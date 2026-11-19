@@ -1,5 +1,5 @@
 import { availableParallelism } from 'node:os';
-import { machineMemory } from '../../../../shared/processes/machine-capacity.mts';
+import { machineMemory } from '../../../../../shared/processes/machine-capacity.mts';
 
 const GIB = 1024 ** 3;
 const MEMORY_PER_SLOT = 1.5 * GIB;

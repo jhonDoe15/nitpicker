@@ -24,7 +24,7 @@ import { pitHistoryOf } from '../builds/pit-history/pit-history.mts';
 import { effectsOptions } from '../adapters/effects/effects-options.mts';
 import { dependencyFile } from './quick/maven-build-arguments.mts';
 import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mts';
-import { startToolHosts } from '../builds/host/session/host-session.mts';
+import { startJavaToolHosts } from './programs/tool-host-program.mts';
 import { mavenScope } from './reactor/maven-scope.mts';
 import { reactorRootFor } from './reactor/reactor-root.mts';
 import { buildOrSkipTests, jacocoExecFiles, testReruns } from './quick/maven-test-phase.mts';
@@ -254,7 +254,7 @@ function presetInWork(
   const run = mavenRunOf(projectRoot, options);
   const request = { policy, environment, configs, work, onModules };
   const { modules, built, scope, kotlin, timedOut, failed, ...prepared } = prepare(run, request);
-  const hosts = startToolHosts({
+  const hosts = startJavaToolHosts({
     work,
     modules: modules.length,
     tools: prepared.tools,

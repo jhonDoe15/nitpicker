@@ -7,7 +7,7 @@ import { javaCommand } from '../../../../maven/programs/java-command.mts';
 import { effectsTool, resolveTools } from '../../../../maven/maven-tools.mts';
 import { PLAIN_TOOL, type HostedTool } from '../../config/host-config.mts';
 import { hostedRun, type HostedRun } from '../../client/host-client.mts';
-import { startToolHosts } from '../host-session.mts';
+import { startJavaToolHosts } from '../../../../maven/programs/tool-host-program.mts';
 
 const COMPILE_TIMEOUT_MS = 120_000;
 const RUN_TIMEOUT_MS = 60_000;
@@ -110,7 +110,7 @@ export function startProbeHost(maven: string | undefined): ProbeHost {
       warning = text;
     },
   };
-  const hosts = startToolHosts({ work, modules: 2, tools, pinned, warn });
+  const hosts = startJavaToolHosts({ work, modules: 2, tools, pinned, warn });
   if (hosts === undefined) {
     throw new Error(`The tool hosts did not start: ${warning}`);
   }

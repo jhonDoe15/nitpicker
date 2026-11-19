@@ -16,7 +16,7 @@ import { readSelfRecursionFindings } from '../../adapters/review-rules/self-recu
 import { readTestOnlyClassFindings } from '../../adapters/review-rules/test-only/test-only-classes.mts';
 import { readTestRuntimeFindings } from '../../adapters/test-runtime/test-runtime-findings.mts';
 import { outerClass } from '../../ingest/class-names.mts';
-import { inModule } from '../module-path.mts';
+import { inModule } from '../paths/module-path.mts';
 import {
   callUntyped,
   findingsOf,

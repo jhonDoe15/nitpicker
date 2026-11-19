@@ -7,7 +7,7 @@ import { runToolsConcurrently } from './concurrent-tools.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import { failWith, writeJavaOptions, writeMarker } from './test-support/marker-tools.mts';
-import { toolHeapFlags } from './tool-slots.mts';
+import { toolHeapFlags } from './slots/tool-slots.mts';
 
 const TOOLS_URL = checkoutModuleUrl(new URL('test-support/marker-tools.mjs', import.meta.url)).href;
 type Task = {

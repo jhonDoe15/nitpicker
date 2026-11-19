@@ -1,10 +1,7 @@
 import { type Failure, failingTestEntries, testsFailHeadline } from '../../typed/reporting.mts';
 import { mockPinHeadline } from '../failure-lines.mts';
-
-export type RerunVerdict = {
-  readonly pinned: ReadonlySet<string>;
-  readonly loadSensitive: ReadonlySet<string>;
-};
+import { testKey } from '../../../test-runners/reruns/rerun-verdict.mts';
+import type { RerunVerdict } from '../../../test-runners/reruns/rerun-verdict.mts';
 
 type Groups = {
   readonly genuine: readonly Failure[];
@@ -12,12 +9,7 @@ type Groups = {
   readonly loadSensitive: readonly Failure[];
 };
 
-export const NO_RERUN_VERDICT: RerunVerdict = { pinned: new Set(), loadSensitive: new Set() };
 const SKIPPED = 'coverage, CRAP and mutation were skipped';
-
-export function testKey(file: string, name: string): string {
-  return `${file} > ${name}`;
-}
 
 function keyOf({ file, name }: Failure): string {
   return testKey(file, name);
