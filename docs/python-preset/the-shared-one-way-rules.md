@@ -1652,8 +1652,10 @@ __getattr__` that warns or maps removed names to new ones (a PEP 562 lazy import
   return types, `__all__` of strings, `global` and `nonlocal` declarations (remove them and pass
   the value in), logging argument counts, `os.getenv` types, a loop variable overwritten in its
   body (bind a new name), an exception built and not raised, a lock made inside `with`, nested
-  `max`/`min` and `subprocess.run` without `check` (`check=True`, or `check=False` with the
-  return code handled). `PLW0108` asks to pass the function itself (`key=str`); a lambda that must
+  `max`/`min`, `subprocess.run` without `check` (`check=True`, or `check=False` with the
+  return code handled) and `open()`, `Path.open()`, `read_text()` or `write_text()` in text mode
+  without an `encoding` (`PLW1514`: pass `encoding="utf-8"`, or `encoding="locale"` where the
+  platform encoding is meant). `PLW0108` asks to pass the function itself (`key=str`); a lambda that must
   look a name up at call time takes an exception. `T100` rejects committed debugger imports and
   breakpoints.
 - The advice follows the project when two forms are valid. Pytest style: the parentheses of

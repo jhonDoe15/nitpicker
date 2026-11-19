@@ -292,16 +292,33 @@ describe('the ruff config for the installed ruff', () => {
   it('drops the rules the installed ruff still has in preview', () => {
     const everyRule = selected(RUFF_CONFIG).map((code) =>
       code === 'RUF071'
-        ? { code, preview: true, status: { Preview: { since: '0.15.6' } } }
+        ? {
+            code,
+            name: 'os-path-commonprefix',
+            preview: true,
+            status: { Preview: { since: '0.15.6' } },
+          }
         : rule(code),
     );
+    const calls = callsLog();
     const root = project({ 'ruff-rules.json': JSON.stringify(everyRule) });
     const { context, reportRoot } = contextFor(root);
 
     runPythonTools(context);
 
     const filtered = readFileSync(path.join(reportRoot, 'nitpicker-ruff.toml'), 'utf8');
+    const preview = calls('ruff', 'check').find(({ args }) => args.includes('--preview'));
     expect(filtered).toBe(readFileSync(RUFF_CONFIG, 'utf8').replace('  "RUF071",\n', ''));
+    expect(preview?.args.slice(-8)).toEqual([
+      '--preview',
+      '--select',
+      'RUF071',
+      '--output-format',
+      'sarif',
+      '--output-file',
+      path.join(reportRoot, 'ruff-preview.sarif'),
+      '.',
+    ]);
   });
   it('drops the rules an older ruff does not know instead of failing on them', () => {
     const calls = callsLog();

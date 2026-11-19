@@ -7,7 +7,7 @@ import { installedRuffRules } from './test-support/installed-ruff-rules.mts';
 
 const enabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 const ruff = process.env['NITPICKER_RUFF'] ?? 'ruff';
-const PREVIEW_SELECTIONS = new Set(['RUF071']);
+const PREVIEW_SELECTIONS = new Set(['PLW1514', 'RUF071']);
 
 describe.skipIf(!enabled)('the RUF rules of the installed ruff', () => {
   const lint = ruffSelection(readFileSync(RUFF_CONFIG, 'utf8'));

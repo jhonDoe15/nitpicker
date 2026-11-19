@@ -19,6 +19,7 @@ import {
 } from './execution/python-project.mts';
 import { formatCommand, ruffExclusions } from './formatting/format-command.mts';
 import { ruffLintConfig } from './project-tools/ruff/ruff-lint-config.mts';
+import { lintPreviewRules } from './project-tools/ruff/preview/ruff-preview.mts';
 import { detectTestRunner } from './execution/python-test-runner.mts';
 import { test, TestRunError } from './test-runs/test-step.mts';
 import { retimeSlowTests } from './test-runs/timing/slow-retime.mts';
@@ -227,12 +228,13 @@ export function lintOptions(context: ToolContext): string[] {
 }
 
 export function lint(context: ToolContext): void {
+  const options = lintOptions(context);
   run(
     context,
     [
       'ruff',
       'check',
-      ...lintOptions(context),
+      ...options,
       '--output-format',
       'sarif',
       '--output-file',
@@ -241,6 +243,7 @@ export function lint(context: ToolContext): void {
     ],
     { accepted: [0, 1], rule: 'ruff-failed' },
   );
+  lintPreviewRules(context, { options, mainReport: RUFF_REPORT });
 }
 
 export function unformattedPaths(
