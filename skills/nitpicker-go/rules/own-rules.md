@@ -32,6 +32,9 @@ the allowed form and ends with its exception entry.
 - Never `time.Sleep` to wait for a goroutine you started (`go-rules/sleep-to-wait`): wait on its
   WaitGroup, errgroup, channel or context. A sleep between retries, with no goroutine started
   before it, is fine.
+- An exported function or method does not wait a package constant it cannot override
+  (`go-rules/uninjectable-delay`): `time.Sleep(retryDelay)` or `<-time.After(retryDelay)` makes a test wait it
+  out. Take the delay as a parameter, or a field or option of the exported type that defaults to the constant.
 - A `Close`, `Shutdown` or `Stop` that releases several resources runs every release: `errors.Join` the
   results, or `defer` one close per resource, never `if err := a.Close(); err != nil { return err }` before
   the next release (`go-rules/cleanup-skipped`).

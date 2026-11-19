@@ -162,6 +162,7 @@ const GO_RULES: ReadonlyMap<string, Labels> = new Map([
   ['credential_shape', SECURITY],
   ['get_prefixed_getter', STYLE],
   ['self_recursion', [RELIABILITY_LABEL, ...MAINTAINABILITY]],
+  ['uninjectable_delay', [...TESTS, ...MAINTAINABILITY]],
 ]);
 
 function staticcheckLabels(rule: string): Labels {

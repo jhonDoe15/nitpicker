@@ -94,6 +94,12 @@ const GROUPS = [
     python: 'self-recursion',
     go: 'go-rules/self-recursion',
   },
+  {
+    jvm: 'UninjectableDelay',
+    typescript: 'nitpicker/no-uninjectable-delay',
+    python: 'uninjectable-delay',
+    go: 'go-rules/uninjectable-delay',
+  },
 ];
 
 function spring(rule) {

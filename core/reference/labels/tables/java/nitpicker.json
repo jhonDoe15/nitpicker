@@ -93,6 +93,7 @@
   "pmd/TestOrderDependence": ["tests"],
   "pmd/TodoWithoutIssue": ["maintainability"],
   "pmd/TryCatchInTest": ["tests"],
+  "pmd/UninjectableDelay": ["tests", "maintainability"],
   "pmd/UntestedRoundTrip": ["tests"],
   "pmd/WeakHash": ["security"],
   "spotbugs/InlineSuppression": ["maintainability"],

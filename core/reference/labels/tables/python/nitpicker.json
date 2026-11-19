@@ -133,6 +133,7 @@
   "python-rules/unclosed-inline-resource": ["reliability"],
   "python-rules/uncollected-tests": ["tests"],
   "python-rules/unindexed-foreign-key": ["performance", "persistence"],
+  "python-rules/uninjectable-delay": ["tests", "maintainability"],
   "python-rules/unmapped-exception": ["reliability"],
   "python-rules/unordered-query": ["bug", "persistence"],
   "python-rules/unsafe-deserialization": ["security"],

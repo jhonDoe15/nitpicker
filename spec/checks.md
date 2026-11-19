@@ -286,6 +286,12 @@ an `if (x == null)` or `if x is None:` branch without `else` that does something
 continue, exit or assignment to `x`) when the same block then reads `x` as present (member access, indexing, destructuring,
 spread, iteration, or an argument of a call the branch also made). A later guard of `x` ends the search.
 
+Delays tests cannot set: `nitpicker/no-uninjectable-delay` (production source, in `eslint-lint`) in the TypeScript and
+JavaScript presets, `pmd/UninjectableDelay` in Java and Kotlin, `uninjectable-delay` (script) in Python and
+`go-rules/uninjectable-delay` in Go. It reports a timer (`setTimeout`, `Thread.sleep`, `TimeUnit.X.sleep`, `delay`,
+`schedule`, `time.sleep`, `asyncio.sleep`, `time.Sleep`, `time.After`) that waits a constant of 500 ms or more declared in
+the same file or package, inside a public function with no parameter, field or option that can carry the delay.
+
 Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
 that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the

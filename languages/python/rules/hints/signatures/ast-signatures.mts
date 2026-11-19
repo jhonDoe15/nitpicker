@@ -4,12 +4,21 @@ import type { RuleHint } from '../hint-types.mts';
 
 const OWNED_MUTATION = /^(.+) \((.+)\)$/u;
 const ALIAS = /^(\S+) = (\S+)$/u;
+const DELAY_TEXT = /^([^|]+)\|([^|]+)\|([^|]+)\|(.+)$/u;
 const USE_TEXT = /^([^|]+)\|(.*)$/u;
 
 function fallThroughDescription(subject = ''): string {
   const [, name = subject, use] = USE_TEXT.exec(subject) ?? [];
   const target = use === undefined ? 'code' : `\`${use}\``;
   return `The null branch handles \`${name}\` and then falls through to ${target}, which uses \`${name}\``;
+}
+
+function delayDescription(subject = ''): string {
+  const [, timer, name = '', millis = '', owner = ''] = DELAY_TEXT.exec(subject) ?? [];
+  if (timer === undefined) {
+    return `\`${subject}\` waits a module constant that the public function cannot override, so a test must wait it out or fake the clock`;
+  }
+  return `\`${timer}\` waits ${name} (${millis} ms), a module constant that public \`${owner}\` cannot override, so a test must wait it out or fake the clock`;
 }
 
 function mutationDescription(subject = ''): string {
@@ -57,6 +66,13 @@ export const SIGNATURE_HINTS: readonly RuleHint[] = [
     describe: fallThroughDescription,
     allowed:
       'Add `return` (or an `else`) so the null case is handled once; a branch that only logs and then continues still fails at the later use.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['uninjectable-delay'],
+    describe: delayDescription,
+    allowed:
+      'Accept the delay as a parameter with the constant as its default (`def poll(delay=RETRY_DELAY)`), or as a constructor argument kept in a field; an exception fits only when the delay is deliberately fixed.',
   },
   {
     tool: RULES_TOOL,

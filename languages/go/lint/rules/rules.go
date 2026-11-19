@@ -7,6 +7,7 @@ import (
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/copies"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/copypasted"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/database"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/delays"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/design"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/failures"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/guards"
@@ -35,6 +36,7 @@ func Analyzers() []*analysis.Analyzer {
 		[]*analysis.Analyzer{
 			copies.Analyzer,
 			copypasted.Analyzer,
+			delays.Analyzer,
 			optional.Analyzer,
 			nilbranch.Analyzer,
 			overflow.Analyzer,

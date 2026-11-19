@@ -20,6 +20,11 @@ describe('signature rule messages', () => {
       'The null branch handles `value` and then falls through to `value.name`, which uses `value`',
     ],
     [
+      'uninjectable-delay',
+      'time.sleep|RETRY_DELAY|2000|poll',
+      '`time.sleep` waits RETRY_DELAY (2000 ms), a module constant that public `poll` cannot override, so a test must wait it out or fake the clock',
+    ],
+    [
       'parameter-mutation',
       'names.append (collect)',
       '`names.append` changes the argument the caller passed to `collect`',
