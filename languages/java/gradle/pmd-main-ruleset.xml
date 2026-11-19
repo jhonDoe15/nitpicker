@@ -147,7 +147,7 @@ return
     </properties>
   </rule>
   <rule name="CallValueStoredInSharedField" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This method of a shared component (a singleton Spring bean, a servlet or a filter) stores a value built from its own argument in an instance field. One instance serves every call, so the next call, possibly on another thread, reads the first caller's value: data from one request leaks into another. Keep the value in a local variable and pass it on, or key it by caller in a concurrent map, or make the bean prototype-scoped. Configuration set once belongs in the constructor, a @PostConstruct method or a setter used at start-up. An exception fits a one-time lazy initialisation that is meant to latch the first value; do it in an init method instead.">
+        message="This method of a shared component (a singleton Spring bean, a servlet or a filter) stores a value built from its own argument in an instance field. One instance serves every call, so the next call, possibly on another thread, reads the value of the first caller: data from one request leaks into another. Keep the value in a local variable and pass it on, or key it by caller in a concurrent map, or make the bean prototype-scoped. Configuration set once belongs in the constructor, a @PostConstruct method or a setter used at start-up. An exception fits a one-time lazy initialisation that is meant to latch the first value; do it in an init method instead.">
     <priority>3</priority>
     <properties>
       <property name="xpath">
@@ -2176,7 +2176,7 @@ return (
     </properties>
   </rule>
   <rule name="SharedStatefulHelperField" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This field keeps a stateful helper (SimpleDateFormat, DateFormat, NumberFormat, Calendar, Matcher, Cipher, Mac, Deflater, Inflater, CRC32, BeanWrapper, ExponentialBackOff) in a static field or in a singleton bean, so every thread shares one instance. These types keep state between calls, so concurrent use gives wrong dates, wrong matches or one caller's retry state shared with everyone. Use an immutable replacement (DateTimeFormatter, a Pattern constant with pattern.matcher(text) per call), create the instance per call (new ExponentialBackOff.Builder().build() in a method), or hold it in a ThreadLocal. An exception fits a field that is only used inside synchronized on one lock.">
+        message="This field keeps a stateful helper (SimpleDateFormat, DateFormat, NumberFormat, Calendar, Matcher, Cipher, Mac, Deflater, Inflater, CRC32, BeanWrapper, ExponentialBackOff) in a static field or in a singleton bean, so every thread shares one instance. These types keep state between calls, so concurrent use gives wrong dates, wrong matches or the retry state of one caller shared with everyone. Use an immutable replacement (DateTimeFormatter, a Pattern constant with pattern.matcher(text) per call), create the instance per call (new ExponentialBackOff.Builder().build() in a method), or hold it in a ThreadLocal. An exception fits a field that is only used inside synchronized on one lock.">
     <priority>3</priority>
     <properties>
       <property name="xpath">
