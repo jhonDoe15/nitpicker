@@ -30,8 +30,14 @@ function isFile(file) {
 }
 
 function ancestors(folder) {
-  const parent = path.dirname(folder);
-  return parent === folder ? [folder] : [folder, ...ancestors(parent)];
+  const folders = [folder];
+  for (const current of folders) {
+    const parent = path.dirname(current);
+    if (parent !== current) {
+      folders.push(parent);
+    }
+  }
+  return folders;
 }
 
 function buildFolders(projectRoot) {
