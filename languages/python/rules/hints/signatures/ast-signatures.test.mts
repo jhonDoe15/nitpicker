@@ -81,6 +81,7 @@ describe('signature rule messages', () => {
       'pattern-translation',
       'like|term',
       "`term` is turned into a SQL `LIKE` pattern by `replace` calls that leave the target's metacharacters unescaped",
+    ],
     [
       'swapped-arguments',
       'docs|proc|pipe|docs',
