@@ -2683,6 +2683,8 @@ runs only when `--fix --rule` names one of its rules.
 | java         | `structure/near-duplicate` (a run shared by two methods of a class)                                                                                                                                                                                                                                                     | `java-extract-partial-run`                                                                                           | extracts the shared statements of a `partial-run` pair into a method and calls it from both (review)                                                                                  |
 | typescript   | `structure/near-duplicate` (copies in one file)                                                                                                                                                                                                                                                                         | `typescript-extract-near-duplicate`                                                                                  | extracts the shared function of a proved copy and calls it from both copies                                                                                                           |
 | typescript   | `structure/near-duplicate` (a run shared by two functions of a file)                                                                                                                                                                                                                                                    | `typescript-extract-partial-run`                                                                                     | extracts the shared statements of a `partial-run` pair into a function and calls it from both (review)                                                                                |
+| java, kotlin | `structure/shorter-condition`                                                                                                                                                                                                                                                                                           | `jvm-shorter-condition`                                                                                              | writes the shorter form the finding names in place of the condition (review)                                                                                                          |
+| java, kotlin | `structure/duplicate-branch` (switch cases and `when` entries)                                                                                                                                                                                                                                                          | `jvm-merge-switch-labels`                                                                                            | merges the labels of cases with the same body into the first case (review)                                                                                                            |
 | java         | `checkstyle/UpperEll`                                                                                                                                                                                                                                                                                                   | `java-upper-ell`                                                                                                     | turns the `l` suffix of a `long` literal into `L`, outside strings, text blocks and comments                                                                                          |
 | kotlin       | `detekt/detekt.style.NewLineAtEndOfFile`                                                                                                                                                                                                                                                                                | `kotlin-final-newline`                                                                                               | ends a file with a line break, CRLF when the file uses CRLF                                                                                                                           |
 | java, kotlin | `errorprone/<Check>` for the checks in [Error Prone fixes](#error-prone-fixes)                                                                                                                                                                                                                                          | `java-error-prone-safe`, `java-error-prone-review`                                                                   | applies the fix Error Prone suggests, to the changed lines of `.java` files                                                                                                           |
@@ -2708,6 +2710,22 @@ runs only when `--fix --rule` names one of its rules.
 | java         | `facts/doc-comment-content`                                                                                                                                                                                                                                                                                             | `java-restating-doc-comment`                                                                                         | deletes the lines of a Javadoc comment in a main source set that only restates the name of its declaration                                                                            |
 | kotlin       | `facts/doc-comment-content`                                                                                                                                                                                                                                                                                             | `kotlin-restating-doc-comment`                                                                                       | the same for KDoc, and for Javadoc in the Java files of the project                                                                                                                   |
 | python       | `facts/doc-comment-content`                                                                                                                                                                                                                                                                                             | `python-restating-docstring`                                                                                         | deletes the lines of a docstring that only restates the name of its function or class, or turns a docstring that is the whole body into `pass`                                        |
+
+Shorter conditions. `jvm-shorter-condition` writes the form that `structure/shorter-condition`
+names in place of the condition, in Java and Kotlin functions, and puts it in parentheses where an
+operator wraps it. It leaves a condition that holds a comment, a condition whose text appears twice
+on its line, and generated sources. It is a `review` recipe: the shorter form evaluates fewer
+operands, so a dropped operand that could throw (unboxing a `null` `Boolean`, a call with a side
+effect) no longer runs.
+
+Switch labels. `jvm-merge-switch-labels` handles the `structure/duplicate-branch` findings on
+switch cases with the same body. It adds the labels of the later cases to the first one and removes
+the later cases: `case 1: case 3:` for Java colon cases, `case 1, 3 ->` for arrow cases and
+`1, 3 ->` for a Kotlin `when` with a subject. It leaves a case that falls through or that a falling
+case enters, a case that declares a local, pattern labels, guards, `null`, `default` and `else`,
+cases with comments, and Kotlin entries that are not next to each other (their conditions are tested
+in order) or that test a type (the body may rely on the smart cast). It is a `review` recipe, as the
+merged case may be one that was meant to differ.
 
 Near-duplicate extraction. The `near-duplicate` recipes handle a `same` or `parameterizable` pair
 whose copies sit in one file (TypeScript, JavaScript), in one class (Java), or in two files of one
@@ -2862,12 +2880,17 @@ checks every recipe that applied a fix:
    compared by tool, rule and file with the ones the same analyzers give for the files before the
    fix.
 2. A recipe is rolled back when its finding is still there, when it adds a finding in a file it
-   touched, or when it adds a compile or type error. A new compile or type error in a file that no
-   recipe touched rolls back every recipe, as nitpicker cannot tell which one caused it.
+   touched, or when it adds a compile or type error. A new finding that is only a simplification
+   (labelled `simplification` and nothing else, such as `errorprone/UnnecessaryParentheses` after
+   a pattern match) does not roll the recipe back: the fix surfaced it, and it is reported as usual.
+   A new compile or type error in a file that no recipe touched rolls back every recipe, as
+   nitpicker cannot tell which one caused it.
 3. A rolled back recipe gets its files back as they were before `--fix`, and a "Fix notes:" line
    names the recipe, its files and the reason: `--fix rolled back <recipe> (<files>): <reason>`.
-   Two recipes that touched the same file are rolled back together. The other recipes stay applied,
-   and the comparison runs on the tree that is left. The files of a rolled back recipe are not
+   Two recipes that touched the same file are rolled back together. A recipe that edits one file at
+   a time (every Error Prone and Kotlin source recipe) is judged per file, so only the files it
+   broke are rolled back. The other recipes stay applied, and the comparison runs on the tree that
+   is left. The files of a rolled back recipe are not
    formatted either, and they are not listed under "Fixed files:" or "Fixed findings:".
 
 When no recipe fixed anything, nothing is verified. When the analyzers fail, or none reports the
@@ -2989,7 +3012,9 @@ them against the pinned Error Prone when it runs the patch compile above, so the
 compile, and they never run in the gate. Each check edits one file, so none renames a public symbol.
 
 `pmd/UseStandardCharsets`, `pmd/SpringComposedMapping`, `pmd/SpringRestController`,
-`pmd/LogStringConcatenation` and `pmd/UseCollectionIsEmpty` are on the safe list. The others
+`pmd/LogStringConcatenation`, `pmd/UseCollectionIsEmpty`, `pmd/SimplifyBooleanReturns`,
+`pmd/SimplifiedTernary`, `pmd/SimplifyBooleanExpressions`, `pmd/CollapsibleIfStatements` and
+`pmd/UselessStringValueOf` are on the safe list. The others
 (`pmd/LiteralsFirstInComparisons`, `pmd/PreserveStackTrace`, `pmd/SpringConstructorInjection`, `pmd/DetachedTestCase`,
 `pmd/RetryInTest`, `pmd/MutationIgnoreMarker`, `pmd/GeneratedOnHandWrittenCode`) change what the
 code does or what the tests measure, so they run only when a run selects their rule. When two

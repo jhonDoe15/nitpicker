@@ -1,6 +1,13 @@
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
 import type { KotlinFound, ScannedKotlin } from '../shared/kotlin-scan.mts';
+import { inheritsUnknownMembers, standsAlone } from './call-context.mts';
 import { shadowsStandardCalls } from './precondition-calls.mts';
+
+const DEFAULT_MESSAGES: Readonly<Record<string, string>> = {
+  require: 'Failed requirement.',
+  check: 'Check failed.',
+};
+const TRAILING_LAMBDA = /^\s*\{/u;
 
 const NOT_NULL =
   /(?<![\w.])(require|check)\s*\(\s*([A-Za-z_]\w*(?:\s*\.\s*[A-Za-z_]\w*)*)\s*!=\s*null\s*\)/gu;
@@ -9,22 +16,25 @@ function notNullChecks(
   call: string,
   rule: string,
 ): (scanned: ScannedKotlin) => readonly KotlinFound[] {
-  return (scanned) =>
-    shadowsStandardCalls(scanned.code)
+  return ({ code }) =>
+    shadowsStandardCalls(code)
       ? []
-      : [...scanned.code.matchAll(NOT_NULL)]
+      : [...code.matchAll(NOT_NULL)]
           .filter(({ 1: name }) => name === call)
-          .map(({ index, 0: text, 2: target }) => ({
-            rule,
-            offset: index,
-            edits: [
-              {
-                start: index,
-                end: index + text.length,
-                text: `${call}NotNull(${(target ?? '').replaceAll(/\s+/gu, '')})`,
-              },
-            ],
-          }));
+          .filter(({ index, 0: text }) => standsAlone(code, index, index + text.length))
+          .filter(({ index }) => !inheritsUnknownMembers(code, index))
+          .map(({ index, 0: text, 2: target }) => {
+            const end = index + text.length;
+            const message = TRAILING_LAMBDA.test(code.slice(end))
+              ? ''
+              : ` { "${DEFAULT_MESSAGES[call] ?? ''}" }`;
+            const subject = (target ?? '').replaceAll(/\s+/gu, '');
+            return {
+              rule,
+              offset: index,
+              edits: [{ start: index, end, text: `${call}NotNull(${subject})${message}` }],
+            };
+          });
 }
 
 export const useRequireNotNullRecipe = kotlinRecipe({
