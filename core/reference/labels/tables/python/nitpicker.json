@@ -144,6 +144,7 @@
   "python-rules/unsafe-deserialization": ["security"],
   "python-rules/unsafe-path-join": ["security"],
   "python-rules/unshielded-cleanup-await": ["reliability", "async"],
+  "python-rules/unsortable-table-column": ["bug"],
   "python-rules/untested-round-trip": ["tests"],
   "python-rules/untrimmed-request-text": ["bug"],
   "python-rules/unused-option": ["simplification"],

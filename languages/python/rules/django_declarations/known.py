@@ -72,3 +72,9 @@ def opaque_names(model, graph):
     for parent in parent_models(model, graph):
         names |= {name for name, _ in class_assignments(parent.node)}
     return names - set(model.fields)
+
+
+def is_many(item):
+    if hasattr(item, "owner"):
+        return item.many
+    return item.relation is not None and item.relation.many
