@@ -556,6 +556,11 @@ Handlers that miss an exception of the guarded call: `except-misses-raised-excep
 need `ValueError`) or of `timedelta(**value)` (also `OverflowError`) and misses another. A common base,
 `except Exception` and a handler for an unrelated exception are left alone.
 
+Asserts on external state: `assert-on-external-state` in the Python preset reports an `assert` in production code on a
+name bound in the same function from a dict or cache `get`, a query row (`first`, `one_or_none`), a payload subscript,
+a nullable model field or an HTTP or SDK client result. An explicit `if x is None:` guard, an `assert` on a value the
+function built and test files are left alone; ruff `S101` stays unselected.
+
 Pending requests left hanging by a close: `nitpicker/settle-pending-on-close` (strict preset, production source)
 reports a `Map`, object or array of callbacks, resolve and reject pairs or deferreds in a class or factory with a
 close, dispose, stop or shutdown function that never settles it (rejecting or calling each entry, or passing

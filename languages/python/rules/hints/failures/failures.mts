@@ -24,4 +24,15 @@ export const FAILURE_HINTS: readonly RuleHint[] = [
     allowed:
       'Catch the common base: `except ValueError` for `json.loads` and `request.json()` (it covers `JSONDecodeError` and `UnicodeDecodeError`), `except (ValueError, TypeError, OverflowError)` for `timedelta(**value)` built from input. `except Exception` fits when any failure should take the same path.',
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['assert-on-external-state'],
+    describe: (subject) => {
+      const [checked = '', source = ''] = subject.split('|');
+      const origin = /[)\]]$/.test(source) ? `\`${source}\`` : `the nullable field \`${source}\``;
+      return `\`assert ${checked}\` checks a value that comes from outside this function (${origin}): when it is missing the request or job crashes with an \`AssertionError\` instead of handling it, and \`python -O\` removes the check`;
+    },
+    allowed:
+      'Handle the missing value: `if schedule is None: return None`, or raise a domain error (`raise NotFound(...)`, `raise HTTPException(404)`), or use the value only when present (`schedule.name if schedule else None`). Keep `assert` for a value this function just built.',
+  },
 ];
