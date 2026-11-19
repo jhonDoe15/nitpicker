@@ -1,3 +1,4 @@
+import type { RepositoryTypes } from '../../project/repository-types.mts';
 import { escapeRegExp } from '../../shared/kotlin-scan.mts';
 
 type Binding =
@@ -73,18 +74,19 @@ function reactiveFile(code: string): boolean {
   return REACTIVE.test(code);
 }
 
-export function isRepositoryName(code: string, name: string): boolean {
-  const bindings = bindingsOf(code, name);
-  return (
-    bindings.length > 0 &&
-    !reactiveFile(code) &&
-    bindings.every(
-      (binding) =>
-        binding.kind === 'typed' &&
-        !binding.type.endsWith('?') &&
-        baseName(binding.type).endsWith('Repository'),
-    )
+export function repositoryTypeOf(code: string, name: string): string | undefined {
+  const types = new Set(
+    bindingsOf(code, name).map((binding) =>
+      binding.kind === 'typed' && !binding.type.endsWith('?') ? baseName(binding.type) : '',
+    ),
   );
+  const [type = ''] = types;
+  return types.size === 1 && !reactiveFile(code) && type.endsWith('Repository') ? type : undefined;
+}
+
+export function isRepositoryName(code: string, name: string, known: RepositoryTypes): boolean {
+  const type = repositoryTypeOf(code, name);
+  return type !== undefined && known.hasBatchCalls(type);
 }
 
 export function isIterableName(code: string, name: string): boolean {

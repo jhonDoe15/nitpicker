@@ -3,6 +3,7 @@ import { kotlinRecipe } from '../../../shared/kotlin-recipe.mts';
 import { splitArguments } from '../../../shared/kotlin-scan.mts';
 import type { KotlinEdit, KotlinFound, ScannedKotlin, Span } from '../../../shared/kotlin-scan.mts';
 import { removalSpan } from '../../../shared/spans.mts';
+import { type RepositoryTypes, repositoryTypes } from '../../../project/repository-types.mts';
 import { isRepositoryName } from '../declared-names.mts';
 
 const NAME = String.raw`(?:this\s*\.\s*)?[A-Za-z_]\w*`;
@@ -42,7 +43,7 @@ type Call = {
   readonly test: RegExpExecArray;
 };
 
-function callOf(code: string, match: RegExpExecArray): Call | undefined {
+function callOf(code: string, match: RegExpExecArray, known: RepositoryTypes): Call | undefined {
   const [head = '', receiver = '', method = ''] = match;
   const { close, parts } = splitArguments(code, match.index + head.length - 1);
   const [argument] = parts;
@@ -53,17 +54,21 @@ function callOf(code: string, match: RegExpExecArray): Call | undefined {
     parts.length !== 1 ||
     test === null ||
     NAMED_ARGUMENT.test(code.slice(argument.start, argument.end)) ||
-    !isRepositoryName(code, receiver.replace(/^this\s*\.\s*/u, ''))
+    !isRepositoryName(code, receiver.replace(/^this\s*\.\s*/u, ''), known)
   ) {
     return undefined;
   }
   return { close, argument, test };
 }
 
-function siteAt(scanned: ScannedKotlin, match: RegExpExecArray): Site | undefined {
+function siteAt(
+  scanned: ScannedKotlin,
+  match: RegExpExecArray,
+  known: RepositoryTypes,
+): Site | undefined {
   const { code, source } = scanned;
   const [head = '', receiver = '', method = ''] = match;
-  const call = callOf(code, match);
+  const call = callOf(code, match, known);
   if (call === undefined) {
     return undefined;
   }
@@ -100,9 +105,10 @@ export const entityExistsRecipe = kotlinRecipe({
   rules: [{ tool: 'effects', rule: 'EntityLoadedForExistence' }],
   safety: 'review',
   keepComments: true,
-  find(scanned): readonly KotlinFound[] {
+  find(scanned, _file, projectRoot): readonly KotlinFound[] {
+    const known = repositoryTypes(projectRoot);
     const sites = [...scanned.code.matchAll(FIND)].flatMap((match) => {
-      const site = siteAt(scanned, match);
+      const site = siteAt(scanned, match, known);
       return site === undefined ? [] : [site];
     });
     const removal = orNullImport(scanned, sites);
