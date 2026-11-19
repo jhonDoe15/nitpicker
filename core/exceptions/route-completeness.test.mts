@@ -6,7 +6,7 @@ import {
   CATALOG_TOOLS as UNTYPED_CATALOG_TOOLS,
   readCatalog as untypedReadCatalog,
   withRuleMessage as untypedWithRuleMessage,
-} from '../../languages/java/messages/rule-messages.mjs';
+} from '../../languages/java/messages/rule-messages.mts';
 import {
   RULE_HINTS as UNTYPED_RULE_HINTS,
   withHint as untypedWithHint,

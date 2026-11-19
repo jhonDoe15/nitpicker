@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { run, summary } from '../../test-support/facts.mts';
 import { file, fn, importOf, klass, parameter } from '../../test-support/loose-facts.mts';
-import { streamedRowsFindings } from './streamed-rows.mjs';
+import { streamedRowsFindings } from './streamed-rows.mts';
 
 function streamed(after: unknown, { returnType = 'Stream<Row>', supers = ['JpaRepository'] } = {}) {
   const facts = file({

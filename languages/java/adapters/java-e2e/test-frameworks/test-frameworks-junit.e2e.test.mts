@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { INIT_SCRIPT as INIT_SCRIPT_UNTYPED } from '../../../builds/java-build.mjs';
+import { INIT_SCRIPT as INIT_SCRIPT_UNTYPED } from '../../../builds/java-build.mts';
 import { collectJavaFindings } from '../../java-diff.mts';
 import {
   ARCHUNIT_FINDING,

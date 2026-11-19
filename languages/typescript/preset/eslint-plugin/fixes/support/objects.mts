@@ -13,6 +13,14 @@ export function keyName(property: TSESTree.ObjectLiteralElement): string | undef
     : String(property.key.value);
 }
 
+export function valueOf(
+  options: TSESTree.ObjectExpression,
+  key: string,
+): TSESTree.Node | undefined {
+  const property = options.properties.find((each) => keyName(each) === key);
+  return property?.type === AST_NODE_TYPES.Property ? property.value : undefined;
+}
+
 export function isPlainObject(
   node: TSESTree.Node | undefined,
   { allowSpread }: Readonly<Record<string, unknown>> = {},

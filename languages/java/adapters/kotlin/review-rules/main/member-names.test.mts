@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ClassFact, ParameterFact, PropertyFact } from '../test-support/facts.mts';
 import { routeOf, run, summary } from '../test-support/facts.mts';
 import { file, fn, klass, parameter, property } from '../test-support/loose-facts.mts';
-import { SINGULAR_PLURAL_RULE, singularPluralFindings } from './member-names.mjs';
+import { SINGULAR_PLURAL_RULE, singularPluralFindings } from './member-names.mts';
 
 const member = (name: string, type: string, overrides = {}) =>
   parameter(name, type, { property: 'val', ...overrides });

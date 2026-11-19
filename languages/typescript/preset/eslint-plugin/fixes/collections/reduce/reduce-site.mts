@@ -3,7 +3,8 @@ import type { Context } from '../../../rules/security/security-values.mts';
 import { ancestorsOf, chainOf, type SourceCode } from '../../../rules/typed/node-views.mts';
 import { soleReturnedValue, type Callback } from '../../../rules/typed/syntax-views.mts';
 import { hasCommentIn } from '../../support/ranges.mts';
-import { applyEdits, type TextEdit } from './text-edits.mts';
+import type { TextEdit } from '../../edits/text.mts';
+import { applyEdits } from './text-edits.mts';
 import { hasDenseArrayType } from './type-proofs.mts';
 
 export type ReduceSite = {

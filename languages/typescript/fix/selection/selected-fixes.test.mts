@@ -58,4 +58,26 @@ describe('selectedOutput', () => {
     expect(result.text).toBe('let a = 1;\nlet b = 2;\n');
     expect(result.suggested).toEqual([{ rule: 'eslint-lint/use-isnan', line: 1 }]);
   });
+  it('applies a suggestion only of a listed rule, an own rule or a guarded fix', () => {
+    const suggested = [
+      { ruleId: 'no-var', line: 1, suggestions: [{ fix: { range: [0, 3], text: 'let' } }] },
+      {
+        ruleId: 'nitpicker/no-falsy-default',
+        line: 2,
+        suggestions: [{ fix: { range: [11, 14], text: 'const' } }],
+      },
+    ];
+    const guarded = [
+      {
+        ruleId: 'no-var',
+        line: 1,
+        suggestions: [{ fix: { range: [0, 3], text: 'let' }, messageId: 'nitpickerGuardedFix' }],
+      },
+    ];
+
+    expect(selectedOutput(SOURCE, suggested, ['no-var', 'nitpicker/no-falsy-default']).text).toBe(
+      'var a = 1;\nconst b = 2;\n',
+    );
+    expect(selectedOutput(SOURCE, guarded, ['no-var']).text).toBe('let a = 1;\nlet b = 2;\n');
+  });
 });

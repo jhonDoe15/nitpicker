@@ -9,7 +9,7 @@ import { foundRuleSubjectLines as found } from '../typed/scan-found.mts';
 import {
   genericNames as untypedGenericNames,
   mutableModuleState as untypedMutableModuleState,
-} from './declarations.mjs';
+} from './declarations.mts';
 
 const genericNames: (scanned: Scanned, context?: { file: string }) => Subjected[] =
   untypedGenericNames;

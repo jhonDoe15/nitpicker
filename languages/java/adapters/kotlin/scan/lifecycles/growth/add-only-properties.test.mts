@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Ruled, lineOf, scanKotlinSource } from '../../typed/typed-scan.mts';
-import { unboundedCollectionProperty as untypedUnboundedCollectionProperty } from './add-only-properties.mjs';
+import { unboundedCollectionProperty as untypedUnboundedCollectionProperty } from './add-only-properties.mts';
 
 const unboundedCollectionProperty: Check<Ruled> = untypedUnboundedCollectionProperty;
 

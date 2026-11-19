@@ -6,7 +6,7 @@ import { effectsSummary as untypedEffectsSummary } from '../../../effects/test-s
 import {
   sourceFileOf as untypedSourceFileOf,
   sourceLocator as untypedSourceLocator,
-} from '../../../reporting/kotlin-reports.mjs';
+} from '../../../reporting/kotlin-reports.mts';
 
 type Locator = (packageDirectory: string, fileName: string) => string | undefined;
 

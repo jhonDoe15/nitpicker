@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import type { RuleFinding } from '../../test-support/facts.mts';
 import { routed, run } from '../../test-support/facts.mts';
 import { recordedFiles } from '../../test-support/loose-facts.mts';
-import { RECURSIVE_MAP_UPDATE_RULE, recursiveMapUpdateFindings } from './recursive-map-update.mjs';
+import { RECURSIVE_MAP_UPDATE_RULE, recursiveMapUpdateFindings } from './recursive-map-update.mts';
 
 const FIXTURES = path.resolve(import.meta.dirname, '../../../../fixtures');
 const PROJECT = path.join(FIXTURES, 'kotlin-map-update-project');

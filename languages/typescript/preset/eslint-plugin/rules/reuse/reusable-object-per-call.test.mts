@@ -7,6 +7,23 @@ function flagged(code: string, type: string) {
   return { code, errors: [{ messageId: 'perCall', data: { type } }] };
 }
 
+function hoisted(code: string, type: string, name: string, output: string) {
+  return {
+    code,
+    errors: [
+      {
+        messageId: 'perCall',
+        data: { type },
+        suggestions: [{ messageId: 'hoistFormatter', data: { name }, output }],
+      },
+    ],
+  };
+}
+
+function cached(code: string) {
+  return { code, errors: [{ messageId: 'cacheValidator', data: { type: 'Ajv' } }] };
+}
+
 const AJV = 'import Ajv from "ajv";\n';
 
 tester.run('reusable-object-per-call', rule, {
@@ -32,20 +49,34 @@ tester.run('reusable-object-per-call', rule, {
     'export function formats() { return { money: new Intl.NumberFormat("en-US") }; }',
     'export function formatter() { const money = new Intl.NumberFormat("en-US"); return (value: number) => money.format(value); }',
     'export function setup() { const money = new Intl.NumberFormat("en-US"); return { money }; }',
+    'export function zone() { return new Intl.DateTimeFormat().resolvedOptions().timeZone; }',
+    'export function zone() { return new Intl.DateTimeFormat("en-US").resolvedOptions().timeZone; }',
+    'export function zone() { const format = new Intl.DateTimeFormat(); return format.resolvedOptions().timeZone; }',
+    'export class Prices { show(value: number) { return new Intl.NumberFormat().format(value); } }',
+    'export function show(date: Date) { return new Intl.DateTimeFormat(undefined, { hour: "numeric" }).format(date); }',
+    'export function show(date: Date) { return new Intl.DateTimeFormat([], { hour: "numeric" }).format(date); }',
+    'export function words(text: string) { return [...new Intl.Segmenter().segment(text)]; }',
+    'export function names() { try { return new Intl.DisplayNames(["en"], { type: "region" }); } catch { return new Intl.DisplayNames(["en"], { type: "language" }); } }',
+    'export function names() { try { return makeNames(); } catch { const display = new Intl.DisplayNames(["en"], { type: "region" }); return display.of("DE"); } }',
+    'export function names() { try { return makeNames(); } catch (error) { return new Intl.Collator("de").compare("a", "b") + String(error); } }',
     'class Ajv { compile() { return () => true; } } export function valid(data: unknown) { return new Ajv().compile()(data); }',
   ],
   invalid: [
-    flagged(
+    hoisted(
       'export function show(value: number) { return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value); }',
       'Intl.NumberFormat',
+      'NUMBER_FORMAT',
+      'const NUMBER_FORMAT = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });\n\nexport function show(value: number) { return NUMBER_FORMAT.format(value); }',
     ),
     flagged(
       'export function show(date: Date) { const day = new Intl.DateTimeFormat("en-GB", { dateStyle: "short" }); return day.format(date); }',
       'Intl.DateTimeFormat',
     ),
-    flagged(
+    hoisted(
       'export function sort(names: string[]) { return names.toSorted(new Intl.Collator("de").compare); }',
       'Intl.Collator',
+      'COLLATOR',
+      'const COLLATOR = new Intl.Collator("de");\n\nexport function sort(names: string[]) { return names.toSorted(COLLATOR.compare); }',
     ),
     flagged(
       'export function ago(days: number) { return Intl.RelativeTimeFormat ? new globalThis.Intl.RelativeTimeFormat("en").format(-days, "day") : ""; }',
@@ -55,33 +86,54 @@ tester.run('reusable-object-per-call', rule, {
       'export function list(names: string[]) { return Intl.ListFormat ? Intl.DateTimeFormat("en").format() + names.join() : ""; }',
       'Intl.DateTimeFormat',
     ),
-    flagged(
-      'export class Prices { show(value: number) { return new Intl.NumberFormat().format(value); } }',
-      'Intl.NumberFormat',
-    ),
-    flagged(
+    hoisted(
       'export const show = (values: number[]) => values.map((value) => new Intl.NumberFormat("en").format(value));',
       'Intl.NumberFormat',
+      'NUMBER_FORMAT',
+      'const NUMBER_FORMAT = new Intl.NumberFormat("en");\n\nexport const show = (values: number[]) => values.map((value) => NUMBER_FORMAT.format(value));',
     ),
-    flagged(
+    hoisted(
       'import { useState } from "react"; export function Price({ value }: { value: number }) { const [shown] = useState(value); return new Intl.NumberFormat("en-US").format(shown); }',
       'Intl.NumberFormat',
+      'NUMBER_FORMAT',
+      'import { useState } from "react";\n\nconst NUMBER_FORMAT = new Intl.NumberFormat("en-US"); export function Price({ value }: { value: number }) { const [shown] = useState(value); return NUMBER_FORMAT.format(shown); }',
     ),
-    flagged(
+    hoisted(
       'export function show(value: number) { return { text: new Intl.NumberFormat("en-US").format(value) }; }',
       'Intl.NumberFormat',
+      'NUMBER_FORMAT',
+      'const NUMBER_FORMAT = new Intl.NumberFormat("en-US");\n\nexport function show(value: number) { return { text: NUMBER_FORMAT.format(value) }; }',
     ),
-    flagged(
+    hoisted(
       'export function show(value: number) { const money = new Intl.NumberFormat("en-US"); return money.format(value); }',
       'Intl.NumberFormat',
+      'NUMBER_FORMAT',
+      'const NUMBER_FORMAT = new Intl.NumberFormat("en-US");\n\nexport function show(value: number) {  return NUMBER_FORMAT.format(value); }',
     ),
-    flagged(
+    hoisted(
       'export function show(values: number[]) { const money = new Intl.NumberFormat("en-US"); return values.map((value) => money.format(value)); }',
       'Intl.NumberFormat',
+      'NUMBER_FORMAT',
+      'const NUMBER_FORMAT = new Intl.NumberFormat("en-US");\n\nexport function show(values: number[]) {  return values.map((value) => NUMBER_FORMAT.format(value)); }',
+    ),
+    cached(
+      `${AJV}export function valid(schema: object, data: unknown) { return new Ajv().compile(schema)(data); }`,
+    ),
+    cached(
+      `${AJV}export function valid(schema: object, data: unknown) { const ajv = new Ajv(); const check = ajv.compile(schema); return check(data); }`,
     ),
     flagged(
-      `${AJV}export function valid(schema: object, data: unknown) { return new Ajv().compile(schema)(data); }`,
+      `${AJV}export function valid(data: unknown) { return new Ajv().compile({ type: "object" })(data); }`,
       'Ajv',
+    ),
+    flagged(
+      `${AJV}export function valid(data: unknown) { return new Ajv({ allErrors: true }).validate({ type: "string" }, data); }`,
+      'Ajv',
+    ),
+    flagged(`${AJV}export function make() { return new Ajv().errors; }`, 'Ajv'),
+    flagged(
+      'export function show(value: number) { try { return String(value); } finally { new Intl.Collator("de").compare("a", "b"); } }',
+      'Intl.Collator',
     ),
   ],
 });

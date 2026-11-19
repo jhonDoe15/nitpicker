@@ -1,0 +1,211 @@
+import { isSecretKey } from '../../../../../spring/spring-secrets.mts';
+import { annotationIn, argumentOf, stringValue } from '../../spring-names.mts';
+import { entriesOf, symbolOf } from '../../spring-scopes.mts';
+import {
+  BEAN,
+  CONFIG_INITIALIZERS,
+  CONFIGURATION,
+  CONFIGURATION_CLASSES,
+  CONFIGURATION_PROPERTIES,
+  DEFAULT_VALUE,
+  PROFILE,
+  PROPERTY_READERS,
+  PROPERTY_RESOLVERS,
+  VALUE,
+} from '../../spring-types.mts';
+import type {
+  Annotated,
+  FunctionFact,
+  ParameterFact,
+  Reported,
+  SpringView,
+} from '../../typed/spring-shapes.mts';
+
+const secretKey: (key: string) => boolean = isSecretKey;
+
+const JVM_KEY = /^(?:java|user|os|file|line|path|javax|jdk|sun|com\.sun|http|https|ftp)\.|^socks/u;
+const SECRET_DEFAULT = /^\$\{([^}:]+):([^}]*)\}$/u;
+const CLASS_KIND = 'class';
+const READS = new Set(['getProperty', 'getRequiredProperty']);
+function isFallback(value: string): boolean {
+  return value !== '' && !/^[#$]/u.test(value);
+}
+
+function parametersWithOwners(
+  view: SpringView,
+): { parameter: ParameterFact; owner: string; fn?: FunctionFact }[] {
+  return [
+    ...view.file.classes.flatMap((declared) =>
+      declared.primaryParameters.map((parameter) => ({ parameter, owner: declared.qualified })),
+    ),
+    ...view.file.functions.flatMap((fn) =>
+      fn.parameters.map((parameter) => ({ parameter, owner: fn.owner, fn })),
+    ),
+  ];
+}
+
+function configurationClass(view: SpringView, qualified: string): boolean {
+  const declared = view.classes.get(qualified.split('.')[0] ?? '') ?? view.classes.get(qualified);
+  return (
+    declared !== undefined &&
+    (annotationIn(view.resolve, declared.annotations, CONFIGURATION_CLASSES) !== undefined ||
+      declared.supers.some((type) => view.is(type, CONFIG_INITIALIZERS)))
+  );
+}
+
+export function stereotype(view: SpringView, qualified: string): boolean {
+  const declared = view.classes.get(qualified);
+  return (
+    declared !== undefined &&
+    annotationIn(view.resolve, declared.annotations, PROPERTY_READERS) !== undefined
+  );
+}
+
+function valueParameters(view: SpringView): Reported[] {
+  return parametersWithOwners(view)
+    .filter(
+      ({ parameter }) => annotationIn(view.resolve, entriesOf(parameter), VALUE) !== undefined,
+    )
+    .filter(({ owner }) => {
+      const declared = view.classes.get(owner);
+      return (
+        declared === undefined ||
+        annotationIn(view.resolve, declared.annotations, CONFIGURATION_CLASSES) === undefined
+      );
+    })
+    .map(({ parameter, owner }) => ({
+      rule: 'SpringTypedConfiguration',
+      line: parameter.line,
+      symbol: `${owner}.${parameter.name}`,
+    }));
+}
+
+function propertyReads(view: SpringView): Reported[] {
+  return view.file.invocations.flatMap((invocation) => {
+    const owner = view.chain(invocation.scope).findLast(({ k }) => k === CLASS_KIND)?.qualified;
+    const fn = view.functionAt(invocation.scope);
+    const key = stringValue(invocation.arguments[0]?.text);
+    const system =
+      invocation.name === 'getProperty' &&
+      invocation.receiver !== undefined &&
+      view.is(invocation.receiver, new Set(['java.lang.System'])) &&
+      !(key !== undefined && JVM_KEY.test(key)) &&
+      !(owner !== undefined && configurationClass(view, owner)) &&
+      view
+        .chain(invocation.scope)
+        .some(
+          ({ k, qualified }) =>
+            k === CLASS_KIND && qualified !== undefined && stereotype(view, qualified),
+        ) &&
+      fn?.name !== 'main';
+    const environment =
+      (READS.has(invocation.name) || (invocation.name === 'get' && invocation.index === true)) &&
+      view
+        .chain(invocation.scope)
+        .some(
+          ({ k, qualified }) =>
+            k === CLASS_KIND && qualified !== undefined && stereotype(view, qualified),
+        ) &&
+      view.is(view.typeOf(invocation.scope, invocation.receiver), PROPERTY_RESOLVERS);
+    return system || environment
+      ? [
+          {
+            rule: 'SpringTypedConfiguration',
+            line: invocation.line,
+            symbol: symbolOf(view, invocation.scope, invocation.name),
+          },
+        ]
+      : [];
+  });
+}
+
+function secretFallback(key: string | undefined, value: string | undefined): boolean {
+  return key !== undefined && value !== undefined && secretKey(key) && isFallback(value);
+}
+
+function declarationsWithEntries(view: SpringView): { entry: Annotated; owner: string }[] {
+  return [
+    ...view.file.properties.map((entry) => ({ entry, owner: entry.owner })),
+    ...view.file.functions.map((entry) => ({ entry, owner: entry.owner })),
+    ...parametersWithOwners(view).map(({ parameter, owner }) => ({ entry: parameter, owner })),
+  ];
+}
+
+function secretDefaults(view: SpringView): Reported[] {
+  const annotated = declarationsWithEntries(view).flatMap(({ entry, owner }) => {
+    const value = annotationIn(view.resolve, entriesOf(entry), VALUE);
+    const placeholder = SECRET_DEFAULT.exec(stringValue(value?.arguments[0]?.text) ?? '');
+    const defaulted = annotationIn(view.resolve, entriesOf(entry), DEFAULT_VALUE);
+    const literal = stringValue(defaulted?.arguments[0]?.text ?? '');
+    return (placeholder !== null && secretFallback(placeholder[1], placeholder[2])) ||
+      (defaulted !== undefined && secretFallback(entry.name, literal))
+      ? [{ rule: 'SpringValueSecretDefault', line: entry.line, symbol: `${owner}.${entry.name}` }]
+      : [];
+  });
+  const reads = view.file.invocations.filter(
+    (invocation) =>
+      (READS.has(invocation.name) || invocation.index === true) &&
+      secretFallback(
+        stringValue(invocation.arguments[0]?.text),
+        stringValue(invocation.arguments[1]?.text ?? invocation.elvis),
+      ) &&
+      view.is(view.typeOf(invocation.scope, invocation.receiver), PROPERTY_RESOLVERS),
+  );
+  return [
+    ...annotated,
+    ...propertiesDefaults(view),
+    ...reads.map((invocation) => ({
+      rule: 'SpringValueSecretDefault',
+      line: invocation.line,
+      symbol: symbolOf(view, invocation.scope, invocation.name),
+    })),
+  ];
+}
+
+function propertiesDefaults(view: SpringView): Reported[] {
+  return view.file.classes.flatMap((declared) => {
+    const properties = annotationIn(view.resolve, declared.annotations, CONFIGURATION_PROPERTIES);
+    if (properties === undefined) {
+      return [];
+    }
+    const prefix = stringValue(
+      argumentOf(properties, 'prefix') ?? argumentOf(properties, 'value', { positional: true }),
+    );
+    return declared.primaryParameters
+      .filter(({ name, defaultValue }) =>
+        secretFallback(
+          [prefix, name].filter((part) => part !== undefined && part !== '').join('.'),
+          stringValue(defaultValue),
+        ),
+      )
+      .map((parameter) => ({
+        rule: 'SpringValueSecretDefault',
+        line: parameter.line,
+        symbol: `${declared.qualified}.${parameter.name}`,
+      }));
+  });
+}
+
+function profiles(view: SpringView): Reported[] {
+  const classes = view.file.classes
+    .filter((declared) => annotationIn(view.resolve, declared.annotations, PROFILE) !== undefined)
+    .filter(
+      (declared) => annotationIn(view.resolve, declared.annotations, CONFIGURATION) === undefined,
+    )
+    .map((declared) => ({
+      rule: 'SpringProfileOnConfiguration',
+      line: declared.line,
+      symbol: declared.qualified,
+    }));
+  const functions = view.file.functions
+    .filter((fn) => annotationIn(view.resolve, entriesOf(fn), PROFILE) !== undefined)
+    .filter((fn) => annotationIn(view.resolve, entriesOf(fn), BEAN) === undefined)
+    .map((fn) => ({
+      rule: 'SpringProfileOnConfiguration',
+      line: fn.line,
+      symbol: `${fn.owner}.${fn.name}`,
+    }));
+  return [...classes, ...functions];
+}
+
+export const CONFIGURATION_RULES = [valueParameters, propertyReads, secretDefaults, profiles];

@@ -3,8 +3,9 @@ import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
-import { ingestCrap as untypedIngestCrap } from '../../ingest/crap.mjs';
-import { fieldsOf, listOf, textOf } from '../../../../shared/values/readers.mts';
+import { ingestCrap as untypedIngestCrap } from '../../ingest/crap.mts';
+import { fieldOf, fieldsOf, listOf, textOf } from '../../../../shared/values/readers.mts';
+import type { JavaFinding } from '../typed/java-values.mts';
 import { INITIALIZERS } from './test-support/initializer-sources.mts';
 import { compiledMetrics, runMetrics } from './test-support/compiled-metrics.mts';
 
@@ -18,8 +19,8 @@ type Measured = {
 const ingestCrap: (
   structure: unknown,
   jacocoXml: string,
-  options: { readonly sourceRoots: readonly string[] },
-) => { readonly findings: readonly { readonly symbol: unknown }[] } = untypedIngestCrap;
+  options?: { readonly sourceRoots: readonly string[] },
+) => { readonly findings: readonly JavaFinding[] } = untypedIngestCrap;
 
 const SOURCE_ROOT = 'src/main/java';
 const EMPTY_JACOCO = '<report name="empty"></report>';
@@ -377,7 +378,7 @@ describe('StructureMetrics.java', () => {
       sourceRoots: [SOURCE_ROOT],
     });
 
-    expect(findings.map((finding) => finding.symbol)).toEqual(
+    expect(findings.map((finding) => fieldOf(finding, 'symbol'))).toEqual(
       measured.structure
         .filter((entry) => entry['privateEmptyConstructor'] !== true)
         .map((entry) => entry['signature']),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { javaDocComments as untypedJavaDocComments } from './java-doc-comments.mjs';
+import { javaDocComments as untypedJavaDocComments } from './java-doc-comments.mts';
 
 const javaDocComments: (
   source: string,

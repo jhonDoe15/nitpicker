@@ -1,17 +1,23 @@
+import { fieldOf } from '../../../../shared/values/readers.mts';
 import type { CouplingFeatures } from '../../adapters/metrics/java-coupling-types.mts';
 import { readCouplingFindings, parseJdeps } from '../../adapters/metrics/java-coupling.mts';
 import { readFeatureGraph } from '../../adapters/features/feature-findings.mts';
-import { kotlinModules, readKotlinMetrics } from '../../adapters/kotlin/kotlin-metrics.mjs';
+import { kotlinModules, readKotlinMetrics } from '../../adapters/kotlin/kotlin-metrics.mts';
 import { readJavaFileLimitFindings } from '../../adapters/metrics/java-structure.mts';
-import { readCopiedConstantFindings } from '../../adapters/review-rules/copied-constants/copied-constants.mjs';
-import { readMaxValueFindings } from '../../adapters/review-rules/max-value-sums/max-value-sums.mjs';
-import { readNullFallThroughFindings } from '../../adapters/review-rules/null-fall-through/null-fall-through.mjs';
-import { readRoundTripFindings } from '../../adapters/review-rules/round-trips/round-trips.mjs';
-import { readTestOnlyClassFindings } from '../../adapters/review-rules/test-only-classes.mts';
+import { readCopiedConstantFindings } from '../../adapters/review-rules/copied-constants/copied-constants.mts';
+import { readMaxValueFindings } from '../../adapters/review-rules/max-value-sums/max-value-sums.mts';
+import { readNullFallThroughFindings } from '../../adapters/review-rules/null-fall-through/null-fall-through.mts';
+import { readRoundTripFindings } from '../../adapters/review-rules/round-trips/round-trips.mts';
+import { readTestOnlyClassFindings } from '../../adapters/review-rules/test-only/test-only-classes.mts';
 import { readTestRuntimeFindings } from '../../adapters/test-runtime/test-runtime-findings.mts';
-import { outerClass } from '../../ingest/class-names.mjs';
-import { inModule } from '../module-path.mjs';
-import type { JavaFinding, JavaPolicy } from '../../adapters/typed/java-values.mts';
+import { outerClass } from '../../ingest/class-names.mts';
+import { inModule } from '../module-path.mts';
+import {
+  callUntyped,
+  findingsOf,
+  type JavaFinding,
+  type JavaPolicy,
+} from '../../adapters/typed/java-values.mts';
 
 export type ReportProject = {
   readonly reportRoot: string;
@@ -93,7 +99,24 @@ export function jdepsEdges(text: string): JdeEdge[] {
 export const couplingFindingsOf: (reportRoot: string, options: CouplingOptions) => JavaFinding[] =
   readCouplingFindings;
 export const kotlinMetricsOf: (reportRoot: string) => unknown = readKotlinMetrics;
-export const kotlinNodesOf: (metrics: unknown) => KotlinNodes = kotlinModules;
+function stringMap(value: unknown): Map<string, string> {
+  const entries = value instanceof Map ? [...value] : [];
+  return new Map(
+    entries.flatMap((entry: unknown): [string, string][] => {
+      const key: unknown = Array.isArray(entry) ? entry[0] : undefined;
+      const text: unknown = Array.isArray(entry) ? entry[1] : undefined;
+      return typeof key === 'string' && typeof text === 'string' ? [[key, text]] : [];
+    }),
+  );
+}
+
+export function kotlinNodesOf(metrics: unknown): KotlinNodes {
+  const nodes = callUntyped(kotlinModules, metrics);
+  return {
+    moduleOf: stringMap(fieldOf(nodes, 'moduleOf')),
+    fileOf: stringMap(fieldOf(nodes, 'fileOf')),
+  };
+}
 export const fileLimitFindings: (projectRoot: string, options: FileLimits) => JavaFinding[] =
   readJavaFileLimitFindings;
 export const featureGraphOf: (
@@ -108,11 +131,15 @@ export const testRuntimeFindings: (
   projectRoot: string,
   options: { readonly projects: readonly ReportProject[] },
 ) => JavaFinding[] = readTestRuntimeFindings;
-export const roundTripFindings: (projectRoot: string, options: WideOptions) => JavaFinding[] =
-  readRoundTripFindings;
-export const copiedConstantFindings: (projectRoot: string, options: WideOptions) => JavaFinding[] =
-  readCopiedConstantFindings;
-export const maxValueFindings: (projectRoot: string, options: WideOptions) => JavaFinding[] =
-  readMaxValueFindings;
-export const nullFallThroughFindings: (projectRoot: string, options: WideOptions) => JavaFinding[] =
-  readNullFallThroughFindings;
+export function roundTripFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
+  return findingsOf(callUntyped(readRoundTripFindings, projectRoot, options));
+}
+export function copiedConstantFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
+  return findingsOf(callUntyped(readCopiedConstantFindings, projectRoot, options));
+}
+export function maxValueFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
+  return findingsOf(callUntyped(readMaxValueFindings, projectRoot, options));
+}
+export function nullFallThroughFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
+  return findingsOf(callUntyped(readNullFallThroughFindings, projectRoot, options));
+}

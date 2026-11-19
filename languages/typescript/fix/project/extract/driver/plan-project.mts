@@ -13,6 +13,7 @@ import {
   extractEnv,
   type Candidate,
   type ExtractEnv,
+  type Extracted,
   type Found,
   type Strategy,
   type UnitNode,
@@ -72,12 +73,30 @@ function foundIn(project: Project, name: string, context: FixContext): Found {
   };
 }
 
-function verified(planned: Planned<ReplaceEdit>, env: ExtractEnv): Planned<ReplaceEdit> {
+const WIDENED =
+  'the literal values did not type-check as a union, so the shared function takes their base type';
+
+type Verified = Planned<ReplaceEdit> & { readonly note?: string };
+
+function verified(planned: Extracted, env: ExtractEnv): Verified {
   if (planned.edits === undefined) {
-    return planned;
+    return { declined: planned.declined };
   }
   const unsafe = verifyEdits(env.context, env.project, planned.edits);
-  return unsafe === undefined ? planned : { declined: unsafe };
+  if (unsafe === undefined || planned.widened === undefined) {
+    return unsafe === undefined ? { edits: planned.edits } : { declined: unsafe };
+  }
+  const widenedUnsafe = verifyEdits(env.context, env.project, planned.widened);
+  return widenedUnsafe === undefined
+    ? { edits: planned.widened, note: WIDENED }
+    : { declined: widenedUnsafe };
+}
+
+function outcomeWithNote(candidate: Candidate, result: Verified) {
+  const outcome = outcomeOf(candidate, result);
+  return outcome.fix === undefined || result.note === undefined
+    ? outcome
+    : { fix: { ...outcome.fix, note: result.note } };
 }
 
 function planFile<C extends Candidate, Input>(
@@ -99,7 +118,10 @@ function planFile<C extends Candidate, Input>(
   const found = foundIn(project, name, context);
   const { candidates, notes } = strategy.candidatesOf(found.matches);
   const outcomes = candidates.map((candidate) =>
-    outcomeOf(candidate, verified(strategy.extract(strategy.inputOf(candidate, found), env), env)),
+    outcomeWithNote(
+      candidate,
+      verified(strategy.extract(strategy.inputOf(candidate, found), env), env),
+    ),
   );
   return collected(outcomes, notes);
 }

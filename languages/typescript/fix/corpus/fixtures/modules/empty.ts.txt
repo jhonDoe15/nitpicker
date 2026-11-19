@@ -1,0 +1,25 @@
+export function swallow(run: () => void): string {
+  try {
+    run();
+  } catch {}
+  return 'ok';
+}
+
+export function emptyIf(flag: boolean): string {
+  if (flag) {
+  }
+  return 'ok';
+}
+
+export class WithBlock {
+  static {}
+}
+
+export function probe(): unknown {
+  return [
+    swallow(() => {
+      throw new Error('x');
+    }),
+    emptyIf(true),
+  ];
+}

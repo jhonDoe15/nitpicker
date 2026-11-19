@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
+import { GRADLE_DIRECTORY } from '../../builds/java-build.mts';
 
 const LINES = readFileSync(path.join(GRADLE_DIRECTORY, 'nitpicker.init.gradle'), 'utf8').split(
   '\n',

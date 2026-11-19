@@ -1,5 +1,5 @@
-import { swallowedCatchBlocks as untypedSwallowedCatchBlocks } from '../../../../adapters/kotlin/scan/rules/catches.mjs';
-import { catchLogCalls as untypedCatchLogCalls } from '../../../../source/catch-logging.mjs';
+import { swallowedCatchBlocks as untypedSwallowedCatchBlocks } from '../../../../adapters/kotlin/scan/rules/catches.mts';
+import { catchLogCalls as untypedCatchLogCalls } from '../../../../source/catch-logging.mts';
 import { isKotlinTestPath, kotlinRecipe } from '../shared/kotlin-recipe.mts';
 
 type LoggerCall = {

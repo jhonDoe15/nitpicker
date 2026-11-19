@@ -32,9 +32,13 @@ export function messageOf(value: unknown): LintMessage {
     ...(fix === undefined ? {} : { fix }),
     ...(Array.isArray(suggestions)
       ? {
-          suggestions: listOf(suggestions).map((suggestion) => ({
-            fix: fixOf(fieldOf(suggestion, 'fix')),
-          })),
+          suggestions: listOf(suggestions).map((suggestion) => {
+            const messageId = fieldOf(suggestion, 'messageId');
+            return {
+              fix: fixOf(fieldOf(suggestion, 'fix')),
+              ...(typeof messageId === 'string' ? { messageId } : {}),
+            };
+          }),
         }
       : {}),
   };

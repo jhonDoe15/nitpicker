@@ -205,7 +205,9 @@
   "pmd/SpringNoSwallowedTransactionException": ["reliability", "spring", "persistence"],
   "pmd/SpringNoTransactionalController": ["maintainability", "spring", "persistence"],
   "pmd/SpringNullOnlyConfigCheck": ["bug", "spring"],
+  "pmd/SpringOpenRedirect": ["security", "spring"],
   "pmd/SpringOrderedProvider": ["bug", "spring"],
+  "pmd/SpringOutboundUrl": ["security", "spring"],
   "pmd/SpringPasswordEncoder": ["security", "spring"],
   "pmd/SpringPermitAllAnyRequest": ["security", "spring"],
   "pmd/SpringProfileOnConfiguration": ["maintainability", "spring"],
@@ -235,6 +237,7 @@
   "pmd/TaskOutlivesTryResource": ["bug", "async"],
   "pmd/TestClassWithoutTestCases": ["tests"],
   "pmd/TimerNotStoppedOnClose": ["reliability", "async"],
+  "pmd/TlsVerificationOff": ["security"],
   "pmd/ToMapDuplicateKey": ["bug"],
   "pmd/TooFewBranchesForASwitchStatement": ["simplification"],
   "pmd/TriStateBoolean": ["maintainability"],
@@ -272,5 +275,6 @@
   "pmd/UseTryWithResources": ["reliability"],
   "pmd/UselessStringValueOf": ["simplification"],
   "pmd/WeakAssertionInTest": ["tests"],
+  "pmd/WeakHmac": ["security"],
   "pmd/WhileLoopWithLiteralBoolean": ["simplification"]
 }

@@ -7,7 +7,7 @@ import type { ReportData, ReportEntry } from '../../../../shared/values/findings
 import { textOf } from '../../../../shared/values/readers.mts';
 import type { LinkContext } from '../github/markdown.mts';
 import { formatTestFailures } from '../../../../languages/typescript/adapters/quality-areas/reporting/test-report.mts';
-import { failingTestsError as untypedFailingTestsError } from '../../../../languages/java/builds/test-failures.mjs';
+import { failingTestsError as untypedFailingTestsError } from '../../../../languages/java/builds/test-failures.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingUrl,

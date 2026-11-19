@@ -1,0 +1,17 @@
+let created = 0;
+function track(): number {
+  created += 1;
+  return created;
+}
+
+export class Counter {
+  readonly #id = track();
+  private readonly unusedTag = track();
+  public total(): number {
+    return created;
+  }
+}
+
+export function probe(): unknown {
+  return new Counter().total();
+}

@@ -2,12 +2,18 @@ import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { ingestArchunit } from '../../../ingest/archunit.mts';
 import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
-import { inModule } from '../../../builds/module-path.mjs';
-import { readSpringArchFindings } from '../../spring-arch/spring-arch.mjs';
-import { featureFaceMatcher } from '../../spring-arch/contract-types.mjs';
-import { sourceFileOf, sourceLocator } from '../kotlin-reports.mjs';
+import { inModule } from '../../../builds/module-path.mts';
+import { readSpringArchFindings } from '../../spring-arch/spring-arch.mts';
+import { featureFaceMatcher } from '../../spring-arch/contract-types.mts';
+import { sourceFileOf, sourceLocator } from '../kotlin-reports.mts';
 import { callUntyped } from '../../typed/java-values.mts';
-import { fieldOf, listOf, textsOf } from '../../../../../shared/values/readers.mts';
+import {
+  fieldOf,
+  listOf,
+  optionalText,
+  textOf,
+  textsOf,
+} from '../../../../../shared/values/readers.mts';
 
 type ReportContext = Readonly<Record<string, unknown>> & {
   readonly projectRoot: string;
@@ -40,7 +46,8 @@ export function springArchFindings(context: ReportContext): unknown {
     spring: fieldOf(manifest, 'spring') === true,
     isFeatureFace: callUntyped(featureFaceMatcher, context['featureLayout']),
     isExcepted: (rule: unknown, file: unknown) =>
-      file !== undefined && callUntyped(matches, rule, inModule(modulePath, file)) === true,
+      file !== undefined &&
+      callUntyped(matches, rule, inModule(optionalText(modulePath), textOf(file))) === true,
   });
 }
 

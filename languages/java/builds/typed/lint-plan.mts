@@ -7,9 +7,9 @@ import {
 } from '../../../../shared/values/readers.mts';
 
 export type LintCompiler = {
-  readonly release: string | undefined;
-  readonly source: string | undefined;
-  readonly target: string | undefined;
+  readonly release?: string | undefined;
+  readonly source?: string | undefined;
+  readonly target?: string | undefined;
   readonly encoding?: string | undefined;
   readonly args: string[];
 };
@@ -29,7 +29,7 @@ export type LintPlan = Readonly<Record<string, unknown>> & {
   readonly spawn?: unknown;
 };
 
-function compilerOf(value: unknown): LintCompiler {
+export function compilerOf(value: unknown): LintCompiler {
   const compiler = fieldsOf(value);
   return {
     ...compiler,

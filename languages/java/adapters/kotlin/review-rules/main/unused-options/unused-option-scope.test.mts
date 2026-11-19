@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { factsView } from '../../build-view.mjs';
+import { factsView } from '../../build-view.mts';
 import type { FileFacts } from '../../test-support/facts.mts';
 import { run, summary } from '../../test-support/facts.mts';
 import type { Loose } from '../../test-support/loose-facts.mts';
@@ -12,7 +12,7 @@ import {
   parameter,
   testFile,
 } from '../../test-support/loose-facts.mts';
-import { UNUSED_OPTION_RULE, UNUSED_OPTION_TOOL, unusedOptionFindings } from './unused-options.mjs';
+import { UNUSED_OPTION_RULE, UNUSED_OPTION_TOOL, unusedOptionFindings } from './unused-options.mts';
 
 const OTHER_MODULE = 'billing/src/main/kotlin/demo/Billing.kt';
 const OTHER_TESTS = 'billing/src/test/kotlin/demo/BillingTest.kt';
@@ -54,7 +54,7 @@ function buildOf(
   modules: Loose[],
   { mentionedInJava = never }: { mentionedInJava?: (name: string) => boolean } = {},
 ): unknown {
-  return factsView({ modules, mentionedInJava });
+  return Reflect.apply(factsView, undefined, [{ modules, mentionedInJava }]);
 }
 
 function findingsFor(

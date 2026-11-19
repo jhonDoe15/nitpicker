@@ -29,5 +29,6 @@ export function matcherOf(fields: Fields): RuleMatcher {
     ...(pattern === undefined ? {} : { pattern: textOf(pattern) }),
     findingTools: textsOf(fieldOf(fields, 'findingTools')),
     fixableIn: textsOf(fieldOf(fields, 'fixableIn')),
+    suggestedIn: textsOf(fieldOf(fields, 'suggestedIn')),
   };
 }

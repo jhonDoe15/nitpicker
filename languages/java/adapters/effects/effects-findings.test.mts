@@ -1,26 +1,17 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { effectsRoot } from './__tests__/effects-roots.mts';
 import {
   readEffectsFindings,
   readEffectsReport,
   withoutCoveredLines,
 } from './effects-findings.mts';
-import { callPath } from './effects-messages.mjs';
-
-const roots: string[] = [];
-
-afterAll(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
+import { callPath } from './effects-messages.mts';
+import { JAVA_FILE, exception, sentence } from './test-support/effects-projects.mts';
 
 function reportWith(violations: unknown[], counts: Record<string, unknown> = {}): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-effects-report-'));
-  roots.push(root);
-  mkdirSync(root, { recursive: true });
-  writeFileSync(path.join(root, 'effects.json'), JSON.stringify({ ...counts, violations }));
-  return root;
+  return effectsRoot('nitpicker-effects-report-', { ...counts, violations });
 }
 
 const loop = {
@@ -43,7 +34,6 @@ function read(violations: unknown[], options: { directory?: string; kotlin?: tru
   });
 }
 
-const JAVA_FILE = 'src/main/java/shop/Import.java';
 const KOTLIN_FILE = 'src/main/kotlin/shop/Import.kt';
 const PATH = '`Import.run()` calls `Loader.load()`, which calls `OrderRepository.findById()`';
 const PER_ITEM = 'once per loop item';
@@ -51,15 +41,6 @@ const LOOPS_FINE =
   'Paging, polling and retry loops are fine; a loop the rule misjudges (a cursor kept in an object or array, a page count read first) goes in `exceptions`.';
 const BATCH_ENDPOINT =
   "Use the service's batch endpoint for all items, or, when it has none, bound the concurrency with";
-
-function exception(rule: string, file: string): string {
-  const entry = `{"rule":"effects/${rule}","paths":["${file}"],"reason":"..."}`;
-  return `If this is intended, add ${entry} to "exceptions" in nitpicker.config.json.`;
-}
-
-function sentence(...parts: string[]): string {
-  return parts.join(' ');
-}
 
 const ASM_ADVICE =
   "class files newer than the engine's ASM release are the usual cause: build with a JDK that ASM reads, or raise the pinned ASM version";

@@ -1,25 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { project, removeProjects } from '../__tests__/spring-config-projects.mts';
-import { sourceTextReader as readerUntyped } from '../../reporting/function-locator.mjs';
-import { withoutUnconstrainedBodies as filterUntyped } from './request-body-constraints.mjs';
-
-type BodyFinding = {
-  readonly tool: string;
-  readonly rule: string;
-  readonly path: string;
-  readonly location: { readonly line: number; readonly column?: number };
-};
+import { sourceTextReader as readerUntyped } from '../../reporting/function-locator.mts';
+import { withoutUnconstrainedBodies } from './request-body-constraints.mts';
+import type { JavaFinding } from '../../typed/java-values.mts';
 
 const sourceTextReader: (projectRoot: string) => (file: string) => string | undefined =
   readerUntyped;
-const withoutUnconstrainedBodies: (
-  findings: readonly BodyFinding[],
-  options: {
-    projectRoot: string;
-    roots: string[];
-    readText: (file: string) => string | undefined;
-  },
-) => BodyFinding[] = filterUntyped;
 
 const CONTROLLER = 'src/main/java/shop/Api.java';
 const CONSTRAINTS = 'import jakarta.validation.constraints.*;\nimport jakarta.validation.Valid;\n';
@@ -38,7 +24,7 @@ function reported(
     files[`src/main/java/shop/${name}.java`] = `package shop;\n${CONSTRAINTS}${text}\n`;
   }
   const projectRoot = project(files, { jpa: false });
-  const findings: BodyFinding[] = [
+  const findings: JavaFinding[] = [
     {
       tool: 'pmd',
       rule: 'SpringValidRequestBody',

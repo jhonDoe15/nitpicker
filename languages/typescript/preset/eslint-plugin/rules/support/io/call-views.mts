@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { resolveConstant, type SourceContext } from '../../analysis/constant-resolution.mts';
 import { nameOf } from '../../typed/node-views.mts';
+import { hasTextReceiver } from './names/text-receivers.mts';
 import {
   chainLinks,
   deepKeys,
@@ -16,6 +17,12 @@ import {
 
 export type { CallArgument, CallView } from './views/call-shapes.mts';
 export { tsCallee, tsCallView, type TsCall } from './views/ts-call-views.mts';
+
+const OWNER_OFFSET = 2;
+
+export function ownerName(view: Pick<CallView, 'names'>): string | undefined {
+  return view.names.at(-OWNER_OFFSET);
+}
 
 export type EstreeCall =
   TSESTree.CallExpression | TSESTree.NewExpression | TSESTree.TaggedTemplateExpression;
@@ -91,6 +98,9 @@ function estreeLiteral(node: TSESTree.Node): LiteralArgument {
   if (ESTREE_FUNCTIONS.has(node.type)) {
     return { type: 'function' };
   }
+  if (node.type === AST_NODE_TYPES.Literal && 'regex' in node) {
+    return { type: 'pattern' };
+  }
   if (node.type === AST_NODE_TYPES.ObjectExpression) {
     const statement = node.properties.find(isTextProperty);
     const statementText = statement === undefined ? undefined : estreeText(statement.value);
@@ -125,9 +135,9 @@ export function estreeCallView(
   context: SourceContext | undefined,
 ): CallView<TSESTree.Identifier> {
   const tagged = call.type === AST_NODE_TYPES.TaggedTemplateExpression;
-  const { links, root } = chainLinks(tagged ? call.tag : call.callee, estreeStep);
+  const chain = chainLinks(tagged ? call.tag : call.callee, estreeStep);
   const args = tagged
     ? [estreeLiteral(call.quasi)]
     : call.arguments.map((argument) => estreeArgument(argument, context));
-  return viewOf(links, root, args);
+  return viewOf(chain, args, hasTextReceiver(call));
 }

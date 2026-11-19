@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { rootsScope } from '../../builds/module-path.mjs';
-import { reportRootPattern } from '../../builds/tools/tool-commands.mjs';
+import { rootsScope } from '../../builds/module-path.mts';
+import { reportRootPattern } from '../../builds/tools/tool-commands.mts';
 import { childrenNamed, parseXml } from '../../../../shared/values/xml.mts';
 import { signalEnd } from '../../../../shared/processes/process-failure.mjs';
 import { callUntyped } from '../../adapters/typed/java-values.mts';

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { MAIN_RULESET, NITPICKER_RULESET, TEST_RULESET } from './layer-files.mjs';
+import { MAIN_RULESET, NITPICKER_RULESET, TEST_RULESET } from './layer-files.mts';
 import { layerPmdRulesets } from './test-support/pmd-layer-views.mts';
 
 const project = (
@@ -18,6 +18,7 @@ const layer = (rules: string[]) =>
     mainPath: MAIN_RULESET,
     mainText: readFileSync(MAIN_RULESET, 'utf8'),
     projectText: project(rules),
+    projectWins: true,
   });
 
 const HEADER = '<?xml version="1.0" encoding="UTF-8"?>\n';

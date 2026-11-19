@@ -1,4 +1,11 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { suggestible } from '../../fixes/support/descriptors.mts';
+import type { FixPlan } from '../../fixes/support/ranges.mts';
+import {
+  constructionFix,
+  factoryFix,
+  propertyFix,
+} from '../../fixes/database/query-logging-fix.mts';
 import { stringValue } from '../analysis/constant-resolution.mts';
 import {
   callName,
@@ -40,8 +47,13 @@ const NEST_ROOT = 'SequelizeModule.forRoot';
 const NEST_ASYNC_ROOT = 'SequelizeModule.forRootAsync';
 const DRIZZLE_LOGGERS = new Set<string | undefined>(['DefaultLogger']);
 
-function report(context: Context, node: TSESTree.Node, form: string): void {
-  context.report({ node, messageId: 'queryLogging', data: { form } });
+function report(
+  context: Context,
+  { node, form, plan }: { node: TSESTree.Node; form: string; plan: FixPlan | undefined },
+): void {
+  context.report(
+    suggestible({ node, messageId: 'queryLogging', data: { form } }, { messageId: 'quiet', plan }),
+  );
 }
 
 function isConsoleMethod(leaf: TSESTree.Node): boolean {
@@ -185,14 +197,19 @@ function logsByDefault(context: Context, object: TSESTree.ObjectExpression): boo
 }
 
 function checkDefaultLogging(
-  { context }: ModuleScope,
+  scope: ModuleScope,
   node: TSESTree.CallExpression | TSESTree.NewExpression,
   form: string,
 ): void {
+  const { context } = scope;
   const { object, missing } = optionsArgument(context, node.arguments);
   const logs = object === undefined ? missing : logsByDefault(context, object);
   if (logs) {
-    report(context, node, `${form}\` without \`logging: false`);
+    report(context, {
+      node,
+      form: `${form}\` without \`logging: false`,
+      plan: constructionFix(scope, node),
+    });
   }
 }
 
@@ -208,18 +225,24 @@ function checkFactoryResult(scope: ModuleScope, object: TSESTree.ObjectExpressio
     calleeLabel(call) === NEST_ASYNC_ROOT &&
     logsByDefault(scope.context, object)
   ) {
-    report(scope.context, object, `${NEST_ASYNC_ROOT}(...)\` without \`logging: false`);
+    report(scope.context, {
+      node: object,
+      form: `${NEST_ASYNC_ROOT}(...)\` without \`logging: false`,
+      plan: factoryFix(scope, object),
+    });
   }
 }
 
-export const rule: TSESLint.RuleModule<'queryLogging'> = {
+export const rule: TSESLint.RuleModule<'queryLogging' | 'quiet'> = {
   meta: {
     type: 'problem',
+    hasSuggestions: true,
     docs: { description: 'Disallow ORM options that log every SQL query' },
     schema: [],
     messages: {
       queryLogging:
         '`{{form}}` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: "event", level: "query" }]` with a handler that filters by duration, or the database\'s own slow-query log. An exception fits only for a local debugging script.',
+      quiet: 'Turn off query logging and keep the error and warning output.',
     },
   },
   create(context) {
@@ -232,7 +255,7 @@ export const rule: TSESLint.RuleModule<'queryLogging'> = {
           return;
         }
         if (PROPERTY_CHECKS[key]?.(scope, parent, node.value) === true) {
-          report(context, node, key);
+          report(context, { node, form: key, plan: propertyFix(scope, node) });
         }
       },
       ObjectExpression(node) {

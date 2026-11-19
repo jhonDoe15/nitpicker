@@ -1,8 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
-import { runJava } from '../maven-command.mjs';
+import { GRADLE_DIRECTORY } from '../../builds/java-build.mts';
+import { runJava } from '../maven-command.mts';
 import { compiledProgram, programSources } from '../programs/helper-programs.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
@@ -80,6 +80,7 @@ export function runSpringArch(options: ArchOptions): void {
       cwd: fieldOf(module, 'basedir'),
       spawn,
       timeoutMs,
+      environment: options['environment'],
     }),
   );
   runRules({

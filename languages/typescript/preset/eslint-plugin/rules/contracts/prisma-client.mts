@@ -3,10 +3,10 @@ import path from 'node:path';
 import { isStrictlyInside } from '../../../../../../shared/filesystem.mjs';
 import { readStamped as untypedReadStamped } from '../../../modules/stamped-file-cache.mjs';
 
-type Cache<Value> = Map<string, { readonly stamp: string; readonly value: Value }>;
+export type StampedCache<Value> = Map<string, { readonly stamp: string; readonly value: Value }>;
 
-const readStamped: <Value>(
-  cache: Cache<Value>,
+export const readStamped: <Value>(
+  cache: StampedCache<Value>,
   file: string,
   read: (file: string) => Value,
 ) => Value | undefined = untypedReadStamped;
@@ -21,8 +21,8 @@ const GENERATOR = /generator\s+\w+\s*\{([^}]*)\}/gu;
 const PROVIDER = /provider\s*=\s*"([^"]+)"/u;
 const OUTPUT = /output\s*=\s*"([^"]+)"/u;
 
-const schemaOutputs: Cache<string[]> = new Map();
-const splitSchemas: Cache<string[]> = new Map();
+const schemaOutputs: StampedCache<string[]> = new Map();
+const splitSchemas: StampedCache<string[]> = new Map();
 
 function childPath(directory: string, name: string): string | undefined {
   const base = path.resolve(directory);

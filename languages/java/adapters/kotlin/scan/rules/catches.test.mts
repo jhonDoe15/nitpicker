@@ -5,7 +5,7 @@ import {
   booleanFlags as untypedBooleanFlags,
   catchOnlyLogs as untypedCatchOnlyLogs,
   swallowedCatchBlocks as untypedSwallowedCatchBlocks,
-} from './catches.mjs';
+} from './catches.mts';
 
 const booleanFlags: Check<Subjected> = untypedBooleanFlags;
 const catchOnlyLogs: Check<Ruled> = untypedCatchOnlyLogs;

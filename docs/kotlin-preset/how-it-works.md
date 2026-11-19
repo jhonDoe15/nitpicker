@@ -6,7 +6,7 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
 gradle -Pnitpicker.kotlin=true -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot)
   -> everything the Java preset writes, plus {detekt.sarif, ktlint.sarif | ktfmt.txt} in each project's report directory
   -> readJavaFindings(root, { preset: 'kotlin' })   (languages/java/adapters/reporting/java-reports.mts)
-       -> readKotlinFindings                         (languages/java/adapters/reporting/kotlin-reports.mjs)
+       -> readKotlinFindings                         (languages/java/adapters/reporting/kotlin-reports.mts)
   -> compareFindings(base, head, renames)
 ```
 
@@ -17,7 +17,7 @@ and makes `nitpickerJava` depend on them. The tool versions are in the same pinn
 Java ones: detekt 1.23.8, ktlint 1.8.0, ktfmt 0.64. `manifest.json` gains `kotlin: true`,
 `kotlinSourceRoots` and `kotlinFormatter`; its `sourceRoots` stay the Java source roots. Which
 formatter, ktfmt style and detekt config to use is decided on the Nitpicker side
-(`languages/java/adapters/kotlin/kotlin-tools.mjs`, unit tested) and handed to the init script as Gradle
+(`languages/java/adapters/kotlin/kotlin-tools.mts`, unit tested) and handed to the init script as Gradle
 properties; the style texts (the `.editorconfig` files to mirror, the ktlint defaults, the detekt
 convention layer) are generated on the Nitpicker side into one JSON file in a temporary folder, whose
 path is the property `nitpicker.kotlin.styleFile`, and only written out by the init script

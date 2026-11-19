@@ -1,12 +1,12 @@
-import { JAVA_CONVENTIONS } from '../../languages/java/conventions/java-conventions.mjs';
-import { KOTLIN_CONVENTIONS } from '../../languages/java/conventions/kotlin-conventions.mjs';
+import { JAVA_CONVENTIONS } from '../../languages/java/conventions/java-conventions.mts';
+import { KOTLIN_CONVENTIONS } from '../../languages/java/conventions/kotlin-conventions.mts';
 import { PYTHON_CONVENTIONS } from '../../languages/python/conventions/python-conventions.mts';
 import {
   JAVASCRIPT_CONVENTIONS,
   TYPESCRIPT_CONVENTIONS,
 } from '../../languages/typescript/conventions/typescript-conventions.mts';
-import { javaProjectStyle } from '../../languages/java/conventions/java-project-style.mjs';
-import { kotlinStyle } from '../../languages/java/conventions/kotlin-style.mjs';
+import { javaProjectStyle } from '../../languages/java/conventions/java-project-style.mts';
+import { kotlinStyle } from '../../languages/java/conventions/kotlin-style.mts';
 import { pythonStyle } from '../../languages/python/conventions/python-style.mts';
 import { eslintConfigStyle } from '../../languages/typescript/preset/eslint-project/eslint-style.mjs';
 import { scriptProjectToolNotices } from '../../languages/typescript/preset/project-tools/ignored-notices.mjs';

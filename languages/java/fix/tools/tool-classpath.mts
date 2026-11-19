@@ -2,8 +2,8 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync
 import path from 'node:path';
 import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
 import { failureText, fixSpawn, runFixCommand } from '../../../../core/fix/common/fix-command.mjs';
-import { gradleTarget } from '../../adapters/gradle-wrapper/gradle-command.mjs';
-import { detectJavaBuild } from '../../builds/java-build.mjs';
+import { gradleTarget } from '../../adapters/gradle-wrapper/gradle-command.mts';
+import { detectJavaBuild } from '../../builds/java-build.mts';
 import {
   cacheDirectory,
   dependency,
@@ -12,7 +12,7 @@ import {
   readClasspaths,
   resolveToolSet,
   toolsKey,
-} from '../../maven/maven-tools.mjs';
+} from '../../maven/maven-tools.mts';
 import { resolutionSettings } from './project-repositories.mts';
 import type { Environment } from '../../../../shared/processes/environment.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
@@ -29,7 +29,7 @@ type Resolution = {
 };
 type ToolResolution = Omit<Resolution, 'environment'> & {
   readonly environment?: Environment | undefined;
-  readonly buildTool?: unknown;
+  readonly buildTool?: string | undefined;
 };
 
 export const FIX_TOOLS_BUILD = path.join(import.meta.dirname, 'fix-tools.build.gradle');
@@ -103,7 +103,7 @@ export function configuredTool(environment: Environment, name: string): string |
 }
 
 function resolveWithGradle({ projectRoot, tools, environment, executeFixCommand }: Resolution) {
-  const directory = textOf(cacheDirectory(`gradle-tools-${textOf(toolsKey(tools))}`));
+  const directory = textOf(cacheDirectory(`gradle-tools-${textOf(toolsKey(tools))}`, environment));
   const cached = textListsOf(readClasspaths(directory, Object.keys(tools)));
   if (textsOf(missing(cached)).length === 0) {
     return cached;
@@ -156,6 +156,7 @@ function resolveWithMaven({
       maven: configuredTool(environment, 'NITPICKER_MAVEN'),
       tools: dependencies,
       spawn: callUntyped(fixSpawn, { operation: 'fix-tools', executeFixCommand }),
+      environment,
     }),
   );
 }

@@ -1,6 +1,6 @@
 import { SCHEMA_KEY, THRESHOLD_KEYS, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mjs';
 import { factRuleSettings } from '../../../shared/project-rules/fact-rules.mjs';
-import { GRADLE_PRESETS } from '../../../languages/java/adapters/gradle-presets.mjs';
+import { GRADLE_PRESETS } from '../../../languages/java/adapters/gradle-presets.mts';
 import { NATIVE_LINE_LENGTH } from '../../../languages/java/adapters/java-policy.mts';
 import { conventionDefinitions } from '../../conventions/definitions.mts';
 import { KEYS, NITPICKER_RULES, SUPPORTED_PRESETS } from '../validate.mts';

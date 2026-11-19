@@ -1,24 +1,7 @@
 import path from 'node:path';
-import { readSpringArchFindings as readUntyped } from '../../spring-arch/spring-arch.mjs';
-import { featureFaceMatcher as matcherUntyped } from '../../spring-arch/contract-types.mjs';
+import { featureFaceMatcher as matcherUntyped } from '../../spring-arch/contract-types.mts';
 
-export type ArchViolation = {
-  readonly rule: string;
-  readonly className: string;
-  readonly fileName: string;
-  readonly detail: string;
-};
-
-export type ArchFinding = {
-  readonly tool: string;
-  readonly rule: string;
-  readonly path: string;
-  readonly identity: string;
-  readonly message: string;
-  readonly allowedForm: string;
-  readonly symbol: string;
-  readonly classification: string;
-};
+export type { ArchFinding, ArchViolation } from '../../spring-arch/spring-arch-types.mts';
 
 export type ArchResolve = (className: string, fileName?: string) => string | undefined;
 
@@ -27,15 +10,7 @@ export const featureFaceMatcher: (options: {
   modulePath: string;
 }) => (file: string) => boolean = matcherUntyped;
 
-export const readSpringArchFindings: (
-  reportRoot: string,
-  options: {
-    resolvePath: ArchResolve;
-    isExcepted?: (rule: string, file: string) => boolean;
-    isFeatureFace?: (file: string) => boolean;
-    spring?: boolean;
-  },
-) => ArchFinding[] = readUntyped;
+export { readSpringArchFindings } from '../../spring-arch/spring-arch.mts';
 
 export const SPRING_ARCH_FIXTURE = path.join(
   path.resolve(import.meta.dirname, '..'),

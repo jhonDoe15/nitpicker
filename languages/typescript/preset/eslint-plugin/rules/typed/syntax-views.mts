@@ -4,7 +4,7 @@ import {
   resolveConstant,
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
-import { chainOf, nameOf } from './node-views.mts';
+import { ancestorsOf, chainOf, nameOf } from './node-views.mts';
 
 export type FunctionNode =
   TSESTree.FunctionDeclaration | TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression;
@@ -179,6 +179,10 @@ export function isFunction(node: TSESTree.Node): node is FunctionNode {
     node.type === AST_NODE_TYPES.FunctionExpression ||
     node.type === AST_NODE_TYPES.ArrowFunctionExpression
   );
+}
+
+export function enclosingFunction(node: TSESTree.Node): FunctionNode | undefined {
+  return ancestorsOf(node).find(isFunction);
 }
 
 export function isExported(declarator: TSESTree.VariableDeclarator): boolean {

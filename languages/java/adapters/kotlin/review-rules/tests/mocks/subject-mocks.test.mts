@@ -6,7 +6,7 @@ import {
   staticMessage as untypedStaticMessage,
   subjectMessage as untypedSubjectMessage,
   subjectMockFindings,
-} from './subject-mocks.mjs';
+} from './subject-mocks.mts';
 
 const staticMessage: (call: string, target: string) => string = untypedStaticMessage;
 const subjectMessage: (type: string) => string = untypedSubjectMessage;

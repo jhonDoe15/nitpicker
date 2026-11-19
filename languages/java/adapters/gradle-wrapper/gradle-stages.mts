@@ -1,13 +1,13 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { javaStyleProperties } from '../style/java-style.mjs';
-import { toolConfigChoices, toolConfigProperties } from '../tool-config/tool-config-choices.mjs';
+import { javaStyleProperties } from '../style/java-style.mts';
+import { toolConfigChoices, toolConfigProperties } from '../tool-config/tool-config-choices.mts';
 import { writeSpringRoles } from '../spring-arch/spring-roles.mts';
 import { writeSpringRuleset } from '../spring/proxies/proxy-ruleset.mts';
-import { effectsProperties } from '../effects/effects-options.mjs';
+import { effectsProperties } from '../effects/effects-options.mts';
 import { pitHistoryProperties } from '../../builds/pit-history/pit-history.mts';
 import { gradlePitDeadlineMs } from '../../builds/pit-failure/pit-failure.mts';
-import { REPORT_OVERHEAD_MS as untypedReportOverheadMs } from './gradle-budget.mjs';
+import { REPORT_OVERHEAD_MS as untypedReportOverheadMs } from './gradle-budget.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { type JavaPolicy, callUntyped } from '../typed/java-values.mts';
 import type { JavaBudget } from '../typed/java-run-options.mts';

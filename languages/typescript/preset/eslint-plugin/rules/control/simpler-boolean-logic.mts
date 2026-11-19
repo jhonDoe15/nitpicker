@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { exactFixText as untypedExactFixText } from '../../../../../../shared/logic/fixes/exact-fix.mjs';
 import { simplerForms as untypedSimplerForms } from '../../../../../../shared/logic/simplify/simpler-forms.mjs';
 import {
   term as untypedTerm,
@@ -14,11 +15,22 @@ import { isTestOf } from './test-positions.mts';
 type Range = readonly [number, number];
 type Context = TSESLint.RuleContext<'simpler' | 'swapped', readonly unknown[]>;
 
+type Found = {
+  readonly range: Range;
+  readonly term: Term;
+  readonly form: string;
+  readonly swapped: boolean;
+};
+
 const simplerForms: (
   root: Term,
   options: { readonly booleanContext: boolean },
-) => readonly { readonly range: Range; readonly form: string; readonly swapped: boolean }[] =
-  untypedSimplerForms;
+) => readonly Found[] = untypedSimplerForms;
+const exactFixText: (input: {
+  readonly root: Term;
+  readonly form: Term;
+  readonly source: string;
+}) => string | undefined = untypedExactFixText;
 const term: (kind: string, value: string | undefined, children: Term[]) => Term = untypedTerm;
 const withRange: (node: Term, range: Range) => Term = untypedWithRange;
 
@@ -68,6 +80,18 @@ function typeSyntaxRanges(sourceCode: SourceCode): Range[] {
 
 function holdsAny(range: Range, inner: readonly Range[]): boolean {
   return inner.some(([start, end]) => start >= range[0] && end <= range[1]);
+}
+
+type FixInputs = {
+  readonly root: Term;
+  readonly comments: readonly Range[];
+  readonly source: string;
+};
+
+function fixText(found: Found, { root, comments, source }: FixInputs): string | undefined {
+  return holdsAny(found.range, comments)
+    ? undefined
+    : exactFixText({ root, form: found.term, source });
 }
 
 function booleanTypes(context: Context): (node: TSESTree.Node) => boolean {
@@ -127,9 +151,10 @@ function expressionRoot(node: TSESTree.Node): TSESTree.Node | undefined {
 export const rule: TSESLint.RuleModule<'simpler' | 'swapped'> = {
   meta: {
     type: 'suggestion',
+    fixable: 'code',
     docs: {
       description:
-        'Report boolean logic that has a strictly simpler exact form, and print that form',
+        'Report boolean logic that has a strictly simpler exact form, print that form, and write it when it keeps every effect',
     },
     schema: [],
     messages: {
@@ -143,12 +168,13 @@ export const rule: TSESLint.RuleModule<'simpler' | 'swapped'> = {
     const options = { isBoolean: booleanTypes(context) };
     const seen = new WeakSet<TSESTree.Node>();
     const typeSyntax = typeSyntaxRanges(sourceCode);
+    const comments = sourceCode.getAllComments().map(({ range }) => range);
 
     function report(root: Term, booleanContext: boolean): void {
       const forms = simplerForms(root, { booleanContext });
-      for (const { range, form, swapped } of forms.filter(
-        (found) => !holdsAny(found.range, typeSyntax),
-      )) {
+      for (const found of forms.filter(({ range }) => !holdsAny(range, typeSyntax))) {
+        const { range, form, swapped } = found;
+        const text = fixText(found, { root, comments, source: sourceCode.text });
         context.report({
           loc: {
             start: sourceCode.getLocFromIndex(range[0]),
@@ -156,6 +182,7 @@ export const rule: TSESLint.RuleModule<'simpler' | 'swapped'> = {
           },
           messageId: swapped ? 'swapped' : 'simpler',
           data: { form },
+          ...(text === undefined ? {} : { fix: (fixer) => fixer.replaceTextRange(range, text) }),
         });
       }
     }

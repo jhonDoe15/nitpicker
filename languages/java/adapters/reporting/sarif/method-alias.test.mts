@@ -6,8 +6,8 @@ import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-fi
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../../typed/java-values.mts';
 import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
-import { withoutGeneratedSources } from '../../generated/generated-sources.mjs';
-import { sarifFindings } from './sarif-reports.mjs';
+import { withoutGeneratedSources } from '../../generated/generated-sources.mts';
+import { sarifFindings } from './sarif-reports.mts';
 
 type Placement = readonly [string, number, string?];
 

@@ -7,8 +7,8 @@ import {
 } from '../../../../core/tooling/temporary-files.mjs';
 import { callUntyped, type JavaPolicy } from '../typed/java-values.mts';
 import { textsOf } from '../../../../shared/values/readers.mts';
-import { kotlinFormatAdvice } from './style/kotlin-format-advice.mjs';
-import { kotlinGradleArguments, kotlinStyleFile, resolveKotlinTools } from './kotlin-tools.mjs';
+import { kotlinFormatAdvice } from './style/kotlin-format-advice.mts';
+import { kotlinGradleArguments, kotlinStyleFile, resolveKotlinTools } from './kotlin-tools.mts';
 
 type KotlinRun = {
   readonly advice: unknown;

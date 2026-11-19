@@ -5,7 +5,7 @@ import { MAX_TESTED_SOURCES, testedSources } from './tested-sources.mts';
 import type { JavaFinding, JavaPolicy } from '../../adapters/typed/java-values.mts';
 import type { JavaRunOptions } from '../../adapters/typed/java-run-options.mts';
 
-type MutationPlan = {
+export type MutationPlan = {
   readonly scope: string[];
   readonly changedOnly: Map<string, LineRange[]>;
   readonly notices: JavaFinding[];

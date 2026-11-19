@@ -10,10 +10,10 @@ import {
   TEST_RUNTIME_ANALYZER,
   isEndToEndPath,
 } from '../../../../shared/rules/test-runtime/scope.mjs';
-import { pathInside as untypedPathInside } from '../review-rules/java-sources.mjs';
+import { pathInside as untypedPathInside } from '../review-rules/java-sources.mts';
 import { readDeclarations } from '../review-rules/source-declarations.mts';
 import { readTestGraph, type TestProject } from './test-graph.mts';
-import { isAbstract as untypedIsAbstract } from './test-sources.mjs';
+import { isAbstract as untypedIsAbstract } from './test-sources.mts';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../typed/java-values.mts';
 import { completeProjects } from '../typed/complete-projects.mts';
@@ -22,7 +22,7 @@ type Judged = { readonly node: string; readonly file: string; readonly sourceHas
 
 const hash: (text: string) => string = untypedHash;
 const pathInside: (root: string, file: string) => string = untypedPathInside;
-const isAbstract: (text: string, simple: string, options: { kotlinOpen: boolean }) => boolean =
+const isAbstract: (text: string, simple: string, options: { kotlinOpen?: true }) => boolean =
   untypedIsAbstract;
 const isEndToEnd: (file: string) => boolean = isEndToEndPath;
 

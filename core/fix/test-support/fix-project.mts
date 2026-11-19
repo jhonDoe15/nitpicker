@@ -15,6 +15,7 @@ type FixRun = {
   readonly cliArguments?: readonly string[];
   readonly prepare?: ((root: string) => void) | undefined;
   readonly realAnalyzers?: true | undefined;
+  readonly environment?: NodeJS.ProcessEnv | undefined;
 };
 
 type FixResult = {
@@ -40,6 +41,7 @@ export function useFixProject(): { readonly fix: (run: FixRun) => FixResult } {
     cliArguments = ['--fix', '--no-cache'],
     prepare,
     realAnalyzers,
+    environment,
   }: FixRun): FixResult {
     const repository = createRepository({ 'quality-policy.json': policy(), ...committed });
     prepare?.(repository.root);
@@ -50,6 +52,7 @@ export function useFixProject(): { readonly fix: (run: FixRun) => FixResult } {
       arguments_: [...cliArguments, '--base', repository.baseRef, '--output', outputRoot],
       currentProjectRoot: repository.root,
       ...(realAnalyzers === true ? {} : { analyzers: [fakeAnalyzer()] }),
+      ...(environment === undefined ? {} : { environment }),
       stdout: output.stdout,
       stderr: output.stderr,
     });

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import * as prettier from 'prettier';
-import { byCodePoint, readRegistryFile, registryFiles } from './registry-files.mjs';
+import { byCodePoint, emittedFrom, readRegistryFile, registryFiles } from './registry-files.mjs';
 
 const PLUGIN = 'languages/typescript/preset/eslint-plugin';
 const REGISTRY_NAME = 'rules.generated.mts';
@@ -31,10 +31,6 @@ function idProblems(rules) {
     ...[...taken].filter(([, same]) => same.length > 1).map(([id]) => `${id} is defined twice`),
     ...rules.filter(({ id }) => !RULE_ID.test(id)).map(({ file }) => `${file} is not kebab-case`),
   ];
-}
-
-function emittedFrom(sources) {
-  return (file) => file.endsWith('.mjs') && sources.has(`${file.slice(0, -'.mjs'.length)}.mts`);
 }
 
 /**
