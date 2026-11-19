@@ -1,0 +1,20 @@
+type Item = { readonly name: string; readonly tags: readonly string[] };
+
+export function tagCount(item: Item): number {
+  return item?.tags?.length ?? 0;
+}
+
+export function name(item: Item | undefined): string {
+  return item?.name ?? 'none';
+}
+
+export function always(items: readonly Item[]): string {
+  if (items) {
+    return 'list';
+  }
+  return 'never';
+}
+
+export function probe(): unknown {
+  return [tagCount({ name: 'a', tags: ['x'] }), name(undefined), always([])];
+}

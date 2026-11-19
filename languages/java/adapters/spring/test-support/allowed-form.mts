@@ -22,6 +22,7 @@ const VERBS = [
   'Name',
   'Put',
   'Read',
+  'Redirect',
   'Release',
   'Remove',
   'Rethrow',

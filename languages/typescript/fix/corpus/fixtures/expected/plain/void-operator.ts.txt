@@ -1,0 +1,13 @@
+function noop(log: string[]): void {
+  log.push('noop');
+}
+
+export function run(log: string[]): void {
+  noop(log);
+}
+
+export function probe(): unknown {
+  const log: string[] = [];
+  run(log);
+  return log;
+}

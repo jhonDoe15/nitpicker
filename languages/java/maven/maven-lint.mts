@@ -17,6 +17,7 @@ import type { ToolClasspaths } from './typed/kotlin-types.mts';
 import { javaFiles } from './lint/java-files.mts';
 import { analyzesGenerated, handWrittenRoots } from './generated/generated-roots.mts';
 import { handWrittenClasses } from './generated/spotbugs-targets.mts';
+import { spotbugsLaunch } from './security/spotbugs-launch.mts';
 
 export { javaFiles } from './lint/java-files.mts';
 export { runCheckstyle, writeCheckstyleSetup } from './lint/maven-checkstyle.mts';
@@ -164,20 +165,16 @@ export function runSpotbugs({
     tool: 'SpotBugs',
     classpath: tools['spotbugs'],
     mainClass: 'edu.umd.cs.findbugs.FindBugs2',
-    args: [
-      ...textsOf(
+    ...spotbugsLaunch({
+      module,
+      report,
+      tools,
+      settings: textsOf(
         fieldOf(fieldOf(configs, 'spotbugs'), 'arguments') ?? spotbugsArguments(NITPICKER_SPOTBUGS),
       ),
-      '-sarif',
-      '-output',
-      report,
-      '-sourcepath',
-      module.sourceRoots.filter((root) => existsSync(root)).join(path.delimiter),
-      ...(aux.length === 0
-        ? []
-        : ['-auxclasspath', aux.filter((entry) => existsSync(entry)).join(path.delimiter)]),
-      ...(targets === undefined ? [module.outputDirectory] : ['-analyzeFromFile', targets.list]),
-    ],
+      auxClasspath: aux,
+      ...(targets === undefined ? {} : { targets: ['-analyzeFromFile', targets.list] }),
+    }),
     cwd: module.basedir,
     accept: () => existsSync(report),
     spawn,
