@@ -221,7 +221,7 @@ function sourceFiles(
     .filter(
       (file) =>
         !matches(file, exclude) &&
-        layout.isSourceFile(`${layout.sourceRoot}/${file}`) &&
+        layout.isSourceFile(path.posix.join(layout.sourceRoot, file)) &&
         !layout.isExcluded(path.posix.join(displayRoot, file)),
     )
     .sort();

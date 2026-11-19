@@ -2,6 +2,7 @@ import path from 'node:path';
 import { internalEdges, normalizePath } from '../dependency-graph/cruise.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 import { appendAll } from '../../../../shared/lists/items.mjs';
+import { isInsideRoot, isProjectRoot, underRoot } from '../layout/source-root/root-paths.mjs';
 
 const DEFAULT_FOUNDATION_DIRECTORIES = new Set(['shared', 'utils']);
 const COMPOSITION_ROOT_NAMES = ['composition-root', 'main', 'server'];
@@ -23,18 +24,20 @@ function declaredEntryPoints({ components, productionModules, root, layout }) {
   const candidates = [...components].map((component) => [
     component,
     layout.entryExtensions
-      .map((extension) => `${root}/${component}/index.${extension}`)
+      .map((extension) => underRoot(root, `${component}/index.${extension}`))
       .find((candidate) => productionModules.includes(candidate)),
   ]);
   return new Map(candidates.filter(([, entryPoint]) => entryPoint !== undefined));
 }
 
-function relativeToRoot(modulePath, sourceRoot) {
-  return modulePath.slice(sourceRoot.length).replace(/^\//, '');
+function pathUnderRoot(modulePath, sourceRoot) {
+  return isProjectRoot(sourceRoot)
+    ? modulePath
+    : modulePath.slice(sourceRoot.length).replace(/^\//, '');
 }
 
 function componentName(modulePath, sourceRoot) {
-  const relativePath = relativeToRoot(modulePath, sourceRoot);
+  const relativePath = pathUnderRoot(modulePath, sourceRoot);
   return relativePath.includes('/') ? relativePath.split('/')[0] : '(root)';
 }
 
@@ -50,14 +53,14 @@ function exportedTargetsOf(module, sourceRoot) {
         dependency.dependencyTypes?.includes('export') === true,
     )
     .map((dependency) => normalizePath(dependency.resolved))
-    .filter((target) => target.startsWith(`${sourceRoot}/`));
+    .filter((target) => isInsideRoot(target, sourceRoot));
 }
 
 function exportTargetsBySource(graph, sourceRoot) {
   const exportTargets = new Map();
   for (const module of graph.modules) {
     const source = normalizePath(module.source);
-    if (!source.startsWith(`${sourceRoot}/`)) continue;
+    if (!isInsideRoot(source, sourceRoot)) continue;
     for (const target of exportedTargetsOf(module, sourceRoot)) {
       const targets = exportTargets.get(source) ?? new Set();
       targets.add(target);
@@ -92,13 +95,13 @@ function byLocation(left, right) {
 }
 
 function normalizedSourceRoot(sources, requestedRoot, layout) {
-  const legacyRoot = `${requestedRoot}/main`;
+  const legacyRoot = underRoot(requestedRoot, 'main');
   const legacyOnly =
     layout.sourceRoots.includes(requestedRoot) &&
     sources.some((source) => layout.isSourceUnderRoot(source, legacyRoot)) &&
     !sources.some(
       (source) =>
-        layout.isSourceUnderRoot(source, requestedRoot) && !source.startsWith(`${legacyRoot}/`),
+        layout.isSourceUnderRoot(source, requestedRoot) && !isInsideRoot(source, legacyRoot),
     );
   return legacyOnly ? legacyRoot : requestedRoot;
 }
@@ -110,7 +113,7 @@ function entryPointScope(graph, sourceRoot, options) {
   const sources = graph.modules.map((module) => normalizePath(module.source));
   const root = normalizedSourceRoot(sources, normalizePath(sourceRoot).replace(/\/$/, ''), layout);
   const productionModules = sources.filter(
-    (source) => source.startsWith(`${root}/`) && isProductionModule(source, root, layout),
+    (source) => isInsideRoot(source, root) && isProductionModule(source, root, layout),
   );
   const components = new Set(
     productionModules
@@ -137,7 +140,7 @@ function crossBoundaryFinding(edge, scope) {
   const sourceComponent = componentName(edge.source, scope.root);
   const targetComponent = componentName(edge.target, scope.root);
   if (
-    scope.compositionRoots.has(relativeToRoot(edge.source, scope.root)) ||
+    scope.compositionRoots.has(pathUnderRoot(edge.source, scope.root)) ||
     sourceComponent === targetComponent ||
     !scope.components.has(targetComponent)
   )

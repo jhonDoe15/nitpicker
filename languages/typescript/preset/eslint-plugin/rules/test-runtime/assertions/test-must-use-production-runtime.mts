@@ -108,11 +108,10 @@ function isProductionModule(filename: string, source: string): boolean {
       ? path.resolve(path.dirname(filename), source)
       : (resolveModule(filename, source) ?? '')
   ).replaceAll('\\', '/');
-  const resolvedRoot = layout.sourceRootOf(`${resolved}/`);
-  if (resolvedRoot === undefined) {
+  const rootRelative = layout.sourcePathOf(`${resolved}/`);
+  if (rootRelative === undefined) {
     return false;
   }
-  const rootRelative = resolved.slice(resolved.indexOf(`/${resolvedRoot}/`) + 1);
   return !(TEST_SUPPORT.test(rootRelative) || layout.isTestFile(rootRelative));
 }
 

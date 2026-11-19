@@ -151,7 +151,7 @@ function productionFiles(root: string, displayRoot: string, layout: StructureLay
       const relative = normalizePath(path.relative(root, absolute));
       return (
         !isExcludedPath(projectRelative(absolute)) &&
-        layout.isSourceFile(`${layout.sourceRoot}/${relative}`) &&
+        layout.isSourceFile(path.posix.join(layout.sourceRoot, relative)) &&
         !layout.isExcluded(normalizePath(path.join(displayRoot, relative)))
       );
     })

@@ -147,7 +147,10 @@ describe('init at the top of a repository with several projects', () => {
       preset: 'typescript',
       layout: { sourceRoots: ['components'] },
     });
-    expect(existsSync(path.join(root, 'examples/top/nitpicker.config.json'))).toBe(false);
+    expect(JSON.parse(readText(root, 'examples/top/nitpicker.config.json'))).toEqual({
+      preset: 'javascript',
+      layout: { sourceRoots: ['.'] },
+    });
     expect(result.stdoutText).not.toContain('No config of its own needed');
   });
   it('gives the frontend of a Java application its own entry beside the java preset', () => {

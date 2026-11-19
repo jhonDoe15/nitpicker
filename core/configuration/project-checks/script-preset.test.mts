@@ -76,3 +76,39 @@ describe('the preset of a script project', () => {
     expect(scriptProjectPreset({ exclude: ['test/legacy/**'] }, project(files))).toBe('javascript');
   });
 });
+
+describe('the script preset of a package with its code at the project root', () => {
+  const rootLayout = { layout: { sourceRoots: ['.'] } };
+
+  it('stays javascript when only tool config files are TypeScript', () => {
+    const files = {
+      'package.json': '{}',
+      'index.js': '',
+      'vite.config.ts': '',
+      'vitest.workspace.config.mts': '',
+    };
+
+    expect(scriptProjectPreset(rootLayout, project(files))).toBe('javascript');
+  });
+
+  it('turns typescript with a real TypeScript file or a tsconfig.json', () => {
+    expect(
+      scriptProjectPreset(
+        rootLayout,
+        project({ 'package.json': '{}', 'index.js': '', 'a.ts': '' }),
+      ),
+    ).toBe('typescript');
+    expect(
+      scriptProjectPreset(
+        rootLayout,
+        project({ 'package.json': '{}', 'index.js': '', 'tsconfig.json': '{}' }),
+      ),
+    ).toBe('typescript');
+  });
+
+  it('keeps counting a TypeScript source under src', () => {
+    const files = { 'package.json': '{}', 'src/a.js': '', 'src/b.ts': '' };
+
+    expect(scriptProjectPreset({}, project(files))).toBe('typescript');
+  });
+});

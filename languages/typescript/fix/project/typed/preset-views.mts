@@ -1,5 +1,6 @@
 import { helperName as untypedHelperName } from '../../../preset/eslint-plugin/test-placement/no-test-helpers-in-source.mts';
 import { testAreaGlobsFor as untypedTestAreaGlobsFor } from '../../../preset/eslint-config/strict-tests.mts';
+import { pathBelowRoot as untypedPathBelowRoot } from '../../../preset/layout/source-root/root-paths.mjs';
 import {
   existingRoots as untypedExistingRoots,
   globMatcher as untypedGlobMatcher,
@@ -24,6 +25,8 @@ const testAreaGlobsFor: (layout: FixLayout) => readonly string[] = untypedTestAr
 const existingRoots: (projectRoot: string, roots: readonly string[]) => readonly string[] =
   untypedExistingRoots;
 
+const pathBelowRoot: (roots: readonly string[], file: string) => string = untypedPathBelowRoot;
+
 const globMatcher: (glob: string) => GlobMatcher = untypedGlobMatcher;
 
 const fileNameComplies: (
@@ -45,6 +48,7 @@ export { moveToDependencies } from '../manifest/manifest-move.mts';
 
 export {
   existingRoots,
+  pathBelowRoot,
   nearestManifest,
   fileNameComplies,
   fileNameParts,

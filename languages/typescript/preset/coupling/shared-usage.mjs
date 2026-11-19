@@ -2,6 +2,7 @@ import { featureRoles } from '../../../../shared/rules/features/feature-roles.mj
 import { sharedUsedByOneFeature as sharedUsage } from '../../../../shared/rules/features/shared-usage.mjs';
 import { featureLayout } from '../architecture/strict-layout.mjs';
 import { normalizePath } from '../dependency-graph/cruise.mjs';
+import { isInsideRoot } from '../layout/source-root/root-paths.mjs';
 
 const roleOf = featureRoles(featureLayout);
 
@@ -17,6 +18,6 @@ export function sharedUsedByOneFeature(graph, { sourceRoot, isProduction }) {
       role,
     }));
   });
-  const modules = sources.filter((source) => source.startsWith(`${root}/`) && isProduction(source));
+  const modules = sources.filter((source) => isInsideRoot(source, root) && isProduction(source));
   return sharedUsage({ modules, imports }, { roleOf });
 }

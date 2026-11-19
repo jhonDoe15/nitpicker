@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { isInsideRoot, underRoot } from '../../layout/source-root/root-paths.mjs';
 
 const CODE_EXTENSIONS = '{ts,tsx,mts,cts,js,jsx,mjs,cjs}';
 const NODE_EXTENSIONS = '{cjs,mjs,js,cts,mts,ts}';
@@ -127,7 +128,7 @@ export function testFileMatcher(patterns) {
 function scopedGlob(root, glob) {
   const [segment, ...after] = glob.slice('**/'.length).split('/');
   const nested = after.length > 0 && path.posix.basename(root) === segment;
-  return [`${root}/${glob}`, ...(nested ? [`${root}/${after.join('/')}`] : [])];
+  return [underRoot(root, glob), ...(nested ? [underRoot(root, after.join('/'))] : [])];
 }
 
 export function rootScopedGlobs(roots, include) {
@@ -140,7 +141,7 @@ export function rootScopedGlobs(roots, include) {
 export function sourceRootGlobs(sourceRoots, patterns) {
   const extra = patterns.include.filter((glob) => !VITEST_TEST_FILES.includes(glob));
   return rootScopedGlobs(sourceRoots, extra).filter((glob) =>
-    sourceRoots.some((root) => glob.startsWith(`${root}/`)),
+    sourceRoots.some((root) => isInsideRoot(glob, root)),
   );
 }
 

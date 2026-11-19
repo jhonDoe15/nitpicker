@@ -10,10 +10,9 @@ export function productionModulePath(specifier: unknown, filename: string): stri
   const resolved = specifier.startsWith('.')
     ? path.resolve(path.dirname(filename), specifier).replaceAll('\\', '/')
     : specifier;
-  const sourceRoot = layout.sourceRootOf(resolved);
-  if (sourceRoot === undefined) {
+  const projectRelative = layout.sourcePathOf(resolved);
+  if (projectRelative === undefined) {
     return undefined;
   }
-  const projectRelative = resolved.slice(resolved.indexOf(`/${sourceRoot}/`) + 1);
   return layout.isTestFile(projectRelative) ? undefined : resolved;
 }

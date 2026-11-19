@@ -4,6 +4,7 @@ import { linkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
 import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 import { readLayout } from '../head-policy.mjs';
 import { EXCLUDED_PATH_PATTERN } from '../layout.mjs';
+import { isInsideRoot } from '../layout/source-root/root-paths.mjs';
 import { layoutTransformFor } from '../tool-configs.mjs';
 import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
 
@@ -124,7 +125,7 @@ export function isTypeOnlyDependency(dependency) {
 }
 
 function isWithinRoot(file, root) {
-  return !isExcludedPath(file) && (file === root || file.startsWith(`${root}/`));
+  return !isExcludedPath(file) && (file === root || isInsideRoot(file, root));
 }
 
 function internalTarget(dependency, { modulePaths, root }) {
