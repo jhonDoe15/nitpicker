@@ -153,10 +153,6 @@ function createClassifiers({
   };
 }
 
-function globsPattern(globs) {
-  return globs.length === 0 ? undefined : globs.map((glob) => globToRegExpSource(glob)).join('|');
-}
-
 function exactPathPattern(files) {
   return files.length === 0
     ? undefined
@@ -164,12 +160,17 @@ function exactPathPattern(files) {
 }
 
 function excludedGlobsFor(layout, exclude) {
+  const hiddenGlobs = [
+    ...(layout.excludedGlobs ?? []).filter((glob) => !builtInExcludedGlobs.includes(glob)),
+    ...exclude,
+  ];
   return {
     excludedGlobs: [...(layout.excludedGlobs ?? builtInExcludedGlobs), ...exclude],
-    hiddenGlobs: [
-      ...(layout.excludedGlobs ?? []).filter((glob) => !builtInExcludedGlobs.includes(glob)),
-      ...exclude,
-    ],
+    hiddenGlobs,
+    excludePattern:
+      hiddenGlobs.length === 0
+        ? undefined
+        : hiddenGlobs.map((glob) => globToRegExpSource(glob)).join('|'),
   };
 }
 
@@ -204,7 +205,7 @@ export function resolveLayout(
     colocatedTests,
     testFiles,
   });
-  const { excludedGlobs, hiddenGlobs } = excludedGlobsFor(layout, exclude);
+  const { excludedGlobs, hiddenGlobs, excludePattern } = excludedGlobsFor(layout, exclude);
   const resolved = {
     testFiles,
     javascript,
@@ -219,7 +220,7 @@ export function resolveLayout(
     ...globs,
     hiddenGlobs,
     ...endToEndFor(layout, testRoots, extensionGlob),
-    excludePattern: globsPattern(hiddenGlobs),
+    excludePattern,
     generatedFilePattern: exactPathPattern(generatedFiles),
     ...createClassifiers({
       sourceRoots,
