@@ -67,7 +67,7 @@ public class SpringDataNoSaveInLoop extends BugChecker implements MethodInvocati
     if (text != null && oneElement()) {
       dropFactoryImport(write.call.getArguments().get(0), write.element, fix, state);
     }
-    return text == null ? Description.NO_MATCH : describeMatch(write.statement, fix.replace(write.statement, text).build());
+    return text == null ? Description.NO_MATCH : Support.describe(this, write.statement, fix.replace(write.statement, text).build(), state);
   }
 
   private Description methodReference(MethodInvocationTree tree, VisitorState state) {
@@ -87,15 +87,15 @@ public class SpringDataNoSaveInLoop extends BugChecker implements MethodInvocati
     String batch = LoopWrite.BATCHES.get(reference.getName().toString());
     String repository = Support.source(reference.getQualifierExpression(), state);
     if (isIterable(select.getExpression(), state)) {
-      return describeMatch(statement, SuggestedFix.replace(statement,
-          repository + "." + batch + "(" + Support.source(select.getExpression(), state) + ");"));
+      return Support.describe(this, statement, SuggestedFix.replace(statement,
+          repository + "." + batch + "(" + Support.source(select.getExpression(), state) + ");"), state);
     }
     if (!isStream(select.getExpression(), state)) {
       return null;
     }
     SuggestedFix.Builder fix = SuggestedFix.builder();
     String collected = Support.source(select.getExpression(), state) + collect(fix, state);
-    return describeMatch(statement, fix.replace(statement, repository + "." + batch + "(" + collected + ");").build());
+    return Support.describe(this, statement, fix.replace(statement, repository + "." + batch + "(" + collected + ");").build(), state);
   }
 
   private static void dropFactoryImport(

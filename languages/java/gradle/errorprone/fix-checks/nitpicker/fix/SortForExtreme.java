@@ -65,7 +65,7 @@ public final class SortForExtreme extends BugChecker implements MethodInvocation
               ? new int[] {sortedFrom(other, state), Support.end(other, state)}
               : null);
     }
-    return describeMatch(tree, fix.build());
+    return Support.describe(this, tree, fix.build(), state);
   }
 
   private static boolean reusesCollectors(MethodInvocationTree sorted, VisitorState state) {

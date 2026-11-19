@@ -44,7 +44,7 @@ public final class DmiRandomUsedOnlyOnce extends BugChecker implements MethodInv
         path.getLeaf() instanceof MethodInvocationTree other
             && matchMethodInvocation(other, state.withPath(path)) != Description.NO_MATCH
             ? range(((MemberSelectTree) other.getMethodSelect()).getExpression(), state) : null);
-    return describeMatch(tree, fix.build());
+    return Support.describe(this, tree, fix.build(), state);
   }
 
   private static int[] range(ExpressionTree tree, VisitorState state) {

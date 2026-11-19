@@ -52,7 +52,7 @@ public final class LogStringConcatenation extends BugChecker implements MethodIn
     }
     String text = split.text.toString();
     String values = String.join(", ", split.values);
-    return describeMatch(tree, SuggestedFix.replace(arguments.get(index), quote(text) + ", " + values));
+    return Support.describe(this, tree, SuggestedFix.replace(arguments.get(index), quote(text) + ", " + values), state);
   }
 
   private static boolean isLogger(ExpressionTree receiver) {

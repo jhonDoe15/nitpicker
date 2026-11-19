@@ -109,7 +109,7 @@ public final class LinearLookupInLoop extends BugChecker
     if (found.isEmpty()) {
       return Description.NO_MATCH;
     }
-    return describeMatch(loop, rewrite(loop, found, state));
+    return Support.describe(this, loop, rewrite(loop, found, state), state);
   }
 
   private static SuggestedFix rewrite(StatementTree loop, List<LookupShape> found, VisitorState state) {

@@ -44,7 +44,7 @@ public final class UseCollectionIsEmpty extends BugChecker implements BinaryTree
     Tree negation = negationAround(state);
     boolean positive = negation == null ? empty : !empty;
     String replacement = (positive ? "" : "!") + receiver + ".isEmpty()";
-    return describeMatch(tree, SuggestedFix.replace(negation == null ? tree : negation, replacement));
+    return Support.describe(this, tree, SuggestedFix.replace(negation == null ? tree : negation, replacement), state);
   }
 
   private static Tree negationAround(VisitorState state) {

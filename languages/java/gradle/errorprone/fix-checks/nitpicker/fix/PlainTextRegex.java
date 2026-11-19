@@ -58,7 +58,7 @@ public final class PlainTextRegex extends BugChecker implements MethodInvocation
     }
     int end = Support.end(select, state);
     fix.replace(end - NAME.length(), end, "replace");
-    return describeMatch(tree, fix.build());
+    return Support.describe(this, tree, fix.build(), state);
   }
 
   private static int[] quotedCall(ExpressionTree replacement, VisitorState state) {

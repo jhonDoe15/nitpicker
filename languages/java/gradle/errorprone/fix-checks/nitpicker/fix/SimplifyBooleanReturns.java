@@ -55,7 +55,7 @@ public final class SimplifyBooleanReturns extends BugChecker implements IfTreeMa
     ParenthesizedTree condition = (ParenthesizedTree) tree.getCondition();
     ExpressionTree test = condition.getExpression();
     String value = first ? Support.source(test, state) : Precedence.negated(test, state);
-    return describeMatch(tree, SuggestedFix.replace(Support.start(tree), end, "return " + value + ";"));
+    return Support.describe(this, tree, SuggestedFix.replace(Support.start(tree), end, "return " + value + ";"), state);
   }
 
   private static boolean holdsComment(IfTree tree, int end, VisitorState state) {
