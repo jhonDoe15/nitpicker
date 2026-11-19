@@ -371,6 +371,10 @@ class type the enclosing function returns (its annotation, or its other `return 
 instead of returned. Builtin types, callees that return `self` and calls on unknown objects stay quiet. The allowed form is
 `return helper(...)`.
 
+Message placeholders: `unformatted-message-placeholder` (script, Python) reports a plain string with `{name}` of a bound name used as
+the message of an exception, a one-argument log call, `warnings.warn` or `assert`, and `exception-format-arguments` (script,
+Python) reports an exception built like a logger call (`ValueError("path %s", path)`). The allowed form formats the text first.
+
 Null branches that continue: `nitpicker/no-null-branch-fall-through` (production
 source, in `eslint-lint`) in the TypeScript and JavaScript presets, and `null-branch-fall-through` (script) in Python. It reports
 an `if (x == null)` or `if x is None:` branch without `else` that does something and does not leave (no return, throw, break,

@@ -24,6 +24,7 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - A project exception a FastAPI route can raise maps to a status: derive it from `HTTPException`
   or register `@app.exception_handler(OrderNotFound)` (`unmapped-exception`).
 - A `try` inside a loop is flagged (PERF203): move it out, or extract the loop body into a function.
+- Messages are formatted before they are raised or logged: `raise ValueError(f"path {path} not found")`, never `"path {path} ..."` without the `f` (`unformatted-message-placeholder`) or `ValueError("path %s not found", path)`, which keeps a tuple (`exception-format-arguments`).
 - Text from a search or filter field (a FastAPI `str` parameter, `request.args`, `request.GET`) is stripped before
   it reaches a lookup: `name = name.strip()`, or a pydantic request model whose base sets
   `ConfigDict(str_strip_whitespace=True)`; a padded `" Davis"` finds nothing (`untrimmed-request-text`).
