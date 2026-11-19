@@ -57,9 +57,7 @@ export function descendantsOf(root: TypeScript.Node): TypeScript.Node[] {
   return found.toSorted((first, second) => first.pos - second.pos);
 }
 
-function wrappedExpression(
-  expression: TypeScript.Expression,
-): TypeScript.Expression | undefined {
+function wrappedExpression(expression: TypeScript.Expression): TypeScript.Expression | undefined {
   return ts.isParenthesizedExpression(expression) ||
     ts.isNonNullExpression(expression) ||
     ts.isAsExpression(expression) ||
