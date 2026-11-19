@@ -1,6 +1,7 @@
-import { PROJECT, type ReadOptions, useTempProjects } from './temp-projects.mts';
+import type { MainSourceOptions } from '../java-sources.mts';
+import { PROJECT, useTempProjects } from './temp-projects.mts';
 
-export type ReadFindings<Found> = (projectRoot: string, options: ReadOptions) => Found[];
+export type ReadFindings<Found> = (projectRoot: string, options: MainSourceOptions) => Found[];
 
 export type LocatedFinding = {
   readonly rule: string;

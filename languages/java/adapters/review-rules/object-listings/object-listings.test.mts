@@ -1,13 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { parseSource as untypedParse } from '../max-value-sums/source-file.mjs';
-import { findUnpagedListings as untypedFind } from './object-listings.mjs';
-
-const parse: (text: string, options: { file: string; kotlin: boolean }) => unknown = untypedParse;
-const find: (source: unknown) => { readonly kind: string }[] = untypedFind;
+import { parseSource as parse } from '../max-value-sums/source-file.mts';
+import { findUnpagedListings } from './object-listings.mts';
 
 function java(imports: string, body: string) {
   const text = `${imports}\nclass Loader {\n  void load() {\n${body}\n  }\n}\n`;
-  return find(parse(text, { file: 'Loader.java', kotlin: false })).map(({ kind }) => kind);
+  return findUnpagedListings(parse(text, { file: 'Loader.java', kotlin: false })).map(
+    ({ kind }) => kind,
+  );
 }
 
 const AWS = 'import software.amazon.awssdk.services.s3.S3Client;';

@@ -1,12 +1,13 @@
-import { parseSource as untypedParse } from '../max-value-sums/source-file.mjs';
+import { parseSource } from '../max-value-sums/source-file.mts';
+import type { SourceFile } from '../max-value-sums/sum-types.mts';
 
-export const parse: (text: string, options: { file: string; kotlin: boolean }) => unknown =
-  untypedParse;
+export const parse: (text: string, options: { file: string; kotlin: boolean }) => SourceFile =
+  parseSource;
 
 type Variant = { readonly file: string; readonly wrap: (body: string) => string };
 
 export function sourceRunners<Row, Result>(options: {
-  find: (source: unknown) => Row[];
+  find: (source: SourceFile) => Row[];
   pick: (row: Row) => Result;
   java: Variant;
   kotlin: Variant;

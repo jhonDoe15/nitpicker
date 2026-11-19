@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { namesOf } from '../../test-support/check-runner.mts';
-import { WALL_CLOCK_CHECK } from './wall-clock.mjs';
+import { WALL_CLOCK_CHECK } from './wall-clock.mts';
 
 const names = namesOf(WALL_CLOCK_CHECK);
 

@@ -1,6 +1,6 @@
 import { describeBodyCases } from '../typed/body-cases.mts';
 import type { Check, Ruled } from '../typed/typed-scan.mts';
-import { hostPortSplits as untypedHostPortSplits } from './host-splits.mjs';
+import { hostPortSplits as untypedHostPortSplits } from './host-splits.mts';
 
 const hostPortSplits: Check<Ruled> = untypedHostPortSplits;
 

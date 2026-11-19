@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { linesOf } from '../../test-support/check-runner.mts';
-import { NAN_GUARD_CHECK } from './nan-guard.mjs';
+import { NAN_GUARD_CHECK } from './nan-guard.mts';
 
 const lines = linesOf(NAN_GUARD_CHECK);
 

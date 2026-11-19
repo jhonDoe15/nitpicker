@@ -1,6 +1,6 @@
 import { describeBodyCases } from '../typed/body-cases.mts';
 import type { Check, Ruled } from '../typed/typed-scan.mts';
-import { surrogateSplittingCuts as untypedCuts } from './surrogate-cuts.mjs';
+import { surrogateSplittingCuts as untypedCuts } from './surrogate-cuts.mts';
 
 const surrogateSplittingCuts: Check<Ruled> = untypedCuts;
 

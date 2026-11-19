@@ -1,6 +1,6 @@
 import { describeBodyCases } from '../typed/body-cases.mts';
 import type { Check, Ruled } from '../typed/typed-scan.mts';
-import { newlineOnlyLineSplits as untypedLineSplits } from './line-splits.mjs';
+import { newlineOnlyLineSplits as untypedLineSplits } from './line-splits.mts';
 
 const newlineOnlyLineSplits: Check<Ruled> = untypedLineSplits;
 

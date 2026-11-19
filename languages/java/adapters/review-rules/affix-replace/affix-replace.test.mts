@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { sourceRunners } from '../test-support/source-runners.mts';
-import { findAffixReplaces as untypedFind } from './affix-replace.mjs';
-
-const find: (source: unknown) => { readonly kind: string }[] = untypedFind;
+import { findAffixReplaces } from './affix-replace.mts';
 
 const { java, kotlin } = sourceRunners({
-  find,
+  find: findAffixReplaces,
   pick: ({ kind }) => kind,
   java: {
     file: 'Names.java',

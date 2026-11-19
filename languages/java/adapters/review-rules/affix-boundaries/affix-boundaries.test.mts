@@ -1,13 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { parse, sourceRunners } from '../test-support/source-runners.mts';
-import { findAffixChecks as untypedFind } from './affix-calls.mjs';
-
-type Check = { readonly line: number; readonly kind: string };
-
-const find: (source: unknown) => Check[] = untypedFind;
+import { findAffixChecks } from './affix-calls.mts';
 
 const { java, kotlin } = sourceRunners({
-  find,
+  find: findAffixChecks,
   pick: ({ kind }) => kind,
   java: {
     file: 'Files.java',
@@ -68,7 +64,7 @@ describe('AffixWithoutBoundary in Java', () => {
   it('leaves a Path alone, since Path.startsWith compares whole segments', () => {
     const text =
       'class A {\n  boolean in(Path file, Path base) { return file.startsWith(base); }\n}\n';
-    expect(find(parse(text, { file: 'A.java', kotlin: false }))).toEqual([]);
+    expect(findAffixChecks(parse(text, { file: 'A.java', kotlin: false }))).toEqual([]);
   });
 });
 

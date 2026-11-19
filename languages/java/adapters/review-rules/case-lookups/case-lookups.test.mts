@@ -1,19 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { parseSource as untypedParse } from '../max-value-sums/source-file.mjs';
-import { findCaseLookups as untypedFind } from './case-lookups.mjs';
-
-const parse: (text: string, options: { file: string; kotlin: boolean }) => unknown = untypedParse;
-const find: (source: unknown) => { readonly kind: string }[] = untypedFind;
+import { parseSource as parse } from '../max-value-sums/source-file.mts';
+import { findCaseLookups } from './case-lookups.mts';
 
 function java(members: string) {
   const text = `import java.util.*;\nclass Audit {\n${members}\n}\n`;
-  return find(parse(text, { file: 'Audit.java', kotlin: false })).map(({ kind }) => kind);
+  return findCaseLookups(parse(text, { file: 'Audit.java', kotlin: false })).map(
+    ({ kind }) => kind,
+  );
 }
 
 function kotlin(members: string) {
-  return find(parse(`class Audit {\n${members}\n}\n`, { file: 'Audit.kt', kotlin: true })).map(
-    ({ kind }) => kind,
-  );
+  return findCaseLookups(
+    parse(`class Audit {\n${members}\n}\n`, { file: 'Audit.kt', kotlin: true }),
+  ).map(({ kind }) => kind);
 }
 
 describe('CaseMismatchedLookup in Java', () => {

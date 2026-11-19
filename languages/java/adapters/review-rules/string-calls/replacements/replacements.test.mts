@@ -7,7 +7,7 @@ import {
 import {
   EXPANDING_REPLACEMENT_RULE,
   readStringCallFindings as untypedRead,
-} from '../string-calls.mjs';
+} from '../string-calls.mts';
 
 const read: ReadFindings<LocatedFinding> = untypedRead;
 
