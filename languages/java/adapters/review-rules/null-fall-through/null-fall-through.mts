@@ -1,10 +1,9 @@
-import { readFileSync } from 'node:fs';
 import { findingFactory } from '../../kotlin/review-rules/review-finding.mts';
-import { pathInside, projectSourceFiles } from '../java-sources.mts';
+import { mainSourceTexts } from '../java-sources.mts';
 import { parseSource } from '../max-value-sums/source-file.mts';
 import { findFallThroughs } from './branches.mts';
 import type { ReviewFinding } from '../../kotlin/review-rules/typed/review-finding-types.mts';
-import type { SourceProject } from '../review-types.mts';
+import type { MainSourceOptions } from '../java-sources.mts';
 
 export const NULL_FALL_THROUGH_RULE = 'NullBranchFallThrough';
 export const NULL_FALL_THROUGH_EXCEPTION_RULE = `pmd/${NULL_FALL_THROUGH_RULE}`;
@@ -20,42 +19,21 @@ function fallThroughMessage(name: string, kotlin: boolean, use?: string): string
 
 export function readNullFallThroughFindings(
   projectRoot: string,
-  {
-    projects,
-    kotlin,
-    policy = {},
-  }: {
-    projects: readonly SourceProject[];
-    kotlin: boolean;
-    policy?: { readonly exclude?: readonly string[] };
-  },
+  options: MainSourceOptions,
 ): ReviewFinding[] {
-  const files = [
-    ...projectSourceFiles(projectRoot, {
-      projects,
-      kotlin,
-      exclude: policy.exclude ?? [],
-      test: false,
-    }).keys(),
-  ];
   const finding = findingFactory();
-  return files.flatMap((file) => {
-    const isKotlin = file.endsWith('.kt');
-    const source = parseSource(readFileSync(pathInside(projectRoot, file), 'utf8'), {
-      file,
-      kotlin: isKotlin,
-    });
-    return findFallThroughs(source).map(({ line, use, name, method }) =>
+  return mainSourceTexts(projectRoot, options).flatMap(({ file, text, kotlin }) =>
+    findFallThroughs(parseSource(text, { file, kotlin })).map(({ line, use, name, method }) =>
       finding({
         rule: NULL_FALL_THROUGH_RULE,
         file,
         line,
         symbol: name,
         key: `${file}:${method}:${name}`,
-        message: fallThroughMessage(name, isKotlin, use),
+        message: fallThroughMessage(name, kotlin, use),
       }),
-    );
-  });
+    ),
+  );
 }
 
 export const NULL_FALL_THROUGH_ALLOWED = fallThroughMessage('<value>', false);

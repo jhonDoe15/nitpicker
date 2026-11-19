@@ -53,26 +53,38 @@ function readerOf(type: string): string | undefined {
   ]).get(type);
 }
 
-function importedReaders(code: string): { calls: RegExp[]; references: RegExp[] } {
-  const calls: RegExp[] = [];
-  const references: RegExp[] = [];
-  for (const [, type = '', member, alias] of code.matchAll(READER_IMPORT)) {
-    const reader = readerOf(type);
-    if (reader === undefined) {
-      continue;
-    }
-    if (member !== undefined && member === reader) {
-      const name = escapeRegExp(alias ?? member);
-      calls.push(new RegExp(`(?<![\\w.])${name}\\s*\\(`, 'gu'));
-      references.push(new RegExp(`(?<![\\w.])::\\s*${name}\\b`, 'gu'));
-    } else if (member === undefined && alias !== undefined) {
-      const owner = escapeRegExp(alias);
-      const method = escapeRegExp(reader);
-      calls.push(new RegExp(`(?<![\\w.])${owner}\\s*\\.\\s*${method}\\s*\\(`, 'gu'));
-      references.push(new RegExp(`(?<![\\w.])${owner}\\s*::\\s*${method}\\b`, 'gu'));
-    }
+function readerPatterns(
+  reader: string,
+  { member, alias }: { member: string | undefined; alias: string | undefined },
+): { call: RegExp; reference: RegExp } | undefined {
+  if (member !== undefined && member === reader) {
+    const name = escapeRegExp(alias ?? member);
+    return {
+      call: new RegExp(`(?<![\\w.])${name}\\s*\\(`, 'gu'),
+      reference: new RegExp(`(?<![\\w.])::\\s*${name}\\b`, 'gu'),
+    };
   }
-  return { calls, references };
+  if (member === undefined && alias !== undefined) {
+    const owner = escapeRegExp(alias);
+    const method = escapeRegExp(reader);
+    return {
+      call: new RegExp(`(?<![\\w.])${owner}\\s*\\.\\s*${method}\\s*\\(`, 'gu'),
+      reference: new RegExp(`(?<![\\w.])${owner}\\s*::\\s*${method}\\b`, 'gu'),
+    };
+  }
+  return undefined;
+}
+
+function importedReaders(code: string): { calls: RegExp[]; references: RegExp[] } {
+  const patterns = [...code.matchAll(READER_IMPORT)].flatMap(([, type = '', member, alias]) => {
+    const reader = readerOf(type);
+    const found = reader === undefined ? undefined : readerPatterns(reader, { member, alias });
+    return found === undefined ? [] : [found];
+  });
+  return {
+    calls: patterns.map(({ call }) => call),
+    references: patterns.map(({ reference }) => reference),
+  };
 }
 
 export function configurationReads(scanned: Scanned): { rule: string; offset: number }[] {
