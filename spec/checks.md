@@ -551,6 +551,11 @@ of something done before it (`ContextVar.reset`, a restored attribute or global,
 `close`), and the same pair around a call in a plain function. A `try`/`finally`, `ExitStack.callback` and a class
 with `__exit__` are left alone.
 
+Handlers that miss an exception of the guarded call: `except-misses-raised-exception` in the Python preset reports a
+`try` or `contextlib.suppress` whose handler names some of the exceptions of `json.loads` and `request.json()` (they
+need `ValueError`) or of `timedelta(**value)` (also `OverflowError`) and misses another. A common base,
+`except Exception` and a handler for an unrelated exception are left alone.
+
 Pending requests left hanging by a close: `nitpicker/settle-pending-on-close` (strict preset, production source)
 reports a `Map`, object or array of callbacks, resolve and reject pairs or deferreds in a class or factory with a
 close, dispose, stop or shutdown function that never settles it (rejecting or calling each entry, or passing
