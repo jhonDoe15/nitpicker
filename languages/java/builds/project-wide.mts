@@ -9,6 +9,7 @@ import {
   fileLimitFindings,
   inModuleOf,
   jdepsEdges,
+  fixedDelayFindings,
   maxValueFindings,
   nullFallThroughFindings,
   selfRecursionFindings,
@@ -269,6 +270,7 @@ export function projectWideReport(
     ...maxValueFindings(projectRoot, { projects, kotlin, policy }),
     ...nullFallThroughFindings(projectRoot, { projects, kotlin, policy }),
     ...selfRecursionFindings(projectRoot, { projects, kotlin, policy }),
+    ...fixedDelayFindings(projectRoot, { projects, kotlin, policy }),
     ...features.findings,
   ];
   return { findings, imports: reuse.imports };

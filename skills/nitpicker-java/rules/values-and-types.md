@@ -164,3 +164,7 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   (`pmd/NullBranchFallThrough`): `if (value == null) { out.append("null"); }` followed by `value.getClass()` fails on the null path, or handles the value twice. End the
   branch with `return` or `throw`, or put the use in an `else`.
 - A function does not call itself, directly or through another function of the file (`pmd/SelfRecursion`): a retry or poll is a loop over attempt numbers, a tree walk is a loop over a worklist (a `Deque` that each step adds the node's children to), flat data uses `map` or `flatMap`. An exception fits only when the recursion is bounded and deliberate.
+- A public method or constructor does not wait a constant it cannot override
+  (`pmd/UninjectableDelay`): `Thread.sleep(RETRY_DELAY_MS)` or `TimeUnit.SECONDS.sleep(...)` on a
+  `private static final` makes a test wait it out. Take the delay as a parameter, or a field the constructor
+  sets, that defaults to the constant (`this(RETRY_DELAY_MS)`).

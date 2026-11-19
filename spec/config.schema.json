@@ -2383,6 +2383,7 @@
                             "pmd/MaxValueOverflow",
                             "pmd/NullBranchFallThrough",
                             "pmd/SelfRecursion",
+                            "pmd/UninjectableDelay",
                             "kotlin-source/ChildCoroutineOutlivesResource",
                             "kotlin-source/SuspendFunInFinallySection",
                             "kotlin-source/UnboundedFanOut",

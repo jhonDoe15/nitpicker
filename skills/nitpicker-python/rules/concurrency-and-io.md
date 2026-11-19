@@ -43,6 +43,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `asyncio.create_subprocess_exec`, and `await asyncio.to_thread(...)` for other blocking calls. No
   `timeout` parameter: the caller wraps the call in `async with asyncio.timeout(...)`, and the scope
   holds an `await`. Wait on an `asyncio.Event`, not a sleep loop.
+- A public function does not sleep a module constant it cannot override (`uninjectable-delay`):
+  `time.sleep(RETRY_DELAY)` or `asyncio.sleep(RETRY_DELAY)` makes a test wait it out. Take
+  `delay=RETRY_DELAY` as a parameter (or a constructor argument kept in a field).
 - Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru) for diagnostics,
   never bare `print`; a `domain` package returns a result instead and leaves logging to `adapters/`.
   A program's own output (what a command prints) goes through a `TextIO` parameter: `out.write(...)`

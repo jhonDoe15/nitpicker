@@ -35,6 +35,7 @@ import {
 } from '../adapters/review-rules/copy-pasted-tests/copy-pasted-tests.mts';
 import { copiedConstantMessage } from '../../../shared/rules/copied-constants/copied-constants.mjs';
 import { maxValueEntry } from './review-entries/max-value.mts';
+import { fixedDelayEntry } from './review-entries/fixed-delay.mts';
 import { nullFallThroughEntry } from './review-entries/null-fall-through.mts';
 import { selfRecursionEntry } from './review-entries/self-recursion.mts';
 import { springConfigForms } from './spring-config-messages.mts';
@@ -275,6 +276,7 @@ export function jvmNitpickerEntries(): RuleEntry[] {
     maxValueEntry(),
     nullFallThroughEntry(),
     selfRecursionEntry(),
+    fixedDelayEntry(),
     formatEntry('google'),
     formatEntry('palantir'),
     ...suppressionEntries(),
