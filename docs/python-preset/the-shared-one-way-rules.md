@@ -72,6 +72,7 @@ are listed at the end.
 | Request text in a lookup                        | `name.strip()` before the lookup, or `ConfigDict(str_strip_whitespace=True)` on a shared base model                                                                                    | `untrimmed-request-text` (script)                                                                                                                                                                                                                                                                                                                                                   |
 | Changing an argument                            | build and return a new value, or copy the argument first (`copy.deepcopy` for nested items)                                                                                            | `parameter-mutation` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Shared defaults and cached results              | hand over a copy (`copy.deepcopy(DEFAULTS)`), keep shared defaults read-only (`MappingProxyType`, tuple, `frozenset`), return a tuple from a cached function                           | `shared-state-mutation` (script)                                                                                                                                                                                                                                                                                                                                                    |
+| A generator read twice                          | materialize it once (`items = list(items)`), or take a `Collection` and convert at the boundary                                                                                        | `iterator-read-twice` (script)                                                                                                                                                                                                                                                                                                                                                      |
 | Compatibility shims                             | change every caller in the same change and delete the old name                                                                                                                         | `compatibility-shim` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Values in regex patterns                        | `re.escape(value)` inside a pattern, `in`/`startswith`/`==` for plain text, `re.compile(pattern)` with a whole pattern                                                                 | `regex-unescaped-value` (script)                                                                                                                                                                                                                                                                                                                                                    |
 | Values in LDAP and SCIM filters                 | `escape_filter_chars(value)` (`ldap3.utils.conv`, `ldap.filter`) or `filter_format` inside an LDAP filter; a quoted, escaped value (`json.dumps(value)`) in a SCIM filter              | `filter-unescaped-value` (script)                                                                                                                                                                                                                                                                                                                                                   |
@@ -1985,6 +1986,27 @@ ids: return`, `if not q:`), a `Q` that is not the Django one and test files. A l
   cannot be matched to one project class by name, a value read through `django.conf.settings`
   and a callee in a class that the project does not define are not followed. Test files are
   skipped.
+
+- `iterator-read-twice` reports a one-shot iterator that is read by two consuming operations on
+  one path, once at the second read. The iterator is a name or `self.x` bound exactly once, in
+  the function, to a generator expression, `map`, `filter`, `zip`, `iter`, `reversed`, `enumerate`,
+  an `itertools` function (not `tee`) or a call to a generator function of the project (the same
+  file, an import or `self.name()`). A consuming operation is a `for` loop or comprehension over
+  it, `x in it`, `list`, `tuple`, `set`, `frozenset`, `sorted`, `sum`, `min`, `max`, `any`, `all`,
+  `len`, `dict`, `enumerate`, `zip`, `map`, `filter`, `iter`, `reversed`, `Counter`, `deque`,
+  `chain`, `reduce`, `.join`, `.extend`, `.update` or `.writelines` taking it, `*it`, tuple
+  unpacking, `yield from it` and a call to a project function that iterates that parameter. One
+  read inside a loop body (or a comprehension body) of a name bound outside it counts as
+  repeated, unless the loop can `break` or `return`. A parameter annotated `Iterable`,
+  `Iterator` or `Generator` (also `Optional` and `|` members) is reported when a consuming
+  read is followed by another consuming read or by passing it to any call, and so is `update_fields`
+  of a `save` or `asave` method (the parameter, or a name read from `kwargs.get("update_fields")`
+  or `kwargs["update_fields"]`) when a consuming read is followed by a call that forwards the same
+  name or `**kwargs`. Quiet: a single read, reads in the two arms of an `if` or `match`, a read
+  in a branch that ends in `return`, `raise`, `continue` or `break` before the next one, a name
+  bound more than once (`items = list(items)` materializes it), `itertools.tee`, reads in nested
+  functions and lambdas, `Collection` and `Sequence` annotations, and test files. The local case
+  is precise; the parameter case is a heuristic, since an `Iterable` argument is often a list.
 - `regex-unescaped-value` reports a function argument built into the pattern of a `re` or `regex`
   call (`compile`, `match`, `search`, `fullmatch`, `sub`, `subn`, `split`, `findall`, `finditer`,
   also imported by name or passed as `pattern=`) through an f-string, `+`, `%` or `str.format`,

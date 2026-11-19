@@ -58,6 +58,7 @@
   "python-rules/inconsistent-attribute-locking": ["bug"],
   "python-rules/io-in-domain": ["maintainability"],
   "python-rules/io-in-loop": ["performance"],
+  "python-rules/iterator-read-twice": ["bug"],
   "python-rules/job-item-failure-stops-run": ["reliability"],
   "python-rules/lazy-relation-in-loop": ["performance", "persistence"],
   "python-rules/linear-lookup-in-loop": ["performance"],
