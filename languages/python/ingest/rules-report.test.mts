@@ -30,8 +30,11 @@ describe('rules script report', () => {
     ]);
   });
 
-  it('classifies presence-truthiness findings as descriptive', () => {
-    const report = [entry({ rule: 'presence-truthiness', subject: 'label(title)' })];
+  it.each([
+    ['presence-truthiness', 'label(title)'],
+    ['async-twin-drift', 'abatch|batch|guard|size <= 0|sync'],
+  ])('classifies %s findings as descriptive', (rule, subject) => {
+    const report = [entry({ rule, subject })];
 
     expect(
       ingestRulesReport(JSON.stringify(report)).map(({ classification }) => classification),

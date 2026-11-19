@@ -147,6 +147,22 @@ Stale retries: `stale-retry` in the Python preset reports a SQLAlchemy `commit()
 `tenacity` or `backoff` decorator or a `Retrying` loop runs again after `StaleDataError` without reading the row again
 (`session.get`, `refresh`, a query); the row is read by id inside each attempt.
 
+Python truthiness rules: `falsy-default` (a parameter replaced with `or`) counts a `QuerySet` parameter and an unannotated
+parameter that is rebuilt as a queryset as falsy, and also reports an `or` chain on number lookups of a typed mapping or
+parsed data (`usage.get("a") or usage.get("b") or 0`); `number-truthiness` reads a number from a project class field
+through an annotated parameter, from a project function with a number return annotation, from a `timedelta` and from a
+queryset. The allowed forms test `None`, compare the number, or call `exists()`.
+
+Python overrides: `override-without-super` reports a method or property that replaces a base member without calling
+`super().<name>`, either a member of a built-in contract (Home Assistant `CoordinatorEntity.available` and `async_added_to_hass`, Django
+`Model.save`, `ModelForm.clean` and the test case class fixtures, a `setUp` that a project base defines) or a member
+that at least five overrides in the project share and at least 80% of them call; abstract and constant bases stay
+quiet. It lives in `languages/python/rules/overrides/`.
+
+Async twins: `async-twin-drift` (report-only, design notes) pairs `x`/`ax`, `_x`/`_ax` and `x`/`x_async` in one module
+or class and reports a parameter, caught exception type, early-return guard or call that only one twin has; twins
+that delegate to each other stay quiet. It lives in `languages/python/rules/twins/`.
+
 Python effect rules: `accumulator-copy` (a name rebuilt from a copy of itself in a loop or `functools.reduce`),
 `lazy-relation-in-loop` (a Django or SQLAlchemy relationship read once per row of a query that does not fetch it),
 `resolver-query-per-parent` (a Strawberry or Graphene field resolver of a type returned as a list that queries per parent; a `DataLoader` is the allowed form),
@@ -174,6 +190,20 @@ committed separately, with no `transaction.atomic()` or `session.begin()` around
 (a write inside a transaction block through a session or database alias that is not the block's) and
 `check-then-write-race` (a read of a model that decides a create of the same model, without a lock, an atomic form
 or a transaction). They live in `languages/python/rules/related_writes/`.
+
+Python shared-state rules: `parameter-mutation` (a public function that changes a caller's list, dict or set, also one
+reached through an attribute, an item, a loop variable, a stored alias or one level below a shallow copy) and
+`shared-state-mutation` (a module-level mutable value handed to a project class that changes it, and a
+`functools.cache` function whose list, dict or set result a caller changes). They live in
+`languages/python/rules/{signatures,sharing}/`.
+
+Python iterator rule: `iterator-read-twice` (a generator, `map`, `filter`, `zip` or other one-shot iterator, a
+parameter annotated `Iterable` or `Iterator`, or a Django `save` override's `update_fields`, read by two consuming
+operations on one path; materializing it once is the allowed form). It lives in `languages/python/rules/iterators/`.
+
+Python forwarding rule: `parameter-not-forwarded` (a parameter that an override leaves out of its `super()` call, that a
+wrapper leaves out of the call to a project function with a same-named keyword, or that a trigger's `__init__` takes but
+`serialize()` leaves out of its dict). It lives in `languages/python/rules/forwarding/`.
 
 Python job rule: `job-item-failure-stops-run` (a loop in a Celery task, an APScheduler job or a Django management
 command that does database or remote I/O per item with no `try` around one item, so the first failing item
@@ -256,6 +286,22 @@ sinks ruff does not know (ORM, TLS context, `Path` reads, locks, the connection 
 which the rule reports there as well.
 The other presets have no helper-aware counterpart.
 
+Empty sequences: `empty-sequence-access` (Python, main sources) reports `min`/`max` with one argument and no
+`default=`, and `[0]`/`[-1]`, on a sequence that can be empty (a filtered comprehension, `filter(...)`, a queryset
+evaluated with `list(...)`, a project function that returns a `list` from a query, or a `list`/`Sequence`
+parameter that the function tests for emptiness elsewhere) when no `if`, `assert`, early exit, loop over the sequence or `try`/`except ValueError` guards the access.
+The allowed forms are `default=`, a length check, `next(iter(xs), None)` and `qs.first()`.
+
+Time differences: `timedelta-seconds-as-total` (Python, main sources) reports `.seconds` and `.microseconds` read on a
+`timedelta` (a difference with a `datetime` or `date` operand, a `timedelta(...)` call, or a name or field annotated
+`timedelta`) unless `.days` of the same value is read in the function. The allowed form is `total_seconds()`.
+
+Tuples: `parenthesised-tuple-argument` (Python, main sources) reports a parenthesised single value, read from the source
+text, in a slot that takes a tuple of arguments (`args=`, `parameters=`, the second argument of `execute`, `executemany`,
+`run_sql` and `apply_async`, the second item returned from `__reduce__`), and `message-tuple-argument` reports a tuple
+of a format text and its values passed as a log or exception message. The allowed forms are `(x,)` and separate
+arguments.
+
 Time units: `nitpicker/time-unit-mismatch` (production source, in `eslint-lint`) reports time values in
 two different units that meet without a conversion: a `+`, `-` or comparison of seconds with milliseconds
 (or nanoseconds, microseconds, minutes), a value assigned or passed under a name or parameter of another
@@ -323,6 +369,24 @@ spread into `push`, `unshift` or `splice` of an array, or into `Math.max`, `Math
 reaches about 125,000 items. With the type checker arrays, typed arrays, sets, maps and `any` values are reported
 (tuples and strings are not), and `push`, `unshift` and `splice` only on an array; array and string literals and
 a function's own rest parameter passed on are allowed.
+
+Discarded new values: `discarded-new-value` (script, Python) reports a statement that calls a method of a string, bytes,
+tuple, set, datetime, `Path` or Django queryset receiver that returns a new value and changes nothing (`query.filter(...)`,
+`expires.replace(...)`), and a truth test of the always-true tuple of `QuerySet.delete()` or `get_or_create()`. The allowed
+form assigns or returns the result.
+
+Unreturned results: `unreturned-result` (script, Python) reports a call statement that ends the function or an `if` branch and whose resolved declared return type is the
+class type the enclosing function returns (its annotation, or its other `return <call>` statements), so the result is dropped
+instead of returned. Builtin types, callees that return `self` and calls on unknown objects stay quiet. The allowed form is
+`return helper(...)`.
+
+Message placeholders: `unformatted-message-placeholder` (script, Python) reports a plain string with `{name}` of a bound name used as
+the message of an exception, a one-argument log call, `warnings.warn` or `assert`, and `exception-format-arguments` (script,
+Python) reports an exception built like a logger call (`ValueError("path %s", path)`). The allowed form formats the text first.
+
+Translated text: `gettext-format-mismatch` (script, Python) checks the placeholders of a literal gettext text against the arguments of
+the `.format(...)` or `.format_map({...})` applied to it, and reports `format_map` inside the gettext call; ruff `INT001`-`INT003`
+(selected) cover f-strings, `.format` and `%` inside the call. The allowed form formats after the lookup with matching names.
 
 Null branches that continue: `nitpicker/no-null-branch-fall-through` (production
 source, in `eslint-lint`) in the TypeScript and JavaScript presets, and `null-branch-fall-through` (script) in Python. It reports
@@ -533,6 +597,32 @@ the part of a fixture after its `yield`, and `asyncio.gather` over releases with
 `pmd/CleanupSkippedOnFailure` in the Java preset, `kotlin-source/CleanupSkippedOnFailure` in the Kotlin
 preset and `go-rules/cleanup-skipped` in the Go preset (an early `return` after a failed `Close`). A release
 inside `try`/`finally`, try-with-resources, `use`, `ExitStack` or `errors.Join` is left alone.
+
+Set and reset pairs whose reset is skipped when the body raises: `reset-skipped-on-failure` in the Python preset
+reports a `contextlib.contextmanager` whose `yield` is not in a `try` with a `finally` and is followed by the undo
+of something done before it (`ContextVar.reset`, a restored attribute or global, `removeHandler`, `unregister`,
+`close`), and the same pair around a call in a plain function. A `try`/`finally`, `ExitStack.callback` and a class
+with `__exit__` are left alone.
+
+Handlers that miss an exception of the guarded call: `except-misses-raised-exception` in the Python preset reports a
+`try` or `contextlib.suppress` whose handler names some of the exceptions of `json.loads` and `request.json()` (they
+need `ValueError`) or of `timedelta(**value)` (also `OverflowError`) and misses another. A common base,
+`except Exception` and a handler for an unrelated exception are left alone.
+
+Asserts on external state: `assert-on-external-state` in the Python preset reports an `assert` in production code on a
+name bound in the same function from a dict or cache `get`, a query row (`first`, `one_or_none`), a payload subscript,
+a nullable model field or an HTTP or SDK client result. An explicit `if x is None:` guard, an `assert` on a value the
+function built and test files are left alone; ruff `S101` stays unselected.
+
+Warning filters in library code: `warning-filter-in-function` in the Python preset reports `warnings.catch_warnings`,
+`simplefilter`, `filterwarnings` and `resetwarnings` inside a function of production code, because the filters are
+process-wide and racy across threads. Module level calls, `main` of a script, `__main__.py`, console-script entry
+points, click and typer commands and test code are left alone.
+
+Command-line failures that exit 0: `exit-status-zero-on-failure` in the Python preset reports `raise SystemExit`,
+`sys.exit()` and `exit(0)` forms inside an `except` block or right after an error message, a `subprocess.run`,
+`subprocess.call` or `os.system` in a command whose exit status is never read, and a failure flag that is only
+printed. `SystemExit(1)`, `SystemExit("message")`, `check=True` and `click.ClickException` are left alone.
 
 Pending requests left hanging by a close: `nitpicker/settle-pending-on-close` (strict preset, production source)
 reports a `Map`, object or array of callbacks, resolve and reject pairs or deferreds in a class or factory with a

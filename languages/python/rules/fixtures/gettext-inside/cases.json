@@ -1,0 +1,17 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "INT001",
+    "mention": "Translate the plain text first and format the result"
+  },
+  {
+    "tool": "ruff",
+    "rule": "INT002",
+    "mention": "Translate the plain text first and format the result"
+  },
+  {
+    "tool": "ruff",
+    "rule": "INT003",
+    "mention": "Translate the plain text first and format the result"
+  }
+]
