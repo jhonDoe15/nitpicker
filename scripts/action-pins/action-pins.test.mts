@@ -26,7 +26,7 @@ describe('repository action pins', () => {
     {
       workflow: 'kotlin-e2e',
       job: 'kotlin-shard',
-      prefix: 'kotlin-gradle',
+      prefix: 'kotlin-gradle-v2',
       setupCache: onPullRequestOnly,
     },
     { workflow: 'python-e2e', job: 'python-shard', prefix: 'python-gradle', setupCache: true },

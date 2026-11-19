@@ -77,7 +77,7 @@ jobs:
           cache-dependency-path: package-lock.json
       # Maven comes with the runner image. The Maven and Gradle dependency caches restore on every run and are
       # saved only from a green run on main: Maven and Gradle remember a failed download as missing, so a cache
-      # saved by a failed run fails every later run.
+      # saved by a failed run fails every later run. Raise the v2 in the keys to drop every stored entry.
       # The primary key hashes the build files; the restore key falls back to the latest entry of main, so a
       # pull request that edits a build file still starts from main's cache and only downloads what changed.
       # setup-java and setup-gradle save no cache of their own.
@@ -89,9 +89,9 @@ jobs:
         uses: actions/cache/restore@v5.1.0
         with:
           path: ~/.m2/repository
-          key: kotlin-m2-${{ runner.os }}-${{ matrix.shard }}-${{ hashFiles('languages/java/maven/fixtures/**/pom.xml', 'languages/java/gradle/nitpicker.init.gradle') }}
+          key: kotlin-m2-v2-${{ runner.os }}-${{ matrix.shard }}-${{ hashFiles('languages/java/maven/fixtures/**/pom.xml', 'languages/java/gradle/nitpicker.init.gradle') }}
           restore-keys: |
-            kotlin-m2-${{ runner.os }}-${{ matrix.shard }}-
+            kotlin-m2-v2-${{ runner.os }}-${{ matrix.shard }}-
       # The Kotlin compiler, detekt, ktlint, ktfmt, PMD, SpotBugs and PIT jars the init script resolves, and the plugins the fixture projects use.
       - id: gradle-cache
         uses: actions/cache/restore@v5.1.0
@@ -99,9 +99,9 @@ jobs:
           path: |
             ~/.gradle/caches/modules-2
             ~/.gradle/caches/jars-*
-          key: kotlin-gradle-${{ runner.os }}-${{ matrix.shard }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          key: kotlin-gradle-v2-${{ runner.os }}-${{ matrix.shard }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
-            kotlin-gradle-${{ runner.os }}-${{ matrix.shard }}-
+            kotlin-gradle-v2-${{ runner.os }}-${{ matrix.shard }}-
       - uses: gradle/actions/setup-gradle@v6.4.1
         with:
           gradle-version: 8.14.3
@@ -117,14 +117,14 @@ jobs:
         if: ${{ success() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && steps.maven-cache.outputs.cache-hit != 'true' }}
         with:
           path: ~/.m2/repository
-          key: kotlin-m2-${{ runner.os }}-${{ matrix.shard }}-${{ hashFiles('languages/java/maven/fixtures/**/pom.xml', 'languages/java/gradle/nitpicker.init.gradle') }}
+          key: kotlin-m2-v2-${{ runner.os }}-${{ matrix.shard }}-${{ hashFiles('languages/java/maven/fixtures/**/pom.xml', 'languages/java/gradle/nitpicker.init.gradle') }}
       - uses: actions/cache/save@v5.1.0
         if: ${{ success() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && steps.gradle-cache.outputs.cache-hit != 'true' }}
         with:
           path: |
             ~/.gradle/caches/modules-2
             ~/.gradle/caches/jars-*
-          key: kotlin-gradle-${{ runner.os }}-${{ matrix.shard }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          key: kotlin-gradle-v2-${{ runner.os }}-${{ matrix.shard }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
       - uses: actions/upload-artifact@v7.0.2
         if: always()
         with:
