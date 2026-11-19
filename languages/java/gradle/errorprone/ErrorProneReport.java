@@ -555,7 +555,7 @@ public final class ErrorProneReport {
             new TreePathScanner<Void, Void>() {
               @Override
               public Void scan(Tree tree, Void unused) {
-                if (statements != null && tree instanceof StatementTree) {
+                if (statements != null && tree instanceof StatementTree && !(tree instanceof ClassTree)) {
                   statements.merge(at.getStartPosition(unit, tree), at.getEndPosition(unit, tree), Math::max);
                 }
                 return super.scan(tree, unused);
