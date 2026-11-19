@@ -99,3 +99,8 @@ function nextArgumentsEnd(code: string, from: number): number | undefined {
 export function afterCall(code: string, from: number): number {
   return chainFrom(from, (position: number) => nextArgumentsEnd(code, position)).at(-1) ?? from;
 }
+
+export function afterGroup(code: string, at: number, opening: RegExp): number {
+  const open = opening.exec(code.slice(at));
+  return open === null ? at : closingIndex(code, at + open[0].length - 1) + 1;
+}

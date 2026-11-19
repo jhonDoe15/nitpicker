@@ -109,7 +109,7 @@ object`. Instance methods are left to the duplicates check, as class methods are
   every arm of a complete `if` chain or `when` starts or ends with, when moving them before or after
   it keeps behaviour (pure conditions over locals that the moved statements do not write; a tail
   that reads no local declared earlier in the arm).
-- **`near-duplicate`.** `adapters/near-duplicates/jvm-trees.mjs` parses the same `.java` and
+- **`near-duplicate`.** `adapters/near-duplicates/jvm-trees.mts` parses the same `.java` and
   `.kt` files with tree-sitter (`web-tree-sitter` and the vendored `tree-sitter-java` and
   `tree-sitter-kotlin` grammars, in a child process) into one tree per method, constructor,
   accessor and field lambda, and the shared engine (`shared/near-duplicates/`) proves which pairs are copies,

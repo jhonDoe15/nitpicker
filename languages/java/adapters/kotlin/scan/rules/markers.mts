@@ -1,8 +1,14 @@
 import { hasGeneratorHeader } from '../../../../../../shared/conventions/generator-marker.mjs';
-import { closingIndex } from '../kotlin-source.mts';
+import { afterGroup } from '../kotlin-source.mts';
 import type { Comment, Scanned } from '../typed/scan-shapes.mts';
 
-type Marker = { rule: string; offset: number; subject: string; end: number };
+type Marker = {
+  rule: string;
+  offset: number;
+  subject: string;
+  end: number;
+};
+type CodeMarker = Marker & { confident: boolean };
 type Step = { rest: string; next: number | undefined };
 
 const ANNOTATION = /(?<![\w`])@([A-Za-z_]\w*:)?(?:[A-Za-z_]\w*\.)*([A-Za-z_]\w*)/g;
@@ -81,6 +87,9 @@ const KOTLIN_WORD_LIST = [
 ];
 const KOTLIN_WORDS = new RegExp(String.raw`\b(?:${KOTLIN_WORD_LIST.join('|')})\b`, 'g');
 const VALUE_SHAPES = new Set([0, 2]);
+const CONTROL_SHAPE = 3;
+const STRONG_SHAPES = new Set([0, 3, 4, 5, 6, 7]);
+const NEUTRAL_LINE = /^(?:[\]})]+[,;]?)?$/;
 
 export function generatedFile(scanned: Scanned): boolean {
   const header = scanned.comments.find(({ start }) => scanned.code.slice(0, start).trim() === '');
@@ -91,8 +100,7 @@ export function generatedFile(scanned: Scanned): boolean {
 }
 
 function skipArguments(code: string, at: number): number {
-  const open = /^\s*\(/.exec(code.slice(at));
-  return open === null ? at : closingIndex(code, at + open[0].length - 1) + 1;
+  return afterGroup(code, at, /^\s*\(/);
 }
 
 function nextStep(code: string, at: number): Step {
@@ -211,12 +219,30 @@ function readsAsProse(text: string): boolean {
   return WORD_RUN.test(withoutGroups(keywordsMarked));
 }
 
-function isCodeLine(text: string): boolean {
+function codeShape(text: string): number {
   if (text === '' || SENTENCE.test(text) || NOT_CODE.test(text)) {
-    return false;
+    return -1;
   }
   const shape = CODE_SHAPES.findIndex((candidate) => candidate.test(text));
-  return shape !== -1 && !(VALUE_SHAPES.has(shape) && readsAsProse(text));
+  return shape !== -1 && !(VALUE_SHAPES.has(shape) && readsAsProse(text)) ? shape : -1;
+}
+
+function isCodeLine(text: string): boolean {
+  return codeShape(text) !== -1;
+}
+
+function isStrongShape(shape: number, text: string): boolean {
+  return STRONG_SHAPES.has(shape) && (shape !== CONTROL_SHAPE || text.endsWith('{'));
+}
+
+function confidentlyCode(lines: string[]): boolean {
+  const texts = lines.filter((line) => !NEUTRAL_LINE.test(line));
+  const shapes = texts.map(codeShape);
+  return (
+    shapes.length > 0 &&
+    !shapes.includes(-1) &&
+    shapes.some((shape, at) => isStrongShape(shape, texts[at] ?? ''))
+  );
 }
 
 function firstCodeLine(lines: string[]): number {
@@ -240,8 +266,8 @@ function firstCodeLine(lines: string[]): number {
   });
 }
 
-export function commentedOutCode(scanned: Scanned): Marker[] {
-  return commentGroups(scanned).flatMap((group): Marker[] => {
+export function commentedOutCode(scanned: Scanned): CodeMarker[] {
+  return commentGroups(scanned).flatMap((group): CodeMarker[] => {
     const lines = group.flatMap(bodyLines);
     const index = firstCodeLine(lines);
     const [head] = group;
@@ -254,6 +280,7 @@ export function commentedOutCode(scanned: Scanned): Marker[] {
             offset: head.start,
             subject: lines[index] ?? '',
             end: tail.end,
+            confident: confidentlyCode(lines),
           },
         ];
   });

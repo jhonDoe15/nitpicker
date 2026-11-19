@@ -54,3 +54,17 @@ export function readJavaExtractions(
   }
   return plan;
 }
+
+export function readShorterConditionFixes(
+  projectRoot: string | undefined,
+  texts: Readonly<Record<string, string>>,
+): RecipePlan {
+  return readJavaExtractions(projectRoot, texts, 'shorter');
+}
+
+export function readSwitchLabelFixes(
+  projectRoot: string | undefined,
+  texts: Readonly<Record<string, string>>,
+): RecipePlan {
+  return readJavaExtractions(projectRoot, texts, 'switches');
+}

@@ -1,9 +1,9 @@
 import { commentedOutCode as untypedCommentedOutCode } from '../../../../adapters/kotlin/scan/rules/markers.mts';
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
-import type { KotlinMarker, ScannedKotlin } from '../shared/kotlin-scan.mts';
+import type { KotlinCodeMarker, ScannedKotlin } from '../shared/kotlin-scan.mts';
 import { removalSpan } from '../shared/spans.mts';
 
-const commentedOutCode: (scanned: ScannedKotlin) => readonly KotlinMarker[] =
+const commentedOutCode: (scanned: ScannedKotlin) => readonly KotlinCodeMarker[] =
   untypedCommentedOutCode;
 
 export const commentedCodeRecipe = kotlinRecipe({
@@ -11,8 +11,10 @@ export const commentedCodeRecipe = kotlinRecipe({
   rules: [{ tool: 'kotlin-source', rule: 'CommentedOutCode' }],
   where: 'both',
   find: (scanned) =>
-    commentedOutCode(scanned).map(({ offset, end }) => ({
-      offset,
-      edits: [{ ...removalSpan(scanned.source, offset, end), text: '' }],
-    })),
+    commentedOutCode(scanned)
+      .filter(({ confident }) => confident)
+      .map(({ offset, end }) => ({
+        offset,
+        edits: [{ ...removalSpan(scanned.source, offset, end), text: '' }],
+      })),
 });

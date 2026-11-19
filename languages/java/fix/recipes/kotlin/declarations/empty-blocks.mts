@@ -1,15 +1,18 @@
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
-import { closingIndex } from '../shared/kotlin-scan.mts';
-import type { KotlinFound, ScannedKotlin } from '../shared/kotlin-scan.mts';
+import { enclosingBodyKind, kindOfBody } from '../shared/body-kind.mts';
+import { closingIndex, enclosingOpen } from '../shared/kotlin-scan.mts';
+import type { KotlinFound, ScannedKotlin, Span } from '../shared/kotlin-scan.mts';
 import { indicesDown, removalSpan } from '../shared/spans.mts';
 
 const CLASS_HEAD = /(?<![\w.:])class\s+[A-Za-z_]/gu;
 const EMPTY_BRACES = /^\{\s*\}/u;
 const HEADER_JOINS = ',:{';
 const FINALLY_BLOCK = /(\s*finally\s*\{\s*\})/gu;
+const INIT_KEYWORD = 'init';
 const INIT_BLOCK = /(?<![\w.])init\s*\{\s*\}/gu;
 const DEFAULT_CONSTRUCTOR = /(?<![\w.:])class\s+[A-Za-z_]\w*(?:<[^<>{}()]*>)?(\s*\(\s*\))/gu;
-const BLOCKED_KIND = /\b(?:enum|annotation|data|value|inner)\s+$/u;
+const BLOCKED_CLASS = /\b(?:enum|annotation)\s+$/u;
+const BLOCKED_CONSTRUCTOR = /\bannotation\s+$/u;
 
 function blankBetween(source: string, from: number, to: number): boolean {
   return source.slice(from, to).replaceAll(/[\s{}()]/gu, '') === '';
@@ -25,9 +28,9 @@ function matchingOpen(code: string, close: number): number | undefined {
   });
 }
 
-function sameDeclaration(code: string, index: number): boolean {
+function sameDeclaration(code: string, index: number, blocked: RegExp): boolean {
   const before = code.slice(code.lastIndexOf('\n', index - 1) + 1, index);
-  return !BLOCKED_KIND.test(before);
+  return !blocked.test(before);
 }
 
 const GROUP_DEPTH: Readonly<Record<string, number>> = { '(': 1, '[': 1, ')': -1, ']': -1 };
@@ -69,7 +72,7 @@ function emptyClassBlocks({ code, source }: ScannedKotlin): KotlinFound[] {
   return [...code.matchAll(CLASS_HEAD)].flatMap(({ index, 0: text }) => {
     const open = headerBrace(code, index + text.length);
     const empty = open === -1 ? undefined : EMPTY_BRACES.exec(code.slice(open))?.[0];
-    if (empty === undefined || !sameDeclaration(code, index)) {
+    if (empty === undefined || !sameDeclaration(code, index, BLOCKED_CLASS)) {
       return [];
     }
     const start = code.slice(0, open).trimEnd().length;
@@ -107,26 +110,54 @@ function emptyFinallyBlocks({ code, source }: ScannedKotlin): KotlinFound[] {
   });
 }
 
+function initOnlyBody(code: string, source: string, index: number): Span | undefined {
+  const open = enclosingOpen(code, index);
+  const close = open === -1 ? -1 : closingIndex(code, open);
+  if (open === -1 || close >= code.length || kindOfBody(code, open) === 'other') {
+    return undefined;
+  }
+  const onlyInit =
+    source
+      .slice(open + 1, close)
+      .replaceAll(INIT_BLOCK, '')
+      .trim() === '';
+  const start = code.slice(0, open).trimEnd().length;
+  return onlyInit ? { start, end: close + 1 } : undefined;
+}
+
 function emptyInitBlocks({ code, source }: ScannedKotlin): KotlinFound[] {
-  return [...code.matchAll(INIT_BLOCK)]
-    .filter(({ index, 0: text }) =>
-      blankBetween(source, index + 'init'.length, index + text.length),
-    )
-    .map(({ index, 0: text }) => ({
-      rule: 'detekt.empty-blocks.EmptyInitBlock',
-      offset: index,
-      edits: [{ ...removalSpan(source, index, index + text.length), text: '' }],
-    }));
+  const seen = new Set<number>();
+  return [...code.matchAll(INIT_BLOCK)].flatMap(({ index, 0: text }) => {
+    const owner = enclosingBodyKind(code, index);
+    if (
+      owner === undefined ||
+      owner === 'other' ||
+      !blankBetween(source, index + INIT_KEYWORD.length, index + text.length)
+    ) {
+      return [];
+    }
+    const body = initOnlyBody(code, source, index);
+    if (body === undefined) {
+      return [found(index, removalSpan(source, index, index + text.length))];
+    }
+    const first = !seen.has(body.start);
+    seen.add(body.start);
+    return first ? [found(index, body)] : [];
+  });
+}
+
+function found(offset: number, span: Span): KotlinFound {
+  return { rule: 'detekt.empty-blocks.EmptyInitBlock', offset, edits: [{ ...span, text: '' }] };
 }
 
 function emptyDefaultConstructors({ code }: ScannedKotlin): KotlinFound[] {
   return [...code.matchAll(DEFAULT_CONSTRUCTOR)]
     .filter(({ index, 0: text }) => {
-      const after = code.slice(index + text.length);
-      const body = /^[^{;\n]*\{/u.exec(after);
-      const end = body === null ? -1 : index + text.length + body[0].length - 1;
+      const end = headerBrace(code, index + text.length);
       const inner = end === -1 ? '' : code.slice(end, closingIndex(code, end) + 1);
-      return sameDeclaration(code, index) && !/\bconstructor\s*\(/u.test(inner);
+      return (
+        sameDeclaration(code, index, BLOCKED_CONSTRUCTOR) && !/\bconstructor\s*\(/u.test(inner)
+      );
     })
     .map(({ index, 0: text, 1: parens }) => ({
       rule: 'detekt.empty-blocks.EmptyDefaultConstructor',

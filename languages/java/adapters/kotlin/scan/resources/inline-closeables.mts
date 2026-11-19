@@ -1,4 +1,4 @@
-import { closingIndex, inImport } from '../kotlin-source.mts';
+import { afterGroup, closingIndex, inImport } from '../kotlin-source.mts';
 import { LOOKBEHIND, chainStart, openedCloseables, segmentBefore } from './closeable-calls.mts';
 import type { Scanned } from '../typed/scan-shapes.mts';
 import type { Span } from '../typed/rule-shapes.mts';
@@ -100,8 +100,7 @@ function argumentOwner(code: string, span: Span): Use {
 }
 
 function memberEnd(code: string, from: number): number {
-  const open = /^\s*(?:<[^<>()]*>\s*)?\(/.exec(code.slice(from));
-  return open === null ? from : closingIndex(code, from + open[0].length - 1) + 1;
+  return afterGroup(code, from, /^\s*(?:<[^<>()]*>\s*)?\(/);
 }
 
 function nextUse(code: string, span: Span): Use {
