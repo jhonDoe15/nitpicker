@@ -13,13 +13,13 @@ import {
 } from '../../../shared/policy.mjs';
 import { PACKAGE_EXCEPTION_RULES } from '../../../shared/project-rules/hygiene-rules.mjs';
 import { PYTHON_TOP_LEVEL_EXCEPTION_RULES } from '../../../languages/python/adapters/configuration/python-config.mts';
-import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
+import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mts';
 import { JAVA_EXCEPTION_RULES } from '../../../languages/java/adapters/java-policy.mts';
 import {
   KOTLIN_DEPRECATED_RULES,
   KOTLIN_EXCEPTION_RULES,
 } from '../../../languages/java/adapters/kotlin/kotlin-options.mts';
-import { DETEKT_RULE } from '../../../languages/java/adapters/kotlin/rules/kotlin-messages.mjs';
+import { DETEKT_RULE } from '../../../languages/java/adapters/kotlin/rules/kotlin-messages.mts';
 import {
   GO_EXCEPTION_RULES,
   GO_LINT_TOOLS,

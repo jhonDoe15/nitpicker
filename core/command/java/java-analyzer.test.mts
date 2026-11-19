@@ -8,7 +8,7 @@ import {
   INTERNAL_ERROR_RULE as internalErrorRule,
   analyzeJavaSnapshot as analyzeSnapshot,
 } from '../../../languages/java/adapters/java-runner.mts';
-import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
+import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mts';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mts';
 import { useGradleFixtures } from './test-support/java-cli-harness.mts';
 import { fakeGradleRun as fakeGradleTools } from '../../../languages/java/adapters/test-support/in-process-gradle.mts';

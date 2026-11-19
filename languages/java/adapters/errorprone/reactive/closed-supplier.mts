@@ -1,6 +1,6 @@
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import { escapeRegExp } from '../../../../../shared/paths/glob.mjs';
-import { blankLiterals as blankLiteralsUntyped } from '../../review-rules/java-sources.mjs';
+import { blankLiterals as blankLiteralsUntyped } from '../../review-rules/java-sources.mts';
 
 const blankLiterals: (text: string) => string = blankLiteralsUntyped;
 

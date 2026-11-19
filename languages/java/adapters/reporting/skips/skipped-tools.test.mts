@@ -10,7 +10,7 @@ import {
   STRUCTURE_SKIPPED,
   skippedFiles,
   skippedToolFindings,
-} from './skipped-tools.mjs';
+} from './skipped-tools.mts';
 
 describe('the tools a build skipped for want of a JDK', () => {
   let reportRoot: string;

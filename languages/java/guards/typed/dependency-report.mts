@@ -1,4 +1,4 @@
-import { referencedNames, usesArchive } from '../../builds/classes/class-references.mjs';
+import { referencedNames, usesArchive } from '../../builds/classes/class-references.mts';
 import { fieldOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
 export type Build = 'gradle' | 'maven';

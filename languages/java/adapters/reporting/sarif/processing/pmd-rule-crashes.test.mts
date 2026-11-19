@@ -8,7 +8,7 @@ import {
   pmdLogRuleCrashes,
   pmdLoggedCrashFiles,
   pmdRuleCrashNotes,
-} from './pmd-rule-crashes.mjs';
+} from './pmd-rule-crashes.mts';
 
 const ROOT = '/work/halo';
 const directories: string[] = [];

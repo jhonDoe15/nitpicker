@@ -31,7 +31,7 @@ Part of the [Java preset guide](../java-preset.md).
   on the branch line itself) keeps its identity and does not count as changed. Lines whose source text is empty after
   trimming are ignored. Coverage comes from the tests of the snapshot being analyzed, so a test
   that is added or removed changes which branches are covered on head.
-- **Tests.** `languages/java/ingest/coverage-reports/jacoco-branches.test.mjs` (sample report, identity stability,
+- **Tests.** `languages/java/ingest/coverage-reports/jacoco-branches.test.mts` (sample report, identity stability,
   baselined / touched / added / moved cases through `compareFindings`); `java-reports.test.mts`
   for the glue; the gated e2e test adds three cases (moved line baselined, edited line fails, new
   uncovered branch fails while the old one stays baselined).

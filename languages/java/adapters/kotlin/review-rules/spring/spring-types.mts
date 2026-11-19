@@ -1,0 +1,261 @@
+import { CONSTRAINT_TYPES } from '../validation/constraint-names.mts';
+
+const SPRING = 'org.springframework';
+const STEREOTYPE = `${SPRING}.stereotype`;
+const WEB = `${SPRING}.web.bind.annotation`;
+const CONTEXT = `${SPRING}.context.annotation`;
+const BOOT = `${SPRING}.boot.autoconfigure`;
+const FACTORY = `${SPRING}.beans.factory`;
+const RESILIENCE4J = 'io.github.resilience4j';
+
+function twins(...names: string[]): string[] {
+  return names.flatMap((name) => [`jakarta.${name}`, `javax.${name}`]);
+}
+
+function inPackage(prefix: string, ...names: string[]): string[] {
+  return names.map((name) => `${prefix}.${name}`);
+}
+
+export function group(...lists: string[][]): Set<string> {
+  return new Set(lists.flat());
+}
+
+export const STEREOTYPES = group(
+  inPackage(STEREOTYPE, 'Component', 'Service', 'Repository', 'Controller'),
+  inPackage(WEB, 'RestController', 'ControllerAdvice', 'RestControllerAdvice'),
+);
+export const PROPERTY_READERS = group(
+  [...STEREOTYPES],
+  inPackage(`${SPRING}.boot.context.properties`, 'ConfigurationProperties'),
+  twins('inject.Named', 'annotation.ManagedBean'),
+  inPackage('org.aspectj.lang.annotation', 'Aspect'),
+);
+export const CONTROLLERS = group(
+  inPackage(STEREOTYPE, 'Controller'),
+  inPackage(WEB, 'RestController'),
+);
+export const REST_CONTROLLER = group(inPackage(WEB, 'RestController'));
+export const CONTROLLER = group(inPackage(STEREOTYPE, 'Controller'));
+export const CONFIGURATION = group(inPackage(CONTEXT, 'Configuration'));
+export const CONFIGURATION_CLASSES = group(
+  inPackage(CONTEXT, 'Configuration'),
+  inPackage(BOOT, 'SpringBootApplication', 'AutoConfiguration'),
+  inPackage(`${SPRING}.boot.test.context`, 'TestConfiguration'),
+);
+export const SPRING_MANAGED_CLASSES = group([...STEREOTYPES, ...CONFIGURATION_CLASSES]);
+export const BOOT_APPLICATION = group(inPackage(BOOT, 'SpringBootApplication'));
+export const BEAN = group(inPackage(CONTEXT, 'Bean'));
+export const PROFILE = group(inPackage(CONTEXT, 'Profile'));
+export const COMPONENT_SCAN = group(inPackage(CONTEXT, 'ComponentScan'));
+export const LAZY = group(inPackage(CONTEXT, 'Lazy'));
+export const AUTOWIRED = group(inPackage(`${FACTORY}.annotation`, 'Autowired'));
+export const INJECT = group(twins('inject.Inject'));
+export const RESOURCE = group(twins('annotation.Resource'));
+export const VALUE = group(inPackage(`${FACTORY}.annotation`, 'Value'));
+export const DEFAULT_VALUE = group(
+  inPackage(`${SPRING}.boot.context.properties.bind`, 'DefaultValue'),
+);
+export const PERSISTENCE_INJECTION = group(
+  twins('persistence.PersistenceContext', 'persistence.PersistenceUnit'),
+);
+export const POST_CONSTRUCT = group(twins('annotation.PostConstruct'));
+export const PRE_DESTROY = group(twins('annotation.PreDestroy'));
+export const SINGLETON_SCOPES = group(
+  inPackage(`${SPRING}.web.context.annotation`, 'RequestScope', 'SessionScope'),
+);
+export const SCOPE = group(inPackage(CONTEXT, 'Scope'));
+export const SYNCHRONIZED = group(['kotlin.jvm.Synchronized']);
+export const COMPLETABLE_FUTURE = group(['java.util.concurrent.CompletableFuture']);
+
+export const SPRING_TRANSACTIONAL = group(
+  inPackage(`${SPRING}.transaction.annotation`, 'Transactional'),
+);
+export const JAKARTA_TRANSACTIONAL = group(twins('transaction.Transactional'));
+export const ASYNC = group(inPackage(`${SPRING}.scheduling.annotation`, 'Async'));
+export const SCHEDULED = group(inPackage(`${SPRING}.scheduling.annotation`, 'Scheduled'));
+export const META_PROXIED = group(
+  [...SPRING_TRANSACTIONAL, ...ASYNC],
+  inPackage(`${SPRING}.cache.annotation`, 'Cacheable', 'CachePut', 'CacheEvict', 'Caching'),
+  inPackage(`${SPRING}.retry.annotation`, 'Retryable', 'CircuitBreaker'),
+  inPackage(`${SPRING}.resilience.annotation`, 'Retryable', 'ConcurrencyLimit'),
+  inPackage(
+    `${SPRING}.security.access.prepost`,
+    'PreAuthorize',
+    'PostAuthorize',
+    'PreFilter',
+    'PostFilter',
+  ),
+  inPackage(`${SPRING}.security.access.annotation`, 'Secured'),
+  twins('annotation.security.RolesAllowed', 'annotation.security.DenyAll'),
+);
+export const PROXIED = group(
+  [...META_PROXIED],
+  inPackage(`${RESILIENCE4J}.retry.annotation`, 'Retry'),
+  inPackage(`${RESILIENCE4J}.circuitbreaker.annotation`, 'CircuitBreaker'),
+  inPackage(`${RESILIENCE4J}.ratelimiter.annotation`, 'RateLimiter'),
+  inPackage(`${RESILIENCE4J}.bulkhead.annotation`, 'Bulkhead'),
+  inPackage(`${RESILIENCE4J}.timelimiter.annotation`, 'TimeLimiter'),
+  inPackage('io.micrometer.core.annotation', 'Timed', 'Counted'),
+  inPackage('io.micrometer.observation.annotation', 'Observed'),
+);
+export const VALIDATED = group(inPackage(`${SPRING}.validation.annotation`, 'Validated'));
+export const CONSTRAINTS = group(CONSTRAINT_TYPES, twins('validation.Valid'));
+export const CONSTRAINT = group(twins('validation.Constraint'));
+export const ASPECT = group(['org.aspectj.lang.annotation.Aspect']);
+export const ADVICE = group(
+  inPackage(
+    'org.aspectj.lang.annotation',
+    'Around',
+    'Before',
+    'After',
+    'AfterReturning',
+    'AfterThrowing',
+    'Pointcut',
+  ),
+);
+export const SPRING_PRESET_OPEN = group(
+  [...STEREOTYPES, ...CONFIGURATION_CLASSES, ...SPRING_TRANSACTIONAL, ...ASYNC],
+  inPackage(`${SPRING}.cache.annotation`, 'Cacheable'),
+  inPackage(`${SPRING}.boot.test.context`, 'SpringBootTest'),
+  inPackage(`${SPRING}.validation.annotation`, 'Validated'),
+);
+
+export const MAPPINGS = group(
+  inPackage(WEB, 'GetMapping', 'PostMapping', 'PutMapping', 'PatchMapping', 'DeleteMapping'),
+  inPackage(WEB, 'RequestMapping'),
+);
+export const REQUEST_MAPPING = group(inPackage(WEB, 'RequestMapping'));
+export const EXCEPTION_HANDLER = group(inPackage(WEB, 'ExceptionHandler'));
+export const RESPONSE_BODY = group(inPackage(WEB, 'ResponseBody'));
+export const REQUEST_BODY = group(inPackage(WEB, 'RequestBody'));
+export const CROSS_ORIGIN = group(inPackage(WEB, 'CrossOrigin'));
+export const VALID = group(
+  twins('validation.Valid'),
+  inPackage(`${SPRING}.validation.annotation`, 'Validated'),
+);
+
+export const BEAN_FACTORIES = group(
+  inPackage(FACTORY, 'BeanFactory', 'ListableBeanFactory', 'HierarchicalBeanFactory'),
+  inPackage(
+    `${FACTORY}.config`,
+    'ConfigurableBeanFactory',
+    'ConfigurableListableBeanFactory',
+    'AutowireCapableBeanFactory',
+  ),
+  inPackage(`${FACTORY}.support`, 'DefaultListableBeanFactory'),
+  inPackage(`${SPRING}.context`, 'ApplicationContext', 'ConfigurableApplicationContext'),
+  inPackage(`${SPRING}.context.support`, 'GenericApplicationContext', 'AbstractApplicationContext'),
+  inPackage(`${SPRING}.web.context`, 'WebApplicationContext'),
+);
+export const LOCATOR_INTERFACES = group(
+  inPackage(`${SPRING}.context`, 'ApplicationContextAware'),
+  inPackage(FACTORY, 'BeanFactoryAware'),
+);
+export const POST_PROCESSORS = group(
+  inPackage(`${FACTORY}.config`, 'BeanFactoryPostProcessor', 'BeanPostProcessor'),
+);
+export const PERSISTENCE_EXCEPTIONS = [
+  /^org\.springframework\.(?:dao|transaction|orm|jdbc)(?:\.\w+)*\.\w*Exception$/u,
+  /^(?:jakarta|javax)\.persistence\.\w*Exception$/u,
+  /^org\.hibernate(?:\.\w+)*\.\w*Exception$/u,
+];
+export const CONFIGURATION_PROPERTIES = group(
+  inPackage(`${SPRING}.boot.context.properties`, 'ConfigurationProperties'),
+);
+export const CONFIG_INITIALIZERS = group(
+  inPackage(`${SPRING}.boot.env`, 'EnvironmentPostProcessor'),
+  inPackage(`${SPRING}.context`, 'ApplicationContextInitializer'),
+);
+export const PROPERTY_RESOLVERS = group(
+  inPackage(
+    `${SPRING}.core.env`,
+    'Environment',
+    'PropertyResolver',
+    'ConfigurableEnvironment',
+    'StandardEnvironment',
+    'AbstractEnvironment',
+  ),
+);
+
+const DATA = `${SPRING}.data`;
+export const DATA_REPOSITORIES = group(
+  inPackage(
+    `${DATA}.repository`,
+    'Repository',
+    'CrudRepository',
+    'ListCrudRepository',
+    'PagingAndSortingRepository',
+    'ListPagingAndSortingRepository',
+  ),
+  inPackage(`${DATA}.repository.reactive`, 'ReactiveCrudRepository', 'ReactiveSortingRepository'),
+  inPackage(`${DATA}.repository.kotlin`, 'CoroutineCrudRepository', 'CoroutineSortingRepository'),
+  inPackage(`${DATA}.jpa.repository`, 'JpaRepository'),
+  inPackage(`${DATA}.mongodb.repository`, 'MongoRepository', 'ReactiveMongoRepository'),
+  inPackage(`${DATA}.r2dbc.repository`, 'R2dbcRepository'),
+  inPackage(`${DATA}.jpa.repository.support`, 'JpaRepositoryImplementation'),
+  inPackage(`${DATA}.repository.history`, 'RevisionRepository'),
+  inPackage(`${DATA}.cassandra.repository`, 'CassandraRepository', 'ReactiveCassandraRepository'),
+  inPackage(`${DATA}.elasticsearch.repository`, 'ElasticsearchRepository'),
+  inPackage(`${DATA}.neo4j.repository`, 'Neo4jRepository', 'ReactiveNeo4jRepository'),
+  inPackage(`${DATA}.couchbase.repository`, 'CouchbaseRepository', 'ReactiveCouchbaseRepository'),
+  inPackage(`${DATA}.keyvalue.repository`, 'KeyValueRepository'),
+);
+export const ENTITY_MANAGER = group(twins('persistence.EntityManager'), ['org.hibernate.Session']);
+export const JDBC = group(
+  inPackage(`${SPRING}.jdbc.core`, 'JdbcTemplate', 'JdbcOperations'),
+  inPackage(
+    `${SPRING}.jdbc.core.namedparam`,
+    'NamedParameterJdbcTemplate',
+    'NamedParameterJdbcOperations',
+  ),
+  inPackage(`${SPRING}.jdbc.core.simple`, 'JdbcClient'),
+);
+export const JOOQ_CONTEXT = group(['org.jooq.DSLContext']);
+export const JOOQ_RECORDS = group(['org.jooq.TableRecord', 'org.jooq.UpdatableRecord']);
+export const HTTP_CLIENTS = group(
+  inPackage(`${SPRING}.web.client`, 'RestTemplate', 'RestOperations', 'RestClient'),
+  inPackage(`${SPRING}.web.reactive.function.client`, 'WebClient'),
+  ['java.net.http.HttpClient'],
+);
+export const REST_TEMPLATE = group(inPackage(`${SPRING}.web.client`, 'RestTemplate'));
+export const REST_OPERATIONS = group(
+  inPackage(`${SPRING}.web.client`, 'RestTemplate', 'RestOperations'),
+);
+export const REST_CLIENT = group(inPackage(`${SPRING}.web.client`, 'RestClient'));
+export const REST_TEMPLATE_BUILDER = group(
+  inPackage(`${SPRING}.boot.web.client`, 'RestTemplateBuilder'),
+  inPackage(`${SPRING}.boot.restclient`, 'RestTemplateBuilder'),
+);
+export const SPRING_CLIENT_FACTORIES = group(
+  inPackage(`${SPRING}.web.client`, 'RestClient'),
+  inPackage(`${SPRING}.web.reactive.function.client`, 'WebClient'),
+);
+export const JDK_HTTP_CLIENT = group(['java.net.http.HttpClient']);
+export const HTTP_REQUEST = group(['java.net.http.HttpRequest']);
+export const SPRING_CLIENT_BUILDERS = group(
+  inPackage(`${SPRING}.web.client`, 'RestClient.Builder'),
+  inPackage(`${SPRING}.web.reactive.function.client`, 'WebClient.Builder'),
+  [...REST_TEMPLATE_BUILDER],
+);
+export const REDIRECT_VIEW = group(
+  inPackage(`${SPRING}.web.servlet.view`, 'RedirectView'),
+  inPackage(`${SPRING}.web.reactive.result.view`, 'RedirectView'),
+);
+export const SERVLET_REQUESTS = group(
+  twins('servlet.ServletRequest', 'servlet.http.HttpServletRequest'),
+  inPackage(`${SPRING}.web.context.request`, 'WebRequest', 'NativeWebRequest'),
+);
+export const SERVLET_RESPONSES = group(twins('servlet.http.HttpServletResponse'));
+export const RESPONSE_ENTITY = group(inPackage(`${SPRING}.http`, 'ResponseEntity'));
+export const HTTP_HEADERS = group(inPackage(`${SPRING}.http`, 'HttpHeaders'));
+export const REACTOR_HTTP_CLIENT = group(['reactor.netty.http.client.HttpClient']);
+export const REQUEST_FACTORIES = group(
+  inPackage(
+    `${SPRING}.http.client`,
+    'SimpleClientHttpRequestFactory',
+    'HttpComponentsClientHttpRequestFactory',
+  ),
+);
+export const REACTOR_CONNECTOR = group(
+  inPackage(`${SPRING}.http.client.reactive`, 'ReactorClientHttpConnector'),
+);

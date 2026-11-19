@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import {
   blankLiterals as blankLiteralsUntyped,
   pathInside as pathInsideUntyped,
-} from '../review-rules/java-sources.mjs';
+} from '../review-rules/java-sources.mts';
 import { escapeRegExp as escapeRegExpUntyped } from '../../../../shared/paths/glob.mjs';
 import type { ClassGraph } from '../domain/domain-types.mts';
 

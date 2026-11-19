@@ -6,10 +6,7 @@ import {
   resolveKotlinTools,
 } from '../test-support/kotlin-tools-views.mts';
 import type { ToolOptions } from '../test-support/kotlin-tools-views.mts';
-import { kotlinSummary as untypedKotlinSummary } from './kotlin-format-advice.mjs';
-
-const kotlinSummary: (tools: unknown, conventions: Record<string, string>) => string[] =
-  untypedKotlinSummary;
+import { kotlinSummary } from './kotlin-format-advice.mts';
 
 const WIDE = { 'kotlin.lineLength': '120' };
 const { project, remove } = kotlinProjects();

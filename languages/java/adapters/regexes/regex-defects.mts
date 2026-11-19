@@ -8,8 +8,8 @@ import {
   REGEX_DIALECTS,
   patternDefects,
 } from '../../../../core/tooling/regex-patterns/pattern-defects.mjs';
-import { withProjectEnumPredicates } from '../review-rules/enum-predicates.mjs';
-import { offsetOf } from '../review-rules/java-sources.mjs';
+import { withProjectEnumPredicates } from '../review-rules/enum-predicates.mts';
+import { offsetOf } from '../review-rules/java-sources.mts';
 import { type JavaFinding, callUntyped, findingsOf } from '../typed/java-values.mts';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 

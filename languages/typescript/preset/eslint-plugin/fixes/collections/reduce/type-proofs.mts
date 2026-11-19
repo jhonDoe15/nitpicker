@@ -88,16 +88,6 @@ export function isAppendedAsOne(context: Context, node: TSESTree.Node): boolean 
   return isPlainConcatValue(context, node, false);
 }
 
-export function hasMethod(context: Context, node: TSESTree.Node, name: string): boolean {
-  const services = typeServices(context);
-  if (services === undefined) {
-    return false;
-  }
-  const checker = services.program.getTypeChecker();
-  const type = checker.getNonNullableType(services.getTypeAtLocation(node));
-  return checker.getPropertyOfType(type, name) !== undefined;
-}
-
 export function hasObjectFromEntries(context: Context, node: TSESTree.Node): boolean {
   const services = typeServices(context);
   const tsNode = services?.esTreeNodeToTSNodeMap.get(node);

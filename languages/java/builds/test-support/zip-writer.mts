@@ -22,7 +22,7 @@ type Writer = (buffer: Buffer, value: number, offset: number) => number;
 type Stored = { readonly nameBytes: Buffer; readonly stored: Buffer; readonly data: Buffer };
 type Entry = Stored & { readonly method: number };
 type Layout = { readonly zip64: boolean; readonly wideSizes: boolean };
-type ZipOptions = Partial<Layout> & { readonly comment?: string };
+type ZipOptions = { readonly zip64?: true; readonly wideSizes?: true; readonly comment?: string };
 type Ending = {
   readonly count: number;
   readonly size: number;
@@ -154,8 +154,10 @@ function endRecords({ count, size, start, zip64, comment }: Ending): Buffer {
 
 export function zipOf(
   files: Readonly<Record<string, string | Buffer>>,
-  { zip64 = false, wideSizes = false, comment = '' }: ZipOptions = {},
+  { zip64: wide64, wideSizes: wideOption, comment = '' }: ZipOptions = {},
 ): Buffer {
+  const zip64 = wide64 === true;
+  const wideSizes = wideOption === true;
   const entries = Object.entries(files).map(([name, text], index) => ({
     name,
     data: typeof text === 'string' ? Buffer.from(text) : text,

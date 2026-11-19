@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Ruled, lineOf, scanKotlinSource } from '../../typed/typed-scan.mts';
-import { pendingFuturesNotFailedOnClose as untypedPendingFuturesNotFailedOnClose } from './pending-futures.mjs';
+import { pendingFuturesNotFailedOnClose as untypedPendingFuturesNotFailedOnClose } from './pending-futures.mts';
 
 const pendingFuturesNotFailedOnClose: Check<Ruled> = untypedPendingFuturesNotFailedOnClose;
 

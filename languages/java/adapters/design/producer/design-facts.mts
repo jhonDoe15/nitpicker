@@ -9,8 +9,9 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { isGeneratedJvm } from '../../generated/generated-sources.mjs';
+import { isGeneratedJvm } from '../../generated/generated-sources.mts';
 import { compileDesignProgram, runDesignProgram } from './design-program.mts';
+import type { JavaEnvironment } from '../../typed/java-values.mts';
 import { resolveInside } from '../../../../../shared/conventions/read-inside.mjs';
 import { byText } from '../../../../../shared/text-order/by-text.mjs';
 import { fieldOf, fieldsOf, listOf, numberOr } from '../../../../../shared/values/readers.mts';
@@ -28,11 +29,13 @@ type ProgramInput = {
   readonly work: string;
   readonly target: string;
   readonly java: string | undefined;
+  readonly environment: JavaEnvironment | undefined;
 };
 type FactsRequest = {
   readonly projectRoot: string;
   readonly modules: readonly DesignModule[];
   readonly output?: string | undefined;
+  readonly environment?: JavaEnvironment | undefined;
 };
 
 const SKIPPED_FILES = new Set(['module-info.java', 'package-info.java']);
@@ -110,14 +113,21 @@ export function sourceJava(
     )?.java;
 }
 
-function programFacts({ projectRoot, files, work, target, java }: ProgramInput): unknown {
+function programFacts({
+  projectRoot,
+  files,
+  work,
+  target,
+  java,
+  environment,
+}: ProgramInput): unknown {
   if (files.length === 0) {
     return { modules: [], types: [], callables: [] };
   }
   const fileList = path.join(work, 'files.txt');
   writeFileSync(fileList, files.join('\n'));
   runDesignProgram({
-    classes: compileDesignProgram(),
+    classes: compileDesignProgram({ environment }),
     projectRoot,
     fileList,
     output: target,
@@ -130,6 +140,7 @@ export function produceDesignFacts({
   projectRoot,
   modules,
   output,
+  environment,
 }: FactsRequest): Readonly<Record<string, unknown>> {
   const files = designSourceFiles(projectRoot, modules);
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-design-'));
@@ -137,7 +148,14 @@ export function produceDesignFacts({
     const target = output ?? path.join(work, 'design-facts.json');
     mkdirSync(path.dirname(target), { recursive: true });
     rmSync(target, { force: true });
-    const facts = programFacts({ projectRoot, files, work, target, java: sourceJava(modules) });
+    const facts = programFacts({
+      projectRoot,
+      files,
+      work,
+      target,
+      java: sourceJava(modules),
+      environment,
+    });
     const bundle = {
       ...fieldsOf(facts),
       types: markPublished(listOf(fieldOf(facts, 'types')), modules),

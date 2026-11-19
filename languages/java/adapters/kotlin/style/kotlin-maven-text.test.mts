@@ -5,8 +5,8 @@ import {
   kotlinFilesOf as untypedKotlinFilesOf,
   ktfmtStyle as untypedKtfmtStyle,
   mavenBuildFacts as untypedMavenBuildFacts,
-} from './kotlin-build-text.mjs';
-import { mavenFormatters as untypedMavenFormatters } from './kotlin-maven-text.mjs';
+} from './kotlin-build-text.mts';
+import { mavenFormatters as untypedMavenFormatters } from './kotlin-maven-text.mts';
 
 const mavenFormatters: (pom: string | undefined) => unknown[] = untypedMavenFormatters;
 const ktfmtStyle: (input: { declared: string; conventions: Record<string, string> }) => string =

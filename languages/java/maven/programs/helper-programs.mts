@@ -2,9 +2,9 @@ import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import type { JavaSpawn } from '../../adapters/typed/java-values.mts';
+import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
 import { javaCommand, runJava } from './java-command.mts';
-import { cacheDirectory, publishDirectory } from '../maven-tools.mjs';
+import { cacheDirectory, publishDirectory } from '../maven-tools.mts';
 
 const PROPERTY_SEPARATOR = ' = ';
 
@@ -21,6 +21,7 @@ type Program = {
   readonly spawn?: JavaSpawn | undefined;
   readonly timeoutMs?: number | undefined;
   readonly java?: string | undefined;
+  readonly environment?: JavaEnvironment | undefined;
 };
 type CacheInput = Pick<Program, 'sources' | 'version' | 'root' | 'release'> & { readonly jdk: Jdk };
 
@@ -94,10 +95,11 @@ export function compiledProgram({
   spawn = spawnSync,
   timeoutMs,
   java = javaCommand('java'),
+  environment = {},
 }: Program): string {
   const jdk = jdkIdentity(tool, spawn, java);
   requireRelease(tool, jdk, release);
-  const cache = cacheDirectory(name);
+  const cache = cacheDirectory(name, environment);
   mkdirSync(cache, { recursive: true });
   const classes = path.join(cache, cacheKey({ sources, version, root, jdk, release }));
   if (existsSync(classes)) {

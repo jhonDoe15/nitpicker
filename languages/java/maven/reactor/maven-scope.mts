@@ -1,6 +1,6 @@
 import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { affectedModules as untypedAffectedModules } from '../../builds/change-scope/affected/affected-modules.mjs';
+import { affectedModules as untypedAffectedModules } from '../../builds/change-scope/affected/affected-modules.mts';
 
 type ScopeModule = {
   readonly coordinates: string;

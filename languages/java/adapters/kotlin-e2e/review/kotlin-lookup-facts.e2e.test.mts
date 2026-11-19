@@ -3,9 +3,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
+import { callUntyped } from '../../typed/java-values.mts';
+import { findingsOf } from '../../kotlin/rules/test-support/findings-list.mts';
 import { assigned } from '../test-support/views/assigned.mts';
-import { findingFactory as untypedFindingFactory } from '../../kotlin/review-rules/review-finding.mjs';
-import { serviceLookupFindings as untypedServiceLookupFindings } from '../../kotlin/review-rules/main/service-lookups/service-lookups.mjs';
+import { findingFactory as untypedFindingFactory } from '../../kotlin/review-rules/review-finding.mts';
+import { serviceLookupFindings as untypedServiceLookupFindings } from '../../kotlin/review-rules/main/service-lookups/service-lookups.mts';
 import { composeMessage } from '../../kotlin/review-rules/test-support/lookup-facts.mts';
 import { prepareKotlinPsi, runKotlinPsi } from '../../test-support/kotlin/kotlin-psi-program.mts';
 import {
@@ -14,10 +16,12 @@ import {
 } from '../test-support/review/lookups/kotlin-lookup-facts-data.mts';
 
 const findingFactory: () => unknown = untypedFindingFactory;
-const serviceLookupFindings: (
+function serviceLookupFindings(
   files: unknown,
   options: { finding: unknown },
-) => { path: string; symbol: string; message: string }[] = untypedServiceLookupFindings;
+): { path: string; symbol?: string; message: string }[] {
+  return findingsOf(callUntyped(untypedServiceLookupFindings, files, options));
+}
 
 const enabled = process.env['NITPICKER_KOTLIN_E2E'] === '1';
 const gradle = process.env['NITPICKER_GRADLE'] ?? 'gradle';
@@ -56,14 +60,14 @@ describe.skipIf(!enabled)('service lookups from the facts kotlin-psi collects', 
   it('reports the lookups outside composition points, typed by scope, through references and qualified names', () => {
     const findings = serviceLookupFindings(fieldOf(facts, 'files'), { finding: findingFactory() });
 
-    expect(findings.map(({ path: file, symbol }) => `${file} ${symbol}`).sort()).toEqual(
+    expect(findings.map(({ path: file, symbol }) => `${file} ${String(symbol)}`).sort()).toEqual(
       EXPECTED_LOOKUP_FACT_FINDINGS,
     );
   });
 
   it('asks a composable for a parameter with the Koin call as its default value', () => {
     const findings = serviceLookupFindings(fieldOf(facts, 'files'), { finding: findingFactory() });
-    const composable = findings.find(({ symbol }) => symbol.startsWith('OrdersScreen'));
+    const composable = findings.find(({ symbol }) => symbol?.startsWith('OrdersScreen') === true);
 
     expect(composable?.message).toBe(composeMessage('koinInject()', 'src/demo/Screens.kt'));
   });

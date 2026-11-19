@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { readPinnedTools } from '../../../builds/java-build.mjs';
-import { toolDependencies } from '../../../maven/maven-tools.mjs';
+import { readPinnedTools } from '../../../builds/java-build.mts';
+import { toolDependencies } from '../../../maven/maven-tools.mts';
 import { errorProneChecks, documentedChecks } from './checks-docs.mts';
 import type { ErrorProneChecks } from './checks-shape.mts';
 

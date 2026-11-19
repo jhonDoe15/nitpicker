@@ -5,7 +5,7 @@ import {
   disabledTlsVerification as untypedDisabledTlsVerification,
   WEAK_HMAC_MESSAGE as UNTYPED_WEAK_HMAC_MESSAGE,
   weakHashes as untypedWeakHashes,
-} from './crypto.mjs';
+} from './crypto.mts';
 
 const disabledTlsVerification: Check<Located> = untypedDisabledTlsVerification;
 const weakHashes: Check<Located & { message?: string }> = untypedWeakHashes;

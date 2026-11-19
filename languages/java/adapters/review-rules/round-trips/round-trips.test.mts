@@ -1,22 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { ROUND_TRIP_RULE, roundTripFindings as untypedRoundTripFindings } from './round-trips.mjs';
+import { ROUND_TRIP_RULE, roundTripFindings } from './round-trips.mts';
 import { roundTripMessage as untypedRoundTripMessage } from '../../../../../shared/rules/round-trips/round-trips.mjs';
+import type { TripSource } from './trip-types.mts';
 import { callUntyped } from '../../typed/java-values.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
-import { findingFactory as untypedFindingFactory } from '../../kotlin/review-rules/review-finding.mjs';
+import { findingFactory as untypedFindingFactory } from '../../kotlin/review-rules/review-finding.mts';
 
-type RoundTripFinding = {
-  readonly rule: string;
-  readonly path: string;
-  readonly symbol: string;
-  readonly message: string;
-  readonly location: { readonly line: number };
-};
-
-const roundTripFindings: (
-  mainSources: readonly unknown[],
-  readTests: () => readonly unknown[],
-) => RoundTripFinding[] = untypedRoundTripFindings;
 const roundTripMessage: (parts: {
   readonly first: string;
   readonly second: string;
@@ -53,7 +42,10 @@ fun loadOrder(text: String) = Order(1)
 `,
 };
 
-function summary(main: readonly unknown[], tests: readonly unknown[]) {
+function summary(
+  main: readonly TripSource[],
+  tests: readonly Pick<TripSource, 'kotlin' | 'text'>[],
+): string[] {
   return roundTripFindings(main, () => tests).map(
     ({ rule, path, location, symbol }) => `${rule} ${path}:${String(location.line)} ${symbol}`,
   );

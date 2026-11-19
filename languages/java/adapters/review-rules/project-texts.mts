@@ -7,7 +7,7 @@ import {
   blankLiterals as untypedBlankLiterals,
   pathInside as untypedPathInside,
   sourceFilesUnder as untypedSourceFilesUnder,
-} from './java-sources.mjs';
+} from './java-sources.mts';
 
 export type TextProject = {
   readonly qualifier: string;

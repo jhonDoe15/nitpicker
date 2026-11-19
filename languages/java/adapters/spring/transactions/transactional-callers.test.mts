@@ -1,15 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  type RootsFilter,
-  type TransactionFilters,
-  project,
-  removeProjects,
-} from '../__tests__/spring-config-projects.mts';
-import { withSpringTransactionFilters as filtersUntyped } from './transaction-filters.mjs';
-import { withoutTransactionalCallers as callersUntyped } from './transactional-callers.mjs';
-
-const withSpringTransactionFilters: TransactionFilters = filtersUntyped;
-const withoutTransactionalCallers: RootsFilter = callersUntyped;
+import { project, removeProjects } from '../__tests__/spring-config-projects.mts';
+import { withSpringTransactionFilters } from './transaction-filters.mts';
+import { withoutTransactionalCallers } from './transactional-callers.mts';
 
 const REPOSITORY = 'src/main/java/shop/JdbcPetRepository.java';
 const INTERFACE = 'src/main/java/shop/PetRepository.java';

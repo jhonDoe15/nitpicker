@@ -3,7 +3,7 @@ import type { Loose } from '../test-support/loose-facts.mts';
 import type { CleanupCallFact } from '../test-support/facts.mts';
 import { run, sourceRouted, summary } from '../test-support/facts.mts';
 import { cleanupCall, file, fn, importOf, klass } from '../test-support/loose-facts.mts';
-import { SUSPEND_CLEANUP_RULE, suspendCleanupFindings } from './suspend-cleanup.mjs';
+import { SUSPEND_CLEANUP_RULE, suspendCleanupFindings } from './suspend-cleanup.mts';
 
 const BOUNDED =
   'run the release as `withContext(NonCancellable) { withTimeout(5.seconds) { ... } }` so it finishes after cancellation but cannot wait forever, and shield only the release itself, in the scope that opened the resource.';

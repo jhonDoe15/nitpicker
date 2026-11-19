@@ -1,10 +1,10 @@
-import { sourceOf as sourceOfUntyped } from './integration-tests.mjs';
+import { sourceOf as sourceOfUntyped } from './integration-tests.mts';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { childrenNamed, parseXml, type XmlElement } from '../../../../shared/values/xml.mts';
-import { sourceLocator as sourceLocatorUntyped } from '../reporting/kotlin-reports.mjs';
-import { pathInside as pathInsideUntyped } from '../review-rules/java-sources.mjs';
+import { sourceLocator as sourceLocatorUntyped } from '../reporting/kotlin-reports.mts';
+import { pathInside as pathInsideUntyped } from '../review-rules/java-sources.mts';
 import { TEST_RESULTS_DIRECTORY } from './slow-tests.mts';
-import type { Locate } from './inherited-tests.mts';
+import type { Locate } from './typed/locate-type.mts';
 
 type ConsoleEntry = {
   readonly className: string;

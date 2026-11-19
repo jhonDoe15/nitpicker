@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { pathInside } from '../filesystem.mjs';
+import { cumulativeJoins } from '../lists/items.mjs';
 import { escapeRegExp } from '../paths/glob.mjs';
 import { projectFilePaths, projectFilesUnder } from '../project-files/project-files.mjs';
 
@@ -23,15 +24,10 @@ function pathspecPattern(root) {
   return new RegExp(`^${source}$`, 'u');
 }
 
-function withAncestors(file) {
-  const parts = file.split('/');
-  return parts.map((_, index) => parts.slice(0, index + 1).join('/'));
-}
-
 function globRootFiles(projectRoot, root) {
   const pattern = pathspecPattern(root);
   return projectFilePaths(projectRoot, { skipDirectory: skipsDirectory }).filter((file) =>
-    withAncestors(file).some((candidate) => pattern.test(candidate)),
+    cumulativeJoins(file, '/').some((candidate) => pattern.test(candidate)),
   );
 }
 

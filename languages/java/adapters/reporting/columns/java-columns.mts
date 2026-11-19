@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { withUtf16Columns } from '../../../../../shared/ingest/columns/utf16-columns.mjs';
-import { toolConfigChoices } from '../../tool-config/tool-config-choices.mjs';
+import { toolConfigChoices } from '../../tool-config/tool-config-choices.mts';
 import {
   type JavaFinding,
   type JavaPolicy,

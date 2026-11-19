@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   fixtureGit,
   useGitFixtures,
@@ -30,17 +30,12 @@ const BASE_OPTIONS = {
   selectedRules: undefined,
 } as const;
 
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
-
 function fixTopic(
   base: FileMap,
   changes: FileMap,
   config: unknown,
   extra: Partial<FixOptions> = {},
 ) {
-  vi.stubEnv('XDG_CACHE_HOME', temporaryRoot('nitpicker-fix-cache-'));
   const repository = createGitRepository(base, { baseRef: 'base' });
   fixtureGit(repository.root, ['checkout', '-q', '-b', 'topic']);
   writeFiles(repository.root, changes);
@@ -52,7 +47,11 @@ function fixTopic(
     executeFixCommand: fakeJvmTools().executeFixCommand,
     headPolicy: { exclude: [], conventions: {}, kotlin: { formatter: 'ktlint' } },
     config,
-    environment: { NITPICKER_GRADLE: '', NITPICKER_MAVEN: 'fake-mvn' },
+    environment: {
+      NITPICKER_GRADLE: '',
+      NITPICKER_MAVEN: 'fake-mvn',
+      XDG_CACHE_HOME: temporaryRoot('nitpicker-fix-cache-'),
+    },
     ...extra,
   });
   return {

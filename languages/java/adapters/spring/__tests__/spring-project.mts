@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { runJavaDiff } from '../../java-diff.mts';
-import { sourceTextReader } from '../../reporting/function-locator.mjs';
-import { withoutUnconstrainedBodies as filterUntyped } from '../web/request-body-constraints.mjs';
+import { sourceTextReader } from '../../reporting/function-locator.mts';
+import { withoutUnconstrainedBodies } from '../web/request-body-constraints.mts';
 import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mts';
 import { commitBranch, runGitIn } from '../../test-support/gradle-e2e.mts';
 import type { JavaFinding } from '../../typed/java-values.mts';
@@ -19,21 +19,10 @@ import {
   textsOf,
 } from '../../../../../shared/values/readers.mts';
 
-type BodyFinding = {
-  readonly tool: string;
-  readonly rule: string;
-  readonly path: string;
+type BodyFinding = JavaFinding & {
   readonly location: { readonly line: number; readonly column: number };
 };
 
-const withoutUnconstrainedBodies: (
-  findings: readonly BodyFinding[],
-  options: {
-    projectRoot: string;
-    roots: string[];
-    readText: (file: string) => string | undefined;
-  },
-) => BodyFinding[] = filterUntyped;
 const readSourceText: (projectRoot: string) => (file: string) => string | undefined =
   sourceTextReader;
 const enabled = process.env['NITPICKER_JAVA_E2E'] === '1';

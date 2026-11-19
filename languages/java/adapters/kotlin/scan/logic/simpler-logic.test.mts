@@ -6,7 +6,7 @@ import {
   lineOf,
   scanKotlinSource,
 } from '../typed/typed-scan.mts';
-import { simplerBooleanLogic as untypedSimplerBooleanLogic } from './simpler-logic.mjs';
+import { simplerBooleanLogic as untypedSimplerBooleanLogic } from './simpler-logic.mts';
 
 const simplerBooleanLogic: Check<Subjected & Messaged> = untypedSimplerBooleanLogic;
 

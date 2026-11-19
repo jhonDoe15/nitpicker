@@ -11,7 +11,7 @@ import {
   SWALLOWED_CANCELLATION_RULE,
   SWALLOWED_INTERRUPT_RULE,
   swallowedHandlerFindings,
-} from './swallowed-handlers.mjs';
+} from './swallowed-handlers.mts';
 
 const caught = (type: string, overrides: Loose = {}) => ({
   line: 4,

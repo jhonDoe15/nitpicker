@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { messageOf, parseJson } from '../../../../shared/values/readers.mts';
 import { EMPTY_MUTATION_FACTS } from '../test-support/fake-gradle/kotlin-empty-reports.mts';
-import { kotlinGeneratedFilter } from './kotlin-reports.mjs';
+import { kotlinGeneratedFilter } from './kotlin-reports.mts';
 
 const roots: string[] = [];
 afterEach(() => {

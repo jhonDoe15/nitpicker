@@ -1,6 +1,6 @@
 import { textOf } from '../../../../shared/values/readers.mts';
+import { namesOf } from './source/jvm-tokens.mts';
 import {
-  namesOf,
   type Bindings,
   type Entry,
   type Parsed,

@@ -2,17 +2,16 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { temporaryTrees } from '../../test-support/temporary-trees.mts';
-import { readPinnedTools as untypedPinnedTools } from '../../builds/java-build.mjs';
-import { forbiddenMethodsOf as untypedForbiddenMethods } from '../../adapters/kotlin/detekt/detekt-lists.mjs';
+import { forbiddenMethodsOf as untypedForbiddenMethods } from '../../adapters/kotlin/detekt/detekt-lists.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 import { kotlinSetup } from './kotlin-setup.mts';
 import type { JavaPolicy } from '../../adapters/typed/java-values.mts';
-import type { KotlinPinned } from './tools/kotlin-dependencies.mts';
 import type { KotlinOptions, ProjectModule } from '../typed/kotlin-types.mts';
+
+import { pinnedKotlinTools as readPinnedTools } from '../typed/kotlin-setup-views.mts';
 
 type SetupResult = ReturnType<typeof kotlinSetup>;
 
-const readPinnedTools: () => KotlinPinned = untypedPinnedTools;
 const forbiddenMethodsOf: (text: string) => unknown[] = untypedForbiddenMethods;
 
 const trees = temporaryTrees('nitpicker-kotlin-options-');

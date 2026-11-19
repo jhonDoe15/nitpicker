@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { fieldOf, listOf } from '../../../../../../shared/values/readers.mts';
 import { callUntyped, type JavaFinding } from '../../../typed/java-values.mts';
-import { withoutRuntimeCryptoKeys } from './crypto-key-filter.mjs';
+import { withoutRuntimeCryptoKeys } from './crypto-key-filter.mts';
 
 const SOURCE = readFileSync(new URL('./fixtures/Keys.java', import.meta.url), 'utf8');
 function sourceText(): string {

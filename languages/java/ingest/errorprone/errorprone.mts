@@ -2,7 +2,7 @@ import { createIdentityCounter, hashIdentity } from '../../../../shared/ingest/c
 import { withoutClassLiteralRepeats } from './class-literals.mts';
 import { diagnosticOf, type Diagnostic } from './diagnostic.mts';
 import { compareText } from '../../../../shared/paths/path-order.mjs';
-import { withoutLineReferences } from '../../../../shared/ingest/line-references.mjs';
+import { withoutLineReferences } from '../../../../shared/ingest/line-references.mts';
 import { definedField } from '../../../../shared/messages/messages.mjs';
 import { errorProneAllowedForm, errorProneMessage } from './messages.mts';
 import { listOf, numberOr, parseJson } from '../../../../shared/values/readers.mts';

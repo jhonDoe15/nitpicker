@@ -1,6 +1,6 @@
 import { callUntyped } from '../../typed/java-values.mts';
 import { fieldOf, optionalText, textOf, textsOf } from '../../../../../shared/values/readers.mts';
-import { layerPmdRulesets as untypedLayerPmdRulesets } from '../pmd-layers.mjs';
+import { layerPmdRulesets as untypedLayerPmdRulesets } from '../pmd-layers.mts';
 
 type PmdLayers = {
   readonly tests: string | undefined;
@@ -17,7 +17,7 @@ export function layerPmdRulesets(input: {
   readonly mainPath: string;
   readonly mainText: string;
   readonly projectText?: string | undefined;
-  readonly projectWins?: false;
+  readonly projectWins: boolean;
   readonly assertionHelpers?: string[];
 }): PmdLayers {
   const layers = callUntyped(untypedLayerPmdRulesets, input);

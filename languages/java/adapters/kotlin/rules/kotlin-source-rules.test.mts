@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { exceptionHint } from './test-support/kotlin-finding-views.mts';
 import type { Finding } from '../../../../../shared/values/findings.mts';
-import { CATCH_LOG_MESSAGE, CATCH_LOG_RULE } from '../../../source/catch-logging.mjs';
+import { CATCH_LOG_MESSAGE, CATCH_LOG_RULE } from '../../../source/catch-logging.mts';
 import {
   readCatchLogFindings as untypedReadCatchLogFindings,
   readTestAssertionFindings as untypedReadTestAssertionFindings,
   TEST_ASSERTION_MESSAGE,
-} from './kotlin-source-rules.mjs';
-import { TEST_ASSERTION_RULE } from './kotlin-rules.mjs';
+} from './kotlin-source-rules.mts';
+import { TEST_ASSERTION_RULE } from './kotlin-rules.mts';
 import { useTempProjects } from './test-support/temp-projects.mts';
 import { findingsOf } from './test-support/findings-list.mts';
-import { readKotlinSourceFindings as untypedReadKotlinSourceFindings } from '../scan/kotlin-scan.mjs';
+import { readKotlinSourceFindings as untypedReadKotlinSourceFindings } from '../scan/kotlin-scan.mts';
 
 function readCatchLogFindings(
   projectRoot: string,

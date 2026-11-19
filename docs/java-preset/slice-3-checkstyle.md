@@ -17,7 +17,7 @@ Part of the [Java preset guide](../java-preset.md).
   `MissingJavadocType` suppressed (`languages/java/gradle/checkstyle-suppressions.xml`): Javadoc is
   allowed on public API but not required, the same rule as the TypeScript preset. Member and method
   names may be a single lowercase letter (`x`, `y`), as record components can. Both builds write
-  the config with `languages/java/builds/rulesets/checkstyle-config.mjs`, which takes the bundled
+  the config with `languages/java/builds/rulesets/checkstyle-config.mts`, which takes the bundled
   file of the pinned version and changes it the same way for Gradle and Maven: no inline
   suppression filters, no `TextBlockGoogleStyleFormatting` (the formatter owns text block layout),
   a `TODO` tag checked for its case only, and field names checked by `MemberName` and

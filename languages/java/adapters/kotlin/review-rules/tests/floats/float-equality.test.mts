@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { JUNIT_HEAD, KOTEST_HEAD, rulesOf } from '../../test-support/sources.mts';
-import { FLOAT_EQUALITY_RULE } from './float-equality.mjs';
+import { FLOAT_EQUALITY_RULE } from './float-equality.mts';
 
 function floats(text: string): string[] {
   return rulesOf(text, FLOAT_EQUALITY_RULE);

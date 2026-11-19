@@ -1,3 +1,4 @@
+import { lastSegment } from '../../kotlin/review-rules/blocking/type-names.mts';
 import {
   PARENTHESES as PARENTHESES_UNTYPED,
   balancedEnd as balancedEndUntyped,
@@ -28,10 +29,6 @@ const JSON_ANNOTATION = /@\s*(?:[a-z]\w*\s*\.\s*)*(?:Json[A-Z]\w*|SerializedName
 const ANNOTATED_CLASS =
   /^(?:\s*(?:@[\w.]+(?:\s*\([^)]*\))?|public|protected|private|static|final|abstract))*\s*(?:class|record)\s+([\w$]+)/u;
 const CAPITALIZED = /\b[A-Z][\w$]*/gu;
-
-function lastSegment(name: string): string {
-  return name.split('.').at(-1) ?? name;
-}
 
 function literalsIn(text: string): string[] {
   return [...text.matchAll(CLASS_LITERAL)].map((match) => lastSegment(match[1] ?? ''));

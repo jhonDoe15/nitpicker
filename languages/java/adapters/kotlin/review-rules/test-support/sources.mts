@@ -1,12 +1,25 @@
-import { lineOf } from '../../scan/kotlin-source.mjs';
-import { scanTestFile } from '../tests/discovery/test-units.mjs';
-import { projectFlags } from '../tests/project-flags.mjs';
-import { fileReports } from '../tests/test-honesty.mjs';
+import { fieldOf, listOf, numberOr, textOf } from '../../../../../../shared/values/readers.mts';
+import { lineOf } from '../../scan/kotlin-source.mts';
+import { scanTestFile } from '../tests/discovery/test-units.mts';
+import { projectFlags } from '../tests/project-flags.mts';
+import { fileReports } from '../tests/test-honesty.mts';
 
-const scan: (text: string, assertionNames?: string[]) => unknown = scanTestFile;
-const flagsOf: (units: { scanned: unknown }[]) => unknown = projectFlags;
-const reportsOf: (scanned: unknown, flags: unknown) => Omit<Report, 'line'>[] = fileReports;
-const lineAt: (scanned: unknown, offset: number) => number = lineOf;
+function scan(text: string, assertionNames?: string[]): unknown {
+  return Reflect.apply(scanTestFile, undefined, [text, assertionNames]);
+}
+
+function lineAt(scanned: unknown, offset: number): number {
+  return numberOr(Reflect.apply(lineOf, undefined, [scanned, offset]), 0);
+}
+
+function reportsOf(scanned: unknown, flags: unknown): Omit<Report, 'line'>[] {
+  const found: unknown = Reflect.apply(fileReports, undefined, [scanned, flags]);
+  return listOf(found).map((report) => ({
+    rule: textOf(fieldOf(report, 'rule')),
+    symbol: textOf(fieldOf(report, 'symbol')),
+    offset: numberOr(fieldOf(report, 'offset'), 0),
+  }));
+}
 
 type Report = {
   rule: string;
@@ -16,7 +29,8 @@ type Report = {
 };
 
 export function flagsFor(texts: string[]): unknown {
-  return flagsOf(texts.map((text) => ({ scanned: scan(text) })));
+  const units = texts.map((text) => ({ scanned: scan(text) }));
+  return Reflect.apply(projectFlags, undefined, [units]);
 }
 
 function reportsFor(

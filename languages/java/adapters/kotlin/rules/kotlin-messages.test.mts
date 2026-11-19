@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { validateKotlinOptions } from '../kotlin-options.mts';
-import { KOTLIN_LISTED_RULES } from './kotlin-messages.mjs';
+import { KOTLIN_LISTED_RULES } from './kotlin-messages.mts';
 import { applyKotlinRuleMessages, exceptionHint } from './test-support/kotlin-finding-views.mts';
 import type { RuleFinding } from './test-support/kotlin-finding-views.mts';
 

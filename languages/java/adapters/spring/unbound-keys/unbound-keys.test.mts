@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { judgedKey } from './unbound-keys.mjs';
+import { judgedKey } from './unbound-keys.mts';
 import { scratchProjects } from './test-support/unbound-project.mts';
 import { MAIN_PROPERTIES, readSpringConfigFindings } from '../__tests__/spring-config-projects.mts';
 

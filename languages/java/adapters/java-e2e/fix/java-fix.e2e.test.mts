@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { fixReport, useFixProject } from '../../../../../core/fix/test-support/fix-project.mts';
 import { entriesOf } from '../../../../../shared/values/findings.mts';
 import { textOf } from '../../../../../shared/values/readers.mts';
@@ -223,7 +223,6 @@ describe.skipIf(!enabled)('nitpicker --fix behind a company mirror', () => {
   const temporary: string[] = [];
 
   afterEach(() => {
-    vi.unstubAllEnvs();
     for (const directory of temporary.splice(0)) {
       rmSync(directory, { recursive: true, force: true });
     }
@@ -236,8 +235,8 @@ describe.skipIf(!enabled)('nitpicker --fix behind a company mirror', () => {
   }
 
   function fixBehind(url: string): ReturnType<typeof fix> {
-    vi.stubEnv('XDG_CACHE_HOME', directory('nitpicker-fix-mirror-cache-'));
     return fix({
+      environment: { XDG_CACHE_HOME: directory('nitpicker-fix-mirror-cache-') },
       committed: {
         'settings.gradle.kts': [
           'rootProject.name = "demo"',

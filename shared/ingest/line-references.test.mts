@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { withoutLineReferences } from './line-references.mjs';
+import { withoutLineReferences } from './line-references.mts';
 
 describe('withoutLineReferences', () => {
   it.each([
