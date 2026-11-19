@@ -262,6 +262,22 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   (`log.info({ config }, 'loaded config')`), one argument per placeholder, `format.splat()` on the
   winston logger, or a metadata object. The same form runs as `pmd/LogFormatArguments` (Java),
   `kotlin-source/LogFormatArguments` (Kotlin) and ruff `PLE1205` and `PLE1206` (Python).
+- `nitpicker/no-swapped-arguments` (needs the type checker; the JavaScript preset runs it on the same
+  program, so a callee it cannot resolve is skipped): a call that passes a plain name (or `this.name`) equal
+  to another parameter of the resolved callee, ignoring leading underscores and case, while that
+  parameter's own slot gets a different name (`pipe_(pipe, docs, kwargs)` for `pipe_(docs, proc, kwargs)`:
+  "`docs` is passed as `proc` and `pipe` as `docs`; did you swap them?"). The callee is resolved with the
+  checker (functions, methods, constructors and the overload that matches), and only when its declaration is
+  in the project, not in `node_modules`, a `.d.ts` or the standard library. One report per call. Not
+  reported: arguments that are not plain names, a spread argument and
+  everything after it, a rest or destructured parameter and the ones after it, parameters not given,
+  single-letter names (`swap(a, b)`), names that differ only by a number or a letter suffix
+  (`x1`/`x2`, `start_a`/`start_b`) and the pairs `left`/`right` and `lhs`/`rhs`
+  stay quiet; `max` passed into `min` is reported, once per swapped pair. A pair is reported when the two
+  arguments are exchanged (`clamp(value, max, min)`), or when a name moved to a later slot and the argument in
+  its own slot is not named like any parameter (`pipe_(pipe, docs, kwargs)`); a name that moved to an earlier
+  slot and a recursive call (`walk(child, node)`) are not reported, and neither is a JSDoc function type. The allowed form is the arguments in the order of the parameters. The same
+  form runs as `swapped-arguments` (Python) and Error Prone `ArgumentSelectionDefectChecker` (Java).
 - `nitpicker/no-secret-in-log`: a secret-named value passed to a `console` method, a logger call (`log`,
   `logger`, `winston`, `pino`, `req.log`, `this.logger` and the like), `process.stdout.write`,
   `process.stderr.write` or an `Error` constructor: as an argument, a member (not of a `tokenizer`), in a

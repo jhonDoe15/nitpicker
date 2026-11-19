@@ -112,6 +112,7 @@
   "python-rules/stub-beside-source": ["maintainability"],
   "python-rules/subprocess-without-timeout": ["reliability"],
   "python-rules/swallowed-exception": ["reliability"],
+  "python-rules/swapped-arguments": ["bug"],
   "python-rules/switched-off-test": ["tests"],
   "python-rules/task-outlives-resource": ["bug", "async"],
   "python-rules/tautological-assert": ["tests"],

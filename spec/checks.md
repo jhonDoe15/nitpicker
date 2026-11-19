@@ -142,6 +142,9 @@ Python effect rules: `accumulator-copy` (a name rebuilt from a copy of itself in
 `resolver-query-per-parent` (a Strawberry or Graphene field resolver of a type returned as a list that queries per parent; a `DataLoader` is the allowed form),
 `cache-write-in-transaction` (a Django or Redis cache write, or a dict filled with a row written in the block, inside
 `transaction.atomic()` or `session.begin()`; `transaction.on_commit` is the allowed form),
+`swapped-arguments` (a call that passes a name equal to another parameter of a project callee into the slot of
+a different parameter, such as `_pipe(pipe, docs, kwargs)` for `_pipe(docs, proc, kwargs)`; keywords, single-letter,
+numbered and `left`/`right` names stay quiet),
 `remote-call-in-transaction` and `remote-call-under-lock` (a remote call while a database transaction or a lock is
 held; a fill-once block under a lock stays allowed), `retry-without-idempotency` (a payment create, message
 publish or `INSERT` without a stable key inside a retry scope) and `dual-write-without-outbox` (a database write
@@ -405,6 +408,11 @@ values (pino: the extra values are dropped; winston without `format.splat()`: ev
 placeholder) and, for pino and bunyan, more placeholders than values. A fields object first (`log.info({ config }, 'x')`),
 one value per placeholder and a metadata object are allowed.
 
+Swapped arguments: `nitpicker/no-swapped-arguments` (production source, in `eslint-lint`, with the type checker) reports
+a call that passes a plain name or `this.name` equal to another parameter of the resolved project callee into the slot of
+a different parameter whose own slot gets a different name. Callees outside the project, keyword-style calls, spread
+arguments, single-letter, numbered or `left`/`right` parameter names are not reported. The same form runs as
+`swapped-arguments` in the Python preset and Error Prone `ArgumentSelectionDefectChecker` in the Java preset.
 Hardcoded secrets and secrets in logs: `nitpicker/no-hardcoded-secret` and `nitpicker/no-secret-in-log`
 (production source, not tests or test-support folders, in `eslint-lint`) report a secret-looking string given to a secret-named variable,
 field, property, assignment, parameter default or environment-read fallback, a credential-shaped string

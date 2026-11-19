@@ -35,6 +35,14 @@ function shimDescription(subject = ''): string {
     : `\`${alias}\` is an alias that keeps the old name of \`${target}\` working`;
 }
 
+function swappedDescription(subject = ''): string {
+  const [passed = '', slot = '', other = '', otherSlot = ''] = subject.split('|');
+  if (other === '') {
+    return "Two arguments are each passed in the slot of the other one's parameter; did you swap them?";
+  }
+  return `\`${passed}\` is passed as \`${slot}\` and \`${other}\` as \`${otherSlot}\`; did you swap them?`;
+}
+
 export const SIGNATURE_HINTS: readonly RuleHint[] = [
   {
     tool: RULES_TOOL,
@@ -96,5 +104,12 @@ export const SIGNATURE_HINTS: readonly RuleHint[] = [
     describe: shimDescription,
     allowed:
       'When code moves or is renamed, change every caller in the same change and delete the old name: keep no alias, forwarding function, module `__getattr__`, `@deprecated` marker or deprecation warning. A published library keeps the deprecation of its public names, and that path takes an exception.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['swapped-arguments'],
+    describe: swappedDescription,
+    allowed:
+      'Pass the arguments in the order of the parameters, or pass them by keyword (`_pipe(docs=docs, proc=pipe, kwargs=kwargs)`) when the order is easy to mix up.',
   },
 ];
