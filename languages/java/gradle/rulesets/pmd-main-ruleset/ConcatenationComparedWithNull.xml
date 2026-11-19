@@ -1,0 +1,17 @@
+  <rule name="ConcatenationComparedWithNull" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A string concatenation is compared with null. A concatenation is never null, so == null is always false and != null is always true, and the value that was meant to be tested is never checked. + binds tighter than == and !=, so &quot;id=&quot; + name != null ? name.trim() : &quot;none&quot; reads (&quot;id=&quot; + name) != null ? ...; when a conditional follows, put the parentheses around it: &quot;id=&quot; + (name != null ? name.trim() : &quot;none&quot;). Otherwise compare the value itself with null, or drop the comparison.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//InfixExpression[@Operator = ('==', '!=')][count(*) = 2][NullLiteral]
+  [let $e := *[not(self::NullLiteral)][1]
+   return exists($e[self::InfixExpression[@Operator = '+'][not(@Parenthesized = true())]])
+     and (exists($e[pmd-java:typeIs('java.lang.String')])
+          or exists($e/descendant-or-self::InfixExpression[@Operator = '+'][StringLiteral]
+                      [not(ancestor::*[exists(. intersect $e/descendant::*)][not(self::InfixExpression[@Operator = '+'] or self::ParenthesizedExpression)])]))
+  ]
+]]></value>
+      </property>
+    </properties>
+  </rule>

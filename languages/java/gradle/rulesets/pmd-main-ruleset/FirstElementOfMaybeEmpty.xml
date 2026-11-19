@@ -1,0 +1,72 @@
+  <rule name="FirstElementOfMaybeEmpty" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="The first element is read after only a null check. A value that is not null can still be empty: a parser result, a header list or a query returns an empty list, array or string, and get(0), [0], charAt(0) or iterator().next() then throws IndexOutOfBoundsException, ArrayIndexOutOfBoundsException, StringIndexOutOfBoundsException or NoSuchElementException on that one input. Test emptiness instead of, or as well as, null: if (init != null &amp;&amp; !init.isEmpty()), values.length &gt; 0 &amp;&amp; values[0] == LIMIT, !text.isEmpty() &amp;&amp; text.charAt(0) == '#'. Right code is not reported: a method that tests the value's emptiness, length, size or content anywhere (isEmpty, size, length, startsWith or equals with a literal, a for-each over it), a value built in the method (List.of, an array literal), and a read inside a loop.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $key := function($e) {
+      if ($e/self::VariableAccess or $e/self::FieldAccess[ThisExpression]) then string($e/@Name) else ()
+    },
+    $receiver := function($n) {
+      if ($n/self::ArrayAccess) then $n/*[1]
+      else if ($n/self::MethodCall[@MethodName = 'next'][ArgumentList/@Size = 0]) then $n/*[1][self::MethodCall[@MethodName = 'iterator'][ArgumentList/@Size = 0]]/*[1]
+      else $n/*[1]
+    },
+    $leaves := function($cond, $sep) {
+      ($cond/descendant-or-self::InfixExpression[@Operator = $sep]
+          [empty((ancestor::*[not(self::InfixExpression[@Operator = $sep])]) intersect ($cond/descendant-or-self::*))]/*
+       | $cond)[not(self::InfixExpression[@Operator = $sep])]
+    },
+    $under := function($a, $part) { exists($a/ancestor-or-self::* intersect $part) },
+    $exits := function($s) {
+      exists($s/self::ReturnStatement | $s/self::ThrowStatement
+             | $s/self::Block/*[last()][self::ReturnStatement or self::ThrowStatement])
+    },
+    $nullTest := function($g, $k, $op) {
+      exists($g/self::InfixExpression[@Operator = $op][*[1][$key(.) = $k]][*[2][self::NullLiteral]])
+    },
+    $nullChecked := function($a, $k) {
+      (some $c in $a/ancestor::ConditionalExpression[$under($a, *[2])] | $a/ancestor::IfStatement[$under($a, *[2])]
+                  | $a/ancestor::InfixExpression[@Operator = '&&'][$under($a, *[2])]
+       satisfies (some $g in $leaves($c/*[1], '&&') satisfies $nullTest($g, $k, '!=')))
+      or (some $c in $a/ancestor::ConditionalExpression[$under($a, *[3])] | $a/ancestor::IfStatement[$under($a, *[3])]
+                  | $a/ancestor::InfixExpression[@Operator = '||'][$under($a, *[2])]
+          satisfies (some $g in $leaves($c/*[1], '||') satisfies $nullTest($g, $k, '==')))
+      or (some $c in $a/ancestor::Block/*[following-sibling::* intersect $a/ancestor::*][self::IfStatement][count(*) = 2][$exits(*[2])]
+          satisfies (some $g in $leaves($c/*[1], '||') satisfies $nullTest($g, $k, '==')))
+    },
+    $chain := function($e, $k) { exists($e/descendant-or-self::*[$key(.) = $k]) },
+    $emptyAware := function($scope, $k) {
+      exists($scope//MethodCall[@MethodName = ('isEmpty', 'isBlank', 'matches', 'size', 'length', 'hasNext', 'stream', 'contains', 'indexOf', 'toArray')][$chain(*[1], $k)])
+      or exists($scope//FieldAccess[@Name = 'length'][$chain(*[1], $k)])
+      or exists($scope//ForeachStatement[*[2][$key(.) = $k]])
+      or exists($scope//MethodCall[@MethodName = ('startsWith', 'endsWith', 'equals', 'equalsIgnoreCase', 'contentEquals')]
+                  [ArgumentList/StringLiteral and $chain(*[1], $k) or *[1][self::StringLiteral] and $chain(ArgumentList, $k)])
+      or exists($scope//ArgumentList/*[$key(.) = $k][parent::ArgumentList/parent::MethodCall
+                  [matches(@MethodName, 'mpty|Blank|matcher|matches|hasLength|hasText|hasElements|size|length', 'i')]])
+    },
+    $built := function($scope, $k) {
+      exists($scope//VariableDeclarator[VariableId/@Name = $k]
+               [*[2][self::ArrayAllocation or self::ArrayInitializer or self::ConstructorCall or self::StringLiteral
+                     or self::MethodCall[@MethodName = ('of', 'asList', 'singletonList', 'singleton', 'copyOf', 'nCopies', 'ofNullable')]]])
+      or exists($scope//AssignmentExpression[*[1][$key(.) = $k]][*[2][self::ArrayAllocation or self::ConstructorCall or self::MethodCall[@MethodName = ('of', 'asList', 'singletonList')]]])
+    }
+return (
+  //ArrayAccess[*[2][self::NumericLiteral][@ValueAsInt = 0]]
+  | //MethodCall[@MethodName = ('get', 'remove')][ArgumentList/@Size = 1][ArgumentList/NumericLiteral[@ValueAsInt = 0]][*[1][pmd-java:typeIs('java.util.List')]]
+  | //MethodCall[@MethodName = 'getFirst'][ArgumentList/@Size = 0][*[1][pmd-java:typeIs('java.util.List')]]
+  | //MethodCall[@MethodName = 'charAt'][ArgumentList/@Size = 1][ArgumentList/NumericLiteral[@ValueAsInt = 0]][*[1][pmd-java:typeIs('java.lang.String')]]
+  | //MethodCall[@MethodName = 'next'][ArgumentList/@Size = 0][*[1][self::MethodCall[@MethodName = 'iterator']][*[1][pmd-java:typeIs('java.util.Collection')]]]
+)[let $k := $key($receiver(.)),
+      $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][last()],
+      $self := .
+  return exists($k) and exists($scope) and $nullChecked(., $k)
+     and exists($scope[not(pmd-java:modifiers() = 'private')]/FormalParameters/FormalParameter/VariableId[@Name = $k])
+     and empty($scope//ArrayAccess[*[1][$key(.) = $k]][*[2][self::NumericLiteral][@ValueAsInt > 0]])
+     and empty($scope//MethodCall[@MethodName = 'get'][*[1][$key(.) = $k]][ArgumentList/NumericLiteral[@ValueAsInt > 0]])
+     and not($emptyAware($scope, $k)) and not($built($scope, $k))
+     and empty($self/ancestor::*[self::ForStatement or self::WhileStatement or self::DoStatement])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
