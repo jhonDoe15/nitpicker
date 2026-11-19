@@ -35,9 +35,9 @@ import {
 } from '../adapters/review-rules/copy-pasted-tests/copy-pasted-tests.mts';
 import { copiedConstantMessage } from '../../../shared/rules/copied-constants/copied-constants.mjs';
 import { maxValueEntry } from './review-entries/max-value.mts';
-import { stringCallEntries } from './review-entries/string-calls.mts';
-import { valueCheckEntries } from './review-entries/value-checks.mts';
-import { minedEntries } from './review-entries/mined-rules.mts';
+import { stringCallEntries } from './review-entries/mined/string-calls.mts';
+import { valueCheckEntries } from './review-entries/mined/value-checks.mts';
+import { minedEntries } from './review-entries/mined/mined-rules.mts';
 import { fixedDelayEntry } from './review-entries/fixed-delay.mts';
 import { mutatingMethodEntry } from './review-entries/mutating-method.mts';
 import { nullFallThroughEntry } from './review-entries/null-fall-through.mts';
@@ -53,6 +53,7 @@ import { roundTripMessage } from '../../../shared/rules/round-trips/round-trips.
 const GUIDE = 'docs/java-preset.md';
 const GUIDE_LABEL = 'Java preset guide';
 const EXCEPTIONS_KEY = 'exceptions';
+const ARCHUNIT_TOOL = 'archunit';
 const JVM = { page: 'java-nitpicker', analyzers: JVM_ANALYZERS, builds: JVM_BUILDS };
 const SPRING_ONLY = 'A project with Spring on the compile classpath.';
 const JMOLECULES_ONLY =
@@ -78,7 +79,7 @@ function archunitAdvice(rule: string): string {
 function archunitEntry(rule: string): RuleEntry {
   return ruleEntry({
     ...JVM,
-    tool: 'archunit',
+    tool: ARCHUNIT_TOOL,
     rule,
     summary: asSentence(guideCell(GUIDE, rule, 'fails when')),
     why: ARCHUNIT_WHY,
@@ -92,7 +93,7 @@ function archunitEntry(rule: string): RuleEntry {
 function contractTypeEntry(): RuleEntry {
   return ruleEntry({
     ...JVM,
-    tool: 'archunit',
+    tool: ARCHUNIT_TOOL,
     rule: CONTRACT_RULE,
     summary: asSentence(guideCell(GUIDE, CONTRACT_RULE, 'fails when')),
     why: ARCHUNIT_WHY,
@@ -110,7 +111,7 @@ function archunitEntries(): RuleEntry[] {
     contractTypeEntry(),
     ruleEntry({
       ...JVM,
-      tool: 'archunit',
+      tool: ARCHUNIT_TOOL,
       rule: '<rule>',
       pattern: `^(?!(?:${ownRules.join('|')})$)`,
       samples: ['archunit/noCyclesBetweenFeatures'],
