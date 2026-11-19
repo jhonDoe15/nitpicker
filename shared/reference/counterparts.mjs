@@ -62,6 +62,12 @@ const GROUPS = [
     jvm: 'MaxValueOverflow',
     go: 'go-rules/max-value-overflow',
   },
+  {
+    jvm: 'NullBranchFallThrough',
+    typescript: 'nitpicker/no-null-branch-fall-through',
+    python: 'null-branch-fall-through',
+    go: 'go-rules/nil-branch-fall-through',
+  },
 ];
 
 function spring(rule) {

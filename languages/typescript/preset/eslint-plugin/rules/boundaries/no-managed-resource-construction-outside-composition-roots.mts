@@ -1,3 +1,4 @@
+import { calleeName } from '../analysis/node/call-text.mts';
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import {
   compositionRootOptionsSchema,
@@ -36,20 +37,6 @@ const VALUE_OBJECT =
 const RESOURCE_FACTORY =
   /^create(?:Server|SecureServer|Client|Pool|Connection|Worker|Transport|Queue|Cache|Store|Scheduler)$/;
 const RESOURCE_FACTORY_MEMBERS = new Set(['axios.create']);
-
-function calleeName(callee: TSESTree.Node): string | undefined {
-  if (callee.type === AST_NODE_TYPES.Identifier) {
-    return callee.name;
-  }
-  if (
-    callee.type === AST_NODE_TYPES.MemberExpression &&
-    !callee.computed &&
-    callee.property.type === AST_NODE_TYPES.Identifier
-  ) {
-    return callee.property.name;
-  }
-  return undefined;
-}
 
 function isResourceFactoryCall(callee: TSESTree.Node): boolean {
   const name = calleeName(callee);

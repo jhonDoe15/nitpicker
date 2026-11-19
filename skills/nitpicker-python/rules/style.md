@@ -44,6 +44,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `x if x is not None else default`, never `x or default`; return a new list or dict instead of
   changing an argument (`items.append`). When code moves, change every caller and delete the old
   name: no alias (`Old = New`), module `__getattr__`, `@deprecated` or `DeprecationWarning` shim.
+- A branch that handles `None` either leaves or is the whole story (`null-branch-fall-through`):
+  `if value is None: out.append("null")` followed by `value.name` fails on the `None` path or handles the
+  value twice. End the branch with `return` (or `raise`), or put the use in an `else`.
 - Regexes: an argument built into a `re` pattern goes through `re.escape(value)`; plain text is
   compared with `in`, `startswith` or `==` (`regex-unescaped-value`).
   Every part of a literal pattern must change what it matches (`a|b|a`, `[_a-z_]` and `x{1}` are

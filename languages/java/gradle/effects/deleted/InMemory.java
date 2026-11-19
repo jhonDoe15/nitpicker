@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import nitpicker.effects.Report;
 import nitpicker.effects.classes.Annotations;
 import nitpicker.effects.flow.Lambdas;
@@ -34,6 +35,8 @@ public final class InMemory {
   public static final int SHARE = 80;
   private static final List<String> FILTERS = List.of("Lorg/hibernate/annotations/SQLRestriction;",
       "Lorg/hibernate/annotations/Where;", "Lorg/hibernate/annotations/Filter;");
+
+  private static final Pattern INCLUDING = Pattern.compile("(?:Including|Include|Includes|With)Deleted(?:Items|Elements|List|Rows|Records|Entries)?$");
 
   private record Unit(MethodFlow flow, String entity, int source, boolean guarded) {}
 
@@ -121,10 +124,10 @@ public final class InMemory {
           Entities.Relation relation = call.getOpcode() == Opcodes.INVOKESTATIC ? null
               : entities.relation(call.owner, call.name, call.desc);
           if (relation != null && relation.collection() && entity.equals(relation.target())) {
-            source = restricted(call) ? -2 : index;
+            source = restricted(call) || includesDeleted(call) ? -2 : index;
           } else if (call.getOpcode() != Opcodes.INVOKESTATIC && program.kinds.isRepository(call.owner)
               && entity.equals(repositories.entity(call.owner))
-              && !alreadyReported.contains(
+              && !includesDeleted(call) && !alreadyReported.contains(
                   Program.key(flow.owner.name, flow.method.name, flow.method.desc) + "#" + index)) {
             source = index;
             filteredSource = filteredReads.contains(Program.key(call.owner, call.name, call.desc));
@@ -178,6 +181,10 @@ public final class InMemory {
       }
     }
     return false;
+  }
+
+  private static boolean includesDeleted(MethodInsnNode call) {
+    return INCLUDING.matcher(call.name).find();
   }
 
   private boolean restricted(MethodInsnNode getter) {

@@ -17,6 +17,7 @@ import { rule as ruleNoArraySpreadArguments } from '../rules/collections/call-sp
 import { rule as ruleNoAssertionInLoop } from '../test-assertions/loop-assertions/no-assertion-in-loop.mts';
 import { rule as ruleNoBooleanFlagParameter } from '../rules/flags/no-boolean-flag-parameter.mts';
 import { rule as ruleNoBranchInCompositionRoot } from '../rules/boundaries/no-branch-in-composition-root.mts';
+import { rule as ruleNoCacheWriteInTransaction } from '../rules/transactions/cache-writes/no-cache-write-in-transaction.mts';
 import { rule as ruleNoCachedRejection } from '../rules/lifecycles/memo/no-cached-rejection.mts';
 import { rule as ruleNoCheckThenWrite } from '../rules/transactions/no-check-then-write.mts';
 import { rule as ruleNoCleanupSkippedOnFailure } from '../rules/lifecycles/release/no-cleanup-skipped-on-failure.mts';
@@ -30,6 +31,7 @@ import { rule as ruleNoDecidedCondition } from '../rules/decided/no-decided-cond
 import { rule as ruleNoDefaultExport } from '../rules/syntax/no-default-export.mts';
 import { rule as ruleNoDevDependencyInProduction } from '../rules/dependencies/no-dev-dependency-in-production.mts';
 import { rule as ruleNoDisabledTlsVerification } from '../rules/security/tls/no-disabled-tls-verification.mts';
+import { rule as ruleNoDroppedLogArguments } from '../rules/logging/no-dropped-log-arguments.mts';
 import { rule as ruleNoDroppedTestCallback } from '../test-assertions/dropped-callback/no-dropped-test-callback.mts';
 import { rule as ruleNoDualWrite } from '../rules/writes/no-dual-write.mts';
 import { rule as ruleNoEagerRelation } from '../rules/persistence/no-eager-relation.mts';
@@ -62,6 +64,7 @@ import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multipl
 import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutating-method-in-domain.mts';
 import { rule as ruleNoNodeProcessPerTest } from '../rules/test-runtime/processes/no-node-process-per-test.mts';
 import { rule as ruleNoNull } from '../rules/syntax/no-null.mts';
+import { rule as ruleNoNullBranchFallThrough } from '../rules/null-branches/no-null-branch-fall-through.mts';
 import { rule as ruleNoOperandSlip } from '../rules/operands/no-operand-slip.mts';
 import { rule as ruleNoOrmQueryLogging } from '../rules/database/no-orm-query-logging.mts';
 import { rule as ruleNoOrmSchemaSync } from '../rules/database/no-orm-schema-sync.mts';
@@ -95,9 +98,6 @@ import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singu
 import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-string-building.mts';
 import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mts';
 import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mts';
-import { rule as ruleNoSwitchedOffTests } from '../test-assertions/no-switched-off-tests.mts';
-import { rule as ruleNoSyncNodeApiInAsync } from '../rules/async/no-sync-node-api-in-async.mts';
-import { rule as ruleNoTaskOutlivingResource } from '../rules/lifetimes/no-task-outliving-resource.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -119,6 +119,7 @@ export const partRules = {
   'no-assertion-in-loop': ruleNoAssertionInLoop,
   'no-boolean-flag-parameter': ruleNoBooleanFlagParameter,
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
+  'no-cache-write-in-transaction': ruleNoCacheWriteInTransaction,
   'no-cached-rejection': ruleNoCachedRejection,
   'no-check-then-write': ruleNoCheckThenWrite,
   'no-cleanup-skipped-on-failure': ruleNoCleanupSkippedOnFailure,
@@ -132,6 +133,7 @@ export const partRules = {
   'no-default-export': ruleNoDefaultExport,
   'no-dev-dependency-in-production': ruleNoDevDependencyInProduction,
   'no-disabled-tls-verification': ruleNoDisabledTlsVerification,
+  'no-dropped-log-arguments': ruleNoDroppedLogArguments,
   'no-dropped-test-callback': ruleNoDroppedTestCallback,
   'no-dual-write': ruleNoDualWrite,
   'no-eager-relation': ruleNoEagerRelation,
@@ -165,6 +167,7 @@ export const partRules = {
   'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
   'no-node-process-per-test': ruleNoNodeProcessPerTest,
   'no-null': ruleNoNull,
+  'no-null-branch-fall-through': ruleNoNullBranchFallThrough,
   'no-operand-slip': ruleNoOperandSlip,
   'no-orm-query-logging': ruleNoOrmQueryLogging,
   'no-orm-schema-sync': ruleNoOrmSchemaSync,
@@ -198,7 +201,4 @@ export const partRules = {
   'no-sql-string-building': ruleNoSqlStringBuilding,
   'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
   'no-string-as-regex': ruleNoStringAsRegex,
-  'no-switched-off-tests': ruleNoSwitchedOffTests,
-  'no-sync-node-api-in-async': ruleNoSyncNodeApiInAsync,
-  'no-task-outliving-resource': ruleNoTaskOutlivingResource,
 };
