@@ -1,5 +1,5 @@
 import type { Finding } from '../../../static-checks/shared.mts';
-import type { StrykerConfig } from '../../typed/mutation.mts';
+import type { StrykerConfig } from '../../../../preset/project-configs/project-config-types.mts';
 import { mutatePatterns } from '../stryker/stryker-config.mts';
 import { escapeGlob } from '../../../oxlint/oxlint-translation.mts';
 

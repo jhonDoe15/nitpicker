@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { Stats } from 'node:fs';
-import { lstatIfExists, removeOwnedLink } from '../../../../core/tooling/policy-links.mjs';
+import { lstatIfExists, removeOwnedLink } from '../../../../core/tooling/policy-links.mts';
 import { type LinkedPolicyFile, linkPolicyFile } from '../typed/tooling.mts';
 import { realpathSync, symlinkSync } from 'node:fs';
 import { layoutTransformFor, readLayout } from '../typed/head-policy.mts';

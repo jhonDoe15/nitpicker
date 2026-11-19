@@ -1,6 +1,6 @@
 import * as prettier from 'prettier';
 import { describe, expect, it } from 'vitest';
-import { JSX_CONVENTIONS } from './jsx-conventions.mjs';
+import { JSX_CONVENTIONS } from './jsx-conventions.mts';
 import { measureOf, prettierConventionOptions } from '../typed/convention-views.mts';
 
 const source = `export function Card({ item, onSelect }) {

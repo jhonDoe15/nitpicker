@@ -1,11 +1,11 @@
 import type * as Prettier from 'prettier';
 import type { ChoiceConvention } from '../../../../shared/values/config-types.mts';
 import { layeredPrettierOptions as untypedLayeredPrettierOptions } from '../../adapters/prettier/prettier-layers.mts';
-import { fileNameComplies as untypedFileNameComplies } from '../file-name-casing.mjs';
+import { fileNameComplies as untypedFileNameComplies } from '../file-name-casing.mts';
 import {
   prettierConventionOptions as untypedPrettierConventionOptions,
   PRETTIER_CONVENTIONS as UNTYPED_PRETTIER_CONVENTIONS,
-} from '../prettier-conventions.mjs';
+} from '../prettier-conventions.mts';
 import {
   conventionChoices as untypedConventionChoices,
   detectConventions as untypedDetectConventions,

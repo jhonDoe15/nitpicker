@@ -34,7 +34,7 @@ export type SlowTestContext = {
   readonly analyzerName: string;
   readonly testRoots: readonly string[];
   readonly thresholds?: Partial<Limits>;
-  readonly exceptions?: unknown[];
+  readonly exceptions?: readonly unknown[];
   readonly changedLines: ReadonlyMap<string, readonly LineRange[]> | undefined;
 };
 

@@ -6,7 +6,7 @@ import regexp from 'eslint-plugin-regexp';
 import tseslint from 'typescript-eslint';
 import { guardedEntries } from '../../../preset/eslint-config/fix-guards/guarded-plugins.mts';
 import { messageOf } from '../../typed/eslint-report.mts';
-import { containedPath } from '../../../../../core/fix/typed/fix-views.mts';
+import { containedPath } from '../../../../../core/fix/typed/views/fix-views.mts';
 import { suggestionRules, type LintMessage } from '../typed/suggestion-views.mts';
 
 const TSCONFIG = {

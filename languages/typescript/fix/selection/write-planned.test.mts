@@ -1,35 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import type { FixEdit } from '../../../../core/fix/typed/fix-types.mts';
+import type { FixEntry, Snapshot } from '../../../../core/fix/typed/edit-types.mts';
 import { appendAll } from '../../../../shared/lists/lists.mts';
 import {
   countFindings,
   judgeFindings,
   recipeRuns,
 } from '../../../../core/fix/verify/judge-findings.mts';
-import type { FindingKey } from '../../../../core/fix/verify/verify-types.mts';
 import { newPassBudget, writeOutputs, type Reported } from './write-planned.mts';
 
 const RULE = 'nitpicker/no-wasted-collection-step';
 const NAME = 'src/a.ts';
 
-type Entry = {
-  readonly name: string;
-  readonly recipe?: string;
-  readonly fix: {
-    readonly edits: readonly FixEdit[];
-    readonly finding?: FindingKey;
-    readonly alsoFixes?: readonly FindingKey[];
-  };
-};
+type Entry = FixEntry;
 
 function recordingWriter() {
   const entries: Entry[] = [];
   return {
     entries,
     projectRoot: '.',
-    apply(_snapshot: unknown, planned: readonly Entry[]) {
+    apply<Planned extends FixEntry>(_snapshot: Snapshot, planned: readonly Planned[]) {
       appendAll(entries, planned);
-      return { applied: planned.map(({ name }) => ({ name })), changedMeanwhile: [], errors: [] };
+      return { applied: planned, changedMeanwhile: [], errors: [] };
     },
   };
 }

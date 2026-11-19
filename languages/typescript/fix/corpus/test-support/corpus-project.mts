@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fixWorkingTree } from '../../../../../core/fix/run-fix.mts';
-import { containedPath } from '../../../../../core/fix/typed/fix-views.mts';
+import { containedPath } from '../../../../../core/fix/typed/views/fix-views.mts';
 import {
   fixOptions,
   topicRepository,

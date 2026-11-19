@@ -1,5 +1,5 @@
-import { reactRuleIds, reactTestRuleIds } from '../preset/eslint-config/react/react-rules.mjs';
-import { i18nRuleIds } from '../preset/eslint-config/i18n/i18n-rules.mjs';
+import { reactRuleIds, reactTestRuleIds } from '../preset/eslint-config/react/react-rules.mts';
+import { i18nRuleIds } from '../preset/eslint-config/i18n/i18n-rules.mts';
 import { readEslintInventory } from './eslint-inventory.mts';
 import { fixerRuns, suggestionApplies } from './fixer-options.mts';
 import { ruleSets, type RuleSet } from './rule-sets.mts';

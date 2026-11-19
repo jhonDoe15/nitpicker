@@ -3,8 +3,8 @@ import path from 'node:path';
 import {
   PACKAGE_ROOT,
   SNAPSHOT_DIRECTORY_NAMES,
-} from '../../../../core/tooling/tool-resolution.mjs';
-import { realTemporaryDirectory } from '../../../../core/tooling/temporary-files.mjs';
+} from '../../../../core/tooling/tool-resolution.mts';
+import { realTemporaryDirectory } from '../../../../core/tooling/temporary-files.mts';
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 const SUPPORTED_KINDS: ReadonlySet<string> = new Set(['prettier', 'typecheck', 'architecture']);
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveLayout } from '../preset/layout.mjs';
+import { resolveLayout } from '../preset/layout.mts';
 import { fixTargets } from './fix-targets.mts';
 import type { Layout } from './typed/fix-views.mts';
 

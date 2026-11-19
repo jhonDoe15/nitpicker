@@ -1,12 +1,12 @@
-import { globMatcher as untypedGlobMatcher } from '../preset/layout.mjs';
-import { createQualityChecks } from '../preset/quality-checks.mjs';
+import { globMatcher as untypedGlobMatcher } from '../preset/layout.mts';
+import { createQualityChecks } from '../preset/quality-checks.mts';
 import type { Layout } from './typed/fix-views.mts';
-import { prettierExclusions } from '../../../core/fix/extensions.mjs';
+import { prettierExclusions } from '../../../core/fix/extensions.mts';
 
 const globMatcher: (pattern: string) => { readonly test: (file: string) => boolean } =
   untypedGlobMatcher;
 
-type Check = { readonly name: string; readonly patterns: readonly string[] };
+type Check = { readonly name: string; readonly patterns?: readonly string[] };
 type Targets = {
   readonly isEslintFile: (file: string) => boolean;
   readonly isPrettierFile: (file: string) => boolean;

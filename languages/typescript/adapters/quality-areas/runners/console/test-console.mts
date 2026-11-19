@@ -31,6 +31,6 @@ export function runTestConsole(options: QualityAreaOptions): Finding[] {
   }));
   return testConsoleFindings(
     { entries },
-    { analyzerName: options.analyzerName, allow: testConsole.allow, exceptions },
+    { analyzerName: options.analyzerName, allow: fieldOf(testConsole, 'allow'), exceptions },
   );
 }

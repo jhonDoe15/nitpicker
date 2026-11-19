@@ -47,10 +47,10 @@ import {
 import {
   type MutationOutcome,
   type MutationReport,
-  type StrykerConfig,
   layeredStrykerConfig,
   withoutProjectIgnoredMutants,
 } from '../typed/mutation.mts';
+import type { StrykerConfig } from '../../../preset/project-configs/project-config-types.mts';
 import { normalizeMutation, withUnreachedMutantsUncovered } from '../reporting/tests.mts';
 import { withMutationSourceHashes } from '../reporting/source-hashes.mts';
 

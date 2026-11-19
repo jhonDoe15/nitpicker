@@ -81,7 +81,7 @@ export function withRatchets(
         ...anchorOf(plan, plan.key),
         ratchet: {
           key: `count:${plan.key}`,
-          value: counts.get(countGroupOf(finding, plan)),
+          value: counts.get(countGroupOf(finding, plan)) ?? plan.uses,
           existingCodeOnly: true,
           ...growth,
         },

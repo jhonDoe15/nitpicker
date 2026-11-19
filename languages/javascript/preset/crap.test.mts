@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { HEAD_POLICY_ENV } from '../../../shared/head-policy.mjs';
 import { fieldOf } from '../../../shared/values/readers.mts';
-import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mts';
 import { parseArguments } from '../../typescript/adapters/quality-areas/arguments.mts';
 import { runQualityArea } from '../../typescript/adapters/quality-areas-runner.mts';
 import { resolveHeadPolicy } from '../../typescript/adapters/dependency-graph/typed/head-policy-views.mts';
@@ -37,7 +37,7 @@ const sources = {
   'src/main/features/grade/domain/classify.ts': branchy,
 };
 
-async function measuredFiles(config: object): Promise<unknown> {
+async function measuredFiles(config: Readonly<Record<string, unknown>>): Promise<unknown> {
   const parent = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-')));
   temporaryRoots.push(parent);
   const root = path.join(parent, 'head');

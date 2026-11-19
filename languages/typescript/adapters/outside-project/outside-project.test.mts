@@ -37,7 +37,7 @@ describe('a type check diagnostic in a file outside the project', () => {
     layout: { isExcluded: () => false, isTestFile: () => false },
     contextOnly: new Set<string>(),
     projectRoot: member,
-    runner: undefined,
+    runner: 'vitest',
     untyped: false,
   };
 

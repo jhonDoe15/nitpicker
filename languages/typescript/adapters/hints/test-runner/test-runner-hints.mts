@@ -1,5 +1,5 @@
 import { readLayout } from '../../typed/head-policy.mts';
-import { projectRunnerVocabulary } from '../../../preset/test-runner/vocabulary/runner-vocabulary.mjs';
+import { projectRunnerVocabulary } from '../../../preset/test-runner/vocabulary/runner-vocabulary.mts';
 import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
 import { type HintedFields, type Rewriter, restrictedMatcherText } from '../eslint-routes.mts';
 import { directive, hinted } from '../stated-form.mts';

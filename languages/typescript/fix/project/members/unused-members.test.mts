@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveLayoutFor } from '../../../preset/layout.mjs';
+import { resolveLayoutFor } from '../../../preset/layout.mts';
 import { useFixtureProjects } from '../test-support/fixture-project.mts';
 import { fixLeavingFileUnchanged } from '../test-support/unchanged-fix.mts';
 import { unusedOptionRecipe, unusedPropRecipe } from './unused-members.mts';

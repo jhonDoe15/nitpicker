@@ -14,10 +14,10 @@ import {
 } from '../typed/tooling.mts';
 import {
   ARCHITECTURE_CONFIG,
-  dependencyGraphTsconfig as untypedDependencyGraphTsconfig,
-} from '../../preset/dependency-graph/cruise.mjs';
-import { readLayout as readUntypedLayout } from '../../preset/head-policy.mjs';
-import { revivedExpression as untypedRevivedExpression } from '../../preset/project-tools/config-values.mjs';
+  dependencyGraphTsconfig,
+} from '../../preset/dependency-graph/cruise.mts';
+import { readLayout } from '../../preset/head-policy.mts';
+import { revivedExpression as untypedRevivedExpression } from '../../preset/project-tools/config-values.mts';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { textOf } from '../../../../shared/values/readers.mts';
 import { policyPath } from '../static-checks/shared.mts';
@@ -74,8 +74,6 @@ type Cruise = {
 
 const TOOL = 'dependency-cruiser';
 const buildOnce: (key: string, build: () => string) => string = untypedBuildOnce;
-const dependencyGraphTsconfig: (layout: unknown) => unknown = untypedDependencyGraphTsconfig;
-const readLayout: () => { readonly excludePattern?: string } = readUntypedLayout;
 const revivedExpression: (value: unknown) => string = untypedRevivedExpression;
 
 const TSCONFIG_NAME = 'tsconfig.quality.json';
