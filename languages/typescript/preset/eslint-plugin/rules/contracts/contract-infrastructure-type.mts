@@ -2,7 +2,7 @@ import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint
 import path from 'node:path';
 import type { ParserServicesWithTypeInformation } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
-import { layoutFeatures as untypedLayoutFeatures } from '../../../architecture/strict-layout.mjs';
+import { layoutFeatures as untypedLayoutFeatures } from '../../../architecture/strict-layout.mts';
 import { hasTypeInformation } from '../promises/cannot-reject.mts';
 import { exportLeaks } from './contract-members.mts';
 

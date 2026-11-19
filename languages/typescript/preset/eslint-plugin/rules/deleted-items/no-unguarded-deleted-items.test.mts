@@ -39,7 +39,7 @@ const { tester, typed } = typedIoProject('deleted-items', TYPES, { 'guarded.ts':
 const HEADER =
   "import { Item, NonDeleted, items, shapes, getNonDeletedItems, isLive, notDeleted, stats } from './store';\n";
 
-function body(code) {
+function body(code: string) {
   return typed(`${HEADER}${code}`);
 }
 

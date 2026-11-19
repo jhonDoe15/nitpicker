@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { isCollectedByRunner, projectRelative } from './runner-option.mts';
 
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -12,7 +12,7 @@ afterEach(() => {
   }
 });
 
-function projectUnder(...segments) {
+function projectUnder(...segments: string[]) {
   const base = mkdtempSync(path.join(tmpdir(), 'nitpicker-runner-option-'));
   temporaryRoots.push(base);
   const root = path.join(base, ...segments);

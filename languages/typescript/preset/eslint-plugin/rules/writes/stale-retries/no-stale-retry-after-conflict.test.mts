@@ -7,16 +7,16 @@ const HEAD = [
   "import retry from 'async-retry';",
   '',
 ].join('\n');
-const inFunction = (body) =>
+const inFunction = (body: string) =>
   `${HEAD}export async function run(orderRepo, order, id, next) { ${body} }`;
 const CONFLICTS = '{ shouldRetry: (error) => error instanceof OptimisticLockVersionMismatchError }';
 const LOOP = (
-  body,
+  body: string,
   handler = 'if (!(error instanceof OptimisticLockVersionMismatchError)) { throw error; }',
 ) =>
   `for (let attempt = 0; attempt < 3; attempt += 1) { try { ${body} return; } catch (error) { ${handler} } }`;
 
-const error = (messageId, entity) => [{ messageId, data: { entity } }];
+const error = (messageId: string, entity: string) => [{ messageId, data: { entity } }];
 
 typescriptRuleTester().run('no-stale-retry-after-conflict', rule, {
   valid: cases(

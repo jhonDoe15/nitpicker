@@ -71,7 +71,7 @@ import { rule as ruleReactNoEffectEventHandling } from '../rules/react/render/re
 import { rule as ruleReactNoHardcodedColors } from '../rules/react/theme/react-no-hardcoded-colors.mts';
 import { rule as ruleReactNoLiteralIdInListComponent } from '../rules/react/ids/react-no-literal-id-in-list-component.mts';
 import { rule as ruleReactNoRandomKey } from '../rules/react/render/react-no-random-key.mts';
-import { rule as ruleReactSingleStylingApproach } from '../rules/react/react-single-styling-approach.mjs';
+import { rule as ruleReactSingleStylingApproach } from '../rules/react/react-single-styling-approach.mts';
 import { rule as ruleReactTestNoImplementationDetails } from '../rules/react-tests/react-test-no-implementation-details.mts';
 import { rule as ruleReleaseListenersOnClose } from '../rules/lifecycles/handles/release-listeners-on-close.mts';
 import { rule as ruleReportModuleLoadEffects } from '../rules/modules/report-module-load-effects.mts';

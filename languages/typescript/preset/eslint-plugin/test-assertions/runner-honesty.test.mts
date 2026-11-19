@@ -1,21 +1,9 @@
-import { RuleTester } from 'eslint';
-import tseslint from 'typescript-eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { rule as noSwitchedOffTests } from './no-switched-off-tests.mts';
 import { rule as noUnpinnedAssertion } from './no-unpinned-assertion.mts';
+import { typescriptRuleTester } from '../test-support/rule-tester.mts';
 
-Object.assign(RuleTester, {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  it,
-  itOnly: it.only,
-});
-const tester = new RuleTester({
-  languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
-});
+const tester = typescriptRuleTester();
 
 tester.run('no-switched-off-tests under node:test, Mocha and test options', noSwitchedOffTests, {
   valid: [

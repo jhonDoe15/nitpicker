@@ -7,7 +7,7 @@ import {
   isTestFactoryMember,
   isTestFunctionName,
 } from '../../analysis/test-code-analysis.mts';
-import { isIntegrationTestFor as untypedIsIntegrationTestFor } from '../../../../layout/end-to-end-tests.mjs';
+import { isIntegrationTestFor as untypedIsIntegrationTestFor } from '../../../../layout/end-to-end-tests.mts';
 import { isNamedMember } from '../../typed/syntax-views.mts';
 import { suggestible } from '../../../fixes/support/descriptors.mts';
 import { raisedTimeoutFix } from '../../../fixes/tests/raised-timeout-fix.mts';

@@ -1,5 +1,8 @@
 import { Linter } from 'eslint';
 import { describe, expect, it } from 'vitest';
+import type { RunnerName } from '../../../test-runner/typed/command-types.mts';
+import { DEFAULT_TEST_RUNNER, TEST_RUNNERS } from '../../../test-runner/runners.mts';
+import { ruleModule } from '../../test-support/rule-tester.mts';
 import { rule } from '../../rules/test-runtime/assertions/no-partial-output-assertion.mts';
 
 const EXCEPTION_FOR_OUTPUT =
@@ -9,20 +12,20 @@ const EXCEPTION_FOR_VALUE =
 const ON_ITS_OWN =
   'For a field that varies, assert it on its own and compare the rest of the value whole.';
 
-const OUTPUT_ASSERTIONS = {
+const OUTPUT_ASSERTIONS: Readonly<Record<RunnerName, string>> = {
   vitest: '`toEqual` or `toBe`',
   jest: '`toEqual` or `toBe`',
   node: '`assert.deepStrictEqual` or `assert.strictEqual`',
   mocha: '`expect(...).to.deep.equal` or `assert.deepStrictEqual`',
 };
-const FRAGMENT_FORMS = {
+const FRAGMENT_FORMS: Readonly<Record<RunnerName, string>> = {
   vitest: '`toContain`, or `toMatch` with a pattern that is not anchored `^...$`',
   jest: '`toContain`, or `toMatch` with a pattern that is not anchored `^...$`',
   node: "`assert.ok(text.includes('x'))`, or `assert.match` with a pattern that is not anchored `^...$`",
   mocha:
     '`include`, `contain` or `string` with text, or `match` with a pattern that is not anchored `^...$`',
 };
-const VALUE_ASSERTIONS = {
+const VALUE_ASSERTIONS: Readonly<Partial<Record<RunnerName, readonly [string, string, string]>>> = {
   vitest: [
     '`toEqual`',
     '`toMatchObject`, `expect.objectContaining`, `expect.stringContaining`, `expect.arrayContaining`',
@@ -36,21 +39,25 @@ const VALUE_ASSERTIONS = {
   ],
 };
 
-function outputMessage(runner) {
+function outputMessage(runner: RunnerName): string {
   return `Assert the whole output with ${OUTPUT_ASSERTIONS[runner]} instead of checking that it contains a fragment (${FRAGMENT_FORMS[runner]}): a fragment passes even when the rest is wrong. ${EXCEPTION_FOR_OUTPUT}`;
 }
 
-function valueMessage(runner) {
-  const [whole, partial, varied] = VALUE_ASSERTIONS[runner];
+function valueMessage(runner: RunnerName): string {
+  const assertions = VALUE_ASSERTIONS[runner];
+  if (assertions === undefined) {
+    throw new Error(`${runner} has no partial value message`);
+  }
+  const [whole, partial, varied] = assertions;
   return `Pass the whole expected value to ${whole} instead of a partial match (${partial}): the rest of the value goes unchecked. ${varied} ${EXCEPTION_FOR_VALUE}`;
 }
 
-function messagesFor(code, runner) {
+function messagesFor(code: string, runner: RunnerName): string[] {
   return new Linter()
     .verify(code, [
       {
         files: ['**/*.js'],
-        plugins: { nitpicker: { rules: { 'no-partial-output-assertion': rule } } },
+        plugins: { nitpicker: { rules: { 'no-partial-output-assertion': ruleModule(rule) } } },
         languageOptions: { sourceType: 'module' },
         rules: { 'nitpicker/no-partial-output-assertion': ['error', { runner }] },
       },
@@ -120,7 +127,7 @@ describe('partial output assertions with Chai under Mocha', () => {
 });
 
 describe('the messages of each runner', () => {
-  it.each(['vitest', 'jest', 'node', 'mocha'])(
+  it.each(TEST_RUNNERS)(
     'names the whole-output assertion of %s for an expect fragment',
     (runner) => {
       expect(messagesFor("expect(output).toContain('fragment');", runner)).toEqual([
@@ -130,14 +137,14 @@ describe('the messages of each runner', () => {
   );
 
   it('keeps the expect matchers in the Vitest partial match message', () => {
-    expect(messagesFor('expect(actual).toMatchObject({ id: 1 });', 'vitest')).toEqual([
-      valueMessage('vitest'),
+    expect(messagesFor('expect(actual).toMatchObject({ id: 1 });', DEFAULT_TEST_RUNNER)).toEqual([
+      valueMessage(DEFAULT_TEST_RUNNER),
     ]);
   });
 
   it('reports a Chai fragment under Vitest, which ships the Chai API', () => {
-    expect(messagesFor("expect(output).to.include('fragment');", 'vitest')).toEqual([
-      outputMessage('vitest'),
+    expect(messagesFor("expect(output).to.include('fragment');", DEFAULT_TEST_RUNNER)).toEqual([
+      outputMessage(DEFAULT_TEST_RUNNER),
     ]);
   });
 });

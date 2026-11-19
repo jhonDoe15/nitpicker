@@ -5,11 +5,11 @@ const ORMS = ['typeorm', 'prisma', 'drizzle', 'kysely', 'knex', 'sequelize', 'mi
 const COLUMN = ['asset__deletedAt'];
 const HELPER = ['asset__helper__withDefaultVisibility'];
 
-function valid(code, filters = COLUMN) {
+function valid(code: string, filters = COLUMN) {
   return { code, options: [{ orms: ORMS, filters }] };
 }
 
-function invalid(code, filters = COLUMN) {
+function invalid(code: string, filters = COLUMN) {
   return { code, options: [{ orms: ORMS, filters }], errors: [{ messageId: 'unfiltered' }] };
 }
 

@@ -68,13 +68,13 @@ const HEADER = [
   '',
 ].join('\n');
 
-const inRun = (body) => typed(`${HEADER}export async function run() { ${body} }`);
-const column = (body, field) => ({
+const inRun = (body: string) => typed(`${HEADER}export async function run() { ${body} }`);
+const column = (body: string, field: string) => ({
   ...inRun(body),
   errors: [{ messageId: 'column', data: { field } }],
 });
-const exists = (body) => ({ ...inRun(body), errors: [{ messageId: 'existence' }] });
-const fixed = (body, output, suggestion = { messageId: 'useExists' }) => ({
+const exists = (body: string) => ({ ...inRun(body), errors: [{ messageId: 'existence' }] });
+const fixed = (body: string, output: string, suggestion = { messageId: 'useExists' }) => ({
   ...inRun(body),
   errors: [
     {

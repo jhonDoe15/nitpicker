@@ -9,7 +9,7 @@ const bullmq = "import { Processor, WorkerHost } from '@nestjs/bullmq';\n";
 const unisolatedLoop =
   'for (const workspace of workspaces) { await this.workspaceRepository.update(workspace.id, { synced: true }); }';
 
-function invalid(code) {
+function invalid(code: string) {
   return { code, errors: [{ messageId: 'unisolated' }] };
 }
 
@@ -74,7 +74,7 @@ const { tester, typed } = typedIoProject('job-loop', STORE);
 const HEADER =
   "import { Cron } from '@nestjs/schedule';\nimport { syncWorkspace } from './store';\n";
 
-function run(loop) {
+function run(loop: string) {
   return typed(
     `${HEADER}export class Job { @Cron('* * * * *') async run(ids: string[]) { ${loop} } }`,
   );

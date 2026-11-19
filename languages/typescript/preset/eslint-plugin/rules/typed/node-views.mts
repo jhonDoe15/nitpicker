@@ -6,7 +6,7 @@ import {
   outermostWrapper as untypedOutermostWrapper,
   scopeChain as untypedScopeChain,
   variableNamed as untypedVariableNamed,
-} from '../analysis/ancestry.mjs';
+} from '../analysis/ancestry.mts';
 import {
   chainOf as untypedChainOf,
   depthFirst as untypedDepthFirst,
@@ -18,6 +18,14 @@ export type Ranged = { readonly range: readonly [number, number] };
 
 export type SourceCode = Readonly<TSESLint.SourceCode>;
 export type LibraryBinding = { readonly source: string; readonly name: string | undefined };
+
+export function stringSourceBinding(
+  binding: { readonly source: unknown; readonly name: string | undefined } | undefined,
+): LibraryBinding | undefined {
+  return typeof binding?.source === 'string'
+    ? { source: binding.source, name: binding.name }
+    : undefined;
+}
 export type VisitorKeys = SourceCode['visitorKeys'];
 
 export type FoldSteps<Item, Context, Result> = {

@@ -1,32 +1,19 @@
 import path from 'node:path';
-import { RuleTester } from 'eslint';
-import tseslint from 'typescript-eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
+import type { RuleTester } from 'eslint';
 import { rule } from '../../rules/test-runtime/environment/no-unused-dom-environment.mts';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { createProject, docblock, lines, logic } from '../test-support/environment-project.mts';
 
-RuleTester.afterAll = afterAll;
-RuleTester.afterEach = afterEach;
-RuleTester.beforeAll = beforeAll;
-RuleTester.beforeEach = beforeEach;
-RuleTester.describe = describe;
-RuleTester.it = it;
-RuleTester.itOnly = it.only;
-
-const ruleTester = new RuleTester({
-  languageOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    parser: tseslint.parser,
-    parserOptions: { ecmaFeatures: { jsx: true } },
-  },
-});
+const ruleTester = typescriptRuleTester({ ecmaFeatures: { jsx: true } });
 
 const root = createProject();
 const filename = path.join(root, 'src/widgets/widget.test.ts');
 const jestDom = { environment: 'jsdom', runner: 'jest' };
 
-const report = (messageId, data) => [{ messageId, data, line: 1 }];
+const report = (
+  messageId: string,
+  data: Readonly<Record<string, string>>,
+): RuleTester.TestCaseError[] => [{ messageId, data, line: 1 }];
 
 ruleTester.run('no-unused-dom-environment under Jest', rule, {
   valid: [

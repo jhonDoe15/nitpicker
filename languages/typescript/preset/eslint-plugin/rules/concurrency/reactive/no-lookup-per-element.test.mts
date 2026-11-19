@@ -19,7 +19,7 @@ const untyped = typescriptRuleTester();
 
 const TYPED_HEADER = `${RX}import { Repository } from "typeorm";\nimport { Owner, OwnerService } from "./store";\ndeclare const owners: Repository<Owner>;\ndeclare const service: OwnerService;\ndeclare const ids: string[];\n`;
 
-const error = (operator, callee, collection = 'ids') => [
+const error = (operator: string, callee: string, collection = 'ids') => [
   { messageId: 'lookup', data: { operator, callee, collection } },
 ];
 

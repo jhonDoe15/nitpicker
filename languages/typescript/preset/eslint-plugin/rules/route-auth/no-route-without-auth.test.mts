@@ -6,15 +6,15 @@ const SHAPE = ['nest__Authenticated__permission'];
 const FALLBACK = ['nest__fallback'];
 const MIDDLEWARE = ['route__requireAuth'];
 
-function valid(code, entries) {
+function valid(code: string, entries: readonly string[]) {
   return { code, options: [{ entries }] };
 }
 
-function invalid(code, entries, messageId) {
+function invalid(code: string, entries: readonly string[], messageId: string) {
   return { code, options: [{ entries }], errors: [{ messageId }] };
 }
 
-const controller = (body, head = '') =>
+const controller = (body: string, head = '') =>
   `${common}${head}@Controller('orders')\nclass OrdersController { ${body} }`;
 
 typescriptRuleTester().run('no-route-without-auth nest majority', rule, {

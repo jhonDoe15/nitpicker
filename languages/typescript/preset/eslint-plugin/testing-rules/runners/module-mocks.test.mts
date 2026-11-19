@@ -5,7 +5,7 @@ import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 const ruleTester = typescriptRuleTester();
 const filename = '/repo/src/main/feature/__tests__/feature.test.ts';
 const internal = "'../../logging/logger.js'";
-const lines = (...parts) => parts.join('\n');
+const lines = (...parts: string[]) => parts.join('\n');
 
 ruleTester.run('no-internal-module-mocks across runners', noInternalMocks, {
   valid: [
