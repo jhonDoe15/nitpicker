@@ -14,29 +14,45 @@ describe('repository action pins', () => {
     expect(actionPinProblems(repositoryRoot)).toEqual([]);
   });
 
-  it.each(['java', 'kotlin', 'python'])('%s uses the MIT Gradle cache provider', (language) => {
+  const expression = (text: string) => ['$', '{{ ', text, ' }}'].join('');
+  const onPullRequestOnly = expression("github.event_name != 'pull_request'");
+  const gradleCaches = [
+    {
+      workflow: 'java-e2e',
+      job: 'java-shard',
+      prefix: 'java-gradle-v2',
+      setupCache: onPullRequestOnly,
+    },
+    {
+      workflow: 'kotlin-e2e',
+      job: 'kotlin-shard',
+      prefix: 'kotlin-gradle',
+      setupCache: onPullRequestOnly,
+    },
+    { workflow: 'python-e2e', job: 'python-shard', prefix: 'python-gradle', setupCache: true },
+    { workflow: 'platforms', job: 'samples', prefix: 'platforms-gradle', setupCache: true },
+  ];
+  const stepsOf = (workflowName: string, jobName: string) => {
     const workflow: unknown = parse(
-      readFileSync(path.join(repositoryRoot, `.github/workflows/${language}-e2e.yml`), 'utf8'),
+      readFileSync(path.join(repositoryRoot, `.github/workflows/${workflowName}.yml`), 'utf8'),
     );
-    const job = fieldsOf(fieldsOf(fieldsOf(workflow)?.['jobs'])?.[`${language}-shard`]);
-    const step = listOf(job?.['steps'])
-      .map((entry) => fieldsOf(entry) ?? {})
-      .find(
-        ({ uses }) => typeof uses === 'string' && uses.startsWith('gradle/actions/setup-gradle@'),
-      );
+    return listOf(fieldsOf(fieldsOf(fieldsOf(workflow)?.['jobs'])?.[jobName])?.['steps']).map(
+      (entry) => fieldsOf(entry) ?? {},
+    );
+  };
+
+  it.each(gradleCaches)('$workflow uses the MIT Gradle cache provider', ({ workflow, job }) => {
+    const step = stepsOf(workflow, job).find(
+      ({ uses }) => typeof uses === 'string' && uses.startsWith('gradle/actions/setup-gradle@'),
+    );
 
     expect(fieldsOf(step?.['with'])?.['cache-provider']).toBe('basic');
   });
 
-  it.each(['java', 'kotlin', 'python'])(
-    '%s restores the Gradle dependency cache and saves it from a green run on main',
-    (language) => {
-      const workflow: unknown = parse(
-        readFileSync(path.join(repositoryRoot, `.github/workflows/${language}-e2e.yml`), 'utf8'),
-      );
-      const steps = listOf(
-        fieldsOf(fieldsOf(fieldsOf(workflow)?.['jobs'])?.[`${language}-shard`])?.['steps'],
-      ).map((entry) => fieldsOf(entry) ?? {});
+  it.each(gradleCaches)(
+    '$workflow restores the Gradle dependency cache and saves it from a green run on main',
+    ({ workflow, job, prefix: keyPrefix, setupCache }) => {
+      const steps = stepsOf(workflow, job);
       const pathOf = (inputs: unknown) => {
         const text = fieldsOf(inputs)?.['path'];
         return typeof text === 'string' ? text : '';
@@ -51,9 +67,8 @@ describe('repository action pins', () => {
       const restore = fieldsOf(stepUsing('actions/cache/restore@', 'modules-2')?.['with']);
       const save = stepUsing('actions/cache/save@', 'modules-2');
 
-      const expression = (text: string) => ['$', '{{ ', text, ' }}'].join('');
-      const generation = language === 'java' ? 'v2-' : '';
-      const prefix = `${language}-gradle-${generation}${expression('runner.os')}-${expression('matrix.shard')}-`;
+      const shard = job === 'samples' ? '' : `${expression('matrix.shard')}-`;
+      const prefix = `${keyPrefix}-${expression('runner.os')}-${shard}`;
       const hash = expression("hashFiles('**/*.gradle*', '**/gradle-wrapper.properties')");
       const onMain = [
         'success()',
@@ -68,10 +83,15 @@ describe('repository action pins', () => {
         'restore-keys': `${prefix}\n`,
       });
       expect(save?.['if']).toBe(expression(onMain));
+      expect(fieldsOf(stepUsing('actions/cache/save@', 'modules-2')?.['with'])?.['key']).toBe(
+        `${prefix}${hash}`,
+      );
       expect(
         fieldsOf(stepUsing('gradle/actions/setup-gradle@')?.['with'])?.['cache-disabled'],
-      ).toBe(language === 'python' ? true : expression("github.event_name != 'pull_request'"));
-      expect(fieldsOf(stepUsing('actions/setup-java@')?.['with'])?.['cache']).toBeUndefined();
+      ).toBe(setupCache);
+      expect(fieldsOf(stepUsing('actions/setup-java@')?.['with'])?.['cache']).toBe(
+        workflow === 'platforms' ? 'maven' : undefined,
+      );
     },
   );
 });
