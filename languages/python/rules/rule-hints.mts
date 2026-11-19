@@ -15,6 +15,7 @@ import { SMELL_HINTS } from './hints/ast/ast-smells.mts';
 import { EFFECT_HINTS } from './hints/effects/index.mts';
 import { WRITE_HINTS } from './hints/writes/index.mts';
 import { MOCK_HINTS } from './hints/tests/mock-hints.mts';
+import { COMPOSITION_HINTS } from './hints/composition/composition-hints.mts';
 import { REGEX_DEFECT_HINTS } from './regexes/regex-defects.mts';
 import { ORM_HINTS } from './hints/persistence/ast-orm.mts';
 import { CONTRACT_HINTS } from './hints/contracts/ast-contracts.mts';
@@ -99,6 +100,7 @@ export const RULE_HINTS: readonly RuleHint[] = [
   ...EFFECT_HINTS,
   ...WRITE_HINTS,
   ...MOCK_HINTS,
+  ...COMPOSITION_HINTS,
   ...REGEX_DEFECT_HINTS,
   ...SIGNATURE_HINTS,
   ...TEST_SWITCH_HINTS,

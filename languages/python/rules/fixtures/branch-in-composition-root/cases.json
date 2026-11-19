@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "branch-in-composition-root",
+    "mention": "lookup table",
+    "subject": "if"
+  }
+]

@@ -111,6 +111,11 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Test an environment variable for a value, not for `None`: `if not os.environ.get("API_URL"):` and
   `os.environ.get("PORT") or "8000"`, never `is not None`, `in os.environ` or a `getenv` default; `API_URL=`
   gives `""`, which those count as set (`env-none-only-check`).
+- Build engines, pools, clients and apps in the composition root only (`managed-resource-outside-composition-root`):
+  `create_engine`, `asyncpg.create_pool`, `redis.Redis`, `httpx.Client`, `requests.Session`, `aiohttp.ClientSession`,
+  `boto3.client` and `Celery(...)` go in `main.py`, `server.py` or `composition_root.py`, and the feature code takes
+  the object as a parameter. The root only wires (`branch-in-composition-root`): no `if`, loop, `match` or `or`
+  default there; pick an implementation by configuration through a lookup table (`BACKENDS[settings.store]()`).
 - Secrets: never put a secret in code (`password`, `token`, `api_key`, ... assigned a literal, also as the
   fallback of `os.getenv`); read it from the environment in the composition root. Never log, print,
   warn or raise with it: log that it is set (`token is not None`) or a masked tail.
