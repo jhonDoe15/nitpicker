@@ -805,6 +805,72 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="ConstantIndexBeyondGuard" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This literal index is larger than the length the guard around it has proved. The guard lets through exactly the length at which the access throws ArrayIndexOutOfBoundsException or IndexOutOfBoundsException (params.length > 1 ? params[2] : null, if (parts.length &lt; 1) return; then parts[1]). Raise the guard to the index used (params.length > 2, parts.length &lt; 2) or lower the index. Right code is not reported: a guard that admits the index (params.length > 2 ? params[2] : null), a receiver that is reassigned in the method, a variable index, and a receiver whose length is read in any other way before the access.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $key := function($e) {
+      if ($e/self::VariableAccess or $e/self::FieldAccess[ThisExpression]) then string($e/@Name) else ()
+    },
+    $lenKey := function($n) {
+      if ($n/self::FieldAccess[@Name = 'length'] or $n/self::MethodCall[@MethodName = 'size'][ArgumentList/@Size = 0])
+      then $key($n/*[1]) else ()
+    },
+    $int := function($n) {
+      if ($n/self::NumericLiteral[@IntLiteral = true()]) then xs:integer($n/@ValueAsInt) else ()
+    },
+    $positive := function($g, $k) {
+      if ($g/self::InfixExpression[@Operator = ('>', '>=', '==')][$lenKey(*[1]) = $k][*[2][self::NumericLiteral]])
+      then (if ($g/@Operator = '>') then $int($g/*[2]) else $int($g/*[2]) - 1)
+      else ()
+    },
+    $negative := function($g, $k) {
+      if ($g/self::InfixExpression[@Operator = ('<', '<=')][$lenKey(*[1]) = $k][*[2][self::NumericLiteral]])
+      then (if ($g/@Operator = '<') then $int($g/*[2]) - 1 else $int($g/*[2]))
+      else if ($g/self::InfixExpression[@Operator = '=='][$lenKey(*[1]) = $k][*[2][self::NumericLiteral][@ValueAsInt = 0]])
+      then 0 else ()
+    },
+    $leaves := function($cond, $sep) {
+      ($cond/descendant-or-self::InfixExpression[@Operator = $sep]
+          [empty((ancestor::*[not(self::InfixExpression[@Operator = $sep])]) intersect ($cond/descendant-or-self::*))]/*
+       | $cond)[not(self::InfixExpression[@Operator = $sep])]
+    },
+    $under := function($a, $part) { exists($a/ancestor-or-self::* intersect $part) },
+    $exits := function($s) {
+      exists($s/self::ReturnStatement | $s/self::ThrowStatement
+             | $s/self::Block/*[last()][self::ReturnStatement or self::ThrowStatement])
+    },
+    $mk := function($g, $v) { if (exists($v)) then map { 'n': $g, 'v': $v } else () },
+    $guards := function($a, $k) {
+      (for $c in $a/ancestor::ConditionalExpression[$under($a, *[2])] | $a/ancestor::IfStatement[$under($a, *[2])]
+         | $a/ancestor::InfixExpression[@Operator = '&&'][$under($a, *[2])]
+         return for $g in $leaves($c/*[1], '&&') return $mk($g, $positive($g, $k)),
+       for $c in $a/ancestor::InfixExpression[@Operator = '||'][$under($a, *[2])]
+         return for $g in $leaves($c/*[1], '||') return $mk($g, $negative($g, $k)),
+       for $c in $a/ancestor::ConditionalExpression[$under($a, *[3])] | $a/ancestor::IfStatement[$under($a, *[3])]
+         return for $g in $leaves($c/*[1], '||') return $mk($g, $negative($g, $k)),
+       for $b in $a/ancestor::Block
+         return for $c in $b/*[following-sibling::* intersect $a/ancestor::*][self::IfStatement][count(*) = 2][$exits(*[2])]
+           return for $g in $leaves($c/*[1], '||') return $mk($g, $negative($g, $k)))
+    }
+return (
+  //ArrayAccess[*[2][self::NumericLiteral][@IntLiteral = true()]]
+  | //MethodCall[@MethodName = 'get'][ArgumentList/@Size = 1][ArgumentList/NumericLiteral[@IntLiteral = true()]]
+      [*[1][pmd-java:typeIs('java.util.List')]]
+)[let $k := $key(*[1]),
+      $m := if (self::ArrayAccess) then $int(*[2]) else $int(ArgumentList/*[1]),
+      $found := if (exists($k)) then $guards(., $k) else (),
+      $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1],
+      $self := .
+  return exists($found) and $m > max($found ! .?v)
+     and (every $n in $scope//*[$lenKey(.) = $k][. << $self] satisfies exists($found ! .?n/*[1][. is $n]))
+     and empty($scope//*[self::VariableAccess or self::FieldAccess][@Name = $k][@AccessType = 'WRITE'])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="ConstructorLeaksResourceOnFailure" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This constructor stores a new thread pool, timer or open file or connection in a field and then runs code that can throw. When that code throws, the caller never receives the object and cannot close it, so the threads or the handle leak (a non-daemon pool also keeps the JVM alive). Create the resource last, or put the rest of the constructor in try/catch that releases it and rethrows (catch (RuntimeException | Error e) then pool.shutdownNow() and throw e), or build the object in a factory method that owns the cleanup. An exception fits only when the resource is released by a caller that is guaranteed to run.">
     <priority>3</priority>
