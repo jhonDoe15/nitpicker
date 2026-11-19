@@ -29,11 +29,8 @@ import {
   COPIED_CONSTANT_RULE,
 } from '../adapters/review-rules/copied-constants/copied-constants.mts';
 import { copiedConstantMessage } from '../../../shared/rules/copied-constants/copied-constants.mjs';
-import {
-  MAX_VALUE_ALLOWED,
-  MAX_VALUE_EXCEPTION_RULE,
-  MAX_VALUE_RULE,
-} from '../adapters/review-rules/max-value-sums/max-value-sums.mts';
+import { maxValueEntry } from './review-entries/max-value.mts';
+import { nullFallThroughEntry } from './review-entries/null-fall-through.mts';
 import { springConfigForms } from './spring-config-messages.mts';
 import {
   ROUND_TRIP_EXCEPTION_RULE,
@@ -42,7 +39,7 @@ import {
 import { roundTripMessage } from '../../../shared/rules/round-trips/round-trips.mjs';
 
 const GUIDE = 'docs/java-preset.md';
-const MAX_VALUE_GUIDE_LABEL = 'Java preset guide';
+const GUIDE_LABEL = 'Java preset guide';
 const EXCEPTIONS_KEY = 'exceptions';
 const JVM = { page: 'java-nitpicker', analyzers: JVM_ANALYZERS, builds: JVM_BUILDS };
 const SPRING_ONLY = 'A project with Spring on the compile classpath.';
@@ -76,7 +73,7 @@ function archunitEntry(rule: string): RuleEntry {
     allowed: archunitAdvice(rule),
     scope: rule.startsWith(DDD_PREFIX) ? JMOLECULES_ONLY : SPRING_ONLY,
     exception: { key: EXCEPTIONS_KEY, rule: `archunit/${rule}` },
-    docs: [{ label: 'Java preset guide', path: GUIDE, anchor: 'spring-architecture-rules' }],
+    docs: [{ label: GUIDE_LABEL, path: GUIDE, anchor: 'spring-architecture-rules' }],
   });
 }
 
@@ -90,7 +87,7 @@ function contractTypeEntry(): RuleEntry {
     allowed: contractEntry('<Class>', 'service|persistence|<method>:<PersistenceHandle>').message,
     scope: 'A project with Spring, or with feature folders, in its main sources.',
     exception: { key: EXCEPTIONS_KEY, rule: `archunit/${CONTRACT_RULE}` },
-    docs: [{ label: 'Java preset guide', path: GUIDE, anchor: 'spring-architecture-rules' }],
+    docs: [{ label: GUIDE_LABEL, path: GUIDE, anchor: 'spring-architecture-rules' }],
   });
 }
 
@@ -109,7 +106,7 @@ function archunitEntries(): RuleEntry[] {
       why: 'The project writes ArchUnit rules as tests named `*ArchTest` or `*ArchitectureTest`; nitpicker runs them and reports each violated rule by the name of its test field or method.',
       allowed: "Fix the code the rule's message names.",
       exception: { key: EXCEPTIONS_KEY, rule: 'archunit/<rule>' },
-      docs: [{ label: 'Java preset guide', path: GUIDE, anchor: 'slice-4-archunit' }],
+      docs: [{ label: GUIDE_LABEL, path: GUIDE, anchor: 'slice-4-archunit' }],
     }),
   ];
 }
@@ -125,7 +122,7 @@ function springConfigEntries(): RuleEntry[] {
       scope: SPRING_ONLY,
       forms,
       exception: { key: EXCEPTIONS_KEY, rule: `spring/${rule}` },
-      docs: [{ label: 'Java preset guide', path: GUIDE, anchor: 'spring-configuration-files' }],
+      docs: [{ label: GUIDE_LABEL, path: GUIDE, anchor: 'spring-configuration-files' }],
     }),
   );
 }
@@ -140,7 +137,7 @@ function formatEntry(style: string): RuleEntry {
     why: `The Java presets keep one layout, the formatter's. ${label} runs in check mode and reports every file it would change.`,
     allowed: javaFormatMessage(style),
     exception: { key: EXCEPTIONS_KEY, rule: `${tool}/format` },
-    docs: [{ label: 'Java preset guide', path: GUIDE, anchor: 'style' }],
+    docs: [{ label: GUIDE_LABEL, path: GUIDE, anchor: 'style' }],
   });
 }
 
@@ -199,7 +196,7 @@ function unrunTestEntry(): RuleEntry {
       { label: 'Maven', message: adviceOf(UNRUN_TEST_ADVICE.maven({ test: '<Test>IT' })) },
     ],
     exception: { key: EXCEPTIONS_KEY, rule: UNRUN_TEST_EXCEPTION_RULE },
-    docs: [{ label: 'Java preset guide', path: GUIDE, anchor: 'tests-that-never-run' }],
+    docs: [{ label: GUIDE_LABEL, path: GUIDE, anchor: 'tests-that-never-run' }],
   });
 }
 
@@ -217,7 +214,7 @@ function roundTripEntry(): RuleEntry {
       example: 'assertEquals(value, <Owner>.<decode>(<Owner>.<encode>(value)))',
     }),
     exception: { key: EXCEPTIONS_KEY, rule: ROUND_TRIP_EXCEPTION_RULE },
-    docs: [{ label: 'Java preset guide', path: GUIDE, anchor: 'round-trip-tests' }],
+    docs: [{ label: GUIDE_LABEL, path: GUIDE, anchor: 'round-trip-tests' }],
   });
 }
 
@@ -237,29 +234,13 @@ function copiedConstantEntry(): RuleEntry {
     }),
     exception: { key: EXCEPTIONS_KEY, rule: COPIED_CONSTANT_EXCEPTION_RULE },
     docs: [
-      { label: 'Java preset guide', path: GUIDE, anchor: 'tests-that-copy-a-constant' },
+      { label: GUIDE_LABEL, path: GUIDE, anchor: 'tests-that-copy-a-constant' },
       ...counterpartsOf(COPIED_CONSTANT_EXCEPTION_RULE),
     ],
   });
 }
 
-function maxValueEntry(): RuleEntry {
-  return ruleEntry({
-    ...JVM,
-    tool: 'pmd',
-    rule: MAX_VALUE_RULE,
-    summary:
-      'An integer `+`, `*` or `+=` with an operand that can hold `Integer.MAX_VALUE` or `Long.MAX_VALUE` (a constant, field or local initialised to it, a parameter a call passes it or defaults to it), whose result is an index, length, bound, `Math.min` argument or compared.',
-    why: 'A "no limit" value overflows as soon as it is added to something, and the negative result goes on as an index or bound. Nitpicker reads the sources of every module for it and prints it as a PMD rule, like the other cross-file rules.',
-    allowed: MAX_VALUE_ALLOWED,
-    exception: { key: EXCEPTIONS_KEY, rule: MAX_VALUE_EXCEPTION_RULE },
-    docs: [
-      { label: MAX_VALUE_GUIDE_LABEL, path: GUIDE, anchor: 'sums-that-overflow-a-maximum-value' },
-      ...counterpartsOf(MAX_VALUE_EXCEPTION_RULE),
-    ],
-  });
-}
-
+/** The entries of the rules nitpicker itself adds to the Java and Kotlin presets. */
 export function jvmNitpickerEntries(): RuleEntry[] {
   return [
     ...archunitEntries(),
@@ -268,6 +249,7 @@ export function jvmNitpickerEntries(): RuleEntry[] {
     roundTripEntry(),
     copiedConstantEntry(),
     maxValueEntry(),
+    nullFallThroughEntry(),
     formatEntry('google'),
     formatEntry('palantir'),
     ...suppressionEntries(),

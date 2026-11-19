@@ -1,8 +1,16 @@
+import { hintText } from '../typed/message-views.mts';
 import { RULES_TOOL } from '../tool.mts';
 import type { RuleHint } from '../hint-types.mts';
 
 const OWNED_MUTATION = /^(.+) \((.+)\)$/u;
 const ALIAS = /^(\S+) = (\S+)$/u;
+const USE_TEXT = /^([^|]+)\|(.*)$/u;
+
+function fallThroughDescription(subject = ''): string {
+  const [, name = subject, use] = USE_TEXT.exec(subject) ?? [];
+  const target = use === undefined ? 'code' : `\`${use}\``;
+  return `The null branch handles \`${name}\` and then falls through to ${target}, which uses \`${name}\``;
+}
 
 function mutationDescription(subject = ''): string {
   const [, mutation = '', owner] = OWNED_MUTATION.exec(subject) ?? [];
@@ -45,6 +53,13 @@ export const SIGNATURE_HINTS: readonly RuleHint[] = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['null-branch-fall-through'],
+    describe: fallThroughDescription,
+    allowed:
+      'Add `return` (or an `else`) so the null case is handled once; a branch that only logs and then continues still fails at the later use.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['number-truthiness'],
     describe: (subject) =>
       `\`${subject}\` is a number tested for truth, so \`0\` reads as false or missing`,
@@ -54,8 +69,9 @@ export const SIGNATURE_HINTS: readonly RuleHint[] = [
   {
     tool: RULES_TOOL,
     rules: ['presence-truthiness'],
-    describe: (subject) =>
-      `\`${subject}\` is an optional string or boolean tested for truth, so \`''\` or \`False\` reads as missing`,
+    describe: (subject, _libraries, data) =>
+      `\`${subject}\` is an optional string, boolean or generic value tested for truth, so \`''\` or \`False\` reads as missing, and ${hintText(data, 'evidence')}`,
+    referenceData: { evidence: '<why the falsy value is valid here>' },
     allowed:
       'Test for `None` only: `name is not None`, `name if name is not None else DEFAULT`. An exception fits only when an empty string or `False` must take the same path as a missing value.',
   },

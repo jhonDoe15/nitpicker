@@ -4,7 +4,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../../builds/java-build.mts';
-import { fieldOf, listOf, parseJson, textOf } from '../../../../../shared/values/readers.mts';
+import {
+  fieldOf,
+  listOf,
+  numberOr,
+  parseJson,
+  textOf,
+} from '../../../../../shared/values/readers.mts';
 import { enabled, gradle } from '../__tests__/spring-project.mts';
 
 const fixture = path.resolve(import.meta.dirname, '../../fixtures/spring-plain-jpa-project');
@@ -45,6 +51,13 @@ describe.skipIf(!enabled)('Spring rules on a Spring project without Spring Data'
     expect(rules.filter((rule) => /^(SpringData|SpringTypedConfiguration)/u.test(rule))).toEqual(
       [],
     );
-    expect(rules.filter((rule) => rule === 'IoCallInLoop')).toEqual(['IoCallInLoop']);
+    const loops = listOf(fieldOf(run, 'results'))
+      .filter((result) => textOf(fieldOf(result, 'ruleId')) === 'IoCallInLoop')
+      .map((result) => {
+        const [location] = listOf(fieldOf(result, 'locations'));
+        const region = fieldOf(fieldOf(location, 'physicalLocation'), 'region');
+        return numberOr(fieldOf(region, 'startLine'), 0);
+      });
+    expect(loops).toEqual([15, 33]);
   });
 });
