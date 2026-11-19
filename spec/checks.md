@@ -147,6 +147,12 @@ Stale retries: `stale-retry` in the Python preset reports a SQLAlchemy `commit()
 `tenacity` or `backoff` decorator or a `Retrying` loop runs again after `StaleDataError` without reading the row again
 (`session.get`, `refresh`, a query); the row is read by id inside each attempt.
 
+Python truthiness rules: `falsy-default` (a parameter replaced with `or`) counts a `QuerySet` parameter and an unannotated
+parameter that is rebuilt as a queryset as falsy, and also reports an `or` chain on number lookups of a typed mapping or
+parsed data (`usage.get("a") or usage.get("b") or 0`); `number-truthiness` reads a number from a project class field
+through an annotated parameter, from a project function with a number return annotation, from a `timedelta` and from a
+queryset. The allowed forms test `None`, compare the number, or call `exists()`.
+
 Python overrides: `override-without-super` reports a method or property that replaces a base member without calling
 `super().<name>`, either a member of a built-in contract (Home Assistant `CoordinatorEntity.available` and `async_added_to_hass`, Django
 `Model.save`, `ModelForm.clean` and the test case class fixtures, a `setUp` that a project base defines) or a member
@@ -587,6 +593,11 @@ Warning filters in library code: `warning-filter-in-function` in the Python pres
 `simplefilter`, `filterwarnings` and `resetwarnings` inside a function of production code, because the filters are
 process-wide and racy across threads. Module level calls, `main` of a script, `__main__.py`, console-script entry
 points, click and typer commands and test code are left alone.
+
+Command-line failures that exit 0: `exit-status-zero-on-failure` in the Python preset reports `raise SystemExit`,
+`sys.exit()` and `exit(0)` forms inside an `except` block or right after an error message, a `subprocess.run`,
+`subprocess.call` or `os.system` in a command whose exit status is never read, and a failure flag that is only
+printed. `SystemExit(1)`, `SystemExit("message")`, `check=True` and `click.ClickException` are left alone.
 
 Pending requests left hanging by a close: `nitpicker/settle-pending-on-close` (strict preset, production source)
 reports a `Map`, object or array of callbacks, resolve and reject pairs or deferreds in a class or factory with a
