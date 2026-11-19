@@ -31,14 +31,18 @@ const LOADER = [
 ].join('\n');
 const TEST_FILE = 'def test_add():\n    assert  1 + 1 == 2\n';
 
-function fixTopic(changes: Record<string, string>, selectedRules?: string[]) {
+function fixTopic(
+  changes: Record<string, string>,
+  selectedRules?: string[],
+  fake: { ruffDiagnostics?: (root: string) => string; ruffReportFails?: true } = {},
+) {
   const repository = createGitRepository(
     { 'pyproject.toml': PYPROJECT, 'README.md': 'demo\n' },
     { baseRef: 'base' },
   );
   fixtureGit(repository.root, ['checkout', '-q', '-b', 'topic']);
   writeFiles(repository.root, changes);
-  const tools = fakePythonTools({ sourceFixes: true });
+  const tools = fakePythonTools({ sourceFixes: true, ...fake });
   const result = fixWorkingTree(
     fixOptions({
       repositoryRoot: repository.root,
@@ -75,11 +79,42 @@ describe('--fix for Python source recipes', () => {
     expect(tools.operations()).toEqual([
       'python-probe',
       'python-probe',
+      'python-probe',
       'ruff-fix',
       'ruff-format-fix',
     ]);
     expect(tools.callsOf('ruff-fix')[0]?.input).toBe(EXC_INFO);
     expect(tools.callsOf('ruff-format-fix')[0]?.input).toBe(EXC_INFO);
+  });
+
+  it('deletes the commented-out lines ruff reports and keeps the sentence above them', () => {
+    const source = 'x = 1\n# Old approach, kept for now.\n# y = compute(x)\n# print(y)\nz = 2\n';
+    const { result, read } = fixTopic({ 'app/a.py': source }, undefined, {
+      ruffDiagnostics: (root) =>
+        JSON.stringify(
+          [3, 4].map((row) => ({
+            code: 'ERA001',
+            filename: path.join(root, 'app/a.py'),
+            location: { row },
+          })),
+        ),
+    });
+
+    expect(read('app/a.py')).toBe('x = 1\n# Old approach, kept for now.\nz = 2\n');
+    expect(result.fixedFindings).toEqual(['app/a.py:3 ruff/ERA001 (python-commented-out-code)']);
+  });
+
+  it('leaves commented-out code as is and still runs the other recipes when ruff cannot report it', () => {
+    const { result, read } = fixTopic({ 'app/load.py': LOADER }, undefined, {
+      ruffReportFails: true,
+    });
+
+    expect(read('app/load.py')).toBe(squeezed(EXC_INFO));
+    expect(result.toolErrors).toEqual([]);
+    expect(result.notes).toEqual([
+      '--fix left ruff/ERA001 as is: ruff could not report it (ruff check exited 2 in the PATH environment:)',
+      'ruff format rewrote app/load.py',
+    ]);
   });
 
   it('applies review recipes for the selected rules before ruff and the formatter', () => {

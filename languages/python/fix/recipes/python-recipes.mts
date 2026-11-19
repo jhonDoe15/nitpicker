@@ -5,6 +5,7 @@ import { localRunScript } from '../source/script-edits.mts';
 import { scriptRecipes } from '../source/python-recipes.mts';
 import { projectScriptRecipes } from '../source/project/project-recipes.mts';
 import { pythonDependenciesRecipe } from './dependencies/dependency-recipe.mts';
+import { pythonCommentedCodeRecipe } from './comments/commented-code.mts';
 import { pythonRestatingDocstringRecipe } from './restating-docstring.mts';
 
 export function createPythonRecipes(
@@ -14,6 +15,7 @@ export function createPythonRecipes(
     ...scriptRecipes(script),
     ...projectScriptRecipes(script),
     pythonRestatingDocstringRecipe,
+    pythonCommentedCodeRecipe,
     pythonDependenciesRecipe,
   ]);
 }

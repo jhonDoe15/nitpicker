@@ -58,10 +58,13 @@ export type DependencyInputs = {
 
 export type UnusedIgnore = { readonly line: number | undefined; readonly message: string };
 
+export type CommentedCode = { readonly text: string; readonly lines: number[] };
+
 export type RecipeInputs = {
   readonly isExcepted?: (rule: string, name: string) => boolean;
   readonly pythonDocstrings?: Readonly<Record<string, readonly DocComment[]>>;
   readonly pythonDependencies?: DependencyInputs;
+  readonly pythonCommentedCode?: Readonly<Record<string, CommentedCode>>;
   readonly pythonUnusedIgnores?: Readonly<
     Record<string, { readonly text: string | undefined; readonly ignores: readonly UnusedIgnore[] }>
   >;

@@ -37,7 +37,11 @@ export type StepInput = {
   readonly writer: FixWriter;
 };
 
-export type Gathered = { readonly inputs: RecipeInputs; readonly toolErrors: unknown[] };
+export type Gathered = {
+  readonly inputs: RecipeInputs;
+  readonly toolErrors: unknown[];
+  readonly notes: string[];
+};
 
 export type FixersResult = {
   readonly fixedFindings?: readonly string[];
