@@ -37,7 +37,7 @@ public final class GeneratedOnHandWrittenCode extends BugChecker implements Anno
       }
     }
     Support.dropImportIfUnused(fix, state, Support.simpleName(tree), all);
-    return describeMatch(tree, fix.build());
+    return Support.describe(this, tree, fix.build(), state);
   }
 
   private static boolean flagged(TreePath path) {

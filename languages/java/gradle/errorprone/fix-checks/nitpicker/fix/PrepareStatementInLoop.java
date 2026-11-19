@@ -73,7 +73,7 @@ public final class PrepareStatementInLoop extends BugChecker
     String replacement =
         "try (" + Support.source(resource, state) + ") {\n" + indent + "  " + header + "{" + inner + "\n" + indent
             + "  }\n" + indent + "}";
-    return describeMatch(loop, SuggestedFix.replace(loop, replacement));
+    return Support.describe(this, loop, SuggestedFix.replace(loop, replacement), state);
   }
 
   private static TryTree onlyTry(StatementTree body) {

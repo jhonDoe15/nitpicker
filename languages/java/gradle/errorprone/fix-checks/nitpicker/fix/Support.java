@@ -1,12 +1,18 @@
 package nitpicker.fix;
 
 import com.google.errorprone.VisitorState;
+import com.google.errorprone.bugpatterns.BugChecker;
+import com.google.errorprone.fixes.ErrorProneEndPosTable;
+import com.google.errorprone.fixes.Fix;
+import com.google.errorprone.fixes.Replacement;
 import com.google.errorprone.fixes.SuggestedFix;
+import com.google.errorprone.matchers.Description;
 import com.google.errorprone.util.ASTHelpers;
 import com.sun.source.tree.AnnotationTree;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.IdentifierTree;
+import com.sun.source.tree.LineMap;
 import com.sun.source.tree.LiteralTree;
 import com.sun.source.tree.ImportTree;
 import com.sun.source.tree.MemberSelectTree;
@@ -21,6 +27,7 @@ import com.sun.tools.javac.code.Type;
 import com.sun.tools.javac.code.Types;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.StringJoiner;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import javax.lang.model.element.ElementKind;
@@ -31,6 +38,24 @@ final class Support {
   private static final ThreadLocal<Boolean> SCANNING = ThreadLocal.withInitial(() -> false);
 
   private Support() {}
+
+  /** Describes a match and names the source lines its fix edits, so a fix is kept or dropped as a whole. */
+  static Description describe(BugChecker checker, Tree tree, Fix fix, VisitorState state) {
+    return checker.buildDescription(tree).setMessage(checker.message() + editedLines(fix, state)).addFix(fix).build();
+  }
+
+  private static String editedLines(Fix fix, VisitorState state) {
+    CompilationUnitTree unit = state.getPath().getCompilationUnit();
+    LineMap lines = unit.getLineMap();
+    StringJoiner ranges = new StringJoiner(",", " (edits: ", ")");
+    ranges.setEmptyValue("");
+    for (Replacement replacement : fix.getReplacements(ErrorProneEndPosTable.create(unit))) {
+      int start = replacement.startPosition();
+      int last = Math.max(start, replacement.endPosition() - 1);
+      ranges.add(lines.getLineNumber(start) + "-" + lines.getLineNumber(last));
+    }
+    return ranges.toString();
+  }
 
   static void dropImportIfUnused(SuggestedFix.Builder fix, VisitorState state, String simpleName, int[] removed,
       Function<TreePath, int[]> rewrites) {

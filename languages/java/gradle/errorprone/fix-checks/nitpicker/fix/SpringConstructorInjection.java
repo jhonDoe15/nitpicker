@@ -91,7 +91,7 @@ public final class SpringConstructorInjection extends BugChecker implements Clas
     String access = tree.getModifiers().getFlags().contains(Modifier.PUBLIC) ? "public " : "";
     fix.postfixWith(lastField, "\n\n" + indent + access + tree.getSimpleName() + "(" + parameters + ") {" + body
         + "\n" + indent + "}");
-    return describeMatch(fields.get(0), fix.build());
+    return Support.describe(this, fields.get(0), fix.build(), state);
   }
 
   private static List<int[]> unitRemovals(VisitorState state) {

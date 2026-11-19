@@ -44,6 +44,6 @@ public final class UseStandardCharsets extends BugChecker implements MethodInvoc
     }
     SuggestedFix.Builder fix = SuggestedFix.builder();
     String type = SuggestedFixes.qualifyType(state, fix, "java.nio.charset.StandardCharsets");
-    return describeMatch(tree, fix.replace(tree, type + "." + constant).build());
+    return Support.describe(this, tree, fix.replace(tree, type + "." + constant).build(), state);
   }
 }
