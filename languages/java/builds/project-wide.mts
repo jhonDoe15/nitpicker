@@ -9,6 +9,7 @@ import {
   inModuleOf,
   jdepsEdges,
   maxValueFindings,
+  nullableReturnFindings,
   nullFallThroughFindings,
   kotlinMetricsOf,
   kotlinNodesOf,
@@ -265,6 +266,7 @@ export function projectWideReport(
     ...copiedConstantFindings(projectRoot, { projects, kotlin, policy }),
     ...maxValueFindings(projectRoot, { projects, kotlin, policy }),
     ...nullFallThroughFindings(projectRoot, { projects, kotlin, policy }),
+    ...nullableReturnFindings(projectRoot, { projects, kotlin, policy }),
     ...features.findings,
   ];
   return { findings, imports: reuse.imports };

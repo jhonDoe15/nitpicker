@@ -204,3 +204,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A null branch that does not leave is not followed by a use of the same value
   (`pmd/NullBranchFallThrough`): `if (value == null) { out.append("null"); }` followed by `value.getClass()` fails on the null path, or handles the value twice. End the
   branch with `return` or `throw`, or put the use in an `else`.
+- The result of a project method that can return `null` is checked before it is used
+  (`pmd/NullableReturnUse`): `Point v = line.intersection(other); line.toSubSpace(v);` throws when the lines are
+  parallel and the method returns `null`. A plain `return null` is reported only where other callers check the
+  result. Add `if (v == null) return ...;`, annotate the method `@Nullable` and handle it,
+  or, when the caller knows the value is set, document it with `Objects.requireNonNull(v, "why")`.
