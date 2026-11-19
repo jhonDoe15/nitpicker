@@ -82,6 +82,11 @@ the allowed form and ends with its exception entry.
   (`go-rules/nil-branch-fall-through`): `if v == nil { log.Println(...) }` then `v.Field` panics on the nil
   path. End the branch with `return` (or `continue`), or use an `else`.
 - A function does not call itself, directly or through another function of the package (`go-rules/self-recursion`): a retry or poll is a `for attempt := range attempts` loop, a tree walk is a loop over a worklist that each step appends the node's children to, flat data is a loop that appends or a `slices`/`maps` helper. An exception fits only when the recursion is bounded and deliberate.
+- Domain code does not change a slice or map it was given (`go-rules/mutating-method-in-domain`, packages
+  with a `domain` path segment): `append(items, x)`, `sort.Ints(items)`, `slices.Sort(items)`, `table[k] = v`
+  or `delete(table, k)` on a parameter writes into the caller's data. Build a new value:
+  `append(slices.Clone(items), x)`, `slices.Concat`, `slices.Sorted(slices.Values(items))`, `maps.Clone(table)`,
+  or assign a clone to the parameter first. A slice or map made and filled in the same function is fine.
 - Never add to a value that can hold the maximum of its type (`go-rules/max-value-overflow`): a
   constant, variable, field or parameter set to `math.MaxInt` (or `MaxInt32`, `MaxInt64`) that a sum or
   product turns negative as an index, slice bound, `make` length, `min`/`max` argument or comparison

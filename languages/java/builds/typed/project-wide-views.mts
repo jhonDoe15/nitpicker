@@ -8,6 +8,7 @@ import { readCopiedConstantFindings } from '../../adapters/review-rules/copied-c
 import { readCopyPastedTestFindings } from '../../adapters/review-rules/copy-pasted-tests/copy-pasted-tests.mts';
 import { readFixedDelayFindings } from '../../adapters/review-rules/fixed-delays/fixed-delays.mts';
 import { readMaxValueFindings } from '../../adapters/review-rules/max-value-sums/max-value-sums.mts';
+import { readMutatingMethodFindings } from '../../adapters/review-rules/mutating-methods/mutating-methods.mts';
 import { readNullFallThroughFindings } from '../../adapters/review-rules/null-fall-through/null-fall-through.mts';
 import { readRoundTripFindings } from '../../adapters/review-rules/round-trips/round-trips.mts';
 import { readSelfRecursionFindings } from '../../adapters/review-rules/self-recursion/self-recursion.mts';
@@ -154,4 +155,7 @@ export function nullFallThroughFindings(projectRoot: string, options: WideOption
 }
 export function fixedDelayFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
   return findingsOf(callUntyped(readFixedDelayFindings, projectRoot, options));
+}
+export function mutatingMethodFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
+  return findingsOf(callUntyped(readMutatingMethodFindings, projectRoot, options));
 }
