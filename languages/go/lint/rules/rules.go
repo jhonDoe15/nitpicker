@@ -59,12 +59,6 @@ func Analyzers() []*analysis.Analyzer {
 		[]*analysis.Analyzer{
 			copies.Analyzer,
 			optional.Analyzer,
-	return slices.Concat(failures.Analyzers(), concurrency.Analyzers(), design.Analyzers(), remote.Analyzers(),
-		database.Analyzers(), guards.Analyzers(), schema.Analyzers(), secrets.Analyzers(), honesty.Analyzers(),
-		lifecycles.Analyzers(), httpvalues.Analyzers(),
-		[]*analysis.Analyzer{
-			copies.Analyzer,
-			optional.Analyzer,
 			nilbranch.Analyzer,
 			overflow.Analyzer,
 			requests.Analyzer,
@@ -85,5 +79,4 @@ func Analyzers() []*analysis.Analyzer {
 			listings.Analyzer,
 		},
 	)
-		})
 }

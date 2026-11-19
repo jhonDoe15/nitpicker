@@ -1,3 +1,13 @@
+import { rule as ruleNoRaisedTestTimeout } from '../rules/test-runtime/assertions/no-raised-test-timeout.mts';
+import { rule as ruleNoRawHttpValue } from '../rules/http-values/no-raw-http-value.mts';
+import { rule as ruleNoRealTimeRandomOrNetwork } from '../test-isolation/no-real-time-random-or-network.mts';
+import { rule as ruleNoReleaseOutsideFinally } from '../rules/resources/release/no-release-outside-finally.mts';
+import { rule as ruleNoRemoteCallInTransaction } from '../rules/effects/no-remote-call-in-transaction.mts';
+import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-call-under-lock.mts';
+import { rule as ruleNoRepeatedStringLiteral } from '../rules/literals/no-repeated-string-literal.mts';
+import { rule as ruleNoRetryWithoutIdempotency } from '../rules/writes/no-retry-without-idempotency.mts';
+import { rule as ruleNoRouteWithoutAuth } from '../rules/route-auth/no-route-without-auth.mts';
+import { rule as ruleNoRuntimeExclusivePropsCheck } from '../rules/react-props/no-runtime-exclusive-props-check.mts';
 import { rule as ruleNoSecretInLog } from '../rules/secrets/no-secret-in-log.mts';
 import { rule as ruleNoSelfRecursion } from '../rules/control/no-self-recursion.mts';
 import { rule as ruleNoSendWithoutReturn } from '../rules/handlers/fall-through/no-send-without-return.mts';
@@ -88,22 +98,18 @@ import { rule as ruleRequireErrorListener } from '../rules/events/require-error-
 import { rule as ruleRequireHttpTimeout } from '../rules/security/http/require-http-timeout.mts';
 import { rule as ruleRequireProcessTimeout } from '../rules/processes/require-process-timeout.mts';
 import { rule as ruleRequirePromiseReject } from '../rules/promises/executors/require-promise-reject.mts';
-import { rule as ruleRequireTestProcessTimeout } from '../rules/test-runtime/processes/timeouts/require-test-process-timeout.mts';
-import { rule as ruleReusableObjectPerCall } from '../rules/reuse/reusable-object-per-call.mts';
-import { rule as ruleSettlePendingOnClose } from '../rules/lifecycles/pending/settle-pending-on-close.mts';
-import { rule as ruleShorterBooleanLogic } from '../rules/control/shorter-boolean-logic.mts';
-import { rule as ruleSimplerBooleanLogic } from '../rules/control/simpler-boolean-logic.mts';
-import { rule as ruleStrictBooleanExpressions } from '../rules/wrapped/strict-boolean-expressions.mts';
-import { rule as ruleStructuredCatchLogging } from '../rules/errors/structured-catch-logging.mts';
-import { rule as ruleTestMustUseProductionRuntime } from '../rules/test-runtime/assertions/test-must-use-production-runtime.mts';
-import { rule as ruleTestTsconfigPinsLibAndTypes } from '../rules/test-runtime/types/test-tsconfig-pins-lib-and-types.mts';
-import { rule as ruleTimeUnitMismatch } from '../rules/time/units/time-unit-mismatch.mts';
-import { rule as ruleTimeoutAbandonsOperation } from '../rules/async/timeout-abandons-operation.mts';
-import { rule as ruleUnboundedFanOut } from '../rules/concurrency/unbounded-fan-out.mts';
-import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reactive/unbounded-reactive-fan-out.mts';
-import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-raised-test-timeout': ruleNoRaisedTestTimeout,
+  'no-raw-http-value': ruleNoRawHttpValue,
+  'no-real-time-random-or-network': ruleNoRealTimeRandomOrNetwork,
+  'no-release-outside-finally': ruleNoReleaseOutsideFinally,
+  'no-remote-call-in-transaction': ruleNoRemoteCallInTransaction,
+  'no-remote-call-under-lock': ruleNoRemoteCallUnderLock,
+  'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
+  'no-retry-without-idempotency': ruleNoRetryWithoutIdempotency,
+  'no-route-without-auth': ruleNoRouteWithoutAuth,
+  'no-runtime-exclusive-props-check': ruleNoRuntimeExclusivePropsCheck,
   'no-secret-in-log': ruleNoSecretInLog,
   'no-self-recursion': ruleNoSelfRecursion,
   'no-send-without-return': ruleNoSendWithoutReturn,
@@ -194,18 +200,4 @@ export const partRules = {
   'require-http-timeout': ruleRequireHttpTimeout,
   'require-process-timeout': ruleRequireProcessTimeout,
   'require-promise-reject': ruleRequirePromiseReject,
-  'require-test-process-timeout': ruleRequireTestProcessTimeout,
-  'reusable-object-per-call': ruleReusableObjectPerCall,
-  'settle-pending-on-close': ruleSettlePendingOnClose,
-  'shorter-boolean-logic': ruleShorterBooleanLogic,
-  'simpler-boolean-logic': ruleSimplerBooleanLogic,
-  'strict-boolean-expressions': ruleStrictBooleanExpressions,
-  'structured-catch-logging': ruleStructuredCatchLogging,
-  'test-must-use-production-runtime': ruleTestMustUseProductionRuntime,
-  'test-tsconfig-pins-lib-and-types': ruleTestTsconfigPinsLibAndTypes,
-  'time-unit-mismatch': ruleTimeUnitMismatch,
-  'timeout-abandons-operation': ruleTimeoutAbandonsOperation,
-  'unbounded-fan-out': ruleUnboundedFanOut,
-  'unbounded-reactive-fan-out': ruleUnboundedReactiveFanOut,
-  'untested-round-trip': ruleUntestedRoundTrip,
 };
