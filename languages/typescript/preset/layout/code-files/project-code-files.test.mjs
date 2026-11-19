@@ -69,8 +69,8 @@ describe('project code traversal', () => {
       'lib/x.js',
     ]);
     expect(layout.sourceGlobs).toEqual([
-      '**/*.{ts,mts,cts,js,mjs,cjs}',
-      '**/*.{ts,mts,cts,js,mjs,cjs}',
+      '**/*.{ts,mts,cts,js,mjs,cjs,jsx}',
+      '**/*.{ts,mts,cts,js,mjs,cjs,jsx}',
     ]);
     expect(layout.isTestFile('test/x.test.js')).toBe(true);
     expect(layout.graphIncludeOnly).toBe('^');

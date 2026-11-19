@@ -8,7 +8,7 @@
   {
     "tool": "python-rules",
     "rule": "self-recursion",
-    "mention": "call each other",
+    "mention": "merge the functions into one that loops",
     "subject": "is_even <-> is_odd"
   }
 ]
