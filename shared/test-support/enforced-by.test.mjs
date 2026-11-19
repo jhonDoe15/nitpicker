@@ -50,10 +50,6 @@ const NOT_ENFORCED_ALTHOUGH_EMITTED = {
       file: 'languages/typescript/preset/unused-api/analyze.mjs',
       evidence: /javascript: layout\.javascript/u,
     },
-    'unused-option': {
-      file: 'languages/typescript/preset/unused-api/analyze.mjs',
-      evidence: /isTypeScriptFile/u,
-    },
     'javascript-in-typescript-project': {
       file: 'languages/typescript/preset/structure/sources/javascript-files.mjs',
       evidence: /isJavascriptPolicy/u,
