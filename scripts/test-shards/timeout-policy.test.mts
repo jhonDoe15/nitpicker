@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { isIntegrationTestFor } from '../../languages/typescript/preset/layout/end-to-end-tests.mjs';
+import { isIntegrationTestFor } from '../../languages/typescript/preset/layout/end-to-end-tests.mts';
 import {
   INTEGRATION_HOOK_TIMEOUT_MS,
   INTEGRATION_TEST_TIMEOUT_MS,
@@ -22,10 +22,10 @@ describe('repository JVM suite deadlines', () => {
         ...readDurations(fileURLToPath(new URL(`./${language}-e2e.json`, import.meta.url))).keys(),
       ];
       expect(files).not.toHaveLength(0);
-      const policy = fieldsOf(config);
+      const policy = fieldsOf(config) ?? {};
       expect(
         files.map((file): unknown => {
-          const integration = isIntegrationTestFor(file, policy) === true;
+          const integration = isIntegrationTestFor(file, policy);
           return resolveTestTimeouts(policy, { file, integration });
         }),
       ).toEqual(

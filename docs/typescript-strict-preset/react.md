@@ -392,7 +392,7 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `.svg` file (a `viewBox`, or without one a `width` and `height`, of 48 or less in both dimensions;
   logos and illustrations are larger, and a sprite sheet with neither is not an icon) under the
   source roots is reported when `package.json` lists an icon package, one of the names in
-  `scopePackages.icons` in `languages/typescript/preset/eslint-config/scope-support.mjs`
+  `scopePackages.icons` in `languages/typescript/preset/eslint-config/scope-support.mts`
   (`lucide-react`, `react-icons`, `@heroicons/react`, `@mui/icons-material`, `@tabler/icons-react`,
   `@phosphor-icons/react`, ...). The framework favicon conventions (`icon.svg`, `favicon.svg`,
   `apple-icon.svg`), names with `logo` or `brand` in them, and generated, test, excluded,

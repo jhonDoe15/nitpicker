@@ -21,9 +21,8 @@ const NODE_22_14_SCRIPTS = ['scripts/typescript/emit.mjs', 'scripts/reference/ge
 const NODE_22_14_BUILD = 'the package build on Node.js 22.14';
 
 export function repositoryFile(root: string, file: string): string {
-  const base = path.resolve(root);
-  const full = path.resolve(base, file);
-  if (!full.startsWith(`${base}${path.sep}`)) {
+  const full = path.resolve(root, file);
+  if (!full.startsWith(`${path.resolve(root)}${path.sep}`)) {
     throw new Error(`${file} is outside the repository`);
   }
   return full;

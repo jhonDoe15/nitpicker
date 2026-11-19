@@ -23,11 +23,10 @@
       "languages/typescript/adapters/oxlint/oxlint-bridge.mts",
       "languages/typescript/adapters/oxlint/oxlint-plan.mts",
       "languages/typescript/adapters/test-runners/mocha/mocha-files.config.mts",
-      "languages/typescript/adapters/test-runners/mocha/restore-sinon.mjs",
+      "languages/typescript/adapters/test-runners/mocha/restore-sinon.mts",
       "languages/typescript/adapters/test-runners/node-test/node-test-reporter.mts",
       "languages/typescript/adapters/test-runners/node-test/restore-mocks.cjs",
       "languages/typescript/adapters/test-runners/v8-coverage/loaded-sources.cjs",
-      "languages/typescript/preset/*/report.mjs",
       "languages/typescript/preset/*/report.mts",
       "languages/typescript/preset/defaults/crap.config.mts",
       "languages/typescript/preset/defaults/stryker.config.mts",
@@ -41,14 +40,14 @@
       "core/diff/execution/analyzer-scheduler.mts",
       "core/reference/generate.mts",
       "core/diff/execution/test-support/fake-analyzer.mts",
-      "core/projects/run/execution/test-support/project-worker.mjs",
+      "core/projects/run/execution/test-support/project-worker.mts",
       "languages/java/adapters/java-runner.mts",
       "languages/java/adapters/gradle-reports/gradle-guards.mts",
       "languages/java/builds/rulesets/write-rules.mts",
       "languages/typescript/adapters/eslint-runner.mts",
       "languages/typescript/adapters/quality-areas-runner.mts",
       "languages/typescript/adapters/static-checks-runner.mts",
-      "languages/typescript/preset/test-environment/read-environment.mjs",
+      "languages/typescript/preset/test-environment/read-environment.mts",
       "languages/typescript/preset/architecture/public-contract-usage.mts",
       "languages/typescript/preset/architecture/runtime-dependency-boundaries.mts",
       "languages/typescript/preset/coding-standards/check.mts",
@@ -79,7 +78,7 @@
   "exceptions": [
     {
       "rule": "nitpicker/no-process-access-outside-composition-root",
-      "paths": ["languages/typescript/preset/test-environment/jest/read-jest-config.mjs"],
+      "paths": ["languages/typescript/preset/test-environment/jest/read-jest-config.mts"],
       "reason": "Config loader: it spawns the project's own Jest to print its resolved config, and the child must inherit the caller's environment with the test script's variables added. The environment is a default parameter, so callers and tests can pass their own."
     },
     {
@@ -179,9 +178,9 @@
           "runner-js-acceptance": {
             "language": "javascript",
             "include": [
-              "languages/javascript/preset/clean-project/runner-projects.test.mjs",
-              "languages/javascript/preset/clean-project/runner-switch.test.mjs",
-              "languages/javascript/preset/clean-project/test-runners.test.mjs"
+              "languages/javascript/preset/clean-project/runner-projects.test.mts",
+              "languages/javascript/preset/clean-project/runner-switch.test.mts",
+              "languages/javascript/preset/clean-project/test-runners.test.mts"
             ],
             "testTimeoutMs": 180000,
             "hookTimeoutMs": 180000,
@@ -190,7 +189,7 @@
           },
           "runner-dom-acceptance": {
             "language": "typescript",
-            "include": ["languages/typescript/preset/clean-projects/jest-dom-project.test.mjs"],
+            "include": ["languages/typescript/preset/clean-projects/jest-dom-project.test.mts"],
             "testTimeoutMs": 180000,
             "hookTimeoutMs": 180000,
             "testDeclarationCeilingMs": 180000,

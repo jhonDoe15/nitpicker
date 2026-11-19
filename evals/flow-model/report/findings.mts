@@ -1,4 +1,4 @@
-import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
+import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mts';
 import { listOf, requiredFields } from '../../../scripts/json/fields.mts';
 import type { AnalysisResult, Reason, ReportedViolation } from '../model/run-types.mts';
 import { sha256 } from './canonical.mts';
