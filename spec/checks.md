@@ -178,6 +178,10 @@ reached through an attribute, an item, a loop variable, a stored alias or one le
 `functools.cache` function whose list, dict or set result a caller changes). They live in
 `languages/python/rules/{signatures,sharing}/`.
 
+Python iterator rule: `iterator-read-twice` (a generator, `map`, `filter`, `zip` or other one-shot iterator, a
+parameter annotated `Iterable` or `Iterator`, or a Django `save` override's `update_fields`, read by two consuming
+operations on one path; materializing it once is the allowed form). It lives in `languages/python/rules/iterators/`.
+
 Python job rule: `job-item-failure-stops-run` (a loop in a Celery task, an APScheduler job or a Django management
 command that does database or remote I/O per item with no `try` around one item, so the first failing item
 stops the rest). It lives in `languages/python/rules/jobs/`.

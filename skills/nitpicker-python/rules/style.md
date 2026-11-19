@@ -50,6 +50,7 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Request, session, cookie, token-header, remote-document and coordinator data can lack a key: read it with
   `.get(key)` and handle `None`, or test `key in data` first, never `request.session[KEY]` or
   `self.coordinator.data[device_id]` (`missing-key-subscript`).
+- A generator, `map`, `filter` or `zip` result is read once: a second loop, `in` test or forwarded call sees nothing (`iterator-read-twice`). Materialize it first (`items = list(items)`); in a Django `save` override write `update_fields = kwargs["update_fields"] = list(update_fields)` before testing it.
 - A branch that handles `None` either leaves or is the whole story (`null-branch-fall-through`):
   `if value is None: out.append("null")` followed by `value.name` fails on the `None` path or handles the
   value twice. End the branch with `return` (or `raise`), or put the use in an `else`.
