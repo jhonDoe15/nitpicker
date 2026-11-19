@@ -13,6 +13,7 @@ export const reactXHints = {
   'no-leaked-conditional-rendering': ` Compare explicitly (\`count > 0 && <Badge />\`) or use a ternary.`,
   'no-unstable-context-value': ` Wrap the value in \`useMemo\` or hoist it.`,
   'no-unstable-default-props': ` Hoist the default to a module-level constant.`,
+  'no-create-ref': ` Use \`useRef\` in a function component: \`createRef()\` gives a new ref on every render.`,
   'no-forward-ref': ` Take \`ref\` as a prop.`,
   'no-context-provider': ` Render \`<Context value={...}>\`.`,
 };

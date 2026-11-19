@@ -1,9 +1,8 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { ancestorsOf, nameOf, type SourceCode } from '../../typed/node-views.mts';
+import { nameOf, type SourceCode } from '../../typed/node-views.mts';
 import {
   functionName,
   isCloseName,
-  isFunctionNode,
   unwrapExpression,
   type FunctionNode,
 } from '../scope/close-scopes.mts';
@@ -62,9 +61,7 @@ export function isCleanupFunction(fn: FunctionNode): boolean {
   return isCloseName(functionName(fn)) || hookCallback(fn);
 }
 
-export function nearestFunction(node: TSESTree.Node): FunctionNode | undefined {
-  return ancestorsOf(node).find(isFunctionNode);
-}
+export { nearestFunction } from '../shared/scopes.mts';
 
 export function releaseCall(expression: TSESTree.Node): TSESTree.CallExpression | undefined {
   const call = unwrapExpression(expression);

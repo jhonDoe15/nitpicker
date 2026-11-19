@@ -48,6 +48,7 @@ import { strictTestConfigFor } from './strict-tests.mts';
 import { configFileGlobsFor, domainGlobsFor, testAreaGlobsFor } from './typed/glob-views.mts';
 import { truthinessRules } from './truthiness/truthiness-rules.mts';
 import { productionPolicyConfigFor } from './policy/production-policy.mts';
+import { productionSourceRules } from './production/production-rules.mts';
 
 function everywhereSelectorsFor(options: StrictOptions) {
   return [...escapeHatchSelectors, ...declarationSelectorsFor(options)];
@@ -116,21 +117,6 @@ const domainRules = {
   'nitpicker/no-unknown-in-domain': 'error',
 };
 
-const productionSourceRules = {
-  'nitpicker/no-boolean-flag-parameter': 'error',
-  'nitpicker/no-self-recursion': 'error',
-  'nitpicker/no-cleanup-skipped-on-failure': 'error',
-  'nitpicker/no-task-outliving-resource': 'error',
-  'nitpicker/settle-pending-on-close': 'error',
-  'nitpicker/release-listeners-on-close': 'error',
-  'nitpicker/no-add-only-collection': 'error',
-  'nitpicker/no-tri-state-boolean': 'error',
-  'nitpicker/no-unhandled-url-parse': 'error',
-  'nitpicker/reusable-object-per-call': 'error',
-  'nitpicker/no-compatibility-shim': 'error',
-  'nitpicker/untested-round-trip': 'error',
-};
-
 export function strictSyntaxConfigFor(
   layout: ScopeLayout = defaultResolvedLayout,
   options: StrictOptions = {},
@@ -192,6 +178,7 @@ function typedProductionRules(layout: ScopeLayout, options: StrictOptions) {
       { runners: options.detachedWorkRunners ?? [] },
     ],
     'nitpicker/no-cached-rejection': 'error',
+    'nitpicker/no-dropped-subscription-handle': 'error',
     'nitpicker/exhaustive-union-predicate': 'error',
     'nitpicker/no-forwarding-method-alias': 'error',
     'nitpicker/no-forwarding-wrapper': 'error',

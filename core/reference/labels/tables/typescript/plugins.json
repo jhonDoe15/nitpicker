@@ -66,6 +66,7 @@
   "eslint/react-x/no-array-index-key": ["bug", "react"],
   "eslint/react-x/no-class-component": ["maintainability", "react"],
   "eslint/react-x/no-context-provider": ["simplification", "react"],
+  "eslint/react-x/no-create-ref": ["bug", "react"],
   "eslint/react-x/no-duplicate-key": ["bug", "react"],
   "eslint/react-x/no-forward-ref": ["simplification", "react"],
   "eslint/react-x/no-leaked-conditional-rendering": ["bug", "react"],
