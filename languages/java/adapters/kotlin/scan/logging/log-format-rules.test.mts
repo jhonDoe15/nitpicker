@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Ruled, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
-import { logFormatArguments as untypedLogFormatArguments } from './log-format-rules.mjs';
+import { logFormatArguments as untypedLogFormatArguments } from './log-format-rules.mts';
 
 const logFormatArguments: Check<Ruled> = untypedLogFormatArguments;
 

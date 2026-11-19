@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { runMaven } from '../../maven-command.mjs';
+import { runMaven } from '../../maven-command.mts';
 import { readInside as untypedReadInside } from '../../../../../shared/conventions/read-inside.mjs';
 import { callUntyped } from '../../../adapters/typed/java-values.mts';
 import { messageOf, optionalText, textOf } from '../../../../../shared/values/readers.mts';

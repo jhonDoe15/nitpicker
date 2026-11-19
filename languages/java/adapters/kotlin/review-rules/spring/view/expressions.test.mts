@@ -7,7 +7,7 @@ import {
   parseSelector,
   splitArguments as untypedSplitArguments,
   unwrapped,
-} from './expressions.mjs';
+} from './expressions.mts';
 import { fixtureFacts, springViews } from '../spring-test-facts.mts';
 
 const splitArguments: (text: string) => { text: string }[] = untypedSplitArguments;
@@ -54,9 +54,9 @@ describe('Kotlin expression text', () => {
       call: true,
       typeArguments: '<Order>',
       arguments: [
-        { text: 'o', spread: false },
-        { text: 'xs', spread: true },
-        { text: '{ it }', lambda: true },
+        { text: 'o', spread: false, lambda: false },
+        { text: 'xs', spread: true, lambda: false },
+        { text: '{ it }', spread: false, lambda: true },
       ],
     });
     expect(parseSelector('content')).toEqual({

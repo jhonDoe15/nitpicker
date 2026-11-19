@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { fieldOf, listOf } from '../../../../../../../shared/values/readers.mts';
 import {
   BOUNDED,
   UNBOUNDED,
@@ -7,7 +6,7 @@ import {
   stableIdentities,
   fixtureProject,
 } from './fan-out-support.mts';
-import { FAN_OUT_MESSAGES, fanOutMessage } from './fan-out.mjs';
+import { FAN_OUT_MESSAGES, fanOutMessage } from './fan-out.mts';
 
 const { files, coverage, lineOf, run, findingAt } = fixtureProject(
   'kotlin-fan-out-project',
@@ -54,9 +53,8 @@ describe('fanOutFindings on the recorded fixture facts', () => {
       file.file === UNBOUNDED
         ? {
             ...file,
-            scopes: listOf(file['scopes']).filter(
-              (scope) =>
-                fieldOf(scope, 'line') !== lineOf(UNBOUNDED, 'urls.map { async { client.send'),
+            scopes: (file.scopes ?? []).filter(
+              (scope) => scope.line !== lineOf(UNBOUNDED, 'urls.map { async { client.send'),
             ),
           }
         : file,

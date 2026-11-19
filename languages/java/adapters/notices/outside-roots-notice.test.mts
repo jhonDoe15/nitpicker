@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { jvmOutsideRootsNotices } from './outside-roots-notice.mjs';
+import { jvmOutsideRootsNotices } from './outside-roots-notice.mts';
 
 const KOTLIN = { preset: 'kotlin' };
 

@@ -1,14 +1,18 @@
-import { logCalls as untypedLogCalls } from '../../../../adapters/kotlin/scan/log-calls.mjs';
-import { operands as untypedOperands } from '../../../../adapters/kotlin/scan/logging/log-format-rules.mjs';
-import { trimmed as untypedTrimmed } from '../../../../adapters/kotlin/scan/regexes/regex-values.mjs';
-import { logTemplates as untypedLogTemplates } from '../../../../adapters/kotlin/scan/rules/calls.mjs';
-import { templatePieces as untypedTemplatePieces } from '../../../../adapters/kotlin/scan/security/sql-values.mjs';
+import { logCalls as untypedLogCalls } from '../../../../adapters/kotlin/scan/log-calls.mts';
+import { operands as untypedOperands } from '../../../../adapters/kotlin/scan/logging/log-format-rules.mts';
+import { trimmed as untypedTrimmed } from '../../../../adapters/kotlin/scan/regexes/regex-values.mts';
+import { logTemplates as untypedLogTemplates } from '../../../../adapters/kotlin/scan/rules/calls.mts';
+import { templatePieces as untypedTemplatePieces } from '../../../../adapters/kotlin/scan/security/sql-values.mts';
 import { withoutGroups } from '../shared/boundaries.mts';
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
 import { literalAt } from '../shared/kotlin-scan.mts';
 import type { ScannedKotlin, Span } from '../shared/kotlin-scan.mts';
 
-type TemplatePiece = { readonly text?: string; readonly expression?: string };
+type TemplatePiece = {
+  readonly text?: string;
+  readonly expression?: string;
+  readonly runtime?: true;
+};
 
 type LogCall = {
   readonly start: number;

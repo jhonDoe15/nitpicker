@@ -22,7 +22,7 @@ public class Released {
   private final ExecutorService injected;
   private final Timer timer = new Timer("audit", true);
   private final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-  private final HttpClient client = HttpClient.newHttpClient(); // violation: SpringHttpClientTimeouts
+  private final HttpClient client = HttpClient.newHttpClient();
 
   public Released(ExecutorService injected) {
     this.injected = injected;

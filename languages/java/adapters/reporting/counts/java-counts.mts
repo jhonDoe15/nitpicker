@@ -103,7 +103,7 @@ function countOf(finding: unknown): unknown {
       };
 }
 
-function noUnit(): undefined {
+export function noUnit(): undefined {
   return undefined;
 }
 

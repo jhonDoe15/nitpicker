@@ -8,12 +8,12 @@ import {
   lintCompatibleOf,
   lintCompilerOf,
   posixOf as posix,
-} from '../typed/javac-views.mts';
-import { lombokPath } from './lint-arguments.mjs';
+} from '../typed/compiled/javac-views.mts';
+import { lombokPath } from './lint-arguments.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { type LintPlan } from '../typed/lint-plan.mts';
-import { inheritedLombokConfigs, lombokConfigs } from './lint-staging.mjs';
+import { inheritedLombokConfigs, lombokConfigs } from './lint-staging.mts';
 
 const lombokJars: (plan: LintPlan) => string[] = lombokPath;
 

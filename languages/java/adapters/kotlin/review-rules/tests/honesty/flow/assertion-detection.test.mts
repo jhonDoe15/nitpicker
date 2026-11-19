@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { JUNIT_HEAD, rulesOf } from '../../../test-support/sources.mts';
-import { CONTROL_FLOW_RULE } from './assertion-flow.mjs';
+import { CONTROL_FLOW_RULE } from './assertion-flow.mts';
 
 function flow(text: string, names?: string[]): string[] {
   return rulesOf(text, CONTROL_FLOW_RULE, undefined, names);

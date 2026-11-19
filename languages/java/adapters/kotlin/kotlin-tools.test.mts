@@ -199,7 +199,7 @@ describe('ktlint and ktfmt with a project .editorconfig', () => {
       ],
     });
     expect(tools.editorconfigFiles).toHaveLength(2);
-    expect(tools.editorconfigIgnored).toBeUndefined();
+    expect(tools.editorconfigIgnored).toBe(false);
   });
 
   it('fails when ktlint lists the project and there is no .editorconfig, saying how to fix it', () => {
@@ -224,7 +224,7 @@ describe('ktlint and ktfmt with a project .editorconfig', () => {
     });
     expect(editorconfigState(toolsOf(files, { toolPrecedence: PROJECT_KTFMT }))).toEqual({
       ktfmtEditorconfig: true,
-      editorconfigIgnored: undefined,
+      editorconfigIgnored: false,
       workspace: {
         offset: '',
         editorconfigs: [{ path: '.editorconfig', text: 'root = true\n\nindent_size = 4\n' }],

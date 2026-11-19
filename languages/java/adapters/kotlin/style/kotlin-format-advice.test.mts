@@ -2,24 +2,37 @@ import { describe, expect, it } from 'vitest';
 import {
   kotlinFormatAdvice as untypedKotlinFormatAdvice,
   kotlinSummary as untypedKotlinSummary,
-} from './kotlin-format-advice.mjs';
+} from './kotlin-format-advice.mts';
 
 type SummaryTools = {
   formatter?: string;
   ktfmtStyle?: string;
-  ktfmtEditorconfig?: boolean;
-  editorconfigIgnored?: boolean;
+  ktfmtEditorconfig?: true;
+  editorconfigIgnored?: true;
   editorconfigFiles?: string[];
   detektIgnored?: string;
 };
 
-const kotlinFormatAdvice: (tools: SummaryTools) => {
-  ktfmt: string;
-  ktlint: (ruleSwitch: string) => string;
-  detekt: string | undefined;
-} = untypedKotlinFormatAdvice;
-const kotlinSummary: (tools: SummaryTools, conventions: Record<string, string>) => string[] =
-  untypedKotlinSummary;
+type FlaggedTools = Omit<SummaryTools, 'ktfmtEditorconfig' | 'editorconfigIgnored'> & {
+  ktfmtEditorconfig: boolean;
+  editorconfigIgnored: boolean;
+};
+
+function withFlags(tools: SummaryTools): FlaggedTools {
+  return {
+    ...tools,
+    ktfmtEditorconfig: tools.ktfmtEditorconfig === true,
+    editorconfigIgnored: tools.editorconfigIgnored === true,
+  };
+}
+
+function kotlinFormatAdvice(tools: SummaryTools): ReturnType<typeof untypedKotlinFormatAdvice> {
+  return untypedKotlinFormatAdvice(withFlags(tools));
+}
+
+function kotlinSummary(tools: SummaryTools, conventions: Record<string, string>): string[] {
+  return untypedKotlinSummary(withFlags(tools), conventions);
+}
 
 const OPT_IN = (tool: string) =>
   `"tools": { "${tool}": { "precedence": ["project", "nitpicker"] } }`;

@@ -1,12 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  type RootsFilter,
-  project,
-  removeProjects,
-} from '../../__tests__/spring-config-projects.mts';
-import { withoutReadOnlyReads as readOnlyUntyped } from './read-only-reads.mjs';
-
-const withoutReadOnlyReads: RootsFilter = readOnlyUntyped;
+import { project, removeProjects } from '../../__tests__/spring-config-projects.mts';
+import { withoutReadOnlyReads } from './read-only-reads.mts';
+import type { JavaFinding } from '../../../typed/java-values.mts';
+import { textOf } from '../../../../../../shared/values/readers.mts';
 
 const SERVICE = 'src/main/java/shop/Reports.java';
 const REPOSITORY = `package shop;
@@ -48,18 +44,22 @@ function service(receiver: string, type: string): string {
 }
 
 function kept(files: Readonly<Record<string, string>>, type: string, receiver: string): unknown[] {
-  const findings = CALLS.map((call, index) => ({
+  const findings: JavaFinding[] = CALLS.map((call, index) => ({
     tool: 'pmd',
     rule: 'SpringTransactionalReadOnlyWrite',
     path: SERVICE,
     location: { line: 7 + index, column: 5 },
     call,
   }));
-  const other = { tool: 'pmd', rule: 'SpringMultiWriteWithoutTransaction', path: SERVICE };
+  const other: JavaFinding = {
+    tool: 'pmd',
+    rule: 'SpringMultiWriteWithoutTransaction',
+    path: SERVICE,
+  };
   return withoutReadOnlyReads([...findings, other], {
     projectRoot: project({ ...files, [SERVICE]: service(receiver, type) }),
     roots: ['src/main/java', 'src/main/kotlin'],
-  }).map((finding) => finding['call'] ?? finding.rule);
+  }).map((finding) => textOf(finding['call'] ?? finding.rule));
 }
 
 afterEach(removeProjects);

@@ -1,0 +1,25 @@
+export function first(values: readonly string[]): string {
+  const head = values[0]!;
+  return head;
+}
+
+export function widen(value: 'a' | 'b'): string {
+  const result = value as string;
+  return result;
+}
+
+export function keep(map: Map<string, number>, key: string): number {
+  if (!map.has(key)) {
+    return 0;
+  }
+  return map.get(key)!;
+}
+
+export function literal(): readonly ['x', 'y'] {
+  const pair = ['x', 'y'] as const;
+  return pair;
+}
+
+export function probe(): unknown {
+  return [first(['q']), widen('a'), keep(new Map([['k', 1]]), 'k'), literal()];
+}

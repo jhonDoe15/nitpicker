@@ -1,15 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { type Check, type Subjected, scanKotlinSource } from '../typed/typed-scan.mts';
+import { scanKotlinSource } from '../typed/typed-scan.mts';
 import { foundRuleLines as found } from '../typed/scan-found.mts';
-import {
-  annotationMarkers as untypedAnnotationMarkers,
-  commentedOutCode as untypedCommentedOutCode,
-  generatedFile as untypedGeneratedFile,
-} from './markers.mjs';
-
-const annotationMarkers: Check<Subjected> = untypedAnnotationMarkers;
-const commentedOutCode: Check<Subjected> = untypedCommentedOutCode;
-const generatedFile: (scanned: unknown) => boolean = untypedGeneratedFile;
+import { annotationMarkers, commentedOutCode, generatedFile } from './markers.mts';
 
 describe('annotationMarkers', () => {
   it.each([

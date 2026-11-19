@@ -1,4 +1,4 @@
-import { unquote as untypedUnquote } from '../../../../adapters/spring/spring-config-parser.mjs';
+import { unquote as untypedUnquote } from '../../../../adapters/spring/spring-config-parser.mts';
 import { lineAt } from './lines.mts';
 import type { Line, LineTable, LocateEntry, Range, Span } from './locate-types.mts';
 

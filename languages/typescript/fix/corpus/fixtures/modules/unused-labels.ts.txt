@@ -1,0 +1,10 @@
+export function labelled(values: readonly number[]): number {
+  let total = 0;
+  outer: for (const value of values) {
+    total += value;
+  }
+  return total;
+}
+export function probe(): unknown {
+  return labelled([1, 2]);
+}

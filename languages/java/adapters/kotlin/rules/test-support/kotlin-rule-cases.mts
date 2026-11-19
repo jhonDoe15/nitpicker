@@ -1,4 +1,4 @@
-import { SUPPRESSION_RULE } from '../kotlin-rules.mjs';
+import { SUPPRESSION_RULE } from '../kotlin-rules.mts';
 import { kotlinGuardCases, type KotlinRuleCase } from './kotlin-guard-cases.mts';
 
 const COROUTINE_IMPORTS =

@@ -4,11 +4,12 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport as untypedParseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { analyzeJavaCoupling, parseJdeps, readCouplingFindings } from './java-coupling.mts';
-import { kotlinModules as untypedKotlinModules } from '../kotlin/kotlin-metrics.mjs';
+import { kotlinModules as untypedKotlinModules } from '../kotlin/kotlin-metrics.mts';
+import type { Metrics } from '../kotlin/kotlin-metrics.mts';
 import type { CouplingReport, KotlinModules } from './java-coupling-types.mts';
 
 const parseAnalyzerReport: (report: unknown, tool: string) => unknown = untypedParseAnalyzerReport;
-const kotlinModules: (metrics: unknown) => KotlinModules = untypedKotlinModules;
+const kotlinModules: (metrics: Metrics) => KotlinModules = untypedKotlinModules;
 const temporaryRoots: string[] = [];
 
 afterEach(() => {

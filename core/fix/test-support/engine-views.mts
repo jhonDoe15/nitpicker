@@ -29,6 +29,7 @@ type FixPlan = {
   readonly finding: FindingAt;
   readonly edits: readonly Edit[];
   readonly stays?: string;
+  readonly note?: string;
 };
 
 export type PlanContext = {
@@ -55,6 +56,7 @@ export type EngineEntry = {
     readonly finding?: FindingAt;
     readonly edits: readonly Edit[];
     readonly stays?: string;
+    readonly note?: string;
   };
 };
 

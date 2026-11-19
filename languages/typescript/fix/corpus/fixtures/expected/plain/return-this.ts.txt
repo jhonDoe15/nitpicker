@@ -1,0 +1,21 @@
+export class Builder {
+  private readonly parts: string[] = [];
+  public add(part: string): this {
+    this.parts.push(part);
+    return this;
+  }
+  public text(): string {
+    return this.parts.join(',');
+  }
+}
+
+export class Wrapped extends Builder {
+  public twice(part: string): this {
+    this.add(part).add(part);
+    return this;
+  }
+}
+
+export function probe(): unknown {
+  return new Wrapped().twice('a').add('b').text();
+}

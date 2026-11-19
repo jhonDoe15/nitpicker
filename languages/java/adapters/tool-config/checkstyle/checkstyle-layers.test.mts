@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { layerCheckstyle } from './checkstyle-layers.mjs';
+import { layerCheckstyle } from './checkstyle-layers.mts';
 
 const DOCTYPE_ID = '-//Checkstyle//DTD Checkstyle Configuration 1.3//EN';
 const DOCTYPE_URL = 'https://checkstyle.org/dtds/configuration_1_3.dtd';
@@ -62,7 +62,7 @@ ${DOCTYPE}
 
 describe('layering the project Checkstyle config over nitpicker', () => {
   it('takes the properties the project sets and keeps every other module and property', () => {
-    expect(layerCheckstyle({ nitpickerText: NITPICKER, projectText: PROJECT }))
+    expect(layerCheckstyle({ nitpickerText: NITPICKER, projectText: PROJECT, projectWins: true }))
       .toBe(`${HEADER}<module name="Checker">
   <property name="severity" value="error"/>
   <property name="charset" value="UTF-8"/>
@@ -121,7 +121,7 @@ describe('layering the project Checkstyle config over nitpicker', () => {
   </module>
 </module>`;
 
-    expect(layerCheckstyle({ nitpickerText: NITPICKER, projectText }))
+    expect(layerCheckstyle({ nitpickerText: NITPICKER, projectText, projectWins: true }))
       .toBe(`${HEADER}<module name="Checker">
   <property name="severity" value="\${org.checkstyle.google.severity}" default="warning"/>
   <module name="SuppressionFilter">
@@ -159,7 +159,7 @@ describe('layering the project Checkstyle config over nitpicker', () => {
   </module>
 </module>`;
 
-    const merged = layerCheckstyle({ nitpickerText: NITPICKER, projectText });
+    const merged = layerCheckstyle({ nitpickerText: NITPICKER, projectText, projectWins: true });
 
     expect(merged.split('\n').filter((line) => /RightCurly|id"|option/.test(line))).toEqual([
       '    <module name="RightCurly">',
@@ -184,7 +184,7 @@ describe('layering the project Checkstyle config over nitpicker', () => {
   </module>
 </module>`;
 
-    const merged = layerCheckstyle({ nitpickerText: NITPICKER, projectText });
+    const merged = layerCheckstyle({ nitpickerText: NITPICKER, projectText, projectWins: true });
 
     expect(merged.split('\n').filter((line) => /RightCurly|id"|option/.test(line))).toEqual([
       '    <module name="RightCurly">',
@@ -200,7 +200,11 @@ describe('layering the project Checkstyle config over nitpicker', () => {
 
   it('refuses a config that does not start at the Checker', () => {
     expect(() =>
-      layerCheckstyle({ nitpickerText: NITPICKER, projectText: '<module name="TreeWalker"/>' }),
+      layerCheckstyle({
+        nitpickerText: NITPICKER,
+        projectText: '<module name="TreeWalker"/>',
+        projectWins: true,
+      }),
     ).toThrow('The Checkstyle config must have a Checker module at its root, not TreeWalker');
   });
 });

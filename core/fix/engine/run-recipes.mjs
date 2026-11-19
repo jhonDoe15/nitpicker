@@ -137,6 +137,10 @@ function staysNote(entry) {
   return `--fix applied ${findingText(entry)} but the finding stays: ${entry.fix.stays}`;
 }
 
+function appliedNote(entry) {
+  return `--fix applied ${findingText(entry)}: ${entry.fix.note}`;
+}
+
 export function runRecipes({
   projectRoot,
   files,
@@ -171,6 +175,7 @@ export function runRecipes({
     notes: [
       ...new Set(state.notes),
       ...state.fixed.filter(({ fix }) => fix.stays !== undefined).map(staysNote),
+      ...state.fixed.filter(({ fix }) => fix.note !== undefined).map(appliedNote),
       ...closingNotes(state, leftovers),
     ],
   };

@@ -1,18 +1,20 @@
 import path from 'node:path';
 import * as prettier from 'prettier';
-import { readRegistryFile, registryFiles } from './registry-files.mjs';
+import { byCodePoint, emittedFrom, readRegistryFile, registryFiles } from './registry-files.mjs';
 
 const KOTLIN = 'languages/java/adapters/kotlin';
 const REGISTRY_FOLDER = 'scan/rules';
 const RULES_EXPORT = /^export const kotlinSourceRules\b/mu;
 const SKIPPED_FOLDERS = new Set(['fixtures', 'test-support', '__tests__']);
 const RULES_NAME = /\bkotlinSourceRules\b/u;
+const MODULE_EXTENSIONS = ['.mts', '.mjs'];
+const SCAN_ENTRY = /^scan\/kotlin-scan\.m[jt]s$/u;
 
 /** Where the generated list of the Kotlin source scan's rule modules goes, from the repository root. */
-export const KOTLIN_SCAN_REGISTRY = `${KOTLIN}/${REGISTRY_FOLDER}/source-rules.generated.mjs`;
+export const KOTLIN_SCAN_REGISTRY = `${KOTLIN}/${REGISTRY_FOLDER}/source-rules.generated.mts`;
 
 function identifier(file) {
-  const name = path.posix.basename(file, '.mjs');
+  const name = path.posix.basename(file, path.posix.extname(file));
   return `rules-${name}`.replaceAll(/-([a-z0-9])/gu, (_, letter) => letter.toUpperCase());
 }
 
@@ -22,8 +24,14 @@ function identifier(file) {
  */
 export function kotlinScanModules(repositoryRoot) {
   const root = path.join(repositoryRoot, KOTLIN);
-  const texts = registryFiles(root, '.mjs', SKIPPED_FOLDERS)
-    .filter((file) => !file.endsWith('.generated.mjs') && file !== 'scan/kotlin-scan.mjs')
+  const isEmitted = emittedFrom(new Set(registryFiles(root, '.mts', SKIPPED_FOLDERS)));
+  const texts = MODULE_EXTENSIONS.flatMap((extension) =>
+    registryFiles(root, extension, SKIPPED_FOLDERS),
+  )
+    .filter(
+      (file) => !(isEmitted(file) || /\.generated\.m[jt]s$/u.test(file) || SCAN_ENTRY.test(file)),
+    )
+    .toSorted(byCodePoint)
     .map((file) => [file, readRegistryFile(root, file)])
     .filter(([, text]) => RULES_NAME.test(text));
   const unlisted = texts.filter(([, text]) => !RULES_EXPORT.test(text)).map(([file]) => file);

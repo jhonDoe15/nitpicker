@@ -1,7 +1,7 @@
 import { listOf } from '../../../../shared/values/readers.mts';
 import { configError } from '../../../../shared/config.mjs';
-import { checkstyleRuleName } from '../../messages/rule-messages.mjs';
-import { JAVA_TOOLS } from '../gradle-presets.mjs';
+import { checkstyleRuleName } from '../../messages/rule-messages.mts';
+import { JAVA_TOOLS } from '../gradle-presets.mts';
 
 type FindingRuleEntry = { readonly rule: string; readonly paths?: unknown };
 

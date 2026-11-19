@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { mergeCheckstyleFiles as untypedMergeCheckstyleFiles } from './checkstyle-merge.mjs';
+import { mergeCheckstyleFiles as untypedMergeCheckstyleFiles } from './checkstyle-merge.mts';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot } = useGitFixtures();
@@ -10,7 +10,7 @@ type MergeFiles = {
   readonly nitpicker: string;
   readonly project: string;
   readonly output: string;
-  readonly projectWins?: boolean;
+  readonly projectWins: boolean;
 };
 
 const mergeCheckstyleFiles: (files: MergeFiles) => void = untypedMergeCheckstyleFiles;
@@ -22,6 +22,7 @@ function filesWith(nitpicker: string, project: string) {
     nitpicker: path.join(root, 'nitpicker.xml'),
     project: path.join(root, 'project.xml'),
     output: path.join(root, 'nested', 'out.xml'),
+    projectWins: true,
   };
 }
 

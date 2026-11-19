@@ -1,29 +1,20 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import type { Finding } from '../../../../../../../shared/values/findings.mts';
+import type { SourceFile } from '../../spring/typed/spring-shapes.mts';
+import type { FanOutFinding } from './typed/fan-out-types.mts';
 import { fieldOf, listOf } from '../../../../../../../shared/values/readers.mts';
 import { expect } from 'vitest';
-import { fanOutFindings } from './fan-out.mjs';
+import { fanOutFindings } from './fan-out.mts';
 
-type FactFile = { file: string; [key: string]: unknown };
+type FactFile = SourceFile;
 
-export type FanOutFinding = Finding & { location: { line: number } };
-
-type FanOutInput = {
-  own: FactFile[];
-  projectFiles: FactFile[];
-  projectRoot: string;
-  javaRoots: string[];
-};
+export type { FanOutFinding };
 
 const FIXTURES = path.resolve(import.meta.dirname, '../../../../fixtures');
 const FACT_FILES = {
   'kotlin-fan-out': path.join(FIXTURES, 'kotlin-fan-out-facts.json'),
   'kotlin-reactive-fan-out': path.join(FIXTURES, 'kotlin-reactive-fan-out-facts.json'),
 };
-
-const fanOut: (input: FanOutInput) => { findings: FanOutFinding[]; calls: Set<string> } =
-  fanOutFindings;
 
 function isFactFile(value: unknown): value is FactFile {
   return typeof fieldOf(value, 'file') === 'string';
@@ -78,7 +69,7 @@ export function fixtureProject(
     return sourceLines(project, file)
       .filter((text) => !text.includes('private fun'))
       .map((text) => pattern.exec(text)?.[1])
-      .filter(Boolean);
+      .filter((name) => name !== undefined);
   }
 
   function lineOf(file: string, fragment: string): number {
@@ -86,7 +77,7 @@ export function fixtureProject(
   }
 
   function run(own: FactFile[] = files): { findings: FanOutFinding[]; calls: Set<string> } {
-    return fanOut({ own, projectFiles: files, projectRoot: project, javaRoots: [] });
+    return fanOutFindings({ own, projectFiles: files, projectRoot: project, javaRoots: [] });
   }
 
   function findingAt(all: FanOutFinding[], fragment: string): FanOutFinding | undefined {

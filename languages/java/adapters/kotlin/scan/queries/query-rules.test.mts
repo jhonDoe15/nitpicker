@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Ruled, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
-import { unboundedQueryArrays as untypedUnboundedQueryArrays } from './unbounded-arrays.mjs';
-import { unorderedQueries as untypedUnorderedQueries } from './unordered-queries.mjs';
+import { unboundedQueryArrays as untypedUnboundedQueryArrays } from './unbounded-arrays.mts';
+import { unorderedQueries as untypedUnorderedQueries } from './unordered-queries.mts';
 
 const unboundedQueryArrays: Check<Ruled> = untypedUnboundedQueryArrays;
 const unorderedQueries: Check<Ruled> = untypedUnorderedQueries;

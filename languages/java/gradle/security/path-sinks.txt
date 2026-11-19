@@ -1,0 +1,2 @@
+java/nio/file/Path.of(Ljava/lang/String;[Ljava/lang/String;)Ljava/nio/file/Path;:0,1
+java/nio/file/Path.of(Ljava/net/URI;)Ljava/nio/file/Path;:0

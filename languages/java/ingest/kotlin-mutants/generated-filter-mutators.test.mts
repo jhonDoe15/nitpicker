@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FILE, emptyClass, filterFor, mutant } from './test-support/filter-helpers.mts';
+import { FILE, emptyClass, filterFor, mutant } from './test-support/generated-filter-fixtures.mts';
 
 const suspendDescription = '(ILkotlin/coroutines/Continuation;)Ljava/lang/Object;';
 const invokeSuspend = {

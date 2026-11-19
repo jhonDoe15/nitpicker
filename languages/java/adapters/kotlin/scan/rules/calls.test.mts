@@ -5,7 +5,7 @@ import {
   logTemplates as untypedLogTemplates,
   shellCommands as untypedShellCommands,
   standardStreams as untypedStandardStreams,
-} from './calls.mjs';
+} from './calls.mts';
 
 const logTemplates: Check<Ruled> = untypedLogTemplates;
 const shellCommands: Check<Subjected> = untypedShellCommands;

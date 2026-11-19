@@ -31,6 +31,7 @@ import type {
   Both,
   Candidate,
   Candidates,
+  Extracted,
   Hole,
   PartialCandidate,
 } from './extract-types.mts';
@@ -89,6 +90,11 @@ const collected: (
   notes: readonly string[],
 ) => { readonly fixes: ProjectFix[]; readonly notes: string[] } = untypedCollected;
 
+function withWidened(edits: readonly ReplaceEdit[], widened: readonly ReplaceEdit[]): Extracted {
+  const same = edits.every((edit, index) => edit.text === widened[index]?.text);
+  return same ? { edits } : { edits, widened };
+}
+
 const dedentedToLeast: (text: string) => string = untypedDedentedToLeast;
 const withReplacements: (
   text: string,
@@ -123,4 +129,5 @@ export {
   typePairProblem,
   wholeCandidates,
   withLineEndingOf,
+  withWidened,
 };

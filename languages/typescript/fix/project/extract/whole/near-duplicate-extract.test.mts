@@ -64,7 +64,7 @@ describe('nearDuplicateExtractRecipe', () => {
         return sharedAlignTop(selection, limit, 'top:');
       }
 
-      function sharedAlignTop(selection: string[], limit: number, value: string): string {
+      function sharedAlignTop(selection: string[], limit: number, value: 'top:' | 'bottom:'): string {
         const selected = selection.filter((element) => element.length < limit);
         const label = selected.map((element) => element.trim()).join(',');
         const output = (label.length > 0 ? value : 'none:') + label + selected.length;
@@ -141,7 +141,7 @@ describe('nearDuplicateExtractRecipe', () => {
         return sharedAlignTop(selection, limit, 'top:');
       }
 
-      async function sharedAlignTop(selection: string[], limit: number, value: string): Promise<string> {
+      async function sharedAlignTop(selection: string[], limit: number, value: 'top:' | 'bottom:'): Promise<string> {
         const selected = selection.filter((element) => element.length < limit);
         const label = await Promise.resolve(selected.join(','));
         const output = (label.length > 0 ? value : 'none:') + label + selected.length;
@@ -183,7 +183,7 @@ describe('nearDuplicateExtractRecipe', () => {
         }
       }
 
-      function sharedTop(selection: string[], limit: number, value: string): string {
+      function sharedTop(selection: string[], limit: number, value: 'top:' | 'bottom:'): string {
         const selected = selection.filter((element) => element.length < limit);
         const label = selected.map((element) => element.trim()).join(',');
         const output = (label.length > 0 ? value : 'none:') + label + selected.length;
@@ -225,7 +225,7 @@ describe('nearDuplicateExtractRecipe', () => {
         return sharedMorning(ids, limit, 'T06:00');
       }
 
-      function sharedMorning(ids: string[], limit: number, value: string): Date[] {
+      function sharedMorning(ids: string[], limit: number, value: 'T06:00' | 'T18:00'): Date[] {
         const found = ids.filter((id) => id.length < limit);
         const dates = found.map((id) => new Date(id + value));
         const total = dates.length + found.length;

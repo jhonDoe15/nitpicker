@@ -1,0 +1,497 @@
+import path from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { defined } from '../builds/test-support/defined.mts';
+import { fieldOf } from '../../../shared/values/readers.mts';
+import { lifecycleArgs, readReactor } from './maven-project.mts';
+import { jacocoPlugin } from './maven-tools.mts';
+import { inBuild, plugin, raw, reactorKit } from './test-support/maven-project-sources.mts';
+
+const { reactor, soloModule, removeReactors } = reactorKit();
+
+function effective(root: string) {
+  return `<?xml version="1.0"?>
+<!-- Effective POMs -->
+<projects>
+  <project>
+    <groupId>demo</groupId>
+    <artifactId>parent</artifactId>
+    <packaging>pom</packaging>
+    <modules><module>core</module><module>tools/app-pom.xml</module></modules>
+  </project>
+  <project>
+    <parent><groupId>demo</groupId></parent>
+    <artifactId>core</artifactId>
+    <properties>
+      <nitpicker.archunit.includes>**/*Rules.class</nitpicker.archunit.includes>
+      <maven.compiler.release>17</maven.compiler.release>
+      <project.build.sourceEncoding>ISO-8859-1</project.build.sourceEncoding>
+    </properties>
+    <build>
+      <sourceDirectory>${root}/core/src/main/java</sourceDirectory>
+      <testSourceDirectory>${root}/core/src/test/java</testSourceDirectory>
+      <outputDirectory>${root}/core/out/classes</outputDirectory>
+      <testOutputDirectory>${root}/core/out/test-classes</testOutputDirectory>
+      <directory>${root}/core/out</directory>
+      <resources><resource><directory>${root}/core/src/main/resources</directory></resource></resources>
+      <plugins>
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>build-helper-maven-plugin</artifactId>
+          <executions>
+            <execution>
+              <goals><goal>add-source</goal></goals>
+              <configuration><sources><source>src/generated/java</source></sources></configuration>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.jacoco</groupId>
+          <artifactId>jacoco-maven-plugin</artifactId>
+          <configuration><destFile>${root}/core/out/mine.exec</destFile></configuration>
+          <executions><execution><goals><goal>prepare-agent</goal></goals></execution></executions>
+        </plugin>
+        <plugin>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <configuration>
+            <source>17</source>
+            <compilerArgs><arg>-Xlint:all</arg><arg>-Xplugin:Noop</arg></compilerArgs>
+            <compilerArgument>-parameters</compilerArgument>
+            <enablePreview>true</enablePreview>
+          </configuration>
+        </plugin>
+        <plugin>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <configuration><reportsDirectory>${root}/core/out/tests</reportsDirectory></configuration>
+        </plugin>
+        <plugin>
+          <artifactId>maven-failsafe-plugin</artifactId>
+          <configuration><reportsDirectory>${root}/core/out/it-tests</reportsDirectory></configuration>
+          <executions>
+            <execution><goals><goal>integration-test</goal><goal>verify</goal></goals></execution>
+          </executions>
+        </plugin>
+      </plugins>
+    </build>
+  </project>
+  <project>
+    <groupId>demo</groupId>
+    <artifactId>app</artifactId>
+    <packaging>war</packaging>
+  </project>
+</projects>
+`;
+}
+
+const PLUGIN_DEFAULT_LEVEL = { release: undefined, source: '8', target: '8' };
+const NO_COMPILER_SETTINGS = {
+  ...PLUGIN_DEFAULT_LEVEL,
+  encoding: undefined,
+  compilerArgs: [],
+  proc: undefined,
+  processorPaths: undefined,
+  test: { ...PLUGIN_DEFAULT_LEVEL, compilerArgs: [] },
+};
+const CORE_LEVEL = { release: '17', source: '17', target: undefined };
+const CORE_ARGS = ['-Xlint:all', '-Xplugin:Noop', '-parameters', '--enable-preview'];
+
+function defaultModule(
+  basedir: string,
+  {
+    coordinates,
+    packaging,
+    pomFile = 'pom.xml',
+  }: { coordinates: string; packaging?: string; pomFile?: string },
+) {
+  const compiler = packaging === 'pom' ? undefined : NO_COMPILER_SETTINGS;
+  const target = path.join(basedir, 'target');
+  return {
+    basedir,
+    pomFile: path.join(basedir, pomFile),
+    coordinates,
+    packaging,
+    buildDirectory: target,
+    outputDirectory: path.join(target, 'classes'),
+    testOutputDirectory: path.join(target, 'test-classes'),
+    sourceRoots: [path.join(basedir, 'src/main/java')],
+    testSourceRoots: [path.join(basedir, 'src/test/java')],
+    resourceRoots: [],
+    surefireReports: path.join(target, 'surefire-reports'),
+    failsafeReports: path.join(target, 'failsafe-reports'),
+    runsFailsafe: false,
+    testJvmArgs: [],
+    integrationTestJvmArgs: [],
+    published: false,
+    jacocoDestFiles: [],
+    jacocoAgentVersion: undefined,
+    archunitIncludes: undefined,
+    compiler,
+    requires: [],
+  };
+}
+
+afterEach(removeReactors);
+
+describe('readReactor', () => {
+  it('maps each module of the effective POM to its directory, following module paths and pom files', () => {
+    const root = reactor({
+      'pom.xml': raw('parent'),
+      'core/pom.xml': raw('core', 'demo'),
+      'tools/app-pom.xml': raw('app'),
+    });
+    const [parent, core, app] = readReactor(root, effective(root));
+
+    expect(parent).toEqual(defaultModule(root, { coordinates: 'demo:parent', packaging: 'pom' }));
+    expect(core).toEqual({
+      basedir: path.join(root, 'core'),
+      pomFile: path.join(root, 'core/pom.xml'),
+      coordinates: 'demo:core',
+      packaging: 'jar',
+      buildDirectory: `${root}/core/out`,
+      outputDirectory: `${root}/core/out/classes`,
+      testOutputDirectory: `${root}/core/out/test-classes`,
+      sourceRoots: [`${root}/core/src/main/java`, path.join(root, 'core/src/generated/java')],
+      testSourceRoots: [`${root}/core/src/test/java`],
+      resourceRoots: [`${root}/core/src/main/resources`],
+      surefireReports: `${root}/core/out/tests`,
+      failsafeReports: `${root}/core/out/it-tests`,
+      runsFailsafe: true,
+      testJvmArgs: [],
+      integrationTestJvmArgs: [],
+      published: false,
+      jacocoDestFiles: [`${root}/core/out/mine.exec`],
+      jacocoAgentVersion: undefined,
+      archunitIncludes: '**/*Rules.class',
+      compiler: {
+        ...CORE_LEVEL,
+        encoding: 'ISO-8859-1',
+        compilerArgs: CORE_ARGS,
+        proc: undefined,
+        processorPaths: undefined,
+        test: { ...CORE_LEVEL, compilerArgs: CORE_ARGS },
+      },
+      requires: [
+        'org.codehaus.mojo:build-helper-maven-plugin',
+        'org.jacoco:jacoco-maven-plugin',
+        'org.apache.maven.plugins:maven-compiler-plugin',
+        'org.apache.maven.plugins:maven-surefire-plugin',
+        'org.apache.maven.plugins:maven-failsafe-plugin',
+      ],
+    });
+    expect(app).toEqual(
+      defaultModule(path.join(root, 'tools'), {
+        coordinates: 'demo:app',
+        packaging: 'war',
+        pomFile: 'app-pom.xml',
+      }),
+    );
+  });
+
+  it('lists the parent, the dependencies and the plugins of a module as what it requires', () => {
+    const root = reactor({ 'pom.xml': raw('app') });
+    const [app] = readReactor(
+      root,
+      '<project><parent><groupId>demo</groupId><artifactId>parent</artifactId></parent>' +
+        '<groupId>demo</groupId><artifactId>app</artifactId><dependencies><dependency>' +
+        '<groupId>demo</groupId><artifactId>core</artifactId></dependency></dependencies></project>',
+    );
+
+    expect(defined(app).requires).toEqual(['demo:parent', 'demo:core']);
+  });
+
+  it('counts a BOM imported in dependencyManagement as required', () => {
+    const root = reactor({ 'pom.xml': raw('app') });
+    const [app] = readReactor(
+      root,
+      '<project><groupId>demo</groupId><artifactId>app</artifactId><dependencyManagement><dependencies>' +
+        '<dependency><groupId>demo</groupId><artifactId>bom</artifactId><type>pom</type>' +
+        '<scope>import</scope></dependency></dependencies></dependencyManagement></project>',
+    );
+
+    expect(defined(app).requires).toEqual(['demo:bom']);
+  });
+
+  it('reads a single-module effective POM', () => {
+    const root = reactor({ 'pom.xml': raw('solo') });
+    const modules = readReactor(
+      root,
+      '<project><groupId>demo</groupId><artifactId>solo</artifactId></project>',
+    );
+
+    expect(modules.map((module) => [module.basedir, module.coordinates])).toEqual([
+      [root, 'demo:solo'],
+    ]);
+  });
+
+  it('matches a module whose raw coordinates use a property by its build directory', () => {
+    const root = reactor({
+      'pom.xml': raw('parent'),
+      'a/pom.xml':
+        '<project><parent><groupId>demo</groupId></parent><artifactId>${project.parent.artifactId}-a</artifactId></project>',
+    });
+    const effectivePom = [
+      '<projects>',
+      `<project><groupId>demo</groupId><artifactId>parent-a</artifactId><build><directory>${root}/a/target</directory></build></project>`,
+      `<project><groupId>demo</groupId><artifactId>parent</artifactId><packaging>pom</packaging><modules><module>a</module></modules><build><directory>${root}/target</directory></build></project>`,
+      '</projects>',
+    ].join('');
+
+    expect(
+      readReactor(root, effectivePom).map((module) => [module.basedir, module.coordinates]),
+    ).toEqual([
+      [root, 'demo:parent'],
+      [path.join(root, 'a'), 'demo:parent-a'],
+    ]);
+  });
+
+  it('reads no compiler settings of a pom module, so its unresolved processor paths do not matter', () => {
+    const root = reactor({ 'pom.xml': raw('parent'), 'app/pom.xml': raw('app') });
+    const processor = (version: string) =>
+      inBuild(
+        plugin(
+          'maven-compiler-plugin',
+          '<configuration><annotationProcessorPaths><path><groupId>org.projectlombok</groupId>' +
+            `<artifactId>lombok</artifactId>${version}</path></annotationProcessorPaths></configuration>`,
+        ),
+      );
+    const effectivePom = (appVersion: string) =>
+      [
+        '<projects>',
+        '<project><groupId>demo</groupId><artifactId>parent</artifactId><packaging>pom</packaging>' +
+          `<modules><module>app</module></modules>${processor('')}</project>`,
+        `<project><groupId>demo</groupId><artifactId>app</artifactId>${processor(appVersion)}</project>`,
+        '</projects>',
+      ].join('');
+
+    const [parent, app] = readReactor(root, effectivePom('<version>1.18.42</version>'));
+
+    expect([defined(parent).compiler, fieldOf(defined(app).compiler, 'processorPaths')]).toEqual([
+      undefined,
+      ['org.projectlombok:lombok:1.18.42'],
+    ]);
+    expect(() => readReactor(root, effectivePom(''))).toThrow(
+      /^Maven module demo:app: maven-compiler-plugin's annotationProcessorPaths names org\.projectlombok:lombok /u,
+    );
+  });
+
+  it.each([
+    [
+      'a module missing from the effective POM',
+      { 'pom.xml': raw('parent'), 'gone/pom.xml': raw('gone') },
+      '<modules><module>gone</module></modules>',
+      (root: string) =>
+        `Maven module ${path.join(root, 'gone/pom.xml')} is not in the effective POM; nitpicker cannot read it`,
+    ],
+    [
+      'a module outside the project',
+      { 'pom.xml': raw('parent') },
+      '<modules><module>../elsewhere</module></modules>',
+      (root: string) =>
+        `Maven module ${path.resolve(root, '../elsewhere')} lies outside ${root}; run nitpicker from a directory that holds every module`,
+    ],
+    [
+      'two modules in one directory',
+      { 'pom.xml': raw('parent'), 'b/pom.xml': raw('b'), 'b/pom-alt.xml': raw('b-alt') },
+      '<modules><module>b/pom-alt.xml</module><module>b</module></modules>',
+      (root: string) =>
+        `${path.join(root, 'b')} holds more than one Maven module; nitpicker reads one module per directory`,
+    ],
+  ])('fails on %s', (_, files, modules, message) => {
+    const root = reactor(files);
+    const effectivePom = [
+      '<projects>',
+      `<project><groupId>demo</groupId><artifactId>parent</artifactId>${modules}</project>`,
+      '<project><groupId>demo</groupId><artifactId>b-alt</artifactId></project>',
+      '<project><groupId>demo</groupId><artifactId>b</artifactId></project>',
+      '</projects>',
+    ].join('');
+
+    expect(() => readReactor(root, effectivePom)).toThrow(new Error(message(root)));
+  });
+});
+
+const IT_GOAL = '<goals><goal>integration-test</goal></goals>';
+
+function failsafe(executions: string, configuration = '') {
+  return plugin(
+    'maven-failsafe-plugin',
+    `<configuration>${configuration}</configuration><executions>${executions}</executions>`,
+  );
+}
+
+describe('testJvmArgs', () => {
+  it('reads the surefire default-test execution, not another test execution', () => {
+    const execution = (id: string, value: string) =>
+      `<execution><id>${id}</id><goals><goal>test</goal></goals>` +
+      `<configuration><argLine>-Dfrom=${value}</argLine></configuration></execution>`;
+    const executions = `<executions>${execution('extra', 'extra')}${execution('default-test', 'default')}</executions>`;
+
+    expect(soloModule(inBuild(plugin('maven-surefire-plugin', executions))).testJvmArgs).toEqual([
+      '-Dfrom=default',
+    ]);
+  });
+
+  it('reads the Failsafe integration-test system properties apart from the Surefire ones', () => {
+    const properties =
+      '<configuration><systemPropertyVariables><spring.aot.enabled>true</spring.aot.enabled>' +
+      '</systemPropertyVariables></configuration>';
+    const module = soloModule(inBuild(failsafe(`<execution>${IT_GOAL}${properties}</execution>`)));
+
+    expect([module.testJvmArgs, module.integrationTestJvmArgs]).toEqual([
+      [],
+      ['-Dspring.aot.enabled=true'],
+    ]);
+  });
+});
+
+describe('lifecycleArgs', () => {
+  it('runs verify, with release, publishing and network plugins and JaCoCo checks off, when Failsafe runs', () => {
+    const module = soloModule(inBuild(failsafe(`<execution>${IT_GOAL}</execution>`)));
+
+    expect(module.runsFailsafe).toBe(true);
+    expect(lifecycleArgs([{ runsFailsafe: false }, module])).toEqual([
+      'verify',
+      '-Djacoco.haltOnFailure=false',
+      '-Dgpg.skip=true',
+      '-Dmaven.javadoc.skip=true',
+      '-Dmaven.source.skip=true',
+      '-Dmaven.deploy.skip=true',
+      '-Djib.skip=true',
+      '-Ddependency-check.skip=true',
+      '-Drat.skip=true',
+      '-Dlicense.skip=true',
+      '-Dlicense.skipDownloadLicenses=true',
+      '-Dlicense.skipAggregateDownloadLicenses=true',
+      '-Djapicmp.skip=true',
+    ]);
+  });
+
+  it('lets an execution turn Failsafe back on that its plugin configuration skips', () => {
+    const execution = `<execution>${IT_GOAL}<configuration><skipITs>false</skipITs></configuration></execution>`;
+
+    expect(soloModule(inBuild(failsafe(execution, '<skipITs>true</skipITs>'))).runsFailsafe).toBe(
+      true,
+    );
+  });
+
+  it.each([
+    ['no Failsafe plugin', ''],
+    ['Failsafe without executions', inBuild(failsafe(''))],
+    [
+      'only the verify goal',
+      inBuild(failsafe('<execution><goals><goal>verify</goal></goals></execution>')),
+    ],
+    [
+      'the skipITs property',
+      `<properties><skipITs>true</skipITs></properties>${inBuild(failsafe(`<execution>${IT_GOAL}</execution>`))}`,
+    ],
+    [
+      'the skipTests property',
+      `<properties><skipTests>TRUE</skipTests></properties>${inBuild(failsafe(`<execution>${IT_GOAL}</execution>`))}`,
+    ],
+    [
+      'skip in the execution',
+      inBuild(
+        failsafe(
+          `<execution>${IT_GOAL}<configuration><skip>true</skip></configuration></execution>`,
+        ),
+      ),
+    ],
+    [
+      'skipTests in the execution',
+      inBuild(
+        failsafe(
+          `<execution>${IT_GOAL}<configuration><skipTests>true</skipTests></configuration></execution>`,
+        ),
+      ),
+    ],
+    [
+      'skip in the plugin',
+      inBuild(failsafe(`<execution>${IT_GOAL}</execution>`, '<skip>true</skip>')),
+    ],
+    [
+      'skipITs in the plugin',
+      inBuild(failsafe(`<execution>${IT_GOAL}</execution>`, '<skipITs>true</skipITs>')),
+    ],
+    ['the phase none', inBuild(failsafe(`<execution><phase>none</phase>${IT_GOAL}</execution>`))],
+    [
+      'Failsafe only under pluginManagement',
+      `<build><pluginManagement><plugins>${failsafe(`<execution>${IT_GOAL}</execution>`)}` +
+        '</plugins></pluginManagement></build>',
+    ],
+    [
+      'Failsafe only in an inactive profile',
+      `<profiles><profile><id>it</id>${inBuild(failsafe(`<execution>${IT_GOAL}</execution>`))}</profile></profiles>`,
+    ],
+  ])('stays on test with %s', (_, inner) => {
+    const module = soloModule(inner);
+
+    expect([module.runsFailsafe, lifecycleArgs([module])]).toEqual([false, ['test']]);
+  });
+});
+
+describe('describeModule plugin configuration', () => {
+  it('reads report directories from the test execution before the plugin configuration', () => {
+    const surefire = plugin(
+      'maven-surefire-plugin',
+      '<configuration><reportsDirectory>plugin-unit</reportsDirectory></configuration>' +
+        '<executions><execution><goals><goal>test</goal></goals>' +
+        '<configuration><reportsDirectory>execution-unit</reportsDirectory></configuration></execution></executions>',
+    );
+    const execution =
+      `<execution>${IT_GOAL}<configuration>` +
+      '<reportsDirectory>execution-it</reportsDirectory></configuration></execution>';
+    const module = soloModule(
+      inBuild(surefire + failsafe(execution, '<reportsDirectory>plugin-it</reportsDirectory>')),
+    );
+
+    expect([module.surefireReports, module.failsafeReports]).toEqual([
+      path.join(module.basedir, 'execution-unit'),
+      path.join(module.basedir, 'execution-it'),
+    ]);
+  });
+
+  it('reads the destFile of every JaCoCo agent execution, the execution before the plugin', () => {
+    const jacoco = plugin(
+      'jacoco-maven-plugin',
+      '<configuration><destFile>target/unit.exec</destFile></configuration><executions>' +
+        '<execution><goals><goal>prepare-agent</goal></goals></execution>' +
+        '<execution><goals><goal>prepare-agent-integration</goal></goals>' +
+        '<configuration><destFile>target/it.exec</destFile></configuration></execution>' +
+        '<execution><id>again</id><goals><goal>prepare-agent</goal></goals></execution>' +
+        '</executions>',
+      'org.jacoco',
+    );
+    const module = soloModule(inBuild(jacoco));
+
+    expect(module.jacocoDestFiles).toEqual([
+      path.join(module.basedir, 'target/unit.exec'),
+      path.join(module.basedir, 'target/it.exec'),
+    ]);
+  });
+
+  it('runs the JaCoCo agent at the version the project binds, since two agents cannot share a JVM', () => {
+    const agent = (phase = '') =>
+      `<executions><execution>${phase}<goals><goal>prepare-agent</goal></goals></execution></executions>`;
+    const versioned = (version: string, body: string) =>
+      soloModule(
+        inBuild(
+          plugin('jacoco-maven-plugin', `<version>${version}</version>${body}`, 'org.jacoco'),
+        ),
+      );
+    const pinned = { jacoco: '0.8.16' };
+    const modules = [
+      versioned('0.8.12', agent()),
+      versioned('0.8.12', ''),
+      versioned('0.8.12', agent('<phase>none</phase>')),
+      versioned(`\${jacoco.version}`, agent()),
+    ];
+
+    expect(modules.map((module) => jacocoPlugin(pinned, [module]))).toEqual([
+      'org.jacoco:jacoco-maven-plugin:0.8.12',
+      'org.jacoco:jacoco-maven-plugin:0.8.16',
+      'org.jacoco:jacoco-maven-plugin:0.8.16',
+      'org.jacoco:jacoco-maven-plugin:0.8.16',
+    ]);
+    expect(jacocoPlugin(pinned)).toBe('org.jacoco:jacoco-maven-plugin:0.8.16');
+  });
+});

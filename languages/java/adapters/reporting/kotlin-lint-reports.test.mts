@@ -5,7 +5,7 @@ import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-sc
 import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mts';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
-import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
+import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mts';
 import {
   javaFindingsOf,
   rootReports,
@@ -50,7 +50,12 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
   });
   it('tells a project whose detekt config is left out how to use it', () => {
     const root = projectWithKotlinReports();
-    const formatAdvice = kotlinFormatAdvice({ ktfmtStyle: 'meta', detektIgnored: 'detekt.yml' });
+    const formatAdvice = kotlinFormatAdvice({
+      ktfmtStyle: 'meta',
+      detektIgnored: 'detekt.yml',
+      ktfmtEditorconfig: false,
+      editorconfigIgnored: false,
+    });
 
     const findings = javaFindingsOf(root, { preset: 'kotlin', formatAdvice });
 

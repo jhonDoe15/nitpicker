@@ -11,7 +11,7 @@ import {
   removed,
   returns,
   type Fields,
-} from './test-support/filter-helpers.mts';
+} from './test-support/generated-filter-fixtures.mts';
 
 const suspendDescription = '(ILkotlin/coroutines/Continuation;)Ljava/lang/Object;';
 const unitDescription = '()Lkotlin/Unit;';

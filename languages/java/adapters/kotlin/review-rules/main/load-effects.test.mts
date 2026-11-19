@@ -11,7 +11,7 @@ import {
   segment,
   testFile,
 } from '../test-support/loose-facts.mts';
-import { loadEffectFindings } from './load-effects.mjs';
+import { loadEffectFindings } from './load-effects.mts';
 
 const imports = (...paths: string[]) =>
   paths.map((target) =>
@@ -166,7 +166,12 @@ describe('class-load effects in Kotlin: what is reported', () => {
 
   it('follows a property to the client it holds, through a declared type or a builder', () => {
     const bindings = [
-      { name: 'pool', owner: 'Clients', local: false, init: [segment('HikariDataSource', true)] },
+      {
+        name: 'pool',
+        owner: 'Clients',
+        local: false,
+        init: [segment('HikariDataSource', true)],
+      },
       { name: 'source', owner: 'Clients', local: false, type: 'DataSource' },
       {
         name: 'ok',

@@ -44,9 +44,10 @@ function isListed(entry: RuleMatcher, preset: string, rules: readonly PresetRule
 }
 
 function toolFixerStatus(entry: RuleMatcher, preset: string, formatters: readonly PresetRule[]) {
-  return entry.fixableIn?.includes(preset) || isListed(entry, preset, formatters)
-    ? FIX_STATUS.automatic
-    : FIX_STATUS.none;
+  if (entry.fixableIn?.includes(preset) || isListed(entry, preset, formatters)) {
+    return FIX_STATUS.automatic;
+  }
+  return entry.suggestedIn?.includes(preset) === true ? FIX_STATUS.review : FIX_STATUS.none;
 }
 
 function selectedFixerStatus(
@@ -77,10 +78,10 @@ export function fixStatusFor(
 }
 
 export function withFixStatus(
-  { fixableIn, ...entry }: Fields,
+  { fixableIn, suggestedIn, ...entry }: Fields,
   sources: FixStatusSources = DEFAULT_FIX_SOURCES,
 ): Fields {
-  const withHint = matcherOf({ ...entry, fixableIn });
+  const withHint = matcherOf({ ...entry, fixableIn, suggestedIn });
   return {
     ...entry,
     fix: Object.fromEntries(

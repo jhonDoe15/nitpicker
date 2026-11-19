@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { rulesOf } from '../../test-support/sources.mts';
-import { GLOBAL_STATE_RULE } from './global-state.mjs';
+import { GLOBAL_STATE_RULE } from './global-state.mts';
 
 function leaks(text: string): string[] {
   return rulesOf(text, GLOBAL_STATE_RULE);

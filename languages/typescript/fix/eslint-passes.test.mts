@@ -29,18 +29,18 @@ function nestedMessages(text: string) {
   const end = text.indexOf(';');
   const outer = text.startsWith('outer(')
     ? [
-        suggestion('x/outer', {
+        suggestion('nitpicker/outer', {
           range: [0, end],
           text: text.slice(0, end).replace('outer', 'outer2'),
         }),
       ]
     : [];
   const inner = editOf(text, 'inner()', 'inner2()');
-  return [...outer, ...(inner === undefined ? [] : [suggestion('x/inner', inner)])];
+  return [...outer, ...(inner === undefined ? [] : [suggestion('nitpicker/inner', inner)])];
 }
 
 function growingMessages() {
-  return [suggestion('x/grow', { range: [0, 0], text: 'a' })];
+  return [suggestion('nitpicker/grow', { range: [0, 0], text: 'a' })];
 }
 
 function fixWith(
@@ -78,24 +78,28 @@ function fixWith(
 describe('the selected ESLint step repeats on the files it changed', () => {
   it('applies two overlapping suggestions of one file in two passes', () => {
     const { result, runs, text } = fixWith('outer(inner());\n', nestedMessages, [
-      'eslint-lint/x/outer',
-      'eslint-lint/x/inner',
+      'eslint-lint/nitpicker/outer',
+      'eslint-lint/nitpicker/inner',
     ]);
 
     expect(text).toBe('outer2(inner2());\n');
     expect(runs).toEqual(['outer(inner());\n', 'outer2(inner());\n', 'outer2(inner2());\n']);
     expect(result.fixedFindings).toEqual([
-      `${NAME}:1 eslint-lint/x/outer (eslint-suggestion)`,
-      `${NAME}:1 eslint-lint/x/inner (eslint-suggestion)`,
+      `${NAME}:1 eslint-lint/nitpicker/outer (eslint-suggestion)`,
+      `${NAME}:1 eslint-lint/nitpicker/inner (eslint-suggestion)`,
     ]);
     expect(result.notes?.filter((note) => note.includes('passes'))).toEqual([]);
   });
   it('stops a fix that keeps reporting itself after 10 passes and says so', () => {
-    const { result, runs, text } = fixWith('grow();\n', growingMessages, ['eslint-lint/x/grow']);
+    const { result, runs, text } = fixWith('grow();\n', growingMessages, [
+      'eslint-lint/nitpicker/grow',
+    ]);
 
     expect(runs).toHaveLength(10);
     expect(text).toBe(`${'a'.repeat(10)}grow();\n`);
-    expect(result.fixedFindings).toEqual([`${NAME}:1 eslint-lint/x/grow (eslint-suggestion)`]);
+    expect(result.fixedFindings).toEqual([
+      `${NAME}:1 eslint-lint/nitpicker/grow (eslint-suggestion)`,
+    ]);
     expect(result.notes).toEqual([
       'eslint --fix rewrote src/a.ts',
       'eslint --fix stopped after 10 passes: selected fixes may still apply',

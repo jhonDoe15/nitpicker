@@ -1,7 +1,7 @@
 import type { TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
 import { arrayItemTypes, itemTypesOf, unionMembers } from '../../../rules/support/array-items.mts';
-import { hasArrayType, nonNullableTypeOf } from '../../../rules/support/checked-types.mts';
+import { hasArrayType } from '../../../rules/support/checked-types.mts';
 import { typeServices, type Context } from '../../../rules/security/security-values.mts';
 import { ts } from '../../../rules/typed/typescript-views.mts';
 
@@ -86,11 +86,6 @@ export function isPlainConcatArgument(context: Context, node: TSESTree.Node): bo
 
 export function isAppendedAsOne(context: Context, node: TSESTree.Node): boolean {
   return isPlainConcatValue(context, node, false);
-}
-
-export function hasMethod(context: Context, node: TSESTree.Node, name: string): boolean {
-  const typed = nonNullableTypeOf(context, node);
-  return typed !== undefined && typed.checker.getPropertyOfType(typed.type, name) !== undefined;
 }
 
 export function hasObjectFromEntries(context: Context, node: TSESTree.Node): boolean {

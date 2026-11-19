@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { ingestCrap } from '../../../ingest/crap.mjs';
+import { ingestCrap } from '../../../ingest/crap.mts';
 import { ingestJacoco } from '../../../ingest/coverage-reports/jacoco.mts';
 import { ingestPit } from '../../../ingest/pit.mts';
 import { ingestJacocoBranches } from '../../../ingest/coverage-reports/jacoco-branches.mts';
@@ -14,13 +14,13 @@ import {
   functionLocator,
   sourceTextReader,
   structureFunctions,
-} from '../function-locator.mjs';
+} from '../function-locator.mts';
 import {
   jacocoSourceRoots,
   kotlinGeneratedFilter,
   sourceFileOf,
   sourceLocator,
-} from '../kotlin-reports.mjs';
+} from '../kotlin-reports.mts';
 import { callUntyped } from '../../typed/java-values.mts';
 import { fieldOf, listOf, textOf, textsOf } from '../../../../../shared/values/readers.mts';
 

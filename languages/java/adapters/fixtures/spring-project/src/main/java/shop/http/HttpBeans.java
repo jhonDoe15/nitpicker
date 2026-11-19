@@ -57,7 +57,7 @@ class HttpBeans {
 
   @Bean
   HttpClient bareJdk() {
-    return HttpClient.newBuilder().build(); // violation: SpringHttpClientTimeouts
+    return HttpClient.newBuilder().build();
   }
 
   @Bean

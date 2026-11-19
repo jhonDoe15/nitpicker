@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { readEffectivePom } from './configuration/effective-pom.mjs';
+import { readEffectivePom } from './configuration/effective-pom.mts';
 import { readReactor } from './maven-project.mts';
 import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mts';
 import { missingLauncherVersions } from './maven-tests.mts';
@@ -10,25 +10,29 @@ import {
   checkstyleIndentation,
   javaFormatterFlags,
   javaFormatterSettings,
-} from '../adapters/style/java-style.mjs';
-import { archunitTool, effectsTool, formatTool, resolveTools } from './maven-tools.mjs';
+} from '../adapters/style/java-style.mts';
+import { archunitTool, effectsTool, formatTool, resolveTools } from './maven-tools.mts';
 import { buildRunsArchRules } from './spring/arch-rules-gate.mts';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mts';
 import { writeSpringRuleset } from '../adapters/spring/proxies/proxy-ruleset.mts';
-import { MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
+import { MAVEN_PRESETS } from '../adapters/gradle-presets.mts';
 import { processorTool } from './errorprone/maven-errorprone.mts';
 import { compilerOf } from './errorprone/compiler-types.mts';
-import { readPinnedTools } from '../builds/java-build.mjs';
+import { readPinnedTools } from '../builds/java-build.mts';
 import { kotlinSetup } from './kotlin/kotlin-setup.mts';
 import { pitHistoryOf } from '../builds/pit-history/pit-history.mts';
-import { effectsOptions } from '../adapters/effects/effects-options.mjs';
+import { effectsOptions } from '../adapters/effects/effects-options.mts';
 import { dependencyFile } from './quick/maven-build-arguments.mts';
 import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mts';
 import { mavenScope } from './reactor/maven-scope.mts';
 import { reactorRootFor } from './reactor/reactor-root.mts';
 import { buildOrSkipTests, jacocoExecFiles, testReruns } from './quick/maven-test-phase.mts';
 import { fieldOf, listOf, textOf, textsOf } from '../../../shared/values/readers.mts';
-import { type JavaPolicy, callUntyped } from '../adapters/typed/java-values.mts';
+import {
+  type JavaEnvironment,
+  type JavaPolicy,
+  callUntyped,
+} from '../adapters/typed/java-values.mts';
 import {
   type Classpaths,
   type Dependency,
@@ -153,7 +157,9 @@ function extraTools({ modules, analyzed, policy, pinned, kotlin }: ToolsRequest)
       .filter((tool) => tool !== undefined),
     ...listOf(callUntyped(formatTool, policy.javaStyle, pinned, formatterVersion(policy))),
     ...listOf(fieldOf(kotlin, 'extraTools')),
-    ...listOf(callUntyped(archunitTool, buildRunsArchRules(policy, analyzed), pinned)),
+    ...listOf(
+      callUntyped(archunitTool, pinned, { runsRules: buildRunsArchRules(policy, analyzed) }),
+    ),
     ...listOf(callUntyped(effectsTool, pinned)),
   ];
 }
@@ -166,7 +172,10 @@ function requireMavenPreset(preset: string | undefined): void {
   }
 }
 
-function presetTools(run: MavenRun, request: ToolsRequest): unknown {
+function presetTools(
+  run: MavenRun & { readonly environment: JavaEnvironment | undefined },
+  request: ToolsRequest,
+): unknown {
   return callUntyped(resolveTools, {
     ...run,
     projectRoot: run.mavenRoot,
@@ -193,7 +202,10 @@ function prepare(
     policy,
   );
   const analyzed = modules.map((module) => ({ module, classpaths: readClasspaths(work, module) }));
-  const tools = presetTools(run, { modules, analyzed, policy, pinned: run.pinned, kotlin });
+  const tools = presetTools(
+    { ...run, environment },
+    { modules, analyzed, policy, pinned: run.pinned, kotlin },
+  );
   return { modules, built, scope, kotlin, since, analyzed, tools, timedOut };
 }
 

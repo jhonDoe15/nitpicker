@@ -3,7 +3,7 @@ import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
 import { sharedRouteRule } from '../../../../shared/exceptions/routes.mjs';
 import { withLegacyInventory } from '../../../../shared/legacy-inventory.mjs';
 import { fieldOf, fieldsOf } from '../../../../shared/values/readers.mts';
-import { declaredToolDigest } from '../tool-config/declared/declared-choices.mjs';
+import { declaredToolDigest } from '../tool-config/declared/declared-choices.mts';
 import { callUntyped, javaPolicyOf, type JavaFinding, type JavaPolicy } from './java-values.mts';
 
 export type ToolSettings = Readonly<
