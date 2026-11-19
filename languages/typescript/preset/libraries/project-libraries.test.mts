@@ -1,52 +1,15 @@
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { fieldOf, fieldsOf } from '../../../../shared/values/readers.mts';
 import {
   nestedCheckout,
   useGitCheckouts,
 } from '../../../../core/diff/git/test-support/git-checkout.mts';
-import {
-  resolveHeadPolicy as untypedResolveHeadPolicy,
-  withHeadCheckoutFacts as untypedWithHeadCheckoutFacts,
-} from '../head-policy.mjs';
-import { librariesForFile as untypedLibrariesForFile } from './file-libraries.mjs';
-import {
-  detectLibraries as untypedDetectLibraries,
-  loggerShapes as untypedLoggerShapes,
-  validationBehavior as untypedValidationBehavior,
-} from './project-libraries.mjs';
+import { resolveHeadPolicy, withHeadCheckoutFacts } from '../head-policy.mts';
+import { librariesForFile } from './file-libraries.mts';
+import { detectLibraries, loggerShapes, validationBehavior } from './project-libraries.mts';
 import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
-
-type Libraries = {
-  validation: string[];
-  logger: string[];
-  packages: Record<string, unknown>;
-};
-type HeadPolicy = {
-  libraries: Libraries;
-  layout?: { sourceRoots?: string[]; colocatedTests?: boolean };
-};
-
-const resolveHeadPolicy: (config: Record<string, unknown>, projectRoot: string) => HeadPolicy =
-  untypedResolveHeadPolicy;
-const withHeadCheckoutFacts: (
-  policy: Record<string, unknown>,
-  head: Record<string, unknown>,
-) => HeadPolicy = untypedWithHeadCheckoutFacts;
-const librariesForFile: (
-  file: { filename: string; cwd: string },
-  libraries: { validation: string[]; logger: string[]; packages?: Record<string, unknown> },
-) => { validation: string[]; logger: string[] } = untypedLibrariesForFile;
-const detectLibraries: (
-  projectRoot: string,
-  isExcluded?: (...file: never[]) => boolean,
-) => Libraries = untypedDetectLibraries;
-const loggerShapes: (libraries: { logger?: string[] } | undefined) => string[] =
-  untypedLoggerShapes;
-const validationBehavior: (libraries: { validation: string[] } | undefined) => {
-  name: string;
-  accepted: { id: string }[];
-} = untypedValidationBehavior;
 
 const { gitCheckout } = useGitCheckouts();
 
@@ -133,7 +96,10 @@ describe('libraries of the base run', () => {
     const base = withHeadCheckoutFacts({ libraries: { validation: [], logger: [] } }, head);
 
     expect(base.libraries).toEqual(head.libraries);
-    expect(Object.keys(base.libraries.packages)).toEqual(['.', 'packages/api']);
+    expect(Object.keys(fieldsOf(fieldOf(base.libraries, 'packages')))).toEqual([
+      '.',
+      'packages/api',
+    ]);
   });
 
   it('takes the colocated test placement of a checkout without test roots', () => {

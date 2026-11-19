@@ -5,10 +5,11 @@ import { fileURLToPath } from 'node:url';
 import { isPlainObject, listOf as untypedListOf } from '../../../../shared/config.mjs';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { isRealPathInside } from '../../../../shared/conventions/read-inside.mjs';
-import { withDependencyCruiserFiles as untypedWithDependencyCruiserFiles } from './config-values.mjs';
+import { withDependencyCruiserFiles as untypedWithDependencyCruiserFiles } from './config-values.mts';
 import { importToolFile, toolFunction } from './typed/tool-modules.mts';
 import { appendAll } from '../../../../shared/lists/lists.mts';
 
+const FILE_PROTOCOL = 'file:';
 const listOf: (value: unknown) => unknown[] = untypedListOf;
 const withDependencyCruiserFiles: (config: unknown, root: string) => unknown =
   untypedWithDependencyCruiserFiles;
@@ -17,7 +18,9 @@ const TOOL = 'dependency-cruiser';
 const CONFIG_EXTENSIONS = ['', '.js', '.json', '.cjs', '.mjs', '.ts', '.cts', '.mts'];
 
 function isLocalSpecifier(specifier: string): boolean {
-  return specifier.startsWith('.') || path.isAbsolute(specifier) || specifier.startsWith('file:');
+  return (
+    specifier.startsWith('.') || path.isAbsolute(specifier) || specifier.startsWith(FILE_PROTOCOL)
+  );
 }
 
 function isInside(root: string, file: string): boolean {
@@ -37,10 +40,12 @@ function containLocalImports(root: string): void {
   nodeModule.registerHooks({
     resolve(specifier, context, nextResolve) {
       const resolved = nextResolve(specifier, context);
-      const parent = context.parentURL?.startsWith('file:')
+      const parent = context.parentURL?.startsWith(FILE_PROTOCOL)
         ? fileURLToPath(context.parentURL)
         : undefined;
-      const target = resolved.url.startsWith('file:') ? fileURLToPath(resolved.url) : undefined;
+      const target = resolved.url.startsWith(FILE_PROTOCOL)
+        ? fileURLToPath(resolved.url)
+        : undefined;
       if (
         parent !== undefined &&
         target !== undefined &&
@@ -56,7 +61,9 @@ function containLocalImports(root: string): void {
 }
 
 function extendedFile(target: string, from: string): string {
-  const base = target.startsWith('file:') ? fileURLToPath(target) : path.resolve(from, target);
+  const base = target.startsWith(FILE_PROTOCOL)
+    ? fileURLToPath(target)
+    : path.resolve(from, target);
   return (
     CONFIG_EXTENSIONS.map((extension) => `${base}${extension}`).find(
       (candidate) => existsSync(candidate) && statSync(candidate).isFile(),

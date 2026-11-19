@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
-import { hashFiles as untypedHashFiles } from './hash.mjs';
+import { hashFiles as untypedHashFiles } from './hash.mts';
 
 const hashFiles: (files: string[], extra: string[], options: { root: string }) => string =
   untypedHashFiles;

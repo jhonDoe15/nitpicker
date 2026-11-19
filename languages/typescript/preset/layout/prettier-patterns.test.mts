@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { globMatcher as untypedGlobMatcher, resolveLayout } from '../layout.mjs';
-import { createQualityChecks as untypedCreateQualityChecks } from '../quality-checks.mjs';
+import { globMatcher as untypedGlobMatcher, resolveLayout } from '../layout.mts';
+import { createQualityChecks } from '../quality-checks.mts';
 
 const globMatcher: (glob: string) => RegExp = untypedGlobMatcher;
-const createQualityChecks: (layout: ReturnType<typeof resolveLayout>) => {
-  readonly staticChecks: readonly { readonly name: string; readonly patterns: readonly string[] }[];
-} = untypedCreateQualityChecks;
 
 function prettierPatterns(layout: ReturnType<typeof resolveLayout>): RegExp[] {
   const check = createQualityChecks(layout).staticChecks.find(
@@ -14,7 +11,7 @@ function prettierPatterns(layout: ReturnType<typeof resolveLayout>): RegExp[] {
   if (check === undefined) {
     throw new Error('prettier-format check is missing');
   }
-  return check.patterns.map((pattern) => globMatcher(pattern));
+  return (check.patterns ?? []).map((pattern) => globMatcher(pattern));
 }
 
 function isChecked(patterns: readonly RegExp[], file: string): boolean {

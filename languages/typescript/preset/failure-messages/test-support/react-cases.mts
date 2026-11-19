@@ -1,7 +1,7 @@
 import type { FailureMessageCase } from './typed/case-types.mts';
 import tseslint from 'typescript-eslint';
 import { reactSyntaxConfigFor } from '../../eslint-config/react/react-scope.mts';
-import { defaultResolvedLayout } from '../../layout.mjs';
+import { defaultResolvedLayout } from '../../layout.mts';
 import { browserCases } from './react/browser-cases.mts';
 import { componentTestCases } from './react/component-test-cases.mts';
 import { correctnessCases } from './react/correctness-cases.mts';

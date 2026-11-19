@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Layout } from '../../adapters/typed/head-policy.mts';
 import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
-import { resolveLayoutFor as untypedResolveLayoutFor } from '../layout.mjs';
+import { resolveLayoutFor as untypedResolveLayoutFor } from '../layout.mts';
 
 const sourcePath: (file: string) => string = checkoutModulePath;
 

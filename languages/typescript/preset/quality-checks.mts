@@ -1,0 +1,273 @@
+import { EXCLUDED_PATH_PATTERN, prettierPatterns, resolveLayout } from './layout.mts';
+import { testExecutionChecksFor } from './checks/test-execution.mts';
+import type {
+  CheckExclusions,
+  EslintCheckOptions,
+  EntryPointsCheck,
+  EslintCheck,
+  QualityCheck,
+  QualityChecks,
+} from './checks/typed/check-types.mts';
+import type { ResolvedLayout } from './typed/layout-types.mts';
+import {
+  POLICY_FILES,
+  JAVASCRIPT_PRESET_FILE,
+  DEPENDENCY_GRAPH_FILES,
+} from './checks/policy-files.mts';
+import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from './dependency-graph/cruise.mts';
+import { eslintVersion, vitestVersion } from './checks/constants.mts';
+import { COUPLING_CHECK_FILES } from './coupling/check-files.mts';
+import { STRUCTURE_CHECK_FILES } from './structure/check-files.mts';
+import { SIZE_SCALED_DEADLINE, repositoryChecksFor } from './checks/areas/repository-checks.mts';
+import { PROJECT_TOOL_FILES } from './project-tools/project-config-files.mts';
+
+const LAYOUT_FILE = 'languages/typescript/preset/layout.mjs';
+const HEAD_POLICY_FILE = 'languages/typescript/preset/head-policy.mjs';
+const TSCONFIG_QUALITY_FILE = 'languages/typescript/preset/defaults/tsconfig.quality.json';
+
+const dependencyCruiserVersion = 'unresolved';
+const prettierVersion = 'unresolved';
+const typeScriptVersion = 'unresolved';
+
+export function createQualityChecks(layout: ResolvedLayout = resolveLayout()): QualityChecks {
+  const exclusions = checkExclusions(layout);
+  return {
+    generalExclusions: exclusions.general,
+    productionExclusions: exclusions.production,
+    eslintChecks: eslintChecksFor(layout, exclusions),
+    entryPointsCheck: entryPointsCheckFor(layout, exclusions),
+    staticChecks: [prettierCheckFor(layout, exclusions), ...typeAndArchitectureChecksFor(layout)],
+    qualityAreaChecks: [
+      ...standardsChecksFor(exclusions),
+      ...graphChecksFor(exclusions),
+      ...repositoryChecksFor(exclusions),
+      ...testExecutionChecksFor(exclusions),
+    ],
+  };
+}
+
+function checkExclusions(layout: ResolvedLayout): CheckExclusions {
+  return {
+    general: [...layout.excludedGlobs, '.stryker-tmp/**'],
+    production: [
+      ...layout.excludedGlobs,
+      ...layout.sourceTestDirectoryGlobs,
+      ...layout.testSupportGlobs,
+      ...layout.testGlobs,
+      '.stryker-tmp/**',
+    ],
+  };
+}
+
+function eslintChecksFor(layout: ResolvedLayout, exclusions: CheckExclusions): EslintCheck[] {
+  return [
+    {
+      name: 'eslint-lint',
+      configRelativePath: 'languages/typescript/preset/defaults/eslint.config.mjs',
+      patterns: [...layout.sourceGlobs, ...layout.testGlobs],
+      exclusions: exclusions.general,
+      policyFiles: [TSCONFIG_QUALITY_FILE],
+      shardWeight: 25,
+      configurationFiles: [
+        'languages/typescript/preset/defaults/eslint.config.mjs',
+        TSCONFIG_QUALITY_FILE,
+        ...POLICY_FILES,
+      ],
+    },
+    productionEslintCheck(layout, exclusions, {
+      name: 'errors',
+      shardWeight: 9,
+      colocatedWith: ['eslint-lint'],
+    }),
+    productionEslintCheck(layout, exclusions, { name: 'logging', shardWeight: 9 }),
+    productionEslintCheck(layout, exclusions, { name: 'module-effects', shardWeight: 11 }),
+  ];
+}
+
+function productionEslintCheck(
+  layout: ResolvedLayout,
+  exclusions: CheckExclusions,
+  { name, shardWeight, colocatedWith }: EslintCheckOptions,
+): EslintCheck {
+  return {
+    ...(colocatedWith === undefined ? {} : { colocatedWith }),
+    name: `eslint-${name}`,
+    configRelativePath: `languages/typescript/preset/eslint-config/policies/${name}.config.mjs`,
+    patterns: layout.sourceGlobs,
+    exclusions: exclusions.production,
+    policyFiles: [],
+    shardWeight,
+    configurationFiles: [
+      'languages/typescript/preset/eslint-config/policies/base.mjs',
+      `languages/typescript/preset/eslint-config/policies/${name}.config.mjs`,
+      ...POLICY_FILES,
+    ],
+  };
+}
+
+function entryPointsCheckFor(
+  layout: ResolvedLayout,
+  exclusions: CheckExclusions,
+): EntryPointsCheck {
+  return {
+    name: 'entry-points',
+    sourceRoot: layout.sourceRoot,
+    sourceRoots: layout.sourceRoots,
+    exclusions: exclusions.production,
+    version: dependencyCruiserVersion,
+    shardWeight: 7,
+    logicalFiles: [
+      LAYOUT_FILE,
+      HEAD_POLICY_FILE,
+      'languages/typescript/preset/entry-points/analyze.mjs',
+      'languages/typescript/preset/dependency-graph/cruise.mjs',
+      ARCHITECTURE_CONFIG,
+      POLICY_TYPESCRIPT_CONFIG,
+      'languages/typescript/adapters/dependency-graph/project-config/dependency-cruiser-layers.mjs',
+      'languages/typescript/adapters/dependency-graph/project-config/graph-layer.mjs',
+      ...PROJECT_TOOL_FILES,
+    ],
+  };
+}
+
+function prettierCheckFor(layout: ResolvedLayout, exclusions: CheckExclusions): QualityCheck {
+  return {
+    name: 'prettier-format',
+    kind: 'prettier',
+    version: prettierVersion,
+    patterns: prettierPatterns(layout),
+    exclusions: exclusions.general,
+    configRelativePath: 'languages/typescript/preset/defaults/.prettierrc.json',
+    ignoreRelativePath: 'languages/typescript/preset/defaults/.prettierignore',
+    shardWeight: 8,
+    configurationFiles: [
+      'languages/typescript/adapters/prettier/prettier-layers.mjs',
+      'languages/typescript/conventions/prettier-conventions.mjs',
+      'languages/typescript/conventions/measures/jsx-conventions.mjs',
+      'languages/typescript/conventions/measures/typescript-syntax.mjs',
+      'languages/typescript/conventions/measures/data-conventions.mjs',
+      LAYOUT_FILE,
+      HEAD_POLICY_FILE,
+      JAVASCRIPT_PRESET_FILE,
+      'languages/typescript/preset/defaults/.prettierrc.json',
+      'languages/typescript/preset/defaults/.prettierignore',
+    ],
+  };
+}
+
+function typeAndArchitectureChecksFor(layout: ResolvedLayout): QualityCheck[] {
+  return [
+    {
+      name: 'typescript-typecheck',
+      kind: 'typecheck',
+      version: typeScriptVersion,
+      patterns: [],
+      exclusions: ['dist/**', ...layout.exclude],
+      configRelativePath: TSCONFIG_QUALITY_FILE,
+      shardWeight: 9,
+      configurationFiles: [
+        LAYOUT_FILE,
+        HEAD_POLICY_FILE,
+        'languages/typescript/preset/tool-configs.mjs',
+        'languages/typescript/preset/project-configs/typescript/layout-rewrites.mjs',
+        'languages/typescript/preset/project-configs/typescript/typescript-project-options.mjs',
+        'languages/typescript/preset/modules/selected-project-tsconfig.mjs',
+        JAVASCRIPT_PRESET_FILE,
+        TSCONFIG_QUALITY_FILE,
+      ],
+    },
+    {
+      name: 'dependency-architecture',
+      kind: 'architecture',
+      version: dependencyCruiserVersion,
+      patterns: layout.graphRoots,
+      exclusions: [EXCLUDED_PATH_PATTERN, ...layout.exclude],
+      configRelativePath: ARCHITECTURE_CONFIG,
+      shardWeight: 7,
+      configurationFiles: [
+        LAYOUT_FILE,
+        HEAD_POLICY_FILE,
+        ARCHITECTURE_CONFIG,
+        'languages/typescript/preset/architecture/outside-roots/outside-roots.mjs',
+        'languages/typescript/preset/architecture/strict-boundary-rules.mjs',
+        'languages/typescript/preset/architecture/domain-packages.mjs',
+        'languages/typescript/preset/architecture/strict-layout.mjs',
+        'languages/typescript/preset/coupling/feature-layout.mjs',
+        TSCONFIG_QUALITY_FILE,
+        'languages/typescript/adapters/dependency-graph/project-config/dependency-cruiser-layers.mjs',
+        'languages/typescript/adapters/dependency-graph/project-config/graph-layer.mjs',
+        'languages/typescript/adapters/dependency-graph/project-dependency-graph.mjs',
+        ...PROJECT_TOOL_FILES,
+      ],
+    },
+  ];
+}
+
+function standardsChecksFor(exclusions: CheckExclusions): QualityCheck[] {
+  return [
+    {
+      name: 'policy-tests',
+      kind: 'policy-tests',
+      version: vitestVersion,
+      exclusions: exclusions.general,
+      ...SIZE_SCALED_DEADLINE,
+      shardWeight: 21,
+      configurationFiles: ['vitest.config.mts'],
+    },
+    {
+      name: 'coding-standards',
+      kind: 'coding-standards',
+      version: eslintVersion,
+      exclusions: exclusions.general,
+      ...SIZE_SCALED_DEADLINE,
+      shardWeight: 10,
+      configurationFiles: [
+        'languages/typescript/preset/coding-standards/check.mjs',
+        'languages/typescript/preset/eslint-config/policies/coding-standards.config.mjs',
+        ...POLICY_FILES,
+      ],
+    },
+  ];
+}
+
+function graphChecksFor(exclusions: CheckExclusions): QualityCheck[] {
+  return [
+    {
+      name: 'coupling',
+      kind: 'coupling',
+      publishesModuleImports: true,
+      version: dependencyCruiserVersion,
+      exclusions: exclusions.production,
+      ...SIZE_SCALED_DEADLINE,
+      shardWeight: 7,
+      configurationFiles: [...DEPENDENCY_GRAPH_FILES, ...COUPLING_CHECK_FILES],
+    },
+    {
+      name: 'test-runtime',
+      kind: 'test-runtime',
+      version: dependencyCruiserVersion,
+      exclusions: exclusions.general,
+      ...SIZE_SCALED_DEADLINE,
+      shardWeight: 9,
+      configurationFiles: [
+        ...DEPENDENCY_GRAPH_FILES,
+        'languages/typescript/preset/test-runtime/analyze.mjs',
+        'languages/typescript/adapters/quality-areas/hashing/whole-file-hash.mjs',
+        'shared/paths/script-stem.mjs',
+      ],
+    },
+    {
+      name: 'structure',
+      kind: 'structure',
+      version: typeScriptVersion,
+      exclusions: exclusions.production,
+      ...SIZE_SCALED_DEADLINE,
+      shardWeight: 4,
+      configurationFiles: STRUCTURE_CHECK_FILES,
+    },
+  ];
+}
+
+const defaultChecks = createQualityChecks();
+
+export const { eslintChecks, entryPointsCheck, staticChecks, qualityAreaChecks } = defaultChecks;

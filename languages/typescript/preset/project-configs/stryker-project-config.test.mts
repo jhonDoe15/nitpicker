@@ -1,13 +1,16 @@
+import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
 import { symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { normalizeMutation } from '../../adapters/quality-areas/reporting/tests.mts';
 import { withoutProjectIgnoredMutants } from '../../adapters/quality-areas/typed/mutation.mts';
-import { strykerIgnoredNotices as untypedStrykerIgnoredNotices } from './ignored-notices.mjs';
-import { readStrykerProjectConfig as untypedReadStrykerProjectConfig } from './stryker-project-config.mjs';
+import { strykerIgnoredNotices as untypedStrykerIgnoredNotices } from './ignored-notices.mts';
+import { readStrykerProjectConfig as untypedReadStrykerProjectConfig } from './stryker-project-config.mts';
 import {
   layeredStrykerConfig,
+  type Policy,
   resolveHeadPolicy,
+  type ToolSettings,
   validateConfig,
   withHeadCheckoutFacts,
 } from './test-support/policy-views.mts';
@@ -51,9 +54,14 @@ const PROJECT = {
   ignorePatterns: ['fixtures'],
 };
 
+function strykerSettings(policy: Policy): ToolSettings | undefined {
+  const { stryker } = policy.tools ?? {};
+  return stryker;
+}
+
 function settingsFor(precedence: string[], project: Record<string, unknown> = PROJECT) {
   const root = projectWith({ 'stryker.config.json': JSON.stringify(project) });
-  return resolveHeadPolicy({ tools: { stryker: { precedence } } }, root).tools.stryker;
+  return strykerSettings(resolveHeadPolicy({ tools: { stryker: { precedence } } }, root));
 }
 
 const MALFORMED_CONFIGS: [Record<string, string>, string][] = [
@@ -98,7 +106,9 @@ describe('the project Stryker config', () => {
     const own = { mutator: { excludedMutations: ['ArrowFunction'], plugins: [] } };
     const layered = layeredStrykerConfig(own, settingsFor(precedence));
 
-    expect(layered.mutator).toEqual(precedence[0] === 'project' ? PROJECT.mutator : own.mutator);
+    expect(fieldOf(layered, 'mutator')).toEqual(
+      precedence[0] === 'project' ? PROJECT.mutator : own.mutator,
+    );
   });
 
   it('never lets the project lower a timeout below what nitpicker or Stryker uses', () => {
@@ -143,10 +153,11 @@ describe('the project Stryker config', () => {
 
   it.each(MALFORMED_CONFIGS)('is a tool error for %j', (files, message) => {
     const root = projectWith(files);
-    const settings = resolveHeadPolicy({ tools: { stryker: { precedence: ['project'] } } }, root)
-      .tools.stryker;
+    const settings = strykerSettings(
+      resolveHeadPolicy({ tools: { stryker: { precedence: ['project'] } } }, root),
+    );
 
-    expect(settings.projectConfigError).toContain(message);
+    expect(fieldOf(settings, 'projectConfigError')).toContain(message);
     expect(() => layeredStrykerConfig(NITPICKER, settings)).toThrow(message);
   });
 
@@ -165,8 +176,8 @@ describe('the project Stryker config', () => {
     const root = projectWith({ 'stryker.config.json': '{broken' });
     const policy = resolveHeadPolicy({ tools: { stryker: { precedence: ['nitpicker'] } } }, root);
 
-    expect(policy.tools.stryker).toEqual({ precedence: ['nitpicker'] });
-    expect(layeredStrykerConfig(NITPICKER, policy.tools.stryker)).toBe(NITPICKER);
+    expect(strykerSettings(policy)).toEqual({ precedence: ['nitpicker'] });
+    expect(layeredStrykerConfig(NITPICKER, strykerSettings(policy))).toBe(NITPICKER);
   });
 
   it('applies the head checkout config to the base snapshot', () => {
@@ -179,8 +190,8 @@ describe('the project Stryker config', () => {
       head,
     );
 
-    expect(base.tools.stryker).toEqual(head.tools.stryker);
-    expect(layeredStrykerConfig(NITPICKER, base.tools.stryker).concurrency).toBe(3);
+    expect(strykerSettings(base)).toEqual(strykerSettings(head));
+    expect(fieldOf(layeredStrykerConfig(NITPICKER, strykerSettings(base)), 'concurrency')).toBe(3);
     expect(
       withHeadCheckoutFacts({ tools: { stryker: { precedence: ['nitpicker'] } } }, head).tools,
     ).toEqual({ stryker: { precedence: ['nitpicker'] } });
@@ -190,18 +201,21 @@ describe('the project Stryker config', () => {
     const root = projectWith({ 'stryker.config.json': '{"concurrency": 3}' });
     const base = { tools: { stryker: { precedence: ['project'] } } };
 
-    expect(withHeadCheckoutFacts(base, resolveHeadPolicy({}, root)).tools.stryker).toEqual({
+    expect(strykerSettings(withHeadCheckoutFacts(base, resolveHeadPolicy({}, root)))).toEqual({
       precedence: ['nitpicker'],
     });
     expect(
-      withHeadCheckoutFacts(base, resolveHeadPolicy({ tools: { stryker: {} } }, root)).tools
-        .stryker,
+      strykerSettings(
+        withHeadCheckoutFacts(base, resolveHeadPolicy({ tools: { stryker: {} } }, root)),
+      ),
     ).toEqual({ precedence: ['nitpicker'] });
     expect(
-      withHeadCheckoutFacts(
-        base,
-        resolveHeadPolicy({ tools: { stryker: { precedence: ['nitpicker'] } } }, root),
-      ).tools.stryker,
+      strykerSettings(
+        withHeadCheckoutFacts(
+          base,
+          resolveHeadPolicy({ tools: { stryker: { precedence: ['nitpicker'] } } }, root),
+        ),
+      ),
     ).toEqual({ precedence: ['nitpicker'] });
   });
 
@@ -209,10 +223,10 @@ describe('the project Stryker config', () => {
     const root = projectWith({ 'stryker.config.mjs': "throw new Error('ran');" });
     const config = { tools: { stryker: { precedence: ['project'] } } };
 
-    expect(resolveHeadPolicy({ ...config, disable: ['mutation'] }, root).tools.stryker).toEqual({
+    expect(strykerSettings(resolveHeadPolicy({ ...config, disable: ['mutation'] }, root))).toEqual({
       precedence: ['project'],
     });
-    expect(resolveHeadPolicy(config, root).tools.stryker.projectConfigError).toBe(
+    expect(strykerSettings(resolveHeadPolicy(config, root))?.['projectConfigError']).toBe(
       'stryker.config.mjs could not be loaded: ran',
     );
   });
@@ -237,7 +251,7 @@ function strykerMutant(line: number, mutatorName: string, excluded: string[], co
 function mutationFindings(precedence: string[]) {
   const settings = settingsFor(precedence, { mutator: { excludedMutations: ['StringLiteral'] } });
   const applied = layeredStrykerConfig({ plugins: [] }, settings);
-  const excluded = applied.mutator?.excludedMutations ?? [];
+  const excluded = textsOf(fieldOf(fieldOf(applied, 'mutator'), 'excludedMutations'));
   const mutants = [
     strykerMutant(1, 'ConditionalExpression', excluded),
     strykerMutant(1, 'StringLiteral', excluded),

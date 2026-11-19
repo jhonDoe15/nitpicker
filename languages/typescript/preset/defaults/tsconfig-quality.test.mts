@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { typescriptApi } from '../../adapters/typed/typescript-program.mts';
-import { resolveLayout } from '../layout.mjs';
-import { layoutTransformFor as untypedLayoutTransformFor } from '../tool-configs.mjs';
+import { resolveLayout } from '../layout.mts';
+import { layoutTransformFor as untypedLayoutTransformFor } from '../tool-configs.mts';
 
 const layoutTransformFor: (
   name: string,

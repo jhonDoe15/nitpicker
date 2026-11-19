@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { ESLint } from 'eslint';
 import { describe, expect, it } from 'vitest';
-import { eslintChecks } from '../../quality-checks.mjs';
+import { eslintChecks } from '../../quality-checks.mts';
 import { fileURLToPath } from 'node:url';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';

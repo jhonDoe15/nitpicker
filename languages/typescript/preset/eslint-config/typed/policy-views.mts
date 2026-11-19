@@ -4,12 +4,13 @@ import {
   readHeadPolicy as untypedReadHeadPolicy,
   resolveHeadPolicy as untypedResolveHeadPolicy,
   readLayout as untypedReadLayout,
-} from '../../head-policy.mjs';
+} from '../../head-policy.mts';
 import {
   applyMatchingRuleExceptions as untypedApplyMatchingRuleExceptions,
   applyRuleExceptions as untypedApplyRuleExceptions,
   checkExceptionRules as untypedCheckExceptionRules,
-} from '../exceptions.mjs';
+  type ExceptionRule,
+} from '../exceptions.mts';
 import type { ScopeLayout } from './config-types.mts';
 
 type PolicyLayout = ScopeLayout & {
@@ -17,20 +18,31 @@ type PolicyLayout = ScopeLayout & {
   readonly entryPoints: string[];
 };
 
-type HeadPolicy = { readonly exceptions: unknown[] };
+type HeadPolicy = { readonly exceptions: readonly ExceptionRule[] };
 
 export const readLayout: () => PolicyLayout = untypedReadLayout;
 
 export const readHeadPolicy: () => HeadPolicy = untypedReadHeadPolicy;
 
-export const applyJavascriptDialect: (
+const dialectApplied: (
   entries: Linter.Config[],
   policy: { readonly preset?: string; readonly exceptions?: unknown[] },
 ) => Linter.Config[] = untypedApplyJavascriptDialect;
 
+export function applyJavascriptDialect(
+  entries: Linter.Config[],
+  policy: { readonly preset?: string; readonly exceptions?: readonly unknown[] },
+): Linter.Config[] {
+  const { exceptions, ...rest } = policy;
+  return dialectApplied(
+    entries,
+    exceptions === undefined ? rest : { ...rest, exceptions: [...exceptions] },
+  );
+}
+
 export const applyMatchingRuleExceptions: (
   entries: readonly Linter.Config[],
-  exceptions: unknown[],
+  exceptions: readonly ExceptionRule[],
 ) => Linter.Config[] = untypedApplyMatchingRuleExceptions;
 
 export const applyRuleExceptions: (
@@ -50,7 +62,10 @@ export const checkExceptionRules: (
 ) => void = untypedCheckExceptionRules;
 
 export const resolveHeadPolicy: (
-  config: object,
+  config: Readonly<Record<string, unknown>>,
   projectRoot?: string,
-) => { readonly exceptions?: unknown[]; readonly i18n?: unknown; readonly react?: unknown } =
-  untypedResolveHeadPolicy;
+) => {
+  readonly exceptions?: readonly unknown[] | undefined;
+  readonly i18n?: unknown;
+  readonly react?: unknown;
+} = untypedResolveHeadPolicy;

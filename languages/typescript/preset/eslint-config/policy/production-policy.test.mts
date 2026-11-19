@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lintFixture } from '../typed/lint-fixture.mts';
-import { defaultResolvedLayout } from '../../layout.mjs';
+import { defaultResolvedLayout } from '../../layout.mts';
 import { strictSyntaxConfigFor } from '../strict.mts';
 import { productionLayoutConfigFor, productionPolicyConfigFor } from './production-policy.mts';
 

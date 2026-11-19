@@ -1,15 +1,16 @@
+import { optionalText } from '../../../../../shared/values/readers.mts';
 import type { Linter } from 'eslint';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mts';
-import { codeExtensions } from '../../layout.mjs';
+import { codeExtensions } from '../../layout.mts';
 import {
   defaultStylingApproach,
   reactNativeTestingPackage,
   reactTestRuleIds,
   restrictedBrowserGlobals,
   testingLibrarySettings,
-} from './react-rules.mjs';
+} from './react-rules.mts';
 import {
   type ReactScope,
   type ResolvedLayout,
@@ -17,13 +18,13 @@ import {
   linterConfigs,
 } from '../typed/config-types.mts';
 import { domainGlobsFor } from '../typed/glob-views.mts';
-import { stylingApproachFor as untypedStylingApproachFor } from './react-styling.mjs';
-import { nitpickerReactRuleIds } from './rules/nitpicker-rules.mjs';
+import { stylingApproachFor as untypedStylingApproachFor } from './react-styling.mts';
+import { nitpickerReactRuleIds } from './rules/nitpicker-rules.mts';
 import {
   react19RuleIds,
   thirdPartyReactRuleIds,
   typedReactXRules,
-} from './rules/third-party-rules.mjs';
+} from './rules/third-party-rules.mts';
 import {
   isReactNativePackage,
   productionScope,
@@ -33,7 +34,7 @@ import {
   testsCleanUpAutomatically,
 } from '../typed/scope-views.mts';
 
-export { isReactProject } from '../scope-support.mjs';
+export { isReactProject } from '../scope-support.mts';
 
 const typedRuleIds = typedReactXRules.map((name) => `react-x/${name}`);
 const untypedThirdPartyRuleIds = thirdPartyReactRuleIds.filter((id) => !typedRuleIds.includes(id));
@@ -44,7 +45,7 @@ const stylingApproachFor: (input: {
   projectRoot: string;
   react: ReactScope;
   layout: ResolvedLayout | undefined;
-}) => string = untypedStylingApproachFor;
+}) => unknown = untypedStylingApproachFor;
 
 function ruleIdsForReact(major: number | undefined) {
   const before19 = major !== undefined && major < REACT_19_MAJOR;
@@ -172,7 +173,9 @@ export async function reactScopeConfigFor(
   const dependencies = readDependencyNames(projectRoot);
   const scope = {
     ...react,
-    styling: stylingApproachFor({ projectRoot, react, layout: scannableLayout(layout) }),
+    styling: optionalText(
+      stylingApproachFor({ projectRoot, react, layout: scannableLayout(layout) }),
+    ),
     reactNative: dependencies.includes(reactNativeTestingPackage),
     nativeApp: dependencies.some(isReactNativePackage),
     major: react.major ?? reactMajorOf(projectRoot),

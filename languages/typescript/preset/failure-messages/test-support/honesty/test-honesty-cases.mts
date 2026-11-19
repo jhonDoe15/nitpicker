@@ -1,7 +1,7 @@
 import type { CaseRow, FailureMessageCase } from '../typed/case-types.mts';
 import { listOf } from '../../../../../../shared/values/readers.mts';
 import tseslint from 'typescript-eslint';
-import { resolveLayout } from '../../../layout.mjs';
+import { resolveLayout } from '../../../layout.mts';
 import { strictTestConfigFor } from '../../../eslint-config/strict-tests.mts';
 import { testHonestyConfigFor } from '../../../eslint-config/test-honesty/index.mts';
 
