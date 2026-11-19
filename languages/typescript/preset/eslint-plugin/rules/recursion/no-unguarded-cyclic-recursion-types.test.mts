@@ -22,11 +22,9 @@ const project = typedTsProject('nitpicker-cyclic-types-', {
   },
 });
 
-function typed(code: string) {
-  return {
-    filename: project.write(code, 'ts'),
-    code: `import type { Type, Node, TypeChecker } from 'typescript';\n${code}`,
-  };
+function typed(body: string) {
+  const code = `import type { Type, Node, TypeChecker } from 'typescript';\n${body}`;
+  return { filename: project.write(code, 'ts'), code };
 }
 
 project.tester.run('no-unguarded-cyclic-recursion over the TypeScript API', rule, {
