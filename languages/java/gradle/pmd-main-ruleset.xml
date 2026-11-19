@@ -707,6 +707,23 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="ConcatenationComparedWithNull" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A string concatenation is compared with null. A concatenation is never null, so == null is always false and != null is always true, and the value that was meant to be tested is never checked. + binds tighter than == and !=, so &quot;id=&quot; + name != null ? name.trim() : &quot;none&quot; reads (&quot;id=&quot; + name) != null ? ...; when a conditional follows, put the parentheses around it: &quot;id=&quot; + (name != null ? name.trim() : &quot;none&quot;). Otherwise compare the value itself with null, or drop the comparison.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//InfixExpression[@Operator = ('==', '!=')][count(*) = 2][NullLiteral]
+  [let $e := *[not(self::NullLiteral)][1]
+   return exists($e[self::InfixExpression[@Operator = '+'][not(@Parenthesized = true())]])
+     and (exists($e[pmd-java:typeIs('java.lang.String')])
+          or exists($e/descendant-or-self::InfixExpression[@Operator = '+'][StringLiteral]
+                      [not(ancestor::*[exists(. intersect $e/descendant::*)][not(self::InfixExpression[@Operator = '+'] or self::ParenthesizedExpression)])]))
+  ]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="ConcurrentMapCheckThenAct" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This concurrent map is checked and then used again for the same key (containsKey or get(key) == null, then put, get or remove), but another thread can change the entry between the two calls: two threads both see it absent and both create the value, or the get returns null after containsKey said true. A ConcurrentMap makes each call atomic, not the pair. Use one atomic call: map.computeIfAbsent(key, k -&gt; create(k)), map.putIfAbsent(key, value), map.getOrDefault(key, fallback), map.computeIfPresent or merge, or read once into a local (Value v = map.get(key); if (v == null) ...). An exception fits a map that only one thread changes, or a pair that is already locked.">
     <priority>3</priority>
