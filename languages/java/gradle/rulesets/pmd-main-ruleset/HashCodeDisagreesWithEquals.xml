@@ -1,0 +1,62 @@
+  <rule name="HashCodeDisagreesWithEquals" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This hashCode reads a field that equals does not compare, or returns the identity hash (super.hashCode()) although equals compares fields, so two objects that are equal get different hashes and HashSet and HashMap lookups, remove and contains miss them. Build both from the same fields: hashCode may use a subset of what equals compares, never more. Keep mutable state out of both: equals compares listener, hashCode returns Objects.hash(listener).">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//ClassDeclaration[@RegularClass = true()]
+  [empty(ModifierList/Annotation[@SimpleName = ('EqualsAndHashCode', 'Data', 'Value')])]
+  [let $c := .,
+       $fields := ClassBody/FieldDeclaration[not(@Static = true())]/VariableDeclarator/VariableId,
+       $eq := ClassBody/MethodDeclaration[@Name = 'equals'][@Arity = 1][not(@Static = true())],
+       $hc := ClassBody/MethodDeclaration[@Name = 'hashCode'][@Arity = 0][not(@Static = true())],
+       $cap := function($n) { concat(upper-case(substring($n, 1, 1)), substring($n, 2)) },
+       $accessors := function($f) { ($f, concat('get', $cap($f)), concat('is', $cap($f))) },
+       $touches := function($m, $f) {
+         exists($m//(VariableAccess | FieldAccess)[@Name = $f])
+         or exists($m//MethodCall[@MethodName = $accessors($f)]) },
+       $declared := ClassBody/MethodDeclaration[not(@Name = ('equals', 'hashCode'))]/@Name,
+       $known := for $f in $fields return $accessors($f/@Name),
+       $opaque := function($m) {
+         exists($m//MethodCall[@MethodName = $declared][not(@MethodName = $known)])
+         or exists($m//MethodCall[matches(@MethodName, '^(get|is)[A-Z]')][ArgumentList[@Size = 0]]
+                                 [not(@MethodName = ($known, 'getClass'))])
+         or exists($m//MethodCall[matches(@MethodName, 'reflection', 'i')])
+         or exists($m//ArgumentList/ThisExpression) },
+       $derived := function($n) {
+         exists($c/ClassBody/ConstructorDeclaration//AssignmentExpression
+                [*[1][(self::VariableAccess or self::FieldAccess) and @Name = $n]]
+                [exists(*[2]/descendant-or-self::*[self::InfixExpression or self::ConditionalExpression])
+                 or count(*[2]/descendant-or-self::*[self::MethodCall or self::ConstructorCall]) ge 2
+                 or exists(*[2][(self::FieldAccess and not(@Name = $accessors($n)))
+                                or (self::MethodCall and not(@MethodName = $accessors($n)))]
+                              [*[1][self::VariableAccess]])]) },
+       $feeds := function($n, $eqFields) {
+         exists($c/ClassBody/ConstructorDeclaration
+                  [let $params := .//AssignmentExpression[*[1][(self::VariableAccess or self::FieldAccess)
+                                                              and @Name = $n]]/*[2]/descendant-or-self::VariableAccess/@Name
+                   return exists(.//AssignmentExpression[*[1][(self::VariableAccess or self::FieldAccess)
+                                                              and @Name = $eqFields]]
+                                   [*[2]/descendant-or-self::*[self::VariableAccess or self::FieldAccess]
+                                                              [@Name = ($n, $params)]])])
+         or exists($c/ClassBody/ConstructorDeclaration//AssignmentExpression
+                     [*[1][(self::VariableAccess or self::FieldAccess) and @Name = $n]]
+                     [*[2]/descendant-or-self::MethodCall[matches(@MethodName, 'hash', 'i')]]) }
+   return count($eq) = 1 and count($hc) = 1 and not($opaque($eq)) and not($opaque($hc))
+     and exists($fields[$touches($eq, @Name)])
+     and ((some $f in $fields satisfies
+             ($touches($hc, $f/@Name) and not($touches($eq, $f/@Name))
+              and not(matches($f/@Name, 'hash', 'i')) and not($derived($f/@Name))
+              and not($feeds($f/@Name, $fields[$touches($eq, @Name)]/@Name))
+              and empty($hc//AssignmentExpression[*[1][(self::VariableAccess or self::FieldAccess)
+                                                       and @Name = $f/@Name]])
+              and empty($hc//VariableId[@Field = false()][@Name = $f/@Name])))
+          or (empty(ExtendsList)
+              and empty($eq//MethodCall[@MethodName = 'equals'][SuperExpression])
+              and exists($hc//MethodCall[@MethodName = 'hashCode'][SuperExpression]
+                         | $hc//MethodCall[@MethodName = 'identityHashCode'][ArgumentList/ThisExpression])))]
+/ClassBody/MethodDeclaration[@Name = 'hashCode'][@Arity = 0]
+]]></value>
+      </property>
+    </properties>
+  </rule>

@@ -1,0 +1,32 @@
+  <rule name="SiblingValuePassed" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A value that belongs to another property fills this slot: the call sets one property from a variable named for a different one while a variable named for this property is never read, or an argument is repeated while its numbered sibling is left out. This is a copy-paste slip that compiles and shows up only at runtime. Pass the matching value (config.timeColumn(timeColumn), onException(type1, type2, type3)). An exception fits a converter that renames on purpose.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $scopeOf := function($n) { $n/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1] },
+    $unread := function($scope, $v) { empty($scope//VariableAccess[@Name = $v/@Name]) }
+return (
+//MethodCall[ArgumentList/@Size = 1][ArgumentList/VariableAccess][not(*[1][self::ArgumentList])]
+  [let $prop := lower-case(if (matches(@MethodName, '^set[A-Z]')) then substring(@MethodName, 4) else @MethodName),
+       $arg := ArgumentList/VariableAccess/@Name,
+       $scope := $scopeOf(.)
+   return exists($scope[not(ModifierList/Annotation[@SimpleName = 'Override'])]) and string-length($prop) >= 4 and lower-case($arg) != $prop
+     and exists($scope//VariableId[lower-case(@Name) = $prop][parent::FormalParameter[parent::FormalParameters/parent::*[self::MethodDeclaration or self::ConstructorDeclaration]]
+                                           or parent::VariableDeclarator/parent::LocalVariableDeclaration[not(ancestor::LambdaExpression)]]
+                  [$unread($scope, .)])]
+|
+//MethodCall[ArgumentList/@Size >= 3]
+  [let $names := ArgumentList/VariableAccess/@Name,
+       $scope := $scopeOf(.)
+   return exists($scope) and count($names) = ArgumentList/@Size
+     and (some $x in distinct-values($names)
+          satisfies matches($x, '[A-Za-z_][0-9]+$') and count($names[. = $x]) = 2
+                    and (let $base := replace($x, '[0-9]+$', '')
+                     return exists($scope//VariableId[replace(@Name, '[0-9]+$', '') = $base][matches(@Name, '[0-9]+$')]
+                                     [not(@Name = $names)][$unread($scope, .)])))]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>

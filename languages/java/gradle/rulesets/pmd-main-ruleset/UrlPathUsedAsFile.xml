@@ -1,0 +1,37 @@
+  <rule name="UrlPathUsedAsFile" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="URL.getFile() and URL.getPath() return the percent-encoded form of the path, so a directory with a space (%20) or another character that URLs encode gives a path that does not exist on disk, and the file looks missing. Convert the URL instead: new File(url.toURI()) or Path.of(url.toURI()), or URLDecoder.decode(path, StandardCharsets.UTF_8) when the URL is known to be a file: URL. An exception fits for a jar: URL that is opened as a FileSystem or read as a stream.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $encoded := function($e) {
+      $e/descendant-or-self::MethodCall[@MethodName = ('getFile', 'getPath')][ArgumentList[@Size = 0]]
+        [*[1][pmd-java:typeIsExactly('java.net.URL')]]
+        [empty(ancestor::ArgumentList[ancestor::*[. is $e]])]
+    },
+    $sinks := (
+      //ConstructorCall[pmd-java:typeIsExactly('java.io.File') or pmd-java:typeIsExactly('java.io.FileInputStream')
+                        or pmd-java:typeIsExactly('java.io.FileOutputStream')
+                        or pmd-java:typeIsExactly('java.io.FileReader') or pmd-java:typeIsExactly('java.io.FileWriter')
+                        or pmd-java:typeIsExactly('java.io.RandomAccessFile')],
+      //MethodCall[(@MethodName = 'get' and *[1][pmd-java:typeIsExactly('java.nio.file.Paths')])
+                   or (@MethodName = 'of' and *[1][pmd-java:typeIsExactly('java.nio.file.Path')])
+                   or (@MethodName = 'getPath' and *[1][pmd-java:typeIs('java.nio.file.FileSystem')])]
+    )
+return
+for $arg in $sinks/ArgumentList/*
+return $arg[empty(ancestor::CatchClause[CatchParameter//ClassType[@SimpleName = ('URISyntaxException',
+                                  'IllegalArgumentException', 'UnsupportedEncodingException')]])]
+  [empty(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]
+           //MethodCall[@MethodName = 'toURI'
+                         or (@MethodName = 'decode' and *[1][pmd-java:typeIs('java.net.URLDecoder')])])]
+  [exists($encoded(.))
+   or (self::VariableAccess
+      and (let $name := @Name,
+               $decl := (ancestor::Block/LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name])[last()]
+           return exists($decl) and exists($encoded($decl/*[last()]))
+             and empty($decl/ancestor::Block[1]//AssignmentExpression[*[1][self::VariableAccess][@Name = $name]])))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
