@@ -1,12 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { PROJECT, useTempProjects } from '../test-support/temp-projects.mts';
+import { useScanner } from '../test-support/temp-projects.mts';
 import { readNullFallThroughFindings as read } from './null-fall-through.mts';
 
-const projectWith = useTempProjects('nitpicker-jvm-null-');
-
-function scan(file: string, text: string, kotlin: boolean) {
-  return read(projectWith({ [file]: text }), { projects: [PROJECT], kotlin });
-}
+const scan = useScanner('nitpicker-jvm-null-', read);
 
 function java(body: string) {
   return scan(

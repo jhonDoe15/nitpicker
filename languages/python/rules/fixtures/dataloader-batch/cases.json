@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "dataloader-batch-result",
+    "mention": "by_id.get(key)",
+    "subject": "ChannelLoader.batch_load|lookup|by_id[key]"
+  }
+]

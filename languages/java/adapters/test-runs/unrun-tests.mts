@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { exceptionHint as exceptionHintUntyped } from '../../../../shared/rules/exceptions.mjs';
-import { inModule } from '../../builds/module-path.mts';
+import { inModule } from '../../builds/paths/module-path.mts';
 import { projectFilesUnder as projectFilesUnderUntyped } from '../../../../shared/project-files/project-files.mjs';
 import { fieldOf, listOf, optionalText, textsOf } from '../../../../shared/values/readers.mts';
 import { TEST_DECLARATION } from '../test-runtime/test-markers.mts';

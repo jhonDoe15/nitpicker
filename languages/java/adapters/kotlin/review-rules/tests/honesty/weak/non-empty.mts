@@ -64,7 +64,7 @@ function assertionCall(call: ArgCall): boolean {
     assertNotEquals: () =>
       args.some((argument) => ZERO.test(squeezed(argument))) && args.some(isSizeExpression),
   };
-  return sized[name]?.() === true;
+  return Object.hasOwn(sized, name) && sized[name]?.() === true;
 }
 
 function assertJ(scanned: TestScanned, call: ArgCall): boolean {

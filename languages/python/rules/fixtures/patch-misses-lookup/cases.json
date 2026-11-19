@@ -2,6 +2,7 @@
   {
     "tool": "python-rules",
     "rule": "patch-misses-lookup",
-    "mention": "looks it up"
+    "mention": "looks it up",
+    "alongside": ["internal-module-patch"]
   }
 ]

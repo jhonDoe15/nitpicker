@@ -2,6 +2,7 @@
   {
     "tool": "python-rules",
     "rule": "tls-verification-off",
-    "mention": "trust the certificate authority"
+    "mention": "trust the certificate authority",
+    "alongside": ["managed-resource-outside-composition-root"]
   }
 ]

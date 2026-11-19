@@ -2,6 +2,7 @@
   {
     "tool": "python-rules",
     "rule": "unbounded-fan-out",
-    "mention": "asyncio.semaphore"
+    "mention": "asyncio.semaphore",
+    "alongside": ["managed-resource-outside-composition-root"]
   }
 ]

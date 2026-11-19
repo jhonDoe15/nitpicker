@@ -36,6 +36,7 @@ const COVERAGE_CONFIGURATION_FILES = [
 
 const MUTATION_CONFIGURATION_FILES = [
   'languages/typescript/preset/tool-configs.mjs',
+  'languages/typescript/preset/project-configs/typescript/layout-rewrites.mjs',
   'languages/typescript/preset/project-configs/typescript/typescript-project-options.mjs',
   'languages/typescript/preset/modules/selected-project-tsconfig.mjs',
   JAVASCRIPT_PRESET_FILE,

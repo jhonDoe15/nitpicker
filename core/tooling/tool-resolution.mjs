@@ -98,8 +98,20 @@ function toolBinary(name, root, bin) {
   return binPath;
 }
 
+const PEER_DISTRIBUTIONS = new Map([['typescript', /^@typescript\/typescript\d+$/u]]);
+
+function isDeclaredName(installedName, { declared, isPeer }) {
+  if (installedName === declared.name) {
+    return true;
+  }
+  return isPeer && PEER_DISTRIBUTIONS.get(declared.name)?.test(installedName) === true;
+}
+
 function assertDeclaredPackage({ name, installed, declared, isPeer }) {
-  if (installed.name !== declared.name || typeof installed.version !== 'string') {
+  if (
+    !isDeclaredName(installed.name, { declared, isPeer }) ||
+    typeof installed.version !== 'string'
+  ) {
     throw new Error(`Invalid installed tool package for ${name}`);
   }
   if (!isPeer && installed.version !== declared.version) {

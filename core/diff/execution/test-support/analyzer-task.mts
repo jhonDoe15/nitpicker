@@ -38,7 +38,7 @@ export function task(
   };
 }
 
-const SCHEDULING_TURNS = [1, 2, 3, 4];
+const SCHEDULING_TURNS = [1, 2, 3, 4, 5, 6, 7, 8];
 
 export async function flushScheduling(): Promise<void> {
   for (const turn of SCHEDULING_TURNS) {

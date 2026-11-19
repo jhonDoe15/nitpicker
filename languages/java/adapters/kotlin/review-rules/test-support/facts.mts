@@ -1,4 +1,4 @@
-import { findingFactory } from '../review-finding.mts';
+import { findingFactory } from '../finding/review-finding.mts';
 import { listOf } from '../../../../../../shared/values/readers.mts';
 
 const MAIN_FILE = 'src/main/kotlin/demo/Sample.kt';

@@ -29,6 +29,11 @@ Notes on the glue in `java-reports.mts`:
   a file PMD fails on in both snapshots is listed in a full run and is not a new finding in a comparison;
   a file that fails only on head is new. The findings of that file are not removed from either side.
   Both the Gradle and the Maven build read the report the same way.
+- **Rules that crash on a file.** When one rule throws on a file, PMD logs `Exception applying rule X on
+  file Y, continuing with next rule` and checks the file with the other rules. Both builds keep PMD's
+  stderr in `pmd-log.txt` next to `pmd.sarif`, and each crashing rule becomes one descriptive
+  `pmd/rule-crashed` note that names the files it skipped. Its identity is the rule name, so the same crash
+  on both sides is not new. The report's notification for that file is not also read as a processing error.
 - **Keys built from a runtime value.** PMD's `HardCodedCryptoKey` reports any key that contains a string
   literal, so `new SecretKeySpec((timestamp + "\n" + secret).getBytes(), ...)` is reported although the
   secret is configured. `crypto-keys/crypto-key-filter.mjs` reads the source at the finding (PMD points

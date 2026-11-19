@@ -32,6 +32,9 @@ the allowed form and ends with its exception entry.
 - Never `time.Sleep` to wait for a goroutine you started (`go-rules/sleep-to-wait`): wait on its
   WaitGroup, errgroup, channel or context. A sleep between retries, with no goroutine started
   before it, is fine.
+- An exported function or method does not wait a package constant it cannot override
+  (`go-rules/uninjectable-delay`): `time.Sleep(retryDelay)` or `<-time.After(retryDelay)` makes a test wait it
+  out. Take the delay as a parameter, or a field or option of the exported type that defaults to the constant.
 - A `Close`, `Shutdown` or `Stop` that releases several resources runs every release: `errors.Join` the
   results, or `defer` one close per resource, never `if err := a.Close(); err != nil { return err }` before
   the next release (`go-rules/cleanup-skipped`).
@@ -78,6 +81,12 @@ the allowed form and ends with its exception entry.
 - A nil branch that does not leave is not followed by a use of the same value
   (`go-rules/nil-branch-fall-through`): `if v == nil { log.Println(...) }` then `v.Field` panics on the nil
   path. End the branch with `return` (or `continue`), or use an `else`.
+- A function does not call itself, directly or through another function of the package (`go-rules/self-recursion`): a retry or poll is a `for attempt := range attempts` loop, a tree walk is a loop over a worklist that each step appends the node's children to, flat data is a loop that appends or a `slices`/`maps` helper. An exception fits only when the recursion is bounded and deliberate.
+- Domain code does not change a slice or map it was given (`go-rules/mutating-method-in-domain`, packages
+  with a `domain` path segment): `append(items, x)`, `sort.Ints(items)`, `slices.Sort(items)`, `table[k] = v`
+  or `delete(table, k)` on a parameter writes into the caller's data. Build a new value:
+  `append(slices.Clone(items), x)`, `slices.Concat`, `slices.Sorted(slices.Values(items))`, `maps.Clone(table)`,
+  or assign a clone to the parameter first. A slice or map made and filled in the same function is fine.
 - Never add to a value that can hold the maximum of its type (`go-rules/max-value-overflow`): a
   constant, variable, field or parameter set to `math.MaxInt` (or `MaxInt32`, `MaxInt64`) that a sum or
   product turns negative as an index, slice bound, `make` length, `min`/`max` argument or comparison
@@ -149,6 +158,9 @@ the allowed form and ends with its exception entry.
   `Clamp(Limit + 1)`, not `Clamp(51)`. A test that holds the copy keeps checking the old value when
   the constant changes. Pin a contract value next to the constant on purpose:
   `if Limit != 50 { t.Fatalf(...) }` or `assert.Equal(t, 50, Limit)`.
+- Write one table-driven test instead of three copies that differ only in literals
+  (`go-rules/copy-pasted-tests`): a slice of cases and one `t.Run(tc.name, ...)` per row. Tests that
+  differ in a call are not copies.
 - Never sleep in a test (`go-rules/sleep-in-test`): wait for the event (a channel,
   `sync.WaitGroup`), or run the code in a `testing/synctest` bubble, where time is virtual. A fake
   that sleeps to act slow is fine.

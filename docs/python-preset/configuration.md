@@ -65,16 +65,17 @@ Where each kind of finding is lifted for some paths:
 }
 ```
 
-| Key            | Values                                                             | Default                                                                              |
-| -------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| `environment`  | `uv`, `poetry`, `pipenv`, `hatch`, `conda`, `path`, or a directory | detected, see above                                                                  |
-| `formatter`    | `ruff`, `black`                                                    | `black` if the project declares it (see below) and not ruff's formatter, else `ruff` |
-| `testRunner`   | `pytest`, `unittest`, `django`, `nose2`                            | `pytest` if the project uses it (see below), else `unittest`                         |
-| `typeChecker`  | `mypy`, `pyright`, `basedpyright`                                  | detected from the project, see below                                                 |
-| `importLinter` | `true`, `false`                                                    | run when the project has an import-linter config (see slice 5), else not             |
-| `sourceRoots`  | non-empty array of project directories                             | `src`, else the top-level packages (directories with `__init__.py`), else `.`        |
-| `entryPoints`  | array of project-relative globs                                    | none; see [Composition roots](the-shared-one-way-rules.md)                           |
-| `exceptions`   | array of `{ rule, paths, reason }`                                 | none; see [Exceptions](#exceptions)                                                  |
+| Key               | Values                                                             | Default                                                                                                                                   |
+| ----------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `environment`     | `uv`, `poetry`, `pipenv`, `hatch`, `conda`, `path`, or a directory | detected, see above                                                                                                                       |
+| `formatter`       | `ruff`, `black`                                                    | `black` if the project declares it (see below) and not ruff's formatter, else `ruff`                                                      |
+| `testRunner`      | `pytest`, `unittest`, `django`, `nose2`                            | `pytest` if the project uses it (see below), else `unittest`                                                                              |
+| `typeChecker`     | `mypy`, `pyright`, `basedpyright`                                  | detected from the project, see below                                                                                                      |
+| `importLinter`    | `true`, `false`                                                    | run when the project has an import-linter config (see slice 5), else not                                                                  |
+| `sourceRoots`     | non-empty array of project directories                             | `src`, else the top-level packages (directories with `__init__.py`), else `.`                                                             |
+| `entryPoints`     | array of project-relative globs                                    | none; see [Composition roots](the-shared-one-way-rules.md)                                                                                |
+| `blockingGetters` | array of method names or dotted names                              | none; `get_connection` is built in for Airflow, see `blocking-helper-in-async` in [the shared one-way rules](the-shared-one-way-rules.md) |
+| `exceptions`      | array of `{ rule, paths, reason }`                                 | none; see [Exceptions](#exceptions)                                                                                                       |
 
 `python.entryPoints` lists the files that start the program, such as a job runner or a worker that
 reads its settings from the environment or connects at import (see the composition roots below).

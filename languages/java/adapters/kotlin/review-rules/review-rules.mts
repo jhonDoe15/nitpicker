@@ -24,7 +24,7 @@ import { SERVICE_LOOKUP_RULE } from './main/service-lookups/service-lookups.mts'
 import { UNBOUNDED_POOL_RULE } from './main/thread-pools/unbounded-pools.mts';
 import { UNUSED_OPTION_RULE } from './main/unused-options/unused-options.mts';
 import { VALIDATION_TARGET_RULE } from './validation/validation-targets.mts';
-import { REVIEW_TOOL, SOURCE_TOOL } from './review-finding.mts';
+import { REVIEW_TOOL, SOURCE_TOOL } from './finding/review-finding.mts';
 import { JAVA_ONLY_SPRING_RULE, SPRING_RULES } from './spring/spring-messages.mts';
 import { SPRING_UNUSED_CONTEXT_RULE } from './tests/spring-context.mts';
 import { FIXED_SLEEP_RULE } from '../../../messages/wait-advice.mts';

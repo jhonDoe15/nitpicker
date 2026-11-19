@@ -40,7 +40,6 @@ describe('repository-level findings in the quality-area analyzers', () => {
         stabilityDirection: [{ source: 'stable', target: 'volatile', delta: 0.5 }],
       },
       'coupling',
-      [],
     );
 
     expect(findings).toEqual([

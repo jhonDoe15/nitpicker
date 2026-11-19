@@ -3,6 +3,7 @@
     "tool": "python-rules",
     "rule": "in-memory-update",
     "mention": "one statement",
-    "subject": "Order|status|sqlalchemy"
+    "subject": "Order|status|sqlalchemy",
+    "alongside": ["unversioned-orm-entity"]
   }
 ]

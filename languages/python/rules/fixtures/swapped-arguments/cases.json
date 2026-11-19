@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "swapped-arguments",
+    "mention": "in the order of the parameters",
+    "subject": "docs|proc|pipe|docs"
+  }
+]

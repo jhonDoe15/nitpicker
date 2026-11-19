@@ -1,0 +1,54 @@
+  <rule name="LogPlaceholderSlip" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This SLF4J or Log4j 2 message loses an argument. With one curly-brace placeholder for every argument and the exception last, the exception is printed with toString() and its stack trace is never logged; and %s, %d or a numbered placeholder in a logger that reads curly braces is printed as it stands while its argument is dropped. Write one curly-brace pair for each value except the exception, which goes last with no pair of its own (log.warn(&quot;Failed for&quot;, id, e) plus the pair after for), and use the pair instead of %s or %d. An exception fits when only the exception text is wanted in the message: pass e.getMessage().">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $levels := ('trace', 'debug', 'info', 'warn', 'error', 'fatal', 'log'),
+    $formatter := function($logger) {
+      exists($logger[self::VariableAccess or self::FieldAccess]
+        [let $name := @Name
+         return root(.)//(VariableDeclarator[@Name = $name] | AssignmentExpression[*[1][@Name = $name]])
+           [*[last()][self::MethodCall][@MethodName = 'getFormatterLogger']]])
+    },
+    $imported := function($node, $prefix) {
+      exists(root($node)//ImportDeclaration[starts-with(@ImportedName, $prefix)])
+    },
+    $throwable := function($arg) {
+      exists($arg[not(self::NullLiteral)][pmd-java:typeIs('java.lang.Throwable')])
+      or (exists($arg[self::VariableAccess])
+          and (some $d in ($arg/ancestor::CatchClause/CatchParameter/VariableId
+                           | $arg/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression]
+                               /(FormalParameters | LambdaParameterList)//VariableId[../ClassType[matches(@SimpleName, '(Exception|Throwable)$')]])
+               satisfies $d/@Name = $arg/@Name))
+    }
+return //MethodCall[@MethodName = $levels][ArgumentList/@Size >= 2]
+  [*[1][pmd-java:typeIs('org.slf4j.Logger') or pmd-java:typeIs('org.apache.logging.log4j.Logger')
+        or (matches(@Name, '^_?log(ger)?$', 'i') and (self::VariableAccess or self::FieldAccess or self::AmbiguousName)
+            and ($imported(., 'org.slf4j.') or $imported(., 'org.apache.logging.log4j.'))
+            and not($imported(., 'java.util.logging.')) and not($imported(., 'org.jboss.logging.'))
+            and not(pmd-java:typeIs('java.util.logging.Logger') or pmd-java:typeIs('org.jboss.logging.BasicLogger')
+                    or pmd-java:typeIs('org.apache.commons.logging.Log') or pmd-java:typeIs('java.lang.System$Logger')))]
+     [not($formatter(.))]]
+  [let $arguments := ArgumentList/*,
+       $skip := if ($arguments[1][self::StringLiteral]) then 0
+                else if ($arguments[2][self::StringLiteral]
+                         and ($arguments[1][pmd-java:typeIs('org.slf4j.Marker') or pmd-java:typeIs('org.apache.logging.log4j.Marker')
+                                            or pmd-java:typeIs('org.apache.logging.log4j.Level')]
+                              or $arguments[1][matches(@Name, '(^|\.)(MARKER|Marker|Level)|^marker$|^level$')]
+                              or $arguments[1][self::FieldAccess or self::AmbiguousName][matches(@Name, '^(TRACE|DEBUG|INFO|WARN|ERROR|FATAL)$')]))
+                     then 1 else (),
+       $format := $arguments[$skip + 1][self::StringLiteral],
+       $rest := $arguments[position() > $skip + 1],
+       $text := string($format/@ConstValue),
+       $unescaped := replace($text, '\\\{\}', ''),
+       $holders := (string-length($unescaped) - string-length(replace($unescaped, '\{\}', ''))) div 2
+   return exists($format) and exists($rest) and not($rest[self::ArrayInitializer or self::ArrayAllocation])
+     and ($holders >= 1 and $holders = count($rest) and $throwable($rest[last()])
+          or ($holders = 0 and not(contains($text, '\{'))
+              and not(count($rest) = 1 and $throwable($rest))
+              and (matches(replace($text, '%%', ''), '%[-+ 0,]*\d*(\.\d+)?[sSd]|%\.\d+f') or matches($text, '\{\d+\}'))))]
+]]></value>
+      </property>
+    </properties>
+  </rule>

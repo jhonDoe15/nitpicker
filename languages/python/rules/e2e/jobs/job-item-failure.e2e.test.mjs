@@ -4,6 +4,7 @@ import { createScripts } from '../../test-support/python-rule-scripts.mts';
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const { cleanup, outcomes } = createScripts({
   hidden: [
+    'managed-resource-outside-composition-root',
     'test-without-assertion',
     'io-in-loop',
     'swallowed-exception',

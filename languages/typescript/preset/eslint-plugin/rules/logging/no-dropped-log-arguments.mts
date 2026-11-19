@@ -1,9 +1,9 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { librariesForFile as untypedLibrariesForFile } from '../../../libraries/file-libraries.mjs';
 import { readHeadPolicy, type LibraryChoices } from '../typed/policy-views.mts';
-import { type Context, unwrapped } from '../security/security-values.mts';
+import { type Context } from '../security/security-values.mts';
 import { isObjectArgument, isPrimitiveArgument } from './argument-kinds.mts';
-import { loggerOf, type Library, type Logger } from './origins/logger-origins.mts';
+import { type Logger } from './origins/logger-origins.mts';
+import { logReceiver, presentLibraries, presentLogger } from './logger-calls.mts';
 import { literalText as messageText } from '../analysis/node/call-text.mts';
 import { placeholderCount } from './placeholders.mts';
 
@@ -11,13 +11,6 @@ type MessageId = 'droppedValues' | 'missingValues' | 'winstonSplat' | 'winstonEx
 type RuleContext = Readonly<TSESLint.RuleContext<MessageId, []>>;
 type Arguments = readonly TSESTree.CallExpressionArgument[];
 
-const librariesForFile: (
-  context: { readonly filename: string; readonly cwd: string },
-  libraries: LibraryChoices | undefined,
-) => { readonly logger?: readonly string[] } | undefined = untypedLibrariesForFile;
-
-const LOG_METHODS = new Set(['trace', 'debug', 'info', 'warn', 'error', 'fatal']);
-const LIBRARIES: readonly Library[] = ['pino', 'bunyan', 'winston'];
 const MAX_VALUE_TEXT = 40;
 
 function valuesText(context: RuleContext, values: Arguments): string {
@@ -97,17 +90,10 @@ function reportWinston(context: RuleContext, node: TSESTree.CallExpression, logg
 }
 
 function loggerCall(node: TSESTree.CallExpression): TSESTree.Node | undefined {
-  const callee = unwrapped(node.callee);
   const unspread = node.arguments.every(
     (argument) => argument.type !== AST_NODE_TYPES.SpreadElement,
   );
-  return unspread &&
-    callee.type === AST_NODE_TYPES.MemberExpression &&
-    !callee.computed &&
-    callee.property.type === AST_NODE_TYPES.Identifier &&
-    LOG_METHODS.has(callee.property.name)
-    ? callee.object
-    : undefined;
+  return unspread ? logReceiver(node) : undefined;
 }
 
 export function noDroppedLogArgumentsRule(
@@ -128,15 +114,14 @@ export function noDroppedLogArgumentsRule(
       },
     },
     create(context) {
-      const present = new Set(librariesForFile(context, rootLibraries)?.logger ?? []);
-      if (!LIBRARIES.some((library) => present.has(library))) {
+      const present = presentLibraries(context, rootLibraries);
+      if (present === undefined) {
         return {};
       }
       return {
         CallExpression(node) {
-          const receiver = loggerCall(node);
-          const logger = receiver === undefined ? undefined : loggerOf(context, receiver);
-          if (logger === undefined || !present.has(logger.library)) {
+          const logger = presentLogger(context, loggerCall(node), present);
+          if (logger === undefined) {
             return;
           }
           if (logger.library === 'winston') {

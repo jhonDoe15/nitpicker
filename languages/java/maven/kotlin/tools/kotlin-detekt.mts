@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { javaCommand, runJava } from '../../maven-command.mts';
+import { javaCommand, runJava } from '../../programs/java-command.mts';
 import { detektJava, skipWithoutJdk } from '../../errorprone/maven-jdk.mts';
 import { DETEKT_SKIPPED } from '../../../adapters/reporting/skips/skipped-tools.mts';
 import { EMPTY_SARIF, kotlinFiles, lintedRoots } from './kotlin-files.mts';

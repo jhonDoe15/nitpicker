@@ -27,7 +27,7 @@ import {
   readKotlinFanOutFindings,
   readKotlinReviewFindings,
 } from '../kotlin/review-rules/review-findings.mts';
-import { withoutCoveredFindings } from '../kotlin/review-rules/review-finding.mts';
+import { withoutCoveredFindings } from '../kotlin/review-rules/finding/review-finding.mts';
 import { readKotlinNotes } from './kotlin-notes.mts';
 import { withoutTransactionAwareCacheWrites } from '../spring/transactions/transaction-aware.mts';
 import { springRoots } from '../spring/transactions/transaction-filters.mts';

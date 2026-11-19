@@ -17,7 +17,7 @@ import { layeredKnipConfig } from '../../adapters/quality-areas/knip/knip-layers
 import { spawnedEntryFiles } from '../../adapters/dependency-graph/spawned-entries.mts';
 import { KNIP_TOOL } from '../../preset/project-tools/project-config-files.mjs';
 import { projectToolLayer as untypedProjectToolLayer } from '../../preset/project-tools/project-tool-policy.mjs';
-import { layoutKnipConfig as untypedLayoutKnipConfig } from '../../preset/tool-configs.mjs';
+import { layoutKnipConfig as untypedLayoutKnipConfig } from '../../preset/project-configs/typescript/layout-rewrites.mjs';
 import { guardDeletions as untypedGuardDeletions } from '../project/dead-files/dead-file-guard.mts';
 import {
   containedPath,

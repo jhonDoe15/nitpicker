@@ -13,6 +13,7 @@ import { REPOSITORY_HYGIENE_TOOL } from '../../hygiene/files/repository-files.mj
 import {
   CHANGE_HISTORY_TOOL,
   PACKAGE_EXCEPTION_RULES,
+  PACKAGE_RULE_IDS,
 } from '../../project-rules/hygiene-rules.mjs';
 import { PYTHON_SIZE_RULES } from '../../project-rules/size-rules.mjs';
 import { UNUSED_API_RULE_IDS } from '../../unused-api/unused-api-policy.mjs';
@@ -53,6 +54,10 @@ const JVM_COUPLING_RULES = Object.fromEntries(
 );
 const NATIVE_RULES = {
   ...JVM_COUPLING_RULES,
+  [PACKAGE_RULE_IDS.unusedDependency]: {
+    java: 'dependencies/unused-declared-dependency',
+    kotlin: 'dependencies/unused-declared-dependency',
+  },
   [RULE_IDS.docCommentContent]: {
     typescript: 'nitpicker/no-comments',
     javascript: 'nitpicker/no-comments',

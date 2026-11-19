@@ -14,7 +14,7 @@ import {
   pinnedKotlinCompiler,
   writeSources,
 } from '../test-support/views/kotlin-psi-views.mts';
-import { findingFactory as untypedFindingFactory } from '../../kotlin/review-rules/review-finding.mts';
+import { findingFactory as untypedFindingFactory } from '../../kotlin/review-rules/finding/review-finding.mts';
 import { unusedOptionFindings as untypedUnusedOptionFindings } from '../../kotlin/review-rules/main/unused-options/unused-options.mts';
 import { forwardingWrapperFindings as untypedForwardingWrapperFindings } from '../../kotlin/review-rules/main/forwarding/forwarding-wrappers.mts';
 

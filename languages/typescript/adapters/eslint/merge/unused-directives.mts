@@ -2,9 +2,11 @@ import { globMatcher as untypedGlobMatcher } from '../../../../../shared/paths/g
 import type { Finding } from '../../../../../shared/values/findings.mts';
 import { fieldOf, textOf, textsOf } from '../../../../../shared/values/readers.mts';
 import { unusedRuleIds, withUnusedRules } from './directive-messages.mts';
+import {
+  INLINE_CONFIG_DISABLED as INLINE_DISABLED_RULE,
+  UNUSED_DIRECTIVE_RULES,
+} from '../messages/non-rule-diagnostics.mts';
 
-const UNUSED_DIRECTIVE_RULE = 'eslint/unused-disable-directive';
-const INLINE_DISABLED_RULE = 'eslint/inline-config-disabled';
 const globMatcher: (glob: string) => { test(file: string): boolean } = untypedGlobMatcher;
 const PREFERRED_REPORTER = 'eslint-lint';
 
@@ -42,7 +44,7 @@ function lintScopes(
 }
 
 function isUnusedDirective(finding: Finding) {
-  return finding.rule === UNUSED_DIRECTIVE_RULE;
+  return UNUSED_DIRECTIVE_RULES.has(finding.rule);
 }
 
 function directiveKey(finding: Finding) {

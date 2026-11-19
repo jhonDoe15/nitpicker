@@ -1,7 +1,10 @@
 import type { Finding } from '../../static-checks/shared.mts';
 import { fieldOf, fieldsOf } from '../../../../../shared/values/readers.mts';
 import { evaluateBaselineExpansions as untypedBaselineExpansions } from '../../../../../shared/rules/baseline-expansion.mjs';
-import { evaluateCoupling as untypedCoupling } from '../../../preset/coupling/evaluate-coupling.mts';
+import {
+  evaluateCoupling as untypedCoupling,
+  type CouplingOptions,
+} from '../../../preset/coupling/evaluate-coupling.mts';
 import { evaluateTestRuntime as untypedTestRuntime } from '../../../../../shared/rules/test-runtime/evaluate.mjs';
 import { evaluateStructure as untypedStructure } from '../../../../../shared/rules/structure.mjs';
 
@@ -13,7 +16,7 @@ const evaluateBaselineExpansions: (
 const evaluateCoupling: (
   report: unknown,
   analyzerName: string,
-  exceptions: unknown[],
+  options: CouplingOptions,
 ) => Finding[] = untypedCoupling;
 const evaluateTestRuntime: (report: unknown, analyzerName: string) => Finding[] =
   untypedTestRuntime;
@@ -31,7 +34,7 @@ const STRUCTURE_HINTS = {
 export function normalizeCoupling(
   report: unknown,
   analyzerName: string,
-  exceptions: unknown[],
+  options: CouplingOptions = {},
 ): Finding[] {
   return evaluateCoupling(
     {
@@ -42,7 +45,7 @@ export function normalizeCoupling(
       })),
     },
     analyzerName,
-    exceptions,
+    options,
   );
 }
 

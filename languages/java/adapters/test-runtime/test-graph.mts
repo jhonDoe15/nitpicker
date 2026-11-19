@@ -1,5 +1,9 @@
 import { readFileSync } from 'node:fs';
-import { outerClass as untypedOuterClass } from '../../ingest/class-names.mts';
+import {
+  outerClass as untypedOuterClass,
+  packageOf,
+  simpleName,
+} from '../../ingest/class-names.mts';
 import { parseJdeps } from '../metrics/java-coupling.mts';
 import { pathInside as untypedPathInside } from '../review-rules/java-sources.mts';
 import { ownersOf, resolver } from '../review-rules/test-only/test-only-classes.mts';
@@ -22,6 +26,7 @@ type ReadProject = TestProject & {
 type TestGraph = {
   readonly edges: Map<string, { target: string; kind: string }[]>;
   readonly declaring: Set<string>;
+  readonly productionNames: ReadonlySet<string>;
   readonly isProduction: (node: string) => boolean;
   readonly bridgesOf: (test: string, visited: Iterable<string>) => string[];
 };
@@ -48,6 +53,33 @@ function addTo(map: Map<string, Set<string>>, key: string, value: string): void 
 
 function nodeOf(qualifier: string, className: string): string {
   return `${qualifier}\0${outerClass(className)}`;
+}
+
+const SIBLING = '\0sibling';
+const TEST_LIKE_NAME =
+  /(?:Test|Tests|TestCase|IT|Spec|Fixtures?|Fake|Stub|Mock|Dummy)(?:\$|$)|^Test/u;
+const PACKAGE_PREFIX_SEGMENTS = 2;
+
+function isSiblingProduction(source: string, target: string): boolean {
+  const home = packageOf(target);
+  return home !== '' && home === packageOf(source) && !TEST_LIKE_NAME.test(simpleName(target));
+}
+
+function prefixesOf(name: string): string[] {
+  return name
+    .split('.')
+    .map((_, index, parts) => parts.slice(0, index + 1).join('.'))
+    .filter((prefix) => prefix.split('.').length >= PACKAGE_PREFIX_SEGMENTS);
+}
+
+function productionNamesOf(read: readonly ReadProject[]): Set<string> {
+  const classes = read.flatMap(({ classes: names }) => names);
+  const packages = classes.map(packageOf);
+  return new Set(
+    [...classes, ...classes.map(outerClass), ...packages, ...packages.flatMap(prefixesOf)].filter(
+      Boolean,
+    ),
+  );
 }
 
 function resolvers(
@@ -77,7 +109,9 @@ function collectEdges(read: readonly ReadProject[]): {
   };
   function record(qualifier: string, { source, target }: { source: string; target: string }): void {
     const from = nodeOf(qualifier, source);
-    const to = resolve(target, qualifier);
+    const to =
+      resolve(target, qualifier) ??
+      (isSiblingProduction(source, target) ? nodeOf(SIBLING, target) : undefined);
     if (isTestMarker(target)) {
       collected.declaring.add(from);
     }
@@ -110,7 +144,8 @@ export function readTestGraph(projects: readonly TestProject[]): TestGraph {
       ]),
     ),
     declaring,
-    isProduction: (node: string) => productionNodes.has(node),
+    productionNames: productionNamesOf(read),
+    isProduction: (node: string) => productionNodes.has(node) || node.startsWith(`${SIBLING}\0`),
     bridgesOf: (test: string, visited: Iterable<string>) =>
       [...new Set([test, ...visited].flatMap((node) => [...(bridges.get(node) ?? [])]))].toSorted(),
   };

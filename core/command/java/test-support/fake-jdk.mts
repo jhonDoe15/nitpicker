@@ -106,26 +106,34 @@ const HANDLERS: Readonly<Record<string, (context: ToolContext) => void>> = {
   },
 };
 
+const PROGRAMS: ReadonlySet<string> = new Set([
+  'StructureMetrics',
+  'ErrorProneReport',
+  'CpdReport',
+]);
+
 function java({ args, cwd }: Omit<FakeJdkRun, 'tool'>): FakeAnswer {
   const tokens = args[0]?.startsWith('@') ? readArgumentFile(args[0]) : args;
   function after(name: string, offset = 1): string {
     return tokens[tokens.indexOf(name) + offset] ?? '';
   }
   const mainClass = tokens.find((token) => /^[a-z]\w*(?:\.[\w$]+)+$/u.test(token));
-  const script = tokens.find((token) => token.endsWith('.java'));
+  const program = tokens.find((token) => PROGRAMS.has(token));
   if (args[0] === '-version') {
     return { stderr: 'openjdk version "21.0.1" 2023-10-17\n' };
   }
   if (args[0] === '-XshowSettings:properties') {
     return { stderr: '    java.vendor = Fake\n    java.version = 21.0.1\n' };
   }
-  if (script?.endsWith('StructureMetrics.java')) {
-    put(after(script), '[]');
-    put(after(script, 2), '{"files":{},"classes":[]}');
-  } else if (script?.endsWith('ErrorProneReport.java')) {
-    put(after(script), '[]\n');
-  } else if (script?.endsWith('CpdReport.java')) {
-    copyOrWrite(after(script), path.join(cwd, 'cpd.xml'), '<pmd-cpd/>');
+  if (program === 'StructureMetrics') {
+    put(after(program), '[]');
+    put(after(program, 2), '{"files":{},"classes":[]}');
+  } else if (program === 'ErrorProneReport') {
+    put(after(program), '[]\n');
+  } else if (program === 'GeneratedClasses') {
+    put(after(program), '');
+  } else if (program === 'CpdReport') {
+    copyOrWrite(after(program), path.join(cwd, 'cpd.xml'), '<pmd-cpd/>');
   } else {
     const handler = mainClass === undefined ? undefined : HANDLERS[mainClass];
     if (handler === undefined) {

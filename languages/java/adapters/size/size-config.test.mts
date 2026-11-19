@@ -18,15 +18,12 @@ describe('size limits in the config', () => {
     );
   });
 
-  it.each([
-    ['classMethods', 'typescript'],
-    ['classMethods', 'javascript'],
-    ['classFields', 'typescript'],
-    ['inheritanceDepth', 'typescript'],
-  ])('rejects thresholds.%s with the %s preset, which does not enforce it', (key, preset) => {
-    expect(() => validateConfig({ preset, thresholds: { [key]: 3 } })).toThrow(
-      `"thresholds.${key}" is only supported with "preset": `,
-    );
+  it('takes the class limits with the typescript and javascript presets, which enforce them', () => {
+    const configs = ['typescript', 'javascript'].map((preset) => ({
+      preset,
+      thresholds: { classMethods: 3, classFields: 3, inheritanceDepth: 3 },
+    }));
+    expect(configs.map(validateConfig)).toEqual(configs);
   });
 
   it('takes folderDepth with the typescript, javascript, kotlin and python presets, and by default', () => {

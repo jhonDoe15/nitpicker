@@ -115,6 +115,7 @@ function resolveWithGradle({ projectRoot, tools, environment, executeFixCommand 
       projectRoot,
       configured: configuredTool(environment, 'NITPICKER_GRADLE'),
       args: gradleToolArguments(tools, staging),
+      environment,
     });
     const result = callUntyped(runFixCommand, {
       operation: 'fix-tools',

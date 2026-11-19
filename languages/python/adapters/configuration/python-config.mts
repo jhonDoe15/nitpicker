@@ -36,6 +36,7 @@ export const SETTING_KEYS = [
   'importLinter',
   'sourceRoots',
   'entryPoints',
+  'blockingGetters',
   'exceptions',
 ];
 
@@ -101,6 +102,9 @@ function validateSettings(settings: unknown, options: RuleOptions): void {
   }
   if (settings['entryPoints'] !== undefined) {
     validateEntryPoints(settings['entryPoints']);
+  }
+  if (settings['blockingGetters'] !== undefined) {
+    validateStringArray(settings['blockingGetters'], 'python.blockingGetters');
   }
   if (settings['exceptions'] !== undefined) {
     validateRuleIds(settings['exceptions'], options);

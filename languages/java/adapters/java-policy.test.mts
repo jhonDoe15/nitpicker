@@ -376,6 +376,16 @@ describe('parseJavaRunnerArguments', () => {
     );
   });
 
+  it('passes the generated-sources opt-in to the runner', () => {
+    const args = ['--project-root', '/p'];
+    const opted = parseJavaRunnerArguments([...args, '--analyze-generated-sources', 'true']);
+
+    const plain = parseJavaRunnerArguments(args).policy;
+
+    expect(plain).not.toHaveProperty('analyzeGeneratedSources');
+    expect(opted.policy).toEqual({ ...plain, analyzeGeneratedSources: true });
+  });
+
   it('leaves the preset to the caller and accepts the kotlin preset with a formatter', () => {
     expect(parseJavaRunnerArguments(['--project-root', '/p']).policy).toEqual({
       crapLimit: undefined,

@@ -17,6 +17,7 @@ import { createQualityChecks } from '../quality-checks.mjs';
 import { eslintVersion } from '../checks/constants.mjs';
 import { hashFiles } from '../checks/hash.mjs';
 import { EXECUTION_INPUTS, sourceInputs } from '../../../../shared/input-sets/inputs.mjs';
+import { memoryScaleOf } from './memory-scales.mjs';
 
 const TEST_RUNNER_ANALYZERS = new Set(['coverage', 'mutation', 'test-console']);
 const EXECUTION_ANALYZERS = new Set([...TEST_RUNNER_ANALYZERS, 'test-runtime', 'crap']);
@@ -139,6 +140,10 @@ function withPackagePolicy(analyzer) {
   analyzer.inputs = EXECUTION_ANALYZERS.has(analyzer.name) ? EXECUTION_INPUTS : SOURCE_INPUTS;
   analyzer.resolveVersion = (projectRoot) => resolveAnalyzerVersion(analyzer.name, projectRoot);
   analyzer.policyFromPackage = true;
+  const memoryScale = memoryScaleOf(analyzer.name);
+  if (memoryScale !== undefined) {
+    analyzer.memoryScale = memoryScale;
+  }
   return analyzer;
 }
 

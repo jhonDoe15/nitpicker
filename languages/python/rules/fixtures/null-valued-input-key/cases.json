@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "null-valued-input-key",
+    "mention": "is not None",
+    "subject": "get|body.get('alt')"
+  }
+]

@@ -138,12 +138,16 @@ function inStartOf(
 }
 
 function helpersOf(view: SpringView, startFunctions: Set<FunctionFact>): FunctionFact[] {
+  if (startFunctions.size === 0) {
+    return [];
+  }
   return view.file.functions.filter((fn) => {
+    if (fn.visibility !== 'private') {
+      return false;
+    }
     const callers = callersOf(view, fn);
     return (
-      fn.visibility === 'private' &&
-      callers.length > 0 &&
-      callers.every((call) => inStartOf(view, startFunctions, call.scope))
+      callers.length > 0 && callers.every((call) => inStartOf(view, startFunctions, call.scope))
     );
   });
 }

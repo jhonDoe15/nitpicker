@@ -24,6 +24,7 @@ export type ScannedKotlin = Scanned;
 export type KotlinFound = {
   readonly rule?: string;
   readonly offset: number;
+  readonly alsoOffsets?: readonly number[];
   readonly edits: readonly KotlinEdit[];
 };
 
@@ -55,3 +56,20 @@ export const splitArguments: (
   code: string,
   open: number,
 ) => { readonly close: number; readonly parts: readonly Span[] } = untypedSplitArguments;
+
+const PAREN_STEP: Readonly<Record<string, number>> = { ')': 1, '(': -1 };
+
+export function matchingOpenParen(code: string, close: number): number {
+  let depth = 0;
+  for (const [offset, character] of code
+    .slice(0, close + 1)
+    .split('')
+    .reverse()
+    .entries()) {
+    depth += PAREN_STEP[character] ?? 0;
+    if (depth === 0) {
+      return close - offset;
+    }
+  }
+  return -1;
+}

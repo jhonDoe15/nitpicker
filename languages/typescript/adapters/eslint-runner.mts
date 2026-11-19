@@ -23,6 +23,7 @@ import { installedDependencies } from './dependency-graph/installed-dependencies
 import { missingDependenciesMessage } from './dependency-graph/package-managers/install.mts';
 import { runLintEngine } from './lint-engine/lint-engine.mts';
 import { normalizeEslintResults } from './eslint/normalize.mts';
+import { ruleCrashNotes } from './lint-engine/crashes/rule-crashes.mts';
 import {
   type EslintFinding,
   testEnvironmentNotices,
@@ -65,7 +66,7 @@ export async function runEslint(options: EslintOptions): Promise<EslintFinding[]
       '--config',
     );
     const testEnvironments = testEnvironmentsFor(options);
-    const value = await runLintEngine({
+    const { results, crashes } = await runLintEngine({
       options,
       projectConfigPath: installedPolicyFiles.at(0)?.targetPath,
       policyConfigPath: policyConfig.canonicalPath,
@@ -73,11 +74,12 @@ export async function runEslint(options: EslintOptions): Promise<EslintFinding[]
     });
     return [
       ...normalizeEslintResults({
-        value,
+        value: results,
         projectRoot: options.projectRoot,
         analyzerName: options.analyzerName,
       }),
       ...testEnvironmentNotices({ testEnvironments, analyzerName: options.analyzerName }),
+      ...ruleCrashNotes(crashes, options.analyzerName),
     ];
   } finally {
     cleanUpEslint(state);

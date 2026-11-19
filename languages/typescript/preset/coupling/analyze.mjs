@@ -2,6 +2,7 @@ import path from 'node:path';
 import { computeCoupling } from '../../../../shared/rules/coupling.mjs';
 import { internalEdges, normalizePath } from '../dependency-graph/cruise.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
+import { isInsideRoot, isProjectRoot, relativeToRoot } from '../layout/source-root/root-paths.mjs';
 import { isReuseProductionPath, projectPathOf } from '../structure/reuse/reuse-paths.mjs';
 import { sharedUsedByOneFeature } from './shared-usage.mjs';
 import {
@@ -14,7 +15,7 @@ import { featureLayout } from '../architecture/strict-layout.mjs';
 import { stabilityUnits } from './feature-layout.mjs';
 
 function pathWithinRoot(file, sourceRoot) {
-  return file.startsWith(`${sourceRoot}/`) ? file.slice(sourceRoot.length + 1) : file;
+  return isInsideRoot(file, sourceRoot) ? relativeToRoot(file, sourceRoot) : file;
 }
 
 function checkoutGraph(graph, projectRoot) {
@@ -42,7 +43,9 @@ export function productionFilter(layout, sourceRoot) {
 }
 
 function packageName(modulePath, sourceRoot) {
-  const relativePath = modulePath.slice(sourceRoot.length).replace(/^\//, '');
+  const relativePath = isProjectRoot(sourceRoot)
+    ? modulePath
+    : modulePath.slice(sourceRoot.length).replace(/^\//, '');
   return relativePath.includes('/') ? relativePath.split('/')[0] : '(root)';
 }
 
@@ -55,6 +58,30 @@ function sharedUsage(graph, sourceRoot, { layout, projectRoot }) {
 
 const defaultRoles = withPublicFace(featureRoles(featureLayout), PUBLIC_FACES.typescript);
 const sharedRoots = featureLayout.sharedRoots.map((glob) => globMatcher(glob));
+
+const HUB_LIMIT = 20;
+
+function couplingSummary(moduleCount, edges, metrics) {
+  const runtimeCount = edges.filter((edge) => edge.kind === 'runtime').length;
+  return {
+    modules: moduleCount,
+    dependencies: edges.length,
+    runtimeDependencies: runtimeCount,
+    typeOnlyDependencies: edges.length - runtimeCount,
+    packages: metrics.packages.length,
+  };
+}
+
+function topHubs(moduleMetrics) {
+  return [...moduleMetrics]
+    .sort(
+      (left, right) =>
+        right.totalCoupling - left.totalCoupling ||
+        right.fanIn - left.fanIn ||
+        left.source.localeCompare(right.source),
+    )
+    .slice(0, HUB_LIMIT);
+}
 
 export function analyzeCoupling(graph, sourceRoot, options = {}) {
   const { layout = defaultResolvedLayout, roleOf = defaultRoles } = options;
@@ -71,7 +98,6 @@ export function analyzeCoupling(graph, sourceRoot, options = {}) {
   const edges = internalEdges(graph, normalizedRoot).filter(
     (edge) => fileSet.has(edge.source) && fileSet.has(edge.target),
   );
-  const runtimeEdges = edges.filter((edge) => edge.kind === 'runtime');
 
   const metrics = computeCoupling({
     modules: files,
@@ -84,22 +110,14 @@ export function analyzeCoupling(graph, sourceRoot, options = {}) {
   const moduleMetrics = metrics.modules.map(({ module, ...rest }) => ({ source: module, ...rest }));
 
   return {
-    summary: {
-      modules: files.length,
-      dependencies: edges.length,
-      runtimeDependencies: runtimeEdges.length,
-      typeOnlyDependencies: edges.length - runtimeEdges.length,
-      packages: metrics.packages.length,
-    },
-    hubs: [...moduleMetrics]
-      .sort(
-        (left, right) =>
-          right.totalCoupling - left.totalCoupling ||
-          right.fanIn - left.fanIn ||
-          left.source.localeCompare(right.source),
-      )
-      .slice(0, 20),
+    summary: couplingSummary(files.length, edges, metrics),
+    hubs: topHubs(moduleMetrics),
     modules: moduleMetrics,
+    moduleImports: edges.map(({ source, target, kind }) => ({
+      from: source,
+      to: target,
+      typeOnly: kind !== 'runtime',
+    })),
     packages: metrics.packages,
     stabilityDirection: metrics.stabilityDirection,
     sharedUsedByOneFeature: sharedUsage(graph, normalizedRoot, { ...options, layout }),

@@ -29,10 +29,12 @@ import { rule as ruleNoCompatibilityShim } from '../rules/signatures/no-compatib
 import { rule as ruleNoCopiedConstant } from '../test-assertions/copied-constants/no-copied-constant.mts';
 import { rule as ruleNoCopyPastedTests } from '../test-quality/no-copy-pasted-tests.mts';
 import { rule as ruleNoCostlyCollectionForm } from '../rules/collections/costly-forms/no-costly-collection-form.mts';
+import { rule as ruleNoDataloaderBatchMismatch } from '../rules/dataloaders/no-dataloader-batch-mismatch.mts';
 import { rule as ruleNoDecidedCondition } from '../rules/decided/no-decided-condition.mts';
 import { rule as ruleNoDefaultExport } from '../rules/syntax/no-default-export.mts';
 import { rule as ruleNoDevDependencyInProduction } from '../rules/dependencies/no-dev-dependency-in-production.mts';
 import { rule as ruleNoDisabledTlsVerification } from '../rules/security/tls/no-disabled-tls-verification.mts';
+import { rule as ruleNoDroppedDelegateResult } from '../rules/delegation/no-dropped-delegate-result.mts';
 import { rule as ruleNoDroppedLogArguments } from '../rules/logging/no-dropped-log-arguments.mts';
 import { rule as ruleNoDroppedSubscriptionHandle } from '../rules/lifecycles/subscriptions/no-dropped-subscription-handle.mts';
 import { rule as ruleNoDroppedTestCallback } from '../test-assertions/dropped-callback/no-dropped-test-callback.mts';
@@ -53,6 +55,7 @@ import { rule as ruleNoHardcodedSecret } from '../rules/secrets/no-hardcoded-sec
 import { rule as ruleNoInMemoryQuery } from '../rules/queries/no-in-memory-query.mts';
 import { rule as ruleNoIncompleteCacheKey } from '../rules/caches/no-incomplete-cache-key.mts';
 import { rule as ruleNoInternalModuleMocks } from '../rules/test-runtime/assertions/no-internal-module-mocks.mts';
+import { rule as ruleNoInterpolatedLogMessage } from '../rules/logging/interpolation/no-interpolated-log-message.mts';
 import { rule as ruleNoIntervalPollingInTests } from '../rules/test-runtime/lifecycle/no-interval-polling-in-tests.mts';
 import { rule as ruleNoIoInLoop } from '../rules/loops/no-io-in-loop.mts';
 import { rule as ruleNoLazyRelationInLoop } from '../rules/effects/no-lazy-relation-in-loop.mts';
@@ -95,9 +98,6 @@ import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-ca
 import { rule as ruleNoRepeatedStringLiteral } from '../rules/literals/no-repeated-string-literal.mts';
 import { rule as ruleNoRetryWithoutIdempotency } from '../rules/writes/no-retry-without-idempotency.mts';
 import { rule as ruleNoRouteWithoutAuth } from '../rules/route-auth/no-route-without-auth.mts';
-import { rule as ruleNoRuntimeExclusivePropsCheck } from '../rules/react-props/no-runtime-exclusive-props-check.mts';
-import { rule as ruleNoSecretInLog } from '../rules/secrets/no-secret-in-log.mts';
-import { rule as ruleNoSelfRecursion } from '../rules/control/no-self-recursion.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -131,10 +131,12 @@ export const partRules = {
   'no-copied-constant': ruleNoCopiedConstant,
   'no-copy-pasted-tests': ruleNoCopyPastedTests,
   'no-costly-collection-form': ruleNoCostlyCollectionForm,
+  'no-dataloader-batch-mismatch': ruleNoDataloaderBatchMismatch,
   'no-decided-condition': ruleNoDecidedCondition,
   'no-default-export': ruleNoDefaultExport,
   'no-dev-dependency-in-production': ruleNoDevDependencyInProduction,
   'no-disabled-tls-verification': ruleNoDisabledTlsVerification,
+  'no-dropped-delegate-result': ruleNoDroppedDelegateResult,
   'no-dropped-log-arguments': ruleNoDroppedLogArguments,
   'no-dropped-subscription-handle': ruleNoDroppedSubscriptionHandle,
   'no-dropped-test-callback': ruleNoDroppedTestCallback,
@@ -155,6 +157,7 @@ export const partRules = {
   'no-in-memory-query': ruleNoInMemoryQuery,
   'no-incomplete-cache-key': ruleNoIncompleteCacheKey,
   'no-internal-module-mocks': ruleNoInternalModuleMocks,
+  'no-interpolated-log-message': ruleNoInterpolatedLogMessage,
   'no-interval-polling-in-tests': ruleNoIntervalPollingInTests,
   'no-io-in-loop': ruleNoIoInLoop,
   'no-lazy-relation-in-loop': ruleNoLazyRelationInLoop,
@@ -198,7 +201,4 @@ export const partRules = {
   'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
   'no-retry-without-idempotency': ruleNoRetryWithoutIdempotency,
   'no-route-without-auth': ruleNoRouteWithoutAuth,
-  'no-runtime-exclusive-props-check': ruleNoRuntimeExclusivePropsCheck,
-  'no-secret-in-log': ruleNoSecretInLog,
-  'no-self-recursion': ruleNoSelfRecursion,
 };

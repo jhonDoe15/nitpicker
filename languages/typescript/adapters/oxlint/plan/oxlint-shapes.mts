@@ -76,7 +76,7 @@ export type Translation = {
   readonly residual: readonly ResidualGroup[];
   readonly ruleNames: ReadonlyMap<string, string>;
   readonly plugins: readonly BridgedPlugin[];
-  readonly typeAware: boolean;
+  readonly typeAwareRules: ReadonlySet<string>;
 };
 
 export type Naming = {

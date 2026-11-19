@@ -9,6 +9,7 @@ export type JavaBudget = {
   readonly mavenCommandTimeoutMs?: number;
   readonly pitDeadlineMs?: number;
 };
+type Writer = { readonly write: (text: string) => unknown };
 export type JavaRunOptions = {
   readonly gradle?: string | undefined;
   readonly maven?: string | undefined;
@@ -18,6 +19,7 @@ export type JavaRunOptions = {
   readonly policy?: JavaPolicy | undefined;
   readonly budget?: JavaBudget | undefined;
   readonly reportDirectory?: string | undefined;
+  readonly warn?: Writer | undefined;
   readonly resolveOverlaps?:
     ((findings: readonly JavaFinding[]) => readonly JavaFinding[]) | undefined;
 };
