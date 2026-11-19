@@ -2713,6 +2713,7 @@ runs only when `--fix --rule` names one of its rules.
 | java, kotlin | `structure/shorter-condition` | `jvm-shorter-condition` | writes the shorter form the finding names in place of the condition (review) |
 | java, kotlin | `structure/duplicate-branch` (switch cases and `when` entries) | `jvm-merge-switch-labels` | merges the labels of cases with the same body into the first case (review) |
 | java | `pmd/StaticForwardingWrapper` | `java-static-forwarding-wrapper` | `review`: points the callers of a private or package-private static method that only passes its parameters on at the target in another class of the project, and deletes the wrapper; leaves what it cannot prove (see below) |
+| java | `pmd/CompatibilityShim` | `java-compatibility-shim` | `review`: points the callers of a private or package-private `@Deprecated` static method that only forwards to a sibling method at that method, and deletes the deprecated one with its Javadoc; leaves what it cannot prove (see below) |
 | java | `checkstyle/UpperEll` | `java-upper-ell` | turns the `l` suffix of a `long` literal into `L`, outside strings, text blocks and comments |
 | java | `pmd/CatchLogWithoutException` |
 | kotlin | `detekt/detekt.style.NewLineAtEndOfFile` | `kotlin-final-newline` | ends a file with a line break, CRLF when the file uses CRLF |
@@ -2763,15 +2764,15 @@ cases with comments, and Kotlin entries that are not next to each other (their c
 in order) or that test a type (the body may rely on the smart cast). It is a `review` recipe, as the
 merged case may be one that was meant to differ.
 
-Forwarding wrappers. `java-static-forwarding-wrapper` changes every caller in the project to the
-method that the wrapper forwards to, then deletes the wrapper (with its Javadoc). It runs over the
-Java sources of the whole project, not only the changed files, and rewrites only when each use of
-the name is a call it can place: `Owner.name(...)` and the unqualified calls inside the owner. The
-target has to be a static method of a class of the project that is the only one of its name, with
-the same parameter types and return type and no `throws` clause, and the callers have to be
-allowed to see it (the fix adds the import of its class where a caller lacks one). It is a
-`review` recipe, since a public or protected method may have callers outside the project, and it
-leaves those as is, together with a wrapper that Kotlin code, a method reference or a string names.
+Forwarding wrappers and compatibility shims. `java-static-forwarding-wrapper` and
+`java-compatibility-shim` change every caller in the project to the method the wrapper or the
+deprecated method forwards to, then delete it (with its Javadoc). They run over the Java sources of
+the whole project, not only the changed files, and rewrite only when each use of the name is a call
+they can place: `Owner.name(...)` and the unqualified calls inside the owner. The target has to be a
+static method of a class of the project that is the only one of its name, with the same parameter
+types and return type and no `throws` clause, and the callers have to be allowed to see it (the
+fix adds the import of its class where a caller lacks one). Both are `review` recipes, since a
+public or protected method may have callers outside the project, and are left as is in that case.
 
 Near-duplicate extraction. The `near-duplicate` recipes handle a `same` or `parameterizable` pair
 whose copies sit in one file (TypeScript, JavaScript), in one class (Java), or in two files of one
