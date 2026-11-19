@@ -49,6 +49,12 @@ const GROUPS = [
     go: 'go-rules/copied-constant-in-test',
   },
   {
+    jvm: 'CopyPastedTest',
+    typescript: 'nitpicker/no-copy-pasted-tests',
+    python: 'copy-pasted-tests',
+    go: 'go-rules/copy-pasted-tests',
+  },
+  {
     spring: 'untrimmed-request-text',
     typescript: 'nitpicker/no-untrimmed-request-text',
     python: 'untrimmed-request-text',

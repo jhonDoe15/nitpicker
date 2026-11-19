@@ -56,6 +56,8 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `1.0` is exact and fine.
 - Use a production constant by name, never a copy of its value (`pmd/CopiedConstantInTest`):
   `Limits.MAX_LENGTH + 1`, not `65`. Pin a contract value as `assertEquals(64, Limits.MAX_LENGTH)`.
+- Write one table instead of three copies of a test that differ only in literals (`pmd/CopyPastedTest`):
+  `@ParameterizedTest` or a Kotest `withData`, with a row per case. Tests that differ in a call are not copies.
 - Never mock the class under test (`pmd/MockedSubjectInTest`): no `mockk<OrderService>()`,
   `mock<OrderService>()` or `@MockK` of it in `OrderServiceTest`, and no `spyk`/`@SpyK` of it with
   `every { subject.helper() }`. Pass its collaborators in through the constructor with fakes or mocks

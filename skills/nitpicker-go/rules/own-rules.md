@@ -149,6 +149,9 @@ the allowed form and ends with its exception entry.
   `Clamp(Limit + 1)`, not `Clamp(51)`. A test that holds the copy keeps checking the old value when
   the constant changes. Pin a contract value next to the constant on purpose:
   `if Limit != 50 { t.Fatalf(...) }` or `assert.Equal(t, 50, Limit)`.
+- Write one table-driven test instead of three copies that differ only in literals
+  (`go-rules/copy-pasted-tests`): a slice of cases and one `t.Run(tc.name, ...)` per row. Tests that
+  differ in a call are not copies.
 - Never sleep in a test (`go-rules/sleep-in-test`): wait for the event (a channel,
   `sync.WaitGroup`), or run the code in a `testing/synctest` bubble, where time is virtual. A fake
   that sleeps to act slow is fine.

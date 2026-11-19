@@ -58,6 +58,7 @@
   "pmd/CollectorsToList": ["simplification"],
   "pmd/CommentedOutCode": ["simplification"],
   "pmd/CopiedConstantInTest": ["tests", "maintainability"],
+  "pmd/CopyPastedTest": ["tests", "maintainability"],
   "pmd/DisabledTest": ["tests"],
   "pmd/DroppedCallbackInTest": ["tests"],
   "pmd/ForEachSideEffect": ["maintainability"],

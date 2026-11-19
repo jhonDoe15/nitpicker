@@ -123,6 +123,9 @@ than the others, and this skill teaches its rules before an agent writes Go.
   counts the package-level constants of the package under test and the exported constants of the
   module's packages a test file imports, resolved through type information. An `iota` group holds
   ordinals, not contract values, so its constants are left out.
+- **Copy-pasted tests.** The `nitpicker/no-copy-pasted-tests` definition of the TypeScript preset as
+  `copy-pasted-tests`: three or more tests of one file (or `t.Run` calls of one block) with the same
+  statements once literals are ignored; the allowed form is the table-driven test.
 - **Tests that run production code, used options and entry points (#1046).** The shared
   `no-production-runtime`, `unused-option` and `public-alternative-bypass` rules in Go's forms: test
   files reach production code through imports and same-package names; Go's optional inputs are

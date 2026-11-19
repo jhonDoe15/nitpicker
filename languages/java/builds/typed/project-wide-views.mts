@@ -5,6 +5,7 @@ import { readFeatureGraph } from '../../adapters/features/feature-findings.mts';
 import { kotlinModules, readKotlinMetrics } from '../../adapters/kotlin/kotlin-metrics.mts';
 import { readJavaFileLimitFindings } from '../../adapters/metrics/java-structure.mts';
 import { readCopiedConstantFindings } from '../../adapters/review-rules/copied-constants/copied-constants.mts';
+import { readCopyPastedTestFindings } from '../../adapters/review-rules/copy-pasted-tests/copy-pasted-tests.mts';
 import { readMaxValueFindings } from '../../adapters/review-rules/max-value-sums/max-value-sums.mts';
 import { readNullFallThroughFindings } from '../../adapters/review-rules/null-fall-through/null-fall-through.mts';
 import { readRoundTripFindings } from '../../adapters/review-rules/round-trips/round-trips.mts';
@@ -136,6 +137,9 @@ export function roundTripFindings(projectRoot: string, options: WideOptions): Ja
 }
 export function copiedConstantFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
   return findingsOf(callUntyped(readCopiedConstantFindings, projectRoot, options));
+}
+export function copyPastedTestFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
+  return findingsOf(callUntyped(readCopyPastedTestFindings, projectRoot, options));
 }
 export function maxValueFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
   return findingsOf(callUntyped(readMaxValueFindings, projectRoot, options));
