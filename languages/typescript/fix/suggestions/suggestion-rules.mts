@@ -24,6 +24,7 @@ export const suggestionRules: Readonly<Record<string, string>> = Object.freeze({
   '@typescript-eslint/no-array-delete': REVIEW,
   '@typescript-eslint/use-unknown-in-catch-callback-variable': REVIEW,
   '@typescript-eslint/switch-exhaustiveness-check': REVIEW,
+  'regexp/optimal-lookaround-quantifier': REVIEW,
 });
 
 export function suggestionName(rule: string | undefined): string {

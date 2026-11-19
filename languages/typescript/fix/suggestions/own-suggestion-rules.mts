@@ -14,7 +14,11 @@ export const OWN_SUGGESTION_RULES = Object.freeze([
   'no-wasted-collection-step',
   'no-unindexed-foreign-key',
   'no-whole-rows-for-one-value',
+  'no-sync-node-api-in-async',
   'require-http-timeout',
   'require-test-process-timeout',
+  'reusable-object-per-call',
   'strict-boolean-expressions',
+  'unbounded-fan-out',
+  'unbounded-reactive-fan-out',
 ]);
