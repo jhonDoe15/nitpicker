@@ -82,6 +82,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Change or delete many rows with one statement (`update(criteria, values)`, `updateMany`, `delete(criteria)`,
   `deleteMany`, `nativeUpdate`), not by loading them, assigning a constant to each and saving them back
   (`nitpicker/no-loaded-rows-saved-back`).
+- Give an entity that is loaded, changed and saved again a version column (`nitpicker/no-unversioned-orm-entity`):
+  `@VersionColumn()` (TypeORM), `@Property({ version: true })` (MikroORM) or `version: true` in the Sequelize model
+  options, so a stale save fails instead of overwriting the other write. Prisma and Drizzle are not reported.
 - Select the one column you read (`select: { email: true }`) and test existence with `exists`/`existsBy`
   (TypeORM) or `findFirst({ where, select: { id: true } })` (Prisma), not by loading whole rows or counting
   (`nitpicker/no-whole-rows-for-one-value`).

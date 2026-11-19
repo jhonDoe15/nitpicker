@@ -123,7 +123,9 @@ function verdictOf(
   if (!messages.some((message) => message.toLowerCase().includes(testCase.mention.toLowerCase()))) {
     return { ok: false, reason: `no message names "${testCase.mention}"`, messages };
   }
-  const allowed = findingsFor(testCase, 'allowed');
+  const allowed = findingsFor(testCase, 'allowed').filter(
+    ({ rule }) => !testCase.alongside?.includes(rule),
+  );
   if (allowed.length > 0) {
     return {
       ok: false,

@@ -55,6 +55,11 @@ const GROUPS = [
     go: 'go-rules/untrimmed-request-text',
   },
   {
+    java: 'JpaVersion',
+    typescript: 'nitpicker/no-unversioned-orm-entity',
+    python: 'unversioned-orm-entity',
+  },
+  {
     typescript: 'nitpicker/no-presence-truthiness',
     python: 'presence-truthiness',
   },

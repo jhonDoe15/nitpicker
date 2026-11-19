@@ -109,6 +109,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-undefined-only-env-check',
   'nitpicker/no-unhandled-url-parse',
   'nitpicker/no-unindexed-foreign-key',
+  'nitpicker/no-unversioned-orm-entity',
   'nitpicker/no-uninjectable-delay',
   'nitpicker/no-ui-framework-in-domain',
   'nitpicker/no-unhandled-void-promise',

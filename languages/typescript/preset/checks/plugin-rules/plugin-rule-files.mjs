@@ -176,6 +176,8 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/database/no-orm-schema-sync.mjs',
   'languages/typescript/preset/eslint-plugin/rules/database/orm-modules.mjs',
   'languages/typescript/preset/eslint-plugin/rules/database/orm-options.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/database/versions/entity-versions.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/database/versions/no-unversioned-orm-entity.mjs',
   'languages/typescript/preset/eslint-plugin/rules/foreign-keys/drizzle-tables.mjs',
   'languages/typescript/preset/eslint-plugin/rules/foreign-keys/entity-relations.mjs',
   'languages/typescript/preset/eslint-plugin/rules/foreign-keys/no-unindexed-foreign-key.mjs',

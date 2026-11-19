@@ -9,6 +9,7 @@ export type RuleCaseInput = {
   readonly mention: string;
   readonly fixture: string;
   readonly subject?: string;
+  readonly alongside?: readonly string[];
   readonly data?: object;
   readonly name?: string;
 };
