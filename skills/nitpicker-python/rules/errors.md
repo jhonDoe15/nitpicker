@@ -30,3 +30,6 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `default=`, check `if xs:` first, or use `next(iter(xs), None)` or `qs.first()` (`empty-sequence-access`).
 - A duration is `(now - start).total_seconds()`; `.seconds` is only the 0 to 86399 part of a `timedelta` and
   ignores its days (`timedelta-seconds-as-total`).
+- A one-element tuple has a comma: `args=(pk,)`, `cursor.execute(sql, (value,))`, `(Cls, (self.message,))` in
+  `__reduce__`; `(pk)` is the bare value (`parenthesised-tuple-argument`). Pass a log or exception message as the
+  format and its values (`logger.info("Processing %s", item)`), never as one tuple (`message-tuple-argument`).
