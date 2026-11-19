@@ -6,7 +6,7 @@ function finding(tool: string, rule: string, path: string) {
 }
 
 function run(id: string, files: readonly string[], findings: ReturnType<typeof finding>[]) {
-  return { id, files: new Set(files), findings };
+  return { key: id, id, files: new Set(files), findings };
 }
 
 const never = () => false;
@@ -30,6 +30,60 @@ describe('recipeRuns', () => {
       { files: ['a'] },
     ]);
     expect(runs.map(({ id, files }) => [id, [...files]])).toEqual([['one', ['a', 'b']]]);
+  });
+
+  it('keeps one run per file for a recipe that edits one file at a time', () => {
+    const runs = recipeRuns([
+      { recipe: 'one', scope: 'file', files: ['a'], finding: finding('t', 'r', 'a') },
+      { recipe: 'one', scope: 'file', files: ['b'], finding: finding('t', 'r', 'b') },
+      { recipe: 'one', scope: 'file', files: ['a'], finding: finding('t', 's', 'a') },
+    ]);
+    expect(runs.map(({ id, files }) => [id, [...files]])).toEqual([
+      ['one', ['a']],
+      ['one', ['b']],
+    ]);
+  });
+
+  it('keeps a fix that edits two files of a file-scoped recipe apart from its one-file fixes', () => {
+    const runs = recipeRuns([
+      { recipe: 'one', scope: 'file', files: ['b', 'a'], finding: finding('t', 'r', 'a') },
+      { recipe: 'one', scope: 'file', files: ['c'], finding: finding('t', 'r', 'c') },
+      { recipe: 'one', scope: 'file', files: ['a', 'b'], finding: finding('t', 's', 'b') },
+    ]);
+    expect(runs.map(({ files }) => [...files])).toEqual([['b', 'a'], ['c']]);
+  });
+
+  it('rolls back only the file whose fix broke the compile', () => {
+    const runs = recipeRuns([
+      { recipe: 'one', scope: 'file', files: ['a'], finding: finding('t', 'r', 'a') },
+      { recipe: 'one', scope: 'file', files: ['b'], finding: finding('t', 'r', 'b') },
+    ]);
+    const before = countFindings([finding('t', 'r', 'a'), finding('t', 'r', 'b')]);
+    const after = countFindings([finding('build', 'compile-error', 'b')]);
+    const reasons = judgeFindings({ runs, before, after, breaking: () => true });
+    const blamed = runs.filter(({ key }) => reasons.has(key));
+    expect(blamed.map(({ files }) => [...files])).toEqual([['b']]);
+  });
+});
+
+describe('judgeFindings and findings a fix surfaces', () => {
+  it('keeps a fix whose new finding only names a further simplification', () => {
+    const runs = recipeRuns([{ recipe: 'one', files: ['a'], finding: finding('t', 'r', 'a') }]);
+    const before = countFindings([finding('t', 'r', 'a')]);
+    const after = countFindings([finding('t', 'next', 'a')]);
+    const surfaced = ({ rule }: { readonly rule: string }) => rule === 'next';
+
+    expect([...judgeFindings({ runs, before, after, breaking: never, surfaced })]).toEqual([]);
+  });
+
+  it('still rolls back a fix that breaks the compile, whatever the finding is labelled', () => {
+    const runs = recipeRuns([{ recipe: 'one', files: ['a'], finding: finding('t', 'r', 'a') }]);
+    const before = countFindings([finding('t', 'r', 'a')]);
+    const after = countFindings([finding('build', 'compile-error', 'a')]);
+
+    expect([
+      ...judgeFindings({ runs, before, after, breaking: () => true, surfaced: () => true }).keys(),
+    ]).toEqual(['one']);
   });
 });
 

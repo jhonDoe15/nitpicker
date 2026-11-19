@@ -72,6 +72,16 @@ describe('patchChecks', () => {
     ).toEqual(['ClassCanBeStatic', 'MissingOverride']);
   });
 
+  it('runs the Error Prone check whose fix clears a selected PMD or SpotBugs twin', () => {
+    expect(
+      patchChecks([
+        'pmd/UnusedPrivateMethod',
+        'spotbugs/UPM_UNCALLED_PRIVATE_METHOD',
+        'pmd/UnnecessaryVarargsArrayCreation',
+      ]),
+    ).toEqual(['UnusedMethod', 'ExplicitArrayForVarargs']);
+  });
+
   it('runs no compile when the selection names no Error Prone check', () => {
     expect(patchChecks(['checkstyle/UpperEll'])).toEqual([]);
   });
