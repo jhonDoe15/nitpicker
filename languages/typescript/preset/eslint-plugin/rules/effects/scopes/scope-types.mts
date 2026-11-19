@@ -1,10 +1,10 @@
 import type { TSESTree } from '@typescript-eslint/utils';
 import type { FunctionNode } from '../../typed/syntax-views.mts';
 import type { VisitorKeys } from '../../typed/node-views.mts';
+import type { Call } from '../../loops/builders/chain-execution.mts';
 
-export type { FunctionNode, VisitorKeys };
+export type { Call, FunctionNode, VisitorKeys };
 export type OpenerFunction = FunctionNode & { readonly parent: TSESTree.CallExpression };
-export type Call = TSESTree.CallExpression | TSESTree.TaggedTemplateExpression;
 export type ScopeKind = 'transaction' | 'lock';
 export type Role = 'begins' | 'ends';
 export type Branch =

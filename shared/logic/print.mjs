@@ -183,8 +183,15 @@ function printStatement(node, texts) {
   }
 }
 
-export function print(root) {
-  return foldTerm(root, (node, texts) =>
-    isStatement(node) ? printStatement(node, texts) : printExpression(node, texts),
+export function printWith(root, textOf) {
+  return foldTerm(
+    root,
+    (node, texts) =>
+      textOf(node) ??
+      (isStatement(node) ? printStatement(node, texts) : printExpression(node, texts)),
   );
+}
+
+export function print(root) {
+  return printWith(root, () => undefined);
 }

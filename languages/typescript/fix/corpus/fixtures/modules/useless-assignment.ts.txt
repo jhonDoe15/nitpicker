@@ -1,0 +1,31 @@
+export function overwritten(read: () => number, log: string[]): number {
+  let value = read();
+  log.push('read');
+  value = 2;
+  return value;
+}
+
+export function chosen(flag: boolean): string {
+  let label = 'none';
+  if (flag) {
+    label = 'yes';
+  } else {
+    label = 'no';
+  }
+  return label;
+}
+
+export function probe(): unknown {
+  const log: string[] = [];
+  let calls = 0;
+  return [
+    overwritten(() => {
+      calls += 1;
+      return calls;
+    }, log),
+    calls,
+    log,
+    chosen(true),
+    chosen(false),
+  ];
+}

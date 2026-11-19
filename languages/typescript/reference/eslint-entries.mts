@@ -1,6 +1,7 @@
 import { reactRuleIds, reactTestRuleIds } from '../preset/eslint-config/react/react-rules.mjs';
 import { i18nRuleIds } from '../preset/eslint-config/i18n/i18n-rules.mjs';
 import { readEslintInventory } from './eslint-inventory.mts';
+import { fixerRuns, suggestionApplies } from './fixer-options.mts';
 import { ruleSets, type RuleSet } from './rule-sets.mts';
 import { counterpartsOf, ruleEntry, type RuleEntry } from './typed/entry-types.mts';
 import type { RuleFacts, RuleForm } from './typed/inventory-types.mts';
@@ -140,7 +141,8 @@ function entryOf(
       .filter(([, tools]) => tools.length > 0),
   );
   const scope = scopeOf(id, Object.keys(analyzers));
-  const fixableIn = facts.fixable === true ? fixablePresets(analyzers) : [];
+  const fixableIn = fixerRuns(id, facts) ? fixablePresets(analyzers) : [];
+  const suggestedIn = suggestionApplies(id) ? fixablePresets(analyzers) : [];
   const forms = formsOf(facts, id);
   return ruleEntry({
     tool: 'eslint',
@@ -156,6 +158,7 @@ function entryOf(
       ? {}
       : { links: [{ label: 'Rule documentation', url: facts.url }] }),
     ...(fixableIn.length === 0 ? {} : { fixableIn }),
+    ...(suggestedIn.length === 0 ? {} : { suggestedIn }),
     docs: docsOf(id),
     exception: { key: 'exceptions', rule: id },
   });

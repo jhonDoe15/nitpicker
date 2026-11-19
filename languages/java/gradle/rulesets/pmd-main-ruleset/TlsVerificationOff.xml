@@ -1,0 +1,37 @@
+  <rule name="TlsVerificationOff" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Keep certificate and hostname verification on in every environment, also behind a flag or an environment variable. For a private or self-signed CA, trust that CA: a KeyStore holding it, given to a TrustManagerFactory (or a Spring SSL bundle). Trusting every certificate or host lets anyone on the network read and change the traffic.">
+    <priority>1</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $trustAll := function($node) {
+      $node[pmd-java:typeIs('io.netty.handler.ssl.util.InsecureTrustManagerFactory')
+        or pmd-java:typeIs('org.apache.http.conn.ssl.NoopHostnameVerifier')
+        or pmd-java:typeIs('org.apache.hc.client5.http.ssl.NoopHostnameVerifier')
+        or pmd-java:typeIs('org.apache.http.conn.ssl.AllowAllHostnameVerifier')
+        or pmd-java:typeIs('org.apache.http.conn.ssl.TrustAllStrategy')
+        or pmd-java:typeIs('org.apache.http.conn.ssl.TrustSelfSignedStrategy')
+        or pmd-java:typeIs('org.apache.hc.client5.http.ssl.TrustAllStrategy')
+        or pmd-java:typeIs('org.apache.hc.client5.http.ssl.TrustSelfSignedStrategy')]
+    },
+    $acceptsAll := function($lambda) {
+      $lambda/*[last()][self::BooleanLiteral[@True = true()]
+        or self::Block[count(*) = 1]/ReturnStatement/BooleanLiteral[@True = true()]]
+    }
+return (
+  //FieldAccess[@Name = 'INSTANCE'][TypeExpression[$trustAll(.)]]
+  | //ConstructorCall[$trustAll(.)]
+  | //FieldAccess[@Name = 'ALLOW_ALL_HOSTNAME_VERIFIER']
+  | //LambdaExpression[$acceptsAll(.)]
+      [pmd-java:typeIs('javax.net.ssl.HostnameVerifier')
+       or pmd-java:typeIs('org.apache.http.ssl.TrustStrategy')
+       or pmd-java:typeIs('org.apache.hc.core5.ssl.TrustStrategy')
+       or parent::ArgumentList/parent::MethodCall[@MethodName = ('setHostnameVerifier', 'setDefaultHostnameVerifier',
+            'hostnameVerifier', 'setSSLHostnameVerifier', 'loadTrustMaterial')]]
+  | //MethodCall[@MethodName = 'setProperty'][*[1][self::TypeExpression][pmd-java:typeIs('java.lang.System')]]
+      [ArgumentList/*[1][@ConstValue = 'jdk.internal.httpclient.disableHostnameVerification']]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>

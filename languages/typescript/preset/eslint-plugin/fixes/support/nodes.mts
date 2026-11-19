@@ -1,4 +1,4 @@
-import type { TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { isNode, type SourceCode } from '../../rules/typed/node-views.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
@@ -26,4 +26,12 @@ export function containsNode(
     }
   }
   return false;
+}
+
+export function importedName(specifier: TSESTree.ImportClause): string | undefined {
+  if (specifier.type !== AST_NODE_TYPES.ImportSpecifier) {
+    return undefined;
+  }
+  const { imported } = specifier;
+  return imported.type === AST_NODE_TYPES.Identifier ? imported.name : imported.value;
 }

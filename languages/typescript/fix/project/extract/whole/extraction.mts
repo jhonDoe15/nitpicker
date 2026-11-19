@@ -1,6 +1,6 @@
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../../../adapters/typed/typescript-program.mts';
-import type { Planned, ReplaceEdit } from '../../typed/project-types.mts';
+import type { ReplaceEdit } from '../../typed/project-types.mts';
 import { alignRegions } from '../lockstep.mts';
 import {
   holeArgumentText,
@@ -22,13 +22,19 @@ import {
   type Aligned,
   type Both,
   type ExtractEnv,
+  type Extracted,
   type Hole,
   type NamedHole,
   type Region,
   type UnitNode,
   type WholeInput,
 } from '../typed/extract-types.mts';
-import { dedentedToLeast, helperNameFor, withLineEndingOf } from '../typed/typed-views.mts';
+import {
+  dedentedToLeast,
+  helperNameFor,
+  withLineEndingOf,
+  withWidened,
+} from '../typed/typed-views.mts';
 import { isAsync, lostComments, unitProblem } from './unit-check.mts';
 import { writesOf } from '../writes.mts';
 
@@ -116,16 +122,18 @@ type Plan = {
   readonly name: string;
   readonly holes: readonly NamedHole[];
   readonly typeHoles: readonly NamedHole[];
+  readonly precise: boolean;
 };
 
-function helperDeclaration({ units, name, holes, typeHoles }: Plan, env: ExtractEnv): string {
+function helperDeclaration(plan: Plan, env: ExtractEnv): string {
+  const { units, name, holes, typeHoles, precise } = plan;
   const typed = isTypeScriptFile(env.path);
   const types = typed ? parameterTypeTexts(units, env, typeHoles) : [];
   const own = units[0].parameters.map(
     (parameter, index) =>
       `${identifierText(parameter.name)}${types[index] === undefined ? '' : `: ${types[index]}`}`,
   );
-  const extra = holes.map((hole) => holeParameterText(hole, env.checker, { typed }));
+  const extra = holes.map((hole) => holeParameterText(hole, env.checker, { typed, precise }));
   const body = bodyOf(units[0]);
   const range = { start: body.getStart(env.sourceFile), end: body.end };
   const text = replacedText(range, [...holes, ...typeHoles], env.sourceFile);
@@ -217,7 +225,7 @@ function analysis({ units, engineHoles }: WholeInput, env: ExtractEnv): Aligned 
   return template === undefined ? aligned : { declined: template };
 }
 
-export function wholeExtraction(input: WholeInput, env: ExtractEnv): Planned<ReplaceEdit> {
+export function wholeExtraction(input: WholeInput, env: ExtractEnv): Extracted {
   const aligned = analysis(input, env);
   if (aligned.declined !== undefined) {
     return aligned;
@@ -234,5 +242,9 @@ export function wholeExtraction(input: WholeInput, env: ExtractEnv): Planned<Rep
     return { declined: 'the name of the shared function would collide' };
   }
   env.claim(name);
-  return { edits: editsFor({ units: input.units, name, holes, typeHoles }, env) };
+  const plan = { units: input.units, name, holes, typeHoles };
+  return withWidened(
+    editsFor({ ...plan, precise: true }, env),
+    editsFor({ ...plan, precise: false }, env),
+  );
 }

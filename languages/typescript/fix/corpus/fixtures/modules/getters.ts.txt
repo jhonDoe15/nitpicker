@@ -1,0 +1,25 @@
+let reads = 0;
+
+const box = {
+  get current(): { readonly factor: number; times(value: number): number } {
+    reads += 1;
+    return {
+      factor: reads,
+      times(value: number): number {
+        return value * this.factor;
+      },
+    };
+  },
+};
+
+export function viaGetter(): number {
+  return box.current.times.call(box.current, 3);
+}
+
+export function firstLarge(values: readonly number[]): number | undefined {
+  return values.filter((value) => value > box.current.factor)[0];
+}
+
+export function probe(): unknown {
+  return [viaGetter(), firstLarge([1, 5, 9]), reads];
+}

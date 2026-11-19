@@ -26,6 +26,16 @@ function scopeChains(scopes) {
   return chains;
 }
 
+function memoizer() {
+  const memos = new Map();
+  return (key, build) => {
+    if (!memos.has(key)) {
+      memos.set(key, build());
+    }
+    return memos.get(key);
+  };
+}
+
 function scopedTo(file, context) {
   const resolve = nameResolver(file, context.declared);
   return {
@@ -46,6 +56,7 @@ function fileView(file, context) {
       invocations: file.invocations.map((invocation) => ({ arguments: [], ...invocation })),
     },
     resolve,
+    memo: memoizer(),
     declared: context.declared,
     chain: (id) => chains.get(id) ?? [],
     classes,

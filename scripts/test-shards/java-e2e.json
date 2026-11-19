@@ -42,6 +42,8 @@
   "languages/java/adapters/java-e2e/preset/quality/java-preset-violations.e2e.test.mts": 72,
   "languages/java/adapters/java-e2e/preset/quality/pmd-categories.e2e.test.mts": 8,
   "languages/java/adapters/java-e2e/preset/quick/java-preset-quick.e2e.test.mts": 16,
+  "languages/java/adapters/java-e2e/preset/security/java-preset-security.e2e.test.mjs": 70,
+  "languages/java/adapters/java-e2e/preset/security/java-preset-tool-licenses.e2e.test.mjs": 105,
   "languages/java/adapters/java-e2e/red-base/java-compile-errors.e2e.test.mts": 54,
   "languages/java/adapters/java-e2e/red-base/java-red-base.e2e.test.mts": 153,
   "languages/java/adapters/java-e2e/spring-unbound/unbound-java.e2e.test.mts": 80,
