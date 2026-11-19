@@ -1,0 +1,50 @@
+  <rule name="OppositeBoundAssigned" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This variable is named for one end of a pair (max, afterPath, nextIndex) but is assigned from the accessor of the opposite end (getMin(), getBeforePath(), getPreviousIndex()). A neighbouring line was copied and only one side of it was edited, so the wrong bound flows into the rest of the method and the code still compiles. Assign from the accessor that matches the name (int max = range.getMax();), or rename the variable if the opposite end is what it holds. An exception fits a name that mentions both ends.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $accessorPairs := ('min max', 'before after', 'prev next', 'left right',
+                       'top bottom', 'first last', 'lower upper', 'low high', 'width height', 'head tail', 'x y'),
+    $bareMethodPairs := ('min max', 'left right', 'top bottom', 'width height', 'low high', 'x y'),
+    $opposites := function($w, $pairs) {
+      for $p in $pairs
+      return (let $t := tokenize($p, ' ')
+              return if ($w = $t[1]) then $t[2] else if ($w = $t[2]) then $t[1] else ())
+    },
+    $tokens := function($n) {
+      for $t in tokenize(lower-case(replace(replace(replace($n, '[0-9]+', ''), '([a-z])([A-Z])', '$1 $2'), '_', ' ')), ' +')[. != '']
+      return if ($t = 'minimum') then 'min' else if ($t = 'maximum') then 'max' else if ($t = 'previous') then 'prev' else $t
+    },
+    $nameOf := function($n) { if ($n/self::VariableDeclarator) then $n/VariableId/@Name else $n/*[1]/@Name },
+    $callOf := function($n) {
+      let $i := $n/*[2]
+      return (if ($i/self::CastExpression) then $i/*[last()] else $i)[self::MethodCall]
+    }
+return
+(//VariableDeclarator[VariableId][*[2]] | //AssignmentExpression[@Operator = '='][*[1][self::VariableAccess or self::FieldAccess]])
+  [let $self := .,
+       $name := $nameOf(.),
+       $call := $callOf(.),
+       $T := $tokens($name),
+       $R := $tokens($call/@MethodName)
+   return exists($call)
+     and not($call/*[1][self::TypeExpression])
+     and not($call/*[1][self::VariableAccess/@Name = $name])
+     and not($self/self::VariableDeclarator
+             and exists($self/ancestor::Block[1]//AssignmentExpression[not(. is $self)][*[1][self::VariableAccess/@Name = $name]]))
+     and (let $pairs := if ($R[1] = 'get') then $accessorPairs
+                        else if (count($R) = 1 and $call/ArgumentList/@Size = 0 and not($call/*[1]/self::AmbiguousName))
+                        then $bareMethodPairs else ()
+          return some $a in $T satisfies
+            (some $b in $opposites($a, $pairs) satisfies
+               $b = $R and not($a = $R) and not($b = $T)
+               and empty(ancestor::Block[1]//(VariableDeclarator[VariableId][*[2]]
+                                              | AssignmentExpression[@Operator = '='][*[1][self::VariableAccess or self::FieldAccess]])
+                           [not(. is $self)]
+                           [$b = $tokens($nameOf(.))][$a = $tokens($callOf(.)/@MethodName)])
+               and (every $r in $R[. != $b] satisfies $r = ($T[. != $a], 'get'))))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
