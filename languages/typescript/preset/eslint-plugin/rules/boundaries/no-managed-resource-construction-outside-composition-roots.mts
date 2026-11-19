@@ -5,7 +5,6 @@ import {
   isCompositionRootFile,
   type CompositionRootOptions,
 } from './composition-root-files.mts';
-import { calleeNameOf } from '../typed/syntax-views.mts';
 
 const MANAGED_SUFFIXES = [
   'Service',
@@ -40,7 +39,7 @@ const RESOURCE_FACTORY =
 const RESOURCE_FACTORY_MEMBERS = new Set(['axios.create']);
 
 function isResourceFactoryCall(callee: TSESTree.Node): boolean {
-  const name = calleeNameOf(callee);
+  const name = calleeName(callee);
   if (name === undefined) {
     return false;
   }
@@ -80,14 +79,14 @@ export const rule: TSESLint.RuleModule<'outsideRoot', CompositionRootOptions> = 
 
     return {
       NewExpression(node: TSESTree.NewExpression) {
-        const name = calleeNameOf(node.callee);
+        const name = calleeName(node.callee);
         if (name !== undefined && MANAGED_RESOURCE.test(name) && !VALUE_OBJECT.test(name)) {
           report(node, name);
         }
       },
       CallExpression(node: TSESTree.CallExpression) {
         if (isResourceFactoryCall(node.callee)) {
-          report(node, calleeNameOf(node.callee));
+          report(node, calleeName(node.callee));
         }
       },
     };

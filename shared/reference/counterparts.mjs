@@ -201,6 +201,8 @@ const GROUPS = [
     typescript: 'nitpicker/no-unpaged-listing',
     python: 'unpaged-listing',
     go: 'go-rules/unpaged-listing',
+  },
+  {
     jvm: 'NullBranchFallThrough',
     typescript: 'nitpicker/no-null-branch-fall-through',
     python: 'null-branch-fall-through',
