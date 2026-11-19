@@ -51,6 +51,7 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `.get(key)` and handle `None`, or test `key in data` first, never `request.session[KEY]` or
   `self.coordinator.data[device_id]` (`missing-key-subscript`).
 - A generator, `map`, `filter` or `zip` result is read once: a second loop, `in` test or forwarded call sees nothing (`iterator-read-twice`). Materialize it first (`items = list(items)`); in a Django `save` override write `update_fields = kwargs["update_fields"] = list(update_fields)` before testing it.
+- Hand every parameter on: an override passes what the base method declares (`super().parse(result, partial=partial)`), a wrapper passes the keyword its callee shares, and `serialize()` returns every `__init__` argument (`parameter-not-forwarded`).
 - A branch that handles `None` either leaves or is the whole story (`null-branch-fall-through`):
   `if value is None: out.append("null")` followed by `value.name` fails on the `None` path or handles the
   value twice. End the branch with `return` (or `raise`), or put the use in an `else`.

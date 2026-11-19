@@ -89,6 +89,7 @@
   "python-rules/orm-schema-sync": ["reliability", "persistence"],
   "python-rules/parameter-mutation": ["maintainability"],
   "python-rules/parenthesised-tuple-argument": ["bug"],
+  "python-rules/parameter-not-forwarded": ["bug"],
   "python-rules/patch-misses-lookup": ["tests"],
   "python-rules/pending-unsettled-on-close": ["bug", "async"],
   "python-rules/permission-name-without-app-label": ["bug", "security"],
