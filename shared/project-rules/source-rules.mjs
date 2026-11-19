@@ -36,7 +36,7 @@ export function sourceRules(ids, enforcedBy) {
       check: STRUCTURE_TOOL,
       limit:
         'a component file without a story, in a package that has Storybook; enforced when more than half of its component files have one, reported otherwise',
-      enforcedBy: { ...enforcedBy, javascript: 'partial' },
+      enforcedBy,
     },
     {
       id: ids.javascriptInTypescriptProject,

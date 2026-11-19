@@ -43,7 +43,6 @@ function registryOf(
   const react = isReactProject({
     projectRoot: context.projectRoot,
     react: context.inputs?.headPolicy?.react,
-    javascript: layout.javascript,
   });
   const packagesInfo = loadPackages(context.projectRoot, layout);
   const shared = createContext({

@@ -35,13 +35,8 @@ function expectedName(
 
 function optionsFor(context: FixContext): readonly unknown[] {
   const { projectRoot, inputs = {} } = context;
-  const layout = inputs.layout;
   return namingConvention({
-    react: isReactProject({
-      projectRoot,
-      react: inputs.headPolicy?.react,
-      javascript: layout?.javascript === true,
-    }),
+    react: isReactProject({ projectRoot, react: inputs.headPolicy?.react }),
     routeHandlers: usesRouteHandlerFramework(readDependencyNames(projectRoot)),
   }).slice(1);
 }

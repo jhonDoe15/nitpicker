@@ -278,7 +278,7 @@ describe('the js-clean fixture project', () => {
     });
 
     it(
-      'leaves the React rule scope off even when package.json lists react',
+      'runs the React rule scope when package.json lists react',
       () => {
         const root = createProject({
           'package.json': JSON.stringify({
@@ -296,10 +296,8 @@ describe('the js-clean fixture project', () => {
 
         expect(toolErrors).toEqual([]);
         expect(
-          findings
-            .filter(({ rule }) => /^react/u.test(textOf(rule)))
-            .map(({ identity }) => identity),
-        ).toEqual([]);
+          findings.map(({ rule }) => textOf(rule)).filter((rule) => /^react/u.test(rule)),
+        ).toEqual(['react-x/no-class-component']);
       },
       FIXTURE_TIMEOUT_MS,
     );

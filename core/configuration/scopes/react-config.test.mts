@@ -23,11 +23,12 @@ describe('the i18n key', () => {
 
 describe('the react key', () => {
   it.each([[{}], [{ enabled: true }], [{ enabled: false }], [{ styling: 'css-in-js' }]])(
-    'is an error with the javascript preset, which points to the typescript preset (%j)',
+    'is accepted with the javascript preset (%j)',
     (react) => {
-      expect(() => validateConfig({ preset: 'javascript', react })).toThrow(
-        'nitpicker.config.json: "react" is not supported with "preset": "javascript": React and JSX belong to the TypeScript preset, so remove the key, or use "preset": "typescript" for a React project',
-      );
+      expect(validateConfig({ preset: 'javascript', react })).toEqual({
+        preset: 'javascript',
+        react,
+      });
     },
   );
 

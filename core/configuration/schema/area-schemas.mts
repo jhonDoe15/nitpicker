@@ -141,13 +141,17 @@ function enabled(what: string): JsonSchema {
   };
 }
 
-export const react = scope('The React rule scope (TypeScript preset only).', REACT_KEYS, {
-  enabled: enabled('React rules'),
-  styling: enumeration(
-    'The one styling approach the project uses; inferred from the sources when unset.',
-    stylingApproaches,
-  ),
-});
+export const react = scope(
+  'The React rule scope (TypeScript and JavaScript presets).',
+  REACT_KEYS,
+  {
+    enabled: enabled('React rules'),
+    styling: enumeration(
+      'The one styling approach the project uses; inferred from the sources when unset.',
+      stylingApproaches,
+    ),
+  },
+);
 
 export const i18n = scope(
   'The i18n rule scope for react-intl (TypeScript preset only).',
