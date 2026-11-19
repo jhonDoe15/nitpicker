@@ -69,13 +69,64 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A `CompletableFuture` that a listener completes is completed exceptionally on the failure path too
   (`client.onFailure(reply::completeExceptionally)`), or comes from an API that returns one itself, such as
   `CompletableFuture.supplyAsync(task, executor)` (`pmd/FutureWithoutException`).
+- A result future, `AsyncResponse` or `DeferredResult` that a callback completes gets the failure too: return the
+  composed stage, chain `.exceptionally(error -> ...)` that fails the result, or read the throwable in
+  `handle`/`whenComplete` and call `completeExceptionally(error)`; a dropped `thenAccept(value -> result.complete(value))`
+  or a `handle((value, ex) -> ...)` that never reads `ex` leaves the caller waiting (`pmd/CompletionWithoutFailurePath`).
+- A `thenAccept`, `thenApply`, `whenComplete` or other stage without the `Async` suffix never waits inside its lambda
+  (`join()`, `get()`, `await()`, `take()`, `Thread.sleep`): it runs on the thread that completed the source, often an
+  I/O thread. Use `thenAcceptAsync(fn, executor)`, `getNow`, or return the next stage from `thenCompose`
+  (`pmd/BlockingInCompletionStage`).
 - A `close()`, `@AfterEach` or `@PreDestroy` method that releases several resources uses one try-with-resources or
   `try`/`finally` per release, never `a.close(); b.close();` in sequence (`pmd/CleanupSkippedOnFailure`).
+- A `close()` or `stop()` that releases a collection of delegates in a loop closes each one in its own `try`/`catch`,
+  collects the failures and rethrows the first with the rest suppressed, never `for (d : delegates) d.close();`
+  (`pmd/CleanupLoopStopsOnFailure`).
+- A constructor that creates a thread pool, `Timer` or opens a file or connection does it as its last step, or wraps the rest
+  of the constructor in `try`/`catch (RuntimeException | Error e)` that shuts the resource down and rethrows
+  (`pmd/ConstructorLeaksResourceOnFailure`).
+- A cleanup call in a `catch` that rethrows (`rollback()`) sits in its own `try`
+  that adds its failure to the original with `addSuppressed`, or logs it, so the real cause is the one that propagates
+  (`pmd/CleanupThrowReplacesFailure`).
+- A `close()` or `stop()` that calls a field only `open()` or `start()` assigns checks it for null first and resets it
+  (`if (cursor != null) { cursor.close(); cursor = null; }`), or the class creates the resource in its constructor
+  (`pmd/CloseDereferencesUnopenedField`).
 - A `close()` that clears a map of pending futures completes every entry first
   (`pending.values().forEach(f -> f.completeExceptionally(...))`), so no caller waits forever
   (`pmd/PendingFuturesNotFailedOnClose`).
 - A class that creates a `ScheduledExecutorService` or `Timer` shuts it down in `close()` (`shutdown()` then
   `awaitTermination`, or `cancel()`), `pmd/TimerNotStoppedOnClose`.
+- A concurrent map whose values are collections stores concurrent values
+  (`map.computeIfAbsent(key, k -> ConcurrentHashMap.newKeySet()).add(item)`) or changes them inside `compute`
+  or `merge`, never a plain `HashSet` or `ArrayList` changed after `computeIfAbsent` returns it
+  (`pmd/PlainCollectionInConcurrentMap`).
+- A plain `HashMap`, `ArrayList` or `HashSet` field that a class changes from an executor, scheduler or
+  `CompletableFuture` task, or in one method while another changes it under `synchronized`, is a concurrent
+  collection (`ConcurrentHashMap`, `CopyOnWriteArrayList`) or is locked on every read and write
+  (`pmd/UnsynchronizedSharedCollection`).
+- A concurrent map is not checked and then used again for the same key (`containsKey` then `put` or `get`,
+  `get(k) == null` then `put`): use `computeIfAbsent`, `putIfAbsent`, `getOrDefault`, or read once into a local
+  (`pmd/ConcurrentMapCheckThenAct`).
+- A `static` field or a singleton bean's field does not hold a `SimpleDateFormat`, `DecimalFormat`, `Calendar`,
+  `Matcher`, `Cipher`, `Mac`, `BeanWrapper` or retry back-off: use `DateTimeFormatter`, a `Pattern` constant with
+  `pattern.matcher(text)` per call, a per-call instance or a `ThreadLocal` (`pmd/SharedStatefulHelperField`).
+- A singleton bean, servlet or filter does not store a value built from a call's argument in an instance field
+  (`this.currency = requestedCurrency` in a service method): keep it in a local, key it by caller in a concurrent
+  map, or use a prototype-scoped bean (`pmd/CallValueStoredInSharedField`).
+- A Netty `ByteBuf` that a method allocates, retains or encodes is released in a `finally` (`buf.release()`) or handed
+  on (returned, stored, `ctx.write(buf)`, `out.add(buf)`), never only read and dropped (`pmd/BufferNeverReleased`).
+- A pooled object (a class that recycles itself through a `Recycler` or `ObjectPool` handle) resets every field it
+  assigns after creation before `handle.recycle(this)` (`position = null;`), or assigns it in every factory method
+  (`pmd/PooledFieldNotReset`).
+- A handle that a `thenCompose` or `thenApply` lambda receives (a ledger, a pooled connection, a channel) is released
+  in `whenComplete` or `handle` so it also runs when a later stage fails, never only in a nested `thenApply`
+  (`pmd/HandleReleasedOnlyOnSuccess`).
+- A value held in a field of a second-level cached entity that is mapped with `@Type`, `@JdbcTypeCode` or
+  `@Convert` is of a type that implements `Serializable` (the abstract base class or interface included), or the field is
+  `transient` (`pmd/CachedEntityFieldNotSerializable`).
+- A callback that removes its own entry from a shared `ConcurrentMap` removes only that value
+  (`requests.remove(unit, future)`, `peersByAddress.remove(address, this)`), never `remove(key)`, which deletes a newer
+  value stored under the same key (`pmd/RemoveByKeyDropsNewerValue`).
 - A `CompletableFuture` field returned on later calls is reset when the attempt fails
   (`whenComplete`, or `AtomicReference.compareAndSet(future, null)`), `pmd/CachedFutureKeepsFailure`.
 - A `Map`, `Set` or `List` field of a singleton bean that a method adds to per request is removed from when the
