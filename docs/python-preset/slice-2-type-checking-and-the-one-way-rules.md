@@ -65,11 +65,12 @@ through the real tools.
   (the star import itself is `F403`), `SIM105` (the `swallowed-exception` rule below covers that
   form) and `RUF100` (every `noqa` is already a finding). `S110` and `S112` are not selected:
   `swallowed-exception` reports what they did, and more, once and under one id. The shared
-  one-way rules add the groups `G` (logging calls), `N` (PEP 8 naming), `ERA` (commented-out
+  one-way rules add the groups `G` (logging calls), `INT` (gettext calls, with the `lint.flake8-gettext` function names of Django's
+  translation helpers), `N` (PEP 8 naming), `ERA` (commented-out
   code), `ARG` (unused arguments), `DTZ` (datetimes without a zone), `PT` (pytest style), `S` (security)
   and `TRY` (exceptions), the pitfall groups `ASYNC`, `LOG`, `PLE`, `PLW` and `T10`, and the single rules
   `PLR2004`, `PLW0602` and `PLW0603`; the last section of this slice lists each one with its allowed form
-  and the rules of those groups that are left off. The groups `RUF`, `G`, `N`, `DTZ`, `PT`, `S`, `TRY`,
+  and the rules of those groups that are left off. The groups `RUF`, `G`, `INT`, `N`, `DTZ`, `PT`, `S`, `TRY`,
   `ASYNC`, `LOG`, `PLE`, `PLW` and `T10` are selected by listing their stable codes, not by prefix, so a
   later ruff cannot add a rule (or a preview rule) to the gate. `ruffConfigFor`
   (`adapters/configuration/python-ruff-config.mjs`) writes the toml into the report directory
