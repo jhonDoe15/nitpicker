@@ -2560,6 +2560,8 @@
                             "pmd/SpringPasswordEncoder",
                             "pmd/SpringPermitAllAnyRequest",
                             "pmd/SpringCsrfDisabled",
+                            "pmd/SpringOutboundUrl",
+                            "pmd/SpringOpenRedirect",
                             "pmd/SpringHardcodedUser",
                             "pmd/JpaLazyFetching",
                             "pmd/JpaEntityClass",
