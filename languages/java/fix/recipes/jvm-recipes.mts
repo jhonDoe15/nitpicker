@@ -30,6 +30,7 @@ import { saveInLoopRecipe } from './kotlin/performance/repositories/loops/save-i
 import { sleepInsteadOfDelayRecipe } from './kotlin/performance/coroutines/sleep-instead-of-delay.mts';
 import { entityExistsRecipe } from './kotlin/performance/repositories/existence/entity-exists.mts';
 import { kotlinCompatibilityShimRecipe } from './kotlin/shims/compatibility-shim.mts';
+import { kotlinHttpTimeoutRecipe } from './kotlin/security/http-timeout.mts';
 import { focusedTestRecipe } from './kotlin/tests/focused-tests.mts';
 import { kotlinRetryInTestRecipe } from './kotlin/tests/retry-in-test.mts';
 import { validationTargetRecipe } from './kotlin/validation/validation-target.mts';
@@ -89,6 +90,7 @@ export const JVM_RECIPES = defineRecipes([
   kotlinRetryInTestRecipe,
   kotlinCompatibilityShimRecipe,
   kotlinForwardingWrapperRecipe,
+  kotlinHttpTimeoutRecipe,
   validationTargetRecipe,
   javaRestatingDocCommentRecipe,
   kotlinRestatingDocCommentRecipe,
