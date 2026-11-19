@@ -30,6 +30,7 @@ export const COVERAGE_REPORT_PATH = 'reports/quality/coverage/coverage-final.jso
 
 export const TEST_CONSOLE_REPORT_PATH = 'reports/quality/test-console/report.json';
 
+import { sourceFilesCoverage } from './source-files/source-coverage.mts';
 import { normalizeCoverage } from './tests.mts';
 
 import { withBranchSourceHashes } from './source-hashes.mts';
@@ -115,7 +116,7 @@ export function readCoverageFindings(
     throw new TypeError('The coverage report is not an object');
   }
   return normalizeCoverage(
-    withBranchSourceHashes(report, options.projectRoot),
+    withBranchSourceHashes(sourceFilesCoverage(report, options.projectRoot), options.projectRoot),
     options.analyzerName,
     { projectRoot: options.projectRoot, testCount: testReport.numTotalTests },
   );

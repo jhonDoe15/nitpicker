@@ -26,7 +26,12 @@ import { withRunnerTypes } from './test-runner/vocabulary/runner-types.mjs';
 import { libsWithTestDom, withTestDom } from './test-environment/dom-code/test-dom-tsconfig.mjs';
 import { filesOutsideRootDir } from './project-configs/typescript/solution-resolution.mjs';
 import { selectedProjectTsconfig } from './modules/selected-project-tsconfig.mjs';
-import { END_TO_END_ROOT, sourceRoots, testRoots } from './layout.mjs';
+import { END_TO_END_ROOT, builtInExcludedGlobs, sourceRoots, testRoots } from './layout.mjs';
+import {
+  expandBraces,
+  isProjectRoot,
+  PROJECT_ROOT_EXCLUDED_GLOBS,
+} from './layout/source-root/root-paths.mjs';
 
 const QUALITY_TSCONFIG = 'tsconfig.quality.json';
 
@@ -38,12 +43,25 @@ function executedRoots(layout) {
   return layout.executedTestRoots ?? layout.testRoots;
 }
 
+function rootedEntry(root, suffix) {
+  if (!isProjectRoot(root)) {
+    return `${root}${suffix}`;
+  }
+  return suffix === '' ? root : suffix.slice(1);
+}
+
+function projectRootExcludes(layout) {
+  return layout.sourceRoots.some(isProjectRoot)
+    ? [...new Set([...builtInExcludedGlobs, ...PROJECT_ROOT_EXCLUDED_GLOBS])]
+    : [];
+}
+
 function expandLayoutRoots(entries, layout, testRootsOf = (value) => value.testRoots) {
   const expanded = entries.flatMap((entry) => {
     const [first, ...rest] = entry.split('/');
     const suffix = rest.length === 0 ? '' : `/${rest.join('/')}`;
     if (DEFAULT_SOURCE_ROOTS.has(first)) {
-      return layout.sourceRoots.map((root) => `${root}${suffix}`);
+      return layout.sourceRoots.map((root) => rootedEntry(root, suffix));
     }
     if (DEFAULT_TEST_ROOTS.has(first)) {
       return testRootsOf(layout).map((root) => `${root}${suffix}`);
@@ -75,7 +93,13 @@ function tsconfigRewrite(javascriptOptions, testRootsOf) {
         ? { compilerOptions: { ...base.compilerOptions, ...javascriptOptions } }
         : {}),
       include: expandLayoutRoots(base.include, layout, testRootsOf),
-      exclude: [...base.exclude, ...layout.exclude],
+      exclude: [
+        ...new Set([
+          ...base.exclude,
+          ...projectRootExcludes(layout).flatMap(expandBraces),
+          ...layout.exclude,
+        ]),
+      ],
     };
   };
 }
@@ -106,7 +130,11 @@ export function layoutKnipConfig(base, layout) {
       javascript ? [...base.project, ...JAVASCRIPT_KNIP_PROJECT] : base.project,
       layout,
     ),
-    ignore: [...expandLayoutRoots(base.ignore, layout), ...layout.exclude],
+    ignore: [
+      ...expandLayoutRoots(base.ignore, layout),
+      ...projectRootExcludes(layout),
+      ...layout.exclude,
+    ],
   };
 }
 
@@ -117,6 +145,7 @@ export function layoutJscpdConfig(base, layout) {
     path: expandLayoutRoots(base.path, layout),
     ignore: [
       ...withSkippedFolders(base.ignore, SCRIPT_SKIPPED_FOLDERS, layout.duplicateSkippedFolders),
+      ...projectRootExcludes(layout),
       ...layout.exclude,
     ],
   };

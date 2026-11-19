@@ -211,3 +211,11 @@ export function selectSourceFiles(
   }
   return { files: selected, audit: auditOf(candidates.length, selected.length, reasons) };
 }
+
+export function resolveInside(projectRoot: string, relative: string): string {
+  const full = path.resolve(projectRoot, relative);
+  if (full !== projectRoot && !full.startsWith(projectRoot + path.sep)) {
+    throw new RangeError(`${relative} is outside the project root`);
+  }
+  return full;
+}

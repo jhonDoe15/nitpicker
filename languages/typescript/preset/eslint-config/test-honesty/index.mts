@@ -1,3 +1,4 @@
+import path from 'node:path';
 import vitest from '@vitest/eslint-plugin';
 import type { ESLint, Linter } from 'eslint';
 import jest from 'eslint-plugin-jest';
@@ -49,7 +50,7 @@ function unitTestGlobsFor(layout: TestLayout): string[] {
 }
 
 function runnableTestGlobs(roots: readonly string[]): string[] {
-  return roots.map((root) => `${root}/**/*.{test,spec}.${codeExtensions}`);
+  return roots.map((root) => path.posix.join(root, `**/*.{test,spec}.${codeExtensions}`));
 }
 
 function stubRestoreBlock(

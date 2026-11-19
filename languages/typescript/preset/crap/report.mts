@@ -5,6 +5,7 @@ import path from 'node:path';
 import config from '../defaults/crap.config.mts';
 import type { Layout } from '../../adapters/typed/head-policy.mts';
 import { readLayout as readUntypedLayout } from '../head-policy.mjs';
+import { resolveInside } from './source-files.mts';
 import { measureCrap } from './measure.mts';
 import { reportFunctionsOf } from './report-functions.mts';
 
@@ -62,11 +63,7 @@ function scoreLine(entry: (typeof functions)[number]): string {
 }
 
 function resolveInsideProject(relative: string): string {
-  const full = path.resolve(projectRoot, relative);
-  if (!full.startsWith(projectRoot + path.sep)) {
-    throw new RangeError(`${relative} is outside the project root`);
-  }
-  return full;
+  return resolveInside(projectRoot, relative);
 }
 
 function sourceFiles(): string[] {

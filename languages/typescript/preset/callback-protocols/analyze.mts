@@ -168,7 +168,7 @@ export function analyzeProductionCallbacks({
         .filter((fullPath) => {
           const relative = path.relative(sourceRoot, fullPath).replaceAll('\\', '/');
           return (
-            layout.isSourceFile(`${layout.sourceRoot}/${relative}`) &&
+            layout.isSourceFile(path.posix.join(layout.sourceRoot, relative)) &&
             !layout.isExcluded(path.posix.join(displayRoot.replaceAll('\\', '/'), relative))
           );
         })

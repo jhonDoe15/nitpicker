@@ -1,4 +1,4 @@
-import { escapeRegExp } from '../../../../../shared/paths/glob.mjs';
+import { rootPattern } from '../../layout/source-root/root-paths.mjs';
 
 export const NO_IMPORT_OUTSIDE_ROOTS = 'no-import-outside-roots';
 
@@ -23,7 +23,7 @@ export function outsideRootsRule({
   excludePattern,
   generatedFilePattern,
 }) {
-  const insideRoots = `^(?:${roots.map(escapeRegExp).join('|')})/`;
+  const insideRoots = `^${rootPattern(roots)}`;
   return {
     name: NO_IMPORT_OUTSIDE_ROOTS,
     severity: 'error',

@@ -181,7 +181,7 @@ function collectRootArchitectureSignals(
     layout,
     displayRoot: layoutSourceRoot,
   }).findings.map((item) => ({
-    file: `${layoutSourceRoot}/${item.source}`,
+    file: path.posix.join(layoutSourceRoot, item.source),
     rule: `runtime-boundary/${item.rule}`,
     source: `${item.role}:${item.target}`,
   }));

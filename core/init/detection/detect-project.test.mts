@@ -140,33 +140,98 @@ describe('TypeScript and JavaScript detection', () => {
       'scripts/build.mjs': SOURCE,
     });
 
-    const { preset, notes, settings, emptySources } = detectProject(root);
+    const { preset, notes, settings } = detectProject(root);
 
-    expect({ preset, notes, settings, emptySources }).toEqual({
+    expect({ preset, notes, settings }).toEqual({
       preset: 'typescript',
       notes: [
         'Its code is under components, not src, so init sets "layout.sourceRoots" to ["components"]. ' +
           'The code at the folder top (1 file) stays out of the checks.',
       ],
       settings: { layout: { sourceRoots: ['components'] } },
-      emptySources: undefined,
     });
   });
 
-  it('says every run reports empty sources when the code sits only at the folder top', () => {
-    const root = project({ 'package.json': '{}', 'auth.mjs': SOURCE, 'body.mjs': SOURCE });
-
-    const { notes, settings, emptySources } = detectProject(root);
-
-    expect({ notes, settings, emptySources }).toEqual({
-      notes: [
-        'Its code sits at the folder top (2 files), and only code in a source root folder is checked: ' +
-          'every run reports "empty sources" for it until the code moves into a folder, such as src, ' +
-          'that "layout.sourceRoots" names.',
-      ],
-      settings: undefined,
-      emptySources: true,
+  it('sets the project root for TypeScript files that sit only at the folder top', () => {
+    const root = project({
+      'package.json': '{}',
+      'auth.ts': TYPED_SOURCE,
+      'body.ts': TYPED_SOURCE,
     });
+
+    const { preset, notes, settings } = detectProject(root);
+
+    expect({ preset, notes, settings }).toEqual({
+      preset: 'typescript',
+      notes: [
+        'Its code is at the project root, so init sets "layout.sourceRoots" to ["."]. ' +
+          'node_modules, tests, build output and tool config files stay out of the checks.',
+      ],
+      settings: { layout: { sourceRoots: ['.'] } },
+    });
+  });
+
+  it('sets the project root for a TypeScript package whose main points into dist', () => {
+    const root = project({
+      'package.json': JSON.stringify({ main: 'dist/index.js' }),
+      'tsconfig.json': '{}',
+      'index.ts': TYPED_SOURCE,
+      'util.ts': TYPED_SOURCE,
+    });
+
+    const { preset, settings } = detectProject(root);
+
+    expect({ preset, settings }).toEqual({
+      preset: 'typescript',
+      settings: { layout: { sourceRoots: ['.'] } },
+    });
+  });
+
+  it('sets the project root as the source root of a JavaScript package that keeps its code there', () => {
+    const root = project({
+      'package.json': JSON.stringify({ main: 'index.js' }),
+      'index.js': SOURCE,
+      'lib/x.js': SOURCE,
+      'test/x.test.js': SOURCE,
+      'eslint.config.js': SOURCE,
+    });
+
+    const { preset, summary, notes, settings } = detectProject(root);
+
+    expect({ preset, summary, notes, settings }).toEqual({
+      preset: 'javascript',
+      summary: 'JavaScript, npm, Vitest',
+      notes: [
+        'Its code is at the project root, so init sets "layout.sourceRoots" to ["."]. ' +
+          'node_modules, tests, build output and tool config files stay out of the checks.',
+      ],
+      settings: { layout: { sourceRoots: ['.'] } },
+    });
+  });
+
+  it('follows an exports target at the root and keeps TypeScript when a tsconfig exists', () => {
+    const root = project({
+      'package.json': JSON.stringify({ exports: { '.': { import: './entry.mjs' } } }),
+      'tsconfig.json': '{}',
+      'entry.mjs': SOURCE,
+      'lib/x.mjs': SOURCE,
+    });
+
+    const { preset, settings } = detectProject(root);
+
+    expect({ preset, settings }).toEqual({
+      preset: 'typescript',
+      settings: { layout: { sourceRoots: ['.'] } },
+    });
+  });
+
+  it('does not treat a workspaces root as a package with its code at the root', () => {
+    const root = project({
+      'package.json': JSON.stringify({ workspaces: ['packages/*'], main: 'index.js' }),
+      'index.js': SOURCE,
+    });
+
+    expect(detectProject(root).settings).toBeUndefined();
   });
 
   it('falls back to src when the existing config is not valid JSON', () => {

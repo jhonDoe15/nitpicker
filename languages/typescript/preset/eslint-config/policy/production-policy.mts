@@ -1,3 +1,4 @@
+import path from 'node:path';
 import type { Linter } from 'eslint';
 import regexp from 'eslint-plugin-regexp';
 import tseslint from 'typescript-eslint';
@@ -199,7 +200,10 @@ function productionGuardRules({
 }
 
 export function configFileGlobsFor(layout: Pick<PolicyLayout, 'sourceRoots'>): string[] {
-  return layout.sourceRoots.flatMap((root) => [`${root}/**/*.config.*`, `${root}/**/.*rc.*`]);
+  return layout.sourceRoots.flatMap((root) => [
+    path.posix.join(root, '**/*.config.*'),
+    path.posix.join(root, '**/.*rc.*'),
+  ]);
 }
 
 export function productionLayoutConfigFor(

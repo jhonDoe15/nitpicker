@@ -1,3 +1,12 @@
+import {
+  isInsideRoot,
+  isProjectRoot,
+  normalizeRoot,
+  PROJECT_ROOT_EXCLUDED_GLOBS,
+  relativeToRoot,
+  sourcePathUnder,
+  underRoot,
+} from './layout/source-root/root-paths.mjs';
 import { filePatterns, globsFor } from './layout/path-patterns.mjs';
 import { END_TO_END_ROOT, endToEndFor } from './layout/end-to-end.mjs';
 import {
@@ -58,14 +67,10 @@ export const FIXTURE_PATH = /(?:^|\/)(?:fixtures|__fixtures__)\//;
 export function prettierPatterns(layout) {
   const code = layout.formatExtensions.join(',');
   return [
-    ...layout.sourceRoots.map((root) => `${root}/**/*.{${code},json,yaml,yml}`),
-    ...layout.testRoots.map((root) => `${root}/**/*.{${code},json}`),
+    ...layout.sourceRoots.map((root) => underRoot(root, `**/*.{${code},json,yaml,yml}`)),
+    ...layout.testRoots.map((root) => underRoot(root, `**/*.{${code},json}`)),
     `*.{${code},json}`,
   ];
-}
-
-function normalizeRoot(root) {
-  return root.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/$/, '');
 }
 
 export function toPosix(file) {
@@ -75,10 +80,10 @@ export function toPosix(file) {
 function sourceUnderRootClassifier({ sourceRoot, isSourceFile, isExcluded }) {
   return (file, root) => {
     const normalized = toPosix(file);
-    const prefix = `${toPosix(root).replace(/\/$/, '')}/`;
+    const base = toPosix(root).replace(/\/$/, '');
     return (
-      normalized.startsWith(prefix) &&
-      isSourceFile(`${sourceRoot}/${normalized.slice(prefix.length)}`) &&
+      isInsideRoot(normalized, base) &&
+      isSourceFile(underRoot(sourceRoot, relativeToRoot(normalized, base))) &&
       !isExcluded(normalized)
     );
   };
@@ -100,6 +105,18 @@ function testFileClassifier(patterns, isRunnerTest) {
       patterns.testPattern.test(normalized) ||
       (patterns.sourcePattern.test(normalized) && isRunnerTest(normalized))
     );
+  };
+}
+
+function sourceRootLookups({ sourceRoots, isGeneratedPath, isExcluded }) {
+  return {
+    sourceRootOf: (file) =>
+      sourceRoots.find((root) => !isProjectRoot(root) && file.includes(`/${root}/`)),
+    sourcePathOf: (file) => {
+      const found = sourcePathUnder(sourceRoots, file);
+      const hidden = found !== undefined && (isGeneratedPath(found) || isExcluded(found));
+      return hidden && sourceRoots.some(isProjectRoot) ? undefined : found;
+    },
   };
 }
 
@@ -148,7 +165,7 @@ function createClassifiers({
       isSourceFile,
       isExcluded,
     }),
-    sourceRootOf: (file) => sourceRoots.find((root) => file.includes(`/${root}/`)),
+    ...sourceRootLookups({ sourceRoots, isGeneratedPath, isExcluded }),
     isTestFixture: (file, name = '') => testInput(name).test(toPosix(file)),
   };
 }
@@ -159,13 +176,24 @@ function exactPathPattern(files) {
     : `^(?:${files.map((file) => escapeRegExp(file)).join('|')})$`;
 }
 
+function rootExcludedGlobs(layout) {
+  return (layout.sourceRoots ?? []).some((root) => isProjectRoot(normalizeRoot(root)))
+    ? [...new Set([...builtInExcludedGlobs, ...PROJECT_ROOT_EXCLUDED_GLOBS])]
+    : [];
+}
+
 function excludedGlobsFor(layout, exclude) {
+  const rootGlobs = rootExcludedGlobs(layout);
   const hiddenGlobs = [
     ...(layout.excludedGlobs ?? []).filter((glob) => !builtInExcludedGlobs.includes(glob)),
+    ...rootGlobs,
     ...exclude,
   ];
   return {
-    excludedGlobs: [...(layout.excludedGlobs ?? builtInExcludedGlobs), ...exclude],
+    excludedGlobs: [
+      ...new Set([...(layout.excludedGlobs ?? builtInExcludedGlobs), ...rootGlobs]),
+      ...exclude,
+    ],
     hiddenGlobs,
     excludePattern:
       hiddenGlobs.length === 0

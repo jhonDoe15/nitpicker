@@ -21,6 +21,7 @@ export type PluginLayout = {
   readonly isTestPath: (file: string) => boolean;
   readonly isTestFixture: (file: string, name?: string) => boolean;
   readonly sourceRootOf: (file: string) => string | undefined;
+  readonly sourcePathOf: (file: string) => string | undefined;
 };
 
 export type LibraryChoices = Readonly<Record<string, unknown>>;

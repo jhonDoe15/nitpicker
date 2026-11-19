@@ -14,7 +14,7 @@ import type {
   ProjectFix,
   ProjectRecipe,
 } from '../typed/project-types.mts';
-import { existingRoots } from '../typed/preset-views.mts';
+import { existingRoots, pathBelowRoot } from '../typed/preset-views.mts';
 import { declined, verifyEdits } from '../typed/project-views.mts';
 import { fullLayoutOf, loadPackages } from '../typed/reuse-views.mts';
 import type { FullLayout } from '../typed/reuse-views.mts';
@@ -104,16 +104,11 @@ function supportPath(context: FixContext, name: string): string {
   if (layout.colocatedTests) {
     return path.posix.join(path.posix.dirname(name), 'test-support', path.posix.basename(name));
   }
-  const root = layout.sourceRoots.find((candidate) => name.startsWith(`${candidate}/`));
   const [testRoot = layout.testRoots[0] ?? ''] = existingRoots(
     context.projectRoot,
     layout.testRoots,
   );
-  return path.posix.join(
-    testRoot,
-    'test-support',
-    name.slice(root === undefined ? 0 : root.length + 1),
-  );
+  return path.posix.join(testRoot, 'test-support', pathBelowRoot(layout.sourceRoots, name));
 }
 
 function importsFor(
