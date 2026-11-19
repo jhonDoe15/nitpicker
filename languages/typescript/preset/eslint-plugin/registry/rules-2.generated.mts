@@ -1,3 +1,13 @@
+import { rule as ruleNoProductionConsole } from '../rules/modules/no-production-console.mts';
+import { rule as ruleNoProductionImportsInSetupFiles } from '../test-isolation/no-production-imports-in-setup-files.mts';
+import { rule as ruleNoPromiseChain } from '../rules/syntax/no-promise-chain.mts';
+import { rule as ruleNoPrototypeKeyAccess } from '../rules/prototype-keys/no-prototype-key-access.mts';
+import { rule as ruleNoQueryPerParent } from '../rules/resolvers/no-query-per-parent.mts';
+import { rule as ruleNoRaisedTestTimeout } from '../rules/test-runtime/assertions/no-raised-test-timeout.mts';
+import { rule as ruleNoRawHttpValue } from '../rules/http-values/no-raw-http-value.mts';
+import { rule as ruleNoRealTimeRandomOrNetwork } from '../test-isolation/no-real-time-random-or-network.mts';
+import { rule as ruleNoReleaseOutsideFinally } from '../rules/resources/release/no-release-outside-finally.mts';
+import { rule as ruleNoRemoteCallInTransaction } from '../rules/effects/no-remote-call-in-transaction.mts';
 import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-call-under-lock.mts';
 import { rule as ruleNoRepeatedStringLiteral } from '../rules/literals/no-repeated-string-literal.mts';
 import { rule as ruleNoRetryWithoutIdempotency } from '../rules/writes/no-retry-without-idempotency.mts';
@@ -5,12 +15,10 @@ import { rule as ruleNoRouteWithoutAuth } from '../rules/route-auth/no-route-wit
 import { rule as ruleNoRuntimeExclusivePropsCheck } from '../rules/react-props/no-runtime-exclusive-props-check.mts';
 import { rule as ruleNoSecretInLog } from '../rules/secrets/no-secret-in-log.mts';
 import { rule as ruleNoSelfRecursion } from '../rules/control/no-self-recursion.mts';
-import { rule as ruleNoServerOrWorkerPerTest } from '../rules/test-runtime/processes/no-server-or-worker-per-test.mts';
-import { rule as ruleNoServiceLocator } from '../rules/service-locator/no-service-locator.mts';
-import { rule as ruleNoShadowedSpreadKey } from '../rules/spreads/no-shadowed-spread-key.mts';
 import { rule as ruleNoSendWithoutReturn } from '../rules/handlers/fall-through/no-send-without-return.mts';
 import { rule as ruleNoServerOrWorkerPerTest } from '../rules/test-runtime/processes/no-server-or-worker-per-test.mts';
 import { rule as ruleNoServiceLocator } from '../rules/service-locator/no-service-locator.mts';
+import { rule as ruleNoShadowedSpreadKey } from '../rules/spreads/no-shadowed-spread-key.mts';
 import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stateful-regex.mts';
 import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-state.mts';
 import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-string-command.mts';
@@ -21,9 +29,6 @@ import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-st
 import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mts';
 import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mts';
 import { rule as ruleNoStringLengthAsByteCount } from '../rules/byte-limits/no-string-length-as-byte-count.mts';
-import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-string-building.mts';
-import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mts';
-import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mts';
 import { rule as ruleNoSwitchedOffTests } from '../test-assertions/no-switched-off-tests.mts';
 import { rule as ruleNoSyncNodeApiInAsync } from '../rules/async/no-sync-node-api-in-async.mts';
 import { rule as ruleNoTaskOutlivingResource } from '../rules/lifetimes/no-task-outliving-resource.mts';
@@ -63,8 +68,8 @@ import { rule as ruleNoUnpinnedAssertion } from '../test-assertions/no-unpinned-
 import { rule as ruleNoUnresolvedRelativeUrl } from '../rules/urls/construction/no-unresolved-relative-url.mts';
 import { rule as ruleNoUnsafeDeserialization } from '../rules/security/deserialization/no-unsafe-deserialization.mts';
 import { rule as ruleNoUnsafePathJoin } from '../rules/guards/no-unsafe-path-join.mts';
-import { rule as ruleNoUnstrippedRemoteText } from '../rules/terminal/no-unstripped-remote-text.mts';
 import { rule as ruleNoUnscopedRecordAccess } from '../rules/record-scope/no-unscoped-record-access.mts';
+import { rule as ruleNoUnstrippedRemoteText } from '../rules/terminal/no-unstripped-remote-text.mts';
 import { rule as ruleNoUntrimmedRequestText } from '../rules/request-text/no-untrimmed-request-text.mts';
 import { rule as ruleNoUnusedDomEnvironment } from '../rules/test-runtime/environment/no-unused-dom-environment.mts';
 import { rule as ruleNoUnvalidatedSchemaField } from '../rules/boundaries/no-unvalidated-schema-field.mts';
@@ -93,29 +98,18 @@ import { rule as ruleReactSingleStylingApproach } from '../rules/react/react-sin
 import { rule as ruleReactTestNoImplementationDetails } from '../rules/react-tests/react-test-no-implementation-details.mts';
 import { rule as ruleReleaseListenersOnClose } from '../rules/lifecycles/handles/release-listeners-on-close.mts';
 import { rule as ruleReportModuleLoadEffects } from '../rules/modules/report-module-load-effects.mts';
-import { rule as ruleRequireAbortSignalForwarding } from '../rules/cancellation/abort-signal/require-abort-signal-forwarding.mts';
-import { rule as ruleRequireAtomicUpdates } from '../rules/wrapped/require-atomic-updates.mts';
-import { rule as ruleRequireClientTimeout } from '../rules/clients/require-client-timeout.mts';
-import { rule as ruleRequireErrorListener } from '../rules/events/require-error-listener.mts';
-import { rule as ruleRequireHttpTimeout } from '../rules/security/http/require-http-timeout.mts';
-import { rule as ruleRequireProcessTimeout } from '../rules/processes/require-process-timeout.mts';
-import { rule as ruleRequirePromiseReject } from '../rules/promises/executors/require-promise-reject.mts';
-import { rule as ruleRequireTestProcessTimeout } from '../rules/test-runtime/processes/timeouts/require-test-process-timeout.mts';
-import { rule as ruleReusableObjectPerCall } from '../rules/reuse/reusable-object-per-call.mts';
-import { rule as ruleSettlePendingOnClose } from '../rules/lifecycles/pending/settle-pending-on-close.mts';
-import { rule as ruleShorterBooleanLogic } from '../rules/control/shorter-boolean-logic.mts';
-import { rule as ruleSimplerBooleanLogic } from '../rules/control/simpler-boolean-logic.mts';
-import { rule as ruleStrictBooleanExpressions } from '../rules/wrapped/strict-boolean-expressions.mts';
-import { rule as ruleStructuredCatchLogging } from '../rules/errors/structured-catch-logging.mts';
-import { rule as ruleTestMustUseProductionRuntime } from '../rules/test-runtime/assertions/test-must-use-production-runtime.mts';
-import { rule as ruleTestTsconfigPinsLibAndTypes } from '../rules/test-runtime/types/test-tsconfig-pins-lib-and-types.mts';
-import { rule as ruleTimeUnitMismatch } from '../rules/time/units/time-unit-mismatch.mts';
-import { rule as ruleTimeoutAbandonsOperation } from '../rules/async/timeout-abandons-operation.mts';
-import { rule as ruleUnboundedFanOut } from '../rules/concurrency/unbounded-fan-out.mts';
-import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reactive/unbounded-reactive-fan-out.mts';
-import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-production-console': ruleNoProductionConsole,
+  'no-production-imports-in-setup-files': ruleNoProductionImportsInSetupFiles,
+  'no-promise-chain': ruleNoPromiseChain,
+  'no-prototype-key-access': ruleNoPrototypeKeyAccess,
+  'no-query-per-parent': ruleNoQueryPerParent,
+  'no-raised-test-timeout': ruleNoRaisedTestTimeout,
+  'no-raw-http-value': ruleNoRawHttpValue,
+  'no-real-time-random-or-network': ruleNoRealTimeRandomOrNetwork,
+  'no-release-outside-finally': ruleNoReleaseOutsideFinally,
+  'no-remote-call-in-transaction': ruleNoRemoteCallInTransaction,
   'no-remote-call-under-lock': ruleNoRemoteCallUnderLock,
   'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
   'no-retry-without-idempotency': ruleNoRetryWithoutIdempotency,
@@ -123,12 +117,10 @@ export const partRules = {
   'no-runtime-exclusive-props-check': ruleNoRuntimeExclusivePropsCheck,
   'no-secret-in-log': ruleNoSecretInLog,
   'no-self-recursion': ruleNoSelfRecursion,
-  'no-server-or-worker-per-test': ruleNoServerOrWorkerPerTest,
-  'no-service-locator': ruleNoServiceLocator,
-  'no-shadowed-spread-key': ruleNoShadowedSpreadKey,
   'no-send-without-return': ruleNoSendWithoutReturn,
   'no-server-or-worker-per-test': ruleNoServerOrWorkerPerTest,
   'no-service-locator': ruleNoServiceLocator,
+  'no-shadowed-spread-key': ruleNoShadowedSpreadKey,
   'no-shared-stateful-regex': ruleNoSharedStatefulRegex,
   'no-shared-test-state': ruleNoSharedTestState,
   'no-shell-string-command': ruleNoShellStringCommand,
@@ -139,9 +131,6 @@ export const partRules = {
   'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
   'no-string-as-regex': ruleNoStringAsRegex,
   'no-string-length-as-byte-count': ruleNoStringLengthAsByteCount,
-  'no-sql-string-building': ruleNoSqlStringBuilding,
-  'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
-  'no-string-as-regex': ruleNoStringAsRegex,
   'no-switched-off-tests': ruleNoSwitchedOffTests,
   'no-sync-node-api-in-async': ruleNoSyncNodeApiInAsync,
   'no-task-outliving-resource': ruleNoTaskOutlivingResource,
@@ -181,8 +170,8 @@ export const partRules = {
   'no-unresolved-relative-url': ruleNoUnresolvedRelativeUrl,
   'no-unsafe-deserialization': ruleNoUnsafeDeserialization,
   'no-unsafe-path-join': ruleNoUnsafePathJoin,
-  'no-unstripped-remote-text': ruleNoUnstrippedRemoteText,
   'no-unscoped-record-access': ruleNoUnscopedRecordAccess,
+  'no-unstripped-remote-text': ruleNoUnstrippedRemoteText,
   'no-untrimmed-request-text': ruleNoUntrimmedRequestText,
   'no-unused-dom-environment': ruleNoUnusedDomEnvironment,
   'no-unvalidated-schema-field': ruleNoUnvalidatedSchemaField,
@@ -211,25 +200,4 @@ export const partRules = {
   'react-test-no-implementation-details': ruleReactTestNoImplementationDetails,
   'release-listeners-on-close': ruleReleaseListenersOnClose,
   'report-module-load-effects': ruleReportModuleLoadEffects,
-  'require-abort-signal-forwarding': ruleRequireAbortSignalForwarding,
-  'require-atomic-updates': ruleRequireAtomicUpdates,
-  'require-client-timeout': ruleRequireClientTimeout,
-  'require-error-listener': ruleRequireErrorListener,
-  'require-http-timeout': ruleRequireHttpTimeout,
-  'require-process-timeout': ruleRequireProcessTimeout,
-  'require-promise-reject': ruleRequirePromiseReject,
-  'require-test-process-timeout': ruleRequireTestProcessTimeout,
-  'reusable-object-per-call': ruleReusableObjectPerCall,
-  'settle-pending-on-close': ruleSettlePendingOnClose,
-  'shorter-boolean-logic': ruleShorterBooleanLogic,
-  'simpler-boolean-logic': ruleSimplerBooleanLogic,
-  'strict-boolean-expressions': ruleStrictBooleanExpressions,
-  'structured-catch-logging': ruleStructuredCatchLogging,
-  'test-must-use-production-runtime': ruleTestMustUseProductionRuntime,
-  'test-tsconfig-pins-lib-and-types': ruleTestTsconfigPinsLibAndTypes,
-  'time-unit-mismatch': ruleTimeUnitMismatch,
-  'timeout-abandons-operation': ruleTimeoutAbandonsOperation,
-  'unbounded-fan-out': ruleUnboundedFanOut,
-  'unbounded-reactive-fan-out': ruleUnboundedReactiveFanOut,
-  'untested-round-trip': ruleUntestedRoundTrip,
 };

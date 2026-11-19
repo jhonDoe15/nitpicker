@@ -61,9 +61,9 @@ import { rule as ruleNoHandwrittenBoundaryGuard } from '../rules/boundaries/no-h
 import { rule as ruleNoHardcodedSecret } from '../rules/secrets/no-hardcoded-secret.mts';
 import { rule as ruleNoInMemoryQuery } from '../rules/queries/no-in-memory-query.mts';
 import { rule as ruleNoInPresenceCheck } from '../rules/presence/no-in-presence-check.mts';
+import { rule as ruleNoIncompleteCacheKey } from '../rules/caches/no-incomplete-cache-key.mts';
 import { rule as ruleNoIncompleteEscaping } from '../rules/escaping/no-incomplete-escaping.mts';
 import { rule as ruleNoInconsistentComparator } from '../rules/comparisons/no-inconsistent-comparator.mts';
-import { rule as ruleNoIncompleteCacheKey } from '../rules/caches/no-incomplete-cache-key.mts';
 import { rule as ruleNoInternalModuleMocks } from '../rules/test-runtime/assertions/no-internal-module-mocks.mts';
 import { rule as ruleNoIntervalPollingInTests } from '../rules/test-runtime/lifecycle/no-interval-polling-in-tests.mts';
 import { rule as ruleNoIoInLoop } from '../rules/loops/no-io-in-loop.mts';
@@ -98,23 +98,6 @@ import { rule as ruleNoPipeDroppingErrors } from '../rules/streams/no-pipe-dropp
 import { rule as ruleNoPresenceTruthiness } from '../rules/truthiness/no-presence-truthiness.mts';
 import { rule as ruleNoProcessAccessOutsideCompositionRoot } from '../rules/guards/no-process-access-outside-composition-root.mts';
 import { rule as ruleNoProcessGlobalsOutsideMainGuard } from '../rules/modules/no-process-globals-outside-main-guard.mts';
-import { rule as ruleNoProductionConsole } from '../rules/modules/no-production-console.mts';
-import { rule as ruleNoProductionImportsInSetupFiles } from '../test-isolation/no-production-imports-in-setup-files.mts';
-import { rule as ruleNoPromiseChain } from '../rules/syntax/no-promise-chain.mts';
-import { rule as ruleNoPrototypeKeyAccess } from '../rules/prototype-keys/no-prototype-key-access.mts';
-import { rule as ruleNoQueryPerParent } from '../rules/resolvers/no-query-per-parent.mts';
-import { rule as ruleNoRaisedTestTimeout } from '../rules/test-runtime/assertions/no-raised-test-timeout.mts';
-import { rule as ruleNoRawHttpValue } from '../rules/http-values/no-raw-http-value.mts';
-import { rule as ruleNoRealTimeRandomOrNetwork } from '../test-isolation/no-real-time-random-or-network.mts';
-import { rule as ruleNoReleaseOutsideFinally } from '../rules/resources/release/no-release-outside-finally.mts';
-import { rule as ruleNoRemoteCallInTransaction } from '../rules/effects/no-remote-call-in-transaction.mts';
-import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-call-under-lock.mts';
-import { rule as ruleNoRepeatedStringLiteral } from '../rules/literals/no-repeated-string-literal.mts';
-import { rule as ruleNoRetryWithoutIdempotency } from '../rules/writes/no-retry-without-idempotency.mts';
-import { rule as ruleNoRouteWithoutAuth } from '../rules/route-auth/no-route-without-auth.mts';
-import { rule as ruleNoRuntimeExclusivePropsCheck } from '../rules/react-props/no-runtime-exclusive-props-check.mts';
-import { rule as ruleNoSecretInLog } from '../rules/secrets/no-secret-in-log.mts';
-import { rule as ruleNoSelfRecursion } from '../rules/control/no-self-recursion.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -180,9 +163,9 @@ export const partRules = {
   'no-hardcoded-secret': ruleNoHardcodedSecret,
   'no-in-memory-query': ruleNoInMemoryQuery,
   'no-in-presence-check': ruleNoInPresenceCheck,
+  'no-incomplete-cache-key': ruleNoIncompleteCacheKey,
   'no-incomplete-escaping': ruleNoIncompleteEscaping,
   'no-inconsistent-comparator': ruleNoInconsistentComparator,
-  'no-incomplete-cache-key': ruleNoIncompleteCacheKey,
   'no-internal-module-mocks': ruleNoInternalModuleMocks,
   'no-interval-polling-in-tests': ruleNoIntervalPollingInTests,
   'no-io-in-loop': ruleNoIoInLoop,
@@ -218,21 +201,4 @@ export const partRules = {
   'no-presence-truthiness': ruleNoPresenceTruthiness,
   'no-process-access-outside-composition-root': ruleNoProcessAccessOutsideCompositionRoot,
   'no-process-globals-outside-main-guard': ruleNoProcessGlobalsOutsideMainGuard,
-  'no-production-console': ruleNoProductionConsole,
-  'no-production-imports-in-setup-files': ruleNoProductionImportsInSetupFiles,
-  'no-promise-chain': ruleNoPromiseChain,
-  'no-prototype-key-access': ruleNoPrototypeKeyAccess,
-  'no-query-per-parent': ruleNoQueryPerParent,
-  'no-raised-test-timeout': ruleNoRaisedTestTimeout,
-  'no-raw-http-value': ruleNoRawHttpValue,
-  'no-real-time-random-or-network': ruleNoRealTimeRandomOrNetwork,
-  'no-release-outside-finally': ruleNoReleaseOutsideFinally,
-  'no-remote-call-in-transaction': ruleNoRemoteCallInTransaction,
-  'no-remote-call-under-lock': ruleNoRemoteCallUnderLock,
-  'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
-  'no-retry-without-idempotency': ruleNoRetryWithoutIdempotency,
-  'no-route-without-auth': ruleNoRouteWithoutAuth,
-  'no-runtime-exclusive-props-check': ruleNoRuntimeExclusivePropsCheck,
-  'no-secret-in-log': ruleNoSecretInLog,
-  'no-self-recursion': ruleNoSelfRecursion,
 };
