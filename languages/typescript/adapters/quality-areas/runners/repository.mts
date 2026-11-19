@@ -110,12 +110,13 @@ export async function runCoupling(options: QualityAreaOptions): Promise<AreaRepo
     'languages/typescript/preset/coupling/analyze.mjs',
     'analyzeCoupling',
   );
-  const { exceptions, history } = readHeadPolicy();
+  const { exceptions, history, layout: layoutPolicy } = readHeadPolicy();
   const findings = await perSourceRoot(options, layout, (root) =>
     normalizeCoupling(
       analyzeCoupling(graph, root, { layout, projectRoot: options.projectRoot }),
       options.analyzerName,
       exceptions,
+      layoutPolicy,
     ),
   );
   const imports = wantsModuleImports(history)

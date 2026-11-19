@@ -100,6 +100,11 @@ export function analyzeCoupling(graph, sourceRoot, options = {}) {
       )
       .slice(0, 20),
     modules: moduleMetrics,
+    moduleImports: edges.map(({ source, target, kind }) => ({
+      from: source,
+      to: target,
+      typeOnly: kind !== 'runtime',
+    })),
     packages: metrics.packages,
     stabilityDirection: metrics.stabilityDirection,
     sharedUsedByOneFeature: sharedUsage(graph, normalizedRoot, { ...options, layout }),

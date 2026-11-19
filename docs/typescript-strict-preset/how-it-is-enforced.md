@@ -82,7 +82,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
 - The rules nitpicker adds are not ESLint rules, but the same `exceptions` key accepts them:
   `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `function-lines-limit`,
   `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`,
-  `folder-depth-limit`, `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`,
+  `folder-depth-limit`, `package-cycle`, `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`,
   `mutant-nocoverage`, `stability-direction`, and the dead-code findings `files`,
   `exports` and `types`, plus the reuse rules (`shared-used-by-one-feature`, `duplicate-definition`,
   `sibling-copy-edit`, `near-duplicate`, `duplicate-branch`, `result-slip`, `exported-name-collision`,

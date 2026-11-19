@@ -14,6 +14,7 @@ const evaluateCoupling: (
   report: unknown,
   analyzerName: string,
   exceptions: unknown[],
+  layout?: unknown,
 ) => Finding[] = untypedCoupling;
 const evaluateTestRuntime: (report: unknown, analyzerName: string) => Finding[] =
   untypedTestRuntime;
@@ -32,6 +33,7 @@ export function normalizeCoupling(
   report: unknown,
   analyzerName: string,
   exceptions: unknown[],
+  layout?: unknown,
 ): Finding[] {
   return evaluateCoupling(
     {
@@ -43,6 +45,7 @@ export function normalizeCoupling(
     },
     analyzerName,
     exceptions,
+    layout,
   );
 }
 
