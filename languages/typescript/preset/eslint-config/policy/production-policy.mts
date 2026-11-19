@@ -123,6 +123,7 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-repeated-string-literal': 'error',
     'nitpicker/no-hardcoded-secret': 'error',
     'nitpicker/no-secret-in-log': 'error',
+    'nitpicker/no-dropped-log-arguments': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
       {
@@ -136,6 +137,18 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
       },
     ],
     ...regexpRules(),
+  };
+}
+
+function transactionGuardRules(): RuleEntries {
+  return {
+    'nitpicker/no-remote-call-in-transaction': 'error',
+    'nitpicker/no-cache-write-in-transaction': 'error',
+    'nitpicker/no-whole-rows-for-one-value': 'error',
+    'nitpicker/no-remote-call-under-lock': 'error',
+    'nitpicker/no-retry-without-idempotency': 'error',
+    'nitpicker/no-stale-retry-after-conflict': 'error',
+    'nitpicker/no-dual-write': 'error',
   };
 }
 
@@ -155,15 +168,11 @@ function productionGuardRules({
     'nitpicker/no-io-in-loop': 'error',
     'nitpicker/no-accumulator-concat': 'error',
     'nitpicker/no-array-spread-arguments': 'error',
+    'nitpicker/no-null-branch-fall-through': 'error',
     'nitpicker/no-lazy-relation-in-loop': 'error',
     'nitpicker/no-lookup-per-element': 'error',
     'nitpicker/no-query-per-parent': 'error',
-    'nitpicker/no-remote-call-in-transaction': 'error',
-    'nitpicker/no-whole-rows-for-one-value': 'error',
-    'nitpicker/no-remote-call-under-lock': 'error',
-    'nitpicker/no-retry-without-idempotency': 'error',
-    'nitpicker/no-stale-retry-after-conflict': 'error',
-    'nitpicker/no-dual-write': 'error',
+    ...transactionGuardRules(),
     'nitpicker/no-unisolated-job-loop': 'error',
     'nitpicker/no-unguarded-deleted-items': 'error',
     'nitpicker/no-in-memory-query': 'error',
