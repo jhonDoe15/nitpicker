@@ -21,6 +21,9 @@ import { DJANGO_DECLARATION_HINTS } from './hints/django/declaration-hints.mts';
 import { ORM_HINTS } from './hints/persistence/ast-orm.mts';
 import { CONTRACT_HINTS } from './hints/contracts/ast-contracts.mts';
 import { SIGNATURE_HINTS } from './hints/signatures/ast-signatures.mts';
+import { FORWARDED_HINTS } from './hints/forwarding/forwarded.mts';
+import { ONE_SHOT_HINTS } from './hints/iterators/one-shot.mts';
+import { SHARED_STATE_HINTS } from './hints/signatures/shared-state.mts';
 import { TEST_SWITCH_HINTS } from './hints/tests/ast-test-switches.mts';
 import { PYTEST_HINTS } from './hints/tests/ruff-pytest.mts';
 import { SECURITY_HINTS } from './hints/security/ruff-security.mts';
@@ -32,13 +35,20 @@ import { STYLE_HINTS } from './hints/ruff-style.mts';
 import { SIMPLER_LOGIC_HINTS } from './hints/logic/simpler-logic.mts';
 import { STREAM_HINTS } from './hints/streams/streams.mts';
 import { LIFECYCLE_HINTS } from './hints/lifecycles/lifecycles.mts';
+import { FAILURE_HINTS } from './hints/failures/failures.mts';
 import { TIME_UNIT_HINTS } from './hints/time/time-units.mts';
+import { RUNTIME_SLIP_HINTS } from './hints/slips/runtime-slips.mts';
 import { RULES_TOOL } from './hints/tool.mts';
 import { DEFAULT_LIBRARIES } from './libraries/project-libraries.mts';
 import { QUERY_FILTER_HINTS } from './hints/filters/query-filters.mts';
 import { DATALOADER_HINTS } from './hints/dataloaders/batches.mts';
 import { AIRFLOW_HINTS } from './hints/airflow/templates.mts';
 import { HTTP_VALUE_HINTS } from './hints/http/http-values.mts';
+import { RESULT_HINTS } from './hints/results/results.mts';
+import { OVERRIDE_HINTS } from './hints/overrides/overrides.mts';
+import { TWIN_HINTS } from './hints/twins/twins.mts';
+import { MESSAGE_HINTS } from './hints/messages/messages.mts';
+import { TRANSLATION_HINTS } from './hints/translations/translations.mts';
 
 export { RULES_TOOL };
 const PYRIGHT_TOOLS = ['pyright', 'basedpyright'];
@@ -107,6 +117,9 @@ export const RULE_HINTS: readonly RuleHint[] = [
   ...COMPOSITION_HINTS,
   ...REGEX_DEFECT_HINTS,
   ...SIGNATURE_HINTS,
+  ...SHARED_STATE_HINTS,
+  ...ONE_SHOT_HINTS,
+  ...FORWARDED_HINTS,
   ...TEST_SWITCH_HINTS,
   ...ORM_HINTS,
   ...DJANGO_DECLARATION_HINTS,
@@ -116,10 +129,17 @@ export const RULE_HINTS: readonly RuleHint[] = [
   ...CONTAINER_HINTS,
   ...STREAM_HINTS,
   ...LIFECYCLE_HINTS,
+  ...FAILURE_HINTS,
   ...HTTP_VALUE_HINTS,
   ...AIRFLOW_HINTS,
   ...DATALOADER_HINTS,
   ...QUERY_FILTER_HINTS,
+  ...RUNTIME_SLIP_HINTS,
+  ...RESULT_HINTS,
+  ...OVERRIDE_HINTS,
+  ...TWIN_HINTS,
+  ...MESSAGE_HINTS,
+  ...TRANSLATION_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...PYRIGHT_TOOLS.map((tool) => ({
     tool,

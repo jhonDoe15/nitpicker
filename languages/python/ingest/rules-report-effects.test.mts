@@ -42,6 +42,41 @@ describe('effect rules report', () => {
       '`requests.post()` makes a remote call while `transaction.atomic()` holds a database transaction: the connection stays checked out for the remote latency, which can exhaust the pool, and the remote side effect cannot roll back with the transaction',
     ],
     [
+      'discarded-new-value',
+      'str.strip()',
+      '`str.strip()` returns a new value and leaves the receiver unchanged, so as a statement it does nothing and the code goes on with the old value',
+    ],
+    [
+      'discarded-new-value',
+      'QuerySet.delete()|truth',
+      '`QuerySet.delete()` returns a tuple, which is always true: testing it never tells whether a row was deleted or created',
+    ],
+    [
+      'unreturned-result',
+      'self.stage_ok()|Response',
+      '`self.stage_ok()` returns a `Response`, the type this function returns, but the call stands as a statement: its result is dropped and the function goes on or ends without it',
+    ],
+    [
+      'unformatted-message-placeholder',
+      '{url.path}',
+      '`{url.path}` is typed inside a plain string that nothing formats, so the message keeps the braces and loses the value it was meant to show',
+    ],
+    [
+      'exception-format-arguments',
+      'ValueError|percent',
+      '`ValueError` is built like a logger call: it stores the message and the extra arguments as a tuple and never formats them, so the text keeps its placeholder and the traceback prints the tuple',
+    ],
+    [
+      'gettext-format-mismatch',
+      'format|missing:location|unused:site',
+      'The arguments of `format` do not fit the placeholders of the translated text: the translated text needs `location`, which `format` does not give, so it raises at run time; `site` fills no placeholder of the text',
+    ],
+    [
+      'gettext-format-mismatch',
+      'format_map|before',
+      '`format_map` fills the text before the translation lookup, so the lookup uses the filled-in text, never finds the message id and the text is never translated',
+    ],
+    [
       'cache-write-in-transaction',
       'cache.set()|transaction.atomic()',
       '`cache.set()` writes the cache inside `transaction.atomic()`: a rollback undoes the database change but not the cache write, so other requests and nodes keep reading a value or an eviction that never happened until it expires',
@@ -85,6 +120,16 @@ describe('effect rules report', () => {
       'blocking-helper-in-async',
       'asyncio.get_event_loop',
       '`asyncio.get_event_loop` inside a coroutine returns a loop that may not be the running one and warns or fails on newer Python versions',
+    ],
+    [
+      'override-without-super',
+      'RoomSensor.available|CoordinatorEntity',
+      '`RoomSensor.available` replaces `CoordinatorEntity.available` without calling `super().available`: what the base member keeps (shared state, registration, saving or validation) is skipped, while the other overrides of it in this project and the contract of the base build on it',
+    ],
+    [
+      'async-twin-drift',
+      'abatch_iterate|batch_iterate|guard|size is None or size <= 0|sync',
+      '`abatch_iterate` and `batch_iterate` are twins, but only the sync one returns or raises early when `size is None or size <= 0`: `abatch_iterate` does not, so sync and async callers get different results',
     ],
     [
       'remote-call-under-lock',

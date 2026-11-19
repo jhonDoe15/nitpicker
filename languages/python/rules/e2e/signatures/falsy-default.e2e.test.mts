@@ -52,6 +52,26 @@ describeRules('falsy-default', () => {
       'def page(limit: int | None = None) -> int:\n    first = limit or 10\n    return (limit or 20) + first\n',
       ['falsy-default:2 page(limit)'],
     ],
+    [
+      'a QuerySet parameter replaced by an or default',
+      'from django.db.models import QuerySet\n\n\ndef visible(qs: QuerySet[Row] | None = None) -> QuerySet[Row]:\n    return qs or Row.objects.all()\n',
+      ['falsy-default:5 visible(qs)'],
+    ],
+    [
+      'an untyped None parameter replaced by a queryset through or',
+      'def visible(user, qs=None):\n    qs = qs or Attribute.objects.filter(owner=user)\n    return qs\n',
+      ['falsy-default:2 visible(qs)'],
+    ],
+    [
+      'a custom queryset method of a project queryset class',
+      'from django.db import models\n\n\nclass AttributeQuerySet(models.QuerySet):\n    def visible_to(self, user):\n        return self.filter(owner=user)\n\n\ndef visible(user, qs=None):\n    qs = qs or Attribute.objects.visible_to(user)\n    return qs\n',
+      ['falsy-default:10 visible(qs)'],
+    ],
+    [
+      'an untyped None parameter replaced by a queryset in a conditional expression',
+      'def visible(qs=None):\n    return qs if qs else Row.objects.filter(live=True)\n',
+      ['falsy-default:2 visible(qs)'],
+    ],
   ]);
 
   itOutcomes('leaves None tests, conditions and parameters of other types alone', [
@@ -99,6 +119,26 @@ describeRules('falsy-default', () => {
     [
       'a local variable',
       'def label(values: list[str]) -> str:\n    name = values[0] if values else None\n    return name or "all"\n',
+      [],
+    ],
+    [
+      'a queryset parameter that is compared with None',
+      'def visible(qs=None):\n    if qs is None:\n        qs = Row.objects.all()\n    return qs or Row.objects.none()\n',
+      [],
+    ],
+    [
+      'an untyped parameter with a terminal ORM call as the fallback',
+      'def pick(row=None):\n    return row or Row.objects.first()\n',
+      [],
+    ],
+    [
+      'a manager method that returns a row, and one annotated with a non-queryset type',
+      'from django.db import models\n\n\nclass ReadingManager(models.Manager):\n    def newest(self, user):\n        return self.get(owner=user)\n\n    def count_for(self, user) -> int:\n        return self.filter(owner=user).count()\n\n\ndef pick(user, row=None):\n    first = row or Reading.objects.newest(user)\n    return first or Reading.objects.count_for(user)\n',
+      [],
+    ],
+    [
+      'a copy of a non-queryset manager-like attribute',
+      'def pick(scene, cache=None):\n    return cache or scene.objects.copy()\n',
       [],
     ],
     [

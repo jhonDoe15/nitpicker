@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "exit-status-zero-on-failure",
+    "mention": "raise SystemExit(1)",
+    "subject": "raise SystemExit|except"
+  }
+]

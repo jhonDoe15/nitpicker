@@ -9,6 +9,7 @@ from signatures.annotations import (
     parameters_of,
     qualified_name,
 )
+from truthiness.sources import queryset_fallbacks
 
 RULE = "falsy-default"
 FALSY_TYPES = {
@@ -44,6 +45,7 @@ FALSY_TYPES = {
     "Decimal",
     "Fraction",
     "timedelta",
+    "QuerySet",
 }
 CONDITION_PARENTS = (ast.If, ast.While, ast.IfExp, ast.Assert)
 TRUTH_CALLS = {"bool", "any", "all"}
@@ -152,7 +154,9 @@ def coerced_names(node, names):
 
 
 def function_findings(function, context):
-    names = optional_parameters(function) - compared_with_none(function)
+    names = (
+        optional_parameters(function) | queryset_fallbacks(function, context.project)
+    ) - compared_with_none(function)
     reported = set()
     found = []
     for node in ast.walk(function) if names else []:

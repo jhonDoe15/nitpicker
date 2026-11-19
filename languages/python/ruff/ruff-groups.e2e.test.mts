@@ -6,7 +6,7 @@ import { installedRuffRules } from './test-support/installed-ruff-rules.mts';
 
 const enabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 const ruff = process.env['NITPICKER_RUFF'] ?? 'ruff';
-const LISTED_GROUPS = /^(?:G|N|ERA|ARG|PT|S|TRY|FBT|ASYNC|DTZ|LOG|PLE|PLW|T10)\d+$/u;
+const LISTED_GROUPS = /^(?:G|INT|N|ERA|ARG|PT|S|TRY|FBT|ASYNC|DTZ|LOG|PLE|PLW|T10)\d+$/u;
 const DECLINED = new Set([
   'FBT001',
   'FBT002',
