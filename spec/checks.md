@@ -259,6 +259,10 @@ evaluated with `list(...)`, a project function that returns a `list` from a quer
 parameter that the function tests for emptiness elsewhere) when no `if`, `assert`, early exit, loop over the sequence or `try`/`except ValueError` guards the access.
 The allowed forms are `default=`, a length check, `next(iter(xs), None)` and `qs.first()`.
 
+Time differences: `timedelta-seconds-as-total` (Python, main sources) reports `.seconds` and `.microseconds` read on a
+`timedelta` (a difference with a `datetime` or `date` operand, a `timedelta(...)` call, or a name or field annotated
+`timedelta`) unless `.days` of the same value is read in the function. The allowed form is `total_seconds()`.
+
 Time units: `nitpicker/time-unit-mismatch` (production source, in `eslint-lint`) reports time values in
 two different units that meet without a conversion: a `+`, `-` or comparison of seconds with milliseconds
 (or nanoseconds, microseconds, minutes), a value assigned or passed under a name or parameter of another

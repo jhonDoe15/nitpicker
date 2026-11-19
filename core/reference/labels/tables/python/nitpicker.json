@@ -135,6 +135,7 @@
   "python-rules/test-helper-in-source": ["maintainability"],
   "python-rules/test-without-assertion": ["tests"],
   "python-rules/time-unit-mismatch": ["bug"],
+  "python-rules/timedelta-seconds-as-total": ["bug"],
   "python-rules/timeout-abandons-operation": ["reliability", "async"],
   "python-rules/timeout-scope-path-without-checkpoint": ["bug", "async"],
   "python-rules/tls-verification-off": ["security"],
