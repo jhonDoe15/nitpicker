@@ -1,0 +1,9 @@
+export function usedHelper(value: number): number {
+  return value * 2;
+}
+export function unusedHelper(value: number): number {
+  return value * 3;
+}
+export function probe(): unknown {
+  return [usedHelper(1), unusedHelper(1)];
+}

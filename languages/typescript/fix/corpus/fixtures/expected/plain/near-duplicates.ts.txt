@@ -1,0 +1,49 @@
+type Shape = { readonly kind: 'circle' | 'square' | 'triangle'; readonly size: number };
+
+export function countCircles(shapes: readonly Shape[], limit: number): number {
+  return sharedCountCircles(shapes, limit, 'circle');
+}
+
+function sharedCountCircles(
+  shapes: readonly Shape[],
+  limit: number,
+  value: 'circle' | 'square',
+): number {
+  const picked = shapes.filter((shape) => shape.kind === value && shape.size < limit);
+  const total = picked.reduce((sum, shape) => sum + shape.size, 0);
+  const output = total > limit ? limit : total;
+  return output * picked.length;
+}
+
+export function countSquares(shapes: readonly Shape[], limit: number): number {
+  return sharedCountCircles(shapes, limit, 'square');
+}
+
+export function labelTop(names: readonly string[], limit: number): string {
+  return sharedLabelTop(names, limit, 'top:');
+}
+
+function sharedLabelTop(names: readonly string[], limit: number, value: string): string {
+  const kept = names.filter((entry) => entry.length < limit);
+  const marks = [value];
+  marks.push(kept.map((entry) => entry.trim()).join(','));
+  return marks.join('').padEnd(limit, '-');
+}
+
+export function labelBottom(names: readonly string[], limit: number): string {
+  return sharedLabelTop(names, limit, 'bottom:');
+}
+
+export function probe(): unknown {
+  const shapes: Shape[] = [
+    { kind: 'circle', size: 2 },
+    { kind: 'square', size: 3 },
+    { kind: 'circle', size: 9 },
+  ];
+  return [
+    countCircles(shapes, 5),
+    countSquares(shapes, 5),
+    labelTop(['a', ' b '], 12),
+    labelBottom([], 9),
+  ];
+}

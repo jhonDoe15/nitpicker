@@ -1,11 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { findingFactory } from '../../review-finding.mjs';
+import { findingFactory } from '../../review-finding.mts';
 import type { Loose } from '../../test-support/loose-facts.mts';
-import type { RuleFinding } from '../../test-support/facts.mts';
-import { unboundedPoolFindings } from './unbounded-pools.mjs';
-
-const poolFindings: (files: Loose[], options: { finding: unknown }) => RuleFinding[] =
-  unboundedPoolFindings;
+import { fieldOf, listOf, textOf } from '../../../../../../../shared/values/readers.mts';
+import { unboundedPoolFindings } from './unbounded-pools.mts';
 
 function source(
   invocations: Loose[],
@@ -31,10 +28,15 @@ function source(
   };
 }
 
-function lines(file: Loose) {
-  return poolFindings([file], { finding: findingFactory() }).map(
-    ({ location, rule, symbol }) => `${String(location.line)} ${rule} ${symbol}`,
-  );
+function lines(file: Loose): string[] {
+  const found: unknown = Reflect.apply(unboundedPoolFindings, undefined, [
+    [file],
+    { finding: findingFactory() },
+  ]);
+  return listOf(found).map((entry) => {
+    const line = String(fieldOf(fieldOf(entry, 'location'), 'line'));
+    return `${line} ${textOf(fieldOf(entry, 'rule'))} ${textOf(fieldOf(entry, 'symbol'))}`;
+  });
 }
 
 const MAX = [{ text: '0' }, { text: 'Int.MAX_VALUE' }, { text: '60' }];

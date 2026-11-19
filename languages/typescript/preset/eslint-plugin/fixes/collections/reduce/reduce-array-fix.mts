@@ -11,7 +11,8 @@ import {
   rewrittenCall,
   type ReduceSite,
 } from './reduce-site.mts';
-import { hasDenseDefiniteArrayType, hasMethod } from './type-proofs.mts';
+import { hasProperty } from '../../../rules/support/checked-types.mts';
+import { hasDenseDefiniteArrayType } from './type-proofs.mts';
 
 const FLAT_MAP = 'flatMap';
 
@@ -73,7 +74,7 @@ function fixOf(context: Context, callback: Callback): FixPlan | undefined {
   ) {
     return undefined;
   }
-  if (rewrite.method === FLAT_MAP && !hasMethod(context, site.receiver, FLAT_MAP)) {
+  if (rewrite.method === FLAT_MAP && !hasProperty(context, site.receiver, FLAT_MAP)) {
     return undefined;
   }
   const result = asExpressionBody(site, rewrite.result);

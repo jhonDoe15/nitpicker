@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Ruled, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
-import { unsafeCasts as untypedUnsafeCasts } from './unsafe-casts.mjs';
+import { unsafeCasts as untypedUnsafeCasts } from './unsafe-casts.mts';
 
 const unsafeCasts: Check<Ruled> = untypedUnsafeCasts;
 

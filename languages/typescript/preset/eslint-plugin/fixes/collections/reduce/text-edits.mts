@@ -1,6 +1,5 @@
 import type { TSESTree } from '@typescript-eslint/utils';
-
-export type TextEdit = { readonly range: TSESTree.Range; readonly text: string };
+import type { TextEdit } from '../../edits/text.mts';
 
 export function applyEdits(
   source: string,

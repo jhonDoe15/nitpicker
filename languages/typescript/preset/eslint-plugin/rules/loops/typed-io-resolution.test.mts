@@ -1,3 +1,4 @@
+import { GENERIC_FORM } from './advice/batch-forms.mts';
 import { rule as ioInLoop } from './no-io-in-loop.mts';
 import { IO_FILES, IO_STORE } from '../../test-support/projects/io-store-fixture.mts';
 import { typedIoProject } from '../../test-support/projects/typed-io-project.mts';
@@ -27,7 +28,7 @@ function loop(statement: string) {
 }
 
 function caseOf(statement: string, messageId: string, callee?: string) {
-  const data = callee === undefined ? {} : { data: { callee } };
+  const data = callee === undefined ? {} : { data: { callee, form: GENERIC_FORM } };
   return { ...typed(loop(statement)), errors: [{ messageId, ...data }] };
 }
 

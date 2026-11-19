@@ -4,7 +4,7 @@ import { evaluateDuplicates } from '../../../shared/rules/duplicates.mjs';
 import { projectFile } from '../../../shared/ingest/common.mjs';
 import { childrenNamed, parseXml, type XmlElement } from '../../../shared/values/xml.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
-import { LITERAL_OR_COMMENT } from '../ingest/source-text.mjs';
+import { LITERAL_OR_COMMENT } from '../ingest/source-text.mts';
 import {
   CPD_IDENTITY_PREFIX,
   cpdNotRun,

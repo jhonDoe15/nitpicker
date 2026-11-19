@@ -44,6 +44,10 @@ function nearestFunction(node: TSESTree.Node): FunctionNode | undefined {
   return ancestorsOf(node).find(isFunctionNode);
 }
 
+export function isDirectlyIn(node: TSESTree.Node, fn: FunctionNode): boolean {
+  return nearestFunction(node) === fn;
+}
+
 function isCallbackOf(fn: FunctionNode, methods: ReadonlySet<string>): boolean {
   const call = fn.parent;
   return (

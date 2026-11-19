@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { JUNIT_HEAD, KOTEST_HEAD, rulesOf, summaryOf } from '../../test-support/sources.mts';
-import { FOCUSED_RULE } from './focused-tests.mjs';
+import { FOCUSED_RULE } from './focused-tests.mts';
 
 function focused(text: string): string[] {
   return rulesOf(text, FOCUSED_RULE);

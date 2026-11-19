@@ -2,6 +2,7 @@ import { appendAll } from '../../../../../../../../shared/lists/lists.mts';
 export type LiteralArgument =
   | { readonly type: 'text'; readonly text: string }
   | { readonly type: 'function' }
+  | { readonly type: 'pattern' }
   | { readonly type: 'object'; readonly keys: Set<string>; readonly text?: string | undefined }
   | { readonly type: 'other' };
 
@@ -15,9 +16,10 @@ export type CallView<Root = unknown> = {
   readonly method: string | undefined;
   readonly root: Root | undefined;
   readonly args: CallArgument[];
+  readonly textual: boolean;
 };
 
-export type Link = { readonly name: string; readonly called: boolean };
+type Link = { readonly name: string; readonly called: boolean };
 
 export type Step<Node, Root> = {
   readonly name?: string;
@@ -36,10 +38,12 @@ function linksLabel(links: readonly Link[]): string {
   return `${links.map(({ name, called }) => (called ? `${name}()` : name)).join('.')}()`;
 }
 
+type LinkChain<Root> = { readonly links: Link[]; readonly root: Root | undefined };
+
 export function viewOf<Root>(
-  links: readonly Link[],
-  root: Root | undefined,
+  { links, root }: LinkChain<Root>,
   args: CallArgument[],
+  textual = false,
 ): CallView<Root> {
   return {
     names: links.map(({ name }) => name).filter((name) => name !== 'this'),
@@ -47,6 +51,7 @@ export function viewOf<Root>(
     method: links.at(-1)?.name,
     root,
     args,
+    textual,
   };
 }
 
@@ -58,7 +63,7 @@ function isCalledLink<Node, Root>(steps: readonly Step<Node, Root>[], index: num
 export function chainLinks<Node, Root>(
   callee: Node,
   step: (node: Node) => Step<Node, Root>,
-): { readonly links: Link[]; readonly root: Root | undefined } {
+): LinkChain<Root> {
   const steps: Step<Node, Root>[] = [];
   const pending = [callee];
   for (const node of pending) {

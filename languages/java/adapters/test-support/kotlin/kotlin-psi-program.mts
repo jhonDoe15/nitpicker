@@ -3,7 +3,7 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect } from 'vitest';
 import { parseJson, textOf } from '../../../../../shared/values/readers.mts';
-import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
+import { INIT_SCRIPT } from '../../../builds/java-build.mts';
 
 export function pinnedKotlinCompiler(): string {
   return /kotlinCompiler\s*:\s*'([^']+)'/.exec(readFileSync(INIT_SCRIPT, 'utf8'))?.[1] ?? '';

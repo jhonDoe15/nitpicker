@@ -45,7 +45,7 @@ describe('Java analyzer configuration files', () => {
     const expected = [
       'languages/java/adapters/java-runner.mjs',
       'languages/java/adapters/java-analyzer.mjs',
-      'languages/java/adapters/kotlin/rules/kotlin-literals.mjs',
+      'languages/java/adapters/kotlin/rules/kotlin-literals.mts',
       ...resourceFiles('languages/java/gradle'),
       ...resourceFiles('languages/java/detekt'),
     ];

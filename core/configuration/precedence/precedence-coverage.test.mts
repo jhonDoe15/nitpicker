@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { createPythonAnalyzers } from '../../../languages/python/adapters/python-analyzer.mts';
-import { KOTLIN_FORMATTERS } from '../../../languages/java/adapters/style/jvm-formatters.mjs';
+import { KOTLIN_FORMATTERS } from '../../../languages/java/adapters/style/jvm-formatters.mts';
 import { GO_LINT_TOOLS } from '../../../languages/go/adapters/configuration/go-config.mts';
-import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
+import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mts';
 import { PRESET_TOOLS } from '../../../shared/exceptions/rule-tools.mjs';
 import { SUPPORTED_PRESETS } from '../validate.mts';
 import { toolSettingKeysOf } from '../tool-settings.mts';

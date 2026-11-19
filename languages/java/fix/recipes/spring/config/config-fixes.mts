@@ -1,11 +1,11 @@
-import { isSensitiveEndpoint as untypedIsSensitiveEndpoint } from '../../../../adapters/spring/config-rules/actuator.mjs';
-import { stripBracketsAndQuotes as untypedStripBracketsAndQuotes } from '../../../../adapters/spring/spring-config-files.mjs';
-import { relaxKey as untypedRelaxKey } from '../../../../adapters/spring/spring-config-parser.mjs';
+import { isSensitiveEndpoint as untypedIsSensitiveEndpoint } from '../../../../adapters/spring/config-rules/actuator.mts';
+import { stripBracketsAndQuotes as untypedStripBracketsAndQuotes } from '../../../../adapters/spring/spring-config-files.mts';
+import { relaxKey as untypedRelaxKey } from '../../../../adapters/spring/spring-config-parser.mts';
 import {
   isLiteralSecret as untypedIsLiteralSecret,
   placeholderDefault as untypedPlaceholderDefault,
   secretVariable as untypedSecretVariable,
-} from '../../../../adapters/spring/spring-secrets.mjs';
+} from '../../../../adapters/spring/spring-secrets.mts';
 import { callUntyped } from '../../../../adapters/typed/java-values.mts';
 import { textOf } from '../../../../../../shared/values/readers.mts';
 import type { ConfigTarget, Operation, SpringEntry } from './config-types.mts';

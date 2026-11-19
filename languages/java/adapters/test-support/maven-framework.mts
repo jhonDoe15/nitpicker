@@ -1,13 +1,13 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { readPinnedTools } from '../../builds/java-build.mjs';
-import { runMaven, TEST_RERUNS_OFF } from '../../maven/maven-command.mjs';
+import { readPinnedTools } from '../../builds/java-build.mts';
+import { runMaven, TEST_RERUNS_OFF } from '../../maven/maven-command.mts';
 import { type ReactorModule, lifecycleArgs, readReactor } from '../../maven/maven-project.mts';
 import {
   moduleClasspaths,
   parseDependencyList,
 } from '../../maven/configuration/maven-classpaths.mts';
-import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from '../../maven/maven-tools.mjs';
+import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from '../../maven/maven-tools.mts';
 import {
   archunitMatcher,
   collectTestResults,
@@ -19,7 +19,7 @@ import { copyTestResults } from '../../maven/results/maven-test-results.mts';
 import { ingestArchunit } from '../../ingest/archunit.mts';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mts';
 import { ingestPit } from '../../ingest/pit.mts';
-import { sourceFileOf, sourceLocator } from '../reporting/kotlin-reports.mjs';
+import { sourceFileOf, sourceLocator } from '../reporting/kotlin-reports.mts';
 import type { ToolClasspaths } from '../../maven/typed/kotlin-types.mts';
 import { findingsOf, type JavaFinding, type JavaPolicy } from '../typed/java-values.mts';
 import { optionalText } from '../../../../shared/values/readers.mts';

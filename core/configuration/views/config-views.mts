@@ -1,5 +1,5 @@
 import { listNames as untypedListNames } from '../../../shared/messages/messages.mjs';
-import { rejectMissingConfiguredBuild as untypedRejectMissingConfiguredBuild } from '../../../languages/java/builds/build-tool/build-tool-setting.mjs';
+import { rejectMissingConfiguredBuild as untypedRejectMissingConfiguredBuild } from '../../../languages/java/builds/build-tool/build-tool-setting.mts';
 import { factRuleSettings as untypedFactRuleSettings } from '../../../shared/project-rules/fact-rules.mjs';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 

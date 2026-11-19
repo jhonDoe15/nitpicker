@@ -1,0 +1,29 @@
+function pick(): string {
+  return 'outer';
+}
+
+export function hoistedInTry(run: () => number): string {
+  const before = pick();
+  {
+    run();
+    function pick(): string {
+      return 'inner';
+    }
+  }
+  return before + pick();
+}
+
+export function shadowedInTry(run: () => number): number {
+  const value = 1;
+  {
+    const value = run();
+    if (value < 0) {
+      return value;
+    }
+  }
+  return value;
+}
+
+export function probe(): unknown {
+  return [hoistedInTry(() => 1), shadowedInTry(() => 5)];
+}

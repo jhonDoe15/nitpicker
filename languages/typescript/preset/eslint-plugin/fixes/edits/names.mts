@@ -5,7 +5,7 @@ import { visibleVariable } from '../support/scope.mts';
 
 const MAX_SUFFIX = 50;
 
-function globalScopeOf(scope: TSESLint.Scope.Scope): TSESLint.Scope.Scope {
+export function globalScopeOf(scope: TSESLint.Scope.Scope): TSESLint.Scope.Scope {
   return scopeChain(scope).at(-1) ?? scope;
 }
 
@@ -19,7 +19,7 @@ function isTaken(sourceCode: SourceCode, sites: readonly TSESTree.Node[], name: 
   });
 }
 
-function declaredBelow(scope: TSESLint.Scope.Scope, name: string): boolean {
+export function declaredBelow(scope: TSESLint.Scope.Scope, name: string): boolean {
   const pending = [scope];
   for (const current of pending) {
     if (current.set.has(name)) {

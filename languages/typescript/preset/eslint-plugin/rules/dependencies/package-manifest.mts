@@ -11,6 +11,8 @@ export type Manifest =
       readonly bundledApp: boolean;
       readonly development: ReadonlySet<string>;
       readonly runtime: ReadonlySet<string>;
+      readonly moduleType: string | undefined;
+      readonly runtimeVersions: ReadonlyMap<string, string>;
     };
 
 const ancestorDirectories: (directory: string) => string[] = untypedAncestorDirectories;
@@ -56,12 +58,25 @@ function manifestAt(directory: string): Manifest | undefined {
     file,
     bundledApp: isBundledApp(directory, value),
     development: new Set(dependencyNames(value, DEVELOPMENT_SECTION)),
-    runtime: new Set(
-      DEPENDENCY_SECTIONS.filter((section) => section !== DEVELOPMENT_SECTION).flatMap((section) =>
-        dependencyNames(value, section),
-      ),
+    runtime: new Set(runtimeSections().flatMap((section) => dependencyNames(value, section))),
+    moduleType: typeof value['type'] === 'string' ? value['type'] : undefined,
+    runtimeVersions: new Map(
+      runtimeSections().flatMap((section) => dependencyVersions(value, section)),
     ),
   };
+}
+
+function runtimeSections(): string[] {
+  return DEPENDENCY_SECTIONS.filter((section) => section !== DEVELOPMENT_SECTION);
+}
+
+function dependencyVersions(manifest: ManifestObject, section: string): [string, string][] {
+  const entries = manifest[section];
+  return isObjectValue(entries)
+    ? Object.entries(entries).filter(
+        (entry): entry is [string, string] => typeof entry[1] === 'string',
+      )
+    : [];
 }
 
 function dependencyNames(manifest: ManifestObject, section: string): string[] {

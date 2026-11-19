@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { GRADLE_DIRECTORY } from '../../../builds/java-build.mjs';
-import { escapeXml } from '../../tool-config/xml-write.mjs';
+import { GRADLE_DIRECTORY } from '../../../builds/java-build.mts';
+import { escapeXml } from '../../tool-config/xml-write.mts';
 import { type ProxyAnnotations, projectProxyAnnotations } from './proxy-annotations.mts';
 import { textOf } from '../../../../../shared/values/readers.mts';
 

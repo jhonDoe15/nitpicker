@@ -60,7 +60,7 @@ tools need a JDK of their own, chosen apart from the one the project compiles wi
 - **When no JDK fits,** that one tool is skipped and the run goes on: the build leaves
   `errorprone-skipped.txt`, `format-skipped.txt`, `checkstyle-skipped.txt`, `structure-skipped.txt`
   or `detekt-skipped.txt` with the reason in the report directory, and a `tool-skipped` tool error
-  (`languages/java/adapters/reporting/skips/skipped-tools.mjs`) names the tool, the module and what
+  (`languages/java/adapters/reporting/skips/skipped-tools.mts`) names the tool, the module and what
   to install. Without the structure metrics CRAP is skipped too. Every other analyzer still
   reports, and the comparison leaves out the findings of the skipped tool on both snapshots, so a
   JDK missing on one side does not make its findings new.
@@ -101,6 +101,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Guards](java-preset/guards.md)
 - [Generated sources](java-preset/generated-sources.md)
 - [Spring rules](java-preset/spring-rules.md)
+- [Security checks (find-sec-bugs)](java-preset/security-checks.md)
 - [Spring architecture rules](java-preset/spring-architecture-rules.md)
 - [Spring configuration files](java-preset/spring-configuration-files.md)
 - [Review rules](java-preset/review-rules.md)

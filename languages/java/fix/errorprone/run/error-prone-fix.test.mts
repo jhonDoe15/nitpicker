@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   fixtureGit,
   useGitFixtures,
@@ -14,7 +14,7 @@ import type { FixOutcome } from '../../../../../core/fix/typed/fix-types.mts';
 import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
 import { fixWorkingTree } from '../../../../../core/fix/run-fix.mts';
 import { patchChecks } from '../checks/error-prone-checks.mts';
-import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
+import { INIT_SCRIPT } from '../../../builds/java-build.mts';
 import { fakeErrorPronePatch, patchChecksOf } from '../../test-support/fake-error-prone-patch.mts';
 import type { PatchHooks, Reply } from '../../test-support/fake-maven-patch.mts';
 import {
@@ -91,12 +91,7 @@ const BASE_CHANGED = CLASS('Changed')
   .replace('extends Base {\n    void run() {}', 'extends Base {\n    void run() { }')
   .replace('  class Inner {', '  class  Inner {');
 
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
-
 function topic(changes: FileMap, build: FileMap = GRADLE): Repository {
-  vi.stubEnv('XDG_CACHE_HOME', temporaryRoot('nitpicker-fix-cache-'));
   const repository = createGitRepository(
     {
       ...build,
@@ -137,7 +132,7 @@ function fix(
     executeFixCommand: tools.executeFixCommand,
     headPolicy: { exclude: [], conventions: { 'java.formatter': 'none' }, ...headPolicy },
     config,
-    environment: ENVIRONMENT,
+    environment: { ...ENVIRONMENT, XDG_CACHE_HOME: temporaryRoot('nitpicker-fix-cache-') },
     selectedRules,
   });
 }

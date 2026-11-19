@@ -12,9 +12,9 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { INIT_SCRIPT } from '../builds/java-build.mjs';
-import { loadEffectFindings } from './kotlin/review-rules/main/load-effects.mjs';
-import { findingFactory } from './kotlin/review-rules/review-finding.mjs';
+import { INIT_SCRIPT } from '../builds/java-build.mts';
+import { loadEffectFindings } from './kotlin/review-rules/main/load-effects.mts';
+import { findingFactory } from './kotlin/review-rules/review-finding.mts';
 import {
   pinnedKotlinCompiler,
   prepareCompiler,
@@ -23,7 +23,7 @@ import {
   type PsiCompiler,
 } from './test-support/kotlin/kotlin-psi-program.mts';
 import { column, columns, listAt } from './test-support/kotlin/psi-fields.mts';
-import { findingsOf } from './typed/java-values.mts';
+import { callUntyped, findingsOf } from './typed/java-values.mts';
 import { fieldOf, listOf, parseJson, textOf } from '../../../shared/values/readers.mts';
 import {
   BOM,
@@ -364,7 +364,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
       }),
     );
     const findings = findingsOf(
-      loadEffectFindings(listAt(facts, 'files'), { finding: findingFactory() }),
+      callUntyped(loadEffectFindings, listAt(facts, 'files'), { finding: findingFactory() }),
     );
 
     expect(

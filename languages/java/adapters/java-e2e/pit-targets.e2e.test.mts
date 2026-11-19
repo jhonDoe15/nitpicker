@@ -3,7 +3,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { INIT_SCRIPT as INIT_SCRIPT_UNTYPED } from '../../builds/java-build.mjs';
+import { INIT_SCRIPT as INIT_SCRIPT_UNTYPED } from '../../builds/java-build.mts';
 import { GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 

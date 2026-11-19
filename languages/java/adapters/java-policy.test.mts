@@ -6,7 +6,7 @@ import { useGitFixtures } from '../../../core/diff/git/test-support/git-reposito
 import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mts';
 import { readConfigFile } from '../../../core/configuration/config.mts';
 import { createJavaAnalyzer } from './java-analyzer.mts';
-import { JAVA_TOOLS } from './gradle-presets.mjs';
+import { JAVA_TOOLS } from './gradle-presets.mts';
 import { lintBaselineProperties } from './collect/build-findings.mts';
 import {
   configureJavaAnalyzer,

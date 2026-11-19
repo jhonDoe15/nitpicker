@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { foundRuleLines } from '../typed/scan-found.mts';
 import { type Check, type Ruled } from '../typed/typed-scan.mts';
-import { httpValues as untypedHttpValues } from './http-values.mjs';
+import { httpValues as untypedHttpValues } from './http-values.mts';
 
 const httpValues: Check<Ruled> = untypedHttpValues;
 const WEB = 'class Web {';

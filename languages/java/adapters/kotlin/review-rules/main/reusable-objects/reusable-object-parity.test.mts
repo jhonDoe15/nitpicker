@@ -12,7 +12,7 @@ import {
   SETUP_ANNOTATIONS,
   SETUP_METHODS,
   STORING_CALLS,
-} from '../../../../../messages/reuse/reusable-objects.mjs';
+} from '../../../../../messages/reuse/reusable-objects.mts';
 
 function byText(left: string, right: string) {
   return left.localeCompare(right);

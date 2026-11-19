@@ -263,3 +263,14 @@ function summaryOf(violation: unknown): string {
 export function effectsSummary({ violations }: { violations: readonly unknown[] }): string[] {
   return violations.map(summaryOf);
 }
+
+export const JAVA_FILE = 'src/main/java/shop/Import.java';
+
+export function exception(rule: string, file: string): string {
+  const entry = `{"rule":"effects/${rule}","paths":["${file}"],"reason":"..."}`;
+  return `If this is intended, add ${entry} to "exceptions" in nitpicker.config.json.`;
+}
+
+export function sentence(...parts: string[]): string {
+  return parts.join(' ');
+}

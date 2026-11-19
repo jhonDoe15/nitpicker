@@ -14,6 +14,15 @@ export type LoopNode =
   | TSESTree.DoWhileStatement;
 export type TestedLoop =
   TSESTree.ForStatement | TSESTree.WhileStatement | TSESTree.DoWhileStatement;
+
+export function isTestedLoop(loop: LoopNode | undefined): loop is TestedLoop {
+  return (
+    loop !== undefined &&
+    loop.type !== AST_NODE_TYPES.ForOfStatement &&
+    loop.type !== AST_NODE_TYPES.ForInStatement
+  );
+}
+
 export type IdentifierAssignment = TSESTree.AssignmentExpression & {
   readonly left: TSESTree.Identifier;
 };

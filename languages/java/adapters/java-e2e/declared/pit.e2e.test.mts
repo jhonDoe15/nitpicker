@@ -2,7 +2,7 @@ import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../../java-diff.mts';
-import { nitpickerPitArguments as nitpickerPitArgumentsUntyped } from '../../tool-config/declared/pit-declared.mjs';
+import { nitpickerPitArguments as nitpickerPitArgumentsUntyped } from '../../tool-config/declared/pit-declared.mts';
 import { textOf } from '../../../../../shared/values/readers.mts';
 import {
   type BuildCommand,
@@ -10,6 +10,7 @@ import {
   ORDERINGS,
   classpathOf,
   compiled,
+  choiceArguments,
   declaredToolChoices,
   enabled,
   gradle,
@@ -147,7 +148,7 @@ function pitMutants(root: string, precedence: readonly string[], tools: Tools): 
       ...['--sourceDirs', path.join(root, 'src/main/java')],
       ...['--classPath', [classes, testClasses, ...classpathOf(tools, JUNIT.name)].join(',')],
       ...['--mutableCodePaths', classes, '--outputFormats', 'XML', '--timestampedReports', 'false'],
-      ...(choices['pit']?.arguments ?? nitpickerPitArguments()),
+      ...choiceArguments(choices, 'pit', nitpickerPitArguments()),
     ],
     cwd: root,
   });

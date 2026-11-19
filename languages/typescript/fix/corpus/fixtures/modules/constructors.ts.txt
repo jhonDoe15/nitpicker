@@ -1,0 +1,29 @@
+class Base {
+  public readonly value: number;
+  public constructor(value: number) {
+    this.value = value;
+  }
+}
+
+export class Same extends Base {
+  public constructor(value: number) {
+    super(value);
+  }
+}
+
+class Hidden {
+  protected constructor() {}
+  public static make(): Hidden {
+    return new Hidden();
+  }
+}
+
+export class Open extends Hidden {
+  public constructor() {
+    super();
+  }
+}
+
+export function probe(): unknown {
+  return [new Same(2).value, new Open() instanceof Hidden];
+}

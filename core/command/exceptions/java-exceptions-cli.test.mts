@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
+import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mts';
 import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { JAVA_SIZE_RULES } from '../../../shared/project-rules/size-rules.mjs';
 import { runCli as nitpickerCli } from '../../cli.mts';

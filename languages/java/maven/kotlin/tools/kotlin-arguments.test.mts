@@ -2,8 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { readPinnedTools as untypedPinnedTools } from '../../../builds/java-build.mjs';
-import { toolDependencies as untypedToolDependencies } from '../../maven-tools.mjs';
+import { toolDependencies as untypedToolDependencies } from '../../maven-tools.mts';
 import { detektArguments, detektClasspath, jdkHome } from './kotlin-detekt.mts';
 import { type KotlinPinned, kotlinTools } from './kotlin-dependencies.mts';
 import { ktfmtArguments, ktlintArguments } from './kotlin-format.mts';
@@ -11,12 +10,13 @@ import { psiArguments } from './kotlin-programs.mts';
 import { textOf } from '../../../../../shared/values/readers.mts';
 import type { KotlinRoots } from '../../typed/kotlin-types.mts';
 
-const readPinnedTools: () => KotlinPinned = untypedPinnedTools;
 const toolDependencies: (
   pinned: KotlinPinned,
   jvmTools: unknown[],
   extra: unknown[],
 ) => Readonly<Record<string, readonly string[]>> = untypedToolDependencies;
+
+import { pinnedKotlinTools as readPinnedTools } from '../../typed/kotlin-setup-views.mts';
 
 const roots: string[] = [];
 const kotlin: KotlinRoots = {

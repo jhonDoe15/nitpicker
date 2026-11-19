@@ -6,7 +6,7 @@ import {
   kotlinScanModules,
   kotlinScanRegistrySource,
 } from './kotlin-scan-registry.mjs';
-import { directoryRules } from '../../languages/java/adapters/kotlin/scan/rules/source-rules.generated.mjs';
+import { directoryRules } from '../../languages/java/adapters/kotlin/scan/rules/source-rules.generated.mts';
 
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, '../..');
 

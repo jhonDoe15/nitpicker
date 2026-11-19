@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { outerClass as untypedOuterClass } from '../../ingest/class-names.mjs';
+import { outerClass as untypedOuterClass } from '../../ingest/class-names.mts';
 import {
   buildCouplingReport as untypedBuildCouplingReport,
   evaluateCoupling as untypedEvaluateCoupling,
@@ -9,7 +9,7 @@ import {
   featureRoleContract as untypedFeatureRoleContract,
   PUBLIC_FACES,
 } from '../../../../shared/rules/features/feature-roles.mjs';
-import { cycleFindings as untypedCycleFindings } from '../../guards/cycles.mjs';
+import { cycleFindings as untypedCycleFindings } from '../../guards/cycles.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../typed/java-values.mts';
 import type {
   CouplingEdge,

@@ -1,4 +1,4 @@
-import { annotationMarkers as untypedAnnotationMarkers } from '../../../../adapters/kotlin/scan/rules/markers.mjs';
+import { annotationMarkers as untypedAnnotationMarkers } from '../../../../adapters/kotlin/scan/rules/markers.mts';
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
 import type { KotlinFound, KotlinMarker, ScannedKotlin } from '../shared/kotlin-scan.mts';
 import { removalSpan } from '../shared/spans.mts';

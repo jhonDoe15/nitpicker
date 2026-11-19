@@ -56,7 +56,7 @@ never falls back to the project's own tests:
 - **Gradle and Maven**: the top-level classes declared in the test sources of `acceptance/`
   (`src/test/java`, `src/test/kotlin`), named by the package and class declared in the file, not by the
   file name. Gradle gets `--tests <package.Class>` for each; Maven gets the simple names in `-Dtest`.
-  Which tool runs is decided by `detectJavaBuild` (`languages/java/builds/java-build.mjs`), the same
+  Which tool runs is decided by `detectJavaBuild` (`languages/java/builds/java-build.mts`), the same
   function the gate uses: a `pom.xml` without a Gradle build file is Maven, and with both, `mvnw`
   without `gradlew` is Maven and anything else is Gradle (unless `java.buildTool` is set).
 

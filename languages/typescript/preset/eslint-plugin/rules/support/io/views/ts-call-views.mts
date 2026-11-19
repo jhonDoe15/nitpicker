@@ -98,6 +98,9 @@ function tsLiteral(node: TypeScript.Node): LiteralArgument {
   if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
     return { type: 'function' };
   }
+  if (ts.isRegularExpressionLiteral(node)) {
+    return { type: 'pattern' };
+  }
   if (ts.isObjectLiteralExpression(node)) {
     const statement = node.properties.find(isTsTextProperty);
     const statementText = statement === undefined ? undefined : tsText(statement.initializer);
@@ -151,12 +154,9 @@ export function tsCallView(
   call: TsCall,
   checker: TypeScript.TypeChecker,
 ): CallView<TypeScript.Identifier> {
-  const { links, root } = chainLinks<TypeScript.Node, TypeScript.Identifier>(
-    tsCallee(call),
-    tsStep,
-  );
+  const chain = chainLinks<TypeScript.Node, TypeScript.Identifier>(tsCallee(call), tsStep);
   const args = ts.isTaggedTemplateExpression(call)
     ? [{ type: 'text' as const, text: tsTemplateText(call.template) }]
     : (call.arguments?.map((argument) => tsArgument(argument, checker)) ?? []);
-  return viewOf(links, root, args);
+  return viewOf(chain, args);
 }

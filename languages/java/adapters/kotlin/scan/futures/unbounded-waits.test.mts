@@ -3,7 +3,7 @@ import { type Check, type Located, lineOf, scanKotlinSource } from '../typed/typ
 import {
   reactorBlocksWithoutTimeout as untypedReactorBlocksWithoutTimeout,
   unboundedWaits as untypedUnboundedWaits,
-} from './unbounded-waits.mjs';
+} from './unbounded-waits.mts';
 
 const reactorBlocksWithoutTimeout: Check<Located> = untypedReactorBlocksWithoutTimeout;
 const unboundedWaits: Check<Located> = untypedUnboundedWaits;

@@ -1,5 +1,5 @@
-import { JAVA_KEYS } from '../../../languages/java/builds/build-tool/build-tool-setting.mjs';
-import { JAVA_BUILD_TOOLS } from '../../../languages/java/builds/java-build.mjs';
+import { JAVA_KEYS } from '../../../languages/java/builds/build-tool/build-tool-setting.mts';
+import { JAVA_BUILD_TOOLS } from '../../../languages/java/builds/java-build.mts';
 import {
   DUPLICATES_KEYS,
   SKIPPED_FOLDER_NAME,

@@ -1,6 +1,6 @@
 import { readSlowTestFindings } from '../test-times/slow-tests.mts';
 import { readTestConsoleFindings } from '../test-times/console-findings.mts';
-import { readUnrunTestFindings } from './unrun-tests.mjs';
+import { readUnrunTestFindings } from './unrun-tests.mts';
 import { callUntyped } from '../typed/java-values.mts';
 import { fieldOf, fieldsOf, listOf } from '../../../../shared/values/readers.mts';
 

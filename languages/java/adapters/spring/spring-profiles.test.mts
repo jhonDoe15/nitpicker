@@ -12,7 +12,7 @@ import {
   resource,
   readSpringConfigFindings,
 } from './__tests__/spring-config-projects.mts';
-import { readTestProfiles as readProfilesUntyped } from './spring-profiles.mjs';
+import { readTestProfiles as readProfilesUntyped } from './spring-profiles.mts';
 import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 const readTestProfiles: (

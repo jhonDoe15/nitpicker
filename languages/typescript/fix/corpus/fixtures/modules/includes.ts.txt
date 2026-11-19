@@ -1,0 +1,25 @@
+export function hasNaN(values: readonly number[]): boolean {
+  return values.indexOf(Number.NaN) !== -1;
+}
+
+export function hasHole(values: readonly (number | undefined)[]): boolean {
+  return values.indexOf(undefined) !== -1;
+}
+
+export function hasAny<T>(values: readonly T[], value: T): boolean {
+  return values.indexOf(value) !== -1;
+}
+
+export function hasText(text: string, part: string): boolean {
+  return text.indexOf(part) >= 0;
+}
+
+export function probe(): unknown {
+  const sparse: (number | undefined)[] = [1, , 3];
+  return [
+    hasNaN([Number.NaN]),
+    hasHole(sparse),
+    hasAny([Number.NaN], Number.NaN),
+    hasText('abc', 'b'),
+  ];
+}

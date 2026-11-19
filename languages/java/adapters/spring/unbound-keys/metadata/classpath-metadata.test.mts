@@ -2,8 +2,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { metadataJson, writeJar } from '../test-support/metadata-jar.mts';
-import { metadataOf, readClasspathMetadata } from './classpath-metadata.mjs';
-import { readJarEntries } from './jar-entries.mjs';
+import { metadataOf, readClasspathMetadata } from './classpath-metadata.mts';
+import { readJarEntries } from './jar-entries.mts';
 import { useGitFixtures } from '../../../../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot } = useGitFixtures();

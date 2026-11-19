@@ -6,14 +6,14 @@ import {
   reactRuleIds as untypedReactRuleIds,
   reactTestRuleIds as untypedReactTestRuleIds,
 } from '../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
-import { SPRING_ARCH_RULES as UNTYPED_SPRING_ARCH_RULES } from '../../languages/java/adapters/spring-arch/spring-arch.mjs';
+import { SPRING_ARCH_RULES as UNTYPED_SPRING_ARCH_RULES } from '../../languages/java/adapters/spring-arch/spring-arch.mts';
 import { KOTLIN_EXCEPTION_RULES as UNTYPED_KOTLIN_EXCEPTION_RULES } from '../../languages/java/adapters/kotlin/kotlin-options.mts';
-import { KOTLIN_SOURCE_MESSAGES as UNTYPED_KOTLIN_SOURCE_MESSAGES } from '../../languages/java/adapters/kotlin/scan/kotlin-scan.mjs';
-import { leftOutPmdRules as untypedLeftOutPmdRules } from '../../languages/java/reference/pmd-rules.mjs';
+import { KOTLIN_SOURCE_MESSAGES as UNTYPED_KOTLIN_SOURCE_MESSAGES } from '../../languages/java/adapters/kotlin/scan/kotlin-scan.mts';
+import { leftOutPmdRules as untypedLeftOutPmdRules } from '../../languages/java/reference/pmd-rules.mts';
 import {
   CATALOG_TOOLS as UNTYPED_CATALOG_TOOLS,
   readCatalog as untypedReadCatalog,
-} from '../../languages/java/messages/rule-messages.mjs';
+} from '../../languages/java/messages/rule-messages.mts';
 import {
   RUFF_IGNORE as UNTYPED_RUFF_IGNORE,
   RUFF_SELECT as UNTYPED_RUFF_SELECT,

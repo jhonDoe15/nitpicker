@@ -112,7 +112,7 @@ width. A `LineLength` module with `severity` `ignore` is not read, and a `max` o
 ignored with a printed note. Checkstyle's own `LineLength` stays suppressed, so the limit is checked once, by
 `line-length-limit`. The run prints each choice and its source. The conventions apply to the Java
 sources of a kotlin-preset project too. They come from the head policy file at run time, and the
-function `javaStyle()` in `languages/java/adapters/style/java-style.mjs` turns them into the style
+function `javaStyle()` in `languages/java/adapters/style/java-style.mts` turns them into the style
 (`google`, `aosp`, `palantir`, `spring` or `none`), which reaches Gradle as `-Pnitpicker.java.style` and Maven
 as `javaStyle`.
 

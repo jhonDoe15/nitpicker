@@ -7,8 +7,8 @@ import {
   coChangeNotices,
 } from '../../../shared/history/co-change/notices.mjs';
 import { CHANGE_HISTORY_TOOL } from '../../../shared/project-rules/hygiene-rules.mjs';
-import { jvmOutsideRootsNotices } from '../../../languages/java/adapters/notices/outside-roots-notice.mjs';
-import { declaredSourceRoots } from '../../../languages/java/adapters/notices/declared-roots.mjs';
+import { jvmOutsideRootsNotices } from '../../../languages/java/adapters/notices/outside-roots-notice.mts';
+import { declaredSourceRoots } from '../../../languages/java/adapters/notices/declared-roots.mts';
 import {
   type OutsideProject,
   pythonOutsideRootsNotices,

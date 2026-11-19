@@ -2,7 +2,7 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { analyzeJavaSnapshot, MAVEN_FAILURE_RULE } from '../../java-runner.mts';
-import { runMaven as runMavenUntyped } from '../../../maven/maven-command.mjs';
+import { runMaven as runMavenUntyped } from '../../../maven/maven-command.mts';
 import { archunitMatcher } from '../../../maven/maven-tests.mts';
 import { requireTestngRun } from '../../../maven/results/maven-test-results.mts';
 import { childrenNamed, parseXml } from '../../../../../shared/values/xml.mts';

@@ -4,7 +4,7 @@ import {
   RELAXED_MOCK_RULE,
   relaxedMessage as untypedRelaxedMessage,
   relaxedMockFindings,
-} from './relaxed-mocks.mjs';
+} from './relaxed-mocks.mts';
 import { mockProject } from './mock-project.mts';
 import { routedMessage } from './routed-message.mts';
 

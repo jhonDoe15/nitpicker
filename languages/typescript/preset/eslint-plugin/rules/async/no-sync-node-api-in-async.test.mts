@@ -8,35 +8,69 @@ type CaseRow = [string, Exclude<RuleTester.InvalidTestCase['errors'], number>];
 
 const tester = typescriptRuleTester();
 const families: readonly SyncFamily[] = SYNC_FAMILIES;
-const alternativeOf = (module: string, api: string) =>
-  families.find((family) => family.modules.has(module))?.alternative(api);
-const blocking = (api: string, module = 'fs', context = 'an async function') => [
-  { messageId: 'blocking', data: { api, context, alternative: alternativeOf(module, api) } },
+const SHELL_ALTERNATIVE =
+  '`await promisify(exec)(command)` with `exec` from "node:child_process" and `promisify` from "node:util", which keeps the shell that `execSync` runs the command in (`execFile` runs none, so `&&`, pipes and globs would fail). The result becomes `{ stdout, stderr }` strings instead of a Buffer and a failure rejects with a different error shape, so check what the code does with both';
+const FILE_ALTERNATIVE =
+  '`await promisify(execFile)(file, args)` with `execFile` from "node:child_process" and `promisify` from "node:util", which runs the file without a shell. The result becomes `{ stdout, stderr }` strings instead of a Buffer and a failure rejects with a different error shape, so check what the code does with both';
+
+function alternativeOf(module: string, api: string): string {
+  const alternative = families.find((family) => family.modules.has(module))?.alternative(api);
+  if (alternative === undefined) {
+    throw new TypeError(`No alternative for ${api} from ${module}.`);
+  }
+  return alternative;
+}
+const CALLBACK_ADVICE =
+  'a loop in place of the synchronous callback (or `Promise.all` over `map` with an async callback), because `await` cannot go inside it, and then ';
+const blocking = (api: string, module = 'fs', context = 'an async function', prefix = '') => [
+  {
+    messageId: 'blocking',
+    data: { api, context, alternative: `${prefix}${alternativeOf(module, api)}` },
+  },
 ];
+const suggested = (api: string, output: string, messageId = 'awaitTwin', module = 'fs') => [
+  { ...blocking(api, module)[0], suggestions: [{ messageId, output }] },
+];
+const inCallback = (api: string) => blocking(api, 'fs', 'an async function', CALLBACK_ADVICE);
 const EXPRESS = 'import express from "express"; import { readFileSync } from "node:fs";';
 const WORKER = 'import { isMainThread } from "node:worker_threads";';
 const FS = 'import { readFileSync, writeFileSync } from "node:fs";';
 
 const blockers: CaseRow[] = [
   [
-    `${FS} export async function load(path) { return readFileSync(path, "utf8"); }`,
-    blocking('readFileSync'),
+    `${FS} export async function load(path) { return readFileSync("a.txt", "utf8"); }`,
+    suggested(
+      'readFileSync',
+      `${FS}\nimport { readFile } from "node:fs/promises"; export async function load(path) { return await readFile("a.txt", "utf8"); }`,
+    ),
   ],
   [
-    'import * as fs from "fs"; export const save = async (path, data) => { fs.writeFileSync(path, data); };',
-    blocking('writeFileSync'),
+    'import * as fs from "fs"; export const save = async (path, data) => { fs.writeFileSync("a.txt", data); };',
+    suggested(
+      'writeFileSync',
+      'import * as fs from "fs"; export const save = async (path, data) => { await fs.promises.writeFile("a.txt", data); };',
+    ),
   ],
   [
     'import fs from "node:fs"; export async function stat(path) { return fs.statSync(path); }',
-    blocking('statSync'),
+    suggested(
+      'statSync',
+      'import fs from "node:fs"; export async function stat(path) { return await fs.promises.stat(path); }',
+    ),
   ],
   [
-    'import { readFileSync as read } from "node:fs"; export async function load(path) { return read(path); }',
-    blocking('readFileSync'),
+    'import { readFileSync as read } from "node:fs"; export async function load(path) { return read("a.txt"); }',
+    suggested(
+      'readFileSync',
+      'import { readFileSync as read } from "node:fs";\nimport { readFile } from "node:fs/promises"; export async function load(path) { return await readFile("a.txt"); }',
+    ),
   ],
   [
-    'const fs = require("fs"); exports.load = async function (path) { return fs.readFileSync(path); };',
-    blocking('readFileSync'),
+    'const fs = require("fs"); exports.load = async function (path) { return fs.readFileSync("a.txt"); };',
+    suggested(
+      'readFileSync',
+      'const fs = require("fs"); exports.load = async function (path) { return await fs.promises.readFile("a.txt"); };',
+    ),
   ],
   [
     'const { readFileSync } = require("node:fs"); exports.load = async (path) => readFileSync(path);',
@@ -48,7 +82,12 @@ const blockers: CaseRow[] = [
   ],
   [
     'import fs from "fs-extra"; export async function copy(a, b) { fs.copySync(a, b); }',
-    blocking('copySync', 'fs-extra'),
+    suggested(
+      'copySync',
+      'import fs from "fs-extra"; export async function copy(a, b) { await fs.copy(a, b); }',
+      'awaitTwin',
+      'fs-extra',
+    ),
   ],
   [
     'import { execSync } from "child_process"; export async function build() { return execSync("make"); }',
@@ -76,20 +115,64 @@ const blockers: CaseRow[] = [
   ],
   [
     `${FS} export async function load(files) { return files.map((file) => readFileSync(file, "utf8")); }`,
-    blocking('readFileSync'),
+    inCallback('readFileSync'),
   ],
   [
-    `${FS} export class Store { async load(path) { return readFileSync(path); } }`,
-    blocking('readFileSync'),
+    'import { existsSync } from "node:fs"; export async function pick(files) { return files.filter((file) => existsSync(file)); }',
+    inCallback('existsSync'),
+  ],
+  [
+    'import fs from "node:fs"; export async function pick(root, names) { return names.find((name) => fs.existsSync(root + name)); }',
+    inCallback('existsSync'),
+  ],
+  [
+    'import { readdirSync, statSync } from "node:fs"; export async function dirs(root) { return readdirSync(root).filter((name) => statSync(root + name).isDirectory()); }',
+    [
+      ...suggested(
+        'readdirSync',
+        'import { readdirSync, statSync } from "node:fs";\nimport { readdir } from "node:fs/promises"; export async function dirs(root) { return (await readdir(root)).filter((name) => statSync(root + name).isDirectory()); }',
+      ),
+      ...inCallback('statSync'),
+    ],
+  ],
+  [
+    'import fs from "node:fs"; export async function all(files) { return Promise.all(files.map(async (file) => fs.readFileSync("a.txt"))); }',
+    suggested(
+      'readFileSync',
+      'import fs from "node:fs"; export async function all(files) { return Promise.all(files.map(async (file) => await fs.promises.readFile("a.txt"))); }',
+    ),
+  ],
+  [
+    'import fs from "node:fs"; export async function all(files) { return files.map((file) => { return fs.readFileSync(file); }); }',
+    inCallback('readFileSync'),
+  ],
+  [
+    `${FS} export class Store { async load(path) { return readFileSync("a.txt"); } }`,
+    suggested(
+      'readFileSync',
+      `${FS}\nimport { readFile } from "node:fs/promises"; export class Store { async load(path) { return await readFile("a.txt"); } }`,
+    ),
   ],
   [
     `${FS} async function main() { readFileSync("a"); } export function start() { return main(); }`,
-    blocking('readFileSync'),
+    suggested(
+      'readFileSync',
+      `${FS}\nimport { readFile } from "node:fs/promises"; async function main() { await readFile("a"); } export function start() { return main(); }`,
+    ),
   ],
-  [`${FS} export async function main() { readFileSync("a"); } main();`, blocking('readFileSync')],
   [
-    `${FS} export async function load(path) { const read = () => readFileSync(path); return await Promise.all([read(), writeFileSync(path, "")]); }`,
-    blocking('writeFileSync'),
+    `${FS} export async function main() { readFileSync("a"); } main();`,
+    suggested(
+      'readFileSync',
+      `${FS}\nimport { readFile } from "node:fs/promises"; export async function main() { await readFile("a"); } main();`,
+    ),
+  ],
+  [
+    `${FS} export async function load(path) { const read = () => readFileSync(path); return await Promise.all([read(), writeFileSync("a.txt", "")]); }`,
+    suggested(
+      'writeFileSync',
+      `${FS}\nimport { writeFile } from "node:fs/promises"; export async function load(path) { const read = () => readFileSync(path); return await Promise.all([read(), await writeFile("a.txt", "")]); }`,
+    ),
   ],
   [
     'import express from "express"; import { readFileSync } from "node:fs"; const app = express(); app.get("/", (req, res) => { res.send(readFileSync("a")); });',
@@ -113,7 +196,10 @@ const blockers: CaseRow[] = [
   ],
   [
     `${FS} export function start() { return (async () => readFileSync("a"))(); }`,
-    blocking('readFileSync'),
+    suggested(
+      'readFileSync',
+      `${FS}\nimport { readFile } from "node:fs/promises"; export function start() { return (async () => await readFile("a"))(); }`,
+    ),
   ],
   [
     'import fs from "node:fs"; export async function real(p) { return fs.realpathSync.native(p); }',
@@ -125,7 +211,11 @@ const blockers: CaseRow[] = [
   ],
   [
     'import { existsSync } from "node:fs"; export async function has(p) { return existsSync(p); }',
-    blocking('existsSync'),
+    suggested(
+      'existsSync',
+      'import { existsSync } from "node:fs";\nimport { access } from "node:fs/promises"; export async function has(p) { return await access(p).then(() => true, () => false); }',
+      'awaitAccess',
+    ),
   ],
   [
     'import { closeSync } from "node:fs"; export async function close(fd) { closeSync(fd); }',
@@ -133,7 +223,20 @@ const blockers: CaseRow[] = [
   ],
   [
     'import fs from "fs-extra"; export async function has(p) { return fs.pathExistsSync(p) || fs.existsSync(p); }',
-    [...blocking('pathExistsSync', 'fs-extra'), ...blocking('existsSync', 'fs-extra')],
+    [
+      ...suggested(
+        'pathExistsSync',
+        'import fs from "fs-extra"; export async function has(p) { return await fs.pathExists(p) || fs.existsSync(p); }',
+        'awaitTwin',
+        'fs-extra',
+      ),
+      ...suggested(
+        'existsSync',
+        'import fs from "fs-extra"; export async function has(p) { return fs.pathExistsSync(p) || await fs.pathExists(p); }',
+        'awaitTwin',
+        'fs-extra',
+      ),
+    ],
   ],
   [
     'import { hkdfSync } from "node:crypto"; export async function derive(k) { return hkdfSync("sha256", k, "", "", 32); }',
@@ -141,7 +244,10 @@ const blockers: CaseRow[] = [
   ],
   [
     `${WORKER} ${FS} export async function run() { if (isMainThread) { readFileSync("a"); } }`,
-    blocking('readFileSync'),
+    suggested(
+      'readFileSync',
+      `${WORKER} ${FS}\nimport { readFile } from "node:fs/promises"; export async function run() { if (isMainThread) { await readFile("a"); } }`,
+    ),
   ],
   [
     'import { Controller, Get as Route } from "@nestjs/common"; import { readFileSync } from "node:fs"; @Controller() export class A { @Route() show() { return readFileSync("a"); } }',
@@ -196,6 +302,11 @@ describe('the allowed form of each call', () => {
       '`await pathExists()` from "fs-extra"',
     );
     expect(alternativeOf('fs-extra', 'existsSync')).toBe('`await pathExists()` from "fs-extra"');
+    expect(alternativeOf('child_process', 'execSync')).toBe(SHELL_ALTERNATIVE);
+    expect([
+      alternativeOf('child_process', 'execFileSync'),
+      alternativeOf('child_process', 'spawnSync'),
+    ]).toEqual([FILE_ALTERNATIVE, FILE_ALTERNATIVE]);
     expect(alternativeOf('crypto', 'scryptSync')).toBe(
       '`await promisify(scrypt)(...)` with `promisify` from "node:util"',
     );

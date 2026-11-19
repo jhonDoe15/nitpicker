@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { MAVEN_PLUGINS } from '../maven-tools.mjs';
+import { MAVEN_PLUGINS } from '../maven-tools.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
 const ARCHUNIT_PACKAGE = 'com.tngtech.archunit';

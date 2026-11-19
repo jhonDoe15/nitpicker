@@ -11,7 +11,7 @@ import { fieldOf, listOf } from '../../../../../../shared/values/readers.mts';
 import { validateFacts } from '../../../../../../shared/rules/facts/schema.mjs';
 import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from '../../kotlin-options.mts';
 import { bundleOf, callsOf, designFindings, recordedFacts } from './design-support.mts';
-import { DESIGN_FAILURE_RULE, DESIGN_TOOL } from './kotlin-design.mjs';
+import { DESIGN_FAILURE_RULE, DESIGN_TOOL } from './kotlin-design.mts';
 
 const RECORDED = recordedFacts('kotlin-design');
 const RECORDED_PUBLISHED = recordedFacts('kotlin-design-published');

@@ -9,7 +9,7 @@ import {
 } from '../../../../../../core/init/test-support/init-then-all.mts';
 import { exceptionHint as untypedExceptionHint } from '../../../../../../shared/rules/exceptions.mjs';
 import { validateFacts as untypedValidateFacts } from '../../../../../../shared/rules/facts/schema.mjs';
-import { kotlinDesignBundle as untypedKotlinDesignBundle } from '../../../kotlin/review-rules/design/kotlin-design.mjs';
+import { kotlinDesignBundle as untypedKotlinDesignBundle } from '../../../kotlin/review-rules/design/kotlin-design.mts';
 import { analyzeWithIncludedBuild as untypedAnalyzeWithIncludedBuild } from '../../../test-support/gradle-e2e.mts';
 import { exceptionRoute as untypedExceptionRoute } from '../../../../../../shared/exceptions/rule-names.mjs';
 import { collectJavaFindings as untypedCollectJavaFindings } from '../../../java-diff.mts';
@@ -76,7 +76,9 @@ type IncludedBuild = {
 
 export const exceptionHint: (rule: string, path: string) => string = untypedExceptionHint;
 export const validateFacts: (facts: unknown) => unknown = untypedValidateFacts;
-export const kotlinDesignBundle: (design: unknown) => unknown = untypedKotlinDesignBundle;
+export function kotlinDesignBundle(design: unknown): unknown {
+  return callUntyped(untypedKotlinDesignBundle, design);
+}
 export const copyFixtureRepository: (input: {
   readonly fixtureRoot: string;
   readonly prefix: string;

@@ -127,7 +127,7 @@ describe('partialRunExtractRecipe', () => {
         return { name: trimmed, age };
       }
 
-      function sharedCreateUserSteps(name: string, age: number, value: string) {
+      function sharedCreateUserSteps(name: string, age: number, value: 'name is required' | 'new name is required') {
         if (name.length === 0) {
           throw new Error(value);
         }
@@ -183,7 +183,7 @@ describe('partialRunExtractRecipe', () => {
         return name.length + age;
       }
 
-      function sharedFirstSteps(name: string, age: number, value: string) {
+      function sharedFirstSteps(name: string, age: number, value: 'name is required' | 'new name is required') {
         if (name.length === 0) {
           throw new Error(value);
         }

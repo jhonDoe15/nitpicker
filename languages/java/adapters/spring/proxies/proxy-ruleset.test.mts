@@ -2,8 +2,8 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { PROXIED } from '../../kotlin/review-rules/spring/spring-types.mjs';
-import { CONSTRAINT_NAMES } from '../../kotlin/review-rules/validation/constraint-names.mjs';
+import { PROXIED } from '../../kotlin/review-rules/spring/spring-types.mts';
+import { CONSTRAINT_NAMES } from '../../kotlin/review-rules/validation/constraint-names.mts';
 import { byText } from '../../../../../shared/text-order/by-text.mjs';
 import { SPRING_RULESET, springRuleset, writeSpringRuleset } from './proxy-ruleset.mts';
 

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { JAVA_FORMATTERS, KOTLIN_FORMATTERS, formatterOptionFlags } from './jvm-formatters.mjs';
+import { JAVA_FORMATTERS, KOTLIN_FORMATTERS, formatterOptionFlags } from './jvm-formatters.mts';
 import { callUntyped } from '../typed/java-values.mts';
 import { byText } from '../../../../shared/text-order/by-text.mjs';
 

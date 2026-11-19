@@ -7,6 +7,7 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import nitpicker.kotlinpsi.bodies.Initializers;
+import nitpicker.kotlinpsi.bodies.Reads;
 import nitpicker.kotlinpsi.common.Frame;
 import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.lexer.KtTokens;
@@ -15,9 +16,11 @@ import org.jetbrains.kotlin.psi.*;
 final class Declarations {
   private static final Pattern CALL_ROOT = Pattern.compile("^\\s*([\\w.]+)\\s*\\(");
   private final State state;
+  private final Reads reads;
 
-  Declarations(State state) {
+  Declarations(State state, Reads reads) {
     this.state = state;
+    this.reads = reads;
   }
 
   private List<Object> supertypes(KtClassOrObject klass) {
@@ -219,7 +222,9 @@ final class Declarations {
             "literal", Initializers.literal(property), "literalText", Initializers.literalText(property),
             "abstract", isAbstract(property) ? Boolean.TRUE : null,
             "initializerQualifier", Initializers.qualifier(property.getInitializer()),
-            "initializerTypeArguments", Initializers.typeArguments(property.getInitializer())));
+            "initializerTypeArguments", Initializers.typeArguments(property.getInitializer()),
+            "reads", reads.of(property.hasDelegate() ? property.getDelegateExpression() : property.getInitializer()),
+            "origin", Initializers.origin(Initializers.valueOf(property))));
   }
 
   private static boolean isAbstract(KtProperty property) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FIXED_SLEEP_RULE } from '../../../../../../messages/wait-advice.mjs';
+import { FIXED_SLEEP_RULE } from '../../../../../../messages/wait-advice.mts';
 import { flagsFor, JUNIT_HEAD, KOTEST_HEAD, rulesOf } from '../../../test-support/sources.mts';
 
 function delays(text: string, flags?: unknown): string[] {

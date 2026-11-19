@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { KOTEST_HEAD, rulesOf, summaryOf } from '../../../test-support/sources.mts';
-import { RETRY_RULE } from './retry-tests.mjs';
+import { RETRY_RULE } from './retry-tests.mts';
 
 function retries(text: string): string[] {
   return rulesOf(text, RETRY_RULE);

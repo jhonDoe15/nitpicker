@@ -5,12 +5,8 @@ import {
   type SourceCode,
   variableNamed,
 } from '../../../typed/node-views.mts';
-import { isFunction } from '../../../typed/syntax-views.mts';
+import { enclosingFunction, isFunction } from '../../../typed/syntax-views.mts';
 import { LOOP_TYPES, plainAssignmentStatement } from '../../spread-shapes.mts';
-
-export function enclosingFunction(node: TSESTree.Node): TSESTree.Node | undefined {
-  return ancestorsOf(node).find(isFunction);
-}
 
 function loopsAround(node: TSESTree.Node): TSESTree.Node[] {
   const loops: TSESTree.Node[] = [];

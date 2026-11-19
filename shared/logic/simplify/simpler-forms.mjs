@@ -74,13 +74,14 @@ function compact(node) {
 }
 
 /**
- * Each part of `root` that has a strictly simpler exact form: its range, the printed form, and
- * whether its branches swap.
+ * Each part of `root` that has a strictly simpler exact form: its range, its term, the printed
+ * form, and whether its branches swap.
  */
 export function simplerForms(root, { booleanContext = false } = {}) {
   const { term: simpler, rewrites } = simplify(root, booleanContext);
   return differences(root, simpler).map((node) => ({
     range: node.range,
+    term: node,
     form: print(compact(node)),
     swapped:
       rewrites.filter(
