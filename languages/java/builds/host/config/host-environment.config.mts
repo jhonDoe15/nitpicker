@@ -11,6 +11,7 @@ export type HostEnvironment = {
   readonly javaOptions: string;
   readonly javaOptionVariables: readonly (string | undefined)[];
   readonly searchPath: string;
+  readonly cacheHome: string | undefined;
 };
 
 export function hostEnvironment(variables: NodeJS.ProcessEnv = process.env): HostEnvironment {
@@ -21,6 +22,7 @@ export function hostEnvironment(variables: NodeJS.ProcessEnv = process.env): Hos
     javaOptions: variables['JDK_JAVA_OPTIONS'] ?? '',
     javaOptionVariables: JAVA_OPTION_VARIABLES.map((name) => variables[name]),
     searchPath: variables['PATH'] ?? '',
+    cacheHome: variables['XDG_CACHE_HOME'],
   };
 }
 

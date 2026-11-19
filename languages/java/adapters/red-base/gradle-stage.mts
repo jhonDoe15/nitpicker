@@ -111,7 +111,12 @@ export function runGradleStage({
   spawn,
   environment,
 }: StageRun): void {
-  const target: unknown = gradleTarget({ projectRoot, configured: gradle, args, environment });
+  const target: unknown = gradleTarget({
+    projectRoot,
+    configured: gradle,
+    args: textsOf(args),
+    environment,
+  });
   const command = textOf(fieldOf(target, 'command'));
   const result = runGradle(
     command,

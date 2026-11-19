@@ -48,7 +48,8 @@ function probeFile(java: string, args: readonly string[]): string | undefined {
     .update(JSON.stringify([binary, mtimeMs, size, args]))
     .digest('hex')
     .slice(0, KEY_LENGTH);
-  return path.join(cacheDirectory(PROBE_CACHE), `${key}.json`);
+  const cacheHome = { XDG_CACHE_HOME: hostEnvironment().cacheHome };
+  return path.join(cacheDirectory(PROBE_CACHE, cacheHome), `${key}.json`);
 }
 
 function readProbe(file: string): Output | undefined {

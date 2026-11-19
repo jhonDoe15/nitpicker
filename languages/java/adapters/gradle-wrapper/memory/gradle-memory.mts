@@ -1,6 +1,7 @@
 import { availableParallelism } from 'node:os';
 import { gradlePropertiesTexts } from '../gradle-command.mts';
-import { machineMemory, toolSlots, withToolHeap } from '../../../maven/parallel/tool-slots.mts';
+import { machineMemory } from '../../../../../shared/processes/machine-capacity.mts';
+import { toolSlots, withToolHeap } from '../../../maven/parallel/tool-slots.mts';
 import { textsOf } from '../../../../../shared/values/readers.mts';
 
 type Environment = Readonly<Record<string, string | undefined>>;
