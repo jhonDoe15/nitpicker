@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { GIT_TIMEOUT_MS } from '../../../../../../shared/processes/deadlines.mjs';
+import { GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
 
 const NO_MATCH = 1;
 const OUTPUT_BYTES = 16 * 1024 * 1024;
@@ -8,11 +8,12 @@ export type LineSearch = {
   readonly pattern: string;
   readonly files: readonly string[];
   readonly after?: number;
+  readonly words?: boolean;
 };
 
 export function projectLines(
   projectRoot: string | undefined,
-  { pattern, files, after = 0 }: LineSearch,
+  { pattern, files, after = 0, words = false }: LineSearch,
 ): readonly string[] | undefined {
   if (projectRoot === undefined) {
     return undefined;
@@ -20,7 +21,14 @@ export function projectLines(
   const result = spawnSync(
     'git',
     [
-      ...['grep', '-I', '-h', '-E', '--untracked', `-A${String(after)}`, '-e', pattern, '--'],
+      ...[
+        'grep',
+        '-I',
+        '-h',
+        '--untracked',
+        ...(words ? ['-F', '-w'] : ['-E', `-A${String(after)}`]),
+      ],
+      ...['-e', pattern, '--'],
       ...files.map((name) => `:(top)${name}`),
     ],
     { cwd: projectRoot, encoding: 'utf8', maxBuffer: OUTPUT_BYTES, timeout: GIT_TIMEOUT_MS },

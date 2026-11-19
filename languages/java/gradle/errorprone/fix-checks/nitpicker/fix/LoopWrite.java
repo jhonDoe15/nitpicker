@@ -157,9 +157,10 @@ final class LoopWrite {
       }
     }
     Attribute.Compound own = transactional(symbol);
-    boolean exposed = !symbol.getModifiers().contains(javax.lang.model.element.Modifier.PRIVATE);
+    boolean exposed = symbol.getModifiers().contains(javax.lang.model.element.Modifier.PUBLIC)
+        && !symbol.getModifiers().contains(javax.lang.model.element.Modifier.FINAL);
     Attribute.Compound transaction = own != null ? own : transactional(symbol.enclClass());
-    return transaction != null && (own == null || exposed) && rollsBackOnFailure(transaction);
+    return transaction != null && exposed && rollsBackOnFailure(transaction);
   }
 
   private static Attribute.Compound transactional(Symbol symbol) {

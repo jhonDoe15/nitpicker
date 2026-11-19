@@ -13,6 +13,7 @@ import { verifyFixes as untypedVerifyFixes } from './verify/verify-fixes.mts';
 import { languageFixers as untypedLanguageFixers } from './language-fixers.mts';
 import { ALL_RECIPES } from './engine/all-recipes.mts';
 import { emptyRuleNotes as untypedEmptyRuleNotes } from './status/rule-notes.mts';
+import { fieldOf } from '../../shared/values/readers.mts';
 import type { Journal, LeftOutFix } from './dry-run/journal-types.mts';
 import type {
   DryRunPlan,
@@ -167,7 +168,27 @@ function withoutUndone(result: FixOutcome, rolledBack: readonly RolledBack[]): F
 }
 
 function leftOutNote({ path: name, line, tool, rule, reason }: LeftOutFix): string {
-  return `--fix left out the fix of ${name}:${String(line)} ${tool}/${rule} and kept the other fixes of the file: ${reason}`;
+  return `--fix left out the fix of ${name}:${String(line)} ${tool}/${rule}: ${reason}`;
+}
+
+function errorKey(error: unknown): string {
+  return `${String(fieldOf(error, 'tool'))}\0${String(fieldOf(error, 'message'))}`;
+}
+
+function merged(earlier: FixOutcome | undefined, fixed: FixOutcome): FixOutcome {
+  if (earlier === undefined) {
+    return fixed;
+  }
+  const errors = new Map(
+    [...earlier.toolErrors, ...fixed.toolErrors].map((error) => [errorKey(error), error]),
+  );
+  return {
+    ...fixed,
+    toolErrors: [...errors.values()],
+    fixedFiles: [...new Set([...earlier.fixedFiles, ...fixed.fixedFiles])],
+    fixedFindings: [...new Set([...(earlier.fixedFindings ?? []), ...(fixed.fixedFindings ?? [])])],
+    notes: [...(earlier.notes ?? []), ...(fixed.notes ?? [])],
+  };
 }
 
 function fixVerified(options: RunOptions, journal: Journal, earlier?: FixOutcome): Verified {
@@ -181,20 +202,13 @@ function fixVerified(options: RunOptions, journal: Journal, earlier?: FixOutcome
     mode: options.verifyMode,
     narrow: earlier === undefined,
   });
-  const result = withoutUndone(
-    earlier === undefined
-      ? fixed
-      : {
-          ...fixed,
-          fixedFiles: [...new Set([...earlier.fixedFiles, ...fixed.fixedFiles])],
-          fixedFindings: [...(earlier.fixedFindings ?? []), ...(fixed.fixedFindings ?? [])],
-          notes: [...new Set([...(earlier.notes ?? []), ...(fixed.notes ?? [])])],
-        },
-    rolledBack,
-  );
+  const result = withoutUndone(merged(earlier, fixed), rolledBack);
   const undone = new Set(rolledBack.flatMap(({ files }) => files));
   const kept = journal.leftOut.filter(({ path: name }) => !undone.has(name)).map(leftOutNote);
-  return { result: { ...result, notes: [...(result.notes ?? []), ...notes, ...kept] }, leftOut };
+  return {
+    result: { ...result, notes: [...new Set([...(result.notes ?? []), ...notes, ...kept])] },
+    leftOut,
+  };
 }
 
 function fixNarrowing(options: RunOptions, journal: Journal): FixOutcome {

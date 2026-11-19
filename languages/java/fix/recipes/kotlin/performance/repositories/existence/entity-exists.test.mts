@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { applyRecipe, plannedLines } from '../../../test-support/apply-recipe.mts';
-import { ORDER_REPOSITORY, kotlinProject } from '../../../test-support/kotlin-project.mts';
+import { plannedLines } from '../../../test-support/apply-recipe.mts';
+import { ORDER_REPOSITORY, fixerIn } from '../../../test-support/kotlin-project.mts';
 import { entityExistsRecipe } from './entity-exists.mts';
 
 const IMPORT = 'import org.springframework.data.repository.findByIdOrNull\n';
@@ -18,9 +18,8 @@ function inClass(
   return `package demo\n\n${imports}\nclass Checker(private val ${parameter}) {\n    fun check(id: Long): Boolean {\n${lines}\n    }\n}\n`;
 }
 
-const project = kotlinProject({ ...ORDER_REPOSITORY });
-const fix = (text: string): string =>
-  applyRecipe(entityExistsRecipe, text, undefined, project.root);
+const project = fixerIn(entityExistsRecipe, ORDER_REPOSITORY);
+const { fix } = project;
 
 afterAll(project.remove);
 

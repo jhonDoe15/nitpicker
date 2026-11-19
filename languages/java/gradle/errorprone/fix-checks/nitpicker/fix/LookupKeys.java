@@ -52,7 +52,8 @@ final class LookupKeys {
     boolean plain = value instanceof IdentifierTree
         || value instanceof MemberSelectTree select && select.getExpression() instanceof IdentifierTree owner
             && owner.getName().contentEquals("this");
-    return plain && ASTHelpers.getSymbol(value) instanceof Symbol.VarSymbol field && field.getKind().isField();
+    return plain && ASTHelpers.getSymbol(value) instanceof Symbol.VarSymbol field && field.getKind().isField()
+        && state.getTypes().isSameType(field.type, method.getReturnType());
   }
 
   static boolean isAccessor(Symbol method) {

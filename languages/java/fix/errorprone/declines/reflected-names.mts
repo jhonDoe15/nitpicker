@@ -1,5 +1,4 @@
-import { spawnSync } from 'node:child_process';
-import { GIT_TIMEOUT_MS } from '../../../../../shared/processes/deadlines.mjs';
+import { projectLines } from '../../project/project-lines.mts';
 import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mjs';
 
 const SEARCHED = [
@@ -15,9 +14,7 @@ const SEARCHED = [
   '*.json',
   '*.factories',
   '*META-INF/services/*',
-].map((pattern) => `:(top)${pattern}`);
-const NO_MATCH = 1;
-const OUTPUT_BYTES = 16 * 1024 * 1024;
+];
 const WORD = '[A-Za-z0-9_]';
 
 type NameLookup = (name: string) => boolean;
@@ -34,15 +31,7 @@ function extendedPattern(name: string): RegExp {
 }
 
 function matchingLines(projectRoot: string, name: string): readonly string[] | undefined {
-  const result = spawnSync(
-    'git',
-    ['grep', '-I', '-h', '-F', '-w', '--untracked', '-e', name, '--', ...SEARCHED],
-    { cwd: projectRoot, encoding: 'utf8', maxBuffer: OUTPUT_BYTES, timeout: GIT_TIMEOUT_MS },
-  );
-  if (result.error !== undefined || (result.status !== 0 && result.status !== NO_MATCH)) {
-    return undefined;
-  }
-  return result.stdout.split('\n');
+  return projectLines(projectRoot, { pattern: name, files: SEARCHED, words: true });
 }
 
 function lookup(

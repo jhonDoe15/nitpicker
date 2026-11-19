@@ -1,5 +1,5 @@
 import { escapeRegExp } from '../shared/kotlin-scan.mts';
-import { projectLines } from './project-lines.mts';
+import { projectLines } from '../../../project/project-lines.mts';
 
 const SOURCES = ['*.kt', '*.java'];
 const HEADER_LINES = 4;
@@ -10,6 +10,8 @@ const BATCH_BASES = new Set([
 ]);
 const GENERICS = /<[^<>]*>/gu;
 const CHUNK_BREAK = /^--$/u;
+const COMMENT_LINE = /^\s*(?:\/\/|\/\*|\*)/u;
+const LINE_COMMENT = /\/\/.*$|\/\*.*?\*\//gu;
 
 export type RepositoryTypes = { readonly hasBatchCalls: (type: string) => boolean };
 
@@ -28,8 +30,8 @@ function chunksOf(lines: readonly string[]): string[] {
   for (const line of lines) {
     if (CHUNK_BREAK.test(line)) {
       chunks.push([]);
-    } else {
-      chunks.at(-1)?.push(line);
+    } else if (!COMMENT_LINE.test(line)) {
+      chunks.at(-1)?.push(line.replace(LINE_COMMENT, ''));
     }
   }
   return chunks.map((chunk) => chunk.join(' ')).filter((chunk) => chunk.trim() !== '');

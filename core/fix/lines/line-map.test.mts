@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { beforeLines, changedBlocks, lineAt, overlaps } from './line-map.mts';
+import { beforeLines, changedBlocks, lineAt, lineStarts, overlaps } from './line-map.mts';
 
 const lines = (...names: string[]): string => names.join('\n');
 
@@ -49,7 +49,9 @@ describe('beforeLines', () => {
 
 describe('lineAt and overlaps', () => {
   it('counts the lines before an offset', () => {
-    expect([0, 1, 2, 3, 4].map((offset) => lineAt('a\nb\nc', offset))).toEqual([1, 1, 2, 2, 3]);
+    expect([0, 1, 2, 3, 4].map((offset) => lineAt(lineStarts('a\nb\nc'), offset))).toEqual([
+      1, 1, 2, 2, 3,
+    ]);
   });
 
   it('compares ranges, also empty ones with slack', () => {

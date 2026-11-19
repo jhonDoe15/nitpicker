@@ -44,6 +44,20 @@ describe('sortForExtremeRecipe and the Kotlin version of the project', () => {
     expect(applyRecipe(sortForExtremeRecipe, THROWING)).toBe(THROWING);
   });
 
+  it.each(['buildSrc/src/main/kotlin/Conventions.kt', 'build-logic/src/main/kotlin/A.kt'])(
+    'keeps first() in build logic, which compiles with the Kotlin of Gradle: %s',
+    (name) => {
+      const project = kotlinProject({
+        'build.gradle.kts': 'plugins {\n    kotlin("jvm") version "1.9.24"\n}\n',
+      });
+      try {
+        expect(applyRecipe(sortForExtremeRecipe, THROWING, name, project.root)).toBe(THROWING);
+      } finally {
+        project.remove();
+      }
+    },
+  );
+
   it('rewrites firstOrNull() whatever the version is', () => {
     expect(applyRecipe(sortForExtremeRecipe, NULLABLE)).toBe(
       'val a = xs.minWithOrNull(naturalOrder())\n',

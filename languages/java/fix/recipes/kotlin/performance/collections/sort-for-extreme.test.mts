@@ -1,11 +1,10 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { applyRecipe, plannedLines } from '../../test-support/apply-recipe.mts';
-import { KOTLIN_BUILD, kotlinProject } from '../../test-support/kotlin-project.mts';
+import { plannedLines } from '../../test-support/apply-recipe.mts';
+import { KOTLIN_BUILD, fixerIn } from '../../test-support/kotlin-project.mts';
 import { sortForExtremeRecipe } from './sort-for-extreme.mts';
 
-const project = kotlinProject({ ...KOTLIN_BUILD });
-const fix = (text: string): string =>
-  applyRecipe(sortForExtremeRecipe, text, undefined, project.root);
+const project = fixerIn(sortForExtremeRecipe, KOTLIN_BUILD);
+const { fix } = project;
 
 afterAll(project.remove);
 

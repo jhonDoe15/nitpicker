@@ -98,7 +98,7 @@ describe('nitpicker --fix with one fix that adds a finding', () => {
     expect(text).toBe(sourceWith(['RESOLVED', marker('checkstyle', 'Worse'), 'RESOLVED'], ' '));
     expect(summary).toBe(
       `Fixed files:\n${NAME}\nFixed findings:\n  ${NAME}:1 checkstyle/First (mixed)\n  ${NAME}:8 checkstyle/Last (mixed)\n` +
-        `Fix notes:\n  google-java-format rewrote ${NAME}\n  --fix left out the fix of ${NAME}:5 checkstyle/Worse and kept the other fixes of the file: adds checkstyle/Added in ${NAME}\n`,
+        `Fix notes:\n  google-java-format rewrote ${NAME}\n  --fix left out the fix of ${NAME}:5 checkstyle/Worse: adds checkstyle/Added in ${NAME}\n`,
     );
   });
 });
