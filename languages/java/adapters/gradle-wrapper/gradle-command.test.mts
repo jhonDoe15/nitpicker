@@ -2,7 +2,7 @@ import { chmodSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync 
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { gradleTarget, pinnedGradleVersion } from './gradle-command.mjs';
+import { gradleTarget, isolatedProjectsOff, pinnedGradleVersion } from './gradle-command.mjs';
 import { mavenTarget } from '../../maven/maven-command.mjs';
 import { textOf } from '../../../../shared/values/readers.mts';
 import { analyzeJavaSnapshot } from '../java-runner.mts';
@@ -141,6 +141,35 @@ describe.skipIf(process.platform === 'win32')('gradleTarget', () => {
 
     expect(pinnedGradleVersion(path.join(root, 'server'))).toBe('9.9.1');
     expect(pinnedGradleVersion(project({ 'settings.gradle': {} }))).toBeUndefined();
+  });
+
+  it('turns Isolated Projects off when the build turns it on, since nitpicker runs without the configuration cache', () => {
+    const root = project({
+      ...wrapper(),
+      'gradle.properties': {
+        text: 'org.gradle.configuration-cache=true\norg.gradle.isolated-projects=true\n',
+      },
+      'settings.gradle': {},
+    });
+
+    expect(gradleTarget({ projectRoot: root, configured: undefined, args })).toEqual(
+      plain(path.join(root, 'gradlew'), ['-Dorg.gradle.isolated-projects=false', ...args]),
+    );
+    expect(isolatedProjectsOff(project({ 'settings.gradle': {} }))).toEqual([]);
+  });
+
+  it('reads Isolated Projects from the Gradle user home and under its earlier property name', () => {
+    const userHome = project({
+      'gradle.properties': { text: 'org.gradle.unsafe.isolated-projects = true\n' },
+    });
+    const root = project({
+      'settings.gradle': {},
+      'gradle.properties': { text: 'org.gradle.isolated-projects=false\n' },
+    });
+
+    expect(isolatedProjectsOff(root, { GRADLE_USER_HOME: userHome })).toEqual([
+      '-Dorg.gradle.unsafe.isolated-projects=false',
+    ]);
   });
 
   it('does not take a directory for the wrapper', () => {

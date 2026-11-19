@@ -147,6 +147,10 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   multi-project build. PMD reads an empty `--dir` as its working folder, the project folder, so it
   used to scan the sources of every subproject again: on a 436-subproject build that was about 68%
   of all PMD time.
+- **Isolated Projects.** When the build's `gradle.properties` or the one in the Gradle user home
+  turns Isolated Projects on (`org.gradle.isolated-projects`, or its earlier name
+  `org.gradle.unsafe.isolated-projects`), nitpicker turns it off for its own run with the same
+  property set to `false` on the command line, since it runs with `--no-configuration-cache`.
 - **Dependency verification.** nitpicker's own tool configurations (its `nitpicker*`
   configurations, the JaCoCo agent it pins, and the Error Prone and PIT launcher classpaths) are
   not verified against the build's `gradle/verification-metadata.xml`, which does not list them; the
