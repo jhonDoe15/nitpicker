@@ -728,12 +728,6 @@
       "line": 5
     },
     {
-      "tool": "pmd",
-      "rule": "FieldCanBeFinal",
-      "path": "src/main/java/probe/G2Stored.java",
-      "line": 4
-    },
-    {
       "tool": "errorprone",
       "rule": "NullAway",
       "path": "src/main/java/probe/G2Stored.java",
@@ -1072,12 +1066,6 @@
     {
       "tool": "errorprone",
       "rule": "DefaultLocale",
-      "path": "src/main/java/probe/P2Inner.java",
-      "line": 7
-    },
-    {
-      "tool": "pmd",
-      "rule": "FieldCanBeFinal",
       "path": "src/main/java/probe/P2Inner.java",
       "line": 7
     },
@@ -1995,6 +1983,12 @@
     },
     {
       "tool": "pmd",
+      "rule": "FieldCanBeFinal",
+      "path": "src/main/java/probe/G2Stored.java",
+      "line": 4
+    },
+    {
+      "tool": "pmd",
       "rule": "UseVarargs",
       "path": "src/main/java/probe/G2Stored.java",
       "line": 7
@@ -2238,6 +2232,12 @@
       "rule": "GenericTypeName",
       "path": "src/main/java/probe/P2Inner.java",
       "line": 13
+    },
+    {
+      "tool": "pmd",
+      "rule": "FieldCanBeFinal",
+      "path": "src/main/java/probe/P2Inner.java",
+      "line": 7
     },
     {
       "tool": "pmd",
