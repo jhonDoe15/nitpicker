@@ -1,5 +1,5 @@
 import { appendFileSync, existsSync, statSync } from 'node:fs';
-import { GitCommandError, runGit } from '../../git/repository/command.mjs';
+import { GitCommandError, runGit } from '../../git/repository/command.mts';
 import { renderDiffSummary } from './diff-summary.mts';
 import { renderSnapshotSummary } from './snapshot-summary.mts';
 import { annotationLines } from './workflow-commands.mts';

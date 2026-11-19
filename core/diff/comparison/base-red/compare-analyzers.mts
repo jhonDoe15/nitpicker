@@ -1,4 +1,5 @@
-import { compareFindings } from '../compare.mjs';
+import { compareFindings } from '../compare.mts';
+import type { TouchedCode } from '../model/finding-types.mts';
 import type { Moves, MoveFields } from '../moved-names/declared/move-types.mts';
 import {
   analyzerMetadata as metadataOf,
@@ -11,7 +12,7 @@ import {
   TOOL_SKIPPED_RULE,
 } from '../../../../shared/rules/finding-helpers.mjs';
 import { withoutAnsi } from '../../../../shared/messages/terminal/terminal-text.mjs';
-import { baseFailuresOf, baseNoteOf, redBaseAnalyzers } from './unknown-base.mjs';
+import { baseFailuresOf, baseNoteOf, redBaseAnalyzers } from './unknown-base.mts';
 import {
   unknownOnBaseOf,
   withoutHeadUnmeasured,
@@ -36,15 +37,14 @@ export type ComparisonRequest = MoveFields & {
   readonly baseRun: AnalyzerRun;
   readonly headRun: AnalyzerRun;
   readonly toolErrors: ReportEntry[];
-  readonly touchedCode?:
-    { readonly testsRemoved?: unknown; readonly [field: string]: unknown } | undefined;
+  readonly touchedCode?: TouchedCode | undefined;
 };
 
 export type FindingComparison = {
   readonly newFindings: readonly Finding[];
   readonly resolvedFindings: readonly Finding[];
   readonly unchangedFindings: readonly Finding[];
-  readonly changedMetrics: readonly Finding[];
+  readonly changedMetrics: readonly ReportEntry[];
 };
 
 export type AnalyzerOutcome = {
@@ -69,14 +69,6 @@ type ComparedContext = NamedContext & {
   readonly unknownFailures: readonly Finding[] | undefined;
 };
 
-const findingsCompared: (
-  request: MoveFields & {
-    readonly baseFindings: readonly Finding[];
-    readonly headFindings: readonly Finding[];
-    readonly touchedCode: unknown;
-    readonly unknownOnBase: unknown;
-  },
-) => Readonly<Record<string, readonly Finding[]>> = compareFindings;
 const plainText: (text: string) => string = withoutAnsi;
 const redBaseOf: (request: {
   readonly names: readonly string[];
@@ -217,7 +209,7 @@ function blocksComparison(error: ReportEntry, name: string, stopped: boolean): b
 function compareOrReportError(context: ComparedContext): FindingComparison {
   const { name, baseFindings, headFindings, toolErrors } = context;
   try {
-    const result = findingsCompared({
+    const result = compareFindings({
       baseFindings: withoutUnmeasuredMutants(baseFindings, context),
       headFindings: withoutHeadUnmeasured(headFindings, context),
       baseToHeadRenames: context.baseToHeadRenames,
@@ -228,10 +220,10 @@ function compareOrReportError(context: ComparedContext): FindingComparison {
       unknownOnBase: unknownOnBaseOf(context),
     });
     return {
-      newFindings: withoutEmittedToolErrors(result['newFindings'] ?? [], 'head', toolErrors),
-      resolvedFindings: result['resolvedFindings'] ?? [],
-      unchangedFindings: result['unchangedFindings'] ?? [],
-      changedMetrics: result['changedMetrics'] ?? [],
+      newFindings: withoutEmittedToolErrors(result.newFindings, 'head', toolErrors),
+      resolvedFindings: result.resolvedFindings,
+      unchangedFindings: result.unchangedFindings,
+      changedMetrics: result.changedMetrics,
     };
   } catch (error) {
     toolErrors.push({

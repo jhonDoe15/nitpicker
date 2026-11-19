@@ -15,7 +15,7 @@ import {
   summaryFields,
 } from '../reporting/report-model.mts';
 import { resolveProjectRoot as untypedProjectRoot } from '../../configuration/project-checks/project-root.mts';
-import { configuredAnalyzers as untypedConfiguredAnalyzers } from '../../../languages/typescript/preset/diff/configured-analyzers.mjs';
+import { configuredAnalyzers as untypedConfiguredAnalyzers } from '../../../languages/typescript/preset/diff/configured-analyzers.mts';
 import { withTroubleshooting as untypedWithTroubleshooting } from '../../../shared/messages/troubleshooting.mjs';
 import { describeError as untypedDescribeError } from '../../../shared/messages/error-chain.mjs';
 import {

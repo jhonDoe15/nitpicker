@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { detectSourceRoots } from '../../../languages/python/adapters/execution/python-project.mts';
-import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
+import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mts';
 import { objectOf } from '../../../shared/values/readers.mts';
 
 function hasPythonMarker(projectRoot: string): boolean {

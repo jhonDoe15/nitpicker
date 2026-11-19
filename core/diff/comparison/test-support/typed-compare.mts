@@ -1,13 +1,21 @@
 import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
-import { compareFindings as compareFindingsJs } from '../compare.mjs';
+import type { Finding } from '../../../../shared/values/findings.mts';
+import {
+  compareFindings as compareTracked,
+  type CompareRequest as TrackedRequest,
+} from '../compare.mts';
+import type { DeclaredMoves } from '../moved-names/declared/move-types.mts';
+import type { TrackedFinding } from '../model/finding-types.mts';
 
 export type CompareRequest = {
   readonly baseFindings: readonly unknown[];
   readonly headFindings: readonly unknown[];
   readonly baseToHeadRenames?: Map<string, string> | undefined;
   readonly baseToHeadDirectories?: Map<string, string> | undefined;
-  readonly touchedCode?: unknown;
-  readonly unknownOnBase?: unknown;
+  readonly baseToHeadPackages?: Map<string, string> | undefined;
+  readonly baseToHeadDeclared?: DeclaredMoves | undefined;
+  readonly touchedCode?: TrackedRequest['touchedCode'];
+  readonly unknownOnBase?: ((finding: Finding) => boolean) | undefined;
 };
 
 export type ComparedFinding = {
@@ -33,28 +41,40 @@ function comparedIn(result: unknown, key: string): ComparedFinding[] {
   return listOf(fieldOf(result, key)).filter(isCompared);
 }
 
-const compareAll: (request: {
-  readonly baseFindings: readonly unknown[];
-  readonly headFindings: readonly unknown[];
-  readonly baseToHeadRenames: Map<string, string> | undefined;
-  readonly baseToHeadDirectories: Map<string, string> | undefined;
-  readonly touchedCode: unknown;
-  readonly unknownOnBase: unknown;
-}) => unknown = compareFindingsJs;
+const REQUIRED_TEXT = ['tool', 'rule', 'path', 'identity', 'message', 'classification'];
+
+function isTracked(value: unknown): value is TrackedFinding {
+  return REQUIRED_TEXT.every((field) => typeof fieldOf(value, field) === 'string');
+}
+
+function trackedIn(findings: readonly unknown[]): TrackedFinding[] {
+  return findings.map((finding) => {
+    if (!isTracked(finding)) {
+      throw new TypeError(
+        'a compared finding needs tool, rule, path, identity, message, classification',
+      );
+    }
+    return finding;
+  });
+}
 
 export function compareFindings({
   baseFindings,
   headFindings,
   baseToHeadRenames,
   baseToHeadDirectories,
+  baseToHeadPackages,
+  baseToHeadDeclared,
   touchedCode,
   unknownOnBase,
 }: CompareRequest): Comparison {
-  const result = compareAll({
-    baseFindings,
-    headFindings,
+  const result = compareTracked({
+    baseFindings: trackedIn(baseFindings),
+    headFindings: trackedIn(headFindings),
     baseToHeadRenames,
     baseToHeadDirectories,
+    baseToHeadPackages,
+    baseToHeadDeclared,
     touchedCode,
     unknownOnBase,
   });

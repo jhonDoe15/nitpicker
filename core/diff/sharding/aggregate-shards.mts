@@ -36,12 +36,12 @@ import {
   outputRootFor,
 } from './aggregate-summary.mts';
 import { clearDiffReports, absoluteTextReportPath } from '../reporting/reporters.mts';
-import { GitCommandError, runGit } from '../git/repository/command.mjs';
+import { GitCommandError, runGit } from '../git/repository/command.mts';
 import { pathToFileURL } from 'node:url';
 import { loadConfig, describeConfigOverrides } from '../../configuration/config.mts';
 import { configureAnalyzers } from '../../configuration/configure-analyzers.mts';
 import { presetAnalyzers, withRepositoryChecks } from '../../configuration/preset-analyzers.mts';
-import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
+import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mts';
 import { renderConsoleSummary } from '../reporting/summary.mts';
 import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mts';
 import { TROUBLESHOOTING_ANCHORS } from '../../../shared/messages/troubleshooting.mjs';

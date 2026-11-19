@@ -11,7 +11,7 @@ import {
   ruleTable,
   toolErrorList,
 } from './markdown.mts';
-import { scopeLine } from '../../../scope/scope-findings.mjs';
+import { scopeLine } from '../../../scope/scope-findings.mts';
 import { partialRunLines as partialLinesOf } from '../partial-run/partial-run.mts';
 import { failingHeadTests as failingTests } from '../failing-tests/failing-tests.mts';
 import type { ReportData } from '../../../../shared/values/findings.mts';

@@ -1,17 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import type { MatchedCode, TouchedEntry } from '../../../comparison/model/finding-types.mts';
 import { compareFindings } from '../../../comparison/test-support/typed-compare.mts';
 
 type Kept = readonly (readonly [string, number, number])[];
 type Edits = { readonly pair?: string; readonly divisible?: boolean; readonly kept?: Kept };
-type ChangedFile = {
-  readonly added: boolean;
-  readonly ranges: readonly number[][];
-  readonly inserted?: readonly number[][];
-};
-type Touched = {
-  readonly changedLines: Map<string, ChangedFile>;
-  readonly isStrictRule: () => boolean;
-};
 
 function clone(
   identity: string,
@@ -40,15 +32,17 @@ function clone(
   };
 }
 
-const touched: Touched = {
-  changedLines: new Map([['a.java', { added: false, ranges: [[3, 9]], inserted: [[5, 5]] }]]),
+const touched: MatchedCode = {
+  changedLines: new Map<string, TouchedEntry>([
+    ['a.java', { added: false, ranges: [[3, 9]], inserted: [[5, 5]] }],
+  ]),
   isStrictRule: () => false,
 };
 
 function compared(
   baseFindings: readonly unknown[],
   headFindings: readonly unknown[],
-  touchedCode: Touched = touched,
+  touchedCode: MatchedCode = touched,
 ) {
   const result = compareFindings({ baseFindings, headFindings, touchedCode });
   return {
@@ -93,9 +87,9 @@ describe('duplicate clones held at the size of a legacy clone of the same files'
         ['b.java', 40, 50],
       ],
     });
-    const replaced = (bSide: ChangedFile): Touched => ({
+    const replaced = (bSide: TouchedEntry): MatchedCode => ({
       ...touched,
-      changedLines: new Map([...touched.changedLines, ['b.java', bSide]]),
+      changedLines: new Map<string, TouchedEntry>([...touched.changedLines, ['b.java', bSide]]),
     });
 
     expect(
@@ -114,9 +108,9 @@ describe('duplicate clones held at the size of a legacy clone of the same files'
         ['b.java', 3, 12],
       ],
     });
-    const editedB = (ranges: readonly number[][]): Touched => ({
+    const editedB = (ranges: TouchedEntry['ranges']): MatchedCode => ({
       isStrictRule: () => false,
-      changedLines: new Map([['b.java', { added: false, ranges }]]),
+      changedLines: new Map<string, TouchedEntry>([['b.java', { added: false, ranges }]]),
     });
 
     expect(compared([clone('old', 100)], [shrunk], editedB([[5, 8]])).held).toEqual([

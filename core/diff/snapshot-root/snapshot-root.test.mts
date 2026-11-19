@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vitest';
 import { runAnalyzers } from '../execution/run-analyzers.mts';
 import { LOG_DIRECTORY, clearDiffReports } from '../reporting/reporters.mts';
 import { fieldOf, fieldsOf } from '../../../shared/values/readers.mts';
-import { withoutSnapshotRoot } from './snapshot-root.mjs';
+import { withoutSnapshotRoot } from './snapshot-root.mts';
 
 const WORKTREE = path.join(path.sep, 'tmp', 'nitpicker-diff-Ab.c1', 'head');
 const SOURCE = path.join(WORKTREE, 'services', 'Handler.java');

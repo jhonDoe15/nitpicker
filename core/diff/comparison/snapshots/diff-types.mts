@@ -41,7 +41,7 @@ export type DiffOptions = Omit<
   readonly acceptPolicyChange?: unknown;
   readonly policyAcceptanceSource?: unknown;
   readonly reportsPolicy?: unknown;
-  readonly warn?: unknown;
+  readonly warn?: ((message: string) => void) | undefined;
 };
 
 export type Settings = Omit<DiffOptions, 'includeWorkingTree'> &

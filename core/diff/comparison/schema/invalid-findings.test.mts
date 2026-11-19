@@ -4,7 +4,7 @@ import {
   withTroubleshooting,
 } from '../../../../shared/messages/troubleshooting.mjs';
 import { textOf } from '../../../../shared/values/readers.mts';
-import { parseAnalyzerReportKeepingValid } from './invalid-findings.mjs';
+import { parseAnalyzerReportKeepingValid } from './invalid-findings.mts';
 
 const finding = (overrides: Readonly<Record<string, unknown>> = {}) => ({
   tool: 'java',

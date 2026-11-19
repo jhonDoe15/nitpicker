@@ -2,14 +2,14 @@ import path from 'node:path';
 import { cpSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
-import { analyzeEntryPoints as analyzeEntryPointsJs } from '../../../../languages/typescript/preset/entry-points/analyze.mjs';
+import { analyzeEntryPoints as analyzeEntryPointsJs } from '../../../../languages/typescript/preset/entry-points/analyze.mts';
 import { compareFindings } from '../../comparison/test-support/typed-compare.mts';
 import type { Finding } from '../../../../shared/values/findings.mts';
 import {
   createEntryPointAnalyzer as createEntryPointAnalyzerJs,
   toEntryPointDiffFindings as toEntryPointDiffFindingsJs,
-} from '../../../../languages/typescript/adapters/entry-points.mjs';
-import { configuredAnalyzers as configuredAnalyzersJs } from '../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
+} from '../../../../languages/typescript/adapters/entry-points.mts';
+import { configuredAnalyzers as configuredAnalyzersJs } from '../../../../languages/typescript/preset/diff/configured-analyzers.mts';
 import { type AnalyzerRequest, runAnalyzers } from '../../execution/run-analyzers.mts';
 import { fileURLToPath } from 'node:url';
 
@@ -33,8 +33,7 @@ const createEntryPointAnalyzer: (options: {
   readonly version: string;
   readonly configurationHash: string;
   readonly exclusions: readonly string[];
-  readonly sourceRoot: string;
-  readonly sourceRoots: undefined;
+  readonly sourceRoots: readonly string[];
   readonly shardWeight: number;
 }) => unknown = createEntryPointAnalyzerJs;
 const packageAnalyzers = configuredAnalyzers();
@@ -99,8 +98,7 @@ describe('entry-point differential adapter', () => {
       version: 'fixture',
       configurationHash: 'fixture',
       exclusions: [],
-      sourceRoot: 'src/main',
-      sourceRoots: undefined,
+      sourceRoots: ['src/main'],
       shardWeight: 1,
     });
     const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-'));
