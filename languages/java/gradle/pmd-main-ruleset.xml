@@ -2482,6 +2482,25 @@ return //MethodCall[@MethodName = 'contains'][ArgumentList/@Size = 1][*[1][self:
       </property>
     </properties>
   </rule>
+  <rule name="LockInFinally" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A finally block locks a lock that the method took before (or inside) the try and never releases it. lock(), lockInterruptibly() and tryLock() here take the lock a second time, so a ReentrantLock stays held after the method returns and every other thread that needs it blocks for good, far from the typo. Release it with lock.unlock() in the finally block. An exception fits a method that also unlocks the same lock elsewhere, such as a lock downgrade or a wait that gives the lock up and takes it back; the rule does not read those.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//FinallyClause/Block/ExpressionStatement/MethodCall
+  [@MethodName = ('lock', 'lockInterruptibly', 'tryLock')][not(*[1][self::ArgumentList])]
+  [*[1][pmd-java:typeIs('java.util.concurrent.locks.Lock') or self::MethodCall[@MethodName = ('readLock', 'writeLock')]]]
+  [let $key := function($c) { string-join($c/*[1]/descendant-or-self::*/(@Name | @MethodName), '.') },
+       $k := $key(.),
+       $fin := ancestor::FinallyClause[1],
+       $m := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1]
+   return empty($m//MethodCall[@MethodName = 'unlock'][not(*[1][self::ArgumentList])][$key(.) = $k])
+     and exists($m//MethodCall[@MethodName = ('lock', 'lockInterruptibly', 'tryLock')][not(*[1][self::ArgumentList])][$key(.) = $k][. << $fin])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="LogPlaceholderSlip" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This SLF4J or Log4j 2 message loses an argument. With one curly-brace placeholder for every argument and the exception last, the exception is printed with toString() and its stack trace is never logged; and %s, %d or a numbered placeholder in a logger that reads curly braces is printed as it stands while its argument is dropped. Write one curly-brace pair for each value except the exception, which goes last with no pair of its own (log.warn(&quot;Failed for&quot;, id, e) plus the pair after for), and use the pair instead of %s or %d. An exception fits when only the exception text is wanted in the message: pass e.getMessage().">
     <priority>3</priority>

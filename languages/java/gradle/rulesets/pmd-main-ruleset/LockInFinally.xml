@@ -1,0 +1,19 @@
+  <rule name="LockInFinally" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A finally block locks a lock that the method took before (or inside) the try and never releases it. lock(), lockInterruptibly() and tryLock() here take the lock a second time, so a ReentrantLock stays held after the method returns and every other thread that needs it blocks for good, far from the typo. Release it with lock.unlock() in the finally block. An exception fits a method that also unlocks the same lock elsewhere, such as a lock downgrade or a wait that gives the lock up and takes it back; the rule does not read those.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//FinallyClause/Block/ExpressionStatement/MethodCall
+  [@MethodName = ('lock', 'lockInterruptibly', 'tryLock')][not(*[1][self::ArgumentList])]
+  [*[1][pmd-java:typeIs('java.util.concurrent.locks.Lock') or self::MethodCall[@MethodName = ('readLock', 'writeLock')]]]
+  [let $key := function($c) { string-join($c/*[1]/descendant-or-self::*/(@Name | @MethodName), '.') },
+       $k := $key(.),
+       $fin := ancestor::FinallyClause[1],
+       $m := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1]
+   return empty($m//MethodCall[@MethodName = 'unlock'][not(*[1][self::ArgumentList])][$key(.) = $k])
+     and exists($m//MethodCall[@MethodName = ('lock', 'lockInterruptibly', 'tryLock')][not(*[1][self::ArgumentList])][$key(.) = $k][. << $fin])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
