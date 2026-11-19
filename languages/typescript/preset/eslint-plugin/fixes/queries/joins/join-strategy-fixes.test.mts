@@ -137,11 +137,11 @@ const sequelize = (body: string, output?: string, spec: Spec = SEQUELIZE_SPEC) =
 const QUERY = "relationLoadStrategy: 'query'";
 
 function run(project: Project, name: string, invalid: ReturnType<typeof reported>[]) {
-  typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: roots[project] }).run(
-    name,
-    rule,
-    { valid: [], invalid },
-  );
+  typescriptRuleTester({
+    project: './tsconfig.json',
+    tsconfigRootDir: roots[project],
+    disallowAutomaticSingleRunInference: true,
+  }).run(name, rule, { valid: [], invalid });
 }
 
 run('current', 'no-multiple-collection-joins TypeORM suggestion', [

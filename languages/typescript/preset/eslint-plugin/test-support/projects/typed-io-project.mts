@@ -87,7 +87,11 @@ export function typedIoProject(
     return typedFile(code, 'js');
   }
   return {
-    tester: typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root }),
+    tester: typescriptRuleTester({
+      project: './tsconfig.json',
+      tsconfigRootDir: root,
+      disallowAutomaticSingleRunInference: true,
+    }),
     typed,
     typedScript,
     typedFile,
