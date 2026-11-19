@@ -16,8 +16,9 @@ const MAX_PROPERTIES = 30;
 type Walk = {
   readonly checker: TypeScript.TypeChecker;
   readonly node: TypeScript.Node;
-  readonly seen: Set<TypeScript.Type>;
 };
+
+type Pending = { readonly type: TypeScript.Type; readonly depth: number };
 
 function hasToJson(type: TypeScript.Type): boolean {
   return type.getProperty('toJSON') !== undefined;
@@ -40,28 +41,28 @@ function memberTypes(walk: Walk, type: TypeScript.Type): TypeScript.Type[] {
   ];
 }
 
-export function lossyPart(walk: Walk, type: TypeScript.Type, depth = 0): string | undefined {
-  if (depth > MAX_DEPTH || walk.seen.has(type)) {
-    return undefined;
-  }
-  walk.seen.add(type);
+function directName(type: TypeScript.Type): string | undefined {
   if ((type.flags & (ts.TypeFlags.BigInt | ts.TypeFlags.BigIntLiteral)) !== 0) {
     return 'bigint';
-  }
-  if (type.isUnionOrIntersection()) {
-    return type.types
-      .map((part) => lossyPart(walk, part, depth))
-      .find((found) => found !== undefined);
   }
   if ((type.flags & ts.TypeFlags.Object) === 0) {
     return undefined;
   }
   const name = type.getSymbol()?.getName() ?? '';
-  if (LOSSY_CLASSES.has(name)) {
-    return name;
+  return LOSSY_CLASSES.has(name) ? name : undefined;
+}
+
+function childrenOf(walk: Walk, { type, depth }: Pending): Pending[] {
+  if (type.isUnionOrIntersection()) {
+    return type.types.map((part) => ({ type: part, depth }));
   }
-  const inner = hasToJson(type) ? [] : [...elementTypes(walk, type), ...memberTypes(walk, type)];
-  return inner.map((part) => lossyPart(walk, part, depth + 1)).find((found) => found !== undefined);
+  if ((type.flags & ts.TypeFlags.Object) === 0 || hasToJson(type)) {
+    return [];
+  }
+  return [...elementTypes(walk, type), ...memberTypes(walk, type)].map((part) => ({
+    type: part,
+    depth: depth + 1,
+  }));
 }
 
 export function lossyTypeOf(
@@ -69,5 +70,21 @@ export function lossyTypeOf(
   node: TypeScript.Node,
   type: TypeScript.Type,
 ): string | undefined {
-  return lossyPart({ checker, node, seen: new Set() }, type);
+  const walk = { checker, node };
+  const seen = new Set<TypeScript.Type>();
+  const pending: Pending[] = [{ type, depth: 0 }];
+  for (const [index, item] of pending.entries()) {
+    if (item.depth > MAX_DEPTH || seen.has(item.type)) {
+      continue;
+    }
+    seen.add(item.type);
+    const name = directName(item.type);
+    if (name !== undefined) {
+      return name;
+    }
+    for (const child of childrenOf(walk, item).reverse()) {
+      pending.splice(index + 1, 0, child);
+    }
+  }
+  return undefined;
 }

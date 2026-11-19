@@ -9,7 +9,10 @@ import {
 } from '../../typed/syntax-views.mts';
 import { isUrlConstructor, quasiText } from './url-values.mts';
 
-type Context = Readonly<TSESLint.RuleContext<'location' | 'redirect' | 'relative', []>>;
+const LOCATION = 'location';
+
+type MessageId = typeof LOCATION | 'redirect' | 'relative';
+type Context = Readonly<TSESLint.RuleContext<MessageId, []>>;
 
 const REQUEST_FUNCTIONS = new Set(['fetch', 'got', 'axios', 'ofetch', 'ky']);
 const REQUEST_OWNERS = new Set([
@@ -29,7 +32,7 @@ const ABSOLUTE_CHECK = /\^https\?|startsWith\(['"]https?|isAbsolute|canParse|URL
 
 function isLocationKey(node: TSESTree.Node): boolean {
   const key = stringValue(node) ?? nameOf(node);
-  return key?.toLowerCase() === 'location';
+  return key?.toLowerCase() === LOCATION;
 }
 
 function isHeadersObject(node: TSESTree.Node): boolean {
@@ -41,34 +44,28 @@ function isHeadersObject(node: TSESTree.Node): boolean {
   );
 }
 
-function isLocationRead(context: Context, node: TSESTree.Node, depth: number): boolean {
-  const value = unwrapOf(node, NULLISH_WRAPPERS);
-  if (depth > MAX_DEPTH) {
-    return false;
-  }
-  if (value.type === AST_NODE_TYPES.MemberExpression) {
-    return (
-      isHeadersObject(value.object) &&
-      (value.computed
-        ? isLocationKey(value.property)
-        : nameOf(value.property)?.toLowerCase() === 'location')
-    );
-  }
-  if (value.type === AST_NODE_TYPES.CallExpression) {
-    const { callee } = value;
-    const [key] = value.arguments;
-    return (
-      callee.type === AST_NODE_TYPES.MemberExpression &&
-      ['get', 'getHeader'].includes(nameOf(callee.property) ?? '') &&
-      key !== undefined &&
-      isLocationKey(key) &&
-      (isHeadersObject(callee.object) || nameOf(callee.property) === 'getHeader')
-    );
-  }
-  return value.type === AST_NODE_TYPES.Identifier && isLocationBinding(context, value, depth);
+function headerRead(value: TSESTree.MemberExpression): boolean {
+  return (
+    isHeadersObject(value.object) &&
+    (value.computed
+      ? isLocationKey(value.property)
+      : nameOf(value.property)?.toLowerCase() === LOCATION)
+  );
 }
 
-function isLocationBinding(context: Context, node: TSESTree.Identifier, depth: number): boolean {
+function headerCall(value: TSESTree.CallExpression): boolean {
+  const { callee } = value;
+  const [key] = value.arguments;
+  return (
+    callee.type === AST_NODE_TYPES.MemberExpression &&
+    ['get', 'getHeader'].includes(nameOf(callee.property) ?? '') &&
+    key !== undefined &&
+    isLocationKey(key) &&
+    (isHeadersObject(callee.object) || nameOf(callee.property) === 'getHeader')
+  );
+}
+
+function bindingStep(context: Context, node: TSESTree.Identifier): TSESTree.Node | boolean {
   const [definition] = findVariable(context, node, node.name)?.defs ?? [];
   if (definition?.type !== TSESLint.Scope.DefinitionType.Variable || !definition.node.init) {
     return false;
@@ -86,7 +83,32 @@ function isLocationBinding(context: Context, node: TSESTree.Identifier, depth: n
       )
     );
   }
-  return id.type === AST_NODE_TYPES.Identifier && isLocationRead(context, init, depth + 1);
+  return id.type === AST_NODE_TYPES.Identifier ? init : false;
+}
+
+function locationStep(context: Context, value: TSESTree.Node): TSESTree.Node | boolean {
+  if (value.type === AST_NODE_TYPES.MemberExpression) {
+    return headerRead(value);
+  }
+  if (value.type === AST_NODE_TYPES.CallExpression) {
+    return headerCall(value);
+  }
+  return value.type === AST_NODE_TYPES.Identifier ? bindingStep(context, value) : false;
+}
+
+function isLocationRead(context: Context, node: TSESTree.Node): boolean {
+  const pending = [{ node, depth: 0 }];
+  for (const item of pending) {
+    if (item.depth > MAX_DEPTH) {
+      return false;
+    }
+    const step = locationStep(context, unwrapOf(item.node, NULLISH_WRAPPERS));
+    if (typeof step === 'boolean') {
+      return step;
+    }
+    pending.push({ node: step, depth: item.depth + 1 });
+  }
+  return false;
 }
 
 function enclosingFunctionName(node: TSESTree.Node): string | undefined {
@@ -137,7 +159,7 @@ function checksAbsolute(context: Context, node: TSESTree.Node): boolean {
   return ABSOLUTE_CHECK.test(context.sourceCode.getText(scope));
 }
 
-export const rule: TSESLint.RuleModule<'location' | 'redirect' | 'relative'> = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: {
@@ -167,9 +189,9 @@ export const rule: TSESLint.RuleModule<'location' | 'redirect' | 'relative'> = {
         ) {
           return;
         }
-        if (isLocationRead(context, argument, 0)) {
+        if (isLocationRead(context, argument)) {
           if (!checksAbsolute(context, node)) {
-            context.report({ node, messageId: 'location' });
+            context.report({ node, messageId: LOCATION });
           }
         } else if (isRelativeText(context, argument)) {
           context.report({ node, messageId: 'relative' });
@@ -183,10 +205,10 @@ export const rule: TSESLint.RuleModule<'location' | 'redirect' | 'relative'> = {
         }
         if (
           isRequestCall(node) &&
-          isLocationRead(context, argument, 0) &&
+          isLocationRead(context, argument) &&
           !checksAbsolute(context, node)
         ) {
-          context.report({ node, messageId: 'location' });
+          context.report({ node, messageId: LOCATION });
         } else if (
           callee.type === AST_NODE_TYPES.MemberExpression &&
           !callee.computed &&

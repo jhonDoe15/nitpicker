@@ -47,20 +47,34 @@ export function returnedValues(fn: FunctionNode): TSESTree.Expression[] {
   return last?.type === AST_NODE_TYPES.ReturnStatement ? values : [];
 }
 
-export function outcomesOf(node: TSESTree.Node): TSESTree.Node[] {
+function conditionalArms(node: TSESTree.Node): TSESTree.Node[] {
   const value = unwrapOf(node, ASSERTION_FORMS);
   return value.type === AST_NODE_TYPES.ConditionalExpression
-    ? [...outcomesOf(value.consequent), ...outcomesOf(value.alternate)]
-    : [value];
+    ? [value.consequent, value.alternate]
+    : [];
+}
+
+export function outcomesOf(node: TSESTree.Node): TSESTree.Node[] {
+  const outcomes: TSESTree.Node[] = [];
+  for (const item of depthFirst(node, conditionalArms)) {
+    if (conditionalArms(item).length === 0) {
+      outcomes.push(unwrapOf(item, ASSERTION_FORMS));
+    }
+  }
+  return outcomes;
 }
 
 function numberOf(node: TSESTree.Node): number | undefined {
-  if (node.type === AST_NODE_TYPES.Literal && typeof node.value === 'number') {
-    return node.value;
-  }
-  if (node.type === AST_NODE_TYPES.UnaryExpression && node.operator === '-') {
-    const inner = numberOf(node.argument);
-    return inner === undefined ? undefined : -inner;
+  let sign = 1;
+  const pending = [node];
+  for (const item of pending) {
+    if (item.type === AST_NODE_TYPES.Literal && typeof item.value === 'number') {
+      return sign * item.value;
+    }
+    if (item.type === AST_NODE_TYPES.UnaryExpression && item.operator === '-') {
+      sign = -sign;
+      pending.push(item.argument);
+    }
   }
   return undefined;
 }
@@ -71,12 +85,16 @@ export function isNonZeroNumber(node: TSESTree.Node): boolean {
 }
 
 function soleReturn(node: TSESTree.Node): TSESTree.Node | undefined {
-  if (node.type === AST_NODE_TYPES.ReturnStatement) {
-    return node.argument ?? undefined;
+  const pending = [node];
+  for (const item of pending) {
+    if (item.type === AST_NODE_TYPES.ReturnStatement) {
+      return item.argument ?? undefined;
+    }
+    if (item.type === AST_NODE_TYPES.BlockStatement && item.body.length === 1 && item.body[0]) {
+      pending.push(item.body[0]);
+    }
   }
-  return node.type === AST_NODE_TYPES.BlockStatement && node.body.length === 1 && node.body[0]
-    ? soleReturn(node.body[0])
-    : undefined;
+  return undefined;
 }
 
 export function branchesOf(fn: FunctionNode): Branch[] {
@@ -110,32 +128,40 @@ function isCallOf(node: TSESTree.Node, owner: string, method: string): boolean {
   );
 }
 
-function isUniqueSource(node: TSESTree.Node): boolean {
-  const value = unwrapOf(node, ASSERTION_FORMS);
-  switch (value.type) {
-    case AST_NODE_TYPES.NewExpression:
-      return nameOf(value.callee) === 'Set';
-    case AST_NODE_TYPES.ArrayExpression: {
-      const [only, ...rest] = value.elements;
-      return (
-        rest.length === 0 &&
-        only?.type === AST_NODE_TYPES.SpreadElement &&
-        isUniqueSource(only.argument)
-      );
-    }
-    case AST_NODE_TYPES.CallExpression:
-      return (
-        isCallOf(value, 'Object', 'keys') ||
-        (isCallOf(value, 'Array', 'from') && value.arguments[0] !== undefined
-          ? isUniqueSource(value.arguments[0])
-          : false) ||
-        (value.callee.type === AST_NODE_TYPES.MemberExpression &&
-          nameOf(value.callee.property) === 'keys' &&
-          value.arguments.length === 0)
-      );
-    default:
-      return false;
+function uniqueStep(value: TSESTree.Node): TSESTree.Node | boolean {
+  if (value.type === AST_NODE_TYPES.NewExpression) {
+    return nameOf(value.callee) === 'Set';
   }
+  if (value.type === AST_NODE_TYPES.ArrayExpression) {
+    const [only, ...rest] = value.elements;
+    return rest.length === 0 && only?.type === AST_NODE_TYPES.SpreadElement ? only.argument : false;
+  }
+  if (value.type !== AST_NODE_TYPES.CallExpression) {
+    return false;
+  }
+  if (isCallOf(value, 'Object', 'keys')) {
+    return true;
+  }
+  if (isCallOf(value, 'Array', 'from')) {
+    return value.arguments[0] ?? false;
+  }
+  return (
+    value.callee.type === AST_NODE_TYPES.MemberExpression &&
+    nameOf(value.callee.property) === 'keys' &&
+    value.arguments.length === 0
+  );
+}
+
+function isUniqueSource(node: TSESTree.Node): boolean {
+  const pending = [node];
+  for (const item of pending) {
+    const step = uniqueStep(unwrapOf(item, ASSERTION_FORMS));
+    if (typeof step === 'boolean') {
+      return step;
+    }
+    pending.push(step);
+  }
+  return false;
 }
 
 export function sortsUniqueItems(receiver: TSESTree.Node, comparatorText: string): boolean {

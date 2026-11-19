@@ -39,7 +39,7 @@ tester.run('no-case-mixed-header-merge', rule, {
       'const res = await fetch(url, { headers: { "content-type": "application/json", ...options.headers } });',
     ),
     flagged(
-      'const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, ...extraHeaders } });',
+      `const res = await fetch(url, { headers: { Authorization: \`Bearer \${token}\`, ...extraHeaders } });`,
     ),
     flagged(
       'const res = await ky(url, { headers: { Accept: "x", ...(init?.headers as Record<string, string>) } });',

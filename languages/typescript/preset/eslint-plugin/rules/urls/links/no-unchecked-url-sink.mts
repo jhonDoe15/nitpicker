@@ -6,6 +6,8 @@ import { lastNameOf } from '../construction/url-values.mts';
 import { assignmentSink, attributeSink, callSink, type Sink } from './link-sinks.mts';
 
 type Context = Readonly<TSESLint.RuleContext<'unchecked', []>>;
+type Pending = { readonly node: TSESTree.Node; readonly depth: number };
+type Outcome = boolean | Pending[];
 type Guard = { readonly text: string; readonly scope: TSESTree.Node | undefined };
 
 const URL_NAME = /(?:url|uri|website|homepage|address|redirect|returnTo)s?$|^(?:src|source)$/iu;
@@ -21,22 +23,33 @@ const WRAPPER_PROPS = new Set(['props', 'rest', 'other', 'others', 'restProps'])
 const MAX_DEPTH = 5;
 
 function startsSafely(node: TSESTree.Node): boolean {
-  const value = unwrapOf(node, TYPE_WRAPPERS);
-  if (value.type === AST_NODE_TYPES.BinaryExpression) {
-    return value.operator === '+' && startsSafely(value.left);
+  const pending: TSESTree.Node[] = [node];
+  for (const current of pending) {
+    const value = unwrapOf(current, TYPE_WRAPPERS);
+    if (value.type === AST_NODE_TYPES.TemplateLiteral) {
+      return SAFE_START.test(value.quasis[0]?.value.cooked ?? '');
+    }
+    if (value.type !== AST_NODE_TYPES.BinaryExpression) {
+      return value.type === AST_NODE_TYPES.Literal && SAFE_START.test(String(value.value));
+    }
+    if (value.operator !== '+') {
+      return false;
+    }
+    pending.push(value.left);
   }
-  if (value.type === AST_NODE_TYPES.TemplateLiteral) {
-    return SAFE_START.test(value.quasis[0]?.value.cooked ?? '');
-  }
-  return value.type === AST_NODE_TYPES.Literal && SAFE_START.test(String(value.value));
+  return false;
 }
 
 function rootOf(node: TSESTree.Node): TSESTree.Identifier | undefined {
-  const value = unwrapOf(node, TYPE_WRAPPERS);
-  if (value.type === AST_NODE_TYPES.MemberExpression) {
-    return rootOf(value.object);
+  const pending: TSESTree.Node[] = [node];
+  for (const current of pending) {
+    const value = unwrapOf(current, TYPE_WRAPPERS);
+    if (value.type !== AST_NODE_TYPES.MemberExpression) {
+      return value.type === AST_NODE_TYPES.Identifier ? value : undefined;
+    }
+    pending.push(value.object);
   }
-  return value.type === AST_NODE_TYPES.Identifier ? value : undefined;
+  return undefined;
 }
 
 function rootName(node: TSESTree.Node): string | undefined {
@@ -59,47 +72,28 @@ function isLiteralListItem(context: Context, node: TSESTree.Node): boolean {
   return list?.type === AST_NODE_TYPES.ArrayExpression;
 }
 
-function isRuntimeValue(context: Context, node: TSESTree.Node, depth: number): boolean {
-  const value = unwrapOf(node, TYPE_WRAPPERS);
-  if (depth > MAX_DEPTH || startsSafely(value) || stringValue(value) !== undefined) {
-    return false;
-  }
-  if (value.type === AST_NODE_TYPES.LogicalExpression) {
-    return (
-      isRuntimeValue(context, value.left, depth + 1) ||
-      isRuntimeValue(context, value.right, depth + 1)
-    );
-  }
-  if (value.type === AST_NODE_TYPES.ConditionalExpression) {
-    return (
-      isRuntimeValue(context, value.consequent, depth + 1) ||
-      isRuntimeValue(context, value.alternate, depth + 1)
-    );
-  }
-  if (value.type === AST_NODE_TYPES.MemberExpression) {
-    const root = rootName(value);
-    return (
-      root !== undefined &&
-      !WRAPPER_PROPS.has(root) &&
-      URL_NAME.test(lastNameOf(value) ?? '') &&
-      !isLiteralListItem(context, value)
-    );
-  }
-  return value.type === AST_NODE_TYPES.Identifier && isRuntimeName(context, value, depth);
+function memberIsRuntime(context: Context, value: TSESTree.MemberExpression): boolean {
+  const root = rootName(value);
+  return (
+    root !== undefined &&
+    !WRAPPER_PROPS.has(root) &&
+    URL_NAME.test(lastNameOf(value) ?? '') &&
+    !isLiteralListItem(context, value)
+  );
 }
 
-function isRuntimeName(context: Context, node: TSESTree.Identifier, depth: number): boolean {
+function nameOutcome(context: Context, node: TSESTree.Identifier, depth: number): Outcome {
   const [definition] = findVariable(context, node, node.name)?.defs ?? [];
   if (definition?.type !== TSESLint.Scope.DefinitionType.Variable || !URL_NAME.test(node.name)) {
     return false;
   }
   const { init, id } = definition.node;
-  if (init === null || init === undefined) {
+  if (init === null) {
     return false;
   }
   if (id.type === AST_NODE_TYPES.Identifier) {
     const resolved = resolveConstant(context, node);
-    return resolved !== node && isRuntimeValue(context, resolved ?? init, depth + 1);
+    return resolved === node ? false : [{ node: resolved ?? init, depth: depth + 1 }];
   }
   const source = rootName(init);
   return (
@@ -107,6 +101,45 @@ function isRuntimeName(context: Context, node: TSESTree.Identifier, depth: numbe
     !WRAPPER_PROPS.has(source) &&
     init.type !== AST_NODE_TYPES.CallExpression
   );
+}
+
+function runtimeOutcome(context: Context, { node, depth }: Pending): Outcome {
+  const value = unwrapOf(node, TYPE_WRAPPERS);
+  if (depth > MAX_DEPTH || startsSafely(value) || stringValue(value) !== undefined) {
+    return false;
+  }
+  if (value.type === AST_NODE_TYPES.LogicalExpression) {
+    return [
+      { node: value.left, depth: depth + 1 },
+      { node: value.right, depth: depth + 1 },
+    ];
+  }
+  if (value.type === AST_NODE_TYPES.ConditionalExpression) {
+    return [
+      { node: value.consequent, depth: depth + 1 },
+      { node: value.alternate, depth: depth + 1 },
+    ];
+  }
+  if (value.type === AST_NODE_TYPES.MemberExpression) {
+    return memberIsRuntime(context, value);
+  }
+  return value.type === AST_NODE_TYPES.Identifier ? nameOutcome(context, value, depth) : false;
+}
+
+function isRuntimeValue(context: Context, node: TSESTree.Node): boolean {
+  const pending: Pending[] = [{ node, depth: 0 }];
+  for (const item of pending) {
+    const outcome = runtimeOutcome(context, item);
+    if (outcome === true) {
+      return true;
+    }
+    if (outcome !== false) {
+      for (const next of outcome) {
+        pending.push(next);
+      }
+    }
+  }
+  return false;
 }
 
 function scopeOf(node: TSESTree.Node): TSESTree.Node | undefined {
@@ -149,12 +182,6 @@ export const rule: TSESLint.RuleModule<'unchecked'> = {
       }
     }
 
-    function guardInit(init: TSESTree.Node | null) {
-      if (init !== null) {
-        guard(init);
-      }
-    }
-
     function add(sink: Sink | undefined) {
       if (sink !== undefined) {
         sinks.push(sink);
@@ -162,16 +189,32 @@ export const rule: TSESLint.RuleModule<'unchecked'> = {
     }
 
     return {
-      JSXAttribute: (node: TSESTree.JSXAttribute) => add(attributeSink(node)),
-      CallExpression: (node: TSESTree.CallExpression) => add(callSink(node)),
-      AssignmentExpression: (node: TSESTree.AssignmentExpression) => add(assignmentSink(node)),
-      VariableDeclarator: (node: TSESTree.VariableDeclarator) => guardInit(node.init),
-      IfStatement: (node: TSESTree.IfStatement) => guard(node.test),
-      ConditionalExpression: (node: TSESTree.ConditionalExpression) => guard(node.test),
-      LogicalExpression: (node: TSESTree.LogicalExpression) => guard(node.left),
+      JSXAttribute(node: TSESTree.JSXAttribute) {
+        add(attributeSink(node));
+      },
+      CallExpression(node: TSESTree.CallExpression) {
+        add(callSink(node));
+      },
+      AssignmentExpression(node: TSESTree.AssignmentExpression) {
+        add(assignmentSink(node));
+      },
+      VariableDeclarator(node: TSESTree.VariableDeclarator) {
+        if (node.init !== null) {
+          guard(node.init);
+        }
+      },
+      IfStatement(node: TSESTree.IfStatement) {
+        guard(node.test);
+      },
+      ConditionalExpression(node: TSESTree.ConditionalExpression) {
+        guard(node.test);
+      },
+      LogicalExpression(node: TSESTree.LogicalExpression) {
+        guard(node.left);
+      },
       'Program:exit'() {
         for (const sink of sinks) {
-          if (isRuntimeValue(context, sink.value, 0) && !isGuarded(context, sink, guards)) {
+          if (isRuntimeValue(context, sink.value) && !isGuarded(context, sink, guards)) {
             context.report({ node: sink.value, messageId: 'unchecked' });
           }
         }

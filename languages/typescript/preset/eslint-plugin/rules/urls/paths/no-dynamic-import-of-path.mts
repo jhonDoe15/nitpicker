@@ -74,8 +74,13 @@ function isNamedPath(node: TSESTree.Identifier): boolean {
 type Walk = {
   readonly context: RuleContext;
   readonly imported: ReadonlySet<string>;
-  readonly depth: number;
 };
+
+type Pending = { readonly node: TSESTree.Node; readonly depth: number };
+
+function deeper(parts: readonly TSESTree.Node[], depth: number): Pending[] {
+  return depth < MAX_DEPTH ? parts.map((node) => ({ node, depth: depth + 1 })) : [];
+}
 
 function isNamedPathValue(context: RuleContext, written: TSESTree.Node, value: TSESTree.Node) {
   const { text } = context.sourceCode;
@@ -89,29 +94,42 @@ function isNamedPathValue(context: RuleContext, written: TSESTree.Node, value: T
   );
 }
 
-function isPathValue(node: TSESTree.Node, walk: Walk): boolean {
-  const { context, imported, depth } = walk;
+function pathOutcome(walk: Walk, { node, depth }: Pending): boolean | Pending[] {
+  const { context, imported } = walk;
   const written = unwrapOf(node, ASSERTION_FORMS);
   const value = unwrapOf(resolveConstant(context, written) ?? written, ASSERTION_FORMS);
   if (written.type === AST_NODE_TYPES.Identifier && isNamedPath(written)) {
     return isNamedPathValue(context, written, value);
   }
-  const next = (part: TSESTree.Node) =>
-    depth < MAX_DEPTH && isPathValue(part, { ...walk, depth: depth + 1 });
-  switch (value.type) {
-    case AST_NODE_TYPES.CallExpression:
-      return isPathCall(value, imported);
-    case AST_NODE_TYPES.BinaryExpression:
-      return value.operator === '+' && (next(value.left) || next(value.right));
-    case AST_NODE_TYPES.TemplateLiteral:
-      return value.expressions.some(next);
-    case AST_NODE_TYPES.Identifier:
-      return CURRENT_DIRECTORY_NAMES.has(value.name);
-    case AST_NODE_TYPES.MemberExpression:
-      return isCurrentDirectory(value);
-    default:
-      return false;
+  if (value.type === AST_NODE_TYPES.CallExpression) {
+    return isPathCall(value, imported);
   }
+  if (value.type === AST_NODE_TYPES.BinaryExpression) {
+    return value.operator === '+' ? deeper([value.left, value.right], depth) : false;
+  }
+  if (value.type === AST_NODE_TYPES.TemplateLiteral) {
+    return deeper(value.expressions, depth);
+  }
+  if (value.type === AST_NODE_TYPES.Identifier) {
+    return CURRENT_DIRECTORY_NAMES.has(value.name);
+  }
+  return value.type === AST_NODE_TYPES.MemberExpression && isCurrentDirectory(value);
+}
+
+function isPathValue(node: TSESTree.Node, walk: Walk): boolean {
+  const pending: Pending[] = [{ node, depth: 0 }];
+  for (const item of pending) {
+    const outcome = pathOutcome(walk, item);
+    if (outcome === true) {
+      return true;
+    }
+    if (outcome !== false) {
+      for (const next of outcome) {
+        pending.push(next);
+      }
+    }
+  }
+  return false;
 }
 
 function startsAsFileUrl(node: TSESTree.Node): boolean {
@@ -150,7 +168,7 @@ export const rule: TSESLint.RuleModule<'filePath'> = {
         ) {
           return;
         }
-        if (isPathValue(source, { context, imported, depth: 0 })) {
+        if (isPathValue(source, { context, imported })) {
           context.report({ node: node.source, messageId: 'filePath' });
         }
       },

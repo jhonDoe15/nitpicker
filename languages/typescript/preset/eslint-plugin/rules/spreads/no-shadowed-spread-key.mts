@@ -73,9 +73,9 @@ function explicitAttribute(
   }
   const { name, value } = attribute;
   const expression =
-    value?.type === AST_NODE_TYPES.JSXExpressionContainer ? value.expression : null;
+    value?.type === AST_NODE_TYPES.JSXExpressionContainer ? value.expression : undefined;
   return name.type === AST_NODE_TYPES.JSXIdentifier &&
-    expression !== null &&
+    expression !== undefined &&
     expression.type !== AST_NODE_TYPES.JSXEmptyExpression
     ? [{ spread, attribute, key: name.name, expression }]
     : [];
@@ -124,10 +124,16 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
       return {};
     }
     return {
-      ObjectExpression: (node: TSESTree.ObjectExpression) =>
-        pairsOf(node).forEach((pair) => checkPair(scope, pair)),
-      JSXOpeningElement: (node: TSESTree.JSXOpeningElement) =>
-        jsxPairsOf(node).forEach((pair) => checkJsxPair(scope, pair)),
+      ObjectExpression(node: TSESTree.ObjectExpression) {
+        for (const pair of pairsOf(node)) {
+          checkPair(scope, pair);
+        }
+      },
+      JSXOpeningElement(node: TSESTree.JSXOpeningElement) {
+        for (const pair of jsxPairsOf(node)) {
+          checkJsxPair(scope, pair);
+        }
+      },
     };
   },
 };

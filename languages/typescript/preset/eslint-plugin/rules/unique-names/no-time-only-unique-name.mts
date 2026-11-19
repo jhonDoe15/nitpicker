@@ -3,7 +3,10 @@ import { resolveConstant } from '../analysis/constant-resolution.mts';
 import { nameOf } from '../typed/node-views.mts';
 import { hasClock, isJoin, isTimeOnlyText, mentionsTmpdir } from './time-values.mts';
 
-type Context = Readonly<TSESLint.RuleContext<'directory' | 'file' | 'id', []>>;
+type MessageId = 'directory' | 'file' | 'id';
+type Context = Readonly<TSESLint.RuleContext<MessageId, []>>;
+
+const DIRECTORY: MessageId = 'directory';
 
 const WRITERS = new Set([
   'mkdir',
@@ -65,7 +68,7 @@ type Finding = {
   readonly context: Context;
   readonly reported: Set<TSESTree.Node>;
   readonly node: TSESTree.Node;
-  readonly messageId: 'directory' | 'file' | 'id';
+  readonly messageId: MessageId;
 };
 
 function reportOnce({ context, reported, node, messageId }: Finding) {
@@ -83,7 +86,7 @@ function isTimeId(context: Context, node: TSESTree.Node): boolean {
   return !(LABEL_NAMES.has(name) && DATE_ONLY.test(context.sourceCode.getText(node)));
 }
 
-export const rule: TSESLint.RuleModule<'directory' | 'file' | 'id'> = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: {
@@ -105,8 +108,9 @@ export const rule: TSESLint.RuleModule<'directory' | 'file' | 'id'> = {
   },
   create(context) {
     const reported = new Set<TSESTree.Node>();
-    const report = (node: TSESTree.Node, messageId: Finding['messageId']): void =>
+    function report(node: TSESTree.Node, messageId: MessageId): void {
       reportOnce({ context, reported, node, messageId });
+    }
     return {
       CallExpression(node: TSESTree.CallExpression) {
         const [first] = node.arguments;
@@ -114,7 +118,7 @@ export const rule: TSESLint.RuleModule<'directory' | 'file' | 'id'> = {
           report(node, 'id');
         } else if (isJoin(node) && node.arguments.some(mentionsTmpdir)) {
           if (isTimeOnlyText(context, node)) {
-            report(node, 'directory');
+            report(node, DIRECTORY);
           }
         } else if (WRITERS.has(calleeName(node)) && first !== undefined) {
           const path = resolveConstant(context, first) ?? first;
@@ -125,7 +129,7 @@ export const rule: TSESLint.RuleModule<'directory' | 'file' | 'id'> = {
       },
       TemplateLiteral(node: TSESTree.TemplateLiteral) {
         if (mentionsTmpdir(node) && isTimeOnlyText(context, node) && !isJoin(node.parent)) {
-          report(node, 'directory');
+          report(node, DIRECTORY);
         } else if (isTimeId(context, node)) {
           report(node, 'id');
         }
@@ -135,7 +139,7 @@ export const rule: TSESLint.RuleModule<'directory' | 'file' | 'id'> = {
           return;
         }
         if (mentionsTmpdir(node) && isTimeOnlyText(context, node)) {
-          report(node, 'directory');
+          report(node, DIRECTORY);
         } else if (isTimeId(context, node)) {
           report(node, 'id');
         }

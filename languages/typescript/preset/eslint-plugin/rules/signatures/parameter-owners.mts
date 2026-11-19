@@ -21,7 +21,7 @@ type CrossesProperty = (member: TSESTree.MemberExpression) => boolean;
 type Walk = {
   readonly sourceCode: SourceCode;
   readonly crossesProperty: CrossesProperty;
-  readonly includeInternal?: boolean;
+  readonly includeInternal?: true;
 };
 
 const { DefinitionType } = TSESLint.Scope;
@@ -186,7 +186,7 @@ export function changedParameter(
   target: TSESTree.Node,
   mutation: Ranged,
 ): TSESLint.Scope.Definitions.ParameterDefinition | undefined {
-  const { sourceCode, crossesProperty, includeInternal = false } = walk;
+  const { sourceCode, crossesProperty, includeInternal } = walk;
   const root = chainRoot(target, crossesProperty);
   const named = root === undefined ? undefined : variableNamed(sourceCode, root);
   const variable = named === undefined ? undefined : aliasedParameter(sourceCode, named, mutation);
@@ -201,7 +201,7 @@ export function changedParameter(
   }
   const owner = definition.node;
   const exempt =
-    (!includeInternal && isInternalFunction(owner)) ||
+    (includeInternal === undefined && isInternalFunction(owner)) ||
     isAccumulator(sourceCode, owner, definition.name) ||
     isDraft(owner) ||
     isContextParameter(definition.name) ||

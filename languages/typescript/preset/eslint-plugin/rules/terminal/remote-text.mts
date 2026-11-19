@@ -20,10 +20,23 @@ const LIFECYCLE_EVENTS = new Set([
   'listening',
 ]);
 const MAX_DEPTH = 5;
+const RESPONSE = 'response';
+
+type Step = (inner: Taint | undefined) => Taint | undefined;
+type Link =
+  { readonly result: Taint | undefined } | { readonly next: TSESTree.Node; readonly apply: Step };
+type Definition = { readonly name: TSESTree.Node; readonly node: TSESTree.Node };
 
 function peel(node: TSESTree.Node): TSESTree.Node {
-  const plain = unwrapped(node);
-  return plain.type === AST_NODE_TYPES.AwaitExpression ? peel(plain.argument) : plain;
+  const pending: TSESTree.Node[] = [node];
+  for (const current of pending) {
+    const plain = unwrapped(current);
+    if (plain.type !== AST_NODE_TYPES.AwaitExpression) {
+      return plain;
+    }
+    pending.push(plain.argument);
+  }
+  return node;
 }
 
 function isSocketCallback(fn: TSESTree.Node): boolean {
@@ -43,79 +56,110 @@ function isSocketCallback(fn: TSESTree.Node): boolean {
   );
 }
 
-function callTaint(
-  context: Context,
-  call: TSESTree.CallExpression,
-  depth: number,
-): Taint | undefined {
-  const callee = unwrapped(call.callee);
-  if (callee.type === AST_NODE_TYPES.Identifier) {
-    return callee.name === 'fetch' || CLIENTS.has(callee.name) ? 'response' : undefined;
-  }
-  if (callee.type !== AST_NODE_TYPES.MemberExpression) {
-    return undefined;
-  }
-  const owner = plainName(callee.object) ?? '';
-  if (callee.object.type === AST_NODE_TYPES.Identifier && CLIENTS.has(owner)) {
-    return 'response';
-  }
-  const reader = memberName(callee) ?? '';
-  if (!READERS.has(reader) || taintOf(context, callee.object, depth + 1) !== 'response') {
+function readerTaint(reader: string, inner: Taint | undefined): Taint | undefined {
+  if (inner !== RESPONSE) {
     return undefined;
   }
   return reader === 'text' ? 'text' : 'body';
 }
 
-function declaredTaint(
-  context: Context,
-  definition: { readonly name: TSESTree.Node; readonly node: TSESTree.Node },
-  depth: number,
-): Taint | undefined {
-  const { node, name } = definition;
-  if (node.type === AST_NODE_TYPES.VariableDeclarator && node.init !== null) {
-    const source = taintOf(context, node.init, depth + 1);
-    if (node.id.type === AST_NODE_TYPES.Identifier) {
-      return source;
-    }
-    const key =
-      name.parent?.type === AST_NODE_TYPES.Property ? plainName(name.parent.key) : undefined;
-    if (source === 'body') {
-      return 'text';
-    }
-    return source === 'response' && BODY_PROPERTIES.has(key ?? '') ? 'body' : undefined;
+function callLink(call: TSESTree.CallExpression): Link {
+  const callee = unwrapped(call.callee);
+  if (callee.type === AST_NODE_TYPES.Identifier) {
+    return { result: callee.name === 'fetch' || CLIENTS.has(callee.name) ? RESPONSE : undefined };
   }
-  const isParameter = [
-    AST_NODE_TYPES.ArrowFunctionExpression,
-    AST_NODE_TYPES.FunctionExpression,
-  ].includes(node.type as never);
-  const first = isParameter && 'params' in node ? node.params[0] : undefined;
+  if (callee.type !== AST_NODE_TYPES.MemberExpression) {
+    return { result: undefined };
+  }
+  const owner = plainName(callee.object) ?? '';
+  if (callee.object.type === AST_NODE_TYPES.Identifier && CLIENTS.has(owner)) {
+    return { result: RESPONSE };
+  }
+  const reader = memberName(callee) ?? '';
+  return READERS.has(reader)
+    ? { next: callee.object, apply: (inner) => readerTaint(reader, inner) }
+    : { result: undefined };
+}
+
+function memberLink(member: TSESTree.MemberExpression): Link {
+  return {
+    next: member.object,
+    apply: (owner) =>
+      owner === 'body' || (owner === RESPONSE && BODY_PROPERTIES.has(memberName(member) ?? ''))
+        ? 'body'
+        : undefined,
+  };
+}
+
+function destructuredTaint(
+  source: Taint | undefined,
+  declarator: TSESTree.VariableDeclarator,
+  name: TSESTree.Node,
+): Taint | undefined {
+  if (declarator.id.type === AST_NODE_TYPES.Identifier) {
+    return source;
+  }
+  const key =
+    name.parent?.type === AST_NODE_TYPES.Property ? plainName(name.parent.key) : undefined;
+  if (source === 'body') {
+    return 'text';
+  }
+  return source === RESPONSE && BODY_PROPERTIES.has(key ?? '') ? 'body' : undefined;
+}
+
+function parameterTaint(node: TSESTree.Node, name: TSESTree.Node): Taint | undefined {
+  const isFunction =
+    node.type === AST_NODE_TYPES.ArrowFunctionExpression ||
+    node.type === AST_NODE_TYPES.FunctionExpression;
+  const first = isFunction ? node.params.at(0) : undefined;
   const inFirst =
     first !== undefined && name.range[0] >= first.range[0] && name.range[1] <= first.range[1];
-  if (!inFirst || !isSocketCallback(node)) {
+  if (!(inFirst && isSocketCallback(node))) {
     return undefined;
   }
   return name.parent?.type === AST_NODE_TYPES.Property ? 'text' : 'body';
 }
 
-export function taintOf(context: Context, node: TSESTree.Node, depth = 0): Taint | undefined {
-  const plain = peel(node);
-  if (depth > MAX_DEPTH) {
-    return undefined;
+function declaredLink({ name, node }: Definition): Link {
+  if (node.type === AST_NODE_TYPES.VariableDeclarator && node.init !== null) {
+    return { next: node.init, apply: (source) => destructuredTaint(source, node, name) };
   }
+  return { result: parameterTaint(node, name) };
+}
+
+function linkOf(context: Context, node: TSESTree.Node): Link {
+  const plain = peel(node);
   if (plain.type === AST_NODE_TYPES.CallExpression) {
-    return callTaint(context, plain, depth);
+    return callLink(plain);
   }
   if (plain.type === AST_NODE_TYPES.MemberExpression) {
-    const owner = taintOf(context, plain.object, depth + 1);
-    return owner === 'body' ||
-      (owner === 'response' && BODY_PROPERTIES.has(memberName(plain) ?? ''))
-      ? 'body'
-      : undefined;
+    return memberLink(plain);
   }
   if (plain.type !== AST_NODE_TYPES.Identifier) {
-    return undefined;
+    return { result: undefined };
   }
   const variable = findVariable(context, plain, plain.name);
   const definition = variable?.defs.length === 1 ? variable.defs[0] : undefined;
-  return definition === undefined ? undefined : declaredTaint(context, definition, depth);
+  return definition === undefined ? { result: undefined } : declaredLink(definition);
+}
+
+function applyAll(steps: readonly Step[], base: Taint | undefined): Taint | undefined {
+  return steps.reduceRight((value, apply) => apply(value), base);
+}
+
+export function taintOf(context: Context, node: TSESTree.Node): Taint | undefined {
+  const steps: Step[] = [];
+  const pending: TSESTree.Node[] = [node];
+  for (const [depth, current] of pending.entries()) {
+    if (depth > MAX_DEPTH) {
+      return applyAll(steps, undefined);
+    }
+    const link = linkOf(context, current);
+    if ('result' in link) {
+      return applyAll(steps, link.result);
+    }
+    steps.push(link.apply);
+    pending.push(link.next);
+  }
+  return applyAll(steps, undefined);
 }

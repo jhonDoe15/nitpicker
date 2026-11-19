@@ -59,7 +59,7 @@ export const rule: TSESLint.RuleModule<MessageId> = {
       escapeBackslash:
         'This `replace` adds a backslash before a character but nothing escapes the backslash itself, ' +
         'so a value holding `\\` round-trips wrong. Match both in one pattern: ' +
-        '`value.replace(/[\\\\"]/g, (c) => `\\\\${c}`)`.',
+        `\`value.replace(/[\\\\"]/g, (c) => \`\\\\\${c}\`)\`.`,
       unescapeOrder:
         'This chain unescapes one sequence at a time and handles `\\\\` in a separate step, so the order ' +
         'decides the result. Decode in one pass: `text.replace(/\\\\(["\'nt\\\\])/g, (_, c) => table[c])`.',
@@ -84,12 +84,9 @@ export const rule: TSESLint.RuleModule<MessageId> = {
         if (unescapesInWrongOrder(chain)) {
           context.report({ node, messageId: 'unescapeOrder' });
         } else if (!opaqueRoot(chainRoot(chain))) {
-          candidates.push(
-            ...escapeCandidates(chain).map((found) => ({
-              call: found.call,
-              scope: outermostFunction(node),
-            })),
-          );
+          for (const found of escapeCandidates(chain)) {
+            candidates.push({ call: found.call, scope: outermostFunction(node) });
+          }
         }
       },
       'Program:exit'() {

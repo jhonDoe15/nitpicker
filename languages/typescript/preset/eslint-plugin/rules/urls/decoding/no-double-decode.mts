@@ -4,12 +4,14 @@ import { nameOf } from '../../typed/node-views.mts';
 import { NULLISH_WRAPPERS, unwrapOf } from '../../typed/syntax-views.mts';
 
 type Context = Readonly<TSESLint.RuleContext<'decoded', []>>;
+type Step = { readonly done: boolean } | { readonly next: TSESTree.Node };
 
 const DECODERS = new Set(['decodeURIComponent', 'decodeURI']);
-const CONTAINER_MEMBERS = new Set(['query', 'searchParams']);
-const CONTAINER_NAMES = new Set(['searchParams', 'query', 'queryParams']);
+const QUERY = 'query';
+const CONTAINER_MEMBERS = new Set([QUERY, 'searchParams']);
+const CONTAINER_NAMES = new Set(['searchParams', QUERY, 'queryParams']);
 const READ_METHODS = new Set(['get', 'getAll']);
-const REQUEST_READS = new Set(['query', 'param']);
+const REQUEST_READS = new Set([QUERY, 'param']);
 const REQUEST_NAMES = new Set(['req', 'request']);
 const STRING_METHODS = new Set(['trim', 'toString']);
 const MAX_DEPTH = 6;
@@ -58,108 +60,140 @@ function isContainerCall(node: TSESTree.CallExpression): boolean {
     calleeName(node) === 'useSearchParams' ||
     (method !== undefined &&
       node.arguments.length === 0 &&
-      method[1] === 'query' &&
+      method[1] === QUERY &&
       isRequest(method[0]))
   );
 }
 
-function isContainerBinding(context: Context, node: TSESTree.Identifier, depth: number): boolean {
+type Binding = {
+  readonly id: TSESTree.BindingName;
+  readonly init: TSESTree.Expression;
+};
+
+function variableBinding(context: Context, node: TSESTree.Identifier): Binding | undefined {
   const definition = definitionOf(context, node);
-  if (definition?.type === TSESLint.Scope.DefinitionType.Parameter) {
-    return CONTAINER_NAMES.has(node.name);
-  }
   if (definition?.type !== TSESLint.Scope.DefinitionType.Variable) {
-    return false;
+    return undefined;
   }
   const { id, init } = definition.node;
-  if (init === null || init === undefined) {
-    return false;
+  return init === null ? undefined : { id, init };
+}
+
+function containerBindingStep(context: Context, node: TSESTree.Identifier): Step {
+  if (definitionOf(context, node)?.type === TSESLint.Scope.DefinitionType.Parameter) {
+    return { done: CONTAINER_NAMES.has(node.name) };
   }
+  const binding = variableBinding(context, node);
+  if (binding === undefined) {
+    return { done: false };
+  }
+  const { id, init } = binding;
   if (id.type === AST_NODE_TYPES.ArrayPattern) {
     const first = id.elements[0];
-    return (
-      first?.type === AST_NODE_TYPES.Identifier &&
-      first.name === node.name &&
-      isContainer(context, init, depth + 1)
-    );
+    return first?.type === AST_NODE_TYPES.Identifier && first.name === node.name
+      ? { next: init }
+      : { done: false };
   }
-  return id.type === AST_NODE_TYPES.Identifier && isContainer(context, init, depth + 1);
+  return id.type === AST_NODE_TYPES.Identifier ? { next: init } : { done: false };
+}
+
+function containerStep(context: Context, value: TSESTree.Node): Step {
+  if (value.type === AST_NODE_TYPES.NewExpression) {
+    return {
+      done:
+        value.callee.type === AST_NODE_TYPES.Identifier && value.callee.name === 'URLSearchParams',
+    };
+  }
+  if (value.type === AST_NODE_TYPES.CallExpression) {
+    return { done: isContainerCall(value) };
+  }
+  if (value.type === AST_NODE_TYPES.MemberExpression) {
+    return { done: isContainerMember(value) };
+  }
+  return value.type === AST_NODE_TYPES.Identifier
+    ? containerBindingStep(context, value)
+    : { done: false };
 }
 
 function isContainer(context: Context, node: TSESTree.Node, depth: number): boolean {
-  const value = unwrapOf(node, NULLISH_WRAPPERS);
-  if (depth > MAX_DEPTH) {
-    return false;
-  }
-  switch (value.type) {
-    case AST_NODE_TYPES.NewExpression:
-      return (
-        value.callee.type === AST_NODE_TYPES.Identifier && value.callee.name === 'URLSearchParams'
-      );
-    case AST_NODE_TYPES.CallExpression:
-      return isContainerCall(value);
-    case AST_NODE_TYPES.MemberExpression:
-      return isContainerMember(value);
-    case AST_NODE_TYPES.Identifier:
-      return isContainerBinding(context, value, depth);
-    default:
+  const pending: TSESTree.Node[] = [node];
+  for (const [offset, current] of pending.entries()) {
+    if (depth + offset > MAX_DEPTH) {
       return false;
+    }
+    const step = containerStep(context, unwrapOf(current, NULLISH_WRAPPERS));
+    if ('done' in step) {
+      return step.done;
+    }
+    pending.push(step.next);
   }
+  return false;
 }
 
-function isDecodedCall(context: Context, node: TSESTree.CallExpression, depth: number): boolean {
+function callStep(context: Context, node: TSESTree.CallExpression, depth: number): Step {
   const method = methodOf(node);
   if (calleeName(node) === 'String') {
     const [argument] = node.arguments;
-    return argument !== undefined && isDecoded(context, argument, depth + 1);
+    return argument === undefined ? { done: false } : { next: argument };
   }
   if (method === undefined) {
-    return false;
+    return { done: false };
   }
   const [owner, name] = method;
   if (READ_METHODS.has(name)) {
-    return isContainer(context, owner, depth + 1);
+    return { done: isContainer(context, owner, depth + 1) };
   }
   if (REQUEST_READS.has(name) && node.arguments.length > 0) {
-    return isRequest(owner);
+    return { done: isRequest(owner) };
   }
-  return STRING_METHODS.has(name) && isDecoded(context, owner, depth + 1);
+  return STRING_METHODS.has(name) ? { next: owner } : { done: false };
 }
 
-function isDecodedBinding(context: Context, node: TSESTree.Identifier, depth: number): boolean {
-  const definition = definitionOf(context, node);
-  if (definition?.type !== TSESLint.Scope.DefinitionType.Variable) {
-    return false;
+function bindingStep(context: Context, node: TSESTree.Identifier, depth: number): Step {
+  const binding = variableBinding(context, node);
+  if (binding === undefined) {
+    return { done: false };
   }
-  const { id, init } = definition.node;
-  if (init === null || init === undefined) {
-    return false;
+  const { id, init } = binding;
+  if (id.type === AST_NODE_TYPES.ObjectPattern) {
+    return { done: isContainer(context, init, depth + 1) };
   }
-  return id.type === AST_NODE_TYPES.ObjectPattern
-    ? isContainer(context, init, depth + 1)
-    : id.type === AST_NODE_TYPES.Identifier && isDecoded(context, init, depth + 1);
+  return id.type === AST_NODE_TYPES.Identifier ? { next: init } : { done: false };
 }
 
-function isDecoded(context: Context, node: TSESTree.Node, depth: number): boolean {
-  const value = unwrapOf(node, NULLISH_WRAPPERS);
-  if (depth > MAX_DEPTH) {
-    return false;
+function memberStep(context: Context, value: TSESTree.MemberExpression, depth: number): Step {
+  if (isContainer(context, value.object, depth + 1)) {
+    return { done: true };
   }
-  switch (value.type) {
-    case AST_NODE_TYPES.MemberExpression:
-      return (
-        isContainer(context, value.object, depth + 1) ||
-        (value.computed && isDecoded(context, value.object, depth + 1))
-      );
-    case AST_NODE_TYPES.CallExpression:
-      return isDecodedCall(context, value, depth);
-    case AST_NODE_TYPES.Identifier:
-      return isDecodedBinding(context, value, depth);
-    case AST_NODE_TYPES.LogicalExpression:
-      return isDecoded(context, value.left, depth + 1);
-    default:
+  return value.computed ? { next: value.object } : { done: false };
+}
+
+function decodedStep(context: Context, value: TSESTree.Node, depth: number): Step {
+  if (value.type === AST_NODE_TYPES.MemberExpression) {
+    return memberStep(context, value, depth);
+  }
+  if (value.type === AST_NODE_TYPES.CallExpression) {
+    return callStep(context, value, depth);
+  }
+  if (value.type === AST_NODE_TYPES.Identifier) {
+    return bindingStep(context, value, depth);
+  }
+  return value.type === AST_NODE_TYPES.LogicalExpression ? { next: value.left } : { done: false };
+}
+
+function isDecoded(context: Context, node: TSESTree.Node): boolean {
+  const pending: TSESTree.Node[] = [node];
+  for (const [depth, current] of pending.entries()) {
+    if (depth > MAX_DEPTH) {
       return false;
+    }
+    const step = decodedStep(context, unwrapOf(current, NULLISH_WRAPPERS), depth);
+    if ('done' in step) {
+      return step.done;
+    }
+    pending.push(step.next);
   }
+  return false;
 }
 
 export const rule: TSESLint.RuleModule<'decoded'> = {
@@ -186,7 +220,7 @@ export const rule: TSESLint.RuleModule<'decoded'> = {
           node.callee.type === AST_NODE_TYPES.Identifier &&
           DECODERS.has(node.callee.name) &&
           argument !== undefined &&
-          isDecoded(context, argument, 0)
+          isDecoded(context, argument)
         ) {
           context.report({ node, messageId: 'decoded' });
         }

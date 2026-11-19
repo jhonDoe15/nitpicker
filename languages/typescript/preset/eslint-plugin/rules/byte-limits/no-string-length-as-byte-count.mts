@@ -4,6 +4,8 @@ import { hasByteName, hasTextLength, isText, leaves } from './string-lengths.mts
 
 type MessageId = 'countBytes';
 
+const COUNT_BYTES: MessageId = 'countBytes';
+
 const COMPARISONS = new Set(['<', '>', '<=', '>=', '===', '!==', '==', '!=']);
 const SLICES = new Set(['slice', 'substring', 'substr']);
 
@@ -59,17 +61,17 @@ export const rule: TSESLint.RuleModule<MessageId> = {
     return {
       BinaryExpression(node) {
         if (comparesLengthToBytes(context, node)) {
-          context.report({ node, messageId: 'countBytes' });
+          context.report({ node, messageId: COUNT_BYTES });
         }
       },
       ForStatement(node) {
         if (stepsByBytes(context, node)) {
-          context.report({ node, messageId: 'countBytes' });
+          context.report({ node, messageId: COUNT_BYTES });
         }
       },
       CallExpression(node) {
         if (slicesByBytes(context, node)) {
-          context.report({ node, messageId: 'countBytes' });
+          context.report({ node, messageId: COUNT_BYTES });
         }
       },
     };

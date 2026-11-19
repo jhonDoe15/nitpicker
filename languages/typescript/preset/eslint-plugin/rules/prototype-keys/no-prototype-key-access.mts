@@ -108,13 +108,13 @@ export const rule: Rule = {
     },
   },
   create(context) {
-    const check = (node: TSESTree.Node): void => {
+    function check(node: TSESTree.Node): void {
       const loop = loopOf(node);
       const write = loop === undefined ? undefined : pollutingWrite(context, loop);
       if (write !== undefined) {
         context.report({ node: write, messageId: 'write' });
       }
-    };
+    }
     return {
       ForInStatement: check,
       ForOfStatement: check,

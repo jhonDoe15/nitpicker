@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
 import type { TypedFacts as Facts } from '../../promises/cannot-reject.mts';
-import { depthFirst, nameOf, variableNamed } from '../../typed/node-views.mts';
+import { chainOf, depthFirst, nameOf, variableNamed } from '../../typed/node-views.mts';
 import { isReference } from '../../typed/typescript-views.mts';
 import { syntaxChildren } from '../../decided/syntax.mts';
 import { plainText } from '../conditions.mts';
@@ -15,15 +15,14 @@ export type Lookup = {
 const MAPS = new Set(['Map', 'WeakMap', 'ReadonlyMap']);
 
 export function unwrap(node: TSESTree.Node): TSESTree.Node {
-  let current = node;
-  while (
+  const chain = chainOf<TSESTree.Node>(node, (current) =>
     current.type === AST_NODE_TYPES.ChainExpression ||
     current.type === AST_NODE_TYPES.TSNonNullExpression ||
     current.type === AST_NODE_TYPES.TSAsExpression
-  ) {
-    current = current.expression;
-  }
-  return current;
+      ? current.expression
+      : undefined,
+  );
+  return chain.at(-1) ?? node;
 }
 
 function methodCall(node: TSESTree.Node, name: string): TSESTree.CallExpression | undefined {
@@ -79,21 +78,35 @@ export function boundLookup(scope: Facts, node: TSESTree.Node): Lookup | undefin
     : undefined;
 }
 
+function isStoreOf(
+  scope: Facts,
+  call: TSESTree.CallExpression,
+  target: { readonly receiver: string; readonly key: string },
+): boolean {
+  return (
+    call.callee.type === AST_NODE_TYPES.MemberExpression &&
+    plainText(call.callee.object, scope.sourceCode) === target.receiver &&
+    plainText(call.arguments[0] ?? call, scope.sourceCode) === target.key
+  );
+}
+
 export function storeCalls(
   scope: Facts,
   region: readonly TSESTree.Node[],
   lookup: Lookup,
 ): TSESTree.CallExpression[] {
-  const receiver = plainText(lookup.receiver, scope.sourceCode);
-  const key = plainText(lookup.key, scope.sourceCode);
-  return region
-    .flatMap((root) => [...depthFirst<TSESTree.Node>(root, syntaxChildren)])
-    .filter(
-      (candidate): candidate is TSESTree.CallExpression =>
-        methodCall(candidate, 'set') === candidate &&
-        candidate.type === AST_NODE_TYPES.CallExpression &&
-        candidate.callee.type === AST_NODE_TYPES.MemberExpression &&
-        plainText(candidate.callee.object, scope.sourceCode) === receiver &&
-        plainText(candidate.arguments[0] ?? candidate, scope.sourceCode) === key,
-    );
+  const target = {
+    receiver: plainText(lookup.receiver, scope.sourceCode),
+    key: plainText(lookup.key, scope.sourceCode),
+  };
+  const stores: TSESTree.CallExpression[] = [];
+  for (const root of region) {
+    for (const candidate of depthFirst<TSESTree.Node>(root, syntaxChildren)) {
+      const call = methodCall(candidate, 'set');
+      if (call !== undefined && call === candidate && isStoreOf(scope, call, target)) {
+        stores.push(call);
+      }
+    }
+  }
+  return stores;
 }

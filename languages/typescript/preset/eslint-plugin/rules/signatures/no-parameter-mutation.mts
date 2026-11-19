@@ -1,4 +1,4 @@
-import { type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { typedScopeOf, type TypedScope } from '../promises/cannot-reject.mts';
 import { type FunctionNode } from '../typed/syntax-views.mts';
 import { helperMutation } from './aliases/helper-mutations.mts';
@@ -38,7 +38,8 @@ function findHit(
   if (mutationAt(scope, node) !== undefined) {
     return mutationHit(scope, node);
   }
-  const helper = node.type === 'CallExpression' ? helperMutation(scope, node, helpers) : undefined;
+  const helper =
+    node.type === AST_NODE_TYPES.CallExpression ? helperMutation(scope, node, helpers) : undefined;
   return helper === undefined
     ? undefined
     : {
@@ -46,6 +47,20 @@ function findHit(
         messageId: 'helperMutation',
         data: { name: scope.sourceCode.getText(helper.argument), callee: helper.callee },
       };
+}
+
+type HitState = {
+  readonly scope: Scope;
+  readonly helpers: Map<FunctionNode, Set<number>>;
+  readonly reported: Set<TSESTree.Node>;
+};
+
+function reportHit({ scope, helpers, reported }: HitState, node: TSESTree.Node): void {
+  const hit = findHit(scope, node, helpers);
+  if (hit !== undefined && !reported.has(hit.parameter)) {
+    reported.add(hit.parameter);
+    scope.context.report({ node, messageId: hit.messageId, data: hit.data });
+  }
 }
 
 export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
@@ -78,22 +93,24 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
     if (scope === undefined) {
       return {};
     }
-    const helpers = new Map<FunctionNode, Set<number>>();
-    const reported = new Set<TSESTree.Node>();
-    const visit = (node: TSESTree.Node): void => {
-      const hit = findHit(scope, node, helpers);
-      if (hit !== undefined && !reported.has(hit.parameter)) {
-        reported.add(hit.parameter);
-        context.report({ node, messageId: hit.messageId, data: hit.data });
-      }
+    const state = {
+      scope,
+      helpers: new Map<FunctionNode, Set<number>>(),
+      reported: new Set<TSESTree.Node>(),
     };
     return {
-      CallExpression: visit,
-      AssignmentExpression: visit,
-      UpdateExpression: visit,
+      CallExpression(node: TSESTree.CallExpression) {
+        reportHit(state, node);
+      },
+      AssignmentExpression(node: TSESTree.AssignmentExpression) {
+        reportHit(state, node);
+      },
+      UpdateExpression(node: TSESTree.UpdateExpression) {
+        reportHit(state, node);
+      },
       UnaryExpression(node: TSESTree.UnaryExpression) {
         if (node.operator === 'delete') {
-          visit(node);
+          reportHit(state, node);
         }
       },
     };

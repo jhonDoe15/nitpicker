@@ -43,7 +43,7 @@ export function keyName(property: TSESTree.Property): string | undefined {
   if (key.type === AST_NODE_TYPES.Literal) {
     return typeof key.value === 'string' ? key.value : undefined;
   }
-  return key.type === AST_NODE_TYPES.Identifier ? key.name : undefined;
+  return key.name;
 }
 
 export function isTextOrNumber(node: TSESTree.Node): boolean {
@@ -54,12 +54,15 @@ export function isTextOrNumber(node: TSESTree.Node): boolean {
   );
 }
 
-export function rootIdentifier(node: TSESTree.Node): TSESTree.Identifier | undefined {
-  let current = node;
-  while (current.type === AST_NODE_TYPES.MemberExpression) {
-    current = current.object;
+function rootIdentifier(node: TSESTree.Node): TSESTree.Identifier | undefined {
+  const chain: TSESTree.Node[] = [node];
+  for (const current of chain) {
+    if (current.type !== AST_NODE_TYPES.MemberExpression) {
+      return current.type === AST_NODE_TYPES.Identifier ? current : undefined;
+    }
+    chain.push(current.object);
   }
-  return current.type === AST_NODE_TYPES.Identifier ? current : undefined;
+  return undefined;
 }
 
 export function isParameterBased(facts: Facts, node: TSESTree.Node): boolean {

@@ -18,13 +18,9 @@ function patternTest(
   node: TSESTree.Node,
 ): { test: (text: string) => boolean; source: string } | undefined {
   const plain = resolveConstant(context, node);
-  if (plain?.type === AST_NODE_TYPES.Literal && 'regex' in plain && plain.regex !== undefined) {
-    try {
-      const pattern = new RegExp(plain.regex.pattern, plain.regex.flags.replace(/[gy]/gu, ''));
-      return { test: (text) => pattern.test(text), source: plain.regex.pattern };
-    } catch {
-      return undefined;
-    }
+  if (plain?.type === AST_NODE_TYPES.Literal && 'regex' in plain) {
+    const pattern = new RegExp(plain.regex.pattern, plain.regex.flags.replace(/[gy]/gu, ''));
+    return { test: (text) => pattern.test(text), source: plain.regex.pattern };
   }
   const value = stringValue(plain);
   return value === undefined ? undefined : { test: (text) => text.includes(value), source: value };
@@ -52,15 +48,18 @@ export function replacementOf(
 
 export function chainOf(context: Context, outermost: TSESTree.CallExpression): Replacement[] {
   const chain: Replacement[] = [];
-  let current: TSESTree.Node = outermost;
-  while (current.type === AST_NODE_TYPES.CallExpression) {
+  const pending: TSESTree.Node[] = [outermost];
+  for (const current of pending) {
+    if (current.type !== AST_NODE_TYPES.CallExpression) {
+      break;
+    }
     const replacement = replacementOf(context, current);
     const callee: TSESTree.Node = unwrapped(current.callee);
     if (replacement === undefined || callee.type !== AST_NODE_TYPES.MemberExpression) {
       break;
     }
     chain.unshift(replacement);
-    current = unwrapped(callee.object);
+    pending.push(unwrapped(callee.object));
   }
   return chain;
 }
@@ -72,9 +71,9 @@ export function chainRoot(chain: readonly Replacement[]): TSESTree.Node | undefi
 
 export function isOutermost(context: Context, call: TSESTree.CallExpression): boolean {
   const member = call.parent;
-  const outer = member?.parent;
+  const outer = member.parent;
   return !(
-    member?.type === AST_NODE_TYPES.MemberExpression &&
+    member.type === AST_NODE_TYPES.MemberExpression &&
     member.object === call &&
     outer?.type === AST_NODE_TYPES.CallExpression &&
     outer.callee === member &&

@@ -30,11 +30,11 @@ tester.run('no-lookup-as-presence', rule, {
     'const counts = new Map<string, number>(); export const a = (k: string) => { const n = counts.get(k) || 0; ' +
       'counts.set(k, n + 1); return n; };',
     'const ids = new Map<number, string>(); export const b = (i: number) => { let id = ids.get(i); if (!id) { id ' +
-      '= `synth_${i}`; ids.set(i, id); } return id; };',
+      `= \`synth_\${i}\`; ids.set(i, id); } return id; };`,
     'const names = new Map<string, string>(); export const c = (k: string) => { if (!names.get(k)) { ' +
       'names.set(k, "n"); } return 1; };',
     'export function f(r: Record<string, unknown>, k: string) { return r[k] != null ? 1 : 2; }',
-    'export function f(r: Record<string, unknown>, k: string) { if (r[k] === undefined) { return `Missing ${k}`; ' +
+    `export function f(r: Record<string, unknown>, k: string) { if (r[k] === undefined) { return \`Missing \${k}\`; ` +
       '} return null; }',
     'export function f(r: Record<string, unknown>, k: string) { if (r[k] === undefined) { throw new ' +
       'Error("missing"); } return 1; }',

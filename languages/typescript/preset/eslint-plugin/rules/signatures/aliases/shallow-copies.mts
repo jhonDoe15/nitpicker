@@ -6,7 +6,7 @@ import {
   ASSERTION_FORMS,
   type FunctionNode,
 } from '../../typed/syntax-views.mts';
-import { nameOf } from '../../typed/node-views.mts';
+import { chainOf, nameOf } from '../../typed/node-views.mts';
 import { returnedValues } from '../../comparisons/comparator-outcomes.mts';
 import { changedParameter } from '../parameter-owners.mts';
 import { isObjectAssign } from '../parameter-copies.mts';
@@ -80,14 +80,19 @@ function copyOf(scope: MutationScope, init: TSESTree.Node): Copy | undefined {
 }
 
 function chain(object: TSESTree.Node): { root: TSESTree.Identifier; first: string } | undefined {
-  let current = unwrapOf(object, ASSERTION_FORMS);
-  let first: string | undefined;
-  while (current.type === AST_NODE_TYPES.MemberExpression) {
-    first = current.computed ? undefined : nameOf(current.property);
-    current = unwrapOf(current.object, ASSERTION_FORMS);
-  }
-  return current.type === AST_NODE_TYPES.Identifier && first !== undefined
-    ? { root: current, first }
+  const members = chainOf<TSESTree.Node>(unwrapOf(object, ASSERTION_FORMS), (current) =>
+    current.type === AST_NODE_TYPES.MemberExpression
+      ? unwrapOf(current.object, ASSERTION_FORMS)
+      : undefined,
+  );
+  const root = members.at(-1);
+  const innermost = members.slice(0, -1).at(-1);
+  const first =
+    innermost?.type === AST_NODE_TYPES.MemberExpression && !innermost.computed
+      ? nameOf(innermost.property)
+      : undefined;
+  return root?.type === AST_NODE_TYPES.Identifier && first !== undefined
+    ? { root, first }
     : undefined;
 }
 

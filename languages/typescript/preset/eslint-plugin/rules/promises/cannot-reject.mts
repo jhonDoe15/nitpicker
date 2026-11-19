@@ -48,6 +48,14 @@ export function typedScopeOf<MessageIds extends string>(
   return hasTypeInformation(services) ? { context, sourceCode, services } : undefined;
 }
 
+export function typedListeners<MessageIds extends string>(
+  context: Readonly<TSESLint.RuleContext<MessageIds, []>>,
+  build: (scope: TypedScope<MessageIds>) => TSESLint.RuleListener,
+): TSESLint.RuleListener {
+  const scope = typedScopeOf(context);
+  return scope === undefined ? {} : build(scope);
+}
+
 export function isThenable(checker: TypeScript.TypeChecker, node: TypeScript.Node): boolean {
   return partsOf(checker.getTypeAtLocation(node)).some((part) => {
     const then = checker.getApparentType(part).getProperty('then');

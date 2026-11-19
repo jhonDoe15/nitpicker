@@ -1,19 +1,12 @@
 import type TypeScript from 'typescript';
 import { ts } from '../typed/typescript-views.mts';
+import { isUnconstrained } from '../presence/value-facts.mts';
 import { partsOf } from '../analysis/narrowing/type-parts.mts';
 
 const NULLISH = ts.TypeFlags.Null | ts.TypeFlags.Undefined | ts.TypeFlags.Void;
 const STRING = ts.TypeFlags.String;
 const NON_EMPTY_STRING = ts.TypeFlags.StringLiteral;
 const BOOLEAN = ts.TypeFlags.Boolean | ts.TypeFlags.BooleanLiteral;
-
-function isUnconstrained(part: TypeScript.Type, checker: TypeScript.TypeChecker): boolean {
-  const constraint = checker.getBaseConstraintOfType(part);
-  return (
-    (part.flags & ts.TypeFlags.TypeParameter) !== 0 &&
-    (constraint === undefined || (constraint.flags & ts.TypeFlags.Unknown) !== 0)
-  );
-}
 
 function canBeFalsy(part: TypeScript.Type, checker: TypeScript.TypeChecker): boolean {
   if ((part.flags & STRING) !== 0) {

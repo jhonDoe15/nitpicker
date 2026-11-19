@@ -59,7 +59,7 @@ tester.run('no-case-sensitive-path-compare', rule, {
     path('if (filePath.startsWith(config.rootDir)) {}'),
     path('if (outDir === options.rootDir) {}'),
     path('if (outDirectory.endsWith(build.dir)) {}'),
-    path('if (`${a.workspaceRoot}/x` === b.projectRoot) {}'),
+    path(`if (\`\${a.workspaceRoot}/x\` === b.projectRoot) {}`),
     authority('if (connection?.remoteAuthority === uri.authority) {}'),
     authority('if (a.authority !== b.authority) {}'),
     authority('if (requestUrl.host === remoteAuthority) {}'),
