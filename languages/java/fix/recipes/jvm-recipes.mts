@@ -28,6 +28,7 @@ import { plainTextRegexRecipe } from './kotlin/performance/regexes/plain-text-re
 import { saveInLoopRecipe } from './kotlin/performance/repositories/loops/save-in-loop.mts';
 import { sleepInsteadOfDelayRecipe } from './kotlin/performance/coroutines/sleep-instead-of-delay.mts';
 import { entityExistsRecipe } from './kotlin/performance/repositories/existence/entity-exists.mts';
+import { kotlinCompatibilityShimRecipe } from './kotlin/shims/compatibility-shim.mts';
 import { focusedTestRecipe } from './kotlin/tests/focused-tests.mts';
 import { kotlinRetryInTestRecipe } from './kotlin/tests/retry-in-test.mts';
 import { validationTargetRecipe } from './kotlin/validation/validation-target.mts';
@@ -85,6 +86,7 @@ export const JVM_RECIPES = defineRecipes([
   entityExistsRecipe,
   focusedTestRecipe,
   kotlinRetryInTestRecipe,
+  kotlinCompatibilityShimRecipe,
   validationTargetRecipe,
   javaRestatingDocCommentRecipe,
   kotlinRestatingDocCommentRecipe,
