@@ -70,7 +70,8 @@ are listed at the end.
 | Results of new-value methods                    | assign or return the result: `query = query.filter(...)`, `expires = expires.replace(microsecond=0)`; unpack the tuple of `delete()` or `get_or_create()` before testing it            | `discarded-new-value` (script)                                                                                                                                                                                                                                                                                                                                                      |
 | Results returned by a function                  | `return helper(...)`, or assign the result and return it                                                                                                                               | `unreturned-result` (script)                                                                                                                                                                                                                                                                                                                                                        |
 | Request text in a lookup                        | `name.strip()` before the lookup, or `ConfigDict(str_strip_whitespace=True)` on a shared base model                                                                                    | `untrimmed-request-text` (script)                                                                                                                                                                                                                                                                                                                                                   |
-| Changing an argument                            | build and return a new value, or copy the argument first                                                                                                                               | `parameter-mutation` (script)                                                                                                                                                                                                                                                                                                                                                       |
+| Changing an argument                            | build and return a new value, or copy the argument first (`copy.deepcopy` for nested items)                                                                                            | `parameter-mutation` (script)                                                                                                                                                                                                                                                                                                                                                       |
+| Shared defaults and cached results              | hand over a copy (`copy.deepcopy(DEFAULTS)`), keep shared defaults read-only (`MappingProxyType`, tuple, `frozenset`), return a tuple from a cached function                           | `shared-state-mutation` (script)                                                                                                                                                                                                                                                                                                                                                    |
 | Compatibility shims                             | change every caller in the same change and delete the old name                                                                                                                         | `compatibility-shim` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Values in regex patterns                        | `re.escape(value)` inside a pattern, `in`/`startswith`/`==` for plain text, `re.compile(pattern)` with a whole pattern                                                                 | `regex-unescaped-value` (script)                                                                                                                                                                                                                                                                                                                                                    |
 | Values in LDAP and SCIM filters                 | `escape_filter_chars(value)` (`ldap3.utils.conv`, `ldap.filter`) or `filter_format` inside an LDAP filter; a quoted, escaped value (`json.dumps(value)`) in a SCIM filter              | `filter-unescaped-value` (script)                                                                                                                                                                                                                                                                                                                                                   |
@@ -1942,6 +1943,48 @@ ids: return`, `if not q:`), a `Q` that is not the Django one and test files. A l
   ORM entity) are skipped like class instances in the TypeScript preset. A constructor
   that changes its argument is reported like any other function. The allowed form returns a new
   value (`[*items, item]`, `{**table, key: value}`) or copies the argument first.
+- `parameter-mutation` also follows a parameter, annotated or not, into what it holds. In a public
+  function it reports a change to an object that the function reached through an item read of a
+  parameter (`message.content[0].append(x)`, `table["a"]["b"].pop(k)`), through a local that was
+  bound to an attribute or item read (`merged = first.content`, then `merged.append(x)`), through a
+  loop or comprehension variable over a parameter's attribute, item, `.values()` or `.items()`
+  (`for block in message.content: block.pop("index")`), and through a container the function
+  filled with a parameter (`payload[k] = p`, then `payload[k].update(...)`). Over a bare
+  parameter, a loop variable counts only when the annotation names a collection of
+  collections (`list[dict[str, int]]`). The changes are `.append`, `.extend`, `.insert`, `.setdefault`,
+  `.popitem`, `.pop`, `.sort`, `.reverse`, `.update(other)` and an item assignment or `del`. A
+  shallow copy (`dict(p)`, `p.copy()`, `{**p}`, `p[:]`, `list(p)`) protects one level only, so
+  `copy["nested"]["k"] = v` and `copy["nested"].append(x)` are reported while `copy["k"] = v` is
+  not. `copy.deepcopy`, a rebinding to a new value (`block = {k: v for ...}`), a comprehension, a
+  fresh local and read-only annotations (`Sequence`, `Mapping`, `str`, `tuple`) stop the walk. A
+  change made straight on an attribute of a parameter (`owner.tags.append(x)`,
+  `owner.background.update(items)`), the way an object argument is filled, `add`, `remove`,
+  `clear` and keyword `update(...)` (they are also methods of ORM managers and querysets) are not
+  reported, to keep the rule quiet where the receiver is not known to be a collection. A
+  parameter changed directly is reported once, as before. Expect some noise on functions that
+  exist to fill an argument object; copy first or exclude the path.
+- `shared-state-mutation` reports shared mutable values that the code changes through a second
+  holder. A module-level `dict`, `list` or `set` (a literal, a comprehension, `dict()`,
+  `defaultdict(...)`, `deque(...)`; bound once, in this file or imported from a project module) that is
+  passed to a project class constructor, positionally or by keyword, or stored in `self.x`, is
+  reported at that line when the receiving class changes it: its `__init__` stores the parameter
+  in `self.x` (or is a `@dataclass` field) and any method of the class calls a mutating method on
+  `self.x`, assigns an item of it or applies an in-place operator, or `__init__` changes the
+  parameter itself. A function decorated with `functools.cache` or `lru_cache` whose `return`
+  is a list, dict or set (a literal, a comprehension, `list()`, `sorted()`, `dict()` or a local
+  built from one) is reported at its definition when some caller in the project changes the
+  result: `get()` then `.append`, an item assignment on it, or `result = get()` followed by such
+  a change of `result` in the same function. The callee is the function of the same
+  file, the one the call imports, or `self.name()` in the same file. A constructor is the class of
+  the same file, the one the call imports, or the only project class of that name. Class attributes bound to
+  a mutable literal and changed through `self` are `module-level-mutable-state`'s (it names them
+  as `Class.attr in method`), and ruff `RUF012` stays off. Quiet: a tuple, `frozenset`,
+  `MappingProxyType`, `copy.deepcopy(CONST)` or `dict(CONST)` handed over, a receiver that copies
+  the parameter before keeping it, a class that never changes what it received, a cached function
+  that returns an immutable value and callers that copy the result first. A constructor that
+  cannot be matched to one project class by name, a value read through `django.conf.settings`
+  and a callee in a class that the project does not define are not followed. Test files are
+  skipped.
 - `regex-unescaped-value` reports a function argument built into the pattern of a `re` or `regex`
   call (`compile`, `match`, `search`, `fullmatch`, `sub`, `subn`, `split`, `findall`, `finditer`,
   also imported by name or passed as `pattern=`) through an f-string, `+`, `%` or `str.format`,

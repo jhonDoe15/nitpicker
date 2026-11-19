@@ -117,6 +117,7 @@
   "python-rules/serializer-null-mismatch": ["bug", "persistence"],
   "python-rules/server-or-container-per-test": ["tests", "performance"],
   "python-rules/service-locator-lookup": ["maintainability"],
+  "python-rules/shared-state-mutation": ["bug"],
   "python-rules/shared-test-state": ["tests"],
   "python-rules/shell-command": ["security"],
   "python-rules/signal-receiver-never-connected": ["bug", "persistence"],

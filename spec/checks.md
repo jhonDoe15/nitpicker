@@ -172,6 +172,12 @@ committed separately, with no `transaction.atomic()` or `session.begin()` around
 `check-then-write-race` (a read of a model that decides a create of the same model, without a lock, an atomic form
 or a transaction). They live in `languages/python/rules/related_writes/`.
 
+Python shared-state rules: `parameter-mutation` (a public function that changes a caller's list, dict or set, also one
+reached through an attribute, an item, a loop variable, a stored alias or one level below a shallow copy) and
+`shared-state-mutation` (a module-level mutable value handed to a project class that changes it, and a
+`functools.cache` function whose list, dict or set result a caller changes). They live in
+`languages/python/rules/{signatures,sharing}/`.
+
 Python job rule: `job-item-failure-stops-run` (a loop in a Celery task, an APScheduler job or a Django management
 command that does database or remote I/O per item with no `try` around one item, so the first failing item
 stops the rest). It lives in `languages/python/rules/jobs/`.

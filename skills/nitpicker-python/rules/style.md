@@ -42,7 +42,7 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   and a `TODO` or `FIXME` carries an issue (`# TODO(#123): ...`, `# TODO PROJ-123: ...` or a link).
 - Signatures: a value with three states is an enum, not `bool | None`; test `None` with
   `x if x is not None else default`, never `x or default`; return a new list or dict instead of
-  changing an argument (`items.append`). When code moves, change every caller and delete the old
+  changing an argument (`items.append`, also `message.content[0].pop(k)`; `copy.deepcopy` first for nested data). Hand a module-level dict, list or set to a class as a copy (`copy.deepcopy(DEFAULTS)`) and return a tuple, `frozenset` or `MappingProxyType` from a `@cache` function (`shared-state-mutation`). When code moves, change every caller and delete the old
   name: no alias (`Old = New`), module `__getattr__`, `@deprecated` or `DeprecationWarning` shim.
 - Parsed or posted input can hold a key with `null`: `body.get("alt", "")` and `"k" in body` then still give `None`
   (`null-valued-input-key`). Write `body.get("alt") or ""` for an empty default, or
