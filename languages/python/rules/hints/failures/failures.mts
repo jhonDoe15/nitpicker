@@ -35,4 +35,12 @@ export const FAILURE_HINTS: readonly RuleHint[] = [
     allowed:
       'Handle the missing value: `if schedule is None: return None`, or raise a domain error (`raise NotFound(...)`, `raise HTTPException(404)`), or use the value only when present (`schedule.name if schedule else None`). Keep `assert` for a value this function just built.',
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['warning-filter-in-function'],
+    describe: (subject) =>
+      `\`${subject}\` changes the warning filters of the whole process from inside a function: with several threads one thread's restore undoes another's filter, so warnings are lost or shown at random, and saving and restoring the filters costs time on every call`,
+    allowed:
+      'Fix the call that warns, or warn with a targeted category (`warnings.warn(message, MyDeprecationWarning, stacklevel=2)`) and let the caller filter it. Set filters once at program start: in `main()`, a `__main__` module, a console-script entry point or `-W` / `PYTHONWARNINGS`. In tests use `pytest.warns` or a `filterwarnings` mark.',
+  },
 ];
