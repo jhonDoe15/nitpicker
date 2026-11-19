@@ -170,7 +170,7 @@ function runSingle(cli: ConfiguredCli, currentProjectRoot: string): ExitCode {
   const profile = applyRunProfile(withRepositoryChecks(analyzers, cli.configOverlay), options);
   const setup: RunSetup = {
     ...labeledRun(profile, { ...options, preset: config.preset, stderr: cli.stderr }),
-    captureHead: stagedCapture(cli, currentProjectRoot),
+    captureHead: sharedCapture(cli) ?? stagedCapture(cli, currentProjectRoot),
     setupErrors: emptySourcesErrors(config, currentProjectRoot, { headPolicy, ...options }),
   };
   writeNotes(cli.stderr, describeDisableCascade(presetSet, config));
@@ -186,6 +186,11 @@ function runSingle(cli: ConfiguredCli, currentProjectRoot: string): ExitCode {
     () => (options.all ? runSnapshot(cli, run) : runComparison(cli, run)),
   );
   return numberOr(exitCode, 2);
+}
+
+function sharedCapture(cli: ConfiguredCli): (() => string) | undefined {
+  const commitSha = cli.sharedHeadWorktree?.commitSha;
+  return commitSha === undefined ? undefined : () => commitSha;
 }
 
 function runSnapshot(cli: ConfiguredCli, run: ConfiguredRun): unknown {
@@ -211,6 +216,7 @@ function runSnapshot(cli: ConfiguredCli, run: ConfiguredRun): unknown {
     runTasks: cli.runTasks,
     scope: run.scope,
     additionalToolErrors: fixToolErrors,
+    sharedHeadWorktree: cli.sharedHeadWorktree,
   });
 }
 

@@ -7,10 +7,9 @@ import {
 } from '../snapshot/reporters.mts';
 import { analyzerRunOptions, selectAnalyzers } from '../diff/execution/run-analyzers.mts';
 import { withNamedTemporaryWorktree } from '../diff/git/repository/worktree.mjs';
-import {
-  prepareSnapshotDependencies,
-  removeSnapshotDependencies,
-} from '../../languages/typescript/adapters/static-checks/dependencies.mts';
+import { removeSnapshotDependencies } from '../../languages/typescript/adapters/static-checks/dependencies.mts';
+import { prepareShared } from '../diff/comparison/snapshots/dependencies.mts';
+import type { SharedWorktree } from '../diff/comparison/snapshots/run-types.mts';
 import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
 import { type QualitySnapshot, runQualitySnapshot } from '../snapshot/run-snapshot.mts';
 import {
@@ -64,6 +63,7 @@ type SnapshotCli = {
   readonly labels?: LabelFilter | undefined;
   readonly setupErrors: readonly object[];
   readonly additionalToolErrors?: readonly unknown[];
+  readonly sharedHeadWorktree?: SharedWorktree | undefined;
 };
 
 type SnapshotReport = QualitySnapshot & { text?: unknown };
@@ -77,6 +77,7 @@ type WorktreeRun = {
   readonly headPolicy: unknown;
   readonly scope: unknown;
   readonly setupErrors: readonly object[];
+  readonly sharedHead?: SharedWorktree | undefined;
 };
 
 const inWorktree: (
@@ -93,11 +94,6 @@ const runStampOf: (request: {
   readonly outputRoot: string;
 }) => object = untypedRunStamp;
 const capturedTree: Capture = captureWorkingTree;
-const prepareDependencies: (options: {
-  readonly projectRoot: string;
-  readonly liveProjectRoot: string;
-  readonly toolRoot: unknown;
-}) => unknown = prepareSnapshotDependencies;
 
 function isCapture(value: unknown): value is Capture {
   return typeof value === 'function';
@@ -108,8 +104,7 @@ function stderrWarning(stderr: TextOutput): (message: string) => unknown {
 }
 
 export function runSnapshotCli(cli: SnapshotCli): number {
-  const { options, currentProjectRoot, analyzers, headPolicy, runTasks, scope } = cli;
-  const { setupErrors } = cli;
+  const { options, currentProjectRoot, analyzers, headPolicy, runTasks, scope, setupErrors } = cli;
   const outputRoot = textOf(outputRootFor(currentProjectRoot, options.outputRoot, 'snapshot'));
   const selectedAnalyzers = selectAnalyzers(analyzers, options.analyzerNames);
   if (selectedAnalyzers.length === 0) {
@@ -122,8 +117,10 @@ export function runSnapshotCli(cli: SnapshotCli): number {
     cli,
     selectedAnalyzers,
   );
-  const report = inWorktree(repositoryRoot, snapshot, (worktreeRoot) =>
-    runInSnapshotWorktree(
+  const sharedHead =
+    cli.sharedHeadWorktree?.commitSha === capturedSha ? cli.sharedHeadWorktree : undefined;
+  function inSnapshot(worktreeRoot: string): SnapshotReport {
+    return runInSnapshotWorktree(
       {
         snapshotRoot: path.join(worktreeRoot, relativeProjectPath),
         selectedAnalyzers,
@@ -131,14 +128,15 @@ export function runSnapshotCli(cli: SnapshotCli): number {
         headPolicy,
         scope,
         setupErrors,
+        sharedHead,
       },
-      {
-        ...analyzerRunOptions({ outputRoot, runTasks }),
-        labels: cli.labels,
-        resume,
-      },
-    ),
-  );
+      { ...analyzerRunOptions({ outputRoot, runTasks }), labels: cli.labels, resume },
+    );
+  }
+  const report =
+    sharedHead === undefined
+      ? inWorktree(repositoryRoot, snapshot, inSnapshot)
+      : inSnapshot(sharedHead.root);
   addToolErrors(report, cli.additionalToolErrors ?? []);
   Object.assign(
     report.summary,
@@ -246,6 +244,7 @@ function runInSnapshotWorktree(
     headPolicy,
     scope,
     setupErrors,
+    sharedHead,
   }: WorktreeRun,
   execution: object,
 ): SnapshotReport {
@@ -253,11 +252,11 @@ function runInSnapshotWorktree(
     (analyzer) => fieldOf(analyzer, 'requiresDependencies') === true,
   );
   const dependencies = needsDependencies
-    ? prepareDependencies({
-        projectRoot: snapshotRoot,
-        liveProjectRoot: currentProjectRoot,
-        toolRoot: PACKAGE_ROOT,
-      })
+    ? prepareShared(
+        { projectRoot: snapshotRoot, liveProjectRoot: currentProjectRoot, toolRoot: PACKAGE_ROOT },
+        sharedHead,
+        'head',
+      )
     : undefined;
   try {
     return runQualitySnapshot({

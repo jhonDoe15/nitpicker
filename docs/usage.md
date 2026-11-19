@@ -982,7 +982,7 @@ nitpicker rules [--preset <name>] [--tool <name>] [--label <label>]... [--fixabl
   that matches nothing names the closest projects, and a name and a folder that point at different
   projects are an error. Without a monorepo it is an error.
 - `--jobs <n>`: in a [monorepo](#monorepos), run up to `n` of the selected projects at once (see
-  [Projects at once](#projects-at-once)). The default is a quarter of the CPUs, at least one.
+  [Projects at once](#projects-at-once)). By default the number follows the projects' sizes.
 - `--details`: print every new finding with its full message, and every held finding, in the
   console summary (see [Console summary](#console-summary)).
 - `--json`: print one compact JSON object on stdout instead of the console summary (see
@@ -2485,9 +2485,12 @@ A job that runs one project with `--project` still checks the repository policy 
 
 ### Projects at once
 
-The selected projects run at the same time, up to a quarter of the CPUs (at least one), since each
-project already runs its own analyzers in parallel. `--jobs <n>` sets how many run at once; `--jobs 1`
-runs them one after another. While they run, stderr shows one progress line per step, labelled with
+The selected projects run at the same time, sized by how many files each holds, since each project
+already runs its own analyzers in parallel: a project of up to 100 files takes one CPU, one of up to
+500 files two, and a larger one four, so a workspace of small packages keeps every CPU busy while large
+projects still run about a quarter of the CPUs at once. When no two projects fit together, they run one
+after another. `--jobs <n>` instead runs up to `n` at once whatever their size; `--jobs 1` runs them one
+after another. While they run, stderr shows one progress line per step, labelled with
 the project (`nitpicker: [web] head: running 6 analyzers`). Each project's console output is printed
 as one block when it finishes, in the order of the plan, so the console reads the same as a run one
 project at a time, and the summary and exit code are the same. A project runs in its own process
@@ -2502,7 +2505,12 @@ package-manager root installs it and the others under that root reuse it, one in
 project that holds another selected project (the root project of a repository with nested projects,
 or two presets on one folder) gets a base checkout of its own, since its analyzers would otherwise see
 the other project's build output, and so does a Gradle project without its own settings file, whose
-build Gradle runs from an enclosing folder. Each project still checks out its own head.
+build Gradle runs from an enclosing folder.
+
+The same projects share one checkout of the head as well: nitpicker records the working tree as one
+commit for the run (the projects would each record the same tree) and adds one git worktree for it,
+so a repository's files are checked out once per run instead of once per project. A `--staged` run
+and the projects that get a base checkout of their own still check out their own head.
 
 ### Reports and exit code
 

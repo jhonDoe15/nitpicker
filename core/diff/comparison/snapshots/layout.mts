@@ -64,6 +64,7 @@ type Project = {
   readonly projectRelativePath: string;
   readonly warn?: unknown;
   readonly sharedBaseWorktree?: SharedWorktree | undefined;
+  readonly sharedHeadWorktree?: SharedWorktree | undefined;
 };
 
 type Worktree = { readonly commitSha: string; readonly warn: unknown };
@@ -132,17 +133,26 @@ export function withSnapshotRoots<T>(
     settings.sharedBaseWorktree?.commitSha === comparison.mergeBaseSha
       ? settings.sharedBaseWorktree
       : undefined;
+  const sharedHead =
+    settings.sharedHeadWorktree?.commitSha === comparison.headSha
+      ? settings.sharedHeadWorktree
+      : undefined;
   function withHead(baseWorktreeRoot: string): T {
-    return inNamedWorktree(
-      repositoryRoot,
-      { commitSha: comparison.headSha, directoryName: 'head', warn },
-      (headWorktreeRoot) =>
-        operation({
-          baseProjectRoot: path.join(baseWorktreeRoot, layout.baseProjectRelativePath),
-          headSnapshotRoot: path.join(headWorktreeRoot, projectRelativePath),
-          sharedBase: shared,
-        }),
-    );
+    function inHead(headWorktreeRoot: string): T {
+      return operation({
+        baseProjectRoot: path.join(baseWorktreeRoot, layout.baseProjectRelativePath),
+        headSnapshotRoot: path.join(headWorktreeRoot, projectRelativePath),
+        sharedBase: shared,
+        sharedHead,
+      });
+    }
+    return sharedHead === undefined
+      ? inNamedWorktree(
+          repositoryRoot,
+          { commitSha: comparison.headSha, directoryName: 'head', warn },
+          inHead,
+        )
+      : inHead(sharedHead.root);
   }
   return shared === undefined
     ? inWorktree(repositoryRoot, { commitSha: comparison.mergeBaseSha, warn }, withHead)
