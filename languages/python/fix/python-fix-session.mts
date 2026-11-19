@@ -12,7 +12,7 @@ import {
   toolPrecedenceOf,
   trackTemporaryPath,
   untrackTemporaryPath,
-} from '../../../core/fix/typed/fix-views.mts';
+} from '../../../core/fix/typed/views/fix-views.mts';
 import { createToolContext } from '../adapters/python-tools.mts';
 
 export type ProbeInvocation = { operation?: string };

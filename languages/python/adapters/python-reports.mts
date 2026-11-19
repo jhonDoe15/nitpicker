@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { containedPath } from '../../../core/fix/common/contained-path.mjs';
+import { containedPath } from '../../../core/fix/tool-steps/paths/contained-path.mts';
 import { ingestCoverageBranches } from '../ingest/coverage-reports/coverage-branches.mts';
 import { ingestCoverageJson } from '../ingest/coverage-reports/coverage-json.mts';
 import { withoutLineNumbers } from '../ingest/typed/type-check-views.mts';

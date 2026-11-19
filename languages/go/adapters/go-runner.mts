@@ -4,7 +4,7 @@ import path from 'node:path';
 import {
   trackTemporaryPath,
   untrackTemporaryPath,
-} from '../../../core/tooling/temporary-files.mjs';
+} from '../../../core/tooling/temporary-files.mts';
 import { GO_ANALYZER_NAME, GO_MUTATION_ANALYZER_NAME } from './go-analyzer.mts';
 import { goRouteRule, readGoFindings } from './go-findings.mts';
 import {

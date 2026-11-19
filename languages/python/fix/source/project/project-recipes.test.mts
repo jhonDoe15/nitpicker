@@ -13,7 +13,11 @@ const RECIPES = projectScriptRecipes({ runScript: localRunScript, optionsFor: ()
 const WRAPPER = 'python-rules/forwarding-wrapper';
 const OPTION = 'python-rules/unused-option';
 
-function apply(name: string, rule: string, inputs?: unknown): ReturnType<typeof applyRecipes> {
+function apply(
+  name: string,
+  rule: string,
+  inputs?: Readonly<Record<string, unknown>>,
+): ReturnType<typeof applyRecipes> {
   return applyRecipes(CASES[name] ?? {}, { selectedRules: [rule], recipes: RECIPES, inputs });
 }
 

@@ -3,7 +3,7 @@ import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
 import type { ScanContext } from './typed/coupling-types.mts';
 
 type DuplicatesContext = ScanContext & { readonly duplicateSkippedFolders?: unknown };
-import { DUPLICATES_REPORT } from '../../../../core/tooling/jscpd/run-jscpd.mjs';
+import { DUPLICATES_REPORT } from '../../../../core/tooling/jscpd/run-jscpd.mts';
 import { duplicateFindings } from './typed/shared-views.mts';
 import {
   readDuplicateClones,

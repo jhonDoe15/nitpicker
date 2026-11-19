@@ -2,12 +2,12 @@ import {
   readDuplicateClones,
   runDuplicateScan,
 } from '../../../../core/tooling/jscpd/duplicate-scan.mts';
-import { DUPLICATES_REPORT } from '../../../../core/tooling/jscpd/run-jscpd.mjs';
+import { DUPLICATES_REPORT } from '../../../../core/tooling/jscpd/run-jscpd.mts';
 import {
   GO_DUPLICATE_GLOBS,
   GO_SKIPPED_FOLDERS,
   skippedFolderGlobs as untypedSkippedFolderGlobs,
-} from '../../../../core/tooling/jscpd/skipped-folders.mjs';
+} from '../../../../core/tooling/jscpd/skipped-folders.mts';
 import { duplicateFindings } from '../../../java/adapters/metrics/java-duplicates.mts';
 import { readInspect } from '../structure/go-inspect.mts';
 import { isRow } from '../typed/row-readers.mts';

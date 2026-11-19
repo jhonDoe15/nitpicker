@@ -1,4 +1,4 @@
-import { jscpdVersion as untypedJscpdVersion } from '../../../../core/tooling/jscpd/run-jscpd.mjs';
+import { jscpdVersion as untypedJscpdVersion } from '../../../../core/tooling/jscpd/run-jscpd.mts';
 import { importLinterEnabled } from '../analysis/python-import-linter.mts';
 import { probeVersion } from '../execution/python-process.mts';
 import { pytestLabel, testRunnerLabel } from '../execution/python-test-runner.mts';
