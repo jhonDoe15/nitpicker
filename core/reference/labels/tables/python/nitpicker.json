@@ -22,6 +22,7 @@
   "python-rules/copied-constant-in-test": ["tests"],
   "python-rules/credential-shape": ["security"],
   "python-rules/database-alias-not-passed": ["bug", "persistence"],
+  "python-rules/dataloader-batch-result": ["bug"],
   "python-rules/deleted-item-filter-missing": ["bug"],
   "python-rules/django-types-missing": ["maintainability"],
   "python-rules/dual-write-without-outbox": ["reliability", "persistence"],

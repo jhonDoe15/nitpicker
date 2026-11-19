@@ -40,6 +40,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-remote-call-under-lock',
   'nitpicker/no-remote-call-in-transaction',
   'nitpicker/no-cache-write-in-transaction',
+  'nitpicker/no-dataloader-batch-mismatch',
   'nitpicker/no-lazy-relation-in-loop',
   'nitpicker/no-accumulator-concat',
   'nitpicker/no-array-spread-arguments',
