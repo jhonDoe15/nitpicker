@@ -1,6 +1,6 @@
 import { declarations, eachFrame, ownUses, textsOf } from '../scan.mjs';
 
-export const NAN_GUARD_RULE = 'NanOnlyGuard';
+const NAN_GUARD_RULE = 'NanOnlyGuard';
 
 const STATIC_PARSERS = new Set(['parseDouble', 'parseFloat', 'valueOf']);
 const RECEIVER_PARSERS = new Set(['toDoubleOrNull', 'toFloatOrNull']);
@@ -42,8 +42,8 @@ function nanCallAt(tokens, index) {
 
 function nanCalls(source, { from, to }) {
   const calls = [];
-  for (let index = from; index < to; index += 1) {
-    const call = nanCallAt(source.tokens, index);
+  for (const index of source.tokens.slice(from, to).keys()) {
+    const call = nanCallAt(source.tokens, from + index);
     if (call !== undefined) {
       calls.push(call);
     }
@@ -64,9 +64,13 @@ function findIn(source, range, frame) {
   if (mentionsFinite) {
     return [];
   }
-  const parsed = declarations(source, range).filter((each) => isParsed(source, each));
+  const parsed = new Set(
+    declarations(source, range)
+      .filter((each) => isParsed(source, each))
+      .map(({ name }) => name),
+  );
   return nanCalls(source, range)
-    .filter(({ name }) => parsed.some((each) => each.name === name))
+    .filter(({ name }) => parsed.has(name))
     .filter(({ name }) => !isBounded(source, range, name))
     .map(({ name, line }) => ({ name, line, method: frame.name }));
 }

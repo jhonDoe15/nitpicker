@@ -32,16 +32,34 @@ const STRING_CALLS = new Set([
   'getRequestURL',
 ]);
 
+const SECOND_TO_LAST = -2;
+
 function hasLastWord(name, words) {
   const parts = name === undefined ? [] : wordsOf(name);
   const last = parts.at(-1);
-  return words.has(last) || (last === 'name' && parts.at(-2) === 'package');
+  return words.has(last) || (last === 'name' && parts.at(SECOND_TO_LAST) === 'package');
 }
 
-export const isDirectoryName = (name) => hasLastWord(name, DIRECTORY_WORDS);
-export const isHostName = (name) => hasLastWord(name, HOST_WORDS);
-export const isLocationName = (name) => hasLastWord(name, LOCATION_WORDS);
-export const isPrefixName = (name) => name?.toLowerCase() === 'prefix';
-export const isSeparatorName = (name) =>
-  name !== undefined && wordsOf(name).some((word) => SEPARATOR_WORDS.has(word));
-export const isStringCall = (name) => STRING_CALLS.has(name);
+export function isDirectoryName(name) {
+  return hasLastWord(name, DIRECTORY_WORDS);
+}
+
+export function isHostName(name) {
+  return hasLastWord(name, HOST_WORDS);
+}
+
+export function isLocationName(name) {
+  return hasLastWord(name, LOCATION_WORDS);
+}
+
+export function isPrefixName(name) {
+  return name?.toLowerCase() === 'prefix';
+}
+
+export function isSeparatorName(name) {
+  return name !== undefined && wordsOf(name).some((word) => SEPARATOR_WORDS.has(word));
+}
+
+export function isStringCall(name) {
+  return STRING_CALLS.has(name);
+}

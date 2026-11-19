@@ -2,7 +2,7 @@ import { forward, splitTopLevel } from '../../max-value-sums/source-file.mjs';
 import { textOf } from '../../token-calls/calls.mjs';
 import { declarations, eachFrame, ownUses } from '../scan.mjs';
 
-export const NEGATIVE_COUNT_RULE = 'NegativeCountArgument';
+const NEGATIVE_COUNT_RULE = 'NegativeCountArgument';
 
 const MEMBER_SINKS = new Set(['repeat', 'take', 'takeLast', 'drop', 'dropLast']);
 const CONSTRUCTORS = new Set(['ArrayList', 'List']);
@@ -18,7 +18,10 @@ function argumentsOf(source, name, open) {
     return [];
   }
   const parts = splitTopLevel(source, { from: open + 1, to: close });
-  return name === 'copyOf' ? parts.slice(1, 2) : parts.length === 1 ? parts : [];
+  if (name === 'copyOf') {
+    return parts.slice(1, 2);
+  }
+  return parts.length === 1 ? parts : [];
 }
 
 function sinkOpen(source, index) {
@@ -81,22 +84,19 @@ function isComputedLimit(source, frameRange, { left, right }) {
 }
 
 function windowEnd(tokens, from, limit) {
-  let end = from;
-  while (end < limit && !['{', ';'].includes(tokens[end].text)) {
-    end += 1;
-  }
-  return end;
+  const stop = tokens.slice(from, limit).findIndex(({ text }) => ['{', ';'].includes(text));
+  return stop === -1 ? limit : from + stop;
 }
 
 function guardWindows(source, { frameRange, sinkIndex }) {
   const { tokens } = source;
-  let start = sinkIndex;
-  while (start > frameRange.from && ![';', '{', '}'].includes(tokens[start - 1].text)) {
-    start -= 1;
-  }
+  const before = tokens.slice(frameRange.from, sinkIndex);
+  const lastStop = before.findLastIndex(({ text }) => [';', '{', '}'].includes(text));
+  const start = frameRange.from + lastStop + 1;
   const windows = [tokens.slice(start, sinkIndex)];
-  for (let index = frameRange.from; index < sinkIndex; index += 1) {
-    if (['if', 'while'].includes(tokens[index].text)) {
+  for (const [offset, { text }] of before.entries()) {
+    if (['if', 'while'].includes(text)) {
+      const index = frameRange.from + offset;
       windows.push(tokens.slice(index, windowEnd(tokens, index + 1, sinkIndex)));
     }
   }
@@ -144,7 +144,7 @@ function findAt(source, site, frame) {
       subtraction === undefined ||
       clamps(source, argument) ||
       isComputedLimit(source, frameRange, subtraction);
-    if (!skipped && !hasGuard(source, site, subtraction)) {
+    if (!(skipped || hasGuard(source, site, subtraction))) {
       const text = textOf(source, { from: subtraction.left.from, to: subtraction.right.to });
       found.push({ line: source.tokens[sinkIndex].line, name, text, method: frame.name });
     }
@@ -153,11 +153,11 @@ function findAt(source, site, frame) {
 }
 
 function findIn(source, frameRange, frame) {
-  const found = [];
-  for (let sinkIndex = frameRange.from; sinkIndex < frameRange.to; sinkIndex += 1) {
-    found.push(...findAt(source, { frameRange, sinkIndex }, frame));
-  }
-  return found;
+  return source.tokens
+    .slice(frameRange.from, frameRange.to)
+    .flatMap((_, offset) =>
+      findAt(source, { frameRange, sinkIndex: frameRange.from + offset }, frame),
+    );
 }
 
 export const NEGATIVE_COUNT_CHECK = {

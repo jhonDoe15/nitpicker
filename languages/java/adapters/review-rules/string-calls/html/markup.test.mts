@@ -1,60 +1,20 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { readStringCallFindings as untypedRead } from '../string-calls.mjs';
+import { describe, expect, it } from 'vitest';
+import {
+  type LocatedFinding,
+  type ReadFindings,
+  ruleLineRunners,
+} from '../../test-support/scratch-scanner.mts';
+import { readStringCallFindings as untypedRead, UNESCAPED_HTML_RULE } from '../string-calls.mjs';
 
-type Finding = {
-  readonly rule: string;
-  readonly message: string;
-  readonly location: { readonly line: number };
-};
+const read: ReadFindings<LocatedFinding> = untypedRead;
 
-const read: (
-  projectRoot: string,
-  options: { readonly projects: readonly unknown[]; readonly kotlin: boolean },
-) => Finding[] = untypedRead;
-
-const roots: string[] = [];
-const PROJECT = {
-  qualifier: '',
-  sourceRoots: ['src/main/java'],
-  testSourceRoots: ['src/test/java'],
-  kotlinSourceRoots: ['src/main/kotlin'],
-  kotlinTestSourceRoots: ['src/test/kotlin'],
-};
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
+const { java, kotlin } = ruleLineRunners({
+  prefix: 'nitpicker-jvm-markup-',
+  read,
+  rule: UNESCAPED_HTML_RULE,
+  className: 'Pages',
+  javaImports: '',
 });
-
-function scan(file: string, text: string, kotlin: boolean) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-jvm-markup-'));
-  roots.push(root);
-  mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-  writeFileSync(path.join(root, file), text);
-  return read(root, { projects: [PROJECT], kotlin }).filter(
-    ({ rule }) => rule === 'UnescapedHtmlValue',
-  );
-}
-
-function java(body: string) {
-  return scan(
-    'src/main/java/shop/Pages.java',
-    `package shop;\nclass Pages {\n${body}\n}\n`,
-    false,
-  ).map(({ location }) => location.line);
-}
-
-function kotlin(body: string) {
-  return scan(
-    'src/main/kotlin/shop/Pages.kt',
-    `package shop\nclass Pages {\n${body}\n}\n`,
-    true,
-  ).map(({ location }) => location.line);
-}
 
 describe('Java HTML strings', () => {
   it('reports a value concatenated or formatted into markup without escaping', () => {
@@ -113,14 +73,16 @@ describe('Java HTML strings', () => {
 describe('Kotlin HTML strings', () => {
   it('reports a template that puts a value into markup', () => {
     expect(kotlin('fun row(name: String): String =\n  "<td>$name</td>"')).toEqual([4]);
-    expect(kotlin('fun link(user: User): String =\n  "<a href=\\"${user.url}\\">x</a>"')).toEqual([
+    expect(kotlin(`fun link(user: User): String =\n  "<a href=\\"\${user.url}\\">x</a>"`)).toEqual([
       4,
     ]);
   });
 
   it('leaves escaped and numeric template parts alone', () => {
-    expect(kotlin('fun row(name: String): String =\n  "<td>${escapeHtml(name)}</td>"')).toEqual([]);
-    expect(kotlin('fun row(items: List<String>): String =\n  "<td>${items.size}</td>"')).toEqual(
+    expect(kotlin(`fun row(name: String): String =\n  "<td>\${escapeHtml(name)}</td>"`)).toEqual(
+      [],
+    );
+    expect(kotlin(`fun row(items: List<String>): String =\n  "<td>\${items.size}</td>"`)).toEqual(
       [],
     );
     expect(kotlin('fun row(): String =\n  "<td>static</td>"')).toEqual([]);

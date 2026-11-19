@@ -65,7 +65,7 @@ const ENTRIES = [
       `\`replace\` removes every occurrence anywhere in the text, so ` +
       `\`blog.git.io\` loses its \`.git\` and a path that contains ` +
       `the directory twice is rewritten in the wrong place. ` +
-      `${READ_FOR_IT}`,
+      READ_FOR_IT,
   },
   {
     rule: CASE_LOOKUP_RULE,

@@ -1,5 +1,6 @@
 import { splitTopLevel } from '../max-value-sums/source-file.mjs';
 
+const UNICODE_ESCAPE_LENGTH = 5;
 const ESCAPES = { n: '\n', t: '\t', r: '\r', b: '\b', f: '\f', 0: '\0' };
 
 export function stringValue(token) {
@@ -11,7 +12,7 @@ export function stringValue(token) {
     return undefined;
   }
   return body.replaceAll(/\\(u[\da-fA-F]{4}|.)/gu, (_, code) =>
-    code.length === 5
+    code.length === UNICODE_ESCAPE_LENGTH
       ? String.fromCharCode(Number.parseInt(code.slice(1), 16))
       : (ESCAPES[code] ?? code),
   );
@@ -60,14 +61,14 @@ function receiverStep(source, index) {
 
 export function receiverStart(source, dot) {
   let start = dot;
-  let index = dot - 1;
-  while (index >= 0) {
-    const step = receiverStep(source, index);
+  const pending = [dot - 1];
+  for (const index of pending) {
+    const step = index >= 0 ? receiverStep(source, index) : undefined;
     if (step === undefined) {
       break;
     }
     start = step.start;
-    index = step.next;
+    pending.push(step.next);
   }
   return start;
 }
@@ -81,8 +82,4 @@ export function tokenText(source, { from, to }, separator) {
     .slice(from, to)
     .map(({ text }) => text)
     .join(separator);
-}
-
-export function textOf(source, range) {
-  return tokenText(source, range, ' ');
 }

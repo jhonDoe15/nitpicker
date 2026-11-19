@@ -1,3 +1,6 @@
+const READ_FOR_IT =
+  'Nitpicker reads the sources of every module for it and prints it as a PMD rule.';
+
 export const VALUE_CHECK_TEXTS = {
   UncheckedResponseBody: {
     anchor: 'response-bodies-parsed-before-the-status-is-checked',
@@ -10,7 +13,7 @@ export const VALUE_CHECK_TEXTS = {
     why:
       'An error status from a proxy, gateway or CDN usually carries an HTML or empty ' +
       'body, so the parser throws an opaque error and the real status is lost. ' +
-      'Nitpicker reads the sources of every module for it and prints it as a PMD rule.',
+      READ_FOR_IT,
   },
   NanOnlyGuard: {
     anchor: 'nan-only-checks-on-parsed-numbers',
@@ -22,7 +25,7 @@ export const VALUE_CHECK_TEXTS = {
     why:
       '`Infinity` and `-Infinity` pass an `isNaN` check, and a text such as "Infinity" ' +
       'or "1e999" parses to them, so the value goes on as a limit or an amount. ' +
-      'Nitpicker reads the sources of every module for it and prints it as a PMD rule.',
+      READ_FOR_IT,
   },
   NegativeCountArgument: {
     anchor: 'counts-computed-by-subtraction',
@@ -34,7 +37,7 @@ export const VALUE_CHECK_TEXTS = {
     why:
       'A negative count throws `IllegalArgumentException` (or ' +
       '`NegativeArraySizeException`) as soon as the right side is the larger one. ' +
-      'Nitpicker reads the sources of every module for it and prints it as a PMD rule.',
+      READ_FOR_IT,
   },
   IndexBoundOffByOne: {
     anchor: 'index-checks-that-let-the-length-through',
@@ -76,6 +79,6 @@ export const VALUE_CHECK_TEXTS = {
       'The wall clock jumps with NTP corrections, manual changes and VM pauses, so the ' +
       'duration comes out negative or huge and a timeout fires early or never. A ' +
       'monotonic clock reads `System.nanoTime()` and does not move backwards. ' +
-      'Nitpicker reads the sources of every module for it and prints it as a PMD rule.',
+      READ_FOR_IT,
   },
 };

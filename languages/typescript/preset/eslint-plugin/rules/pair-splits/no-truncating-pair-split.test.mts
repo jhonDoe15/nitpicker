@@ -60,6 +60,6 @@ tester.run('no-truncating-pair-split', rule, {
       'export function parse(pair: string) { const [name, secret] = pair.split("="); return name + secret; }',
       '=',
     ),
-    flagged('export const [key, value] = `${prefix}${line}`.split(":");'),
+    flagged(`export const [key, value] = \`\${prefix}\${line}\`.split(":");`),
   ],
 });

@@ -22,27 +22,35 @@ function isPassThrough(parent: Node): boolean {
   );
 }
 
-export type Flow = 'whole' | 'built';
+const WHOLE = 'whole';
+const BUILT = 'built';
 
-export function reachesRegExp(node: Node): Flow | undefined {
-  let current = node;
-  while (current.parent != null) {
-    const { parent } = current;
+export type Flow = typeof WHOLE | typeof BUILT;
+
+function reachesRegExp(node: Node): Flow | undefined {
+  const pending = [node];
+  for (const current of pending) {
+    const parent = current.parent ?? undefined;
+    if (parent === undefined) {
+      return undefined;
+    }
     if (isRegExpArgument(parent, current)) {
-      return current === node ? 'whole' : 'built';
+      return current === node ? WHOLE : BUILT;
     }
     if (!isPassThrough(parent)) {
       return undefined;
     }
-    current = parent;
+    pending.push(parent);
   }
   return undefined;
 }
 
 function boundVariable(context: SourceContext, node: Node): TSESLint.Scope.Variable | undefined {
-  const holder = node.parent;
+  const holder = node.parent ?? undefined;
   const declared =
-    holder != null && holder.type === AST_NODE_TYPES.VariableDeclarator && holder.init === node
+    holder !== undefined &&
+    holder.type === AST_NODE_TYPES.VariableDeclarator &&
+    holder.init === node
       ? holder.id
       : undefined;
   return declared?.type === AST_NODE_TYPES.Identifier
@@ -62,5 +70,5 @@ export function flowsToRegExp(context: SourceContext, node: Node): Flow | undefi
   const flows = variable.references
     .filter(({ init }) => init !== true)
     .map(({ identifier }) => reachesRegExp(identifier));
-  return flows.includes('whole') ? 'whole' : flows.find((flow) => flow !== undefined);
+  return flows.includes(WHOLE) ? WHOLE : flows.find((flow) => flow !== undefined);
 }

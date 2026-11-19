@@ -11,6 +11,20 @@ export type Link = {
 };
 export type Chain = { readonly links: readonly Link[]; readonly root: Node };
 
+export function textReceiverOf(
+  node: TSESTree.CallExpression,
+  methods: ReadonlySet<string>,
+): Node | undefined {
+  if (node.callee.type === AST_NODE_TYPES.MemberExpression) {
+    return methods.has(calleeNameOf(node.callee) ?? '') ? node.callee.object : undefined;
+  }
+  return node.callee.type === AST_NODE_TYPES.Identifier &&
+    node.callee.name === 'String' &&
+    node.arguments.length === 1
+    ? node.arguments[0]
+    : undefined;
+}
+
 const REPLACE_METHODS = new Set<string>(['replace', 'replaceAll']);
 const ESCAPE_NAME = /escape|quote/iu;
 const ESCAPING_REPLACEMENT = /\$[&0-9]|^[\\!^]{1,2}[%_]$/u;
@@ -27,15 +41,16 @@ export function replaceReceiver(node: Node): TSESTree.CallExpression | undefined
 
 export function replaceChainAt(top: TSESTree.CallExpression): Chain {
   const links: Link[] = [];
-  let current: Node = top;
-  for (;;) {
+  const pending: Node[] = [top];
+  for (const current of pending) {
     const call = replaceReceiver(current);
     if (call === undefined || call.callee.type !== AST_NODE_TYPES.MemberExpression) {
       return { links: links.toReversed(), root: current };
     }
     links.push({ call, pattern: call.arguments[0], replacement: stringValue(call.arguments[1]) });
-    current = call.callee.object;
+    pending.push(call.callee.object);
   }
+  return { links, root: top };
 }
 
 export function isChainTop(call: TSESTree.CallExpression): boolean {

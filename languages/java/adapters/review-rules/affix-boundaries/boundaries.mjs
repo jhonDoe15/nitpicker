@@ -13,8 +13,18 @@ export function literalText(token) {
     : undefined;
 }
 
-export function initializerOf(source, name) {
+function statementEnd(source, from) {
   const { tokens, kotlin } = source;
+  const offset = tokens
+    .slice(from)
+    .findIndex(
+      (token, index) => token.text === ';' || (kotlin && startsNewLine(tokens, from + index)),
+    );
+  return offset === -1 ? tokens.length : from + offset;
+}
+
+export function initializerOf(source, name) {
+  const { tokens } = source;
   const at = tokens.findIndex(
     (token, index) =>
       token.text === name &&
@@ -25,68 +35,66 @@ export function initializerOf(source, name) {
   if (at === -1) {
     return undefined;
   }
-  let end = at + 2;
-  while (
-    end < tokens.length &&
-    tokens[end].text !== ';' &&
-    !(kotlin && startsNewLine(tokens, end))
-  ) {
-    end += 1;
-  }
-  return { from: at + 2, to: end };
+  return { from: at + 2, to: statementEnd(source, at + 2) };
 }
 
-export function assignmentsOf(source, name) {
-  const { tokens, kotlin } = source;
+function assignmentsOf(source, name) {
+  const { tokens } = source;
   const ranges = [];
   for (const [index, token] of tokens.entries()) {
     const assigned = token.text === name && ASSIGNMENTS.has(tokens[index + 1]?.text);
-    if (!assigned || tokens[index - 1]?.text === '.') {
-      continue;
+    if (assigned && tokens[index - 1]?.text !== '.') {
+      ranges.push({ from: index + 2, to: statementEnd(source, index + 2) });
     }
-    let end = index + 2;
-    while (
-      end < tokens.length &&
-      tokens[end].text !== ';' &&
-      !(kotlin && startsNewLine(tokens, end))
-    ) {
-      end += 1;
-    }
-    ranges.push({ from: index + 2, to: end });
   }
   return ranges;
 }
 
-function callEnds(source, range, depth) {
+const ENDED = { ended: true, next: [] };
+
+function callStep(source, range, depth) {
   const close = range.to - 1;
   const open = source.partner[close];
   const name = source.tokens[open - 1]?.text;
   if (isSeparatorName(name)) {
-    return true;
+    return ENDED;
   }
   const last = splitTopLevel(source, { from: open + 1, to: close }).at(-1);
-  return JOINING_CALLS.has(name) && last !== undefined && endsWithBoundary(source, last, depth + 1);
+  const joining = JOINING_CALLS.has(name) && last !== undefined;
+  return { ended: false, next: joining ? [{ range: last, depth: depth + 1 }] : [] };
 }
 
-export function endsWithBoundary(source, range, depth = 0) {
-  const { tokens } = source;
-  const last = tokens[range.to - 1];
+function boundaryStep(source, { range, depth }) {
+  const last = source.tokens[range.to - 1];
   if (depth > MAX_DEPTH || last === undefined) {
-    return true;
+    return ENDED;
   }
   const text = literalText(last);
   if (text !== undefined) {
-    return text === '' || BOUNDARY_CHARACTERS.includes(text.at(-1));
+    return { ended: text === '' || BOUNDARY_CHARACTERS.includes(text.at(-1)), next: [] };
   }
   if (last.text === ')') {
-    return callEnds(source, range, depth);
+    return callStep(source, range, depth);
   }
-  const name = lastName(source, range);
-  if (isSeparatorName(name)) {
-    return true;
+  if (isSeparatorName(lastName(source, range))) {
+    return ENDED;
   }
   const assigned = range.to - range.from === 1 ? assignmentsOf(source, last.text) : [];
-  return assigned.some((each) => endsWithBoundary(source, each, depth + 1));
+  return { ended: false, next: assigned.map((each) => ({ range: each, depth: depth + 1 })) };
+}
+
+export function endsWithBoundary(source, start) {
+  const pending = [{ range: start, depth: 0 }];
+  for (const item of pending) {
+    const step = boundaryStep(source, item);
+    if (step.ended) {
+      return true;
+    }
+    for (const next of step.next) {
+      pending.push(next);
+    }
+  }
+  return false;
 }
 
 export function startsWithBoundary(source, range) {

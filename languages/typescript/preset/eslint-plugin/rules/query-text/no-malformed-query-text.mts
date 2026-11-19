@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { orderedOperandsOf } from '../typed/syntax-views.mts';
 import {
   OPAQUE,
   isFullQuery as untypedFull,
@@ -47,10 +48,6 @@ const QUERY_CALLS = new Set([
   'none',
 ]);
 
-function flatten(node: Node): Node[] {
-  return isConcatenation(node) ? [...flatten(node.left), ...flatten(node.right)] : [node];
-}
-
 function textOf(node: Node): string {
   const plain = stringKey(node);
   if (plain !== undefined) {
@@ -90,21 +87,24 @@ function nextStatement(statement: Node): Node | undefined {
     parent?.type === AST_NODE_TYPES.BlockStatement || parent?.type === AST_NODE_TYPES.Program
       ? parent.body
       : [];
-  return list[list.indexOf(statement as never) + 1];
+  return list[list.findIndex((item) => item === statement) + 1];
+}
+
+function calleeName(callee: Node): string | undefined {
+  if (
+    callee.type === AST_NODE_TYPES.MemberExpression &&
+    callee.property.type === AST_NODE_TYPES.Identifier
+  ) {
+    return callee.property.name;
+  }
+  return callee.type === AST_NODE_TYPES.Identifier ? callee.name : undefined;
 }
 
 function isQueryCall(parent: Node): boolean {
   if (parent.type !== AST_NODE_TYPES.CallExpression) {
     return false;
   }
-  const { callee } = parent;
-  const name =
-    callee.type === AST_NODE_TYPES.MemberExpression &&
-    callee.property.type === AST_NODE_TYPES.Identifier
-      ? callee.property.name
-      : callee.type === AST_NODE_TYPES.Identifier
-        ? callee.name
-        : undefined;
+  const name = calleeName(parent.callee);
   return name !== undefined && QUERY_CALLS.has(name);
 }
 
@@ -141,7 +141,7 @@ function adjacentProblem(operands: readonly Node[]): Problem | undefined {
   return undefined;
 }
 
-export const rule: TSESLint.RuleModule<MessageId, []> = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: { description: 'Report query text that is malformed once its literal parts are joined' },
@@ -162,25 +162,22 @@ export const rule: TSESLint.RuleModule<MessageId, []> = {
 
     return {
       BinaryExpression(node) {
-        if (!isConcatenation(node) || (node.parent !== undefined && isConcatenation(node.parent))) {
+        if (!isConcatenation(node) || isConcatenation(node.parent)) {
           return;
         }
-        const operands = flatten(node);
+        const operands = orderedOperandsOf(node, '+');
         const text = operands.map(textOf).join('');
         check(node, { operands, text, complete: isComplete(node, text) });
       },
       TemplateLiteral(node) {
-        if (node.parent !== undefined && isConcatenation(node.parent)) {
+        if (isConcatenation(node.parent)) {
           return;
         }
         const text = textOf(node);
         check(node, { operands: [node], text, complete: isComplete(node, text) });
       },
       Literal(node) {
-        if (
-          typeof node.value === 'string' &&
-          !(node.parent !== undefined && isConcatenation(node.parent))
-        ) {
+        if (typeof node.value === 'string' && !isConcatenation(node.parent)) {
           check(node, {
             operands: [node],
             text: node.value,

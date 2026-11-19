@@ -1,18 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { parseSource as untypedParse } from '../../max-value-sums/source-file.mjs';
-import { WALL_CLOCK_CHECK as untypedCheck } from './wall-clock.mjs';
+import { namesOf } from '../../test-support/check-runner.mts';
+import { WALL_CLOCK_CHECK } from './wall-clock.mjs';
 
-type Found = { readonly line: number; readonly name: string };
-
-const parseSource: (text: string, options: { file: string; kotlin: boolean }) => unknown =
-  untypedParse;
-const check: { find: (source: unknown) => Found[] } = untypedCheck;
-
-function names(body: string, kotlin = false): string[] {
-  return check
-    .find(parseSource(`class A {\n${body}\n}\n`, { file: kotlin ? 'A.kt' : 'A.java', kotlin }))
-    .map(({ name }) => name);
-}
+const names = namesOf(WALL_CLOCK_CHECK);
 
 describe('WallClockElapsed in Java', () => {
   it('reports a timeout measured with currentTimeMillis', () => {
@@ -87,7 +77,7 @@ describe('WallClockElapsed in Kotlin', () => {
           '  while (System.currentTimeMillis() - start < limit) { work() }',
           '}',
         ].join('\n'),
-        true,
+        { kotlin: true },
       ),
     ).toEqual(['start']);
   });

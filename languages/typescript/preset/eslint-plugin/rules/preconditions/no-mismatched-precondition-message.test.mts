@@ -16,7 +16,7 @@ ruleTester.run('no-mismatched-precondition-message', rule, {
     "function f(name) { if (!name) throw new Error('Count must be positive'); }",
     "function f(name, count) { if (!name) throw new Error('Something went wrong'); }",
     "function f(name, count) { if (!name) { log(name); throw new Error('count must be set'); } }",
-    'function f(name, count) { if (!name) throw new Error(`count must be set ${count}`); }',
+    `function f(name, count) { if (!name) throw new Error(\`count must be set \${count}\`); }`,
     "function f(name, count) { if (!name || !count) throw new Error('count must be set'); }",
     "function f(name) { if (!name) throw new Error('count must be set'); }",
     "function f(name, value) { invariant(name, 'value of the field'); }",

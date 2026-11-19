@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable, stringValue, type SourceContext } from '../analysis/constant-resolution.mts';
 import { isNode, nameOf, type SourceCode } from '../typed/node-views.mts';
+import { callbackReceiverOf } from '../typed/syntax-views.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Node = TSESTree.Node;
@@ -89,15 +90,6 @@ function referencedIdentifiers(
   return identifiers;
 }
 
-function callbackReceiver(fn: Node): Node | undefined {
-  const call = fn.parent;
-  return call?.type === AST_NODE_TYPES.CallExpression &&
-    call.arguments.some((argument) => argument === fn) &&
-    call.callee.type === AST_NODE_TYPES.MemberExpression
-    ? call.callee.object
-    : undefined;
-}
-
 function boundValue(definition: TSESLint.Scope.Definitions.VariableDefinition): Node | undefined {
   const { init } = definition.node;
   if (init !== null) {
@@ -117,7 +109,7 @@ function nextValue(context: SourceContext, identifier: TSESTree.Identifier): Nex
     return {};
   }
   if (definition.type === DefinitionType.Parameter) {
-    const receiver = callbackReceiver(definition.node);
+    const receiver = callbackReceiverOf(definition.node);
     return receiver === undefined ? { input: true } : { value: receiver };
   }
   if (definition.type !== DefinitionType.Variable || MODULE_SCOPES.has(variable.scope.type)) {

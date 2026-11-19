@@ -1,7 +1,8 @@
+import { escapeRegExp } from '../../../../../../shared/paths/glob.mjs';
 import { forward } from '../../max-value-sums/source-file.mjs';
 import { eachFrame, statementEnd } from '../scan.mjs';
 
-export const INDEX_BOUND_RULE = 'IndexBoundOffByOne';
+const INDEX_BOUND_RULE = 'IndexBoundOffByOne';
 
 const LENGTHS = '(?:size\\(\\)|length\\(\\)|length|size|count)';
 const REJECTING = new RegExp(
@@ -13,10 +14,6 @@ const ACCEPTING = new RegExp(
   'u',
 );
 const LEAVES = new Set(['return', 'throw', 'continue', 'break']);
-
-function escape(text) {
-  return text.replaceAll(/[$.*+?()[\]{}|\\^]/gu, String.raw`\$&`);
-}
 
 function pairOf(text, form) {
   const match = form.exec(text);
@@ -51,16 +48,17 @@ function splitOn(source, { from, to }, operator) {
 }
 
 function readsOf(text, { index, owner }) {
-  const call = `\\.(?:get|charAt|elementAt)\\(${escape(index)}\\)`;
-  return new RegExp(`(?<![\\w.])${escape(owner)}(?:${call}|\\[${escape(index)}\\])`, 'u').test(
-    text,
-  );
+  const call = `\\.(?:get|charAt|elementAt)\\(${escapeRegExp(index)}\\)`;
+  return new RegExp(
+    `(?<![\\w.])${escapeRegExp(owner)}(?:${call}|\\[${escapeRegExp(index)}\\])`,
+    'u',
+  ).test(text);
 }
 
 function strictCheck(text, { index, owner }) {
-  const bound = `${escape(owner)}\\.${LENGTHS}`;
-  const strict = `${escape(index)}(?:>=|<)${bound}|${bound}(?:<=|>)${escape(index)}`;
-  const moved = `(?<![\\w.])${escape(index)}(?:=(?!=)|[-+*/]=|\\+\\+|--)|(?:\\+\\+|--)${escape(index)}`;
+  const bound = `${escapeRegExp(owner)}\\.${LENGTHS}`;
+  const strict = `${escapeRegExp(index)}(?:>=|<)${bound}|${bound}(?:<=|>)${escapeRegExp(index)}`;
+  const moved = `(?<![\\w.])${escapeRegExp(index)}(?:=(?!=)|[-+*/]=|\\+\\+|--)|(?:\\+\\+|--)${escapeRegExp(index)}`;
   return new RegExp(`${strict}|${moved}`, 'u').test(text);
 }
 
@@ -81,9 +79,10 @@ function leaves(source, { from, to }) {
 function ifStatements(source, { from, to }) {
   const { tokens, partner } = source;
   const found = [];
-  for (let index = from; index < to; index += 1) {
+  for (const [offset, token] of tokens.slice(from, to).entries()) {
+    const index = from + offset;
     const open = index + 1;
-    if (tokens[index].text === 'if' && tokens[open]?.text === '(' && partner[open] > open) {
+    if (token.text === 'if' && tokens[open]?.text === '(' && partner[open] > open) {
       found.push({ index, open, close: partner[open] });
     }
   }
@@ -102,7 +101,7 @@ function reportFor(source, statement, frameRange) {
   const frameText = joined(source, statement.open + 1, frameRange.to);
   const found = [];
   const rejecting = splitOn(source, condition, '||');
-  rejecting.forEach((part) => {
+  for (const part of rejecting) {
     const pair = pairOf(joined(source, part.from, part.to), REJECTING);
     const later = joined(source, part.to, statement.close);
     const after =
@@ -117,8 +116,8 @@ function reportFor(source, statement, frameRange) {
         rejects: true,
       });
     }
-  });
-  splitOn(source, condition, '&&').forEach((part) => {
+  }
+  for (const part of splitOn(source, condition, '&&')) {
     const pair = pairOf(joined(source, part.from, part.to), ACCEPTING);
     const later = `${joined(source, part.to, statement.close)}${joined(source, branch.from, branch.to)}`;
     if (pair && !strictCheck(frameText, pair) && readsOf(later, pair)) {
@@ -129,7 +128,7 @@ function reportFor(source, statement, frameRange) {
         rejects: false,
       });
     }
-  });
+  }
   return found;
 }
 

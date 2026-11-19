@@ -22,19 +22,18 @@ function receiverStep(source, at) {
   return start;
 }
 
-export function receiverStart(source, dot) {
+function receiverStart(source, dot) {
   let start = dot;
-  let at = dot - 1;
-  while (at >= 0) {
-    const found = receiverStep(source, at);
+  const pending = [dot - 1];
+  for (const at of pending) {
+    const found = at >= 0 ? receiverStep(source, at) : undefined;
     if (found === undefined) {
       break;
     }
     start = found;
-    if (!CALL_SEPARATORS.has(source.tokens[start - 1]?.text)) {
-      break;
+    if (CALL_SEPARATORS.has(source.tokens[start - 1]?.text)) {
+      pending.push(start - 2);
     }
-    at = start - 2;
   }
   return start;
 }
@@ -79,16 +78,22 @@ export function stringValue(source, range) {
 }
 
 export function lastName(source, { from, to }) {
-  const { tokens } = source;
-  for (let index = to - 1; index >= from; index -= 1) {
-    if (tokens[index].kind === 'identifier') {
-      return tokens[index].text;
+  const { tokens, partner } = source;
+  const pending = [to - 1];
+  for (const index of pending) {
+    if (index < from) {
+      break;
     }
-    if (tokens[index].text !== ')' && tokens[index].text !== '(') {
+    const { kind, text } = tokens[index];
+    if (kind === 'identifier') {
+      return text;
+    }
+    if (text === ')') {
+      pending.push(partner[index] - 1);
+    } else if (text === '(') {
+      pending.push(index - 1);
+    } else {
       return undefined;
-    }
-    if (tokens[index].text === ')') {
-      index = source.partner[index];
     }
   }
   return undefined;
@@ -115,29 +120,25 @@ export function stringNames(source) {
 export function startOfStatement(source, from) {
   const { tokens, opener } = source;
   const level = opener[from];
-  let index = from;
-  while (index > 0 && index - 1 !== level) {
-    const previous = index - 1;
-    if (
-      opener[previous] === level &&
-      (tokens[previous].text === ';' || tokens[previous].text === '}')
-    ) {
-      break;
-    }
-    index -= 1;
-  }
-  return index;
+  const lower = level + 1;
+  const stop = tokens
+    .slice(lower, from)
+    .findLastIndex(
+      (token, offset) =>
+        opener[lower + offset] === level && (token.text === ';' || token.text === '}'),
+    );
+  return stop === -1 ? lower : lower + stop + 1;
 }
 
 export function endOfCondition(source, from) {
   const { tokens, opener, partner } = source;
   const level = opener[from];
-  let index = from;
-  while (index < tokens.length && index !== partner[level]) {
-    if (opener[index] === level && (tokens[index].text === ';' || tokens[index].text === '{')) {
-      break;
-    }
-    index += 1;
-  }
-  return index;
+  const found = tokens
+    .slice(from)
+    .findIndex(
+      (token, offset) =>
+        from + offset === partner[level] ||
+        (opener[from + offset] === level && (token.text === ';' || token.text === '{')),
+    );
+  return found === -1 ? tokens.length : from + found;
 }

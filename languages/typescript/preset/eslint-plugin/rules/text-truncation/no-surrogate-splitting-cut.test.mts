@@ -48,6 +48,6 @@ untyped.run('no-surrogate-splitting-cut (untyped)', rule, {
   ],
   invalid: [
     { code: 'export const a = s.length > max ? s.slice(0, max - 3) + "..." : s;', errors: ERROR },
-    { code: 'export const a = s.length > max ? `${s.slice(0, max - 1)}…` : s;', errors: ERROR },
+    { code: `export const a = s.length > max ? \`\${s.slice(0, max - 1)}…\` : s;`, errors: ERROR },
   ],
 });

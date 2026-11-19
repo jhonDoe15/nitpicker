@@ -1,19 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { parseSource as untypedParse } from '../max-value-sums/source-file.mjs';
+import { sourceRunners } from '../test-support/source-runners.mts';
 import { findMismatchedPreconditions as untypedFind } from './precondition-messages.mjs';
 
-const parse: (text: string, options: { file: string; kotlin: boolean }) => unknown = untypedParse;
 const find: (source: unknown) => { readonly named: string }[] = untypedFind;
 
-function java(members: string) {
-  const text = `import org.springframework.util.Assert;\nclass Cache {\n  private String region;\n${members}\n}\n`;
-  return find(parse(text, { file: 'Cache.java', kotlin: false })).map(({ named }) => named);
-}
-
-function kotlin(members: string) {
-  const text = `class Cache(val region: String) {\n${members}\n}\n`;
-  return find(parse(text, { file: 'Cache.kt', kotlin: true })).map(({ named }) => named);
-}
+const { java, kotlin } = sourceRunners({
+  find,
+  pick: ({ named }) => named,
+  java: {
+    file: 'Cache.java',
+    wrap: (members) =>
+      `import org.springframework.util.Assert;\nclass Cache {\n  private String region;\n${members}\n}\n`,
+  },
+  kotlin: {
+    file: 'Cache.kt',
+    wrap: (members) => `class Cache(val region: String) {\n${members}\n}\n`,
+  },
+});
 
 describe('PreconditionMessageNamesOtherValue in Java', () => {
   it('reports a check whose message names another value in scope', () => {

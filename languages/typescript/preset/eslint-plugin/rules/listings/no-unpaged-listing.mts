@@ -61,32 +61,36 @@ function objectKeys(node: Node | undefined): Set<string> | undefined {
     keys.add(
       key.type === AST_NODE_TYPES.Identifier
         ? key.name
-        : String((key as { value?: unknown }).value),
+        : String('value' in key ? key.value : undefined),
     );
   }
   return keys;
 }
 
+function passesResult(parent: Node | undefined, current: Node): parent is Node {
+  return (
+    parent !== undefined &&
+    (parent.type === AST_NODE_TYPES.AwaitExpression ||
+      parent.type === AST_NODE_TYPES.ChainExpression ||
+      parent.type === AST_NODE_TYPES.TSNonNullExpression ||
+      (parent.type === AST_NODE_TYPES.CallExpression && parent.callee === current) ||
+      (parent.type === AST_NODE_TYPES.MemberExpression &&
+        parent.object === current &&
+        !parent.computed &&
+        parent.property.type === AST_NODE_TYPES.Identifier &&
+        RESULT_PARTS.has(parent.property.name)))
+  );
+}
+
 function climbResult(node: Node): Node {
-  let current = node;
-  for (;;) {
+  const chain: Node[] = [node];
+  for (const current of chain) {
     const parent = current.parent ?? undefined;
-    const passes =
-      parent !== undefined &&
-      (parent.type === AST_NODE_TYPES.AwaitExpression ||
-        parent.type === AST_NODE_TYPES.ChainExpression ||
-        parent.type === AST_NODE_TYPES.TSNonNullExpression ||
-        (parent.type === AST_NODE_TYPES.CallExpression && parent.callee === current) ||
-        (parent.type === AST_NODE_TYPES.MemberExpression &&
-          parent.object === current &&
-          !parent.computed &&
-          parent.property.type === AST_NODE_TYPES.Identifier &&
-          RESULT_PARTS.has(parent.property.name)));
-    if (!passes) {
-      return current;
+    if (passesResult(parent, current)) {
+      chain.push(parent);
     }
-    current = parent;
   }
+  return chain.at(-1) ?? node;
 }
 
 function isPresenceTest(node: Node): boolean {
@@ -142,7 +146,7 @@ function isSearchCall(callee: Node): boolean {
   );
 }
 
-export const rule: TSESLint.RuleModule<MessageId, []> = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: { description: 'Follow the page marker of an object-store or search listing' },

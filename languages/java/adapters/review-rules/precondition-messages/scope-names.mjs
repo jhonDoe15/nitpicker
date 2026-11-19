@@ -12,6 +12,7 @@ const NOT_TYPES = new Set([
   'if',
   'while',
 ]);
+const BINDING_RECEIVER_OFFSET = 3;
 const AFTER_NAME = new Set(['=', ';', ',', ')', ':']);
 
 function isDeclaration(tokens, index) {
@@ -26,9 +27,9 @@ function isDeclaration(tokens, index) {
 
 function declaredIn(tokens, { from, to }) {
   const names = new Set();
-  for (let index = from; index < to; index += 1) {
-    if (isDeclaration(tokens, index)) {
-      names.add(tokens[index].text);
+  for (const [offset, token] of tokens.slice(from, to).entries()) {
+    if (isDeclaration(tokens, from + offset)) {
+      names.add(token.text);
     }
   }
   return names;
@@ -56,19 +57,18 @@ export function scopeNamesOf(source) {
 }
 
 function derives(tokens, index, named) {
-  const binding = tokens[index - 2]?.text === 'instanceof' && tokens[index - 3]?.text === named;
+  const binding =
+    tokens[index - 2]?.text === 'instanceof' &&
+    tokens[index - BINDING_RECEIVER_OFFSET]?.text === named;
   if (binding) {
     return true;
   }
   if (tokens[index + 1]?.text !== '=') {
     return false;
   }
-  for (let at = index + 2; at < tokens.length && tokens[at].text !== ';'; at += 1) {
-    if (tokens[at].text === named) {
-      return true;
-    }
-  }
-  return false;
+  const rest = tokens.slice(index + 2);
+  const end = rest.findIndex((token) => token.text === ';');
+  return (end === -1 ? rest : rest.slice(0, end)).some((token) => token.text === named);
 }
 
 export function isDerivedFrom(source, { checked, named }) {

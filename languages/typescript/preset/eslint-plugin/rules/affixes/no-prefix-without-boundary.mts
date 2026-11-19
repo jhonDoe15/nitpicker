@@ -11,12 +11,12 @@ import { isDirectoryName, isHostName, isLocationName, isPrefixName, nameText } f
 
 type MessageId = 'prefix' | 'suffix' | 'origin';
 type Node = TSESTree.Node;
+type AffixMethod = 'startsWith' | 'endsWith';
 
 const ORIGIN_ONLY = /^https?:\/\/[^/]+$/iu;
 const PATH_SHAPED = /^(?:[/~@]|[\w.-]+\/)/u;
 const COMPARISONS = new Set(['===', '==']);
 const LENGTH_COMPARISONS = new Set(['===', '==', '!==', '!=', '>', '>=', '<', '<=']);
-const AFFIX_CALLS = new Set(['startsWith', 'endsWith']);
 const WORD_LITERAL = /[\p{L}\p{N}]/u;
 const TRANSPARENT = new Set<string>([
   AST_NODE_TYPES.LogicalExpression,
@@ -34,11 +34,14 @@ function climbs(parent: Node | undefined, current: Node): parent is Node {
 }
 
 function conditionRoot(node: Node): Node {
-  let current = node;
-  while (climbs(current.parent, current)) {
-    current = current.parent as Node;
+  const chain = [node];
+  for (const current of chain) {
+    const { parent } = current;
+    if (climbs(parent, current)) {
+      chain.push(parent);
+    }
   }
-  return current;
+  return chain.at(-1) ?? node;
 }
 
 function sameText(context: SourceContext, left: Node, right: Node): boolean {
@@ -108,13 +111,22 @@ function literalOf(context: SourceContext, node: Node): string | undefined {
 }
 
 function leadingText(context: SourceContext, node: Node): string | undefined {
-  const resolved = resolveConstant(context, node) ?? node;
-  if (resolved.type === AST_NODE_TYPES.TemplateLiteral) {
-    return resolved.quasis[0]?.value.cooked ?? undefined;
+  const pending = [node];
+  for (const item of pending) {
+    const resolved = resolveConstant(context, item) ?? item;
+    if (resolved.type === AST_NODE_TYPES.TemplateLiteral) {
+      return resolved.quasis[0]?.value.cooked ?? undefined;
+    }
+    if (resolved.type !== AST_NODE_TYPES.BinaryExpression || resolved.operator !== '+') {
+      return undefined;
+    }
+    const literal = literalOf(context, resolved.left);
+    if (literal !== undefined) {
+      return literal;
+    }
+    pending.push(resolved.left);
   }
-  return resolved.type === AST_NODE_TYPES.BinaryExpression && resolved.operator === '+'
-    ? (literalOf(context, resolved.left) ?? leadingText(context, resolved.left))
-    : undefined;
+  return undefined;
 }
 
 function startsWithMessage(
@@ -151,18 +163,24 @@ const CHECKS = {
   endsWith: endsWithMessage,
 };
 
-function affixCall(node: TSESTree.CallExpression): { receiver: Node; method: string } | undefined {
+function affixMethod(name: string | undefined): AffixMethod | undefined {
+  return name === 'startsWith' || name === 'endsWith' ? name : undefined;
+}
+
+function affixCall(
+  node: TSESTree.CallExpression,
+): { receiver: Node; method: AffixMethod } | undefined {
   const callee = unwrapped(node.callee);
-  const method = callee.type === AST_NODE_TYPES.MemberExpression ? nameText(callee) : undefined;
+  const method =
+    callee.type === AST_NODE_TYPES.MemberExpression ? affixMethod(nameText(callee)) : undefined;
   return callee.type === AST_NODE_TYPES.MemberExpression &&
     method !== undefined &&
-    AFFIX_CALLS.has(method) &&
     node.arguments.length === 1
     ? { receiver: callee.object, method }
     : undefined;
 }
 
-export const rule: TSESLint.RuleModule<MessageId, []> = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: {
@@ -173,10 +191,10 @@ export const rule: TSESLint.RuleModule<MessageId, []> = {
     messages: {
       prefix:
         'A text prefix check also accepts siblings that only share the text (`/foo` matches `/foobar`). ' +
-        'Compare whole segments: `x === base || x.startsWith(`${base}/`)`, or use `path.relative`.',
+        `Compare whole segments: \`x === base || x.startsWith(\`\${base}/\`)\`, or use \`path.relative\`.`,
       suffix:
         'A host suffix check also accepts `evilexample.com` for `example.com`. ' +
-        'Compare `host === domain || host.endsWith(`.${domain}`)`.',
+        `Compare \`host === domain || host.endsWith(\`.\${domain}\`)\`.`,
       origin:
         'A URL prefix without a boundary also accepts `http://localhost.attacker.example`. ' +
         'Parse the value and compare `new URL(x).origin` or `hostname`.',
@@ -190,7 +208,7 @@ export const rule: TSESLint.RuleModule<MessageId, []> = {
         if (found === undefined || arg === undefined || arg.type === AST_NODE_TYPES.SpreadElement) {
           return;
         }
-        const messageId = CHECKS[found.method as keyof typeof CHECKS](context, found.receiver, arg);
+        const messageId = CHECKS[found.method](context, found.receiver, arg);
         if (
           messageId !== undefined &&
           !isGuarded(context, node, { receiver: found.receiver, arg })

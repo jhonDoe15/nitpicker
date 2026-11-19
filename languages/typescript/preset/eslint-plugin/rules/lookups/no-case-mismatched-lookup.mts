@@ -1,4 +1,4 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import {
   findVariable,
   isFunctionNode,
@@ -7,6 +7,8 @@ import {
 import { ancestorsOf, depthFirst, nodeChildren } from '../typed/node-views.mts';
 import { unwrapped } from '../typed/syntax-views.mts';
 import { type Casing, hasCase, literalKeys, normalizedKey } from './case-keys.mts';
+
+const { DefinitionType } = TSESLint.Scope;
 
 type MessageId = 'original' | 'raw';
 type Node = TSESTree.Node;
@@ -38,7 +40,7 @@ function parameterBuilt(context: SourceContext, collection: Node): boolean {
   if (source?.type !== AST_NODE_TYPES.Identifier) {
     return false;
   }
-  return findVariable(context, source, source.name)?.defs[0]?.type === 'Parameter';
+  return findVariable(context, source, source.name)?.defs[0]?.type === DefinitionType.Parameter;
 }
 
 function scopeRoot(node: Node, receiver: Node): Node {
@@ -78,10 +80,11 @@ function filledCasing(
 }
 
 function shortText(text: string): string {
-  return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}...` : text;
+  const points = Array.from(text);
+  return points.length > MAX_TEXT ? `${points.slice(0, MAX_TEXT).join('')}...` : text;
 }
 
-export const rule: TSESLint.RuleModule<MessageId, []> = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: {

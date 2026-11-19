@@ -1,17 +1,14 @@
-import { describe, expect, it } from 'vitest';
-import { type Check, type Ruled, scanKotlinSource } from '../typed/typed-scan.mts';
+import { describeBodyCases } from '../typed/body-cases.mts';
+import type { Check, Ruled } from '../typed/typed-scan.mts';
 import { hostPortSplits as untypedHostPortSplits } from './host-splits.mjs';
 
 const hostPortSplits: Check<Ruled> = untypedHostPortSplits;
 
-function found(body: string) {
-  return hostPortSplits(
-    scanKotlinSource(`fun parse(host: String, request: Request) {\n${body}\n}\n`),
-  ).length;
-}
-
-describe('hostPortSplits', () => {
-  it.each([
+describeBodyCases({
+  title: 'hostPortSplits',
+  check: hostPortSplits,
+  header: `fun parse(host: String, request: Request) {`,
+  reports: [
     ['a split of host', '    val name = host.split(":")[0]'],
     ['substringBefore on host', '    val name = host.substringBefore(":")'],
     ['substringAfter on a hostname', '    val port = hostname.substringAfter(":")'],
@@ -24,11 +21,8 @@ describe('hostPortSplits', () => {
       '    val name = request.getHeader("X-Forwarded-Host").substringBefore(":")',
     ],
     ['an authority', '    val name = authority.substringBefore(":")'],
-  ])('reports %s', (_name, body) => {
-    expect(found(body)).toBe(1);
-  });
-
-  it.each([
+  ],
+  clean: [
     ['another receiver', '    val name = line.split(":")[0]'],
     ['another separator', '    val name = host.split("/")[0]'],
     ['substringBeforeLast', '    val name = host.substringBeforeLast(":")'],
@@ -40,7 +34,5 @@ describe('hostPortSplits', () => {
       'a bracket check in the file',
       '    if (host.startsWith("[")) return\n    val name = host.split(":")[0]',
     ],
-  ])('leaves %s alone', (_name, body) => {
-    expect(found(body)).toBe(0);
-  });
+  ],
 });

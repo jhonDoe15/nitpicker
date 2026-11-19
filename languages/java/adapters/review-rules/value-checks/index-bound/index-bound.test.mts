@@ -1,18 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { parseSource as untypedParse } from '../../max-value-sums/source-file.mjs';
+import { checkRunner } from '../../test-support/check-runner.mts';
 import { INDEX_BOUND_CHECK as untypedCheck } from './index-bound.mjs';
 
 type Found = { readonly line: number; readonly name: string; readonly rejects: boolean };
 
-const parseSource: (text: string, options: { file: string; kotlin: boolean }) => unknown =
-  untypedParse;
 const check: { find: (source: unknown) => Found[] } = untypedCheck;
 
-function names(body: string, kotlin = false): string[] {
-  return check
-    .find(parseSource(`class A {\n${body}\n}\n`, { file: kotlin ? 'A.kt' : 'A.java', kotlin }))
-    .map(({ name, rejects }) => `${name}${rejects ? '>' : '<='}`);
-}
+const names = checkRunner({ check, pick: ({ name, rejects }) => `${name}${rejects ? '>' : '<='}` });
 
 describe('IndexBoundOffByOne in Java', () => {
   it('reports a guard that lets the length through before a get', () => {
@@ -88,7 +82,7 @@ describe('IndexBoundOffByOne in Kotlin', () => {
           '  return items[index]',
           '}',
         ].join('\n'),
-        true,
+        { kotlin: true },
       ),
     ).toEqual(['index>']);
   });

@@ -16,14 +16,21 @@ export type SplitCall = {
 const NULLISH_FALLBACKS = new Set(['??', '||']);
 
 export function unchained(node: TSESTree.Node): TSESTree.Node {
-  const inner = unwrapOf(node, ASSERTION_FORMS);
-  if (inner.type === AST_NODE_TYPES.ChainExpression) {
-    return unchained(inner.expression);
+  const chain: TSESTree.Node[] = [node];
+  for (const current of chain) {
+    const inner = unwrapOf(current, ASSERTION_FORMS);
+    if (inner.type === AST_NODE_TYPES.ChainExpression) {
+      chain.push(inner.expression);
+    } else if (
+      inner.type === AST_NODE_TYPES.LogicalExpression &&
+      NULLISH_FALLBACKS.has(inner.operator)
+    ) {
+      chain.push(inner.left);
+    } else {
+      return inner;
+    }
   }
-  if (inner.type === AST_NODE_TYPES.LogicalExpression && NULLISH_FALLBACKS.has(inner.operator)) {
-    return unchained(inner.left);
-  }
-  return inner;
+  return node;
 }
 
 export function splitCallOf(context: SourceContext, node: TSESTree.Node): SplitCall | undefined {

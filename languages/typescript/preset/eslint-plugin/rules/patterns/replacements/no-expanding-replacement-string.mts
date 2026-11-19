@@ -1,4 +1,4 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESLint } from '@typescript-eslint/utils';
 import { typeServices } from '../../security/security-values.mts';
 import { calleeNameOf } from '../../typed/syntax-views.mts';
 import { hasDollarGuard } from './dollar-guards.mts';
@@ -26,7 +26,7 @@ export const rule: TSESLint.RuleModule<'expandingReplacement', [], Docs> = {
     if (services === undefined) {
       return {};
     }
-    const typeOf = (node: TSESTree.Node) => services.getTypeAtLocation(node);
+    const typeOf = services.getTypeAtLocation.bind(services);
     return {
       CallExpression(node) {
         const method = calleeNameOf(node.callee) ?? '';

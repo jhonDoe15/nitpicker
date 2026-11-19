@@ -8,11 +8,13 @@ const ASYNC = 'async';
 const PERSISTENCE = 'persistence';
 const PERFORMANCE: Labels = [PERFORMANCE_LABEL];
 const RELIABILITY: Labels = [RELIABILITY_LABEL];
-const SECURITY: Labels = ['security'];
+const SECURITY_LABEL = 'security';
+const TESTS_LABEL = 'tests';
+const SECURITY: Labels = [SECURITY_LABEL];
 const RELIABLE_ASYNC: Labels = [RELIABILITY_LABEL, ASYNC];
 const RELIABLE_PERSISTENCE: Labels = [RELIABILITY_LABEL, PERSISTENCE];
 const STYLE: Labels = ['style'];
-const TESTS: Labels = ['tests'];
+const TESTS: Labels = [TESTS_LABEL];
 const MAINTAINABILITY: Labels = ['maintainability'];
 
 const GO_LINTERS: ReadonlyMap<string, Labels> = new Map([
@@ -142,7 +144,7 @@ const GO_RULES: ReadonlyMap<string, Labels> = new Map([
   ['io_in_loop', PERFORMANCE],
   ['logged_and_returned', RELIABILITY],
   ['pending_not_closed', RELIABLE_ASYNC],
-  ['sleep_to_wait', ['tests', ASYNC]],
+  ['sleep_to_wait', [TESTS_LABEL, ASYNC]],
   ['unowned_goroutine', RELIABLE_ASYNC],
   ['init_side_effect', MAINTAINABILITY],
   ['map_only_grows', [PERFORMANCE_LABEL, RELIABILITY_LABEL]],
@@ -166,15 +168,15 @@ const GO_RULES: ReadonlyMap<string, Labels> = new Map([
   ['index_bound_off_by_one', BUG],
   ['negative_count', BUG],
   ['nan_only_guard', BUG],
-  ['unescaped_html_value', ['bug', 'security']],
+  ['unescaped_html_value', ['bug', SECURITY_LABEL]],
   ['expanding_replacement', BUG],
-  ['pattern_translation', ['bug', 'security']],
+  ['pattern_translation', ['bug', SECURITY_LABEL]],
   ['byte_cut_splits_rune', BUG],
   ['newline_only_line_split', BUG],
   ['host_port_colon_split', BUG],
   ['delimited_lookup_key', BUG],
   ['pair_split_drops_rest', BUG],
-  ['prefix_without_boundary', ['bug', 'security']],
+  ['prefix_without_boundary', ['bug', SECURITY_LABEL]],
   ['unanchored_affix_replace', BUG],
   ['case_mismatched_lookup', BUG],
   ['precondition_message_names_other_value', BUG],
@@ -189,7 +191,7 @@ const GO_RULES: ReadonlyMap<string, Labels> = new Map([
   ['conditional_assertion_in_test', TESTS],
   ['skipped_test_without_reason', TESTS],
   ['switched_off_test', TESTS],
-  ['sleep_in_test', ['tests', ASYNC]],
+  ['sleep_in_test', [TESTS_LABEL, ASYNC]],
   ['write_outside_transaction', ['bug', PERSISTENCE]],
   ['writes_without_transaction', ['bug', PERSISTENCE]],
   ['copied_constant_in_test', TESTS],

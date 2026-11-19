@@ -4,7 +4,14 @@ import { isOperator, methodCalls, stringValue } from '../calls.mjs';
 
 const CONSTANT_NAME = /^[A-Z][A-Z0-9_]*$/u;
 const SAFE_NAME = /quoteReplacement|escapeReplacement|escape|quote/iu;
-const REGEX_ENTRY = new Set(['Regex', 'toRegex']);
+const REGEX = 'Regex';
+const REPLACE_FIRST = 'replaceFirst';
+const REGEX_ENTRY = new Set([REGEX, 'toRegex']);
+const SHAPED_LENGTH = 4;
+const METHOD_FROM_END = -3;
+const DOT_FROM_END = -4;
+const OPEN_FROM_END = -2;
+const VALUE_LENGTH = 40;
 const SCAN_AHEAD = 14;
 
 function isLiteralArgument(source, { from, to }) {
@@ -34,8 +41,11 @@ function isQuoted(source, { from, to }) {
 function isEnumText(source, { from, to }) {
   const { tokens } = source;
   const call = tokens.slice(from, to);
-  const last = call.at(-3)?.text;
-  const shaped = call.length >= 4 && call.at(-4)?.text === '.' && call.at(-2)?.text === '(';
+  const last = call.at(METHOD_FROM_END)?.text;
+  const shaped =
+    call.length >= SHAPED_LENGTH &&
+    call.at(DOT_FROM_END)?.text === '.' &&
+    call.at(OPEN_FROM_END)?.text === '(';
   const enumFile = tokens.some(({ text }) => text === 'enum');
   return shaped && (last === 'name' || (enumFile && ['value', 'getValue'].includes(last)));
 }
@@ -75,7 +85,7 @@ function regexNames(source) {
   for (const [index, token] of tokens.entries()) {
     const next = tokens[index + 1];
     const typed =
-      token.kind === 'identifier' && next?.text === ':' && tokens[index + 2]?.text === 'Regex';
+      token.kind === 'identifier' && next?.text === ':' && tokens[index + 2]?.text === REGEX;
     const assigned =
       token.kind === 'identifier' &&
       next?.text === '=' &&
@@ -108,23 +118,23 @@ function isMatcherReceiver(source, call) {
 
 function kotlinRegexArgument(source, names, { from, to }) {
   const first = source.tokens.slice(from, to);
-  const direct = first[0]?.text === 'Regex' || first.some((token) => token.text === 'toRegex');
+  const direct = first[0]?.text === REGEX || first.some((token) => token.text === 'toRegex');
   return direct || (first.length === 1 && names.has(first[0].text));
 }
 
 function javaTargets(source, call) {
   const { name, args } = call;
-  if (args.length === 2 && (name === 'replaceAll' || name === 'replaceFirst')) {
+  if (args.length === 2 && (name === 'replaceAll' || name === REPLACE_FIRST)) {
     return args[1];
   }
-  return args.length === 1 && name !== 'replaceFirst' && isMatcherReceiver(source, call)
+  return args.length === 1 && name !== REPLACE_FIRST && isMatcherReceiver(source, call)
     ? args[0]
     : undefined;
 }
 
 function kotlinTargets(source, names, call) {
   const { name, args } = call;
-  if (name === 'replace' || name === 'replaceFirst') {
+  if (name === 'replace' || name === REPLACE_FIRST) {
     if (args.length === 2 && kotlinRegexArgument(source, names, args[0])) {
       return args[1];
     }
@@ -135,7 +145,7 @@ function kotlinTargets(source, names, call) {
 
 export function findExpandingReplacements(source) {
   const names = source.kotlin ? regexNames(source) : new Set();
-  return methodCalls(source, ['replaceAll', 'replaceFirst', 'replace']).flatMap((call) => {
+  return methodCalls(source, ['replaceAll', REPLACE_FIRST, 'replace']).flatMap((call) => {
     const target = source.kotlin ? kotlinTargets(source, names, call) : javaTargets(source, call);
     if (
       target === undefined ||
@@ -155,7 +165,7 @@ export function findExpandingReplacements(source) {
       {
         line: call.line,
         method: call.name,
-        value: text.slice(0, 40),
+        value: text.slice(0, VALUE_LENGTH),
         owner: frameAt(source, call.open)?.name,
       },
     ];

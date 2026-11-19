@@ -20,7 +20,7 @@ export const VALUE_CHECKS = [
 
 export const VALUE_CHECK_EXCEPTION_RULES = VALUE_CHECKS.map(({ rule }) => `pmd/${rule}`);
 
-export function valueCheckFindings(source, finding, file) {
+function valueCheckFindings(source, finding, file) {
   return VALUE_CHECKS.flatMap((check) =>
     check.find(source).map((found) =>
       finding({

@@ -61,13 +61,19 @@ function isEntityReplace(node: TSESTree.CallExpression): boolean {
 }
 
 function rootNames(node: Node): string[] {
-  if (node.type === AST_NODE_TYPES.CallExpression) {
-    return [calleeNameOf(node.callee) ?? '', ...rootNames(node.callee)];
+  const names: string[] = [];
+  const pending = [node];
+  for (const current of pending) {
+    if (current.type === AST_NODE_TYPES.CallExpression) {
+      names.push(calleeNameOf(current.callee) ?? '');
+      pending.push(current.callee);
+    } else if (current.type === AST_NODE_TYPES.AwaitExpression) {
+      pending.push(current.argument);
+    } else if (current.type === AST_NODE_TYPES.MemberExpression) {
+      pending.push(current.object);
+    }
   }
-  if (node.type === AST_NODE_TYPES.AwaitExpression) {
-    return rootNames(node.argument);
-  }
-  return node.type === AST_NODE_TYPES.MemberExpression ? rootNames(node.object) : [];
+  return names;
 }
 
 function isSafeJoin(node: TSESTree.CallExpression): boolean {
@@ -98,11 +104,10 @@ function safeCall(node: TSESTree.CallExpression): boolean {
   );
 }
 
-function writesAreSafe(
-  context: SourceContext,
-  node: TSESTree.Identifier,
-  isSafe: (value: Node) => boolean,
-): boolean {
+type Verdict = boolean | readonly Node[];
+type SafeEnv = { readonly context: SourceContext; readonly typeOf: TypeOf };
+
+function writeVerdict(context: SourceContext, node: TSESTree.Identifier): Verdict {
   const variable = findVariable(context, node, node.name);
   const declared = variable?.defs.every(
     (definition) =>
@@ -110,26 +115,23 @@ function writesAreSafe(
       definition.node.id.type === AST_NODE_TYPES.Identifier,
   );
   const writes = variable?.references.filter((reference) => reference.isWrite()) ?? [];
-  return (
-    declared === true &&
-    writes.length > 0 &&
-    writes.every(({ writeExpr }) => writeExpr != null && isSafe(writeExpr))
-  );
+  const written = writes.flatMap(({ writeExpr }) => writeExpr ?? []);
+  const safe = declared === true && writes.length > 0 && written.length === writes.length;
+  return safe ? written : false;
 }
 
 function chainNames(node: Node): string[] {
-  if (node.type !== AST_NODE_TYPES.MemberExpression) {
-    return [];
+  const names: string[] = [];
+  const pending = [node];
+  for (const current of pending) {
+    if (current.type === AST_NODE_TYPES.MemberExpression) {
+      if (!current.computed && current.property.type === AST_NODE_TYPES.Identifier) {
+        names.push(current.property.name);
+      }
+      pending.push(current.object);
+    }
   }
-  const own =
-    !node.computed && node.property.type === AST_NODE_TYPES.Identifier ? [node.property.name] : [];
-  return [...own, ...chainNames(node.object)];
-}
-
-interface SafeEnv {
-  context: SourceContext;
-  typeOf: TypeOf;
-  depth: number;
+  return names;
 }
 
 function isSafeMember(target: TSESTree.MemberExpression): boolean {
@@ -141,48 +143,67 @@ function isSafeMember(target: TSESTree.MemberExpression): boolean {
   );
 }
 
-function isSafeStructure(env: SafeEnv, target: Node): boolean {
-  const next = (child: Node) => isSafeNode({ ...env, depth: env.depth + 1 }, child);
-  switch (target.type) {
-    case AST_NODE_TYPES.TemplateLiteral:
-      return isMarkupFragment(target) || target.expressions.every(next);
-    case AST_NODE_TYPES.BinaryExpression:
-      return (
-        target.operator !== '+' || isMarkupFragment(target) || operandsOf(target, '+').every(next)
-      );
-    case AST_NODE_TYPES.Identifier:
-      return SAFE_NAME.test(target.name) || writesAreSafe(env.context, target, next);
-    case AST_NODE_TYPES.MemberExpression:
-      return isSafeMember(target);
-    case AST_NODE_TYPES.CallExpression:
-      return safeCall(target);
-    case AST_NODE_TYPES.ConditionalExpression:
-      return next(target.consequent) && next(target.alternate);
-    case AST_NODE_TYPES.LogicalExpression:
-      return next(target.left) && next(target.right);
-    case AST_NODE_TYPES.UnaryExpression:
-      return true;
-    default:
-      return false;
+function compoundOperands(target: Node): readonly Node[] | undefined {
+  if (target.type === AST_NODE_TYPES.TemplateLiteral) {
+    return isMarkupFragment(target) ? [] : target.expressions;
   }
+  if (target.type === AST_NODE_TYPES.BinaryExpression) {
+    return target.operator !== '+' || isMarkupFragment(target) ? [] : operandsOf(target, '+');
+  }
+  if (target.type === AST_NODE_TYPES.ConditionalExpression) {
+    return [target.consequent, target.alternate];
+  }
+  return target.type === AST_NODE_TYPES.LogicalExpression ? [target.left, target.right] : undefined;
 }
 
-function isSafeNode(env: SafeEnv, node: Node): boolean {
-  const { context, typeOf, depth } = env;
+function leafVerdict(context: SourceContext, target: Node): Verdict {
+  if (target.type === AST_NODE_TYPES.Identifier) {
+    return SAFE_NAME.test(target.name) || writeVerdict(context, target);
+  }
+  if (target.type === AST_NODE_TYPES.MemberExpression) {
+    return isSafeMember(target);
+  }
+  if (target.type === AST_NODE_TYPES.CallExpression) {
+    return safeCall(target);
+  }
+  return target.type === AST_NODE_TYPES.UnaryExpression;
+}
+
+function verdictOf(env: SafeEnv, node: Node, depth: number): Verdict {
   const named = unwrapped(node);
   if (named.type === AST_NODE_TYPES.Identifier && SAFE_NAME.test(named.name)) {
     return true;
   }
-  const target = unwrapped(resolveConstant(context, named));
+  const target = unwrapped(resolveConstant(env.context, named));
   if (target === undefined || depth > MAX_DEPTH) {
     return false;
   }
   if (target.type === AST_NODE_TYPES.Literal || stringValue(target) !== undefined) {
     return true;
   }
-  return (typeOf !== undefined && isPlainType(typeOf(target))) || isSafeStructure(env, target);
+  if (env.typeOf !== undefined && isPlainType(env.typeOf(target))) {
+    return true;
+  }
+  return compoundOperands(target) ?? leafVerdict(env.context, target);
+}
+
+type Pending = { readonly node: Node; readonly depth: number };
+
+function childItems(verdict: Verdict, depth: number): Pending[] {
+  return typeof verdict === 'boolean' ? [] : verdict.map((node) => ({ node, depth: depth + 1 }));
 }
 
 export function isSafeValue(context: SourceContext, typeOf: TypeOf, node: Node): boolean {
-  return isSafeNode({ context, typeOf, depth: 0 }, node);
+  const env = { context, typeOf };
+  const pending: Pending[] = [{ node, depth: 0 }];
+  for (const item of pending) {
+    const verdict = verdictOf(env, item.node, item.depth);
+    if (verdict === false) {
+      return false;
+    }
+    for (const child of childItems(verdict, item.depth)) {
+      pending.push(child);
+    }
+  }
+  return true;
 }

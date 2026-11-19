@@ -6,11 +6,12 @@ export const PRECONDITION_MESSAGE_RULE = 'PreconditionMessageNamesOtherValue';
 export const PRECONDITION_MESSAGE_EXCEPTION_RULE = `pmd/${PRECONDITION_MESSAGE_RULE}`;
 
 const SUBJECT = new RegExp(
-  '^[`\'"]?([A-Za-z_$][\\w$]*)[`\'"]?\\s+' +
+  '^[`\'"]?([a-z_$][\\w$]*)[`\'"]?\\s+' +
     "(?:must|should|is|are|was|cannot|can't|can not|may not|has|have|required|needs|not)\\b",
   'iu',
 );
 const ELEMENT_CHECK = /\bcontain/iu;
+const CHECK_NOT_NULL = 'checkNotNull';
 const OWNERS = new Set(['Assert', 'Objects', 'Preconditions', 'Validate']);
 const VALUE_CHECKS = new Set([
   'notNull',
@@ -20,7 +21,7 @@ const VALUE_CHECKS = new Set([
   'notBlank',
   'noNullElements',
   'requireNonNull',
-  'checkNotNull',
+  CHECK_NOT_NULL,
   'requireNotNull',
 ]);
 const CONDITION_CHECKS = new Set([
@@ -32,8 +33,8 @@ const CONDITION_CHECKS = new Set([
   'require',
   'check',
 ]);
-const BARE_JAVA = new Set(['requireNonNull', 'checkNotNull', 'checkArgument', 'checkState']);
-const BARE_KOTLIN = new Set(['requireNotNull', 'checkNotNull', 'require', 'check']);
+const BARE_JAVA = new Set(['requireNonNull', CHECK_NOT_NULL, 'checkArgument', 'checkState']);
+const BARE_KOTLIN = new Set(['requireNotNull', CHECK_NOT_NULL, 'require', 'check']);
 const HOOK_NAME = /^use[A-Z]/u;
 const GETTER_PREFIX = /^(?:get|is|has)(?=[A-Z])/u;
 
@@ -67,8 +68,7 @@ function checkedIdentifiers(source, range) {
 
 function checkedNames(source, range) {
   const names = new Set();
-  for (let index = range.from; index < range.to; index += 1) {
-    const token = source.tokens[index];
+  for (const token of source.tokens.slice(range.from, range.to)) {
     if (token.kind === 'identifier') {
       names.add(normalized(token.text));
       names.add(normalized(token.text.replace(GETTER_PREFIX, '')));

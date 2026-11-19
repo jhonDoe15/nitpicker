@@ -15,7 +15,7 @@ function report(context: Context, { value, operator }: Site): void {
   }
 }
 
-export const rule: TSESLint.RuleModule<'unescapedValue', []> = {
+export const rule: TSESLint.RuleModule<'unescapedValue'> = {
   meta: {
     type: 'problem',
     docs: {
@@ -37,14 +37,14 @@ export const rule: TSESLint.RuleModule<'unescapedValue', []> = {
         }
       },
       CallExpression(node) {
-        filterSites.callSites(node).forEach((site) => {
+        for (const site of filterSites.callSites(node)) {
           report(context, site);
-        });
+        }
       },
       TaggedTemplateExpression(node) {
-        filterSites.templateSites(node).forEach((site) => {
+        for (const site of filterSites.templateSites(node)) {
           report(context, site);
-        });
+        }
       },
     };
   },

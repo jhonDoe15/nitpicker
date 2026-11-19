@@ -6,7 +6,7 @@ import {
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
 import { depthFirst, nodeChildren } from '../typed/node-views.mts';
-import { unwrapped } from '../typed/syntax-views.mts';
+import { callbackReceiverOf, unwrapped } from '../typed/syntax-views.mts';
 import { isDirectoryName, nameText } from './names.mts';
 
 type MessageId = 'suffix' | 'prefix';
@@ -56,56 +56,63 @@ const STATEMENT_STEPS = new Set<string>([
 ]);
 
 function enclosingIf(node: Node): Node | undefined {
-  let current: Node | undefined = node.parent ?? undefined;
-  while (current !== undefined && STATEMENT_STEPS.has(current.type)) {
-    current = current.parent ?? undefined;
+  const first = node.parent ?? undefined;
+  const pending: Node[] = first === undefined ? [] : [first];
+  for (const current of pending) {
+    if (!STATEMENT_STEPS.has(current.type)) {
+      return current.type === AST_NODE_TYPES.IfStatement ? current : undefined;
+    }
+    const next = current.parent ?? undefined;
+    if (next !== undefined) {
+      pending.push(next);
+    }
   }
-  return current?.type === AST_NODE_TYPES.IfStatement ? current : undefined;
+  return undefined;
 }
 
 function guardRoot(node: Node): Node {
-  let current = node;
-  while (current.parent !== undefined && TRANSPARENT.has(current.parent.type)) {
-    current = current.parent;
+  const chain = [node];
+  for (const item of chain) {
+    const { parent } = item;
+    if (parent !== undefined && TRANSPARENT.has(parent.type)) {
+      chain.push(parent);
+    }
   }
+  const current = chain.at(-1) ?? node;
   return current.type === AST_NODE_TYPES.IfStatement ? current : (enclosingIf(current) ?? current);
 }
 
-function filteredSource(fn: Node): Node | undefined {
-  const call = fn.parent;
-  return call?.type === AST_NODE_TYPES.CallExpression &&
-    call.arguments.includes(fn as TSESTree.CallExpressionArgument) &&
-    call.callee.type === AST_NODE_TYPES.MemberExpression
-    ? call.callee.object
-    : undefined;
-}
-
 function filteredSources(call: Node): Node[] {
-  const sources: Node[] = [];
-  let current: Node | undefined = call;
-  while (current !== undefined) {
-    const source = isFunctionNode(current) ? filteredSource(current) : undefined;
-    if (source !== undefined) {
-      sources.push(source);
+  const ancestors = [call];
+  for (const current of ancestors) {
+    const parent = current.parent ?? undefined;
+    if (parent !== undefined) {
+      ancestors.push(parent);
     }
-    current = current.parent ?? undefined;
   }
-  return sources;
+  return ancestors.flatMap((current) => {
+    const source = isFunctionNode(current) ? callbackReceiverOf(current) : undefined;
+    return source === undefined ? [] : [source];
+  });
 }
 
 function guardRoots(call: TSESTree.CallExpression): Node[] {
   return [guardRoot(call), ...filteredSources(call)];
 }
 
+function tailText(built: Node): string | undefined {
+  if (built.type === AST_NODE_TYPES.TemplateLiteral) {
+    return built.quasis.at(-1)?.value.cooked ?? undefined;
+  }
+  return built.type === AST_NODE_TYPES.BinaryExpression && built.operator === '+'
+    ? stringValue(built.right)
+    : undefined;
+}
+
 function endsWithText(context: SourceContext, receiver: Node, pattern: Node): boolean {
   const suffix = stringValue(resolveConstant(context, pattern) ?? pattern);
   const built = resolveConstant(context, receiver) ?? receiver;
-  const tail =
-    built.type === AST_NODE_TYPES.TemplateLiteral
-      ? built.quasis.at(-1)?.value.cooked
-      : built.type === AST_NODE_TYPES.BinaryExpression && built.operator === '+'
-        ? stringValue(built.right)
-        : undefined;
+  const tail = tailText(built);
   return suffix !== undefined && tail?.endsWith(suffix) === true;
 }
 
@@ -140,7 +147,7 @@ function messageFor(
   return isPrefixValue(pattern) ? 'prefix' : undefined;
 }
 
-export const rule: TSESLint.RuleModule<MessageId, []> = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: { description: 'Remove a suffix or prefix with an anchored check, not a string replace' },

@@ -1,18 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { parseSource as untypedParse } from '../../max-value-sums/source-file.mjs';
-import { BACKOFF_CHECK as untypedCheck } from './backoff.mjs';
+import { namesOf } from '../../test-support/check-runner.mts';
+import { BACKOFF_CHECK } from './backoff.mjs';
 
-type Found = { readonly line: number; readonly name: string };
-
-const parseSource: (text: string, options: { file: string; kotlin: boolean }) => unknown =
-  untypedParse;
-const check: { find: (source: unknown) => Found[] } = untypedCheck;
-
-function names(body: string, kotlin = false): string[] {
-  return check
-    .find(parseSource(`class A {\n${body}\n}\n`, { file: kotlin ? 'A.kt' : 'A.java', kotlin }))
-    .map(({ name }) => name);
-}
+const names = namesOf(BACKOFF_CHECK);
 
 describe('BackoffShiftOverflow in Java', () => {
   it('reports a shift clamped only to the type width', () => {
@@ -53,7 +43,9 @@ describe('BackoffShiftOverflow in Java', () => {
 describe('BackoffShiftOverflow in Kotlin', () => {
   it('reports shl of an attempt count', () => {
     expect(
-      names('fun delay(base: Long, attempt: Int): Long = base * (1L shl attempt)', true),
+      names('fun delay(base: Long, attempt: Int): Long = base * (1L shl attempt)', {
+        kotlin: true,
+      }),
     ).toEqual(['attempt']);
   });
 });

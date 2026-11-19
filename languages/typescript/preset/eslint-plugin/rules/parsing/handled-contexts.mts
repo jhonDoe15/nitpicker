@@ -36,7 +36,7 @@ export function isPromiseCaught(node: TSESTree.Node): boolean {
     callee.type === AST_NODE_TYPES.MemberExpression &&
     nameOf(callee.property) === 'then' &&
     (then.arguments.length > 1 ||
-      (parent?.type === AST_NODE_TYPES.MemberExpression && nameOf(parent.property) === 'catch'))
+      (parent.type === AST_NODE_TYPES.MemberExpression && nameOf(parent.property) === 'catch'))
   );
 }
 
@@ -46,7 +46,6 @@ export function isPercentTest(node: TSESTree.CallExpression): boolean {
     callee.type === AST_NODE_TYPES.MemberExpression &&
     callee.object.type === AST_NODE_TYPES.Literal &&
     'regex' in callee.object &&
-    callee.object.regex !== undefined &&
     callee.object.regex.pattern.includes('%') &&
     nameOf(callee.property) === 'test'
   );

@@ -1,6 +1,13 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { isLiteral } from '../typed/syntax-views.mts';
-import { leaves, unwrap } from '../support/flow/guard-forms.mts';
+import { ancestorsOf, depthFirst } from '../typed/node-views.mts';
+import {
+  escapeText as escapeRegExp,
+  leaves,
+  mathMethodOf,
+  soleInitializer,
+  unwrap,
+} from '../support/flow/guard-forms.mts';
 
 type MessageId = 'negativeCount';
 type Context = Readonly<TSESLint.RuleContext<MessageId, []>>;
@@ -10,17 +17,23 @@ const RELATION = /[<>]/u;
 const LARGEST = /max|largest|longest|lengths/iu;
 const CLAMPING = new Set(['max', 'min', 'round', 'floor', 'ceil']);
 
+function plusOperands(node: TSESTree.Node): TSESTree.Node[] {
+  return node.type === AST_NODE_TYPES.BinaryExpression && node.operator === '+'
+    ? [unwrap(node.left), unwrap(node.right)]
+    : [];
+}
+
 function findSubtraction(node: TSESTree.Node): TSESTree.BinaryExpression | undefined {
-  const value = unwrap(node);
-  if (value.type !== AST_NODE_TYPES.BinaryExpression) {
-    return undefined;
+  for (const value of depthFirst(unwrap(node), plusOperands)) {
+    if (
+      value.type === AST_NODE_TYPES.BinaryExpression &&
+      value.operator === '-' &&
+      !isLiteral(value.right)
+    ) {
+      return value;
+    }
   }
-  if (value.operator === '-') {
-    return isLiteral(value.right) ? undefined : value;
-  }
-  return value.operator === '+'
-    ? (findSubtraction(value.left) ?? findSubtraction(value.right))
-    : undefined;
+  return undefined;
 }
 
 function resolve(context: Context, argument: TSESTree.Node): Subtraction | undefined {
@@ -32,39 +45,42 @@ function resolve(context: Context, argument: TSESTree.Node): Subtraction | undef
   if (value.type !== AST_NODE_TYPES.Identifier) {
     return undefined;
   }
-  const variable = context.sourceCode
-    .getScope(value)
-    .references.find(({ identifier }) => identifier === value)?.resolved;
-  const [definition] = variable?.defs ?? [];
-  const writes = variable?.references.filter((reference) => reference.isWrite()) ?? [];
-  if (
-    variable?.defs.length !== 1 ||
-    writes.length !== 1 ||
-    definition?.node.type !== AST_NODE_TYPES.VariableDeclarator ||
-    definition.node.init === null
-  ) {
+  const initial = soleInitializer(context, value);
+  if (initial === undefined) {
     return undefined;
   }
-  const found = findSubtraction(definition.node.init);
+  const found = findSubtraction(initial);
   return found === undefined ? undefined : { node: found, name: value.name };
 }
 
+function isMathClamp(value: TSESTree.Node): boolean {
+  return CLAMPING.has(mathMethodOf(value) ?? '');
+}
+
+function initializerOf(
+  context: Context,
+  identifier: TSESTree.Identifier,
+): TSESTree.Node | undefined {
+  const [definition] = context.sourceCode.getScope(identifier).set.get(identifier.name)?.defs ?? [];
+  return definition?.node.type === AST_NODE_TYPES.VariableDeclarator
+    ? (definition.node.init ?? undefined)
+    : undefined;
+}
+
 function isClamped(context: Context, node: TSESTree.Node): boolean {
-  const value = unwrap(node);
-  if (value.type === AST_NODE_TYPES.Identifier) {
-    const [definition] = context.sourceCode.getScope(value).set.get(value.name)?.defs ?? [];
-    const init =
-      definition?.node.type === AST_NODE_TYPES.VariableDeclarator && definition.node.init;
-    return init ? isClamped(context, init) : false;
+  const pending = [node];
+  for (const current of pending) {
+    const value = unwrap(current);
+    if (value.type !== AST_NODE_TYPES.Identifier) {
+      return isMathClamp(value);
+    }
+    const init = initializerOf(context, value);
+    if (init === undefined) {
+      return false;
+    }
+    pending.push(init);
   }
-  return (
-    value.type === AST_NODE_TYPES.CallExpression &&
-    value.callee.type === AST_NODE_TYPES.MemberExpression &&
-    value.callee.object.type === AST_NODE_TYPES.Identifier &&
-    value.callee.object.name === 'Math' &&
-    value.callee.property.type === AST_NODE_TYPES.Identifier &&
-    CLAMPING.has(value.callee.property.name)
-  );
+  return false;
 }
 
 function isComputedLimit(context: Context, { left, right }: TSESTree.BinaryExpression): boolean {
@@ -83,18 +99,18 @@ function guards(testText: string, { node, name }: Subtraction, context: Context)
   const left = sourceCode.getText(node.left);
   const right = sourceCode.getText(node.right);
   const both = testText.includes(left) && testText.includes(right);
-  const named = name !== undefined && new RegExp(`\\b${name}\\b`, 'u').test(testText);
+  const named = name !== undefined && new RegExp(`\\b${escapeRegExp(name)}\\b`, 'u').test(testText);
   return both || named || testText.includes(sourceCode.getText(node));
 }
 
 function exitsEarlier(context: Context, child: TSESTree.Node, found: Subtraction): boolean {
   const { sourceCode } = context;
   const { parent } = child;
-  const siblings =
+  const siblings: readonly TSESTree.Node[] =
     parent?.type === AST_NODE_TYPES.BlockStatement || parent?.type === AST_NODE_TYPES.Program
       ? parent.body
       : [];
-  const earlier = siblings.slice(0, siblings.indexOf(child as TSESTree.ProgramStatement));
+  const earlier = siblings.slice(0, siblings.indexOf(child));
   return earlier.some(
     (statement) =>
       statement.type === AST_NODE_TYPES.IfStatement &&
@@ -119,14 +135,9 @@ function guardsChild(context: Context, child: TSESTree.Node, found: Subtraction)
 }
 
 function isGuarded(context: Context, sink: TSESTree.Node, found: Subtraction): boolean {
-  let child: TSESTree.Node = sink;
-  while (child.type !== AST_NODE_TYPES.Program) {
-    if (guardsChild(context, child, found) || exitsEarlier(context, child, found)) {
-      return true;
-    }
-    child = child.parent;
-  }
-  return false;
+  return [sink, ...ancestorsOf(sink)].some(
+    (child) => guardsChild(context, child, found) || exitsEarlier(context, child, found),
+  );
 }
 
 function sinkName(node: TSESTree.CallExpression | TSESTree.NewExpression): string | undefined {
@@ -143,7 +154,7 @@ function sinkName(node: TSESTree.CallExpression | TSESTree.NewExpression): strin
     : undefined;
 }
 
-export const rule: TSESLint.RuleModule<MessageId, []> = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: {

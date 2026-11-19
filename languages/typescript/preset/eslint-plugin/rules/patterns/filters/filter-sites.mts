@@ -50,15 +50,18 @@ function keyOf(node: Node): string | undefined {
 }
 
 function prismaCallAbove(node: Node): boolean {
-  let current: Node = node;
+  const chain: Node[] = [node];
   let whereSeen = false;
-  for (let level = 0; level < MAX_LEVELS && current.parent != null; level += 1) {
-    const holder: Node = current.parent;
+  for (const [level, current] of chain.entries()) {
+    const holder = current.parent ?? undefined;
+    if (level >= MAX_LEVELS || holder === undefined) {
+      return false;
+    }
     whereSeen = whereSeen || keyOf(holder) === 'where';
     if (holder.type === AST_NODE_TYPES.CallExpression) {
       return whereSeen && PRISMA_METHODS.has(calleeNameOf(holder.callee) ?? '');
     }
-    current = holder;
+    chain.push(holder);
   }
   return false;
 }

@@ -12,14 +12,14 @@ tester.run('no-expanding-replacement-string', rule, {
     "export function fill(text: string) { return text.replace('{name}', 'a'); }",
     "export function fill(text: string) { return text.replace(/(\\d+)/, '$1.0'); }",
     "const FILLER = '<b>$&</b>';\nexport function fill(text: string) { return text.replace(/a/g, FILLER); }",
-    'export function fill(text: string, name: string) { return text.replace(/a/g, `$1${name}`); }',
+    `export function fill(text: string, name: string) { return text.replace(/a/g, \`$1\${name}\`); }`,
     "export function fill(text: string, name: string) { return text.replace(/(a)/g, '$1' + name); }",
     "export function fill(text: string, name: string) { return text.replace('{name}', () => name); }",
     "export function fill(text: string, name: string) { return text.replaceAll('{name}', function () { return name; }); }",
     "export function fill(text: string, make: () => string) { return text.replace('{name}', make); }",
     "export function fill(text: string, count: number) { return text.replace('{count}', String(count)); }",
     "export function fill(text: string, count: number) { return text.replace('{count}', count.toFixed(2)); }",
-    "export function fill(text: string, count: number) { return text.replace('{count}', `${count}`); }",
+    `export function fill(text: string, count: number) { return text.replace('{count}', \`\${count}\`); }`,
     "export function fill(text: string, kind: 'a' | 'b') { return text.replace('{kind}', kind); }",
     "export function fill(text: string, name: string) { return text.replace('{name}', name.replace(/\\$/g, '$$$$')); }",
     "export function fill(text: string, name: string) { return text.replace('{name}', escapeReplacement(name)); }\ndeclare function escapeReplacement(value: string): string;",
@@ -38,7 +38,7 @@ tester.run('no-expanding-replacement-string', rule, {
       expanding('replace', 'name'),
     ),
     typed(
-      'export function fill(text: string, arg: unknown) { return text.replace(`<<${1}>>`, String(arg)); }',
+      `export function fill(text: string, arg: unknown) { return text.replace(\`<<\${1}>>\`, String(arg)); }`,
       expanding('replace', 'String(arg)'),
     ),
     typed(
@@ -62,8 +62,8 @@ tester.run('no-expanding-replacement-string', rule, {
       expanding('replaceAll', 'name'),
     ),
     typed(
-      "export function fill(text: string, name: string) { return text.replace('{name}', `Dr. ${name}`); }",
-      expanding('replace', '`Dr. ${name}`'),
+      `export function fill(text: string, name: string) { return text.replace('{name}', \`Dr. \${name}\`); }`,
+      expanding('replace', `\`Dr. \${name}\``),
     ),
     typed(
       "export function fill(text: string, name: string) { return text.replace('{name}', name + '!'); }",

@@ -9,7 +9,7 @@ import { findTranslations } from './translation/chains.mjs';
 export const PATTERN_TRANSLATION_RULE = 'PatternTranslation';
 export const EXPANDING_REPLACEMENT_RULE = 'ExpandingReplacement';
 export const UNESCAPED_HTML_RULE = 'UnescapedHtmlValue';
-export const STRING_CALL_RULES = [
+const STRING_CALL_RULES = [
   PATTERN_TRANSLATION_RULE,
   EXPANDING_REPLACEMENT_RULE,
   UNESCAPED_HTML_RULE,
@@ -109,11 +109,16 @@ export function readStringCallFindings(projectRoot, { projects, kotlin = false, 
   );
 }
 
-export const PATTERN_TRANSLATION_ALLOWED = translationMessage({ kind: 'regex', root: '<value>' });
+const PLACEHOLDER_VALUE = '<value>';
+
+export const PATTERN_TRANSLATION_ALLOWED = translationMessage({
+  kind: 'regex',
+  root: PLACEHOLDER_VALUE,
+});
 
 export const EXPANDING_REPLACEMENT_ALLOWED = replacementMessage({
-  value: '<value>',
+  value: PLACEHOLDER_VALUE,
   kotlin: false,
 });
 
-export const UNESCAPED_HTML_ALLOWED = markupMessage({ value: '<value>' });
+export const UNESCAPED_HTML_ALLOWED = markupMessage({ value: PLACEHOLDER_VALUE });

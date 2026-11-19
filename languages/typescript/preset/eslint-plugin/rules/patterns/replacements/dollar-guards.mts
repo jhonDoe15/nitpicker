@@ -20,8 +20,12 @@ function isNoDollarTest(context: SourceContext, test: Node, text: string): boole
 
 export function hasDollarGuard(context: SourceContext, node: Node): boolean {
   const text = context.sourceCode.getText(node);
-  for (let child: Node = node; child.parent != null; child = child.parent) {
-    const holder = child.parent;
+  const pending = [node];
+  for (const child of pending) {
+    const holder = child.parent ?? undefined;
+    if (holder === undefined) {
+      return false;
+    }
     if (
       (holder.type === AST_NODE_TYPES.IfStatement ||
         holder.type === AST_NODE_TYPES.ConditionalExpression) &&
@@ -30,6 +34,7 @@ export function hasDollarGuard(context: SourceContext, node: Node): boolean {
     ) {
       return true;
     }
+    pending.push(holder);
   }
   return false;
 }

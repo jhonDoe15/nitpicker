@@ -15,13 +15,13 @@ const NUMERIC_TYPES = new Set([
   'Boolean',
   'Int',
 ]);
+const OWNER_OFFSET = 3;
 const DIAGNOSTIC_NAME = /(?:Exception|Error)$/u;
 const DIAGNOSTIC_CALLS = new Set(['warn', 'error', 'info', 'debug', 'trace', 'fail']);
 const DIAGNOSTIC_OWNERS = /^(?:log|logger|LOG|LOGGER|Assert|Assertions|Preconditions)$/u;
 const DIAGNOSTIC_FUNCTIONS = new Set(['require', 'check', 'error', 'checkNotNull']);
-const cache = new WeakMap();
 
-function declaredNumbers({ tokens, kotlin }) {
+export function numericNames({ tokens, kotlin }) {
   const names = new Set();
   for (const [index, token] of tokens.entries()) {
     const next = tokens[index + 1];
@@ -36,16 +36,9 @@ function declaredNumbers({ tokens, kotlin }) {
   return names;
 }
 
-export function numericNames(source) {
-  if (!cache.has(source)) {
-    cache.set(source, declaredNumbers(source));
-  }
-  return cache.get(source);
-}
-
 function isDiagnosticOpener(tokens, open) {
   const callee = tokens[open - 1];
-  const owner = tokens[open - 3];
+  const owner = tokens[open - OWNER_OFFSET];
   if (callee?.kind !== 'identifier') {
     return false;
   }
@@ -57,10 +50,13 @@ function isDiagnosticOpener(tokens, open) {
 }
 
 export function isDiagnosticText({ tokens, opener }, index) {
-  for (let open = opener[index]; open >= 0; open = opener[open]) {
-    if (tokens[open].text === '(' && isDiagnosticOpener(tokens, open)) {
-      return true;
+  const chain = [opener[index]];
+  for (const open of chain) {
+    if (open >= 0) {
+      chain.push(opener[open]);
     }
   }
-  return false;
+  return chain.some(
+    (open) => open >= 0 && tokens[open].text === '(' && isDiagnosticOpener(tokens, open),
+  );
 }

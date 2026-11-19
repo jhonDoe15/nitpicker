@@ -1,5 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { escapeText, leaves } from '../support/flow/guard-forms.mts';
+import { depthFirst, nodeChildren } from '../typed/node-views.mts';
+import { enclosingUnit } from '../support/flow/enclosing-unit.mts';
+import { escapeText as escapeRegExp, leaves } from '../support/flow/guard-forms.mts';
 
 type MessageId = 'rejectsTooLate' | 'acceptsTooMuch';
 type Context = Readonly<TSESLint.RuleContext<MessageId, []>>;
@@ -11,6 +13,9 @@ type Bound = {
 
 const LOOPS = new Set<string>([AST_NODE_TYPES.WhileStatement, AST_NODE_TYPES.ForStatement]);
 const LENGTH_NAMES = new Set(['length', 'size', 'count']);
+const REJECTING = 'rejecting';
+const ACCEPTING = 'accepting';
+
 function ownerOfLength(context: Context, node: TSESTree.Node): string | undefined {
   const value =
     node.type === AST_NODE_TYPES.CallExpression && node.arguments.length === 0 ? node.callee : node;
@@ -34,34 +39,44 @@ function indexText(context: Context, node: TSESTree.Node): string | undefined {
   return node.type === AST_NODE_TYPES.Identifier ? context.sourceCode.getText(node) : undefined;
 }
 
+function sidesOf(
+  node: TSESTree.BinaryExpression,
+  kind: typeof REJECTING | typeof ACCEPTING,
+): readonly [TSESTree.Node, TSESTree.Node] | undefined {
+  const direct = kind === REJECTING ? '>' : '<=';
+  const flipped = kind === REJECTING ? '<' : '>=';
+  if (node.operator === direct) {
+    return [node.left, node.right];
+  }
+  return node.operator === flipped ? [node.right, node.left] : undefined;
+}
+
 function boundOf(
   context: Context,
   node: TSESTree.Node,
-  kind: 'rejecting' | 'accepting',
+  kind: typeof REJECTING | typeof ACCEPTING,
 ): Bound | undefined {
-  if (node.type !== AST_NODE_TYPES.BinaryExpression) {
+  const sides = node.type === AST_NODE_TYPES.BinaryExpression ? sidesOf(node, kind) : undefined;
+  if (node.type !== AST_NODE_TYPES.BinaryExpression || sides === undefined) {
     return undefined;
   }
-  const direct = kind === 'rejecting' ? '>' : '<=';
-  const flipped = kind === 'rejecting' ? '<' : '>=';
-  const [indexNode, lengthNode] =
-    node.operator === direct
-      ? [node.left, node.right]
-      : node.operator === flipped
-        ? [node.right, node.left]
-        : [];
-  if (indexNode === undefined || lengthNode === undefined) {
-    return undefined;
-  }
-  const index = indexText(context, indexNode);
-  const owner = ownerOfLength(context, lengthNode);
+  const index = indexText(context, sides[0]);
+  const owner = ownerOfLength(context, sides[1]);
   return index === undefined || owner === undefined ? undefined : { bound: node, index, owner };
 }
 
+function isOperation(
+  node: TSESTree.Node,
+  operator: '||' | '&&',
+): node is TSESTree.LogicalExpression {
+  return node.type === AST_NODE_TYPES.LogicalExpression && node.operator === operator;
+}
+
 function chain(node: TSESTree.Node, operator: '||' | '&&'): TSESTree.Node[] {
-  return node.type === AST_NODE_TYPES.LogicalExpression && node.operator === operator
-    ? [...chain(node.left, operator), ...chain(node.right, operator)]
-    : [node];
+  const parts = depthFirst(node, (current) =>
+    isOperation(current, operator) ? [current.left, current.right] : [],
+  );
+  return [...parts].filter((each) => !isOperation(each, operator));
 }
 
 function isWrite(node: TSESTree.MemberExpression): boolean {
@@ -71,15 +86,6 @@ function isWrite(node: TSESTree.MemberExpression): boolean {
     parent.type === AST_NODE_TYPES.UpdateExpression ||
     (parent.type === AST_NODE_TYPES.UnaryExpression && parent.operator === 'delete')
   );
-}
-
-function childNodes(node: TSESTree.Node, keys: readonly string[]): TSESTree.Node[] {
-  const record = node as unknown as Record<string, unknown>;
-  return keys
-    .flatMap((key) => (Array.isArray(record[key]) ? record[key] : [record[key]]))
-    .filter(
-      (each): each is TSESTree.Node => typeof each === 'object' && each !== null && 'type' in each,
-    );
 }
 
 function isRead(context: Context, node: TSESTree.Node, { index, owner }: Bound): boolean {
@@ -94,21 +100,25 @@ function isRead(context: Context, node: TSESTree.Node, { index, owner }: Bound):
 }
 
 function reads(context: Context, roots: readonly TSESTree.Node[], bound: Bound): boolean {
-  const { visitorKeys } = context.sourceCode;
-  const visit = (node: TSESTree.Node): boolean =>
-    isRead(context, node, bound) || childNodes(node, visitorKeys[node.type] ?? []).some(visit);
-  return roots.some(visit);
+  return roots.some((root) => {
+    for (const node of depthFirst(root, nodeChildren)) {
+      if (isRead(context, node, bound)) {
+        return true;
+      }
+    }
+    return false;
+  });
 }
 
 function hasPairCheck(text: string, { index, owner }: Bound): boolean {
-  const lengthOf = `${escapeText(owner)}\\.\\w+(?:\\(\\))?`;
-  const name = escapeText(index);
+  const lengthOf = `${escapeRegExp(owner)}\\.\\w+(?:\\(\\))?`;
+  const name = escapeRegExp(index);
   const pair = `${name}\\s*(?:>=|<|===)\\s*${lengthOf}|${lengthOf}\\s*(?:<=|>|===)\\s*${name}\\b`;
   return new RegExp(pair, 'u').test(text);
 }
 
 function hasMove(text: string, { index }: Bound): boolean {
-  const name = escapeText(index);
+  const name = escapeRegExp(index);
   const moved = new RegExp(
     `(?<!(?:let|const|var)\\s)\\b${name}\\s*(?:=(?!=)|[-+*/]=|\\+\\+|--)|(?:\\+\\+|--)${name}\\b`,
     'u',
@@ -125,18 +135,7 @@ function following(node: TSESTree.IfStatement): TSESTree.Node[] {
 }
 
 function enclosingText(context: Context, node: TSESTree.Node): string {
-  let current: TSESTree.Node = node;
-  while (current.parent !== undefined && current.parent.type !== AST_NODE_TYPES.Program) {
-    current = current.parent;
-    if (
-      current.type === AST_NODE_TYPES.FunctionDeclaration ||
-      current.type === AST_NODE_TYPES.FunctionExpression ||
-      current.type === AST_NODE_TYPES.ArrowFunctionExpression
-    ) {
-      break;
-    }
-  }
-  return context.sourceCode.getText(current);
+  return context.sourceCode.getText(enclosingUnit(node));
 }
 
 type Env = {
@@ -167,25 +166,25 @@ function isChecked(env: Env, found: Bound, node: TSESTree.Node): boolean {
 
 function disjunction(env: Env, test: TSESTree.Node, after: readonly TSESTree.Node[]): void {
   const parts = chain(test, '||');
-  parts.forEach((part, at) => {
-    const found = boundOf(env.context, part, 'rejecting');
+  for (const [at, part] of parts.entries()) {
+    const found = boundOf(env.context, part, REJECTING);
     const later = [...parts.slice(at + 1), ...after];
     if (found && !isChecked(env, found, part) && reads(env.context, later, found)) {
       report(env, found, 'rejectsTooLate');
     }
-  });
+  }
 }
 
 function conjunction(env: Env, test: TSESTree.Node, body: readonly TSESTree.Node[]): void {
   const parts = chain(test, '&&');
   const checked = LOOPS.has(test.parent?.type ?? '') ? isPaired : isChecked;
-  parts.forEach((part, at) => {
-    const found = boundOf(env.context, part, 'accepting');
+  for (const [at, part] of parts.entries()) {
+    const found = boundOf(env.context, part, ACCEPTING);
     const later = [...parts.slice(at + 1), ...body];
     if (found && !checked(env, found, part) && reads(env.context, later, found)) {
       report(env, found, 'acceptsTooMuch');
     }
-  });
+  }
 }
 
 function checkLogical(env: Env, node: TSESTree.LogicalExpression): void {
@@ -204,7 +203,7 @@ function checkLogical(env: Env, node: TSESTree.LogicalExpression): void {
   }
 }
 
-export const rule: TSESLint.RuleModule<MessageId, []> = {
+export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'problem',
     docs: {

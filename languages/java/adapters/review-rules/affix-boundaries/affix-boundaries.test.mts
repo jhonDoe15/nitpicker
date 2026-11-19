@@ -1,25 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { parseSource as untypedParse } from '../max-value-sums/source-file.mjs';
+import { parse, sourceRunners } from '../test-support/source-runners.mts';
 import { findAffixChecks as untypedFind } from './affix-calls.mjs';
 
 type Check = { readonly line: number; readonly kind: string };
 
-const parse: (text: string, options: { file: string; kotlin: boolean }) => unknown = untypedParse;
 const find: (source: unknown) => Check[] = untypedFind;
 
-function java(body: string) {
-  const text =
-    `class Files {\n  void check(String pathname, String base, ` +
-    `String hostname, String domain) {\n${body}\n  }\n}\n`;
-  return find(parse(text, { file: 'Files.java', kotlin: false })).map(({ kind }) => kind);
-}
-
-function kotlin(body: string) {
-  const text =
-    `class Files {\n  fun check(pathname: String, base: String, ` +
-    `hostname: String, domain: String) {\n${body}\n  }\n}\n`;
-  return find(parse(text, { file: 'Files.kt', kotlin: true })).map(({ kind }) => kind);
-}
+const { java, kotlin } = sourceRunners({
+  find,
+  pick: ({ kind }) => kind,
+  java: {
+    file: 'Files.java',
+    wrap: (body) =>
+      `class Files {\n  void check(String pathname, String base, ` +
+      `String hostname, String domain) {\n${body}\n  }\n}\n`,
+  },
+  kotlin: {
+    file: 'Files.kt',
+    wrap: (body) =>
+      `class Files {\n  fun check(pathname: String, base: String, ` +
+      `hostname: String, domain: String) {\n${body}\n  }\n}\n`,
+  },
+});
 
 describe('AffixWithoutBoundary in Java', () => {
   it('reports a prefix, suffix and origin check without a boundary', () => {
