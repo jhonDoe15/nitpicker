@@ -26,7 +26,7 @@ type Loop = {
 };
 type Step = { readonly sites: Site[]; readonly next: TSESTree.Node[] };
 
-const COMBINATORS = new Set(['all', 'allSettled', 'any', 'race']);
+const COMBINATORS = new Set(['all', 'allSettled']);
 const MAPPERS = new Set(['map', 'flatMap']);
 const SIZES = new Set(['length', 'size']);
 const MAX_DEPTH = 4;

@@ -1,4 +1,6 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { suggestible } from '../../fixes/support/descriptors.mts';
+import { syncFsFix } from '../../fixes/async/sync-fs-fix.mts';
 import { findVariable } from '../analysis/constant-resolution.mts';
 import {
   bindingsOf,
@@ -10,6 +12,7 @@ import { memberName, unwrapped, type Context } from '../security/security-values
 import {
   enclosingContext,
   frameworkNames,
+  isDirectlyIn,
   isStartupFunction,
   isWorkerBranch,
   routeHandlers,
@@ -21,6 +24,7 @@ import {
   type SyncFamily,
 } from './sync-node-apis.mts';
 
+type MessageIds = 'blocking' | 'awaitTwin' | 'awaitAccess';
 type FamilyBindings = { readonly family: SyncFamily; readonly bindings: ModuleBindings };
 type FileScope = {
   readonly families: readonly FamilyBindings[];
@@ -45,6 +49,9 @@ const CONTEXT_NAMES: Readonly<Record<'async' | 'handler', string>> = {
   async: 'an async function',
   handler: 'a request handler',
 };
+
+const CALLBACK_ADVICE =
+  'a loop in place of the synchronous callback (or `Promise.all` over `map` with an async callback), because `await` cannot go inside it, and then ';
 
 function isWorkerScript(bindings: ModuleBindings, text: string): boolean {
   const named = [...bindings.named.values()].some((name) => WORKER_SCRIPT_BINDINGS.has(name));
@@ -155,21 +162,30 @@ function reportCandidates(
     ) {
       continue;
     }
-    context.report({
+    const alternative = family.alternative(name);
+    const fix =
+      found.kind === 'async' ? syncFsFix(context, { call: node, fn: found.fn }) : undefined;
+    const descriptor: TSESLint.ReportDescriptor<MessageIds> = {
       node,
       messageId: 'blocking',
       data: {
         api: name,
         context: CONTEXT_NAMES[found.kind],
-        alternative: family.alternative(name),
+        alternative: isDirectlyIn(node, found.fn)
+          ? alternative
+          : `${CALLBACK_ADVICE}${alternative}`,
       },
-    });
+    };
+    context.report(
+      suggestible(descriptor, { messageId: fix?.messageId ?? 'awaitTwin', plan: fix?.plan }),
+    );
   }
 }
 
-export const rule: TSESLint.RuleModule<'blocking'> = {
+export const rule: TSESLint.RuleModule<MessageIds> = {
   meta: {
     type: 'problem',
+    hasSuggestions: true,
     docs: {
       description: 'Disallow synchronous Node APIs inside async functions and request handlers',
     },
@@ -177,6 +193,10 @@ export const rule: TSESLint.RuleModule<'blocking'> = {
     messages: {
       blocking:
         '`{{api}}` blocks the event loop inside {{context}}, so every other request and task waits until it returns. Use {{alternative}}.',
+      awaitTwin:
+        'Await the promise version of this call. It yields to other work, so code that relied on the call finishing before anything else ran can now interleave.',
+      awaitAccess:
+        'Await an `access` check instead. It yields to other work, so the path can change between the check and its use, as it could before.',
     },
   },
   create(context) {
