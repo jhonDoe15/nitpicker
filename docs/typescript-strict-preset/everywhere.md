@@ -1292,6 +1292,14 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   outside any function is not scored. A function that must stay complex gets an exception for the
   rule in `nitpicker.config.json`.
 - Config files are exempt from the loop, `forEach` and promise-chain bans; `eqeqeq` still applies.
+- `nitpicker/report-module-load-effects` does not report a member definition: an assignment to a
+  member of a function, class or fresh object declared at the top of the same file
+  (`Foo.prototype.bar = function ...`, `Foo.prototype = { ... }`, `Foo.create = function ...`,
+  `app.init = function ...` after `var app = module.exports = {}`), and `Object.assign`,
+  `Object.defineProperty` or `Object.defineProperties` on such a member, when every value is a
+  function, a class, a literal, a member of such a binding, or an object literal of those. A
+  definition on an imported or global object (`Array.prototype.last = ...`) patches shared state
+  and is still reported, and so is a value that calls something.
 - `nitpicker/report-module-load-effects` also reports work done by a module-level `const`
   initialiser (`Date.now()`, `performance.now()`, `Math.random()`, `crypto.randomUUID()`, `fetch`,
   timers, a `...Sync` call from `fs`, `child_process`, `crypto` or `zlib` such as `readFileSync`

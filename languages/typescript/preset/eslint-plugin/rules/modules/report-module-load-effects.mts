@@ -8,6 +8,7 @@ import {
 } from '../analysis/subprocess-calls.mts';
 import { ancestorsOf, type SourceCode } from '../typed/node-views.mts';
 import { calleeNameOf } from '../typed/syntax-views.mts';
+import { isMemberDefinition } from './definitions/member-definitions.mts';
 import { guardedByMain, isMainGuard } from './entry/main-guard.mts';
 
 type MessageIds =
@@ -217,7 +218,8 @@ export const rule: TSESLint.RuleModule<MessageIds, Options> = {
           node.parent.type !== AST_NODE_TYPES.Program ||
           isDirective(node) ||
           node.expression.type === AST_NODE_TYPES.AwaitExpression ||
-          (commonJsExports && isCommonJsExport(node.expression))
+          (commonJsExports && isCommonJsExport(node.expression)) ||
+          isMemberDefinition(context, node.expression)
         ) {
           return;
         }
