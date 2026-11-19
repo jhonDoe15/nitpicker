@@ -29,6 +29,7 @@ import {
   kotlinRestatingDocCommentRecipe,
 } from './restating-doc-comment.mts';
 import { upperEllRecipe } from './upper-ell.mts';
+import { javaCatchLogRecipe } from './java/catch-log.mts';
 import { javaExtractNearDuplicateRecipe } from './extract/near-duplicate-extract.mts';
 import { javaExtractPartialRunRecipe } from './extract/partial/partial-run-extract.mts';
 import { shorterConditionRecipe } from './logic/shorter-condition.mts';
@@ -53,6 +54,7 @@ export const JVM_RECIPES = defineRecipes([
   useOrEmptyRecipe,
   unnecessaryLetRecipe,
   catchLogRecipe,
+  javaCatchLogRecipe,
   logConcatenationRecipe,
   generatedMarkerRecipe,
   jvmSyntheticRecipe,

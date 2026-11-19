@@ -72,6 +72,11 @@ const GROUPS = [
     java: 'LogStringConcatenation',
     typescript: 'nitpicker/no-interpolated-log-message',
   },
+  {
+    java: 'CatchLogWithoutException',
+    typescript: 'nitpicker/structured-catch-logging',
+    python: 'catch-log-without-exception',
+  },
 ];
 
 function spring(rule) {

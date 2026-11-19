@@ -7,6 +7,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `throw new IllegalStateException("bad quantity " + text, e);` (`PreserveStackTrace`).
 - A `catch (InterruptedException e)` calls `Thread.currentThread().interrupt()` or rethrows; returning a
   default or logging alone loses the interrupt (`pmd/SwallowedInterrupt`).
+- A log call at warn level or above in a `catch` passes the caught exception, so the stack trace is kept
+  (`pmd/CatchLogWithoutException`): SLF4J and Log4j 2 take it last, `log.warn("could not load {}", id, e)`;
+  JBoss Logging and Quarkus Log take it first in the formatted forms, `log.warnf(e, "could not load %s", id)`;
+  `java.util.logging` and `System.Logger` use `log(Level.WARNING, "could not load", e)`.
 - Catch the narrowest type: `catch (NumberFormatException e)`. `catch (Exception)`,
   `catch (RuntimeException)`, `catch (Throwable)` and `catch (NullPointerException)` fail. Keep
   the `try` around the one call that throws.

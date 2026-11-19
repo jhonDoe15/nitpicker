@@ -144,6 +144,7 @@ const REVIEW_RULES = new Set([
   'FutureWithoutException',
   'LogFormatArguments',
   'LogExceptionFirst',
+  'CatchLogWithoutException',
   'RecursiveMapUpdate',
   'DefaultTimeZone',
   'MixedTimeUnits',

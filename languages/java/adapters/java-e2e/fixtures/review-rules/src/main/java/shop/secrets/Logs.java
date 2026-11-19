@@ -54,7 +54,7 @@ public final class Logs {
     try {
       Kind.valueOf(token);
     } catch (IllegalArgumentException e) {
-      log.warn("unknown token " + token);
+      log.warn("unknown token " + token); // violation: CatchLogWithoutException
     }
   }
 
