@@ -53,6 +53,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-secret-in-log',
   'nitpicker/no-dropped-log-arguments',
   'nitpicker/no-dropped-delegate-result',
+  'nitpicker/no-swapped-arguments',
   'nitpicker/no-branch-in-composition-root',
   'nitpicker/no-comments',
   'nitpicker/no-compatibility-shim',

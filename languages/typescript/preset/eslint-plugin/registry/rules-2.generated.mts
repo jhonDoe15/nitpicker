@@ -1,4 +1,5 @@
 import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mts';
+import { rule as ruleNoSwappedArguments } from '../rules/arguments/no-swapped-arguments.mts';
 import { rule as ruleNoSwitchedOffTests } from '../test-assertions/no-switched-off-tests.mts';
 import { rule as ruleNoSyncNodeApiInAsync } from '../rules/async/no-sync-node-api-in-async.mts';
 import { rule as ruleNoTaskOutlivingResource } from '../rules/lifetimes/no-task-outliving-resource.mts';
@@ -72,6 +73,7 @@ import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-rou
 
 export const partRules = {
   'no-string-as-regex': ruleNoStringAsRegex,
+  'no-swapped-arguments': ruleNoSwappedArguments,
   'no-switched-off-tests': ruleNoSwitchedOffTests,
   'no-sync-node-api-in-async': ruleNoSyncNodeApiInAsync,
   'no-task-outliving-resource': ruleNoTaskOutlivingResource,

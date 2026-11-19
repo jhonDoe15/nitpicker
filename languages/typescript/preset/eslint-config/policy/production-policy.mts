@@ -126,6 +126,7 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-secret-in-log': 'error',
     'nitpicker/no-dropped-log-arguments': 'error',
     'nitpicker/no-dropped-delegate-result': 'error',
+    'nitpicker/no-swapped-arguments': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
       {
