@@ -26,11 +26,41 @@ const LOOKUP_PROBLEMS: Readonly<Record<string, (keys: string) => string>> = {
     `puts \`${keys}\` (a JSON, array or text field) in the lookup, so a value that was changed or is formatted differently never matches the stored row and every call creates a duplicate`,
 };
 
-function lookupDescribe(subject: string): string {
-  const [call = '', kind = '', keys = ''] = subject.split('|');
-  const problem = LOOKUP_PROBLEMS[kind]?.(keys) ?? 'looks the row up by fields that are not unique';
-  return `\`${call}()\` ${problem}`;
+function reasonedDescribe(
+  reasons: Readonly<Record<string, (detail: string) => string>>,
+  fallback: string,
+  frame: (head: string, reason: string) => string,
+): (subject: string) => string {
+  return (subject) => {
+    const [head = '', kind = '', detail = ''] = subject.split('|');
+    return frame(head, reasons[kind]?.(detail) ?? fallback);
+  };
 }
+
+const lookupDescribe = reasonedDescribe(
+  LOOKUP_PROBLEMS,
+  'looks the row up by fields that are not unique',
+  (call, reason) => `\`${call}()\` ${reason}`,
+);
+
+const EMPTY_FILTERS: Readonly<Record<string, (value: string) => string>> = {
+  branch: (value) =>
+    `\`${value}\` can be an empty \`Q()\`, and a filter without conditions selects every row, so when that branch runs the query (and a delete, update or add on its result) acts on the whole table`,
+  reduce: (value) =>
+    `\`${value}\` starts from an empty \`Q()\`; with no items it stays empty and the filter selects every row`,
+  loop: (value) =>
+    `\`${value}\` starts as an empty \`Q()\` and is filled in a loop; when the loop has no items it stays empty and the filter selects every row`,
+  'sql-empty': (value) =>
+    `\`${value}\` has no arguments, so it adds no condition and the statement selects, updates or deletes every row`,
+  'sql-spread': (value) =>
+    `\`${value}\` is built from a list that can be empty, and \`or_()\` or \`and_()\` of nothing adds no condition, so the statement then covers every row`,
+};
+
+const emptyFilterDescribe = reasonedDescribe(
+  EMPTY_FILTERS,
+  'can be an empty `Q()`',
+  (method, reason) => `The argument of \`${method}()\`: ${reason}`,
+);
 
 export const DJANGO_MODEL_HINTS: readonly RuleHint[] = [
   {
@@ -40,6 +70,13 @@ export const DJANGO_MODEL_HINTS: readonly RuleHint[] = [
       'Django is a dependency but no Django type plugin is configured, so mypy and pyright see `null=True` fields, `.first()` and `dict.get` as non-optional and the strict checks miss the `None` uses',
     allowed:
       'Add `django-stubs` with its mypy plugin (`plugins = ["mypy_django_plugin.main"]` and a `[tool.django-stubs]` settings module), or `django-types` for pyright; nitpicker does not change the type checker configuration itself.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['empty-filter-condition'],
+    describe: emptyFilterDescribe,
+    allowed:
+      'Handle the empty case on its own: `queryset.none()`, `pk__in=ids` (an empty list matches nothing) instead of a `Q` built from the members, or an explicit `if not ids:` check before the query; in SQLAlchemy check the list before `or_(*items)` or `and_(*items)`.',
   },
   {
     tool: RULES_TOOL,

@@ -47,6 +47,7 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - A branch that handles `None` either leaves or is the whole story (`null-branch-fall-through`):
   `if value is None: out.append("null")` followed by `value.name` fails on the `None` path or handles the
   value twice. End the branch with `return` (or `raise`), or put the use in an `else`.
+- Handle an empty id list or an unsaved row before the query: `queryset.none()` or `pk__in=ids`, never an empty `Q()` branch, `reduce(or_, ..., Q())` or a `Q()` filled in a loop with no emptiness check, since a filter without conditions matches every row (`empty-filter-condition`).
 - Django `get`, `get_or_create` and `update_or_create` look up by the primary key, a unique field or every field of a unique constraint, never by a name or an `|` of `Q` objects; use `filter(...).first()` when several rows are possible and put JSON, array and text fields in `defaults={...}` (`non-unique-lookup`).
 - Django values that can be `None` (a `null=True` field, `.first()`, `.last()`, `cleaned_data.get(...)`, `request.user` attributes) are checked before use: `if x is None: return`, `x or default`, `getattr(x, "a", None)` or `filter(field__isnull=False)` (`nullable-dereference`). A Django project configures `django-stubs` (mypy plugin) or `django-types` (pyright) so these values are Optional (`django-types-missing`).
 - Regexes: an argument built into a `re` pattern goes through `re.escape(value)`; plain text is
