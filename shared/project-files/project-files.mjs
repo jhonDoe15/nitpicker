@@ -2,7 +2,7 @@ import { statSync } from 'node:fs';
 import path from 'node:path';
 import { ancestorDirectories } from '../filesystem.mjs';
 import { cachedTree } from './listing-cache.mjs';
-import { loadTree } from './repository-listing.mjs';
+import { listFolder, loadTree } from './repository-listing.mjs';
 import { hasRepositoryMarker, inheritedRule, posixRelative, walkedPaths } from './tree-walk.mjs';
 
 const ROOT_DIRECTORY = '';
@@ -13,7 +13,8 @@ function repositoryTop(directory) {
 
 function repositoryOf(directory) {
   const top = repositoryTop(directory);
-  const tree = top === undefined ? undefined : cachedTree(top, loadTree);
+  const tree =
+    top === undefined ? undefined : cachedTree(top, { load: loadTree, relist: listFolder });
   return tree === undefined ? undefined : { top, tree };
 }
 
