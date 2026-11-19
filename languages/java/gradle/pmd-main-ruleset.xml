@@ -10,6 +10,86 @@
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
   <description>Nitpicker's PMD rules for main sources.</description>
   <rule ref="category/java/security.xml"/>
+  <rule name="AffixLengthMismatch" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This substring cuts a different number of characters than the prefix or suffix the code has just tested, so the result keeps a piece of the affix or loses a character of the value (path.startsWith(&quot;file://&quot;) then path.substring(6) keeps a slash; a quoted string cut with substring(1, s.length() - 2) loses its last character). The code runs and returns a value that is off by one. Cut exactly what was tested: path.substring(&quot;file://&quot;.length()), s.substring(1, s.length() - 1), or keep the affix in a constant that both the test and the cut use. Right code is not reported: an offset taken from the literal (&quot;file://&quot;.length()), an offset equal to the tested length, and a prefix followed by another test of the same value, such as a separator check.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $key := function($e) {
+      if ($e/self::VariableAccess or $e/self::FieldAccess[ThisExpression]) then string($e/@Name) else ()
+    },
+    $lenOf := function($n, $k) {
+      exists($n/self::MethodCall[@MethodName = 'length'][ArgumentList/@Size = 0][$key(*[1]) = $k])
+    },
+    $int := function($n) {
+      if ($n/self::NumericLiteral[@IntLiteral = true()]) then xs:integer($n/@ValueAsInt) else ()
+    },
+    $affixOf := function($g, $k) {
+      let $c := if ($g/self::UnaryExpression[@Operator = '!']) then $g/*[1] else $g,
+          $neg := exists($g/self::UnaryExpression[@Operator = '!'])
+      return
+        if ($c/self::MethodCall[@MethodName = ('startsWith', 'endsWith')][ArgumentList/@Size = 1][ArgumentList/StringLiteral][$key(*[1]) = $k])
+        then map { 'kind': if ($c/@MethodName = 'startsWith') then 'prefix' else 'suffix', 'len': xs:integer($c/ArgumentList/StringLiteral/@Length), 'text': string($c/ArgumentList/StringLiteral/@ConstValue), 'neg': $neg }
+        else if ($c/self::InfixExpression[@Operator = ('==', '!=')][*[2][self::CharLiteral]]
+                   [*[1][self::MethodCall][@MethodName = 'charAt'][ArgumentList/@Size = 1][$key(*[1]) = $k]])
+        then (let $at := $c/*[1]/ArgumentList/*[1]
+              return if ($int($at) = 0)
+                     then map { 'kind': 'prefix', 'len': 1, 'neg': $c/@Operator = '!=' }
+                     else if ($at/self::InfixExpression[@Operator = '-'][$lenOf(*[1], $k)][$int(*[2]) = 1])
+                     then map { 'kind': 'suffix', 'len': 1, 'neg': $c/@Operator = '!=' }
+                     else ())
+        else ()
+    },
+    $harmless := function($g, $k) {
+      exists($g/self::InfixExpression[@Operator = ('<', '<=', '>', '>=', '==', '!=')]
+               [every $side in * satisfies $side/self::NumericLiteral or $side/self::NullLiteral or $lenOf($side, $k) or $key($side) = $k])
+      or exists($g/self::MethodCall[@MethodName = 'isEmpty'][$key(*[1]) = $k])
+      or exists($g/self::UnaryExpression[@Operator = '!'][MethodCall[@MethodName = 'isEmpty'][$key(*[1]) = $k]])
+    },
+    $leaves := function($cond, $sep) {
+      ($cond/descendant-or-self::InfixExpression[@Operator = $sep]
+          [empty((ancestor::*[not(self::InfixExpression[@Operator = $sep])]) intersect ($cond/descendant-or-self::*))]/*
+       | $cond)[not(self::InfixExpression[@Operator = $sep])]
+    },
+    $under := function($a, $part) { exists($a/ancestor-or-self::* intersect $part) },
+    $exits := function($s) {
+      exists($s/self::ReturnStatement | $s/self::ThrowStatement
+             | $s/self::Block/*[last()][self::ReturnStatement or self::ThrowStatement])
+    },
+    $mentions := function($g, $k) { exists($g/descendant-or-self::*[self::VariableAccess or self::FieldAccess][@Name = $k]) },
+    $tests := function($a, $k) {
+      let $pos := for $c in $a/ancestor::ConditionalExpression[$under($a, *[2])] | $a/ancestor::IfStatement[$under($a, *[2])]
+                          | $a/ancestor::InfixExpression[@Operator = '&&'][$under($a, *[2])]
+                  return $leaves($c/*[1], '&&'),
+          $neg := (for $c in $a/ancestor::ConditionalExpression[$under($a, *[3])] | $a/ancestor::IfStatement[$under($a, *[3])]
+                   return $leaves($c/*[1], '||'),
+                   for $b in $a/ancestor::Block
+                   return for $c in $b/*[following-sibling::* intersect $a/ancestor::*][self::IfStatement][count(*) = 2][$exits(*[2])]
+                          return $leaves($c/*[1], '||'))
+      return (for $g in $pos return let $m := $affixOf($g, $k) return if (exists($m) and not($m?neg)) then $m else (),
+              for $g in $neg return let $m := $affixOf($g, $k) return if (exists($m) and $m?neg) then $m else (),
+              for $g in ($pos, $neg)[$mentions(., $k)]
+              return if (exists($affixOf($g, $k)) or $harmless($g, $k)) then () else map { 'kind': 'other' })
+    }
+return
+//MethodCall[@MethodName = 'substring'][ArgumentList/@Size = (1, 2)][*[1][pmd-java:typeIs('java.lang.String')]]
+  [let $k := $key(*[1]),
+       $args := ArgumentList/*,
+       $found := if (exists($k)) then $tests(., $k) else (),
+       $first := $int($args[1]),
+       $last := if ($args[2][self::InfixExpression[@Operator = '-']][$lenOf(*[1], $k)]) then $int($args[2]/*[2]) else ()
+   return exists($found) and empty($found[?kind = 'other'])
+     and (exists($first) and $first >= 1 and exists($last) and exists($found[?kind = 'prefix']) and exists($found[?kind = 'suffix'])
+            and (empty($found[?kind = 'prefix'][?len = $first]) or empty($found[?kind = 'suffix'][?len = $last]))
+          or empty($args[2]) and exists($first) and empty($found[?kind = 'suffix'])
+            and exists($found[?kind = 'prefix'][matches(?text, '^[A-Za-z][A-Za-z0-9]*(://|:)$')][?len - $first = 1]))
+     and empty(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]
+               //*[self::VariableAccess or self::FieldAccess][@Name = $k][@AccessType = 'WRITE'])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="AnnotationAttributeNotResolved" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This annotation attribute is used as it is, while other attributes of the same annotation instance in this method go through resolve(...), resolveEmbeddedValue, resolveStringValue, resolvePlaceholders or evaluate(...). A property placeholder or SpEL expression in its value is then taken literally. Resolve it like its siblings: endpoint.setConsumes(resolve(listener.consumes())). An attribute that is meant to be literal (a class name, an id) can stay raw; then read it before the resolved ones or pass it to a method that documents it as literal.">
     <priority>3</priority>
