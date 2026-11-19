@@ -153,6 +153,10 @@ Python overrides: `override-without-super` reports a method or property that rep
 that at least five overrides in the project share and at least 80% of them call; abstract and constant bases stay
 quiet. It lives in `languages/python/rules/overrides/`.
 
+Async twins: `async-twin-drift` (report-only, design notes) pairs `x`/`ax`, `_x`/`_ax` and `x`/`x_async` in one module
+or class and reports a parameter, caught exception type, early-return guard or call that only one twin has; twins
+that delegate to each other stay quiet. It lives in `languages/python/rules/twins/`.
+
 Python effect rules: `accumulator-copy` (a name rebuilt from a copy of itself in a loop or `functools.reduce`),
 `lazy-relation-in-loop` (a Django or SQLAlchemy relationship read once per row of a query that does not fetch it),
 `resolver-query-per-parent` (a Strawberry or Graphene field resolver of a type returned as a list that queries per parent; a `DataLoader` is the allowed form),

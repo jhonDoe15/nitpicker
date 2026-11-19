@@ -107,6 +107,11 @@ describe('effect rules report', () => {
       '`RoomSensor.available` replaces `CoordinatorEntity.available` without calling `super().available`: what the base member keeps (shared state, registration, saving or validation) is skipped, while the other overrides of it in this project and the contract of the base build on it',
     ],
     [
+      'async-twin-drift',
+      'abatch_iterate|batch_iterate|guard|size is None or size <= 0|sync',
+      '`abatch_iterate` and `batch_iterate` are twins, but only the sync one returns or raises early when `size is None or size <= 0`: `abatch_iterate` does not, so sync and async callers get different results',
+    ],
+    [
       'remote-call-under-lock',
       'notify() > requests.post()|self._lock',
       '`notify()` (which calls `requests.post()`) makes a remote call while `self._lock` is held: every other caller waits for the remote latency, and a slow or hung remote service blocks them all',
