@@ -4,12 +4,13 @@ from collections import namedtuple
 from django_models.fields import Field, Relation, declared_fields, implicit_key
 from django_models.members import generic_foreign_keys, managers_of, property_names
 from django_models.meta import meta_facts
-from orm.models import is_django_model
+from checks.common import dotted_name
+from orm.models import DJANGO_MODEL, is_django_model
 from security.resolve.scopes import MAX_HOPS, definition, module_where
 
 Model = namedtuple(
     "Model",
-    "key name node context abstract fields owned uniques properties generic managers bases is_model",
+    "key name node context abstract fields owned uniques properties generic managers bases is_model complete",
 )
 Reverse = namedtuple("Reverse", "name query_name owner relation many")
 Graph = namedtuple("Graph", "by_key by_name reverse")
@@ -81,13 +82,19 @@ def owned_names(parents, own, fields):
     return names
 
 
+def bases_known(cls, context):
+    resolved = len(base_classes(cls, context))
+    plain = sum(dotted_name(b, context.aliases) == DJANGO_MODEL for b in cls.bases)
+    return resolved + plain == len(cls.bases)
+
+
 def build_model(cls, context, built, hops=0):
     key = (context.path, cls.name)
     if key in built:
         return built[key]
     built[key] = None
     parents = parents_of(cls, context, built, hops)
-    abstract, uniques, _ = meta_facts(cls, context)
+    abstract, uniques, opaque = meta_facts(cls, context)
     inherited = [item for parent in parents for item in parent.uniques]
     own = declared_fields(cls, context)
     fields = all_fields(parents, own)
@@ -105,6 +112,7 @@ def build_model(cls, context, built, hops=0):
         merged(parents, managers_of(cls, context), "managers"),
         [parent.key for parent in parents],
         is_django_model(cls, context),
+        not opaque and bases_known(cls, context) and all(p.complete for p in parents),
     )
     built[key] = model
     return model
