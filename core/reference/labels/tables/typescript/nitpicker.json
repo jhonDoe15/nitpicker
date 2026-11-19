@@ -33,6 +33,7 @@
   "eslint/nitpicker/no-dev-dependency-in-production": ["bug", "maintainability"],
   "eslint/nitpicker/no-disabled-tls-verification": ["security"],
   "eslint/nitpicker/no-dropped-log-arguments": ["bug", "reliability"],
+  "eslint/nitpicker/no-interpolated-log-message": ["maintainability"],
   "eslint/nitpicker/no-dropped-test-callback": ["tests"],
   "eslint/nitpicker/no-dual-write": ["reliability", "persistence"],
   "eslint/nitpicker/no-eager-relation": ["performance", "persistence"],

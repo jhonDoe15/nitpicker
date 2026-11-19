@@ -68,6 +68,10 @@ const GROUPS = [
     python: 'null-branch-fall-through',
     go: 'go-rules/nil-branch-fall-through',
   },
+  {
+    java: 'LogStringConcatenation',
+    typescript: 'nitpicker/no-interpolated-log-message',
+  },
 ];
 
 function spring(rule) {

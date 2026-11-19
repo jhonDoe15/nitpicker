@@ -184,6 +184,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A pino, bunyan or winston call keeps every value it is given: the values go in the fields object first
   (`log.info({ config }, 'loaded config')`) or one per placeholder, and a winston logger fills placeholders only
   with `format.splat()` (`nitpicker/no-dropped-log-arguments`).
+- A pino, bunyan or winston message stays constant: the values go in the fields (`log.info({ orderId }, 'loaded order')`,
+  winston `logger.info('loaded order', { orderId })`), never in a template or a `+` concatenation
+  (`nitpicker/no-interpolated-log-message`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

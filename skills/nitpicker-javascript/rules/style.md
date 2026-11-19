@@ -166,6 +166,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A pino, bunyan or winston call keeps every value it is given: the values go in the fields object first
   (`log.info({ config }, 'loaded config')`) or one per placeholder, and a winston logger fills placeholders only
   with `format.splat()` (`nitpicker/no-dropped-log-arguments`).
+- A pino, bunyan or winston message stays constant: the values go in the fields (`log.info({ orderId }, 'loaded order')`,
+  winston `logger.info('loaded order', { orderId })`), never in a template or a `+` concatenation
+  (`nitpicker/no-interpolated-log-message`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
