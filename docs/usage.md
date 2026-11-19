@@ -1,5 +1,20 @@
 # Using nitpicker
 
+Python extraction. The two Python recipes are `review` recipes and look at one file at a time, never at
+test files. Two functions of one module, or two methods of one class, whose parameters are plain
+positional ones (no `*args`, `**kwargs`, keyword-only or positional-only parameters; defaults and
+annotations are accepted, and annotations are copied) share a function named `_shared_` and the first
+copy's name, placed after the first copy, as a module function or, for two methods, as a method. Both
+copies must be plain functions or both `async`. A differing string, number or boolean literal becomes a
+parameter, except inside an f-string or an annotation. A partial run is a run of whole statements of the
+function body; at most one value it defines is used after it, and that value is always assigned in the
+run. The recipes leave a pair as it is when a copy has a decorator, a nested function or class,
+`global`, `nonlocal`, `yield`, an import, `super()` or `locals()`, when a run assigns a variable
+declared before it, awaits, returns or has an async comprehension, when a comment of the second copy
+would be dropped, or when the copies are in two files. For two methods they also decline when the first
+parameter is not named `self`, when a method is `__new__`, `__init_subclass__` or `__class_getitem__`,
+when the class is a protocol, and when a subclass in the project defines a member with the name of the
+shared method.
 Kotlin extraction. The same two recipes handle `.kt` files. Two functions of one class, one `object`
 or one file, with plain parameters (no defaults, `vararg` or annotations), a declared return type
 (a block body without one returns `Unit`) and the same `suspend` modifier, share a `private` function
@@ -2720,8 +2735,8 @@ runs only when `--fix --rule` names one of its rules.
 | ------------ | -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------, ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------, --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | java, kotlin | `structure/near-duplicate` (copies in one class, or in two files of one folder; in Kotlin, copies in one class or file) | `java-extract-near-duplicate` | extracts the shared method of a proved copy and calls it from both copies (review) |
 | java, kotlin | `structure/near-duplicate` (a run shared by two methods of a class, or two Kotlin functions of a file) | `java-extract-partial-run` | extracts the shared statements of a `partial-run` pair into a method and calls it from both (review) |
-| java | `structure/near-duplicate` (copies in one class, or in two files of one folder) | `java-extract-near-duplicate` | extracts the shared method of a proved copy and calls it from both copies (review) |
-| java | `structure/near-duplicate` (a run shared by two methods of a class) | `java-extract-partial-run` | extracts the shared statements of a `partial-run` pair into a method and calls it from both (review) |
+| python | `structure/near-duplicate` (copies in one file or one class) | `python-extract-near-duplicate` | extracts the shared function of a proved copy and calls it from both copies; a differing string, number or boolean literal becomes a parameter (review) |
+| python | `structure/near-duplicate` (a run shared by two functions or methods of a file) | `python-extract-partial-run` | extracts the shared statements of a `partial-run` pair into a function and calls it from both (review) |
 | typescript | `structure/near-duplicate` (copies in one file) | `typescript-extract-near-duplicate` | extracts the shared function of a proved copy and calls it from both copies; a differing string or number literal becomes a parameter typed with the union of both literals, or their base type (with a note) when the union does not compile |
 | typescript | `structure/near-duplicate` (a run shared by two functions of a file) | `typescript-extract-partial-run` | extracts the shared statements of a `partial-run` pair into a function and calls it from both (review) |
 | java, kotlin | `structure/shorter-condition` | `jvm-shorter-condition` | writes the shorter form the finding names in place of the condition (review) |
@@ -2855,10 +2870,8 @@ in two TypeScript files, in two Java folders, in two packages, in generated sour
 class, is not looked at. The
 TypeScript recipe also checks the result with the compiler before it writes. The Java recipes do
 not compile the result, so they are `review` recipes, and so is the TypeScript partial-run recipe,
-whose closures and aliasing a type check cannot prove. A file that uses CRLF keeps CRLF. Python and
-Go have no extraction recipe.
-whose closures and aliasing a type check cannot prove. A file that uses CRLF keeps CRLF. Kotlin,
-Python and Go have no extraction recipe.
+whose closures and aliasing a type check cannot prove. A file that uses CRLF keeps CRLF. Go has no
+extraction recipe.
 
 Partial-run extraction. The `partial-run` recipes handle a pair that shares a run of three or more
 statements, in two functions of one file or two methods of one class. The shared run becomes a

@@ -135,8 +135,12 @@ Declined: nothing in the recipes of issue 788 is declined without a precise reas
 
 ## Near-duplicate extraction
 
-No recipe extracts the shared function of a `near-duplicate` pair in Python. The extraction needs the
-parameter and return types of the new function, and the Python recipes see only text. The finding
-stays.
-
-The same holds for a `partial-run` pair: no recipe extracts the shared statements in Python, and the finding stays.
+`python-extract-near-duplicate` and `python-extract-partial-run` are review recipes. They take the pairs the
+shared engine reports for two functions of one file (or two methods of one class) and add a private
+`_shared_` function after the first copy. Parameters of the shared function are the first copy's
+parameters (with their annotations, without defaults) and one parameter per differing string, number or
+boolean constant. The recipes decline a pair with decorators, nested definitions, `global`, `nonlocal`,
+`yield`, imports, `super()`, `locals()`, only one async copy, an f-string or annotation difference, a run
+that writes a variable declared before it, awaits or returns, a method whose first parameter is not
+`self` or that is `__new__`, `__init_subclass__` or `__class_getitem__`, a protocol class, a subclass
+that defines the shared name, or copies in two files, and the finding stays.
