@@ -1,16 +1,14 @@
-import { comparisonKey as untypedComparisonKey } from '../../../../core/diff/comparison/fingerprint.mjs';
-import type { JavaFinding } from '../typed/java-values.mts';
-
-const comparisonKey: (finding: JavaFinding) => string = untypedComparisonKey;
+import { comparisonKey as comparisonKey } from '../../../../core/diff/comparison/fingerprint.mts';
+import type { TrackedFinding } from '../../../../core/diff/comparison/model/finding-types.mts';
 
 export function withoutDuplicateIdentities(
-  findings: readonly JavaFinding[],
+  findings: readonly TrackedFinding[],
   snapshot: string,
   warn: (message: string) => void,
-): JavaFinding[] {
+): TrackedFinding[] {
   const seen = new Set<string>();
   const dropped = new Map<string, number>();
-  const kept: JavaFinding[] = [];
+  const kept: TrackedFinding[] = [];
   for (const finding of findings) {
     const key = comparisonKey(finding);
     if (seen.has(key)) {

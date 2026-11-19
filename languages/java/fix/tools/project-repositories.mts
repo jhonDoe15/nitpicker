@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
+import { containedPath } from '../../../../core/fix/tool-steps/paths/contained-path.mts';
 import { gradleTokens } from '../../builds/narrowing/gradle-script.mts';
 import { textsOf } from '../../../../shared/values/readers.mts';
 

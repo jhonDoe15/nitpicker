@@ -7,13 +7,13 @@ import {
   withoutRenamedCopies as untypedWithoutRenamedCopies,
 } from '../../../../shared/renamed-clones/findings.mjs';
 import { sourceFilesUnder as untypedSourceFilesUnder } from '../../../../shared/renamed-clones/files.mjs';
-import { withoutImportOnlyClones as untypedWithoutImportOnlyClones } from '../../../../core/tooling/jscpd/import-only.mjs';
-import { jscpdClones as untypedJscpdClones } from '../../../../core/tooling/jscpd/jscpd-clones.mjs';
+import { withoutImportOnlyClones as untypedWithoutImportOnlyClones } from '../../../../core/tooling/jscpd/import-only.mts';
+import { jscpdClones as untypedJscpdClones } from '../../../../core/tooling/jscpd/jscpd-clones.mts';
 import {
   insideReportRoot as untypedInsideReportRoot,
   renamedReportFile as untypedRenamedReportFile,
-} from '../../../../core/tooling/jscpd/run-jscpd.mjs';
-import { skippedFolderGlobs as untypedSkippedFolderGlobs } from '../../../../core/tooling/jscpd/skipped-folders.mjs';
+} from '../../../../core/tooling/jscpd/run-jscpd.mts';
+import { skippedFolderGlobs as untypedSkippedFolderGlobs } from '../../../../core/tooling/jscpd/skipped-folders.mts';
 import type { DuplicateClone } from '../../../../core/tooling/jscpd/duplicate-scan.mts';
 import type { Finding } from '../../../../shared/values/findings.mts';
 

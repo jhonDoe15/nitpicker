@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
+import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mts';
 import { calculateCrap, parseLizardCsv } from '../../../shared/ingest/lizard-crap.mjs';
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { fieldsOf, listOf, numberOr, parseJson } from '../../../shared/values/readers.mts';

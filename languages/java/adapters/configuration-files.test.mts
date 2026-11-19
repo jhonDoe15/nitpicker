@@ -84,7 +84,7 @@ describe('Java analyzer configuration files', () => {
   });
 
   it('reach shared and core modules the runner uses', () => {
-    const expected = ['core/diff/git/paths.mjs', 'shared/rules/structure.mjs'];
+    const expected = ['core/diff/git/paths.mts', 'shared/rules/structure.mjs'];
 
     expect(hashedAmong(expected).sort()).toEqual(expected);
   });

@@ -1,4 +1,4 @@
-import { defineRecipes as untypedDefineRecipes } from '../../../../core/fix/engine/recipes.mjs';
+import { defineRecipes as untypedDefineRecipes } from '../../../../core/fix/engine/recipes.mts';
 import type { FixRecipe } from '../../../../core/fix/typed/fix-types.mts';
 import { kotlinFinalNewlineRecipe } from './final-newline.mts';
 import { SPRING_CONFIG_RECIPES } from './spring/config/config-recipes.mts';

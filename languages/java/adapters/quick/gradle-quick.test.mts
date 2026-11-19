@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -6,6 +6,7 @@ import { collectJavaFindings } from '../java-diff.mts';
 import { fakeGradleRun } from '../test-support/in-process-gradle.mts';
 import type { JavaFinding, JavaPolicy } from '../typed/java-values.mts';
 import { parseJson, textsOf } from '../../../../shared/values/readers.mts';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 const roots: string[] = [];
@@ -33,10 +34,7 @@ function project() {
     'jacoco.xml': UNCOVERED_JACOCO,
     'kotlin-mutation-facts.json': '{"files":[]}\n',
   };
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
+  writeFiles(root, files);
   return root;
 }
 

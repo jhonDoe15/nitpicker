@@ -5,7 +5,7 @@ import {
   fixtureGit,
   useGitFixtures,
 } from '../../../../core/diff/git/test-support/git-repository.mts';
-import { byCodeUnits } from '../../../../core/scope/mutation-scope.mjs';
+import { byCodeUnits } from '../../../../core/scope/mutation-scope.mts';
 import { defined } from '../test-support/defined.mts';
 import { affectedModules, type JavaModule } from './affected/affected-modules.mts';
 import { comparisonRoots, readChangedFiles } from './comparison-changes.mts';

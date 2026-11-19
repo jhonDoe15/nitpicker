@@ -1,7 +1,26 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { filesUnder, pathInside } from '../../../../shared/filesystem.mjs';
+import {
+  filesUnder as untypedFilesUnder,
+  pathInside as untypedPathInside,
+} from '../../../../shared/filesystem.mjs';
+import { fieldOf, fieldsOf, textOf } from '../../../../shared/values/readers.mts';
+
+type Catalog = { readonly name: string; readonly file: string };
+type PluginEntry = {
+  readonly reference: string;
+  readonly id: string | undefined;
+  readonly error?: unknown;
+};
+
+const filesUnder: (
+  root: string,
+  options: {
+    readonly skipDirectory: (absolute: string, entry: { readonly name: string }) => boolean;
+  },
+) => Iterable<string> = untypedFilesUnder;
+const pathInside: (root: string, relative: string) => string | undefined = untypedPathInside;
 
 export const BUILD_LOGIC_FOLDERS = ['buildSrc', 'build-logic'];
 const PLUGIN_IDS = new Set([
@@ -26,7 +45,7 @@ const CATALOG_FROM_FILE =
   /\b(?:create\s*\(\s*["'](?<named>\w+)["']\s*\)|(?<plain>\w+))\s*\{\s*from\s*\(\s*files\s*\(\s*["'](?<file>[^"']+)["']/gu;
 const INLINE_PLUGIN = /\bplugin\s*\(\s*["'](?<alias>[\w.-]+)["']\s*,\s*["'](?<id>[\w.-]+)["']/gu;
 
-export function projectFiles(projectRoot, pattern) {
+export function projectFiles(projectRoot: string, pattern: RegExp): string[] {
   const files = filesUnder(projectRoot, {
     skipDirectory: (_absolute, entry) =>
       entry.name.startsWith('.') || SKIPPED_FOLDERS.has(entry.name),
@@ -34,25 +53,31 @@ export function projectFiles(projectRoot, pattern) {
   return [...files].filter((file) => pattern.test(path.basename(file)));
 }
 
-function accessorOf(alias) {
+function accessorOf(alias: string): string {
   return alias.replaceAll(/[-_.]+/gu, '.');
 }
 
-function pluginId(entry) {
+function pluginId(entry: unknown): string | undefined {
   if (typeof entry === 'string') {
     return entry.split(':')[0];
   }
-  return typeof entry?.id === 'string' ? entry.id : undefined;
+  const id = fieldOf(entry, 'id');
+  return typeof id === 'string' ? id : undefined;
 }
 
-function catalogPlugins(projectRoot, catalog) {
+function catalogPlugins(projectRoot: string, catalog: Catalog): PluginEntry[] {
   const file = pathInside(projectRoot, catalog.file);
   if (file === undefined || !existsSync(file)) {
     return [];
   }
   try {
-    const { parse } = createRequire(import.meta.url)('smol-toml');
-    const plugins = parse(readFileSync(file, 'utf8')).plugins ?? {};
+    const toml: unknown = createRequire(import.meta.url)('smol-toml');
+    const parse = fieldOf(toml, 'parse');
+    if (typeof parse !== 'function') {
+      throw new TypeError('smol-toml has no parse');
+    }
+    const parsed: unknown = Reflect.apply(parse, toml, [readFileSync(file, 'utf8')]);
+    const plugins = fieldsOf(fieldOf(parsed, 'plugins'));
     return Object.entries(plugins).map(([alias, entry]) => ({
       reference: `${catalog.name}.${accessorOf(alias)}`,
       id: pluginId(entry),
@@ -62,21 +87,21 @@ function catalogPlugins(projectRoot, catalog) {
   }
 }
 
-function declaredCatalogs(settings) {
+function declaredCatalogs(settings: string): Catalog[] {
   return [...settings.matchAll(CATALOG_FROM_FILE)].map(({ groups }) => ({
-    name: groups.named ?? groups.plain,
-    file: groups.file,
+    name: textOf(groups?.['named'] ?? groups?.['plain']),
+    file: textOf(groups?.['file']),
   }));
 }
 
-function inlinePlugins(settings) {
+function inlinePlugins(settings: string): PluginEntry[] {
   return [...settings.matchAll(INLINE_PLUGIN)].map(({ groups }) => ({
-    reference: `libs.${accessorOf(groups.alias)}`,
-    id: groups.id,
+    reference: `libs.${accessorOf(textOf(groups?.['alias']))}`,
+    id: textOf(groups?.['id']),
   }));
 }
 
-function kotlinAliases(projectRoot) {
+function kotlinAliases(projectRoot: string): Set<string> {
   const settings = projectFiles(projectRoot, SETTINGS_SCRIPT)
     .map((file) => readFileSync(file, 'utf8'))
     .join('\n');
@@ -85,18 +110,22 @@ function kotlinAliases(projectRoot) {
     ...catalogs.flatMap((catalog) => catalogPlugins(projectRoot, catalog)),
     ...inlinePlugins(settings),
   ];
-  return new Set(entries.filter(({ id }) => PLUGIN_IDS.has(id)).map(({ reference }) => reference));
+  return new Set(
+    entries
+      .filter(({ id }) => id !== undefined && PLUGIN_IDS.has(id))
+      .map(({ reference }) => reference),
+  );
 }
 
-function appliesOnLine(line, aliases) {
+function appliesOnLine(line: string, aliases: ReadonlySet<string>): boolean {
   if (NOT_APPLIED.test(line)) {
     return false;
   }
   const ids = [...line.matchAll(PLUGIN_BY_ID), ...line.matchAll(PLUGIN_BY_APPLY)].map(
-    ({ groups }) => groups.id,
+    ({ groups }) => textOf(groups?.['id']),
   );
   const references = [...line.matchAll(PLUGIN_BY_ALIAS)].map(
-    ({ groups }) => `${groups.catalog}.${groups.accessor}`,
+    ({ groups }) => `${textOf(groups?.['catalog'])}.${textOf(groups?.['accessor'])}`,
   );
   return (
     KOTLIN_ACCESSOR.test(line) ||
@@ -105,7 +134,7 @@ function appliesOnLine(line, aliases) {
   );
 }
 
-function conventionSources(projectRoot) {
+function conventionSources(projectRoot: string): string[] {
   return BUILD_LOGIC_FOLDERS.flatMap((folder) => {
     const directory = pathInside(projectRoot, folder);
     return directory !== undefined && existsSync(directory)
@@ -114,7 +143,7 @@ function conventionSources(projectRoot) {
   });
 }
 
-export function gradleAppliesKotlin(projectRoot) {
+export function gradleAppliesKotlin(projectRoot: string): boolean {
   const aliases = kotlinAliases(projectRoot);
   const scripts = projectFiles(projectRoot, BUILD_SCRIPT).filter(
     (file) => !SETTINGS_SCRIPT.test(path.basename(file)),

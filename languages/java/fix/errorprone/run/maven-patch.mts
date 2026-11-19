@@ -1,6 +1,6 @@
 import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { fixSpawn } from '../../../../../core/fix/common/fix-command.mjs';
+import { fixSpawn } from '../../../../../core/fix/tool-steps/commands/fix-command.mts';
 import { readPinnedTools } from '../../../builds/java-build.mts';
 import {
   moduleClasspaths,

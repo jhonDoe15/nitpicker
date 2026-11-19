@@ -2,12 +2,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
-import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
+import { compareFindings } from '../../../../core/diff/comparison/compare.mts';
+import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mts';
 import { readDuplicateFindings } from '../../adapters/metrics/java-duplicates.mts';
 import { coveredByCpd, readCpdFindings } from '../cpd-duplicates.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
-import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, fieldsOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 
 const MAIN_A = 'src/main/java/demo/A.java';
 const MAIN_B = 'src/main/java/demo/B.java';
@@ -29,12 +29,14 @@ function readDuplicates(
 }
 const parseReport: (value: unknown, name: string) => { findings: readonly unknown[] } =
   parseAnalyzerReport;
-const compare: (input: {
+function compare(input: {
   baseFindings: readonly unknown[];
   headFindings: readonly unknown[];
   touchedCode: { changedLines: Map<string, unknown>; isStrictRule: () => boolean };
   unknownOnBase: undefined;
-}) => Readonly<Record<string, unknown>> = compareFindings;
+}): Readonly<Record<string, unknown>> {
+  return fieldsOf(callUntyped(compareFindings, input));
+}
 
 afterEach(() => {
   for (const root of roots.splice(0)) {

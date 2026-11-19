@@ -12,7 +12,7 @@ import {
   textsOf,
 } from '../../../../shared/values/readers.mts';
 
-export type ToolValues = Readonly<Record<string, unknown>>;
+type ToolValues = Readonly<Record<string, unknown>>;
 type ToolSpec = {
   readonly launcher: string | undefined;
   readonly args: string[];

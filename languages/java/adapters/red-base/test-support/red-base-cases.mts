@@ -6,7 +6,7 @@ import { commitBranch, runGitIn, summarize } from '../../test-support/gradle-e2e
 import type { ExitCode } from '../../../../../core/cli-context.mts';
 import type { JavaPolicy } from '../../typed/java-values.mts';
 import { runCli } from '../../../../../core/cli.mts';
-import { containedPath } from '../../../../../core/fix/common/contained-path.mjs';
+import { containedPath } from '../../../../../core/fix/tool-steps/paths/contained-path.mts';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { runJavaDiff } from '../../java-diff.mts';
 import { testsFailOnBase as testsFailOnBaseUntyped } from '../../../../../shared/rules/finding-helpers.mjs';

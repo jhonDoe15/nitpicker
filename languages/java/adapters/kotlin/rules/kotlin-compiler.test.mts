@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { exceptionHint } from './test-support/kotlin-finding-views.mts';
 import { useTempProjects } from './test-support/temp-projects.mts';
 import type { Finding } from '../../../../../shared/values/findings.mts';
-import { compareFindings as untypedCompare } from '../../../../../core/diff/comparison/compare.mjs';
+import { compareFindings as untypedCompare } from '../../../../../core/diff/comparison/compare.mts';
 import {
   parseCompilerWarnings as untypedParseCompilerWarnings,
   readCompilerFindings as untypedReadCompilerFindings,
