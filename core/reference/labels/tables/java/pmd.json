@@ -149,6 +149,7 @@
   "pmd/ProperLogger": ["style"],
   "pmd/RandomInTest": ["tests"],
   "pmd/RealClockInTest": ["tests"],
+  "pmd/ReceiverPassedAsArgument": ["bug"],
   "pmd/RecursiveMapUpdate": ["bug"],
   "pmd/RedundantFieldInitializer": ["simplification"],
   "pmd/RedundantStreamStep": ["simplification"],
