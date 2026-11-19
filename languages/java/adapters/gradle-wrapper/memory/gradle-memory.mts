@@ -17,20 +17,22 @@ function projectWorkers(projectRoot: string, environment: Environment): number |
     const value = WORKERS_MAX.exec(text)?.[1];
     return value === undefined ? [] : [Number(value)];
   });
-  return values.length === 0 ? undefined : Math.min(...values);
+  return values.length === 0
+    ? undefined
+    : values.reduce((smallest, value) => Math.min(smallest, value));
 }
 
 export function gradleWorkerArguments(
   projectRoot: string,
+  environment: Environment,
   { slots = toolSlots(), cpus = availableParallelism() }: Machine = {},
-  environment: Environment = process.env,
 ): string[] {
   const workers = Math.min(slots, projectWorkers(projectRoot, environment) ?? slots);
   return workers < cpus ? [`--max-workers=${String(workers)}`] : [];
 }
 
 export function gradleToolEnvironment(
-  environment: Environment = process.env,
+  environment: Environment,
   slots = toolSlots(),
 ): Record<string, string | undefined> {
   const own = (environment['JDK_JAVA_OPTIONS'] ?? '').split(/\s+/u).filter((flag) => flag !== '');

@@ -27,20 +27,20 @@ describe('gradleWorkerArguments', () => {
   const userHome = { GRADLE_USER_HOME: '/nonexistent-gradle-home' };
 
   it('lowers the Gradle workers to the tool slots only when memory, not the CPUs, limits them', () => {
-    expect(gradleWorkerArguments(build(), { slots: 2, cpus: 8 }, userHome)).toEqual([
+    expect(gradleWorkerArguments(build(), userHome, { slots: 2, cpus: 8 })).toEqual([
       '--max-workers=2',
     ]);
-    expect(gradleWorkerArguments(build(), { slots: 4, cpus: 4 }, userHome)).toEqual([]);
+    expect(gradleWorkerArguments(build(), userHome, { slots: 4, cpus: 4 })).toEqual([]);
   });
 
   it('keeps a lower worker count the build sets itself', () => {
     const root = build('org.gradle.workers.max=1\n');
 
-    expect(gradleWorkerArguments(root, { slots: 3, cpus: 8 }, userHome)).toEqual([
+    expect(gradleWorkerArguments(root, userHome, { slots: 3, cpus: 8 })).toEqual([
       '--max-workers=1',
     ]);
     expect(
-      gradleWorkerArguments(build('org.gradle.workers.max=6\n'), { slots: 3, cpus: 8 }, userHome),
+      gradleWorkerArguments(build('org.gradle.workers.max=6\n'), userHome, { slots: 3, cpus: 8 }),
     ).toEqual(['--max-workers=3']);
   });
 });
@@ -72,8 +72,10 @@ describe('memoryAdvice', () => {
         'runs 4 tool JVMs at once next to the daemon: lower the daemon heap (-Xmx in org.gradle.jvmargs) or ' +
         'org.gradle.workers.max in gradle.properties, or run on a larger machine.',
     );
-    expect(memoryAdvice('java.lang.OutOfMemoryError: Java heap space', 1, 2 * GIB)).toContain(
-      'runs 1 tool JVM at',
+    expect(memoryAdvice('java.lang.OutOfMemoryError: Java heap space', 1, 2 * GIB)).toBe(
+      '\nThe Gradle daemon or one of its JVMs ran out of memory on a machine with 2.0 GB, where nitpicker ' +
+        'runs 1 tool JVM at once next to the daemon: lower the daemon heap (-Xmx in org.gradle.jvmargs) or ' +
+        'org.gradle.workers.max in gradle.properties, or run on a larger machine.',
     );
     expect(memoryAdvice('error: cannot find symbol', 4, GIB)).toBe('');
   });

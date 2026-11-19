@@ -55,8 +55,10 @@ describe.skipIf(!enabled)(
     it('turns Isolated Projects off for its own run and reports the subproject', () => {
       expect(findings.filter(({ classification }) => classification === 'tool-error')).toEqual([]);
       expect(
-        findings.filter(({ tool, rule }) => tool === 'pmd' && rule === 'UnusedPrivateField'),
-      ).toMatchObject([{ path: 'src/main/java/demo/lib/Counter.java' }]);
+        findings
+          .filter(({ tool, rule }) => tool === 'pmd' && rule === 'UnusedPrivateField')
+          .map(({ path: file }) => file),
+      ).toEqual(['src/main/java/demo/lib/Counter.java']);
     });
   },
 );
