@@ -1,13 +1,17 @@
 package nitpicker.fix;
 
+import com.google.errorprone.VisitorState;
 import com.google.errorprone.util.ASTHelpers;
 import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.IdentifierTree;
 import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.MethodInvocationTree;
+import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.ParenthesizedTree;
+import com.sun.source.tree.ReturnTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreeScanner;
+import com.sun.tools.javac.code.Flags;
 import com.sun.tools.javac.code.Symbol;
 import javax.lang.model.element.ElementKind;
 
@@ -15,13 +19,14 @@ import javax.lang.model.element.ElementKind;
 final class LookupKeys {
   private LookupKeys() {}
 
-  static boolean isKey(ExpressionTree side, Symbol parameter) {
+  static boolean isKey(ExpressionTree side, Symbol parameter, VisitorState state) {
     if (side instanceof MethodInvocationTree call) {
       return call.getArguments().isEmpty()
           && call.getMethodSelect() instanceof MemberSelectTree select
           && select.getExpression() instanceof IdentifierTree
           && ASTHelpers.getSymbol(select.getExpression()) == parameter
-          && isAccessor(ASTHelpers.getSymbol(call));
+          && isAccessor(ASTHelpers.getSymbol(call))
+          && readsField(ASTHelpers.getSymbol(call), state);
     }
     if (side instanceof MemberSelectTree select
         && select.getExpression() instanceof IdentifierTree
@@ -30,6 +35,24 @@ final class LookupKeys {
       return field instanceof Symbol.VarSymbol && !field.isStatic() && field.getKind().isField();
     }
     return false;
+  }
+
+  /** Whether the accessor only returns a field, so calling it on every element ahead of the loop cannot fail. */
+  private static boolean readsField(Symbol.MethodSymbol method, VisitorState state) {
+    if (method.owner.getKind() == ElementKind.RECORD && (method.flags() & Flags.GENERATED_MEMBER) != 0) {
+      return true;
+    }
+    MethodTree declared = ASTHelpers.findMethod(method, state);
+    if (declared == null || declared.getBody() == null || declared.getBody().getStatements().size() != 1
+        || !(declared.getBody().getStatements().get(0) instanceof ReturnTree returned)
+        || returned.getExpression() == null) {
+      return false;
+    }
+    ExpressionTree value = Support.unparenthesized(returned.getExpression());
+    boolean plain = value instanceof IdentifierTree
+        || value instanceof MemberSelectTree select && select.getExpression() instanceof IdentifierTree owner
+            && owner.getName().contentEquals("this");
+    return plain && ASTHelpers.getSymbol(value) instanceof Symbol.VarSymbol field && field.getKind().isField();
   }
 
   static boolean isAccessor(Symbol method) {
