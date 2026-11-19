@@ -132,6 +132,15 @@ describe('parseJsdoc problems', () => {
     expect(messageIds('* @throws {Error}')).toEqual(['jsdocUnsupportedTag']);
   });
 
+  it.each(['constructor', 'toString', 'hasOwnProperty', '__proto__', 'valueOf'])(
+    'reports the tag @%s, named like an Object.prototype member, as unsupported',
+    (tag) => {
+      expect(parseJsdoc(`* @${tag}\n * @param {number} size`).problems).toEqual([
+        { messageId: 'jsdocUnsupportedTag', data: { tag } },
+      ]);
+    },
+  );
+
   it('reports a tag without its type as malformed with its usage', () => {
     expect(parseJsdoc('* @param name').problems).toEqual([
       { messageId: 'jsdocMalformed', data: { tag: 'param', usage: '@param {Type} name' } },
