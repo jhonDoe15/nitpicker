@@ -236,6 +236,7 @@
   "pmd/StaticMockOfProjectType": ["tests"],
   "pmd/StreamedRowsCollected": ["performance", "persistence"],
   "pmd/StringToString": ["simplification"],
+  "pmd/SubtractionComparison": ["bug"],
   "pmd/SwallowedInterrupt": ["reliability", "async"],
   "pmd/SwitchStmtsShouldHaveDefault": ["bug"],
   "pmd/TaskOutlivesTryResource": ["bug", "async"],
