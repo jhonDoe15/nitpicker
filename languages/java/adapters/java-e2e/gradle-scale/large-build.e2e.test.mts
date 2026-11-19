@@ -84,5 +84,9 @@ describe.skipIf(!enabled)(
       expect(files.toSorted()).toEqual([...new Set(files)].toSorted());
       expect(files).toContain('Counter.java');
     });
+
+    it('measures coverage in the full run, where check depends on jacocoTestReport', () => {
+      expect(ranOf(runs, 'full').findings.some(({ tool }) => tool === 'jacoco')).toBe(true);
+    });
   },
 );

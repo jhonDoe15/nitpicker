@@ -52,6 +52,7 @@
   "languages/java/adapters/kotlin-e2e/one-way/kotlin-preset-one-way-rules-banned.e2e.test.mts": 118,
   "languages/java/adapters/kotlin-e2e/one-way/kotlin-preset-one-way-rules-hostile-config.e2e.test.mts": 59,
   "languages/java/adapters/kotlin-e2e/quick/kotlin-preset-quick.e2e.test.mts": 26,
+  "languages/java/adapters/kotlin-e2e/quick/kotlin-strict-build.e2e.test.mts": 115,
   "languages/java/adapters/kotlin-e2e/red-base/kotlin-compile-errors.e2e.test.mts": 72,
   "languages/java/adapters/kotlin-e2e/red-base/kotlin-red-base.e2e.test.mts": 265,
   "languages/java/adapters/kotlin-e2e/review-rules/kotlin-preset-review-rules-coroutines.e2e.test.mts": 112,
