@@ -6,6 +6,7 @@ import {
   gitSubcommand,
 } from '../../analysis/test-code-analysis.mts';
 import { perTestSubprocessVisitors } from '../per-test-subprocess.mts';
+import { vocabularyOf } from '../../runner-apis/runner-option.mts';
 
 const REPOSITORY_CREATING_SUBCOMMANDS = new Set(['init', 'clone']);
 
@@ -22,13 +23,18 @@ export const rule: TSESLint.RuleModule<'repositoryPerTest'> = {
     schema: [],
     messages: {
       repositoryPerTest:
-        'Do not create a git repository in each test or beforeEach. Build a template repository once in beforeAll and copy it per test with cpSync.',
+        'Do not create a git repository in each test or beforeEach. Build a template repository once in {{sharedSetupHook}} and copy it per test with cpSync.',
     },
   },
   create(context) {
-    return perTestSubprocessVisitors(context, 'repositoryPerTest', (node, bindings) => {
-      const direct = describeSubprocess(context, node, bindings);
-      return createsRepository(direct ?? describeWrapperCall(context, node, bindings));
-    });
+    const data = { sharedSetupHook: vocabularyOf(context).sharedSetupHook };
+    return perTestSubprocessVisitors(
+      context,
+      { messageId: 'repositoryPerTest', data },
+      (node, bindings) => {
+        const direct = describeSubprocess(context, node, bindings);
+        return createsRepository(direct ?? describeWrapperCall(context, node, bindings));
+      },
+    );
   },
 };

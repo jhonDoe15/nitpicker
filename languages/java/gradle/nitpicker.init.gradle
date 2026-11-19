@@ -379,16 +379,26 @@ def rulesetExcluding = { String name, String description, List<String> rules, Co
         + excludes + rules + ['</ruleset>', '']).join('\n')
 }
 
-def mainRulesOnMainSources = { File mainRules, File rulesetDir, boolean spring, boolean reactor, Collection<File> testDirectories ->
-    def springRules = nitpickerArgument('nitpicker.pmd.springRules') ?: new File(rulesetDir, 'spring-ruleset.xml').absolutePath
-    def rules = [mainRules] + (spring ? [new File(springRules)] : []) +
-        (reactor ? [new File(rulesetDir, 'reactor-ruleset.xml')] : [])
-    def references = rules.collect { "  <rule ref=\"${escapeXml(it.absolutePath)}\"/>".toString() }
+def springDataRules = ['SpringDataRowWriteInLoop', 'SpringDataNoFlush', 'SpringDataNoSaveInLoop',
+    'SpringDataSaveInLoopHelper', 'SpringDataNativeQuery']
+
+def mainRulesOnMainSources = { File mainRules, File rulesetDir, boolean spring, boolean springData,
+        boolean reactor, Collection<File> testDirectories ->
+    def springRules = nitpickerArgument('nitpicker.pmd.springRules')
+        ?: new File(rulesetDir, 'spring-ruleset.xml').absolutePath
+    def ruleRef = { String path, String inner = '' -> "  <rule ref=\"${escapeXml(path)}\">${inner}</rule>".toString() }
+    def main = mainRules.absolutePath
+    def references = springData
+        ? [ruleRef(main, '<exclude name="IoCallInLoop"/>'),
+            "  <rule ref=\"${escapeXml(main)}/IoCallInLoop\"><properties>".toString()
+                + '<property name="springData" value="true"/></properties></rule>']
+        : [ruleRef(main)]
     if (spring) {
-        def main = escapeXml(mainRules.absolutePath)
-        references = ["  <rule ref=\"${main}\"><exclude name=\"IoCallInLoop\"/></rule>".toString(),
-            "  <rule ref=\"${main}/IoCallInLoop\"><properties><property name=\"springData\" value=\"true\"/></properties></rule>".toString()] +
-            references.drop(1)
+        references += ruleRef(new File(springRules).absolutePath,
+            springData ? '' : springDataRules.collect { "<exclude name=\"${it}\"/>" }.join(''))
+    }
+    if (reactor) {
+        references += ruleRef(new File(rulesetDir, 'reactor-ruleset.xml').absolutePath)
     }
     rulesetExcluding('nitpicker-main', "Nitpicker's main-only rules on main sources only.", references, testDirectories)
 }
@@ -655,6 +665,10 @@ allprojects {
         def usesSpring = {
             springDeclared || sourceSets.main.compileClasspath.files.any { it.name ==~ /spring-(context|boot)-.*\.jar/ }
         }
+        def usesSpringData = {
+            def classpath = sourceSets.main.compileClasspath.files
+            classpath.isEmpty() || classpath.any { it.name ==~ /spring-data-(commons|jpa)-.*\.jar/ }
+        }
         def usesReactor = { sourceSets.main.compileClasspath.files.any { it.name ==~ /reactor-core-.*\.jar/ } }
         def usesJmolecules = {
             sourceSets.main.compileClasspath.files.any { it.name ==~ /jmolecules-ddd-.*\.jar/ }
@@ -710,7 +724,8 @@ allprojects {
                     .findAll { it.exists() }.unique().collect { it.absolutePath }.join('\n')
                 def mainRuleset = reportDir.get().file('pmd-main.xml').asFile
                 mainRuleset.text = mainRulesOnMainSources(
-                    mainRules, initScriptDir, usesSpring(), usesReactor(), testSourceDirectories())
+                    mainRules, initScriptDir, usesSpring(), usesSpring() && usesSpringData(), usesReactor(),
+                    testSourceDirectories())
                 def testRuleset = reportDir.get().file('pmd-tests.xml').asFile
                 testRuleset.text = testRulesOnTestSources(testRules, initScriptDir, usesSpring(), mainSources.files)
                 def nitpickerExtras = [testRuleset, mainRuleset]

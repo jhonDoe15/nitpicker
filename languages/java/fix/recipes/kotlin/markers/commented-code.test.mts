@@ -10,7 +10,9 @@ describe('commentedCodeRecipe', () => {
     expect(plannedLines(commentedCodeRecipe, text)).toEqual([2]);
   });
   it('deletes a trailing comment and the spaces before it', () => {
-    expect(applyRecipe(commentedCodeRecipe, 'val a = 1 // b = compute(2)\n')).toBe('val a = 1\n');
+    expect(applyRecipe(commentedCodeRecipe, 'val a = 1 // val b = compute(2)\n')).toBe(
+      'val a = 1\n',
+    );
   });
   it('deletes a block comment of code', () => {
     expect(applyRecipe(commentedCodeRecipe, 'fun f() {}\n/* val x = 1 */\nfun g() {}\n')).toBe(
@@ -23,8 +25,28 @@ describe('commentedCodeRecipe', () => {
     expect(applyRecipe(commentedCodeRecipe, text)).toBe(text);
   });
   it('also cleans test sources', () => {
-    expect(applyRecipe(commentedCodeRecipe, '// foo(1)\nclass T\n', 'src/test/kotlin/T.kt')).toBe(
-      'class T\n',
-    );
+    expect(
+      applyRecipe(commentedCodeRecipe, '// val x = foo(1)\nclass T\n', 'src/test/kotlin/T.kt'),
+    ).toBe('class T\n');
+  });
+  it.each([
+    '// return null\nfun f() = 1\n',
+    '// retries = 3\nfun f() = 1\n',
+    '// flush()\nfun f() = 1\n',
+    '// when (the user logs in)\nfun f() = 1\n',
+    '// package private\nfun f() = 1\n',
+    '// Disabled because of ticket ABC-123:\n// val flag = readFlag()\nfun f() = 1\n',
+    'val a = 1 // b = 2\n',
+    'fun f() = g(/* debug = true */)\n',
+  ])('declines a comment that may be prose (%s)', (text) => {
+    expect(applyRecipe(commentedCodeRecipe, text)).toBe(text);
+  });
+  it('deletes a commented-out block with its closing brace', () => {
+    expect(
+      applyRecipe(
+        commentedCodeRecipe,
+        'fun f() {\n    //if (k > 3) {\n    //    return 0\n    //}\n}\n',
+      ),
+    ).toBe('fun f() {\n}\n');
   });
 });

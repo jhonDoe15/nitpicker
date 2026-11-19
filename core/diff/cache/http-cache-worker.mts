@@ -31,9 +31,9 @@ async function requestCache(commandArguments: readonly string[]): Promise<void> 
   const [method, url, timeoutText] = commandArguments;
   const headers = requestHeaders();
   try {
-    let body: Buffer | undefined;
+    let body: string | undefined;
     if (method === 'PUT') {
-      body = await readStandardInput();
+      body = (await readStandardInput()).toString('utf8');
       headers['content-type'] = 'application/json';
     }
     const response = await fetch(String(url), {

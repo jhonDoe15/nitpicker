@@ -19,15 +19,18 @@ const wastedStepMessages = {
     'Spreading `undefined` or `null` adds nothing, so the `{{operator}} {}` fallback is not needed: spread the value itself.',
   lengthCheck:
     '`{{method}}` already answers {{answer}} for an empty array, so this length check adds nothing. Drop it.',
-  singlePromise:
-    '`Promise.{{method}}` over one promise only waits for that promise. Write {{form}} instead.',
+  singlePromise: '`Promise.{{method}}` over one promise only waits for that promise. {{advice}}',
   awaitInPromiseMethod:
     'This `await` waits for its promise before `Promise.{{method}}` sees it, so the promises no longer run together. Pass the promise without `await`.',
+  dropAwait: 'Remove the `await` so this promise starts together with the others.',
+  awaitPromise: 'Await the promise itself instead of wrapping it.',
 };
 
 export const rule: TSESLint.RuleModule<MessageId> = {
   meta: {
     type: 'suggestion',
+    fixable: 'code',
+    hasSuggestions: true,
     docs: {
       description:
         'Disallow collection and promise steps that copy for nothing or walk the data twice, where a single step says the same',
@@ -36,26 +39,25 @@ export const rule: TSESLint.RuleModule<MessageId> = {
     messages: wastedStepMessages,
   },
   create(context) {
-    const { sourceCode } = context;
     const report = optionalReporter(context);
     return {
       MemberExpression(member) {
         report(filterFirst(member));
       },
       CallExpression(call) {
-        report(findAsBoolean(call) ?? mapFlat(call));
-        for (const step of promiseSteps(call)) {
+        report(findAsBoolean(context, call) ?? mapFlat(context, call));
+        for (const step of promiseSteps(context, call)) {
           report(step);
         }
       },
       ArrayExpression(array) {
-        report(uselessSpread(array));
+        report(uselessSpread(context, array));
       },
       'ObjectExpression > SpreadElement'(spread) {
-        report(fallbackSpread(spread));
+        report(fallbackSpread(context, spread));
       },
       LogicalExpression(logical) {
-        report(lengthCheck(sourceCode, logical));
+        report(lengthCheck(context, logical));
       },
     };
   },

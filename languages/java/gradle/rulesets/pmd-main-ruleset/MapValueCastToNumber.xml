@@ -1,0 +1,67 @@
+  <rule name="MapValueCastToNumber" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A value read from a Map&lt;String, Object&gt; or a Properties is cast straight to a number or java.time type. The runtime type depends on the source (a JDBC driver returns Long or BigDecimal for an integer column, YAML and JSON give Integer, Long, Double or String), so the cast works in one setup and throws ClassCastException in another. Convert instead: ((Number) row.get(&quot;count&quot;)).intValue(), Integer.parseInt(String.valueOf(value)), a typed accessor (rs.getObject(column, LocalDate.class)) or a typed binding (@ConfigurationProperties, a record mapper). Maps that come from a method parameter or that this class fills itself (put, putAll, setProperty) are not reported, and neither is a get that an instanceof test of the cast type on the same get expression guards.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//CastExpression
+  [ClassType[@SimpleName = ('Integer', 'Long', 'Short', 'Byte', 'Double', 'Float', 'BigDecimal', 'BigInteger',
+                            'LocalDate', 'LocalDateTime', 'LocalTime', 'Instant', 'OffsetDateTime', 'ZonedDateTime')]
+   or PrimitiveType[@Kind = ('int', 'long', 'short', 'byte', 'double', 'float')]]
+  [*[2]/self::MethodCall[@MethodName = ('get', 'getOrDefault')][ArgumentList/@Size = (1, 2)]]
+  [let $read := *[2],
+       $receiver := $read/*[1],
+       $name := string($receiver/@Name),
+       $scope := $read/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1],
+       $declarations := $scope//VariableId[@Name = $name],
+       $declared := function($id) { $id/../ClassType[@SimpleName = 'Map'][TypeArguments/@Size = 2]
+                                      [TypeArguments/*[1][self::ClassType[@SimpleName = 'String']]]
+                                      [TypeArguments/*[2][self::WildcardType[not(@LowerBound = true())]
+                                                          or self::ClassType[@SimpleName = 'Object']]],
+                                    $id/../../ClassType[@SimpleName = 'Map'][TypeArguments/@Size = 2]
+                                      [TypeArguments/*[1][self::ClassType[@SimpleName = 'String']]]
+                                      [TypeArguments/*[2][self::WildcardType[not(@LowerBound = true())]
+                                                          or self::ClassType[@SimpleName = 'Object']]] },
+       $sources := ('queryForMap', 'load', 'loadAs', 'readValue', 'convertValue', 'fromJson'),
+       $listRead := function($e) {
+         $e/self::MethodCall[@MethodName = 'queryForList']
+       },
+       $initializer := function($e) { ($e/self::CastExpression/*[last()], $e)[1] },
+       $external := function($id) {
+         $id/parent::VariableDeclarator
+         and (let $init := $initializer($id/../*[2])
+              return $init/self::MethodCall[@MethodName = $sources]
+                     or $init/self::MethodCall[@MethodName = 'get'][$listRead(*[1])]
+                     or (empty($id/../*[2]) and (let $loop := $id/ancestor::ForeachStatement[1],
+                                                     $items := $loop/*[2]
+                                                 return exists($loop/*[1][. is $id/../..])
+                                                        and ($listRead($items)
+                                                             or (let $source := $loop/ancestor::MethodDeclaration[1]
+                                                                   //VariableId[@Name = string($items/@Name)]
+                                                                 return count($source) = 1
+                                                                        and $listRead($source/../*[2]))))))
+       }
+   return ($receiver/self::VariableAccess and count($declarations) = 1
+           and exists($declared($declarations)) and $external($declarations)
+           and $receiver[pmd-java:typeIs('java.util.Map')])
+          or ($receiver[self::VariableAccess or self::FieldAccess][pmd-java:typeIs('java.util.Properties')]
+              and $read/@MethodName = 'get')
+          or ($receiver/self::MethodCall[@MethodName = 'queryForMap'] and $read/@MethodName = 'get')]
+  [let $read := *[2],
+       $kind := string(PrimitiveType/@Kind),
+       $type := (ClassType/@SimpleName,
+                 if ($kind = 'int') then 'Integer'
+                 else concat(upper-case(substring($kind, 1, 1)), substring($kind, 2))),
+       $name := string($read/*[1]/@Name),
+       $key := string-join($read/ArgumentList/*/(@Image, @Name), '|')
+   return empty(ancestor::*[self::IfStatement or self::ConditionalExpression]/*[1]
+                  /descendant-or-self::InfixExpression[@Operator = 'instanceof']
+                  [*[2]/descendant-or-self::ClassType/@SimpleName = $type]
+                  [*[1]/self::MethodCall[@MethodName = $read/@MethodName][*[1]/@Name = $name]
+                     [string-join(ArgumentList/*/(@Image, @Name), '|') = $key]])
+      and ($name = '' or empty(ancestor::ClassBody[last()]//MethodCall[@MethodName = ('put', 'putAll', 'setProperty')]
+                                 [*[1][self::VariableAccess or self::FieldAccess][@Name = $name]]))]
+]]></value>
+      </property>
+    </properties>
+  </rule>

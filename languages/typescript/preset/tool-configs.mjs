@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   JAVASCRIPT_COMPILER_OPTIONS,
@@ -20,9 +20,15 @@ import {
   solutionRootDir,
   strictCompilerOptions,
 } from './project-configs/typescript/typescript-project-options.mjs';
+import { readHeadPolicy } from './head-policy.mjs';
+import { policyTestRunner } from './test-runner/policy-runner.mjs';
+import { withRunnerTypes } from './test-runner/vocabulary/runner-types.mjs';
+import { libsWithTestDom, withTestDom } from './test-environment/dom-code/test-dom-tsconfig.mjs';
 import { filesOutsideRootDir } from './project-configs/typescript/solution-resolution.mjs';
 import { selectedProjectTsconfig } from './modules/selected-project-tsconfig.mjs';
 import { END_TO_END_ROOT, sourceRoots, testRoots } from './layout.mjs';
+
+const QUALITY_TSCONFIG = 'tsconfig.quality.json';
 
 const DEFAULT_SOURCE_ROOTS = new Set(sourceRoots);
 const DEFAULT_TEST_ROOTS = new Set(testRoots);
@@ -124,13 +130,13 @@ export function jsonTransform(rewrite, layout) {
 }
 
 const REWRITES = new Map([
-  ['tsconfig.quality.json', layoutTsconfig],
+  [QUALITY_TSCONFIG, layoutTsconfig],
   [STRYKER_TSCONFIG, layoutStrykerTsconfig],
   ['knip.json', layoutKnipConfig],
   ['jscpd.json', layoutJscpdConfig],
 ]);
 
-const TSCONFIG_POLICY_FILES = new Set(['tsconfig.quality.json', STRYKER_TSCONFIG]);
+const TSCONFIG_POLICY_FILES = new Set([QUALITY_TSCONFIG, STRYKER_TSCONFIG]);
 
 export function layoutTransformFor(
   policyFileName,
@@ -162,32 +168,13 @@ export function layoutTransformFor(
       return `${JSON.stringify(layered, null, 2)}\n`;
     }
     const rewritten = withProjectStrictness(
-      withEndToEndDom(layoutTransform?.(text) ?? text, name, { projectDirectory, layout }),
+      withTestDom(layoutTransform?.(text) ?? text, name, { projectDirectory, layout }),
       layout,
     );
-    return relaxesMutants ? withoutMutantStrictness(rewritten) : rewritten;
+    const runner = policyTestRunner(readHeadPolicy(), projectDirectory);
+    const typed = withRunnerTypes(rewritten, { runner, projectDirectory });
+    return relaxesMutants ? withoutMutantStrictness(typed) : typed;
   };
-}
-
-const DOM_LIB = 'dom';
-function libsWithEndToEndDom(libs, projectDirectory, layout) {
-  const hasEndToEnd =
-    layout.testRoots.includes(END_TO_END_ROOT) &&
-    existsSync(path.join(projectDirectory, END_TO_END_ROOT));
-  const lacksDom = libs?.every((lib) => lib.toLowerCase() !== DOM_LIB) ?? false;
-  return hasEndToEnd && lacksDom ? [...libs, DOM_LIB] : undefined;
-}
-
-function withEndToEndDom(text, name, { projectDirectory, layout }) {
-  if (name !== 'tsconfig.quality.json') {
-    return text;
-  }
-  const config = JSON.parse(text);
-  const lib = libsWithEndToEndDom(config.compilerOptions?.lib, projectDirectory, layout);
-  if (lib === undefined) {
-    return text;
-  }
-  return `${JSON.stringify({ ...config, compilerOptions: { ...config.compilerOptions, lib } }, null, 2)}\n`;
 }
 
 function strictOverrides(layout, keys = Object.keys(strictCompilerOptions(layout.javascript))) {
@@ -214,6 +201,7 @@ function withoutMutantStrictness(text) {
   return `${JSON.stringify({ ...config, compilerOptions }, null, 2)}\n`;
 }
 
+const JAVASCRIPT_PROJECT_OPTIONS = { ...JAVASCRIPT_COMPILER_OPTIONS, maxNodeModuleJsDepth: 0 };
 const MUTANT_STRICTNESS_OPTIONS = new Set([
   'noImplicitReturns',
   'noFallthroughCasesInSwitch',
@@ -238,7 +226,7 @@ function projectLayeredMutationTsconfig(extended, { strictMutants, layout, proje
       skipLibCheck: true,
       ...(strictMutants ? POLICY_COMPILER_OPTIONS : {}),
       ...strictOverrides(layout, Object.keys(POLICY_COMPILER_OPTIONS)),
-      ...(layout.javascript ? JAVASCRIPT_COMPILER_OPTIONS : {}),
+      ...(layout.javascript ? JAVASCRIPT_PROJECT_OPTIONS : {}),
     },
   };
 }
@@ -258,14 +246,13 @@ export function filesLeftOutsideRootDir(projectDirectory, layout, base = shipped
 }
 
 function projectLayeredTsconfig(extended, base, { layout, projectDirectory, withRootFiles }) {
-  const javascriptOptions = layout.javascript ? JAVASCRIPT_COMPILER_OPTIONS : {};
+  const javascriptOptions = layout.javascript ? JAVASCRIPT_PROJECT_OPTIONS : {};
   const layered = layoutTsconfig(base, layout);
   const rootFiles = withRootFiles ? projectRootFiles(projectDirectory, extended) : [];
-  const lib = libsWithEndToEndDom(
-    projectLibs(projectDirectory, extended),
+  const lib = libsWithTestDom(projectLibs(projectDirectory, extended), QUALITY_TSCONFIG, {
     projectDirectory,
     layout,
-  );
+  });
   return {
     extends: extended,
     compilerOptions: {

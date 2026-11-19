@@ -21,7 +21,6 @@ import {
 } from '../spring-types.mjs';
 
 const INJECTION = new Set([...AUTOWIRED, ...INJECT, ...RESOURCE]);
-const CONSTRUCTOR_INJECTION = new Set([...AUTOWIRED, ...INJECT]);
 const PLAIN_COLLECTIONS = new Set([
   'HashMap',
   'LinkedHashMap',
@@ -94,20 +93,7 @@ function constructorInjection(view) {
     .filter((fn) => fn.name !== '<init>')
     .filter((fn) => has(view, fn, INJECTION) || (has(view, fn, VALUE) && !has(view, fn, BEAN)))
     .map((fn) => report('SpringConstructorInjection', fn, fn.owner));
-  const constructors = file.classes.flatMap((declared) => {
-    const secondary = view.functionsOf(declared.qualified).filter(({ name }) => name === '<init>');
-    const primary =
-      secondary.length === 0 &&
-      annotationIn(view.resolve, declared.constructorAnnotations ?? [], CONSTRUCTOR_INJECTION);
-    const onlySecondary =
-      secondary.length === 1 &&
-      declared.primaryParameters.length === 0 &&
-      has(view, secondary[0], CONSTRUCTOR_INJECTION);
-    return primary || onlySecondary
-      ? [report('SpringConstructorInjection', declared, declared.qualified)]
-      : [];
-  });
-  return [...properties, ...functions, ...constructors];
+  return [...properties, ...functions];
 }
 
 function beans(view) {
