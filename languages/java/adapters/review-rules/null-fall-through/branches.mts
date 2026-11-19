@@ -1,7 +1,8 @@
 import { isField, initialises } from './fields.mts';
 import { useText } from './use-text.mts';
 import { frameAt, startsNewLine } from '../max-value-sums/source-file.mts';
-import { statementStop } from '../value-checks/scan.mts';
+import { blockBranch, statementStop } from '../value-checks/scan.mts';
+import type { Branch } from '../value-checks/scan.mts';
 import type { BareSource, SourceFile, Span } from '../max-value-sums/sum-types.mts';
 import type { Token } from '../../reuse/jvm-reuse-types.mts';
 
@@ -61,14 +62,11 @@ function statementEnd(source: BareSource, from: number): number {
   return ends && !source.kotlin ? index + 1 : index;
 }
 
-type Branch = Span & { readonly next: number };
-
 function branchOf(source: BareSource, open: number): Branch {
-  const { tokens, partner } = source;
-  const start = (partner[open] ?? -1) + 1;
-  const close = partner[start] ?? -1;
-  if (tokens[start]?.text === '{' && close > start) {
-    return { from: start + 1, to: close, next: close + 1 };
+  const start = (source.partner[open] ?? -1) + 1;
+  const block = blockBranch(source, start);
+  if (block !== undefined) {
+    return block;
   }
   const end = statementEnd(source, start);
   return { from: start, to: end, next: end };

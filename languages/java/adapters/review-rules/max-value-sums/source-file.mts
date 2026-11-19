@@ -292,3 +292,13 @@ export function frameAt(source: SourceFile, index: number): Frame | undefined {
       undefined,
     );
 }
+
+export function enclosingOpeners(opener: Int32Array, index: number): number[] {
+  const chain = [opener[index] ?? -1];
+  for (const open of chain) {
+    if (open >= 0) {
+      chain.push(opener[open] ?? -1);
+    }
+  }
+  return chain;
+}

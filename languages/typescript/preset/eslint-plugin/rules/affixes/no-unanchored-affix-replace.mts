@@ -6,7 +6,8 @@ import {
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
 import { depthFirst, nodeChildren } from '../typed/node-views.mts';
-import { callbackReceiverOf, unwrapped } from '../typed/syntax-views.mts';
+import { callbackReceiverOf } from '../typed/callback-receivers.mts';
+import { unwrapped } from '../typed/syntax-views.mts';
 import { isDirectoryName, nameText } from './names.mts';
 
 type MessageId = 'suffix' | 'prefix';

@@ -3,6 +3,7 @@ import type { TokenCall } from '../token-calls/calls.mts';
 import { literalText } from '../affix-boundaries/boundaries.mts';
 import { isDerivedFrom, scopeNamesOf } from './scope-names.mts';
 import type { BareSource, SourceFile, Span } from '../max-value-sums/sum-types.mts';
+import { headWord, normalized, WORD_BREAK } from '../../../../../shared/naming/name-matching.mts';
 import type { MinedItem, MinedRule } from '../review-types.mts';
 
 export const PRECONDITION_MESSAGE_RULE = 'PreconditionMessageNamesOtherValue';
@@ -40,16 +41,6 @@ const BARE_JAVA = new Set(['requireNonNull', CHECK_NOT_NULL, 'checkArgument', 'c
 const BARE_KOTLIN = new Set(['requireNotNull', CHECK_NOT_NULL, 'require', 'check']);
 const HOOK_NAME = /^use[A-Z]/u;
 const GETTER_PREFIX = /^(?:get|is|has)(?=[A-Z])/u;
-
-function normalized(name: string): string {
-  return name.replaceAll(/[^a-z0-9]/giu, '').toLowerCase();
-}
-
-const WORD_BREAK = /(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|[_\-\s]+/u;
-
-function headWord(name: string): string {
-  return (name.split(WORD_BREAK).at(-1) ?? '').toLowerCase().replace(/s$/u, '');
-}
 
 function initialsOf(name: string): string {
   return name

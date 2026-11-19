@@ -290,12 +290,3 @@ export function chainRootName(node: TSESTree.Node): string | undefined {
   }).at(-1);
   return root?.type === AST_NODE_TYPES.Identifier ? root.name : undefined;
 }
-
-export function callbackReceiverOf(fn: TSESTree.Node): TSESTree.Node | undefined {
-  const call = fn.parent;
-  return call?.type === AST_NODE_TYPES.CallExpression &&
-    call.arguments.some((argument) => argument === fn) &&
-    call.callee.type === AST_NODE_TYPES.MemberExpression
-    ? call.callee.object
-    : undefined;
-}

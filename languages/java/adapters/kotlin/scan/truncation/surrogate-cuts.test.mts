@@ -1,4 +1,4 @@
-import { describeBodyCases } from '../typed/body-cases.mts';
+import { describeBodyCases } from '../body-cases/body-cases.mts';
 import type { Check, Ruled } from '../typed/typed-scan.mts';
 import { surrogateSplittingCuts as untypedCuts } from './surrogate-cuts.mts';
 
