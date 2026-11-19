@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "signal-receiver-never-connected",
+    "mention": "AppConfig.ready",
+    "subject": "on_order|post_save|signals"
+  }
+]
