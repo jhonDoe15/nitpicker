@@ -13,6 +13,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A logger field names the class that declares it: `LoggerFactory.getLogger(Orders.class)` in `Orders`, not the
   class it was copied from (`pmd/LoggerForOtherClass`); `MethodHandles.lookup().lookupClass()` and `getClass()`
   are fine too.
+- Give a logged exception no `{}` of its own: `log.warn("Failed for {}", id, e)` keeps the stack trace,
+  `log.warn("Failed for {} due to {}", id, e)` prints only `e.toString()`. In an SLF4J or Log4j 2 message
+  write `{}`, not `%s`, `%d` or `{0}` (`pmd/LogPlaceholderSlip`).
 - Fan-out: bound concurrent remote or message calls. Run the tasks on a fixed pool
   (`Executors.newFixedThreadPool(8)`), take a `Semaphore` permit around each call, or work through
   fixed-size batches; never `supplyAsync` per element on the default pool or a cached or
