@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "permission-name-without-app-label",
+    "mention": "app_label",
+    "subject": "has_perm()|impersonate"
+  }
+]
