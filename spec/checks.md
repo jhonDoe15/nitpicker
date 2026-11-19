@@ -123,6 +123,35 @@ In the Python preset `io-in-loop` reports a database call per element also insid
 groups and callables handed to `start_soon`, `to_thread` or `run_in_executor` (one query per item stays one query per item), while a remote call in those concurrent forms belongs to
 `unbounded-fan-out` and a remote call in a sequential loop to `io-in-loop`.
 
+React effects: `nitpicker/react-effect-needs-dependencies` (production source in a React project, in `eslint-lint`)
+reports a `useEffect`, `useLayoutEffect` or `useInsertionEffect` call with no dependency array whose callback calls a
+`useState` setter, a `useReducer` dispatch, a `set*` function from a hook result or a `set*` parameter. A callback that
+only reads or writes refs, an async callback, a setter under an `if`, ternary or `&&` guard, a layout effect that
+measures a ref and setters in nested functions are left alone.
+
+React initial values: `nitpicker/react-no-eager-initial-value` (production source in a React project, in
+`eslint-lint`) reports `useState(call())`, `useState(new X())` and `useRef(call())` or `useRef(new X())`, whose argument
+is built on every render (a `new` of a non-built-in class, or a call named like parse, compute, build, create,
+generate, load, read or init, `JSON.parse`, `localStorage.getItem`), and `createBrowserRouter`, `createMemoryRouter`, `createHashRouter`, `createStore`,
+`configureStore` and `new QueryClient()` called directly in a component or hook body, except in an async component or a server file. Getters, translations,
+type conversions, hook calls, `Date.now()` and built-in constructors are allowed, as are a function argument and a guarded lazy fill.
+
+React i18next: `nitpicker/react-i18next-escape-value` (production source in a React project that depends on
+`react-i18next`, in `eslint-lint`) reports a `t(...)` or `<Trans values>` call that interpolates values into text React
+renders while no source file of the package sets `interpolation.escapeValue: false` and the call does not. The init
+call itself, literal values and values formatted as numbers or dates are not reported.
+
+React list ids: `nitpicker/react-no-literal-id-in-list-component` (production source in a React project, in
+`eslint-lint`) reports a literal `id` in a component rendered inside a `.map`, `.flatMap` or `Array.from` callback
+(same file, or another file of the package importing it) when the same component refers to that id through `htmlFor`,
+`aria-*`, `list`, `form`, `getElementById` or `querySelector`. `useId()` and ids built from the item are allowed, and so is a render under a `switch` case or an equality branch.
+
+React mutations: `nitpicker/react-mutation-drops-failure` (production source in a React project, in `eslint-lint`)
+reports a React Query `mutate(...)` or `mutateAsync(...)` call, or a `useMutation` options object, that passes
+`onSuccess` while `onError` is passed nowhere and `error`, `isError`, `status` or `failureReason` is never read from
+the result. A `mutateAsync` call with `try`/`catch` or `.catch`, and a project whose source sets `MutationCache`
+`onError`, are left alone.
+
 Rows changed in memory: `in-memory-update` in the Python preset reports rows loaded from a Django queryset or a
 SQLAlchemy query only to set the same values on each and write them back (`bulk_update`, `commit`), where one `update`
 statement does it; models with a `save()` override, signals, `before_update` listeners, `auto_now` fields or a version
@@ -188,6 +217,29 @@ and costly to build (Jackson mappers, Gson, `JAXBContext`, validator factories, 
 formatters, `Intl` formatters, Ajv, pydantic `TypeAdapter`, jinja2 `Environment`) made in a
 function that runs on every call, in production code. The Go preset has no rule engine of its own
 yet.
+
+Abort signal forwarding: `nitpicker/require-abort-signal-forwarding` (production source, in `eslint-lint`) reports an awaited
+call that has an `AbortSignal` parameter, or an options parameter with a `signal` property, that the call does not
+supply while the calling function has an `AbortSignal` in scope (types needed), and an endless loop that awaits and never
+reads that signal (without types for a parameter named `signal`). Passing `{ signal }` on, testing `signal.aborted`,
+awaiting a reader of a response fetched with the signal and listening for the signal's `abort` event are allowed.
+
+Use after await on a disposed object: `nitpicker/no-use-after-await-when-disposed` (production source, in `eslint-lint`)
+reports an async method of a class whose teardown method sets a disposed, closed or destroyed flag when the method fires an
+event or starts a timer or process (also `cp.spawn`, `window.setTimeout`, `modelService.createModel`; an awaited
+`setTimeout` is only a sleep) after an `await` without reading that flag (or a cancellation check) between the `await`
+and the use. `if (this._isDisposed) return;` after the `await` is allowed.
+
+Falsy thrown values: `nitpicker/no-falsy-error-check` (production source, in `eslint-lint`) reports a caught or rejected
+value (a `catch` variable, the parameter of a `.catch` or `.then` rejection handler, with types an `error` or `cause`
+property typed `unknown`) that is tested by truthiness (also `!!e` and an optional chain), used as the left side of `||`, or tested with `typeof e ===
+'object'` without a `null` check, because a thrown `undefined`, `null`, `0` or `''` then counts as no error. A separate
+presence flag, `!== undefined` and `'cause' in error` are allowed.
+
+Guards that send and fall through: `nitpicker/no-send-without-return` (production source, in `eslint-lint`) reports an `if`
+without `else` whose last statement sends a response (`res.json`, `res.status(...).send`, `reply.send`, `res.redirect`) or
+calls `next`, `callback`, `cb` or `done` (the last parameter of the function) when more statements follow the branch in
+the same block. `return res.status(400).json(...)`, `return next()`, a `return;` after the call and an `else` are allowed.
 
 Child process deadlines: `nitpicker/require-process-timeout` (production source, in `eslint-lint`)
 reports production code that waits for a child process to exit without a deadline: a synchronous
@@ -369,6 +421,12 @@ a changed loop or inline array callback over items that carry a deleted or visib
 flagged items and this one does not. The finding names the flag and the project's guard form: a helper such as
 `getNonDeletedElements` or a narrowed type such as `NonDeleted<T>`.
 
+Record scope: `nitpicker/no-unscoped-record-access` (production source, in `eslint-lint`, type-aware) reports a changed
+repository or ORM read, update or delete whose filter holds an id taken from the request and lacks an owner field
+(organization, environment, team, user, subscriber, tenant, project and the like) that at least 75% of the project's
+queries on the same model carry (at least five). An earlier access-check call, a comparison of the record's owner,
+an unreadable filter and admin or internal code are not reported.
+
 Route auth: `nitpicker/no-route-without-auth` (production source, in `eslint-lint`) reports a NestJS handler that lacks the
 auth decorator shape almost every handler declares (90%, for example `@Authenticated({ permission })`), or, when no
 shape has a majority but some handlers use a guard and there is no global guard, a handler with no guard and no public
@@ -528,6 +586,56 @@ directory, file name or record id whose only varying part is the current time (`
 Date().toISOString()`, `performance.now()`): a path under `tmpdir()`, the path given to `mkdir` or `writeFile`, and an
 `id`, `_id`, `uid`, `key` or `name` value or fallback. A random or counter part, or any other variable in the name, is
 allowed.
+Release outside finally: `nitpicker/no-release-outside-finally` (production source, in `eslint-lint`) reports a pooled
+connection, query runner, session, lock, stream reader or bundle taken from a known acquire call (`createQueryRunner`,
+`getConnection`, awaited `connect`, `acquire` or `lock`, `checkout`, `getReader`, `startSession`, `rollup`) and released by a
+later statement of the same block while an `await`, `return`, `throw` or a call on the resource sits in between. A release
+in `finally` or `catch`, `await using`, a resource that is returned or stored, and an awaited call that ends in a
+`.catch(() => {})` that cannot throw are allowed.
+
+Unclosed file descriptors: `nitpicker/no-unclosed-file-descriptor` (production source, in `eslint-lint`) reports a call to
+`fs.openSync` or to `open` from `fs/promises` whose result is dropped, or kept in a local of a function that has no
+`closeSync`, `close` or `handle.close()` for it and does not return, store or hand it to another function. A descriptor
+given to `spawn` as stdio still has to be closed by the parent. `await using`, a descriptor that is returned or stored, a
+module-level descriptor and one used by a `process.stdout.write` or `process.stderr.write` override are allowed.
+
+Pipe chains that drop errors: `nitpicker/no-pipe-dropping-errors` (production source, in `eslint-lint`) reports a Node stream
+(recognized from `fs`, `zlib`, `crypto` and `stream` factories and classes, `.createReadStream()` and `.stream()` calls) chained
+with `.pipe()` where the result is used or piped again, or where a lone `a.pipe(b);` is followed by a `'finish'`, `'end'` or
+`'close'` listener on `b`, and the source or a middle stream has no `'error'` listener and is not passed to `pipeline` or
+`finished`. `pipeline(...)`, an error listener on each stream before the last, RxJS `pipe` and a lone `a.pipe(b);` statement
+nobody waits on are allowed.
+
+Child process awaited on exit: `nitpicker/no-child-exit-event` (production source, in `eslint-lint`) reports an `'exit'` listener
+on a child from `spawn`, `exec`, `execFile` or `fork` whose handler reads output collected from `stdout` or `stderr` in the
+same function, or defaults the exit code to zero with `??` or `||`. `'close'`, `events.once(child, 'close')`, a handler that
+awaits or tests its `signal` argument, a child spawned with `stdio` `'inherit'` or `'ignore'`, and a listener that only logs
+or cleans up are allowed.
+
+Incomplete cache keys: `nitpicker/no-incomplete-cache-key` (production source, in `eslint-lint`) reports a TanStack
+Query `queryKey` array that omits a variable the inline `queryFn` reads from the enclosing function, and a memo cache
+whose key (template, `+`, `join` or `JSON.stringify`) omits a parameter that the stored value is computed from.
+Loggers, abort signals, context objects, tokens and credentials, called functions and module-level values are not
+inputs, and a memo cache that the same file clears is not reported.
+
+Local servers on every interface: `nitpicker/no-listen-on-all-interfaces` (production source, in `eslint-lint`) reports
+`listen(port)`, `listen(port, callback)` and `listen({ port })` without a host on an `http`, `https`, `net`, `http2`,
+Express, Connect, Polka or Koa server in a local helper file (an Electron or VS Code host, a CLI folder, or a server
+variable, function, file name, request handler or listen callback that mentions oauth, sso, redirect, authorize or
+login). A host, a socket path, a spread, a port probe or an ordinary server entry point is not reported.
+
+Cyclic recursion: `nitpicker/no-unguarded-cyclic-recursion` (production source, in `eslint-lint`, type-aware) reports a
+function that calls itself with a typed value reached through `cause`, `parents`, `references`, `deps`, `imports`,
+`edges` and similar collection properties of its own parameter (or, for the TypeScript API `Type`, `types`, `target`,
+`base` and `getTypeArguments`) when the function has no visited set, map or depth limit. Single-pointer walks (`parent`,
+`next`, `prev`, `owner`), tree children, syntax tree nodes and untyped parameters are not reported.
+
+Chunkwise stream text: `nitpicker/no-chunkwise-stream-text` (production source, in `eslint-lint`, type-aware) reports,
+inside a `'data'` listener or a `for await` loop over a stream whose chunk is a `Buffer`, `Uint8Array` or untyped
+stream chunk without `setEncoding`, string accumulation of the chunk (`text += chunk`, `chunk.toString()`), a
+`TextDecoder.decode(chunk)` without `{ stream: true }`, and `includes`, `indexOf`, `startsWith` or a regex test on the
+chunk alone, which corrupt split multibyte characters or miss a split message. Streams read with a string encoding
+(`createReadStream(path, 'utf8')`, `setEncoding`) and `Readable.from` (which yields strings) are not reported.
 Dropped log arguments: `nitpicker/no-dropped-log-arguments` (production source, in `eslint-lint`, when the project
 depends on pino, bunyan or winston) reports a `trace` to `fatal` call whose literal message has fewer placeholders than
 values (pino: the extra values are dropped; winston without `format.splat()`: every value after a message with a
@@ -584,6 +692,40 @@ the Python preset (`call_later`, `call_at`, `threading.Timer` and signal handler
 in the Java preset and `kotlin-source/TimerNotStoppedOnClose` in the Kotlin preset (a scheduled executor or
 `Timer` that close never shuts down) and `go-rules/ticker-not-stopped` in the Go preset (`time.NewTicker`
 without `Stop`).
+
+Per-call registrations: `nitpicker/no-per-call-registration` (strict preset, production source) reports, in a class
+method that runs once per event or item (a handler named `on*` or `handle*`, a method called in a loop or from a
+callback given to `on*` or `subscribe`, or passed as a handler; an arrow function field counts), `this._register(x)` or
+`add(x)` on a disposable-store field with a disposable created in the call, and `process.on` with a handler created in
+the call, when the method does not guard the registration (`if (!this.f)`), release the field, clear the store, remove
+the process listener or let the registered callback remove its own entry, and is not only called from the constructor. The owner's store
+then grows by one entry per call until the owner is disposed.
+
+Timers nothing clears: `nitpicker/no-uncleared-timeout` (strict preset, production source) reports a `setTimeout`
+statement (handle dropped) that rejects or aborts inside a `new Promise` executor that settles another way, one in a
+React event handler (not an effect) whose callback calls a state setter, and one in a per-event method of a class
+with a dispose-style method whose callback uses `this`, when no `clearTimeout` in the component or class could
+cancel it. Timers that keep their handle, `.unref()`ed timers, sleeps and callbacks that first test a mounted or disposed
+flag are left alone.
+
+Debounce created per call: `nitpicker/no-per-call-debounce` (strict preset, production source) reports `debounce` or
+`throttle` from lodash, es-toolkit, throttle-debounce and similar libraries that is invoked at once, passed as an
+argument inside a class method that is not a constructor or initializer, or created in a React component or hook body
+outside `useMemo`, `useCallback`, `useRef`, `useState` and effects, or kept in a local that the same function calls.
+Each call or render gets its own timer, so nothing
+is debounced. Fields, module-level constants, factories that return the function and RxJS operators are left alone.
+
+Registry entries deleted by a stale teardown: `nitpicker/no-unguarded-registry-delete` (strict preset, production
+source) reports `map.delete(key)` in a function nested after `map.set(key, value)` (a disposable, a close callback, a
+`finally`, a returned function) when it does not compare `map.get(key)` with the registered value, so a newer entry
+under the same key is removed. Fresh keys, functions that reject duplicate keys with `has` or an earlier `get`, comparisons
+through an alias of the value and deletes in the same call are left alone.
+
+Dropped subscription handles: `nitpicker/no-dropped-subscription-handle` (strict preset, typed production source)
+reports an expression statement that calls an event subscription (`on*`, `subscribe`, `listen*`, `watch*`,
+`addListener` and similar, also as an optional call) whose result has a `dispose()` or `unsubscribe()` method or is a `() => void` function, in a
+class with a close or dispose method or at module level. `once` calls, emitters the class creates itself and bounded
+RxJS subscriptions are left alone. The listener is otherwise never removed and keeps the object alive.
 
 Cached promises that keep a rejection or let a stale attempt win: `nitpicker/no-cached-rejection` (strict preset,
 typed production source) reports a promise assigned to a class field or an outliving variable and reused through a

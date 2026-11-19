@@ -24,6 +24,8 @@ import { rule as ruleNoCachedRejection } from '../rules/lifecycles/memo/no-cache
 import { rule as ruleNoCaseMixedHeaderMerge } from '../rules/urls/requests/no-case-mixed-header-merge.mts';
 import { rule as ruleNoCaseSensitivePathCompare } from '../rules/urls/paths/no-case-sensitive-path-compare.mts';
 import { rule as ruleNoCheckThenWrite } from '../rules/transactions/no-check-then-write.mts';
+import { rule as ruleNoChildExitEvent } from '../rules/processes/events/no-child-exit-event.mts';
+import { rule as ruleNoChunkwiseStreamText } from '../rules/chunks/no-chunkwise-stream-text.mts';
 import { rule as ruleNoCleanupSkippedOnFailure } from '../rules/lifecycles/release/no-cleanup-skipped-on-failure.mts';
 import { rule as ruleNoCollectedStreamRows } from '../rules/streams/no-collected-stream-rows.mts';
 import { rule as ruleNoComments } from '../rules/modules/no-comments.mts';
@@ -38,6 +40,7 @@ import { rule as ruleNoDirectoryPassingExistenceCheck } from '../rules/urls/file
 import { rule as ruleNoDisabledTlsVerification } from '../rules/security/tls/no-disabled-tls-verification.mts';
 import { rule as ruleNoDoubleDecode } from '../rules/urls/decoding/no-double-decode.mts';
 import { rule as ruleNoDroppedLogArguments } from '../rules/logging/no-dropped-log-arguments.mts';
+import { rule as ruleNoDroppedSubscriptionHandle } from '../rules/lifecycles/subscriptions/no-dropped-subscription-handle.mts';
 import { rule as ruleNoDroppedTestCallback } from '../test-assertions/dropped-callback/no-dropped-test-callback.mts';
 import { rule as ruleNoDualWrite } from '../rules/writes/no-dual-write.mts';
 import { rule as ruleNoDynamicImportOfPath } from '../rules/urls/paths/no-dynamic-import-of-path.mts';
@@ -45,6 +48,7 @@ import { rule as ruleNoEagerRelation } from '../rules/persistence/no-eager-relat
 import { rule as ruleNoEmptyEverySignal } from '../rules/empty-lists/no-empty-every-signal.mts';
 import { rule as ruleNoExternalExecutablesInUnitTests } from '../rules/test-runtime/processes/no-external-executables-in-unit-tests.mts';
 import { rule as ruleNoFalsyDefault } from '../rules/signatures/no-falsy-default.mts';
+import { rule as ruleNoFalsyErrorCheck } from '../rules/errors/falsy-errors/no-falsy-error-check.mts';
 import { rule as ruleNoFirstTestChargedSetup } from '../rules/test-runtime/lifecycle/no-first-test-charged-setup.mts';
 import { rule as ruleNoFixedSleepSynchronization } from '../rules/test-runtime/lifecycle/no-fixed-sleep-synchronization.mts';
 import { rule as ruleNoFloatEqualityInTests } from '../test-assertions/no-float-equality-in-tests.mts';
@@ -59,10 +63,12 @@ import { rule as ruleNoInMemoryQuery } from '../rules/queries/no-in-memory-query
 import { rule as ruleNoInPresenceCheck } from '../rules/presence/no-in-presence-check.mts';
 import { rule as ruleNoIncompleteEscaping } from '../rules/escaping/no-incomplete-escaping.mts';
 import { rule as ruleNoInconsistentComparator } from '../rules/comparisons/no-inconsistent-comparator.mts';
+import { rule as ruleNoIncompleteCacheKey } from '../rules/caches/no-incomplete-cache-key.mts';
 import { rule as ruleNoInternalModuleMocks } from '../rules/test-runtime/assertions/no-internal-module-mocks.mts';
 import { rule as ruleNoIntervalPollingInTests } from '../rules/test-runtime/lifecycle/no-interval-polling-in-tests.mts';
 import { rule as ruleNoIoInLoop } from '../rules/loops/no-io-in-loop.mts';
 import { rule as ruleNoLazyRelationInLoop } from '../rules/effects/no-lazy-relation-in-loop.mts';
+import { rule as ruleNoListenOnAllInterfaces } from '../rules/listeners/no-listen-on-all-interfaces.mts';
 import { rule as ruleNoLoadedRowsSavedBack } from '../rules/queries/rows/no-loaded-rows-saved-back.mts';
 import { rule as ruleNoLocalTimeZone } from '../rules/time/no-local-time-zone.mts';
 import { rule as ruleNoLookupAsPresence } from '../rules/presence/lookups/no-lookup-as-presence.mts';
@@ -86,6 +92,9 @@ import { rule as ruleNoOrmQueryLogging } from '../rules/database/no-orm-query-lo
 import { rule as ruleNoOrmSchemaSync } from '../rules/database/no-orm-schema-sync.mts';
 import { rule as ruleNoParameterMutation } from '../rules/signatures/no-parameter-mutation.mts';
 import { rule as ruleNoPartialOutputAssertion } from '../rules/test-runtime/assertions/no-partial-output-assertion.mts';
+import { rule as ruleNoPerCallDebounce } from '../rules/lifecycles/debounce/no-per-call-debounce.mts';
+import { rule as ruleNoPerCallRegistration } from '../rules/lifecycles/registrations/no-per-call-registration.mts';
+import { rule as ruleNoPipeDroppingErrors } from '../rules/streams/no-pipe-dropping-errors.mts';
 import { rule as ruleNoPresenceTruthiness } from '../rules/truthiness/no-presence-truthiness.mts';
 import { rule as ruleNoProcessAccessOutsideCompositionRoot } from '../rules/guards/no-process-access-outside-composition-root.mts';
 import { rule as ruleNoProcessGlobalsOutsideMainGuard } from '../rules/modules/no-process-globals-outside-main-guard.mts';
@@ -97,7 +106,15 @@ import { rule as ruleNoQueryPerParent } from '../rules/resolvers/no-query-per-pa
 import { rule as ruleNoRaisedTestTimeout } from '../rules/test-runtime/assertions/no-raised-test-timeout.mts';
 import { rule as ruleNoRawHttpValue } from '../rules/http-values/no-raw-http-value.mts';
 import { rule as ruleNoRealTimeRandomOrNetwork } from '../test-isolation/no-real-time-random-or-network.mts';
+import { rule as ruleNoReleaseOutsideFinally } from '../rules/resources/release/no-release-outside-finally.mts';
 import { rule as ruleNoRemoteCallInTransaction } from '../rules/effects/no-remote-call-in-transaction.mts';
+import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-call-under-lock.mts';
+import { rule as ruleNoRepeatedStringLiteral } from '../rules/literals/no-repeated-string-literal.mts';
+import { rule as ruleNoRetryWithoutIdempotency } from '../rules/writes/no-retry-without-idempotency.mts';
+import { rule as ruleNoRouteWithoutAuth } from '../rules/route-auth/no-route-without-auth.mts';
+import { rule as ruleNoRuntimeExclusivePropsCheck } from '../rules/react-props/no-runtime-exclusive-props-check.mts';
+import { rule as ruleNoSecretInLog } from '../rules/secrets/no-secret-in-log.mts';
+import { rule as ruleNoSelfRecursion } from '../rules/control/no-self-recursion.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -126,6 +143,8 @@ export const partRules = {
   'no-case-mixed-header-merge': ruleNoCaseMixedHeaderMerge,
   'no-case-sensitive-path-compare': ruleNoCaseSensitivePathCompare,
   'no-check-then-write': ruleNoCheckThenWrite,
+  'no-child-exit-event': ruleNoChildExitEvent,
+  'no-chunkwise-stream-text': ruleNoChunkwiseStreamText,
   'no-cleanup-skipped-on-failure': ruleNoCleanupSkippedOnFailure,
   'no-collected-stream-rows': ruleNoCollectedStreamRows,
   'no-comments': ruleNoComments,
@@ -140,6 +159,7 @@ export const partRules = {
   'no-disabled-tls-verification': ruleNoDisabledTlsVerification,
   'no-double-decode': ruleNoDoubleDecode,
   'no-dropped-log-arguments': ruleNoDroppedLogArguments,
+  'no-dropped-subscription-handle': ruleNoDroppedSubscriptionHandle,
   'no-dropped-test-callback': ruleNoDroppedTestCallback,
   'no-dual-write': ruleNoDualWrite,
   'no-dynamic-import-of-path': ruleNoDynamicImportOfPath,
@@ -147,6 +167,7 @@ export const partRules = {
   'no-empty-every-signal': ruleNoEmptyEverySignal,
   'no-external-executables-in-unit-tests': ruleNoExternalExecutablesInUnitTests,
   'no-falsy-default': ruleNoFalsyDefault,
+  'no-falsy-error-check': ruleNoFalsyErrorCheck,
   'no-first-test-charged-setup': ruleNoFirstTestChargedSetup,
   'no-fixed-sleep-synchronization': ruleNoFixedSleepSynchronization,
   'no-float-equality-in-tests': ruleNoFloatEqualityInTests,
@@ -161,10 +182,12 @@ export const partRules = {
   'no-in-presence-check': ruleNoInPresenceCheck,
   'no-incomplete-escaping': ruleNoIncompleteEscaping,
   'no-inconsistent-comparator': ruleNoInconsistentComparator,
+  'no-incomplete-cache-key': ruleNoIncompleteCacheKey,
   'no-internal-module-mocks': ruleNoInternalModuleMocks,
   'no-interval-polling-in-tests': ruleNoIntervalPollingInTests,
   'no-io-in-loop': ruleNoIoInLoop,
   'no-lazy-relation-in-loop': ruleNoLazyRelationInLoop,
+  'no-listen-on-all-interfaces': ruleNoListenOnAllInterfaces,
   'no-loaded-rows-saved-back': ruleNoLoadedRowsSavedBack,
   'no-local-time-zone': ruleNoLocalTimeZone,
   'no-lookup-as-presence': ruleNoLookupAsPresence,
@@ -189,6 +212,9 @@ export const partRules = {
   'no-orm-schema-sync': ruleNoOrmSchemaSync,
   'no-parameter-mutation': ruleNoParameterMutation,
   'no-partial-output-assertion': ruleNoPartialOutputAssertion,
+  'no-per-call-debounce': ruleNoPerCallDebounce,
+  'no-per-call-registration': ruleNoPerCallRegistration,
+  'no-pipe-dropping-errors': ruleNoPipeDroppingErrors,
   'no-presence-truthiness': ruleNoPresenceTruthiness,
   'no-process-access-outside-composition-root': ruleNoProcessAccessOutsideCompositionRoot,
   'no-process-globals-outside-main-guard': ruleNoProcessGlobalsOutsideMainGuard,
@@ -200,5 +226,13 @@ export const partRules = {
   'no-raised-test-timeout': ruleNoRaisedTestTimeout,
   'no-raw-http-value': ruleNoRawHttpValue,
   'no-real-time-random-or-network': ruleNoRealTimeRandomOrNetwork,
+  'no-release-outside-finally': ruleNoReleaseOutsideFinally,
   'no-remote-call-in-transaction': ruleNoRemoteCallInTransaction,
+  'no-remote-call-under-lock': ruleNoRemoteCallUnderLock,
+  'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
+  'no-retry-without-idempotency': ruleNoRetryWithoutIdempotency,
+  'no-route-without-auth': ruleNoRouteWithoutAuth,
+  'no-runtime-exclusive-props-check': ruleNoRuntimeExclusivePropsCheck,
+  'no-secret-in-log': ruleNoSecretInLog,
+  'no-self-recursion': ruleNoSelfRecursion,
 };
