@@ -3,6 +3,7 @@ import { appendAll } from '../../../../../shared/lists/lists.mts';
 import type { Literal, Range, ScanState, Scanned, StackEntry } from './typed/scan-shapes.mts';
 
 export {
+  afterGroup,
   braceDepths,
   closingIndex,
   enclosingOpen,

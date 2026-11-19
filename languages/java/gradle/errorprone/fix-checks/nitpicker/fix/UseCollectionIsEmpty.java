@@ -14,7 +14,9 @@ import com.sun.source.tree.ExpressionTree;
 import com.sun.source.tree.LiteralTree;
 import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.MethodInvocationTree;
+import com.sun.source.tree.ParenthesizedTree;
 import com.sun.source.tree.Tree;
+import com.sun.source.util.TreePath;
 
 @BugPattern(
     summary = "Calls isEmpty() on a collection or map instead of comparing its size with zero.",
@@ -39,7 +41,18 @@ public final class UseCollectionIsEmpty extends BugChecker implements BinaryTree
     }
     MemberSelectTree select = (MemberSelectTree) size.getMethodSelect();
     String receiver = Support.source(select.getExpression(), state);
-    return describeMatch(tree, SuggestedFix.replace(tree, (empty ? "" : "!") + receiver + ".isEmpty()"));
+    Tree negation = negationAround(state);
+    boolean positive = negation == null ? empty : !empty;
+    String replacement = (positive ? "" : "!") + receiver + ".isEmpty()";
+    return describeMatch(tree, SuggestedFix.replace(negation == null ? tree : negation, replacement));
+  }
+
+  private static Tree negationAround(VisitorState state) {
+    TreePath path = state.getPath().getParentPath();
+    while (path != null && path.getLeaf() instanceof ParenthesizedTree) {
+      path = path.getParentPath();
+    }
+    return path != null && path.getLeaf().getKind() == Tree.Kind.LOGICAL_COMPLEMENT ? path.getLeaf() : null;
   }
 
   private static Boolean emptiness(Tree.Kind kind, int constant) {

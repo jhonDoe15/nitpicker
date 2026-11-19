@@ -47,7 +47,7 @@ function restore(journal: Journal) {
 
 function fixesOf(journal: Journal, repositoryRoot: string): DryRunPlan['fixes'] {
   const prefix = repositoryName(repositoryRoot, realpathSync(journal.projectRoot));
-  return journal.events.map(({ files, ...event }) => ({
+  return journal.events.map(({ files, scope: _scope, ...event }) => ({
     ...event,
     files: files.map((name) => (prefix === '' ? name : `${prefix}/${name}`)),
   }));
