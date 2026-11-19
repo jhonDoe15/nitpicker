@@ -1,6 +1,8 @@
 import { RULES_TOOL } from '../tool.mts';
 import { DJANGO_MODEL_HINTS } from '../django/django-model-hints.mts';
 import { NARROW_HINTS, ROW_HINTS } from './row-hints.mts';
+import { DATABASE_ALIAS_HINTS } from '../django/database-hints.mts';
+import { SIGNAL_HINTS } from './signal-hints.mts';
 import type { RuleHint } from '../hint-types.mts';
 
 const QUERY_WORK: Readonly<Record<string, string>> = {
@@ -58,4 +60,6 @@ export const PERSISTENCE_HINTS: readonly RuleHint[] = [
   ...ROW_HINTS,
   ...NARROW_HINTS,
   ...DJANGO_MODEL_HINTS,
+  ...SIGNAL_HINTS,
+  ...DATABASE_ALIAS_HINTS,
 ];

@@ -172,6 +172,23 @@ Python route auth rule: `route-without-auth` (a FastAPI route, a Django REST fra
 the auth requirement, a `Depends(...)`, `permission_classes` or login decorator, that at least 90% of the project's
 handlers declare, with at least five handlers counted). It lives in `languages/python/rules/route_auth/`.
 
+Python signal rules: `cache-invalidated-on-save-only` (a Django `post_save` or `pre_save` receiver that invalidates a
+cache, with no `post_delete`, `pre_delete` or `m2m_changed` receiver of the same model invalidating the same cache;
+silent in a project that never deletes rows) and `signal-receiver-never-connected` (receivers in a signals module
+that no other module imports, in a project with an `AppConfig`). They live in
+`languages/python/rules/signal_receivers/`.
+
+Python database alias rule: `database-alias-not-passed` (a function that receives a database alias, a `using` or
+`db_alias` parameter, a signal receiver's `using` or a data migration's `schema_editor`, and runs a model query,
+`save`, `delete` or `transaction.atomic`, `set_rollback` or `on_commit` without it; silent in a project with one
+database; a different alias is reported as the wrong one). Functions given to `migrations.RunPython` are also checked,
+in every project, for current model classes and helpers instead of `apps.get_model`. It lives in
+`languages/python/rules/database_aliases/`.
+
+Python permission rule: `permission-name-without-app-label` (a Django `has_perm`, `has_perms`, `permission_required`
+or `perms_map` permission string without the `app_label.` prefix; a bare codename with an object in a project that
+uses django-guardian stays allowed). It lives in `languages/python/rules/permissions/`.
+
 Unbounded thread pools: `pmd/UnboundedThreadPool` in the Java and Kotlin presets reports
 `Executors.newCachedThreadPool()` and a `ThreadPoolExecutor` without a maximum size in main
 sources. In a Spring project, `pmd/SpringUnreleasedResource` reports a bean field that holds an
