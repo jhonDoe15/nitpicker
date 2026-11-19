@@ -1,0 +1,30 @@
+const JUNIT = `
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.13.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+test {
+    useJUnitPlatform()
+}
+`;
+
+export const LARGE_BUILD_FILES: Readonly<Record<string, string>> = {
+  'settings.gradle':
+    "rootProject.name = 'large'\ninclude 'platform', 'platform:base', 'platform:api'\n",
+  'build.gradle':
+    "allprojects {\n    apply plugin: 'java'\n    repositories {\n        mavenCentral()\n    }\n}\n",
+  'platform/build.gradle': '',
+  'platform/base/build.gradle': `apply plugin: 'jacoco'\n${JUNIT}\ntasks.named('check') {\n    dependsOn 'jacocoTestReport'\n}\n`,
+  'platform/base/src/main/java/demo/base/Counter.java':
+    'package demo.base;\n\npublic final class Counter {\n  private int unused;\n\n' +
+    '  public int next(int value) {\n    return value + 1;\n  }\n}\n',
+  'platform/base/src/test/java/demo/base/CounterTest.java':
+    'package demo.base;\n\nimport static org.junit.jupiter.api.Assertions.assertEquals;\n\n' +
+    'import org.junit.jupiter.api.Test;\n\nclass CounterTest {\n  @Test\n  void countsOn() {\n' +
+    '    assertEquals(2, new Counter().next(1));\n  }\n}\n',
+  'platform/api/build.gradle': "dependencies {\n    implementation project(':platform:base')\n}\n",
+  'platform/api/src/main/java/demo/api/Greeter.java':
+    'package demo.api;\n\nimport demo.base.Counter;\n\npublic final class Greeter {\n' +
+    '  public void greet() {\n    System.out.println(new Counter().next(1));\n  }\n}\n',
+};
