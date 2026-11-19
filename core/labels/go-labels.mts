@@ -183,6 +183,8 @@ const GO_RULES: ReadonlyMap<string, Labels> = new Map([
   ['precondition_message_names_other_value', BUG],
   ['malformed_query_text', ['bug', PERSISTENCE]],
   ['unpaged_listing', BUG],
+  ['nil_branch_fall_through', BUG],
+  ['mutating_method_in_domain', MAINTAINABILITY],
   ['query_per_parent_resolver', PERFORMANCE],
   ['untrimmed_request_text', BUG],
   ['max_value_overflow', BUG],
