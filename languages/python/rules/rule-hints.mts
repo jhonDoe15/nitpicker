@@ -30,6 +30,7 @@ import { SIMPLER_LOGIC_HINTS } from './hints/logic/simpler-logic.mts';
 import { STREAM_HINTS } from './hints/streams/streams.mts';
 import { LIFECYCLE_HINTS } from './hints/lifecycles/lifecycles.mts';
 import { TIME_UNIT_HINTS } from './hints/time/time-units.mts';
+import { RUNTIME_SLIP_HINTS } from './hints/slips/runtime-slips.mts';
 import { RULES_TOOL } from './hints/tool.mts';
 import { DEFAULT_LIBRARIES } from './libraries/project-libraries.mts';
 import { QUERY_FILTER_HINTS } from './hints/filters/query-filters.mts';
@@ -114,6 +115,7 @@ export const RULE_HINTS: readonly RuleHint[] = [
   ...AIRFLOW_HINTS,
   ...DATALOADER_HINTS,
   ...QUERY_FILTER_HINTS,
+  ...RUNTIME_SLIP_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...PYRIGHT_TOOLS.map((tool) => ({
     tool,

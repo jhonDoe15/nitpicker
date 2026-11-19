@@ -28,6 +28,7 @@
   "python-rules/dual-write-without-outbox": ["reliability", "persistence"],
   "python-rules/eager-relationship": ["performance", "persistence"],
   "python-rules/empty-filter-condition": ["bug", "persistence"],
+  "python-rules/empty-sequence-access": ["bug"],
   "python-rules/enum-string-constants": ["maintainability"],
   "python-rules/env-none-only-check": ["bug"],
   "python-rules/exhaustive-enum-predicate": ["bug"],
