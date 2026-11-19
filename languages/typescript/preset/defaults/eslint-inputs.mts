@@ -151,7 +151,6 @@ export const readDependencyNames: (projectRoot: string) => string[] = untypedRea
 export const isReactProject: (options: {
   readonly projectRoot: string;
   readonly react: object;
-  readonly javascript: boolean;
 }) => boolean = untypedIsReactProject;
 export const isI18nProject: (options: {
   readonly projectRoot: string;

@@ -86,7 +86,7 @@ export function reuseRules(ids, reactEnforcedBy) {
       id: ids.redefinedLibraryComponent,
       check: STRUCTURE_TOOL,
       limit: 'React only: a component named like one the project renders from a dependency',
-      enforcedBy: { ...reactEnforcedBy, javascript: 'partial' },
+      enforcedBy: reactEnforcedBy,
     },
     {
       id: ids.newIconAsset,

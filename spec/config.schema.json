@@ -156,7 +156,7 @@
       "items": { "$ref": "#/definitions/exception" }
     },
     "react": {
-      "description": "The React rule scope (TypeScript preset only).",
+      "description": "The React rule scope (TypeScript and JavaScript presets).",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -1863,7 +1863,6 @@
               }
             }
           },
-          "react": false,
           "i18n": false,
           "python": false,
           "kotlin": false,

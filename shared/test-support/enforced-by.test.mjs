@@ -48,7 +48,7 @@ const NOT_ENFORCED_ALTHOUGH_EMITTED = {
   javascript: {
     'unused-prop': {
       file: 'languages/typescript/preset/unused-api/analyze.mjs',
-      evidence: /javascript: layout\.javascript/u,
+      evidence: /!layout\.javascript && isReactProject/u,
     },
     'javascript-in-typescript-project': {
       file: 'languages/typescript/preset/structure/sources/javascript-files.mjs',

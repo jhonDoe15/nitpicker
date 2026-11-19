@@ -10,7 +10,7 @@ import {
   SCRIPT_SKIPPED_FOLDERS,
   withSkippedFolders,
 } from '../../../core/tooling/jscpd/skipped-folders.mjs';
-import { projectLibs, projectRootFiles } from './modules/tsconfig-files.mjs';
+import { parsedTsconfig, projectLibs, projectRootFiles } from './modules/tsconfig-files.mjs';
 import {
   POLICY_COMPILER_OPTIONS,
   TYPESCRIPT_ONLY_OPTIONS,
@@ -202,6 +202,16 @@ function withoutMutantStrictness(text) {
 }
 
 const JAVASCRIPT_PROJECT_OPTIONS = { ...JAVASCRIPT_COMPILER_OPTIONS, maxNodeModuleJsDepth: 0 };
+
+function javascriptProjectOptions(layout, projectDirectory, extended) {
+  if (!layout.javascript) {
+    return {};
+  }
+  const { jsx, ...options } = JAVASCRIPT_PROJECT_OPTIONS;
+  return parsedTsconfig(path.join(projectDirectory, extended)).options.jsx === undefined
+    ? { ...options, jsx }
+    : options;
+}
 const MUTANT_STRICTNESS_OPTIONS = new Set([
   'noImplicitReturns',
   'noFallthroughCasesInSwitch',
@@ -226,7 +236,7 @@ function projectLayeredMutationTsconfig(extended, { strictMutants, layout, proje
       skipLibCheck: true,
       ...(strictMutants ? POLICY_COMPILER_OPTIONS : {}),
       ...strictOverrides(layout, Object.keys(POLICY_COMPILER_OPTIONS)),
-      ...(layout.javascript ? JAVASCRIPT_PROJECT_OPTIONS : {}),
+      ...javascriptProjectOptions(layout, projectDirectory, extended),
     },
   };
 }
@@ -246,7 +256,7 @@ export function filesLeftOutsideRootDir(projectDirectory, layout, base = shipped
 }
 
 function projectLayeredTsconfig(extended, base, { layout, projectDirectory, withRootFiles }) {
-  const javascriptOptions = layout.javascript ? JAVASCRIPT_PROJECT_OPTIONS : {};
+  const javascriptOptions = javascriptProjectOptions(layout, projectDirectory, extended);
   const layered = layoutTsconfig(base, layout);
   const rootFiles = withRootFiles ? projectRootFiles(projectDirectory, extended) : [];
   const lib = libsWithTestDom(projectLibs(projectDirectory, extended), QUALITY_TSCONFIG, {

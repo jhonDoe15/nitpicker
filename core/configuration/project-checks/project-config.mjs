@@ -10,6 +10,7 @@ import {
 } from '../../../languages/typescript/preset/layout.mjs';
 
 const JSX_FILE = /\.[jt]sx$/u;
+const TSX_FILE = /\.tsx$/u;
 export const HEAD_NAMES = ['HEAD', '@'];
 
 export function rejectHeadBase(base) {
@@ -20,7 +21,7 @@ export function rejectHeadBase(base) {
   }
 }
 
-function existingJsxFiles(projectRoot, root) {
+function existingJsxFiles(projectRoot, root, pattern) {
   const directory = pathInside(projectRoot, root);
   if (directory === undefined || !existsSync(directory)) {
     return [];
@@ -31,17 +32,17 @@ function existingJsxFiles(projectRoot, root) {
     }),
   ]
     .map((file) => path.relative(projectRoot, file).replaceAll('\\', '/'))
-    .filter((file) => JSX_FILE.test(file));
+    .filter((file) => pattern.test(file));
 }
 
-export function firstJsxFile(config, projectRoot) {
+export function firstJsxFile(config, projectRoot, pattern = JSX_FILE) {
   const roots = [
     ...(config.layout?.sourceRoots ?? defaultSourceRoots),
     ...(config.layout?.testRoots ?? defaultTestRoots),
   ];
   const excluded = (config.exclude ?? []).map(globMatcher);
   return roots
-    .flatMap((root) => existingJsxFiles(projectRoot, root))
+    .flatMap((root) => existingJsxFiles(projectRoot, root, pattern))
     .find((file) => !excluded.some((matcher) => matcher.test(file)));
 }
 
@@ -49,10 +50,10 @@ export function rejectUnreadableSources(config, projectRoot) {
   if (config.preset !== 'javascript') {
     return;
   }
-  const found = firstJsxFile(config, projectRoot);
+  const found = firstJsxFile(config, projectRoot, TSX_FILE);
   if (found !== undefined) {
     throw configError(
-      `"preset": "javascript" does not analyze .jsx and .tsx files, and ${found} is one. Use "preset": "typescript", which reads them, or list the path in "exclude".`,
+      `"preset": "javascript" does not analyze .tsx files, and ${found} is one. Use "preset": "typescript", which reads them, or list the path in "exclude".`,
     );
   }
 }

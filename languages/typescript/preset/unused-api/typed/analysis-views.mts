@@ -30,11 +30,8 @@ export type Context = { readonly owned: unknown };
 type IsExcepted = (rule: string, ...candidates: readonly unknown[]) => boolean;
 
 export const exceptionMatcher: (exceptions: unknown[]) => IsExcepted = untypedExceptionMatcher;
-export const isReactProject: (options: {
-  projectRoot: string;
-  react: object;
-  javascript: boolean;
-}) => boolean = untypedIsReactProject;
+export const isReactProject: (options: { projectRoot: string; react: object }) => boolean =
+  untypedIsReactProject;
 export const readHeadPolicy: (environment: NodeJS.ProcessEnv) => {
   readonly exceptions: unknown[];
   readonly react: object;
