@@ -8,6 +8,7 @@ import {
   resolveAnalyzerMetadata,
   withResolvedMetadata,
 } from '../report/analyzer-metadata.mts';
+import { deadlineScaleOf, projectFileCount, scaledDeadlineMs } from './scaled-deadline.mts';
 
 export type TaskContext = {
   readonly projectRoot: string;
@@ -37,6 +38,16 @@ export type PreparedTask = {
 };
 
 const DEFAULT_ANALYZER_TIMEOUT_MS = 5 * 60 * 1000;
+
+function taskTimeoutMs(analyzer: Record<string, unknown>, liveProjectRoot: string): number {
+  const base =
+    typeof analyzer['timeoutMs'] === 'number' ? analyzer['timeoutMs'] : DEFAULT_ANALYZER_TIMEOUT_MS;
+  const scale = deadlineScaleOf(analyzer);
+  if (analyzer['configuredTimeout'] === true || scale === undefined) {
+    return base;
+  }
+  return scaledDeadlineMs(base, scale, projectFileCount(liveProjectRoot, scale.extensions));
+}
 
 function logLocation(
   logRoot: unknown,
@@ -115,7 +126,7 @@ function createTask(
     concurrencyWeight: analyzer.concurrencyWeight ?? 1,
     concurrencyGroup: analyzer.concurrencyGroup,
     executionPriority: analyzer.executionPriority ?? 0,
-    timeoutMs: analyzer.timeoutMs ?? DEFAULT_ANALYZER_TIMEOUT_MS,
+    timeoutMs: taskTimeoutMs(analyzer, liveProjectRoot),
     configuredTimeout: analyzer['configuredTimeout'] === true,
     reportedTools: analyzer.reportedTools ?? [],
     acceptedExitCodes: [0, ...(analyzer.findingExitCodes ?? [])],
