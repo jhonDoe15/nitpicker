@@ -7,9 +7,7 @@ const listMethods = new Set(['map', 'flatMap']);
 const equalityOperators = new Set(['==', '===', '!=', '!==']);
 
 export function literalText(node: TSESTree.Node | undefined): string | undefined {
-  return plainText(
-    node?.type === AST_NODE_TYPES.JSXExpressionContainer ? node.expression : node,
-  );
+  return plainText(node?.type === AST_NODE_TYPES.JSXExpressionContainer ? node.expression : node);
 }
 
 function isListCallback(node: TSESTree.Node): boolean {

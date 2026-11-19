@@ -3,6 +3,9 @@ import path from 'node:path';
 import { cachedValue } from '../../../../../../../shared/values/caching/cached-value.mts';
 import { parseJson, readTextFile } from './file-reads.mts';
 import { projectFilesUnder } from '../../../../../../../shared/project-files/project-files.mjs';
+import { ancestorDirectories as untypedAncestorDirectories } from '../../../../../../../shared/filesystem.mjs';
+
+const ancestorDirectories: (directory: string) => string[] = untypedAncestorDirectories;
 
 type Manifest = Readonly<Record<string, unknown>>;
 
@@ -29,21 +32,12 @@ function readManifest(directory: string): Manifest | undefined {
   return parsed.kind === 'parsed' && isManifest(parsed.value) ? parsed.value : undefined;
 }
 
-function ancestors(directory: string): string[] {
-  const chain = [directory];
-  for (const current of chain) {
-    const parent = path.dirname(current);
-    if (parent !== current) {
-      chain.push(parent);
-    }
-  }
-  return chain;
-}
-
 function nearestPackage(filename: string): string | undefined {
   const start = path.dirname(filename);
   return cachedValue(roots, start, () => ({
-    root: ancestors(start).find((directory) => existsSync(path.join(directory, 'package.json'))),
+    root: ancestorDirectories(start).find((directory) =>
+      existsSync(path.join(directory, 'package.json')),
+    ),
   })).root;
 }
 
@@ -52,7 +46,7 @@ function scanRoot(filename: string): string | undefined {
   if (nearest === undefined) {
     return undefined;
   }
-  const workspace = ancestors(nearest).find(
+  const workspace = ancestorDirectories(nearest).find(
     (directory) => readManifest(directory)?.['workspaces'] !== undefined,
   );
   return workspace ?? nearest;

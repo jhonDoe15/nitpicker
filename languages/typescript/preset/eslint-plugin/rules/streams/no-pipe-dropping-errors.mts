@@ -40,12 +40,11 @@ function recordCall(sourceCode: SourceCode, call: TSESTree.CallExpression, facts
     facts.completed.add(ownerName);
   }
   const name = nameOf(callee.type === AST_NODE_TYPES.MemberExpression ? callee.property : callee);
-  if (PIPELINES.has(name ?? '')) {
-    for (const argument of call.arguments) {
-      const text = namedStreams(sourceCode, argument);
-      if (text !== undefined) {
-        facts.handled.add(text);
-      }
+  const piped = PIPELINES.has(name ?? '') ? call.arguments : [];
+  for (const argument of piped) {
+    const text = namedStreams(sourceCode, argument);
+    if (text !== undefined) {
+      facts.handled.add(text);
     }
   }
 }

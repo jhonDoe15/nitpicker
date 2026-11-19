@@ -92,10 +92,9 @@ function derivesFromSignal(
     if (identifiers.some((identifier) => names.has(identifier.name))) {
       return true;
     }
-    if (item.hops < MAX_HOPS) {
-      for (const init of initializersOf(sourceCode, identifiers)) {
-        pending.push({ node: init, hops: item.hops + 1 });
-      }
+    const next = item.hops < MAX_HOPS ? initializersOf(sourceCode, identifiers) : [];
+    for (const init of next) {
+      pending.push({ node: init, hops: item.hops + 1 });
     }
   }
   return false;
