@@ -40,9 +40,21 @@ export type ApplyResult = {
   readonly errors: string[];
 };
 
+export type EditedLines = readonly (readonly [number, number])[];
+
 export type JournalEvent = Omit<PlannedFix, 'files'> & {
   readonly files: readonly string[];
   readonly scope?: string | undefined;
+  readonly lines?: EditedLines | undefined;
+};
+
+export type LeftOutFix = {
+  readonly tool: string;
+  readonly rule: string;
+  readonly path: string;
+  readonly line: number;
+  readonly lines: EditedLines;
+  readonly reason: string;
 };
 
 export type Journal = {
@@ -51,6 +63,7 @@ export type Journal = {
   readonly fixed: Map<string, FixedState>;
   readonly indexListings: Map<string, string>;
   events: JournalEvent[];
+  leftOut: readonly LeftOutFix[];
   readonly savers: (() => void)[];
 };
 

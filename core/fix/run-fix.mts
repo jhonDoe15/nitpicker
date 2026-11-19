@@ -13,7 +13,7 @@ import { verifyFixes as untypedVerifyFixes } from './verify/verify-fixes.mts';
 import { languageFixers as untypedLanguageFixers } from './language-fixers.mts';
 import { ALL_RECIPES } from './engine/all-recipes.mts';
 import { emptyRuleNotes as untypedEmptyRuleNotes } from './status/rule-notes.mts';
-import type { Journal } from './dry-run/journal-types.mts';
+import type { Journal, LeftOutFix } from './dry-run/journal-types.mts';
 import type {
   DryRunPlan,
   FixInvocation,
@@ -25,7 +25,12 @@ import type {
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 
 type Executor = (invocation: FixInvocation) => unknown;
-type RolledBack = { readonly files: readonly string[]; readonly recipe: string };
+type RolledBack = {
+  readonly files: readonly string[];
+  readonly recipe: string;
+  readonly whole: boolean;
+};
+type Verified = { readonly result: FixOutcome; readonly leftOut: readonly LeftOutFix[] };
 
 type RunOptions = {
   readonly repositoryRoot: string;
@@ -63,8 +68,12 @@ const verifyFixes: (options: {
   readonly journal: Journal;
   readonly analyze: unknown;
   readonly mode: string;
-}) => { readonly rolledBack: readonly RolledBack[]; readonly notes: readonly string[] } =
-  untypedVerifyFixes;
+  readonly narrow: boolean;
+}) => {
+  readonly rolledBack: readonly RolledBack[];
+  readonly leftOut: readonly LeftOutFix[];
+  readonly notes: readonly string[];
+} = untypedVerifyFixes;
 const lowerBaseline: (options: {
   readonly projectRoot: string;
   readonly writer: FixWriter;
@@ -138,29 +147,63 @@ function rewroteAny(note: string, names: ReadonlySet<string>): boolean {
   return [...names].some((name) => note.endsWith(` rewrote ${name}`));
 }
 
-function withVerification(options: RunOptions, journal: Journal, result: FixOutcome): FixOutcome {
-  if (options.analyzeFixes === undefined) {
-    return result;
-  }
-  const { rolledBack, notes } = verifyFixes({
-    journal,
-    analyze: options.analyzeFixes,
-    mode: options.verifyMode,
-  });
+function isUndone(line: string, rolledBack: readonly RolledBack[]): boolean {
+  return rolledBack.some(
+    ({ recipe, whole, files }) =>
+      line.endsWith(`(${recipe})`) && (whole || files.some((name) => line.startsWith(`${name}:`))),
+  );
+}
+
+function withoutUndone(result: FixOutcome, rolledBack: readonly RolledBack[]): FixOutcome {
   const undone = new Set(rolledBack.flatMap(({ files }) => files));
-  const undoneRecipes = new Set(rolledBack.map(({ recipe }) => `(${recipe})`));
   return {
     ...result,
     fixedFiles: result.fixedFiles.filter((name) => !undone.has(name)),
     ...(result.fixedFindings === undefined
       ? {}
-      : {
-          fixedFindings: result.fixedFindings.filter(
-            (line) => !undoneRecipes.has(line.slice(line.lastIndexOf('('))),
-          ),
-        }),
-    notes: [...(result.notes ?? []).filter((note) => !rewroteAny(note, undone)), ...notes],
+      : { fixedFindings: result.fixedFindings.filter((line) => !isUndone(line, rolledBack)) }),
+    notes: (result.notes ?? []).filter((note) => !rewroteAny(note, undone)),
   };
+}
+
+function leftOutNote({ path: name, line, tool, rule, reason }: LeftOutFix): string {
+  return `--fix left out the fix of ${name}:${String(line)} ${tool}/${rule} and kept the other fixes of the file: ${reason}`;
+}
+
+function fixVerified(options: RunOptions, journal: Journal, earlier?: FixOutcome): Verified {
+  const fixed = fixOnce(options, journalWriter(journal));
+  if (options.analyzeFixes === undefined) {
+    return { result: fixed, leftOut: [] };
+  }
+  const { rolledBack, leftOut, notes } = verifyFixes({
+    journal,
+    analyze: options.analyzeFixes,
+    mode: options.verifyMode,
+    narrow: earlier === undefined,
+  });
+  const result = withoutUndone(
+    earlier === undefined
+      ? fixed
+      : {
+          ...fixed,
+          fixedFiles: [...new Set([...earlier.fixedFiles, ...fixed.fixedFiles])],
+          fixedFindings: [...(earlier.fixedFindings ?? []), ...(fixed.fixedFindings ?? [])],
+          notes: [...new Set([...(earlier.notes ?? []), ...(fixed.notes ?? [])])],
+        },
+    rolledBack,
+  );
+  const undone = new Set(rolledBack.flatMap(({ files }) => files));
+  const kept = journal.leftOut.filter(({ path: name }) => !undone.has(name)).map(leftOutNote);
+  return { result: { ...result, notes: [...(result.notes ?? []), ...notes, ...kept] }, leftOut };
+}
+
+function fixNarrowing(options: RunOptions, journal: Journal): FixOutcome {
+  const first = fixVerified(options, journal);
+  if (first.leftOut.length === 0) {
+    return first.result;
+  }
+  journal.leftOut = first.leftOut;
+  return fixVerified(options, journal, first.result).result;
 }
 
 function withLoweredBaseline(
@@ -207,12 +250,7 @@ function fixInTree(options: RunOptions): FixOutcome {
   }
   const journal = createJournal(projectRoot);
   function run(): FixOutcome {
-    const writer = journalWriter(journal);
-    return withLoweredBaseline(
-      options,
-      writer,
-      withVerification(options, journal, fixOnce(options, writer)),
-    );
+    return withLoweredBaseline(options, journalWriter(journal), fixNarrowing(options, journal));
   }
   if (!options.dryRun) {
     return run();

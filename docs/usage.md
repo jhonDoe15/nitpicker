@@ -2927,6 +2927,16 @@ checks every recipe that applied a fix:
    broke are rolled back. The other recipes stay applied, and the comparison runs on the tree that
    is left. The files of a rolled back recipe are not
    formatted either, and they are not listed under "Fixed files:" or "Fixed findings:".
+4. When nitpicker can tell which fixes of a rolled back file are to blame, it runs the fixers once
+   more without them and verifies again, so one bad fix does not undo the other fixes of the file.
+   The fixes to blame are the ones of a rule that is still reported, and the ones that edited the
+   lines a new finding is reported on (layout changes of a formatter are ignored for this). A
+   "Fix notes:" line names each fix that was left out:
+   `--fix left out the fix of <file>:<line> <tool>/<rule> and kept the other fixes of the file: <reason>`.
+   The file is rolled back whole, as in step 3, when a new finding sits on a line no fix edited,
+   when every fix of the file is to blame, when a recipe that edits several files touched it, or
+   when the second verification fails too. The second run happens at most once and only after a
+   rollback, and it costs one more fixer run and one more verification.
 
 When no recipe fixed anything, nothing is verified. When the analyzers fail, or none reports the
 fixed rules, every fix stays and a "Fix notes:" line says that the fixes were not verified.

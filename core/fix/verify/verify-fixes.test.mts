@@ -182,7 +182,7 @@ describe('verifyFixes', () => {
     const root = project(FILES);
     const analyze = analyzeTree(root);
     const result = verifyFixes({ journal: createJournal(root), analyze });
-    expect(result).toEqual({ rolledBack: [], notes: [] });
+    expect(result).toEqual({ rolledBack: [], leftOut: [], notes: [] });
     expect(analyze).not.toHaveBeenCalled();
   });
 
