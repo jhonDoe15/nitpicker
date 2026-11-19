@@ -194,8 +194,8 @@ tasks.register('nitpickerErrorProne') {
                 [runner.absolutePath, report.absolutePath, checks.absolutePath] + argumentFiles*.absolutePath
             def process = new ProcessBuilder(command)
                 .directory(projectDir).redirectErrorStream(true).start()
-            // The JVM's own "Picked up JAVA_TOOL_OPTIONS" notice is not part of the cause.
-            def log = process.inputStream.getText('UTF-8').readLines().findAll { !it.startsWith('Picked up ') }
+            // The JVM's own "Picked up JAVA_TOOL_OPTIONS" notices are not part of the cause.
+            def log = process.inputStream.getText('UTF-8').readLines().findAll { !(it ==~ /^(?:NOTE: )?Picked up .*/) }
             def exit = process.waitFor()
             def compiled = exit == 0 && report.exists()
             if (!compiled) {

@@ -4,6 +4,7 @@ import { type GradleResult, runGradle } from '../gradle-wrapper/gradle-process.m
 import { gradleLog, withGradleLog } from '../gradle-wrapper/diagnostics/failure-log.mts';
 import { condenseFailure, isRateLimited } from '../gradle-wrapper/diagnostics/failure-text.mts';
 import { gradleSpawnFailure } from '../gradle-wrapper/diagnostics/spawn-failure.mts';
+import { memoryAdvice } from '../gradle-wrapper/memory/gradle-memory.mts';
 import { usesConfigRetries } from '../../../../shared/conventions/tool-precedence.mjs';
 import { failingTestsOf } from '../gradle-reports/failing-tests.mts';
 import { failingTestsError } from '../../builds/test-failures.mjs';
@@ -49,6 +50,7 @@ function failedStage(
   const retry = isRateLimited(outputOf(result)) ? `\n${RATE_LIMIT_ADVICE}` : '';
   return new Error(
     `${textOf(presetLabel(policy.preset))} preset failed ${where}: ${detail}${retry}` +
+      memoryAdvice(outputOf(result)) +
       pathGradleAdvice(command, projectRoot),
   );
 }
