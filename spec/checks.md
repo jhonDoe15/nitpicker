@@ -152,6 +152,8 @@ Python effect rules: `accumulator-copy` (a name rebuilt from a copy of itself in
 `resolver-query-per-parent` (a Strawberry or Graphene field resolver of a type returned as a list that queries per parent; a `DataLoader` is the allowed form),
 `cache-write-in-transaction` (a Django or Redis cache write, or a dict filled with a row written in the block, inside
 `transaction.atomic()` or `session.begin()`; `transaction.on_commit` is the allowed form),
+`templated-field-used-in-init` (an Airflow operator `__init__` that checks, defaults or converts a parameter named in
+`template_fields`; a plain assignment and the logic in `execute()` are the allowed form),
 `remote-call-in-transaction` and `remote-call-under-lock` (a remote call while a database transaction or a lock is
 held; a fill-once block under a lock stays allowed), `retry-without-idempotency` (a payment create, message
 publish or `INSERT` without a stable key inside a retry scope) and `dual-write-without-outbox` (a database write

@@ -19,3 +19,4 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Dependencies: every package production code imports is a production dependency of the project
   (pyproject, Pipfile, requirements or setup.cfg); test-only packages go in a dev group; remove a
   dependency nothing uses.
+- Airflow operators: `__init__` only assigns a parameter named in `template_fields` (`self.sql_params = sql_params`); validate, default and convert it in `execute()` (`templated-field-used-in-init`).
