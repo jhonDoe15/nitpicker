@@ -98,6 +98,7 @@
   "python-rules/row-for-existence": ["performance", "persistence"],
   "python-rules/row-for-one-column": ["performance", "persistence"],
   "python-rules/secret-in-log": ["security"],
+  "python-rules/self-recursion": ["reliability", "maintainability"],
   "python-rules/server-or-container-per-test": ["tests", "performance"],
   "python-rules/service-locator-lookup": ["maintainability"],
   "python-rules/shared-test-state": ["tests"],

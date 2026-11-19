@@ -88,6 +88,12 @@ const GROUPS = [
     typescript: 'nitpicker/structured-catch-logging',
     python: 'catch-log-without-exception',
   },
+  {
+    jvm: 'SelfRecursion',
+    typescript: 'nitpicker/no-self-recursion',
+    python: 'self-recursion',
+    go: 'go-rules/self-recursion',
+  },
 ];
 
 function spring(rule) {

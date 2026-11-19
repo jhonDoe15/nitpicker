@@ -7,6 +7,7 @@ import { LOCATOR_HINTS } from './hints/ast/locators.mts';
 import { ASYNC_HINTS } from './hints/ast/ast-async.mts';
 import { STRUCTURE_HINTS } from './hints/ast/ast-structure.mts';
 import { COPY_PASTED_HINTS } from './hints/tests/copy-pasted-hints.mts';
+import { RECURSION_HINTS } from './hints/ast/ast-recursion.mts';
 import { ROUND_TRIP_HINTS } from './hints/tests/round-trip-hints.mts';
 import { CONTAINER_HINTS } from './hints/containers/containers.mts';
 import { TYPING_HINTS } from './hints/typing/ast-typing.mts';
@@ -87,6 +88,7 @@ export const RULE_HINTS: readonly RuleHint[] = [
   ...SECURITY_HINTS,
   ...RULES_SECURITY_HINTS,
   ...STRUCTURE_HINTS,
+  ...RECURSION_HINTS,
   ...ROUND_TRIP_HINTS,
   ...COPY_PASTED_HINTS,
   ...TYPING_HINTS,

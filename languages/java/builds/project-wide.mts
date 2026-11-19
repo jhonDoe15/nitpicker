@@ -11,6 +11,7 @@ import {
   jdepsEdges,
   maxValueFindings,
   nullFallThroughFindings,
+  selfRecursionFindings,
   kotlinMetricsOf,
   kotlinNodesOf,
   outerClassOf,
@@ -267,6 +268,7 @@ export function projectWideReport(
     ...copyPastedTestFindings(projectRoot, { projects, kotlin, policy }),
     ...maxValueFindings(projectRoot, { projects, kotlin, policy }),
     ...nullFallThroughFindings(projectRoot, { projects, kotlin, policy }),
+    ...selfRecursionFindings(projectRoot, { projects, kotlin, policy }),
     ...features.findings,
   ];
   return { findings, imports: reuse.imports };

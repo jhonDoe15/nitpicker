@@ -17,6 +17,7 @@ import (
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/nilbranch"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/optional"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/overflow"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/recursion"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/remote"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/requests"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/resolvers"
@@ -40,5 +41,6 @@ func Analyzers() []*analysis.Analyzer {
 			requests.Analyzer,
 			jobs.Analyzer,
 			resolvers.Analyzer,
+			recursion.Analyzer,
 		})
 }

@@ -1,0 +1,14 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "self-recursion",
+    "mention": "worklist",
+    "subject": "total"
+  },
+  {
+    "tool": "python-rules",
+    "rule": "self-recursion",
+    "mention": "call each other",
+    "subject": "is_even <-> is_odd"
+  }
+]

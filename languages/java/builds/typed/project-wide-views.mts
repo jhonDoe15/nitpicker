@@ -9,6 +9,7 @@ import { readCopyPastedTestFindings } from '../../adapters/review-rules/copy-pas
 import { readMaxValueFindings } from '../../adapters/review-rules/max-value-sums/max-value-sums.mts';
 import { readNullFallThroughFindings } from '../../adapters/review-rules/null-fall-through/null-fall-through.mts';
 import { readRoundTripFindings } from '../../adapters/review-rules/round-trips/round-trips.mts';
+import { readSelfRecursionFindings } from '../../adapters/review-rules/self-recursion/self-recursion.mts';
 import { readTestOnlyClassFindings } from '../../adapters/review-rules/test-only/test-only-classes.mts';
 import { readTestRuntimeFindings } from '../../adapters/test-runtime/test-runtime-findings.mts';
 import { outerClass } from '../../ingest/class-names.mts';
@@ -143,6 +144,9 @@ export function copyPastedTestFindings(projectRoot: string, options: WideOptions
 }
 export function maxValueFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
   return findingsOf(callUntyped(readMaxValueFindings, projectRoot, options));
+}
+export function selfRecursionFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
+  return findingsOf(callUntyped(readSelfRecursionFindings, projectRoot, options));
 }
 export function nullFallThroughFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
   return findingsOf(callUntyped(readNullFallThroughFindings, projectRoot, options));

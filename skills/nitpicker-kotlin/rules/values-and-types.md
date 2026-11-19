@@ -121,3 +121,4 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - A null branch that does not leave is not followed by a use of the same value
   (`pmd/NullBranchFallThrough`): `if (value == null) { log.warn(...) }` followed by `value!!.length` fails on the null path, or handles the value twice. End the
   branch with `return` or `throw`, or put the use in an `else`.
+- A function does not call itself, directly or through another function of the file (`pmd/SelfRecursion`): a retry or poll is a loop over attempt numbers, a tree walk is a loop over a worklist (an `ArrayDeque` that each step adds the node's children to), flat data uses `map` or `flatMap`. An exception fits only when the recursion is bounded and deliberate.
