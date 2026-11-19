@@ -187,7 +187,7 @@ function chainState(segments: ChainSegment[], scope: EffectScope): ChainState {
 }
 
 function memberEffect(state: ChainState, item: LoadFact): boolean {
-  const argumentCount = item.arguments.length;
+  const argumentCount = item.arguments?.length ?? 0;
   if (state.kind === 'static') {
     return (
       item.call === true && hasEffect('static', state.type, { name: item.name, argumentCount })
@@ -208,10 +208,10 @@ function memberEffect(state: ChainState, item: LoadFact): boolean {
 }
 
 function constructorEffect(kind: string, item: LoadFact): boolean {
-  const first = item.arguments[0]?.text ?? '';
+  const first = item.arguments?.[0]?.text ?? '';
   const matches: Record<string, boolean> = {
     any: true,
-    arguments: item.arguments.length > 0,
+    arguments: (item.arguments?.length ?? 0) > 0,
     'file-name': FILE_NAME_ARGUMENT.test(first),
     file: FILE_ARGUMENT.test(first),
   };
@@ -229,7 +229,7 @@ function namedEffect(resolved: string | undefined, item: LoadFact): boolean {
   const owner = resolved.split('.').slice(0, -1).join('.');
   const call = {
     name: resolved.slice(resolved.lastIndexOf('.') + 1),
-    argumentCount: item.arguments.length,
+    argumentCount: item.arguments?.length ?? 0,
   };
   return isTopLevelEffect(resolved) || hasEffect('static', owner, call);
 }
