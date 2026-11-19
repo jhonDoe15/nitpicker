@@ -25,3 +25,6 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Text from a search or filter field (a FastAPI `str` parameter, `request.args`, `request.GET`) is stripped before
   it reaches a lookup: `name = name.strip()`, or a pydantic request model whose base sets
   `ConfigDict(str_strip_whitespace=True)`; a padded `" Davis"` finds nothing (`untrimmed-request-text`).
+- `min(xs)`, `max(xs)` and `xs[0]` or `xs[-1]` on a list that a filtered comprehension, `filter(...)`, a
+  queryset or a query function produced raise on an empty sequence: pass
+  `default=`, check `if xs:` first, or use `next(iter(xs), None)` or `qs.first()` (`empty-sequence-access`).

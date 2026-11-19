@@ -253,6 +253,12 @@ sinks ruff does not know (ORM, TLS context, `Path` reads, locks, the connection 
 which the rule reports there as well.
 The other presets have no helper-aware counterpart.
 
+Empty sequences: `empty-sequence-access` (Python, main sources) reports `min`/`max` with one argument and no
+`default=`, and `[0]`/`[-1]`, on a sequence that can be empty (a filtered comprehension, `filter(...)`, a queryset
+evaluated with `list(...)`, a project function that returns a `list` from a query, or a `list`/`Sequence`
+parameter that the function tests for emptiness elsewhere) when no `if`, `assert`, early exit, loop over the sequence or `try`/`except ValueError` guards the access.
+The allowed forms are `default=`, a length check, `next(iter(xs), None)` and `qs.first()`.
+
 Time units: `nitpicker/time-unit-mismatch` (production source, in `eslint-lint`) reports time values in
 two different units that meet without a conversion: a `+`, `-` or comparison of seconds with milliseconds
 (or nanoseconds, microseconds, minutes), a value assigned or passed under a name or parameter of another
