@@ -1,16 +1,19 @@
 import ast
 
 from fixers.comments.unused_ignore import unused_ignore
+from fixers.project.alias import alias_fix
 from fixers.project.forwarding import forwarding
 from fixers.project.scan import module_functions
 from fixers.project.unused_option import unused_option
-from runner import Finding, parse, to_edit
+from runner import Finding, node_at, parse, to_edit
 from source_text import Decline, Source, refuse
 
 RULES_TOOL = "python-rules"
 FORWARDING = "forwarding-wrapper"
 UNUSED_OPTION = "unused-option"
 UNUSED_IGNORE = "unused-ignore"
+SHIM = "compatibility-shim"
+NOT_ALIAS = "only an alias assignment is replaced by its target"
 FAILED = "the fixer failed on this finding"
 
 
@@ -24,6 +27,16 @@ def forwarding_fix(index, sources, editable, item):
     if len(found) != 1:
         refuse("the module defines the name more than once")
     return forwarding(index, sources, editable, item["path"], found[0])
+
+
+def shim_fix(index, sources, editable, item):
+    path = item["path"]
+    statements = [
+        node for node in node_at(sources[path], item["at"]) if isinstance(node, ast.Assign)
+    ]
+    if not statements:
+        refuse(NOT_ALIAS)
+    return alias_fix(index, sources, editable, path, statements[0])
 
 
 def option_fix(index, sources, editable, item):
@@ -40,12 +53,14 @@ def project_fixes(index, sources, editable, found):
         try:
             if item["rule"] == FORWARDING:
                 grouped = forwarding_fix(index, sources, editable, item)
+            elif item["rule"] == SHIM:
+                grouped = shim_fix(index, sources, editable, item)
             else:
                 grouped = option_fix(index, sources, editable, item)
             if not set(grouped) <= editable:
                 refuse("the file is not one --fix covers")
             edits = [
-                to_edit(sources[path], path, edit)
+                edit if isinstance(edit, dict) else to_edit(sources[path], path, edit)
                 for path, parts in grouped.items()
                 for edit in parts
             ]
@@ -55,6 +70,12 @@ def project_fixes(index, sources, editable, found):
         except Exception:
             declines.append({**finding.as_dict(), "reason": FAILED})
     return fixes, declines
+
+
+def check_findings(project):
+    from signatures import shims
+
+    return [item for context in project.contexts.values() for item in shims.check(context)]
 
 
 def main(payload):
@@ -71,6 +92,8 @@ def main(payload):
     index.extra_texts = payload.get("texts", [])
     found = []
     try:
+        if SHIM in rules:
+            found.extend(check_findings(project))
         if FORWARDING in rules:
             found.extend(forwarding_findings(index))
         if UNUSED_OPTION in rules:
