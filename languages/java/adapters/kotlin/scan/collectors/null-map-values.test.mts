@@ -61,6 +61,30 @@ describe('NullMapValue', () => {
       [`${ROWS}.collect(Collectors.toMap({ it.id }, { if (it.live) it.note else null }))`],
     ],
     [
+      'a filter on another property',
+      [
+        ROWS,
+        '    .filter { it.id != null }',
+        '    .collect(Collectors.toMap({ it.id }, { it.note?.trim() }))',
+      ],
+    ],
+    [
+      'a filter that may still keep a null',
+      [
+        ROWS,
+        '    .filter { it.note != null || it.live }',
+        '    .collect(Collectors.toMap({ it.id }, { it.note?.trim() }))',
+      ],
+    ],
+    [
+      'a filter on the receiver of the value',
+      [
+        ROWS,
+        '    .filter { it.owner != null }',
+        '    .collect(Collectors.toMap({ it.id }, { it.owner?.name }))',
+      ],
+    ],
+    [
       'a groupingBy classifier that can be null',
       [`${ROWS}.collect(Collectors.groupingBy { it.owner?.name })`],
     ],
@@ -95,6 +119,22 @@ describe('NullMapValue', () => {
         INFO,
         `${ENTRIES}.filter { it.value != null }`,
         '    .collect(Collectors.toMap({ it.key }, { it.value }))',
+      ],
+    ],
+    [
+      'a value a filter already checked',
+      [
+        ROWS,
+        '    .filter { it.live && it.note?.trim() != null }',
+        '    .collect(Collectors.toUnmodifiableMap({ it.id }, { it.note?.trim() }))',
+      ],
+    ],
+    [
+      'a classifier a filter already checked',
+      [
+        ROWS,
+        '    .filter { Objects.nonNull(it.owner?.name) }',
+        '    .collect(Collectors.groupingBy { it.owner?.name })',
       ],
     ],
     [

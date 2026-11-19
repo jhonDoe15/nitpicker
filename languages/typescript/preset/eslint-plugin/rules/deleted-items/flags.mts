@@ -18,12 +18,34 @@ const DECLARING_PARENTS = new Set<TypeScript.SyntaxKind>([
   ts.SyntaxKind.ClassExpression,
 ]);
 
+const WRAPPING_TYPES = new Set<TypeScript.SyntaxKind>([
+  ts.SyntaxKind.TypeReference,
+  ts.SyntaxKind.IntersectionType,
+  ts.SyntaxKind.UnionType,
+  ts.SyntaxKind.ParenthesizedType,
+  ts.SyntaxKind.TypeOperator,
+]);
+
+function unwrapped(node: TypeScript.Node): TypeScript.Node {
+  const chain = [node];
+  for (const current of chain) {
+    if (WRAPPING_TYPES.has(current.kind)) {
+      chain.push(current.parent);
+    }
+  }
+  return chain.at(-1) ?? node;
+}
+
+function isAliasedLiteral(literal: TypeScript.Node): boolean {
+  return ts.isTypeAliasDeclaration(unwrapped(literal.parent));
+}
+
 function isDeclaringMember(declaration: TypeScript.Declaration): boolean {
   const parent = parentOf(declaration);
   if (parent === undefined) {
     return false;
   }
-  const typeAlias = ts.isTypeLiteralNode(parent) && ts.isTypeAliasDeclaration(parent.parent);
+  const typeAlias = ts.isTypeLiteralNode(parent) && isAliasedLiteral(parent);
   return DECLARING_PARENTS.has(parent.kind) || typeAlias;
 }
 

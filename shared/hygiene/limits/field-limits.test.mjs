@@ -254,6 +254,66 @@ describe('field limits that disagree', () => {
     ]);
   });
 
+  it('skips enum fields, which hold at most the longest constant', () => {
+    const route = (lines, file = 'src/main/java/app/Route.java') => ({
+      [file]: lines.join('\n'),
+      [CONTROLLER]: BINDING.replace('Owner owner', 'Route route'),
+      [SCHEMA]: 'CREATE TABLE routes (\n  id INTEGER,\n  policy VARCHAR(50)\n);\n',
+    });
+    const javaField = [
+      '@Entity',
+      'class Route {',
+      '    enum Policy { ACCEPT_ALL, DROP_ALL }',
+      '    @Enumerated(EnumType.STRING)',
+      '    public Policy policy;',
+      '}',
+    ];
+    const javaPlain = javaField.filter((line) => !line.includes('@Enumerated'));
+    const kotlin = [
+      '@Entity',
+      'class Route {',
+      '    @Column(length = 50) var policy: Policy = Policy.DROP_ALL',
+      '}',
+      'enum class Policy { DROP_ALL }',
+    ];
+    const text = ['@Entity', 'class Route {', '    public String policy;', '}'];
+
+    expect(check(route(javaField))).toEqual([]);
+    expect(check(route(javaPlain))).toEqual([]);
+    expect(check(route(kotlin, 'src/main/kotlin/Route.kt'))).toEqual([]);
+    expect(summary(check(route(text)))).toEqual([
+      'src/main/java/app/Route.java:3 Route.policy unbounded',
+    ]);
+  });
+
+  it('still reports an enum field whose validation exceeds the column', () => {
+    const findings = check({
+      'src/main/java/app/Route.java': [
+        '@Entity',
+        'class Route {',
+        '    enum Policy { ACCEPT_ALL }',
+        '    @Size(max = 80)',
+        '    public Policy policy;',
+        '}',
+      ].join('\n'),
+      [CONTROLLER]: BINDING.replace('Owner owner', 'Route route'),
+      [SCHEMA]: 'CREATE TABLE routes (\n  id INTEGER,\n  policy VARCHAR(50)\n);\n',
+    });
+
+    expect(summary(findings)).toEqual(['src/main/java/app/Route.java:5 Route.policy loose']);
+  });
+
+  it('never reports at the migration when no source declaration exists', () => {
+    const findings = check({
+      'src/main/java/app/Store.java': 'class Store { void touch(Kind kind, long id) {} }\n',
+      [CONTROLLER]:
+        '@RestController\nclass OwnerRestController {\n  @PostMapping("/o") void touch(@RequestBody Kind kind) {}\n}\n',
+      [SCHEMA]: 'CREATE TABLE kinds (\n  id INTEGER,\n  entity_type VARCHAR(128)\n);\n',
+    });
+
+    expect(findings).toEqual([]);
+  });
+
   it('keeps the fields apart by a change of their limits in the identity', () => {
     const before = check({ [OWNER]: owner(['@Size(max = 50)']), [SCHEMA]: TABLE });
     const after = check({

@@ -43,13 +43,13 @@ public class ProductQueries {
 
   public Long byId(long id) {
     String sql = "select version from product where id = " + id;
-    return jdbc.queryForObject(sql, Long.class); // violation: SpringQueryConcatenation
+    return jdbc.queryForObject(sql, Long.class);
   }
 
   public int clear(long id) {
     String sql = "update product set version = 0";
     sql += " where id = " + id;
-    return jdbc.update(sql); // violation: SpringQueryConcatenation
+    return jdbc.update(sql);
   }
 
   public int namedUpdate(String name) {

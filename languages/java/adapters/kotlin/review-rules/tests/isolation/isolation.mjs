@@ -13,7 +13,7 @@ export const ISOLATION_RULES = [CLOCK_RULE, RANDOM_RULE, NETWORK_RULE];
 const CLOCK = {
   rule: CLOCK_RULE,
   message:
-    'This test reads the real clock, so its result depends on when it runs. Pass a fixed time in: a Clock.fixed(...) the subject takes, now(clock) with that clock, or a fixed Instant. Measuring elapsed time or a polling deadline is allowed: System.nanoTime() or TimeSource.Monotonic, a start time subtracted later, or now() compared in a loop.',
+    'This test reads the real clock, so its result depends on when it runs. Pass a fixed time in: a Clock.fixed(...) the subject takes, now(clock) with that clock, or a fixed Instant. An Instant that only marks presence (setDeletedAt(Instant.now())), bases relative values or feeds Clock.fixed is allowed, and so is measuring elapsed time or a polling deadline: System.nanoTime() or TimeSource.Monotonic, a start time subtracted later, or now() compared in a loop.',
 };
 const RANDOM = {
   rule: RANDOM_RULE,

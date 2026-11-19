@@ -140,6 +140,51 @@ describe('Kotlin tests that read the real clock', () => {
     expect(reads(text)).toEqual(['StartTest.used@13', 'StartTest.mixed@21', 'StartTest.unused@27']);
   });
 
+  it('allows an instant that only marks presence or bases relative values', () => {
+    const text = `${HEAD}class MarkerTest {
+    private val clock = Clock.fixed(Instant.now(), ZoneId.of("UTC"))
+
+    @Test
+    fun marks() {
+        meta.setDeletionTimestamp(Instant.now())
+        meta.setCreatedAt(Instant.now().plusSeconds(10))
+        val now = Instant.now()
+        first.setCreationTimestamp(now)
+        second.setCreationTimestamp(now.plusSeconds(10))
+        third.setCreationTimestamp(now.minus(Duration.ofSeconds(5)))
+    }
+}
+`;
+
+    expect(reads(text)).toEqual([]);
+  });
+
+  it('reports instants that reach the subject and dates near midnight', () => {
+    const text = `${HEAD}class BoundaryTest {
+    @Test
+    fun reaches() {
+        val now = Instant.now()
+        first.setCreationTimestamp(now)
+        assertEquals(now, service.created())
+        validator.check(LocalDate.now().plusDays(1))
+        meta.setDeletionTimestamp(LocalDate.now().atStartOfDay())
+        meta.setSeen(Instant.now())
+        meta.setSeenAt(Instant.now().toEpochMilli())
+        meta.setBirthDate(LocalDate.now().minusYears(51))
+    }
+}
+`;
+
+    expect(reads(text)).toEqual([
+      'BoundaryTest.reaches@13',
+      'BoundaryTest.reaches@16',
+      'BoundaryTest.reaches@17',
+      'BoundaryTest.reaches@18',
+      'BoundaryTest.reaches@19',
+      'BoundaryTest.reaches@20',
+    ]);
+  });
+
   it('skips a file that fakes the time statically', () => {
     const text = `${HEAD}import io.mockk.mockkStatic
 

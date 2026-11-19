@@ -96,6 +96,6 @@ CREDENTIAL_SHAPES = [
 ]
 EMBEDDED_SECRET_PATTERNS = [
     r"^(?:jdbc:)?[a-z][a-z0-9+.-]*://[^\s/:@]+:([^\s/@]+)@",
-    r"^(?:bearer|basic|token)\s+(\S+)$",
+    r"^(?:bearer|basic|token)\s+([^\s\x22]+)$",
     r"[?&;]password=([^&;\s]+)",
 ]

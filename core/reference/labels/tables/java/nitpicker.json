@@ -60,6 +60,7 @@
   "pmd/InlineSuppression": ["maintainability"],
   "pmd/IoCallInLoop": ["performance"],
   "pmd/MaxValueOverflow": ["bug"],
+  "pmd/NullBranchFallThrough": ["bug"],
   "pmd/NullMapValue": ["bug"],
   "pmd/TodoWithoutIssue": ["maintainability"],
   "pmd/UntestedRoundTrip": ["tests"],

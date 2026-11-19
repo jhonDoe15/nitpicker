@@ -2,7 +2,8 @@
         message="Map @ManyToMany as a Set (or a List with @OrderColumn). A plain List makes Hibernate delete and re-insert every join row when one element is removed.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
-//FieldDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.ManyToMany') or pmd-java:typeIs('javax.persistence.ManyToMany'))]]
+//FieldDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.ManyToMany') or pmd-java:typeIs('javax.persistence.ManyToMany'))]
+    [not(AnnotationMemberList/MemberValuePair[@Name = 'mappedBy'])]]
   [not(ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.OrderColumn') or pmd-java:typeIs('javax.persistence.OrderColumn'))])]
   /ClassType[pmd-java:typeIs('java.util.List') or pmd-java:typeIsExactly('java.util.Collection')]
 ]]></value></property></properties>
