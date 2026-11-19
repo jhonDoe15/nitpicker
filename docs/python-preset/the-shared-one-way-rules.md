@@ -1924,6 +1924,17 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   (`patch("shop.cart.LIMIT", 1)`) or another module is not reported; `patch-misses-lookup` covers
   patch targets that miss. Allowed: pass the collaborators in and give the test a fake of them, and
   test a helper through the public function that calls it.
+- `internal-module-patch` (Java and Kotlin: `StaticMockOfProjectType`; TypeScript:
+  `nitpicker/no-internal-module-mocks`) reports, in a test file, a patch of the project's own code:
+  `patch`, `patch.object` and `patch.dict` (also through `mocker`, the pytest-mock fixture) and
+  `monkeypatch.setattr` whose target is a function, class or method of a module under the
+  source roots, and `patch.dict` of a dictionary of one (`patch("shop.billing.client.send")`,
+  `monkeypatch.setattr(billing_client, "send", fake)`, `patch.dict(config.SETTINGS, {...})`). The module the test is named after is left to
+  `mocked-subject-in-test`. Allowed: patching third-party and standard-library targets (`time.sleep`,
+  `requests.get`, `os.environ`), a module constant (`monkeypatch.setattr(settings, "DEBUG", True)`), and
+  passing a fake through a parameter or constructor
+  (`Checkout(FakeMailer()).pay()`). An exception fits only for code that cannot take a parameter, such as a
+  module-level singleton read at import time or a framework hook.
 - `mock-without-spec` (the Kotlin preset's `RelaxedMockInTest` covers the MockK form, a relaxed mock) reports, in a test file, a mock of project code
   that accepts any call. A `Mock`, `MagicMock`, `AsyncMock`, `NonCallableMock` or
   `NonCallableMagicMock` with no spec (no first argument, `spec`, `spec_set` or `wraps`), passed

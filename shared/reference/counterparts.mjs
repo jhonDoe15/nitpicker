@@ -61,6 +61,11 @@ const GROUPS = [
     go: 'go-rules/untrimmed-request-text',
   },
   {
+    java: 'StaticMockOfProjectType',
+    typescript: 'nitpicker/no-internal-module-mocks',
+    python: 'internal-module-patch',
+  },
+  {
     java: 'JpaVersion',
     typescript: 'nitpicker/no-unversioned-orm-entity',
     python: 'unversioned-orm-entity',
