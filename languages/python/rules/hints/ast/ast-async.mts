@@ -23,6 +23,18 @@ function parts(subject = '') {
     : { scope: subject.slice(0, index), call: subject.slice(index + SEPARATOR.length) };
 }
 
+const LOOP_GETTER = 'asyncio.get_event_loop';
+
+function blockingDescribe(subject: string): string {
+  if (subject === LOOP_GETTER) {
+    return `\`${subject}\` inside a coroutine returns a loop that may not be the running one and warns or fails on newer Python versions`;
+  }
+  if (subject.includes(' calls ')) {
+    return `\`${subject}\`, so this async function blocks the event loop and stalls every other task`;
+  }
+  return `\`${subject}\` runs in this async function and blocks the event loop while it waits for the database, a file or a lock, which stalls every other task`;
+}
+
 export const ASYNC_HINTS: readonly RuleHint[] = [
   {
     tool: RULES_TOOL,
@@ -81,10 +93,9 @@ export const ASYNC_HINTS: readonly RuleHint[] = [
   {
     tool: RULES_TOOL,
     rules: ['blocking-helper-in-async'],
-    describe: (subject) =>
-      `\`${subject}\`, so this async function blocks the event loop and stalls every other task`,
+    describe: blockingDescribe,
     allowed:
-      'Run the helper in a worker thread: `await asyncio.to_thread(fetch_profile, url)` or `await loop.run_in_executor(None, fetch_profile, url)`, or use an async client (`httpx.AsyncClient`, `aiohttp`) and `await asyncio.sleep(...)`. Work done at startup, before the loop serves requests, takes an exception.',
+      'Run the blocking work in a worker thread: `await asyncio.to_thread(fetch_profile, url)`, `await loop.run_in_executor(None, fetch_profile, url)` or, for Django ORM code, `await sync_to_async(load_credits)(team_id)` or the async methods (`await Model.objects.aget(...)`, `acount`, `acreate`, `async for`); use `asyncio.get_running_loop()` instead of `get_event_loop()`, and an async client (`httpx.AsyncClient`, `aiohttp`) with `await asyncio.sleep(...)`. Work done at startup, before the loop serves requests, takes an exception.',
   },
   {
     tool: RULES_TOOL,

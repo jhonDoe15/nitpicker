@@ -67,6 +67,7 @@ function projectSettings({
     importLinter: settings['importLinter'],
     sourceRoots,
     entryPoints: settings['entryPoints'] ?? [],
+    blockingGetters: settings['blockingGetters'] ?? [],
   };
 }
 

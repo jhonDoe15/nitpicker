@@ -28,6 +28,7 @@
   "eslint/nitpicker/no-copied-constant": ["tests"],
   "eslint/nitpicker/no-copy-pasted-tests": ["tests"],
   "eslint/nitpicker/no-costly-collection-form": ["performance"],
+  "eslint/nitpicker/no-dataloader-batch-mismatch": ["bug"],
   "eslint/nitpicker/no-decided-condition": ["simplification"],
   "eslint/nitpicker/no-default-export": ["style"],
   "eslint/nitpicker/no-dev-dependency-in-production": ["bug", "maintainability"],

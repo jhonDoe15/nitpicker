@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "filter-unescaped-value",
+    "mention": "escape_filter_chars",
+    "subject": "ldap|group_dn"
+  }
+]

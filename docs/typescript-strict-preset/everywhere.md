@@ -613,6 +613,16 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   after the transaction call returns (`await prisma.$transaction(...)`, then `redis.set(...)`) or
   from a TypeORM `afterTransactionCommit` subscriber; callbacks that do not run during the call
   (`setTimeout`, event handlers) are not inside the transaction. The message names that form.
+- DataLoader batch functions (`nitpicker/no-dataloader-batch-mismatch`): a batch function must return
+  one entry per requested key, in the order of the keys, with `null` or an `Error` for a key that has no
+  row. The rule reads the function given to `new DataLoader(...)` from the `dataloader` package (an
+  inline function, or a function or const declared in the file) and reports an empty array returned
+  outside an `if` that tests the keys or a value derived from them (`[...new Set(keys)]`), rows of a query returned as they come (a `findMany`, `find`,
+  `findByIds` result, directly, through a variable, or mapped without the keys), and
+  a lookup asserted with `!` inside a `keys.map(...)` callback (`byId.get(key)!`, `rows.find(...)!`), or a `throw` (or a call to a local function that only throws) that runs when that lookup fails (`if (!row) { throw ... }`, `byId.get(key) ?? notFound(key)`).
+  `keys.map((key) => byId.get(key) ?? null)`, a lookup in a map built from the keys (`new Map(keys.map((key) => [key, null]))`), a result that maps over the keys and a function that
+  builds its result elsewhere (a helper call, a variable of unknown origin) are not reported. The
+  message names the allowed form.
 - Remote calls while a connection or lock is held (`nitpicker/no-remote-call-in-transaction` and
   `nitpicker/no-remote-call-under-lock`, needing the type checker for the full analysis): a remote
   call (HTTP, gRPC, a cloud SDK call that is not a store or a broker), direct or through project

@@ -306,6 +306,11 @@
             ]
           }
         },
+        "blockingGetters": {
+          "description": "Synchronous getters that block an async function, as method names (`get_connection`) or dotted names (`hooks.base.get_connection`); Airflow `get_connection` is built in.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
         "exceptions": {
           "description": "Exceptions for the Python rules that the top-level \"exceptions\" does not take.",
           "type": "array",

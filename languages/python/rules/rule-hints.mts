@@ -17,6 +17,7 @@ import { WRITE_HINTS } from './hints/writes/index.mts';
 import { MOCK_HINTS } from './hints/tests/mock-hints.mts';
 import { COMPOSITION_HINTS } from './hints/composition/composition-hints.mts';
 import { REGEX_DEFECT_HINTS } from './regexes/regex-defects.mts';
+import { DJANGO_DECLARATION_HINTS } from './hints/django/declaration-hints.mts';
 import { ORM_HINTS } from './hints/persistence/ast-orm.mts';
 import { CONTRACT_HINTS } from './hints/contracts/ast-contracts.mts';
 import { SIGNATURE_HINTS } from './hints/signatures/ast-signatures.mts';
@@ -34,6 +35,9 @@ import { LIFECYCLE_HINTS } from './hints/lifecycles/lifecycles.mts';
 import { TIME_UNIT_HINTS } from './hints/time/time-units.mts';
 import { RULES_TOOL } from './hints/tool.mts';
 import { DEFAULT_LIBRARIES } from './libraries/project-libraries.mts';
+import { QUERY_FILTER_HINTS } from './hints/filters/query-filters.mts';
+import { DATALOADER_HINTS } from './hints/dataloaders/batches.mts';
+import { AIRFLOW_HINTS } from './hints/airflow/templates.mts';
 import { HTTP_VALUE_HINTS } from './hints/http/http-values.mts';
 
 export { RULES_TOOL };
@@ -105,6 +109,7 @@ export const RULE_HINTS: readonly RuleHint[] = [
   ...SIGNATURE_HINTS,
   ...TEST_SWITCH_HINTS,
   ...ORM_HINTS,
+  ...DJANGO_DECLARATION_HINTS,
   ...PERSISTENCE_HINTS,
   ...QUERY_HINTS,
   ...TIME_UNIT_HINTS,
@@ -112,6 +117,9 @@ export const RULE_HINTS: readonly RuleHint[] = [
   ...STREAM_HINTS,
   ...LIFECYCLE_HINTS,
   ...HTTP_VALUE_HINTS,
+  ...AIRFLOW_HINTS,
+  ...DATALOADER_HINTS,
+  ...QUERY_FILTER_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...PYRIGHT_TOOLS.map((tool) => ({
     tool,
