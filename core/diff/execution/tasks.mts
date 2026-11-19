@@ -20,6 +20,7 @@ export type AnalyzerTask = {
   readonly executionPriority?: number | undefined;
   readonly toleratedDependencyErrors?: readonly string[] | undefined;
   readonly timeoutMs: number;
+  readonly memoryMegabytes?: number | undefined;
   readonly configuredTimeout?: unknown;
   readonly acceptedExitCodes: readonly number[];
   readonly reportedTools?: readonly string[] | undefined;
@@ -95,6 +96,13 @@ function validateOptionalTaskFields(task: unknown, name: string): void {
   const tolerated = fieldOf(task, 'toleratedDependencyErrors');
   if (tolerated !== undefined && !isStringList(tolerated, isNonEmptyString)) {
     throw new TypeError(`${name} toleratedDependencyErrors must be non-empty strings`);
+  }
+  const memory = fieldOf(task, 'memoryMegabytes');
+  if (
+    memory !== undefined &&
+    !(typeof memory === 'number' && Number.isSafeInteger(memory) && memory >= 0)
+  ) {
+    throw new TypeError(`${name} memoryMegabytes must be a non-negative safe integer`);
   }
   const checkpoint = fieldOf(task, 'checkpoint');
   if (

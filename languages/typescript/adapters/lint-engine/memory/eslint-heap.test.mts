@@ -60,7 +60,7 @@ describe('the out-of-memory message', () => {
     expect(isOutOfMemory('FATAL ERROR: Reached heap limit Allocation failed')).toBe(true);
     expect(isOutOfMemory('TypeError: x is not a function')).toBe(false);
     expect(outOfMemoryMessage('--max-old-space-size=6912')).toBe(
-      'eslint-lint ran out of memory (6912 MB heap). Lower NITPICKER_MAX_PARALLEL so it gets a larger ' +
+      'ESLint ran out of memory (6912 MB heap). Lower NITPICKER_MAX_PARALLEL so it gets a larger ' +
         'share of the machine, or give it more heap with NODE_OPTIONS=--max-old-space-size=<MB>, and rerun.',
     );
     expect(outOfMemoryMessage(undefined)).toBe(
@@ -108,7 +108,7 @@ describe('runLintEngine when ESLint runs out of heap', () => {
       });
 
       await expect(run).rejects.toThrow(
-        'eslint-lint ran out of memory (96 MB heap). Lower NITPICKER_MAX_PARALLEL',
+        'ESLint ran out of memory (96 MB heap). Lower NITPICKER_MAX_PARALLEL',
       );
     } finally {
       vi.unstubAllEnvs();
