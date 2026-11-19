@@ -9,7 +9,7 @@
   "languages/java/adapters/java-e2e/declared/spotbugs.e2e.test.mts": 62,
   "languages/java/adapters/java-e2e/fix/java-fix-recipe.e2e.test.mts": 20,
   "languages/java/adapters/java-e2e/fix/java-fix.e2e.test.mts": 49,
-  "languages/java/adapters/java-e2e/fix/own-checks/own-checks-verify.e2e.test.mts": 230,
+  "languages/java/adapters/java-e2e/fix/own-checks/own-checks-verify.e2e.test.mts": 330,
   "languages/java/adapters/java-e2e/fix/own-checks/own-checks.e2e.test.mts": 155,
   "languages/java/adapters/java-e2e/gradle-9/late-artifacts.e2e.test.mts": 59,
   "languages/java/adapters/java-e2e/init/init-java.e2e.test.mts": 48,
