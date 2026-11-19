@@ -97,7 +97,7 @@ export function reuseRules(ids, reactEnforcedBy) {
   ];
 }
 
-export function couplingRules(ids, { everyLanguage, withoutTypescript }) {
+export function couplingRules(ids, { everyLanguage, withoutGo }) {
   return [
     {
       id: ids.stabilityDirection,
@@ -110,8 +110,8 @@ export function couplingRules(ids, { everyLanguage, withoutTypescript }) {
       id: ids.packageCycle,
       check: COUPLING,
       limit:
-        'packages that depend on each other in a loop, one finding per package (Java and Kotlin: compiled class dependencies, so mixed Java and Kotlin edges count); a cycle that a reported `feature-cycle` fully explains (its packages lie in two or more features of that cycle, and removing the edges of that feature cycle leaves no cycle) is left to that rule',
-      enforcedBy: withoutTypescript,
+        'packages that depend on each other in a loop, one finding per package (Java and Kotlin: compiled class dependencies, so mixed Java and Kotlin edges count; TypeScript and JavaScript: the folders of the production modules, from their runtime imports, so a type-only import is not an edge, and neither is an import between a folder and its own subfolder); a cycle that a reported `feature-cycle` fully explains (its packages lie in two or more features of that cycle, and removing the edges of that feature cycle leaves no cycle) is left to that rule',
+      enforcedBy: withoutGo,
       notApplicable: { go: GO_NO_IMPORT_CYCLES },
     },
   ];

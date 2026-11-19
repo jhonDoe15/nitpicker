@@ -19,6 +19,7 @@ export type HeadPolicy = {
   readonly tools: { readonly knip?: unknown; readonly eslint?: EslintToolSettings };
   readonly history: unknown;
   readonly thresholds?: unknown;
+  readonly layout?: unknown;
 };
 
 export type Layout = {
