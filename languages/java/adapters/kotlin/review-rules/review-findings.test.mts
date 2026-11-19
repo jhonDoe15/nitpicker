@@ -9,7 +9,7 @@ import {
   REVIEW_TOOL,
   SOURCE_TOOL,
   withoutCoveredFindings as untypedWithoutCovered,
-} from './review-finding.mts';
+} from './finding/review-finding.mts';
 import { readKotlinFacts } from './report/kotlin-report.mts';
 import { readKotlinReviewFindings as untypedReadFindings } from './review-findings.mts';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules.mts';

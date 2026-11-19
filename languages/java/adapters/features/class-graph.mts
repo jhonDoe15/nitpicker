@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { inModule as inModuleUntyped } from '../../builds/module-path.mts';
+import { inModule as inModuleUntyped } from '../../builds/paths/module-path.mts';
 import {
   kotlinModules as kotlinModulesUntyped,
   readKotlinMetrics as readKotlinMetricsUntyped,

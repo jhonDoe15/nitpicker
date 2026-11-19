@@ -1,4 +1,4 @@
-import { frameAt, splitTopLevel } from '../max-value-sums/source-file.mts';
+import { frameAt, splitTopLevel } from '../max-value-sums/source/source-file.mts';
 import type { Frame, SourceFile } from '../max-value-sums/sum-types.mts';
 
 export type Call = {

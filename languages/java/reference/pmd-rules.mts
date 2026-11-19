@@ -9,7 +9,7 @@ import {
 import type { RuleEntry } from './typed/entry-views.mts';
 import { springMessage } from '../adapters/kotlin/review-rules/spring/spring-messages.mts';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from '../adapters/kotlin/review-rules/review-rules.mts';
-import { REVIEW_TOOL } from '../adapters/kotlin/review-rules/review-finding.mts';
+import { REVIEW_TOOL } from '../adapters/kotlin/review-rules/finding/review-finding.mts';
 import { JVM_ANALYZERS, JVM_BUILDS } from './catalog-rules.mts';
 import {
   ESCAPING_MESSAGE,

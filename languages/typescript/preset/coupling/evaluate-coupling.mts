@@ -16,11 +16,15 @@ function importEdge(entry: unknown): ImportEdge {
   };
 }
 
+export type CouplingOptions = {
+  readonly exceptions?: readonly unknown[];
+  readonly layout?: unknown;
+};
+
 export function evaluateCoupling(
   report: unknown,
   analyzerName: string,
-  exceptions: readonly unknown[] = [],
-  layout?: unknown,
+  { exceptions = [], layout }: CouplingOptions = {},
 ): Finding[] {
   const isExcepted = exceptionMatcher(exceptions);
   return [

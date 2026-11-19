@@ -1,5 +1,5 @@
 import { blockCommentEnd, stringEnd } from './jvm-literals.mts';
-import type { Token } from '../jvm-reuse-types.mts';
+import type { Token } from '../../jvm-reuse-types.mts';
 
 type Lexed = { readonly kind: string; readonly end: number };
 type TokenParts = {

@@ -29,7 +29,9 @@ function parameterMembers({ parameter, context }) {
     return bindingMembers(parameter);
   }
   const type = context.checker.getTypeAtLocation(parameter);
-  if (type.flags & ts.TypeFlags.TypeParameter) return new Map();
+  if (type.flags & ts.TypeFlags.TypeParameter) {
+    return new Map();
+  }
   return ownedMembers({ checker: context.checker, type, owned: context.owned });
 }
 

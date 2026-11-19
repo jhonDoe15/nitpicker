@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globMatcher } from '../../../../../shared/paths/glob.mjs';
-import { findingFactory } from '../../kotlin/review-rules/review-finding.mts';
-import { tokenizeJvm } from '../../reuse/source/jvm-tokens.mts';
+import { findingFactory } from '../../kotlin/review-rules/finding/review-finding.mts';
+import { tokenizeJvm } from '../../reuse/source/tokens/jvm-tokens.mts';
 import { pathInside, sourceFilesUnder, sourceRootsOf } from '../java-sources.mts';
 import type { ReviewFinding } from '../../kotlin/review-rules/typed/review-finding-types.mts';
 import type { SourceProject } from '../review-types.mts';
@@ -12,7 +12,7 @@ const matcherOf: (glob: string) => { test: (file: string) => boolean } = globMat
 
 export const COPY_PASTED_TEST_RULE = 'CopyPastedTest';
 export const COPY_PASTED_TEST_EXCEPTION_RULE = `pmd/${COPY_PASTED_TEST_RULE}`;
-export const COPY_PASTED_TEST_MIN_COPIES = 3;
+const COPY_PASTED_TEST_MIN_COPIES = 3;
 const FORMS = {
   java: 'one parameterized test: `@ParameterizedTest` with `@CsvSource` or `@MethodSource` (TestNG: `@Test(dataProvider = ...)` with a `@DataProvider`), with a row per case',
   kotlin:

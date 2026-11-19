@@ -1,6 +1,6 @@
 import { declaredIn, typeBefore } from './declarations.mts';
 import { copyingCall, resolveAt, siteAt } from './calls.mts';
-import { splitTopLevel } from '../max-value-sums/source-file.mts';
+import { between, splitTopLevel } from '../max-value-sums/source/source-file.mts';
 import { newBefore } from './returns.mts';
 import type { MethodInfo } from './declarations.mts';
 import type { FileModel, Lookup, ProjectClass, Scope, Site, Target } from './calls.mts';
@@ -31,27 +31,30 @@ const GUARD_CALLEE = /null|empty|blank|valid|check|require|assert|verify|present
 const PREDICATE_CALLEE = /^(?:is|has|can|exists|supports)[A-Z]/u;
 const ARITHMETIC = new Set(['-', '*', '/', '%', '<', '>', '<=', '>=', '++', '--']);
 const EQUALITY = new Set(['==', '!=']);
+const NEUTRAL = 'neutral';
 
-const POSITIONS = new WeakMap<Frame, Map<string, number[]>>();
+type Positions = ReadonlyMap<string, readonly number[]>;
+type FrameScope = Scope & { readonly positions: Positions };
+type PassedForm = (scope: Scope, at: number) => string | undefined;
 
-function positionsIn(source: SourceFile, frame: Frame): Map<string, number[]> {
-  const cached = POSITIONS.get(frame);
-  if (cached !== undefined) {
-    return cached;
-  }
+function positionsIn(source: SourceFile, frame: Frame): Positions {
   const positions = new Map<string, number[]>();
-  for (let index = frame.body.from; index < frame.body.to; index += 1) {
+  for (const index of between(frame.body.from, frame.body.to)) {
     const text = source.tokens[index]?.text ?? '';
-    positions.set(text, [...(positions.get(text) ?? []), index]);
+    const known = positions.get(text);
+    if (known === undefined) {
+      positions.set(text, [index]);
+    } else {
+      known.push(index);
+    }
   }
-  POSITIONS.set(frame, positions);
   return positions;
 }
 
-function sameCallChecked(source: SourceFile, frame: Frame, site: Site): boolean {
+function sameCallChecked(source: SourceFile, positions: Positions, site: Site): boolean {
   const { tokens } = source;
   const texts = tokens.slice(site.start, site.close + 1).map(({ text }) => text);
-  const candidates = positionsIn(source, frame).get(texts[0] ?? '') ?? [];
+  const candidates = positions.get(texts[0] ?? '') ?? [];
   return candidates
     .filter((index) => index < site.start)
     .some((index) => {
@@ -79,16 +82,19 @@ function isGuard(source: SourceFile, at: number): boolean {
   );
 }
 
+function isNumber(source: SourceFile, index: number): boolean {
+  return source.tokens[index]?.kind === 'number';
+}
+
 function isArithmetic(source: SourceFile, at: number): boolean {
   const { tokens } = source;
   const before = tokens[at - 1]?.text ?? '';
   const after = tokens[at + 1]?.text ?? '';
-  const number = (index: number): boolean => tokens[index]?.kind === 'number';
   return (
     ARITHMETIC.has(before) ||
     ARITHMETIC.has(after) ||
-    (EQUALITY.has(after) && number(at + 2)) ||
-    ((before === '+' || after === '+') && (number(at - 2) || number(at + 2)))
+    (EQUALITY.has(after) && isNumber(source, at + 2)) ||
+    ((before === '+' || after === '+') && (isNumber(source, at - 2) || isNumber(source, at + 2)))
   );
 }
 
@@ -161,20 +167,24 @@ function passedForm(scope: Scope, at: number): string | undefined {
   }
   const inside = { ...scope, model: { ...scope.model, source: target.cls.source } };
   const { from, to } = target.method.frame.body;
-  const found = laterUse(inside, { name: target.name, from, to, type: '' }, true);
+  const found = scanUses(inside, { name: target.name, from, to, type: '' }, undefined);
   return typeof found === 'object'
     ? `passed to \`${target.cls.name}.${target.method.name}\`, which dereferences it,`
     : undefined;
 }
 
-function laterUse(
+function laterUse(scope: Scope, later: Later): SiteResult['outcome'] | Use {
+  return scanUses(scope, later, passedForm);
+}
+
+function scanUses(
   scope: Scope,
   { name, from, to, type }: Later,
-  nested = false,
+  passed: PassedForm | undefined,
 ): SiteResult['outcome'] | Use {
   const { source } = scope.model;
   const { tokens } = source;
-  for (let at = from; at < to; at += 1) {
+  for (const at of between(from, to)) {
     const token = tokens[at];
     if (token?.text !== name || tokens[at - 1]?.text === '.') {
       continue;
@@ -184,14 +194,14 @@ function laterUse(
       return 'checked';
     }
     if (tokens[at + 1]?.text === '=' || redeclared) {
-      return 'neutral';
+      return NEUTRAL;
     }
-    const form = useForm(source, at, type) ?? (nested ? undefined : passedForm(scope, at));
+    const form = useForm(source, at, type) ?? passed?.(scope, at);
     if (form !== undefined) {
       return { line: token.line, form, variable: name };
     }
   }
-  return 'neutral';
+  return NEUTRAL;
 }
 
 type Assigned = { name: string; type: string; open: number; cast: string | undefined };
@@ -257,12 +267,12 @@ function localResult(scope: Scope, site: Site, local: Assigned): SiteResult {
     : { target, outcome: 'use', use: later };
 }
 
-function resultOf(scope: Scope, site: Site): SiteResult {
+function resultOf(scope: FrameScope, site: Site): SiteResult {
   const { source } = scope.model;
   const { tokens } = source;
   const { target } = site;
   const local = assignedLocal(scope, site);
-  if (inPlaceCheck(source, site) || sameCallChecked(source, scope.frame, site)) {
+  if (inPlaceCheck(source, site) || sameCallChecked(source, scope.positions, site)) {
     return { target, outcome: 'checked' };
   }
   if (local !== undefined) {
@@ -273,7 +283,7 @@ function resultOf(scope: Scope, site: Site): SiteResult {
   const line = tokens[site.name]?.line ?? 0;
   return direct
     ? { target, outcome: 'use', use: { line, form: 'dereferenced' } }
-    : { target, outcome: 'neutral' };
+    : { target, outcome: NEUTRAL };
 }
 
 function isDeclared(model: FileModel, frame: Frame): boolean {
@@ -285,10 +295,11 @@ function isDeclared(model: FileModel, frame: Frame): boolean {
 
 export function sitesIn(model: FileModel, lookup: Lookup): SiteResult[] {
   const frames = model.source.frames.filter((frame) => isDeclared(model, frame));
-  const owners = new Map<number, Scope>();
+  const owners = new Map<number, FrameScope>();
   for (const frame of frames) {
-    const scope = { model, frame, lookup, declared: declaredIn(model.source, frame) };
-    for (let index = frame.body.from; index < frame.body.to; index += 1) {
+    const declared = declaredIn(model.source, frame);
+    const scope = { model, frame, lookup, declared, positions: positionsIn(model.source, frame) };
+    for (const index of between(frame.body.from, frame.body.to)) {
       owners.set(index, scope);
     }
   }

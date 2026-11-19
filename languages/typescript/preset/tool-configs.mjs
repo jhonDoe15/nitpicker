@@ -1,162 +1,32 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import {
-  JAVASCRIPT_COMPILER_OPTIONS,
-  JAVASCRIPT_JSCPD_FORMAT,
-  JAVASCRIPT_KNIP_ENTRIES,
-  JAVASCRIPT_KNIP_PROJECT,
-} from '../../javascript/preset/javascript-preset.mjs';
-import {
-  SCRIPT_SKIPPED_FOLDERS,
-  withSkippedFolders,
-} from '../../../core/tooling/jscpd/skipped-folders.mjs';
+import { JAVASCRIPT_COMPILER_OPTIONS } from '../../javascript/preset/javascript-preset.mjs';
 import { parsedTsconfig, projectLibs, projectRootFiles } from './modules/tsconfig-files.mjs';
 import {
   POLICY_COMPILER_OPTIONS,
-  TYPESCRIPT_ONLY_OPTIONS,
   extendedProjectTsconfig,
   projectStrictOverrides,
   solutionCompilerOptions,
   solutionRootDir,
   strictCompilerOptions,
 } from './project-configs/typescript/typescript-project-options.mjs';
+import {
+  jsonTransform,
+  layoutJscpdConfig,
+  layoutKnipConfig,
+  layoutStrykerTsconfig,
+  layoutTsconfig,
+} from './project-configs/typescript/layout-rewrites.mjs';
 import { readHeadPolicy } from './head-policy.mjs';
 import { policyTestRunner } from './test-runner/policy-runner.mjs';
 import { withRunnerTypes } from './test-runner/vocabulary/runner-types.mjs';
 import { libsWithTestDom, withTestDom } from './test-environment/dom-code/test-dom-tsconfig.mjs';
 import { filesOutsideRootDir } from './project-configs/typescript/solution-resolution.mjs';
 import { selectedProjectTsconfig } from './modules/selected-project-tsconfig.mjs';
-import { END_TO_END_ROOT, builtInExcludedGlobs, sourceRoots, testRoots } from './layout.mjs';
-import {
-  expandBraces,
-  isProjectRoot,
-  PROJECT_ROOT_EXCLUDED_GLOBS,
-} from './layout/source-root/root-paths.mjs';
 
 const QUALITY_TSCONFIG = 'tsconfig.quality.json';
 
-const DEFAULT_SOURCE_ROOTS = new Set(sourceRoots);
-const DEFAULT_TEST_ROOTS = new Set(testRoots);
 const STRYKER_TSCONFIG = 'tsconfig.stryker.json';
-
-function executedRoots(layout) {
-  return layout.executedTestRoots ?? layout.testRoots;
-}
-
-function rootedEntry(root, suffix) {
-  if (!isProjectRoot(root)) {
-    return `${root}${suffix}`;
-  }
-  return suffix === '' ? root : suffix.slice(1);
-}
-
-function projectRootExcludes(layout) {
-  return layout.sourceRoots.some(isProjectRoot)
-    ? [...new Set([...builtInExcludedGlobs, ...PROJECT_ROOT_EXCLUDED_GLOBS])]
-    : [];
-}
-
-function expandLayoutRoots(entries, layout, testRootsOf = (value) => value.testRoots) {
-  const expanded = entries.flatMap((entry) => {
-    const [first, ...rest] = entry.split('/');
-    const suffix = rest.length === 0 ? '' : `/${rest.join('/')}`;
-    if (DEFAULT_SOURCE_ROOTS.has(first)) {
-      return layout.sourceRoots.map((root) => rootedEntry(root, suffix));
-    }
-    if (DEFAULT_TEST_ROOTS.has(first)) {
-      return testRootsOf(layout).map((root) => `${root}${suffix}`);
-    }
-    return [entry];
-  });
-  return [...new Set(expanded)];
-}
-
-export function isCustomLayout(layout) {
-  return (
-    JSON.stringify([layout.sourceRoots, layout.testRoots, executedRoots(layout)]) !==
-      JSON.stringify([
-        sourceRoots,
-        testRoots,
-        testRoots.filter((root) => root !== END_TO_END_ROOT),
-      ]) ||
-    layout.exclude.length > 0 ||
-    (layout.entryPoints ?? []).length > 0 ||
-    layout.duplicateSkippedFolders !== undefined
-  );
-}
-
-function tsconfigRewrite(javascriptOptions, testRootsOf) {
-  return function rewriteTsconfig(base, layout) {
-    return {
-      ...base,
-      ...(layout.javascript
-        ? { compilerOptions: { ...base.compilerOptions, ...javascriptOptions } }
-        : {}),
-      include: expandLayoutRoots(base.include, layout, testRootsOf),
-      exclude: [
-        ...new Set([
-          ...base.exclude,
-          ...projectRootExcludes(layout).flatMap(expandBraces),
-          ...layout.exclude,
-        ]),
-      ],
-    };
-  };
-}
-
-const JAVASCRIPT_RELAXED_OPTIONS = Object.fromEntries(
-  Object.keys(TYPESCRIPT_ONLY_OPTIONS).map((option) => [option, false]),
-);
-
-export const layoutTsconfig = tsconfigRewrite(
-  { ...JAVASCRIPT_COMPILER_OPTIONS, ...JAVASCRIPT_RELAXED_OPTIONS, noEmit: true },
-  (layout) => layout.testRoots,
-);
-
-export const layoutStrykerTsconfig = tsconfigRewrite(JAVASCRIPT_COMPILER_OPTIONS, executedRoots);
-
-export function layoutKnipConfig(base, layout) {
-  const javascript = layout.javascript === true;
-  return {
-    ...base,
-    entry: [
-      ...expandLayoutRoots(
-        javascript ? [...base.entry, ...JAVASCRIPT_KNIP_ENTRIES] : base.entry,
-        layout,
-      ),
-      ...(layout.entryPoints ?? []),
-    ],
-    project: expandLayoutRoots(
-      javascript ? [...base.project, ...JAVASCRIPT_KNIP_PROJECT] : base.project,
-      layout,
-    ),
-    ignore: [
-      ...expandLayoutRoots(base.ignore, layout),
-      ...projectRootExcludes(layout),
-      ...layout.exclude,
-    ],
-  };
-}
-
-export function layoutJscpdConfig(base, layout) {
-  return {
-    ...base,
-    ...(layout.javascript ? { format: [...base.format, JAVASCRIPT_JSCPD_FORMAT] } : {}),
-    path: expandLayoutRoots(base.path, layout),
-    ignore: [
-      ...withSkippedFolders(base.ignore, SCRIPT_SKIPPED_FOLDERS, layout.duplicateSkippedFolders),
-      ...projectRootExcludes(layout),
-      ...layout.exclude,
-    ],
-  };
-}
-
-export function jsonTransform(rewrite, layout) {
-  if (!isCustomLayout(layout) && layout.javascript !== true) {
-    return undefined;
-  }
-  return (text) => `${JSON.stringify(rewrite(JSON.parse(text), layout), null, 2)}\n`;
-}
 
 const REWRITES = new Map([
   [QUALITY_TSCONFIG, layoutTsconfig],

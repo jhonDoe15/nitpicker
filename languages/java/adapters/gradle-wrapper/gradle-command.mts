@@ -1,6 +1,9 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
+import { ancestorDirectories as untypedAncestorDirectories } from '../../../../shared/filesystem.mjs';
+
+const ancestorDirectories: (directory: string) => string[] = untypedAncestorDirectories;
 
 type SpawnTarget = { readonly command: string; readonly args: string[]; readonly shell: boolean };
 type GradleRequest = {
@@ -43,19 +46,8 @@ function isFile(file: string | undefined): file is string {
   return file !== undefined && statSync(file, { throwIfNoEntry: false })?.isFile() === true;
 }
 
-function ancestors(folder: string): string[] {
-  const folders = [folder];
-  for (const current of folders) {
-    const parent = path.dirname(current);
-    if (parent !== current) {
-      folders.push(parent);
-    }
-  }
-  return folders;
-}
-
 function buildFolders(projectRoot: string): string[] {
-  const folders = ancestors(path.resolve(projectRoot));
+  const folders = ancestorDirectories(path.resolve(projectRoot));
   const root = folders.findIndex((folder) =>
     BUILD_ROOT_MARKERS.some((marker) => {
       const file = childPath(folder, marker);

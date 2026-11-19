@@ -1,13 +1,17 @@
 import type TypeScript from 'typescript';
 import type { TSESTree } from '@typescript-eslint/utils';
 import { ts } from '../../typed/typescript-views.mts';
+import {
+  classChain,
+  decoratorName,
+  decoratorsOf,
+} from '../../request-inputs/bindings/ts-nodes.mts';
 import { typeServices, type Context } from '../../security/security-values.mts';
 
 export type VersionForm = 'typeorm' | 'mikro' | 'sequelize';
 type Mapping = 'unversioned' | 'versioned' | 'unmapped';
 export type Unversioned = { readonly entity: string; readonly form: VersionForm };
 
-const MAX_BASES = 3;
 const TYPEORM: VersionForm = 'typeorm';
 const MIKRO: VersionForm = 'mikro';
 const SEQUELIZE: VersionForm = 'sequelize';
@@ -21,18 +25,8 @@ const FAMILIES: readonly (readonly [VersionForm, (source: string) => boolean])[]
   [SEQUELIZE, (source) => source === 'sequelize' || source === 'sequelize-typescript'],
 ];
 
-function decoratorsOf(node: TypeScript.Node): readonly TypeScript.Decorator[] {
-  return ts.canHaveDecorators(node) ? (ts.getDecorators(node) ?? []) : [];
-}
-
 function decoratorCall(decorator: TypeScript.Decorator): TypeScript.Expression {
   return decorator.expression;
-}
-
-function decoratorName(decorator: TypeScript.Decorator): string | undefined {
-  const { expression } = decorator;
-  const callee = ts.isCallExpression(expression) ? expression.expression : expression;
-  return ts.isIdentifier(callee) ? callee.text : undefined;
 }
 
 function isVersionOption(property: TypeScript.ObjectLiteralElementLike): boolean {
@@ -65,32 +59,6 @@ function importSources(file: TypeScript.SourceFile): string[] {
 function formOf(declaration: TypeScript.ClassDeclaration): VersionForm | undefined {
   const sources = importSources(declaration.getSourceFile());
   return FAMILIES.find(([, matches]) => sources.some(matches))?.[0];
-}
-
-function baseDeclaration(
-  checker: TypeScript.TypeChecker,
-  declaration: TypeScript.ClassDeclaration,
-): TypeScript.ClassDeclaration | undefined {
-  const clause = declaration.heritageClauses?.find(
-    (each) => each.token === ts.SyntaxKind.ExtendsKeyword,
-  );
-  const base = clause?.types[0];
-  const symbol = base === undefined ? undefined : checker.getTypeAtLocation(base).getSymbol();
-  return symbol?.declarations?.find(ts.isClassDeclaration);
-}
-
-function chainOf(
-  checker: TypeScript.TypeChecker,
-  declaration: TypeScript.ClassDeclaration,
-): TypeScript.ClassDeclaration[] {
-  const chain = [declaration];
-  for (const current of chain.slice(0, MAX_BASES)) {
-    const base = baseDeclaration(checker, current);
-    if (base !== undefined) {
-      chain.push(base);
-    }
-  }
-  return chain;
 }
 
 function membersDecorated(
@@ -161,7 +129,7 @@ function mappingFor(
     return 'unmapped';
   }
   const test = form === TYPEORM ? isTypeormVersion : isMikroVersion;
-  return mappingOf(!membersDecorated(chainOf(checker, declaration), test));
+  return mappingOf(!membersDecorated(classChain(checker, declaration), test));
 }
 
 function classOf(

@@ -1,34 +1,32 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { librariesForFile as untypedLibrariesForFile } from '../../../../libraries/file-libraries.mjs';
 import { readHeadPolicy, type LibraryChoices } from '../../typed/policy-views.mts';
 import { unwrapped } from '../../security/security-values.mts';
 import { isObjectArgument } from '../argument-kinds.mts';
-import { loggerOf, type Library } from '../origins/logger-origins.mts';
+import { logReceiver, presentLibraries, presentLogger } from '../logger-calls.mts';
 
 type MessageId = 'structuredFields' | 'trailingFields';
 
-const librariesForFile: (
-  context: { readonly filename: string; readonly cwd: string },
-  libraries: LibraryChoices | undefined,
-) => { readonly logger?: readonly string[] } | undefined = untypedLibrariesForFile;
+const WINSTON = 'winston';
 
-const LOG_METHODS = new Set(['trace', 'debug', 'info', 'warn', 'error', 'fatal']);
-const WINSTON: Library = 'winston';
-const LIBRARIES: readonly Library[] = ['pino', 'bunyan', WINSTON];
+function staticParts(node: TSESTree.Node): readonly TSESTree.Node[] | undefined {
+  const inner = unwrapped(node);
+  if (inner.type === AST_NODE_TYPES.TemplateLiteral) {
+    return inner.expressions;
+  }
+  if (inner.type === AST_NODE_TYPES.BinaryExpression && inner.operator === '+') {
+    return [inner.left, inner.right];
+  }
+  return inner.type === AST_NODE_TYPES.Literal ? [] : undefined;
+}
 
 function isStatic(node: TSESTree.Node): boolean {
   const pending = [node];
   for (const next of pending) {
-    const inner = unwrapped(next);
-    if (inner.type === AST_NODE_TYPES.TemplateLiteral) {
-      for (const expression of inner.expressions) {
-        pending.push(expression);
-      }
-    } else if (inner.type === AST_NODE_TYPES.BinaryExpression && inner.operator === '+') {
-      pending.push(inner.left, inner.right);
-    } else if (inner.type !== AST_NODE_TYPES.Literal) {
+    const parts = staticParts(next);
+    if (parts === undefined) {
       return false;
     }
+    pending.push(...parts);
   }
   return true;
 }
@@ -52,16 +50,6 @@ function isTextual(node: TSESTree.Node): boolean {
   );
 }
 
-function receiverOf(node: TSESTree.CallExpression): TSESTree.Node | undefined {
-  const callee = unwrapped(node.callee);
-  return callee.type === AST_NODE_TYPES.MemberExpression &&
-    !callee.computed &&
-    callee.property.type === AST_NODE_TYPES.Identifier &&
-    LOG_METHODS.has(callee.property.name)
-    ? callee.object
-    : undefined;
-}
-
 export function noInterpolatedLogMessageRule(
   rootLibraries: LibraryChoices | undefined,
 ): TSESLint.RuleModule<MessageId> {
@@ -78,16 +66,15 @@ export function noInterpolatedLogMessageRule(
       },
     },
     create(context) {
-      const present = new Set(librariesForFile(context, rootLibraries)?.logger ?? []);
-      if (!LIBRARIES.some((library) => present.has(library))) {
+      const present = presentLibraries(context, rootLibraries);
+      if (present === undefined) {
         return {};
       }
       return {
         CallExpression(node) {
-          const receiver = receiverOf(node);
-          const logger = receiver === undefined ? undefined : loggerOf(context, receiver);
+          const logger = presentLogger(context, logReceiver(node), present);
           const [first, second] = node.arguments;
-          if (logger === undefined || !present.has(logger.library) || first === undefined) {
+          if (logger === undefined || first === undefined) {
             return;
           }
           const structured =

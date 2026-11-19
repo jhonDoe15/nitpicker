@@ -2,7 +2,7 @@ import {
   featureRoleContract,
   PUBLIC_FACES,
 } from '../../../../shared/rules/features/feature-roles.mjs';
-import { inModule } from '../../builds/module-path.mts';
+import { inModule } from '../../builds/paths/module-path.mts';
 
 export const CONTRACT_RULE = 'contract-infrastructure-type';
 const PACKAGE_FACE = 'package';

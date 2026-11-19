@@ -1,8 +1,9 @@
-import { findingFactory } from '../../kotlin/review-rules/review-finding.mts';
+import { findingFactory } from '../../kotlin/review-rules/finding/review-finding.mts';
 import { mainSourceTexts, packageOf } from '../java-sources.mts';
-import { parseSource } from '../max-value-sums/source-file.mts';
+import { parseSource } from '../max-value-sums/source/source-file.mts';
 import { classesOf } from './declarations.mts';
-import { documentedNullable, nullableOf } from './returns.mts';
+import { documentedNullable } from './javadoc-tags.mts';
+import { nullableOf } from './returns.mts';
 import { sitesIn } from './uses.mts';
 import type { ReviewFinding } from '../../kotlin/review-rules/typed/review-finding-types.mts';
 import type { MainSourceOptions } from '../java-sources.mts';
@@ -19,6 +20,7 @@ const WHERE = {
 };
 const MAX_ALONE = 2;
 const MIN_CHECKING = 3;
+const MOSTLY = { part: 4, whole: 5 };
 
 const IMPORT = /^\s*import\s+([\w.]+(?:\.\*)?)\s*;/gmu;
 
@@ -126,7 +128,8 @@ type Origin = { readonly where: string; readonly sure: boolean };
 function originOf(target: Target, counts: { total: number; checked: number }): Origin | undefined {
   const { nullable } = target;
   if (nullable === undefined) {
-    const mostly = counts.checked >= MIN_CHECKING && counts.checked * 5 >= counts.total * 4;
+    const mostly =
+      counts.checked >= MIN_CHECKING && counts.checked * MOSTLY.whole >= counts.total * MOSTLY.part;
     const where = `is null-checked by ${String(counts.checked)} of its ${String(counts.total)} callers`;
     return mostly ? { where, sure: false } : undefined;
   }

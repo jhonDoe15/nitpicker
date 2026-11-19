@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { code, declaredClass, useDeclarationScripts } from './declaration-support.mts';
+import { code, declaredBuilder, useDeclarationScripts } from './declaration-support.mts';
 
 const enabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 const { itOutcomes } = useDeclarationScripts(enabled);
@@ -34,14 +34,11 @@ class Address(models.Model):
 `,
 ];
 
-function table(...lines: string[]): string {
-  return declaredClass({
-    models: MODELS,
-    header: 'class AddressTable(tables.Table):',
-    body: lines,
-    meta: ['        model = Address', '        fields = ("label",)'],
-  });
-}
+const table = declaredBuilder({
+  models: MODELS,
+  header: 'class AddressTable(tables.Table):',
+  meta: ['        model = Address', '        fields = ("label",)'],
+});
 
 describe.skipIf(!enabled)('unsortable-table-column', () => {
   itOutcomes('flags sortable columns over values that are not database fields', [

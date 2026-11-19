@@ -1,6 +1,4 @@
-import { findingFactory } from '../../kotlin/review-rules/review-finding.mts';
-import { mainSourceTexts } from '../java-sources.mts';
-import { parseSource } from '../max-value-sums/source-file.mts';
+import { findingsFromSources } from './parsed-sources.mts';
 import { callsOf } from './calls.mts';
 import { recursionsOf } from './cycles.mts';
 import type { ReviewFinding } from '../../kotlin/review-rules/typed/review-finding-types.mts';
@@ -33,9 +31,7 @@ export function readSelfRecursionFindings(
   projectRoot: string,
   options: MainSourceOptions,
 ): ReviewFinding[] {
-  const finding = findingFactory();
-  return mainSourceTexts(projectRoot, options).flatMap(({ file, text, kotlin }) => {
-    const source = parseSource(text, { file, kotlin });
+  return findingsFromSources(projectRoot, options, ({ file, kotlin, source, finding }) => {
     function named(open: number): string {
       return source.tokens[open - 1]?.text ?? '';
     }

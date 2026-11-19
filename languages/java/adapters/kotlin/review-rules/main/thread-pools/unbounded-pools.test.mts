@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findingFactory } from '../../review-finding.mts';
+import { findingFactory } from '../../finding/review-finding.mts';
 import type { Loose } from '../../test-support/loose-facts.mts';
 import { fieldOf, listOf, textOf } from '../../../../../../../shared/values/readers.mts';
 import { unboundedPoolFindings } from './unbounded-pools.mts';

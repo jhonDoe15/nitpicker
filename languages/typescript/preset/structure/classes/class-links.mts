@@ -81,25 +81,25 @@ function exportEntries(statement: TypeScript.ExportDeclaration): [string, Export
   });
 }
 
+function statementExports(statement: TypeScript.Statement): [string, Export][] {
+  if (ts.isExportDeclaration(statement)) {
+    return exportEntries(statement);
+  }
+  if (ts.isExportAssignment(statement) && ts.isIdentifier(statement.expression)) {
+    return [[DEFAULT, { kind: 'local', name: statement.expression.text }]];
+  }
+  return exportedByModifier(statement).map(([exported, name]): [string, Export] => [
+    exported,
+    { kind: 'local', name },
+  ]);
+}
+
 export function fileFacts(
   sourceFile: TypeScript.SourceFile,
   measures: readonly ClassMeasure[],
 ): FileFacts {
   const statements = [...sourceFile.statements];
-  const exports = new Map<string, Export>();
-  for (const statement of statements) {
-    for (const [exported, name] of exportedByModifier(statement)) {
-      exports.set(exported, { kind: 'local', name });
-    }
-    if (ts.isExportDeclaration(statement)) {
-      for (const [name, entry] of exportEntries(statement)) {
-        exports.set(name, entry);
-      }
-    }
-    if (ts.isExportAssignment(statement) && ts.isIdentifier(statement.expression)) {
-      exports.set(DEFAULT, { kind: 'local', name: statement.expression.text });
-    }
-  }
+  const exports = new Map<string, Export>(statements.flatMap(statementExports));
   return {
     classes: new Map(
       measures.flatMap((entry) => (entry.local === undefined ? [] : [[entry.local, entry]])),
@@ -162,18 +162,26 @@ function nextSteps(step: Step, here: FileFacts): { found?: ClassMeasure; steps: 
   };
 }
 
+function stepKey(step: Step): string {
+  return `${step.file}\0${step.name}\0${step.path.join('.')}\0${String(step.exported)}`;
+}
+
+function startSteps(entry: ClassMeasure): Step[] {
+  if (entry.base === undefined) {
+    return [];
+  }
+  const [name = '', ...path] = entry.base.split('.');
+  return [{ file: entry.source, name, path, exported: false }];
+}
+
 export function resolveBase(
   entry: ClassMeasure,
   facts: ReadonlyMap<string, FileFacts>,
 ): ClassMeasure | undefined {
-  if (entry.base === undefined) {
-    return undefined;
-  }
-  const [name = '', ...path] = entry.base.split('.');
-  const pending: Step[] = [{ file: entry.source, name, path, exported: false }];
+  const pending = startSteps(entry);
   const seen = new Set<string>();
   for (const step of pending) {
-    const key = `${step.file}\0${step.name}\0${step.path.join('.')}\0${String(step.exported)}`;
+    const key = stepKey(step);
     const here = facts.get(step.file);
     if (here === undefined || seen.has(key)) {
       continue;
@@ -183,9 +191,7 @@ export function resolveBase(
     if (found !== undefined) {
       return found;
     }
-    for (const next of steps) {
-      pending.push(next);
-    }
+    pending.push(...steps);
   }
   return undefined;
 }

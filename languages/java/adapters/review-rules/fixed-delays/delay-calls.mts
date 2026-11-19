@@ -1,4 +1,4 @@
-import { splitTopLevel } from '../max-value-sums/source-file.mts';
+import { splitTopLevel } from '../max-value-sums/source/source-file.mts';
 import { evaluate } from './delay-constants.mts';
 import type { Constants } from './delay-constants.mts';
 import type { SourceFile, Span } from '../max-value-sums/sum-types.mts';
@@ -43,25 +43,28 @@ function openOf(index: number, matched: string): number {
   return index + matched.split(' ').length - 1;
 }
 
-function timerAt(source: SourceFile, index: number): Timer | undefined {
-  const head = source.tokens
-    .slice(index, index + WINDOW)
-    .map(({ text }) => text)
-    .join(' ');
-  const before = source.tokens[index - 1]?.text ?? '';
+function sleepTimer(head: string, index: number): Timer | undefined {
   const sleep = SLEEP.exec(head)?.[0];
   if (sleep !== undefined) {
     return { name: 'Thread.sleep', open: openOf(index, sleep), unit: 1, from: 0 };
   }
   const [timeUnit, unitName = ''] = TIME_UNIT_SLEEP.exec(head) ?? [];
   const unit = UNIT_MILLIS.get(unitName);
-  if (timeUnit !== undefined && unit !== undefined) {
-    return {
-      name: `TimeUnit.${unitName}.sleep`,
-      open: openOf(index, timeUnit),
-      unit,
-      from: 0,
-    };
+  if (timeUnit === undefined || unit === undefined) {
+    return undefined;
+  }
+  return { name: `TimeUnit.${unitName}.sleep`, open: openOf(index, timeUnit), unit, from: 0 };
+}
+
+function timerAt(source: SourceFile, index: number): Timer | undefined {
+  const head = source.tokens
+    .slice(index, index + WINDOW)
+    .map(({ text }) => text)
+    .join(' ');
+  const before = source.tokens[index - 1]?.text ?? '';
+  const sleeping = sleepTimer(head, index);
+  if (sleeping !== undefined) {
+    return sleeping;
   }
   const delay = DELAY.exec(head)?.[0];
   if (source.kotlin && delay !== undefined && before !== '.' && before !== 'fun') {

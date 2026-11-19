@@ -1,7 +1,7 @@
-import { findingFactory } from '../../kotlin/review-rules/review-finding.mts';
+import { findingFactory } from '../../kotlin/review-rules/finding/review-finding.mts';
 import { isDomain } from '../../domain/domain-roles.mts';
 import { mainSourceTexts, packageOf } from '../java-sources.mts';
-import { frameAt, parseSource, splitTopLevel } from '../max-value-sums/source-file.mts';
+import { frameAt, parseSource, splitTopLevel } from '../max-value-sums/source/source-file.mts';
 import { javaFormsOf, kindOfType, kotlinFormsOf, mutates } from './mutators.mts';
 import type { Kind } from './mutators.mts';
 import type { ReviewFinding } from '../../kotlin/review-rules/typed/review-finding-types.mts';

@@ -1,4 +1,4 @@
-import { startsNewLine } from '../max-value-sums/source-file.mts';
+import { startsNewLine } from '../max-value-sums/source/source-file.mts';
 import type { SourceFile, Span } from '../max-value-sums/sum-types.mts';
 
 const DURATION_UNITS = new Map([
@@ -102,11 +102,12 @@ export function delayConstants(source: SourceFile): Constants {
   const constants = new Map<string, number>();
   for (const [name, token] of source.tokens.entries()) {
     const assign = token.kind === 'identifier' ? assignmentOf(source, name) : -1;
-    if (assign !== -1 && isConstantDeclaration(source, name)) {
-      const value = evaluate(source, constants, { from: assign + 1, to: valueEnd(source, assign) });
-      if (value !== undefined) {
-        constants.set(token.text, value);
-      }
+    if (assign === -1 || !isConstantDeclaration(source, name)) {
+      continue;
+    }
+    const value = evaluate(source, constants, { from: assign + 1, to: valueEnd(source, assign) });
+    if (value !== undefined) {
+      constants.set(token.text, value);
     }
   }
   return constants;

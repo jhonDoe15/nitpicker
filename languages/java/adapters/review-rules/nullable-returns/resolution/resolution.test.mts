@@ -4,8 +4,12 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { projectWideReport } from '../../../../builds/project-wide.mts';
 import { PROJECT, useTempProjects } from '../../test-support/temp-projects.mts';
-import { nullableReturnUses, readNullableReturnFindings } from '../nullable-returns.mts';
-import { MARK, expectFlagged, peers, reported, sample } from '../test-support/samples.mts';
+import {
+  NULLABLE_RETURN_RULE,
+  nullableReturnUses,
+  readNullableReturnFindings,
+} from '../nullable-returns.mts';
+import { MARK, flaggedReport, peers, reported, sample } from '../test-support/samples.mts';
 
 const projectWith = useTempProjects('nitpicker-nullable-');
 
@@ -30,7 +34,15 @@ ${peers('find')}`;
   Sample root() { return parent().parent(); }`),
       },
     ]).map((use) => use.message);
-    expect(message).toContain('which throws NullPointerException on that path');
+    expect(message).toBe(
+      [
+        '`Sample.parent` documents that it may return `null`, on line 7 of Sample.java, and',
+        'the result of `Sample.parent` is dereferenced here without a null check, which throws',
+        'NullPointerException on that path; add `if (result == null) return ...;` or annotate',
+        'the method `@Nullable` and handle it. If the caller knows from context that the value',
+        'is set, add `Objects.requireNonNull(result, "why")` to document it.',
+      ].join(' '),
+    );
   });
 
   it('does not resolve a call in a nested class with a superclass to the outer method', () => {
@@ -47,11 +59,12 @@ ${find}  class Inner extends Base {
   }
 }
 `;
-    expectFlagged(text);
+    const { found, marked } = flaggedReport(text);
+    expect(found).toEqual(marked);
   });
 
   it('follows var, a cast and an unboxing cast between the call and the local', () => {
-    expectFlagged(
+    const { found, marked } = flaggedReport(
       sample(`${find}  int a(String key) {
     var o = find(key);
     return o.hashCode(); ${MARK}
@@ -65,6 +78,7 @@ ${find}  class Inner extends Base {
     return n;
   }`),
     );
+    expect(found).toEqual(marked);
   });
 
   it('reads abstract and interface methods as targets for the documented and caller signals', () => {
@@ -205,8 +219,17 @@ class Consumer {
     expect(
       findings.map(({ rule, path: file, location }) => `${rule}:${file}:${String(location.line)}`),
     ).toEqual(['NullableReturnUse:src/main/java/shop/Sample.java:6']);
-    expect(findings[0]?.message).toContain(
-      'add {"rule":"pmd/NullableReturnUse","paths":["src/main/java/shop/Sample.java"],"reason":"..."} to "exceptions"',
+    expect(findings[0]?.message).toBe(
+      [
+        '`Sample.find` returns `null` on line 4 of src/main/java/shop/Sample.java, and other',
+        'callers check it, and the result of `Sample.find` is dereferenced here without a null',
+        'check, which can throw NullPointerException on that path; add `if (result == null)',
+        'return ...;` or annotate the method `@Nullable` and handle it. If the caller knows',
+        'from context that the value is set, add `Objects.requireNonNull(result, "why")` to',
+        'document it. If this is intended, add',
+        '{"rule":"pmd/NullableReturnUse","paths":["src/main/java/shop/Sample.java"],"reason":"..."}',
+        'to "exceptions" in nitpicker.config.json.',
+      ].join(' '),
     );
   });
 });
@@ -259,7 +282,7 @@ class Page {
 
       expect(
         findings
-          .filter(({ rule }) => rule === 'NullableReturnUse')
+          .filter(({ rule }) => rule === NULLABLE_RETURN_RULE)
           .map(({ path: file, location }) => `${file}:${String(location?.line)}`),
       ).toEqual(['web/src/main/java/shop/web/Page.java:6']);
     } finally {

@@ -49,11 +49,9 @@ function layoutOf(tokens: readonly Token[]): Layout {
   const close = new Map<number, number>();
   const depth: number[] = [];
   for (const [at, token] of tokens.entries()) {
-    if (CLOSERS.has(token.text)) {
-      const open = stack.pop();
-      if (open !== undefined) {
-        close.set(open, at);
-      }
+    const open = CLOSERS.has(token.text) ? stack.pop() : undefined;
+    if (open !== undefined) {
+      close.set(open, at);
     }
     depth.push(stack.length);
     if (OPENERS.has(token.text)) {

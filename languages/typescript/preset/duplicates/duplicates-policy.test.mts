@@ -9,7 +9,7 @@ import {
   resolveLayout as untypedResolveLayout,
   resolveLayoutFor as untypedResolveLayoutFor,
 } from '../layout.mjs';
-import { layoutJscpdConfig as untypedLayoutJscpdConfig } from '../tool-configs.mjs';
+import { layoutJscpdConfig as untypedLayoutJscpdConfig } from '../project-configs/typescript/layout-rewrites.mjs';
 import {
   fieldOf,
   listOf,

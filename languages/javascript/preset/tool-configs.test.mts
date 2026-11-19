@@ -5,13 +5,13 @@ import { describe, expect, it } from 'vitest';
 import { fieldsOf, listOf, parseJson, textsOf } from '../../../shared/values/readers.mts';
 import { rootsRemovedAfterAll } from '../../typescript/adapters/test-support/temporary-roots.mts';
 import { resolveLayout as untypedResolveLayout } from '../../typescript/preset/layout.mjs';
+import { layoutTransformFor as untypedLayoutTransformFor } from '../../typescript/preset/tool-configs.mjs';
 import {
   jsonTransform as untypedJsonTransform,
   layoutJscpdConfig as untypedLayoutJscpdConfig,
   layoutKnipConfig as untypedLayoutKnipConfig,
-  layoutTransformFor as untypedLayoutTransformFor,
   layoutTsconfig as untypedLayoutTsconfig,
-} from '../../typescript/preset/tool-configs.mjs';
+} from '../../typescript/preset/project-configs/typescript/layout-rewrites.mjs';
 
 type Layout = ReturnType<typeof untypedResolveLayout>;
 type Json = Readonly<Record<string, unknown>>;

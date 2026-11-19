@@ -1,4 +1,4 @@
-import { tokenizeJvm } from './jvm-tokens.mts';
+import { tokenizeJvm } from './tokens/jvm-tokens.mts';
 import {
   annotationsEnd,
   bracketPairs,

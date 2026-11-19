@@ -26,10 +26,9 @@ export type Recursion = {
 function reachable(start: Frame, calls: readonly Call[]): Set<Frame> {
   const seen = new Set<Frame>([start]);
   for (const current of seen) {
-    for (const { source, target } of calls) {
-      if (source === current) {
-        seen.add(target);
-      }
+    const targets = calls.filter(({ source }) => source === current).map(({ target }) => target);
+    for (const target of targets) {
+      seen.add(target);
     }
   }
   return seen;
