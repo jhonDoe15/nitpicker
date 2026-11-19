@@ -1,7 +1,7 @@
 import type { TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
 import { arrayItemTypes, itemTypesOf, unionMembers } from '../../../rules/support/array-items.mts';
-import { hasArrayType } from '../../../rules/support/checked-types.mts';
+import { hasArrayType, nonNullableTypeOf } from '../../../rules/support/checked-types.mts';
 import { typeServices, type Context } from '../../../rules/security/security-values.mts';
 import { ts } from '../../../rules/typed/typescript-views.mts';
 
@@ -89,13 +89,8 @@ export function isAppendedAsOne(context: Context, node: TSESTree.Node): boolean 
 }
 
 export function hasMethod(context: Context, node: TSESTree.Node, name: string): boolean {
-  const services = typeServices(context);
-  if (services === undefined) {
-    return false;
-  }
-  const checker = services.program.getTypeChecker();
-  const type = checker.getNonNullableType(services.getTypeAtLocation(node));
-  return checker.getPropertyOfType(type, name) !== undefined;
+  const typed = nonNullableTypeOf(context, node);
+  return typed !== undefined && typed.checker.getPropertyOfType(typed.type, name) !== undefined;
 }
 
 export function hasObjectFromEntries(context: Context, node: TSESTree.Node): boolean {

@@ -8,7 +8,7 @@ export type LocatedFinding = {
   readonly location: { readonly line: number };
 };
 
-export function scratchScanner<Found>(options: {
+function scratchScanner<Found>(options: {
   prefix: string;
   read: ReadFindings<Found>;
 }): (files: Readonly<Record<string, string>>, kotlin: boolean) => Found[] {
