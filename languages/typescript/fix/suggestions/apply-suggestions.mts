@@ -1,4 +1,10 @@
-import { isRuleSelected, suggestionName, type LintMessage } from './typed/suggestion-views.mts';
+import { keepsBehaviour } from './suggestion-checks.mts';
+import {
+  isRuleSelected,
+  pickedSuggestions,
+  suggestionName,
+  type LintMessage,
+} from './typed/suggestion-views.mts';
 
 const BYTE_ORDER_MARK = '﻿';
 
@@ -12,15 +18,22 @@ export type SuggestionEdit = {
 
 type AppliedSuggestion = { readonly rule: string; readonly line: number | undefined };
 
-export function singleSuggestionEdit(message: LintMessage): SuggestionEdit | undefined {
+export function singleSuggestionEdit(
+  message: LintMessage,
+  source: string,
+): SuggestionEdit | undefined {
   const { ruleId, suggestions, fatal, fix } = message;
   if (fatal === true || fix !== undefined) {
     return undefined;
   }
-  if (suggestions?.length !== 1) {
+  const picked = ruleId === undefined ? undefined : pickedSuggestions[ruleId];
+  const offered = (suggestions ?? []).filter(
+    ({ messageId }) => picked === undefined || messageId === picked,
+  );
+  if (offered.length !== 1) {
     return undefined;
   }
-  const edit = suggestions[0]?.fix;
+  const edit = offered[0]?.fix;
   const [start, end] = edit?.range ?? [];
   const valid =
     typeof start === 'number' &&
@@ -28,7 +41,10 @@ export function singleSuggestionEdit(message: LintMessage): SuggestionEdit | und
     Number.isInteger(start) &&
     Number.isInteger(end) &&
     start <= end;
-  return valid && typeof edit?.text === 'string'
+  return valid &&
+    typeof edit?.text === 'string' &&
+    end <= source.length &&
+    keepsBehaviour(ruleId, source, { start, end })
     ? { start, end, text: edit.text, rule: ruleId, line: message.line }
     : undefined;
 }
@@ -58,8 +74,8 @@ export function applySuggestions({
   const edits = nonOverlapping(
     messages
       .filter(({ ruleId }) => isRuleSelected(ruleId, selectedRules))
-      .map(singleSuggestionEdit)
-      .filter((edit): edit is SuggestionEdit => edit !== undefined && edit.end <= body.length),
+      .map((message) => singleSuggestionEdit(message, body))
+      .filter((edit): edit is SuggestionEdit => edit !== undefined),
   );
   let result = body;
   for (const edit of edits.toReversed()) {

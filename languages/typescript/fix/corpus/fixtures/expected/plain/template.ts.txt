@@ -1,0 +1,15 @@
+export function label(name: string): string {
+  return name;
+}
+
+export function joined(name: string, other: string): string {
+  return name + other;
+}
+
+export function nested(name: string): string {
+  return name;
+}
+
+export function probe(): unknown {
+  return [label('a'), joined('a', 'b'), nested('n')];
+}

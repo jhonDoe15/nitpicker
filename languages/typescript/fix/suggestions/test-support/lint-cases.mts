@@ -4,6 +4,7 @@ import path from 'node:path';
 import { ESLint } from 'eslint';
 import regexp from 'eslint-plugin-regexp';
 import tseslint from 'typescript-eslint';
+import { guardedEntries } from '../../../preset/eslint-config/fix-guards/guarded-plugins.mts';
 import { messageOf } from '../../typed/eslint-report.mts';
 import { containedPath } from '../../../../../core/fix/typed/fix-views.mts';
 import { suggestionRules, type LintMessage } from '../typed/suggestion-views.mts';
@@ -33,7 +34,7 @@ function eslintFor(root: string): ESLint {
   return new ESLint({
     cwd: root,
     overrideConfigFile: true,
-    overrideConfig: [
+    overrideConfig: guardedEntries([
       {
         files: ['**/*.ts'],
         languageOptions: {
@@ -41,9 +42,11 @@ function eslintFor(root: string): ESLint {
           parserOptions: { project: './tsconfig.json', tsconfigRootDir: root },
         },
         plugins: { '@typescript-eslint': tseslint.plugin, regexp },
-        rules: Object.fromEntries(Object.keys(suggestionRules).map((rule) => [rule, 'error'])),
+        rules: Object.fromEntries(
+          Object.keys(suggestionRules).map((rule) => [rule, 'error' as const]),
+        ),
       },
-    ],
+    ]),
   });
 }
 
