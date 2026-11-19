@@ -13,7 +13,7 @@ import { type ToolClasspaths, resolvedTool } from '../typed/kotlin-types.mts';
 import { type CompilerSettings, type SourceModule, compilerOf } from './compiler-types.mts';
 import { ERROR_PRONE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mts';
 import { errorProneJava, isNoFittingJdk, skipWithoutJdk } from './maven-jdk.mts';
-import { toolHeapFlags, toolSlots } from '../parallel/tool-slots.mts';
+import { toolHeapFlags, toolSlots } from '../parallel/slots/tool-slots.mts';
 import { analyzesGenerated, generatedRoots } from '../generated/generated-roots.mts';
 import { mavenBudget } from '../../adapters/gradle-wrapper/gradle-budget.mts';
 

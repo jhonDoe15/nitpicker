@@ -103,8 +103,10 @@ describe('java.buildTool', () => {
       configurationHash: 'hash',
       createInvocation: () => ({ args: [] }),
     };
-    const plain = configureJavaAnalyzer(base, { java: {} });
-    const pinned = configureJavaAnalyzer(base, { java: { buildTool: 'maven' } });
+    const plain = configureJavaAnalyzer(base, { java: { analyzeGeneratedSources: false } });
+    const pinned = configureJavaAnalyzer(base, {
+      java: { buildTool: 'maven', analyzeGeneratedSources: false },
+    });
     const { args } = pinned.createInvocation({ projectRoot: '.', toolRoot: '.' });
 
     expect(args.slice(0, 2)).toEqual(['--build-tool', 'maven']);

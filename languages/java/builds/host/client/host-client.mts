@@ -7,7 +7,7 @@ import { spawnSyncWithOutputFile } from '../../../../../core/tooling/output-file
 import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
 import { fieldOf, numberOr, textOf } from '../../../../../shared/values/readers.mts';
 import type { JavaSpawn } from '../../../adapters/typed/java-values.mts';
-import { toolHeapFlags } from '../../../maven/parallel/tool-slots.mts';
+import { toolHeapFlags } from '../../../maven/parallel/slots/tool-slots.mts';
 import { probeJava } from '../../../maven/programs/probe/java-probe-cache.mts';
 import {
   HOSTED_TOOLS,

@@ -1,27 +1,30 @@
 import { chmodSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { GRADLE_DIRECTORY } from '../../java-build.mts';
 import { fieldOf, textOf, textsOf } from '../../../../../shared/values/readers.mts';
 import { machineMemory } from '../../../../../shared/processes/machine-capacity.mts';
 import { privateDirectory } from '../client/host-client.mts';
 import { traceHosting } from '../config/host-trace.mts';
-import { compiledProgram, programSources } from '../../../maven/programs/helper-programs.mts';
+import type { compiledProgram } from '../../../maven/programs/helper-programs.mts';
 import { HOST_CONFIG_FILE, HOST_RELEASE, hostCap } from '../config/host-config.mts';
 import { stopHost } from '../config/host-files.mts';
 import { exportHostsDirectory, hostEnvironment } from '../config/host-environment.config.mts';
 import { attempt } from '../../../../../shared/values/attempt/attempt.mts';
 
 export type ToolHosts = { readonly stop: () => void };
-type HostRequest = {
+export type HostProgram = {
+  readonly compile: typeof compiledProgram;
+  readonly root: string;
+  readonly sources: () => string[];
+};
+export type HostRequest = {
   readonly work: string;
   readonly modules: number;
   readonly tools: unknown;
   readonly pinned: unknown;
   readonly warn: { readonly write: (text: string) => unknown };
-  readonly compile?: typeof compiledProgram;
+  readonly program: HostProgram;
 };
 
-const HOST_DIRECTORY = path.join(GRADLE_DIRECTORY, 'host');
 const HOSTS_FOLDER = 'hosts';
 const MINIMUM_MODULES = 2;
 const PRIVATE_MODE = 0o700;
@@ -34,16 +37,16 @@ function stopAll(directory: string): void {
   }
 }
 
-function compiledHost({ work, tools, pinned, compile = compiledProgram }: HostRequest): {
+function compiledHost({ work, tools, pinned, program }: HostRequest): {
   classpath: string;
 } {
   const libraries = textsOf(fieldOf(tools, 'effects')).filter((entry) => existsSync(entry));
-  const classes = compile({
+  const classes = program.compile({
     tool: 'The shared tool JVM',
     name: 'tool-host',
-    sources: programSources(HOST_DIRECTORY, { recursive: true }),
+    sources: program.sources(),
     version: textOf(fieldOf(pinned, 'asm')),
-    root: HOST_DIRECTORY,
+    root: program.root,
     release: HOST_RELEASE,
     libraries,
     cwd: work,

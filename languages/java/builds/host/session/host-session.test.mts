@@ -21,7 +21,7 @@ function request(modules: number): Parameters<typeof startToolHosts>[0] {
     tools: { effects: ['/asm.jar'] },
     pinned: { asm: '9.9' },
     warn: { write: warnings },
-    compile,
+    program: { compile, root: '/host', sources: () => [] },
   };
 }
 

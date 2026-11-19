@@ -3,11 +3,7 @@ import { runProjectTests } from './run-project-tests.mts';
 import { RUNNER_NAMES } from '../../preset/test-runner/runners.mjs';
 import type { TestOptions, TestReport, TestRun } from './typed/runner-types.mts';
 import type { TextOutput } from '../quality-areas/typed/area-types.mts';
-import {
-  NO_RERUN_VERDICT,
-  type RerunVerdict,
-  testKey,
-} from '../quality-areas/reporting/reruns/rerun-groups.mts';
+import { NO_RERUN_VERDICT, type RerunVerdict, testKey } from './reruns/rerun-verdict.mts';
 
 type Outcomes = { readonly failed: ReadonlySet<string>; readonly passed: ReadonlySet<string> };
 type Rerun = {

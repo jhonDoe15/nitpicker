@@ -46,7 +46,8 @@ import {
   assertionDetails,
 } from './failure-lines.mts';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
-import { NO_RERUN_VERDICT, type RerunVerdict, failureGroupLines } from './reruns/rerun-groups.mts';
+import { failureGroupLines } from './reruns/rerun-groups.mts';
+import { NO_RERUN_VERDICT, type RerunVerdict } from '../../test-runners/reruns/rerun-verdict.mts';
 
 const COULD_NOT_RUN = 'could not run';
 
