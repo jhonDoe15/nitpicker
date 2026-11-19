@@ -42,9 +42,9 @@ own root keeps its sources. Annotation processor output
   hand-written code that uses generated classes still resolves.
 - **Error Prone** still compiles generated sources, because hand-written code depends on them, but
   runs no checks on them: `-XepExcludedPaths` names the generated roots (joined with a pattern the
-  project declares itself) and `-XepDisableWarningsInGeneratedCode` is on. Error Prone matches the
-  pattern against the file's decoded path, so a directory with spaces or non-ASCII letters is
-  matched literally.
+  project declares itself). Error Prone matches the pattern against the file's decoded path, so a
+  directory with spaces or non-ASCII letters is matched literally. Hand-written code annotated
+  `@Generated` is still checked, so the fix-only checks can remove such annotations.
 
 ## `java.analyzeGeneratedSources`
 
