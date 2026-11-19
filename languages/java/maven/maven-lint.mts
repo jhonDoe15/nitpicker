@@ -150,6 +150,11 @@ export function runSpotbugs({
   timeoutMs,
 }: SpotbugsOptions): void {
   const report = path.join(reportDir, 'spotbugs.sarif');
+  const analyzed = path.resolve(module.outputDirectory);
+  const auxiliary = auxClasspath.filter(
+    (entry) => path.resolve(entry) !== analyzed && existsSync(entry),
+  );
+  const auxClasspathFile = path.join(reportDir, 'spotbugs-aux-classpath.txt');
   const hasClasses =
     existsSync(module.outputDirectory) && readdirSync(module.outputDirectory).length > 0;
   if (!hasClasses) {
@@ -163,7 +168,8 @@ export function runSpotbugs({
     writeFileSync(report, EMPTY_SARIF);
     return;
   }
-  const aux = targets === undefined ? auxClasspath : [...auxClasspath, module.outputDirectory];
+  const aux = targets === undefined ? auxiliary : [...auxiliary, module.outputDirectory];
+  writeFileSync(auxClasspathFile, [...new Set(aux)].join('\n'));
   runJava({
     tool: 'SpotBugs',
     classpath: tools['spotbugs'],
@@ -175,7 +181,7 @@ export function runSpotbugs({
       settings: textsOf(
         fieldOf(fieldOf(configs, 'spotbugs'), 'arguments') ?? spotbugsArguments(NITPICKER_SPOTBUGS),
       ),
-      auxClasspath: aux,
+      auxClasspathFile: aux.length === 0 ? undefined : auxClasspathFile,
       ...(targets === undefined ? {} : { targets: ['-analyzeFromFile', targets.list] }),
     }),
     cwd: module.basedir,
