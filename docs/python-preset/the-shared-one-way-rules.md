@@ -54,6 +54,8 @@ are listed at the end.
 | Defaulting parameters                           | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                                                        | `falsy-default` (script)                                                                                                                                                                                                                                                                                                                                                            |
 | Testing numbers                                 | `count > 0`, `index != -1`, `count is not None`                                                                                                                                        | `number-truthiness` (script)                                                                                                                                                                                                                                                                                                                                                        |
 | Null branch that continues                      | `if x is None:` then `return` (or `else:`), so the null case is handled once                                                                                                           | `null-branch-fall-through` (script)                                                                                                                                                                                                                                                                                                                                                 |
+| Django type plugin                              | `django-stubs` with its mypy plugin, or `django-types` for pyright, so `null=True` fields and `.first()` are Optional                                                                  | `django-types-missing` (script)                                                                                                                                                                                                                                                                                                                                                     |
+| Nullable values                                 | check before use: `if x is None: return`, `x or default`, `getattr(x, "a", None)`, `filter(field__isnull=False)`; `@login_required` or `is_authenticated` for `request.user`           | `nullable-dereference` (script)                                                                                                                                                                                                                                                                                                                                                     |
 | Request text in a lookup                        | `name.strip()` before the lookup, or `ConfigDict(str_strip_whitespace=True)` on a shared base model                                                                                    | `untrimmed-request-text` (script)                                                                                                                                                                                                                                                                                                                                                   |
 | Changing an argument                            | build and return a new value, or copy the argument first                                                                                                                               | `parameter-mutation` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Compatibility shims                             | change every caller in the same change and delete the old name                                                                                                                         | `compatibility-shim` (script)                                                                                                                                                                                                                                                                                                                                                       |
@@ -1468,6 +1470,33 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   Not reported: an empty branch (`pass`), `if not x:`, a use
   after another test of `x` (`if x is not None`, `x and x.attr`, `x if x else ...`, `assert x`,
   `isinstance`), a lambda or function that is not called on the spot, and test files.
+- `nullable-dereference` reports, in a Django project, a value that can be `None` where the function
+  uses it as present (an attribute, a call, a subscript, a `for` loop, a `len()`, `sorted()` or `list()`
+  argument, an ordering comparison or an `in` test) with no check before the use in the same function.
+  The value is a `null=True` field of a model (any field type, also `ForeignKey`, `OneToOneField` and
+  `JSONField`) read through `self` in a method of the model or through a variable that holds one row (a
+  `get()`, `first()`, `last()`, `earliest()` or `latest()` result, a loop variable over a model queryset, or
+  a parameter annotated with the model); the result of `.first()` or `.last()` on a model queryset; a
+  `.get(key)` without a default on `cleaned_data`, `validated_data`, `attrs`, `kwargs`, `request.GET`,
+  `request.POST`, `request.data` or `request.session` (also through a variable and `a.get(x) or b.get(y)`);
+  or an attribute of `request.user` that only a signed-in user has (a field, property or reverse accessor of
+  the project's user model, or `email`, `first_name`, `last_name`, `get_full_name`). Quiet: an `is None` or
+  `is not None` test, a truthiness test, `if not x: return`, `x and x.attr`, `x or default`, `x.attr if x
+else ...`, `assert x`, `isinstance(x, ...)` before the use, an assignment to the same name or attribute
+  before the use, a use inside `try` with an `except` that catches `AttributeError`, `TypeError` or
+  `Exception`, a row from a queryset filtered with `field__isnull=False` or `field=...`, an instance made by
+  `create()` or the model constructor, a many-to-many field, a view or class marked with `login_required`,
+  `permission_required`, `LoginRequiredMixin`, `IsAuthenticated` or `permission_classes`, and test files.
+  `request.user` is checked against `is_authenticated` and `is_anonymous`. One finding per value and
+  function, on its first unguarded use. Allowed form: check the value first, use `value or default` or
+  `getattr(value, "attr", None)`, or narrow the queryset; add `django-stubs` or `django-types` so the
+  type checker sees these values as Optional.
+- `django-types-missing` reports once per run, on the first model class of the project (by path), when
+  Django is a dependency (`pyproject.toml`, `Pipfile`, `setup.cfg`, `setup.py`, `requirements*.txt` or
+  `requirements/*.txt`) and none of those files, `mypy.ini`, `tox.ini` or `pyrightconfig.json` mentions
+  `django-stubs`, `django-types` or `mypy_django_plugin`. Python has no setup-notice channel for this, so
+  it is a script rule. A project without Django models or without Django in its dependencies is not
+  reported. The project installs and configures the plugin; nitpicker changes no type checker config.
 - `number-truthiness` reports a number (`int`, `float`, `complex`, `Decimal`, `Fraction`, also
   `Optional` and `|` members) that is tested for truth, where `0` reads as false or missing: a
   parameter or annotated local, and a number field of a class in the same module read through a
