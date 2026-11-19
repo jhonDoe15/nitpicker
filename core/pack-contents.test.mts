@@ -16,7 +16,7 @@ import { fieldAt } from '../scripts/json/fields.mts';
 import { listOf, parseJson, textOf } from '../shared/values/readers.mts';
 import { PAGE_IDS as UNTYPED_PAGE_IDS } from '../shared/reference/pages.mjs';
 import { REFERENCE_DATA_DIRECTORY as UNTYPED_DATA_DIRECTORY } from '../shared/reference/store.mjs';
-import { PACKAGE_ROOT as untypedPackageRoot } from './tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT as untypedPackageRoot } from './tooling/tool-resolution.mts';
 
 const root: string = untypedPackageRoot;
 const PAGE_IDS: readonly string[] = UNTYPED_PAGE_IDS;

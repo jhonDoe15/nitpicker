@@ -1,19 +1,31 @@
 import { describe, expect, it } from 'vitest';
 import { packageVersion } from '../../help/package-version.mts';
 import { useProjects, withPeers } from '../test-support/projects.mts';
-import { quotedTypescriptPin } from '../test-support/typescript-pin.mjs';
+import { quotedTypescriptPin } from '../test-support/typescript-pin.mts';
 import { planPeers } from './peer-plan.mts';
-import { javascriptApiPin } from '../test-support/typescript-pin.mjs';
+import type { InitProject } from '../init-types.mts';
+import { fieldOf, fieldsOf, textOf } from '../../../shared/values/readers.mts';
+import { javascriptApiPin } from '../test-support/typescript-pin.mts';
 
 const project = useProjects();
 const NITPICKER = `nitpicker@${packageVersion()}`;
-const YARN = {
+const YARN: InitProject = {
   family: 'node',
-  packageManager: { add: 'yarn add --dev', install: 'yarn' },
+  preset: 'typescript',
+  summary: '',
+  notes: [],
+  packageManager: {
+    add: 'yarn add --dev',
+    install: 'yarn',
+    run: 'yarn',
+    name: 'yarn',
+    root: '.',
+    locked: false,
+  },
   testRunner: 'vitest',
 };
 
-function olderApp(versions) {
+function olderApp(versions: Readonly<Record<string, string>>): string {
   return project({
     ...withPeers({
       typescript: '5.4.5',
@@ -87,9 +99,12 @@ describe('peer plan for an older React app', () => {
 
   it('reads a declared Vite when it is not installed', () => {
     const files = withPeers({ typescript: '5.4.5', vitest: '2.1.4' });
-    const manifest = JSON.parse(files['package.json']);
-    manifest.devDependencies.vite = '^4.5.0';
-    const plan = planPeers(project({ ...files, 'package.json': JSON.stringify(manifest) }), YARN);
+    const manifest: unknown = JSON.parse(textOf(files['package.json']));
+    const edited = {
+      ...fieldsOf(manifest),
+      devDependencies: { ...fieldsOf(fieldOf(manifest, 'devDependencies')), vite: '^4.5.0' },
+    };
+    const plan = planPeers(project({ ...files, 'package.json': JSON.stringify(edited) }), YARN);
 
     expect(plan.blockers).toHaveLength(1);
   });

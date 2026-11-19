@@ -10,7 +10,9 @@ import {
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
 import { maskedDiagnostics } from '../../diff/reporting/test-support/output-expectations.mts';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+import { fieldOf } from '../../../shared/values/readers.mts';
 import { fakeAnalyzer, useCliFixtures } from '../test-support/cli-harness.mts';
+import type { CliRunInput, FixtureRepository } from '../test-support/fixture-types.mts';
 
 const { createRepository, makeOutputRoot, runCli } = useCliFixtures(nitpickerCli);
 const FIRST = 'src/main/billing/first.ts';
@@ -55,7 +57,11 @@ function failingRepository() {
   return repository;
 }
 
-function execute(repository, arguments_, extra = {}) {
+function execute(
+  repository: FixtureRepository,
+  arguments_: readonly string[],
+  extra: Partial<CliRunInput> = {},
+) {
   const output = captureOutput();
   const exitCode = runCli({
     arguments_,
@@ -71,7 +77,7 @@ function execute(repository, arguments_, extra = {}) {
   return { exitCode, stdout: output.stdoutText, stderr: output.stderrText };
 }
 
-function runThenShow(showArguments = [], { all = false } = {}) {
+function runThenShow(showArguments: readonly string[] = [], { all = false } = {}) {
   const repository = failingRepository();
   const outputRoot = makeOutputRoot();
   const run = execute(repository, [
@@ -89,7 +95,7 @@ function runThenShow(showArguments = [], { all = false } = {}) {
   return { repository, outputRoot, run, shown };
 }
 
-function normalized(stdout) {
+function normalized(stdout: string): string {
   return stdout
     .replace(/head [0-9a-f]{12}/u, 'head <sha>')
     .replace(/run at \S+/u, 'run at <time>')
@@ -97,7 +103,7 @@ function normalized(stdout) {
     .replace(/Full diagnostics: .*\n/u, DIAGNOSTICS);
 }
 
-function summaryOf(stdout) {
+function summaryOf(stdout: string): string {
   return stdout.slice(stdout.indexOf('\nQuality'));
 }
 
@@ -315,7 +321,7 @@ describe('nitpicker show after an --all run', () => {
     execute(repository, ['--all']);
 
     const shown = execute(repository, ['show']);
-    const summary = JSON.parse(
+    const summary: unknown = JSON.parse(
       readFileSync(path.join(repository.root, 'reports/quality/snapshot/summary.json'), 'utf8'),
     );
 
@@ -324,6 +330,6 @@ describe('nitpicker show after an --all run', () => {
         `${BY_ANALYZER}${DIAGNOSTICS}`,
     );
     expect(shown.exitCode).toBe(1);
-    expect(summary.workingTree).toMatch(/^[0-9a-f]{64}$/u);
+    expect(fieldOf(summary, 'workingTree')).toMatch(/^[0-9a-f]{64}$/u);
   });
 });

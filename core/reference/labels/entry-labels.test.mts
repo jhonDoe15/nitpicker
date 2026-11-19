@@ -2,14 +2,15 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readReferenceEntries } from '../../../shared/reference/store.mjs';
+import { readReferenceEntries as untypedReadEntries } from '../../../shared/reference/store.mjs';
 import { LABELS, isKind } from '../../labels/taxonomy.mts';
 import { entryLabeler, labelProblems, labelTable } from './entry-labels.mts';
 import { upstreamLabelResolver } from './upstream-labels.mts';
 
+const readReferenceEntries: () => { id: string; labels: string[] }[] = untypedReadEntries;
 const entries = readReferenceEntries();
 const ids = new Set(entries.map(({ id }) => id));
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -85,7 +86,7 @@ describe('entryLabeler', () => {
       rule: 'UnorderedQuery',
       labels: ['bug', 'persistence'],
     });
-    expect(label({ id: 'ruff/PERF401', tool: 'ruff', rule: 'PERF401' }).labels).toEqual([
+    expect(label({ id: 'ruff/PERF401', tool: 'ruff', rule: 'PERF401' })['labels']).toEqual([
       'performance',
     ]);
   });

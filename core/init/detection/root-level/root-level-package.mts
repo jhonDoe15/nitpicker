@@ -4,7 +4,7 @@ import type { CodeFolders } from '../../../../languages/typescript/preset/notice
 import { parsedJsonc as untypedParsedJsonc } from '../../../../shared/jsonc/jsonc.mjs';
 import { resolveInside as untypedResolveInside } from '../../../../shared/conventions/read-inside.mjs';
 import { fieldOf, isPlainObject, listOf } from '../../../../shared/values/readers.mts';
-import { PROJECT_ROOT as untypedProjectRoot } from '../../../../languages/typescript/preset/layout/source-root/root-paths.mjs';
+import { PROJECT_ROOT as untypedProjectRoot } from '../../../../languages/typescript/preset/layout/source-root/root-paths.mts';
 
 type ParsedJsonc = { readonly kind: string; readonly value?: unknown };
 

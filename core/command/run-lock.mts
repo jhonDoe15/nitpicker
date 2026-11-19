@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import path from 'node:path';
-import { runGit } from '../diff/git/repository/command.mjs';
+import { runGit } from '../diff/git/repository/command.mts';
 import type { TextOutput } from '../cli-context.mts';
 import { acquireFileLock, isProcessAlive } from '../tooling/file-lock.mts';
 

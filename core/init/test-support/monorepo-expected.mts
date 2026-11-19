@@ -1,3 +1,5 @@
+import { textOf } from '../../../shared/values/readers.mts';
+
 const SKILL_SOURCE = 'jhonDoe15/nitpicker#v<version>';
 const TYPESCRIPT_PIN = 'typescript@>=5.7 <6.1.0';
 const OTHER_TOOLS = '@types/node vitest @vitest/coverage-v8';
@@ -13,11 +15,11 @@ const JAVA = 'java';
 const TYPESCRIPT = 'typescript';
 const JAVASCRIPT = 'javascript';
 
-function heading(count, origin) {
+function heading(count: number, origin: string): string[] {
   return [`nitpicker init: a monorepo of ${String(count)} projects, ${origin}`, ''];
 }
 
-function noOwnConfig(preset) {
+function noOwnConfig(preset: string): string {
   return `  No config of its own needed: the monorepo run gives it the "${preset}" preset.`;
 }
 
@@ -26,9 +28,13 @@ const LANGUAGE_NAMES = new Map([
   [JAVASCRIPT, 'JavaScript'],
 ]);
 
-function scriptMember(folder, preset, closing = [noOwnConfig(preset)]) {
+function scriptMember(
+  folder: string,
+  preset: string,
+  closing: readonly string[] = [noOwnConfig(preset)],
+): string[] {
   return [
-    `${folder}: ${LANGUAGE_NAMES.get(preset)}, npm, Vitest (preset "${preset}")`,
+    `${folder}: ${textOf(LANGUAGE_NAMES.get(preset))}, npm, Vitest (preset "${preset}")`,
     SCRIPT_MISSING,
     SCRIPT_INSTALL,
     ...closing,
@@ -50,7 +56,7 @@ const POLYGLOT_MEMBERS = [
   ...scriptMember('web', TYPESCRIPT),
 ];
 
-function skills(...languages) {
+function skills(...languages: readonly string[]): string[] {
   return [
     'Install the agent skills:',
     ...languages.map(
@@ -195,7 +201,7 @@ export const KEPT_MEMBER_CONFIG_OUTPUT = [
   ...THEN_RUN,
 ];
 
-function workflow(setup) {
+function workflow(setup: readonly string[]): string[] {
   return [
     'name: nitpicker',
     '',

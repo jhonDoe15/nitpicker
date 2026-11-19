@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 import { packageVersion } from '../../help/package-version.mts';
 import { useProjects } from '../test-support/projects.mts';
-import { javascriptApiPin, typescriptPin } from '../test-support/typescript-pin.mjs';
+import { javascriptApiPin, typescriptPin } from '../test-support/typescript-pin.mts';
 import {
   assertTypeScriptNode,
   missingNodePeers,

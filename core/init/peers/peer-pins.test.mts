@@ -1,14 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { chooseVitest, minimumOf, typescriptRequirement } from './peer-pins.mts';
+import {
+  type FoundVersion,
+  type VitestPeerTable,
+  chooseVitest,
+  minimumOf,
+  typescriptRequirement,
+} from './peer-pins.mts';
 
-const PEERS = {
+const PEERS: VitestPeerTable = {
   4: { vite: '^6.0.0 || ^7.0.0 || ^8.0.0' },
   5: { vite: '^6.4.0 || ^7.0.0 || ^8.0.0' },
 };
 
-const asExact = (version) => (version === undefined ? undefined : { exact: version });
+const asExact = (version: string | undefined): FoundVersion | undefined =>
+  version === undefined ? undefined : { exact: version };
 
-function choose(versions, declared = {}) {
+function choose(
+  versions: Readonly<Record<string, string>>,
+  declared: Readonly<Record<string, string>> = {},
+) {
   return chooseVitest({
     supported: '^4.1.11 || ^5.0.0',
     peers: PEERS,
@@ -18,7 +28,7 @@ function choose(versions, declared = {}) {
   });
 }
 
-function blockedAdvice(found) {
+function blockedAdvice(found: string): string {
   return [
     'No Vitest that nitpicker supports (^4.1.11 || ^5.0.0) runs with the installed packages: ',
     `Vitest 5 needs vite ^6.4.0 || ^7.0.0 || ^8.0.0 but the project has ${found}; `,

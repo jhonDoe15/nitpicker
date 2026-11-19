@@ -10,6 +10,8 @@ import {
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 import { fakeAnalyzer, useCliFixtures } from '../test-support/cli-harness.mts';
+import type { FixtureRepository } from '../test-support/fixture-types.mts';
+import { fieldOf } from '../../../shared/values/readers.mts';
 
 const { createRepository, makeOutputRoot, runCli } = useCliFixtures(nitpickerCli);
 
@@ -28,7 +30,7 @@ function repositoryWithNestedPackage() {
   return repository;
 }
 
-function runFrom(repository, folder, extra = []) {
+function runFrom(repository: FixtureRepository, folder: string, extra: readonly string[] = []) {
   const output = captureOutput();
   const outputRoot = makeOutputRoot();
   const base = extra.includes('--all') ? [] : ['--base', repository.baseRef];
@@ -41,12 +43,12 @@ function runFrom(repository, folder, extra = []) {
     stdout: output.stdout,
     stderr: output.stderr,
   });
-  const read = (name) => readFileSync(path.join(outputRoot, name), 'utf8');
+  const read = (name: string) => readFileSync(path.join(outputRoot, name), 'utf8');
   return {
     exitCode,
     firstLine: output.stdoutText.split('\n')[0],
     reportHead: read('report.txt').split('\n').slice(0, 2),
-    projectPath: JSON.parse(read('summary.json')).projectPath,
+    projectPath: fieldOf(JSON.parse(read('summary.json')), 'projectPath'),
   };
 }
 

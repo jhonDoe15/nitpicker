@@ -5,7 +5,7 @@ import { runQualitySnapshot } from './run-snapshot.mts';
 const { temporaryRoot } = useGitFixtures();
 const NAMES = ['eslint-errors', 'eslint-logging', 'eslint-module-effects'];
 
-function unused(tool) {
+function unused(tool: string) {
   return {
     tool,
     rule: 'eslint/unused-disable-directive',
@@ -17,7 +17,7 @@ function unused(tool) {
   };
 }
 
-function snapshot(usedBy) {
+function snapshot(usedBy?: string) {
   const analyzers = NAMES.map((name) => ({
     name,
     version: '1',
@@ -29,7 +29,8 @@ function snapshot(usedBy) {
   return runQualitySnapshot({
     analyzers,
     projectRoot: temporaryRoot('nitpicker-snapshot-directives-'),
-    runTasks: (tasks) => ({
+    scope: undefined,
+    runTasks: (tasks: readonly { readonly name: string }[]) => ({
       reports: tasks.map(({ name }) => [name, { findings: name === usedBy ? [] : [unused(name)] }]),
       errors: [],
       timings: [],

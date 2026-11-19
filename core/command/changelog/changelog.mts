@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mts';
 import type { TextOutput } from '../../cli-context.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 

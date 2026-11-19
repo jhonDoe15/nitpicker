@@ -6,6 +6,8 @@ import { captureOutput } from '../../diff/reporting/test-support/output-capture.
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 import { EXECUTION_INPUTS, sourceInputs } from '../../../shared/input-sets/inputs.mjs';
 import { crashingAnalyzer, fakeAnalyzer, useCliFixtures } from '../test-support/cli-harness.mts';
+import type { FixtureAnalyzer } from '../test-support/fixture-types.mts';
+import { fieldOf, fieldsOf, listOf } from '../../../shared/values/readers.mts';
 
 const { createRepository, makeOutputRoot, runCli } = useCliFixtures(nitpickerCli);
 
@@ -15,7 +17,10 @@ const initialFiles = {
   'src/main/clean.ts': 'export const clean = true;\n',
 };
 
-function runChange(changes, analyzers) {
+function runChange(
+  changes: Readonly<Record<string, string>>,
+  analyzers: readonly FixtureAnalyzer[],
+) {
   const repository = createRepository(initialFiles);
   writeFiles(repository.root, changes);
   const output = captureOutput();
@@ -28,8 +33,13 @@ function runChange(changes, analyzers) {
     stdout: output.stdout,
     stderr: output.stderr,
   });
-  const summary = JSON.parse(readFileSync(path.join(outputRoot, 'summary.json'), 'utf8'));
+  const parsed: unknown = JSON.parse(readFileSync(path.join(outputRoot, 'summary.json'), 'utf8'));
+  const summary = fieldsOf(parsed);
   return { exitCode, output, summary, repository, outputRoot };
+}
+
+function toolNames(summary: Readonly<Record<string, unknown>>): unknown[] {
+  return listOf(summary['tools']).map((tool) => fieldOf(tool, 'name'));
 }
 
 const executionCrash = () => ({ ...crashingAnalyzer(), inputs: EXECUTION_INPUTS });
@@ -52,10 +62,10 @@ describe('skipping analyzers a change cannot affect', () => {
       `No analyzer reads the files changed since comparison-base (${repository.baseSha.slice(0, 12)}); skipped crashing-analyzer, source-crash.\n`,
     );
     expect(output.stderrText).toBe('');
-    expect(summary.noChanges).toBeUndefined();
-    expect(summary.skippedAll).toBe(true);
-    expect(summary.skippedAnalyzers).toEqual(['crashing-analyzer', 'source-crash']);
-    expect(summary.tools).toEqual([]);
+    expect(summary['noChanges']).toBeUndefined();
+    expect(summary['skippedAll']).toBe(true);
+    expect(summary['skippedAnalyzers']).toEqual(['crashing-analyzer', 'source-crash']);
+    expect(summary['tools']).toEqual([]);
   });
 
   it.each([
@@ -69,9 +79,9 @@ describe('skipping analyzers a change cannot affect', () => {
     const { exitCode, summary } = runChange({ [file]: content }, [executionCrash(), sourceCrash()]);
 
     expect(exitCode).toBe(2);
-    expect(summary.noChanges).toBeUndefined();
-    expect(summary.skippedAnalyzers).toBeUndefined();
-    expect(summary.tools.map(({ name }) => name)).toEqual(['crashing-analyzer', 'source-crash']);
+    expect(summary['noChanges']).toBeUndefined();
+    expect(summary['skippedAnalyzers']).toBeUndefined();
+    expect(toolNames(summary)).toEqual(['crashing-analyzer', 'source-crash']);
   });
 
   it('runs only the analyzers whose inputs the change touches', () => {
@@ -81,8 +91,8 @@ describe('skipping analyzers a change cannot affect', () => {
     );
 
     expect(exitCode).toBe(2);
-    expect(summary.skippedAnalyzers).toEqual(['quiet-analyzer']);
-    expect(summary.tools.map(({ name }) => name)).toEqual(['crashing-analyzer']);
+    expect(summary['skippedAnalyzers']).toEqual(['quiet-analyzer']);
+    expect(toolNames(summary)).toEqual(['crashing-analyzer']);
     expect(output.stdoutText).toBe(
       [
         'Base: comparison-base (argument)',
@@ -102,6 +112,6 @@ describe('skipping analyzers a change cannot affect', () => {
     const { exitCode, summary } = runChange({ 'README.md': 'changed\n' }, [crashingAnalyzer()]);
 
     expect(exitCode).toBe(2);
-    expect(summary.tools.map(({ name }) => name)).toEqual(['crashing-analyzer']);
+    expect(toolNames(summary)).toEqual(['crashing-analyzer']);
   });
 });

@@ -3,11 +3,11 @@ import path from 'node:path';
 import {
   detectedPreset,
   scriptProjectPreset,
-} from '../../configuration/project-checks/preset-detection.mjs';
+} from '../../configuration/project-checks/preset-detection.mts';
 import {
   sourceRoots as defaultSourceRoots,
   resolveLayoutFor,
-} from '../../../languages/typescript/preset/layout.mjs';
+} from '../../../languages/typescript/preset/layout.mts';
 import {
   type CodeFolders,
   codeFolders,
