@@ -135,7 +135,7 @@ jobs:
   self-gate:
     if: github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     permissions:
       contents: read
       statuses: read
@@ -201,17 +201,26 @@ jobs:
           fi
       # ESLint over this repository takes about four and a half minutes on a CI runner, close to the
       # five-minute default. The longer budget is set for CI only, in the checkout; a timeout is not
-      # policy, so it changes no digest and both snapshots run with it.
+      # policy, so it changes no digest and both snapshots run with it. The budget is committed on
+      # top of the checkout, because the gate binds an approval to the commit of a clean tree: an
+      # approval of the checkout carries over to that local commit, which only adds the budget.
       - name: Give eslint-lint a CI time budget
+        id: budget
+        env:
+          ACCEPTANCE: ${{ steps.approval.outputs.acceptance }}
         run: |
           node -e "const fs = require('node:fs'); const file = 'nitpicker.config.json'; const config = JSON.parse(fs.readFileSync(file, 'utf8')); config.analyzerTimeoutMinutes = { ...config.analyzerTimeoutMinutes, 'eslint-lint': 10 }; fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\\n');"
           npx prettier --write nitpicker.config.json
+          git -c user.name=nitpicker -c user.email=nitpicker@users.noreply.github.com commit --quiet --no-verify -m 'CI time budget for eslint-lint' -- nitpicker.config.json
+          if [ -n "$ACCEPTANCE" ]; then
+            echo "acceptance=commit:$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          fi
       # The CLI takes the base from GITHUB_BASE_REF on a pull request and origin/main on a manual run;
       # policy is nitpicker.config.json.
       - name: nitpicker on itself
         run: node core/cli.mts --output reports/nitpicker
         env:
-          NITPICKER_ACCEPT_POLICY_CHANGE: ${{ steps.approval.outputs.acceptance || vars.NITPICKER_ACCEPT_POLICY_CHANGE }}
+          NITPICKER_ACCEPT_POLICY_CHANGE: ${{ steps.budget.outputs.acceptance || vars.NITPICKER_ACCEPT_POLICY_CHANGE }}
       - uses: actions/upload-artifact@v7.0.2
         if: failure()
         with:

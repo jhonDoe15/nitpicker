@@ -2,7 +2,7 @@ import {
   mochaLoadArguments,
   mochaModulePath,
   projectMocha,
-} from '../../test-runner/mocha-options.mjs';
+} from '../../test-runner/test-files/mocha-options.mjs';
 import { MOCHA_OPTIONS_NITPICKER_SETS } from '../../test-runner/runners.mjs';
 import { withoutOptions } from '../../test-runner/script-command.mjs';
 import { loadInChild, loaderScript } from '../config-module.mjs';

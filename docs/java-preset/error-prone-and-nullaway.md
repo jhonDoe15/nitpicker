@@ -705,6 +705,9 @@ The pairs:
 - line: `pmd/UnsynchronizedStaticFormatter` over `spotbugs/STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE`
 - class: `errorprone/DateFormatConstant` over `pmd/UnsynchronizedStaticFormatter`, `spotbugs/STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE`
 - field: `errorprone/DateFormatConstant` over `spotbugs/STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE`
+- line: `pmd/SharedStatefulHelperField` over `errorprone/DateFormatConstant`
+- field: `pmd/SharedStatefulHelperField` over `spotbugs/STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE`, `spotbugs/STCAL_STATIC_CALENDAR_INSTANCE`
+- class: `pmd/SharedStatefulHelperField` over `pmd/UnsynchronizedStaticFormatter`, `spotbugs/STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE`
 - line: `pmd/NonThreadSafeSingleton` over `spotbugs/LI_LAZY_INIT_STATIC`, `spotbugs/SING_SINGLETON_GETTER_NOT_SYNCHRONIZED`
 - line: `kotlin-source/ChildCoroutineOutlivesResource` over `pmd/CoroutineEscapesTest`
 - line: `pmd/SqlConcatenation` over `spotbugs/SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE`, `spotbugs/SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING`

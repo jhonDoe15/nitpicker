@@ -40,6 +40,14 @@ describeRules('process-env-access', () => {
       ['process-env-access:5 os.getenv'],
     ],
     ['another module named os', 'import osx\n\nURL = osx.environ["URL"]\n', []],
+    ['a parameter called os', 'def f(os):\n    return os.environ["URL"]\n', []],
+    ['a local called os', 'os = make()\n\nURL = os.getenv("URL")\n', []],
+    ['getattr on a parameter called os', 'def f(os):\n    return getattr(os, "environ")\n', []],
+    [
+      'getattr on the os module',
+      'import os\n\nENV = getattr(os, "environ")\n',
+      ['process-env-access:3 os.environ'],
+    ],
     ['a local variable called environ', 'def f(environ):\n    return environ["URL"]\n', []],
   ]);
 

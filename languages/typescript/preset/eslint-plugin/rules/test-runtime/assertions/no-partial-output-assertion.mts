@@ -2,6 +2,13 @@ import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint
 import { isExpectCall, memberName } from '../../analysis/test-code-analysis.mts';
 import { chainOf } from '../../typed/node-views.mts';
 import { appendAll } from '../../../../../../../shared/lists/lists.mts';
+import {
+  type AssertionVerdict,
+  isFragmentMatch,
+  isTextArgument,
+  runnerAssertionVerdict,
+} from '../../runner-apis/runner-assertions.mts';
+import { RUNNER_OPTION_SCHEMA, vocabularyOf } from '../../runner-apis/runner-option.mts';
 
 type MemberCall = TSESTree.CallExpression & { readonly callee: TSESTree.MemberExpression };
 
@@ -30,26 +37,6 @@ function startsFromExpect(callee: TSESTree.MemberExpression): boolean {
   return root !== undefined && isExpectCall(root);
 }
 
-function isTextArgument(node: TSESTree.Node | undefined): boolean {
-  return (
-    (node?.type === AST_NODE_TYPES.Literal && typeof node.value === 'string') ||
-    node?.type === AST_NODE_TYPES.TemplateLiteral
-  );
-}
-
-function isAnchoredPattern(node: TSESTree.RegExpLiteral): boolean {
-  const { pattern } = node.regex;
-  return pattern.startsWith('^') && pattern.endsWith('$') && !pattern.endsWith('\\$');
-}
-
-function isFragmentMatch(node: TSESTree.CallExpression): boolean {
-  const argument = node.arguments[0];
-  if (argument?.type === AST_NODE_TYPES.Literal && 'regex' in argument) {
-    return !isAnchoredPattern(argument);
-  }
-  return isTextArgument(argument);
-}
-
 function isPositiveExpectation(callee: TSESTree.MemberExpression): boolean {
   return startsFromExpect(callee) && !isNegatedExpectation(callee);
 }
@@ -66,7 +53,7 @@ function isPartialAssertion(node: TSESTree.CallExpression): node is MemberCall {
   if (matcher === 'toContain' && !isTextArgument(node.arguments[0])) {
     return false;
   }
-  if (matcher === 'toMatch' && !isFragmentMatch(node)) {
+  if (matcher === 'toMatch' && !isFragmentMatch(node.arguments[0])) {
     return false;
   }
   return isPositiveExpectation(callee);
@@ -126,28 +113,45 @@ function isPartialMatcherAssertion(node: TSESTree.CallExpression): node is Membe
   );
 }
 
+function verdictOf(node: TSESTree.CallExpression): AssertionVerdict {
+  if (isPartialAssertion(node)) {
+    return 'partialOutput';
+  }
+  return isPartialMatcherAssertion(node) ? 'partialMatcher' : runnerAssertionVerdict(node);
+}
+
+function reportedNode(node: TSESTree.CallExpression): TSESTree.Node {
+  return node.callee.type === AST_NODE_TYPES.MemberExpression ? node.callee.property : node.callee;
+}
+
 export const rule: TSESLint.RuleModule<'partialOutput' | 'partialMatcher'> = {
   meta: {
     type: 'problem',
     docs: {
       description: 'Require tests to assert the whole output instead of a fragment of it',
     },
-    schema: [],
+    schema: RUNNER_OPTION_SCHEMA,
     messages: {
       partialOutput:
-        'Assert the whole output with `toEqual` or `toBe` instead of checking that it contains a fragment (`toContain`, or `toMatch` with a pattern that is not anchored `^...$`): a fragment passes even when the rest is wrong. An exception fits only when the output is too large or unordered to pin.',
+        'Assert the whole output with {{wholeOutput}} instead of checking that it contains a fragment ({{fragmentForms}}): a fragment passes even when the rest is wrong. An exception fits only when the output is too large or unordered to pin.',
       partialMatcher:
-        'Pass the whole expected value to `toEqual` instead of a partial match (`toMatchObject`, `expect.objectContaining`, `expect.stringContaining`, `expect.arrayContaining`): the rest of the value goes unchecked. Use `expect.any(Type)` for a field that varies. An exception fits only when the value is too large or unordered to pin.',
+        'Pass the whole expected value to {{wholeValue}} instead of a partial match ({{partialForms}}): the rest of the value goes unchecked. {{variedField}} An exception fits only when the value is too large or unordered to pin.',
     },
   },
   create(context) {
     return {
       CallExpression(node) {
-        if (isPartialAssertion(node)) {
-          context.report({ node: node.callee.property, messageId: 'partialOutput' });
-        } else if (isPartialMatcherAssertion(node)) {
-          context.report({ node: node.callee.property, messageId: 'partialMatcher' });
+        const messageId = verdictOf(node);
+        if (messageId === undefined) {
+          return;
         }
+        const { wholeOutput, fragmentForms, wholeValue, partialForms, variedField } =
+          vocabularyOf(context);
+        context.report({
+          node: reportedNode(node),
+          messageId,
+          data: { wholeOutput, fragmentForms, wholeValue, partialForms, variedField },
+        });
       },
     };
   },

@@ -20,3 +20,9 @@ def secure(suffix: str | None, default: str) -> str:
 
 def present(values: list[str | None]) -> list[str | None]:
     return [value for value in values if value is not None]
+
+
+def search(query: str | None) -> str:
+    if query:
+        return query.strip()
+    return ""

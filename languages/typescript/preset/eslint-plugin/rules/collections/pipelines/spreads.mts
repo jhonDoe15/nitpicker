@@ -1,4 +1,9 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import type { Context } from '../../security/security-values.mts';
+import { spreadCopyFix } from '../../../fixes/collections/spread-copy-fix.mts';
+import { fallbackSpreadFix } from '../../../fixes/collections/fallback-spread-fix.mts';
+import { hasArrayType } from '../../support/checked-types.mts';
+import { fixable } from '../../../fixes/support/descriptors.mts';
 import { calledMember, memberName, unwrapped } from '../costly-forms/repeated-runs.mts';
 
 const ARRAY_RESULTS = new Set([
@@ -17,6 +22,7 @@ const STATIC_ARRAY_RESULTS = new Map([
 ]);
 const ITERABLE_CONSTRUCTORS = new Set(['Map', 'Set', 'WeakMap', 'WeakSet']);
 const PROMISE_METHODS = new Set(['all', 'allSettled', 'any', 'race']);
+const PROMISE_ARRAYS = new Set(['all', 'allSettled']);
 const FALLBACKS = new Set(['||', '??']);
 
 function staticCall(
@@ -34,19 +40,26 @@ function staticCall(
   );
 }
 
-function isNewArray(node: TSESTree.Node): boolean {
+function isArrayMethodResult(context: Context, member: TSESTree.MemberExpression): boolean {
+  const name = memberName(member);
+  if (member.computed || name === undefined || !ARRAY_RESULTS.has(name)) {
+    return false;
+  }
+  return name === 'split' || hasArrayType(context, member.object) === 'yes';
+}
+
+function isNewArray(context: Context, node: TSESTree.Node): boolean {
   const value = unwrapped(node);
   if (value.type === AST_NODE_TYPES.ArrayExpression) {
     return true;
   }
   if (value.type === AST_NODE_TYPES.AwaitExpression) {
-    return staticCall(value.argument, new Map([['Promise', PROMISE_METHODS]]));
+    return staticCall(value.argument, new Map([['Promise', PROMISE_ARRAYS]]));
   }
   const member = value.type === AST_NODE_TYPES.CallExpression ? calledMember(value) : undefined;
-  const name = member === undefined ? undefined : memberName(member);
   return (
     staticCall(value, STATIC_ARRAY_RESULTS) ||
-    (member !== undefined && !member.computed && name !== undefined && ARRAY_RESULTS.has(name))
+    (member !== undefined && isArrayMethodResult(context, member))
   );
 }
 
@@ -77,29 +90,34 @@ function takesIterable(outer: TSESTree.Node): boolean {
 }
 
 export function uselessSpread(
+  context: Context,
   array: TSESTree.ArrayExpression,
 ): TSESLint.ReportDescriptor<'uselessSpread'> | undefined {
   const [only] = array.elements;
   if (array.elements.length !== 1 || only?.type !== AST_NODE_TYPES.SpreadElement) {
     return undefined;
   }
-  if (isNewArray(only.argument)) {
-    return {
-      node: only,
-      messageId: 'uselessSpread',
-      data: { what: 'an array that is already new' },
-    };
+  const plan = spreadCopyFix(context, array, only);
+  if (isNewArray(context, only.argument)) {
+    return fixable(
+      { node: only, messageId: 'uselessSpread', data: { what: 'an array that is already new' } },
+      plan,
+    );
   }
   return takesIterable(array)
-    ? {
-        node: only,
-        messageId: 'uselessSpread',
-        data: { what: 'an iterable that the receiver already takes' },
-      }
+    ? fixable(
+        {
+          node: only,
+          messageId: 'uselessSpread',
+          data: { what: 'an iterable that the receiver already takes' },
+        },
+        plan,
+      )
     : undefined;
 }
 
 export function fallbackSpread(
+  context: Context,
   spread: TSESTree.SpreadElement,
 ): TSESLint.ReportDescriptor<'fallbackInSpread'> | undefined {
   const value = unwrapped(spread.argument);
@@ -110,6 +128,9 @@ export function fallbackSpread(
   return FALLBACKS.has(value.operator) &&
     fallback.type === AST_NODE_TYPES.ObjectExpression &&
     fallback.properties.length === 0
-    ? { node: spread, messageId: 'fallbackInSpread', data: { operator: value.operator } }
+    ? fixable(
+        { node: spread, messageId: 'fallbackInSpread', data: { operator: value.operator } },
+        fallbackSpreadFix(context, spread, value),
+      )
     : undefined;
 }

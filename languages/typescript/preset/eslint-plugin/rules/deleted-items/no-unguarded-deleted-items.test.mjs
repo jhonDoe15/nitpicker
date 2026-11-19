@@ -174,3 +174,77 @@ readonlyTester.run('no-unguarded-deleted-items on a flag declared in Readonly<{.
     },
   ],
 });
+
+const INCLUDING_TYPES = [
+  'export interface Item { id: string; isDeleted: boolean; label: string }',
+  'export declare const items: readonly Item[];',
+  'export declare function getItemsIncludingDeleted(): readonly Item[];',
+  'export declare function withDeletedItems(): readonly Item[];',
+  'export declare const trash: readonly Item[];',
+].join('\n');
+const INCLUDING_GUARDED = Array.from(
+  { length: 30 },
+  (_, index) => `export const g${String(index)} = items.filter((i) => !i.isDeleted).length;`,
+);
+const INCLUDING_OPEN = [
+  'export const o1 = getItemsIncludingDeleted().map((item) => item.id);',
+  'export const o2 = withDeletedItems().map((item) => item.label);',
+  'const everything = getItemsIncludingDeleted();',
+  'export const o3 = everything.filter((item) => item.label !== "");',
+  'export function o4() { for (const item of everything) { console.log(item.id); } }',
+  'export function o5(elementsIncludingDeleted: readonly Item[]) {',
+  '  return elementsIncludingDeleted.map((item) => item.id);',
+  '}',
+  'export function o6(list: readonly Item[]) { return list.map((item) => item.id); }',
+  'export const o7 = o6(getItemsIncludingDeleted());',
+  'export const o8 = o6(everything);',
+  'export function o9(list: readonly Item[]) { return list.map((item) => item.label); }',
+  'export const o10 = o9(getItemsIncludingDeleted());',
+  'export const o11 = o9(items);',
+].join('\n');
+const { tester: includingTester, typed: includingTyped } = typedIoProject(
+  'deleted-items-including',
+  INCLUDING_TYPES,
+  {
+    'guarded.ts': ["import { items } from './store';", ...INCLUDING_GUARDED].join('\n'),
+    'open.ts': [
+      "import { Item, items, getItemsIncludingDeleted, withDeletedItems } from './store';",
+      INCLUDING_OPEN,
+    ].join('\n'),
+  },
+);
+const INCLUDING_HEADER = "import { Item, items, trash } from './store';\n";
+
+includingTester.run('no-unguarded-deleted-items leaves including-deleted collections out', rule, {
+  valid: [
+    includingTyped(
+      `${INCLUDING_HEADER}export function ids(elementsIncludingDeleted: Item[]) { for (const item of elementsIncludingDeleted) { console.log(item.id); } }`,
+    ),
+  ],
+  invalid: [
+    {
+      ...includingTyped(
+        `${INCLUDING_HEADER}export function ids(itemsWithDeletedAt: Item[]) { for (const item of itemsWithDeletedAt) { console.log(item.id); } }`,
+      ),
+      errors: [{ messageId: 'unguarded' }],
+    },
+    {
+      ...includingTyped(
+        `${INCLUDING_HEADER}export function ids(withDeletedAtLeast: Item[]) { return withDeletedAtLeast.map((item) => item.id); }`,
+      ),
+      errors: [{ messageId: 'unguarded' }],
+    },
+    {
+      ...includingTyped(
+        `${INCLUDING_HEADER}export function ids() { for (const item of items) { console.log(item.id); } }`,
+      ),
+      errors: [{ message: /`for\.\.\.of` over `Item`.*`isDeleted`.*8\d%/u }],
+    },
+    {
+      ...includingTyped(
+        `${INCLUDING_HEADER}export const labels = trash.map((item) => item.label);`,
+      ),
+      errors: [{ messageId: 'unguarded' }],
+    },
+  ],
+});

@@ -22,15 +22,21 @@ describe('optionalAbstractRecipe', () => {
       'abstract class A {\n    abstract fun f()\n    interface I { fun g() }\n}\n',
     );
   });
-  it('keeps abstract in strings and comments', () => {
-    const text =
-      'interface A {\n    // abstract fun f()\n    val s: String get() = "abstract fun"\n}\n';
-
+  it.each([
+    [
+      'abstract in strings and comments',
+      'interface A {\n    // abstract fun f()\n    val s: String get() = "abstract fun"\n}\n',
+    ],
+    ['a modifier with a comment after it', 'interface I {\n  abstract /* keep */ fun f()\n}\n'],
+    [
+      'abstract members of an abstract class that follows a bodyless interface',
+      'interface Marker\n\nabstract class Shape {\n    abstract fun area(): Int\n}\n',
+    ],
+    [
+      'abstract members of an abstract class declared in an interface',
+      'interface R {\n    abstract class Impl : R {\n        abstract fun f(): Int\n    }\n}\n',
+    ],
+  ])('keeps %s', (_name, text) => {
     expect(fix(text)).toBe(text);
-  });
-  it('declines a modifier with a comment after it', () => {
-    const text = 'interface I {\n  abstract /* keep */ fun f()\n}\n';
-
-    expect(applyRecipe(optionalAbstractRecipe, text)).toBe(text);
   });
 });

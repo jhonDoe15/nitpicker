@@ -1,0 +1,34 @@
+  <rule name="CleanupLoopStopsOnFailure" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This loop releases each element in a cleanup method without a try, so the first element whose release throws ends the loop and the remaining ones stay open (file handles, cursors, connections). Release each element in its own try/catch, collect the failures, and rethrow the first one with the others added as suppressed (try (...) around each element, or a helper that does this). An exception fits only when a failed release should abort the remaining ones.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $releases := ('close', 'destroy', 'stop', 'dispose', 'disconnect'),
+    $cleanup := ('close', 'dispose', 'destroy', 'shutdown', 'stop', 'teardown', 'tearDown', 'disconnect', 'end', 'cleanup',
+                 'doClose', 'doStop', 'doDestroy', 'doShutdown'),
+    $hooks := ('javax.annotation.PreDestroy', 'jakarta.annotation.PreDestroy'),
+    $skipped := ('java.util.concurrent.ExecutorService', 'java.lang.Thread', 'java.util.Timer'),
+    $element := function($call, $name) {
+      exists($call/*[1][self::VariableAccess or self::CastExpression][(self::CastExpression/*[last()] | .)[self::VariableAccess][@Name = $name]])
+      and empty($call/*[1][some $t in $skipped satisfies pmd-java:typeIs($t)])
+    }
+return //MethodDeclaration[@Name = $cleanup or ModifierList/Annotation[some $hook in $hooks satisfies pmd-java:typeIs($hook)]]
+  /Block//(
+    ForeachStatement/*[last()]//MethodCall[@MethodName = $releases][empty(ArgumentList/*)][parent::ExpressionStatement]
+      [let $loop := ancestor::ForeachStatement[1]
+       return $element(., $loop/LocalVariableDeclaration/VariableDeclarator/VariableId/@Name)
+              and empty(ancestor::TryStatement intersect $loop//TryStatement)
+              and empty(ancestor::LambdaExpression intersect $loop//LambdaExpression)]
+    |
+    MethodCall[@MethodName = 'forEach']/ArgumentList[count(*) = 1]/*[1][
+      self::MethodReference[@MethodName = $releases]
+      or self::LambdaExpression[count(LambdaParameterList/LambdaParameter) = 1]
+           [let $p := LambdaParameterList/LambdaParameter/VariableId/@Name
+            return exists((*[last()][self::MethodCall] | *[last()][self::Block][count(*) = 1]/ExpressionStatement/MethodCall)
+                          [@MethodName = $releases][empty(ArgumentList/*)][$element(., $p)])]]/../..
+  )
+]]></value>
+      </property>
+    </properties>
+  </rule>

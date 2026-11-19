@@ -1,5 +1,5 @@
 import { parsedTsconfig as untypedParsedTsconfig } from '../../../../preset/modules/tsconfig-files.mjs';
-import { hasProjectFile as untypedHasProjectFile } from '../../../../preset/test-runner/detect-runner.mjs';
+import { hasProjectFile as untypedHasProjectFile } from '../../../../preset/test-runner/detection/project-files.mjs';
 import { compareText as untypedCompareText } from '../../../../../../shared/paths/path-order.mjs';
 import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../../shared/project-files/project-files.mjs';
 

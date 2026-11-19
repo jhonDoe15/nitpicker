@@ -8,6 +8,7 @@ import type { RecipeResult } from '../../../../../core/fix/typed/fix-views.mts';
 import type { FixFile, FixRecipe } from '../../../../../core/fix/typed/fix-types.mts';
 import type { LabeledHunk } from '../patch/select-hunks.mts';
 import { ruleOf, SAFE_CHECKS } from '../checks/error-prone-checks.mts';
+import { twinsOf } from '../checks/twin-rules.mts';
 import { errorProneRecipes } from './error-prone-recipes.mts';
 import { labeledHunk } from '../patch/test-support/labeled-hunks.mts';
 
@@ -81,8 +82,23 @@ describe('the Error Prone recipes', () => {
     );
     expect(result.fixedFindings).toEqual([
       `${NAME}:3 errorprone/MissingOverride (java-error-prone-safe)`,
+      `${NAME}:3 pmd/MissingOverride (java-error-prone-safe)`,
     ]);
     expect(result.toolErrors).toEqual([]);
+  });
+
+  it('apply an Error Prone fix when the PMD twin it clears is selected', () => {
+    const root = project();
+
+    const result = run(root, [STATIC, OVERRIDE], ['pmd/MissingOverride']);
+
+    expect(readFileSync(path.join(root, NAME), 'utf8')).toBe(
+      'class A {\n  class Inner {}\n  @Override void run() {}\n}\n',
+    );
+    expect(result.fixedFindings).toEqual([
+      `${NAME}:3 errorprone/MissingOverride (java-error-prone-safe)`,
+      `${NAME}:3 pmd/MissingOverride (java-error-prone-safe)`,
+    ]);
   });
 
   it('apply a review check when its rule is selected, and only the selected rule', () => {
@@ -110,7 +126,11 @@ describe('the Error Prone recipes', () => {
     expect(readFileSync(path.join(root, NAME), 'utf8')).toBe(
       'class A {\n  static class Inner {}\n  @Override void run() {}\n}\n',
     );
-    expect(result.fixedFindings).toHaveLength(2);
+    expect(result.fixedFindings).toEqual([
+      `${NAME}:3 errorprone/MissingOverride (java-error-prone-safe)`,
+      `${NAME}:3 pmd/MissingOverride (java-error-prone-safe)`,
+      `${NAME}:2 errorprone/ClassCanBeStatic (java-error-prone-review)`,
+    ]);
     expect(result.notes).toEqual([]);
   });
 
@@ -182,7 +202,7 @@ describe('the Error Prone recipes', () => {
 
     expect(safe?.presets).toEqual(['java', 'kotlin']);
     expect([safe?.safety, review?.safety]).toEqual(['safe', 'review']);
-    expect(safe?.rules).toEqual(SAFE_CHECKS.map(ruleOf));
+    expect(safe?.rules).toEqual(SAFE_CHECKS.flatMap((check) => [ruleOf(check), ...twinsOf(check)]));
     expect([ownSafe, ownReview].map((recipe) => recipe?.presets)).toEqual([
       ['java', 'kotlin'],
       ['java', 'kotlin'],
@@ -198,6 +218,7 @@ describe('the Error Prone recipes', () => {
 
     expect(result.fixedFindings).toEqual([
       `${NAME}:4 errorprone/MissingOverride (java-error-prone-safe)`,
+      `${NAME}:4 pmd/MissingOverride (java-error-prone-safe)`,
     ]);
   });
 });
