@@ -58,6 +58,7 @@ are listed at the end.
 | Empty filter condition                          | `queryset.none()` for the empty case, `pk__in=ids` (an empty list matches nothing), or an explicit emptiness check before the query                                                    | `empty-filter-condition` (script)                                                                                                                                                                                                                                                                                                                                                   |
 | Lookups of one row                              | look up by the primary key, a unique field or every field of a unique constraint; `filter(...).first()` when several rows are possible; changing fields in `defaults={...}`            | `non-unique-lookup` (script)                                                                                                                                                                                                                                                                                                                                                        |
 | Nullable values                                 | check before use: `if x is None: return`, `x or default`, `getattr(x, "a", None)`, `filter(field__isnull=False)`; `@login_required` or `is_authenticated` for `request.user`           | `nullable-dereference` (script)                                                                                                                                                                                                                                                                                                                                                     |
+| Query settings and filters                      | fields and `__` paths ending at a column: `search_fields = ["app__name"]`; the target model's queryset: `ModelChoiceFilter(queryset=Account.objects.all())`                            | `unresolved-query-field`, `filter-model-mismatch` (script)                                                                                                                                                                                                                                                                                                                          |
 | Request text in a lookup                        | `name.strip()` before the lookup, or `ConfigDict(str_strip_whitespace=True)` on a shared base model                                                                                    | `untrimmed-request-text` (script)                                                                                                                                                                                                                                                                                                                                                   |
 | Changing an argument                            | build and return a new value, or copy the argument first                                                                                                                               | `parameter-mutation` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Compatibility shims                             | change every caller in the same change and delete the old name                                                                                                                         | `compatibility-shim` (script)                                                                                                                                                                                                                                                                                                                                                       |
@@ -1531,6 +1532,28 @@ ids: return`, `if not q:`), a `Q` that is not the Django one and test files. A l
   iterable) is tested earlier (an `if`, a walrus test, `len()`) or is a literal list with items. Only OR
   accumulation is reported (`|=`, `|`, `operator.or_`, `or_`): an empty AND (`q &= ...`,
   `reduce(and_, ...)`, `and_(*conds)`) means no restriction and stays quiet.
+- `unresolved-query-field` reports, in a Django project, an entry of a setting that names a model field the
+  model does not have. Checked: `search_fields`, `ordering_fields`, `ordering`, `filterset_fields` and
+  `filter_fields` of a Django REST framework view (the model comes from `queryset = Model.objects...` or from
+  the `Meta.model` of its `serializer_class`), `search_fields`, `ordering` and `list_filter` of a
+  `ModelAdmin` registered with `@admin.register(Model)` or `admin.site.register(Model, Admin)`, and
+  `Meta.fields` and the `field_name` of a django-filter `FilterSet` with `Meta.model`. Each entry is resolved
+  through the model graph (`__` paths through foreign keys, many-to-many fields and reverse accessors, `pk`,
+  the `^`, `=`, `@`, `$` search prefixes and a leading `-`). It is reported when a part of the path is no
+  field of the model it reaches, and when a `search_fields` entry ends at a relation instead of a column.
+  Quiet: lookups after a field (`name__icontains`, `created__year`), key paths into `JSONField`,
+  `HStoreField` and `ArrayField`, `"__all__"`, `"?"`, a name given by `.annotate(...)`, `.alias(...)`,
+  `.values(name=...)` or `.extra(select=...)` anywhere in the project, a name declared as a class attribute
+  of the model (a manager, `TaggableManager`, `GenericRelation`) or of the filterset, a model with a base
+  class outside the project, and test files. Allowed form: a field or a `__` path that ends at a text
+  column, such as `["app__name", "app__slug"]`.
+- `filter-model-mismatch` reports a django-filter `ModelChoiceFilter` or `ModelMultipleChoiceFilter` in a
+  `FilterSet` with `Meta.model` whose `queryset` is the manager chain of a model other than the target of
+  the relation it filters (the `field_name`, or the filter name with and without the `_id` suffix, resolved
+  on `Meta.model`), and one whose `to_field_name` is not a field of the queryset's model. A queryset of a
+  subclass or a parent of the target, a filter that names no relation of the model, a `to_field_name` of
+  `pk` and a queryset that is not a model manager chain are not reported. Allowed form: the queryset of the
+  relation's target model, and a `to_field_name` that is one of its fields.
 - `number-truthiness` reports a number (`int`, `float`, `complex`, `Decimal`, `Fraction`, also
   `Optional` and `|` members) that is tested for truth, where `0` reads as false or missing: a
   parameter or annotated local, and a number field of a class in the same module read through a

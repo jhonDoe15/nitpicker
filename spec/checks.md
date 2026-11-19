@@ -301,6 +301,11 @@ ordering comparison on a `null=True` model field, a `.first()`/`.last()` result,
 or a signed-in-only `request.user` attribute, with no `None` test, truthiness test, `or` fallback, `is_authenticated` check or login
 decorator before it in the same function.
 
+Django query settings: `unresolved-query-field` (script, Python only) reports a `search_fields`, `ordering_fields`, `ordering`,
+`filterset_fields`, `list_filter`, django-filter `Meta.fields` or `field_name` entry that does not resolve through the model graph, and a
+`search_fields` entry that ends at a relation; `filter-model-mismatch` (script, Python only) reports a `ModelChoiceFilter` or
+`ModelMultipleChoiceFilter` whose queryset is of another model than the relation it filters, or whose `to_field_name` is not a field.
+
 Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
 that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the
