@@ -7,7 +7,9 @@ import java.util.List;
 import java.util.Map;
 import nitpicker.effects.flow.MethodFlow;
 import nitpicker.effects.flow.Program;
+import nitpicker.effects.flow.Lambdas;
 import nitpicker.effects.flow.Walker;
+import nitpicker.effects.memo.Memo;
 import nitpicker.effects.classes.Annotations;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -45,6 +47,7 @@ public final class Summaries {
 
   public void compute() {
     Walker walker = new Walker(program, false);
+    Memo once = new Memo(program);
     for (MethodFlow flow : program.all()) {
       List<Call> found = new ArrayList<>();
       sites.put(Program.key(flow.owner.name, flow.method.name, flow.method.desc), found);
@@ -54,12 +57,21 @@ public final class Summaries {
       walker.walk(flow, Walker.Ctx.NONE, new Walker.Visitor() {
         @Override
         public void visit(MethodFlow at, int index, MethodInsnNode call, Walker.Ctx ctx) {
-          found.add(new Call(at, index, call.owner, call.name, call.desc));
+          if (!once.guarded(at, index)) {
+            found.add(new Call(at, index, call.owner, call.name, call.desc));
+          }
         }
 
         @Override
         public void reference(MethodFlow at, int index, String owner, String name, String desc, Walker.Ctx ctx) {
-          found.add(new Call(at, index, owner, name, desc));
+          if (!once.guarded(at, index)) {
+            found.add(new Call(at, index, owner, name, desc));
+          }
+        }
+
+        @Override
+        public boolean skips(MethodFlow at, Lambdas.Use use) {
+          return once.once(at, use);
         }
       });
     }
