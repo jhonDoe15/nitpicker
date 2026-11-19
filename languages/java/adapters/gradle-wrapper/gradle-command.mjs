@@ -1,15 +1,18 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
+import { homedir } from 'node:os';
 import path from 'node:path';
 
 const EXECUTABLE_BITS = 0o111;
 const WINDOWS_SCRIPT = /\.(?:bat|cmd)$/iu;
 const BUILD_ROOT_MARKERS = ['.git', '.mvn', 'settings.gradle', 'settings.gradle.kts'];
 const WRAPPER_PROPERTIES = path.join('gradle', 'wrapper', 'gradle-wrapper.properties');
+const ISOLATED_PROJECTS = /^\s*(org\.gradle\.(?:unsafe\.)?isolated-projects)\s*[=:]\s*true\s*$/gmu;
 const PINNED_GRADLE = /^distributionUrl=.*gradle-([\d.]+(?:-[\w.]+)?)-(?:bin|all)\.zip\s*$/mu;
 
 export function gradleTarget(options) {
   return wrapperTarget({
     ...options,
+    args: [...isolatedProjectsOff(options.projectRoot), ...options.args],
     wrapper: 'gradlew',
     windowsWrapper: 'gradlew.bat',
     tool: 'gradle',
@@ -36,6 +39,23 @@ function nearestFile(projectRoot, name) {
   return buildFolders(projectRoot)
     .map((folder) => path.join(folder, name))
     .find((file) => statSync(file, { throwIfNoEntry: false })?.isFile() === true);
+}
+
+function textIfFile(file) {
+  return statSync(file, { throwIfNoEntry: false })?.isFile() === true
+    ? readFileSync(file, 'utf8')
+    : '';
+}
+
+export function isolatedProjectsOff(projectRoot, environment = process.env) {
+  const userHome = environment['GRADLE_USER_HOME'] || path.join(homedir(), '.gradle');
+  const properties = [...buildFolders(projectRoot), userHome].map((folder) =>
+    textIfFile(path.join(folder, 'gradle.properties')),
+  );
+  const names = properties.flatMap((text) =>
+    [...text.matchAll(ISOLATED_PROJECTS)].map((match) => match[1]),
+  );
+  return [...new Set(names)].toSorted().map((name) => `-D${name}=false`);
 }
 
 export function pinnedGradleVersion(projectRoot) {
