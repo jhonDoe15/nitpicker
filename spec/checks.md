@@ -288,6 +288,10 @@ spread, iteration, or an argument of a call the branch also made). A later guard
 
 Django type plugin: `django-types-missing` (script, Python only) is reported once, on the first model class, when Django is a
 dependency and neither `django-stubs` (mypy plugin) nor `django-types` is configured.
+Empty Django filters: `empty-filter-condition` (script, Python only) reports an empty `Q()` (a conditional or `or` branch, a `reduce` that starts from
+`Q()`, or a `Q()` filled in a loop with no emptiness check) and a SQLAlchemy `or_()` with no arguments or spread over a list that can be
+empty, given to `filter`, `exclude`, `get`, `aget` or `where`, which selects every row; `queryset.none()` and `pk__in=ids` are the allowed forms.
+
 Django lookups of one row: `non-unique-lookup` (script, Python only) reports `get`, `aget`, `get_or_create` or `update_or_create` on a model
 manager or queryset whose lookup keywords do not cover the primary key, a unique field, a one-to-one field or a unique constraint of the
 model, an `|` of `Q` objects given to `get`, and a JSON, array or text field in the lookup of `get_or_create` or `update_or_create`.
