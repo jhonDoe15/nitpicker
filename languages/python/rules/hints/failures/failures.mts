@@ -43,4 +43,21 @@ export const FAILURE_HINTS: readonly RuleHint[] = [
     allowed:
       'Fix the call that warns, or warn with a targeted category (`warnings.warn(message, MyDeprecationWarning, stacklevel=2)`) and let the caller filter it. Set filters once at program start: in `main()`, a `__main__` module, a console-script entry point or `-W` / `PYTHONWARNINGS`. In tests use `pytest.warns` or a `filterwarnings` mark.',
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['exit-status-zero-on-failure'],
+    describe: (subject) => {
+      const [text = '', reason = ''] = subject.split('|');
+      if (reason === 'returncode') {
+        return `\`${text}\` runs a program in a command and never reads its exit status, so the command exits 0 even when the program failed and scripts and CI jobs treat the run as a success`;
+      }
+      if (reason === 'flag') {
+        return `\`${text}\` is read only to print the failure: the command still exits with status 0, so scripts and CI jobs treat the failed run as a success`;
+      }
+      const place = reason === 'except' ? 'in an `except` block' : 'right after an error message';
+      return `\`${text}\` ${place} ends the program with status 0, so scripts and CI jobs treat the failure as a success`;
+    },
+    allowed:
+      'Exit with a non-zero status: `raise SystemExit(1)`, `raise SystemExit(f"Invalid arguments: {err}")` (a message exits with status 1) or `sys.exit(1)`, or raise `click.ClickException(...)` or `typer.Exit(code=1)`. Run a program with `subprocess.run(..., check=True)` or end with `sys.exit(result.returncode)`; after a failed result, exit non-zero instead of only printing it.',
+  },
 ];
