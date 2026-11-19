@@ -85,19 +85,9 @@ function runJavaPreset(
       budget,
     });
     const checkTests = testsFailedModules.length === 0 && !testsSkipped;
-    const options = {
-      projectRoot,
-      gradle,
-      budget,
-      reportBase,
-      since,
-      checkTests,
-      policy,
-      spawn,
-      environment,
-    };
+    const options = { projectRoot, gradle, budget, reportBase, since, policy, spawn, environment };
     for (const stage of stages) {
-      runGradleStage({ args: stage(), ...options });
+      runGradleStage({ args: stage(), checkTests, ...options });
     }
   });
 }
