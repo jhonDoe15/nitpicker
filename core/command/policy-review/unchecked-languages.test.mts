@@ -1,30 +1,28 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import {
+  temporaryRootMaker,
+  writeFiles,
+} from '../../../languages/java/__tests__/temporary-roots.mts';
 import { uncheckedLanguageNotices } from './unchecked-languages.mts';
 
-const roots = [];
+const makeRoot = temporaryRootMaker('unchecked-languages-');
 
-function projectRoot(files) {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'unchecked-languages-'));
-  roots.push(root);
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
+function projectRoot(files: Readonly<Record<string, string>>): string {
+  const root = makeRoot();
+  writeFiles(root, files);
   return root;
 }
 
-function notices(changedFiles, { preset, root = projectRoot({}), exclude = [] }) {
+function notices(
+  changedFiles: readonly string[],
+  {
+    preset,
+    root = projectRoot({}),
+    exclude = [],
+  }: { preset: string | undefined; root?: string; exclude?: readonly string[] },
+) {
   return uncheckedLanguageNotices(changedFiles, { preset, projectRoot: root, exclude });
 }
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
 
 describe('uncheckedLanguageNotices', () => {
   it('names a TypeScript folder of a Gradle build and the projects entry that checks it', () => {

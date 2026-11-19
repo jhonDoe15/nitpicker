@@ -1,21 +1,22 @@
 import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { fieldOf } from '../../../shared/values/readers.mts';
 import { packageVersion } from '../../help/package-version.mts';
 import { inspectRepository } from '../../projects/plan/inspect.mts';
-import * as expected from '../test-support/monorepo-expected.mjs';
+import * as expected from '../test-support/monorepo-expected.mts';
 import { init, readText, useProjects } from '../test-support/projects.mts';
 
 const createProject = useProjects();
 const WORKFLOW = '.github/workflows/nitpicker.yml';
 
-function normalized(text) {
+function normalized(text: string): string {
   return text
     .replaceAll(packageVersion(), '<version>')
     .replace(/(uses: actions\/[\w-]+)@v[\d.]+/gu, '$1@<pin>');
 }
 
-function lines(expectedLines) {
+function lines(expectedLines: readonly string[]): string {
   return expectedLines.join('\n');
 }
 
@@ -29,8 +30,11 @@ const POLYGLOT = {
   'service/src/main/java/App.java': 'class App {}\n',
 };
 
-function presetsOf(root) {
+function presetsOf(root: string) {
   const { plan } = inspectRepository({ root });
+  if (plan === undefined) {
+    throw new TypeError('inspectRepository found no plan');
+  }
   return plan.projects.map(({ path: folder, preset, configError }) => ({
     folder,
     preset,
@@ -192,6 +196,7 @@ describe('init at the top of a repository with several projects', () => {
 
     init(root);
 
-    expect(JSON.parse(readText(root, 'nitpicker.config.json')).projects).toBeUndefined();
+    const config: unknown = JSON.parse(readText(root, 'nitpicker.config.json'));
+    expect(fieldOf(config, 'projects')).toBeUndefined();
   });
 });
