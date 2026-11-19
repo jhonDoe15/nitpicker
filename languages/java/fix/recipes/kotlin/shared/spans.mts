@@ -26,3 +26,13 @@ export function removalSpan(text: string, start: number, end: number): Span {
   }
   return { start, end: end + (after.length - after.trimStart().length) };
 }
+
+export function statementPrefix(text: string, index: number): string {
+  const before = text.slice(0, index);
+  const boundary = Math.max(
+    before.lastIndexOf(';'),
+    before.lastIndexOf('{'),
+    before.lastIndexOf('}'),
+  );
+  return before.slice(boundary + 1);
+}
