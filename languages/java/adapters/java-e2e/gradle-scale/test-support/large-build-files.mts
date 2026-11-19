@@ -9,11 +9,27 @@ test {
 }
 `;
 
+const VERIFICATION = `<?xml version="1.0" encoding="UTF-8"?>
+<verification-metadata xmlns="https://schema.gradle.org/dependency-verification"
+                       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                       xsi:schemaLocation="https://schema.gradle.org/dependency-verification https://schema.gradle.org/dependency-verification/dependency-verification-1.3.xsd">
+   <configuration>
+      <verify-metadata>true</verify-metadata>
+      <verify-signatures>false</verify-signatures>
+      <trusted-artifacts>
+         <trust group="^org[.](junit|opentest4j|apiguardian)([.].*)?$" regex="true"/>
+      </trusted-artifacts>
+   </configuration>
+   <components/>
+</verification-metadata>
+`;
+
 export const LARGE_BUILD_FILES: Readonly<Record<string, string>> = {
   'settings.gradle':
     "rootProject.name = 'large'\ninclude 'platform', 'platform:base', 'platform:api'\n",
   'build.gradle':
     "allprojects {\n    apply plugin: 'java'\n    repositories {\n        mavenCentral()\n    }\n}\n",
+  'gradle/verification-metadata.xml': VERIFICATION,
   'platform/build.gradle': '',
   'platform/base/build.gradle': `apply plugin: 'jacoco'\n${JUNIT}\ntasks.named('check') {\n    dependsOn 'jacocoTestReport'\n}\n`,
   'platform/base/src/main/java/demo/base/Counter.java':
