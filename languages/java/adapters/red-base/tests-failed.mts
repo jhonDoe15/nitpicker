@@ -8,7 +8,7 @@ import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
 } from '../../../../shared/messages/troubleshooting.mjs';
-import { failingTestsText } from '../../builds/test-failures.mjs';
+import { failingTestsText } from '../../builds/test-failures.mts';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import type { JavaFinding, JavaPolicy } from '../typed/java-values.mts';
 

@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { type Fields, fieldAt, requiredFields, requiredText } from '../../scripts/json/fields.mts';
 import { type Preset, defaultAcceptance, presetOf } from '../lib/presets.mts';
-import { detectJavaBuild } from '../../languages/java/builds/java-build.mjs';
+import { detectJavaBuild } from '../../languages/java/builds/java-build.mts';
 import { loadTree } from '../detectors/tree.mts';
 
 type Trees = ReadonlyMap<string, string>;

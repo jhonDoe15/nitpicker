@@ -1,8 +1,8 @@
 import {
   BUILD_DECLARED_TOOLS as UNTYPED_BUILD_DECLARED_TOOLS,
   PROJECT_TOOL_CONFIGS as UNTYPED_PROJECT_TOOL_CONFIGS,
-} from '../../../languages/java/adapters/gradle-presets.mjs';
-import { declaredConfigFiles as untypedDeclaredConfigFiles } from '../../../languages/java/adapters/tool-config/declared/declared-choices.mjs';
+} from '../../../languages/java/adapters/gradle-presets.mts';
+import { declaredConfigFiles as untypedDeclaredConfigFiles } from '../../../languages/java/adapters/tool-config/declared/declared-choices.mts';
 import {
   readInside as untypedReadInside,
   readRealInside as untypedReadRealInside,
@@ -11,7 +11,7 @@ import {
   JSCPD_PROJECT_FILE as UNTYPED_JSCPD_PROJECT_FILE,
   precedenceLayers as untypedPrecedenceLayers,
 } from '../../../shared/conventions/tool-precedence.mjs';
-import { kotlinStyleFiles as untypedKotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
+import { kotlinStyleFiles as untypedKotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mts';
 import { PRETTIER_PROJECT_FILES as UNTYPED_PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
 import {
   appliedStrykerConfig as untypedAppliedStrykerConfig,
@@ -54,11 +54,11 @@ import { readPytestRetries as untypedReadPytestRetries } from '../../../language
 import {
   directorySource as untypedDirectorySource,
   readDeclaredBuild as untypedReadDeclaredBuild,
-} from '../../../languages/java/adapters/tool-config/declared/declared-build.mjs';
+} from '../../../languages/java/adapters/tool-config/declared/declared-build.mts';
 import {
   testRetryDeclarations as untypedTestRetryDeclarations,
   testRetryValues as untypedTestRetryValues,
-} from '../../../languages/java/adapters/tool-config/declared/test-retries-declared.mjs';
+} from '../../../languages/java/adapters/tool-config/declared/test-retries-declared.mts';
 import { GOLANGCI_FILES as UNTYPED_GOLANGCI_FILES } from '../../../languages/go/adapters/formatting/go-formatters.mts';
 import type {
   AppliedValues,
@@ -70,6 +70,12 @@ import type {
   ReplacedOptions,
 } from './policy-types.mts';
 import type { ResolvedLayout } from './typed-views.mts';
+import type {
+  BuildSource,
+  Declaration,
+  DeclaredBuild,
+} from '../../../languages/java/adapters/tool-config/declared/declared-types.mts';
+import { textsOf } from '../../../shared/values/readers.mts';
 
 type Attempted<Value> =
   | { readonly value: Value; readonly error?: undefined }
@@ -90,26 +96,15 @@ type ProjectConfigChange = {
 };
 
 type OwnChanges = (applied: OwnApplied) => FileChange[];
-type RetryDeclaration = {
-  readonly file: string;
-  readonly setting: string;
-  readonly value: unknown;
-};
-type DeclaredSource = {
-  readonly paths: () => readonly string[];
-  readonly readMany: (files: readonly string[]) => ReadonlyMap<string, string>;
-};
-
 const readPytestRetries: (root: string) => {
   readonly values: Values;
   readonly file: string | undefined;
 } = untypedReadPytestRetries;
-const directorySource: (root: string) => DeclaredSource = untypedDirectorySource;
-const readDeclaredBuild: (source: DeclaredSource) => unknown = untypedReadDeclaredBuild;
-const testRetryDeclarations: (build: unknown) => readonly RetryDeclaration[] =
+const directorySource: (root: string) => BuildSource = untypedDirectorySource;
+const readDeclaredBuild: (source: BuildSource) => DeclaredBuild = untypedReadDeclaredBuild;
+const testRetryDeclarations: (build: DeclaredBuild) => readonly Declaration[] =
   untypedTestRetryDeclarations;
-const testRetryValues: (declarations: readonly RetryDeclaration[]) => Values =
-  untypedTestRetryValues;
+const testRetryValues: (declarations: readonly Declaration[]) => Values = untypedTestRetryValues;
 
 const strykerConfigChanges: OwnChanges = untypedStrykerConfigChanges;
 const testsConfigChanges: OwnChanges = untypedTestsConfigChanges;
@@ -137,8 +132,9 @@ const precedenceLayers: (precedence: string[] | undefined) => {
   readonly usesProject: boolean;
   readonly nitpickerFirst: boolean;
 } = untypedPrecedenceLayers;
-const kotlinStyleFiles: (settings: KotlinSettings, policyRoot: string) => string[] =
-  untypedKotlinStyleFiles;
+function kotlinStyleFiles(settings: KotlinSettings, policyRoot: string): string[] {
+  return textsOf(Reflect.apply(untypedKotlinStyleFiles, undefined, [settings, policyRoot]));
+}
 const projectTsconfigFiles: (projectRoot: string, layout: ResolvedLayout) => string[] =
   untypedProjectTsconfigFiles;
 const testRunnerProjectFiles: (projectRoot: string, config: PolicyConfig) => string[] =

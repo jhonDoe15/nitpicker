@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { INIT_SCRIPT } from '../../builds/java-build.mjs';
+import { INIT_SCRIPT } from '../../builds/java-build.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 
 const script = readFileSync(INIT_SCRIPT, 'utf8');

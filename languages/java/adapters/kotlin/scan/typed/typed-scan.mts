@@ -1,48 +1,29 @@
-import { lineOf as untypedLineOf, scanKotlinSource as untypedScan } from '../kotlin-source.mjs';
-
-export type Located = {
-  offset: number;
-};
-
-export type Ruled = Located & {
-  rule: string;
-};
-
-export type Subjected = Ruled & {
-  subject: string;
-};
-
-export type Messaged = Located & {
-  message: string;
-};
-
-export type Literal = {
-  start: number;
-  end: number;
-  bodyStart: number;
-  text: string;
-  template: boolean;
-  raw: boolean;
-};
-
-type Comment = {
-  start: number;
-  end: number;
-  kind: string;
-  text: string;
-};
-
-export type Scanned = {
-  source: string;
-  code: string;
-  contextCode: string;
-  literals: Literal[];
-  comments: Comment[];
-  lineStarts: number[];
-};
-
-export type Check<Found extends Located> = (scanned: Scanned) => Found[];
+import type {
+  Check,
+  Located,
+  Literal,
+  Messaged,
+  Ruled,
+  Scanned,
+  Subjected,
+} from './scan-shapes.mts';
+import { escapeRegExp as untypedEscape } from '../../../../../../shared/paths/glob.mjs';
+import {
+  chainOf as untypedChainOf,
+  depthFirst as untypedDepthFirst,
+} from '../../../../../../shared/traversal.mjs';
+import { lineOf as untypedLineOf, scanKotlinSource as untypedScan } from '../kotlin-source.mts';
 
 export const scanKotlinSource: (source: string) => Scanned = untypedScan;
 
+export const chainFrom: <T>(start: T | undefined, next: (value: T) => T | undefined) => T[] =
+  untypedChainOf;
+
+export const depthFirst: <T>(root: T, children: (node: T) => T[]) => Iterable<T> =
+  untypedDepthFirst;
+
+export const escapeRegExp: (value: string) => string = untypedEscape;
+
 export const lineOf: (scanned: Scanned, offset: number) => number = untypedLineOf;
+
+export type { Check, Located, Literal, Messaged, Ruled, Scanned, Subjected };

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fieldOf, listOf, textOf, textsOf } from '../../../../../../shared/values/readers.mts';
-import { kotlinDesignBundle, kotlinDesignFindings } from './kotlin-design.mjs';
+import { kotlinDesignBundle, kotlinDesignFindings } from './kotlin-design.mts';
 
 export type Item = {
   id?: string;

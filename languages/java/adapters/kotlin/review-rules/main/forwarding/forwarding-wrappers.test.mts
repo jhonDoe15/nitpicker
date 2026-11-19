@@ -4,7 +4,7 @@ import { routeOf, run, summary } from '../../test-support/facts.mts';
 import type { Loose } from '../../test-support/loose-facts.mts';
 import { argument, file, fn, importOf, klass, parameter } from '../../test-support/loose-facts.mts';
 import { forward, params } from './forwarding-support.mts';
-import { FORWARDING_RULE, forwardingWrapperFindings } from './forwarding-wrappers.mjs';
+import { FORWARDING_RULE, forwardingWrapperFindings } from './forwarding-wrappers.mts';
 
 const target = (name = 'scaled', overrides: Loose = {}) =>
   fn(name, { parameters: params('cents'), returnType: 'Int', ...overrides });

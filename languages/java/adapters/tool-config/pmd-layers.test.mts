@@ -73,6 +73,7 @@ const layer = (options: {
     testText: TESTS,
     mainPath: '/nitpicker/pmd-main-ruleset.xml',
     mainText: MAIN,
+    projectWins: true,
     ...options,
   });
 

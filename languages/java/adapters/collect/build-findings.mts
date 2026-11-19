@@ -4,22 +4,22 @@ import path from 'node:path';
 import { runJavaDuplicates } from '../metrics/java-duplicates.mts';
 import { runKotlinDuplicates } from '../kotlin/kotlin-duplicates.mts';
 import { readOptions } from '../options/java-read-options.mts';
-import { toolConfigChoices } from '../tool-config/tool-config-choices.mjs';
+import { toolConfigChoices } from '../tool-config/tool-config-choices.mts';
 import { readJavaFindings } from '../reporting/java-reports.mts';
 import { readNotAffected, readReportModules } from '../gradle-reports/report-modules.mts';
 import { runMavenPreset } from '../../maven/maven-build.mts';
 import { MAVEN_REPORT_DIRECTORY } from '../../maven/module/maven-module.mts';
-import { detectJavaBuild, INIT_SCRIPT } from '../../builds/java-build.mjs';
+import { detectJavaBuild, INIT_SCRIPT } from '../../builds/java-build.mts';
 import { mergedRoots, readModuleReport } from '../../builds/java-modules.mts';
 import { resolveKotlinRun } from '../kotlin/kotlin-run.mts';
 import { runGradleStage } from '../red-base/gradle-stage.mts';
 import { runOrNoteFailingTests, withRootSourceRoots } from '../red-base/tests-failed.mts';
-import { gradleBudget } from '../gradle-wrapper/gradle-budget.mjs';
+import { gradleBudget } from '../gradle-wrapper/gradle-budget.mts';
 import { gradleStages } from '../gradle-wrapper/gradle-stages.mts';
 import { gradleDesignFindings, mavenDesignFindings } from '../design/design-modules.mts';
 import { type JavaPolicy, callUntyped, findingsOf } from '../typed/java-values.mts';
 import { type JavaReport, type JavaRunOptions, budgetOf } from '../typed/java-run-options.mts';
-import { fieldOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, optionalText } from '../../../../shared/values/readers.mts';
 import { stopReuseAhead } from '../../builds/reuse-ahead/reuse-ahead.mts';
 import { startGradleReuse, startMavenReuse } from '../../builds/reuse-ahead/reuse-start.mts';
 
@@ -173,7 +173,7 @@ function mavenFindings(projectRoot: string, options: JavaRunOptions): JavaReport
     formatAdvice: run.formatAdvice,
     reportDirectory: MAVEN_REPORT_DIRECTORY,
   });
-  const design = mavenDesignFindings(projectRoot, moduleDirs, options.policy);
+  const design = mavenDesignFindings(projectRoot, moduleDirs, options);
   return {
     findings: [...read.findings, ...design],
     imports: read.imports,
@@ -184,7 +184,7 @@ function mavenFindings(projectRoot: string, options: JavaRunOptions): JavaReport
 
 export function buildFindings(projectRoot: string, options: JavaRunOptions): JavaReport {
   try {
-    return detectJavaBuild(projectRoot, options.policy?.['buildTool']) === 'maven'
+    return detectJavaBuild(projectRoot, optionalText(options.policy?.['buildTool'])) === 'maven'
       ? mavenFindings(projectRoot, options)
       : withGradleReports(projectRoot, options);
   } finally {

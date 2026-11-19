@@ -1,6 +1,6 @@
 import { realpathSync } from 'node:fs';
 import path from 'node:path';
-import { buildViews } from '../kotlin/review-rules/build-view.mjs';
+import { buildViews } from '../kotlin/review-rules/build-view.mts';
 import { coveredByCpd } from '../../guards/cpd-duplicates.mts';
 import { readProjectDuplicateFindings } from '../kotlin/kotlin-duplicates.mts';
 import {
@@ -12,22 +12,22 @@ import {
   withoutExcludedFiles,
 } from '../gradle-reports/report-modules.mts';
 import { readErrorProneFindings } from '../errorprone/java-errorprone.mts';
-import { readCommentFindings } from '../comments/comment-findings.mjs';
-import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
-import { readSpringConfigFindings } from '../spring/java-spring.mjs';
+import { readCommentFindings } from '../comments/comment-findings.mts';
+import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mts';
+import { readSpringConfigFindings } from '../spring/java-spring.mts';
 import { readGuardFindings } from '../../guards/index.mts';
 import { withEffectsFindings } from '../effects/effects-findings.mts';
 import { readJavaStructureFindings } from '../metrics/java-structure.mts';
 import { testRunFindings } from '../test-runs/test-run-findings.mts';
 import { readClassLimitFindings } from '../size/class-limits.mts';
-import { modulesUnitLocator, sourceTextReader } from './function-locator.mjs';
-import { checkstyleFindings, formatFindings } from './format-findings.mjs';
+import { modulesUnitLocator, sourceTextReader } from './function-locator.mts';
+import { checkstyleFindings, formatFindings } from './format-findings.mts';
 import { withoutMainMethodFindings } from './entry-point/main-method.mts';
 import { readDocCommentFindings } from '../doc-comments/doc-comment-findings.mts';
-import { sarifFindings } from './sarif/sarif-reports.mjs';
+import { sarifFindings } from './sarif/sarif-reports.mts';
 import { projectWideReport, reportModuleProjects } from '../../builds/project-wide.mts';
-import { applyRuleMessages } from '../../messages/rule-messages.mjs';
-import { readKotlinFindings, requireKotlinManifest, sourceLocator } from './kotlin-reports.mjs';
+import { applyRuleMessages } from '../../messages/rule-messages.mts';
+import { readKotlinFindings, requireKotlinManifest, sourceLocator } from './kotlin-reports.mts';
 import {
   type Findings,
   type ModuleContext,
@@ -42,9 +42,9 @@ import {
   STRUCTURE_SKIPPED,
   skippedFiles,
   skippedToolFindings,
-} from './skips/skipped-tools.mjs';
-import { foreignKeyGate } from '../jpa/foreign-keys/key-gate.mjs';
-import { sequenceGate } from '../jpa/sequence-ids.mjs';
+} from './skips/skipped-tools.mts';
+import { foreignKeyGate } from '../jpa/foreign-keys/key-gate.mts';
+import { sequenceGate } from '../jpa/sequence-ids.mts';
 import { withoutSourceBackedSpotbugs } from './null-findings/spotbugs-log.mts';
 import { withoutBoundFields } from './null-findings/unwritten-fields.mts';
 import { callUntyped } from '../typed/java-values.mts';
@@ -231,7 +231,8 @@ export function readJavaFindings(projectRoot: string, options: Options = {}): Ja
       listOf(withModuleIdentity(moduleContextFindings(projectRoot, module, run), module)),
     );
   const wide = wideReport(projectRoot, run, reportBase);
-  const findings: unknown = applyRuleMessages(
+  const findings: unknown = callUntyped(
+    applyRuleMessages,
     [
       ...moduleFindings,
       ...listOf(wide.findings),

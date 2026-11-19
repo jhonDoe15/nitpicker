@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commentedOutCode as untypedCommentedOutCode } from './commented-out-code.mjs';
+import { commentedOutCode as untypedCommentedOutCode } from './commented-out-code.mts';
 
 const commentedOutCode: (source: string) => { subject: string; offset: number }[] =
   untypedCommentedOutCode;

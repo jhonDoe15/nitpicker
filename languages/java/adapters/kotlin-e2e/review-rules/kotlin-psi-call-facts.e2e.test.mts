@@ -5,6 +5,8 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { listOf } from '../../../../../scripts/json/fields.mts';
 import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
+import { callUntyped } from '../../typed/java-values.mts';
+import { findingsOf } from '../../kotlin/rules/test-support/findings-list.mts';
 import { assigned } from '../test-support/views/assigned.mts';
 import {
   compilePsiProgram,
@@ -12,19 +14,23 @@ import {
   pinnedKotlinCompiler,
   writeSources,
 } from '../test-support/views/kotlin-psi-views.mts';
-import { findingFactory as untypedFindingFactory } from '../../kotlin/review-rules/review-finding.mjs';
-import { unusedOptionFindings as untypedUnusedOptionFindings } from '../../kotlin/review-rules/main/unused-options/unused-options.mjs';
-import { forwardingWrapperFindings as untypedForwardingWrapperFindings } from '../../kotlin/review-rules/main/forwarding/forwarding-wrappers.mjs';
+import { findingFactory as untypedFindingFactory } from '../../kotlin/review-rules/review-finding.mts';
+import { unusedOptionFindings as untypedUnusedOptionFindings } from '../../kotlin/review-rules/main/unused-options/unused-options.mts';
+import { forwardingWrapperFindings as untypedForwardingWrapperFindings } from '../../kotlin/review-rules/main/forwarding/forwarding-wrappers.mts';
 
 type Identified = { identity: string }[];
 
 const findingFactory: () => unknown = untypedFindingFactory;
-const unusedOptionFindings: (
+function unusedOptionFindings(
   files: unknown,
   options: { finding: unknown; mentionedInJava: () => boolean },
-) => Identified = untypedUnusedOptionFindings;
-const forwardingWrapperFindings: (files: unknown, options: { finding: unknown }) => Identified =
-  untypedForwardingWrapperFindings;
+): Identified {
+  return findingsOf(callUntyped(untypedUnusedOptionFindings, files, options));
+}
+
+function forwardingWrapperFindings(files: unknown, options: { finding: unknown }): Identified {
+  return findingsOf(callUntyped(untypedForwardingWrapperFindings, files, options));
+}
 
 const enabled = process.env['NITPICKER_KOTLIN_E2E'] === '1';
 const gradle = process.env['NITPICKER_GRADLE'] ?? 'gradle';

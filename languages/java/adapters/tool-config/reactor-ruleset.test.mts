@@ -8,7 +8,7 @@ import {
   EVIDENCE_CALLS as untypedEvidenceCalls,
   MEMBER_CALLS as untypedMemberCalls,
   STATIC_CALLS as untypedStaticCalls,
-} from '../kotlin/review-rules/blocking/blocking-catalog.mjs';
+} from '../kotlin/review-rules/blocking/blocking-catalog.mts';
 import {
   guidePages as untypedGuidePages,
   guideText as untypedGuideText,

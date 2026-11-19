@@ -1,5 +1,5 @@
 import type { RecipeEdit } from '../../../../../../core/fix/typed/fix-types.mts';
-import { relaxKey as untypedRelaxKey } from '../../../../adapters/spring/spring-config-parser.mjs';
+import { relaxKey as untypedRelaxKey } from '../../../../adapters/spring/spring-config-parser.mts';
 import type { Located, Range, Span } from '../locate/locate-types.mts';
 import { openInViewInsertion } from '../locate/insert-locate.mts';
 import { lineTable, removalRange } from '../locate/lines.mts';

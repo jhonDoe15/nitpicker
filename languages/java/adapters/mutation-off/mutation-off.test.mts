@@ -9,11 +9,11 @@ import { readOptions } from '../options/java-read-options.mts';
 import { createJavaAnalyzer } from '../java-analyzer.mts';
 import { configureJavaAnalyzer } from '../java-policy.mts';
 import { comparisonMutationPlan } from '../../builds/change-scope/mutation-plan.mts';
-import { withoutPitTools as untypedWithoutPitTools } from '../../maven/quick/maven-quick.mjs';
+import { withoutPitTools as untypedWithoutPitTools } from '../../maven/quick/maven-quick.mts';
 
 const withoutPitTools: (
   tools: Record<string, unknown[]>,
-  mutationOff: boolean,
+  options: { readonly mutationOff: boolean },
 ) => Record<string, unknown[]> = untypedWithoutPitTools;
 
 const HYGIENE = { name: 'hygiene' };
@@ -89,8 +89,11 @@ describe('"disable": ["mutation"] with the java and kotlin presets', () => {
     expect(stage?.().filter((argument) => argument.startsWith('-Pnitpicker.mutation'))).toEqual([
       '-Pnitpicker.mutation=off',
     ]);
-    expect(Object.keys(withoutPitTools(tools, true))).toEqual(['jacoco', 'archunit']);
-    expect(withoutPitTools(tools, false)).toBe(tools);
+    expect(Object.keys(withoutPitTools(tools, { mutationOff: true }))).toEqual([
+      'jacoco',
+      'archunit',
+    ]);
+    expect(withoutPitTools(tools, { mutationOff: false })).toBe(tools);
     expect(readOptions({ mutationOff: true })['mutationOff']).toBe(true);
   });
 

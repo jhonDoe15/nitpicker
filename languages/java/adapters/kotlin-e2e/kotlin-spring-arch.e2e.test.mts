@@ -3,7 +3,7 @@ import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { INIT_SCRIPT } from '../../builds/java-build.mjs';
+import { INIT_SCRIPT } from '../../builds/java-build.mts';
 import { writeSpringRoles } from '../spring-arch/spring-roles.mts';
 import { fieldOf, listOf, parseJson, textOf } from '../../../../shared/values/readers.mts';
 import { assigned } from './test-support/views/assigned.mts';

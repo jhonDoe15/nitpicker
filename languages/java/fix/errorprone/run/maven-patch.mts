@@ -1,21 +1,21 @@
 import { mkdirSync, mkdtempSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fixSpawn } from '../../../../../core/fix/common/fix-command.mjs';
-import { readPinnedTools } from '../../../builds/java-build.mjs';
+import { readPinnedTools } from '../../../builds/java-build.mts';
 import {
   moduleClasspaths,
   parseDependencyList,
 } from '../../../maven/configuration/maven-classpaths.mts';
-import { readEffectivePom } from '../../../maven/configuration/effective-pom.mjs';
+import { readEffectivePom } from '../../../maven/configuration/effective-pom.mts';
 import { runErrorProne, processorTool } from '../../../maven/errorprone/maven-errorprone.mts';
 import {
   dependencyFile,
   dependencyListArguments,
   PROJECT_CHECKS_OFF,
 } from '../../../maven/quick/maven-build-arguments.mts';
-import { runMaven } from '../../../maven/maven-command.mjs';
+import { runMaven } from '../../../maven/maven-command.mts';
 import { readReactor } from '../../../maven/maven-project.mts';
-import { resolveToolSet, toolDependencies } from '../../../maven/maven-tools.mjs';
+import { resolveToolSet, toolDependencies } from '../../../maven/maven-tools.mts';
 import { callUntyped } from '../../../adapters/typed/java-values.mts';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 import { configuredTool } from '../../tools/tool-classpath.mts';
@@ -26,6 +26,7 @@ type MavenRun = {
   readonly maven: string | undefined;
   readonly spawn: unknown;
   readonly work: string;
+  readonly environment: Readonly<Record<string, string | undefined>>;
 };
 
 const projectChecksOff: readonly string[] = PROJECT_CHECKS_OFF;
@@ -62,6 +63,7 @@ function toolsFor(run: MavenRun, modules: readonly unknown[]): unknown {
     projectRoot: run.projectRoot,
     maven: run.maven,
     spawn: run.spawn,
+    environment: run.environment,
     tools: Object.fromEntries(wanted.map((name) => [name, fieldOf(all, name)])),
   });
 }
@@ -82,7 +84,13 @@ export function runMavenPatch({
   checks,
 }: PatchRun): PatchRoots {
   const spawn = callUntyped(fixSpawn, { operation: 'error-prone-patch', executeFixCommand });
-  const run = { projectRoot, maven: configuredTool(environment, 'NITPICKER_MAVEN'), spawn, work };
+  const run = {
+    projectRoot,
+    maven: configuredTool(environment, 'NITPICKER_MAVEN'),
+    spawn,
+    work,
+    environment,
+  };
   const patchRoot = path.join(work, 'patches');
   const reportRoot = path.join(work, 'reports');
   mkdirSync(patchRoot, { recursive: true });

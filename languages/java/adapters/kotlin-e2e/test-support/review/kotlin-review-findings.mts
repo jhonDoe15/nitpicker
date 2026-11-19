@@ -1,10 +1,10 @@
-import { ISOLATION_FILES, ISOLATION_FINDINGS } from './isolation/kotlin-isolation-data.mjs';
+import { ISOLATION_FILES, ISOLATION_FINDINGS } from './isolation/kotlin-isolation-data.mts';
 import {
   GLOBAL_STATE_FILES,
   GLOBAL_STATE_FINDINGS,
 } from './concurrency/kotlin-global-state-data.mts';
 import { mapUpdateFiles, MAP_UPDATE_FINDINGS } from './concurrency/kotlin-map-update-data.mts';
-import { BLOCKING_RULES } from '../../../kotlin/review-rules/blocking/blocking-findings.mjs';
+import { BLOCKING_RULES } from '../../../kotlin/review-rules/blocking/blocking-findings.mts';
 import { readFileSync } from 'node:fs';
 import type { Finding } from '../../../../../../shared/values/findings.mts';
 import path from 'node:path';

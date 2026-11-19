@@ -1,8 +1,8 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { runFixCommand } from '../../../../../core/fix/common/fix-command.mjs';
-import { gradleTarget } from '../../../adapters/gradle-wrapper/gradle-command.mjs';
-import { INIT_SCRIPT as untypedInitScript } from '../../../builds/java-build.mjs';
+import { gradleTarget } from '../../../adapters/gradle-wrapper/gradle-command.mts';
+import { INIT_SCRIPT as untypedInitScript } from '../../../builds/java-build.mts';
 import { callUntyped } from '../../../adapters/typed/java-values.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import type { Environment } from '../../../../../shared/processes/environment.mts';

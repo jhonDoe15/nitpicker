@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
 import { TOOL_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
@@ -10,12 +10,7 @@ import type { FixInvocation } from './typed/fix-types.mts';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
 
-afterEach(() => {
-  vi.unstubAllEnvs();
-});
-
 function repository() {
-  vi.stubEnv('XDG_CACHE_HOME', temporaryRoot('nitpicker-fix-cache-'));
   const created = createGitRepository(
     { 'build.gradle': "plugins { id 'java' }\n" },
     { baseRef: 'base' },
@@ -56,6 +51,7 @@ function operationsFor(config: unknown, selectedRules: readonly string[] = []) {
   const operations: string[] = [];
   const result = fixWorkingTree({
     ...BASE_OPTIONS,
+    environment: { XDG_CACHE_HOME: temporaryRoot('nitpicker-fix-cache-') },
     repositoryRoot: created.root,
     projectRoot: created.root,
     baseRef: 'base',

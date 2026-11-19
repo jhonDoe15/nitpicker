@@ -1,4 +1,4 @@
-import { commentedOutCode as untypedCommentedOutCode } from '../../../../adapters/kotlin/scan/rules/markers.mjs';
+import { commentedOutCode as untypedCommentedOutCode } from '../../../../adapters/kotlin/scan/rules/markers.mts';
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
 import type { KotlinCodeMarker, ScannedKotlin } from '../shared/kotlin-scan.mts';
 import { removalSpan } from '../shared/spans.mts';

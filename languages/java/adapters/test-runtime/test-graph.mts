@@ -1,13 +1,13 @@
 import { readFileSync } from 'node:fs';
-import { outerClass as untypedOuterClass } from '../../ingest/class-names.mjs';
+import { outerClass as untypedOuterClass } from '../../ingest/class-names.mts';
 import { parseJdeps } from '../metrics/java-coupling.mts';
-import { pathInside as untypedPathInside } from '../review-rules/java-sources.mjs';
-import { ownersOf, resolver } from '../review-rules/test-only-classes.mts';
+import { pathInside as untypedPathInside } from '../review-rules/java-sources.mts';
+import { ownersOf, resolver } from '../review-rules/test-only/test-only-classes.mts';
 import { EDGE_KINDS } from '../../../../shared/rules/test-runtime/classify.mjs';
 import {
   isFrameworkBridge as untypedIsFrameworkBridge,
   isTestMarker as untypedIsTestMarker,
-} from './test-markers.mjs';
+} from './test-markers.mts';
 
 export type TestProject = {
   readonly reportRoot: string;

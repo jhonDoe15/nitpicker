@@ -1,6 +1,6 @@
 import path from 'node:path';
 import type { Finding } from '../../../../../../shared/values/findings.mts';
-import { SOURCE_RULE_IDS } from '../../../kotlin/rules/kotlin-rules.mjs';
+import { SOURCE_RULE_IDS } from '../../../kotlin/rules/kotlin-rules.mts';
 
 const PACKAGE = 'package demo.guards\n\n';
 const LOGGER = `${PACKAGE}import java.util.logging.Logger\n\n`;

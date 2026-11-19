@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Ruled, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
-import { processWaitsWithoutTimeout as untypedProcessWaitsWithoutTimeout } from './process-waits.mjs';
+import { processWaitsWithoutTimeout as untypedProcessWaitsWithoutTimeout } from './process-waits.mts';
 
 const processWaitsWithoutTimeout: Check<Ruled> = untypedProcessWaitsWithoutTimeout;
 

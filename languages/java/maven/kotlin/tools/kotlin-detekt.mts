@@ -1,12 +1,12 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { javaCommand, runJava } from '../../maven-command.mjs';
+import { javaCommand, runJava } from '../../maven-command.mts';
 import { detektJava, skipWithoutJdk } from '../../errorprone/maven-jdk.mts';
-import { DETEKT_SKIPPED } from '../../../adapters/reporting/skips/skipped-tools.mjs';
+import { DETEKT_SKIPPED } from '../../../adapters/reporting/skips/skipped-tools.mts';
 import { EMPTY_SARIF, kotlinFiles, lintedRoots } from './kotlin-files.mts';
-import { writeKotlinNotes } from '../../../adapters/reporting/kotlin-notes.mjs';
-import { GRADLE_DIRECTORY } from '../../../builds/java-build.mjs';
+import { writeKotlinNotes } from '../../../adapters/reporting/kotlin-notes.mts';
+import { GRADLE_DIRECTORY } from '../../../builds/java-build.mts';
 import { toolchainJdkHome } from '../../configuration/toolchain/toolchain-jdk.mts';
 import type { JdkRequirements, ToolchainContext } from '../../typed/toolchain-types.mts';
 import { type JavaSpawn, callUntyped } from '../../../adapters/typed/java-values.mts';

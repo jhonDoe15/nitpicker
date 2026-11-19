@@ -10,7 +10,7 @@ import {
   testMethod,
   type Loose,
 } from '../spring/spring-test-facts.mts';
-import { SPRING_UNUSED_CONTEXT_RULE, springContextFindings } from './spring-context.mjs';
+import { SPRING_UNUSED_CONTEXT_RULE, springContextFindings } from './spring-context.mts';
 
 const IMPORT = {
   path: 'org.springframework.boot.test.context.SpringBootTest',

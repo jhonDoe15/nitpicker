@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { pathInside as untypedPathInside } from '../../review-rules/java-sources.mjs';
+import { pathInside as untypedPathInside } from '../../review-rules/java-sources.mts';
 
 const pathInside: (root: string, file: string) => string = untypedPathInside;
 

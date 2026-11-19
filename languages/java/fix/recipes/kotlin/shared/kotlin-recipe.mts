@@ -4,7 +4,7 @@ import type {
   RecipeSource,
   RuleRef,
 } from '../../../../../../core/fix/typed/fix-types.mts';
-import { generatedFile as untypedGeneratedFile } from '../../../../adapters/kotlin/scan/rules/markers.mjs';
+import { generatedFile as untypedGeneratedFile } from '../../../../adapters/kotlin/scan/rules/markers.mts';
 import { lineAt, scanKotlinSource } from './kotlin-scan.mts';
 import type { KotlinFound, ScannedKotlin } from './kotlin-scan.mts';
 

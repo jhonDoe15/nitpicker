@@ -69,7 +69,7 @@ export function call(name: string, overrides: Loose = {}): CallFact {
 }
 
 export function segment(name: string, isCall = false, args: Loose[] = []): SegmentFact {
-  return typedSegment(name, isCall, args);
+  return isCall ? typedSegment(name, { call: true, args }) : typedSegment(name, { args });
 }
 
 export function loaded(text: string, context: Loose, overrides: Loose = {}): LoadedFact {

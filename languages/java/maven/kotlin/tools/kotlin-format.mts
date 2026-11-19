@@ -1,6 +1,6 @@
 import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { runJava } from '../../maven-command.mjs';
+import { runJava } from '../../maven-command.mts';
 import { withStyleWorkspace } from './kotlin-style-workspace.mts';
 import { EMPTY_SARIF, kotlinFiles, lintedRoots } from './kotlin-files.mts';
 import { relativeTo } from '../../module/module-paths.mts';

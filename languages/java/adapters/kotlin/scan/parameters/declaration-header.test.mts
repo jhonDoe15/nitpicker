@@ -3,11 +3,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { scanKotlinSource, type Scanned } from '../typed/typed-scan.mts';
-import { withFrameworkAllowances } from '../typed/typed-allowances.mts';
+import { withFrameworkAllowances } from '../framework-allowances.mts';
 import {
   hasCallbackAnnotation as untypedHasCallbackAnnotation,
   UNUSED_PARAMETER_RULE as UNTYPED_UNUSED_PARAMETER_RULE,
-} from './declaration-header.mjs';
+} from './declaration-header.mts';
 
 const UNUSED_PARAMETER_RULE: string = UNTYPED_UNUSED_PARAMETER_RULE;
 const hasCallbackAnnotation: (scanned: Scanned, line: number) => boolean =

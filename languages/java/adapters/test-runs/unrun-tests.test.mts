@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import { callUntyped, findingsOf } from '../typed/java-values.mts';
-import { readUnrunTestFindings } from './unrun-tests.mjs';
+import { readUnrunTestFindings } from './unrun-tests.mts';
 
 const { gitCheckout } = useGitCheckouts();
 const { temporaryRoot } = useGitFixtures();

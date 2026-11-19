@@ -2,27 +2,25 @@ import { readFileSync } from 'node:fs';
 import {
   nitpickerCheckstyleConfig as untypedCheckstyleConfig,
   withGuardChecks as untypedGuardChecks,
-} from './checkstyle-config.mjs';
-import { unformattedCheckstyle as untypedUnformatted } from '../../adapters/tool-config/checkstyle/unformatted-checks.mjs';
-import { writeGuardRulesets as untypedGuardRulesets } from './pmd-rulesets.mjs';
+} from './checkstyle-config.mts';
+import { unformattedCheckstyle as untypedUnformatted } from '../../adapters/tool-config/checkstyle/unformatted-checks.mts';
+import { writeGuardRulesets as untypedGuardRulesets } from './pmd-rulesets.mts';
+import { textOf, textsOf } from '../../../../shared/values/readers.mts';
+import { compilerOf } from '../typed/lint-plan.mts';
 
 export type RulesPlan = Readonly<Record<string, unknown>>;
 
 export const nitpickerCheckstyleConfig: (bundled: string) => string = untypedCheckstyleConfig;
-export const withGuardChecks: (config: string, files: unknown) => string = untypedGuardChecks;
+export function withGuardChecks(config: string, files: unknown): string {
+  return untypedGuardChecks(config, textsOf(files));
+}
 export const unformattedCheckstyle: (text: string, indentation: unknown) => string =
   untypedUnformatted;
-const guardRulesets: (plan: {
-  readonly reportDir: unknown;
-  readonly testDirectories: unknown;
-  readonly compiler: unknown;
-}) => string[] = untypedGuardRulesets;
-
 export function writeGuardRulesets(plan: RulesPlan): string[] {
-  return guardRulesets({
-    reportDir: plan['reportDir'],
-    testDirectories: plan['testDirectories'],
-    compiler: plan['compiler'],
+  return untypedGuardRulesets({
+    reportDir: textOf(plan['reportDir']),
+    testDirectories: textsOf(plan['testDirectories']),
+    compiler: compilerOf(plan['compiler']),
   });
 }
 

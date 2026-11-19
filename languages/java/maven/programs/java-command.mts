@@ -1,6 +1,6 @@
 import type { SpawnSyncReturns } from 'node:child_process';
 import { type JavaSpawn, callUntyped } from '../../adapters/typed/java-values.mts';
-import { javaCommand as untypedJavaCommand, runJava as untypedRunJava } from '../maven-command.mjs';
+import { javaCommand as untypedJavaCommand, runJava as untypedRunJava } from '../maven-command.mts';
 
 export type JavaRun = {
   readonly tool: string;

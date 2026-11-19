@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { JUNIT_HEAD, KOTEST_HEAD, rulesOf, summaryOf } from '../../../test-support/sources.mts';
-import { CONTROL_FLOW_RULE } from './assertion-flow.mjs';
+import { CONTROL_FLOW_RULE } from './assertion-flow.mts';
 
 const MOCK_HEAD = `${JUNIT_HEAD.trimEnd()}
 import io.mockk.verify

@@ -1,9 +1,9 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fileFindings } from '../../../languages/java/adapters/suppressions/java-suppressions.mjs';
+import { fileFindings } from '../../../languages/java/adapters/suppressions/java-suppressions.mts';
 import { fieldAt } from '../../../scripts/json/fields.mts';
-import { isBannedSuppression } from '../../../languages/java/adapters/kotlin/rules/kotlin-rules.mjs';
+import { isBannedSuppression } from '../../../languages/java/adapters/kotlin/rules/kotlin-rules.mts';
 import { toTree } from '../tree.mts';
 import { detectLanguageTampering } from './tampering/index.mts';
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { withoutCoveredCasts as untypedWithoutCoveredCasts } from './cast-precedence.mjs';
+import { withoutCoveredCasts as untypedWithoutCoveredCasts } from './cast-precedence.mts';
 
 type Cast = {
   tool: string;

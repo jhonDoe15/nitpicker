@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
+import { GRADLE_DIRECTORY } from '../../builds/java-build.mts';
 import type { ToolClasspaths } from '../typed/kotlin-types.mts';
 
 type LaunchModule = {

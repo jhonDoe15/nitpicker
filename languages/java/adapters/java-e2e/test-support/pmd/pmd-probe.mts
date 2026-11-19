@@ -3,12 +3,12 @@ import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync }
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, expect } from 'vitest';
-import type { JavaFinding } from '../../../typed/java-values.mts';
+import { callUntyped, findingsOf, type JavaFinding } from '../../../typed/java-values.mts';
 import { ingestSarif as ingestSarifUntyped } from '../../../../../../shared/ingest/sarif.mjs';
-import { withPmdLevels as withPmdLevelsUntyped } from '../../../reporting/sarif/pmd-levels.mjs';
-import { applyRuleMessages as applyRuleMessagesUntyped } from '../../../../messages/rule-messages.mjs';
-import { INIT_SCRIPT as INIT_SCRIPT_UNTYPED } from '../../../../builds/java-build.mjs';
-import { writeRulesets as writeRulesetsUntyped } from '../../../tool-config/pmd-wrappers.mjs';
+import { withPmdLevels } from '../../../reporting/sarif/pmd-levels.mts';
+import { applyRuleMessages } from '../../../../messages/rule-messages.mts';
+import { INIT_SCRIPT as INIT_SCRIPT_UNTYPED } from '../../../../builds/java-build.mts';
+import { writeRulesets as writeRulesetsUntyped } from '../../../tool-config/pmd-wrappers.mts';
 import { appendSentence, exceptionRoute } from '../views/java-e2e-views.mts';
 import { parseJson, textOf } from '../../../../../../shared/values/readers.mts';
 
@@ -17,14 +17,12 @@ const ingestSarif: (
   log: unknown,
   options: { tool: string; root: string },
 ) => { findings: JavaFinding[] } = ingestSarifUntyped;
-const withPmdLevels: (log: unknown) => unknown = withPmdLevelsUntyped;
-const applyRuleMessages: (findings: JavaFinding[], options?: undefined) => JavaFinding[] =
-  applyRuleMessagesUntyped;
 const writeRulesets: (options: {
   module: { sourceRoots: string[]; testSourceRoots: string[] };
   reportDir: string;
-  configs: { pmd: object };
+  configs: { pmd: { projectWins: boolean } };
   spring: boolean;
+  springData: boolean;
   springRules: undefined;
 }) => { mainRuleset: string; testsRuleset: string } = writeRulesetsUntyped;
 
@@ -37,8 +35,9 @@ function scopedRulesets(root: string): string {
       testSourceRoots: [path.join(root, 'src/test/java')],
     },
     reportDir: root,
-    configs: { pmd: {} },
+    configs: { pmd: { projectWins: true } },
     spring: false,
+    springData: false,
     springRules: undefined,
   });
   return [ruleset, mainRuleset, testsRuleset].join(',');
@@ -83,8 +82,9 @@ export function runPmdProbe(root: string, gradle: string): void {
 
 export function readPmdProbeFindings(root: string): JavaFinding[] {
   const report = readFileSync(path.join(root, 'pmd.sarif'), 'utf8');
-  return applyRuleMessages(
-    ingestSarif(withPmdLevels(parseJson(report)), { tool: 'pmd', root }).findings,
+  const levelled = callUntyped(withPmdLevels, parseJson(report));
+  return findingsOf(
+    callUntyped(applyRuleMessages, ingestSarif(levelled, { tool: 'pmd', root }).findings),
   );
 }
 

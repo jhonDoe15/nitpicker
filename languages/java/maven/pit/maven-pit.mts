@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { runJava } from '../maven-command.mjs';
-import { mavenBudget } from '../../adapters/gradle-wrapper/gradle-budget.mjs';
-import { nitpickerPitArguments } from '../../adapters/tool-config/declared/pit-declared.mjs';
+import { runJava } from '../maven-command.mts';
+import { mavenBudget } from '../../adapters/gradle-wrapper/gradle-budget.mts';
+import { nitpickerPitArguments } from '../../adapters/tool-config/declared/pit-declared.mts';
 import { pitHistoryArguments } from '../../builds/pit-history/pit-history.mts';
 import { writePitFailure } from '../../builds/pit-failure/pit-failure.mts';
 import {

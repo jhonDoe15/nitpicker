@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CATALOG_TOOLS, readCatalog } from '../../messages/rule-messages.mjs';
-import { KOTLIN_REVIEW_EXCEPTION_RULES } from '../kotlin/review-rules/review-rules.mjs';
-import { INLINE_SUPPRESSION_RULE } from '../suppressions/java-suppressions.mjs';
+import { CATALOG_TOOLS, readCatalog } from '../../messages/rule-messages.mts';
+import { KOTLIN_REVIEW_EXCEPTION_RULES } from '../kotlin/review-rules/review-rules.mts';
+import { INLINE_SUPPRESSION_RULE } from '../suppressions/java-suppressions.mts';
 import { fieldOf, fieldsOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import {
   matchesRule,

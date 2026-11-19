@@ -1,7 +1,5 @@
 import { asSentence } from '../entry.mjs';
 
-export { asSentence };
-
 const CODE_SPAN = /(`[^`]*`)/u;
 const EMPHASIS = /(?<![\p{L}\p{N}\\])(\*\*|\*|_)(?=\S)(.+?)(?<=\S)\1(?![\p{L}\p{N}])/gu;
 const FIRST_SENTENCE = /^(.+?[.!?])(?:\s+|$)(?=[A-Z`([]|$)/su;

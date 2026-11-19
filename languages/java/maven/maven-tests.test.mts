@@ -21,7 +21,7 @@ import {
 } from './maven-tests.mts';
 import { javaArgumentFile, runPit } from './pit/maven-pit.mts';
 import { textOf } from '../../../shared/values/readers.mts';
-import { readPitMutators as untypedPitMutators } from '../builds/java-build.mjs';
+import { readPitMutators as untypedPitMutators } from '../builds/java-build.mts';
 import { pitTargets } from './module/pit-scope.mts';
 
 const readPitMutators: () => string[] = untypedPitMutators;

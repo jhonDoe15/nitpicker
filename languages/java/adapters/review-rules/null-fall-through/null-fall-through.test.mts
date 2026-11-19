@@ -1,14 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { PROJECT, useTempProjects, type ReadOptions } from '../test-support/temp-projects.mts';
-import { readNullFallThroughFindings as untypedRead } from './null-fall-through.mjs';
-
-type Finding = {
-  readonly rule: string;
-  readonly message: string;
-  readonly location: { readonly line: number };
-};
-
-const read: (projectRoot: string, options: ReadOptions) => Finding[] = untypedRead;
+import { PROJECT, useTempProjects } from '../test-support/temp-projects.mts';
+import { readNullFallThroughFindings as read } from './null-fall-through.mts';
 
 const projectWith = useTempProjects('nitpicker-jvm-null-');
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { credentialUrl, isLiteralSecret, secretVariable } from './spring-secrets.mjs';
+import { credentialUrl, isLiteralSecret, secretVariable } from './spring-secrets.mts';
 
 describe('isLiteralSecret: keys', () => {
   it.each([

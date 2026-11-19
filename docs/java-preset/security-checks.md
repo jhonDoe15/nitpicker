@@ -13,7 +13,7 @@ config exception.
 Every message is rewritten to the allowed form, for example: "Pass values as bind parameters (...)
 and never build query text from input."; the gate appends the shared exception sentence for
 `spotbugs/SQL_INJECTION_JPA`, as it does for every rule. The texts live in
-`languages/java/adapters/security/advice-groups.mjs`; a test requires one for every pattern of the
+`languages/java/adapters/security/advice-groups.mts`; a test requires one for every pattern of the
 pinned plugin version, so a plugin bump that adds a pattern fails until the pattern is either
 given advice or excluded with a reason. Identity is the sink plus the enclosing class and method
 name, without the parameter types, so two findings of one pattern in different methods are told
@@ -41,7 +41,7 @@ cost nothing. Rules that can flag correct code stay on and carry the exception r
 common cases are `PREDICTABLE_RANDOM` for `Random` or `ThreadLocalRandom` used for jitter or
 sampling, and `WEAK_MESSAGE_DIGEST_MD5` or `_SHA1` for an ETag or a legacy interface.
 
-`languages/java/adapters/java-e2e/preset/security/java-preset-security.e2e.test.mjs` (gated like the
+`languages/java/adapters/java-e2e/preset/security/java-preset-security.e2e.test.mts` (gated like the
 other Java e2e tests) runs the plugin through Gradle on the `gradle-project` fixture and expects
 exactly one `SQL_INJECTION_JPA` for a Jakarta `createQuery` built from a parameter, one
 `SQL_INJECTION_SPRING_JDBC` for each Spring JDBC call whose query text a helper builds from a
@@ -87,5 +87,5 @@ A trust-all `X509TrustManager` or `HostnameVerifier` class of the project, anony
 is find-sec-bugs' `WEAK_TRUST_MANAGER` and `WEAK_HOSTNAME_VERIFIER`, so the PMD rule leaves classes
 alone and each site is reported once. Test sources are not checked: a test server with a
 self-signed certificate is normal there. `languages/java/adapters/java-e2e/fixtures/review-rules`
-marks the reported and the allowed forms; `java-spring-review.e2e.test.mjs` checks them on Gradle and
+marks the reported and the allowed forms; `java-spring-review.e2e.test.mts` checks them on Gradle and
 Maven.

@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { pathInside as untypedPathInside } from '../review-rules/java-sources.mjs';
+import { pathInside as untypedPathInside } from '../review-rules/java-sources.mts';
 
 const pathInside: (base: string, relative: string) => string = untypedPathInside;
 

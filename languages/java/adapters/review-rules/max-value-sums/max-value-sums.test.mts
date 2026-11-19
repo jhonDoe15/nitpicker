@@ -1,19 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { PROJECT, useTempProjects, type ReadOptions } from '../test-support/temp-projects.mts';
-import {
-  MAX_VALUE_RULE,
-  readMaxValueFindings as untypedReadMaxValueFindings,
-} from './max-value-sums.mjs';
-
-type MaxValueFinding = {
-  readonly rule: string;
-  readonly path: string;
-  readonly message: string;
-  readonly location: { readonly line: number };
-};
-
-const readMaxValueFindings: (projectRoot: string, options: ReadOptions) => MaxValueFinding[] =
-  untypedReadMaxValueFindings;
+import { PROJECT, useTempProjects } from '../test-support/temp-projects.mts';
+import { MAX_VALUE_RULE, readMaxValueFindings } from './max-value-sums.mts';
 
 const projectWith = useTempProjects('nitpicker-jvm-max-');
 
