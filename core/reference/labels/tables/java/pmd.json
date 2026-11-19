@@ -66,6 +66,7 @@
   "pmd/EpochNarrowedToInt": ["bug"],
   "pmd/EqualsLeavesOutField": ["bug"],
   "pmd/ExhaustiveEnumPredicate": ["maintainability"],
+  "pmd/FieldCanBeFinal": ["simplification"],
   "pmd/FinalizeOnlyCallsSuperFinalize": ["simplification"],
   "pmd/FirstElementOfMaybeEmpty": ["bug"],
   "pmd/FixedSleepInTest": ["tests"],

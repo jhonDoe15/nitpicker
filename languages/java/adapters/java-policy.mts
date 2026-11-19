@@ -118,7 +118,7 @@ function runnerArguments({
   exclude = [],
   exceptions = [],
   kotlin = {},
-  java = {},
+  java = { analyzeGeneratedSources: false },
   mutationOff = false,
   duplicates = {},
   tools = {},
@@ -140,6 +140,7 @@ function runnerArguments({
     ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
     ...(mutationOff ? ['--mutation', 'off'] : []),
     ...(java.buildTool === undefined ? [] : ['--build-tool', java.buildTool]),
+    ...(java.analyzeGeneratedSources ? ['--analyze-generated-sources', 'true'] : []),
     ...(kotlin.detektConfig === undefined ? [] : ['--kotlin-detekt-config', kotlin.detektConfig]),
     ...(duplicates.skippedFolders === undefined
       ? []

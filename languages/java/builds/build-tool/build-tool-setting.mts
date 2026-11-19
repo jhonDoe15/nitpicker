@@ -7,8 +7,9 @@ import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, optionalText } from '../../../../shared/values/readers.mts';
 
 const BUILD_TOOL = 'buildTool';
+const ANALYZE_GENERATED = 'analyzeGeneratedSources';
 
-export const JAVA_KEYS = [BUILD_TOOL];
+export const JAVA_KEYS = [BUILD_TOOL, ANALYZE_GENERATED];
 
 const BUILD_FILES: Readonly<Record<string, readonly string[]>> = {
   maven: ['pom.xml'],
@@ -20,6 +21,10 @@ export function validateJavaBuildSetting(config: unknown): void {
   const buildTool = fieldOf(java, BUILD_TOOL);
   if (buildTool !== undefined && !JAVA_BUILD_TOOLS.some((name) => name === buildTool)) {
     throw configError(`"java.buildTool" must be one of: ${JAVA_BUILD_TOOLS.join(', ')}`);
+  }
+  const analyzeGenerated = fieldOf(java, ANALYZE_GENERATED);
+  if (analyzeGenerated !== undefined && typeof analyzeGenerated !== 'boolean') {
+    throw configError('"java.analyzeGeneratedSources" must be true or false');
   }
 }
 

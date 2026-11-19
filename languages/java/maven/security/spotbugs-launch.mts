@@ -13,6 +13,7 @@ type LaunchOptions = {
   readonly tools: ToolClasspaths;
   readonly settings: readonly string[];
   readonly auxClasspath?: readonly string[];
+  readonly targets?: readonly string[];
 };
 type SpotbugsLaunch = {
   readonly jvmArgs: readonly string[];
@@ -34,6 +35,7 @@ export function spotbugsLaunch({
   tools,
   settings,
   auxClasspath = [],
+  targets = [module.outputDirectory],
 }: LaunchOptions): SpotbugsLaunch {
   return {
     jvmArgs: Object.entries(SINK_FILES).map(([detector, sinks]) => {
@@ -59,7 +61,7 @@ export function spotbugsLaunch({
             '-auxclasspath',
             auxClasspath.filter((entry) => existsSync(entry)).join(path.delimiter),
           ]),
-      module.outputDirectory,
+      ...targets,
     ],
   };
 }

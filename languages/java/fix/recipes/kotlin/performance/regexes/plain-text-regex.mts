@@ -2,7 +2,7 @@ import {
   literalText as untypedLiteralText,
   regexSites as untypedRegexSites,
   trimmed as untypedTrimmed,
-} from '../../../../../adapters/kotlin/scan/regexes/regex-values.mjs';
+} from '../../../../../adapters/kotlin/scan/regexes/regex-values.mts';
 import { kotlinRecipe } from '../../shared/kotlin-recipe.mts';
 import { splitArguments } from '../../shared/kotlin-scan.mts';
 import type { KotlinFound, ScannedKotlin, Span } from '../../shared/kotlin-scan.mts';

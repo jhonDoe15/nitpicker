@@ -6,6 +6,7 @@ import { isJavaModule } from '../../builds/lint/lint-arguments.mts';
 import { javaFiles } from '../maven-lint.mts';
 import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
 import { runJava } from '../programs/java-command.mts';
+import { compiledProgram } from '../programs/helper-programs.mts';
 import { fieldOf, numberOr, textsOf } from '../../../../shared/values/readers.mts';
 import type { Classpaths } from '../typed/maven-values.mts';
 import { type ToolClasspaths, resolvedTool } from '../typed/kotlin-types.mts';
@@ -13,6 +14,7 @@ import { type CompilerSettings, type SourceModule, compilerOf } from './compiler
 import { ERROR_PRONE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mts';
 import { errorProneJava, isNoFittingJdk, skipWithoutJdk } from './maven-jdk.mts';
 import { toolHeapFlags, toolSlots } from '../parallel/tool-slots.mts';
+import { analyzesGenerated, generatedRoots } from '../generated/generated-roots.mts';
 import { mavenBudget } from '../../adapters/gradle-wrapper/gradle-budget.mts';
 
 type Modular = boolean | 'all';
@@ -39,9 +41,11 @@ type ArgumentSet = CompileSet & {
   readonly processors: readonly string[];
   readonly compiler: CompilerSettings;
   readonly flags: readonly string[];
+  readonly skipRoots: readonly string[] | undefined;
 };
 
 const ERROR_PRONE = 'errorprone';
+const ERROR_PRONE_TOOL = 'Error Prone';
 const RUNNER_DIRECTORY = path.join(GRADLE_DIRECTORY, ERROR_PRONE);
 const COMPILER_PACKAGES = [
   ...['api', 'file', 'main', 'model', 'parser'],
@@ -117,7 +121,7 @@ function lookupLines({ classpath: sourcePath, compiled = [], own, modular }: Com
 }
 
 function writeArguments(work: string, set: ArgumentSet): string[] {
-  const { name, roots, own, processors, compiler, test, modular, flags } = set;
+  const { name, roots, own, processors, compiler, test, modular, flags, skipRoots } = set;
   const sources = javaFiles(roots).filter(
     (file) => modular !== false || path.basename(file) !== MODULE_INFO,
   );
@@ -138,6 +142,9 @@ function writeArguments(work: string, set: ArgumentSet): string[] {
     ...levelLines(compiler),
     ...(compiler.encoding === undefined ? [] : ['-encoding', compiler.encoding]),
     ...flags.map((flag) => `--errorprone-flag=${flag}`),
+    ...(skipRoots === undefined
+      ? []
+      : ['--skip-generated', ...skipRoots.map((root) => `--generated-root=${root}`)]),
     ...(test ? ['--test-only'] : []),
     '--sources',
     ...sources,
@@ -212,6 +219,7 @@ function analyze(
   const work = path.join(reportDir, ERROR_PRONE);
   rmSync(work, { recursive: true, force: true });
   const compiler = compilerOf(module.compiler);
+  const declaredFlags = textsOf(fieldOf(fieldOf(configs, ERROR_PRONE), 'arguments'));
   const argumentFiles = compileSets({ module, classpaths }, modular).flatMap((set) =>
     writeArguments(work, {
       ...set,
@@ -220,25 +228,45 @@ function analyze(
         ...resolvedTool(tools, ERROR_PRONE),
         ...processorPath(set.classpath, compiler, tools),
       ],
-      flags: textsOf(fieldOf(fieldOf(configs, ERROR_PRONE), 'arguments')),
+      flags: declaredFlags,
+      skipRoots: analyzesGenerated(configs) ? undefined : generatedRoots(module, set.roots),
     }),
   );
   if (argumentFiles.length === 0) {
     writeFileSync(report, '[]\n');
     return;
   }
-  runJava({
-    java: errorProneJava({ preview: usesPreview(compiler), spawn, environment }),
+  const java = errorProneJava({ preview: usesPreview(compiler), spawn, environment });
+  runReport({ module, spawn, timeoutMs }, java, { report, argumentFiles });
+}
+
+type ReportContext = Pick<ErrorProneContext, 'module' | 'spawn' | 'timeoutMs'>;
+
+function runReport(
+  { module, spawn, timeoutMs }: ReportContext,
+  java: string,
+  { report, argumentFiles }: { readonly report: string; readonly argumentFiles: readonly string[] },
+): void {
+  const classes = compiledProgram({
+    tool: ERROR_PRONE_TOOL,
+    name: 'errorprone-report',
+    sources: [path.join(RUNNER_DIRECTORY, 'ErrorProneReport.java')],
+    version: '1',
+    libraries: [],
+    cwd: module.basedir,
     spawn,
     timeoutMs,
-    tool: 'Error Prone',
+    java,
+  });
+  runJava({
+    java,
+    spawn,
+    timeoutMs,
+    tool: ERROR_PRONE_TOOL,
+    classpath: [classes],
+    mainClass: 'ErrorProneReport',
     jvmArgs: [...JVM_FLAGS, ...runnerFlags(timeoutMs)],
-    args: [
-      path.join(RUNNER_DIRECTORY, 'ErrorProneReport.java'),
-      report,
-      path.join(RUNNER_DIRECTORY, 'checks.json'),
-      ...argumentFiles,
-    ],
+    args: [report, path.join(RUNNER_DIRECTORY, 'checks.json'), ...argumentFiles],
     cwd: module.basedir,
     accept: (result) => result.status === 0 && existsSync(report),
   });

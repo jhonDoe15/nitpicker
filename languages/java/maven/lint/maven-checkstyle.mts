@@ -17,6 +17,7 @@ import type { SourceModule } from '../errorprone/compiler-types.mts';
 import { javaCommand, runJava } from '../programs/java-command.mts';
 import type { ToolClasspaths } from '../typed/kotlin-types.mts';
 import { javaFiles } from './java-files.mts';
+import { handWrittenRoots } from '../generated/generated-roots.mts';
 
 type CheckstylePinned = { readonly checkstyle: string };
 type CheckstyleSetup = { readonly config: string; readonly properties: string };
@@ -169,14 +170,14 @@ function runCheckstyleReports(options: CheckstyleOptions): void {
   checkstyleReport({
     ...context,
     setup: checkstyleSetup(options, false),
-    roots: module.sourceRoots,
+    roots: handWrittenRoots(module, module.sourceRoots, options.configs),
     report: path.join(reportDir, CHECKSTYLE_XML),
     always: true,
   });
   checkstyleReport({
     ...context,
     setup: checkstyleSetup(options, true),
-    roots: module.testSourceRoots,
+    roots: handWrittenRoots(module, module.testSourceRoots, options.configs),
     report: path.join(reportDir, 'checkstyle-test.xml'),
     always: false,
   });
