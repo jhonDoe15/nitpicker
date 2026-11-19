@@ -8,20 +8,43 @@ const CALLEE = /^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$/u;
 const IT_MEMBER = /^it(\??)\.([\s\S]+)$/u;
 const IT_ARGUMENT = /^([A-Za-z_][\w.]*)\(\s*it\s*\)$/u;
 
+const IDENTIFIER = /^[A-Za-z_]\w*/u;
+const BARE = /^[A-Za-z_]\w*$/u;
+
+function singleSegment(member: string): boolean {
+  const name = IDENTIFIER.exec(member)?.[0] ?? '';
+  const rest = member.slice(name.length);
+  if (name === '' || rest === '') {
+    return name !== '';
+  }
+  let depth = 0;
+  for (const [offset, character] of Array.from(rest).entries()) {
+    depth += character === '(' ? 1 : 0;
+    depth -= character === ')' ? 1 : 0;
+    if (depth === 0 && offset < rest.length - 1) {
+      return false;
+    }
+  }
+  return rest.startsWith('(') && rest.endsWith(')') && depth === 0;
+}
+
 function memberAccess(body: string, safe: string, receiver: string): string | undefined {
   const found = IT_MEMBER.exec(body);
   const member = found?.[2];
   if (found === null || member === undefined || /\bit\b/u.test(member) || member.includes('\n')) {
     return undefined;
   }
-  return MEMBERS.test(withoutGroups(member).trim()) && !/[{}]/u.test(member)
-    ? `${receiver}${safe === '' && found[1] === '' ? '.' : '?.'}${member}`
+  const plain = MEMBERS.test(withoutGroups(member).trim()) && !/[{}]/u.test(member);
+  const nullSafe = safe === '' && found[1] === '' ? '.' : '?.';
+  return plain && (safe === '' || singleSegment(member))
+    ? `${receiver}${nullSafe}${member}`
     : undefined;
 }
 
 function argument(body: string, safe: string, receiver: string): string | undefined {
   const callee = IT_ARGUMENT.exec(body)?.[1];
-  return callee !== undefined && safe === '' && CALLEE.test(callee) && !/\bit\b/u.test(callee)
+  const ordered = callee !== undefined && (BARE.test(callee) || BARE.test(receiver));
+  return ordered && safe === '' && CALLEE.test(callee) && !/\bit\b/u.test(callee)
     ? `${callee}(${receiver})`
     : undefined;
 }

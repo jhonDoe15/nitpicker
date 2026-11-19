@@ -34,6 +34,24 @@ class ClockReads {
     assertThat(Duration.between(deadline, Instant.now())).isLessThan(Duration.ofSeconds(5));
   }
 
+  void marksPresence(Metadata metadata) {
+    metadata.setDeletionTimestamp(Instant.now());
+    metadata.setCreatedAt(Instant.now().plusSeconds(10));
+    Instant now = Instant.now();
+    metadata.setCreationTimestamp(now);
+    metadata.setUpdateTimestamp(now.plusSeconds(10));
+    Clock frozen = Clock.fixed(Instant.now(), ZoneOffset.UTC);
+    assertThat(frozen.millis()).isPositive();
+  }
+
+  void reachesTheSubject(Metadata metadata, Checker checker) {
+    Instant now = Instant.now(); // violation: RealClockInTest
+    metadata.setCreationTimestamp(now);
+    assertThat(metadata.created()).isEqualTo(now);
+    assertThat(checker.valid(LocalDate.now().plusDays(1))).isFalse(); // violation: RealClockInTest
+    metadata.setSeen(Instant.now()); // violation: RealClockInTest
+  }
+
   void drawsRandomValues() {
     int roll = new Random().nextInt(6); // violation: RandomInTest
     double share = Math.random(); // violation: RandomInTest
@@ -47,5 +65,23 @@ class ClockReads {
     UUID id = UUID.randomUUID();
     assertThat(roll).isBetween(0, 5);
     assertThat(UUID.fromString(id.toString())).isEqualTo(id);
+  }
+
+  interface Metadata {
+    void setDeletionTimestamp(Instant value);
+
+    void setCreatedAt(Instant value);
+
+    void setCreationTimestamp(Instant value);
+
+    void setUpdateTimestamp(Instant value);
+
+    void setSeen(Instant value);
+
+    Instant created();
+  }
+
+  interface Checker {
+    boolean valid(LocalDate date);
   }
 }

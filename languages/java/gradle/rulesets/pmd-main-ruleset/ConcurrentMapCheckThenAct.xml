@@ -1,0 +1,81 @@
+  <rule name="ConcurrentMapCheckThenAct" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This concurrent map is checked and then used again for the same key (containsKey or get(key) == null, then put, get or remove), but another thread can change the entry between the two calls: two threads both see it absent and both create the value, or the get returns null after containsKey said true. A ConcurrentMap makes each call atomic, not the pair. Use one atomic call: map.computeIfAbsent(key, k -&gt; create(k)), map.putIfAbsent(key, value), map.getOrDefault(key, fallback), map.computeIfPresent or merge, or read once into a local (Value v = map.get(key); if (v == null) ...). An exception fits a map that only one thread changes, or a pair that is already locked.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $fp := function($n) {
+      string-join(for $x in $n/descendant-or-self::*
+                  return concat(name($x), '=', $x/@Name, $x/@Image, $x/@MethodName), '|')
+    },
+    $concurrent := function($ref) {
+      $ref[self::VariableAccess or self::FieldAccess[*[1][self::ThisExpression[not(*)]]]]
+        [pmd-java:typeIs('java.util.concurrent.ConcurrentMap')
+         or (some $d in ancestor::ClassBody[1]/FieldDeclaration/VariableDeclarator[VariableId/@Name = $ref/@Name]
+             satisfies $d/*[2][self::ConstructorCall][pmd-java:typeIs('java.util.concurrent.ConcurrentMap')])]
+    },
+    $call := function($n, $names) {
+      $n/self::MethodCall[@MethodName = $names][ArgumentList/@Size >= 1][exists($concurrent(*[1]))]
+    },
+    $conds := function($c) {
+      $c | $c/self::InfixExpression[@Operator = '&&']/*
+    },
+    $guarded := function($n) {
+      exists($n/ancestor::SynchronizedStatement)
+        or exists($n/ancestor::MethodDeclaration[1][pmd-java:modifiers() = 'synchronized'
+             or .//MethodCall[@MethodName = ('lock', 'lockInterruptibly', 'tryLock', 'writeLock', 'readLock')]])
+    },
+    $simpleKey := function($k) {
+      empty($k/descendant-or-self::*[self::ConstructorCall or self::AssignmentExpression or self::LambdaExpression
+                                     or self::UnaryExpression[@Operator = ('++', '--')]])
+        and (every $m in $k/descendant-or-self::MethodCall satisfies
+               matches($m/@MethodName, '^get[A-Z]\w*$') and $m/ArgumentList/@Size = 0)
+    },
+    $keyAssigned := function($scope, $k) {
+      exists($scope/descendant-or-self::*[self::AssignmentExpression or self::UnaryExpression[@Operator = ('++', '--')]]
+               /*[1][self::VariableAccess or self::FieldAccess][@Name = $k/descendant-or-self::*/@Name])
+    },
+    $constant := function($v, $body) {
+      exists($v/self::*[self::NumericLiteral or self::StringLiteral or self::BooleanLiteral
+                        or self::NullLiteral or self::CharLiteral])
+        or exists($v/self::*[self::VariableAccess or self::FieldAccess]
+                    [matches(@Name, '^[A-Z][A-Z0-9_]*$')
+                     or (some $f in $body/FieldDeclaration[@Static = true()][pmd-java:modifiers() = 'final']
+                         /VariableDeclarator satisfies $f/VariableId/@Name = @Name)])
+    },
+    $removed := function($chk) {
+      exists($chk/ancestor::ClassBody[1]//MethodCall
+               [@MethodName = ('remove', 'clear', 'computeIfPresent', 'compute', 'replace')]
+               [string(*[1]/@Name) = string($chk/*[1]/@Name)]
+             | $chk/ancestor::ClassBody[1]//MethodCall[starts-with(@MethodName, 'remove')]
+               [*[1][self::MethodCall[@MethodName = ('entrySet', 'keySet', 'values')]]
+                    [string(*[1]/@Name) = string($chk/*[1]/@Name)]])
+    },
+    $acts := function($scope, $check, $names) {
+      $scope/descendant-or-self::MethodCall[@MethodName = $names][ArgumentList/@Size >= 1]
+        [$fp(*[1]) = $fp($check/*[1])][$fp(ArgumentList/*[1]) = $fp($check/ArgumentList/*[1])]
+        [$simpleKey(ArgumentList/*[1])][not($keyAssigned($scope, ArgumentList/*[1]))]
+    }
+return
+  (
+    //IfStatement[not($guarded(.))]/(let $if := . return
+      for $c in $conds(*[1])
+      return
+        (for $chk in ($c/self::UnaryExpression[@Operator = '!']/*[1][$call(., 'containsKey')]
+                      | $c/self::InfixExpression[@Operator = '==']
+                          [*[2][self::NullLiteral]]/*[1][$call(., 'get')])
+         return $acts($if/*[2], $chk, 'put')[not(ancestor::SynchronizedStatement)]
+                    [not($constant(ArgumentList/*[2], ancestor::ClassBody[1]))])
+        |
+        (for $chk in $c/self::MethodCall[$call(., 'containsKey')][$removed(.)]
+         return $acts($if/*[2], $chk, ('get', 'remove'))[@MethodName = 'get' or parent::VariableDeclarator]
+                                                [not(ancestor::SynchronizedStatement)]))
+  )
+  |
+  //ConditionalExpression[not($guarded(.))]/(let $cond := . return
+    for $chk in *[1]/self::MethodCall[$call(., 'containsKey')][$removed(.)]
+    return $acts($cond/*[2], $chk, 'get'))
+]]></value>
+      </property>
+    </properties>
+  </rule>

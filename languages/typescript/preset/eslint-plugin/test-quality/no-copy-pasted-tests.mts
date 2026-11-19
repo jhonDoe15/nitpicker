@@ -5,6 +5,7 @@ import {
   type TSESTree,
 } from '@typescript-eslint/utils';
 import type { SourceCode } from '../rules/typed/node-views.mts';
+import { RUNNER_OPTION_SCHEMA, vocabularyOf } from '../rules/runner-apis/runner-option.mts';
 import { callbackOf, chainHasProperty, isCaseCall } from './test-calls.mts';
 
 const MIN_COPIES = 3;
@@ -57,11 +58,11 @@ function copiesIn(
 export const rule: TSESLint.RuleModule<'copiedTest'> = {
   meta: {
     type: 'suggestion',
-    docs: { description: 'Require one it.each table instead of copies of a test' },
-    schema: [],
+    docs: { description: 'Require one table of cases instead of copies of a test' },
+    schema: RUNNER_OPTION_SCHEMA,
     messages: {
       copiedTest:
-        'This test repeats the body of {{count}} others and differs only in its literals. Write one `it.each` table with a row per case.',
+        'This test repeats the body of {{count}} others and differs only in its literals. Put the cases in one table and {{eachCase}}.',
     },
   },
   create(context) {
@@ -71,7 +72,7 @@ export const rule: TSESLint.RuleModule<'copiedTest'> = {
           context.report({
             node: call.callee,
             messageId: 'copiedTest',
-            data: { count: String(calls.length - 1) },
+            data: { count: String(calls.length - 1), eachCase: vocabularyOf(context).eachCase },
           });
         }
       }

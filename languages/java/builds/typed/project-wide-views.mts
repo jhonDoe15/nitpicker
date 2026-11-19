@@ -5,6 +5,7 @@ import { kotlinModules, readKotlinMetrics } from '../../adapters/kotlin/kotlin-m
 import { readJavaFileLimitFindings } from '../../adapters/metrics/java-structure.mts';
 import { readCopiedConstantFindings } from '../../adapters/review-rules/copied-constants/copied-constants.mjs';
 import { readMaxValueFindings } from '../../adapters/review-rules/max-value-sums/max-value-sums.mjs';
+import { readNullFallThroughFindings } from '../../adapters/review-rules/null-fall-through/null-fall-through.mjs';
 import { readRoundTripFindings } from '../../adapters/review-rules/round-trips/round-trips.mjs';
 import { readTestOnlyClassFindings } from '../../adapters/review-rules/test-only-classes.mts';
 import { readTestRuntimeFindings } from '../../adapters/test-runtime/test-runtime-findings.mts';
@@ -113,3 +114,5 @@ export const copiedConstantFindings: (projectRoot: string, options: WideOptions)
   readCopiedConstantFindings;
 export const maxValueFindings: (projectRoot: string, options: WideOptions) => JavaFinding[] =
   readMaxValueFindings;
+export const nullFallThroughFindings: (projectRoot: string, options: WideOptions) => JavaFinding[] =
+  readNullFallThroughFindings;

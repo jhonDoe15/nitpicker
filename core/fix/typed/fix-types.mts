@@ -93,8 +93,11 @@ export type RecipeEdit =
   | { readonly type: 'move'; readonly from: string; readonly to: string }
   | { readonly type: 'untrack'; readonly path: string };
 
+type RecipeFinding = RuleRef & { readonly path: string; readonly line: number };
+
 export type RecipeFix = {
-  readonly finding: RuleRef & { readonly path: string; readonly line: number };
+  readonly finding: RecipeFinding;
+  readonly alsoFixes?: readonly RecipeFinding[];
   readonly edits: readonly RecipeEdit[];
 };
 

@@ -58,6 +58,8 @@ export const SECRET_VALUE_CASES = [
   [TOKEN, 'abc1', NONE],
   [PASSWORD, String.raw`^(?=.*\d).{8,}$`, NONE],
   [TOKEN, GITHUB_TOKEN, CREDENTIAL],
+  ['challenge', 'Basic realm="Reports"', NONE],
+  ['challenge', 'Bearer realm="api", error="invalid_token"', NONE],
   ['secretKey', DJANGO_KEY, CREDENTIAL],
   [API_KEY, AWS_KEY, CREDENTIAL],
   [TOKEN, BEARER, CREDENTIAL],

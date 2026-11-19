@@ -2,6 +2,7 @@ import { functionAround } from '../../global-state/state-restores.mjs';
 import { classesOf, enclosingClasses } from '../../discovery/declarations.mjs';
 import { closeOf, execAt, wordBefore } from '../../discovery/text-scan.mjs';
 import { enclosingParens } from '../report.mjs';
+import { isMarkerSpan } from './markers.mjs';
 import { isOperand } from './operands.mjs';
 
 const MEASURING_CALLS = new Set(['isBefore', 'isAfter', 'compareTo', 'until', 'while']);
@@ -94,7 +95,7 @@ function isTemplated(scanned, local, scope) {
   );
 }
 
-function isMeasuredLocal(scanned, read) {
+function isMeasuredLocal(scanned, read, accepts) {
   const local = localAfter(scanned, read);
   if (local === undefined) {
     return false;
@@ -104,10 +105,21 @@ function isMeasuredLocal(scanned, read) {
   return (
     !isTemplated(scanned, local, scope) &&
     uses.length > 0 &&
-    uses.every((offset) => isMeasuringSpan(scanned, offset, offset + local.name.length))
+    uses.every((offset) => accepts(scanned, offset, offset + local.name.length))
   );
 }
 
+function isMeasuringOrMarker(scanned, start, end) {
+  return isMeasuringSpan(scanned, start, end) || isMarkerSpan(scanned, start, end);
+}
+
 export function isMeasuring(scanned, read) {
-  return isMeasuringSpan(scanned, read.offset, read.end) || isMeasuredLocal(scanned, read);
+  if (isMeasuringSpan(scanned, read.offset, read.end)) {
+    return true;
+  }
+  const instant = read.family === 'Instant.now';
+  return (
+    (instant && isMarkerSpan(scanned, read.offset, read.end)) ||
+    isMeasuredLocal(scanned, read, instant ? isMeasuringOrMarker : isMeasuringSpan)
+  );
 }

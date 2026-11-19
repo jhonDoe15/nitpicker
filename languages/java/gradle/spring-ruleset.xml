@@ -400,6 +400,18 @@ return
 //MethodCall[@MethodName = ('getenv', 'getProperty') and *[1][self::TypeExpression and pmd-java:typeIs('java.lang.System')]
   and not(ArgumentList/StringLiteral[1][matches(@ConstValue, '^(java|user|os|file|line|path|javax|jdk|sun|com\.sun|http|https|ftp)\.|^socks')])
   and (ArgumentList/* or parent::MethodCall[@MethodName = ('get', 'getOrDefault', 'containsKey')])]
+  [ancestor::ClassDeclaration[last()]/ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.stereotype.Component')
+    or pmd-java:typeIs('org.springframework.stereotype.Service')
+    or pmd-java:typeIs('org.springframework.stereotype.Repository')
+    or pmd-java:typeIs('org.springframework.stereotype.Controller')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.ControllerAdvice')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestControllerAdvice')
+    or pmd-java:typeIs('org.springframework.boot.context.properties.ConfigurationProperties')
+    or pmd-java:typeIs('jakarta.inject.Named') or pmd-java:typeIs('javax.inject.Named')
+    or pmd-java:typeIs('jakarta.annotation.ManagedBean') or pmd-java:typeIs('javax.annotation.ManagedBean')
+    or pmd-java:typeIs('org.aspectj.lang.annotation.Aspect')]]
   [not(ancestor::ClassDeclaration[last()]/ModifierList/Annotation[
     pmd-java:typeIs('org.springframework.context.annotation.Configuration')
     or pmd-java:typeIs('org.springframework.boot.autoconfigure.SpringBootApplication')
@@ -415,7 +427,10 @@ return
     or pmd-java:typeIs('org.springframework.stereotype.Service')
     or pmd-java:typeIs('org.springframework.stereotype.Repository')
     or pmd-java:typeIs('org.springframework.stereotype.Controller')
-    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')]]
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+    or pmd-java:typeIs('jakarta.inject.Named') or pmd-java:typeIs('javax.inject.Named')
+    or pmd-java:typeIs('jakarta.annotation.ManagedBean') or pmd-java:typeIs('javax.annotation.ManagedBean')
+    or pmd-java:typeIs('org.aspectj.lang.annotation.Aspect')]]
   //MethodCall[@MethodName = ('getProperty', 'getRequiredProperty') and *[1][pmd-java:typeIs('org.springframework.core.env.PropertyResolver')]]
 ]]></value></property></properties>
   </rule>
@@ -476,10 +491,6 @@ return
   or (pmd-java:typeIs('org.springframework.beans.factory.annotation.Value')
       and (parent::ModifierList/parent::FieldDeclaration
            or parent::ModifierList/parent::MethodDeclaration[not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')])]))]
-|
-//ConstructorDeclaration[count(../ConstructorDeclaration) = 1]/ModifierList/Annotation[
-  pmd-java:typeIs('org.springframework.beans.factory.annotation.Autowired')
-  or (pmd-java:typeIs('jakarta.inject.Inject') or pmd-java:typeIs('javax.inject.Inject'))]
 ]]></value></property></properties>
   </rule>
   <rule name="SpringImmutableBeans" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
@@ -653,7 +664,8 @@ return (
         message="Map @ManyToMany as a Set (or a List with @OrderColumn). A plain List makes Hibernate delete and re-insert every join row when one element is removed.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
-//FieldDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.ManyToMany') or pmd-java:typeIs('javax.persistence.ManyToMany'))]]
+//FieldDeclaration[ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.ManyToMany') or pmd-java:typeIs('javax.persistence.ManyToMany'))]
+    [not(AnnotationMemberList/MemberValuePair[@Name = 'mappedBy'])]]
   [not(ModifierList/Annotation[(pmd-java:typeIs('jakarta.persistence.OrderColumn') or pmd-java:typeIs('javax.persistence.OrderColumn'))])]
   /ClassType[pmd-java:typeIs('java.util.List') or pmd-java:typeIsExactly('java.util.Collection')]
 ]]></value></property></properties>
@@ -1859,12 +1871,37 @@ let $scope := function($node) {
   $expression/descendant-or-self::*[not(self::InfixExpression[@Operator = '+'])]
     [every $up in ancestor::*[exists(ancestor-or-self::*[. is $expression])] satisfies $up[self::InfixExpression[@Operator = '+']]]
 },
+    $upper := function($node) {
+  exists($node[self::VariableAccess or self::FieldAccess][matches(@Name, '^[A-Z][A-Z0-9_]*$')]
+    [exists(@ConstValue)
+     or (let $name := @Name,
+             $declared := ancestor::CompilationUnit//(FieldDeclaration | LocalVariableDeclaration)
+               /VariableDeclarator[VariableId/@Name = $name]
+         return exists($declared) and (every $d in $declared satisfies
+           ($d/parent::LocalVariableDeclaration[pmd-java:modifiers() = 'final']
+            or $d/parent::FieldDeclaration[pmd-java:modifiers() = 'final'][pmd-java:modifiers() = 'static'])
+           and exists($d/*[2])
+           and (every $n in $d/*[2]/descendant-or-self::* satisfies $n[self::StringLiteral or self::NumericLiteral
+             or self::BooleanLiteral or self::CharLiteral or self::ArgumentList or self::TypeExpression or self::ClassType
+             or self::AmbiguousName or self::InfixExpression
+             or self::MethodCall[@MethodName = ('of', 'asList', 'copyOf', 'unmodifiableList', 'unmodifiableSet')]])))])
+},
     $constant := function($node) {
   exists($node[self::StringLiteral or self::NumericLiteral or self::CharLiteral or self::BooleanLiteral
-    or self::VariableAccess[matches(@Name, '^[A-Z][A-Z0-9_]*$')] or self::FieldAccess[matches(@Name, '^[A-Z][A-Z0-9_]*$')]
+    or $upper(.)
     or self::ConditionalExpression[*[2][self::StringLiteral]][*[3][self::StringLiteral]]
     or self::MethodCall[@MethodName = 'join'][*[1][pmd-java:typeIs('java.lang.String')]]
-      [ArgumentList[count(*) = 2]/*[2][self::MethodCall[@MethodName = 'nCopies'][ArgumentList/*[2][self::StringLiteral[@ConstValue = '?']]]]]
+      [ArgumentList[count(*) ge 2]/*[1][self::StringLiteral]]
+      [every $item in ArgumentList/*[position() gt 1] satisfies $item[self::StringLiteral
+        or $upper(.)
+        or self::MethodCall[@MethodName = 'nCopies'][ArgumentList/*[2][self::StringLiteral[@ConstValue = '?']]]]]
+    or self::MethodCall[@MethodName = ('getSimpleName', 'getName', 'getTypeName', 'getCanonicalName')][*[1][pmd-java:typeIs('java.lang.Class')]]
+    or self::MethodCall[@MethodName = ('name', 'toString', 'ordinal')][*[1][pmd-java:typeIs('java.lang.Enum')]]
+    or self::*[self::VariableAccess or self::FieldAccess or self::MethodCall or self::CastExpression or self::ArrayAccess]
+      [pmd-java:typeIs('java.lang.Number') or pmd-java:typeIs('java.lang.Boolean') or pmd-java:typeIs('java.lang.Character')
+       or pmd-java:typeIs('java.lang.Enum') or pmd-java:typeIs('int') or pmd-java:typeIs('long') or pmd-java:typeIs('short')
+       or pmd-java:typeIs('byte') or pmd-java:typeIs('double') or pmd-java:typeIs('float') or pmd-java:typeIs('boolean')
+       or pmd-java:typeIs('char')]
     or self::MethodCall[@MethodName = ('format', 'formatted')][*[1][pmd-java:typeIs('java.lang.String')]]
       [every $argument in ArgumentList/* satisfies $argument[self::StringLiteral or self::NumericLiteral]]])
 },

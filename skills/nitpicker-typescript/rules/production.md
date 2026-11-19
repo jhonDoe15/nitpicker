@@ -131,6 +131,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   created before the loop, or build the result with `flatMap` (`nitpicker/no-accumulator-concat`).
 - Load a lazy TypeORM relation with the query that reads the items (`relations: { customer: true }` or
   `leftJoinAndSelect`), never with `await item.customer` once per item (`nitpicker/no-lazy-relation-in-loop`).
+- Write a cache (`redis.set`/`del`, `cache-manager`, a `Map` filled with a new row) after the transaction call returns, not inside
+  its callback (`nitpicker/no-cache-write-in-transaction`).
 - Keep a remote call out of a transaction and out of a lock: call before the transaction starts or after it
   commits (and outside the lock), and keep only the shared-state change under the lock
   (`nitpicker/no-remote-call-in-transaction`, `nitpicker/no-remote-call-under-lock`).
@@ -179,6 +181,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Secrets come from the environment or a secrets manager, never from a literal given to `password`, `token`,
   `apiKey` and the like (`nitpicker/no-hardcoded-secret`), and a log call or error message says a secret is
   set or shows a masked tail, never the value (`nitpicker/no-secret-in-log`).
+- A pino, bunyan or winston call keeps every value it is given: the values go in the fields object first
+  (`log.info({ config }, 'loaded config')`) or one per placeholder, and a winston logger fills placeholders only
+  with `format.splat()` (`nitpicker/no-dropped-log-arguments`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

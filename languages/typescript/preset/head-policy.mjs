@@ -12,7 +12,6 @@ import {
   hasScopePackage,
   reactMajorOf,
   scopePackage,
-  testsCleanUpAutomatically,
 } from './eslint-config/scope-support.mjs';
 import {
   builtInExcludedGlobs,
@@ -27,6 +26,7 @@ import { detectLibraries } from './libraries/project-libraries.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { hasPrettierConventions } from '../conventions/prettier-conventions.mjs';
 import { markedGeneratedFiles } from './layout/generated-files.mjs';
+import { withTestRunnerFacts } from './test-runner/detect-runner.mjs';
 import { withHeadToolConfigs } from './project-configs/head-tool-configs.mjs';
 import { picked } from '../../../shared/config.mjs';
 import { projectConfigTools } from './project-tools/project-config-files.mjs';
@@ -79,6 +79,7 @@ export function resolveHeadPolicy(config = {}, projectRoot) {
 }
 
 function withProjectFacts(policy, config, projectRoot) {
+  const scoped = SCOPED_PRESETS.includes(config.preset);
   const jscpd = resolveJscpdPolicy(policy.tools?.jscpd, projectRoot);
   const tools = withProjectToolConfigs(
     withHeadToolConfigs(
@@ -89,9 +90,9 @@ function withProjectFacts(policy, config, projectRoot) {
     projectRoot,
     { disabled: config.disable },
   );
-  return {
+  const withScopes = {
     ...policy,
-    ...(SCOPED_PRESETS.includes(config.preset)
+    ...(scoped
       ? {
           ...withDetectedScopes(policy, projectRoot),
           libraries: detectLibraries(projectRoot, excludedPathMatcher(policy)),
@@ -99,6 +100,9 @@ function withProjectFacts(policy, config, projectRoot) {
       : {}),
     ...(tools === undefined ? {} : { tools: withToolFacts(tools, projectRoot) }),
   };
+  return scoped
+    ? withTestRunnerFacts(withScopes, projectRoot, resolveLayoutFor(withScopes))
+    : withScopes;
 }
 
 function withToolFacts(tools, projectRoot) {
@@ -146,7 +150,6 @@ function detectedScopes(policy, projectRoot) {
       ...(iconPackage === undefined ? {} : { iconPackage }),
       ...(major === undefined ? {} : { major }),
       ...(styling === undefined ? {} : { styling }),
-      ...(scopes.react.enabled ? { autoCleanup: testsCleanUpAutomatically(projectRoot) } : {}),
     },
   };
 }

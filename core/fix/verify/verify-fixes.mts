@@ -2,6 +2,7 @@ import { COMPILE_TOOLS } from './analyzer-names.mts';
 import { countFindings, judgeFindings, recipeRuns, withSharedFiles } from './judge-findings.mts';
 import { restoreFiles, withOriginals } from './tree-states.mts';
 import { messageOf } from '../../../shared/values/readers.mts';
+import { findingLabeler } from '../../labels/finding-labels.mts';
 import type { Journal } from '../dry-run/journal-types.mts';
 import {
   isAnalyze,
@@ -10,9 +11,18 @@ import {
   type Analysis,
   type VerifyRequest,
   type AnalyzeRequest,
+  type FindingKey,
   type RecipeRun,
   type VerifyResult,
 } from './verify-types.mts';
+
+const SURFACED_LABELS = new Set(['simplification']);
+const labelsOf = findingLabeler({ areaOf: () => 'other' });
+
+function onlySimplifies(finding: FindingKey) {
+  const labels = labelsOf(finding);
+  return labels.length > 0 && labels.every((label) => SURFACED_LABELS.has(label));
+}
 
 function breakingIn(mode: string) {
   return (tool: string) => COMPILE_TOOLS.includes(tool) || (mode === 'full' && tool === 'tests');
@@ -78,21 +88,22 @@ export function verifyFixes({ journal, analyze, mode = 'narrow' }: VerifyRequest
       before: before.findings,
       after: after.findings,
       breaking: breakingIn(mode),
+      surfaced: onlySimplifies,
     }),
   );
   const { rolled, kept } = rollBack(
     journal,
-    runs.filter(({ id }) => reasons.has(id)),
+    runs.filter(({ key }) => reasons.has(key)),
   );
   return {
     rolledBack: rolled.map((run) => ({
       recipe: run.id,
       files: [...run.files],
-      reasons: reasons.get(run.id) ?? [],
+      reasons: reasons.get(run.key) ?? [],
     })),
     notes: [
       ...after.unmatched.map((tool) => `--fix could not verify ${tool}: no analyzer reports it`),
-      ...rolled.map((run) => rollbackNote(run, reasons.get(run.id) ?? [])),
+      ...rolled.map((run) => rollbackNote(run, reasons.get(run.key) ?? [])),
       ...kept.map(keptNote),
     ],
   };

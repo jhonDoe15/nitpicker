@@ -90,7 +90,7 @@ export const TEST_RUNNER_CONFIGURATION_FILES = [
   'languages/typescript/preset/test-environment/read-environment.mjs',
   'languages/typescript/preset/test-runner/detect-runner.mjs',
   'languages/typescript/preset/test-runner/mocha-config-files.mjs',
-  'languages/typescript/preset/test-runner/mocha-options.mjs',
+  'languages/typescript/preset/test-runner/test-files/mocha-options.mjs',
   'languages/typescript/preset/test-runner/runners.mjs',
   'languages/typescript/preset/test-runner/script-command.mjs',
 ];

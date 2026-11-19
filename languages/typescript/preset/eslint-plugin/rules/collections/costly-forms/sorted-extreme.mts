@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { variableNamed, type SourceCode } from '../../typed/node-views.mts';
+import type { SourceCode } from '../../typed/node-views.mts';
+import { isReadAfterSort } from './receivers/later-reads.mts';
 import {
   calledMember,
   memberName,
@@ -16,7 +17,7 @@ const ENDS = new Set(['pop', 'shift']);
 const FIRST = 0;
 const LAST = -1;
 
-function isIndexZero(property: TSESTree.Node): boolean {
+export function isIndexZero(property: TSESTree.Node): boolean {
   const value = unwrapped(property);
   return (
     numberValue(value) === FIRST || (value.type === AST_NODE_TYPES.Literal && value.value === '0')
@@ -64,18 +65,6 @@ function takesEnd(call: TSESTree.CallExpression): boolean {
   );
 }
 
-function isLaterRead(
-  sourceCode: SourceCode,
-  identifier: TSESTree.Identifier,
-  call: TSESTree.CallExpression,
-): boolean {
-  const variable = variableNamed(sourceCode, identifier);
-  return (
-    variable === undefined ||
-    variable.references.some((reference) => reference.identifier.range[0] > call.range[1])
-  );
-}
-
 function sortsSharedArray(
   sourceCode: SourceCode,
   member: TSESTree.MemberExpression,
@@ -86,7 +75,7 @@ function sortsSharedArray(
   }
   const receiver = unwrapped(member.object);
   if (receiver.type === AST_NODE_TYPES.Identifier) {
-    return isLaterRead(sourceCode, receiver, call);
+    return isReadAfterSort(sourceCode, receiver, call);
   }
   return (
     receiver.type === AST_NODE_TYPES.MemberExpression ||

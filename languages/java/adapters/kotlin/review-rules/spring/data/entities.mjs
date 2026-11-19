@@ -46,7 +46,7 @@ function annotatedMembers(view) {
   ].filter(({ member }) => entriesOf(member).length > 0);
 }
 
-function mappingFindings(view, member, symbol) {
+function mappingFindings(view, { member, symbol }, { allowsSequenceIds }) {
   return entriesOf(member).flatMap((entry) => {
     const type = entry.type ?? entry.name;
     const fetch = argumentOf(entry, 'fetch') ?? '';
@@ -60,6 +60,7 @@ function mappingFindings(view, member, symbol) {
       [
         'JpaSequenceIds',
         view.is(type, GENERATED_VALUE) &&
+          allowsSequenceIds?.(view.file.file) !== false &&
           BATCH_BREAKING_IDS.test(argumentOf(entry, 'strategy') ?? ''),
       ],
     ];
@@ -67,15 +68,19 @@ function mappingFindings(view, member, symbol) {
   });
 }
 
-function mappings(view) {
+function mappings(view, options) {
   return annotatedMembers(view).flatMap(({ member, owner }) =>
-    mappingFindings(view, member, `${owner}.${member.name}`),
+    mappingFindings(view, { member, symbol: `${owner}.${member.name}` }, options),
   );
 }
 
 function manyToManyLists(view) {
   return annotatedMembers(view)
-    .filter(({ member }) => annotatedWith(view, member, MANY_TO_MANY) !== undefined)
+    .filter(
+      ({ member }) =>
+        annotatedWith(view, member, MANY_TO_MANY) !== undefined &&
+        argumentOf(annotatedWith(view, member, MANY_TO_MANY), 'mappedBy') === undefined,
+    )
     .filter(({ member }) => annotatedWith(view, member, ORDER_COLUMN) === undefined)
     .filter(({ member }) =>
       LIST_TYPES.has(

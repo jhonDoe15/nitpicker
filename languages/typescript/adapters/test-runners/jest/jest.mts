@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { readTestReport, spawnNodeTool, withoutOptions } from '../typed/runner-tools.mts';
+import { readTestReport, spawnNodeTool } from '../typed/runner-tools.mts';
 import type {
   RunnerCommand,
   TestConsole,
@@ -17,70 +17,16 @@ import {
 } from '../test-run.mts';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
 import { assertSourcesCovered, coverageArguments, shownConfig } from './jest-coverage.mts';
-import { type JestLaunch, jestTool } from './jest-launcher.mts';
+import { jestArguments, jestScriptArguments, jestTool } from './jest-launcher.mts';
 import { consoleProducerPath, jestAssertImport, startTestConsole } from '../test-console-run.mts';
 
 const LATE_LOG = 'Cannot log after tests are done';
 
-const OPTIONS_NITPICKER_SETS = {
-  flags: [
-    '--watch',
-    '--watchAll',
-    '--coverage',
-    '--collectCoverage',
-    '--json',
-    '--ci',
-    '--silent',
-    '--passWithNoTests',
-    '--onlyChanged',
-    '-o',
-    '--onlyFailures',
-    '-f',
-    '--lastCommit',
-    '--changedFilesWithAncestor',
-    '--showConfig',
-    '--listTests',
-    '--clearCache',
-  ],
-  valued: [
-    '--outputFile',
-    '--coverageDirectory',
-    '--coverageProvider',
-    '--coverageThreshold',
-    '--testTimeout',
-    '--maxWorkers',
-    '-w',
-    '--changedSince',
-    '--shard',
-    '--testNamePattern',
-    '-t',
-  ],
-  variadic: [
-    '--findRelatedTests',
-    '--collectCoverageFrom',
-    '--coveragePathIgnorePatterns',
-    '--coverageReporters',
-    '--reporters',
-  ],
-};
-
 const SERIAL_OPTIONS = new Set(['--runInBand', '-i']);
-
-function scriptArguments(command: RunnerCommand): string[] {
-  return withoutOptions(command.arguments_, OPTIONS_NITPICKER_SETS);
-}
-
-export function jestArguments(
-  command: RunnerCommand,
-  nitpickerArguments: readonly string[],
-  { leading, trailing }: Pick<JestLaunch, 'leading' | 'trailing'>,
-): string[] {
-  return [...leading, ...scriptArguments(command), ...nitpickerArguments, ...trailing];
-}
 
 function rerunPaths(options: TestOptions, command: RunnerCommand): string[] {
   const named = new Set(
-    scriptArguments(command).map((token) => path.resolve(options.projectRoot, token)),
+    jestScriptArguments(command).map((token) => path.resolve(options.projectRoot, token)),
   );
   return (options.rerun?.files ?? []).filter((file) => !named.has(file));
 }

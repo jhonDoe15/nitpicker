@@ -9,12 +9,37 @@ let $scope := function($node) {
   $expression/descendant-or-self::*[not(self::InfixExpression[@Operator = '+'])]
     [every $up in ancestor::*[exists(ancestor-or-self::*[. is $expression])] satisfies $up[self::InfixExpression[@Operator = '+']]]
 },
+    $upper := function($node) {
+  exists($node[self::VariableAccess or self::FieldAccess][matches(@Name, '^[A-Z][A-Z0-9_]*$')]
+    [exists(@ConstValue)
+     or (let $name := @Name,
+             $declared := ancestor::CompilationUnit//(FieldDeclaration | LocalVariableDeclaration)
+               /VariableDeclarator[VariableId/@Name = $name]
+         return exists($declared) and (every $d in $declared satisfies
+           ($d/parent::LocalVariableDeclaration[pmd-java:modifiers() = 'final']
+            or $d/parent::FieldDeclaration[pmd-java:modifiers() = 'final'][pmd-java:modifiers() = 'static'])
+           and exists($d/*[2])
+           and (every $n in $d/*[2]/descendant-or-self::* satisfies $n[self::StringLiteral or self::NumericLiteral
+             or self::BooleanLiteral or self::CharLiteral or self::ArgumentList or self::TypeExpression or self::ClassType
+             or self::AmbiguousName or self::InfixExpression
+             or self::MethodCall[@MethodName = ('of', 'asList', 'copyOf', 'unmodifiableList', 'unmodifiableSet')]])))])
+},
     $constant := function($node) {
   exists($node[self::StringLiteral or self::NumericLiteral or self::CharLiteral or self::BooleanLiteral
-    or self::VariableAccess[matches(@Name, '^[A-Z][A-Z0-9_]*$')] or self::FieldAccess[matches(@Name, '^[A-Z][A-Z0-9_]*$')]
+    or $upper(.)
     or self::ConditionalExpression[*[2][self::StringLiteral]][*[3][self::StringLiteral]]
     or self::MethodCall[@MethodName = 'join'][*[1][pmd-java:typeIs('java.lang.String')]]
-      [ArgumentList[count(*) = 2]/*[2][self::MethodCall[@MethodName = 'nCopies'][ArgumentList/*[2][self::StringLiteral[@ConstValue = '?']]]]]
+      [ArgumentList[count(*) ge 2]/*[1][self::StringLiteral]]
+      [every $item in ArgumentList/*[position() gt 1] satisfies $item[self::StringLiteral
+        or $upper(.)
+        or self::MethodCall[@MethodName = 'nCopies'][ArgumentList/*[2][self::StringLiteral[@ConstValue = '?']]]]]
+    or self::MethodCall[@MethodName = ('getSimpleName', 'getName', 'getTypeName', 'getCanonicalName')][*[1][pmd-java:typeIs('java.lang.Class')]]
+    or self::MethodCall[@MethodName = ('name', 'toString', 'ordinal')][*[1][pmd-java:typeIs('java.lang.Enum')]]
+    or self::*[self::VariableAccess or self::FieldAccess or self::MethodCall or self::CastExpression or self::ArrayAccess]
+      [pmd-java:typeIs('java.lang.Number') or pmd-java:typeIs('java.lang.Boolean') or pmd-java:typeIs('java.lang.Character')
+       or pmd-java:typeIs('java.lang.Enum') or pmd-java:typeIs('int') or pmd-java:typeIs('long') or pmd-java:typeIs('short')
+       or pmd-java:typeIs('byte') or pmd-java:typeIs('double') or pmd-java:typeIs('float') or pmd-java:typeIs('boolean')
+       or pmd-java:typeIs('char')]
     or self::MethodCall[@MethodName = ('format', 'formatted')][*[1][pmd-java:typeIs('java.lang.String')]]
       [every $argument in ArgumentList/* satisfies $argument[self::StringLiteral or self::NumericLiteral]]])
 },
