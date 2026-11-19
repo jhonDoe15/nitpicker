@@ -400,6 +400,11 @@ values (pino: the extra values are dropped; winston without `format.splat()`: ev
 placeholder) and, for pino and bunyan, more placeholders than values. A fields object first (`log.info({ config }, 'x')`),
 one value per placeholder and a metadata object are allowed.
 
+Interpolated log messages: `nitpicker/no-interpolated-log-message` (production source, in `eslint-lint`, when the project
+depends on pino, bunyan or winston) reports a `trace` to `fatal` call whose message is a template literal with
+expressions or a `+` concatenation with a non-literal. pino and bunyan take the values as fields first
+(`log.info({ orderId }, 'loaded order')`), winston as metadata after the message.
+
 Hardcoded secrets and secrets in logs: `nitpicker/no-hardcoded-secret` and `nitpicker/no-secret-in-log`
 (production source, not tests or test-support folders, in `eslint-lint`) report a secret-looking string given to a secret-named variable,
 field, property, assignment, parameter default or environment-read fallback, a credential-shaped string

@@ -247,6 +247,14 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   (`log.info({ config }, 'loaded config')`), one argument per placeholder, `format.splat()` on the
   winston logger, or a metadata object. The same form runs as `pmd/LogFormatArguments` (Java),
   `kotlin-source/LogFormatArguments` (Kotlin) and ruff `PLE1205` and `PLE1206` (Python).
+- `nitpicker/no-interpolated-log-message` (needs pino, bunyan or winston in `package.json`): a log call
+  (`trace` to `fatal`) whose message is a template literal with expressions or a `+` concatenation with a
+  non-literal part. The message is the first argument, or the second when the first is an object (pino and
+  bunyan). Every such message differs, so the value cannot be searched as a field, and the string is built
+  even when the level is off. Allowed forms: pino and bunyan `log.info({ orderId }, 'loaded order')`, winston
+  `logger.info('loaded order', { orderId })`. Loggers are found as in `nitpicker/no-dropped-log-arguments`;
+  `console.*` stays with `nitpicker/no-production-console`. The same form runs as `pmd/LogStringConcatenation`
+  (Java), `kotlin-source/LogStringConcatenation` (Kotlin) and ruff `G001` to `G004` (Python).
 - `nitpicker/no-secret-in-log`: a secret-named value passed to a `console` method, a logger call (`log`,
   `logger`, `winston`, `pino`, `req.log`, `this.logger` and the like), `process.stdout.write`,
   `process.stderr.write` or an `Error` constructor: as an argument, a member (not of a `tokenizer`), in a
