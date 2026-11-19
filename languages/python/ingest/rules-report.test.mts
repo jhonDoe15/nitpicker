@@ -283,6 +283,11 @@ describe('rules script report', () => {
       'yaml.full_load',
       '`yaml.full_load` can build arbitrary Python objects from the document',
     ],
+    [
+      'permission-name-without-app-label',
+      'has_perm()|impersonate',
+      '`has_perm()` checks the permission `impersonate` without an app label: Django compares the full `app_label.codename` string, so a bare name never matches a global permission and the check is false for every user',
+    ],
   ])('describes %s by its subject', (rule, subject, message) => {
     expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0]?.message).toBe(message);
   });

@@ -1,4 +1,5 @@
 import { RULES_TOOL } from '../tool.mts';
+import { parseEffect } from '../effects/subject.mts';
 import type { RuleHint } from '../hint-types.mts';
 import type { Libraries } from '../../libraries/typed/library-types.mts';
 
@@ -153,5 +154,19 @@ export const RULES_SECURITY_HINTS: readonly RuleHint[] = [
     rules: ['unsafe-deserialization'],
     describe: (subject) => `\`${subject}\` ${loadingAdvice(subject)[1]}`,
     allowed: (subject) => loadingAdvice(subject)[2],
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['permission-name-without-app-label'],
+    describe: (subject) => {
+      const { path, fields } = parseEffect(subject);
+      const [owner = 'has_perm()'] = path;
+      const [name = '<codename>'] = fields;
+      return `\`${owner}\` checks the permission \`${name}\` without an app label: Django compares the full \`app_label.codename\` string, so a bare name never matches a global permission and the check is false for every user`;
+    },
+    allowed: (subject) => {
+      const [name = '<codename>'] = parseEffect(subject).fields;
+      return `Write the permission as \`app_label.${name}\` (the app label of the model that owns it). A check of an object permission through django-guardian takes the bare codename together with the object.`;
+    },
   },
 ];
