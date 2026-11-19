@@ -102,6 +102,11 @@ describe('effect rules report', () => {
       '`asyncio.get_event_loop` inside a coroutine returns a loop that may not be the running one and warns or fails on newer Python versions',
     ],
     [
+      'override-without-super',
+      'RoomSensor.available|CoordinatorEntity',
+      '`RoomSensor.available` replaces `CoordinatorEntity.available` without calling `super().available`: what the base member keeps (shared state, registration, saving or validation) is skipped, while the other overrides of it in this project and the contract of the base build on it',
+    ],
+    [
       'remote-call-under-lock',
       'notify() > requests.post()|self._lock',
       '`notify()` (which calls `requests.post()`) makes a remote call while `self._lock` is held: every other caller waits for the remote latency, and a slow or hung remote service blocks them all',

@@ -87,6 +87,7 @@
   "python-rules/number-truthiness": ["bug"],
   "python-rules/orm-query-logging": ["security", "persistence"],
   "python-rules/orm-schema-sync": ["reliability", "persistence"],
+  "python-rules/override-without-super": ["bug"],
   "python-rules/parameter-mutation": ["maintainability"],
   "python-rules/parenthesised-tuple-argument": ["bug"],
   "python-rules/parameter-not-forwarded": ["bug"],

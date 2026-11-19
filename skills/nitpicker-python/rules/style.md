@@ -79,3 +79,4 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `email.message`, `werkzeug.http` or `http.cookies.SimpleCookie` instead of `split(",")` or `split(";")`
   (`http-value-case`, `hand-split-http-header`). The request header mapping ignores the case of a name; a
   library that is itself the parser takes an exception.
+- Call the base member when you override one that carries state: `super().available and ...`, `super().save(*args, **kwargs)`, `super().setUp()`; the overrides of a member in the project, and the known contracts of Home Assistant, Django and test cases, build on it (`override-without-super`).
