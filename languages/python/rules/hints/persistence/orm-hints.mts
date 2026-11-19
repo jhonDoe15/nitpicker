@@ -1,4 +1,5 @@
 import { RULES_TOOL } from '../tool.mts';
+import { DJANGO_MODEL_HINTS } from '../django/django-model-hints.mts';
 import { NARROW_HINTS, ROW_HINTS } from './row-hints.mts';
 import type { RuleHint } from '../hint-types.mts';
 
@@ -56,4 +57,5 @@ export const PERSISTENCE_HINTS: readonly RuleHint[] = [
   },
   ...ROW_HINTS,
   ...NARROW_HINTS,
+  ...DJANGO_MODEL_HINTS,
 ];

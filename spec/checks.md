@@ -286,6 +286,14 @@ an `if (x == null)` or `if x is None:` branch without `else` that does something
 continue, exit or assignment to `x`) when the same block then reads `x` as present (member access, indexing, destructuring,
 spread, iteration, or an argument of a call the branch also made). A later guard of `x` ends the search.
 
+Django type plugin: `django-types-missing` (script, Python only) is reported once, on the first model class, when Django is a
+dependency and neither `django-stubs` (mypy plugin) nor `django-types` is configured.
+
+Nullable Django values: `nullable-dereference` (script, Python only) reports an attribute, call, subscript, iteration, `len()` or
+ordering comparison on a `null=True` model field, a `.first()`/`.last()` result, a `.get(key)` without a default on form or request data,
+or a signed-in-only `request.user` attribute, with no `None` test, truthiness test, `or` fallback, `is_authenticated` check or login
+decorator before it in the same function.
+
 Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
 that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the
