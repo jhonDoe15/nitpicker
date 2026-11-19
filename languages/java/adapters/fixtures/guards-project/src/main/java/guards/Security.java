@@ -6,8 +6,12 @@ import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collections;
+import java.util.List;
 
 public final class Security {
+  private static final List<String> COLUMNS = List.of("id", "name");
+
   public void find(Statement statement, String name) throws SQLException {
     statement.executeQuery("select * from users where name = '" + name + "'"); // violation: pmd/SqlConcatenation
   }
@@ -17,6 +21,33 @@ public final class Security {
       query.setString(1, name);
       query.executeQuery();
     }
+  }
+
+  public void insertFixedColumns(Connection connection, long id) throws SQLException {
+    String columns = String.join(",", COLUMNS);
+    String marks = String.join(",", Collections.nCopies(COLUMNS.size(), "?"));
+    try (var query = connection.prepareStatement("insert into users (" + columns + ") values (" + marks + ")")) {
+      query.setLong(1, id);
+      query.executeUpdate();
+    }
+  }
+
+  public void findByType(Statement statement, long id) throws SQLException {
+    statement.executeQuery("select * from " + Security.class.getSimpleName() + " where id = " + id);
+  }
+
+  public void findByShouted(Statement statement, String column) throws SQLException {
+    String ORDER = column;
+    statement.executeQuery("select * from users order by " + ORDER); // violation: pmd/SqlConcatenation
+  }
+
+  public void findByConstant(Statement statement) throws SQLException {
+    final String ORDER = "name";
+    statement.executeQuery("select * from users order by " + ORDER);
+  }
+
+  public void findByColumn(Statement statement, String column) throws SQLException {
+    statement.executeQuery("select " + column + " from users"); // violation: pmd/SqlConcatenation
   }
 
   public MessageDigest digest() throws NoSuchAlgorithmException {

@@ -11,6 +11,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class QueryForms {
   private final JdbcTemplate jdbc;
+  private static final List<String> COLUMNS = List.of("id", "name", "price");
+
   private final JdbcClient client;
 
   public QueryForms(JdbcTemplate jdbc, JdbcClient client) {
@@ -58,5 +60,35 @@ public class QueryForms {
   public List<Map<String, Object>> chosen(boolean archived) {
     String table = archived ? "product_archive" : "product";
     return jdbc.queryForList("select * from " + table);
+  }
+
+  enum Direction { ASC, DESC }
+
+  public List<Map<String, Object>> columns() {
+    String sql = "insert into product (" + String.join(",", COLUMNS) + ") values ("
+        + String.join(",", Collections.nCopies(COLUMNS.size(), "?")) + ")";
+    return jdbc.queryForList(sql);
+  }
+
+  public List<Map<String, Object>> byType() {
+    return jdbc.queryForList("select * from " + QueryForms.class.getSimpleName() + " where 1 = 1");
+  }
+
+  public List<Map<String, Object>> directed(Direction direction, long id) {
+    return jdbc.queryForList("select * from product where id = " + id + " order by name " + direction.name());
+  }
+
+  public List<Map<String, Object>> rawParameter(String column) {
+    return jdbc.queryForList("select " + column + " from product"); // violation: SpringQueryConcatenation
+  }
+
+  public List<Map<String, Object>> shoutedParameter(String column) {
+    String ORDER = column;
+    return jdbc.queryForList("select * from product order by " + ORDER); // violation: SpringQueryConcatenation
+  }
+
+  public List<Map<String, Object>> shoutedConstant() {
+    final String ORDER = "name";
+    return jdbc.queryForList("select * from product order by " + ORDER);
   }
 }

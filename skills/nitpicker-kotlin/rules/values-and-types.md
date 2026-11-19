@@ -162,3 +162,6 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `=`, as many values as columns in an `INSERT`, and a space at the start of every appended fragment.
 - An object-store or search listing follows its pages (`pmd/UnpagedListing`): `listObjectsV2Paginator(request)` or a loop on
   `isTruncated()` and `nextContinuationToken()`, and a RediSearch query sets `limit(offset, count)` and loops.
+- A null branch that does not leave is not followed by a use of the same value
+  (`pmd/NullBranchFallThrough`): `if (value == null) { log.warn(...) }` followed by `value!!.length` fails on the null path, or handles the value twice. End the
+  branch with `return` or `throw`, or put the use in an `else`.

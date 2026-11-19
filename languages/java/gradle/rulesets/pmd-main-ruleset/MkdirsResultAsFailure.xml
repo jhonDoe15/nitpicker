@@ -1,0 +1,56 @@
+  <rule name="MkdirsResultAsFailure" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="File.mkdirs() and File.mkdir() return false when the directory already exists, also when another thread or process created it a moment ago, so treating false as a failure throws under concurrent writers. Use Files.createDirectories(dir.toPath()), which does not fail for an existing directory, or if (!dir.mkdirs() &amp;&amp; !dir.isDirectory()) throw new IOException(...). An exception fits when the directory was just deleted or has a fresh random name.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $make := function($e) {
+      $e/descendant-or-self::MethodCall[@MethodName = ('mkdirs', 'mkdir')][ArgumentList[@Size = 0]]
+        [*[1][pmd-java:typeIsExactly('java.io.File')]]
+    },
+    $rechecked := function($e) {
+      exists($e//MethodCall[@MethodName = ('exists', 'isDirectory', 'isFile')])
+    },
+    $key := function($r) {
+      string-join($r/descendant-or-self::*[@Name or @MethodName]/string((@Name, @MethodName)[1]), '.')
+    },
+    $names := function($r) { $r/descendant-or-self::*[self::VariableAccess or self::FieldAccess]/@Name },
+    $before := function($anchor) {
+      $anchor/ancestor::IfStatement/*[1] | $anchor/ancestor-or-self::*[parent::Block]/preceding-sibling::*
+    },
+    $checkedBefore := function($anchor, $r) {
+      exists($before($anchor)//MethodCall[@MethodName = ('exists', 'isDirectory')][*[1][$key(.) = $key($r)]])
+    },
+    $deletedBefore := function($anchor, $r) {
+      exists($before($anchor)//MethodCall[matches(@MethodName, '^(delete|forceDelete|cleanDirectory)')]
+                                         [.//(VariableAccess | FieldAccess)/@Name = $names($r)])
+    },
+    $fresh := function($anchor, $r) {
+      exists(($anchor/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+              | $anchor/ancestor::ClassBody[1]/FieldDeclaration)
+             //(VariableDeclarator[VariableId/@Name = $names($r)]/*[last()]
+               | AssignmentExpression[*[1][(self::VariableAccess or self::FieldAccess) and @Name = $names($r)]]/*[2])
+             /descendant-or-self::MethodCall[
+                matches(@MethodName, '^(randomUUID|nextLong|nextInt|nanoTime|currentTimeMillis|createTemp.*)$')
+                          or matches(@MethodName, 'random|uuid', 'i')
+                          or (@MethodName = 'create' and *[1][@Name = 'IdUtils' or .//ClassType/@SimpleName = 'IdUtils'])])
+    },
+    $skip := function($anchor, $e) {
+      some $r in $make($e)/*[1] satisfies
+        ($checkedBefore($anchor, $r) or $deletedBefore($anchor, $r) or $fresh($anchor, $r))
+    }
+return (
+  //IfStatement[exists(*[2]/descendant-or-self::ThrowStatement)
+                or exists(*[2]/descendant-or-self::ReturnStatement[BooleanLiteral[@True = false()]])]
+    [not(exists(*[2]//IfStatement/*[1]//MethodCall[@MethodName = ('exists', 'isDirectory')]))]
+    [*[1][exists($make(.)/parent::UnaryExpression[@Operator = '!'])
+          or exists($make(.)/parent::InfixExpression[@Operator = '=='][BooleanLiteral[@True = false()]])]]
+    [not($rechecked(*[1]))][not($skip(., *[1]))]/*[1],
+  //MethodCall[@MethodName = ('isTrue', 'state', 'checkState', 'checkArgument', 'assertTrue')]
+    [ArgumentList/*[1][exists($make(.))]][not($rechecked(ArgumentList))]
+    [not($skip(., ArgumentList/*[1]))]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>

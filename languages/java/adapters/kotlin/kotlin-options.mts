@@ -20,6 +20,7 @@ import { MINED_EXCEPTION_RULES } from '../review-rules/mined/mined-rules.mjs';
 import { MAX_VALUE_EXCEPTION_RULE } from '../review-rules/max-value-sums/max-value-sums.mjs';
 import { STRING_CALL_EXCEPTION_RULES } from '../review-rules/string-calls/string-calls.mjs';
 import { VALUE_CHECK_EXCEPTION_RULES } from '../review-rules/value-checks/value-checks.mjs';
+import { NULL_FALL_THROUGH_EXCEPTION_RULE } from '../review-rules/null-fall-through/null-fall-through.mjs';
 import {
   fieldOf,
   fieldsOf,
@@ -57,6 +58,7 @@ export const KOTLIN_EXCEPTION_RULES: string[] = [
     ...STRING_CALL_EXCEPTION_RULES,
     ...VALUE_CHECK_EXCEPTION_RULES,
     ...MINED_EXCEPTION_RULES,
+    NULL_FALL_THROUGH_EXCEPTION_RULE,
     ...KOTLIN_LISTED_RULES,
     ...KOTLIN_REVIEW_EXCEPTION_RULES,
   ]),

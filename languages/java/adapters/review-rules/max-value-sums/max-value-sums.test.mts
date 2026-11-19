@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type ReadFindings, scratchScanner } from '../test-support/scratch-scanner.mts';
+import { PROJECT, useTempProjects, type ReadOptions } from '../test-support/temp-projects.mts';
 import {
   MAX_VALUE_RULE,
   readMaxValueFindings as untypedReadMaxValueFindings,
@@ -12,9 +12,10 @@ type MaxValueFinding = {
   readonly location: { readonly line: number };
 };
 
-const readMaxValueFindings: ReadFindings<MaxValueFinding> = untypedReadMaxValueFindings;
+const readMaxValueFindings: (projectRoot: string, options: ReadOptions) => MaxValueFinding[] =
+  untypedReadMaxValueFindings;
 
-const scanFiles = scratchScanner({ prefix: 'nitpicker-jvm-max-', read: readMaxValueFindings });
+const projectWith = useTempProjects('nitpicker-jvm-max-');
 
 function lines({
   files,
@@ -23,7 +24,7 @@ function lines({
   readonly files: Readonly<Record<string, string>>;
   readonly kotlin: boolean;
 }) {
-  return scanFiles(files, kotlin).map(
+  return readMaxValueFindings(projectWith(files), { projects: [PROJECT], kotlin }).map(
     ({ rule, path: file, location }) => `${rule} ${file}:${String(location.line)}`,
   );
 }
@@ -205,13 +206,11 @@ describe('Java sums that overflow on a maximum-value sentinel', () => {
   });
 
   it('names the allowed forms and the exception route in the message', () => {
-    const [found] = scanFiles(
-      {
-        [JAVA_FILE]:
-          'package shop;\nclass Text {\n  int f(int start) {\n    int w = Integer.MAX_VALUE;\n    return Math.min(start + w, 3);\n  }\n}\n',
-      },
-      false,
-    );
+    const root = projectWith({
+      [JAVA_FILE]:
+        'package shop;\nclass Text {\n  int f(int start) {\n    int w = Integer.MAX_VALUE;\n    return Math.min(start + w, 3);\n  }\n}\n',
+    });
+    const [found] = readMaxValueFindings(root, { projects: [PROJECT], kotlin: false });
     expect(found?.message).toBe(
       '`w` can hold Integer.MAX_VALUE (a "no limit" value), so `start + w` overflows to a negative number that is then used as an index, length, bound or comparison. Compare without adding (`width >= length - start`), widen first (`(long) start + width`), use `Math.addExact`, or check the sentinel before the arithmetic (`if (w == Integer.MAX_VALUE) ...`). If this is intended, add {"rule":"pmd/MaxValueOverflow","paths":["src/main/java/shop/Text.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
@@ -254,6 +253,52 @@ describe('Java sums: guards, returned and chosen maximums, page sizes', () => {
         ].join('\n'),
       ),
     ).toEqual([]);
+  });
+
+  it('allows an accessor compared with the sentinel before the sum, and reports it without', () => {
+    const body = (guard: string) =>
+      java(
+        [
+          '  static final int UNSET = Integer.MAX_VALUE;',
+          '  private int maxWidth = UNSET;',
+          '  int getMaxWidth() { return maxWidth; }',
+          '  void setMaxWidth(int value) { maxWidth = value; }',
+          '  int total(Text style, Text builder, String header, String text) {',
+          ...guard.split('\n'),
+          '    int calcWidth = 0;',
+          '    calcWidth += builder.getMaxWidth();',
+          '    return text.substring(0, Math.min(calcWidth, text.length()));',
+          '  }',
+        ].join('\n'),
+      );
+
+    expect(
+      body(
+        [
+          '    if (style.getMaxWidth() < header.length() || style.getMaxWidth() == UNSET) {',
+          '      builder.setMaxWidth(header.length());',
+          '    }',
+        ].join('\n'),
+      ),
+    ).toEqual([]);
+    expect(
+      body(
+        [
+          '    if (UNSET == style.getMaxWidth()) {',
+          '      builder.setMaxWidth(header.length());',
+          '    }',
+        ].join('\n'),
+      ),
+    ).toEqual([]);
+    expect(
+      body(
+        [
+          '    if (style.getMaxWidth() < header.length()) {',
+          '      builder.setMaxWidth(header.length());',
+          '    }',
+        ].join('\n'),
+      ),
+    ).toEqual([`${MAX_VALUE_RULE} ${JAVA_FILE}:12`]);
   });
 
   it('reports a maximum added directly inside Math.min', () => {

@@ -7,6 +7,8 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.SecureRandom;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -27,6 +29,19 @@ public class Allowed {
   private final Condition changed = lock.newCondition();
   private volatile Object published;
   private boolean ready;
+
+  public void dump(ResultSet rows, List<String> into) throws SQLException {
+    if (!rows.next()) { return; }
+    do {
+      into.add(rows.getString("name"));
+    } while (rows.next());
+  }
+  public void dumpOrFail(ResultSet rows, List<String> into) throws SQLException {
+    if (!rows.next()) { throw new SQLException("empty"); }
+    do {
+      into.add(rows.getString("name"));
+    } while (rows.next());
+  }
 
   public static Allowed instance() { return INSTANCE; }
   public String copy(String value) { return value; }

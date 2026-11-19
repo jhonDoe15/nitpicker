@@ -50,6 +50,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   a string template reads `\1` and `\g<name>` (`expanding-replacement`).
 - A glob or pattern turned into a regex or `LIKE` pattern with `replace` calls is escaped for the target first
   (`re.escape(glob).replace("\\*", ".*")`), never rewritten from the raw value (`pattern-translation`).
+- A branch that handles `None` either leaves or is the whole story (`null-branch-fall-through`):
+  `if value is None: out.append("null")` followed by `value.name` fails on the `None` path or handles the
+  value twice. End the branch with `return` (or `raise`), or put the use in an `else`.
 - Regexes: an argument built into a `re` pattern goes through `re.escape(value)`; plain text is
   compared with `in`, `startswith` or `==` (`regex-unescaped-value`).
   Every part of a literal pattern must change what it matches (`a|b|a`, `[_a-z_]` and `x{1}` are

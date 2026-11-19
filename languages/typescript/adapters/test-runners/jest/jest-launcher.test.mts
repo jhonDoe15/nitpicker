@@ -8,7 +8,8 @@ import { consoleProducerPath } from '../test-console-run.mts';
 import { createRunnerProjects } from '../test-support/runner-project.mts';
 import { areaOptions } from '../area-options.mts';
 import { coverageArguments } from './jest-coverage.mts';
-import { jestArguments, runJest } from './jest.mts';
+import { runJest } from './jest.mts';
+import { jestArguments } from './jest-launcher.mts';
 import type { RunnerCommand } from '../typed/runner-types.mts';
 import type { QualityAreaOptions } from '../../quality-areas/typed/area-types.mts';
 import { parseJson, fieldOf } from '../../../../../shared/values/readers.mts';
@@ -188,6 +189,26 @@ describe('a Jest run that a Create React App script starts', () => {
           'Install the project dependencies, or set "tools.tests.runner" in nitpicker.config.json. ' +
           linkSentence('testRunnerNotInstalled'),
       ),
+    );
+  });
+
+  it.each([
+    ['react-app-rewired', 'react-app-rewired', 'bin/index.js'],
+    ['rescripts', '@rescripts/cli', 'bin/rescripts.js'],
+  ])('starts Jest through %s, from the bin of %s', (launcher, packageName, bin) => {
+    const packageFolder = `node_modules/${packageName}`;
+    const depth = packageFolder.split('/').length + 1;
+    const fake = FAKE_REACT_SCRIPTS.replace("'../../..'", `'${Array(depth).fill('..').join('/')}'`);
+    const root = launchedProject({
+      [`${packageFolder}/package.json`]: { name: packageName, version: '1.0.0' },
+      [`${packageFolder}/${bin}`]: fake,
+    });
+
+    const run = runJest(optionsFor(root), command(launcher, []));
+
+    expect([run.failed, run.report.numTotalTests]).toEqual([false, 1]);
+    expect(() => runJest(optionsFor(launchedProject({})), command(launcher, []))).toThrow(
+      /^The test script runs "[a-z-]+ test", but [@a-z/-]+ is not installed in /u,
     );
   });
 });

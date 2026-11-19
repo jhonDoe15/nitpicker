@@ -8,6 +8,7 @@ import { readMaxValueFindings } from '../../adapters/review-rules/max-value-sums
 import { readStringCallFindings } from '../../adapters/review-rules/string-calls/string-calls.mjs';
 import { readValueCheckFindings } from '../../adapters/review-rules/value-checks/value-checks.mjs';
 import { readMinedFindings } from '../../adapters/review-rules/mined/mined-rules.mjs';
+import { readNullFallThroughFindings } from '../../adapters/review-rules/null-fall-through/null-fall-through.mjs';
 import { readRoundTripFindings } from '../../adapters/review-rules/round-trips/round-trips.mjs';
 import { readTestOnlyClassFindings } from '../../adapters/review-rules/test-only-classes.mts';
 import { readTestRuntimeFindings } from '../../adapters/test-runtime/test-runtime-findings.mts';
@@ -122,3 +123,5 @@ export const valueCheckFindings: (projectRoot: string, options: WideOptions) => 
   readValueCheckFindings;
 export const minedFindings: (projectRoot: string, options: WideOptions) => JavaFinding[] =
   readMinedFindings;
+export const nullFallThroughFindings: (projectRoot: string, options: WideOptions) => JavaFinding[] =
+  readNullFallThroughFindings;

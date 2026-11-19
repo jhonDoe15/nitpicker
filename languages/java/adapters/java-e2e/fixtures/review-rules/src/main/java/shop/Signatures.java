@@ -154,6 +154,22 @@ public final class Signatures {
     return issuedAtSeconds + lifetimeSeconds < System.currentTimeMillis() / 1000;
   }
 
+  public static double elapsedSeconds(long nowMillis, long startedAtMillis) {
+    long elapsedMillis = nowMillis - startedAtMillis;
+    double elapsedSeconds = elapsedMillis / 1000.0;
+    return Math.max(0.0, elapsedSeconds);
+  }
+
+  public static long timeoutMillis(long timeoutSeconds) {
+    long timeoutMillis = timeoutSeconds * 1000;
+    return timeoutMillis;
+  }
+
+  public static double elapsedAsSeconds(long elapsedMillis) {
+    double elapsedSeconds = elapsedMillis; // violation: MixedTimeUnits
+    return elapsedSeconds;
+  }
+
   public static long deadlineMillis(long lifetimeSeconds) {
     return System.currentTimeMillis() + TimeUnit.SECONDS.toMillis(lifetimeSeconds);
   }

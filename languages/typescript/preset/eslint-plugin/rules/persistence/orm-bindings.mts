@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { staticKeyName } from '../analysis/static-shapes.mts';
-import { constantInitializer, type SourceCode } from '../typed/node-views.mts';
+import { constantInitializer, requiredLiteral, type SourceCode } from '../typed/node-views.mts';
 import { ASSERTION_WRAPPERS, unwrapOf } from '../typed/syntax-views.mts';
 import { libraryBinding, variableOf, type LibraryBinding } from './library-bindings.mts';
 
@@ -66,16 +66,7 @@ function isOrmSource(source: unknown, orm: Orm): boolean {
 }
 
 function requiredSource(declarator: TSESTree.VariableDeclarator): unknown {
-  const { init } = declarator;
-  if (
-    init?.type !== AST_NODE_TYPES.CallExpression ||
-    init.callee.type !== AST_NODE_TYPES.Identifier ||
-    init.callee.name !== 'require'
-  ) {
-    return undefined;
-  }
-  const [first] = init.arguments;
-  return first?.type === AST_NODE_TYPES.Literal ? first.value : undefined;
+  return requiredLiteral(declarator.init ?? undefined);
 }
 
 function statementSources(statement: TSESTree.Node): unknown[] {

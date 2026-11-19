@@ -70,6 +70,30 @@ tester.run('unbounded-fan-out', rule, {
   ],
   invalid: [
     {
+      code: 'import OpenAI from "openai"; const ai = new OpenAI(); await Promise.all(prompts.map((prompt) => ai.chat.completions.create({ prompt })));',
+      errors: error({ operation: 'ai.chat.completions.create()', collection: 'prompts' }),
+    },
+    {
+      code: 'export async function run(urls) { for (;;) { await Promise.all(urls.map((url) => fetch(url))); } }',
+      errors: unbounded,
+    },
+    {
+      code: 'await Promise.all(urls.slice().map((url) => fetch(url)));',
+      errors: unbounded,
+    },
+    {
+      code: 'const loader = { all(urls) { return Promise.all(urls.map((url) => this.limit(() => fetch(url)))); } };',
+      errors: unbounded,
+    },
+    {
+      code: 'class Loader { all(urls) { return Promise.all(urls.map((url) => this.gate(() => fetch(url)))); } }',
+      errors: unbounded,
+    },
+    {
+      code: 'await Promise.all(Array.from(urls).map((url) => fetch(url)));',
+      errors: unbounded,
+    },
+    {
       code: 'import pLimit from "p-limit"; class Loader { limit = pLimit(4); all(urls) { return Promise.all(urls.map((url) => { this.limit(() => log(url)); return fetch(url); })); } }',
       errors: error({ operation: 'fetch()', collection: 'urls' }),
     },

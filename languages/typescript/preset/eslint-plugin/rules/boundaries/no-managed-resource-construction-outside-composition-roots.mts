@@ -1,3 +1,4 @@
+import { calleeName } from '../analysis/node/call-text.mts';
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import {
   compositionRootOptionsSchema,

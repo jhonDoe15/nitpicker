@@ -18,6 +18,7 @@ export type CountedFinding = FindingKey & { readonly count: number };
 export type Counts = ReadonlyMap<string, CountedFinding>;
 
 export type RecipeRun = {
+  readonly key: string;
   readonly id: string;
   readonly files: Set<string>;
   readonly findings: FindingKey[];
@@ -64,6 +65,7 @@ export type Comparison = { readonly before: Counts; readonly after: Counts };
 export type Judgement = Comparison & {
   readonly runs: readonly RecipeRun[];
   readonly breaking: (tool: string) => boolean;
+  readonly surfaced?: (finding: FindingKey) => boolean;
 };
 
 export type Analyses =
@@ -82,6 +84,7 @@ export function isAnalyze(value: unknown): value is Analyze {
 
 export type RunEvent = {
   readonly recipe?: string | undefined;
+  readonly scope?: string | undefined;
   readonly files: readonly string[];
   readonly finding?: FindingKey | undefined;
   readonly alsoFindings?: readonly FindingKey[] | undefined;

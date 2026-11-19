@@ -10,8 +10,7 @@ const GUARDS = path.join(GRADLE_DIRECTORY, 'rules/guards-ruleset.xml');
 const HONESTY = path.join(GRADLE_DIRECTORY, 'rules/test-honesty-ruleset.xml');
 const OPTIONAL_GET_BEFORE_10 = {
   rule: 'OptionalGet',
-  message:
-    'Use orElse(...), orElseThrow(Supplier), map or ifPresent instead of Optional.get(), also after isPresent().',
+  message: 'Use orElse(...), orElseThrow(Supplier), map or ifPresent instead of Optional.get().',
 };
 const tests = path.join('/work', 'my.app', 'src', 'test', 'java');
 const quoted = String.raw`/work/my\.app/src/test/java/`;

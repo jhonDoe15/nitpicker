@@ -15,6 +15,11 @@ describe('signature rule messages', () => {
       '`page(limit)` replaces a falsy argument with a default, so `0`, `""`, `[]` and `False` count as not given',
     ],
     [
+      'null-branch-fall-through',
+      'value|value.name',
+      'The null branch handles `value` and then falls through to `value.name`, which uses `value`',
+    ],
+    [
       'parameter-mutation',
       'names.append (collect)',
       '`names.append` changes the argument the caller passed to `collect`',

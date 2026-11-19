@@ -12,6 +12,7 @@ import {
   stringCallFindings,
   valueCheckFindings,
   minedFindings,
+  nullFallThroughFindings,
   kotlinMetricsOf,
   kotlinNodesOf,
   outerClassOf,
@@ -269,6 +270,7 @@ export function projectWideReport(
     ...stringCallFindings(projectRoot, { projects, kotlin, policy }),
     ...valueCheckFindings(projectRoot, { projects, kotlin, policy }),
     ...minedFindings(projectRoot, { projects, kotlin, policy }),
+    ...nullFallThroughFindings(projectRoot, { projects, kotlin, policy }),
     ...features.findings,
   ];
   return { findings, imports: reuse.imports };
