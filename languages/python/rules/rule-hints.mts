@@ -42,6 +42,7 @@ import { DATALOADER_HINTS } from './hints/dataloaders/batches.mts';
 import { AIRFLOW_HINTS } from './hints/airflow/templates.mts';
 import { HTTP_VALUE_HINTS } from './hints/http/http-values.mts';
 import { RESULT_HINTS } from './hints/results/results.mts';
+import { OVERRIDE_HINTS } from './hints/overrides/overrides.mts';
 
 export { RULES_TOOL };
 const PYRIGHT_TOOLS = ['pyright', 'basedpyright'];
@@ -126,6 +127,7 @@ export const RULE_HINTS: readonly RuleHint[] = [
   ...QUERY_FILTER_HINTS,
   ...RUNTIME_SLIP_HINTS,
   ...RESULT_HINTS,
+  ...OVERRIDE_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...PYRIGHT_TOOLS.map((tool) => ({
     tool,
