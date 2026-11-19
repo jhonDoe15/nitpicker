@@ -2,6 +2,7 @@
   {
     "tool": "python-rules",
     "rule": "http-without-timeout",
-    "mention": "timeout=10"
+    "mention": "timeout=10",
+    "alongside": ["managed-resource-outside-composition-root"]
   }
 ]

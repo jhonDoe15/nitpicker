@@ -71,6 +71,14 @@ const GROUPS = [
     python: 'unversioned-orm-entity',
   },
   {
+    typescript: 'nitpicker/no-branch-in-composition-root',
+    python: 'branch-in-composition-root',
+  },
+  {
+    typescript: 'nitpicker/no-managed-resource-construction-outside-composition-roots',
+    python: 'managed-resource-outside-composition-root',
+  },
+  {
     typescript: 'nitpicker/no-presence-truthiness',
     python: 'presence-truthiness',
   },

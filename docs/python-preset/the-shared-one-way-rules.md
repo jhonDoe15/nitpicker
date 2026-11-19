@@ -220,6 +220,29 @@ Details that are decisions rather than the table:
   `[project.entry-points]`, poetry scripts and plugins, flit), `setup.cfg` or `setup.py`; or a file
   matched by `python.entryPoints`.
   Nothing under a `domain` folder is a composition root.
+- `branch-in-composition-root` (TypeScript: `nitpicker/no-branch-in-composition-root`) reports a branch in a
+  file that only wires the program together: `main.py`, `server.py` or `composition_root.py` in the root
+  package (the top-level package, a folder with an `__init__.py` whose parent has none), a file under a
+  `composition_root/` folder of it, or a file listed in `python.entryPoints`. Reported: `if`, a
+  conditional expression, `match`, `for` and `while` loops, and `or` with a literal, collection or call on
+  its right (`settings.get("port") or 3000`), at module level and inside functions. Not reported:
+  `if __name__ == "__main__":`, `if TYPE_CHECKING:`, a guard whose body only raises
+  (`if url is None: raise RuntimeError("DATABASE_URL is missing")`), `and`/`or` between plain values, and
+  `try` statements. Allowed: choose an implementation by configuration through a lookup table
+  (`BACKENDS = {"memory": MemoryStore, "redis": RedisStore}` then `BACKENDS[settings.store]()`), and put
+  other decisions in a factory of the feature. A branch that belongs in the root needs an exception for
+  the rule.
+- `managed-resource-outside-composition-root` (TypeScript:
+  `nitpicker/no-managed-resource-construction-outside-composition-roots`) reports a call that builds a
+  managed resource in a file that is not a composition root: SQLAlchemy `create_engine` and
+  `create_async_engine`, `asyncpg.create_pool`, `redis.Redis`, `redis.StrictRedis`, `Redis.from_url` and
+  `redis.from_url`, `httpx.Client` and `AsyncClient`, `requests.Session`, `aiohttp.ClientSession`,
+  `boto3` and `aioboto3` `client` and `resource`, and `celery.Celery`, also through `from ... import`
+  and aliases. A composition root here is a file named for `branch-in-composition-root` above, or any
+  file `process-env-access` treats as one (`app.py`, `cli.py`, a file with a main guard, a factory such
+  as `create_app`). Tests are skipped. Allowed: build the resource once in the composition root and pass it
+  to the code that uses it as a parameter or constructor argument. An exception fits only for a script or
+  tool outside the application that owns a short-lived resource.
 - `env-none-only-check` reports an environment variable tested only for being missing, which
   counts an empty value as set: `API_URL=` gives `""`, which passes the test, so the feature turns
   on with nothing to use. Reported, in every non-test file: `is None`, `is not None`, `== None` and
