@@ -14,6 +14,7 @@ import { EFFECT_HINTS } from './hints/effects/index.mts';
 import { WRITE_HINTS } from './hints/writes/index.mts';
 import { MOCK_HINTS } from './hints/tests/mock-hints.mts';
 import { REGEX_DEFECT_HINTS } from './regexes/regex-defects.mts';
+import { DJANGO_DECLARATION_HINTS } from './hints/django/declaration-hints.mts';
 import { ORM_HINTS } from './hints/persistence/ast-orm.mts';
 import { CONTRACT_HINTS } from './hints/contracts/ast-contracts.mts';
 import { SIGNATURE_HINTS } from './hints/signatures/ast-signatures.mts';
@@ -99,6 +100,7 @@ export const RULE_HINTS: readonly RuleHint[] = [
   ...SIGNATURE_HINTS,
   ...TEST_SWITCH_HINTS,
   ...ORM_HINTS,
+  ...DJANGO_DECLARATION_HINTS,
   ...PERSISTENCE_HINTS,
   ...QUERY_HINTS,
   ...TIME_UNIT_HINTS,
