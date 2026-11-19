@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
+import { expandsFully as untypedExpandsFully } from '../../../../../../shared/traversal.mjs';
 
 const LEAVES = new Set<string>([
   AST_NODE_TYPES.Literal,
@@ -10,6 +11,9 @@ const LEAVES = new Set<string>([
 ]);
 
 type Parts = readonly TSESTree.Node[] | undefined;
+
+const expandsFully: (root: TSESTree.Node, children: (node: TSESTree.Node) => Parts) => boolean =
+  untypedExpandsFully;
 
 function propertyValue(property: TSESTree.ObjectLiteralElement): Parts {
   if (property.type !== AST_NODE_TYPES.Property || property.computed) {
@@ -66,13 +70,5 @@ function partsOf(node: TSESTree.Node): Parts {
 }
 
 export function isInertValue(node: TSESTree.Node): boolean {
-  const pending = [node];
-  for (const current of pending) {
-    const parts = partsOf(current);
-    if (parts === undefined) {
-      return false;
-    }
-    appendAll(pending, parts);
-  }
-  return true;
+  return expandsFully(node, partsOf);
 }

@@ -11,7 +11,7 @@ const ESCAPES: Readonly<Record<string, string>> = {
   '\u2029': '\\u2029',
 };
 
-const SPECIAL = /[\\\n\r\t\u0008\f\v\0\u2028\u2029]|\p{Cc}|\p{Surrogate}/gu;
+const SPECIAL = /[\\\u2028\u2029]|\p{Cc}|\p{Surrogate}/gu;
 const HEX = 16;
 const UNICODE_DIGITS = 4;
 
