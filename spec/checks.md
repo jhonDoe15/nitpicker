@@ -182,6 +182,10 @@ Python iterator rule: `iterator-read-twice` (a generator, `map`, `filter`, `zip`
 parameter annotated `Iterable` or `Iterator`, or a Django `save` override's `update_fields`, read by two consuming
 operations on one path; materializing it once is the allowed form). It lives in `languages/python/rules/iterators/`.
 
+Python forwarding rule: `parameter-not-forwarded` (a parameter that an override leaves out of its `super()` call, that a
+wrapper leaves out of the call to a project function with a same-named keyword, or that a trigger's `__init__` takes but
+`serialize()` leaves out of its dict). It lives in `languages/python/rules/forwarding/`.
+
 Python job rule: `job-item-failure-stops-run` (a loop in a Celery task, an APScheduler job or a Django management
 command that does database or remote I/O per item with no `try` around one item, so the first failing item
 stops the rest). It lives in `languages/python/rules/jobs/`.

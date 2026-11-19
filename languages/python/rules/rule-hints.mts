@@ -18,6 +18,7 @@ import { DJANGO_DECLARATION_HINTS } from './hints/django/declaration-hints.mts';
 import { ORM_HINTS } from './hints/persistence/ast-orm.mts';
 import { CONTRACT_HINTS } from './hints/contracts/ast-contracts.mts';
 import { SIGNATURE_HINTS } from './hints/signatures/ast-signatures.mts';
+import { FORWARDED_HINTS } from './hints/forwarding/forwarded.mts';
 import { ONE_SHOT_HINTS } from './hints/iterators/one-shot.mts';
 import { SHARED_STATE_HINTS } from './hints/signatures/shared-state.mts';
 import { TEST_SWITCH_HINTS } from './hints/tests/ast-test-switches.mts';
@@ -108,6 +109,7 @@ export const RULE_HINTS: readonly RuleHint[] = [
   ...SIGNATURE_HINTS,
   ...SHARED_STATE_HINTS,
   ...ONE_SHOT_HINTS,
+  ...FORWARDED_HINTS,
   ...TEST_SWITCH_HINTS,
   ...ORM_HINTS,
   ...DJANGO_DECLARATION_HINTS,
