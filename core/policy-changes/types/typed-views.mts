@@ -24,9 +24,9 @@ import {
 } from '../../../shared/exceptions/rule-names.mjs';
 import { pathInside as untypedPathInside } from '../../../shared/filesystem.mjs';
 import { projectFilePaths as untypedProjectFilePaths } from '../../../shared/project-files/project-files.mjs';
-import { GRADLE_PRESETS as UNTYPED_GRADLE_PRESETS } from '../../../languages/java/adapters/gradle-presets.mjs';
-import { readBuildSources as untypedReadBuildSources } from '../../../languages/java/builds/narrowing/build-sources.mjs';
-import { jvmProductionReach as untypedJvmProductionReach } from '../../../languages/java/builds/reach/source-reach.mjs';
+import { GRADLE_PRESETS as UNTYPED_GRADLE_PRESETS } from '../../../languages/java/adapters/gradle-presets.mts';
+import { readBuildSources as untypedReadBuildSources } from '../../../languages/java/builds/narrowing/build-sources.mts';
+import { jvmProductionReach as untypedJvmProductionReach } from '../../../languages/java/builds/reach/source-reach.mts';
 import { readPythonSelection as untypedReadPythonSelection } from '../../../languages/python/adapters/configuration/pytest/test-selection.mts';
 import { detectSourceRoots as untypedDetectSourceRoots } from '../../../languages/python/adapters/execution/python-project.mts';
 import {
@@ -35,7 +35,7 @@ import {
 } from '../../../languages/typescript/preset/modules/tsconfig-files.mjs';
 import { checkedJavascriptFiles as untypedCheckedJavascriptFiles } from '../../../languages/typescript/preset/eslint-config/policy/untyped-javascript.mts';
 import { presetToDeclare as untypedPresetToDeclare } from '../../configuration/project-checks/preset-detection.mjs';
-import { isGeneratedJvm as untypedIsGeneratedJvm } from '../../../languages/java/adapters/generated/generated-sources.mjs';
+import { isGeneratedJvm as untypedIsGeneratedJvm } from '../../../languages/java/adapters/generated/generated-sources.mts';
 import { isGeneratedPython as untypedIsGeneratedPython } from '../../../languages/python/libraries/generated-files.mts';
 import { isMarkedGenerated as untypedIsMarkedGenerated } from '../../../languages/typescript/preset/layout/generated-files.mjs';
 import { isGeneratedGo as untypedIsGeneratedGo } from '../../../languages/go/adapters/structure/go-generated.mts';
@@ -111,8 +111,10 @@ type GeneratedTest = (projectRoot: string, file: string) => boolean;
 const pathInside: (root: string, relative: string) => string | undefined = untypedPathInside;
 const projectFilePaths: (projectRoot: string) => string[] = untypedProjectFilePaths;
 const GRADLE_PRESETS: readonly (string | undefined)[] = UNTYPED_GRADLE_PRESETS;
-const readBuildSources: (projectRoot: string, files: readonly string[]) => BuildSource[] =
-  untypedReadBuildSources;
+function readBuildSources(projectRoot: string, files: readonly string[]): BuildSource[] {
+  const sources: readonly unknown[] = untypedReadBuildSources(projectRoot, files);
+  return sources.filter((source) => isBuildSource(source));
+}
 const detectSourceRoots: (projectRoot: string, setting: readonly string[] | undefined) => string[] =
   untypedDetectSourceRoots;
 const checksJavascript: (configFile: string) => boolean = untypedChecksJavascript;

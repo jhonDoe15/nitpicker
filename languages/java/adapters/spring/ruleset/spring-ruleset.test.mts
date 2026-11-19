@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { configurationFiles } from '../../java-analyzer.mts';
 import { ALLOWED_FORM_FIRST } from '../test-support/allowed-form.mts';
-import { withRuleMessage as withMessageUntyped } from '../../../messages/rule-messages.mjs';
+import { withRuleMessage } from '../../../messages/rule-messages.mts';
 import {
   guidePages as guidePagesUntyped,
   guideText as guideTextUntyped,
@@ -12,8 +12,6 @@ import { textOf } from '../../../../../shared/values/readers.mts';
 
 type RuleEntry = { readonly name: string; readonly message: string };
 
-const withRuleMessage: (finding: object) => { allowedForm: string; message: string } =
-  withMessageUntyped;
 const guidePages: (file: string) => unknown[] = guidePagesUntyped;
 const guideText: (page: unknown) => string = guideTextUntyped;
 
@@ -115,7 +113,8 @@ describe('spring-ruleset.xml', () => {
         message,
         classification: 'enforceable',
       });
-      return [name, finding.allowedForm, finding.message.startsWith(finding.allowedForm)];
+      const allowedForm = textOf(finding['allowedForm']);
+      return [name, allowedForm, textOf(finding.message).startsWith(allowedForm)];
     });
 
     expect(forms).toEqual(

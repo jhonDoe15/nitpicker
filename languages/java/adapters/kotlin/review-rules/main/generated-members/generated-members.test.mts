@@ -6,7 +6,7 @@ import {
   MEMBER_CYCLE_RULE,
   SKIPPED_SUPER_RULE,
   generatedMemberFindings,
-} from './generated-members.mjs';
+} from './generated-members.mts';
 
 const val = (name: string, type: string, line = 1, overrides = {}) =>
   parameter(name, type, { property: 'val', line, ...overrides });

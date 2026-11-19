@@ -6,7 +6,7 @@ import {
   readerOf,
   type ClassReader,
   type ConstantPool,
-} from '../typed/class-file-views.mts';
+} from '../typed/compiled/class-file-views.mts';
 
 export type ClassSummary = {
   readonly name: string;

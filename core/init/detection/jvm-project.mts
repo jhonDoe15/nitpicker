@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { buildRunsPreset, describeJavaBuild } from '../../../languages/java/builds/java-build.mjs';
+import { buildRunsPreset, describeJavaBuild } from '../../../languages/java/builds/java-build.mts';
 import type { InitProject } from '../init-types.mts';
 import { existingConfig } from '../files/config-file.mts';
 import { fieldsOf, textOf } from '../../../shared/values/readers.mts';

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Ruled, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
-import { kotlinSourceRules as untypedKotlinSourceRules } from './costly-collections.mjs';
+import { kotlinSourceRules as untypedKotlinSourceRules } from './costly-collections.mts';
 
 const kotlinSourceRules: { main: Check<Ruled>[] } = untypedKotlinSourceRules;
 

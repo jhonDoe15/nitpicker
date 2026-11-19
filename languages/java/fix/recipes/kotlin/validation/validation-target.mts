@@ -1,4 +1,4 @@
-import { CONSTRAINT_NAMES as UNTYPED_CONSTRAINT_NAMES } from '../../../../adapters/kotlin/review-rules/validation/constraint-names.mjs';
+import { CONSTRAINT_NAMES as UNTYPED_CONSTRAINT_NAMES } from '../../../../adapters/kotlin/review-rules/validation/constraint-names.mts';
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
 import { splitArguments } from '../shared/kotlin-scan.mts';
 import type { Span } from '../shared/kotlin-scan.mts';

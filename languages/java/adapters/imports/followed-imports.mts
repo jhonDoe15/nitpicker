@@ -1,8 +1,8 @@
 import {
   JAVA_TEST_STATIC_IMPORTS,
   JAVA_WILDCARD_IMPORTS,
-} from '../../conventions/java-conventions.mjs';
-import { isTestSource } from '../../conventions/measures/java-imports.mjs';
+} from '../../conventions/java-conventions.mts';
+import { isTestSource } from '../../conventions/measures/java-imports.mts';
 import type { JavaFinding, SourceReader } from '../typed/java-values.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 

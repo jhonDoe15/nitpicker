@@ -1,11 +1,11 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { REUSABLE_OBJECT_RULE } from '../../../../../messages/reuse/reusable-objects.mjs';
+import { REUSABLE_OBJECT_RULE } from '../../../../../messages/reuse/reusable-objects.mts';
 import type { RuleFinding } from '../../test-support/facts.mts';
 import { routed, run } from '../../test-support/facts.mts';
 import { recordedFiles } from '../../test-support/loose-facts.mts';
-import { KOTLIN_REUSABLE_OBJECT_MESSAGE, reusableObjectFindings } from './reusable-objects.mjs';
+import { KOTLIN_REUSABLE_OBJECT_MESSAGE, reusableObjectFindings } from './reusable-objects.mts';
 
 const PROJECT = path.resolve(
   import.meta.dirname,

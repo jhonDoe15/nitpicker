@@ -2,17 +2,18 @@ import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import { GRADLE_DIRECTORY } from '../../../builds/java-build.mjs';
-import { javaCommand, runJava } from '../../../maven/maven-command.mjs';
-import { cacheDirectory, publishDirectory } from '../../../maven/maven-tools.mjs';
+import { GRADLE_DIRECTORY } from '../../../builds/java-build.mts';
+import { javaCommand, runJava } from '../../../maven/maven-command.mts';
+import { cacheDirectory, publishDirectory } from '../../../maven/maven-tools.mts';
 import { resolveInside } from '../../../../../shared/conventions/read-inside.mjs';
 import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
-import { type JavaSpawn, callUntyped } from '../../typed/java-values.mts';
+import { type JavaEnvironment, type JavaSpawn, callUntyped } from '../../typed/java-values.mts';
 
 type CompileRequest = {
   readonly sources?: readonly string[];
   readonly cache?: string;
   readonly spawn?: JavaSpawn;
+  readonly environment?: JavaEnvironment | undefined;
 };
 type ProgramRun = {
   readonly classes: string;
@@ -77,8 +78,9 @@ export function compileDesignProgram({
   sources = designSources(),
   cache,
   spawn = spawnSync,
+  environment = {},
 }: CompileRequest = {}): string {
-  const root = cache ?? textOf(cacheDirectory('design-facts'));
+  const root = cache ?? textOf(cacheDirectory('design-facts', environment));
   mkdirSync(root, { recursive: true });
   const classes = inside(root, cacheKey(sources, spawn));
   if (existsSync(classes)) {

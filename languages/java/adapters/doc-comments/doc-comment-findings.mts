@@ -3,8 +3,8 @@ import path from 'node:path';
 import { pathInside } from '../../../../shared/filesystem.mjs';
 import { RULE_IDS } from '../../../../shared/policy.mjs';
 import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
-import { javaDocComments } from './java-doc-comments.mjs';
-import { kotlinDocComments } from './kotlin-doc-comments.mjs';
+import { javaDocComments } from './java-doc-comments.mts';
+import { kotlinDocComments } from './kotlin-doc-comments.mts';
 import { callUntyped } from '../typed/java-values.mts';
 import { fieldOf, fieldsOf, listOf, textsOf } from '../../../../shared/values/readers.mts';
 

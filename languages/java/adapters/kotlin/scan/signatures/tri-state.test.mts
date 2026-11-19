@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type Check, type Subjected, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
-import { triStateBooleans as untypedTriStateBooleans } from './tri-state.mjs';
+import { triStateBooleans as untypedTriStateBooleans } from './tri-state.mts';
 
 const triStateBooleans: Check<Subjected> = untypedTriStateBooleans;
 

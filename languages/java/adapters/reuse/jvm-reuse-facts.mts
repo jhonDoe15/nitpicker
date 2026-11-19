@@ -17,14 +17,14 @@ import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs'
 import {
   pathInside as untypedPathInside,
   projectSourceFiles as untypedProjectSourceFiles,
-} from '../review-rules/java-sources.mjs';
-import { readJvmUnits as untypedReadJvmUnits } from '../near-duplicates/jvm-trees.mjs';
+} from '../review-rules/java-sources.mts';
+import { readJvmUnits as untypedReadJvmUnits } from '../near-duplicates/jvm-trees.mts';
 import { toolSlots } from '../../maven/parallel/tool-slots.mts';
 import { definitionKey } from './jvm-definition-keys.mts';
 import { importFacts } from './jvm-reference-uses.mts';
 import { fileBindings, projectIndex, referenceScope } from './jvm-references.mts';
+import { readJvmDefinitions } from './source/jvm-definitions.mts';
 import {
-  readJvmDefinitions,
   type BoundEntry,
   type Definition,
   type Entry,

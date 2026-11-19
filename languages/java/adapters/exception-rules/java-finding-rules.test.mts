@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { JAVA_TOOLS } from '../gradle-presets.mjs';
+import { JAVA_TOOLS } from '../gradle-presets.mts';
 import { isJavaFindingRule, validateJavaFindingRule } from './java-finding-rules.mts';
 
 describe('isJavaFindingRule', () => {

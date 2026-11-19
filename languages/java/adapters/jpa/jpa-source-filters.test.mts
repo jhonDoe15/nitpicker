@@ -5,31 +5,9 @@ import {
 import { describe, expect, it } from 'vitest';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
-import {
-  dropEntityAssociations as dropAssociationsUntyped,
-  dropInheritedVersions as dropVersionsUntyped,
-} from './jpa-source-filters.mjs';
-
-type SarifResult = {
-  readonly ruleId: string;
-  readonly message: { readonly arguments: readonly string[] };
-  readonly locations: readonly unknown[];
-};
-type SarifLog = { readonly runs: readonly { readonly results: readonly SarifResult[] }[] };
-type VersionFinding = {
-  readonly tool: string;
-  readonly rule: string;
-  readonly path: string;
-  readonly location?: { readonly line: number };
-};
-type FilterOptions = { projectRoot: string; sourceRoots: string[] };
-
-const dropEntityAssociations: (log: SarifLog, projectRoot: string) => SarifLog =
-  dropAssociationsUntyped;
-const dropInheritedVersions: (
-  findings: readonly VersionFinding[],
-  options: FilterOptions,
-) => VersionFinding[] = dropVersionsUntyped;
+import { dropEntityAssociations, dropInheritedVersions } from './jpa-source-filters.mts';
+import type { SarifLog, SarifResult, JpaFilterOptions as FilterOptions } from './jpa-types.mts';
+import type { JavaFinding as VersionFinding } from '../typed/java-values.mts';
 
 const { gitCheckout } = useGitCheckouts();
 const { temporaryRoot } = useGitFixtures();
@@ -62,9 +40,9 @@ function exposure(field: string, ruleId = 'EI_EXPOSE_REP', file = 'Order.java'):
 }
 
 function ruleIds(log: SarifLog): string[] {
-  return log.runs
-    .flatMap((run) => run.results)
-    .map((result) => `${result.ruleId}:${String(result.message.arguments[1])}`);
+  return (log.runs ?? [])
+    .flatMap((run) => run.results ?? [])
+    .map((result) => `${String(result.ruleId)}:${String(result.message?.arguments?.[1])}`);
 }
 
 describe('dropEntityAssociations', () => {
@@ -98,10 +76,9 @@ class Order {
       exposure('customer', 'EI_EXPOSE_REP', 'Missing.java'),
     ];
     const kept = dropEntityAssociations({ runs: [{ results }] }, root);
-    expect(kept.runs.flatMap((run) => run.results).map((result) => result.ruleId)).toEqual([
-      'URF_UNREAD_FIELD',
-      'EI_EXPOSE_REP',
-    ]);
+    expect(
+      (kept.runs ?? []).flatMap((run) => run.results ?? []).map((result) => result.ruleId),
+    ).toEqual(['URF_UNREAD_FIELD', 'EI_EXPOSE_REP']);
   });
 });
 

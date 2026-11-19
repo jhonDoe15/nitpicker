@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { callUntyped, findingsOf } from '../../typed/java-values.mts';
-import { sarifFindings } from '../sarif/sarif-reports.mjs';
+import { sarifFindings } from '../sarif/sarif-reports.mts';
 import { withoutSourceBackedSpotbugs } from '../null-findings/spotbugs-log.mts';
 
 const roots: string[] = [];

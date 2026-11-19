@@ -22,8 +22,8 @@ function findings(
   {
     files,
     policy = {},
-    kotlin = false,
-  }: { files?: Record<string, string>; policy?: JavaPolicy; kotlin?: boolean } = {},
+    kotlin,
+  }: { files?: Record<string, string>; policy?: JavaPolicy; kotlin?: true } = {},
 ) {
   const classes = modules.flatMap((module) => module.classes);
   const project = featureProject({ files: files ?? javaSources(classes), modules });

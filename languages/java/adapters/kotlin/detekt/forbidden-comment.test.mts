@@ -4,22 +4,17 @@ import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
 import { taskMarkerCases as untypedTaskMarkerCases } from '../../../../../shared/naming/test-support/task-marker-cases.mjs';
 import { fieldAt } from '../../../../../scripts/json/fields.mts';
-import { listEntriesOf as untypedListEntriesOf, MERGED_LISTS } from './detekt-lists.mjs';
-
-type Entry = { value: string; reason?: string };
+import { listEntriesOf, MERGED_LISTS } from './detekt-lists.mts';
 
 const taskMarkerCases: (engine: string, reported: boolean) => { name: string; text: string }[] =
   untypedTaskMarkerCases;
-const listEntriesOf: (text: string, list: unknown) => Entry[] = untypedListEntriesOf;
 
 const TEXT = readFileSync(
   path.resolve(import.meta.dirname, '../../../detekt/nitpicker-detekt.yml'),
   'utf8',
 );
-const COMMENTS = listEntriesOf(
-  TEXT,
-  MERGED_LISTS.find(({ rule }) => rule === 'ForbiddenComment'),
-);
+const [, , COMMENT_LIST] = MERGED_LISTS;
+const COMMENTS = listEntriesOf(TEXT, COMMENT_LIST);
 const FORBIDDEN = new RegExp(
   (COMMENTS[0]?.value ?? '').replaceAll('(?m)', '').replaceAll('(?-i)', ''),
   'm',

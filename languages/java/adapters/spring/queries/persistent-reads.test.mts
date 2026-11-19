@@ -1,18 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { project, removeProjects } from '../__tests__/spring-config-projects.mts';
-import { dropComputedReads as dropUntyped } from './persistent-reads.mjs';
-
-type Candidate = {
-  readonly tool: string;
-  readonly rule: string;
-  readonly path: string;
-  readonly location: { readonly line: number; readonly column?: number };
-};
-
-const dropComputedReads: (
-  findings: readonly Candidate[],
-  options: { projectRoot: string; roots: string[] },
-) => Candidate[] = dropUntyped;
+import { dropComputedReads } from './persistent-reads.mts';
 
 const ENTITY = 'src/main/java/shop/Invoice.java';
 const BASE = 'src/main/java/shop/Audited.java';

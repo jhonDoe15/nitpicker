@@ -1,4 +1,5 @@
-import { kotlinStyleFile, resolveKotlinTools } from '../../adapters/kotlin/kotlin-tools.mjs';
+import { readPinnedTools } from '../../builds/java-build.mts';
+import { kotlinStyleFile, resolveKotlinTools } from '../../adapters/kotlin/kotlin-tools.mts';
 import { fieldOf, optionalText, textOf } from '../../../../shared/values/readers.mts';
 import {
   type JavaEnvironment,
@@ -7,7 +8,12 @@ import {
   callUntyped,
 } from '../../adapters/typed/java-values.mts';
 import type { KotlinPinned, kotlinTools } from '../kotlin/tools/kotlin-dependencies.mts';
-import type { KotlinOptions, KotlinStyle, ProjectModule } from './kotlin-types.mts';
+import type {
+  EditorConfigFile,
+  KotlinOptions,
+  KotlinStyle,
+  ProjectModule,
+} from './kotlin-types.mts';
 
 export type ResolvedTools = {
   readonly formatter: string;
@@ -62,5 +68,39 @@ export function toolsOf(root: string, request: ToolsRequest): ResolvedTools {
     raw: tools,
   };
 }
-export const styleOf: (tools: unknown, conventions: unknown) => KotlinStyle | undefined =
-  kotlinStyleFile;
+function editorconfigsOf(value: unknown): EditorConfigFile[] | undefined {
+  return Array.isArray(value)
+    ? value.map((file: unknown) => ({
+        path: textOf(fieldOf(file, 'path')),
+        text: textOf(fieldOf(file, 'text')),
+      }))
+    : undefined;
+}
+
+export function styleOf(tools: unknown, conventions: unknown): KotlinStyle | undefined {
+  const found = callUntyped(kotlinStyleFile, tools, conventions);
+  if (typeof found !== 'object' || found === null) {
+    return undefined;
+  }
+  return {
+    editorconfigs: editorconfigsOf(fieldOf(found, 'editorconfigs')),
+    offset: optionalText(fieldOf(found, 'offset')),
+    ktlintDefaults: optionalText(fieldOf(found, 'ktlintDefaults')),
+    detektConventions: optionalText(fieldOf(found, 'detektConventions')),
+    detektEnforced: optionalText(fieldOf(found, 'detektEnforced')),
+  };
+}
+
+export function pinnedKotlinTools(): KotlinPinned {
+  const pinned = readPinnedTools();
+  function pin(name: string): string {
+    return pinned[name] ?? '';
+  }
+  return {
+    ktlint: pin('ktlint'),
+    ktfmt: pin('ktfmt'),
+    kotlinCompiler: pin('kotlinCompiler'),
+    detekt: pin('detekt'),
+    detektKotlin: pin('detektKotlin'),
+  };
+}

@@ -1,9 +1,9 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { JAVA_FORMATTERS } from '../../adapters/style/jvm-formatters.mjs';
+import { JAVA_FORMATTERS } from '../../adapters/style/jvm-formatters.mts';
 import { skipWithoutJdk, sourceLevel, toolJava } from '../errorprone/maven-jdk.mts';
-import { FORMAT_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mjs';
-import { runJava } from '../maven-command.mjs';
+import { FORMAT_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mts';
+import { runJava } from '../maven-command.mts';
 import { JAVAC_EXPORTS, javaFiles } from '../maven-lint.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';

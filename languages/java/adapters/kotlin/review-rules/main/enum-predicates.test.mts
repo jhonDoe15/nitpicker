@@ -5,8 +5,8 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { routeOf, routed, run, summary } from '../test-support/facts.mts';
 import type { Loose } from '../test-support/loose-facts.mts';
 import { file, klass } from '../test-support/loose-facts.mts';
-import { ENUM_PREDICATE_RULE } from '../../../review-rules/enum-predicates.mjs';
-import { enumMessage, enumPredicateFindings } from './enum-predicates.mjs';
+import { ENUM_PREDICATE_RULE } from '../../../review-rules/enum-predicates.mts';
+import { enumMessage, enumPredicateFindings } from './enum-predicates.mts';
 
 const status = klass('Status', { kind: 'enum', entries: ['NEW', 'PAID', 'SHIPPED', 'CANCELLED'] });
 const comparison = (left: string, right: string, stability: Loose = {}) => ({

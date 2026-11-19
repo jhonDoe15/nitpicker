@@ -1,0 +1,62 @@
+import type { IndexedScan, Literal, Scanned } from '../../typed/scan-shapes.mts';
+import type { Span } from '../../typed/rule-shapes.mts';
+const NESTING = /[()[\]{}"]/g;
+const OPENERS = '([{';
+
+function firstStartsFrom(scanned: Scanned): Int32Array {
+  const first = new Int32Array(scanned.code.length + 2);
+  let cursor = 0;
+  for (const [index, literal] of scanned.literals.entries()) {
+    first.fill(index, cursor, literal.start + 1);
+    cursor = Math.max(cursor, literal.start + 1);
+  }
+  first.fill(scanned.literals.length, cursor);
+  return first;
+}
+
+function nest(stack: number[], mark: string, index: number): void {
+  if (OPENERS.includes(mark)) {
+    stack.push(index);
+  } else {
+    stack.pop();
+  }
+}
+
+function enclosingOpens(scanned: Scanned, byStart: Map<number, Literal>): Map<number, number> {
+  const opens = new Map<number, number>();
+  const stack: number[] = [];
+  let skipUntil = 0;
+  for (const { index, 0: mark } of scanned.code.matchAll(NESTING)) {
+    const literal = mark === '"' ? byStart.get(index) : undefined;
+    if (index < skipUntil || (mark === '"' && literal === undefined)) {
+      continue;
+    }
+    if (literal === undefined) {
+      nest(stack, mark, index);
+    } else {
+      opens.set(index, stack.at(-1) ?? -1);
+      skipUntil = literal.end;
+    }
+  }
+  return opens;
+}
+
+export function withLiteralIndex(scanned: Scanned): IndexedScan {
+  const byStart = new Map(
+    scanned.literals.map((literal): [number, Literal] => [literal.start, literal]),
+  );
+  const index = {
+    byStart,
+    byEnd: new Map(scanned.literals.map((literal): [number, Literal] => [literal.end, literal])),
+    first: firstStartsFrom(scanned),
+    opens: enclosingOpens(scanned, byStart),
+  };
+  return { ...scanned, index };
+}
+
+export function literalsWithin(scanned: IndexedScan, { start, end }: Span): Literal[] {
+  const { first } = scanned.index;
+  const from = first[Math.min(start, first.length - 1)] ?? 0;
+  const to = first[Math.min(end, first.length - 1)] ?? 0;
+  return scanned.literals.slice(from, to).filter((literal) => literal.end <= end);
+}

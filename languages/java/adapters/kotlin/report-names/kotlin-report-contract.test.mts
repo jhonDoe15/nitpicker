@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { KOTLIN_REPORTS } from './kotlin-report-names.mjs';
+import { KOTLIN_REPORTS } from './kotlin-report-names.mts';
 
 const REPORT_FILES: Readonly<Record<string, string>> = KOTLIN_REPORTS;
 

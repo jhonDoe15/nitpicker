@@ -8,16 +8,16 @@ import {
   JAVA_TOOLS,
   PROJECT_TOOL_CONFIGS,
   precedenceToolNames,
-} from './gradle-presets.mjs';
+} from './gradle-presets.mts';
 import {
   isJavaFindingRule,
   validateJavaFindingRule,
 } from './exception-rules/java-finding-rules.mts';
-import { JAVA_BUILD_TOOLS } from '../builds/java-build.mjs';
+import { JAVA_BUILD_TOOLS } from '../builds/java-build.mts';
 import { KOTLIN_FORMATTERS } from './kotlin/kotlin-options.mts';
 import { JAVA_LINE_LENGTH, JAVA_SIZE_RULES } from '../../../shared/project-rules/size-rules.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
-import { INLINE_SUPPRESSION_RULE } from './suppressions/java-suppressions.mjs';
+import { INLINE_SUPPRESSION_RULE } from './suppressions/java-suppressions.mts';
 import {
   canonical,
   FILE_LIMIT_THRESHOLDS,

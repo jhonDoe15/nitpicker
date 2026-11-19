@@ -9,7 +9,7 @@ import {
 import {
   mainOperandSlips as untypedMainOperandSlips,
   testOperandSlips as untypedTestOperandSlips,
-} from './operand-slips.mjs';
+} from './operand-slips.mts';
 
 const mainOperandSlips: Check<Subjected & Messaged> = untypedMainOperandSlips;
 const testOperandSlips: Check<Subjected & Messaged> = untypedTestOperandSlips;

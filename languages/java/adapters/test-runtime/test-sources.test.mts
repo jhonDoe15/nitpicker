@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isAbstract } from './test-sources.mjs';
+import { isAbstract } from './test-sources.mts';
 
 describe('isAbstract', () => {
   it.each([

@@ -8,7 +8,7 @@ import {
   exceptionMatcher as exceptionMatcherUntyped,
 } from '../../../../shared/rules/exceptions.mjs';
 import { hash as hashUntyped } from '../../../../shared/rules/finding-helpers.mjs';
-import { inModule as inModuleUntyped } from '../../builds/module-path.mjs';
+import { inModule as inModuleUntyped } from '../../builds/module-path.mts';
 import { readConsoleEntries } from './console-output.mts';
 import type { JavaFinding } from '../typed/java-values.mts';
 

@@ -1,7 +1,7 @@
 import { existsSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { runJava } from '../maven-command.mjs';
-import { toolCommand } from '../../builds/tools/tool-commands.mjs';
+import { runJava } from '../maven-command.mts';
+import { toolCommand } from '../../builds/tools/tool-commands.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { mavenModuleOf } from '../typed/maven-values.mts';

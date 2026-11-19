@@ -2,10 +2,10 @@ import { readFileSync } from 'node:fs';
 import {
   qualifiedName as qualifiedNameUntyped,
   sourceOfType as sourceOfTypeUntyped,
-} from './integration-tests.mjs';
+} from './integration-tests.mts';
+import type { Locate } from './typed/locate-type.mts';
 import { testMethod } from './test-methods.mts';
 
-export type Locate = (directory: string, fileName: string) => string | undefined;
 type SourceFile = { readonly relative: string; readonly file: string };
 export type InheritedMethod = {
   readonly source: string;

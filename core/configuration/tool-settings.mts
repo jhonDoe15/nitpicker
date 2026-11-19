@@ -4,7 +4,7 @@ import {
   GRADLE_PRESETS,
   PROJECT_TOOL_CONFIGS,
   styleToolsOf,
-} from '../../languages/java/adapters/gradle-presets.mjs';
+} from '../../languages/java/adapters/gradle-presets.mts';
 import { configError, DRIVE_LETTER, GLOB_CHARACTER, PARENT_SEGMENT } from '../../shared/config.mjs';
 import { isPlainObject } from './views/config-views.mts';
 import { textOf, textsOf } from '../../shared/values/readers.mts';

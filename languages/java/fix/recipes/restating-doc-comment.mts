@@ -1,5 +1,5 @@
-import { javaDocCommentEntries } from '../../adapters/doc-comments/java-doc-comments.mjs';
-import { kotlinDocCommentEntries } from '../../adapters/doc-comments/kotlin-doc-comments.mjs';
+import { javaDocCommentEntries } from '../../adapters/doc-comments/java-doc-comments.mts';
+import { kotlinDocCommentEntries } from '../../adapters/doc-comments/kotlin-doc-comments.mts';
 import {
   DOC_COMMENT_RULE,
   deletionFix as untypedDeletionFix,

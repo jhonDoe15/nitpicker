@@ -1,10 +1,10 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { javaCommand, runJava } from '../maven-command.mjs';
+import { javaCommand, runJava } from '../maven-command.mts';
 import { skipWithoutJdk, sourceLevel, structureJava } from '../errorprone/maven-jdk.mts';
-import { STRUCTURE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mjs';
+import { STRUCTURE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mts';
 import { relativeTo } from '../module/module-paths.mts';
-import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
+import { GRADLE_DIRECTORY } from '../../builds/java-build.mts';
 import { writeJdepsReports } from '../../builds/classes/jdeps-reports.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { fieldOf, listOf } from '../../../../../../../shared/values/readers.mts';
 import type { FanOutFinding } from '../fan-out/fan-out-support.mts';
 import {
   UNBOUNDED,
@@ -7,7 +6,7 @@ import {
   stableIdentities,
   fixtureProject,
 } from '../fan-out/fan-out-support.mts';
-import { reactiveFanOutMessage } from './reactive-fan-out.mjs';
+import { reactiveFanOutMessage } from './reactive-fan-out.mts';
 
 const RULE = 'UnboundedReactiveFanOut';
 
@@ -68,7 +67,7 @@ describe('reactive fan-out on the recorded fixture facts', () => {
     const at = (fragment: string) =>
       findings.find(({ location }) => location.line === lineOf(UNBOUNDED, fragment))?.message;
     const work = { helper: 'fetch', call: 'client.get', kind: 'remote' };
-    const zipped = { form: 'combinator', collection: 'ids', work, limit: undefined };
+    const zipped = { form: 'combinator' as const, collection: 'ids', work, limit: undefined };
 
     expect(at('Mono.zip(')).toBe(reactiveFanOutMessage({ ...zipped, operator: 'Mono.zip' }));
     expect(at('Mono.`when`(')).toBe(reactiveFanOutMessage({ ...zipped, operator: 'Mono.when' }));
@@ -101,9 +100,8 @@ describe('reactive fan-out on the recorded fixture facts', () => {
       file.file === UNBOUNDED
         ? {
             ...file,
-            invocations: listOf(file['invocations']).filter(
-              (call: unknown) =>
-                fieldOf(call, 'line') !== removed || fieldOf(call, 'name') !== 'zip',
+            invocations: file.invocations.filter(
+              (call) => call.line !== removed || call.name !== 'zip',
             ),
           }
         : file,

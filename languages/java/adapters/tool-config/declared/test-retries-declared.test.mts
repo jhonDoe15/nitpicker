@@ -80,15 +80,16 @@ describe('the test retries a build declares', () => {
   ])('lets the ordering %j decide whether the values apply', (precedence, expected) => {
     const layers = { usesProject: true, nitpickerFirst: precedence[0] === 'nitpicker' };
 
-    expect(TESTS.choice(buildOf({ 'build.gradle': GROOVY }), { layers }).arguments).toEqual(
-      expected,
-    );
+    expect(
+      TESTS.choice(buildOf({ 'build.gradle': GROOVY }), { layers, root: '' }).arguments,
+    ).toEqual(expected);
   });
 
   it('is a tool error to name the project without a retry in the build', () => {
     expect(() =>
       TESTS.choice(buildOf({ 'build.gradle': "plugins { id 'java' }" }), {
-        layers: { usesProject: true, nitpickerFirst: false },
+        layers: { nitpickerFirst: false },
+        root: '',
       }),
     ).toThrow('"tools.tests.precedence" lists "project" but test retries in the build');
   });

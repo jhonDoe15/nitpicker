@@ -1,15 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  type RootsFilter,
-  type TransactionFilters,
-  project,
-  removeProjects,
-} from '../__tests__/spring-config-projects.mts';
-import { withoutInheritedTransactions as inheritedUntyped } from './inherited-transactions.mjs';
-import { withSpringTransactionFilters as filtersUntyped } from './transaction-filters.mjs';
-
-const withoutInheritedTransactions: RootsFilter = inheritedUntyped;
-const withSpringTransactionFilters: TransactionFilters = filtersUntyped;
+import { project, removeProjects } from '../__tests__/spring-config-projects.mts';
+import { withoutInheritedTransactions } from './inherited-transactions.mts';
+import { withSpringTransactionFilters } from './transaction-filters.mts';
 
 const SERVICE = 'src/main/java/shop/Orders.java';
 const REPOSITORY = 'src/main/java/shop/OrderRepository.java';

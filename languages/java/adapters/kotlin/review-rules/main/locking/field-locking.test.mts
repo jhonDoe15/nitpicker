@@ -3,8 +3,8 @@ import type { FileFacts } from '../../test-support/facts.mts';
 import { run, summary } from '../../test-support/facts.mts';
 import type { Loose } from '../../test-support/loose-facts.mts';
 import { file, klass, parameter, property } from '../../test-support/loose-facts.mts';
-import { FIELD_LOCKING_RULE } from '../../../../../messages/locking/lock-evidence.mjs';
-import { fieldLockingFindings } from './field-locking.mjs';
+import { FIELD_LOCKING_RULE } from '../../../../../messages/locking/lock-evidence.mts';
+import { fieldLockingFindings } from './field-locking.mts';
 
 const CLASS_SCOPE = {
   k: 'class',

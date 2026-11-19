@@ -8,7 +8,7 @@ import {
   trackTemporaryPath,
   untrackTemporaryPath,
 } from '../../../../core/tooling/temporary-files.mjs';
-import { runJava } from '../../maven/maven-command.mjs';
+import { runJava } from '../../maven/maven-command.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import type { Tools } from '../tools/tool-classpath.mts';

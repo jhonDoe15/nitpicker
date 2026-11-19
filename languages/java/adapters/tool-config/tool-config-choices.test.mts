@@ -5,7 +5,7 @@ import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repos
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import { callUntyped } from '../typed/java-values.mts';
 import { textOf, textsOf } from '../../../../shared/values/readers.mts';
-import { toolConfigProperties as untypedToolConfigProperties } from './tool-config-choices.mjs';
+import { toolConfigProperties as untypedToolConfigProperties } from './tool-config-choices.mts';
 import { linkSentence as untypedLinkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 function toolConfigProperties(
