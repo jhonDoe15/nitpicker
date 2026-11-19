@@ -2250,6 +2250,15 @@
       "useInstead": "import subprocess\n\nsubprocess.run([\"ls\", \"nonexistent\"], check=True)  # Raises exception."
     },
     {
+      "code": "PLW1514",
+      "name": "unspecified-encoding",
+      "linter": "Pylint",
+      "summary": "`{function_name}` in text mode without explicit `encoding` argument",
+      "whatItDoes": "Checks for uses of `open` and related calls without an explicit `encoding` argument.",
+      "why": "Using `open` in text mode without an explicit encoding can lead to non-portable code, with differing behavior across platforms. While readers may assume that UTF-8 is the default encoding, in reality, the default is locale-specific. Instead, consider using the `encoding` parameter to enforce a specific encoding. PEP 597 recommends the use of `encoding=\"utf-8\"` as a default, and suggests that it may become the default in future versions of Python.",
+      "useInstead": "open(\"file.txt\", encoding=\"utf-8\")"
+    },
+    {
       "code": "PLW2101",
       "name": "useless-with-lock",
       "linter": "Pylint",
