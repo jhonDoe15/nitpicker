@@ -5,7 +5,7 @@ import {
   kotlinModules as kotlinModulesUntyped,
   readKotlinMetrics as readKotlinMetricsUntyped,
 } from '../kotlin/kotlin-metrics.mts';
-import { outerClass as outerClassUntyped } from '../../ingest/class-names.mts';
+import { outerClass as outerClassUntyped, packageOf } from '../../ingest/class-names.mts';
 import { parseJdeps } from '../metrics/java-coupling.mts';
 import type { Metrics } from '../kotlin/kotlin-metrics.mts';
 import type { KotlinModules } from '../metrics/java-coupling-types.mts';
@@ -36,11 +36,6 @@ const readDeclarations: (
 
 const MAIN_EDGES = 'jdeps.txt';
 const MAIN_CLASSES = 'jdeps-classes.txt';
-
-function packageOf(className: string): string {
-  const index = className.lastIndexOf('.');
-  return index < 0 ? '' : className.slice(0, index);
-}
 
 function reportFiles({ reportRoot }: ClassProject): { edges: string; classes: string } {
   return {
