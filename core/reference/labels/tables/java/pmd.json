@@ -66,6 +66,7 @@
   "pmd/EqualsLeavesOutField": ["bug"],
   "pmd/ExhaustiveEnumPredicate": ["maintainability"],
   "pmd/FinalizeOnlyCallsSuperFinalize": ["simplification"],
+  "pmd/FirstElementOfMaybeEmpty": ["bug"],
   "pmd/FixedSleepInTest": ["tests"],
   "pmd/FloatEqualityInTest": ["tests"],
   "pmd/ForLoopCanBeForeach": ["simplification"],
