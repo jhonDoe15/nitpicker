@@ -170,13 +170,10 @@ function formatMarkup(source, numbers) {
 
 export function findUnescapedMarkup(source) {
   const state = { seen: new Set(), numbers: numericNames(source) };
-  const found = [];
-  for (const [index, token] of source.tokens.entries()) {
-    if (token.kind === 'string' && isMarkupToken(token) && !isDiagnosticText(source, index)) {
-      for (const finding of markupFindings(source, index, state)) {
-        found.push(finding);
-      }
-    }
-  }
+  const candidates = [...source.tokens.entries()].filter(
+    ([index, token]) =>
+      token.kind === 'string' && isMarkupToken(token) && !isDiagnosticText(source, index),
+  );
+  const found = candidates.flatMap(([index]) => markupFindings(source, index, state));
   return [...found, ...formatMarkup(source, state.numbers)];
 }

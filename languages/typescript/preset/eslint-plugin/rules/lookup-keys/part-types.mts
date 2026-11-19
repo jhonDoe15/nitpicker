@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
 import { typeServices, type Context } from '../security/security-values.mts';
+import { calleeNameOf } from '../typed/syntax-views.mts';
 import { ts } from '../typed/typescript-views.mts';
 
 const OBJECT_KIND = 'object';
@@ -17,17 +18,6 @@ const VALUE_OBJECTS = new Set([
   'Number',
   'String',
 ]);
-
-function nameOf(node: TSESTree.Node): string | undefined {
-  if (node.type === AST_NODE_TYPES.Identifier) {
-    return node.name;
-  }
-  return node.type === AST_NODE_TYPES.MemberExpression &&
-    !node.computed &&
-    node.property.type === AST_NODE_TYPES.Identifier
-    ? node.property.name
-    : undefined;
-}
 
 export type PartKind = 'string' | 'object';
 
@@ -67,7 +57,7 @@ function convertedValue(part: TSESTree.Node): TSESTree.Node | undefined {
 
 export function partKind(context: Context, part: TSESTree.Node): PartKind | undefined {
   const services = typeServices(context);
-  if (services === undefined || SAFE_NAME.test(nameOf(part) ?? '')) {
+  if (services === undefined || SAFE_NAME.test(calleeNameOf(part) ?? '')) {
     return undefined;
   }
   const checker = services.program.getTypeChecker();
