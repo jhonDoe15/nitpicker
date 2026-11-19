@@ -1,5 +1,17 @@
 # Using nitpicker
 
+Kotlin extraction. The same two recipes handle `.kt` files. Two functions of one class, one `object`
+or one file, with plain parameters (no defaults, `vararg` or annotations), a declared return type
+(a block body without one returns `Unit`) and the same `suspend` modifier, share a `private` function
+placed after the first copy, as a member or at the top level. A differing string, character, boolean
+or `Int`, `Long`, `Double` or `Float` literal assigned to a local becomes a parameter; a literal in any
+other place that needs a number is left. A partial run is a run of whole statements of the function
+body. The values it reads must be parameters or locals with a written type that is not nullable, and
+the one value it defines and the code after it uses needs a written type. The recipes leave a pair as
+it is when a copy has an annotation, type parameters, a receiver, `inline`, `tailrec` or `external`, sits
+in an interface, declares a local function, class or object or calls `super`, when the copies read
+differently named outer values or call differently named functions, when a run assigns a variable
+declared before it, or when the copies are in two files.
 The full reference: install, how the comparison works, reports, exit codes, every command-line
 option, configuration, the presets, adopting nitpicker on existing code, and running it in CI.
 For a short introduction, see the [README](../README.md).
@@ -2706,6 +2718,8 @@ runs only when `--fix --rule` names one of its rules.
 
 | Preset | Rule | Recipe | What it does |
 | ------------ | -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------, ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------, --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| java, kotlin | `structure/near-duplicate` (copies in one class, or in two files of one folder; in Kotlin, copies in one class or file) | `java-extract-near-duplicate` | extracts the shared method of a proved copy and calls it from both copies (review) |
+| java, kotlin | `structure/near-duplicate` (a run shared by two methods of a class, or two Kotlin functions of a file) | `java-extract-partial-run` | extracts the shared statements of a `partial-run` pair into a method and calls it from both (review) |
 | java | `structure/near-duplicate` (copies in one class, or in two files of one folder) | `java-extract-near-duplicate` | extracts the shared method of a proved copy and calls it from both copies (review) |
 | java | `structure/near-duplicate` (a run shared by two methods of a class) | `java-extract-partial-run` | extracts the shared statements of a `partial-run` pair into a method and calls it from both (review) |
 | typescript | `structure/near-duplicate` (copies in one file) | `typescript-extract-near-duplicate` | extracts the shared function of a proved copy and calls it from both copies; a differing string or number literal becomes a parameter typed with the union of both literals, or their base type (with a note) when the union does not compile |
@@ -2841,6 +2855,8 @@ in two TypeScript files, in two Java folders, in two packages, in generated sour
 class, is not looked at. The
 TypeScript recipe also checks the result with the compiler before it writes. The Java recipes do
 not compile the result, so they are `review` recipes, and so is the TypeScript partial-run recipe,
+whose closures and aliasing a type check cannot prove. A file that uses CRLF keeps CRLF. Python and
+Go have no extraction recipe.
 whose closures and aliasing a type check cannot prove. A file that uses CRLF keeps CRLF. Kotlin,
 Python and Go have no extraction recipe.
 
