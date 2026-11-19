@@ -15,6 +15,21 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A scope with a close function releases what it registers: keep the handler and call `off` on the emitter, or
   register with `once` or a `{ signal }` that close aborts, and keep each `setInterval` or retry `setTimeout`
   handle to `clearInterval` or `clearTimeout` it in close (`nitpicker/release-listeners-on-close`).
+- A method that runs once per event or item does not add to the owner's disposable store
+  (`this._register(...)`, `this._store.add(...)`) or to `process.on(...)`: register once in the constructor or keep
+  a per-call handle that is released when the work ends (`nitpicker/no-per-call-registration`).
+- A `setTimeout` that rejects or aborts a promise keeps its handle and clears it when the promise settles
+  (`.finally(() => clearTimeout(timer))`), and a timer started in an event handler of a component or a disposable
+  class keeps its id and clears it on unmount or dispose (`nitpicker/no-uncleared-timeout`).
+- Create a `debounce` or `throttle` function once (a class field, module scope, `useMemo` or `useRef`), never per
+  call or per render: a new one each time has its own timer, so nothing is debounced
+  (`nitpicker/no-per-call-debounce`).
+- A teardown that deletes a registry entry by key first checks that the entry is still its own registration:
+  `if (map.get(key) === value) { map.delete(key); }`, because a newer registration may have reused the key
+  (`nitpicker/no-unguarded-registry-delete`).
+- The handle an event subscription returns (a disposable, a `Subscription` or an unsubscribe function) is kept
+  and released in dispose, for example `this._register(emitter.onDidChange(...))`, not dropped
+  (`nitpicker/no-dropped-subscription-handle`).
 - A promise kept in a field or variable and returned on later calls is cleared when it rejects, and only while it
   still holds that attempt: `catch (error) { if (conn === attempt) { conn = undefined; } throw error; }`
   (`nitpicker/no-cached-rejection`).
@@ -77,6 +92,17 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   that rejects by itself: `once` from `node:events`, `pipeline`/`finished` from
   `node:stream/promises`, or `util.promisify` (`nitpicker/require-promise-reject`). A wait on a
   socket or network stream also gets a deadline: a timer that rejects or `AbortSignal.timeout(ms)`.
+- A function that receives an `AbortSignal` passes it on to the awaited calls that accept one (`await sleep(1000, { signal })`,
+  `fetch(url, { signal })`) and an endless polling loop checks `signal.aborted` or passes the signal on
+  (`nitpicker/require-abort-signal-forwarding`).
+- An async method of a class with a `dispose`/`close`/`destroy` flag checks the flag after each `await` before it fires an
+  event, registers a disposable or starts a timer or process: `if (this._isDisposed) return;`
+  (`nitpicker/no-use-after-await-when-disposed`).
+- A caught error, rejection reason or `error`/`cause` property of type `unknown` is not tested by truthiness (`if (error)`,
+  `props.error || state.error`) or by `typeof e === 'object'` without `e !== null`, because code can throw `undefined`, `0` or
+  `''`: keep a presence flag, or compare with `!== undefined` or `'cause' in error` (`nitpicker/no-falsy-error-check`).
+- A guard that sends a response or calls `next`/`callback` returns right after it (`return res.status(400).json(...)`,
+  `return next()`), so the code below does not run too (`nitpicker/no-send-without-return`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
@@ -220,6 +246,27 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-malformed-query-text`).
 - An object-store listing follows its pages: `paginateListObjectsV2`, or a loop on `NextContinuationToken`; a search
   call sets its `LIMIT` and loops (`nitpicker/no-unpaged-listing`).
+- A pooled connection, query runner, session, lock or bundle is released in `finally` (or declared with `await using`), not by
+  a statement after the work that a throw or early return skips (`nitpicker/no-release-outside-finally`).
+- A descriptor from `fs.openSync` or a `FileHandle` from `open` is closed in `finally` (or declared with `await using`);
+  to create or empty a file use `writeFileSync(path, '')`, and close a descriptor given to `spawn` as stdio in the parent
+  (`nitpicker/no-unclosed-file-descriptor`).
+- Node streams are chained with `pipeline(a, b, c)` from `node:stream/promises`, not `a.pipe(b).pipe(c)`, because `pipe`
+  forwards no errors (`nitpicker/no-pipe-dropping-errors`).
+- A child process whose output or exit code you use is waited on with `'close'` (handler `(code, signal)`, a signal or
+  missing code is a failure), not `'exit'`, which can fire before the output is drained (`nitpicker/no-child-exit-event`).
+- A cache or query key names every input of the value stored under it: the environment, registry settings or table
+  variant a computation reads belong in the `queryKey` array or the key string (`nitpicker/no-incomplete-cache-key`).
+- A record read or changed by an id from the request keeps the owner field the project's other queries on that model
+  carry (`{ _environmentId, _subscriberId, _id: command.notificationId }`), or checks the caller's access first
+  (`nitpicker/no-unscoped-record-access`).
+- A local callback or companion server listens on the loopback host
+  (`server.listen(port, '127.0.0.1', callback)`), and passes `'0.0.0.0'` only when it must accept remote
+  connections (`nitpicker/no-listen-on-all-interfaces`).
+- A recursive walk over a graph that can contain cycles (an error `cause` chain, `parent` links, a recursive type)
+  passes a visited `Set` or a depth limit down (`nitpicker/no-unguarded-cyclic-recursion`).
+- A stream is decoded and searched as a whole, not chunk by chunk: collect the chunks and decode once, pass
+  `{ stream: true }` to a `TextDecoder`, or search an accumulated buffer (`nitpicker/no-chunkwise-stream-text`).
 - A pino, bunyan or winston call keeps every value it is given: the values go in the fields object first
   (`log.info({ config }, 'loaded config')`) or one per placeholder, and a winston logger fills placeholders only
   with `format.splat()` (`nitpicker/no-dropped-log-arguments`).

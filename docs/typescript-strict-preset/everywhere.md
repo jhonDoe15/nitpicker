@@ -64,6 +64,59 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   registration in the constructor or at the top level of the factory that creates the emitter (it runs once per
   emitter) and `process.on`, which the composition-root rule owns, `once: true`, an `AbortSignal` option and a `setTimeout` inside a `new Promise` executor are left alone.
   Allowed: keep the handler or handle and release it in close, or register with a signal that close aborts.
+- `nitpicker/no-per-call-registration`: a method that runs once per event or item must not register a
+  disposable or process listener that lives as long as its owner. In a class method (not the constructor, a getter
+  or an `init*`, `setup*`, `activate*`, `register*`, `create*`, `start*` or mount-style method) that is an event
+  handler (named `on*` or `handle*`, also an arrow function field), runs in a loop or an iterator callback, is called
+  in a loop of another method or from a callback given to `on*`, `subscribe` or `addEventListener`, or is passed as a
+  handler there, it reports `this._register(x)` and `this.<store>.add(x)` (a field declared
+  or created as a `DisposableStore`, `CompositeDisposable` or `DisposableCollection`) when `x` is created in the
+  call (`new ...`, `toDisposable(...)`, an `on*` event subscription), and `process.on(...)` or
+  `process.addListener(...)` with a function created in the call. Lazy creation (an `if` on the field that is
+  assigned), a field released in the method (`dispose`, `clear`) or elsewhere in the class (`clear`, `delete`), a
+  store cleared by the class, a `process.off` in the method, a registered callback that removes its own entry from the
+  store, a method only called from the constructor or a field initializer, `once` and constructors are left alone. Allowed:
+  register once in the constructor or a field initializer, keep the per-call handle in a `MutableDisposable` or a
+  cleared store, or keep the handler in a variable and remove it when the work ends.
+- `nitpicker/no-uncleared-timeout`: a `setTimeout` whose handle is dropped must not guard work that can finish
+  first or whose owner can go away. It reports a statement `setTimeout(...)` directly in a `new Promise` executor
+  when the callback rejects (or calls `abort`, `destroy`, `close` or `kill`) and the executor settles the promise
+  by another path, so the timer stays armed after a success; a statement `setTimeout(...)` in an event handler
+  inside a React component or hook (not an effect) whose callback calls a state setter, when the component never
+  calls `clearTimeout`; and a statement `setTimeout(...)` in a per-event method of a class with a close, dispose,
+  `disconnectedCallback`, `ngOnDestroy` or `componentWillUnmount` method, whose callback uses `this`, when the
+  class never calls `clearTimeout`. A kept handle, `.unref()`, a sleep (`setTimeout(resolve, ms)`), timers that only
+  run plain functions and a callback that first tests a mounted or disposed flag (`if (mounted.current)`,
+  `if (!this._disposed)`) are left alone. Allowed: keep the handle and clear it when the work settles
+  (`finally`), on unmount or in dispose, or pass an `AbortSignal` the owner aborts.
+- `nitpicker/no-per-call-debounce`: a debounced or throttled function must be created once. It reports
+  `debounce` and `throttle` from `lodash`, `lodash-es`, `lodash.debounce`, `lodash.throttle`, `lodash/debounce`,
+  `es-toolkit`, `throttle-debounce`, `just-debounce-it`, `just-throttle` or `underscore` (or a local function with
+  that name) when the call is invoked at once (`debounce(fn, 100)(value)`), is an argument of a call in a class
+  method that is not a constructor or an `init*`, `setup*`, `ngOnInit` or mount-style method, is kept in a local that
+  the same function calls (`const d = debounce(fn, 100); d(value)`), or sits in a React
+  component or hook body (or a handler inside it) outside `useMemo`, `useCallback`, `useRef`, `useState` and
+  effects. Each call or render then gets a new timer, so nothing is debounced. A factory that returns the
+  debounced function, a class field, a module-level constant, `this.f = debounce(...)` and the RxJS operators are left
+  alone. Allowed: create it once (a field, module scope, `useMemo`, `useRef`) and call that function.
+- `nitpicker/no-unguarded-registry-delete`: a teardown that deletes a registry entry by key must check that the
+  entry is still its own. When a function does `map.set(key, value)` (the map is a field of `this` or a variable
+  declared outside the function, the key is a literal or taken from a parameter, the value is a variable) and a
+  nested function created after it (a `toDisposable` callback, `onDidClose`, `.finally`, a returned function or
+  `dispose`) calls `map.delete(key)` without comparing `map.get(key)` with `value`, it reports the delete: a newer
+  registration under the same key would be removed by the old teardown. Fresh keys (`generateUuid()`, a counter),
+  a function that rejects duplicates with `map.has(key)` or with a `map.get(key)` read before the `set` (`if (!map.get(key))`,
+  an in-flight lookup that returns the existing entry), a comparison through a local alias of the value, an inline `new`
+  value and deletes in the same call are left alone. Allowed: `if (map.get(key) === value) { map.delete(key); }`.
+- `nitpicker/no-dropped-subscription-handle` (needs type information): the handle returned by an event
+  subscription must not be dropped in a long-lived object. For an expression statement that is a call named
+  `on*`, `subscribe*`, `listen*`, `watch*`, `observe*`, `autorun`, `addListener`, `addEventListener` or
+  `register*` (not a `this.register*` method) whose result type has a `dispose()` or `unsubscribe()` method (or is a
+  `() => void` function; an optional call `a?.onX(...)` counts), in a class with a close, dispose, destroy or `ngOnDestroy` method or at module level, it
+  reports the dropped handle: the listener is never removed. `once*` calls, an emitter that is a field the class
+  creates itself, `void` calls, and an RxJS `subscribe` after `take`, `first`, `takeUntil`, `takeUntilDestroyed` or an
+  HTTP client call are left alone. Allowed: register the handle (`this._register(...)`, `store.add(...)`), keep it
+  in a field that dispose releases, or use `once`.
 - `nitpicker/no-cached-rejection` (needs type information): a cached promise must not keep a rejection or let
   a stale attempt win. When a class field (`this.conn`) or a closure or module variable that outlives the call is
   assigned a promise (by type) and reused through a guard (`if (conn) return conn`, `conn ??= start()`,
@@ -225,6 +278,93 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   public test key or a documented example. The same form runs as `hardcoded-secret` and `credential-shape` (Python and Go),
   `pmd/HardcodedSecret` and `pmd/CredentialLiteral` (Java) and the `HardcodedSecret` and `CredentialLiteral`
   source checks (Kotlin).
+- `nitpicker/no-release-outside-finally`: a local assigned from `createQueryRunner()`, `getConnection()`, `await x.connect()`,
+  `await x.acquire()`, `await x.lock()`, `checkout()`, `getReader()`, `startSession()` or `rollup()` and released by a later
+  statement of the same block (`release`, `releaseLock`, `unlock`, `close`, `end`, `destroy`, `dispose`, `endSession`,
+  `disconnect`) when an `await`, `yield`, `return`, `throw` or a call on that resource sits between the two, so a failure or an
+  early return keeps a pooled connection, a lock or a bundle open. Allowed forms: `try { ... } finally { runner.release(); }`,
+  `await using`, a release in a `catch` or `finally` of the same function, a resource that is returned, stored in a field or
+  collection, or an unawaited `connect`/`acquire` call, a `try` whose `catch` neither rethrows nor returns, and an
+  `await x.query(...).catch(() => {})` whose handler cannot throw.
+- `nitpicker/no-unclosed-file-descriptor`: `fs.openSync` or a `FileHandle` from `fs/promises` `open` (or `fs.promises.open`)
+  whose result is dropped as an expression statement, or is kept in a local of a function that never closes it
+  (`closeSync(fd)`, `close(fd)`, `handle.close()`) and never hands it on. Passing the descriptor to `spawn` as `stdio`
+  or to another `fs` call does not transfer ownership, so the parent still has to close it. A descriptor that is
+  returned, stored in a field, passed to another function (`createReadStream(null, { fd })`, `register(fd)`), used by a
+  `process.stdout.write` or `process.stderr.write` override that lives as long as the process, declared
+  with `await using`, or kept in a module-level variable is not reported, and neither is a `FileHandle` whose stream
+  owns it (`handle.createReadStream()`). Allowed forms: `writeFileSync(path, '')` to create or empty a file, and
+  `try { ... } finally { closeSync(fd); }`.
+- `nitpicker/no-pipe-dropping-errors`: a Node stream chained with `.pipe()` whose result is used (returned, assigned, awaited,
+  or followed by an `on('finish' | 'end' | 'close' | 'error')` listener) or that pipes through a second stream, when the source or a
+  middle stream has no `'error'` listener in the file and is not passed to `pipeline` or `finished`: `pipe` forwards no errors and
+  destroys no other stream, so the export ends short, the awaiting promise never settles and descriptors stay open. The source
+  must be recognizable as a Node stream without types: `createReadStream`, `createWriteStream`, zlib and crypto `create*`
+  streams from `fs`, `zlib` or `crypto`, `new Transform()`, `new PassThrough()` and the other `stream` classes,
+  `Readable.from` and `Readable.fromWeb`, a `.createReadStream()`, `.createWriteStream()` or `.stream()` call, or a local const
+  initialized from one; a stream created in the middle of the chain (`input.pipe(createGzip()).pipe(res)`) counts as well.
+  A lone `a.pipe(b);` statement is reported only when the file waits for `b` with a `'finish'`, `'end'` or `'close'` listener.
+  RxJS and Effect `pipe` calls and `process.stdin` are not reported.
+  Allowed forms: `pipeline(a, b, c)` from `node:stream/promises`, or `node:stream` with a callback, or an `'error'` listener on every
+  stream before the last.
+- `nitpicker/no-child-exit-event`: an `'exit'` listener (`on`, `once`, `addListener`) on a child process from `spawn`, `exec`,
+  `execFile` or `fork` whose handler uses output the same function collects from `stdout` or `stderr` (a `'data'` listener or a
+  `for await` loop that appends to a variable the handler reads), or defaults the exit code to zero (`code ?? 0`, `code || 0`).
+  `'exit'` can fire before the streams are drained, so the last chunk is lost, and a child killed by a signal passes `null`, which
+  the default turns into success. A handler that awaits or tests its `signal` argument, a child spawned with `stdio` set to
+  `'inherit'` or `'ignore'`, a function that also listens for `'close'`, and a listener that only logs or cleans up are not reported. Allowed forms: `'close'` with `(code, signal)` treating a signal or missing code as failure,
+  `events.once(child, 'close')`, or `promisify(execFile)`.
+- `nitpicker/no-incomplete-cache-key`: a cache key that leaves out an input the cached value depends on, so
+  calls that differ in it share one entry. Two forms. A TanStack Query call (`useQuery`, `useInfiniteQuery`,
+  `queryOptions` and the like, in a file that imports `@tanstack/*-query` or `react-query`) whose inline `queryFn`
+  reads a variable of the enclosing function (a prop, parameter or hook result) that the `queryKey` array does not
+  mention, directly or through a variable the key reads; functions, `queryClient`, module-level values, imports,
+  literals, tokens and credentials, callbacks only passed to `.then`, type names and services that are only called
+  (`api.get(id)` on a `useApi()` result) are not inputs. A memo cache in one function: a `const` key built by a
+  template with expressions, `+`, `[...].join()` or `JSON.stringify`, read with `cache.get(key)` or `cache.has(key)`
+  and stored with `cache.set(key, value)` on the same receiver, where the value is computed from a parameter that
+  the key never references (directly or through a local variable). Parameters named or typed as a logger, abort
+  signal or context, tokens and credentials, parameters that are only called, and parameters only passed to
+  logging are left out, and so is a module-level cache that the same file clears with `.clear()`.
+  Allowed form: every input of the computation is part of the key
+  (`` `${base}:${variant}:${table ?? ''}` ``, `['preview', environmentId, slug]`).
+- `nitpicker/no-listen-on-all-interfaces`: a local callback or companion server that calls `listen` without a host, which
+  binds every network interface, so a sign-in code or a local API is reachable from the rest of the network. It judges
+  `listen(port)`, `listen(port, callback)` and `listen({ port })` on a server made by `http`, `https`, `net` or `http2`
+  `createServer`, `express()`, `connect()`, `polka()` or `new Koa()` from a module the file imports (directly or through a
+  local variable or a `use`/`get`/`on` chain), and only when the file is a local helper: it imports `electron` or `vscode`,
+  sits under a `cli`, `electron`, `desktop` or `extension` folder, or the server variable, the enclosing function, the
+  file name, the request handler given to `createServer` or the `listen` callback mention oauth, sso, redirect,
+  authorize, login, loopback or an auth code (other routes and strings in the function do not count). A host argument,
+  a `host`, `hostname` or `path` property, a spread, a string path, and any call with a host or an unknown second argument
+  pass, as does an ordinary server entry point, a port probe (`listen(0)`, or a server closed in the `listen`
+  callback) and an options variable as first argument (`listen(options)`). Allowed form: `server.listen(port, '127.0.0.1', callback)` or
+  `listen({ port, host: '127.0.0.1' })`; a service that must accept remote connections passes `'0.0.0.0'` explicitly.
+- `nitpicker/no-unguarded-cyclic-recursion` (needs the type checker): a function that calls itself with a value read
+  through a property that can lead back to an earlier node, and has no visited set or depth limit, so a cycle (an
+  error `cause` chain, a dependency or import graph, a recursive type) overflows the stack or never
+  finishes. The recursive call (also `this.name(...)`, and through a local variable, a `for...of` loop or a callback
+  of `map`, `filter`, `some`, `every`, `find`, `forEach`, `flatMap`) must pass a value reached from its own parameter
+  through `cause`, `causes`, `parents`, `references`, `dependencies`, `dependents`, `deps`, `importers`, `imports`,
+  `edges`, `links`, `neighbors`, `supertypes`, `bases` or `baseTypes`, or, for a parameter of the TypeScript API
+  `Type`, through `types`, `target`, `constraint`, `base`, `supertype` or `getTypeArguments`/`getBaseTypes`, with a typed argument that is assignable to the parameter. A function that mentions
+  a `Set`, `WeakSet`, `Map` or `WeakMap`, or a name such as `seen`, `visited`, `depth`, `level`, `stack`, `limit`, `cache`
+  or `memo`, is taken as guarded; untyped (`any`) parameters, single-pointer walks (`parent`, `next`, `prev`, `owner`,
+  `ref`: a chain ends), tree children (`children`, `body`, `left`, `right`),
+  and parameters typed as syntax tree nodes (`ts.Node`, ESTree nodes) are left alone. Allowed form: pass a `Set` of
+  visited values down and return when the value is in it (`if (seen.has(error)) return [];`), or a depth limit.
+- `nitpicker/no-chunkwise-stream-text` (needs the type checker): stream data decoded or matched one chunk at a time,
+  so text or a message split across two chunks breaks. Inside a `'data'` listener (`on`, `once`, `addListener`,
+  `prependListener`) or a `for await` loop over a stream, where the chunk is typed `Buffer`, `Uint8Array` or `ArrayBuffer`
+  (or untyped on a stream-like receiver such as `child.stdout`, a socket or a request, in a file that never mentions
+  `encoding` or `setEncoding`), it reports `text += chunk` (also `chunk.toString()`, `String(chunk)` and
+  `chunk.toString('utf8')`) into a variable declared outside the callback, `decoder.decode(chunk)` on a `TextDecoder`
+  without `{ stream: true }`, and `includes`, `indexOf`, `startsWith`, `endsWith`, `match`, `search` or a regex `test` on
+  the chunk or on a local variable holding its text. A stream with `setEncoding(...)` on the same receiver, string
+  chunks (`Readable.from(...)`, `createReadStream(path, 'utf8')`), `hex` or `base64` conversions and an accumulated
+  buffer are not reported. Allowed form: keep the chunks
+  (`parts.push(chunk)`) and decode once (`Buffer.concat(parts).toString('utf8')`), pass `{ stream: true }`, or search an
+  accumulated string.
 - `nitpicker/no-dropped-log-arguments` (needs pino, bunyan or winston in `package.json`): a log call
   (`trace` to `fatal`) whose message is a string or a template without expressions and whose values
   are lost or left unfilled. pino and bunyan read the message as the first argument, or the second
@@ -738,6 +878,20 @@ row.status = next; return repo.save(row);`). A retry that does not name the conf
   uses; a table below the threshold, or a project with no majority, is never reported. Relation loads (`include`,
   `select`, `relations`), ordering and a query built in one expression and run elsewhere are not judged, and
   a trash, restore, purge or admin query takes the exception.
+- Record scope (`nitpicker/no-unscoped-record-access`, needing the type checker): a read, update or delete through
+  a repository or ORM delegate (`this.messageRepository.findOne({...})`, `prisma.booking.update({ where: {...} })`; the
+  methods `find`, `findOne`, `findFirst`, `findUnique`, `update*`, `delete*` and their `OrThrow`/`By` forms) whose
+  filter object holds an id taken from the request (a parameter named `command`, `dto`, `input`, `body`, `params`,
+  `req` or `request`, typed as a Command, Dto, Input, Request, Body, Params or Payload, or decorated `@Param`,
+  `@Body`, `@Query`, including a value read from it into a local variable) and lacks an owner field the project's
+  other queries on the same model carry. The model is the last name of the receiver (`messageRepository`, `booking`);
+  an owner field is `organizationId`, `environmentId`, `teamId`, `userId`, `subscriberId`, `tenantId`, `projectId`,
+  `workspaceId`, `accountId`, `ownerId` and the like (with or without a leading underscore), and one is followed
+  when it appears in at least 75% of the model's filters in non-test source (at least five). A function that calls
+  an access or permission check before the query or compares an owner field of the record, a filter with a spread,
+  `AND`/`OR`/`NOT` or computed keys, and admin, internal, worker and cron code are not reported. Allowed form: add
+  the field from the authenticated caller to the filter (`{ _environmentId, _subscriberId, _id: command.notificationId }`),
+  or check the caller's access first.
 - Deleted items in memory (`nitpicker/no-unguarded-deleted-items`, the in-memory counterpart of the query rule, needing
   the type checker): an iteration over an array whose item type declares `isDeleted`, `deleted`, `deletedAt`, `archived`,
   `hidden` or `isVisible` as a boolean (`deletedAt` as a nullable date or timestamp) in a project interface, class or type literal, also one wrapped in `Readonly<...>` or an intersection
@@ -1317,6 +1471,46 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
     3 `load`/`loadAll` without a `schema` (the installed major is read from the project), BSON
     `evalFunctions: true` and libxmljs `noent: true`. Allowed: `JSON.parse` checked against a schema,
     `yaml.load(text)` with the default schema in js-yaml 4, and `yaml.safeLoad(text)` in js-yaml 3.
+- `nitpicker/require-abort-signal-forwarding` (production files): a function with an `AbortSignal` in scope (a parameter or
+  local typed `AbortSignal`, in an enclosing function too) that awaits a call without giving it the signal, and an endless
+  loop that never reads it. With types, an awaited call is reported when its resolved signature has an `AbortSignal`
+  parameter that is not supplied, or an options parameter with a `signal` property (`sleep(ms, { signal })`, `fetch(url,
+  { signal })`) that is missing, not an object literal with `signal` or a spread, or not passed. An endless loop
+  (`while (true)`, `for (;;)`, `do ... while (true)`) that awaits and has no reference to the signal in its body is
+  reported too; without types the loop check runs for a parameter named `signal` or `abortSignal`. Calls that are not
+  awaited, calls with a spread argument, bounded loops and loops that read `signal.aborted`, call `throwIfAborted()`,
+  pass the signal on, await a value derived from a request made with the signal (a reader of a `fetch(url, { signal })`
+  response), or belong to a function that listens for the signal's `abort` event are not reported. Allowed forms: pass
+  `{ signal }` on, test `!signal.aborted` in the loop condition.
+- `nitpicker/no-use-after-await-when-disposed` (production files): an `async` method (or async arrow field) of a class whose
+  `dispose`, `close`, `destroy` or `ngOnDestroy` sets a flag (`this._isDisposed = true`, `this.closed = true`,
+  `this.destroyed = true`) that fires an event (`this._onDidStart.fire()`, `this.emitter.emit(...)`) or starts a timer or
+  process (`setTimeout`, `setInterval`, `spawn`, `fork`, `createModel`, `createTerminal`, also as `window.setTimeout`,
+  `cp.spawn` or `this.modelService.createModel`) after an `await` on the same path, with no read of the flag (or of a name with
+  `dispos`, `destroy`, `closed`, `cancel`, `abort` or `unmount` in it, such as `token.isCancellationRequested`) between
+  that `await` and the use. Plain field writes after the `await`, `_register` calls, an awaited `setTimeout` (the promise
+  form), calls inside nested callbacks, methods only called from
+  the constructor and classes whose teardown sets no flag are not reported. Allowed form: `if (this._isDisposed) return;`
+  after the `await`, before the state change.
+- `nitpicker/no-falsy-error-check` (production files): a caught or rejected value tested by truthiness, so a thrown
+  `undefined`, `null`, `0` or `''` counts as no error. It reports `if (e)`, `if (!e)`, `e ? a : b`, `while (e)` and
+  `!!e` (also `state?.error ? a : b`) for a
+  `catch` clause variable and for the parameter of a `.catch(...)` handler or the second argument of `.then(...)` that has
+  no type or is `unknown` or `any`, unless the branch reads a member of it (`e ? e.message : ...` guards a property read);
+  `typeof e === 'object'` for those values without a `null` check, `instanceof` or `e &&` in the same function; and, with
+  types, an `error` or `cause` property typed `unknown` (or a declared `any`) tested the same way or used as the left
+  side of `||` (`props.error || state.error`). `e && e.code === 'X'`, `e instanceof Error`, `e !== undefined`, `??` and
+  Node-style callbacks (`(err, data) => { if (err) ... }`) are not reported. Allowed forms: a separate presence flag,
+  `!== undefined` when `undefined` means no error by contract, `'cause' in error`.
+- `nitpicker/no-send-without-return` (production files): an `if` without `else` whose last statement sends the response or
+  hands control on, with more statements after it in the same block, so those statements run too (a second response, or
+  the work the guard meant to refuse). The sending call is `res`, `response` or `reply` (a parameter of the enclosing
+  function) with `send`, `json`, `end`, `redirect`, `sendStatus`, `sendFile` or `jsonp`, also behind `status(...)`,
+  `code(...)`, `set(...)`, `header(...)`, `type(...)` or `cookie(...)`; or a call of `next`, `callback`, `cb` or `done` that is
+  the last parameter of the enclosing function. The code after the branch must contain a statement that is not a
+  logging call, `return;`, `break` or `continue`. `res.write`, a branch that returns or throws, an `else`, and a branch
+  that is the last statement of its block are not reported. Allowed forms: `return res.status(400).json(...)`,
+  `return next()`, a `return;` after the call, or an `else` around the rest.
 - Child processes the code waits for have a deadline (`nitpicker/require-process-timeout`, production
   files; test files have `nitpicker/require-test-process-timeout`). From `child_process`, `execa` and
   `cross-spawn`: `execSync`, `execFileSync`, `spawnSync`, `execaSync` and `execaCommandSync` need a
