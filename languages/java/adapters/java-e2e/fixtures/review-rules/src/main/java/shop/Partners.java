@@ -22,7 +22,7 @@ public final class Partners {
   private static final Duration TIMEOUT = Duration.ofSeconds(5);
   private static final String LEGACY_SIGNATURE = "HmacMD5";
   private static final String FEED = "https://feed.partners.example.com/orders";
-  private static final boolean INSECURE = Boolean.parseBoolean(System.getenv("PARTNER_INSECURE"));
+  private static final boolean INSECURE = Boolean.parseBoolean(System.getenv("PARTNER_INSECURE")); // violation: ConfigurationReadOutsideCompositionRoot
 
   private final HttpClient bare = HttpClient.newHttpClient(); // violation: HttpWithoutTimeout
   private final HttpClient timed = HttpClient.newBuilder().connectTimeout(TIMEOUT).build();
