@@ -89,6 +89,66 @@ export function namedErrorProject(prefix: string, messageId: string): NamedProje
 
 type TypedCase = { filename: string; code: string };
 
+type FixCaseOptions<Errors> = {
+  readonly typed: (body: string) => TypedCase;
+  readonly header: string;
+  readonly errors: Errors;
+};
+
+type SuggestionCaseOptions = {
+  readonly typed: (body: string) => TypedCase;
+  readonly header: string;
+  readonly wrap: (body: string, parameters?: string) => string;
+  readonly messageId: string;
+  readonly suggestionId: string;
+};
+
+type FixCase<Errors> = TypedCase & { readonly errors: Errors; readonly output?: string };
+
+type FixCaseBuilders<Errors> = {
+  readonly fixes: (code: string, output: string) => FixCase<Errors>;
+  readonly declines: (code: string) => FixCase<Errors>;
+};
+
+export function fixCases<Errors>({
+  typed,
+  header,
+  errors,
+}: FixCaseOptions<Errors>): FixCaseBuilders<Errors> {
+  function fixes(code: string, output: string): FixCase<Errors> {
+    return { ...typed(code), errors, output: `${header}${output}` };
+  }
+  function declines(code: string): FixCase<Errors> {
+    return { ...typed(code), errors };
+  }
+  return { fixes, declines };
+}
+
+type SuggestionError = { readonly messageId: string; suggestions?: SuggestionOutput[] };
+
+type SuggestionOutput = { readonly messageId: string; readonly output: string };
+
+type SuggestionCase = TypedCase & { errors: SuggestionError[] };
+
+type SuggestionCaseBuilders = {
+  readonly pushes: (body: string, output: string, parameters?: string) => SuggestionCase;
+  readonly declines: (body: string, parameters?: string) => SuggestionCase;
+};
+
+export function suggestionCases(options: SuggestionCaseOptions): SuggestionCaseBuilders {
+  const { typed, header, wrap, messageId, suggestionId } = options;
+  function pushes(body: string, output: string, parameters?: string): SuggestionCase {
+    const suggestions = [
+      { messageId: suggestionId, output: `${header}${wrap(output, parameters)}` },
+    ];
+    return { ...typed(wrap(body, parameters)), errors: [{ messageId, suggestions }] };
+  }
+  function declines(body: string, parameters?: string): SuggestionCase {
+    return { ...typed(wrap(body, parameters)), errors: [{ messageId }] };
+  }
+  return { pushes, declines };
+}
+
 type TypedCaseProject<Errors> = {
   root: string;
   tester: TypedRuleTester;
