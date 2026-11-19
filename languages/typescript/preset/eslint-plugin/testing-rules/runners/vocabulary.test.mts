@@ -1,17 +1,19 @@
-import { Linter } from 'eslint';
+import { Linter, type Rule } from 'eslint';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { resolveHeadPolicy, withHeadPolicyFile } from '../../../head-policy.mjs';
+import { resolveHeadPolicy, withHeadPolicyFile } from '../../../head-policy.mts';
 import { rule as noRaisedTimeout } from '../../rules/test-runtime/assertions/no-raised-test-timeout.mts';
 import { rule as noIntervalPolling } from '../../rules/test-runtime/lifecycle/no-interval-polling-in-tests.mts';
 import { rule as noFixedSleep } from '../../rules/test-runtime/lifecycle/no-fixed-sleep-synchronization.mts';
-import { TEST_RUNNERS } from '../../../test-runner/runners.mjs';
+import { TEST_RUNNERS } from '../../../test-runner/runners.mts';
+import type { RunnerName } from '../../../test-runner/typed/command-types.mts';
+import { ruleModule } from '../../test-support/rule-tester.mts';
 
 const SLEEP = "it('a', async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });";
 const INTERVAL = "it('a', () => { setInterval(check, 10); });";
 const ABSENCE =
   "it('a', async () => { await expect(screen.findByRole('tooltip')).rejects.toThrow(); });";
 
-function messagesFor(rules, code, runner) {
+function messagesFor(rules: Record<string, Rule.RuleModule>, code: string, runner?: string) {
   const options = runner === undefined ? [] : [{ runner }];
   return new Linter()
     .verify(code, [
@@ -27,24 +29,27 @@ function messagesFor(rules, code, runner) {
     .map(({ message }) => message);
 }
 
-const sleepRules = { 'no-fixed-sleep': noFixedSleep };
-const intervalRules = { 'no-interval-polling': noIntervalPolling };
+const sleepRules = { 'no-fixed-sleep': ruleModule(noFixedSleep) };
+const intervalRules = { 'no-interval-polling': ruleModule(noIntervalPolling) };
 const EXCEPTION = 'An exception fits only when a real wait is unavoidable.';
 
-const sleepMessage = (advice) =>
+const sleepMessage = (advice: string) =>
   `Fixed sleeps are non-deterministic; wait on a condition with ${advice}. ${EXCEPTION}`;
-const absenceMessage = (advance) =>
+const absenceMessage = (advance: string) =>
   `Do not assert absence by letting a wait time out: \`.rejects\` passes only after the full timeout, so the test is slow and depends on the delay. Advance fake timers past the delay (\`${advance}\`) and assert absence at once, such as \`expect(screen.queryByRole('tooltip')).toBeNull()\`. ${EXCEPTION}`;
-const intervalMessage = (advice) => `Prefer ${advice} over setInterval polling in tests.`;
+const intervalMessage = (advice: string) => `Prefer ${advice} over setInterval polling in tests.`;
 
-const ADVICE = {
+const ADVICE: Readonly<Record<RunnerName, string>> = {
   vitest: 'vi.waitFor or expect.poll',
   jest: 'waitFor from Testing Library or jest.advanceTimersByTimeAsync',
   node: 'an awaited event or promise, or mock.timers.tick',
   mocha: 'an awaited event or promise, or a fake clock advanced with clock.tickAsync',
 };
-const POLL = { ...ADVICE, vitest: 'vi.waitFor / expect.poll' };
-const ADVANCE = {
+const POLL: Readonly<Record<RunnerName, string>> = {
+  ...ADVICE,
+  vitest: 'vi.waitFor / expect.poll',
+};
+const ADVANCE: Readonly<Record<RunnerName, string>> = {
   vitest: 'vi.advanceTimersByTime',
   jest: 'jest.advanceTimersByTime',
   node: 'mock.timers.tick',
@@ -89,10 +94,13 @@ describe('rule messages name the API of the project runner', () => {
       const config = runner === undefined ? {} : { tools: { tests: { runner } } };
       const code = "it('a', () => { expect(1).toBe(1); }, 60_000);";
 
-      const messages = withHeadPolicyFile(resolveHeadPolicy(config), (policyFile) => {
-        vi.stubEnv('NITPICKER_POLICY', policyFile);
-        return messagesFor({ 'no-raised-test-timeout': noRaisedTimeout }, code);
-      });
+      const messages: unknown = withHeadPolicyFile(
+        resolveHeadPolicy(config),
+        (policyFile: string) => {
+          vi.stubEnv('NITPICKER_POLICY', policyFile);
+          return messagesFor({ 'no-raised-test-timeout': ruleModule(noRaisedTimeout) }, code);
+        },
+      );
 
       expect(messages).toEqual([
         'Keep the test timeout between 1 and 10000 ms for this test project. Make the test faster or configure its named project timeout in tools.tests.timeouts.',

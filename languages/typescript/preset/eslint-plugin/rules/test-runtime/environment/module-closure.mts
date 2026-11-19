@@ -1,10 +1,11 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { reachableModules as untypedReachableModules } from '../../../../modules/module-resolution.mjs';
-import { readStamped as untypedReadStamped } from '../../../../modules/stamped-file-cache.mjs';
+import { reachableModules as untypedReachableModules } from '../../../../modules/module-resolution.mts';
+import { readStamped as untypedReadStamped } from '../../../../modules/stamped-file-cache.mts';
+import type { ModuleAlias } from '../../../../modules/typed/module-types.mts';
 import { scanDomEvidence, type DomEvidence } from './dom-evidence.mts';
 
-export type ModuleAlias = { readonly find: string | RegExp; readonly replacement: string };
+export type { ModuleAlias };
 
 type Signal = 'usesDom' | 'touchesDom';
 type Verdict = boolean | undefined;

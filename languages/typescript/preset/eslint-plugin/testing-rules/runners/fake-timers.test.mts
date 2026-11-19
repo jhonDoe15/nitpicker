@@ -5,7 +5,7 @@ const ruleTester = typescriptRuleTester();
 const waitFor = "import { waitFor } from '@testing-library/react';";
 const nodeMock = "import { mock } from 'node:test';";
 const sinonImport = "import sinon from 'sinon';";
-const lines = (...parts) => parts.join('\n');
+const lines = (...parts: string[]) => parts.join('\n');
 
 ruleTester.run('no-wait-for-with-fake-timers across runners', noWaitFor, {
   valid: [

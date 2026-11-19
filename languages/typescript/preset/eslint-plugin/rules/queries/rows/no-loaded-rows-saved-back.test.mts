@@ -46,8 +46,8 @@ const HEADER = [
   '',
 ].join('\n');
 
-const inRun = (body) => typed(`${HEADER}export async function run() { ${body} }`);
-const bad = (body, messageId) => ({ ...inRun(body), errors: [{ messageId }] });
+const inRun = (body: string) => typed(`${HEADER}export async function run() { ${body} }`);
+const bad = (body: string, messageId: string) => ({ ...inRun(body), errors: [{ messageId }] });
 
 const LOAD = 'const stale = await orderRepo.find({ where: { status: "pending" } });';
 
@@ -161,7 +161,7 @@ tester.run('no-loaded-rows-saved-back', rule, {
   ],
 });
 
-const drizzle = (body) =>
+const drizzle = (body: string) =>
   typed(
     `import { eq, inArray } from "drizzle-orm";\nexport async function run(db, orders) { ${body} }`,
   );

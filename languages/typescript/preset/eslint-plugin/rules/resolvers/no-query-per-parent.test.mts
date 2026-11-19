@@ -34,7 +34,7 @@ const NEST = [
   'declare const rate: number;',
 ].join('\n');
 
-const nest = (members, decorator = '@Resolver(() => View)') =>
+const nest = (members: string, decorator = '@Resolver(() => View)') =>
   typed(
     [
       NEST,
@@ -54,7 +54,7 @@ const TYPE_GRAPHQL = [
   'declare const owners: Repository<Owner>;',
 ].join('\n');
 
-const SDL = (list) =>
+const SDL = (list: string) =>
   [
     "import { ApolloServer } from '@apollo/server';",
     "import { Repository } from 'typeorm';",
@@ -63,7 +63,7 @@ const SDL = (list) =>
     `const typeDefs = \`type View { id: ID! owner: Owner } type Profile { id: ID! owner: Owner } type Query { views: ${list} }\`;`,
   ].join('\n');
 
-const error = (callee) => ({
+const error = (callee: string) => ({
   messageId: 'perParent',
   data: { callee: callee.replaceAll(/`([^`]+)`/gu, '`$1()`'), parent: 'View' },
 });

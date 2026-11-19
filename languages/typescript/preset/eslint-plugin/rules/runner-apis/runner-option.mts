@@ -4,16 +4,16 @@ import type { JSONSchema } from '@typescript-eslint/utils';
 import { ancestorDirectories as untypedAncestorDirectories } from '../../../../../../shared/filesystem.mjs';
 import { posixRelative as untypedPosixRelative } from '../../../../../../shared/project-files/tree-walk.mjs';
 import { readHeadPolicy, readLayout } from '../typed/policy-views.mts';
-import { DEFAULT_TEST_RUNNER, TEST_RUNNERS } from '../../../test-runner/runners.mjs';
-import { recordedTestRunner as untypedRecordedTestRunner } from '../../../test-runner/vocabulary/runner-vocabulary.mjs';
+import { DEFAULT_TEST_RUNNER, TEST_RUNNERS } from '../../../test-runner/runners.mts';
+import { recordedTestRunner as untypedRecordedTestRunner } from '../../../test-runner/vocabulary/runner-vocabulary.mts';
 import {
   type RunnerVocabulary,
   runnerVocabulary,
 } from '../../../test-runner/vocabulary/typed-vocabulary.mts';
 import {
-  defaultTestFiles as untypedDefaultTestFiles,
-  testFileMatcher as untypedTestFileMatcher,
-} from '../../../test-runner/test-files/test-file-patterns.mjs';
+  defaultTestFiles,
+  testFileMatcher,
+} from '../../../test-runner/test-files/test-file-patterns.mts';
 import { fieldOf } from '../../../../../../shared/values/readers.mts';
 
 type RunnerContext = {
@@ -26,14 +26,12 @@ type FileMatcher = (file: string) => boolean;
 const ancestorDirectories: (directory: string) => string[] = untypedAncestorDirectories;
 const posixRelative: (from: string, to: string) => string = untypedPosixRelative;
 const recordedTestRunner: (policy: unknown) => string | undefined = untypedRecordedTestRunner;
-const defaultTestFiles: (runner: string) => unknown = untypedDefaultTestFiles;
-const testFileMatcher: (patterns: unknown) => FileMatcher = untypedTestFileMatcher;
 const defaultRunner: string = DEFAULT_TEST_RUNNER;
 
 const layout = readLayout();
 
 export const RUNNER_OPTION_PROPERTY: Readonly<Record<string, JSONSchema.JSONSchema4>> = {
-  runner: { type: 'string', enum: TEST_RUNNERS },
+  runner: { type: 'string', enum: [...TEST_RUNNERS] },
 };
 
 export const RUNNER_OPTION_SCHEMA: JSONSchema.JSONSchema4[] = [

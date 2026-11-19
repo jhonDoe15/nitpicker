@@ -1,11 +1,8 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { isNarrowedByInstanceof } from '../analysis/narrowing/instanceof-guards.mts';
-import { librariesForFile as untypedLibrariesForFile } from '../../../libraries/file-libraries.mjs';
-import { validationBehavior as untypedValidationBehavior } from '../../../libraries/project-libraries.mjs';
-import {
-  isParsedBySchema as untypedIsParsedBySchema,
-  schemaContext as untypedSchemaContext,
-} from '../../../libraries/schema-calls.mjs';
+import { librariesForFile } from '../../../libraries/file-libraries.mts';
+import { validationBehavior } from '../../../libraries/project-libraries.mts';
+import { isParsedBySchema, schemaContext } from '../../../libraries/schema-calls.mts';
 import {
   jsdocOptionSchema,
   typePredicateTags,
@@ -17,14 +14,6 @@ import { readHeadPolicy, type LibraryChoices } from '../typed/policy-views.mts';
 
 type MessageId = 'typePredicate' | 'inlineNarrowing' | 'overloadCast' | 'unparsedJson' | 'jsonCopy';
 type Context = Readonly<TSESLint.RuleContext<MessageId, JsdocOptions>>;
-type SchemaContext = Readonly<Record<string, unknown>>;
-type ValidationBehavior = {
-  readonly name: string;
-  readonly phrase: string;
-  readonly call: string;
-  readonly example: string;
-  readonly accepted: readonly unknown[];
-};
 type ParameterOwner =
   | TSESTree.FunctionDeclaration
   | TSESTree.FunctionExpression
@@ -36,19 +25,6 @@ type ParameterOwner =
   | TSESTree.TSMethodSignature
   | TSESTree.TSCallSignatureDeclaration
   | TSESTree.TSConstructSignatureDeclaration;
-
-const librariesForFile: (
-  context: { readonly filename: string; readonly cwd: string },
-  libraries: LibraryChoices,
-) => LibraryChoices = untypedLibrariesForFile;
-const validationBehavior: (libraries: LibraryChoices) => ValidationBehavior =
-  untypedValidationBehavior;
-const schemaContext: (context: Context) => SchemaContext = untypedSchemaContext;
-const isParsedBySchema: (
-  schema: SchemaContext,
-  expression: TSESTree.Node,
-  libraries: readonly unknown[],
-) => boolean = untypedIsParsedBySchema;
 
 const UNTYPED_KEYWORDS = new Set<string>([
   AST_NODE_TYPES.TSUnknownKeyword,

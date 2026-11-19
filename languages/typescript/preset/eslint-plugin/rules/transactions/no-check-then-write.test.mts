@@ -3,11 +3,11 @@ import { rule } from './no-check-then-write.mts';
 
 const ALL = ['typeorm', 'prisma', 'drizzle', 'kysely', 'knex', 'sequelize'];
 
-function valid(code, orms = ALL, opensTransactions = true) {
+function valid(code: string, orms = ALL, opensTransactions = true) {
   return { code, options: [{ orms, opensTransactions }] };
 }
 
-function invalid(code) {
+function invalid(code: string) {
   return {
     code,
     options: [{ orms: ALL, opensTransactions: true }],

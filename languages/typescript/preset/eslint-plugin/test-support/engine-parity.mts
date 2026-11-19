@@ -56,7 +56,7 @@ const PATTERNS = ['src/**/*.{ts,mjs}', 'test/**/*.{ts,mjs}'];
 function policySource(kind: PolicyKind, javascript: boolean): string {
   const { module, factory, body } = FACTORIES[kind];
   const factoryModule = checkoutModuleUrl(new URL(module, import.meta.url)).href;
-  const layoutModule = import.meta.resolve('../../layout.mjs');
+  const layoutModule = checkoutModuleUrl(new URL('../../layout.mjs', import.meta.url)).href;
   const dialect = import.meta.resolve('../../../../javascript/preset/eslint-dialect.mts');
   return `import { ${factory} } from ${JSON.stringify(factoryModule)};
 import { resolveLayout } from ${JSON.stringify(layoutModule)};

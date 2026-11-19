@@ -2,13 +2,13 @@ import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-unatomic-writes.mts';
 
 const ALL = ['typeorm', 'prisma', 'drizzle', 'kysely', 'knex', 'sequelize', 'mikro'];
-const forms = (orms, opensTransactions = true) => [{ orms, opensTransactions }];
+const forms = (orms: readonly string[], opensTransactions = true) => [{ orms, opensTransactions }];
 
-function valid(code, orms = ALL, opensTransactions = true) {
+function valid(code: string, orms = ALL, opensTransactions = true) {
   return { code, options: forms(orms, opensTransactions) };
 }
 
-function invalid(code, messageId, orms = ALL, opensTransactions = true) {
+function invalid(code: string, messageId: string, orms = ALL, opensTransactions = true) {
   return { code, options: forms(orms, opensTransactions), errors: [{ messageId }] };
 }
 

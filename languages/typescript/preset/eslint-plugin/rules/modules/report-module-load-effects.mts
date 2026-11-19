@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { stylesheetSpecifier as untypedStylesheetSpecifier } from '../../../layout.mjs';
+import { stylesheetSpecifier as untypedStylesheetSpecifier } from '../../../layout.mts';
 import { SYNC_API_MODULES } from '../analysis/node/node-sync-modules.mts';
 import {
   importedCalleeName,

@@ -1,8 +1,9 @@
+import type { ProjectLibraries } from '../../../libraries/typed/library-types.mts';
 import { readHeadPolicyFile as untypedReadHeadPolicyFile } from '../../../../../../shared/head-policy.mjs';
 import {
   readHeadPolicy as untypedReadHeadPolicy,
   readLayout as untypedReadLayout,
-} from '../../../head-policy.mjs';
+} from '../../../head-policy.mts';
 
 export type PluginLayout = {
   readonly extensions: readonly string[];
@@ -24,9 +25,9 @@ export type PluginLayout = {
   readonly sourcePathOf: (file: string) => string | undefined;
 };
 
-export type LibraryChoices = Readonly<Record<string, unknown>>;
+export type LibraryChoices = ProjectLibraries | undefined;
 
-export type PluginHeadPolicy = { readonly libraries: LibraryChoices };
+export type PluginHeadPolicy = { readonly libraries: ProjectLibraries | undefined };
 
 export const readLayout: () => PluginLayout = untypedReadLayout;
 
