@@ -1,13 +1,13 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { ancestorsOf, nameOf } from '../../typed/node-views.mts';
-import { staticTextOf } from '../../typed/static-text.mts';
+import { literalText as plainText } from '../../analysis/node/call-text.mts';
 import { isFunction } from '../../typed/syntax-views.mts';
 
 const listMethods = new Set(['map', 'flatMap']);
 const equalityOperators = new Set(['==', '===', '!=', '!==']);
 
 export function literalText(node: TSESTree.Node | undefined): string | undefined {
-  return staticTextOf(
+  return plainText(
     node?.type === AST_NODE_TYPES.JSXExpressionContainer ? node.expression : node,
   );
 }

@@ -3,7 +3,7 @@ import {
   type ProgramFinding,
   type ProgramScope,
 } from '../program-rules/typed-program-rule.mts';
-import { followedFlag, iterationsOf, type Followed } from './project-index.mts';
+import { followedFlag, isIntended, iterationsOf, type Followed } from './project-index.mts';
 import type { Iteration } from './iterations.mts';
 
 const MESSAGE = [
@@ -25,7 +25,8 @@ function allowedForms(followed: Followed): string {
 }
 
 function findingOf(iteration: Iteration, scope: ProgramScope): ProgramFinding | undefined {
-  const followed = iteration.guarded ? undefined : followedFlag(scope.program, iteration.flag.key);
+  const skipped = iteration.guarded || isIntended(scope.program, iteration.node);
+  const followed = skipped ? undefined : followedFlag(scope.program, iteration.flag.key);
   return followed === undefined
     ? undefined
     : {

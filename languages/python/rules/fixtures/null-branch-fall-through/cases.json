@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "null-branch-fall-through",
+    "mention": "so the null case is handled once"
+  }
+]

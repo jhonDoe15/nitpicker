@@ -13,6 +13,7 @@ import (
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/httpvalues"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/jobs"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/lifecycles"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/nilbranch"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/optional"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/overflow"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/remote"
@@ -29,6 +30,13 @@ func Analyzers() []*analysis.Analyzer {
 	return slices.Concat(failures.Analyzers(), concurrency.Analyzers(), design.Analyzers(), remote.Analyzers(),
 		database.Analyzers(), guards.Analyzers(), schema.Analyzers(), secrets.Analyzers(), honesty.Analyzers(),
 		lifecycles.Analyzers(), httpvalues.Analyzers(),
-		[]*analysis.Analyzer{copies.Analyzer, optional.Analyzer, overflow.Analyzer, requests.Analyzer, jobs.Analyzer,
-			resolvers.Analyzer})
+		[]*analysis.Analyzer{
+			copies.Analyzer,
+			optional.Analyzer,
+			nilbranch.Analyzer,
+			overflow.Analyzer,
+			requests.Analyzer,
+			jobs.Analyzer,
+			resolvers.Analyzer,
+		})
 }

@@ -17,6 +17,49 @@ const RULE = 'ConfigurationReadOutsideCompositionRoot';
 
 describe('configurationReads', () => {
   it.each([
+    [
+      'a static import',
+      'import java.lang.System.getProperty',
+      'fun mode() = getProperty("shop.mode")',
+    ],
+    [
+      'a renamed static import',
+      'import java.lang.System.getProperty as prop',
+      'fun mode() = prop("shop.mode")',
+    ],
+    [
+      'a renamed System',
+      'import java.lang.System as Sys',
+      'fun mode() = Sys.getProperty("shop.mode")',
+    ],
+    [
+      'a static Integer import',
+      'import java.lang.Integer.getInteger',
+      'val batch = getInteger("shop.batch")',
+    ],
+    [
+      'a static import reference',
+      'import java.lang.System.getProperty',
+      'fun r(k: List<String>) = k.map(::getProperty)',
+    ],
+  ])('flags %s', (_name, header, line) => {
+    expect(found(`package demo\n\n${header}\n\nclass Service {\n    ${line}\n}\n`)).toEqual([
+      [RULE, 6],
+    ]);
+  });
+
+  it('accepts a project method and a JVM key next to a static import', () => {
+    const header = 'import java.lang.System.getProperty';
+    const body =
+      'fun a(s: Settings) = s.getProperty("shop.mode")\n    fun b() = getProperty("java.version")';
+    expect(found(`package demo\n\n${header}\n\nclass Service {\n    ${body}\n}\n`)).toEqual([]);
+  });
+
+  it('accepts a bare call without the static import', () => {
+    expect(inService('fun mode() = getProperty("shop.mode")')).toEqual([]);
+  });
+
+  it.each([
     ['an application property', 'fun mode() = System.getProperty("shop.mode")'],
     ['a property with a default', 'fun mode() = System.getProperty("shop.mode", "live")'],
     ['a property named by a variable', 'fun read(key: String) = System.getProperty(key)'],

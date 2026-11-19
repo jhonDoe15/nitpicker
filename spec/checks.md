@@ -169,6 +169,8 @@ Stale retries: `stale-retry` in the Python preset reports a SQLAlchemy `commit()
 Python effect rules: `accumulator-copy` (a name rebuilt from a copy of itself in a loop or `functools.reduce`),
 `lazy-relation-in-loop` (a Django or SQLAlchemy relationship read once per row of a query that does not fetch it),
 `resolver-query-per-parent` (a Strawberry or Graphene field resolver of a type returned as a list that queries per parent; a `DataLoader` is the allowed form),
+`cache-write-in-transaction` (a Django or Redis cache write, or a dict filled with a row written in the block, inside
+`transaction.atomic()` or `session.begin()`; `transaction.on_commit` is the allowed form),
 `remote-call-in-transaction` and `remote-call-under-lock` (a remote call while a database transaction or a lock is
 held; a fill-once block under a lock stays allowed), `retry-without-idempotency` (a payment create, message
 publish or `INSERT` without a stable key inside a retry scope) and `dual-write-without-outbox` (a database write
@@ -330,10 +332,22 @@ reaches about 125,000 items. With the type checker arrays, typed arrays, sets, m
 (tuples and strings are not), and `push`, `unshift` and `splice` only on an array; array and string literals and
 a function's own rest parameter passed on are allowed.
 
+Null branches that continue: `nitpicker/no-null-branch-fall-through` (production
+source, in `eslint-lint`) in the TypeScript and JavaScript presets, and `null-branch-fall-through` (script) in Python. It reports
+an `if (x == null)` or `if x is None:` branch without `else` that does something and does not leave (no return, throw, break,
+continue, exit or assignment to `x`) when the same block then reads `x` as present (member access, indexing, destructuring,
+spread, iteration, or an argument of a call the branch also made). A later guard of `x` ends the search.
+
 Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
 that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the
 item. Only proven cases are reported: a collection of unknown origin is not.
+
+Cache writes in transactions: `nitpicker/no-cache-write-in-transaction` (production source, in `eslint-lint`) reports a
+Redis, `cache-manager`, `keyv` or `node-cache` write, or a `Map` filled with a row or id written in the same callback,
+inside a Prisma `$transaction`, TypeORM `transaction`, Kysely `transaction().execute` or begin/commit scope. The
+allowed form is writing the cache after the transaction call returns (or from a TypeORM `afterTransactionCommit`
+subscriber); the finding names it.
 
 Remote calls while a resource is held: `nitpicker/no-remote-call-in-transaction` and
 `nitpicker/no-remote-call-under-lock` (production source, in `eslint-lint`, type-aware) report a remote call,
@@ -489,6 +503,11 @@ stream chunk without `setEncoding`, string accumulation of the chunk (`text += c
 `TextDecoder.decode(chunk)` without `{ stream: true }`, and `includes`, `indexOf`, `startsWith` or a regex test on the
 chunk alone, which corrupt split multibyte characters or miss a split message. Streams read with a string encoding
 (`createReadStream(path, 'utf8')`, `setEncoding`) and `Readable.from` (which yields strings) are not reported.
+Dropped log arguments: `nitpicker/no-dropped-log-arguments` (production source, in `eslint-lint`, when the project
+depends on pino, bunyan or winston) reports a `trace` to `fatal` call whose literal message has fewer placeholders than
+values (pino: the extra values are dropped; winston without `format.splat()`: every value after a message with a
+placeholder) and, for pino and bunyan, more placeholders than values. A fields object first (`log.info({ config }, 'x')`),
+one value per placeholder and a metadata object are allowed.
 
 Hardcoded secrets and secrets in logs: `nitpicker/no-hardcoded-secret` and `nitpicker/no-secret-in-log`
 (production source, not tests or test-support folders, in `eslint-lint`) report a secret-looking string given to a secret-named variable,
