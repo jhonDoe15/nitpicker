@@ -90,6 +90,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Blocking helpers stay out of `async def`: `await asyncio.to_thread(fetch_profile, url)` or
   `loop.run_in_executor(None, fetch_profile, url)` for a plain function that calls `requests`, `httpx.get`,
   `time.sleep` or `subprocess.run`, or an async client (`blocking-helper-in-async`; startup work takes an exception).
+  The same holds for Django ORM queries (`await sync_to_async(load)(id)` or `aget`, `acount`, `async for`),
+  `ssl.create_default_context(cafile=...)`, `Path.read_text`, thread and file locks and a hook's `get_connection`;
+  use `asyncio.get_running_loop()`, never `get_event_loop()`, in a coroutine.
 - Waits for a worker have a deadline: `future.result(timeout=30)`, `concurrent.futures.wait(futures, timeout=30)`,
   `thread.join(timeout=30)` and then `thread.is_alive()`; never the no-argument form
   (`unbounded-wait`; a shutdown that joins the worker it just stopped takes an exception).

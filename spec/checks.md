@@ -237,9 +237,13 @@ Kotlin preset, and `unbounded-wait` runs them in the Python preset for `concurre
 JavaScript presets have no counterpart, since a promise has no blocking wait.
 
 Blocking helpers in async code: `blocking-helper-in-async` (Python, main sources) reports a call from an `async def`
-to a project function that calls `requests`, `httpx`, `urllib.request.urlopen`, `time.sleep`, `os.system` or
-`subprocess.run` (up to three calls deep), unless the helper is offloaded with `asyncio.to_thread` or
-`run_in_executor`; a blocking call written in the async function itself stays with ruff `ASYNC210` to `ASYNC251`.
+to a project function that calls `requests`, `httpx`, `urllib.request.urlopen`, `time.sleep`, `os.system`,
+`subprocess.run`, a Django ORM terminal (`Model.objects.get`, `count`, iteration and the others), `ssl.create_default_context`
+with a certificate file, `load_cert_chain`, `Path.read_text`, `open`, a `threading` or `filelock` lock or an Airflow
+`get_connection` (up to three calls deep), unless the helper is offloaded with `asyncio.to_thread`, `run_in_executor` or
+`sync_to_async`. A blocking call written in the async function itself stays with ruff `ASYNC210` to `ASYNC251`, except the
+sinks ruff does not know (ORM, TLS context, `Path` reads, locks, the connection getter and `asyncio.get_event_loop()`),
+which the rule reports there as well.
 The other presets have no helper-aware counterpart.
 
 Time units: `nitpicker/time-unit-mismatch` (production source, in `eslint-lint`) reports time values in

@@ -47,6 +47,7 @@ export function runnerContext({
       importLinter: undefined,
       sourceRoots: ['.'],
       entryPoints: undefined,
+      blockingGetters: [],
     },
     env: {},
   };

@@ -106,7 +106,7 @@ are listed at the end.
 | Abandoned work                                  | `asyncio.wait_for`, `asyncio.timeout` or a `TaskGroup`; cancel or hand off `pending` after `asyncio.wait(..., timeout=)`                                                               | `timeout-abandons-operation` (script)                                                                                                                                                                                                                                                                                                                                               |
 | Child processes                                 | `subprocess.run(args, timeout=30, check=True)`, `communicate(timeout=30)`, asyncio waits in `asyncio.timeout(30)`                                                                      |
 | Unbounded waits                                 | `future.result(timeout=30)`, `concurrent.futures.wait(futures, timeout=30)`, `thread.join(timeout=30)`                                                                                 | `unbounded-wait` (script)                                                                                                                                                                                                                                                                                                                                                           |
-| Blocking helpers                                | `await asyncio.to_thread(fetch_profile, url)`, `loop.run_in_executor(None, fetch_profile, url)`, an async client                                                                       | `blocking-helper-in-async` (script; direct calls are ruff `ASYNC210`, `ASYNC220`, `ASYNC221`, `ASYNC222`, `ASYNC251`)                                                                                                                                                                                                                                                               |
+| Blocking helpers                                | `await asyncio.to_thread(fetch_profile, url)`, `loop.run_in_executor(None, fetch_profile, url)`, an async client                                                                       | `blocking-helper-in-async` (script; direct HTTP, subprocess, sleep and file calls are ruff `ASYNC210` to `ASYNC251`; ORM, TLS, lock and `get_event_loop` calls are the rule's)                                                                                                                                                                                                      |
 | Test honesty                                    | a skip only on a real condition, no sleeping, no tautologies, fixed time and seeded random values, no network, no leaked global state                                                  | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `retry-in-test`, `mocked-subject-in-test`, `mock-without-spec`, `patch-misses-lookup`, `untested-round-trip`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test`, `copied-constant-in-test`, `server-or-container-per-test`, `global-state-leak-in-test` (script) |
 | Float checks in tests                           | `assert total == pytest.approx(0.3)`, `math.isclose`, `assertAlmostEqual`                                                                                                              | `float-equality-in-test` (script)                                                                                                                                                                                                                                                                                                                                                   |
 | Test assertions                                 | the exact value, length or call arguments, not a presence, non-empty or called-only check                                                                                              | `weak-assertion` (script)                                                                                                                                                                                                                                                                                                                                                           |
@@ -339,25 +339,41 @@ factory=make_mailer)`, `injector.binder.bind(...)`). A call to a project functio
   test support. TypeScript and JavaScript have no counterpart, since a promise has no blocking wait. A program whose
   purpose is to wait for the work to finish, such as a shutdown that joins the worker it just stopped, takes an
   exception.
-- `blocking-helper-in-async` reports a call from an `async def` to a plain function of the project that blocks
-  the event loop: the helper (a module function, an imported one or a `self.` method, up to three calls deep) calls
+- `blocking-helper-in-async` reports a call from an `async def` to a plain function of the project that blocks the
+  event loop: the helper (a module function, an imported one or a `self.` method, up to three calls deep) calls
   `requests` or `httpx` module-level `get`, `post`, `put`, `patch`, `delete`, `head`, `options` or `request`,
-  `urllib.request.urlopen`, `time.sleep`, `os.system` or `subprocess.run`, `call`, `check_call` or `check_output`.
-  A call that the async function makes itself is left to ruff `ASYNC210`, `ASYNC220`, `ASYNC221`, `ASYNC222` and
-  `ASYNC251`. A helper passed to `asyncio.to_thread`, `run_in_executor` or a lambda is not called there and is not
-  reported; neither is an async helper, a decorated helper, a method of another object, a session or client
-  instance, file I/O (`open`) and CPU work. Not in tests or test support. Work done at startup, before the loop
-  serves requests, takes an exception. The helper is found by its last definition in the module, as a `self.` or
-  `cls.` method (also of a same-module base class) or as `ClassName.method`; a name that the async function or
-  helper rebinds (a parameter, a local assignment, a nested `def`) is not followed, and a rebound `requests` or
-  `time` is not the library. A generator helper that is only called, `time.sleep(0)`, `__init__` through `A()`,
-  properties, `from helper import *` and a helper whose module is outside the project are not followed. Two
-  calls to the same helper on one line are one finding. The TypeScript, Java and Kotlin presets have no counterpart for helpers:
-  detekt `SleepInsteadOfDelay` covers a direct `Thread.sleep` in a suspend function.
-  Sync code that runs the async twin of a method and waits for it (`asyncio.run(fetch_async(x))` or `executor.submit(...).result()`
-  when `fetch(x)` exists) has no rule: the project's own sync wrapper over the async implementation
-  (`def fetch(x): return asyncio.run(fetch_async(x))`) is the legitimate form of the same call, and a rule cannot
-  tell the two apart by reading the twin's name and parameters.
+  `urllib.request.urlopen`, `time.sleep`, `os.system` or `subprocess.run`, `call`, `check_call` or `check_output`, or
+  one of the sinks below. The sinks are: a Django ORM terminal on a manager or queryset of a model class of the
+  project (`Model.objects.get`, `first`, `last`, `count`, `exists`, `create`, `update`, `delete`, `get_or_create`,
+  `update_or_create`, `in_bulk`, `aggregate`, `earliest`, `latest`, `bulk_*`, a chain such as
+  `Model.objects.filter(...).count()`, and iteration of a queryset in a `for`, a comprehension or `list(...)`);
+  `ssl.create_default_context` with `cafile` or `capath`, and `load_verify_locations`, `load_cert_chain` or
+  `load_default_certs` in a file that imports `ssl`; `Path` `read_text`, `read_bytes`, `write_text` and `write_bytes`
+  in a file that imports `pathlib`, and `open` in a helper; `acquire` or `with` on a `threading` lock, semaphore or
+  condition assigned in the same file or on a `filelock` lock; and `get_connection` in a file that imports `airflow`,
+  and every name in `python.blockingGetters` (a method name such as `fetch_secret` or a dotted name such as
+  `hook.read_token`; it adds to the built-in Airflow getter). A call that the async function makes itself is left to
+  ruff `ASYNC210`, `ASYNC220`, `ASYNC221`, `ASYNC222`, `ASYNC230`, `ASYNC240` and `ASYNC251` when ruff covers it
+  (HTTP, subprocess, sleep, `open`, `os.path`); the sinks ruff does not cover are reported there too, with the subject
+  `Order.objects.first`, `ssl.create_default_context` or `LOCK.acquire`, and `asyncio.get_event_loop()` inside a
+  coroutine is reported with that name, since `asyncio.get_running_loop()` is the form that returns the running loop.
+  The async ORM forms (`aget`, `acount`, `acreate`, `async for`), a callable passed to `sync_to_async`,
+  `database_sync_to_async`, `asyncio.to_thread` or `run_in_executor` (it is not called in the async function, so it is
+  not a sink), an awaited call, an async comprehension, a non-blocking or timed lock `acquire`, `read_text` and its
+  kind on an `anyio`, `trio`, `aiopath` or `aiofiles` path, and an `ssl.create_default_context()` without a file
+  argument are not reported. A helper passed to `asyncio.to_thread`, `run_in_executor` or a lambda is not called there
+  and is not reported; neither is an async helper, a decorated helper, a method of another object, a session or client
+  instance and CPU work. Not in tests or test support. Work done at startup, before the loop serves requests, takes an
+  exception. The helper is found by its last definition in the module, as a `self.` or `cls.` method (also of a
+  same-module base class) or as `ClassName.method`; a name that the async function or helper rebinds (a parameter, a
+  local assignment, a nested `def`) is not followed, and a rebound `requests` or `time` is not the library. A
+  generator helper that is only called, `time.sleep(0)`, `__init__` through `A()`, properties, `from helper import *`
+  and a helper whose module is outside the project are not followed. Two calls to the same helper on one line are one
+  finding. The TypeScript, Java and Kotlin presets have no counterpart for helpers: detekt `SleepInsteadOfDelay`
+  covers a direct `Thread.sleep` in a suspend function. Sync code that runs the async twin of a method and waits for
+  it (`asyncio.run(fetch_async(x))` or `executor.submit(...).result()` when `fetch(x)` exists) has no rule: the
+  project's own sync wrapper over the async implementation (`def fetch(x): return asyncio.run(fetch_async(x))`) is the
+  legitimate form of the same call, and a rule cannot tell the two apart by reading the twin's name and parameters.
 - `time-unit-mismatch` reports time values in two different units that meet without a conversion. Units
   come from the API (`time.time()`, `time.monotonic()`, `time.perf_counter()`, `datetime.timestamp()` and
   `timedelta.total_seconds()` in seconds, the `_ns` variants in nanoseconds, the JWT claims `exp`, `iat`,

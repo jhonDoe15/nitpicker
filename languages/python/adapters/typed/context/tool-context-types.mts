@@ -22,6 +22,7 @@ export type ToolProject = {
   readonly importLinter: unknown;
   readonly sourceRoots: readonly string[];
   readonly entryPoints: unknown;
+  readonly blockingGetters: unknown;
 };
 
 export type ToolContext = {

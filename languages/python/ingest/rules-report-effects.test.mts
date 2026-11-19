@@ -72,6 +72,21 @@ describe('effect rules report', () => {
       '`self.coordinator.data[self._id]` raises `KeyError` for a device that left the refreshed data, and the request or the update fails with it',
     ],
     [
+      'blocking-helper-in-async',
+      'load calls Order.objects.count',
+      '`load calls Order.objects.count`, so this async function blocks the event loop and stalls every other task',
+    ],
+    [
+      'blocking-helper-in-async',
+      'Order.objects.first',
+      '`Order.objects.first` runs in this async function and blocks the event loop while it waits for the database, a file or a lock, which stalls every other task',
+    ],
+    [
+      'blocking-helper-in-async',
+      'asyncio.get_event_loop',
+      '`asyncio.get_event_loop` inside a coroutine returns a loop that may not be the running one and warns or fails on newer Python versions',
+    ],
+    [
       'remote-call-under-lock',
       'notify() > requests.post()|self._lock',
       '`notify()` (which calls `requests.post()`) makes a remote call while `self._lock` is held: every other caller waits for the remote latency, and a slow or hung remote service blocks them all',
