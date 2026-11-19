@@ -10,6 +10,86 @@
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
   <description>Nitpicker's PMD rules for main sources.</description>
   <rule ref="category/java/security.xml"/>
+  <rule name="AffixLengthMismatch" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This substring cuts a different number of characters than the prefix or suffix the code has just tested, so the result keeps a piece of the affix or loses a character of the value (path.startsWith(&quot;file://&quot;) then path.substring(6) keeps a slash; a quoted string cut with substring(1, s.length() - 2) loses its last character). The code runs and returns a value that is off by one. Cut exactly what was tested: path.substring(&quot;file://&quot;.length()), s.substring(1, s.length() - 1), or keep the affix in a constant that both the test and the cut use. Right code is not reported: an offset taken from the literal (&quot;file://&quot;.length()), an offset equal to the tested length, and a prefix followed by another test of the same value, such as a separator check.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $key := function($e) {
+      if ($e/self::VariableAccess or $e/self::FieldAccess[ThisExpression]) then string($e/@Name) else ()
+    },
+    $lenOf := function($n, $k) {
+      exists($n/self::MethodCall[@MethodName = 'length'][ArgumentList/@Size = 0][$key(*[1]) = $k])
+    },
+    $int := function($n) {
+      if ($n/self::NumericLiteral[@IntLiteral = true()]) then xs:integer($n/@ValueAsInt) else ()
+    },
+    $affixOf := function($g, $k) {
+      let $c := if ($g/self::UnaryExpression[@Operator = '!']) then $g/*[1] else $g,
+          $neg := exists($g/self::UnaryExpression[@Operator = '!'])
+      return
+        if ($c/self::MethodCall[@MethodName = ('startsWith', 'endsWith')][ArgumentList/@Size = 1][ArgumentList/StringLiteral][$key(*[1]) = $k])
+        then map { 'kind': if ($c/@MethodName = 'startsWith') then 'prefix' else 'suffix', 'len': xs:integer($c/ArgumentList/StringLiteral/@Length), 'text': string($c/ArgumentList/StringLiteral/@ConstValue), 'neg': $neg }
+        else if ($c/self::InfixExpression[@Operator = ('==', '!=')][*[2][self::CharLiteral]]
+                   [*[1][self::MethodCall][@MethodName = 'charAt'][ArgumentList/@Size = 1][$key(*[1]) = $k]])
+        then (let $at := $c/*[1]/ArgumentList/*[1]
+              return if ($int($at) = 0)
+                     then map { 'kind': 'prefix', 'len': 1, 'neg': $c/@Operator = '!=' }
+                     else if ($at/self::InfixExpression[@Operator = '-'][$lenOf(*[1], $k)][$int(*[2]) = 1])
+                     then map { 'kind': 'suffix', 'len': 1, 'neg': $c/@Operator = '!=' }
+                     else ())
+        else ()
+    },
+    $harmless := function($g, $k) {
+      exists($g/self::InfixExpression[@Operator = ('<', '<=', '>', '>=', '==', '!=')]
+               [every $side in * satisfies $side/self::NumericLiteral or $side/self::NullLiteral or $lenOf($side, $k) or $key($side) = $k])
+      or exists($g/self::MethodCall[@MethodName = 'isEmpty'][$key(*[1]) = $k])
+      or exists($g/self::UnaryExpression[@Operator = '!'][MethodCall[@MethodName = 'isEmpty'][$key(*[1]) = $k]])
+    },
+    $leaves := function($cond, $sep) {
+      ($cond/descendant-or-self::InfixExpression[@Operator = $sep]
+          [empty((ancestor::*[not(self::InfixExpression[@Operator = $sep])]) intersect ($cond/descendant-or-self::*))]/*
+       | $cond)[not(self::InfixExpression[@Operator = $sep])]
+    },
+    $under := function($a, $part) { exists($a/ancestor-or-self::* intersect $part) },
+    $exits := function($s) {
+      exists($s/self::ReturnStatement | $s/self::ThrowStatement
+             | $s/self::Block/*[last()][self::ReturnStatement or self::ThrowStatement])
+    },
+    $mentions := function($g, $k) { exists($g/descendant-or-self::*[self::VariableAccess or self::FieldAccess][@Name = $k]) },
+    $tests := function($a, $k) {
+      let $pos := for $c in $a/ancestor::ConditionalExpression[$under($a, *[2])] | $a/ancestor::IfStatement[$under($a, *[2])]
+                          | $a/ancestor::InfixExpression[@Operator = '&&'][$under($a, *[2])]
+                  return $leaves($c/*[1], '&&'),
+          $neg := (for $c in $a/ancestor::ConditionalExpression[$under($a, *[3])] | $a/ancestor::IfStatement[$under($a, *[3])]
+                   return $leaves($c/*[1], '||'),
+                   for $b in $a/ancestor::Block
+                   return for $c in $b/*[following-sibling::* intersect $a/ancestor::*][self::IfStatement][count(*) = 2][$exits(*[2])]
+                          return $leaves($c/*[1], '||'))
+      return (for $g in $pos return let $m := $affixOf($g, $k) return if (exists($m) and not($m?neg)) then $m else (),
+              for $g in $neg return let $m := $affixOf($g, $k) return if (exists($m) and $m?neg) then $m else (),
+              for $g in ($pos, $neg)[$mentions(., $k)]
+              return if (exists($affixOf($g, $k)) or $harmless($g, $k)) then () else map { 'kind': 'other' })
+    }
+return
+//MethodCall[@MethodName = 'substring'][ArgumentList/@Size = (1, 2)][*[1][pmd-java:typeIs('java.lang.String')]]
+  [let $k := $key(*[1]),
+       $args := ArgumentList/*,
+       $found := if (exists($k)) then $tests(., $k) else (),
+       $first := $int($args[1]),
+       $last := if ($args[2][self::InfixExpression[@Operator = '-']][$lenOf(*[1], $k)]) then $int($args[2]/*[2]) else ()
+   return exists($found) and empty($found[?kind = 'other'])
+     and (exists($first) and $first >= 1 and exists($last) and exists($found[?kind = 'prefix']) and exists($found[?kind = 'suffix'])
+            and (empty($found[?kind = 'prefix'][?len = $first]) or empty($found[?kind = 'suffix'][?len = $last]))
+          or empty($args[2]) and exists($first) and empty($found[?kind = 'suffix'])
+            and exists($found[?kind = 'prefix'][matches(?text, '^[A-Za-z][A-Za-z0-9]*(://|:)$')][?len - $first = 1]))
+     and empty(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]
+               //*[self::VariableAccess or self::FieldAccess][@Name = $k][@AccessType = 'WRITE'])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="AnnotationAttributeNotResolved" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This annotation attribute is used as it is, while other attributes of the same annotation instance in this method go through resolve(...), resolveEmbeddedValue, resolveStringValue, resolvePlaceholders or evaluate(...). A property placeholder or SpEL expression in its value is then taken literally. Resolve it like its siblings: endpoint.setConsumes(resolve(listener.consumes())). An attribute that is meant to be literal (a class name, an id) can stay raw; then read it before the resolved ones or pass it to a method that documents it as literal.">
     <priority>3</priority>
@@ -290,6 +370,44 @@ return
   [empty(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression
                      or self::Initializer][1]
          //InfixExpression[@Operator = ('==', '!=')][NullLiteral]/MethodCall[@MethodName = 'getCanonicalName'])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="ChangeNamedEquality" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A name that says something changed is computed as plain equality: isModified() or a hasChanged variable holds a.equals(b), so it is true exactly when nothing differs. A settings page then never offers Apply, or listeners fire on every refresh except real changes, and the code still compiles. Negate the comparison (return !current.equals(initial);, boolean hasChanged = !Objects.equals(saved, edited);), or rename the method or variable to say what it tests (isUnchanged). An exception fits a name that says the values match.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $tokens := function($n) {
+      tokenize(lower-case(replace(replace($n, '([a-z0-9])([A-Z])', '$1 $2'), '_', ' ')), ' +')[. != '']
+    },
+    $isEquality := function($e) {
+      exists($e/self::MethodCall[@MethodName = ('equals', 'deepEquals', 'equalLists', 'equalsIgnoreCase')]
+               [ArgumentList/@Size = (1, 2)])
+      or exists($e/self::InfixExpression[@Operator = '=='][count(*) = 2]
+                  [empty(*[self::NullLiteral or self::BooleanLiteral or self::NumericLiteral or self::StringLiteral
+                           or self::CharLiteral or matches(@Name, '(^|\.)[A-Z][A-Z0-9_]*$')])])
+    },
+    $changeWords := ('changed', 'modified', 'dirty', 'different', 'differs', 'updated', 'diff', 'changes'),
+    $negations := ('not', 'unchanged', 'unmodified', 'same', 'equal', 'equals', 'identical', 'matches', 'match', 'clean')
+return (
+//MethodDeclaration
+  [matches(@Name, '^(is|has|was|needs)([A-Z][a-z0-9]*)*(Modified|Changed|Changes|Dirty|Different|Updated|Diff)$')]
+  [empty($tokens(@Name)[. = $negations])]
+  [Block[@Size = 1]/ReturnStatement[$isEquality(*[1])]]
+|
+//VariableDeclarator
+  [let $words := $tokens(VariableId/@Name)
+   return exists(parent::LocalVariableDeclaration[empty(PrimitiveType | ClassType) or PrimitiveType[@Kind = 'boolean'] or ClassType[@SimpleName = 'Boolean']])
+     and $words[last()] = $changeWords and empty($words[. = $negations])
+     and $isEquality(*[2])]
+|
+//AssignmentExpression[@Operator = '='][*[1][self::VariableAccess or (self::FieldAccess and *[1][self::ThisExpression])]]
+  [let $words := $tokens(*[1]/@Name)
+   return $words[last()] = $changeWords and empty($words[. = $negations]) and $isEquality(*[2])]
+)
 ]]></value>
       </property>
     </properties>
@@ -669,6 +787,23 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="ConcatenationComparedWithNull" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A string concatenation is compared with null. A concatenation is never null, so == null is always false and != null is always true, and the value that was meant to be tested is never checked. + binds tighter than == and !=, so &quot;id=&quot; + name != null ? name.trim() : &quot;none&quot; reads (&quot;id=&quot; + name) != null ? ...; when a conditional follows, put the parentheses around it: &quot;id=&quot; + (name != null ? name.trim() : &quot;none&quot;). Otherwise compare the value itself with null, or drop the comparison.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//InfixExpression[@Operator = ('==', '!=')][count(*) = 2][NullLiteral]
+  [let $e := *[not(self::NullLiteral)][1]
+   return exists($e[self::InfixExpression[@Operator = '+'][not(@Parenthesized = true())]])
+     and (exists($e[pmd-java:typeIs('java.lang.String')])
+          or exists($e/descendant-or-self::InfixExpression[@Operator = '+'][StringLiteral]
+                      [not(ancestor::*[exists(. intersect $e/descendant::*)][not(self::InfixExpression[@Operator = '+'] or self::ParenthesizedExpression)])]))
+  ]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="ConcurrentMapCheckThenAct" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This concurrent map is checked and then used again for the same key (containsKey or get(key) == null, then put, get or remove), but another thread can change the entry between the two calls: two threads both see it absent and both create the value, or the get returns null after containsKey said true. A ConcurrentMap makes each call atomic, not the pair. Use one atomic call: map.computeIfAbsent(key, k -&gt; create(k)), map.putIfAbsent(key, value), map.getOrDefault(key, fallback), map.computeIfPresent or merge, or read once into a local (Value v = map.get(key); if (v == null) ...). An exception fits a map that only one thread changes, or a pair that is already locked.">
     <priority>3</priority>
@@ -746,6 +881,72 @@ return
   //ConditionalExpression[not($guarded(.))]/(let $cond := . return
     for $chk in *[1]/self::MethodCall[$call(., 'containsKey')][$removed(.)]
     return $acts($cond/*[2], $chk, 'get'))
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="ConstantIndexBeyondGuard" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This literal index is larger than the length the guard around it has proved. The guard lets through exactly the length at which the access throws ArrayIndexOutOfBoundsException or IndexOutOfBoundsException (params.length > 1 ? params[2] : null, if (parts.length &lt; 1) return; then parts[1]). Raise the guard to the index used (params.length > 2, parts.length &lt; 2) or lower the index. Right code is not reported: a guard that admits the index (params.length > 2 ? params[2] : null), a receiver that is reassigned in the method, a variable index, and a receiver whose length is read in any other way before the access.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $key := function($e) {
+      if ($e/self::VariableAccess or $e/self::FieldAccess[ThisExpression]) then string($e/@Name) else ()
+    },
+    $lenKey := function($n) {
+      if ($n/self::FieldAccess[@Name = 'length'] or $n/self::MethodCall[@MethodName = 'size'][ArgumentList/@Size = 0])
+      then $key($n/*[1]) else ()
+    },
+    $int := function($n) {
+      if ($n/self::NumericLiteral[@IntLiteral = true()]) then xs:integer($n/@ValueAsInt) else ()
+    },
+    $positive := function($g, $k) {
+      if ($g/self::InfixExpression[@Operator = ('>', '>=', '==')][$lenKey(*[1]) = $k][*[2][self::NumericLiteral]])
+      then (if ($g/@Operator = '>') then $int($g/*[2]) else $int($g/*[2]) - 1)
+      else ()
+    },
+    $negative := function($g, $k) {
+      if ($g/self::InfixExpression[@Operator = ('<', '<=')][$lenKey(*[1]) = $k][*[2][self::NumericLiteral]])
+      then (if ($g/@Operator = '<') then $int($g/*[2]) - 1 else $int($g/*[2]))
+      else if ($g/self::InfixExpression[@Operator = '=='][$lenKey(*[1]) = $k][*[2][self::NumericLiteral][@ValueAsInt = 0]])
+      then 0 else ()
+    },
+    $leaves := function($cond, $sep) {
+      ($cond/descendant-or-self::InfixExpression[@Operator = $sep]
+          [empty((ancestor::*[not(self::InfixExpression[@Operator = $sep])]) intersect ($cond/descendant-or-self::*))]/*
+       | $cond)[not(self::InfixExpression[@Operator = $sep])]
+    },
+    $under := function($a, $part) { exists($a/ancestor-or-self::* intersect $part) },
+    $exits := function($s) {
+      exists($s/self::ReturnStatement | $s/self::ThrowStatement
+             | $s/self::Block/*[last()][self::ReturnStatement or self::ThrowStatement])
+    },
+    $mk := function($g, $v) { if (exists($v)) then map { 'n': $g, 'v': $v } else () },
+    $guards := function($a, $k) {
+      (for $c in $a/ancestor::ConditionalExpression[$under($a, *[2])] | $a/ancestor::IfStatement[$under($a, *[2])]
+         | $a/ancestor::InfixExpression[@Operator = '&&'][$under($a, *[2])]
+         return for $g in $leaves($c/*[1], '&&') return $mk($g, $positive($g, $k)),
+       for $c in $a/ancestor::InfixExpression[@Operator = '||'][$under($a, *[2])]
+         return for $g in $leaves($c/*[1], '||') return $mk($g, $negative($g, $k)),
+       for $c in $a/ancestor::ConditionalExpression[$under($a, *[3])] | $a/ancestor::IfStatement[$under($a, *[3])]
+         return for $g in $leaves($c/*[1], '||') return $mk($g, $negative($g, $k)),
+       for $b in $a/ancestor::Block
+         return for $c in $b/*[following-sibling::* intersect $a/ancestor::*][self::IfStatement][count(*) = 2][$exits(*[2])]
+           return for $g in $leaves($c/*[1], '||') return $mk($g, $negative($g, $k)))
+    }
+return (
+  //ArrayAccess[*[2][self::NumericLiteral][@IntLiteral = true()]]
+  | //MethodCall[@MethodName = 'get'][ArgumentList/@Size = 1][ArgumentList/NumericLiteral[@IntLiteral = true()]]
+      [*[1][pmd-java:typeIs('java.util.List')]]
+)[let $k := $key(*[1]),
+      $m := if (self::ArrayAccess) then $int(*[2]) else $int(ArgumentList/*[1]),
+      $found := if (exists($k)) then $guards(., $k) else (),
+      $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1],
+      $self := .
+  return exists($found) and $m > max($found ! .?v)
+     and (every $n in $scope//*[$lenKey(.) = $k][. << $self] satisfies exists($found ! .?n/*[1][. is $n]))
+     and empty($scope//*[self::VariableAccess or self::FieldAccess][@Name = $k][@AccessType = 'WRITE'])]
 ]]></value>
       </property>
     </properties>
@@ -887,6 +1088,48 @@ return //ConstructorDeclaration[FormalParameters[@Size = 1]/FormalParameter
      and count($candidates) ge 3
      and count($candidates) - count($touched) = 1
      and 4 * count($touched) ge 3 * count($candidates)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="DatePatternLetterSlip" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This date-time pattern mixes up its letters, and none of these throws: MM after an hour is the month (HH:MM), mm next to dd or yy is the minute (dd.mm.yyyy), HH:ss leaves the minutes out, yyy and yyyyy give odd years, kk and KK are the hours 1-24 and 0-11, and hh without a is a 12-hour clock with no marker (also with HH in the same pattern). The wrong values reach logs, file names and screens. Write the minutes as mm and the month as MM (&quot;dd.MM.yyyy HH:mm&quot;), the year as yyyy or yy, the 24-hour clock as HH, and add a for hh. An exception fits a display that wants kk or KK on purpose.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $value := function($arg) {
+      if ($arg[self::StringLiteral]) then string($arg/@ConstValue)
+      else if ($arg[self::VariableAccess]) then
+        (let $declared := root($arg)//FieldDeclaration[ModifierList/@ExplicitModifiers = 'final'][ModifierList/@ExplicitModifiers = 'static']
+                            /VariableDeclarator[@Name = $arg/@Name][*[last()][self::StringLiteral]]
+         return if (count($declared) = 1) then string($declared/*[last()]/@ConstValue) else ())
+      else ()
+    },
+    $bad := function($arg, $legacy) {
+      let $raw := $value($arg),
+          $p := replace(replace($raw, "''", ''), "'[^']*'", ''),
+          $marker := matches($p, '[aB]')
+      return exists($raw) and ((matches($p, '[HhKk]{1,2}[:.]M{1,2}([^M]|$)')
+                and not($legacy and count(analyze-string($p, 'M+')/*:match) >= 2))
+        or matches($p, '^[^HhKk]*([dyM]+[-./]m+|m+[-./][dyM]+)')
+        or matches($p, '(^|[^y])(yyy|y{5,})([^y]|$)')
+        or matches($p, 'k')
+        or (matches($p, 'K') and not($marker))
+        or (matches($p, 'h') and not($marker) and not($legacy and matches($p, 'hh')))
+        or (matches($p, 'h') and matches($p, 'H') and not($marker))
+        or matches($p, '[HhKk]{1,2}[:.]s'))
+    }
+return (
+  //ConstructorCall[ClassType[@SimpleName = 'SimpleDateFormat']]/ArgumentList/*[1]
+    [$bad(., true())],
+  //MethodCall[@MethodName = ('applyPattern', 'applyLocalizedPattern')][*[1][pmd-java:typeIs('java.text.SimpleDateFormat')]]
+    /ArgumentList/*[1][$bad(., true())],
+  //MethodCall[@MethodName = 'ofPattern'][*[1][self::TypeExpression/ClassType/@SimpleName = 'DateTimeFormatter' or self::AmbiguousName/@Name = 'DateTimeFormatter']]
+    /ArgumentList/*[1][$bad(., false())],
+  //MethodCall[@MethodName = 'appendPattern'][*[1][pmd-java:typeIs('java.time.format.DateTimeFormatterBuilder')]]
+    /ArgumentList/*[1][$bad(., false())]
+)
 ]]></value>
       </property>
     </properties>
@@ -1108,6 +1351,78 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="FirstElementOfMaybeEmpty" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="The first element is read after only a null check. A value that is not null can still be empty: a parser result, a header list or a query returns an empty list, array or string, and get(0), [0], charAt(0) or iterator().next() then throws IndexOutOfBoundsException, ArrayIndexOutOfBoundsException, StringIndexOutOfBoundsException or NoSuchElementException on that one input. Test emptiness instead of, or as well as, null: if (init != null &amp;&amp; !init.isEmpty()), values.length &gt; 0 &amp;&amp; values[0] == LIMIT, !text.isEmpty() &amp;&amp; text.charAt(0) == ''#''. Right code is not reported: a method that tests the value''s emptiness, length, size or content anywhere (isEmpty, size, length, startsWith or equals with a literal, a for-each over it), a value built in the method (List.of, an array literal), and a read inside a loop.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $key := function($e) {
+      if ($e/self::VariableAccess or $e/self::FieldAccess[ThisExpression]) then string($e/@Name) else ()
+    },
+    $receiver := function($n) {
+      if ($n/self::ArrayAccess) then $n/*[1]
+      else if ($n/self::MethodCall[@MethodName = 'next'][ArgumentList/@Size = 0]) then $n/*[1][self::MethodCall[@MethodName = 'iterator'][ArgumentList/@Size = 0]]/*[1]
+      else $n/*[1]
+    },
+    $leaves := function($cond, $sep) {
+      ($cond/descendant-or-self::InfixExpression[@Operator = $sep]
+          [empty((ancestor::*[not(self::InfixExpression[@Operator = $sep])]) intersect ($cond/descendant-or-self::*))]/*
+       | $cond)[not(self::InfixExpression[@Operator = $sep])]
+    },
+    $under := function($a, $part) { exists($a/ancestor-or-self::* intersect $part) },
+    $exits := function($s) {
+      exists($s/self::ReturnStatement | $s/self::ThrowStatement
+             | $s/self::Block/*[last()][self::ReturnStatement or self::ThrowStatement])
+    },
+    $nullTest := function($g, $k, $op) {
+      exists($g/self::InfixExpression[@Operator = $op][*[1][$key(.) = $k]][*[2][self::NullLiteral]])
+    },
+    $nullChecked := function($a, $k) {
+      (some $c in $a/ancestor::ConditionalExpression[$under($a, *[2])] | $a/ancestor::IfStatement[$under($a, *[2])]
+                  | $a/ancestor::InfixExpression[@Operator = '&&'][$under($a, *[2])]
+       satisfies (some $g in $leaves($c/*[1], '&&') satisfies $nullTest($g, $k, '!=')))
+      or (some $c in $a/ancestor::ConditionalExpression[$under($a, *[3])] | $a/ancestor::IfStatement[$under($a, *[3])]
+                  | $a/ancestor::InfixExpression[@Operator = '||'][$under($a, *[2])]
+          satisfies (some $g in $leaves($c/*[1], '||') satisfies $nullTest($g, $k, '==')))
+      or (some $c in $a/ancestor::Block/*[following-sibling::* intersect $a/ancestor::*][self::IfStatement][count(*) = 2][$exits(*[2])]
+          satisfies (some $g in $leaves($c/*[1], '||') satisfies $nullTest($g, $k, '==')))
+    },
+    $chain := function($e, $k) { exists($e/descendant-or-self::*[$key(.) = $k]) },
+    $emptyAware := function($scope, $k) {
+      exists($scope//MethodCall[@MethodName = ('isEmpty', 'isBlank', 'matches', 'size', 'length', 'hasNext', 'stream', 'contains', 'indexOf', 'toArray')][$chain(*[1], $k)])
+      or exists($scope//FieldAccess[@Name = 'length'][$chain(*[1], $k)])
+      or exists($scope//ForeachStatement[*[2][$key(.) = $k]])
+      or exists($scope//MethodCall[@MethodName = ('startsWith', 'endsWith', 'equals', 'equalsIgnoreCase', 'contentEquals')]
+                  [ArgumentList/StringLiteral and $chain(*[1], $k) or *[1][self::StringLiteral] and $chain(ArgumentList, $k)])
+      or exists($scope//ArgumentList/*[$key(.) = $k][parent::ArgumentList/parent::MethodCall
+                  [matches(@MethodName, 'mpty|Blank|matcher|matches|hasLength|hasText|hasElements|size|length', 'i')]])
+    },
+    $built := function($scope, $k) {
+      exists($scope//VariableDeclarator[VariableId/@Name = $k]
+               [*[2][self::ArrayAllocation or self::ArrayInitializer or self::ConstructorCall or self::StringLiteral
+                     or self::MethodCall[@MethodName = ('of', 'asList', 'singletonList', 'singleton', 'copyOf', 'nCopies', 'ofNullable')]]])
+      or exists($scope//AssignmentExpression[*[1][$key(.) = $k]][*[2][self::ArrayAllocation or self::ConstructorCall or self::MethodCall[@MethodName = ('of', 'asList', 'singletonList')]]])
+    }
+return (
+  //ArrayAccess[*[2][self::NumericLiteral][@ValueAsInt = 0]]
+  | //MethodCall[@MethodName = ('get', 'remove')][ArgumentList/@Size = 1][ArgumentList/NumericLiteral[@ValueAsInt = 0]][*[1][pmd-java:typeIs('java.util.List')]]
+  | //MethodCall[@MethodName = 'getFirst'][ArgumentList/@Size = 0][*[1][pmd-java:typeIs('java.util.List')]]
+  | //MethodCall[@MethodName = 'charAt'][ArgumentList/@Size = 1][ArgumentList/NumericLiteral[@ValueAsInt = 0]][*[1][pmd-java:typeIs('java.lang.String')]]
+  | //MethodCall[@MethodName = 'next'][ArgumentList/@Size = 0][*[1][self::MethodCall[@MethodName = 'iterator']][*[1][pmd-java:typeIs('java.util.Collection')]]]
+)[let $k := $key($receiver(.)),
+      $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][last()],
+      $self := .
+  return exists($k) and exists($scope) and $nullChecked(., $k)
+     and exists($scope[not(pmd-java:modifiers() = 'private')]/FormalParameters/FormalParameter/VariableId[@Name = $k])
+     and empty($scope//ArrayAccess[*[1][$key(.) = $k]][*[2][self::NumericLiteral][@ValueAsInt > 0]])
+     and empty($scope//MethodCall[@MethodName = 'get'][*[1][$key(.) = $k]][ArgumentList/NumericLiteral[@ValueAsInt > 0]])
+     and not($emptyAware($scope, $k)) and not($built($scope, $k))
+     and empty($self/ancestor::*[self::ForStatement or self::WhileStatement or self::DoStatement])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="ForwardDropsParameter" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This override never reads one of its parameters and only forwards the call to a same-named method without it, so the value passed by the caller is silently lost. Pass the parameter on (return delegate.send(message, headers, timeout);), or call the overload that really takes it. An exception fits when the value does not apply to this class: say so with a throw, or keep the unused parameter out of the forwarded call on purpose in a documented adapter.">
     <priority>3</priority>
@@ -1274,6 +1589,47 @@ return
      and not(matches($name, $roles))
      and not(some $super in (ExtendsList | ImplementsList)/ClassType
              satisfies replace(replace($super/@SimpleName, '[0-9]+$', ''), $generic, '$1') = $word)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="GetterReturnsSiblingField" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This getter returns a different field than its name says: getScrollWidth() returns areaHeight although the class also has a field named for the getter, and the two names differ in a single word. A neighbouring getter was cloned and only the method name was changed, so the wrong value is served and the code still compiles. Return the field the getter is named for (return areaWidth;), or rename the getter when the sibling field is what it should expose. An exception fits a getter that deliberately exposes a related field and says so in its name.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $tokens := function($n) {
+      let $bare := if (matches($n, '^_')) then substring($n, 2)
+                   else if (matches($n, '^my[A-Z]')) then substring($n, 3)
+                   else if (matches($n, '^m[A-Z]')) then substring($n, 2)
+                   else $n
+      return tokenize(lower-case(replace($bare, '([a-z0-9])([A-Z])', '$1 $2')), ' ')
+    },
+    $typeOf := function($id) {
+      string-join($id/ancestor::FieldDeclaration[1]/*[self::ClassType or self::PrimitiveType or self::ArrayType]
+                    /descendant-or-self::*/(@SimpleName | @Kind), ',')
+    },
+    $pairs := ('width height', 'left right', 'top bottom', 'min max', 'request response', 'audio video', 'read write',
+               'input output', 'key value', 'start end', 'first last'),
+    $isPair := function($a, $b) {
+      some $p in $pairs satisfies (let $t := tokenize($p, ' ') return ($a = $t[1] and $b = $t[2]) or ($a = $t[2] and $b = $t[1]))
+    },
+    $sameWord := function($a, $b) { $a = $b or (min((string-length($a), string-length($b))) >= 3 and (starts-with($a, $b) or starts-with($b, $a))) }
+return
+//MethodDeclaration[FormalParameters/@Size = 0][@Static = false()][@Abstract = false()]
+  [matches(@Name, '^(get|is|has)[A-Z]')]
+  [Block[@Size = 1]/ReturnStatement[*[1][self::VariableAccess or (self::FieldAccess and *[1][self::ThisExpression])]]]
+  [let $cls := ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration][1],
+       $want := $tokens(replace(@Name, '^(get|is|has)', '')),
+       $got := Block/ReturnStatement/*[1]/@Name,
+       $fields := $cls/*/FieldDeclaration/VariableDeclarator/VariableId
+   return (let $other := $fields[@Name = $got][1],
+              $named := $fields[string-join($tokens(@Name), ' ') = string-join($want, ' ')][1],
+              $have := $tokens($got)
+          return (count($want) >= 2 or $isPair($want[1], $have[1])) and exists($other) and exists($named) and $typeOf($other) = $typeOf($named)
+            and count($have) = count($want)
+            and count(for $i in 1 to count($want) return if (not($sameWord($have[$i], $want[$i]))) then 1 else ()) = 1)]
 ]]></value>
       </property>
     </properties>
@@ -1805,6 +2161,34 @@ return //MethodCall[ArgumentList]
       </property>
     </properties>
   </rule>
+  <rule name="InvertedEqualsCheck" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This early out in equals(Object) returns false when the compared field is equal, while the other checks of the method return false when a field differs. The test is inverted: two equal objects compare as unequal and the method carries on for objects that differ, so equals is not even reflexive and sets and maps lose entries. Negate the comparison: if (!name.equals(that.name)) return false;.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//IfStatement[count(*) = 2]
+  [*[2][self::ReturnStatement[BooleanLiteral[@True = false()]]
+        or self::Block[count(*) = 1]/ReturnStatement[BooleanLiteral[@True = false()]]]]
+  [let $m := ancestor::MethodDeclaration[1],
+       $p := string($m/FormalParameters/FormalParameter/VariableId/@Name),
+       $aliases := ($p, $m//VariableDeclarator[.//CastExpression/VariableAccess[@Name = $p]]/VariableId/@Name,
+                    $m//TypePattern/VariableId/@Name),
+       $cond := *[1],
+       $last := if ($cond[self::InfixExpression[@Operator = '||']]) then $cond/*[2] else $cond,
+       $call := $last[self::MethodCall[@MethodName = 'equals'][ArgumentList/@Size = (1, 2)]]
+   return exists($m[@Name = 'equals'][@Arity = 1][FormalParameters/FormalParameter/ClassType[@SimpleName = 'Object']])
+     and exists($call)
+     and (some $v in $call//VariableAccess satisfies $v/@Name = $aliases)
+     and exists($m//IfStatement[count(*) = 2]
+                  [*[2][self::ReturnStatement[BooleanLiteral[@True = false()]]
+                        or self::Block[count(*) = 1]/ReturnStatement[BooleanLiteral[@True = false()]]]]
+                  /*[1]/descendant-or-self::*[self::UnaryExpression[@Operator = '!'][.//MethodCall[@MethodName = 'equals']]
+                        or self::InfixExpression[@Operator = '!='][empty(.//MethodCall[@MethodName = 'getClass'])]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="IoCallInLoop" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Fetch or write all items at once (findAllById, saveAll, deleteAll, where id in (...), one batched request) instead of calling a database, HTTP or repository API once per loop item. Paging, polling and retry loops are fine.">
     <priority>2</priority>
@@ -2098,6 +2482,79 @@ return //MethodCall[@MethodName = 'contains'][ArgumentList/@Size = 1][*[1][self:
       </property>
     </properties>
   </rule>
+  <rule name="LockInFinally" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A finally block locks a lock that the method took before (or inside) the try and never releases it. lock(), lockInterruptibly() and tryLock() here take the lock a second time, so a ReentrantLock stays held after the method returns and every other thread that needs it blocks for good, far from the typo. Release it with lock.unlock() in the finally block. An exception fits a method that also unlocks the same lock elsewhere, such as a lock downgrade or a wait that gives the lock up and takes it back; the rule does not read those.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//FinallyClause/Block/ExpressionStatement/MethodCall
+  [@MethodName = ('lock', 'lockInterruptibly', 'tryLock')][not(*[1][self::ArgumentList])]
+  [*[1][pmd-java:typeIs('java.util.concurrent.locks.Lock') or self::MethodCall[@MethodName = ('readLock', 'writeLock')]]]
+  [let $key := function($c) { string-join($c/*[1]/descendant-or-self::*/(@Name | @MethodName), '.') },
+       $k := $key(.),
+       $fin := ancestor::FinallyClause[1],
+       $m := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1]
+   return empty($m//MethodCall[@MethodName = 'unlock'][not(*[1][self::ArgumentList])][$key(.) = $k])
+     and exists($m//MethodCall[@MethodName = ('lock', 'lockInterruptibly', 'tryLock')][not(*[1][self::ArgumentList])][$key(.) = $k][. << $fin])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="LogPlaceholderSlip" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This SLF4J or Log4j 2 message loses an argument. With one curly-brace placeholder for every argument and the exception last, the exception is printed with toString() and its stack trace is never logged; and %s, %d or a numbered placeholder in a logger that reads curly braces is printed as it stands while its argument is dropped. Write one curly-brace pair for each value except the exception, which goes last with no pair of its own (log.warn(&quot;Failed for&quot;, id, e) plus the pair after for), and use the pair instead of %s or %d. An exception fits when only the exception text is wanted in the message: pass e.getMessage().">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $levels := ('trace', 'debug', 'info', 'warn', 'error', 'fatal', 'log'),
+    $formatter := function($logger) {
+      exists($logger[self::VariableAccess or self::FieldAccess]
+        [let $name := @Name
+         return root(.)//(VariableDeclarator[@Name = $name] | AssignmentExpression[*[1][@Name = $name]])
+           [*[last()][self::MethodCall][@MethodName = 'getFormatterLogger']]])
+    },
+    $imported := function($node, $prefix) {
+      exists(root($node)//ImportDeclaration[starts-with(@ImportedName, $prefix)])
+    },
+    $throwable := function($arg) {
+      exists($arg[not(self::NullLiteral)][pmd-java:typeIs('java.lang.Throwable')])
+      or (exists($arg[self::VariableAccess])
+          and (some $d in ($arg/ancestor::CatchClause/CatchParameter/VariableId
+                           | $arg/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression]
+                               /(FormalParameters | LambdaParameterList)//VariableId[../ClassType[matches(@SimpleName, '(Exception|Throwable)$')]])
+               satisfies $d/@Name = $arg/@Name))
+    }
+return //MethodCall[@MethodName = $levels][ArgumentList/@Size >= 2]
+  [*[1][pmd-java:typeIs('org.slf4j.Logger') or pmd-java:typeIs('org.apache.logging.log4j.Logger')
+        or (matches(@Name, '^_?log(ger)?$', 'i') and (self::VariableAccess or self::FieldAccess or self::AmbiguousName)
+            and ($imported(., 'org.slf4j.') or $imported(., 'org.apache.logging.log4j.'))
+            and not($imported(., 'java.util.logging.')) and not($imported(., 'org.jboss.logging.'))
+            and not(pmd-java:typeIs('java.util.logging.Logger') or pmd-java:typeIs('org.jboss.logging.BasicLogger')
+                    or pmd-java:typeIs('org.apache.commons.logging.Log') or pmd-java:typeIs('java.lang.System$Logger')))]
+     [not($formatter(.))]]
+  [let $arguments := ArgumentList/*,
+       $skip := if ($arguments[1][self::StringLiteral]) then 0
+                else if ($arguments[2][self::StringLiteral]
+                         and ($arguments[1][pmd-java:typeIs('org.slf4j.Marker') or pmd-java:typeIs('org.apache.logging.log4j.Marker')
+                                            or pmd-java:typeIs('org.apache.logging.log4j.Level')]
+                              or $arguments[1][matches(@Name, '(^|\.)(MARKER|Marker|Level)|^marker$|^level$')]
+                              or $arguments[1][self::FieldAccess or self::AmbiguousName][matches(@Name, '^(TRACE|DEBUG|INFO|WARN|ERROR|FATAL)$')]))
+                     then 1 else (),
+       $format := $arguments[$skip + 1][self::StringLiteral],
+       $rest := $arguments[position() > $skip + 1],
+       $text := string($format/@ConstValue),
+       $unescaped := replace($text, '\\\{\}', ''),
+       $holders := (string-length($unescaped) - string-length(replace($unescaped, '\{\}', ''))) div 2
+   return exists($format) and exists($rest) and not($rest[self::ArrayInitializer or self::ArrayAllocation])
+     and ($holders >= 1 and $holders = count($rest) and $throwable($rest[last()])
+          or ($holders = 0 and not(contains($text, '\{'))
+              and not(count($rest) = 1 and $throwable($rest))
+              and (matches(replace($text, '%%', ''), '%[-+ 0,]*\d*(\.\d+)?[sSd]|%\.\d+f') or matches($text, '\{\d+\}'))))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="LoggerForOtherClass" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This logger is created for a class with a similar name (same last word, or same first two words and the same number of words) other than the one that declares it, usually a copy-paste slip, so its log lines carry the wrong category: the level settings of this class do not apply and searches for its logs miss them. Use the enclosing class literal (private static final Logger LOG = LoggerFactory.getLogger(Orders.class)), MethodHandles.lookup().lookupClass(), or getClass() for an instance logger. An exception fits when a facade class deliberately logs as its public type.">
     <priority>3</priority>
@@ -2122,6 +2579,42 @@ return //MethodCall[@MethodName = 'contains'][ArgumentList/@Size = 1][*[1][self:
    return exists($named) and not($named = ($inFile, $parents))
      and not(contains($own[last()]/@SimpleName, $named) or contains($named, $own[last()]/@SimpleName))
      and ($a[last()] = $b[last()] or ($a[1] = $b[1] and $a[2] = $b[2] and count($a) = count($b)))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="LoopUpdateAwayFromExit" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This for loop moves its index away from its own exit condition: the condition keeps holding while the update runs the other way (i >= 0 with i++, i &lt; n with i--, i &lt;= 0 with i--), so the loop never ends and fails with an IndexOutOfBoundsException or runs until the index overflows. Count in the direction the condition tests: for (int i = list.size() - 1; i >= 0; i--) and for (int i = 0; i &lt; n; i++). Right code is not reported: a loop that leaves through break, return or throw on another condition, a loop that assigns the index in its body, and a byte, short or char index that wraps on purpose.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $flip := function($op) { map { '<': '>', '<=': '>=', '>': '<', '>=': '<=' }($op) }
+return
+//ForStatement[ForUpdate][InfixExpression[@Operator = ('<', '<=', '>', '>=')]]
+  [let $cond := InfixExpression[@Operator = ('<', '<=', '>', '>=')]
+   return some $var in distinct-values(ForUpdate//VariableAccess/@Name)
+     satisfies
+       (let $left := exists($cond/*[1][self::VariableAccess][@Name = $var]),
+            $right := exists($cond/*[2][self::VariableAccess][@Name = $var]),
+            $op := if ($left) then string($cond/@Operator) else $flip(string($cond/@Operator)),
+            $delta := function($u) {
+              let $lit := $u/*[2]
+              return if ($lit/self::NumericLiteral) then number($lit/@ValueAsDouble)
+                     else if ($lit/self::UnaryExpression[@Operator = '-'][NumericLiteral]) then -number($lit/NumericLiteral/@ValueAsDouble)
+                     else 0
+            },
+            $steps := ForUpdate//AssignmentExpression[@Operator = ('+=', '-=')][VariableAccess[1]/@Name = $var],
+            $upward := ForUpdate//UnaryExpression[@Operator = '++'][VariableAccess/@Name = $var]
+                     | $steps[@Operator = '+='][$delta(.) > 0] | $steps[@Operator = '-='][$delta(.) < 0],
+            $downward := ForUpdate//UnaryExpression[@Operator = '--'][VariableAccess/@Name = $var]
+                       | $steps[@Operator = '-='][$delta(.) > 0] | $steps[@Operator = '+='][$delta(.) < 0]
+        return ($left != $right)
+          and (exists($downward) and empty($upward) and $op = ('<', '<=') or exists($upward) and empty($downward) and $op = ('>', '>='))
+          and empty($cond/VariableAccess[@Name = $var][pmd-java:typeIs('byte') or pmd-java:typeIs('short') or pmd-java:typeIs('char')])
+          and empty(ForInit//PrimitiveType[@Kind = ('byte', 'short', 'char')])
+          and empty(*[last()]//BreakStatement | *[last()]//ReturnStatement | *[last()]//ThrowStatement)
+          and empty(*[last()]//VariableAccess[@Name = $var][@AccessType = 'WRITE']))]
 ]]></value>
       </property>
     </properties>
@@ -2454,6 +2947,56 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="OppositeBoundAssigned" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This variable is named for one end of a pair (max, afterPath, nextIndex) but is assigned from the accessor of the opposite end (getMin(), getBeforePath(), getPreviousIndex()). A neighbouring line was copied and only one side of it was edited, so the wrong bound flows into the rest of the method and the code still compiles. Assign from the accessor that matches the name (int max = range.getMax();), or rename the variable if the opposite end is what it holds. An exception fits a name that mentions both ends.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $accessorPairs := ('min max', 'before after', 'prev next', 'left right',
+                       'top bottom', 'first last', 'lower upper', 'low high', 'width height', 'head tail', 'x y'),
+    $bareMethodPairs := ('min max', 'left right', 'top bottom', 'width height', 'low high', 'x y'),
+    $opposites := function($w, $pairs) {
+      for $p in $pairs
+      return (let $t := tokenize($p, ' ')
+              return if ($w = $t[1]) then $t[2] else if ($w = $t[2]) then $t[1] else ())
+    },
+    $tokens := function($n) {
+      for $t in tokenize(lower-case(replace(replace(replace($n, '[0-9]+', ''), '([a-z])([A-Z])', '$1 $2'), '_', ' ')), ' +')[. != '']
+      return if ($t = 'minimum') then 'min' else if ($t = 'maximum') then 'max' else if ($t = 'previous') then 'prev' else $t
+    },
+    $nameOf := function($n) { if ($n/self::VariableDeclarator) then $n/VariableId/@Name else $n/*[1]/@Name },
+    $callOf := function($n) {
+      let $i := $n/*[2]
+      return (if ($i/self::CastExpression) then $i/*[last()] else $i)[self::MethodCall]
+    }
+return
+(//VariableDeclarator[VariableId][*[2]] | //AssignmentExpression[@Operator = '='][*[1][self::VariableAccess or self::FieldAccess]])
+  [let $self := .,
+       $name := $nameOf(.),
+       $call := $callOf(.),
+       $T := $tokens($name),
+       $R := $tokens($call/@MethodName)
+   return exists($call)
+     and not($call/*[1][self::TypeExpression])
+     and not($call/*[1][self::VariableAccess/@Name = $name])
+     and not($self/self::VariableDeclarator
+             and exists($self/ancestor::Block[1]//AssignmentExpression[not(. is $self)][*[1][self::VariableAccess/@Name = $name]]))
+     and (let $pairs := if ($R[1] = 'get') then $accessorPairs
+                        else if (count($R) = 1 and $call/ArgumentList/@Size = 0 and not($call/*[1]/self::AmbiguousName))
+                        then $bareMethodPairs else ()
+          return some $a in $T satisfies
+            (some $b in $opposites($a, $pairs) satisfies
+               $b = $R and not($a = $R) and not($b = $T)
+               and empty(ancestor::Block[1]//(VariableDeclarator[VariableId][*[2]]
+                                              | AssignmentExpression[@Operator = '='][*[1][self::VariableAccess or self::FieldAccess]])
+                           [not(. is $self)]
+                           [$b = $tokens($nameOf(.))][$a = $tokens($callOf(.)/@MethodName)])
+               and (every $r in $R[. != $b] satisfies $r = ($T[. != $a], 'get'))))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="OptionalOrElseGetNull" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="orElseGet(null) passes a null Supplier: it compiles, but throws a NullPointerException as soon as the Optional is empty. Use orElse(null) when a null result is meant (and check it where it is used), orElseGet(() -&gt; fallback()) for a computed default, or orElseThrow(() -&gt; new NotFoundException(id)) when absence is an error.">
     <priority>3</priority>
@@ -2677,6 +3220,35 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="ReceiverPassedAsArgument" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A call passes its own receiver as an argument (defaults.putAll(defaults), node.setPeer(node)). Another variable of the same type is in scope, so the author most likely typed the wrong name: the call is then a no-op or corrupts the object, and the intended argument is never used. Pass the variable that was meant (defaults.putAll(transientVariables)). An exception fits a method that really takes the object it is called on, such as a self-registration or a self-comparison in a contract test.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $typeOf := function($id) {
+      string-join($id/ancestor::*[self::FormalParameter or self::LocalVariableDeclaration or self::FieldDeclaration][1]
+                    /*[self::ClassType or self::PrimitiveType or self::ArrayType]
+                    /descendant-or-self::*/(@SimpleName | @Kind | self::ArrayDimensions/@Size), ',')
+    }
+return
+//MethodCall[ArgumentList/@Size = 1][ArgumentList/VariableAccess][*[1][self::VariableAccess]]
+  [matches(@MethodName, '^(set|put|add|remove|register|append|insert|link|attach|assign|bind|apply|update|with)([A-Z]|$)')]
+  [not(@MethodName = ('addAll', 'removeAll', 'add'))]
+  [not(matches(@MethodName, '(Next|Prev|Previous|Head|Tail|Link|Parent|List)([A-Z]|$)'))]
+  [let $name := *[1]/@Name,
+       $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1],
+       $cls := ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration][1],
+       $decl := (($scope//VariableId[@Name = $name]), ($cls/*/FieldDeclaration/VariableDeclarator/VariableId[@Name = $name]))[1],
+       $type := $typeOf($decl)
+   return exists(ArgumentList/VariableAccess[@Name = $name]) and exists($scope) and $type != ''
+     and exists((($scope//VariableId[ancestor::*[self::FormalParameter or self::LocalVariableDeclaration][1]]),
+                 ($cls/*/FieldDeclaration/VariableDeclarator/VariableId))
+                [@Name != $name][$typeOf(.) = $type])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="RecursiveMapUpdate" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Change the map after its computeIfAbsent, compute, computeIfPresent or merge returns, not inside the function passed to it or a callback or same-class method that function starts: build the value there and attach the cleanup to the result (map.computeIfAbsent(key, k -&gt; start(k)).whenComplete((r, e) -&gt; map.remove(key, r))). A ConcurrentHashMap otherwise throws IllegalStateException (Recursive update) or deadlocks, and a HashMap throws ConcurrentModificationException.">
     <priority>3</priority>
@@ -2817,6 +3389,45 @@ return //MethodCall[@MethodName = ('isPresent', 'isEmpty')][ArgumentList/@Size =
          and empty($method//MethodCall[@MethodName = ('equals', 'computeIfPresent', 'compute')])
          and empty($method//MethodCall[@MethodName = 'remove'][ArgumentList[@Size = 2]]))
      )]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="ReplaceWithWrongLiteralKind" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="String.replace takes plain text and replaceAll and replaceFirst take a regex, and this call mixes them up. replace(&quot;\\s+&quot;, &quot;&quot;) looks for the three characters \s+ and removes nothing; replaceAll(&quot;.tmp&quot;, &quot;&quot;) treats the dot as any character; replaceAll(&quot;?&quot;, value) throws PatternSyntaxException; and a File.separator or a backslash or dollar sign in the replacement is read as an escape or a group reference, which breaks on Windows. Use replaceAll for a regex (path.replaceAll(&quot;\\s+&quot;, &quot;&quot;)), replace for text (sql.replace(&quot;?&quot;, value), file.replace(&quot;.tmp&quot;, &quot;&quot;)), and Matcher.quoteReplacement(File.separator) for a replacement. An exception fits text that really contains the escape characters.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $regexAsText := '\(\?|\\[dDsSwWbB]|\.[*+]|\[\^|\[[^\]\[]*[a-zA-Z0-9]-[a-zA-Z0-9][^\]\[]*\]|\\[.$()\[\]{}|?*+]',
+    $regexClasses := '\(\?|\\[dDsSwWbB]|\.[*+]|\[\^|\[[^\]\[]*[a-zA-Z0-9]-[a-zA-Z0-9][^\]\[]*\]',
+    $loneMeta := '^[?*+|()\[{\\]$',
+    $extension := '^\.[A-Za-z][A-Za-z0-9]{1,5}\$?$',
+    $badReplacement := '\\|\$($|[^0-9{])',
+    $separator := function($arg) {
+      exists($arg[not(descendant-or-self::MethodCall[@MethodName = 'quoteReplacement'])]
+                 /descendant-or-self::*[self::AmbiguousName[@Name = 'File.separator']
+                    or self::FieldAccess[@Name = 'separator'][*[1][self::AmbiguousName[@Name = 'File'] or self::TypeExpression/ClassType[@SimpleName = 'File']]]])
+    }
+return (
+  //MethodCall[@MethodName = 'replace'][ArgumentList/@Size = 2][*[1][not(self::ArgumentList)]]
+    [ArgumentList/*[1][self::StringLiteral][matches(@ConstValue, $regexAsText)][not(matches(@ConstValue, '^\\.$'))]]
+    [not(ArgumentList/*[2][self::StringLiteral][matches(@ConstValue, $regexClasses)])]
+    [not(*[1][pmd-java:typeIs('java.lang.StringBuilder') or pmd-java:typeIs('java.lang.StringBuffer')])]
+    /ArgumentList/*[1],
+  //MethodCall[@MethodName = ('replaceAll', 'replaceFirst')][ArgumentList/@Size = 2]
+    [*[1][not(self::ArgumentList)]]
+    [ArgumentList/*[1][self::StringLiteral]
+       [matches(@ConstValue, $loneMeta) or matches(@ConstValue, $extension)
+        or (matches(@ConstValue, '[\\^$.|?*+()\[\]{}]')
+            and ../*[2][self::StringLiteral][matches(replace(@ConstValue, '\\[\\$]', ''), $badReplacement)])]]
+    /ArgumentList/*[1],
+  //MethodCall[@MethodName = ('replaceAll', 'replaceFirst')][ArgumentList/@Size = 2]
+    [*[1][not(self::ArgumentList)]]
+    [not(ArgumentList/*[1][@CompileTimeConstant = true()][not(matches(@ConstValue, '[\\^$.|?*+()\[\]{}]'))])]
+    [$separator(ArgumentList/*[2])]
+    /ArgumentList/*[2]
+)
 ]]></value>
       </property>
     </properties>
@@ -3292,6 +3903,55 @@ return (
       [@MethodName = $collectors or @MethodName = $groupings and ArgumentList/@Size = 1]]
   | //MethodCall[@MethodName = ('forEach', 'forEachOrdered')][ArgumentList[@Size = 1][$appends(*[1])]]
 )[$fromQuery(.)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="SubtractionComparison" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This comparator returns the difference of two numbers. A difference of two ints overflows for large or negative values, and (int) of a long, float or double difference truncates, so two values that differ can compare as equal or in the wrong order, and sorting then fails only on some data (Comparison method violates its general contract). Compare with Integer.compare(a.line, b.line), Long.compare(a.time, b.time) or Double.compare(a.x, b.x), or build the comparator with Comparator.comparingInt(Item::count). An exception fits operands that are bounded by construction, such as sizes, lengths, ordinals, buffer positions and limits, status codes, chars, bytes and shorts. Two int parameters compared by a plain subtraction are left to the integer-slip check.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $bounded := function($o, $local) {
+      exists($o[self::NumericLiteral])
+      or exists($o[self::MethodCall][@MethodName = ('size', 'length', 'ordinal', 'getNumericValue', 'signum', 'getMonthValue', 'getDayOfMonth', 'getDayOfWeek',
+                                                       'identityHashCode', 'remaining', 'position', 'limit', 'capacity', 'readableBytes', 'readerIndex', 'writerIndex', 'indexOf',
+                                                       'code', 'getCode', 'statusCode', 'getStatusCode')])
+      or exists($o[self::MethodCall][matches(@MethodName, '^get(.*[a-z])?Count$')])
+      or exists($o[self::MethodCall or self::VariableAccess or self::FieldAccess][matches(@MethodName | @Name, '(len|length|size|depth|remaining)$', 'i')])
+      or exists($o[self::VariableAccess][@Name = $local])
+      or exists($o[self::FieldAccess][@Name = 'length'])
+      or exists($o[pmd-java:typeIs('byte') or pmd-java:typeIs('short') or pmd-java:typeIs('char')
+                   or pmd-java:typeIs('java.lang.Byte') or pmd-java:typeIs('java.lang.Short') or pmd-java:typeIs('java.lang.Character')])
+    }
+return
+//InfixExpression[@Operator = '-'][count(*) = 2]
+  [let $anchor := ancestor::*[not(self::ParenthesizedExpression or self::CastExpression or self::ConditionalExpression)][1],
+       $cast := exists(parent::CastExpression) or exists(parent::ParenthesizedExpression/parent::CastExpression),
+       $method := $anchor/ancestor-or-self::*[self::MethodDeclaration or self::LambdaExpression][1],
+       $locals := $method//LocalVariableDeclaration/VariableDeclarator/VariableId/@Name,
+       $intParam := function($o) {
+         exists($o[self::VariableAccess][@Name = $method/FormalParameters/FormalParameter
+                    [PrimitiveType[@Kind = 'int'] or ClassType[@SimpleName = 'Integer']]/VariableId/@Name]) },
+       $wide := pmd-java:typeIs('long') or pmd-java:typeIs('double') or pmd-java:typeIs('float')
+   return
+     (exists($anchor[self::ReturnStatement]) or exists($anchor[self::LambdaExpression]))
+     and (
+       exists($method[self::MethodDeclaration][@Name = 'compare'][@Arity = 2])
+       or exists($method[self::MethodDeclaration][@Name = 'compareTo'][@Arity = 1])
+       or exists($method[self::LambdaExpression][LambdaParameterList/@Size = 2]
+                 [pmd-java:typeIs('java.util.Comparator')
+                  or parent::ArgumentList/parent::MethodCall[@MethodName = ('sort', 'sorted', 'max', 'min', 'thenComparing', 'binarySearch')]
+                  or parent::ArgumentList/parent::ConstructorCall[ClassType[@SimpleName = ('TreeMap', 'TreeSet', 'PriorityQueue', 'ConcurrentSkipListMap', 'ConcurrentSkipListSet', 'PriorityBlockingQueue')]]])
+     )
+     and (
+       ($cast and $wide and not(exists($method[self::MethodDeclaration][@Name = 'compareTo']) and pmd-java:typeIs('long')))
+       or (pmd-java:typeIs('int')
+           and not(exists($method[self::MethodDeclaration]) and $intParam(*[1]) and $intParam(*[2])))
+     )
+     and not($bounded(*[1], $locals)) and not($bounded(*[2], $locals))
+]
 ]]></value>
       </property>
     </properties>
@@ -4098,6 +4758,46 @@ return (
                                           or descendant-or-self::MethodCall[pmd-java:matchesSig($quote)]
                                           or descendant-or-self::MethodReference[@MethodName = 'quote']]]
                 /VariableId/@Name)]]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="UnsafeStopFlag" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This boolean flag is polled in the loop of run() or call() and set from another method, but it is neither volatile nor guarded by one lock. Without a happens-before edge the JIT may read it once and keep it in a register, so the loop never sees the write and the shutdown hangs or the worker spins forever; the class compiles and passes on a fast machine. Declare it volatile (private volatile boolean running = true), use an AtomicBoolean, or read and write it under the same lock. An exception fits a flag that is written only after the thread has stopped, or one that is confined to a single thread by design.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $loops := ('run', 'call', 'doRun', 'runLoop', 'loop'),
+    $guarded := function($node) {
+      exists($node/ancestor::SynchronizedStatement)
+      or exists($node/ancestor::MethodDeclaration[1][ModifierList/@ExplicitModifiers = 'synchronized'])
+    },
+    $isField := function($n, $name) {
+      exists($n[self::VariableAccess[@Name = $name]
+                | self::FieldAccess[@Name = $name][*[1][self::ThisExpression]]])
+    }
+return //ClassDeclaration[ExtendsList/ClassType[@SimpleName = 'Thread']
+                           or ImplementsList/ClassType[@SimpleName = ('Runnable', 'Callable')]]
+  /ClassBody/FieldDeclaration[PrimitiveType[@Kind = 'boolean']]
+    [not(ModifierList/@ExplicitModifiers = ('volatile', 'final'))]
+  /VariableDeclarator
+  [let $name := @Name,
+       $class := ancestor::ClassDeclaration[1],
+       $readers := $class/ClassBody/MethodDeclaration[@Name = $loops][empty(.//VariableId[@Name = $name])],
+       $conditions := $readers/(.//WhileStatement/*[1] | .//DoStatement/*[last()]
+                                | .//ForStatement/*[not(self::ForInit or self::ForUpdate or self::Block or ends-with(local-name(), 'Statement'))][1]
+                                | .//*[self::WhileStatement or self::DoStatement or self::ForStatement]/Block/IfStatement
+                                    [*[2][self::BreakStatement or self::ReturnStatement
+                                          or self::Block/*[self::BreakStatement or self::ReturnStatement]]]/*[1]),
+       $reads := $conditions/descendant-or-self::*[self::VariableAccess or self::FieldAccess]
+                   [$isField(., $name)],
+       $writes := $class/ClassBody//AssignmentExpression[$isField(*[1], $name)]
+                    [let $method := ancestor::MethodDeclaration[1]
+                     return exists($method) and empty($method//VariableId[@Name = $name])
+                       and not(some $r in $readers satisfies $r is $method)]
+   return exists($reads) and exists($writes)
+     and (some $access in ($reads, $writes) satisfies not($guarded($access)))]
 ]]></value>
       </property>
     </properties>

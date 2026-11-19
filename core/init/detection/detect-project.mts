@@ -17,6 +17,7 @@ import {
 import { type ExistingConfig, existingConfig } from '../files/config-file.mts';
 import { type Detected, describeJvmProject } from './jvm-project.mts';
 import { describeNodeProject } from './node-project.mts';
+import { PROJECT_ROOT, isRootLevelPackage } from './root-level/root-level-package.mts';
 import { describePythonProject } from './python-project.mts';
 import type { InitProject } from '../init-types.mts';
 import type { Layout } from '../../../languages/typescript/adapters/typed/head-policy.mts';
@@ -54,6 +55,9 @@ function emptySourcesNote(projectRoot: string, config: DetectionConfig): string 
     return message;
   }
   const roots = config.layout.sourceRoots;
+  if (foldersOf(projectRoot, layoutOf(policy)).topFiles.length > 0) {
+    return `No TypeScript or JavaScript sources under ${roots.join(', ')}, but there is code at the project root. Set "layout.sourceRoots" to ["."] in nitpicker.config.json to check it.`;
+  }
   return `No TypeScript or JavaScript sources under ${roots.join(', ')} yet, so the TypeScript preset is set. For another layout, set "layout.sourceRoots" in nitpicker.config.json.`;
 }
 
@@ -90,9 +94,26 @@ function rootsNote(folders: readonly string[], { topFiles }: CodeFolders, roots:
   return `Its code is under ${folders.join(', ')}, not ${roots}, so init sets ${setting}.${top}`;
 }
 
+function rootLevelProject(projectRoot: string, found: CodeFolders): InitProject | undefined {
+  if (!isRootLevelPackage(projectRoot, found)) {
+    return undefined;
+  }
+  const settings = { layout: { sourceRoots: [PROJECT_ROOT] } };
+  const preset = scriptPresetOf(settings, projectRoot) ?? DEFAULT_PRESET;
+  const project = describeNodeProject(projectRoot, preset);
+  const note =
+    `Its code is at the project root, so init sets "layout.sourceRoots" to ${JSON.stringify(settings.layout.sourceRoots)}. ` +
+    'node_modules, tests, build output and tool config files stay out of the checks.';
+  return { ...project, notes: [...project.notes, note], settings };
+}
+
 function withFoundRoots(projectRoot: string, config: DetectionConfig): InitProject | undefined {
   const found = foldersOf(projectRoot, layoutOf(policyOf(config)));
-  const { folders, topFiles } = found;
+  const rootLevel = rootLevelProject(projectRoot, found);
+  if (rootLevel !== undefined) {
+    return rootLevel;
+  }
+  const { folders } = found;
   const roots = config.layout.sourceRoots.join(', ');
   if (folders.length > 0) {
     const preset = scriptPresetOf({ ...config, layout: { sourceRoots: folders } }, projectRoot);
@@ -100,15 +121,7 @@ function withFoundRoots(projectRoot: string, config: DetectionConfig): InitProje
     const notes = [...project.notes, rootsNote(folders, found, roots)];
     return { ...project, notes, settings: { layout: { sourceRoots: folders } } };
   }
-  if (topFiles.length === 0) {
-    return undefined;
-  }
-  const project = describeNodeProject(projectRoot, DEFAULT_PRESET);
-  const note =
-    `Its code sits at ${topCode(topFiles)}, and only code in a source root folder is checked: ` +
-    `every run reports "empty sources" for it until the code moves into a folder, such as ${roots}, ` +
-    'that "layout.sourceRoots" names.';
-  return { ...project, notes: [...project.notes, note], emptySources: true };
+  return undefined;
 }
 
 const SCRIPT_PRESETS = new Set(['typescript', 'javascript']);

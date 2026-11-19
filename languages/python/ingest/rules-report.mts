@@ -19,7 +19,7 @@ const CHECK_FAILED_RULE = 'rules-check-failed';
 const SKIPPED_RULE = 'rules-skipped';
 export const MINIMUM_PYTHON = '3.10';
 const TOO_DEEP_RULE = 'rules-too-deep';
-const REPORT_ONLY_RULES: ReadonlySet<string> = new Set(['presence-truthiness']);
+const REPORT_ONLY_RULES: ReadonlySet<string> = new Set(['presence-truthiness', 'async-twin-drift']);
 const TOO_DEEP_CHECKS: Readonly<Record<string, string>> = {
   file: 'some of the per-file checks',
   all: 'every check',

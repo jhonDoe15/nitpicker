@@ -20,7 +20,7 @@ function isLinterConfig(value: unknown): value is Linter.Config {
 }
 
 const javascript = { preset: 'javascript' };
-const JAVASCRIPT_FILES = '**/*.{js,mjs,cjs}';
+const JAVASCRIPT_FILES = '**/*.{js,mjs,cjs,jsx}';
 const TYPESCRIPT_FILES = '**/*.{ts,mts,cts}';
 
 function ruleSettings(entries: ConfigEntry[], rule: string): unknown[] {

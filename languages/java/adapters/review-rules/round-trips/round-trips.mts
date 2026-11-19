@@ -14,7 +14,7 @@ import type {
   TripProject,
   TripSource,
 } from './trip-types.mts';
-import { findingFactory } from '../../kotlin/review-rules/review-finding.mts';
+import { findingFactory } from '../../kotlin/review-rules/finding/review-finding.mts';
 import { pathInside, projectSourceFiles } from '../java-sources.mts';
 import { mainPairs } from './main-pairs.mts';
 import { javaTestNames, kotlinTestNames } from './test-names.mts';

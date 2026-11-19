@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
-import { toolSlots } from './tool-slots.mts';
+import { toolSlots } from './slots/tool-slots.mts';
 
 type ToolRun = (options: Readonly<Record<string, unknown>>) => void;
 type ToolTask = {

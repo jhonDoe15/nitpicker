@@ -23,6 +23,14 @@ describe('patchFlags', () => {
     ]);
   });
 
+  it('enables a fix check that Error Prone leaves off by default', () => {
+    expect(patchFlags({ checks: ['FieldCanBeFinal'], patchRoot: '/p' })).toEqual([
+      '-XepPatchChecks:FieldCanBeFinal',
+      '-XepPatchLocation:/p',
+      '-Xep:FieldCanBeFinal:WARN',
+    ]);
+  });
+
   it('points at the fix-only checks when one of them is asked for', () => {
     const flags = patchFlags({
       checks: ['MissingOverride', 'UseStandardCharsets'],

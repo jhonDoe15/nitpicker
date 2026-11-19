@@ -31,6 +31,14 @@ function ownSelected(selectedRules: readonly string[]): string[] {
   });
 }
 
+const OFF_BY_DEFAULT_FIXES: ReadonlySet<string> = new Set(['FieldCanBeFinal']);
+
+export function enablingFlags(checks: readonly string[]): string[] {
+  return checks
+    .filter((check) => OFF_BY_DEFAULT_FIXES.has(check))
+    .map((check) => `-Xep:${check}:WARN`);
+}
+
 export function patchChecks(selectedRules: readonly string[]): string[] {
   const prefix = `${ERROR_PRONE_TOOL}/`;
   const selected = selectedRules

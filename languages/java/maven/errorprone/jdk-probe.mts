@@ -5,6 +5,7 @@ import { fieldOf } from '../../../../shared/values/readers.mts';
 import { explainedError } from '../../../../shared/messages/troubleshooting.mjs';
 import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
 import { javaCommand } from '../programs/java-command.mts';
+import { probeJava } from '../programs/probe/java-probe-cache.mts';
 
 export type Installed = { readonly java: string; readonly feature: number | undefined };
 export type FeatureJdk = { readonly java: string; readonly feature: number };
@@ -66,7 +67,7 @@ export function jdkHomes({
 }
 
 function describe(java: string, spawn: JavaSpawn): Described {
-  const result = spawn(java, ['-version'], { encoding: 'utf8' });
+  const result = probeJava(java, ['-version'], spawn);
   if (fieldOf(result.error, 'code') === 'ENOENT') {
     return { java, missing: true, feature: undefined };
   }

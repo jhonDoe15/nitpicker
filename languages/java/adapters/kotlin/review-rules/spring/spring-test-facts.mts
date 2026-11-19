@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { listOf, fieldOf, fieldsOf, parseJson } from '../../../../../../shared/values/readers.mts';
-import { findingFactory as untypedFindingFactory } from '../review-finding.mts';
+import { findingFactory as untypedFindingFactory } from '../finding/review-finding.mts';
 import { springFindings as untypedSpringFindings } from './spring-findings.mts';
 import { springViews as untypedSpringViews } from './view/spring-view.mts';
 import { testMethod as baseTestMethod, type RuleFinding } from '../test-support/facts.mts';

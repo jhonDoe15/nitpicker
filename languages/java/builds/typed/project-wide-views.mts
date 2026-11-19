@@ -5,13 +5,18 @@ import { readFeatureGraph } from '../../adapters/features/feature-findings.mts';
 import { kotlinModules, readKotlinMetrics } from '../../adapters/kotlin/kotlin-metrics.mts';
 import { readJavaFileLimitFindings } from '../../adapters/metrics/java-structure.mts';
 import { readCopiedConstantFindings } from '../../adapters/review-rules/copied-constants/copied-constants.mts';
+import { readCopyPastedTestFindings } from '../../adapters/review-rules/copy-pasted-tests/copy-pasted-tests.mts';
+import { readFixedDelayFindings } from '../../adapters/review-rules/fixed-delays/fixed-delays.mts';
 import { readMaxValueFindings } from '../../adapters/review-rules/max-value-sums/max-value-sums.mts';
+import { readMutatingMethodFindings } from '../../adapters/review-rules/mutating-methods/mutating-methods.mts';
 import { readNullFallThroughFindings } from '../../adapters/review-rules/null-fall-through/null-fall-through.mts';
+import { readNullableReturnFindings } from '../../adapters/review-rules/nullable-returns/nullable-returns.mts';
 import { readRoundTripFindings } from '../../adapters/review-rules/round-trips/round-trips.mts';
+import { readSelfRecursionFindings } from '../../adapters/review-rules/self-recursion/self-recursion.mts';
 import { readTestOnlyClassFindings } from '../../adapters/review-rules/test-only/test-only-classes.mts';
 import { readTestRuntimeFindings } from '../../adapters/test-runtime/test-runtime-findings.mts';
 import { outerClass } from '../../ingest/class-names.mts';
-import { inModule } from '../module-path.mts';
+import { inModule } from '../paths/module-path.mts';
 import {
   callUntyped,
   findingsOf,
@@ -137,9 +142,24 @@ export function roundTripFindings(projectRoot: string, options: WideOptions): Ja
 export function copiedConstantFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
   return findingsOf(callUntyped(readCopiedConstantFindings, projectRoot, options));
 }
+export function copyPastedTestFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
+  return findingsOf(callUntyped(readCopyPastedTestFindings, projectRoot, options));
+}
 export function maxValueFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
   return findingsOf(callUntyped(readMaxValueFindings, projectRoot, options));
 }
+export function selfRecursionFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
+  return findingsOf(callUntyped(readSelfRecursionFindings, projectRoot, options));
+}
 export function nullFallThroughFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
   return findingsOf(callUntyped(readNullFallThroughFindings, projectRoot, options));
+}
+export function nullableReturnFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
+  return findingsOf(callUntyped(readNullableReturnFindings, projectRoot, options));
+}
+export function fixedDelayFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
+  return findingsOf(callUntyped(readFixedDelayFindings, projectRoot, options));
+}
+export function mutatingMethodFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
+  return findingsOf(callUntyped(readMutatingMethodFindings, projectRoot, options));
 }

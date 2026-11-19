@@ -11,6 +11,7 @@ import {
 import { crapScore } from './istanbul/metrics.mts';
 import { describeFunctions } from './functions/describe.mts';
 import { selectSourceFiles, type SourceExclusionAudit } from './source-files.mts';
+import { blockingParseDiagnostics } from '../syntax/diagnostics/legacy-scripts.mts';
 import type {
   FileCoverage,
   FunctionDescriptor,
@@ -133,7 +134,10 @@ function parseSource(file: string): TypeScript.SourceFile {
     true,
     kind,
   );
-  const diagnostics = hasParseDiagnostics(sourceFile) ? sourceFile.parseDiagnostics : [];
+  const diagnostics = blockingParseDiagnostics(
+    file,
+    hasParseDiagnostics(sourceFile) ? sourceFile.parseDiagnostics : [],
+  );
   if (diagnostics.length > 0) {
     const messages = diagnostics.map((diagnostic) => formatDiagnostic(sourceFile, diagnostic));
     throw new SyntaxError(`Unable to parse TypeScript source ${file}: ${messages.join('; ')}`);

@@ -4,7 +4,11 @@ import { useScripts, pythonLines as code } from '../../test-support/python-rule-
 const enabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 const { itOutcomes } = useScripts({
   enabled,
-  hidden: ['test-without-assertion', 'network-in-test'],
+  hidden: [
+    'managed-resource-outside-composition-root',
+    'test-without-assertion',
+    'network-in-test',
+  ],
 });
 
 describe.skipIf(!enabled)('remote-call-in-transaction', () => {

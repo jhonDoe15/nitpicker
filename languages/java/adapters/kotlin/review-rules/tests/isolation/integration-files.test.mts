@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { findingFactory } from '../../review-finding.mts';
+import { findingFactory } from '../../finding/review-finding.mts';
 import { testHonestyFindings } from '../test-honesty.mts';
 
 const roots: string[] = [];

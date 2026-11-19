@@ -1,4 +1,3 @@
-import { availableParallelism } from 'node:os';
 import { executeAnalyzerTask } from '../process.mts';
 import {
   type AnalyzerTask,
@@ -9,6 +8,8 @@ import {
 import { type Release, type Semaphore, createWeightedSemaphore } from '../capacity.mts';
 import { createProgressReporter, writeToDescriptor } from '../progress.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
+import { resolveMaxParallel } from '../../../../shared/processes/machine-capacity.mts';
+import { usableMemoryMegabytes } from '../../../../shared/processes/memory/node-heap.mts';
 import {
   type GraphResult,
   type Outcome,
@@ -28,6 +29,7 @@ type OnSettled = ((event: ProgressEvent) => unknown) | undefined;
 
 type GraphOptions = {
   readonly maxParallel?: number;
+  readonly memoryMegabytes?: number;
   readonly execute?: unknown;
   readonly signal?: AbortSignal | undefined;
   readonly onSettled?: OnSettled;
@@ -35,6 +37,7 @@ type GraphOptions = {
 
 type TaskRun = {
   readonly semaphore: Semaphore;
+  readonly memory: { readonly semaphore: Semaphore; readonly capacity: number };
   readonly groupSemaphores: Map<string, Semaphore>;
   readonly maxParallel: number;
   readonly execute: Executor;
@@ -53,27 +56,11 @@ function isExecutor(value: unknown): value is Executor {
   return typeof value === 'function';
 }
 
-const DEFAULT_MAX_PARALLEL = 4;
-
-export function resolveMaxParallel(
-  environment: Readonly<Record<string, string | undefined>>,
-  available: number = availableParallelism(),
-): number {
-  const configured = environment['NITPICKER_MAX_PARALLEL'];
-  if (configured === undefined) {
-    return Math.max(1, Math.min(DEFAULT_MAX_PARALLEL, available));
-  }
-  const value = Number(configured);
-  if (!Number.isInteger(value) || value < 1) {
-    throw new TypeError('NITPICKER_MAX_PARALLEL must be a positive integer');
-  }
-  return value;
-}
-
 export async function runTaskGraph(
   tasks: unknown,
   {
     maxParallel = resolveMaxParallel({}),
+    memoryMegabytes = usableMemoryMegabytes(),
     execute = executeAnalyzerTask,
     signal,
     onSettled = descriptorProgress(tasks),
@@ -92,6 +79,7 @@ export async function runTaskGraph(
   const taskPromises = scheduleTasks(orderedTasks, {
     run: {
       semaphore: createWeightedSemaphore(maxParallel),
+      memory: { semaphore: createWeightedSemaphore(memoryMegabytes), capacity: memoryMegabytes },
       groupSemaphores: new Map<string, Semaphore>(),
       maxParallel,
       execute,
@@ -155,7 +143,7 @@ async function reportWhenSettled(
 async function runTask(
   task: AnalyzerTask,
   dependencies: readonly Promise<Outcome>[],
-  { semaphore, groupSemaphores, maxParallel, execute, signal }: TaskRun,
+  { semaphore, memory, groupSemaphores, maxParallel, execute, signal }: TaskRun,
 ): Promise<Outcome> {
   const dependencyOutcomes = await Promise.all(dependencies);
   const failedDependency = blockingDependency(task, dependencyOutcomes);
@@ -171,7 +159,7 @@ async function runTask(
     releaseGroup();
     return cancelledOutcome(task.name);
   }
-  const releaseCapacity = await semaphore.acquire(Math.min(task.concurrencyWeight, maxParallel));
+  const releaseSlots = await acquireSlots(task, { semaphore, memory, maxParallel });
   try {
     return checkpointed(
       task,
@@ -179,9 +167,23 @@ async function runTask(
       dependencyOutcomes,
     );
   } finally {
-    releaseCapacity();
+    releaseSlots();
     releaseGroup();
   }
+}
+
+async function acquireSlots(
+  task: AnalyzerTask,
+  { semaphore, memory, maxParallel }: Pick<TaskRun, 'semaphore' | 'memory' | 'maxParallel'>,
+): Promise<Release> {
+  const releaseMemory = await memory.semaphore.acquire(
+    Math.min(task.memoryMegabytes ?? 0, memory.capacity),
+  );
+  const releaseCapacity = await semaphore.acquire(Math.min(task.concurrencyWeight, maxParallel));
+  return () => {
+    releaseCapacity();
+    releaseMemory();
+  };
 }
 
 function acquireGroup(

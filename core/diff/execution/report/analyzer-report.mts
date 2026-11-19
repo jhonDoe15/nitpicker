@@ -6,6 +6,7 @@ import {
 } from '../../../../shared/messages/troubleshooting.mjs';
 import { textOf } from '../../../../shared/values/readers.mts';
 import type { AnalyzerTask } from '../tasks.mts';
+import { MEMORY_ADVICE, isOutOfMemory } from '../../../../shared/processes/memory/node-heap.mts';
 
 export type AnalyzerReport = { readonly findings: readonly { readonly tool?: unknown }[] };
 
@@ -26,15 +27,28 @@ export function reportFromAnalyzerOutput(
   { status, signal, stdoutText, stderrText }: ChildOutput,
 ): AnalyzerReport {
   if (typeof status !== 'number' || !task.acceptedExitCodes.includes(status)) {
-    const exit =
-      status === null ? `signal ${textOf(signal ?? 'unknown')}` : `exit ${textOf(status)}`;
-    const detail = stderrText.trim() || stdoutText.trim() || 'no diagnostic output';
     throw troubleshootingError(
-      `${task.name} crashed with ${exit}: ${detail}`,
+      crashMessage(task.name, { status, signal, stdoutText, stderrText }),
       TROUBLESHOOTING_ANCHORS.analyzerCrashed,
     );
   }
   return parseReport(stdoutText, task.name, task.reportedTools);
+}
+
+function crashMessage(
+  name: string,
+  { status, signal, stdoutText, stderrText }: ChildOutput,
+): string {
+  if (isOutOfMemory(stderrText)) {
+    return `${name} ran out of memory. ${MEMORY_ADVICE}`;
+  }
+  const exit = status === null ? `signal ${textOf(signal ?? 'unknown')}` : `exit ${textOf(status)}`;
+  const detail = stderrText.trim() || stdoutText.trim() || 'no diagnostic output';
+  const killed =
+    signal === 'SIGKILL'
+      ? ' A SIGKILL usually means the system ran out of memory. ' + MEMORY_ADVICE
+      : '';
+  return `${name} crashed with ${exit}: ${detail}${killed}`;
 }
 
 function parsedReport(rawReport: unknown, analyzerName: string): AnalyzerReport {

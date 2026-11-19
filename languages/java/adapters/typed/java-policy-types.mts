@@ -44,7 +44,8 @@ export type RunnerConfig = {
   readonly exclude?: readonly string[] | undefined;
   readonly exceptions?: readonly ExceptionEntry[] | undefined;
   readonly kotlin?: { readonly formatter?: string; readonly detektConfig?: string } | undefined;
-  readonly java?: { readonly buildTool?: string } | undefined;
+  readonly java?:
+    { readonly buildTool?: string; readonly analyzeGeneratedSources: boolean } | undefined;
   readonly mutationOff?: true | false;
   readonly duplicates?: { readonly skippedFolders?: unknown } | undefined;
   readonly tools?: ToolSettings | undefined;

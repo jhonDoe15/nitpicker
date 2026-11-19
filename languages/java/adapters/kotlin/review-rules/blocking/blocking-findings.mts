@@ -3,7 +3,7 @@ import type { BlockingProject } from '../typed/kotlin-flow-types.mts';
 import type { FindingFactory, ReviewFinding } from '../typed/review-finding-types.mts';
 import { classifyBlocking } from './classify.mts';
 import { projectIndex } from './project-index.mts';
-import { SOURCE_TOOL } from '../review-finding.mts';
+import { SOURCE_TOOL } from '../finding/review-finding.mts';
 import { TIMEOUT_RULE, callKey, scopeName, timeoutFindings } from './timeouts.mts';
 import { resolverFor } from './type-names.mts';
 

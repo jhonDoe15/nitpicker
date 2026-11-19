@@ -13,12 +13,17 @@ import {
 import { pathInside as untypedPathInside } from '../review-rules/java-sources.mts';
 import { readDeclarations } from '../review-rules/source-declarations.mts';
 import { readTestGraph, type TestProject } from './test-graph.mts';
-import { isAbstract as untypedIsAbstract } from './test-sources.mts';
+import { isAbstract as untypedIsAbstract, namesProductionCode } from './test-sources.mts';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../typed/java-values.mts';
 import { completeProjects } from '../typed/complete-projects.mts';
 
-type Judged = { readonly node: string; readonly file: string; readonly sourceHash: string };
+type Judged = {
+  readonly node: string;
+  readonly file: string;
+  readonly sourceHash: string;
+  readonly namesProduction: boolean;
+};
 
 const hash: (text: string) => string = untypedHash;
 const pathInside: (root: string, file: string) => string = untypedPathInside;
@@ -35,7 +40,10 @@ function testRoots(project: TestProject): string[] {
 function declaredTests(
   projectRoot: string,
   projects: readonly TestProject[],
-  declaring: ReadonlySet<string>,
+  {
+    declaring,
+    productionNames,
+  }: { declaring: ReadonlySet<string>; productionNames: ReadonlySet<string> },
 ): Judged[] {
   return projects.flatMap((project) => {
     const nodes = [...declaring].filter((node) => node.startsWith(`${project.qualifier}\0`));
@@ -53,9 +61,20 @@ function declaredTests(
       const simple = className.slice(className.lastIndexOf('.') + 1);
       return isAbstract(text, simple, { kotlinOpen: true })
         ? []
-        : [{ node, file: declared.file, sourceHash: hash(text) }];
+        : [
+            {
+              node,
+              file: declared.file,
+              sourceHash: hash(text),
+              namesProduction: namesProductionCode(text, productionNames),
+            },
+          ];
     });
   });
+}
+
+function isJudged({ file, namesProduction }: Judged): boolean {
+  return !(isEndToEnd(file) || namesProduction);
 }
 
 function findingsByFile(
@@ -92,9 +111,9 @@ export function readTestRuntimeFindings(
     return [];
   }
   const graph = readTestGraph(complete);
-  const declared = declaredTests(projectRoot, complete, graph.declaring);
-  const judged = declared.filter(({ file }) => !isEndToEnd(file));
-  const excluded = declared.filter(({ file }) => isEndToEnd(file)).map(({ node }) => node);
+  const declared = declaredTests(projectRoot, complete, graph);
+  const judged = declared.filter(isJudged);
+  const excluded = declared.filter((test) => !isJudged(test)).map(({ node }) => node);
   if (declared.length === 0) {
     return [];
   }

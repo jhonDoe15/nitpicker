@@ -112,6 +112,8 @@ const BANNED = {
     '87 PLR1711',
     '91 PLR0124',
     '95 PLR1714',
+    '99 PLW1514',
+    '104 PLW1514',
   ],
   'settings.py': ['7 PLW1507', '8 PLW1508', '9 PLE1507'],
   'special/dunders.py': [

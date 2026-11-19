@@ -15,7 +15,6 @@ const frameworkConventions: (projectRoot: string) => { readonly defaultExports: 
 const isReactProject: (settings: {
   readonly projectRoot: string;
   readonly react: object | undefined;
-  readonly javascript: boolean;
 }) => boolean = untypedIsReactProject;
 
 const readDependencyNames: (projectRoot: string) => string[] = untypedReadDependencyNames;

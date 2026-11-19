@@ -14,7 +14,7 @@ import { withFunctionSourceHashes } from '../reporting/source-hashes.mts';
 import { readLayout } from '../../typed/head-policy.mts';
 import { readSlowTestFindings } from '../../slow-tests/slow-tests.mts';
 import { runProjectTests } from '../../test-runners/run-project-tests.mts';
-import { passesWithoutMockPin } from '../../test-runners/mock-pin-rerun.mts';
+import { mockPinVerdict } from '../../test-runners/mock-pin-rerun.mts';
 import { hasProjectTests, projectTestFiles } from '../../test-runners/test-run.mts';
 import {
   TESTS_FAILED_SKIPPED_RULE,
@@ -43,7 +43,7 @@ export async function runCoverage(
   const run = await runProjectTests(options);
   if (run.failed) {
     rmSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), { force: true });
-    const mockPin = await passesWithoutMockPin(options, run, output);
+    const mockPin = await mockPinVerdict(options, run, output);
     return coverageFailureFindings(options, run, { mockPin });
   }
   if (run.report.numTotalTests === 0) {

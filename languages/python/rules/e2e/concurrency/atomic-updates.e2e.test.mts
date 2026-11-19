@@ -3,7 +3,7 @@ import { useScripts } from '../../test-support/python-rule-scripts.mts';
 
 const { outcomes, itOutcomes, describeRules } = useScripts({
   enabled: process.env['NITPICKER_PYTHON_E2E'] === '1',
-  hidden: ['module-level-mutable-state'],
+  hidden: ['module-level-mutable-state', 'reset-skipped-on-failure'],
 });
 const all = useScripts({ enabled: true });
 

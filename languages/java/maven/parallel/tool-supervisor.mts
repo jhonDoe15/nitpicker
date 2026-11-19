@@ -1,6 +1,6 @@
 import { type ChildProcess, spawn } from 'node:child_process';
 import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
-import { withToolHeap } from './tool-slots.mts';
+import { withToolHeap } from './slots/tool-slots.mts';
 
 const TOOL_SOURCE = [
   'const chunks = [];',

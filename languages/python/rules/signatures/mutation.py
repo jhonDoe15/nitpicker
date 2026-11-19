@@ -1,86 +1,24 @@
 import ast
 
-from checks.common import dotted_name, finding, last_name
-from review.fields import TYPED_DICT, base_class, record_kind
+from checks.common import dotted_name, finding
 from signatures.annotations import (
     FUNCTION_TYPES,
-    TRANSPARENT_WRAPPERS,
-    subscript_arguments,
     decorator_names,
     is_hook,
-    members_of,
-    parameters_of,
     qualified_name,
 )
 from signatures.copies import copy_positions
+from reach.kinds import (
+    ANY_MUTATORS,
+    CONTAINERS,
+    IN_PLACE_OPERATORS,
+    OPERATOR_SYMBOLS,
+    container_parameters,
+)
+from reach.derived import derived_events
 from signatures.scopes import key_of, position, visible_nodes
 
 RULE = "parameter-mutation"
-UNION_NAMES = {"Union", "Optional"}
-MAX_UNION_MEMBERS = 24
-CONTAINERS = {
-    "list": {"append", "extend", "insert", "remove", "pop", "clear", "sort", "reverse"},
-    "dict": {"update", "setdefault", "pop", "popitem", "clear"},
-    "set": {
-        "add",
-        "discard",
-        "remove",
-        "pop",
-        "clear",
-        "update",
-        "difference_update",
-        "intersection_update",
-        "symmetric_difference_update",
-    },
-    "deque": {
-        "append",
-        "appendleft",
-        "extend",
-        "extendleft",
-        "insert",
-        "remove",
-        "pop",
-        "popleft",
-        "clear",
-        "reverse",
-        "rotate",
-    },
-    "bytearray": {"append", "extend", "insert", "remove", "pop", "clear", "reverse"},
-}
-KIND_BY_NAME = {
-    "list": "list",
-    "List": "list",
-    "MutableSequence": "list",
-    "dict": "dict",
-    "Dict": "dict",
-    "MutableMapping": "dict",
-    "defaultdict": "dict",
-    "DefaultDict": "dict",
-    "OrderedDict": "dict",
-    "Counter": "dict",
-    "ChainMap": "dict",
-    "set": "set",
-    "Set": "set",
-    "MutableSet": "set",
-    "deque": "deque",
-    "Deque": "deque",
-    "bytearray": "bytearray",
-}
-OPERATOR_SYMBOLS = {
-    ast.Add: "+=",
-    ast.Mult: "*=",
-    ast.BitOr: "|=",
-    ast.BitAnd: "&=",
-    ast.Sub: "-=",
-    ast.BitXor: "^=",
-}
-IN_PLACE_OPERATORS = {
-    "list": (ast.Add, ast.Mult),
-    "dict": (ast.BitOr,),
-    "set": (ast.BitOr, ast.BitAnd, ast.Sub, ast.BitXor),
-    "deque": (ast.Add, ast.Mult),
-    "bytearray": (ast.Add, ast.Mult),
-}
 MODULE_MUTATORS = {
     "random.shuffle",
     "heapq.heappush",
@@ -95,69 +33,6 @@ MODULE_MUTATORS = {
 
 
 FIXED_SIGNATURE_DECORATORS = {"override", "overload"}
-ANY_MUTATORS = set().union(*CONTAINERS.values())
-
-
-def parsed(node):
-    if not (isinstance(node, ast.Constant) and isinstance(node.value, str)):
-        return node
-    try:
-        return ast.parse(node.value.strip(), mode="eval").body
-    except (SyntaxError, ValueError, RecursionError, MemoryError):
-        return None
-
-
-def annotation_parts(node):
-    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
-        return [node.left, node.right], None
-    if isinstance(node, ast.Subscript):
-        arguments = subscript_arguments(node)
-        wrapper = last_name(node.value)
-        if wrapper in UNION_NAMES:
-            return arguments, None
-        if wrapper in TRANSPARENT_WRAPPERS:
-            return arguments[:1], None
-        return [], node.value
-    return [], node
-
-
-def annotation_classes(annotation):
-    pending, found = [annotation], []
-    for node in pending:
-        if len(pending) > MAX_UNION_MEMBERS:
-            break
-        parts, named = annotation_parts(parsed(node))
-        pending.extend(parts)
-        if named is not None:
-            found.append(named)
-    return found
-
-
-def is_typed_dict(annotation, context):
-    if annotation is None:
-        return False
-    return any(
-        found is not None and record_kind(found[0], found[1]) == TYPED_DICT
-        for found in (
-            base_class(context, node) for node in annotation_classes(annotation)
-        )
-    )
-
-
-def container_kind(annotation, context):
-    named = next(
-        (KIND_BY_NAME[name] for name in members_of(annotation) if name in KIND_BY_NAME),
-        None,
-    )
-    return "dict" if named is None and is_typed_dict(annotation, context) else named
-
-
-def container_parameters(function, context):
-    kinds = {
-        argument.arg: container_kind(argument.annotation, context)
-        for argument in parameters_of(function)
-    }
-    return {name: kind for name, kind in kinds.items() if kind is not None}
 
 
 def root_key(node):
@@ -278,6 +153,16 @@ def is_private_helper(function, context):
     return private or enclosing_function(function, context) is not None
 
 
+def derived_findings(function, context, taken):
+    found, reported = [], set()
+    for label, node in derived_events(function, context):
+        if label not in reported and node.lineno not in taken:
+            reported.add(label)
+            subject = f"{label} ({qualified_name(function, context)})"
+            found.append(finding(context.path, RULE, subject, node))
+    return found
+
+
 def function_findings(function, context):
     if (
         is_hook(function)
@@ -285,11 +170,13 @@ def function_findings(function, context):
         or decorator_names(function) & FIXED_SIGNATURE_DECORATORS
     ):
         return []
-    return [
+    found = [
         item
         for name, kind in container_parameters(function, context).items()
         for item in parameter_findings(function, name, kind, context)
     ]
+    taken = {item["line"] for item in found}
+    return [*found, *derived_findings(function, context, taken)]
 
 
 def check(context):

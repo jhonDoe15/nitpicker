@@ -12,15 +12,8 @@ function exempt(message: string, classAnnotations: readonly string[] | undefined
 }
 
 describe('class exemptions', () => {
-  it('drops FieldCanBeFinal inside JPA entity, embeddable and mapped superclass classes only', () => {
-    expect([
-      exempt(FINAL, ['jakarta.persistence.Entity']),
-      exempt(FINAL, ['javax.persistence.Embeddable']),
-      exempt(FINAL, ['jakarta.persistence.MappedSuperclass']),
-      exempt(FINAL, ['lombok.Data']),
-      exempt(FINAL, []),
-      exempt(FINAL, undefined),
-    ]).toStrictEqual([true, true, true, false, false, false]);
+  it('no longer spares FieldCanBeFinal, which pmd/FieldCanBeFinal reports instead', () => {
+    expect(exempt(FINAL, ['jakarta.persistence.Entity'])).toBe(false);
   });
 
   it('drops PrivateConstructorForUtilityClass on Spring configuration and ArchUnit classes only', () => {

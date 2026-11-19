@@ -134,6 +134,9 @@ export function parseRunnerArguments(
       preset: values.get('--preset'),
       kotlinFormatter: values.get('--kotlin-formatter'),
       buildTool: values.get('--build-tool'),
+      ...(values.get('--analyze-generated-sources') === 'true'
+        ? { analyzeGeneratedSources: true }
+        : {}),
       ...parseMutation(values.get('--mutation')),
       kotlinDetektConfig: values.get('--kotlin-detekt-config'),
       duplicateSkippedFolders: parseSkippedFolders(values.get('--duplicate-skipped-folders')),
@@ -188,6 +191,7 @@ const RUNNER_OPTIONS = [
   '--preset',
   '--kotlin-formatter',
   '--build-tool',
+  '--analyze-generated-sources',
   '--mutation',
   '--kotlin-detekt-config',
   '--file-limits',

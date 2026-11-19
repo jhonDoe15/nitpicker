@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "uninjectable-delay",
+    "mention": "accept the delay as a parameter"
+  }
+]

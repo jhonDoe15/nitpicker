@@ -42,11 +42,47 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   and a `TODO` or `FIXME` carries an issue (`# TODO(#123): ...`, `# TODO PROJ-123: ...` or a link).
 - Signatures: a value with three states is an enum, not `bool | None`; test `None` with
   `x if x is not None else default`, never `x or default`; return a new list or dict instead of
-  changing an argument (`items.append`). When code moves, change every caller and delete the old
+  changing an argument (`items.append`, also `message.content[0].pop(k)`; `copy.deepcopy` first for nested
+  data). Hand a module-level dict, list or set to a class as a copy (`copy.deepcopy(DEFAULTS)`) and return a
+  tuple, `frozenset` or `MappingProxyType` from a `@cache` function (`shared-state-mutation`). When code
+  moves, change every caller and delete the old
   name: no alias (`Old = New`), module `__getattr__`, `@deprecated` or `DeprecationWarning` shim.
+- Arguments go in the order of the parameters: passing `docs` into the slot of `proc` when `docs` is another
+  parameter of the callee is a swap (`swapped-arguments`); pass by keyword when the order is easy to mix up.
 - A branch that handles `None` either leaves or is the whole story (`null-branch-fall-through`):
   `if value is None: out.append("null")` followed by `value.name` fails on the `None` path or handles the
   value twice. End the branch with `return` (or `raise`), or put the use in an `else`.
+- A function does not call itself, directly or through another function of the module or class (`self-recursion`): a retry or poll is a `for attempt in range(attempts)` loop, a tree walk is a loop over a worklist that each step extends with the node's children, flat data is a comprehension. An exception fits only when the recursion is bounded and deliberate.
+- Domain code (a `domain` directory) does not change what it was given (`mutating-method-in-domain`):
+  `items.append(x)`, `items.sort()` or `table.update(other)` on a parameter. Build a new value with a
+  comprehension or an unpacking (`[*items, x]`, `{**table, **other}`, `sorted(items)`), or copy the argument
+  first (`items = list(items)`). A list or dict created and filled in the same function is fine.
+- Parsed or posted input can hold a key with `null`: `body.get("alt", "")` and `"k" in body` then still give `None`
+  (`null-valued-input-key`). Write `body.get("alt") or ""` for an empty default, or
+  `v if (v := body.get("n")) is not None else 0` where `0` is valid, and test `body.get("k") is not None`.
+- Request, session, cookie, token-header, remote-document and coordinator data can lack a key: read it with
+  `.get(key)` and handle `None`, or test `key in data` first, never `request.session[KEY]` or
+  `self.coordinator.data[device_id]` (`missing-key-subscript`).
+- A generator, `map`, `filter` or `zip` result is read once: a second loop, `in` test or forwarded call sees
+  nothing (`iterator-read-twice`). Materialize it first (`items = list(items)`); in a Django `save` override
+  write `update_fields = kwargs["update_fields"] = list(update_fields)` before testing it.
+- Hand every parameter on: an override passes what the base method declares
+  (`super().parse(result, partial=partial)`), a wrapper passes the keyword its callee shares, and
+  `serialize()` returns every `__init__` argument (`parameter-not-forwarded`).
+- Handle an empty id list or an unsaved row before the query: `queryset.none()` or `pk__in=ids`, never an empty `Q()` branch, `reduce(or_, ..., Q())` or a `Q()` filled in a loop with no emptiness check, since a filter without conditions matches every row (`empty-filter-condition`).
+- Django `get`, `get_or_create` and `update_or_create` look up by the primary key, a unique field or every field of a unique constraint, never by a name or an `|` of `Q` objects; use `filter(...).first()` when several rows are possible and put JSON, array and text fields in `defaults={...}` (`non-unique-lookup`).
+- Django values that can be `None` (a `null=True` field, `.first()`, `.last()`, `cleaned_data.get(...)`, `request.user` attributes) are checked before use: `if x is None: return`, `x or default`, `getattr(x, "a", None)` or `filter(field__isnull=False)` (`nullable-dereference`). A Django project configures `django-stubs` (mypy plugin) or `django-types` (pyright) so these values are Optional (`django-types-missing`).
+- Django query settings name real things: `search_fields`, `ordering`, `list_filter` and `filterset_fields` entries are fields or `__` paths that end at a column (`["app__name"]`, not the relation `"app"`), and a `ModelChoiceFilter` gets the queryset of the model its relation points to, with a `to_field_name` that exists (`unresolved-query-field`, `filter-model-mismatch`).
+- DRF serializer fields say what the model allows: `allow_null=True` over a `null=True` column or a reverse one-to-one relation (also for a nested `read_only` serializer), `required=False` over a blank or default column, and a method field that can return `None` has an `Optional` annotation or `@extend_schema_field(..., allow_null=True)` (`serializer-null-mismatch`).
+- A serializer `Meta.fields` list keeps the fields most other serializers of the model expose, or the serializer is named as a variant (`BriefDeviceSerializer`, `NestedDeviceSerializer`) (`serializer-fields-omitted`).
+- A django-tables2 column over a value that is not a database field (a property, a `GenericForeignKey`, a related manager) says how it sorts: `orderable=False`, `order_by=(...)` with real fields or an `order_<name>` method (`unsortable-table-column`).
+- Methods that return a new value (`str.strip`, `datetime.replace`, `Path.with_suffix`, a queryset `filter`)
+  must have their result assigned or returned (`query = query.filter(...)`); `qs.delete()` and
+  `get_or_create()` return a tuple that is always true, so unpack it before testing (`discarded-new-value`).
+- Return the result of a helper that builds the function's own result
+  (`return self.async_update_and_abort(...)`, `return self.executor.stage_ok()`); as the last statement of the
+  function or of a branch it is dropped and the function goes on or ends without a result
+  (`unreturned-result`).
 - Regexes: an argument built into a `re` pattern goes through `re.escape(value)`; plain text is
   compared with `in`, `startswith` or `==` (`regex-unescaped-value`).
   Every part of a literal pattern must change what it matches (`a|b|a`, `[_a-z_]` and `x{1}` are
@@ -62,3 +98,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `email.message`, `werkzeug.http` or `http.cookies.SimpleCookie` instead of `split(",")` or `split(";")`
   (`http-value-case`, `hand-split-http-header`). The request header mapping ignores the case of a name; a
   library that is itself the parser takes an exception.
+- Call the base member when you override one that carries state: `super().available and ...`,
+  `super().save(*args, **kwargs)`, `super().setUp()`; the overrides of a member in the project, and the known
+  contracts of Home Assistant, Django and test cases, build on it (`override-without-super`).
+- Keep a sync function and its async twin (`batch_iterate`/`abatch_iterate`, `_stream`/`_astream`) in step:
+  the same parameters, early returns, caught exception types and calls, or one shared implementation both call
+  (`async-twin-drift`).

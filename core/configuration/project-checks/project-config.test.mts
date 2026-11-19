@@ -19,7 +19,7 @@ function project(config: object, files: readonly string[]): string {
 
 function unanalyzed(file: string): Error {
   return new Error(
-    `nitpicker.config.json: "preset": "javascript" does not analyze .jsx and .tsx files, and ${file} is one. ` +
+    `nitpicker.config.json: "preset": "javascript" does not analyze .tsx files, and ${file} is one. ` +
       'Use "preset": "typescript", which reads them, or list the path in "exclude".',
   );
 }
@@ -35,7 +35,7 @@ describe('config checks that need the project', () => {
     expect(validateConfig({ base: 'origin/main' })).toEqual({ base: 'origin/main' });
   });
 
-  it.each(['src/App.tsx', 'test/ui/View.jsx'])(
+  it.each(['src/App.tsx', 'test/ui/View.tsx'])(
     'rejects the javascript preset when %s would go unanalyzed',
     (file) => {
       const root = project({ preset: 'javascript' }, [file, 'src/a.js']);
@@ -45,7 +45,9 @@ describe('config checks that need the project', () => {
 
   it('accepts the javascript preset for .ts files, an excluded .tsx file and other presets', () => {
     const javascript = { preset: 'javascript' };
-    expect(loadConfig(project(javascript, ['src/a.js', 'src/b.ts']))).toEqual(javascript);
+    expect(loadConfig(project(javascript, ['src/a.js', 'src/b.ts', 'src/c.jsx']))).toEqual(
+      javascript,
+    );
     const excluded = { preset: 'javascript', exclude: ['src/legacy/**'] };
     expect(loadConfig(project(excluded, ['src/legacy/Old.tsx']))).toEqual(excluded);
     const typescript = { preset: 'typescript' };

@@ -128,7 +128,8 @@ Part of the [Java preset guide](../java-preset.md).
   finding, and the `class is an internal JDK API` diagnostic `SunApi` adds at the `.class` of a
   literal it already reported is dropped; different columns or messages on a line stay apart. Identity: a hash of the check and the
   message's first line, with
-  `line <n>` removed, and `#2`, `#3` for repeats in one file in source order; no line, no path and
+  every line reference (`line 18`, `line(s): 1193, 1211`, `lines 1052 and 1060`) reduced to `line`
+  (`withoutLineReferences`, which PMD's subjects use too), and `#2`, `#3` for repeats in one file in source order; no line, no path and
   no `Did you mean` text, so moved or reformatted code stays baselined and a renamed file follows
   the rename map.
 - **Policy: every check that catches a bug class or names one allowed form.** All 641 checks of
@@ -136,11 +137,11 @@ Part of the [Java preset guide](../java-preset.md).
   (`reviewedChecks` in `checks.json`, with the reviewed Error Prone and NullAway versions under
   `reviewed`; a unit test fails when the init script or the Maven path pins other versions, and
   the e2e test fails when the jar's checks differ from the reviewed ones). On: every ERROR and
-  WARNING check Error Prone enables by default except 10, plus 107 of its off-by-default checks (for
-  example `FieldCanBeLocal`, `FieldCanBeFinal`, `IdentifierName`,
+  WARNING check Error Prone enables by default except 10, plus 106 of its off-by-default checks (for
+  example `FieldCanBeLocal`, `IdentifierName`,
   `PrivateConstructorForUtilityClass`, `RedundantThrows`, `CheckedExceptionNotThrown`,
   `ThrowSpecificExceptions`, `NonFinalStaticField`, `BanSerializableRead`,
-  `UseCorrectAssertInTests`): 593 checks. A check is off only when another check that is always on
+  `UseCorrectAssertInTests`): 592 checks. A check is off only when another check that is always on
   reports every case it does at the same place, it fights another tool, needs an annotation library a project would add only for it (Error Prone's own
   annotations, Guava, auto-common), flags legitimate code with no allowed form, or picks one of two
   forms that are both valid conventions (`var` or the explicit type, `final` on parameters and
@@ -217,7 +218,7 @@ Part of the [Java preset guide](../java-preset.md).
   `RedundantNullCheck`, `ExtendsObject`, `UnrecognisedJavadocTag`,
   `SuppressWarningsWithoutExplanation`, and NullAway's passed or returned `@Nullable`), plus
   `PrivateConstructorForUtilityClass` at `@FieldNameConstants` (the generated `Fields` class).
-  Declaration checks such as `FieldCanBeFinal` are kept even when the
+  Declaration checks such as `FieldCanBeLocal` are kept even when the
   declaration starts with a Lombok annotation, and so is NullAway's uninitialized-field finding at
   `@Data` or `@NoArgsConstructor`, which NullAway reports for the same field without Lombok.
   The sources whose nearest `lombok.config` (walking up from each source's directory until
@@ -320,7 +321,13 @@ Part of the [Java preset guide](../java-preset.md).
   own compiled classes on its class path, as the Lombok split already does, and keeps its own
   patch directory. Maven passes the size of the tool pool and gives the runner's JVM the heap of two
   pool slots (`-XX:MaxRAMPercentage`, ahead of the slot share in `JDK_JAVA_OPTIONS`); Gradle passes
-  the number of cores. On commons-lang (646 files) the run took 71 s on 4 workers instead of 116 s,
+  the number of cores and its JVM gets the slot share in `JDK_JAVA_OPTIONS`.
+- **The build's own compiler arguments.** On Gradle the runner gets `options.allCompilerArgs`, so
+  arguments a `CommandLineArgumentProvider` adds count too, and a `--module-path` (or `-p`) the build
+  passes that way is merged into the module path the runner builds from the classpath. When Error
+  Prone still cannot compile sources the build's own compile compiled, the module gets a
+  `tool-skipped` note for Error Prone with the first lines of the cause, and the other tools'
+  findings are kept. On commons-lang (646 files) the run took 71 s on 4 workers instead of 116 s,
   with the same 8027 diagnostics.
 - **`Immutable` only when it can match.** The check walks every supertype of every class, which
   takes minutes on deep interface hierarchies (javaparser-core: over 15 minutes). It reports only
@@ -357,6 +364,7 @@ Part of the [Java preset guide](../java-preset.md).
 | `EmptyIf`                        | off     | errorprone/UnnecessarySemicolon, which is always on, reports every if (c); at the same position with a clearer fix                                                                                                                        |
 | `EqualsGetClass`                 | on      | getClass() and instanceof in equals are both valid conventions, with different semantics for subclasses                                                                                                                                   |
 | `EqualsMissingNullable`          | off     | Nullness is NullAway's job here; this check only asks for an annotation                                                                                                                                                                   |
+| `FieldCanBeFinal`                | off     | pmd/FieldCanBeFinal reports the same fields from the parse PMD already does; this check alone cost about 85% of Error Prone's time on a 100k-line module. It still runs when `--fix` applies its fix                                      |
 | `FieldCanBeStatic`               | off     | Crashes Error Prone (2.26 to 2.52) when it rewrites a Lombok @Getter field initialized from a constant; spotbugs/SS_SHOULD_BE_STATIC reports such a field when its initializer is a compile-time constant                                 |
 | `FieldMissingNullable`           | off     | Nullness is NullAway's job here; this check only asks for an annotation                                                                                                                                                                   |
 | `IfChainToSwitch`                | on      | An if-chain and a switch are both valid forms                                                                                                                                                                                             |
@@ -389,6 +397,23 @@ Part of the [Java preset guide](../java-preset.md).
 | `Varifier`                       | off     | var and the explicit type are both valid conventions; nitpicker never flags either                                                                                                                                                        |
 | `VoidMissingNullable`            | off     | Nullness is NullAway's job here; this check only asks for an annotation                                                                                                                                                                   |
 | `YodaCondition`                  | off     | Fights pmd/LiteralsFirstInComparisons, which wants the constant first                                                                                                                                                                     |
+
+`pmd/FieldCanBeFinal` (a rule of `pmd-ruleset.xml`, so main and test sources) replaces the finding of
+`FieldCanBeFinal` without Error Prone's attribution pass. It reports a private, non-volatile field that
+is written once in its declaration, once in the one instance initializer, once in each constructor that
+does not call `this(...)`, or (static) once in the one static initializer, and nowhere else, as plain
+`=` statements of that block. It leaves out a field with an annotation other than `@Deprecated` and
+`@SuppressWarnings` (so a Lombok-annotated field such as `@Getter` or `@NonNull` is never reported),
+and every field of a class annotated `@Entity`,
+`@Embeddable`, `@MappedSuperclass` or with Lombok's `@Data`, `@Setter`, `@Builder`, `@SuperBuilder` and
+constructor annotations. A field that a constructor or an instance initializer of its class reads
+(a static field: a static initializer), also inside a lambda or an anonymous class there, is left
+alone, because `final` would need the write to come first; only the plain assignment target is not a
+read. A write in a lambda, a loop, a branch, a `try`, a nested
+class or through another reference leaves the field alone, and a field written by an inner class of the
+same name is matched by name, not by symbol. `--fix` selects the Error Prone fix of
+`FieldCanBeFinal` for it, so `pmd/FieldCanBeFinal` is the rule to select, and a baseline or exception
+for `errorprone/FieldCanBeFinal` no longer applies.
 
 ## ERROR checks that keep the exceptions route
 
@@ -574,7 +599,7 @@ The pairs:
 - line: `errorprone/IntLongMath` over `errorprone/NarrowCalculation`
 - line: `errorprone/InfiniteRecursion` over `spotbugs/IL_INFINITE_RECURSIVE_LOOP`
 - line: `errorprone/ComparisonOutOfRange` over `spotbugs/INT_BAD_COMPARISON_WITH_SIGNED_BYTE`
-- line: `errorprone/NonFinalStaticField` over `spotbugs/MS_FINAL_PKGPROTECT`, `spotbugs/MS_SHOULD_BE_FINAL`, `errorprone/FieldCanBeFinal`
+- line: `errorprone/NonFinalStaticField` over `spotbugs/MS_FINAL_PKGPROTECT`, `spotbugs/MS_SHOULD_BE_FINAL`, `pmd/FieldCanBeFinal`
 - line: `errorprone/MutablePublicArray` over `spotbugs/MS_MUTABLE_ARRAY`, `spotbugs/MS_PKGPROTECT`
 - line: `errorprone/NullAway` over `pmd/NullAssignment`, `pmd/ReturnEmptyCollectionRatherThanNull`
 - line: `errorprone/InvalidPatternSyntax` over `spotbugs/RE_BAD_SYNTAX_FOR_REGULAR_EXPRESSION`
@@ -715,6 +740,5 @@ same message as `System.out`; a line of the body that calls `printStackTrace()` 
 
 | Check                               | Spared in classes annotated                                                                       | Why                                                                                                  |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `FieldCanBeFinal`                   | `@Entity`, `@Embeddable`, `@MappedSuperclass` (jakarta and javax persistence)                     | JPA forbids final persistent fields                                                                  |
 | `IdentifierName`                    | `@AnalyzeClasses`                                                                                 | ArchUnit names a rule after its `@ArchTest` field, and its convention is a lower_snake_case sentence |
 | `PrivateConstructorForUtilityClass` | `@Configuration` (and so `@SpringBootApplication`, `@SpringBootConfiguration`), `@AnalyzeClasses` | Spring's CGLIB proxy and ArchUnit's runner need a non-private constructor                            |

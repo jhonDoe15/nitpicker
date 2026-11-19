@@ -67,4 +67,7 @@ export type ProductionAnalysis = {
   readonly rankings: Readonly<Record<MetricGroup, readonly Ranked[]>>;
   readonly functions: AnalysisFunction[];
   readonly classes: AnalysisClass[];
+  readonly unparsed: readonly UnparsedSource[];
 };
+
+export type UnparsedSource = { readonly file: string; readonly reason: string };

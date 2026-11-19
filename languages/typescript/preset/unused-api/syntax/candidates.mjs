@@ -77,6 +77,24 @@ export function isOptionsParameter(parameter) {
   return OPTIONS_TYPE.test(referenceName(parameter.type) ?? '');
 }
 
+/** The destructured properties of an options parameter, by name, for code without types. */
+export function bindingMembers(parameter) {
+  if (!ts.isObjectBindingPattern(parameter.name)) {
+    return new Map();
+  }
+  const elements = parameter.name.elements;
+  if (elements.some((element) => element.dotDotDotToken !== undefined)) {
+    return new Map();
+  }
+  const named = elements.map((element) => [
+    element.propertyName === undefined ? element.name : element.propertyName,
+    element,
+  ]);
+  return new Map(
+    named.filter(([name]) => ts.isIdentifier(name)).map(([name, element]) => [name.text, element]),
+  );
+}
+
 export function isComponentCandidate({ candidate, fileName, react }) {
   return (
     react &&

@@ -9,7 +9,7 @@ import {
   projectFilePaths as untypedProjectFilePaths,
   projectFilesUnder as untypedProjectFilesUnder,
 } from '../../../../../shared/project-files/project-files.mjs';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mjs';
+import { rootPattern as untypedRootPattern } from '../../layout/source-root/root-paths.mjs';
 import { collectFileLimitFindings as untypedCollectFileLimitFindings } from '../../../../../shared/rules/file-limits.mjs';
 import { folderDepthFindings as untypedFolderDepthFindings } from '../../../../../shared/rules/size/folder-depth.mjs';
 import { FOLDER_DEPTH_DEFAULTS as untypedFolderDepthDefaults } from '../../../../../shared/project-rules/size-rules.mjs';
@@ -48,7 +48,11 @@ export const projectFilesUnder: (
   },
 ) => string[] = untypedProjectFilesUnder;
 
-export const escapeRegExp: (value: string) => string = untypedEscapeRegExp;
+const rootPattern: (roots: readonly string[]) => string = untypedRootPattern;
+
+export function rootExpression(roots: readonly string[]): RegExp {
+  return new RegExp(rootPattern(roots));
+}
 
 export const collectFileLimitFindings: (
   projectRoot: string,

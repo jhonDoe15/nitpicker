@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "warning-filter-in-function",
+    "mention": "warnings.warn(message, MyDeprecationWarning, stacklevel=2)",
+    "subject": "warnings.catch_warnings()"
+  }
+]

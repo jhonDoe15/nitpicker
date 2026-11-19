@@ -2,11 +2,13 @@
   {
     "tool": "python-rules",
     "rule": "orm-schema-sync",
-    "mention": "alembic upgrade head"
+    "mention": "alembic upgrade head",
+    "alongside": ["managed-resource-outside-composition-root"]
   },
   {
     "tool": "python-rules",
     "rule": "orm-query-logging",
-    "mention": "slow-query log"
+    "mention": "slow-query log",
+    "alongside": ["managed-resource-outside-composition-root"]
   }
 ]

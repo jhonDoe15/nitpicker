@@ -1,4 +1,4 @@
-import { backward, between, forward, frameAt, startsNewLine } from './source-file.mts';
+import { backward, between, forward, frameAt, startsNewLine } from './source/source-file.mts';
 import { accessorName, lookup, refAt, valueKind } from './values/values.mts';
 import { isComparison, usedAsBound, usedLater } from './sinks.mts';
 import type {

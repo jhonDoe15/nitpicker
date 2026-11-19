@@ -109,7 +109,8 @@ describe('the Gradle init script and the formatter style', () => {
       'doLast {',
       'def exit = executionResult.get().exitValue',
       'if (exit != 0) {',
-      "def detail = formatErrors.toString('UTF-8').readLines().findAll { it.trim() && !it.startsWith('Picked up ') }.take(20).join('\\n')",
+      "def detail = formatErrors.toString('UTF-8').readLines()",
+      ".findAll { it.trim() && !(it ==~ /^(?:NOTE: )?Picked up .*/) }.take(20).join('\\n')",
       `throw new GradleException("\${mainClass.get().contains('palantir') ? 'palantir-java-format' : 'google-java-format'} " +`,
       `"failed with exit code \${exit}: \${detail}")`,
       '}',
@@ -118,10 +119,10 @@ describe('the Gradle init script and the formatter style', () => {
     ]);
   });
 
-  it('checks the same main and test Java files before and during formatting', () => {
+  it('checks the same hand-written main and test Java files before and during formatting', () => {
     expect(blockStartingWith('def javaFiles = {')).toEqual([
       'def javaFiles = {',
-      '(mainSources.files + testSourceDirectories()).findAll { it.exists() }',
+      '(lintedMainDirs() + lintedTestDirs()).findAll { it.exists() }',
       ".collectMany { directory -> fileTree(directory) { include '**/*.java' }.files }.unique().sort()",
       '}',
     ]);

@@ -21,6 +21,7 @@ from truthiness.evidence import (
     type_variables,
 )
 from truthiness.fields import field_name, field_owners
+from truthiness.lookups import lookup_findings
 from truthiness.numbers import scope_nodes
 
 RULE = "presence-truthiness"
@@ -288,5 +289,5 @@ def check(context):
         item
         for node in ast.walk(context.tree)
         if isinstance(node, FUNCTION_TYPES)
-        for item in Scan(node, context).run()
+        for item in [*Scan(node, context).run(), *lookup_findings(node, context)]
     ]

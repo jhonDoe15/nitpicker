@@ -20,12 +20,17 @@ import {
 } from '../../../../../shared/values/readers.mts';
 import { importPolicyModule, relativeProjectPath, runNodeTool } from '../typed/tooling.mts';
 import path from 'node:path';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import type { Finding } from '../../static-checks/shared.mts';
 import type { QualityAreaOptions } from '../typed/area-types.mts';
 import { toolErrorFinding } from '../reporting/test-report.mts';
 import { mutationSkipFor } from './skips/mutation-skips.mts';
+import {
+  uninstrumentedFile,
+  uninstrumentedNote,
+  withoutMutatedFile,
+} from './skips/uninstrumented.mts';
 import {
   CRACO_JEST_CONFIG,
   cracoJestConfigText,
@@ -112,18 +117,19 @@ async function strykerReport(
       createdFiles,
       testRunner,
     });
-    const skippedFindings = runStrykerOrExplainSkip(options, configPath, written.command);
-    if (skippedFindings !== undefined) {
-      return { skipped: skippedFindings };
+    const run = runStrykerOnce(options, configPath, written);
+    if (run.skipped !== undefined) {
+      return { skipped: run.skipped };
     }
     return {
       report: withMutationSourceHashes(
         withoutProjectIgnoredMutants(
-          readMutationReport(options.projectRoot, fieldOf(written.config, 'coverageAnalysis')),
-          written.config,
+          readMutationReport(options.projectRoot, fieldOf(run.config, 'coverageAnalysis')),
+          run.config,
         ),
         options.projectRoot,
       ),
+      notes: run.notes,
     };
   } finally {
     await Promise.all(createdFiles.paths().map((filePath) => rm(filePath, { force: true })));
@@ -202,28 +208,51 @@ async function writeStrykerConfig({
   return { command: testRunner.command, config };
 }
 
-function runStrykerOrExplainSkip(
+type StrykerOutcome =
+  | { readonly skipped: Finding[]; readonly config?: undefined; readonly notes?: undefined }
+  | { readonly skipped?: undefined; readonly config: StrykerConfig; readonly notes: Finding[] };
+
+function runStrykerOnce(
   options: QualityAreaOptions,
   configPath: string,
-  command: RunnerCommand,
-): Finding[] | undefined {
+  written: { readonly command: RunnerCommand; readonly config: StrykerConfig },
+): StrykerOutcome {
   try {
-    runNodeTool({
-      options,
-      relativeToolPath: '@stryker-mutator/core/bin/stryker.js',
-      arguments_: ['run', configPath],
-      environment: command.environment,
-      acceptedStatuses: [0],
-    });
-    return undefined;
+    runStryker(options, configPath, written.command);
+    return { config: written.config, notes: [] };
   } catch (error) {
-    const skip =
-      error instanceof Error ? mutationSkipFor(error.message, options.snapshot) : undefined;
-    if (skip === undefined) {
-      throw error;
+    const failure = error instanceof Error ? uninstrumentedFile(error.message) : undefined;
+    const config = failure && withoutMutatedFile(written.config, failure.file);
+    if (failure === undefined || config === undefined) {
+      return { skipped: explainedSkip(options, error) };
     }
-    return [toolErrorFinding(options, skip)];
+    writeFileSync(configPath, `export default ${JSON.stringify(config, null, 2)};\n`);
+    try {
+      runStryker(options, configPath, written.command);
+    } catch (retryError) {
+      return { skipped: explainedSkip(options, retryError) };
+    }
+    return { config, notes: [uninstrumentedNote(options.analyzerName, failure)] };
   }
+}
+
+function runStryker(options: QualityAreaOptions, configPath: string, command: RunnerCommand): void {
+  runNodeTool({
+    options,
+    relativeToolPath: '@stryker-mutator/core/bin/stryker.js',
+    arguments_: ['run', configPath],
+    environment: command.environment,
+    acceptedStatuses: [0],
+  });
+}
+
+function explainedSkip(options: QualityAreaOptions, error: unknown): Finding[] {
+  const skip =
+    error instanceof Error ? mutationSkipFor(error.message, options.snapshot) : undefined;
+  if (skip === undefined) {
+    throw error;
+  }
+  return [toolErrorFinding(options, skip)];
 }
 
 function isMutationReport(value: unknown): value is MutationReport {

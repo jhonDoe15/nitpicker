@@ -35,6 +35,8 @@ def shown(value, length=SHOWN_LENGTH):
 
 
 def finding(path, rule, subject, node):
+    if isinstance(node, ast.comprehension):
+        node = node.iter
     end = getattr(node, "end_lineno", None) or node.lineno
     return {
         "rule": rule,

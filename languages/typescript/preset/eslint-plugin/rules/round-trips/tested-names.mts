@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, realpathSync, statSync, type Dirent } from 'node:fs';
 import path from 'node:path';
 import type TypeScript from 'typescript';
 import { ts } from '../typed/typescript-views.mts';
@@ -12,6 +12,8 @@ import {
 import { walkedPaths as untypedWalkedPaths } from '../../../../../../shared/project-files/tree-walk.mjs';
 import { reachableNames as untypedReachableNames } from '../../../../../../shared/rules/round-trips/round-trips.mjs';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
+import { attempt } from '../../../../../../shared/values/attempt/attempt.mts';
+import { containedPath } from '../../../../../../shared/paths/contained-path.mjs';
 
 type Scan = {
   readonly tests: Set<string>[];
@@ -143,12 +145,46 @@ function isSkipped(projectRoot: string, absolute: string, entry: Named): boolean
   return entry.name.startsWith('.') || EXCLUDED.test(toPosix(path.relative(projectRoot, absolute)));
 }
 
+function walkedUnder(projectRoot: string, root: string, prefix: string): string[] {
+  return walkedPaths(root, {
+    skipDirectory: (absolute, entry) =>
+      isSkipped(projectRoot, path.join(projectRoot, prefix, path.relative(root, absolute)), entry),
+    includeLinks: undefined,
+  }).map((file) => (prefix === '' ? file : `${prefix}/${file}`));
+}
+
+function linkedDirectory(projectRoot: string, entry: Dirent): string | undefined {
+  if (
+    !entry.isSymbolicLink() ||
+    isSkipped(projectRoot, path.join(projectRoot, entry.name), entry)
+  ) {
+    return undefined;
+  }
+  const target = attempt(() =>
+    realpathSync(
+      containedPath(path.resolve(projectRoot), entry.name, {
+        outside: (name: string) => `${name} is not inside the project`,
+      }),
+    ),
+  );
+  if (!target.ok) {
+    return undefined;
+  }
+  const directory = attempt(() => statSync(target.value).isDirectory());
+  return directory.ok && directory.value ? target.value : undefined;
+}
+
+function projectFiles(projectRoot: string): string[] {
+  const linked = readdirSync(projectRoot, { withFileTypes: true }).flatMap((entry) => {
+    const target = linkedDirectory(projectRoot, entry);
+    return target === undefined ? [] : walkedUnder(projectRoot, target, entry.name);
+  });
+  return [...walkedUnder(projectRoot, projectRoot, ''), ...linked];
+}
+
 function testFilesOf(projectRoot: string): string[] {
   const layout = readLayout();
-  return walkedPaths(projectRoot, {
-    skipDirectory: (absolute, entry) => isSkipped(projectRoot, absolute, entry),
-    includeLinks: undefined,
-  }).filter(
+  return projectFiles(projectRoot).filter(
     (file) => layout.isTestFile(file) && !layout.isExcluded(file) && !layout.isGeneratedPath(file),
   );
 }
