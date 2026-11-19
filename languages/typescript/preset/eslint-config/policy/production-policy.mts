@@ -17,6 +17,7 @@ import {
   securitySupportGlobs,
   type SecurityFacts,
 } from './security-facts.mts';
+import { valueAndWebRules } from '../production/value-web-rules.mts';
 
 export type PolicyOptions = LearnedConfig & {
   readonly react?: unknown;
@@ -123,33 +124,7 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-repeated-string-literal': 'error',
     'nitpicker/no-hardcoded-secret': 'error',
     'nitpicker/no-secret-in-log': 'error',
-    'nitpicker/no-blank-number-coercion': 'error',
-    'nitpicker/no-empty-every-signal': 'error',
-    'nitpicker/no-shadowed-spread-key': 'error',
-    'nitpicker/no-lookup-as-presence': 'error',
-    'nitpicker/no-in-presence-check': 'error',
-    'nitpicker/no-unescaped-css-selector': 'error',
-    'nitpicker/no-unstripped-remote-text': 'error',
-    'nitpicker/no-hand-quoted-generated-code': 'error',
-    'nitpicker/no-incomplete-escaping': 'error',
-    'nitpicker/no-string-length-as-byte-count': 'error',
-    'nitpicker/no-lossy-utf8-decode': 'error',
-    'nitpicker/no-non-latin1-header-value': 'error',
-    'nitpicker/no-btoa-on-runtime-text': 'error',
-    'nitpicker/no-unencoded-url-part': 'error',
-    'nitpicker/no-dynamic-import-of-path': 'error',
-    'nitpicker/no-unchecked-url-sink': 'error',
-    'nitpicker/no-case-sensitive-path-compare': 'error',
-    'nitpicker/no-double-decode': 'error',
-    'nitpicker/no-directory-passing-existence-check': 'error',
-    'nitpicker/no-unresolved-relative-url': 'error',
-    'nitpicker/no-slash-only-redirect-guard': 'error',
-    'nitpicker/no-case-mixed-header-merge': 'error',
-    'nitpicker/no-time-only-unique-name': 'error',
-    'nitpicker/no-unguarded-json-parse': 'error',
-    'nitpicker/no-truncating-split-limit': 'error',
-    'nitpicker/no-prototype-key-access': 'error',
-    'nitpicker/no-inconsistent-comparator': 'error',
+    ...valueAndWebRules,
     'nitpicker/no-dropped-log-arguments': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
