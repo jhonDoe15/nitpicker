@@ -545,6 +545,12 @@ the part of a fixture after its `yield`, and `asyncio.gather` over releases with
 preset and `go-rules/cleanup-skipped` in the Go preset (an early `return` after a failed `Close`). A release
 inside `try`/`finally`, try-with-resources, `use`, `ExitStack` or `errors.Join` is left alone.
 
+Set and reset pairs whose reset is skipped when the body raises: `reset-skipped-on-failure` in the Python preset
+reports a `contextlib.contextmanager` whose `yield` is not in a `try` with a `finally` and is followed by the undo
+of something done before it (`ContextVar.reset`, a restored attribute or global, `removeHandler`, `unregister`,
+`close`), and the same pair around a call in a plain function. A `try`/`finally`, `ExitStack.callback` and a class
+with `__exit__` are left alone.
+
 Pending requests left hanging by a close: `nitpicker/settle-pending-on-close` (strict preset, production source)
 reports a `Map`, object or array of callbacks, resolve and reject pairs or deferreds in a class or factory with a
 close, dispose, stop or shutdown function that never settles it (rejecting or calling each entry, or passing

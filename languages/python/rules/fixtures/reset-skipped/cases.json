@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "reset-skipped-on-failure",
+    "mention": "var.reset(token)",
+    "subject": "tracing: handlers_var.set() before handlers_var.reset()"
+  }
+]

@@ -103,6 +103,7 @@ are listed at the end.
 | Streamed rows                                   | a fixed-size batch flushed inside the loop over a streamed query or server-side cursor                                                                                                 | `streamed-rows-collected` (script)                                                                                                                                                                                                                                                                                                                                                  |
 | Concurrent remote calls                         | `asyncio.Semaphore` acquired in the task, or chunks of fixed size, or one batch call                                                                                                   | `unbounded-fan-out` (script)                                                                                                                                                                                                                                                                                                                                                        |
 | Cleanup order                                   | `ExitStack` / `AsyncExitStack`, or `try`/`finally`; `gather(..., return_exceptions=True)`                                                                                              |
+| Resets after a failure                          | `try:` the work, `finally:` the reset (`var.reset(token)`, restoring the saved value, removing the registration); `ExitStack.callback`; a class with `__exit__`                        | `reset-skipped-on-failure` (script)                                                                                                                                                                                                                                                                                                                                                 |
 | Task lifetimes                                  | open the resource around the whole task group, or inside the child; await the task first                                                                                               | `task-outlives-resource` (script)                                                                                                                                                                                                                                                                                                                                                   |
 | Trio/AnyIO cleanup                              | `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()`                                                                                        | `unshielded-cleanup-await` (script)                                                                                                                                                                                                                                                                                                                                                 |
 | Files and connections                           | `with open(path) as handle:`, `Path(path).read_text()`, `contextlib.closing(...)`                                                                                                      | `unclosed-inline-resource` (script), `SIM115`                                                                                                                                                                                                                                                                                                                                       |
@@ -1274,6 +1275,27 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   `gather(..., return_exceptions=True)` followed by a raise of the first failure. Steps on the same object do not
   count (`writer.close()` then `await writer.wait_closed()`, `sock.shutdown()` then `sock.close()`,
   `pool.shutdown()` then `self.pool = None`).
+- `reset-skipped-on-failure` reports a set-and-reset pair whose reset is skipped when the code between them
+  raises, so the state stays set for every later call. In a function decorated with `contextlib.contextmanager`
+  or `asynccontextmanager` (production code only), a `yield` that is not inside a `try` with a `finally` (or with
+  an `except BaseException`, `except Exception` or bare `except`) is followed, in the same block, by a statement
+  that undoes something done before it: `var.reset(token)` for a `token = var.set(...)`, an assignment to an
+  attribute, subscript or `global` name that was assigned before the `yield` (or saved with `old = target.attr`),
+  `removeHandler`, `remove`, `discard`, `unregister`, `unsubscribe` or `disconnect` of the same receiver and
+  arguments that an earlier `addHandler`, `add`, `append`, `register`, `subscribe` or `connect` set up, and `close`,
+  `aclose` or `release` of a name assigned from a call before the `yield`. In any other function, the same
+  pairs are reported when a call sits between the two steps in one block and the reset is not in a `finally`;
+  there only the saved-value form (`old = target.attr` ... `target.attr = old`) counts as an assignment pair, the
+  open and close pair is not read (unclosed resources have their own rules), and a receiver that is a local
+  or a parameter of the function (a `visiting` set, a `path` list) is skipped, so only module, class and `self`
+  state, context variables and other process-wide state are reported. A status field that moves forward
+  (`job.state = "done"`) is not reported. A lifespan function (named `lifespan`, with `app` as first
+  parameter or passed as `lifespan=`) is not reported, because the framework never throws into it. Pytest
+  fixtures, generators that are not context
+  managers and test files are not reported. Allowed: `try: yield` with the reset in `finally:`, an
+  `except BaseException:` that resets and raises again, `ExitStack.callback`, and a class with `__exit__`. A
+  reset in an `except Exception` handler that does not reset is not told apart from one that does, so that form
+  stays quiet.
 - `pending-unsettled-on-close` reports a close that clears pending futures without failing them. In a class
   with a `close`, `aclose`, `__exit__`, `__aexit__`, `dispose`, `destroy`, `shutdown`, `stop` or `disconnect`
   method, an attribute that is a dict, list or set of futures (a `create_future()`, `Future()` or `Deferred()`

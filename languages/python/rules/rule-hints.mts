@@ -31,6 +31,7 @@ import { STYLE_HINTS } from './hints/ruff-style.mts';
 import { SIMPLER_LOGIC_HINTS } from './hints/logic/simpler-logic.mts';
 import { STREAM_HINTS } from './hints/streams/streams.mts';
 import { LIFECYCLE_HINTS } from './hints/lifecycles/lifecycles.mts';
+import { FAILURE_HINTS } from './hints/failures/failures.mts';
 import { TIME_UNIT_HINTS } from './hints/time/time-units.mts';
 import { RUNTIME_SLIP_HINTS } from './hints/slips/runtime-slips.mts';
 import { RULES_TOOL } from './hints/tool.mts';
@@ -116,6 +117,7 @@ export const RULE_HINTS: readonly RuleHint[] = [
   ...CONTAINER_HINTS,
   ...STREAM_HINTS,
   ...LIFECYCLE_HINTS,
+  ...FAILURE_HINTS,
   ...HTTP_VALUE_HINTS,
   ...AIRFLOW_HINTS,
   ...DATALOADER_HINTS,

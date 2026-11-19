@@ -106,6 +106,7 @@
   "python-rules/remote-call-in-transaction": ["reliability", "persistence"],
   "python-rules/remote-call-under-lock": ["reliability", "async"],
   "python-rules/repeated-string-literal": ["maintainability"],
+  "python-rules/reset-skipped-on-failure": ["reliability"],
   "python-rules/resolver-query-per-parent": ["performance", "persistence"],
   "python-rules/retry-in-test": ["tests"],
   "python-rules/retry-without-idempotency": ["reliability"],
