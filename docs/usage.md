@@ -2714,6 +2714,7 @@ runs only when `--fix --rule` names one of its rules.
 | java, kotlin | `structure/duplicate-branch` (switch cases and `when` entries) | `jvm-merge-switch-labels` | merges the labels of cases with the same body into the first case (review) |
 | java | `pmd/StaticForwardingWrapper` | `java-static-forwarding-wrapper` | `review`: points the callers of a private or package-private static method that only passes its parameters on at the target in another class of the project, and deletes the wrapper; leaves what it cannot prove (see below) |
 | java | `pmd/CompatibilityShim` | `java-compatibility-shim` | `review`: points the callers of a private or package-private `@Deprecated` static method that only forwards to a sibling method at that method, and deletes the deprecated one with its Javadoc; leaves what it cannot prove (see below) |
+| java | `pmd/HttpWithoutTimeout` | `java-http-without-timeout` | `review`: adds a ten-second deadline to a `java.net.http` request or client, a JAX-RS `ClientBuilder` and an `HttpURLConnection` that has none; leaves an Apache client and a builder kept in a variable |
 | java | `checkstyle/UpperEll` | `java-upper-ell` | turns the `l` suffix of a `long` literal into `L`, outside strings, text blocks and comments |
 | java | `pmd/CatchLogWithoutException` |
 | kotlin | `detekt/detekt.style.NewLineAtEndOfFile` | `kotlin-final-newline` | ends a file with a line break, CRLF when the file uses CRLF |
@@ -2773,6 +2774,12 @@ static method of a class of the project that is the only one of its name, with t
 types and return type and no `throws` clause, and the callers have to be allowed to see it (the
 fix adds the import of its class where a caller lacks one). Both are `review` recipes, since a
 public or protected method may have callers outside the project, and are left as is in that case.
+
+HTTP deadlines. `java-http-without-timeout` adds a fixed ten-second deadline to the calls that
+`pmd/HttpWithoutTimeout` reports in a main source set, for `java.net.http`, `HttpURLConnection`
+and the JAX-RS `ClientBuilder`. It writes `Duration` or `TimeUnit` as the file already imports
+them, and imports them when it does not. It is a `review` recipe because a deadline changes what
+a slow server does to the caller; choose another duration by editing the call afterwards.
 
 Near-duplicate extraction. The `near-duplicate` recipes handle a `same` or `parameterizable` pair
 whose copies sit in one file (TypeScript, JavaScript), in one class (Java), or in two files of one
