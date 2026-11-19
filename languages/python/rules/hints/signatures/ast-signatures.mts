@@ -28,6 +28,13 @@ function mutationDescription(subject = ''): string {
     : `\`${mutation}\` changes the argument the caller passed to \`${owner}\``;
 }
 
+function domainMutationDescription(subject = ''): string {
+  const [, mutation = subject, owner] = OWNED_MUTATION.exec(subject) ?? [];
+  return owner === undefined
+    ? `\`${subject}\` changes a value the domain function was given`
+    : `\`${mutation}\` changes a value the caller passed to \`${owner}\`, and domain code builds new values instead`;
+}
+
 function shimDescription(subject = ''): string {
   if (subject === '__getattr__') {
     return 'A module `__getattr__` keeps names that were removed or renamed working';
@@ -105,6 +112,13 @@ export const SIGNATURE_HINTS: readonly RuleHint[] = [
     describe: mutationDescription,
     allowed:
       'Build and return a new value (`[*items, item]`, `{**table, key: value}`), or copy the argument first (`items = [*items]`) when the function needs a working copy; do not hand a result back through a parameter.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['mutating-method-in-domain'],
+    describe: domainMutationDescription,
+    allowed:
+      'Domain code builds new values: use a comprehension or an unpacking (`[*items, item]`, `[x for x in items if x]`, `{**table, key: value}`, `sorted(items)`), or copy the argument first (`items = list(items)`) when the function needs a working copy. A list or dict created and filled in the same function is fine.',
   },
   {
     tool: RULES_TOOL,

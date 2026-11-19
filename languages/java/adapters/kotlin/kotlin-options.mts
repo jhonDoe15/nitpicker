@@ -18,6 +18,7 @@ import { ROUND_TRIP_EXCEPTION_RULE } from '../review-rules/round-trips/round-tri
 import { COPIED_CONSTANT_EXCEPTION_RULE } from '../review-rules/copied-constants/copied-constants.mts';
 import { MAX_VALUE_EXCEPTION_RULE } from '../review-rules/max-value-sums/max-value-sums.mts';
 import { FIXED_DELAY_EXCEPTION_RULE } from '../review-rules/fixed-delays/fixed-delays.mts';
+import { MUTATING_METHOD_EXCEPTION_RULE } from '../review-rules/mutating-methods/mutating-methods.mts';
 import { NULL_FALL_THROUGH_EXCEPTION_RULE } from '../review-rules/null-fall-through/null-fall-through.mts';
 import { SELF_RECURSION_EXCEPTION_RULE } from '../review-rules/self-recursion/self-recursion.mts';
 import {
@@ -57,6 +58,7 @@ export const KOTLIN_EXCEPTION_RULES: string[] = [
     NULL_FALL_THROUGH_EXCEPTION_RULE,
     SELF_RECURSION_EXCEPTION_RULE,
     FIXED_DELAY_EXCEPTION_RULE,
+    MUTATING_METHOD_EXCEPTION_RULE,
     ...KOTLIN_LISTED_RULES,
     ...KOTLIN_REVIEW_EXCEPTION_RULES,
   ]),

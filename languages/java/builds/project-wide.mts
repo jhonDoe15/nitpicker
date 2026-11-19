@@ -11,6 +11,7 @@ import {
   jdepsEdges,
   fixedDelayFindings,
   maxValueFindings,
+  mutatingMethodFindings,
   nullFallThroughFindings,
   selfRecursionFindings,
   kotlinMetricsOf,
@@ -271,6 +272,7 @@ export function projectWideReport(
     ...nullFallThroughFindings(projectRoot, { projects, kotlin, policy }),
     ...selfRecursionFindings(projectRoot, { projects, kotlin, policy }),
     ...fixedDelayFindings(projectRoot, { projects, kotlin, policy }),
+    ...mutatingMethodFindings(projectRoot, { projects, kotlin, policy }),
     ...features.findings,
   ];
   return { findings, imports: reuse.imports };

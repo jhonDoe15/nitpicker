@@ -72,6 +72,7 @@
   "python-rules/orm-query-logging": ["security", "persistence"],
   "python-rules/orm-schema-sync": ["reliability", "persistence"],
   "python-rules/parameter-mutation": ["maintainability"],
+  "python-rules/mutating-method-in-domain": ["maintainability"],
   "python-rules/patch-misses-lookup": ["tests"],
   "python-rules/pending-unsettled-on-close": ["bug", "async"],
   "python-rules/presence-truthiness": ["bug"],

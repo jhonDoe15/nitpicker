@@ -9,6 +9,7 @@ import (
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/database"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/delays"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/design"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/domainmutation"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/failures"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/guards"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/honesty"
@@ -39,6 +40,7 @@ func Analyzers() []*analysis.Analyzer {
 			delays.Analyzer,
 			optional.Analyzer,
 			nilbranch.Analyzer,
+			domainmutation.Analyzer,
 			overflow.Analyzer,
 			requests.Analyzer,
 			jobs.Analyzer,

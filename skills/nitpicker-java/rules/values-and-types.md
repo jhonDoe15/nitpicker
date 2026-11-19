@@ -168,3 +168,7 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   (`pmd/UninjectableDelay`): `Thread.sleep(RETRY_DELAY_MS)` or `TimeUnit.SECONDS.sleep(...)` on a
   `private static final` makes a test wait it out. Take the delay as a parameter, or a field the constructor
   sets, that defaults to the constant (`this(RETRY_DELAY_MS)`).
+- Domain code does not change what it was given (`pmd/MutatingMethodInDomain`, classes of a `domain` package):
+  `items.add(x)`, `index.put(k, v)`, `list.sort(...)` or `date.setTime(...)` on a parameter. Build a new value:
+  `List.copyOf` plus the change, `Stream.toList()`, `Map.copyOf`, or a new collection created and filled
+  in the same method.

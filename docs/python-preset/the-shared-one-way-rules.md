@@ -57,6 +57,7 @@ are listed at the end.
 | Recursion over unknown depth                    | a `for attempt in range(attempts)` loop for a retry, a loop over a worklist for a tree walk, a comprehension for flat data |
 | Delays tests can set                            | `def poll(delay=RETRY_DELAY)` with `time.sleep(delay)`                                                                                                                                 | `uninjectable-delay` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Request text in a lookup                        | `name.strip()` before the lookup, or `ConfigDict(str_strip_whitespace=True)` on a shared base model                                                                                    | `untrimmed-request-text` (script)                                                                                                                                                                                                                                                                                                                                                   |
+| Changing an argument in domain code             | a comprehension or unpacking (`[*items, item]`, `sorted(items)`), or copy the argument first       
 | Changing an argument                            | build and return a new value, or copy the argument first                                                                                                                               | `parameter-mutation` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Compatibility shims                             | change every caller in the same change and delete the old name                                                                                                                         | `compatibility-shim` (script)                                                                                                                                                                                                                                                                                                                                                       |
 | Values in regex patterns                        | `re.escape(value)` inside a pattern, `in`/`startswith`/`==` for plain text, `re.compile(pattern)` with a whole pattern                                                                 | `regex-unescaped-value` (script)                                                                                                                                                                                                                                                                                                                                                    |
@@ -1572,6 +1573,18 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   ORM entity) are skipped like class instances in the TypeScript preset. A constructor
   that changes its argument is reported like any other function. The allowed form returns a new
   value (`[*items, item]`, `{**table, key: value}`) or copies the argument first.
+- `mutating-method-in-domain` reports, in a file under a `domain` directory (not tests; the scope of
+  `any-in-domain` and `io-in-domain`), a function that calls `.append`, `.extend`, `.insert`, `.pop`,
+  `.remove`, `.sort`, `.update`, `.setdefault`, `.add`, `.discard`, `.clear` or another mutator of its type on a
+  parameter it did not create. A parameter annotated as a container (the types of `parameter-mutation`) takes
+  every mutator of its type; an unannotated parameter takes only `.append`, `.appendleft`, `.extend`,
+  `.extendleft`, `.insert`, `.sort`, `.setdefault`, `.discard` and `.popitem`, since `.add`, `.pop` or `.update`
+  can belong to any object. Unlike `parameter-mutation`, it also covers private helpers, nested functions and
+  `pytest_*` hooks; a call that `parameter-mutation` already reports is reported once, by that rule. Not
+  reported: a list, dict or set created and filled in the same function, a parameter rebound before the first
+  call (`items = list(items)`), `self` and `cls`, and a one-hop alias. There is no automatic fix. The message
+  names the building forms: a comprehension, an unpacking (`[*items, item]`, `{**table, key: value}`),
+  `sorted(items)`, or a copy first.
 - `regex-unescaped-value` reports a function argument built into the pattern of a `re` or `regex`
   call (`compile`, `match`, `search`, `fullmatch`, `sub`, `subn`, `split`, `findall`, `finditer`,
   also imported by name or passed as `pattern=`) through an f-string, `+`, `%` or `str.format`,

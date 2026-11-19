@@ -100,6 +100,12 @@ const GROUPS = [
     python: 'uninjectable-delay',
     go: 'go-rules/uninjectable-delay',
   },
+  {
+    jvm: 'MutatingMethodInDomain',
+    typescript: 'nitpicker/no-mutating-method-in-domain',
+    python: 'mutating-method-in-domain',
+    go: 'go-rules/mutating-method-in-domain',
+  },
 ];
 
 function spring(rule) {
