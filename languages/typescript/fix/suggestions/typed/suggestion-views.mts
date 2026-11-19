@@ -1,5 +1,7 @@
 import {
+  isListedSuggestion as untypedIsListedSuggestion,
   isRuleSelected as untypedIsRuleSelected,
+  pickedSuggestions as untypedPickedSuggestions,
   suggestionName as untypedSuggestionName,
   suggestionRules as untypedSuggestionRules,
 } from '../suggestion-rules.mts';
@@ -14,7 +16,9 @@ export type LintMessage = {
   readonly line?: number | undefined;
   readonly fatal?: true | undefined;
   readonly fix?: LintFix | undefined;
-  readonly suggestions?: readonly { readonly fix?: LintFix | undefined }[] | undefined;
+  readonly suggestions?:
+    | readonly { readonly fix?: LintFix | undefined; readonly messageId?: string | undefined }[]
+    | undefined;
 };
 
 export const isRuleSelected: (
@@ -22,6 +26,13 @@ export const isRuleSelected: (
   selectedRules: readonly string[],
 ) => boolean = untypedIsRuleSelected;
 
+export const isListedSuggestion: (
+  rule: string | undefined,
+  messageId: string | undefined,
+) => boolean = untypedIsListedSuggestion;
+
 export const suggestionName: (rule: string | undefined) => string = untypedSuggestionName;
 
 export const suggestionRules: Readonly<Record<string, string>> = untypedSuggestionRules;
+
+export const pickedSuggestions: Readonly<Record<string, string>> = untypedPickedSuggestions;

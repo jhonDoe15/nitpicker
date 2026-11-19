@@ -1,0 +1,22 @@
+export function rethrow(run: () => number): number {
+  try {
+    return run();
+  } catch (error) {
+    throw error;
+  }
+}
+
+export function rethrowWithFinally(run: () => number, log: string[]): number {
+  try {
+    return run();
+  } catch (error) {
+    throw error;
+  } finally {
+    log.push('done');
+  }
+}
+
+export function probe(): unknown {
+  const log: string[] = [];
+  return [rethrow(() => 1), rethrowWithFinally(() => 2, log), log];
+}

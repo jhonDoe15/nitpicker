@@ -1,5 +1,11 @@
 import { annotationIn } from './spring-names.mjs';
-import { BEAN, COMPLETABLE_FUTURE, POST_CONSTRUCT, SYNCHRONIZED } from './spring-types.mjs';
+import {
+  BEAN,
+  COMPLETABLE_FUTURE,
+  POST_CONSTRUCT,
+  STEREOTYPES,
+  SYNCHRONIZED,
+} from './spring-types.mjs';
 
 const INIT_NAMES = new Set(['afterPropertiesSet']);
 const STARTUP_NAMES = new Set([...INIT_NAMES, 'afterSingletonsInstantiated']);
@@ -36,7 +42,7 @@ export function factoryType(name) {
 }
 
 export function entriesOf(declaration) {
-  return declaration.annotationEntries ?? [];
+  return declaration.annotationEntries ?? declaration.annotations ?? [];
 }
 
 export function report(rule, declaration, symbol) {
@@ -45,6 +51,10 @@ export function report(rule, declaration, symbol) {
 
 export function has(view, declaration, fqns) {
   return annotationIn(view.resolve, entriesOf(declaration), fqns) !== undefined;
+}
+
+export function managed(view, declared) {
+  return declared !== undefined && has(view, declared, STEREOTYPES);
 }
 
 export function ownerOf(view, invocation) {
@@ -85,16 +95,17 @@ export function beanMethodNames(view, option) {
   );
 }
 
-function selfCallsByName(view) {
-  const byName = new Map();
-  for (const invocation of view.file.invocations) {
-    if (isSelfCall(view, invocation)) {
-      const calls = byName.get(invocation.name) ?? [];
-      calls.push(invocation);
-      byName.set(invocation.name, calls);
-    }
-  }
-  return byName;
+export function invocationsNamed(view, name) {
+  const named = view.memo('invocationsNamed', () =>
+    Map.groupBy(view.file.invocations, (invocation) => invocation.name),
+  );
+  return named.get(name) ?? [];
+}
+
+function callersOf(view, fn) {
+  return invocationsNamed(view, fn.name).filter(
+    (invocation) => isSelfCall(view, invocation) && ownerOf(view, invocation) === fn.owner,
+  );
 }
 
 function inStartOf(view, startFunctions, scopeId) {
@@ -106,7 +117,7 @@ function inStartOf(view, startFunctions, scopeId) {
   return fn !== undefined && startFunctions.has(fn);
 }
 
-function helpersOf(view, startFunctions, selfCalls) {
+function helpersOf(view, startFunctions) {
   if (startFunctions.size === 0) {
     return [];
   }
@@ -114,9 +125,7 @@ function helpersOf(view, startFunctions, selfCalls) {
     if (fn.visibility !== 'private') {
       return false;
     }
-    const callers = (selfCalls.get(fn.name) ?? []).filter(
-      (invocation) => ownerOf(view, invocation) === fn.owner,
-    );
+    const callers = callersOf(view, fn);
     return (
       callers.length > 0 && callers.every((call) => inStartOf(view, startFunctions, call.scope))
     );
@@ -124,9 +133,8 @@ function helpersOf(view, startFunctions, selfCalls) {
 }
 
 export function setupScopes(view, isStart) {
-  const selfCalls = selfCallsByName(view);
   const startFunctions = Array.from({ length: HELPER_LEVELS }).reduce(
-    (known) => new Set([...known, ...helpersOf(view, known, selfCalls)]),
+    (known) => new Set([...known, ...helpersOf(view, known)]),
     new Set(view.file.functions.filter((fn) => isStart(fn))),
   );
   return (scopeId) => inStartOf(view, startFunctions, scopeId);

@@ -87,6 +87,7 @@ export type ProjectFinding = {
 export type ProjectFix = {
   readonly finding: ProjectFinding;
   readonly edits: readonly ProjectEdit[];
+  readonly note?: string;
 };
 
 export type ProjectPlan = {

@@ -1,0 +1,19 @@
+export async function load(read: () => number): Promise<number> {
+  return read();
+}
+
+export async function throws(): Promise<number> {
+  throw new Error('boom');
+}
+
+export async function probe(): Promise<unknown> {
+  const results: unknown[] = [await load(() => 1)];
+  try {
+    const pending = throws();
+    results.push('sync-ok');
+    await pending;
+  } catch (error) {
+    results.push(error instanceof Error ? error.message : 'other');
+  }
+  return results;
+}

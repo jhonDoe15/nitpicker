@@ -1,4 +1,4 @@
-import { annotationIn, typeArguments, typeName } from '../spring-names.mjs';
+import { annotationIn, simpleTypeName, typeArguments } from '../spring-names.mjs';
 import { BODY_STATUS } from '../../validation/constraint-names.mjs';
 import { bodyConstraints } from './body-constraints.mjs';
 import { has, report, returnTypeOf } from '../spring-scopes.mjs';
@@ -66,15 +66,11 @@ const SCALARS = new Set([
 ]);
 const STAR = '*';
 
-function simple(type) {
-  return typeName(type).split('.').at(-1);
-}
-
 function leaf(view, type) {
   if (type === STAR || view.is(type, ANY) || view.is(type, JSON_NODES)) {
     return true;
   }
-  if (!MAPS.has(simple(type))) {
+  if (!MAPS.has(simpleTypeName(type))) {
     return false;
   }
   const [, value] = typeArguments(type);
@@ -82,7 +78,7 @@ function leaf(view, type) {
 }
 
 function inner(type) {
-  const name = simple(type);
+  const name = simpleTypeName(type);
   if (MAPS.has(name)) {
     return typeArguments(type).slice(1);
   }
@@ -92,7 +88,7 @@ function inner(type) {
 function untyped(view, type) {
   return (
     leaf(view, type) ||
-    (BODIES.has(simple(type)) && typeArguments(type).length === 0) ||
+    (BODIES.has(simpleTypeName(type)) && typeArguments(type).length === 0) ||
     inner(type).some(
       (argument) => leaf(view, argument) || inner(argument).some((nested) => leaf(view, nested)),
     )
@@ -100,7 +96,7 @@ function untyped(view, type) {
 }
 
 function plainBody(type) {
-  const name = simple(type);
+  const name = simpleTypeName(type);
   if (SCALARS.has(name) || MAPS.has(name) || name.endsWith('Array')) {
     return true;
   }
@@ -109,7 +105,9 @@ function plainBody(type) {
     WRAPPERS.has(name) &&
     argumentsOf.some(
       (argument) =>
-        argument === STAR || SCALARS.has(simple(argument)) || MAPS.has(simple(argument)),
+        argument === STAR ||
+        SCALARS.has(simpleTypeName(argument)) ||
+        MAPS.has(simpleTypeName(argument)),
     )
   );
 }

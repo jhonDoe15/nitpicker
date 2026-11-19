@@ -4,6 +4,7 @@ import { checkoutModulePath as untypedCheckoutModulePath } from '../../../shared
 import { layeredPolicy as untypedLayeredPolicy } from './lint-engine/project-layer.mjs';
 import { fieldOf, fieldsOf, listOf, parseJson, textsOf } from '../../../shared/values/readers.mts';
 import type { Environment } from '../../../shared/processes/environment.mts';
+import { guardedEntries } from '../preset/eslint-config/fix-guards/guarded-plugins.mts';
 
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 
@@ -38,12 +39,14 @@ if (!(
 
 const selectedRules = selectedRuleIds(process.env['NITPICKER_DIFF_ESLINT_ONLY_RULES']);
 
-export default (
-  await layeredPolicy(
-    [...entriesOf(policyModule), ...scopedEntries(extraPolicyModule)],
-    process.env,
-  )
-).map((entry) => rebaseTypeScriptProject(entry, projectRoot, projectConfigPath));
+export default guardedEntries(
+  (
+    await layeredPolicy(
+      [...entriesOf(policyModule), ...scopedEntries(extraPolicyModule)],
+      process.env,
+    )
+  ).map((entry) => rebaseTypeScriptProject(entry, projectRoot, projectConfigPath)),
+);
 
 function entriesOf(module: unknown): PolicyEntry[] {
   return listOf(fieldOf(module, DEFAULT_EXPORT)).map(fieldsOf);

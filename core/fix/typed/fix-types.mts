@@ -128,6 +128,7 @@ export type RuleMatcher = RuleRef & {
   readonly pattern?: string;
   readonly findingTools?: readonly string[];
   readonly fixableIn?: readonly string[];
+  readonly suggestedIn?: readonly string[];
 };
 
 export type PresetRule = RuleRef & {

@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import nitpicker.kotlinpsi.bodies.Bodies;
+import nitpicker.kotlinpsi.bodies.Reads;
 import nitpicker.kotlinpsi.bodies.Throwing;
 import nitpicker.kotlinpsi.catches.Catches;
 import nitpicker.kotlinpsi.bodies.Initializers;
@@ -42,7 +43,8 @@ public final class FactsCollector {
   public FactsCollector(KtFile file, String text, String relative, boolean test, Set<String> nothing) {
     this.file = file;
     this.state = new State(file, text, relative, test);
-    this.declarations = new Declarations(state);
+    Reads reads = new Reads(!test);
+    this.declarations = new Declarations(state, reads);
     this.calls = new Calls(state);
     this.timeouts = new Timeouts(file, text, state.timeouts);
     this.predicates = new Predicates(state);
@@ -51,7 +53,7 @@ public final class FactsCollector {
     this.locking = new Locking(file, state::lineOf);
     this.lifetimes = new Lifetimes(file, state::lineOf);
     this.coroutines = new CoroutineFacts(file, text);
-    this.bodies = new Bodies(text, test, throwing, state.namesOf(HANDLER));
+    this.bodies = new Bodies(text, test, throwing, state.namesOf(HANDLER), reads);
     this.loads = test ? null : new LoadCalls(file, state::lineOf);
   }
 
@@ -107,18 +109,24 @@ public final class FactsCollector {
       return declarations.declareConstructor((KtSecondaryConstructor) element, frame);
     }
     if (element instanceof KtPropertyAccessor) {
-      return new Frame(frame, m("k", "fun", "name", accessorName((KtPropertyAccessor) element)));
+      Frame inner = new Frame(frame, m("k", "fun", "name", accessorName((KtPropertyAccessor) element)));
+      bodies.accessor((KtPropertyAccessor) element, inner);
+      return inner;
     }
     if (element instanceof KtClassInitializer) {
       return new Frame(frame, m("k", "init"));
     }
     if (element instanceof KtLambdaExpression) {
       Frame inner = new Frame(frame, Scopes.lambdaData((KtLambdaExpression) element, state));
+      bodies.lambda((KtLambdaExpression) element, inner);
       bodies.iterable(inner, element);
       return inner;
     }
     if (element instanceof KtLoopExpression) {
       Frame inner = new Frame(frame, Scopes.loopData((KtLoopExpression) element, state));
+      if (element instanceof KtForExpression) {
+        bodies.loop((KtForExpression) element, inner);
+      }
       bodies.iterable(inner, element);
       return inner;
     }

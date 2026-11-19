@@ -1,0 +1,13 @@
+type Options = { readonly size: number };
+
+export function sized({ size = 3 }: Options): number {
+  return size;
+}
+
+export function fromJson(text: string): number {
+  return sized(JSON.parse(text) as Options);
+}
+
+export function probe(): unknown {
+  return [sized({ size: 1 }), fromJson('{}'), fromJson('{"size":4}')];
+}

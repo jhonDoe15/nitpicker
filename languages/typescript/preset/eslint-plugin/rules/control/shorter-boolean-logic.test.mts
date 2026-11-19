@@ -7,13 +7,16 @@ const { tester, typed: typedCase } = decidedTester({ module: 'esnext' });
 type Found = readonly [condition: string, form: string, reason: string];
 
 function typed(code: string): TypedCase;
-function typed(code: string, found: Found): InvalidCase;
-function typed(code: string, found?: Found): TypedCase | InvalidCase {
+function typed(code: string, found: Found): InvalidCase & { output: string };
+function typed(code: string, found?: Found): TypedCase | (InvalidCase & { output: string }) {
   if (found === undefined) {
     return typedCase(code);
   }
   const [condition, form, reason] = found;
-  return typedCase(code, [{ messageId: 'shorter', data: { condition, form, reason } }]);
+  return {
+    ...typedCase(code, [{ messageId: 'shorter', data: { condition, form, reason } }]),
+    output: code.replace(condition, form),
+  };
 }
 
 const NUMBER = 'export function f(n: number, x: number, a: boolean, b: boolean, c: boolean)';
