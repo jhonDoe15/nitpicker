@@ -3,6 +3,7 @@ import { useScripts } from '../../test-support/python-rule-scripts.mts';
 const { itOutcomes, describeRules } = useScripts({
   enabled: process.env['NITPICKER_PYTHON_E2E'] === '1',
   hidden: [
+    'managed-resource-outside-composition-root',
     'http-without-timeout',
     'shell-command',
     'module-level-mutable-state',

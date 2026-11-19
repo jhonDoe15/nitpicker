@@ -2,7 +2,10 @@ import { describe } from 'vitest';
 import { useScripts, pythonLines as code } from '../../test-support/python-rule-scripts.mts';
 
 const enabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
-const { itOutcomes } = useScripts({ enabled, hidden: ['test-without-assertion'] });
+const { itOutcomes } = useScripts({
+  enabled,
+  hidden: ['self-recursion', 'test-without-assertion'],
+});
 
 const PIPE = ['def _pipe(docs, proc, kwargs):', '    return proc(docs, **kwargs)', '', ''];
 
