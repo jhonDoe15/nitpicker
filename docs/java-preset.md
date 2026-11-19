@@ -90,6 +90,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Copy-pasted tests](java-preset/copy-pasted-tests.md)
 - [Sums that overflow a maximum value](java-preset/sums-that-overflow-a-maximum-value.md)
 - [Null branches that fall through](java-preset/null-branches-that-fall-through.md)
+- [Self-recursion](java-preset/self-recursion.md)
 - [Console output of tests](java-preset/console-output-of-tests.md)
 - [Round-trip tests](java-preset/round-trip-tests.md)
 - [Error Prone and NullAway](java-preset/error-prone-and-nullaway.md)

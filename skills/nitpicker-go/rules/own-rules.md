@@ -78,6 +78,7 @@ the allowed form and ends with its exception entry.
 - A nil branch that does not leave is not followed by a use of the same value
   (`go-rules/nil-branch-fall-through`): `if v == nil { log.Println(...) }` then `v.Field` panics on the nil
   path. End the branch with `return` (or `continue`), or use an `else`.
+- A function does not call itself, directly or through another function of the package (`go-rules/self-recursion`): a retry or poll is a `for attempt := range attempts` loop, a tree walk is a loop over a worklist that each step appends the node's children to, flat data is a loop that appends or a `slices`/`maps` helper. An exception fits only when the recursion is bounded and deliberate.
 - Never add to a value that can hold the maximum of its type (`go-rules/max-value-overflow`): a
   constant, variable, field or parameter set to `math.MaxInt` (or `MaxInt32`, `MaxInt64`) that a sum or
   product turns negative as an index, slice bound, `make` length, `min`/`max` argument or comparison

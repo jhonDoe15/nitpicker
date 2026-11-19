@@ -72,6 +72,7 @@
   "pmd/MockedValueType": ["tests"],
   "pmd/NestedQuantifierRegex": ["performance", "security"],
   "pmd/NullBranchFallThrough": ["bug"],
+  "pmd/SelfRecursion": ["reliability", "maintainability"],
   "pmd/NullMapValue": ["bug"],
   "pmd/OptionalAsFieldOrParameter": ["maintainability"],
   "pmd/OptionalGet": ["simplification"],
