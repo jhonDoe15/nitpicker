@@ -62,6 +62,16 @@ describe('effect rules report', () => {
       "`'slug' in cleaned_input` is also true when the key is present with `null`, and the read after it then gets `None`",
     ],
     [
+      'missing-key-subscript',
+      'request|request.session[KEY]',
+      '`request.session[KEY]` raises `KeyError` for a session that expired or a cookie, header or parameter the client left out, and the request or the update fails with it',
+    ],
+    [
+      'missing-key-subscript',
+      'coordinator|self.coordinator.data[self._id]',
+      '`self.coordinator.data[self._id]` raises `KeyError` for a device that left the refreshed data, and the request or the update fails with it',
+    ],
+    [
       'remote-call-under-lock',
       'notify() > requests.post()|self._lock',
       '`notify()` (which calls `requests.post()`) makes a remote call while `self._lock` is held: every other caller waits for the remote latency, and a slow or hung remote service blocks them all',
