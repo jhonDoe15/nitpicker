@@ -19,7 +19,10 @@ type Binding = {
 };
 
 const { DefinitionType } = TSESLint.Scope;
-const SUITE_NAMES = new Set(['describe', 'suite']);
+const DESCRIBE = 'describe';
+const SUITE = 'suite';
+
+const SUITE_NAMES = new Set([DESCRIBE, SUITE, 'context']);
 const CASE_NAMES = new Set(['it', 'test', 'specify', 'xit', 'fit', 'xtest']);
 const TEST_MODULES = new Set([
   'vitest',
@@ -29,10 +32,27 @@ const TEST_MODULES = new Set([
   '@jest/globals',
   '@playwright/test',
 ]);
+const MODIFIERS = new Set([
+  'only',
+  'skip',
+  'todo',
+  'concurrent',
+  'sequential',
+  'shuffle',
+  'each',
+  'for',
+  'fails',
+  'failing',
+  'runIf',
+  'skipIf',
+  'serial',
+  'parallel',
+  'fixme',
+]);
 const MAX_EXTENSION_DEPTH = 4;
 const NOT_TESTS = [
   'step',
-  'describe',
+  DESCRIBE,
   'beforeEach',
   'afterEach',
   'beforeAll',
@@ -58,6 +78,30 @@ function rootIdentifierOf(callee: TSESTree.Node): TSESTree.Identifier | undefine
 
 function rootNameOf(callee: TSESTree.Node): string | undefined {
   return rootIdentifierOf(callee)?.name;
+}
+
+function memberNames(callee: TSESTree.Node): (string | undefined)[] {
+  return chainOf(callee, linkOf)
+    .filter((link) => link.type === AST_NODE_TYPES.MemberExpression)
+    .map((link) => (link.computed ? undefined : nameOf(link.property)))
+    .toReversed();
+}
+
+function testCallShape(node: TSESTree.Node): typeof SUITE | 'case' | undefined {
+  if (node.type !== AST_NODE_TYPES.CallExpression) {
+    return undefined;
+  }
+  const root = rootNameOf(node.callee) ?? '';
+  const names = memberNames(node.callee);
+  const isPlaywrightSuite = CASE_NAMES.has(root) && names[0] === DESCRIBE;
+  const modifiers = isPlaywrightSuite ? names.slice(1) : names;
+  if (!modifiers.every((name) => name !== undefined && MODIFIERS.has(name))) {
+    return undefined;
+  }
+  if (isPlaywrightSuite || SUITE_NAMES.has(root)) {
+    return SUITE;
+  }
+  return CASE_NAMES.has(root) ? 'case' : undefined;
 }
 
 function isRequireOfTestModule(init: TSESTree.Node | undefined): boolean {
@@ -132,13 +176,11 @@ export function chainHasProperty(callee: TSESTree.Node, name: string): boolean {
 }
 
 export function isSuiteCall(node: TSESTree.Node): node is TSESTree.CallExpression {
-  const root = node.type === AST_NODE_TYPES.CallExpression ? rootNameOf(node.callee) : undefined;
-  return root !== undefined && SUITE_NAMES.has(root);
+  return testCallShape(node) === SUITE;
 }
 
 export function isCaseCall(node: TSESTree.Node): node is TSESTree.CallExpression {
-  const root = node.type === AST_NODE_TYPES.CallExpression ? rootNameOf(node.callee) : undefined;
-  return root !== undefined && CASE_NAMES.has(root);
+  return testCallShape(node) === 'case';
 }
 
 function isInlineFunction(node: TSESTree.Node): node is InlineFunction {

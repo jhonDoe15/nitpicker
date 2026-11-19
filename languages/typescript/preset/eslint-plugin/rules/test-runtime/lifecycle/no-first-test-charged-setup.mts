@@ -5,6 +5,7 @@ import {
   perTestVisitors,
   registrationRoot,
 } from '../../analysis/test-code-analysis.mts';
+import { vocabularyOf } from '../../runner-apis/runner-option.mts';
 
 type StoredValue = TSESTree.AwaitExpression | TSESTree.CallExpression;
 
@@ -142,10 +143,11 @@ export const rule: TSESLint.RuleModule<'chargedSetup'> = {
     type: 'problem',
     schema: [],
     messages: {
-      chargedSetup: `"{{name}}" is memoized lazily at module level and filled by a call, so whichever test runs first pays for its setup, reports show that test as slow, and test order starts to matter. Compute it once in beforeAll and let tests read it. An exception fits only when the setup is cheap or the lazy memo is intended.`,
+      chargedSetup: `"{{name}}" is memoized lazily at module level and filled by a call, so whichever test runs first pays for its setup, reports show that test as slow, and test order starts to matter. Compute it once in {{sharedSetupHook}} and let tests read it. An exception fits only when the setup is cheap or the lazy memo is intended.`,
     },
   },
   create(context) {
+    const { sharedSetupHook } = vocabularyOf(context);
     return perTestVisitors(context, (node) => {
       if (node.type !== AST_NODE_TYPES.CallExpression) {
         return undefined;
@@ -158,7 +160,7 @@ export const rule: TSESLint.RuleModule<'chargedSetup'> = {
       if (target === undefined || !isModuleLevelMutable(context, target)) {
         return undefined;
       }
-      return { messageId: 'chargedSetup', data: { name: target.name } };
+      return { messageId: 'chargedSetup', data: { name: target.name, sharedSetupHook } };
     });
   },
 };

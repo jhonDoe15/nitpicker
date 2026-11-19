@@ -145,7 +145,7 @@ describe('head policy reader', () => {
     expect(resolveHeadPolicy(projectConfig, root).tools.prettier['projectConfigDigest']).not.toBe(
       before,
     );
-    expect(resolveHeadPolicy({}, root)).not.toHaveProperty('tools');
+    expect(resolveHeadPolicy({}, root).tools).toEqual({ tests: { detectedRunner: 'vitest' } });
   });
 
   it('exposes the configured entry points on the resolved layout', () => {

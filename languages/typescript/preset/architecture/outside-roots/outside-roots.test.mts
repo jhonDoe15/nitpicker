@@ -48,7 +48,7 @@ function project(files: Readonly<Record<string, string>>): string {
 
 async function cruise(files: Readonly<Record<string, string>>, options: OutsideRootsOptions = {}) {
   const baseDir = project(files);
-  const rule = outsideRootsRule('^src/', ['src'], options);
+  const rule = outsideRootsRule({ path: '^src/' }, ['src'], options);
   const result = await cruiseWithConfig(
     { forbidden: [rule], options: { tsConfig: { fileName: tsConfig } } },
     { baseDir, paths: ['src'], outputType: 'err-long' },
@@ -92,7 +92,7 @@ describe('outsideRootsRule', () => {
 
   it('fails an import of build output or unmarked generated code, and accepts marked generated code', async () => {
     const exclude = dependencyArchitectureExclude();
-    const rule = outsideRootsRule('^src/', ['src'], {
+    const rule = outsideRootsRule({ path: '^src/' }, ['src'], {
       generatedFilePattern: '^(?:generated/marked\\.ts)$',
     });
     const result = await cruiseWithConfig(
@@ -128,7 +128,7 @@ describe('outsideRootsRule', () => {
     });
     const result = await cruiseWithConfig(
       {
-        forbidden: [outsideRootsRule('^src/', ['src'])],
+        forbidden: [outsideRootsRule({ path: '^src/' }, ['src'])],
         options: { tsConfig: { fileName: tsConfig } },
       },
       { baseDir, paths: ['tests'], outputType: 'err-long' },
@@ -140,7 +140,7 @@ describe('outsideRootsRule', () => {
 
 describe('the outside-roots message', () => {
   it('names moving the code under a source root first and the loosening route second', () => {
-    expect(outsideRootsRule('^src/', ['src']).comment).toBe(
+    expect(outsideRootsRule({ path: '^src/' }, ['src']).comment).toBe(
       'Production code imports only from layout.sourceRoots: move the imported code under a source root, or add its folder to layout.sourceRoots so the gate checks it. Excluding the imported file instead is a policy loosening that fails until a person accepts it.',
     );
   });

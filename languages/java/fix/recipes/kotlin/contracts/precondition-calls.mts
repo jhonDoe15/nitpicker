@@ -20,7 +20,13 @@ export function shadowsStandardCalls(code: string): boolean {
     String.raw`^\s*import\s+[\w.]+\.(?:${SHADOWABLE.join('|')})\s*$`,
     'm',
   );
-  return declared.test(code) || imported.test(code);
+  const names = SHADOWABLE.join('|');
+  const variable = new RegExp(String.raw`\b(?:val|var)\s+(?:${names})\b`);
+  const parameter = new RegExp(String.raw`[(,]\s*(?:(?:vararg|val|var)\s+)?(?:${names})\s*:`);
+  const lambdaParameter = new RegExp(String.raw`[{,]\s*(?:${names})\s*(?:,[\w\s,]*)?->`);
+  return [declared, imported, variable, parameter, lambdaParameter].some((shadow) =>
+    shadow.test(code),
+  );
 }
 
 export function shadowsException(code: string, name: string): boolean {
@@ -90,7 +96,9 @@ function bodyOf(scanned: ScannedKotlin, close: number): RegExpExecArray | undefi
 
 function tailEnd(scanned: ScannedKotlin, thrown: ThrowCall, braced: boolean): number | undefined {
   const { code, source } = scanned;
-  const tail = (braced ? /^(?:[ \t]*;)?\s*\}/u : /^(?:[ \t]*;)?/u).exec(code.slice(thrown.end));
+  const tail = (braced ? /^(?:[ \t]*;)?\s*\}/u : /^(?:[ \t]*;(?=[ \t]*(?:\n|$)))?/u).exec(
+    code.slice(thrown.end),
+  );
   return tail !== null && onlyBlanks(source, thrown.end, thrown.end + tail[0].length)
     ? thrown.end + tail[0].length
     : undefined;
@@ -115,7 +123,7 @@ function guardAt(
     body === undefined || thrown === undefined
       ? undefined
       : tailEnd(scanned, thrown, body[1] !== undefined);
-  return thrown === undefined || end === undefined || /^\s*else\b/u.test(code.slice(end))
+  return thrown === undefined || end === undefined || /^[\s;]*else\b/u.test(code.slice(end))
     ? []
     : [{ start: match.index, end, condition: [open + 1, close], message: thrown.message }];
 }
@@ -128,6 +136,10 @@ export function ifThrows(scanned: ScannedKotlin, exceptionName: string): Guard[]
 
 const OPERATOR = /===|!==|==|!=|&&|\|\||<=|>=|[<>]|\?:|(?<!\w)!?(?:in|is|as)\b/gu;
 const FLIPPED: Readonly<Record<string, string>> = {
+  is: '!is',
+  '!is': 'is',
+  in: '!in',
+  '!in': 'in',
   '==': '!=',
   '!=': '==',
   '===': '!==',
@@ -153,13 +165,26 @@ function topLevel(code: string): string {
     .join('');
 }
 
+type Negation = { readonly text: string; readonly code: string; readonly flat: string };
+
+function withoutNegation({ text, code, flat }: Negation, bare: boolean) {
+  const group = /^!\s*\(/u.exec(text);
+  if (group !== null && closingIndex(code.trim(), group[0].length - 1) === text.length - 1) {
+    return text.slice(group[0].length, -1).trim();
+  }
+  return bare && flat.startsWith('!') && CHAIN.test(flat.slice(1).trim())
+    ? text.slice(1).trim()
+    : undefined;
+}
+
 export function negated(source: string, code: string): string {
   const text = source.trim();
   const top = topLevel(code.trim());
   const flat = top.replaceAll(HIDDEN, '');
   const operators = [...top.matchAll(OPERATOR)];
-  if (operators.length === 0 && flat.startsWith('!') && CHAIN.test(flat.slice(1).trim())) {
-    return text.slice(1).trim();
+  const removed = withoutNegation({ text, code, flat }, operators.length === 0);
+  if (removed !== undefined) {
+    return removed;
   }
   if (operators.length === 0 && CHAIN.test(flat)) {
     return `!${text}`;
@@ -171,4 +196,10 @@ export function negated(source: string, code: string): string {
     return `${text.slice(0, index)}${flipped}${text.slice(index + token.length)}`;
   }
   return `!(${text})`;
+}
+
+const NULL_CHAIN = /^\s*([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*)\s*==\s*null\s*$/u;
+
+export function nullCheckedChain(condition: string): string | undefined {
+  return NULL_CHAIN.exec(condition)?.[1];
 }

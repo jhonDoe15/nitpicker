@@ -148,4 +148,122 @@ public class Emptiness {
 `,
     lines: [7],
   },
+  {
+    check: 'SimplifyBooleanReturns',
+    file: `${MAIN}/Flags.java`,
+    before: `package demo;
+
+public class Flags {
+  boolean positive(int count) {
+    if (count > 0) {
+      return true;
+    }
+    return false;
+  }
+}
+`,
+    after: `package demo;
+
+public class Flags {
+  boolean positive(int count) {
+    return count > 0;
+  }
+}
+`,
+    lines: [5],
+  },
+  {
+    check: 'SimplifiedTernary',
+    file: `${MAIN}/Choice.java`,
+    before: `package demo;
+
+public class Choice {
+  boolean either(boolean ready, boolean late) {
+    return ready ? true : late;
+  }
+}
+`,
+    after: `package demo;
+
+public class Choice {
+  boolean either(boolean ready, boolean late) {
+    return ready || late;
+  }
+}
+`,
+    lines: [5],
+  },
+  {
+    check: 'SimplifyBooleanExpressions',
+    file: `${MAIN}/Truth.java`,
+    before: `package demo;
+
+public class Truth {
+  boolean same(boolean ready) {
+    return ready == true;
+  }
+}
+`,
+    after: `package demo;
+
+public class Truth {
+  boolean same(boolean ready) {
+    return ready;
+  }
+}
+`,
+    lines: [5],
+  },
+  {
+    check: 'CollapsibleIfStatements',
+    file: `${MAIN}/Nesting.java`,
+    before: `package demo;
+
+import java.util.List;
+
+public class Nesting {
+  void add(boolean first, boolean second, List<String> out) {
+    if (first) {
+      if (second) {
+        out.add("both");
+      }
+    }
+  }
+}
+`,
+    after: `package demo;
+
+import java.util.List;
+
+public class Nesting {
+  void add(boolean first, boolean second, List<String> out) {
+    if (first && second) {
+      out.add("both");
+    }
+  }
+}
+`,
+    lines: [7],
+  },
+  {
+    check: 'UselessStringValueOf',
+    file: `${MAIN}/Texts.java`,
+    before: `package demo;
+
+public class Texts {
+  String label(int count) {
+    return "n=" + String.valueOf(count);
+  }
+}
+`,
+    after: `package demo;
+
+public class Texts {
+  String label(int count) {
+    return "n=" + count;
+  }
+}
+`,
+    lines: [5],
+  },
 ];

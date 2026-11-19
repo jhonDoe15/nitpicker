@@ -4,14 +4,19 @@ import type { KotlinFound, KotlinMarker, ScannedKotlin } from '../shared/kotlin-
 import { removalSpan } from '../shared/spans.mts';
 
 const TOOL = 'kotlin-source';
+const EXACT_GENERATED: ReadonlySet<string> = new Set(['Generated']);
 
 const annotationMarkers: (scanned: ScannedKotlin) => readonly KotlinMarker[] =
   untypedAnnotationMarkers;
 
-function removals(rule: string): (scanned: ScannedKotlin) => readonly KotlinFound[] {
+function removals(
+  rule: string,
+  names?: ReadonlySet<string>,
+): (scanned: ScannedKotlin) => readonly KotlinFound[] {
   return (scanned) =>
     annotationMarkers(scanned)
       .filter((marker) => marker.rule === rule && scanned.code[marker.offset - 1] !== '[')
+      .filter(({ subject }) => names === undefined || names.has(subject))
       .map(({ offset, end }) => ({
         rule,
         offset,
@@ -22,7 +27,7 @@ function removals(rule: string): (scanned: ScannedKotlin) => readonly KotlinFoun
 export const generatedMarkerRecipe = kotlinRecipe({
   id: 'kotlin-generated-on-hand-written-code',
   rules: [{ tool: TOOL, rule: 'GeneratedOnHandWrittenCode' }],
-  find: removals('GeneratedOnHandWrittenCode'),
+  find: removals('GeneratedOnHandWrittenCode', EXACT_GENERATED),
 });
 
 export const jvmSyntheticRecipe = kotlinRecipe({

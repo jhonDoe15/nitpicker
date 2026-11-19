@@ -1,7 +1,6 @@
 import path from 'node:path';
 import eslint from '@eslint/js';
 import { defineConfig } from 'eslint/config';
-import vitest from '@vitest/eslint-plugin';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import {
@@ -11,6 +10,7 @@ import {
   applyRuleExceptions,
   assertionFunctionNames,
   detachedWorkRunnerNames,
+  domProductionConfigFor,
   errorWrappingPolicy,
   existingRoots,
   fileNameRuleOptions,
@@ -23,6 +23,7 @@ import {
   logicConfigFor,
   nestScopeConfigFor,
   nitpickerRules,
+  policyTestRunner,
   ormsOf,
   precedenceLayers,
   productionLayoutConfigFor,
@@ -45,16 +46,20 @@ import {
   testEnvironmentConfigFor,
   testEnvironmentsFromVariables,
   testHonestyConfigFor,
+  testRunnerLintConfig,
   typeImportFixStyle,
   untypedJavascriptConfig,
   usesRouteHandlerFramework,
+  withRunnerTestPaths,
   type Entry,
   type ParserOptions,
 } from './eslint-inputs.mts';
 
 const policy = readHeadPolicy();
+const testRunner = policyTestRunner(policy, analyzedProjectRoot());
+const runnerConfig = testRunnerLintConfig(testRunner, assertionFunctionNames(policy.conventions));
 
-const layout = readLayout();
+const layout = withRunnerTestPaths(readLayout(), analyzedProjectRoot());
 const react = isReactProject({
   projectRoot: analyzedProjectRoot(),
   react: policy.react,
@@ -66,6 +71,7 @@ const i18n = isI18nProject({
   i18n: policy.i18n,
   javascript: layout.javascript,
 });
+const testEnvironments = testEnvironmentsFromVariables(process.env);
 const security = securityFactsFor(analyzedProjectRoot(), (file) => layout.isSourceFile(file));
 const server = isServerProject(analyzedProjectRoot());
 const nest = isNestProject(analyzedProjectRoot());
@@ -78,6 +84,9 @@ const productionFiles = [...sourceGlobs];
 const testFiles = [...testGlobs, ...layout.sourceTestDirectoryGlobs];
 const VITEST_TYPE_TEST_FILES = ['**/*.{test,spec}-d.?(c|m)[jt]s?(x)'];
 const selectedFiles = [...productionFiles, ...testFiles];
+const vitestTypeTestEntries: Entry[] = [
+  { files: VITEST_TYPE_TEST_FILES, rules: { 'vitest/expect-expect': 'off' } },
+];
 
 const endToEndEntries: Entry[] =
   layout.endToEndGlobs.length === 0
@@ -177,17 +186,16 @@ const presetConfig = defineConfig(
     },
   },
   {
-    ...vitest.configs.recommended,
     files: testFiles,
     plugins: {
-      ...vitest.configs.recommended.plugins,
+      ...runnerConfig.plugins,
       nitpicker: nitpickerRules,
     },
+    settings: runnerConfig.settings,
     languageOptions: {
-      ...vitest.configs.env.languageOptions,
       globals: {
         ...globals.node,
-        ...vitest.configs.env.languageOptions.globals,
+        ...runnerConfig.globals,
       },
       parserOptions: {
         project: './tsconfig.quality.json',
@@ -195,46 +203,35 @@ const presetConfig = defineConfig(
       },
     },
     rules: {
-      ...vitest.configs.recommended.rules,
+      ...runnerConfig.rules,
+      ...runnerConfig.typedRules,
       '@typescript-eslint/no-unused-vars': ['error', UNUSED_PARAMETERS],
       'nitpicker/integration-test-uses-approved-harness': 'error',
       'nitpicker/container-pause-requires-finally-unpause': 'error',
       'nitpicker/bounded-container-teardown': 'error',
-      'nitpicker/no-fixed-sleep-synchronization': 'error',
-      'nitpicker/no-interval-polling-in-tests': 'error',
+      'nitpicker/no-fixed-sleep-synchronization': ['error', { runner: testRunner }],
+      'nitpicker/no-interval-polling-in-tests': ['error', { runner: testRunner }],
       'nitpicker/no-mocking-subject-under-test': 'error',
       'nitpicker/no-internal-module-mocks': 'error',
       'nitpicker/no-wait-for-with-fake-timers': 'error',
-      'nitpicker/no-partial-output-assertion': 'error',
-      'nitpicker/test-must-use-production-runtime': 'error',
-      'vitest/expect-expect': 'off',
-      'vitest/no-conditional-in-test': 'error',
-      'vitest/valid-expect': ['error', { maxArgs: 2 }],
-      'vitest/require-awaited-expect-poll': 'error',
-      'vitest/valid-expect-in-promise': 'error',
+      'nitpicker/no-partial-output-assertion': ['error', { runner: testRunner }],
+      'nitpicker/test-must-use-production-runtime': ['error', { runner: testRunner }],
     },
   },
-  {
-    files: testFiles,
-    ignores: VITEST_TYPE_TEST_FILES,
-    rules: {
-      'vitest/expect-expect': [
-        'error',
-        { assertFunctionNames: assertionFunctionNames(policy.conventions) },
-      ],
-    },
-  },
+  ...(testRunner === 'vitest' ? vitestTypeTestEntries : []),
   {
     files: [...unitTestGlobs],
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
   ...testHonestyConfigFor(layout, {
+    runner: testRunner,
     assertionFunctionNames: assertionFunctionNames(policy.conventions),
-    setupFiles: setupFilesIn(analyzedProjectRoot()),
+    setupFiles: setupFilesIn(analyzedProjectRoot(), testRunner),
     stubRestores: stubRestoresIn(analyzedProjectRoot()),
     testRootsOnDisk: existingRoots(analyzedProjectRoot(), layout.testRoots),
   }),
-  ...testEnvironmentConfigFor(layout, testEnvironmentsFromVariables(process.env)),
+  ...testEnvironmentConfigFor(layout, testEnvironments, testRunner),
+  ...(react ? [] : domProductionConfigFor(layout, testEnvironments, analyzedProjectRoot())),
 );
 
 const inactiveRuleIds = [

@@ -121,6 +121,7 @@ function eventOf(entry: JournalEntry, tool: string | undefined): JournalEvent {
   return {
     recipe: entry.recipe,
     safety: entry.safety,
+    ...(entry.scope === undefined ? {} : { scope: entry.scope }),
     finding: entry.fix.finding,
     ...(also.length === 0 ? {} : { alsoFindings: also }),
     files,
