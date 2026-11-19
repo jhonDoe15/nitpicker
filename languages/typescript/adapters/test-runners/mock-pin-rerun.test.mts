@@ -5,9 +5,11 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { PICK_SOURCE, createRunnerProjects, runArea } from './test-support/runner-project.mts';
 
 const projects = createRunnerProjects();
+const markers: string[] = [];
 
 afterEach(() => {
   projects.remove();
+  for (const marker of markers.splice(0)) rmSync(marker, { recursive: true, force: true });
 });
 
 const SHARED_SPY = [
@@ -37,6 +39,25 @@ function pinnedMessage(setting: string, failures: readonly string[]): string {
     ' once in `beforeAll` or a `describe` body, and rerun:\n',
     failures.join('\n'),
   ].join('');
+}
+
+const FLAKY_ENTRY = (file: string): string =>
+  `  ${file}:7 > fails only the first time: AssertionError: expected false to be true // Object.is equality`;
+
+function flakyTest(): string {
+  const markerDirectory = mkdtempSync(path.join(tmpdir(), 'nitpicker-flaky-'));
+  markers.push(markerDirectory);
+  return [
+    "import { existsSync, writeFileSync } from 'node:fs';",
+    "import { expect, it } from 'vitest';",
+    `const marker = ${JSON.stringify(path.join(markerDirectory, 'seen'))};`,
+    "it('fails only the first time', () => {",
+    '  const seen = existsSync(marker);',
+    "  writeFileSync(marker, 'x');",
+    '  expect(seen).toBe(true);',
+    '});',
+    '',
+  ].join('\n');
 }
 
 function vitestProject(testText: string) {
@@ -71,29 +92,38 @@ describe('a Vitest test that relies on a spy created once', () => {
     );
   });
 
-  it('keeps the plain message for a test that fails once and passes when rerun with the pin', async () => {
-    const markerDirectory = mkdtempSync(path.join(tmpdir(), 'nitpicker-flaky-'));
-    const marker = path.join(markerDirectory, 'seen');
-    const flaky = [
-      "import { existsSync, writeFileSync } from 'node:fs';",
-      "import { expect, it } from 'vitest';",
-      `const marker = ${JSON.stringify(marker)};`,
-      "it('fails only the first time', () => {",
-      '  const seen = existsSync(marker);',
-      "  writeFileSync(marker, 'x');",
-      '  expect(seen).toBe(true);',
-      '});',
-      '',
-    ].join('\n');
-
-    const [finding] = await runArea('coverage', vitestProject(flaky));
-    rmSync(markerDirectory, { recursive: true, force: true });
+  it('names a test that fails once and passes when rerun with the pin as load-sensitive', async () => {
+    const [finding] = await runArea('coverage', vitestProject(flakyTest()));
 
     expect(finding?.message).toBe(
       [
-        '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
-        '  test/pick.test.ts:7 > fails only the first time: AssertionError: expected false to be true //' +
-          ' Object.is equality',
+        '1 test failed in the first run and passed when rerun, so it looks load-sensitive or flaky; ' +
+          'coverage, CRAP and mutation were skipped. Make the assertions independent of timing and machine ' +
+          'load, and rerun:',
+        FLAKY_ENTRY('test/pick.test.ts'),
+      ].join('\n'),
+    );
+  });
+
+  it('blames the pin only for the test that fails under it, and names the other as load-sensitive', async () => {
+    const root = projects.project({
+      'package.json': { name: 'p', type: 'module', scripts: { test: 'vitest' } },
+      'src/main/pick.ts': PICK_SOURCE,
+      'test/pick.test.ts': SHARED_SPY,
+      'test/timing.test.ts': flakyTest(),
+    });
+
+    const [finding] = await runArea('coverage', root);
+
+    expect(finding?.message).toBe(
+      [
+        pinnedMessage('`restoreMocks: true`', [
+          `  test/pick.test.ts:6 > calls the spy: ${SPY_FAILURE}`,
+          `  test/pick.test.ts:7 > still sees the spy call: ${SPY_FAILURE}`,
+        ]),
+        '1 more test failed in the first run and passed when rerun, so it looks load-sensitive or flaky. ' +
+          'Make the assertions independent of timing and machine load, and rerun:',
+        FLAKY_ENTRY('test/timing.test.ts'),
       ].join('\n'),
     );
   });

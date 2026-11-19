@@ -34,7 +34,7 @@ const NUMERIC = ['max', 'maxvalue'];
 
 function callBounds(name, args, numeric) {
   if (!numeric) {
-    return TEXT[name]?.(args) ?? {};
+    return Object.hasOwn(TEXT, name) ? TEXT[name](args) : {};
   }
   return NUMERIC.includes(name) ? { maximum: args.positional[0] } : {};
 }

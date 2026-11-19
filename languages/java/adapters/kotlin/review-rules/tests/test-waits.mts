@@ -125,7 +125,8 @@ const CLASSIFIERS: Record<string, WaitClassifier> = {
 };
 
 function classify(wait: WaitFact, file: KotlinFile, declared: Set<string>): WaitFound | undefined {
-  return CLASSIFIERS[wait.name]?.(wait, contextOf(file, wait, declared));
+  const classifier = Object.hasOwn(CLASSIFIERS, wait.name) ? CLASSIFIERS[wait.name] : undefined;
+  return classifier?.(wait, contextOf(file, wait, declared));
 }
 
 function isPolling(loop: WaitScope): boolean {

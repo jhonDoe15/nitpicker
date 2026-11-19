@@ -21,6 +21,7 @@ type Signal = {
   readonly rule: string;
   readonly source: string;
   readonly message?: string;
+  readonly unparsed?: true;
 };
 
 type Allowance = Signal & { readonly count: number };
@@ -74,11 +75,21 @@ export async function collectSignals(
 }
 
 function resultSignals(root: string, result: ESLint.LintResult): Signal[] {
-  if (result.fatalErrorCount > 0)
-    throw new Error(result.messages.map((item) => item.message).join('\n'));
-  const lines = readFileSync(result.filePath, 'utf8').split('\n');
   const file = path.relative(root, result.filePath).replaceAll('\\', '/');
+  if (result.fatalErrorCount > 0) return [unparsedSignal(file, result.messages)];
+  const lines = readFileSync(result.filePath, 'utf8').split('\n');
   return result.messages.map((message) => messageSignal(file, lines, message));
+}
+
+function unparsedSignal(file: string, messages: readonly Linter.LintMessage[]): Signal {
+  const reason = messages.find((message) => message.fatal === true)?.message ?? 'parse failed';
+  return {
+    file,
+    rule: 'unparsed-file',
+    source: reason,
+    message: `coding-standards could not parse ${file} (${reason}), so it did not check this file; the other files were checked.`,
+    unparsed: true,
+  };
 }
 
 function messageSignal(
@@ -116,7 +127,9 @@ export function readLegacyInventory(inventoryPath = defaultLegacyInventoryPath):
 
 async function check(): Promise<number> {
   const baseline = readLegacyInventory();
-  const signals = [...(await collectSignals()), ...collectArchitectureSignals()];
+  const signals = [...(await collectSignals()), ...collectArchitectureSignals()].filter(
+    (signal) => signal.unparsed !== true,
+  );
   const regressions = compareSignals(signals, baseline.sites);
   if (regressions.length > 0) {
     for (const item of regressions)

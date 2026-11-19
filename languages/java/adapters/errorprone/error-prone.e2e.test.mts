@@ -389,8 +389,8 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
       options('--release=17', ...project('--add-opens')),
       options('--release=17', ...project('--add-exports')),
     ]).toStrictEqual([
-      '--release 17',
-      '--add-exports=java.base/java.lang=ALL-UNNAMED -source 17 -target 17',
+      '--release 17 -sourcepath',
+      '--add-exports=java.base/java.lang=ALL-UNNAMED -source 17 -target 17 -sourcepath',
     ]);
   });
 

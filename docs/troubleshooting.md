@@ -238,7 +238,11 @@ Kotlin analyzer means the build ran but nitpicker's own code failed on it, often
 report the build left empty or cut off.
 
 **Fix.** The message ends with the process's own output; start there. For an out-of-memory kill, give the
-job more memory or run fewer analyzers at once with `NITPICKER_MAX_PARALLEL`. For a custom analyzer, run
+job more memory or run fewer analyzers at once with `NITPICKER_MAX_PARALLEL`. ESLint gets a heap of three
+quarters of the memory less 1.5 GB for each other analyzer that can run beside it (never less than Node's
+default), so `eslint-lint ran out of memory (N MB heap)` means that share was too small: lower
+`NITPICKER_MAX_PARALLEL`, or set `NODE_OPTIONS=--max-old-space-size=<MB>`, which nitpicker then leaves as
+it is. For a custom analyzer, run
 its `command` in the checkout by hand and check that it prints only `{"findings": [...]}` and exits 0.
 See [custom analyzers](usage.md#custom-analyzers). If a built-in analyzer crashes on a simple project,
 please open an issue with the message and the project's tool versions.

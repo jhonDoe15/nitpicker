@@ -44,7 +44,7 @@ function ruleBounds(tag, type) {
   return Object.assign(
     {},
     ...parts.map(([name, value]) =>
-      /^\d+$/u.test(value ?? '') ? rules[name]?.(Number(value)) : {},
+      /^\d+$/u.test(value ?? '') && Object.hasOwn(rules, name) ? rules[name](Number(value)) : {},
     ),
   );
 }

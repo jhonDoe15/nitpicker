@@ -15,6 +15,7 @@ import { fieldOf, textsOf } from '../../../shared/values/readers.mts';
 import type { Classpaths } from './typed/maven-values.mts';
 import type { ToolClasspaths } from './typed/kotlin-types.mts';
 import { javaFiles } from './lint/java-files.mts';
+import { PMD_LOG } from '../adapters/reporting/sarif/processing/pmd-rule-crashes.mts';
 import { spotbugsLaunch } from './security/spotbugs-launch.mts';
 
 export { javaFiles } from './lint/java-files.mts';
@@ -121,7 +122,7 @@ export function runPmd(options: PmdOptions): void {
   }
   const aux = writeAuxClasspath({ module, reportDir, classpaths });
   const rulesets = pmdRulesets(options);
-  runJava({
+  const result = runJava({
     tool: 'PMD',
     classpath: tools['pmd'],
     mainClass: 'net.sourceforge.pmd.cli.PmdCli',
@@ -131,6 +132,8 @@ export function runPmd(options: PmdOptions): void {
     spawn,
     timeoutMs,
   });
+  const stderr = fieldOf(result, 'stderr');
+  writeFileSync(path.join(reportDir, PMD_LOG), typeof stderr === 'string' ? stderr : '');
 }
 
 export function runSpotbugs({

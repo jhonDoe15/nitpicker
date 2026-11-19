@@ -22,6 +22,7 @@ import { pathToFileURL } from 'node:url';
 import { moduleRoleBoundaries } from './runtime-dependency-boundaries.config.mts';
 import { defaultResolvedLayout as untypedDefaultLayout } from '../layout.mjs';
 import { appendAll } from '../../../../shared/lists/lists.mts';
+import { blockingParseDiagnostics } from '../syntax/diagnostics/legacy-scripts.mts';
 
 const ts = typescriptApi();
 
@@ -97,7 +98,7 @@ function staticCallName(expression: TypeScript.Expression): string | undefined {
 
 function parseSource(source: string, filename: string): TypeScript.SourceFile {
   const file = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true);
-  const diagnostics = parseDiagnosticsOf(file);
+  const diagnostics = blockingParseDiagnostics(filename, parseDiagnosticsOf(file));
   if (diagnostics.length === 0) return file;
   const messages = diagnostics.map((diagnostic) =>
     ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),

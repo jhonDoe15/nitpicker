@@ -48,10 +48,11 @@ export async function runCodingStandards(options: QualityAreaOptions): Promise<F
   const compareSignals = await policyExport(options, CODING_STANDARDS, 'compareSignals');
   const baselineRelativePath = options.legacyInventory;
   const baseline = readOptionalBaseline(options.projectPolicyRoot, baselineRelativePath);
-  const signals = [
+  const collected = [
     ...listOf(await collectSignals(options.projectRoot, options.policyRoot)),
     ...listOf(collectArchitectureSignals(options.projectRoot)),
   ];
+  const signals = collected.filter((signal) => !isUnparsed(signal));
   const findings = listOf(compareSignals(signals, baseline)).map((signal) => ({
     tool: options.analyzerName,
     rule: textOf(fieldOf(signal, 'rule')),
@@ -64,7 +65,36 @@ export async function runCodingStandards(options: QualityAreaOptions): Promise<F
     const baseBaseline = readOptionalBaseline(options.baselineRoot, baselineRelativePath);
     appendAll(findings, normalizeBaselineExpansions(baseBaseline, baseline, options.analyzerName));
   }
-  return findings;
+  return [...findings, ...unparsedNotes(collected, options.analyzerName)];
+}
+
+function unparsedSourceNotes(analysis: unknown, analyzerName: string): Finding[] {
+  return listOf(fieldOf(analysis, 'unparsed')).map((entry) => {
+    const file = textOf(fieldOf(entry, 'file'));
+    return {
+      tool: analyzerName,
+      rule: 'unparsed-file',
+      path: file,
+      identity: 'unparsed-file',
+      message: `structure could not parse ${file} (${textOf(fieldOf(entry, 'reason'))}), so it measured the other files only.`,
+      classification: 'descriptive',
+    };
+  });
+}
+
+function isUnparsed(signal: unknown): boolean {
+  return fieldOf(signal, 'unparsed') === true;
+}
+
+function unparsedNotes(signals: readonly unknown[], analyzerName: string): Finding[] {
+  return signals.filter(isUnparsed).map((signal) => ({
+    tool: analyzerName,
+    rule: textOf(fieldOf(signal, 'rule')),
+    path: textOf(fieldOf(signal, 'file')),
+    identity: textOf(fieldOf(signal, 'rule')),
+    message: signalMessage(signal),
+    classification: 'descriptive',
+  }));
 }
 
 function signalMessage(signal: unknown): string {
@@ -161,15 +191,16 @@ export async function runStructure(options: QualityAreaOptions): Promise<Finding
     'analyzeProductionFiles',
   );
   const layout = readLayout();
-  const functionFindings = await perSourceRoot(options, layout, (root) =>
-    normalizeStructure(
-      withFunctionSourceHashes(
-        analyzeProductionFiles(path.join(options.projectRoot, root), root, { layout }),
-        options.projectRoot,
+  const functionFindings = await perSourceRoot(options, layout, (root) => {
+    const analysis = analyzeProductionFiles(path.join(options.projectRoot, root), root, { layout });
+    return [
+      ...normalizeStructure(
+        withFunctionSourceHashes(analysis, options.projectRoot),
+        options.analyzerName,
       ),
-      options.analyzerName,
-    ),
-  );
+      ...unparsedSourceNotes(analysis, options.analyzerName),
+    ];
+  });
   return [
     ...functionFindings,
     ...typescriptStructureProjectFindings({ ...options, baselinePaths: baselinePathsOf(options) }),
