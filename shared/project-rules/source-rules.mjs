@@ -1,6 +1,11 @@
 const FIX_TEXT = '{fix}';
 const STRUCTURE_TOOL = 'structure';
 
+const DOUBLE_NUMBERS =
+  'every number is a double and never wraps: there is no wrapping difference and no smallest value whose `Math.abs` stays negative, which are the shapes the rule proves';
+const UNBOUNDED_INTEGERS =
+  'integers have no fixed width and never overflow: there is no wrapping difference and no smallest value whose `abs` stays negative, which are the shapes the rule proves';
+
 export const SOURCE_RULE_IDS = {
   componentStoryMissing: 'component-story-missing',
   javascriptInTypescriptProject: 'javascript-in-typescript-project',
@@ -62,7 +67,12 @@ export function sourceRules(ids, enforcedBy) {
       id: ids.integerSlip,
       check: STRUCTURE_TOOL,
       limit:
-        'Java, Kotlin and Go integer arithmetic that a solver shows wrong for some input, with the guards before it known (`int`/`long` are fixed-width and overflow, sizes are bounded): a difference compared with 0 by order (never `==`/`!=`, which wrapping cannot change; Go unsigned integers wrap too) or returned from `compareTo`/`compare` (it overflows, use `Integer.compare`), `Math.abs` of an `int` or `long` (`byte`, `short` and `char` promote) used as an index or a `%` bucket (the smallest value stays negative; Go `math.Abs` is a float function and has no such slip), and in Kotlin and Go a `%` result compared with a positive value for a parameter that can be negative (Java keeps SpotBugs `IM_BAD_CHECK_FOR_ODD`); only operands that are parameters never reassigned, fields and calls are probed, a local has no known range and is skipped; the message names the inputs; Go integers are read at their declared width (`int` is 64 bits); TypeScript numbers are doubles and Python integers are unbounded, so neither has these slips',
+        'Java, Kotlin and Go integer arithmetic that a solver shows wrong for some input, with the guards before it known (`int`/`long` are fixed-width and overflow, sizes are bounded): a difference compared with 0 by order (never `==`/`!=`, which wrapping cannot change; Go unsigned integers wrap too) or returned from `compareTo`/`compare` (it overflows, use `Integer.compare`), `Math.abs` of an `int` or `long` (`byte`, `short` and `char` promote) used as an index or a `%` bucket (the smallest value stays negative; Go `math.Abs` is a float function and has no such slip), and in Kotlin and Go a `%` result compared with a positive value for a parameter that can be negative (Java keeps SpotBugs `IM_BAD_CHECK_FOR_ODD`); only operands that are parameters never reassigned, fields and calls are probed, a local has no known range and is skipped; the message names the inputs; Go integers are read at their declared width (`int` is 64 bits)',
+      notApplicable: {
+        typescript: DOUBLE_NUMBERS,
+        javascript: DOUBLE_NUMBERS,
+        python: UNBOUNDED_INTEGERS,
+      },
     },
     {
       id: ids.shorterCondition,
