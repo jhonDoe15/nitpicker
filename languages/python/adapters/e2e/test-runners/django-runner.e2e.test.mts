@@ -34,24 +34,22 @@ const SETTINGS = [
 ].join('\n');
 const GRADE =
   'def grade(score: int) -> str:\n    if score >= 10:\n        return "pass"\n    return "fail"\n';
-const GRADE_TESTS = [
-  'from django.test import SimpleTestCase',
-  '',
-  'from polls.grades import grade',
-  '',
-  '',
-  'class GradeTests(SimpleTestCase):',
-  '    def test_pass(self) -> None:',
-  '        self.assertEqual(grade(20), "pass")',
-  '',
-  '    def test_boundary(self) -> None:',
-  '        self.assertEqual(grade(10), "pass")',
-  '',
-  '    def test_fail(self) -> None:',
-  '        self.assertEqual(grade(9), "fail")',
-  '',
-].join('\n');
-const WEAK_TESTS = GRADE_TESTS.split('\n    def test_boundary')[0] ?? '';
+const gradeTests = (cases: string) =>
+  [
+    'from django.test import SimpleTestCase',
+    '',
+    'from polls.grades import grade',
+    '',
+    '',
+    'class GradeTests(SimpleTestCase):',
+    '    def test_grade(self) -> None:',
+    `        for score, expected in [${cases}]:`,
+    '            with self.subTest(score=score):',
+    '                self.assertEqual(grade(score), expected)',
+    '',
+  ].join('\n');
+const GRADE_TESTS = gradeTests('(20, "pass"), (10, "pass"), (9, "fail")');
+const WEAK_TESTS = gradeTests('(20, "pass")');
 const PLACEHOLDER_TESTS =
   'from django.test import SimpleTestCase\n\n\nclass GradeTests(SimpleTestCase):\n    pass\n';
 const UNTYPED_DJANGO = ['import-untyped', 'misc'].map((rule) => ({

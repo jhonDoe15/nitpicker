@@ -2,7 +2,11 @@ import { useScripts, pythonLines as code } from '../../test-support/python-rule-
 
 const { itOutcomes, describeRules } = useScripts({
   enabled: process.env['NITPICKER_PYTHON_E2E'] === '1',
-  hidden: ['swallowed-exception', 'retry-without-idempotency'],
+  hidden: [
+    'managed-resource-outside-composition-root',
+    'swallowed-exception',
+    'retry-without-idempotency',
+  ],
 });
 
 describeRules('effect kinds of value helpers and derived handles', () => {

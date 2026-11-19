@@ -3,7 +3,7 @@ import { useScripts } from '../../test-support/python-rule-scripts.mts';
 
 const { findingsOf, describeRules } = useScripts({
   enabled: process.env['NITPICKER_PYTHON_E2E'] === '1',
-  hidden: ['http-without-timeout', 'swallowed-exception'],
+  hidden: ['self-recursion', 'http-without-timeout', 'swallowed-exception'],
 });
 
 const lines = (...rows: string[]) => `${rows.join('\n')}\n`;
