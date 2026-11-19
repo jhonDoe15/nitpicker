@@ -13,7 +13,7 @@ import {
 } from '../../../../languages/python/adapters/e2e/test-support/python-preset-data.mts';
 import {
   commitBranch,
-  gate,
+  settledGate,
   initializeRepository,
   installPackages,
   useRepositories,
@@ -124,8 +124,8 @@ describe.skipIf(!pythonE2eEnabled)(
       removeRepositories();
     });
 
-    it('gates the touched packages with one command, skips the Gradle module and reports one result', () => {
-      const result = gate(root, 'web-and-api');
+    it('gates the touched packages with one command, skips the Gradle module and reports one result', async () => {
+      const result = await settledGate(root, 'web-and-api');
 
       expect(statuses(result)).toEqual({ web: 'passed', api: 'failed', svc: 'skipped' });
       expect(result.exitCode).toBe(1);
@@ -159,8 +159,8 @@ describe.skipIf(!pythonE2eEnabled)(
       ]);
     });
 
-    it('runs the Gradle module when it changes and skips the others', () => {
-      const result = gate(root, 'svc-only');
+    it('runs the Gradle module when it changes and skips the others', async () => {
+      const result = await settledGate(root, 'svc-only');
 
       expect(statuses(result), result.text).toEqual({
         web: 'skipped',
@@ -173,8 +173,8 @@ describe.skipIf(!pythonE2eEnabled)(
       expect(names.filter((name) => name === 'java')).toEqual(['java']);
     });
 
-    it('runs only the projects named with --project, changed or not', () => {
-      const result = gate(root, 'svc-only', { extra: ['--project', 'web'] });
+    it('runs only the projects named with --project, changed or not', async () => {
+      const result = await settledGate(root, 'svc-only', { extra: ['--project', 'web'] });
 
       expect(statuses(result)).toEqual({ web: 'passed', api: 'skipped', svc: 'skipped' });
       expect(result.exitCode).toBe(0);
@@ -215,7 +215,7 @@ describe.skipIf(!pythonE2eEnabled)(
       removeRepositories();
     });
 
-    it.each(['npm', 'pnpm'])('gates a member whose dependencies %s installed', (manager) => {
+    it.each(['npm', 'pnpm'])('gates a member whose dependencies %s installed', async (manager) => {
       const root = repository();
       write(root, workspaceFiles(manager));
       installWebPackages(root, '.', manager);
@@ -224,7 +224,7 @@ describe.skipIf(!pythonE2eEnabled)(
         'packages/a/src/greeting.ts': `export function greeting(name: string): string {\n  return \`Hi, \${name}!\`;\n}\n`,
       });
 
-      const result = gate(root, 'member');
+      const result = await settledGate(root, 'member');
 
       expect([statuses(result), summaryOf(result).overallStatus, result.exitCode]).toEqual([
         { 'packages/a': 'passed' },
@@ -235,7 +235,7 @@ describe.skipIf(!pythonE2eEnabled)(
       expect(existsSync(path.join(root, 'packages/a/node_modules'))).toBe(manager === 'pnpm');
     });
 
-    it('keeps applying the exclude of the root config to a member', () => {
+    it('keeps applying the exclude of the root config to a member', async () => {
       const root = repository();
       write(root, {
         ...workspaceFiles('npm'),
@@ -248,7 +248,7 @@ describe.skipIf(!pythonE2eEnabled)(
         'packages/a/src/legacy/old.ts': `export function old(name: string): string {\n  var unused = 1;\n  return \`Hi, \${name}!\`;\n}\n`,
       });
 
-      const result = gate(root, 'excluded');
+      const result = await settledGate(root, 'excluded');
 
       expect([statuses(result), result.exitCode]).toEqual([{ 'packages/a': 'passed' }, 0]);
       expect(result.json('packages/a/summary.json').configOverrides).toEqual([

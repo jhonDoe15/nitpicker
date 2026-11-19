@@ -218,7 +218,7 @@ function symbolicName(repositoryRoot: string, ref: string): string | undefined {
   return gitOrUndefined(repositoryRoot, ['rev-parse', '--symbolic-full-name', ref])?.trim();
 }
 
-function commitOf(repositoryRoot: string, ref: string): string | undefined {
+export function commitOf(repositoryRoot: string, ref: string): string | undefined {
   return gitOrUndefined(repositoryRoot, [
     'rev-parse',
     '--verify',
