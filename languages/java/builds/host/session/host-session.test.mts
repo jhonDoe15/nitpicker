@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { machineMemory } from '../../../maven/parallel/tool-slots.mts';
+import { machineMemory } from '../../../../../shared/processes/machine-capacity.mts';
 import { startToolHosts } from './host-session.mts';
 import { HOST_CONFIG_FILE, hostCap } from '../config/host-config.mts';
 import { HOSTS_OFF_VARIABLE, HOSTS_VARIABLE } from '../config/host-environment.config.mts';

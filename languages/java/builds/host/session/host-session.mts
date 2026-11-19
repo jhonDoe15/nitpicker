@@ -2,7 +2,7 @@ import { chmodSync, existsSync, mkdirSync, readdirSync, writeFileSync } from 'no
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../java-build.mts';
 import { fieldOf, textOf, textsOf } from '../../../../../shared/values/readers.mts';
-import { machineMemory } from '../../../maven/parallel/tool-slots.mts';
+import { machineMemory } from '../../../../../shared/processes/machine-capacity.mts';
 import { privateDirectory } from '../client/host-client.mts';
 import { traceHosting } from '../config/host-trace.mts';
 import { compiledProgram, programSources } from '../../../maven/programs/helper-programs.mts';
