@@ -1,5 +1,5 @@
 import { Linter } from 'eslint';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
@@ -81,6 +81,20 @@ describe('untested-round-trip', () => {
     });
 
     expect(reported(root, CODEC)).toEqual([]);
+  });
+
+  it('finds tests behind a linked top-level directory, as in a lint stage', () => {
+    const root = project({
+      'real/test/codec.test.ts': [
+        "import { decodeToken, encodeToken, Order } from '../src/codec';",
+        "it('round-trips', () => { expect(decodeToken(encodeToken('a'))).toBe('a'); });",
+        "it('round-trips orders', () => { expect(Order.fromJson(new Order(1).toJson()).total).toBe(1); });",
+      ].join('\n'),
+      'stage/src/.keep': '',
+    });
+    symlinkSync(path.join(root, 'real', 'test'), path.join(root, 'stage', 'test'));
+
+    expect(reported(path.join(root, 'stage'), CODEC)).toEqual([]);
   });
 
   it('skips unexported, private, abstract and one-sided declarations', () => {
