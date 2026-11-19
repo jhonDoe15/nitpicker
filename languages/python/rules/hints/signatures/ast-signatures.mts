@@ -49,7 +49,7 @@ export const SIGNATURE_HINTS: readonly RuleHint[] = [
     describe: (subject) =>
       `\`${subject}\` replaces a falsy argument with a default, so \`0\`, \`""\`, \`[]\` and \`False\` count as not given`,
     allowed:
-      'Test for `None` only: `limit if limit is not None else DEFAULT_LIMIT`, or `if limit is None: limit = DEFAULT_LIMIT`.',
+      'Test for `None` only: `limit if limit is not None else DEFAULT_LIMIT`, or `if limit is None: limit = DEFAULT_LIMIT`; for a queryset, `qs if qs is not None else Row.objects.all()`.',
   },
   {
     tool: RULES_TOOL,
@@ -62,18 +62,18 @@ export const SIGNATURE_HINTS: readonly RuleHint[] = [
     tool: RULES_TOOL,
     rules: ['number-truthiness'],
     describe: (subject) =>
-      `\`${subject}\` is a number tested for truth, so \`0\` reads as false or missing`,
+      `\`${subject}\` is a number, zero duration or queryset tested for truth, so \`0\` or an empty value reads as false or missing`,
     allowed:
-      'Compare the number: `count > 0`, `count != 0`, `index != -1`; test an optional number with `count is not None`, and default it with `count if count is not None else DEFAULT`. An exception fits only when `0` must take the same path as a missing value.',
+      'Compare the number: `count > 0`, `count != 0`, `index != -1`; test an optional value with `count is not None`, and default it with `count if count is not None else DEFAULT`; ask a queryset `qs.exists()` and a collection `len(items) > 0` when emptiness is meant. An exception fits only when `0` or an empty value must take the same path as a missing value.',
   },
   {
     tool: RULES_TOOL,
     rules: ['presence-truthiness'],
     describe: (subject, _libraries, data) =>
-      `\`${subject}\` is an optional string, boolean or generic value tested for truth, so \`''\` or \`False\` reads as missing, and ${hintText(data, 'evidence')}`,
+      `\`${subject}\` is an optional string, boolean, generic or looked-up value tested for truth, so \`''\`, \`0\` or \`False\` reads as missing, and ${hintText(data, 'evidence')}`,
     referenceData: { evidence: '<why the falsy value is valid here>' },
     allowed:
-      'Test for `None` only: `name is not None`, `name if name is not None else DEFAULT`. An exception fits only when an empty string or `False` must take the same path as a missing value.',
+      'Test for `None` only: `name is not None`, `name if name is not None else DEFAULT`; for a lookup, `value = table.get(key)` then `value if value is not None else DEFAULT`. An exception fits only when an empty string or `False` must take the same path as a missing value.',
   },
   {
     tool: RULES_TOOL,

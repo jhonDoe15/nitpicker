@@ -3,7 +3,12 @@ import { createScripts } from '../../test-support/python-rule-scripts.mts';
 
 const enabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 const { cleanup, outcomes } = createScripts({
-  hidden: ['number-truthiness', 'tri-state-boolean', 'boolean-flag-parameter'],
+  hidden: [
+    'number-truthiness',
+    'tri-state-boolean',
+    'boolean-flag-parameter',
+    'parameter-mutation',
+  ],
 });
 afterEach(cleanup);
 
@@ -70,6 +75,31 @@ describe.skipIf(!enabled)('presence-truthiness', () => {
           },
         },
         ['presence-truthiness:2 run(option)'],
+      ],
+      [
+        'a lookup in a mapping of numbers replaced through or',
+        'def tokens(usage: dict[str, int]) -> int:\n    return usage.get("input_tokens") or usage.get("prompt_tokens") or 0\n',
+        ['presence-truthiness:2 tokens(usage.get)'],
+      ],
+      [
+        'a number lookup with a non-zero default',
+        'def limit(options: dict[str, int | float]) -> float:\n    return options.get("limit") or 10\n',
+        ['presence-truthiness:2 limit(options.get)'],
+      ],
+      [
+        'a walrus on a number lookup whose branch uses the value',
+        'def state(readings: dict[str, int]) -> dict[str, int]:\n    attrs = {}\n    if (value := readings.get("state")):\n        attrs["state"] = value\n    return attrs\n',
+        ['presence-truthiness:3 state(value)'],
+      ],
+      [
+        'a name assigned once from a number lookup',
+        'def show(readings: dict[str, float]) -> str:\n    value = readings.get("power")\n    return f"{value} W" if value else "unknown"\n',
+        ['presence-truthiness:3 show(value)'],
+      ],
+      [
+        'parsed data read with a chain of lookups',
+        'import json\n\n\ndef tokens(text: str) -> int:\n    usage = json.loads(text)\n    return usage.get("input_tokens") or usage.get("prompt_tokens") or 0\n',
+        ['presence-truthiness:6 tokens(usage.get)'],
       ],
       [
         'a dict comprehension that keeps truthy values',
@@ -152,6 +182,31 @@ describe.skipIf(!enabled)('presence-truthiness', () => {
       [
         'a value narrowed by a None guard that exits',
         'def run(x: str | None) -> str:\n    if x is None:\n        raise ValueError("x")\n    if x:\n        return x.strip()\n    return ""\n',
+        [],
+      ],
+      [
+        'a number lookup with a zero default or an explicit None test',
+        'def run(usage: dict[str, int]) -> int:\n    first = usage.get("a") or 0\n    second = usage.get("b")\n    return first + (second if second is not None else 0)\n',
+        [],
+      ],
+      [
+        'lookups in mappings of strings, untyped mappings and lookups with a default',
+        'def run(names: dict[str, str], other, counts: dict[str, int]) -> object:\n    return names.get("a") or other.get("b") or counts.get("c", 1) or "x"\n',
+        [],
+      ],
+      [
+        'one lookup of parsed data with a default',
+        'import json\n\n\ndef name(text: str) -> str:\n    data = json.loads(text)\n    return data.get("name") or "unknown"\n',
+        [],
+      ],
+      [
+        'an or chain in a condition, a text fallback, and a value that is only passed on',
+        'import json\n\n\ndef run(text: str, counts: dict[str, int], out: list) -> object:\n    body = json.loads(text)\n    title = body.get("name") or body.get("title") or "untitled"\n    if counts.get("a") or counts.get("b") or 5:\n        title = 1\n    if (n := counts.get("a")):\n        out.append(n)\n    return bool(counts.get("c") or counts.get("d") or 7), title\n',
+        [],
+      ],
+      [
+        'a lookup whose branch does not use the value, and a rebound mapping',
+        'def run(counts: dict[str, int], rows: list[str]) -> int:\n    if counts.get("a"):\n        return 1\n    counts = dict.fromkeys(rows, 1)\n    return counts.get("b") or 5\n',
         [],
       ],
       [

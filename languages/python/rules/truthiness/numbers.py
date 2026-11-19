@@ -4,6 +4,10 @@ from checks.common import finding
 from signatures.annotations import FUNCTION_TYPES, parameters_of, qualified_name
 from signatures.defaults import optional_parameters
 from truthiness.fields import field_name, field_owners, is_number
+from truthiness.sources import (
+    is_number_call,
+    sourced_names,
+)
 
 RULE = "number-truthiness"
 GUARDED = True
@@ -65,25 +69,31 @@ def bound_names(node):
     return []
 
 
-def number_names(function, nodes):
+def annotated_names(function, nodes, is_kind):
     names = {
         argument.arg
         for argument in parameters_of(function)
-        if is_number(argument.annotation)
+        if is_kind(argument.annotation)
     }
-    targets = [kept_target(node) for node in nodes]
-    kept = {id(target) for target in targets if target is not None}
     names.update(
         node.target.id
         for node in nodes
         if isinstance(node, ast.AnnAssign)
         and isinstance(node.target, ast.Name)
-        and is_number(node.annotation)
+        and is_kind(node.annotation)
     )
+    return names
+
+
+def number_names(function, nodes, context):
+    names = annotated_names(function, nodes, is_number)
+    targets = [kept_target(node) for node in nodes]
+    kept = {id(target) for target in targets if target is not None}
     rebound = {
         name for node in nodes if id(node) not in kept for name in bound_names(node)
     }
-    return names - rebound, rebound
+    sourced = set(sourced_names(nodes, context, bound_names))
+    return (names - rebound) | sourced, rebound
 
 
 def is_zero(node):
@@ -121,22 +131,27 @@ def is_tested(node, context, optional):
     return in_condition(node, context)
 
 
-def subject_of(node, names, owners):
+def subject_of(node, names, owners, context):
     if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load):
         return node.id if node.id in names else None
+    if isinstance(node, ast.NamedExpr):
+        return node.target.id if node.target.id in names else None
+    called = is_number_call(node, context)
+    if called is not None:
+        return f"{called}()"
     return field_name(node, owners)
 
 
 def function_findings(function, context):
     nodes = list(scope_nodes(function))
-    names, rebound = number_names(function, nodes)
+    names, rebound = number_names(function, nodes, context)
     parameters = [item for item in parameters_of(function) if item.arg not in rebound]
     owners = field_owners(function, context, parameters)
     optional = optional_parameters(function)
     reported = set()
     found = []
-    for node in nodes if names or owners else []:
-        subject = subject_of(node, names, owners)
+    for node in nodes:
+        subject = subject_of(node, names, owners, context)
         if (
             subject is not None
             and subject not in reported
