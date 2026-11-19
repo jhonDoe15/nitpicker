@@ -34,8 +34,8 @@ describe('peer plan for an older React app', () => {
 
     expect(plan.outdated).toEqual([
       'typescript too old (have 5.4.5, need >=5.7)',
-      'vitest too old (have 2.1.4, need ^4.1.11 || ^5.0.0)',
-      '@vitest/coverage-v8 too old (have 2.1.4, need ^4.1.11 || ^5.0.0)',
+      'vitest too old (have 2.1.4, need ^3.2.0 || ^4.1.11 || ^5.0.0)',
+      '@vitest/coverage-v8 too old (have 2.1.4, need ^3.2.0 || ^4.1.11 || ^5.0.0)',
     ]);
     expect(plan.absent).toEqual([NITPICKER]);
   });
@@ -61,24 +61,25 @@ describe('peer plan for an older React app', () => {
     const plan = planPeers(olderApp({ vite: '7.1.0' }), YARN);
 
     expect(plan.command).toBe(
-      `yarn add --dev ${NITPICKER} ${quotedTypescriptPin()} 'vitest@^4.1.11' '@vitest/coverage-v8@^4.1.11'`,
+      `yarn add --dev ${NITPICKER} ${quotedTypescriptPin()} 'vitest@^3.2.0' '@vitest/coverage-v8@^3.2.0'`,
     );
   });
 
   it('says to upgrade Vite first when no supported Vitest runs on it', () => {
-    const plan = planPeers(olderApp({ vite: '5.4.11' }), YARN);
+    const plan = planPeers(olderApp({ vite: '4.5.0' }), YARN);
 
     expect(plan.command).toBe(`yarn add --dev ${NITPICKER} ${quotedTypescriptPin()}`);
     expect(plan.outdated).toEqual([
       'typescript too old (have 5.4.5, need >=5.7)',
-      'vitest too old (have 2.1.4, need ^4.1.11 || ^5.0.0)',
-      '@vitest/coverage-v8 too old (have 2.1.4, need ^4.1.11 || ^5.0.0)',
+      'vitest too old (have 2.1.4, need ^3.2.0 || ^4.1.11 || ^5.0.0)',
+      '@vitest/coverage-v8 too old (have 2.1.4, need ^3.2.0 || ^4.1.11 || ^5.0.0)',
     ]);
     expect(plan.blockers).toEqual([
       [
-        'No Vitest that nitpicker supports (^4.1.11 || ^5.0.0) runs with the installed packages: ',
-        'Vitest 5 needs vite ^6.4.0 || ^7.0.0 || ^8.0.0 but the project has 5.4.11; ',
-        'Vitest 4 needs vite ^6.0.0 || ^7.0.0 || ^8.0.0 but the project has 5.4.11. ',
+        'No Vitest that nitpicker supports (^3.2.0 || ^4.1.11 || ^5.0.0) runs with the installed packages: ',
+        'Vitest 5 needs vite ^6.4.0 || ^7.0.0 || ^8.0.0 but the project has 4.5.0; ',
+        'Vitest 4 needs vite ^6.0.0 || ^7.0.0 || ^8.0.0 but the project has 4.5.0; ',
+        'Vitest 3 needs vite ^5.0.0 || ^6.0.0 || ^7.0.0 but the project has 4.5.0. ',
         'Upgrade vite first (for example npm install --save-dev vite@latest), then run nitpicker init again.',
       ].join(''),
     ]);
@@ -87,7 +88,7 @@ describe('peer plan for an older React app', () => {
   it('reads a declared Vite when it is not installed', () => {
     const files = withPeers({ typescript: '5.4.5', vitest: '2.1.4' });
     const manifest = JSON.parse(files['package.json']);
-    manifest.devDependencies.vite = '^5.4.0';
+    manifest.devDependencies.vite = '^4.5.0';
     const plan = planPeers(project({ ...files, 'package.json': JSON.stringify(manifest) }), YARN);
 
     expect(plan.blockers).toHaveLength(1);

@@ -197,11 +197,11 @@ function enumStrings(view: SpringView, { projectFiles }: RuleOptions): Reported[
 }
 
 function readsOf(view: SpringView, fn: FunctionFact): string[] {
-  return (
+  const reads =
     view.file.scopes.find(
       ({ k, name, line }) => k === 'fun' && name === fn.name && line === fn.line,
-    )?.reads ?? []
-  );
+    )?.reads ?? [];
+  return [...reads].filter((read) => typeof read === 'string');
 }
 
 function identityHashes(view: SpringView, declared: ClassFact): Reported[] {

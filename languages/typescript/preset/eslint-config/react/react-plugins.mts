@@ -7,7 +7,8 @@ import reactWebApi from 'eslint-plugin-react-web-api';
 import reactX from 'eslint-plugin-react-x';
 import testingLibrary from 'eslint-plugin-testing-library';
 import { inReactTestFilesOnly } from '../../eslint-plugin/rules/react-tests/react-test-files.mts';
-import { accessibilityRuleNames, testingLibraryHints } from './react-rules.mjs';
+import { projectRunnerVocabulary } from '../../test-runner/vocabulary/typed-vocabulary.mts';
+import { accessibilityRuleNames, testingLibraryHintsFor } from './react-rules.mjs';
 import { accessibilityHints, accessibilityOptionOverrides } from './rules/accessibility-rules.mjs';
 import {
   reactDomHints,
@@ -236,7 +237,7 @@ function testingLibraryRule(name: string, hint: string): Rule.RuleModule {
 
 export const testingLibraryPlugin = {
   rules: Object.fromEntries(
-    Object.entries(testingLibraryHints).map(([name, hint]) => [
+    Object.entries(testingLibraryHintsFor(projectRunnerVocabulary())).map(([name, hint]) => [
       name,
       testingLibraryRule(name, hint),
     ]),

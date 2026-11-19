@@ -1,11 +1,19 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { cruiseInProcess as untypedCruise } from '../dependency-graph/test-support/in-process-cruise.mts';
-import type { AnalyzeOptions, Graph } from './analysis-types.mts';
+import type { AnalysisLayout, AnalyzeOptions, Graph } from './analysis-types.mts';
 import { analyzeTestRuntime, loadModuleSources } from './analyze.mts';
+import { resolveLayout as untypedResolveLayout } from '../layout.mjs';
+import { defaultTestFiles as untypedDefaultTestFiles } from '../test-runner/test-files/test-file-patterns.mjs';
 
 const cruise: (paths: string[], options: { typeScriptRoot: string }) => Promise<Graph> =
   untypedCruise;
+const resolveLayout: (
+  layout: object,
+  exclude: string[],
+  options: { testFiles: unknown },
+) => AnalysisLayout = untypedResolveLayout;
+const defaultTestFiles: (runner: string) => unknown = untypedDefaultTestFiles;
 
 const projectRoot = path.resolve(import.meta.dirname, '../../../..');
 const fixtureRoot = 'languages/typescript/preset/test-runtime/fixtures';
@@ -46,6 +54,32 @@ describe('resolved test runtime report', () => {
       ['type-only.test.ts', 'type-only-production-dependency'],
     ]);
     expect(report.exclusions).toEqual([`${fixtureRoot}/negative/tests/contract/contract.test.ts`]);
+  });
+
+  it.each([
+    ['jest', 'src/__tests__/format.js'],
+    ['node', 'test/format-test.js'],
+    ['mocha', 'test/format.js'],
+  ])('analyzes the files %s runs, whatever their names', (runner: string, test: string) => {
+    const graph = {
+      modules: [
+        { source: test, dependencies: [{ resolved: 'src/format.js', dependencyTypes: ['local'] }] },
+        { source: 'src/format.js', dependencies: [] },
+        { source: 'tests/helpers/format.js', dependencies: [] },
+      ],
+    };
+    const layout = resolveLayout({}, [], { testFiles: defaultTestFiles(runner) });
+
+    expect(analyzeTestRuntime(graph, { layout }).tests).toEqual([
+      {
+        test,
+        category: 'direct-production-runtime',
+        directProductionModules: ['src/format.js'],
+        runtimeProductionModules: ['src/format.js'],
+        typeOnlyProductionModules: [],
+        subprocessBridges: [],
+      },
+    ]);
   });
 
   it('fails visibly for a malformed analyzer graph', () => {

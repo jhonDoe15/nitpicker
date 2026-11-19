@@ -587,7 +587,7 @@
           "additionalProperties": false,
           "properties": {
             "runner": {
-              "description": "It names the runner that runs the project's tests; without it nitpicker uses the runner the project's test script, config files or dependencies name",
+              "description": "It names the runner that runs the project's tests; without it nitpicker follows the project's test scripts, runner config files, test-file imports and runner dependencies, and stops when they name several runners",
               "enum": ["vitest", "jest", "node", "mocha"]
             },
             "timeouts": {
@@ -2560,6 +2560,8 @@
                             "pmd/SpringPasswordEncoder",
                             "pmd/SpringPermitAllAnyRequest",
                             "pmd/SpringCsrfDisabled",
+                            "pmd/SpringOutboundUrl",
+                            "pmd/SpringOpenRedirect",
                             "pmd/SpringHardcodedUser",
                             "pmd/JpaLazyFetching",
                             "pmd/JpaEntityClass",

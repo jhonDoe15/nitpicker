@@ -1,7 +1,8 @@
 export type SarifResult = {
   readonly ruleId?: string;
-  readonly message?: { readonly arguments?: readonly unknown[] };
+  readonly message?: { readonly text?: string; readonly arguments?: readonly unknown[] };
   readonly locations?: readonly {
+    readonly logicalLocations?: readonly { readonly fullyQualifiedName?: string }[];
     readonly physicalLocation?: {
       readonly artifactLocation?: { readonly uri?: string };
       readonly region?: unknown;

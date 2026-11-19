@@ -4,6 +4,7 @@ import {
   findVariable,
   isFunctionNode,
   resolveConstant,
+  resolveFunction,
 } from '../../analysis/constant-resolution.mts';
 import { memberName, typeServices, type Context } from '../../security/security-values.mts';
 import { nameOf } from '../../typed/node-views.mts';
@@ -101,8 +102,21 @@ export function rxjsName(context: Context, callee: TSESTree.Node): string | unde
     : undefined;
 }
 
+export function isSelector(context: Context, node: TSESTree.Node): boolean {
+  const target = skipped(node);
+  return isFunctionNode(target) || resolveFunction(context, target) !== undefined;
+}
+
+function isUndefined(context: Context, node: TSESTree.Node): boolean {
+  return (
+    node.type === AST_NODE_TYPES.Identifier &&
+    node.name === 'undefined' &&
+    (findVariable(context, node, 'undefined')?.defs.length ?? 0) === 0
+  );
+}
+
 export function isUnlimited(context: Context, node: TSESTree.Node | undefined): boolean {
-  if (node === undefined || isFunctionNode(skipped(node))) {
+  if (node === undefined || isSelector(context, node)) {
     return true;
   }
   const target = skipped(resolveConstant(context, skipped(node)));
@@ -112,7 +126,11 @@ export function isUnlimited(context: Context, node: TSESTree.Node | undefined): 
       (findVariable(context, target, 'Infinity')?.defs.length ?? 0) === 0) ||
     (target?.type === AST_NODE_TYPES.MemberExpression &&
       memberName(target) === 'POSITIVE_INFINITY');
-  return infinite || constantNumber(context, node) === Number.POSITIVE_INFINITY;
+  return (
+    infinite ||
+    (target !== undefined && isUndefined(context, target)) ||
+    constantNumber(context, node) === Number.POSITIVE_INFINITY
+  );
 }
 
 function typedCollection(context: Context, node: TSESTree.Node): Typed {

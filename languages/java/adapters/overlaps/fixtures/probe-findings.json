@@ -2139,6 +2139,12 @@
     },
     {
       "tool": "pmd",
+      "rule": "SharedStatefulHelperField",
+      "path": "src/main/java/probe/Locks.java",
+      "line": 11
+    },
+    {
+      "tool": "pmd",
       "rule": "UnsynchronizedStaticFormatter",
       "path": "src/main/java/probe/Locks.java",
       "line": 17
@@ -2247,6 +2253,12 @@
     },
     {
       "tool": "pmd",
+      "rule": "SharedStatefulHelperField",
+      "path": "src/main/java/probe/P2Inner.java",
+      "line": 7
+    },
+    {
+      "tool": "pmd",
       "rule": "SimpleDateFormatNeedsLocale",
       "path": "src/main/java/probe/P2Inner.java",
       "line": 7
@@ -2319,7 +2331,19 @@
     },
     {
       "tool": "pmd",
+      "rule": "SharedStatefulHelperField",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 10
+    },
+    {
+      "tool": "pmd",
       "rule": "LegacyCalendarApi",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 11
+    },
+    {
+      "tool": "pmd",
+      "rule": "SharedStatefulHelperField",
       "path": "src/main/java/probe/Shared.java",
       "line": 11
     },
@@ -2373,6 +2397,12 @@
     },
     {
       "tool": "pmd",
+      "rule": "SharedStatefulHelperField",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 9
+    },
+    {
+      "tool": "pmd",
       "rule": "NonThreadSafeSingleton",
       "path": "src/main/java/probe/Single.java",
       "line": 9
@@ -2404,6 +2434,12 @@
     {
       "tool": "pmd",
       "rule": "LegacyCalendarApi",
+      "path": "src/main/java/probe/Stamps.java",
+      "line": 8
+    },
+    {
+      "tool": "pmd",
+      "rule": "SharedStatefulHelperField",
       "path": "src/main/java/probe/Stamps.java",
       "line": 8
     },
@@ -2950,10 +2986,24 @@
     },
     {
       "tool": "spotbugs",
+      "rule": "SQL_INJECTION_JDBC",
+      "path": "src/main/java/probe/G13Guards.java",
+      "line": 13,
+      "symbol": "probe.G13Guards.find(Connection, String)"
+    },
+    {
+      "tool": "spotbugs",
       "rule": "SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE",
       "path": "src/main/java/probe/G13Guards.java",
       "line": 13,
       "symbol": "probe.G13Guards.find(Connection, String)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SQL_INJECTION_JDBC",
+      "path": "src/main/java/probe/G13Guards.java",
+      "line": 19,
+      "symbol": "probe.G13Guards.prepare(Connection, String)"
     },
     {
       "tool": "spotbugs",
@@ -2996,6 +3046,13 @@
       "path": "src/main/java/probe/Guarded.java",
       "line": 19,
       "symbol": "probe.Guarded.count"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "OBJECT_DESERIALIZATION",
+      "path": "src/main/java/probe/GuardOverlaps.java",
+      "line": 42,
+      "symbol": "probe.GuardOverlaps.read(InputStream)"
     },
     {
       "tool": "spotbugs",
@@ -3131,6 +3188,13 @@
     },
     {
       "tool": "spotbugs",
+      "rule": "PREDICTABLE_RANDOM",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 12,
+      "symbol": "probe.Numbers.all(int, byte, int)"
+    },
+    {
+      "tool": "spotbugs",
       "rule": "RV_ABSOLUTE_VALUE_OF_RANDOM_INT",
       "path": "src/main/java/probe/Numbers.java",
       "line": 12,
@@ -3145,6 +3209,13 @@
     },
     {
       "tool": "spotbugs",
+      "rule": "PREDICTABLE_RANDOM",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 8,
+      "symbol": "probe.Numbers.all(int, byte, int)"
+    },
+    {
+      "tool": "spotbugs",
       "rule": "RV_01_TO_INT",
       "path": "src/main/java/probe/Numbers.java",
       "line": 8,
@@ -3156,6 +3227,13 @@
       "path": "src/main/java/probe/Numbers.java",
       "line": 9,
       "symbol": "java.util.Random.nextInt()"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "PREDICTABLE_RANDOM",
+      "path": "src/main/java/probe/Numbers.java",
+      "line": 9,
+      "symbol": "probe.Numbers.all(int, byte, int)"
     },
     {
       "tool": "spotbugs",

@@ -138,7 +138,12 @@ describe('generated tsconfig.quality.json', () => {
       projectWith('jsconfig.json'),
     );
     expect(config['extends']).toBe('./jsconfig.json');
-    expect(compilerOptions(config)['checkJs']).toBe(true);
+    const { allowJs, checkJs, maxNodeModuleJsDepth } = compilerOptions(config);
+    expect({ allowJs, checkJs, maxNodeModuleJsDepth }).toEqual({
+      allowJs: true,
+      checkJs: true,
+      maxNodeModuleJsDepth: 0,
+    });
   });
 
   it('prefers tsconfig.json over jsconfig.json', () => {
@@ -185,11 +190,12 @@ describe('generated tsconfig.stryker.json', () => {
       projectWith('jsconfig.json'),
     );
     expect(javascript['extends']).toBe('./jsconfig.json');
-    const { skipLibCheck, allowJs, checkJs } = compilerOptions(javascript);
-    expect({ skipLibCheck, allowJs, checkJs }).toEqual({
+    const { skipLibCheck, allowJs, checkJs, maxNodeModuleJsDepth } = compilerOptions(javascript);
+    expect({ skipLibCheck, allowJs, checkJs, maxNodeModuleJsDepth }).toEqual({
       skipLibCheck: true,
       allowJs: true,
       checkJs: true,
+      maxNodeModuleJsDepth: 0,
     });
     const typescript = transformed(
       'tsconfig.stryker.json',
@@ -217,10 +223,20 @@ describe('generated knip.json', () => {
     const added = [
       'src/main.{js,mjs,cjs}',
       'vitest.config.{js,mjs,cjs}',
+      'jest.config.{js,mjs,cjs}',
+      'tests/jest.config.{js,mjs,cjs}',
       'tests/fixtures/*harness*.{js,mjs,cjs}',
     ];
     expect(added.filter((entry) => !textsOf(config['entry']).includes(entry))).toEqual([]);
     expect(config['project']).toEqual([...textsOf(base['project']), '*.config.{js,mjs,cjs}']);
+  });
+
+  it('lists the Jest and Mocha config files in the shared entries, for both presets', () => {
+    const runnerConfigs = textsOf(base['entry']).filter(
+      (entry) => entry.startsWith('jest.config') || entry.startsWith('.mocharc'),
+    );
+
+    expect(runnerConfigs).toEqual(['jest.config.{ts,mts}', '.mocharc.{js,cjs,mjs}']);
   });
 
   it('does not add them for TypeScript', () => {

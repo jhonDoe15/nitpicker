@@ -1,4 +1,4 @@
-import { annotationIn, typeArguments, typeName } from '../spring-names.mts';
+import { annotationIn, simpleTypeName, typeArguments } from '../spring-names.mts';
 import { BODY_STATUS } from '../../validation/constraint-names.mts';
 import { bodyConstraints } from './body-constraints.mts';
 import { has, report, returnTypeOf } from '../spring-scopes.mts';
@@ -67,15 +67,11 @@ const SCALARS = new Set([
 ]);
 const STAR = '*';
 
-function simple(type: string | undefined): string {
-  return typeName(type).split('.').at(-1) ?? '';
-}
-
 function leaf(view: SpringView, type: string | undefined): boolean {
   if (type === STAR || view.is(type, ANY) || view.is(type, JSON_NODES)) {
     return true;
   }
-  if (!MAPS.has(simple(type))) {
+  if (!MAPS.has(simpleTypeName(type))) {
     return false;
   }
   const [, value] = typeArguments(type);
@@ -83,7 +79,7 @@ function leaf(view: SpringView, type: string | undefined): boolean {
 }
 
 function inner(type: string | undefined): string[] {
-  const name = simple(type);
+  const name = simpleTypeName(type);
   if (MAPS.has(name)) {
     return typeArguments(type).slice(1);
   }
@@ -93,7 +89,7 @@ function inner(type: string | undefined): string[] {
 function untyped(view: SpringView, type: string | undefined): boolean {
   return (
     leaf(view, type) ||
-    (BODIES.has(simple(type)) && typeArguments(type).length === 0) ||
+    (BODIES.has(simpleTypeName(type)) && typeArguments(type).length === 0) ||
     inner(type).some(
       (argument) => leaf(view, argument) || inner(argument).some((nested) => leaf(view, nested)),
     )
@@ -101,7 +97,7 @@ function untyped(view: SpringView, type: string | undefined): boolean {
 }
 
 function plainBody(type: string | undefined): boolean {
-  const name = simple(type);
+  const name = simpleTypeName(type);
   if (SCALARS.has(name) || MAPS.has(name) || name.endsWith('Array')) {
     return true;
   }
@@ -110,7 +106,9 @@ function plainBody(type: string | undefined): boolean {
     WRAPPERS.has(name) &&
     argumentsOf.some(
       (argument) =>
-        argument === STAR || SCALARS.has(simple(argument)) || MAPS.has(simple(argument)),
+        argument === STAR ||
+        SCALARS.has(simpleTypeName(argument)) ||
+        MAPS.has(simpleTypeName(argument)),
     )
   );
 }

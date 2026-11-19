@@ -1,7 +1,14 @@
 import { annotationIn } from './spring-names.mts';
-import { BEAN, COMPLETABLE_FUTURE, POST_CONSTRUCT, SYNCHRONIZED } from './spring-types.mts';
+import {
+  BEAN,
+  COMPLETABLE_FUTURE,
+  POST_CONSTRUCT,
+  STEREOTYPES,
+  SYNCHRONIZED,
+} from './spring-types.mts';
 import type {
   Annotation,
+  AnnotationHolder,
   Declaration,
   Fqns,
   FunctionFact,
@@ -44,18 +51,20 @@ export function factoryType(name: string | undefined): string | undefined {
   return name !== undefined && Object.hasOwn(FACTORY_TYPES, name) ? FACTORY_TYPES[name] : undefined;
 }
 
-export function entriesOf(declaration: {
-  annotationEntries?: Annotation[] | undefined;
-}): Annotation[] {
-  return declaration.annotationEntries ?? [];
+export function entriesOf(declaration: AnnotationHolder): Annotation[] {
+  return declaration.annotationEntries ?? declaration.annotations ?? [];
 }
 
 export function report(rule: string, declaration: Declaration, symbol: string): Reported {
   return { rule, line: declaration.line, symbol };
 }
 
-export function has(view: SpringView, declaration: Declaration, fqns: Fqns): boolean {
+export function has(view: SpringView, declaration: AnnotationHolder, fqns: Fqns): boolean {
   return annotationIn(view.resolve, entriesOf(declaration), fqns) !== undefined;
+}
+
+export function managed(view: SpringView, declared: Declaration | undefined): boolean {
+  return declared !== undefined && has(view, declared, STEREOTYPES);
 }
 
 export function ownerOf(view: SpringView, invocation: InvocationFact): string {
@@ -100,12 +109,18 @@ export function beanMethodNames(view: SpringView, option: string): Set<string> {
   );
 }
 
+export function invocationsNamed(view: SpringView, name: string): InvocationFact[] {
+  const named = view.memo(
+    'invocationsNamed',
+    () => Map.groupBy(view.file.invocations, (invocation) => invocation.name),
+    (value): value is Map<string | undefined, InvocationFact[]> => value instanceof Map,
+  );
+  return named.get(name) ?? [];
+}
+
 function callersOf(view: SpringView, fn: FunctionFact) {
-  return view.file.invocations.filter(
-    (invocation) =>
-      invocation.name === fn.name &&
-      isSelfCall(view, invocation) &&
-      ownerOf(view, invocation) === fn.owner,
+  return invocationsNamed(view, fn.name).filter(
+    (invocation) => isSelfCall(view, invocation) && ownerOf(view, invocation) === fn.owner,
   );
 }
 

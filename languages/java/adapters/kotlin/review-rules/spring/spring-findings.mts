@@ -14,6 +14,7 @@ import { UNGUARDED_WRITE_RULES } from './transactions/unguarded-writes.mts';
 import { springMessage } from './spring-messages.mts';
 import { springViews } from './view/spring-view.mts';
 import { ERROR_LEAK_RULES } from './web/error-leaks.mts';
+import { OUTBOUND_RULES } from './web/outbound.mts';
 import { SECURITY_RULES } from './web/security.mts';
 import { WEB_RULES } from './web/web.mts';
 import { WIRING_RULES } from './wiring/wiring.mts';
@@ -72,6 +73,7 @@ const RULES: SpringRule[] = [
   ...WEB_RULES,
   ...ERROR_LEAK_RULES,
   ...SECURITY_RULES,
+  ...OUTBOUND_RULES,
   ...ENTITY_RULES,
   ...FOREIGN_KEY_RULES,
   ...COLUMN_RULES,

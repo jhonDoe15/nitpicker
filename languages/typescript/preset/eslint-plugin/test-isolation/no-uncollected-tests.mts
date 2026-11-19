@@ -1,25 +1,33 @@
 import { AST_NODE_TYPES, type TSESLint } from '@typescript-eslint/utils';
-import { readLayout } from '../rules/typed/policy-views.mts';
 import { isTestFunctionChain } from '../test-quality/test-calls.mts';
+import {
+  RUNNER_OPTION_SCHEMA,
+  isCollectedByRunner,
+  runnerOf,
+  vocabularyOf,
+} from '../rules/runner-apis/runner-option.mts';
 
-const layout = readLayout();
-const RUNNABLE_NAME = new RegExp(
-  `\\.(?:test|spec)(?:-d)?\\.(?:${layout.extensions.join('|')})$`,
-  'u',
-);
+const TYPE_TEST_NAME = /\.(?:test|spec)-d\.[cm]?[jt]sx?$/u;
+
+function isCollected(context: Parameters<typeof isCollectedByRunner>[0]): boolean {
+  return (
+    isCollectedByRunner(context) ||
+    (runnerOf(context) === 'vitest' && TYPE_TEST_NAME.test(context.filename))
+  );
+}
 
 export const rule: TSESLint.RuleModule<'neverRuns'> = {
   meta: {
     type: 'problem',
     docs: { description: 'Report test calls in a file the test runner never collects' },
-    schema: [],
+    schema: RUNNER_OPTION_SCHEMA,
     messages: {
       neverRuns:
-        'This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). An exception fits only when another test file runs it on purpose.',
+        'This file defines tests but the test runner does not collect it, so they never run. {{collectIt}} An exception fits only when another test file runs it on purpose.',
     },
   },
   create(context) {
-    if (RUNNABLE_NAME.test(context.filename)) {
+    if (isCollected(context)) {
       return {};
     }
     return {
@@ -31,7 +39,11 @@ export const rule: TSESLint.RuleModule<'neverRuns'> = {
             isTestFunctionChain(statement.expression.callee),
         );
         if (first !== undefined) {
-          context.report({ node: first, messageId: 'neverRuns' });
+          context.report({
+            node: first,
+            messageId: 'neverRuns',
+            data: { collectIt: vocabularyOf(context).collectIt },
+          });
         }
       },
     };

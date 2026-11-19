@@ -138,6 +138,10 @@ export function typeName(text: string | undefined): string {
 
 const DEPTH_STEP: Record<string, number> = { '<': 1, '>': -1 };
 
+export function simpleTypeName(text: string | undefined): string {
+  return typeName(text).split('.').at(-1) ?? '';
+}
+
 export function typeArguments(text: string | undefined): string[] {
   const compact = (text ?? '').replaceAll(/\s+/gu, '').replace(/\?$/u, '');
   const open = compact.indexOf('<');

@@ -65,6 +65,7 @@ const FIRST_VERSION = /(?<major>\d+)(?:\.(?<minor>\d+))?(?:\.(?<patch>\d+))?/u;
 const PEER_RANGES = fieldOf(manifestOf(PACKAGE_ROOT), PEER_DEPENDENCIES);
 const NATIVE_TYPESCRIPT_MAJOR = 7;
 const OTHER_VITEST_PEERS: VitestPeerTable = {
+  3: { vite: '^5.0.0 || ^6.0.0 || ^7.0.0' },
   4: { vite: '^6.0.0 || ^7.0.0 || ^8.0.0' },
   5: { vite: '^6.4.0 || ^7.0.0 || ^8.0.0' },
 };

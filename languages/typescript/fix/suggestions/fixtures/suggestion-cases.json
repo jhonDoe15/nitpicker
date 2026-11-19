@@ -15,5 +15,6 @@
   "@typescript-eslint/no-array-delete": "export function drop(items: number[]): void {\n  delete items[0];\n}\n",
   "@typescript-eslint/use-unknown-in-catch-callback-variable": "export function recover(p: Promise<number>): Promise<number> {\n  return p.catch((e) => 0);\n}\n",
   "@typescript-eslint/switch-exhaustiveness-check": "type Mode = 'a' | 'b';\n\nexport function label(m: Mode): number {\n  switch (m) {\n    case 'a':\n      return 1;\n  }\n  return 0;\n}\n",
+  "regexp/optimal-lookaround-quantifier": "export const digits = /(?=\\w+)x/;\n",
   "two-suggestions": "export function same(x: number): boolean {\n  return x === -0;\n}\n"
 }

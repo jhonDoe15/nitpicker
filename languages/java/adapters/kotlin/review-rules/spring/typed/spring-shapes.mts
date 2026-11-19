@@ -6,8 +6,11 @@ import type {
   InvocationFact,
   LocalFact,
   ExceptionUse,
+  NameRead,
   ParameterFact,
   PropertyFact,
+  Read,
+  ReturnValue,
   ScopeFact,
   ScopeParameter,
   SpringFile,
@@ -68,7 +71,11 @@ export type Annotated = {
   type?: string | undefined;
   initializer?: string | undefined;
 };
-export type Declaration = { line: number; annotationEntries?: Annotation[] | undefined };
+export type AnnotationHolder = {
+  annotationEntries?: Annotation[] | undefined;
+  annotations?: Annotation[] | undefined;
+};
+export type Declaration = AnnotationHolder & { line: number };
 
 export type ProjectContext = {
   projectFiles: SourceFile[];
@@ -94,6 +101,11 @@ export type Receiver = { text?: string; scope?: number | undefined; type?: strin
 export type SpringView = {
   file: SpringFile;
   resolve: Resolve;
+  memo: <Value>(
+    key: string,
+    compute: () => Value,
+    accepts: (value: unknown) => value is Value,
+  ) => Value;
   declared: Set<string>;
   chain: (id: number | undefined) => ScopeFact[];
   classes: Map<string, ClassFact>;
@@ -148,8 +160,11 @@ export type {
   InvocationFact,
   LocalFact,
   ExceptionUse,
+  NameRead,
   ParameterFact,
   PropertyFact,
+  Read,
+  ReturnValue,
   ScopeFact,
   ScopeParameter,
 };

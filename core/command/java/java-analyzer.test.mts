@@ -142,6 +142,7 @@ const PINNED_TOOLS = [
   'pmd',
   'forbiddenapis',
   'spotbugs',
+  'findSecBugs',
   'googleJavaFormat',
   'palantirJavaFormat',
   'jacoco',

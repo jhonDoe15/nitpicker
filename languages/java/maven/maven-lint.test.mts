@@ -7,11 +7,10 @@ import {
   useGitCheckouts,
 } from '../../../core/diff/git/test-support/git-checkout.mts';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { GRADLE_DIRECTORY } from '../builds/java-build.mts';
+import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mts';
 import { runFormat } from './format/maven-format.mts';
 import { javaFiles, writeCheckstyleSetup } from './maven-lint.mts';
 import { toolDependencies } from './maven-tools.mts';
-import { readPinnedTools } from '../builds/java-build.mts';
 
 const roots: string[] = [];
 const { gitCheckout } = useGitCheckouts();
@@ -233,6 +232,9 @@ describe('maven tools', () => {
     ]);
     expect(tools['launcher-1.11.4']).toEqual([
       dependency('org.junit.platform', 'junit-platform-launcher', '1.11.4'),
+    ]);
+    expect(tools['spotbugsPlugins']).toEqual([
+      dependency('com.h3xstream.findsecbugs', 'findsecbugs-plugin', pinned['findSecBugs']),
     ]);
     expect(tools['jacoco']).toEqual([
       dependency(
