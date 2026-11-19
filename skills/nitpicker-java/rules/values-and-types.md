@@ -104,6 +104,18 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Fill each setter or builder slot with the value named for it (`config.timeColumn(timeColumn)`, not
   `config.tableName(timeColumn)`), and pass every member of a numbered family (`type1, type2, type3`),
   not one twice (`pmd/SiblingValuePassed`).
+- A getter returns the field it is named for (`getScrollWidth()` returns `areaWidth`, not the
+  neighbouring `areaHeight`, and `getLeft()` not `right`); a cloned getter gets its field changed together with its name
+  (`pmd/GetterReturnsSiblingField`).
+- Assign a bound from the accessor that carries its name (`int max = range.getMax();`,
+  `afterPath = getAfterPath(change)`, not the accessor of the opposite end); a copied line gets both
+  sides edited (`pmd/OppositeBoundAssigned`).
+- A method or variable named for a change (`isModified`, `hasChanged`, `dirty`) is computed with a
+  negated comparison (`return !saved.equals(edited);`), not plain equality, which says the opposite
+  (`pmd/ChangeNamedEquality`).
+- Do not pass a variable to a setter or mutator called on itself (`defaults.putAll(defaults)`,
+  `node.setPeer(node)`, `node.attach(node)`) when another variable of that type is in scope; name the
+  one that was meant (`pmd/ReceiverPassedAsArgument`).
 - A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
   not both; one item is a one-element list.
 - Take a dependency as a constructor parameter (a `Provider` or `Instance` when it is optional or
