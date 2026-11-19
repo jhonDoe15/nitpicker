@@ -27,7 +27,7 @@ const WIDER: Record<string, Set<string> | undefined> = {
 };
 
 function isHelper(fn: FunctionFact): boolean {
-  return fn.local === true || fn.visibility === 'private';
+  return fn.local || fn.visibility === 'private';
 }
 
 function inClass(view: SpringView, invocation: InvocationFact, qualified: string): boolean {
@@ -44,7 +44,7 @@ function visibleTo(
   if (invocation.reference === true || invocation.assign === true) {
     return false;
   }
-  if (fn.local === true) {
+  if (fn.local) {
     return view.chain(invocation.scope).some(({ id }) => id === scope.parent);
   }
   if (fn.receiver !== undefined) {

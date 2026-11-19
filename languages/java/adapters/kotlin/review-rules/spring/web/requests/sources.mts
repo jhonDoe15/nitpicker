@@ -85,7 +85,7 @@ function seedsOf(view: SpringView, scope: ScopeFact, parameters: SeedParameter[]
 
 function functionSeeds(view: SpringView, scope: ScopeFact): Seed[] {
   const fn = view.functionOf(scope);
-  if (fn === undefined || fn.visibility === 'private' || fn.local === true) {
+  if (fn === undefined || fn.visibility === 'private' || fn.local) {
     return [];
   }
   if (fn.name === '<init>' && managed(view, view.classAt(scope.id))) {

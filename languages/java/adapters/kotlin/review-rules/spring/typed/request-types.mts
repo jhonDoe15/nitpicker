@@ -2,7 +2,7 @@ import type { Annotation, LocalFact, Read, ScopeFact } from './spring-facts.mts'
 import type { Grouping } from '../../kotlin-facts.mts';
 
 export type Direct = { direct: true; type?: undefined };
-export type Shaped = { type: string; direct?: undefined };
+type Shaped = { type: string; direct?: undefined };
 export type Taint = Direct | Shaped;
 export type Mode = 'alias' | 'element';
 

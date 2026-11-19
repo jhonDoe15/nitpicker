@@ -1,19 +1,13 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 import { javaFindingsOf } from '../reporting/__tests__/kotlin-report-project.mts';
 import { reportBaseOf, writeModules } from '../test-support/report-base.mts';
 import { securityMessage } from './security-advice.mts';
 
 const PATTERN = 'SQL_INJECTION_SPRING_JDBC';
-const roots: string[] = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { temporaryRoot } = useGitFixtures();
 
 function sarif(results: unknown[]): string {
   return JSON.stringify({ runs: [{ tool: { driver: { name: 'tool', rules: [] } }, results }] });
@@ -36,8 +30,7 @@ function spotbugsResult(method: string, line = 10): unknown {
 }
 
 function projectWithSecurityReports(): string {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-security-reports-')));
-  roots.push(root);
+  const root = realpathSync(temporaryRoot('nitpicker-security-reports-'));
   const reports = writeModules(root);
   const sourceFile = path.join(root, 'src/main/java/demo/Bad.java');
   mkdirSync(path.dirname(sourceFile), { recursive: true });
