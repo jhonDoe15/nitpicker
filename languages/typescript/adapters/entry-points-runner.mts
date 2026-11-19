@@ -5,7 +5,6 @@ import { importEntryPointAnalyzer, toEntryPointDiffFindings } from './typed/entr
 import {
   type CruiseReport,
   existingRoots,
-  loadDependencyGraph,
   isInvokedModule,
   writeAdapterFindings,
 } from './typed/static-checks.mts';
@@ -13,7 +12,7 @@ import { applyAreaExceptions } from './exceptions/area-exceptions.mts';
 import type { Finding } from './static-checks/shared.mts';
 import { PACKAGE_ROOT, SNAPSHOT_DIRECTORY_NAMES } from '../../../core/tooling/tool-resolution.mjs';
 import { type Layout, readLayout } from './typed/head-policy.mts';
-import { EXCLUDED_PATH_PATTERN } from '../preset/dependency-graph/cruise.mjs';
+import { loadProjectModules } from './dependency-graph/shared-graph/project-modules.mts';
 import { realTemporaryDirectory } from '../../../core/tooling/temporary-files.mjs';
 import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 
@@ -79,17 +78,11 @@ function graphLoader(
 }
 
 function loadModules(options: EntryPointOptions, patterns: readonly string[]): CruiseReport {
-  const graph = loadDependencyGraph({
+  return loadProjectModules({
     projectRoot: options.projectRoot,
     policyRoot: options.policyRoot,
     patterns,
-    exclude: EXCLUDED_PATH_PATTERN,
-    reportsConfigErrors: false,
   });
-  if (!Array.isArray(graph.modules)) {
-    throw new TypeError('dependency-cruiser report is missing its modules array');
-  }
-  return graph;
 }
 
 function collectArguments(arguments_: readonly string[]) {

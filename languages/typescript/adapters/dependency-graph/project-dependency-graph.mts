@@ -29,6 +29,7 @@ import { projectGraphLayer } from './project-config/graph-layer.mts';
 import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
 import type { SpawnSyncReturns } from 'node:child_process';
 import { describeProcessEnd } from '../../../../shared/processes/process-failure.mjs';
+import { MAX_GRAPH_OUTPUT_BYTES, compactGraphText } from './shared-graph/compact-graph.mts';
 
 export type CruiseViolation = {
   readonly rule?: unknown;
@@ -77,7 +78,6 @@ const dependencyGraphTsconfig: (layout: unknown) => unknown = untypedDependencyG
 const readLayout: () => { readonly excludePattern?: string } = readUntypedLayout;
 const revivedExpression: (value: unknown) => string = untypedRevivedExpression;
 
-const MAX_OUTPUT_BYTES = 100 * 1024 * 1024;
 const TSCONFIG_NAME = 'tsconfig.quality.json';
 const LAYERS_MODULE = checkoutModuleUrl(
   pathToFileURL(path.join(import.meta.dirname, 'project-config', 'dependency-cruiser-layers.mjs')),
@@ -155,12 +155,12 @@ function runCruise(cruise: Cruise): string {
       {
         cwd: cruise.projectRoot,
         encoding: 'utf8',
-        maxBuffer: MAX_OUTPUT_BYTES,
+        maxBuffer: MAX_GRAPH_OUTPUT_BYTES,
         timeout: TOOL_RUN_CEILING_MS,
       },
     );
     assertCruised(result);
-    return result.stdout;
+    return compactGraphText(result.stdout);
   } finally {
     wrapper.remove();
   }
