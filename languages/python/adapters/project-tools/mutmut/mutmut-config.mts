@@ -18,7 +18,7 @@ import { attempt, parseToml, stringifyToml, toolLayers, unique } from '../projec
 import {
   listedProjectFiles,
   outsideScopePatterns,
-} from '../../../../../core/scope/mutation-scope.mjs';
+} from '../../../../../core/scope/mutation-scope.mts';
 
 type MutmutRequest = { readonly context: MutmutContext; readonly fail: FailWith };
 
@@ -101,7 +101,12 @@ function excludedPatterns(exclude: readonly string[]): string[] {
 function outsideScope({ projectRoot, mutationScope }: MutmutContext): string[] {
   return mutationScope === undefined
     ? []
-    : textsOf(outsideScopePatterns(listedProjectFiles(projectRoot, [PYTHON_FILES]), mutationScope));
+    : textsOf(
+        outsideScopePatterns(
+          listedProjectFiles(projectRoot, [PYTHON_FILES]),
+          textsOf(mutationScope),
+        ),
+      );
 }
 
 export function ignoredMutmutKeys(table: Fields): string[] {

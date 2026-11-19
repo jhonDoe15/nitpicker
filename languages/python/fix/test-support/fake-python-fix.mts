@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import type { FixInvocation as CoreFixInvocation } from '../../../../core/fix/typed/fix-types.mts';
 
-type FixInvocation = CoreFixInvocation & { operation?: string; acceptedStatuses?: number[] };
+type FixInvocation = CoreFixInvocation;
 
 type FixReply = {
   status?: ReturnType<typeof spawnSync>['status'];

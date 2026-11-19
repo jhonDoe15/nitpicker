@@ -1,8 +1,8 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { parseChangedLines as untypedParseChangedLines } from '../../../../core/diff/git/patches/changed-lines.mjs';
-import { runGit } from '../../../../core/diff/git/repository/command.mjs';
-import { diffFromBase as untypedDiffFromBase } from '../../../../core/tooling/git/base-diff.mjs';
+import { parseChangedLines as untypedParseChangedLines } from '../../../../core/diff/git/patches/changed-lines.mts';
+import { runGit } from '../../../../core/diff/git/repository/command.mts';
+import { diffFromBase } from '../../../../core/tooling/git/base-diff.mts';
 import { run } from '../execution/go-process.mts';
 import { inspectCommand } from '../execution/go-tools.mts';
 import { moduleFileText } from '../execution/go-module.mts';
@@ -16,12 +16,6 @@ type Targets = { all: boolean; files: Readonly<Record<string, readonly ChangedRa
 
 const parseChangedLines: (diff: string) => ReadonlyMap<string, ChangedFile> =
   untypedParseChangedLines;
-const diffFromBase: (options: {
-  runGit: unknown;
-  baselineRoot: string;
-  projectRoot: string;
-  args: readonly string[];
-}) => string = untypedDiffFromBase;
 const globMatcher: (glob: string) => { test: (file: string) => boolean } = untypedGlobMatcher;
 
 const GO_SOURCE = /(?<!_test)\.go$/u;

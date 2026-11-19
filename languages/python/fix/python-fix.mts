@@ -9,7 +9,7 @@ import {
   SHARED_RECIPES,
   readBytes,
   sharedInputs,
-} from '../../../core/fix/typed/fix-views.mts';
+} from '../../../core/fix/typed/views/fix-views.mts';
 import type { ToolContext } from '../adapters/typed/context/tool-context-types.mts';
 import type {
   FixersResult,

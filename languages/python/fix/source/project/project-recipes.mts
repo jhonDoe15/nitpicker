@@ -7,7 +7,7 @@ import type {
 } from '../../typed/fix-types.mts';
 import type { ScriptOptions, ScriptSettings } from '../../typed/script-types.mts';
 import { defineRecipes } from '../../typed/core-views.mts';
-import { REVIEW } from '../../../../../core/fix/engine/safety.mjs';
+import { REVIEW } from '../../../../../core/fix/engine/safety.mts';
 import { declineNote } from '../python-recipes.mts';
 import { projectPayload } from './project-payload.mts';
 
