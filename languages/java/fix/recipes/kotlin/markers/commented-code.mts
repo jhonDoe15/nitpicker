@@ -1,7 +1,7 @@
 import { commentedOutCode as untypedCommentedOutCode } from '../../../../adapters/kotlin/scan/rules/markers.mts';
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
 import type { KotlinCodeMarker, ScannedKotlin } from '../shared/kotlin-scan.mts';
-import { removalSpan } from '../shared/spans.mts';
+import { removalSpan } from '../../shared/spans.mts';
 
 const commentedOutCode: (scanned: ScannedKotlin) => readonly KotlinCodeMarker[] =
   untypedCommentedOutCode;
@@ -15,6 +15,6 @@ export const commentedCodeRecipe = kotlinRecipe({
       .filter(({ confident }) => confident)
       .map(({ offset, end }) => ({
         offset,
-        edits: [{ ...removalSpan(scanned.source, offset, end), text: '' }],
+        edits: [removalSpan(scanned.source, offset, end)],
       })),
 });

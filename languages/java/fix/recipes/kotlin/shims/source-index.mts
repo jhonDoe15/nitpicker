@@ -4,7 +4,7 @@ import type { FixRecipe, RecipeFix, RuleRef } from '../../../../../../core/fix/t
 import { isKotlinTestPath } from '../shared/kotlin-recipe.mts';
 import { escapeRegExp, scanKotlinSource } from '../shared/kotlin-scan.mts';
 import type { KotlinEdit, ScannedKotlin } from '../shared/kotlin-scan.mts';
-import { removalSpan } from '../shared/spans.mts';
+import { removalSpan } from '../../shared/spans.mts';
 
 export type Source = {
   readonly path: string;

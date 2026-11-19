@@ -39,6 +39,7 @@ import {
   javaRestatingDocCommentRecipe,
   kotlinRestatingDocCommentRecipe,
 } from './restating-doc-comment.mts';
+import { javaCommentedCodeRecipe } from './comments/commented-code.mts';
 import { upperEllRecipe } from './upper-ell.mts';
 import { javaCatchLogRecipe } from './java/catch-log.mts';
 import { javaExtractNearDuplicateRecipe } from './extract/near-duplicate-extract.mts';
@@ -77,6 +78,7 @@ export const JVM_RECIPES = defineRecipes([
   jvmSyntheticRecipe,
   mutationIgnoreRecipe,
   commentedCodeRecipe,
+  javaCommentedCodeRecipe,
   mayBeConstRecipe,
   mayBeConstReviewRecipe,
   explicitGcRecipe,

@@ -1,7 +1,7 @@
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
 import { closingIndex, enclosingOpen, matchingOpenParen } from '../shared/kotlin-scan.mts';
 import type { KotlinFound, ScannedKotlin } from '../shared/kotlin-scan.mts';
-import { removalSpan } from '../shared/spans.mts';
+import { removalSpan } from '../../shared/spans.mts';
 
 const COLLECTION =
   /(?<![\w.$`])(?:java\.lang\.)?(?:(System)\s*\.\s*gc|(Runtime)\s*\.\s*getRuntime\s*\(\s*\)\s*\.\s*gc)\s*\(\s*\)/gu;
