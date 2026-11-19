@@ -102,6 +102,7 @@ describe.skipIf(!enabled).each([
     expect(read(repository, `${JAVA}/Untouched.java`)).toBe(untouched);
     expect(result.fixedFindings).toEqual([
       `${JAVA}/Changed.java:17 errorprone/MissingOverride (java-error-prone-safe)`,
+      `${JAVA}/Changed.java:17 pmd/MissingOverride (java-error-prone-safe)`,
     ]);
   });
 
@@ -119,6 +120,7 @@ describe.skipIf(!enabled).each([
 
     expect(plain.fixedFindings).toEqual([
       `${JAVA}/Changed.java:17 errorprone/MissingOverride (java-error-prone-safe)`,
+      `${JAVA}/Changed.java:17 pmd/MissingOverride (java-error-prone-safe)`,
     ]);
     expect(selected.fixedFindings).toEqual([
       `${JAVA}/Changed.java:6 errorprone/ClassCanBeStatic (java-error-prone-review)`,
