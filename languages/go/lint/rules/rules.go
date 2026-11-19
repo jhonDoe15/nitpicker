@@ -71,6 +71,7 @@ func Analyzers() []*analysis.Analyzer {
 			requests.Analyzer,
 			jobs.Analyzer,
 			resolvers.Analyzer,
+			recursion.Analyzer,
 			translation.Analyzer,
 			replacements.Analyzer,
 			markup.Analyzer,
@@ -86,6 +87,4 @@ func Analyzers() []*analysis.Analyzer {
 			listings.Analyzer,
 		},
 	)
-			recursion.Analyzer,
-		})
 }
