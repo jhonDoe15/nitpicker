@@ -3,6 +3,7 @@ import ast
 from fixers.comments.unused_ignore import unused_ignore
 from fixers.project.alias import alias_fix
 from fixers.project.forwarding import forwarding
+from fixers.project.helper_move import helper_move
 from fixers.project.scan import module_functions
 from fixers.project.unused_option import unused_option
 from runner import Finding, node_at, parse, to_edit
@@ -13,6 +14,7 @@ FORWARDING = "forwarding-wrapper"
 UNUSED_OPTION = "unused-option"
 UNUSED_IGNORE = "unused-ignore"
 SHIM = "compatibility-shim"
+HELPER = "test-helper-in-source"
 NOT_ALIAS = "only an alias assignment is replaced by its target"
 FAILED = "the fixer failed on this finding"
 
@@ -46,6 +48,10 @@ def option_fix(index, sources, editable, item):
     return {path: edit}
 
 
+def is_write(edit):
+    return isinstance(edit, dict) and edit["type"] == "write"
+
+
 def project_fixes(index, sources, editable, found):
     fixes, declines = [], []
     for item in found:
@@ -55,9 +61,12 @@ def project_fixes(index, sources, editable, found):
                 grouped = forwarding_fix(index, sources, editable, item)
             elif item["rule"] == SHIM:
                 grouped = shim_fix(index, sources, editable, item)
+            elif item["rule"] == HELPER:
+                grouped = helper_move(index, sources, editable, item["path"])
             else:
                 grouped = option_fix(index, sources, editable, item)
-            if not set(grouped) <= editable:
+            created = {edit["path"] for edit in sum(grouped.values(), []) if is_write(edit)}
+            if not set(grouped) <= editable | created:
                 refuse("the file is not one --fix covers")
             edits = [
                 edit if isinstance(edit, dict) else to_edit(sources[path], path, edit)
@@ -72,10 +81,18 @@ def project_fixes(index, sources, editable, found):
     return fixes, declines
 
 
-def check_findings(project):
+def check_findings(project, rules):
+    from discovery import helpers
     from signatures import shims
 
-    return [item for context in project.contexts.values() for item in shims.check(context)]
+    checks = [(SHIM, shims.check), (HELPER, helpers.check)]
+    return [
+        item
+        for context in project.contexts.values()
+        for rule, check in checks
+        if rule in rules
+        for item in check(context)
+    ]
 
 
 def main(payload):
@@ -92,8 +109,8 @@ def main(payload):
     index.extra_texts = payload.get("texts", [])
     found = []
     try:
-        if SHIM in rules:
-            found.extend(check_findings(project))
+        if rules & {SHIM, HELPER}:
+            found.extend(check_findings(project, rules))
         if FORWARDING in rules:
             found.extend(forwarding_findings(index))
         if UNUSED_OPTION in rules:

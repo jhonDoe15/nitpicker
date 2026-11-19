@@ -119,6 +119,12 @@ export function projectScriptRecipes({
       lookup,
       optionsFor,
     }),
+    projectRecipe({
+      id: 'python-test-helper-location',
+      rule: 'test-helper-in-source',
+      lookup,
+      optionsFor,
+    }),
     projectRecipe({ id: 'python-unused-option', rule: 'unused-option', lookup, optionsFor }),
     unusedIgnoreRecipe({ lookup }),
   ]);
