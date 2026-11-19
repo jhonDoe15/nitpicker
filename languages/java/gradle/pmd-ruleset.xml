@@ -272,7 +272,7 @@ self::MethodCall[@MethodName = 'next'][parent::DoStatement]
     </properties>
   </rule>
   <rule name="CatchLogWithoutException" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This log call in a catch leaves the caught exception out, so the stack trace and the cause are lost. SLF4J and Log4j 2 take the exception last (log.warn(&quot;could not load '{}'&quot;, id, e)); JBoss Logging and Quarkus Log take it first in the formatted forms (log.warnf(e, &quot;could not load %s&quot;, id)) and last in log.warn(&quot;could not load&quot;, e); java.util.logging and System.Logger take log(Level.WARNING, &quot;could not load&quot;, e). Name the catch parameter ignored when the failure is expected and needs no trace.">
+        message="This log call in a catch leaves the caught exception out, so the stack trace and the cause are lost. SLF4J and Log4j 2 take the exception last (log.warn(&quot;could not load '{'}&quot;, id, e)); JBoss Logging and Quarkus Log take it first in the formatted forms (log.warnf(e, &quot;could not load %s&quot;, id)) and last in log.warn(&quot;could not load&quot;, e); java.util.logging and System.Logger take log(Level.WARNING, &quot;could not load&quot;, e). Name the catch parameter ignored when the failure is expected and needs no trace.">
     <priority>3</priority>
     <properties>
       <property name="xpath">

@@ -13,7 +13,7 @@ describe('reuse findings', () => {
     ]);
   });
 
-  it('runs for the JavaScript preset on .js files and leaves .jsx and .tsx outside it', () => {
+  it('runs for the JavaScript preset on .js and .jsx files', () => {
     const copy = `export const LIMIT = 5;\nexport function get(a) {\n  return a;\n}\n${usesValues('LIMIT', 'get')}`;
     const files = reactFiles(
       {
@@ -34,6 +34,8 @@ describe('reuse findings', () => {
       ['new-icon-asset', 'src/arrow.svg', 'new-icon-asset'],
       ['duplicate-definition', 'src/b.mjs', 'duplicate:get'],
       ['duplicate-definition', 'src/b.mjs', 'duplicate:LIMIT'],
+      ['duplicate-definition', 'src/c.jsx', 'duplicate:get'],
+      ['duplicate-definition', 'src/c.jsx', 'duplicate:LIMIT'],
       ['exported-name-collision', 'src/e.js', 'collision:get'],
     ]);
   });
