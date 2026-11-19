@@ -2250,6 +2250,42 @@ return //MethodCall[@MethodName = 'contains'][ArgumentList/@Size = 1][*[1][self:
       </property>
     </properties>
   </rule>
+  <rule name="LoopUpdateAwayFromExit" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This for loop moves its index away from its own exit condition: the condition keeps holding while the update runs the other way (i >= 0 with i++, i &lt; n with i--, i &lt;= 0 with i--), so the loop never ends and fails with an IndexOutOfBoundsException or runs until the index overflows. Count in the direction the condition tests: for (int i = list.size() - 1; i >= 0; i--) and for (int i = 0; i &lt; n; i++). Right code is not reported: a loop that leaves through break, return or throw on another condition, a loop that assigns the index in its body, and a byte, short or char index that wraps on purpose.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $flip := function($op) { map { '<': '>', '<=': '>=', '>': '<', '>=': '<=' }($op) }
+return
+//ForStatement[ForUpdate][InfixExpression[@Operator = ('<', '<=', '>', '>=')]]
+  [let $cond := InfixExpression[@Operator = ('<', '<=', '>', '>=')]
+   return some $var in distinct-values(ForUpdate//VariableAccess/@Name)
+     satisfies
+       (let $left := exists($cond/*[1][self::VariableAccess][@Name = $var]),
+            $right := exists($cond/*[2][self::VariableAccess][@Name = $var]),
+            $op := if ($left) then string($cond/@Operator) else $flip(string($cond/@Operator)),
+            $delta := function($u) {
+              let $lit := $u/*[2]
+              return if ($lit/self::NumericLiteral) then number($lit/@ValueAsDouble)
+                     else if ($lit/self::UnaryExpression[@Operator = '-'][NumericLiteral]) then -number($lit/NumericLiteral/@ValueAsDouble)
+                     else 0
+            },
+            $steps := ForUpdate//AssignmentExpression[@Operator = ('+=', '-=')][VariableAccess[1]/@Name = $var],
+            $upward := ForUpdate//UnaryExpression[@Operator = '++'][VariableAccess/@Name = $var]
+                     | $steps[@Operator = '+='][$delta(.) > 0] | $steps[@Operator = '-='][$delta(.) < 0],
+            $downward := ForUpdate//UnaryExpression[@Operator = '--'][VariableAccess/@Name = $var]
+                       | $steps[@Operator = '-='][$delta(.) > 0] | $steps[@Operator = '+='][$delta(.) < 0]
+        return ($left != $right)
+          and (exists($downward) and empty($upward) and $op = ('<', '<=') or exists($upward) and empty($downward) and $op = ('>', '>='))
+          and empty($cond/VariableAccess[@Name = $var][pmd-java:typeIs('byte') or pmd-java:typeIs('short') or pmd-java:typeIs('char')])
+          and empty(ForInit//PrimitiveType[@Kind = ('byte', 'short', 'char')])
+          and empty(*[last()]//BreakStatement | *[last()]//ReturnStatement | *[last()]//ThrowStatement)
+          and empty(*[last()]//VariableAccess[@Name = $var][@AccessType = 'WRITE']))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="LoopVariableUnused" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This loop never uses its loop variable, but its body reads a fixed element of the iterated collection (xs.get(0), xs[0]), so every iteration reads the same element. Use the variable instead: for (String name : names) context.getBean(name, type), delegates.get(i).handle(ctx). If the loop only repeats work, name the variable ignored (for (Item ignored : items)) or use a plain counter.">
     <priority>3</priority>

@@ -178,6 +178,18 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A loop uses its loop variable (`pmd/LoopVariableUnused`): `for (String name : names) ctx.getBean(name, type)`,
   `delegates.get(i).handle(ctx)`, not `names[0]` or `delegates.get(0)` on every pass. A loop that only repeats
   work names its variable `ignored`.
+- A counting `for` loop updates its index toward its exit condition (`pmd/LoopUpdateAwayFromExit`):
+  `for (int i = list.size() - 1; i >= 0; i--)` and `for (int i = 0; i < n; i++)`, not `i >= 0` with `i++`
+  or `i < n` with `i--`, which never ends.
+- A literal index stays inside the length its own guard proved: `params.length > 2 ? params[2] : null`,
+  `if (parts.length < 2) return;` before `parts[1]`, `list.size() >= 3` before `list.get(2)`; a guard one short
+  of the index lets through exactly the length that throws (`pmd/ConstantIndexBeyondGuard`).
+- Cut exactly the affix you tested: `path.substring("file://".length())` after `startsWith("file://")`, and
+  `s.substring(1, s.length() - 1)` after checking both quotes, not a hard-coded offset that is one off
+  (`pmd/AffixLengthMismatch`).
+- A null check does not make a list, array or string non-empty: read `get(0)`, `[0]`, `charAt(0)` or
+  `iterator().next()` after `!isEmpty()`, `size() > 0` or `length > 0`
+  (`pmd/FirstElementOfMaybeEmpty`).
 - A "no limit" maximum is never added to anything (`pmd/MaxValueOverflow`): `startPos + width` with a
   `width` that is `Integer.MAX_VALUE`, a constant of it or a parameter a caller passes it, overflows to a
   negative index or bound. Compare without adding (`width >= length - start`), widen first
