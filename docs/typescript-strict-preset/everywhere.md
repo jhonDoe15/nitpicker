@@ -278,6 +278,14 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   its own slot is not named like any parameter (`pipe_(pipe, docs, kwargs)`); a name that moved to an earlier
   slot and a recursive call (`walk(child, node)`) are not reported, and neither is a JSDoc function type. The allowed form is the arguments in the order of the parameters. The same
   form runs as `swapped-arguments` (Python) and Error Prone `ArgumentSelectionDefectChecker` (Java).
+- `nitpicker/no-interpolated-log-message` (needs pino, bunyan or winston in `package.json`): a log call
+  (`trace` to `fatal`) whose message is a template literal with expressions or a `+` concatenation with a
+  non-literal part. The message is the first argument, or the second when the first is an object (pino and
+  bunyan). Every such message differs, so the value cannot be searched as a field, and the string is built
+  even when the level is off. Allowed forms: pino and bunyan `log.info({ orderId }, 'loaded order')`, winston
+  `logger.info('loaded order', { orderId })`. Loggers are found as in `nitpicker/no-dropped-log-arguments`;
+  `console.*` stays with `nitpicker/no-production-console`. The same form runs as `pmd/LogStringConcatenation`
+  (Java), `kotlin-source/LogStringConcatenation` (Kotlin) and ruff `G001` to `G004` (Python).
 - `nitpicker/no-secret-in-log`: a secret-named value passed to a `console` method, a logger call (`log`,
   `logger`, `winston`, `pino`, `req.log`, `this.logger` and the like), `process.stdout.write`,
   `process.stderr.write` or an `Error` constructor: as an argument, a member (not of a `tokenizer`), in a
@@ -711,7 +719,7 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   attempt carries the old version and fails the same way), and the entity was re-read inside the scope by a
   `find*` call but saved as it is, with no field assigned and no helper given it (the update is lost). Allowed:
   re-read by id and re-apply the change inside the retried scope (`const row = await repo.findOneByOrFail({ id });
-  row.status = next; return repo.save(row);`). A retry that does not name the conflict error is not reported.
+row.status = next; return repo.save(row);`). A retry that does not name the conflict error is not reported.
   Prisma, Sequelize and MikroORM have no equivalent in this check, which reads TypeORM's `save`.
 - Related writes in one transaction (`nitpicker/no-unatomic-writes`, and `nitpicker/no-check-then-write`
   as a report-only advisory): both apply only to a project that depends on TypeORM, Prisma, Drizzle,
@@ -809,6 +817,18 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   `health`, `ready`, `live`, `ping`, `metrics`, `status`, `login`, `signup`, `register`, `logout`, `callback`, `webhook`,
   `public` or `oauth` is left alone. The service form (a request id reaching a repository call
   without the project's access check) needs data flow and is not covered.
+- No entity loaded and saved again without a version column (`nitpicker/no-unversioned-orm-entity`, the
+  TypeScript and JavaScript counterpart of the Java rule `JpaVersion`): a row loaded by `find`, `findOne`,
+  `findBy`, `findOneBy`, `findOneOrFail`, `findAll`, `findByPk` or `findAndCount` (or each row of a loaded
+  list), assigned a field, and then passed to `save` or `persistAndFlush`, saved with its own `save()` or
+  `update()`, or flushed with `flush()`, in the same function. The entity class comes from the type
+  checker. Reported: a TypeORM `@Entity` without a `@VersionColumn()` (the entity or a base class), a
+  MikroORM `@Entity` without a `@Property({ version: true })`, and a Sequelize model (`@Table` or
+  `Model.init` in the model's file) without `version: true`. Prisma and Drizzle have no version column
+  feature, so they are not reported; an entity that is only read or only inserted is left alone. Allowed:
+  `@VersionColumn() version!: number`, `@Property({ version: true }) version!: number`, or
+  `version: true` in the model options. An exception fits only when concurrent writers of the table are
+  ruled out another way, such as a pessimistic lock or a single writer.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
   `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,

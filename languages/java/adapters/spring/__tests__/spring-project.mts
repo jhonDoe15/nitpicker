@@ -160,6 +160,7 @@ const REVIEW_RULES = new Set([
   'DatePatternLetterSlip',
   'ReplaceWithWrongLiteralKind',
   'UnsafeStopFlag',
+  'CatchLogWithoutException',
   'RecursiveMapUpdate',
   'DefaultTimeZone',
   'MixedTimeUnits',

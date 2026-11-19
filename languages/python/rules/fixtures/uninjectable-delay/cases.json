@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "uninjectable-delay",
+    "mention": "so a test must wait it out or fake the clock"
+  }
+]

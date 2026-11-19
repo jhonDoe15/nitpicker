@@ -4,6 +4,7 @@ import type { RuleHint } from '../hint-types.mts';
 
 const OWNED_MUTATION = /^(.+) \((.+)\)$/u;
 const ALIAS = /^(\S+) = (\S+)$/u;
+const DELAY_TEXT = /^([^|]+)\|([^|]+)\|([^|]+)\|(.+)$/u;
 const USE_TEXT = /^([^|]+)\|(.*)$/u;
 
 function fallThroughDescription(subject = ''): string {
@@ -12,11 +13,26 @@ function fallThroughDescription(subject = ''): string {
   return `The null branch handles \`${name}\` and then falls through to ${target}, which uses \`${name}\``;
 }
 
+function delayDescription(subject = ''): string {
+  const [, timer, name = '', millis = '', owner = ''] = DELAY_TEXT.exec(subject) ?? [];
+  if (timer === undefined) {
+    return `\`${subject}\` waits a module constant that the public function cannot override, so a test must wait it out or fake the clock`;
+  }
+  return `\`${timer}\` waits ${name} (${millis} ms), a module constant that public \`${owner}\` cannot override, so a test must wait it out or fake the clock`;
+}
+
 function mutationDescription(subject = ''): string {
   const [, mutation = '', owner] = OWNED_MUTATION.exec(subject) ?? [];
   return owner === undefined
     ? `\`${subject}\` changes the argument the caller passed in`
     : `\`${mutation}\` changes the argument the caller passed to \`${owner}\``;
+}
+
+function domainMutationDescription(subject = ''): string {
+  const [, mutation = subject, owner] = OWNED_MUTATION.exec(subject) ?? [];
+  return owner === undefined
+    ? `\`${subject}\` changes a value the domain function was given`
+    : `\`${mutation}\` changes a value the caller passed to \`${owner}\`, and domain code builds new values instead`;
 }
 
 function shimDescription(subject = ''): string {
@@ -68,6 +84,13 @@ export const SIGNATURE_HINTS: readonly RuleHint[] = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['uninjectable-delay'],
+    describe: delayDescription,
+    allowed:
+      'Accept the delay as a parameter with the constant as its default (`def poll(delay=RETRY_DELAY)`), or as a constructor argument kept in a field; an exception fits only when the delay is deliberately fixed.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['number-truthiness'],
     describe: (subject) =>
       `\`${subject}\` is a number tested for truth, so \`0\` reads as false or missing`,
@@ -97,6 +120,13 @@ export const SIGNATURE_HINTS: readonly RuleHint[] = [
     describe: mutationDescription,
     allowed:
       'Build and return a new value (`[*items, item]`, `{**table, key: value}`), or copy the argument first (`items = [*items]`) when the function needs a working copy; do not hand a result back through a parameter.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['mutating-method-in-domain'],
+    describe: domainMutationDescription,
+    allowed:
+      'Domain code builds new values: use a comprehension or an unpacking (`[*items, item]`, `[x for x in items if x]`, `{**table, key: value}`, `sorted(items)`), or copy the argument first (`items = list(items)`) when the function needs a working copy. A list or dict created and filled in the same function is fine.',
   },
   {
     tool: RULES_TOOL,
