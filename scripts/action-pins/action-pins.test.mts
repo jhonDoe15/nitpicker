@@ -14,7 +14,7 @@ describe('repository action pins', () => {
     expect(actionPinProblems(repositoryRoot)).toEqual([]);
   });
 
-  it.each(['java', 'kotlin'])('%s uses the MIT Gradle cache provider', (language) => {
+  it.each(['java', 'kotlin', 'python'])('%s uses the MIT Gradle cache provider', (language) => {
     const workflow: unknown = parse(
       readFileSync(path.join(repositoryRoot, `.github/workflows/${language}-e2e.yml`), 'utf8'),
     );
@@ -28,7 +28,7 @@ describe('repository action pins', () => {
     expect(fieldsOf(step?.['with'])?.['cache-provider']).toBe('basic');
   });
 
-  it.each(['java', 'kotlin'])(
+  it.each(['java', 'kotlin', 'python'])(
     '%s restores the Gradle dependency cache and saves it from a green run on main',
     (language) => {
       const workflow: unknown = parse(
@@ -70,7 +70,7 @@ describe('repository action pins', () => {
       expect(save?.['if']).toBe(expression(onMain));
       expect(
         fieldsOf(stepUsing('gradle/actions/setup-gradle@')?.['with'])?.['cache-disabled'],
-      ).toBe(expression("github.event_name != 'pull_request'"));
+      ).toBe(language === 'python' ? true : expression("github.event_name != 'pull_request'"));
       expect(fieldsOf(stepUsing('actions/setup-java@')?.['with'])?.['cache']).toBeUndefined();
     },
   );
