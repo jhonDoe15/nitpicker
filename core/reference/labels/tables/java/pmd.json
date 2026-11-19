@@ -49,6 +49,7 @@
   "pmd/CopyConstructorSharesCollection": ["bug"],
   "pmd/CopyMethodDropsField": ["bug"],
   "pmd/CredentialLiteral": ["security"],
+  "pmd/DatePatternLetterSlip": ["bug"],
   "pmd/DefaultLabelNotLastInSwitch": ["style"],
   "pmd/DefaultLabelNotLastInSwitchStmt": ["style"],
   "pmd/DefaultTimeZone": ["bug"],

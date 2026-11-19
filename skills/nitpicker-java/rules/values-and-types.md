@@ -34,6 +34,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `new GregorianCalendar()` and `new SimpleDateFormat(...)` without a time zone are flagged
   (`pmd/LegacyCalendarApi`), and so are `ZoneId.systemDefault()` and `TimeZone.getDefault()`
   (`pmd/DefaultTimeZone`).
+- In a date-time pattern, `mm` is the minute and `MM` the month (`dd.MM.yyyy HH:mm`), the year is `yyyy` or `yy`,
+  the 24-hour clock is `HH` (not `kk`), and `hh` or `KK` needs `a`; none of these throws when written wrong
+  (`pmd/DatePatternLetterSlip`).
 - HTTP text is case-insensitive and structured headers are parsed: lowercase a header value, URI scheme or
   host, cookie name or file extension before comparing it (`toLowerCase(Locale.ROOT)`, `equalsIgnoreCase`) and
   parse `Content-Type`, `Accept` and cookies with `MediaType.parseMediaType`, `MediaType.parseMediaTypes`,

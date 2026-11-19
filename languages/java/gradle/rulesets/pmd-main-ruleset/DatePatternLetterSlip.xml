@@ -1,0 +1,42 @@
+  <rule name="DatePatternLetterSlip" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This date-time pattern mixes up its letters, and none of these throws: MM after an hour is the month (HH:MM), mm next to dd or yy is the minute (dd.mm.yyyy), HH:ss leaves the minutes out, yyy and yyyyy give odd years, kk and KK are the hours 1-24 and 0-11, and hh without a is a 12-hour clock with no marker (also with HH in the same pattern). The wrong values reach logs, file names and screens. Write the minutes as mm and the month as MM (&quot;dd.MM.yyyy HH:mm&quot;), the year as yyyy or yy, the 24-hour clock as HH, and add a for hh. An exception fits a display that wants kk or KK on purpose.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $value := function($arg) {
+      if ($arg[self::StringLiteral]) then string($arg/@ConstValue)
+      else if ($arg[self::VariableAccess]) then
+        (let $declared := root($arg)//FieldDeclaration[ModifierList/@ExplicitModifiers = 'final'][ModifierList/@ExplicitModifiers = 'static']
+                            /VariableDeclarator[@Name = $arg/@Name][*[last()][self::StringLiteral]]
+         return if (count($declared) = 1) then string($declared/*[last()]/@ConstValue) else ())
+      else ()
+    },
+    $bad := function($arg, $legacy) {
+      let $raw := $value($arg),
+          $p := replace(replace($raw, "''", ''), "'[^']*'", ''),
+          $marker := matches($p, '[aB]')
+      return exists($raw) and ((matches($p, '[HhKk]{1,2}[:.]M{1,2}([^M]|$)')
+                and not($legacy and count(analyze-string($p, 'M+')/*:match) >= 2))
+        or matches($p, '^[^HhKk]*([dyM]+[-./]m+|m+[-./][dyM]+)')
+        or matches($p, '(^|[^y])(yyy|y{5,})([^y]|$)')
+        or matches($p, 'k')
+        or (matches($p, 'K') and not($marker))
+        or (matches($p, 'h') and not($marker) and not($legacy and matches($p, 'hh')))
+        or (matches($p, 'h') and matches($p, 'H') and not($marker))
+        or matches($p, '[HhKk]{1,2}[:.]s'))
+    }
+return (
+  //ConstructorCall[ClassType[@SimpleName = 'SimpleDateFormat']]/ArgumentList/*[1]
+    [$bad(., true())],
+  //MethodCall[@MethodName = ('applyPattern', 'applyLocalizedPattern')][*[1][pmd-java:typeIs('java.text.SimpleDateFormat')]]
+    /ArgumentList/*[1][$bad(., true())],
+  //MethodCall[@MethodName = 'ofPattern'][*[1][self::TypeExpression/ClassType/@SimpleName = 'DateTimeFormatter' or self::AmbiguousName/@Name = 'DateTimeFormatter']]
+    /ArgumentList/*[1][$bad(., false())],
+  //MethodCall[@MethodName = 'appendPattern'][*[1][pmd-java:typeIs('java.time.format.DateTimeFormatterBuilder')]]
+    /ArgumentList/*[1][$bad(., false())]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
