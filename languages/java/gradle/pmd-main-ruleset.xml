@@ -294,6 +294,44 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="ChangeNamedEquality" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A name that says something changed is computed as plain equality: isModified() or a hasChanged variable holds a.equals(b), so it is true exactly when nothing differs. A settings page then never offers Apply, or listeners fire on every refresh except real changes, and the code still compiles. Negate the comparison (return !current.equals(initial);, boolean hasChanged = !Objects.equals(saved, edited);), or rename the method or variable to say what it tests (isUnchanged). An exception fits a name that says the values match.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $tokens := function($n) {
+      tokenize(lower-case(replace(replace($n, '([a-z0-9])([A-Z])', '$1 $2'), '_', ' ')), ' +')[. != '']
+    },
+    $isEquality := function($e) {
+      exists($e/self::MethodCall[@MethodName = ('equals', 'deepEquals', 'equalLists', 'equalsIgnoreCase')]
+               [ArgumentList/@Size = (1, 2)])
+      or exists($e/self::InfixExpression[@Operator = '=='][count(*) = 2]
+                  [empty(*[self::NullLiteral or self::BooleanLiteral or self::NumericLiteral or self::StringLiteral
+                           or self::CharLiteral or matches(@Name, '(^|\.)[A-Z][A-Z0-9_]*$')])])
+    },
+    $changeWords := ('changed', 'modified', 'dirty', 'different', 'differs', 'updated', 'diff', 'changes'),
+    $negations := ('not', 'unchanged', 'unmodified', 'same', 'equal', 'equals', 'identical', 'matches', 'match', 'clean')
+return (
+//MethodDeclaration
+  [matches(@Name, '^(is|has|was|needs)([A-Z][a-z0-9]*)*(Modified|Changed|Changes|Dirty|Different|Updated|Diff)$')]
+  [empty($tokens(@Name)[. = $negations])]
+  [Block[@Size = 1]/ReturnStatement[$isEquality(*[1])]]
+|
+//VariableDeclarator
+  [let $words := $tokens(VariableId/@Name)
+   return exists(parent::LocalVariableDeclaration[empty(PrimitiveType | ClassType) or PrimitiveType[@Kind = 'boolean'] or ClassType[@SimpleName = 'Boolean']])
+     and $words[last()] = $changeWords and empty($words[. = $negations])
+     and $isEquality(*[2])]
+|
+//AssignmentExpression[@Operator = '='][*[1][self::VariableAccess or (self::FieldAccess and *[1][self::ThisExpression])]]
+  [let $words := $tokens(*[1]/@Name)
+   return $words[last()] = $changeWords and empty($words[. = $negations]) and $isEquality(*[2])]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="ClassLoadEffect" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Do this work in a method that main or the framework calls after startup (a @Bean method, an ApplicationRunner) and pass the result in, or create it on first use in a lazy holder class: this call runs while its class loads (in a static field or block, an enum constant, the constructor or initializer of an instance created at load, or a method one of them calls), so it connects, starts threads, sleeps or touches files in whatever order classes load, and in every test that touches the class. Constants, loggers, Pattern.compile and collections can stay static, and the class with main is not checked.">
     <priority>3</priority>
