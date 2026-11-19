@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { appendFileSync, cpSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -21,6 +22,16 @@ function strictBuild(): string {
   temporary.push(root);
   cpSync(fixture, root, { recursive: true });
   appendFileSync(path.join(root, 'build.gradle.kts'), CHECK_RUNS_JACOCO);
+  const written = spawnSync(
+    gradle,
+    ['--quiet', '--no-configuration-cache', '--write-verification-metadata', 'sha256', 'help'],
+    { cwd: root, encoding: 'utf8', timeout: 180_000 },
+  );
+  if (written.status !== 0) {
+    throw new Error(
+      `writing the verification metadata failed:\n${written.stdout}${written.stderr}`,
+    );
+  }
   return root;
 }
 
@@ -31,7 +42,7 @@ afterAll(() => {
 });
 
 describe.skipIf(!kotlinE2eEnabled)(
-  'Kotlin preset on a build whose check depends on jacocoTestReport',
+  'Kotlin preset on a build with dependency verification whose check depends on jacocoTestReport',
   () => {
     const runs: Runs<'quick' | 'full', readonly Finding[]> = {};
     beforeAll(() => {

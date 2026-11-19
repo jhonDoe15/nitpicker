@@ -469,6 +469,8 @@ allprojects {
     if (gradle.parent != null) {
         return
     }
+    configurations.matching { it.name.startsWith('nitpicker') || it.name in ['jacocoAgent', 'jacocoAnt'] }
+        .configureEach { resolutionStrategy.disableDependencyVerification() }
     if (nitpickerArgument('nitpicker.kotlin') == 'true') {
         project.ext.nitpickerKotlinSourceModule = [quick: quickRun, testsFailed: (nitpickerArgument('nitpicker.testsFailed') ?: '').toString().split(',').findAll { it }, kotlinTooling: kotlinTooling, initScriptDir: initScriptDir, pinned: pinned, reportBase: reportBase, modules: javaModules,
             moduleKey: moduleKeyOf, selected: kotlinSourceModule, buildFacts: kotlinCallerGaps,

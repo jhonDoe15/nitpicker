@@ -22,6 +22,7 @@ def errorProneClasspath = {
     def configuration = project.configurations.detachedConfiguration(
         project.dependencies.create("com.google.errorprone:error_prone_core:${versions.errorProne}"),
         project.dependencies.create("com.uber.nullaway:nullaway:${versions.nullAway}"))
+    configuration.resolutionStrategy.disableDependencyVerification()
     configuration.attributes {
         attribute(Usage.USAGE_ATTRIBUTE, project.objects.named(Usage, Usage.JAVA_RUNTIME))
         attribute(Category.CATEGORY_ATTRIBUTE, project.objects.named(Category, Category.LIBRARY))

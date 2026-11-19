@@ -117,8 +117,10 @@ project.ext.nitpickerRegisterPit = { Map spec ->
                 classpath += configurations.nitpickerPitJunit5
             }
             if (engine != null && !runtimeJars.any { it.startsWith('junit-platform-launcher-') }) {
-                classpath += project.configurations.detachedConfiguration(
+                def launcher = project.configurations.detachedConfiguration(
                     project.dependencies.create("org.junit.platform:junit-platform-launcher:${engine}"))
+                launcher.resolutionStrategy.disableDependencyVerification()
+                classpath += launcher
             }
             if (runtimeJars.any { it ==~ /testng-\d.*\.jar/ }) {
                 classpath += configurations.nitpickerPitTestng
