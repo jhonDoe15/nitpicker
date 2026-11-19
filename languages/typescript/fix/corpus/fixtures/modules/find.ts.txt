@@ -1,0 +1,15 @@
+export function firstEven(values: readonly number[], log: number[]): number | undefined {
+  return values.filter((value) => {
+    log.push(value);
+    return value % 2 === 0;
+  })[0];
+}
+
+export function firstAt(values: readonly number[]): number | undefined {
+  return values.filter((value) => value > 1).at(0);
+}
+
+export function probe(): unknown {
+  const log: number[] = [];
+  return [firstEven([1, 2, 3, 4], log), log, firstAt([1, 2, 3])];
+}

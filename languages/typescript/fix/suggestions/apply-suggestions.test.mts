@@ -28,7 +28,13 @@ const expected: Readonly<Record<string, string>> = {
   'use-isnan': 'export function bad(x: number): boolean {\n  return Number.isNaN(x);\n}\n',
   'preserve-caught-error':
     "export function wrap(): number {\n  try {\n    return 1;\n  } catch (error) {\n    throw new Error('failed', { cause: error });\n  }\n}\n",
-  '@typescript-eslint/require-await': 'export function one(): number {\n  return 1;\n}\n',
+  '@typescript-eslint/require-await':
+    'function one(): number {\n  return 1;\n}\n\nexport async function two(): Promise<number> {\n  return (await one()) + 1;\n}\n',
+  'no-useless-escape': "export const dot = 'a.b';\n",
+  '@typescript-eslint/no-unnecessary-type-conversion':
+    'export function same(text: string): string {\n  return text;\n}\n',
+  '@typescript-eslint/prefer-find':
+    'export function first(names: readonly string[]): string | undefined {\n  return names.find((name) => name.length > 2);\n}\n',
   '@typescript-eslint/await-thenable':
     'export async function wait(a: number): Promise<number> {\n  return  a;\n}\n',
   '@typescript-eslint/ban-ts-comment':
@@ -40,6 +46,8 @@ const expected: Readonly<Record<string, string>> = {
   'regexp/optimal-lookaround-quantifier': 'export const digits = /(?=\\w)x/;\n',
   '@typescript-eslint/switch-exhaustiveness-check':
     "type Mode = 'a' | 'b';\n\nexport function label(m: Mode): number {\n  switch (m) {\n    case 'a':\n      return 1;\n    case \"b\": { throw new Error('Not implemented yet: \"b\" case') }\n  }\n  return 0;\n}\n",
+  '@typescript-eslint/no-unnecessary-condition':
+    'type Item = { readonly tags: readonly string[] };\n\nexport function count(item: Item): number {\n  return item.tags.length;\n}\n',
 };
 
 const everything = Object.keys(suggestionRules).map(suggestionName);

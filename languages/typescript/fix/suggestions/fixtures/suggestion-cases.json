@@ -9,12 +9,16 @@
   "no-unused-private-class-members": "export class Holder {\n  #unused = 1;\n}\n",
   "use-isnan": "export function bad(x: number): boolean {\n  return x === NaN;\n}\n",
   "preserve-caught-error": "export function wrap(): number {\n  try {\n    return 1;\n  } catch (error) {\n    throw new Error('failed');\n  }\n}\n",
-  "@typescript-eslint/require-await": "export async function one(): Promise<number> {\n  return 1;\n}\n",
+  "@typescript-eslint/require-await": "async function one(): Promise<number> {\n  return 1;\n}\n\nexport async function two(): Promise<number> {\n  return (await one()) + 1;\n}\n",
   "@typescript-eslint/await-thenable": "export async function wait(a: number): Promise<number> {\n  return await a;\n}\n",
   "@typescript-eslint/ban-ts-comment": "export function cast(): string {\n  // @ts-ignore\n  return 1 as string;\n}\n",
   "@typescript-eslint/no-array-delete": "export function drop(items: number[]): void {\n  delete items[0];\n}\n",
   "@typescript-eslint/use-unknown-in-catch-callback-variable": "export function recover(p: Promise<number>): Promise<number> {\n  return p.catch((e) => 0);\n}\n",
   "@typescript-eslint/switch-exhaustiveness-check": "type Mode = 'a' | 'b';\n\nexport function label(m: Mode): number {\n  switch (m) {\n    case 'a':\n      return 1;\n  }\n  return 0;\n}\n",
   "regexp/optimal-lookaround-quantifier": "export const digits = /(?=\\w+)x/;\n",
-  "two-suggestions": "export function same(x: number): boolean {\n  return x === -0;\n}\n"
+  "two-suggestions": "export function same(x: number): boolean {\n  return x === -0;\n}\n",
+  "@typescript-eslint/no-unnecessary-condition": "type Item = { readonly tags: readonly string[] };\n\nexport function count(item: Item): number {\n  return item?.tags.length;\n}\n",
+  "@typescript-eslint/prefer-find": "export function first(names: readonly string[]): string | undefined {\n  return names.filter((name) => name.length > 2)[0];\n}\n",
+  "no-useless-escape": "export const dot = 'a\\.b';\n",
+  "@typescript-eslint/no-unnecessary-type-conversion": "export function same(text: string): string {\n  return String(text);\n}\n"
 }

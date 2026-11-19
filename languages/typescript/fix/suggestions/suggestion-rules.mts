@@ -2,6 +2,7 @@ import {
   REVIEW as untypedReview,
   SAFE as untypedSafe,
 } from '../../../../core/fix/engine/safety.mjs';
+import { GUARDED_FIX_MESSAGE } from '../../preset/eslint-config/fix-guards/guard-message.mts';
 
 const REVIEW: string = untypedReview;
 const SAFE: string = untypedSafe;
@@ -11,6 +12,7 @@ export const suggestionRules: Readonly<Record<string, string>> = Object.freeze({
   'no-case-declarations': SAFE,
   'no-prototype-builtins': SAFE,
   'no-compare-neg-zero': SAFE,
+  'no-useless-escape': SAFE,
   '@typescript-eslint/no-unnecessary-type-constraint': SAFE,
   '@typescript-eslint/no-useless-constructor': SAFE,
   '@typescript-eslint/no-non-null-asserted-nullish-coalescing': SAFE,
@@ -24,8 +26,30 @@ export const suggestionRules: Readonly<Record<string, string>> = Object.freeze({
   '@typescript-eslint/no-array-delete': REVIEW,
   '@typescript-eslint/use-unknown-in-catch-callback-variable': REVIEW,
   '@typescript-eslint/switch-exhaustiveness-check': REVIEW,
+  '@typescript-eslint/no-unnecessary-condition': REVIEW,
+  '@typescript-eslint/prefer-find': REVIEW,
+  '@typescript-eslint/no-unnecessary-type-conversion': REVIEW,
   'regexp/optimal-lookaround-quantifier': REVIEW,
 });
+
+export const pickedSuggestions: Readonly<Record<string, string>> = Object.freeze({
+  'no-useless-escape': 'removeEscape',
+  '@typescript-eslint/no-unnecessary-type-conversion': 'suggestRemove',
+});
+
+const OWN_RULE_PREFIX = 'nitpicker/';
+
+export function isListedSuggestion(
+  rule: string | undefined,
+  messageId: string | undefined,
+): boolean {
+  return (
+    rule !== undefined &&
+    (Object.hasOwn(suggestionRules, rule) ||
+      rule.startsWith(OWN_RULE_PREFIX) ||
+      messageId === GUARDED_FIX_MESSAGE)
+  );
+}
 
 export function suggestionName(rule: string | undefined): string {
   return `${SUGGESTION_TOOL}/${String(rule)}`;
