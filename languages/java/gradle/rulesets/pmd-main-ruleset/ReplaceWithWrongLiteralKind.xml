@@ -1,0 +1,39 @@
+  <rule name="ReplaceWithWrongLiteralKind" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="String.replace takes plain text and replaceAll and replaceFirst take a regex, and this call mixes them up. replace(&quot;\\s+&quot;, &quot;&quot;) looks for the three characters \s+ and removes nothing; replaceAll(&quot;.tmp&quot;, &quot;&quot;) treats the dot as any character; replaceAll(&quot;?&quot;, value) throws PatternSyntaxException; and a File.separator or a backslash or dollar sign in the replacement is read as an escape or a group reference, which breaks on Windows. Use replaceAll for a regex (path.replaceAll(&quot;\\s+&quot;, &quot;&quot;)), replace for text (sql.replace(&quot;?&quot;, value), file.replace(&quot;.tmp&quot;, &quot;&quot;)), and Matcher.quoteReplacement(File.separator) for a replacement. An exception fits text that really contains the escape characters.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $regexAsText := '\(\?|\\[dDsSwWbB]|\.[*+]|\[\^|\[[^\]\[]*[a-zA-Z0-9]-[a-zA-Z0-9][^\]\[]*\]|\\[.$()\[\]{}|?*+]',
+    $regexClasses := '\(\?|\\[dDsSwWbB]|\.[*+]|\[\^|\[[^\]\[]*[a-zA-Z0-9]-[a-zA-Z0-9][^\]\[]*\]',
+    $loneMeta := '^[?*+|()\[{\\]$',
+    $extension := '^\.[A-Za-z][A-Za-z0-9]{1,5}\$?$',
+    $badReplacement := '\\|\$($|[^0-9{])',
+    $separator := function($arg) {
+      exists($arg[not(descendant-or-self::MethodCall[@MethodName = 'quoteReplacement'])]
+                 /descendant-or-self::*[self::AmbiguousName[@Name = 'File.separator']
+                    or self::FieldAccess[@Name = 'separator'][*[1][self::AmbiguousName[@Name = 'File'] or self::TypeExpression/ClassType[@SimpleName = 'File']]]])
+    }
+return (
+  //MethodCall[@MethodName = 'replace'][ArgumentList/@Size = 2][*[1][not(self::ArgumentList)]]
+    [ArgumentList/*[1][self::StringLiteral][matches(@ConstValue, $regexAsText)][not(matches(@ConstValue, '^\\.$'))]]
+    [not(ArgumentList/*[2][self::StringLiteral][matches(@ConstValue, $regexClasses)])]
+    [not(*[1][pmd-java:typeIs('java.lang.StringBuilder') or pmd-java:typeIs('java.lang.StringBuffer')])]
+    /ArgumentList/*[1],
+  //MethodCall[@MethodName = ('replaceAll', 'replaceFirst')][ArgumentList/@Size = 2]
+    [*[1][not(self::ArgumentList)]]
+    [ArgumentList/*[1][self::StringLiteral]
+       [matches(@ConstValue, $loneMeta) or matches(@ConstValue, $extension)
+        or (matches(@ConstValue, '[\\^$.|?*+()\[\]{}]')
+            and ../*[2][self::StringLiteral][matches(replace(@ConstValue, '\\[\\$]', ''), $badReplacement)])]]
+    /ArgumentList/*[1],
+  //MethodCall[@MethodName = ('replaceAll', 'replaceFirst')][ArgumentList/@Size = 2]
+    [*[1][not(self::ArgumentList)]]
+    [not(ArgumentList/*[1][@CompileTimeConstant = true()][not(matches(@ConstValue, '[\\^$.|?*+()\[\]{}]'))])]
+    [$separator(ArgumentList/*[2])]
+    /ArgumentList/*[2]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>

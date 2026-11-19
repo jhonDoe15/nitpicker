@@ -5,7 +5,7 @@ import {
   copiedConstantMessage as untypedCopiedConstantMessage,
   valueKey as untypedValueKey,
 } from '../../../../../shared/rules/copied-constants/copied-constants.mjs';
-import { findingFactory } from '../../kotlin/review-rules/review-finding.mts';
+import { findingFactory } from '../../kotlin/review-rules/finding/review-finding.mts';
 import { readJvmDefinitions } from '../../reuse/source/jvm-definitions.mts';
 import { pathInside, sourceFilesUnder, sourceRootsOf } from '../java-sources.mts';
 import type { ImportEntry } from '../../reuse/jvm-reuse-types.mts';

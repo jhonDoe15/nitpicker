@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
+import { GIT_OUTPUT_LIMIT_BYTES, GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
 
 export class GitCommandError extends Error {
   constructor({ args, cwd, result }) {
@@ -16,7 +16,7 @@ export function runGit(repositoryRoot, args, { environment } = {}) {
   const result = spawnSync('git', args, {
     cwd: repositoryRoot,
     encoding: 'utf8',
-    maxBuffer: 10 * 1024 * 1024,
+    maxBuffer: GIT_OUTPUT_LIMIT_BYTES,
     timeout: GIT_TIMEOUT_MS,
     env: environment === undefined ? process.env : { ...process.env, ...environment },
   });

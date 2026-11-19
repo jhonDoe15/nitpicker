@@ -251,7 +251,7 @@ const CATALOG = [
   },
   ...couplingRules(RULE_IDS, {
     everyLanguage: withGo(withKotlin(ALL, true)),
-    withoutTypescript: withKotlin({ typescript: false, java: true, python: true }, true),
+    withoutGo: withKotlin(ALL, true),
   }),
   {
     id: RULE_IDS.noProductionRuntime,

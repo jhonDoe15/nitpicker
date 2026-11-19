@@ -99,6 +99,7 @@ function rulesOptions(
   const packageFacts = readPackageFacts(projectRoot);
   return {
     sourceRoots: project.sourceRoots,
+    blockingGetters: project.blockingGetters,
     testRunner: project.testRunner,
     ...collectionOptions(pytestConfig),
     xfailStrict: pytestConfig.xfailStrict,

@@ -62,17 +62,17 @@
           "minimum": 1
         },
         "classMethods": {
-          "description": "Methods per class (Java, Kotlin, Python; default 20).",
+          "description": "Methods per class (TypeScript, JavaScript, Java, Kotlin, Python; default 20).",
           "type": "integer",
           "minimum": 1
         },
         "classFields": {
-          "description": "Instance fields per class (Java, Kotlin, Python; default 10).",
+          "description": "Instance fields per class (TypeScript, JavaScript, Java, Kotlin, Python; default 10).",
           "type": "integer",
           "minimum": 1
         },
         "inheritanceDepth": {
-          "description": "Superclasses per class (Java, Kotlin, Python; default 3).",
+          "description": "Superclasses per class (TypeScript, JavaScript, Java, Kotlin, Python; default 3).",
           "type": "integer",
           "minimum": 1
         },
@@ -108,8 +108,7 @@
             "allOf": [
               { "not": { "pattern": "^/|^[A-Za-z]:" } },
               { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } },
-              { "not": { "pattern": "[*?{}[\\]]" } },
-              { "not": { "pattern": "^(?:\\.[/\\\\]?)?$" } }
+              { "not": { "pattern": "[*?{}[\\]]" } }
             ]
           }
         },
@@ -156,7 +155,7 @@
       "items": { "$ref": "#/definitions/exception" }
     },
     "react": {
-      "description": "The React rule scope (TypeScript preset only).",
+      "description": "The React rule scope (TypeScript and JavaScript presets).",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -306,6 +305,11 @@
               { "not": { "pattern": "(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)" } }
             ]
           }
+        },
+        "blockingGetters": {
+          "description": "Synchronous getters that block an async function, as method names (`get_connection`) or dotted names (`hooks.base.get_connection`); Airflow `get_connection` is built in.",
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
         },
         "exceptions": {
           "description": "Exceptions for the Python rules that the top-level \"exceptions\" does not take.",
@@ -1215,6 +1219,10 @@
         "buildTool": {
           "description": "The build tool when the project has both a pom.xml and a Gradle build: \"maven\" or \"gradle\". Without it nitpicker picks Gradle, or Maven when mvnw exists and gradlew does not.",
           "enum": ["maven", "gradle"]
+        },
+        "analyzeGeneratedSources": {
+          "description": "Set to true to also analyze generated sources (build-directory roots such as protobuf output, and annotation processor output); default false.",
+          "type": "boolean"
         }
       }
     },
@@ -1373,9 +1381,6 @@
       "if": { "properties": { "preset": { "const": "typescript" } } },
       "then": {
         "properties": {
-          "thresholds": {
-            "properties": { "classMethods": false, "classFields": false, "inheritanceDepth": false }
-          },
           "tools": {
             "properties": {
               "pmd": false,
@@ -1633,9 +1638,6 @@
       "if": { "properties": { "preset": { "const": "javascript" } }, "required": ["preset"] },
       "then": {
         "properties": {
-          "thresholds": {
-            "properties": { "classMethods": false, "classFields": false, "inheritanceDepth": false }
-          },
           "tools": {
             "properties": {
               "pmd": false,
@@ -1869,7 +1871,6 @@
               }
             }
           },
-          "react": false,
           "i18n": false,
           "python": false,
           "kotlin": false,
@@ -2388,6 +2389,10 @@
                             "pmd/CopiedConstantInTest",
                             "pmd/MaxValueOverflow",
                             "pmd/NullBranchFallThrough",
+                            "pmd/NullableReturnUse",
+                            "pmd/SelfRecursion",
+                            "pmd/UninjectableDelay",
+                            "pmd/MutatingMethodInDomain",
                             "kotlin-source/ChildCoroutineOutlivesResource",
                             "kotlin-source/SuspendFunInFinallySection",
                             "kotlin-source/UnboundedFanOut",

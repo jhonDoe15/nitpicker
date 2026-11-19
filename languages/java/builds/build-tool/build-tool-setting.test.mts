@@ -28,6 +28,17 @@ afterEach(() => {
   }
 });
 
+describe('java.analyzeGeneratedSources', () => {
+  it('accepts a boolean and rejects anything else', () => {
+    const config = { preset: 'java', java: { analyzeGeneratedSources: true } };
+
+    expect(validateConfig(config)).toEqual(config);
+    expect(() => {
+      validateJavaBuildSetting({ preset: 'java', java: { analyzeGeneratedSources: 'yes' } });
+    }).toThrow(/"java.analyzeGeneratedSources" must be true or false/);
+  });
+});
+
 describe('java.buildTool', () => {
   it.each(['java', 'kotlin'])('is accepted with the %s preset', (preset) => {
     const config = { preset, java: { buildTool: 'maven' } };
@@ -92,8 +103,10 @@ describe('java.buildTool', () => {
       configurationHash: 'hash',
       createInvocation: () => ({ args: [] }),
     };
-    const plain = configureJavaAnalyzer(base, { java: {} });
-    const pinned = configureJavaAnalyzer(base, { java: { buildTool: 'maven' } });
+    const plain = configureJavaAnalyzer(base, { java: { analyzeGeneratedSources: false } });
+    const pinned = configureJavaAnalyzer(base, {
+      java: { buildTool: 'maven', analyzeGeneratedSources: false },
+    });
     const { args } = pinned.createInvocation({ projectRoot: '.', toolRoot: '.' });
 
     expect(args.slice(0, 2)).toEqual(['--build-tool', 'maven']);

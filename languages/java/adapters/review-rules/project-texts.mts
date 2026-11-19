@@ -71,6 +71,10 @@ const COMMENT_STYLES = new Map<string, (text: string) => string>([
 ]);
 const MAX_TEXT_BYTES = 2 * 1024 * 1024;
 const WEBAPP_ROOT = 'src/main/webapp';
+const CONFIG_ROOT = 'conf';
+const ROUTES_FILE = /^routes$|\.routes$/u;
+const ROUTE_ACTION = /^\s*[A-Z*]+\s+\S+\s+(?!controllers\.)([\w$.]+\.[\w$]+)/gmu;
+const PLAY_CONTROLLERS = 'controllers.';
 const DEPENDENCY_DIRECTORY = 'node_modules';
 
 function filesUnder(directory: string): string[] {
@@ -107,12 +111,24 @@ function entryFor(projectRoot: string, file: string): ProjectText | undefined {
   return raw.includes('\0') ? undefined : { file: relative, named: withoutComments(file, raw) };
 }
 
+function routeAliases(file: string, text: string): string {
+  if (!ROUTES_FILE.test(path.basename(file))) {
+    return '';
+  }
+  return [...text.matchAll(ROUTE_ACTION)]
+    .map((match) => `\n${PLAY_CONTROLLERS}${match[1] ?? ''}`)
+    .join('');
+}
+
 function withoutComments(file: string, raw: string): string {
-  const isContainerFile = CONTAINER_FILES.some((name) => path.basename(file).endsWith(name));
-  const strip = isContainerFile
+  const name = path.basename(file);
+  const isHashFile =
+    CONTAINER_FILES.some((suffix) => name.endsWith(suffix)) || ROUTES_FILE.test(name);
+  const strip = isHashFile
     ? (text: string) => text.replaceAll(LINE_HASH_COMMENT, '')
     : COMMENT_STYLES.get(path.extname(file).toLowerCase());
-  return strip === undefined ? raw : strip(raw);
+  const text = strip === undefined ? raw : strip(raw);
+  return `${text}${routeAliases(file, text)}`;
 }
 
 function moduleDirectories(projects: readonly TextProject[]): string[] {
@@ -135,6 +151,7 @@ export function readProjectTexts(
   const files = [
     ...[...sourceRoots, ...resourceRoots].flatMap((root) => filesUnder(inProject(root))),
     ...directories.flatMap((directory) => filesUnder(inProject(path.join(directory, WEBAPP_ROOT)))),
+    ...directories.flatMap((directory) => filesUnder(inProject(path.join(directory, CONFIG_ROOT)))),
     ...directories.flatMap((directory) => filesIn(inProject(directory || '.'))),
     ...sourceFilesUnder(path.resolve(projectRoot), CONTAINER_FILES),
   ];

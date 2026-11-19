@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "shared-state-mutation",
+    "mention": "copy.deepcopy(DEFAULTS)",
+    "subject": "DEFAULT_PREFERENCES in UserConfig"
+  }
+]

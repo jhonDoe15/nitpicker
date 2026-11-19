@@ -1,0 +1,23 @@
+[
+  { "buildDir": "build", "root": "src/main/java", "generated": false },
+  { "buildDir": "build", "root": "build/generated/sources/proto/main/java", "generated": true },
+  { "buildDir": "build", "root": "build/anything/else", "generated": true },
+  { "buildDir": "target", "root": "target/generated-sources/protobuf", "generated": true },
+  {
+    "buildDir": "target",
+    "root": "target/generated-test-sources/test-annotations",
+    "generated": true
+  },
+  { "buildDir": "build", "root": "target/generated-sources/openapi", "generated": true },
+  { "buildDir": "target", "root": "build/delombok/src", "generated": true },
+  { "buildDir": "out", "root": "out/gen/java", "generated": true },
+  { "buildDir": "out", "root": "src/main/generated", "generated": false },
+  { "buildDir": "target", "root": "../shared/src/main/java", "generated": false },
+  { "buildDir": "target", "root": "../target/generated-sources/x", "generated": true },
+  { "buildDir": ".", "root": "src/main/java", "generated": false },
+  { "buildDir": ".", "root": "src/test/java", "generated": false },
+  { "buildDir": ".", "root": ".", "generated": false },
+  { "buildDir": ".", "root": "build/generated/sources", "generated": true },
+  { "buildDir": "..", "root": "src/main/java", "generated": false },
+  { "buildDir": "..", "root": "src/main/kotlin", "generated": false }
+]

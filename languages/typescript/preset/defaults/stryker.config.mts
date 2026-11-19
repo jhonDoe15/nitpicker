@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readLayout as readUntypedLayout } from '../head-policy.mjs';
 
@@ -49,8 +50,8 @@ export default {
     break: 0,
   },
   ignorePatterns: [
-    ...sourceRoots.map((root) => `${root}/dist`),
-    ...testRoots.map((root) => `${root}/integration`),
+    ...sourceRoots.map((root) => path.posix.join(root, 'dist')),
+    ...testRoots.map((root) => path.posix.join(root, 'integration')),
     '/reports/quality',
     '.nitpicker-*',
     '!.nitpicker-diff-stryker.*',

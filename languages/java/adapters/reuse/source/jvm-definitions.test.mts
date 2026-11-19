@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readJvmDefinitions } from './jvm-definitions.mts';
-import { tokenizeJvm } from './jvm-tokens.mts';
+import { tokenizeJvm } from './tokens/jvm-tokens.mts';
 
 function summary(source: string, kotlin = false) {
   return readJvmDefinitions(source, { kotlin }).definitions.map(

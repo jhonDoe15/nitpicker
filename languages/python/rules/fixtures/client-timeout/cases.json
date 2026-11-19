@@ -2,6 +2,7 @@
   {
     "tool": "python-rules",
     "rule": "client-without-timeout",
-    "mention": "statement_timeout"
+    "mention": "statement_timeout",
+    "alongside": ["managed-resource-outside-composition-root"]
   }
 ]

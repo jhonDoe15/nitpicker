@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "serializer-fields-omitted",
+    "mention": "Meta.fields",
+    "subject": "serial|DeviceShortSerializer|Device"
+  }
+]

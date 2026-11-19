@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { ingestArchunit } from '../../../ingest/archunit.mts';
 import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
-import { inModule } from '../../../builds/module-path.mts';
+import { inModule } from '../../../builds/paths/module-path.mts';
 import { readSpringArchFindings } from '../../spring-arch/spring-arch.mts';
 import { featureFaceMatcher } from '../../spring-arch/contract-types.mts';
 import { sourceFileOf, sourceLocator } from '../kotlin-reports.mts';

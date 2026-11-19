@@ -1,6 +1,11 @@
 import type TypeScript from 'typescript';
 import type { TSESTree } from '@typescript-eslint/utils';
 import { ts } from '../../typed/typescript-views.mts';
+import {
+  classChain,
+  decoratorName,
+  decoratorsOf,
+} from '../../request-inputs/bindings/ts-nodes.mts';
 import { typeServices, type Context } from '../../security/security-values.mts';
 import { cachedValue } from '../../../../../../../shared/values/caching/cached-value.mts';
 import { appendAll } from '../../../../../../../shared/lists/lists.mts';
@@ -17,13 +22,6 @@ type Index = { readonly names: Set<string>; global: boolean };
 export type HookStatus = 'unknown' | 'plain' | 'hooked' | 'clean';
 
 const indexes = new WeakMap<TypeScript.Program, Index>();
-const MAX_BASES = 3;
-
-function decoratorName(decorator: TypeScript.Decorator): string | undefined {
-  const { expression } = decorator;
-  const callee = ts.isCallExpression(expression) ? expression.expression : expression;
-  return ts.isIdentifier(callee) ? callee.text : undefined;
-}
 
 const CASCADE_OPTIONS = new Set(['cascade', 'orphanRemoval', 'orphanedRowAction']);
 
@@ -57,8 +55,7 @@ function isHookDecorator(decorator: TypeScript.Decorator): boolean {
 }
 
 function memberHooked(member: TypeScript.ClassElement): boolean {
-  const decorators = ts.canHaveDecorators(member) ? (ts.getDecorators(member) ?? []) : [];
-  return decorators.some(isHookDecorator);
+  return decoratorsOf(member).some(isHookDecorator);
 }
 
 function returnedNames(method: TypeScript.MethodDeclaration): string[] {
@@ -149,30 +146,11 @@ function programIndex(program: TypeScript.Program): Index {
   });
 }
 
-function baseDeclaration(
-  checker: TypeScript.TypeChecker,
-  declaration: TypeScript.ClassDeclaration,
-): TypeScript.ClassDeclaration | undefined {
-  const clause = declaration.heritageClauses?.find(
-    (each) => each.token === ts.SyntaxKind.ExtendsKeyword,
-  );
-  const base = clause?.types[0];
-  const symbol = base === undefined ? undefined : checker.getTypeAtLocation(base).getSymbol();
-  return symbol?.declarations?.find(ts.isClassDeclaration);
-}
-
 function classHooked(
   checker: TypeScript.TypeChecker,
   declaration: TypeScript.ClassDeclaration,
 ): boolean {
-  const chain = [declaration];
-  for (const current of chain.slice(0, MAX_BASES)) {
-    const base = baseDeclaration(checker, current);
-    if (base !== undefined) {
-      chain.push(base);
-    }
-  }
-  return chain.some((current) => current.members.some(memberHooked));
+  return classChain(checker, declaration).some((current) => current.members.some(memberHooked));
 }
 
 const LOOSE_TYPES = ts.TypeFlags.Any | ts.TypeFlags.Unknown;

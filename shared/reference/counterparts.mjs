@@ -49,10 +49,34 @@ const GROUPS = [
     go: 'go-rules/copied-constant-in-test',
   },
   {
+    jvm: 'CopyPastedTest',
+    typescript: 'nitpicker/no-copy-pasted-tests',
+    python: 'copy-pasted-tests',
+    go: 'go-rules/copy-pasted-tests',
+  },
+  {
     spring: 'untrimmed-request-text',
     typescript: 'nitpicker/no-untrimmed-request-text',
     python: 'untrimmed-request-text',
     go: 'go-rules/untrimmed-request-text',
+  },
+  {
+    java: 'StaticMockOfProjectType',
+    typescript: 'nitpicker/no-internal-module-mocks',
+    python: 'internal-module-patch',
+  },
+  {
+    java: 'JpaVersion',
+    typescript: 'nitpicker/no-unversioned-orm-entity',
+    python: 'unversioned-orm-entity',
+  },
+  {
+    typescript: 'nitpicker/no-branch-in-composition-root',
+    python: 'branch-in-composition-root',
+  },
+  {
+    typescript: 'nitpicker/no-managed-resource-construction-outside-composition-roots',
+    python: 'managed-resource-outside-composition-root',
   },
   {
     typescript: 'nitpicker/no-presence-truthiness',
@@ -67,6 +91,33 @@ const GROUPS = [
     typescript: 'nitpicker/no-null-branch-fall-through',
     python: 'null-branch-fall-through',
     go: 'go-rules/nil-branch-fall-through',
+  },
+  {
+    java: 'LogStringConcatenation',
+    typescript: 'nitpicker/no-interpolated-log-message',
+  },
+  {
+    java: 'CatchLogWithoutException',
+    typescript: 'nitpicker/structured-catch-logging',
+    python: 'catch-log-without-exception',
+  },
+  {
+    jvm: 'SelfRecursion',
+    typescript: 'nitpicker/no-self-recursion',
+    python: 'self-recursion',
+    go: 'go-rules/self-recursion',
+  },
+  {
+    jvm: 'UninjectableDelay',
+    typescript: 'nitpicker/no-uninjectable-delay',
+    python: 'uninjectable-delay',
+    go: 'go-rules/uninjectable-delay',
+  },
+  {
+    jvm: 'MutatingMethodInDomain',
+    typescript: 'nitpicker/no-mutating-method-in-domain',
+    python: 'mutating-method-in-domain',
+    go: 'go-rules/mutating-method-in-domain',
   },
 ];
 

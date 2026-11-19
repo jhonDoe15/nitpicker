@@ -1,10 +1,10 @@
 const JAVASCRIPT_PRESET = 'javascript';
 
-export const JAVASCRIPT_EXTENSIONS = ['js', 'mjs', 'cjs'];
+export const JAVASCRIPT_EXTENSIONS = ['js', 'mjs', 'cjs', 'jsx'];
 
 export const TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT = ['ts', 'mts', 'cts'];
 
-export const JAVASCRIPT_COMPILER_OPTIONS = { allowJs: true, checkJs: true };
+export const JAVASCRIPT_COMPILER_OPTIONS = { allowJs: true, checkJs: true, jsx: 'react-jsx' };
 
 export const JAVASCRIPT_JSCPD_FORMAT = 'javascript';
 

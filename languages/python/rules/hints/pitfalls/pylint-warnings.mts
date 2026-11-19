@@ -94,6 +94,12 @@ export const PYLINT_WARNING_HINTS: readonly RuleHint[] = [
   },
   {
     tool: 'ruff',
+    rules: ['PLW1514'],
+    allowed:
+      'Pass `encoding="utf-8"`, or `encoding="locale"` where the platform encoding is meant; binary mode needs none.',
+  },
+  {
+    tool: 'ruff',
     rules: ['PLW2101'],
     allowed:
       'Create the lock once and share it: `self._lock = threading.Lock()`, then `with self._lock:`.',

@@ -4,7 +4,7 @@ import type { Finding } from '../../../../../shared/values/findings.mts';
 import { fieldOf, parseJson, textsOf } from '../../../../../shared/values/readers.mts';
 import { callUntyped } from '../../typed/java-values.mts';
 import { findingsOf } from '../../kotlin/rules/test-support/findings-list.mts';
-import { REVIEW_TOOL, findingFactory } from '../../kotlin/review-rules/review-finding.mts';
+import { REVIEW_TOOL, findingFactory } from '../../kotlin/review-rules/finding/review-finding.mts';
 import { springFindings as untypedSpringFindings } from '../../kotlin/review-rules/spring/spring-findings.mts';
 import { SPRING_RULES } from '../../kotlin/review-rules/spring/spring-messages.mts';
 import {

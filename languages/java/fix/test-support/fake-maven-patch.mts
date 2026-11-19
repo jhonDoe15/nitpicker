@@ -20,7 +20,7 @@ type MavenOptions = {
 
 const OK: Reply = { status: 0, stdout: '', stderr: '' };
 const CHECKS_ARGUMENT_COUNT = 3;
-const REPORT_SCRIPT = /ErrorProneReport\.java$/u;
+const REPORT_PROGRAM = 'ErrorProneReport';
 
 function pomFor(root: string): string {
   const build = [
@@ -63,7 +63,10 @@ export function requiredOption(args: readonly string[], prefix: string): string 
 
 function errorProneRun(invocation: FakeInvocation, patch: PatchHooks | undefined): Reply {
   const tokens = tokensOf((invocation.args[0] ?? '').slice(1));
-  const at = tokens.findIndex((token) => REPORT_SCRIPT.test(token));
+  const at = tokens.indexOf(REPORT_PROGRAM);
+  if (at < 0) {
+    return OK;
+  }
   const report = tokens[at + 1] ?? '';
   const flags = tokens
     .slice(at + CHECKS_ARGUMENT_COUNT)
@@ -114,6 +117,9 @@ export function mavenPatchResponse(
   }
   if (args[0] === '-version') {
     return { status: 0, stdout: '', stderr: 'openjdk version "21.0.1"' };
+  }
+  if (args[0] === '-XshowSettings:properties') {
+    return { status: 0, stdout: '', stderr: '    java.vendor = Fake\n    java.version = 21.0.1\n' };
   }
   return errorProneRun(invocation, patch);
 }

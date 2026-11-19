@@ -549,10 +549,9 @@ cross-class view, which PMD does not have; they are nitpicker's own ArchUnit rul
 `npm run test:java`) runs PMD through the init script on `adapters/fixtures/spring-project`, whose
 sources mark every expected violation with a `// violation: <rule>` comment, and asserts the
 reported set equals the marked set. The fixture also holds the legitimate forms each rule must
-accept. It also runs Error Prone on the fixture and asserts its `FieldCanBeFinal`,
+accept. It also runs Error Prone on the fixture and asserts its
 `PrivateConstructorForUtilityClass` and `MissingOverride` findings: `MissingOverride` in
-`ProductRepository` and the one plain utility class, but no `FieldCanBeFinal` in the JPA entities
-and no `PrivateConstructorForUtilityClass` on the application or configuration classes. The other
+`ProductRepository` and the one plain utility class, and no `PrivateConstructorForUtilityClass` on the application or configuration classes. The other
 Error Prone checks fire on the deliberate violations the Spring rule examples hold.
 
 # Reactor rules

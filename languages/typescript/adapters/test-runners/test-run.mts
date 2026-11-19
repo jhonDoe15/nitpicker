@@ -171,7 +171,7 @@ export function coverageGlobs(): {
     include: layout.sourceGlobs,
     exclude: [
       ...layout.sourceTestDirectoryGlobs,
-      ...layout.sourceRoots.map((root) => `${root}/**/*.{test,spec}.*`),
+      ...layout.sourceRoots.map((root) => path.posix.join(root, '**/*.{test,spec}.*')),
       ...layout.runnerSourceTestGlobs,
       '**/*.d.ts',
       ...layout.excludedGlobs,

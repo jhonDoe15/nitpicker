@@ -28,9 +28,18 @@ import {
   COPIED_CONSTANT_PIN,
   COPIED_CONSTANT_RULE,
 } from '../adapters/review-rules/copied-constants/copied-constants.mts';
+import {
+  COPY_PASTED_TEST_EXCEPTION_RULE,
+  COPY_PASTED_TEST_RULE,
+  copyPastedTestMessage,
+} from '../adapters/review-rules/copy-pasted-tests/copy-pasted-tests.mts';
 import { copiedConstantMessage } from '../../../shared/rules/copied-constants/copied-constants.mjs';
 import { maxValueEntry } from './review-entries/max-value.mts';
+import { fixedDelayEntry } from './review-entries/fixed-delay.mts';
+import { mutatingMethodEntry } from './review-entries/mutating-method.mts';
 import { nullFallThroughEntry } from './review-entries/null-fall-through.mts';
+import { nullableReturnEntry } from './review-entries/nullable-return.mts';
+import { selfRecursionEntry } from './review-entries/self-recursion.mts';
 import { springConfigForms } from './spring-config-messages.mts';
 import {
   ROUND_TRIP_EXCEPTION_RULE,
@@ -240,6 +249,23 @@ function copiedConstantEntry(): RuleEntry {
   });
 }
 
+function copyPastedTestEntry(): RuleEntry {
+  return ruleEntry({
+    ...JVM,
+    tool: 'pmd',
+    rule: COPY_PASTED_TEST_RULE,
+    summary:
+      'Three or more test methods (or Kotest cases) of one class whose bodies are the same once string, number, character, boolean and null literals are ignored.',
+    why: 'A copy per case hides which value is the case and makes a new case a copy-paste. A table has one row per case and one body to read. Nitpicker computes it over the test sources of every module and prints it as a PMD rule, like the other test honesty rules.',
+    allowed: copyPastedTestMessage({ count: 2, kotlin: false }),
+    exception: { key: EXCEPTIONS_KEY, rule: COPY_PASTED_TEST_EXCEPTION_RULE },
+    docs: [
+      { label: GUIDE_LABEL, path: GUIDE, anchor: 'copy-pasted-tests' },
+      ...counterpartsOf(COPY_PASTED_TEST_EXCEPTION_RULE),
+    ],
+  });
+}
+
 /** The entries of the rules nitpicker itself adds to the Java and Kotlin presets. */
 export function jvmNitpickerEntries(): RuleEntry[] {
   return [
@@ -248,8 +274,13 @@ export function jvmNitpickerEntries(): RuleEntry[] {
     unrunTestEntry(),
     roundTripEntry(),
     copiedConstantEntry(),
+    copyPastedTestEntry(),
     maxValueEntry(),
     nullFallThroughEntry(),
+    nullableReturnEntry(),
+    selfRecursionEntry(),
+    fixedDelayEntry(),
+    mutatingMethodEntry(),
     formatEntry('google'),
     formatEntry('palantir'),
     ...suppressionEntries(),

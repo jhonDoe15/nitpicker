@@ -6,7 +6,7 @@ import {
 } from '../../test-support/python-rule-scripts.mts';
 
 const enabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
-const { cleanup, verdicts } = createScripts();
+const { cleanup, verdicts } = createScripts({ hidden: ['missing-key-subscript'] });
 afterEach(cleanup);
 
 const CASE = 'http-value-case';

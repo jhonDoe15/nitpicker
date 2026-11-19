@@ -1,5 +1,10 @@
 import { DUPLICATES_CONFIGURATION_FILES } from './duplicates/configuration-files.mjs';
-import { EXCLUDED_PATH_PATTERN, prettierPatterns, resolveLayout } from './layout.mjs';
+import {
+  EXCLUDED_PATH_PATTERN,
+  codeExtensionNames,
+  prettierPatterns,
+  resolveLayout,
+} from './layout.mjs';
 import { testExecutionChecksFor } from './checks/test-execution.mjs';
 import {
   POLICY_FILES,
@@ -12,6 +17,11 @@ import { COUPLING_CHECK_FILES } from './coupling/check-files.mjs';
 import { STRUCTURE_CHECK_FILES } from './structure/check-files.mjs';
 import { DEAD_CODE_CHECK_FILES } from './unused-api/check-files.mjs';
 import { PROJECT_TOOL_FILES } from './project-tools/project-config-files.mjs';
+
+const SIZE_SCALED_DEADLINE = {
+  timeoutMs: 5 * MINUTE_MS,
+  timeoutScale: { perThousandFilesMs: 2 * MINUTE_MS, extensions: codeExtensionNames },
+};
 
 const dependencyCruiserVersion = 'unresolved';
 
@@ -156,6 +166,7 @@ function typeAndArchitectureChecksFor(layout) {
         'languages/typescript/preset/layout.mjs',
         'languages/typescript/preset/head-policy.mjs',
         'languages/typescript/preset/tool-configs.mjs',
+        'languages/typescript/preset/project-configs/typescript/layout-rewrites.mjs',
         'languages/typescript/preset/project-configs/typescript/typescript-project-options.mjs',
         'languages/typescript/preset/modules/selected-project-tsconfig.mjs',
         JAVASCRIPT_PRESET_FILE,
@@ -196,7 +207,7 @@ function standardsChecksFor(exclusions) {
       kind: 'policy-tests',
       version: vitestVersion,
       exclusions: exclusions.general,
-      timeoutMs: 2 * MINUTE_MS,
+      ...SIZE_SCALED_DEADLINE,
       shardWeight: 21,
       configurationFiles: ['vitest.config.mts'],
     },
@@ -205,7 +216,7 @@ function standardsChecksFor(exclusions) {
       kind: 'coding-standards',
       version: eslintVersion,
       exclusions: exclusions.general,
-      timeoutMs: 2 * MINUTE_MS,
+      ...SIZE_SCALED_DEADLINE,
       shardWeight: 10,
       configurationFiles: [
         'languages/typescript/preset/coding-standards/check.mjs',
@@ -224,7 +235,7 @@ function graphChecksFor(exclusions) {
       publishesModuleImports: true,
       version: dependencyCruiserVersion,
       exclusions: exclusions.production,
-      timeoutMs: 2 * MINUTE_MS,
+      ...SIZE_SCALED_DEADLINE,
       shardWeight: 7,
       configurationFiles: [...DEPENDENCY_GRAPH_FILES, ...COUPLING_CHECK_FILES],
     },
@@ -233,7 +244,7 @@ function graphChecksFor(exclusions) {
       kind: 'test-runtime',
       version: dependencyCruiserVersion,
       exclusions: exclusions.general,
-      timeoutMs: 2 * MINUTE_MS,
+      ...SIZE_SCALED_DEADLINE,
       shardWeight: 9,
       configurationFiles: [
         ...DEPENDENCY_GRAPH_FILES,
@@ -247,7 +258,7 @@ function graphChecksFor(exclusions) {
       kind: 'structure',
       version: typeScriptVersion,
       exclusions: exclusions.production,
-      timeoutMs: 2 * MINUTE_MS,
+      ...SIZE_SCALED_DEADLINE,
       shardWeight: 4,
       configurationFiles: STRUCTURE_CHECK_FILES,
     },
@@ -261,7 +272,7 @@ function repositoryChecksFor(exclusions) {
       kind: 'duplicates',
       version: jscpdVersion,
       exclusions: exclusions.general,
-      timeoutMs: 2 * MINUTE_MS,
+      ...SIZE_SCALED_DEADLINE,
       shardWeight: 2,
       configurationFiles: [...DUPLICATES_CONFIGURATION_FILES, JAVASCRIPT_PRESET_FILE],
     },
@@ -270,7 +281,7 @@ function repositoryChecksFor(exclusions) {
       kind: 'dead-code',
       version: knipVersion,
       exclusions: exclusions.general,
-      timeoutMs: 2 * MINUTE_MS,
+      ...SIZE_SCALED_DEADLINE,
       shardWeight: 5,
       configurationFiles: DEAD_CODE_CHECK_FILES,
     },

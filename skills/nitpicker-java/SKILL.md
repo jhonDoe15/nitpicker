@@ -131,7 +131,7 @@ Each finding names the safe form; the exception route is `spotbugs/<PATTERN>` or
   nothing.
 - Code that is right despite a rule gets a reviewed `exceptions` entry in `nitpicker.config.json`
   that names the finding as printed, for example `pmd/UnusedPrivateField`,
-  `checkstyle/AbbreviationAsWordInName` or `errorprone/FieldCanBeFinal`, with its paths and a
+  `checkstyle/AbbreviationAsWordInName` or `errorprone/NonFinalStaticField`, with its paths and a
   reason. A structure, CRAP, changed-branch coverage, duplicate or coupling finding ends with its
   own entry. Never add one, nor a config `exclude`, `disable`, `thresholds` or legacy entry, nor a
   weaker test, to get past the gate yourself: stop and ask.

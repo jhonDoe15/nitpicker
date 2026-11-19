@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fixtureGit } from '../../core/diff/git/test-support/git-repository.mts';
@@ -21,7 +21,14 @@ const ALLOW_FILE_PROTOCOL = ['-c', 'protocol.file.allow=always'];
 function listings(logFile) {
   return readFileSync(logFile, 'utf8')
     .split('\n')
-    .filter((line) => line.includes('built-in: git') && line.includes(' ls-files '));
+    .filter(
+      (line) =>
+        line.includes('built-in: git') && line.includes(' ls-files ') && line.includes(' --stage '),
+    );
+}
+
+function wholeListings(logFile) {
+  return listings(logFile).filter((line) => !line.includes(':(literal)'));
 }
 
 function logFileOf() {
@@ -133,6 +140,28 @@ describe('submodules', () => {
   });
 });
 
+describe('the kinds of listed files', () => {
+  it('leaves out a tracked file deleted from the working tree', () => {
+    const root = gitProject(SOURCES, { tracked: ['README.md', 'src/a.mjs', 'src/deep/b.mjs'] });
+    rmSync(path.join(root, 'src', 'a.mjs'));
+
+    expect(projectFilePaths(root)).toEqual(['README.md', 'src/deep/b.mjs']);
+  });
+
+  it('treats a tracked file replaced by a link as a link', () => {
+    const root = gitProject(SOURCES, { tracked: ['README.md', 'src/a.mjs', 'src/deep/b.mjs'] });
+    rmSync(path.join(root, 'src', 'a.mjs'));
+    symlinkSync('deep/b.mjs', path.join(root, 'src', 'a.mjs'));
+
+    expect(projectFilePaths(root)).toEqual(['README.md', 'src/deep/b.mjs']);
+    expect(projectFilePaths(root, { includeLinks: true })).toEqual([
+      'README.md',
+      'src/a.mjs',
+      'src/deep/b.mjs',
+    ]);
+  });
+});
+
 describe('the listing of a repository', () => {
   it('is made once while the tree does not change, whatever folder asks', () => {
     const logFile = logFileOf();
@@ -170,6 +199,28 @@ describe('the listing of a repository', () => {
       'src/late/c.mjs',
     ]);
     expect(listings(logFile)).toHaveLength(2);
+    expect(wholeListings(logFile)).toHaveLength(1);
+  });
+
+  it('lists again only the folders where files were written', () => {
+    const logFile = logFileOf();
+    const folders = Array.from({ length: 40 }, (_, index) => `packages/p${String(index)}`);
+    const packages = Object.fromEntries(folders.map((folder) => [`${folder}/src/a.mjs`, '']));
+    const root = gitProject(packages, { tracked: Object.keys(packages) });
+    ageTree(root);
+    projectFilePaths(root);
+
+    for (const folder of folders) {
+      writeFiles(root, { [`${folder}/nitpicker.config.json`]: '{}' });
+      projectFilePaths(path.join(root, ...folder.split('/')));
+    }
+
+    expect(projectFilePaths(root)).toEqual(
+      folders
+        .flatMap((folder) => [`${folder}/nitpicker.config.json`, `${folder}/src/a.mjs`])
+        .toSorted(),
+    );
+    expect(wholeListings(logFile)).toHaveLength(1);
   });
 
   it('shows a file created right after an earlier listing', () => {

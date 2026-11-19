@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "exception-format-arguments",
+    "mention": "f\"path {path} not found\"",
+    "subject": "ValueError|percent"
+  }
+]

@@ -12,6 +12,7 @@ import { pathInside as untypedPathInside } from '../java-sources.mts';
 import { isNamedElsewhere, readProjectTexts, type TextProject } from '../project-texts.mts';
 import { readDeclarations } from '../source-declarations.mts';
 import { mainUsages, type Resolve, type UsageProject } from './test-only-usage.mts';
+import { isScannedSubtype, scannedSubtypes } from './scanned-subtypes.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import type { JavaFinding } from '../../typed/java-values.mts';
 import { completeProjects } from '../../typed/complete-projects.mts';
@@ -57,7 +58,7 @@ const TEST_ONLY_TOOL = 'coupling';
 const TEST_ONLY_RULE = 'test-only-export';
 export const TEST_ONLY_EXCEPTION_RULE = `${TEST_ONLY_TOOL}/${TEST_ONLY_RULE}`;
 const REPORTS = ['jdeps.txt', 'jdeps-classes.txt', 'jdeps-test.txt'];
-const MESSAGE = `Class {name} is only used by tests. ${allowedForm('Move it to the test sources, or use it from production code.')} ${EXCEPTION_HINT}`;
+const MESSAGE = `Class {name} is only used by tests: no production code or project file names it. ${allowedForm('Move it to the test sources, or use it from production code.')} A framework may still load it by name or by scanning, so check that first. ${EXCEPTION_HINT}`;
 
 function readProject(project: ReportProject): ReadProject {
   function report(name: string): string {
@@ -182,8 +183,11 @@ export function readTestOnlyClassFindings(
     return [];
   }
   const texts = readProjectTexts(projectRoot, read);
+  const scanned = scannedSubtypes(texts);
   return found
-    .filter((candidate) => !isNamedElsewhere(texts, candidate))
+    .filter(
+      (candidate) => !(isNamedElsewhere(texts, candidate) || isScannedSubtype(scanned, candidate)),
+    )
     .map(finding)
     .toSorted(
       (left, right) =>

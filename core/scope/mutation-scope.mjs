@@ -1,8 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { GIT_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
+import { GIT_OUTPUT_LIMIT_BYTES, GIT_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
 import { isInScope } from './scope-findings.mjs';
-
-const GIT_OUTPUT_LIMIT_BYTES = 64 * 1024 * 1024;
 
 export function byCodeUnits(left, right) {
   return Number(left > right) - Number(left < right);

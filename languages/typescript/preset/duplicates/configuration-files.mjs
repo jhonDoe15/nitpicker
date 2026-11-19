@@ -3,6 +3,7 @@ export const DUPLICATES_CONFIGURATION_FILES = [
   'languages/typescript/preset/duplicates/normalize.mjs',
   'languages/typescript/preset/duplicates/renamed.mjs',
   'languages/typescript/preset/tool-configs.mjs',
+  'languages/typescript/preset/project-configs/typescript/layout-rewrites.mjs',
   'core/tooling/jscpd/import-only.mjs',
   'core/tooling/jscpd/import-only/script-imports.mjs',
   'core/tooling/jscpd/jscpd-clones.mjs',

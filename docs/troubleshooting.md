@@ -238,7 +238,11 @@ Kotlin analyzer means the build ran but nitpicker's own code failed on it, often
 report the build left empty or cut off.
 
 **Fix.** The message ends with the process's own output; start there. For an out-of-memory kill, give the
-job more memory or run fewer analyzers at once with `NITPICKER_MAX_PARALLEL`. For a custom analyzer, run
+job more memory or run fewer analyzers at once with `NITPICKER_MAX_PARALLEL`. Every Node analyzer, ESLint
+included, gets a heap of three quarters of the memory less 1.5 GB for each other analyzer that can run beside
+it (never less than Node's default), so `<analyzer> ran out of memory` means that share was too small: lower
+`NITPICKER_MAX_PARALLEL`, or set `NODE_OPTIONS=--max-old-space-size=<MB>`, which nitpicker then leaves as
+it is. For a custom analyzer, run
 its `command` in the checkout by hand and check that it prints only `{"findings": [...]}` and exits 0.
 See [custom analyzers](usage.md#custom-analyzers). If a built-in analyzer crashes on a simple project,
 please open an issue with the message and the project's tool versions.
@@ -1021,6 +1025,14 @@ Maven runs on is older, and no suitable one is installed in the places nitpicker
 (hosted CI images set it), add a `jdkHome` entry in `~/.m2/toolchains.xml`, or install it with SDKMAN or
 the system package. Or run Maven itself on JDK 21. On Gradle, the toolchain service finds or downloads
 the JDK.
+
+### Tool hosting misbehaves
+
+**Symptom.** A Maven run with several modules prints `nitpicker: Java tools run in separate JVMs per module (tool hosting is off: ...)`, or a Java tool reports something a run on one module does not, or `java` processes named `nitpicker.host.ToolHost` stay after a crashed run.
+
+**Cause.** Maven runs with two or more modules keep one resident JVM per tool (see [Shared tool JVMs on Maven](internals.md#shared-tool-jvms-on-maven)). The first line is only a notice: the run went on with a JVM per tool and module, which is slower, not different. A tool whose static state leaks between modules, or a sandbox that blocks Unix sockets, can make the hosted result differ.
+
+**Fix.** Set `NITPICKER_NO_TOOL_HOSTS=1` to turn hosting off; the results are those of a separate JVM per tool and module. Set `NITPICKER_TOOL_HOSTS_TRACE=<file>` to see which jobs ran hosted. Report a difference with the trace and the tool's name. A host exits by itself when the run that started it is gone; if one remains, kill it by its process id.
 
 ## Platforms
 

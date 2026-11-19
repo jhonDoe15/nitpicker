@@ -30,8 +30,11 @@ describe('rules script report', () => {
     ]);
   });
 
-  it('classifies presence-truthiness findings as descriptive', () => {
-    const report = [entry({ rule: 'presence-truthiness', subject: 'label(title)' })];
+  it.each([
+    ['presence-truthiness', 'label(title)'],
+    ['async-twin-drift', 'abatch|batch|guard|size <= 0|sync'],
+  ])('classifies %s findings as descriptive', (rule, subject) => {
+    const report = [entry({ rule, subject })];
 
     expect(
       ingestRulesReport(JSON.stringify(report)).map(({ classification }) => classification),
@@ -282,6 +285,11 @@ describe('rules script report', () => {
       'unsafe-deserialization',
       'yaml.full_load',
       '`yaml.full_load` can build arbitrary Python objects from the document',
+    ],
+    [
+      'permission-name-without-app-label',
+      'has_perm()|impersonate',
+      '`has_perm()` checks the permission `impersonate` without an app label: Django compares the full `app_label.codename` string, so a bare name never matches a global permission and the check is false for every user',
     ],
   ])('describes %s by its subject', (rule, subject, message) => {
     expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0]?.message).toBe(message);

@@ -21,6 +21,7 @@ WRITES = {
     "insert",
 }
 ROOTS = {"query", "select", "select_from"}
+SHORTCUTS = {"get_object_or_404", "get_list_or_404", "aget_object_or_404"}
 RUNNERS = {"execute", "scalars", "scalar", "stream", "stream_scalars"}
 EXECUTING = {
     "first",
@@ -55,10 +56,22 @@ def class_name(node):
     return None
 
 
+def is_shortcut(node):
+    return (
+        isinstance(node, ast.Call)
+        and bool(node.args)
+        and chain_names(node.func)[-1:] in [[name] for name in SHORTCUTS]
+    )
+
+
 def model_roots(function, models):
     for node in walk_statements(function.body):
         if isinstance(node, ast.Attribute) and node.attr == "objects":
             model = models.get(class_name(node.value))
+            if model is not None and model.kind == "django":
+                yield node, model
+        elif is_shortcut(node):
+            model = models.get(class_name(node.args[0]))
             if model is not None and model.kind == "django":
                 yield node, model
         elif (
@@ -156,6 +169,10 @@ def helper_of(node, helpers):
 
 
 def status_of(chain, root, model, function, context, helpers):
+    if is_shortcut(chain):
+        if applies(chain, model, helpers, context):
+            return FILTERED, helper_of(chain, helpers)
+        return UNFILTERED, None
     parent = context.parents.get(id(chain))
     if chain_methods(chain) & WRITES:
         return EXEMPT, None
@@ -212,7 +229,9 @@ def reads_of(context):
             if is_intentional(qualified, context.path):
                 continue
             for root, model in model_roots(function, models):
-                chain = outer_chain(root, context.parents)
+                chain = (
+                    root if is_shortcut(root) else outer_chain(root, context.parents)
+                )
                 status, helper = status_of(
                     chain, root, model, function, context, helpers
                 )

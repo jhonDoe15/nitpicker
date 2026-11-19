@@ -13,9 +13,12 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - A database write and a message publish do not share a function: write an outbox row in the same transaction and let a relay publish it and mark that row sent (`dual-write-without-outbox`).
 - Related writes share one transaction (`with session.begin():`, `with transaction.atomic():`), written through the session the block opened; a check that decides a create is atomic (`get_or_create`, `ON CONFLICT`) or locks the row (`select_for_update()`, `with_for_update()`) (`related-writes-without-transaction`, `write-outside-transaction`, `check-then-write-race`).
 - Scheduled and queued jobs (Celery tasks, APScheduler jobs, Django management commands) isolate each item of a loop that does I/O: a `try`/`except` per item that records the failure, or one task per item with `.delay(item)` (`job-item-failure-stops-run`).
-- Reads of a model with a soft-delete or visibility column apply the filter the project's other reads use (`deleted_at__isnull=True`, `.alive()`, a filtering default manager, SQLAlchemy `with_loader_criteria`); trash, restore, purge and admin code reads deleted rows on purpose (`soft-delete-filter-missing`).
+- Reads of a model with a soft-delete or visibility column apply the filter the project's other reads use (`deleted_at__isnull=True`, `.alive()`, a filtering default manager, SQLAlchemy `with_loader_criteria`); trash, restore, purge and admin code reads deleted rows on purpose; the same holds for an activity flag (`active=True`, `internal=False`, `user__is_active=True`) and a scoping method such as `.restrict(request.user, "view")` that most reads of the model apply (`soft-delete-filter-missing`).
 - Loops and lookups over a collection of items with a deleted or hidden flag skip flagged items the way the project's other code does (a guard on the flag, a helper such as `live(items)`, a narrowed type); undo, restore and sync code reads them on purpose (`deleted-item-filter-missing`).
 - Route handlers declare the auth requirement the project's other handlers use: the same `Depends(get_current_user)` or `Security(...)` in FastAPI (or on the router), `permission_classes` in Django REST framework, the login decorator in Flask; public routes (login, health, webhooks) are the exception (`route-without-auth`).
+- A Django receiver that clears a cache on `post_save` is also connected to `post_delete` (stack both `@receiver` decorators, or add a second receiver that clears the same keys; `m2m_changed` for many-to-many data), and its module is imported from `AppConfig.ready()` (`cache-invalidated-on-save-only`, `signal-receiver-never-connected`).
+- In a project with several databases, a function that receives an alias (`using`, `db_alias`, a signal receiver's `using`, a migration's `schema_editor.connection.alias`) passes it on: `Model.objects.using(using)`, `instance.save(using=using)`, `transaction.atomic(using=using)` (`database-alias-not-passed`).
+- Django permission names carry the app label: `user.has_perm("shop.change_order")`, `@permission_required("shop.view_order")`, never a bare codename that matches no user (`permission-name-without-app-label`).
 - Build a pydantic `TypeAdapter`, a jinja2 `Environment` or a `fastjsonschema.compile` validator once, at module level or in `__init__`, not inside a function that runs per call (`reusable-object-per-call`).
 - Trio, AnyIO and `asyncio.TaskGroup`: open a resource around the whole task group or inside the
   child task, never in a `with` inside the group that hands it to `start_soon`/`create_task`
@@ -24,6 +27,8 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - A `close`, `aclose`, `__exit__`, `__aexit__` or fixture teardown that releases several resources registers them on
   `contextlib.ExitStack` / `AsyncExitStack` (or `gather(..., return_exceptions=True)`, or `try`/`finally`), never
   `await a.aclose()` then `await b.aclose()` (`cleanup-skipped-on-failure`).
+- A `@contextmanager` (or a set, call, reset sequence) puts the undo step in `finally:` after the `yield`:
+  `token = var.set(x)`, `try: yield`, `finally: var.reset(token)` (`reset-skipped-on-failure`).
 - A `close` that clears a dict of futures kept for pending requests fails every one first
   (`future.set_exception(ConnectionError("closed"))` or `future.cancel()`), so no awaiting caller hangs
   (`pending-unsettled-on-close`).
@@ -43,6 +48,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `asyncio.create_subprocess_exec`, and `await asyncio.to_thread(...)` for other blocking calls. No
   `timeout` parameter: the caller wraps the call in `async with asyncio.timeout(...)`, and the scope
   holds an `await`. Wait on an `asyncio.Event`, not a sleep loop.
+- A public function does not sleep a module constant it cannot override (`uninjectable-delay`):
+  `time.sleep(RETRY_DELAY)` or `asyncio.sleep(RETRY_DELAY)` makes a test wait it out. Take
+  `delay=RETRY_DELAY` as a parameter (or a constructor argument kept in a field).
 - Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru) for diagnostics,
   never bare `print`; a `domain` package returns a result instead and leaves logging to `adapters/`.
   A program's own output (what a command prints) goes through a `TextIO` parameter: `out.write(...)`
@@ -63,6 +71,7 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `if`, `any()` or `next()`, `.order_by()` instead of `sorted()`, and `.aggregate()`/`func.sum` instead
   of `sum()`, `max()` or `Counter` over the rows (`in-memory-query`).
 - Let the database change rows too: `Model.objects.filter(...).update(status="expired")` or `session.execute(update(Model).where(...).values(...))` instead of loading rows, assigning the same value to each and calling `bulk_update` or `commit` (`in-memory-update`).
+- Give a model that the code loads, changes and saves again a version column (`unversioned-orm-entity`): `version: Mapped[int] = mapped_column(default=1)` and `__mapper_args__ = {"version_id_col": version}`, so a stale commit raises `StaleDataError` instead of overwriting the other write. Django models are not reported.
 - Ask for what you use: `values_list("email", flat=True)` or `select(User.email)` instead of loading whole rows to read one column (`row-for-one-column`), and `.exists()` or `select(exists().where(...))` instead of `.count() > 0` or `.first() is not None` (`row-for-existence`).
 - Optimistic-lock retries: retry a `StaleDataError` by reading the row again inside each attempt (`order = session.get(Order, order_id)`, apply the change, `commit()`), never by committing the object loaded before the retry (`stale-retry`).
 - Index every foreign key in the migration that adds it (Alembic `op.create_index`, or `index=True` on
@@ -87,6 +96,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Blocking helpers stay out of `async def`: `await asyncio.to_thread(fetch_profile, url)` or
   `loop.run_in_executor(None, fetch_profile, url)` for a plain function that calls `requests`, `httpx.get`,
   `time.sleep` or `subprocess.run`, or an async client (`blocking-helper-in-async`; startup work takes an exception).
+  The same holds for Django ORM queries (`await sync_to_async(load)(id)` or `aget`, `acount`, `async for`),
+  `ssl.create_default_context(cafile=...)`, `Path.read_text`, thread and file locks and a hook's `get_connection`;
+  use `asyncio.get_running_loop()`, never `get_event_loop()`, in a coroutine.
 - Waits for a worker have a deadline: `future.result(timeout=30)`, `concurrent.futures.wait(futures, timeout=30)`,
   `thread.join(timeout=30)` and then `thread.is_alive()`; never the no-argument form
   (`unbounded-wait`; a shutdown that joins the worker it just stopped takes an exception).
@@ -107,6 +119,11 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Test an environment variable for a value, not for `None`: `if not os.environ.get("API_URL"):` and
   `os.environ.get("PORT") or "8000"`, never `is not None`, `in os.environ` or a `getenv` default; `API_URL=`
   gives `""`, which those count as set (`env-none-only-check`).
+- Build engines, pools, clients and apps in the composition root only (`managed-resource-outside-composition-root`):
+  `create_engine`, `asyncpg.create_pool`, `redis.Redis`, `httpx.Client`, `requests.Session`, `aiohttp.ClientSession`,
+  `boto3.client` and `Celery(...)` go in `main.py`, `server.py` or `composition_root.py`, and the feature code takes
+  the object as a parameter. The root only wires (`branch-in-composition-root`): no `if`, loop, `match` or `or`
+  default there; pick an implementation by configuration through a lookup table (`BACKENDS[settings.store]()`).
 - Secrets: never put a secret in code (`password`, `token`, `api_key`, ... assigned a literal, also as the
   fallback of `os.getenv`); read it from the environment in the composition root. Never log, print,
   warn or raise with it: log that it is set (`token is not None`) or a masked tail.

@@ -1,11 +1,15 @@
+import path from 'node:path';
+import { isInsideRoot, relativeToRoot, underRoot } from '../layout/source-root/root-paths.mjs';
 export const FEATURES_FOLDER = 'main/features';
 export const SHARED_FOLDER = 'main/shared';
 
 export function typescriptFeatureLayout(layout, sourceRoots) {
   return {
-    sharedRoots: layout?.sharedRoots ?? sourceRoots.map((root) => `**/${root}/${SHARED_FOLDER}`),
+    sharedRoots:
+      layout?.sharedRoots ?? sourceRoots.map((root) => path.posix.join('**', root, SHARED_FOLDER)),
     featureRoots:
-      layout?.featureRoots ?? sourceRoots.map((root) => `**/${root}/${FEATURES_FOLDER}`),
+      layout?.featureRoots ??
+      sourceRoots.map((root) => path.posix.join('**', root, FEATURES_FOLDER)),
     sharedInsideFeatures: layout?.sharedRoots !== undefined,
   };
 }
@@ -23,14 +27,14 @@ function sharedFolderOf(file, sharedRoots) {
 }
 
 function placeUnder(root, file) {
-  const inside = file.slice(root.length + 1);
+  const inside = relativeToRoot(file, root);
   if (COMPOSITION_ROOT_FOLDER.test(inside)) {
-    return { group: `${root}/composition-root`, wiring: true };
+    return { group: underRoot(root, 'composition-root'), wiring: true };
   }
   if (COMPOSITION_ROOT_FILE.test(inside) || !inside.includes('/')) {
     return { group: file, wiring: true };
   }
-  return { group: `${root}/${inside.split('/')[0]}`, wiring: false };
+  return { group: underRoot(root, inside.split('/')[0]), wiring: false };
 }
 
 function featureGroup(file, directory) {
@@ -39,7 +43,7 @@ function featureGroup(file, directory) {
 }
 
 export function stabilityUnits({ sourceRoot, sharedRoots, roleOf }) {
-  const main = `${sourceRoot}/${MAIN_FOLDER}`;
+  const main = underRoot(sourceRoot, MAIN_FOLDER);
   function placeOf(file) {
     const role = roleOf(file);
     if (role.kind === 'feature') {
@@ -49,7 +53,7 @@ export function stabilityUnits({ sourceRoot, sharedRoots, roleOf }) {
     if (shared !== undefined) {
       return { group: shared, wiring: false };
     }
-    const root = [main, sourceRoot].find((folder) => file.startsWith(`${folder}/`));
+    const root = [main, sourceRoot].find((folder) => isInsideRoot(file, folder));
     return root === undefined
       ? { group: file.slice(0, file.lastIndexOf('/')), wiring: false }
       : placeUnder(root, file);
