@@ -11,7 +11,7 @@ public final class Links {
   private static final URI DOCS = URI.create("https://shop.example/docs");
   private static final URI BLOCK = URI.create("""
       https://shop.example/block""");
-  private static final URI CONFIGURED = URI.create(System.getenv("SHOP_URL")); // violation: UriCreateDynamic
+  private static final URI CONFIGURED = URI.create(System.getenv("SHOP_URL")); // violation: UriCreateDynamic, ConfigurationReadOutsideCompositionRoot
 
   private Links() {}
 

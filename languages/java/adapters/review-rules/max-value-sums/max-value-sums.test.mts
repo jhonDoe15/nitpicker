@@ -281,6 +281,52 @@ describe('Java sums: guards, returned and chosen maximums, page sizes', () => {
     ).toEqual([]);
   });
 
+  it('allows an accessor compared with the sentinel before the sum, and reports it without', () => {
+    const body = (guard: string) =>
+      java(
+        [
+          '  static final int UNSET = Integer.MAX_VALUE;',
+          '  private int maxWidth = UNSET;',
+          '  int getMaxWidth() { return maxWidth; }',
+          '  void setMaxWidth(int value) { maxWidth = value; }',
+          '  int total(Text style, Text builder, String header, String text) {',
+          ...guard.split('\n'),
+          '    int calcWidth = 0;',
+          '    calcWidth += builder.getMaxWidth();',
+          '    return text.substring(0, Math.min(calcWidth, text.length()));',
+          '  }',
+        ].join('\n'),
+      );
+
+    expect(
+      body(
+        [
+          '    if (style.getMaxWidth() < header.length() || style.getMaxWidth() == UNSET) {',
+          '      builder.setMaxWidth(header.length());',
+          '    }',
+        ].join('\n'),
+      ),
+    ).toEqual([]);
+    expect(
+      body(
+        [
+          '    if (UNSET == style.getMaxWidth()) {',
+          '      builder.setMaxWidth(header.length());',
+          '    }',
+        ].join('\n'),
+      ),
+    ).toEqual([]);
+    expect(
+      body(
+        [
+          '    if (style.getMaxWidth() < header.length()) {',
+          '      builder.setMaxWidth(header.length());',
+          '    }',
+        ].join('\n'),
+      ),
+    ).toEqual([`${MAX_VALUE_RULE} ${JAVA_FILE}:12`]);
+  });
+
   it('reports a maximum added directly inside Math.min', () => {
     expect(java('  int run(int n) {\n    return Math.min(Integer.MAX_VALUE + n, 5);\n  }')).toEqual(
       [`${MAX_VALUE_RULE} ${JAVA_FILE}:4`],

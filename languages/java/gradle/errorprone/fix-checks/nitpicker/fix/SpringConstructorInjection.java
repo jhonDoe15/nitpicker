@@ -44,23 +44,7 @@ public final class SpringConstructorInjection extends BugChecker implements Clas
     if (tree.getKind() != Tree.Kind.CLASS || hasLombokConstructor(tree)) {
       return Description.NO_MATCH;
     }
-    List<MethodTree> constructors = constructors(tree);
-    if (constructors.size() == 1) {
-      return soleConstructor(constructors.get(0), state);
-    }
-    return constructors.isEmpty() ? fieldInjection(tree, state) : Description.NO_MATCH;
-  }
-
-  private Description soleConstructor(MethodTree constructor, VisitorState state) {
-    for (AnnotationTree annotation : constructor.getModifiers().getAnnotations()) {
-      if (Support.isAnnotation(annotation, INJECT) && annotation.getArguments().isEmpty()) {
-        int[] range = Support.removalRange(annotation, state);
-        SuggestedFix.Builder fix = SuggestedFix.builder().replace(range[0], range[1], "");
-        Support.dropImportIfUnused(fix, state, Support.simpleName(annotation), unitRemovals(state));
-        return describeMatch(annotation, fix.build());
-      }
-    }
-    return Description.NO_MATCH;
+    return constructors(tree).isEmpty() ? fieldInjection(tree, state) : Description.NO_MATCH;
   }
 
   private Description fieldInjection(ClassTree tree, VisitorState state) {
@@ -116,14 +100,7 @@ public final class SpringConstructorInjection extends BugChecker implements Clas
       if (tree.getKind() != Tree.Kind.CLASS || hasLombokConstructor(tree)) {
         continue;
       }
-      List<MethodTree> constructors = constructors(tree);
-      if (constructors.size() == 1) {
-        for (AnnotationTree annotation : constructors.get(0).getModifiers().getAnnotations()) {
-          if (Support.isAnnotation(annotation, INJECT) && annotation.getArguments().isEmpty()) {
-            removed.add(Support.removalRange(annotation, state));
-          }
-        }
-      } else if (constructors.isEmpty()) {
+      if (constructors(tree).isEmpty()) {
         Set<Symbol> assigned = assignedFields(tree);
         for (Tree member : tree.getMembers()) {
           if (member instanceof VariableTree field && injectable(field, assigned, state)) {

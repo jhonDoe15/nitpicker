@@ -1,7 +1,7 @@
 import { Linter } from 'eslint';
 import { describe, expect, it } from 'vitest';
 import { rule } from './naming-convention.mts';
-import { ruleModule } from '../../test-support/rule-tester.mts';
+import { ruleModule, typescriptRuleTester } from '../../test-support/rule-tester.mts';
 
 const OPTIONS = [
   { selector: 'variable', format: ['camelCase', 'UPPER_CASE'] },
@@ -41,4 +41,20 @@ describe('nitpicker/naming-convention without type information', () => {
       'nitpicker/naming-convention: Variable name `total_count` must match one of the following formats: camelCase, UPPER_CASE',
     ]);
   });
+});
+
+typescriptRuleTester().run('nitpicker/naming-convention next to import-equals', rule, {
+  valid: [
+    {
+      code: "import fs = require('node:fs'); export const total = fs;",
+      options: OPTIONS,
+    },
+  ],
+  invalid: [
+    {
+      code: "import z = require('zod'); export const Order = z.object({});",
+      options: OPTIONS,
+      errors: [{ messageId: 'doesNotMatchFormat' }],
+    },
+  ],
 });

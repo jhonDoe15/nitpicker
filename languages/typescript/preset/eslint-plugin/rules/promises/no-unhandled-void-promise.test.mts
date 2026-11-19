@@ -120,6 +120,10 @@ tester.run('no-unhandled-void-promise', rule, {
   ],
   invalid: [
     typed(
+      `async function send(id: string) { try { count(); } finally { logger.error(id); } }\nexport function start() { void send('a'); }`,
+      { invalid: true },
+    ),
+    typed(
       `async function send(id: string) { try { await report(id); } catch (error) { report('b'); } }\nexport function start() { void send('a'); }`,
       { invalid: true },
     ),
