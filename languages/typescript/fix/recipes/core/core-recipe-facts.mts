@@ -44,38 +44,46 @@ export type CoreFacts = {
   readonly options: readonly unknown[];
 };
 
-type Choices = Partial<Pick<CoreFacts, 'safety' | 'presets' | 'options'>>;
+type Choices = Pick<CoreFacts, 'module' | 'name'> &
+  Partial<Pick<CoreFacts, 'safety' | 'presets' | 'options'>>;
 
-function facts(rule: string, module: string, name: string, choices: Choices = {}): CoreFacts {
-  return { rule, module, name, safety: SAFE, presets: BOTH_PRESETS, options: [], ...choices };
+function facts(rule: string, choices: Choices): CoreFacts {
+  return { rule, safety: SAFE, presets: BOTH_PRESETS, options: [], ...choices };
 }
 
 export const CORE_RECIPES = {
-  emptyStaticBlock: facts(
-    'no-empty-static-block',
-    'statements/empty-static-block',
-    'emptyStaticBlockRecipe',
-  ),
-  uselessConcat: facts('no-useless-concat', 'expressions/useless-concat', 'uselessConcatRecipe'),
-  uselessCatch: facts('no-useless-catch', 'statements/useless-catch', 'uselessCatchRecipe'),
-  uselessCall: facts('no-useless-call', 'expressions/useless-call', 'uselessCallRecipe', {
+  emptyStaticBlock: facts('no-empty-static-block', {
+    module: 'statements/empty-static-block',
+    name: 'emptyStaticBlockRecipe',
+  }),
+  uselessConcat: facts('no-useless-concat', {
+    module: 'expressions/useless-concat',
+    name: 'uselessConcatRecipe',
+  }),
+  uselessCatch: facts('no-useless-catch', {
+    module: 'statements/useless-catch',
+    name: 'uselessCatchRecipe',
+  }),
+  uselessCall: facts('no-useless-call', {
+    module: 'expressions/useless-call',
+    name: 'uselessCallRecipe',
     safety: REVIEW,
   }),
-  duplicateImports: facts(
-    'no-duplicate-imports',
-    'modules/duplicate-imports',
-    'duplicateImportsRecipe',
-    { options: [{ allowSeparateTypeImports: true }] },
-  ),
-  unreachable: facts('no-unreachable', 'statements/unreachable', 'unreachableRecipe', {
+  duplicateImports: facts('no-duplicate-imports', {
+    module: 'modules/duplicate-imports',
+    name: 'duplicateImportsRecipe',
+    options: [{ allowSeparateTypeImports: true }],
+  }),
+  unreachable: facts('no-unreachable', {
+    module: 'statements/unreachable',
+    name: 'unreachableRecipe',
     presets: ['javascript'],
   }),
-  uselessAssignment: facts(
-    'no-useless-assignment',
-    'statements/useless-assignment',
-    'uselessAssignmentRecipe',
-    { safety: REVIEW },
-  ),
+  uselessAssignment: facts('no-useless-assignment', {
+    module: 'statements/useless-assignment',
+    name: 'uselessAssignmentRecipe',
+    safety: REVIEW,
+  }),
 } satisfies Readonly<Record<string, CoreFacts>>;
 
 export function recipeFields(recipe: CoreFacts): Omit<FileRecipe, 'plan'> {
