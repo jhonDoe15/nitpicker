@@ -29,6 +29,7 @@ export const suggestionRules: Readonly<Record<string, string>> = Object.freeze({
   '@typescript-eslint/no-unnecessary-condition': REVIEW,
   '@typescript-eslint/prefer-find': REVIEW,
   '@typescript-eslint/no-unnecessary-type-conversion': REVIEW,
+  'regexp/optimal-lookaround-quantifier': REVIEW,
 });
 
 export const pickedSuggestions: Readonly<Record<string, string>> = Object.freeze({
