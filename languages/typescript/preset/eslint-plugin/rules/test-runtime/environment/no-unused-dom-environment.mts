@@ -138,7 +138,7 @@ function mayUseDom(filename: string, text: string, aliases: readonly ModuleAlias
   const evidence = scanDomEvidence(text, filename);
   return (
     evidence.usesDom ||
-    evidence.opaqueImport ||
+    evidence.opaque ||
     closureUsesDom(filename, evidence.specifiers, aliases) !== false
   );
 }
@@ -149,7 +149,12 @@ function projectSetupUsesDom(
   aliases: readonly ModuleAlias[],
 ): boolean {
   return (
-    isDomEnvironment(options?.environment) && setupUsesDom(options?.setupFiles ?? [], cwd, aliases)
+    isDomEnvironment(options?.environment) &&
+    setupUsesDom(
+      (options?.setupFiles ?? []).filter((entry) => registeredEnvironment(entry) === undefined),
+      cwd,
+      aliases,
+    )
   );
 }
 

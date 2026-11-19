@@ -44,3 +44,9 @@ function isDomOnly(name: string): boolean {
 export const DOM_GLOBAL_NAMES: ReadonlySet<string> = new Set(
   Object.keys(globals.browser).filter(isDomOnly),
 );
+
+export const STUBBABLE_DOM_GLOBALS: ReadonlySet<string> = new Set(
+  Object.keys(globals.browser).filter(
+    (name) => ONLY_BEHIND_A_FLAG_IN_NODE.includes(name) || !PROVIDED_BY_NODE.has(name),
+  ),
+);
