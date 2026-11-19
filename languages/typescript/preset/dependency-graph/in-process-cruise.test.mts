@@ -1,8 +1,8 @@
 import { cruise as runDependencyCruiser } from 'dependency-cruiser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { withHeadPolicyFile as untypedWithHeadPolicyFile } from '../head-policy.mjs';
-import { EXCLUDED_PATH_PATTERN, resolveLayout } from '../layout.mjs';
-import { cruise as untypedCruise } from './cruise.mjs';
+import { withHeadPolicyFile as untypedWithHeadPolicyFile } from '../head-policy.mts';
+import { EXCLUDED_PATH_PATTERN, resolveLayout } from '../layout.mts';
+import { cruise as untypedCruise } from './cruise.mts';
 import { cruiseInProcess } from './test-support/in-process-cruise.mts';
 
 const cruise: (

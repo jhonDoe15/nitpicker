@@ -1,0 +1,59 @@
+import { rootPattern } from '../../layout/source-root/root-paths.mts';
+import type { NonProjectDependency, PathPattern } from '../typed/rule-types.mts';
+
+type OutsideRootsRule = {
+  readonly name: string;
+  readonly severity: 'error';
+  readonly comment: string;
+  readonly from: { readonly path: string; readonly pathNot?: PathPattern };
+  readonly to: { readonly pathNot: string; readonly dependencyTypesNot: NonProjectDependency[] };
+};
+
+export const NO_IMPORT_OUTSIDE_ROOTS = 'no-import-outside-roots';
+
+const OUTSIDE_ROOTS_COMMENT =
+  'Production code imports only from layout.sourceRoots: move the imported code under a source root, or add its folder to layout.sourceRoots so the gate checks it. Excluding the imported file instead is a policy loosening that fails until a person accepts it.';
+const NON_PROJECT_DEPENDENCIES: NonProjectDependency[] = [
+  'core',
+  'npm',
+  'npm-dev',
+  'npm-optional',
+  'npm-peer',
+  'npm-bundled',
+  'npm-no-pkg',
+  'npm-unknown',
+  'unknown',
+  'undetermined',
+];
+
+export function outsideRootsRule({
+  productionSource,
+  roots,
+  excludePattern,
+  generatedFilePattern,
+}: {
+  readonly productionSource: { readonly path: string; readonly pathNot?: PathPattern };
+  readonly roots: readonly string[];
+  readonly excludePattern: string | undefined;
+  readonly generatedFilePattern: string | undefined;
+}): OutsideRootsRule {
+  const insideRoots = `^${rootPattern(roots)}`;
+  return {
+    name: NO_IMPORT_OUTSIDE_ROOTS,
+    severity: 'error',
+    comment: OUTSIDE_ROOTS_COMMENT,
+    from: productionSource,
+    to: {
+      pathNot: [
+        insideRoots,
+        '(?:^|/)node_modules/',
+        generatedFilePattern,
+        '\\.json$',
+        excludePattern,
+      ]
+        .filter((pattern) => pattern !== undefined)
+        .join('|'),
+      dependencyTypesNot: NON_PROJECT_DEPENDENCIES,
+    },
+  };
+}

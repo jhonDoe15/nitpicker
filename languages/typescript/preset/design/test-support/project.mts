@@ -5,15 +5,14 @@ import type { Finding } from '../../../../../shared/values/findings.mts';
 import {
   headPolicyEnvironment as untypedHeadPolicyEnvironment,
   withHeadPolicyFile as untypedWithHeadPolicyFile,
-} from '../../head-policy.mjs';
-import { resolveLayoutFor as untypedResolveLayoutFor } from '../../layout.mjs';
-import { layoutTransformFor as untypedLayoutTransformFor } from '../../tool-configs.mjs';
+} from '../../head-policy.mts';
+import { resolveLayoutFor } from '../../layout.mts';
+import { layoutTransformFor } from '../../tool-configs.mts';
 import { analyzeDesignSignals, projectDesignFacts } from '../analyze.mts';
 import type { DesignFacts } from '../design-types.mts';
 
 type Files = Readonly<Record<string, unknown>>;
 type Policy = Readonly<Record<string, unknown>>;
-type Transform = (text: string, targetPath: string) => string;
 type ProjectOptions = {
   projectRoot: string;
   configPath: string;
@@ -24,9 +23,6 @@ const withHeadPolicyFile: <T>(policy: Policy, operation: (policyFile: string) =>
   untypedWithHeadPolicyFile;
 const headPolicyEnvironment: (policyFile: string) => NodeJS.ProcessEnv =
   untypedHeadPolicyEnvironment;
-const resolveLayoutFor: (policy: Policy) => unknown = untypedResolveLayoutFor;
-const layoutTransformFor: (policyFileName: string, layout: unknown) => Transform | undefined =
-  untypedLayoutTransformFor;
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../../..');
 const fixtureRoot = path.resolve(import.meta.dirname, '../../fixtures');

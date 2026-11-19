@@ -4,12 +4,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { Layout } from '../../adapters/typed/head-policy.mts';
-import {
-  resolveLayout as untypedResolveLayout,
-  resolveLayoutFor as untypedResolveLayoutFor,
-} from '../layout.mjs';
-import { layoutJscpdConfig as untypedLayoutJscpdConfig } from '../project-configs/typescript/layout-rewrites.mjs';
+import { resolveLayout, resolveLayoutFor } from '../layout.mts';
+import { layoutJscpdConfig } from '../project-configs/typescript/layout-rewrites.mts';
+import { defaultJscpd } from './test-support/default-jscpd.mts';
 import {
   fieldOf,
   listOf,
@@ -18,20 +15,12 @@ import {
   textOf,
 } from '../../../../shared/values/readers.mts';
 
-const resolveLayout: () => Layout = untypedResolveLayout;
-const resolveLayoutFor: (config: Readonly<Record<string, unknown>>) => Layout =
-  untypedResolveLayoutFor;
-const layoutJscpdConfig: (base: unknown, layout: Layout) => { readonly ignore: string[] } =
-  untypedLayoutJscpdConfig;
-
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 const jscpd = path.join(projectRoot, 'node_modules/.bin/jscpd');
 const fixtureRoot = path.join(projectRoot, 'languages/typescript/preset/duplicates/fixtures');
-const defaultConfig: unknown = parseJson(
-  readFileSync(path.join(import.meta.dirname, '../defaults/jscpd.json'), 'utf8'),
-);
-const productionIgnore: string[] = layoutJscpdConfig(defaultConfig, resolveLayout()).ignore;
-const shippedFormats: string[] = listOf(fieldOf(defaultConfig, 'format')).map(textOf);
+const defaultConfig = defaultJscpd();
+const productionIgnore: string[] = [...layoutJscpdConfig(defaultConfig, resolveLayout()).ignore];
+const shippedFormats: string[] = [...defaultConfig.format];
 const temporaryDirectories: string[] = [];
 
 type FileName = { readonly name: string };

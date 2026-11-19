@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { resolveLayout } from '../layout.mjs';
+import { resolveLayout } from '../layout.mts';
 import {
   analyzeCoupling,
   sharedUsedByOneFeature,
@@ -39,7 +39,7 @@ async function analyzerForRoots(sourceRoots: readonly string[]): Promise<SharedU
   vi.stubEnv('NITPICKER_POLICY', policyFile);
   vi.resetModules();
   try {
-    return (await import('./shared-usage.mjs')).sharedUsedByOneFeature;
+    return (await import('./shared-usage.mts')).sharedUsedByOneFeature;
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

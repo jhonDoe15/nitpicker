@@ -69,7 +69,9 @@ export async function collectSignals(
     allowInlineConfig: false,
   });
   const files = layout.projectCodeFiles(root);
-  if (files.length === 0) return [];
+  if (files.length === 0) {
+    return [];
+  }
   const results = await eslint.lintFiles([...files]);
   return results.flatMap((result) => resultSignals(root, result));
 }
@@ -97,7 +99,9 @@ function messageSignal(
   lines: readonly string[],
   message: Linter.LintMessage,
 ): Signal {
-  if (!message.ruleId) throw new Error(message.message);
+  if (!message.ruleId) {
+    throw new Error(message.message);
+  }
   return {
     file,
     rule: message.ruleId,
@@ -110,11 +114,12 @@ function messageSource(lines: readonly string[], message: Linter.LintMessage): s
   const line = message.line;
   const last = message.endLine ?? line;
   const sourceLines = lines.slice(line - 1, last);
-  if (message.endColumn !== undefined && message.endColumn > 0)
+  if (message.endColumn !== undefined && message.endColumn > 0) {
     sourceLines[sourceLines.length - 1] = (sourceLines.at(-1) ?? '').slice(
       0,
       message.endColumn - 1,
     );
+  }
   sourceLines[0] = (sourceLines[0] ?? '').slice(message.column - 1);
   return sourceLines.join('\n').replace(/\s+/g, ' ').trim();
 }
@@ -132,10 +137,11 @@ async function check(): Promise<number> {
   );
   const regressions = compareSignals(signals, baseline.sites);
   if (regressions.length > 0) {
-    for (const item of regressions)
+    for (const item of regressions) {
       process.stderr.write(
         formatOutput(item.file, item.rule, item.source, 'count:', item.count) + '\n',
       );
+    }
     process.stderr.write(
       formatOutput(
         'Coding standards failed. Fix the new sites; do not expand the legacy allowance.',
@@ -178,7 +184,9 @@ function collectRootArchitectureSignals(
   }: { readonly layout: ProjectLayout; readonly analyzedConfigs: Set<string> },
 ): Signal[] {
   const sourceRoot = path.join(root, layoutSourceRoot);
-  if (!existsSync(sourceRoot)) return [];
+  if (!existsSync(sourceRoot)) {
+    return [];
+  }
   const configPath = [
     path.join(sourceRoot, 'tsconfig.json'),
     path.join(root, 'tsconfig.json'),

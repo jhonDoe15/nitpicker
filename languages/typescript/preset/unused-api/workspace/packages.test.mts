@@ -6,11 +6,8 @@ import {
   nestedCheckout,
   useGitCheckouts,
 } from '../../../../../core/diff/git/test-support/git-checkout.mts';
-import { resolveLayoutFor } from '../../layout.mjs';
-import { loadPackages as untypedLoadPackages } from './packages.mjs';
-import type { PackagesInfo } from './workspace-types.mts';
-
-const loadPackages: (project: string, layout: unknown) => PackagesInfo = untypedLoadPackages;
+import { resolveLayoutFor } from '../../layout.mts';
+import { loadPackages } from './packages.mts';
 
 const { gitCheckout } = useGitCheckouts();
 const layout = resolveLayoutFor({});

@@ -1,19 +1,13 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { cruiseInProcess as untypedCruise } from '../dependency-graph/test-support/in-process-cruise.mts';
-import type { AnalysisLayout, AnalyzeOptions, Graph } from './analysis-types.mts';
+import type { AnalyzeOptions, Graph } from './analysis-types.mts';
 import { analyzeTestRuntime, loadModuleSources } from './analyze.mts';
-import { resolveLayout as untypedResolveLayout } from '../layout.mjs';
-import { defaultTestFiles as untypedDefaultTestFiles } from '../test-runner/test-files/test-file-patterns.mjs';
+import { resolveLayout } from '../layout.mts';
+import { defaultTestFiles } from '../test-runner/test-files/test-file-patterns.mts';
 
 const cruise: (paths: string[], options: { typeScriptRoot: string }) => Promise<Graph> =
   untypedCruise;
-const resolveLayout: (
-  layout: object,
-  exclude: string[],
-  options: { testFiles: unknown },
-) => AnalysisLayout = untypedResolveLayout;
-const defaultTestFiles: (runner: string) => unknown = untypedDefaultTestFiles;
 
 const projectRoot = path.resolve(import.meta.dirname, '../../../..');
 const fixtureRoot = 'languages/typescript/preset/test-runtime/fixtures';

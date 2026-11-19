@@ -1,4 +1,4 @@
-import { globMatcher as untypedGlobMatcher, toPosix as untypedToPosix } from '../../../layout.mjs';
+import { globMatcher as untypedGlobMatcher, toPosix as untypedToPosix } from '../../../layout.mts';
 
 export type ProductionLayout = {
   readonly testRoots: readonly string[];
