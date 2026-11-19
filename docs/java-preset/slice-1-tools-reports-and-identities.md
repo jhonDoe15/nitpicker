@@ -44,8 +44,9 @@ Notes on the glue in `java-reports.mts`:
   hex `decode`, `valueOf`, `substring` and similar). Names in capitals count as constants. A key made only
   of literals and constants is still reported. The Kotlin preset reads the same report for its Java files.
 - **Identity injection.** Neither tool emits `partialFingerprints`. The glue sets one
-  (`nitpicker/subject`) from the message text (PMD) or message arguments (SpotBugs), so the SARIF
-  ingester's `fp:` identity path is used and the line is never involved. The alternative, the
+  (`nitpicker/subject`) from the message text (PMD) or message arguments (SpotBugs; for a
+  find-sec-bugs pattern also the enclosing class and method name, without its parameter list), so
+  the SARIF ingester's `fp:` identity path is used and the line is never involved. The alternative, the
   ingester's default hash of rule, path and symbol, would treat two different unused fields in one
   file as indistinguishable repeats; matching by what the finding is about is more precise.
 - **Several projects.** Each Gradle project's reports are read on their own and their findings

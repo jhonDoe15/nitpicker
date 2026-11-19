@@ -16,6 +16,7 @@ import type { Classpaths } from './typed/maven-values.mts';
 import type { ToolClasspaths } from './typed/kotlin-types.mts';
 import { javaFiles } from './lint/java-files.mts';
 import { PMD_LOG } from '../adapters/reporting/sarif/processing/pmd-rule-crashes.mjs';
+import { spotbugsLaunch } from './security/spotbugs-launch.mts';
 
 export { javaFiles } from './lint/java-files.mts';
 export { runCheckstyle, writeCheckstyleSetup } from './lint/maven-checkstyle.mts';
@@ -155,23 +156,15 @@ export function runSpotbugs({
     tool: 'SpotBugs',
     classpath: tools['spotbugs'],
     mainClass: 'edu.umd.cs.findbugs.FindBugs2',
-    args: [
-      ...textsOf(
+    ...spotbugsLaunch({
+      module,
+      report,
+      tools,
+      settings: textsOf(
         fieldOf(fieldOf(configs, 'spotbugs'), 'arguments') ?? spotbugsArguments(NITPICKER_SPOTBUGS),
       ),
-      '-sarif',
-      '-output',
-      report,
-      '-sourcepath',
-      module.sourceRoots.filter((root) => existsSync(root)).join(path.delimiter),
-      ...(auxClasspath.length === 0
-        ? []
-        : [
-            '-auxclasspath',
-            auxClasspath.filter((entry) => existsSync(entry)).join(path.delimiter),
-          ]),
-      module.outputDirectory,
-    ],
+      auxClasspath,
+    }),
     cwd: module.basedir,
     accept: () => existsSync(report),
     spawn,

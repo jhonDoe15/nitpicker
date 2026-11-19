@@ -7,6 +7,12 @@ import { FIXED_SLEEP_RULE, withWaitAdvice } from '../../../messages/wait-advice.
 import { dropSleepsInFakes } from '../../../messages/latency-fakes.mjs';
 import { withFanOutDetails } from '../../../messages/fan-out/fan-out-details.mjs';
 import { withLoadEffectSubjects } from '../../../messages/load-effects.mjs';
+import {
+  securitySubject,
+  stableName,
+  withoutDuplicateSites,
+  withSecurityMessages,
+} from '../../security/security-advice.mjs';
 import { withLockEvidence } from '../../../messages/locking/lock-evidence.mjs';
 import { withProjectTypeMocks } from '../../../messages/mocks/project-mocks.mjs';
 import { dropNetworkInIntegrationTests } from '../../../messages/isolation/unit-tests.mjs';
@@ -148,7 +154,7 @@ export function sarifFindings(context) {
   const spotbugs = preparedReport(
     readSarifReport(path.join(context.reportRoot, 'spotbugs.sarif')),
     context,
-    spotbugsSubject,
+    (result) => securitySubject(result, spotbugsSubject(result)),
   );
   return [
     ...withProjectFilters(pmdFindings(pmd, context), context),
@@ -158,8 +164,13 @@ export function sarifFindings(context) {
     }),
     ...pmdLogRuleCrashes(context.reportRoot, projectRoot),
     ...ingestSarif(
-      (context.spotbugsFilter ?? ((log) => log))(
-        withoutClassesWithoutSource(dropEntityAssociations(spotbugs, projectRoot), projectRoot),
+      withSecurityMessages(
+        withoutDuplicateSites(
+          (context.spotbugsFilter ?? ((log) => log))(
+            withoutClassesWithoutSource(dropEntityAssociations(spotbugs, projectRoot), projectRoot),
+          ),
+          pmd,
+        ),
       ),
       { tool: 'spotbugs' },
     ).findings,
@@ -168,5 +179,6 @@ export function sarifFindings(context) {
 
 function spotbugsSubject(result) {
   const args = result.message?.arguments;
-  return Array.isArray(args) && args.length > 0 ? args.join(' ') : result.message?.text;
+  const subject = Array.isArray(args) && args.length > 0 ? args.join(' ') : result.message?.text;
+  return typeof subject === 'string' ? stableName(subject) : subject;
 }
