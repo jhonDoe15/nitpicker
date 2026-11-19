@@ -2,6 +2,7 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
 import { typeServices, type Context } from '../security/security-values.mts';
 import { calleeNameOf } from '../typed/syntax-views.mts';
+import { nonNullableTypeOf } from '../support/checked-types.mts';
 import { ts } from '../typed/typescript-views.mts';
 
 const OBJECT_KIND = 'object';
@@ -74,21 +75,15 @@ export function partKind(context: Context, part: TSESTree.Node): PartKind | unde
 }
 
 export function receiverTypeName(context: Context, node: TSESTree.Node): string | undefined {
-  const services = typeServices(context);
-  if (services === undefined) {
-    return undefined;
-  }
-  const checker = services.program.getTypeChecker();
-  return checker.getNonNullableType(services.getTypeAtLocation(node)).getSymbol()?.name;
+  return nonNullableTypeOf(context, node)?.type.getSymbol()?.name;
 }
 
 export function hasStringIndex(context: Context, node: TSESTree.Node): boolean {
-  const services = typeServices(context);
-  if (services === undefined) {
+  const typed = nonNullableTypeOf(context, node);
+  if (typed === undefined) {
     return false;
   }
-  const checker = services.program.getTypeChecker();
-  const type = checker.getNonNullableType(services.getTypeAtLocation(node));
+  const { checker, type } = typed;
   return (
     !checker.isArrayType(type) &&
     checker.getIndexInfoOfType(type, ts.IndexKind.String) !== undefined

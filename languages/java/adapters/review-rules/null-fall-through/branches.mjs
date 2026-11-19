@@ -1,6 +1,7 @@
 import { isField, initialises } from './fields.mjs';
 import { useText } from './use-text.mjs';
-import { forward, frameAt, startsNewLine } from '../max-value-sums/source-file.mjs';
+import { frameAt, startsNewLine } from '../max-value-sums/source-file.mjs';
+import { statementStop } from '../value-checks/scan.mjs';
 
 const LEAVES = new Set(['return', 'throw', 'break', 'continue', 'exitProcess', 'error', 'TODO']);
 const ASSIGNMENTS = new Set(['=', '+=', '-=', '*=', '/=']);
@@ -38,15 +39,8 @@ function nullCheck(source, { from, to }) {
 }
 
 function statementEnd(source, from) {
-  const { tokens, kotlin } = source;
-  for (const { index, group } of forward(source, from)) {
-    const { text } = tokens[index];
-    const ends = kotlin ? index > from && startsNewLine(tokens, index) : text === ';' && !group;
-    if (ends || text === '}') {
-      return ends && !kotlin ? index + 1 : index;
-    }
-  }
-  return tokens.length;
+  const { index, ends } = statementStop(source, from);
+  return ends && !source.kotlin ? index + 1 : index;
 }
 
 function branchOf(source, open) {

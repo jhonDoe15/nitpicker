@@ -1,15 +1,19 @@
 import { forward, startsNewLine } from '../max-value-sums/source-file.mjs';
 
-export function statementEnd(source, from) {
+export function statementStop(source, from) {
   const { tokens, kotlin } = source;
   for (const { index, group } of forward(source, from)) {
     const { text } = tokens[index];
     const ends = kotlin ? index > from && startsNewLine(tokens, index) : text === ';' && !group;
     if (ends || text === '}') {
-      return index;
+      return { index, ends };
     }
   }
-  return tokens.length;
+  return { index: tokens.length, ends: false };
+}
+
+export function statementEnd(source, from) {
+  return statementStop(source, from).index;
 }
 
 export function declarations(source, { from, to }) {
