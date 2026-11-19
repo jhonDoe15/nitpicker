@@ -39,6 +39,7 @@ describe('tool context', () => {
       typeCheckers: [],
       sourceRoots: ['src'],
       entryPoints: [],
+      blockingGetters: [],
     });
   });
   it('takes the environment from the live checkout and the sources from the snapshot', () => {
@@ -66,6 +67,7 @@ describe('tool context', () => {
       targetVersion: 'py38',
       sourceRoots: ['src'],
       entryPoints: [],
+      blockingGetters: [],
     });
   });
   it('checks both snapshots with the formatter the head chose, so adopting black flags no untouched file', () => {

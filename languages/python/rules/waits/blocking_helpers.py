@@ -9,6 +9,7 @@ from security.resolve.scopes import (
     where_of,
 )
 from security.support import exempt
+from waits.sinks.labels import direct_label, reached_label
 
 RULE = "blocking-helper-in-async"
 GUARDED = True
@@ -144,12 +145,23 @@ def is_blocking(call, name):
     return not (name == "time.sleep" and zero)
 
 
+def blocking_name(node, context):
+    if not isinstance(node, ast.Call):
+        return reached_label(node, context)
+    name = dotted_name(node.func, context.aliases)
+    plain_call = not shadowed(node, context)
+    if plain_call and (is_blocking(node, name) or name == "open"):
+        return name
+    return reached_label(node, context)
+
+
 def blocking_reached(function, place, hops):
     for node in own_nodes(function):
+        reached = blocking_name(node, place.context)
+        if reached is not None:
+            return reached
         if not isinstance(node, ast.Call) or shadowed(node, place.context):
             continue
-        if is_blocking(node, dotted_name(node.func, place.context.aliases)):
-            return dotted_name(node.func, place.context.aliases)
         found = callee(node, where_of(node, place.context)) if hops > 0 else None
         if found is not None and found[0] is not function:
             reached = blocking_reached(found[0], found[1], hops - 1)
@@ -168,6 +180,16 @@ def problem(call, context):
     return None if reached is None else f"{found[0].name} calls {reached}"
 
 
+def subject_of(node, context):
+    if isinstance(node, ast.Call):
+        return problem(node, context) or direct_label(node, context)
+    return direct_label(node, context)
+
+
+def site_of(node):
+    return node.iter if isinstance(node, ast.comprehension) else node
+
+
 def check(context):
     if exempt(context):
         return []
@@ -177,8 +199,9 @@ def check(context):
         if not isinstance(function, ast.AsyncFunctionDef):
             continue
         for node in own_nodes(function):
-            subject = problem(node, context) if isinstance(node, ast.Call) else None
-            if subject is not None and (node.lineno, subject) not in seen:
-                seen.add((node.lineno, subject))
-                found.append(finding(context.path, RULE, subject, node))
+            subject = subject_of(node, context)
+            site = site_of(node)
+            if subject is not None and (site.lineno, subject) not in seen:
+                seen.add((site.lineno, subject))
+                found.append(finding(context.path, RULE, subject, site))
     return found
