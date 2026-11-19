@@ -18,9 +18,3 @@ def may_be_none(item):
         return not item.many
     many = item.relation is not None and item.relation.many
     return item.null and not many
-
-
-def is_many(item):
-    if hasattr(item, "owner"):
-        return item.many
-    return item.relation is not None and item.relation.many

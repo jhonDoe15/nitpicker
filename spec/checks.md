@@ -312,6 +312,9 @@ column, and a `SerializerMethodField` whose method returns `None` without an `Op
 
 Serializer field lists: `serializer-fields-omitted` (script, Python only) reports a `ModelSerializer` with an explicit `Meta.fields` list that
 omits a model field exposed by at least 80% of at least three other serializers of the model; variant names and `exclude` stay quiet.
+Sortable table columns: `unsortable-table-column` (script, Python only) reports a declared django-tables2 column of a table with `Meta.model`
+whose accessor is a property, a generic foreign key, a missing attribute or a many-valued relation of the model, with no `orderable=False`,
+`order_by=`, `order_<name>` method or `Meta.orderable = False`.
 
 Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
 reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function

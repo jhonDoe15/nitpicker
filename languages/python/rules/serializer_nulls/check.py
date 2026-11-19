@@ -2,8 +2,9 @@ import ast
 
 from checks.common import finding
 from django_declarations.classes import meta_model
+from django_declarations.known import is_many
 from orm.models import keyword
-from serializer_nulls.chain import is_many, may_be_none, resolved_chain
+from serializer_nulls.chain import may_be_none, resolved_chain
 from serializer_nulls.fields import (
     flag,
     is_serializer_class,

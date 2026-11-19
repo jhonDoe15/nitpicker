@@ -53,6 +53,7 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Django query settings name real things: `search_fields`, `ordering`, `list_filter` and `filterset_fields` entries are fields or `__` paths that end at a column (`["app__name"]`, not the relation `"app"`), and a `ModelChoiceFilter` gets the queryset of the model its relation points to, with a `to_field_name` that exists (`unresolved-query-field`, `filter-model-mismatch`).
 - DRF serializer fields say what the model allows: `allow_null=True` over a `null=True` column or a reverse one-to-one relation (also for a nested `read_only` serializer), `required=False` over a blank or default column, and a method field that can return `None` has an `Optional` annotation or `@extend_schema_field(..., allow_null=True)` (`serializer-null-mismatch`).
 - A serializer `Meta.fields` list keeps the fields most other serializers of the model expose, or the serializer is named as a variant (`BriefDeviceSerializer`, `NestedDeviceSerializer`) (`serializer-fields-omitted`).
+- A django-tables2 column over a value that is not a database field (a property, a `GenericForeignKey`, a related manager) says how it sorts: `orderable=False`, `order_by=(...)` with real fields or an `order_<name>` method (`unsortable-table-column`).
 - Regexes: an argument built into a `re` pattern goes through `re.escape(value)`; plain text is
   compared with `in`, `startswith` or `==` (`regex-unescaped-value`).
   Every part of a literal pattern must change what it matches (`a|b|a`, `[_a-z_]` and `x{1}` are

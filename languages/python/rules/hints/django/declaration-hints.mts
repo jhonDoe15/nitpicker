@@ -1,8 +1,10 @@
 import { RULES_TOOL } from '../tool.mts';
 import type { RuleHint } from '../hint-types.mts';
 
+const MODEL = '<model>';
+
 function queryFieldDescribe(subject: string): string {
-  const [attribute = '', entry = '<entry>', model = '<model>', kind = ''] = subject.split('|');
+  const [attribute = '', entry = '<entry>', model = MODEL, kind = ''] = subject.split('|');
   if (kind === 'relation') {
     return `\`${attribute}\` entry \`${entry}\` ends at a relation of \`${model}\`, not at a text column, so searching it fails with a \`FieldError\` on the first request`;
   }
@@ -10,7 +12,7 @@ function queryFieldDescribe(subject: string): string {
 }
 
 function filterMismatchDescribe(subject: string): string {
-  const [name = '', queryset = '<queryset>', third = '<model>', kind] = subject.split('|');
+  const [name = '', queryset = '<queryset>', third = MODEL, kind] = subject.split('|');
   if (kind === 'to_field_name') {
     return `\`${name}\` sets \`to_field_name="${third}"\`, but \`${queryset}\` has no such field, so choices are rejected or the lookup fails`;
   }
@@ -18,7 +20,7 @@ function filterMismatchDescribe(subject: string): string {
 }
 
 function serializerDescribe(subject: string): string {
-  const [name = '', owner = '<model>', kind = ''] = subject.split('|');
+  const [name = '', owner = MODEL, kind = ''] = subject.split('|');
   if (kind === 'method') {
     return `\`${name}\` is a method field of \`${owner}\` whose method can return \`None\`, but the declared schema says it never is null, so typed clients crash on the null`;
   }
@@ -29,8 +31,17 @@ function serializerDescribe(subject: string): string {
 }
 
 function omittedDescribe(subject: string): string {
-  const [name = '', owner = '<serializer>', model = '<model>'] = subject.split('|');
+  const [name = '', owner = '<serializer>', model = MODEL] = subject.split('|');
   return `\`${owner}\` leaves out \`${name}\`, which most other serializers of \`${model}\` expose, so clients that read this endpoint miss the value or a field was dropped by accident`;
+}
+
+function columnDescribe(subject: string): string {
+  const [name = '', model = MODEL, kind = ''] = subject.split('|');
+  const value =
+    kind === 'related manager'
+      ? `a many-valued relation of \`${model}\``
+      : `a value that is not a database column of \`${model}\` (a property, a generic foreign key or a derived value)`;
+  return `The table column \`${name}\` is sortable by default but shows ${value}, so clicking its header raises a \`FieldError\` or sorts by the wrong thing`;
 }
 
 export const DJANGO_DECLARATION_HINTS: readonly RuleHint[] = [
@@ -61,5 +72,12 @@ export const DJANGO_DECLARATION_HINTS: readonly RuleHint[] = [
     describe: omittedDescribe,
     allowed:
       'Add the field to `Meta.fields`; when the omission is intended, name the serializer as a variant (`BriefDeviceSerializer`, `NestedDeviceSerializer`, `DeviceWriteSerializer`) or use `exclude` to show the intent.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['unsortable-table-column'],
+    describe: columnDescribe,
+    allowed:
+      'Turn sorting off for a column that is not a database field: `tables.BooleanColumn(orderable=False)`; or name the real fields it sorts by with `order_by=("label",)`, add an `order_<name>` method to the table, or set `orderable = False` in the table `Meta`.',
   },
 ];
