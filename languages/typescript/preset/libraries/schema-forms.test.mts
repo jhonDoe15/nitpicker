@@ -1,12 +1,10 @@
-import { boundaryGuardRule as untypedBoundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mts';
+import { boundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mts';
 import { createTester } from './test-support/rule-tester.mts';
 
 const tester = createTester();
 
-const boundaryGuardRule: (options: { validation: string[] }) => unknown = untypedBoundaryGuardRule;
-
 function guardRule(...validation: string[]) {
-  return boundaryGuardRule({ validation });
+  return boundaryGuardRule({ validation, logger: [] });
 }
 
 const PREDICATE = 'function isUser(value: unknown): value is User { return true; }';

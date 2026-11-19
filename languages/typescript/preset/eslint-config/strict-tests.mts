@@ -1,7 +1,7 @@
 import type { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../eslint-plugin/index.mts';
-import { codeExtensions, defaultResolvedLayout } from '../layout.mjs';
+import { codeExtensions, defaultResolvedLayout } from '../layout.mts';
 import { promiseChainRule, testControlFlowSelectors } from './strict/strict-control-flow.mts';
 import { typeAssertionSelectors } from './strict/strict-escape-hatches.mts';
 import type { ScopeLayout } from './typed/config-types.mts';

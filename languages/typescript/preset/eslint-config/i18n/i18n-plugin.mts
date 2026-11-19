@@ -6,8 +6,8 @@ import {
   withoutFixes,
   withReportFilter,
 } from '../typed/rule-views.mts';
-import { dropParseErrors, reportOncePerNode } from './i18n-filters.mjs';
-import { i18nRules } from './i18n-rules.mjs';
+import { dropParseErrors, reportOncePerNode } from './i18n-filters.mts';
+import { i18nRules } from './i18n-rules.mts';
 
 const formatjsRules: Readonly<Record<string, Rule.RuleModule>> = formatjs.rules ?? {};
 

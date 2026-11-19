@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { eslintMessageWithHint } from '../../../adapters/hints/eslint-hints.mts';
 import { regexpRuleHints } from '../../../adapters/hints/eslint-routes.mts';
-import { defaultResolvedLayout } from '../../layout.mjs';
+import { defaultResolvedLayout } from '../../layout.mts';
 import { isStrictRule } from '../../strict-rules.mts';
 import { productionPolicyConfigFor } from '../policy/production-policy.mts';
 import { hintInput } from '../typed/hints/hint-input.mts';

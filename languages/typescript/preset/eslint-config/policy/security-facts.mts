@@ -3,13 +3,13 @@ import { readFileSync } from 'node:fs';
 import { pathInside as untypedPathInside } from '../../../../../shared/filesystem.mjs';
 import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mjs';
 import { SQL_LIBRARIES } from '../../eslint-plugin/rules/security/sql/no-sql-string-building.mts';
-import { codeExtensions } from '../../layout.mjs';
-import { nonProductionFolders } from '../../structure/reuse/reuse-paths.mjs';
+import { codeExtensions } from '../../layout.mts';
+import { nonProductionFolders } from '../../structure/reuse/reuse-paths.mts';
 import {
   packageMajorOf as untypedPackageMajorOf,
   readDependencyNames as untypedReadDependencyNames,
   storyGlobs as untypedStoryGlobs,
-} from '../scope-support.mjs';
+} from '../scope-support.mts';
 import { GIT_TIMEOUT_MS } from '../../../../../shared/processes/deadlines.mjs';
 
 export type SecurityFacts = {

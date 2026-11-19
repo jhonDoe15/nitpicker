@@ -1,0 +1,94 @@
+import type { CheckExclusions, QualityCheck } from './typed/check-types.mts';
+import { MINUTE_MS, vitestVersion, crapVersion, strykerVersion } from './constants.mts';
+import { JAVASCRIPT_PRESET_FILE, TEST_RUNNER_CONFIGURATION_FILES } from './policy-files.mts';
+import { CRAP_CHECK_FILES } from '../crap/check-files.mts';
+import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
+import { testConsoleCheckFor } from './test-console.mts';
+
+const COVERAGE_TIMEOUT_MS = 5 * MINUTE_MS;
+const MUTATION_TIMEOUT_MS = 30 * MINUTE_MS;
+
+const CRAP_CONFIGURATION_FILES = [
+  ...CRAP_CHECK_FILES,
+  'languages/typescript/preset/layout.mjs',
+  'languages/typescript/preset/head-policy.mjs',
+  JAVASCRIPT_PRESET_FILE,
+  'shared/rules/crap.mjs',
+];
+
+const COVERAGE_CONFIGURATION_FILES = [
+  'shared/test-timeouts/resolve.mjs',
+  'shared/paths/glob.mjs',
+  'shared/head-policy.mjs',
+  'shared/policy.mjs',
+  'languages/typescript/adapters/test-runners/v8-coverage/loaded-sources.cjs',
+  'languages/typescript/adapters/test-runners/vitest/test-timeouts-setup.mjs',
+  ...TEST_RUNNER_CONFIGURATION_FILES,
+  'languages/typescript/preset/defaults/vitest.quality.config.ts',
+  'languages/typescript/preset/layout.mjs',
+  'languages/typescript/preset/head-policy.mjs',
+  'shared/rules/console/ansi.mjs',
+  'languages/typescript/preset/test-console/console-report.mjs',
+  'languages/typescript/preset/test-console/runners/jest-reporter.config.mjs',
+  'languages/typescript/preset/test-console/runners/jest-reporter.mjs',
+  'languages/typescript/preset/test-console/runners/mocha-capture.config.mjs',
+  'languages/typescript/preset/test-console/runners/mocha-capture.mjs',
+  'languages/typescript/preset/test-console/vitest-reporter.config.mjs',
+  'languages/typescript/preset/test-failures/vitest-failure-details.config.mjs',
+  JAVASCRIPT_PRESET_FILE,
+];
+
+const MUTATION_CONFIGURATION_FILES = [
+  'languages/typescript/preset/tool-configs.mjs',
+  'languages/typescript/preset/project-configs/typescript/layout-rewrites.mjs',
+  'languages/typescript/preset/project-configs/typescript/typescript-project-options.mjs',
+  'languages/typescript/preset/modules/selected-project-tsconfig.mjs',
+  JAVASCRIPT_PRESET_FILE,
+  'languages/typescript/preset/defaults/stryker.config.mjs',
+  'languages/typescript/preset/project-configs/stryker-project-config.mjs',
+  'languages/typescript/preset/project-configs/config-module.mjs',
+  'languages/typescript/preset/defaults/vitest.quality.config.ts',
+  'languages/typescript/preset/defaults/tsconfig.stryker.json',
+];
+
+export function testExecutionChecksFor(exclusions: CheckExclusions): QualityCheck[] {
+  return [
+    {
+      name: 'coverage',
+      kind: 'coverage',
+      version: vitestVersion,
+      exclusions: exclusions.general,
+      concurrencyWeight: 2,
+      concurrencyGroup: 'test-execution',
+      executionPriority: 1,
+      reportedTools: ['test-runtime'],
+      shardWeight: 16,
+      timeoutMs: COVERAGE_TIMEOUT_MS,
+      configurationFiles: COVERAGE_CONFIGURATION_FILES,
+    },
+    testConsoleCheckFor(exclusions),
+    {
+      name: 'crap',
+      kind: 'crap',
+      version: crapVersion,
+      exclusions: exclusions.production,
+      dependencies: ['coverage'],
+      shardWeight: 2,
+      timeoutMs: 2 * MINUTE_MS,
+      adapterArguments: ['--crap-score-limit', String(DEFAULT_CRAP_SCORE_LIMIT)],
+      configurationFiles: CRAP_CONFIGURATION_FILES,
+    },
+    {
+      name: 'mutation',
+      kind: 'mutation',
+      version: strykerVersion,
+      exclusions: exclusions.production,
+      concurrencyWeight: 2,
+      concurrencyGroup: 'test-execution',
+      executionPriority: 1,
+      shardWeight: 90,
+      timeoutMs: MUTATION_TIMEOUT_MS,
+      configurationFiles: MUTATION_CONFIGURATION_FILES,
+    },
+  ];
+}

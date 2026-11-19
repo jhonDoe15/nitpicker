@@ -3,10 +3,8 @@ import path from 'node:path';
 import { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
-import { boundaryGuardRule as untypedBoundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mts';
+import { boundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mts';
 import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
-
-const boundaryGuardRule: (options: { validation: string[] }) => unknown = untypedBoundaryGuardRule;
 
 const linterClass: new (options: { cwd: string }) => {
   verify(code: string, config: unknown, options: { filename: string }): Linter.LintMessage[];
@@ -40,7 +38,7 @@ function lint(root: string, code: string) {
           sourceType: 'module',
           parserOptions: { project: path.join(root, 'tsconfig.json'), tsconfigRootDir: root },
         },
-        plugins: { p: { rules: { g: boundaryGuardRule({ validation: ['joi'] }) } } },
+        plugins: { p: { rules: { g: boundaryGuardRule({ validation: ['joi'], logger: [] }) } } },
         rules: { 'p/g': 'error' },
       },
     ],

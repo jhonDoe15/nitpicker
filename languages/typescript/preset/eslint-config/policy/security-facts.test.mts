@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { tempProjects } from '../test-support/temp-projects.mts';
 import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
 import { lintFixture } from '../typed/lint-fixture.mts';
-import { defaultResolvedLayout } from '../../layout.mjs';
+import { defaultResolvedLayout } from '../../layout.mts';
 import { productionPolicyConfigFor } from './production-policy.mts';
 import { securityFactsFor, securityRules } from './security-facts.mts';
 
 const projectWith = tempProjects('nitpicker-security-facts-');
 
-const production = (file: string) => defaultResolvedLayout.isSourceFile(file) === true;
+const production = (file: string) => defaultResolvedLayout.isSourceFile(file);
 const manifest = (dependencies: Readonly<Record<string, string>>) => ({
   'package.json': { dependencies },
 });

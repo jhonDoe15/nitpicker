@@ -1,11 +1,11 @@
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
-import { resolveLayout } from '../../../layout.mjs';
+import { resolveLayout } from '../../../layout.mts';
 import { fieldOf, textOf } from '../../../../../../shared/values/readers.mts';
-import { accessibilityRuleNames } from '../react-rules.mjs';
+import { accessibilityRuleNames } from '../react-rules.mts';
 import { lintFixture } from '../../typed/lint-fixture.mts';
 import { reactSyntaxConfigFor } from '../react-scope.mts';
-import { accessibilityHints, extraAccessibilityRuleNames } from './accessibility-rules.mjs';
+import { accessibilityHints, extraAccessibilityRuleNames } from './accessibility-rules.mts';
 
 const config = [
   { languageOptions: { parser: tseslint.parser } },

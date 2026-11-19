@@ -1,5 +1,5 @@
 import type { Linter } from 'eslint';
-import type { defaultResolvedLayout } from '../../layout.mjs';
+import type { defaultResolvedLayout } from '../../layout.mts';
 
 export type ScopeLayout = {
   readonly sourceGlobs: string[];

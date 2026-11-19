@@ -1,6 +1,6 @@
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
-import { resolveLayout as untypedResolveLayout } from '../../layout.mjs';
+import { resolveLayout as untypedResolveLayout } from '../../layout.mts';
 import { strictTestConfigFor } from '../strict-tests.mts';
 import { type ResolvedLayout, linterConfigs } from '../typed/config-types.mts';
 import { failureMessagesFor } from '../typed/lint-fixture.mts';

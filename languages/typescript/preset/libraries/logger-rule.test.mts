@@ -29,18 +29,22 @@ const MESSAGE_ONLY_FORMS = [
 ];
 
 for (const library of ['winston', 'log4js', 'loglevel', 'consola', 'tslog', 'roarr', 'signale']) {
-  tester.run(`catch logging with ${library}`, structuredCatchLoggingRule({ logger: [library] }), {
-    valid: CAUGHT_VALUE_FORMS,
-    invalid: MESSAGE_ONLY_FORMS.map((code) => ({
-      code,
-      errors: [{ message: VALUE_MESSAGE }],
-    })),
-  });
+  tester.run(
+    `catch logging with ${library}`,
+    structuredCatchLoggingRule({ validation: [], logger: [library] }),
+    {
+      valid: CAUGHT_VALUE_FORMS,
+      invalid: MESSAGE_ONLY_FORMS.map((code) => ({
+        code,
+        errors: [{ message: VALUE_MESSAGE }],
+      })),
+    },
+  );
 }
 
 tester.run(
   'catch logging with pino or bunyan',
-  structuredCatchLoggingRule({ logger: ['bunyan'] }),
+  structuredCatchLoggingRule({ validation: [], logger: ['bunyan'] }),
   {
     valid: [inCatch("logger.error({ err: e }, 'failed')")],
     invalid: [
@@ -69,13 +73,17 @@ for (const logger of [
   ['winston', 'pino'],
   ['pino', 'winston'],
 ]) {
-  tester.run(`catch logging with ${logger.join(' and ')}`, structuredCatchLoggingRule({ logger }), {
-    valid: [inCatch("logger.error({ err: e }, 'failed')"), inCatch("logger.error('failed', e)")],
-    invalid: [
-      {
-        code: inCatch('logger.error(`failed ${e.message}`)'),
-        errors: [{ message: EITHER_MESSAGE }],
-      },
-    ],
-  });
+  tester.run(
+    `catch logging with ${logger.join(' and ')}`,
+    structuredCatchLoggingRule({ validation: [], logger }),
+    {
+      valid: [inCatch("logger.error({ err: e }, 'failed')"), inCatch("logger.error('failed', e)")],
+      invalid: [
+        {
+          code: inCatch('logger.error(`failed ${e.message}`)'),
+          errors: [{ message: EITHER_MESSAGE }],
+        },
+      ],
+    },
+  );
 }

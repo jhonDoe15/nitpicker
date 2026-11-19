@@ -1,4 +1,5 @@
-import { detectedPreset as untypedDetectedPreset } from '../../../../core/configuration/project-checks/preset-detection.mjs';
+import type { DetectedPreset } from '../../../../core/configuration/project-checks/preset-detection.mts';
+import { detectedPreset as untypedDetectedPreset } from '../../../../core/configuration/project-checks/preset-detection.mts';
 import { projectFilePaths as untypedProjectFilePaths } from '../../../../shared/project-files/project-files.mjs';
 import {
   TROUBLESHOOTING_ANCHORS,
@@ -10,9 +11,9 @@ import {
   EXCLUDED_PATH_PATTERN,
   codeExtensionNames,
   resolveLayoutFor as untypedResolveLayoutFor,
-} from '../layout.mjs';
+} from '../layout.mts';
 
-const detectedPreset: (projectRoot: string) => string | undefined = untypedDetectedPreset;
+const detectedPreset: (projectRoot: string) => DetectedPreset | undefined = untypedDetectedPreset;
 const projectFilePaths: (projectRoot: string) => string[] = untypedProjectFilePaths;
 const withTroubleshooting: (message: string, anchor: string) => string = untypedWithTroubleshooting;
 const resolveLayoutFor: (policy: object) => Layout = untypedResolveLayoutFor;

@@ -9,7 +9,7 @@ import {
 } from './typed/config-types.mts';
 import { nitpickerRules } from '../eslint-plugin/index.mts';
 import { functionalPlugin } from '../eslint-plugin/type-identity/functional-plugin.mts';
-import { defaultResolvedLayout } from '../layout.mjs';
+import { defaultResolvedLayout } from '../layout.mts';
 import { errorWrappingPolicy } from './policies/error-wrapping-policy.mts';
 import { nestSelectors } from './nest/nest-forms.mts';
 import {

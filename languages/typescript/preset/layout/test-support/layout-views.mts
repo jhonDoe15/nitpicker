@@ -1,18 +1,15 @@
-import type { Layout } from '../../../adapters/typed/head-policy.mts';
 import { fieldOf, fieldsOf, parseJson, textsOf } from '../../../../../shared/values/readers.mts';
-import { resolveHeadPolicy as untypedResolveHeadPolicy } from '../../head-policy.mjs';
+import { resolveHeadPolicy } from '../../head-policy.mts';
+import { resolveLayout, resolveLayoutFor } from '../../layout.mts';
 import {
-  resolveLayout as untypedResolveLayout,
-  resolveLayoutFor as untypedResolveLayoutFor,
-} from '../../layout.mjs';
-import { layoutTransformFor as untypedLayoutTransformFor } from '../../tool-configs.mjs';
-import {
-  isCustomLayout as untypedIsCustomLayout,
-  layoutStrykerTsconfig as untypedLayoutStrykerTsconfig,
-  layoutJscpdConfig as untypedLayoutJscpdConfig,
-  layoutKnipConfig as untypedLayoutKnipConfig,
-  layoutTsconfig as untypedLayoutTsconfig,
-} from '../../project-configs/typescript/layout-rewrites.mjs';
+  isCustomLayout,
+  layoutJscpdConfig,
+  layoutKnipConfig,
+  layoutStrykerTsconfig,
+  layoutTsconfig,
+} from '../../project-configs/typescript/layout-rewrites.mts';
+import { layoutTransformFor } from '../../tool-configs.mts';
+import type { TransformOptions } from '../../typed/tool-config/tool-config-types.mts';
 
 export type Policy = {
   readonly exclude?: readonly string[];
@@ -29,16 +26,7 @@ export type Policy = {
   };
 };
 
-export type TestLayout = Layout & {
-  readonly testGlobs: readonly string[];
-  readonly testSupportGlobs: readonly string[];
-  readonly graphIncludeOnly: string;
-  readonly excludePattern: string | undefined;
-  readonly entryPoints?: readonly string[];
-  isTestFixture(file: string): boolean;
-  isSourceUnderRoot(file: string, root: string): boolean;
-  sourceRootOf(file: string): string | undefined;
-};
+export type TestLayout = ReturnType<typeof resolveLayout>;
 
 export type Tsconfig = {
   readonly extends: unknown;
@@ -48,8 +36,6 @@ export type Tsconfig = {
 };
 
 type Transform = (text: string, targetPath: string) => string;
-
-type TransformOptions = { readonly strictMutants: boolean };
 
 type VitestProject = {
   readonly test: {
@@ -87,41 +73,17 @@ export type ConfigEntry = {
   readonly rules?: Readonly<Record<string, unknown>>;
 };
 
-export const resolveLayout: (layout?: Policy['layout'], exclude?: string[]) => TestLayout =
-  untypedResolveLayout;
-
-export const resolveLayoutFor: (policy?: Readonly<Record<string, unknown>>) => TestLayout =
-  untypedResolveLayoutFor;
-
-export const resolveHeadPolicy: (
-  policy: Policy,
-  projectRoot?: string,
-) => { readonly layout: Readonly<Record<string, unknown>> } = untypedResolveHeadPolicy;
-
-export const isCustomLayout: (layout: TestLayout) => boolean = untypedIsCustomLayout;
-
-export const layoutTsconfig: (base: Tsconfig, layout: TestLayout) => Tsconfig =
-  untypedLayoutTsconfig;
-
-export const layoutStrykerTsconfig: (base: Tsconfig, layout: TestLayout) => Tsconfig =
-  untypedLayoutStrykerTsconfig;
-
-export const layoutTransformFor: (
-  policyFileName: string,
-  layout: TestLayout,
-  options?: TransformOptions,
-) => Transform | undefined = untypedLayoutTransformFor;
-
-export const layoutJscpdConfig: (
-  base: unknown,
-  layout: TestLayout,
-) => { readonly path: string[]; readonly ignore: string[] } = untypedLayoutJscpdConfig;
-
-export const layoutKnipConfig: (
-  base: unknown,
-  layout: TestLayout,
-) => { readonly entry: string[]; readonly project: string[]; readonly ignore: string[] } =
-  untypedLayoutKnipConfig;
+export {
+  isCustomLayout,
+  layoutJscpdConfig,
+  layoutKnipConfig,
+  layoutStrykerTsconfig,
+  layoutTransformFor,
+  layoutTsconfig,
+  resolveHeadPolicy,
+  resolveLayout,
+  resolveLayoutFor,
+};
 
 export function compareText(left: string, right: string): number {
   return left < right ? -1 : 1;

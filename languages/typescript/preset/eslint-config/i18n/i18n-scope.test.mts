@@ -4,13 +4,13 @@ import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
-import { POLICY_FILES } from '../../checks/policy-files.mjs';
-import { resolveLayout as untypedResolveLayout } from '../../layout.mjs';
+import { POLICY_FILES } from '../../checks/policy-files.mts';
+import { resolveLayout as untypedResolveLayout } from '../../layout.mts';
 import { isStrictRule, strictEslintRuleIds } from '../../strict-rules.mts';
 import { fieldOf, fieldsOf, listOf } from '../../../../../shared/values/readers.mts';
 import type { ResolvedLayout } from '../typed/config-types.mts';
 import { resolveHeadPolicy } from '../typed/policy-views.mts';
-import { i18nOffRules, i18nRuleIds, i18nRuleNames, i18nRules } from './i18n-rules.mjs';
+import { i18nOffRules, i18nRuleIds, i18nRuleNames, i18nRules } from './i18n-rules.mts';
 import { i18nScopeConfigFor, isI18nProject } from './i18n-scope.mts';
 import { usePresetConfig } from '../../test-support/preset-config-import.mts';
 import { useTemporaryProjects } from '../../test-support/temporary-projects.mts';
@@ -209,14 +209,21 @@ describe('the i18n scope config', () => {
   it('hashes the scope files it runs', () => {
     const folder = path.join(import.meta.dirname);
     const sources = readdirSync(folder)
-      .filter((name) => name.endsWith('.mjs') && !name.endsWith('.test.mjs'))
-      .map((name) => `languages/typescript/preset/eslint-config/i18n/${name}`);
+      .filter((name) => name.endsWith('.mts') && !name.endsWith('.test.mts'))
+      .map(
+        (name) =>
+          `languages/typescript/preset/eslint-config/i18n/${name.replace(/\.mts$/u, '.mjs')}`,
+      );
     const repositoryRoot = path.resolve(import.meta.dirname, '../../../../..');
 
     const files = [...sources, 'languages/typescript/preset/eslint-config/scope-support.mjs'];
     expect(sources).not.toHaveLength(0);
     expect(files.filter((file) => !POLICY_FILES.includes(file))).toEqual([]);
-    expect(files.filter((file) => !existsSync(path.join(repositoryRoot, file)))).toEqual([]);
+    expect(
+      files.filter(
+        (file) => !existsSync(path.join(repositoryRoot, file.replace(/\.mjs$/u, '.mts'))),
+      ),
+    ).toEqual([]);
   });
 
   it('follows a custom layout', async () => {

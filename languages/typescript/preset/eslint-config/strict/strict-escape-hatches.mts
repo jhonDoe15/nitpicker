@@ -1,13 +1,9 @@
-import { readHeadPolicy as untypedReadHeadPolicy } from '../../head-policy.mjs';
-import { validationBehavior as untypedValidationBehavior } from '../../libraries/project-libraries.mjs';
+import { readHeadPolicy } from '../../head-policy.mts';
+import { validationBehavior } from '../../libraries/project-libraries.mts';
 import { SYNTAX_EXCEPTION_HINT } from '../rule-hints.mts';
 import type { StrictOptions } from '../typed/config-types.mts';
 
 type ReactScope = Pick<StrictOptions, 'react'>;
-
-const readHeadPolicy: () => { readonly libraries: unknown } = untypedReadHeadPolicy;
-const validationBehavior: (libraries: unknown) => { readonly name: string } =
-  untypedValidationBehavior;
 
 const validationName = validationBehavior(readHeadPolicy().libraries).name;
 

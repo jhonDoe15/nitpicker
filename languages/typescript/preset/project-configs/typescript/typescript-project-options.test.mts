@@ -1,8 +1,8 @@
 import { readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fieldOf, fieldsOf, parseJson } from '../../../../../shared/values/readers.mts';
-import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
+import { fieldOf, fieldsOf, parseJson, textOf } from '../../../../../shared/values/readers.mts';
+import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mts';
 import {
   loadTypeScript,
   preEmitDiagnostics,
@@ -16,29 +16,13 @@ import {
 } from '../test-support/policy-views.mts';
 import type { Policy } from '../test-support/policy-views.mts';
 import { useTemporaryProjects } from '../../test-support/temporary-projects.mts';
-import { typescriptIgnoredNotices as untypedTypescriptIgnoredNotices } from '../ignored-notices.mjs';
-import { typescriptVersion as untypedTypescriptVersion } from '../../modules/tsconfig-files.mjs';
+import { typescriptIgnoredNotices } from '../ignored-notices.mts';
+import { typescriptVersion } from '../../modules/tsconfig-files.mts';
 import {
-  projectStrictValues as untypedProjectStrictValues,
-  projectTsconfigFiles as untypedProjectTsconfigFiles,
-  readTypescriptProjectConfig as untypedReadTypescriptProjectConfig,
-} from './typescript-project-options.mjs';
-
-type ProjectLayout = { javascript: boolean; sourceRoots: string[] };
-
-const typescriptIgnoredNotices: (options: {
-  config: Record<string, unknown>;
-  projectRoot: string;
-}) => unknown = untypedTypescriptIgnoredNotices;
-const typescriptVersion: () => string = untypedTypescriptVersion;
-const projectStrictValues: (options: Record<string, unknown>, javascript: boolean) => unknown =
-  untypedProjectStrictValues;
-const projectTsconfigFiles: (projectRoot: string, layout: ProjectLayout) => string[] =
-  untypedProjectTsconfigFiles;
-const readTypescriptProjectConfig: (
-  projectRoot: string,
-  layout: ProjectLayout,
-) => { compilerOptions: Record<string, unknown> } = untypedReadTypescriptProjectConfig;
+  projectStrictValues,
+  projectTsconfigFiles,
+  readTypescriptProjectConfig,
+} from './typescript-project-options.mts';
 
 const { projectWith } = useTemporaryProjects('nitpicker-ts-options-', { resolveSymlinks: true });
 
@@ -153,7 +137,7 @@ describe('the project tsconfig compiler options', () => {
     );
     const baseRoot = relaxedProject('{"compilerOptions":{}}');
 
-    expect(base.tools.typescript).toEqual(head.tools.typescript);
+    expect(base.tools?.typescript).toEqual(head.tools?.typescript);
     const configPath = generatedConfig('tsconfig.quality.json', base, baseRoot);
     expect(await errorCodes('native', configPath, baseRoot)).toEqual(RELAXED_ERRORS);
   });
@@ -200,7 +184,9 @@ describe('the project tsconfig compiler options', () => {
         root,
       );
 
-      expect(policy.tools.typescript.projectConfigError?.includes(message)).toBe(true);
+      expect(
+        textOf(fieldOf(policy.tools?.typescript, 'projectConfigError')).includes(message),
+      ).toBe(true);
       expect(() => generatedConfig('tsconfig.quality.json', policy, root)).toThrow(message);
     },
   );
@@ -210,7 +196,7 @@ describe('the project tsconfig compiler options', () => {
     const root = projectWith({ 'src/a.ts': SOURCE });
     symlinkSync(path.join(outside, 'shared.json'), path.join(root, 'tsconfig.json'));
 
-    expect(policyFor(['project'], root).tools.typescript.projectConfigError).toBe(
+    expect(policyFor(['project'], root).tools?.typescript?.['projectConfigError']).toBe(
       'tsconfig.json must stay inside the project',
     );
   });
@@ -218,7 +204,7 @@ describe('the project tsconfig compiler options', () => {
   it('are not read without the opt-in, even when the tsconfig cannot be parsed', () => {
     const root = projectWith({ 'tsconfig.json': '{"compilerOptions": [' });
 
-    expect(policyFor(['nitpicker'], root).tools.typescript).toEqual({ precedence: ['nitpicker'] });
+    expect(policyFor(['nitpicker'], root).tools?.typescript).toEqual({ precedence: ['nitpicker'] });
   });
 });
 
@@ -329,7 +315,12 @@ describe('the project tsconfig compiler options that nitpicker owns or does not 
       root,
     );
 
-    expect(policy.tools.typescript.projectConfig?.compilerOptions?.['strict']).toBe(false);
+    expect(
+      fieldOf(
+        fieldOf(fieldOf(policy.tools?.typescript, 'projectConfig'), 'compilerOptions'),
+        'strict',
+      ),
+    ).toBe(false);
     expect(() =>
       readTypescriptProjectConfig(root, { javascript: false, sourceRoots: ['src'] }),
     ).toThrow('a tsconfig.json is missing');
@@ -358,7 +349,7 @@ describe('the head policy when the opt-in changes', () => {
       head,
     );
 
-    expect(base.tools.typescript).toEqual({ precedence: ['nitpicker'] });
+    expect(base.tools?.typescript).toEqual({ precedence: ['nitpicker'] });
     expect(() => generatedConfig('tsconfig.quality.json', base, baseRoot)).not.toThrow();
     expect(() =>
       withHeadCheckoutFacts({ tools: { typescript: { precedence: ['project'] } } }, {}),
@@ -378,7 +369,7 @@ describe('the head policy when the opt-in changes', () => {
           generatedConfig('tsconfig.quality.json', policy, root),
     );
 
-    expect(policies.map((policy) => policy.tools.typescript)).toEqual([
+    expect(policies.map((policy) => policy.tools?.typescript)).toEqual([
       { precedence: ['nitpicker', 'project'] },
       { precedence: ['nitpicker', 'project'] },
     ]);

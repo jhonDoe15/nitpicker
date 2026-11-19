@@ -8,7 +8,7 @@ import {
   projectTsconfigs as untypedProjectTsconfigs,
   tsconfigChain,
   tsconfigProblems as untypedTsconfigProblems,
-} from './tsconfig-files.mjs';
+} from './tsconfig-files.mts';
 
 type Files = Readonly<Record<string, string>>;
 

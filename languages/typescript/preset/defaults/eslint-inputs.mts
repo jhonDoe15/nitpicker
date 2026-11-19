@@ -1,5 +1,13 @@
-import type { ESLint, Linter } from 'eslint';
-import type { Layout } from '../../adapters/typed/head-policy.mts';
+import type { ESLint } from 'eslint';
+import { fieldsOf } from '../../../../shared/values/readers.mts';
+import type {
+  Entry,
+  ParserOptions,
+  PresetLayout,
+  PresetPolicy,
+  SecurityFacts,
+  StrictOptions,
+} from './typed/eslint-input-types.mts';
 import { nitpickerRules as untypedNitpickerRules } from '../eslint-plugin/index.mts';
 import { errorWrappingPolicy as untypedErrorWrappingPolicy } from '../eslint-config/policies/error-wrapping-policy.mts';
 import { strictPresetConfig as untypedStrictPresetConfig } from '../eslint-config/strict.mts';
@@ -8,17 +16,15 @@ import {
   usesRouteHandlerFramework as untypedUsesRouteHandlerFramework,
   productionLayoutConfigFor as untypedProductionLayoutConfigFor,
 } from '../eslint-config/policy/production-policy.mts';
-import { applyRuleExceptions as untypedApplyRuleExceptions } from '../eslint-config/exceptions.mjs';
+import { applyRuleExceptions as untypedApplyRuleExceptions } from '../eslint-config/exceptions.mts';
 import { logicConfigFor as untypedLogicConfigFor } from '../eslint-config/logic/logic-rules.mts';
 import { untypedJavascriptConfig as javascriptWithoutTypesConfig } from '../eslint-config/policy/untyped-javascript.mts';
-import {
-  applyJavascriptDialect as untypedApplyJavascriptDialect,
-  scriptRuleEntries as untypedScriptRuleEntries,
-} from '../../../javascript/preset/eslint-dialect.mts';
+import { scriptRuleEntries as untypedScriptRuleEntries } from '../../../javascript/preset/eslint-dialect.mts';
+import { applyJavascriptDialect as dialectApplied } from '../eslint-config/typed/policy-views.mts';
 import {
   reactRuleIds as untypedReactRuleIds,
   reactTestRuleIds as untypedReactTestRuleIds,
-} from '../eslint-config/react/react-rules.mjs';
+} from '../eslint-config/react/react-rules.mts';
 import {
   analyzedProjectRoot as untypedAnalyzedProjectRoot,
   isReactProject as untypedIsReactProject,
@@ -27,9 +33,9 @@ import {
 import { testHonestyConfigFor as untypedTestHonestyConfigFor } from '../eslint-config/test-honesty/index.mts';
 import { setupFilesIn as untypedSetupFilesIn } from '../eslint-config/test-honesty/setup-files.mts';
 import { stubRestoresIn as untypedStubRestoresIn } from '../eslint-config/test-honesty/stub-restores.mts';
-import { readDependencyNames as untypedReadDependencyNames } from '../eslint-config/scope-support.mjs';
+import { readDependencyNames as untypedReadDependencyNames } from '../eslint-config/scope-support.mts';
 import { securityFactsFor as untypedSecurityFactsFor } from '../eslint-config/policy/security-facts.mts';
-import { i18nRuleIds as untypedI18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
+import { i18nRuleIds as untypedI18nRuleIds } from '../eslint-config/i18n/i18n-rules.mts';
 import {
   i18nScopeConfigFor as untypedI18nScopeConfigFor,
   isI18nProject as untypedIsI18nProject,
@@ -39,15 +45,14 @@ import {
   serverScopeConfigFor as untypedServerScopeConfigFor,
 } from '../eslint-config/server/server-scope.mts';
 import { serverRuleIds as untypedServerRuleIds } from '../eslint-config/server/server-rules.mts';
-import { isNestProject as untypedIsNestProject } from '../eslint-config/nest/nest-project.mjs';
+import { isNestProject as untypedIsNestProject } from '../eslint-config/nest/nest-project.mts';
 import { nestScopeConfigFor as untypedNestScopeConfigFor } from '../eslint-config/nest/nest-scope.mts';
 import {
   readHeadPolicy as untypedReadHeadPolicy,
   readLayout as untypedReadLayout,
-} from '../head-policy.mjs';
+} from '../head-policy.mts';
 import { precedenceLayers as untypedPrecedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
-import { existingRoots as untypedExistingRoots } from '../layout.mjs';
-import { fileNameRuleOptions as untypedFileNameRuleOptions } from '../../conventions/file-name-casing.mjs';
+import { existingRoots as untypedExistingRoots } from '../layout.mts';
 import { assertionFunctionNames as untypedAssertionFunctionNames } from '../../conventions/measures/assertion-functions.mts';
 import { typeImportFixStyle as untypedTypeImportFixStyle } from '../../conventions/type-import-style.mts';
 import { detachedWorkRunnerNames as untypedDetachedWorkRunnerNames } from '../../conventions/measures/detached-work-runners.mts';
@@ -60,58 +65,16 @@ import {
   testEnvironmentsFromVariables as untypedTestEnvironmentsFromVariables,
 } from '../test-environment/test-environment-config.mts';
 import type { Environments } from '../test-environment/typed/environment-types.mts';
-import { withRunnerTestPaths as untypedWithRunnerTestPaths } from '../test-runner/test-files/test-file-patterns.mjs';
-import { policyTestRunner as untypedPolicyTestRunner } from '../test-runner/policy-runner.mjs';
+import { withRunnerTestPaths as untypedWithRunnerTestPaths } from '../test-runner/test-files/test-file-patterns.mts';
+import { policyTestRunner as untypedPolicyTestRunner } from '../test-runner/policy-runner.mts';
 
-export type Entry = Linter.Config;
+type Conventions = PresetPolicy['conventions'];
+
+export type { Entry, ParserOptions, PresetLayout, PresetPolicy, StrictOptions };
 
 type Plugin = ESLint.Plugin;
 
-export type StrictOptions = {
-  readonly react: boolean;
-  readonly nest: boolean;
-  readonly routeHandlers: boolean;
-  readonly security: SecurityFacts;
-  readonly frameworkDefaultExports: readonly string[];
-  readonly detachedWorkRunners: readonly string[];
-  readonly databaseWrites: {
-    readonly orms: readonly string[];
-    readonly opensTransactions: boolean;
-  };
-  readonly routeAuth: { readonly entries: readonly string[] };
-  readonly softDeleteFilters: {
-    readonly orms: readonly string[];
-    readonly filters: readonly string[];
-  };
-};
-
-export type PresetLayout = Layout & {
-  readonly runnableTestGlobs: readonly string[];
-  readonly testGlobs: readonly string[];
-  readonly unitTestGlobs: readonly string[];
-  readonly endToEndGlobs: readonly string[];
-  readonly typescriptProject?: string | undefined;
-};
-
-export type ParserOptions = {
-  readonly project: string;
-  readonly tsconfigRootDir: string;
-};
-
-type Conventions = object;
-
-type SecurityFacts = { readonly browser: boolean };
-
 type TestEnvironments = Environments;
-
-export type PresetPolicy = {
-  readonly react: object;
-  readonly i18n: object;
-  readonly conventions: Conventions;
-  readonly frameworks: { readonly defaultExports: readonly string[] };
-  readonly exceptions: { readonly rule: string; readonly paths: string[] }[];
-  readonly tools: { readonly eslint?: { readonly precedence?: string[] } };
-};
 
 function isEntries(value: unknown): value is Entry[] {
   return Array.isArray(value);
@@ -138,7 +101,14 @@ function pluginOf(value: unknown): Plugin {
 export const nitpickerRules: Plugin = pluginOf(untypedNitpickerRules);
 export const errorWrappingPolicy: unknown = untypedErrorWrappingPolicy;
 export const UNUSED_PARAMETERS: unknown = untypedUnusedParameters;
-export const readHeadPolicy: () => PresetPolicy = untypedReadHeadPolicy;
+export function readHeadPolicy(): PresetPolicy {
+  const policy = untypedReadHeadPolicy();
+  return {
+    ...policy,
+    conventions: policy.conventions ?? {},
+    conventionPins: fieldsOf(policy.conventionPins),
+  };
+}
 export const readLayout: () => PresetLayout = untypedReadLayout;
 export const reactRuleIds: readonly string[] = untypedReactRuleIds;
 export const reactTestRuleIds: readonly string[] = untypedReactTestRuleIds;
@@ -150,11 +120,11 @@ export const usesRouteHandlerFramework: (dependencyNames: readonly string[]) => 
 export const readDependencyNames: (projectRoot: string) => string[] = untypedReadDependencyNames;
 export const isReactProject: (options: {
   readonly projectRoot: string;
-  readonly react: object;
+  readonly react: Readonly<Record<string, unknown>>;
 }) => boolean = untypedIsReactProject;
 export const isI18nProject: (options: {
   readonly projectRoot: string;
-  readonly i18n: object;
+  readonly i18n: Readonly<Record<string, unknown>>;
   readonly javascript: boolean;
 }) => boolean = untypedIsI18nProject;
 export const isServerProject: (projectRoot: string) => boolean = untypedIsServerProject;
@@ -176,7 +146,7 @@ export const existingRoots: (projectRoot: string, roots: readonly string[]) => s
   untypedExistingRoots;
 export const testEnvironmentsFromVariables: (variables: NodeJS.ProcessEnv) => TestEnvironments =
   untypedTestEnvironmentsFromVariables;
-export const fileNameRuleOptions: (policy: PresetPolicy) => unknown = untypedFileNameRuleOptions;
+export { fileNameRuleOptions } from '../../conventions/file-name-casing.mts';
 export const typeImportFixStyle: (conventions: Conventions) => unknown = untypedTypeImportFixStyle;
 export const assertionFunctionNames: (conventions: Conventions) => string[] =
   untypedAssertionFunctionNames;
@@ -221,7 +191,10 @@ export function untypedJavascriptConfig(options: {
   return entriesOf(Reflect.apply(javascriptWithoutTypesConfig, undefined, [options]));
 }
 
-export async function reactScopeConfigFor(layout: PresetLayout, react: object): Promise<Entry[]> {
+export async function reactScopeConfigFor(
+  layout: PresetLayout,
+  react: Readonly<Record<string, unknown>>,
+): Promise<Entry[]> {
   const entries: unknown = await Reflect.apply(untypedReactScopeConfigFor, undefined, [
     layout,
     react,
@@ -229,7 +202,10 @@ export async function reactScopeConfigFor(layout: PresetLayout, react: object): 
   return entriesOf(entries);
 }
 
-export async function i18nScopeConfigFor(layout: PresetLayout, i18n: object): Promise<Entry[]> {
+export async function i18nScopeConfigFor(
+  layout: PresetLayout,
+  i18n: Readonly<Record<string, unknown>>,
+): Promise<Entry[]> {
   const entries: unknown = await Reflect.apply(untypedI18nScopeConfigFor, undefined, [
     layout,
     i18n,
@@ -272,7 +248,7 @@ export function testEnvironmentConfigFor(
 }
 
 export function applyJavascriptDialect(entries: Entry[], policy: PresetPolicy): Entry[] {
-  return entriesOf(untypedApplyJavascriptDialect(entries, policy));
+  return entriesOf(dialectApplied(entries, policy));
 }
 
 export function scriptRuleEntries(files: readonly string[]): Entry[] {
@@ -284,5 +260,11 @@ export function applyRuleExceptions(
   exceptions: PresetPolicy['exceptions'],
   options: { readonly projectRules: boolean },
 ): Entry[] {
-  return entriesOf(untypedApplyRuleExceptions(entries, exceptions, options));
+  return entriesOf(
+    untypedApplyRuleExceptions(
+      entries,
+      exceptions,
+      options.projectRules ? { projectRules: true } : {},
+    ),
+  );
 }
