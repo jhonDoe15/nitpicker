@@ -41,75 +41,74 @@ function declined(body: string, project = current) {
   return { ...project.typed(code(body)), errors: [{ messageId: 'count' }] };
 }
 
+const PRISMA_COUNTS: readonly (readonly [string, string])[] = [
+  [
+    'return (await prisma.user.findMany({ where: { email } })).length;',
+    'return await prisma.user.count({ where: { email } });',
+  ],
+  [
+    'return (await prisma.user.findMany({ where: { email }, select: { id: true } })).length;',
+    'return await prisma.user.count({ where: { email } });',
+  ],
+  [
+    'return (await prisma.user.findMany({ where: { email }, include: { x: true } })).length;',
+    'return await prisma.user.count({ where: { email } });',
+  ],
+  [
+    'return (await prisma.user.findMany({ orderBy: { id: "asc" }, where: { email } })).length;',
+    'return await prisma.user.count({ where: { email } });',
+  ],
+  [
+    'return (await prisma.user.findMany({ omit: { name: true }, where: { email } })).length;',
+    'return await prisma.user.count({ where: { email } });',
+  ],
+  [
+    'return (await prisma.user.findMany({ select: { id: true } })).length;',
+    'return await prisma.user.count();',
+  ],
+  ['return (await prisma.user.findMany()).length;', 'return await prisma.user.count();'],
+  [
+    'return (await prisma.user.findMany({ where, relationLoadStrategy: "join" })).length;',
+    'return await prisma.user.count({ where });',
+  ],
+  ['return (await prisma.user.findMany({})).length;', 'return await prisma.user.count({});'],
+  [
+    'return (await prisma.user.findMany({ where })).length > 0;',
+    'return (await prisma.user.count({ where })) > 0;',
+  ],
+  [
+    'return (await prisma.user.findMany({ where })).length === 0;',
+    'return (await prisma.user.count({ where })) === 0;',
+  ],
+  [
+    'use((await prisma.user.findMany({ where })).length);',
+    'use(await prisma.user.count({ where }));',
+  ],
+  [
+    'use({ total: (await prisma.user.findMany({ where })).length });',
+    'use({ total: await prisma.user.count({ where }) });',
+  ],
+  [
+    'const totals = [(await prisma.user.findMany({ where })).length]; use(totals);',
+    'const totals = [await prisma.user.count({ where })]; use(totals);',
+  ],
+  [
+    'const total = (await prisma.user.findMany({ where })).length; use(total);',
+    'const total = await prisma.user.count({ where }); use(total);',
+  ],
+  [
+    'const rows = await prisma.user.findMany({ where, select: { id: true } }); return rows.length;',
+    'const rows = await prisma.user.count({ where }); return rows;',
+  ],
+  [
+    'const rows = await prisma.user.findMany(); return rows.length > 0 ? 1 : 2;',
+    'const rows = await prisma.user.count(); return rows > 0 ? 1 : 2;',
+  ],
+];
+
 current.tester.run('no-in-memory-query Prisma count suggestion', rule, {
   valid: [],
-  invalid: [
-    counted(
-      'return (await prisma.user.findMany({ where: { email } })).length;',
-      'return await prisma.user.count({ where: { email } });',
-    ),
-    counted(
-      'return (await prisma.user.findMany({ where: { email }, select: { id: true } })).length;',
-      'return await prisma.user.count({ where: { email } });',
-    ),
-    counted(
-      'return (await prisma.user.findMany({ where: { email }, include: { x: true } })).length;',
-      'return await prisma.user.count({ where: { email } });',
-    ),
-    counted(
-      'return (await prisma.user.findMany({ orderBy: { id: "asc" }, where: { email } })).length;',
-      'return await prisma.user.count({ where: { email } });',
-    ),
-    counted(
-      'return (await prisma.user.findMany({ omit: { name: true }, where: { email } })).length;',
-      'return await prisma.user.count({ where: { email } });',
-    ),
-    counted(
-      'return (await prisma.user.findMany({ select: { id: true } })).length;',
-      'return await prisma.user.count();',
-    ),
-    counted('return (await prisma.user.findMany()).length;', 'return await prisma.user.count();'),
-    counted(
-      'return (await prisma.user.findMany({ where, relationLoadStrategy: "join" })).length;',
-      'return await prisma.user.count({ where });',
-    ),
-    counted(
-      'return (await prisma.user.findMany({})).length;',
-      'return await prisma.user.count({});',
-    ),
-    counted(
-      'return (await prisma.user.findMany({ where })).length > 0;',
-      'return (await prisma.user.count({ where })) > 0;',
-    ),
-    counted(
-      'return (await prisma.user.findMany({ where })).length === 0;',
-      'return (await prisma.user.count({ where })) === 0;',
-    ),
-    counted(
-      'use((await prisma.user.findMany({ where })).length);',
-      'use(await prisma.user.count({ where }));',
-    ),
-    counted(
-      'use({ total: (await prisma.user.findMany({ where })).length });',
-      'use({ total: await prisma.user.count({ where }) });',
-    ),
-    counted(
-      'const totals = [(await prisma.user.findMany({ where })).length]; use(totals);',
-      'const totals = [await prisma.user.count({ where })]; use(totals);',
-    ),
-    counted(
-      'const total = (await prisma.user.findMany({ where })).length; use(total);',
-      'const total = await prisma.user.count({ where }); use(total);',
-    ),
-    counted(
-      'const rows = await prisma.user.findMany({ where, select: { id: true } }); return rows.length;',
-      'const rows = await prisma.user.count({ where }); return rows;',
-    ),
-    counted(
-      'const rows = await prisma.user.findMany(); return rows.length > 0 ? 1 : 2;',
-      'const rows = await prisma.user.count(); return rows > 0 ? 1 : 2;',
-    ),
-  ],
+  invalid: PRISMA_COUNTS.map(([body, output]) => counted(body, output)),
 });
 
 current.tester.run('no-in-memory-query Prisma count declined', rule, {
