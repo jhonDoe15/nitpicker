@@ -133,6 +133,11 @@ SQLAlchemy query loads whole only to read one known column (`[u.email for u in U
 for existence (`.count() > 0`, `.first() is not None`); `values_list`, `select(User.email)` and `.exists()` are the
 allowed forms, and relationships, properties and already narrowed queries stay quiet.
 
+Null in input: `null-valued-input-key` in the Python preset reports `.get(key, default)`, `.setdefault(key, default)` and a
+`key in mapping` guard that is followed by `mapping[key]` on parsed JSON, a response, a request body, a `cleaned_input`
+or a loosely typed `dict[str, Any]` parameter, where a key sent with `null` returns `None`; `.get(key) or ""` for an empty
+default and an `is not None` test are the allowed forms (a number default is never rewritten with `or`).
+
 Stale retries: `stale-retry` in the Python preset reports a SQLAlchemy `commit()` or `flush()` that a retry loop, a
 `tenacity` or `backoff` decorator or a `Retrying` loop runs again after `StaleDataError` without reading the row again
 (`session.get`, `refresh`, a query); the row is read by id inside each attempt.

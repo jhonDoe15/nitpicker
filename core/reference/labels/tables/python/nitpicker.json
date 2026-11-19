@@ -73,6 +73,7 @@
   "python-rules/non-unique-lookup": ["bug", "persistence"],
   "python-rules/not-type-checking": ["maintainability"],
   "python-rules/null-branch-fall-through": ["bug"],
+  "python-rules/null-valued-input-key": ["bug"],
   "python-rules/nullable-dereference": ["bug"],
   "python-rules/number-truthiness": ["bug"],
   "python-rules/orm-query-logging": ["security", "persistence"],
