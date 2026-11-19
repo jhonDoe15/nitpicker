@@ -61,6 +61,7 @@
   "python-rules/lock-order-inversion": ["bug"],
   "python-rules/logger-in-domain": ["maintainability"],
   "python-rules/many-to-many-cascade-delete": ["bug", "persistence"],
+  "python-rules/missing-key-subscript": ["bug"],
   "python-rules/mock-without-spec": ["tests"],
   "python-rules/mocked-subject-in-test": ["tests"],
   "python-rules/module-level-mutable-state": ["maintainability"],

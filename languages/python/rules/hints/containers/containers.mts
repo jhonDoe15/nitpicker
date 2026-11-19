@@ -24,6 +24,19 @@ function nullKeyDescribe(subject = ''): string {
   return `\`${text}\` falls back to its default only when the key is missing: a key sent with \`null\` returns \`None\`, which then reaches code that expects a value${zero}`;
 }
 
+const MISSING_KEY_CAUSES: Readonly<Record<string, string>> = {
+  request: 'a session that expired or a cookie, header or parameter the client left out',
+  token: 'a token header that lacks the key, read before the token is rejected',
+  remote: 'a remote document that lacks the key',
+  coordinator: 'a device that left the refreshed data',
+};
+
+function missingKeyDescribe(subject = ''): string {
+  const separator = subject.indexOf('|');
+  const cause = MISSING_KEY_CAUSES[subject.slice(0, separator)] ?? 'a key that is not there';
+  return `\`${subject.slice(separator + 1)}\` raises \`KeyError\` for ${cause}, and the request or the update fails with it`;
+}
+
 export const CONTAINER_HINTS: readonly RuleHint[] = [
   {
     tool: RULES_TOOL,
@@ -46,5 +59,12 @@ export const CONTAINER_HINTS: readonly RuleHint[] = [
     describe: nullKeyDescribe,
     allowed:
       'Treat a null value like a missing key. Use `body.get("alt") or ""` only when the default is the empty value of the type (`""`, `[]`, `{}`); where `0` or `False` is a valid value, test `value if (value := body.get("n")) is not None else 0`. Replace `"k" in body` by `body.get("k") is not None`. A pydantic model or `TypedDict` that rejects null states it once.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['missing-key-subscript'],
+    describe: missingKeyDescribe,
+    allowed:
+      'Read it with `.get(key)` and handle the missing case: `plan = request.session.get(KEY)`, then `if plan is None: return redirect(...)`; for a coordinator, `device = self.coordinator.data.get(self._device_id)` and `return device.temperature if device is not None else None`. A `key in mapping` test before the read or a `try` that catches `KeyError` also fits; a pydantic model or `TypedDict` states the keys once.',
   },
 ];

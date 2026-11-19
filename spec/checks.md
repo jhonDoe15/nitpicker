@@ -138,6 +138,11 @@ Null in input: `null-valued-input-key` in the Python preset reports `.get(key, d
 or a loosely typed `dict[str, Any]` parameter, where a key sent with `null` returns `None`; `.get(key) or ""` for an empty
 default and an `is not None` test are the allowed forms (a number default is never rewritten with `or`).
 
+Missing keys: `missing-key-subscript` in the Python preset reports `mapping[key]` reads of a request mapping
+(`request.session`, `COOKIES`, `GET`, `POST`, `headers`, `scope["cookies"]`), an untrusted token header, a `.json()`
+document named like a configuration and `self.coordinator.data` that the function neither tests with `key in mapping` nor reads in a `try` that
+catches `KeyError`; `.get(key)` with the missing case handled is the allowed form.
+
 Stale retries: `stale-retry` in the Python preset reports a SQLAlchemy `commit()` or `flush()` that a retry loop, a
 `tenacity` or `backoff` decorator or a `Retrying` loop runs again after `StaleDataError` without reading the row again
 (`session.get`, `refresh`, a query); the row is read by id inside each attempt.

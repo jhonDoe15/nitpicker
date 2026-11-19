@@ -47,6 +47,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Parsed or posted input can hold a key with `null`: `body.get("alt", "")` and `"k" in body` then still give `None`
   (`null-valued-input-key`). Write `body.get("alt") or ""` for an empty default, or
   `v if (v := body.get("n")) is not None else 0` where `0` is valid, and test `body.get("k") is not None`.
+- Request, session, cookie, token-header, remote-document and coordinator data can lack a key: read it with
+  `.get(key)` and handle `None`, or test `key in data` first, never `request.session[KEY]` or
+  `self.coordinator.data[device_id]` (`missing-key-subscript`).
 - A branch that handles `None` either leaves or is the whole story (`null-branch-fall-through`):
   `if value is None: out.append("null")` followed by `value.name` fails on the `None` path or handles the
   value twice. End the branch with `return` (or `raise`), or put the use in an `else`.
