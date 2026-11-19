@@ -7,6 +7,7 @@ import { readJavaFileLimitFindings } from '../../adapters/metrics/java-structure
 import { readCopiedConstantFindings } from '../../adapters/review-rules/copied-constants/copied-constants.mts';
 import { readMaxValueFindings } from '../../adapters/review-rules/max-value-sums/max-value-sums.mts';
 import { readNullFallThroughFindings } from '../../adapters/review-rules/null-fall-through/null-fall-through.mts';
+import { readNullableReturnFindings } from '../../adapters/review-rules/nullable-returns/nullable-returns.mts';
 import { readRoundTripFindings } from '../../adapters/review-rules/round-trips/round-trips.mts';
 import { readTestOnlyClassFindings } from '../../adapters/review-rules/test-only/test-only-classes.mts';
 import { readTestRuntimeFindings } from '../../adapters/test-runtime/test-runtime-findings.mts';
@@ -142,4 +143,7 @@ export function maxValueFindings(projectRoot: string, options: WideOptions): Jav
 }
 export function nullFallThroughFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
   return findingsOf(callUntyped(readNullFallThroughFindings, projectRoot, options));
+}
+export function nullableReturnFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
+  return findingsOf(callUntyped(readNullableReturnFindings, projectRoot, options));
 }
