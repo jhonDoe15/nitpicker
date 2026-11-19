@@ -1,3 +1,4 @@
+import { hasNonNullExtremes } from '../../project/kotlin-version.mts';
 import { kotlinRecipe } from '../../shared/kotlin-recipe.mts';
 import { closingIndex } from '../../shared/kotlin-scan.mts';
 import type { KotlinFound, ScannedKotlin } from '../../shared/kotlin-scan.mts';
@@ -27,6 +28,7 @@ const REPLACEMENTS: Readonly<Record<string, Replacement>> = {
 };
 
 type Candidate = {
+  readonly orNull: boolean;
   readonly start: number;
   readonly end: number;
   readonly text: string;
@@ -111,7 +113,12 @@ function candidateAt(scanned: ScannedKotlin, match: RegExpMatchArray): Candidate
   }
   const method = take[1] === 'first' ? replacement.min : replacement.minOrNull;
   const wrapped = replacement.shape === SELECTOR ? method.replace(/By/u, 'With') : method;
-  return { start: match.index ?? 0, end, text: `.${wrapped}${argumentText(source, site)}` };
+  return {
+    orNull: take[1] !== 'first',
+    start: match.index ?? 0,
+    end,
+    text: `.${wrapped}${argumentText(source, site)}`,
+  };
 }
 
 export const sortForExtremeRecipe = kotlinRecipe({
@@ -119,11 +126,12 @@ export const sortForExtremeRecipe = kotlinRecipe({
   rules: [{ tool: 'kotlin-source', rule: 'SortForExtreme' }],
   safety: 'review',
   keepComments: true,
-  find(scanned): readonly KotlinFound[] {
+  find(scanned, _file, projectRoot): readonly KotlinFound[] {
     const found = [...scanned.code.matchAll(SORT_CALL)].flatMap((match) => {
       const candidate = candidateAt(scanned, match);
       return candidate === undefined ? [] : [candidate];
     });
+    const nonNull = found.some(({ orNull }) => !orNull) && hasNonNullExtremes(projectRoot);
     return found
       .filter(
         (outer) =>
@@ -131,6 +139,7 @@ export const sortForExtremeRecipe = kotlinRecipe({
             (inner) => inner !== outer && outer.start < inner.start && inner.end <= outer.end,
           ),
       )
+      .filter(({ orNull }) => orNull || nonNull)
       .map(({ start, end, text }) => ({ offset: start, edits: [{ start, end, text }] }));
   },
 });
