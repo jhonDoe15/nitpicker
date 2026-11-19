@@ -12,16 +12,12 @@ import {
   describeDisableCascade,
   loadConfig,
 } from './configuration/config.mts';
-import { resolveProjectHeadPolicy } from './conventions/project-head-policy.mts';
-import {
-  configureAll,
-  presetAnalyzers,
-  withRepositoryChecks,
-} from './configuration/preset-analyzers.mts';
+import { configuredWithTestFiles } from './command/comparison/test-file-policy.mts';
+import { withRepositoryChecks } from './configuration/preset-analyzers.mts';
 import { assertProjectPeers } from './init/preflight/project-peers.mts';
 import { withRunLock } from './command/run-lock.mts';
 import { runSnapshotCli } from './command/snapshot.mts';
-import { historyAvailabilityNotes, noticeDescriber } from './command/policy-review/notices.mts';
+import { noticeDescriber, snapshotNotes } from './command/policy-review/notices.mts';
 import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mts';
 import { runGit } from './diff/git/repository/command.mjs';
 import { resolveComparison } from './diff/git/repository/git.mjs';
@@ -167,12 +163,11 @@ function runSingle(cli: ConfiguredCli, currentProjectRoot: string): ExitCode {
   const { options } = cli;
   const config: NitpickerConfig = loadConfig(currentProjectRoot, { overlay: cli.configOverlay });
   writePresetHint(cli.stderr, config, currentProjectRoot);
-  const headPolicy: unknown = resolveProjectHeadPolicy(config, currentProjectRoot, {
-    maven: cli.environment['NITPICKER_MAVEN'],
+  const { presetSet, headPolicy, analyzers } = configuredWithTestFiles(cli, {
+    config,
+    currentProjectRoot,
   });
-  const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
-  const configured = configureAll(presetSet, config, headPolicy);
-  const profile = applyRunProfile(withRepositoryChecks(configured, cli.configOverlay), options);
+  const profile = applyRunProfile(withRepositoryChecks(analyzers, cli.configOverlay), options);
   const setup: RunSetup = {
     ...labeledRun(profile, { ...options, preset: config.preset, stderr: cli.stderr }),
     captureHead: stagedCapture(cli, currentProjectRoot),
@@ -196,7 +191,7 @@ function runSingle(cli: ConfiguredCli, currentProjectRoot: string): ExitCode {
 function runSnapshot(cli: ConfiguredCli, run: ConfiguredRun): unknown {
   const { config, currentProjectRoot, headPolicy } = run;
   const fixToolErrors = fixAllFilesIfRequested(cli, run);
-  writeNotes(cli.stderr, historyAvailabilityNotes(config, headPolicy, currentProjectRoot));
+  writeNotes(cli.stderr, snapshotNotes(config, headPolicy, currentProjectRoot));
   const snapshotHeadPolicy: unknown = snapshotPolicy({
     config,
     currentProjectRoot,

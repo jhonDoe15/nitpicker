@@ -29,8 +29,8 @@ const inJsdom = (...parts: string[]) => ({
   code: lines(...parts, logic),
   options: [jsdom],
 });
-const projectReport = (environment = 'jsdom') => [
-  { messageId: 'unusedProjectEnvironment', data: { environment }, line: 1 },
+const projectReport = (environment = 'jsdom', directive = '@vitest-environment') => [
+  { messageId: 'unusedProjectEnvironment', data: { environment, directive }, line: 1 },
 ];
 const directiveReport = (environment: string, line = 1, directive = '@vitest-environment') => [
   { messageId: 'unusedDirectiveEnvironment', data: { environment, directive }, line },

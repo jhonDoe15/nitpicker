@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { Parser, type Node } from 'web-tree-sitter';
+import { Parser } from 'web-tree-sitter';
 import { pathInside } from '../../../../shared/filesystem.mjs';
 import { fileRequest as untypedFileRequest } from '../../../../shared/near-duplicates/trees-request.mjs';
 import { isText } from '../../../../shared/values/readers.mts';
@@ -7,6 +7,8 @@ import { loadGrammar } from './grammar/load-grammar.mts';
 import { kotlinUnits } from './kotlin/units.mts';
 import { javaExtractions } from './extract/file-extractions.mts';
 import { javaUnits } from './tree/units.mts';
+import { shorterFixes, type Grammar } from './simplify/shorter-fixes.mts';
+import { switchLabelFixes } from './simplify/switch-labels.mts';
 
 type TreesRequest = {
   readonly root: string;
@@ -15,9 +17,6 @@ type TreesRequest = {
   readonly mode: string;
 };
 const fileRequest: (value: unknown) => { root: string; files: string[] } = untypedFileRequest;
-
-type UnitsOf = (program: Node, file: string) => unknown;
-type Grammar = { readonly parser: Parser; readonly unitsOf: UnitsOf };
 
 const GRAMMARS = {
   java: javaUnits,
@@ -33,8 +32,13 @@ function textsOf(value: object): Readonly<Record<string, string>> | undefined {
   return undefined;
 }
 
+const MODES = new Set(['partial', 'shorter', 'switches']);
+const FIXERS = { shorter: shorterFixes, switches: switchLabelFixes } as const;
+
 function modeOf(value: object): string {
-  return 'mode' in value && value.mode === 'partial' ? 'partial' : 'whole';
+  return 'mode' in value && typeof value.mode === 'string' && MODES.has(value.mode)
+    ? value.mode
+    : 'whole';
 }
 
 function treesRequest(value: unknown): TreesRequest {
@@ -94,6 +98,15 @@ async function main(): Promise<unknown> {
   await Parser.init();
   const java = await grammarOf('java');
   const { texts } = request;
+  if (texts !== undefined && (request.mode === 'shorter' || request.mode === 'switches')) {
+    const kotlin = await grammarOf('kotlin');
+    const fixer = FIXERS[request.mode];
+    return {
+      fixes: request.files.flatMap((file) =>
+        fixer(file.endsWith('.kt') ? kotlin : java, { file, text: texts[file] ?? '' }),
+      ),
+    };
+  }
   if (texts !== undefined) {
     return extractionsOf(
       java,

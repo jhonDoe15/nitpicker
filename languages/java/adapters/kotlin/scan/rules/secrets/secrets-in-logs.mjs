@@ -17,6 +17,34 @@ const KEY_CLOSE = /^\s*[)\]]/;
 const FORMAT_CALL = /\bformat\s*\(/g;
 const KEY_READ_WINDOW = 32;
 const KEY_CLOSE_WINDOW = 16;
+const FUNCTION_START = /\bfun\b/g;
+const PLAIN_VALUE_TYPES = new Set([
+  'String',
+  'Int',
+  'Integer',
+  'Long',
+  'Short',
+  'Byte',
+  'Char',
+  'Character',
+  'Boolean',
+  'Double',
+  'Float',
+  'Number',
+  'BigDecimal',
+  'BigInteger',
+  'Optional',
+  'UUID',
+  'Instant',
+  'LocalDate',
+  'LocalDateTime',
+  'LocalTime',
+  'Duration',
+  'URI',
+  'URL',
+]);
+const PARSED_NAME =
+  /(?:\b([A-Za-z_]\w*)\s*\.\s*valueOf|\benumValueOf\s*<[^<>()]*>)\s*\(\s*([A-Za-z_]\w*)\s*\)/g;
 const PAIRED_VALUE = /^\s*(to\b|,)\s*([A-Za-z_][\w.?!]*(?:\(\))?)/;
 
 function nameOf(expression) {
@@ -97,14 +125,39 @@ function argumentNames(scanned, argument) {
   ];
 }
 
+function functionStart(starts, at) {
+  return starts.findLast((index) => index <= at) ?? 0;
+}
+
+function parsedNames(code) {
+  const starts = [...code.matchAll(FUNCTION_START)].map((match) => match.index);
+  const parsed = [...code.matchAll(PARSED_NAME)]
+    .filter((match) => !PLAIN_VALUE_TYPES.has(match[1] ?? ''))
+    .map((match) => ({
+      name: match[2],
+      function: functionStart(starts, match.index),
+      end: match.index + match[0].length,
+    }));
+  return (sink, name) =>
+    parsed.some(
+      (entry) =>
+        entry.name === name &&
+        entry.end <= sink.start &&
+        entry.function === functionStart(starts, sink.start),
+    );
+}
+
 export function secretsInLogs(source) {
   const scanned = withLiteralIndex(source);
+  const isEnumName = parsedNames(scanned.code);
   return secretSinks(scanned.code).flatMap((sink) => {
     const names = [
       ...sink.arguments.flatMap((argument) => argumentNames(scanned, argument)),
       ...sinkKeys(scanned, sink),
     ];
-    const secret = names.find((entry) => entry.name !== undefined && isLogged(entry));
+    const secret = names.find(
+      (entry) => entry.name !== undefined && isLogged(entry) && !isEnumName(sink, entry.name),
+    );
     return secret === undefined
       ? []
       : [{ rule: 'SecretInLog', offset: sink.start, subject: secret.name }];

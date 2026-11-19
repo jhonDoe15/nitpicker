@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { depthFirst } from './traversal.mjs';
 
@@ -9,6 +9,14 @@ export function pathInside(root, relative) {
     return undefined;
   }
   return full;
+}
+
+export function isFile(file) {
+  return statSync(file, { throwIfNoEntry: false })?.isFile() === true;
+}
+
+export function isDirectory(directory) {
+  return statSync(directory, { throwIfNoEntry: false })?.isDirectory() === true;
 }
 
 export function isStrictlyInside(parent, candidate) {

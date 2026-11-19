@@ -16,7 +16,7 @@ type CruiseRequest = {
   readonly outputType: OutputType;
 };
 
-type FixtureConfig = {
+export type FixtureConfig = {
   readonly forbidden: NonNullable<IFlattenedRuleSet['forbidden']>;
   readonly options: {
     readonly tsConfig: { readonly fileName: string };

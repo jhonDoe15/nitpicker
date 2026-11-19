@@ -1,14 +1,29 @@
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
 import type { KotlinFound, ScannedKotlin } from '../shared/kotlin-scan.mts';
+import { inheritsUnknownMembers } from './call-context.mts';
 import {
   ifThrows,
   negated,
+  nullCheckedChain,
   shadowsException,
   shadowsStandardCalls,
   throwCall,
 } from './precondition-calls.mts';
 
 const ILLEGAL_STATE = 'IllegalStateException';
+
+const DEFAULT_MESSAGES: Readonly<Record<string, string>> = {
+  require: '"Failed requirement."',
+  check: '"Check failed."',
+};
+
+type Replaced = { readonly message: string | undefined; readonly notNull: boolean };
+
+function replacement(call: string, test: string, { message, notNull }: Replaced): string {
+  const name = notNull ? `${call}NotNull` : call;
+  const lambda = message ?? (notNull ? DEFAULT_MESSAGES[call] : undefined);
+  return lambda === undefined ? `${name}(${test})` : `${name}(${test}) { ${lambda} }`;
+}
 
 function guard(
   scanned: ScannedKotlin,
@@ -18,12 +33,19 @@ function guard(
   if (shadowsStandardCalls(scanned.code) || shadowsException(scanned.code, exception)) {
     return [];
   }
-  return ifThrows(scanned, exception).map(({ start, end, condition, message }) => {
-    const [from, to] = condition;
-    const test = negated(scanned.source.slice(from, to), scanned.code.slice(from, to));
-    const text = message === undefined ? `${call}(${test})` : `${call}(${test}) { ${message} }`;
-    return { rule: name, offset: start, edits: [{ start, end, text }] };
-  });
+  return ifThrows(scanned, exception)
+    .map(({ start, end, condition, message }) => {
+      const [from, to] = condition;
+      const written = scanned.source.slice(from, to);
+      const chain = nullCheckedChain(written);
+      const test = negated(written, scanned.code.slice(from, to));
+      const text = replacement(call, chain ?? test, { message, notNull: chain !== undefined });
+      return { rule: name, offset: start, edits: [{ start, end, text }] };
+    })
+    .filter(
+      ({ edits: [first] }) =>
+        first !== undefined && !inheritsUnknownMembers(scanned.code, first.start),
+    );
 }
 
 function insideGuard(guards: readonly KotlinFound[], offset: number): boolean {
@@ -40,7 +62,10 @@ function throws(scanned: ScannedKotlin, guards: readonly KotlinFound[]): KotlinF
     ...scanned.code.matchAll(/(?<![\w.])throw\s+(?:java\.lang\.)?IllegalStateException\b/gu),
   ].flatMap(({ index }) => {
     const thrown = throwCall(scanned, index, ILLEGAL_STATE);
-    return thrown === undefined || thrown.message === undefined || insideGuard(guards, index)
+    return thrown === undefined ||
+      thrown.message === undefined ||
+      insideGuard(guards, index) ||
+      inheritsUnknownMembers(scanned.code, index)
       ? []
       : [
           {

@@ -1,24 +1,12 @@
+import { balancedEnd } from '../../../../../shared/source-text/brackets/balanced.mjs';
+
 const SPOTLESS = /\bspotless\s*\{/gu;
 const JAVA_BLOCK = /\bjava\s*\{/gu;
 const STEP = /\b(palantirJavaFormat|googleJavaFormat)\s*\(/giu;
 const CHAIN_CALL = /^\s*\.\s*(\w+)\s*\(/u;
 
-function depthChange(char, [left, right]) {
-  if (char === left) {
-    return 1;
-  }
-  return char === right ? -1 : 0;
-}
-
 function closing(text, open, brackets) {
-  let depth = 0;
-  for (const [offset, char] of text.slice(open).split('').entries()) {
-    depth += depthChange(char, brackets);
-    if (depth === 0) {
-      return open + offset;
-    }
-  }
-  return text.length - 1;
+  return Math.min(balancedEnd(text, open, brackets), text.length - 1);
 }
 
 function blocksAfter(text, pattern) {

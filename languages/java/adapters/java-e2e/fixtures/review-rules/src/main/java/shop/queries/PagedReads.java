@@ -63,6 +63,83 @@ public final class PagedReads {
     return entityManager.createQuery(criteria).setMaxResults(20).getResultList();
   }
 
+  public boolean probe(String name) {
+    return !entityManager
+        .createQuery("select a.id from Account a where a.name = :name", Long.class)
+        .setParameter("name", name)
+        .setMaxResults(1)
+        .getResultList()
+        .isEmpty();
+  }
+
+  public boolean ambiguous(String name) {
+    return entityManager
+            .createQuery("select a.id from Account a where a.name = :name", Long.class)
+            .setParameter("name", name)
+            .setMaxResults(2)
+            .getResultList()
+            .size()
+        > 1;
+  }
+
+  public boolean heldProbe(String name) {
+    List<Long> rows = entityManager
+        .createQuery("select a.id from Account a where a.name = :name", Long.class)
+        .setParameter("name", name)
+        .setMaxResults(1)
+        .getResultList();
+    return !rows.isEmpty();
+  }
+
+  public Account heldRow(String name) {
+    List<Account> rows = entityManager
+        .createQuery("select a from Account a where a.name = :name", Account.class)
+        .setParameter("name", name)
+        .setMaxResults(1) // violation: UnorderedQuery
+        .getResultList();
+    return rows.get(0);
+  }
+
+  public boolean streamProbe(String name) {
+    return entityManager
+        .createQuery("select a.id from Account a where a.name = :name", Long.class)
+        .setParameter("name", name)
+        .setMaxResults(1)
+        .getResultList()
+        .stream()
+        .findAny()
+        .isPresent();
+  }
+
+  public boolean rowEmptyName(String name) {
+    return entityManager
+        .createQuery("select a from Account a where a.name = :name", Account.class)
+        .setParameter("name", name)
+        .setMaxResults(1) // violation: UnorderedQuery
+        .getResultList()
+        .get(0)
+        .name()
+        .isEmpty();
+  }
+
+  public Long anyRow(String name) {
+    return entityManager
+        .createQuery("select a.id from Account a where a.name = :name", Long.class)
+        .setParameter("name", name)
+        .setMaxResults(1) // violation: UnorderedQuery
+        .getResultList()
+        .stream()
+        .findAny()
+        .get();
+  }
+
+  public List<Account> chainedCriteriaPage(int page) {
+    CriteriaBuilder builder = entityManager.getCriteriaBuilder();
+    CriteriaQuery<Account> criteria = builder.createQuery(Account.class);
+    criteria.select(criteria.from(Account.class)).orderBy(builder.asc(criteria.from(Account.class).get("id")));
+    return entityManager.createQuery(criteria).setFirstResult(page * 20).setMaxResults(20).getResultList();
+  }
+
   public List<Account> dynamicPage(String jpql) {
     return entityManager.createQuery(jpql, Account.class).setMaxResults(20).getResultList();
   }

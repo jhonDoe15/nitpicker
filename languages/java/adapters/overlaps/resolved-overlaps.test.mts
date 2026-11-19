@@ -176,7 +176,6 @@ describe('overlaps on the probe project', () => {
         'Hiding.java:8',
         ['checkstyle/VisibilityModifier', 'spotbugs/URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD'],
       ],
-      ['Locks.java:17', ['forbiddenapis/legacy-date-time', 'pmd/UnsynchronizedStaticFormatter']],
       ['Misc.java:23', ['errorprone/SynchronizeOnNonFinalField', 'pmd/AvoidSynchronizedStatement']],
       ['Numbers.java:10', ['checkstyle/MagicNumber', 'errorprone/ComparisonOutOfRange']],
       ['Numbers.java:7', ['checkstyle/MagicNumber', 'errorprone/BadShiftAmount']],
@@ -193,10 +192,16 @@ describe('overlaps on the probe project', () => {
       ['Obsolete.java:12', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
       ['Obsolete.java:13', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
       ['OldTest.java:14', ['errorprone/RedundantNullCheck', 'pmd/SimplifiableTestAssertion']],
-      ['P2Inner.java:10', ['forbiddenapis/legacy-date-time', 'pmd/UnsynchronizedStaticFormatter']],
       ['P2Inner.java:13', ['errorprone/ClassCanBeStatic', 'pmd/GenericTypeName']],
       ['P2Inner.java:6', ['checkstyle/VisibilityModifier', 'errorprone/NonFinalStaticField']],
-      ['P2Inner.java:7', ['errorprone/NonFinalStaticField', 'pmd/LegacyCalendarApi']],
+      [
+        'P2Inner.java:7',
+        [
+          'errorprone/NonFinalStaticField',
+          'pmd/LegacyCalendarApi',
+          'pmd/SharedStatefulHelperField',
+        ],
+      ],
       [
         'P2Strings.java:21',
         [
@@ -206,9 +211,7 @@ describe('overlaps on the probe project', () => {
       ],
       ['P2Strings.java:26', ['checkstyle/MagicNumber', 'forbiddenapis/thread-sleep']],
       ['SelfAssign.java:7', ['errorprone/SelfAssignment', 'pmd/AvoidReassigningParameters']],
-      ['Shared.java:16', ['forbiddenapis/legacy-date-time', 'pmd/UnsynchronizedStaticFormatter']],
       ['Skip.java:8', ['checkstyle/MagicNumber', 'pmd/CheckSkipResult']],
-      ['Stamps.java:11', ['forbiddenapis/legacy-date-time', 'pmd/UnsynchronizedStaticFormatter']],
       [
         'StaticCtor.java:7',
         ['checkstyle/MagicNumber', 'spotbugs/ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD'],

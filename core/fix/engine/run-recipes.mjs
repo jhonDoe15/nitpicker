@@ -22,7 +22,9 @@ function selectedFixes(planned, recipe, run) {
     throw new Error(`recipe ${recipe.id} returned no fixes list`);
   }
   return planned.fixes.filter(
-    ({ finding } = {}) => run.selected.size === 0 || run.selected.has(ruleName(finding ?? {})),
+    ({ finding, alsoFixes = [] } = {}) =>
+      run.selected.size === 0 ||
+      [finding ?? {}, ...alsoFixes].some((named) => run.selected.has(ruleName(named))),
   );
 }
 
@@ -45,7 +47,7 @@ function planRecipe(recipe, snapshot, run) {
         edits.some((edit) => changesText(edit, snapshot, run.settings.projectRoot)),
       )
       .sort(fixOrder)
-      .map((fix) => ({ recipe: recipe.id, safety: recipe.safety, fix })),
+      .map((fix) => ({ recipe: recipe.id, safety: recipe.safety, scope: recipe.scope, fix })),
     notes: planned.notes ?? [],
   };
 }

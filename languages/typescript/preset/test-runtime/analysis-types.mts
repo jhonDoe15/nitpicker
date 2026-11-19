@@ -6,6 +6,7 @@ export type AnalysisLayout = {
   readonly entryExtensions: readonly string[];
   isExcluded(source: string): boolean;
   isEndToEndTest(source: string): boolean;
+  isRunnerTestFile(source: string): boolean;
   isSourceUnderRoot(source: string, root: string): boolean;
 };
 

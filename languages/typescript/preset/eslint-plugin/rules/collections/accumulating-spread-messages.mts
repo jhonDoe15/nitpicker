@@ -1,5 +1,6 @@
 export type SpreadKind = 'reduce' | 'reduceObject' | 'reduceArray' | 'loopObject' | 'loopArray';
 export type SpreadMessageId = keyof typeof accumulatingSpreadMessages;
+export type RuleMessageId = SpreadMessageId | keyof typeof spreadSuggestionMessages;
 
 const DOMAIN_PATH = /(?:^|\/)features\/[^/]+\/domain\//u;
 
@@ -51,3 +52,8 @@ const DOMAIN_IDS: Readonly<Record<SpreadKind, SpreadMessageId>> = {
 export function accumulatingSpreadMessageId(kind: SpreadKind, filePath: string): SpreadMessageId {
   return DOMAIN_PATH.test(filePath.replaceAll('\\', '/')) ? DOMAIN_IDS[kind] : kind;
 }
+
+export const spreadSuggestionMessages = {
+  pushOntoArray:
+    'Declare the array const and push onto it in the loop instead of copying it on every pass. This changes the array in place, so it is offered only when nothing else holds the array during the loop.',
+};

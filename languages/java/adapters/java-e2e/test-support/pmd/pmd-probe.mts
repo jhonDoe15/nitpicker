@@ -182,7 +182,10 @@ export function routedMessages(
 ): { readonly actual: string | undefined; readonly expected: string } {
   const ruleset = readFileSync(rulesetPath, 'utf8');
   const rule = ruleset.slice(ruleset.indexOf(`<rule name="${ruleName}"`));
-  const message = textOf(/message="([^"]*)"/u.exec(rule)?.[1]);
+  const message = textOf(/message="([^"]*)"/u.exec(rule)?.[1])
+    .replaceAll('&quot;', '"')
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>');
   const first = findings.find(({ rule: name }) => name === ruleName);
   return {
     actual: first?.message,

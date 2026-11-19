@@ -24,12 +24,6 @@ import {
   syntaxChildren,
 } from './analysis-views.mts';
 
-const TEST_FILE = /(?:^|\/).+\.(?:test|spec)\.[cm]?[jt]sx?$/;
-
-function isTest(source: string): boolean {
-  return TEST_FILE.test(source);
-}
-
 function dynamicImportSpecifier(node: TypeScript.Node): string | undefined {
   const ts = typescriptApi();
   if (!(
@@ -139,11 +133,12 @@ function modulesOf(graph: Graph | undefined): readonly GraphModule[] {
 export async function loadModuleSources(
   graph: Graph | undefined,
   rootDirectory: string,
+  layout: AnalysisLayout = defaultLayout,
 ): Promise<Map<string, string>> {
   const entries = await Promise.all(
     modulesOf(graph)
       .map((module) => normalizePath(module.source))
-      .filter((source) => isTest(source) && !isExcludedPath(source))
+      .filter((source) => layout.isRunnerTestFile(source) && !isExcludedPath(source))
       .map(async (source): Promise<[string, string]> => [
         source,
         await readFile(containedPath(rootDirectory, source), 'utf8'),
@@ -178,7 +173,7 @@ export function analyzeTestRuntime(
   };
   const allTests = modules
     .map((module) => normalizePath(module.source))
-    .filter(isTest)
+    .filter((source) => layout.isRunnerTestFile(source))
     .sort();
   function isProductionModule(source: string): boolean {
     return isProduction(source, context.productionRoots, layout);
