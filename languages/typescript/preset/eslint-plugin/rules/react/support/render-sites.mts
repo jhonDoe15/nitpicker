@@ -50,10 +50,12 @@ function localNames(sourceFile: TypeScript.SourceFile, { file, target, exportNam
       continue;
     }
     const resolved = resolveModuleSpecifier(statement.moduleSpecifier.text, file);
-    if (resolved.kind === 'file' && resolved.path === target) {
-      for (const name of importedNames(statement, exportName)) {
-        names.add(name);
-      }
+    const imported =
+      resolved.kind === 'file' && resolved.path === target
+        ? importedNames(statement, exportName)
+        : [];
+    for (const name of imported) {
+      names.add(name);
     }
   }
   return names;
@@ -83,12 +85,12 @@ function isListCallback(node: TypeScript.Node): boolean {
 function testsEquality(test: TypeScript.Expression): boolean {
   const pending = [test];
   for (const current of pending) {
+    if (ts.isBinaryExpression(current) && equalityOperators.has(current.operatorToken.kind)) {
+      return true;
+    }
     if (ts.isParenthesizedExpression(current)) {
       pending.push(current.expression);
     } else if (ts.isBinaryExpression(current)) {
-      if (equalityOperators.has(current.operatorToken.kind)) {
-        return true;
-      }
       pending.push(current.left, current.right);
     }
   }

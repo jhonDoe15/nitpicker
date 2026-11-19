@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { ts, wrappedExpression } from '../typed/typescript-views.mts';
+import { innermostExpression, ts } from '../typed/typescript-views.mts';
 
 export type Step = { readonly via: string };
 
@@ -47,14 +47,7 @@ function fallbackLeft(expression: TypeScript.Expression): TypeScript.Expression 
 }
 
 export function unwrap(expression: TypeScript.Expression): TypeScript.Expression {
-  const chain = [expression];
-  for (const current of chain) {
-    const inner = wrappedExpression(current) ?? fallbackLeft(current);
-    if (inner !== undefined) {
-      chain.push(inner);
-    }
-  }
-  return chain.at(-1) ?? expression;
+  return innermostExpression(expression, fallbackLeft);
 }
 
 function isParam(expression: TypeScript.Expression, scope: Scope): boolean {

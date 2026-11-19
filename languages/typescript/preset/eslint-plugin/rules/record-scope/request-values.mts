@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { ts, wrappedExpression } from '../typed/typescript-views.mts';
+import { innermostExpression, ts } from '../typed/typescript-views.mts';
 
 const REQUEST_NAME = /^(?:command|dto|input|body|params|req|request|payload)$/iu;
 const REQUEST_TYPE = /(?:Command|Dto|DTO|Input|Request|Body|Params|Payload)(?:<[^>]*>)?(?:\[\])?$/u;
@@ -16,14 +16,7 @@ function coercedArgument(expression: TypeScript.Expression): TypeScript.Expressi
 }
 
 function withoutWrappers(expression: TypeScript.Expression): TypeScript.Expression {
-  const chain = [expression];
-  for (const current of chain) {
-    const inner = wrappedExpression(current) ?? coercedArgument(current);
-    if (inner !== undefined) {
-      chain.push(inner);
-    }
-  }
-  return chain.at(-1) ?? expression;
+  return innermostExpression(expression, coercedArgument);
 }
 
 function rootIdentifier(expression: TypeScript.Expression): TypeScript.Identifier | undefined {

@@ -67,3 +67,17 @@ export function wrappedExpression(
     ? expression.expression
     : undefined;
 }
+
+export function innermostExpression(
+  expression: TypeScript.Expression,
+  inner: (current: TypeScript.Expression) => TypeScript.Expression | undefined,
+): TypeScript.Expression {
+  const chain = [expression];
+  for (const current of chain) {
+    const next = wrappedExpression(current) ?? inner(current);
+    if (next !== undefined) {
+      chain.push(next);
+    }
+  }
+  return chain.at(-1) ?? expression;
+}
