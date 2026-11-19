@@ -1,10 +1,11 @@
-import { existsSync, lstatSync, readdirSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../adapters/typed/typescript-program.mts';
 import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 import { codeExtensionNames } from '../layout.mjs';
 import { workspacePaths } from './workspace/entries.mts';
+import { relevantSiblingFiles } from './workspace/sibling-imports.mts';
 import type { PackageEntry, PackagesInfo, ProgramLayout } from './workspace/workspace-types.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
@@ -159,48 +160,62 @@ function compilerOptions({
   };
 }
 
-function keepsFile(
-  {
-    projectRoot,
-    layout,
-    withoutTests,
-  }: { projectRoot: string; layout: ProgramLayout; withoutTests: true | undefined },
-  file: string,
-): boolean {
-  const relative = path.relative(projectRoot, file).split(path.sep).join('/');
-  return !(withoutTests && (layout.isTestFile(relative) || layout.isTestFixture(`/${relative}`)));
-}
-
-export function createProjectProgram({
-  projectRoot,
-  configPath,
-  packagesInfo,
-  layout,
-  withoutTests,
-}: {
+type ProgramRequest = {
   projectRoot: string;
   configPath: string;
   packagesInfo: PackagesInfo;
   layout: ProgramLayout;
-  withoutTests?: true;
-}): TypeScript.Program {
+};
+
+const reusablePrograms = new Map<string, TypeScript.Program>();
+
+function programKey({ projectRoot, configPath, packagesInfo }: ProgramRequest): string {
+  return JSON.stringify([
+    projectRoot,
+    readFileSync(configPath, 'utf8'),
+    packagesInfo.packages.map(({ dir }) => dir),
+  ]);
+}
+
+function builtProgram({ projectRoot, configPath, packagesInfo, layout }: ProgramRequest) {
   const parsed = parseConfig(configPath, projectRoot);
+  const options = compilerOptions({ parsed, packages: packagesInfo.packages, projectRoot, layout });
   const siblings = packagesInfo.packages.filter(
     ({ dir }) => dir !== projectRoot && !projectRoot.startsWith(`${dir}${path.sep}`),
+  );
+  const siblingFiles = codeFilesUnder(
+    siblings.map(({ dir }) => dir),
+    layout,
+    projectRoot,
   );
   const rootNames = new Set([
     ...parsed.fileNames,
     ...rootConfigsAndScripts(projectRoot, layout),
-    ...codeFilesUnder(
-      siblings.map(({ dir }) => dir),
-      layout,
+    ...relevantSiblingFiles({
       projectRoot,
-    ),
+      files: siblingFiles,
+      packages: packagesInfo.packages,
+      options,
+    }),
   ]);
-  return ts.createProgram({
-    rootNames: [...rootNames].filter((file) =>
-      keepsFile({ projectRoot, layout, withoutTests }, file),
-    ),
-    options: compilerOptions({ parsed, packages: packagesInfo.packages, projectRoot, layout }),
-  });
+  return ts.createProgram({ rootNames: [...rootNames], options });
+}
+
+function takenOrBuilt(
+  reusable: Map<string, TypeScript.Program>,
+  request: ProgramRequest,
+): TypeScript.Program {
+  const key = programKey(request);
+  const kept = reusable.get(key);
+  reusable.clear();
+  if (kept !== undefined) {
+    return kept;
+  }
+  const program = builtProgram(request);
+  reusable.set(key, program);
+  return program;
+}
+
+export function createProjectProgram(request: ProgramRequest): TypeScript.Program {
+  return takenOrBuilt(reusablePrograms, request);
 }

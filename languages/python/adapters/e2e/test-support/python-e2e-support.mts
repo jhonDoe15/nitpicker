@@ -131,7 +131,24 @@ export function gate(
   if (existsSync(path.join(reports, 'new-findings.json'))) {
     schemaChecked({ newFindings: json('new-findings.json') });
   }
-  return { exitCode, json, text: output.text, reports };
+  return {
+    exitCode,
+    json,
+    get text() {
+      return output.text;
+    },
+    reports,
+  };
+}
+
+export async function settledGate(
+  root: string,
+  branch: string,
+  options: GateOptions = {},
+): Promise<GateResult & { readonly exitCode: number }> {
+  const result = gate(root, branch, options);
+  const exitCode = await result.exitCode;
+  return { ...result, exitCode };
 }
 
 export function policyChangesOf(root: string, branch: string): PolicyChanges {

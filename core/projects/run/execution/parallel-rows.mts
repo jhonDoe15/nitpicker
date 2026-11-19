@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { createWeightedSemaphore } from '../../../diff/execution/capacity.mts';
+import { projectFilePaths } from '../../../../shared/project-files/project-files.mjs';
 import { projectHeading } from '../../report/console.mjs';
 import { outcomeOf } from '../../report/outcome.mjs';
 import { type Finished, type Launch, launchProject, type ProjectJob } from './launch.mts';
@@ -18,17 +19,40 @@ import {
 import type { MonorepoCli, ProjectOutcome, ProjectRow } from '../../project-types.mts';
 
 const CPUS_PER_PROJECT = 4;
+const SMALL_PROJECT_FILES = 100;
+const MEDIUM_PROJECT_FILES = 500;
+const projectFiles: (root: string) => readonly string[] = projectFilePaths;
 const WORKER_SCRIPT = fileURLToPath(
   checkoutModuleUrl(new URL('../../../project-worker.mjs', import.meta.url)),
 );
 
 type InOrder = (index: number, write: () => void) => void;
 
-function parallelJobs(rows: readonly ProjectRow[], cli: MonorepoCli): number {
-  const selected = rows.filter(({ selection }) => selection.selected).length;
+type Capacity = { readonly slots: number; readonly weightOf: (row: ProjectRow) => number };
+
+function sizedWeight(row: ProjectRow, slots: number): number {
+  const files = projectFiles(row.project.absolute).length;
+  if (files <= SMALL_PROJECT_FILES) {
+    return 1;
+  }
+  return Math.min(slots, files <= MEDIUM_PROJECT_FILES ? 2 : CPUS_PER_PROJECT);
+}
+
+function capacityOf(rows: readonly ProjectRow[], cli: MonorepoCli): Capacity {
+  const selected = rows.filter(({ selection }) => selection.selected);
   const inProcess = cli.analyzers !== undefined && cli.projectWorker === undefined;
-  const wanted = cli.options.jobs ?? Math.floor(availableParallelism() / CPUS_PER_PROJECT);
-  return inProcess ? 1 : Math.max(1, Math.min(selected, wanted));
+  if (inProcess || selected.length < 2) {
+    return { slots: 1, weightOf: () => 1 };
+  }
+  if (cli.options.jobs !== undefined) {
+    return { slots: Math.max(1, Math.min(selected.length, cli.options.jobs)), weightOf: () => 1 };
+  }
+  const slots = Math.max(1, availableParallelism());
+  const weights = new Map(selected.map((row) => [row, sizedWeight(row, slots)]));
+  const [lightest = slots, next = slots] = [...weights.values()].toSorted((a, b) => a - b);
+  return lightest + next > slots
+    ? { slots: 1, weightOf: () => 1 }
+    : { slots, weightOf: (row) => weights.get(row) ?? slots };
 }
 
 function inOrder(): InOrder {
@@ -97,13 +121,13 @@ function outcomeOfFinished(row: ProjectRow, run: SelectedRun, finished: Finished
 
 type Pool = {
   readonly context: RunContext;
-  readonly acquire: () => Promise<() => void>;
+  readonly acquire: (row: ProjectRow) => Promise<() => void>;
   readonly ordered: InOrder;
   readonly resultsRoot: string;
 };
 
-async function launchPooled(pool: Pool, launch: Launch): Promise<Finished> {
-  const release = await pool.acquire();
+async function launchPooled(pool: Pool, row: ProjectRow, launch: Launch): Promise<Finished> {
+  const release = await pool.acquire(row);
   try {
     launch.progress.write(`nitpicker: [${launch.label}] started\n`);
     return await launchProject(launch);
@@ -124,7 +148,7 @@ async function runInPool(row: ProjectRow, index: number, pool: Pool): Promise<Pr
     ordered(index, () => undefined);
     return row;
   }
-  const finished = await launchPooled(pool, {
+  const finished = await launchPooled(pool, row, {
     label: row.project.path,
     job: jobOf(context, run, path.join(pool.resultsRoot, `${String(index)}.json`)),
     workerScript: context.cli.projectWorker ?? WORKER_SCRIPT,
@@ -141,13 +165,13 @@ async function runInPool(row: ProjectRow, index: number, pool: Pool): Promise<Pr
 async function runRowsInParallel(
   rows: readonly ProjectRow[],
   context: RunContext,
-  jobs: number,
+  capacity: Capacity,
 ): Promise<readonly ProjectRow[]> {
-  const semaphore = createWeightedSemaphore(jobs);
+  const semaphore = createWeightedSemaphore(capacity.slots);
   const resultsRoot = await mkdtemp(path.join(tmpdir(), 'nitpicker-projects-'));
   const pool: Pool = {
     context,
-    acquire: () => semaphore.acquire(1),
+    acquire: (row) => semaphore.acquire(capacity.weightOf(row)),
     ordered: inOrder(),
     resultsRoot,
   };
@@ -167,8 +191,8 @@ export function runRows(
   rows: readonly ProjectRow[],
   context: RunContext,
 ): readonly ProjectRow[] | Promise<readonly ProjectRow[]> {
-  const jobs = parallelJobs(rows, context.cli);
-  return jobs > 1
-    ? runRowsInParallel(rows, context, jobs)
+  const capacity = capacityOf(rows, context.cli);
+  return capacity.slots > 1
+    ? runRowsInParallel(rows, context, capacity)
     : rows.map((row) => runRow(row, context));
 }

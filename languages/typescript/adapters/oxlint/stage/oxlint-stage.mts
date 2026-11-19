@@ -23,6 +23,7 @@ export type StageConfig = {
   readonly configPath: string;
   readonly nativeConfigPath: string;
   readonly files: readonly string[];
+  readonly typeAware: boolean;
 };
 
 type OxlintConfig = {
@@ -147,14 +148,54 @@ export function writeStageConfigs({
     return `./${STAGE_DIRECTORY}/${plugin.alias}.mjs`;
   });
   const bridgedRulePrefixes = translation.plugins.map(({ alias }) => `${alias}/`);
-  return translation.partitions.map((partition, index) => {
+  const { typeAwareRules } = translation;
+  const plain = translation.partitions.map((partition) => ({
+    partition: withRules(partition, (rule) => !typeAwareRules.has(rule)),
+    plugins: jsPlugins,
+    typeAware: false,
+  }));
+  const typed = typeAwarePartition(translation.partitions, typeAwareRules);
+  const passes = typed === undefined ? plain : [...plain, { ...typed, plugins: [] }];
+  return passes.map(({ partition, plugins, typeAware }, index) => {
     const configPath = path.join(stage, `${STAGE_DIRECTORY}rc-${String(index)}.json`);
     const nativeConfigPath = path.join(stage, `${STAGE_DIRECTORY}rc-${String(index)}-native.json`);
-    const config = stageConfig(partition, jsPlugins);
+    const config = stageConfig(partition, plugins);
     writeFileSync(configPath, JSON.stringify(config, null, 2));
     writeFileSync(nativeConfigPath, JSON.stringify(nativeConfig(config, bridgedRulePrefixes)));
-    return { configPath, nativeConfigPath, files: partition.files };
+    return { configPath, nativeConfigPath, files: partition.files, typeAware };
   });
+}
+
+function withRules(partition: Partition, keeps: (rule: string) => boolean): Partition {
+  return {
+    ...partition,
+    overrides: partition.overrides.map((override) => ({
+      ...override,
+      rules: Object.fromEntries(Object.entries(override.rules).filter(([rule]) => keeps(rule))),
+    })),
+  };
+}
+
+function typeAwarePartition(
+  partitions: readonly Partition[],
+  typeAwareRules: ReadonlySet<string>,
+): { readonly partition: Partition; readonly typeAware: true } | undefined {
+  const typed = partitions
+    .map((partition) => withRules(partition, (rule) => typeAwareRules.has(rule)))
+    .filter(({ overrides }) => overrides.some(({ rules }) => Object.keys(rules).length > 0));
+  if (typed.length === 0) {
+    return undefined;
+  }
+  return {
+    partition: {
+      settings: {},
+      files: [...new Set(partitions.flatMap(({ files }) => files))],
+      overrides: typed.flatMap(({ overrides }) =>
+        overrides.filter(({ rules }) => Object.keys(rules).length > 0),
+      ),
+    },
+    typeAware: true,
+  };
 }
 
 function nativeConfig(config: OxlintConfig, bridgedRulePrefixes: readonly string[]): OxlintConfig {
