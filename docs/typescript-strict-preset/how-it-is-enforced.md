@@ -24,6 +24,10 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   the entry matches, which can weaken a rule (`allowEmptyCatch: true` for `no-empty`), so the policy
   review lists each nitpicker rule whose options the project replaces; see
   [ESLint configs](../usage.md#eslint-configs-typescript-and-javascript-presets).
+- A file that does not parse (a data file saved as `.js`, say) becomes one report-only `unparsed-file`
+  note naming the file and the parse error, from `eslint-lint` and the other ESLint and oxlint analyzers
+  as from `structure` and `coding-standards`. The other files keep their findings, and an old broken file
+  does not fail every change.
 - `no-restricted-syntax` is one rule with one list per scope. ESLint flat config replaces a rule's
   options when several config objects match the same file, so each scope carries the complete list:
   `restrictedSyntaxByScope` in `eslint-config/strict.mjs` has `source`, `configFile`, `domain` and `adapters`, and
