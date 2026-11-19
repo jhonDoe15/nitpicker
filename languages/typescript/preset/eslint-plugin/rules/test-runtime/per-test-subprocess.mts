@@ -4,7 +4,7 @@ import { perTestVisitors, subprocessBindings } from '../analysis/test-code-analy
 
 export function perTestSubprocessVisitors<MessageIds extends string>(
   context: Readonly<TSESLint.RuleContext<MessageIds, readonly unknown[]>>,
-  messageId: MessageIds,
+  report: { readonly messageId: MessageIds; readonly data?: Readonly<Record<string, unknown>> },
   isReported: (call: TSESTree.CallExpression, bindings: ModuleBindings) => boolean,
 ): TSESLint.RuleListener {
   let bindings: ModuleBindings = { named: new Map(), namespaces: new Set() };
@@ -14,7 +14,7 @@ export function perTestSubprocessVisitors<MessageIds extends string>(
     },
     ...perTestVisitors(context, (node) =>
       node.type === AST_NODE_TYPES.CallExpression && isReported(node, bindings)
-        ? { messageId }
+        ? { messageId: report.messageId, data: report.data ?? {} }
         : undefined,
     ),
   };

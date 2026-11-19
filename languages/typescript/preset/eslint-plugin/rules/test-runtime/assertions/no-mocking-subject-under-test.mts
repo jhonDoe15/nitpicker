@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import path from 'node:path';
-import { mockedModuleSource } from '../../analysis/test-code-analysis.mts';
+import { moduleMocks } from '../../runner-apis/module-mocks.mts';
+import { createRunnerApis, runnerApiVisitors } from '../../runner-apis/runner-apis.mts';
 import { readLayout } from '../../typed/policy-views.mts';
 
 const layout = readLayout();
@@ -45,9 +46,13 @@ export const rule: TSESLint.RuleModule<'mockedSubject'> = {
     const filename = context.filename.replaceAll('\\', '/');
     const productionImports = new Set<string>();
     const mocks: { readonly node: TSESTree.CallExpression; readonly source: string }[] = [];
+    const apis = createRunnerApis();
+    const apiVisitors = runnerApiVisitors(apis);
 
     return {
+      ...apiVisitors,
       ImportDeclaration(node) {
+        apiVisitors.ImportDeclaration(node);
         const source = node.source.value;
         if (
           typeof source === 'string' &&
@@ -59,9 +64,10 @@ export const rule: TSESLint.RuleModule<'mockedSubject'> = {
         }
       },
       CallExpression(node) {
-        const source = mockedModuleSource(node);
-        if (source !== undefined) {
-          mocks.push({ node, source });
+        for (const { name } of moduleMocks(apis, node)) {
+          if (name !== undefined) {
+            mocks.push({ node, source: name });
+          }
         }
       },
       'Program:exit'() {

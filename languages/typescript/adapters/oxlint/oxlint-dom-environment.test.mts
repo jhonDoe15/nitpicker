@@ -80,7 +80,9 @@ function reportsOf({ root, results }: Linted, relativePath: string) {
 }
 
 const projectMessage = (environment: string) =>
-  rule.meta.messages.unusedProjectEnvironment.replaceAll('{{environment}}', environment);
+  rule.meta.messages.unusedProjectEnvironment
+    .replaceAll('{{environment}}', environment)
+    .replaceAll('{{directive}}', directive);
 const directiveMessage = (environment: string) =>
   rule.meta.messages.unusedDirectiveOverDomProject
     .replace('{{environment}}', environment)

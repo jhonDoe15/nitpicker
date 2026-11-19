@@ -13,6 +13,8 @@ import {
   parseMutationScope as parseUntypedMutationScope,
 } from '../../../../core/tooling/runner-arguments.mjs';
 
+const LIVE_PROJECT_ROOT_OPTION = '--live-project-root';
+
 const parseMutationScope: (text: string) => readonly string[] = parseUntypedMutationScope;
 
 const VALUE_ARGUMENTS = new Set([
@@ -21,7 +23,7 @@ const VALUE_ARGUMENTS = new Set([
   '--project-root',
   '--policy-root',
   '--tool-root',
-  '--live-project-root',
+  LIVE_PROJECT_ROOT_OPTION,
   '--project-policy-root',
   '--snapshot',
   '--baseline-root',
@@ -49,9 +51,14 @@ export function parseArguments(arguments_: readonly string[]): QualityAreaOption
     policyRoot: validatedSnapshotRoot(requiredValue(values, '--policy-root'), '--policy-root'),
     toolRoot,
     liveProjectRoot: optionalValue(
-      values.get('--live-project-root'),
+      values.get(LIVE_PROJECT_ROOT_OPTION),
       (value: string) => realpathSync(value),
       PACKAGE_ROOT,
+    ),
+    runnerProjectRoot: optionalValue(
+      values.get(LIVE_PROJECT_ROOT_OPTION),
+      (value: string) => realpathSync(value),
+      projectRoot,
     ),
     snapshot,
     legacyInventory: values.get('--legacy-inventory') ?? DEFAULT_LEGACY_INVENTORY,

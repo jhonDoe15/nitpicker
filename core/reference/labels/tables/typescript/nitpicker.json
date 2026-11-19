@@ -126,6 +126,7 @@
   "eslint/nitpicker/no-unmapped-exception": ["reliability"],
   "eslint/nitpicker/no-unordered-query": ["bug", "persistence"],
   "eslint/nitpicker/no-unowned-async-assertion": ["tests", "async"],
+  "eslint/nitpicker/no-unpinned-assertion": ["tests"],
   "eslint/nitpicker/no-unsafe-deserialization": ["security"],
   "eslint/nitpicker/no-unsafe-path-join": ["security"],
   "eslint/nitpicker/no-untrimmed-request-text": ["bug"],
