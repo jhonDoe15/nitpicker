@@ -88,7 +88,7 @@ export const SIGNATURE_HINTS: readonly RuleHint[] = [
     rules: ['parameter-mutation'],
     describe: mutationDescription,
     allowed:
-      'Build and return a new value (`[*items, item]`, `{**table, key: value}`), or copy the argument first (`items = [*items]`) when the function needs a working copy; do not hand a result back through a parameter.',
+      'Build and return a new value (`[*items, item]`, `{**table, key: value}`), or copy the argument first (`items = [*items]`, `copy.deepcopy(items)` when a nested item changes) when the function needs a working copy; do not hand a result back through a parameter.',
   },
   {
     tool: RULES_TOOL,

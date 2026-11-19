@@ -31,6 +31,16 @@ describe('signature rule messages', () => {
     ],
     ['parameter-mutation', 'odd', '`odd` changes the argument the caller passed in'],
     [
+      'shared-state-mutation',
+      'DEFAULTS in UserConfig',
+      '`DEFAULTS` is a module-level collection that `UserConfig` keeps by reference and then changes, so the shared default changes for every other user',
+    ],
+    [
+      'shared-state-mutation',
+      'get_items()',
+      '`get_items()` returns the same cached list, dict or set to every caller, and a caller changes it, so later calls get the changed value',
+    ],
+    [
       'compatibility-shim',
       '__getattr__',
       'A module `__getattr__` keeps names that were removed or renamed working',
@@ -61,6 +71,7 @@ describe('signature rule messages', () => {
     ['number-truthiness', 'qs.exists()'],
     ['presence-truthiness', 'table.get(key)'],
     ['parameter-mutation', 'Build and return a new value'],
+    ['shared-state-mutation', 'copy.deepcopy(DEFAULTS)'],
     ['compatibility-shim', 'delete the old name'],
   ])('name the allowed form of %s and end with the exception route', (rule, form) => {
     const { message } = withHint({
