@@ -1,3 +1,6 @@
+import { rule as ruleNoPresenceTruthiness } from '../rules/truthiness/no-presence-truthiness.mts';
+import { rule as ruleNoProcessAccessOutsideCompositionRoot } from '../rules/guards/no-process-access-outside-composition-root.mts';
+import { rule as ruleNoProcessGlobalsOutsideMainGuard } from '../rules/modules/no-process-globals-outside-main-guard.mts';
 import { rule as ruleNoProductionConsole } from '../rules/modules/no-production-console.mts';
 import { rule as ruleNoProductionImportsInSetupFiles } from '../test-isolation/no-production-imports-in-setup-files.mts';
 import { rule as ruleNoPromiseChain } from '../rules/syntax/no-promise-chain.mts';
@@ -95,13 +98,11 @@ import { rule as ruleReactNoEffectDerivedState } from '../rules/react/react-no-e
 import { rule as ruleReactNoEffectEventHandling } from '../rules/react/render/react-no-effect-event-handling.mts';
 import { rule as ruleReactNoHardcodedColors } from '../rules/react/theme/react-no-hardcoded-colors.mts';
 import { rule as ruleReactNoLiteralIdInListComponent } from '../rules/react/ids/react-no-literal-id-in-list-component.mts';
-import { rule as ruleReactNoRandomKey } from '../rules/react/render/react-no-random-key.mts';
-import { rule as ruleReactSingleStylingApproach } from '../rules/react/react-single-styling-approach.mjs';
-import { rule as ruleReactTestNoImplementationDetails } from '../rules/react-tests/react-test-no-implementation-details.mts';
-import { rule as ruleReleaseListenersOnClose } from '../rules/lifecycles/handles/release-listeners-on-close.mts';
-import { rule as ruleReportModuleLoadEffects } from '../rules/modules/report-module-load-effects.mts';
 
 export const partRules = {
+  'no-presence-truthiness': ruleNoPresenceTruthiness,
+  'no-process-access-outside-composition-root': ruleNoProcessAccessOutsideCompositionRoot,
+  'no-process-globals-outside-main-guard': ruleNoProcessGlobalsOutsideMainGuard,
   'no-production-console': ruleNoProductionConsole,
   'no-production-imports-in-setup-files': ruleNoProductionImportsInSetupFiles,
   'no-promise-chain': ruleNoPromiseChain,
@@ -199,9 +200,4 @@ export const partRules = {
   'react-no-effect-event-handling': ruleReactNoEffectEventHandling,
   'react-no-hardcoded-colors': ruleReactNoHardcodedColors,
   'react-no-literal-id-in-list-component': ruleReactNoLiteralIdInListComponent,
-  'react-no-random-key': ruleReactNoRandomKey,
-  'react-single-styling-approach': ruleReactSingleStylingApproach,
-  'react-test-no-implementation-details': ruleReactTestNoImplementationDetails,
-  'release-listeners-on-close': ruleReleaseListenersOnClose,
-  'report-module-load-effects': ruleReportModuleLoadEffects,
 };
