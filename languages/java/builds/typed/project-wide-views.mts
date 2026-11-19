@@ -159,6 +159,7 @@ export function valueCheckFindings(projectRoot: string, options: WideOptions): J
 }
 export function minedFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
   return findingsOf(callUntyped(readMinedFindings, projectRoot, options));
+}
 export function selfRecursionFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
   return findingsOf(callUntyped(readSelfRecursionFindings, projectRoot, options));
 }
