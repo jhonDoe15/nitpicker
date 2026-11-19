@@ -4854,5 +4854,10 @@ npx nitpicker aggregate --input-root shards --shard-count 3
   Analyzer versions include the runtime for Java and Kotlin (the JDK), Python and Go, so run the
   aggregate job with the same toolchain as the shards.
 - Set `NITPICKER_MAX_PARALLEL` to a positive integer to cap how many analyzers run at once within
-  one job. It also sizes the ESLint heap: three quarters of the memory less 1.5 GB for each other
-  analyzer that can run at once, unless `NODE_OPTIONS` already sets `--max-old-space-size`.
+  one job. It also sizes the heap of every built-in Node analyzer (and of the Node tools it starts,
+  ESLint among them): three quarters of the memory less 1.5 GB for each other analyzer that can run at
+  once, unless `NODE_OPTIONS` already sets `--max-old-space-size`. Analyzers that build whole-project
+  programs also carry a memory estimate from the project's number of source files, and one starts
+  only when its estimate fits in three quarters of the memory beside the ones already running (one
+  whose estimate is larger than that runs alone), so a large project runs fewer of them at once
+  instead of running out of memory.

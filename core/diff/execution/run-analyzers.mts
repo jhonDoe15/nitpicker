@@ -1,5 +1,6 @@
 import { analyzerName as nameOf } from '../reporting/report-model.mts';
 import { type PreparedTask, type TaskContext, prepareTask } from './preparation/prepare-task.mts';
+import { memoizedFileCounter } from './preparation/project-size.mts';
 import { namedReports, namedToolErrors } from '../snapshot-root/snapshot-root.mjs';
 import path from 'node:path';
 import { describeError } from '../../../shared/messages/error-chain.mjs';
@@ -189,10 +190,11 @@ function prepareTasks(
   const metadata = new Map<unknown, AnalyzerMetadata>();
   const toolErrors: ReportEntry[] = [];
   const tasks: PreparedTask[] = [];
+  const sizedContext = { ...context, countFiles: memoizedFileCounter() };
 
   for (const [index, analyzer] of analyzers.entries()) {
     const name = nameOf(analyzer, index);
-    const preparation = prepareTask(analyzer, context, metadata.get(analyzer));
+    const preparation = prepareTask(analyzer, sizedContext, metadata.get(analyzer));
     metadata.set(analyzer, preparation.metadata);
     if (preparation.kind === 'ready') {
       const checkpoint = checkpoints.get(name);

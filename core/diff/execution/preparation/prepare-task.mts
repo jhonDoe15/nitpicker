@@ -8,7 +8,13 @@ import {
   resolveAnalyzerMetadata,
   withResolvedMetadata,
 } from '../report/analyzer-metadata.mts';
-import { deadlineScaleOf, projectFileCount, scaledDeadlineMs } from './scaled-deadline.mts';
+import {
+  type FileCounter,
+  deadlineScaleOf,
+  memoryEstimateMegabytes,
+  projectFileCount,
+  scaledDeadlineMs,
+} from './project-size.mts';
 
 export type TaskContext = {
   readonly projectRoot: string;
@@ -20,6 +26,7 @@ export type TaskContext = {
   readonly liveProjectRoot: string;
   readonly mutationScope: unknown;
   readonly logRoot: unknown;
+  readonly countFiles?: FileCounter;
 };
 
 export type PreparedTask = {
@@ -30,6 +37,7 @@ export type PreparedTask = {
   readonly concurrencyGroup: string | undefined;
   readonly executionPriority: number;
   readonly timeoutMs: number;
+  readonly memoryMegabytes: number;
   readonly configuredTimeout: boolean;
   readonly reportedTools: readonly string[];
   readonly acceptedExitCodes: readonly number[];
@@ -39,14 +47,18 @@ export type PreparedTask = {
 
 const DEFAULT_ANALYZER_TIMEOUT_MS = 5 * 60 * 1000;
 
-function taskTimeoutMs(analyzer: Record<string, unknown>, liveProjectRoot: string): number {
+function taskTimeoutMs(
+  analyzer: Record<string, unknown>,
+  liveProjectRoot: string,
+  countFiles: FileCounter,
+): number {
   const base =
     typeof analyzer['timeoutMs'] === 'number' ? analyzer['timeoutMs'] : DEFAULT_ANALYZER_TIMEOUT_MS;
   const scale = deadlineScaleOf(analyzer);
   if (analyzer['configuredTimeout'] === true || scale === undefined) {
     return base;
   }
-  return scaledDeadlineMs(base, scale, projectFileCount(liveProjectRoot, scale.extensions));
+  return scaledDeadlineMs(base, scale, countFiles(liveProjectRoot, scale.extensions));
 }
 
 function logLocation(
@@ -104,6 +116,7 @@ function createTask(
   context: TaskContext,
 ): PreparedTask {
   const { projectRoot, policyRoot, toolRoot, snapshot, liveProjectRoot } = context;
+  const countFiles = context.countFiles ?? projectFileCount;
   const analyzer = withResolvedMetadata(source, metadata);
   validateAnalyzer(analyzer);
   const invocation = analyzer.createInvocation.call(source, {
@@ -126,7 +139,8 @@ function createTask(
     concurrencyWeight: analyzer.concurrencyWeight ?? 1,
     concurrencyGroup: analyzer.concurrencyGroup,
     executionPriority: analyzer.executionPriority ?? 0,
-    timeoutMs: taskTimeoutMs(analyzer, liveProjectRoot),
+    timeoutMs: taskTimeoutMs(analyzer, liveProjectRoot, countFiles),
+    memoryMegabytes: memoryEstimateMegabytes(analyzer, liveProjectRoot, countFiles),
     configuredTimeout: analyzer['configuredTimeout'] === true,
     reportedTools: analyzer.reportedTools ?? [],
     acceptedExitCodes: [0, ...(analyzer.findingExitCodes ?? [])],
