@@ -147,6 +147,13 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   multi-project build. PMD reads an empty `--dir` as its working folder, the project folder, so it
   used to scan the sources of every subproject again: on a 436-subproject build that was about 68%
   of all PMD time.
+- **Memory.** Gradle runs size the tool JVMs from the machine's memory, as Maven runs do: every JVM
+  that sets no heap of its own (PMD, SpotBugs, Error Prone, the structure and effects programs)
+  gets `-XX:MaxRAMPercentage` of 75% divided by the tool slots, through `JDK_JAVA_OPTIONS`
+  (a heap the user already set there is kept). When memory allows fewer slots than there are
+  CPUs, `--max-workers` drops to the slot count (or to the build's own lower
+  `org.gradle.workers.max`). When the daemon or a JVM runs out of memory, the tool error names
+  the machine's memory and the number of tool JVMs.
 - **Isolated Projects.** When the build's `gradle.properties` or the one in the Gradle user home
   turns Isolated Projects on (`org.gradle.isolated-projects`, or its earlier name
   `org.gradle.unsafe.isolated-projects`), nitpicker turns it off for its own run with the same

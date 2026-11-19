@@ -47,11 +47,15 @@ function textIfFile(file) {
     : '';
 }
 
-export function isolatedProjectsOff(projectRoot, environment = process.env) {
+export function gradlePropertiesTexts(projectRoot, environment = process.env) {
   const userHome = environment['GRADLE_USER_HOME'] || path.join(homedir(), '.gradle');
-  const properties = [...buildFolders(projectRoot), userHome].map((folder) =>
+  return [...buildFolders(projectRoot), userHome].map((folder) =>
     textIfFile(path.join(folder, 'gradle.properties')),
   );
+}
+
+export function isolatedProjectsOff(projectRoot, environment = process.env) {
+  const properties = gradlePropertiesTexts(projectRoot, environment);
   const names = properties.flatMap((text) =>
     [...text.matchAll(ISOLATED_PROJECTS)].map((match) => match[1]),
   );

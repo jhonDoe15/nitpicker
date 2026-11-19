@@ -17,6 +17,7 @@ export type GradleOptions = {
   readonly maxBuffer: number;
   readonly shell: unknown;
   readonly timeout: number | undefined;
+  readonly env?: Readonly<Record<string, string | undefined>>;
   readonly spawn?: unknown;
 };
 

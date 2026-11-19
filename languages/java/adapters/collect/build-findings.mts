@@ -16,6 +16,7 @@ import { runGradleStage } from '../red-base/gradle-stage.mts';
 import { runOrNoteFailingTests, withRootSourceRoots } from '../red-base/tests-failed.mts';
 import { gradleBudget } from '../gradle-wrapper/gradle-budget.mjs';
 import { gradleStages } from '../gradle-wrapper/gradle-stages.mts';
+import { gradleWorkerArguments } from '../gradle-wrapper/memory/gradle-memory.mts';
 import { gradleDesignFindings, mavenDesignFindings } from '../design/design-modules.mts';
 import { type JavaPolicy, callUntyped, findingsOf } from '../typed/java-values.mts';
 import { type JavaReport, type JavaRunOptions, budgetOf } from '../typed/java-run-options.mts';
@@ -67,6 +68,7 @@ function runJavaPreset(
   withKotlinArguments(kotlinRun, (kotlinArguments) => {
     const common = [
       ...GRADLE_FLAGS,
+      ...gradleWorkerArguments(projectRoot),
       `-Pnitpicker.reportDir=${reportBase}`,
       `-Pnitpicker.node=${process.execPath}`,
       ...lintBaselineProperties(policy),

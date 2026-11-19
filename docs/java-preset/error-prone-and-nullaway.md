@@ -320,7 +320,7 @@ Part of the [Java preset guide](../java-preset.md).
   own compiled classes on its class path, as the Lombok split already does, and keeps its own
   patch directory. Maven passes the size of the tool pool and gives the runner's JVM the heap of two
   pool slots (`-XX:MaxRAMPercentage`, ahead of the slot share in `JDK_JAVA_OPTIONS`); Gradle passes
-  the number of cores.
+  the number of cores and its JVM gets the slot share in `JDK_JAVA_OPTIONS`.
 - **The build's own compiler arguments.** On Gradle the runner gets `options.allCompilerArgs`, so
   arguments a `CommandLineArgumentProvider` adds count too, and a `--module-path` (or `-p`) the build
   passes that way is merged into the module path the runner builds from the classpath. When Error

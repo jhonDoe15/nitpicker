@@ -12,6 +12,7 @@ import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts'
 import { type JavaPolicy, callUntyped } from '../typed/java-values.mts';
 import type { JavaBudget } from '../typed/java-run-options.mts';
 import type { GradleOptions } from './gradle-process.mts';
+import { gradleToolEnvironment } from './memory/gradle-memory.mts';
 
 type ExportRequest = {
   readonly initScript: string;
@@ -66,6 +67,7 @@ export function gradleOptions(
     maxBuffer: MAX_OUTPUT_BYTES,
     shell,
     timeout: budget.commandTimeoutMs,
+    env: gradleToolEnvironment(),
     spawn,
   };
 }
