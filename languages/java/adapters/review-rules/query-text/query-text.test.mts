@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { sourceRunners } from '../test-support/source-runners.mts';
-import { findMalformedQueries as untypedFind } from './query-text.mjs';
-
-const find: (source: unknown) => { readonly kind: string }[] = untypedFind;
+import { findMalformedQueries } from './query-text.mts';
 
 const { java, kotlin } = sourceRunners({
-  find,
+  find: findMalformedQueries,
   pick: ({ kind }) => kind,
   java: {
     file: 'Mapper.java',

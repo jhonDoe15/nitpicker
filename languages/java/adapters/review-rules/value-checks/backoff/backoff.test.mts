@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { namesOf } from '../../test-support/check-runner.mts';
-import { BACKOFF_CHECK } from './backoff.mjs';
+import { BACKOFF_CHECK } from './backoff.mts';
 
 const names = namesOf(BACKOFF_CHECK);
 

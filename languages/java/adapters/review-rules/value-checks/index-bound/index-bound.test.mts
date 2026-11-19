@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { checkRunner } from '../../test-support/check-runner.mts';
-import { INDEX_BOUND_CHECK as untypedCheck } from './index-bound.mjs';
-
-type Found = { readonly line: number; readonly name: string; readonly rejects: boolean };
-
-const check: { find: (source: unknown) => Found[] } = untypedCheck;
+import { INDEX_BOUND_CHECK as check } from './index-bound.mts';
 
 const names = checkRunner({ check, pick: ({ name, rejects }) => `${name}${rejects ? '>' : '<='}` });
 

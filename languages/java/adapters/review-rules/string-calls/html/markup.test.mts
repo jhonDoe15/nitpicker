@@ -4,7 +4,7 @@ import {
   type ReadFindings,
   ruleLineRunners,
 } from '../../test-support/scratch-scanner.mts';
-import { readStringCallFindings as untypedRead, UNESCAPED_HTML_RULE } from '../string-calls.mjs';
+import { readStringCallFindings as untypedRead, UNESCAPED_HTML_RULE } from '../string-calls.mts';
 
 const read: ReadFindings<LocatedFinding> = untypedRead;
 

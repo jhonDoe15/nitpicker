@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { linesOf } from '../../test-support/check-runner.mts';
-import { RESPONSE_BODY_CHECK } from './response-body.mjs';
+import { RESPONSE_BODY_CHECK } from './response-body.mts';
 
 const lines = linesOf(RESPONSE_BODY_CHECK);
 

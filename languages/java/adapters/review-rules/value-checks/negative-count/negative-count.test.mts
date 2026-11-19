@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { namesOf } from '../../test-support/check-runner.mts';
-import { NEGATIVE_COUNT_CHECK } from './negative-count.mjs';
+import { NEGATIVE_COUNT_CHECK } from './negative-count.mts';
 
 const names = namesOf(NEGATIVE_COUNT_CHECK);
 

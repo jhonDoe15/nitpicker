@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { sourceRunners } from '../test-support/source-runners.mts';
-import { findMismatchedPreconditions as untypedFind } from './precondition-messages.mjs';
-
-const find: (source: unknown) => { readonly named: string }[] = untypedFind;
+import { findMismatchedPreconditions } from './precondition-messages.mts';
 
 const { java, kotlin } = sourceRunners({
-  find,
+  find: findMismatchedPreconditions,
   pick: ({ named }) => named,
   java: {
     file: 'Cache.java',

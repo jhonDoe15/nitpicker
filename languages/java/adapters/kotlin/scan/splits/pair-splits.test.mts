@@ -1,6 +1,6 @@
 import { describeBodyCases } from '../typed/body-cases.mts';
 import type { Check, Ruled } from '../typed/typed-scan.mts';
-import { pairSplits as untypedPairSplits } from './pair-splits.mjs';
+import { pairSplits as untypedPairSplits } from './pair-splits.mts';
 
 const pairSplits: Check<Ruled> = untypedPairSplits;
 
