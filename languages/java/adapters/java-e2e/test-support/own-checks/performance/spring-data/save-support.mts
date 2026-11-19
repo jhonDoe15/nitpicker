@@ -44,15 +44,16 @@ public class Audit {
 `,
 };
 
-export function savesClass(name: string, body: string): string {
+export function savesClass(name: string, body: string, annotation = '@Transactional\n'): string {
   return `package demo.saves;
 
 import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.springframework.transaction.annotation.Transactional;
 
-public class ${name} {
+${annotation}public class ${name} {
   private final ItemRepository items;
   private final Audit audit;
   private EntityManager entityManager;

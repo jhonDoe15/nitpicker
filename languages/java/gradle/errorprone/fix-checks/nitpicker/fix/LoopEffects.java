@@ -222,7 +222,8 @@ final class LoopEffects {
     }
     Symbol symbol = ASTHelpers.getSymbol(receiver);
     boolean field = symbol != null && symbol.getKind() == javax.lang.model.element.ElementKind.FIELD;
-    return field && BEAN_NAME.matcher(type.tsym.getSimpleName().toString()).matches();
+    return field && BEAN_NAME.matcher(type.tsym.getSimpleName().toString()).matches()
+        || OpaqueTypes.opaque(type, state);
   }
 
   private static boolean isA(Type type, String name, VisitorState state) {

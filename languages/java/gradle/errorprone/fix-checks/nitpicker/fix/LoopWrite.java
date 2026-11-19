@@ -3,6 +3,7 @@ package nitpicker.fix;
 import com.google.errorprone.VisitorState;
 import com.google.errorprone.util.ASTHelpers;
 import com.sun.source.tree.BlockTree;
+import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.EnhancedForLoopTree;
 import com.sun.source.tree.ExpressionStatementTree;
 import com.sun.source.tree.ExpressionTree;
@@ -10,11 +11,16 @@ import com.sun.source.tree.ForLoopTree;
 import com.sun.source.tree.IdentifierTree;
 import com.sun.source.tree.IfTree;
 import com.sun.source.tree.LambdaExpressionTree;
+import com.sun.source.tree.MemberReferenceTree;
 import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.MethodInvocationTree;
+import com.sun.source.tree.MethodTree;
 import com.sun.source.tree.StatementTree;
 import com.sun.source.tree.Tree;
+import com.sun.source.tree.TryTree;
 import com.sun.source.util.TreePath;
+import com.sun.source.util.TreeScanner;
+import com.sun.tools.javac.code.Attribute;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Symbol.MethodSymbol;
 import com.sun.tools.javac.code.Type;
@@ -37,6 +43,14 @@ final class LoopWrite {
       "java.util.List.of", "java.util.Set.of", "java.util.Collections.singletonList",
       "java.util.Collections.singleton");
   private static final Set<String> ITERATING = Set.of("forEach", "forEachOrdered");
+  private static final Set<String> TRANSACTIONAL = Set.of(
+      "org.springframework.transaction.annotation.Transactional", "jakarta.transaction.Transactional",
+      "javax.transaction.Transactional");
+  private static final Set<String> JOINING = Set.of("REQUIRED", "REQUIRES_NEW", "MANDATORY", "NESTED");
+  private static final Set<String> HARMLESS = Set.of(
+      "transactionManager", "value", "label", "isolation", "timeout", "timeoutString", "rollbackFor",
+      "rollbackForClassName", "rollbackOn");
+  private static final Set<String> LIFECYCLE = Set.of("PostConstruct", "PreDestroy");
 
   final MethodInvocationTree call;
   final ExpressionTree receiver;
@@ -108,6 +122,84 @@ final class LoopWrite {
       return null;
     }
     return new LoopWrite(call, element, batch, loop.getLeaf(), (StatementTree) loop.getLeaf(), body);
+  }
+
+  /**
+   * Whether a failure partway through the loop undoes the writes of the earlier passes anyway: the loop runs in a
+   * transaction that rolls back on every exception that can leave it, and nothing around it catches one.
+   */
+  static boolean rollsBackTogether(StatementTree loop, VisitorState state) {
+    TreePath at = state.getPath();
+    while (at != null && at.getLeaf() != loop) {
+      at = at.getParentPath();
+    }
+    MethodTree method = null;
+    for (at = at == null ? null : at.getParentPath(); at != null && method == null; at = at.getParentPath()) {
+      Tree leaf = at.getLeaf();
+      if (leaf instanceof TryTree || leaf instanceof LambdaExpressionTree || leaf instanceof ClassTree) {
+        return false;
+      }
+      method = leaf instanceof MethodTree found ? found : null;
+    }
+    MethodSymbol symbol = method == null ? null : ASTHelpers.getSymbol(method);
+    if (symbol == null || symbol.isConstructor() || symbol.isStatic() || calledInside(symbol, state)) {
+      return false;
+    }
+    for (Type thrown : symbol.getThrownTypes()) {
+      if (!state.getTypes().isSubtype(thrown, state.getSymtab().runtimeExceptionType)
+          && !state.getTypes().isSubtype(thrown, state.getSymtab().errorType)) {
+        return false;
+      }
+    }
+    for (Attribute.Compound annotation : symbol.getAnnotationMirrors()) {
+      if (LIFECYCLE.contains(annotation.type.tsym.getSimpleName().toString())) {
+        return false;
+      }
+    }
+    Attribute.Compound own = transactional(symbol);
+    boolean exposed = !symbol.getModifiers().contains(javax.lang.model.element.Modifier.PRIVATE);
+    Attribute.Compound transaction = own != null ? own : transactional(symbol.enclClass());
+    return transaction != null && (own == null || exposed) && rollsBackOnFailure(transaction);
+  }
+
+  private static Attribute.Compound transactional(Symbol symbol) {
+    for (Attribute.Compound annotation : symbol.getAnnotationMirrors()) {
+      if (TRANSACTIONAL.contains(annotation.type.tsym.getQualifiedName().toString())) {
+        return annotation;
+      }
+    }
+    return null;
+  }
+
+  private static boolean rollsBackOnFailure(Attribute.Compound transaction) {
+    boolean spring = transaction.type.tsym.getQualifiedName().toString().startsWith("org.springframework.");
+    for (var entry : transaction.getElementValues().entrySet()) {
+      String name = entry.getKey().getSimpleName().toString();
+      String value = entry.getValue().getValue().toString();
+      boolean scope = name.equals("propagation") || !spring && name.equals("value");
+      if (scope ? !JOINING.contains(value.substring(value.lastIndexOf('.') + 1)) : !HARMLESS.contains(name)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static boolean calledInside(MethodSymbol method, VisitorState state) {
+    boolean[] found = {false};
+    new TreeScanner<Void, Void>() {
+      @Override
+      public Void visitMethodInvocation(MethodInvocationTree node, Void unused) {
+        found[0] |= ASTHelpers.getSymbol(node) == method;
+        return super.visitMethodInvocation(node, unused);
+      }
+
+      @Override
+      public Void visitMemberReference(MemberReferenceTree node, Void unused) {
+        found[0] |= ASTHelpers.getSymbol(node) == method;
+        return super.visitMemberReference(node, unused);
+      }
+    }.scan(state.getPath().getCompilationUnit(), null);
+    return found[0];
   }
 
   static boolean isRepository(ExpressionTree receiver, VisitorState state) {

@@ -33,7 +33,7 @@ const WHOLE = saveCase(
     items.saveAll(all);
   }
 `,
-  [19],
+  [21],
 );
 
 const FOR_EACH = saveCase(
@@ -56,7 +56,7 @@ const FOR_EACH = saveCase(
     items.deleteAll(gone);
   }
 `,
-  [19],
+  [21],
 );
 
 const BUILT = {
@@ -88,7 +88,7 @@ const BUILT = {
     this.items.saveAllAndFlush(toSave);
   }
 `,
-    [19],
+    [21],
   ),
 };
 
@@ -116,7 +116,7 @@ const CONDITIONAL = saveCase(
     items.saveAll(toSave);
   }
 `,
-  [19],
+  [21],
 );
 
 const STREAM = saveCase(
@@ -131,7 +131,7 @@ const STREAM = saveCase(
     items.saveAll(all.stream().filter(item -> item.getName() != null).toList());
   }
 `,
-  [19],
+  [21],
 );
 
 const IDS = saveCase(
@@ -152,7 +152,7 @@ const IDS = saveCase(
     items.deleteAllById(toDelete);
   }
 `,
-  [19],
+  [21],
 );
 
 const NESTED = saveCase(
@@ -179,7 +179,7 @@ const NESTED = saveCase(
     }
   }
 `,
-  [20],
+  [22],
 );
 
 const TOUCHED_BODY = `
@@ -219,7 +219,7 @@ const TOUCHED = {
     this.items.saveAll(toSave);
   }
 `,
-    [19],
+    [21],
   ),
   base: savesClass('SaveTouched', TOUCHED_BODY.replace('SAVE', 'items.save(item);')),
 };
