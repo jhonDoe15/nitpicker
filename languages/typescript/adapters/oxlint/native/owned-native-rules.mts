@@ -4,6 +4,7 @@ import type {
   OwnedNativeRule,
   OxlintDiagnostic,
   RuleMessages,
+  ReportedSpan,
   SpreadCheck,
 } from '../plan/oxlint-shapes.mts';
 
@@ -65,7 +66,7 @@ export function ownedNativeMessage({
 export function ownedNativeChecker(
   filePath: string,
   text: string,
-): (check: SpreadCheck) => boolean {
+): (check: SpreadCheck) => readonly ReportedSpan[] {
   const checkers = new Map(
     [...OWNED_NATIVE_RULES].map(([ruleId, { checkerOf }]) => [ruleId, checkerOf(filePath, text)]),
   );

@@ -164,9 +164,11 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   value, in all production code (not in tests). It reports `...acc` in the callback passed straight
   to `reduce` or `reduceRight` when `acc` is the callback's first of exactly two parameters
   (`xs.reduce((acc, x) => ({ ...acc, [x.id]: x }), {})`, `xs.reduce((acc, x) => [...acc, x], [])`),
-  and a `let` accumulator declared outside a loop whose first reassignment, inside the loop, spreads
-  it into an array or object literal (`out = [...out, x]`). Each step copies everything collected so
-  far, so the work is quadratic. An accumulator that cannot grow is not reported: an object literal
+  and each write inside a loop that spreads a `let` accumulator, declared outside the loop, into an
+  array or object literal (`out = [...out, x]`), reported at that spread. A `let` that is also
+  written some other way (reset, `+=`, a destructuring or a closure that assigns it, a write
+  outside the loop) is not reported. Each step copies everything collected so far, so the work is
+  quadratic. An accumulator that cannot grow is not reported: an object literal
   whose other entries are all fixed keys (`({ ...acc, paid: acc.paid + x.v })`) and an array that is
   cut back at once with literal bounds (`[...acc, x].slice(-3)`, `.slice(0, 3)`). Allowed forms:
   build the result in one pass with `Object.fromEntries(xs.map((x) => [x.key, x.value]))`,
