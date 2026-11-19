@@ -154,6 +154,9 @@ Python effect rules: `accumulator-copy` (a name rebuilt from a copy of itself in
 `transaction.atomic()` or `session.begin()`; `transaction.on_commit` is the allowed form),
 `templated-field-used-in-init` (an Airflow operator `__init__` that checks, defaults or converts a parameter named in
 `template_fields`; a plain assignment and the logic in `execute()` are the allowed form),
+`dataloader-batch-result` (a `batch_load`/`batch_load_fn` method of a `DataLoader` subclass, or a function given to
+`DataLoader(...)`, that returns `[]`, the rows as they come or a dict, or reads `by_id[key]` for each key; one entry per
+key in key order, such as `[by_id.get(key) for key in keys]`, is the allowed form),
 `remote-call-in-transaction` and `remote-call-under-lock` (a remote call while a database transaction or a lock is
 held; a fill-once block under a lock stays allowed), `retry-without-idempotency` (a payment create, message
 publish or `INSERT` without a stable key inside a retry scope) and `dual-write-without-outbox` (a database write
@@ -362,6 +365,12 @@ Redis, `cache-manager`, `keyv` or `node-cache` write, or a `Map` filled with a r
 inside a Prisma `$transaction`, TypeORM `transaction`, Kysely `transaction().execute` or begin/commit scope. The
 allowed form is writing the cache after the transaction call returns (or from a TypeORM `afterTransactionCommit`
 subscriber); the finding names it.
+
+DataLoader batches: `nitpicker/no-dataloader-batch-mismatch` (production source, in `eslint-lint`) reports a function
+given to `new DataLoader(...)` from the `dataloader` package that returns an empty array, the rows of a query as they
+come, a lookup asserted with `!` inside a `keys.map(...)` callback, or a `throw` on a failed lookup there. The allowed form is one entry per key in key
+order (`keys.map((key) => byId.get(key) ?? null)`); the finding names it. The Python preset has the same contract in
+`dataloader-batch-result`.
 
 Remote calls while a resource is held: `nitpicker/no-remote-call-in-transaction` and
 `nitpicker/no-remote-call-under-lock` (production source, in `eslint-lint`, type-aware) report a remote call,

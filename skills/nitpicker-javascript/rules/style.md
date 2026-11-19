@@ -115,6 +115,7 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `leftJoinAndSelect`), never with `await item.customer` once per item (`nitpicker/no-lazy-relation-in-loop`).
 - Write a cache (`redis.set`/`del`, `cache-manager`, a `Map` filled with a new row) after the transaction call returns, not inside
   its callback (`nitpicker/no-cache-write-in-transaction`).
+- A DataLoader batch function returns one entry per key in the order of the keys: `keys.map((key) => byId.get(key) ?? null)`, never the rows as they come, `[]` or `byId.get(key)!` (`nitpicker/no-dataloader-batch-mismatch`).
 - Keep a remote call out of a transaction and out of a lock: call before the transaction starts or after it
   commits (and outside the lock), and keep only the shared-state change under the lock
   (`nitpicker/no-remote-call-in-transaction`, `nitpicker/no-remote-call-under-lock`).

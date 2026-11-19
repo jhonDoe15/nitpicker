@@ -144,6 +144,7 @@ function transactionGuardRules(): RuleEntries {
   return {
     'nitpicker/no-remote-call-in-transaction': 'error',
     'nitpicker/no-cache-write-in-transaction': 'error',
+    'nitpicker/no-dataloader-batch-mismatch': 'error',
     'nitpicker/no-whole-rows-for-one-value': 'error',
     'nitpicker/no-remote-call-under-lock': 'error',
     'nitpicker/no-retry-without-idempotency': 'error',

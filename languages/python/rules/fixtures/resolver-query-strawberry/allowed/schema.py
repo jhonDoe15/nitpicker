@@ -6,9 +6,9 @@ from shop.db import session
 from shop.models import Customer
 
 
-async def load_customers(keys: list[int]) -> list[Customer]:
+async def load_customers(keys: list[int]) -> list[Customer | None]:
     rows = {row.id: row for row in await session.scalars(Customer.select_in(keys))}
-    return [rows[key] for key in keys]
+    return [rows.get(key) for key in keys]
 
 
 @strawberry.type
