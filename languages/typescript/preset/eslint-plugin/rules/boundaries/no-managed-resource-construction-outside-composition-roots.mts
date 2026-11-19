@@ -4,6 +4,7 @@ import {
   isCompositionRootFile,
   type CompositionRootOptions,
 } from './composition-root-files.mts';
+import { calleeNameOf } from '../typed/syntax-views.mts';
 
 const MANAGED_SUFFIXES = [
   'Service',
@@ -37,22 +38,8 @@ const RESOURCE_FACTORY =
   /^create(?:Server|SecureServer|Client|Pool|Connection|Worker|Transport|Queue|Cache|Store|Scheduler)$/;
 const RESOURCE_FACTORY_MEMBERS = new Set(['axios.create']);
 
-function calleeName(callee: TSESTree.Node): string | undefined {
-  if (callee.type === AST_NODE_TYPES.Identifier) {
-    return callee.name;
-  }
-  if (
-    callee.type === AST_NODE_TYPES.MemberExpression &&
-    !callee.computed &&
-    callee.property.type === AST_NODE_TYPES.Identifier
-  ) {
-    return callee.property.name;
-  }
-  return undefined;
-}
-
 function isResourceFactoryCall(callee: TSESTree.Node): boolean {
-  const name = calleeName(callee);
+  const name = calleeNameOf(callee);
   if (name === undefined) {
     return false;
   }
@@ -92,14 +79,14 @@ export const rule: TSESLint.RuleModule<'outsideRoot', CompositionRootOptions> = 
 
     return {
       NewExpression(node: TSESTree.NewExpression) {
-        const name = calleeName(node.callee);
+        const name = calleeNameOf(node.callee);
         if (name !== undefined && MANAGED_RESOURCE.test(name) && !VALUE_OBJECT.test(name)) {
           report(node, name);
         }
       },
       CallExpression(node: TSESTree.CallExpression) {
         if (isResourceFactoryCall(node.callee)) {
-          report(node, calleeName(node.callee));
+          report(node, calleeNameOf(node.callee));
         }
       },
     };

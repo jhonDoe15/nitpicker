@@ -94,14 +94,11 @@ function blockEnd(source, index) {
   return open >= 0 ? source.partner[open] : source.tokens.length;
 }
 
-function reportFor(source, statement, frameRange) {
+function rejectingFindings({ source, statement, branch, frameText }) {
   const { tokens } = source;
   const condition = { from: statement.open + 1, to: statement.close };
-  const branch = branchOf(source, statement.close);
-  const frameText = joined(source, statement.open + 1, frameRange.to);
   const found = [];
-  const rejecting = splitOn(source, condition, '||');
-  for (const part of rejecting) {
+  for (const part of splitOn(source, condition, '||')) {
     const pair = pairOf(joined(source, part.from, part.to), REJECTING);
     const later = joined(source, part.to, statement.close);
     const after =
@@ -117,6 +114,13 @@ function reportFor(source, statement, frameRange) {
       });
     }
   }
+  return found;
+}
+
+function acceptingFindings({ source, statement, branch, frameText }) {
+  const { tokens } = source;
+  const condition = { from: statement.open + 1, to: statement.close };
+  const found = [];
   for (const part of splitOn(source, condition, '&&')) {
     const pair = pairOf(joined(source, part.from, part.to), ACCEPTING);
     const later = `${joined(source, part.to, statement.close)}${joined(source, branch.from, branch.to)}`;
@@ -130,6 +134,16 @@ function reportFor(source, statement, frameRange) {
     }
   }
   return found;
+}
+
+function reportFor(source, statement, frameRange) {
+  const context = {
+    source,
+    statement,
+    branch: branchOf(source, statement.close),
+    frameText: joined(source, statement.open + 1, frameRange.to),
+  };
+  return [...rejectingFindings(context), ...acceptingFindings(context)];
 }
 
 function findIn(source, range, frame) {

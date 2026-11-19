@@ -27,10 +27,9 @@ export function leaves(statement: TSESTree.Statement): boolean {
     if (LEAVES.has(current.type)) {
       return true;
     }
-    if (current.type === AST_NODE_TYPES.BlockStatement) {
-      for (const inner of current.body) {
-        pending.push(inner);
-      }
+    const inner = current.type === AST_NODE_TYPES.BlockStatement ? current.body : [];
+    for (const item of inner) {
+      pending.push(item);
     }
   }
   return false;

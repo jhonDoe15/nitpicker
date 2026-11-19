@@ -70,7 +70,9 @@ type Step = { readonly node: Node; readonly depth: number; readonly path: readon
 type Found = { readonly leaf: Node; readonly path: readonly number[] };
 type Expansion = { readonly leaf: Node | undefined; readonly next: readonly Step[] };
 
-function child(step: Step, node: Node, index: number, depth = step.depth): Step {
+type Child = { readonly node: Node; readonly index: number; readonly depth?: number };
+
+function child(step: Step, { node, index, depth = step.depth }: Child): Step {
   return { node, depth, path: [...step.path, index] };
 }
 
@@ -78,21 +80,27 @@ function expand(context: SourceContext, step: Step): Expansion {
   const target = chained(unwrapped(step.node));
   const inner = parts(target);
   if (inner.length > 0) {
-    return { leaf: undefined, next: inner.map((part, index) => child(step, part, index)) };
+    return {
+      leaf: undefined,
+      next: inner.map((part, index) => child(step, { node: part, index })),
+    };
   }
   if (isEscapeCall(target) || isEscapingReplace(target) || isNamedEscaped(target)) {
     return { leaf: undefined, next: [] };
   }
   const receiver = textReceiver(target);
   if (receiver !== undefined) {
-    return { leaf: undefined, next: [child(step, receiver, 0)] };
+    return { leaf: undefined, next: [child(step, { node: receiver, index: 0 })] };
   }
   const resolved =
     target.type === AST_NODE_TYPES.Identifier && step.depth < MAX_DEPTH
       ? resolveConstant(context, target)
       : undefined;
   if (resolved !== undefined && resolved !== target) {
-    return { leaf: undefined, next: [child(step, resolved, 0, step.depth + 1)] };
+    return {
+      leaf: undefined,
+      next: [child(step, { node: resolved, index: 0, depth: step.depth + 1 })],
+    };
   }
   const isLeaf =
     target.type === AST_NODE_TYPES.Identifier || target.type === AST_NODE_TYPES.MemberExpression;

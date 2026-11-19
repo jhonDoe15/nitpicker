@@ -124,12 +124,12 @@ function chainNames(node: Node): string[] {
   const names: string[] = [];
   const pending = [node];
   for (const current of pending) {
-    if (current.type === AST_NODE_TYPES.MemberExpression) {
-      if (!current.computed && current.property.type === AST_NODE_TYPES.Identifier) {
-        names.push(current.property.name);
-      }
-      pending.push(current.object);
+    if (current.type !== AST_NODE_TYPES.MemberExpression) {
+      continue;
     }
+    const named = !current.computed && current.property.type === AST_NODE_TYPES.Identifier;
+    names.push(...(named ? [current.property.name] : []));
+    pending.push(current.object);
   }
   return names;
 }
