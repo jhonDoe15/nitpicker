@@ -19,5 +19,6 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Dependencies: every package production code imports is a production dependency of the project
   (pyproject, Pipfile, requirements or setup.cfg); test-only packages go in a dev group; remove a
   dependency nothing uses.
+- Values in an LDAP filter go through `escape_filter_chars` (`ldap3.utils.conv`, `ldap.filter`) or `filter_format`; a SCIM filter value is quoted and escaped (`json.dumps(value)`) (`filter-unescaped-value`).
 - DataLoader batch functions return one entry per key in the order of the keys: `[by_id.get(key) for key in keys]` (`None` for a missing row), never `by_id[key]`, `[]` or the rows as they come (`dataloader-batch-result`).
 - Airflow operators: `__init__` only assigns a parameter named in `template_fields` (`self.sql_params = sql_params`); validate, default and convert it in `execute()` (`templated-field-used-in-init`).
