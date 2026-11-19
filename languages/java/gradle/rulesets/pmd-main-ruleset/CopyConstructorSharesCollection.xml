@@ -1,0 +1,34 @@
+  <rule name="CopyConstructorSharesCollection" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This copy constructor assigns the List, Set, Map or Collection field of its parameter as is, and the class changes that field elsewhere, so the copy and the original share one instance: a change through one shows in the other. Copy it (`this.items = new ArrayList&lt;&gt;(other.items)`, `new LinkedHashMap&lt;&gt;(other.map)`, or `List.copyOf(other.items)` when it is never changed). An exception fits only for a collection that both objects must share on purpose.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $changing := ('add', 'addAll', 'put', 'putAll', 'remove', 'removeIf', 'clear', 'putIfAbsent', 'computeIfAbsent',
+                  'merge', 'compute', 'set', 'removeAll', 'retainAll', 'sort', 'addFirst', 'addLast', 'offer', 'push',
+                  'poll', 'pop', 'replaceAll')
+return //ConstructorDeclaration[FormalParameters[@Size = 1]/FormalParameter
+    [ClassType/@SimpleName = ancestor::ClassDeclaration[1]/@SimpleName]
+    [not(matches(ClassType/@SimpleName, 'Builder$'))]]
+  /Block/ExpressionStatement/AssignmentExpression[@Operator = '=']
+  [*[1][self::FieldAccess[ThisExpression] or self::VariableAccess]]
+  [*[2][(self::FieldAccess or self::MethodCall[lower-case(@MethodName) = lower-case(concat('get', ../*[1]/@Name))])
+         and *[1][self::VariableAccess]
+                 [@Name = ancestor::ConstructorDeclaration/FormalParameters/FormalParameter/VariableId/@Name]
+         and (pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map'))]]
+  [let $f := *[1]/@Name
+   return empty(ancestor::ClassBody[1]//(VariableDeclarator[VariableId/@Name = $f]/ConstructorCall
+                                          | AssignmentExpression[*[1]/@Name = $f]/ConstructorCall)
+                  [pmd-java:typeIs('java.util.concurrent.ConcurrentMap')])
+      and exists(ancestor::ClassBody[1]//MethodCall[@MethodName = $changing]
+                   [*[1][(self::VariableAccess or self::FieldAccess) and @Name = $f]]
+                   [empty(ancestor::ConstructorDeclaration | ancestor::Initializer)]
+                   [empty(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression]
+                            [1]//VariableId[@Name = $f][not(parent::VariableDeclarator[parent::FieldDeclaration])])]
+                   [not(some $a in ancestor::MethodDeclaration[1]//AssignmentExpression
+                               [*[1][(self::VariableAccess or self::FieldAccess) and @Name = $f]]
+                        satisfies $a << .)])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
