@@ -19,7 +19,6 @@ import {
   securitySupportGlobs,
   type SecurityFacts,
 } from './security-facts.mts';
-import { valueAndWebRules } from '../production/value-web-rules.mts';
 
 export type PolicyOptions = LearnedConfig & {
   readonly react?: unknown;
@@ -126,7 +125,6 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-repeated-string-literal': 'error',
     'nitpicker/no-hardcoded-secret': 'error',
     'nitpicker/no-secret-in-log': 'error',
-    ...valueAndWebRules,
     'nitpicker/no-child-exit-event': 'error',
     'nitpicker/no-pipe-dropping-errors': 'error',
     'nitpicker/no-unclosed-file-descriptor': 'error',
@@ -203,7 +201,6 @@ function productionGuardRules({
     'nitpicker/no-sync-node-api-in-async': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
     'nitpicker/timeout-abandons-operation': ['error', httpClientOptions({ react, security })],
-    'nitpicker/no-lossy-json-stringify': 'error',
     ...productionGuardEntries,
     ...learnedRules(learned),
     ...securityRules({ react, security }),
