@@ -48,6 +48,7 @@ const RULES_BUILT_FROM = new Map([
   ]),
   ...ENFORCED_MUTATION_STATUSES.map((status) => [mutantRuleId(status), 'mutantRuleId']),
   [RULE_IDS.shorterCondition, 'shorter-boolean-logic'],
+  [PACKAGE_RULE_IDS.unusedDependency, 'unused-declared-dependency'],
   [RULE_IDS.featureInternalImport, 'feature-internals-only-through-index'],
   [RULE_IDS.sharedImportsFeature, 'shared-does-not-import-features'],
   [RULE_IDS.featureCycle, 'no-production-cycles'],

@@ -1,3 +1,4 @@
+import path from 'node:path';
 import type { Linter } from 'eslint';
 import regexp from 'eslint-plugin-regexp';
 import tseslint from 'typescript-eslint';
@@ -136,6 +137,9 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-incomplete-cache-key': 'error',
     'nitpicker/no-listen-on-all-interfaces': 'error',
     'nitpicker/no-dropped-log-arguments': 'error',
+    'nitpicker/no-dropped-delegate-result': 'error',
+    'nitpicker/no-swapped-arguments': 'error',
+    'nitpicker/no-interpolated-log-message': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
       {
@@ -156,6 +160,7 @@ function transactionGuardRules(): RuleEntries {
   return {
     'nitpicker/no-remote-call-in-transaction': 'error',
     'nitpicker/no-cache-write-in-transaction': 'error',
+    'nitpicker/no-dataloader-batch-mismatch': 'error',
     'nitpicker/no-whole-rows-for-one-value': 'error',
     'nitpicker/no-remote-call-under-lock': 'error',
     'nitpicker/no-retry-without-idempotency': 'error',
@@ -194,6 +199,7 @@ function productionGuardRules({
     'nitpicker/no-orm-query-logging': 'error',
     'nitpicker/no-orm-schema-sync': 'error',
     'nitpicker/no-unindexed-foreign-key': 'error',
+    'nitpicker/no-unversioned-orm-entity': 'error',
     'nitpicker/no-shell-string-command': 'error',
     'nitpicker/require-process-timeout': 'error',
     'nitpicker/require-client-timeout': 'error',
@@ -208,7 +214,10 @@ function productionGuardRules({
 }
 
 export function configFileGlobsFor(layout: Pick<PolicyLayout, 'sourceRoots'>): string[] {
-  return layout.sourceRoots.flatMap((root) => [`${root}/**/*.config.*`, `${root}/**/.*rc.*`]);
+  return layout.sourceRoots.flatMap((root) => [
+    path.posix.join(root, '**/*.config.*'),
+    path.posix.join(root, '**/.*rc.*'),
+  ]);
 }
 
 export function productionLayoutConfigFor(

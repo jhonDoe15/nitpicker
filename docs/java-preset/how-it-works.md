@@ -139,3 +139,29 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   on the single-module fixture (median of 4) and 23.0 s against 28.7 s on the three-module fixture
   (median of 3). With an injected process runner (tests) the tools run one after another in the
   calling process.
+
+## Large Gradle builds
+
+- **Projects without sources.** `nitpickerPmd` is skipped, with an empty `pmd.sarif`, in a project
+  that has no main or test source folder, such as the root or an aggregate parent of a
+  multi-project build. PMD reads an empty `--dir` as its working folder, the project folder, so it
+  used to scan the sources of every subproject again: on a 436-subproject build that was about 68%
+  of all PMD time.
+- **Memory.** Gradle runs size the tool JVMs from the machine's memory, as Maven runs do: every JVM
+  that sets no heap of its own (PMD, SpotBugs, Error Prone, the structure and effects programs)
+  gets `-XX:MaxRAMPercentage` of 75% divided by the tool slots, through `JDK_JAVA_OPTIONS`
+  (a heap the user already set there is kept). When memory allows fewer slots than there are
+  CPUs, `--max-workers` drops to the slot count (or to the build's own lower
+  `org.gradle.workers.max`). When the daemon or a JVM runs out of memory, the tool error names
+  the machine's memory and the number of tool JVMs.
+- **Isolated Projects.** When the build's `gradle.properties` or the one in the Gradle user home
+  turns Isolated Projects on (`org.gradle.isolated-projects`, or its earlier name
+  `org.gradle.unsafe.isolated-projects`), nitpicker turns it off for its own run with the same
+  property set to `false` on the command line, since it runs with `--no-configuration-cache`.
+- **Dependency verification.** nitpicker's own tool configurations (its `nitpicker*`
+  configurations, the JaCoCo agent it pins, and the Error Prone and PIT launcher classpaths) are
+  not verified against the build's `gradle/verification-metadata.xml`, which does not list them; the
+  project's own configurations are still verified.
+- **`check` that depends on `jacocoTestReport`.** The walk over `check`'s dependencies that finds
+  the test tasks does not enter JaCoCo report tasks or nitpicker's own tasks, whose dependencies
+  are that walk again, and quick runs leave the project's `jacocoTestReport` as it is.

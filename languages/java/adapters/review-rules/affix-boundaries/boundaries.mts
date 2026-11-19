@@ -1,6 +1,6 @@
 import { lastName } from '../token-calls/calls.mts';
 import { isSeparatorName } from './names.mts';
-import { splitTopLevel, startsNewLine } from '../max-value-sums/source-file.mts';
+import { splitTopLevel, startsNewLine } from '../max-value-sums/source/source-file.mts';
 import type { BareSource, Span } from '../max-value-sums/sum-types.mts';
 
 type Pending = { readonly range: Span; readonly depth: number };

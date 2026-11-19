@@ -1,11 +1,10 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
-  markedProbeLines,
-  probeFindingsIn,
+  markedRuleLines as markedLinesIn,
+  reportedRuleLines,
   usePmdProbe,
 } from '../../test-support/pmd/pmd-probe.mts';
-import type { JavaFinding } from '../../../typed/java-values.mts';
 import { textOf } from '../../../../../../shared/values/readers.mts';
 
 const enabled = process.env['NITPICKER_JAVA_E2E'] === '1';
@@ -22,30 +21,14 @@ const SIMPLER_FORMS = {
   NegatedOperands: ['!a && !b is !(a || b)', '!a || !b is !(a && b)'],
 };
 const RULES = new Set(Object.keys(SIMPLER_FORMS));
-const MARKER = /\/\/ violation: (\w+)$/u;
-
-function markedLines(role: string): string[] {
-  return markedProbeLines(
-    fixtures,
-    MARKER,
-    (location, match) => `src/${role}/java/demo/${location} ${match[1] ?? ''}`,
-  ).sort();
-}
-
-function reportedLines(findings: readonly JavaFinding[], role: string): string[] {
-  return probeFindingsIn(findings, role, RULES)
-    .map(({ rule, path: file, location }) => `${file}:${String(location?.line)} ${rule}`)
-    .sort();
-}
-
 describe.skipIf(!enabled)('boolean logic with an exact simpler form', () => {
   const probe = usePmdProbe('simpler-logic', gradle, { fixtures, target: 'java/demo' });
 
   it.each(['main', 'test'])(
     'reports each marked line in %s sources, and none of the simpler forms',
     (role) => {
-      expect(reportedLines(probe.findings, role)).toEqual(markedLines(role));
-      expect(reportedLines(probe.findings, role)).toHaveLength(18);
+      expect(reportedRuleLines(probe.findings, role, RULES)).toEqual(markedLinesIn(fixtures, role));
+      expect(reportedRuleLines(probe.findings, role, RULES)).toHaveLength(18);
     },
   );
 

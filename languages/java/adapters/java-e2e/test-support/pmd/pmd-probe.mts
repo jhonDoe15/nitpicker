@@ -147,7 +147,7 @@ export function markedRoleLines(
   return markedProbeLines(fixtures, marker, (location) => `${prefixOf(role)}/${location}`).sort();
 }
 
-export function probeFindingsIn(
+function probeFindingsIn(
   findings: readonly JavaFinding[],
   role: string,
   rules: ReadonlySet<string>,
@@ -173,6 +173,26 @@ export function reportedRoleLines(
   rules: ReadonlySet<string>,
 ): string[] {
   return reportedProbeLines(findings, role, rules).sort();
+}
+
+const RULE_MARKER = /\/\/ violation: (\w+)$/u;
+
+export function markedRuleLines(fixtures: string, role: string): string[] {
+  return markedProbeLines(
+    fixtures,
+    RULE_MARKER,
+    (location, match) => `src/${role}/java/demo/${location} ${match[1] ?? ''}`,
+  ).sort();
+}
+
+export function reportedRuleLines(
+  findings: readonly JavaFinding[],
+  role: string,
+  rules: ReadonlySet<string>,
+): string[] {
+  return probeFindingsIn(findings, role, rules)
+    .map(({ rule, path: file, location }) => `${file}:${String(location?.line)} ${rule}`)
+    .sort();
 }
 
 export function routedMessages(

@@ -1,4 +1,4 @@
-import { between } from './source-file.mts';
+import { between } from './source/source-file.mts';
 import type { SourceFile, Span } from './sum-types.mts';
 
 const COMPARISONS = new Set(['<', '>', '<=', '>=', '==', '!=']);

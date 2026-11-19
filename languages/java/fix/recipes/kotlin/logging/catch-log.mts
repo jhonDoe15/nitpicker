@@ -1,5 +1,8 @@
 import { swallowedCatchBlocks as untypedSwallowedCatchBlocks } from '../../../../adapters/kotlin/scan/rules/catches.mts';
-import { catchLogCalls as untypedCatchLogCalls } from '../../../../source/catch-logging.mts';
+import {
+  catchLogCalls as untypedCatchLogCalls,
+  endOfText,
+} from '../../../../source/catch-logging.mts';
 import { isKotlinTestPath, kotlinRecipe } from '../shared/kotlin-recipe.mts';
 
 type LoggerCall = {
@@ -21,10 +24,6 @@ const catchLogCalls: (
 ) => readonly CaughtLog[] = untypedCatchLogCalls;
 
 const RULE = { tool: 'detekt', rule: 'catch-log-without-exception' };
-
-function endOfText(code: string, from: number): number {
-  return code.slice(0, from).trimEnd().length;
-}
 
 function insertion(
   code: string,

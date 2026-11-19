@@ -1,3 +1,8 @@
+import { rule as ruleRequireClientTimeout } from '../rules/clients/require-client-timeout.mts';
+import { rule as ruleRequireErrorListener } from '../rules/events/require-error-listener.mts';
+import { rule as ruleRequireHttpTimeout } from '../rules/security/http/require-http-timeout.mts';
+import { rule as ruleRequireProcessTimeout } from '../rules/processes/require-process-timeout.mts';
+import { rule as ruleRequirePromiseReject } from '../rules/promises/executors/require-promise-reject.mts';
 import { rule as ruleRequireTestProcessTimeout } from '../rules/test-runtime/processes/timeouts/require-test-process-timeout.mts';
 import { rule as ruleReusableObjectPerCall } from '../rules/reuse/reusable-object-per-call.mts';
 import { rule as ruleSettlePendingOnClose } from '../rules/lifecycles/pending/settle-pending-on-close.mts';
@@ -14,6 +19,11 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'require-client-timeout': ruleRequireClientTimeout,
+  'require-error-listener': ruleRequireErrorListener,
+  'require-http-timeout': ruleRequireHttpTimeout,
+  'require-process-timeout': ruleRequireProcessTimeout,
+  'require-promise-reject': ruleRequirePromiseReject,
   'require-test-process-timeout': ruleRequireTestProcessTimeout,
   'reusable-object-per-call': ruleReusableObjectPerCall,
   'settle-pending-on-close': ruleSettlePendingOnClose,

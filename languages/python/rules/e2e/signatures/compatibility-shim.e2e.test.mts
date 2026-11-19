@@ -3,6 +3,7 @@ import { useScripts, inFile } from '../../test-support/python-rule-scripts.mts';
 
 const { findingsOf, itOutcomes, describeRules } = useScripts({
   enabled: process.env['NITPICKER_PYTHON_E2E'] === '1',
+  hidden: ['warning-filter-in-function'],
 });
 
 describeRules('compatibility-shim', () => {

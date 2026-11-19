@@ -11,3 +11,9 @@ export function isAbstract(
     'u',
   ).test(text);
 }
+
+const NAME_LITERAL = /"([\w$]+(?:\.[\w$]+)*)"/gu;
+
+export function namesProductionCode(text: string, names: ReadonlySet<string>): boolean {
+  return [...text.matchAll(NAME_LITERAL)].some((match) => names.has(match[1] ?? ''));
+}

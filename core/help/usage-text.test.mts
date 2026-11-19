@@ -65,7 +65,7 @@ const EXPECTED_USAGE_HEAD = [
   '  --rule <substring>               List the findings whose rule matches; with --fix, apply only the fixes of tool/rule (repeatable).',
   '  --label <label>                  Run only the checks that can report these labels and list only such findings (repeatable).',
   '  --project <path>                 In a monorepo, run only this project: folder, package name or quoted glob (repeatable).',
-  '  --jobs <n>                       In a monorepo, run up to n projects at once (default: a quarter of the CPUs).',
+  '  --jobs <n>                       In a monorepo, run up to n projects at once (default: by project size).',
   '  --details                        Print every new and held finding with its full message.',
   '  --json                           Print one compact JSON result on stdout instead of the summary.',
   '  --quick                          Run only the fast checks and skip the tests and what builds on them.',

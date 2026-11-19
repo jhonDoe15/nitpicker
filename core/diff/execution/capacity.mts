@@ -28,6 +28,9 @@ export function createWeightedSemaphore(capacity: number): Semaphore {
 
   return {
     acquire(weight: number): Promise<Release> {
+      if (weight === 0) {
+        return Promise.resolve(() => undefined);
+      }
       return new Promise((resolve) => {
         waiting.push({ weight, resolve });
         drain();

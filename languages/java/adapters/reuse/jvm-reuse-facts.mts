@@ -19,7 +19,7 @@ import {
   projectSourceFiles as untypedProjectSourceFiles,
 } from '../review-rules/java-sources.mts';
 import { readJvmUnits as untypedReadJvmUnits } from '../near-duplicates/jvm-trees.mts';
-import { toolSlots } from '../../maven/parallel/tool-slots.mts';
+import { toolSlots } from '../../maven/parallel/slots/tool-slots.mts';
 import { definitionKey } from './jvm-definition-keys.mts';
 import { importFacts } from './jvm-reference-uses.mts';
 import { fileBindings, projectIndex, referenceScope } from './jvm-references.mts';

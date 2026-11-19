@@ -2,6 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach } from 'vitest';
+import type { ReviewFinding } from '../../kotlin/review-rules/typed/review-finding-types.mts';
+import type { MainSourceOptions } from '../java-sources.mts';
 
 export const PROJECT = {
   qualifier: '',
@@ -33,4 +35,13 @@ export function useTempProjects(
     }
     return root;
   };
+}
+
+export function useScanner(
+  prefix: string,
+  read: (projectRoot: string, options: MainSourceOptions) => ReviewFinding[],
+): (file: string, text: string, kotlin: boolean) => ReviewFinding[] {
+  const projectWith = useTempProjects(prefix);
+  return (file, text, kotlin) =>
+    read(projectWith({ [file]: text }), { projects: [PROJECT], kotlin });
 }

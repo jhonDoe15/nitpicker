@@ -5,7 +5,8 @@ export const DEPENDENCY_PATH_PATTERN = '(?:^|/)node_modules(?:/|$)';
 const DEPENDENCY_PATH = new RegExp(DEPENDENCY_PATH_PATTERN);
 
 export function codeFilesUnder(layout, projectRoot, roots) {
-  return roots.flatMap((root) => codeFilesUnderRoot(layout, projectRoot, root).toSorted());
+  const walked = roots.includes('.') ? ['.'] : [...new Set(roots)];
+  return walked.flatMap((root) => codeFilesUnderRoot(layout, projectRoot, root).toSorted());
 }
 
 function codeFilesUnderRoot(layout, projectRoot, root) {

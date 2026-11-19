@@ -91,6 +91,7 @@ describe('running the rules script', () => {
       modules: { 'src/demo/a.py': 'demo.a' },
       published: false,
       entryPoints: [],
+      blockingGetters: [],
       contractFaces: {},
     });
     expect(readFileSync(path.join(reportRoot, 'python-files.txt'), 'utf8')).toBe('src/demo/a.py');

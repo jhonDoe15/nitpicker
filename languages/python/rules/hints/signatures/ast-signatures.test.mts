@@ -15,9 +15,19 @@ describe('signature rule messages', () => {
       '`page(limit)` replaces a falsy argument with a default, so `0`, `""`, `[]` and `False` count as not given',
     ],
     [
+      'number-truthiness',
+      'run(state)',
+      '`run(state)` is a number, zero duration or queryset tested for truth, so `0` or an empty value reads as false or missing',
+    ],
+    [
       'null-branch-fall-through',
       'value|value.name',
       'The null branch handles `value` and then falls through to `value.name`, which uses `value`',
+    ],
+    [
+      'uninjectable-delay',
+      'time.sleep|RETRY_DELAY|2000|poll',
+      '`time.sleep` waits RETRY_DELAY (2000 ms), a module constant that public `poll` cannot override, so a test must wait it out or fake the clock',
     ],
     [
       'parameter-mutation',
@@ -25,6 +35,16 @@ describe('signature rule messages', () => {
       '`names.append` changes the argument the caller passed to `collect`',
     ],
     ['parameter-mutation', 'odd', '`odd` changes the argument the caller passed in'],
+    [
+      'shared-state-mutation',
+      'DEFAULTS in UserConfig',
+      '`DEFAULTS` is a module-level collection that `UserConfig` keeps by reference and then changes, so the shared default changes for every other user',
+    ],
+    [
+      'shared-state-mutation',
+      'get_items()',
+      '`get_items()` returns the same cached list, dict or set to every caller, and a caller changes it, so later calls get the changed value',
+    ],
     [
       'compatibility-shim',
       '__getattr__',
@@ -61,6 +81,10 @@ describe('signature rule messages', () => {
       'pattern-translation',
       'like|term',
       "`term` is turned into a SQL `LIKE` pattern by `replace` calls that leave the target's metacharacters unescaped",
+    [
+      'swapped-arguments',
+      'docs|proc|pipe|docs',
+      '`docs` is passed as `proc` and `pipe` as `docs`; did you swap them?',
     ],
   ])('describe %s for %s', (rule, subject, description) => {
     expect(describeRuleFinding(rule, subject)).toBe(description);
@@ -69,8 +93,12 @@ describe('signature rule messages', () => {
   it.each([
     ['tri-state-boolean', 'an enum'],
     ['falsy-default', 'is not None'],
+    ['number-truthiness', 'qs.exists()'],
+    ['presence-truthiness', 'table.get(key)'],
     ['parameter-mutation', 'Build and return a new value'],
+    ['shared-state-mutation', 'copy.deepcopy(DEFAULTS)'],
     ['compatibility-shim', 'delete the old name'],
+    ['swapped-arguments', 'order of the parameters'],
   ])('name the allowed form of %s and end with the exception route', (rule, form) => {
     const { message } = withHint({
       tool: RULES_TOOL,

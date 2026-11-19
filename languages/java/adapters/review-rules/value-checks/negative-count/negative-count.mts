@@ -1,4 +1,4 @@
-import { forward, splitTopLevel } from '../../max-value-sums/source-file.mts';
+import { forward, splitTopLevel } from '../../max-value-sums/source/source-file.mts';
 import { textOf } from '../../token-calls/calls.mts';
 import { declarations, eachFrame, ownUses } from '../scan.mts';
 import type { ValueCheck, ValueFound } from '../scan.mts';

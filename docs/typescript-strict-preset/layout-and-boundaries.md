@@ -35,7 +35,15 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `architecture/domain-packages.mjs`, beside the network, database, logger and ID packages the
   dependency rules keep out of `domain/`.
 - Shared code does not import features. Features do not import the composition root. Import cycles
-  are not allowed.
+  are not allowed: dependency-cruiser's `no-production-cycles` reports a cycle between modules, and
+  `package-cycle` (the `coupling` check, TypeScript and JavaScript presets alike) reports one finding on
+  each folder of a cycle between folders, such as `orders/a.ts` importing `billing/b.ts` while
+  `billing/c.ts` imports `orders/d.ts`, where no module is in a cycle. A folder is the directory of a
+  production module, a type-only import is not an edge, and neither is an import between a folder and its own
+  subfolder (a barrel next to its subfolders is fine). A cycle that a reported `feature-cycle`
+  fully explains (its folders lie in two or more features of that cycle, and removing the edges of
+  that cycle leaves none) is left to `feature-cycle`. The rule takes `exceptions` on the path of the
+  folder's first module.
 - A feature's `index.ts` is its contract, so it does not hand out a persistence handle or a web
   request or response object (`nitpicker/contract-infrastructure-type`, type-aware): an exported
   variable that holds one (`export const db = new PrismaClient()`), an exported function, a public

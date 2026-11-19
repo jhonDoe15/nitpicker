@@ -46,7 +46,9 @@ export function restrictedMatcherText(matcher: string): string | undefined {
 
 const NO_ROUTE_RULES = new Set([
   'eslint/unused-disable-directive',
+  'eslint/unused-enable-directive',
   'eslint/inline-config-disabled',
+  'eslint/unattributed-message',
 ]);
 
 export function eslintRoute({ rule, path: relativePath }: RouteSubject): string | undefined {

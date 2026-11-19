@@ -1,4 +1,4 @@
-import { frameAt } from '../max-value-sums/source-file.mts';
+import { frameAt } from '../max-value-sums/source/source-file.mts';
 import { enclosingOpeners } from '../value-checks/scan.mts';
 import { methodCalls } from '../token-calls/calls.mts';
 import type { TokenCall } from '../token-calls/calls.mts';

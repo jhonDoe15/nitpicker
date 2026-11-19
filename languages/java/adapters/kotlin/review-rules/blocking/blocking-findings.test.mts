@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SOURCE_TOOL } from '../review-finding.mts';
+import { SOURCE_TOOL } from '../finding/review-finding.mts';
 import type { FileFacts } from '../test-support/facts.mts';
 import { run, sourceRouted, summary } from '../test-support/facts.mts';
 import type { Loose } from '../test-support/loose-facts.mts';

@@ -1,4 +1,4 @@
-import { startsNewLine } from '../../max-value-sums/source-file.mts';
+import { startsNewLine } from '../../max-value-sums/source/source-file.mts';
 import { declarations, eachFrame, ownUses, statementEnd, textsOf } from '../scan.mts';
 import type { ValueCheck, ValueFound } from '../scan.mts';
 import type { Frame, SourceFile, Span } from '../../max-value-sums/sum-types.mts';

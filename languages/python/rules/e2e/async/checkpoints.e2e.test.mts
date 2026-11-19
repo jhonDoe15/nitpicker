@@ -11,6 +11,7 @@ const RULE = 'timeout-scope-path-without-checkpoint';
 const RUFF_TIMEOUT_MS = 60_000;
 const { outcomes, findingsOf, itOutcomes, describeRules } = useScripts({
   enabled: process.env['NITPICKER_PYTHON_E2E'] === '1',
+  hidden: ['managed-resource-outside-composition-root'],
 });
 
 const inAsync = (head: string, body: string) => `${head}\n\n\nasync def f(flag, items):\n${body}`;

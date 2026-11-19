@@ -8,6 +8,12 @@ const SUBMODULES_FILE = '.gitmodules';
 const SUBMODULE_PATHS = String.raw`^submodule\..*\.path$`;
 const NO_MATCH = 1;
 const GIT_PATHS = ['index', 'info/exclude'];
+const CHECKED = 'checked';
+const STAGED_KINDS = new Map([
+  ['120000', 'link'],
+  ['160000', 'submodule'],
+]);
+const LISTED_KINDS = new Set(['file', 'link']);
 
 function nullSeparated(stdout) {
   return stdout.split('\0').filter(Boolean);
@@ -28,23 +34,40 @@ function registeredSubmodules(directory) {
     .filter((absolute) => hasRepositoryMarker(absolute));
 }
 
-function ownEntries(directory) {
-  const listed = neutralGit(directory, [
+function stagedKinds(stdout) {
+  const kinds = new Map();
+  for (const entry of nullSeparated(stdout)) {
+    const file = entry.slice(entry.indexOf('\t') + 1);
+    const mode = entry.slice(0, entry.indexOf(' '));
+    if (!kinds.has(file)) {
+      kinds.set(file, STAGED_KINDS.get(mode) ?? 'file');
+    }
+  }
+  return kinds;
+}
+
+function ownEntries(directory, pathspecs = []) {
+  const staged = neutralGit(directory, ['ls-files', '-z', '--stage', '--', ...pathspecs]);
+  if (staged === undefined) {
+    return undefined;
+  }
+  const changed = neutralGit(directory, [
     'ls-files',
     '-z',
-    '--cached',
+    '--modified',
     '--others',
     '--exclude-standard',
+    '--',
+    ...pathspecs,
   ]);
-  if (listed === undefined) {
-    return undefined;
+  const kinds = stagedKinds(staged.stdout);
+  for (const file of nullSeparated(changed?.stdout ?? '')) {
+    kinds.set(file, CHECKED);
   }
   const isNested = inheritedRule((relative) =>
     hasRepositoryMarker(path.join(directory, ...relative.split('/'))),
   );
-  return [...new Set(nullSeparated(listed.stdout))].filter(
-    (file) => !(file.endsWith('/') || isNested(path.posix.dirname(file))),
-  );
+  return [...kinds].filter(([file]) => !(file.endsWith('/') || isNested(path.posix.dirname(file))));
 }
 
 function kindOf(file) {
@@ -71,9 +94,17 @@ function gitPathsOf(top) {
 
 function presentEntries(top, prefix, entries) {
   return entries
-    .map((entry) => `${prefix}${entry}`)
-    .map((file) => ({ file, kind: kindOf(path.join(top, ...file.split('/'))) }))
-    .filter(({ kind }) => kind !== undefined);
+    .map(([entry, staged]) => {
+      const file = `${prefix}${entry}`;
+      const kind = staged === CHECKED ? kindOf(path.join(top, ...file.split('/'))) : staged;
+      return { file, kind };
+    })
+    .filter(({ kind }) => LISTED_KINDS.has(kind));
+}
+
+export function listFolder(top, folder) {
+  const entries = ownEntries(top, [`:(literal)${folder}/`]);
+  return entries === undefined ? undefined : presentEntries(top, '', entries);
 }
 
 export function loadTree(top) {

@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   normalizeUri as untypedNormalizeUri,
   prepareSarif as untypedPrepareSarif,
@@ -8,12 +10,14 @@ import {
   listOf,
   type Fields,
 } from '../../../../../../shared/values/readers.mts';
+import { isRuleCrashText } from './pmd-rule-crashes.mts';
 
 type SarifRoots = {
   readonly roots: readonly string[];
   readonly sourceRoots: readonly string[];
   readonly projectRoot: string;
 };
+type ProcessingOptions = SarifRoots & { readonly loggedCrashFiles?: ReadonlySet<string> };
 type Prepared = { readonly runs: readonly { readonly results: readonly unknown[] }[] };
 
 const normalizeUri: (uri: string) => string | undefined = untypedNormalizeUri;
@@ -72,11 +76,33 @@ function relativePath(prepared: unknown): string {
     : '.';
 }
 
+function notifiedFile(notification: Fields, projectRoot: string): string | undefined {
+  const location = listOf(notification['locations'])[0];
+  const uri = fieldOf(fieldOf(fieldOf(location, 'physicalLocation'), 'artifactLocation'), 'uri');
+  if (typeof uri !== 'string') {
+    return undefined;
+  }
+  return uri.startsWith('file:') ? fileURLToPath(uri) : path.resolve(projectRoot, uri);
+}
+
+function isLoggedRuleCrash(
+  notification: Fields,
+  loggedCrashFiles: ReadonlySet<string>,
+  projectRoot: string,
+): boolean {
+  const file = notifiedFile(notification, projectRoot);
+  return (
+    isRuleCrashText(messageText(notification)) && file !== undefined && loggedCrashFiles.has(file)
+  );
+}
+
 export function pmdProcessingErrors(
   log: unknown,
-  { roots, sourceRoots, projectRoot }: SarifRoots,
+  { roots, sourceRoots, projectRoot, loggedCrashFiles = new Set<string>() }: ProcessingOptions,
 ): PmdProcessingError[] {
-  const notifications = notificationsOf(log).filter(isPlainObject);
+  const notifications = notificationsOf(log)
+    .filter(isPlainObject)
+    .filter((notification) => !isLoggedRuleCrash(notification, loggedCrashFiles, projectRoot));
   if (notifications.length === 0) {
     return [];
   }

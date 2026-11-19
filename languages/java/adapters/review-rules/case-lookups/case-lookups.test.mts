@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseSource as parse } from '../max-value-sums/source-file.mts';
+import { parseSource as parse } from '../max-value-sums/source/source-file.mts';
 import { findCaseLookups } from './case-lookups.mts';
 
 function java(members: string) {

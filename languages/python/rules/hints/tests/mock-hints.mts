@@ -33,4 +33,12 @@ export const MOCK_HINTS: readonly RuleHint[] = [
     allowed:
       'Patch the name in the module that looks it up (`patch("shop.checkout.send")` after `from shop.mailer import send` in `shop.checkout`), or have that module import the module (`from shop import mailer`, then `mailer.send(...)`).',
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['internal-module-patch'],
+    describe: (subject: string) =>
+      `The test replaces \`${subject}\`, code of the project itself, by patching it where it lives, so it is tied to the module layout and the real wiring is never exercised`,
+    allowed:
+      'Take the collaborator as a parameter or constructor argument and pass a fake: `Checkout(FakeMailer()).pay()` or `bill(order, mailer=FakeMailer())`. Patch only third-party and standard-library targets (`time.sleep`, `requests.get`). An exception fits only for code that cannot take a parameter, such as a module-level singleton read at import time or a framework hook.',
+  },
 ];

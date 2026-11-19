@@ -52,14 +52,16 @@ export const UNUSED_API_RULES = [
     check: 'structure',
     limit:
       'an optional input no call sets, tests counting only when published: TypeScript, an options property ' +
-      'of an exported function (a non-literal argument sets all); Python, an optional parameter (one with a ' +
+      'of an exported function (a non-literal argument sets all); JavaScript, a property destructured in the ' +
+      'parameter of an exported function, judged from the destructuring and its defaults (no types are read, so ' +
+      'an options parameter that is not destructured is not judged; a non-literal argument sets all); Python, an optional parameter (one with a ' +
       'default) of a public module-level function (no leading underscore, and listed in `__all__` when the ' +
       'module has a literal one); Kotlin, a defaulted parameter of a public top-level, object or companion ' +
       'function (not members or constructors, built by reflection) or of a private or internal function or ' +
       "constructor (its module's calls and tests); Go, an exported field (untagged, not embedded) of " +
       'an `...Options` or `...Opts` struct that an exported function or method takes, or a `WithX` ' +
       'function returning the option type of an exported variadic `...Option` parameter',
-    enforcedBy: { ...TYPESCRIPT_AND_KOTLIN, python: true, go: true },
+    enforcedBy: { ...TYPESCRIPT_AND_KOTLIN, javascript: true, python: true, go: true },
     notApplicable: { java: NO_OPTIONAL_INPUTS },
   },
   {

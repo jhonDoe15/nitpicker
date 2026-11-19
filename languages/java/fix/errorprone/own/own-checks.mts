@@ -10,6 +10,8 @@ const GRADLE_DIRECTORY: string = untypedGradleDirectory;
 export const OWN_CHECKS_DIRECTORY = path.join(GRADLE_DIRECTORY, 'errorprone', 'fix-checks');
 
 const PMD = 'pmd';
+const EFFECTS = 'effects';
+const SPOTBUGS = 'spotbugs';
 
 export const OWN_CHECKS: readonly OwnCheck[] = Object.freeze([
   { check: 'UseStandardCharsets', tool: PMD, safety: SAFE },
@@ -17,6 +19,11 @@ export const OWN_CHECKS: readonly OwnCheck[] = Object.freeze([
   { check: 'SpringRestController', tool: PMD, safety: SAFE },
   { check: 'LogStringConcatenation', tool: PMD, safety: SAFE },
   { check: 'UseCollectionIsEmpty', tool: PMD, safety: SAFE },
+  { check: 'DMI_RANDOM_USED_ONLY_ONCE', tool: SPOTBUGS, safety: SAFE },
+  { check: 'UseEnumCollections', tool: PMD, safety: REVIEW },
+  { check: 'SortForExtreme', tool: PMD, safety: REVIEW },
+  { check: 'PlainTextRegex', tool: PMD, safety: REVIEW },
+  { check: 'DoNotCallGarbageCollectionExplicitly', tool: PMD, safety: REVIEW },
   { check: 'SimplifyBooleanReturns', tool: PMD, safety: SAFE },
   { check: 'SimplifiedTernary', tool: PMD, safety: SAFE },
   { check: 'SimplifyBooleanExpressions', tool: PMD, safety: SAFE },
@@ -29,6 +36,13 @@ export const OWN_CHECKS: readonly OwnCheck[] = Object.freeze([
   { check: 'RetryInTest', tool: PMD, safety: REVIEW },
   { check: 'MutationIgnoreMarker', tool: PMD, safety: REVIEW },
   { check: 'GeneratedOnHandWrittenCode', tool: PMD, safety: REVIEW },
+  { check: 'SpringDataNoSaveInLoop', tool: PMD, safety: REVIEW },
+  { check: 'SpringDataBatchOfOne', tool: PMD, safety: REVIEW },
+  { check: 'EntityLoadedForExistence', tool: EFFECTS, safety: REVIEW },
+  { check: 'ListUsedAsSet', tool: PMD, safety: REVIEW },
+  { check: 'LinearLookupInLoop', tool: PMD, safety: REVIEW },
+  { check: 'ReusableObjectPerCall', tool: PMD, safety: REVIEW },
+  { check: 'IIL_PREPARE_STATEMENT_IN_LOOP', tool: 'spotbugs', safety: REVIEW },
 ]);
 
 const BY_CHECK = new Map(OWN_CHECKS.map((entry) => [entry.check, entry]));

@@ -4,7 +4,7 @@ import { roundTripMessage as untypedRoundTripMessage } from '../../../../../shar
 import type { TripSource } from './trip-types.mts';
 import { callUntyped } from '../../typed/java-values.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
-import { findingFactory as untypedFindingFactory } from '../../kotlin/review-rules/review-finding.mts';
+import { findingFactory as untypedFindingFactory } from '../../kotlin/review-rules/finding/review-finding.mts';
 
 const roundTripMessage: (parts: {
   readonly first: string;

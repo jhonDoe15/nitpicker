@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { resolveLayoutFor } from '../../../preset/layout.mjs';
 import { useFixtureProjects } from '../test-support/fixture-project.mts';
 import { fixLeavingFileUnchanged } from '../test-support/unchanged-fix.mts';
 import { unusedOptionRecipe, unusedPropRecipe } from './unused-members.mts';
@@ -47,6 +48,25 @@ describe('unused member recipes', () => {
         }
         "
       `);
+    });
+
+    it('drops a destructured option of a JavaScript function that no caller sets', () => {
+      const result = projects.fix(
+        {
+          'src/run.js':
+            'export function run(task, { retries = 1, verbose = false }) {\n  return [task, retries];\n}\n',
+          'src/use.js': "import { run } from './run.js';\nrun('a', { retries: 2 });\n",
+        },
+        {
+          recipe: unusedOptionRecipe,
+          rule,
+          changed: ['src/run.js'],
+          inputs: { layout: resolveLayoutFor({ preset: 'javascript' }) },
+        },
+      );
+      expect(result.tree['src/run.js']).toBe(
+        'export function run(task, { retries = 1 }) {\n  return [task, retries];\n}\n',
+      );
     });
 
     it('declines when the function body reads the option', () => {

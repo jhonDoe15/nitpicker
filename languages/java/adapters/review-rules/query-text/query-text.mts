@@ -1,4 +1,4 @@
-import { forward, startsNewLine } from '../max-value-sums/source-file.mts';
+import { forward, startsNewLine } from '../max-value-sums/source/source-file.mts';
 import {
   isFullQuery as untypedIsFullQuery,
   queryProblemMessage as untypedMessage,

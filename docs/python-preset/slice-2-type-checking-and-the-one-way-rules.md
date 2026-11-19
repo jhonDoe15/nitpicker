@@ -65,17 +65,24 @@ through the real tools.
   (the star import itself is `F403`), `SIM105` (the `swallowed-exception` rule below covers that
   form) and `RUF100` (every `noqa` is already a finding). `S110` and `S112` are not selected:
   `swallowed-exception` reports what they did, and more, once and under one id. The shared
-  one-way rules add the groups `G` (logging calls), `N` (PEP 8 naming), `ERA` (commented-out
+  one-way rules add the groups `G` (logging calls), `INT` (gettext calls, with the `lint.flake8-gettext` function names of Django's
+  translation helpers), `N` (PEP 8 naming), `ERA` (commented-out
   code), `ARG` (unused arguments), `DTZ` (datetimes without a zone), `PT` (pytest style), `S` (security)
   and `TRY` (exceptions), the pitfall groups `ASYNC`, `LOG`, `PLE`, `PLW` and `T10`, and the single rules
   `PLR2004`, `PLW0602` and `PLW0603`; the last section of this slice lists each one with its allowed form
-  and the rules of those groups that are left off. The groups `RUF`, `G`, `N`, `DTZ`, `PT`, `S`, `TRY`,
+  and the rules of those groups that are left off. The groups `RUF`, `G`, `INT`, `N`, `DTZ`, `PT`, `S`, `TRY`,
   `ASYNC`, `LOG`, `PLE`, `PLW` and `T10` are selected by listing their stable codes, not by prefix, so a
   later ruff cannot add a rule (or a preview rule) to the gate. `ruffConfigFor`
   (`adapters/configuration/python-ruff-config.mjs`) writes the toml into the report directory
   without the codes that the installed ruff does not know or lists as preview or removed
   (`ruff rule --all --output-format json`), which lets ruff 0.9 up to 0.16 run the same selection;
-  a prefix such as `E4` or `T20` stays when a known rule starts with it. Test files are the ones
+  a prefix such as `E4` or `T20` stays when a known rule starts with it. A code the preset lists that
+  the installed ruff still has in preview (`PLW1514` unspecified-encoding, `RUF071`) runs in a second
+  `ruff check --preview --select <codes>` pass with the same options (like the stable codes the
+  preset selects, a project's own ruff `ignore` does not turn them off), and its results are merged
+  into `ruff.sarif` under their codes
+  (`adapters/project-tools/ruff/preview/ruff-preview.mts`). Preview mode never applies to the main
+  pass, so it does not change what the stable rules report. Test files are the ones
   pytest collects (the `python_files` patterns, `testpaths`, `conftest.py`, any `tests` or `test`
   folder, `test_*.py`, `*_test.py`, and the Django names in a Django project, see
   [runner parity](runner-parity.md)): ruff's `ARG`, `DTZ`, `PLR2004`, `S` and `ASYNC251` findings in them are

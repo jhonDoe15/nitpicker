@@ -23,17 +23,25 @@ const GUARDS_RULES = path.join(GRADLE_DIRECTORY, 'rules/guards-ruleset.xml');
 const HONESTY_RULES = path.join(GRADLE_DIRECTORY, 'rules/test-honesty-ruleset.xml');
 const SPRING_RULES = path.join(GRADLE_DIRECTORY, 'spring-ruleset.xml');
 
+function installFakeJdk(root: string, java: string): void {
+  const bin = path.join(root, 'jdk/bin');
+  mkdirSync(bin, { recursive: true });
+  writeFileSync(path.join(bin, 'java'), java);
+  writeFileSync(path.join(bin, 'javac'), '#!/bin/sh\nexit 0\n');
+  for (const name of ['java', 'javac']) {
+    chmodSync(path.join(bin, name), 0o755);
+  }
+  vi.stubEnv('JAVA_HOME', path.join(root, 'jdk'));
+  vi.stubEnv('XDG_CACHE_HOME', path.join(root, 'cache'));
+}
+
 function workspace(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pmd-'));
   roots.push(root);
-  const java = path.join(root, 'jdk/bin/java');
-  mkdirSync(path.dirname(java), { recursive: true });
-  writeFileSync(
-    java,
+  installFakeJdk(
+    root,
     ['#!/bin/sh', `cat "\${1#@}" > '${path.join(root, 'java-arguments')}'`].join('\n'),
   );
-  chmodSync(java, 0o755);
-  vi.stubEnv('JAVA_HOME', path.join(root, 'jdk'));
   return root;
 }
 
@@ -314,18 +322,17 @@ function fakeCpdJava({
 }): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-cpd-'));
   roots.push(root);
-  const java = path.join(root, 'jdk/bin/java');
-  mkdirSync(path.dirname(java), { recursive: true });
   writeFileSync(path.join(root, 'report'), report);
   writeFileSync(path.join(root, 'stderr'), stderr);
   const script = [
+    `if [ "$1" = -XshowSettings:properties ]; then`,
+    `  printf '    java.vendor = Fake\\n    java.version = 21.0.1\\n' >&2; exit 0`,
+    'fi',
     `cat "\${1#@}" > '${root}/arguments'`,
     `cat '${root}/report' > '${root}/app/target/nitpicker/cpd.xml'`,
     `cat '${root}/stderr' >&2`,
   ];
-  writeFileSync(java, ['#!/bin/sh', ...script, ending].join('\n'));
-  chmodSync(java, 0o755);
-  vi.stubEnv('JAVA_HOME', path.join(root, 'jdk'));
+  installFakeJdk(root, ['#!/bin/sh', ...script, ending].join('\n'));
   return root;
 }
 
@@ -337,19 +344,26 @@ function reportFiles(reportDir: string): (string | undefined)[] {
   );
 }
 
-function cpd(run: { report: string; stderr: string; ending: string }) {
+function cpd(run: { report: string; stderr: string; ending: string; configs?: unknown }) {
   const root = fakeCpdJava(run);
   const basedir = path.join(root, 'app');
   const reportDir = path.join(basedir, 'target/nitpicker');
+  const generatedRoot = path.join(basedir, 'target/generated-sources/proto');
   mkdirSync(path.join(basedir, 'src/main/java'), { recursive: true });
+  mkdirSync(generatedRoot, { recursive: true });
   mkdirSync(reportDir, { recursive: true });
   for (const stale of ['cpd.xml', 'cpd-failed.txt', 'cpd-skipped.txt']) {
     writeFileSync(path.join(reportDir, stale), 'stale');
   }
   runCpd({
-    module: { basedir, sourceRoots: [path.join(basedir, 'src/main/java')], testSourceRoots: [] },
+    module: {
+      basedir,
+      sourceRoots: [path.join(basedir, 'src/main/java'), generatedRoot],
+      testSourceRoots: [],
+    },
     reportDir,
     tools: { pmd: ['/tools/pmd.jar'] },
+    configs: run.configs,
   });
   const tokens = readFileSync(path.join(root, 'arguments'), 'utf8').split('\n');
   return {
@@ -366,10 +380,24 @@ describe.skipIf(process.platform === 'win32')('runCpd', () => {
     expect(run.outputs).toEqual([CPD_XML, undefined, undefined]);
     expect(run.arguments).toEqual([
       '-cp',
-      '/tools/pmd.jar',
-      path.join(GRADLE_DIRECTORY, 'CpdReport.java'),
+      expect.stringMatching(/cpd-report\/[0-9a-f]{64}:\/tools\/pmd\.jar$/u),
+      'CpdReport',
       path.join(run.basedir, 'target/nitpicker/cpd.xml'),
       path.join(run.basedir, 'src/main/java'),
+    ]);
+  });
+
+  it('reads generated source roots only when the project opts in', () => {
+    const opted = cpd({
+      report: CPD_XML,
+      stderr: '',
+      ending: 'exit 0',
+      configs: { generated: { analyze: true } },
+    });
+
+    expect(opted.arguments.slice(-2)).toEqual([
+      path.join(opted.basedir, 'src/main/java'),
+      path.join(opted.basedir, 'target/generated-sources/proto'),
     ]);
   });
 
@@ -391,6 +419,7 @@ describe.skipIf(process.platform === 'win32')('runCpd', () => {
     mkdirSync(path.dirname(java), { recursive: true });
     writeFileSync(java, 'not executable');
     vi.stubEnv('JAVA_HOME', path.join(basedir, 'jdk'));
+    vi.stubEnv('XDG_CACHE_HOME', path.join(basedir, 'cache'));
     mkdirSync(path.join(basedir, 'src/main/java'), { recursive: true });
 
     runCpd({
@@ -401,7 +430,7 @@ describe.skipIf(process.platform === 'win32')('runCpd', () => {
 
     expect(reportFiles(basedir)).toEqual([
       undefined,
-      `EACCES\nspawnSync ${java} EACCES`,
+      `Error\nPMD CPD need the JDK identity, but java -version failed: spawnSync ${java} EACCES`,
       undefined,
     ]);
   });

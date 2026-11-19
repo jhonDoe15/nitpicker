@@ -8,5 +8,5 @@ func Countdown(count int) int {
 	if count == 0 {
 		return 0
 	}
-	return Countdown(count - 1)
+	return Countdown(count - 1) // want self-recursion
 }

@@ -1,3 +1,4 @@
+import { isProjectRoot, rootOf } from '../../layout/source-root/root-paths.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ts } from '../../../typescript-api/typescript-api.mjs';
@@ -25,8 +26,9 @@ function packageRootFinder(projectRoot, layout) {
   return (file) => {
     const directory = path.posix.dirname(file);
     if (!known.has(directory)) {
-      const sourceRoot = layout.sourceRoots.find((root) => file.startsWith(`${root}/`));
-      known.set(directory, manifestDirectory(projectRoot, file) ?? sourceRoot ?? '');
+      const sourceRoot = rootOf(layout.sourceRoots, file);
+      const fallback = sourceRoot === undefined || isProjectRoot(sourceRoot) ? '' : sourceRoot;
+      known.set(directory, manifestDirectory(projectRoot, file) ?? fallback);
     }
     return known.get(directory);
   };

@@ -8,7 +8,7 @@ import {
 } from '../../head-policy.mjs';
 import {
   createContext as untypedCreateContext,
-  isTypeScriptFile as untypedIsTypeScriptFile,
+  isAnalyzedFile as untypedIsAnalyzedFile,
 } from '../context.mjs';
 import { unusedApiFindings as untypedUnusedApiFindings } from '../findings.mjs';
 import { collectReferences as untypedCollectReferences } from '../references/references.mjs';
@@ -30,11 +30,8 @@ export type Context = { readonly owned: unknown };
 type IsExcepted = (rule: string, ...candidates: readonly unknown[]) => boolean;
 
 export const exceptionMatcher: (exceptions: unknown[]) => IsExcepted = untypedExceptionMatcher;
-export const isReactProject: (options: {
-  projectRoot: string;
-  react: object;
-  javascript: boolean;
-}) => boolean = untypedIsReactProject;
+export const isReactProject: (options: { projectRoot: string; react: object }) => boolean =
+  untypedIsReactProject;
 export const readHeadPolicy: (environment: NodeJS.ProcessEnv) => {
   readonly exceptions: unknown[];
   readonly react: object;
@@ -46,7 +43,8 @@ export const createContext: (options: {
   layout: AnalysisLayout;
   packagesInfo: PackagesInfo;
 }) => Context = untypedCreateContext;
-export const isTypeScriptFile: (file: string) => boolean = untypedIsTypeScriptFile;
+export const isAnalyzedFile: (file: string, layout: AnalysisLayout) => boolean =
+  untypedIsAnalyzedFile;
 export const unusedApiFindings: (
   registry: unknown,
   context: {

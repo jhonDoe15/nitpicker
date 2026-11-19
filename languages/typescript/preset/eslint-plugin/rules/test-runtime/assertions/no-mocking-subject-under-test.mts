@@ -24,11 +24,8 @@ function isProductionModule(filename: string, source: string): boolean {
     return layout.sourceRootOf(source) !== undefined;
   }
   const resolved = path.resolve(path.dirname(filename), source).replaceAll('\\', '/');
-  const sourceRoot = layout.sourceRootOf(resolved);
-  return (
-    sourceRoot !== undefined &&
-    !layout.isTestFile(resolved.slice(resolved.indexOf(`/${sourceRoot}/`) + 1))
-  );
+  const projectRelative = layout.sourcePathOf(resolved);
+  return projectRelative !== undefined && !layout.isTestFile(projectRelative);
 }
 
 export const rule: TSESLint.RuleModule<'mockedSubject'> = {

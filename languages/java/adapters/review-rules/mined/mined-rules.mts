@@ -1,9 +1,9 @@
-import { findingFactory } from '../../kotlin/review-rules/review-finding.mts';
+import { findingFactory } from '../../kotlin/review-rules/finding/review-finding.mts';
 import { mainSourceTexts } from '../java-sources.mts';
 import type { MainSourceOptions } from '../java-sources.mts';
 import type { MinedRule } from '../review-types.mts';
 import type { ReviewFinding } from '../../kotlin/review-rules/typed/review-finding-types.mts';
-import { parseSource } from '../max-value-sums/source-file.mts';
+import { parseSource } from '../max-value-sums/source/source-file.mts';
 import { affixBoundaryRule } from '../affix-boundaries/affix-boundaries.mts';
 import { preconditionMessageRule } from '../precondition-messages/precondition-messages.mts';
 import { unpagedListingRule } from '../object-listings/object-listings.mts';

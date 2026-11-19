@@ -1,4 +1,4 @@
-import { findingFactory } from '../../kotlin/review-rules/review-finding.mts';
+import { findingFactory } from '../../kotlin/review-rules/finding/review-finding.mts';
 import { mainSourceTexts } from '../java-sources.mts';
 import type { MainSourceOptions } from '../java-sources.mts';
 import type { SourceFile } from '../max-value-sums/sum-types.mts';
@@ -6,7 +6,7 @@ import type {
   FindingFactory,
   ReviewFinding,
 } from '../../kotlin/review-rules/typed/review-finding-types.mts';
-import { parseSource } from '../max-value-sums/source-file.mts';
+import { parseSource } from '../max-value-sums/source/source-file.mts';
 import { findUnescapedMarkup } from './html/markup.mts';
 import { findExpandingReplacements } from './replacements/replacements.mts';
 import { findTranslations } from './translation/chains.mts';

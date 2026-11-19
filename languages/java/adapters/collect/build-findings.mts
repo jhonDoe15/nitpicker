@@ -8,6 +8,7 @@ import { toolConfigChoices } from '../tool-config/tool-config-choices.mts';
 import { readJavaFindings } from '../reporting/java-reports.mts';
 import { readNotAffected, readReportModules } from '../gradle-reports/report-modules.mts';
 import { runMavenPreset } from '../../maven/maven-build.mts';
+import { failedModuleFindings } from '../../maven/reactor/failed-modules.mts';
 import { MAVEN_REPORT_DIRECTORY } from '../../maven/module/maven-module.mts';
 import { detectJavaBuild, INIT_SCRIPT } from '../../builds/java-build.mts';
 import { mergedRoots, readModuleReport } from '../../builds/java-modules.mts';
@@ -16,6 +17,7 @@ import { runGradleStage } from '../red-base/gradle-stage.mts';
 import { runOrNoteFailingTests, withRootSourceRoots } from '../red-base/tests-failed.mts';
 import { gradleBudget } from '../gradle-wrapper/gradle-budget.mts';
 import { gradleStages } from '../gradle-wrapper/gradle-stages.mts';
+import { gradleWorkerArguments } from '../gradle-wrapper/memory/gradle-memory.mts';
 import { gradleDesignFindings, mavenDesignFindings } from '../design/design-modules.mts';
 import { type JavaPolicy, callUntyped, findingsOf } from '../typed/java-values.mts';
 import { type JavaReport, type JavaRunOptions, budgetOf } from '../typed/java-run-options.mts';
@@ -61,12 +63,14 @@ function runJavaPreset(
     budget = budgetOf(gradleBudget()),
     testsFailedModules = [],
     testsSkipped,
+    environment,
   }: PresetRun,
 ): void {
   const since = Date.now() - CLOCK_SLACK_MS;
   withKotlinArguments(kotlinRun, (kotlinArguments) => {
     const common = [
       ...GRADLE_FLAGS,
+      ...gradleWorkerArguments(projectRoot, environment ?? {}),
       `-Pnitpicker.reportDir=${reportBase}`,
       `-Pnitpicker.node=${process.execPath}`,
       ...lintBaselineProperties(policy),
@@ -82,9 +86,9 @@ function runJavaPreset(
       budget,
     });
     const checkTests = testsFailedModules.length === 0 && !testsSkipped;
-    const options = { projectRoot, gradle, budget, reportBase, since, checkTests, policy, spawn };
+    const options = { projectRoot, gradle, budget, reportBase, since, policy, spawn, environment };
     for (const stage of stages) {
-      runGradleStage({ args: stage(), ...options });
+      runGradleStage({ args: stage(), checkTests, ...options });
     }
   });
 }
@@ -152,7 +156,10 @@ function mavenFindings(projectRoot: string, options: JavaRunOptions): JavaReport
     ...options,
     timeoutMs: options.budget?.mavenCommandTimeoutMs,
     pitDeadline: options.budget?.pitDeadlineMs,
-    configs: toolConfigChoices(projectRoot, options.policy),
+    configs: {
+      ...toolConfigChoices(projectRoot, options.policy),
+      generated: { analyze: options.policy?.analyzeGeneratedSources === true },
+    },
     onModules: (modules) => {
       startMavenReuse(projectRoot, modules, options.policy);
     },
@@ -175,7 +182,11 @@ function mavenFindings(projectRoot: string, options: JavaRunOptions): JavaReport
   });
   const design = mavenDesignFindings(projectRoot, moduleDirs, options);
   return {
-    findings: [...read.findings, ...design],
+    findings: [
+      ...read.findings,
+      ...design,
+      ...failedModuleFindings(run.failedModules, projectRoot),
+    ],
     imports: read.imports,
     testsFailures: run.testsFailures,
     notAffected: run.notAffected,
