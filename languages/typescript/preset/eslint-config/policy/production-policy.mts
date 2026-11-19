@@ -182,6 +182,7 @@ function productionGuardRules({
     'nitpicker/no-orm-query-logging': 'error',
     'nitpicker/no-orm-schema-sync': 'error',
     'nitpicker/no-unindexed-foreign-key': 'error',
+    'nitpicker/no-unversioned-orm-entity': 'error',
     'nitpicker/no-shell-string-command': 'error',
     'nitpicker/require-process-timeout': 'error',
     'nitpicker/require-client-timeout': 'error',

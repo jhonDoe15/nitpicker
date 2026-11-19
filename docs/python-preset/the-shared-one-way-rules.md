@@ -1372,6 +1372,17 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   models are left to the migrations when the project has an Alembic `versions/` folder with a
   revision (`down_revision = ...`) next to an `env.py`; `foreign-key-index` then checks the
   revisions. Manifests are read from the project root and `requirements/`. Tests are skipped.
+- `unversioned-orm-entity` (Java and Kotlin: `JpaVersion`; TypeScript: `nitpicker/no-unversioned-orm-entity`)
+  reports a SQLAlchemy model that the project loads, changes and saves again without a `version_id_col`
+  in its `__mapper_args__` (on the class or a base class): two requests that update the same row both
+  succeed and the later one silently overwrites the earlier one. The row is loaded by `session.get`,
+  `session.scalars(select(Model))`, `session.execute(select(Model))` or `session.query(Model)` (a single
+  row through `first()`, `one()` or `scalar_one()`, or each row of a loop), assigned an attribute, and the
+  function then commits, flushes, or calls `add` or `merge`. Django has no built-in version column, so
+  Django models are not reported, and neither are models that are only read or only inserted. Allowed:
+  `version: Mapped[int] = mapped_column(default=1)` with `__mapper_args__ = {"version_id_col": version}`.
+  An exception fits only when concurrent writers of the table are ruled out another way, such as
+  `with_for_update()` or a single writer.
 - `in-memory-update` reports rows loaded only to set model fields to the same value and write them back, where one update
   statement does it without loading anything. The rows are a query result as `in-memory-query` reads it
   (a Django queryset or `list()` of one, a SQLAlchemy `.all()` list, or `session.scalars(select(Model))`

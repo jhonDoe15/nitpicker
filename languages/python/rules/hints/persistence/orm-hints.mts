@@ -1,5 +1,6 @@
 import { RULES_TOOL } from '../tool.mts';
 import { NARROW_HINTS, ROW_HINTS } from './row-hints.mts';
+import { VERSION_HINTS } from './version-hints.mts';
 import type { RuleHint } from '../hint-types.mts';
 
 const QUERY_WORK: Readonly<Record<string, string>> = {
@@ -56,4 +57,5 @@ export const PERSISTENCE_HINTS: readonly RuleHint[] = [
   },
   ...ROW_HINTS,
   ...NARROW_HINTS,
+  ...VERSION_HINTS,
 ];

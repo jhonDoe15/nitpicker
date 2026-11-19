@@ -786,6 +786,18 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   `health`, `ready`, `live`, `ping`, `metrics`, `status`, `login`, `signup`, `register`, `logout`, `callback`, `webhook`,
   `public` or `oauth` is left alone. The service form (a request id reaching a repository call
   without the project's access check) needs data flow and is not covered.
+- No entity loaded and saved again without a version column (`nitpicker/no-unversioned-orm-entity`, the
+  TypeScript and JavaScript counterpart of the Java rule `JpaVersion`): a row loaded by `find`, `findOne`,
+  `findBy`, `findOneBy`, `findOneOrFail`, `findAll`, `findByPk` or `findAndCount` (or each row of a loaded
+  list), assigned a field, and then passed to `save` or `persistAndFlush`, saved with its own `save()` or
+  `update()`, or flushed with `flush()`, in the same function. The entity class comes from the type
+  checker. Reported: a TypeORM `@Entity` without a `@VersionColumn()` (the entity or a base class), a
+  MikroORM `@Entity` without a `@Property({ version: true })`, and a Sequelize model (`@Table` or
+  `Model.init` in the model's file) without `version: true`. Prisma and Drizzle have no version column
+  feature, so they are not reported; an entity that is only read or only inserted is left alone. Allowed:
+  `@VersionColumn() version!: number`, `@Property({ version: true }) version!: number`, or
+  `version: true` in the model options. An exception fits only when concurrent writers of the table are
+  ruled out another way, such as a pessimistic lock or a single writer.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
   `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,
