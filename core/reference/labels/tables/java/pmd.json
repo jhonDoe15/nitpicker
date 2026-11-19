@@ -163,6 +163,7 @@
   "pmd/RedundantStreamStep": ["simplification"],
   "pmd/RegexPartDefect": ["bug"],
   "pmd/RemoveByKeyDropsNewerValue": ["bug", "async"],
+  "pmd/ReplaceWithWrongLiteralKind": ["bug"],
   "pmd/RetryInTest": ["tests"],
   "pmd/ReturnFromFinallyBlock": ["reliability"],
   "pmd/ReusableObjectPerCall": ["performance"],
