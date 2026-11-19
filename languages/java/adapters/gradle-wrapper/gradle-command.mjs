@@ -1,8 +1,11 @@
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 const EXECUTABLE_BITS = 0o111;
 const WINDOWS_SCRIPT = /\.(?:bat|cmd)$/iu;
+const BUILD_ROOT_MARKERS = ['.git', '.mvn', 'settings.gradle', 'settings.gradle.kts'];
+const WRAPPER_PROPERTIES = path.join('gradle', 'wrapper', 'gradle-wrapper.properties');
+const PINNED_GRADLE = /^distributionUrl=.*gradle-([\d.]+(?:-[\w.]+)?)-(?:bin|all)\.zip\s*$/mu;
 
 export function gradleTarget(options) {
   return wrapperTarget({
@@ -11,6 +14,35 @@ export function gradleTarget(options) {
     windowsWrapper: 'gradlew.bat',
     tool: 'gradle',
   });
+}
+
+function buildFolders(projectRoot) {
+  const folders = [];
+  let folder = path.resolve(projectRoot);
+  for (;;) {
+    folders.push(folder);
+    const parent = path.dirname(folder);
+    if (
+      parent === folder ||
+      BUILD_ROOT_MARKERS.some((marker) => existsSync(path.join(folder, marker)))
+    ) {
+      return folders;
+    }
+    folder = parent;
+  }
+}
+
+function nearestFile(projectRoot, name) {
+  return buildFolders(projectRoot)
+    .map((folder) => path.join(folder, name))
+    .find((file) => statSync(file, { throwIfNoEntry: false })?.isFile() === true);
+}
+
+export function pinnedGradleVersion(projectRoot) {
+  const properties = nearestFile(projectRoot, WRAPPER_PROPERTIES);
+  return properties === undefined
+    ? undefined
+    : PINNED_GRADLE.exec(readFileSync(properties, 'utf8'))?.[1];
 }
 
 export function wrapperTarget({
@@ -26,17 +58,16 @@ export function wrapperTarget({
     return spawnTarget(configured, args);
   }
   if (platform === 'win32') {
-    const script = path.join(projectRoot, windowsWrapper);
-    return existsSync(script)
-      ? spawnTarget(script, args)
-      : { command: tool, args: args.map(quoted), shell: true };
+    const script = nearestFile(projectRoot, windowsWrapper);
+    return script === undefined
+      ? { command: tool, args: args.map(quoted), shell: true }
+      : spawnTarget(script, args);
   }
-  const script = path.join(projectRoot, wrapper);
-  const stat = statSync(script, { throwIfNoEntry: false });
-  if (stat === undefined || !stat.isFile()) {
+  const script = nearestFile(projectRoot, wrapper);
+  if (script === undefined) {
     return { command: tool, args, shell: false };
   }
-  return (stat.mode & EXECUTABLE_BITS) === 0
+  return (statSync(script).mode & EXECUTABLE_BITS) === 0
     ? { command: 'sh', args: [script, ...args], shell: false }
     : { command: script, args, shell: false };
 }
