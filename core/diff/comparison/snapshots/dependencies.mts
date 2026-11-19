@@ -12,29 +12,30 @@ type PreparedRoots = {
   readonly liveProjectRoot: string;
   readonly toolRoot: string;
   readonly sharedBase?: SharedWorktree | undefined;
+  readonly sharedHead?: SharedWorktree | undefined;
 };
 
-const prepare: (options: {
+type Preparation = {
   readonly projectRoot: string;
   readonly liveProjectRoot: string;
   readonly toolRoot: string;
-  readonly reuseExisting?: true;
-}) => unknown = prepareSnapshotDependencies;
+};
+
+const prepare: (options: Preparation & { readonly reuseExisting?: true }) => unknown =
+  prepareSnapshotDependencies;
 
 const SHARED_PREPARATION_TIMEOUT_MS = 10 * 60 * 1000;
 
-function prepareBase({
-  baseProjectRoot,
-  liveProjectRoot,
-  toolRoot,
-  sharedBase,
-}: PreparedRoots): unknown {
-  const options = { projectRoot: baseProjectRoot, liveProjectRoot, toolRoot };
-  if (sharedBase === undefined) {
+export function prepareShared(
+  options: Preparation,
+  shared: SharedWorktree | undefined,
+  side: string,
+): unknown {
+  if (shared === undefined) {
     return prepare(options);
   }
-  const describe = 'the base dependencies another project prepares did not become ready';
-  withWaitedLock(sharedBase.lockPath, { timeoutMs: SHARED_PREPARATION_TIMEOUT_MS, describe }, () =>
+  const describe = `the ${side} dependencies another project prepares did not become ready`;
+  withWaitedLock(shared.lockPath, { timeoutMs: SHARED_PREPARATION_TIMEOUT_MS, describe }, () =>
     prepare({ ...options, reuseExisting: true }),
   );
   return undefined;
@@ -49,15 +50,20 @@ function withPreparedAnalyzerDependencies<T>(roots: PreparedRoots, operation: ()
   const { headSnapshotRoot, liveProjectRoot, toolRoot } = roots;
   const preparedDependencies: unknown[] = [];
   try {
-    const baseDependencies = prepareBase(roots);
+    const { baseProjectRoot, sharedBase, sharedHead } = roots;
+    const baseDependencies = prepareShared(
+      { projectRoot: baseProjectRoot, liveProjectRoot, toolRoot },
+      sharedBase,
+      'base',
+    );
     if (baseDependencies !== undefined) {
       preparedDependencies.push(baseDependencies);
     }
-    const headDependencies = prepare({
-      projectRoot: headSnapshotRoot,
-      liveProjectRoot,
-      toolRoot,
-    });
+    const headDependencies = prepareShared(
+      { projectRoot: headSnapshotRoot, liveProjectRoot, toolRoot },
+      sharedHead,
+      'head',
+    );
     if (headDependencies !== undefined) {
       preparedDependencies.push(headDependencies);
     }

@@ -13,7 +13,7 @@ import {
   lintResultsOf,
   planOf,
 } from './plan/oxlint-shapes.mts';
-import { type LintTiming, type StageRun, lintConfigs } from './run/stage-lint.mts';
+import { type LintTiming, type StageRun, lintConfigs, settledBeside } from './run/stage-lint.mts';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { oxlintBinary, spawnJson } from './oxlint-process.mts';
 import type { Environment } from '../../../../shared/processes/environment.mts';
@@ -162,9 +162,10 @@ async function lintAttempt({
     neutralized,
   };
   return lintBesideResidual({
-    residual: residualRun(residualRuns, translation.residual, () =>
-      residualResults(projectRoot, translation.residual, runEslintCli),
-    ),
+    residual: () =>
+      residualRun(residualRuns, translation.residual, () =>
+        residualResults(projectRoot, translation.residual, runEslintCli),
+      ),
     translation,
     bridgedRules,
     stage,
@@ -191,15 +192,12 @@ async function lintBesideResidual({
   bridgedRules,
   ...run
 }: StageRun & {
-  readonly residual: Promise<LintResult[]>;
+  readonly residual: () => Promise<LintResult[]>;
   readonly translation: Translation;
   readonly bridgedRules: Set<string>;
   readonly configs: readonly StageConfig[];
 }): Promise<Outcome> {
-  const [linted, residualOutcome] = await Promise.allSettled([
-    lintConfigs({ ...run, typeAware: translation.typeAware }),
-    residual,
-  ]);
+  const [linted, residualOutcome] = await settledBeside(() => lintConfigs(run), residual, run);
   if (linted.status === 'rejected') {
     bridgeRejectedRules(linted.reason, translation.ruleNames, bridgedRules);
   }

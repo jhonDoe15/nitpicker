@@ -20,6 +20,7 @@ export type ConfiguredCli = Cli & {
   readonly repositoryLoosenings?: readonly PolicyLoosening[];
   readonly sharedBase?: ReturnType<typeof resolveBase>;
   readonly sharedBaseWorktree?: SharedWorktree | undefined;
+  readonly sharedHeadWorktree?: SharedWorktree | undefined;
   readonly repositoryToolErrors?: readonly object[];
 };
 

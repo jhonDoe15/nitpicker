@@ -10,13 +10,17 @@ export function unusedRuleIds(message: string): string[] {
     : [...description.matchAll(/'([^']+)'/gu)].flatMap(([, rule]) => rule ?? []);
 }
 
-export function withUnusedRules(finding: Finding, rules: readonly string[]): Finding {
+export function unusedDirectiveMessage(rules: readonly string[]): string {
   const quoted = rules.toSorted().map((rule) => `'${rule}'`);
   const description =
     quoted.length <= 2
       ? quoted.join(' or ')
       : `${quoted.slice(0, -1).join(', ')}, or ${quoted.at(-1) ?? ''}`;
-  const message = `Unused eslint-disable directive (no problems were reported from ${description}).`;
+  return `Unused eslint-disable directive (no problems were reported from ${description}).`;
+}
+
+export function withUnusedRules(finding: Finding, rules: readonly string[]): Finding {
+  const message = unusedDirectiveMessage(rules);
   return message === finding.message
     ? finding
     : {
