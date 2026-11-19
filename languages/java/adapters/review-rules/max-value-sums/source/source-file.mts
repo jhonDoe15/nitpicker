@@ -1,5 +1,5 @@
-import { tokenizeJvm } from '../../reuse/source/jvm-tokens.mts';
-import type { Token } from '../../reuse/jvm-reuse-types.mts';
+import { tokenizeJvm } from '../../../reuse/source/tokens/jvm-tokens.mts';
+import type { Token } from '../../../reuse/jvm-reuse-types.mts';
 import type {
   BackwardStep,
   BareSource,
@@ -9,7 +9,7 @@ import type {
   Param,
   SourceFile,
   Span,
-} from './sum-types.mts';
+} from '../sum-types.mts';
 
 const CLOSERS = new Map([
   ['(', ')'],

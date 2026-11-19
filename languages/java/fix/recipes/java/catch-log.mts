@@ -1,6 +1,9 @@
 import type { FixRecipe, RecipeFix } from '../../../../../core/fix/typed/fix-types.mts';
 import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mjs';
-import { catchLogCalls as untypedCatchLogCalls } from '../../../source/catch-logging.mts';
+import {
+  catchLogCalls as untypedCatchLogCalls,
+  endOfText,
+} from '../../../source/catch-logging.mts';
 
 type LoggerCall = {
   readonly index: number;
@@ -26,10 +29,6 @@ const LEVEL_AND_MESSAGE = 2;
 
 function lineAt(code: string, offset: number): number {
   return code.slice(0, offset).split('\n').length;
-}
-
-function endOfText(code: string, from: number): number {
-  return code.slice(0, from).trimEnd().length;
 }
 
 function endsInComment(code: string, close: number): boolean {

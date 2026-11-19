@@ -6,7 +6,7 @@ import { fieldOf } from '../../../../../shared/values/readers.mts';
 import { callUntyped } from '../../typed/java-values.mts';
 import { findingsOf } from '../../kotlin/rules/test-support/findings-list.mts';
 import { assigned } from '../test-support/views/assigned.mts';
-import { findingFactory as untypedFindingFactory } from '../../kotlin/review-rules/review-finding.mts';
+import { findingFactory as untypedFindingFactory } from '../../kotlin/review-rules/finding/review-finding.mts';
 import { serviceLookupFindings as untypedServiceLookupFindings } from '../../kotlin/review-rules/main/service-lookups/service-lookups.mts';
 import { composeMessage } from '../../kotlin/review-rules/test-support/lookup-facts.mts';
 import { prepareKotlinPsi, runKotlinPsi } from '../../test-support/kotlin/kotlin-psi-program.mts';

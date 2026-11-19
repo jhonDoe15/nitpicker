@@ -53,7 +53,7 @@ const KOTLIN_MUTATORS = [
   'minusAssign',
 ];
 
-export const MUTATORS: ReadonlyMap<Kind, ReadonlySet<string>> = new Map([
+const MUTATORS: ReadonlyMap<Kind, ReadonlySet<string>> = new Map([
   ['list', new Set([...COLLECTION_MUTATORS, ...KOTLIN_MUTATORS])],
   ['set', new Set([...COLLECTION_MUTATORS, ...KOTLIN_MUTATORS])],
   ['map', new Set([...COLLECTION_MUTATORS, ...KOTLIN_MUTATORS])],

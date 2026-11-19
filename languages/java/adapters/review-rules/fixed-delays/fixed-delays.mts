@@ -1,6 +1,4 @@
-import { findingFactory } from '../../kotlin/review-rules/review-finding.mts';
-import { mainSourceTexts } from '../java-sources.mts';
-import { parseSource } from '../max-value-sums/source-file.mts';
+import { findingsFromSources } from '../self-recursion/parsed-sources.mts';
 import { delayCalls } from './delay-calls.mts';
 import { delayConstants } from './delay-constants.mts';
 import type { ReviewFinding } from '../../kotlin/review-rules/typed/review-finding-types.mts';
@@ -11,8 +9,13 @@ export const FIXED_DELAY_RULE = 'UninjectableDelay';
 export const FIXED_DELAY_EXCEPTION_RULE = `pmd/${FIXED_DELAY_RULE}`;
 
 const MIN_FIXED_DELAY_MS = 500;
-const OPTION_PARAMETER_NAME =
-  /option|opts|config|setting|delay|timeout|interval|wait|duration|ms$|param|override|dependenc|deps|context|ctx|env|clock|sleeper|scheduler|executor/iu;
+const OPTION_PARAMETER_NAME = new RegExp(
+  [
+    'option|opts|config|setting|delay|timeout|interval|wait|duration|ms$|param',
+    'override|dependenc|deps|context|ctx|env|clock|sleeper|scheduler|executor',
+  ].join('|'),
+  'iu',
+);
 const HIDDEN_FROM_CALLERS = new Set(['private', 'protected', 'internal']);
 const DECLARATION_BREAKS = new Set([';', '{', '}']);
 
@@ -25,21 +28,14 @@ function outermostFrame(source: SourceFile, index: number): Frame | undefined {
     );
 }
 
-function modifiersOf(source: SourceFile, frame: Frame): string[] {
-  const line = source.tokens[frame.open - 1]?.line ?? 0;
-  const before = source.tokens.slice(0, frame.open - 1).reverse();
-  const stop = before.findIndex(({ text, line: at }) => DECLARATION_BREAKS.has(text) || at < line);
-  return before.slice(0, stop === -1 ? undefined : stop).map(({ text }) => text);
-}
-
-const CLASS_WORDS = new Set(['class', 'object', 'interface', 'enum', 'record']);
-
 function wordsBefore(source: SourceFile, index: number): string[] {
   const line = source.tokens[index]?.line ?? 0;
   const before = source.tokens.slice(0, index).reverse();
   const stop = before.findIndex(({ text, line: at }) => DECLARATION_BREAKS.has(text) || at < line);
   return before.slice(0, stop === -1 ? undefined : stop).map(({ text }) => text);
 }
+
+const CLASS_WORDS = new Set(['class', 'object', 'interface', 'enum', 'record']);
 
 function enclosingClassWords(source: SourceFile, at: number): string[][] {
   return source.tokens.flatMap(({ text }, index) => {
@@ -53,7 +49,7 @@ function enclosingClassWords(source: SourceFile, at: number): string[][] {
 }
 
 function isOpenToCallers(source: SourceFile, frame: Frame): boolean {
-  const words = modifiersOf(source, frame);
+  const words = wordsBefore(source, frame.open - 1);
   const hidden = enclosingClassWords(source, frame.open).some((each) =>
     each.some((word) => HIDDEN_FROM_CALLERS.has(word)),
   );
@@ -95,7 +91,7 @@ function isShadowed(
     );
 }
 
-export function fixedDelayMessage(parts: {
+function fixedDelayMessage(parts: {
   timer: string;
   name: string;
   millis: string;
@@ -117,10 +113,8 @@ export function readFixedDelayFindings(
   projectRoot: string,
   options: MainSourceOptions,
 ): ReviewFinding[] {
-  const finding = findingFactory();
-  return mainSourceTexts(projectRoot, options).flatMap(({ file, text, kotlin }) => {
-    const source = parseSource(text, { file, kotlin });
-    return delayCalls(source, delayConstants(source)).flatMap((call) => {
+  return findingsFromSources(projectRoot, options, ({ file, kotlin, source, finding }) =>
+    delayCalls(source, delayConstants(source)).flatMap((call) => {
       const frame = outermostFrame(source, call.index);
       if (
         frame === undefined ||
@@ -147,8 +141,8 @@ export function readFixedDelayFindings(
           }),
         }),
       ];
-    });
-  });
+    }),
+  );
 }
 
 export const FIXED_DELAY_ALLOWED = fixedDelayMessage({

@@ -1,5 +1,5 @@
 import { textAt } from '../jvm-members.mts';
-import { namesOf } from '../jvm-tokens.mts';
+import { namesOf } from '../tokens/jvm-tokens.mts';
 import type { Token } from '../../jvm-reuse-types.mts';
 import type { FoundMember, Structure } from '../jvm-source-types.mts';
 

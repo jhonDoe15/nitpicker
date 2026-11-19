@@ -34,6 +34,7 @@ export const STRUCTURE_CHECK_FILES = [
   'languages/typescript/preset/libraries/validation-libraries.mjs',
   'shared/rules/exceptions.mjs',
   'languages/typescript/preset/tool-configs.mjs',
+  'languages/typescript/preset/project-configs/typescript/layout-rewrites.mjs',
   'languages/typescript/preset/defaults/tsconfig.quality.json',
   'languages/typescript/preset/unused-api/analyze.mjs',
   'languages/typescript/preset/unused-api/context.mjs',

@@ -1,4 +1,3 @@
-import { expect } from 'vitest';
 import { nullableReturnUses } from '../nullable-returns.mts';
 
 export const MARK = '// flagged';
@@ -12,10 +11,11 @@ export function reported(files: Readonly<Record<string, string>>): string[] {
   return nullableReturnUses(sources).map(({ file, line }) => `${file}:${String(line)}`);
 }
 
-export function expectFlagged(text: string): void {
-  expect(reported({ 'Sample.java': text })).toEqual(
-    flagged(text).map((line) => `Sample.java:${String(line)}`),
-  );
+export function flaggedReport(text: string): { found: string[]; marked: string[] } {
+  return {
+    found: reported({ 'Sample.java': text }),
+    marked: flagged(text).map((line) => `Sample.java:${String(line)}`),
+  };
 }
 
 export function peers(name: string, count = 6): string {

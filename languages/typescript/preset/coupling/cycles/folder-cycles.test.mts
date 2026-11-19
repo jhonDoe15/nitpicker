@@ -26,7 +26,7 @@ function cyclesOf(imports: readonly Import[], exceptions: readonly unknown[] = [
   const findings = evaluateCoupling(
     { ...report, modules: report.modules.map(({ source }) => ({ file: source })) },
     'coupling',
-    exceptions,
+    { exceptions },
   );
   return findings
     .filter(({ rule }) => rule === 'package-cycle')

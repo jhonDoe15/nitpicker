@@ -45,7 +45,6 @@ export function sampleFindings(): Finding[] {
         stabilityDirection: [{ source: 'stable', target: 'volatile', delta: 0.5 }],
       },
       'coupling',
-      [],
     ),
     ...normalizeTestRuntime(
       {

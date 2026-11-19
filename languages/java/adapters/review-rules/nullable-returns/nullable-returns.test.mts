@@ -1,17 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { projectWideReport } from '../../../builds/project-wide.mts';
-import { PROJECT, useTempProjects } from '../test-support/temp-projects.mts';
-import { nullableReturnUses, readNullableReturnFindings } from './nullable-returns.mts';
-import { MARK, expectFlagged, peers, reported, sample } from './test-support/samples.mts';
-
-const projectWith = useTempProjects('nitpicker-nullable-');
+import { nullableReturnUses } from './nullable-returns.mts';
+import { MARK, flaggedReport, peers, reported, sample } from './test-support/samples.mts';
 
 describe('NullableReturnUse: the Defects4J shapes', () => {
   it('reports a local that stays null on one path and is copied by the caller', () => {
-    expectFlagged(
+    const { found, marked } = flaggedReport(
       sample(`  Map<String, Integer> initializeHeader(String[] header) {
     Map<String, Integer> hdrMap = null;
     if (header != null) {
@@ -24,6 +17,7 @@ describe('NullableReturnUse: the Defects4J shapes', () => {
     return new LinkedHashMap<String, Integer>(hdr); ${MARK}
   }`),
     );
+    expect(found).toEqual(marked);
   });
 
   it('reports a documented null result passed on to a method that dereferences it', () => {
@@ -64,9 +58,18 @@ public class SubLine {
   Set<String> e(Sample interfaceType) {
     return interfaceType.getImplicitPrototype().getOwnPropertyNames(); ${MARK}
   }`);
-    expectFlagged(text);
+    const { found, marked } = flaggedReport(text);
+    expect(found).toEqual(marked);
     const [message] = nullableReturnUses([{ file: 'Sample.java', text }]).map((use) => use.message);
-    expect(message).toContain('is null-checked by 4 of its 5 callers');
+    expect(message).toBe(
+      [
+        '`Sample.getImplicitPrototype` is null-checked by 4 of its 5 callers, and the result',
+        'of `Sample.getImplicitPrototype` is dereferenced here without a null check, which can',
+        'throw NullPointerException on that path; add `if (result == null) return ...;` or',
+        'annotate the method `@Nullable` and handle it. If the caller knows from context that',
+        'the value is set, add `Objects.requireNonNull(result, "why")` to document it.',
+      ].join(' '),
+    );
   });
 });
 
@@ -81,7 +84,7 @@ describe('NullableReturnUse: reported uses', () => {
 ${peers('find')}`;
 
   it('reports a direct dereference, a local dereference, an index and a for-each', () => {
-    expectFlagged(
+    const { found, marked } = flaggedReport(
       sample(`${callee}  int a(String key) { return find(key).hashCode(); } ${MARK}
   int b(String key) {
     Object value = find(key);
@@ -106,10 +109,11 @@ ${peers('find')}`;
   }
   boolean namesChecked(String key) { List<String> n = names(key); return n != null; }`),
     );
+    expect(found).toEqual(marked);
   });
 
   it('reports unboxing of a null Integer and a switch on a null enum', () => {
-    expectFlagged(
+    const { found, marked } = flaggedReport(
       sample(`  Integer count(String key) {
     if (key.isEmpty()) {
       return null;
@@ -140,10 +144,11 @@ ${peers('find')}`;
 ${peers('count')}${peers('mode')}
   enum Mode { A }`),
     );
+    expect(found).toEqual(marked);
   });
 
   it('resolves this.m(), a typed parameter, a typed field and a static call', () => {
-    expectFlagged(
+    const { found, marked } = flaggedReport(
       sample(`${callee}  Sample other;
   static Object lookup(String key) {
     if (key.isEmpty()) {
@@ -157,10 +162,11 @@ ${peers('lookup')}
   int c(String key) { return other.find(key).hashCode(); } ${MARK}
   int d(String key) { return Sample.lookup(key).hashCode(); } ${MARK}`),
     );
+    expect(found).toEqual(marked);
   });
 
   it('reports a documented null on the use line, and a use on the next call of a chain', () => {
-    expectFlagged(
+    const { found, marked } = flaggedReport(
       sample(`  /**
    * Finds the entry.
    * @return the entry, or {@code null} if there is none
@@ -177,10 +183,11 @@ ${peers('entry')}
   }
   interface Entry { int size(); }`),
     );
+    expect(found).toEqual(marked);
   });
 
   it('reports a documented null used by a single caller that never checks', () => {
-    expectFlagged(
+    const { found, marked } = flaggedReport(
       sample(`  /**
    * @return the parent, or null if there is none
    */
@@ -188,6 +195,7 @@ ${peers('entry')}
   Sample up;
   Sample root() { return parent().parent(); } ${MARK}`),
     );
+    expect(found).toEqual(marked);
   });
 
   it('names the method, where it returns null, the fix and the exception', () => {
@@ -221,23 +229,8 @@ describe('NullableReturnUse: allowed forms', () => {
   boolean peer(String key) { return find(key) != null; }
 `;
 
-  it('allows every null check before the use', () => {
-    expectFlagged(
-      sample(`${callee}  int a(String key) { Object v = find(key); if (v == null) { return 0; } return v.hashCode(); }
-  int b(String key) { Object v = find(key); return v != null ? v.hashCode() : 0; }
-  int c(String key) { Object v = find(key); return Objects.isNull(v) ? 0 : v.hashCode(); }
-  int d(String key) { Object v = find(key); Objects.requireNonNull(v, "set"); return v.hashCode(); }
-  int e(String key) { Object v = find(key); return v instanceof String ? 1 : v.hashCode(); }
-  int f(String key) { Object v = find(key); assert v != null; return v.hashCode(); }
-  int g(String key) { Object v = find(key); return Optional.ofNullable(v).map(Object::hashCode).orElse(0); }
-  int h(String key) { return find(key) != null ? find(key).hashCode() : 0; }
-  int i(String key) { Object v = find(key); v = key; return v.hashCode(); }
-  int j(String key) { Object v = find(key); return String.valueOf(v).length() + Objects.hashCode(v); }`),
-    );
-  });
-
   it('allows annotated, stub, null-in-null-out, Optional and flag-dependent methods', () => {
-    expectFlagged(
+    const { found, marked } = flaggedReport(
       sample(`  @Nullable Object a(String key) { if (key.isEmpty()) { return null; } return key; }
   @CheckForNull Object b(String key) { if (key.isEmpty()) { return null; } return key; }
   Object stub() { return null; }
@@ -266,10 +259,11 @@ describe('NullableReturnUse: allowed forms', () => {
   Object k(String key) { return () -> { return null; }; }
   int kUse(String key) { return k(key).hashCode(); }`),
     );
+    expect(found).toEqual(marked);
   });
 
   it('allows a local that is assigned on every path or rechecked', () => {
-    expectFlagged(
+    const { found, marked } = flaggedReport(
       sample(`  Object a(boolean flag) {
     Object result = null;
     if (flag) {
@@ -296,39 +290,54 @@ describe('NullableReturnUse: allowed forms', () => {
   }
   int use(boolean flag) { return a(flag).hashCode() + b(flag).hashCode() + c(flag).hashCode(); }`),
     );
-  });
-
-  it('allows an overload of the same arity that is not nullable', () => {
-    expectFlagged(
-      sample(`${callee}  Object find(Object key) { return key; }
-  int a(String key) { return find(key).hashCode(); }`),
-    );
+    expect(found).toEqual(marked);
   });
 
   it('allows a callee that every caller uses without checking', () => {
-    expectFlagged(
+    const { found, marked } = flaggedReport(
       sample(`${callee.replace('  boolean peer(String key) { return find(key) != null; }\n', '')}
   int a(String key) { return find(key).hashCode(); }
   int b(String key) { return find(key).hashCode(); }
   int c(String key) { return find(key).hashCode(); }`),
     );
+    expect(found).toEqual(marked);
   });
 
-  it('allows a method of a library type with the same name', () => {
-    expectFlagged(
-      sample(`${callee}  int a(List<String> list, String key) { return list.find(key).hashCode(); }
-  int b(Other other, String key) { return other.find(key).hashCode(); }`),
-    );
-  });
-
-  it('allows a call inside an anonymous class and a class that is not the callee owner', () => {
-    expectFlagged(
-      sample(`${callee}  Runnable a(String key) {
+  it.each([
+    [
+      'allows every null check before the use',
+      `  int a(String key) { Object v = find(key); if (v == null) { return 0; } return v.hashCode(); }
+  int b(String key) { Object v = find(key); return v != null ? v.hashCode() : 0; }
+  int c(String key) { Object v = find(key); return Objects.isNull(v) ? 0 : v.hashCode(); }
+  int d(String key) { Object v = find(key); Objects.requireNonNull(v, "set"); return v.hashCode(); }
+  int e(String key) { Object v = find(key); return v instanceof String ? 1 : v.hashCode(); }
+  int f(String key) { Object v = find(key); assert v != null; return v.hashCode(); }
+  int g(String key) { Object v = find(key); return Optional.ofNullable(v).map(Object::hashCode).orElse(0); }
+  int h(String key) { return find(key) != null ? find(key).hashCode() : 0; }
+  int i(String key) { Object v = find(key); v = key; return v.hashCode(); }
+  int j(String key) { Object v = find(key); return String.valueOf(v).length() + Objects.hashCode(v); }`,
+    ],
+    [
+      'allows an overload of the same arity that is not nullable',
+      `  Object find(Object key) { return key; }
+  int a(String key) { return find(key).hashCode(); }`,
+    ],
+    [
+      'allows a method of a library type with the same name',
+      `  int a(List<String> list, String key) { return list.find(key).hashCode(); }
+  int b(Other other, String key) { return other.find(key).hashCode(); }`,
+    ],
+    [
+      'allows a call inside an anonymous class and a class that is not the callee owner',
+      `  Runnable a(String key) {
     return new Runnable() {
       Object find(String other) { return other; }
       public void run() { find("x").hashCode(); }
     };
-  }`),
-    );
+  }`,
+    ],
+  ])('%s', (_name, body) => {
+    const { found, marked } = flaggedReport(sample(`${callee}${body}`));
+    expect(found).toEqual(marked);
   });
 });

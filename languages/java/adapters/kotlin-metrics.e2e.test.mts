@@ -14,7 +14,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../builds/java-build.mts';
 import { loadEffectFindings } from './kotlin/review-rules/main/load-effects.mts';
-import { findingFactory } from './kotlin/review-rules/review-finding.mts';
+import { findingFactory } from './kotlin/review-rules/finding/review-finding.mts';
 import {
   pinnedKotlinCompiler,
   prepareCompiler,

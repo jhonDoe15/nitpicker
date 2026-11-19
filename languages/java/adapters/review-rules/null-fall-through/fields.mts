@@ -1,4 +1,4 @@
-import { frameAt } from '../max-value-sums/source-file.mts';
+import { frameAt } from '../max-value-sums/source/source-file.mts';
 import type { Frame, SourceFile } from '../max-value-sums/sum-types.mts';
 import type { Token } from '../../reuse/jvm-reuse-types.mts';
 

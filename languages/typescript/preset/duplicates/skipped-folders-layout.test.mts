@@ -6,7 +6,7 @@ import { resolveLayoutFor as untypedResolveLayoutFor } from '../layout.mjs';
 import {
   isCustomLayout as untypedIsCustomLayout,
   layoutJscpdConfig as untypedLayoutJscpdConfig,
-} from '../tool-configs.mjs';
+} from '../project-configs/typescript/layout-rewrites.mjs';
 import { fieldOf, listOf, parseJson, textOf } from '../../../../shared/values/readers.mts';
 
 const resolveLayoutFor: (config: Readonly<Record<string, unknown>>) => Layout =

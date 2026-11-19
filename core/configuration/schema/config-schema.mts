@@ -7,6 +7,7 @@ import { KEYS, NITPICKER_RULES, SUPPORTED_PRESETS } from '../validate.mts';
 import { HEAD_NAMES } from '../project-checks/project-config.mjs';
 import { LAYOUT_KEYS, layoutKeysFor } from '../scopes/layout-settings.mts';
 import * as areas from './area-schemas.mts';
+import * as languageAreas from './languages/language-schemas.mts';
 import { conventionProperties, history, protocols, spring } from './setting-schemas.mts';
 import {
   exceptionDefinitions,
@@ -85,13 +86,13 @@ const TOP_LEVEL: SchemaTable = {
     ...projectPath,
   },
   duplicates: areas.duplicates,
-  python: areas.python,
+  python: languageAreas.python,
   tools,
   testConsole: areas.testConsole,
   protocols,
-  kotlin: areas.kotlin,
-  java: areas.java,
-  go: areas.go,
+  kotlin: languageAreas.kotlin,
+  java: languageAreas.java,
+  go: languageAreas.go,
   spring,
   history,
   conventions: {

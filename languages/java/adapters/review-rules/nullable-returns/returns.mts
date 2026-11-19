@@ -1,86 +1,36 @@
-import { between } from '../max-value-sums/source-file.mts';
-import { declaredIn } from './declarations.mts';
+import { between } from '../max-value-sums/source/source-file.mts';
+import { declaredIn, enclosingOpeners, walkWhile } from './declarations.mts';
 import type { Frame, SourceFile, Span } from '../max-value-sums/sum-types.mts';
 import type { MethodInfo, Nullable } from './declarations.mts';
 import type { Token } from '../../reuse/jvm-reuse-types.mts';
 
-const DOCUMENTED =
-  /\/\*\*((?:(?!\*\/)[\s\S])*)\*\/\s*(?:@\w+(?:\([^)]*\))?\s*)*[\w.<>[\],?\s]+?\s+(\w+)\s*\(/dgu;
-const RETURN_TAG = /@return\b([\s\S]*?)(?=\n\s*\*?\s*@\w|$)/u;
-const NEGATIONS = [
-  'never',
-  'always',
-  'not',
-  'non',
-  'neither',
-  'nor',
-  'no',
-  'without',
-  'instead of',
-  'rather than',
-  'cannot',
-  "can't",
-  'default implementation',
-];
-const NEGATED = new RegExp(String.raw`\b(?:${NEGATIONS.join('|')})\b[^.;]{0,24}\bnull`, 'iu');
-const NULL_IN_NULL_OUT =
-  /\bnull\s+(?:if|when|for)\s+(?:the\s+)?[\w\s]{0,24}?\b(?:is|are|was)\s+(?:\{@code\s+|<code>)?null\b/iu;
-const MAY_BE_NULL = new RegExp(
-  [
-    String.raw`\bnull\s+(?:if|when|otherwise|unless|in case|on|for|where|as)\b`,
-    String.raw`\bor\s+(?:\{@code\s+|<code>)?null\b`,
-    String.raw`\b(?:may|can|might|will|could)\s+(?:also\s+)?(?:be|return)\s+(?:\{@code\s+|<code>)?null\b`,
-    String.raw`^\s*(?:\{@code\s+|<code>)?null\b`,
-    String.raw`\bnull\s+(?:is returned|means)\b`,
-  ].join('|'),
-  'iu',
-);
+const RETURN = 'return';
+const NULL_INIT_TOKENS = 4;
+const NULL_INIT_END = 3;
 const STUB_TOKENS = 3;
 const EXIT_SPAN = 8;
-const NULLABLE_ANNOTATIONS = /^(?:Nullable\w*|CheckForNull|NonNull\w*|NotNull|Nonnull|Null\w*)$/u;
+const NULLABLE_ANNOTATIONS = /^(?:CheckForNull|NonNull\w*|NotNull|Nonnull|Null\w*)$/u;
 const SKIPPED_RETURNS =
   /^(?:void|boolean|byte|short|int|long|char|float|double|Boolean|Optional\w*)(?:<.*>)?$/u;
 
-export function documentedNullable(text: string): Map<string, string> {
-  const found = new Map<string, string>();
-  let line = 1;
-  let offset = 0;
-  for (const match of text.matchAll(DOCUMENTED)) {
-    const nameAt = match.indices?.[2]?.[0] ?? offset;
-    line += text.slice(offset, nameAt).split('\n').length - 1;
-    offset = nameAt;
-    const comment = (match[1] ?? '').replaceAll(/\n\s*\*/gu, '\n');
-    const tag = (RETURN_TAG.exec(comment)?.[1] ?? '').replaceAll(/\s+/gu, ' ');
-    if (!NEGATED.test(tag) && !NULL_IN_NULL_OUT.test(tag) && MAY_BE_NULL.test(tag)) {
-      found.set(`${match[2] ?? ''}:${String(line)}`, tag);
-    }
-  }
-  return found;
+function typeToken(token: Token | undefined): boolean {
+  return token?.kind === 'identifier' || '.<>,?'.includes(token?.text ?? '#');
 }
 
 export function newBefore(tokens: readonly Token[], paren: number): boolean {
-  let at = paren - 1;
-  while (
-    at >= 0 &&
-    (tokens[at]?.kind === 'identifier' || '.<>,?'.includes(tokens[at]?.text ?? '#'))
-  ) {
-    at -= 1;
-  }
+  const at = walkWhile(paren - 1, -1, (step) => step >= 0 && typeToken(tokens[step]));
   return tokens[at]?.text === 'new' && at < paren - 1;
 }
 
 function directlyIn(source: SourceFile, index: number, bodyOpen: number): boolean {
   const { tokens, opener, partner } = source;
-  let open = opener[index] ?? -1;
-  while (open >= 0 && open !== bodyOpen) {
+  const chain = enclosingOpeners(opener, index);
+  const stop = chain.indexOf(bodyOpen);
+  return !(stop < 0 ? chain : chain.slice(0, stop)).some((open) => {
     const lambda = tokens[open - 1]?.text === '->';
     const anonymous = tokens[open - 1]?.text === ')' && newBefore(tokens, partner[open - 1] ?? 0);
-    if (tokens[open]?.text === '{' && (lambda || anonymous)) {
-      return false;
-    }
-    open = opener[open] ?? -1;
-  }
-  return true;
+    return tokens[open]?.text === '{' && (lambda || anonymous);
+  });
 }
 
 function guardsParameter(source: SourceFile, frame: Frame, at: number): boolean {
@@ -115,32 +65,28 @@ function afterExit(tokens: readonly Token[], at: number): boolean {
 
 function returnsNull(source: SourceFile, frame: Frame): number | undefined {
   const { tokens } = source;
-  const stub = frame.body.to - frame.body.from <= STUB_TOKENS;
-  for (let index = frame.body.from; index < frame.body.to && !stub; index += 1) {
-    const isReturn = tokens[index]?.text === 'return' && tokens[index + 1]?.text === 'null';
-    const direct = isReturn && tokens[index + 2]?.text === ';';
-    if (
-      direct &&
+  if (frame.body.to - frame.body.from <= STUB_TOKENS) {
+    return undefined;
+  }
+  const found = between(frame.body.from, frame.body.to).find(
+    (index) =>
+      tokens[index]?.text === RETURN &&
+      tokens[index + 1]?.text === 'null' &&
+      tokens[index + 2]?.text === ';' &&
       directlyIn(source, index, frame.body.from - 1) &&
       !guardsParameter(source, frame, index) &&
-      !afterExit(tokens, index)
-    ) {
-      return tokens[index]?.line;
-    }
-  }
-  return undefined;
+      !afterExit(tokens, index),
+  );
+  return found === undefined ? undefined : tokens[found]?.line;
 }
 
 function statementBounds(source: SourceFile, assignment: number, bodyOpen: number): Span {
   const { tokens, opener, partner } = source;
-  let open = opener[assignment] ?? -1;
-  if (open === bodyOpen) {
+  if (opener[assignment] === bodyOpen) {
     const end = tokens.findIndex((token, at) => at > assignment && token.text === ';');
     return { from: assignment, to: end };
   }
-  while (open >= 0 && opener[open] !== bodyOpen) {
-    open = opener[open] ?? -1;
-  }
+  const open = enclosingOpeners(opener, assignment).find((at) => opener[at] === bodyOpen) ?? -1;
   return { from: open, to: partner[open] ?? -1 };
 }
 
@@ -164,7 +110,7 @@ function isNullInit(source: SourceFile, bodyOpen: number, index: number): boolea
     tokens[index]?.kind === 'identifier' &&
     tokens[index + 1]?.text === '=' &&
     tokens[index + 2]?.text === 'null' &&
-    tokens[index + 3]?.text === ';' &&
+    tokens[index + NULL_INIT_END]?.text === ';' &&
     (before?.kind === 'identifier' || before?.text === '>')
   );
 }
@@ -176,7 +122,7 @@ function localReturnLine(source: SourceFile, frame: Frame): number | undefined {
   );
   for (const index of inits) {
     const name = source.tokens[index]?.text ?? '';
-    const found = assignedOnSomePaths(source, frame, { name, from: index + 4 });
+    const found = assignedOnSomePaths(source, frame, { name, from: index + NULL_INIT_TOKENS });
     if (found !== undefined) {
       return found;
     }
@@ -185,6 +131,10 @@ function localReturnLine(source: SourceFile, frame: Frame): number | undefined {
 }
 
 type Local = { readonly name: string; readonly from: number };
+
+function nextText(tokens: readonly Token[], index: number): string {
+  return tokens[index + 1]?.text ?? '';
+}
 
 function mentionsOf(
   source: SourceFile,
@@ -196,15 +146,17 @@ function mentionsOf(
   const own = between(from, frame.body.to).filter(
     (index) => tokens[index]?.text === name && tokens[index - 1]?.text !== '.',
   );
-  const next = (index: number): string => tokens[index + 1]?.text ?? '';
   const returns = own.filter(
     (index) =>
-      tokens[index - 1]?.text === 'return' && next(index) === ';' && opener[index] === bodyOpen,
+      tokens[index - 1]?.text === RETURN &&
+      nextText(tokens, index) === ';' &&
+      opener[index] === bodyOpen,
   );
   return {
-    assignments: own.filter((index) => next(index) === '='),
+    assignments: own.filter((index) => nextText(tokens, index) === '='),
     compared: own.some(
-      (index) => ['==', '!='].includes(next(index)) && tokens[index + 2]?.text === 'null',
+      (index) =>
+        ['==', '!='].includes(nextText(tokens, index)) && tokens[index + 2]?.text === 'null',
     ),
     returned: tokens[returns.at(-1) ?? -1]?.line,
   };
@@ -220,9 +172,7 @@ function assignedOnSomePaths(source: SourceFile, frame: Frame, local: Local): nu
 function dependsOnFlag(source: SourceFile, method: MethodInfo, tag: string): boolean {
   return declaredIn(source, method.frame).some(
     ({ name, type, index }) =>
-      index === method.frame.open &&
-      type === 'boolean' &&
-      new RegExp(`\\b${name}\\b`, 'u').test(tag),
+      index === method.frame.open && type === 'boolean' && tag.split(/\W+/u).includes(name),
   );
 }
 
@@ -244,7 +194,7 @@ export function nullableOf(
   }
   const direct = returnsNull(source, method.frame);
   if (direct !== undefined) {
-    return { why: 'return', line: direct };
+    return { why: RETURN, line: direct };
   }
   const local = localReturnLine(source, method.frame);
   if (local !== undefined) {

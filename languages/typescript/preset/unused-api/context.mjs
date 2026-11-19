@@ -12,7 +12,7 @@ const GENERATED_MARKER =
   /@generated|auto-?generated|generated (?:by|from|file)|do not (?:edit|modify)/iu;
 const HEADER_LENGTH = 1000;
 
-export function isTypeScriptFile(file) {
+function isTypeScriptFile(file) {
   return TYPESCRIPT_EXTENSIONS.has(path.extname(file));
 }
 

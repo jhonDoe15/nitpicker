@@ -1,12 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { PROJECT, useTempProjects } from '../test-support/temp-projects.mts';
+import { useScanner } from '../test-support/temp-projects.mts';
 import { readMutatingMethodFindings as read } from './mutating-methods.mts';
 
-const projectWith = useTempProjects('nitpicker-jvm-mutation-');
-
-function scan(file: string, text: string, kotlin: boolean) {
-  return read(projectWith({ [file]: text }), { projects: [PROJECT], kotlin });
-}
+const scan = useScanner('nitpicker-jvm-mutation-', read);
 
 function java(body: string, packageName = 'shop.domain') {
   return scan(

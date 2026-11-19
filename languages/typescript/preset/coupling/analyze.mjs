@@ -59,6 +59,30 @@ function sharedUsage(graph, sourceRoot, { layout, projectRoot }) {
 const defaultRoles = withPublicFace(featureRoles(featureLayout), PUBLIC_FACES.typescript);
 const sharedRoots = featureLayout.sharedRoots.map((glob) => globMatcher(glob));
 
+const HUB_LIMIT = 20;
+
+function couplingSummary(moduleCount, edges, metrics) {
+  const runtimeCount = edges.filter((edge) => edge.kind === 'runtime').length;
+  return {
+    modules: moduleCount,
+    dependencies: edges.length,
+    runtimeDependencies: runtimeCount,
+    typeOnlyDependencies: edges.length - runtimeCount,
+    packages: metrics.packages.length,
+  };
+}
+
+function topHubs(moduleMetrics) {
+  return [...moduleMetrics]
+    .sort(
+      (left, right) =>
+        right.totalCoupling - left.totalCoupling ||
+        right.fanIn - left.fanIn ||
+        left.source.localeCompare(right.source),
+    )
+    .slice(0, HUB_LIMIT);
+}
+
 export function analyzeCoupling(graph, sourceRoot, options = {}) {
   const { layout = defaultResolvedLayout, roleOf = defaultRoles } = options;
   if (!Array.isArray(graph?.modules)) {
@@ -74,7 +98,6 @@ export function analyzeCoupling(graph, sourceRoot, options = {}) {
   const edges = internalEdges(graph, normalizedRoot).filter(
     (edge) => fileSet.has(edge.source) && fileSet.has(edge.target),
   );
-  const runtimeEdges = edges.filter((edge) => edge.kind === 'runtime');
 
   const metrics = computeCoupling({
     modules: files,
@@ -87,21 +110,8 @@ export function analyzeCoupling(graph, sourceRoot, options = {}) {
   const moduleMetrics = metrics.modules.map(({ module, ...rest }) => ({ source: module, ...rest }));
 
   return {
-    summary: {
-      modules: files.length,
-      dependencies: edges.length,
-      runtimeDependencies: runtimeEdges.length,
-      typeOnlyDependencies: edges.length - runtimeEdges.length,
-      packages: metrics.packages.length,
-    },
-    hubs: [...moduleMetrics]
-      .sort(
-        (left, right) =>
-          right.totalCoupling - left.totalCoupling ||
-          right.fanIn - left.fanIn ||
-          left.source.localeCompare(right.source),
-      )
-      .slice(0, 20),
+    summary: couplingSummary(files.length, edges, metrics),
+    hubs: topHubs(moduleMetrics),
     modules: moduleMetrics,
     moduleImports: edges.map(({ source, target, kind }) => ({
       from: source,

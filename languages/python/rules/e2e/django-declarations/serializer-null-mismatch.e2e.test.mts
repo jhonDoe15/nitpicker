@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { code, declaredClass, useDeclarationScripts } from './declaration-support.mts';
+import { code, declaredBuilder, useDeclarationScripts } from './declaration-support.mts';
 
 const enabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 const { itOutcomes } = useDeclarationScripts(enabled);
@@ -34,14 +34,11 @@ class GroupSerializer(serializers.ModelSerializer):
 `,
 ];
 
-function serializer(...lines: string[]): string {
-  return declaredClass({
-    models: MODELS,
-    header: 'class BindingSerializer(serializers.ModelSerializer):',
-    body: lines,
-    meta: ['        model = Binding', '        fields = "__all__"'],
-  });
-}
+const serializer = declaredBuilder({
+  models: MODELS,
+  header: 'class BindingSerializer(serializers.ModelSerializer):',
+  meta: ['        model = Binding', '        fields = "__all__"'],
+});
 
 describe.skipIf(!enabled)('serializer-null-mismatch', () => {
   itOutcomes('flags settings that disagree with the model or the method', [

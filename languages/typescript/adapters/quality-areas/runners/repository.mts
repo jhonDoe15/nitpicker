@@ -145,8 +145,7 @@ export async function runCoupling(options: QualityAreaOptions): Promise<AreaRepo
     normalizeCoupling(
       analyzeCoupling(graph, root, { layout, projectRoot: options.projectRoot }),
       options.analyzerName,
-      exceptions,
-      layoutPolicy,
+      { exceptions, layout: layoutPolicy },
     ),
   );
   const imports = wantsModuleImports(history)

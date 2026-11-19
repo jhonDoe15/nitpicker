@@ -7,15 +7,23 @@ export function useDeclarationScripts(enabled: boolean): ReturnType<typeof useSc
   });
 }
 
-export type DeclaredClass = {
+type DeclaredClass = {
   readonly models: readonly string[];
   readonly header: string;
   readonly body: readonly string[];
   readonly meta: readonly string[];
 };
 
-export function declaredClass({ models, header, body, meta }: DeclaredClass): string {
+function declaredClass({ models, header, body, meta }: DeclaredClass): string {
   return code(...models, header, ...body, '', '    class Meta:', ...meta);
+}
+
+export function declaredBuilder({
+  models,
+  header,
+  meta,
+}: Omit<DeclaredClass, 'body'>): (...lines: string[]) => string {
+  return (...lines) => declaredClass({ models, header, body: lines, meta });
 }
 
 export { code };

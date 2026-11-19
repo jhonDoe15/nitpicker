@@ -1,14 +1,14 @@
-import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
-import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
-import { inModule } from '../../../builds/module-path.mts';
-import { definedField } from '../../../../../shared/messages/messages.mjs';
-import { createIdentityCounter } from '../../../../../shared/ingest/common.mjs';
+import { exceptionRoute } from '../../../../../../shared/exceptions/rule-names.mjs';
+import { exceptionMatcher } from '../../../../../../shared/rules/exceptions.mjs';
+import { inModule } from '../../../../builds/paths/module-path.mts';
+import { definedField } from '../../../../../../shared/messages/messages.mjs';
+import { createIdentityCounter } from '../../../../../../shared/ingest/common.mjs';
 import {
   appendSentence,
   hasExceptionRoute,
-} from '../../../../../shared/messages/exception-sentence.mjs';
+} from '../../../../../../shared/messages/exception-sentence.mjs';
 
-import type { FindingFactory, ReviewFinding } from './typed/review-finding-types.mts';
+import type { FindingFactory, ReviewFinding } from '../typed/review-finding-types.mts';
 
 type RouteInput = {
   rule: string;

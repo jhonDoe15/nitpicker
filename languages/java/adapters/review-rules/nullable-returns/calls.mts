@@ -1,4 +1,5 @@
-import { splitTopLevel } from '../max-value-sums/source-file.mts';
+import { splitTopLevel } from '../max-value-sums/source/source-file.mts';
+import { enclosingOpeners } from './declarations.mts';
 import { eligible, newBefore } from './returns.mts';
 import type { Declared, ClassInfo, MethodInfo, Nullable } from './declarations.mts';
 import type { Frame, SourceFile } from '../max-value-sums/sum-types.mts';
@@ -39,6 +40,8 @@ export type Scope = {
   readonly declared: Declared[];
 };
 
+const QUALIFIER_DOT = 3;
+const QUALIFIER_THIS = 4;
 const NOT_CALLS = new Set([
   'if',
   'for',
@@ -73,20 +76,17 @@ function targetIn(cls: ProjectClass, name: string, count: number): Target | 'abs
 
 function enclosingClasses(scope: Scope, index: number): ProjectClass[] | undefined {
   const { source } = scope.model;
-  const found: ProjectClass[] = [];
-  for (let open = source.opener[index] ?? -1; open >= 0; open = source.opener[open] ?? -1) {
-    const anonymous =
+  const chain = enclosingOpeners(source.opener, index);
+  const anonymous = chain.some(
+    (open) =>
       source.tokens[open - 1]?.text === ')' &&
-      newBefore(source.tokens, source.partner[open - 1] ?? 0);
-    const named = scope.model.classes.find((cls) => cls.open === open);
-    if (anonymous) {
-      return undefined;
-    }
-    if (named !== undefined) {
-      found.push(named);
-    }
+      newBefore(source.tokens, source.partner[open - 1] ?? 0),
+  );
+  if (anonymous) {
+    return undefined;
   }
-  return found;
+  const byOpen = new Map(scope.model.classes.map((cls) => [cls.open, cls]));
+  return chain.flatMap((open) => byOpen.get(open) ?? []);
 }
 
 function visible(model: FileModel, cls: ProjectClass): boolean {
@@ -145,9 +145,10 @@ function callableAt(scope: Scope, index: number): Callable | undefined {
   const close = partner[index + 1] ?? -1;
   const before = tokens[index - 1]?.text;
   const classes = enclosingClasses(scope, index);
+  const token = tokens[index];
   const callable =
-    tokens[index]?.kind === 'identifier' &&
-    !NOT_CALLS.has(tokens[index]?.text ?? '') &&
+    token?.kind === 'identifier' &&
+    !NOT_CALLS.has(token.text) &&
     tokens[index + 1]?.text === '(' &&
     close >= 0 &&
     before !== 'new' &&
@@ -175,14 +176,15 @@ function ownCall(scope: Scope, index: number, call: Callable): Resolved | undefi
 function receiverCall(scope: Scope, index: number, call: Callable): Resolved | undefined {
   const { tokens } = scope.model.source;
   const receiver = tokens[index - 2];
-  const field = tokens[index - 3]?.text === '.' && tokens[index - 4]?.text === 'this';
-  if (receiver?.kind !== 'identifier' || (tokens[index - 3]?.text === '.' && !field)) {
+  const qualified = tokens[index - QUALIFIER_DOT]?.text === '.';
+  const field = qualified && tokens[index - QUALIFIER_THIS]?.text === 'this';
+  if (receiver?.kind !== 'identifier' || (qualified && !field)) {
     return undefined;
   }
   const type = receiverType(scope, { name: receiver.text, at: index, classes: call.classes });
   const cls = uniqueClass(scope, type);
   const { close, count } = call;
-  const start = field ? index - 4 : index - 2;
+  const start = field ? index - QUALIFIER_THIS : index - 2;
   return cls === undefined ? undefined : { cls, name: index, start, close, count };
 }
 
@@ -192,7 +194,7 @@ export function resolveAt(scope: Scope, index: number): Resolved | undefined {
   const receiver = tokens[index - 2];
   const own =
     tokens[index - 1]?.text !== '.' ||
-    (receiver?.text === 'this' && tokens[index - 3]?.text !== '.');
+    (receiver?.text === 'this' && tokens[index - QUALIFIER_DOT]?.text !== '.');
   if (call === undefined) {
     return undefined;
   }
@@ -223,19 +225,15 @@ const COPYING_TYPES = new Set([
   'PriorityQueue',
   'String',
 ]);
-const COPYING_CALLS =
-  /^(?:unmodifiable\w+|synchronized\w+|copyOf|addAll|putAll|unmodifiableCollection)$/u;
+const COPYING_CALLS = /^(?:unmodifiable\w+|synchronized\w+|copyOf|addAll|putAll)$/u;
 export function copyingCall(source: SourceFile, at: number): string | undefined {
   const { tokens, opener } = source;
   const open = opener[at] ?? -1;
   const direct = tokens[at - 1]?.text === '(' && tokens[at + 1]?.text === ')';
-  let name = open - 1;
-  if (tokens[name]?.text === '>') {
-    while (name >= 0 && tokens[name]?.text !== '<') {
-      name -= 1;
-    }
-    name -= 1;
-  }
+  const name =
+    tokens[open - 1]?.text === '>'
+      ? tokens.slice(0, open - 1).findLastIndex((token) => token.text === '<') - 1
+      : open - 1;
   const callee = tokens[name]?.text ?? '';
   const constructs = tokens[name - 1]?.text === 'new';
   const copies = constructs ? COPYING_TYPES.has(callee) : COPYING_CALLS.test(callee);
