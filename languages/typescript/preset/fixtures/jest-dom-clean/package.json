@@ -1,0 +1,21 @@
+{
+  "name": "jest-dom-clean-fixture",
+  "private": true,
+  "scripts": {
+    "test": "jest -c config/jest.config.cjs"
+  },
+  "dependencies": {
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "10.4.2",
+    "@testing-library/react": "16.3.3",
+    "@types/jest": "30.0.0",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "jest": "30.5.2",
+    "jest-environment-jsdom": "30.5.2",
+    "ts-jest": "29.4.15"
+  }
+}

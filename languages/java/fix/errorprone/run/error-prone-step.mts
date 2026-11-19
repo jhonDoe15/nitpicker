@@ -72,10 +72,12 @@ export function errorPronePatch(
     const { patchRoot, reportRoot } = compileForPatch(settings, checks, work);
     const patches = readPatches({ patchRoot, projectRoot });
     const diagnostics = readDiagnostics({ reportRoot, projectRoot });
-    const live = liveTexts(projectRoot, javaFiles);
+    const live = settings.allFiles ? new Map<string, string>() : liveTexts(projectRoot, javaFiles);
     const touched = touchedByFile({
       files: javaFiles,
-      baseSources: readBaseFiles({ repositoryRoot, mergeBaseSha, files: javaFiles }),
+      baseSources: settings.allFiles
+        ? new Map()
+        : readBaseFiles({ repositoryRoot, mergeBaseSha, files: javaFiles }),
       live,
       allFiles: settings.allFiles,
     });

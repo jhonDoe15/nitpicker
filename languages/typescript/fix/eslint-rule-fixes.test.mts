@@ -241,13 +241,45 @@ const REVIEW_RULES = [
   'eslint-lint/nitpicker/no-raised-test-timeout',
 ];
 
+const NET_FILE = 'src/main/features/orders/adapters/net.ts';
+const TIMEOUT_FILE = 'tests/slow.test.ts';
+
+function typeErrorWhenFixed(root: string, name: keyof typeof REVIEW_INPUT) {
+  const text = readFileSync(path.join(root, name), 'utf8');
+  return text === REVIEW_INPUT[name]
+    ? []
+    : [
+        {
+          tool: 'typescript-typecheck',
+          rule: 'TS2304',
+          path: name,
+          classification: 'enforceable',
+        },
+      ];
+}
+
+function rolledBackNote(rules: string, reason: string): string {
+  return `--fix rolled back eslint-suggestion ${rules} ${NET_FILE} (${NET_FILE}): ${reason}`;
+}
+
+function rollbackNotes(notes: readonly string[] | undefined) {
+  return (notes ?? []).filter((note) => note.startsWith('--fix rolled back'));
+}
+
 function topic(changed: Readonly<Record<string, string>>) {
   return topicRepository(createGitRepository, COMMITTED, changed);
 }
 
-function fix(repository: { readonly root: string }, selectedRules?: readonly string[]) {
+function fix(
+  repository: { readonly root: string },
+  selectedRules?: readonly string[],
+  analyzeFixes?: (request: unknown) => unknown,
+) {
   const result = fixWorkingTree(
-    fixOptions(repository.root, selectedRules === undefined ? {} : { selectedRules }),
+    fixOptions(repository.root, {
+      ...(selectedRules === undefined ? {} : { selectedRules }),
+      ...(analyzeFixes === undefined ? {} : { analyzeFixes }),
+    }),
   );
   function read(name: string): string {
     return readFileSync(path.join(repository.root, name), 'utf8');
@@ -307,5 +339,74 @@ describe('the fixes of nitpicker own ESLint rules', () => {
     expect(read('src/main/log.ts').split('\n')[8]).toBe(
       "    logger.error({ err: error }, 'failed');",
     );
+  });
+  it('rolls back a suggestion that adds a type error and names it in the notes', () => {
+    const repository = topic(REVIEW_INPUT);
+    const requests: unknown[] = [];
+    const { result, read } = fix(repository, REVIEW_RULES, (request) => {
+      requests.push(request);
+      return { findings: typeErrorWhenFixed(repository.root, TIMEOUT_FILE) };
+    });
+
+    expect(read(TIMEOUT_FILE)).toBe(REVIEW_INPUT[TIMEOUT_FILE]);
+    expect(rollbackNotes(result.notes)).toEqual([
+      expect.stringMatching(
+        /^--fix rolled back eslint-suggestion .*require-test-process-timeout.* \(tests\/slow\.test\.ts\): .*TS2304/u,
+      ),
+    ]);
+    expect(requests[0]).toEqual({
+      files: [NET_FILE, TIMEOUT_FILE],
+      mode: 'narrow',
+      tools: ['eslint-lint'],
+    });
+  });
+  it('keeps the suggestions when the analysis finds nothing new', () => {
+    const repository = topic(REVIEW_INPUT);
+    const { result, read } = fix(repository, REVIEW_RULES, () => ({ findings: [] }));
+
+    expect(rollbackNotes(result.notes)).toEqual([]);
+    expect(read(TIMEOUT_FILE)).toBe(REVIEW_OUTPUT[TIMEOUT_FILE]);
+    expect(read(NET_FILE)).toBe(REVIEW_OUTPUT[NET_FILE]);
+  });
+  it('rolls back every suggestion of one file together and keeps the other file', () => {
+    const repository = topic(REVIEW_INPUT);
+    const { result, read } = fix(repository, REVIEW_RULES, () => ({
+      findings: typeErrorWhenFixed(repository.root, NET_FILE),
+    }));
+
+    expect(read(NET_FILE)).toBe(REVIEW_INPUT[NET_FILE]);
+    expect(read(TIMEOUT_FILE)).toBe(REVIEW_OUTPUT[TIMEOUT_FILE]);
+    expect(rollbackNotes(result.notes)).toEqual([
+      rolledBackNote(
+        [
+          'nitpicker/no-disabled-tls-verification',
+          'nitpicker/no-falsy-default',
+          'nitpicker/no-shell-string-command',
+          'nitpicker/require-http-timeout',
+        ].join(','),
+        `breaks the compile or type check: new typescript-typecheck/TS2304 in ${NET_FILE}`,
+      ),
+    ]);
+  });
+  it('rolls a suggestion back when its finding is still reported', () => {
+    const repository = topic(REVIEW_INPUT);
+    const { result, read } = fix(repository, ['eslint-lint/nitpicker/no-falsy-default'], () => ({
+      findings: [
+        {
+          tool: 'eslint-lint',
+          rule: 'nitpicker/no-falsy-default',
+          path: NET_FILE,
+          classification: 'enforceable',
+        },
+      ],
+    }));
+
+    expect(read(NET_FILE)).toBe(REVIEW_INPUT[NET_FILE]);
+    expect(rollbackNotes(result.notes)).toEqual([
+      rolledBackNote(
+        'nitpicker/no-falsy-default',
+        `eslint-lint/nitpicker/no-falsy-default is still reported in ${NET_FILE}`,
+      ),
+    ]);
   });
 });

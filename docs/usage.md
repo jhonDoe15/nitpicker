@@ -23,9 +23,10 @@ installed in `node_modules` by npm, pnpm, Yarn (Yarn Plug'n'Play is not supporte
 every member that has none of its own, and a missing install names the workspace root. The base's
 own install supports all four managers; nitpicker itself is tested end to end with npm projects. nitpicker brings its own pinned ESLint, Prettier, dependency-cruiser, knip, jscpd,
 Stryker and CRAP tooling and loads them from its own package, so neither side of the comparison can
-choose them. `vitest` and `@vitest/coverage-v8` (4.1.11 or newer, or 5) and `typescript` come from
-your project; if one is missing or incompatible, the tool that needs it fails and the report shows a
-tool error. On Node.js 22 with its bundled npm 10, see [npm 10 and Vitest 4.1](#npm-10-and-vitest-41).
+choose them. `typescript` and the project's test runner come from your project: Vitest, Jest,
+`node:test` or Mocha (see [Test runners](#test-runners)). A Vitest project also needs
+`@vitest/coverage-v8` at its Vitest version (4.1.11 or newer, or 5). If a peer is missing or
+incompatible, the tool that needs it fails and the report shows a tool error. On Node.js 22 with its bundled npm 10, see [npm 10 and Vitest 4.1](#npm-10-and-vitest-41).
 
 ### npm 10 and Vitest 4.1
 
@@ -2683,6 +2684,8 @@ runs only when `--fix --rule` names one of its rules.
 | java | `structure/near-duplicate` (a run shared by two methods of a class) | `java-extract-partial-run` | extracts the shared statements of a `partial-run` pair into a method and calls it from both (review) |
 | typescript | `structure/near-duplicate` (copies in one file) | `typescript-extract-near-duplicate` | extracts the shared function of a proved copy and calls it from both copies |
 | typescript | `structure/near-duplicate` (a run shared by two functions of a file) | `typescript-extract-partial-run` | extracts the shared statements of a `partial-run` pair into a function and calls it from both (review) |
+| java, kotlin | `structure/shorter-condition` | `jvm-shorter-condition` | writes the shorter form the finding names in place of the condition (review) |
+| java, kotlin | `structure/duplicate-branch` (switch cases and `when` entries) | `jvm-merge-switch-labels` | merges the labels of cases with the same body into the first case (review) |
 | java | `checkstyle/UpperEll` | `java-upper-ell` | turns the `l` suffix of a `long` literal into `L`, outside strings, text blocks and comments |
 | kotlin | `detekt/detekt.style.NewLineAtEndOfFile` | `kotlin-final-newline` | ends a file with a line break, CRLF when the file uses CRLF |
 | java, kotlin | `errorprone/<Check>` for the checks in [Error Prone fixes](#error-prone-fixes) | `java-error-prone-safe`, `java-error-prone-review` | applies the fix Error Prone suggests, to the changed lines of `.java` files |
@@ -2708,6 +2711,22 @@ runs only when `--fix --rule` names one of its rules.
 | java | `facts/doc-comment-content` | `java-restating-doc-comment` | deletes the lines of a Javadoc comment in a main source set that only restates the name of its declaration |
 | kotlin | `facts/doc-comment-content` | `kotlin-restating-doc-comment` | the same for KDoc, and for Javadoc in the Java files of the project |
 | python | `facts/doc-comment-content` | `python-restating-docstring` | deletes the lines of a docstring that only restates the name of its function or class, or turns a docstring that is the whole body into `pass` |
+
+Shorter conditions. `jvm-shorter-condition` writes the form that `structure/shorter-condition`
+names in place of the condition, in Java and Kotlin functions, and puts it in parentheses where an
+operator wraps it. It leaves a condition that holds a comment, a condition whose text appears twice
+on its line, and generated sources. It is a `review` recipe: the shorter form evaluates fewer
+operands, so a dropped operand that could throw (unboxing a `null` `Boolean`, a call with a side
+effect) no longer runs.
+
+Switch labels. `jvm-merge-switch-labels` handles the `structure/duplicate-branch` findings on
+switch cases with the same body. It adds the labels of the later cases to the first one and removes
+the later cases: `case 1: case 3:` for Java colon cases, `case 1, 3 ->` for arrow cases and
+`1, 3 ->` for a Kotlin `when` with a subject. It leaves a case that falls through or that a falling
+case enters, a case that declares a local, pattern labels, guards, `null`, `default` and `else`,
+cases with comments, and Kotlin entries that are not next to each other (their conditions are tested
+in order) or that test a type (the body may rely on the smart cast). It is a `review` recipe, as the
+merged case may be one that was meant to differ.
 
 Near-duplicate extraction. The `near-duplicate` recipes handle a `same` or `parameterizable` pair
 whose copies sit in one file (TypeScript, JavaScript), in one class (Java), or in two files of one
@@ -2862,18 +2881,25 @@ checks every recipe that applied a fix:
    compared by tool, rule and file with the ones the same analyzers give for the files before the
    fix.
 2. A recipe is rolled back when its finding is still there, when it adds a finding in a file it
-   touched, or when it adds a compile or type error. A new compile or type error in a file that no
-   recipe touched rolls back every recipe, as nitpicker cannot tell which one caused it.
+   touched, or when it adds a compile or type error. A new finding that is only a simplification
+   (labelled `simplification` and nothing else, such as `errorprone/UnnecessaryParentheses` after
+   a pattern match) does not roll the recipe back: the fix surfaced it, and it is reported as usual.
+   A new compile or type error in a file that no recipe touched rolls back every recipe, as
+   nitpicker cannot tell which one caused it.
 3. A rolled back recipe gets its files back as they were before `--fix`, and a "Fix notes:" line
    names the recipe, its files and the reason: `--fix rolled back <recipe> (<files>): <reason>`.
-   Two recipes that touched the same file are rolled back together. The other recipes stay applied,
-   and the comparison runs on the tree that is left. The files of a rolled back recipe are not
+   Two recipes that touched the same file are rolled back together. A recipe that edits one file at
+   a time (every Error Prone and Kotlin source recipe) is judged per file, so only the files it
+   broke are rolled back. The other recipes stay applied, and the comparison runs on the tree that
+   is left. The files of a rolled back recipe are not
    formatted either, and they are not listed under "Fixed files:" or "Fixed findings:".
 
 When no recipe fixed anything, nothing is verified. When the analyzers fail, or none reports the
 fixed rules, every fix stays and a "Fix notes:" line says that the fixes were not verified.
-Formatters and `eslint --fix` are trusted and are not rolled back by themselves. `--fix --dry-run`
-verifies too, so the plan only lists the fixes that would stay.
+Formatters and plain `eslint --fix` output are trusted and are not rolled back by themselves. The one
+exception is a suggestion applied with `--rule` (see [ESLint rule fixes](#eslint-rule-fixes)): each file
+it changed is verified as the recipe `eslint-suggestion <rules> <file>`, so a type error or a finding of
+that rule that is still there rolls the file back. `--fix --dry-run` verifies too, so the plan only lists the fixes that would stay.
 
 `nitpicker --fix --verify full` runs the whole gate instead (the analyzers you selected, tests and
 mutation testing included) and uses the same rules. In it a new `tests` finding anywhere rolls
@@ -2947,6 +2973,10 @@ finding as it is. No fix adds a comment.
 | `nitpicker/test-tsconfig-pins-lib-and-types`         | safe   | adds `types: []` and `lib: ['ES2022']` to a literal `compilerOptions`                                                    |
 | `nitpicker/hermetic-git-in-tests`                    | safe   | adds `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_NOSYSTEM` to the `env` of the git call                                          |
 | `nitpicker/no-mutating-method-in-domain`             | safe   | writes `toSorted` or `toReversed` for a `sort` or `reverse` through a computed key on a fresh array whose result is used |
+| `nitpicker/no-wasted-collection-step`                | safe   | safe: spread fallbacks and copies, length tests, `flatMap`, `some`; review: `await` in `Promise.all`, `Promise.all([p])` |
+| `nitpicker/no-accumulating-spread`                   | safe   | safe: `Object.fromEntries`, `map` or `flatMap` for a `reduce` that spreads its accumulator; review: `push` in a loop     |
+| `nitpicker/no-accumulator-concat`                    | safe   | safe: `flatMap` for a `reduce` that concatenates onto its accumulator; review: `push` for `x = x.concat(y)` in a loop    |
+| `nitpicker/no-costly-collection-form`                | review | writes a `Set` for an array used as a set, a `Map` or `Set` built once for a keyed lookup, `reduce` for a sort to an end |
 | `nitpicker/no-falsy-default`                         | review | writes `??` for `\|\|` or for `x ? x : fallback`                                                                         |
 | `nitpicker/require-http-timeout`                     | review | adds `signal: AbortSignal.timeout(10000)` to `fetch` and `timeout: 10000` to `axios.<method>`                            |
 | `nitpicker/require-test-process-timeout`             | review | adds `timeout` (the test declaration ceiling, 10000 ms by default) to `spawnSync`, `execSync` and `execFileSync`         |
@@ -2957,7 +2987,12 @@ finding as it is. No fix adds a comment.
 A `safe` rule has an ESLint fix, so `--fix` applies it. A `review` rule changes behaviour on purpose, so it
 offers its rewrite as an ESLint suggestion, which plain `--fix` never applies. When a run selects the rule
 (`--fix --rule eslint-lint/<rule>`), the fix, or the one suggestion of a `review` rule, is applied to the changed
-files, and the other ESLint rules are not fixed in that run. Prettier runs after ESLint as usual.
+files, and the other ESLint rules are not fixed in that run. ESLint reruns on the files it changed until no
+selected fix applies, at most 10 passes, so fixes whose ranges overlap are all applied; a "Fix notes:" line says when
+the cap was hit. Prettier runs after ESLint as usual. Safe fixes assume arrays have no holes, as TypeScript's types do.
+A suggestion applied this way is verified like a recipe: for each file the run reports the rules it applied
+as `eslint-lint` findings, and [Verify the fixes](#verify-the-fixes) reruns `eslint-lint` and the type check
+on the file and rolls it back when a rule's finding is still there or a compile error is new.
 
 `nitpicker/structured-catch-logging` is configured in the logging check, not in the `eslint-lint` check, so
 `--fix` also loads the rules of the logging check for the production files it covers. Its fix is applied
@@ -2989,7 +3024,9 @@ them against the pinned Error Prone when it runs the patch compile above, so the
 compile, and they never run in the gate. Each check edits one file, so none renames a public symbol.
 
 `pmd/UseStandardCharsets`, `pmd/SpringComposedMapping`, `pmd/SpringRestController`,
-`pmd/LogStringConcatenation`, `pmd/UseCollectionIsEmpty` and `spotbugs/DMI_RANDOM_USED_ONLY_ONCE` are on the safe list. The others
+`pmd/LogStringConcatenation`, `pmd/UseCollectionIsEmpty`, `pmd/SimplifyBooleanReturns`,
+`pmd/SimplifiedTernary`, `pmd/SimplifyBooleanExpressions`, `pmd/CollapsibleIfStatements`,
+`pmd/UselessStringValueOf` and `spotbugs/DMI_RANDOM_USED_ONLY_ONCE` are on the safe list. The others
 (`pmd/LiteralsFirstInComparisons`, `pmd/PreserveStackTrace`, `pmd/SpringConstructorInjection`, `pmd/DetachedTestCase`,
 `pmd/RetryInTest`, `pmd/MutationIgnoreMarker`, `pmd/GeneratedOnHandWrittenCode`, `pmd/SpringDataNoSaveInLoop`, `pmd/SpringDataBatchOfOne`, `effects/EntityLoadedForExistence`, `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop`, `pmd/ReusableObjectPerCall`, `spotbugs/IIL_PREPARE_STATEMENT_IN_LOOP`, `pmd/UseEnumCollections`, `pmd/SortForExtreme`, `pmd/PlainTextRegex`, `pmd/DoNotCallGarbageCollectionExplicitly`) change what the
 code does or what the tests measure, so they run only when a run selects their rule. When two
@@ -3159,7 +3196,8 @@ It is never applied unless declared: `nitpicker init` writes it for a project wi
 TypeScript, and a run without a preset on such a project prints a hint to stderr. CI needs what the TypeScript preset needs
 ([nitpicker in CI](ci.md#toolchains-by-preset)). Types are written as JSDoc and checked by TypeScript with `allowJs` and
 `checkJs`: nitpicker generates the tsconfig, layered over your `tsconfig.json` or `jsconfig.json` when you
-have one. `typescript` and `vitest` are peers as for TypeScript.
+have one. `typescript` and the project's test runner (Vitest with `@vitest/coverage-v8`, Jest,
+`node:test` or Mocha) are peers as for TypeScript.
 
 The `$schema` line of [Editor support](#editor-support) offers this preset's keys only: it flags
 `react`, `i18n` and the class thresholds that only Java, Kotlin and Python take, and accepts the
@@ -3167,13 +3205,11 @@ JavaScript conventions.
 
 What the preset does not support:
 
-- **Test runner.** Both presets run the tests with the project's runner: Vitest, Jest, `node:test` or
-  Mocha (coverage, CRAP, mutation and console output). Test files are linted with the Vitest rules
-  whatever the runner, so `vitest/no-import-node-test` reports a `node:test` import; its message
-  points to an exception for that rule.
+- **Test runner.** Both presets run and lint the tests with the project's runner: Vitest, Jest,
+  `node:test` or Mocha (coverage, CRAP, mutation, console output and the test lint rules).
 - **CommonJS tests.** Production code may be CommonJS. A Vitest test file must `import` Vitest,
-  because `require('vitest')` fails at run time, so import `.cjs` production code from an ESM test, as
-  the fixture does; Jest, `node:test` and Mocha tests may be CommonJS.
+  because `require('vitest')` fails at run time, so import `.cjs` production code from an ESM test,
+  as the fixture does. Jest, `node:test` and Mocha run CommonJS tests as they are.
 - **`.jsx` and `.tsx`.** React and JSX belong to the TypeScript preset. No analyzer reads a `.jsx` or
   `.tsx` file, so a project with one under its source or test roots is a config error (exit 2) rather
   than a green gate that checks nothing. Use the TypeScript preset, or list those files in `exclude`.
@@ -3363,7 +3399,9 @@ new and touched code must comply.
   start and bound, `Array.from({ length: 3 })` or `do ... while`) is not reported.
   `nitpicker/no-partial-output-assertion` also rejects `toMatchObject` and
   `expect.objectContaining`, `expect.stringContaining` and `expect.arrayContaining` inside
-  `toEqual`/`toStrictEqual`, and `toMatch` with a string or an unanchored pattern: assert the whole
+  `toEqual`/`toStrictEqual`, `toMatch` with a string or an unanchored pattern, and the same
+  fragments under `node:test` and Chai (`assert.ok(text.includes('x'))`,
+  `assert.partialDeepStrictEqual`, `expect(x).to.include('x')`, `containSubset`): assert the whole
   value. Assertions must pin the value: `toBeDefined`, `toBeTruthy`, `toBeFalsy`, `not.toBeNull`,
   `not.toBeUndefined`, a bare `toHaveBeenCalled()`, `toThrow()` without a message and `expect(true)`
   are rejected, and so are their spellings `nitpicker/no-weak-assertion` finds: `not.toBe(null)`, a
@@ -4449,7 +4487,7 @@ To use your project's own type scope and compiler options for type checking and 
 TypeScript checker, explicitly select a config in `nitpicker.config.json`:
 
 ```json
-{ "tools": { "typescript": { "project": "tsconfig.quality.json" } } }
+{ "tools": { "typescript": { "project": "tsconfig.json" } } }
 ```
 
 The path must name a JSON config file inside the project, relative to its root. Nested configs
@@ -4467,6 +4505,153 @@ Other analyzers still enforce nitpicker's rules and source/test layout.
 
 Troubleshooting: the failures this preset meets are listed in the
 [TypeScript and JavaScript preset guide](typescript-strict-preset/troubleshooting.md).
+
+## Test runners
+
+Coverage, CRAP and mutation run the project's tests with the runner the project already uses:
+Vitest, Jest, `node:test` or Mocha. nitpicker goes through these steps in order and takes the runner
+from the first step that names one. When a step names more than one runner (a `test` script running
+two, a Jest config next to a `test:unit` script running Vitest, as many test files for each, or two
+runner dependencies), coverage, CRAP and mutation stop with exit 2 before any check runs, naming
+each runner with its evidence, until `tools.tests.runner` chooses one. A run without them goes on:
+the test-file lint rules follow the runner the later steps favour among the ones named (else the
+first one named), and a notice says which until `tools.tests.runner` chooses.
+
+1. `tools.tests.runner` in `nitpicker.config.json`: `"vitest"`, `"jest"`, `"node"` or `"mocha"`.
+2. The runner the `test` script in `package.json` calls, following the scripts it runs:
+   `npm run <name>` (also with `--silent` or `-s`), `npm test`, `yarn <name>`, `yarn run <name>`,
+   `pnpm <name>`, `pnpm run <name>`, `bun run <name>`, and the scripts `run-s`, `run-p` and
+   `npm-run-all` run, name globs such as `test:*` included. `react-scripts test`, `craco test`,
+   `react-app-rewired test` and `rescripts test` are Jest, `ts-mocha` is Mocha with `ts-node`, and
+   `tsx --test` is `node:test` with the `tsx` loader.
+3. The runners the other `test*` scripts call, together with the runners' config files:
+   `vitest.config.*` or `vitest.workspace.*`, `jest.config.*` or a `jest` key in `package.json`,
+   `.mocharc.*` or a `mocha` key in `package.json`.
+4. The runner the test files import: `vitest`, `@jest/globals`, `mocha` or `node:test`. The runner
+   most test files import wins; each test file counts once, however often it imports the runner.
+   The test files here are the files under the test roots, the source roots' `*.test.*`,
+   `*.spec.*` and `__tests__/` files, and the files any runner's default patterns match, so a
+   `test/greeting.js` counts.
+5. The runner in `dependencies` or `devDependencies`. `ts-jest`, `babel-jest`, `@jest/globals`,
+   `react-scripts`, `@craco/craco`, `react-app-rewired` and `@rescripts/cli` count as Jest.
+6. Vitest.
+
+In a comparison the base snapshot runs its tests with its own runner: its `tools.tests.runner`, else
+the head's, else what the base checkout alone shows through the same steps. When the base commit
+uses another runner, its tests run with that runner, and with the test files that runner finds in
+the base checkout, if it is installed in the project; when it is not, coverage
+and CRAP are not compared on that change and nitpicker says so. The `test-only-export` check leaves
+out the `jest*` and `vitest*` config files and `.mocharc.*`, whichever runner the project uses.
+
+From the script nitpicker also takes the environment variables (`NODE_ENV=test`, also through
+`cross-env`), the Node options before the runner (`node --import tsx --test`) and the runner's own
+options (`--config`, `--require`, test file patterns). It drops the options it sets itself (watch
+mode, coverage, reporters, timeouts and worker counts) and Jest's options that run only some of the
+tests (`--shard`, `-t`, `--findRelatedTests`, `--onlyChanged`, `--changedSince`, `--lastCommit`,
+`--onlyFailures`); `--selectProjects` stays. Steps the script runs before the tests, such as
+`tsc && jest`, are not run: a failing test run names them so you can run them first. Tests use the resolved named-project timeout (10 000 ms by default) and run at most 4 files at once (Mocha, and Jest with `--runInBand`, run them one
+after another), and they must pass for coverage, CRAP and mutation to run.
+
+- **Vitest** loads the project's `vitest.config.*` or `vite.config.*` (the first found, `.ts`,
+  `.mts`, `.cts`, `.js`, `.mjs` or `.cjs`). Its environment, setup files, aliases and plugins
+  apply. nitpicker runs the `*.test.*` and `*.spec.*` files under the source and test roots,
+  ignores the project's `test.dir`, and restores mocks after every test. A Vitest project needs
+  `@vitest/coverage-v8` at its Vitest version.
+- **Jest** runs with the project's Jest config, so its `testMatch`, `roots`, transforms and
+  environment decide which files run and how. nitpicker collects coverage from the source roots
+  with Jest's Babel coverage provider, relative to the config's `rootDir` (such as NestJS's
+  `"rootDir": "src"`), and restores mocks after every test (`--restoreMocks`). A config whose
+  projects cover none of the source files is a tool error. `react-scripts test`, `craco test`,
+  `react-app-rewired test` and `rescripts test` run through the project's installed
+  `react-scripts`, `@craco/craco`, `react-app-rewired` or `@rescripts/cli`, and mutation uses
+  Stryker's Create React App support or the craco Jest config.
+  Mutation uses Stryker's Jest runner, with the test transform's own type check turned off
+  (`ts-jest` would reject the instrumented code); the TypeScript checker still type checks each
+  mutant.
+- **`node:test`** runs `node --test` with the script's test patterns (Node's default patterns when
+  the script names none) and the test files under the test roots. TypeScript tests run with Node's
+  type stripping (Node's transform mode for enums, namespaces and parameter properties), or with
+  the loader the script names, such as `tsx` or `ts-node/register`. Each test file runs once. A
+  failing `before` hook shows its error on the tests it cancelled. nitpicker preloads a module that
+  restores, after each test, the doubles that test and its `beforeEach` hooks made with the shared
+  `mock`; doubles a `before` hook made stay until the suite restores them. The preload leaves the
+  processes a test forks alone. Mutation uses Stryker's tap runner, with the same preload.
+- **Mocha** runs with the project's `.mocharc.*`, the script's options and specs, and the test
+  files under the test roots. Loaders such as `ts-node/register` and `tsx` work in-process and in
+  the child process Mocha starts for Node options. A test file that fails to load is reported as
+  that file failing. When the project has sinon, a root hook plugin nitpicker adds restores, after
+  each test, the sinon doubles (clocks from `sinon.useFakeTimers()` included) that test and its
+  `beforeEach` hooks made; doubles a `before` hook made stay until the suite calls
+  `sinon.restore()`. Mutation uses Stryker's Mocha runner with the options Mocha itself merges
+  from the script, `.mocharc.*` and `package.json`; Stryker's Mocha runner supports Mocha up to 11,
+  so on Mocha 12 mutation is skipped with a notice while coverage and CRAP still run.
+
+For `node:test` and Mocha, nitpicker reads coverage from V8 (`NODE_V8_COVERAGE`) and maps it to
+branches the way Vitest's coverage does, so a finding names the same `if`, `?:` or `??` arm. When a
+loader rewrote a file, nitpicker records the code that ran and maps it back through the loader's
+source map; a loader that writes no source map is a tool error. Coverage from child processes and
+workers is merged. A `ts-node` target below ES2022 is raised to ES2022 for the coverage run (class
+field semantics kept), so `??` and `?.` are not counted as extra branches. A `.tsx` file no test
+loaded is not reported.
+
+Lint follows the runner too: test files get the same strictness under every runner, through
+`@vitest/eslint-plugin` for Vitest and `eslint-plugin-jest`'s structural rules for Jest (`jest/`),
+`node:test` (`node-test/`) and Mocha (`mocha/`). nitpicker's own test rules know each runner's
+mocks, fake timers and timeouts, and their messages name that runner's API. Type checks use the
+runner's globals (`@types/jest` or `@types/mocha` when installed). When a Jest or Mocha project has
+not installed them, the type check does not report the errors the runner's globals cause in test
+files (`describe` or `expect` not found), and a notice names the package to install.
+
+Which files are tests follows the runner as well. When an analyzer of the preset runs, nitpicker
+reads the runner's test file patterns from the head checkout and records them in the head policy as
+`tools.tests.testFiles`, so the policy hash includes them; a base snapshot that runs another runner
+reads that runner's patterns from the base checkout. The project's Vite, Jest and Mocha configs
+load in a child process. When one cannot be read, nitpicker takes the runner's default patterns and
+says so in a notice.
+
+- **Vitest**: `*.test.*` and `*.spec.*`, plus the config's `test.include` and `test.exclude`.
+- **Jest**: the config's `testMatch`, `testRegex` and `testPathIgnorePatterns`, read with
+  `jest --showConfig` through the test script's options (`--config`) and its launcher
+  (`react-scripts test`, `craco test`, `react-app-rewired test`, `rescripts test`), so a Create
+  React App or craco project is read with the config those tools build; else Jest's defaults,
+  `__tests__/` and `*.test.*`/`*.spec.*`. Each project's matches count under its `roots` only,
+  and a project whose `runner` does not run tests (`jest-runner-eslint`, `jest-runner-tsc`) adds
+  none.
+- **`node:test`**: the patterns the `node --test` script names, else Node's defaults: `*.test.*`,
+  `*-test.*`, `*_test.*`, `test-*.*`, `test.*` and every file under a `test/` folder.
+- **Mocha**: the spec of the script, `.mocharc.*` or `package.json`, else `test/*.{js,cjs,mjs}`.
+
+A file under the source roots that matches those patterns is a test, not production code: the test
+lint rules apply to it, coverage, CRAP and mutation leave it out, the test-runtime analysis times it,
+and the dependency architecture rules treat it as a test (a colocated `greet-test.js` in `domain/`
+is not held to the domain rules, and production code may not import it). The message of
+`nitpicker/test-must-use-production-runtime` names the runner's naming when it sends a shared
+helper to a file that is not a test. Globs are matched as globs. A Jest config that finds its tests
+only through `testRegex` is matched against the project's files, and the tools that take globs or
+paths (ESLint, dependency-cruiser) get the matching files by their literal paths.
+
+With Jest, `node:test` and Mocha any file under the test roots counts as a test when nitpicker
+decides whether coverage runs; with Vitest only `*.test.*` and `*.spec.*` files do. A runner that
+runs no test while nitpicker sees test files is a tool error that names one of them.
+
+Which tests run in the DOM follows the runner too. Vitest's `environment` and Jest's
+`testEnvironment` (read through the same `jest --showConfig`, project by project) set the default,
+and a `@vitest-environment` or `@jest-environment` comment sets it for one file. Mocha and
+`node:test` read no environment comment: a test file runs in the DOM when the setup that runs
+before every test file registers a global DOM, that is `global-jsdom`, `jsdom-global` or
+`@happy-dom/global-registrator` (or a local setup file that imports one) in Mocha's `require`
+(the script or `.mocharc.*`) or in the `--import` and `--require` options of the `node --test`
+script. `nitpicker/no-unused-dom-environment` reports a test file that runs in a DOM but never uses
+it. Under Vitest and Jest its message asks for a `node` environment comment, or a `node` default
+with the DOM comment on the DOM tests; under Mocha and `node:test` it asks to take the registration
+out of that setup and import it at the top of the test files that use the DOM, or to move those
+files to a separate Mocha or `node --test` run that registers it, and a test file that imports a
+registrar itself but never uses the DOM is told to remove the import. In a project without React,
+the production files the DOM tests import (followed through relative imports) get the browser
+globals, with the confusing ones (`event`, `name`, `status`, ...) restricted to `window.<name>`
+outside `domain/`, as in a React project; production code no DOM test reaches, such as a Node
+server, does not, so its use of `document` is still reported. When a test runs in a DOM, the type
+check adds the DOM lib to the shipped tsconfig, or to a project tsconfig whose `lib` leaves it out.
 
 ## Adopting nitpicker on existing code
 

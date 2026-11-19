@@ -37,6 +37,8 @@ import {
 import { upperEllRecipe } from './upper-ell.mts';
 import { javaExtractNearDuplicateRecipe } from './extract/near-duplicate-extract.mts';
 import { javaExtractPartialRunRecipe } from './extract/partial/partial-run-extract.mts';
+import { shorterConditionRecipe } from './logic/shorter-condition.mts';
+import { switchLabelsRecipe } from './logic/switch-labels.mts';
 
 const defineRecipes: (recipes: readonly FixRecipe[]) => readonly FixRecipe[] = untypedDefineRecipes;
 
@@ -78,4 +80,6 @@ export const JVM_RECIPES = defineRecipes([
   kotlinRestatingDocCommentRecipe,
   javaExtractNearDuplicateRecipe,
   javaExtractPartialRunRecipe,
+  shorterConditionRecipe,
+  switchLabelsRecipe,
 ]);
