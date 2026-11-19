@@ -60,7 +60,7 @@ export const BATCH_CASES = [
       'import java.util.Collections;\nimport java.util.List;',
     ),
     after: savesClass('BatchOfOne', AFTER).replace(LIST_IMPORT, ARRAY_LIST_IMPORT),
-    lines: [20],
+    lines: [22],
   },
   {
     check: 'SpringDataBatchOfOne',

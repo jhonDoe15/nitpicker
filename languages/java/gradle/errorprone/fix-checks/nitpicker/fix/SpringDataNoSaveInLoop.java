@@ -172,7 +172,7 @@ public class SpringDataNoSaveInLoop extends BugChecker implements MethodInvocati
   }
 
   private static String collected(LoopWrite write, SuggestedFix.Builder fix, VisitorState state) {
-    if (declaredOutside(write)) {
+    if (declaredOutside(write) || !LoopWrite.rollsBackTogether(write.statement, state)) {
       return null;
     }
     Type element = ASTHelpers.getType(write.element);
