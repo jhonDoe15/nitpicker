@@ -68,6 +68,118 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="BlockingInCompletionStage" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Hand the wait to an executor or compose instead of blocking: use the Async variant with an executor (source.thenAcceptAsync(value -&gt; save(value), executor)), return the next stage from thenCompose instead of calling join() on it, or read an already completed future with getNow(null). A stage without the Async suffix runs on the thread that completes its source future, often a Netty I/O thread or a client callback thread, so a get(), join(), await(), take() or sleep() here stalls every other task queued on that thread and can deadlock when the awaited work needs the same thread. An exception fits when the source always completes on a pool made for blocking work.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall
+  [(@MethodName = 'join' and ArgumentList[@Size = 0]
+      and *[1][pmd-java:typeIs('java.util.concurrent.CompletableFuture') or pmd-java:typeIs('java.util.concurrent.ForkJoinTask')])
+    or (@MethodName = 'get' and ArgumentList[@Size = 0] and *[1][pmd-java:typeIs('java.util.concurrent.Future')])
+    or (@MethodName = 'get' and ArgumentList[@Size = 2][not(*[1][self::NumericLiteral][@ValueAsInt = 0])]
+        and *[1][pmd-java:typeIs('java.util.concurrent.Future')])
+    or (@MethodName = 'await' and *[1][pmd-java:typeIs('java.util.concurrent.CountDownLatch')])
+    or (@MethodName = 'take' and *[1][pmd-java:typeIs('java.util.concurrent.BlockingQueue')])
+    or (@MethodName = 'put' and *[1][pmd-java:typeIs('java.util.concurrent.BlockingQueue')])
+    or (@MethodName = ('acquire', 'acquireUninterruptibly') and *[1][pmd-java:typeIs('java.util.concurrent.Semaphore')])
+    or (pmd-java:matchesSig('java.lang.Thread#sleep(_*)') and not(ArgumentList/*[1][self::NumericLiteral][@ValueAsInt = 0]))]
+  [not(@MethodName = 'put')
+   or (let $queue := string(*[1]/@Name)
+       return empty(ancestor::CompilationUnit//VariableDeclarator[VariableId/@Name = $queue]/ConstructorCall
+         [ClassType[@SimpleName = 'LinkedTransferQueue'] or (ClassType[@SimpleName = ('LinkedBlockingQueue', 'LinkedBlockingDeque')]
+                                                              and ArgumentList[@Size = 0])]))]
+  [let $lambda := ancestor::*[self::LambdaExpression or self::AnonymousClassDeclaration][1][self::LambdaExpression],
+       $stage := $lambda/parent::ArgumentList/parent::MethodCall
+         [@MethodName = ('thenAccept', 'thenApply', 'thenCompose', 'thenRun', 'thenCombine', 'thenAcceptBoth',
+                         'whenComplete', 'handle', 'exceptionally', 'applyToEither', 'acceptEither')]
+         [*[1][pmd-java:typeIs('java.util.concurrent.CompletionStage')]],
+       $root := (*[1]/descendant-or-self::*[self::VariableAccess or self::FieldAccess])[1],
+       $receiver := string($root/@Name),
+       $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+   return exists($stage)
+     and not($receiver = $lambda/LambdaParameterList//VariableId/@Name)
+     and empty(ancestor::CompilationUnit//VariableDeclarator[VariableId/@Name = $receiver]/*[2]
+                 /descendant-or-self::MethodCall[@MethodName = ('completedFuture', 'failedFuture', 'completedStage')])
+     and not($receiver = $stage/*[1]/descendant-or-self::*[self::VariableAccess or self::FieldAccess]/@Name)
+     and not($receiver = $method//ForeachStatement/LocalVariableDeclaration/VariableDeclarator/VariableId/@Name)
+     and empty($lambda//MethodCall[@MethodName = ('isDone', 'isCompletedExceptionally', 'isCancelled')]
+                 [*[1][self::VariableAccess or self::FieldAccess][@Name = $receiver]])
+     and empty($method//MethodCall[@MethodName = ('allOf', 'anyOf', 'waitForAll')])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="BufferNeverReleased" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This reference-counted buffer is allocated, retained or encoded here and only read in the method: it is never released, returned, stored or handed to another call, so its memory (direct memory for pooled Netty buffers) leaks until the process runs out. Release it on every path: a try block with buf.release() in its finally, or hand it to the pipeline (ctx.write(buf)) or return it. An exception fits an unpooled heap buffer, which the garbage collector frees.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $allocators := ('buffer', 'directBuffer', 'heapBuffer', 'ioBuffer', 'compositeBuffer', 'compositeDirectBuffer'),
+    $reads := '^(get|set|read|write|is|has|can|skip|index|bytes|ensure|capacity|readable|writable|equals|hashCode|toString|refCnt|clear|mark|reset|order|max|forEach|compareTo)',
+    $fluent := '^(write|set|clear|mark|reset|skip|ensure|discard)',
+    $shares := 'Slice|Retained|Duplicate|Sink|Readonly',
+    $allocates := function($init) {
+      exists($init[self::MethodCall]
+        [(@MethodName = $allocators
+          and (*[1][self::MethodCall][@MethodName = 'alloc']
+               or *[1][pmd-java:typeIs('io.netty.buffer.ByteBufAllocator')]
+               or *[1][self::TypeExpression][pmd-java:typeIsExactly('io.netty.buffer.Unpooled')][../@MethodName = 'directBuffer']))
+         or (@MethodName = ('retain', 'readRetainedSlice', 'retainedSlice', 'retainedDuplicate') and *[1][pmd-java:typeIs('io.netty.buffer.ByteBuf')])
+         or (matches(@MethodName, '^encode') and pmd-java:typeIs('io.netty.buffer.ByteBuf'))])
+    },
+    $onlyRead := function($u) {
+      ($u/parent::MethodCall[*[1] is $u][matches(@MethodName, $reads)][not(matches(@MethodName, $shares))]
+         [parent::ExpressionStatement or not(matches(@MethodName, $fluent))])
+      or ($u/parent::ArgumentList/parent::MethodCall[@MethodName = ('equals', 'compareTo', 'writeBytes', 'setBytes')])
+    }
+return
+  //LocalVariableDeclaration/VariableDeclarator
+    [VariableId[pmd-java:typeIs('io.netty.buffer.ByteBuf')]]
+    [$allocates(*[2])]
+    [let $name := VariableId/@Name, $scope := ancestor::Block[1]
+     return every $u in $scope//VariableAccess[@Name = $name] satisfies $onlyRead($u)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="CachedEntityFieldNotSerializable" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This mapped field of a second-level cached entity (@Cacheable or Hibernate @Cache) holds a project type that is not Serializable (or a collection of them). A cache that serializes entries (Ehcache with off-heap or disk tiers, a distributed cache) throws NotSerializableException on the write, or skips the entry, while tests with an in-memory cache pass. Make the type implement Serializable (public abstract class Attribute implements Serializable), mark the field @Transient or transient, or cache the entity with a JSON serializer. An exception fits a cache that keeps entries by reference.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $mappings := ('Type', 'JdbcTypeCode', 'Convert'),
+    $unserializable := function($t, $unit) {
+      let $imported := $unit/ImportDeclaration[@ImportedSimpleName = $t/@SimpleName],
+          $local := $unit//ClassDeclaration[@SimpleName = $t/@SimpleName],
+          $root := string-join(tokenize($unit/PackageDeclaration/@Name, '\.')[position() le 2], '.')
+      return exists($t[self::ClassType][pmd-java:typeIs('java.lang.Object')][not(pmd-java:typeIs('java.io.Serializable'))])
+         and empty($local[@Interface = true()])
+         and (if (exists($imported)) then (some $i in $imported satisfies starts-with($i/@ImportedName, concat($root, '.')))
+              else (exists($local)
+                    or (empty($unit/ImportDeclaration[@ImportOnDemand = true()][@Static = false()])
+                        and not($t/@SimpleName = ('Object', 'Iterable', 'Runnable', 'CharSequence', 'Thread', 'Process',
+                                                  'Record', 'Comparable', 'AutoCloseable', 'ThreadLocal', 'Runtime')))))
+    }
+return
+  //ClassDeclaration[ModifierList/Annotation[(@SimpleName = 'Cacheable' and not(.//BooleanLiteral[@True = false()]))
+                                            or @SimpleName = 'Cache']]
+    [ancestor::CompilationUnit/ImportDeclaration[@ImportedName = ('jakarta.persistence.Cacheable', 'javax.persistence.Cacheable',
+                                                               'org.hibernate.annotations.Cache')]]
+    /ClassBody/FieldDeclaration[not(pmd-java:modifiers() = ('static', 'transient'))]
+      [ModifierList/Annotation[@SimpleName = $mappings]]
+      [not(ModifierList/Annotation[@SimpleName = 'Transient'])]
+      [let $unit := ancestor::CompilationUnit,
+           $type := *[self::ClassType or self::ArrayType][1]
+       return $unserializable($type, $unit) or (some $a in $type/TypeArguments/ClassType satisfies $unserializable($a, $unit))]
+    /VariableDeclarator/VariableId
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="CachedFutureKeepsFailure" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This field caches a CompletableFuture and later calls return it, but nothing ever resets it after a failure, so a first attempt that fails is replayed to every later caller instead of being retried. Reset the field when the attempt fails, and only if it still holds this attempt: future.whenComplete((value, error) -&gt; reset(future, error)), or keep the future in an AtomicReference and call compareAndSet(future, null). An exception fits only when keeping the first failure is intended.">
     <priority>3</priority>
@@ -88,6 +200,51 @@ return
      and exists($body//ReturnStatement[*[1][(self::VariableAccess or self::FieldAccess) and @Name = $name]
                                        or *[1][self::ConditionalExpression]/*[(self::VariableAccess or self::FieldAccess) and @Name = $name]])
      and empty($body//MethodCall[@MethodName = 'compareAndSet'][*[1][(self::VariableAccess or self::FieldAccess) and @Name = $name]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="CallValueStoredInSharedField" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This method of a shared component (a singleton Spring bean, a servlet or a filter) stores a value built from its own argument in an instance field. One instance serves every call, so the next call, possibly on another thread, reads the value of the first caller: data from one request leaks into another. Keep the value in a local variable and pass it on, or key it by caller in a concurrent map, or make the bean prototype-scoped. Configuration set once belongs in the constructor, a @PostConstruct method or a setter used at start-up. An exception fits a one-time lazy initialisation that is meant to latch the first value; do it in an init method instead.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $handler := '^(do[A-Z]|service$|handle|process|on[A-Z]\w*Message$|execute$|apply$|call$)',
+    $servletTypes := ('jakarta.servlet.Servlet', 'jakarta.servlet.Filter', 'javax.servlet.Servlet', 'javax.servlet.Filter')
+return
+//ClassDeclaration
+  [(ModifierList/Annotation[pmd-java:typeIs('org.springframework.stereotype.Component')
+        or pmd-java:typeIs('org.springframework.stereotype.Service')
+        or pmd-java:typeIs('org.springframework.stereotype.Repository')]
+    and empty(ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Scope')
+        or pmd-java:typeIs('org.springframework.web.context.annotation.RequestScope')
+        or pmd-java:typeIs('org.springframework.web.context.annotation.SessionScope')]))
+   or (some $t in $servletTypes satisfies pmd-java:typeIs($t))]
+  /(let $class := . return
+    for $f in ClassBody/FieldDeclaration[@Static = false()][not(pmd-java:modifiers() = ('final', 'volatile'))]
+                [empty(ModifierList/Annotation)]
+                [empty(ClassType[starts-with(@SimpleName, 'Atomic')])]/VariableDeclarator/VariableId
+    return
+      let $name := $f/@Name,
+          $servlet := exists($class[some $t in $servletTypes satisfies pmd-java:typeIs($t)])
+      return $class/ClassBody/MethodDeclaration
+        [pmd-java:modifiers() = ('public', 'protected')][not(pmd-java:modifiers() = 'synchronized')]
+        [matches(@Name, $handler)]
+        [empty(ModifierList/Annotation[not(@SimpleName = 'Override')])]
+        [not($servlet) or matches(@Name, '^(do[A-Z]|service$)')]
+        [let $m := ., $params := FormalParameters/FormalParameter/VariableId/@Name
+         return exists($params)]
+        /Block//AssignmentExpression[@Operator = '=']
+        [*[1][(self::VariableAccess[@Name = $name]
+                 [empty(ancestor::MethodDeclaration[1]//VariableId[@Name = $name])])
+              or self::FieldAccess[@Name = $name][*[1][self::ThisExpression[not(*)]]]]]
+        [empty(ancestor::LambdaExpression | ancestor::SynchronizedStatement | ancestor::ConstructorCall)]
+        [let $params := ancestor::MethodDeclaration[1]/FormalParameters/FormalParameter/VariableId/@Name
+         return exists(*[2]/descendant-or-self::VariableAccess[@Name = $params])]
+        [empty(ancestor::IfStatement[*[1]/descendant-or-self::InfixExpression[@Operator = ('==', '!=')]
+                [*[(self::VariableAccess or self::FieldAccess) and @Name = $name]][NullLiteral]])]
+   )
 ]]></value>
       </property>
     </properties>
@@ -344,6 +501,106 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="CleanupLoopStopsOnFailure" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This loop releases each element in a cleanup method without a try, so the first element whose release throws ends the loop and the remaining ones stay open (file handles, cursors, connections). Release each element in its own try/catch, collect the failures, and rethrow the first one with the others added as suppressed (try (...) around each element, or a helper that does this). An exception fits only when a failed release should abort the remaining ones.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $releases := ('close', 'destroy', 'stop', 'dispose', 'disconnect'),
+    $cleanup := ('close', 'dispose', 'destroy', 'shutdown', 'stop', 'teardown', 'tearDown', 'disconnect', 'end', 'cleanup',
+                 'doClose', 'doStop', 'doDestroy', 'doShutdown'),
+    $hooks := ('javax.annotation.PreDestroy', 'jakarta.annotation.PreDestroy'),
+    $skipped := ('java.util.concurrent.ExecutorService', 'java.lang.Thread', 'java.util.Timer'),
+    $element := function($call, $name) {
+      exists($call/*[1][self::VariableAccess or self::CastExpression][(self::CastExpression/*[last()] | .)[self::VariableAccess][@Name = $name]])
+      and empty($call/*[1][some $t in $skipped satisfies pmd-java:typeIs($t)])
+    }
+return //MethodDeclaration[@Name = $cleanup or ModifierList/Annotation[some $hook in $hooks satisfies pmd-java:typeIs($hook)]]
+  /Block//(
+    ForeachStatement/*[last()]//MethodCall[@MethodName = $releases][empty(ArgumentList/*)][parent::ExpressionStatement]
+      [let $loop := ancestor::ForeachStatement[1]
+       return $element(., $loop/LocalVariableDeclaration/VariableDeclarator/VariableId/@Name)
+              and empty(ancestor::TryStatement intersect $loop//TryStatement)
+              and empty(ancestor::LambdaExpression intersect $loop//LambdaExpression)]
+    |
+    MethodCall[@MethodName = 'forEach']/ArgumentList[count(*) = 1]/*[1][
+      self::MethodReference[@MethodName = $releases]
+      or self::LambdaExpression[count(LambdaParameterList/LambdaParameter) = 1]
+           [let $p := LambdaParameterList/LambdaParameter/VariableId/@Name
+            return exists((*[last()][self::MethodCall] | *[last()][self::Block][count(*) = 1]/ExpressionStatement/MethodCall)
+                          [@MethodName = $releases][empty(ArgumentList/*)][$element(., $p)])]]/../..
+  )
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="CleanupThrowReplacesFailure" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This cleanup call runs in a catch block that rethrows, outside any try, so when it throws, its exception replaces the original one and the caller and the logs see the close failure instead of the real cause. Run the cleanup in its own try and add its failure to the original (try rollback() and catch (Exception e) with ex.addSuppressed(e)) before rethrowing, or log the cleanup failure and rethrow the original. A try-with-resources header, a closeQuietly helper, a plain finally that closes and a local variable are not reported. An exception fits only when the cleanup cannot throw.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $cleanup := ('close', 'abort', 'rollback', 'shutdown', 'shutdownNow', 'stop', 'disconnect', 'delete', 'cancel'),
+    $silent := ('java.util.concurrent.ExecutorService', 'java.util.concurrent.Future', 'java.util.Timer',
+                'java.lang.Thread', 'java.lang.Process', 'java.util.Collection', 'java.util.Map',
+                'java.lang.StringBuilder', 'java.util.concurrent.CountDownLatch', 'java.util.concurrent.Semaphore',
+                'java.util.concurrent.locks.Lock',
+                'io.netty.util.ReferenceCounted'),
+    $call := function($s) {
+      $s/self::ExpressionStatement/MethodCall[@MethodName = $cleanup][@MethodName = ('abort', 'rollback', 'delete') or empty(ArgumentList/*)][*[1][not(self::ArgumentList or self::TypeExpression)][not(matches(@Name, '^[A-Z][A-Z_0-9]+$'))]]
+    },
+    $quiet := function($c) {
+      exists($c/*[1][some $t in $silent satisfies pmd-java:typeIs($t)])
+      or exists($c/*[1][self::VariableAccess]
+                [@Name = $c/ancestor::MethodDeclaration[1]//LocalVariableDeclaration/VariableDeclarator/VariableId/@Name])
+    }
+return //CatchClause[let $param := CatchParameter/VariableId/@Name, $block := Block
+              return exists($block/ThrowStatement[*[1][self::VariableAccess[@Name = $param]
+                                                      or self::ConstructorCall[ArgumentList/VariableAccess[@Name = $param]]]])]
+    /Block/ExpressionStatement[$call(.)][not($quiet($call(.)))]
+      [following-sibling::ThrowStatement]
+      /MethodCall
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="CloseDereferencesUnopenedField" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This close method calls a field that only an open or start method assigns, so closing an object that was never opened throws a NullPointerException, and frameworks that close every registered stream after a failure see that exception instead of the original error. Check for null and reset the field (if (cursor != null) cursor.close(); then cursor = null), or create the resource in the constructor. A constructor, initializer or @PostConstruct method that calls the opener is not reported. An exception fits only when the class forbids closing before opening.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $openers := '^(?:open|doOpen|start|doStart|init|doInit|connect|doConnect)([A-Z_]\w*)?$',
+    $closers := '^(?:close|doClose|stop|doStop|destroy|doDestroy|dispose|doDispose)$',
+    $hooks := ('javax.annotation.PreDestroy', 'jakarta.annotation.PreDestroy'),
+    $named := function($n, $name) { ($n/self::VariableAccess or $n/self::FieldAccess) and $n/@Name = $name }
+return //ClassDeclaration/ClassBody/MethodDeclaration
+  [matches(@Name, $closers) or ModifierList/Annotation[some $hook in $hooks satisfies pmd-java:typeIs($hook)]]
+  [empty(.//*[self::IfStatement or self::ConditionalExpression or self::ReturnStatement
+              or self::TryStatement or self::SynchronizedStatement])]
+  [empty(.//MethodCall[@MethodName = ('nonNull', 'isNull', 'requireNonNull', 'ofNullable', 'isPresent')])]
+  [empty(.//InfixExpression[@Operator = ('&&', '||', '==', '!=')])]
+  /Block//MethodCall[*[1][self::VariableAccess or self::FieldAccess]]
+  [let $name := *[1]/@Name,
+       $body := ancestor::ClassBody[1],
+       $field := $body/FieldDeclaration[@Static = false()][not(pmd-java:modifiers() = 'final')][empty(ModifierList/Annotation)][ClassType]
+                   [VariableDeclarator[count(*) = 1][VariableId/@Name = $name]],
+       $writes := $body//AssignmentExpression[*[1][$named(., $name)]][not(*[2][self::NullLiteral])]
+   return exists($field)
+     and exists($writes)
+     and empty($body/Initializer)
+     and empty(($body/ConstructorDeclaration | $body/Initializer
+                | $body/MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('javax.annotation.PostConstruct')
+                                                                   or pmd-java:typeIs('jakarta.annotation.PostConstruct')]])
+                 //MethodCall[*[1][self::ArgumentList or self::ThisExpression]]
+                 [@MethodName = $writes/ancestor::MethodDeclaration[1]/@Name])
+     and empty($body/ConstructorDeclaration//AssignmentExpression[*[1][$named(., $name)]])
+     and (every $w in $writes satisfies exists($w/ancestor::MethodDeclaration[matches(@Name, $openers)]))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="CompatibilityShim" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="A @Deprecated declaration keeps the old API next to its replacement. Delete it and change its callers to the replacement in the same change.">
     <priority>3</priority>
@@ -352,6 +609,189 @@ return (
         <value><![CDATA[
 //ModifierList/Annotation[@SimpleName = 'Deprecated']
   [not(parent::ModifierList/parent::MethodDeclaration/ModifierList/Annotation[@SimpleName = 'Override'])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="CompletionWithoutFailurePath" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Forward the failure to the result: return the composed stage (return source.thenCompose(value -&gt; next(value))), or chain .exceptionally(error -&gt; fail(result, error)) with a method that calls result.completeExceptionally(error), or read the throwable in whenComplete (value, error) and call completeExceptionally(error) when it is not null. This callback completes a result future, resumes an AsyncResponse or sets a DeferredResult, but when the source future fails it never runs, or it runs without looking at the throwable, so the result stays pending and its caller waits forever. An exception fits only when a pending result is intended.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $success := function($call) {
+      $call[(@MethodName = 'complete' and *[1][pmd-java:typeIs('java.util.concurrent.CompletableFuture')])
+        or (@MethodName = 'resume' and *[1][pmd-java:typeIs('jakarta.ws.rs.container.AsyncResponse')
+              or pmd-java:typeIs('javax.ws.rs.container.AsyncResponse')])
+        or (@MethodName = 'setResult' and *[1][pmd-java:typeIs('org.springframework.web.context.request.async.DeferredResult')])
+        or (@MethodName = 'onResponse' and *[1][pmd-java:typeIs('org.opensearch.core.action.ActionListener')
+              or pmd-java:typeIs('org.elasticsearch.action.ActionListener')])]
+    },
+    $failure := function($call) {
+      $call[@MethodName = ('completeExceptionally', 'cancel', 'onFailure', 'setErrorResult')
+        or (@MethodName = 'resume' and ArgumentList/*[1][pmd-java:typeIs('java.lang.Throwable')])]
+    },
+    $recoveries := ('exceptionally', 'exceptionallyAsync', 'exceptionallyCompose', 'exceptionallyComposeAsync',
+      'handle', 'handleAsync', 'whenComplete', 'whenCompleteAsync')
+return
+  //ExpressionStatement/MethodCall
+    [@MethodName = ('thenAccept', 'thenAcceptAsync', 'thenApply', 'thenApplyAsync', 'thenCompose',
+                    'thenComposeAsync', 'thenRun', 'thenRunAsync')]
+    [*[1][pmd-java:typeIs('java.util.concurrent.CompletionStage')]]
+    [not(*[1]/descendant-or-self::MethodCall[@MethodName = ('completedFuture', 'completedStage')])]
+    [let $stage := .,
+         $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1],
+         $lambda := ArgumentList/LambdaExpression[1]
+     return exists($lambda) and exists($method)
+       and (some $done in $lambda//MethodCall[exists($success(.))][*[1][self::VariableAccess or self::FieldAccess]]
+            satisfies (let $name := string($done/*[1]/@Name),
+                           $failures := $method//MethodCall[exists($failure(.))][*[1][(self::VariableAccess or self::FieldAccess)
+                                                                                  and @Name = $name]]
+                       return empty($lambda/LambdaParameterList//VariableId[@Name = $name])
+                         and empty($lambda//VariableId[@Name = $name])
+                         and empty($failures[ancestor::CatchClause or ancestor::LambdaExpression/parent::ArgumentList/parent::MethodCall
+                                                [@MethodName = $recoveries]])
+                         and (exists($failures) or empty($method//VariableDeclarator[VariableId/@Name = $name]
+                                                         [*[2][self::ConstructorCall]])
+                              or not($done/@MethodName = 'complete'))))]
+|
+  //MethodCall[@MethodName = ('handle', 'handleAsync', 'whenComplete', 'whenCompleteAsync')]
+    [*[1][pmd-java:typeIs('java.util.concurrent.CompletionStage')]]
+    [ArgumentList/LambdaExpression[1][LambdaParameterList[@Size = 2]]
+       [let $error := LambdaParameterList/LambdaParameter[2]/VariableId/@Name,
+            $value := LambdaParameterList/LambdaParameter[1]/VariableId/@Name
+        return empty(.//VariableAccess[@Name = $error])
+          and exists(.//VariableAccess[@Name = $value])
+          and not(starts-with($error, '_') or matches($error, '^(ignored?|unused)$', 'i'))
+          and exists(.//MethodCall[exists($success(.))][*[1][(self::VariableAccess or self::FieldAccess)
+                       and not(@Name = ancestor::LambdaExpression[1]/LambdaParameterList//VariableId/@Name)]])]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="ConcurrentMapCheckThenAct" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This concurrent map is checked and then used again for the same key (containsKey or get(key) == null, then put, get or remove), but another thread can change the entry between the two calls: two threads both see it absent and both create the value, or the get returns null after containsKey said true. A ConcurrentMap makes each call atomic, not the pair. Use one atomic call: map.computeIfAbsent(key, k -&gt; create(k)), map.putIfAbsent(key, value), map.getOrDefault(key, fallback), map.computeIfPresent or merge, or read once into a local (Value v = map.get(key); if (v == null) ...). An exception fits a map that only one thread changes, or a pair that is already locked.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $fp := function($n) {
+      string-join(for $x in $n/descendant-or-self::*
+                  return concat(name($x), '=', $x/@Name, $x/@Image, $x/@MethodName), '|')
+    },
+    $concurrent := function($ref) {
+      $ref[self::VariableAccess or self::FieldAccess[*[1][self::ThisExpression[not(*)]]]]
+        [pmd-java:typeIs('java.util.concurrent.ConcurrentMap')
+         or (some $d in ancestor::ClassBody[1]/FieldDeclaration/VariableDeclarator[VariableId/@Name = $ref/@Name]
+             satisfies $d/*[2][self::ConstructorCall][pmd-java:typeIs('java.util.concurrent.ConcurrentMap')])]
+    },
+    $call := function($n, $names) {
+      $n/self::MethodCall[@MethodName = $names][ArgumentList/@Size >= 1][exists($concurrent(*[1]))]
+    },
+    $conds := function($c) {
+      $c | $c/self::InfixExpression[@Operator = '&&']/*
+    },
+    $guarded := function($n) {
+      exists($n/ancestor::SynchronizedStatement)
+        or exists($n/ancestor::MethodDeclaration[1][pmd-java:modifiers() = 'synchronized'
+             or .//MethodCall[@MethodName = ('lock', 'lockInterruptibly', 'tryLock', 'writeLock', 'readLock')]])
+    },
+    $simpleKey := function($k) {
+      empty($k/descendant-or-self::*[self::ConstructorCall or self::AssignmentExpression or self::LambdaExpression
+                                     or self::UnaryExpression[@Operator = ('++', '--')]])
+        and (every $m in $k/descendant-or-self::MethodCall satisfies
+               matches($m/@MethodName, '^get[A-Z]\w*$') and $m/ArgumentList/@Size = 0)
+    },
+    $keyAssigned := function($scope, $k) {
+      exists($scope/descendant-or-self::*[self::AssignmentExpression or self::UnaryExpression[@Operator = ('++', '--')]]
+               /*[1][self::VariableAccess or self::FieldAccess][@Name = $k/descendant-or-self::*/@Name])
+    },
+    $constant := function($v, $body) {
+      exists($v/self::*[self::NumericLiteral or self::StringLiteral or self::BooleanLiteral
+                        or self::NullLiteral or self::CharLiteral])
+        or exists($v/self::*[self::VariableAccess or self::FieldAccess]
+                    [matches(@Name, '^[A-Z][A-Z0-9_]*$')
+                     or (some $f in $body/FieldDeclaration[@Static = true()][pmd-java:modifiers() = 'final']
+                         /VariableDeclarator satisfies $f/VariableId/@Name = @Name)])
+    },
+    $removed := function($chk) {
+      exists($chk/ancestor::ClassBody[1]//MethodCall
+               [@MethodName = ('remove', 'clear', 'computeIfPresent', 'compute', 'replace')]
+               [string(*[1]/@Name) = string($chk/*[1]/@Name)]
+             | $chk/ancestor::ClassBody[1]//MethodCall[starts-with(@MethodName, 'remove')]
+               [*[1][self::MethodCall[@MethodName = ('entrySet', 'keySet', 'values')]]
+                    [string(*[1]/@Name) = string($chk/*[1]/@Name)]])
+    },
+    $acts := function($scope, $check, $names) {
+      $scope/descendant-or-self::MethodCall[@MethodName = $names][ArgumentList/@Size >= 1]
+        [$fp(*[1]) = $fp($check/*[1])][$fp(ArgumentList/*[1]) = $fp($check/ArgumentList/*[1])]
+        [$simpleKey(ArgumentList/*[1])][not($keyAssigned($scope, ArgumentList/*[1]))]
+    }
+return
+  (
+    //IfStatement[not($guarded(.))]/(let $if := . return
+      for $c in $conds(*[1])
+      return
+        (for $chk in ($c/self::UnaryExpression[@Operator = '!']/*[1][$call(., 'containsKey')]
+                      | $c/self::InfixExpression[@Operator = '==']
+                          [*[2][self::NullLiteral]]/*[1][$call(., 'get')])
+         return $acts($if/*[2], $chk, 'put')[not(ancestor::SynchronizedStatement)]
+                    [not($constant(ArgumentList/*[2], ancestor::ClassBody[1]))])
+        |
+        (for $chk in $c/self::MethodCall[$call(., 'containsKey')][$removed(.)]
+         return $acts($if/*[2], $chk, ('get', 'remove'))[@MethodName = 'get' or parent::VariableDeclarator]
+                                                [not(ancestor::SynchronizedStatement)]))
+  )
+  |
+  //ConditionalExpression[not($guarded(.))]/(let $cond := . return
+    for $chk in *[1]/self::MethodCall[$call(., 'containsKey')][$removed(.)]
+    return $acts($cond/*[2], $chk, 'get'))
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="ConstructorLeaksResourceOnFailure" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This constructor stores a new thread pool, timer or open file or connection in a field and then runs code that can throw. When that code throws, the caller never receives the object and cannot close it, so the threads or the handle leak (a non-daemon pool also keeps the JVM alive). Create the resource last, or put the rest of the constructor in try/catch that releases it and rethrows (catch (RuntimeException | Error e) then pool.shutdownNow() and throw e), or build the object in a factory method that owns the cleanup. An exception fits only when the resource is released by a caller that is guaranteed to run.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $pools := ('java.util.concurrent.ExecutorService', 'java.util.Timer'),
+    $files := ('java.io.FileInputStream', 'java.io.FileOutputStream', 'java.io.FileReader', 'java.io.FileWriter',
+               'java.io.RandomAccessFile', 'java.util.zip.ZipFile', 'java.net.Socket', 'java.net.ServerSocket'),
+    $safe := ('requireNonNull', 'checkNotNull', 'checkArgument', 'checkState', 'notNull', 'isTrue', 'hasText'),
+    $risky := function($c) {
+      exists($c[self::MethodCall]
+              [*[1][self::ArgumentList or self::ThisExpression]
+               or matches(@MethodName, '^(?:connect|open|start|init\w*|load\w*|read\w*|parse\w*|register\w*|subscribe|validate\w*)$')])
+    },
+    $pool := function($e) {
+      exists($e[self::MethodCall][@MethodName = ('newFixedThreadPool', 'newCachedThreadPool', 'newSingleThreadExecutor',
+                                                 'newScheduledThreadPool', 'newSingleThreadScheduledExecutor',
+                                                 'newWorkStealingPool', 'newVirtualThreadPerTaskExecutor')])
+      or exists($e[self::ConstructorCall][pmd-java:typeIs('java.util.concurrent.ExecutorService')
+                                          or pmd-java:typeIs('java.util.concurrent.ForkJoinPool')])
+    },
+    $fresh := function($e) {
+      exists($e[self::MethodCall][@MethodName = ('newFixedThreadPool', 'newCachedThreadPool', 'newSingleThreadExecutor',
+                                                 'newScheduledThreadPool', 'newSingleThreadScheduledExecutor',
+                                                 'newWorkStealingPool', 'newVirtualThreadPerTaskExecutor',
+                                                 'getConnection', 'newInputStream', 'newOutputStream',
+                                                 'newBufferedReader', 'newBufferedWriter')]
+                    [*[1][self::TypeExpression]/ClassType[@SimpleName = ('Executors', 'DriverManager', 'Files')]])
+      or exists($e[self::ConstructorCall][some $t in ($pools, $files, 'java.util.concurrent.ForkJoinPool')
+                                          satisfies pmd-java:typeIs($t)])
+    }
+return //ConstructorDeclaration/Block/ExpressionStatement[AssignmentExpression[@Operator = '=']
+    [*[1][self::FieldAccess or self::VariableAccess]][$fresh(*[2])]]
+  [let $opening := .
+   return empty(ancestor::ConstructorDeclaration[1]//TryStatement)
+     and exists(following-sibling::*[
+       (self::ThrowStatement
+        or self::IfStatement[.//ThrowStatement]
+        or self::ExpressionStatement[MethodCall[@MethodName = $safe]])[not($pool($opening/AssignmentExpression/*[2]))]
+       or self::ExpressionStatement[$risky(MethodCall)]
+       or self::ExpressionStatement[AssignmentExpression[$risky(*[2][self::MethodCall])]]])]
 ]]></value>
       </property>
     </properties>
@@ -887,6 +1327,40 @@ return (
   | //MethodCall[@MethodName = ('split', 'splitToList', 'splitToStream')][$source(ArgumentList/*[1], $names)]
       [*[1][self::MethodCall[@MethodName = ('on', 'onPattern', 'compile')]]]
 )
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="HandleReleasedOnlyOnSuccess" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="The value this stage receives is closed or released only inside a later success stage (thenApply, thenCompose, thenAccept). When a later stage fails, the future completes exceptionally and the release never runs, so the handle leaks with its buffers and timers. Release it where every outcome passes: read(handle).whenComplete((result, error) -&gt; close(handle)), or handle(...) with the release first. An exception fits a handle that a later stage stores or returns, so the owner releases it.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $success := ('thenCompose', 'thenApply', 'thenAccept', 'thenRun', 'thenComposeAsync', 'thenApplyAsync',
+                 'thenAcceptAsync', 'thenRunAsync', 'thenCombine', 'thenAcceptBoth'),
+    $always := ('whenComplete', 'whenCompleteAsync', 'handle', 'handleAsync', 'exceptionally', 'exceptionallyCompose',
+                'exceptionallyAsync'),
+    $release := '^(close|asyncClose|closeAsync|release|dispose|returnConnection|releaseConnection)',
+    $stage := function($lambda, $names) {
+      exists($lambda[parent::ArgumentList/parent::MethodCall[@MethodName = $names]])
+    }
+return
+  //LambdaExpression[$stage(., $success)][LambdaParameterList[@Size = 1]/LambdaParameter/VariableId]
+    [let $outer := .,
+         $p := LambdaParameterList/LambdaParameter/VariableId/@Name,
+         $releases := .//MethodCall[matches(@MethodName, $release)]
+                        [*[1][self::VariableAccess][@Name = $p] or ArgumentList/VariableAccess[@Name = $p]]
+     return exists($releases)
+       and empty(.//MethodCall[@MethodName = ('complete', 'put', 'putIfAbsent', 'set', 'add', 'offer')]
+                   [ArgumentList/VariableAccess[@Name = $p]])
+       and empty(.//AssignmentExpression[*[2][self::VariableAccess][@Name = $p]])
+       and empty(.//ReturnStatement/VariableAccess[@Name = $p])
+       and (every $r in $releases satisfies
+              (let $lambdas := $r/ancestor::LambdaExpression[$outer intersect ancestor::*]
+               return exists($lambdas) and $stage($lambdas[1], $success)
+                 and (every $l in $lambdas satisfies not($stage($l, $always)))
+                 and empty($r/ancestor::FinallyClause | $r/ancestor::CatchClause)))]
 ]]></value>
       </property>
     </properties>
@@ -2065,6 +2539,54 @@ return //ClassDeclaration/ClassBody/FieldDeclaration[@Static = false()]
       </property>
     </properties>
   </rule>
+  <rule name="PlainCollectionInConcurrentMap" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A value of this concurrent map is a plain collection (ArrayList, HashSet, HashMap and the like) that is changed after computeIfAbsent returns it, so two threads that add under the same key change it at once: elements are lost, a reader throws ConcurrentModificationException and a HashMap can corrupt. Store a concurrent value (ConcurrentHashMap.newKeySet(), CopyOnWriteArrayList, new ConcurrentHashMap&lt;&gt;()), change it inside compute or merge, or lock around every read and write of the value. An exception fits a map that only one thread uses.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $plain := ('java.util.ArrayList', 'java.util.LinkedList', 'java.util.HashSet', 'java.util.LinkedHashSet',
+               'java.util.TreeSet', 'java.util.HashMap', 'java.util.LinkedHashMap', 'java.util.TreeMap',
+               'java.util.ArrayDeque', 'java.util.EnumMap', 'java.util.EnumSet', 'java.util.PriorityQueue'),
+    $writes := ('add', 'addAll', 'put', 'putAll', 'remove', 'removeIf', 'removeAll', 'retainAll', 'clear',
+                'merge', 'compute', 'computeIfAbsent', 'computeIfPresent', 'putIfAbsent', 'replace', 'replaceAll',
+                'offer', 'push', 'pop', 'poll', 'addFirst', 'addLast', 'set', 'sort'),
+    $concurrentField := function($ref, $body) {
+      $ref[self::VariableAccess or self::FieldAccess[*[1][self::ThisExpression[not(*)] or self::TypeExpression]]]
+        [pmd-java:typeIs('java.util.concurrent.ConcurrentMap')
+         or (some $d in $body/FieldDeclaration/VariableDeclarator[VariableId/@Name = $ref/@Name]
+             satisfies $d/*[2][self::ConstructorCall][pmd-java:typeIs('java.util.concurrent.ConcurrentMap')])]
+        [some $d in $body/FieldDeclaration/VariableDeclarator satisfies $d/VariableId/@Name = $ref/@Name]
+        [not(self::VariableAccess) or empty(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression]//VariableId[@Name = $ref/@Name])]
+    },
+    $creates := function($call) {
+      let $factory := $call/ArgumentList/*[2]
+      return exists($factory[self::LambdaExpression]/*[last()][self::ConstructorCall][some $t in $plain satisfies pmd-java:typeIsExactly($t)])
+          or exists($factory[self::MethodReference[@MethodName = 'new']][some $t in $plain satisfies TypeExpression[pmd-java:typeIsExactly($t)]])
+    },
+    $sources := function($body) {
+      $body//MethodCall[@MethodName = 'computeIfAbsent'][ArgumentList/@Size = 2][$creates(.)][exists($concurrentField(*[1], $body))]
+        [empty(ArgumentList/*[1]/descendant-or-self::MethodCall[@MethodName = ('currentThread', 'getId', 'threadId')])]
+    },
+    $guarded := function($n) {
+      exists($n/ancestor::SynchronizedStatement)
+        or exists($n/ancestor::MethodDeclaration[1][pmd-java:modifiers() = 'synchronized'
+             or .//MethodCall[@MethodName = ('lock', 'lockInterruptibly', 'tryLock', 'writeLock', 'readLock')]])
+    }
+return
+  //ClassBody/(let $body := . return $sources($body)[ancestor::ClassBody[1] is $body])
+    /(if (parent::MethodCall[@MethodName = $writes] and . is ../*[1]) then ..
+      else if (parent::VariableDeclarator)
+      then (let $name := ../VariableId/@Name
+            return if (exists(ancestor::Block[1]//AssignmentExpression[*[1][self::VariableAccess][@Name = $name]]))
+                   then ()
+                   else ancestor::Block[1]//MethodCall[@MethodName = $writes][*[1][self::VariableAccess][@Name = $name]])
+      else ())
+    [not($guarded(.))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="PlainTextRegex" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Use replace(target, replacement), which replaces every occurrence of the plain text and reads the replacement literally. This replaceAll pattern has no regex metacharacters, so replaceAll only compiles a regex on every call and reads a dollar sign or backslash in the replacement as a group reference.">
     <priority>3</priority>
@@ -2073,6 +2595,52 @@ return //ClassDeclaration/ClassBody/FieldDeclaration[@Static = false()]
         <value><![CDATA[
 //MethodCall[pmd-java:matchesSig('java.lang.String#replaceAll(java.lang.String,java.lang.String)')]
   [ArgumentList/*[1][@CompileTimeConstant = true()][not(matches(@ConstValue, '[\\^$.|?*+()\[\]{}]'))]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="PooledFieldNotReset" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This field of a pooled object (the class recycles itself through a Recycler or ObjectPool handle) is assigned after creation, but recycle never resets it and not every factory method assigns it, so the next borrower sees the value of the last use (a cached position, an initialized flag, a reference that keeps its owner alive). Reset it before handle.recycle(this) (this.position = null;), assign it in every factory method that takes an object from the pool, or reset it where the object is returned to the pool. An exception fits a field that every reader overwrites before reading it.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $isHandle := function($field) {
+      exists($field/ClassType[@SimpleName = 'Handle'][ClassType[@SimpleName = ('Recycler', 'ObjectPool')]
+             or pmd-java:typeIs('io.netty.util.Recycler.Handle') or pmd-java:typeIs('io.netty.util.internal.ObjectPool.Handle')])
+    },
+    $assigns := function($scope, $name) {
+      $scope//AssignmentExpression[*[1][(self::VariableAccess and empty(ancestor::MethodDeclaration[1]//VariableId[@Name = $name]))
+                              or self::FieldAccess][@Name = $name]]
+    }
+return
+  //ClassBody[FieldDeclaration[$isHandle(.)]]/
+    (let $body := .,
+         $handles := FieldDeclaration[$isHandle(.)]/VariableDeclarator/VariableId/@Name,
+         $pools := FieldDeclaration[ClassType[@SimpleName = ('Recycler', 'ObjectPool')]]/VariableDeclarator/VariableId/@Name,
+         $recycleCalls := .//MethodCall[@MethodName = ('recycle', 'unguardedRecycle')]
+                            [*[1][self::VariableAccess][@Name = $handles]][ArgumentList/*[1][self::ThisExpression]]
+                            [ancestor::ClassBody[1] is $body],
+         $recycleMethods := $recycleCalls/ancestor::MethodDeclaration[1],
+         $level1 := MethodDeclaration[@Name = $recycleMethods//MethodCall/@MethodName],
+         $level2 := MethodDeclaration[@Name = ($recycleMethods | $level1)//MethodCall/@MethodName],
+         $resetScope := $recycleMethods | $level1 | $level2,
+         $factories := MethodDeclaration[pmd-java:modifiers() = 'static']
+                         [.//MethodCall[@MethodName = 'get'][*[1][self::VariableAccess][@Name = $pools]]],
+         $declared := $body/MethodDeclaration/@Name,
+         $opaque := exists(($resetScope//MethodCall except $recycleCalls)
+                      [(*[1][self::ArgumentList or self::ThisExpression] and not(@MethodName = $declared))
+                       or ArgumentList/ThisExpression])
+     return
+       if (empty($recycleMethods) or empty($factories) or $opaque) then ()
+       else FieldDeclaration[not(pmd-java:modifiers() = ('final', 'static'))][not($isHandle(.))]/VariableDeclarator/VariableId
+         [let $name := @Name,
+              $setters := $body//MethodDeclaration[exists($assigns(., $name))]/@Name
+          return exists($assigns($body//MethodDeclaration, $name))
+            and empty($assigns($resetScope, $name))
+            and empty($resetScope//MethodCall[*[1][self::VariableAccess or self::FieldAccess][@Name = $name]])
+            and (some $f in $factories satisfies
+                   empty($assigns($f, $name)) and empty($f//MethodCall[@MethodName = $setters]))])
 ]]></value>
       </property>
     </properties>
@@ -2198,6 +2766,52 @@ return //MethodCall[@MethodName = ('isPresent', 'isEmpty')][ArgumentList/@Size =
           [*[1][self::MethodCall[@MethodName = 'count'][ArgumentList/@Size = 0][exists($filtered(.))]]]
   | //MethodCall[@MethodName = ('size', 'isEmpty')][ArgumentList/@Size = 0][exists($listed(.))]
   | //MethodCall[@MethodName = ('size', 'isEmpty')][ArgumentList/@Size = 0][exists($copied(.))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="RemoveByKeyDropsNewerValue" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Remove only the entry this callback owns: map.remove(key, value) (or map.remove(key, this) inside the value class), or computeIfPresent(key, (k, current) -&gt; current == value ? null : current). By the time this callback runs, another caller may have stored a newer value under the same key, and remove(key) deletes that one: an active request or a valid connection disappears. An exception fits when the key can never be stored again while this callback is pending.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[@MethodName = 'remove'][ArgumentList[@Size = 1]]
+  [*[1][self::VariableAccess or self::FieldAccess]
+        [let $n := @Name
+         return pmd-java:typeIs('java.util.concurrent.ConcurrentMap')
+           or exists(ancestor::ClassBody/FieldDeclaration/VariableDeclarator[VariableId/@Name = $n]
+                       [*[2][self::ConstructorCall][pmd-java:typeIs('java.util.concurrent.ConcurrentMap')]])]]
+  [let $map := string(*[1]/@Name),
+       $key := ArgumentList/*[1][self::VariableAccess]/@Name,
+       $method := ancestor::MethodDeclaration[1],
+       $lambda := ancestor::LambdaExpression[1],
+       $class := ancestor::ClassDeclaration[1]
+   return exists($method) and exists($key)
+     and (
+       (exists($lambda)
+         and (some $put in $method//MethodCall[@MethodName = ('put', 'putIfAbsent')][ArgumentList[@Size = 2]]
+                [*[1][self::VariableAccess or self::FieldAccess][@Name = $map]]
+                [ArgumentList/*[1][self::VariableAccess][@Name = $key]]
+                [ArgumentList/*[2][self::VariableAccess]]
+              satisfies (let $value := string($put/ArgumentList/*[2]/@Name)
+                         return empty($put/ancestor::LambdaExpression[. is $lambda])
+                           and not($lambda/LambdaParameterList//VariableId/@Name = ($key, $value))
+                           and $lambda/parent::ArgumentList/parent::MethodCall/*[1]/descendant-or-self::VariableAccess[1]/@Name = $value
+                           and empty($lambda//InfixExpression[@Operator = ('==', '!=')][.//VariableAccess[@Name = $value]])
+                           and empty($lambda//MethodCall[@MethodName = ('equals', 'computeIfPresent', 'compute')]))))
+       or
+       (empty($lambda) and $method/@Static = false()
+         and matches($method/@Name,
+               'close|unregister|deregister|release|evict|dispose|cancel|complete|expire|timeout|fail|disconnect|destroy|^on[A-Z]',
+               'i')
+         and (some $field in $class/ancestor-or-self::ClassDeclaration/ClassBody/FieldDeclaration
+                [VariableDeclarator/VariableId/@Name = $map]
+              satisfies $field/ClassType[1]/TypeArguments/*[last()]/@SimpleName = $class/@SimpleName)
+         and empty($method//InfixExpression[@Operator = ('==', '!=')][ThisExpression])
+         and empty($method//MethodCall[@MethodName = ('equals', 'computeIfPresent', 'compute')])
+         and empty($method//MethodCall[@MethodName = 'remove'][ArgumentList[@Size = 2]]))
+     )]
 ]]></value>
       </property>
     </properties>
@@ -2393,6 +3007,53 @@ return (
                     [pmd-java:typeIs('org.springframework.context.annotation.Configuration')
                      or pmd-java:typeIs('org.springframework.boot.SpringBootConfiguration')
                      or pmd-java:typeIs('org.springframework.boot.autoconfigure.SpringBootApplication')])])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="SharedStatefulHelperField" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This field keeps a stateful helper (SimpleDateFormat, DateFormat, NumberFormat, Calendar, Matcher, Cipher, Mac, Deflater, Inflater, CRC32, BeanWrapper, ExponentialBackOff) in a static field or in a singleton bean, so every thread shares one instance. These types keep state between calls, so concurrent use gives wrong dates, wrong matches or the retry state of one caller shared with everyone. Use an immutable replacement (DateTimeFormatter, a Pattern constant with pattern.matcher(text) per call), create the instance per call (new ExponentialBackOff.Builder().build() in a method), or hold it in a ThreadLocal. An exception fits a field that is only used inside synchronized on one lock.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $stateful := ('java.text.DateFormat', 'java.text.NumberFormat', 'java.util.Calendar',
+                  'java.util.regex.Matcher', 'javax.crypto.Cipher', 'javax.crypto.Mac', 'java.util.zip.Deflater',
+                  'java.util.zip.Inflater', 'java.util.zip.CRC32', 'org.springframework.beans.BeanWrapper',
+                  'com.google.api.client.util.ExponentialBackOff', 'com.google.api.client.util.BackOff'),
+    $readOnly := function($u) {
+      exists($u/parent::MethodCall[@MethodName = 'clone'][*[1] is $u])
+        or exists($u/parent::ArgumentList/parent::MethodCall
+                    [@MethodName = ('getTimestamp', 'getDate', 'getTime', 'setTimestamp', 'setDate', 'setTime')])
+    },
+    $guarded := function($n) {
+      exists($n/ancestor::SynchronizedStatement)
+        or exists($n/ancestor::MethodDeclaration[1][pmd-java:modifiers() = 'synchronized'])
+    }
+return //ClassBody/FieldDeclaration
+  [ClassType[some $t in $stateful satisfies pmd-java:typeIs($t)]]
+  [@Static = true()
+   or ancestor::ClassDeclaration[1]
+        [ModifierList/Annotation[pmd-java:typeIs('org.springframework.stereotype.Component')
+           or pmd-java:typeIs('org.springframework.stereotype.Service')
+           or pmd-java:typeIs('org.springframework.stereotype.Repository')
+           or pmd-java:typeIs('org.springframework.stereotype.Controller')
+           or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+           or pmd-java:typeIs('jakarta.inject.Singleton') or pmd-java:typeIs('javax.inject.Singleton')]]
+        [empty(ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Scope')
+           or pmd-java:typeIs('org.springframework.web.context.annotation.RequestScope')
+           or pmd-java:typeIs('org.springframework.web.context.annotation.SessionScope')])]]
+  [let $name := VariableDeclarator/VariableId/@Name,
+       $uses := ancestor::ClassBody[1]//(VariableAccess | FieldAccess)[@Name = $name]
+                  [empty(ancestor::VariableDeclarator[VariableId/@Name = $name][parent::FieldDeclaration])]
+   return not(exists(ancestor::ClassBody[1]//AssignmentExpression
+                       [*[1][(self::VariableAccess or self::FieldAccess) and @Name = $name]]
+                       [*[2][self::VariableAccess]
+                            [@Name = ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+                                       /FormalParameters/FormalParameter/VariableId/@Name]]))
+      and (if (empty($uses)) then not(pmd-java:modifiers() = 'private')
+           else ((some $u in $uses satisfies not($guarded($u)))
+                 and not(every $u in $uses satisfies $readOnly($u))))]
 ]]></value>
       </property>
     </properties>
@@ -3395,6 +4056,84 @@ return (
                                           or descendant-or-self::MethodCall[pmd-java:matchesSig($quote)]
                                           or descendant-or-self::MethodReference[@MethodName = 'quote']]]
                 /VariableId/@Name)]]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="UnsynchronizedSharedCollection" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This plain collection field (HashMap, ArrayList, HashSet and the like) is changed here without a lock, while the same class shows other threads use it: the change runs in a task handed to an executor, scheduler, thread or CompletableFuture, or other methods read the field under synchronized. Concurrent writers lose entries, readers throw ConcurrentModificationException and a HashMap can loop forever. Use ConcurrentHashMap, ConcurrentHashMap.newKeySet() or CopyOnWriteArrayList (for rarely changed listener lists), or take the same lock around every read and write. An exception fits a field that only one thread ever touches.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $plain := ('java.util.ArrayList', 'java.util.LinkedList', 'java.util.HashSet', 'java.util.LinkedHashSet',
+               'java.util.TreeSet', 'java.util.HashMap', 'java.util.LinkedHashMap', 'java.util.TreeMap',
+               'java.util.WeakHashMap', 'java.util.ArrayDeque', 'java.util.PriorityQueue'),
+    $writes := ('add', 'addAll', 'put', 'putAll', 'remove', 'removeIf', 'removeAll', 'retainAll', 'clear',
+                'putIfAbsent', 'computeIfAbsent', 'compute', 'merge', 'offer', 'push', 'pop', 'poll',
+                'addFirst', 'addLast', 'removeFirst', 'removeLast'),
+    $isRef := function($n, $name) {
+      ($n/self::VariableAccess[@Name = $name]
+         [empty(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression]
+                  //VariableId[@Name = $name])])
+      | $n/self::FieldAccess[@Name = $name][*[1][self::ThisExpression[not(*)]]]
+    },
+    $single := function($init) {
+      exists($init/self::MethodCall[@MethodName = ('newSingleThreadExecutor', 'newSingleThreadScheduledExecutor')
+                                    or (@MethodName = ('newFixedThreadPool', 'newScheduledThreadPool')
+                                        and ArgumentList/NumericLiteral[1][@Image = '1'])])
+    },
+    $initMethod := function($m) {
+      exists($m[matches(@Name, '^(init|setup|configure|load|populate|build|afterPropertiesSet)')
+                or ModifierList/Annotation[matches(@SimpleName,
+                     '^(PostConstruct|BeforeEach|BeforeAll|Before|EventListener)$')]])
+    },
+    $async := function($lambda) {
+      let $call := $lambda/parent::ArgumentList/parent::*
+      return exists($call[self::MethodCall]
+                      [(@MethodName = ('submit', 'execute', 'schedule', 'scheduleAtFixedRate', 'scheduleWithFixedDelay')
+                        and *[1][pmd-java:typeIs('java.util.concurrent.Executor')]
+                             [not(self::VariableAccess and (some $f in ancestor::ClassBody[1]/FieldDeclaration/VariableDeclarator
+                                    satisfies $f/VariableId/@Name = @Name and empty($f/*[2])))]
+                             [not((self::VariableAccess or self::FieldAccess)
+                                  and (some $f in ancestor::ClassBody[1]/FieldDeclaration/VariableDeclarator
+                                       satisfies $f/VariableId/@Name = @Name and $single($f/*[2])))])
+                       or (@MethodName = ('runAsync', 'supplyAsync') and *[1][self::TypeExpression])
+                       or (matches(@MethodName, 'Async$') and *[1][pmd-java:typeIs('java.util.concurrent.CompletionStage')])])
+          or exists($call[self::ConstructorCall][pmd-java:typeIsExactly('java.lang.Thread')]
+                      [empty(ancestor::MethodDeclaration[1]//MethodCall[@MethodName = 'join'])])
+    },
+    $guarded := function($n) {
+      exists($n/ancestor::SynchronizedStatement)
+        or exists($n/ancestor::LambdaExpression/parent::ArgumentList/parent::MethodCall
+                    [matches(@MethodName, 'lock|synchronized', 'i')])
+        or $initMethod($n/ancestor::MethodDeclaration[1])
+        or exists($n/ancestor::MethodDeclaration[1][pmd-java:modifiers() = 'synchronized'
+             or .//MethodCall[@MethodName = ('lock', 'lockInterruptibly', 'tryLock', 'writeLock', 'readLock')]])
+    }
+return
+  //ClassBody/(let $body := . return
+    for $d in $body/FieldDeclaration/VariableDeclarator
+              [*[2][self::ConstructorCall][some $t in $plain satisfies pmd-java:typeIsExactly($t)]]
+    return
+      let $name := $d/VariableId/@Name,
+          $refs := $body//(VariableAccess | FieldAccess)[@Name = $name][exists($isRef(., $name))]
+      return $body//MethodCall[@MethodName = $writes][ancestor::ClassBody[1] is $body]
+        [exists($isRef(*[1], $name))]
+        [not($guarded(.))]
+        [empty(ancestor::ConstructorDeclaration | ancestor::Initializer)]
+        [let $call := .
+         return
+           (some $l in ancestor::LambdaExpression satisfies
+              ($async($l) and (some $r in $refs satisfies empty($r/ancestor::LambdaExpression[. is $l]))))
+           or (exists(ancestor::MethodDeclaration[1][pmd-java:modifiers() = ('public', 'protected')]
+                        [empty(.//SynchronizedStatement)]
+                        [empty(.//MethodCall[@MethodName = ('holdsLock', 'lock', 'lockInterruptibly', 'tryLock')])])
+               and (some $w in $body//MethodCall[@MethodName = $writes][exists($isRef(*[1], $name))] satisfies
+                      (exists($w/ancestor::SynchronizedStatement)
+                       or exists($w/ancestor::MethodDeclaration[1][pmd-java:modifiers() = 'synchronized']))
+                      and empty($w/ancestor::ConstructorDeclaration)))]
+    )
 ]]></value>
       </property>
     </properties>
