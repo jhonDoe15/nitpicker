@@ -29,7 +29,14 @@ import {
   trackTemporaryPath as untypedTrack,
   untrackTemporaryPath as untypedUntrack,
 } from '../../tooling/temporary-files.mjs';
-import type { FixFile, FixInvocation, FixSettings, FixStep, FixWriter } from './fix-types.mts';
+import type {
+  FixFile,
+  FixInvocation,
+  FixSettings,
+  FixStep,
+  FixWriter,
+  PlannedFix,
+} from './fix-types.mts';
 
 export type Bytes = ReadonlyMap<string, Buffer>;
 
@@ -75,6 +82,9 @@ type PlannedText = {
   readonly name: string;
   readonly bytes: Buffer | undefined;
   readonly text: string;
+  readonly recipe?: string;
+  readonly safety?: string;
+  readonly findings?: readonly NonNullable<PlannedFix['finding']>[];
 };
 
 export const containedPath: (root: string, name: string) => string = untypedContainedPath;

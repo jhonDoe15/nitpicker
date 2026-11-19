@@ -27,6 +27,7 @@ describe('readPinnedTools', () => {
       'pmd',
       'forbiddenapis',
       'spotbugs',
+      'findSecBugs',
       'googleJavaFormat',
       'palantirJavaFormat',
       'jacoco',

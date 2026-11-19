@@ -1,8 +1,29 @@
+export type NameRead = {
+  name: string;
+  member?: string | undefined;
+  calls?: string[] | undefined;
+  prefixes?: string[] | undefined;
+  lambda?: undefined;
+};
+
+type LambdaRead = {
+  lambda: number;
+  name?: undefined;
+  member?: undefined;
+  calls?: undefined;
+  prefixes?: undefined;
+};
+
+export type Read = NameRead | LambdaRead;
+
+export type Origin = { root: string; call?: string | undefined };
+
 export type Argument = {
   text: string;
   name?: string | undefined;
   spread: boolean;
   lambda: boolean;
+  reads?: Read[] | undefined;
 };
 
 export type Annotation = {
@@ -74,6 +95,7 @@ export type FunctionFact = {
   expressionBody?: true;
   forward?: ForwardFact | undefined;
   receiver?: string | undefined;
+  local?: true;
   modifiers: string[];
   typeBounds?: TypeBound[] | undefined;
 };
@@ -86,6 +108,8 @@ export type PropertyFact = {
   initializer?: string | undefined;
   initializerTypeArguments?: string | undefined;
   initializerQualifier?: string | undefined;
+  reads?: Read[] | undefined;
+  origin?: Origin | undefined;
   annotationEntries?: Annotation[] | undefined;
   literalText?: string | undefined;
   literal?: true;
@@ -114,7 +138,7 @@ export type ScopeFact = {
   argument?: string | undefined;
   range?: string | undefined;
   params?: ScopeParameter[] | undefined;
-  reads?: string[] | undefined;
+  reads?: string[] | Read[] | undefined;
 };
 
 export type InvocationFact = {
@@ -123,6 +147,7 @@ export type InvocationFact = {
   name: string;
   arguments: Argument[];
   receiver?: string | undefined;
+  receiverReads?: Read[] | undefined;
   assignedTo?: string | undefined;
   after?: string[] | undefined;
   assign?: true;
@@ -152,6 +177,15 @@ export type LocalFact = {
   initializerTypeArguments?: string | undefined;
   component?: number | undefined;
   alias?: string | undefined;
+  reads?: Read[] | undefined;
+  origin?: Origin | undefined;
+};
+
+export type ReturnValue = {
+  scope: number;
+  line: number;
+  reads?: Read[] | undefined;
+  lambda?: true;
 };
 
 type NullTest = {
@@ -196,6 +230,7 @@ export type SpringFile = {
   scopes: ScopeFact[];
   invocations: InvocationFact[];
   locals?: LocalFact[] | undefined;
+  returnValues?: ReturnValue[] | undefined;
   nullTests?: NullTest[] | undefined;
   globals?: PropertyFact[] | undefined;
   exceptionUses: ExceptionUse[];

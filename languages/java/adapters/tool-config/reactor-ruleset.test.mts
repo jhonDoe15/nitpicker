@@ -105,6 +105,10 @@ describe('reactor-ruleset.xml', () => {
       'ReactorBlockingInOperator',
       'ReactorBlockInReactiveMethod',
       'ReactorBlockWithoutTimeout',
+      'ReactorCleanupSkippedOnCancel',
+      'ReactorResourceNotReleasedOnCancel',
+      'ReactiveSubscribeAndReturn',
+      'ReactiveEagerFallback',
     ]);
     expect(ruleset.match(/<rule name=/g)).toHaveLength(rules.length);
   });
@@ -125,6 +129,10 @@ describe('reactor-ruleset.xml', () => {
   it('names the offloading scheduler in the operator rule', () => {
     expect(rules.map(({ message }) => message.includes('Schedulers.boundedElastic()'))).toEqual([
       true,
+      false,
+      false,
+      false,
+      false,
       false,
       false,
     ]);

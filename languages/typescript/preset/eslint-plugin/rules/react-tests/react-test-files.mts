@@ -5,7 +5,10 @@ import {
   moduleSourcesOf as untypedModuleSourcesOf,
   statementSources as untypedStatementSources,
 } from '../../../modules/module-sources.mjs';
-import { isBrowserEndToEndTest, mockedModuleSource } from '../analysis/test-code-analysis.mts';
+import { isBrowserEndToEndTest } from '../analysis/test-code-analysis.mts';
+import { moduleMocks } from '../runner-apis/module-mocks.mts';
+import { type RunnerApis, runnerApisOf } from '../runner-apis/runner-apis.mts';
+import { awaited } from '../effects/lazy-relations.mts';
 import { isNode, nameOf, type SourceCode } from '../typed/node-views.mts';
 import { readLayout } from '../typed/policy-views.mts';
 import { calleeNameOf } from '../typed/syntax-views.mts';
@@ -87,12 +90,29 @@ function reachesTestHelper(source: string, filename: string): boolean {
   return false;
 }
 
+function topLevelCalls(statement: TSESTree.ProgramStatement): (TSESTree.Node | undefined)[] {
+  if (statement.type === AST_NODE_TYPES.ExpressionStatement) {
+    return [awaited(statement.expression)];
+  }
+  return statement.type === AST_NODE_TYPES.VariableDeclaration
+    ? statement.declarations.map((declarator) => awaited(declarator.init ?? undefined))
+    : [];
+}
+
+function mockedSources(
+  apis: RunnerApis,
+  statement: TSESTree.ProgramStatement,
+): (string | undefined)[] {
+  return topLevelCalls(statement)
+    .filter((node) => node?.type === AST_NODE_TYPES.CallExpression)
+    .flatMap((call) => moduleMocks(apis, call).map(({ name }) => name));
+}
+
 function topLevelSources(program: TSESTree.Program): (string | undefined)[] {
+  const apis = runnerApisOf(program);
   return program.body.flatMap((statement) => [
     ...statementSources(statement),
-    ...(statement.type === AST_NODE_TYPES.ExpressionStatement
-      ? [mockedModuleSource(statement.expression)]
-      : []),
+    ...mockedSources(apis, statement),
   ]);
 }
 

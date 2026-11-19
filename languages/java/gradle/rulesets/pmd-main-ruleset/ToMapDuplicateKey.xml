@@ -1,0 +1,29 @@
+  <rule name="ToMapDuplicateKey" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This Collectors.toMap has no merge function, but its keys come from parsed text or request data (a split string, file lines, cookies, headers, name-value pairs), where the same key can appear twice. The second one throws IllegalStateException: Duplicate key, so the code works in tests and fails on the first real input with a duplicate. Decide what a duplicate means: `toMap(Cookie::getName, Cookie::getValue, (first, second) -&gt; first)` keeps the first (use second to keep the last, or throw with both values), or use `groupingBy` when duplicates are expected. An exception fits only for keys that are unique by construction (a stream that is distinct(), comes from a Set or from IntStream.range).">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $nameLike := ('getName', 'name', 'getKey', 'getHeaderName', 'getLabel'),
+    $pairTypes := ('jakarta.servlet.http.Cookie', 'javax.servlet.http.Cookie', 'jakarta.ws.rs.core.Cookie',
+                   'javax.ws.rs.core.Cookie', 'java.net.HttpCookie', 'org.springframework.http.HttpCookie',
+                   'org.apache.http.Header', 'org.apache.http.NameValuePair', 'org.apache.hc.core5.http.Header',
+                   'org.apache.hc.core5.http.NameValuePair', 'io.netty.handler.codec.http.cookie.Cookie')
+return //MethodCall[@MethodName = ('toMap', 'toUnmodifiableMap', 'toConcurrentMap')][ArgumentList[@Size = 2]]
+  [pmd-java:matchesSig('java.util.stream.Collectors#toMap(_*)')
+   or pmd-java:matchesSig('java.util.stream.Collectors#toUnmodifiableMap(_*)')
+   or pmd-java:matchesSig('java.util.stream.Collectors#toConcurrentMap(_*)')]
+  [ancestor::MethodCall[@MethodName = 'collect'][1]/*[1]/descendant-or-self::MethodCall
+       [@MethodName = ('split', 'lines', 'readAllLines', 'getCookies', 'splitToList', 'splitAsStream')]
+   or ArgumentList/*[1]/descendant-or-self::MethodCall[@MethodName = ('split', 'splitToList')]
+   or ArgumentList/*[1][self::MethodReference][@MethodName = $nameLike]
+        [*[1][some $t in $pairTypes satisfies pmd-java:typeIs($t)]]
+   or ArgumentList/*[1][self::LambdaExpression]//MethodCall[@MethodName = $nameLike]
+        [*[1][self::VariableAccess][some $t in $pairTypes satisfies pmd-java:typeIs($t)]]]
+  [empty(ancestor::MethodCall[@MethodName = 'collect'][1]/*[1]/descendant-or-self::MethodCall
+           [@MethodName = ('distinct', 'toSet', 'toUnmodifiableSet', 'toCollection', 'range', 'rangeClosed')
+            or (@MethodName = 'stream' and *[1][pmd-java:typeIs('java.util.Set')])])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

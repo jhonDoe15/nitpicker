@@ -36,6 +36,20 @@ function scopeChains(scopes: ScopeFact[]): Map<number | undefined, ScopeFact[]> 
   return chains;
 }
 
+function memoizer(): SpringView['memo'] {
+  const memos = new Map<string, unknown>();
+  return (key, compute, accepts) => {
+    if (!memos.has(key)) {
+      memos.set(key, compute());
+    }
+    const stored = memos.get(key);
+    if (!accepts(stored)) {
+      throw new TypeError(`memo ${key} holds another kind of value`);
+    }
+    return stored;
+  };
+}
+
 function scopedTo(file: SourceFile, context: ProjectContext): ScopedView {
   const resolve = nameResolver(file, context.declared);
   return {
@@ -56,6 +70,7 @@ function fileView(file: ViewableFile, context: ProjectContext): SpringView {
       invocations: file.invocations.map((invocation) => ({ arguments: [], ...invocation })),
     },
     resolve,
+    memo: memoizer(),
     declared: context.declared,
     chain: (id: number | undefined) => chains.get(id) ?? [],
     classes,

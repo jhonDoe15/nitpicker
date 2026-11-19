@@ -5,6 +5,7 @@ import {
   moduleBindings,
   perTestVisitors,
 } from '../../analysis/test-code-analysis.mts';
+import { vocabularyOf } from '../../runner-apis/runner-option.mts';
 
 const SERVER_MODULES = new Set(
   ['http', 'https', 'http2', 'net', 'tls'].flatMap((name) => [name, `node:${name}`]),
@@ -19,10 +20,11 @@ export const rule: TSESLint.RuleModule<'serverPerTest'> = {
     schema: [],
     messages: {
       serverPerTest:
-        'Do not start a server or worker thread in each test or beforeEach. Start it once in beforeAll and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh server.',
+        'Do not start a server or worker thread in each test or beforeEach. Start it once in {{sharedSetupHook}} and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh server.',
     },
   },
   create(context) {
+    const data = { sharedSetupHook: vocabularyOf(context).sharedSetupHook };
     let servers: ModuleBindings = { named: new Map(), namespaces: new Set() };
     let workers: ModuleBindings = { named: new Map(), namespaces: new Set() };
     return {
@@ -36,16 +38,16 @@ export const rule: TSESLint.RuleModule<'serverPerTest'> = {
           node.type === AST_NODE_TYPES.NewExpression ? workers : servers,
         );
         if (node.type === AST_NODE_TYPES.CallExpression && SERVER_FACTORIES.has(name ?? '')) {
-          return { messageId: SERVER_PER_TEST };
+          return { messageId: SERVER_PER_TEST, data };
         }
         if (node.type === AST_NODE_TYPES.NewExpression && name === 'Worker') {
-          return { messageId: SERVER_PER_TEST };
+          return { messageId: SERVER_PER_TEST, data };
         }
         if (
           node.type === AST_NODE_TYPES.NewExpression &&
           importedCalleeName(node.callee, servers) === 'Server'
         ) {
-          return { messageId: SERVER_PER_TEST };
+          return { messageId: SERVER_PER_TEST, data };
         }
         return undefined;
       }),

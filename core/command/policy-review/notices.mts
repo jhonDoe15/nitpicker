@@ -135,12 +135,18 @@ function coChangeDescriber(
     : undefined;
 }
 
+function policyNotices(headPolicy: unknown): readonly string[] {
+  return textsOf(fieldOf(fieldOf(fieldOf(headPolicy, 'tools'), 'tests'), 'notices'));
+}
+
 export function noticeDescriber(
   config: NitpickerConfig,
   headPolicy: unknown,
   projectRoot: string,
 ): Describer | undefined {
+  const notices = policyNotices(headPolicy);
   const describers = [
+    notices.length === 0 ? undefined : () => notices,
     languageDescriber(config, headPolicy, projectRoot),
     uncheckedDescriber(config, headPolicy, projectRoot),
     coChangeDescriber(config, headPolicy, projectRoot),
@@ -155,9 +161,20 @@ export function historyAvailabilityNotes(
   config: NitpickerConfig,
   headPolicy: unknown,
   projectRoot: string,
-): unknown {
+): readonly string[] {
   if (!runsCoChange(config)) {
     return [];
   }
-  return availabilityNotices({ projectRoot, policy: objectOf(headPolicy) });
+  return textsOf(availabilityNotices({ projectRoot, policy: objectOf(headPolicy) }));
+}
+
+export function snapshotNotes(
+  config: NitpickerConfig,
+  headPolicy: unknown,
+  projectRoot: string,
+): readonly string[] {
+  return [
+    ...policyNotices(headPolicy),
+    ...historyAvailabilityNotes(config, headPolicy, projectRoot),
+  ];
 }

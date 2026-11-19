@@ -7,11 +7,12 @@ import { typescriptRuleTester, type TypedRuleTester } from './rule-tester.mts';
 export type CaseError = {
   readonly messageId: string;
   readonly data?: Readonly<Record<string, string>>;
+  readonly suggestions?: { messageId: string; output: string }[];
 };
 export type TypedCase = { filename: string; code: string };
 export type InvalidCase = TypedCase & { errors: CaseError[] };
 
-type TypedCases = {
+export type TypedCases = {
   readonly tester: TypedRuleTester;
   readonly cleanup: () => void;
   readonly typed: {

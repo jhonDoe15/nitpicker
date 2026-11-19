@@ -28,9 +28,11 @@ const isIntegrationTestFor: (file: string, policy: Readonly<Record<string, unkno
 
 export { TEST_TIMEOUT_CEILING_MS } from '../../../../../../../shared/test-timeouts/resolve.mjs';
 
-const HOOKS = new Set(['beforeAll', 'beforeEach', 'afterAll', 'afterEach']);
-const HOOK_TIMEOUT_KEYS = ['hookTimeout', 'teardownTimeout'];
-const TIMEOUT_KEYS = new Set(['timeout', 'testTimeout', 'hookTimeout', 'teardownTimeout']);
+const HOOK_TIMEOUT = 'hookTimeout';
+const TEARDOWN_TIMEOUT = 'teardownTimeout';
+const HOOKS = new Set(['beforeAll', 'beforeEach', 'afterAll', 'afterEach', 'before', 'after']);
+const HOOK_TIMEOUT_KEYS = [HOOK_TIMEOUT, TEARDOWN_TIMEOUT];
+const TIMEOUT_KEYS = new Set(['timeout', 'testTimeout', HOOK_TIMEOUT, TEARDOWN_TIMEOUT]);
 
 function timeoutProperties(
   context: SourceContext,
@@ -49,12 +51,64 @@ function timeoutProperties(
   );
 }
 
-function timeoutNodes(context: SourceContext, node: TSESTree.CallExpression): TimeoutNode[] {
+function firstArgumentTimeouts(node: TSESTree.CallExpression): TimeoutNode[] {
+  return node.arguments.slice(0, 1).map((argument) => ({ node: argument, hook: false }));
+}
+
+function globalTimeouts(
+  context: SourceContext,
+  node: TSESTree.CallExpression,
+): TimeoutNode[] | undefined {
   if (isNamedMember(node.callee, 'vi', 'setConfig')) {
     return timeoutProperties(context, node.arguments[0]).map((property) => ({
       node: property.value,
       hook: HOOK_TIMEOUT_KEYS.includes(property.key.name),
     }));
+  }
+  return isNamedMember(node.callee, 'jest', 'setTimeout') ? firstArgumentTimeouts(node) : undefined;
+}
+
+function isChainedTimeout({ callee }: TSESTree.CallExpression): boolean {
+  if (
+    callee.type !== AST_NODE_TYPES.MemberExpression ||
+    callee.computed ||
+    callee.property.name !== 'timeout'
+  ) {
+    return false;
+  }
+  return (
+    callee.object.type === AST_NODE_TYPES.ThisExpression ||
+    isTestFunctionName(registrationRoot(callee.object))
+  );
+}
+
+function argumentTimeouts(
+  context: SourceContext,
+  argument: TSESTree.CallExpressionArgument | undefined,
+  hook = false,
+): TimeoutNode[] {
+  if (argument === undefined || isFunctionNode(argument)) {
+    return [];
+  }
+  const properties = timeoutProperties(context, argument);
+  if (properties.length > 0) {
+    return properties.map((property) => ({
+      node: property.value,
+      hook: hook || HOOK_TIMEOUT_KEYS.includes(property.key.name),
+    }));
+  }
+  return resolveConstant(context, argument)?.type === AST_NODE_TYPES.ObjectExpression
+    ? []
+    : [{ node: argument, hook }];
+}
+
+function timeoutNodes(context: SourceContext, node: TSESTree.CallExpression): TimeoutNode[] {
+  const global = globalTimeouts(context, node);
+  if (global !== undefined) {
+    return global;
+  }
+  if (isChainedTimeout(node)) {
+    return firstArgumentTimeouts(node);
   }
   const root = registrationRoot(node.callee);
   if (
@@ -65,27 +119,14 @@ function timeoutNodes(context: SourceContext, node: TSESTree.CallExpression): Ti
     return [];
   }
   if (root !== undefined && HOOKS.has(root) && node.callee.type === AST_NODE_TYPES.Identifier) {
-    return node.arguments.slice(1, 2).map((node) => ({ node, hook: true }));
+    return node.arguments
+      .slice(1, 2)
+      .flatMap((argument) => argumentTimeouts(context, argument, true));
   }
   if (!(isTestFunctionName(root) && node.arguments.some(isFunctionNode))) {
     return [];
   }
-  return node.arguments.slice(1).flatMap((argument): TimeoutNode[] => {
-    if (isFunctionNode(argument)) {
-      return [];
-    }
-    const properties = timeoutProperties(context, argument);
-    if (properties.length > 0) {
-      return properties.map((property) => ({
-        node: property.value,
-        hook: HOOK_TIMEOUT_KEYS.includes(property.key.name),
-      }));
-    }
-    const resolved = resolveConstant(context, argument);
-    return resolved?.type === AST_NODE_TYPES.ObjectExpression
-      ? []
-      : [{ node: argument, hook: false }];
-  });
+  return node.arguments.slice(1).flatMap((argument) => argumentTimeouts(context, argument));
 }
 
 function reportTimeout(

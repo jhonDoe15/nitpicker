@@ -26,7 +26,12 @@ describe.skipIf(process.platform === 'win32')('runSpotbugs', () => {
     const reportDir = path.join(basedir, 'report');
     mkdirSync(reportDir);
     const module = sourceModule({ basedir, outputDirectory: classes });
-    runSpotbugs({ module, reportDir, tools: { spotbugs: ['spotbugs.jar'] }, configs });
+    runSpotbugs({
+      module,
+      reportDir,
+      tools: { spotbugs: ['spotbugs.jar'], spotbugsPlugins: ['plugin.jar'] },
+      configs,
+    });
     const args = textsOf(parseJson(readFileSync(path.join(basedir, 'arguments.json'), 'utf8')));
     return args.slice(args.indexOf('edu.umd.cs.findbugs.FindBugs2') + 1, args.indexOf('-sarif'));
   }

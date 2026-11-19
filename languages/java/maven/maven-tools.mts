@@ -132,6 +132,9 @@ export function toolDependencies(
     ],
     forbiddenapis: [dependency(`de.thetaphi:forbiddenapis:${at('forbiddenapis')}`)],
     spotbugs: [dependency(`com.github.spotbugs:spotbugs:${at('spotbugs')}`)],
+    spotbugsPlugins: [
+      dependency(`com.h3xstream.findsecbugs:findsecbugs-plugin:${at('findSecBugs')}`),
+    ],
     checkstyle: [dependency(`com.puppycrawl.tools:checkstyle:${at('checkstyle')}`)],
     errorprone: [
       dependency(`com.google.errorprone:error_prone_core:${at('errorProne')}`),

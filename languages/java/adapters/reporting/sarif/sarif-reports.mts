@@ -10,6 +10,12 @@ import { FIXED_SLEEP_RULE, withWaitAdvice } from '../../../messages/wait-advice.
 import { dropSleepsInFakes } from '../../../messages/latency-fakes.mts';
 import { withFanOutDetails } from '../../../messages/fan-out/fan-out-details.mts';
 import { withLoadEffectSubjects } from '../../../messages/load-effects.mts';
+import {
+  securitySubject,
+  stableName,
+  withoutDuplicateSites,
+  withSecurityMessages,
+} from '../../security/security-advice.mts';
 import { withLockEvidence } from '../../../messages/locking/lock-evidence.mts';
 import { withProjectTypeMocks } from '../../../messages/mocks/project-mocks.mts';
 import { dropNetworkInIntegrationTests } from '../../../messages/isolation/unit-tests.mts';
@@ -199,7 +205,7 @@ export function sarifFindings(context: SarifContext): unknown[] {
   const spotbugs = preparedReport(
     readSarifReport(path.join(context.reportRoot, 'spotbugs.sarif')),
     context,
-    spotbugsSubject,
+    (result) => securitySubject(result, spotbugsSubject(result)),
   );
   const spotbugsFilter = context['spotbugsFilter'];
   const withSources = withoutClassesWithoutSource(
@@ -208,16 +214,21 @@ export function sarifFindings(context: SarifContext): unknown[] {
   );
   const filtered: unknown =
     typeof spotbugsFilter === 'function' ? callUntyped(spotbugsFilter, withSources) : withSources;
+  const secured = withSecurityMessages(
+    withoutDuplicateSites(isSarifLog(filtered) ? filtered : EMPTY_SARIF, pmd),
+  );
   return [
     ...listOf(withProjectFilters(pmdFindings(pmd, context), context)),
     ...pmdProcessingErrors(pmd, context),
-    ...ingestSarif(fieldsOf(filtered), { tool: 'spotbugs' }).findings,
+    ...ingestSarif(fieldsOf(secured), { tool: 'spotbugs' }).findings,
   ];
 }
 
 function spotbugsSubject(result: SarifResult): string | undefined {
   const args = result.message?.arguments;
-  return Array.isArray(args) && args.length > 0
-    ? args.join(' ')
-    : optionalText(fieldOf(result.message, 'text'));
+  const subject =
+    Array.isArray(args) && args.length > 0
+      ? args.join(' ')
+      : optionalText(fieldOf(result.message, 'text'));
+  return typeof subject === 'string' ? stableName(subject) : subject;
 }

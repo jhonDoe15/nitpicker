@@ -1,0 +1,29 @@
+  <rule name="ForwardDropsParameter" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This override never reads one of its parameters and only forwards the call to a same-named method without it, so the value passed by the caller is silently lost. Pass the parameter on (return delegate.send(message, headers, timeout);), or call the overload that really takes it. An exception fits when the value does not apply to this class: say so with a throw, or keep the unused parameter out of the forwarded call on purpose in a documented adapter.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodDeclaration[ModifierList/Annotation[@SimpleName = 'Override']]
+  [let $call := Block[count(*) = 1]/(ReturnStatement | ExpressionStatement)/MethodCall,
+       $method := .,
+       $names := FormalParameters/FormalParameter/VariableId/@Name,
+       $unused := FormalParameters/FormalParameter[not(@Varargs = true())]/VariableId[not(@Name = $call//VariableAccess/@Name)]
+   return exists($call) and exists($unused)
+     and $call/@MethodName = @Name
+     and not($call/TypeArguments)
+     and (exists($call/*[1][self::SuperExpression])
+          or (let $supers := ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration][1]
+                               /(ExtendsList | ImplementsList)/ClassType/@SimpleName,
+                  $recv := $call/*[1][self::VariableAccess[not(@Name = $names)]
+                                      or self::FieldAccess[*[1][self::ThisExpression[not(*)]]]]
+              return exists($recv)
+                 and (some $f in ancestor::ClassBody[1]/FieldDeclaration[ClassType/@SimpleName = $supers]
+                                 /VariableDeclarator/VariableId satisfies $f/@Name = $recv/@Name)))
+     and $call/ArgumentList/@Size >= 1
+     and $call/ArgumentList/@Size < count($names)
+     and (every $a in $call/ArgumentList/* satisfies $a[self::VariableAccess][@Name = $names])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
