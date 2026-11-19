@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type { Ranged } from '../typed/node-views.mts';
 import { calleeNameOf } from '../typed/syntax-views.mts';
+import { rootIdentifierOf, staticMemberName } from '../support/member-roots.mts';
 
 type Variable = TSESLint.Scope.Variable;
 
@@ -39,17 +40,7 @@ export function calleeName(call: TSESTree.CallExpression): string | undefined {
 }
 
 function objectStaticName(call: TSESTree.CallExpression): string | undefined {
-  const { callee } = call;
-  if (
-    callee.type === AST_NODE_TYPES.MemberExpression &&
-    !callee.computed &&
-    callee.object.type === AST_NODE_TYPES.Identifier &&
-    callee.object.name === 'Object' &&
-    callee.property.type === AST_NODE_TYPES.Identifier
-  ) {
-    return callee.property.name;
-  }
-  return undefined;
+  return staticMemberName(call, 'Object');
 }
 
 export function isObjectAssign(call: TSESTree.CallExpression): boolean {
@@ -130,14 +121,7 @@ function ownerName(owner: TSESTree.Node): string | undefined {
 }
 
 function rootName(node: TSESTree.Node): string | undefined {
-  const chain: TSESTree.Node[] = [node];
-  for (const current of chain) {
-    if (current.type !== AST_NODE_TYPES.MemberExpression) {
-      return current.type === AST_NODE_TYPES.Identifier ? current.name : undefined;
-    }
-    chain.push(current.object);
-  }
-  return undefined;
+  return rootIdentifierOf(node)?.name;
 }
 
 export function isDefaultFill(

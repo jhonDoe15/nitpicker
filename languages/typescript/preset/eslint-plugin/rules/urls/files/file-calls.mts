@@ -106,9 +106,7 @@ function rootsOf(node: TSESTree.Node): string[] {
   for (const current of pending) {
     const value = unwrapOf(current, ASSERTION_FORMS);
     if (value.type === AST_NODE_TYPES.MemberExpression) {
-      if (!value.computed) {
-        names.push(nameOf(value.property) ?? '');
-      }
+      names.push(...(value.computed ? [] : [nameOf(value.property) ?? '']));
       pending.push(value.object);
     } else if (value.type === AST_NODE_TYPES.Identifier) {
       names.push(value.name);

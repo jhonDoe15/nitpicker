@@ -132,6 +132,17 @@ function reportReads(found: ReadCheck, region: readonly TSESTree.Node[]) {
   }
 }
 
+type State = { readonly context: RuleContext; readonly reported: Set<TSESTree.Node> };
+
+function checkOperands(state: State, test: TSESTree.Node, region: readonly TSESTree.Node[]): void {
+  for (const part of operandsOf(unwrapOf(test, [AST_NODE_TYPES.TSNonNullExpression]), '&&')) {
+    const path = existenceCheckedPath(part);
+    if (path !== undefined) {
+      reportReads({ ...state, guarded: part, path }, region);
+    }
+  }
+}
+
 export const rule: TSESLint.RuleModule<'directory'> = {
   meta: {
     type: 'problem',
@@ -149,51 +160,33 @@ export const rule: TSESLint.RuleModule<'directory'> = {
   },
   create(context) {
     const { sourceCode } = context;
-    const reported = new Set<TSESTree.Node>();
-
-    function check(
-      guarded: TSESTree.Node,
-      path: TSESTree.Node,
-      region: readonly TSESTree.Node[],
-    ): void {
-      reportReads({ context, reported, guarded, path }, region);
-    }
-
-    function guardedRegion(test: TSESTree.Node, region: readonly TSESTree.Node[]) {
-      for (const part of operandsOf(unwrapOf(test, [AST_NODE_TYPES.TSNonNullExpression]), '&&')) {
-        const path = existenceCheckedPath(part);
-        if (path !== undefined) {
-          check(part, path, region);
-        }
-      }
-    }
-
+    const state: State = { context, reported: new Set<TSESTree.Node>() };
     return {
       IfStatement(node: TSESTree.IfStatement) {
-        guardedRegion(node.test, [node.consequent]);
+        checkOperands(state, node.test, [node.consequent]);
         const path = negatedExistence(node.test);
         if (path !== undefined && exits(node.consequent)) {
-          check(node.test, path, statementsAfter(node));
+          reportReads({ ...state, guarded: node.test, path }, statementsAfter(node));
         }
       },
       ConditionalExpression(node: TSESTree.ConditionalExpression) {
-        guardedRegion(node.test, [node.consequent]);
+        checkOperands(state, node.test, [node.consequent]);
       },
-      LogicalExpression: (node: TSESTree.LogicalExpression) => {
+      LogicalExpression(node: TSESTree.LogicalExpression) {
         if (node.operator === '&&') {
-          guardedRegion(node.left, [node.right]);
+          checkOperands(state, node.left, [node.right]);
         }
       },
       ExpressionStatement(node: TSESTree.ExpressionStatement) {
         const path = awaitedExistence(node.expression);
         if (path !== undefined) {
-          check(node, path, statementsAfter(node));
+          reportReads({ ...state, guarded: node, path }, statementsAfter(node));
         }
       },
       CallExpression(node: TSESTree.CallExpression) {
         const found = filterGuard(sourceCode, node);
         if (found !== undefined) {
-          check(node, found.parameter, [found.reader.body]);
+          reportReads({ ...state, guarded: node, path: found.parameter }, [found.reader.body]);
         }
       },
     };

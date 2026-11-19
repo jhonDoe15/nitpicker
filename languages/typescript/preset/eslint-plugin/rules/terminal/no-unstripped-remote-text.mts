@@ -68,10 +68,9 @@ function carriedValues(node: TSESTree.Node): Carried[] {
     const children = carriedChildren(plain);
     if (children === undefined) {
       leaves.push({ node: plain, stringy: item.stringy });
-    } else {
-      for (const child of children) {
-        pending.push({ node: child, stringy: true });
-      }
+    }
+    for (const child of children ?? []) {
+      pending.push({ node: child, stringy: true });
     }
   }
   return leaves;

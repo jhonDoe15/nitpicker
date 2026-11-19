@@ -156,15 +156,14 @@ export function isTimeOnlyText(context: SourceContext, node: TSESTree.Node): boo
 function hasStringPart(node: TSESTree.Node): boolean {
   const pending = [node];
   for (const item of pending) {
-    if (item.type === AST_NODE_TYPES.BinaryExpression) {
-      if (item.operator === '+') {
-        pending.push(item.left, item.right);
-      }
-    } else if (
+    const isString =
       item.type === AST_NODE_TYPES.TemplateLiteral ||
-      (item.type === AST_NODE_TYPES.Literal && typeof item.value === 'string')
-    ) {
+      (item.type === AST_NODE_TYPES.Literal && typeof item.value === 'string');
+    if (isString) {
       return true;
+    }
+    if (item.type === AST_NODE_TYPES.BinaryExpression && item.operator === '+') {
+      pending.push(item.left, item.right);
     }
   }
   return false;

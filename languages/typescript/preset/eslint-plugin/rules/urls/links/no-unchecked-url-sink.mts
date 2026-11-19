@@ -133,10 +133,8 @@ function isRuntimeValue(context: Context, node: TSESTree.Node): boolean {
     if (outcome === true) {
       return true;
     }
-    if (outcome !== false) {
-      for (const next of outcome) {
-        pending.push(next);
-      }
+    for (const next of outcome === false ? [] : outcome) {
+      pending.push(next);
     }
   }
   return false;
@@ -150,6 +148,25 @@ function isGuarded(context: Context, sink: Sink, guards: readonly Guard[]): bool
   const text = context.sourceCode.getText(unwrapOf(sink.value, TYPE_WRAPPERS));
   const scope = scopeOf(sink.value);
   return guards.some((guard) => guard.scope === scope && guard.text.includes(text));
+}
+
+type Found = {
+  readonly sourceCode: Context['sourceCode'];
+  readonly sinks: Sink[];
+  readonly guards: Guard[];
+};
+
+function recordGuard(found: Found, test: TSESTree.Node): void {
+  const text = found.sourceCode.getText(test);
+  if (GUARD_WORDS.test(text)) {
+    found.guards.push({ text, scope: scopeOf(test) });
+  }
+}
+
+function recordSink(found: Found, sink: Sink | undefined): void {
+  if (sink !== undefined) {
+    found.sinks.push(sink);
+  }
 }
 
 export const rule: TSESLint.RuleModule<'unchecked'> = {
@@ -171,50 +188,34 @@ export const rule: TSESLint.RuleModule<'unchecked'> = {
     if (MAIL_FILE.test(context.filename)) {
       return {};
     }
-    const { sourceCode } = context;
-    const sinks: Sink[] = [];
-    const guards: Guard[] = [];
-
-    function guard(test: TSESTree.Node) {
-      const text = sourceCode.getText(test);
-      if (GUARD_WORDS.test(text)) {
-        guards.push({ text, scope: scopeOf(test) });
-      }
-    }
-
-    function add(sink: Sink | undefined) {
-      if (sink !== undefined) {
-        sinks.push(sink);
-      }
-    }
-
+    const found: Found = { sourceCode: context.sourceCode, sinks: [], guards: [] };
     return {
       JSXAttribute(node: TSESTree.JSXAttribute) {
-        add(attributeSink(node));
+        recordSink(found, attributeSink(node));
       },
       CallExpression(node: TSESTree.CallExpression) {
-        add(callSink(node));
+        recordSink(found, callSink(node));
       },
       AssignmentExpression(node: TSESTree.AssignmentExpression) {
-        add(assignmentSink(node));
+        recordSink(found, assignmentSink(node));
       },
       VariableDeclarator(node: TSESTree.VariableDeclarator) {
         if (node.init !== null) {
-          guard(node.init);
+          recordGuard(found, node.init);
         }
       },
       IfStatement(node: TSESTree.IfStatement) {
-        guard(node.test);
+        recordGuard(found, node.test);
       },
       ConditionalExpression(node: TSESTree.ConditionalExpression) {
-        guard(node.test);
+        recordGuard(found, node.test);
       },
       LogicalExpression(node: TSESTree.LogicalExpression) {
-        guard(node.left);
+        recordGuard(found, node.left);
       },
       'Program:exit'() {
-        for (const sink of sinks) {
-          if (isRuntimeValue(context, sink.value) && !isGuarded(context, sink, guards)) {
+        for (const sink of found.sinks) {
+          if (isRuntimeValue(context, sink.value) && !isGuarded(context, sink, found.guards)) {
             context.report({ node: sink.value, messageId: 'unchecked' });
           }
         }

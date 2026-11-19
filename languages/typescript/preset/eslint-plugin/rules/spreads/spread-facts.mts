@@ -4,6 +4,7 @@ import type { TypedFacts as Facts } from '../promises/cannot-reject.mts';
 import { depthFirst, nameOf, variableNamed } from '../typed/node-views.mts';
 import { unwrapped } from '../typed/syntax-views.mts';
 import { syntaxChildren } from '../decided/syntax.mts';
+import { rootIdentifierOf } from '../support/member-roots.mts';
 import { includesUndefined } from '../presence/value-facts.mts';
 
 const OPTIONS_TYPE = /(?:Options|Config|Settings|Props)$/u;
@@ -54,19 +55,8 @@ export function isTextOrNumber(node: TSESTree.Node): boolean {
   );
 }
 
-function rootIdentifier(node: TSESTree.Node): TSESTree.Identifier | undefined {
-  const chain: TSESTree.Node[] = [node];
-  for (const current of chain) {
-    if (current.type !== AST_NODE_TYPES.MemberExpression) {
-      return current.type === AST_NODE_TYPES.Identifier ? current : undefined;
-    }
-    chain.push(current.object);
-  }
-  return undefined;
-}
-
 export function isParameterBased(facts: Facts, node: TSESTree.Node): boolean {
-  const root = rootIdentifier(node);
+  const root = rootIdentifierOf(node);
   const definition =
     root === undefined ? undefined : variableNamed(facts.sourceCode, root)?.defs.at(0);
   return definition?.type === TSESLint.Scope.DefinitionType.Parameter;
