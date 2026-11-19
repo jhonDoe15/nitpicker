@@ -62,17 +62,17 @@
           "minimum": 1
         },
         "classMethods": {
-          "description": "Methods per class (Java, Kotlin, Python; default 20).",
+          "description": "Methods per class (TypeScript, JavaScript, Java, Kotlin, Python; default 20).",
           "type": "integer",
           "minimum": 1
         },
         "classFields": {
-          "description": "Instance fields per class (Java, Kotlin, Python; default 10).",
+          "description": "Instance fields per class (TypeScript, JavaScript, Java, Kotlin, Python; default 10).",
           "type": "integer",
           "minimum": 1
         },
         "inheritanceDepth": {
-          "description": "Superclasses per class (Java, Kotlin, Python; default 3).",
+          "description": "Superclasses per class (TypeScript, JavaScript, Java, Kotlin, Python; default 3).",
           "type": "integer",
           "minimum": 1
         },
@@ -1373,9 +1373,6 @@
       "if": { "properties": { "preset": { "const": "typescript" } } },
       "then": {
         "properties": {
-          "thresholds": {
-            "properties": { "classMethods": false, "classFields": false, "inheritanceDepth": false }
-          },
           "tools": {
             "properties": {
               "pmd": false,
@@ -1633,9 +1630,6 @@
       "if": { "properties": { "preset": { "const": "javascript" } }, "required": ["preset"] },
       "then": {
         "properties": {
-          "thresholds": {
-            "properties": { "classMethods": false, "classFields": false, "inheritanceDepth": false }
-          },
           "tools": {
             "properties": {
               "pmd": false,

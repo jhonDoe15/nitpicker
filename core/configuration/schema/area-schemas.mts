@@ -64,9 +64,9 @@ const THRESHOLD_DESCRIPTIONS: TextTable = {
   lineLength: `Characters per line (default ${String(FILES.lineLength)}).`,
   folderFiles: `Source files, and separately test files, directly in one folder (default ${String(FILES.folderFiles)}).`,
   folderDepth: `Folders below the feature layer (TypeScript, JavaScript; default ${String(DEPTHS.typescript)}) or packages below the root package (default ${String(DEPTHS.java)} for Java and Kotlin, ${String(DEPTHS.python)} for Python).`,
-  classMethods: `Methods per class (Java, Kotlin, Python; default ${String(CLASSES.classMethods)}).`,
-  classFields: `Instance fields per class (Java, Kotlin, Python; default ${String(CLASSES.classFields)}).`,
-  inheritanceDepth: `Superclasses per class (Java, Kotlin, Python; default ${String(CLASSES.inheritanceDepth)}).`,
+  classMethods: `Methods per class (TypeScript, JavaScript, Java, Kotlin, Python; default ${String(CLASSES.classMethods)}).`,
+  classFields: `Instance fields per class (TypeScript, JavaScript, Java, Kotlin, Python; default ${String(CLASSES.classFields)}).`,
+  inheritanceDepth: `Superclasses per class (TypeScript, JavaScript, Java, Kotlin, Python; default ${String(CLASSES.inheritanceDepth)}).`,
   unitTestSeconds: `Seconds one unit test the change adds or edits may take (default ${String(TEST_TIME_DEFAULTS.unitTestSeconds)}).`,
   integrationTestSeconds: `Seconds one integration test the change adds or edits may take (default ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)}).`,
 };

@@ -1491,8 +1491,12 @@ the hash alone.
 Size thresholds beyond the file limits, all whole numbers that fail only when a change makes the
 code worse than the base: `folderDepth` is the folders below `features/<feature>/<layer>/` in
 TypeScript and JavaScript (default 1) and the packages below the root package in Java and Kotlin
-(default 4); for Java and Kotlin (their `.java` files), `classMethods` (methods per class, default 20), `classFields` (instance
-fields per class, default 10) and `inheritanceDepth` (superclasses, default 3). Their rules
+(default 4); for TypeScript, JavaScript, Java and Kotlin (their `.java` files), `classMethods` (methods per class, default 20),
+`classFields` (instance fields per class, default 10) and `inheritanceDepth` (superclasses, default 3). In TypeScript
+and JavaScript a class declaration or class expression in the production sources counts: methods and accessors
+(static ones too, overload signatures once, the constructor not), instance fields (class fields and constructor
+parameter properties, static ones not) and the `extends` chain; a base class outside the project, such as a library
+class or a mixin call, ends the chain and counts one level. Their rules
 (`folder-depth-limit`, `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`) take
 `exceptions` like the file limits, and a threshold a preset does not enforce is a config error. Details:
 [Java preset](java-preset/class-and-package-size-limits.md).

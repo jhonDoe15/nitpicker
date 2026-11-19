@@ -1,5 +1,6 @@
 import type { Finding } from '../../adapters/static-checks/shared.mts';
 import { readHeadPolicy, readLayout, reuseFindings } from './typed/rule-views.mts';
+import { typescriptClassLimitFindings } from './classes/class-limit-findings.mts';
 import { componentStoryFindings } from './component-stories.mts';
 import { typescriptFileLimitFindings } from './limits/file-limits.mts';
 import { javascriptFileFindings } from './sources/javascript-files.mts';
@@ -27,6 +28,7 @@ export function typescriptStructureProjectFindings(
   const policy = readHeadPolicy(environment);
   return [
     ...typescriptFileLimitFindings(projectRoot, analyzerName, environment),
+    ...typescriptClassLimitFindings(projectRoot, analyzerName, environment),
     ...javascriptFileFindings({ projectRoot, liveProjectRoot, analyzerName, layout, policy }),
     ...componentStoryFindings({
       projectRoot,
