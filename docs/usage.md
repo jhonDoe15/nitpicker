@@ -2755,6 +2755,7 @@ runs only when `--fix --rule` names one of its rules.
 | java | `facts/doc-comment-content` | `java-restating-doc-comment` | deletes the lines of a Javadoc comment in a main source set that only restates the name of its declaration |
 | kotlin | `facts/doc-comment-content` | `kotlin-restating-doc-comment` | the same for KDoc, and for Javadoc in the Java files of the project |
 | python | `facts/doc-comment-content` | `python-restating-docstring` | deletes the lines of a docstring that only restates the name of its function or class, or turns a docstring that is the whole body into `pass` |
+| python | `ruff/ERA001` | `python-commented-out-code` | deletes the comment lines ruff reports as commented-out code and keeps a sentence above them; leaves docstrings, licence, shebang and encoding headers, tool directives (`noqa`, `type:`, `pragma`, `fmt:`, `pyright:`, `mypy:`, `ruff:`, `isort:`, `pylint:`), trailing comments and a line that may be prose |
 
 Shorter conditions. `jvm-shorter-condition` writes the form that `structure/shorter-condition`
 names in place of the condition, in Java and Kotlin functions, and puts it in parentheses where an
