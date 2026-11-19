@@ -1,3 +1,5 @@
+const RESTRICTED_SYNTAX = 'no-restricted-syntax';
+
 type ReportedMessage = {
   readonly ruleId?: unknown;
   readonly messageId?: unknown;
@@ -19,13 +21,11 @@ const SAME_START_SUPERSEDING = new Map<unknown, string>([
 const ENCLOSING_SUPERSEDING = [
   {
     ruleId: 'nitpicker/no-accumulating-spread',
-    messageIds: new Set<unknown>([
-      'loopArray',
-      'loopObject',
-      'domainLoopArray',
-      'domainLoopObject',
-    ]),
-    supersededBy: 'functional/no-let',
+    messageIds: new Set<unknown>(['domainLoopArray', 'domainLoopObject']),
+    supersededBy: {
+      ruleId: RESTRICTED_SYNTAX,
+      messagePrefixes: ['domain/ code has no loops'],
+    },
   },
 ];
 
@@ -41,14 +41,14 @@ const THROW_PREFIX = 'Throw an Error subclass that preserves cause';
 
 const MESSAGE_SUPERSEDING: readonly MessageSuperseding[] = [
   {
-    ruleId: 'no-restricted-syntax',
+    ruleId: RESTRICTED_SYNTAX,
     messagePrefixes: READONLY_DOMAIN_PREFIXES,
     supersededBy: { ruleId: 'functional/prefer-immutable-types' },
     within: 'enclosing',
   },
   {
     ruleId: '@typescript-eslint/only-throw-error',
-    supersededBy: { ruleId: 'no-restricted-syntax', messagePrefixes: [THROW_PREFIX] },
+    supersededBy: { ruleId: RESTRICTED_SYNTAX, messagePrefixes: [THROW_PREFIX] },
     within: 'start',
   },
 ];
@@ -119,7 +119,12 @@ function isSuperseded(
   );
   return (
     enclosing !== undefined &&
-    records.some((other) => other.ruleId === enclosing.supersededBy && encloses(other, message))
+    records.some(
+      (other) =>
+        other.ruleId === enclosing.supersededBy.ruleId &&
+        hasPrefix(other, enclosing.supersededBy.messagePrefixes) &&
+        encloses(other, message),
+    )
   );
 }
 
