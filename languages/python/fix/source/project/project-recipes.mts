@@ -113,6 +113,12 @@ export function projectScriptRecipes({
       lookup,
       optionsFor,
     }),
+    projectRecipe({
+      id: 'python-compatibility-alias',
+      rule: 'compatibility-shim',
+      lookup,
+      optionsFor,
+    }),
     projectRecipe({ id: 'python-unused-option', rule: 'unused-option', lookup, optionsFor }),
     unusedIgnoreRecipe({ lookup }),
   ]);
