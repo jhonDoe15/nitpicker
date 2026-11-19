@@ -27,7 +27,6 @@ public final class ErrorProneReport {
   private static final String SKIP_GENERATED = "--skip-generated";
   private static final String GENERATED_ROOT = "--generated-root=";
   private static final String EXCLUDED_PATHS = PROJECT_FLAG + "-XepExcludedPaths:";
-  private static final String DISABLE_IN_GENERATED = PROJECT_FLAG + "-XepDisableWarningsInGeneratedCode";
   private static final String PATCH_LOCATION = PROJECT_FLAG + "-XepPatchLocation:";
   private static final String FIX_CHECKS = PROJECT_FLAG + "-XepNitpickerFixChecks:";
   private static final String PROCESSOR_PATH = "-processorpath";
@@ -153,8 +152,8 @@ public final class ErrorProneReport {
   }
 
   /**
-   * With {@code --skip-generated}, adds {@code -XepDisableWarningsInGeneratedCode} and an {@code -XepExcludedPaths}
-   * pattern for each {@code --generated-root=<dir>} line, joined with a pattern the project declared. Error Prone
+   * With {@code --skip-generated}, adds an {@code -XepExcludedPaths} pattern for each
+   * {@code --generated-root=<dir>} line, joined with a pattern the project declared. Error Prone
    * matches the pattern against the file's decoded path, and the plugin option is split at whitespace, so a
    * directory's own whitespace is written as a hexadecimal escape.
    */
@@ -175,9 +174,6 @@ public final class ErrorProneReport {
         .map(line -> pathPattern(line.substring(GENERATED_ROOT.length()))).toList();
     if (!roots.isEmpty()) {
       patterns.add(".*(?:" + String.join("|", roots) + ")/.*");
-    }
-    if (!kept.contains(DISABLE_IN_GENERATED)) {
-      kept.add(DISABLE_IN_GENERATED);
     }
     if (!patterns.isEmpty()) {
       kept.add(EXCLUDED_PATHS + (patterns.size() == 1 ? patterns.get(0)

@@ -140,7 +140,6 @@ describe.runIf(enabled)(
 
         expect(matches).toBe('true');
         expect(flags.split(' ')).toEqual([
-          '--errorprone-flag=-XepDisableWarningsInGeneratedCode',
           '--errorprone-flag=-XepExcludedPaths:.*(?:/work/my\\x{20}app\\x{20}ü\\x{20}\\[1\\]/build/generated)/.*',
         ]);
       });
