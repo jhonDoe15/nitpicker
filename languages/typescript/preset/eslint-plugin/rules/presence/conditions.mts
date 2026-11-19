@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { ancestorsOf, nameOf } from '../typed/node-views.mts';
-export { plainText } from '../truthiness/presence-checks.mts';
+export { plainText } from '../typed/node-views.mts';
 
 const FILTERS = new Set(['filter', 'find', 'findLast', 'some', 'every']);
 const TEST_PARENTS = new Set<string>([

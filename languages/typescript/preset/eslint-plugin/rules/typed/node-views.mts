@@ -108,3 +108,7 @@ export function requiredLiteral(
   const [first] = init.arguments;
   return first?.type === AST_NODE_TYPES.Literal ? first.value : undefined;
 }
+
+export function plainText(node: TSESTree.Node, sourceCode: SourceCode): string {
+  return sourceCode.getText(node).replaceAll('?.', '.').replaceAll('!', '');
+}
