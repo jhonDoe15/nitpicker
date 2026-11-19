@@ -95,4 +95,12 @@ public class BasketReports {
   public List<Item> everything(Basket basket) {
     return basket.getItems();
   }
+
+  public int trashed(Long basket) {
+    int count = 0;
+    for (Item item : items.findByBasketIdIncludingDeleted(basket)) {
+      count += item.getQuantity() + item.getPrice();
+    }
+    return count;
+  }
 }

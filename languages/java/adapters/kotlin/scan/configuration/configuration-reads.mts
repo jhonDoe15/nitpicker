@@ -1,6 +1,7 @@
 import { CONFIGURATION_READ_RULE } from '../../../spring/configuration/covered-reads.mts';
 import { inImport, literalAt, splitArguments } from '../kotlin-source.mts';
 import { isConfigurationRoot } from './configuration-roots.mts';
+import { escapeRegExp } from '../../../typed/regex-escape.mts';
 import type { Scanned } from '../typed/scan-shapes.mts';
 
 const READS = [
@@ -14,6 +15,12 @@ const READ = new RegExp(
   'gu',
 );
 const REFERENCE = /(?<![\w.])(?:java\s*\.\s*lang\s*\.\s*)?System\s*::\s*getProperty\b/gu;
+const READER_TYPES = '(System|Integer|Long|Boolean)';
+const READER_MEMBERS = '(?:\\s*\\.\\s*(getProperty|getInteger|getLong|getBoolean))?';
+const READER_IMPORT = new RegExp(
+  `^[ \\t]*import\\s+java\\s*\\.\\s*lang\\s*\\.\\s*${READER_TYPES}${READER_MEMBERS}(?:\\s+as\\s+(\\w+))?[ \\t]*$`,
+  'gmu',
+);
 const JVM_KEY = /^(?:java|user|os|file|line|path|javax|jdk|sun|com\.sun|http|https|ftp)\.|^socks/u;
 const CONFIGURATION_MESSAGES = {
   [CONFIGURATION_READ_RULE]:
@@ -37,16 +44,48 @@ function readsJvmKey(scanned: Scanned, match: RegExpExecArray) {
   );
 }
 
+function readerOf(type: string): string | undefined {
+  return new Map([
+    ['System', 'getProperty'],
+    ['Integer', 'getInteger'],
+    ['Long', 'getLong'],
+    ['Boolean', 'getBoolean'],
+  ]).get(type);
+}
+
+function importedReaders(code: string): { calls: RegExp[]; references: RegExp[] } {
+  const calls: RegExp[] = [];
+  const references: RegExp[] = [];
+  for (const [, type = '', member, alias] of code.matchAll(READER_IMPORT)) {
+    const reader = readerOf(type);
+    if (reader === undefined) {
+      continue;
+    }
+    if (member !== undefined && member === reader) {
+      const name = escapeRegExp(alias ?? member);
+      calls.push(new RegExp(`(?<![\\w.])${name}\\s*\\(`, 'gu'));
+      references.push(new RegExp(`(?<![\\w.])::\\s*${name}\\b`, 'gu'));
+    } else if (member === undefined && alias !== undefined) {
+      const owner = escapeRegExp(alias);
+      const method = escapeRegExp(reader);
+      calls.push(new RegExp(`(?<![\\w.])${owner}\\s*\\.\\s*${method}\\s*\\(`, 'gu'));
+      references.push(new RegExp(`(?<![\\w.])${owner}\\s*::\\s*${method}\\b`, 'gu'));
+    }
+  }
+  return { calls, references };
+}
+
 export function configurationReads(scanned: Scanned): { rule: string; offset: number }[] {
   if (isConfigurationRoot(scanned)) {
     return [];
   }
-  const calls = [...scanned.code.matchAll(READ)].filter(
-    (match) => !(inImport(scanned.code, match.index) || readsJvmKey(scanned, match)),
-  );
-  const references = [...scanned.code.matchAll(REFERENCE)].filter(
-    (match) => !inImport(scanned.code, match.index),
-  );
+  const imported = importedReaders(scanned.code);
+  const calls = [READ, ...imported.calls]
+    .flatMap((pattern) => [...scanned.code.matchAll(pattern)])
+    .filter((match) => !(inImport(scanned.code, match.index) || readsJvmKey(scanned, match)));
+  const references = [REFERENCE, ...imported.references]
+    .flatMap((pattern) => [...scanned.code.matchAll(pattern)])
+    .filter((match) => !inImport(scanned.code, match.index));
   return [...calls, ...references].map(({ index }) => ({
     rule: CONFIGURATION_READ_RULE,
     offset: index,
