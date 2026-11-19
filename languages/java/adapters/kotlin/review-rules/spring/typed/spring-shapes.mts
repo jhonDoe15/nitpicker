@@ -10,7 +10,6 @@ import type {
   ParameterFact,
   PropertyFact,
   Read,
-  ReturnValue,
   ScopeFact,
   ScopeParameter,
   SpringFile,
@@ -164,7 +163,6 @@ export type {
   ParameterFact,
   PropertyFact,
   Read,
-  ReturnValue,
   ScopeFact,
   ScopeParameter,
 };

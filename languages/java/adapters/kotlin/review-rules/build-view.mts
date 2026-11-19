@@ -40,6 +40,20 @@ export function javaMentions(
   };
 }
 
+export function memoizer(): FactsView['memo'] {
+  const memos = new Map<string, unknown>();
+  return (key, compute, accepts) => {
+    if (!memos.has(key)) {
+      memos.set(key, compute());
+    }
+    const stored = memos.get(key);
+    if (!accepts(stored)) {
+      throw new TypeError(`memo ${key} holds another kind of value`);
+    }
+    return stored;
+  };
+}
+
 export function factsView({
   modules,
   mentionedInJava,
@@ -47,22 +61,12 @@ export function factsView({
   modules: FactsModule[];
   mentionedInJava: (name: string) => boolean;
 }): FactsView {
-  const memos = new Map<string, unknown>();
   return {
     modules,
     facts: new Map(modules.map((module) => [module.reportRoot, module.facts])),
     files: modules.flatMap((module) => module.facts.files),
     mentionedInJava,
-    memo(key, compute, accepts) {
-      if (!memos.has(key)) {
-        memos.set(key, compute());
-      }
-      const stored = memos.get(key);
-      if (!accepts(stored)) {
-        throw new TypeError(`memo ${key} holds another kind of value`);
-      }
-      return stored;
-    },
+    memo: memoizer(),
   };
 }
 

@@ -16,7 +16,7 @@ type LambdaRead = {
 
 export type Read = NameRead | LambdaRead;
 
-export type Origin = { root: string; call?: string | undefined };
+type Origin = { root: string; call?: string | undefined };
 
 export type Argument = {
   text: string;
@@ -95,7 +95,7 @@ export type FunctionFact = {
   expressionBody?: true;
   forward?: ForwardFact | undefined;
   receiver?: string | undefined;
-  local?: true;
+  local: boolean;
   modifiers: string[];
   typeBounds?: TypeBound[] | undefined;
 };
@@ -181,7 +181,7 @@ export type LocalFact = {
   origin?: Origin | undefined;
 };
 
-export type ReturnValue = {
+type ReturnValue = {
   scope: number;
   line: number;
   reads?: Read[] | undefined;

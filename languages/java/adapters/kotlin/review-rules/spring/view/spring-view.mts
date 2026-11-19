@@ -1,3 +1,4 @@
+import { memoizer } from '../../build-view.mts';
 import { declaredNames, nameResolver, resolvesTo, typeName } from '../spring-names.mts';
 import { declaresLocally, implicitReceiver, receiverOf, typeOf } from './local-types.mts';
 import {
@@ -34,20 +35,6 @@ function scopeChains(scopes: ScopeFact[]): Map<number | undefined, ScopeFact[]> 
     chains.set(scope.id, [scope, ...(chains.get(scope.parent) ?? [])]);
   }
   return chains;
-}
-
-function memoizer(): SpringView['memo'] {
-  const memos = new Map<string, unknown>();
-  return (key, compute, accepts) => {
-    if (!memos.has(key)) {
-      memos.set(key, compute());
-    }
-    const stored = memos.get(key);
-    if (!accepts(stored)) {
-      throw new TypeError(`memo ${key} holds another kind of value`);
-    }
-    return stored;
-  };
 }
 
 function scopedTo(file: SourceFile, context: ProjectContext): ScopedView {
