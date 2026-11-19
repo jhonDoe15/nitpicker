@@ -4,60 +4,14 @@ import { describe, expect, it } from 'vitest';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
 import { readTestOnlyClassFindings } from './test-only-classes.mts';
-
-type Pair = readonly [string, string];
-type Found = {
-  readonly path: string;
-  readonly identity?: string | undefined;
-  readonly location?: { readonly line: number } | undefined;
-};
+import { module, source, summary, type Pair } from '../test-support/test-only-modules.mts';
 
 const { temporaryRoot } = useGitFixtures();
-
-const edge = ([source, target]: Pair) => `   ${source} -> ${target} not found\n`;
-
-function module(
-  root: string,
-  qualifier: string,
-  options: {
-    readonly classes: readonly string[];
-    readonly main?: readonly Pair[];
-    readonly tests?: readonly Pair[];
-    readonly published?: boolean;
-    readonly kotlin?: boolean;
-    readonly resourceRoots?: readonly string[];
-  },
-) {
-  const { classes, main = [], tests = [], published = false } = options;
-  const reportRoot = path.join(root, '.reports', qualifier || 'root');
-  writeFiles(reportRoot, {
-    'jdeps-classes.txt': classes.map((name) => `${name}\n`).join(''),
-    'jdeps.txt': main.map(edge).join(''),
-    'jdeps-test.txt': tests.map(edge).join(''),
-    'manifest.json': JSON.stringify({ published }),
-  });
-  const prefix = qualifier === '' ? '' : `${qualifier}/`;
-  return {
-    reportRoot,
-    qualifier,
-    sourceRoots: [`${prefix}src/main/java`],
-    kotlinSourceRoots: options.kotlin ? [`${prefix}src/main/kotlin`] : [],
-    resourceRoots: options.resourceRoots ?? [`${prefix}src/main/resources`],
-  };
-}
 
 function project(files: Readonly<Record<string, string>>): string {
   const root = temporaryRoot('test-only-classes-');
   writeFiles(root, files);
   return root;
-}
-
-const source = (name: string, body = '') => `package shop;\n\npublic class ${name} {${body}}\n`;
-
-function summary(findings: readonly Found[]) {
-  return findings.map(
-    ({ path: file, identity, location }) => `${file}:${String(location?.line)} ${String(identity)}`,
-  );
 }
 
 describe('readTestOnlyClassFindings', () => {
@@ -85,7 +39,9 @@ describe('readTestOnlyClassFindings', () => {
 
     expect(summary(findings)).toEqual(['src/main/java/shop/Fixtures.java:3 class:shop.Fixtures']);
     expect(findings[0]?.message).toBe(
-      'Class shop.Fixtures is only used by tests. Move it to the test sources, or use it from production code. ' +
+      'Class shop.Fixtures is only used by tests: no production code or project file names it. ' +
+        'Move it to the test sources, or use it from production code. ' +
+        'A framework may still load it by name or by scanning, so check that first. ' +
         'If this is intended, add ' +
         '{"rule":"coupling/test-only-export","paths":["src/main/java/shop/Fixtures.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
@@ -154,7 +110,7 @@ describe('readTestOnlyClassFindings', () => {
         module(root, 'lib', {
           classes: ['shop.Codec', 'shop.Format'],
           tests: [['shop.CodecTest', 'shop.Codec']],
-          published: true,
+          traits: ['published'],
         }),
         module(root, 'app', {
           classes: ['shop.Main', 'shop.Dead'],
@@ -162,7 +118,7 @@ describe('readTestOnlyClassFindings', () => {
             ['shop.FormatTest', 'shop.Format'],
             ['shop.DeadTest', 'shop.Dead'],
           ],
-          published: true,
+          traits: ['published'],
         }),
       ],
     });
@@ -178,7 +134,7 @@ describe('readTestOnlyClassFindings', () => {
           classes: ['shop.App', 'shop.Cart'],
           main: [['shop.App', 'org.springframework.boot.autoconfigure.SpringBootApplication']],
           tests: [['shop.CartTest', 'shop.Cart']],
-          published: true,
+          traits: ['published'],
         }),
       ],
     });
@@ -207,7 +163,7 @@ function singleModule(
   }: {
     readonly classes: string[];
     readonly main?: Pair[];
-    readonly kotlin?: boolean;
+    readonly traits?: readonly ('published' | 'kotlin')[];
     readonly resourceRoots?: string[];
   },
 ) {
@@ -318,7 +274,7 @@ describe('readTestOnlyClassFindings in Kotlin modules', () => {
             'shop.Entry',
             'shop.Tools',
           ],
-          kotlin: true,
+          traits: ['kotlin'],
         },
       ),
     ).toEqual([

@@ -19,6 +19,7 @@ const fake = createFakeProjects();
 afterEach(fake.remove);
 
 const NO_PRODUCTION = 'no-production-runtime';
+const ACME = 'com.acme.app';
 const MATH_TEST = `${javaSource('MathTest')}\n${javaSource('MathOtherTest')}`;
 
 function judge(
@@ -290,6 +291,82 @@ describe('readTestRuntimeFindings reports', () => {
     const projects = [{ ...module, reportRoot: `${root}/missing` }];
 
     expect(readTestRuntimeFindings(root, { projects })).toEqual([]);
+  });
+});
+
+describe('readTestRuntimeFindings code the analysed modules do not hold', () => {
+  it('passes a test that calls a same-package class of a sibling project, with no import', () => {
+    const findings = judge(
+      { 'src/test/java/util/TotpTest.java': javaSource('TotpTest').replace('shop', 'util') },
+      {
+        classes: ['app.Main'],
+        tests: [
+          ['util.TotpTest', JUNIT_TEST],
+          ['util.TotpTest', 'util.Totp'],
+        ],
+      },
+    );
+
+    expect(enforced(findings)).toEqual([]);
+  });
+
+  it('reports a test whose unseen classes are test helpers or libraries near the production package', () => {
+    const findings = judge(
+      {
+        'src/test/java/com/acme/app/ClockTest.java': javaSource('ClockTest').replace('shop', ACME),
+        'src/test/java/com/acme/app/FixtureTest.java': javaSource('FixtureTest').replace(
+          'shop',
+          ACME,
+        ),
+      },
+      {
+        classes: ['com.acme.app.Main', 'com.acme.app.web.Routes'],
+        tests: [
+          ['com.acme.app.ClockTest', JUNIT_TEST],
+          ['com.acme.app.ClockTest', 'com.acme.lib.Clock'],
+          ['com.acme.app.FixtureTest', JUNIT_TEST],
+          ['com.acme.app.FixtureTest', 'com.acme.app.OrderFixtures'],
+          ['com.acme.app.FixtureTest', 'com.acme.app.TestClock$Tick'],
+        ],
+      },
+    );
+
+    expect(enforced(findings)).toEqual([
+      `test-runtime/${NO_PRODUCTION} src/test/java/com/acme/app/ClockTest.java`,
+      `test-runtime/${NO_PRODUCTION} src/test/java/com/acme/app/FixtureTest.java`,
+    ]);
+  });
+
+  it('passes a test that hands production package or class names to a helper', () => {
+    const scan = [
+      'package checks;',
+      'public class SerializableContractTest extends SerializableContractBase {',
+      '  public SerializableContractTest() { super(new String[] {"controllers", "models"}); }',
+      '}',
+    ].join('\n');
+    const nested = 'package checks;\n\nclass NestedTest { String n = "models.Order$Line"; }\n';
+    const label = 'package checks;\n\nclass LabelTest { String[] l = {"label", "com", "acme"}; }\n';
+    const findings = judge(
+      {
+        'src/test/java/checks/SerializableContractTest.java': scan,
+        'src/test/java/checks/LabelTest.java': label,
+        'src/test/java/checks/NestedTest.java': nested,
+      },
+      {
+        classes: ['controllers.Orders', 'models.Order', 'models.Order$Line', 'com.acme.web.Home'],
+        tests: [
+          ['checks.SerializableContractTest', JUNIT_TEST],
+          ['checks.SerializableContractTest', 'org.lib.SerializableContractBase'],
+          ['checks.LabelTest', JUNIT_TEST],
+          ['checks.LabelTest', 'java.lang.String'],
+          ['checks.NestedTest', JUNIT_TEST],
+        ],
+      },
+    );
+
+    expect(enforced(findings)).toEqual([
+      `test-runtime/${NO_PRODUCTION} src/test/java/checks/LabelTest.java`,
+    ]);
   });
 });
 
