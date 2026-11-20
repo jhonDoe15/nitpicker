@@ -8,6 +8,19 @@ use std::rc::Rc;
 
 const MARKER: &str = "NOPMD";
 
+/// The javac warning names PMD also takes as silencing some of its own rules.
+fn javac_name_covers(name: &str, rule: &str) -> bool {
+    match name {
+        "serial" => matches!(rule, "BeanMembersShouldSerialize" | "NonSerializableClass" | "MissingSerialVersionUID"),
+        "unused" => matches!(
+            rule,
+            "UnusedPrivateField" | "UnusedLocalVariable" | "UnusedPrivateMethod" | "UnusedFormalParameter" | "UnusedAssignment" | "SingularField"
+        ),
+        "fallthrough" => rule == "ImplicitSwitchFallThrough",
+        _ => false,
+    }
+}
+
 pub struct Suppressions {
     /// Lines that carry a `//` comment with the marker.
     lines: Vec<usize>,
@@ -45,7 +58,7 @@ impl Suppressions {
         let mut current = id;
         while current != ROOT {
             let names = self.names(tree, file, resolver, current);
-            if names.iter().any(|name| name == "PMD" || name == "all" || name.strip_prefix("PMD.") == Some(rule)) {
+            if names.iter().any(|name| name == "PMD" || name == "all" || name.strip_prefix("PMD.") == Some(rule) || javac_name_covers(name, rule)) {
                 return true;
             }
             current = tree.nodes[current as usize].parent;

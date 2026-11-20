@@ -18,6 +18,9 @@ pub struct Written {
     pub xpath: String,
     #[serde(default)]
     pub message: String,
+    /// PMD's `violationSuppressXPath`: a finding is dropped when this query, run on its node, selects a node.
+    #[serde(default)]
+    pub suppress: String,
     /// Rule properties other than the query; the query reads them as variables.
     #[serde(default)]
     pub properties: BTreeMap<String, Property>,
@@ -34,6 +37,7 @@ struct Compiled {
     name: String,
     message: String,
     query: Result<Expr, String>,
+    suppress: Option<Result<Expr, String>>,
     properties: Env,
 }
 
@@ -71,6 +75,8 @@ impl XPathRules {
                                 name: rule.name.clone(),
                                 message: rule.message.clone(),
                                 query: Parser::parse(&rule.xpath, rule.properties.keys().cloned().collect()).map(|(query, _)| query),
+                                suppress: (!rule.suppress.trim().is_empty())
+                                    .then(|| Parser::parse(&rule.suppress, Vec::new()).map(|(query, _)| query)),
                                 properties: rule
                                     .properties
                                     .values()
@@ -79,6 +85,11 @@ impl XPathRules {
                                         let value = match property.kind.as_str() {
                                             "Boolean" => Item::Flag(property.value.trim() == "true"),
                                             "Integer" | "Long" => Item::Whole(property.value.trim().parse().unwrap_or(0)),
+                                            // A list is a sequence of its entries, written with commas between them.
+                                            kind if kind.starts_with("List[") => {
+                                                let entries = property.value.split(',').map(str::trim).filter(|entry| !entry.is_empty());
+                                                return (slot as u32, Seq::from(entries.map(Item::text).collect()));
+                                            }
                                             _ => Item::text(&property.value),
                                         };
                                         (slot as u32, Seq::One(value))
@@ -152,6 +163,13 @@ impl FileRule for XPathRules {
                         };
                         if !quiet.idle() && quiet.hides(&tree, file, &resolver, *id, place("BeginLine"), &rule.name) {
                             continue;
+                        }
+                        if let Some(Ok(suppress)) = &rule.suppress {
+                            let selected = machine.eval(suppress, &Focus { item: Some(item), position: 1, size: 1 }, &mut Env::default());
+                            let failed = machine.trouble.borrow_mut().take().is_some();
+                            if !failed && selected.items().iter().any(|selected| matches!(selected, Item::Node(_))) {
+                                continue;
+                            }
                         }
                         out.push(Finding {
                             file: file.path.clone(),
