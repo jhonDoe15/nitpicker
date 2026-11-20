@@ -1,6 +1,6 @@
 //! The functions of a file as units for the near-duplicate rules: a name, a size and a tree of the body.
 use super::references::Span;
-use super::trees::{Lambda, TreeNode, Trees, is_space, quoted};
+use super::trees::{Lambda, TreeNode, Trees, is_space};
 use crate::typescript::ParsedFile;
 use crate::typescript::tree::Tree;
 use oxc_ast::AstKind;
@@ -47,17 +47,17 @@ fn key_text(file: &ParsedFile, key: &PropertyKey, computed: bool) -> String {
         return text[open..close].to_string();
     }
     match key {
-        PropertyKey::StringLiteral(literal) => literal.value.display().to_string(),
+        PropertyKey::StringLiteral(literal) => file.halves.string(literal.value),
         PropertyKey::StaticIdentifier(name) => name.name.to_string(),
         _ => file.slice(span.start, span.end).to_string(),
     }
 }
 
-fn string_like(expression: Option<&Expression>) -> String {
+fn string_like(file: &ParsedFile, expression: Option<&Expression>) -> String {
     match expression {
-        Some(Expression::StringLiteral(literal)) => quoted(&literal.value.display().to_string()),
+        Some(Expression::StringLiteral(literal)) => file.halves.quoted(&file.halves.string(literal.value)),
         Some(Expression::TemplateLiteral(template)) if template.expressions.is_empty() => {
-            quoted(&template.quasis.first().and_then(|quasi| quasi.value.cooked).map(|text| text.display().to_string()).unwrap_or_default())
+            file.halves.quoted(&template.quasis.first().map(|quasi| file.halves.template(quasi)).unwrap_or_default())
         }
         _ => String::new(),
     }
@@ -82,9 +82,9 @@ fn label_of(file: &ParsedFile, kind: AstKind, parent: &str) -> String {
         AstKind::CallExpression(call) => {
             let span = call.callee.span();
             let first = call.arguments.first().and_then(|argument| argument.as_expression());
-            joined(parent, &call_label(file.slice(span.start, span.end), string_like(first)))
+            joined(parent, &call_label(file.slice(span.start, span.end), string_like(file, first)))
         }
-        AstKind::ImportExpression(import) => joined(parent, &call_label("import", string_like(Some(&import.source)))),
+        AstKind::ImportExpression(import) => joined(parent, &call_label("import", string_like(file, Some(&import.source)))),
         AstKind::ObjectProperty(property) if !property.shorthand => {
             let prefix = match property.kind {
                 PropertyKind::Get => "get ",

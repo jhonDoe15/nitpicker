@@ -22,3 +22,4 @@ export const Card = memo(function Card({ title }: { title: string }) {
 export const Field = React.forwardRef<HTMLInputElement, Props<string>>((props, ref) => <input ref={ref} {...props} />);
 const Plain = () => <List<string> items={[]} />;
 export default Plain;
+export const Spaced = () => <a>xy﻿z  w</a>;

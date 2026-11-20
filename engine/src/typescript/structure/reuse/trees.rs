@@ -2,6 +2,8 @@
 //! them from the compiler's tree: same node kinds, same values, same line ranges.
 use super::references::Span;
 use crate::typescript::ParsedFile;
+use crate::typescript::strings::{self, Halves};
+pub use crate::typescript::strings::is_space;
 use oxc_ast::ast::*;
 use oxc_span::GetSpan;
 use oxc_syntax::number::ToJsString;
@@ -29,15 +31,6 @@ pub struct TreeNode {
 const SNIPPET_LENGTH: usize = 60;
 const SNIPPET_KINDS: &[&str] = &["call", "new", "member", "index", "binary", "unary", "update", "assign", "conditional", "lambda", "expression"];
 
-/// What a JavaScript regular expression matches with `\s`.
-pub fn is_space(character: char) -> bool {
-    matches!(
-        character,
-        '\t' | '\n' | '\u{b}' | '\u{c}' | '\r' | ' ' | '\u{a0}' | '\u{1680}' | '\u{2000}'..='\u{200a}' | '\u{2028}' | '\u{2029}' | '\u{202f}' | '\u{205f}'
-            | '\u{3000}' | '\u{feff}'
-    )
-}
-
 pub fn flat(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut spaced = false;
@@ -55,25 +48,45 @@ pub fn flat(text: &str) -> String {
     out
 }
 
-fn short(text: &str) -> String {
-    if text.encode_utf16().count() <= SNIPPET_LENGTH {
-        return text.to_string();
+/// The text with white space runs folded, cut after `limit` UTF-16 code units; `None` past the end.
+fn flat_start(text: &str, limit: usize) -> (String, bool) {
+    let mut out = String::new();
+    let mut units = 0;
+    let mut spaced = false;
+    for character in text.chars() {
+        let character = if is_space(character) { ' ' } else { character };
+        if character == ' ' && spaced {
+            continue;
+        }
+        spaced = character == ' ';
+        if units >= limit {
+            return (out, true);
+        }
+        units += character.len_utf16();
+        out.push(character);
+    }
+    (out, false)
+}
+
+fn short(halves: Halves, text: &str) -> String {
+    let (start, longer) = flat_start(text, SNIPPET_LENGTH + 1);
+    if !longer && start.encode_utf16().count() <= SNIPPET_LENGTH {
+        return start;
     }
     let mut out = String::new();
     let mut units = 0;
-    for character in text.chars() {
+    for character in start.chars() {
         units += character.len_utf16();
         if units > SNIPPET_LENGTH - 3 {
+            if units - character.len_utf16() < SNIPPET_LENGTH - 3 {
+                out.push(halves.first_half(character));
+            }
             break;
         }
         out.push(character);
     }
     out.push_str("...");
     out
-}
-
-pub fn quoted(text: &str) -> String {
-    serde_json::to_string(text).expect("string")
 }
 
 fn sp(node: &impl GetSpan) -> Span {
@@ -126,7 +139,7 @@ impl<'t, 'a> Trees<'t, 'a> {
     }
     fn snippet(&self, mut node: TreeNode, span: Span) -> TreeNode {
         if node.text.is_none() && SNIPPET_KINDS.contains(&node.kind) {
-            node.text = Some(short(&self.text(span)));
+            node.text = Some(short(self.file.halves, self.file.slice(span.0, span.1)));
         }
         node
     }
@@ -155,9 +168,9 @@ impl<'t, 'a> Trees<'t, 'a> {
         match key {
             PropertyKey::StaticIdentifier(name) => Some(name.name.to_string()),
             PropertyKey::PrivateIdentifier(name) => Some(format!("#{}", name.name)),
-            PropertyKey::StringLiteral(literal) => Some(literal.value.display().to_string()),
+            PropertyKey::StringLiteral(literal) => Some(self.file.halves.string(literal.value)),
             PropertyKey::TemplateLiteral(template) if template.expressions.is_empty() => {
-                Some(template.quasis.first().and_then(|quasi| quasi.value.cooked).map(|text| text.display().to_string()).unwrap_or_default())
+                Some(template.quasis.first().map(|quasi| self.file.halves.template(quasi)).unwrap_or_default())
             }
             PropertyKey::NumericLiteral(number) => Some(number.value.to_js_string()),
             _ => None,
@@ -175,15 +188,15 @@ impl<'t, 'a> Trees<'t, 'a> {
     fn template_part(&self, template: &TemplateLiteral<'a>, index: usize) -> TreeNode {
         let quasi = &template.quasis[index];
         let start = if index == 0 { template.span.start } else { quasi.span.start };
-        let cooked = quasi.value.cooked.map(|text| text.display().to_string()).unwrap_or_default();
-        self.literal("string", quoted(&cooked), (start, quasi.span.end))
+        let cooked = self.file.halves.template(quasi);
+        self.literal("string", self.file.halves.quoted(&cooked), (start, quasi.span.end))
     }
 
     fn template(&self, template: &TemplateLiteral<'a>) -> TreeNode {
         let span = sp(template);
         if template.expressions.is_empty() {
-            let cooked = template.quasis.first().and_then(|quasi| quasi.value.cooked).map(|text| text.display().to_string()).unwrap_or_default();
-            return self.literal("string", quoted(&cooked), span);
+            let cooked = template.quasis.first().map(|quasi| self.file.halves.template(quasi)).unwrap_or_default();
+            return self.literal("string", self.file.halves.quoted(&cooked), span);
         }
         let mut children = vec![self.template_part(template, 0)];
         for (index, expression) in template.expressions.iter().enumerate() {
@@ -334,7 +347,7 @@ impl<'t, 'a> Trees<'t, 'a> {
                     if !value.is_empty() {
                         let raw = self.file.slice(span.0, span.1);
                         let lead = raw.len() - raw.trim_start_matches(is_space).len();
-                        out.push(self.literal("string", quoted(value), (span.0 + lead as u32, span.1)));
+                        out.push(self.literal("string", self.file.halves.quoted(value), (span.0 + lead as u32, span.1)));
                     }
                 }
                 JSXChild::Element(element) => out.push(self.jsx_element(element)),
@@ -353,7 +366,7 @@ impl<'t, 'a> Trees<'t, 'a> {
     fn jsx_attribute_value(&self, attribute: &JSXAttribute<'a>) -> TreeNode {
         match &attribute.value {
             None => self.literal("boolean", "true", sp(attribute)),
-            Some(JSXAttributeValue::StringLiteral(literal)) => self.literal("string", quoted(&literal.value.display().to_string()), sp(&**literal)),
+            Some(JSXAttributeValue::StringLiteral(literal)) => self.literal("string", self.file.halves.quoted(&self.file.halves.string(literal.value)), sp(&**literal)),
             Some(JSXAttributeValue::ExpressionContainer(container)) => {
                 container.expression.as_expression().map_or_else(none, |expression| self.expression(expression))
             }
@@ -399,10 +412,10 @@ impl<'t, 'a> Trees<'t, 'a> {
         let span = sp(expression);
         match expression {
             Expression::Identifier(name) => self.name(&name.name, span),
-            Expression::StringLiteral(literal) => self.literal("string", quoted(&literal.value.display().to_string()), span),
+            Expression::StringLiteral(literal) => self.literal("string", self.file.halves.quoted(&self.file.halves.string(literal.value)), span),
             Expression::TemplateLiteral(template) => self.template(template),
             Expression::NumericLiteral(number) => self.literal("number", number.value.to_js_string(), span),
-            Expression::BigIntLiteral(_) => self.literal("bigint", self.file.slice(span.0, span.1).replace('_', ""), span),
+            Expression::BigIntLiteral(_) => self.literal("bigint", strings::big_integer(self.file.slice(span.0, span.1)), span),
             Expression::RegExpLiteral(_) => self.literal("regexp", self.file.slice(span.0, span.1), span),
             Expression::BooleanLiteral(literal) => self.literal("boolean", if literal.value { "true" } else { "false" }, span),
             Expression::NullLiteral(_) => self.literal("null", "null", span),
@@ -585,7 +598,7 @@ impl<'t, 'a> Trees<'t, 'a> {
             .iter()
             .map(|directive| {
                 let literal = &directive.expression;
-                let value = self.literal("string", quoted(&literal.value.display().to_string()), sp(literal));
+                let value = self.literal("string", self.file.halves.quoted(&self.file.halves.string(literal.value)), sp(literal));
                 self.at("evaluate", sp(directive), vec![value])
             })
             .collect();

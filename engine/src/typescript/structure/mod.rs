@@ -77,7 +77,8 @@ pub fn analyze_files(files: &[(String, String)]) -> Analysis {
     let per_file: Vec<Result<SourceAnalysis, Unparsed>> = files
         .par_iter()
         .map(|(path, display)| {
-            let text = std::fs::read_to_string(path).map_err(|error| Unparsed { file: display.clone(), reason: error.to_string() })?;
+            let bytes = std::fs::read(path).map_err(|error| Unparsed { file: display.clone(), reason: error.to_string() })?;
+            let text = String::from_utf8_lossy(&bytes);
             let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
             with_parsed(path, text, |file| analyze_source(file, display)).map_err(|reason| Unparsed { file: display.clone(), reason })
         })

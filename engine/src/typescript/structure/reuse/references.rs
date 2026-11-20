@@ -2,6 +2,7 @@
 use crate::typescript::tree::Tree;
 use oxc_ast::AstKind;
 use std::cmp::Ordering;
+use std::collections::HashMap;
 
 pub type Span = (u32, u32);
 
@@ -9,6 +10,8 @@ pub type Span = (u32, u32);
 pub struct Names<'a> {
     pub references: Vec<(u32, &'a str)>,
     pub declared: Vec<(u32, &'a str)>,
+    /// First and last read of each name.
+    reads: HashMap<&'a str, (u32, u32)>,
 }
 
 /// The order JavaScript sorts strings in: by UTF-16 code unit.
@@ -82,7 +85,11 @@ impl<'a> Names<'a> {
         }
         references.sort_unstable();
         declared.sort_unstable();
-        Names { references, declared }
+        let mut reads: HashMap<&str, (u32, u32)> = HashMap::new();
+        for (at, name) in &references {
+            reads.entry(name).or_insert((*at, *at)).1 = *at;
+        }
+        Names { references, declared, reads }
     }
 
     pub fn declared_in(&self, span: Span) -> impl Iterator<Item = &'a str> + '_ {
@@ -100,6 +107,6 @@ impl<'a> Names<'a> {
     }
 
     pub fn read_outside(&self, name: &str, span: Span) -> bool {
-        self.references.iter().any(|(at, read)| *read == name && (*at < span.0 || *at >= span.1))
+        self.reads.get(name).is_some_and(|(first, last)| *first < span.0 || *last >= span.1)
     }
 }
