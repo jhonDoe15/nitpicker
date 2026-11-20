@@ -3,7 +3,6 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
-  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -14,6 +13,7 @@ import { afterAll, describe, expect, it, vi } from 'vitest';
 import { collectJavaFindings } from '../../../adapters/java-diff.mts';
 import { HOSTED_TOOLS } from '../config/host-config.mts';
 import { HOSTS_OFF_VARIABLE, TRACE_VARIABLE } from '../config/host-environment.config.mts';
+import { hostedEvery, otherOutcomes, reportsUnder } from './test-support/report-parity.mts';
 
 const TEST_TIMEOUT_MS = 180_000;
 const enabled = process.env['NITPICKER_JAVA_E2E'] === '1';
@@ -42,11 +42,6 @@ const parent = (modules: Modules): string => `<?xml version="1.0" encoding="UTF-
   <modules>${modules.map(([, name]) => `<module>${name}</module>`).join('')}</modules>
 </project>
 `;
-const VOLATILE = /(?:^|\/)(?:test-results|nitpicker-lint|work)(?:\/|$)/u;
-const JVM_NOTICE = /^(?:NOTE: )?Picked up /u;
-const WORK_DIRECTORY = /\/tmp\/nitpicker-maven-\w+/gu;
-const SECONDS = /in \d+(?:\.\d+)?s/gu;
-const TIMESTAMP = /timestamp="[^"]*"/gu;
 const KOTLIN_MAIN = `package demo
 
 class Library(private val names: List<String>) {
@@ -117,44 +112,12 @@ function project(modules: Modules, name: string): string {
   return root;
 }
 
-function sortedKeys(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(sortedKeys);
-  }
-  return typeof value === 'object' && value !== null
-    ? Object.fromEntries(
-        Object.entries(value)
-          .toSorted(([left], [right]) => left.localeCompare(right))
-          .map(([key, item]) => [key, sortedKeys(item)]),
-      )
-    : value;
-}
-
-function normalized(text: string, root: string, name: string): string {
-  const canonical = name.endsWith('.json') ? JSON.stringify(sortedKeys(JSON.parse(text))) : text;
-  return canonical
-    .replaceAll(root, '<root>')
-    .split('\n')
-    .filter((line) => !JVM_NOTICE.test(line))
-    .join('\n')
-    .replaceAll(WORK_DIRECTORY, '<work>')
-    .replaceAll(SECONDS, 'in <seconds>')
-    .replaceAll(TIMESTAMP, 'timestamp="<time>"');
-}
-
 function reports(root: string, modules: Modules): Record<string, string> {
-  const found: Record<string, string> = {};
-  for (const [, name] of modules) {
-    const directory = path.join(root, name, 'target/nitpicker');
-    for (const file of readdirSync(directory, { recursive: true, withFileTypes: true })) {
-      const full = path.join(file.parentPath, file.name);
-      const key = path.relative(root, full).replaceAll('\\', '/');
-      if (file.isFile() && !VOLATILE.test(key)) {
-        found[key] = normalized(readFileSync(full, 'utf8'), root, file.name);
-      }
-    }
-  }
-  return found;
+  return Object.fromEntries(
+    modules.flatMap(([, name]) =>
+      Object.entries(reportsUnder(path.join(root, name, 'target/nitpicker'), root)),
+    ),
+  );
 }
 
 function analyze(root: string, hosted: boolean, trace: string, preset: string): unknown {
@@ -189,16 +152,6 @@ function parity(modules: Modules, preset: string, name = preset): Parity {
   };
 }
 
-function hostedEvery(trace: readonly string[], tools: readonly string[], modules: Modules) {
-  return tools.map(
-    (tool) => trace.filter((line) => line === `hosted ${tool}`).length >= modules.length,
-  );
-}
-
-function otherOutcomes(trace: readonly string[]): string[] {
-  return trace.filter((line) => line !== '' && !line.startsWith('hosted '));
-}
-
 describe.skipIf(!enabled)('the shared tool JVMs', () => {
   it.each([
     ['two different Java modules', JAVA_MODULES, 'java'],
@@ -212,7 +165,7 @@ describe.skipIf(!enabled)('the shared tool JVMs', () => {
 
       expect(run.hosted.reports).toEqual(run.fresh.reports);
       expect(run.hosted.findings).toEqual(run.fresh.findings);
-      expect(hostedEvery(run.trace, tools, modules)).toEqual(tools.map(() => true));
+      expect(hostedEvery(run.trace, tools, modules.length)).toEqual(tools.map(() => true));
       expect(otherOutcomes(run.trace)).toEqual([]);
     },
     TEST_TIMEOUT_MS,
@@ -225,7 +178,7 @@ describe.skipIf(!enabled)('the shared tool JVMs', () => {
 
       expect(run.hosted.reports).toEqual(run.fresh.reports);
       expect(run.hosted.findings).toEqual(run.fresh.findings);
-      expect(hostedEvery(run.trace, KOTLIN_TOOLS, KOTLIN_MODULES)).toEqual(
+      expect(hostedEvery(run.trace, KOTLIN_TOOLS, KOTLIN_MODULES.length)).toEqual(
         KOTLIN_TOOLS.map(() => true),
       );
       expect(otherOutcomes(run.trace)).toEqual([]);

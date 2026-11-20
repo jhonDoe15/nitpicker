@@ -18,6 +18,7 @@ import { STRUCTURE_CHECK_FILES } from './structure/check-files.mjs';
 import { DEAD_CODE_CHECK_FILES } from './unused-api/check-files.mjs';
 import { PROJECT_TOOL_FILES } from './project-tools/project-config-files.mjs';
 
+const ESLINT_LINT = 'eslint-lint';
 const SIZE_SCALED_DEADLINE = {
   timeoutMs: 5 * MINUTE_MS,
   timeoutScale: { perThousandFilesMs: 2 * MINUTE_MS, extensions: codeExtensionNames },
@@ -66,39 +67,42 @@ function checkExclusions(layout) {
 function eslintChecksFor(layout, exclusions) {
   return [
     {
-      name: 'eslint-lint',
+      name: ESLINT_LINT,
       configRelativePath: 'languages/typescript/preset/defaults/eslint.config.mjs',
       patterns: [...layout.sourceGlobs, ...layout.testGlobs],
       exclusions: exclusions.general,
       policyFiles: ['languages/typescript/preset/defaults/tsconfig.quality.json'],
       shardWeight: 25,
+      carries: true,
       configurationFiles: [
         'languages/typescript/preset/defaults/eslint.config.mjs',
+        'languages/typescript/preset/eslint-config/policies/base.mjs',
+        'languages/typescript/preset/eslint-config/production/carried-policies.mjs',
+        'languages/typescript/preset/eslint-config/production/carried-variable.mjs',
+        'languages/typescript/adapters/eslint/carried/carried-reports.mjs',
         'languages/typescript/preset/defaults/tsconfig.quality.json',
         ...POLICY_FILES,
       ],
     },
-    productionEslintCheck(layout, exclusions, {
-      name: 'errors',
-      shardWeight: 9,
-      colocatedWith: ['eslint-lint'],
-    }),
-    productionEslintCheck(layout, exclusions, { name: 'logging', shardWeight: 9 }),
-    productionEslintCheck(layout, exclusions, { name: 'module-effects', shardWeight: 11 }),
+    ...['errors', 'logging', 'module-effects'].map((name) =>
+      productionEslintCheck(layout, exclusions, name),
+    ),
   ];
 }
 
-function productionEslintCheck(layout, exclusions, { name, shardWeight, colocatedWith }) {
+function productionEslintCheck(layout, exclusions, name) {
   return {
-    ...(colocatedWith === undefined ? {} : { colocatedWith }),
+    colocatedWith: [ESLINT_LINT],
+    carriedBy: ESLINT_LINT,
     name: `eslint-${name}`,
     configRelativePath: `languages/typescript/preset/eslint-config/policies/${name}.config.mjs`,
     patterns: layout.sourceGlobs,
     exclusions: exclusions.production,
     policyFiles: [],
-    shardWeight,
+    shardWeight: 1,
     configurationFiles: [
       'languages/typescript/preset/eslint-config/policies/base.mjs',
+      'languages/typescript/preset/eslint-config/production/carried-policies.mjs',
       `languages/typescript/preset/eslint-config/policies/${name}.config.mjs`,
       ...POLICY_FILES,
     ],

@@ -113,13 +113,12 @@ afterEvaluate {
             def compiler = configurations.nitpickerKotlinCompiler.asPath
             def classes = shared.psiClasses(project, compiler)
             def roots = main.dirs.collect { relative(it) } + test.dirs.collect { 'test:' + relative(it) }
-            shared.runProcess('KotlinPsi', [new File(System.getProperty('java.home'), 'bin/java').absolutePath,
-                    '-Djava.awt.headless=true', "-Dnitpicker.kotlinCompiler=${shared.pinned.kotlinCompiler}".toString(),
-                    "-Dnitpicker.kotlinPsi.excluded=${excludedList.absolutePath}".toString(),
-                    "-Dnitpicker.published=${published()}".toString(), '-cp',
-                    compiler + File.pathSeparator + classes.absolutePath, 'nitpicker.kotlinpsi.KotlinPsi',
-                    metrics.absolutePath, facts.absolutePath, analysisRoot.absolutePath] + roots,
-                projectDir)
+            shared.runKotlinPsi(project, [
+                java     : new File(System.getProperty('java.home'), 'bin/java').absolutePath,
+                classpath: configurations.nitpickerKotlinCompiler.files*.absolutePath + [classes.absolutePath],
+                args     : ["--excluded=${excludedList.absolutePath}".toString()] + (published() ? ['--published'] : []) +
+                    [metrics.absolutePath, facts.absolutePath, analysisRoot.absolutePath] + roots,
+            ])
         }
     }
 

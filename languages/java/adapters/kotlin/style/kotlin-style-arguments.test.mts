@@ -272,6 +272,7 @@ describe('the Gradle hand-off', () => {
         !(
           argument.startsWith('-Pnitpicker.reportDir=') ||
           argument.startsWith('-Pnitpicker.node=') ||
+          argument.startsWith('-Pnitpicker.toolHosts=') ||
           argument.startsWith('-Pnitpicker.pit.deadline=')
         ),
     );

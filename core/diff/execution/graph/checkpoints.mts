@@ -1,7 +1,8 @@
 import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { cacheEntryText } from '../../cache/entries/cache-entry.mts';
-import type { AnalyzerTask } from '../tasks.mts';
+import type { AnalyzerTask, TaskCheckpoint } from '../tasks.mts';
+import { splitByTool } from '../carried/carried-analyzers.mts';
 import type { Outcome } from './outcomes.mts';
 import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
 
@@ -36,12 +37,36 @@ export function checkpointed(
   dependencyOutcomes: readonly Outcome[],
 ): Outcome {
   const { checkpoint } = task;
-  if (checkpoint !== undefined && isClean(outcome) && dependencyOutcomes.every(isClean)) {
+  const carried = task.carried ?? [];
+  if (
+    (checkpoint !== undefined || carried.length > 0) &&
+    isClean(outcome) &&
+    dependencyOutcomes.every(isClean)
+  ) {
+    const split = splitByTool(
+      outcome.report,
+      carried.map(({ name }) => name),
+    );
+    const parts = [
+      { checkpoint, report: split.own },
+      ...carried.map((part) => ({
+        checkpoint: part.checkpoint,
+        report: split.carried.get(part.name),
+      })),
+    ];
+    for (const part of parts) {
+      writeCheckpoint(part.checkpoint, part.report);
+    }
+  }
+  return outcome;
+}
+
+function writeCheckpoint(checkpoint: TaskCheckpoint | undefined, source: unknown): void {
+  if (checkpoint !== undefined) {
     const report = {
-      findings: listOf(fieldOf(outcome.report, 'findings')),
-      moduleImports: fieldOf(outcome.report, 'moduleImports'),
+      findings: listOf(fieldOf(source, 'findings')),
+      moduleImports: fieldOf(source, 'moduleImports'),
     };
     writeAtomically(checkpoint.file, () => cacheEntryText(checkpoint.key, report));
   }
-  return outcome;
 }

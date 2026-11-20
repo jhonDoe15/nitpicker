@@ -1198,9 +1198,9 @@ A full run always runs its head.
   Optional `NITPICKER_CACHE_AUTH_HEADER` and `NITPICKER_CACHE_TIMEOUT_MS`. Comparison runs only
   read the remote; give write credentials only to the job that runs `cache publish` on `main`.
 - `NITPICKER_NO_TOOL_HOSTS`: any value turns off the shared tool JVMs a Maven run with two or more
-  modules uses (see [tool hosting](troubleshooting.md#tool-hosting-misbehaves)). Each tool then starts
+  modules, or a Gradle run with three or more projects, uses (see [tool hosting](troubleshooting.md#tool-hosting-misbehaves)). Each tool then starts
   its own JVM per module, as before. Results are identical; only the time differs.
-- `NITPICKER_TOOL_HOSTS`: set by a Maven run for the tool processes it starts, to the directory of its
+- `NITPICKER_TOOL_HOSTS`: set by a Maven or Gradle run for the tool processes it starts, to the directory of its
   tool JVMs. Do not set it yourself.
 - `NITPICKER_TOOL_HOSTS_TRACE`: a file the run appends one line to for each tool job
   (`hosted <tool>`, `fallback <tool>`, `relative <tool>`, or `off <reason>`), for finding out which
@@ -1545,6 +1545,14 @@ The built-in set: `eslint-lint`, `eslint-errors`, `eslint-logging`, `eslint-modu
 `coding-standards`, `coupling`, `test-runtime`, `structure`, `duplicates`, `dead-code`, `coverage`,
 `test-console`, `crap` and `mutation`. The Java and Kotlin presets have one analyzer each (`java`, `kotlin`), which `disable` also lets you run without PIT through the name `mutation`; the Python preset has
 two, `python` and `mutation`, and the Go preset two, `go` and `mutation`. Every preset also runs `repository-hygiene`, and `change-history` once `history.coChange` is on.
+
+`eslint-errors`, `eslint-logging` and `eslint-module-effects` are small rule sets for production
+source. When `eslint-lint` is part of the same run it carries their rules in its own lint pass, so a
+project starts one lint pass instead of four; their findings keep their analyzer name, rule ids and
+labels, `disable` and `--analyzer` work as before, and each still runs by itself when `eslint-lint`
+is not in the run (`--analyzer eslint-errors`, `"disable": ["eslint-lint"]`, a quick run). If the
+`eslint-lint` pass fails, the analyzers it carried fail with it. Inline `eslint-disable` comments
+have no effect on their rules either way; use `exceptions`.
 
 ### Editor support
 
@@ -4078,8 +4086,9 @@ Only these parts of each entry of the project's config apply:
 
 An `eslint-disable` comment that suppresses nothing is reported once as `eslint/unused-disable-directive`,
 not once per ESLint analyzer: a directive counts as unused only when every ESLint analyzer that lints its
-file found nothing for it to suppress, so a directive that `eslint-errors` or `eslint-logging` needs is
-not reported by `eslint-lint`. This holds for the `oxlint` and `eslint` engines and in the JavaScript
+file found nothing for it to suppress, so a directive that `coding-standards` needs is
+not reported by `eslint-lint`. A directive in a file with locked inline configuration is reported
+once as `eslint/inline-config-disabled`, by `eslint-lint` when it ran. This holds for the `oxlint` and `eslint` engines and in the JavaScript
 preset.
 An `eslint-enable` comment with no `eslint-disable` before it is reported once the same way, as
 `eslint/unused-enable-directive`. Any other ESLint message that names no rule is kept as

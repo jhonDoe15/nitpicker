@@ -23,6 +23,8 @@ import { installedDependencies } from './dependency-graph/installed-dependencies
 import { missingDependenciesMessage } from './dependency-graph/package-managers/install.mts';
 import { runLintEngine } from './lint-engine/lint-engine.mts';
 import { normalizeEslintResults } from './eslint/normalize.mts';
+import { carriedPassNotes, withCarriedTools } from './eslint/carried/carried-reports.mts';
+import { productionLayout } from '../preset/eslint-config/typed/policy-views.mts';
 import { ruleCrashNotes } from './lint-engine/crashes/rule-crashes.mts';
 import {
   type EslintFinding,
@@ -72,14 +74,17 @@ export async function runEslint(options: EslintOptions): Promise<EslintFinding[]
       policyConfigPath: policyConfig.canonicalPath,
       testEnvironments,
     });
+    const findings = normalizeEslintResults({
+      value: results,
+      projectRoot: options.projectRoot,
+      analyzerName: options.analyzerName,
+    });
+    const crashNotes = ruleCrashNotes(crashes, options.analyzerName);
     return [
-      ...normalizeEslintResults({
-        value: results,
-        projectRoot: options.projectRoot,
-        analyzerName: options.analyzerName,
-      }),
+      ...withCarriedTools(findings, options.environment),
       ...testEnvironmentNotices({ testEnvironments, analyzerName: options.analyzerName }),
-      ...ruleCrashNotes(crashes, options.analyzerName),
+      ...crashNotes,
+      ...carriedPassNotes([...findings, ...crashNotes], options.environment, productionLayout),
     ];
   } finally {
     cleanUpEslint(state);

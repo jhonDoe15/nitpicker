@@ -1,6 +1,12 @@
 import { analyzerName as nameOf } from '../reporting/report-model.mts';
 import { type PreparedTask, type TaskContext, prepareTask } from './preparation/prepare-task.mts';
 import { memoizedFileCounter } from './preparation/project-size.mts';
+import {
+  type CarryPlan,
+  carriedNames,
+  planCarried,
+  withCarriedOutcomes,
+} from './carried/carried-analyzers.mts';
 import { namedReports, namedToolErrors } from '../snapshot-root/snapshot-root.mjs';
 import path from 'node:path';
 import { describeError } from '../../../shared/messages/error-chain.mjs';
@@ -78,8 +84,9 @@ export function runAnalyzers({
     throw new TypeError('liveProjectRoot is required');
   }
 
+  const plan = planCarried(analyzers);
   const { tasks, toolErrors, metadata } = prepareTasks(
-    analyzers,
+    { analyzers, plan },
     {
       projectRoot,
       policyRoot,
@@ -99,16 +106,15 @@ export function runAnalyzers({
     headPolicyFile,
     snapshot,
   });
-  return namedRun({ ...scheduled, metadata }, toolErrors, {
-    projectRoot,
-    liveProjectRoot,
-    snapshot,
-  });
+  const outcome = withCarriedOutcomes(
+    { ...scheduled, metadata, toolErrors: [...toolErrors, ...scheduled.toolErrors] },
+    plan,
+  );
+  return namedRun(outcome, { projectRoot, liveProjectRoot, snapshot });
 }
 
 function namedRun(
   scheduled: ScheduledRun & { readonly metadata: MetadataMap },
-  toolErrors: readonly ReportEntry[],
   {
     projectRoot,
     liveProjectRoot,
@@ -119,7 +125,7 @@ function namedRun(
   return {
     reports: reportsNamed(scheduled.reports, snapshotRoot),
     timings: scheduled.timings,
-    toolErrors: errorsNamed([...toolErrors, ...scheduled.toolErrors], snapshotRoot),
+    toolErrors: errorsNamed(scheduled.toolErrors, snapshotRoot),
     skipped: scheduled.skipped,
     metadata: scheduled.metadata,
   };
@@ -179,7 +185,7 @@ function scheduleTasks(
 }
 
 function prepareTasks(
-  analyzers: readonly unknown[],
+  { analyzers, plan }: { readonly analyzers: readonly unknown[]; readonly plan: CarryPlan },
   context: TaskContext,
   checkpoints: Checkpoints,
 ): {
@@ -194,18 +200,30 @@ function prepareTasks(
 
   for (const [index, analyzer] of analyzers.entries()) {
     const name = nameOf(analyzer, index);
-    const preparation = prepareTask(analyzer, sizedContext, metadata.get(analyzer));
+    const preparation = prepareTask(
+      analyzer,
+      {
+        ...sizedContext,
+        carried: carriedNames(plan, analyzer).map((carried) => ({
+          name: carried,
+          checkpoint: checkpoints.get(carried),
+        })),
+      },
+      metadata.get(analyzer),
+    );
     metadata.set(analyzer, preparation.metadata);
-    if (preparation.kind === 'ready') {
-      const checkpoint = checkpoints.get(name);
-      tasks.push(checkpoint === undefined ? preparation.task : { ...preparation.task, checkpoint });
+    if (preparation.kind !== 'ready') {
+      toolErrors.push({
+        tool: name,
+        snapshot: context.snapshot,
+        message: errorText(preparation.error),
+      });
       continue;
     }
-    toolErrors.push({
-      tool: name,
-      snapshot: context.snapshot,
-      message: errorText(preparation.error),
-    });
+    if (plan.scheduled.includes(analyzer)) {
+      const checkpoint = checkpoints.get(name);
+      tasks.push(checkpoint === undefined ? preparation.task : { ...preparation.task, checkpoint });
+    }
   }
 
   return { tasks, toolErrors, metadata };

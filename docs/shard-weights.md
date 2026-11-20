@@ -86,6 +86,9 @@ measured and keeps its old weight of 21.
   relative to the rest: 25 (was 49).
 - `prettier-format` and `typescript-typecheck` were overweight (24 and 17): about 8 and 9.
 - The remaining ESLint subsets and graph checks sit at the process-overhead floor, 7 to 11.
+- `eslint-errors`, `eslint-logging` and `eslint-module-effects` have since dropped to 1 each: they
+  are planned into the shard of `eslint-lint` (`colocatedWith`), which carries their rules in its
+  own pass, so they start no process of their own there.
 
 Resulting plans (sum of weights per shard): 2 shards 115/115, 3 shards 90/71/69, 4 shards
 90/46/47/47. `mutation` alone is the lower bound on any plan. The previous 3-shard plan was
