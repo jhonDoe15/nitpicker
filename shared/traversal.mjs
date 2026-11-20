@@ -35,6 +35,27 @@ export function* depthFirst(root, children) {
   }
 }
 
+function pushReversed(pending, items) {
+  if (items.length === 1) {
+    pending.push(items[0]);
+    return;
+  }
+  for (const item of items.toReversed()) {
+    pending.push(item);
+  }
+}
+
+/** The nodes `depthFirst` yields, as a list: the same order without a generator step per node. */
+export function preOrder(root, children) {
+  const nodes = [];
+  const pending = [root];
+  for (const node of stackIterator(pending)) {
+    nodes.push(node);
+    pushReversed(pending, children(node));
+  }
+  return nodes;
+}
+
 function expandItem(item, expand, pending) {
   const entries = expand(item.node, item.context);
   pending.push({ ...item, entries });
