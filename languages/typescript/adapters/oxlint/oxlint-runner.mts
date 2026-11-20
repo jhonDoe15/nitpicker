@@ -1,5 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { trackTemporaryPath, untrackTemporaryPath } from '../typed/tooling.mts';
@@ -14,7 +13,7 @@ import {
   lintResultsOf,
   planOf,
 } from './plan/oxlint-shapes.mts';
-import { engineLintEnvironment } from './run/engine-pass.mts';
+import { withEngineLint } from './run/engine-pass.mts';
 import { mergeResults } from './run/merged-results.mts';
 import { type LintTiming, type StageRun, lintConfigs, settledBeside } from './run/stage-lint.mts';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
@@ -71,7 +70,45 @@ export async function lintWithOxlint({
   readonly projectConfigPath: string | undefined;
   readonly runEslintCli: RunEslintCli;
 }): Promise<LintResult[]> {
-  const plan = planOf(
+  const plan = planFor(options, environment);
+  const files = plan.groups.flatMap((group) => group.files);
+  const stage = trackTemporaryPath(createStage(options.projectRoot, projectConfigPath));
+  try {
+    if (projectConfigPath !== undefined) {
+      hideNestedTypeScriptConfigs(stage, options.projectRoot, files);
+    }
+    const inlineConfig = neutralizeInlineConfig(stage, options.projectRoot, plan.noInlineConfig);
+    const directiveFiles = directiveFilesOf(options.projectRoot, files, plan.noInlineConfig);
+    const { projectRoot, timeoutMs } = options;
+    const { results, residual } = await withEngineLint(
+      { plan, projectRoot, environment, timeoutMs },
+      (engineEnvironment) =>
+        lintUntilAccepted({
+          plan,
+          stage,
+          projectRoot,
+          runEslintCli,
+          environment: engineEnvironment,
+          timeoutMs,
+          neutralized: new Map([
+            ...inlineConfig.neutralized,
+            ...oxlintDirectiveLocations(directiveFiles),
+          ]),
+          directiveFiles,
+        }),
+    );
+    return mergeResults([...results, ...inlineConfig.results, ...residual]).map((result) => ({
+      ...result,
+      filePath: path.join(options.projectRoot, result.filePath),
+    }));
+  } finally {
+    rmSync(stage, { recursive: true, force: true });
+    untrackTemporaryPath(stage);
+  }
+}
+
+function planFor(options: LintEngineOptions, environment: Environment): OxlintPlan {
+  return planOf(
     spawnJson([PLAN_PATH, options.projectRoot, ...options.patterns], {
       cwd: options.projectRoot,
       env: environment,
@@ -79,46 +116,6 @@ export async function lintWithOxlint({
       timeoutMs: options.timeoutMs,
     }),
   );
-  const files = plan.groups.flatMap((group) => group.files);
-  const stage = trackTemporaryPath(createStage(options.projectRoot, projectConfigPath));
-  const engineDirectory = trackTemporaryPath(
-    mkdtempSync(path.join(tmpdir(), 'nitpicker-engine-lint-')),
-  );
-  try {
-    if (projectConfigPath !== undefined) {
-      hideNestedTypeScriptConfigs(stage, options.projectRoot, files);
-    }
-    const inlineConfig = neutralizeInlineConfig(stage, options.projectRoot, plan.noInlineConfig);
-    const directiveFiles = directiveFilesOf(options.projectRoot, files, plan.noInlineConfig);
-    const { results, residual } = await lintUntilAccepted({
-      plan,
-      stage,
-      projectRoot: options.projectRoot,
-      runEslintCli,
-      environment: engineLintEnvironment({
-        plan,
-        projectRoot: options.projectRoot,
-        environment,
-        timeoutMs: options.timeoutMs,
-        directory: engineDirectory,
-      }),
-      timeoutMs: options.timeoutMs,
-      neutralized: new Map([
-        ...inlineConfig.neutralized,
-        ...oxlintDirectiveLocations(directiveFiles),
-      ]),
-      directiveFiles,
-    });
-    return mergeResults([...results, ...inlineConfig.results, ...residual]).map((result) => ({
-      ...result,
-      filePath: path.join(options.projectRoot, result.filePath),
-    }));
-  } finally {
-    rmSync(stage, { recursive: true, force: true });
-    rmSync(engineDirectory, { recursive: true, force: true });
-    untrackTemporaryPath(stage);
-    untrackTemporaryPath(engineDirectory);
-  }
 }
 
 async function lintUntilAccepted({

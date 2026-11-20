@@ -29,7 +29,7 @@ export function engineCandidates({ platform, arch, root }: EngineHost): string[]
 }
 
 export function findEngine(
-  environment: Environment = process.env,
+  environment: Environment,
   host: EngineHost = currentHost(),
 ): string | undefined {
   const chosen = environment[ENGINE_OVERRIDE];

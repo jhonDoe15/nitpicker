@@ -15,6 +15,11 @@ export const ENGINE_FINDINGS_FILE = 'NITPICKER_ENGINE_LINT_FINDINGS';
 
 const NONE: Replay = { covered: new Set(), reports: new Map() };
 const replays = new Map<string, Replay>();
+const source: { file: string | undefined } = { file: undefined };
+
+export function replayEngineFindingsFrom(file: string | undefined): void {
+  source.file = file;
+}
 
 function reportKey(file: string, ruleId: string): string {
   return JSON.stringify([file, ruleId]);
@@ -41,8 +46,8 @@ function readReplay(file: string): Replay {
   return { covered: new Set(listOf(fieldOf(written, 'files')).map(String)), reports };
 }
 
-function replayOf(environment: NodeJS.ProcessEnv = process.env): Replay {
-  const file = environment[ENGINE_FINDINGS_FILE];
+function replayOf(): Replay {
+  const { file } = source;
   return file === undefined || file === '' ? NONE : cachedValue(replays, file, readReplay);
 }
 
