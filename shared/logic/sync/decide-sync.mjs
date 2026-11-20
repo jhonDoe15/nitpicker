@@ -90,15 +90,27 @@ function aheadAnswers() {
   };
 }
 
+function sharedAnswers() {
+  const nothing = new Map();
+  const stores = [{ find: (id) => nothing.get(id), keep: () => nothing }];
+  return {
+    current: () => stores[0],
+    share(store) {
+      stores[0] = store;
+    },
+  };
+}
+
 const answers = answerCache();
 const ahead = aheadAnswers();
+const shared = sharedAnswers();
 
 function pendingReplies(bridge) {
   return chainOf(receiveMessageOnPort(bridge.replies), () => receiveMessageOnPort(bridge.replies));
 }
 
 function replyTo(bridge, id) {
-  return pendingReplies(bridge).find(({ message }) => message.id === id)?.message.result;
+  return pendingReplies(bridge).find(({ message }) => message.id === id)?.message;
 }
 
 function waits(deadline) {
@@ -117,9 +129,9 @@ function awaitReply(bridge, id, deadline) {
   for (const left of waits(deadline)) {
     Atomics.wait(bridge.signal, 0, 0, left);
     Atomics.store(bridge.signal, 0, 0);
-    const result = replyTo(bridge, id);
-    if (result !== undefined) {
-      return result;
+    const reply = replyTo(bridge, id);
+    if (reply !== undefined) {
+      return reply;
     }
   }
   return undefined;
@@ -142,11 +154,11 @@ function ask(request, timeoutMs) {
   Atomics.store(current.signal, 0, 0);
   current.worker.postMessage({ id, ...request });
   current.waiting = id;
-  const result = awaitReply(current, id, Date.now() + timeoutMs);
-  if (result !== undefined) {
+  const reply = awaitReply(current, id, Date.now() + timeoutMs);
+  if (reply !== undefined) {
     current.waiting = undefined;
   }
-  return result;
+  return reply;
 }
 
 function answered(request, { timeoutMs = SAFETY_NET_MS, budget }) {
@@ -158,18 +170,38 @@ function answered(request, { timeoutMs = SAFETY_NET_MS, budget }) {
   if (!spendRun(budget)) {
     return undefined;
   }
-  if (ahead.isNoting()) {
-    const found = ahead.find(id);
-    if (found === undefined) {
-      ahead.note(id, request);
-    }
-    return found;
+  return ahead.isNoting() ? noted(id, request) : settled(id, () => ask(request, timeoutMs));
+}
+
+function noted(id, request) {
+  const found = ahead.find(id) ?? shared.current().find(id);
+  if (found === undefined) {
+    ahead.note(id, request);
   }
-  const result = ahead.find(id) ?? ask(request, timeoutMs);
+  return found;
+}
+
+function settled(id, askSolver) {
+  const found = ahead.find(id) ?? shared.current().find(id);
+  const reply = found === undefined ? askSolver() : undefined;
+  const result = found ?? reply?.result;
   if (result !== undefined) {
     answers.keep(id, result);
   }
+  if (reply?.result !== undefined && reply.failure === undefined) {
+    shared.current().keep(id, reply.result);
+  }
   return result;
+}
+
+/**
+ * Shares the solver's answers with the other processes of a run through `store` (`find(id)` and
+ * `keep(id, result)`, by the terms asked): a stored answer is taken where the solver would have
+ * been asked, and what the solver answers without failing is kept. The entry module of a process
+ * calls this once, before the first question.
+ */
+export function shareSolverAnswers(store) {
+  shared.share(store);
 }
 
 /**
