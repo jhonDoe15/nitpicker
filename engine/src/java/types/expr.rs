@@ -686,12 +686,23 @@ impl<'a> Resolver<'a> {
                     "ternary_expression" if ["consequence", "alternative"].iter().any(|branch| {
                         argument.field(*branch).is_some_and(|part| FUNCTIONS.contains(&unwrap(part).kind()))
                     }) => Shape::Function(Vec::new(), true, true, false),
-                    _ if self.is_busy(argument) => Shape::Unknown,
+                    _ if self.is_busy(argument) => self.erased_result(argument).map_or(Shape::Unknown, Shape::Typed),
                     _ if nested => self.settled(argument).map_or(Shape::Unknown, Shape::Typed),
                     _ => self.type_of(argument).map_or(Shape::Unknown, Shape::Typed),
                 }
             })
             .collect()
+    }
+
+    /// The class a call gives whatever its type variables stand for: enough to pick among overloads while the
+    /// type arguments still wait for the context.
+    fn erased_result(&self, argument: Node) -> Option<Type> {
+        if argument.kind() != "method_invocation" {
+            return None;
+        }
+        let resolved = self.resolve_call(argument)?;
+        let named = matches!(&resolved.method.generic_returns, Type::Class(name, _) if name != "?");
+        named.then(|| resolved.method.returns.clone())
     }
 
     /// Counts one step of work and tells whether the question in progress has used up its share.
@@ -1194,6 +1205,11 @@ impl<'a> Resolver<'a> {
     fn fill_map(&self, resolved: &Call, call: Node, functions: bool, nested: bool) -> HashMap<String, Type> {
         let mut map = self.index.member_map(&resolved.receiver, &resolved.declaring);
         let method = &resolved.method;
+        for (name, kind) in self.outer_map(call, &resolved.declaring) {
+            if !method.type_parameters.contains(&name) {
+                map.insert(name, kind);
+            }
+        }
         if method.type_parameters.is_empty() {
             return map;
         }
@@ -1321,6 +1337,34 @@ impl<'a> Resolver<'a> {
             }
         }
         map.extend(inferred);
+        map
+    }
+
+    /// What the type parameters of the classes around an inner class stand for at a place in the file: a class
+    /// there that extends the outer class sees the inner class with the type arguments it gives to the outer one,
+    /// `Base<String>.Inner` for `Inner` written in a class that extends `Base<String>`.
+    fn outer_map(&self, at: Node, declaring: &str) -> HashMap<String, Type> {
+        let mut map = HashMap::new();
+        let mut hidden: Vec<String> = Vec::new();
+        let mut inner = declaring;
+        while let Some((outer, _)) = inner.rsplit_once('.') {
+            let Some(info) = self.index.get(inner) else { break };
+            if info.is_interface || info.flags & (super::model::flag::STATIC | super::model::flag::ENUM | super::model::flag::RECORD) != 0 {
+                break;
+            }
+            hidden.extend(info.type_parameters.iter().map(|(name, _)| name.clone()));
+            if self.index.generic(outer) {
+                let around = enclosing_types(self.scope, at).into_iter().find(|own| own != outer && self.index.is_subtype(own, outer));
+                if let Some(own) = around {
+                    for (name, kind) in self.index.member_map(&self.own_type(&own), outer) {
+                        if !hidden.contains(&name) && !kind.mentions_variable() {
+                            map.entry(name).or_insert(kind);
+                        }
+                    }
+                }
+            }
+            inner = outer;
+        }
         map
     }
 
