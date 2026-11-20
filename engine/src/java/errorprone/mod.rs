@@ -76,6 +76,10 @@ impl Context<'_> {
         }
         names
     }
+    /// The line of a byte offset, from zero.
+    pub fn line_of(&self, offset: usize) -> usize {
+        self.line_starts.partition_point(|start| *start <= offset) - 1
+    }
     pub fn text(&self, node: Node) -> &str {
         self.file.text_of(node)
     }
@@ -112,6 +116,8 @@ const CHECKS: &[Check] = &[
     values::unused_exception,
     names::type_parameter_naming,
     names::wildcard_import,
+    names::suppress_warnings_without_explanation,
+    names::type_parameter_unused_in_formals,
 ];
 
 pub struct ErrorProne;
