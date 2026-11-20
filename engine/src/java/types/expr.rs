@@ -788,7 +788,23 @@ impl<'a> Resolver<'a> {
                 }
                 several => {
                     let exact = typed.as_ref().and_then(|actual| several.iter().find(|(_, method)| method.parameters == *actual));
-                    exact.or_else(|| several.iter().find(|(_, method)| several.iter().all(|(_, other)| narrower(method, other)))).copied()
+                    let found = exact.or_else(|| several.iter().find(|(_, method)| several.iter().all(|(_, other)| narrower(method, other))));
+                    // Variable arity: compare the parameter types each one offers for the arguments given.
+                    let spread = |method: &Method| -> Vec<Type> {
+                        let fixed = method.parameters.len().saturating_sub(1);
+                        let element = match method.parameters.last() {
+                            Some(Type::Array(element)) => (**element).clone(),
+                            Some(other) => other.clone(),
+                            None => Type::class("java.lang.Object"),
+                        };
+                        (0..shapes.len().max(fixed + 1)).map(|at| if at < fixed { method.parameters[at].clone() } else { element.clone() }).collect()
+                    };
+                    let narrower_spread = |method: &Method, other: &Method| {
+                        let (mine, theirs) = (spread(method), spread(other));
+                        mine.len() >= theirs.len() && mine.iter().zip(&theirs).all(|(a, b)| self.assignable(a, b, true))
+                    };
+                    let varied = || several.iter().find(|(_, method)| several.iter().all(|(_, other)| narrower_spread(method, other)));
+                    found.or_else(|| if phase == 2 { varied() } else { None }).copied()
                 }
             };
             return chosen.map(|(class, method)| Call { raw: false, receiver: owner, declaring: class.name.clone(), method: (*method).clone() });

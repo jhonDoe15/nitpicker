@@ -390,7 +390,7 @@ impl<'a> Resolver<'a> {
                 _ => None,
             };
             let Some(kind) = both(false) else { continue };
-            varargs |= parameter.kind() == "spread_parameter";
+            varargs |= parameter.kind() == "spread_parameter" || self.file.text_of(parameter).contains("...");
             erased.push(kind.erased());
             generic.push(both(true).unwrap_or(unknown));
         }
@@ -406,7 +406,12 @@ impl<'a> Resolver<'a> {
     fn nullable_parameters(&self, member: Node) -> u64 {
         let list = member.child_by_field_name("parameters").map(children).unwrap_or_default();
         let listed = list.into_iter().filter(|part| matches!(part.kind(), "formal_parameter" | "spread_parameter"));
-        listed.enumerate().filter(|(position, part)| *position < 64 && part.kind() == "formal_parameter" && super::super::helpers::marked_nullable(self.file, *part)).fold(0, |bits, (position, _)| bits | 1 << position)
+        let marked = |part: Node| {
+            let spread = part.kind() == "spread_parameter" || self.file.text_of(part).contains("...");
+            let names = super::super::helpers::annotation_names(self.file, part);
+            if spread { names.iter().any(|name| name.ends_with("Nullable")) } else { super::super::helpers::marked_nullable(self.file, part) }
+        };
+        listed.enumerate().filter(|(position, part)| *position < 64 && marked(*part)).fold(0, |bits, (position, _)| bits | 1 << position)
     }
 
     fn class_flags(&self, declaration: Node) -> u16 {

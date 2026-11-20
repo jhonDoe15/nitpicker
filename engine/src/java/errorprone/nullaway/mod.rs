@@ -833,9 +833,21 @@ pub fn null_away(context: &Context, root: Node) {
             "compact_constructor_declaration" => parent(node).and_then(parent).and_then(|record| record.child_by_field_name("parameters")),
             _ => parameters,
         };
+        // An implicitly typed lambda parameter takes what the functional interface's method says about it.
+        let inherited: u64 = if node.kind() == "lambda_expression" {
+            let target = context.resolver.lambda_target(node);
+            let found = target.as_ref().and_then(|target| context.resolver.index.functional_method(&target.name()));
+            found.filter(|(declaring, _)| annotated(&declaring.name)).map_or(0, |(_, method)| method.nullable_parameters)
+        } else {
+            0
+        };
+        let mut implicit = 0usize;
         for parameter in parameters.map(children).unwrap_or_default() {
             let (name, nullable) = match parameter.kind() {
-                "identifier" => (Some(parameter), false),
+                "identifier" => {
+                    implicit += 1;
+                    (Some(parameter), implicit <= 64 && inherited & (1 << (implicit - 1)) != 0)
+                }
                 "formal_parameter" | "spread_parameter" => {
                     let name = parameter.child_by_field_name("name").or_else(|| {
                         children(parameter).into_iter().find(|part| part.kind() == "variable_declarator").and_then(|part| part.child_by_field_name("name"))
@@ -851,7 +863,7 @@ pub fn null_away(context: &Context, root: Node) {
         }
         if let Some(parameters) = parameters.filter(|parameters| parameters.kind() == "identifier") {
             let path = flow.local(parameters);
-            write(&mut start, path, NONNULL);
+            write(&mut start, path, if inherited & 1 != 0 { NULLABLE } else { NONNULL });
         }
         let inputs = flow.run(start);
         for block in 0..flow.cfg.blocks.len() {

@@ -61,12 +61,21 @@ pub fn declarators<'t>(declaration: Node<'t>) -> Vec<Node<'t>> {
 /// Whether a declaration carries an annotation that NullAway reads as "may be null". An annotation that can
 /// only sit on a type (JSpecify's, the Checker Framework's) marks the elements when the type is an array.
 pub fn marked_nullable(file: &SourceFile, declaration: Node) -> bool {
-    let marked = annotation_names(file, declaration).iter().any(|name| matches!(name.rsplit('.').next(), Some("Nullable" | "CheckForNull" | "ParametricNullness")));
-    if !marked {
-        return false;
+    let nullable = |name: &str| matches!(name.rsplit('.').next(), Some("Nullable" | "CheckForNull" | "ParametricNullness"));
+    let named = |annotation: Node| {
+        matches!(annotation.kind(), "marker_annotation" | "annotation") && annotation.child_by_field_name("name").is_some_and(|name| nullable(file.text_of(name)))
+    };
+    let kind = declaration.child_by_field_name("type");
+    // Written on the type itself: before a method's return type, on an array's brackets, inside a qualified name.
+    let on_brackets = kind.filter(|kind| kind.kind() == "array_type").and_then(|kind| kind.child_by_field_name("dimensions")).is_some_and(|dimensions| children(dimensions).into_iter().next().is_some_and(named));
+    let qualified = kind.map(|kind| if kind.kind() == "generic_type" { kind.child(0).unwrap_or(kind) } else { kind });
+    let in_name = qualified.filter(|kind| kind.kind() == "scoped_type_identifier").is_some_and(|kind| children(kind).into_iter().any(named));
+    if on_brackets || in_name {
+        return true;
     }
-    let array = declaration.child_by_field_name("type").is_some_and(|kind| kind.kind() == "array_type")
+    let array = kind.is_some_and(|kind| kind.kind() == "array_type")
         || children(declaration).iter().any(|part| part.kind() == "variable_declarator" && part.child_by_field_name("dimensions").is_some());
     let on_types = file.text.contains("import org.jspecify.annotations.Nullable;") || file.text.contains("import org.checkerframework.checker.nullness.qual.Nullable;");
-    !(array && on_types)
+    let marked = annotation_names(file, declaration).iter().any(|name| nullable(name)) || children(declaration).into_iter().any(named);
+    marked && !(array && on_types)
 }

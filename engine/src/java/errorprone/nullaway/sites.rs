@@ -47,7 +47,17 @@ impl<'t> Flow<'_, 't> {
 
     fn arguments_passed(&mut self, node: Node<'t>, reported: &mut std::collections::HashSet<usize>) {
         let resolver = self.context.resolver;
-        let Some((call, _)) = resolver.call_formals(node) else { return };
+        let resolved = resolver.call_formals(node);
+        if let Ok(wanted) = std::env::var("NP_DBG") {
+            let line = self.context.file.text[..node.start_byte()].matches('\n').count() + 1;
+            if wanted.split(',').any(|one| format!("{}:{line}", self.context.file.path).ends_with(one)) {
+                eprintln!("DBG {line} {} -> {:?}", self.context.text(node).lines().next().unwrap_or(""), resolved.as_ref().map(|(call, _)| (&call.declaring, &call.method.name, &call.method.parameters, call.method.nullable_parameters, call.method.varargs)));
+                for actual in Self::arguments(node) {
+                    eprintln!("   arg {} may {} known {:?}", self.context.text(actual).lines().next().unwrap_or(""), self.may_be_null(actual), self.known(strip(actual)));
+                }
+            }
+        }
+        let Some((call, _)) = resolved else { return };
         let formals = call.method.parameters.len();
         if formals == 0 {
             return;
