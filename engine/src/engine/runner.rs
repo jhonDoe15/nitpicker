@@ -58,7 +58,7 @@ fn parse_text(text: &str, language: &dyn Language) -> Option<tree_sitter::Tree> 
 }
 
 fn parse(path: &PathBuf, language: &dyn Language) -> Option<SourceFile> {
-    let text = std::fs::read_to_string(path).ok()?;
+    let text = super::source::read_text(path)?;
     let tree = parse_text(&text, language)?;
     Some(SourceFile { path: path.to_string_lossy().into_owned(), text, tree })
 }

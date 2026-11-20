@@ -12,6 +12,18 @@ pub struct Token {
     pub line: u32,
 }
 
+/// A source file's text as PMD reads it: no byte order mark, bytes that are not UTF-8 become U+FFFD and every line break
+/// becomes `\n`. PMD 7.16.0 then counts lines as if the mark were still there (#2164); the engine reports the true place.
+pub fn read_text(path: &std::path::Path) -> Option<String> {
+    let bytes = std::fs::read(path).ok()?;
+    let bytes = bytes.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(&bytes);
+    Some(normalized(&String::from_utf8_lossy(bytes)))
+}
+
+pub fn normalized(text: &str) -> String {
+    if text.contains('\r') { text.replace("\r\n", "\n").replace('\r', "\n") } else { text.to_string() }
+}
+
 impl SourceFile {
     pub fn text_of(&self, node: Node) -> &str {
         &self.text[node.byte_range()]
