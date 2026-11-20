@@ -36,6 +36,10 @@ impl Documented<'_, '_, '_> {
     fn report(&self, check: &'static str, pos: usize, message: &str) {
         self.context.report(check, self.node, self.source(pos), message);
     }
+    /// Reports where javac says the comment itself is; an empty comment has no place, so its declaration stands in.
+    fn report_comment(&self, check: &'static str, message: &str) {
+        self.context.report(check, self.node, self.doc.start.unwrap_or(self.start), message);
+    }
 }
 
 /// The doc comment javac attaches to a declaration: the nearest one before its first token.
@@ -75,7 +79,7 @@ pub fn javadoc(context: &Context, node: Node) {
 fn empty_block_tag(documented: &Documented) {
     const TEXT: &str = "A block tag (@param, @return, @throws, @deprecated) has an empty description. Block tags without descriptions don't add \
                         much value for future readers of the code; consider removing the tag entirely or adding a description.";
-    documented.doc.visit(&mut |tree| {
+    documented.doc.visit(&mut |tree, _| {
         let described = match tree.kind {
             Kind::Block => matches!(tree.name.as_str(), "param" | "return" | "throws" | "exception" | "deprecated"),
             Kind::Inline => tree.name == "return",
@@ -129,14 +133,14 @@ fn missing_summary(documented: &Documented, declaration: Node) {
     let seen = last_scanned(&documented.doc, &|tree| tree.kind == Kind::Block && tree.name == "see");
     let instead = |tag: &str| format!("A summary fragment is required; consider using the value of the @{tag} block as a summary fragment instead.");
     if returned.is_some_and(|tree| tree.kind == Kind::Inline || !tree.children.is_empty()) {
-        return documented.report(CHECK, documented.doc.pos, &instead("return"));
+        return documented.report_comment(CHECK, &instead("return"));
     }
     if seen.is_some() {
-        return documented.report(CHECK, documented.doc.pos, &instead("see"));
+        return documented.report_comment(CHECK, &instead("see"));
     }
     let marked = annotation_names(context, declaration).into_iter().any(|name| matches!(name, "Override" | "java.lang.Override" | "Deprecated" | "java.lang.Deprecated"));
     if exposed(declaration, documented.node) && !marked {
-        documented.report(CHECK, documented.doc.pos, "A summary line is required on public/protected Javadocs.");
+        documented.report_comment(CHECK, "A summary line is required on public/protected Javadocs.");
     }
 }
 
@@ -182,7 +186,7 @@ fn invalid_block_tag(documented: &Documented, declaration: Node) {
     let parameters = if documented.element == Element::Method { parameter_names(documented.context, declaration) } else { Vec::new() };
     let broken_code = documented.doc.body.iter().any(|tree| tree.kind == Kind::Erroneous && tree.name.starts_with("{@code"));
     let mut depth = 0i32;
-    documented.doc.visit(&mut |tree| {
+    documented.doc.visit(&mut |tree, parent| {
         let name = tree.name.as_str();
         match tree.kind {
             Kind::StartElement if matches!(name, "code" | "pre") => depth += 1,
@@ -220,7 +224,11 @@ fn invalid_block_tag(documented: &Documented, declaration: Node) {
                 documented.report(CHECK, tree.pos, &format!("Tag name `{name}` is unknown.{hint}"));
             }
             Kind::Block | Kind::Inline if tree.is_block_tag() && !valid.contains(&name) && !OTHER_BLOCKS.contains(&name) => {
-                documented.report(CHECK, tree.pos, &format!("The tag @{name} is not allowed on this type of element."));
+                let message = format!("The tag @{name} is not allowed on this type of element.");
+                match parent {
+                    Some(parent) => documented.report(CHECK, parent.pos, &message),
+                    None => documented.report_comment(CHECK, &message),
+                }
             }
             _ => {}
         }
@@ -262,7 +270,7 @@ fn unescaped_entity(documented: &Documented) {
     let mut no_fix: Vec<Range> = Vec::new();
     let mut starts: Vec<usize> = Vec::new();
     let mut another = false;
-    documented.doc.visit(&mut |tree| {
+    documented.doc.visit(&mut |tree, _| {
         let name = tree.name.as_str();
         match tree.kind {
             Kind::StartElement if matches!(name, "pre" | "code") => {
@@ -310,7 +318,7 @@ fn unescaped_entity(documented: &Documented) {
                     avoided by wrapping it in a {@code } tag.";
         documented.context.report(CHECK, documented.node, range.from, text);
     }
-    documented.doc.visit(&mut |tree| {
+    documented.doc.visit(&mut |tree, _| {
         if tree.kind != Kind::Erroneous || !matches!(tree.name.as_str(), "&" | "<" | ">") {
             return;
         }

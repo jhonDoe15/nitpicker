@@ -1,6 +1,10 @@
 //! Error Prone checks written for the engine: same check name, line and column as Error Prone reports.
 mod doc;
+mod docparse;
 mod docref;
+mod doctags;
+#[cfg(test)]
+mod doctest;
 mod hierarchy;
 mod javadoc;
 mod members;
