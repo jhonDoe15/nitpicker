@@ -185,6 +185,29 @@ final class Buffers {
     },
   ],
   [
+    'a --patch-module of java.base',
+    `def stubs = layout.buildDirectory.dir('stubs')
+tasks.register('stubClasses', JavaCompile) {
+    source = fileTree('stubs')
+    classpath = files()
+    destinationDirectory = stubs
+    options.compilerArgs += ['--patch-module', "java.base=\${file('stubs')}"]
+}
+tasks.named('compileJava') {
+    dependsOn 'stubClasses'
+    options.compilerArgs += ['--patch-module', "java.base=\${stubs.get().asFile}"]
+}
+`,
+    {
+      'stubs/java/lang/Patched.java':
+        'package java.lang;\n\npublic final class Patched {\n  private Patched() {}\n\n' +
+        '  public static int one() {\n    return 1;\n  }\n}\n',
+      'src/main/java/demo/Patches.java':
+        'package demo;\n\nfinal class Patches {\n  private Patches() {}\n\n' +
+        '  static int one() {\n    return Patched.one();\n  }\n}\n',
+    },
+  ],
+  [
     '-source and -target 8',
     `java {
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -363,7 +386,7 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
     ]);
   });
 
-  it('keeps --release when the only JDK-module option is an --add-opens, which javac never gets', () => {
+  it('keeps --release unless an --add-exports or --patch-module names a JDK module', () => {
     const work = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-levels-')));
     projects.push(work);
     writeFileSync(
@@ -388,9 +411,15 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
     expect([
       options('--release=17', ...project('--add-opens')),
       options('--release=17', ...project('--add-exports')),
+      options('--release=21', '--project-arg=--patch-module', '--project-arg=java.base=stubs.jar'),
+      options('--release=21', '--project-arg=--patch-module=java.base=stubs.jar'),
+      options('--release=21', '--project-arg=--patch-module=shop.orders=build/extra'),
     ]).toStrictEqual([
       '--release 17 -sourcepath',
       '--add-exports=java.base/java.lang=ALL-UNNAMED -source 17 -target 17 -sourcepath',
+      '--patch-module=java.base=stubs.jar -source 21 -target 21 -sourcepath',
+      '--patch-module=java.base=stubs.jar -source 21 -target 21 -sourcepath',
+      '--patch-module=shop.orders=build/extra --release 21 -sourcepath',
     ]);
   });
 
