@@ -145,6 +145,18 @@ function inlinedPair(pair, variants) {
   return sides.some((side, index) => side !== pair[index]) ? sides : undefined;
 }
 
+function attempted(pair, failed, compare) {
+  try {
+    return compare();
+  } catch (error) {
+    failed.push({
+      units: pair.map(({ unit }) => unit.id),
+      reason: error instanceof Error ? error.message : String(error),
+    });
+    return undefined;
+  }
+}
+
 export function findNearDuplicates(units, options = {}) {
   const tokensOf = createVocabulary();
   const proof = { cachedKey: createKeyCache(), refuted: options.refuted ?? [] };
@@ -152,12 +164,16 @@ export function findNearDuplicates(units, options = {}) {
   const { originals, mixed, variants } = preparedSets(units, tokensOf);
   const pairs = pairsIn(originals, changed);
   const seen = new Set(pairs.map(idsOf));
-  const found = pairs.map((pair) => {
-    const inlined = inlinedPair(pair, variants);
-    return (
-      proveUnits(pair, proof) ?? (inlined === undefined ? undefined : provedInlined(inlined, proof))
-    );
-  });
+  const failed = options.failed ?? [];
+  const found = pairs.map((pair) =>
+    attempted(pair, failed, () => {
+      const inlined = inlinedPair(pair, variants);
+      return (
+        proveUnits(pair, proof) ??
+        (inlined === undefined ? undefined : provedInlined(inlined, proof))
+      );
+    }),
+  );
   const extra =
     variants.size === 0
       ? []
@@ -165,7 +181,7 @@ export function findNearDuplicates(units, options = {}) {
           .filter(
             (pair) => !seen.has(idsOf(pair)) && pair.some(({ unit }) => variants.has(unit.id)),
           )
-          .map((pair) => provedInlined(pair, proof));
+          .map((pair) => attempted(pair, failed, () => provedInlined(pair, proof)));
   return [...found, ...extra]
     .filter((finding) => finding !== undefined)
     .sort((left, right) => compareText(left.identity, right.identity));
