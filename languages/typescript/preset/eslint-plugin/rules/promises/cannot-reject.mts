@@ -38,12 +38,22 @@ export type TypedScope<MessageIds extends string> = {
   readonly services: ParserServicesWithTypeInformation;
 };
 
+export type TypedFacts = Pick<TypedScope<string>, 'services' | 'sourceCode'>;
+
 export function typedScopeOf<MessageIds extends string>(
   context: Readonly<TSESLint.RuleContext<MessageIds, []>>,
 ): TypedScope<MessageIds> | undefined {
   const { sourceCode } = context;
   const services = sourceCode.parserServices;
   return hasTypeInformation(services) ? { context, sourceCode, services } : undefined;
+}
+
+export function typedListeners<MessageIds extends string>(
+  context: Readonly<TSESLint.RuleContext<MessageIds, []>>,
+  build: (scope: TypedScope<MessageIds>) => TSESLint.RuleListener,
+): TSESLint.RuleListener {
+  const scope = typedScopeOf(context);
+  return scope === undefined ? {} : build(scope);
 }
 
 export function isThenable(checker: TypeScript.TypeChecker, node: TypeScript.Node): boolean {

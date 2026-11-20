@@ -34,6 +34,8 @@ def pitMutators = [
 // The directory of this script, where languages/java/gradle/StructureMetrics.java lives.
 def initScriptDir = buildscript.sourceFile.parentFile
 // END SH5 structure metrics
+apply from: new File(initScriptDir, 'tasks/tool-host.gradle')
+def toolHost = gradle.ext.nitpickerToolHost
 
 def nitpickerArgument = { String name -> gradle.startParameter.projectProperties[name] }
 def nitpickerSettings = { String tool, List<String> defaults ->
@@ -83,6 +85,17 @@ def runProcess = { String name, List<String> command, File directory ->
     def exit = process.waitFor()
     if (exit != 0) {
         throw new GradleException(processFailure(name, exit, log))
+    }
+}
+
+def runKotlinPsi = { project, Map job ->
+    def result = toolHost.java(project, job + [
+        jvmArgs  : ['-Djava.awt.headless=true', "-Dnitpicker.kotlinCompiler=${pinned.kotlinCompiler}".toString()],
+        mainClass: 'nitpicker.kotlinpsi.KotlinPsi',
+        cwd      : project.projectDir.absolutePath,
+    ])
+    if (result.status != 0) {
+        throw new GradleException(processFailure('KotlinPsi', result.status, result.stdout + result.stderr))
     }
 }
 
@@ -420,11 +433,12 @@ def nodeCommand = nitpickerArgument('nitpicker.node') ?: 'node'
 def rulesWriter = ['write-rules.mts', 'write-rules.mjs']
     .collect { new File(initScriptDir, "../builds/rulesets/${it}").canonicalFile }
     .find { it.exists() }
-def runNode = { File script, List<String> arguments, String failure ->
+def runNode = { File script, List<String> arguments, String failure, Map environment = [:] ->
     def process
     try {
-        process = new ProcessBuilder([nodeCommand, script.absolutePath] + arguments)
-            .redirectErrorStream(true).start()
+        def builder = new ProcessBuilder([nodeCommand, script.absolutePath] + arguments).redirectErrorStream(true)
+        builder.environment().putAll(environment)
+        process = builder.start()
     } catch (IOException error) {
         throw new GradleException("${failure}: could not run ${nodeCommand}: ${error.message}")
     }
@@ -483,7 +497,7 @@ allprojects {
     if (nitpickerArgument('nitpicker.kotlin') == 'true') {
         project.ext.nitpickerKotlinSourceModule = [quick: quickRun, testsFailed: (nitpickerArgument('nitpicker.testsFailed') ?: '').toString().split(',').findAll { it }, kotlinTooling: kotlinTooling, initScriptDir: initScriptDir, pinned: pinned, reportBase: reportBase, modules: javaModules,
             moduleKey: moduleKeyOf, selected: kotlinSourceModule, buildFacts: kotlinCallerGaps,
-            psiClasses: kotlinPsiClasses, runProcess: runProcess, repositories: projectRepositories,
+            psiClasses: kotlinPsiClasses, runProcess: runProcess, runKotlinPsi: runKotlinPsi, repositories: projectRepositories,
             formatter: nitpickerArgument('nitpicker.kotlin.formatter'), pitContext: pitContext, mutationOff: mutationOff]
         project.apply from: new File(initScriptDir, 'kotlin/kotlin-source-modules.gradle')
     }
@@ -511,6 +525,21 @@ allprojects {
         project.ext.nitpickerToolCommandInputs = [toolCommandsFile, toolCommandsScript]
         project.ext.nitpickerToolLauncher = toolLauncher
         project.ext.nitpickerRunNode = runNode
+        // Runs a single-file helper program of this directory: from its cached classes in a warm tool
+        // JVM when it can, and from the source file on a runtime without javac.
+        def runHelper = { String name, File source, String launcher, List<String> arguments, List<File> libraries = [] ->
+            def classes = toolHost.compiled(name, [source], libraries, launcher)
+            toolHost.java(project, [
+                java     : launcher,
+                jvmArgs  : [],
+                classpath: ((classes == null ? [] : [classes]) + libraries)*.absolutePath,
+                mainClass: classes == null ? source.absolutePath : source.name - '.java',
+                args     : arguments,
+                cwd      : projectDir.absolutePath,
+            ])
+        }
+        project.ext.nitpickerRunHelper = runHelper
+        project.ext.nitpickerToolHost = toolHost
         project.ext.nitpickerProcessFailure = processFailure
         project.ext.nitpickerWriteRules = writeRules
         def testsFailedModules = (nitpickerArgument('nitpicker.testsFailed') ?: '').toString().split(',').findAll { it }
@@ -725,6 +754,11 @@ allprojects {
                 reportDir.get().file('pmd.sarif').asFile.text = '{"version":"2.1.0","runs":[]}'
                 false
             }
+            toolHost.exec(it) { int status, String output, String errors ->
+                System.out.print(output)
+                System.err.print(errors)
+                reportDir.get().file('pmd-log.txt').asFile.text = errors
+            }
             // PMD warns on stderr when a rule throws on a file; the log keeps those warnings for the report.
             def pmdLog = new ByteArrayOutputStream()
             def pmdStderr = System.err
@@ -808,16 +842,14 @@ allprojects {
                     if (!generatedRoots.isEmpty()) {
                         def list = reportDir.get().file('spotbugs-targets.txt').asFile
                         def helper = new File(initScriptDir, 'generated/GeneratedClasses.java')
-                        def command = [project.ext.nitpickerSourceJava().java, helper.absolutePath, list.absolutePath] +
+                        def result = runHelper('generated-classes', helper, project.ext.nitpickerSourceJava().java,
+                            [list.absolutePath] +
                             classDirs.collectMany { ['--classes', it.absolutePath] } +
                             generatedRoots.collectMany { ['--generated', it.absolutePath] } +
-                            lintedMainDirs().collectMany { ['--written', it.absolutePath] }
-                        def process = new ProcessBuilder(command).directory(projectDir)
-                            .redirectErrorStream(true).start()
-                        def log = process.inputStream.getText('UTF-8')
-                        def exit = process.waitFor()
-                        if (exit != 0) {
-                            throw new GradleException(processFailure('GeneratedClasses', exit, log))
+                            lintedMainDirs().collectMany { ['--written', it.absolutePath] })
+                        if (result.status != 0) {
+                            throw new GradleException(
+                                processFailure('GeneratedClasses', result.status, result.stdout + result.stderr))
                         }
                         if (list.length() == 0) {
                             throw new StopExecutionException()
@@ -862,19 +894,26 @@ allprojects {
             })
             def formatErrors = new ByteArrayOutputStream()
             errorOutput = formatErrors
+            def checkFormatExit = { int exit, String errors ->
+                if (exit != 0) {
+                    def detail = errors.readLines()
+                        .findAll { it.trim() && !(it ==~ /^(?:NOTE: )?Picked up .*/) }.take(20).join('\n')
+                    throw new GradleException("${mainClass.get().contains('palantir') ? 'palantir-java-format' : 'google-java-format'} " +
+                        "failed with exit code ${exit}: ${detail}")
+                }
+            }
+            toolHost.exec(it) { int status, String output, String errors ->
+                standardOutput.close()
+                reportDir.get().file('format.txt').asFile.setText(output, 'UTF-8')
+                checkFormatExit(status, errors)
+            }
             doFirst {
                 reportDir.get().asFile.mkdirs()
                 standardOutput = new FileOutputStream(reportDir.get().file('format.txt').asFile)
                 args(['--dry-run'] + ([aosp: ['--aosp'], palantir: ['--palantir']][javaStyle] ?: []) + javaFormatterFlags + javaFiles()*.absolutePath)
             }
             doLast {
-                def exit = executionResult.get().exitValue
-                if (exit != 0) {
-                    def detail = formatErrors.toString('UTF-8').readLines()
-                        .findAll { it.trim() && !(it ==~ /^(?:NOTE: )?Picked up .*/) }.take(20).join('\n')
-                    throw new GradleException("${mainClass.get().contains('palantir') ? 'palantir-java-format' : 'google-java-format'} " +
-                        "failed with exit code ${exit}: ${detail}")
-                }
+                checkFormatExit(executionResult.get().exitValue, formatErrors.toString('UTF-8'))
             }
         }
 
@@ -1231,13 +1270,11 @@ allprojects {
                             "download it. ${e.message ?: ''}").replaceAll(/\s+/, ' ').trim() + '\n'
                     return
                 }
-                def process = new ProcessBuilder([java, metricsSource.absolutePath,
-                        output.absolutePath, classesOutput.absolutePath, analysisRoot.absolutePath] + roots)
-                    .directory(projectDir).redirectErrorStream(true).start()
-                def log = process.inputStream.getText('UTF-8')
-                def exit = process.waitFor()
-                if (exit != 0) {
-                    throw new GradleException(processFailure('StructureMetrics', exit, log))
+                def result = runHelper('structure-metrics', metricsSource, java,
+                    [output.absolutePath, classesOutput.absolutePath, analysisRoot.absolutePath] + roots)
+                if (result.status != 0) {
+                    throw new GradleException(
+                        processFailure('StructureMetrics', result.status, result.stdout + result.stderr))
                 }
             }
         }
@@ -1369,14 +1406,22 @@ allprojects {
                 target
             }
             def jdeps = new File(System.getProperty('java.home'), 'bin/jdeps')
-            def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] +
-                analyzed.collect { it.absolutePath }).directory(projectDir)
-                .redirectError(ProcessBuilder.Redirect.DISCARD).start()
-            process.inputStream.withReader('UTF-8') { reader -> reader.eachLine { onLine(it) } }
-            def result = process.waitFor()
+            def arguments = ['-verbose:class', '-filter:none'] + analyzed.collect { it.absolutePath }
+            def hosted = toolHost.tool(project,
+                [command: jdeps.absolutePath, args: arguments, cwd: projectDir.absolutePath])
+            def result
+            if (hosted == null) {
+                def process = new ProcessBuilder([jdeps.absolutePath] + arguments).directory(projectDir)
+                    .redirectError(ProcessBuilder.Redirect.DISCARD).start()
+                process.inputStream.withReader('UTF-8') { reader -> reader.eachLine { onLine(it) } }
+                result = process.waitFor()
+            } else {
+                hosted.stdout.toString().eachLine { onLine(it) }
+                result = hosted.status as int
+            }
             delete staged
             if (result != 0) {
-                throw new GradleException("jdeps failed (${jdeps}) with exit code ${process.exitValue()}")
+                throw new GradleException("jdeps failed (${jdeps}) with exit code ${result}")
             }
         }
         tasks.register('nitpickerJdeps') {
@@ -1502,13 +1547,13 @@ allprojects {
                             kotlinSourceDirsOf('test').collect { 'test:' + relative(it) }
                         def excluded = reportDir.get().file('kotlin-excluded.txt').asFile
                         project.ext.nitpickerWriteKotlinExcluded(excluded, kotlinExcludedFiles())
-                        runProcess('KotlinPsi', [new File(home, 'java').absolutePath, '-Djava.awt.headless=true',
-                                "-Dnitpicker.kotlinCompiler=${pinned.kotlinCompiler}".toString(),
-                                "-Dnitpicker.kotlinPsi.excluded=${excluded.absolutePath}".toString(),
-                                "-Dnitpicker.published=${publishesLibrary()}".toString(), '-cp',
-                                compiler + File.pathSeparator + classes.absolutePath, 'nitpicker.kotlinpsi.KotlinPsi',
-                                metrics.absolutePath, facts.absolutePath, analysisRoot.absolutePath] + roots,
-                            projectDir)
+                        runKotlinPsi(project, [
+                            java     : new File(home, 'java').absolutePath,
+                            classpath: configurations.nitpickerKotlinCompiler.files*.absolutePath + [classes.absolutePath],
+                            args     : ["--excluded=${excluded.absolutePath}".toString()] +
+                                (publishesLibrary() ? ['--published'] : []) +
+                                [metrics.absolutePath, facts.absolutePath, analysisRoot.absolutePath] + roots,
+                        ])
                     }
                 }
                 // --- end kotlin structure ---

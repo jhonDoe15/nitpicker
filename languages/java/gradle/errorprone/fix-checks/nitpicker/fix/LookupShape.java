@@ -133,8 +133,8 @@ final class LookupShape {
     if (parameterSymbol == null || sides == null) {
       return null;
     }
-    boolean first = LookupKeys.isKey(sides[0], parameterSymbol);
-    boolean second = LookupKeys.isKey(sides[1], parameterSymbol);
+    boolean first = LookupKeys.isKey(sides[0], parameterSymbol, state);
+    boolean second = LookupKeys.isKey(sides[1], parameterSymbol, state);
     if (first == second) {
       return null;
     }

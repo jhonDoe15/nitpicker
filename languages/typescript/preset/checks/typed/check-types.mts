@@ -19,6 +19,8 @@ export type QualityCheck = {
   readonly adapterArguments?: readonly string[];
   readonly publishesModuleImports?: true;
   readonly colocatedWith?: readonly string[];
+  readonly carriedBy?: string;
+  readonly carries?: boolean;
   readonly patterns?: readonly string[];
   readonly configRelativePath?: string;
   readonly ignoreRelativePath?: string;
@@ -39,12 +41,6 @@ export type EslintCheck = QualityCheck & {
   readonly configRelativePath: string;
   readonly patterns: readonly string[];
   readonly policyFiles: readonly string[];
-};
-
-export type EslintCheckOptions = {
-  readonly name: string;
-  readonly shardWeight: number;
-  readonly colocatedWith?: readonly string[];
 };
 
 export type QualityChecks = {

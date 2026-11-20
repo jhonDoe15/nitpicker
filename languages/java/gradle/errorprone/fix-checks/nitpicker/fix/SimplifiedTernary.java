@@ -34,7 +34,7 @@ public final class SimplifiedTernary extends BugChecker implements ConditionalEx
       return Description.NO_MATCH;
     }
     String text = Precedence.inContext(rewrite.text(), rewrite.precedence(), state);
-    return describeMatch(tree, SuggestedFix.replace(tree, text));
+    return Support.describe(this, tree, SuggestedFix.replace(tree, text), state);
   }
 
   private static Rewrite rewrite(

@@ -1,8 +1,12 @@
-import { describe, expect, it } from 'vitest';
-import { applyRecipe, plannedLines } from '../../test-support/apply-recipe.mts';
+import { afterAll, describe, expect, it } from 'vitest';
+import { plannedLines } from '../../test-support/apply-recipe.mts';
+import { KOTLIN_BUILD, fixerIn } from '../../test-support/kotlin-project.mts';
 import { sortForExtremeRecipe } from './sort-for-extreme.mts';
 
-const fix = (text: string): string => applyRecipe(sortForExtremeRecipe, text);
+const project = fixerIn(sortForExtremeRecipe, KOTLIN_BUILD);
+const { fix } = project;
+
+afterAll(project.remove);
 
 describe('sortForExtremeRecipe', () => {
   it.each([
@@ -35,7 +39,7 @@ describe('sortForExtremeRecipe', () => {
     expect(fix(before)).toBe(
       'val a = xs\n    .filter { it.ok }\n    .minWith(compareBy { it.age })\nval b = 1\n',
     );
-    expect(plannedLines(sortForExtremeRecipe, before)).toEqual([3]);
+    expect(plannedLines(sortForExtremeRecipe, before, undefined, project.root)).toEqual([3]);
   });
 
   it('keeps a multi-line selector lambda as written', () => {

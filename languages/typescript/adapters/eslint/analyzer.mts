@@ -2,6 +2,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 
+import { CARRIED_VARIABLE } from '../../preset/eslint-config/production/carried-variable.mts';
+
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 
 const runnerPath = checkoutModulePath(
@@ -21,6 +23,8 @@ type EslintAnalyzerSettings = {
   readonly shardWeight?: number | undefined;
   readonly policyFromPackage?: true | undefined;
   readonly colocatedWith?: string | undefined;
+  readonly carriedBy?: string | undefined;
+  readonly carries?: boolean | undefined;
   readonly eslintTimeoutMs?: number | undefined;
   readonly eslintCliPath?: string | undefined;
 };
@@ -30,6 +34,7 @@ type EslintInvocationRoots = {
   readonly policyRoot: string;
   readonly toolRoot: string;
   readonly liveProjectRoot: string | undefined;
+  readonly carried?: readonly string[] | undefined;
 };
 
 type EslintInvocation = { command: string; args: string[]; cwd: string };
@@ -45,7 +50,8 @@ function invocationOf(
   roots: EslintInvocationRoots,
 ): EslintInvocation {
   const { name, configRelativePath, patterns, policyFiles = [], environment = {} } = settings;
-  const { projectRoot, policyRoot, toolRoot, liveProjectRoot } = roots;
+  const { projectRoot, policyRoot, toolRoot, liveProjectRoot, carried = [] } = roots;
+  const carriedEnvironment = carried.length === 0 ? {} : { [CARRIED_VARIABLE]: carried.join(',') };
   const args = [
     runnerPath,
     '--analyzer-name',
@@ -59,7 +65,7 @@ function invocationOf(
     '--config',
     configRelativePath,
     ...optionalArguments({ ...settings, liveProjectRoot }),
-    ...environmentArguments(environment),
+    ...environmentArguments({ ...environment, ...carriedEnvironment }),
     ...patterns.flatMap((pattern) => ['--pattern', pattern]),
     ...policyFiles.flatMap((policyFile) => ['--policy-file', policyFile]),
   ];
@@ -79,6 +85,8 @@ export function createEslintAnalyzer(settings: EslintAnalyzerSettings): {
     shardWeight = 1,
     policyFromPackage = false,
     colocatedWith,
+    carriedBy,
+    carries = false,
   } = settings;
   return {
     name: settings.name,
@@ -89,6 +97,8 @@ export function createEslintAnalyzer(settings: EslintAnalyzerSettings): {
     timeoutMs: settings.timeoutMs,
     shardWeight,
     ...(colocatedWith === undefined ? {} : { colocatedWith }),
+    ...(carriedBy === undefined ? {} : { carriedBy }),
+    ...(carries ? { carries: true } : {}),
     requiresDependencies: true,
     ...(policyFromPackage ? {} : { concurrencyGroup: 'eslint-snapshot-dependencies' }),
     createInvocation(roots) {

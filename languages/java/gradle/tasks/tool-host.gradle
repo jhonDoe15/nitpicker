@@ -1,0 +1,134 @@
+// Hands tool runs to the shared, warm tool JVMs that languages/java/builds/host starts, so a build
+// with many subprojects pays each tool's JVM start and warm-up once. Every hand-off falls back to a
+// JVM of its own: when the run has no hosts directory, on a build with fewer than three projects,
+// when the host is busy with another subproject, or when it cannot take the job.
+def gradleDirectory = buildscript.sourceFile.parentFile.parentFile
+def hostsDirectory = gradle.startParameter.projectProperties['nitpicker.toolHosts']?.toString()
+def nodeCommand = gradle.startParameter.projectProperties['nitpicker.node']?.toString() ?: 'node'
+def jobScript = ['host-job.mts', 'host-job.mjs']
+    .collect { new File(gradleDirectory, "../builds/host/gradle/${it}").canonicalFile }
+    .find { it.exists() }
+def session = [prepared: null]
+// A root with one subproject gains nothing: every tool still starts its JVM once.
+def minimumProjects = 3
+def hostEnvironment = [NITPICKER_TOOL_HOSTS: hostsDirectory]
+
+def ask = { String command, Map job ->
+    try {
+        def builder = new ProcessBuilder([nodeCommand, jobScript.absolutePath, command])
+            .redirectError(ProcessBuilder.Redirect.DISCARD)
+        builder.environment().putAll(hostEnvironment)
+        def process = builder.start()
+        process.outputStream.withWriter('UTF-8') { it << groovy.json.JsonOutput.toJson(job) }
+        def reply = process.inputStream.getText('UTF-8')
+        process.waitFor() == 0 ? new groovy.json.JsonSlurper().parseText(reply) : null
+    } catch (Exception unavailable) {
+        null
+    }
+}
+
+def prepared = { project ->
+    synchronized (session) {
+        if (session.prepared == null) {
+            def libraries = project.configurations.findByName('nitpickerEffects')
+            if (hostsDirectory == null || jobScript == null || project.rootProject.allprojects.size() < minimumProjects) {
+                session.prepared = false
+            } else if (libraries != null) {
+                session.prepared = ask('prepare', [
+                    libraries: libraries.files.findAll { it.exists() }.sort { it.name }*.absolutePath,
+                    java     : new File(System.getProperty('java.home'), 'bin/java').absolutePath,
+                ]) != null
+            }
+        }
+        session.prepared == true
+    }
+}
+
+def hosted = { String command, project, Map job ->
+    if (!prepared(project)) {
+        return null
+    }
+    def reply = ask(command, job)
+    reply?.hosted ? reply : null
+}
+
+def forked = { Map job ->
+    def classpath = job.classpath.isEmpty() ? [] : ['-cp', job.classpath.join(File.pathSeparator)]
+    def process = new ProcessBuilder([job.java] + job.jvmArgs + classpath + [job.mainClass] + job.args)
+        .directory(new File(job.cwd)).start()
+    def stdout = new ByteArrayOutputStream()
+    def stderr = new ByteArrayOutputStream()
+    process.waitForProcessOutput(stdout, stderr)
+    [status: process.exitValue(), stdout: stdout.toString('UTF-8'), stderr: stderr.toString('UTF-8')]
+}
+
+def jdkIdentity = { File java ->
+    def release = new File(java.parentFile.parentFile, 'release')
+    release.isFile() ? release.getText('UTF-8') : java.absolutePath
+}
+
+// The classes of a helper program, compiled once per JDK and source text into Gradle's user home;
+// null on a runtime without javac, where the caller starts the program from its source file.
+def compiled = { String name, Collection<File> sources, Collection<File> libraries, String launcher ->
+    def javac = ['javac', 'javac.exe'].collect { new File(new File(launcher).parentFile, it) }.find { it.isFile() }
+    if (javac == null) {
+        return null
+    }
+    def ordered = sources.sort { it.absolutePath }
+    def digest = java.security.MessageDigest.getInstance('SHA-256')
+    (ordered.collect { it.name + '\n' + it.getText('UTF-8') } + libraries*.name.sort() + [jdkIdentity(new File(launcher))])
+        .each { digest.update((it + '\u0000').getBytes('UTF-8')) }
+    def cacheRoot = new File(gradle.gradleUserHomeDir, "caches/nitpicker/${name}")
+    def classes = new File(cacheRoot, digest.digest().encodeHex().toString())
+    if (!classes.isDirectory()) {
+        def staging = new File(cacheRoot, "${classes.name}.${UUID.randomUUID()}")
+        staging.mkdirs()
+        def classpath = libraries.isEmpty() ? [] : ['-cp', libraries*.absolutePath.join(File.pathSeparator)]
+        def process = new ProcessBuilder([javac.absolutePath, '-proc:none', '-nowarn', '-d', staging.absolutePath] +
+            classpath + ordered*.absolutePath).redirectErrorStream(true).start()
+        def log = process.inputStream.getText('UTF-8')
+        if (process.waitFor() != 0) {
+            staging.deleteDir()
+            throw new GradleException("nitpicker could not compile its ${name} program: ${log.trim()}")
+        }
+        try {
+            java.nio.file.Files.move(staging.toPath(), classes.toPath(), java.nio.file.StandardCopyOption.ATOMIC_MOVE)
+        } catch (java.nio.file.FileSystemException raced) {
+            staging.deleteDir()
+            if (!classes.isDirectory()) {
+                throw raced
+            }
+        }
+    }
+    classes
+}
+
+gradle.ext.nitpickerToolHost = [
+    // The node environment that lets a script nitpicker starts reach the hosts; empty without them.
+    environment: { project -> prepared(project) ? hostEnvironment : [:] },
+    // Runs a main class in a warm JVM, or in a JVM of its own: [status, stdout, stderr].
+    java       : { project, Map job -> hosted('run', project, job) ?: forked(job) },
+    // Runs a JDK tool (javac, jdeps) in a warm JVM, or null when the caller has to start it.
+    tool       : { project, Map job -> hosted('tool', project, job) },
+    compiled   : compiled,
+    // Lets a JavaExec task try a warm JVM first. finish(status, stdout, stderr) writes what the
+    // task's own actions write after a forked run. Call it before the task adds its own doFirst
+    // actions, so that they have set the arguments when this one reads them.
+    exec       : { task, Closure finish ->
+        task.doFirst {
+            def launcher = task.javaLauncher.orNull?.executablePath?.asFile?.absolutePath
+            def reply = launcher == null ? null : hosted('run', task.project, [
+                java     : launcher,
+                jvmArgs  : ((task.jvmArgs ?: []) + task.allJvmArgs).collect { it.toString() }.unique(),
+                classpath: task.classpath.files*.absolutePath,
+                mainClass: task.mainClass.get(),
+                args     : task.args.collect { it.toString() },
+                cwd      : task.workingDir.absolutePath,
+            ])
+            if (reply != null) {
+                finish(reply.status as int, reply.stdout.toString(), reply.stderr.toString())
+                throw new StopExecutionException()
+            }
+        }
+    },
+]

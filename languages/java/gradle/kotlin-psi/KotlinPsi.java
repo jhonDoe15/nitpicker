@@ -45,9 +45,10 @@ import org.jetbrains.kotlin.psi.KtFile;
  * <pre>java -Dnitpicker.kotlinCompiler=VERSION -cp COMPILER_JARS:CLASSES nitpicker.kotlinpsi.KotlinPsi
  *     METRICS.json FACTS.json PROJECT_DIR ROOT...</pre>
  *
- * A root prefixed {@code test:} holds test sources. The system property {@code nitpicker.kotlinPsi.excluded}
- * names a file of paths relative to PROJECT_DIR, one per line, that the build excludes from its source sets:
- * they are not read. The metrics report (functions, class names and types, see
+ * A root prefixed {@code test:} holds test sources. The system property {@code nitpicker.kotlinPsi.excluded},
+ * or an argument {@code --excluded=FILE}, names a file of paths relative to PROJECT_DIR, one per line, that
+ * the build excludes from its source sets: they are not read. The argument {@code --published} stands for the
+ * system property {@code nitpicker.published}; arguments reach a run in a shared JVM, where properties do not. The metrics report (functions, class names and types, see
  * {@link MetricsCollector} and {@link Types}) covers the other roots only; its detekt counts
  * ({@link DetektCounts}) and the facts report ({@link FactsCollector}) cover all.
  * A syntax error ends the run: the sources compiled, so the pinned compiler does not read them.
@@ -56,6 +57,8 @@ public final class KotlinPsi {
   private static final String TEST_PREFIX = "test:";
   private static final String MUTATION_REPORT = "kotlin-mutation-facts.json";
   private static final String EXCLUDED_PROPERTY = "nitpicker.kotlinPsi.excluded";
+  private static final String EXCLUDED_OPTION = "--excluded=";
+  private static final String PUBLISHED_OPTION = "--published";
   private static final long STACK_BYTES = Long.getLong("nitpicker.stackBytes", 1L << 29);
 
   private KotlinPsi() {}
@@ -82,11 +85,23 @@ public final class KotlinPsi {
     }
   }
 
-  private static void run(String[] args) throws IOException {
-    Path metricsOutput = Path.of(args[0]);
-    Path factsOutput = Path.of(args[1]);
-    Path projectDir = Path.of(args[2]).toAbsolutePath().normalize();
-    Map<Path, Boolean> files = sources(projectDir, List.of(args).subList(3, args.length));
+  private static void run(String[] arguments) throws IOException {
+    List<String> args = new ArrayList<>();
+    String excludedList = System.getProperty(EXCLUDED_PROPERTY);
+    boolean published = Boolean.getBoolean("nitpicker.published");
+    for (String argument : arguments) {
+      if (argument.startsWith(EXCLUDED_OPTION)) {
+        excludedList = argument.substring(EXCLUDED_OPTION.length());
+      } else if (argument.equals(PUBLISHED_OPTION)) {
+        published = true;
+      } else {
+        args.add(argument);
+      }
+    }
+    Path metricsOutput = Path.of(args.get(0));
+    Path factsOutput = Path.of(args.get(1));
+    Path projectDir = Path.of(args.get(2)).toAbsolutePath().normalize();
+    Map<Path, Boolean> files = sources(projectDir, args.subList(3, args.size()), excludedList);
     List<String> functions = new ArrayList<>();
     List<String> classes = new ArrayList<>();
     List<String> types = new ArrayList<>();
@@ -120,7 +135,7 @@ public final class KotlinPsi {
         detektCountsOf(source, detektCounts);
         facts.add(factsOf(source, nothing));
       }
-      design = designOf(production);
+      design = designOf(production, published);
       Files.writeString(
           factsOutput.resolveSibling(MUTATION_REPORT),
           Json.of(Map.of("files", mutationFacts(mainSources))) + "\n",
@@ -192,12 +207,12 @@ public final class KotlinPsi {
     }
   }
 
-  private static Object designOf(List<Source> production) {
+  private static Object designOf(List<Source> production, boolean published) {
     try {
       if (Boolean.getBoolean("nitpicker.failDesign")) {
         throw new IllegalStateException("design facts were asked to fail");
       }
-      return DesignFacts.build(production, Boolean.getBoolean("nitpicker.published"));
+      return DesignFacts.build(production, published);
     } catch (RuntimeException | StackOverflowError failed) {
       System.err.println("design facts failed: " + failed);
       return Map.of("error", String.valueOf(failed));
@@ -209,8 +224,7 @@ public final class KotlinPsi {
     return Map.of("file", relative, "test", test, "skipped", true);
   }
 
-  private static Set<Path> excluded(Path projectDir) throws IOException {
-    String list = System.getProperty(EXCLUDED_PROPERTY);
+  private static Set<Path> excluded(Path projectDir, String list) throws IOException {
     Set<Path> excluded = new HashSet<>();
     if (list != null && Files.isRegularFile(Path.of(list))) {
       for (String line : Files.readAllLines(Path.of(list), StandardCharsets.UTF_8)) {
@@ -222,9 +236,10 @@ public final class KotlinPsi {
     return excluded;
   }
 
-  private static Map<Path, Boolean> sources(Path projectDir, List<String> roots) throws IOException {
+  private static Map<Path, Boolean> sources(Path projectDir, List<String> roots, String excludedList)
+      throws IOException {
     Map<Path, Boolean> files = new LinkedHashMap<>();
-    Set<Path> excluded = excluded(projectDir);
+    Set<Path> excluded = excluded(projectDir, excludedList);
     for (String argument : roots) {
       boolean test = argument.startsWith(TEST_PREFIX);
       Path root = projectDir.resolve(test ? argument.substring(TEST_PREFIX.length()) : argument);

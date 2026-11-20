@@ -1,7 +1,14 @@
 import { COMPILE_TOOLS } from './analyzer-names.mts';
-import { countFindings, judgeFindings, recipeRuns, withSharedFiles } from './judge-findings.mts';
+import {
+  countFindings,
+  findingKeyOf,
+  judgeFindings,
+  recipeRuns,
+  withSharedFiles,
+} from './judge-findings.mts';
+import { fixesToLeaveOut } from './narrow/blame.mts';
 import { restoreFiles, withOriginals } from './tree-states.mts';
-import { messageOf } from '../../../shared/values/readers.mts';
+import { fieldOf, messageOf } from '../../../shared/values/readers.mts';
 import { findingLabeler } from '../../labels/finding-labels.mts';
 import type { Journal } from '../dry-run/journal-types.mts';
 import {
@@ -9,6 +16,7 @@ import {
   type Analyze,
   type Analyses,
   type Analysis,
+  type AnalyzedFinding,
   type VerifyRequest,
   type AnalyzeRequest,
   type FindingKey,
@@ -34,11 +42,11 @@ function rollbackNote({ id, files }: RecipeRun, reasons: readonly string[]) {
 
 function analysisOf(analyze: Analyze, request: AnalyzeRequest): Analysis {
   const { findings, errors = [], unmatched = [] } = analyze(request);
-  return { findings: countFindings(findings), errors, unmatched };
+  return { findings: countFindings(findings), lines: findingLines(findings), errors, unmatched };
 }
 
 function skipped(message: string): VerifyResult {
-  return { rolledBack: [], notes: [`--fix could not verify the fixes: ${message}`] };
+  return { rolledBack: [], leftOut: [], notes: [`--fix could not verify the fixes: ${message}`] };
 }
 
 function bothAnalyses(journal: Journal, analyze: unknown, request: AnalyzeRequest): Analyses {
@@ -68,43 +76,76 @@ function keptNote({ id, files }: RecipeRun) {
   return `--fix could not roll back ${id} (${[...files].join(', ')}): a file changed while --fix ran, left as is`;
 }
 
-export function verifyFixes({ journal, analyze, mode = 'narrow' }: VerifyRequest): VerifyResult {
+function findingLines(findings: readonly AnalyzedFinding[]): Map<string, number[]> {
+  const lines = new Map<string, number[]>();
+  for (const finding of findings) {
+    const line = fieldOf(finding.location, 'line');
+    if (finding.classification === 'enforceable' && typeof line === 'number') {
+      lines.set(findingKeyOf(finding), [...(lines.get(findingKeyOf(finding)) ?? []), line]);
+    }
+  }
+  return lines;
+}
+
+type Verdict = {
+  readonly journal: Journal;
+  readonly runs: readonly RecipeRun[];
+  readonly after: Analysis;
+  readonly before: Analysis;
+  readonly mode: string;
+  readonly narrow: boolean;
+};
+
+function judged({ journal, runs, after, before, mode, narrow }: Verdict): VerifyResult {
+  const judgement = {
+    runs,
+    before: before.findings,
+    after: after.findings,
+    breaking: breakingIn(mode),
+    surfaced: onlySimplifies,
+  };
+  const reasons = withSharedFiles(runs, judgeFindings(judgement));
+  const candidates = runs.filter(({ key }) => reasons.has(key));
+  const blamed = narrow
+    ? fixesToLeaveOut(candidates, { ...judgement, journal, lines: after.lines, reasons })
+    : [];
+  const { rolled, kept } = rollBack(journal, candidates);
+  const restored = new Set(rolled.flatMap((run) => [...run.files]));
+  const leftOut = blamed.filter(({ path: name }) => restored.has(name));
+  const retried = new Set(leftOut.map(({ path: name }) => name));
+  return {
+    rolledBack: rolled.map((run) => ({
+      recipe: run.id,
+      whole: run.key === run.id,
+      files: [...run.files],
+      reasons: reasons.get(run.key) ?? [],
+    })),
+    leftOut,
+    notes: [
+      ...after.unmatched.map((tool) => `--fix could not verify ${tool}: no analyzer reports it`),
+      ...rolled
+        .filter((run) => ![...run.files].every((name) => retried.has(name)))
+        .map((run) => rollbackNote(run, reasons.get(run.key) ?? [])),
+      ...kept.map(keptNote),
+    ],
+  };
+}
+
+export function verifyFixes({
+  journal,
+  analyze,
+  mode = 'narrow',
+  rollback = 'whole-files',
+}: VerifyRequest): VerifyResult {
   const runs = recipeRuns(journal.events);
   if (runs.length === 0) {
-    return { rolledBack: [], notes: [] };
+    return { rolledBack: [], leftOut: [], notes: [] };
   }
   const tools = runs.flatMap((run) => run.findings.map(({ tool }) => tool));
   const files = runs.flatMap((run) => [...run.files]);
   const request = { tools: [...new Set(tools)], files: [...new Set(files)], mode };
   const analyses = bothAnalyses(journal, analyze, request);
-  if (analyses.failure !== undefined) {
-    return skipped(analyses.failure);
-  }
-  const { after, before } = analyses;
-  const reasons = withSharedFiles(
-    runs,
-    judgeFindings({
-      runs,
-      before: before.findings,
-      after: after.findings,
-      breaking: breakingIn(mode),
-      surfaced: onlySimplifies,
-    }),
-  );
-  const { rolled, kept } = rollBack(
-    journal,
-    runs.filter(({ key }) => reasons.has(key)),
-  );
-  return {
-    rolledBack: rolled.map((run) => ({
-      recipe: run.id,
-      files: [...run.files],
-      reasons: reasons.get(run.key) ?? [],
-    })),
-    notes: [
-      ...after.unmatched.map((tool) => `--fix could not verify ${tool}: no analyzer reports it`),
-      ...rolled.map((run) => rollbackNote(run, reasons.get(run.key) ?? [])),
-      ...kept.map(keptNote),
-    ],
-  };
+  return analyses.failure === undefined
+    ? judged({ journal, runs, ...analyses, mode, narrow: rollback === 'bad-fixes' })
+    : skipped(analyses.failure);
 }

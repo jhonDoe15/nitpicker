@@ -41,11 +41,11 @@ export const SORT_CASES = [
     statements: [
       [
         `Person a = people.stream().sorted(${BY_AGE}).toList().get(0);`,
-        `Person a = people.stream().min(${BY_AGE}).orElseThrow();`,
+        `Person a = people.stream().min(${BY_AGE}).orElseThrow(IndexOutOfBoundsException::new);`,
       ],
       [
         `Person b = people.stream().sorted(${BY_AGE}).collect(Collectors.toList()).get(0);`,
-        `Person b = people.stream().min(${BY_AGE}).orElseThrow();`,
+        `Person b = people.stream().min(${BY_AGE}).orElseThrow(IndexOutOfBoundsException::new);`,
       ],
       [
         `Person c = people.stream().sorted(${BY_AGE}).toList().getFirst();`,
@@ -57,7 +57,7 @@ export const SORT_CASES = [
       ],
       [
         'String e = words.sorted().toList().get(0);',
-        'String e = words.min(Comparator.naturalOrder()).orElseThrow();',
+        'String e = words.min(Comparator.naturalOrder()).orElseThrow(IndexOutOfBoundsException::new);',
       ],
     ],
   }),
@@ -92,7 +92,7 @@ export const SORT_CASES = [
     statements: [
       [
         'String a = names.stream().sorted(Comparator.comparing(s -> List.of(s, s).stream().collect(Collectors.joining()))).collect(Collectors.toList()).get(0);',
-        'String a = names.stream().min(Comparator.comparing(s -> List.of(s, s).stream().collect(Collectors.joining()))).orElseThrow();',
+        'String a = names.stream().min(Comparator.comparing(s -> List.of(s, s).stream().collect(Collectors.joining()))).orElseThrow(IndexOutOfBoundsException::new);',
       ],
       [
         'Optional<String> b = names.stream().sorted(Comparator.comparing(s -> List.of(s, s).stream().collect(Collectors.joining()))).findFirst();',

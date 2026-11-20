@@ -1,5 +1,3 @@
-import { productionPolicyConfig } from './base.mts';
+import { namedPolicyConfig } from './base.mts';
 
-export default productionPolicyConfig({
-  'nitpicker/no-silent-catch': 'error',
-});
+export default namedPolicyConfig('eslint-errors');

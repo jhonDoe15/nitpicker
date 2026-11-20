@@ -33,7 +33,7 @@ const WHOLE = saveCase(
     items.saveAll(all);
   }
 `,
-  [19],
+  [21],
 );
 
 const FOR_EACH = saveCase(
@@ -56,14 +56,14 @@ const FOR_EACH = saveCase(
     items.deleteAll(gone);
   }
 `,
-  [19],
+  [21],
 );
 
 const BUILT = {
   ...saveCase(
     'SaveBuilt',
     `
-  void built(List<String> names) {
+  public void built(List<String> names) {
     for (String name : names) {
       if (name.isBlank()) {
         continue;
@@ -75,7 +75,7 @@ const BUILT = {
   }
 `,
     `
-  void built(List<String> names) {
+  public void built(List<String> names) {
     List<Item> toSave = new ArrayList<>();
     for (String name : names) {
       if (name.isBlank()) {
@@ -88,14 +88,14 @@ const BUILT = {
     this.items.saveAllAndFlush(toSave);
   }
 `,
-    [19],
+    [21],
   ),
 };
 
 const CONDITIONAL = saveCase(
   'SaveConditional',
   `
-  void fresh(List<Item> all) {
+  public void fresh(List<Item> all) {
     all.forEach(item -> {
       if (item.getId() == null) {
         item.setName("new");
@@ -105,7 +105,7 @@ const CONDITIONAL = saveCase(
   }
 `,
   `
-  void fresh(List<Item> all) {
+  public void fresh(List<Item> all) {
     List<Item> toSave = new ArrayList<>();
     all.forEach(item -> {
       if (item.getId() == null) {
@@ -116,7 +116,7 @@ const CONDITIONAL = saveCase(
     items.saveAll(toSave);
   }
 `,
-  [19],
+  [21],
 );
 
 const STREAM = saveCase(
@@ -131,20 +131,20 @@ const STREAM = saveCase(
     items.saveAll(all.stream().filter(item -> item.getName() != null).toList());
   }
 `,
-  [19],
+  [21],
 );
 
 const IDS = saveCase(
   'SaveIds',
   `
-  void raw(long[] ids) {
+  public void raw(long[] ids) {
     for (long id : ids) {
       items.deleteById(id);
     }
   }
 `,
   `
-  void raw(long[] ids) {
+  public void raw(long[] ids) {
     List<Long> toDelete = new ArrayList<>();
     for (long id : ids) {
       toDelete.add(id);
@@ -152,13 +152,13 @@ const IDS = saveCase(
     items.deleteAllById(toDelete);
   }
 `,
-  [19],
+  [21],
 );
 
 const NESTED = saveCase(
   'SaveNested',
   `
-  void groups(List<List<Item>> groups) {
+  public void groups(List<List<Item>> groups) {
     for (List<Item> group : groups) {
       for (Item item : group) {
         item.setName("grouped");
@@ -168,7 +168,7 @@ const NESTED = saveCase(
   }
 `,
   `
-  void groups(List<List<Item>> groups) {
+  public void groups(List<List<Item>> groups) {
     for (List<Item> group : groups) {
       List<Item> toSave = new ArrayList<>();
       for (Item item : group) {
@@ -179,11 +179,11 @@ const NESTED = saveCase(
     }
   }
 `,
-  [20],
+  [22],
 );
 
 const TOUCHED_BODY = `
-  void rename(List<Item> all) {
+  public void rename(List<Item> all) {
     for (Item item : all) {
       String name = item.getName();
       if (name == null) {
@@ -203,7 +203,7 @@ const TOUCHED = {
     'SaveTouched',
     TOUCHED_BODY.replace('SAVE', 'this.items.save(item);'),
     `
-  void rename(List<Item> all) {
+  public void rename(List<Item> all) {
     List<Item> toSave = new ArrayList<>();
     for (Item item : all) {
       String name = item.getName();
@@ -219,7 +219,7 @@ const TOUCHED = {
     this.items.saveAll(toSave);
   }
 `,
-    [19],
+    [21],
   ),
   base: savesClass('SaveTouched', TOUCHED_BODY.replace('SAVE', 'items.save(item);')),
 };

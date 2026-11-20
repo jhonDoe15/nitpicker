@@ -116,6 +116,12 @@ tasks.register('nitpickerDetekt', JavaExec) {
             return false
         }
     }
+    def checkExit = { int code, String text ->
+        if (!(code in [0, 2]) || !report.get().asFile.exists()) {
+            throw new GradleException("detekt failed with exit code ${code}: ${text.trim()}")
+        }
+    }
+    gradle.ext.nitpickerToolHost.exec(it) { int status, String output, String errors -> checkExit(status, output + errors) }
     doFirst {
         reportDir.get().asFile.mkdirs()
         standardOutput = log
@@ -133,10 +139,5 @@ tasks.register('nitpickerDetekt', JavaExec) {
               '--classpath', typeResolutionClasspath,
               '--jdk-home', detektJdkHome()])
     }
-    doLast {
-        def code = executionResult.get().exitValue
-        if (!(code in [0, 2]) || !report.get().asFile.exists()) {
-            throw new GradleException("detekt failed with exit code ${code}: ${log.toString('UTF-8').trim()}")
-        }
-    }
+    doLast { checkExit(executionResult.get().exitValue, log.toString('UTF-8')) }
 }

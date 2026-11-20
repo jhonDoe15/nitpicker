@@ -116,4 +116,37 @@ describe('readDiagnostics', () => {
       ]),
     );
   });
+  it('reads the lines the fix of a diagnostic edits', () => {
+    const { project, work } = workspace();
+    const file = path.join(project, 'src/A.java');
+    writeFileSync(
+      path.join(work, 'reports/m/errorprone.json'),
+      JSON.stringify([
+        {
+          file,
+          line: 4,
+          endLine: 9,
+          message: '[SaveInLoop] collect (edits: 4-9,12-12)\n  Did you mean',
+        },
+        { file, line: 20, message: '[Sort] one pass (edits: 20-20)' },
+      ]),
+    );
+
+    expect(
+      readDiagnostics({ reportRoot: path.join(work, 'reports'), projectRoot: project }).get(
+        'src/A.java',
+      ),
+    ).toEqual([
+      {
+        check: 'SaveInLoop',
+        line: 4,
+        endLine: 9,
+        edits: [
+          [4, 9],
+          [12, 12],
+        ],
+      },
+      { check: 'Sort', line: 20, edits: [[20, 20]] },
+    ]);
+  });
 });

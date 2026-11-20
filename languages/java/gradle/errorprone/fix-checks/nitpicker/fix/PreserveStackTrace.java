@@ -57,7 +57,7 @@ public final class PreserveStackTrace extends BugChecker implements CatchTreeMat
     }.scan(tree.getBlock(), null);
     for (NewClassTree created : thrown) {
       if (!passesCaught(created, caught) && hasCauseConstructor(created, caught, state)) {
-        state.reportMatch(describeMatch(created, causeFix(created, caught, state)));
+        state.reportMatch(Support.describe(this, created, causeFix(created, caught, state), state));
       }
     }
     return Description.NO_MATCH;
