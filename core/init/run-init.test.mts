@@ -7,7 +7,7 @@ import type { FileMap } from '../diff/git/test-support/fixture-files.mts';
 import { readSnippet } from './files/agents-md.mts';
 import { unifiedDiff } from './files/line-diff.mts';
 import { init, initWith, readText, useProjects, withPeers } from './test-support/projects.mts';
-import { quotedTypescriptPin, typescriptPin } from './test-support/typescript-pin.mjs';
+import { quotedTypescriptPin, typescriptPin } from './test-support/typescript-pin.mts';
 
 const createProject = useProjects();
 const TYPESCRIPT = { 'package.json': '{}', 'src/index.ts': 'export const value = 1;\n' };

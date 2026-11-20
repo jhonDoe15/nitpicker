@@ -3,10 +3,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
-import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
+import { compareFindings } from '../../../../../core/diff/comparison/compare.mts';
 import { normalizeEslintResults } from '../../../adapters/eslint/normalize.mts';
 import { lintFixture } from '../typed/lint-fixture.mts';
-import { defaultResolvedLayout } from '../../layout.mjs';
+import { defaultResolvedLayout } from '../../layout.mts';
 import { isStrictRule, mustMeetOnEditedLines } from '../../strict-rules.mts';
 import { UNUSED_PARAMETER_ADVICE } from './unused-parameters.mts';
 import { productionLayoutConfigFor, productionPolicyConfigFor } from './production-policy.mts';
@@ -53,21 +53,16 @@ type ComparedFindings = {
   readonly unchangedFindings: readonly { readonly rule: string }[];
 };
 
-const compare: (input: {
-  readonly baseFindings: readonly unknown[];
-  readonly headFindings: readonly unknown[];
-  readonly touchedCode: object;
-  readonly unknownOnBase: undefined;
-}) => Readonly<Record<string, unknown>> = compareFindings;
-
 function compareTouched(
   baseFindings: readonly unknown[],
   headFindings: readonly unknown[],
   touchedCode: object,
 ): ComparedFindings {
-  const result = compare({ baseFindings, headFindings, touchedCode, unknownOnBase: undefined });
+  const result: unknown = Reflect.apply(compareFindings, undefined, [
+    { baseFindings, headFindings, touchedCode, unknownOnBase: undefined },
+  ]);
   const rulesOf = (key: string) =>
-    listOf(result[key]).map((finding) => ({ rule: textOf(fieldOf(finding, 'rule')) }));
+    listOf(fieldOf(result, key)).map((finding) => ({ rule: textOf(fieldOf(finding, 'rule')) }));
   return { newFindings: rulesOf('newFindings'), unchangedFindings: rulesOf('unchangedFindings') };
 }
 

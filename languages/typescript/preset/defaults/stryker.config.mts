@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readLayout as readUntypedLayout } from '../head-policy.mjs';
+import { readLayout as readUntypedLayout } from '../head-policy.mts';
 
 const readLayout: () => {
   readonly sourceGlobs: readonly string[];

@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mts';
 import { TESTS_FAILED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
 import { runQualityArea } from '../../quality-areas-runner.mts';
 import type { Finding } from '../../static-checks/shared.mts';
@@ -120,7 +120,7 @@ export async function newConsoleOutput({
   readonly base: string;
   readonly head: string;
 }): Promise<(string | undefined)[][]> {
-  const { newFindings = [] } = compareFindings({
+  const { newFindings } = compareFindings({
     baseFindings: await consoleFindings(base),
     headFindings: await consoleFindings(head),
     touchedCode: undefined,

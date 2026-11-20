@@ -2,7 +2,7 @@ import path from 'node:path';
 import { policyAcceptance } from '../policy/policy-acceptance.mts';
 import { outputRootFor } from '../../diff/reporting/reporters.mts';
 import { inspectRepository } from '../plan/inspect.mts';
-import { isGitWorkTree, memberProjectOf } from '../plan/member-root.mjs';
+import { isGitWorkTree, memberProjectOf } from '../plan/member-root.mts';
 import {
   asProjectLoosenings,
   projectSetLoosenings,
@@ -14,7 +14,7 @@ import {
   writeCombinedMachineReports,
 } from '../report/combined-files.mts';
 import { combinedSummary, exitCodeOf, writeCombinedReports } from '../report/combined-summary.mts';
-import { renderPlan, renderSummary } from '../report/console.mjs';
+import { renderPlan, renderSummary } from '../report/console.mts';
 import { analyzersByProject, unlistedFolders } from './context.mts';
 import {
   rejectPathScope,
@@ -22,7 +22,7 @@ import {
   submoduleHint,
   undeclaredHint,
   unlistedHint,
-} from './messages.mjs';
+} from './messages.mts';
 import { comparisonOf, selectionOf, submodulePaths } from './selection-plan.mts';
 import { enclosingPlan, requestsProjects, singleMode } from './single-mode.mts';
 import { clearReports, extrasOf, type RunContext } from './execution/project-rows.mts';
@@ -97,7 +97,7 @@ type Finished = {
 
 type Prepared = Omit<RunContext, 'cli' | 'runProject'> & {
   readonly rows: readonly ProjectRow[];
-  readonly outside: unknown;
+  readonly outside: readonly string[];
 };
 
 function prepare(plan: MonorepoPlan, cli: MonorepoCli): Prepared {

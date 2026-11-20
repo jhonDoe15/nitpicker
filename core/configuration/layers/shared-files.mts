@@ -3,7 +3,7 @@ import path from 'node:path';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import { inheritedLayerFiles } from './inherited.mts';
 import type { ConfigLayer } from '../../../shared/values/config-types.mts';
-import { readLayers as untypedReadLayers } from './layers.mjs';
+import { readLayers as untypedReadLayers } from './layers.mts';
 
 const readLayers: (
   configPath: string,

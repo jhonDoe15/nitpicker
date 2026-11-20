@@ -1,6 +1,6 @@
 import path from 'node:path';
-import { GitCommandError, runGit } from '../diff/git/repository/command.mjs';
-import { commitTreeOverHead } from '../diff/git/repository/git.mjs';
+import { GitCommandError, runGit } from '../diff/git/repository/command.mts';
+import { commitTreeOverHead } from '../diff/git/repository/git.mts';
 import type { CaptureHead } from '../diff/comparison/snapshots/run-types.mts';
 import { stagedConfigDrift, stagedConfigNotice } from './config-drift.mts';
 

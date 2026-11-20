@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fieldsOf } from '../json/fields.mts';
-import { containedPath } from '../../core/fix/common/contained-path.mjs';
+import { containedPath } from '../../core/fix/tool-steps/paths/contained-path.mts';
 import type { PlatformRun } from './smoke.mts';
 
 const SNAPSHOTS = ['base', 'head'] as const;

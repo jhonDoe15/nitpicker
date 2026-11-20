@@ -9,7 +9,7 @@ import {
 } from '../../../shared/messages/troubleshooting.mjs';
 import { chainOf as untypedChainOf } from '../../../shared/traversal.mjs';
 import { detectedPreset, markerFilesIn } from './project-check-views.mts';
-import { uvWorkspaceOf } from './uv-workspace.mjs';
+import { uvWorkspaceOf } from './uv-workspace.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 
 const chainOf: (start: string, next: (current: string) => string | undefined) => string[] =

@@ -3,7 +3,7 @@ import {
   troubleshootingError as untypedTroubleshootingError,
   withTroubleshooting as untypedWithTroubleshooting,
 } from '../../../../../shared/messages/troubleshooting.mjs';
-import { withTemporaryWorktree as untypedWithTemporaryWorktree } from '../../../../../core/diff/git/repository/worktree.mjs';
+import { withTemporaryWorktree as untypedWithTemporaryWorktree } from '../../../../../core/diff/git/repository/worktree.mts';
 import { projectFilePaths as untypedProjectFilePaths } from '../../../../../shared/project-files/project-files.mjs';
 
 export const explainedError: (message: string) => Error = untypedExplainedError;

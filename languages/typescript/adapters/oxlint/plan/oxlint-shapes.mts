@@ -1,4 +1,5 @@
 import { fieldOf } from '../../../../../shared/values/readers.mts';
+import { hasFields } from '../../../preset/eslint-config/runner/node-test-plugin.mts';
 
 type Span = { readonly offset: number; readonly length: number };
 
@@ -93,20 +94,16 @@ export type SpreadCheck = {
   readonly spread: Position;
 };
 
-function isShaped(value: unknown, keys: readonly string[]): value is object {
-  return typeof value === 'object' && value !== null && keys.every((key) => key in value);
-}
-
 function isPlan(value: unknown): value is OxlintPlan {
-  return isShaped(value, ['groups', 'noInlineConfig', 'typedPluginRules', 'nativeRules']);
+  return hasFields(value, ['groups', 'noInlineConfig', 'typedPluginRules', 'nativeRules']);
 }
 
 function isDiagnostic(value: unknown): value is OxlintDiagnostic {
-  return isShaped(value, ['filename', 'message']);
+  return hasFields(value, ['filename', 'message']);
 }
 
 function isLintResult(value: unknown): value is LintResult {
-  return isShaped(value, ['filePath', 'messages']);
+  return hasFields(value, ['filePath', 'messages']);
 }
 
 export function planOf(value: unknown): OxlintPlan {

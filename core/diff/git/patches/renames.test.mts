@@ -6,9 +6,9 @@ import {
   mapDirectory,
   remapRootPrefix,
   scopeMoves,
-} from './renames.mjs';
+} from './renames.mts';
 
-const LIFTED_PACKAGE = [
+const LIFTED_PACKAGE: [string, string][] = [
   ['typescript/core/cli.mjs', 'core/cli.mjs'],
   ['typescript/core/diff/git/repository/git.mjs', 'core/diff/git/repository/git.mjs'],
   ['typescript/package.json', 'package.json'],

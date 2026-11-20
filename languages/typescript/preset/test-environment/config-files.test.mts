@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { PROJECT_CONFIG_NAMES, projectConfigFile } from './config-files.mjs';
+import { PROJECT_CONFIG_NAMES, projectConfigFile } from './config-files.mts';
 
 const qualityConfig = readFileSync(
   path.join(import.meta.dirname, '../defaults/vitest.quality.config.ts'),

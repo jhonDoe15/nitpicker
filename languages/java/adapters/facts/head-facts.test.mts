@@ -11,7 +11,7 @@ import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repos
 import {
   resolveHeadPolicy,
   withHeadCheckoutFacts,
-} from '../../../typescript/preset/head-policy.mjs';
+} from '../../../typescript/preset/head-policy.mts';
 import { resolveProjectHeadPolicy } from '../../../../core/conventions/project-head-policy.mts';
 import { declaresSpring, hasFeatureFolders, javaHeadFacts } from './head-facts.mts';
 import { analyzeJavaSnapshot, readRunnerPolicy, withHeadPolicy } from '../java-runner.mts';

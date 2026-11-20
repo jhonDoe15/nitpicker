@@ -4,6 +4,8 @@ import {
   type Comparison,
   compareFindings,
 } from '../../../comparison/test-support/typed-compare.mts';
+import type { MatchedCode, TouchedEntry } from '../../../comparison/model/finding-types.mts';
+import type { HunkTuple } from '../../../git/line-types.mts';
 
 type Hunk = {
   readonly oldStart: number;
@@ -36,18 +38,18 @@ function lines(result: Comparison) {
   };
 }
 
-function touchedBy(hunks: readonly Hunk[]) {
+function touchedBy(hunks: readonly Hunk[]): MatchedCode {
   return {
-    changedLines: new Map([
+    changedLines: new Map<string, TouchedEntry>([
       [
         'src/main/java/demo/Legacy.java',
         {
           added: false,
           ranges: hunks
             .filter(({ newCount }) => newCount > 0)
-            .map(({ newStart, newCount }) => [newStart, newStart + newCount - 1]),
+            .map(({ newStart, newCount }): [number, number] => [newStart, newStart + newCount - 1]),
           inserted: [],
-          hunks: hunks.map(({ oldStart, oldCount, newStart, newCount }) => [
+          hunks: hunks.map(({ oldStart, oldCount, newStart, newCount }): HunkTuple => [
             oldStart,
             oldCount,
             newStart,

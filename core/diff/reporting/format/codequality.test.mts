@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { comparisonKey } from '../../comparison/fingerprint.mjs';
+import { entryKey } from '../../comparison/fingerprint.mts';
 import { fieldAt, listOf } from '../../../../scripts/json/fields.mts';
 import { parseJson } from '../../../../shared/values/readers.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
@@ -9,7 +9,7 @@ import { renderCodeQualityReport } from './codequality.mts';
 
 function fingerprint(projectDirectory: string, value: ReportEntry): string {
   return createHash('sha256')
-    .update(`${projectDirectory}\n${comparisonKey(value)}`)
+    .update(`${projectDirectory}\n${entryKey(value)}`)
     .digest('hex');
 }
 

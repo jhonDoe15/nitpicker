@@ -4,7 +4,7 @@ import {
   PYTHON_ANALYZER_NAME,
   createPythonAnalyzers,
 } from '../../../languages/python/adapters/python-analyzer.mts';
-import { configuredAnalyzers } from '../../../languages/typescript/preset/diff/configured-analyzers.mjs';
+import { configuredAnalyzers } from '../../../languages/typescript/preset/diff/configured-analyzers.mts';
 import { analyzersToVerify } from './analyzer-names.mts';
 import { textsOf } from '../../../shared/values/readers.mts';
 

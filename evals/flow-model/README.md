@@ -143,7 +143,7 @@ completions with their locations, plus changed violations and path outcomes.
 
 `report/findings.mts` emits only descriptive findings with existing fields (`tool`, `rule`, `path`,
 `identity`, `symbol`, `message`, `classification`, `location`, `metric`). `run.mts` passes every
-finding through `parseAnalyzerReport` from `core/diff/comparison/finding-schema.mjs`. The model,
+finding through `parseAnalyzerReport` from `core/diff/comparison/finding-schema.mts`. The model,
 paths and witnesses stay in separate artifacts. A violation's identity includes its call site, so
 two calls that break the same rule are two findings, and the identity survives whitespace changes.
 Synthetic and seeded findings point to the generated sources under `reports/flow-model/`, not to

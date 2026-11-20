@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { cachedValue } from '../../../../../../../shared/values/caching/cached-value.mts';
 import type TypeScript from 'typescript';
-import { resolveModuleSpecifier as untypedResolve } from '../../../../modules/module-resolution.mjs';
-import { scriptKindOf as untypedScriptKindOf } from '../../../../modules/module-sources.mjs';
+import { resolveModuleSpecifier as untypedResolve } from '../../../../modules/module-resolution.mts';
+import { scriptKindOf as untypedScriptKindOf } from '../../../../modules/module-sources.mts';
 import { ts } from '../../typed/typescript-views.mts';
 import { readTextFile } from './file-reads.mts';
 import { projectSourceFiles } from './package-facts.mts';

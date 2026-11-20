@@ -2,6 +2,7 @@ import type { Analyzer, ProfiledAnalyzer } from '../shared/values/analyzers.mts'
 import type { NitpickerConfig } from '../shared/values/config-types.mts';
 import type { RunTasks } from './diff/execution/progress.mts';
 import type { LabelFilter } from './labels/taxonomy.mts';
+import type { Scope } from './scope/scope-findings.mts';
 
 export type TextOutput = {
   write(text: string): unknown;
@@ -79,7 +80,7 @@ export type ConfiguredRun = {
   readonly currentProjectRoot: string;
   readonly config: NitpickerConfig;
   readonly headPolicy: unknown;
-  readonly scope: unknown;
+  readonly scope: Scope | undefined;
   readonly setup: RunSetup;
 };
 

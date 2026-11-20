@@ -20,7 +20,7 @@ import {
 } from './typed/static-checks.mts';
 import { applyAreaExceptions } from './exceptions/area-exceptions.mts';
 import { withTypeScriptHint } from './hints/tool-failure-hint.mts';
-import { REACH_THROUGH_SHARED_RULE } from '../preset/architecture/strict-boundary-rules.mjs';
+import { REACH_THROUGH_SHARED_RULE } from '../preset/architecture/strict-boundary-rules.mts';
 import { withInternalFrames } from '../../../shared/messages/crashes/internal-error.mts';
 
 type ViolationText = {

@@ -1,21 +1,13 @@
 import {
-  resolveHeadPolicy as untypedResolveHeadPolicy,
-  withHeadCheckoutFacts as untypedWithHeadCheckoutFacts,
+  resolveHeadPolicy,
+  withHeadCheckoutFacts,
   withHeadPolicyFile as untypedWithHeadPolicyFile,
-} from '../../../preset/head-policy.mjs';
+} from '../../../preset/head-policy.mts';
+import type { HeadPolicyFile } from '../../../preset/typed/head-policy-types.mts';
 
-export type ResolvedHeadPolicy = {
-  readonly preset?: string;
-  readonly tools: Readonly<Record<string, unknown>>;
-};
+export type ResolvedHeadPolicy = HeadPolicyFile;
 
-export const resolveHeadPolicy: (config: object, projectRoot?: string) => ResolvedHeadPolicy =
-  untypedResolveHeadPolicy;
-
-export const withHeadCheckoutFacts: (
-  policy: ResolvedHeadPolicy,
-  headPolicy: ResolvedHeadPolicy,
-) => ResolvedHeadPolicy = untypedWithHeadCheckoutFacts;
+export { resolveHeadPolicy, withHeadCheckoutFacts };
 
 export const withHeadPolicyFile: <T>(
   policy: ResolvedHeadPolicy,

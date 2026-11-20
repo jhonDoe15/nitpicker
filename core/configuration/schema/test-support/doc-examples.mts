@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mts';
 import { SCHEMA_KEY } from '../../../../shared/config.mjs';
 import { KEYS } from '../../validate.mts';
 import { isPlainObject } from '../../views/config-views.mts';

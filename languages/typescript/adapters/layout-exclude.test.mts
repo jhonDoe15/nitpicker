@@ -11,33 +11,20 @@ import { runCli } from '../../../core/cli.mts';
 import { maskedDiagnostics } from '../../../core/diff/reporting/test-support/output-expectations.mts';
 import { withDefaultAnalyzerParallelism as untypedParallelism } from '../../../core/diff/execution/test-support/analyzer-parallelism.mts';
 import { type AnalyzerRun, runAnalyzers } from '../../../core/diff/execution/run-analyzers.mts';
-import { fieldOf } from '../../../shared/values/readers.mts';
-import {
-  applyLayout as untypedApplyLayout,
-  configuredAnalyzers as untypedConfiguredAnalyzers,
-} from '../preset/diff/configured-analyzers.mjs';
+import { fieldOf, textsOf } from '../../../shared/values/readers.mts';
+import { applyLayout, configuredAnalyzers } from '../preset/diff/configured-analyzers.mts';
+import type { PackageAnalyzer } from '../preset/diff/typed/analyzer-types.mts';
 import {
   type ResolvedHeadPolicy,
   resolveHeadPolicy,
   withHeadPolicyFile,
 } from './dependency-graph/typed/head-policy-views.mts';
 
-type PresetAnalyzer = {
-  readonly name: string;
-  readonly exclusions?: readonly string[];
-  createInvocation(options: {
-    readonly projectRoot: string;
-    readonly policyRoot: string;
-    readonly toolRoot: string;
-  }): { readonly args: string[] };
-};
+type PresetAnalyzer = PackageAnalyzer;
 
 const createGitTemplate: () => string = untypedCreateGitTemplate;
 const copyGitTemplate: (template: string, root: string) => void = untypedCopyGitTemplate;
 const withDefaultAnalyzerParallelism: <T>(run: () => T) => T = untypedParallelism;
-const configuredAnalyzers: () => PresetAnalyzer[] = untypedConfiguredAnalyzers;
-const applyLayout: (analyzers: PresetAnalyzer[], policy: ResolvedHeadPolicy) => PresetAnalyzer[] =
-  untypedApplyLayout;
 
 const packageAnalyzers = configuredAnalyzers();
 // Every runner and tool is pointed at a project whose sources live in `lib/` and whose tests live
@@ -277,11 +264,14 @@ describe('applyLayout', () => {
       projectRoot: '/p',
       policyRoot: '/p',
       toolRoot: packageRoot,
+      liveProjectRoot: '/p',
+      snapshot: 'head',
     });
     expect(new Set(invocation.args)).toEqual(
       new Set([
         '--analyzer-name',
         '--config',
+        '--live-project-root',
         '--pattern',
         '--policy-file',
         '--policy-root',
@@ -299,7 +289,7 @@ describe('applyLayout', () => {
       ]),
     );
     expect(invocation.args).not.toContain('src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}');
-    expect([...new Set(eslint.exclusions)].sort()).toEqual([
+    expect([...new Set(textsOf(eslint['exclusions']))].sort()).toEqual([
       '**/node_modules/**',
       '.stryker-tmp/**',
       'build/**',
@@ -315,6 +305,8 @@ describe('applyLayout', () => {
       projectRoot: '/p',
       policyRoot: '/p',
       toolRoot: packageRoot,
+      liveProjectRoot: '/p',
+      snapshot: 'head',
     });
     expect(entryPoints.args.slice(entryPoints.args.indexOf('--source-root'))).toEqual([
       '--source-root',
@@ -330,6 +322,7 @@ describe('applyLayout', () => {
   it('leaves custom and injected analyzers alone', () => {
     const custom = {
       name: 'custom',
+      cacheKeyFiles: [],
       createInvocation() {
         return { args: [] };
       },
@@ -424,7 +417,7 @@ function analyze(
   names: string[],
   files: Record<string, string>,
   policy: ResolvedHeadPolicy = customPolicy,
-  analyzers: PresetAnalyzer[] = customAnalyzers,
+  analyzers: readonly PresetAnalyzer[] = customAnalyzers,
 ): AnalyzerRun {
   const projectRoot = createProject(files);
   // The tools are independent, so they run side by side as they do for a user.

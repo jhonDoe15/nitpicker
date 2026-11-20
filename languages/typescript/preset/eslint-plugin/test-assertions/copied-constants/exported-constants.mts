@@ -4,7 +4,7 @@ import type TypeScript from 'typescript';
 import {
   isExported as untypedIsExported,
   scriptKindOf as untypedScriptKindOf,
-} from '../../../modules/module-sources.mjs';
+} from '../../../modules/module-sources.mts';
 import { readLayout } from '../../rules/typed/policy-views.mts';
 import { ts, variableNames } from '../../rules/typed/typescript-views.mts';
 import {

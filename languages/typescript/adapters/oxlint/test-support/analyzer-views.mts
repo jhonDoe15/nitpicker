@@ -1,10 +1,10 @@
 import { importClosure as untypedImportClosure } from '../../../../../shared/import-closure.mjs';
 import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
 import { transpiled as untypedTranspiled } from '../../../../../scripts/typescript/emit.mjs';
-import { parseAnalyzerReport as untypedParseAnalyzerReport } from '../../../../../core/diff/comparison/finding-schema.mjs';
-import { resolveAnalyzerVersion as untypedResolveAnalyzerVersion } from '../../../preset/analyzer-versions.mjs';
-import { hashFiles as untypedHashFiles } from '../../../preset/checks/hash.mjs';
-import { configuredAnalyzers as untypedConfiguredAnalyzers } from '../../../preset/diff/configured-analyzers.mjs';
+import { parseAnalyzerReport as untypedParseAnalyzerReport } from '../../../../../core/diff/comparison/finding-schema.mts';
+import { resolveAnalyzerVersion as untypedResolveAnalyzerVersion } from '../../../preset/analyzer-versions.mts';
+import { hashFiles as untypedHashFiles } from '../../../preset/checks/hash.mts';
+import { configuredAnalyzers as untypedConfiguredAnalyzers } from '../../../preset/diff/configured-analyzers.mts';
 import { accumulatingSpreadMessages as untypedSpreadMessages } from '../../../preset/eslint-plugin/rules/collections/accumulating-spread-messages.mts';
 import type { AnalyzerReport } from '../../../../../shared/values/findings.mts';
 
@@ -34,7 +34,7 @@ export const resolveAnalyzerVersion: (analyzerName: string, liveProjectRoot: str
 
 export const hashFiles: (
   relativePaths: readonly string[],
-  configurationValues: unknown[],
+  configurationValues: readonly string[],
   options: { readonly root: string },
 ) => string = untypedHashFiles;
 

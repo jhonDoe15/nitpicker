@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   importsOnly as untypedImportsOnly,
   withoutImportOnlyClones as untypedWithoutImportOnlyClones,
-} from './import-only.mjs';
+} from './import-only.mts';
 
 type Clone = { fragment?: string };
 

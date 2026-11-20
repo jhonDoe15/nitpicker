@@ -173,7 +173,7 @@ export function componentStoryFindings({
   readonly liveProjectRoot?: string | undefined;
   readonly analyzerName: string;
   readonly layout: StructureLayout;
-  readonly exceptions: unknown[];
+  readonly exceptions: readonly unknown[];
 }): Finding[] {
   const isExcepted = exceptionMatcher(exceptions);
   const current = scanProject(projectRoot, layout, isExcepted);

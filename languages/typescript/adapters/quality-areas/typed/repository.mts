@@ -1,26 +1,25 @@
 import type { Finding } from '../../static-checks/shared.mts';
-import type { CruiseReport } from '../../typed/static-checks.mts';
-import type { Layout } from '../../typed/head-policy.mts';
+import { type CruiseReport, reachModuleOf } from '../../typed/static-checks.mts';
+import type { DependencyGraph } from '../../../preset/dependency-graph/graph-types.mts';
 import type { QualityAreaOptions } from './area-types.mts';
-import type { KnipConfig } from './policy.mts';
+
+export type JscpdConfig = { readonly path: string[]; readonly [key: string]: unknown };
 import { hash as untypedHash } from '../../../../../shared/rules/finding-helpers.mjs';
 import { typescriptStructureProjectFindings as untypedStructureProjectFindings } from '../../../preset/structure/project-findings.mts';
+import { layeredJscpdConfig as untypedLayeredJscpdConfig } from '../../../../../core/tooling/jscpd/config.mts';
+import { rootsPattern as untypedRootsPattern } from '../../../../../core/tooling/jscpd/skipped-folders.mts';
 import {
-  layoutJscpdConfig as untypedLayoutJscpdConfig,
-  layoutKnipConfig as untypedLayoutKnipConfig,
-} from '../../../preset/project-configs/typescript/layout-rewrites.mjs';
-import { layeredJscpdConfig as untypedLayeredJscpdConfig } from '../../../../../core/tooling/jscpd/config.mjs';
-import { rootsPattern as untypedRootsPattern } from '../../../../../core/tooling/jscpd/skipped-folders.mjs';
+  layoutJscpdConfig,
+  layoutKnipConfig,
+} from '../../../preset/project-configs/typescript/layout-rewrites.mts';
 import { normalizeDuplicates as untypedNormalizeDuplicates } from '../../../preset/duplicates/normalize.mts';
 import { renamedDuplicatesReport as untypedRenamedDuplicatesReport } from '../../../preset/duplicates/renamed.mts';
 import { baselinePathsOf as untypedBaselinePathsOf } from '../../../../../shared/rules/facts/baseline.mjs';
-import { graphImports as untypedGraphImports } from '../../../preset/dependency-graph/workspace-imports.mjs';
+import { graphImports as untypedGraphImports } from '../../../preset/dependency-graph/workspace-imports.mts';
 import {
   moduleImportsSection as untypedModuleImportsSection,
   wantsModuleImports as untypedWantsModuleImports,
 } from '../../../../../shared/history/co-change/dependencies/module-imports.mjs';
-
-export type JscpdConfig = { readonly path: string[]; readonly [key: string]: unknown };
 
 export type JscpdRun = (run: { readonly configPath: string; readonly cwd?: string }) => unknown;
 
@@ -32,13 +31,7 @@ export const typescriptStructureProjectFindings: (
   options: QualityAreaOptions & { readonly baselinePaths: unknown },
 ) => Finding[] = untypedStructureProjectFindings;
 
-export const layoutJscpdConfig: (base: unknown, layout: Layout) => JscpdConfig =
-  untypedLayoutJscpdConfig;
-
-export const layoutKnipConfig: (base: unknown, layout: Layout) => KnipConfig =
-  untypedLayoutKnipConfig;
-
-export const layeredJscpdConfig: (base: JscpdConfig) => Readonly<Record<string, unknown>> =
+export const layeredJscpdConfig: (base: object) => Readonly<Record<string, unknown>> =
   untypedLayeredJscpdConfig;
 
 export const rootsPattern: (roots: readonly string[]) => string = untypedRootsPattern;
@@ -62,13 +55,24 @@ export const renamedDuplicatesReport: (run: {
 
 export const baselinePathsOf: (options: QualityAreaOptions) => unknown = untypedBaselinePathsOf;
 
-export const graphImports: (
+const workspaceGraphImports: (
+  graph: DependencyGraph,
+  project: {
+    isSourceFile: (relativePath: string) => boolean;
+    projectRoot: string;
+  },
+) => unknown = untypedGraphImports;
+
+export function graphImports(
   graph: CruiseReport,
   project: {
     readonly isSourceFile: (relativePath: string) => boolean;
     readonly projectRoot: string;
   },
-) => unknown = untypedGraphImports;
+): unknown {
+  const modules: readonly unknown[] = Array.isArray(graph.modules) ? graph.modules : [];
+  return workspaceGraphImports({ modules: modules.flatMap(reachModuleOf) }, project);
+}
 
 export const wantsModuleImports: (history: unknown) => boolean = untypedWantsModuleImports;
 
@@ -76,3 +80,7 @@ export const moduleImportsSection: (
   imports: unknown,
   history: unknown,
 ) => Readonly<Record<string, unknown>> = untypedModuleImportsSection;
+
+export { layoutJscpdConfig };
+
+export { layoutKnipConfig };

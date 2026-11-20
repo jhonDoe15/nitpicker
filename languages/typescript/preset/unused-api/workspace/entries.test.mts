@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { resolveLayoutFor } from '../../layout.mjs';
+import { resolveLayoutFor } from '../../layout.mts';
 import { publicEntryGlobs, workspacePaths } from './entries.mts';
 
 const layout = resolveLayoutFor({ layout: { sourceRoots: ['src/main'] } });

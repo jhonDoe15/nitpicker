@@ -1,7 +1,7 @@
 import {
   REVIEW as untypedReview,
   SAFE as untypedSafe,
-} from '../../../../../core/fix/engine/safety.mjs';
+} from '../../../../../core/fix/engine/safety.mts';
 
 const SAFE: string = untypedSafe;
 const REVIEW: string = untypedReview;

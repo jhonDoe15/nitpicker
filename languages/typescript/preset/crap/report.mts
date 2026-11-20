@@ -4,7 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import config from '../defaults/crap.config.mts';
 import type { Layout } from '../../adapters/typed/head-policy.mts';
-import { readLayout as readUntypedLayout } from '../head-policy.mjs';
+import { readLayout as readUntypedLayout } from '../head-policy.mts';
 import { resolveInside } from './source-files.mts';
 import { measureCrap } from './measure.mts';
 import { reportFunctionsOf } from './report-functions.mts';

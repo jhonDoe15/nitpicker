@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach } from 'vitest';
-import { containedPath } from '../../core/fix/common/contained-path.mjs';
+import { containedPath } from '../../core/fix/tool-steps/paths/contained-path.mts';
 
 export type Files = Readonly<Record<string, string>>;
 

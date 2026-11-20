@@ -7,7 +7,7 @@ import { createFindingsCache } from '../../../../../core/diff/cache/findings-cac
 import { compareFindings, firstOf } from '../../eslint/test-support/finding-comparison.mts';
 import type { EslintFinding } from '../../eslint/typed/engine.mts';
 import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
-import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mts';
 import {
   accumulatingSpreadMessages,
   checkoutModulePath,

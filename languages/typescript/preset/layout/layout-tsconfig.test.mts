@@ -3,7 +3,7 @@ import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import { parseJson } from '../../../../shared/values/readers.mts';
-import { linkPolicyFile as untypedLinkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
+import { linkPolicyFile as untypedLinkPolicyFile } from '../../../../core/tooling/policy-links.mts';
 import { readDefaultTsconfig } from './test-support/layout-readers.mts';
 import { customLayout, defaults, temporaryProject } from './test-support/layout-config-loading.mts';
 import {

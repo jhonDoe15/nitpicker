@@ -5,9 +5,9 @@ import { findNearDuplicates as untypedFindNearDuplicates } from '../../../../../
 import { COPIES } from '../../../../../../shared/near-duplicates/test-support/copies.mjs';
 import { javascriptUnits as untypedJavascriptUnits } from '../../../../../../shared/near-duplicates/test-support/javascript.mjs';
 import {
-  nearDuplicateUnitNodes as untypedNearDuplicateUnitNodes,
+  nearDuplicateUnitNodes,
   nearDuplicateUnits as untypedNearDuplicateUnits,
-} from './units.mjs';
+} from './units.mts';
 import { FORMAT_COPY, JSX_COPIES, TYPESCRIPT_COPIES, UNIT_FORMS } from './test-support/sources.mts';
 
 const ts = typescriptApi();
@@ -35,9 +35,6 @@ const javascriptUnits: (text: string, options: { readonly file: string }) => Uni
   untypedJavascriptUnits;
 const nearDuplicateUnits: (sourceFile: TypeScript.SourceFile, file: string) => Unit[] =
   untypedNearDuplicateUnits;
-const nearDuplicateUnitNodes: (sourceFile: TypeScript.SourceFile) => {
-  readonly name: { readonly text: string };
-}[] = untypedNearDuplicateUnitNodes;
 
 function unitsOf(text: string, file: string): Unit[] {
   return nearDuplicateUnits(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), file);
@@ -195,7 +192,9 @@ export function hasOverdueSome(loans: Loan[], today: Date): boolean {
     const text =
       'export function first(a: number) {\n  return a + 1;\n}\n\nexport function second(b: number) {\n  return b * 2;\n}\n';
     const sourceFile = ts.createSourceFile('pair.ts', text, ts.ScriptTarget.Latest, true);
-    const names = nearDuplicateUnitNodes(sourceFile).map((node) => node.name.text);
+    const names = nearDuplicateUnitNodes(sourceFile).map((node) =>
+      ts.isFunctionDeclaration(node) ? node.name?.text : undefined,
+    );
     expect(names).toEqual(nearDuplicateUnits(sourceFile, 'pair.ts').map(({ name }) => name));
   });
 });

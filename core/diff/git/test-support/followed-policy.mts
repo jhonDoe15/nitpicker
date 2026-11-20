@@ -2,8 +2,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { FileMap } from './fixture-files.mts';
 import { fixtureGit, useGitFixtures } from './git-repository.mts';
-import { resolveComparison } from '../repository/git.mjs';
-import { resolveHeadPolicy } from '../../../../languages/typescript/preset/head-policy.mjs';
+import { resolveComparison } from '../repository/git.mts';
+import { resolveHeadPolicy } from '../../../../languages/typescript/preset/head-policy.mts';
 import { comparisonPolicy } from '../../../conventions/resolve.mts';
 
 const { createGitRepository } = useGitFixtures();

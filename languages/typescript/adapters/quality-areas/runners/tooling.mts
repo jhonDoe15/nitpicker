@@ -1,5 +1,5 @@
 import type { SpawnSyncReturns } from 'node:child_process';
-import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mts';
 import type { CruiseReport } from '../../dependency-graph/project-dependency-graph.mts';
 import { loadProjectModules } from '../../dependency-graph/shared-graph/project-modules.mts';
 import { existingRoots } from '../../typed/static-checks.mts';

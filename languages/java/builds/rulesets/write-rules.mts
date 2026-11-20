@@ -4,6 +4,7 @@ import {
   nitpickerCheckstyleConfig,
   planText,
   readPlan,
+  reportingCheckstyleConfig,
   type RulesPlan,
   unformattedCheckstyle,
   withGuardChecks,
@@ -22,9 +23,13 @@ export function writeRules(kind: string | undefined, plan: RulesPlan): void {
   }
   if (kind === 'checkstyle-config') {
     const config = nitpickerCheckstyleConfig(readFileSync(planText(plan, 'source'), 'utf8'));
+    const unformatted = plan['javaStyle'] === 'none';
     writeFileSync(
       planText(plan, 'output'),
-      plan['javaStyle'] === 'none' ? unformattedCheckstyle(config, plan['indentation']) : config,
+      reportingCheckstyleConfig(
+        unformatted ? unformattedCheckstyle(config, plan['indentation']) : config,
+        unformatted ? 'unformatted' : 'formatted',
+      ),
     );
     return;
   }

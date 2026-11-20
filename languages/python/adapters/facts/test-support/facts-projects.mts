@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from '
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { expect } from 'vitest';
+import { afterEach, expect } from 'vitest';
 import { parseJson } from '../../../../../shared/values/readers.mts';
 import { run } from '../../execution/python-process.mts';
 import { createToolContext } from '../../test-support/typed/tool-context.mts';
@@ -75,4 +75,32 @@ export function createFactsProjects(): FactsProject {
   }
 
   return { factsOf, nearDuplicates, cleanup };
+}
+
+type Order = 'found' | 'by-line';
+
+function ruleFindings(rule: string, order: Order): (text: string) => string[] {
+  const { factsOf, cleanup } = createFactsProjects();
+  afterEach(cleanup);
+  return (text) => {
+    const found = factsOf({ 'src/shop/rules.py': text })
+      .findings()
+      .filter((finding) => finding.rule === rule);
+    const ordered =
+      order === 'by-line'
+        ? found.toSorted((left, right) => (left.location?.line ?? 0) - (right.location?.line ?? 0))
+        : found;
+    return ordered.map(
+      ({ location, message }) => `${String(location?.line)}: ${message.split('. ')[0] ?? ''}`,
+    );
+  };
+}
+
+export function ruleLines(rule: string, order: Order = 'found'): (text: string) => string[] {
+  return ruleFindings(rule, order);
+}
+
+export function ruleLinesOf(rule: string): (...lines: readonly string[]) => string[] {
+  const linesOf = ruleFindings(rule, 'found');
+  return (...lines) => linesOf(`${lines.join('\n')}\n`);
 }

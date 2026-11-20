@@ -1,5 +1,5 @@
-import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
-import { failureText } from '../../../../core/fix/common/fix-command.mjs';
+import { containedPath } from '../../../../core/fix/tool-steps/paths/contained-path.mts';
+import { failureOf } from '../tools/failure-of.mts';
 import { JAVA_FORMATTERS } from '../../adapters/style/jvm-formatters.mts';
 import { JAVAC_EXPORTS } from '../../maven/maven-lint.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
@@ -102,7 +102,7 @@ export function javaFormat({
         .filter(({ relative }) => stderr.includes(`${textOf(containedPath(directory, relative))}:`))
         .map(({ name }) => name);
       if (fieldOf(result, 'status') !== 0 && unformattable.length === 0) {
-        throw new Error(`${label} failed: ${textOf(failureText(result))}`);
+        throw new Error(`${label} failed: ${failureOf(result)}`);
       }
       return {
         formatted: new Map(

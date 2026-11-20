@@ -29,7 +29,7 @@ type MutationReportOf = (
 
 type ScopedMutation = {
   readonly layout: Layout;
-  readonly exceptions: unknown[];
+  readonly exceptions: readonly unknown[];
   readonly mutationReport: MutationReportOf;
   readonly normalize: (report: MutationReport, analyzerName: string) => Finding[];
 };

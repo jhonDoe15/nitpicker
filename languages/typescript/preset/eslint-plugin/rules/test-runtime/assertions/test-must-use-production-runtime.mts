@@ -3,11 +3,11 @@ import path from 'node:path';
 import {
   reachableModules as untypedReachableModules,
   resolveModuleSpecifier as untypedResolveModuleSpecifier,
-} from '../../../../modules/module-resolution.mjs';
+} from '../../../../modules/module-resolution.mts';
 import {
   moduleReferencesOf as untypedModuleReferencesOf,
   statementSources as untypedStatementSources,
-} from '../../../../modules/module-sources.mjs';
+} from '../../../../modules/module-sources.mts';
 import { isBrowserEndToEndTest } from '../../analysis/test-code-analysis.mts';
 import { readLayout } from '../../typed/policy-views.mts';
 import { RUNNER_OPTION_PROPERTY, vocabularyOf } from '../../runner-apis/runner-option.mts';

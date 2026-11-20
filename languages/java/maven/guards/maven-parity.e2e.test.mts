@@ -52,11 +52,7 @@ describe.skipIf(!enabled)('Maven guard parity and compile modes', () => {
     expect(
       fromMaven
         .filter((finding) => finding.tool === 'dependencies')
-        .map(({ path: file, identity, message }) => [
-          file,
-          identity,
-          (message ?? '').split('. ')[0],
-        ]),
+        .map(({ path: file, identity, message }) => [file, identity, message.split('. ')[0]]),
     ).toEqual([
       [
         'pom.xml',

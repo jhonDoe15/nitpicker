@@ -8,7 +8,7 @@ import {
   withTroubleshooting,
 } from '../../../shared/messages/troubleshooting.mjs';
 import { textOf } from '../../../shared/values/readers.mts';
-import { MAX_PASSES } from './run-recipes.mjs';
+import { MAX_PASSES } from './run-recipes.mts';
 import { defineRecipes, runRecipes } from '../test-support/engine-views.mts';
 import type { PlanFile, RecipeSpec } from '../test-support/engine-views.mts';
 

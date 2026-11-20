@@ -1,5 +1,5 @@
 import tseslint from 'typescript-eslint';
-import { resolveLayout } from '../../../layout.mjs';
+import { resolveLayout } from '../../../layout.mts';
 import { i18nScopeConfigFor } from '../i18n-scope.mts';
 
 const i18nConfig = [

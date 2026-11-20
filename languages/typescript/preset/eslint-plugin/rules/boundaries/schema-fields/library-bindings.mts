@@ -4,9 +4,14 @@ import {
   isUnresolved as untypedIsUnresolved,
   libraryBinding as untypedLibraryBinding,
   variableOf as untypedVariableOf,
-} from '../../../../libraries/module-bindings.mjs';
-import { VALIDATION_LIBRARIES as untypedValidationLibraries } from '../../../../libraries/validation-libraries.mjs';
-import { isNode, type LibraryBinding, type SourceCode } from '../../typed/node-views.mts';
+} from '../../../../libraries/module-bindings.mts';
+import { VALIDATION_LIBRARIES as untypedValidationLibraries } from '../../../../libraries/validation-libraries.mts';
+import {
+  isNode,
+  stringSourceBinding,
+  type LibraryBinding,
+  type SourceCode,
+} from '../../typed/node-views.mts';
 
 type Variable = TSESLint.Scope.Variable;
 type ValidationLibrary = { readonly id: string; readonly packages: readonly string[] };
@@ -16,10 +21,12 @@ export const variableOf: (
   identifier: TSESTree.Identifier,
 ) => Variable | undefined = untypedVariableOf;
 
-export const libraryBinding: (
+export function libraryBinding(
   variable: Variable | undefined,
   packages: readonly string[],
-) => LibraryBinding | undefined = untypedLibraryBinding;
+): LibraryBinding | undefined {
+  return stringSourceBinding(untypedLibraryBinding(variable, packages));
+}
 
 export const isUnresolved: (variable: Variable | undefined) => boolean = untypedIsUnresolved;
 

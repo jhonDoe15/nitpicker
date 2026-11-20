@@ -1,4 +1,4 @@
-import { stylesheetExtensionNames } from '../../preset/layout.mjs';
+import { stylesheetExtensionNames } from '../../preset/layout.mts';
 
 const MISSING_MODULE_CODES = new Set([2307, 2792, 2882]);
 const ASSET_EXTENSIONS: readonly string[] = [

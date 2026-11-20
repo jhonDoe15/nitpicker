@@ -1,10 +1,10 @@
 import { symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { resolveLayoutFor } from '../../layout.mjs';
+import { resolveLayoutFor } from '../../layout.mts';
 import { codeFilesUnder } from '../program.mts';
 import { createProject, removeProject } from '../test-support/project.mts';
-import { loadPackages } from '../workspace/packages.mjs';
+import { loadPackages } from '../workspace/packages.mts';
 import { reexportedTestOnlyEntries } from './reexported-exports.mts';
 
 const APP = { name: 'app', private: true };

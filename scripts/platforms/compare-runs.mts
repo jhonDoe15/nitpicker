@@ -11,7 +11,7 @@ import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { requiredFields, requiredText } from '../json/fields.mts';
 import { sampleNamed } from './samples.mts';
-import { containedPath } from '../../core/fix/common/contained-path.mjs';
+import { containedPath } from '../../core/fix/tool-steps/paths/contained-path.mts';
 import { coverageEvidenceNotes } from './coverage-evidence.mts';
 import type { NormalizedRun, PlatformRun } from './smoke.mts';
 

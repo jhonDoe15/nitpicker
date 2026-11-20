@@ -1,4 +1,4 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync, type SpawnSyncOptions } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -6,8 +6,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   openOutputFile as untypedOpenOutputFile,
   spawnSyncWithOutputFile as untypedSpawnSyncWithOutputFile,
-} from './output-file.mjs';
-import { removeTrackedTemporaryPaths } from '../temporary-files.mjs';
+} from './output-file.mts';
+import { removeTrackedTemporaryPaths } from '../temporary-files.mts';
 
 type Collected = {
   error?: Error & {
@@ -19,19 +19,22 @@ type Collected = {
   };
   status: number | null;
   stdout: string | Buffer;
-  stderr: string;
+  stderr: string | Buffer;
   output: unknown[];
 };
 type OutputFile = {
   directory: string;
   descriptor: number;
   size: () => number;
-  read: (encoding: string) => string | Buffer;
+  read: (encoding: BufferEncoding) => string | Buffer;
   remove: () => void;
 };
 
-const spawnSyncWithOutputFile: (command: string, args: string[], options?: object) => Collected =
-  untypedSpawnSyncWithOutputFile;
+const spawnSyncWithOutputFile: (
+  command: string,
+  args: string[],
+  options?: SpawnSyncOptions,
+) => Collected = untypedSpawnSyncWithOutputFile;
 const openOutputFile: () => OutputFile = untypedOpenOutputFile;
 
 const REPORT_BYTES = 3 * 1024 * 1024;
@@ -48,7 +51,7 @@ describe('reading a child report through a file instead of a pipe', () => {
   let repository: string;
   let blob: string;
 
-  function catBlob(options?: object) {
+  function catBlob(options?: SpawnSyncOptions) {
     return spawnSyncWithOutputFile('git', ['cat-file', 'blob', blob], {
       cwd: repository,
       env: GIT_ENVIRONMENT,

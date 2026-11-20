@@ -5,6 +5,7 @@ import {
   policyFindings,
 } from '../reporting/review/policy-findings.mts';
 import type { DeclaredMoves } from './moved-names/declared/move-types.mts';
+import type { TouchedCode } from './model/finding-types.mts';
 import { attachFixes } from './fixes/attach-fixes.mts';
 import {
   type AnalyzerOutcome,
@@ -19,7 +20,12 @@ import { withCoChangeDependencies } from '../../../shared/history/co-change/depe
 import { withSharedUnusedDirectives } from '../../../languages/typescript/adapters/eslint/merge/unused-directives.mts';
 import { runProfileSummary } from '../../quick/summary.mts';
 import { skippedSummary } from '../skipping/lines.mts';
-import { scopeNotes, scopeOutcomes, scopeSummary } from '../../scope/scope-findings.mjs';
+import {
+  type Scope,
+  scopeNotes as scopedNotes,
+  scopeOutcomes as scopedOutcomes,
+  scopeSummary as scopedSummary,
+} from '../../scope/scope-findings.mts';
 import type { Finding, ReportEntry } from '../../../shared/values/findings.mts';
 import { type LabelsOf, findingLabeler, labelCounts } from '../../labels/finding-labels.mts';
 import { labeledFindings, labeledOutcomes, labelRun } from '../../labels/label-filter.mts';
@@ -46,7 +52,7 @@ export type ReportContext = {
   readonly acceptPolicyChange?: unknown;
   readonly policyAcceptanceSource?: unknown;
   readonly reportsPolicy: boolean;
-  readonly scope?: unknown;
+  readonly scope?: Scope | undefined;
   readonly quick?: unknown;
   readonly staged?: unknown;
   readonly labels?: LabelFilter | undefined;
@@ -63,7 +69,7 @@ export type CombineRequest = ReportContext & {
   readonly baseToHeadDirectories?: Moves | undefined;
   readonly baseToHeadPackages?: Moves | undefined;
   readonly baseToHeadDeclared?: DeclaredMoves | undefined;
-  readonly touchedCode?: { readonly testsRemoved?: unknown } | undefined;
+  readonly touchedCode?: TouchedCode | undefined;
   readonly policies?: { readonly base?: unknown; readonly head?: unknown } | undefined;
 };
 
@@ -72,7 +78,7 @@ export type DiffReport = {
   readonly newFindings: Finding[];
   readonly resolvedFindings: Finding[];
   readonly unchangedFindings: Finding[];
-  readonly changedMetrics: Finding[];
+  readonly changedMetrics: ReportEntry[];
   readonly toolErrors: ReportEntry[];
   readonly notes: ReportEntry[];
   text?: unknown;
@@ -103,12 +109,6 @@ const withSharedDirectives: (run: AnalyzerRun, analyzers: readonly unknown[]) =>
   withSharedUnusedDirectives;
 const profileSummary: (context: { readonly quick: unknown; readonly staged: unknown }) => object =
   runProfileSummary;
-const scopedOutcomes: (
-  outcomes: readonly AnalyzerOutcome[],
-  scope: unknown,
-) => readonly ScopedOutcome[] = scopeOutcomes;
-const scopedNotes: (notes: readonly ReportEntry[], scope: unknown) => ReportEntry[] = scopeNotes;
-const scopedSummary: (scope: unknown, outside: number) => object = scopeSummary;
 
 export function combineAnalyzerReports(context: CombineRequest): DiffReport {
   const { additionalToolErrors, policies = {} } = context;
@@ -191,7 +191,10 @@ function skippedCheckNotices(outcomes: readonly ScopedOutcome[]): string[] {
   ];
 }
 
-function collect(outcomes: readonly ScopedOutcome[], key: keyof FindingComparison): Finding[] {
+function collect(
+  outcomes: readonly ScopedOutcome[],
+  key: Exclude<keyof FindingComparison, 'changedMetrics'>,
+): Finding[] {
   return outcomes.flatMap(({ result }) => result[key]);
 }
 
@@ -290,7 +293,7 @@ function buildReport(context: BuildContext): DiffReport {
     newFindings: sorted(newFindings),
     resolvedFindings: sorted(collect(outcomes, 'resolvedFindings')),
     unchangedFindings: sorted(collect(outcomes, 'unchangedFindings')),
-    changedMetrics: sorted(collect(outcomes, 'changedMetrics')),
+    changedMetrics: sorted(outcomes.flatMap(({ result }) => result.changedMetrics)),
     toolErrors: sorted(toolErrors),
     notes: sorted(context.notes),
   };

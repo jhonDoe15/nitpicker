@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SHARED_BUILD_DIRECTORY_ENVIRONMENT } from '../../../../../core/tooling/build-once/build-once.mts';
-import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mts';
 import { fieldOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 import { writeFileTree } from '../../test-support/file-tree.mts';
 import { type CruiseReport, loadDependencyGraph } from '../project-dependency-graph.mts';

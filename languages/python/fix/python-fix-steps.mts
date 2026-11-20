@@ -7,7 +7,7 @@ import {
   splitByEncoding,
   withFixedLineEndingsOf,
   writeTexts,
-} from '../../../core/fix/typed/fix-views.mts';
+} from '../../../core/fix/typed/views/fix-views.mts';
 import type { ToolContext } from '../adapters/typed/context/tool-context-types.mts';
 import type { FormatterInfo, RunSettings, StepInput } from './typed/python-fix-types.mts';
 import { failure } from '../adapters/execution/python-process.mts';

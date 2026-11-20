@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { crapFindings } from '../../../../../shared/rules/crap.mjs';
 import { compareFindings } from '../../../comparison/test-support/typed-compare.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
-import { parseFinding } from '../../../comparison/finding-schema.mjs';
+import { parseFinding } from '../../../comparison/finding-schema.mts';
 
 type CrapFunction = {
   readonly score: number;

@@ -6,7 +6,7 @@ import { RULES_TOOL } from '../rules/rule-hints.mts';
 import { createToolContext, mutationVersions, toolVersions } from './python-tools.mts';
 import { TEST_CONSOLE_TOOL } from './test-results/console-output.mts';
 import { FACTS_TOOL } from './facts/python-facts.mts';
-import { mutationScopeArguments as untypedScopeArguments } from '../../../core/tooling/runner-arguments.mjs';
+import { mutationScopeArguments } from '../../../core/tooling/runner-arguments.mts';
 import { checkoutModulePath as untypedModulePath } from '../../../shared/paths/checkout-module.mjs';
 import type {
   AnalyzerProbes,
@@ -17,10 +17,10 @@ import type {
   VersionReader,
 } from './typed/context/analyzer-types.mts';
 import { EXECUTION_INPUTS } from '../../../shared/input-sets/inputs.mjs';
+import { textsOf } from '../../../shared/values/readers.mts';
 
 const importClosure: (relativePaths: string[], root: string) => Map<string, string> =
   untypedClosure;
-const mutationScopeArguments: (scope: unknown) => string[] = untypedScopeArguments;
 const checkoutModulePath: (file: string) => string = untypedModulePath;
 export const PYTHON_ANALYZER_NAME = 'python';
 export const MUTATION_ANALYZER_NAME = 'mutation';
@@ -92,7 +92,9 @@ function pythonInvocation(
       ...(part === PYTHON_ANALYZER_NAME && baselineMovesFile !== undefined
         ? ['--baseline-moves-file', baselineMovesFile]
         : []),
-      ...(part === MUTATION_ANALYZER_NAME ? mutationScopeArguments(mutationScope) : []),
+      ...(part === MUTATION_ANALYZER_NAME
+        ? mutationScopeArguments(mutationScope === undefined ? undefined : textsOf(mutationScope))
+        : []),
     ],
     cwd: toolRoot,
   });

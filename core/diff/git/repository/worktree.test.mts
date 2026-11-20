@@ -14,8 +14,8 @@ import { useGitFixtures } from '../test-support/git-repository.mts';
 import {
   withNamedTemporaryWorktree as withNamedWorktreeJs,
   withTemporaryWorktree as withWorktreeJs,
-} from './worktree.mjs';
-import { runGit as runGitJs } from './command.mjs';
+} from './worktree.mts';
+import { runGit as runGitJs } from './command.mts';
 
 type Warn = (message: string) => unknown;
 

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { EDITED_LINE_SENTENCE } from '../../../../../core/diff/comparison/positions/touched-lines.mjs';
+import { EDITED_LINE_SENTENCE } from '../../../../../core/diff/comparison/positions/touched-lines.mts';
 import {
   commitBranch,
   diffOf,

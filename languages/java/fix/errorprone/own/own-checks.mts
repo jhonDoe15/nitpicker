@@ -1,4 +1,4 @@
-import { REVIEW, SAFE } from '../../../../../core/fix/engine/safety.mjs';
+import { REVIEW, SAFE } from '../../../../../core/fix/engine/safety.mts';
 import path from 'node:path';
 import { GRADLE_DIRECTORY as untypedGradleDirectory } from '../../../builds/java-build.mts';
 import type { RuleRef } from '../../../../../core/fix/typed/fix-types.mts';

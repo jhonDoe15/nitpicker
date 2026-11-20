@@ -1,5 +1,5 @@
 import { ChildProcess, spawn } from 'node:child_process';
-import { openOutputFile } from '../../tooling/output-file/output-file.mjs';
+import { openOutputFile } from '../../tooling/output-file/output-file.mts';
 import {
   ANALYZER_TIMEOUT_KEY,
   ANALYZER_TIMEOUT_VARIABLE,
@@ -9,7 +9,7 @@ import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
 } from '../../../shared/messages/troubleshooting.mjs';
-import { withoutHostCiOutputs } from '../../tooling/host-environment.mjs';
+import { withoutHostCiOutputs } from '../../tooling/host-environment.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 import { withCompileCache } from '../../../shared/processes/environment.mts';
 import { withNodeHeap } from '../../../shared/processes/memory/node-heap.mts';

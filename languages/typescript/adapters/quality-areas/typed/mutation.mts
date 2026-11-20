@@ -1,12 +1,12 @@
 import type { Finding } from '../../static-checks/shared.mts';
-import type { Layout } from '../../typed/head-policy.mts';
-import { parseChangedLines as untypedParseChangedLines } from '../../../../../core/diff/git/patches/changed-lines.mjs';
-import { runGit as untypedRunGit } from '../../../../../core/diff/git/repository/command.mjs';
-import { diffFromBase as untypedDiffFromBase } from '../../../../../core/tooling/git/base-diff.mjs';
+import type { StrykerConfig } from '../../../preset/project-configs/project-config-types.mts';
+import { parseChangedLines as untypedParseChangedLines } from '../../../../../core/diff/git/patches/changed-lines.mts';
+import { runGit } from '../../../../../core/diff/git/repository/command.mts';
+import { diffFromBase } from '../../../../../core/tooling/git/base-diff.mts';
 import {
   isInMutationScope as untypedIsInMutationScope,
   scopedProjectFiles as untypedScopedProjectFiles,
-} from '../../../../../core/scope/mutation-scope.mjs';
+} from '../../../../../core/scope/mutation-scope.mts';
 import { globMatcher as untypedGlobMatcher } from '../../../../../shared/paths/glob.mjs';
 import { pathInside as untypedPathInside } from '../../../../../shared/filesystem.mjs';
 import { exceptionRoute as untypedExceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
@@ -14,8 +14,8 @@ import { mutantRuleId as untypedMutantRuleId } from '../../../../../shared/polic
 import {
   layeredStrykerConfig as untypedLayeredStrykerConfig,
   withoutProjectIgnoredMutants as untypedWithoutProjectIgnoredMutants,
-} from '../../../preset/project-configs/stryker-project-config.mjs';
-import { layoutTransformFor as untypedLayoutTransformFor } from '../../../preset/tool-configs.mjs';
+} from '../../../preset/project-configs/stryker-project-config.mts';
+import { layoutTransformFor } from '../../../preset/tool-configs.mts';
 
 type Position = { readonly line?: number; readonly column?: number };
 
@@ -44,28 +44,17 @@ export type MutationOutcome =
       readonly notes?: readonly Finding[];
     };
 
-export type StrykerConfig = Readonly<Record<string, unknown>>;
-
 export type ChangedFile = { readonly path: string; readonly ranges: [number, number][] };
-
-type Transform = ((text: string, targetPath: string) => string) | undefined;
 
 export const parseChangedLines: (diffText: string) => Map<string, ChangedFile> =
   untypedParseChangedLines;
-
-const diffFromBase: (request: {
-  readonly runGit: unknown;
-  readonly baselineRoot: string;
-  readonly projectRoot: string;
-  readonly args: readonly string[];
-}) => string = untypedDiffFromBase;
 
 export function gitDiffFromBase(
   baselineRoot: string,
   projectRoot: string,
   args: readonly string[],
 ): string {
-  return diffFromBase({ runGit: untypedRunGit, baselineRoot, projectRoot, args });
+  return diffFromBase({ runGit, baselineRoot, projectRoot, args });
 }
 
 export const isInMutationScope: (
@@ -104,8 +93,4 @@ export const withoutProjectIgnoredMutants: (
   appliedConfig: StrykerConfig,
 ) => MutationReport = untypedWithoutProjectIgnoredMutants;
 
-export const layoutTransformFor: (
-  policyFileName: string,
-  layout: Layout,
-  options?: { readonly strictMutants: boolean },
-) => Transform = untypedLayoutTransformFor;
+export { layoutTransformFor };

@@ -72,7 +72,7 @@ describe.skipIf(!enabled)('Java preset on Maven reactor modules', () => {
       findings
         .filter((finding) => finding.tool === 'test-runtime')
         .filter((finding) => finding.classification === 'enforceable')
-        .map(({ rule, path: file, identity }) => `${rule} ${file} ${String(identity)}`)
+        .map(({ rule, path: file, identity }) => `${rule} ${file} ${identity}`)
         .sort(),
     ).toEqual([
       'slow-test core/src/test/java/demo/core/AdderTest.java test:demo.core.AdderTest#adds',

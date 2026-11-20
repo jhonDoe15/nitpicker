@@ -3,7 +3,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { writeFiles } from '../../core/diff/git/test-support/fixture-files.mts';
-import { containedPath } from '../../core/fix/common/contained-path.mjs';
+import { containedPath } from '../../core/fix/tool-steps/paths/contained-path.mts';
 import { type Fields, fieldsOf } from '../json/fields.mts';
 import {
   CONSUMER_SOURCE,

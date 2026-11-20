@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detectTestRunner as untypedDetectTestRunner, testRunnerFor } from './detect-runner.mjs';
+import { detectTestRunner as untypedDetectTestRunner, testRunnerFor } from './detect-runner.mts';
 import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
 const detectTestRunner: (root: string) => { readonly runner: string } = untypedDetectTestRunner;

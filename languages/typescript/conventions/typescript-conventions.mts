@@ -1,9 +1,9 @@
 import type { ConventionDefinition } from '../../../shared/values/config-types.mts';
-import { FILE_NAME_CONVENTION as UNTYPED_FILE_NAME_CONVENTION } from './file-name-casing.mjs';
+import { FILE_NAME_CONVENTION as UNTYPED_FILE_NAME_CONVENTION } from './file-name-casing.mts';
 import { ASSERTION_HELPERS_CONVENTION } from './measures/assertion-functions.mts';
 import { DATA_CONVENTIONS } from './measures/data-conventions.mts';
 import { DETACHED_WORK_RUNNERS_CONVENTION } from './measures/detached-work-runners.mts';
-import { JSX_CONVENTIONS as UNTYPED_JSX_CONVENTIONS } from './measures/jsx-conventions.mjs';
+import { JSX_CONVENTIONS as UNTYPED_JSX_CONVENTIONS } from './measures/jsx-conventions.mts';
 import { SOFT_DELETE_FILTERS_CONVENTION as UNTYPED_SOFT_DELETE_FILTERS_CONVENTION } from './measures/database/soft-delete-filters.mts';
 import { TRANSACTIONS_CONVENTION as UNTYPED_TRANSACTIONS_CONVENTION } from './measures/database/transactions.mts';
 import { ROUTE_AUTH_CONVENTION as UNTYPED_ROUTE_AUTH_CONVENTION } from './measures/routes/route-auth.mts';

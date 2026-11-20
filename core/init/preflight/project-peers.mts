@@ -1,14 +1,14 @@
 import {
   needsProjectTypeScript,
   runsProjectTests,
-} from '../../../languages/typescript/preset/diff/configured-analyzers.mjs';
-import { testRunnerFor } from '../../../languages/typescript/preset/test-runner/detect-runner.mjs';
+} from '../../../languages/typescript/preset/diff/configured-analyzers.mts';
+import { testRunnerFor } from '../../../languages/typescript/preset/test-runner/detect-runner.mts';
 import { listNames } from '../../../shared/messages/messages.mjs';
-import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mts';
 import { describePackageManager } from '../detection/package-manager.mts';
 import { type PeerNeeds, nodePeerNeeds, runnerPeers } from '../peers/node-peers.mts';
 import { installCommand } from '../peers/peer-plan.mts';
-import { fieldOf, textOf } from '../../../shared/values/readers.mts';
+import { fieldOf, optionalText, textOf } from '../../../shared/values/readers.mts';
 import type { PackageManager } from '../init-types.mts';
 
 type PeerRun = {
@@ -20,9 +20,6 @@ type PeerRun = {
 
 const TYPESCRIPT = 'typescript';
 
-const runnerOf: (projectRoot: string, configured: unknown) => { readonly runner?: unknown } =
-  testRunnerFor;
-
 function neededPeers(
   projectRoot: string,
   analyzers: readonly unknown[],
@@ -31,11 +28,13 @@ function neededPeers(
   const names = new Set(
     analyzers
       .filter((analyzer) => fieldOf(analyzer, 'policyFromPackage') === true)
-      .map((analyzer) => fieldOf(analyzer, 'name')),
+      .map((analyzer) => textOf(fieldOf(analyzer, 'name'))),
   );
   const needsTypeScript = [...names].some((name) => needsProjectTypeScript(name));
   const runsTests = [...names].some((name) => runsProjectTests(name));
-  const runner = runsTests ? runnerOf(projectRoot, configuredRunner).runner : undefined;
+  const runner = runsTests
+    ? testRunnerFor(projectRoot, optionalText(configuredRunner)).runner
+    : undefined;
   return [
     ...(needsTypeScript ? [TYPESCRIPT] : []),
     ...(runner === undefined ? [] : runnerPeers(textOf(runner))),

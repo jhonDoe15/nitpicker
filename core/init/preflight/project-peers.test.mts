@@ -3,7 +3,7 @@ import { runCli } from '../../cli.mts';
 import { useCliFixtures } from '../../command/test-support/cli-harness.mts';
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
 import { useProjects, withPeers } from '../test-support/projects.mts';
-import { quotedTypescriptPin } from '../test-support/typescript-pin.mjs';
+import { quotedTypescriptPin } from '../test-support/typescript-pin.mts';
 import { assertProjectPeers } from './project-peers.mts';
 
 const project = useProjects();

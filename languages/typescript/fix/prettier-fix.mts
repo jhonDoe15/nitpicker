@@ -1,8 +1,8 @@
 import path from 'node:path';
-import { staticChecks } from '../preset/quality-checks.mjs';
-import { usesLayeredPrettier as untypedUsesLayeredPrettier } from '../preset/head-policy.mjs';
+import { staticChecks } from '../preset/quality-checks.mts';
+import { usesLayeredPrettier as untypedUsesLayeredPrettier } from '../preset/head-policy.mts';
 import { fileURLToPath } from 'node:url';
-import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mts';
 import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
 import type { FixFile, FixSettings, FixStep } from '../../../core/fix/typed/fix-types.mts';
@@ -11,7 +11,7 @@ import {
   formatNotes,
   rewriteFormatted,
   runFixCommand,
-} from '../../../core/fix/typed/fix-views.mts';
+} from '../../../core/fix/typed/views/fix-views.mts';
 
 const usesLayeredPrettier: (environment: NodeJS.ProcessEnv) => boolean = untypedUsesLayeredPrettier;
 
@@ -32,8 +32,8 @@ function prettierCheck(): { readonly config: string; readonly ignore: string } {
     throw new Error('The prettier-format check is not defined');
   }
   return {
-    config: found.configRelativePath,
-    ignore: textOf(fieldOf(found, 'ignoreRelativePath')),
+    config: found.configRelativePath ?? '',
+    ignore: textOf(found.ignoreRelativePath),
   };
 }
 

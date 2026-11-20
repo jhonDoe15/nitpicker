@@ -4,8 +4,8 @@ import { failureMessagesFor } from './typed/lint-fixture.mts';
 import { TEST_TIMEOUT_CEILING_MS } from '../eslint-plugin/rules/test-runtime/assertions/no-raised-test-timeout.mts';
 import tseslint from 'typescript-eslint';
 import { testTimeouts } from '../../adapters/test-runners/test-run.mts';
-import { resolveLayout } from '../layout.mjs';
-import { defaultTestFiles as untypedDefaultTestFiles } from '../test-runner/test-files/test-file-patterns.mjs';
+import { resolveLayout } from '../layout.mts';
+import { defaultTestFiles } from '../test-runner/test-files/test-file-patterns.mts';
 import { isStrictRule } from '../strict-rules.mts';
 import { strictPresetConfig } from './strict.mts';
 import {
@@ -14,8 +14,6 @@ import {
   strictTestRules,
   strictTestsConfig,
 } from './strict-tests.mts';
-
-const defaultTestFiles: (runner: string) => unknown = untypedDefaultTestFiles;
 
 const raisedTimeout = "it('slow', () => {}, 60_000);";
 const loopMessage =

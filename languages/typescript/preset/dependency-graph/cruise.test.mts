@@ -1,14 +1,14 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
-import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mts';
 import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mjs';
 import { parseArguments } from '../../adapters/quality-areas/arguments.mts';
 import { runQualityAreaReport } from '../../adapters/quality-areas-runner.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
-import { projectImports as untypedProjectImports } from './cruise.mjs';
+import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
+import { projectImports as untypedProjectImports } from './cruise.mts';
 
 type ImportGraph = {
   readonly modules: readonly {
@@ -26,19 +26,14 @@ const projectImports: (
   isProduction: (file: string) => boolean,
 ) => { readonly from: string; readonly to: string }[] = untypedProjectImports;
 
-const roots: string[] = [];
+const { emptyProject } = useTemporaryProjects('nitpicker-diff-', { resolveSymlinks: true });
 
 afterEach(() => {
   vi.unstubAllEnvs();
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
 });
 
 function projectWith(files: Readonly<Record<string, string>>): string {
-  const parent = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-')));
-  roots.push(parent);
-  const root = path.join(parent, 'head');
+  const root = path.join(emptyProject(), 'head');
   writeFiles(root, files);
   return root;
 }

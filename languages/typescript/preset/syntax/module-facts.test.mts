@@ -5,7 +5,7 @@ import {
   fileAliasReads as untypedFileAliasReads,
   fileDynamicImports,
   fileExports,
-} from './module-facts.mjs';
+} from './module-facts.mts';
 
 const exportLine: (file: ts.SourceFile, name: string) => number | undefined = untypedExportLine;
 const fileAliasReads: (file: ts.SourceFile) => { text: string }[] = untypedFileAliasReads;

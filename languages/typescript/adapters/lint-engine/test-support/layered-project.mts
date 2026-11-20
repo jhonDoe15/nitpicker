@@ -4,11 +4,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { vi } from 'vitest';
 import { HEAD_POLICY_ENV } from '../../../../../shared/head-policy.mjs';
-import { RULE_EXCEPTION_ENTRY } from '../../../preset/eslint-config/exceptions.mjs';
+import { RULE_EXCEPTION_ENTRY } from '../../../preset/eslint-config/exceptions.mts';
 import { LINT_CONFIG } from '../../../preset/test-environment/resolve-environment.mts';
 import { createProject } from '../../oxlint/test-support/oxlint-project.mts';
 import { runLintEngine } from '../lint-engine.mts';
-import { resolveHeadPolicy, type TestHeadPolicy } from './engine-views.mts';
+import { resolveHeadPolicy } from './engine-views.mts';
+import type { HeadPolicyFile } from '../../../preset/typed/head-policy-types.mts';
 import { fieldOf, listOf, numberOr, textOf } from '../../../../../shared/values/readers.mts';
 
 const TSESLINT = JSON.stringify(import.meta.resolve('typescript-eslint'));
@@ -119,7 +120,7 @@ export function headPolicyFor({
   readonly engine: string;
   readonly precedence?: readonly string[] | undefined;
   readonly liveProjectRoot: string;
-}): TestHeadPolicy {
+}): HeadPolicyFile {
   const eslint = { engine, ...(precedence === undefined ? {} : { precedence }) };
   return resolveHeadPolicy({ tools: { eslint } }, liveProjectRoot);
 }
@@ -132,7 +133,7 @@ export async function lintLayered({
 }: {
   readonly projectRoot: string;
   readonly liveProjectRoot?: string;
-  readonly policy: TestHeadPolicy;
+  readonly policy: HeadPolicyFile;
   readonly configRelativePath?: string;
 }): Promise<{ file: string; ruleId: unknown; line: number }[]> {
   const directory = await mkdtemp(path.join(tmpdir(), 'nitpicker-eslint-layer-policy-'));

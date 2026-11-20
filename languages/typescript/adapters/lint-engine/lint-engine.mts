@@ -9,7 +9,7 @@ import {
 } from '../../preset/test-environment/resolve-environment.mts';
 import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
 import { incompatiblePackageMessage } from './compatibility/incompatible-package.mts';
-import { PROJECT_LAYER_VARIABLE } from './project-layer.mjs';
+import { PROJECT_LAYER_VARIABLE } from './project-layer.mts';
 import type { TestEnvironments } from '../eslint/typed/engine.mts';
 import { type LintEngineOptions, projectLayerValue, troubleshootingError } from './typed/tools.mts';
 import { type CollectedRun, spawnCollected } from '../oxlint/oxlint-process.mts';

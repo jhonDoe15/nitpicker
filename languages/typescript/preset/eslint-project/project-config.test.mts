@@ -2,28 +2,15 @@ import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { projectStyle as conventionStyle } from '../../../../core/conventions/test-support/project-style.mts';
-import {
-  resolveHeadPolicy as untypedResolveHeadPolicy,
-  withHeadCheckoutFacts as untypedWithHeadCheckoutFacts,
-} from '../head-policy.mjs';
+import { resolveHeadPolicy, withHeadCheckoutFacts } from '../head-policy.mts';
 import {
   eslintConfigFiles as untypedEslintConfigFiles,
   eslintProjectFacts as untypedEslintProjectFacts,
-} from './project-config.mjs';
+} from './project-config.mts';
 import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
-type EslintSettings = {
-  engine?: string;
-  precedence?: string[];
-  projectConfigMissing?: boolean;
-};
-type HeadPolicy = { tools: { eslint: EslintSettings } };
 type Files = Record<string, string>;
 
-const resolveHeadPolicy: (config: Record<string, unknown>, projectRoot?: string) => HeadPolicy =
-  untypedResolveHeadPolicy;
-const withHeadCheckoutFacts: (policy: HeadPolicy, head: HeadPolicy) => HeadPolicy =
-  untypedWithHeadCheckoutFacts;
 const eslintConfigFiles: (projectRoot: string) => string[] = untypedEslintConfigFiles;
 const eslintProjectFacts: (projectRoot: string) => {
   projectConfigFile?: string;
@@ -164,10 +151,10 @@ describe('the head policy for the ESLint project config', () => {
     const head = resolveHeadPolicy(optedIn, root);
     const staleBase = resolveHeadPolicy(optedIn, project({}));
 
-    expect(staleBase.tools.eslint.projectConfigMissing).toBe(true);
-    expect(withHeadCheckoutFacts(staleBase, head).tools.eslint).toEqual(head.tools.eslint);
-    expect(withHeadCheckoutFacts(resolveHeadPolicy(optedIn), head).tools.eslint).toEqual(
-      head.tools.eslint,
+    expect(staleBase.tools?.eslint?.projectConfigMissing).toBe(true);
+    expect(withHeadCheckoutFacts(staleBase, head).tools?.eslint).toEqual(head.tools?.eslint);
+    expect(withHeadCheckoutFacts(resolveHeadPolicy(optedIn), head).tools?.eslint).toEqual(
+      head.tools?.eslint,
     );
     expect(withHeadCheckoutFacts(resolveHeadPolicy({ tools: {} }), head).tools).toEqual({});
   });

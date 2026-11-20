@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import * as prettier from 'prettier';
 import { describe, expect, it } from 'vitest';
-import { prettierExclusions } from '../../../core/fix/extensions.mjs';
+import { prettierExclusions } from '../../../core/fix/extensions.mts';
 import { fieldOf, parseJson, textOf, textsOf } from '../../../shared/values/readers.mts';
-import { readLayout as untypedReadLayout } from './head-policy.mjs';
+import { readLayout as untypedReadLayout } from './head-policy.mts';
 import {
   builtInExcludedGlobs as untypedBuiltInExcludedGlobs,
   defaultResolvedLayout as untypedDefaultResolvedLayout,
@@ -17,7 +17,7 @@ import {
   resolveLayoutFor,
   sourceRoot as untypedSourceRoot,
   testRoots as untypedTestRoots,
-} from './layout.mjs';
+} from './layout.mts';
 
 const builtInExcludedGlobs = textsOf(untypedBuiltInExcludedGlobs);
 const defaultResolvedLayout = {

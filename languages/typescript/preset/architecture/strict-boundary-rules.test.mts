@@ -1,9 +1,11 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DEPENDENCY_RULES as untypedDependencyRules } from '../../../../shared/exceptions/rule-tools.mjs';
-import untypedCruiserConfig from '../defaults/dependency-cruiser.config.mjs';
+import untypedCruiserConfig from '../defaults/dependency-cruiser.config.mts';
 import { fieldOf, listOf, parseJson, textOf, textsOf } from '../../../../shared/values/readers.mts';
-import { NO_IMPORT_OUTSIDE_ROOTS } from './outside-roots/outside-roots.mjs';
+import { NO_IMPORT_OUTSIDE_ROOTS } from './outside-roots/outside-roots.mts';
+import type { LayoutTestFiles } from '../layout/layout-types.mts';
+import type { BoundaryRule } from './typed/rule-types.mts';
 import {
   cruiseStrict,
   cruiseWithConfig,
@@ -16,23 +18,16 @@ import {
   sharedReachPath as untypedSharedReachPath,
   strictBoundaryRules as untypedStrictBoundaryRules,
   strictBoundaryRulesFor as untypedStrictBoundaryRulesFor,
-} from './strict-boundary-rules.mjs';
+} from './strict-boundary-rules.mts';
 import {
   testFilePathPatterns as untypedTestFilePathPatterns,
   testFilePaths as untypedTestFilePaths,
-} from './strict-layout.mjs';
-import { resolveLayout } from '../layout.mjs';
+} from './strict-layout.mts';
+import { resolveLayout } from '../layout.mts';
 import {
-  defaultTestFiles as untypedDefaultTestFiles,
-  testFilePatterns as untypedTestFilePatterns,
-} from '../test-runner/test-files/test-file-patterns.mjs';
-
-type StrictRule = {
-  readonly name: string;
-  readonly comment: string;
-  readonly from: { readonly pathNot?: readonly string[] };
-  readonly to: { readonly path: string | readonly string[] };
-};
+  defaultTestFiles,
+  testFilePatterns,
+} from '../test-runner/test-files/test-file-patterns.mts';
 
 type Exception = {
   readonly rule: string;
@@ -40,21 +35,20 @@ type Exception = {
   readonly reason: string;
 };
 
-const strictBoundaryRules: readonly StrictRule[] = untypedStrictBoundaryRules;
-const strictBoundaryRulesFor: (exceptions: readonly Exception[]) => readonly StrictRule[] =
+const strictBoundaryRules: readonly BoundaryRule[] = untypedStrictBoundaryRules;
+const strictBoundaryRulesFor: (exceptions: readonly Exception[]) => readonly BoundaryRule[] =
   untypedStrictBoundaryRulesFor;
-const sharedReachPath: (violation: unknown, modules: unknown) => string[] | undefined =
-  untypedSharedReachPath;
+function sharedReachPath(violation: unknown, modules: unknown): string[] | undefined {
+  const found: unknown = Reflect.apply(untypedSharedReachPath, undefined, [violation, modules]);
+  return found === undefined ? undefined : textsOf(found);
+}
 const cruiserConfig: { readonly forbidden: readonly { readonly name: string }[] } =
   untypedCruiserConfig;
 const DEPENDENCY_RULES: readonly string[] = untypedDependencyRules;
 const strictConfig: FixtureConfig = untypedStrictConfig;
 const testFilePaths: readonly string[] = untypedTestFilePaths;
-const testFilePathPatterns: (layout: unknown, projectRoot: string) => unknown =
-  untypedTestFilePathPatterns;
-const defaultTestFiles: (runner: string) => unknown = untypedDefaultTestFiles;
-function testFilePatterns(options: { includeRegexes: string[] }): unknown {
-  return Reflect.apply(untypedTestFilePatterns, undefined, [options]);
+function testFilePathPatterns(layout: unknown, projectRoot: string): unknown {
+  return Reflect.apply(untypedTestFilePathPatterns, undefined, [layout, projectRoot]);
 }
 
 const fixturesRoot = path.resolve(import.meta.dirname, 'fixtures/strict');
@@ -235,7 +229,7 @@ describe('the test files of each runner in domain/', () => {
     '(?:^|/)(?:src)/.*\\.(?:test|spec)\\.',
   ];
 
-  function patternsFor(testFiles: unknown): string[] {
+  function patternsFor(testFiles: LayoutTestFiles): string[] {
     const layout: unknown = resolveLayout({}, [], { testFiles });
     const patterns: unknown = testFilePathPatterns(layout, fixture);
     return textsOf(patterns);

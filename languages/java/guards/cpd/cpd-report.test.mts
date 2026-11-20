@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { temporaryTrees } from '../../test-support/temporary-trees.mts';
-import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
+import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mts';
 import { readCpdFindings } from '../cpd-duplicates.mts';
 
 const trees = temporaryTrees('nitpicker-cpd-');

@@ -1,5 +1,5 @@
 import type { Linter } from 'eslint';
-import { CARRIED_VARIABLE } from './carried-variable.mjs';
+import { CARRIED_VARIABLE } from './carried-variable.mts';
 
 export { CARRIED_VARIABLE };
 

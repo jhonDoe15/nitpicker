@@ -5,7 +5,7 @@ import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
 import type { ProfiledAnalyzer } from '../../../../../shared/values/analyzers.mts';
 import type { DiffOptions } from '../../../comparison/run-diff.mts';
 import type { FileMap } from '../../../git/test-support/fixture-files.mts';
-import { runGit } from '../../../git/repository/command.mjs';
+import { runGit } from '../../../git/repository/command.mts';
 import { runTasksInProcess } from '../../../execution/test-support/in-process-analyzers.mts';
 import { commit, useGitFixtures } from '../../../git/test-support/git-repository.mts';
 import { writeFiles } from '../../../git/test-support/fixture-files.mts';

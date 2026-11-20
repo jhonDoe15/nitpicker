@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { ts as untypedTs } from '../../typescript-api/typescript-api.mjs';
+import { ts as untypedTs } from '../../typescript-api/typescript-api.mts';
 import { chainOf as untypedChainOf } from '../../../../shared/traversal.mjs';
 import { isTypeScriptApi } from '../../../../shared/values/boundaries/typescript-guard.mts';
 

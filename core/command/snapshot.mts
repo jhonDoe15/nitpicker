@@ -6,24 +6,24 @@ import {
   renderRuleFilterSection as renderSnapshotRuleFilterSection,
 } from '../snapshot/reporters.mts';
 import { analyzerRunOptions, selectAnalyzers } from '../diff/execution/run-analyzers.mts';
-import { withNamedTemporaryWorktree } from '../diff/git/repository/worktree.mjs';
+import { withNamedTemporaryWorktree } from '../diff/git/repository/worktree.mts';
 import { removeSnapshotDependencies } from '../../languages/typescript/adapters/static-checks/dependencies.mts';
 import { prepareShared } from '../diff/comparison/snapshots/dependencies.mts';
 import type { SharedWorktree } from '../diff/comparison/snapshots/run-types.mts';
-import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../tooling/tool-resolution.mts';
 import { type QualitySnapshot, runQualitySnapshot } from '../snapshot/run-snapshot.mts';
 import {
   colorEnabled as untypedColorEnabled,
   displayPath as untypedDisplayPath,
 } from '../../shared/messages/terminal/terminal-text.mjs';
 import { realpathSync } from 'node:fs';
-import { runGit } from '../diff/git/repository/command.mjs';
+import { runGit } from '../diff/git/repository/command.mts';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mts';
-import { captureWorkingTree } from '../diff/git/repository/git.mjs';
+import { captureWorkingTree } from '../diff/git/repository/git.mts';
 import { runProfileSummary } from '../quick/summary.mts';
 import { outputRootFor } from '../diff/reporting/reporters.mts';
 import { assertHasCommit } from '../diff/git/repository/base-ref.mts';
-import { runStamp as untypedRunStamp } from '../diff/reporting/run-stamp/run-stamp.mjs';
+import { runStamp as untypedRunStamp } from '../diff/reporting/run-stamp/run-stamp.mts';
 import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mts';
 import { failingHeadTests as failingTestsOf } from '../diff/reporting/failing-tests/failing-tests.mts';
 import { snapshotJson } from '../diff/reporting/json-output/json-output.mts';
@@ -33,6 +33,7 @@ import { appendAll } from '../../shared/lists/lists.mts';
 import { fieldOf, numberOr, objectOf, textOf } from '../../shared/values/readers.mts';
 import { projectHeader } from './comparison/outcome.mts';
 import { finishSnapshotResume, snapshotResume } from '../diff/cache/resume/snapshot-resume.mts';
+import type { Scope } from '../scope/scope-findings.mts';
 import type { LabelFilter } from '../labels/taxonomy.mts';
 
 const displayPath: (absolutePath: string) => string = untypedDisplayPath;
@@ -59,7 +60,7 @@ type SnapshotCli = {
   readonly jsonOutput?: TextOutput | undefined;
   readonly environment: NodeJS.ProcessEnv;
   readonly runTasks: unknown;
-  readonly scope: unknown;
+  readonly scope: Scope | undefined;
   readonly labels?: LabelFilter | undefined;
   readonly setupErrors: readonly object[];
   readonly additionalToolErrors?: readonly unknown[];
@@ -75,20 +76,11 @@ type WorktreeRun = {
   readonly selectedAnalyzers: readonly unknown[];
   readonly currentProjectRoot: string;
   readonly headPolicy: unknown;
-  readonly scope: unknown;
+  readonly scope: Scope | undefined;
   readonly setupErrors: readonly object[];
   readonly sharedHead?: SharedWorktree | undefined;
 };
 
-const inWorktree: (
-  repositoryRoot: string,
-  snapshot: {
-    readonly commitSha: unknown;
-    readonly directoryName: string;
-    readonly warn: (message: string) => unknown;
-  },
-  operation: (worktreeRoot: string) => SnapshotReport,
-) => SnapshotReport = withNamedTemporaryWorktree;
 const runStampOf: (request: {
   readonly projectRoot: string;
   readonly outputRoot: string;
@@ -99,8 +91,10 @@ function isCapture(value: unknown): value is Capture {
   return typeof value === 'function';
 }
 
-function stderrWarning(stderr: TextOutput): (message: string) => unknown {
-  return (message) => stderr.write(`nitpicker: ${message}\n`);
+function stderrWarning(stderr: TextOutput): (message: string) => void {
+  return (message) => {
+    stderr.write(`nitpicker: ${message}\n`);
+  };
 }
 
 export function runSnapshotCli(cli: SnapshotCli): number {
@@ -135,7 +129,7 @@ export function runSnapshotCli(cli: SnapshotCli): number {
   }
   const report =
     sharedHead === undefined
-      ? inWorktree(repositoryRoot, snapshot, inSnapshot)
+      ? withNamedTemporaryWorktree(repositoryRoot, snapshot, inSnapshot)
       : inSnapshot(sharedHead.root);
   addToolErrors(report, cli.additionalToolErrors ?? []);
   Object.assign(
@@ -158,7 +152,11 @@ function capturedRun(cli: SnapshotCli, selectedAnalyzers: readonly unknown[]) {
   const { repositoryRoot, relativeProjectPath, capturedSha } = captured;
   return {
     ...captured,
-    snapshot: { commitSha: capturedSha, directoryName: 'head', warn: stderrWarning(cli.stderr) },
+    snapshot: {
+      commitSha: textOf(capturedSha),
+      directoryName: 'head',
+      warn: stderrWarning(cli.stderr),
+    },
     resume: snapshotResume({
       ...cli,
       repositoryRoot,

@@ -2,22 +2,16 @@ import {
   layerEntries as untypedLayerEntries,
   layeredPolicy as untypedLayeredPolicy,
   projectLayerValue as untypedProjectLayerValue,
-} from '../project-layer.mjs';
-import { projectEntries as untypedProjectEntries } from '../project-loader.mjs';
-import { replacedOptionRules as untypedReplacedOptionRules } from '../project-rules.mjs';
+} from '../project-layer.mts';
+import { projectEntries as untypedProjectEntries } from '../project-loader.mts';
+import { replacedOptionRules as untypedReplacedOptionRules } from '../project-rules.mts';
 import { replacedEslintOptions as untypedReplacedEslintOptions } from '../replaced-options.mts';
-import { applyRuleExceptions as untypedApplyRuleExceptions } from '../../../preset/eslint-config/exceptions.mjs';
-import {
-  resolveHeadPolicy as untypedResolveHeadPolicy,
-  withHeadCheckoutFacts as untypedWithHeadCheckoutFacts,
-} from '../../../preset/head-policy.mjs';
+import type { FlatEntry } from '../typed/flat-config.mts';
 import type { Environment } from '../../../../../shared/processes/environment.mts';
 
-export { PROJECT_LAYER_VARIABLE } from '../project-layer.mjs';
+export { PROJECT_LAYER_VARIABLE } from '../project-layer.mts';
 
-export type TestHeadPolicy = { readonly tools: { readonly eslint?: unknown } };
-
-export type FlatEntry = Readonly<Record<string, unknown>>;
+export type { FlatEntry };
 
 type LayerSettings = {
   readonly precedence?: readonly string[];
@@ -49,16 +43,6 @@ export const replacedEslintOptions: (
   projectRoot: string,
 ) => { readonly rules?: string[]; readonly error?: string } = untypedReplacedEslintOptions;
 
-export const resolveHeadPolicy: (config: object, projectRoot?: string) => TestHeadPolicy =
-  untypedResolveHeadPolicy;
+export { resolveHeadPolicy, withHeadCheckoutFacts } from '../../../preset/head-policy.mts';
 
-export const withHeadCheckoutFacts: (
-  policy: TestHeadPolicy,
-  headPolicy: TestHeadPolicy,
-) => TestHeadPolicy = untypedWithHeadCheckoutFacts;
-
-export const applyRuleExceptions: (
-  entries: readonly FlatEntry[],
-  exceptions: unknown[],
-  options: { readonly projectRules: boolean },
-) => FlatEntry[] = untypedApplyRuleExceptions;
+export { applyRuleExceptions } from '../../../preset/eslint-config/exceptions.mts';

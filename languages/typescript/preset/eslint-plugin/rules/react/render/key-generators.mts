@@ -3,8 +3,8 @@ import type TypeScript from 'typescript';
 import {
   isExported as untypedIsExported,
   scriptKindOf as untypedScriptKindOf,
-} from '../../../../modules/module-sources.mjs';
-import { readStamped as untypedReadStamped } from '../../../../modules/stamped-file-cache.mjs';
+} from '../../../../modules/module-sources.mts';
+import { readStamped as untypedReadStamped } from '../../../../modules/stamped-file-cache.mts';
 import { ts } from '../../typed/typescript-views.mts';
 
 export type Binding = { readonly bound: boolean; readonly source?: string };

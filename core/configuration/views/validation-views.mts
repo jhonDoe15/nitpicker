@@ -8,8 +8,8 @@ import {
   didYouMean as untypedDidYouMean,
   suggestionOrAllowed as untypedSuggestionOrAllowed,
 } from '../../../shared/messages/closest-match.mjs';
-import { stylingApproaches as untypedStylingApproaches } from '../../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
-import { i18nRuleIds as untypedI18nRuleIds } from '../../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
+import { stylingApproaches as untypedStylingApproaches } from '../../../languages/typescript/preset/eslint-config/react/react-rules.mts';
+import { i18nRuleIds as untypedI18nRuleIds } from '../../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mts';
 
 export function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;

@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { containedPath } from '../../../../../../core/fix/common/contained-path.mjs';
+import { containedPath } from '../../../../../../core/fix/tool-steps/paths/contained-path.mts';
 import {
   ALLOWANCES_REPORT,
   RULES_REPORT,

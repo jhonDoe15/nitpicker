@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
-import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
+import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mts';
 import { JAVA_TOOLS } from './gradle-presets.mts';
 import { DOC_COMMENT_TOOL } from './doc-comments/doc-comment-findings.mts';
 import { INIT_SCRIPT, readPinnedTools } from '../builds/java-build.mts';
@@ -11,11 +11,12 @@ import { javaExecutionBudget } from './java-runner.mts';
 import { COMPILE_ERROR_TOOL } from '../../../shared/rules/finding-helpers.mjs';
 import { javaCommand } from '../maven/maven-command.mts';
 import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mjs';
-import { mutationScopeArguments } from '../../../core/tooling/runner-arguments.mjs';
+import { mutationScopeArguments } from '../../../core/tooling/runner-arguments.mts';
 import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 import { changedTestsKey } from '../builds/change-scope/tested-sources.mts';
 import { fieldsOf, textOf } from '../../../shared/values/readers.mts';
 import type { JavaSpawn } from './typed/java-values.mts';
+import { mutationScopeOf } from '../../../core/scope/mutation-scope.mts';
 
 type InvocationContext = {
   readonly projectRoot: string;
@@ -218,7 +219,7 @@ export function createJavaAnalyzer({ kotlin = false } = {}): JavaAnalyzer {
           '--project-root',
           projectRoot,
           ...(kotlin ? ['--preset', 'kotlin'] : []),
-          ...mutationScopeArguments(mutationScope),
+          ...mutationScopeArguments(mutationScopeOf(mutationScope)),
         ],
         cwd: toolRoot,
       };

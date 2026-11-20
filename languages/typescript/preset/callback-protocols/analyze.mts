@@ -23,7 +23,7 @@ import {
   calleeName,
 } from './bindings.mts';
 import { accessPath, constructedTarget, optionProperties } from './bound-values.mts';
-import { defaultResolvedLayout as untypedDefaultLayout } from '../layout.mjs';
+import { defaultResolvedLayout as untypedDefaultLayout } from '../layout.mts';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 

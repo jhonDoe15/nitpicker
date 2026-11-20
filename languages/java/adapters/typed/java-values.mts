@@ -1,4 +1,5 @@
 import type { SpawnSyncOptionsWithStringEncoding, SpawnSyncReturns } from 'node:child_process';
+import type { TrackedFinding } from '../../../../core/diff/comparison/model/finding-types.mts';
 import { fieldsOf, optionalText } from '../../../../shared/values/readers.mts';
 
 type JavaLocation = {
@@ -76,6 +77,19 @@ function isJavaFinding(value: unknown): value is JavaFinding {
 
 export function findingsOf(value: unknown): JavaFinding[] {
   return Array.isArray(value) ? value.filter(isJavaFinding) : [];
+}
+
+function isTrackedFinding(value: unknown): value is TrackedFinding {
+  return (
+    isJavaFinding(value) &&
+    typeof value['identity'] === 'string' &&
+    typeof value['message'] === 'string' &&
+    typeof value['classification'] === 'string'
+  );
+}
+
+export function trackedFindingsOf(value: unknown): TrackedFinding[] {
+  return Array.isArray(value) ? value.filter(isTrackedFinding) : [];
 }
 
 export function javaPolicyOf(value: unknown): JavaPolicy {

@@ -2,7 +2,7 @@ import tseslint from 'typescript-eslint';
 import { configuredRuleTester } from './test-support/rule-tester.mts';
 import { rule as reactNoEffectDataFetching } from './rules/react/react-no-effect-data-fetching.mts';
 import { rule as reactNoEffectDerivedState } from './rules/react/react-no-effect-derived-state.mts';
-import { rule as reactSingleStylingApproach } from './rules/react/react-single-styling-approach.mjs';
+import { rule as reactSingleStylingApproach } from './rules/react/react-single-styling-approach.mts';
 
 const tester = configuredRuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },

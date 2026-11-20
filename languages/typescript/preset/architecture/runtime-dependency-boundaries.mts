@@ -20,7 +20,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { moduleRoleBoundaries } from './runtime-dependency-boundaries.config.mts';
-import { defaultResolvedLayout as untypedDefaultLayout } from '../layout.mjs';
+import { defaultResolvedLayout as untypedDefaultLayout } from '../layout.mts';
 import { appendAll } from '../../../../shared/lists/lists.mts';
 import { blockingParseDiagnostics } from '../syntax/diagnostics/legacy-scripts.mts';
 

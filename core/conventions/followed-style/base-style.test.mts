@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
-import { resolveComparison } from '../../diff/git/repository/git.mjs';
+import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mts';
+import { resolveComparison } from '../../diff/git/repository/git.mts';
 import { branchOff } from '../../diff/git/test-support/branch-off.mts';
 import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
 import { comparedConventions } from '../test-support/compare-policy.mts';

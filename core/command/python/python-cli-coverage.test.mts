@@ -6,7 +6,7 @@ import { fieldAt } from '../../../scripts/json/fields.mts';
 import { fieldOf, listOf } from '../../../shared/values/readers.mts';
 import { usePythonFixtures } from './test-support/python-cli-harness.mts';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
-import { EDITED_LINE_SENTENCE } from '../../diff/comparison/positions/touched-lines.mjs';
+import { EDITED_LINE_SENTENCE } from '../../diff/comparison/positions/touched-lines.mts';
 
 const { pythonRepository, run } = usePythonFixtures(nitpickerCli);
 

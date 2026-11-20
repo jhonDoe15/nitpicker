@@ -5,7 +5,7 @@ import path from 'node:path';
 import {
   trackTemporaryPath as untypedTrack,
   untrackTemporaryPath,
-} from '../../../../../../core/tooling/temporary-files.mjs';
+} from '../../../../../../core/tooling/temporary-files.mts';
 import { execute } from '../../python-process.mts';
 import { environmentError } from '../environment-error.mts';
 import { declaredManagedEnvironment } from '../managed.mts';

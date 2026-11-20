@@ -1,17 +1,17 @@
 import type { SpawnSyncOptionsWithStringEncoding, SpawnSyncReturns } from 'node:child_process';
-import { linkPolicyFile as linkUntypedPolicyFile } from '../../../../core/tooling/policy-links.mjs';
+import { linkPolicyFile as linkUntypedPolicyFile } from '../../../../core/tooling/policy-links.mts';
 import {
   trackTemporaryPath as trackUntypedTemporaryPath,
   untrackTemporaryPath as untrackUntypedTemporaryPath,
-} from '../../../../core/tooling/temporary-files.mjs';
-import { spawnSyncWithOutputFile as spawnUntypedWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
+} from '../../../../core/tooling/temporary-files.mts';
+import { spawnSyncWithOutputFile as spawnUntypedWithOutputFile } from '../../../../core/tooling/output-file/output-file.mts';
 import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mjs';
 import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 import {
   isToolInstalled as untypedIsToolInstalled,
   resolveTool as resolveUntypedTool,
   toolNameForPath as untypedToolNameForPath,
-} from '../../../../core/tooling/tool-resolution.mjs';
+} from '../../../../core/tooling/tool-resolution.mts';
 
 type ToolLocation = {
   readonly projectRoot?: string;
@@ -54,7 +54,7 @@ export const untrackTemporaryPath: (filePath: string) => void = untrackUntypedTe
 export const linkPolicyFile: (
   sourcePath: string,
   targetPath: string,
-  transform: unknown,
+  transform?: (text: string, targetPath: string) => string,
 ) => LinkedPolicyFile = linkUntypedPolicyFile;
 
 export function toolBinaryPath(

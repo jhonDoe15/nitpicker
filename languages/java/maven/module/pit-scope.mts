@@ -1,6 +1,10 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { byCodeUnits, isInMutationScope } from '../../../../core/scope/mutation-scope.mjs';
+import {
+  byCodeUnits,
+  isInMutationScope,
+  mutationScopeOf,
+} from '../../../../core/scope/mutation-scope.mts';
 import { sourceFileOf } from '../kotlin/java-classes.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { posix } from '../../builds/lint/lint-staging.mts';
@@ -17,7 +21,6 @@ type ScopedTargets = PitScope & {
 
 const posixPath: (file: string) => string = posix;
 const compareCodeUnits: (left: string, right: string) => number = byCodeUnits;
-const inMutationScope: (file: string, scope: unknown) => boolean = isInMutationScope;
 
 const PACKAGE_DECLARATION = /^\s*(?:@file:\S+\s+)*package\s+([\w.`]+)/mu;
 const SOURCE_FILE = /\.(?:java|kt)$/u;
@@ -51,7 +54,12 @@ function scopedSourceKeys({
   return new Set(
     sourceRoots
       .flatMap((root) => filesUnder(root, SOURCE_FILE))
-      .filter((file) => inMutationScope(posixPath(path.relative(projectRoot, file)), mutationScope))
+      .filter((file) =>
+        isInMutationScope(
+          posixPath(path.relative(projectRoot, file)),
+          mutationScopeOf(mutationScope),
+        ),
+      )
       .map(sourceKey),
   );
 }

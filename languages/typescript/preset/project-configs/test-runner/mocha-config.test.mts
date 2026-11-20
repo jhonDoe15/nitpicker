@@ -1,15 +1,9 @@
+import { fieldOf } from '../../../../../shared/values/readers.mts';
 import { afterEach, describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
-import { mochaConfigRetries as untypedMochaConfigRetries } from './mocha-config.mjs';
+import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mts';
+import { mochaConfigRetries } from './mocha-config.mts';
 import { OPT_IN, createRetryProjects } from './test-support/retry-projects.mts';
 import type { ProjectFiles } from './test-support/runner-views.mts';
-
-const mochaConfigRetries: (options: {
-  projectRoot: string;
-  liveRoot: string;
-  tokens: string[];
-  timeoutMs: number | undefined;
-}) => number | undefined = untypedMochaConfigRetries;
 
 const projects = createRetryProjects();
 
@@ -107,8 +101,8 @@ describe('the Mocha options the project config loader reads', () => {
 
     const tests = projects.headTests(root, OPT_IN);
 
-    expect(tests.projectConfig).toBe(undefined);
-    expect(tests.projectConfigError).toBe(
+    expect(fieldOf(tests, 'projectConfig')).toBe(undefined);
+    expect(fieldOf(tests, 'projectConfigError')).toBe(
       'the Mocha config could not be loaded: it ended the process with exit code 0',
     );
   });
@@ -119,6 +113,9 @@ describe('the Mocha options the project config loader reads', () => {
       'mocha --config config/mocha.json --retries 8',
     );
 
-    expect(projects.headTests(root, OPT_IN).projectConfig).toEqual({ runner: 'mocha', retry: 3 });
+    expect(fieldOf(projects.headTests(root, OPT_IN), 'projectConfig')).toEqual({
+      runner: 'mocha',
+      retry: 3,
+    });
   });
 });

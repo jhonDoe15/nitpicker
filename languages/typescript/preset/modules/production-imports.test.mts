@@ -1,17 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
-import {
-  packageEntryFiles as untypedPackageEntryFiles,
-  productionReach as untypedProductionReach,
-} from './production-imports.mjs';
-
-const packageEntryFiles: (root: string, files: readonly string[]) => string[] =
-  untypedPackageEntryFiles;
-const productionReach: (
-  root: string,
-  options: { readonly importers: readonly string[]; readonly entries?: readonly string[] },
-) => Map<string, string> = untypedProductionReach;
+import { packageEntryFiles, productionReach } from './production-imports.mts';
 
 const { temporaryRoot } = useGitFixtures();
 

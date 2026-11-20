@@ -6,7 +6,7 @@ import { commitBranch, runGitIn, summarize } from '../../test-support/gradle-e2e
 import type { ExitCode } from '../../../../../core/cli-context.mts';
 import type { JavaPolicy } from '../../typed/java-values.mts';
 import { runCli } from '../../../../../core/cli.mts';
-import { containedPath } from '../../../../../core/fix/common/contained-path.mjs';
+import { containedPath } from '../../../../../core/fix/tool-steps/paths/contained-path.mts';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { runJavaDiff } from '../../java-diff.mts';
 import { testsFailOnBase as testsFailOnBaseUntyped } from '../../../../../shared/rules/finding-helpers.mjs';
@@ -115,9 +115,11 @@ export function redBaseCases({
   expected: { legacy: string; violation: string[] };
 }): void {
   let root: string;
+  let repaired: DiffOutcome;
 
   beforeAll(() => {
     root = setup();
+    repaired = diffOf(root, REPAIRED, { gradle, maven, policy });
   });
 
   afterAll(() => {
@@ -125,13 +127,13 @@ export function redBaseCases({
   });
 
   it('does not block a change that repairs the failing base tests, and keeps comparing the other checks with the base', () => {
-    const result = diffOf(root, REPAIRED, { gradle, maven, policy });
-
     expect({
-      failed: result.failed,
-      newEnforceable: summarize(result.newEnforceable),
-      notes: entriesOf(result['notes']).map(({ tool, rule }) => `${textOf(tool)} ${textOf(rule)}`),
-      legacy: summarize(findingsOf(result['unchangedFindings'])).filter(
+      failed: repaired.failed,
+      newEnforceable: summarize(repaired.newEnforceable),
+      notes: entriesOf(repaired['notes']).map(
+        ({ tool, rule }) => `${textOf(tool)} ${textOf(rule)}`,
+      ),
+      legacy: summarize(findingsOf(repaired['unchangedFindings'])).filter(
         (entry) => entry === expected.legacy,
       ),
     }).toEqual({

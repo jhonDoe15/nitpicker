@@ -6,9 +6,9 @@ export type StructureLayout = Layout & {
 };
 
 export type StructurePolicy = {
-  readonly exceptions: unknown[];
-  readonly thresholds: { readonly folderDepth?: number };
-  readonly preset?: string;
+  readonly exceptions: readonly unknown[];
+  readonly thresholds: { readonly folderDepth?: number | undefined };
+  readonly preset?: string | undefined;
   readonly layout?: Readonly<Record<string, unknown>>;
 };
 

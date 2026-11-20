@@ -4,7 +4,7 @@ import {
   runnerCommand,
   tokenize,
   withoutOptions as untypedWithoutOptions,
-} from './script-command.mjs';
+} from './script-command.mts';
 
 const optionRemoval: {
   withoutOptions(

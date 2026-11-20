@@ -14,7 +14,7 @@ import { mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
-import { containedPath as untypedContainedPath } from '../../../../../core/fix/common/contained-path.mjs';
+import { containedPath as untypedContainedPath } from '../../../../../core/fix/tool-steps/paths/contained-path.mts';
 
 const sourcePath: (file: string) => string = checkoutModulePath;
 const containedPath: (root: string, name: string) => string = untypedContainedPath;

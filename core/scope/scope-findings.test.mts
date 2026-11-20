@@ -1,13 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  isInScope,
-  scopeLine,
-  scopeNotes,
-  scopeOutcomes as untypedScopeOutcomes,
-} from './scope-findings.mjs';
-
-const scopeOutcomes: (outcomes: object[], scope: { paths: string[] } | undefined) => object[] =
-  untypedScopeOutcomes;
+import { isInScope, scopeLine, scopeNotes, scopeOutcomes } from './scope-findings.mts';
 
 const scope = { paths: ['src/orders', 'src/billing/bill.ts'] };
 
@@ -27,7 +19,17 @@ describe('scope', () => {
 
   it('keeps everything without a scope', () => {
     expect(isInScope('.', undefined)).toBe(true);
-    const outcomes = [{ tool: { name: 'tool' }, result: { newFindings: [{ path: 'a' }] } }];
+    const outcomes = [
+      {
+        tool: { name: 'tool' },
+        result: {
+          newFindings: [{ path: 'a' }],
+          resolvedFindings: [],
+          unchangedFindings: [],
+          changedMetrics: [],
+        },
+      },
+    ];
     expect(scopeOutcomes(outcomes, undefined)).toBe(outcomes);
   });
 

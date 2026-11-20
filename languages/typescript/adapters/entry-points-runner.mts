@@ -10,10 +10,10 @@ import {
 } from './typed/static-checks.mts';
 import { applyAreaExceptions } from './exceptions/area-exceptions.mts';
 import type { Finding } from './static-checks/shared.mts';
-import { PACKAGE_ROOT, SNAPSHOT_DIRECTORY_NAMES } from '../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT, SNAPSHOT_DIRECTORY_NAMES } from '../../../core/tooling/tool-resolution.mts';
 import { type Layout, readLayout } from './typed/head-policy.mts';
 import { loadProjectModules } from './dependency-graph/shared-graph/project-modules.mts';
-import { realTemporaryDirectory } from '../../../core/tooling/temporary-files.mjs';
+import { realTemporaryDirectory } from '../../../core/tooling/temporary-files.mts';
 import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 
 type EntryPointOptions = {

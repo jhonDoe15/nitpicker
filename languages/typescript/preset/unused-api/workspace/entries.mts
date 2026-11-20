@@ -3,7 +3,7 @@ import path from 'node:path';
 import type { EntryLayout, PackageEntry } from './workspace-types.mts';
 import { fieldOf, fieldsOf } from '../../../../../shared/values/readers.mts';
 import { depthFirst } from './entry-views.mts';
-import { codeExtensionNames } from '../../layout.mjs';
+import { codeExtensionNames } from '../../layout.mts';
 
 const MANIFEST_ENTRY_FIELDS = ['source', 'types', 'typings', 'module', 'main'];
 const FALLBACK_ROOTS = ['src', '.'];

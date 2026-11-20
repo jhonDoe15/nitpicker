@@ -1,9 +1,9 @@
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { createStaticCheckAnalyzer } from '../../../../../../languages/typescript/adapters/static-checks/analyzer.mjs';
+import { createStaticCheckAnalyzer } from '../../../../../../languages/typescript/adapters/static-checks/analyzer.mts';
 import type { ProfiledAnalyzer } from '../../../../../../shared/values/analyzers.mts';
 import { createProfiledAnalyzer } from '../../../analysis/eslint/test-support/eslint-fixtures.mts';
-import { PACKAGE_ROOT } from '../../../../../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../../tooling/tool-resolution.mts';
 import type { FileMap } from '../../../../git/test-support/fixture-files.mts';
 import { useGitFixtures } from '../../../../git/test-support/git-repository.mts';
 

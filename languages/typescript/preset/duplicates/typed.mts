@@ -1,9 +1,12 @@
 import type TypeScript from 'typescript';
 import type { Finding } from '../../adapters/static-checks/shared.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
-import { withoutImportOnlyClones as untypedWithoutImportOnlyClones } from '../../../../core/tooling/jscpd/import-only.mjs';
-import { jscpdClones as untypedJscpdClones } from '../../../../core/tooling/jscpd/jscpd-clones.mjs';
-import { renamedJscpdSettings as untypedRenamedJscpdSettings } from '../../../../core/tooling/jscpd/config.mjs';
+import { withoutImportOnlyClones as untypedWithoutImportOnlyClones } from '../../../../core/tooling/jscpd/import-only.mts';
+import { jscpdClones as untypedJscpdClones } from '../../../../core/tooling/jscpd/jscpd-clones.mts';
+import {
+  renamedJscpdSettings as untypedRenamedJscpdSettings,
+  type JscpdSettings,
+} from '../../../../core/tooling/jscpd/config.mts';
 import { evaluateDuplicates as untypedEvaluateDuplicates } from '../../../../shared/rules/duplicates.mjs';
 import {
   renamedClones as untypedRenamedClones,
@@ -19,16 +22,16 @@ import {
   codeExtensionNames as untypedCodeExtensionNames,
   existingRoots as untypedExistingRoots,
   sourceRoot as untypedSourceRoot,
-} from '../layout.mjs';
+} from '../layout.mts';
 
-type CloneSide = { readonly file: string; readonly line: number };
+type CloneSide = { readonly file: string; readonly line: unknown };
 
 export type JscpdClone = {
   readonly first: CloneSide;
   readonly second: CloneSide;
-  readonly fragment?: string | undefined;
-  readonly lines?: number | undefined;
-  readonly tokens?: number | undefined;
+  readonly fragment?: unknown;
+  readonly lines?: unknown;
+  readonly tokens?: unknown;
 };
 
 export type RenamedClone = JscpdClone & { readonly original: string };
@@ -47,11 +50,6 @@ type NormalizedTree = {
   };
 };
 
-type RenamedSettings = {
-  readonly path: string[];
-  readonly [key: string]: unknown;
-};
-
 const rootValue: unknown = untypedSourceRoot;
 
 export const sourceRoot: string = textOf(rootValue);
@@ -64,7 +62,7 @@ export const existingRoots: (root: string, roots: readonly string[]) => string[]
 export const withoutImportOnlyClones: (clones: JscpdClone[], format: string) => JscpdClone[] =
   untypedWithoutImportOnlyClones;
 
-export const jscpdClones: (report: unknown, configuredPaths: readonly string[]) => JscpdClone[] =
+export const jscpdClones: (report: unknown, configuredPaths: unknown) => JscpdClone[] =
   untypedJscpdClones;
 
 export const evaluateDuplicates: (
@@ -94,10 +92,13 @@ export const sourceFilesUnder: (
   extensions: readonly string[],
 ) => string[] = untypedSourceFilesUnder;
 
-export const RENAMED_SETTINGS: unknown = untypedRenamedSettings;
+export const RENAMED_SETTINGS: { readonly minTokens: number; readonly minLines: number } =
+  untypedRenamedSettings;
 
-export const renamedJscpdSettings: (config: unknown, renamed: unknown) => RenamedSettings =
-  untypedRenamedJscpdSettings;
+export const renamedJscpdSettings: (
+  config: JscpdSettings,
+  renamed: { readonly minTokens: number; readonly minLines: number },
+) => JscpdSettings = untypedRenamedJscpdSettings;
 
 export const withNormalizedTree: <Result>(
   tree: NormalizedTree,

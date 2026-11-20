@@ -10,7 +10,7 @@ import {
   compareFindings,
 } from '../../../comparison/test-support/typed-compare.mts';
 import { fieldOf, numberOr } from '../../../../../shared/values/readers.mts';
-import { parseFinding } from '../../../comparison/finding-schema.mjs';
+import { parseFinding } from '../../../comparison/finding-schema.mts';
 
 const evaluateFunctions: (
   report: { readonly functions: readonly object[] },

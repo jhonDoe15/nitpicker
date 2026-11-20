@@ -1,4 +1,4 @@
-import { spawnSyncWithOutputFile as untypedSpawnSync } from '../../../../../core/tooling/output-file/output-file.mjs';
+import { spawnSyncWithOutputFile as untypedSpawnSync } from '../../../../../core/tooling/output-file/output-file.mts';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

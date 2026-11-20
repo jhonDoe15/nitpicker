@@ -1,5 +1,5 @@
 import { shownSetting as untypedShownSetting } from '../../../../shared/config.mjs';
-import { JSCPD_MODES as UNTYPED_MODES, JSCPD_SIZE as UNTYPED_SIZE } from '../config.mjs';
+import { JSCPD_MODES as UNTYPED_MODES, JSCPD_SIZE as UNTYPED_SIZE } from '../config.mts';
 
 import type { AppliedValues, FileChange } from '../../../policy-changes/types/policy-types.mts';
 

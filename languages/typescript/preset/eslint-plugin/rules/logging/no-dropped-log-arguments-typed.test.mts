@@ -58,7 +58,7 @@ const OWNER = [
   '',
 ].join('\n');
 
-const bothLibraries = noDroppedLogArgumentsRule({ logger: ['pino', 'winston'] });
+const bothLibraries = noDroppedLogArgumentsRule({ validation: [], logger: ['pino', 'winston'] });
 
 project.tester.run('no-dropped-log-arguments with types', bothLibraries, {
   valid: [

@@ -5,14 +5,14 @@ Part of the [Java preset guide](../java-preset.md).
 - **Where it runs.** jscpd is a Node tool, so it is not in the Gradle init script (which this slice
   does not touch). After the Gradle task has written `manifest.json` in the report directory,
   `languages/java/adapters/metrics/java-duplicates.mts` runs the package's own pinned jscpd (`runJscpd` in
-  `core/tooling/jscpd/run-jscpd.mjs`, shared with Python and the one the TypeScript `duplicates`
+  `core/tooling/jscpd/run-jscpd.mts`, shared with Python and the one the TypeScript `duplicates`
   check uses; its version is appended to the analyzer version as `jscpd@x.y.z`) once per existing
   main source root with `--format java --mode mild` and a nitpicker-owned `--config` (a project's
   `.jscpd.json` is not read). It ignores the folders named `build`, `generated`, `target` and `out`
   at any depth; the config key `duplicates.skippedFolders` replaces this list (an empty list
   ignores nothing) and reaches the runner as `--duplicate-skipped-folders`. Clones made only of
   `package` and `import` lines (the clone may end on the line where the following declaration
-  starts) are not reported (`core/tooling/jscpd/import-only/jvm-imports.mjs`). The message names
+  starts) are not reported (`core/tooling/jscpd/import-only/jvm-imports.mts`). The message names
   both files and tells to add either to `exclude`, and a glob that matches either file of the pair
   lifts the finding. It runs once for the whole build, over the source roots of every Gradle project.
   Reports go to `jscpd/<n>/` in the report directory and are merged into its `duplicates.json`.

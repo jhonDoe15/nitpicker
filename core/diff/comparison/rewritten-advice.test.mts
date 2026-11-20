@@ -2,13 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { fieldAt } from '../../../scripts/json/fields.mts';
 import { fieldOf } from '../../../shared/values/readers.mts';
 import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
-import { namedReports as namedReportsJs } from '../snapshot-root/snapshot-root.mjs';
+import { namedReports } from '../snapshot-root/snapshot-root.mts';
 import { compareFindings } from './test-support/typed-compare.mts';
-import {
-  type ParsedFinding,
-  type ParsedReport,
-  parseFinding,
-} from './test-support/parsed-findings.mts';
+import { type ParsedFinding, parseFinding } from './test-support/parsed-findings.mts';
 
 type Ratchet = Readonly<Record<string, unknown>> & {
   readonly worseMessage?: string;
@@ -16,11 +12,6 @@ type Ratchet = Readonly<Record<string, unknown>> & {
 };
 
 type Span = readonly [number, number];
-
-const namedReports: (
-  reports: Map<string, { readonly findings: readonly ParsedFinding[] }>,
-  snapshotRoot: { readonly projectRoot: string; readonly snapshot: string },
-) => Map<string, ParsedReport> = namedReportsJs;
 
 function routeFor(rule: string, path: string, functionName?: string): string {
   return String(
@@ -159,7 +150,7 @@ describe('a tool error the run renames', () => {
           'custom',
           {
             findings: [
-              parseFinding({
+              {
                 tool: 'custom',
                 rule: 'crashed',
                 path: '.',
@@ -168,7 +159,7 @@ describe('a tool error the run renames', () => {
                   'Could not read /tmp/snapshot-head/a.json. Delete /tmp/snapshot-head/a.json.',
                 allowedForm: 'Delete /tmp/snapshot-head/a.json.',
                 classification: 'tool-error',
-              }),
+              },
             ],
           },
         ],

@@ -5,7 +5,7 @@ import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
 import { useGitFixtures } from '../diff/git/test-support/git-repository.mts';
 import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mts';
 import { createPythonAnalyzers } from '../../languages/python/adapters/python-analyzer.mts';
-import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
+import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mts';
 import { configureAnalyzers } from './configure-analyzers.mts';
 import { validateConfig } from './validate.mts';
 import { analyzerAt, configurationHashOf } from './test-support/analyzer-access.mts';

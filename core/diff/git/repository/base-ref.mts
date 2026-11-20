@@ -1,5 +1,5 @@
 import { configError } from '../../../../shared/config.mjs';
-import { GitCommandError, listRemotes, runGit } from './command.mjs';
+import { GitCommandError, listRemotes, runGit } from './command.mts';
 
 type BaseChoice = { readonly baseRef: string; readonly source: string };
 

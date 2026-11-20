@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Finding } from '../../adapters/static-checks/shared.mts';
-import { resolveLayout } from '../layout.mjs';
+import { resolveLayout } from '../layout.mts';
 import { componentStoryFindings } from './component-stories.mts';
 import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 

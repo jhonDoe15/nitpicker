@@ -1,18 +1,18 @@
 import path from 'node:path';
-import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mts';
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
 } from '../../../languages/typescript/adapters/static-checks/dependencies.mts';
-import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
+import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mts';
 import { type FindingsCache, createFindingsCache } from './findings-cache.mts';
 import { isCacheable } from './entries/run-with-cache.mts';
 import type { CacheStore } from './cache-stores.mts';
 import { withComparisonKeys } from './keys/comparison-keys.mts';
-import { runGit } from '../git/repository/command.mjs';
+import { runGit } from '../git/repository/command.mts';
 import { analyzerName } from '../reporting/report-model.mts';
 import { type AnalyzerRun, runAnalyzers } from '../execution/run-analyzers.mts';
-import { withTemporaryWorktree } from '../git/repository/worktree.mjs';
+import { withTemporaryWorktree } from '../git/repository/worktree.mts';
 import type { Analyzer } from '../../../shared/values/analyzers.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 import { appendAll } from '../../../shared/lists/lists.mts';

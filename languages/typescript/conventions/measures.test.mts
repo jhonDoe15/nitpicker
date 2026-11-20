@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PRETTIER_CONVENTIONS } from './prettier-conventions.mjs';
+import { PRETTIER_CONVENTIONS } from './prettier-conventions.mts';
 import { measureOf } from './typed/convention-views.mts';
 
 const statements = Array.from({ length: 12 }, (_, index) => `const value${String(index)} = read()`);

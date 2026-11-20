@@ -1,4 +1,4 @@
-import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
+import { compareFindings } from '../../../../core/diff/comparison/compare.mts';
 import { callUntyped, findingsOf } from '../../adapters/typed/java-values.mts';
 import type { JavaFinding } from '../../adapters/typed/java-values.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';

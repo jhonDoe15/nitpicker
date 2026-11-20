@@ -1,10 +1,11 @@
 import { resolveBase } from '../../diff/git/repository/base-ref.mts';
 import { policyAcceptance } from '../../projects/policy/policy-acceptance.mts';
-import { javascriptPresetHint } from '../../configuration/project-checks/preset-detection.mjs';
+import { javascriptPresetHint } from '../../configuration/project-checks/preset-detection.mts';
 import { type CacheStore, resolveCacheStore } from '../../diff/cache/cache-stores.mts';
 import { fieldsOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import type { Analyzer } from '../../../shared/values/analyzers.mts';
 import type { Cli, CliOptions, RunSetup, TextOutput } from '../../cli-context.mts';
+import type { Scope } from '../../scope/scope-findings.mts';
 import type { Loosening as PolicyLoosening } from '../../policy-changes/types/policy-types.mts';
 import type { NitpickerConfig, ProjectOverlay } from '../../../shared/values/config-types.mts';
 import type { SharedWorktree } from '../../diff/comparison/snapshots/run-types.mts';
@@ -12,7 +13,7 @@ import type { SharedWorktree } from '../../diff/comparison/snapshots/run-types.m
 export type ConfiguredCli = Cli & {
   readonly options: CliOptions;
   readonly jsonOutput?: TextOutput;
-  readonly scope?: unknown;
+  readonly scope?: Scope | undefined;
   readonly currentFolder?: string | undefined;
   readonly configOverlay?: ProjectOverlay | undefined;
   readonly projectKey?: string | undefined;

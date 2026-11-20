@@ -3,11 +3,11 @@ import {
   indentationStyle as untypedIndentationStyle,
   codeLines as untypedCodeLines,
   winner as untypedWinner,
-} from '../layout-measures.mjs';
+} from '../layout-measures.mts';
 import {
   descendants as untypedDescendants,
   parsedSource as untypedParsedSource,
-} from '../measures/typescript-syntax.mjs';
+} from '../measures/typescript-syntax.mts';
 
 export const indentationStyle: (text: string) => string | undefined = untypedIndentationStyle;
 

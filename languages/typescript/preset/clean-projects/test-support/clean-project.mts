@@ -1,4 +1,4 @@
-import { verifyRunnerFixtureDependencies } from './runner-fixture-dependencies.mjs';
+import { verifyRunnerFixtureDependencies } from './runner-fixture-dependencies.mts';
 import { execFileSync } from 'node:child_process';
 import {
   cpSync,
@@ -12,7 +12,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeAll } from 'vitest';
-import { containedPath as untypedContainedPath } from '../../../../../core/fix/common/contained-path.mjs';
+import { containedPath as untypedContainedPath } from '../../../../../core/fix/tool-steps/paths/contained-path.mts';
 import { runCli } from '../../../../../core/cli.mts';
 import type { ExitCode } from '../../../../../core/cli-context.mts';
 import {

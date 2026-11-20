@@ -5,7 +5,7 @@ import {
 } from '../../../../core/diff/git/test-support/git-checkout.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 import { hasGeneratorMarker } from '../../../../shared/conventions/generator-marker.mjs';
-import { markedGeneratedFiles as untypedMarkedGeneratedFiles } from './generated-files.mjs';
+import { markedGeneratedFiles as untypedMarkedGeneratedFiles } from './generated-files.mts';
 
 const markedGeneratedFiles: (root: string) => string[] = untypedMarkedGeneratedFiles;
 

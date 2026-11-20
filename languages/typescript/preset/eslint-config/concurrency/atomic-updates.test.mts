@@ -2,7 +2,7 @@ import { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
 import { routedEslintFields } from '../../../adapters/hints/eslint-hints.mts';
-import { defaultResolvedLayout, resolveLayout } from '../../layout.mjs';
+import { defaultResolvedLayout, resolveLayout } from '../../layout.mts';
 import { applyJavascriptDialect, applyRuleExceptions } from '../typed/policy-views.mts';
 import { hintInput } from '../typed/hints/hint-input.mts';
 import { atomicUpdateConfigFor } from './atomic-updates.mts';

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { textsOf } from '../../../../../shared/values/readers.mts';
-import { resolveLayoutFor } from '../../layout.mjs';
+import { resolveLayoutFor } from '../../layout.mts';
 import { layoutKnipProductionConfig } from './production-config.mts';
 
 const CODE = '{ts,tsx,mts,cts,js,jsx,mjs,cjs}';
