@@ -13,7 +13,7 @@ sentinel and the sum are often in different files.
   `Long.MAX_VALUE` (Kotlin `Int.MAX_VALUE`) or the literal `2147483647`, a Kotlin parameter whose default
   value is one, or a parameter that a call in the project passes one (positionally or by name, directly or
   through such a constant, field or parameter, across files). An accessor of such a field
-  (`getMaxWidth()`) or of a method that only returns one (`unlimited()`) counts, and so does a local chosen by a ternary with a maximum branch. In a method that creates `PageRequest.of(page, MAX)` or `Pageable.ofSize(MAX)`, `getPageSize()` counts as a maximum. A parameter of the same name that shadows a maximum field does not.
+  (`getMaxWidth()`) or of a method that only returns one (`unlimited()`) counts, and so does a local chosen by a ternary with a maximum branch. In a method that creates `PageRequest.of(page, MAX)` or `Pageable.ofSize(MAX)`, `getPageSize()` counts as a maximum. A parameter of the same name that shadows a maximum field does not. The same holds for a local variable declared in the method (`int end = text.indexOf(...)`, Kotlin `val end = ...`) with the name of such a field.
 - **The sum is used as:** an index (`items[a + b]`, `get`, `subList`, `substring`, `charAt`, `copyOf`),
   a length or capacity (`new int[a + b]`, `ArrayList(a + b)`, `limit`, `take`, `repeat`), a loop bound
   (`i < a + b`, Kotlin `until` and `..`), an argument of `Math.min`/`Math.max` (`minOf`, `maxOf`), an

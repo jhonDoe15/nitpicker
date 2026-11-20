@@ -284,7 +284,13 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
   own construct, since an empty collection or an untaken branch passes silently there too. A loop with a literal count cannot run zero times and is fine
   (`for (int i = 0; i < 3; i++)`, `i <= 3`, a counting-down loop, `IntStream.range(0, 3)` and
   `rangeClosed`, also through `map`, `mapToObj` or `boxed`, but not through `filter`, `limit`, `skip` or
-  `takeWhile`, which can leave no element), and so is `do ... while`. A `break` or `return` inside such a loop
+  `takeWhile`, which can leave no element), and so is `do ... while`. A for-each loop or an iterating callback is also
+  fine over a literal with at least one element (`List.of("a", "b")`, `Arrays.asList(...)`, `Set.of(...)`,
+  `Stream.of(...)`, an array initializer), over a variable whose size the test asserted before the loop
+  (for-each and `forEach` only: `assertEquals(3, rows.size())`, `assertFalse(rows.isEmpty())`, `assertThat(rows).hasSize(3)`, `isNotEmpty()`,
+  `containsExactly(...)`), and when a variable the loop writes is asserted after it (a found flag or a counter).
+  The guarding assertion must itself be unconditional. An `if` with an `else` in which both branches
+  assert always asserts and is fine; an `else if` chain is still reported. A `break` or `return` inside such a loop
   can still skip an assertion; that is a known limit. An assertion is a call named `assert*`, Mockito `verify`,
   `verifyNo*`, `verifyZero*`, `should()` and `shouldHaveNo*`, `andExpect`/`andExpectAll`, or the Reactor
   and WebTestClient `verifyComplete`, `verifyError`, `verifyTimeout`, `expectStatus`, `expectBody`,
@@ -316,7 +322,17 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
   non-final fields or a static
   collection it changes is an `errorprone/NonFinalStaticField` or `pmd/MutableStaticCollection` finding
   like production code. A test with no assertion at all is still
-  `pmd/UnitTestShouldIncludeAssert`. An assumption on a real condition (`assumeTrue(isLinux())`) and a test
+  `pmd/UnitTestShouldIncludeAssert`. An assertion inside a lambda of the test counts (a transaction or
+  context callback, `dynamicTest(name, () -> assertEquals(...))` in a `@TestFactory`), and so does a snapshot
+  call (`toMatchSnapshot`, `matchesSnapshot`). A test is also taken as verified when it calls a method on an
+  unannotated parameter and its class registers an extension (`@ExtendWith` or a `@RegisterExtension` field,
+  other than Mockito's and Spring's) that implements `AfterEachCallback` or `AfterTestExecutionCallback`:
+  a recorder that such an extension injects and compares after the test, as in golden-file suites. An
+  extension registered only through a composed annotation is not seen. `pmd/UnitTestShouldUseTestAnnotation`
+  (a public `test...` method without `@Test`) is not reported where a runner finds tests by name: a class that
+  extends JUnit 3's `TestCase`, Lucene's `LuceneTestCase` or `RandomizedTest`, or that carries
+  `@TestMethodProviders` or `@RunWith` of `RandomizedRunner`, `JUnit38ClassRunner` or `AllTests`. With such a
+  runner, `pmd/TestClassWithoutTestCases` counts the public `test...` methods as test cases too. An assumption on a real condition (`assumeTrue(isLinux())`) and a test
   that only `verify`s a call are not reported: environment guards and verifying a `void` collaborator are
   legitimate.
 - **Test honesty by preset.** The four checks that keep a test honest exist in every preset that

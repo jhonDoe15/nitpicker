@@ -167,6 +167,13 @@ Part of the [Java preset guide](../java-preset.md).
   and count that returns something else, or one without compiled source (a library or a class
   file, and Lombok-generated chain setters and `@Builder` methods) keeps Error Prone's own
   decision.
+  In test sources, a method whose result is ignored at 20 or more call sites is reported once, at
+  the first site in path order, with the number of other sites: a call repeated that often in tests
+  is made for its effect, as in a recorded (golden-file) suite where the call is the checked action,
+  so the finding asks to declare that once with `@CanIgnoreReturnValue` or to use the results
+  (`adapters/errorprone/floods/ignored-result-floods.mts`). The sites are counted by the call text
+  of the message (`get(...)`), over all test source sets of the project; main sources keep one
+  finding per call.
 - **NullAway.** Main sources only: a test that passes `null` on purpose to check the failure is
   legitimate. `AnnotatedPackages` is the project's main packages: its code is non-null unless
   marked, and a field, parameter or return value that may be null carries a `@Nullable` (NullAway

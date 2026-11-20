@@ -90,6 +90,7 @@ return .[
     <exclude name="UnitTestAssertionsShouldIncludeMessage"/>
     <exclude name="UnitTestContainsTooManyAsserts"/>
     <exclude name="UnitTestShouldIncludeAssert"/>
+    <exclude name="UnitTestShouldUseTestAnnotation"/>
     <exclude name="UnusedFormalParameter"/>
   </rule>
   <rule ref="category/java/bestpractices.xml/UnusedFormalParameter">
@@ -120,10 +121,45 @@ return .[
                 value="./ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass')]"/>
     </properties>
   </rule>
+  <rule ref="category/java/bestpractices.xml/UnitTestShouldUseTestAnnotation">
+    <properties>
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+.[ancestor::ClassDeclaration[
+    pmd-java:typeIs('junit.framework.TestCase')
+    or pmd-java:typeIs('org.apache.lucene.tests.util.LuceneTestCase')
+    or pmd-java:typeIs('org.apache.lucene.util.LuceneTestCase')
+    or pmd-java:typeIs('com.carrotsearch.randomizedtesting.RandomizedTest')
+    or ModifierList/Annotation[@SimpleName = 'TestMethodProviders']
+    or ModifierList/Annotation[@SimpleName = 'RunWith']
+         //ClassLiteral/ClassType[@SimpleName = ('RandomizedRunner', 'JUnit38ClassRunner', 'AllTests')]]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule ref="category/java/bestpractices.xml/UnitTestShouldIncludeAssert">
     <properties>
       <property name="extraAssertMethodNames"
-                value="andExpect,andExpectAll,should,shouldHaveNoInteractions,shouldHaveNoMoreInteractions,expectStatus,expectBody,expectHeader,expectNext,expectNextCount,expectComplete,expectError,verifyComplete,verifyError,verifyTimeout"/>
+                value="andExpect,andExpectAll,should,shouldHaveNoInteractions,shouldHaveNoMoreInteractions,expectStatus,expectBody,expectHeader,expectNext,expectNextCount,expectComplete,expectError,verifyComplete,verifyError,verifyTimeout,toMatchSnapshot,matchesSnapshot"/>
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+.[.//LambdaExpression//MethodCall[matches(@MethodName,
+    '^(assert.*|fail|verify.*|andExpect(All)?|should(HaveNo.*)?|expect(Status|Body|Header|Next.*|Complete|Error.*)|toMatchSnapshot|matchesSnapshot)$')]]
+| .[let $method := .,
+        $classes := ancestor::ClassDeclaration,
+        $callback := function($type) {
+          exists($type[pmd-java:typeIs('org.junit.jupiter.api.extension.AfterEachCallback')
+                       or pmd-java:typeIs('org.junit.jupiter.api.extension.AfterTestExecutionCallback')]
+                      [not(pmd-java:typeIs('org.mockito.junit.jupiter.MockitoExtension')
+                           or pmd-java:typeIs('org.springframework.test.context.junit.jupiter.SpringExtension'))]) }
+    return exists(FormalParameters/FormalParameter[not(ModifierList/Annotation)]
+                    [let $name := VariableId/@Name
+                     return exists($method/Block//MethodCall[*[1][self::VariableAccess][@Name = $name]])])
+      and (some $type in ($classes/ModifierList/Annotation[@SimpleName = 'ExtendWith']//ClassLiteral/ClassType,
+                          $classes/ClassBody/FieldDeclaration[ModifierList/Annotation/@SimpleName = 'RegisterExtension']/ClassType)
+           satisfies $callback($type))]
+]]></value>
+      </property>
     </properties>
   </rule>
   <rule ref="category/java/bestpractices.xml/CheckResultSet">
@@ -747,6 +783,10 @@ return $call[exists($format[pmd-java:typeIs('java.lang.String')])][
     or ancestor::ClassBody[1]//MethodCall[@MethodName = ('add', 'addAll', 'put', 'putAll', 'putIfAbsent', 'remove', 'clear', 'merge', 'compute', 'computeIfAbsent', 'offer', 'push', 'poll', 'pop', 'addFirst', 'addLast', 'removeIf', 'replaceAll', 'sort')]
         [*[1][self::VariableAccess or self::FieldAccess]/@Name = $name]
         [ancestor::MethodDeclaration or ancestor::ConstructorDeclaration]]
+  [not(let $name := VariableDeclarator/VariableId/@Name return
+    ancestor::ClassBody[1]/MethodDeclaration[ModifierList/Annotation/@SimpleName
+        = ('BeforeEach', 'AfterEach', 'Before', 'After', 'BeforeMethod', 'AfterMethod')]
+      //MethodCall[@MethodName = 'clear'][*[1][self::VariableAccess or self::FieldAccess]/@Name = $name])]
 ]]></value></property></properties>
   </rule>
   <rule name="MutationIgnoreMarker" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"

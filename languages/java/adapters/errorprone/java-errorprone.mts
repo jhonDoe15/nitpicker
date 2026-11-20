@@ -10,6 +10,7 @@ import { isLombokGenerated } from './lombok/lombok-generated.mts';
 import { isClosedByUsing } from './reactive/closed-supplier.mts';
 import { compiledSources, sourceReader } from './lombok/source-text.mts';
 import { withoutFluentCalls } from './fluent/fluent-returns.mts';
+import { withGroupedTestCalls } from './floods/ignored-result-floods.mts';
 import { errorProneChecks } from './checks/checks-docs.mts';
 import type { ErrorProneChecks } from './checks/checks-shape.mts';
 import { callUntyped } from '../typed/java-values.mts';
@@ -58,10 +59,13 @@ export function readErrorProneFindings(context: ReportContext): Finding[] {
       guava: guavaRead(manifest, testRoots),
     },
   );
+  const kept = listOf(fieldOf(ingested, 'findings'))
+    .filter((finding) => !isFormatterOwned(finding, context['javaStyle']))
+    .map((finding) => fieldsOf(finding));
   return [
-    ...listOf(fieldOf(ingested, 'findings'))
-      .filter((finding) => !isFormatterOwned(finding, context['javaStyle']))
-      .map((finding) => withExceptionRoute(fieldsOf(finding), testRoots, checks)),
+    ...withGroupedTestCalls(kept, (file) => inRoots(file, testRoots)).map((finding) =>
+      withExceptionRoute(finding, testRoots, checks),
+    ),
     ...(placement.outside.size === 0 ? [] : [unmappedError(placement.outside, roots)]),
     ...crashes.map((crash) => crashError(crash, roots)),
   ];
