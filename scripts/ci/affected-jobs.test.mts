@@ -369,6 +369,7 @@ describe('the required checks of the typescript workflow', () => {
       `node core/cli.mts aggregate --input-root reports/shards --shard-count ${String(shards.length)} --output reports/nitpicker`,
     );
     expect(budgetOf('self-gate')).toContain('GIT_COMMITTER_DATE="$checkout_date"');
+    expect(runsOf('self-gate-shard').filter((run) => run.includes('--defer-exit'))).toEqual([]);
     expect(budgetOf('self-gate-shard').startsWith(budgetOf('self-gate'))).toBe(true);
   });
 
