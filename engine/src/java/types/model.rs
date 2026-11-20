@@ -153,6 +153,8 @@ pub struct Method {
     pub flags: u16,
     /// What the `throws` clause lists, type variables kept.
     pub throws: Vec<Type>,
+    /// Parameter names, when the source or the class file gives them; empty otherwise.
+    pub names: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default)]

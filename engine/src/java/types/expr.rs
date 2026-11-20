@@ -940,6 +940,7 @@ impl<'a> Resolver<'a> {
                 varargs: false,
                 flags: 0,
                 throws: Vec::new(),
+                names: Vec::new(),
             };
             return Some(Call { raw: false, receiver: owner, declaring: info.name.clone(), method });
         }
