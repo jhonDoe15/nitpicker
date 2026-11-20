@@ -33,6 +33,7 @@ import { withoutSpringCoveredReads } from '../../spring/configuration/covered-re
 import { withPmdLevels } from './pmd-levels.mts';
 import { withRenderedPlaceholders } from '../../../messages/pmd-placeholders/pmd-placeholders.mts';
 import { withoutRuntimeCryptoKeys } from './crypto-keys/crypto-key-filter.mts';
+import { cutOffSarifReport } from './processing/cut-off-report.mts';
 import { pmdProcessingErrors } from './processing/pmd-processing-errors.mts';
 import { pmdLogRuleCrashes, pmdLoggedCrashFiles } from './processing/pmd-rule-crashes.mts';
 import { withoutLineReferences } from '../../../../../shared/ingest/line-references.mts';
@@ -82,8 +83,20 @@ function isSarifLog(value: unknown): value is SarifLog {
 
 export function readSarifReport(file: string): SarifLog {
   const text = readFileSync(file, 'utf8');
-  const log = text.trim() === '' ? EMPTY_SARIF : parseJson(text);
+  const log = text.trim() === '' ? EMPTY_SARIF : parsedReport(text);
   return isSarifLog(log) ? log : EMPTY_SARIF;
+}
+
+function parsedReport(text: string): unknown {
+  try {
+    return parseJson(text);
+  } catch (error) {
+    const repaired = cutOffSarifReport(text);
+    if (repaired === undefined) {
+      throw error;
+    }
+    return parseJson(repaired);
+  }
 }
 
 function withJpaFilters(
