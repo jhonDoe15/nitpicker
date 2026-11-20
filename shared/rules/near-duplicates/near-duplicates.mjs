@@ -131,10 +131,24 @@ function nearDuplicateFinding(finding, { pair, analyzerName }) {
   });
 }
 
+function warnOfSkipped(failed) {
+  const [first] = failed;
+  if (first !== undefined) {
+    process.emitWarning(
+      `The near-duplicate check skipped ${String(failed.length)} pair(s) it could not compare. ` +
+        `The first is ${first.units.join(' and ')}: ${first.reason}`,
+    );
+  }
+}
+
 export function nearDuplicateMatches(units, { isExcepted }) {
   const byId = new Map(units.map((unit) => [unitIdOf(unit), unit]));
   const rule = RULE_IDS.nearDuplicate;
-  return findNearDuplicates(units.map((unit) => ({ ...unit, id: unitIdOf(unit) })))
+  const failed = [];
+  const identified = units.map((unit) => ({ ...unit, id: unitIdOf(unit) }));
+  const findings = findNearDuplicates(identified, { failed });
+  warnOfSkipped(failed);
+  return findings
     .map((finding) => ({ finding, pair: sides(finding, byId) }))
     .filter(({ finding, pair }) => !isLeftToCloneAnalyzer(finding, pair))
     .filter(({ finding, pair }) => !isTypeSpecialized(finding, pair))
