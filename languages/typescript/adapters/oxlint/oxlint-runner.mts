@@ -1,4 +1,5 @@
-import { rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { trackTemporaryPath, untrackTemporaryPath } from '../typed/tooling.mts';
@@ -13,6 +14,8 @@ import {
   lintResultsOf,
   planOf,
 } from './plan/oxlint-shapes.mts';
+import { engineLintEnvironment } from './run/engine-pass.mts';
+import { mergeResults } from './run/merged-results.mts';
 import { type LintTiming, type StageRun, lintConfigs, settledBeside } from './run/stage-lint.mts';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { oxlintBinary, spawnJson } from './oxlint-process.mts';
@@ -78,6 +81,9 @@ export async function lintWithOxlint({
   );
   const files = plan.groups.flatMap((group) => group.files);
   const stage = trackTemporaryPath(createStage(options.projectRoot, projectConfigPath));
+  const engineDirectory = trackTemporaryPath(
+    mkdtempSync(path.join(tmpdir(), 'nitpicker-engine-lint-')),
+  );
   try {
     if (projectConfigPath !== undefined) {
       hideNestedTypeScriptConfigs(stage, options.projectRoot, files);
@@ -89,7 +95,13 @@ export async function lintWithOxlint({
       stage,
       projectRoot: options.projectRoot,
       runEslintCli,
-      environment,
+      environment: engineLintEnvironment({
+        plan,
+        projectRoot: options.projectRoot,
+        environment,
+        timeoutMs: options.timeoutMs,
+        directory: engineDirectory,
+      }),
       timeoutMs: options.timeoutMs,
       neutralized: new Map([
         ...inlineConfig.neutralized,
@@ -103,7 +115,9 @@ export async function lintWithOxlint({
     }));
   } finally {
     rmSync(stage, { recursive: true, force: true });
+    rmSync(engineDirectory, { recursive: true, force: true });
     untrackTemporaryPath(stage);
+    untrackTemporaryPath(engineDirectory);
   }
 }
 
@@ -267,26 +281,4 @@ async function residualResults(
       (message) => message.ruleId !== undefined && rules.includes(message.ruleId),
     ),
   }));
-}
-
-function mergeResults(results: readonly LintResult[]): LintResult[] {
-  const byFile = new Map<string, LintResult['messages'][number][]>();
-  for (const result of results) {
-    byFile.set(result.filePath, [...(byFile.get(result.filePath) ?? []), ...result.messages]);
-  }
-  return [...byFile]
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([filePath, messages]) => ({ filePath, messages: messages.sort(byPosition) }));
-}
-
-function byPosition(
-  left: LintResult['messages'][number],
-  right: LintResult['messages'][number],
-): number {
-  return (
-    left.line - right.line ||
-    left.column - right.column ||
-    String(left.ruleId).localeCompare(String(right.ruleId)) ||
-    left.message.localeCompare(right.message)
-  );
 }

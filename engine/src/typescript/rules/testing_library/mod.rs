@@ -60,13 +60,20 @@ pub struct Tools<'w, 'a, 'v> {
     pub detect: &'w Detection<'v>,
     pub scopes: &'v Scopes<'a, 'v>,
     selected: &'w [&'static str],
-    found: &'w mut Vec<(&'static str, u32, String)>,
+    found: &'w mut Vec<(&'static str, u32, Option<u32>, String)>,
 }
 
 impl Tools<'_, '_, '_> {
     pub fn report(&mut self, rule: &'static str, at: Node, message: String) {
         if self.selected.contains(&rule) {
-            self.found.push((rule, at.start(), message));
+            self.found.push((rule, at.start(), Some(at.end()), message));
+        }
+    }
+
+    /// A report at the start of a node, as the plugin makes with `loc: node.loc.start`.
+    pub fn report_point(&mut self, rule: &'static str, at: Node, message: String) {
+        if self.selected.contains(&rule) {
+            self.found.push((rule, at.start(), None, message));
         }
     }
 }
@@ -75,7 +82,7 @@ struct Walk<'s, 'a, 'v> {
     detect: Detection<'v>,
     scopes: &'v Scopes<'a, 'v>,
     selected: &'s [&'static str],
-    found: Vec<(&'static str, u32, String)>,
+    found: Vec<(&'static str, u32, Option<u32>, String)>,
     events: awaits::Events,
     async_queries: awaits::Queries,
     async_utils: awaits::Utils,
@@ -194,7 +201,7 @@ pub fn check(context: &mut Context) {
         let mut tools = Tools { detect: &walk.detect, scopes, selected: &selected, found: &mut walk.found };
         access::cleanup(&mut tools);
     }
-    for (rule, start, message) in walk.found {
-        context.report_at(rule, start, message);
+    for (rule, start, end, message) in walk.found {
+        context.report_range(rule, start, end, message);
     }
 }

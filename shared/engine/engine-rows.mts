@@ -8,12 +8,19 @@ export type EngineFinding = {
   readonly line: number;
   readonly column: number;
   readonly message: string;
+  readonly end?: { readonly line: number; readonly column: number };
 };
 
 const PARSE_FAILURE_RULE = '!parse';
 
+function endOf(line: unknown, column: unknown): Pick<EngineFinding, 'end'> {
+  return typeof line === 'number' && typeof column === 'number' ? { end: { line, column } } : {};
+}
+
 function findingOf(row: unknown): EngineFinding {
-  const [file, rule, line, column, message]: unknown[] = Array.isArray(row) ? row : [];
+  const [file, rule, line, column, message, endLine, endColumn]: unknown[] = Array.isArray(row)
+    ? row
+    : [];
   if (
     typeof file !== 'string' ||
     typeof rule !== 'string' ||
@@ -21,9 +28,11 @@ function findingOf(row: unknown): EngineFinding {
     typeof column !== 'number' ||
     typeof message !== 'string'
   ) {
-    throw new TypeError(`nitpicker-engine wrote a row that is not a finding: ${JSON.stringify(row)}`);
+    throw new TypeError(
+      `nitpicker-engine wrote a row that is not a finding: ${JSON.stringify(row)}`,
+    );
   }
-  return { file, rule, line, column, message };
+  return { file, rule, line, column, message, ...endOf(endLine, endColumn) };
 }
 
 export function engineFindings(report: unknown): EngineFinding[] {
@@ -38,7 +47,9 @@ export function readEngineFindings(file: string): EngineFinding[] {
 }
 
 export function unparsedFiles(findings: readonly EngineFinding[]): Set<string> {
-  return new Set(findings.filter(({ rule }) => rule === PARSE_FAILURE_RULE).map(({ file }) => file));
+  return new Set(
+    findings.filter(({ rule }) => rule === PARSE_FAILURE_RULE).map(({ file }) => file),
+  );
 }
 
 export async function* readEngineLines(file: string): AsyncGenerator<unknown, void> {

@@ -192,6 +192,7 @@ fn typescript_structure(args: &[String]) {
 /// the list is the path to read, the path to report and `key=value` settings for that file, tabs between them. The
 /// module suffix is `test-utils` unless given, and empty for none; `testing-library/utils-module=<suffix>` sets it for
 /// one file and `testing-library/scope=off` leaves the file to no testing-library rule.
+/// A row of the output is file, rule, line, column and message, then the end line and column of a reported range.
 /// `--testing-library-scope` has the engine decide both for every file without such settings, by following the file's
 /// imports as the preset does; `--end-to-end-root <folder>` names the folder of browser tests for that decision.
 fn typescript_lint(args: &[String]) {
@@ -227,7 +228,16 @@ fn typescript_lint(args: &[String]) {
         .collect();
     let rules = typescript::rules::selected(only.as_deref());
     let findings = typescript::rules::lint_files(&files, &rules);
-    let rows: Vec<_> = findings.iter().map(|found| (&found.file, &found.rule, found.line, found.column, &found.message)).collect();
+    let rows: Vec<_> = findings
+        .iter()
+        .map(|reported| {
+            let found = &reported.finding;
+            match reported.end {
+                Some((line, column)) => serde_json::json!([found.file, found.rule, found.line, found.column, found.message, line, column]),
+                None => serde_json::json!([found.file, found.rule, found.line, found.column, found.message]),
+            }
+        })
+        .collect();
     let text = serde_json::to_string(&rows).expect("json");
     match out {
         Some(path) => std::fs::write(path, text).expect("write"),

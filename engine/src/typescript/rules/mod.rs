@@ -22,7 +22,20 @@ pub struct Context<'a, 's> {
     /// Settings given for this file alone, as `key=value`.
     pub settings: &'s [String],
     display: &'s str,
-    findings: Vec<Finding>,
+    findings: Vec<Reported>,
+}
+
+/// A finding, and where its range ends when the rule reports a range and not a point.
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Reported {
+    pub finding: Finding,
+    pub end: Option<(usize, usize)>,
+}
+
+impl From<Finding> for Reported {
+    fn from(finding: Finding) -> Reported {
+        Reported { finding, end: None }
+    }
 }
 
 impl<'a> Context<'a, '_> {
@@ -43,13 +56,19 @@ impl<'a> Context<'a, '_> {
     }
 
     pub fn report_at(&mut self, rule: &str, start: u32, message: String) {
-        self.findings.push(Finding {
-            file: self.display.to_string(),
-            line: self.file.lines.line(start) as usize,
-            column: self.file.lines.column_utf16(self.file.text, start) as usize + 1,
-            rule: if rule.contains('/') { rule.to_string() } else { format!("nitpicker/{rule}") },
-            message,
-        });
+        self.report_range(rule, start, None, message);
+    }
+
+    fn place(&self, offset: u32) -> (usize, usize) {
+        (self.file.lines.line(offset) as usize, self.file.lines.column_utf16(self.file.text, offset) as usize + 1)
+    }
+
+    /// Reports from `start`, up to `end` when the rule reports a range and not a point.
+    pub fn report_range(&mut self, rule: &str, start: u32, end: Option<u32>, message: String) {
+        let (line, column) = self.place(start);
+        let rule = if rule.contains('/') { rule.to_string() } else { format!("nitpicker/{rule}") };
+        let finding = Finding { file: self.display.to_string(), line, column, rule, message };
+        self.findings.push(Reported { finding, end: end.map(|end| self.place(end)) });
     }
 }
 
@@ -95,11 +114,11 @@ impl Selection {
     }
 }
 
-fn lint_file(path: &str, display: &str, settings: &[String], selection: &Selection) -> Vec<Finding> {
+fn lint_file(path: &str, display: &str, settings: &[String], selection: &Selection) -> Vec<Reported> {
     let Ok(text) = std::fs::read_to_string(path) else { return Vec::new() };
     super::with_parsed(path, &text, |file| {
         if file.panicked {
-            return vec![Finding { file: display.to_string(), line: 1, column: 1, rule: "!parse".into(), message: String::new() }];
+            return vec![Finding { file: display.to_string(), line: 1, column: 1, rule: "!parse".into(), message: String::new() }.into()];
         }
         let semantic = SemanticBuilder::new().with_build_nodes(true).build(file.program).semantic;
         let view = selection.view.then(|| support::view::View::of(file.program.to_estree_json(true, true)));
@@ -120,8 +139,8 @@ pub struct Listed {
     pub settings: Vec<String>,
 }
 
-pub fn lint_files(files: &[Listed], rules: &Selection) -> Vec<Finding> {
-    let mut findings: Vec<Finding> = files.par_iter().flat_map_iter(|file| lint_file(&file.path, &file.display, &file.settings, rules)).collect();
+pub fn lint_files(files: &[Listed], rules: &Selection) -> Vec<Reported> {
+    let mut findings: Vec<Reported> = files.par_iter().flat_map_iter(|file| lint_file(&file.path, &file.display, &file.settings, rules)).collect();
     findings.sort();
     findings
 }

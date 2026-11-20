@@ -3,12 +3,16 @@
 use std::path::Path;
 use std::process::Command;
 
-type Row = (String, String, u64, u64, String);
+/// A finding as written: file, rule, line, column, message, and the end of the range when there is one.
+type Row = Vec<serde_json::Value>;
+
+fn sorted(mut rows: Vec<Row>) -> Vec<Row> {
+    rows.sort_by_key(|row| serde_json::to_string(row).expect("text"));
+    rows
+}
 
 fn rows(path: &Path) -> Vec<Row> {
-    let mut rows: Vec<Row> = serde_json::from_str(&std::fs::read_to_string(path).expect("rows")).expect("json");
-    rows.sort();
-    rows
+    sorted(serde_json::from_str(&std::fs::read_to_string(path).expect("rows")).expect("json"))
 }
 
 #[test]
@@ -31,12 +35,12 @@ fn testing_library_findings_match_the_plugin() {
         .status()
         .expect("engine runs");
     assert!(status.success());
-    let found: Vec<Row> = rows(&out).into_iter().filter(|row| row.1.starts_with("testing-library/")).collect();
+    let found: Vec<Row> = rows(&out).into_iter().filter(|row| row[1].as_str().is_some_and(|rule| rule.starts_with("testing-library/"))).collect();
     let expected = rows(&root.join("expected").join("typescript-lint.json"));
     let _ = std::fs::remove_file(&list);
     let _ = std::fs::remove_file(&out);
     assert_eq!(found, expected);
-    let reporting: std::collections::BTreeSet<&str> = expected.iter().map(|row| row.1.as_str()).collect();
+    let reporting: std::collections::BTreeSet<&str> = expected.iter().filter_map(|row| row[1].as_str()).collect();
     assert_eq!(reporting.len(), 12, "every rule reports in the fixtures");
 }
 
@@ -63,7 +67,7 @@ fn imports_resolve_through_the_path_mapping_of_the_nearest_config() {
 fn a_test_file_takes_its_utilities_from_the_helper_its_imports_reach() {
     let expected = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("expected").join("typescript-scope.json");
     let found: Vec<Row> = serde_json::from_str(&engine_on_scope_fixtures(&["typescript-lint", "--testing-library-scope"])).expect("json");
-    assert_eq!(found, rows(&expected));
+    assert_eq!(sorted(found), rows(&expected));
     let unscoped: Vec<Row> = serde_json::from_str(&engine_on_scope_fixtures(&["typescript-lint"])).expect("json");
     assert_eq!(unscoped.len(), 1, "without the scope only the direct import counts");
 }
