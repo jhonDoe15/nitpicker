@@ -138,6 +138,7 @@ enum Shape {
     Unknown,
 }
 
+#[derive(Clone)]
 pub struct Call {
     /// Called on a value of a raw type: member types are erased.
     pub raw: bool,
@@ -617,6 +618,22 @@ impl<'a> Resolver<'a> {
 
     /// The method a call resolves to, when name, receiver and argument types leave one candidate.
     pub fn resolve_call(&self, call: Node) -> Option<Call> {
+        if let Some(known) = self.calls.borrow().get(&call.id()) {
+            return known.as_deref().cloned();
+        }
+        let outside = self.depth.get() == 0 && self.resolving.borrow().is_empty() && self.busy.borrow().is_empty();
+        if outside {
+            self.work.set(0);
+        }
+        let skipped = self.skipped.get();
+        let found = self.resolve_call_now(call);
+        if outside && self.skipped.get() == skipped && self.work.get() <= WORK_LIMIT {
+            self.calls.borrow_mut().insert(call.id(), found.clone().map(std::rc::Rc::new));
+        }
+        found
+    }
+
+    fn resolve_call_now(&self, call: Node) -> Option<Call> {
         if self.spent() {
             return None;
         }
@@ -834,6 +851,22 @@ impl<'a> Resolver<'a> {
 
     /// The constructor a `new` expression calls. With a diamond, the class's type parameters are inferred like a method's.
     fn resolve_constructor(&self, creation: Node) -> Option<Call> {
+        if let Some(known) = self.calls.borrow().get(&creation.id()) {
+            return known.as_deref().cloned();
+        }
+        let outside = self.depth.get() == 0 && self.resolving.borrow().is_empty() && self.busy.borrow().is_empty();
+        if outside {
+            self.work.set(0);
+        }
+        let skipped = self.skipped.get();
+        let found = self.resolve_constructor_now(creation);
+        if outside && self.skipped.get() == skipped && self.work.get() <= WORK_LIMIT {
+            self.calls.borrow_mut().insert(creation.id(), found.clone().map(std::rc::Rc::new));
+        }
+        found
+    }
+
+    fn resolve_constructor_now(&self, creation: Node) -> Option<Call> {
         if self.spent() {
             return None;
         }

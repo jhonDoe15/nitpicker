@@ -103,7 +103,10 @@ fn instead(kind: Kind, class: &str, name: &str, parameters: &[&str]) -> String {
 fn obsolete_api(context: &Context, call: Node) -> Option<String> {
     let name = if call.kind() == "method_invocation" { context.text(call.child_by_field_name("name")?) } else { "" };
     let known = matches!(name, "keys" | "elements" | "hitEnd" | "requireEnd") || BY_NAME.iter().any(|row| row.2 == name);
-    if !known {
+    let created = call.child_by_field_name("type").map(|kind| context.text(kind)).unwrap_or_default();
+    let created = created.split('<').next().unwrap_or_default().rsplit('.').next().unwrap_or_default().trim();
+    let made = call.kind() == "method_invocation" || BY_NAME.iter().any(|row| row.0 == C && row.1.rsplit('.').next() == Some(created));
+    if !known || !made {
         return None;
     }
     let (resolved, _) = context.resolver.call_formals(call)?;
