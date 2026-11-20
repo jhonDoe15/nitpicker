@@ -233,7 +233,7 @@ impl<'a, 't> Machine<'a, 't> {
             "ClassDeclaration" | "EnumDeclaration" | "RecordDeclaration" | "AnnotationTypeDeclaration" | "AnonymousClassDeclaration" => {
                 let source = node.source?;
                 let names = &self.resolver.scope.names;
-                names.get(&source.id()).or_else(|| names.get(&source.parent()?.id())).map(|name| Type::class(name))
+                names.get(&source.id()).or_else(|| names.get(&crate::engine::source::parent(source)?.id())).map(|name| Type::class(name))
             }
             "EnumConstant" => {
                 let mut holder = node.parent;

@@ -1433,10 +1433,10 @@ impl<'a, 't> Builder<'a, 't> {
 
     fn access(&self, node: Node) -> &'static str {
         let mut inner = node;
-        let mut holder = node.parent();
+        let mut holder = crate::engine::source::parent(node);
         while let Some(outer) = holder.filter(|outer| outer.kind() == "parenthesized_expression") {
             inner = outer;
-            holder = outer.parent();
+            holder = crate::engine::source::parent(outer);
         }
         match holder {
             Some(outer) if outer.kind() == "update_expression" => "WRITE",

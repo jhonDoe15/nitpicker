@@ -1,4 +1,5 @@
 //! Static types of expressions, as far as declarations, the index and erased signatures give them.
+use std::rc::Rc;
 use super::model::{ClassInfo, Field, Method, OBJECT, Type};
 use std::collections::HashMap;
 use super::scope::{Resolver, class_at, enclosing_type, enclosing_types};
@@ -228,9 +229,36 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    /// The local variables a block declares directly: name, where the statement starts, and the places of the
+    /// statement in the block and of the declarator in the statement. Kept per block, first declaration first.
+    fn locals_of(&self, block: Node) -> Rc<Vec<(String, usize, u32, u32)>> {
+        if let Some(known) = self.locals.borrow().get(&block.id()) {
+            return known.clone();
+        }
+        let mut declared = Vec::new();
+        let mut cursor = block.walk();
+        for (place, statement) in block.children(&mut cursor).enumerate() {
+            if statement.kind() != "local_variable_declaration" {
+                continue;
+            }
+            let mut inner = statement.walk();
+            for (at, declarator) in statement.children(&mut inner).enumerate() {
+                if declarator.kind() != "variable_declarator" {
+                    continue;
+                }
+                if let Some(name) = declarator.child_by_field_name("name") {
+                    declared.push((self.file.text_of(name).to_string(), statement.start_byte(), place as u32, at as u32));
+                }
+            }
+        }
+        let declared = Rc::new(declared);
+        self.locals.borrow_mut().insert(block.id(), declared.clone());
+        declared
+    }
+
     fn binding(&self, usage: Node, name: &str) -> Option<Binding<'a>> {
         let mut inner = usage;
-        let mut scope = usage.parent();
+        let mut scope = crate::engine::source::parent(usage);
         while let Some(node) = scope {
             let typed = |declaration: Node, declarator: Option<Node>| -> Option<Type> {
                 let written = declaration.child_by_field_name("type")?;
@@ -243,17 +271,12 @@ impl<'a> Resolver<'a> {
             let named = |holder: Node| holder.child_by_field_name("name").is_some_and(|n| self.file.text_of(n) == name);
             match node.kind() {
                 "block" | "constructor_body" | "switch_block_statement_group" | "program" => {
-                    for statement in children(node) {
-                        if statement.start_byte() >= inner.start_byte() {
-                            break;
-                        }
-                        if statement.kind() == "local_variable_declaration" {
-                            for declarator in super::super::helpers::declarators(statement) {
-                                if named(declarator) {
-                                    return Some(Binding::Local(typed(statement, Some(declarator))));
-                                }
-                            }
-                        }
+                    let declared = self.locals_of(node);
+                    let found = declared.iter().find(|local| local.0 == name).filter(|local| local.1 < inner.start_byte());
+                    if let Some((_, _, statement, declarator)) = found {
+                        let statement = node.child(*statement)?;
+                        let declarator = statement.child(*declarator)?;
+                        return Some(Binding::Local(typed(statement, Some(declarator))));
                     }
                 }
                 "for_statement" => {
@@ -343,7 +366,7 @@ impl<'a> Resolver<'a> {
                 }
             }
             inner = node;
-            scope = node.parent();
+            scope = crate::engine::source::parent(node);
         }
         let single = self.scope.static_single.get(name).into_iter().flatten();
         single.chain(&self.scope.static_on_demand).find_map(|owner| {
@@ -440,7 +463,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn pattern_variable(&self, usage: Node, name: &str) -> Option<Type> {
-        let mut scope = usage.parent();
+        let mut scope = crate::engine::source::parent(usage);
         while let Some(node) = scope {
             if matches!(node.kind(), "method_declaration" | "constructor_declaration" | "lambda_expression" | "class_body") {
                 let mut found = None;
@@ -458,7 +481,7 @@ impl<'a> Resolver<'a> {
                 });
                 return found;
             }
-            scope = node.parent();
+            scope = crate::engine::source::parent(node);
         }
         None
     }
@@ -1140,7 +1163,7 @@ impl<'a> Resolver<'a> {
 
     /// A case label of a switch over an enum names a constant of that enum.
     fn case_constant(&self, usage: Node, name: &str) -> Option<Type> {
-        usage.parent().filter(|label| label.kind() == "switch_label")?;
+        crate::engine::source::parent(usage).filter(|label| label.kind() == "switch_label")?;
         let switch = crate::engine::source::ancestor(usage, &["switch_expression", "switch_statement"])?;
         let selector = self.type_of(switch.child_by_field_name("condition")?)?;
         self.index.field(&selector.name(), name).is_some().then_some(selector)
@@ -1202,14 +1225,14 @@ impl<'a> Resolver<'a> {
             return None;
         }
         let mut inner = expression;
-        let mut holder = expression.parent()?;
+        let mut holder = crate::engine::source::parent(expression)?;
         while holder.kind() == "parenthesized_expression" {
             inner = holder;
-            holder = holder.parent()?;
+            holder = crate::engine::source::parent(holder)?;
         }
         match holder.kind() {
             "argument_list" if arguments => {
-                let call = holder.parent()?;
+                let call = crate::engine::source::parent(holder)?;
                 let position = call_arguments(call).iter().position(|argument| *argument == inner)?;
                 let resolved = match call.kind() {
                     "method_invocation" => self.resolve_call(call)?,
@@ -1238,7 +1261,7 @@ impl<'a> Resolver<'a> {
                 Some(pattern.substitute(&map))
             }
             "variable_declarator" => {
-                let declaration = holder.parent()?;
+                let declaration = crate::engine::source::parent(holder)?;
                 declaration.child_by_field_name("type").filter(|kind| self.file.text_of(*kind) != "var")?;
                 self.declared_type(declaration, Some(holder))
             }
@@ -1326,9 +1349,9 @@ impl<'a> Resolver<'a> {
                 _ => {}
             }
         }
-        let mut holder = expression.parent();
+        let mut holder = crate::engine::source::parent(expression);
         while holder.is_some_and(|node| node.kind() == "parenthesized_expression") {
-            holder = holder.and_then(|node| node.parent());
+            holder = holder.and_then(crate::engine::source::parent);
         }
         let in_lambda = holder.is_some_and(|node| {
             node.kind() == "lambda_expression"
@@ -1362,12 +1385,12 @@ impl<'a> Resolver<'a> {
     /// The expression is an argument for a parameter whose type is a type variable of the called method.
     fn fills_type_variable(&self, expression: Node) -> bool {
         let mut inner = expression;
-        let mut holder = expression.parent();
+        let mut holder = crate::engine::source::parent(expression);
         while let Some(node) = holder.filter(|node| node.kind() == "parenthesized_expression") {
             inner = node;
-            holder = node.parent();
+            holder = crate::engine::source::parent(node);
         }
-        let Some(call) = holder.filter(|node| node.kind() == "argument_list").and_then(|list| list.parent()) else { return false };
+        let Some(call) = holder.filter(|node| node.kind() == "argument_list").and_then(|list| crate::engine::source::parent(list)) else { return false };
         let Some(position) = call_arguments(call).iter().position(|argument| *argument == inner) else { return false };
         let resolved = match call.kind() {
             "method_invocation" => self.resolve_call(call),
@@ -1385,10 +1408,10 @@ impl<'a> Resolver<'a> {
     }
 
     fn initializer(&self, expression: Node) -> Option<Type> {
-        let holder = expression.parent()?;
+        let holder = crate::engine::source::parent(expression)?;
         match holder.kind() {
             "array_creation_expression" => self.type_of(holder),
-            "variable_declarator" => self.declared_type(holder.parent()?, Some(holder)),
+            "variable_declarator" => self.declared_type(crate::engine::source::parent(holder)?, Some(holder)),
             "array_initializer" => match self.type_of(holder)? {
                 Type::Array(element) => Some(*element),
                 _ => None,

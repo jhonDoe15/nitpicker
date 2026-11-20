@@ -118,6 +118,7 @@ impl FileRule for XPathRules {
     fn check(&self, _file: &SourceFile, _out: &mut Vec<Finding>) {}
     fn check_in(&self, file: &SourceFile, project: &Project, out: &mut Vec<Finding>) {
         let Some(project) = project.downcast_ref::<JavaProject>() else { return };
+        let _parents = crate::engine::source::ParentTable::of(file.tree.root_node());
         let scope = &crate::java::types::scope::FileScope::of(file);
         let resolver = Resolver::new(&project.index, file, scope);
         let tree = PmdTree::build(file, file.tree.root_node(), &resolver);
