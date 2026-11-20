@@ -4,6 +4,7 @@ import { prettierPrecedence, usesLayeredPrettier, readLayout } from '../typed/he
 import type * as Prettier from 'prettier';
 import type { StaticCheckOptions } from './arguments.mts';
 import { type Finding, runNodeTool, projectFile, policyFile, hash } from './shared.mts';
+import { describeProcessEnd } from '../../../../shared/processes/process-failure.mjs';
 import { resolveTool, toolBinaryPath, trackTemporaryPath } from '../typed/tooling.mts';
 import {
   importPrettier as importPrettierApi,
@@ -17,8 +18,15 @@ import { messageOf } from '../../../../shared/values/readers.mts';
 import { formattingHunks } from '../prettier/format-hunks.mts';
 import { listUnformattedInParallel } from '../prettier/parallel-cli.mts';
 import { matchingFiles } from '../prettier/matching-files.mts';
+import {
+  type Formatted,
+  formattedOrUnparsed,
+  unparsedFileFinding,
+  unparsedFilesOf,
+} from '../prettier/unparsed/unparsed-files.mts';
 import { formatAdvice } from '../../../../shared/messages/format/format-advice.mjs';
 
+const PRETTIER_ERROR_STATUS = 2;
 const PRETTIER_MESSAGE = `These lines are not formatted with Prettier. ${formatAdvice()}`;
 
 type InstalledPolicy = {
@@ -102,8 +110,13 @@ function listUnformattedFilesSerially(
       ...options.patterns,
       ...exclusions.map((glob) => `!${glob}`),
     ],
-    acceptedStatuses: [0, 1],
+    acceptedStatuses: [0, 1, PRETTIER_ERROR_STATUS],
   });
+  const unparsedFiles =
+    result.status === PRETTIER_ERROR_STATUS ? unparsedFilesOf(result.stderr) : [];
+  if (unparsedFiles === undefined) {
+    throw new Error(describeProcessEnd(options.kind, result));
+  }
   const unformattedFiles = result.stdout
     .split(/\r?\n/)
     .map((value) => value.trim())
@@ -111,7 +124,7 @@ function listUnformattedFilesSerially(
   if (result.status === 1 && unformattedFiles.length === 0) {
     throw new Error(`Prettier reported formatting differences without file paths`);
   }
-  return unformattedFiles;
+  return [...unformattedFiles, ...unparsedFiles];
 }
 
 async function layeredFormattingFindings(
@@ -136,20 +149,19 @@ async function layeredFormattingFindings(
         return [];
       }
       const source = await readFile(path.join(options.projectRoot, relativePath), 'utf8');
-      const formatted = await prettier.format(source, {
-        ...(await layeredPrettierOptions(prettier, {
-          ...layers,
-          policyOptions,
-          relativePath,
-          onConfigError: (error) => {
-            configErrors.push(error);
-          },
-        })),
-        filepath: path.join(options.projectRoot, relativePath),
+      const layered = await layeredPrettierOptions(prettier, {
+        ...layers,
+        policyOptions,
+        relativePath,
+        onConfigError: (error) => {
+          configErrors.push(error);
+        },
       });
-      return formatted === source
-        ? []
-        : formattingFindings({ tool: options.analyzerName, relativePath, source }, formatted);
+      const filepath = path.join(options.projectRoot, relativePath);
+      const result = await formattedOrUnparsed(() =>
+        prettier.format(source, { ...layered, filepath }),
+      );
+      return checkedFindings({ tool: options.analyzerName, relativePath, source }, result);
     }),
   );
   return [...configNotLoaded(options.analyzerName, configErrors), ...perFile.flat()];
@@ -202,11 +214,10 @@ async function formattingFindingsOf(
       const relativePath = projectFile(options.projectRoot, filePath);
       const absolutePath = path.join(options.projectRoot, relativePath);
       const source = await readFile(absolutePath, 'utf8');
-      const formatted = await prettier.format(source, {
-        ...prettierOptions,
-        filepath: absolutePath,
-      });
-      return formattingFindings({ tool: options.analyzerName, relativePath, source }, formatted);
+      const result = await formattedOrUnparsed(() =>
+        prettier.format(source, { ...prettierOptions, filepath: absolutePath }),
+      );
+      return checkedFindings({ tool: options.analyzerName, relativePath, source }, result);
     }),
   );
   return perFile.flat();
@@ -252,6 +263,13 @@ function linkPrettierPolicy({
     unlinkSync(configPath);
     throw error;
   }
+}
+
+function checkedFindings(checked: FormattedSource, result: Formatted): Finding[] {
+  if (result.formatted === undefined) {
+    return [unparsedFileFinding(checked.tool, checked.relativePath, result.reason)];
+  }
+  return result.formatted === checked.source ? [] : formattingFindings(checked, result.formatted);
 }
 
 function formattingFindings(
