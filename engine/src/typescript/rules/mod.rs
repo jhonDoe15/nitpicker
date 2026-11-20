@@ -1,5 +1,7 @@
 //! Lint rules on the shared parse. Ids, messages and positions are those of the ESLint-plugin rule of the same name.
-mod no_silent_catch;
+mod errors;
+mod modules;
+pub mod support;
 
 use super::ParsedFile;
 use crate::engine::finding::Finding;
@@ -32,7 +34,10 @@ impl<'a> Context<'a, '_> {
 
 pub type Rule = fn(&mut Context);
 
-pub const ALL: &[(&str, Rule)] = &[("no-silent-catch", no_silent_catch::check)];
+pub const ALL: &[(&str, Rule)] = &[
+    ("no-production-console", modules::no_production_console::check),
+    ("no-silent-catch", errors::no_silent_catch::check),
+];
 
 pub fn selected(only: Option<&[String]>) -> Vec<Rule> {
     ALL.iter().filter(|(name, _)| only.is_none_or(|names| names.iter().any(|wanted| wanted == name))).map(|(_, rule)| *rule).collect()
