@@ -31,6 +31,13 @@ const FIELD_MESSAGE =
 const DIGIT_UNDERSCORE_MESSAGE =
   "Non-constant field name ''{0}'' must be lowerCamelCase, with no underscore, not even between " +
   'digits.';
+const ALWAYS_SUPPRESSED = /<suppress\s+(checks|id)="([^"]*)"\s+files="\."\s*\/>/gu;
+const LEAF_MODULE = /<module name="([^"]+)"\s*(?:\/>|>(?:(?!<module )[\s\S])*?<\/module>)/gu;
+const MODULE_ID = /<property name="id"\s+value="([^"]*)"/u;
+const KEPT_MODULE = /(?:Filter|Holder)$/u;
+const LAYOUT_SUPPRESSIONS = 'checkstyle-suppressions.xml';
+const UNFORMATTED_SUPPRESSIONS = 'checkstyle-suppressions-unformatted.xml';
+type Suppressed = { readonly checks: readonly RegExp[]; readonly ids: ReadonlySet<string> };
 type Edit = {
   readonly pattern: RegExp;
   readonly replacement: (...groups: string[]) => string;
@@ -122,4 +129,41 @@ export function withGuardChecks(config: string, files: readonly string[]): strin
   }
   const modules = files.map((file) => checkstyleRuleModules(file)).join('\n');
   return config.replace(TREE_WALKER, () => `${TREE_WALKER}\n${modules}`);
+}
+
+export function suppressionsFile(unformatted: boolean): string {
+  return unformatted ? UNFORMATTED_SUPPRESSIONS : LAYOUT_SUPPRESSIONS;
+}
+
+function alwaysSuppressed(suppressions: string): Suppressed {
+  const entries = [...suppressions.matchAll(ALWAYS_SUPPRESSED)];
+  return {
+    checks: entries
+      .filter(([, kind]) => kind === 'checks')
+      .map(([, , value]) => new RegExp(value ?? '', 'u')),
+    ids: new Set(entries.filter(([, kind]) => kind === 'id').map(([, , value]) => value ?? '')),
+  };
+}
+
+function checkClass(name: string): string {
+  const simple = name.slice(name.lastIndexOf('.') + 1);
+  return simple.endsWith('Check') ? simple : `${simple}Check`;
+}
+
+export function withoutSuppressedChecks(config: string, suppressions: string): string {
+  const { checks, ids } = alwaysSuppressed(suppressions);
+  return config.replaceAll(LEAF_MODULE, (module: string, name: string) => {
+    const id = MODULE_ID.exec(module)?.[1];
+    const dropped =
+      !KEPT_MODULE.test(name) &&
+      (checks.some((check) => check.test(checkClass(name))) || (id !== undefined && ids.has(id)));
+    return dropped ? '' : module;
+  });
+}
+
+export function reportingCheckstyleConfig(config: string, unformatted: boolean): string {
+  return withoutSuppressedChecks(
+    config,
+    readFileSync(path.join(GRADLE_DIRECTORY, suppressionsFile(unformatted)), 'utf8'),
+  );
 }

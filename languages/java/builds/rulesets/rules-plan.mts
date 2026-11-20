@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import {
   nitpickerCheckstyleConfig as untypedCheckstyleConfig,
+  reportingCheckstyleConfig as untypedReportingConfig,
   withGuardChecks as untypedGuardChecks,
 } from './checkstyle-config.mts';
 import { unformattedCheckstyle as untypedUnformatted } from '../../adapters/tool-config/checkstyle/unformatted-checks.mts';
@@ -11,6 +12,8 @@ import { compilerOf } from '../typed/lint-plan.mts';
 export type RulesPlan = Readonly<Record<string, unknown>>;
 
 export const nitpickerCheckstyleConfig: (bundled: string) => string = untypedCheckstyleConfig;
+export const reportingCheckstyleConfig: (config: string, unformatted: boolean) => string =
+  untypedReportingConfig;
 export function withGuardChecks(config: string, files: unknown): string {
   return untypedGuardChecks(config, textsOf(files));
 }
