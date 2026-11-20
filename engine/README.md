@@ -120,8 +120,8 @@ Measured on 4 cores against Error Prone running only these checks (findings: sam
 
 | Code base | Files, lines | Error Prone wall, CPU, peak | Engine | Findings |
 | --- | --- | --- | --- | --- |
-| Elasticsearch `server` | 5,106, 1,035k | 249 s, 417 s, 3.2 GB | 8.0 s, 28.9 s, 0.5 GB | 4,330 / 5 / 1 | 1,532 / 7 / 1 |
-| Nacos | 3,118, 548k | 108 s, 242 s, 2.9 GB | 5.2 s, 13.0 s, 0.3 GB | 2,438 / 2 / 4 | 85 / 0 / 0 |
+| Elasticsearch `server` | 5,106, 1,035k | 26.5 s, 75.6 s, 3.4 GB | 7.8 s, 28.6 s, 0.5 GB | 5,476 / 4 / 0 |
+| Nacos | 3,118, 548k | 13.4 s, 42.3 s, 1.5 GB | 5.5 s, 13.1 s, 0.3 GB | 4,837 / 7 / 7 |
 | javaparser-core | 594, 121k | 7.8 s, 24.2 s, 0.9 GB | 1.0 s, 3.5 s, 0.1 GB | 5,399 / 0 / 6 |
 | Guava | 610, 183k | 7.2 s, 22.8 s, 0.8 GB | 1.1 s, 3.8 s, 0.1 GB | 198 / 0 / 0 |
 | jackson-databind | 478, 134k | 5.0 s, 16.0 s, 0.5 GB | 0.8 s, 2.7 s, 0.1 GB | 1,130 / 0 / 0 |
@@ -155,8 +155,8 @@ these five patterns from source:
 
 | Code base | Files, lines | SpotBugs wall, CPU, peak | Engine | Exposed representation | Constructor throw |
 | --- | --- | --- | --- | --- | --- |
-| Elasticsearch `server` | 5,106, 1,035k | 249 s, 417 s, 3.2 GB | 9.4 s, 34.8 s, 0.5 GB | 4,326 / 9 / 4 | 1,531 / 8 / 2 |
-| Nacos | 3,118, 548k | 108 s, 242 s, 2.9 GB | 6.6 s, 16.1 s, 0.3 GB | 2,437 / 3 / 6 | 84 / 1 / 0 |
+| Elasticsearch `server` | 5,106, 1,035k | 249 s, 417 s, 3.2 GB | 8.0 s, 28.9 s, 0.5 GB | 4,330 / 5 / 1 | 1,532 / 7 / 1 |
+| Nacos | 3,118, 548k | 108 s, 242 s, 2.9 GB | 5.2 s, 13.0 s, 0.3 GB | 2,438 / 2 / 4 | 85 / 0 / 0 |
 | javaparser-core | 594, 121k | 48.3 s, 97.2 s, 2.3 GB | 0.9 s, 3.0 s, 0.1 GB | 500 / 0 / 0 | 17 / 0 / 0 |
 | Guava | 610, 183k | 43.6 s, 99.8 s, 1.8 GB | 1.3 s, 4.3 s, 0.1 GB | 14 / 0 / 0 | 0 / 0 / 0 |
 | jackson-databind | 478, 134k | 35.7 s, 78.2 s, 1.7 GB | 0.9 s, 3.3 s, 0.1 GB | 224 / 0 / 0 | 17 / 0 / 0 |
@@ -213,6 +213,6 @@ one; the line of an inner-class constructor is the line of its opening brace.
 
 Known gaps in what is rebuilt: `c ? a : b` stored in a field follows a table measured on SpotBugs, which decides
 by the compiled form (`tests/fixtures/spotbugs/choices*`); a local variable with more than two values is taken
-as changeable; stores from other files are not seen; a branch SpotBugs finds dead because it compares a field
+as changeable, and so is a value more than 8 local variables or 256 nested values deep; stores from other files are not seen; a branch SpotBugs finds dead because it compares a field
 nothing writes with a constant is still looked at; a call that is the very first instruction of a `finally`
 block is still covered by the handler before it in the compiled form, which the engine does not rebuild.

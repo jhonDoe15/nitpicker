@@ -100,7 +100,25 @@ impl<'t> Walker<'_, '_, 't> {
                 let names = children(statement).into_iter().filter(|part| part.kind() == "variable_declarator").filter_map(|d| d.child_by_field_name("name"));
                 declared.extend(names.map(|name| self.text(name).to_string()));
             }
-            if !self.exec(statement, state) {
+            // A pattern variable ends with its statement; after an `if` on a negated test it goes on to the end
+            // of the block.
+            let mut tested = Vec::new();
+            if self.text(statement).contains("instanceof") {
+                crate::engine::source::walk(statement, |node| {
+                    if node.kind() == "instanceof_expression" {
+                        tested.extend(eval::pattern_variable(node).map(|name| self.text(name).to_string()));
+                    }
+                });
+            }
+            let done = self.exec(statement, state);
+            let test = statement.child_by_field_name("condition").map(|test| self.text(test)).unwrap_or_default();
+            if statement.kind() == "if_statement" && (test.contains('!') || test.contains("||")) {
+                declared.append(&mut tested);
+            }
+            for name in tested {
+                state.remove(&name);
+            }
+            if !done {
                 completes = false;
                 break;
             }
