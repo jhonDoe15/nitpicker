@@ -2,7 +2,7 @@
 name = "nitpicker-engine"
 version = "0.0.1"
 edition = "2024"
-license = "MIT"
+license = "PolyForm-Noncommercial-1.0.0"
 
 [dependencies]
 rayon = "1.12.0"
