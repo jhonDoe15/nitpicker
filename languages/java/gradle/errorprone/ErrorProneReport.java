@@ -30,11 +30,11 @@ public final class ErrorProneReport {
   private static final String PATCH_LOCATION = PROJECT_FLAG + "-XepPatchLocation:";
   private static final String FIX_CHECKS = PROJECT_FLAG + "-XepNitpickerFixChecks:";
   private static final String PROCESSOR_PATH = "-processorpath";
-  private static final List<String> MODULE_OPTIONS = List.of("--add-exports", "--add-modules", "--add-reads");
+  private static final List<String> MODULE_OPTIONS = List.of("--add-exports", "--add-modules", "--add-reads", "--patch-module");
   private static final List<String> NULLAWAY_OPTIONS =
       List.of("ExcludedFieldAnnotations", "ExternalInitAnnotations", "CustomInitializerAnnotations");
   private static final Pattern NAME = Pattern.compile("\"([^\"]+)\"");
-  private static final Pattern JDK_MODULE = Pattern.compile("^--add-exports=(?:java|jdk)\\.");
+  private static final Pattern JDK_MODULE = Pattern.compile("^--(?:add-exports|patch-module)=(?:java|jdk)\\.");
   private static final Pattern ADD_SUPPRESS_WARNINGS =
       Pattern.compile("(?m)^\\s*lombok\\.addSuppressWarnings\\s*=\\s*(\\w+)");
   private static final Pattern STOP_BUBBLING = Pattern.compile("(?m)^\\s*config\\.stopBubbling\\s*=\\s*true\\b");
