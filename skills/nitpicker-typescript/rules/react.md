@@ -22,5 +22,7 @@ exception route in the message: write that form, don't work around the rule.
 - A `useSelector` or Zustand selector returns a stored value or a primitive; for several values use one call each,
   `createSelector`, `shallowEqual` or `useShallow(...)`, never `(s) => ({ a: s.a, b: s.b })` or `s.items.filter(...)`
   alone (`nitpicker/react-no-unstable-selector-result`).
+- `useSyncExternalStore` gets a `subscribe` declared at module level (or in `useCallback`) and a `getSnapshot` that
+  returns a value the store keeps, not a new object or array (`nitpicker/react-no-unstable-store-subscribe`).
 - Component tests query through `screen` and assert what the user sees (text, roles, focus), never
   component state, instances or hook internals.
