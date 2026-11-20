@@ -41,9 +41,9 @@ const PLUGIN_WHY: Readonly<Record<string, string>> = {
   functional: 'The preset turns on this rule to keep data immutable.',
   vitest: 'The preset turns on this rule of the Vitest plugin for tests.',
   playwright:
-    'The preset turns on this rule of the Playwright plugin in test files that import Playwright, so browser tests wait on the page instead of reading it once.',
+    'The preset turns on this rule of the Playwright plugin in test files that import Playwright, so browser tests use the steps that wait for the page.',
   cypress:
-    'The preset turns on this rule of the Cypress plugin in test files that use `cy`, so commands run in the order Cypress queues them.',
+    'The preset turns on this rule of the Cypress plugin in test files that use `cy`, so tests follow the command queue and leave no debugging stops.',
 };
 const RESTRICTED = /^(?:[\w-]+\/)?no-restricted-/u;
 const REACT_SCOPE =
