@@ -1154,6 +1154,44 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="DelimitedLookupKey" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This map or set key joins two runtime strings with a delimiter, so the pairs &quot;a-b&quot; and &quot;c&quot;, and &quot;a&quot; and &quot;b-c&quot;, produce the same key: one entry overwrites or answers for another. Key it with a record, List.of(a, b) or a nested map, or encode the parts so the delimiter cannot appear in them. A number, an enum, an id that cannot hold the delimiter and a literal are fine.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $keyCalls := ('get', 'put', 'containsKey', 'remove', 'getOrDefault', 'putIfAbsent', 'computeIfAbsent',
+                  'computeIfPresent', 'compute', 'merge', 'add', 'contains'),
+    $plain := function($e) {
+      exists($e[pmd-java:typeIsExactly('java.lang.String')][not(@CompileTimeConstant = true())]
+        [not(self::MethodCall[@MethodName = ('toString', 'valueOf', 'name', 'toHexString', 'toBinaryString', 'toOctalString')])]
+        [not(matches(string-join(descendant-or-self::*/(@Name, @MethodName), ' '), '(?:^|[a-z0-9])(?:id|Id|ID|uuid|Uuid|hash|Hash|index|Index|idx)( |$)', ''))]
+        [not(matches(string-join(descendant-or-self::*/(@Name, @MethodName), ' '), '(?:^|[a-z0-9])(?:owner|Owner|class|Class|method|Method|bean|Bean)( |$)', ''))])
+    },
+    $generated := function($e) {
+      exists($e/descendant-or-self::MethodCall[@MethodName = ('getAndIncrement', 'incrementAndGet', 'nanoTime', 'currentTimeMillis', 'randomUUID', 'nextLong', 'nextInt')])
+    },
+    $dynamic := function($e) { exists($e[not(@CompileTimeConstant = true())][not(self::StringLiteral)]) },
+    $delimiter := function($e) { exists($e[self::StringLiteral][matches(@Image, '^"[-_:;,.|/#@~=*&%+]{1,2}"$')]) },
+    $joinedExpr := function($e) {
+      not($generated($e)) and
+      exists($e/descendant-or-self::InfixExpression[@Operator = '+'][not(ancestor::ArgumentList[(.. is $e) or ancestor::*[. is $e]])]
+               [*[1][self::InfixExpression[@Operator = '+'][$delimiter(*[2])][$dynamic(*[1])]]][$plain(*[2])][$plain(*[1]/*[1])]
+             | $e[self::MethodCall][@MethodName = 'join'][pmd-java:matchesSig('java.lang.String#join(_*)')]
+                 [$delimiter(ArgumentList/*[1])][count(ArgumentList/*[position() > 1][$plain(.)]) >= 2])
+    },
+    $joined := function($key) {
+      $joinedExpr($key)
+      or exists($key[self::VariableAccess][let $name := @Name return
+           ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1]
+             //LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name][$joinedExpr(*[2])]])
+    }
+return //MethodCall[@MethodName = $keyCalls][*[1][pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Set')]]
+  [let $key := ArgumentList/*[1] return $joined($key)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="EpochNarrowedToInt" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="An epoch time is cut to a 32-bit int here: epoch milliseconds overflow at once, and epoch seconds overflow in 2038 and turn a long lifetime into a date in the past. Keep epoch times in a long or an Instant (long expiresAt = Instant.now().getEpochSecond() + lifetimeSeconds), and compare them as long values.">
     <priority>3</priority>
@@ -1851,6 +1889,31 @@ return (
   //ReturnStatement/MethodCall[@MethodName = 'collect'][ArgumentList/MethodCall[@MethodName = 'toList']]
     [$hashChain(*[1], true())]
 )
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="HostPortColonSplit" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This cuts a host and port at &quot;:&quot;. An IPv6 literal such as [::1]:3000 has colons of its own, so the host becomes &quot;[&quot; and the port is lost or wrong. Parse it with URI (new URI(&quot;http://&quot; + host).getHost() and getPort()), Guava HostAndPort.fromString(host), or cut after the closing bracket. A value that is known not to be an IPv6 address takes an exceptions entry.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $named := function($e) {
+      exists($e[self::VariableAccess or self::FieldAccess][matches(@Name, '^(?:host|hostname|authority|origin|[a-z0-9]+Host)$')]
+             | $e[self::MethodCall][@MethodName = ('getHeader', 'getHeaderString', 'getFirst')]
+                 [ArgumentList/StringLiteral[matches(@Image, '^"(?:host|x-forwarded-host|:authority)"$', 'i')]]
+             | $e[self::MethodCall][@MethodName = ('getAuthority', 'getRawAuthority')][ArgumentList/@Size = 0])
+    },
+    $colon := function($e) { exists($e[self::StringLiteral][@Image = '":"']) },
+    $text := function($e) { string-join($e/descendant-or-self::*/(@Name, @MethodName), '.') }
+return (
+  //MethodCall[@MethodName = 'split'][ArgumentList/@Size = (1, 2)][$colon(ArgumentList/*[1])]
+    [$named(*[1])]
+  | //MethodCall[@MethodName = ('substring', 'subSequence')][$named(*[1])]
+      [ArgumentList/MethodCall[@MethodName = 'indexOf'][$colon(ArgumentList/*[1])][$text(*[1]) = $text(../../*[1])]]
+)[not(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1]
+        //StringLiteral[@Image = ('"["', '"]"')])]
 ]]></value>
       </property>
     </properties>
@@ -2892,6 +2955,39 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="NewlineOnlyLineSplit" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This splits text read from a file on &quot;\n&quot; only, so every line of a CRLF file keeps a trailing carriage return, comparisons and regular expressions are off, and text that uses a lone carriage return is not split at all. Split on every line terminator with split(&quot;\\R&quot;) or lines(), or read it line by line with a BufferedReader. Text the program generated itself is fine.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $read := function($e) {
+      exists($e[self::MethodCall][@MethodName = ('readString', 'readFileToString', 'readAllBytes')]
+             | $e[self::ConstructorCall][ClassType/@SimpleName = 'String']
+                 [ArgumentList/*[1][self::MethodCall][@MethodName = ('readAllBytes', 'readFileToByteArray', 'readBytes')]]
+             | $e[self::MethodCall][@MethodName = 'toString'][ArgumentList/@Size = (1, 2)]
+                 [*[1][self::TypeExpression/ClassType[@SimpleName = 'IOUtils']]])
+    },
+    $steps := ('trim', 'strip', 'stripTrailing', 'stripLeading'),
+    $base := function($e) {
+      $read($e) or exists($e[self::MethodCall][@MethodName = $steps][ArgumentList/@Size = 0][$read(*[1])])
+    },
+    $newline := function($e) { exists($e[self::StringLiteral][@Image = '"\n"']) },
+    $text := function($e) {
+      $base($e) or exists($e[self::VariableAccess][let $name := @Name return
+        ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1]
+          //LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name][$base(*[2])]
+          [not(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1]
+               //AssignmentExpression[*[1][self::VariableAccess[@Name = $name]]])]])
+    }
+return //MethodCall[@MethodName = ('split', 'indexOf', 'lastIndexOf')][$newline(ArgumentList/*[1])][ArgumentList/@Size = 1]
+  [$text(*[1])]
+  [not(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1]
+        //StringLiteral[matches(@Image, '\\r|\\R|\\u2028')])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="NullableLibraryResult" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This call returns null as a normal answer (a package without manifest metadata has no version, a request without that query string, header, parameter, path info or session has none), but the result is dereferenced without a null check, so the code throws a NullPointerException for those inputs. Check it first (String version = pkg.getImplementationVersion(); if (version != null) ...), or fall back with Objects.requireNonNullElse(request.getParameter(name), &quot;&quot;). An exception fits when the receiver is known to have the value.">
     <priority>3</priority>
@@ -3006,6 +3102,29 @@ return
 //MethodCall[@MethodName = 'orElseGet'][ArgumentList[@Size = 1]/NullLiteral]
   [*[1][some $t in ('java.util.Optional', 'java.util.OptionalInt', 'java.util.OptionalLong',
                     'java.util.OptionalDouble') satisfies pmd-java:typeIsExactly($t)]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="PairSplitDropsRest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This reads the second part of a String.split on &quot;:&quot; or &quot;=&quot;, so a value that contains the separator (a URL, a message, a base64 =) loses everything after it, and a text without the separator throws ArrayIndexOutOfBoundsException. Split once with a limit: text.split(&quot;:&quot;, 2) and check the length, or cut at text.indexOf(&quot;:&quot;). A format that cannot hold the separator twice takes an exceptions entry.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $split := function($e) {
+      exists($e[self::MethodCall][@MethodName = 'split'][ArgumentList/@Size = 1]
+        [pmd-java:matchesSig('java.lang.String#split(java.lang.String)')]
+        [ArgumentList/StringLiteral[@Image = ('":"', '"="')]]
+        [not(matches(string-join(*[1]/descendant-or-self::*/(@Name, @MethodName), ' '), 'time|clock|duration|ratio|aspect', 'i'))])
+    }
+return //ArrayAccess[*[2][self::NumericLiteral][@Image = '1']][
+  $split(*[1])
+  or *[1][self::VariableAccess][let $name := @Name return
+    ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1]
+      [.//LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name][$split(*[2])]]
+      [not(.//FieldAccess[@Name = 'length'][*[1][self::VariableAccess[@Name = $name]]])]]
+]
 ]]></value>
       </property>
     </properties>
@@ -3956,6 +4075,38 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="SurrogateSplittingCut" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This cuts text at a length counted in UTF-16 chars after a check of the same length, so a cut between the two halves of a surrogate pair (an emoji, many CJK characters) leaves a lone surrogate that renders as a replacement character and fails strict UTF-8 encoding. Step back over a high surrogate before cutting (Character.isHighSurrogate(text.charAt(end - 1)) then end--), cut by code point with text.offsetByCodePoints(0, count), or use a BreakIterator for grapheme clusters. Text that is ASCII by construction (ids, hashes, base64) is fine.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $over := function($test) {
+      $test[self::InfixExpression][@Operator = ('>', '>=')]
+        [*[1][self::MethodCall][@MethodName = 'length'][ArgumentList/@Size = 0][*[1][self::VariableAccess][pmd-java:typeIs('java.lang.CharSequence')]]]
+        [*[2][self::VariableAccess or self::NumericLiteral or self::FieldAccess]]
+    },
+    $boundMatches := function($bound, $end) {
+      exists($end/descendant-or-self::*[self::VariableAccess or self::FieldAccess][@Name = $bound/@Name][$bound[self::VariableAccess or self::FieldAccess]]
+             | $end/descendant-or-self::NumericLiteral[@Image = $bound/@Image][$bound[self::NumericLiteral]])
+    },
+    $unit := function($m) { $m/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1] }
+return //MethodCall[@MethodName = ('substring', 'subSequence')][ArgumentList/@Size = 2]
+  [ArgumentList/*[1][self::NumericLiteral][@Image = '0']]
+  [not(ArgumentList/*[2][self::NumericLiteral][@Image = ('0', '1')])]
+  [*[1][self::VariableAccess][not(matches(@Name, 'hash|hex|base64|uuid|sha[0-9]*|digest|slug|token|^id$|Id$|normali[sz]ed|sanitized|identifier', 'i'))]]
+  [let $name := *[1]/@Name, $end := ArgumentList/*[2], $self := .
+   return exists(ancestor::*[self::IfStatement or self::ConditionalExpression][*[2]/descendant-or-self::*[. is $self]]
+                   [$over(*[1])][*[1]/*[1]/*[1]/@Name = $name][$boundMatches(*[1]/*[2], $end)])]
+  [not(matches(string-join(ArgumentList/*[2]/descendant-or-self::*/@Name, ' '), '(?:^| )(?:name|identifier|id|key)(?:Limit|Length|Max)', 'i'))]
+  [not(matches($unit(.)/self::MethodDeclaration/@Name, 'normali[sz]e|sanitiz|slug', 'i'))]
+  [not($unit(.)//MethodCall[@MethodName = ('replaceAll', 'replaceFirst')][ArgumentList/*[1][self::StringLiteral][matches(@Image, '^"\[\^')]])]
+  [not($unit(.)//MethodCall[@MethodName = ('isHighSurrogate', 'isLowSurrogate', 'isSurrogate', 'isSurrogatePair', 'codePointCount', 'offsetByCodePoints', 'codePoints', 'codePointAt')]
+       | $unit(.)//ConstructorCall[ClassType/@SimpleName = 'BreakIterator'] | $unit(.)//MethodCall[@MethodName = 'getCharacterInstance'])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="TimerNotStoppedOnClose" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This scheduler or timer is created by a class that has a close method, but close never shuts it down, so its scheduled tasks keep running and its thread keeps the JVM alive after close. Call shutdown() (then awaitTermination) on the executor, or cancel() on the Timer, in close (Spring beans are covered by SpringUnreleasedResource). An exception fits only when the scheduler is shared and owned elsewhere.">
     <priority>3</priority>
@@ -4881,14 +5032,16 @@ return
     </properties>
   </rule>
   <rule name="UriCreateDynamic" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="URI.create throws IllegalArgumentException on a space, a non-ASCII character or any other character that is not encoded, so one odd stored, user or header value turns this call into an error response. Build the URI with an encoding builder (UriComponentsBuilder.fromUriString(base).path(path).queryParam(name, value).encode().build().toUri(), or new URI(scheme, host, path, fragment)), or parse the text where the failure is handled: new URI(text) with URISyntaxException caught, or URI.create(text) in a try that catches IllegalArgumentException. A constant or a project helper that does one of these is fine. A value read from configuration at startup also matches, because a bad value fails only at runtime.">
+        message="URI.create throws IllegalArgumentException on a space, a non-ASCII character or any other character that is not encoded, and URLDecoder.decode throws it on a percent sign that does not start a valid escape (100%.png), so one odd stored, user or header value turns this call into an error response. Build the URI with an encoding builder (UriComponentsBuilder.fromUriString(base).path(path).queryParam(name, value).encode().build().toUri(), or new URI(scheme, host, path, fragment)), or parse the text where the failure is handled: new URI(text) with URISyntaxException caught, or URI.create(text) or URLDecoder.decode(text, charset) in a try that catches IllegalArgumentException. A constant or a project helper that does one of these is fine. A value read from configuration at startup also matches, because a bad value fails only at runtime.">
     <priority>3</priority>
     <properties>
       <property name="xpath">
         <value><![CDATA[
 let $caught := ('IllegalArgumentException', 'RuntimeException', 'Exception', 'Throwable')
 return (
-  //MethodCall[pmd-java:matchesSig('java.net.URI#create(java.lang.String)')]
+  //MethodCall[pmd-java:matchesSig('java.net.URI#create(java.lang.String)')
+              or pmd-java:matchesSig('java.net.URLDecoder#decode(java.lang.String)')
+              or pmd-java:matchesSig('java.net.URLDecoder#decode(java.lang.String,_)')]
     [not(ArgumentList/*[1][@CompileTimeConstant = true()])]
   | //MethodReference[@MethodName = 'create'][*[1][self::TypeExpression][pmd-java:typeIsExactly('java.net.URI')]]
 )[let $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer

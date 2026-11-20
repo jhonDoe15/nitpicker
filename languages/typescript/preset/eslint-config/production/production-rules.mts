@@ -1,4 +1,5 @@
 import type { Linter } from 'eslint';
+import { textPathNumberGuardRules, textPathNumberRules } from './text-path-number-rules.mts';
 
 export const productionSourceRules: Record<string, Linter.RuleEntry> = {
   'nitpicker/no-boolean-flag-parameter': 'error',
@@ -58,4 +59,6 @@ export const productionGuardEntries: Record<string, Linter.RuleEntry> = {
   'nitpicker/promise-wait-deadline': 'error',
   'nitpicker/unbounded-fan-out': 'error',
   'nitpicker/unbounded-reactive-fan-out': 'error',
+  ...textPathNumberRules,
+  ...textPathNumberGuardRules,
 };

@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "unchecked-response-json",
+    "mention": "raise_for_status"
+  }
+]

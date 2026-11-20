@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "index-bound-off-by-one",
+    "mention": "index >= len"
+  }
+]

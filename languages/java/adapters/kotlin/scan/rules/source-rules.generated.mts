@@ -37,8 +37,12 @@ import { kotlinSourceRules as rulesSql } from '../security/sql.mts';
 import { kotlinSourceRules as rulesCompatibilityShims } from '../signatures/compatibility-shims.mts';
 import { kotlinSourceRules as rulesParameterMutation } from '../signatures/parameter-mutation.mts';
 import { kotlinSourceRules as rulesTriState } from '../signatures/tri-state.mts';
+import { kotlinSourceRules as rulesHostSplits } from '../splits/host-splits.mts';
+import { kotlinSourceRules as rulesLineSplits } from '../splits/line-splits.mts';
+import { kotlinSourceRules as rulesPairSplits } from '../splits/pair-splits.mts';
 import { kotlinSourceRules as rulesDefaultTimeZone } from '../time/default-time-zone.mts';
 import { kotlinSourceRules as rulesTimeUnits } from '../time/units/time-units.mts';
+import { kotlinSourceRules as rulesSurrogateCuts } from '../truncation/surrogate-cuts.mts';
 import { kotlinSourceRules as rulesUriParsing } from '../uris/uri-parsing.mts';
 
 export const directoryRules = [
@@ -81,7 +85,11 @@ export const directoryRules = [
   rulesCompatibilityShims,
   rulesParameterMutation,
   rulesTriState,
+  rulesHostSplits,
+  rulesLineSplits,
+  rulesPairSplits,
   rulesDefaultTimeZone,
   rulesTimeUnits,
+  rulesSurrogateCuts,
   rulesUriParsing,
 ];

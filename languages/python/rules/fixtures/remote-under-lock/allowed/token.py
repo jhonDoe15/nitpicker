@@ -14,6 +14,7 @@ class Tokens:
         with self._lock:
             if self._token is None or self._expires < time.time():
                 response = requests.post("https://auth.example.com/token", timeout=5)
+                response.raise_for_status()
                 self._token = response.json()["access_token"]
                 self._expires = time.time() + 300
             return self._token

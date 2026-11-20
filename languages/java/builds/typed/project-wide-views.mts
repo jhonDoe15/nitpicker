@@ -8,6 +8,9 @@ import { readCopiedConstantFindings } from '../../adapters/review-rules/copied-c
 import { readCopyPastedTestFindings } from '../../adapters/review-rules/copy-pasted-tests/copy-pasted-tests.mts';
 import { readFixedDelayFindings } from '../../adapters/review-rules/fixed-delays/fixed-delays.mts';
 import { readMaxValueFindings } from '../../adapters/review-rules/max-value-sums/max-value-sums.mts';
+import { readStringCallFindings } from '../../adapters/review-rules/string-calls/string-calls.mts';
+import { readValueCheckFindings } from '../../adapters/review-rules/value-checks/value-checks.mts';
+import { readMinedFindings } from '../../adapters/review-rules/mined/mined-rules.mts';
 import { readMutatingMethodFindings } from '../../adapters/review-rules/mutating-methods/mutating-methods.mts';
 import { readNullFallThroughFindings } from '../../adapters/review-rules/null-fall-through/null-fall-through.mts';
 import { readNullableReturnFindings } from '../../adapters/review-rules/nullable-returns/nullable-returns.mts';
@@ -147,6 +150,15 @@ export function copyPastedTestFindings(projectRoot: string, options: WideOptions
 }
 export function maxValueFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
   return findingsOf(callUntyped(readMaxValueFindings, projectRoot, options));
+}
+export function stringCallFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
+  return findingsOf(callUntyped(readStringCallFindings, projectRoot, options));
+}
+export function valueCheckFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
+  return findingsOf(callUntyped(readValueCheckFindings, projectRoot, options));
+}
+export function minedFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
+  return findingsOf(callUntyped(readMinedFindings, projectRoot, options));
 }
 export function selfRecursionFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
   return findingsOf(callUntyped(readSelfRecursionFindings, projectRoot, options));
