@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type { SourceCode } from '../typed/node-views.mts';
+import { staticMemberName } from '../support/member-roots.mts';
 import { findVariable } from '../analysis/constant-resolution.mts';
 import {
   isGlobalObject,
@@ -28,14 +29,7 @@ type TypeOnlyNode =
   | TSESTree.ExportAllDeclaration;
 
 export function consoleMethodOf(call: TSESTree.CallExpression): string | undefined {
-  const { callee } = call;
-  return callee.type === AST_NODE_TYPES.MemberExpression &&
-    !callee.computed &&
-    callee.object.type === AST_NODE_TYPES.Identifier &&
-    callee.object.name === CONSOLE &&
-    callee.property.type === AST_NODE_TYPES.Identifier
-    ? callee.property.name
-    : undefined;
+  return staticMemberName(call, CONSOLE);
 }
 
 const STANDARD_STREAMS = new Set<string | undefined>(['stdout', 'stderr']);
