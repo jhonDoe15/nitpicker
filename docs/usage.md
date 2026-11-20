@@ -5001,4 +5001,6 @@ npx nitpicker aggregate --input-root shards --shard-count 3
   programs also carry a memory estimate from the project's number of source files, and one starts
   only when its estimate fits in three quarters of the memory beside the ones already running (one
   whose estimate is larger than that runs alone), so a large project runs fewer of them at once
-  instead of running out of memory.
+  instead of running out of memory. An analyzer whose estimate is larger than the shared heap gets
+  a heap of its estimate, up to three quarters of the memory, so one that runs alone can use the
+  machine.

@@ -29,18 +29,29 @@ export function heapMegabytesOf(nodeOptions: string | undefined): number | undef
   return megabytes === undefined ? undefined : Number(megabytes);
 }
 
+export function admittedHeapMegabytes(budget: HeapBudget, admittedMegabytes: number): number {
+  return Math.max(
+    nodeHeapMegabytes(budget),
+    Math.min(admittedMegabytes, usableMemoryMegabytes(budget.memory)),
+  );
+}
+
 export function withNodeHeap(
   environment: Environment,
   budget: Omit<HeapBudget, 'parallel'> = {
     memory: machineMemory(),
     defaultLimit: getHeapStatistics().heap_size_limit,
   },
+  admittedMegabytes = 0,
 ): Environment {
   const nodeOptions = environment['NODE_OPTIONS'];
   if (heapMegabytesOf(nodeOptions) !== undefined) {
     return environment;
   }
-  const megabytes = nodeHeapMegabytes({ ...budget, parallel: resolveMaxParallel(environment) });
+  const megabytes = admittedHeapMegabytes(
+    { ...budget, parallel: resolveMaxParallel(environment) },
+    admittedMegabytes,
+  );
   return {
     ...environment,
     NODE_OPTIONS: [nodeOptions ?? '', `--max-old-space-size=${String(megabytes)}`].join(' ').trim(),
