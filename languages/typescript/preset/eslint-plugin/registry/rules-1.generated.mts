@@ -62,6 +62,7 @@ import { rule as ruleNoForwardingMethodAlias } from '../rules/api-shape/no-forwa
 import { rule as ruleNoForwardingWrapper } from '../rules/api-shape/no-forwarding-wrapper.mts';
 import { rule as ruleNoGenericName } from '../rules/naming/no-generic-name.mts';
 import { rule as ruleNoGitRepositoryPerTest } from '../rules/test-runtime/processes/no-git-repository-per-test.mts';
+import { rule as ruleNoGrowingProcessArguments } from '../rules/processes/arguments/no-growing-process-arguments.mts';
 import { rule as ruleNoHandQuotedGeneratedCode } from '../rules/generated-code/no-hand-quoted-generated-code.mts';
 import { rule as ruleNoHandwrittenBoundaryGuard } from '../rules/boundaries/no-handwritten-boundary-guard.mts';
 import { rule as ruleNoHardcodedSecret } from '../rules/secrets/no-hardcoded-secret.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multipl
 import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutating-method-in-domain.mts';
 import { rule as ruleNoNanOnlyCheck } from '../rules/numbers/no-nan-only-check.mts';
 import { rule as ruleNoNegativeCount } from '../rules/counts/no-negative-count.mts';
-import { rule as ruleNoNewlineOnlyLineSplit } from '../rules/line-splits/no-newline-only-line-split.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -164,6 +164,7 @@ export const partRules = {
   'no-forwarding-wrapper': ruleNoForwardingWrapper,
   'no-generic-name': ruleNoGenericName,
   'no-git-repository-per-test': ruleNoGitRepositoryPerTest,
+  'no-growing-process-arguments': ruleNoGrowingProcessArguments,
   'no-hand-quoted-generated-code': ruleNoHandQuotedGeneratedCode,
   'no-handwritten-boundary-guard': ruleNoHandwrittenBoundaryGuard,
   'no-hardcoded-secret': ruleNoHardcodedSecret,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
   'no-nan-only-check': ruleNoNanOnlyCheck,
   'no-negative-count': ruleNoNegativeCount,
-  'no-newline-only-line-split': ruleNoNewlineOnlyLineSplit,
 };

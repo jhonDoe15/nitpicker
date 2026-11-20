@@ -1816,6 +1816,16 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   hangs the program. A program whose purpose is to run a child to completion, such as a build
   wrapper, takes an exception. The rule reads no types, so it behaves the same in the JavaScript
   preset.
+- A list that grows with the project is not passed as process arguments (`nitpicker/no-growing-process-arguments`,
+  production files). Linux limits one argument to 128 KiB and the command line to a few MiB, Windows the command
+  line to 32,767 characters; past that the process does not start (`E2BIG`). Reported in the argument list of
+  `spawn`, `spawnSync`, `execFile`, `execFileSync`, `fork` and execa (and in the `${...}` parts of an `exec` or
+  `execSync` command): a spread of a file listing or glob result (`readdirSync`, `readdir`, `glob`, `globSync`,
+  `fast-glob`, `globby`, `glob.sync`, also through `filter`, `map`, `flatMap`, `sort`, `concat`, `Array.from` or a
+  `const`), and one argument that joins such a list or joins any list that is not a literal with `path.delimiter`
+  (a class path or a path list). Not reported: lists the rule cannot trace to a listing (`...changedFiles` from a
+  parameter), a `slice` of a listing, chunks, literal lists, the list in `env` (`CLASSPATH`) and an `@args` file.
+  The Java preset reports the class-path form as `pmd/GrowingProcessArguments`.
 - A subprocess deadline stops the work, not only a wrapper around it (`nitpicker/no-wrapper-only-timeout`,
   production files). A `timeout`, `signal` or `cancelSignal` kills only the process that was started; when that is a
   shell, a launcher or a script, the real work runs in its child and keeps running after the call returns. Reported:

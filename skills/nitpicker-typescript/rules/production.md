@@ -123,6 +123,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
+- Pass a list that grows with the project (files from a listing or glob, a class path) through an argument file
+  (`@args.txt`), standard input, `CLASSPATH` or in chunks, not spread or joined into the arguments of a child process,
+  which fails with `E2BIG` on a large project (`nitpicker/no-growing-process-arguments`).
 - A deadline on a shell or launcher (`npm run`, `npx`, `./gradlew`, `sh -c 'a && b'`, `exec` with `&&`) kills only
   the wrapper: start the executable directly, or start it `detached: true` and kill the group
   (`process.kill(-child.pid)`) on timeout (`nitpicker/no-wrapper-only-timeout`).

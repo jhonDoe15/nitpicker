@@ -153,6 +153,7 @@ const REVIEW_RULES = new Set([
   'RegexPartDefect',
   'BacktrackingRegex',
   'ProcessWaitWithoutTimeout',
+  'GrowingProcessArguments',
   'DestroyLeavesDescendants',
   'HeadCutErrorOutput',
   'StderrAsFailure',

@@ -1,3 +1,4 @@
+import { rule as ruleNoNewlineOnlyLineSplit } from '../rules/line-splits/no-newline-only-line-split.mts';
 import { rule as ruleNoNodeProcessPerTest } from '../rules/test-runtime/processes/no-node-process-per-test.mts';
 import { rule as ruleNoNonLatin1HeaderValue } from '../rules/encoding/no-non-latin1-header-value.mts';
 import { rule as ruleNoNull } from '../rules/syntax/no-null.mts';
@@ -97,9 +98,9 @@ import { rule as ruleNoUnresolvedRelativeUrl } from '../rules/urls/construction/
 import { rule as ruleNoUnsafeDeserialization } from '../rules/security/deserialization/no-unsafe-deserialization.mts';
 import { rule as ruleNoUnsafePathJoin } from '../rules/guards/no-unsafe-path-join.mts';
 import { rule as ruleNoUnscopedRecordAccess } from '../rules/record-scope/no-unscoped-record-access.mts';
-import { rule as ruleNoUnstrippedRemoteText } from '../rules/terminal/no-unstripped-remote-text.mts';
 
 export const partRules = {
+  'no-newline-only-line-split': ruleNoNewlineOnlyLineSplit,
   'no-node-process-per-test': ruleNoNodeProcessPerTest,
   'no-non-latin1-header-value': ruleNoNonLatin1HeaderValue,
   'no-null': ruleNoNull,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unsafe-deserialization': ruleNoUnsafeDeserialization,
   'no-unsafe-path-join': ruleNoUnsafePathJoin,
   'no-unscoped-record-access': ruleNoUnscopedRecordAccess,
-  'no-unstripped-remote-text': ruleNoUnstrippedRemoteText,
 };

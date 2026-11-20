@@ -319,6 +319,13 @@ same rule runs as `subprocess-without-timeout` in the Python preset, `pmd/Proces
 in the Java preset and `kotlin-source/ProcessWaitWithoutTimeout` in the Kotlin preset; tests keep
 `nitpicker/require-test-process-timeout` (TypeScript) or their runner's own limits.
 
+Project-sized process arguments: `nitpicker/no-growing-process-arguments` (production source, in
+`eslint-lint`) reports a file listing or glob result spread into the arguments of a child process, or joined into
+one argument, and any non-literal list joined with `path.delimiter` into one argument. `pmd/GrowingProcessArguments`
+(Java, main sources) reports a class path or path list joined with `File.pathSeparator` into an argument of a
+process the method starts. Past the operating system's argument limits the process does not start; the allowed
+forms are an argument file, standard input, the `CLASSPATH` variable or chunks.
+
 Deadlines that stop only a wrapper: `nitpicker/no-wrapper-only-timeout` (production source, in `eslint-lint`)
 reports a subprocess call with a `timeout` or abort signal whose command is a shell, a launcher (`npm`, `npx`,
 `gradlew`, `mvnw`, a `.sh` or `.cmd` file) or a compound shell command, unless it is started `detached` and the

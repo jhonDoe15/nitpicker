@@ -15,6 +15,10 @@ const PAGES = {
 };
 const GROUPS = [
   {
+    java: 'GrowingProcessArguments',
+    typescript: 'nitpicker/no-growing-process-arguments',
+  },
+  {
     java: 'DestroyLeavesDescendants',
     typescript: 'nitpicker/no-wrapper-only-timeout',
   },

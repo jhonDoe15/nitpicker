@@ -85,6 +85,7 @@
   "pmd/GenericTypeName": ["style"],
   "pmd/GetterReturnsSiblingField": ["bug"],
   "pmd/GlobalStateLeakInTest": ["tests"],
+  "pmd/GrowingProcessArguments": ["bug"],
   "pmd/GuardLogStatement": ["performance"],
   "pmd/HandleReleasedOnlyOnSuccess": ["bug", "async"],
   "pmd/HardcodedSecret": ["security"],

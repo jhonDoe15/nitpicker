@@ -144,6 +144,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`, reading the output on
   another thread first; never `waitFor()` or `getInputStream().readAllBytes()` alone
   (`pmd/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).
+- Pass a class path to a child JVM through an argument file (`@args.txt`) or the `CLASSPATH` environment variable,
+  not joined with `File.pathSeparator` into one argument, which stops the process from starting on a large build
+  (`pmd/GrowingProcessArguments`).
 - When a child process runs over its deadline and was started through a shell or launcher (`sh`, `cmd`, `npm`,
   `./gradlew`), destroy its descendants first: `process.descendants().forEach(ProcessHandle::destroyForcibly)`,
   then the process (`pmd/DestroyLeavesDescendants`).

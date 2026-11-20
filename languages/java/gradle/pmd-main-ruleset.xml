@@ -1718,6 +1718,46 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="GrowingProcessArguments" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This joins a class path or path list into one argument of a process the method starts. The operating system limits a single argument (128 KiB on Linux) and the whole command line (32,767 characters on Windows), so the process does not start (&quot;Argument list too long&quot;, &quot;The command line is too long&quot;) once the project has enough modules or dependencies. Pass the list another way: an argument file (@args.txt for java, javac and many tools), the CLASSPATH environment variable or a manifest-only jar for a class path, or standard input.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $sep := function($e) {
+      exists($e[self::FieldAccess[@Name = ('pathSeparator', 'pathSeparatorChar')][*[1][pmd-java:typeIs('java.io.File')]]
+             or self::MethodCall[@MethodName = 'getProperty'][ArgumentList/StringLiteral[@Image = '"path.separator"']]])
+    }
+return
+(//MethodCall[@MethodName = 'join'][ArgumentList/@Size = 2][*[1][self::TypeExpression][pmd-java:typeIs('java.lang.String')]]
+   [$sep(ArgumentList/*[1])]
+ | //MethodCall[@MethodName = 'collect']
+   [ArgumentList/MethodCall[@MethodName = 'joining'][ArgumentList/@Size = 1][$sep(ArgumentList/*[1])]])
+  [let $m := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer or self::LambdaExpression][1],
+       $starts := $m//(ConstructorCall[pmd-java:typeIs('java.lang.ProcessBuilder')]
+                       | MethodCall[@MethodName = 'command'][*[1][pmd-java:typeIs('java.lang.ProcessBuilder')]]
+                       | MethodCall[@MethodName = 'exec'][*[1][pmd-java:typeIs('java.lang.Runtime')]]),
+       $direct := function($args) {
+         $args/(VariableAccess | MethodCall[@MethodName = ('of', 'asList')]/ArgumentList/VariableAccess)/@Name
+       },
+       $argNames := $direct($starts/ArgumentList),
+       $adds := $m//MethodCall[@MethodName = ('add', 'addAll')][*[1][self::VariableAccess[@Name = $argNames]]],
+       $listInits := $m//VariableDeclarator[VariableId/@Name = $argNames]/*[2],
+       $flow := ($argNames, $direct($adds/ArgumentList), $direct($listInits/ArgumentList),
+                 $listInits/self::VariableAccess/@Name),
+       $held := ancestor::VariableDeclarator[1][parent::LocalVariableDeclaration],
+       $holder := $held[empty($m//MethodCall[@MethodName = 'length'][*[1][self::VariableAccess[@Name = $held/VariableId/@Name]]])],
+       $top := ancestor-or-self::*[not(parent::InfixExpression[@Operator = '+']
+                                     or parent::ArgumentList/parent::MethodCall[@MethodName = ('of', 'asList')]
+                                     or self::ArgumentList[parent::MethodCall[@MethodName = ('of', 'asList')]])][1],
+       $slot := $top/parent::ArgumentList
+   return exists($slot[some $s in ($starts, $adds, $listInits) satisfies . is $s/ArgumentList])
+       or exists($top[some $i in $listInits satisfies . is $i])
+       or exists($holder[VariableId/@Name = $flow])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="HandSplitHttpHeader" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This splits a structured header by hand, which breaks on quoted values, whitespace around separators and quality weights. Parse it instead: MediaType.parseMediaType(value) or MediaType.parseMediaTypes(value) for Content-Type and Accept, ContentDisposition.parse(value), HttpCookie.parse(value) or the servlet cookie API for cookies. A library that is itself the parser takes an exceptions entry.">
     <priority>3</priority>
