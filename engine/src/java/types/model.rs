@@ -128,4 +128,8 @@ pub struct ClassInfo {
     pub fields: Vec<Field>,
     pub methods: Vec<Method>,
     pub is_interface: bool,
+    /// For an enum: how many constants it declares.
+    pub enum_constants: Option<u32>,
+    /// For a sealed class or interface: the classes it permits.
+    pub permitted: Option<Vec<String>>,
 }
