@@ -11,13 +11,8 @@ const BRACES: &str = "The Google Java Style Guide requires braces to be used wit
 pub fn missing_braces(context: &Context, node: Node) {
     let bodies: Vec<Node> = match node.kind() {
         "if_statement" => {
-            let other = node
-                .child_by_field_name("alternative")
-                .filter(|other| other.kind() != "if_statement");
-            node.child_by_field_name("consequence")
-                .into_iter()
-                .chain(other)
-                .collect()
+            let other = node.child_by_field_name("alternative").filter(|other| other.kind() != "if_statement");
+            node.child_by_field_name("consequence").into_iter().chain(other).collect()
         }
         "for_statement" | "enhanced_for_statement" | "while_statement" | "do_statement" => {
             node.child_by_field_name("body").into_iter().collect()
@@ -35,16 +30,9 @@ pub fn empty_catch(context: &Context, node: Node) {
     if node.kind() != "catch_clause" {
         return;
     }
-    let Some(block) = node.child_by_field_name("body") else {
-        return;
-    };
+    let Some(block) = node.child_by_field_name("body") else { return };
     if named_children(block).is_empty() {
-        context.report(
-            "EmptyCatch",
-            node,
-            node.start_byte(),
-            "Caught exceptions should not be ignored",
-        );
+        context.report("EmptyCatch", node, node.start_byte(), "Caught exceptions should not be ignored");
     }
 }
 
@@ -65,10 +53,7 @@ fn mutated_before_all(context: &Context, name: &str) -> bool {
         if found || method.kind() != "method_declaration" {
             return;
         }
-        if !annotation_simple_names(context, method)
-            .iter()
-            .any(|own| matches!(*own, "BeforeClass" | "BeforeAll"))
-        {
+        if !annotation_simple_names(context, method).iter().any(|own| matches!(*own, "BeforeClass" | "BeforeAll")) {
             return;
         }
         walk(method, |inner| {
@@ -79,9 +64,7 @@ fn mutated_before_all(context: &Context, name: &str) -> bool {
             };
             found |= target.is_some_and(|target| match target.kind() {
                 "identifier" => context.text(target) == name,
-                "field_access" => target
-                    .child_by_field_name("field")
-                    .is_some_and(|field| context.text(field) == name),
+                "field_access" => target.child_by_field_name("field").is_some_and(|field| context.text(field) == name),
                 _ => false,
             });
         });
@@ -96,32 +79,17 @@ pub fn non_final_static_field(context: &Context, node: Node) {
     if has_modifier(node, "final") || has_modifier(node, "volatile") {
         return;
     }
-    if parent(node)
-        .is_some_and(|body| matches!(body.kind(), "interface_body" | "annotation_type_body"))
-    {
+    if parent(node).is_some_and(|body| matches!(body.kind(), "interface_body" | "annotation_type_body")) {
         return;
     }
     const AVOID: &[&str] = &["Captor", "Inject", "LazyInit", "Mock", "TestParameter"];
-    if annotation_simple_names(context, node)
-        .iter()
-        .any(|name| AVOID.contains(name))
-    {
+    if annotation_simple_names(context, node).iter().any(|name| AVOID.contains(name)) {
         return;
     }
-    for declarator in children(node)
-        .into_iter()
-        .filter(|part| part.kind() == "variable_declarator")
-    {
-        let Some(name) = declarator.child_by_field_name("name") else {
-            continue;
-        };
+    for declarator in children(node).into_iter().filter(|part| part.kind() == "variable_declarator") {
+        let Some(name) = declarator.child_by_field_name("name") else { continue };
         if !mutated_before_all(context, context.text(name)) {
-            context.report(
-                "NonFinalStaticField",
-                node,
-                name.start_byte(),
-                "Static fields should almost always be final.",
-            );
+            context.report("NonFinalStaticField", node, name.start_byte(), "Static fields should almost always be final.");
         }
     }
 }
@@ -129,41 +97,28 @@ pub fn non_final_static_field(context: &Context, node: Node) {
 const SPECIFIC: &str = "Base exception classes should be treated as abstract. If the exception is intended to be caught, throw a domain-specific exception. Otherwise, prefer a more specific exception for clarity. Common alternatives include: AssertionError, IllegalArgumentException, IllegalStateException, and (Guava's) VerifyException.";
 
 fn created_class(context: &Context, creation: Node) -> Option<String> {
-    match context
-        .resolver
-        .type_node(creation.child_by_field_name("type")?)?
-    {
+    match context.resolver.type_node(creation.child_by_field_name("type")?)? {
         Type::Class(name, _) => Some(name),
         _ => None,
     }
 }
 
 pub fn throw_specific_exceptions(context: &Context, node: Node) {
-    if node.kind() != "object_creation_expression"
-        || parent(node).is_none_or(|above| above.kind() != "throw_statement")
-    {
+    if node.kind() != "object_creation_expression" || parent(node).is_none_or(|above| above.kind() != "throw_statement") {
         return;
     }
-    if children(node)
-        .iter()
-        .any(|part| part.kind() == "class_body")
-    {
+    if children(node).iter().any(|part| part.kind() == "class_body") {
         return;
     }
-    let base = created_class(context, node).is_some_and(|name| {
-        matches!(
-            name.as_str(),
-            "java.lang.RuntimeException" | "java.lang.Throwable" | "java.lang.Error"
-        )
-    });
+    let base = created_class(context, node)
+        .is_some_and(|name| matches!(name.as_str(), "java.lang.RuntimeException" | "java.lang.Throwable" | "java.lang.Error"));
     if base {
         context.report("ThrowSpecificExceptions", node, node.start_byte(), SPECIFIC);
     }
 }
 
 fn open_parenthesis(call: Node) -> usize {
-    call.child_by_field_name("arguments")
-        .map_or(call.start_byte(), |list| list.start_byte())
+    call.child_by_field_name("arguments").map_or(call.start_byte(), |list| list.start_byte())
 }
 
 const SYSTEM_OUT: &str = "Production code should not print to standard out or standard error. Standard out and standard error should only be used for debugging.";
@@ -171,39 +126,22 @@ const SYSTEM_OUT: &str = "Production code should not print to standard out or st
 pub fn system_out(context: &Context, node: Node) {
     match node.kind() {
         "field_access" => {
-            let (Some(object), Some(field)) = (
-                node.child_by_field_name("object"),
-                node.child_by_field_name("field"),
-            ) else {
-                return;
-            };
+            let (Some(object), Some(field)) = (node.child_by_field_name("object"), node.child_by_field_name("field")) else { return };
             if !matches!(context.text(field), "out" | "err") {
                 return;
             }
             let system = matches!(context.resolver.receiver(object), Some(Receiver::Static(name)) if name == "java.lang.System");
             if system {
-                let dot = children(node)
-                    .into_iter()
-                    .find(|part| part.kind() == ".")
-                    .map_or(field.start_byte(), |dot| dot.start_byte());
+                let dot = children(node).into_iter().find(|part| part.kind() == ".").map_or(field.start_byte(), |dot| dot.start_byte());
                 context.report("SystemOut", node, dot, SYSTEM_OUT);
             }
         }
         "method_invocation" => {
-            let name = node
-                .child_by_field_name("name")
-                .map(|name| context.text(name))
-                .unwrap_or_default();
+            let name = node.child_by_field_name("name").map(|name| context.text(name)).unwrap_or_default();
             let bad = match name {
-                "printStackTrace" => context
-                    .resolver
-                    .matches_sig(node, "java.lang.Throwable#printStackTrace()"),
-                "dumpStack" => context
-                    .resolver
-                    .matches_sig(node, "java.lang.Thread#dumpStack()"),
-                "print" | "println" => context
-                    .resolver
-                    .matches_sig(node, &format!("java.lang.IO#{name}(_*)")),
+                "printStackTrace" => context.resolver.matches_sig(node, "java.lang.Throwable#printStackTrace()"),
+                "dumpStack" => context.resolver.matches_sig(node, "java.lang.Thread#dumpStack()"),
+                "print" | "println" => context.resolver.matches_sig(node, &format!("java.lang.IO#{name}(_*)")),
                 _ => false,
             };
             if bad {
@@ -215,41 +153,26 @@ pub fn system_out(context: &Context, node: Node) {
 }
 
 const DATE: &str = "java.util.Date";
-const DATE_MESSAGE: &str =
-    "Date has a bad API that leads to bugs; prefer java.time.Instant or LocalDate.";
+const DATE_MESSAGE: &str = "Date has a bad API that leads to bugs; prefer java.time.Instant or LocalDate.";
 
 pub fn java_util_date(context: &Context, node: Node) {
     match node.kind() {
         "object_creation_expression" => {
             if created_class(context, node).is_some_and(|name| name == DATE) {
-                let at = children(node)
-                    .into_iter()
-                    .find(|part| part.kind() == "new")
-                    .map_or(node.start_byte(), |new| new.start_byte());
+                let at = children(node).into_iter().find(|part| part.kind() == "new").map_or(node.start_byte(), |new| new.start_byte());
                 context.report("JavaUtilDate", node, at, DATE_MESSAGE);
             }
         }
         "method_invocation" => {
-            let Some(call) = context.resolver.resolve_call(node) else {
-                return;
-            };
-            let qualified = node
-                .child_by_field_name("object")
-                .is_some_and(|object| object.kind() != "super");
-            let receiver = if qualified {
-                call.receiver.name()
-            } else {
-                call.declaring.clone()
-            };
+            let Some(call) = context.resolver.resolve_call(node) else { return };
+            let qualified = node.child_by_field_name("object").is_some_and(|object| object.kind() != "super");
+            let receiver = if qualified { call.receiver.name() } else { call.declaring.clone() };
             if receiver != DATE {
                 return;
             }
             let method = &call.method;
             let exempt = (method.name == "toInstant" && !method.is_static)
-                || (method.name == "from"
-                    && method.is_static
-                    && method.parameters.len() == 1
-                    && method.parameters[0].name() == "java.time.Instant");
+                || (method.name == "from" && method.is_static && method.parameters.len() == 1 && method.parameters[0].name() == "java.time.Instant");
             if !exempt {
                 context.report("JavaUtilDate", node, open_parenthesis(node), DATE_MESSAGE);
             }
@@ -264,27 +187,12 @@ pub fn string_case_locale_usage(context: &Context, node: Node) {
     if node.kind() != "method_invocation" {
         return;
     }
-    let name = node
-        .child_by_field_name("name")
-        .map(|name| context.text(name))
-        .unwrap_or_default();
-    if !matches!(name, "toLowerCase" | "toUpperCase")
-        || !context
-            .resolver
-            .matches_sig(node, &format!("java.lang.String#{name}()"))
-    {
+    let name = node.child_by_field_name("name").map(|name| context.text(name)).unwrap_or_default();
+    if !matches!(name, "toLowerCase" | "toUpperCase") || !context.resolver.matches_sig(node, &format!("java.lang.String#{name}()")) {
         return;
     }
-    let exact = context
-        .resolver
-        .resolve_call(node)
-        .is_some_and(|call| call.receiver.name() == "java.lang.String");
+    let exact = context.resolver.resolve_call(node).is_some_and(|call| call.receiver.name() == "java.lang.String");
     if exact {
-        context.report(
-            "StringCaseLocaleUsage",
-            node,
-            open_parenthesis(node),
-            LOCALE,
-        );
+        context.report("StringCaseLocaleUsage", node, open_parenthesis(node), LOCALE);
     }
 }

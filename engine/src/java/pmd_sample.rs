@@ -25,41 +25,23 @@ fn simple_name(text: &str) -> &str {
 }
 
 fn annotations<'t>(list: Node<'t>) -> Vec<Node<'t>> {
-    children(list)
-        .into_iter()
-        .filter(|part| matches!(part.kind(), "marker_annotation" | "annotation"))
-        .collect()
+    children(list).into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation")).collect()
 }
 
 fn annotation_name<'f>(file: &'f SourceFile, annotation: Node) -> &'f str {
-    annotation
-        .child_by_field_name("name")
-        .map(|name| simple_name(file.text_of(name)))
-        .unwrap_or_default()
+    annotation.child_by_field_name("name").map(|name| simple_name(file.text_of(name))).unwrap_or_default()
 }
 
 fn generated_on_hand_written(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
     let owner = matches!(
         node.kind(),
-        "class_declaration"
-            | "record_declaration"
-            | "enum_declaration"
-            | "method_declaration"
-            | "constructor_declaration"
-            | "compact_constructor_declaration"
+        "class_declaration" | "record_declaration" | "enum_declaration" | "method_declaration"
+            | "constructor_declaration" | "compact_constructor_declaration"
     );
-    let Some(list) = owner.then(|| super::helpers::modifiers(node)).flatten() else {
-        return;
-    };
+    let Some(list) = owner.then(|| super::helpers::modifiers(node)).flatten() else { return };
     for annotation in annotations(list) {
         if annotation_name(file, annotation).contains("Generated") {
-            report(
-                out,
-                file,
-                annotation,
-                "GeneratedOnHandWrittenCode",
-                "Generated marker on hand-written code.".into(),
-            );
+            report(out, file, annotation, "GeneratedOnHandWrittenCode", "Generated marker on hand-written code.".into());
         }
     }
 }
@@ -69,23 +51,14 @@ fn compatibility_shim(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
         return;
     }
     let overriding = node.parent().is_some_and(|owner| {
-        owner.kind() == "method_declaration"
-            && annotation_names(file, owner)
-                .iter()
-                .any(|n| simple_name(n) == "Override")
+        owner.kind() == "method_declaration" && annotation_names(file, owner).iter().any(|n| simple_name(n) == "Override")
     });
     if overriding {
         return;
     }
     for annotation in annotations(node) {
         if annotation_name(file, annotation) == "Deprecated" {
-            report(
-                out,
-                file,
-                annotation,
-                "CompatibilityShim",
-                "Deprecated code kept for compatibility.".into(),
-            );
+            report(out, file, annotation, "CompatibilityShim", "Deprecated code kept for compatibility.".into());
         }
     }
 }
@@ -101,9 +74,7 @@ fn unwrap<'t>(mut node: Node<'t>) -> Node<'t> {
 }
 
 fn operator<'f>(file: &'f SourceFile, node: Node) -> &'f str {
-    node.child_by_field_name("operator")
-        .map(|op| file.text_of(op))
-        .unwrap_or_default()
+    node.child_by_field_name("operator").map(|op| file.text_of(op)).unwrap_or_default()
 }
 
 fn logical_parent<'t>(node: Node<'t>) -> Option<Node<'t>> {
@@ -116,9 +87,7 @@ fn logical_parent<'t>(node: Node<'t>) -> Option<Node<'t>> {
 
 fn operands<'t>(file: &SourceFile, node: Node<'t>, op: &str, out: &mut Vec<Node<'t>>) {
     for side in ["left", "right"] {
-        let Some(child) = node.child_by_field_name(side).map(unwrap) else {
-            continue;
-        };
+        let Some(child) = node.child_by_field_name(side).map(unwrap) else { continue };
         if child.kind() == "binary_expression" && operator(file, child) == op {
             operands(file, child, op, out);
         } else {
@@ -135,31 +104,18 @@ fn negated_operands(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
     if !matches!(op, "&&" | "||") {
         return;
     }
-    let nested = logical_parent(node)
-        .is_some_and(|p| p.kind() == "binary_expression" && operator(file, p) == op);
+    let nested = logical_parent(node).is_some_and(|p| p.kind() == "binary_expression" && operator(file, p) == op);
     if nested {
         return;
     }
     let mut parts = Vec::new();
     operands(file, node, op, &mut parts);
-    if parts
-        .iter()
-        .all(|part| part.kind() == "unary_expression" && operator(file, *part) == "!")
-    {
+    if parts.iter().all(|part| part.kind() == "unary_expression" && operator(file, *part) == "!") {
         let mut at = node;
-        while let Some(parent) = at
-            .parent()
-            .filter(|p| p.kind() == "parenthesized_expression")
-        {
+        while let Some(parent) = at.parent().filter(|p| p.kind() == "parenthesized_expression") {
             at = parent;
         }
-        report(
-            out,
-            file,
-            at,
-            "NegatedOperands",
-            "Every operand is negated.".into(),
-        );
+        report(out, file, at, "NegatedOperands", "Every operand is negated.".into());
     }
 }
 
@@ -169,10 +125,7 @@ fn generic_package_name(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
         return;
     }
     let format = FORMAT.get_or_init(|| {
-        Regex::new(
-            r"(^|\.)(utils?|utilit(y|ies)|helpers?|managers?|commons?|misc|miscellaneous)(\.|$)",
-        )
-        .expect("format")
+        Regex::new(r"(^|\.)(utils?|utilit(y|ies)|helpers?|managers?|commons?|misc|miscellaneous)(\.|$)").expect("format")
     });
     let name = children(node)
         .into_iter()
@@ -180,13 +133,7 @@ fn generic_package_name(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
         .map(|child| file.text_of(child))
         .unwrap_or_default();
     if format.is_match(name) {
-        report(
-            out,
-            file,
-            node,
-            "GenericPackageName",
-            "Generic package name.".into(),
-        );
+        report(out, file, node, "GenericPackageName", "Generic package name.".into());
     }
 }
 
@@ -196,41 +143,29 @@ fn declared_type<'f>(file: &'f SourceFile, usage: Node, name: &str) -> Option<&'
     while let Some(node) = scope {
         let mut found = None;
         for child in children(node) {
-            if child.start_byte() > usage.start_byte()
-                && !matches!(node.kind(), "class_body" | "enum_body_declarations")
-            {
+            if child.start_byte() > usage.start_byte() && !matches!(node.kind(), "class_body" | "enum_body_declarations") {
                 break;
             }
             match child.kind() {
                 "local_variable_declaration" | "field_declaration" => {
-                    let named = declarators(child).iter().any(|d| {
-                        d.child_by_field_name("name")
-                            .is_some_and(|n| file.text_of(n) == name)
-                    });
+                    let named = declarators(child)
+                        .iter()
+                        .any(|d| d.child_by_field_name("name").is_some_and(|n| file.text_of(n) == name));
                     if named {
                         found = child.child_by_field_name("type").map(|t| file.text_of(t));
                     }
                 }
                 "formal_parameters" => {
                     for parameter in children(child) {
-                        if parameter
-                            .child_by_field_name("name")
-                            .is_some_and(|n| file.text_of(n) == name)
-                        {
-                            found = parameter
-                                .child_by_field_name("type")
-                                .map(|t| file.text_of(t));
+                        if parameter.child_by_field_name("name").is_some_and(|n| file.text_of(n) == name) {
+                            found = parameter.child_by_field_name("type").map(|t| file.text_of(t));
                         }
                     }
                 }
                 _ => {}
             }
         }
-        if node.kind() == "enhanced_for_statement"
-            && node
-                .child_by_field_name("name")
-                .is_some_and(|n| file.text_of(n) == name)
-        {
+        if node.kind() == "enhanced_for_statement" && node.child_by_field_name("name").is_some_and(|n| file.text_of(n) == name) {
             found = node.child_by_field_name("type").map(|t| file.text_of(t));
         }
         if found.is_some() {
@@ -242,23 +177,8 @@ fn declared_type<'f>(file: &'f SourceFile, usage: Node, name: &str) -> Option<&'
 }
 
 const STRING_METHODS: &[&str] = &[
-    "toString",
-    "trim",
-    "strip",
-    "toLowerCase",
-    "toUpperCase",
-    "substring",
-    "replace",
-    "replaceAll",
-    "replaceFirst",
-    "concat",
-    "format",
-    "valueOf",
-    "join",
-    "name",
-    "getName",
-    "getSimpleName",
-    "getMessage",
+    "toString", "trim", "strip", "toLowerCase", "toUpperCase", "substring", "replace", "replaceAll", "replaceFirst",
+    "concat", "format", "valueOf", "join", "name", "getName", "getSimpleName", "getMessage",
 ];
 
 fn is_string(file: &SourceFile, expression: Node) -> bool {
@@ -269,16 +189,12 @@ fn is_string(file: &SourceFile, expression: Node) -> bool {
             let declared = declared_type(file, expression, file.text_of(expression));
             matches!(declared, Some("String" | "java.lang.String"))
         }
-        "method_invocation" => expression
-            .child_by_field_name("name")
-            .is_some_and(|n| STRING_METHODS.contains(&file.text_of(n))),
+        "method_invocation" => {
+            expression.child_by_field_name("name").is_some_and(|n| STRING_METHODS.contains(&file.text_of(n)))
+        }
         "binary_expression" => {
             operator(file, expression) == "+"
-                && ["left", "right"].iter().any(|s| {
-                    expression
-                        .child_by_field_name(s)
-                        .is_some_and(|e| is_string(file, e))
-                })
+                && ["left", "right"].iter().any(|s| expression.child_by_field_name(s).is_some_and(|e| is_string(file, e)))
         }
         _ => false,
     }
@@ -289,15 +205,9 @@ fn plain_text_regex(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
     if node.kind() != "method_invocation" {
         return;
     }
-    let named = node
-        .child_by_field_name("name")
-        .is_some_and(|n| file.text_of(n) == "replaceAll");
-    let Some(arguments) = node.child_by_field_name("arguments") else {
-        return;
-    };
-    let Some(receiver) = node.child_by_field_name("object") else {
-        return;
-    };
+    let named = node.child_by_field_name("name").is_some_and(|n| file.text_of(n) == "replaceAll");
+    let Some(arguments) = node.child_by_field_name("arguments") else { return };
+    let Some(receiver) = node.child_by_field_name("object") else { return };
     if !named || arguments.named_child_count() != 2 || !is_string(file, receiver) {
         return;
     }
@@ -309,13 +219,7 @@ fn plain_text_regex(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
     let value = text[1..text.len() - 1].replace("\\\\", "\\");
     let special = SPECIAL.get_or_init(|| Regex::new(r"[\\^$.|?*+()\[\]{}]").expect("format"));
     if !special.is_match(&value) {
-        report(
-            out,
-            file,
-            node,
-            "PlainTextRegexLocal",
-            "replaceAll with a plain-text pattern.".into(),
-        );
+        report(out, file, node, "PlainTextRegexLocal", "replaceAll with a plain-text pattern.".into());
     }
 }
 

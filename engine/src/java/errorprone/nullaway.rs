@@ -58,11 +58,7 @@ fn join(target: &mut Option<Store>, from: &Store) -> bool {
     let mut changed = false;
     for (path, slot) in known.iter_mut().enumerate() {
         let other = read(from, path);
-        let joined = if *slot == ABSENT || other == ABSENT {
-            ABSENT
-        } else {
-            least_upper(*slot, other)
-        };
+        let joined = if *slot == ABSENT || other == ABSENT { ABSENT } else { least_upper(*slot, other) };
         if joined != *slot {
             *slot = joined;
             changed = true;
@@ -73,19 +69,12 @@ fn join(target: &mut Option<Store>, from: &Store) -> bool {
 
 fn annotated_packages() -> &'static [String] {
     static PACKAGES: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
-    PACKAGES.get_or_init(|| {
-        std::env::var("NP_NULLAWAY_PACKAGES")
-            .map(|list| list.split(',').map(String::from).collect())
-            .unwrap_or_default()
-    })
+    PACKAGES.get_or_init(|| std::env::var("NP_NULLAWAY_PACKAGES").map(|list| list.split(',').map(String::from).collect()).unwrap_or_default())
 }
 
 fn annotated(class: &str) -> bool {
     let packages = annotated_packages();
-    packages.is_empty()
-        || packages.iter().any(|package| {
-            class.starts_with(package.as_str()) && class[package.len()..].starts_with('.')
-        })
+    packages.is_empty() || packages.iter().any(|package| class.starts_with(package.as_str()) && class[package.len()..].starts_with('.'))
 }
 
 fn strip(mut node: Node) -> Node {
@@ -133,12 +122,8 @@ impl<'a, 't> Flow<'a, 't> {
         if let Some(switch) = self.owners.get(&node.id()) {
             return Some(*switch);
         }
-        let parent = node
-            .parent()
-            .filter(|parent| parent.kind() == "ternary_expression")?;
-        let arm = ["consequence", "alternative"]
-            .into_iter()
-            .any(|field| parent.child_by_field_name(field) == Some(node));
+        let parent = node.parent().filter(|parent| parent.kind() == "ternary_expression")?;
+        let arm = ["consequence", "alternative"].into_iter().any(|field| parent.child_by_field_name(field) == Some(node));
         arm.then(|| parent.id())
     }
     fn known(&self, node: Node) -> Option<u8> {
@@ -159,20 +144,11 @@ impl<'a, 't> Flow<'a, 't> {
         let mut current = parent(usage);
         while let Some(at) = current {
             match at.kind() {
-                "compact_constructor_declaration"
-                | "class_declaration"
-                | "interface_declaration"
-                | "enum_declaration" => return None,
+                "compact_constructor_declaration" | "class_declaration" | "interface_declaration" | "enum_declaration" => return None,
                 "record_declaration" => {
                     let parameters = at.child_by_field_name("parameters")?;
-                    let found = children(parameters).into_iter().find(|part| {
-                        part.child_by_field_name("name")
-                            .is_some_and(|written| self.text(written) == name)
-                    })?;
-                    return Some(crate::java::helpers::marked_nullable(
-                        self.context.file,
-                        found,
-                    ));
+                    let found = children(parameters).into_iter().find(|part| part.child_by_field_name("name").is_some_and(|written| self.text(written) == name))?;
+                    return Some(crate::java::helpers::marked_nullable(self.context.file, found));
                 }
                 _ => current = parent(at),
             }
@@ -184,14 +160,8 @@ impl<'a, 't> Flow<'a, 't> {
         let resolver = self.context.resolver;
         let name = self.text(access.child_by_field_name("field")?);
         match resolver.receiver(access.child_by_field_name("object")?)? {
-            Receiver::Static(owner) => resolver
-                .index
-                .field(&owner, name)
-                .map(|(class, field)| (class, field, true)),
-            Receiver::Value(Type::Class(owner, _)) => resolver
-                .index
-                .field(&owner, name)
-                .map(|(class, field)| (class, field, false)),
+            Receiver::Static(owner) => resolver.index.field(&owner, name).map(|(class, field)| (class, field, true)),
+            Receiver::Value(Type::Class(owner, _)) => resolver.index.field(&owner, name).map(|(class, field)| (class, field, false)),
             Receiver::Value(_) => None,
         }
     }
@@ -200,12 +170,7 @@ impl<'a, 't> Flow<'a, 't> {
     fn fixed(&self, access: Node, found: Option<(&ClassInfo, &Field, bool)>) -> bool {
         match found {
             Some((_, field, fixed)) => fixed || field.flags & flag::STATIC != 0,
-            None => access.child_by_field_name("object").is_none_or(|object| {
-                !matches!(
-                    self.context.resolver.receiver(object),
-                    Some(Receiver::Value(_))
-                )
-            }),
+            None => access.child_by_field_name("object").is_none_or(|object| !matches!(self.context.resolver.receiver(object), Some(Receiver::Value(_)))),
         }
     }
 
@@ -225,8 +190,7 @@ impl<'a, 't> Flow<'a, 't> {
     fn constant(&self, node: Node) -> Option<String> {
         let node = unwrap(node);
         let kind = node.kind();
-        if kind.ends_with("_literal") && kind != "null_literal" || kind == "true" || kind == "false"
-        {
+        if kind.ends_with("_literal") && kind != "null_literal" || kind == "true" || kind == "false" {
             return Some(self.text(node).to_string());
         }
         None
@@ -236,17 +200,13 @@ impl<'a, 't> Flow<'a, 't> {
         let node = strip(node);
         let resolver = self.context.resolver;
         match node.kind() {
-            "identifier" if resolver.binding(node, self.text(node)).is_none() => resolver
-                .pattern_variable(node, self.text(node))
-                .map(|_| self.text(node).to_string()),
+            "identifier" if resolver.binding(node, self.text(node)).is_none() => {
+                resolver.pattern_variable(node, self.text(node)).map(|_| self.text(node).to_string())
+            }
             "identifier" => match resolver.binding(node, self.text(node))? {
-                Binding::Local(_) if self.component(node).is_some() => {
-                    Some(format!("this.{}", self.text(node)))
-                }
+                Binding::Local(_) if self.component(node).is_some() => Some(format!("this.{}", self.text(node))),
                 Binding::Local(_) => Some(self.text(node).to_string()),
-                Binding::Field(_, class, field) if field.flags & flag::STATIC != 0 => {
-                    Some(format!("{}.{}", class.name, field.name))
-                }
+                Binding::Field(_, class, field) if field.flags & flag::STATIC != 0 => Some(format!("{}.{}", class.name, field.name)),
                 Binding::Field(..) => Some(format!("this.{}", self.text(node))),
             },
             "field_access" => {
@@ -259,14 +219,8 @@ impl<'a, 't> Flow<'a, 't> {
             }
             "method_invocation" => {
                 let call = resolver.resolve_call(node)?;
-                let arguments: Vec<Node> = node
-                    .child_by_field_name("arguments")
-                    .map(named_children)
-                    .unwrap_or_default();
-                let arguments: Vec<Node> = arguments
-                    .into_iter()
-                    .filter(|argument| !argument.kind().ends_with("comment"))
-                    .collect();
+                let arguments: Vec<Node> = node.child_by_field_name("arguments").map(named_children).unwrap_or_default();
+                let arguments: Vec<Node> = arguments.into_iter().filter(|argument| !argument.kind().ends_with("comment")).collect();
                 let object = node.child_by_field_name("object");
                 if map_method(resolver, &call, "get", 1) {
                     let key = match self.constant(arguments[0]) {
@@ -287,22 +241,13 @@ impl<'a, 't> Flow<'a, 't> {
                     constants.push(self.constant(*argument)?);
                 }
                 if call.method.is_static {
-                    return Some(format!(
-                        "{}.{}({})",
-                        call.declaring,
-                        call.method.name,
-                        constants.join(",")
-                    ));
+                    return Some(format!("{}.{}({})", call.declaring, call.method.name, constants.join(",")));
                 }
                 let base = match object {
                     Some(object) => self.base(object)?,
                     None => "this".to_string(),
                 };
-                Some(format!(
-                    "{base}.{}({})",
-                    call.method.name,
-                    constants.join(",")
-                ))
+                Some(format!("{base}.{}({})", call.method.name, constants.join(",")))
             }
             "array_access" => {
                 let array = strip(node.child_by_field_name("array")?);
@@ -310,9 +255,7 @@ impl<'a, 't> Flow<'a, 't> {
                 if !matches!(array.kind(), "identifier" | "field_access") {
                     return None;
                 }
-                let at = if index.kind() == "decimal_integer_literal"
-                    || matches!(index.kind(), "identifier" | "field_access")
-                {
+                let at = if index.kind() == "decimal_integer_literal" || matches!(index.kind(), "identifier" | "field_access") {
                     self.text(index).to_string()
                 } else {
                     return None;
@@ -343,13 +286,8 @@ impl<'a, 't> Flow<'a, 't> {
     }
 
     fn arguments(call: Node<'t>) -> Vec<Node<'t>> {
-        let list: Vec<Node> = call
-            .child_by_field_name("arguments")
-            .map(named_children)
-            .unwrap_or_default();
-        list.into_iter()
-            .filter(|argument| !argument.kind().ends_with("comment"))
-            .collect()
+        let list: Vec<Node> = call.child_by_field_name("arguments").map(named_children).unwrap_or_default();
+        list.into_iter().filter(|argument| !argument.kind().ends_with("comment")).collect()
     }
 
     fn step(&mut self, node: Node<'t>, store: &mut Store) -> u8 {
@@ -362,9 +300,7 @@ impl<'a, 't> Flow<'a, 't> {
                     Some(true) => self.known_or(store, node, NULLABLE),
                     _ => self.known_or(store, node, NONNULL),
                 },
-                Some(Binding::Field(_, class, field)) if Self::nullable_field(class, field) => {
-                    self.known_or(store, node, NULLABLE)
-                }
+                Some(Binding::Field(_, class, field)) if Self::nullable_field(class, field) => self.known_or(store, node, NULLABLE),
                 _ => NONNULL,
             },
             "field_access" => {
@@ -374,26 +310,16 @@ impl<'a, 't> Flow<'a, 't> {
                     self.settle(store, object, NONNULL);
                 }
                 match found {
-                    Some((class, field, _)) if Self::nullable_field(class, field) => {
-                        self.known_or(store, node, NULLABLE)
-                    }
+                    Some((class, field, _)) if Self::nullable_field(class, field) => self.known_or(store, node, NULLABLE),
                     _ => NONNULL,
                 }
             }
             "method_invocation" => self.call(node, store),
             "assignment_expression" => {
-                if node
-                    .child_by_field_name("operator")
-                    .is_none_or(|operator| operator.kind() != "=")
-                {
+                if node.child_by_field_name("operator").is_none_or(|operator| operator.kind() != "=") {
                     return NONNULL;
                 }
-                let (Some(left), Some(right)) = (
-                    node.child_by_field_name("left"),
-                    node.child_by_field_name("right"),
-                ) else {
-                    return NONNULL;
-                };
+                let (Some(left), Some(right)) = (node.child_by_field_name("left"), node.child_by_field_name("right")) else { return NONNULL };
                 let value = self.value(right);
                 match left.kind() {
                     "identifier" => self.settle(store, left, value),
@@ -414,12 +340,7 @@ impl<'a, 't> Flow<'a, 't> {
                 value
             }
             "variable_declarator" | "resource" => {
-                let (Some(name), Some(value)) = (
-                    node.child_by_field_name("name"),
-                    node.child_by_field_name("value"),
-                ) else {
-                    return NONNULL;
-                };
+                let (Some(name), Some(value)) = (node.child_by_field_name("name"), node.child_by_field_name("value")) else { return NONNULL };
                 let value = self.value(value);
                 let path = self.local(name);
                 write(store, path, value);
@@ -432,19 +353,9 @@ impl<'a, 't> Flow<'a, 't> {
                 if let Some(name) = node.child_by_field_name("name") {
                     let path = self.local(name);
                     write(store, path, NONNULL);
-                    let keys = node
-                        .child_by_field_name("value")
-                        .map(strip)
-                        .filter(|value| value.kind() == "method_invocation");
-                    let map = keys.filter(|keys| {
-                        resolver
-                            .resolve_call(*keys)
-                            .is_some_and(|call| map_method(resolver, &call, "keySet", 0))
-                    });
-                    if let Some(base) = map
-                        .and_then(|keys| keys.child_by_field_name("object"))
-                        .and_then(|map| self.base(map))
-                    {
+                    let keys = node.child_by_field_name("value").map(strip).filter(|value| value.kind() == "method_invocation");
+                    let map = keys.filter(|keys| resolver.resolve_call(*keys).is_some_and(|call| map_method(resolver, &call, "keySet", 0)));
+                    if let Some(base) = map.and_then(|keys| keys.child_by_field_name("object")).and_then(|map| self.base(map)) {
                         let path = self.path(format!("{base}.get[{}]", self.text(name)));
                         write(store, path, NONNULL);
                     }
@@ -460,36 +371,22 @@ impl<'a, 't> Flow<'a, 't> {
             }
             "method_reference" => {
                 let object = named_children(node).into_iter().next();
-                if let Some(object) = object
-                    .filter(|object| matches!(resolver.receiver(*object), Some(Receiver::Value(_))))
-                {
+                if let Some(object) = object.filter(|object| matches!(resolver.receiver(*object), Some(Receiver::Value(_)))) {
                     self.settle(store, object, NONNULL);
                 }
                 NONNULL
             }
             "parenthesized_expression" => self.value(unwrap(node)),
             "cast_expression" => {
-                let primitive = node.child_by_field_name("type").is_some_and(|kind| {
-                    matches!(
-                        kind.kind(),
-                        "integral_type" | "floating_point_type" | "boolean_type"
-                    )
-                });
+                let primitive = node.child_by_field_name("type").is_some_and(|kind| matches!(kind.kind(), "integral_type" | "floating_point_type" | "boolean_type"));
                 match node.child_by_field_name("value") {
                     Some(value) if !primitive => self.value(value),
                     _ => NONNULL,
                 }
             }
             "ternary_expression" => {
-                let arms = [
-                    node.child_by_field_name("consequence"),
-                    node.child_by_field_name("alternative"),
-                ];
-                let known: Vec<u8> = arms
-                    .into_iter()
-                    .flatten()
-                    .filter_map(|arm| self.known(arm))
-                    .collect();
+                let arms = [node.child_by_field_name("consequence"), node.child_by_field_name("alternative")];
+                let known: Vec<u8> = arms.into_iter().flatten().filter_map(|arm| self.known(arm)).collect();
                 let joined = self.path(format!("(result {}", node.id()));
                 match read(store, joined) {
                     ABSENT => known.into_iter().reduce(least_upper).unwrap_or(NONNULL),
@@ -497,16 +394,8 @@ impl<'a, 't> Flow<'a, 't> {
                 }
             }
             "switch_expression" => {
-                let results = self
-                    .cfg
-                    .results
-                    .get(&node.id())
-                    .cloned()
-                    .unwrap_or_default();
-                let known: Vec<u8> = results
-                    .iter()
-                    .filter_map(|result| self.known(*result))
-                    .collect();
+                let results = self.cfg.results.get(&node.id()).cloned().unwrap_or_default();
+                let known: Vec<u8> = results.iter().filter_map(|result| self.known(*result)).collect();
                 let joined = self.path(format!("(result {}", node.id()));
                 match read(store, joined) {
                     ABSENT => known.into_iter().reduce(least_upper).unwrap_or(NONNULL),
@@ -519,11 +408,7 @@ impl<'a, 't> Flow<'a, 't> {
                 }
                 NONNULL
             }
-            "lambda_expression"
-            | "object_creation_expression"
-            | "class_declaration"
-            | "record_declaration"
-            | "enum_declaration"
+            "lambda_expression" | "object_creation_expression" | "class_declaration" | "record_declaration" | "enum_declaration"
             | "interface_declaration" => {
                 let known: Vec<(String, u8)> = self
                     .paths
@@ -545,9 +430,7 @@ impl<'a, 't> Flow<'a, 't> {
         let object = node.child_by_field_name("object");
         let fixed = match (&found, object) {
             (Some(call), _) => call.method.is_static,
-            (None, Some(object)) => {
-                matches!(resolver.receiver(object), Some(Receiver::Static(_)) | None)
-            }
+            (None, Some(object)) => matches!(resolver.receiver(object), Some(Receiver::Static(_)) | None),
             (None, None) => true,
         };
         if let (false, Some(object)) = (fixed, object) {
@@ -560,9 +443,7 @@ impl<'a, 't> Flow<'a, 't> {
                 self.settle(store, *argument, NONNULL);
             }
         }
-        if (map_method(resolver, &call, "put", 2) || map_method(resolver, &call, "putIfAbsent", 2))
-            && arguments.len() == 2
-        {
+        if (map_method(resolver, &call, "put", 2) || map_method(resolver, &call, "putIfAbsent", 2)) && arguments.len() == 2 {
             let value = self.value(arguments[1]);
             if let Some(path) = self.map_path(node, arguments[0]) {
                 write(store, path, value);
@@ -574,10 +455,7 @@ impl<'a, 't> Flow<'a, 't> {
             }
         }
         if map_method(resolver, &call, "remove", 1) && arguments.len() == 1 {
-            let known = self
-                .map_path(node, arguments[0])
-                .map(|path| read(store, path))
-                .filter(|value| *value != ABSENT);
+            let known = self.map_path(node, arguments[0]).map(|path| read(store, path)).filter(|value| *value != ABSENT);
             if let Some(path) = self.map_path(node, arguments[0]) {
                 write(store, path, NULLABLE);
             }
@@ -585,24 +463,14 @@ impl<'a, 't> Flow<'a, 't> {
         }
         let depends = modelled(resolver, models::NULL_IMPLIES_NULL_PARAMETERS, &call);
         if !depends.is_empty() {
-            let any = depends.iter().any(|position| {
-                arguments
-                    .get(*position)
-                    .is_some_and(|argument| self.value(*argument) != NONNULL)
-            });
-            return if any {
-                self.known_or(store, node, NULLABLE)
-            } else {
-                NONNULL
-            };
+            let any = depends.iter().any(|position| arguments.get(*position).is_some_and(|argument| self.value(*argument) != NONNULL));
+            return if any { self.known_or(store, node, NULLABLE) } else { NONNULL };
         }
         let loose = !annotated(&call.declaring);
         if has_model(resolver, models::NONNULL_RETURNS, &call, loose) {
             return NONNULL;
         }
-        if nullable_model(resolver, &call, loose)
-            || !loose && call.method.flags & flag::NULLABLE != 0
-        {
+        if nullable_model(resolver, &call, loose) || !loose && call.method.flags & flag::NULLABLE != 0 {
             return self.known_or(store, node, NULLABLE);
         }
         NONNULL
@@ -626,33 +494,17 @@ impl<'a, 't> Flow<'a, 't> {
         let resolver = self.context.resolver;
         match test.kind() {
             "binary_expression" => {
-                let operator = test
-                    .child_by_field_name("operator")
-                    .map(|operator| operator.kind());
-                let (Some(left), Some(right)) = (
-                    test.child_by_field_name("left"),
-                    test.child_by_field_name("right"),
-                ) else {
-                    return (holds, fails);
-                };
+                let operator = test.child_by_field_name("operator").map(|operator| operator.kind());
+                let (Some(left), Some(right)) = (test.child_by_field_name("left"), test.child_by_field_name("right")) else { return (holds, fails) };
                 if !matches!(operator, Some("==" | "!=")) {
                     return (holds, fails);
                 }
                 let (left_value, right_value) = (self.value(left), self.value(right));
-                let (same, other) = if operator == Some("==") {
-                    (&mut holds, &mut fails)
-                } else {
-                    (&mut fails, &mut holds)
-                };
+                let (same, other) = if operator == Some("==") { (&mut holds, &mut fails) } else { (&mut fails, &mut holds) };
                 let unequal = |value: u8| if value == NULL { NONNULL } else { NULLABLE };
-                for (side, own, opposite) in [
-                    (left, left_value, right_value),
-                    (right, right_value, left_value),
-                ] {
+                for (side, own, opposite) in [(left, left_value, right_value), (right, right_value, left_value)] {
                     let side = match unwrap(side) {
-                        assigned if assigned.kind() == "assignment_expression" => {
-                            assigned.child_by_field_name("left").unwrap_or(assigned)
-                        }
+                        assigned if assigned.kind() == "assignment_expression" => assigned.child_by_field_name("left").unwrap_or(assigned),
                         plain => plain,
                     };
                     if let Some(path) = self.path_of(side) {
@@ -667,9 +519,7 @@ impl<'a, 't> Flow<'a, 't> {
                 }
             }
             "method_invocation" => {
-                let Some(call) = resolver.resolve_call(test) else {
-                    return (holds, fails);
-                };
+                let Some(call) = resolver.resolve_call(test) else { return (holds, fails) };
                 let arguments = Self::arguments(test);
                 for position in modelled(resolver, models::NULL_IMPLIES_TRUE_PARAMETERS, &call) {
                     if let Some(argument) = arguments.get(position) {
@@ -706,9 +556,7 @@ impl<'a, 't> Flow<'a, 't> {
             if rounds > 200 * count + 1000 {
                 break;
             }
-            let Some(mut store) = inputs[block].clone() else {
-                continue;
-            };
+            let Some(mut store) = inputs[block].clone() else { continue };
             self.copy = self.cfg.blocks[block].copy;
             let mut reach = |inputs: &mut Vec<Option<Store>>, to: usize, store: &Store| {
                 if join(&mut inputs[to], store) && !queued[to] {
@@ -720,12 +568,7 @@ impl<'a, 't> Flow<'a, 't> {
             for position in 0..self.cfg.blocks[block].steps.len() {
                 let node = self.cfg.blocks[block].steps[position];
                 // An exception leaves from a call or a creation, with what was known just before it.
-                if matches!(
-                    node.kind(),
-                    "method_invocation"
-                        | "object_creation_expression"
-                        | "explicit_constructor_invocation"
-                ) {
+                if matches!(node.kind(), "method_invocation" | "object_creation_expression" | "explicit_constructor_invocation") {
                     for handler in &catches {
                         reach(&mut inputs, *handler, &store);
                     }
@@ -767,34 +610,24 @@ impl<'a, 't> Flow<'a, 't> {
         let possible = match expression.kind() {
             "null_literal" => return true,
             "identifier" => match resolver.binding(expression, self.text(expression)) {
-                Some(Binding::Local(_)) => {
-                    self.component(expression).is_none_or(|nullable| nullable)
-                }
-                Some(Binding::Field(_, class, field)) => {
-                    field.constant.is_none() && Self::nullable_field(class, field)
-                }
+                Some(Binding::Local(_)) => self.component(expression).is_none_or(|nullable| nullable),
+                Some(Binding::Field(_, class, field)) => field.constant.is_none() && Self::nullable_field(class, field),
                 None => false,
             },
-            "field_access" => self.field(expression).is_some_and(|(class, field, _)| {
-                field.constant.is_none() && Self::nullable_field(class, field)
-            }),
+            "field_access" => self.field(expression).is_some_and(|(class, field, _)| field.constant.is_none() && Self::nullable_field(class, field)),
             "method_invocation" => match resolver.resolve_call(expression) {
                 Some(call) => {
                     let loose = !annotated(&call.declaring);
                     if !loose && call.method.flags & flag::NULLABLE != 0 {
                         !has_model(resolver, models::NONNULL_RETURNS, &call, loose)
                     } else {
-                        nullable_model(resolver, &call, loose)
-                            || !modelled(resolver, models::NULL_IMPLIES_NULL_PARAMETERS, &call)
-                                .is_empty()
+                        nullable_model(resolver, &call, loose) || !modelled(resolver, models::NULL_IMPLIES_NULL_PARAMETERS, &call).is_empty()
                     }
                 }
                 None => false,
             },
             "ternary_expression" | "switch_expression" => true,
-            "assignment_expression" => expression
-                .child_by_field_name("operator")
-                .is_some_and(|operator| operator.kind() == "="),
+            "assignment_expression" => expression.child_by_field_name("operator").is_some_and(|operator| operator.kind() == "="),
             _ => false,
         };
         possible && matches!(self.known(expression), Some(NULL | NULLABLE))
@@ -802,110 +635,50 @@ impl<'a, 't> Flow<'a, 't> {
 }
 
 fn arity(written: &str) -> usize {
-    if written.is_empty() {
-        0
-    } else {
-        written.split(',').count()
-    }
+    if written.is_empty() { 0 } else { written.split(',').count() }
 }
 
-fn fits(
-    resolver: &crate::java::types::scope::Resolver,
-    row: &models::Model,
-    call: &Call,
-    inherited: bool,
-) -> bool {
+fn fits(resolver: &crate::java::types::scope::Resolver, row: &models::Model, call: &Call, inherited: bool) -> bool {
     row.1 == call.method.name
         && arity(row.2) == call.method.parameters.len()
-        && (row.0 == call.declaring
-            || inherited && resolver.index.is_subtype(&call.declaring, row.0)
-            || resolver.index.is_subtype(row.0, &call.declaring) && inherited)
+        && (row.0 == call.declaring || inherited && resolver.index.is_subtype(&call.declaring, row.0) || resolver.index.is_subtype(row.0, &call.declaring) && inherited)
 }
 
 /// The parameter positions a table names for the called method.
-fn modelled(
-    resolver: &crate::java::types::scope::Resolver,
-    table: &[models::Model],
-    call: &Call,
-) -> Vec<usize> {
-    table
-        .iter()
-        .filter(|row| fits(resolver, row, call, true))
-        .map(|row| row.3)
-        .collect()
+fn modelled(resolver: &crate::java::types::scope::Resolver, table: &[models::Model], call: &Call) -> Vec<usize> {
+    table.iter().filter(|row| fits(resolver, row, call, true)).map(|row| row.3).collect()
 }
 
-fn has_model(
-    resolver: &crate::java::types::scope::Resolver,
-    table: &[models::Model],
-    call: &Call,
-    inherited: bool,
-) -> bool {
+fn has_model(resolver: &crate::java::types::scope::Resolver, table: &[models::Model], call: &Call, inherited: bool) -> bool {
     table.iter().any(|row| fits(resolver, row, call, inherited))
 }
 
-fn nullable_model(
-    resolver: &crate::java::types::scope::Resolver,
-    call: &Call,
-    inherited: bool,
-) -> bool {
-    has_model(resolver, models::ALWAYS_NULLABLE_RETURNS, call, inherited)
-        || has_model(
-            resolver,
-            models::NULLABLE_RETURNS_JSPECIFY_MODE_DISABLED,
-            call,
-            inherited,
-        )
+fn nullable_model(resolver: &crate::java::types::scope::Resolver, call: &Call, inherited: bool) -> bool {
+    has_model(resolver, models::ALWAYS_NULLABLE_RETURNS, call, inherited) || has_model(resolver, models::NULLABLE_RETURNS_JSPECIFY_MODE_DISABLED, call, inherited)
 }
 
-fn map_method(
-    resolver: &crate::java::types::scope::Resolver,
-    call: &Call,
-    name: &str,
-    parameters: usize,
-) -> bool {
+fn map_method(resolver: &crate::java::types::scope::Resolver, call: &Call, name: &str, parameters: usize) -> bool {
     call.method.name == name
         && call.method.parameters.len() == parameters
-        && (call.declaring == "java.util.Map"
-            || resolver.index.is_subtype(&call.declaring, "java.util.Map"))
+        && (call.declaring == "java.util.Map" || resolver.index.is_subtype(&call.declaring, "java.util.Map"))
 }
 
 /// Guava's `checkState` and `checkArgument`: they throw unless their first argument holds.
 fn guard(context: &Context, call: Node) -> bool {
-    let name = call
-        .child_by_field_name("name")
-        .map(|name| context.text(name));
+    let name = call.child_by_field_name("name").map(|name| context.text(name));
     matches!(name, Some("checkState" | "checkArgument"))
-        && context
-            .resolver
-            .resolve_call(call)
-            .is_some_and(|found| found.declaring == "com.google.common.base.Preconditions")
+        && context.resolver.resolve_call(call).is_some_and(|found| found.declaring == "com.google.common.base.Preconditions")
 }
 
 /// The body to analyse for a node that starts one, and where its parameters are.
 fn unit<'t>(node: Node<'t>) -> Option<(Node<'t>, Option<Node<'t>>)> {
     match node.kind() {
-        "method_declaration"
-        | "constructor_declaration"
-        | "compact_constructor_declaration"
-        | "lambda_expression" => Some((
-            node.child_by_field_name("body")?,
-            node.child_by_field_name("parameters"),
-        )),
-        "static_initializer" => Some((
-            children(node)
-                .into_iter()
-                .find(|part| part.kind() == "block")?,
-            None,
-        )),
-        "block" if parent(node).is_some_and(|above| above.kind() == "class_body") => {
-            Some((node, None))
+        "method_declaration" | "constructor_declaration" | "compact_constructor_declaration" | "lambda_expression" => {
+            Some((node.child_by_field_name("body")?, node.child_by_field_name("parameters")))
         }
-        "variable_declarator"
-            if parent(node).is_some_and(|above| {
-                matches!(above.kind(), "field_declaration" | "constant_declaration")
-            }) =>
-        {
+        "static_initializer" => Some((children(node).into_iter().find(|part| part.kind() == "block")?, None)),
+        "block" if parent(node).is_some_and(|above| above.kind() == "class_body") => Some((node, None)),
+        "variable_declarator" if parent(node).is_some_and(|above| matches!(above.kind(), "field_declaration" | "constant_declaration")) => {
             Some((node.child_by_field_name("value")?, None))
         }
         _ => None,
@@ -921,17 +694,8 @@ fn surroundings(node: Node) -> Option<usize> {
     while let Some(at) = current {
         match at.kind() {
             "class_body" => match parent(at) {
-                Some(above) if above.kind() == "object_creation_expression" => {
-                    return Some(above.id());
-                }
-                Some(above)
-                    if parent(above).is_some_and(|outer| {
-                        !matches!(
-                            outer.kind(),
-                            "class_body" | "program" | "interface_body" | "enum_body_declarations"
-                        )
-                    }) =>
-                {
+                Some(above) if above.kind() == "object_creation_expression" => return Some(above.id()),
+                Some(above) if parent(above).is_some_and(|outer| !matches!(outer.kind(), "class_body" | "program" | "interface_body" | "enum_body_declarations")) => {
                     return Some(above.id());
                 }
                 _ => return None,
@@ -967,28 +731,13 @@ pub fn null_away(context: &Context, root: Node) {
     let mut inner: HashMap<usize, Vec<(String, u8)>> = HashMap::new();
     let mut reported = std::collections::HashSet::new();
     walk(root, |node| {
-        let Some((body, parameters)) = unit(node) else {
-            return;
-        };
+        let Some((body, parameters)) = unit(node) else { return };
         if unmarked(context, node) {
             return;
         }
         let cfg = cfg::build(context.file, body, &|call| guard(context, call));
-        let owners = cfg
-            .results
-            .iter()
-            .flat_map(|(switch, results)| results.iter().map(|result| (result.id(), *switch)))
-            .collect();
-        let mut flow = Flow {
-            context,
-            cfg,
-            paths: HashMap::new(),
-            values: HashMap::new(),
-            copy: 0,
-            locals: Default::default(),
-            inner: HashMap::new(),
-            owners,
-        };
+        let owners = cfg.results.iter().flat_map(|(switch, results)| results.iter().map(|result| (result.id(), *switch))).collect();
+        let mut flow = Flow { context, cfg, paths: HashMap::new(), values: HashMap::new(), copy: 0, locals: Default::default(), inner: HashMap::new(), owners };
         let mut start = Store::new();
         if let Some(known) = surroundings(node).and_then(|key| inner.get(&key)) {
             for (name, value) in known {
@@ -1000,9 +749,7 @@ pub fn null_away(context: &Context, root: Node) {
             }
         }
         let parameters = match node.kind() {
-            "compact_constructor_declaration" => parent(node)
-                .and_then(parent)
-                .and_then(|record| record.child_by_field_name("parameters")),
+            "compact_constructor_declaration" => parent(node).and_then(parent).and_then(|record| record.child_by_field_name("parameters")),
             _ => parameters,
         };
         for parameter in parameters.map(children).unwrap_or_default() {
@@ -1010,16 +757,9 @@ pub fn null_away(context: &Context, root: Node) {
                 "identifier" => (Some(parameter), false),
                 "formal_parameter" | "spread_parameter" => {
                     let name = parameter.child_by_field_name("name").or_else(|| {
-                        children(parameter)
-                            .into_iter()
-                            .find(|part| part.kind() == "variable_declarator")
-                            .and_then(|part| part.child_by_field_name("name"))
+                        children(parameter).into_iter().find(|part| part.kind() == "variable_declarator").and_then(|part| part.child_by_field_name("name"))
                     });
-                    (
-                        name,
-                        parameter.kind() == "formal_parameter"
-                            && crate::java::helpers::marked_nullable(context.file, parameter),
-                    )
+                    (name, parameter.kind() == "formal_parameter" && crate::java::helpers::marked_nullable(context.file, parameter))
                 }
                 _ => (None, false),
             };
@@ -1028,8 +768,7 @@ pub fn null_away(context: &Context, root: Node) {
                 write(&mut start, path, if nullable { NULLABLE } else { NONNULL });
             }
         }
-        if let Some(parameters) = parameters.filter(|parameters| parameters.kind() == "identifier")
-        {
+        if let Some(parameters) = parameters.filter(|parameters| parameters.kind() == "identifier") {
             let path = flow.local(parameters);
             write(&mut start, path, NONNULL);
         }
@@ -1042,9 +781,7 @@ pub fn null_away(context: &Context, root: Node) {
             for position in 0..flow.cfg.blocks[block].steps.len() {
                 let node = flow.cfg.blocks[block].steps[position];
                 let (object, mark) = match node.kind() {
-                    "field_access" | "method_invocation" => {
-                        (node.child_by_field_name("object"), ".")
-                    }
+                    "field_access" | "method_invocation" => (node.child_by_field_name("object"), "."),
                     "array_access" => (node.child_by_field_name("array"), "["),
                     "method_reference" => (named_children(node).into_iter().next(), "::"),
                     _ => continue,
@@ -1053,21 +790,9 @@ pub fn null_away(context: &Context, root: Node) {
                 if !flow.may_be_null(object) || !reported.insert(node.id()) {
                     continue;
                 }
-                let sign = children(node)
-                    .into_iter()
-                    .find(|part| part.kind() == mark && part.start_byte() >= object.end_byte());
-                let at = sign
-                    .filter(|_| mark != "::")
-                    .map_or(node.start_byte(), |sign| sign.start_byte());
-                context.report(
-                    "NullAway",
-                    node,
-                    at,
-                    &format!(
-                        "dereferenced expression '{}' is @Nullable",
-                        context.text(object)
-                    ),
-                );
+                let sign = children(node).into_iter().find(|part| part.kind() == mark && part.start_byte() >= object.end_byte());
+                let at = sign.filter(|_| mark != "::").map_or(node.start_byte(), |sign| sign.start_byte());
+                context.report("NullAway", node, at, &format!("dereferenced expression '{}' is @Nullable", context.text(object)));
             }
         }
         inner.extend(flow.inner);

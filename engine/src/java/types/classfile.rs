@@ -57,9 +57,7 @@ impl<'a> Signature<'a> {
         self.text.get(self.at).copied()
     }
     fn word(&mut self, stops: &[u8]) -> Option<&'a str> {
-        let length = self.text[self.at..]
-            .iter()
-            .position(|byte| stops.contains(byte))?;
+        let length = self.text[self.at..].iter().position(|byte| stops.contains(byte))?;
         let word = std::str::from_utf8(&self.text[self.at..self.at + length]).ok()?;
         self.at += length;
         Some(word)
@@ -137,16 +135,13 @@ impl<'a> Signature<'a> {
             if bounds.len() > 1 {
                 bounds.retain(|kind| *kind != Type::class(OBJECT));
             }
-            let several =
-                bounds.len() > 1 && bounds.iter().all(|kind| matches!(kind, Type::Class(..)));
-            let joined = several
-                .then(|| Type::class(&bounds.iter().map(Type::name).collect::<Vec<_>>().join("&")));
+            let several = bounds.len() > 1 && bounds.iter().all(|kind| matches!(kind, Type::Class(..)));
+            let joined = several.then(|| Type::class(&bounds.iter().map(Type::name).collect::<Vec<_>>().join("&")));
             let bound = match joined.or_else(|| bounds.into_iter().next()) {
                 Some(kind @ Type::Class(..)) if several => Some(kind),
-                Some(Type::Variable(other)) => parameters
-                    .iter()
-                    .find(|(known, _)| *known == other)
-                    .map(|(_, kind): &(String, Type)| kind.clone()),
+                Some(Type::Variable(other)) => {
+                    parameters.iter().find(|(known, _)| *known == other).map(|(_, kind): &(String, Type)| kind.clone())
+                }
                 Some(kind) => Some(kind.erased()),
                 None => None,
             };
@@ -204,10 +199,7 @@ fn skip_annotation(reader: &mut Reader) -> Option<u16> {
     Some(kind)
 }
 
-fn attributes<'a>(
-    reader: &mut Reader<'a>,
-    utf8: &impl Fn(u16) -> Option<&'a [u8]>,
-) -> Option<Attributes<'a>> {
+fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Option<Attributes<'a>> {
     let mut found = Attributes::default();
     for _ in 0..reader.u2()? {
         let name = utf8(reader.u2()?)?;
@@ -221,18 +213,10 @@ fn attributes<'a>(
             for _ in 0..reader.u2()? {
                 let kind = utf8(skip_annotation(reader)?);
                 found.deprecated |= kind == Some(b"Ljava/lang/Deprecated;");
-                found.nullable |= kind.is_some_and(|kind| {
-                    kind.ends_with(b"/Nullable;")
-                        || kind.ends_with(b"/CheckForNull;")
-                        || kind.ends_with(b"/ParametricNullness;")
-                });
+                found.nullable |= kind.is_some_and(|kind| kind.ends_with(b"/Nullable;") || kind.ends_with(b"/CheckForNull;") || kind.ends_with(b"/ParametricNullness;"));
             }
         } else if name == b"PermittedSubclasses" {
-            found.permitted = Some(
-                (0..reader.u2()?)
-                    .map(|_| reader.u2())
-                    .collect::<Option<Vec<u16>>>()?,
-            );
+            found.permitted = Some((0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?);
         } else if name == b"Record" {
             found.record = true;
         }
@@ -247,13 +231,7 @@ fn attributes<'a>(
 fn member_flags(access: u16, found: &Attributes) -> u16 {
     let deprecated = found.deprecated;
     let mut bits = 0;
-    for (mask, bit) in [
-        (0x0010, flag::FINAL),
-        (0x0001, flag::PUBLIC),
-        (0x0004, flag::PROTECTED),
-        (0x0008, flag::STATIC),
-        (0x0400, flag::ABSTRACT),
-    ] {
+    for (mask, bit) in [(0x0010, flag::FINAL), (0x0001, flag::PUBLIC), (0x0004, flag::PROTECTED), (0x0008, flag::STATIC), (0x0400, flag::ABSTRACT)] {
         if access & mask != 0 {
             bits |= bit;
         }
@@ -321,15 +299,10 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         Constant::Class(index) => std::str::from_utf8(utf8(*index)?).ok()?,
         _ => return None,
     };
-    let package_name = internal
-        .rsplit_once('/')
-        .map(|(package, _)| package.replace('/', "."))
-        .unwrap_or_default();
+    let package_name = internal.rsplit_once('/').map(|(package, _)| package.replace('/', ".")).unwrap_or_default();
     let name = dotted(internal);
     let superclass = class_name(reader.u2()?);
-    let interfaces = (0..reader.u2()?)
-        .map(|_| reader.u2().and_then(&class_name))
-        .collect::<Option<Vec<_>>>()?;
+    let interfaces = (0..reader.u2()?).map(|_| reader.u2().and_then(&class_name)).collect::<Option<Vec<_>>>()?;
     let mut fields = Vec::new();
     let mut enum_constants = 0;
     for _ in 0..reader.u2()? {
@@ -340,31 +313,14 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         let found = attributes(&mut reader, &utf8)?;
         let (signature, constant) = (found.signature, found.constant);
         if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == 0 {
-            let fixed = constant
-                .filter(|_| flags & ACC_STATIC != 0)
-                .map(|_| Vec::new());
+            let fixed = constant.filter(|_| flags & ACC_STATIC != 0).map(|_| Vec::new());
             let constant = constant.and_then(|index| match pool.get(index as usize)? {
                 Constant::Text(text) => Some(String::from_utf8_lossy(utf8(*text)?).into_owned()),
                 _ => None,
             });
-            let kind = Signature {
-                text: descriptor,
-                at: 0,
-            }
-            .kind()?;
-            let generic = signature
-                .and_then(|text| Signature { text, at: 0 }.kind())
-                .unwrap_or_else(|| kind.clone());
-            fields.push(Field {
-                name: String::from_utf8_lossy(field_name).into_owned(),
-                kind,
-                generic,
-                constant,
-                strict: fixed.is_some(),
-                fixed,
-                is_private: flags & 0x0002 != 0,
-                flags: member_flags(flags, &found),
-            });
+            let kind = Signature { text: descriptor, at: 0 }.kind()?;
+            let generic = signature.and_then(|text| Signature { text, at: 0 }.kind()).unwrap_or_else(|| kind.clone());
+            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, flags: member_flags(flags, &found) });
         }
     }
     let mut methods = Vec::new();
@@ -375,11 +331,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         let found = attributes(&mut reader, &utf8)?;
         let signature = found.signature;
         if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == 0 && method_name != b"<clinit>" {
-            let (_, parameters, returns) = Signature {
-                text: descriptor,
-                at: 0,
-            }
-            .method()?;
+            let (_, parameters, returns) = Signature { text: descriptor, at: 0 }.method()?;
             let generic = signature
                 .and_then(|text| Signature { text, at: 0 }.method())
                 .filter(|(_, generic, _)| generic.len() == parameters.len());
@@ -391,10 +343,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 returns,
                 generic_parameters,
                 generic_returns,
-                type_bounds: type_parameters
-                    .iter()
-                    .map(|(_, bound)| bound.clone())
-                    .collect(),
+                type_bounds: type_parameters.iter().map(|(_, bound)| bound.clone()).collect(),
                 type_parameters: type_parameters.into_iter().map(|(name, _)| name).collect(),
                 package_private: flags & 0x0007 == 0,
                 is_abstract: flags & ACC_ABSTRACT != 0,
@@ -416,9 +365,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     if found.record {
         class_flags |= flag::RECORD;
     }
-    let permitted: Option<Vec<String>> = found
-        .permitted
-        .map(|listed| listed.into_iter().filter_map(&class_name).collect());
+    let permitted: Option<Vec<String>> = found.permitted.map(|listed| listed.into_iter().filter_map(&class_name).collect());
     if permitted.is_some() {
         class_flags |= flag::SEALED;
     }
@@ -431,12 +378,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
             generic_supers.push(kind);
         }
     } else {
-        generic_supers.extend(
-            superclass
-                .iter()
-                .chain(&interfaces)
-                .map(|name| Type::class(name)),
-        );
+        generic_supers.extend(superclass.iter().chain(&interfaces).map(|name| Type::class(name)));
     }
     Some(ClassInfo {
         name,

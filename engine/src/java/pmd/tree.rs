@@ -45,10 +45,7 @@ const PLACES: [&str; 4] = ["BeginLine", "BeginColumn", "EndLine", "EndColumn"];
 /// Renumbers the nodes so that their index is their place in document order.
 fn ordered(nodes: Vec<PNode>) -> (Vec<PNode>, Vec<u32>) {
     let mut order: Vec<u32> = Vec::with_capacity(nodes.len());
-    let mut stack: Vec<u32> = (0..nodes.len() as u32)
-        .rev()
-        .filter(|id| nodes[*id as usize].parent == ROOT)
-        .collect();
+    let mut stack: Vec<u32> = (0..nodes.len() as u32).rev().filter(|id| nodes[*id as usize].parent == ROOT).collect();
     while let Some(id) = stack.pop() {
         order.push(id);
         stack.extend(nodes[id as usize].children.iter().rev());
@@ -60,9 +57,7 @@ fn ordered(nodes: Vec<PNode>) -> (Vec<PNode>, Vec<u32>) {
     let mut slots: Vec<Option<PNode>> = nodes.into_iter().map(Some).collect();
     let mut sorted: Vec<PNode> = Vec::with_capacity(order.len());
     for old in &order {
-        let Some(mut node) = slots[*old as usize].take() else {
-            continue;
-        };
+        let Some(mut node) = slots[*old as usize].take() else { continue };
         if node.parent != ROOT {
             node.parent = renamed[node.parent as usize];
         }
@@ -81,28 +76,11 @@ fn ordered(nodes: Vec<PNode>) -> (Vec<PNode>, Vec<u32>) {
 }
 
 const ORDER: &[&str] = &[
-    "public",
-    "protected",
-    "private",
-    "sealed",
-    "non-sealed",
-    "abstract",
-    "static",
-    "final",
-    "synchronized",
-    "native",
-    "default",
-    "strictfp",
-    "transient",
-    "volatile",
+    "public", "protected", "private", "sealed", "non-sealed", "abstract", "static", "final", "synchronized", "native", "default",
+    "strictfp", "transient", "volatile",
 ];
-const TYPE_DECLARATIONS: &[&str] = &[
-    "class_declaration",
-    "interface_declaration",
-    "enum_declaration",
-    "record_declaration",
-    "annotation_type_declaration",
-];
+const TYPE_DECLARATIONS: &[&str] =
+    &["class_declaration", "interface_declaration", "enum_declaration", "record_declaration", "annotation_type_declaration"];
 
 #[derive(Clone, Copy, PartialEq)]
 enum Owner {
@@ -115,9 +93,7 @@ enum Owner {
 
 fn kids<'t>(node: Node<'t>) -> Vec<Node<'t>> {
     let mut cursor = node.walk();
-    node.named_children(&mut cursor)
-        .filter(|kid| !kid.kind().ends_with("comment"))
-        .collect()
+    node.named_children(&mut cursor).filter(|kid| !kid.kind().ends_with("comment")).collect()
 }
 
 fn fields<'t>(node: Node<'t>, name: &str) -> Vec<Node<'t>> {
@@ -139,17 +115,12 @@ fn unicode_unescaped(written: &str) -> String {
     let (mut at, mut slashes) = (0, 0);
     while at < units.len() {
         let unit = units[at];
-        if unit == u16::from(b'\\')
-            && slashes % 2 == 0
-            && units.get(at + 1) == Some(&u16::from(b'u'))
-        {
+        if unit == u16::from(b'\\') && slashes % 2 == 0 && units.get(at + 1) == Some(&u16::from(b'u')) {
             let mut digits = at + 1;
             while units.get(digits) == Some(&u16::from(b'u')) {
                 digits += 1;
             }
-            let hex: Option<String> = units
-                .get(digits..digits + 4)
-                .map(|hex| String::from_utf16_lossy(hex));
+            let hex: Option<String> = units.get(digits..digits + 4).map(|hex| String::from_utf16_lossy(hex));
             if let Some(value) = hex.and_then(|hex| u16::from_str_radix(&hex, 16).ok()) {
                 out.push(value);
                 at = digits + 4;
@@ -157,11 +128,7 @@ fn unicode_unescaped(written: &str) -> String {
                 continue;
             }
         }
-        slashes = if unit == u16::from(b'\\') {
-            slashes + 1
-        } else {
-            0
-        };
+        slashes = if unit == u16::from(b'\\') { slashes + 1 } else { 0 };
         out.push(unit);
         at += 1;
     }
@@ -178,11 +145,7 @@ fn text(value: &str) -> Value {
 
 impl<'t> PmdTree<'t> {
     pub fn build(file: &SourceFile, tree_root: Node<'t>, resolver: &Resolver) -> PmdTree<'t> {
-        let mut builder = Builder {
-            file,
-            resolver,
-            nodes: Vec::new(),
-        };
+        let mut builder = Builder { file, resolver, nodes: Vec::new() };
         builder.unit(tree_root);
         // PMD's lexer reads `>>` as one token, and a type that ends inside it ends where the token ends.
         let bytes = file.text.as_bytes();
@@ -194,34 +157,19 @@ impl<'t> PmdTree<'t> {
             }
         }
         let mut lines = vec![0];
-        lines.extend(
-            file.text
-                .bytes()
-                .enumerate()
-                .filter(|(_, byte)| *byte == b'\n')
-                .map(|(at, _)| at + 1),
-        );
+        lines.extend(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1));
         let (nodes, last) = ordered(builder.nodes);
-        let mut named: std::collections::HashMap<&'static str, Vec<u32>> =
-            std::collections::HashMap::new();
+        let mut named: std::collections::HashMap<&'static str, Vec<u32>> = std::collections::HashMap::new();
         for (id, node) in nodes.iter().enumerate() {
             named.entry(node.name).or_default().push(id as u32);
         }
-        PmdTree {
-            nodes,
-            last,
-            named,
-            lines,
-        }
+        PmdTree { nodes, last, named, lines }
     }
 
     /// Line and column as PMD counts them: both from 1, columns in UTF-16 units.
     pub fn place(&self, file: &SourceFile, byte: usize) -> (usize, usize) {
         let line = self.lines.partition_point(|start| *start <= byte) - 1;
-        (
-            line + 1,
-            file.text[self.lines[line]..byte].encode_utf16().count() + 1,
-        )
+        (line + 1, file.text[self.lines[line]..byte].encode_utf16().count() + 1)
     }
 
     pub fn attribute(&self, file: &SourceFile, id: u32, name: &str) -> Option<Value> {
@@ -250,20 +198,11 @@ impl<'t> PmdTree<'t> {
     /// The name of an attribute as the tree keeps it, when the node has it.
     pub fn attribute_key(&self, id: u32, name: &str) -> Option<&'static str> {
         let node = &self.nodes[id as usize];
-        node.attributes
-            .iter()
-            .map(|(key, _)| *key)
-            .chain(PLACES)
-            .chain(["Image"])
-            .find(|key| *key == name)
+        node.attributes.iter().map(|(key, _)| *key).chain(PLACES).chain(["Image"]).find(|key| *key == name)
     }
 
     pub fn attribute_names(&self, id: u32) -> Vec<&'static str> {
-        let mut names: Vec<&'static str> = self.nodes[id as usize]
-            .attributes
-            .iter()
-            .map(|(key, _)| *key)
-            .collect();
+        let mut names: Vec<&'static str> = self.nodes[id as usize].attributes.iter().map(|(key, _)| *key).collect();
         names.extend(["BeginLine", "BeginColumn", "EndLine", "EndColumn"]);
         names
     }
@@ -273,28 +212,13 @@ struct Builder<'a, 't> {
     file: &'a SourceFile,
     resolver: &'a Resolver<'a>,
     nodes: Vec<PNode<'t>>,
+
 }
 
 impl<'a, 't> Builder<'a, 't> {
-    fn open(
-        &mut self,
-        parent: u32,
-        name: &'static str,
-        source: Option<Node<'t>>,
-        start: usize,
-        end: usize,
-    ) -> u32 {
+    fn open(&mut self, parent: u32, name: &'static str, source: Option<Node<'t>>, start: usize, end: usize) -> u32 {
         let id = self.nodes.len() as u32;
-        self.nodes.push(PNode {
-            name,
-            parent,
-            children: Vec::new(),
-            source,
-            start,
-            end,
-            report: None,
-            attributes: Vec::new(),
-        });
+        self.nodes.push(PNode { name, parent, children: Vec::new(), source, start, end, report: None, attributes: Vec::new() });
         if parent != ROOT {
             self.nodes[parent as usize].children.push(id);
         }
@@ -314,11 +238,7 @@ impl<'a, 't> Builder<'a, 't> {
     }
 
     fn get(&self, id: u32, key: &str) -> Option<&Value> {
-        self.nodes[id as usize]
-            .attributes
-            .iter()
-            .find(|(known, _)| *known == key)
-            .map(|(_, value)| value)
+        self.nodes[id as usize].attributes.iter().find(|(known, _)| *known == key).map(|(_, value)| value)
     }
 
     fn is(&self, id: u32, key: &str) -> bool {
@@ -337,29 +257,15 @@ impl<'a, 't> Builder<'a, 't> {
     fn unit(&mut self, root: Node<'t>) {
         let all = kids(root);
         let start = all.first().map_or(0, |first| first.start_byte());
-        let id = self.open(
-            ROOT,
-            "CompilationUnit",
-            Some(root),
-            start,
-            self.file.text.len(),
-        );
+        let id = self.open(ROOT, "CompilationUnit", Some(root), start, self.file.text.len());
         self.set(id, "PackageName", text(""));
         for kid in all {
             match kid.kind() {
                 "package_declaration" => {
                     let declaration = self.at(id, "PackageDeclaration", kid);
-                    let name = kids(kid)
-                        .into_iter()
-                        .rev()
-                        .find(|part| matches!(part.kind(), "identifier" | "scoped_identifier"));
-                    self.nodes[declaration as usize].report =
-                        name.map(|name| (name.start_byte(), name.end_byte()));
-                    let package: String = name
-                        .map(|name| self.text(name))
-                        .unwrap_or_default()
-                        .split_whitespace()
-                        .collect();
+                    let name = kids(kid).into_iter().rev().find(|part| matches!(part.kind(), "identifier" | "scoped_identifier"));
+                    self.nodes[declaration as usize].report = name.map(|name| (name.start_byte(), name.end_byte()));
+                    let package: String = name.map(|name| self.text(name)).unwrap_or_default().split_whitespace().collect();
                     self.set(declaration, "Name", text(&package));
                     self.set(id, "PackageName", text(&package));
                     self.modifiers(declaration, kid, &[]);
@@ -373,25 +279,13 @@ impl<'a, 't> Builder<'a, 't> {
                         .map(|name| self.text(name).split_whitespace().collect())
                         .unwrap_or_default();
                     let wide = parts.iter().any(|part| part.kind() == "asterisk");
-                    self.set(
-                        declaration,
-                        "Static",
-                        flag(parts.iter().any(|part| part.kind() == "static")),
-                    );
+                    self.set(declaration, "Static", flag(parts.iter().any(|part| part.kind() == "static")));
                     self.set(declaration, "ImportOnDemand", flag(wide));
                     self.set(declaration, "ImportedName", text(&name));
                     if !wide {
-                        self.set(
-                            declaration,
-                            "ImportedSimpleName",
-                            text(name.rsplit('.').next().unwrap_or_default()),
-                        );
+                        self.set(declaration, "ImportedSimpleName", text(name.rsplit('.').next().unwrap_or_default()));
                     }
-                    let package = if wide {
-                        name.as_str()
-                    } else {
-                        name.rsplit_once('.').map_or("", |(package, _)| package)
-                    };
+                    let package = if wide { name.as_str() } else { name.rsplit_once('.').map_or("", |(package, _)| package) };
                     self.set(declaration, "PackageName", text(package));
                 }
                 kind if TYPE_DECLARATIONS.contains(&kind) => {
@@ -403,27 +297,11 @@ impl<'a, 't> Builder<'a, 't> {
     }
 
     /// The modifier list of a declaration; returns the effective modifiers.
-    fn modifiers(
-        &mut self,
-        parent: u32,
-        declaration: Node<'t>,
-        implicit: &[&'static str],
-    ) -> Vec<&'static str> {
+    fn modifiers(&mut self, parent: u32, declaration: Node<'t>, implicit: &[&'static str]) -> Vec<&'static str> {
         if declaration.kind() == "package_declaration" {
-            let notes: Vec<Node<'t>> = kids(declaration)
-                .into_iter()
-                .filter(|part| matches!(part.kind(), "marker_annotation" | "annotation"))
-                .collect();
-            let start = notes
-                .first()
-                .map_or(declaration.start_byte(), |first| first.start_byte());
-            let id = self.open(
-                parent,
-                "ModifierList",
-                None,
-                start,
-                notes.last().map_or(start, |last| last.end_byte()),
-            );
+            let notes: Vec<Node<'t>> = kids(declaration).into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation")).collect();
+            let start = notes.first().map_or(declaration.start_byte(), |first| first.start_byte());
+            let id = self.open(parent, "ModifierList", None, start, notes.last().map_or(start, |last| last.end_byte()));
             for note in notes {
                 self.annotation(id, note);
             }
@@ -433,14 +311,11 @@ impl<'a, 't> Builder<'a, 't> {
         }
         let written = find(declaration, "modifiers");
         let bare = if declaration.kind() == "enhanced_for_statement" {
-            declaration
-                .child_by_field_name("type")
-                .map_or(declaration.start_byte(), |written| written.start_byte())
+            declaration.child_by_field_name("type").map_or(declaration.start_byte(), |written| written.start_byte())
         } else {
             declaration.start_byte()
         };
-        let (start, end) =
-            written.map_or((bare, bare), |list| (list.start_byte(), list.end_byte()));
+        let (start, end) = written.map_or((bare, bare), |list| (list.start_byte(), list.end_byte()));
         let id = self.open(parent, "ModifierList", None, start, end);
         let mut explicit: Vec<&'static str> = Vec::new();
         for part in written.map(children).unwrap_or_default() {
@@ -454,68 +329,30 @@ impl<'a, 't> Builder<'a, 't> {
         let rank = |modifier: &&'static str| ORDER.iter().position(|known| known == modifier);
         explicit.sort_by_key(rank);
         let mut effective = explicit.clone();
-        effective.extend(
-            implicit
-                .iter()
-                .filter(|modifier| !explicit.contains(modifier)),
-        );
+        effective.extend(implicit.iter().filter(|modifier| !explicit.contains(modifier)));
         effective.sort_by_key(rank);
         effective.dedup();
-        self.set(
-            id,
-            "ExplicitModifiers",
-            Value::List(
-                explicit
-                    .iter()
-                    .map(|modifier| modifier.to_string())
-                    .collect(),
-            ),
-        );
-        self.set(
-            id,
-            "EffectiveModifiers",
-            Value::List(
-                effective
-                    .iter()
-                    .map(|modifier| modifier.to_string())
-                    .collect(),
-            ),
-        );
+        self.set(id, "ExplicitModifiers", Value::List(explicit.iter().map(|modifier| modifier.to_string()).collect()));
+        self.set(id, "EffectiveModifiers", Value::List(effective.iter().map(|modifier| modifier.to_string()).collect()));
         effective
     }
 
     fn visibility(effective: &[&'static str]) -> &'static str {
-        ["public", "protected", "private"]
-            .into_iter()
-            .find(|level| effective.contains(level))
-            .unwrap_or("package")
+        ["public", "protected", "private"].into_iter().find(|level| effective.contains(level)).unwrap_or("package")
     }
 
     fn annotation(&mut self, parent: u32, node: Node<'t>) -> u32 {
         let id = self.at(parent, "Annotation", node);
         if let Some(name) = node.child_by_field_name("name") {
             self.named_type(id, name);
-            self.set(
-                id,
-                "SimpleName",
-                text(
-                    self.text(name)
-                        .rsplit('.')
-                        .next()
-                        .unwrap_or_default()
-                        .trim(),
-                ),
-            );
+            self.set(id, "SimpleName", text(self.text(name).rsplit('.').next().unwrap_or_default().trim()));
         }
         if let Some(arguments) = node.child_by_field_name("arguments") {
             let list = self.at(id, "AnnotationMemberList", arguments);
             for kid in kids(arguments) {
                 let pair = self.at(list, "MemberValuePair", kid);
                 if kid.kind() == "element_value_pair" {
-                    let key = kid
-                        .child_by_field_name("key")
-                        .map(|key| self.text(key))
-                        .unwrap_or_default();
+                    let key = kid.child_by_field_name("key").map(|key| self.text(key)).unwrap_or_default();
                     self.set(pair, "Name", text(key));
                     self.set(pair, "Image", text(key));
                     self.set(pair, "Shorthand", flag(false));
@@ -557,18 +394,9 @@ impl<'a, 't> Builder<'a, 't> {
             // A name brought in by a single-type import is a class even when its jar is not on the class path.
             Some(name) => {
                 let first = written.split('.').next().unwrap_or(written);
-                self.resolver.index.has(&name)
-                    || self
-                        .resolver
-                        .scope
-                        .single
-                        .get(first)
-                        .is_some_and(|imported| name.starts_with(imported.as_str()))
+                self.resolver.index.has(&name) || self.resolver.scope.single.get(first).is_some_and(|imported| name.starts_with(imported.as_str()))
             }
-            None => written
-                .rsplit('.')
-                .next()
-                .is_some_and(|last| last.starts_with(char::is_uppercase)),
+            None => written.rsplit('.').next().is_some_and(|last| last.starts_with(char::is_uppercase)),
         }
     }
 
@@ -578,21 +406,9 @@ impl<'a, 't> Builder<'a, 't> {
             "scoped_identifier" | "scoped_type_identifier" | "field_access" => {
                 let id = self.at(parent, "ClassType", node);
                 let parts = kids(node);
-                let simple = parts
-                    .iter()
-                    .rev()
-                    .find(|part| matches!(part.kind(), "identifier" | "type_identifier"))
-                    .copied();
-                self.set(
-                    id,
-                    "SimpleName",
-                    text(simple.map(|simple| self.text(simple)).unwrap_or_default()),
-                );
-                if let Some(scope) = parts
-                    .first()
-                    .copied()
-                    .filter(|scope| Some(*scope) != simple)
-                {
+                let simple = parts.iter().rev().find(|part| matches!(part.kind(), "identifier" | "type_identifier")).copied();
+                self.set(id, "SimpleName", text(simple.map(|simple| self.text(simple)).unwrap_or_default()));
+                if let Some(scope) = parts.first().copied().filter(|scope| Some(*scope) != simple) {
                     let written: String = self.text(scope).split_whitespace().collect();
                     if scope.kind() == "generic_type" || self.names_class(node, &written) {
                         self.ty(id, scope);
@@ -621,11 +437,7 @@ impl<'a, 't> Builder<'a, 't> {
             self.ty(id, kid);
         }
         self.sized(id);
-        self.set(
-            id,
-            "Diamond",
-            flag(self.nodes[id as usize].children.is_empty()),
-        );
+        self.set(id, "Diamond", flag(self.nodes[id as usize].children.is_empty()));
     }
 
     fn dimensions(&mut self, parent: u32, node: Node<'t>) -> usize {
@@ -643,9 +455,7 @@ impl<'a, 't> Builder<'a, 't> {
             match part.kind() {
                 "marker_annotation" | "annotation" => pending.push(part),
                 "[" => {
-                    let start = pending
-                        .first()
-                        .map_or(part.start_byte(), |first| first.start_byte());
+                    let start = pending.first().map_or(part.start_byte(), |first| first.start_byte());
                     let dim = self.open(id, "ArrayTypeDim", None, start, part.end_byte());
                     self.set(dim, "Varargs", flag(false));
                     for annotation in pending.drain(..) {
@@ -667,15 +477,11 @@ impl<'a, 't> Builder<'a, 't> {
 
     /// Puts type annotations on a type; on an array they belong to the element type.
     fn annotate(&mut self, written: u32, annotations: &[Node<'t>]) {
-        let Some(first) = annotations.first() else {
-            return;
-        };
+        let Some(first) = annotations.first() else { return };
         let mut target = written;
         while self.nodes[target as usize].name == "ArrayType" {
             self.nodes[target as usize].start = first.start_byte();
-            let Some(element) = self.nodes[target as usize].children.first().copied() else {
-                break;
-            };
+            let Some(element) = self.nodes[target as usize].children.first().copied() else { break };
             target = element;
         }
         self.nodes[target as usize].start = first.start_byte();
@@ -690,9 +496,7 @@ impl<'a, 't> Builder<'a, 't> {
         match node.kind() {
             "generic_type" => {
                 let parts = kids(node);
-                let Some(base) = parts.first().copied() else {
-                    return self.at(parent, "ClassType", node);
-                };
+                let Some(base) = parts.first().copied() else { return self.at(parent, "ClassType", node) };
                 let id = self.ty(parent, base);
                 self.nodes[id as usize].end = node.end_byte();
                 self.nodes[id as usize].source = Some(node);
@@ -706,9 +510,7 @@ impl<'a, 't> Builder<'a, 't> {
                 if let Some(element) = node.child_by_field_name("element") {
                     self.ty(id, element);
                 }
-                let depth = node
-                    .child_by_field_name("dimensions")
-                    .map_or(0, |dimensions| self.dimensions(id, dimensions));
+                let depth = node.child_by_field_name("dimensions").map_or(0, |dimensions| self.dimensions(id, dimensions));
                 self.set(id, "ArrayDepth", Value::Whole(depth as i64));
                 id
             }
@@ -720,20 +522,14 @@ impl<'a, 't> Builder<'a, 't> {
             "void_type" => self.at(parent, "VoidType", node),
             "annotated_type" => {
                 let parts = kids(node);
-                let Some(inner) = parts.last().copied() else {
-                    return self.at(parent, "ClassType", node);
-                };
+                let Some(inner) = parts.last().copied() else { return self.at(parent, "ClassType", node) };
                 let id = self.ty(parent, inner);
                 self.annotate(id, &parts[..parts.len() - 1]);
                 id
             }
             "wildcard" => {
                 let id = self.at(parent, "WildcardType", node);
-                self.set(
-                    id,
-                    "LowerBound",
-                    flag(children(node).iter().any(|part| part.kind() == "super")),
-                );
+                self.set(id, "LowerBound", flag(children(node).iter().any(|part| part.kind() == "super")));
                 for kid in kids(node) {
                     if matches!(kid.kind(), "marker_annotation" | "annotation") {
                         self.annotation(id, kid);
@@ -749,10 +545,7 @@ impl<'a, 't> Builder<'a, 't> {
 
     fn type_parameters(&mut self, parent: u32, node: Node<'t>) {
         let id = self.at(parent, "TypeParameters", node);
-        for kid in kids(node)
-            .into_iter()
-            .filter(|kid| kid.kind() == "type_parameter")
-        {
+        for kid in kids(node).into_iter().filter(|kid| kid.kind() == "type_parameter") {
             let parameter = self.at(id, "TypeParameter", kid);
             for part in kids(kid) {
                 match part.kind() {
@@ -782,34 +575,19 @@ impl<'a, 't> Builder<'a, 't> {
         self.sized(id);
     }
 
-    fn type_declaration(
-        &mut self,
-        parent: u32,
-        node: Node<'t>,
-        inside: Option<Owner>,
-        local: bool,
-    ) -> u32 {
+    fn type_declaration(&mut self, parent: u32, node: Node<'t>, inside: Option<Owner>, local: bool) -> u32 {
         let (name, owner, body_name) = match node.kind() {
             "interface_declaration" => ("ClassDeclaration", Owner::Interface, "ClassBody"),
             "enum_declaration" => ("EnumDeclaration", Owner::Enum, "EnumBody"),
             "record_declaration" => ("RecordDeclaration", Owner::Record, "RecordBody"),
-            "annotation_type_declaration" => (
-                "AnnotationTypeDeclaration",
-                Owner::Annotation,
-                "AnnotationTypeBody",
-            ),
+            "annotation_type_declaration" => ("AnnotationTypeDeclaration", Owner::Annotation, "AnnotationTypeBody"),
             _ => ("ClassDeclaration", Owner::Class, "ClassBody"),
         };
         let id = self.at(parent, name, node);
         let mut implicit: Vec<&'static str> = Vec::new();
-        let around =
-            crate::engine::source::ancestor(node, TYPE_DECLARATIONS).map(|around| around.kind());
+        let around = crate::engine::source::ancestor(node, TYPE_DECLARATIONS).map(|around| around.kind());
         if matches!(inside, Some(Owner::Interface | Owner::Annotation))
-            || (local
-                && matches!(
-                    around,
-                    Some("interface_declaration" | "annotation_type_declaration")
-                ))
+            || (local && matches!(around, Some("interface_declaration" | "annotation_type_declaration")))
         {
             implicit.extend(["public", "static"]);
         }
@@ -821,10 +599,7 @@ impl<'a, 't> Builder<'a, 't> {
             Owner::Enum => {
                 implicit.extend(inside.map(|_| "static"));
                 let bodied = node.child_by_field_name("body").is_some_and(|body| {
-                    kids(body).iter().any(|constant| {
-                        constant.kind() == "enum_constant"
-                            && constant.child_by_field_name("body").is_some()
-                    })
+                    kids(body).iter().any(|constant| constant.kind() == "enum_constant" && constant.child_by_field_name("body").is_some())
                 });
                 if !bodied {
                     implicit.push("final");
@@ -844,13 +619,7 @@ impl<'a, 't> Builder<'a, 't> {
             if let Some(parameters) = node.child_by_field_name("parameters") {
                 let parts = kids(parameters);
                 let list = match (parts.first(), parts.last()) {
-                    (Some(first), Some(last)) => self.open(
-                        id,
-                        "RecordComponentList",
-                        Some(parameters),
-                        first.start_byte(),
-                        last.end_byte(),
-                    ),
+                    (Some(first), Some(last)) => self.open(id, "RecordComponentList", Some(parameters), first.start_byte(), last.end_byte()),
                     _ => self.at(id, "RecordComponentList", parameters),
                 };
                 for kid in kids(parameters) {
@@ -859,15 +628,7 @@ impl<'a, 't> Builder<'a, 't> {
                     self.set(component, "Varargs", flag(kid.kind() == "spread_parameter"));
                 }
                 self.sized(list);
-                self.set(
-                    list,
-                    "Varargs",
-                    flag(
-                        kids(parameters)
-                            .last()
-                            .is_some_and(|last| last.kind() == "spread_parameter"),
-                    ),
-                );
+                self.set(list, "Varargs", flag(kids(parameters).last().is_some_and(|last| last.kind() == "spread_parameter")));
             }
         }
         for part in children(node) {
@@ -878,9 +639,7 @@ impl<'a, 't> Builder<'a, 't> {
                 _ => continue,
             };
             let list = self.at(id, list, part);
-            let types = find(part, "type_list")
-                .map(kids)
-                .unwrap_or_else(|| kids(part));
+            let types = find(part, "type_list").map(kids).unwrap_or_else(|| kids(part));
             for written in types {
                 self.ty(list, written);
             }
@@ -889,40 +648,19 @@ impl<'a, 't> Builder<'a, 't> {
         if let Some(name) = node.child_by_field_name("name") {
             self.set(id, "SimpleName", text(self.text(name)));
         }
-        let keyword = children(node).into_iter().find(|part| {
-            matches!(
-                part.kind(),
-                "class" | "interface" | "enum" | "record" | "@interface"
-            )
-        });
-        self.nodes[id as usize].report = keyword.map(|keyword| {
-            (
-                keyword.start_byte(),
-                if keyword.kind() == "@interface" {
-                    keyword.start_byte() + 1
-                } else {
-                    keyword.end_byte()
-                },
-            )
-        });
+        let keyword = children(node).into_iter().find(|part| matches!(part.kind(), "class" | "interface" | "enum" | "record" | "@interface"));
+        self.nodes[id as usize].report =
+            keyword.map(|keyword| (keyword.start_byte(), if keyword.kind() == "@interface" { keyword.start_byte() + 1 } else { keyword.end_byte() }));
         if !local {
             let known = self.resolver.scope.names.get(&node.id());
-            if let Some(canonical) = known.filter(|name| {
-                !name
-                    .split('.')
-                    .any(|part| part.starts_with(|first: char| first.is_ascii_digit()))
-            }) {
+            if let Some(canonical) = known.filter(|name| !name.split('.').any(|part| part.starts_with(|first: char| first.is_ascii_digit()))) {
                 self.set(id, "CanonicalName", text(canonical));
                 self.set(id, "BinaryName", text(canonical));
             }
         }
         let package = &self.resolver.scope.package;
         self.set(id, "PackageName", text(package));
-        self.set(
-            id,
-            "Interface",
-            flag(matches!(owner, Owner::Interface | Owner::Annotation)),
-        );
+        self.set(id, "Interface", flag(matches!(owner, Owner::Interface | Owner::Annotation)));
         self.set(id, "RegularInterface", flag(owner == Owner::Interface));
         self.set(id, "RegularClass", flag(owner == Owner::Class));
         self.set(id, "Enum", flag(owner == Owner::Enum));
@@ -935,15 +673,7 @@ impl<'a, 't> Builder<'a, 't> {
         self.set(id, "Anonymous", flag(false));
         self.set(id, "Nested", flag(inside.is_some() && !local));
         self.set(id, "TopLevel", flag(inside.is_none() && !local));
-        self.set(
-            id,
-            "Visibility",
-            text(if local {
-                "local"
-            } else {
-                Self::visibility(&effective)
-            }),
-        );
+        self.set(id, "Visibility", text(if local { "local" } else { Self::visibility(&effective) }));
         if let Some(body) = node.child_by_field_name("body") {
             self.body(id, body, body_name, owner);
         }
@@ -969,9 +699,7 @@ impl<'a, 't> Builder<'a, 't> {
                 ";" => {
                     self.at(id, "EmptyDeclaration", kid);
                 }
-                _ if kid.is_named() && !kid.kind().ends_with("comment") => {
-                    self.member(id, kid, owner)
-                }
+                _ if kid.is_named() && !kid.kind().ends_with("comment") => self.member(id, kid, owner),
                 _ => {}
             }
         }
@@ -996,11 +724,7 @@ impl<'a, 't> Builder<'a, 't> {
         if let Some(arguments) = node.child_by_field_name("arguments") {
             self.arguments(id, arguments);
         }
-        self.set(
-            id,
-            "AnonymousClass",
-            flag(node.child_by_field_name("body").is_some()),
-        );
+        self.set(id, "AnonymousClass", flag(node.child_by_field_name("body").is_some()));
         if let Some(body) = node.child_by_field_name("body") {
             self.anonymous(id, body, true);
         }
@@ -1010,45 +734,18 @@ impl<'a, 't> Builder<'a, 't> {
         let id = self.at(parent, "AnonymousClassDeclaration", body);
         let fixed = crate::engine::source::ancestor(
             body,
-            &[
-                "method_declaration",
-                "static_initializer",
-                "field_declaration",
-                "constant_declaration",
-                "class_body",
-            ],
+            &["method_declaration", "static_initializer", "field_declaration", "constant_declaration", "class_body"],
         );
         let fixed = constant
             || fixed.is_some_and(|scope| match scope.kind() {
                 "static_initializer" | "constant_declaration" => true,
                 "class_body" => false,
-                _ => find(scope, "modifiers")
-                    .is_some_and(|list| children(list).iter().any(|part| part.kind() == "static")),
+                _ => find(scope, "modifiers").is_some_and(|list| children(list).iter().any(|part| part.kind() == "static")),
             });
-        let list = self.open(
-            id,
-            "ModifierList",
-            None,
-            body.start_byte(),
-            body.start_byte(),
-        );
+        let list = self.open(id, "ModifierList", None, body.start_byte(), body.start_byte());
         self.set(list, "ExplicitModifiers", Value::List(Vec::new()));
-        self.set(
-            list,
-            "EffectiveModifiers",
-            Value::List(if fixed {
-                vec!["static".to_string()]
-            } else {
-                Vec::new()
-            }),
-        );
-        for (key, value) in [
-            ("Anonymous", true),
-            ("Interface", false),
-            ("RegularClass", false),
-            ("Local", false),
-            ("Abstract", false),
-        ] {
+        self.set(list, "EffectiveModifiers", Value::List(if fixed { vec!["static".to_string()] } else { Vec::new() }));
+        for (key, value) in [("Anonymous", true), ("Interface", false), ("RegularClass", false), ("Local", false), ("Abstract", false)] {
             self.set(id, key, flag(value));
         }
         self.set(id, "Static", flag(fixed));
@@ -1057,15 +754,7 @@ impl<'a, 't> Builder<'a, 't> {
         self.body(id, body, "ClassBody", Owner::Class);
     }
 
-    fn variable_flags(
-        &mut self,
-        id: u32,
-        name: &str,
-        field: bool,
-        fixed: bool,
-        visibility: &'static str,
-        last: bool,
-    ) {
+    fn variable_flags(&mut self, id: u32, name: &str, field: bool, fixed: bool, visibility: &'static str, last: bool) {
         self.set(id, "Name", text(name));
         self.set(id, "Field", flag(field));
         self.set(id, "Static", flag(fixed));
@@ -1074,20 +763,11 @@ impl<'a, 't> Builder<'a, 't> {
     }
 
     /// Modifier list, type and variable id of a parameter-like declaration.
-    fn parameter_parts(
-        &mut self,
-        id: u32,
-        node: Node<'t>,
-        implicit: &[&'static str],
-        visibility: &'static str,
-        field: bool,
-    ) {
+    fn parameter_parts(&mut self, id: u32, node: Node<'t>, implicit: &[&'static str], visibility: &'static str, field: bool) {
         let effective = self.modifiers(id, node, implicit);
         let spread = node.kind() == "spread_parameter";
         let written = if spread {
-            kids(node)
-                .into_iter()
-                .find(|kid| !matches!(kid.kind(), "modifiers" | "variable_declarator"))
+            kids(node).into_iter().find(|kid| !matches!(kid.kind(), "modifiers" | "variable_declarator"))
         } else {
             node.child_by_field_name("type")
         };
@@ -1098,10 +778,7 @@ impl<'a, 't> Builder<'a, 't> {
                 let end = dots.map_or(written.end_byte(), |dots| dots.end_byte());
                 let array = self.open(id, "ArrayType", Some(node), written.start_byte(), end);
                 let (element, inner) = if written.kind() == "array_type" {
-                    (
-                        written.child_by_field_name("element").unwrap_or(written),
-                        written.child_by_field_name("dimensions"),
-                    )
+                    (written.child_by_field_name("element").unwrap_or(written), written.child_by_field_name("dimensions"))
                 } else {
                     (written, None)
                 };
@@ -1119,11 +796,7 @@ impl<'a, 't> Builder<'a, 't> {
                     if let Some(at) = between.find('@') {
                         let name = between[at + 1..].trim();
                         let (start, end) = (from + at, from + at + 1 + name.len());
-                        if !name.is_empty()
-                            && name
-                                .chars()
-                                .all(|c| c.is_alphanumeric() || matches!(c, '_' | '.' | '$'))
-                        {
+                        if !name.is_empty() && name.chars().all(|c| c.is_alphanumeric() || matches!(c, '_' | '.' | '$')) {
                             self.nodes[dim as usize].start = start;
                             if inner.is_none() {
                                 self.nodes[dims as usize].start = start;
@@ -1144,26 +817,11 @@ impl<'a, 't> Builder<'a, 't> {
             }
         }
         let declarator = find(node, "variable_declarator");
-        let name = declarator
-            .and_then(|declarator| declarator.child_by_field_name("name"))
-            .or_else(|| node.child_by_field_name("name"));
+        let name = declarator.and_then(|declarator| declarator.child_by_field_name("name")).or_else(|| node.child_by_field_name("name"));
         if let Some(name) = name {
             let dims = declarator.unwrap_or(node).child_by_field_name("dimensions");
-            let variable = self.open(
-                id,
-                "VariableId",
-                Some(name),
-                name.start_byte(),
-                dims.map_or(name.end_byte(), |dims| dims.end_byte()),
-            );
-            self.variable_flags(
-                variable,
-                self.text(name),
-                field,
-                false,
-                visibility,
-                effective.contains(&"final"),
-            );
+            let variable = self.open(id, "VariableId", Some(name), name.start_byte(), dims.map_or(name.end_byte(), |dims| dims.end_byte()));
+            self.variable_flags(variable, self.text(name), field, false, visibility, effective.contains(&"final"));
             if let Some(dims) = dims {
                 self.dimensions(variable, dims);
             }
@@ -1187,9 +845,7 @@ impl<'a, 't> Builder<'a, 't> {
                 }
                 "receiver_parameter" => {
                     let receiver = self.at(id, "ReceiverParameter", kid);
-                    if let Some(written) = kids(kid).into_iter().find(|part| {
-                        part.kind().ends_with("type") || part.kind() == "type_identifier"
-                    }) {
+                    if let Some(written) = kids(kid).into_iter().find(|part| part.kind().ends_with("type") || part.kind() == "type_identifier") {
                         self.ty(receiver, written);
                     }
                 }
@@ -1200,33 +856,13 @@ impl<'a, 't> Builder<'a, 't> {
         (count, varargs)
     }
 
-    fn declarator(
-        &mut self,
-        parent: u32,
-        node: Node<'t>,
-        field: bool,
-        fixed: bool,
-        visibility: &'static str,
-        last: bool,
-    ) {
+    fn declarator(&mut self, parent: u32, node: Node<'t>, field: bool, fixed: bool, visibility: &'static str, last: bool) {
         let id = self.at(parent, "VariableDeclarator", node);
-        let Some(name) = node.child_by_field_name("name") else {
-            return;
-        };
+        let Some(name) = node.child_by_field_name("name") else { return };
         let dims = node.child_by_field_name("dimensions");
         self.set(id, "Name", text(self.text(name)));
-        self.set(
-            id,
-            "Initializer",
-            flag(node.child_by_field_name("value").is_some()),
-        );
-        let variable = self.open(
-            id,
-            "VariableId",
-            Some(name),
-            name.start_byte(),
-            dims.map_or(name.end_byte(), |dims| dims.end_byte()),
-        );
+        self.set(id, "Initializer", flag(node.child_by_field_name("value").is_some()));
+        let variable = self.open(id, "VariableId", Some(name), name.start_byte(), dims.map_or(name.end_byte(), |dims| dims.end_byte()));
         self.variable_flags(variable, self.text(name), field, fixed, visibility, last);
         if let Some(dims) = dims {
             self.dimensions(variable, dims);
@@ -1241,29 +877,14 @@ impl<'a, 't> Builder<'a, 't> {
         match node.kind() {
             "field_declaration" | "constant_declaration" => {
                 let id = self.at(parent, "FieldDeclaration", node);
-                let effective = self.modifiers(
-                    id,
-                    node,
-                    if shared {
-                        &["public", "static", "final"]
-                    } else {
-                        &[]
-                    },
-                );
+                let effective = self.modifiers(id, node, if shared { &["public", "static", "final"] } else { &[] });
                 if let Some(written) = node.child_by_field_name("type") {
                     self.ty(id, written);
                 }
-                let (fixed, last, visibility) = (
-                    effective.contains(&"static"),
-                    effective.contains(&"final"),
-                    Self::visibility(&effective),
-                );
+                let (fixed, last, visibility) = (effective.contains(&"static"), effective.contains(&"final"), Self::visibility(&effective));
                 let declarators = fields(node, "declarator");
-                let first = declarators
-                    .first()
-                    .and_then(|first| first.child_by_field_name("name"));
-                self.nodes[id as usize].report =
-                    first.map(|name| (name.start_byte(), name.end_byte()));
+                let first = declarators.first().and_then(|first| first.child_by_field_name("name"));
+                self.nodes[id as usize].report = first.map(|name| (name.start_byte(), name.end_byte()));
                 for declarator in declarators {
                     self.declarator(id, declarator, true, fixed, visibility, last);
                 }
@@ -1273,23 +894,13 @@ impl<'a, 't> Builder<'a, 't> {
             }
             "method_declaration" | "annotation_type_element_declaration" => {
                 let id = self.at(parent, "MethodDeclaration", node);
-                let written: Vec<&str> = find(node, "modifiers")
-                    .map(children)
-                    .unwrap_or_default()
-                    .iter()
-                    .map(|part| part.kind())
-                    .collect();
+                let written: Vec<&str> = find(node, "modifiers").map(children).unwrap_or_default().iter().map(|part| part.kind()).collect();
                 let bodied = node.child_by_field_name("body").is_some();
                 let mut implicit: Vec<&'static str> = Vec::new();
                 if shared && !written.contains(&"private") {
                     implicit.push("public");
                 }
-                if shared
-                    && !bodied
-                    && !written.contains(&"static")
-                    && !written.contains(&"default")
-                    && !written.contains(&"private")
-                {
+                if shared && !bodied && !written.contains(&"static") && !written.contains(&"default") && !written.contains(&"private") {
                     implicit.push("abstract");
                 }
                 let effective = self.modifiers(id, node, &implicit);
@@ -1301,23 +912,15 @@ impl<'a, 't> Builder<'a, 't> {
                     let written = self.ty(id, result);
                     let loose: Vec<Node<'t>> = kids(node)
                         .into_iter()
-                        .filter(|part| {
-                            matches!(part.kind(), "marker_annotation" | "annotation")
-                                && part.end_byte() <= result.start_byte()
-                        })
+                        .filter(|part| matches!(part.kind(), "marker_annotation" | "annotation") && part.end_byte() <= result.start_byte())
                         .collect();
                     self.annotate(written, &loose);
                 }
                 let (arity, varargs) = match node.child_by_field_name("parameters") {
                     Some(parameters) => self.formal_parameters(id, parameters),
                     None => {
-                        let at = node
-                            .child_by_field_name("name")
-                            .map_or(node.end_byte(), |name| name.end_byte());
-                        let (from, to) = (
-                            find(node, "(").map_or(at, |open| open.start_byte()),
-                            find(node, ")").map_or(at, |close| close.end_byte()),
-                        );
+                        let at = node.child_by_field_name("name").map_or(node.end_byte(), |name| name.end_byte());
+                        let (from, to) = (find(node, "(").map_or(at, |open| open.start_byte()), find(node, ")").map_or(at, |close| close.end_byte()));
                         let list = self.open(id, "FormalParameters", None, from, to);
                         self.set(list, "Size", Value::Whole(0));
                         (0, false)
@@ -1342,20 +945,12 @@ impl<'a, 't> Builder<'a, 't> {
                 }
                 let name = node.child_by_field_name("name");
                 let named = name.map(|name| self.text(name)).unwrap_or_default();
-                self.nodes[id as usize].report =
-                    name.map(|name| (name.start_byte(), name.end_byte()));
+                self.nodes[id as usize].report = name.map(|name| (name.start_byte(), name.end_byte()));
                 let void = result.is_some_and(|result| result.kind() == "void_type");
                 let annotated = find(node, "modifiers").is_some_and(|list| {
-                    kids(list).iter().any(|part| {
-                        part.kind() == "marker_annotation"
-                            && self.text(*part).trim_start_matches('@').trim() == "Override"
-                    })
+                    kids(list).iter().any(|part| part.kind() == "marker_annotation" && self.text(*part).trim_start_matches('@').trim() == "Override")
                 });
-                let entry = named == "main"
-                    && void
-                    && effective.contains(&"public")
-                    && effective.contains(&"static")
-                    && arity == 1;
+                let entry = named == "main" && void && effective.contains(&"public") && effective.contains(&"static") && arity == 1;
                 self.set(id, "Name", text(named));
                 self.set(id, "Arity", Value::Whole(arity as i64));
                 self.set(id, "Varargs", flag(varargs));
@@ -1363,42 +958,18 @@ impl<'a, 't> Builder<'a, 't> {
                 self.set(id, "Abstract", flag(effective.contains(&"abstract")));
                 self.set(id, "Static", flag(effective.contains(&"static")));
                 self.set(id, "Final", flag(effective.contains(&"final")));
-                self.set(
-                    id,
-                    "Overridden",
-                    flag(annotated || self.overrides(node, named, arity)),
-                );
+                self.set(id, "Overridden", flag(annotated || self.overrides(node, named, arity)));
                 self.set(id, "MainMethod", flag(entry));
                 self.set(id, "Visibility", text(Self::visibility(&effective)));
             }
             "constructor_declaration" | "compact_constructor_declaration" => {
                 let compact = node.kind() == "compact_constructor_declaration";
-                let id = self.at(
-                    parent,
-                    if compact {
-                        "CompactConstructorDeclaration"
-                    } else {
-                        "ConstructorDeclaration"
-                    },
-                    node,
-                );
-                let effective = self.modifiers(
-                    id,
-                    node,
-                    if owner == Owner::Enum {
-                        &["private"]
-                    } else {
-                        &[]
-                    },
-                );
+                let id = self.at(parent, if compact { "CompactConstructorDeclaration" } else { "ConstructorDeclaration" }, node);
+                let effective = self.modifiers(id, node, if owner == Owner::Enum { &["private"] } else { &[] });
                 if let Some(parameters) = node.child_by_field_name("type_parameters") {
                     self.type_parameters(id, parameters);
                 }
-                let (arity, varargs) = node
-                    .child_by_field_name("parameters")
-                    .map_or((0, false), |parameters| {
-                        self.formal_parameters(id, parameters)
-                    });
+                let (arity, varargs) = node.child_by_field_name("parameters").map_or((0, false), |parameters| self.formal_parameters(id, parameters));
                 if let Some(throws) = find(node, "throws") {
                     let list = self.at(id, "ThrowsList", throws);
                     for thrown in kids(throws) {
@@ -1410,19 +981,10 @@ impl<'a, 't> Builder<'a, 't> {
                     self.block(id, body);
                 }
                 let name = node.child_by_field_name("name");
-                self.nodes[id as usize].report =
-                    name.map(|name| (name.start_byte(), name.end_byte()));
-                self.set(
-                    id,
-                    "Image",
-                    text(name.map(|name| self.text(name)).unwrap_or_default()),
-                );
+                self.nodes[id as usize].report = name.map(|name| (name.start_byte(), name.end_byte()));
+                self.set(id, "Image", text(name.map(|name| self.text(name)).unwrap_or_default()));
                 if !compact {
-                    self.set(
-                        id,
-                        "Name",
-                        text(name.map(|name| self.text(name)).unwrap_or_default()),
-                    );
+                    self.set(id, "Name", text(name.map(|name| self.text(name)).unwrap_or_default()));
                     self.set(id, "Abstract", flag(false));
                     self.set(id, "Static", flag(false));
                 }
@@ -1435,11 +997,7 @@ impl<'a, 't> Builder<'a, 't> {
             "static_initializer" | "block" => {
                 let id = self.at(parent, "Initializer", node);
                 self.set(id, "Static", flag(node.kind() == "static_initializer"));
-                let body = if node.kind() == "block" {
-                    Some(node)
-                } else {
-                    find(node, "block")
-                };
+                let body = if node.kind() == "block" { Some(node) } else { find(node, "block") };
                 if let Some(body) = body {
                     self.block(id, body);
                 }
@@ -1453,21 +1011,9 @@ impl<'a, 't> Builder<'a, 't> {
 
     /// A method with that name and parameter count exists in a supertype of the class around the declaration.
     fn overrides(&self, method: Node, name: &str, arity: usize) -> bool {
-        let Some(own) =
-            crate::java::types::scope::enclosing_type(self.file, self.resolver.scope, method)
-        else {
-            return false;
-        };
+        let Some(own) = crate::java::types::scope::enclosing_type(self.file, self.resolver.scope, method) else { return false };
         let index = self.resolver.index;
-        let variables = index
-            .get(&own)
-            .map(|info| {
-                info.type_parameters
-                    .iter()
-                    .map(|(name, _)| Type::Variable(name.clone()))
-                    .collect()
-            })
-            .unwrap_or_default();
+        let variables = index.get(&own).map(|info| info.type_parameters.iter().map(|(name, _)| Type::Variable(name.clone())).collect()).unwrap_or_default();
         let receiver = Type::Class(own.clone(), variables);
         let written: Vec<Option<Type>> = method
             .child_by_field_name("parameters")
@@ -1477,22 +1023,15 @@ impl<'a, 't> Builder<'a, 't> {
             .filter(|kid| matches!(kid.kind(), "formal_parameter" | "spread_parameter"))
             .map(|kid| {
                 if kid.kind() == "spread_parameter" {
-                    let written = kids(kid)
-                        .into_iter()
-                        .find(|part| !matches!(part.kind(), "modifiers" | "variable_declarator"));
-                    written
-                        .and_then(|written| self.resolver.type_node(written))
-                        .map(|kind| Type::Array(Box::new(kind)))
+                    let written = kids(kid).into_iter().find(|part| !matches!(part.kind(), "modifiers" | "variable_declarator"));
+                    written.and_then(|written| self.resolver.type_node(written)).map(|kind| Type::Array(Box::new(kind)))
                 } else {
                     self.resolver.declared_type(kid, None)
                 }
             })
             .collect();
         let interface = index.get(&own).is_some_and(|info| info.is_interface);
-        let package = index
-            .get(&own)
-            .map(|info| info.package.clone())
-            .unwrap_or_default();
+        let package = index.get(&own).map(|info| info.package.clone()).unwrap_or_default();
         index
             .lineage(&own)
             .iter()
@@ -1507,17 +1046,12 @@ impl<'a, 't> Builder<'a, 't> {
                         && !(known.package_private && info.package != package)
                         && !known.is_static
                         && !known.is_private
-                        && known
-                            .generic_parameters
-                            .iter()
-                            .zip(&written)
-                            .all(|(theirs, ours)| {
-                                let theirs = theirs.substitute(&map);
-                                ours.as_ref().is_none_or(|ours| {
-                                    matches!(theirs, Type::Variable(_))
-                                        || theirs.erased().name() == ours.erased().name()
-                                })
+                        && known.generic_parameters.iter().zip(&written).all(|(theirs, ours)| {
+                            let theirs = theirs.substitute(&map);
+                            ours.as_ref().is_none_or(|ours| {
+                                matches!(theirs, Type::Variable(_)) || theirs.erased().name() == ours.erased().name()
                             })
+                        })
                 })
             })
     }
@@ -1550,29 +1084,14 @@ impl<'a, 't> Builder<'a, 't> {
         if declarators.is_empty() {
             // A resource or a for-each variable: name and value are on the declaration itself.
             if let Some(name) = node.child_by_field_name("name") {
-                let value = node
-                    .child_by_field_name("value")
-                    .filter(|_| node.kind() == "resource");
+                let value = node.child_by_field_name("value").filter(|_| node.kind() == "resource");
                 let end = value.map_or(name.end_byte(), |value| value.end_byte());
                 let declarator = self.open(id, "VariableDeclarator", None, name.start_byte(), end);
                 self.set(declarator, "Name", text(self.text(name)));
                 self.set(declarator, "Initializer", flag(value.is_some()));
                 let dims = node.child_by_field_name("dimensions");
-                let variable = self.open(
-                    declarator,
-                    "VariableId",
-                    Some(name),
-                    name.start_byte(),
-                    dims.map_or(name.end_byte(), |dims| dims.end_byte()),
-                );
-                self.variable_flags(
-                    variable,
-                    self.text(name),
-                    false,
-                    false,
-                    "local",
-                    effective.contains(&"final"),
-                );
+                let variable = self.open(declarator, "VariableId", Some(name), name.start_byte(), dims.map_or(name.end_byte(), |dims| dims.end_byte()));
+                self.variable_flags(variable, self.text(name), false, false, "local", effective.contains(&"final"));
                 if let Some(value) = value {
                     self.expr(declarator, value);
                 }
@@ -1582,44 +1101,25 @@ impl<'a, 't> Builder<'a, 't> {
             }
         }
         for declarator in declarators {
-            self.declarator(
-                id,
-                declarator,
-                false,
-                false,
-                "local",
-                effective.contains(&"final"),
-            );
+            self.declarator(id, declarator, false, false, "local", effective.contains(&"final"));
         }
         let first = self.nodes[id as usize]
             .children
             .iter()
             .filter(|kid| self.nodes[**kid as usize].name == "VariableDeclarator")
             .find_map(|kid| self.nodes[*kid as usize].children.first().copied());
-        self.nodes[id as usize].report = first.map(|first| {
-            (
-                self.nodes[first as usize].start,
-                self.nodes[first as usize].end,
-            )
-        });
+        self.nodes[id as usize].report = first.map(|first| (self.nodes[first as usize].start, self.nodes[first as usize].end));
         id
     }
 
     /// The expression inside the parentheses a statement requires around its condition.
     fn condition(&mut self, parent: u32, node: Node<'t>) {
-        let inner = if node.kind() == "parenthesized_expression" {
-            kids(node).first().copied().unwrap_or(node)
-        } else {
-            node
-        };
+        let inner = if node.kind() == "parenthesized_expression" { kids(node).first().copied().unwrap_or(node) } else { node };
         self.expr(parent, inner);
     }
 
     fn labelled(&mut self, id: u32, node: Node<'t>) {
-        if let Some(label) = kids(node)
-            .into_iter()
-            .find(|kid| kid.kind() == "identifier")
-        {
+        if let Some(label) = kids(node).into_iter().find(|kid| kid.kind() == "identifier") {
             self.set(id, "Label", text(self.text(label)));
             self.set(id, "Image", text(self.text(label)));
         }
@@ -1641,16 +1141,8 @@ impl<'a, 't> Builder<'a, 't> {
             }
             "if_statement" => {
                 let id = self.at(parent, "IfStatement", node);
-                self.set(
-                    id,
-                    "Else",
-                    flag(node.child_by_field_name("alternative").is_some()),
-                );
-                for (field, plain) in [
-                    ("condition", true),
-                    ("consequence", false),
-                    ("alternative", false),
-                ] {
+                self.set(id, "Else", flag(node.child_by_field_name("alternative").is_some()));
+                for (field, plain) in [("condition", true), ("consequence", false), ("alternative", false)] {
                     match node.child_by_field_name(field) {
                         Some(part) if plain => self.condition(id, part),
                         Some(part) => self.stmt(id, part),
@@ -1659,28 +1151,13 @@ impl<'a, 't> Builder<'a, 't> {
                 }
             }
             "while_statement" | "do_statement" => {
-                let id = self.at(
-                    parent,
-                    if node.kind() == "do_statement" {
-                        "DoStatement"
-                    } else {
-                        "WhileStatement"
-                    },
-                    node,
-                );
-                let (condition, body) = (
-                    node.child_by_field_name("condition"),
-                    node.child_by_field_name("body"),
-                );
+                let id = self.at(parent, if node.kind() == "do_statement" { "DoStatement" } else { "WhileStatement" }, node);
+                let (condition, body) = (node.child_by_field_name("condition"), node.child_by_field_name("body"));
                 if node.kind() == "do_statement" {
                     body.into_iter().for_each(|body| self.stmt(id, body));
-                    condition
-                        .into_iter()
-                        .for_each(|condition| self.condition(id, condition));
+                    condition.into_iter().for_each(|condition| self.condition(id, condition));
                 } else {
-                    condition
-                        .into_iter()
-                        .for_each(|condition| self.condition(id, condition));
+                    condition.into_iter().for_each(|condition| self.condition(id, condition));
                     body.into_iter().for_each(|body| self.stmt(id, body));
                 }
             }
@@ -1689,24 +1166,12 @@ impl<'a, 't> Builder<'a, 't> {
                 let inits = fields(node, "init");
                 if let (Some(first), Some(last)) = (inits.first(), inits.last()) {
                     let declares = first.kind() == "local_variable_declaration";
-                    let end = if declares {
-                        fields(*first, "declarator")
-                            .last()
-                            .map_or(last.end_byte(), |last| last.end_byte())
-                    } else {
-                        last.end_byte()
-                    };
+                    let end = if declares { fields(*first, "declarator").last().map_or(last.end_byte(), |last| last.end_byte()) } else { last.end_byte() };
                     let init = self.open(id, "ForInit", None, first.start_byte(), end);
                     if declares {
                         self.local(init, *first, &[]);
                     } else {
-                        let list = self.open(
-                            init,
-                            "StatementExpressionList",
-                            None,
-                            first.start_byte(),
-                            last.end_byte(),
-                        );
+                        let list = self.open(init, "StatementExpressionList", None, first.start_byte(), last.end_byte());
                         for init in &inits {
                             self.expr(list, *init);
                         }
@@ -1718,15 +1183,8 @@ impl<'a, 't> Builder<'a, 't> {
                 }
                 let updates = fields(node, "update");
                 if let (Some(first), Some(last)) = (updates.first(), updates.last()) {
-                    let update =
-                        self.open(id, "ForUpdate", None, first.start_byte(), last.end_byte());
-                    let list = self.open(
-                        update,
-                        "StatementExpressionList",
-                        None,
-                        first.start_byte(),
-                        last.end_byte(),
-                    );
+                    let update = self.open(id, "ForUpdate", None, first.start_byte(), last.end_byte());
+                    let list = self.open(update, "StatementExpressionList", None, first.start_byte(), last.end_byte());
                     for update in &updates {
                         self.expr(list, *update);
                     }
@@ -1739,9 +1197,7 @@ impl<'a, 't> Builder<'a, 't> {
             "enhanced_for_statement" => {
                 let id = self.at(parent, "ForeachStatement", node);
                 let declaration = self.local(id, node, &[]);
-                let start = find(node, "modifiers")
-                    .or(node.child_by_field_name("type"))
-                    .map_or(node.start_byte(), |first| first.start_byte());
+                let start = find(node, "modifiers").or(node.child_by_field_name("type")).map_or(node.start_byte(), |first| first.start_byte());
                 self.nodes[declaration as usize].start = start;
                 self.nodes[declaration as usize].source = None;
                 if let Some(value) = node.child_by_field_name("value") {
@@ -1764,15 +1220,7 @@ impl<'a, 't> Builder<'a, 't> {
                 }
             }
             "break_statement" | "continue_statement" => {
-                let id = self.at(
-                    parent,
-                    if node.kind() == "break_statement" {
-                        "BreakStatement"
-                    } else {
-                        "ContinueStatement"
-                    },
-                    node,
-                );
+                let id = self.at(parent, if node.kind() == "break_statement" { "BreakStatement" } else { "ContinueStatement" }, node);
                 self.labelled(id, node);
             }
             "labeled_statement" => {
@@ -1802,11 +1250,7 @@ impl<'a, 't> Builder<'a, 't> {
                             self.local(resource, kid, &["final"]);
                             self.set(resource, "ConciseResource", flag(false));
                         } else {
-                            let inner = if kid.kind() == "resource" {
-                                kids(kid).first().copied().unwrap_or(kid)
-                            } else {
-                                kid
-                            };
+                            let inner = if kid.kind() == "resource" { kids(kid).first().copied().unwrap_or(kid) } else { kid };
                             self.expr(resource, inner);
                             self.set(resource, "ConciseResource", flag(true));
                         }
@@ -1823,35 +1267,19 @@ impl<'a, 't> Builder<'a, 't> {
                             if let Some(parameter) = find(kid, "catch_formal_parameter") {
                                 let caught = self.at(clause, "CatchParameter", parameter);
                                 let effective = self.modifiers(caught, parameter, &[]);
-                                let types =
-                                    find(parameter, "catch_type").map(kids).unwrap_or_default();
+                                let types = find(parameter, "catch_type").map(kids).unwrap_or_default();
                                 self.set(caught, "Multicatch", flag(types.len() > 1));
                                 if let [only] = types.as_slice() {
                                     self.ty(caught, *only);
-                                } else if let (Some(first), Some(last)) =
-                                    (types.first(), types.last())
-                                {
-                                    let union = self.open(
-                                        caught,
-                                        "UnionType",
-                                        None,
-                                        first.start_byte(),
-                                        last.end_byte(),
-                                    );
+                                } else if let (Some(first), Some(last)) = (types.first(), types.last()) {
+                                    let union = self.open(caught, "UnionType", None, first.start_byte(), last.end_byte());
                                     for written in &types {
                                         self.ty(union, *written);
                                     }
                                 }
                                 if let Some(name) = parameter.child_by_field_name("name") {
                                     let variable = self.at(caught, "VariableId", name);
-                                    self.variable_flags(
-                                        variable,
-                                        self.text(name),
-                                        false,
-                                        false,
-                                        "package",
-                                        effective.contains(&"final"),
-                                    );
+                                    self.variable_flags(variable, self.text(name), false, false, "package", effective.contains(&"final"));
                                     self.set(caught, "Name", text(self.text(name)));
                                 }
                                 self.set(caught, "Visibility", text("package"));
@@ -1875,18 +1303,14 @@ impl<'a, 't> Builder<'a, 't> {
             }
             "explicit_constructor_invocation" => {
                 let id = self.at(parent, "ExplicitConstructorInvocation", node);
-                let target = node
-                    .child_by_field_name("constructor")
-                    .map(|part| part.kind());
+                let target = node.child_by_field_name("constructor").map(|part| part.kind());
                 if let Some(object) = node.child_by_field_name("object") {
                     self.expr(id, object);
                 }
                 if let Some(arguments) = node.child_by_field_name("type_arguments") {
                     self.type_arguments(id, arguments);
                 }
-                let count = node
-                    .child_by_field_name("arguments")
-                    .map_or(0, |arguments| self.arguments(id, arguments));
+                let count = node.child_by_field_name("arguments").map_or(0, |arguments| self.arguments(id, arguments));
                 self.set(id, "MethodName", text("new"));
                 self.set(id, "This", flag(target == Some("this")));
                 self.set(id, "Super", flag(target == Some("super")));
@@ -1908,50 +1332,24 @@ impl<'a, 't> Builder<'a, 't> {
         if let Some(condition) = node.child_by_field_name("condition") {
             self.condition(id, condition);
         }
-        let Some(body) = node.child_by_field_name("body") else {
-            return id;
-        };
+        let Some(body) = node.child_by_field_name("body") else { return id };
         let tested = node.child_by_field_name("condition");
         let mut seen: Vec<u32> = Vec::new();
         for group in kids(body) {
             let parts = kids(group);
-            let labels: Vec<Node> = parts
-                .iter()
-                .filter(|part| part.kind() == "switch_label")
-                .copied()
-                .collect();
+            let labels: Vec<Node> = parts.iter().filter(|part| part.kind() == "switch_label").copied().collect();
             let arrow = group.kind() == "switch_rule";
             for (position, label) in labels.iter().enumerate() {
                 let last = position + 1 == labels.len();
-                let end = if last {
-                    group.end_byte()
-                } else {
-                    label.end_byte() + 1
-                };
-                let branch = self.open(
-                    id,
-                    if arrow {
-                        "SwitchArrowBranch"
-                    } else {
-                        "SwitchFallthroughBranch"
-                    },
-                    None,
-                    label.start_byte(),
-                    end,
-                );
+                let end = if last { group.end_byte() } else { label.end_byte() + 1 };
+                let branch = self.open(id, if arrow { "SwitchArrowBranch" } else { "SwitchFallthroughBranch" }, None, label.start_byte(), end);
                 // `case null, default` is the default label too; the grammar reads its `default` as a name.
-                let default = self.text(*label).trim_start().starts_with("default")
-                    || kids(*label)
-                        .iter()
-                        .any(|part| self.text(*part) == "default");
+                let default = self.text(*label).trim_start().starts_with("default") || kids(*label).iter().any(|part| self.text(*part) == "default");
                 self.set(branch, "Default", flag(default));
                 let written = self.at(branch, "SwitchLabel", *label);
                 self.set(written, "Default", flag(default));
                 seen.push(written);
-                let constants: Vec<Node<'t>> = kids(*label)
-                    .into_iter()
-                    .filter(|part| self.text(*part) != "default")
-                    .collect();
+                let constants: Vec<Node<'t>> = kids(*label).into_iter().filter(|part| self.text(*part) != "default").collect();
                 for constant in constants {
                     match constant.kind() {
                         "guard" => {
@@ -1995,39 +1393,18 @@ impl<'a, 't> Builder<'a, 't> {
         let mut written: Vec<Node<'t>> = Vec::new();
         for label in labels {
             let kids = self.nodes[*label as usize].children.clone();
-            let patterned = kids
-                .iter()
-                .any(|kid| PATTERNS.contains(&self.nodes[*kid as usize].name));
+            let patterned = kids.iter().any(|kid| PATTERNS.contains(&self.nodes[*kid as usize].name));
             self.set(*label, "PatternLabel", flag(patterned));
             default_case |= self.is(*label, "Default");
             any_pattern |= patterned;
             count += kids.len();
-            for kid in kids
-                .iter()
-                .filter(|kid| self.nodes[**kid as usize].name == "TypePattern")
-            {
-                let kind = self.nodes[*kid as usize]
-                    .children
-                    .iter()
-                    .find(|part| self.nodes[**part as usize].name != "ModifierList");
+            for kid in kids.iter().filter(|kid| self.nodes[**kid as usize].name == "TypePattern") {
+                let kind = self.nodes[*kid as usize].children.iter().find(|part| self.nodes[**part as usize].name != "ModifierList");
                 written.extend(kind.and_then(|kind| self.nodes[*kind as usize].source));
             }
         }
-        let tested = tested.map(|tested| {
-            if tested.kind() == "parenthesized_expression" {
-                kids(tested).first().copied().unwrap_or(tested)
-            } else {
-                tested
-            }
-        });
-        let facts = super::switches::facts(
-            self.resolver,
-            tested,
-            default_case,
-            any_pattern,
-            count,
-            &written,
-        );
+        let tested = tested.map(|tested| if tested.kind() == "parenthesized_expression" { kids(tested).first().copied().unwrap_or(tested) } else { tested });
+        let facts = super::switches::facts(self.resolver, tested, default_case, any_pattern, count, &written);
         self.set(id, "DefaultCase", flag(facts.default_case));
         self.set(id, "ExhaustiveEnumSwitch", flag(facts.exhaustive_enum));
         self.set(id, "Exhaustive", flag(facts.exhaustive));
@@ -2036,10 +1413,7 @@ impl<'a, 't> Builder<'a, 't> {
     fn pattern(&mut self, parent: u32, node: Node<'t>) {
         match node.kind() {
             "pattern" => {
-                kids(node)
-                    .first()
-                    .into_iter()
-                    .for_each(|inner| self.pattern(parent, *inner));
+                kids(node).first().into_iter().for_each(|inner| self.pattern(parent, *inner));
             }
             "record_pattern" => {
                 let id = self.at(parent, "RecordPattern", node);
@@ -2048,36 +1422,16 @@ impl<'a, 't> Builder<'a, 't> {
                         "record_pattern_body" => {
                             let list = self.at(id, "PatternList", kid);
                             for part in kids(kid) {
-                                let inner = if part.kind() == "record_pattern_component" {
-                                    kids(part)
-                                } else {
-                                    vec![part]
-                                };
+                                let inner = if part.kind() == "record_pattern_component" { kids(part) } else { vec![part] };
                                 if inner.len() == 2 {
                                     let typed = self.at(list, "TypePattern", part);
                                     self.set(typed, "Visibility", text("package"));
-                                    self.open(
-                                        typed,
-                                        "ModifierList",
-                                        None,
-                                        part.start_byte(),
-                                        part.start_byte(),
-                                    );
+                                    self.open(typed, "ModifierList", None, part.start_byte(), part.start_byte());
                                     self.ty(typed, inner[0]);
                                     let variable = self.at(typed, "VariableId", inner[1]);
-                                    self.variable_flags(
-                                        variable,
-                                        self.text(inner[1]),
-                                        false,
-                                        false,
-                                        "local",
-                                        false,
-                                    );
+                                    self.variable_flags(variable, self.text(inner[1]), false, false, "local", false);
                                 } else {
-                                    inner
-                                        .first()
-                                        .into_iter()
-                                        .for_each(|only| self.pattern(list, *only));
+                                    inner.first().into_iter().for_each(|only| self.pattern(list, *only));
                                 }
                             }
                         }
@@ -2093,15 +1447,8 @@ impl<'a, 't> Builder<'a, 't> {
                 self.modifiers(id, node, &[]);
                 self.set(id, "Visibility", text("package"));
                 let parts = kids(node);
-                let name = parts
-                    .iter()
-                    .rev()
-                    .find(|part| part.kind() == "identifier")
-                    .copied();
-                if let Some(written) = parts
-                    .iter()
-                    .find(|part| part.kind() != "modifiers" && Some(**part) != name)
-                {
+                let name = parts.iter().rev().find(|part| part.kind() == "identifier").copied();
+                if let Some(written) = parts.iter().find(|part| part.kind() != "modifiers" && Some(**part) != name) {
                     self.ty(id, *written);
                 }
                 if let Some(name) = name {
@@ -2130,12 +1477,7 @@ impl<'a, 't> Builder<'a, 't> {
         }
         match holder {
             Some(outer) if outer.kind() == "update_expression" => "WRITE",
-            Some(outer)
-                if outer.kind() == "assignment_expression"
-                    && outer.child_by_field_name("left") == Some(inner) =>
-            {
-                "WRITE"
-            }
+            Some(outer) if outer.kind() == "assignment_expression" && outer.child_by_field_name("left") == Some(inner) => "WRITE",
             _ => "READ",
         }
     }
@@ -2144,10 +1486,7 @@ impl<'a, 't> Builder<'a, 't> {
         let id = self.at(parent, "TypeExpression", node);
         self.set(id, "CompileTimeConstant", flag(false));
         self.set(id, "Parenthesized", flag(false));
-        if matches!(
-            node.kind(),
-            "identifier" | "field_access" | "scoped_identifier"
-        ) {
+        if matches!(node.kind(), "identifier" | "field_access" | "scoped_identifier") {
             self.named_type(id, node);
         } else {
             self.ty(id, node);
@@ -2165,30 +1504,17 @@ impl<'a, 't> Builder<'a, 't> {
                     Some(Receiver::Static(_)) => self.type_expression(parent, node),
                     Some(Receiver::Value(_)) => self.expr(parent, node),
                     None if self.resolver.is_variable(node, first) => self.expr(parent, node),
-                    None if node.kind() == "identifier"
-                        && !written.starts_with(char::is_uppercase) =>
-                    {
+                    None if node.kind() == "identifier" && !written.starts_with(char::is_uppercase) => {
                         let id = self.at(parent, "AmbiguousName", node);
                         self.set(id, "Name", text(&written));
                         self.set(id, "Image", text(&written));
                         id
                     }
-                    None if written
-                        .rsplit('.')
-                        .next()
-                        .is_some_and(|last| last.starts_with(char::is_uppercase)) =>
-                    {
-                        self.type_expression(parent, node)
-                    }
+                    None if written.rsplit('.').next().is_some_and(|last| last.starts_with(char::is_uppercase)) => self.type_expression(parent, node),
                     None => self.expr(parent, node),
                 }
             }
-            "generic_type"
-            | "array_type"
-            | "integral_type"
-            | "floating_point_type"
-            | "boolean_type"
-            | "type_identifier"
+            "generic_type" | "array_type" | "integral_type" | "floating_point_type" | "boolean_type" | "type_identifier"
             | "scoped_type_identifier" => self.type_expression(parent, node),
             _ => self.expr(parent, node),
         }
@@ -2198,9 +1524,7 @@ impl<'a, 't> Builder<'a, 't> {
         let mut inner = node;
         let mut depth = 0;
         while inner.kind() == "parenthesized_expression" {
-            let Some(next) = kids(inner).first().copied() else {
-                break;
-            };
+            let Some(next) = kids(inner).first().copied() else { break };
             inner = next;
             depth += 1;
         }
@@ -2223,46 +1547,26 @@ impl<'a, 't> Builder<'a, 't> {
     /// Whether an operator expression is made of compile-time constants only.
     fn constant(&self, id: u32) -> bool {
         let node = &self.nodes[id as usize];
-        let all = |from: usize| {
-            node.children[from..]
-                .iter()
-                .all(|child| self.is(*child, "CompileTimeConstant"))
-        };
+        let all = |from: usize| node.children[from..].iter().all(|child| self.is(*child, "CompileTimeConstant"));
         match node.name {
-            "InfixExpression" => {
-                !matches!(self.get(id, "Operator"), Some(Value::Text(sign)) if &**sign == "instanceof")
-                    && all(0)
-            }
-            "UnaryExpression" => {
-                !matches!(self.get(id, "Operator"), Some(Value::Text(sign)) if &**sign == "++" || &**sign == "--")
-                    && all(0)
-            }
+            "InfixExpression" => !matches!(self.get(id, "Operator"), Some(Value::Text(sign)) if &**sign == "instanceof") && all(0),
+            "UnaryExpression" => !matches!(self.get(id, "Operator"), Some(Value::Text(sign)) if &**sign == "++" || &**sign == "--") && all(0),
             "ConditionalExpression" | "ArrayInitializer" => all(0),
             "CastExpression" => {
                 let simple = node.children.first().is_some_and(|written| {
                     let written = &self.nodes[*written as usize];
-                    written.name == "PrimitiveType"
-                        || written.attributes.iter().any(|(key, value)| {
-                            *key == "SimpleName"
-                                && matches!(value, Value::Text(name) if &**name == "String")
-                        })
+                    written.name == "PrimitiveType" || written.attributes.iter().any(|(key, value)| *key == "SimpleName" && matches!(value, Value::Text(name) if &**name == "String"))
                 });
                 simple && all(1)
             }
-            "VariableAccess" | "FieldAccess" => node
-                .source
-                .is_some_and(|source| self.resolver.constant_field(source)),
+            "VariableAccess" | "FieldAccess" => node.source.is_some_and(|source| self.resolver.constant_field(source)),
             _ => false,
         }
     }
 
     fn number(&mut self, id: u32, node: Node<'t>) {
         let image = self.text(node);
-        let digits: String = image
-            .chars()
-            .filter(|c| *c != '_')
-            .collect::<String>()
-            .to_lowercase();
+        let digits: String = image.chars().filter(|c| *c != '_').collect::<String>().to_lowercase();
         let whole = !node.kind().contains("floating");
         let long = whole && digits.ends_with('l');
         let body = digits.trim_end_matches('l');
@@ -2277,28 +1581,16 @@ impl<'a, 't> Builder<'a, 't> {
                 body.parse::<u64>()
             }
             .unwrap_or(0);
-            let value = if long {
-                parsed as i64
-            } else {
-                parsed as u32 as i32 as i64
-            };
+            let value = if long { parsed as i64 } else { parsed as u32 as i32 as i64 };
             (value, if long { value as f64 } else { parsed as f64 })
         } else if let Some(hex) = body.strip_prefix("0x") {
-            let (digits, power) = hex
-                .trim_end_matches(['f', 'd'])
-                .split_once('p')
-                .unwrap_or((hex, "0"));
+            let (digits, power) = hex.trim_end_matches(['f', 'd']).split_once('p').unwrap_or((hex, "0"));
             let (whole, fraction) = digits.split_once('.').unwrap_or((digits, ""));
-            let mantissa =
-                u64::from_str_radix(&format!("{whole}{fraction}"), 16).unwrap_or(0) as f64;
-            let real =
-                mantissa * 2f64.powi(power.parse::<i32>().unwrap_or(0) - 4 * fraction.len() as i32);
+            let mantissa = u64::from_str_radix(&format!("{whole}{fraction}"), 16).unwrap_or(0) as f64;
+            let real = mantissa * 2f64.powi(power.parse::<i32>().unwrap_or(0) - 4 * fraction.len() as i32);
             (real as i64 as i32 as i64, real)
         } else {
-            let real = body
-                .trim_end_matches(['f', 'd'])
-                .parse::<f64>()
-                .unwrap_or(0.0);
+            let real = body.trim_end_matches(['f', 'd']).parse::<f64>().unwrap_or(0.0);
             (real as i64 as i32 as i64, real)
         };
         self.set(id, "Image", text(image));
@@ -2314,12 +1606,8 @@ impl<'a, 't> Builder<'a, 't> {
 
     fn plain(&mut self, parent: u32, node: Node<'t>) -> u32 {
         match node.kind() {
-            "decimal_integer_literal"
-            | "hex_integer_literal"
-            | "octal_integer_literal"
-            | "binary_integer_literal"
-            | "decimal_floating_point_literal"
-            | "hex_floating_point_literal" => {
+            "decimal_integer_literal" | "hex_integer_literal" | "octal_integer_literal" | "binary_integer_literal"
+            | "decimal_floating_point_literal" | "hex_floating_point_literal" => {
                 let id = self.at(parent, "NumericLiteral", node);
                 self.number(id, node);
                 id
@@ -2329,11 +1617,7 @@ impl<'a, 't> Builder<'a, 't> {
                 let image = self.text(node);
                 let value = literal_text(self.file, node).unwrap_or_default();
                 self.set(id, "Image", text(&unicode_unescaped(image)));
-                self.set(
-                    id,
-                    "Length",
-                    Value::Whole(value.encode_utf16().count() as i64),
-                );
+                self.set(id, "Length", Value::Whole(value.encode_utf16().count() as i64));
                 self.set(id, "Empty", flag(value.is_empty()));
                 self.set(id, "TextBlock", flag(image.starts_with("\"\"\"")));
                 self.set(id, "ConstValue", text(&value));
@@ -2364,8 +1648,7 @@ impl<'a, 't> Builder<'a, 't> {
             "super" => self.at(parent, "SuperExpression", node),
             "field_access" | "scoped_identifier" => {
                 let parts = kids(node);
-                let (Some(object), Some(field)) = (parts.first().copied(), parts.last().copied())
-                else {
+                let (Some(object), Some(field)) = (parts.first().copied(), parts.last().copied()) else {
                     return self.at(parent, "FieldAccess", node);
                 };
                 if field.kind() == "this" {
@@ -2375,12 +1658,8 @@ impl<'a, 't> Builder<'a, 't> {
                 }
                 let id = self.at(parent, "FieldAccess", node);
                 if parts.iter().any(|part| part.kind() == "super") && object.kind() != "super" {
-                    let end = parts
-                        .iter()
-                        .find(|part| part.kind() == "super")
-                        .map_or(object.end_byte(), |keyword| keyword.end_byte());
-                    let qualified =
-                        self.open(id, "SuperExpression", None, object.start_byte(), end);
+                    let end = parts.iter().find(|part| part.kind() == "super").map_or(object.end_byte(), |keyword| keyword.end_byte());
+                    let qualified = self.open(id, "SuperExpression", None, object.start_byte(), end);
                     self.set(qualified, "CompileTimeConstant", flag(false));
                     self.set(qualified, "Parenthesized", flag(false));
                     self.named_type(qualified, object);
@@ -2394,22 +1673,11 @@ impl<'a, 't> Builder<'a, 't> {
             }
             "method_invocation" => {
                 let id = self.at(parent, "MethodCall", node);
-                let name = node
-                    .child_by_field_name("name")
-                    .map(|name| self.text(name))
-                    .unwrap_or_default();
-                let lifted = children(node)
-                    .into_iter()
-                    .find(|part| part.kind() == "super");
+                let name = node.child_by_field_name("name").map(|name| self.text(name)).unwrap_or_default();
+                let lifted = children(node).into_iter().find(|part| part.kind() == "super");
                 match (node.child_by_field_name("object"), lifted) {
                     (Some(object), Some(keyword)) if object != keyword => {
-                        let qualified = self.open(
-                            id,
-                            "SuperExpression",
-                            None,
-                            object.start_byte(),
-                            keyword.end_byte(),
-                        );
+                        let qualified = self.open(id, "SuperExpression", None, object.start_byte(), keyword.end_byte());
                         self.set(qualified, "CompileTimeConstant", flag(false));
                         self.set(qualified, "Parenthesized", flag(false));
                         self.named_type(qualified, object);
@@ -2432,14 +1700,8 @@ impl<'a, 't> Builder<'a, 't> {
             "object_creation_expression" => {
                 let id = self.at(parent, "ConstructorCall", node);
                 let parts = children(node);
-                let keyword = parts
-                    .iter()
-                    .position(|part| part.kind() == "new")
-                    .unwrap_or(0);
-                if let Some(object) = parts[..keyword]
-                    .iter()
-                    .find(|part| part.is_named() && !part.kind().ends_with("comment"))
-                {
+                let keyword = parts.iter().position(|part| part.kind() == "new").unwrap_or(0);
+                if let Some(object) = parts[..keyword].iter().find(|part| part.is_named() && !part.kind().ends_with("comment")) {
                     self.expr(id, *object);
                 }
                 if let Some(arguments) = node.child_by_field_name("type_arguments") {
@@ -2461,33 +1723,19 @@ impl<'a, 't> Builder<'a, 't> {
             }
             "array_creation_expression" => {
                 let id = self.at(parent, "ArrayAllocation", node);
-                let dims: Vec<Node> = kids(node)
-                    .into_iter()
-                    .filter(|kid| matches!(kid.kind(), "dimensions_expr" | "dimensions"))
-                    .collect();
+                let dims: Vec<Node> = kids(node).into_iter().filter(|kid| matches!(kid.kind(), "dimensions_expr" | "dimensions")).collect();
                 let mut depth = 0;
                 if let Some(element) = node.child_by_field_name("type") {
-                    let end = dims
-                        .last()
-                        .map_or(element.end_byte(), |last| last.end_byte());
+                    let end = dims.last().map_or(element.end_byte(), |last| last.end_byte());
                     let array = self.open(id, "ArrayType", None, element.start_byte(), end);
                     let written = self.ty(array, element);
-                    let notes: Vec<Node<'t>> = kids(node)
-                        .into_iter()
-                        .filter(|part| matches!(part.kind(), "marker_annotation" | "annotation"))
-                        .collect();
+                    let notes: Vec<Node<'t>> = kids(node).into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation")).collect();
                     if let Some(first) = notes.first() {
                         self.nodes[array as usize].start = first.start_byte();
                     }
                     self.annotate(written, &notes);
                     if let (Some(first), Some(last)) = (dims.first(), dims.last()) {
-                        let list = self.open(
-                            array,
-                            "ArrayDimensions",
-                            None,
-                            first.start_byte(),
-                            last.end_byte(),
-                        );
+                        let list = self.open(array, "ArrayDimensions", None, first.start_byte(), last.end_byte());
                         for dim in &dims {
                             if dim.kind() == "dimensions_expr" {
                                 let sized = self.at(list, "ArrayDimExpr", *dim);
@@ -2498,16 +1746,8 @@ impl<'a, 't> Builder<'a, 't> {
                             } else {
                                 let written = self.text(*dim);
                                 for (offset, _) in written.match_indices('[') {
-                                    let close = written[offset..]
-                                        .find(']')
-                                        .map_or(written.len(), |close| offset + close + 1);
-                                    let plain = self.open(
-                                        list,
-                                        "ArrayTypeDim",
-                                        None,
-                                        dim.start_byte() + offset,
-                                        dim.start_byte() + close,
-                                    );
+                                    let close = written[offset..].find(']').map_or(written.len(), |close| offset + close + 1);
+                                    let plain = self.open(list, "ArrayTypeDim", None, dim.start_byte() + offset, dim.start_byte() + close);
                                     self.set(plain, "Varargs", flag(false));
                                 }
                             }
@@ -2544,10 +1784,7 @@ impl<'a, 't> Builder<'a, 't> {
             }
             "binary_expression" => {
                 let id = self.at(parent, "InfixExpression", node);
-                let operator = node
-                    .child_by_field_name("operator")
-                    .map(|sign| self.text(sign))
-                    .unwrap_or_default();
+                let operator = node.child_by_field_name("operator").map(|sign| self.text(sign)).unwrap_or_default();
                 self.set(id, "Operator", text(operator));
                 for field in ["left", "right"] {
                     if let Some(part) = node.child_by_field_name(field) {
@@ -2562,48 +1799,23 @@ impl<'a, 't> Builder<'a, 't> {
                 if let Some(left) = node.child_by_field_name("left") {
                     self.expr(id, left);
                 }
-                let (written, name, pattern) = (
-                    node.child_by_field_name("right"),
-                    node.child_by_field_name("name"),
-                    node.child_by_field_name("pattern"),
-                );
+                let (written, name, pattern) = (node.child_by_field_name("right"), node.child_by_field_name("name"), node.child_by_field_name("pattern"));
                 match (written, name, pattern) {
                     (Some(written), Some(name), _) => {
-                        let start = children(node)
-                            .iter()
-                            .find(|part| part.kind() == "final")
-                            .map_or(written.start_byte(), |part| part.start_byte());
-                        let wrapper =
-                            self.open(id, "PatternExpression", None, start, name.end_byte());
+                        let start = children(node).iter().find(|part| part.kind() == "final").map_or(written.start_byte(), |part| part.start_byte());
+                        let wrapper = self.open(id, "PatternExpression", None, start, name.end_byte());
                         self.set(wrapper, "CompileTimeConstant", flag(false));
                         self.set(wrapper, "Parenthesized", flag(false));
                         let typed = self.open(wrapper, "TypePattern", None, start, name.end_byte());
                         self.set(typed, "Visibility", text("package"));
-                        let list = self.open(
-                            typed,
-                            "ModifierList",
-                            None,
-                            start,
-                            written.start_byte().min(start + 5),
-                        );
+                        let list = self.open(typed, "ModifierList", None, start, written.start_byte().min(start + 5));
                         let fixed = start != written.start_byte();
-                        let listed = if fixed {
-                            vec!["final".to_string()]
-                        } else {
-                            Vec::new()
-                        };
+                        let listed = if fixed { vec!["final".to_string()] } else { Vec::new() };
                         self.set(list, "ExplicitModifiers", Value::List(listed.clone()));
                         self.set(list, "EffectiveModifiers", Value::List(listed));
                         self.ty(typed, written);
                         let variable = self.at(typed, "VariableId", name);
-                        self.variable_flags(
-                            variable,
-                            self.text(name),
-                            false,
-                            false,
-                            "local",
-                            fixed,
-                        );
+                        self.variable_flags(variable, self.text(name), false, false, "local", fixed);
                     }
                     (_, _, Some(pattern)) => {
                         let wrapper = self.at(id, "PatternExpression", pattern);
@@ -2620,18 +1832,10 @@ impl<'a, 't> Builder<'a, 't> {
             }
             "unary_expression" | "update_expression" => {
                 let id = self.at(parent, "UnaryExpression", node);
-                let sign = children(node)
-                    .into_iter()
-                    .find(|part| !part.is_named())
-                    .map(|sign| self.text(sign))
-                    .unwrap_or_default();
+                let sign = children(node).into_iter().find(|part| !part.is_named()).map(|sign| self.text(sign)).unwrap_or_default();
                 let operand = kids(node).first().copied();
                 self.set(id, "Operator", text(sign));
-                self.set(
-                    id,
-                    "Prefix",
-                    flag(operand.is_none_or(|operand| operand.start_byte() > node.start_byte())),
-                );
+                self.set(id, "Prefix", flag(operand.is_none_or(|operand| operand.start_byte() > node.start_byte())));
                 if let Some(operand) = operand {
                     self.expr(id, operand);
                 }
@@ -2639,10 +1843,7 @@ impl<'a, 't> Builder<'a, 't> {
             }
             "assignment_expression" => {
                 let id = self.at(parent, "AssignmentExpression", node);
-                let operator = node
-                    .child_by_field_name("operator")
-                    .map(|sign| self.text(sign))
-                    .unwrap_or_default();
+                let operator = node.child_by_field_name("operator").map(|sign| self.text(sign)).unwrap_or_default();
                 self.set(id, "Operator", text(operator));
                 self.set(id, "Compound", flag(operator != "="));
                 for field in ["left", "right"] {
@@ -2664,20 +1865,11 @@ impl<'a, 't> Builder<'a, 't> {
             "cast_expression" => {
                 let id = self.at(parent, "CastExpression", node);
                 let value = node.child_by_field_name("value");
-                let types: Vec<Node> = kids(node)
-                    .into_iter()
-                    .filter(|kid| Some(*kid) != value)
-                    .collect();
+                let types: Vec<Node> = kids(node).into_iter().filter(|kid| Some(*kid) != value).collect();
                 if let [only] = types.as_slice() {
                     self.ty(id, *only);
                 } else if let (Some(first), Some(last)) = (types.first(), types.last()) {
-                    let both = self.open(
-                        id,
-                        "IntersectionType",
-                        None,
-                        first.start_byte(),
-                        last.end_byte(),
-                    );
+                    let both = self.open(id, "IntersectionType", None, first.start_byte(), last.end_byte());
                     for written in &types {
                         self.ty(both, *written);
                     }
@@ -2692,32 +1884,15 @@ impl<'a, 't> Builder<'a, 't> {
                 let mut arity = 0;
                 if let Some(parameters) = node.child_by_field_name("parameters") {
                     let list = self.at(id, "LambdaParameterList", parameters);
-                    let listed = if parameters.kind() == "identifier" {
-                        vec![parameters]
-                    } else {
-                        kids(parameters)
-                    };
+                    let listed = if parameters.kind() == "identifier" { vec![parameters] } else { kids(parameters) };
                     for parameter in listed {
                         let entry = self.at(list, "LambdaParameter", parameter);
                         if parameter.kind() == "identifier" {
-                            let modifiers = self.open(
-                                entry,
-                                "ModifierList",
-                                None,
-                                parameter.start_byte(),
-                                parameter.start_byte(),
-                            );
+                            let modifiers = self.open(entry, "ModifierList", None, parameter.start_byte(), parameter.start_byte());
                             self.set(modifiers, "ExplicitModifiers", Value::List(Vec::new()));
                             self.set(modifiers, "EffectiveModifiers", Value::List(Vec::new()));
                             let variable = self.at(entry, "VariableId", parameter);
-                            self.variable_flags(
-                                variable,
-                                self.text(parameter),
-                                false,
-                                false,
-                                "package",
-                                false,
-                            );
+                            self.variable_flags(variable, self.text(parameter), false, false, "package", false);
                             self.set(entry, "Visibility", text("package"));
                             self.set(entry, "Final", flag(false));
                         } else {
@@ -2738,16 +1913,8 @@ impl<'a, 't> Builder<'a, 't> {
                     None => {}
                 }
                 self.set(id, "Arity", Value::Whole(arity));
-                self.set(
-                    id,
-                    "BlockBody",
-                    flag(body.is_some_and(|body| body.kind() == "block")),
-                );
-                self.set(
-                    id,
-                    "ExpressionBody",
-                    flag(body.is_some_and(|body| body.kind() != "block")),
-                );
+                self.set(id, "BlockBody", flag(body.is_some_and(|body| body.kind() == "block")));
+                self.set(id, "ExpressionBody", flag(body.is_some_and(|body| body.kind() != "block")));
                 id
             }
             "method_reference" => {
@@ -2759,10 +1926,7 @@ impl<'a, 't> Builder<'a, 't> {
                 if let Some(arguments) = find(node, "type_arguments") {
                     self.type_arguments(id, arguments);
                 }
-                let name = parts
-                    .last()
-                    .map(|name| self.text(*name))
-                    .unwrap_or_default();
+                let name = parts.last().map(|name| self.text(*name)).unwrap_or_default();
                 self.set(id, "MethodName", text(name));
                 self.set(id, "ConstructorReference", flag(name == "new"));
                 id
@@ -2786,11 +1950,7 @@ pub fn java_double(value: f64) -> String {
         return "NaN".to_string();
     }
     if value.is_infinite() {
-        return if value > 0.0 {
-            "Infinity".to_string()
-        } else {
-            "-Infinity".to_string()
-        };
+        return if value > 0.0 { "Infinity".to_string() } else { "-Infinity".to_string() };
     }
     let size = value.abs();
     if size == 0.0 || (1e-3..1e7).contains(&size) {
@@ -2798,10 +1958,6 @@ pub fn java_double(value: f64) -> String {
     }
     let written = format!("{value:e}");
     let (digits, exponent) = written.split_once('e').unwrap_or((&written, "0"));
-    let digits = if digits.contains('.') {
-        digits.to_string()
-    } else {
-        format!("{digits}.0")
-    };
+    let digits = if digits.contains('.') { digits.to_string() } else { format!("{digits}.0") };
     format!("{digits}E{exponent}")
 }

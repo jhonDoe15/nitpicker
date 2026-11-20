@@ -39,13 +39,9 @@ impl Type {
     pub fn substitute(&self, map: &HashMap<String, Type>) -> Type {
         match self {
             Type::Variable(name) => map.get(name).cloned().unwrap_or_else(|| self.clone()),
-            Type::Class(name, arguments) => Type::Class(
-                name.clone(),
-                arguments
-                    .iter()
-                    .map(|argument| argument.substitute(map))
-                    .collect(),
-            ),
+            Type::Class(name, arguments) => {
+                Type::Class(name.clone(), arguments.iter().map(|argument| argument.substitute(map)).collect())
+            }
             Type::Array(element) => Type::Array(Box::new(element.substitute(map))),
             other => other.clone(),
         }

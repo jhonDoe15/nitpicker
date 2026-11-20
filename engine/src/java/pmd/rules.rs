@@ -61,10 +61,7 @@ impl XPathRules {
             let only: Vec<&str> = only.split(',').collect();
             written.retain(|rule| only.contains(&rule.name.as_str()));
         }
-        Some(XPathRules {
-            written,
-            totals: Mutex::new(BTreeMap::new()),
-        })
+        Some(XPathRules { written, totals: Mutex::new(BTreeMap::new()) })
     }
 
     fn compiled(&self) -> Rc<Vec<Compiled>> {
@@ -77,38 +74,21 @@ impl XPathRules {
                             .map(|rule| Compiled {
                                 name: rule.name.clone(),
                                 message: rule.message.clone(),
-                                query: Parser::parse(
-                                    &rule.xpath,
-                                    rule.properties.keys().cloned().collect(),
-                                )
-                                .map(|(query, _)| query),
-                                suppress: (!rule.suppress.trim().is_empty()).then(|| {
-                                    Parser::parse(&rule.suppress, Vec::new())
-                                        .map(|(query, _)| query)
-                                }),
+                                query: Parser::parse(&rule.xpath, rule.properties.keys().cloned().collect()).map(|(query, _)| query),
+                                suppress: (!rule.suppress.trim().is_empty())
+                                    .then(|| Parser::parse(&rule.suppress, Vec::new()).map(|(query, _)| query)),
                                 properties: rule
                                     .properties
                                     .values()
                                     .enumerate()
                                     .map(|(slot, property)| {
                                         let value = match property.kind.as_str() {
-                                            "Boolean" => {
-                                                Item::Flag(property.value.trim() == "true")
-                                            }
-                                            "Integer" | "Long" => Item::Whole(
-                                                property.value.trim().parse().unwrap_or(0),
-                                            ),
+                                            "Boolean" => Item::Flag(property.value.trim() == "true"),
+                                            "Integer" | "Long" => Item::Whole(property.value.trim().parse().unwrap_or(0)),
                                             // A list is a sequence of its entries, written with commas between them.
                                             kind if kind.starts_with("List[") => {
-                                                let entries = property
-                                                    .value
-                                                    .split(',')
-                                                    .map(str::trim)
-                                                    .filter(|entry| !entry.is_empty());
-                                                return (
-                                                    slot as u32,
-                                                    Seq::from(entries.map(Item::text).collect()),
-                                                );
+                                                let entries = property.value.split(',').map(str::trim).filter(|entry| !entry.is_empty());
+                                                return (slot as u32, Seq::from(entries.map(Item::text).collect()));
                                             }
                                             _ => Item::text(&property.value),
                                         };
@@ -126,29 +106,16 @@ impl XPathRules {
 
 impl Drop for XPathRules {
     fn drop(&mut self) {
-        let Ok(path) = std::env::var("NP_XPATH_STATS") else {
-            return;
-        };
-        eprintln!(
-            "types and calls for rules: {} ms (all threads)",
-            super::xpath::library::TYPE_NANOS.load(std::sync::atomic::Ordering::Relaxed)
-                / 1_000_000
-        );
-        let totals = self
-            .totals
-            .lock()
-            .map(|totals| totals.clone())
-            .unwrap_or_default();
+        let Ok(path) = std::env::var("NP_XPATH_STATS") else { return };
+        eprintln!("types and calls for rules: {} ms (all threads)", super::xpath::library::TYPE_NANOS.load(std::sync::atomic::Ordering::Relaxed) / 1_000_000);
+        let totals = self.totals.lock().map(|totals| totals.clone()).unwrap_or_default();
         let rows: Vec<serde_json::Value> = totals
             .iter()
             .map(|(name, (files, nanos, findings, trouble))| {
                 serde_json::json!({"rule": name, "files": files, "ms": *nanos as f64 / 1e6, "findings": findings, "trouble": trouble})
             })
             .collect();
-        let _ = std::fs::write(
-            path,
-            serde_json::to_string_pretty(&rows).unwrap_or_default(),
-        );
+        let _ = std::fs::write(path, serde_json::to_string_pretty(&rows).unwrap_or_default());
     }
 }
 
@@ -161,9 +128,7 @@ impl FileRule for XPathRules {
     }
     fn check(&self, _file: &SourceFile, _out: &mut Vec<Finding>) {}
     fn check_in(&self, file: &SourceFile, project: &Project, out: &mut Vec<Finding>) {
-        let Some(project) = project.downcast_ref::<JavaProject>() else {
-            return;
-        };
+        let Some(project) = project.downcast_ref::<JavaProject>() else { return };
         let _parents = crate::engine::source::ParentTable::of(file.tree.root_node());
         let scope = &crate::java::types::scope::FileScope::of(file);
         let resolver = Resolver::new(&project.index, file, scope);
@@ -184,25 +149,11 @@ impl FileRule for XPathRules {
                 Err(problem) => trouble = Some(format!("not parsed: {problem}")),
                 Ok(query) => {
                     let mut env: Env = rule.properties.clone();
-                    let result = machine.eval(
-                        query,
-                        &Focus {
-                            item: Some(&root),
-                            position: 1,
-                            size: 1,
-                        },
-                        &mut env,
-                    );
+                    let result = machine.eval(query, &Focus { item: Some(&root), position: 1, size: 1 }, &mut env);
                     trouble = machine.trouble.borrow_mut().take();
                     if let Some(trouble) = &trouble {
                         // PMD reports no findings of a rule for a file on which the query fails.
-                        out.push(Finding {
-                            file: file.path.clone(),
-                            line: 0,
-                            column: 0,
-                            rule: format!("!{}", rule.name),
-                            message: trouble.clone(),
-                        });
+                        out.push(Finding { file: file.path.clone(), line: 0, column: 0, rule: format!("!{}", rule.name), message: trouble.clone() });
                     }
                     for item in result.items().iter().filter(|_| trouble.is_none()) {
                         let Item::Node(id) = item else { continue };
@@ -210,35 +161,13 @@ impl FileRule for XPathRules {
                             Some(Value::Whole(whole)) => whole as usize,
                             _ => 0,
                         };
-                        if !quiet.idle()
-                            && quiet.hides(
-                                &tree,
-                                file,
-                                &resolver,
-                                *id,
-                                place("BeginLine"),
-                                &rule.name,
-                            )
-                        {
+                        if !quiet.idle() && quiet.hides(&tree, file, &resolver, *id, place("BeginLine"), &rule.name) {
                             continue;
                         }
                         if let Some(Ok(suppress)) = &rule.suppress {
-                            let selected = machine.eval(
-                                suppress,
-                                &Focus {
-                                    item: Some(item),
-                                    position: 1,
-                                    size: 1,
-                                },
-                                &mut Env::default(),
-                            );
+                            let selected = machine.eval(suppress, &Focus { item: Some(item), position: 1, size: 1 }, &mut Env::default());
                             let failed = machine.trouble.borrow_mut().take().is_some();
-                            if !failed
-                                && selected
-                                    .items()
-                                    .iter()
-                                    .any(|selected| matches!(selected, Item::Node(_)))
-                            {
+                            if !failed && selected.items().iter().any(|selected| matches!(selected, Item::Node(_))) {
                                 continue;
                             }
                         }
@@ -255,18 +184,10 @@ impl FileRule for XPathRules {
             }
             local.push((1, started.elapsed().as_nanos(), found, trouble));
         }
-        if let Some(limit) = std::env::var("NP_SLOW")
-            .ok()
-            .and_then(|limit| limit.parse::<u128>().ok())
-        {
+        if let Some(limit) = std::env::var("NP_SLOW").ok().and_then(|limit| limit.parse::<u128>().ok()) {
             let spent: u128 = local.iter().map(|(_, nanos, _, _)| nanos / 1_000_000).sum();
             if spent > limit {
-                let worst = rules
-                    .iter()
-                    .zip(&local)
-                    .max_by_key(|(_, (_, nanos, _, _))| *nanos)
-                    .map(|(rule, _)| rule.name.as_str())
-                    .unwrap_or_default();
+                let worst = rules.iter().zip(&local).max_by_key(|(_, (_, nanos, _, _))| *nanos).map(|(rule, _)| rule.name.as_str()).unwrap_or_default();
                 eprintln!("slow: {spent} ms {} (most in {worst})", file.path);
             }
         }

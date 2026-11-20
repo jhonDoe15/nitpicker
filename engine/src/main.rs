@@ -17,33 +17,15 @@ fn main() {
     let mut index = 0;
     while index < args.len() {
         match args[index].as_str() {
-            "--rules" => {
-                index += 1;
-                only = Some(args[index].split(',').map(String::from).collect());
-            }
-            "--out" => {
-                index += 1;
-                out = Some(args[index].clone());
-            }
-            "--duplicates" => {
-                index += 1;
-                min_tokens = args[index].parse().expect("token count");
-            }
-            "--files" => {
-                index += 1;
-                file_list = Some(args[index].clone());
-            }
+            "--rules" => { index += 1; only = Some(args[index].split(',').map(String::from).collect()); }
+            "--out" => { index += 1; out = Some(args[index].clone()); }
+            "--duplicates" => { index += 1; min_tokens = args[index].parse().expect("token count"); }
+            "--files" => { index += 1; file_list = Some(args[index].clone()); }
             "--dump" => dump = true,
             "--classpath" => {
                 index += 1;
-                let listed =
-                    std::fs::read_to_string(&args[index]).unwrap_or_else(|_| args[index].clone());
-                options.classpath.extend(
-                    listed
-                        .split(['\n', ':'])
-                        .filter(|entry| !entry.trim().is_empty())
-                        .map(|entry| PathBuf::from(entry.trim())),
-                );
+                let listed = std::fs::read_to_string(&args[index]).unwrap_or_else(|_| args[index].clone());
+                options.classpath.extend(listed.split(['\n', ':']).filter(|entry| !entry.trim().is_empty()).map(|entry| PathBuf::from(entry.trim())));
             }
             other => roots.push(PathBuf::from(other)),
         }
@@ -54,23 +36,12 @@ fn main() {
         let text = std::fs::read_to_string(&roots[0]).expect("file");
         let mut parser = tree_sitter::Parser::new();
         parser.set_language(&language.grammar()).expect("grammar");
-        println!(
-            "{}",
-            parser
-                .parse(&text, None)
-                .expect("tree")
-                .root_node()
-                .to_sexp()
-        );
+        println!("{}", parser.parse(&text, None).expect("tree").root_node().to_sexp());
         return;
     }
     let started = Instant::now();
     let files = match file_list {
-        Some(list) => std::fs::read_to_string(list)
-            .expect("list")
-            .lines()
-            .map(PathBuf::from)
-            .collect(),
+        Some(list) => std::fs::read_to_string(list).expect("list").lines().map(PathBuf::from).collect(),
         None => engine::runner::collect_files(&roots, &language),
     };
     let listed = started.elapsed();
@@ -92,13 +63,7 @@ fn main() {
     }
     eprintln!(
         "{} files, {} lines, {} findings, {} functions, {} duplicates; list {:.0} ms, analyze {:.0} ms, total {:.0} ms",
-        result.files,
-        result.lines,
-        result.findings.len(),
-        result.functions.len(),
-        result.duplicates.len(),
-        listed.as_secs_f64() * 1e3,
-        (analyzed - listed).as_secs_f64() * 1e3,
-        started.elapsed().as_secs_f64() * 1e3
+        result.files, result.lines, result.findings.len(), result.functions.len(), result.duplicates.len(),
+        listed.as_secs_f64() * 1e3, (analyzed - listed).as_secs_f64() * 1e3, started.elapsed().as_secs_f64() * 1e3
     );
 }

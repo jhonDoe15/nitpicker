@@ -51,41 +51,16 @@ struct Builder<'t, 'f> {
 }
 
 const TYPE_PARTS: &[&str] = &[
-    "type_identifier",
-    "generic_type",
-    "scoped_type_identifier",
-    "integral_type",
-    "floating_point_type",
-    "boolean_type",
-    "void_type",
-    "array_type",
-    "dimensions",
-    "type_arguments",
-    "annotation",
-    "marker_annotation",
-    "modifiers",
-    "class_body",
-    "annotated_type",
-    "line_comment",
-    "block_comment",
-    "type_parameters",
-    "superclass",
-    "super_interfaces",
+    "type_identifier", "generic_type", "scoped_type_identifier", "integral_type", "floating_point_type", "boolean_type", "void_type",
+    "array_type", "dimensions", "type_arguments", "annotation", "marker_annotation", "modifiers", "class_body", "annotated_type",
+    "line_comment", "block_comment", "type_parameters", "superclass", "super_interfaces",
 ];
-const NESTED: &[&str] = &[
-    "class_declaration",
-    "interface_declaration",
-    "enum_declaration",
-    "record_declaration",
-    "annotation_type_declaration",
-];
+const NESTED: &[&str] =
+    &["class_declaration", "interface_declaration", "enum_declaration", "record_declaration", "annotation_type_declaration"];
 
 pub fn unwrap(mut node: Node) -> Node {
     while node.kind() == "parenthesized_expression" {
-        match named_children(node)
-            .into_iter()
-            .find(|inner| !inner.kind().ends_with("comment"))
-        {
+        match named_children(node).into_iter().find(|inner| !inner.kind().ends_with("comment")) {
             Some(inner) => node = inner,
             None => break,
         }
@@ -99,10 +74,7 @@ pub fn build<'t>(file: &SourceFile, body: Node<'t>, guards: &dyn Fn(Node) -> boo
     let mut builder = Builder {
         file,
         guards,
-        cfg: Cfg {
-            blocks: Vec::new(),
-            results: HashMap::new(),
-        },
+        cfg: Cfg { blocks: Vec::new(), results: HashMap::new() },
         current: 0,
         targets: Vec::new(),
         handlers: Vec::new(),
@@ -123,12 +95,7 @@ pub fn build<'t>(file: &SourceFile, body: Node<'t>, guards: &dyn Fn(Node) -> boo
 impl<'t> Builder<'t, '_> {
     fn block(&mut self) -> usize {
         let catches = self.handlers.iter().flatten().copied().collect();
-        self.cfg.blocks.push(Block {
-            steps: Vec::new(),
-            exit: Exit::End,
-            catches,
-            copy: self.copy,
-        });
+        self.cfg.blocks.push(Block { steps: Vec::new(), exit: Exit::End, catches, copy: self.copy });
         self.cfg.blocks.len() - 1
     }
     fn step(&mut self, node: Node<'t>) {
@@ -150,43 +117,21 @@ impl<'t> Builder<'t, '_> {
 
     fn test(&mut self, node: Node<'t>, holds: usize, fails: usize) {
         let node = unwrap(node);
-        let operator = node
-            .child_by_field_name("operator")
-            .map(|operator| operator.kind());
+        let operator = node.child_by_field_name("operator").map(|operator| operator.kind());
         match (node.kind(), operator) {
             ("binary_expression", Some("&&")) => {
                 let middle = self.block();
-                self.test(
-                    node.child_by_field_name("left").expect("left"),
-                    middle,
-                    fails,
-                );
+                self.test(node.child_by_field_name("left").expect("left"), middle, fails);
                 self.current = middle;
-                self.test(
-                    node.child_by_field_name("right").expect("right"),
-                    holds,
-                    fails,
-                );
+                self.test(node.child_by_field_name("right").expect("right"), holds, fails);
             }
             ("binary_expression", Some("||")) => {
                 let middle = self.block();
-                self.test(
-                    node.child_by_field_name("left").expect("left"),
-                    holds,
-                    middle,
-                );
+                self.test(node.child_by_field_name("left").expect("left"), holds, middle);
                 self.current = middle;
-                self.test(
-                    node.child_by_field_name("right").expect("right"),
-                    holds,
-                    fails,
-                );
+                self.test(node.child_by_field_name("right").expect("right"), holds, fails);
             }
-            ("unary_expression", Some("!")) => self.test(
-                node.child_by_field_name("operand").expect("operand"),
-                fails,
-                holds,
-            ),
+            ("unary_expression", Some("!")) => self.test(node.child_by_field_name("operand").expect("operand"), fails, holds),
             _ => {
                 self.expression(node);
                 self.leave(Exit::Branch(node, holds, fails));
@@ -204,19 +149,13 @@ impl<'t> Builder<'t, '_> {
     }
 
     fn expression(&mut self, node: Node<'t>) {
-        let operator = node
-            .child_by_field_name("operator")
-            .map(|operator| operator.kind());
+        let operator = node.child_by_field_name("operator").map(|operator| operator.kind());
         match node.kind() {
             "binary_expression" if matches!(operator, Some("&&" | "||")) => self.joined(node),
             "unary_expression" if operator == Some("!") => self.joined(node),
             "ternary_expression" => {
                 let (holds, fails, after) = (self.block(), self.block(), self.block());
-                self.test(
-                    node.child_by_field_name("condition").expect("condition"),
-                    holds,
-                    fails,
-                );
+                self.test(node.child_by_field_name("condition").expect("condition"), holds, fails);
                 for (block, field) in [(holds, "consequence"), (fails, "alternative")] {
                     self.current = block;
                     if let Some(arm) = node.child_by_field_name(field) {
@@ -229,10 +168,7 @@ impl<'t> Builder<'t, '_> {
             }
             "lambda_expression" => self.step(node),
             "method_reference" => {
-                let object = named_children(node)
-                    .into_iter()
-                    .next()
-                    .filter(|object| !TYPE_PARTS.contains(&object.kind()));
+                let object = named_children(node).into_iter().next().filter(|object| !TYPE_PARTS.contains(&object.kind()));
                 if let Some(object) = object {
                     self.expression(object);
                 }
@@ -263,22 +199,13 @@ impl<'t> Builder<'t, '_> {
                     self.expression(object);
                 }
                 let arguments = node.child_by_field_name("arguments");
-                let first = arguments
-                    .map(named_children)
-                    .unwrap_or_default()
-                    .into_iter()
-                    .find(|part| !part.kind().ends_with("comment"));
+                let first = arguments.map(named_children).unwrap_or_default().into_iter().find(|part| !part.kind().ends_with("comment"));
                 match first.filter(|_| (self.guards)(node)) {
                     Some(first) => {
                         let (holds, fails) = (self.block(), self.block());
                         self.test(first, holds, fails);
                         self.current = holds;
-                        for part in arguments
-                            .map(named_children)
-                            .unwrap_or_default()
-                            .into_iter()
-                            .filter(|part| *part != first)
-                        {
+                        for part in arguments.map(named_children).unwrap_or_default().into_iter().filter(|part| *part != first) {
                             if !TYPE_PARTS.contains(&part.kind()) {
                                 self.expression(part);
                             }
@@ -302,9 +229,7 @@ impl<'t> Builder<'t, '_> {
                 for part in named_children(node) {
                     if part.kind() == "argument_list" {
                         self.parts(part);
-                    } else if !TYPE_PARTS.contains(&part.kind())
-                        && node.child_by_field_name("type") != Some(part)
-                    {
+                    } else if !TYPE_PARTS.contains(&part.kind()) && node.child_by_field_name("type") != Some(part) {
                         self.expression(part);
                     }
                 }
@@ -323,9 +248,7 @@ impl<'t> Builder<'t, '_> {
                 self.step(node);
             }
             "identifier" | "this" | "super" | "class_literal" => self.step(node),
-            kind if kind.ends_with("_literal") || kind == "true" || kind == "false" => {
-                self.step(node)
-            }
+            kind if kind.ends_with("_literal") || kind == "true" || kind == "false" => self.step(node),
             _ => {
                 self.parts(node);
                 self.step(node);
@@ -339,13 +262,7 @@ impl<'t> Builder<'t, '_> {
             if TYPE_PARTS.contains(&part.kind()) {
                 continue;
             }
-            if matches!(
-                part.kind(),
-                "argument_list"
-                    | "dimensions_expr"
-                    | "array_initializer"
-                    | "element_value_array_initializer"
-            ) {
+            if matches!(part.kind(), "argument_list" | "dimensions_expr" | "array_initializer" | "element_value_array_initializer") {
                 self.parts(part);
             } else {
                 self.expression(part);
@@ -362,22 +279,13 @@ impl<'t> Builder<'t, '_> {
             if !fits {
                 return None;
             }
-            if continues {
-                target.continues
-            } else {
-                Some(target.breaks)
-            }
+            if continues { target.continues } else { Some(target.breaks) }
         })
     }
 
     fn looped(&mut self, breaks: usize, continues: usize, body: Option<Node<'t>>) {
         let label = self.label.take();
-        self.targets.push(Target {
-            label,
-            breaks,
-            continues: Some(continues),
-            plain: true,
-        });
+        self.targets.push(Target { label, breaks, continues: Some(continues), plain: true });
         if let Some(body) = body {
             self.statement(body);
         }
@@ -396,10 +304,7 @@ impl<'t> Builder<'t, '_> {
                 }
             }
             "local_variable_declaration" => {
-                for declarator in children(node)
-                    .into_iter()
-                    .filter(|child| child.kind() == "variable_declarator")
-                {
+                for declarator in children(node).into_iter().filter(|child| child.kind() == "variable_declarator") {
                     if let Some(value) = declarator.child_by_field_name("value") {
                         self.expression(value);
                     }
@@ -445,14 +350,9 @@ impl<'t> Builder<'t, '_> {
                 let mut cursor = node.walk();
                 let starts: Vec<Node> = node.children_by_field_name("init", &mut cursor).collect();
                 for start in starts {
-                    if start.kind() == "local_variable_declaration" {
-                        self.statement(start)
-                    } else {
-                        self.expression(start)
-                    }
+                    if start.kind() == "local_variable_declaration" { self.statement(start) } else { self.expression(start) }
                 }
-                let (head, body, update, after) =
-                    (self.block(), self.block(), self.block(), self.block());
+                let (head, body, update, after) = (self.block(), self.block(), self.block(), self.block());
                 self.jump(head);
                 self.current = head;
                 match field("condition") {
@@ -465,8 +365,7 @@ impl<'t> Builder<'t, '_> {
                 self.jump(update);
                 self.current = update;
                 let mut cursor = node.walk();
-                let updates: Vec<Node> =
-                    node.children_by_field_name("update", &mut cursor).collect();
+                let updates: Vec<Node> = node.children_by_field_name("update", &mut cursor).collect();
                 for step in updates {
                     self.expression(step);
                 }
@@ -490,16 +389,9 @@ impl<'t> Builder<'t, '_> {
             }
             "labeled_statement" => {
                 let after = self.block();
-                let mut parts = named_children(node)
-                    .into_iter()
-                    .filter(|part| !part.kind().ends_with("comment"));
+                let mut parts = named_children(node).into_iter().filter(|part| !part.kind().ends_with("comment"));
                 let name = parts.next().map(|name| self.text(name).to_string());
-                self.targets.push(Target {
-                    label: name.clone(),
-                    breaks: after,
-                    continues: None,
-                    plain: false,
-                });
+                self.targets.push(Target { label: name.clone(), breaks: after, continues: None, plain: false });
                 if let Some(inner) = parts.next() {
                     self.label = name;
                     self.statement(inner);
@@ -509,10 +401,7 @@ impl<'t> Builder<'t, '_> {
                 self.current = after;
             }
             "break_statement" | "continue_statement" => {
-                let name = named_children(node)
-                    .into_iter()
-                    .find(|part| part.kind() == "identifier")
-                    .map(|name| self.text(name).to_string());
+                let name = named_children(node).into_iter().find(|part| part.kind() == "identifier").map(|name| self.text(name).to_string());
                 match self.target(name.as_deref(), node.kind() == "continue_statement") {
                     Some(to) => self.jump(to),
                     None => self.leave(Exit::End),
@@ -525,9 +414,7 @@ impl<'t> Builder<'t, '_> {
                 self.dead();
             }
             "yield_statement" => {
-                let value = named_children(node)
-                    .into_iter()
-                    .find(|part| !part.kind().ends_with("comment"));
+                let value = named_children(node).into_iter().find(|part| !part.kind().ends_with("comment"));
                 if let Some(value) = value {
                     self.expression(value);
                     if let Some((switch, _)) = self.switches.last() {
@@ -544,11 +431,7 @@ impl<'t> Builder<'t, '_> {
             "switch_expression" => self.switch(node),
             "synchronized_statement" => {
                 for part in named_children(node) {
-                    if part.kind() == "block" {
-                        self.statement(part)
-                    } else {
-                        self.expression(part)
-                    }
+                    if part.kind() == "block" { self.statement(part) } else { self.expression(part) }
                 }
             }
             // Assertions count as switched off, as NullAway assumes by default: the test is never run.
@@ -566,19 +449,13 @@ impl<'t> Builder<'t, '_> {
 
     fn guarded(&mut self, node: Node<'t>) {
         let after = self.block();
-        let clauses: Vec<Node> = children(node)
-            .into_iter()
-            .filter(|part| part.kind() == "catch_clause")
-            .collect();
-        let last = children(node)
-            .into_iter()
-            .find(|part| part.kind() == "finally_clause");
+        let clauses: Vec<Node> = children(node).into_iter().filter(|part| part.kind() == "catch_clause").collect();
+        let last = children(node).into_iter().find(|part| part.kind() == "finally_clause");
         let landing = last.map(|_| self.block());
         let thrown = last.map(|_| self.block());
         let handlers: Vec<usize> = clauses.iter().map(|_| self.block()).collect();
         let next = landing.unwrap_or(after);
-        self.handlers
-            .push(handlers.iter().copied().chain(thrown).collect());
+        self.handlers.push(handlers.iter().copied().chain(thrown).collect());
         let body = self.block();
         self.jump(body);
         self.current = body;
@@ -606,10 +483,7 @@ impl<'t> Builder<'t, '_> {
             let inner = self.block();
             self.cfg.blocks[*handler].exit = Exit::Jump(inner);
             self.current = inner;
-            if let Some(parameter) = children(*clause)
-                .into_iter()
-                .find(|part| part.kind() == "catch_formal_parameter")
-            {
+            if let Some(parameter) = children(*clause).into_iter().find(|part| part.kind() == "catch_formal_parameter") {
                 self.step(parameter);
             }
             if let Some(body) = clause.child_by_field_name("body") {
@@ -647,22 +521,11 @@ impl<'t> Builder<'t, '_> {
         }
         let head = self.current;
         let after = self.block();
-        let cases: Vec<Node> = node
-            .child_by_field_name("body")
-            .map(named_children)
-            .unwrap_or_default();
-        let cases: Vec<Node> = cases
-            .into_iter()
-            .filter(|case| matches!(case.kind(), "switch_block_statement_group" | "switch_rule"))
-            .collect();
+        let cases: Vec<Node> = node.child_by_field_name("body").map(named_children).unwrap_or_default();
+        let cases: Vec<Node> = cases.into_iter().filter(|case| matches!(case.kind(), "switch_block_statement_group" | "switch_rule")).collect();
         let blocks: Vec<usize> = cases.iter().map(|_| self.block()).collect();
         let total = cases.iter().any(|case| {
-            children(*case)
-                .into_iter()
-                .filter(|part| part.kind() == "switch_label")
-                .any(|label| {
-                    self.text(label).starts_with("default") || self.text(label).contains("default")
-                })
+            children(*case).into_iter().filter(|part| part.kind() == "switch_label").any(|label| self.text(label).starts_with("default") || self.text(label).contains("default"))
         });
         let rules = cases.iter().any(|case| case.kind() == "switch_rule");
         let mut exits = blocks.clone();
@@ -673,26 +536,16 @@ impl<'t> Builder<'t, '_> {
             exits.push(after);
         }
         self.cfg.blocks[head].exit = Exit::Any(exits);
-        self.targets.push(Target {
-            label: None,
-            breaks: after,
-            continues: None,
-            plain: true,
-        });
+        self.targets.push(Target { label: None, breaks: after, continues: None, plain: true });
         self.switches.push((node.id(), after));
         for (position, case) in cases.iter().enumerate() {
             self.current = blocks[position];
             if case.kind() == "switch_rule" {
-                for part in named_children(*case)
-                    .into_iter()
-                    .filter(|part| part.kind() != "switch_label")
-                {
+                for part in named_children(*case).into_iter().filter(|part| part.kind() != "switch_label") {
                     match part.kind() {
                         "expression_statement" => {
                             self.parts(part);
-                            let value = named_children(part)
-                                .into_iter()
-                                .find(|value| !value.kind().ends_with("comment"));
+                            let value = named_children(part).into_iter().find(|value| !value.kind().ends_with("comment"));
                             self.cfg.results.entry(node.id()).or_default().extend(value);
                         }
                         _ => self.statement(part),

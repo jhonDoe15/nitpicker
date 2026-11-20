@@ -39,10 +39,7 @@ impl Item {
     }
 
     pub fn is_node(&self) -> bool {
-        matches!(
-            self,
-            Item::Doc | Item::Node(_) | Item::Attr(..) | Item::Xml(_)
-        )
+        matches!(self, Item::Doc | Item::Node(_) | Item::Attr(..) | Item::Xml(_))
     }
 
     /// Where a tree node stands in document order.
@@ -119,34 +116,18 @@ pub fn real_text(value: f64) -> String {
         return "NaN".to_string();
     }
     if value.is_infinite() {
-        return if value > 0.0 {
-            "INF".to_string()
-        } else {
-            "-INF".to_string()
-        };
+        return if value > 0.0 { "INF".to_string() } else { "-INF".to_string() };
     }
     let size = value.abs();
     if size == 0.0 {
-        return if value.is_sign_negative() {
-            "-0".to_string()
-        } else {
-            "0".to_string()
-        };
+        return if value.is_sign_negative() { "-0".to_string() } else { "0".to_string() };
     }
     if (1e-6..1e6).contains(&size) {
-        return if value.fract() == 0.0 {
-            format!("{}", value as i64)
-        } else {
-            format!("{value}")
-        };
+        return if value.fract() == 0.0 { format!("{}", value as i64) } else { format!("{value}") };
     }
     let written = format!("{value:e}");
     let (digits, exponent) = written.split_once('e').unwrap_or((&written, "0"));
-    let digits = if digits.contains('.') {
-        digits.to_string()
-    } else {
-        format!("{digits}.0")
-    };
+    let digits = if digits.contains('.') { digits.to_string() } else { format!("{digits}.0") };
     format!("{digits}E{exponent}")
 }
 
