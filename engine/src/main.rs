@@ -31,8 +31,8 @@ fn main() {
         typescript_reuse(&args[1..]);
         return;
     }
-    if args.first().map(String::as_str) == Some("typescript-public-contracts") {
-        typescript_public_contracts(&args[1..]);
+    if args.first().map(String::as_str) == Some("typescript-typed") {
+        typescript_typed(&args[1..]);
         return;
     }
     if args.first().map(String::as_str) == Some("typescript-type-replay") {
@@ -202,39 +202,53 @@ fn typescript_structure(args: &[String]) {
     );
 }
 
-/// `typescript-public-contracts --compiler <tsc of TypeScript 7> --project <tsconfig.json> [--only-named] [--by-position] [--diagnostics-first] [--out <file>]`:
-/// unused methods of implemented, exported interfaces, with the types asked from the compiler's API server.
-fn typescript_public_contracts(args: &[String]) {
+/// Exit status of `typescript-typed` when the compiler's types are not available: the binary is missing, its
+/// version is not supported, or the server failed. The caller runs its own check instead.
+const TYPES_UNAVAILABLE: i32 = 3;
+
+/// `typescript-typed --compiler <tsc of TypeScript 7> --project <tsconfig.json> --checks <name,name> [--all-reads] [--out <file>]`:
+/// the checks that need types, all against one session of the compiler's API server.
+fn typescript_typed(args: &[String]) {
     let started = Instant::now();
     let mut compiler = None;
     let mut project = None;
     let mut out = None;
-    let mut only_named = false;
-    let mut by_position = false;
-    let mut diagnostics_first = false;
+    let mut checks: Vec<String> = Vec::new();
+    let mut options = typescript::typed::Options::default();
     let mut index = 0;
     while index < args.len() {
         match args[index].as_str() {
             "--compiler" => { index += 1; compiler = Some(PathBuf::from(&args[index])); }
             "--project" => { index += 1; project = Some(args[index].clone()); }
+            "--checks" => { index += 1; checks = args[index].split(',').filter(|name| !name.is_empty()).map(String::from).collect(); }
             "--out" => { index += 1; out = Some(args[index].clone()); }
-            "--only-named" => only_named = true,
-            "--by-position" => by_position = true,
-            "--diagnostics-first" => diagnostics_first = true,
+            "--all-reads" => options.all_reads = true,
             other => panic!("unknown argument {other}"),
         }
         index += 1;
     }
-    let (findings, counts) = typescript::typed::public_contracts::run(&compiler.expect("--compiler"), &project.expect("--project"), only_named, by_position, diagnostics_first).unwrap_or_else(|error| {
-        eprintln!("{error}");
+    if checks.iter().any(|name| name == "dump-trees") {
+        let text = typescript::typed::dump_trees(&compiler.expect("--compiler"), &project.expect("--project")).unwrap_or_else(|error| {
+            eprintln!("types unavailable: {error}");
+            std::process::exit(TYPES_UNAVAILABLE);
+        });
+        std::fs::write(out.expect("--out"), text).expect("write");
+        return;
+    }
+    if let Some(unknown) = checks.iter().find(|name| !typescript::typed::CHECKS.contains(&name.as_str())) {
+        eprintln!("unknown check {unknown}; known: {}", typescript::typed::CHECKS.join(", "));
         std::process::exit(2);
+    }
+    let report = typescript::typed::run(&compiler.expect("--compiler"), &project.expect("--project"), &checks, &options).unwrap_or_else(|error| {
+        eprintln!("types unavailable: {error}");
+        std::process::exit(TYPES_UNAVAILABLE);
     });
-    let text = serde_json::to_string_pretty(&serde_json::json!({ "findings": findings })).expect("json");
+    let text = serde_json::to_string(&report).expect("json");
     match out {
         Some(path) => std::fs::write(path, text).expect("write"),
         None => println!("{text}"),
     }
-    eprintln!("{} findings; {:.0} ms; {}", findings.len(), started.elapsed().as_secs_f64() * 1e3, serde_json::to_string(&counts).expect("json"));
+    eprintln!("{} checks; {:.0} ms; {}", checks.len(), started.elapsed().as_secs_f64() * 1e3, report["session"]);
 }
 
 /// `typescript-type-replay --compiler <tsc> --project <tsconfig.json> --questions <jsonl> --kinds <json> [--out <jsonl>]`:
