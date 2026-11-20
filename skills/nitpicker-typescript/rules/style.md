@@ -50,3 +50,21 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `.filter(Boolean)` on a number, an optional string or an optional boolean (`nitpicker/strict-boolean-expressions`,
   `nitpicker/no-presence-truthiness`, the latter report-only). Once `if (x)` has decided `x`, do not write
   `Boolean(x)` or `!!x` in that branch (`nitpicker/no-decided-condition`).
+- Text from an env var, a query parameter or a form field is checked for blankness before `Number(text)`:
+  `Number("")` is 0, so `isNaN` alone accepts a blank value; use `if (!text?.trim())`, `Number.parseInt(text, 10)`,
+  or a check that rejects 0 (`nitpicker/no-blank-number-coercion`).
+- An "all done" or "all cancelled" signal over a list that can be empty checks the list first:
+  `tools.length > 0 && tools.every(...)`, because `every` is true for no items
+  (`nitpicker/no-empty-every-signal`, report-only).
+- An explicit key and a spread of an object that can carry the same key are ordered on purpose: the explicit
+  value goes last when it must win (`{ ...data, id: idOrSelector }`, `<Button {...props} disabled={loading} />`),
+  and a caller default goes first or is read as `options.mode ?? 'detailed'` (`nitpicker/no-shadowed-spread-key`).
+- An option read from an options or config object is defaulted with `??`, not `||`: `options.ipv6Subnet ?? 64`,
+  `options.forceObject ?? config.forceObject`, so an explicit `false`, `0` or `''` from the caller stays
+  (`nitpicker/no-falsy-default`).
+- A cache or lookup decides presence from the key, not from the stored value: `if (!m.has(k)) { m.set(k, make()); }`
+  then `m.get(k)!`, and `key in record` or `Object.hasOwn(record, key)` for a record of `unknown` values, because a
+  cached `0`, `''`, `false` or `undefined` is a hit (`nitpicker/no-lookup-as-presence`).
+- A key that can hold `undefined` is tested by its value, not by `in`: `data.targetUID !== undefined`, never
+  `'targetUID' in data` on an optional property, a `Partial<...>` or a `Record<string, T | undefined>`
+  (`nitpicker/no-in-presence-check`; `in` stays right for a union discriminant).

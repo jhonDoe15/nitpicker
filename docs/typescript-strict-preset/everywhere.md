@@ -280,6 +280,230 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   public test key or a documented example. The same form runs as `hardcoded-secret` and `credential-shape` (Python and Go),
   `pmd/HardcodedSecret` and `pmd/CredentialLiteral` (Java) and the `HardcodedSecret` and `CredentialLiteral`
   source checks (Kotlin).
+- `nitpicker/no-btoa-on-runtime-text`: `btoa(x)` (also `window.btoa`, `globalThis.btoa`, `self.btoa`) where `x` is not a constant,
+  not built from `String.fromCharCode`/`String.fromCodePoint`, `encodeURIComponent` or `escape`, not a binary-named or
+  byte-built value, and not inside a `try` with a `catch`. `btoa` accepts only Latin-1 and throws `InvalidCharacterError`
+  for any character above U+00FF, so a password, name or JSON with non-ASCII text fails, often in a login path. Allowed
+  forms: `new TextEncoder().encode(text)` with a bytes-to-base64 step, `Uint8Array.prototype.toBase64()`, or
+  `Buffer.from(text, 'utf8').toString('base64')` in Node. Python, Java, Kotlin and Go take bytes in their base64 APIs, so
+  the charset is explicit there and they need no counterpart.
+- `nitpicker/no-non-latin1-header-value`: an HTTP header value set from a file path (`file.relative`, `filename`, `path.relative(...)`),
+  a route, a user name, request `params`/`query`/`body` data or `JSON.stringify(...)` without encoding, through
+  `res.setHeader`, `res.header`, `reply.header`, `headers.set`/`append`, `res.writeHead`, `new Headers({...})` or a `headers`
+  object given to `fetch`, `Request`, `Response` or an HTTP client. Header values are byte strings, so `fetch`, `Headers` and
+  Node's `setHeader` throw for a character above U+00FF and non-English text fails where ASCII test data passes. Allowed forms:
+  `encodeURIComponent`, `encodeURI` or base64, decoded on the other side. Literals, numbers and values the type checker shows
+  as numbers or string literal unions are skipped.
+- `nitpicker/no-lossy-utf8-decode`: bytes decoded to text with silent replacement where the text is then parsed, compared or
+  written back. It reports `new TextDecoder()` (no label or a UTF-8 label, no `fatal: true`, no streaming second argument) whose
+  decoded text reaches `JSON.parse`, a hash `update`, a write call, or an equality test against a non-constant, directly or
+  through one variable; and `readFile`/`readFileSync` with `'utf8'` (or `buffer.toString('utf8')` of a `readFile` buffer) whose
+  text is written back to the same path, also through a call such as `transform(content)`. Invalid UTF-8 becomes U+FFFD, so
+  the round trip silently loses bytes. Allowed forms: `new TextDecoder('utf-8', { fatal: true })`, which throws on malformed
+  input, or keeping the bytes. Display-only decoding (logging, terminal output), reads written to another path, and
+  `JSON.parse(readFileSync(path, 'utf8'))` of a config file are not reported.
+- `nitpicker/no-string-length-as-byte-count`: `text.length` of a string (by type, or a string literal, template, annotated
+  `string` variable or `JSON.stringify` result) compared with, added to, used as a `for` loop bound stepped by, or sliced with a
+  value named in bytes (`MAX_KEY_BYTES`, `maxBytes`, `chunkByteSize`, `limitInBytes`). `.length` counts UTF-16 code units, so
+  non-ASCII text passes the check and is cut or rejected later, or a chunk splits a multi-byte character. Allowed forms:
+  `Buffer.byteLength(text, 'utf8')`, `new TextEncoder().encode(text).byteLength`, or slicing the encoded bytes. `Buffer` and
+  `Uint8Array` lengths, `byteLength`, array lengths and limits not named in bytes are not reported. Go counts bytes in
+  `len(string)`; the Python and Java forms are left for a parity review.
+- `nitpicker/no-incomplete-escaping`: a `.replace`/`.replaceAll` chain that escapes or unescapes by hand and skips the escape
+  character. Escape direction: a replacement that puts a backslash before a matched quote, backtick or brace
+  (`'\\"'`, `'\\$&'`) where no earlier step of the chain, and no other `replace` in the same function, matches the backslash
+  itself (`value.replace(/"/g, '\\"')` leaves `a\"b` ambiguous). Unescape direction: a chain that decodes sequences one kind at
+  a time and handles `\\` in a separate step, so the order decides the result. Allowed forms: one regex covering the escape
+  character and the specials with a callback (`value.replace(/[\\"]/g, (c) => '\\' + c)`), a single-pass unescape with a
+  callback, or a library escaper (driver quoting functions, `JSON.stringify`, `JSON.parse`). A chain that starts from another
+  call's result, a regex-escape helper whose class includes `\`, and callback replacements are not reported. Python
+  `str.replace` and Java `String.replace` have the same chains and are left for a parity review.
+- `nitpicker/no-hand-quoted-generated-code`: a template literal that writes JavaScript or TypeScript source (an `import ... from`,
+  `export`, `require(`, `import(`, `const x =` or `.default(` statement) and places a runtime value directly between two `"` or two
+  `'` characters in specifier or declaration position (after `from`, `import`, `require(`, `[`, `.default(` or `const x =`). A quote, backslash or newline in the value (a module specifier, export name or default read from a user's
+  project) then produces invalid code or code that does something else. Allowed forms: `JSON.stringify(value)` in place of the
+  quotes, an AST printer, a constant, a number, an UPPER_CASE constant, or a value passed through an escape or quote helper.
+  Tagged templates, HTML attributes (`nonce="${nonce}"`) and error messages that only mention `import "${x}"` are not reported.
+  Python f-strings that write Python or JSON have the same trap (`repr()` or `json.dumps()` are the allowed forms) and can
+  follow when a Python repository shows it.
+- `nitpicker/no-unstripped-remote-text`: in a file that runs in Node (it uses `process`, a `node:` module or a Node builtin, and no
+  `document` or `window`), `console.*`, `process.stdout.write`, `process.stderr.write` or a bare `logger.*`/`log.*` (not `this.logger`) given text that came
+  from a socket message (the first parameter of an `.on(event, callback)` on a `ws`, `socket`, `hot`, `channel` or `ipc`
+  receiver, except `open`, `close`, `error` and similar) or from a network response (`await fetch(...)` then `.text()` or
+  `.json()`, or `.data`/`.body` of an `axios`, `got`, `ky` or `needle` result), directly, through a template or a `+`, or through
+  a variable. ANSI and other control sequences in that text can move the cursor, clear the screen, rewrite earlier lines or set the
+  title. Allowed forms: `util.stripVTControlCharacters(text)`, `strip-ansi`, or printing `JSON.stringify(text)`. Printing a whole
+  parsed object (`console.log(body)`) is not reported, because `util.inspect` escapes control characters. Child process output
+  is not tracked.
+- `nitpicker/no-unescaped-css-selector`: a selector given to `querySelector`, `querySelectorAll`, `closest`, `matches`,
+  `webkitMatchesSelector`, `cy.get`, `cy.find` or `page.$`/`page.$$` that is a template literal or `+` concatenation with a variable
+  or member right after `#`, `.` or an attribute `=` (`#${id}`, `[data-name="${name}"]`). Quotes, brackets, colons, dots or a
+  leading digit make the selector throw a `SyntaxError` or match the wrong elements. A value wrapped in `.replace(...)` is
+  reported as hand-rolled escaping. Allowed forms: `CSS.escape(value)`, numbers, constants, string literal unions (with
+  types), and class names named `class`/`className` after a `.`.
+- `nitpicker/no-unencoded-url-part`: a URL built in a template literal with a value that is not encoded. It reports a query value
+  (`${api}/search?q=${query}`, `?redirect=${target}`, `?ref=${branch}`) whose name says free text (a query, search,
+  branch, ref, tag, title, name, message, URL, path, redirect, callback or error value), a path segment of a URL
+  (`https://host/branches/${branch}`) for a branch, ref, tag, title, file name, user name, label, query, token or e-mail value, a
+  `?` appended to a callback, redirect, action or return URL that may already carry a query
+  (`${callbackURL}?error=${message}`), `new URL(`${path}/x`, base)` with a path that may start with `//`, and a user name or
+  password put into the credential slot of a `postgres://`, `mysql://`, `redis://`, `mongodb://` or `amqp://` URL. Numbers,
+  ids, constants, URL parts (`url.pathname`), values in `encodeURIComponent`, `encodeURI`, `URLSearchParams` or `.toString()`,
+  tagged templates, text with whitespace, a branch after `/blob/`, `/tree/`, `/heads/`, `/branch/`, `/archive/`,
+  `/tar.gz/` and the like (which keep slashes), a `?` appended to a `...returnUrl` and files named `__mocks__` or `*.mock.*`
+  are not reported. Allowed forms: `encodeURIComponent(value)`, `url.searchParams.set(name, value)` on a `new URL(base)`, and
+  `key.split('/').map(encodeURIComponent).join('/')` for a key that keeps its slashes. Joins with `+`, doubled slashes and
+  ids in paths are not checked.
+- `nitpicker/no-dynamic-import-of-path`: a dynamic `import(...)` whose argument is a filesystem path. It reports a call of
+  `path.resolve`, `path.join`, `path.normalize`, `path.relative`, `require.resolve`, `fileURLToPath`, `realpath` or
+  `realpathSync` (or a name imported from `node:path`), `process.cwd()`, `__dirname`, `__filename` or
+  `import.meta.dirname` joined into the argument, a constant that holds one of those, and a variable named `...Path`,
+  `...File` or `...Dir` in a file that uses Node modules and never mentions `pathToFileURL`. On Windows `C:\repo\plugin.mjs`
+  reads `c:` as a URL scheme and the import fails with `ERR_UNSUPPORTED_ESM_URL_SCHEME`, while it works on Linux and macOS.
+  A string literal, a bare package name, `pathToFileURL(file).href`, `new URL(...)`, `import.meta.resolve(...)` and a
+  parameter or property that is only named like a path, a template that starts with `file:` and files under `__test__` or
+  `playground` are not reported. Allowed form: `await import(pathToFileURL(file).href)`.
+- `nitpicker/no-unchecked-url-sink`: a runtime URL that becomes a link, a frame source or a navigation target without an
+  `http(s)` scheme check. It reads `href` on `a`, `area` and components named `...Link` or `...Anchor`, `src` on `iframe`,
+  `embed`, `object` and `frame`, `action` and `formAction` on `form`, `button` and `input`, `window.open(x)`,
+  `location.assign(x)`, `location.replace(x)` and `location.href = x`, and reports a value that is a member (`model.serverUrl`,
+  `record.url`) or a variable taken from one, or a destructured one, whose name ends in `url`, `uri`, `website`, `homepage`,
+  `address`, `redirect` or `returnTo` (or is `src` or `source`). A `javascript:` or `data:` value then runs script in the
+  origin when it is clicked or embedded; `react-dom/no-script-url` sees only a literal. Not reported: constants, text that
+  starts with `http://`, `https://`, `/` (not `//`), `#`, `mailto:` or `tel:`, call results (`getSafeHttpUrl(x)`), props passed
+  through a wrapper component (`props.href`), a member of an item of an array literal that is listed in the same file, files under
+  `emails/`, and a value that an `if`, a conditional, a `&&`, or a `URL.parse` or `new URL`
+  declaration in the same function checks with a protocol test, `sanitize...`, `isSafe...` or `canParse`. Allowed form: one
+  helper that returns the URL only for `http:` and `https:` (and `mailto:` where wanted), used at every sink, with plain text as
+  the fallback.
+- `nitpicker/no-case-sensitive-path-compare`: file paths or URI authorities compared as plain strings. It reads `===`, `!==`,
+  `==`, `!=`, `startsWith`, `endsWith` and `includes` with a path on both sides, where a path is a `path.resolve`, `path.join`,
+  `path.normalize`, `path.dirname`, `process.cwd()`, `fileURLToPath` or `realpath` result, `__dirname`, `import.meta.dirname`, a
+  `.fsPath`, or a name ending in `Dir`, `Directory`, `Root`, `Cwd`, `Folder`, `FilePath`, `Filename` or `path`, and at least one side
+  is a property of another object (`msg.workspaceRoot !== receiverWorkspaceRoot`, `f.path === editor.document.uri.fsPath`). It
+  also reads an authority on both sides (`uri.authority`, `remoteAuthority`), or a host name (`host`, `hostname`) next to one of
+  them, because URL objects lowercase their host names. Windows and macOS
+  file systems and host names ignore case, so the same file or host in another spelling counts as a different one: watches do
+  not fire, editors are not found and messages from the same workspace are rejected. A side that is lowercased or passed through
+  a helper named like `normalize...`, `canonical...`, `isEqual...` or `isSame...`, a comparison against a literal, two local
+  values from the same API (`parentDir === currentDir`, `a.cwd === b.cwd`, `paths.root === paths.dir`), constants named in
+  capitals, `rankDir`, `appsDir`, `libsDir` and `configDir`, and code that checks `process.platform` in the same function are not
+  reported. Allowed forms: `path.relative(a, b) === ''`, one normalize-and-lowercase helper on win32 and darwin, a resource
+  `isEqual` or `isEqualAuthority`, or `toLowerCase()` on both host names.
+- `nitpicker/no-double-decode`: `decodeURIComponent(x)` or `decodeURI(x)` on a value the framework has already percent-decoded:
+  a `URLSearchParams` read (`get`, `getAll`, also through `url.searchParams` and `useSearchParams()`), `router.query`, `req.query`,
+  `ctx.query`, a page `searchParams` prop, Express and Fastify `req.params`, and Hono `c.req.query(name)` and `c.req.param(name)`, followed
+  through local variables, destructuring, `String(...)`, `trim()` and `??`. A second decode turns a literal `%41` into `A` and throws
+  `URIError` on a bare `%` ("Quota at 100%"). Values from `location.search`, `location.hash`, `request.url`, headers, cookies and
+  Next.js route `params` (which can stay encoded) are not reported. Allowed form: use the value as it is, and decode only raw text.
+- `nitpicker/no-directory-passing-existence-check`: a file read whose only guard is an existence check. `existsSync`, `access`,
+  `accessSync`, `pathExists` and `pathExistsSync` are true for a directory, so the `readFile`, `readFileSync`, `createReadStream`,
+  `open` or `readJson` that follows throws `EISDIR` when a folder has the expected name. It reports a read of the same path
+  expression in the branch of `if (exists(p))`, in `exists(p) ? read(p) : ...` and `exists(p) && read(p)`, after
+  `if (!exists(p)) { return; }` (or `continue`, `break`, `throw`) and after an awaited `access(p)` statement, and in the callback
+  of `.filter((p) => existsSync(p)).map(...)`. Only paths that come from outside are checked: a parameter named like a file or
+  path, a loop or callback variable, and a property of an `options`, `config`, `settings`, `params` or `args` object (a path built
+  from `path.join`, a literal or a file name with an extension is left alone). A function that also calls `stat`, `statSync`,
+  `isFile` or `isDirectory`, and a read inside a `try` with a `catch`, are not reported. Allowed forms:
+  `statSync(p, { throwIfNoEntry: false })?.isFile()`, `(await stat(p)).isFile()`, or a read whose handler covers `ENOENT` and `EISDIR`.
+- `nitpicker/no-unresolved-relative-url`: a URL that can be relative used where an absolute one is required. It reports a
+  `Location` header (`res.headers.location`, `headers['location']`, `headers.get('location')`, also through a local variable or
+  destructuring) passed to `new URL(location)` with one argument, to `fetch`, `got`, `axios`, `http.get`, `https.request` and the
+  like, or to a recursive call of the enclosing function, `Response.redirect` and `NextResponse.redirect` with a literal or
+  template that starts with `/` or a `pages.*` path (`${pages.error}?error=Configuration`), and `new URL(...)` with one argument
+  that is a literal or template starting with `/`. A relative redirect then throws `Invalid URL` or goes to the wrong host. A
+  function that tests for `https?:`, `isAbsolute`, `URL.canParse` or `URL.parse` is not reported. Allowed form:
+  `new URL(location, requestUrl)` with the URL that was requested as the base.
+- `nitpicker/no-slash-only-redirect-guard`: a redirect or callback target accepted as same-site because it starts with `/`. It
+  reads a value named like a redirect target (`callbackUrl`, `redirectTo`, `returnTo`, `next`, `continue`, `target`, `destination`, ...)
+  that passes `v.startsWith('/')`, `v[0] === '/'`, `v.charAt(0) === '/'` or a bare `^\/` regex and then is returned or given to
+  `redirect`, `res.redirect`, `Response.redirect`, `router.push`, `router.replace` or `location.assign`, in a function that never
+  rejects a second slash or a backslash, never compares an `origin`, never builds a `URL` and calls no `isSafe...`, `isValid...` or
+  `sanitize...` helper. `//evil.example` and `/\evil.example` start with a slash and are another site to browsers and routers. It also
+  reports `router.push(parsed.pathname + parsed.search + parsed.hash)` after a same-origin check on a `new URL(...)` when nothing
+  rejects a `//` pathname. Allowed forms: resolve against a fixed origin and compare the origin back, then redirect to the resolved
+  URL; an allow-list of exact paths; a `startsWith('//')` and backslash rejection; or a project validator.
+- `nitpicker/no-case-mixed-header-merge`: request headers merged in a plain object where a caller key in another letter case is
+  kept next to the default. It reads an object literal given as `headers` (to `fetch`, `Request`, axios, ky, got, undici, ofetch or any
+  call) or assigned to a variable or property named `...headers`, that spreads a caller value named like `headers`,
+  `options.headers`, `init.headers` or `extraHeaders` and also writes a known header name as a literal key (`Content-Type`,
+  `Authorization`, `Accept`, `User-Agent`, `Cookie`, `X-Api-Key`, ...) in any case. Object keys are case-sensitive and header names
+  are not, so a caller `content-type` is sent next to the default `Content-Type` (`fetch` joins them as `application/json, text/plain`)
+  and the override never happens. A lowercase key next to `req.headers`, `request.headers` or `incoming.headers`
+  (Node lowercases those keys) is not reported. A spread that goes through a call (a normalizer, `Object.fromEntries`, `new Headers(...)`) or
+  resolves to a local object literal, and a `Headers` instance, are not reported. Allowed forms: `new Headers(init)` with `has` and
+  `set`, or lowercasing every key before merging.
+- `nitpicker/no-inconsistent-comparator`: a function given to `sort` or `toSorted` (inline, or a same-file function or
+  `const` arrow passed by name) with two plain parameters, that never returns `0`: every returned value is a non-zero
+  number literal (`a.x < b.x ? 1 : -1`, or `if (a.x < b.x) return -1; return 1;`), so equal items swap places with the
+  input order and the engine decides the result. It also reports a branch that tests a missing value on both sides
+  (`a.v == null || b.v == null`, `!a.v || !b.v`, or `a.v != null && b.v != null` with the other arm) and returns one
+  value that does not depend on `a` or `b` (`direction`, `-1`), which treats a missing `a` and a missing `b` the same.
+  Allowed forms: `a - b`, `a.localeCompare(b)`, a comparator with a `return 0` or a result of another comparison, and
+  null handling that checks `a` and `b` separately (`a.v == null ? 1 : b.v == null ? -1 : a.v - b.v`). The rule reads
+  no types. A sort over items that are unique by construction (`[...new Set(ids)]`, `Object.keys(table)`, `Map.keys()`,
+  `Array.from` of those, or `Object.entries` compared on `[0]` only) is not reported.
+- `nitpicker/no-prototype-key-access`: two ways a plain object treats `__proto__`, `constructor` and `prototype` as
+  ordinary keys. A merge loop (`for...in`, or `Object.keys` or `Object.entries` with `for...of` or `forEach`) that
+  assigns `target[key] = ...` and also hands `target[key]` to a merge-named function (`merge`, `extend`, `assign`,
+  `defaults`) or to the function it is in, so `__proto__` reaches `Object.prototype` (prototype pollution). It is not
+  reported when the function mentions one of the three keys as a string, calls a helper with `proto`, `unsafe`,
+  `dangerous`, `forbidden`, `blocked` or `isPlain` in its name, tests the key with `.has`, `.includes` or `.test`,
+  checks `Object.hasOwn(target, key)` or `target.hasOwnProperty(key)` on the target itself, or when the target is
+  `Object.create(null)`. And `key in table` where `table` is a constant object literal (no `__proto__: null`, no
+  spread) and `key` is a `string`, `any` or `unknown` parameter or a member such as `req.query.name`, which also
+  matches inherited members such as `constructor` and `toString`. Allowed forms: `Object.hasOwn(table, key)`, a `Map`,
+  or an `Object.create(null)` table. A write back to a key of the same object the loop iterates
+  (`for (const key of Object.keys(config)) config[key] = ...`) and an `in` check whose key is the parameter of a
+  callback over a constant array are not reported. The rule reads no types.
+- `nitpicker/no-lossy-json-stringify` (type-aware): `JSON.stringify(value)` without a replacer (a second argument that
+  is not `null` or `undefined`) where the type of `value` holds a `bigint` (it throws `TypeError: Do not know how to
+  serialize a BigInt`) or a `Map`, `Set`, `WeakMap`, `WeakSet` or `RegExp` (each becomes `{}`, so different values
+  give one string, such as a shared cache key or id). The type is read directly, in a union, an array or tuple
+  element, an object property or an index signature, up to three levels deep. A type with a `toJSON` member (such as
+  `Date`) is not entered, and `any`, `unknown` and type parameters are not reported. Allowed forms: a replacer
+  function (`JSON.stringify(value, (_, v) => typeof v === 'bigint' ? `${v}n` : v)`), a `toJSON` method, or converting
+  first (`String(id)`, `[...map]`, `Object.fromEntries(map)`, `regex.source`).
+- `nitpicker/no-truncating-split-limit`: `text.split(separator, limit)` with any separator and a whole-number `limit` of 2 or more whose
+  last part is read: destructured into exactly `limit` names (`const [user, password] = decoded.split(':', 2)`),
+  indexed at `limit - 1` (`arg.split('=', 2)[1]`), or taken with `.pop()` or `.at(-1)`, directly or through a variable
+  the result is stored in. JavaScript stops after `limit` parts and drops the rest of the text, unlike Java, Python
+  and Go, which keep the remainder in the last part, so a password with a colon or a flag value with `=` is cut short.
+  `split(sep, 1)[0]`, a destructuring with fewer names than the limit and a split without a limit are not reported (a
+  split without a limit whose key and value are destructured is a separate rule), nor is a regular expression
+  separator with a capture group. Allowed forms: split once at
+  `indexOf(separator)` and `slice` both sides, or `const [head, ...rest] = text.split(separator)` and
+  `rest.join(separator)`. The rule reads no types.
+- `nitpicker/no-unguarded-json-parse`: `JSON.parse(text)` outside a `try` with a `catch` (and outside a promise chain
+  that ends in `.catch`) when `text` is read from a source that can hold corrupt or foreign text: a file (`readFile`
+  or `readFileSync`, directly, through `.toString()`, `String(...)`, `.trim()`, `await`, a `||` or `??` fallback, or a
+  `const` variable), `localStorage.getItem` or `sessionStorage.getItem`, `response.text()` on a `res`, `resp` or
+  `response` value, or the data of a message handler (`socket.on('message', (data) => ...)`,
+  `addEventListener('message', (event) => event.data)`). A truncated write, a hand-edited file or a value from an
+  older version throws a `SyntaxError` that takes down startup, a reducer or a migration. A `try` that has only
+  `finally`, or a parse inside the `catch` block, does not count. Files of the project itself (a path that names
+  `package`, `manifest`, `tsconfig`, a lock, a schema, a template, a fixture, translations or `import.meta`), standard
+  input, and files under `scripts`, `bin`, `tools`, `.github`, `templates`, `examples`, `benchmarks`, `docker`,
+  `playground`, `vendor`, test support folders, `*.min.js` and `*.config.*` are not checked. A path variable named
+  `*JsonPath` and files named `migrations`, `generators` or `executors` count as project files.
+  Allowed form: parse inside `try { ... } catch { ... }` that returns a failure result or a default and names the
+  source, then validate the parsed value. An exception fits a function whose contract is to throw on bad input. The
+  rule reads no types. It sits next to `nitpicker/no-handwritten-boundary-guard`: a schema check after an unguarded
+  `JSON.parse` still crashes on malformed text.
+- `nitpicker/no-time-only-unique-name`: a temp directory, file name or record id whose only varying part is the
+  current time (`Date.now()`, `new Date()` and its `toISOString()`, `getTime()` and other calls, `performance.now()`,
+  also through `String(...)`, `.toString(36)`, `.slice(...)`, `Math.floor(...)` and a `const` variable), so two calls
+  in the same millisecond or minute share one name and one overwrites or deletes the other's files, or two records
+  share an id. Reported for a `path.join` or `path.resolve` under `tmpdir()` (`join(tmpdir(), `pwa-${Date.now()}`)`)
+  or a template with `tmpdir()` in it; for the first argument of `mkdir`, `writeFile`, `appendFile`,
+  `createWriteStream`, `outputFile` and `ensureDir` (their sync forms too); for a property, assignment or variable
+  named `id`, `_id`, `uid`, `key` or `name` (a `key` or `name` made from the date only, such as
+  `toISOString().slice(0, 10)`, is a label and is not reported; a template, a concatenation, `String(Date.now())` or
+  `Date.now().toString()`, not the bare number); and for a fallback (`message._id || String(Date.now())`, `id ??
+  Date.now()`). Not reported when anything else varies: a `randomUUID()`, `Math.random()`, `process.pid`, a counter, a
+  parameter or any other variable in the name. Allowed forms: `fs.mkdtemp(path.join(os.tmpdir(), 'prefix-'))` for
+  directories and `crypto.randomUUID()` for ids; a timestamp next to a unique part is fine. A name that is unique by
+  design (one file per day) takes an exception. The rule reads no types.
 - `nitpicker/no-dropped-delegate-result`: a method or function whose last statement calls a same-named
   method on another receiver and drops the result (`this.constructor.update(...)`, `this.delegate.update(...)`,
   `super.update(...)`, `Model.update(...)`, or `.call` and `.apply` of those), so callers get `undefined` instead of the
@@ -1978,10 +2202,26 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   the parameter (`(options as Options).size = 1`). The allowed form is a new object
   (`{ ...options, retries: 3 }`) or a copy first
   (`const next = { ...options }`, `options = { ...options }` or `Object.assign({}, options)`).
-  A function that fills an object its caller hands it to be filled takes a config exception.
+  A parameter is reported once per function, at its first change. A parameter named `out`, `acc`, `state`, `ctx`,
+  `context`, `cache`, `builder`, `draft`, `result`, `errors` or `diagnostics`, or ending in `State`, `Context`,
+  `Cache` or `Builder` (by name or by type name), is a context the function is meant to change and is not
+  reported. A call whose result is assigned back to the argument (`opts = normalize(opts)`) and `config ??= ...`
+  in a function named `resolve...`, `normalize...`, `sanitize...`, `apply...` or `fill...` are not reported.
+  A function that fills another object its caller hands it takes a config exception.
   The same aliases and nested named properties apply to the indexed and mutating-method forms
   (`const list = items; list.push(x)`, `input.items.push(x)`, `input.items[0] = x`), with the
   same project or anonymous type check on each named step.
+  Four more shapes are followed. `Object.defineProperty` and `Object.defineProperties` on a parameter
+  or alias count like `Object.assign`. A `let` alias (`let init = options`) stays an alias on the paths
+  where it was not reassigned: a write in the other arm of an `if`/`else`, or after the mutation outside
+  a loop, does not clear it. A parameter, or a property of one (`options.args`), passed to a function of
+  the same file that is declared at the top level, is not exported and changes that argument in place
+  (`removeFlags(options.args)` with a helper that splices it) is reported at the call. A shallow copy
+  (`const merged = { ...defaults, ...options }`, `Object.assign({}, options)`, or a same-file helper
+  that only returns such a spread) protects only its top level: `merged.lib.entry = x` or
+  `merged.args.push(x)` writes to the parameter's own `lib` or `args`, unless the copy sets that property
+  itself or the function reassigns `merged.lib` first. The lib.dom init dictionaries (`ResponseInit`,
+  `RequestInit`, `EventInit` and the other `*Init` interfaces) count as project object types.
   `domain/` files keep the stricter
   `no-mutating-method-in-domain` and do not get this rule. The shared method tables are in
   `eslint-plugin/rules/analysis/mutation/mutating-methods.mts`.
@@ -1991,6 +2231,19 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `string`, `boolean`, `bigint`) turns `0`, `''` and `false` into the default. Write
   `limit ?? DEFAULT_LIMIT`, or test `limit === undefined`. Not reported: a fallback equal to the
   falsy value (`name || ''`, `count || 0`, `flag || false`, where `??` gives the same result), a
+  fallback of `undefined` or `null` (except a boolean member, where `options.unique || undefined`
+  drops an explicit `false`), a condition (`if (a || b)`), and a value that is neither a parameter
+  nor a member read. The same test on a member of an options, config or request object
+  (`options.forceObject || config.forceObject`, `options?.unique || undefined`,
+  `options.ipv6Subnet || 64`, `update.referrer || this.referrer`, `query.expression ? query.expression : d`)
+  is reported when the member's type is optional or nullable and also has a falsy value; a text member with a
+  string literal fallback (`options.prefix || 'app'`) is not, because an empty text rarely means a value there.
+  Also not reported on a member: a text member whose name or fallback names an identifier or label
+  (`name`, `title`, `url`, `path`, `mode`, `token`, `id`, `scope`), a fresh-value fallback (`randomUUID()`),
+  a boolean member in a chain of flags (`a.network || b.network || c`), and an index read (`alias[type] || type`).
+  When `0`, `''` or `false` must take the default (a page size of 0 meaning "unset"), keep `||` with an
+  exception or normalise first. In the JavaScript preset the type comes from JSDoc; without JSDoc types the
+  rule sees nothing.
   fallback of `undefined` or `null`, a condition (`if (a || b)`), and a value that is not a
   parameter. In the JavaScript preset the type comes from JSDoc; without JSDoc types the rule sees
   nothing.
@@ -2055,6 +2308,73 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `x || false` (where `??` gives the same result), and a parameter tested as `x ? x : d` or `x || d`,
   which `nitpicker/no-falsy-default` reports. When an empty string or `false` must take the same
   path as a missing value, add an exception for the rule. In the JavaScript preset the type comes
+  from JSDoc and inference (`checkJs`).
+- `nitpicker/no-in-presence-check` (type-aware, production source): `'key' in obj` used as a presence check
+  (an `if`, `while` or `?:` test, a `&&`/`||`/`!` operand of one, `Boolean(...)`, or a `filter` callback body) where
+  the type of `obj` declares the key as optional or `| undefined`, or is a `Record` or index signature whose
+  values include `undefined`. `in` is true for a key that exists with the value `undefined`, so a form that
+  cleared a field, a `{ _id: undefined }` user or a URL-state snapshot takes the "present" branch and
+  forwards `undefined`. Write `obj.key !== undefined` (or `!= null`), or `Object.hasOwn(obj, 'key') && obj.key !== undefined`
+  when an own key and a defined value are both meant. Not reported: `in` as a union discriminant (a member
+  without the key, or a member that declares the key only as `undefined`), a condition that also reads
+  `obj.key` (`'k' in o && o.k !== undefined`), a ternary that passes the value on or gives `undefined`
+  (`'k' in o ? o.k : undefined`), a branch that throws or type-checks the value, a type without the key,
+  `unknown` and `any`. When an explicit
+  `undefined` must count as present (a patch that clears a field), add an exception for the rule. In the
+  JavaScript preset the type comes from JSDoc and inference (`checkJs`).
+- `nitpicker/no-lookup-as-presence` (type-aware, production source): a stored value read to decide whether its
+  key is present, where a stored value can itself read as missing. Reported: the cache shape on a `Map`,
+  `WeakMap` or `ReadonlyMap` (`let v = m.get(k); if (!v) { ...; m.set(k, v); }`, `if (v === undefined)`,
+  `if (v == null)`, `if (v) return v; ...; m.set(k, ...)`, `m.get(k) || compute()` or `?? compute()` followed by
+  `m.set(k, ...)` for the same map and key) when the value type can be falsy (`string`, `number`, `boolean`,
+  `0`, `''`, `false`, `null`, `undefined`, `unknown`, an unconstrained type parameter) for a truthiness test, or
+  holds `undefined`, `null` or `unknown` for a comparison; and `record[key] !== undefined` (also `===`, `!=`, `==`)
+  with a non-literal key on a record whose values are `unknown`, used as a condition or returned, which cannot
+  tell a missing key from a stored `undefined`. Write `m.has(k)` for the cache (`if (!m.has(k)) m.set(k, make());
+  const v = m.get(k)!;`) and `key in record` or `Object.hasOwn(record, key)` for the record. Not reported: a
+  value type that cannot be falsy (objects, functions), a map whose `get` result is only read, a miss branch
+  that stores another key or map, `any` values, a `|| 0`, `|| ''` or `|| false` fallback (same result), a
+  text or number map whose stored values are never empty (a non-empty literal or template, `emitFile()`,
+  `randomUUID()`), a `!= null` test on a record, a record test whose branch throws or returns a "missing"
+  message, a comparison with `undefined` on a value type without it, and
+  a condition that also tests the key with `in` or `has`. When a stored empty value must be computed again,
+  add an exception for the rule.
+- `nitpicker/no-shadowed-spread-key` (type-aware, production source): a key written next to a spread of an object
+  whose type can carry the same key, where one of the two silently wins. Reported: a function parameter written
+  before the spread (`{ id: idOrSelector, ...data }`, `{ id, ...data }`, and the JSX form
+  `<Button disabled={loading} {...props} />`) when the spread's type declares the key as optional (a required
+  key is TypeScript's TS2783), so a caller's `data.id` or `disabled={false}` replaces the explicit value; and a
+  string or number literal written after a spread of a parameter, or of a member of a parameter, whose type is
+  named `*Options`, `*Config`, `*Settings` or `*Props` and declares the key as optional
+  (`{ ...start.codexConfig, model_reasoning_summary: 'detailed' }`), so the caller's value is ignored. Write the
+  spread first for the first form (`{ ...data, id: idOrSelector }`), and the default before the spread or
+  `mode: options.mode ?? 'detailed'` for the second. Not reported: a literal or constant before the spread (a
+  default), a value that reads the spread (`id: data.id`), a boolean or `undefined` after the spread (a forced
+  flag or a cleared key), a key the spread type lacks, a spread named `overrides` or `defaults`, a spread of
+  an object literal that lacks the key, a file under `testing`, `test-utils` or `__fixtures__`, and a spread
+  of a local variable. An exception fits when the
+  spread is meant to override or the explicit key is meant to win.
+- `nitpicker/no-empty-every-signal` (type-aware, production source; report-only: its findings print as design
+  notes and never fail the change): `xs.every(...)` over an array that can be empty, used as an all-done signal,
+  because `every` is `true` for an empty array. Reported: the call is assigned to a name that starts with `all`,
+  `every` or `each` (`const allToolsCancelled = tools.every(...)`), or is the test of an `if` or `?:` whose branch
+  calls `stop`, `finish`, `complete`, `cancel`, `delete`, `remove`, `send`, `close`, `end`, `abort`, `resolve`,
+  `dispose`, `shutdown`, `terminate` or `kill`; and the array is a function parameter, a property read, the result
+  of `.filter(...)` or a variable holding one. Write `tools.length > 0 && tools.every(...)`. Not reported: a
+  tuple, a local array literal, and a function that also reads `xs.length`, `xs[0]`, `xs.some`, `xs.find`,
+  `xs.findIndex`, `xs.at` or `isNonEmpty(xs)`, which counts as an empty-list guard (so `xs.length === 0 || xs.every(...)`
+  and `xs.length > 0 && xs.every(...)` both pass here). When an empty list should count as done, keep `every`
+  and add an exception for the rule.
+- `nitpicker/no-blank-number-coercion` (type-aware, production source): `Number(x)` or `+x` of a string that can be
+  empty (`string`, `string | undefined`, or an untyped `process.env.X`, `req.query.x`, `searchParams.get(...)`,
+  `formData.get(...)`, `config.getString(...)`) whose only validity check is `isNaN`, `Number.isNaN` or
+  `Number.isFinite`, on the call itself or on the variable that holds it. `Number("")` and `Number("  ")` are `0`,
+  not `NaN`, so a blank setting, env var or form field passes as the number 0. Reject blank text first
+  (`if (!x?.trim())`), use `Number.parseInt(x, 10)` or `parseFloat` (NaN for `""`), or write the blank case out
+  (`x.trim() === "" ? 0 : Number(x)`). Not reported: a function that tests the same text for blankness (`!x`,
+  `x ? ... : ...`, `x.trim()`, `x.length`, `x === ''`), a result that is also checked against the zero boundary
+  (`> 0`, `>= 1`, `<= 0`, `< 1`), text taken from a destructured `split(...)` part, an `x || 'text'` default, text that is a non-blank literal union, and `unknown`
+  values outside the input shapes above.
   from JSDoc and inference (`checkJs`); a type parameter needs `@template`, and the literal
   evidence works the same without types.
 - `nitpicker/no-shared-stateful-regex`: a regex with the `g` or `y` flag keeps `lastIndex` between
