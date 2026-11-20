@@ -188,6 +188,10 @@ struct Attributes<'a> {
     exceptions: Vec<u16>,
     names: Vec<u16>,
     marks: u32,
+    /// Constant pool entries of the strings in `containerOf` of `@Immutable`.
+    held: Vec<u16>,
+    /// Positions of the type parameters with `@ImmutableTypeParameter`.
+    strict: Vec<u8>,
 }
 
 fn skip_element(reader: &mut Reader) -> Option<()> {
@@ -214,6 +218,38 @@ fn skip_annotation(reader: &mut Reader) -> Option<u16> {
     Some(kind)
 }
 
+/// The constant pool entries of the strings an element holds, alone or in an array.
+fn element_strings(reader: &mut Reader, into: &mut Vec<u16>) -> Option<()> {
+    let start = reader.at;
+    match reader.u1()? {
+        b's' => into.push(reader.u2()?),
+        b'[' => {
+            for _ in 0..reader.u2()? {
+                element_strings(reader, into)?;
+            }
+        }
+        _ => {
+            reader.at = start;
+            skip_element(reader)?;
+        }
+    }
+    Some(())
+}
+
+/// One entry of a type annotations attribute on a class: the type parameter it sits on, if it sits on one, and
+/// the index of its type descriptor. Gives nothing for a target this reader does not know.
+fn type_annotation(reader: &mut Reader) -> Option<(Option<u8>, u16)> {
+    let parameter = match reader.u1()? {
+        0x00 => Some(reader.u1()?),
+        0x10 => reader.skip(2).map(|_| None)?,
+        0x11 => reader.skip(2).map(|_| None)?,
+        _ => return None,
+    };
+    let steps = reader.u1()? as usize;
+    reader.skip(steps * 2)?;
+    Some((parameter, skip_annotation(reader)?))
+}
+
 fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Option<Attributes<'a>> {
     let mut found = Attributes::default();
     for _ in 0..reader.u2()? {
@@ -226,10 +262,28 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
             found.constant = Some(reader.u2()?);
         } else if name == b"RuntimeVisibleAnnotations" || name == b"RuntimeInvisibleAnnotations" {
             for _ in 0..reader.u2()? {
+                let begin = reader.at;
                 let kind = utf8(skip_annotation(reader)?);
+                if kind == Some(b"Lcom/google/errorprone/annotations/Immutable;") {
+                    reader.at = begin + 2;
+                    for _ in 0..reader.u2()? {
+                        if utf8(reader.u2()?) == Some(b"containerOf") {
+                            element_strings(reader, &mut found.held)?;
+                        } else {
+                            skip_element(reader)?;
+                        }
+                    }
+                }
                 found.deprecated |= kind == Some(b"Ljava/lang/Deprecated;");
                 let written = kind.and_then(|text| std::str::from_utf8(text).ok()).and_then(|text| text.strip_prefix('L')?.strip_suffix(';'));
                 found.marks |= written.map_or(0, |text| flag::of_annotation(&text.replace(['/', '$'], ".")));
+            }
+        } else if name == b"RuntimeVisibleTypeAnnotations" {
+            for _ in 0..reader.u2()? {
+                let Some((parameter, kind)) = type_annotation(reader) else { break };
+                if utf8(kind) == Some(b"Lcom/google/errorprone/annotations/ImmutableTypeParameter;") {
+                    found.strict.extend(parameter);
+                }
             }
         } else if name == b"PermittedSubclasses" {
             found.permitted = Some((0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?);
@@ -420,6 +474,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     } else {
         generic_supers.extend(superclass.iter().chain(&interfaces).map(|name| Type::class(name)));
     }
+    let immutable_parameters = found.strict.iter().filter_map(|at| type_parameters.get(*at as usize)).map(|(name, _)| name.clone()).collect();
     Some(ClassInfo {
         name,
         package: package_name,
@@ -433,5 +488,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         enum_constants: (access & ACC_ENUM != 0).then_some(enum_constants),
         flags: class_flags,
         permitted,
+        container_of: found.held.iter().filter_map(|entry| utf8(*entry)).map(|text| String::from_utf8_lossy(text).into_owned()).collect(),
+        immutable_parameters,
     })
 }

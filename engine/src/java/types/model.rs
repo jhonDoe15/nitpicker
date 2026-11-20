@@ -127,6 +127,11 @@ pub mod flag {
     pub const MAY_IGNORE: u32 = 1 << 16;
     /// Carries an annotation named `Keep` or `UsedReflectively`.
     pub const KEPT: u32 = 1 << 17;
+    /// Carries Error Prone's `@Immutable`.
+    pub const IMMUTABLE: u32 = 1 << 18;
+
+    pub const IMMUTABLE_NAME: &str = "com.google.errorprone.annotations.Immutable";
+    pub const IMMUTABLE_PARAMETER_NAME: &str = "com.google.errorprone.annotations.ImmutableTypeParameter";
 
     /// The bits an annotation gives, by its full name with `.` between a class and its member class.
     pub fn of_annotation(name: &str) -> u32 {
@@ -139,7 +144,11 @@ pub mod flag {
             | "dagger.producers.ProductionSubcomponent.Builder" => return DAGGER_BUILDER,
             _ => {}
         }
-        let exact = if name == "com.google.errorprone.annotations.CanIgnoreReturnValue" { MAY_IGNORE } else { 0 };
+        let exact = match name {
+            "com.google.errorprone.annotations.CanIgnoreReturnValue" => MAY_IGNORE,
+            IMMUTABLE_NAME => IMMUTABLE,
+            _ => 0,
+        };
         exact | match name.rsplit('.').next().unwrap_or(name) {
             "CheckReturnValue" | "MustUseReturnValues" => CHECK_RESULT,
             "CanIgnoreReturnValue" | "IgnorableReturnValue" => IGNORE_RESULT,
@@ -208,4 +217,8 @@ pub struct ClassInfo {
     /// For a sealed class or interface: the classes it permits.
     pub permitted: Option<Vec<String>>,
     pub flags: u32,
+    /// The type parameters that `containerOf` of the class's `@Immutable` names.
+    pub container_of: Vec<String>,
+    /// The type parameters marked `@ImmutableTypeParameter`.
+    pub immutable_parameters: Vec<String>,
 }

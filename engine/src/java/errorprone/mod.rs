@@ -21,6 +21,8 @@ mod targets;
 mod throws;
 mod time;
 mod unused_methods;
+mod immutable;
+mod immutable_known;
 mod keep;
 mod boxed;
 mod interrupts;
@@ -173,6 +175,7 @@ const CHECKS: &[Check] = &[
     mutability::mixed_mutability_return_type,
     interrupts::interrupted_exception_swallowed,
     futures::future_return_value_ignored,
+    immutable::immutable_enum_checker,
     names::type_parameter_naming,
     names::wildcard_import,
     names::same_name_but_different,

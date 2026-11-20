@@ -549,6 +549,7 @@ impl<'a> Resolver<'a> {
                 Some((self.file.text_of(named).to_string(), self.bound(parameter)))
             })
             .collect();
+        let (container_of, immutable_parameters) = self.immutable_marks(declaration);
         ClassInfo {
             name,
             superclass: parent.as_ref().map(Type::name),
@@ -565,7 +566,44 @@ impl<'a> Resolver<'a> {
             }),
             permitted: self.permitted(declaration, &own_name, &listed("permits")),
             flags: self.class_flags(declaration),
+            container_of,
+            immutable_parameters,
         }
+    }
+
+    /// What `containerOf` of the class's `@Immutable` names, and the type parameters with `@ImmutableTypeParameter`.
+    fn immutable_marks(&self, declaration: Node) -> (Vec<String>, Vec<String>) {
+        use super::model::flag::{IMMUTABLE_NAME, IMMUTABLE_PARAMETER_NAME};
+        fn annotations<'t>(holder: Node<'t>) -> impl Iterator<Item = Node<'t>> {
+            children(holder).into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation"))
+        }
+        let named = |annotation: &Node, wanted: &str| {
+            annotation.child_by_field_name("name").is_some_and(|name| {
+                let written = self.file.text_of(name);
+                wanted.ends_with(written.rsplit('.').next().unwrap_or(written)) && self.class_name(declaration, written).as_deref() == Some(wanted)
+            })
+        };
+        let mut held = Vec::new();
+        let marked = super::super::helpers::modifiers(declaration).into_iter().flat_map(annotations).find(|annotation| named(annotation, IMMUTABLE_NAME));
+        for pair in marked.and_then(|annotation| annotation.child_by_field_name("arguments")).map(children).unwrap_or_default() {
+            let key = pair.child_by_field_name("key").map(|key| self.file.text_of(key));
+            if pair.kind() == "element_value_pair" && key == Some("containerOf") {
+                crate::engine::source::walk(pair, |part| {
+                    if part.kind() == "string_literal" {
+                        held.extend(super::expr::literal_text(self.file, part));
+                    }
+                });
+            }
+        }
+        let strict = children(declaration)
+            .into_iter()
+            .filter(|child| child.kind() == "type_parameters")
+            .flat_map(children)
+            .filter(|parameter| parameter.kind() == "type_parameter" && annotations(*parameter).any(|annotation| named(&annotation, IMMUTABLE_PARAMETER_NAME)))
+            .filter_map(|parameter| children(parameter).into_iter().find(|c| matches!(c.kind(), "type_identifier" | "identifier")))
+            .map(|name| self.file.text_of(name).to_string())
+            .collect();
+        (held, strict)
     }
 
     /// The classes a sealed declaration permits: the ones it lists, else the ones in its file that extend it directly.
