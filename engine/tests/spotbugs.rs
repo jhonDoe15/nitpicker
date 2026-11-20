@@ -32,7 +32,7 @@ fn found_in(case: &Path, name: &str) -> BTreeSet<Row> {
 }
 
 #[test]
-fn exposed_representation_patterns_report_what_spotbugs_reports() {
+fn patterns_report_what_spotbugs_reports() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
     let expected: Vec<Row> = serde_json::from_str(&std::fs::read_to_string(root.join("expected").join("spotbugs.json")).expect("expected")).expect("rows");
     let expected: BTreeSet<Row> = expected.into_iter().collect();
@@ -45,5 +45,5 @@ fn exposed_representation_patterns_report_what_spotbugs_reports() {
     let missed: Vec<&Row> = expected.difference(&found).collect();
     let extra: Vec<&Row> = found.difference(&expected).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(expected.iter().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 4);
+    assert_eq!(expected.iter().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 5);
 }

@@ -614,6 +614,7 @@ impl<'a> Resolver<'a> {
             is_static: false,
             is_private: false,
             varargs: false,
+            throws: Vec::new(),
             flags: super::model::flag::PUBLIC,
         };
         let bits = |member: Node| -> u16 {
@@ -710,6 +711,13 @@ impl<'a> Resolver<'a> {
                             && (info.is_interface || has(member, "abstract")),
                         varargs,
                         flags: bits(member) | if member.field("body").is_none() && info.is_interface { super::model::flag::ABSTRACT } else { 0 },
+                        throws: children(member)
+                            .into_iter()
+                            .filter(|part| part.kind() == "throws")
+                            .flat_map(children)
+                            .filter(|part| part.is_named())
+                            .map(|thrown| self.written(thrown, false).map_or_else(|| "java.lang.Throwable".to_string(), |kind| kind.erased().name()))
+                            .collect(),
                     });
                 }
                 "constructor_declaration" => {

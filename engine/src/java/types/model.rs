@@ -131,6 +131,8 @@ pub struct Method {
     pub is_private: bool,
     pub varargs: bool,
     pub flags: u16,
+    /// The exception types of the `throws` clause.
+    pub throws: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default)]

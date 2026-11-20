@@ -140,28 +140,30 @@ pattern is rebuilt from its documented meaning and from what SpotBugs reports on
 purpose, and its source is not read. A finding carries the SpotBugs pattern name, line and message;
 `@SuppressFBWarnings` with the pattern name, or without a value, hides it. `NP_SB_ONLY=<pattern,...>` runs some.
 
-Done (#2098): `EI_EXPOSE_REP`, `MS_EXPOSE_REP`, `EI_EXPOSE_REP2` and `EI_EXPOSE_STATIC_REP2`, 62% of what SpotBugs
-with FindSecBugs reports on the seven code bases below. The rest is planned in #2097.
+Done: `EI_EXPOSE_REP`, `MS_EXPOSE_REP`, `EI_EXPOSE_REP2` and `EI_EXPOSE_STATIC_REP2` (#2098) and
+`CT_CONSTRUCTOR_THROW` (#2112), together 76% of what SpotBugs with FindSecBugs reports on the seven code bases
+below. The rest is planned in #2097.
 
 `tests/expected/spotbugs.json` holds what SpotBugs reported for the compiled `tests/fixtures/spotbugs`; each
 fixture folder is one experiment on SpotBugs' behaviour. `parity/spotbugs/run.sh` runs SpotBugs the way a Java
 run does, `rows.py` turns its XML report into rows and `compare.py report.json spotbugs.xml <patterns>
 [sources.txt] [-v]` compares by pattern, file, line and message.
 
-Measured on 4 cores (findings: same / missed / extra). SpotBugs runs all its patterns and needs compiled
-classes first (31 s for Elasticsearch `server`); the engine column is these four patterns from source:
+Measured on 4 cores (findings: same / missed / extra, exposed representation then constructor throw). SpotBugs
+runs all its patterns and needs compiled classes first (31 s for Elasticsearch `server`); the engine column is
+these five patterns from source:
 
-| Code base | Files, lines | SpotBugs wall, CPU, peak | Engine | Findings |
-| --- | --- | --- | --- | --- |
-| Elasticsearch `server` | 5,106, 1,035k | 249 s, 417 s, 3.2 GB | 8.9 s, 32.2 s, 0.5 GB | 4,326 / 9 / 4 |
-| Nacos | 3,118, 548k | 108 s, 242 s, 2.9 GB | 8.0 s, 16.0 s, 0.3 GB | 2,437 / 3 / 6 |
-| javaparser-core | 594, 121k | 48.3 s, 97.2 s, 2.3 GB | 0.9 s, 3.2 s, 0.1 GB | 500 / 0 / 0 |
-| Guava | 610, 183k | 43.6 s, 99.8 s, 1.8 GB | 1.3 s, 4.1 s, 0.1 GB | 14 / 0 / 0 |
-| jackson-databind | 478, 134k | 35.7 s, 78.2 s, 1.7 GB | 1.0 s, 3.4 s, 0.1 GB | 224 / 0 / 0 |
-| commons-lang | 264, 106k | 19.9 s, 50.5 s, 1.2 GB | 0.6 s, 1.7 s, 0.1 GB | 15 / 0 / 0 |
-| MyBatis | 393, 40k | 15.5 s, 50.3 s, 0.9 GB | 0.4 s, 1.2 s, 0.1 GB | 173 / 0 / 0 |
+| Code base | Files, lines | SpotBugs wall, CPU, peak | Engine | Exposed representation | Constructor throw |
+| --- | --- | --- | --- | --- | --- |
+| Elasticsearch `server` | 5,106, 1,035k | 249 s, 417 s, 3.2 GB | 9.4 s, 34.8 s, 0.5 GB | 4,326 / 9 / 4 | 1,531 / 8 / 2 |
+| Nacos | 3,118, 548k | 108 s, 242 s, 2.9 GB | 6.6 s, 16.1 s, 0.3 GB | 2,437 / 3 / 6 | 84 / 1 / 0 |
+| javaparser-core | 594, 121k | 48.3 s, 97.2 s, 2.3 GB | 0.9 s, 3.0 s, 0.1 GB | 500 / 0 / 0 | 17 / 0 / 0 |
+| Guava | 610, 183k | 43.6 s, 99.8 s, 1.8 GB | 1.3 s, 4.3 s, 0.1 GB | 14 / 0 / 0 | 0 / 0 / 0 |
+| jackson-databind | 478, 134k | 35.7 s, 78.2 s, 1.7 GB | 0.9 s, 3.3 s, 0.1 GB | 224 / 0 / 0 | 17 / 0 / 0 |
+| commons-lang | 264, 106k | 19.9 s, 50.5 s, 1.2 GB | 0.7 s, 2.2 s, 0.1 GB | 15 / 0 / 0 | 17 / 0 / 0 |
+| MyBatis | 393, 40k | 15.5 s, 50.3 s, 0.9 GB | 0.4 s, 1.2 s, 0.1 GB | 173 / 0 / 0 | 32 / 0 / 0 |
 
-The 22 differences (7,689 same):
+Exposed representation, 22 differences (7,689 same):
 
 - Class order, 2 (protobuf-generated classes in Nacos): whether SpotBugs knows that a field of another class
   only holds unchangeable values depends on the order it visits classes in, and it differs between runs.
@@ -173,6 +175,21 @@ The 22 differences (7,689 same):
   and a constructor without parameters two classes deep.
 - 10 not explained yet (tracked in #2098): 4 getters of protobuf-generated builders and 2 other getters the
   engine reports alone, 3 getters and 1 constructor only SpotBugs reports.
+
+Constructor throw, 11 differences (1,698 same):
+
+- Anonymous classes, 6 missed: a field initializer or initializer block of an anonymous class that can throw is
+  not looked at yet.
+- A local class, 2 (1 finding): the engine names it differently in the message.
+- 3 not explained yet (tracked in #2112): a constructor where SpotBugs reports an earlier line (2, 1 finding)
+  and one constructor in Nacos only SpotBugs reports.
+
+What SpotBugs counts as "an exception can leave the constructor", as measured (`tests/fixtures/spotbugs/ctor_*`):
+a `throw` or `assert` no enclosing `catch` takes; a call to a method that declares exceptions; a call to a
+method of the same class from which one of those can leave, however deep; `this(...)` to a constructor with one
+of those, one level deep. Not counted: calls to constructors, to undeclared methods of other classes, anything
+before the first constructor call of the body (which a `new` among the arguments of `super(...)` already ends),
+and a rethrown `Throwable`. Final classes, enums, records and classes with a final `finalize()` are exempt.
 
 Known gaps in what is rebuilt: `c ? a : b` stored in a field follows a table measured on SpotBugs, which decides
 by the compiled form (`tests/fixtures/spotbugs/choices*`); a local variable with more than one value is taken

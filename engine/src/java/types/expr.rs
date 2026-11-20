@@ -905,6 +905,7 @@ impl<'a> Resolver<'a> {
                 is_private: false,
                 varargs: false,
                 flags: 0,
+                throws: Vec::new(),
             };
             return Some(Call { raw: false, receiver: owner, declaring: info.name.clone(), method });
         }
