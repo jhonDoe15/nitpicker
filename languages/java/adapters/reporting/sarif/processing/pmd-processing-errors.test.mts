@@ -55,6 +55,27 @@ describe('pmdProcessingErrors', () => {
     ]);
   });
 
+  it('names the file in the cause by its project path, so the identity is the same in every checkout', () => {
+    const findings = processingErrors(
+      log(
+        notification(
+          'src/test/java/RoleTests.java',
+          'ParseException: Parse exception in file \'/work/app/src/test/java/RoleTests.java\' at line 363, column 18: Encountered "(".',
+        ),
+      ),
+      context,
+    );
+
+    expect(findings.map(({ identity, message }) => ({ identity, message }))).toEqual([
+      {
+        identity:
+          'processing-error:src/test/java/RoleTests.java:ParseException: Parse exception in file \'src/test/java/RoleTests.java\' at line #, column #: Encountered "(".',
+        message:
+          'PMD could not process this file, so it has no PMD findings: ParseException: Parse exception in file \'src/test/java/RoleTests.java\' at line 363, column 18: Encountered "(".',
+      },
+    ]);
+  });
+
   it('keeps an error with no file at the project root and drops repeats', () => {
     const findings = processingErrors(
       log(notification(undefined, 'bad ruleset'), notification(undefined, 'bad ruleset')),

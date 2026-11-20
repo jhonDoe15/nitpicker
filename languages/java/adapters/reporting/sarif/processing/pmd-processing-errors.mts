@@ -47,6 +47,12 @@ function firstLine(text: string): string {
   return cause.length > MAX_CAUSE_LENGTH ? `${cause.slice(0, MAX_CAUSE_LENGTH)}...` : cause;
 }
 
+function withoutRoots(cause: string, roots: readonly string[]): string {
+  return roots
+    .toSorted((left, right) => right.length - left.length)
+    .reduce((text, root) => text.replaceAll(`${root}${path.sep}`, ''), cause);
+}
+
 function notificationsOf(log: unknown): readonly unknown[] {
   return listOf(fieldOf(log, 'runs')).flatMap((run) =>
     listOf(fieldOf(run, 'invocations')).flatMap((invocation) =>
@@ -114,7 +120,7 @@ export function pmdProcessingErrors(
   const identities = new Set<string>();
   return notifications.flatMap((notification, index) => {
     const filePath = relativePath(results[index]);
-    const cause = firstLine(messageText(notification));
+    const cause = withoutRoots(firstLine(messageText(notification)), [...roots, projectRoot]);
     const identity = `${RULE}:${filePath}:${cause.replaceAll(/\d+/gu, '#')}`;
     if (identities.has(identity)) {
       return [];
