@@ -153,6 +153,19 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   and one that returns a stored value or a primitive (`find`, `length`) are not reported. `slice`
   and `concat` (a string result is a primitive), `sort` (the same array) and a fallback such as
   `state.items ?? []` (new only while the value is missing) are not treated as new values.
+- **A stable `subscribe` and a cached snapshot for `useSyncExternalStore`**
+  (`nitpicker/react-no-unstable-store-subscribe`). A `subscribe` argument written inline, or bound
+  to a function declared in the same component or hook body outside `useCallback`, is a new
+  function on every render, so React unsubscribes and subscribes again each time: declare it at
+  module level or wrap it in `useCallback`. A function that takes no parameter (the no-op
+  `() => () => {}` used to detect hydration), one made once by an enclosing factory function and
+  a project with the React Compiler are not reported for this. A `getSnapshot` or
+  `getServerSnapshot` argument (inline, or a function of the same file) that returns an object or
+  array literal, `new Map`, `Set`, `Date`, `Array`, `Object`, `URL` or `URLSearchParams`,
+  `Object.keys`/`values`/`entries`/
+  `fromEntries(...)` or the result of `.filter`, `.map`, `.flatMap`, `.toSorted` or `.toReversed` is
+  never the same value twice, so React renders in a loop: return a value the store keeps. The hook
+  from `react`, `use-sync-external-store` and `use-sync-external-store/shim` counts.
 - **No array index as `key`** (`react-x/no-array-index-key`): use a stable id from the item. Every
   element rendered from a list has a `key` (`react-x/no-missing-key`) and siblings do not repeat
   one (`react-x/no-duplicate-key`). A `key` built from `Math.random()`, `Date.now()`,

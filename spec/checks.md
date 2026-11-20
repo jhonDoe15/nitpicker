@@ -167,6 +167,11 @@ argument to react-redux `useSelector` (also typed hooks made from it), to a hook
 Zustand `useStore(store, selector)`. Hooks are resolved to the project file that creates them; `createWithEqualityFn`
 stores, wrapped hooks and hooks from packages are left alone.
 
+React external stores: `nitpicker/react-no-unstable-store-subscribe` (production source in a React project, in
+`eslint-lint`) reports a `useSyncExternalStore` call whose `subscribe` argument is written inline or declared in the
+same component or hook body outside `useCallback` (not a function without parameters, and not in a project with the
+React Compiler), and a `getSnapshot` or `getServerSnapshot` function that returns a new object or array on every call.
+
 Rows changed in memory: `in-memory-update` in the Python preset reports rows loaded from a Django queryset or a
 SQLAlchemy query only to set the same values on each and write them back (`bulk_update`, `commit`), where one `update`
 statement does it; models with a `save()` override, signals, `before_update` listeners, `auto_now` fields or a version

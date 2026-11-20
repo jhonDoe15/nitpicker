@@ -71,3 +71,20 @@ export function isEffectCallback(
   const name = hookName(sourceCode, call.callee);
   return name !== undefined && effectHooks.has(name);
 }
+
+export function constFunctionOf(definition: TSESLint.Scope.Definition): FunctionNode | undefined {
+  if (definition.type === TSESLint.Scope.DefinitionType.FunctionName) {
+    return isFunctionNode(definition.node) ? definition.node : undefined;
+  }
+  const isConst =
+    definition.type === TSESLint.Scope.DefinitionType.Variable &&
+    definition.parent.kind === 'const';
+  const init = isConst ? definition.node.init : undefined;
+  return isConst &&
+    definition.node.id.type === AST_NODE_TYPES.Identifier &&
+    init !== null &&
+    init !== undefined &&
+    isFunctionNode(init)
+    ? init
+    : undefined;
+}

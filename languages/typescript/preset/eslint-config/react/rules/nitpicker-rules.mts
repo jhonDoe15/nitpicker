@@ -11,4 +11,5 @@ export const nitpickerReactRuleIds = [
   'nitpicker/react-no-random-key',
   'nitpicker/react-no-unstable-memo-props',
   'nitpicker/react-no-unstable-selector-result',
+  'nitpicker/react-no-unstable-store-subscribe',
 ];
