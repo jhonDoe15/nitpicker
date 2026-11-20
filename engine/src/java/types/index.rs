@@ -70,7 +70,7 @@ fn read(origin: &Origin) -> Option<ClassInfo> {
         Origin::Archive(archive, position) => {
             let mut archive = archive.lock().ok()?;
             let mut entry = archive.by_index(*position).ok()?;
-            let mut bytes = Vec::with_capacity(entry.size() as usize);
+            let mut bytes = Vec::with_capacity(entry.size().min(1 << 24) as usize);
             entry.read_to_end(&mut bytes).ok()?;
             bytes
         }

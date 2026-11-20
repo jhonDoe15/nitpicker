@@ -51,11 +51,19 @@ impl XPathRules {
     /// The rules named by `NP_XPATH_RULES` (a JSON list of name, xpath and message), narrowed by `NP_XPATH_ONLY`.
     pub fn from_env() -> Option<XPathRules> {
         let path = std::env::var("NP_XPATH_RULES").ok()?;
-        let text = std::fs::read_to_string(&path).ok()?;
-        let mut written: Vec<Written> = serde_json::from_str(&text).ok()?;
+        let text = std::fs::read_to_string(&path).unwrap_or_else(|problem| refuse(&format!("cannot read {path}: {problem}")));
+        let mut written: Vec<Written> = serde_json::from_str(&text).unwrap_or_else(|problem| refuse(&format!("{path} is no rule list: {problem}")));
         if let Ok(only) = std::env::var("NP_XPATH_ONLY") {
             let only: Vec<&str> = only.split(',').collect();
+            if let Some(unknown) = only.iter().find(|name| !written.iter().any(|rule| rule.name == **name)) {
+                refuse(&format!("NP_XPATH_ONLY names {unknown}, which {path} does not list"));
+            }
             written.retain(|rule| only.contains(&rule.name.as_str()));
+        }
+        for rule in &written {
+            if let Err(problem) = Parser::parse(&rule.xpath, rule.properties.keys().cloned().collect()) {
+                refuse(&format!("rule {} has a query that cannot be read: {problem}", rule.name));
+            }
         }
         Some(XPathRules { written, totals: Mutex::new(BTreeMap::new()) })
     }
@@ -185,4 +193,9 @@ impl FileRule for XPathRules {
             }
         }
     }
+}
+
+fn refuse(problem: &str) -> ! {
+    eprintln!("nitpicker-engine: {problem}");
+    std::process::exit(2)
 }

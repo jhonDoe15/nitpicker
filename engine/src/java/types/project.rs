@@ -18,6 +18,9 @@ fn jdk_modules() -> Vec<PathBuf> {
         .map(|entries| entries.filter_map(Result::ok).map(|entry| entry.path()).collect())
         .unwrap_or_default();
     modules.sort();
+    if modules.is_empty() {
+        eprintln!("nitpicker-engine: no jmods folder under NITPICKER_JDK or JAVA_HOME; JDK types are unknown");
+    }
     modules
 }
 

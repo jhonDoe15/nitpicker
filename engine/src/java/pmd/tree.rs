@@ -169,6 +169,7 @@ impl<'t> PmdTree<'t> {
 
     /// Line and column as PMD counts them: both from 1, columns in UTF-16 units.
     pub fn place(&self, file: &SourceFile, byte: usize) -> (usize, usize) {
+        let byte = (0..=byte.min(file.text.len())).rev().find(|at| file.text.is_char_boundary(*at)).unwrap_or(0);
         let line = self.lines.partition_point(|start| *start <= byte) - 1;
         (line + 1, file.text[self.lines[line]..byte].encode_utf16().count() + 1)
     }
