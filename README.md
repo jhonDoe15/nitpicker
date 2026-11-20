@@ -164,10 +164,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 nitpicker is under the [PolyForm Noncommercial License 1.0.0](LICENSE).
 
-- Free for noncommercial use: personal projects, hobby and open source work, study and research, and
-  use by charities, schools, public research organizations and government institutions.
+- Free for noncommercial purposes: personal and hobby projects, and study or research with no
+  commercial aim. Charities, schools, public research organizations, public safety or health
+  organizations, environmental protection organizations and government institutions may use it
+  whatever their funding.
 - Any business or other commercial use needs a commercial license, including use only inside a
-  company, on internal code or in its CI. To get one, open an issue titled "Commercial license" or
+  company, on internal code or in its CI, and open source work done by or for a company. To get one, open an issue titled "Commercial license" or
   write through the maintainer's GitHub profile.
 
 ## Acknowledgements

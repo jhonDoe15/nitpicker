@@ -231,10 +231,14 @@ memory.
 ## Licenses
 
 nitpicker itself is under the [PolyForm Noncommercial License 1.0.0](LICENSE), and the maintainers
-also offer commercial licenses. By contributing, you agree that your contribution may be licensed under
-both. Code nitpicker copies or ports from other projects must be permissive (MIT, Apache-2.0, BSD,
-ISC) so it can ship under these terms, with its notices kept. A tool nitpicker runs
-unmodified, either downloaded at run time or installed as an unmodified npm package, may be
+also offer commercial licenses. By contributing, you confirm that you have the right to submit your
+contribution, and you grant the maintainers a perpetual, worldwide, irrevocable, royalty-free license
+to use, modify, sublicense and relicense it under the PolyForm Noncommercial License 1.0.0, under
+commercial licenses and under any other terms they choose. You keep your copyright.
+
+Code nitpicker copies or ports from other projects must be permissive (MIT, Apache-2.0, BSD, ISC) so
+it can ship under these terms, with its notices kept. A tool nitpicker runs unmodified, either
+downloaded at run time or installed as an unmodified npm package, may be
 weak-copyleft (LGPL, EPL, MPL) or GPL-2.0 with the Classpath exception. Any other GPL, AGPL and
 source-available licenses (SSPL, SSALv1, BSL, Elastic and the like) are never allowed, in either
 form.
