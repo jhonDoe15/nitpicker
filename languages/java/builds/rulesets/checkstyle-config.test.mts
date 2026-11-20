@@ -71,6 +71,7 @@ describe('withoutSuppressedChecks', () => {
     '<suppressions>',
     '<suppress checks="Indentation|LineLength" files="."/>',
     '<suppress id="LeftCurlyNl" files="."/>',
+    '<!-- <suppress checks="NeedBraces" files="."/> -->',
     '<suppress checks="MagicNumber" files="Generated"/>',
     '</suppressions>',
   ].join('\n');
@@ -86,6 +87,8 @@ describe('withoutSuppressedChecks', () => {
     '<module name="LeftCurly"><property name="id" value="LeftCurlyEol"/></module>',
     '<module name="LeftCurly"><property name="id" value="LeftCurlyNl"/></module>',
     '<module name="MagicNumber"/>',
+    '<module name="NeedBraces"/>',
+    '<module name="JavadocTagContinuationIndentation"/>',
     '</module>',
     '</module>',
   ].join('');
@@ -97,14 +100,25 @@ describe('withoutSuppressedChecks', () => {
         leaf('SuppressionFilter'),
         {
           name: 'TreeWalker',
-          modules: [leaf('SuppressionXpathSingleFilter'), leaf('LeftCurly'), leaf('MagicNumber')],
+          modules: [
+            leaf('SuppressionXpathSingleFilter'),
+            leaf('LeftCurly'),
+            leaf('LeftCurly'),
+            leaf('MagicNumber'),
+            leaf('NeedBraces'),
+          ],
         },
       ],
     });
   });
 
-  it('keeps the id of the check that stays', () => {
-    expect(withoutSuppressedChecks(config, suppressions)).toContain('value="LeftCurlyEol"');
+  it('keeps a check that is suppressed by id, so a layered project module still finds both', () => {
+    const kept = withoutSuppressedChecks(config, suppressions);
+
+    expect([kept.includes('value="LeftCurlyEol"'), kept.includes('value="LeftCurlyNl"')]).toEqual([
+      true,
+      true,
+    ]);
   });
 
   it('keeps every check when no suppression covers all files', () => {
