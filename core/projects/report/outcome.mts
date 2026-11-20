@@ -18,8 +18,8 @@ function readJson(file: string): unknown {
   }
   try {
     return JSON.parse(readFileSync(file, 'utf8'));
-  } catch {
-    return undefined;
+  } catch (error) {
+    throw new Error(`nitpicker could not read ${file}`, { cause: error });
   }
 }
 

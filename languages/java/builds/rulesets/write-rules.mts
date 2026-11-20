@@ -28,7 +28,7 @@ export function writeRules(kind: string | undefined, plan: RulesPlan): void {
       planText(plan, 'output'),
       reportingCheckstyleConfig(
         unformatted ? unformattedCheckstyle(config, plan['indentation']) : config,
-        unformatted,
+        unformatted ? 'unformatted' : 'formatted',
       ),
     );
     return;

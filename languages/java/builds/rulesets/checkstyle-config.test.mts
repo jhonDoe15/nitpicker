@@ -132,14 +132,14 @@ describe('reportingCheckstyleConfig', () => {
     '<module name="OperatorWrap"/><module name="NeedBraces"/></module></module>';
 
   it('leaves the layout checks to the formatter of a formatted project', () => {
-    expect(moduleTree(parseXml(reportingCheckstyleConfig(config, false)))).toEqual({
+    expect(moduleTree(parseXml(reportingCheckstyleConfig(config, 'formatted')))).toEqual({
       name: 'Checker',
       modules: [{ name: 'TreeWalker', modules: [leaf('NeedBraces')] }],
     });
   });
 
   it('keeps the indentation check for a project without a formatter', () => {
-    expect(moduleTree(parseXml(reportingCheckstyleConfig(config, true)))).toEqual({
+    expect(moduleTree(parseXml(reportingCheckstyleConfig(config, 'unformatted')))).toEqual({
       name: 'Checker',
       modules: [{ name: 'TreeWalker', modules: [leaf('Indentation'), leaf('NeedBraces')] }],
     });

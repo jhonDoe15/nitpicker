@@ -90,6 +90,7 @@ function checkstyleSetup(
   );
   const bundled = textOf(nitpickerCheckstyleConfig(bundledGoogleChecks(jar, spawn ?? spawnSync)));
   const unformatted = fieldOf(style, 'javaStyle') === 'none';
+  const formatting = unformatted ? 'unformatted' : 'formatted';
   const declared = fieldsOf(fieldOf(configs, CHECKSTYLE));
   return writeCheckstyleSetup({
     directory: path.join(reportDir, test ? 'checkstyle-test-config' : 'checkstyle-config'),
@@ -97,12 +98,12 @@ function checkstyleSetup(
       withGuardChecks(
         reportingCheckstyleConfig(
           unformatted ? unformattedCheckstyle(bundled, fieldOf(style, 'indentation')) : bundled,
-          unformatted,
+          formatting,
         ),
         ['checkstyle-all.xml', ...(test ? [] : ['checkstyle-main.xml'])],
       ),
     ),
-    suppressions: suppressionsFile(unformatted),
+    suppressions: suppressionsFile(formatting),
     project: optionalText(declared['project']),
     projectWins: declared['projectWins'] !== false,
   });
