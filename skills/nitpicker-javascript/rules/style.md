@@ -179,6 +179,22 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Secrets come from the environment or a secrets manager, never from a literal given to `password`, `token`,
   `apiKey` and the like (`nitpicker/no-hardcoded-secret`), and a log call or error message says a secret is
   set or shows a masked tail, never the value (`nitpicker/no-secret-in-log`).
+- A path, route, package or host is matched on whole segments, never by text prefix: `a === base ||
+  a.startsWith(`${base}/`)`, `host === domain || host.endsWith(`.${domain}`)`, `new URL(x).hostname` for a URL
+  (`nitpicker/no-prefix-without-boundary`).
+- A suffix or prefix is removed with an anchored check, never a string `replace` (`name.replace('.git', '')`
+  also hits `blog.git.io`): `name.replace(/\.git$/, '')`, `endsWith` with `slice`, or `url.port = next` on a parsed
+  URL (`nitpicker/no-unanchored-affix-replace`).
+- A key normalized with `toLowerCase()` or `toUpperCase()` is looked up in a collection normalized the same way: build
+  the set with `names.map((name) => name.toLowerCase())`, and fill and read a map with the same normalized key
+  (`nitpicker/no-case-mismatched-lookup`).
+- A precondition message names the value it checks: `if (!timeUnit) throw new Error('timeUnit must be set')`, not
+  another parameter (`nitpicker/no-mismatched-precondition-message`).
+- Query text built from parts reads as one valid statement once joined: a bind placeholder after every `LIKE` and `=`,
+  as many values as columns in an `INSERT`, and a space at the start of every appended fragment
+  (`nitpicker/no-malformed-query-text`).
+- An object-store listing follows its pages: `paginateListObjectsV2`, or a loop on `NextContinuationToken`; a search
+  call sets its `LIMIT` and loops (`nitpicker/no-unpaged-listing`).
 - A method that wraps a same-named method returns its result: `return this.delegate.update(x)`, not a bare
   `this.delegate.update(x)` (`nitpicker/no-dropped-delegate-result`).
 - Arguments go in the order of the parameters: passing `docs` into the slot of `proc` when `docs` is another
@@ -263,3 +279,17 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - In a server project, text from a search or filter field is trimmed once before it reaches a lookup:
   `req.query.q?.trim()`, a zod `.trim()` schema, or one global middleware that trims every string; a padded
   `" Davis"` finds nothing (`nitpicker/no-untrimmed-request-text`).
+- A `fetch` response is checked (`res.ok` or `res.status`) before `res.json()` reads it, or read as text and parsed in
+  `try`: a proxy or gateway error page is HTML, and the `SyntaxError` hides the status (`nitpicker/no-unchecked-response-json`).
+- A number that was parsed or computed is checked with `Number.isFinite(x)`, not only `isNaN(x)`: `Infinity` passes
+  `isNaN` (`nitpicker/no-nan-only-check`).
+- A count computed by subtraction is clamped before `repeat` or `new Array`: `' '.repeat(Math.max(0, width - text.length))`
+  (`nitpicker/no-negative-count`); a negative count throws a `RangeError`.
+- A bounds check before a read rejects with `index >= list.length` (or accepts with `index < list.length`); `>` and `<=`
+  let `index === length` through to an `undefined` read (`nitpicker/no-index-bound-off-by-one`). `>` is right only for
+  an insertion position.
+- A backoff delay does not grow by `1 << attempt` or `2 ** attempt` without a bound: cap the exponent
+  (`Math.min(attempt, 10)`) and clamp the delay with `Math.min` (`nitpicker/no-overflowing-backoff`); the shift wraps
+  at 32 bits and the power reaches `Infinity`.
+- A duration or a timeout is measured with a monotonic clock, not two wall-clock reads: read
+  `performance.now()` for both ends instead of subtracting two `Date.now()` readings (`nitpicker/no-wall-clock-elapsed`).

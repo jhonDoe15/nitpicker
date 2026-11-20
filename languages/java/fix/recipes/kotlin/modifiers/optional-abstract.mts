@@ -1,6 +1,6 @@
 import { enclosingBodyKind } from '../shared/body-kind.mts';
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
-import { removalSpan } from '../shared/spans.mts';
+import { removalSpan } from '../../shared/spans.mts';
 
 const INTERFACE = 'interface';
 const ABSTRACT = /(?<![\w.@:$`])abstract[ \t]+(?=(?:interface|fun|val|var)\b)/gu;
@@ -17,6 +17,6 @@ export const optionalAbstractRecipe = kotlinRecipe({
       })
       .map(({ index, 0: text }) => ({
         offset: index,
-        edits: [{ ...removalSpan(source, index, index + text.length), text: '' }],
+        edits: [removalSpan(source, index, index + text.length)],
       })),
 });

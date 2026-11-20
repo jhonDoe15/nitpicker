@@ -1,6 +1,6 @@
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
 import { closingIndex } from '../shared/kotlin-scan.mts';
-import { indicesDown } from '../shared/spans.mts';
+import { indicesDown } from '../../shared/spans.mts';
 
 const EXPLICIT_IT = /\{(\s*)it\s*->[ \t]*/gu;
 

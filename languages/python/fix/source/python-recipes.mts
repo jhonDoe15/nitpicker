@@ -15,7 +15,7 @@ import { scriptEdits } from './script-edits.mts';
 const RULES_TOOL = 'python-rules';
 const PRESET = 'python';
 
-type Entry = { id: string; tool: string; rule: string; safety: string };
+type Entry = { id: string; tool: string; rule: string; safety: string; kind?: string };
 type EditsOf = (files: readonly PlanFile[], context?: { projectRoot: string }) => ScriptResult;
 
 const TABLE: Entry[] = [
@@ -23,6 +23,20 @@ const TABLE: Entry[] = [
   { id: 'python-falsy-default', tool: RULES_TOOL, rule: 'falsy-default', safety: REVIEW },
   { id: 'python-frozen-dataclass', tool: RULES_TOOL, rule: 'frozen-dataclass', safety: REVIEW },
   { id: 'python-http-timeout', tool: RULES_TOOL, rule: 'http-without-timeout', safety: REVIEW },
+  {
+    id: 'python-test-retry',
+    tool: RULES_TOOL,
+    rule: 'retry-in-test',
+    safety: SAFE,
+    kind: 'marker',
+  },
+  {
+    id: 'python-test-retry-library',
+    tool: RULES_TOOL,
+    rule: 'retry-in-test',
+    safety: REVIEW,
+    kind: 'library',
+  },
   { id: 'python-shell-arguments', tool: RULES_TOOL, rule: 'shell-command', safety: REVIEW },
   {
     id: 'python-tls-verification',
@@ -50,18 +64,28 @@ function occupied(edit: PlanEdit, read: (name: string) => string | undefined): b
 
 const PROJECT_READS = new Set(['frozen-dataclass']);
 
-function planFor({ tool, rule }: Entry, editsOf: EditsOf): (context: PlanContext) => ScriptPlanned {
+function planFor(
+  { tool, rule, kind }: Entry,
+  editsOf: EditsOf,
+): (context: PlanContext) => ScriptPlanned {
   return function plan({ files, read, projectRoot }: PlanContext): ScriptPlanned {
     const found = editsOf(files, PROJECT_READS.has(rule) ? { projectRoot } : undefined);
     const fixes = found.fixes.filter(
-      ({ finding }) => finding.tool === tool && finding.rule === rule,
+      (fix) =>
+        fix.finding.tool === tool &&
+        fix.finding.rule === rule &&
+        (kind === undefined || fix.kind === kind),
     );
     const clear = fixes.filter(({ edits }) => !edits.some((edit) => occupied(edit, read)));
     const taken = fixes.length - clear.length;
     return {
       fixes: clear,
       notes: [
-        ...found.declines.filter((decline) => decline.rule === rule).map(declineNote),
+        ...found.declines
+          .filter(
+            (decline) => decline.rule === rule && (kind === undefined || decline.kind === kind),
+          )
+          .map(declineNote),
         ...(taken === 0
           ? []
           : [`--fix left ${String(taken)} ${rule} file(s) as is: the new name exists`]),

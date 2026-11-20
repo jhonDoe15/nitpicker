@@ -45,6 +45,8 @@ type RecipeRequest = {
 
 const JAVA_FILE = /\.java$/u;
 const KOTLIN_FILE = /\.kt$/u;
+const GRADLE_BUILD_FILE = /(?:^|\/)build\.gradle(?:\.kts)?$/u;
+const UNRUN_TESTS_RULE = 'test-runtime/test-not-run';
 const springConfigFile: RegExp = SPRING_CONFIG_FILE;
 const jvmRecipes: readonly unknown[] = JVM_RECIPES;
 const sharedRecipes: readonly unknown[] = SHARED_RECIPES;
@@ -91,9 +93,15 @@ function recipeRun({ settings, files, accepts, selectedRules, patchEntries }: Re
   return { ...run, toolErrors: [...shared.toolErrors, ...run.toolErrors] };
 }
 
-function acceptsOf({ projectRoot, headPolicy, config }: Resolved): (name: string) => boolean {
+function acceptsOf({
+  projectRoot,
+  headPolicy,
+  config,
+  selectedRules = [],
+}: Resolved): (name: string) => boolean {
   const excluded = callUntyped(excludedBy, fieldOf(headPolicy, 'exclude'));
   const withKotlin = fieldOf(config, 'preset') === 'kotlin';
+  const withBuildFiles = selectedRules.includes(UNRUN_TESTS_RULE);
   const roots: unknown = declaredSourceRoots(projectRoot);
   function isExcluded(name: string): boolean {
     return callUntyped(excluded, name) === true;
@@ -101,6 +109,7 @@ function acceptsOf({ projectRoot, headPolicy, config }: Resolved): (name: string
   return function accepts(name: string): boolean {
     return (
       (springConfigFile.test(name) && !isExcluded(name)) ||
+      (withBuildFiles && GRADLE_BUILD_FILE.test(name) && !isExcluded(name)) ||
       ((JAVA_FILE.test(name) || (withKotlin && KOTLIN_FILE.test(name))) &&
         !isExcluded(name) &&
         callUntyped(inJvmSourceSets, name, roots) === true &&

@@ -43,6 +43,17 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `ContentDisposition.parse` or `HttpCookie.parse` instead of `split(",")` or `split(";")`
   (`pmd/HttpValueCase`, `pmd/HandSplitHttpHeader`). `getHeader` and `HttpHeaders` ignore the case of the
   name; a library that is itself the parser takes an exception.
+- Split `key:value` text once: `text.split(":", 2)` with a length check, or `indexOf(':')` with `substring`, not
+  `text.split(":")[1]`, which drops what follows the second separator and throws when there is none
+  (`pmd/PairSplitDropsRest`).
+- A `Map` or `Set` key made of several strings is a record or `List.of(a, b)`, not `a + "-" + b`: different
+  pairs (`"a-b"` with `"c"`, `"a"` with `"b-c"`) give the same key (`pmd/DelimitedLookupKey`).
+- Read a host and port with `URI` (`new URI("http://" + host)`, `getHost()`, `getPort()`) or Guava `HostAndPort`,
+  not `host.split(":")`: an IPv6 literal `[::1]:3000` has colons of its own (`pmd/HostPortColonSplit`).
+- Split file text with `lines()`, `split("\\R")` or a `BufferedReader`, not `split("\n")`: a CRLF file keeps a
+  `\r` on each line (`pmd/NewlineOnlyLineSplit`).
+- Truncate text after `Character.isHighSurrogate(text.charAt(end - 1))` (then `end--`), or by code point, not
+  `text.substring(0, max)`, which can split an emoji (`pmd/SurrogateSplittingCut`).
 - Library getters that answer `null` are checked before use: `request.getQueryString()`, `getHeader(name)`,
   `getParameter(name)`, `getPathInfo()`, `getSession(false)` and
   `Package.getImplementationVersion()`. Compare with `null`, or fall back with
@@ -67,7 +78,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   (`UriComponentsBuilder...encode().build().toUri()`, `new URI(scheme, host, path, fragment)`), or
   parse where the failure is handled (`URI.create(text)` in a `try` that catches
   `IllegalArgumentException`); `URI.create` on a non-constant string is flagged
-  (`pmd/UriCreateDynamic`).
+  (`pmd/UriCreateDynamic`). `URLDecoder.decode(text, charset)` throws the same exception on a stray `%`:
+  catch it too.
 - Regexes: `split`, `matches`, `replaceAll` and `replaceFirst` take a regex, so wrap a runtime
   value in `Pattern.quote(value)` (also when you join it into a `Pattern.compile` pattern), and use
   `replace` for plain text (`pmd/UnquotedRegexValue`, `pmd/PlainTextRegex`).
@@ -175,6 +187,14 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Secrets come from the environment or a secrets manager, never from a literal given to `password`,
   `token`, `apiKey` and the like (`pmd/HardcodedSecret`, `pmd/CredentialLiteral`), and a log call or
   exception message says a secret is set or shows a masked tail, never the value (`pmd/SecretInLog`).
+- A value put into an HTML string is escaped first (`HtmlUtils.htmlEscape`, `Encode.forHtml`) or the page comes
+  from an escaping template engine (`pmd/UnescapedHtmlValue`).
+- A replacement that comes from data goes through `Matcher.quoteReplacement(value)` in `replaceAll`,
+  `replaceFirst` and `Matcher.replaceAll`, or use `String.replace(CharSequence, CharSequence)`
+  (`pmd/ExpandingReplacement`): the replacement reads `$1` and `\\`.
+- A glob or pattern turned into a regex or a `LIKE` pattern with `replace` calls is escaped for the target
+  first (`pmd/PatternTranslation`): `Pattern.quote(glob).replace("*", ".*")`, never the raw value; for `LIKE`
+  escape `%`, `_` and the escape character, then map the wildcards.
 - A password or secret digest is never compared with `equals` (`pmd/SecretDigestEquals`): check a password with
   `passwordEncoder.matches(raw, stored)` (a salted encoder never returns the stored value again), and compare an
   HMAC or a digest of a secret with `MessageDigest.isEqual(expected, actual)`, which takes constant time.
@@ -201,6 +221,34 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `width` that is `Integer.MAX_VALUE`, a constant of it or a parameter a caller passes it, overflows to a
   negative index or bound. Compare without adding (`width >= length - start`), widen first
   (`(long) start + width`), use `Math.addExact`, or check the sentinel before the arithmetic.
+- A JDK `HttpClient` or OkHttp response is checked (`statusCode()`, `isSuccessful()`) before its body is handed to a JSON
+  parser (`pmd/UncheckedResponseBody`): a proxy error page is not JSON, and the parse error hides the status.
+- A parsed double is checked with `Double.isFinite(x)`, not only `Double.isNaN(x)`: `"Infinity"` and `"1e999"` parse to
+  an infinity that `isNaN` lets through (`pmd/NanOnlyGuard`).
+- A count that is a subtraction is clamped before `repeat`, `Arrays.copyOf` or `new ArrayList<>(n)`:
+  `" ".repeat(Math.max(0, width - text.length()))`; a negative count throws (`pmd/NegativeCountArgument`).
+- A bounds check before `get(index)`, `charAt(index)` or `array[index]` rejects with `index >= size()` (or `>= length`):
+  `index > size()` lets `index == size()` through to an `IndexOutOfBoundsException` (`pmd/IndexBoundOffByOne`); `>` is
+  right only for an insertion position.
+- A backoff delay does not grow by `1L << attempt` without a bound: cap the exponent (`Math.min(attempt, 20)`) or use
+  `Math.multiplyExact` and fall back to the maximum delay; the shift wraps and the delay turns negative
+  (`pmd/BackoffShiftOverflow`).
+- A duration or a timeout is measured with a monotonic clock, not two wall-clock reads: read
+  `System.nanoTime()` or use a `Stopwatch` or Micrometer `Timer.Sample` instead of subtracting two `Instant.now()` or
+  `System.currentTimeMillis()` readings (`pmd/WallClockElapsed`).
+- A path, route, package or host is matched on whole segments, never by `String` prefix
+  (`pmd/AffixWithoutBoundary`): `path.equals(base) || path.startsWith(base + "/")`, `Path.startsWith`,
+  `host.equals(domain) || host.endsWith("." + domain)`, and `URI.getHost()` for a URL.
+- A suffix or prefix is removed with an anchored check, never `replace` (`pmd/AffixRemovedByReplace`):
+  `name.endsWith(".git") ? name.substring(0, name.length() - 4) : name`, because `replace` also hits `blog.git.io`.
+- A key lower-cased or upper-cased for a lookup is looked up in a collection normalized the same way (`pmd/CaseMismatchedLookup`): build the set with `toLowerCase(Locale.ROOT)`, use `new TreeSet<>(String.CASE_INSENSITIVE_ORDER)`;
+  a map filled with `name.toLowerCase()` is read with it too.
+- A precondition message names the value it checks (`pmd/PreconditionMessageNamesOtherValue`): the check on `timeToLive`
+  says so, and the unit gets its own check and message.
+- SQL built from parts reads as one valid statement once joined (`pmd/MalformedQueryText`): a `?` after every `LIKE` and
+  `=`, as many values as columns in an `INSERT`, and a space at the start of every appended fragment.
+- An object-store or search listing follows its pages (`pmd/UnpagedListing`): `listObjectsV2Paginator(request)` or a loop on
+  `isTruncated()` and `nextContinuationToken()`, and a RediSearch query sets `limit(offset, count)` and loops.
 - A null branch that does not leave is not followed by a use of the same value
   (`pmd/NullBranchFallThrough`): `if (value == null) { out.append("null"); }` followed by `value.getClass()` fails on the null path, or handles the value twice. End the
   branch with `return` or `throw`, or put the use in an `else`.
