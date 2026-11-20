@@ -1,19 +1,21 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { dateUseOf, type Use } from './date-uses.mts';
+import { isUtcToday } from './utc-date-texts.mts';
 
 const USE_TEXT: Readonly<Record<Use, string>> = {
   state: 'the first value of component or form state',
   input: 'a value of a date input',
-  fallback: 'the default for a date that was not given',
+  fallback: 'the value for a date that was not given',
 };
-import { isUtcToday } from './utc-date-texts.mts';
 
 function heldIn(node: TSESTree.Node): TSESTree.Identifier | undefined {
   const holder = node.parent;
   if (holder?.type !== AST_NODE_TYPES.VariableDeclarator || holder.init !== node) {
     return undefined;
   }
-  return holder.id.type === AST_NODE_TYPES.Identifier ? holder.id : undefined;
+  return holder.parent.kind === 'const' && holder.id.type === AST_NODE_TYPES.Identifier
+    ? holder.id
+    : undefined;
 }
 
 function usesOfVariable(code: TSESLint.SourceCode, name: TSESTree.Identifier): Use[] {

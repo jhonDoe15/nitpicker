@@ -1,4 +1,4 @@
-const SUBJECTS = 'app|application|implementation|scenario|world|project|system';
+const SUBJECTS = 'app|application|implementation|scenario|world';
 const REMOTE = 'api|network|backend|server|http|database|db';
 const STAND_INS = 'dummy|mock|mocked|fake|hard-?coded|placeholder|stub';
 const PHRASES = [

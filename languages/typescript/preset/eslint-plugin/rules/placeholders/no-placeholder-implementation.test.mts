@@ -23,6 +23,14 @@ tester.run('no-placeholder-implementation', rule, {
     rate('// In a real app this is fetched', 'return { from, to, rate: 1.1 };'),
     rate('// Simulate network delay', 'await new Promise((resolve) => queue.push(resolve));'),
     rate('// Replace with the real total', 'total = compute(from);'),
+    rate('// Replace with your actual domain', 'const domain = config.domain;', 'return domain;'),
+    rate('// Replace with the actual key', 'const key = process.env.API_KEY;', 'return key;'),
+    rate(
+      'if (!from) {',
+      '  // In a real app you would redirect to the login page',
+      '  return null;',
+      '}',
+    ),
     rate('// Replace this with a real implementation', 'throw new Error("not implemented");'),
     lines('// Placeholder implementation', 'export const rates = load();'),
     lines('function send() {', '  log("sent");', '  // placeholder implementation', '}'),
@@ -77,11 +85,11 @@ tester.run('no-placeholder-implementation', rule, {
     },
     {
       code: lines(
-        'function total(account) {',
+        'function total(balance: number) {',
         '  let converted = 0;',
         '  // In a real app this converts',
         '  // between the two currencies',
-        '  converted = account.balance;',
+        '  converted = balance;',
         '  return converted;',
         '}',
       ),
@@ -101,6 +109,14 @@ tester.run('no-placeholder-implementation', rule, {
         '// Mock data for now',
         'const users = [{ id: 1, name: "Ada" }, { id: 2, name: "Bo" }];',
       ),
+      errors: PLACEHOLDER,
+    },
+    {
+      code: lines('async function users() { // Simulate API call', '  return [{ id: 1 }];', '}'),
+      errors: PLACEHOLDER,
+    },
+    {
+      code: 'function send() { /* placeholder implementation */ }',
       errors: PLACEHOLDER,
     },
     {

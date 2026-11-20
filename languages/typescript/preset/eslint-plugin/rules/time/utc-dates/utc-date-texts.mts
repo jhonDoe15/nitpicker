@@ -6,6 +6,7 @@ const { DefinitionType } = TSESLint.Scope;
 
 const CUTS = new Set(['slice', 'substring', 'substr']);
 const DATE_LENGTH = 10;
+const INSTANT_SETTERS = /^set(?:UTC|Time$)/u;
 
 type MethodCall = {
   readonly name: string;
@@ -58,7 +59,7 @@ function usesUtcParts(variable: TSESLint.Scope.Variable): boolean {
     return (
       member.type === AST_NODE_TYPES.MemberExpression &&
       member.property.type === AST_NODE_TYPES.Identifier &&
-      member.property.name.startsWith('setUTC')
+      INSTANT_SETTERS.test(member.property.name)
     );
   });
 }
@@ -74,6 +75,7 @@ function isLocalNow(code: SourceCode, node: TSESTree.Node): boolean {
   }
   const { init } = definition.node;
   return (
+    definition.parent.kind === 'const' &&
     definition.node.id === definition.name &&
     init !== null &&
     isCurrentInstant(init) &&

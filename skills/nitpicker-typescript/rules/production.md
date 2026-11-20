@@ -123,7 +123,7 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A `catch` in a request handler that answers with `{ error }` gives the status too (`NextResponse.json({ error }, {
   status: 500 })`, `res.status(500).json({ error })`): without one the failure is sent as `200 OK`. When 200 is meant,
   write `{ status: 200 }` (`nitpicker/no-error-response-without-status`).
-- Today's date for a person (the first value of a date field or filter, the default for a date that was not given) is
+- Today's date for a person (the first value of a date field or filter, the value for a date that was not given) is
   formatted in their time zone, `new Intl.DateTimeFormat('en-CA').format(new Date())` or the date library's `format(new
   Date(), 'yyyy-MM-dd')`, not cut out of `new Date().toISOString()`, which is the date in UTC and a day off for part of
   every day (`nitpicker/no-utc-date-as-local-date`).

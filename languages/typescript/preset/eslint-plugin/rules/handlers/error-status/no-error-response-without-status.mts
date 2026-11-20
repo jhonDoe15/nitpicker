@@ -1,6 +1,7 @@
 import { type TSESLint } from '@typescript-eslint/utils';
 import {
   answerOf,
+  answersByProtocol,
   catchAround,
   isErrorBody,
   leavesStatus,
@@ -29,6 +30,9 @@ export const rule: TSESLint.RuleModule<'successStatus'> = {
     },
   },
   create(context) {
+    if (answersByProtocol(context.sourceCode)) {
+      return {};
+    }
     return {
       CallExpression(node) {
         const answer = answerOf(context.sourceCode, node);
@@ -36,7 +40,10 @@ export const rule: TSESLint.RuleModule<'successStatus'> = {
           return;
         }
         const clause = catchAround(node);
-        if (clause !== undefined && defaultsToSuccess(answer, () => statusSetAround(clause))) {
+        if (
+          clause !== undefined &&
+          defaultsToSuccess(answer, () => statusSetAround(clause, answer.root.name))
+        ) {
           context.report({ node, messageId: 'successStatus' });
         }
       },

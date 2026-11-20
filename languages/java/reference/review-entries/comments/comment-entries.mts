@@ -32,7 +32,7 @@ export function commentEntries(): RuleEntry[] {
     {
       rule: PLACEHOLDER_RULE,
       summary:
-        'In main sources: a comment that calls the code a stand-in for the real work ("in a real application ...", "simulate the API call", "placeholder implementation", "replace with the real ...", "mock data for now"), on or right above a statement that is one by its shape: a `return` of a literal or an empty collection, a bare `Thread.sleep`, an assignment that copies a value unchanged, or a method body that holds only the comment.',
+        'In main sources: a comment that calls the code a stand-in for the real work ("in a real application ...", "simulate the API call", "placeholder implementation", "replace with the real ...", "mock data for now"), on or right above a statement that is one by its shape: a `return` of a literal or an empty collection that is not the first statement of an `if`, loop or other block, a bare `Thread.sleep`, an assignment whose value is one plain name, or a method body that holds only the comment.',
       why: 'The stand-in compiles and a demo works, so it reaches production: a fixed delay instead of a request, a constant instead of a query, an amount that is never converted.',
       allowed: PLACEHOLDER_MESSAGE,
     },

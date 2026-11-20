@@ -189,10 +189,30 @@ function isBareStatus(node: TSESTree.Node): boolean {
   return node.type === AST_NODE_TYPES.ExpressionStatement && setsStatus(node.expression);
 }
 
-/** Whether `clause` sets a response status, or the function around it sets one as a statement. */
-export function statusSetAround(clause: TSESTree.CatchClause): boolean {
+function handsOver(node: TSESTree.Node, name: string): boolean {
+  return (
+    node.type === AST_NODE_TYPES.CallExpression &&
+    node.arguments.some(
+      (argument) => argument.type === AST_NODE_TYPES.Identifier && argument.name === name,
+    )
+  );
+}
+
+/**
+ * Whether `clause` sets a response status or hands the response `name` to a call that may set
+ * one, or the function around it sets a status as a statement of its own.
+ */
+export function statusSetAround(clause: TSESTree.CatchClause, name: string): boolean {
   const owner = ancestorsOf(clause).find(isFunction) ?? clause;
-  return [...inside(clause.body)].some(setsStatus) || [...inside(owner)].some(isBareStatus);
+  return (
+    [...inside(clause.body)].some((node) => setsStatus(node) || handsOver(node, name)) ||
+    [...inside(owner)].some(isBareStatus)
+  );
+}
+
+/** Whether the file speaks GraphQL, where a failed operation is answered with 200 and `errors`. */
+export function answersByProtocol(code: SourceCode): boolean {
+  return /graphql/iu.test(code.text);
 }
 
 /** The `catch` clause whose block holds `node`, in the same function. */

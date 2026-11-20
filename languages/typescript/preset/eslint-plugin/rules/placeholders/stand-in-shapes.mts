@@ -1,6 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { chainOf } from '../typed/node-views.mts';
-import { unwrapOf, TYPE_WRAPPERS } from '../typed/syntax-views.mts';
+import { isFunction, unwrapOf, TYPE_WRAPPERS } from '../typed/syntax-views.mts';
 
 export type Shape = 'literal' | 'data' | 'delay' | 'copy' | 'empty';
 
@@ -66,15 +65,14 @@ function isCollection(value: TSESTree.Node): boolean {
   );
 }
 
-function memberObject(node: TSESTree.Node): TSESTree.Node | undefined {
-  return node.type === AST_NODE_TYPES.MemberExpression && !node.computed
-    ? plain(node.object)
-    : undefined;
+function isReference(value: TSESTree.Node): boolean {
+  const node = plain(value);
+  return node.type === AST_NODE_TYPES.Identifier && node.name !== 'undefined';
 }
 
-function isReference(value: TSESTree.Node): boolean {
-  const root = chainOf(plain(value), memberObject).at(-1);
-  return root?.type === AST_NODE_TYPES.Identifier && root.name !== 'undefined';
+function isFunctionLevel(statement: TSESTree.Node): boolean {
+  const block = statement.parent;
+  return block?.type === AST_NODE_TYPES.BlockStatement && isFunction(block.parent);
 }
 
 function isTimerCall(node: TSESTree.Node): boolean {
@@ -120,7 +118,6 @@ function expressionShape(expression: TSESTree.Expression): Shape | undefined {
   }
   return expression.type === AST_NODE_TYPES.AssignmentExpression &&
     expression.operator === '=' &&
-    isReference(expression.left) &&
     isReference(expression.right)
     ? 'copy'
     : undefined;
@@ -129,7 +126,11 @@ function expressionShape(expression: TSESTree.Expression): Shape | undefined {
 /** The kind of stand-in a statement is by its shape alone, if it is one. */
 export function standInShape(statement: TSESTree.Node): Shape | undefined {
   if (statement.type === AST_NODE_TYPES.ReturnStatement) {
-    return statement.argument !== null && isFixedValue(statement.argument) ? 'literal' : undefined;
+    return statement.argument !== null &&
+      isFunctionLevel(statement) &&
+      isFixedValue(statement.argument)
+      ? 'literal'
+      : undefined;
   }
   if (statement.type === AST_NODE_TYPES.VariableDeclaration) {
     return declaredShape(statement);

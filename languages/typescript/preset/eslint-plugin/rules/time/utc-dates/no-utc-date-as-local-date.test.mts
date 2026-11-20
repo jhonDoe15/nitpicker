@@ -16,6 +16,24 @@ tester.run('no-utc-date-as-local-date', rule, {
     `const range = { startDate: ${TODAY}, endDate: ${TODAY} };`,
     `const date = ${TODAY}; if (date !== currentDate) { rotate(date); }`,
     `logger.info(${TODAY});`,
+    `const day = candidate || ${TODAY};`,
+    `const day = lastupdate ?? ${TODAY};`,
+    component(
+      'let now = new Date(); now = new Date(row.at); const [d, setD] = useState(now.toISOString().slice(0, 10));',
+    ),
+    component(
+      'const at = new Date(); at.setTime(row.at); const [d, setD] = useState(at.toISOString().slice(0, 10));',
+    ),
+    component(
+      `const [state, dispatch] = useReducer((s, a) => ({ ...s, issued: ${TODAY} }), initial);`,
+    ),
+    component(
+      `const form = useFormik({ onSubmit: (values) => send({ ...values, filedOn: ${TODAY} }) });`,
+    ),
+    component(`const [state, setState] = useState({ later: () => ${TODAY} });`),
+    `function create({ dueDate = ${TODAY} }) { return dueDate; }`,
+    `function logName(date = ${TODAY}) { return "log-" + date + ".txt"; }`,
+    component(`let day = ${TODAY}; day = other(); const [shown, setShown] = useState(day);`),
     `const day = options.day ?? ${TODAY};`,
     `const partition = options.partition || ${TODAY};`,
     `const ready = options.startDate && ${TODAY};`,
@@ -103,11 +121,15 @@ tester.run('no-utc-date-as-local-date', rule, {
     },
     { code: `const invoice = { issueDate: opts.issueDate || ${TODAY} };`, errors: UTC },
     { code: `const date = opts.date ?? ${TODAY};`, errors: UTC },
+    { code: component(`const [days, setDays] = useState([${TODAY}]);`), errors: UTC },
+    { code: component(`const [day, setDay] = useState(open ? ${TODAY} : "");`), errors: UTC },
+    {
+      code: component(`const [state, dispatch] = useReducer(reduce, { issued: ${TODAY} });`),
+      errors: UTC,
+    },
     {
       code: `const today = ${TODAY}; const payload = { VoidDate: voidDate || today };`,
       errors: UTC,
     },
-    { code: `function create({ dueDate = ${TODAY} }) { return dueDate; }`, errors: UTC },
-    { code: `function list(startDate = ${TODAY}) { return startDate; }`, errors: UTC },
   ],
 });

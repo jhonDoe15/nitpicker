@@ -1802,50 +1802,53 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   with an error body and no status, so the failure is sent as `200 OK`: the caller's `response.ok` is true, a scheduler
   records the run as succeeded and nothing retries. Reported inside a `catch` (not in a function nested in it):
   `NextResponse.json(body)` (imported from `next/server`) or the global `Response.json(body)` with no second argument,
-  or with an object literal that has no `status`; `res`, `response` or `reply` (a parameter of an enclosing function)
-  with `json` or `send`, also behind `set(...)` or `header(...)`, when the `catch` has no `status(...)`,
-  `sendStatus(...)`, `code(...)`, `writeHead(...)` or assignment to `statusCode` and the function sets none as a
-  statement of its own; and `c.json(body)` with one argument on the context parameter (`c`, `ctx`, `context`) of a file
-  that imports `hono`. The body is an object literal with an `error`, `errors` or `err` property (not `null`, `false` or
-  `[]`), no spread, and no outcome field of its own: `status`, `statusCode`, `code`, `success`, `ok`, `data`, `result`,
-  `jsonrpc` or `id` next to the error means the project answers with an envelope or by a protocol (JSON-RPC, GraphQL)
-  and is not reported. Allowed forms: `NextResponse.json({ error }, { status: 500 })`, `res.status(500).json({ error
-  })`, and a status written out when 200 is meant, for example for a webhook sender that must not retry (`{ status: 200
-  }`).
+  or with an object literal that has no `status` and no spread; `json` or `send` on `res`, `response` or `reply` (a
+  parameter of an enclosing function), also behind chained calls other than `status(...)`, `sendStatus(...)`,
+  `code(...)` and `writeHead(...)`; and `c.json(body)` with one argument on the context parameter (`c`, `ctx`,
+  `context`) of a file that imports `hono`. The parameter forms are not reported when the `catch` calls `status`,
+  `sendStatus`, `code` or `writeHead`, assigns `status` or `statusCode`, or passes the response to another call
+  (`fail(res, error)`), or when the function sets a status as a statement of its own. The body is an object literal with
+  an `error`, `errors` or `err` property (not `null`, `false`, `undefined` or `[]`), no spread or computed key, and no
+  outcome field of its own: `status`, `statusCode`, `code`, `success`, `ok`, `data`, `result`, `jsonrpc` or `id` next to
+  the error means the project answers with an envelope or by a protocol and is not reported. A file that mentions
+  GraphQL is skipped, because GraphQL over HTTP answers a failed operation with 200 and `errors`. Allowed forms:
+  `NextResponse.json({ error }, { status: 500 })`, `res.status(500).json({ error })`, and a status written out when 200
+  is meant, for example for a webhook sender that must not retry (`{ status: 200 }`).
 - `nitpicker/no-utc-date-as-local-date` (production files): the calendar date cut out of `toISOString()`, which is the
   date in UTC, used as today's date for a person: for part of every day it is yesterday or tomorrow for them (already
   tomorrow in the evening in the Americas, still yesterday in the morning in Asia), so a date field opens on the wrong
   day and a record gets the wrong issue date. The expression is `<now>.toISOString()` followed by `.split('T')[0]`,
   `.slice(0, 10)`, `.substring(0, 10)` or `.substr(0, 10)`, where `<now>` is `new Date()`, `new Date(Date.now())` or a
-  variable initialized with one of them and never changed with a `setUTC...` method. It is reported only where its use
-  makes it a date the person sees or enters, directly or through a `const` it initializes: inside the argument of
-  `useState`, `useReducer`, `useForm` or `useFormik` (also in an object or array literal, a conditional, the right side
-  of `||` or `??`, or a lazy initializer); as `value`, `defaultValue`, `min` or `max` of a JSX element with
-  `type="date"`; and as the default for a date that was not given, which is the right side of `||` or `??` or a
-  parameter or destructuring default whose other side is a name that ends in `date` or `Date` (`opts.issueDate || ...`,
-  `{ dueDate = ... }`). Not reported: a file name, log label, cache or partition key, sitemap date, a comparison, a
-  plain object property, and a date that is not the current instant (`row.createdAt.toISOString().slice(0, 10)`, a date
-  built with `Date.UTC`). Allowed forms: `new Intl.DateTimeFormat('en-CA').format(new Date())` (local `YYYY-MM-DD` in a
-  browser or command line tool; with `timeZone` on a server) or `format(new Date(), 'yyyy-MM-dd')` of the date library
-  in use.
+  `const` initialized with one of them and never changed with `setTime` or a `setUTC...` method. It is reported only
+  where its use makes it a date the person sees or enters, directly or through a `const` it initializes: inside the
+  argument of `useState`, `useReducer`, `useForm` or `useFormik` (also in an object or array literal, a conditional, a
+  `||` or `??`, or the lazy initializer `useState(() => ...)`); as `value`, `defaultValue`, `min` or `max` of a JSX
+  element with `type="date"`; and as the value for a date that was not given, which is the right side of `||` or `??`
+  whose left side is named `date` or ends in `Date` (`opts.issueDate || ...`). Not reported: a file name, log label,
+  cache or partition key, sitemap date, a comparison, a plain object property, a parameter default, and a date that is
+  not the current instant (`row.createdAt.toISOString().slice(0, 10)`, a date built with `Date.UTC`). Allowed forms:
+  `new Intl.DateTimeFormat('en-CA').format(new Date())` (local `YYYY-MM-DD` in a browser or command line tool; with
+  `timeZone` on a server) or `format(new Date(), 'yyyy-MM-dd')` of the date library in use.
 - `nitpicker/no-placeholder-implementation` (production files): code that a comment calls a stand-in for the real work
   and that is one by its shape, so the stand-in ships: a fixed delay instead of a request, a constant instead of a
   query, an amount that is never converted. Both conditions are needed. The comment holds one of these phrases, in any
-  letter case: "in a real app / application / implementation / scenario / world / project / system", "simulate (an /
-  the) API / network / backend / server / HTTP / database ...", "simulate (a / the) request / delay / latency", "mock
-  data / implementation / response for now", "placeholder implementation", "replace (this / it) with (a / the / your)
-  real / actual ...", "for now (we) (just) return a dummy / mock / fake / hardcoded / placeholder / stub ...". The
-  statement on the same line as the comment, or the one that starts on the line after the comment (or after the comments
-  that directly follow it), is a `return` of a literal or of an array or object literal that holds only literals; a
-  `const`, `let` or `var` initialized with a non-empty array or object literal that holds only literals; a bare `await`
-  of `sleep(...)`, `delay(...)`, `wait(...)` or `new Promise((resolve) => setTimeout(resolve, ...))`; an assignment or
-  declaration that copies a plain name or member chain unchanged (`convertedBalance = balance;`); or the comment is all
-  a function body holds. Not reported: the comment alone, the code alone, "for now" on its own, a comment about someone
-  else's behaviour ("in a real browser the event fires twice"), and files whose path has a `test`, `spec`, `stories`,
-  `example`, `fixture`, `mock`, `seed`, `doc`, `template`, `demo`, `sample`, `e2e`, `playground`, `cypress` or
-  `playwright` part. Allowed forms: do the real work, or throw an error that says the function is not implemented.
-  Deleting the comment leaves the stand-in in place. The same check runs as `pmd/PlaceholderImplementation` on Java
-  sources.
+  letter case: "in a real app / application / implementation / scenario / world", "simulate (an / the) API / network /
+  backend / server / HTTP / database / db", "simulate (a / the) request / delay / latency", "mock data / implementation
+  / response for now", "placeholder implementation", "replace (this / it) with (a / the / your) real / actual", "for now
+  (we) (just) return a dummy / mock / fake / hardcoded / placeholder / stub". The statement that ends on the comment's
+  line, or the one that starts on the line after the comment (or after the comments that directly follow it, or after a
+  comment on the opening line of the block), is a `return` of a literal or of an array or object literal that holds only
+  literals, as a direct statement of a function body; a `const`, `let` or `var` initialized with a non-empty array or
+  object literal that holds only literals; a bare `await` of `sleep(...)`, `delay(...)`, `wait(...)`, `setTimeout(...)`
+  or `new Promise((resolve) => setTimeout(resolve, ...))`; an assignment or declaration whose value is one plain name
+  (`convertedBalance = balance;`); or the comment is all a function body holds. Not reported: the comment alone, the
+  code alone, "for now" on its own, a comment about someone else's behaviour ("in a real browser the event fires
+  twice"), a `return` inside an `if` or a loop, a copied member (`config.domain`, `process.env.KEY`), and files whose
+  path below the working directory has a `test`, `tests`, `__tests__`, `spec`, `stories`, `story`, `storybook`,
+  `example`, `fixture`, `mock`, `__mocks__`, `seed`, `doc`, `documentation`, `template`, `demo`, `sample`, `e2e`,
+  `playground`, `cypress` or `playwright` part (also in the plural). Allowed forms: do the real work, or throw an error
+  that says the function is not implemented. Deleting the comment leaves the stand-in in place. The same check runs as
+  `pmd/PlaceholderImplementation` on Java sources.
 - Child processes the code waits for have a deadline (`nitpicker/require-process-timeout`, production
   files; test files have `nitpicker/require-test-process-timeout`). From `child_process`, `execa` and
   `cross-spawn`: `execSync`, `execFileSync`, `spawnSync`, `execaSync` and `execaCommandSync` need a

@@ -1,3 +1,4 @@
+import path from 'node:path';
 import {
   AST_NODE_TYPES,
   AST_TOKEN_TYPES,
@@ -81,7 +82,7 @@ function standInAt(
 
 function standInUnder(code: TSESLint.SourceCode, comment: TSESTree.Comment): Found | undefined {
   const before = code.getTokenBefore(comment) ?? undefined;
-  if (before?.loc.end.line === comment.loc.start.line) {
+  if (before?.loc.end.line === comment.loc.start.line && before.value !== '{') {
     return standInAt(code, before, 1);
   }
   const last = lastOfRun(code, comment);
@@ -106,7 +107,7 @@ export const rule: TSESLint.RuleModule<'placeholder'> = {
     },
   },
   create(context) {
-    if (isNonProductionPath(context.filename)) {
+    if (isNonProductionPath(path.relative(context.cwd, context.filename))) {
       return {};
     }
     const reported = new Set<TSESTree.Node>();

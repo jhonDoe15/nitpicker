@@ -65,18 +65,13 @@ function inputUse(parent: TSESTree.Node): Use | undefined {
     : undefined;
 }
 
-function defaulted(node: TSESTree.Node, parent: TSESTree.Node): TSESTree.Node | undefined {
-  if (parent.type === AST_NODE_TYPES.LogicalExpression) {
-    return parent.right === node && parent.operator !== '&&' ? parent.left : undefined;
-  }
-  return parent.type === AST_NODE_TYPES.AssignmentPattern && parent.right === node
-    ? parent.left
-    : undefined;
-}
-
 function fallbackUse(node: TSESTree.Node, parent: TSESTree.Node): Use | undefined {
-  const target = defaulted(node, parent);
-  return target !== undefined && isDateNamed(target) ? 'fallback' : undefined;
+  return parent.type === AST_NODE_TYPES.LogicalExpression &&
+    parent.right === node &&
+    parent.operator !== '&&' &&
+    isDateNamed(parent.left)
+    ? 'fallback'
+    : undefined;
 }
 
 function useAt(node: TSESTree.Node): Use | undefined {
@@ -85,6 +80,18 @@ function useAt(node: TSESTree.Node): Use | undefined {
     return undefined;
   }
   return stateUse(node, parent) ?? inputUse(parent) ?? fallbackUse(node, parent);
+}
+
+function isLazyInitializer(node: TSESTree.Node, parent: TSESTree.Node): boolean {
+  const call = parent.parent;
+  return (
+    parent.type === AST_NODE_TYPES.ArrowFunctionExpression &&
+    parent.body === node &&
+    parent.params.length === 0 &&
+    call?.type === AST_NODE_TYPES.CallExpression &&
+    call.arguments[0] === parent &&
+    calleeNameOf(call.callee) === 'useState'
+  );
 }
 
 function passes(node: TSESTree.Node, parent: TSESTree.Node): boolean {
@@ -97,7 +104,7 @@ function passes(node: TSESTree.Node, parent: TSESTree.Node): boolean {
   if (parent.type === AST_NODE_TYPES.LogicalExpression) {
     return parent.operator !== '&&';
   }
-  return parent.type === AST_NODE_TYPES.ArrowFunctionExpression && parent.body === node;
+  return isLazyInitializer(node, parent);
 }
 
 function carrier(node: TSESTree.Node): TSESTree.Node | undefined {

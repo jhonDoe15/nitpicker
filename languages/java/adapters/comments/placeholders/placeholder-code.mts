@@ -11,17 +11,16 @@ export const PLACEHOLDER_RULE = 'PlaceholderImplementation';
 export const PLACEHOLDER_MESSAGE =
   'The comment calls this code a stand-in for the real work, and the code is one: it returns a fixed value, only sleeps, passes a value on unchanged or does nothing. Do the real work, or throw `UnsupportedOperationException`, so that no caller takes the stand-in for a result. Deleting the comment alone leaves the stand-in in place.';
 
-const EMPTY_VALUES = String.raw`Collections\.empty\w*\(\)|(?:List|Set|Map)\.of\(\)|Optional\.empty\(\)|new \w+(?:<[^()]*>)?\(\)`;
+const EMPTY_VALUES = String.raw`Collections\.empty\w*\(\)|(?:List|Set|Map)\.of\(\)|Optional\.empty\(\)|new (?:Array|Linked|Hash|Tree)\w+(?:<[^()]*>)?\(\)`;
 const FIXED_VALUES = String.raw`null|true|false|-?[\d._]+[LlFfDd]?|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)'`;
+const FIXED_RETURN = new RegExp(String.raw`^return (?:${FIXED_VALUES}|${EMPTY_VALUES}) ?;$`, 'u');
 const SHAPES = [
-  new RegExp(String.raw`^return\s+(?:${FIXED_VALUES}|${EMPTY_VALUES})\s*;$`, 'u'),
   /^(?:Thread|TimeUnit\.[A-Z_]+)\.sleep\(.*\);$/u,
-  /^(?:(?:final )?[A-Z][\w.]*(?:<[^=;()]*>)?(?:\[\])* )?[a-z_]\w* ?= ?(?!(?:null|true|false|this) ?;)[a-z_][\w.]* ?;$/u,
+  /^(?:(?:final )?(?:int|long|double|float|boolean|[A-Z][\w.]*(?:<[^=;()]*>)?)(?:\[\])* )?[a-z_]\w* ?= ?(?!(?:null|true|false|this) ?;)[a-z_]\w* ?;$/u,
 ];
 const COMMENT_ONLY = /^(?:\/\/|\/\*|\*)/u;
-const METHOD_OPENING = /\)(?: throws [\w., ]+)? ?\{$/u;
-const CONTROL_OPENING =
-  /^(?:\}\s*)?(?:if|else|for|while|do|switch|try|catch|finally|synchronized)\b/u;
+const METHOD_HEADER =
+  /^(?!(?:new|return|throw|else|do|try) )(?:@?[\w.]+(?:<[^()]*>)?(?:\[\])* )+\w+\([^()]*\)(?: throws [\w., ]+)? ?\{$/u;
 
 function linesOf(source: string): Line[] {
   const starts = [0, ...[...source.matchAll(/\n/gu)].map((match) => match.index + 1)];
@@ -31,18 +30,24 @@ function linesOf(source: string): Line[] {
   }));
 }
 
-function isStandIn(code: string): boolean {
-  const spaced = code.replaceAll(/\s+/gu, ' ');
-  return SHAPES.some((shape) => shape.test(spaced));
+function spaced(line: Line | undefined): string {
+  return (line?.text ?? '').trim().replaceAll(/\s+/gu, ' ');
 }
 
-function closesEmptyMethod(lines: readonly Line[], opening: number, code: string): boolean {
-  const header = (lines[opening]?.text ?? '').trim().replaceAll(/\s+/gu, ' ');
-  return code === '}' && METHOD_OPENING.test(header) && !CONTROL_OPENING.test(header);
+function opensOtherBlock(header: string): boolean {
+  return header.endsWith('{') && !METHOD_HEADER.test(header);
 }
 
-function codeBefore(lines: readonly Line[], index: number): number {
-  return lines.findLastIndex(
+function isStandIn(code: string, header: string): boolean {
+  return (
+    SHAPES.some((shape) => shape.test(code)) ||
+    (FIXED_RETURN.test(code) && !opensOtherBlock(header)) ||
+    (code === '}' && METHOD_HEADER.test(header))
+  );
+}
+
+function codeBefore(lines: readonly Line[], index: number): Line | undefined {
+  return lines.findLast(
     (line, position) =>
       position < index && line.text.trim() !== '' && !COMMENT_ONLY.test(line.text.trim()),
   );
@@ -51,14 +56,22 @@ function codeBefore(lines: readonly Line[], index: number): number {
 function standInFor(lines: readonly Line[], index: number, offset: number): Line | undefined {
   const line = lines[index];
   const leading = line === undefined ? '' : line.text.slice(0, offset - line.start).trim();
-  if (line !== undefined && leading !== '' && !COMMENT_ONLY.test(leading)) {
-    return isStandIn(leading) ? line : undefined;
+  const header = spaced(codeBefore(lines, index));
+  if (
+    line !== undefined &&
+    leading !== '' &&
+    !COMMENT_ONLY.test(leading) &&
+    !leading.endsWith('{')
+  ) {
+    return isStandIn(leading.replaceAll(/\s+/gu, ' '), header) ? line : undefined;
   }
   const next = lines.find(
     (candidate, position) => position > index && !COMMENT_ONLY.test(candidate.text.trim()),
   );
-  const code = next?.text.trim() ?? '';
-  return isStandIn(code) || closesEmptyMethod(lines, codeBefore(lines, index), code)
+  return isStandIn(
+    spaced(next),
+    leading.endsWith('{') ? spaced({ text: leading, start: 0 }) : header,
+  )
     ? next
     : undefined;
 }

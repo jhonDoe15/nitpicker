@@ -39,6 +39,11 @@ describe('placeholderCode', () => {
     ]);
   });
 
+  it('reads a comment on the opening line of a method', () => {
+    const source = inClass('  int size() { // placeholder implementation', '    return 0;', '  }');
+    expect(subjects(source)).toEqual(['return 0;']);
+  });
+
   it('gives the offset of the statement', () => {
     const source = inClass(
       '  int size() {',
@@ -79,6 +84,21 @@ describe('placeholderCode', () => {
       '    if (amount.isZero()) {',
       '      // placeholder implementation',
       '    }',
+      '    if (amount != null',
+      '        && ledger != null) {',
+      '      // In a real app we would also notify the user',
+      '    }',
+      '    if (ledger == null) {',
+      '      // In a real app this redirects to the login page',
+      '      return null;',
+      '    }',
+      '    // Replace with the real user',
+      '    return new User();',
+      '    // Replace with the actual id',
+      '    String id = config.id;',
+      '    Runnable task = new Runnable() {',
+      '      // placeholder implementation',
+      '    };',
       '    // Replace with the real ledger',
       '    this.ledger = null;',
       '    // simulate network delay',
