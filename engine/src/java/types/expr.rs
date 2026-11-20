@@ -257,7 +257,7 @@ impl<'a> Resolver<'a> {
         declared
     }
 
-    fn binding(&self, usage: Node, name: &str) -> Option<Binding<'a>> {
+    pub fn binding(&self, usage: Node, name: &str) -> Option<Binding<'a>> {
         let mut inner = usage;
         let mut scope = crate::engine::source::parent(usage);
         while let Some(node) = scope {

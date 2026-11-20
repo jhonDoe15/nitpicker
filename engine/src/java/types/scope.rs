@@ -411,7 +411,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// Erased and generic parameter types, and whether the last one is variable arity.
-    fn parameters(&self, list: Option<Node>) -> (Vec<Type>, Vec<Type>, bool) {
+    pub fn parameters(&self, list: Option<Node>) -> (Vec<Type>, Vec<Type>, bool) {
         let mut erased = Vec::new();
         let mut generic = Vec::new();
         let mut varargs = false;
@@ -522,6 +522,7 @@ impl<'a> Resolver<'a> {
             permitted: self.permitted(declaration, &own_name, &listed("permits")),
             record_components: (kind == "record_declaration").then(Vec::new),
             flags: self.class_flags(declaration),
+            setter_like: false,
         }
     }
 
@@ -722,6 +723,8 @@ impl<'a> Resolver<'a> {
                 _ => {}
             }
         }
+        let own = Type::class(&info.name);
+        info.setter_like = info.methods.iter().any(|method| !method.is_static && super::model::setter_name(&method.name) && method.returns != own);
         if matches!(declaration.kind(), "class_declaration" | "enum_declaration") && !info.methods.iter().any(|method| method.name == "<init>") {
             info.methods.push(plain("<init>", Vec::new(), Type::Primitive("void")));
         }
