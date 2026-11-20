@@ -237,7 +237,7 @@ impl<'a> Resolver<'a> {
             }
             // Names in the header of a class are looked up around it: its members and what it inherits are not in scope there.
             // The components of a record are the exception: they see the members.
-            let inside = |field: &str| node.field(field) == Some(inner);
+            let inside = |field: &'static str| node.field(field) == Some(inner);
             let header = TYPE_DECLARATIONS.contains(&node.kind()) && !inside("body") && !(node.kind() == "record_declaration" && inside("parameters"));
             if let Some(owner) = class_at(self.scope, node, inner).filter(|_| !header) {
                 for ancestor in self.index.lineage(&owner).iter() {
