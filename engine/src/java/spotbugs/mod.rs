@@ -5,6 +5,8 @@ mod expose;
 mod flow;
 mod mutable;
 mod names;
+mod observed;
+mod statements;
 mod stores;
 
 use super::types::project::JavaProject;
@@ -26,6 +28,8 @@ pub struct Context<'a> {
     pub fixed: RefCell<HashMap<String, Rc<HashSet<String>>>>,
     /// Fields whose stored values are all of one changeable type, worked out once.
     pub widened: RefCell<Option<Rc<HashSet<(String, String)>>>>,
+    /// Every value the file stores in a field, worked out once.
+    pub stores: RefCell<Option<Rc<observed::Stores<'a>>>>,
     line_starts: Vec<usize>,
     selected: Option<Vec<String>>,
     out: RefCell<Vec<Finding>>,
@@ -96,7 +100,7 @@ impl Context<'_> {
 /// A detector looks at one class, enum, record or interface declaration at a time.
 type Detector = fn(&Context, Node);
 
-const DETECTORS: &[Detector] = &[expose::exposed_representation, constructors::constructor_throw];
+const DETECTORS: &[Detector] = &[expose::exposed_representation, constructors::constructor_throw, statements::statements];
 
 pub struct SpotBugs;
 
@@ -118,13 +122,14 @@ impl FileRule for SpotBugs {
         let selected = std::env::var("NP_SB_ONLY").ok().map(|names| names.split(',').map(String::from).collect());
         let mut declared = Vec::new();
         walk(file.tree.root_node(), |node| {
-            if TYPE_DECLARATIONS.contains(&node.kind()) {
+            let unnamed = matches!(node.kind(), "object_creation_expression" | "enum_constant") && children(node).iter().any(|part| part.kind() == "class_body");
+            if TYPE_DECLARATIONS.contains(&node.kind()) || unnamed {
                 declared.push(node);
             }
         });
         let classes = declared.iter().filter_map(|node| Some((scope.names.get(&node.id())?.clone(), *node))).collect();
         let fixed = RefCell::new(HashMap::new());
-        let context = Context { resolver, file, classes, fixed, widened: RefCell::new(None), line_starts, selected, out: RefCell::new(Vec::new()) };
+        let context = Context { resolver, file, classes, fixed, widened: RefCell::new(None), stores: RefCell::new(None), line_starts, selected, out: RefCell::new(Vec::new()) };
         for node in declared {
             for detector in DETECTORS {
                 detector(&context, node);

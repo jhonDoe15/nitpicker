@@ -5,7 +5,7 @@ use super::Context;
 use crate::engine::source::{ancestor, children, named_children, walk};
 use crate::java::types::expr::{Binding, Receiver};
 use crate::java::types::model::Type;
-use crate::java::types::scope::{TYPE_DECLARATIONS, enclosing_types};
+use crate::java::types::scope::TYPE_DECLARATIONS;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use tree_sitter::Node;
@@ -249,39 +249,11 @@ pub fn widened(context: &Context) -> Rc<HashSet<(String, String)>> {
             }
         }).or_insert(kind);
     };
-    walk(context.file.tree.root_node(), |node| match node.kind() {
-        "variable_declarator" if crate::engine::source::parent(node).is_some_and(|holder| holder.kind() == "field_declaration") => {
-            let class = enclosing_types(context.resolver.scope, node).into_iter().next();
-            if let (Some(class), Some(name), Some(value)) = (class, node.child_by_field_name("name"), node.child_by_field_name("value")) {
-                note((class, context.text(name).to_string()), value);
-            }
+    for (key, values) in super::observed::field_stores(context).iter() {
+        for value in values {
+            note(key.clone(), *value);
         }
-        "assignment_expression" => {
-            let (Some(left), Some(right)) = (node.child_by_field_name("left"), node.child_by_field_name("right")) else { return };
-            let key = match left.kind() {
-                "identifier" => match context.resolver.binding(left, context.text(left)) {
-                    Some(Binding::Field(_, declaring, field)) => Some((declaring.name.clone(), field.name.clone())),
-                    _ => None,
-                },
-                "field_access" => {
-                    let holder = left.child_by_field_name("object").and_then(|object| match object.kind() {
-                        "this" => enclosing_types(context.resolver.scope, object).into_iter().next(),
-                        _ => match context.resolver.receiver(object) {
-                            Some(Receiver::Value(Type::Class(class, _)) | Receiver::Static(class)) => Some(class.to_string()),
-                            _ => None,
-                        },
-                    });
-                    let name = left.child_by_field_name("field").map(|field| context.text(field));
-                    holder.zip(name).and_then(|(holder, name)| index.field(&holder, name)).map(|(declaring, field)| (declaring.name.clone(), field.name.clone()))
-                }
-                _ => None,
-            };
-            if let Some(key) = key {
-                note(key, right);
-            }
-        }
-        _ => {}
-    });
+    }
     let found: HashSet<(String, String)> = stored.into_iter().filter(|(_, kind)| kind.as_ref().is_some_and(|kind| mutable(index, kind))).map(|(key, _)| key).collect();
     let found = Rc::new(found);
     *context.widened.borrow_mut() = Some(found.clone());
