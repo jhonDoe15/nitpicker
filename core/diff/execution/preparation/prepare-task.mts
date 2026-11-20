@@ -14,6 +14,7 @@ import {
   memoryEstimateMegabytes,
   projectFileCount,
   scaledDeadlineMs,
+  scaledFileCount,
 } from './project-size.mts';
 
 export type TaskContext = {
@@ -60,7 +61,7 @@ function taskTimeoutMs(
   if (analyzer['configuredTimeout'] === true || scale === undefined) {
     return base;
   }
-  return scaledDeadlineMs(base, scale, countFiles(liveProjectRoot, scale.extensions));
+  return scaledDeadlineMs(base, scale, scaledFileCount(scale, liveProjectRoot, countFiles));
 }
 
 function logLocation(

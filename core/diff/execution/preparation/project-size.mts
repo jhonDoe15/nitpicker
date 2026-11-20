@@ -2,14 +2,25 @@ import { spawnSync } from 'node:child_process';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
 import { GIT_OUTPUT_LIMIT_BYTES, GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
 
+type CountedRoots = (liveProjectRoot: string) => readonly string[];
+
 type SizeScale = {
   readonly perThousandFiles: number;
   readonly extensions: readonly string[];
+  readonly roots?: CountedRoots | undefined;
 };
 
 export type FileCounter = (root: string, extensions: readonly string[]) => number;
 
 const FILES_PER_STEP = 1000;
+
+function isCountedRoots(value: unknown): value is CountedRoots {
+  return typeof value === 'function';
+}
+
+function countedRootsOf(value: unknown): CountedRoots | undefined {
+  return isCountedRoots(value) ? value : undefined;
+}
 
 function sizeScaleOf(analyzer: unknown, field: string, amountKey: string): SizeScale | undefined {
   const scale = fieldOf(analyzer, field);
@@ -17,7 +28,11 @@ function sizeScaleOf(analyzer: unknown, field: string, amountKey: string): SizeS
   if (typeof perThousandFiles !== 'number' || perThousandFiles <= 0) {
     return undefined;
   }
-  return { perThousandFiles, extensions: textsOf(fieldOf(scale, 'extensions')) };
+  return {
+    perThousandFiles,
+    extensions: textsOf(fieldOf(scale, 'extensions')),
+    roots: countedRootsOf(fieldOf(scale, 'roots')),
+  };
 }
 
 export function deadlineScaleOf(analyzer: unknown): SizeScale | undefined {
@@ -33,8 +48,17 @@ export function memoryEstimateMegabytes(
   if (scale === undefined) {
     return 0;
   }
-  const files = countFiles(liveProjectRoot, scale.extensions);
+  const files = scaledFileCount(scale, liveProjectRoot, countFiles);
   return Math.round((files / FILES_PER_STEP) * scale.perThousandFiles);
+}
+
+export function scaledFileCount(
+  scale: SizeScale,
+  liveProjectRoot: string,
+  countFiles: FileCounter,
+): number {
+  const roots = scale.roots?.(liveProjectRoot) ?? [liveProjectRoot];
+  return roots.reduce((sum, root) => sum + countFiles(root, scale.extensions), 0);
 }
 
 export function scaledDeadlineMs(baseMs: number, scale: SizeScale, fileCount: number): number {

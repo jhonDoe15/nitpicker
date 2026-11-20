@@ -101,6 +101,24 @@ describe('analyzer budgets scaled with project size', () => {
     expect(deadlineScaleOf({ timeoutScale: { perThousandFilesMs: 0 } })).toBeUndefined();
   });
 
+  it('counts the files of every folder a memory scale says the analyzer reaches', () => {
+    const { root } = git.createGitRepository(
+      { ...sources(500), 'packages/kit/a.ts': '', 'packages/kit/b.ts': '' },
+      { prefix: 'nitpicker-memory-' },
+    );
+    const reach = { perThousandFilesMegabytes: 1000, extensions: ['ts'] };
+    const roots = (projectRoot: string) => [projectRoot, `${root}/packages`];
+
+    expect(memoryEstimateMegabytes({ memoryScale: reach }, `${root}/src`)).toBe(500);
+    expect(memoryEstimateMegabytes({ memoryScale: { ...reach, roots } }, `${root}/src`)).toBe(502);
+    expect(
+      preparedTimeout(
+        analyzer({ timeoutScale: { ...SCALE, extensions: ['ts'], roots } }),
+        `${root}/src`,
+      ),
+    ).toBe(preparedTimeout(analyzer({ timeoutScale: { ...SCALE, extensions: ['ts'] } }), root));
+  });
+
   it('estimates an analyzer peak memory from the number of source files', () => {
     const { root } = git.createGitRepository(sources(1_500), { prefix: 'nitpicker-memory-' });
     const memoryScale = { perThousandFilesMegabytes: 600, extensions: ['ts'] };

@@ -2257,7 +2257,8 @@ run; its quick results are cached apart from its full ones.
 Each analyzer has a deadline: 5 minutes unless the analyzer sets its own (30 minutes for `python` and `go`,
 70 for the Python `mutation` analyzer, two Gradle or Maven commands plus a minute for `java` and
 `kotlin`). The TypeScript and JavaScript analyzers whose work grows with the code (`coding-standards`,
-`coupling`, `test-runtime`, `structure`, `duplicates`, `dead-code` and `policy-tests`) get 5 minutes plus
+`coupling`, `test-runtime`, `structure`, `duplicates`, `dead-code`, `policy-tests` and
+`typescript-typecheck`) get 5 minutes plus
 2 minutes for each started thousand source files of the project, so a project of 10,000 files gets
 25 minutes. An analyzer that runs out of time is a tool error that names this setting. On a large
 project, give it more time:
@@ -5001,6 +5002,8 @@ npx nitpicker aggregate --input-root shards --shard-count 3
   programs also carry a memory estimate from the project's number of source files, and one starts
   only when its estimate fits in three quarters of the memory beside the ones already running (one
   whose estimate is larger than that runs alone), so a large project runs fewer of them at once
-  instead of running out of memory. An analyzer whose estimate is larger than the shared heap gets
+  instead of running out of memory. The type check's estimate also counts the folders its
+  `tsconfig.json` reaches through path mappings and project references, because the compiler loads
+  those sources too. An analyzer whose estimate is larger than the shared heap gets
   a heap of its estimate, up to three quarters of the memory, so one that runs alone can use the
   machine.

@@ -95,3 +95,22 @@ describe('analyzer cache keys', () => {
     ).toEqual([]);
   });
 });
+
+describe('the type check on a large project', () => {
+  it('has a deadline that grows with the files and a memory estimate over what its tsconfig reaches', () => {
+    const typecheck: unknown = configuredAnalyzers().find(
+      ({ name }) => name === 'typescript-typecheck',
+    );
+    const scales = Object.assign({ timeoutMs: 0, timeoutScale: {}, memoryScale: {} }, typecheck);
+
+    expect([scales.timeoutMs, scales.timeoutScale]).toEqual([
+      300_000,
+      { perThousandFilesMs: 120_000, extensions: expect.arrayContaining(['ts', 'tsx']) },
+    ]);
+    expect(scales.memoryScale).toEqual({
+      perThousandFilesMegabytes: 640,
+      extensions: expect.arrayContaining(['ts', 'tsx']),
+      roots: expect.any(Function),
+    });
+  });
+});
