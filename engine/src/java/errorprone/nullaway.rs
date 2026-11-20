@@ -376,6 +376,19 @@ impl<'a, 't> Flow<'a, 't> {
                 }
                 NONNULL
             }
+            "switch_label" => {
+                let holds_null = |label: Node| named_children(label).into_iter().any(|part| part.kind() == "null_literal" || named_children(part).into_iter().any(|inner| inner.kind() == "null_literal"));
+                let switch = std::iter::successors(node.parent(), |parent| parent.parent()).find(|parent| matches!(parent.kind(), "switch_expression" | "switch_statement"));
+                let Some(switch) = switch else { return NONNULL };
+                let labels = switch.child_by_field_name("body").map(named_children).unwrap_or_default().into_iter().flat_map(|case| children(case).into_iter().filter(|part| part.kind() == "switch_label").collect::<Vec<_>>());
+                let mut labels = labels;
+                if labels.any(holds_null) && !holds_null(node) {
+                    if let Some(condition) = switch.child_by_field_name("condition") {
+                        self.settle(store, condition, NONNULL);
+                    }
+                }
+                NONNULL
+            }
             "parenthesized_expression" => self.value(unwrap(node)),
             "cast_expression" => {
                 let primitive = node.child_by_field_name("type").is_some_and(|kind| matches!(kind.kind(), "integral_type" | "floating_point_type" | "boolean_type"));
@@ -542,6 +555,67 @@ impl<'a, 't> Flow<'a, 't> {
         (holds, fails)
     }
 
+    /// The exception types a step can throw, as the Checker Framework's flow graph has them: declared
+    /// exceptions and the unchecked roots for a call, a null pointer exception for a dereference.
+    fn thrown(&self, node: Node) -> Vec<String> {
+        let resolver = self.context.resolver;
+        let unchecked = || vec!["java.lang.RuntimeException".to_string(), "java.lang.Error".to_string()];
+        let null_pointer = "java.lang.NullPointerException".to_string();
+        match node.kind() {
+            "method_invocation" | "object_creation_expression" => match resolver.resolve_call(node) {
+                Some(call) => {
+                    let mut all = call.method.throws.clone();
+                    all.extend(unchecked());
+                    all
+                }
+                None => unchecked(),
+            },
+            "explicit_constructor_invocation" => vec!["java.lang.Throwable".to_string()],
+            "field_access" if !self.fixed(node, self.field(node)) => vec![null_pointer],
+            "array_access" => vec![null_pointer, "java.lang.ArrayIndexOutOfBoundsException".to_string()],
+            "cast_expression" => vec!["java.lang.ClassCastException".to_string()],
+            "throw_statement" => {
+                let value = named_children(node).into_iter().find(|part| !part.kind().ends_with("comment"));
+                let kind = value.and_then(|value| resolver.type_of(value)).map(|kind| kind.name());
+                vec![kind.unwrap_or_else(|| "java.lang.Throwable".to_string())]
+            }
+            _ => Vec::new(),
+        }
+    }
+
+    /// The handler blocks an exception of one of these types can reach: in each enclosing `try`, a handler
+    /// that surely catches it ends the search, one that may catch it does not.
+    fn landings(&self, frames: &[Vec<cfg::Catch<'t>>], thrown: &[String]) -> Vec<usize> {
+        let resolver = self.context.resolver;
+        let mut found = Vec::new();
+        for exception in thrown {
+            'frames: for frame in frames {
+                for handler in frame {
+                    if handler.types.is_empty() {
+                        found.push(handler.block);
+                        break 'frames;
+                    }
+                    for written in &handler.types {
+                        let Some(caught) = resolver.type_node(*written).map(|kind| kind.name()) else {
+                            found.push(handler.block);
+                            continue;
+                        };
+                        if resolver.index.is_subtype(exception, &caught) {
+                            found.push(handler.block);
+                            break 'frames;
+                        }
+                        if resolver.index.is_subtype(&caught, exception) {
+                            found.push(handler.block);
+                        }
+                    }
+                }
+            }
+        }
+        found.sort_unstable();
+        found.dedup();
+        found
+    }
+
     fn run(&mut self, start: Store) -> Vec<Option<Store>> {
         let count = self.cfg.blocks.len();
         let mut inputs: Vec<Option<Store>> = vec![None; count];
@@ -567,10 +641,10 @@ impl<'a, 't> Flow<'a, 't> {
             let catches = self.cfg.blocks[block].catches.clone();
             for position in 0..self.cfg.blocks[block].steps.len() {
                 let node = self.cfg.blocks[block].steps[position];
-                // An exception leaves from a call or a creation, with what was known just before it.
-                if matches!(node.kind(), "method_invocation" | "object_creation_expression" | "explicit_constructor_invocation") {
-                    for handler in &catches {
-                        reach(&mut inputs, *handler, &store);
+                // An exception leaves with what was known just before the step that throws it.
+                if !catches.is_empty() {
+                    for handler in self.landings(&catches, &self.thrown(node)) {
+                        reach(&mut inputs, handler, &store);
                     }
                 }
                 let value = self.step(node, &mut store);
@@ -581,8 +655,9 @@ impl<'a, 't> Flow<'a, 't> {
                 }
             }
             if matches!(self.cfg.blocks[block].exit, Exit::End) {
-                for handler in &catches {
-                    reach(&mut inputs, *handler, &store);
+                let last = catches.iter().flatten().find(|handler| handler.types.is_empty());
+                if let Some(last) = last {
+                    reach(&mut inputs, last.block, &store);
                 }
             }
             match &self.cfg.blocks[block].exit {

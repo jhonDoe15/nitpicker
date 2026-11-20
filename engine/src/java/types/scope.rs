@@ -397,6 +397,18 @@ impl<'a> Resolver<'a> {
         (erased, generic, varargs)
     }
 
+    fn throws(&self, member: Node) -> Vec<String> {
+        let clause = children(member).into_iter().find(|part| part.kind() == "throws");
+        let mut cursor = member.walk();
+        clause.map(|clause| clause.named_children(&mut cursor).filter_map(|kind| self.written(kind, false)).map(|kind| kind.name()).collect()).unwrap_or_default()
+    }
+
+    fn nullable_parameters(&self, member: Node) -> u64 {
+        let list = member.child_by_field_name("parameters").map(children).unwrap_or_default();
+        let listed = list.into_iter().filter(|part| matches!(part.kind(), "formal_parameter" | "spread_parameter"));
+        listed.enumerate().filter(|(position, part)| *position < 64 && part.kind() == "formal_parameter" && super::super::helpers::marked_nullable(self.file, *part)).fold(0, |bits, (position, _)| bits | 1 << position)
+    }
+
     fn class_flags(&self, declaration: Node) -> u16 {
         use super::model::flag;
         let has = super::super::helpers::has_modifier;
@@ -575,6 +587,8 @@ impl<'a> Resolver<'a> {
             is_static: false,
             is_private: false,
             varargs: false,
+            throws: Vec::new(),
+            nullable_parameters: 0,
             flags: super::model::flag::PUBLIC,
         };
         let bits = |member: Node| -> u16 {
@@ -673,6 +687,8 @@ impl<'a> Resolver<'a> {
                         is_abstract: member.child_by_field_name("body").is_none()
                             && (info.is_interface || has(member, "abstract")),
                         varargs,
+                        throws: self.throws(member),
+                        nullable_parameters: self.nullable_parameters(member),
                         flags: bits(member) | if member.child_by_field_name("body").is_none() && info.is_interface { super::model::flag::ABSTRACT } else { 0 },
                     });
                 }
@@ -681,6 +697,8 @@ impl<'a> Resolver<'a> {
                     info.methods.push(Method {
                         generic_parameters,
                         varargs,
+                        throws: self.throws(member),
+                        nullable_parameters: self.nullable_parameters(member),
                         ..plain("<init>", parameters, Type::Primitive("void"))
                     });
                 }
@@ -698,7 +716,7 @@ impl<'a> Resolver<'a> {
         if declaration.kind() == "record_declaration" {
             let (parameters, generic_parameters, varargs) = self.parameters(declaration.child_by_field_name("parameters"));
             if !info.methods.iter().any(|method| method.name == "<init>" && method.parameters == parameters) {
-                info.methods.push(Method { generic_parameters, varargs, ..plain("<init>", parameters, Type::Primitive("void")) });
+                info.methods.push(Method { generic_parameters, varargs, nullable_parameters: self.nullable_parameters(declaration), ..plain("<init>", parameters, Type::Primitive("void")) });
             }
             for component in declaration.child_by_field_name("parameters").map(children).unwrap_or_default() {
                 let (Some(name), Some(kind)) = (component.child_by_field_name("name"), self.declared(component, None, false)) else {

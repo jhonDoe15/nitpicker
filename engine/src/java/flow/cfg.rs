@@ -13,11 +13,25 @@ pub enum Exit<'t> {
     Any(Vec<usize>),
 }
 
+/// A handler block and the types it catches; no types means everything (a `finally`).
+#[derive(Clone)]
+pub struct Catch<'t> {
+    pub block: usize,
+    pub types: Vec<Node<'t>>,
+}
+
+fn caught<'t>(clause: Node<'t>) -> Vec<Node<'t>> {
+    let parameter = children(clause).into_iter().find(|part| part.kind() == "catch_formal_parameter");
+    let listed = parameter.and_then(|parameter| children(parameter).into_iter().find(|part| part.kind() == "catch_type"));
+    listed.map(named_children).unwrap_or_default()
+}
+
 pub struct Block<'t> {
     pub steps: Vec<Node<'t>>,
     pub exit: Exit<'t>,
     /// Handler blocks an exception thrown in this block can reach.
-    pub catches: Vec<usize>,
+    /// Enclosing `try` statements, innermost first, each with its handlers in order.
+    pub catches: Vec<Vec<Catch<'t>>>,
     /// A `finally` body is lowered once for leaving normally and once for leaving by an exception; blocks of
     /// the second lowering carry their own number, so the same node can hold a value per lowering.
     pub copy: usize,
@@ -43,7 +57,7 @@ struct Builder<'t, 'f> {
     cfg: Cfg<'t>,
     current: usize,
     targets: Vec<Target>,
-    handlers: Vec<Vec<usize>>,
+    handlers: Vec<Vec<Catch<'t>>>,
     label: Option<String>,
     switches: Vec<(usize, usize)>,
     copy: usize,
@@ -94,7 +108,7 @@ pub fn build<'t>(file: &SourceFile, body: Node<'t>, guards: &dyn Fn(Node) -> boo
 
 impl<'t> Builder<'t, '_> {
     fn block(&mut self) -> usize {
-        let catches = self.handlers.iter().flatten().copied().collect();
+        let catches = self.handlers.iter().rev().cloned().collect();
         self.cfg.blocks.push(Block { steps: Vec::new(), exit: Exit::End, catches, copy: self.copy });
         self.cfg.blocks.len() - 1
     }
@@ -410,6 +424,9 @@ impl<'t> Builder<'t, '_> {
             }
             "return_statement" | "throw_statement" => {
                 self.parts(node);
+                if node.kind() == "throw_statement" {
+                    self.step(node);
+                }
                 self.leave(Exit::End);
                 self.dead();
             }
@@ -455,7 +472,9 @@ impl<'t> Builder<'t, '_> {
         let thrown = last.map(|_| self.block());
         let handlers: Vec<usize> = clauses.iter().map(|_| self.block()).collect();
         let next = landing.unwrap_or(after);
-        self.handlers.push(handlers.iter().copied().chain(thrown).collect());
+        let everything = thrown.map(|block| Catch { block, types: Vec::new() });
+        let typed = clauses.iter().zip(&handlers).map(|(clause, block)| Catch { block: *block, types: caught(*clause) });
+        self.handlers.push(typed.chain(everything.clone()).collect());
         let body = self.block();
         self.jump(body);
         self.current = body;
@@ -478,7 +497,7 @@ impl<'t> Builder<'t, '_> {
         }
         self.jump(next);
         self.handlers.pop();
-        self.handlers.push(thrown.into_iter().collect());
+        self.handlers.push(everything.into_iter().collect());
         for (clause, handler) in clauses.iter().zip(&handlers) {
             let inner = self.block();
             self.cfg.blocks[*handler].exit = Exit::Jump(inner);
@@ -540,6 +559,9 @@ impl<'t> Builder<'t, '_> {
         self.switches.push((node.id(), after));
         for (position, case) in cases.iter().enumerate() {
             self.current = blocks[position];
+            for label in children(*case).into_iter().filter(|part| part.kind() == "switch_label") {
+                self.step(label);
+            }
             if case.kind() == "switch_rule" {
                 for part in named_children(*case).into_iter().filter(|part| part.kind() != "switch_label") {
                     match part.kind() {

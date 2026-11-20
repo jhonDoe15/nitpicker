@@ -818,6 +818,8 @@ impl<'a> Resolver<'a> {
                 is_static: false,
                 is_private: false,
                 varargs: false,
+                throws: Vec::new(),
+                nullable_parameters: 0,
                 flags: 0,
             };
             return Some(Call { raw: false, receiver: owner, declaring: info.name.clone(), method });

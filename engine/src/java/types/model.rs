@@ -132,6 +132,10 @@ pub struct Method {
     /// Not inherited.
     pub is_private: bool,
     pub varargs: bool,
+    /// Declared exception classes.
+    pub throws: Vec<String>,
+    /// Bit per parameter position that is marked nullable.
+    pub nullable_parameters: u64,
     pub flags: u16,
 }
 

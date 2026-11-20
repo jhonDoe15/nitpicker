@@ -173,6 +173,9 @@ struct Attributes<'a> {
     nullable: bool,
     record: bool,
     permitted: Option<Vec<u16>>,
+    throws: Vec<u16>,
+    annotated_parameters: usize,
+    nullable_parameters: u64,
 }
 
 fn skip_element(reader: &mut Reader) -> Option<()> {
@@ -214,6 +217,19 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                 let kind = utf8(skip_annotation(reader)?);
                 found.deprecated |= kind == Some(b"Ljava/lang/Deprecated;");
                 found.nullable |= kind.is_some_and(|kind| kind.ends_with(b"/Nullable;") || kind.ends_with(b"/CheckForNull;") || kind.ends_with(b"/ParametricNullness;"));
+            }
+        } else if name == b"Exceptions" {
+            found.throws = (0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?;
+        } else if name == b"RuntimeVisibleParameterAnnotations" || name == b"RuntimeInvisibleParameterAnnotations" {
+            let count = reader.u1()? as usize;
+            found.annotated_parameters = found.annotated_parameters.max(count);
+            for position in 0..count {
+                for _ in 0..reader.u2()? {
+                    let kind = utf8(skip_annotation(reader)?);
+                    if kind.is_some_and(|kind| kind.ends_with(b"/Nullable;") || kind.ends_with(b"/CheckForNull;") || kind.ends_with(b"/ParametricNullness;")) && position < 64 {
+                        found.nullable_parameters |= 1 << position;
+                    }
+                }
             }
         } else if name == b"PermittedSubclasses" {
             found.permitted = Some((0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?);
@@ -337,6 +353,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 .filter(|(_, generic, _)| generic.len() == parameters.len());
             let (type_parameters, generic_parameters, generic_returns) =
                 generic.unwrap_or_else(|| (Vec::new(), parameters.clone(), returns.clone()));
+            let parameters_count = parameters.len();
             methods.push(Method {
                 name: String::from_utf8_lossy(method_name).into_owned(),
                 parameters,
@@ -350,6 +367,11 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 is_static: flags & ACC_STATIC != 0,
                 is_private: false,
                 varargs: flags & ACC_VARARGS != 0,
+                throws: found.throws.iter().filter_map(|index| class_name(*index)).collect(),
+                nullable_parameters: {
+                    let shift = parameters_count.saturating_sub(found.annotated_parameters.max(1)).min(63);
+                    if found.annotated_parameters == 0 { 0 } else { found.nullable_parameters << shift }
+                },
                 flags: member_flags(flags, &found),
             });
         }
