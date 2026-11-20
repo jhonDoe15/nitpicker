@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "malformed-query-text",
+    "mention": "bind placeholder"
+  }
+]

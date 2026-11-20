@@ -21,7 +21,6 @@ import {
   isFieldRecord as isRecord,
 } from './typed/engine.mts';
 import { routedEslintFields, withoutFatalDirectives } from '../hints/eslint-hints.mts';
-import { positiveInteger } from './arguments.mts';
 import { nonRuleDiagnosticId } from './messages/non-rule-diagnostics.mts';
 import { withoutSupersededMessages } from '../lint-engine/overlapping-reports.mts';
 import {
@@ -34,17 +33,12 @@ import {
 import { requiredString } from '../static-checks/arguments.mts';
 import { collapseAnyChains } from './chains/any-chain.mts';
 import { withCatchParameterWording } from './messages/catch-parameter.mts';
+import { type Positions, reportedPositions } from './messages/message-positions.mts';
+import { isFatal, unparsedNotes } from './messages/unparsed-file.mts';
 
 type NormalizedMessage = {
   readonly finding: EslintFinding;
   readonly plan: RatchetPlan | undefined;
-};
-
-type Positions = {
-  readonly line: number;
-  readonly column: number;
-  readonly sourcePosition: number;
-  readonly endPosition: number | undefined;
 };
 
 type LocatedReport = {
@@ -115,20 +109,49 @@ function normalizeResult({
   if (unsuperseded.length === 0) {
     return [];
   }
-  const relativePath = projectFile.relativePath;
-  const source = readFileSync(projectFile.canonicalPath, 'utf8');
+  const context = `ESLint result ${String(resultIndex)}`;
+  return [
+    ...unparsedNotes({
+      messages: unsuperseded,
+      context,
+      relativePath: projectFile.relativePath,
+      analyzerName,
+    }),
+    ...normalizeRuleMessages({
+      messages: unsuperseded.filter((message) => !isFatal(message)),
+      context,
+      projectFile,
+      analyzerName,
+    }),
+  ];
+}
+
+function normalizeRuleMessages({
+  messages,
+  context,
+  projectFile,
+  analyzerName,
+}: {
+  readonly messages: readonly unknown[];
+  readonly context: string;
+  readonly projectFile: { readonly relativePath: string; readonly canonicalPath: string };
+  readonly analyzerName: string;
+}): NormalizedMessage[] {
+  if (messages.length === 0) {
+    return [];
+  }
+  const { relativePath } = projectFile;
   const sourceFile = ts.createSourceFile(
     relativePath,
-    source,
+    readFileSync(projectFile.canonicalPath, 'utf8'),
     ts.ScriptTarget.Latest,
     true,
     scriptKind(relativePath),
   );
-  const messages = collapseAnyChains(unsuperseded, sourceFile);
-  return messages.map((message, messageIndex) =>
+  return collapseAnyChains(messages, sourceFile).map((message, messageIndex) =>
     normalizeMessage({
       message,
-      context: `ESLint result ${String(resultIndex)} message ${String(messageIndex)}`,
+      context: `${context} message ${String(messageIndex)}`,
       analyzerName,
       relativePath,
       sourceFile,
@@ -144,7 +167,7 @@ function normalizeMessage({
   sourceFile,
 }: MessageContext): NormalizedMessage {
   assertMessageRecord(message, context);
-  const messageText = validatedMessageText(message, context);
+  const messageText = requiredString(message.message, `${context}.message`);
   const ruleId = ruleIdOf(message, messageText);
   const positions = reportedPositions(message, context, sourceFile);
   const report = locateReport(sourceFile, positions);
@@ -216,14 +239,6 @@ function assertMessageRecord(message: unknown, context: string): asserts message
   }
 }
 
-function validatedMessageText(message: EslintMessage, context: string): string {
-  const messageText = requiredString(message.message, `${context}.message`);
-  if (message.fatal === true) {
-    throw new Error(`${context} is fatal: ${messageText}`);
-  }
-  return messageText;
-}
-
 function locateReport(
   sourceFile: TypeScript.SourceFile,
   { sourcePosition, endPosition }: Positions,
@@ -263,24 +278,6 @@ function hintedMessage({
     sourceFile,
   });
   return withCatchParameterWording(fields, { ruleId, comment, locatedNode });
-}
-
-function reportedPositions(
-  message: EslintMessage,
-  context: string,
-  sourceFile: TypeScript.SourceFile,
-): Positions {
-  const line = positiveInteger(message.line, `${context}.line`);
-  const column = positiveInteger(message.column, `${context}.column`);
-  const sourcePosition = sourceFile.getPositionOfLineAndCharacter(line - 1, column - 1);
-  const endPosition =
-    message.endLine === undefined || message.endColumn === undefined
-      ? undefined
-      : sourceFile.getPositionOfLineAndCharacter(
-          positiveInteger(message.endLine, `${context}.endLine`) - 1,
-          positiveInteger(message.endColumn, `${context}.endColumn`) - 1,
-        );
-  return { line, column, sourcePosition, endPosition };
 }
 
 function messageIdentityOf(message: EslintMessage, messageText: string): string {

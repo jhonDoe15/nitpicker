@@ -28,6 +28,15 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   parse `Content-Type`, `Accept` and cookies with `MediaType.parseMediaType`, `ContentDisposition.parse` or
   `HttpCookie.parse` instead of `split(",")` or `split(";")` (`kotlin-source/HttpValueCase`,
   `kotlin-source/HandSplitHttpHeader`). A library that is itself the parser takes an exception.
+- Split `key:value` text once: `text.split(":", limit = 2)`, or `substringBefore` with `substringAfter`, not
+  `text.split(":")[1]` or `val (key, value) = text.split(":")`, which drop what follows the second separator
+  (`kotlin-source/PairSplitDropsRest`).
+- Read a host and port with `URI("http://$host")` (`host`, `port`), not `host.split(":")` or
+  `substringBefore(":")`: an IPv6 literal `[::1]:3000` has colons of its own (`kotlin-source/HostPortColonSplit`).
+- Split file text with `lines()` or `readLines()`, not `split("\n")`: a CRLF file keeps a `\r` on each line
+  (`kotlin-source/NewlineOnlyLineSplit`).
+- Truncate text after a `Character.isHighSurrogate` check (or by code point), not `text.take(max)`, which can
+  split an emoji (`kotlin-source/SurrogateSplittingCut`).
 - Time units: name a time value with its unit (`timeoutMillis`, `ttlSeconds`) and let it meet only the same
   unit: convert once where it enters (`TimeUnit.SECONDS.toMillis(ttlSeconds)`, `ttlSeconds.seconds`), pass
   milliseconds to `delay` and `Thread.sleep`, and keep epoch times in a `Long` or an `Instant`, never
@@ -40,7 +49,8 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `encode()`, `URI(scheme, host, path, fragment)`), or parse where the failure is handled
   (`runCatching { URI.create(text) }`, a `try` that catches `IllegalArgumentException`);
   `URI.create(text)` and `URI(text)` on a non-constant string are flagged
-  (`kotlin-source/UriCreateDynamic`).
+  (`kotlin-source/UriCreateDynamic`). `URLDecoder.decode(text, charset)` throws the same exception on a stray `%`:
+  catch it too.
 - Regexes: escape a runtime value before it goes into a pattern (`Regex.escape(name)`), pass a
   whole pattern to `Regex(pattern)` on its own, and use the plain-text `replace`, `split` and
   `contains` for text without metacharacters (`kotlin-source/UnquotedRegexValue`,
@@ -114,10 +124,44 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   (`kotlin-source/NullMapValue`).
 - A `Stream` returned by a repository function is handled row by row in `forEach`, flushing a
   fixed-size batch there, never collected with `toList()` or `collect` (`pmd/StreamedRowsCollected`).
+- A value put into an HTML string is escaped first (`HtmlUtils.htmlEscape`, `Encode.forHtml`) or the page is built
+  with `kotlinx.html` (`pmd/UnescapedHtmlValue`).
+- A replacement that comes from data goes through `Regex.escapeReplacement(value)`, or use the lambda overload
+  `regex.replace(text) { value }`, or `String.replace(String, String)` (`pmd/ExpandingReplacement`): the
+  replacement reads `$1` and `\\`.
+- A glob or pattern turned into a `Regex` or a `LIKE` pattern with `replace` calls is escaped for the target
+  first (`pmd/PatternTranslation`): `Regex.escape(glob).replace("*", ".*")`, never the raw value; for `LIKE`
+  escape `%`, `_` and the escape character, then map the wildcards.
 - A "no limit" maximum is never added to anything (`pmd/MaxValueOverflow`): `startPos + width` with a
   `width` that is `Int.MAX_VALUE`, a constant of it, a parameter that defaults to it or a caller passes it,
   overflows to a negative index or bound. Compare without adding (`width >= length - start`), widen first
   (`start.toLong() + width`), use `Math.addExact`, or check the sentinel before the arithmetic.
+- A JDK `HttpClient` or OkHttp response is checked (`statusCode()`, `isSuccessful`) before its body is decoded as JSON
+  (`pmd/UncheckedResponseBody`): a proxy error page is not JSON, and the parse error hides the status.
+- A parsed double is checked with `x.isFinite()`, not only `x.isNaN()`: `"Infinity"` and `"1e999"` parse to an
+  infinity that `isNaN` lets through (`pmd/NanOnlyGuard`).
+- A count that is a subtraction is clamped before `take`, `takeLast`, `drop`, `dropLast`, `repeat` or `List(n)`:
+  `list.takeLast((a.size - b.size).coerceAtLeast(0))`; a negative count throws (`pmd/NegativeCountArgument`).
+- A bounds check before `get(index)` or `list[index]` rejects with `index >= size`: `index > size` lets `index == size`
+  through to an `IndexOutOfBoundsException` (`pmd/IndexBoundOffByOne`); `>` is right only for an insertion position.
+- A backoff delay does not grow by `1L shl attempt` without a bound: cap the exponent (`Math.min(attempt, 20)`); the shift
+  wraps and the delay turns negative (`pmd/BackoffShiftOverflow`).
+- A duration or a timeout is measured with a monotonic clock, not two wall-clock reads: read
+  `System.nanoTime()` or `TimeSource.Monotonic.markNow()` instead of subtracting two `Instant.now()` or
+  `System.currentTimeMillis()` readings (`pmd/WallClockElapsed`).
+- A path, route, package or host is matched on whole segments, never by `String` prefix
+  (`pmd/AffixWithoutBoundary`): `path == base || path.startsWith("$base/")`, `Path.startsWith`,
+  `host == domain || host.endsWith(".$domain")`, and `URI.getHost()` for a URL.
+- A suffix or prefix is removed with `removeSuffix` or `removePrefix`, never `replace` (`pmd/AffixRemovedByReplace`),
+  because `replace` also hits `blog.git.io`.
+- A key lower-cased or upper-cased for a lookup is looked up in a collection normalized the same way (`pmd/CaseMismatchedLookup`): build the set from `values.map { it.lowercase() }`, or use a case-insensitive collection;
+  a map filled with `name.lowercase()` is read with it too.
+- A precondition message names the value it checks (`pmd/PreconditionMessageNamesOtherValue`): the check on `timeToLive`
+  says so, and the unit gets its own check and message.
+- SQL built from parts reads as one valid statement once joined (`pmd/MalformedQueryText`): a `?` after every `LIKE` and
+  `=`, as many values as columns in an `INSERT`, and a space at the start of every appended fragment.
+- An object-store or search listing follows its pages (`pmd/UnpagedListing`): `listObjectsV2Paginator(request)` or a loop on
+  `isTruncated()` and `nextContinuationToken()`, and a RediSearch query sets `limit(offset, count)` and loops.
 - A null branch that does not leave is not followed by a use of the same value
   (`pmd/NullBranchFallThrough`): `if (value == null) { log.warn(...) }` followed by `value!!.length` fails on the null path, or handles the value twice. End the
   branch with `return` or `throw`, or put the use in an `else`.
