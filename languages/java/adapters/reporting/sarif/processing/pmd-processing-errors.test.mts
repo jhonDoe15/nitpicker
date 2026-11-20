@@ -76,6 +76,22 @@ describe('pmdProcessingErrors', () => {
     ]);
   });
 
+  it('removes the root before shortening, and only where a path starts', () => {
+    const padding = 'x'.repeat(225);
+    const findings = processingErrors(
+      log(
+        notification('src/A.java', `Failed ${padding} in '/work/app/src/A.java' while parsing`),
+        notification('src/B.java', "Cannot read '/mnt/work/app/src/B.java' or '/work/app2/B.java'"),
+      ),
+      { ...context, roots: ['/work/app', '/work'] },
+    );
+
+    expect(findings.map(({ message }) => message)).toEqual([
+      `PMD could not process this file, so it has no PMD findings: Failed ${padding} in 'src...`,
+      "PMD could not process this file, so it has no PMD findings: Cannot read '/mnt/work/app/src/B.java' or 'app2/B.java'",
+    ]);
+  });
+
   it('keeps an error with no file at the project root and drops repeats', () => {
     const findings = processingErrors(
       log(notification(undefined, 'bad ruleset'), notification(undefined, 'bad ruleset')),

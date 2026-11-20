@@ -11,6 +11,7 @@ import {
   type Fields,
 } from '../../../../../../shared/values/readers.mts';
 import { isRuleCrashText } from './pmd-rule-crashes.mts';
+import { escapeRegExp } from '../../../../builds/typed/regex-views.mts';
 
 type SarifRoots = {
   readonly roots: readonly string[];
@@ -43,14 +44,27 @@ function firstLine(text: string): string {
     .split(/\r?\n/u)
     .map((candidate) => candidate.trim())
     .find((candidate) => candidate !== '');
-  const cause = line ?? 'no message';
+  return line ?? 'no message';
+}
+
+function shortened(cause: string): string {
   return cause.length > MAX_CAUSE_LENGTH ? `${cause.slice(0, MAX_CAUSE_LENGTH)}...` : cause;
 }
 
+function rootPrefix(root: string): RegExp {
+  const folders = root
+    .split(/[/\\]/u)
+    .map(escapeRegExp)
+    .join(String.raw`[/\\]`);
+  return new RegExp(String.raw`(?<![\w./\\-])${folders}[/\\]`, 'gu');
+}
+
 function withoutRoots(cause: string, roots: readonly string[]): string {
-  return roots
+  return [...new Set(roots)]
+    .filter((root) => root.length > 1)
     .toSorted((left, right) => right.length - left.length)
-    .reduce((text, root) => text.replaceAll(`${root}${path.sep}`, ''), cause);
+    .map(rootPrefix)
+    .reduce((text, prefix) => text.replaceAll(prefix, ''), cause);
 }
 
 function notificationsOf(log: unknown): readonly unknown[] {
@@ -120,7 +134,9 @@ export function pmdProcessingErrors(
   const identities = new Set<string>();
   return notifications.flatMap((notification, index) => {
     const filePath = relativePath(results[index]);
-    const cause = withoutRoots(firstLine(messageText(notification)), [...roots, projectRoot]);
+    const cause = shortened(
+      withoutRoots(firstLine(messageText(notification)), [...roots, projectRoot]),
+    );
     const identity = `${RULE}:${filePath}:${cause.replaceAll(/\d+/gu, '#')}`;
     if (identities.has(identity)) {
       return [];
