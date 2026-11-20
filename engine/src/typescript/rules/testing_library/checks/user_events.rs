@@ -134,3 +134,48 @@ impl PreferSetup {
         tools.report(SETUP, callee, format!("Prefer using userEvent with setup() instead of direct {method}() call. Use: const user = userEvent.setup(); await user.{method}(...)"));
     }
 }
+
+/// What the preset adds to prefer-user-event-setup: with no default import of user-event, a call on the named
+/// `userEvent` import, or on `userEvent` or `default` of a namespace import, is a direct call as well.
+pub struct NamedImport {
+    named: Option<String>,
+    namespace: Option<String>,
+}
+
+impl NamedImport {
+    pub fn of(program: Node) -> Option<NamedImport> {
+        let imports: Vec<Node> = program
+            .nodes("body")
+            .into_iter()
+            .filter(|statement| statement.is("ImportDeclaration") && string_literal(statement.node("source")).as_deref() == Some("@testing-library/user-event"))
+            .collect();
+        let specifiers: Vec<Vec<Node>> = imports.iter().map(|declaration| declaration.nodes("specifiers")).collect();
+        if specifiers.iter().flatten().any(|specifier| specifier.is("ImportDefaultSpecifier")) {
+            return None;
+        }
+        let local = |wanted: fn(&Node) -> bool| {
+            specifiers.iter().find_map(|listed| listed.iter().find(|specifier| wanted(specifier)).and_then(|specifier| specifier.node("local")).map(name))
+        };
+        let named = local(|specifier| specifier.is("ImportSpecifier") && identifier_name(specifier.node("imported")).as_deref() == Some("userEvent"));
+        let namespace = local(|specifier| specifier.is("ImportNamespaceSpecifier"));
+        (named.is_some() || namespace.is_some()).then_some(NamedImport { named, namespace })
+    }
+
+    fn is_receiver(&self, node: Node) -> bool {
+        if node.is("Identifier") {
+            return self.named.is_some() && node.name().as_deref() == self.named.as_deref();
+        }
+        let member = node.is("MemberExpression") && !node.flag("computed");
+        let on_namespace = self.namespace.is_some() && identifier_name(node.node("object")) == self.namespace;
+        let property = node.node("property").and_then(|property| property.name());
+        member && on_namespace && matches!(property.as_deref(), Some("userEvent" | "default"))
+    }
+
+    pub fn call(&self, node: Node, tools: &mut Tools) {
+        let Some(callee) = node.node("callee").filter(|callee| callee.is("MemberExpression") && !callee.flag("computed")) else { return };
+        let method = callee.node("property").and_then(|property| property.name()).map_or("undefined".to_string(), |found| found.into_owned());
+        if method != "setup" && callee.node("object").is_some_and(|object| self.is_receiver(object)) {
+            tools.report(SETUP, callee, format!("Prefer using userEvent with setup() instead of direct {method}() call. Use: const user = userEvent.setup(); await user.{method}(...)"));
+        }
+    }
+}

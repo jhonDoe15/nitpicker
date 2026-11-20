@@ -174,6 +174,7 @@ fn typescript_lint(args: &[String]) {
                 index += 1;
                 typescript::rules::testing_library::set_utils_module(Some(args[index].clone()).filter(|module| !module.is_empty()));
             }
+            "--testing-library-upstream" => typescript::rules::testing_library::set_upstream_only(),
             other => panic!("unknown argument {other}"),
         }
         index += 1;

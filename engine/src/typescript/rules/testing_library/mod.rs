@@ -37,6 +37,13 @@ pub fn set_utils_module(setting: Option<String>) {
     let _ = UTILS_MODULE.set(setting);
 }
 
+static UPSTREAM_ONLY: OnceLock<bool> = OnceLock::new();
+
+/// Leaves out what the preset adds to the plugin's rules, to compare with the plugin itself.
+pub fn set_upstream_only() {
+    let _ = UPSTREAM_ONLY.set(true);
+}
+
 fn utils_module() -> Option<String> {
     UTILS_MODULE.get_or_init(|| Some("test-utils".to_string())).clone()
 }
@@ -69,6 +76,7 @@ struct Walk<'s, 'a, 'v> {
     screen: queries::Screen,
     user_event: user_events::PreferUserEvent,
     setup: user_events::PreferSetup,
+    named_import: Option<user_events::NamedImport>,
 }
 
 impl<'v> Walk<'_, '_, 'v> {
@@ -127,6 +135,10 @@ impl<'v> Walk<'_, '_, 'v> {
         if self.detect.imported(false) {
             self.rules(node);
         }
+        if node.is("CallExpression") && let Some(named_import) = &self.named_import {
+            let mut tools = Tools { detect: &self.detect, scopes: self.scopes, selected: self.selected, found: &mut self.found };
+            named_import.call(node, &mut tools);
+        }
         if Detection::is_kind_of_require(node) && let Some(call) = node.parent() {
             self.detect.require(call);
         }
@@ -156,6 +168,7 @@ pub fn check(context: &mut Context) {
         screen: Default::default(),
         user_event: Default::default(),
         setup: Default::default(),
+        named_import: user_events::NamedImport::of(view.program()).filter(|_| !UPSTREAM_ONLY.get().copied().unwrap_or(false)),
     };
     walk.visit(view.program());
     if walk.detect.imported(false) {
