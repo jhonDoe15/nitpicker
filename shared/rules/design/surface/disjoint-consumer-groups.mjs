@@ -14,14 +14,28 @@ function usedTargets(item) {
   return [...(item.calls ?? []).map(({ target }) => target), ...(item.references ?? [])];
 }
 
-function consumersByMember(owner, members, index) {
-  const ids = new Set(members.map(({ id }) => id));
+function usingFilesByTarget(index) {
+  const files = new Map();
+  for (const user of [...index.callables, ...index.types]) {
+    for (const target of usedTargets(user)) {
+      const known = files.get(target);
+      if (known === undefined) {
+        files.set(target, [user.file]);
+      } else {
+        known.push(user.file);
+      }
+    }
+  }
+  return files;
+}
+
+function consumersByMember(owner, members, usingFiles) {
   const consumers = new Map();
-  for (const { target, file } of [...index.callables, ...index.types]
-    .filter((user) => user.file !== owner.file)
-    .flatMap((user) => usedTargets(user).map((target) => ({ target, file: user.file })))
-    .filter((use) => ids.has(use.target))) {
-    consumers.set(target, new Set([...(consumers.get(target) ?? []), file]));
+  for (const { id } of members) {
+    const files = (usingFiles.get(id) ?? []).filter((file) => file !== owner.file);
+    if (files.length > 0) {
+      consumers.set(id, new Set(files));
+    }
   }
   return consumers;
 }
@@ -110,11 +124,11 @@ function groupText(group, { consumers, index }) {
   return `${quoted(names)} (used by ${listSites(files, MAX_LISTED_FILES)})`;
 }
 
-function ownerGroups(owner, index) {
+function ownerGroups(owner, { index, usingFiles }) {
   const members = index
     .members(owner.id)
     .filter(({ exported, entry, kind }) => exported && entry !== true && kind !== 'constructor');
-  const consumers = consumersByMember(owner, members, index);
+  const consumers = consumersByMember(owner, members, usingFiles);
   const used = [...consumers.keys()].sort(byText);
   if (used.length < MIN_USED_MEMBERS) {
     return { groups: [], consumers };
@@ -129,8 +143,9 @@ export function disjointConsumerGroupFindings(index, finding) {
   const owners = index.types.filter(
     (owner) => OWNER_KINDS.has(owner.kind) && owner.exported && !index.isPublished(owner),
   );
+  const usingFiles = usingFilesByTarget(index);
   return owners.flatMap((owner) => {
-    const { groups, consumers } = ownerGroups(owner, index);
+    const { groups, consumers } = ownerGroups(owner, { index, usingFiles });
     if (groups.length < 2) {
       return [];
     }
