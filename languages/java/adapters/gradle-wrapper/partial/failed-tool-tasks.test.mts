@@ -2,8 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   failedProjects,
   failedToolTasks,
-  noteFailedToolTasks,
-  noteStoppedBuild,
+  failedToolRecord,
   skippedModuleFindings,
 } from './failed-tool-tasks.mts';
 import type { FailedToolTasks } from './failed-tool-tasks.mts';
@@ -72,16 +71,14 @@ describe('failed nitpicker tool tasks in a Gradle failure', () => {
   });
 
   it('notes the tasks once across reruns and keeps the first error', () => {
-    const noted: FailedToolTasks = { tasks: [], error: undefined };
+    const record = failedToolRecord();
     const first = new Error('first');
 
-    expect(noteFailedToolTasks(noted, { output: FORBIDDEN, error: first })).toBe(true);
-    expect(noteFailedToolTasks(noted, { output: FORBIDDEN, error: new Error('second') })).toBe(
-      true,
-    );
-    expect(noteFailedToolTasks(noted, { output: COMPILE, error: new Error('third') })).toBe(false);
-    expect(noteFailedToolTasks(undefined, { output: FORBIDDEN, error: first })).toBe(false);
+    expect(record.noteTasks({ output: FORBIDDEN, error: first })).toBe(true);
+    expect(record.noteTasks({ output: FORBIDDEN, error: new Error('second') })).toBe(true);
+    expect(record.noteTasks({ output: COMPILE, error: new Error('third') })).toBe(false);
 
+    const noted = record.current();
     expect([noted.tasks.length, noted.error, [...failedProjects(noted)]]).toEqual([
       1,
       first,
@@ -126,7 +123,7 @@ describe('failed nitpicker tool tasks in a Gradle failure', () => {
   });
 
   it('reports a build stopped at its deadline once, naming the projects it did not reach', () => {
-    const noted: FailedToolTasks = { tasks: [], error: undefined };
+    const record = failedToolRecord();
     const stopped = Object.defineProperty(new Error('stopped'), 'timedOut', {
       value: { build: 'Gradle', minutes: 20 },
     });
@@ -135,11 +132,12 @@ describe('failed nitpicker tool tasks in a Gradle failure', () => {
       dir: `m${String(index)}`,
     }));
 
-    expect([noteStoppedBuild(noted, new Error('other')), noted.stoppedAfterMinutes]).toEqual([
+    expect([record.noteStopped(new Error('other')), record.current().stoppedAfterMinutes]).toEqual([
       false,
       undefined,
     ]);
-    expect([noteStoppedBuild(noted, stopped), noted.error]).toEqual([true, stopped]);
+    expect([record.noteStopped(stopped), record.current().error]).toEqual([true, stopped]);
+    const noted = record.current();
     expect(skippedModuleFindings(skipped, noted)).toEqual([
       {
         tool: 'gradle',

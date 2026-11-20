@@ -77,7 +77,7 @@ export function fitFindings<T>(findings: readonly T[], availableBytes: number): 
   const cut = rulesToCut(findings, availableBytes);
   const dropped = new Set(cut.map(({ rule }) => rule));
   return {
-    findings: findings.filter((finding) => !isCuttable(finding) || !dropped.has(ruleOf(finding))),
+    findings: findings.filter((finding) => !(isCuttable(finding) && dropped.has(ruleOf(finding)))),
     cut: cut.map(({ rule, findings: count }) => ({ rule, findings: count })),
   };
 }

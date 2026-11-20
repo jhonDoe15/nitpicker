@@ -1,24 +1,9 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { scratchTrees } from '../../../../shared/test-support/scratch-trees.mts';
 import { checkedModules } from './checked-modules.mts';
 
-const scratch = mkdtempSync(path.join(tmpdir(), 'nitpicker-checked-modules-'));
-
-afterAll(() => {
-  rmSync(scratch, { recursive: true, force: true });
-});
-
-function reports(files: Readonly<Record<string, string>>): string {
-  const base = mkdtempSync(path.join(scratch, 'reports-'));
-  for (const [name, text] of Object.entries(files)) {
-    const file = path.join(base, name);
-    mkdirSync(path.dirname(file), { recursive: true });
-    writeFileSync(file, text);
-  }
-  return base;
-}
+const reports = scratchTrees('nitpicker-checked-modules-');
 
 const MODULES = JSON.stringify([
   { key: 'module-app', path: ':app', dir: 'app' },

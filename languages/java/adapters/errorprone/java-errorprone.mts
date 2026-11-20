@@ -59,13 +59,13 @@ export function readErrorProneFindings(context: ReportContext): Finding[] {
       guava: guavaRead(manifest, testRoots),
     },
   );
-  const kept = listOf(fieldOf(ingested, 'findings'))
-    .filter((finding) => !isFormatterOwned(finding, context['javaStyle']))
-    .map((finding) => fieldsOf(finding));
   return [
-    ...withGroupedTestCalls(kept, (file) => inRoots(file, testRoots)).map((finding) =>
-      withExceptionRoute(finding, testRoots, checks),
-    ),
+    ...withGroupedTestCalls(
+      listOf(fieldOf(ingested, 'findings'))
+        .filter((finding) => !isFormatterOwned(finding, context['javaStyle']))
+        .map((finding) => fieldsOf(finding)),
+      (file) => inRoots(file, testRoots),
+    ).map((finding) => withExceptionRoute(finding, testRoots, checks)),
     ...(placement.outside.size === 0 ? [] : [unmappedError(placement.outside, roots)]),
     ...crashes.map((crash) => crashError(crash, roots)),
   ];

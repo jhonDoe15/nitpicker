@@ -251,15 +251,17 @@ export function findUnusedPublicContractMethods(
 
 function parsedConfig(absoluteConfig: string): TypeScript.ParsedCommandLine {
   const config = ts.readConfigFile(absoluteConfig, (fileName) => ts.sys.readFile(fileName));
-  if (config.error)
+  if (config.error) {
     throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, '\n'));
+  }
   const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, path.dirname(absoluteConfig));
-  if (parsed.errors.length > 0)
+  if (parsed.errors.length > 0) {
     throw new Error(
       parsed.errors
         .map((error) => ts.flattenDiagnosticMessageText(error.messageText, '\n'))
         .join('\n'),
     );
+  }
   return parsed;
 }
 

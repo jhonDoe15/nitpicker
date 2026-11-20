@@ -106,7 +106,7 @@ export function withoutExcludedFiles(
     : findings.filter((finding) => !excluded.has(textOf(fieldOf(finding, 'path'))));
 }
 
-function readModule(reportBase: string, preset: string, entry: unknown): ReportModule | undefined {
+function readModule(reportBase: string, entry: unknown): ReportModule | undefined {
   const key = textOf(fieldOf(entry, 'key'));
   const reportRoot = resolveInside(reportBase, key);
   const manifestFile: unknown = firstProjectFile(reportBase, [path.join(key, MANIFEST_FILE)]);
@@ -158,7 +158,7 @@ export function readReportModules(
   projectRoot?: string,
 ): ReportModules {
   const modules = listedModules(reportBase, preset, projectRoot).map((entry) => {
-    const module = readModule(reportBase, preset, entry);
+    const module = readModule(reportBase, entry);
     if (module === undefined) {
       throw new Error(
         `The ${preset} preset found no Gradle reports for ${moduleLabel(entry)}: its nitpickerJava task did not run`,
@@ -178,9 +178,7 @@ export function readFinishedModules(
   const skipped: SkippedModule[] = [];
   for (const entry of listedModules(reportBase, preset)) {
     const projectPath = textOf(fieldOf(entry, 'path'));
-    const module = failedProjects.has(projectPath)
-      ? undefined
-      : readModule(reportBase, preset, entry);
+    const module = failedProjects.has(projectPath) ? undefined : readModule(reportBase, entry);
     if (module === undefined) {
       skipped.push({ path: projectPath, dir: textOf(fieldOf(entry, 'dir')) });
     } else {

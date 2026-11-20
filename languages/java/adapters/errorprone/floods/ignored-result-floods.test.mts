@@ -32,8 +32,11 @@ describe('ignored results of one method across the tests', () => {
 
     const result = grouped(findings);
 
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ path: `${TESTS}/shop/ATest.java`, location: { line: 12 } });
+    expect([result.length, result[0]?.['path'], result[0]?.['location']]).toEqual([
+      1,
+      `${TESTS}/shop/ATest.java`,
+      { line: 12, column: 5 },
+    ]);
     expect(result[0]?.['message']).toBe(
       `The tests ignore the result of \`get(...)\` here and at ${String(IGNORED_RESULT_FLOOD + 1)} other call ` +
         'sites, so the call is made for its effect (it records, sends or builds). Annotate the method with ' +

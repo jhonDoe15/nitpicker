@@ -8,14 +8,20 @@ export type FailedToolTask = {
   readonly reason: string;
 };
 export type FailedToolTasks = {
-  readonly tasks: FailedToolTask[];
-  error: unknown;
-  stoppedAfterMinutes?: number;
+  readonly tasks: readonly FailedToolTask[];
+  readonly error: unknown;
+  readonly stoppedAfterMinutes?: number | undefined;
 };
+export type FailedToolRecord = {
+  current(): FailedToolTasks;
+  noteTasks(found: FailedBuild): boolean;
+  noteStopped(error: unknown): boolean;
+};
+type FailedBuild = { readonly output: string; readonly error: unknown };
 export type SkippedModule = { readonly path: string; readonly dir: string };
 
 const MODULE_BUILD_FAILED_RULE: string = SHARED_MODULE_BUILD_FAILED_RULE;
-const WENT_WRONG = /\* What went wrong:\n(?<first>[^\n]*)(?<rest>(?:\n(?:> | {2,})[^\n]*)*)/gu;
+const WENT_WRONG = /\* What went wrong:\n(?<first>[^\n]*)(?<rest>(?:\n(?:> | {2})[^\n]*)*)/gu;
 const FAILED_TOOL_TASK =
   /^Execution failed for task '(?<project>(?::[\w.-]+)*):(?<task>nitpicker\w+)'/u;
 const ROOT_PROJECT = ':';
@@ -30,7 +36,10 @@ function reasonOf(first: string, rest: string): string {
     .filter((line) => line !== '')
     .join(' ');
   const reason = detail === '' ? first : detail;
-  return reason.length > MAX_REASON_LENGTH ? `${reason.slice(0, MAX_REASON_LENGTH)}...` : reason;
+  const characters = Array.from(reason);
+  return characters.length > MAX_REASON_LENGTH
+    ? `${characters.slice(0, MAX_REASON_LENGTH).join('')}...`
+    : reason;
 }
 
 export function failedToolTasks(output: string): FailedToolTask[] | undefined {
@@ -51,32 +60,41 @@ export function failedToolTasks(output: string): FailedToolTask[] | undefined {
   return problems.length > 0 && tasks.length === problems.length ? tasks : undefined;
 }
 
-export function noteFailedToolTasks(
-  noted: FailedToolTasks | undefined,
-  { output, error }: { readonly output: string; readonly error: unknown },
-): boolean {
-  const tasks = noted === undefined ? undefined : failedToolTasks(output);
-  if (noted === undefined || tasks === undefined) {
-    return false;
+function withFailedTasks(
+  noted: FailedToolTasks,
+  { output, error }: FailedBuild,
+): FailedToolTasks | undefined {
+  const tasks = failedToolTasks(output);
+  if (tasks === undefined) {
+    return undefined;
   }
   const known = new Set(noted.tasks.map(({ project, task }) => `${project}:${task}`));
-  noted.tasks.push(...tasks.filter(({ project, task }) => !known.has(`${project}:${task}`)));
-  noted.error ??= error;
-  return true;
+  const added = tasks.filter(({ project, task }) => !known.has(`${project}:${task}`));
+  return { ...noted, tasks: noted.tasks.concat(added), error: noted.error ?? error };
+}
+
+function withStoppedBuild(noted: FailedToolTasks, error: unknown): FailedToolTasks | undefined {
+  const minutes = fieldOf(fieldOf(error, 'timedOut'), 'minutes');
+  return typeof minutes === 'number'
+    ? { ...noted, stoppedAfterMinutes: minutes, error: noted.error ?? error }
+    : undefined;
+}
+
+export function failedToolRecord(): FailedToolRecord {
+  let noted: FailedToolTasks = { tasks: [], error: undefined };
+  function keep(next: FailedToolTasks | undefined): boolean {
+    noted = next ?? noted;
+    return next !== undefined;
+  }
+  return {
+    current: () => noted,
+    noteTasks: (found) => keep(withFailedTasks(noted, found)),
+    noteStopped: (error) => keep(withStoppedBuild(noted, error)),
+  };
 }
 
 export function failedProjects(noted: FailedToolTasks): ReadonlySet<string> {
   return new Set(noted.tasks.map(({ project }) => project));
-}
-
-export function noteStoppedBuild(noted: FailedToolTasks, error: unknown): boolean {
-  const minutes = fieldOf(fieldOf(error, 'timedOut'), 'minutes');
-  if (typeof minutes !== 'number') {
-    return false;
-  }
-  noted.stoppedAfterMinutes = minutes;
-  noted.error ??= error;
-  return true;
 }
 
 function stoppedBuildFinding(skipped: readonly SkippedModule[], minutes: number): JavaFinding {

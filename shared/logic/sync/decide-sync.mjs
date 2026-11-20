@@ -150,24 +150,16 @@ function ask(request, timeoutMs) {
   return result;
 }
 
-function withoutRanges({ range, children, ...term }) {
-  return { ...term, children: children.map(withoutRanges) };
-}
-
-function placeless(request) {
-  return request.explain
-    ? request
-    : {
-        ...request,
-        conditions: request.conditions.map(withoutRanges),
-        query: withoutRanges(request.query),
-      };
+function withoutRange(key, value) {
+  return key === 'range' ? undefined : value;
 }
 
 function solved(request, timeoutMs) {
-  const asked = placeless(request);
-  const sameTerms = JSON.stringify(asked);
-  const result = answersByTerms.find(sameTerms) ?? ask(asked, timeoutMs);
+  if (request.explain) {
+    return ask(request, timeoutMs);
+  }
+  const sameTerms = JSON.stringify(request, withoutRange);
+  const result = answersByTerms.find(sameTerms) ?? ask(JSON.parse(sameTerms), timeoutMs);
   if (result !== undefined) {
     answersByTerms.keep(sameTerms, result);
   }
@@ -231,8 +223,7 @@ function reply(asked, options) {
 
 /**
  * `decide` for synchronous callers such as lint rules: the solver runs in a worker thread and this
- * call blocks until it answers. Answers are kept by the terms asked; the same terms at another
- * place in the source take a run of the budget but are not solved again. The solver stops at its
+ * call blocks until it answers. Answers are kept by the terms asked. The solver stops at its
  * resource limit (`options.resourceLimit`), the same on every machine; `timeoutMs` is only a safety
  * net far above any normal answer. A question that runs out of either, that exceeds `options.budget`
  * (see `solverBudget`) or that arrives while an answer is pending or after the worker stopped is 'open'.

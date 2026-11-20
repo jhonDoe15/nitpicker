@@ -7,8 +7,8 @@ const checkFacts: (bundle: unknown) => unknown = validateFacts;
 
 describe('Java design facts for a member type of a parameterized outer type', () => {
   it('names Outer<A, B>.Inner as Outer.Inner in a parameter and a return type', () => {
-    const execute = facts.callables.find(({ id }) => String(id).includes('execute'));
-    const current = facts.callables.find(({ id }) => String(id).includes('current'));
+    const execute = facts.callables.find(({ id }) => id.includes('execute'));
+    const current = facts.callables.find(({ id }) => id.includes('current'));
 
     expect(execute?.['params']).toEqual([
       { name: 'reference', type: 'src/main/java/kin/Replication.java#Replication.Reference' },

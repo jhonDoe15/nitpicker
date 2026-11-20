@@ -54,9 +54,13 @@ function analyzerNamesOf(
   ];
 }
 
+type AnalyzerRequest = Pick<MonorepoCli, 'analyzers'> & {
+  readonly options: Pick<MonorepoCli['options'], 'analyzerNames'>;
+};
+
 export function analyzersByProject(
   plan: MonorepoPlan,
-  cli: MonorepoCli,
+  cli: AnalyzerRequest,
   selected?: ReadonlySet<string>,
 ): Map<string, readonly string[]> {
   const requested = cli.options.analyzerNames;

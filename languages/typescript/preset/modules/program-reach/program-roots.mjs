@@ -16,7 +16,7 @@ function directoryOf(target) {
 
 function isInside(directory, root) {
   const relative = path.relative(root, directory);
-  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+  return relative === '' || !(relative.startsWith('..') || path.isAbsolute(relative));
 }
 
 function outermost(directories) {
@@ -45,9 +45,5 @@ export function typecheckProgramRoots(projectRoot) {
   if (!existsSync(configFile)) {
     return [root];
   }
-  try {
-    return outermost([root, ...reachedDirectories(configFile)]);
-  } catch {
-    return [root];
-  }
+  return outermost([root, ...reachedDirectories(configFile)]);
 }
