@@ -1,5 +1,6 @@
 //! CT_CONSTRUCTOR_THROW: an exception can leave a constructor of a class that can be subclassed, which leaves a
 //! half-built object a finalizer could get hold of.
+use super::handlers::{caught, catch_types, closing, Guard, UNKNOWN};
 use super::{Context, names};
 use crate::engine::source::{children, named_children, parent};
 use crate::java::helpers::has_modifier;
@@ -10,7 +11,6 @@ use std::collections::HashMap;
 use tree_sitter::Node;
 
 const TAIL: &str = "will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks.";
-const UNKNOWN: &str = "?";
 
 /// Where an exception starts, its type, and whether that is before the `super(...)` or `this(...)` call runs.
 type Site<'t> = (Node<'t>, String, bool);
@@ -29,25 +29,6 @@ struct Scan<'c, 'a, 't> {
 }
 
 impl<'t> Scan<'_, '_, 't> {
-    fn caught(&self, thrown: &str, catches: &[String]) -> bool {
-        let index = self.context.resolver.index;
-        catches.iter().any(|caught| {
-            caught == "java.lang.Throwable" || (thrown == UNKNOWN && caught == "java.lang.Exception") || (thrown != UNKNOWN && index.is_subtype(thrown, caught))
-        })
-    }
-
-    fn catch_types(&self, statement: Node) -> Vec<String> {
-        let mut found = Vec::new();
-        for clause in children(statement).into_iter().filter(|part| part.kind() == "catch_clause") {
-            for parameter in children(clause).into_iter().filter(|part| part.kind() == "catch_formal_parameter") {
-                for listed in children(parameter).into_iter().filter(|part| part.kind() == "catch_type").flat_map(named_children) {
-                    found.push(self.context.resolver.type_node(listed).map_or_else(|| UNKNOWN.to_string(), |kind| kind.erased().name()));
-                }
-            }
-        }
-        found
-    }
-
     /// A `switch` used as a value without a `default`: the compiler adds a throw for the case nothing matches.
     fn may_not_match(&self, switch: Node) -> bool {
         let as_value = parent(switch).is_some_and(|around| !matches!(around.kind(), "block" | "switch_block_statement_group" | "switch_rule" | "expression_statement" | "labeled_statement" | "if_statement" | "for_statement" | "enhanced_for_statement" | "while_statement" | "do_statement" | "constructor_body" | "program"));
@@ -133,32 +114,52 @@ impl<'t> Scan<'_, '_, 't> {
         let Some(body) = target.child_by_field_name("body") else { return sites };
         if target.kind() == "constructor_declaration" && delegation(body).is_none_or(|called| called != "this") {
             for member in &self.shared {
-                self.walk(*member, &[], &mut sites);
+                self.walk(*member, &Guard::Open, false, &mut sites);
             }
         }
-        self.walk(body, &[], &mut sites);
+        self.walk(body, &Guard::Open, target.kind() != "constructor_declaration", &mut sites);
         sites
     }
 
-    /// Every place under `node`, in source order, where an exception starts that no enclosing `catch` takes.
-    fn walk(&self, node: Node<'t>, catches: &[String], sites: &mut Vec<Site<'t>>) {
+    /// Every place under `node`, in source order, where an exception starts that the handler around it does not
+    /// take. `method` says the body is one of a method and not of a constructor.
+    fn walk(&self, node: Node<'t>, guard: &Guard, method: bool, sites: &mut Vec<Site<'t>>) {
         let kind = node.kind();
         if kind == "lambda_expression" || kind == "class_body" || TYPE_DECLARATIONS.contains(&kind) {
             return;
         }
         if kind == "try_statement" || kind == "try_with_resources_statement" {
-            let mut inner = self.catch_types(node);
-            inner.extend(catches.iter().cloned());
+            let catches = catch_types(self.context, node);
+            let cleanup = children(node).into_iter().filter(|part| part.kind() == "finally_clause").flat_map(named_children).any(|block| block.named_child_count() > 0);
+            let passes = if cleanup { Guard::Passes } else { guard.clone() };
+            let around = if catches.is_empty() { passes.clone() } else { Guard::Takes(catches) };
+            let resources = kind == "try_with_resources_statement";
             for part in children(node) {
-                let guarded = !matches!(part.kind(), "catch_clause" | "finally_clause");
-                self.walk(part, if guarded { &inner } else { catches }, sites);
+                match part.kind() {
+                    "catch_clause" => self.walk(part, &passes, method, sites),
+                    "finally_clause" => self.walk(part, guard, method, sites),
+                    "block" if resources => {
+                        self.walk(part, &Guard::Closes, method, sites);
+                        // Without a way out of the body at its end the compiler leaves the closing call out.
+                        let ends = part.named_child(part.named_child_count().saturating_sub(1) as u32).is_some_and(|last| last.kind() == "throw_statement");
+                        let closing = if ends { Vec::new() } else { closing(self.context, node) };
+                        sites.extend(closing.into_iter().filter(|thrown| !caught(self.context, thrown, &around, method)).map(|thrown| (part, thrown, false)));
+                    }
+                    _ => self.walk(part, &around, method, sites),
+                }
+            }
+            return;
+        }
+        if kind == "synchronized_statement" {
+            for part in children(node) {
+                self.walk(part, if part.kind() == "block" { &Guard::Passes } else { guard }, method, sites);
             }
             return;
         }
         if kind == "explicit_constructor_invocation" {
             let mut early = Vec::new();
             for part in children(node) {
-                self.walk(part, catches, &mut early);
+                self.walk(part, guard, method, &mut early);
             }
             // SpotBugs takes the first constructor call it meets for the `super(...)` call, so a `new` among the
             // arguments ends the early part.
@@ -172,12 +173,12 @@ impl<'t> Scan<'_, '_, 't> {
             let late = |at: Node| created.iter().any(|(start, end)| *end <= at.end_byte() && !(*start <= at.start_byte() && at.end_byte() <= *end));
             sites.extend(early.into_iter().map(|(at, thrown, _)| (at, thrown, !late(at))));
             if node.child_by_field_name("constructor").is_some_and(|called| called.kind() == "this") {
-                sites.extend(self.delegated(node).into_iter().filter(|thrown| !self.caught(thrown, catches)).map(|thrown| (node, thrown, false)));
+                sites.extend(self.delegated(node).into_iter().filter(|thrown| !caught(self.context, thrown, guard, false)).map(|thrown| (node, thrown, false)));
             }
             return;
         }
         for part in children(node) {
-            self.walk(part, catches, sites);
+            self.walk(part, guard, method, sites);
         }
         let thrown = match kind {
             "throw_statement" => {
@@ -192,7 +193,8 @@ impl<'t> Scan<'_, '_, 't> {
             "method_invocation" => self.call(node),
             _ => Vec::new(),
         };
-        sites.extend(thrown.into_iter().filter(|thrown| !self.caught(thrown, catches)).map(|thrown| (node, thrown, false)));
+        let every = method && kind == "method_invocation";
+        sites.extend(thrown.into_iter().filter(|thrown| !caught(self.context, thrown, guard, every)).map(|thrown| (node, thrown, false)));
     }
 }
 
@@ -237,7 +239,7 @@ pub fn constructor_throw(context: &Context, class: Node) {
     if constructors.is_empty() {
         let mut sites = Vec::new();
         for member in &scan.shared {
-            scan.walk(*member, &[], &mut sites);
+            scan.walk(*member, &Guard::Open, false, &mut sites);
         }
         if let Some((site, _, _)) = sites.iter().find(|site| !site.2) {
             report(class, *site);
