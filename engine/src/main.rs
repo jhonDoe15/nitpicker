@@ -8,8 +8,8 @@ use std::time::Instant;
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    if args.first().map(String::as_str) == Some("typescript-reuse") {
-        typescript_reuse(&args[1..]);
+    if args.first().map(String::as_str) == Some("typescript-lint") {
+        typescript_lint(&args[1..]);
         return;
     }
     if args.first().map(String::as_str) == Some("typescript-structure") {
@@ -153,4 +153,38 @@ fn typescript_structure(args: &[String]) {
         analysis.summary.files, analysis.summary.lines, analysis.summary.functions, analysis.summary.classes,
         analysis.unparsed.len(), started.elapsed().as_secs_f64() * 1e3
     );
+}
+
+/// `typescript-lint --files <list> [--rules <a,b>] [--out <file>]`: the list is read as for `typescript-structure`.
+fn typescript_lint(args: &[String]) {
+    let (mut list, mut out, mut only) = (None, None, None::<Vec<String>>);
+    let mut index = 0;
+    while index < args.len() {
+        match args[index].as_str() {
+            "--files" => { index += 1; list = Some(&args[index]); }
+            "--out" => { index += 1; out = Some(&args[index]); }
+            "--rules" => { index += 1; only = Some(args[index].split(',').map(String::from).collect()); }
+            other => panic!("unknown argument {other}"),
+        }
+        index += 1;
+    }
+    let started = Instant::now();
+    let files: Vec<(String, String)> = std::fs::read_to_string(list.expect("--files"))
+        .expect("list")
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(|line| match line.split_once('\t') {
+            Some((path, display)) => (path.to_string(), display.to_string()),
+            None => (line.to_string(), line.to_string()),
+        })
+        .collect();
+    let rules = typescript::rules::selected(only.as_deref());
+    let findings = typescript::rules::lint_files(&files, &rules);
+    let rows: Vec<_> = findings.iter().map(|found| (&found.file, &found.rule, found.line, found.column, &found.message)).collect();
+    let text = serde_json::to_string(&rows).expect("json");
+    match out {
+        Some(path) => std::fs::write(path, text).expect("write"),
+        None => println!("{text}"),
+    }
+    eprintln!("{} files, {} rules, {} findings; {:.0} ms", files.len(), rules.len(), findings.len(), started.elapsed().as_secs_f64() * 1e3);
 }
