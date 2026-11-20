@@ -5,6 +5,7 @@ import {
   copiedConstantFindings,
   copyPastedTestFindings,
   couplingFindingsOf,
+  delegateSkipsDefaultFindings,
   featureGraphOf,
   fileLimitFindings,
   inModuleOf,
@@ -249,6 +250,7 @@ function reviewRuleFindings(
     ...selfRecursionFindings(projectRoot, options),
     ...fixedDelayFindings(projectRoot, options),
     ...mutatingMethodFindings(projectRoot, options),
+    ...delegateSkipsDefaultFindings(projectRoot, options),
   ];
 }
 
