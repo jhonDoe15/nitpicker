@@ -220,6 +220,24 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   flush a fixed-size batch inside the loop (`if (batch.length >= 500) await save(batch.splice(0))`)
   and the rest once after it. An exception fits only for a source that always stays small. The same
   form runs as `streamed-rows-collected` (Python) and `pmd/StreamedRowsCollected` (Java and Kotlin).
+- `nitpicker/no-pattern-compiled-in-loop`: a glob compiled again on every pass of a loop or an
+  iteration callback (`map`, `filter`, `some`, `forEach`, `reduce` and the like) although the pattern
+  does not change inside it, in all production code (not in tests). It reports `path.matchesGlob`
+  (also `path.posix` and `path.win32`, and `matchesGlob` imported from `node:path`), `minimatch(value,
+  pattern)`, `minimatch.match`, `minimatch.makeRe`, `minimatch.filter`, `new Minimatch(pattern)`,
+  `picomatch(pattern)`, `picomatch.isMatch`, `picomatch.makeRe`, `micromatch(list, pattern)`,
+  `micromatch.isMatch`, `micromatch.matcher` and the other `micromatch` list tests, each imported or
+  required from its package, when every name the pattern reads is declared outside the loop or
+  callback and not assigned inside it, and the pattern makes no call. None of these calls caches the
+  compiled matcher, so `files.filter((file) => path.matchesGlob(file, `${dir}/**`))` compiles the same
+  glob once per file. A pattern that reads the loop variable or a parameter of the callback (a new
+  pattern per element) and a matcher compiled before the loop (`const isMatch = picomatch(pattern)`)
+  are not reported. `new RegExp(pattern)` is not reported either: V8 keeps compiled regular
+  expressions by source and flags, so a repeated `new RegExp` with the same text does not compile
+  again. Allowed form: compile once before the loop (`picomatch(pattern)`, `new Minimatch(pattern)`,
+  `micromatch.matcher(pattern)`), or test a cheap prefix or suffix first. The Java and Kotlin presets
+  report the same mistake for `String.matches`, `replaceAll`, `replaceFirst` and `Pattern.matches`
+  with a constant pattern (#2018).
 - `nitpicker/no-wasted-collection-step`: a collection or promise step that copies for nothing or
   walks the data twice, in all production code (not in tests). It reports `filter(p)[0]` and
   `filter(p).at(0)` with a callback `p` (allowed form: `find(p)`; a selector string, as in jQuery,

@@ -389,6 +389,12 @@ preset (a `Stream` from a Spring Data repository, `getResultStream()`, `queryFor
 it is the default return type of a coroutine repository, so `toList()` on it is the usual read of a
 small result. The Go preset has no own rule engine yet.
 
+Repeated work: `nitpicker/no-pattern-compiled-in-loop` (production source, in `eslint-lint`) reports
+a glob compiled on every pass of a loop or iteration callback with a pattern that does not change
+there (`path.matchesGlob`, `minimatch`, `picomatch`, `micromatch`). The Python preset has no
+counterpart, since `re` and `fnmatch` cache compiled patterns; Java and Kotlin are tracked in #2018
+and Go in #2133.
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a
