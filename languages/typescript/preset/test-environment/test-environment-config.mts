@@ -86,8 +86,7 @@ export function testEnvironmentConfigFor(
 ): EnvironmentBlock[] {
   const files = layout.runnableTestGlobs;
   const context = { aliases, layout, runner, globalDom };
-  return [
-    environmentBlock({ files, environment, setupFiles }, context),
-    ...scopes.map((scope) => environmentBlock(scope, context)),
-  ];
+  return [{ files, environment, setupFiles }, ...scopes]
+    .filter((scope) => scope.files.length > 0)
+    .map((scope) => environmentBlock(scope, context));
 }
