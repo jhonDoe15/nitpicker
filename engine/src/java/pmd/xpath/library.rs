@@ -1,4 +1,5 @@
 //! The standard functions PMD rules call, and PMD's own Java functions.
+use crate::java::fields::Fields;
 use super::eval::{Focus, Machine};
 use super::value::{Env, Item, Seq};
 use crate::java::pmd::tree::Value;
@@ -349,12 +350,12 @@ impl<'a, 't> Machine<'a, 't> {
             ("EnumConstant", "enum_constant") | ("ExplicitConstructorInvocation", "explicit_constructor_invocation") => true,
             _ => return None,
         };
-        let name = if created { "new" } else { source.child_by_field_name("name").map(|name| self.file.text_of(name)).unwrap_or_default() };
+        let name = if created { "new" } else { source.field("name").map(|name| self.file.text_of(name)).unwrap_or_default() };
         let (call, formals) = self.resolver.call_formals(source)?;
         let qualifier = if created {
             Type::class(&call.declaring)
         } else {
-            match source.child_by_field_name("object") {
+            match source.field("object") {
                 Some(_) => node.children.first().and_then(|first| self.node_type(*first)).unwrap_or(call.receiver.clone()),
                 None => Type::class(&call.declaring),
             }
@@ -370,12 +371,12 @@ impl<'a, 't> Machine<'a, 't> {
             return false;
         }
         if wanted.name != "_" {
-            let name = if node.name != "MethodCall" { Some("new") } else { source.child_by_field_name("name").map(|name| self.file.text_of(name)) };
+            let name = if node.name != "MethodCall" { Some("new") } else { source.field("name").map(|name| self.file.text_of(name)) };
             if name != Some(wanted.name.as_str()) {
                 return false;
             }
         }
-        let given = source.child_by_field_name("arguments").map_or(0, |list| {
+        let given = source.field("arguments").map_or(0, |list| {
             let mut cursor = list.walk();
             list.named_children(&mut cursor).filter(|kid| !kid.kind().ends_with("comment")).count()
         });

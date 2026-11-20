@@ -25,6 +25,9 @@ enum Slot {
 #[derive(Default)]
 pub struct TypeIndex {
     classes: HashMap<String, Slot>,
+    /// Ancestors per class, kept once the index no longer changes.
+    lineages: std::sync::RwLock<HashMap<String, std::sync::Arc<Vec<String>>>>,
+    settled: bool,
     pub binary_classes: usize,
     pub source_classes: usize,
 }
@@ -110,7 +113,27 @@ impl TypeIndex {
     }
 
     /// The class and every supertype, nearest first. Unknown supertypes are still listed by name.
-    pub fn lineage(&self, name: &str) -> Vec<String> {
+    /// Tells the index that no class will be added or replaced any more.
+    pub fn settle(&mut self) {
+        self.settled = true;
+    }
+
+    /// The class and everything it extends or implements, nearest first.
+    pub fn lineage(&self, name: &str) -> std::sync::Arc<Vec<String>> {
+        if !self.settled {
+            return std::sync::Arc::new(self.walk_up(name));
+        }
+        if let Some(known) = self.lineages.read().ok().and_then(|known| known.get(name).cloned()) {
+            return known;
+        }
+        let found = std::sync::Arc::new(self.walk_up(name));
+        if let Ok(mut known) = self.lineages.write() {
+            known.insert(name.to_string(), found.clone());
+        }
+        found
+    }
+
+    fn walk_up(&self, name: &str) -> Vec<String> {
         let mut seen = HashSet::new();
         let mut queue = std::collections::VecDeque::from([name.to_string()]);
         let mut order = Vec::new();
@@ -243,8 +266,8 @@ impl TypeIndex {
     pub fn functional_method(&self, interface: &str) -> Option<(&ClassInfo, &Method)> {
         let mut seen: Vec<(&ClassInfo, &Method)> = Vec::new();
         self.get(interface).filter(|info| info.is_interface)?;
-        for ancestor in self.lineage(interface) {
-            let Some(info) = self.get(&ancestor).filter(|info| info.is_interface) else { continue };
+        for ancestor in self.lineage(interface).iter() {
+            let Some(info) = self.get(ancestor).filter(|info| info.is_interface) else { continue };
             for method in &info.methods {
                 let inherited = matches!(method.name.as_str(), "equals" | "hashCode" | "toString");
                 let known = seen.iter().any(|(_, other)| other.name == method.name && other.parameters.len() == method.parameters.len());
@@ -279,7 +302,7 @@ impl TypeIndex {
         if !chain.iter().any(|name| name == OBJECT) {
             chain.push(OBJECT.to_string());
         }
-        let rest: Vec<String> = self.lineage(class).into_iter().filter(|name| !chain.contains(name)).collect();
+        let rest: Vec<String> = self.lineage(class).iter().filter(|name| !chain.contains(name)).cloned().collect();
         chain.extend(rest);
         chain
     }
