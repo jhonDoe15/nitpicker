@@ -1,195 +1,295 @@
-//! Whether javac's `ReferenceParser` accepts the reference of a `@see`, `@link` or `@throws`.
+//! References in doc comments: `module/package.Type#member(parameters)` and `Type##fragment`, as the
+//! specification's References section gives them. A reference that does not have that form is an error.
+use super::doc::{Kind, Tree, is_space};
+use super::docparse::{Parser, java_part, java_start};
 
-#[derive(Clone, PartialEq, Debug)]
-enum Token {
-    Name(String),
-    Sign(char),
+/// What a tag accepts as its reference.
+#[derive(Clone, Copy, PartialEq)]
+pub enum Form {
+    /// Anything the general form allows: `@see`, `{@link}`, `{@value}`.
+    Full,
+    /// A type alone: `@throws`, `@provides`, `@uses`, the type of `@serialField`.
+    Type,
 }
 
-const RESERVED: &[&str] = &[
-    "abstract", "assert", "break", "case", "catch", "class", "const", "continue", "default", "do", "else", "enum", "extends", "final", "finally",
-    "for", "goto", "if", "implements", "import", "instanceof", "interface", "native", "new", "package", "private", "protected", "public",
-    "return", "static", "strictfp", "super", "switch", "synchronized", "this", "throw", "throws", "transient", "try", "volatile", "while",
-    "true", "false", "null", "_",
-];
-const PRIMITIVES: &[&str] = &["boolean", "byte", "char", "short", "int", "long", "float", "double", "void"];
+const SYNTAX: &str = "dc.ref.syntax.error";
+const UNEXPECTED: &str = "dc.ref.unexpected.input";
 
-fn tokens(text: &str) -> Option<Vec<Token>> {
-    let letters: Vec<char> = text.chars().collect();
-    let mut found = Vec::new();
-    let mut at = 0;
-    while at < letters.len() {
-        let letter = letters[at];
-        if letter.is_whitespace() {
-            at += 1;
-        } else if letter.is_alphabetic() || matches!(letter, '_' | '$') {
-            let end = (at..letters.len()).find(|place| !(letters[*place].is_alphanumeric() || matches!(letters[*place], '_' | '$'))).unwrap_or(letters.len());
-            found.push(Token::Name(letters[at..end].iter().collect()));
-            at = end;
-        } else if matches!(letter, '.' | '<' | '>' | ',' | '?' | '[' | ']' | '&') {
-            found.push(Token::Sign(letter));
-            at += 1;
-        } else {
-            return None;
+const PRIMITIVES: &[&str] = &["boolean", "byte", "char", "double", "float", "int", "long", "short", "void"];
+/// Words that are never a name, and the names a type may not have.
+const RESERVED: &[&str] = &[
+    "abstract", "break", "case", "catch", "class", "const", "continue", "default", "do", "else", "extends", "false", "final", "finally", "for", "goto",
+    "if", "implements", "import", "instanceof", "interface", "native", "new", "null", "package", "private", "protected", "public", "return", "static",
+    "strictfp", "super", "switch", "synchronized", "this", "throw", "throws", "transient", "true", "try", "volatile", "while",
+];
+const NO_TYPE: &[&str] = &["_", "assert", "enum", "permits", "record", "sealed", "var", "yield"];
+
+impl Parser<'_> {
+    /// Reads a reference: up to whitespace outside parentheses and angle brackets, or a closing brace.
+    pub fn reference(&mut self, form: Form) -> Result<Tree, &'static str> {
+        let from = self.at;
+        let mut depth = 0i32;
+        while let Some(character) = self.peek() {
+            let ends = match character {
+                '}' => true,
+                '@' => self.line_start,
+                other => is_space(other) && depth == 0,
+            };
+            if ends {
+                break;
+            }
+            depth += i32::from(matches!(character, '(' | '<')) - i32::from(matches!(character, ')' | '>'));
+            self.line_start = character == '\n' || (self.line_start && is_space(character));
+            self.at += 1;
+        }
+        let written: Vec<char> = self.text[from..self.at].to_vec();
+        if written.is_empty() {
+            return Err(SYNTAX);
+        }
+        if depth > 0 {
+            return Err("dc.unterminated.signature");
+        }
+        check(&written, form)?;
+        Ok(Tree::leaf(Kind::Reference, written.iter().collect(), from, self.at))
+    }
+}
+
+/// `module/Type`, `module/` or `Type`.
+fn qualified(written: &[char]) -> Result<(), &'static str> {
+    let Some(slash) = written.iter().position(|character| *character == '/') else { return whole_type(written) };
+    let module: String = written[..slash].iter().collect();
+    if module.is_empty() || module.strip_suffix('.').is_some_and(|rest| rest.split('.').all(identifier)) {
+        return Err(SYNTAX);
+    }
+    if !module.split('.').all(identifier) {
+        return Err(UNEXPECTED);
+    }
+    if written[slash + 1..].is_empty() { Ok(()) } else { whole_type(&written[slash + 1..]) }
+}
+
+fn check(written: &[char], form: Form) -> Result<(), &'static str> {
+    if form == Form::Type {
+        return qualified(written);
+    }
+    let mut depth = 0i32;
+    for (at, character) in written.iter().enumerate() {
+        depth += i32::from(*character == '(') - i32::from(*character == ')');
+        if *character == ')' && depth == 0 && at + 1 < written.len() {
+            return Err("dc.ref.bad.parens");
         }
     }
-    Some(found)
+    let hash = written.iter().position(|character| *character == '#');
+    let (qualifier, member) = match hash {
+        Some(at) if written.get(at + 1) == Some(&'#') => (&written[..at], None),
+        Some(at) => (&written[..at], Some(&written[at + 1..])),
+        None if written.contains(&'(') => (&written[..0], Some(written)),
+        None => (written, None),
+    };
+    if !qualifier.is_empty() {
+        qualified(qualifier)?;
+    }
+    let Some(member) = member else { return Ok(()) };
+    let open = member.iter().position(|character| *character == '(').unwrap_or(member.len());
+    let name: String = member[..open].iter().collect();
+    if name.is_empty() || name == "_" {
+        return Err(SYNTAX);
+    }
+    if !identifier(&name) {
+        return Err(UNEXPECTED);
+    }
+    if open == member.len() {
+        return Ok(());
+    }
+    parameters(&member[open + 1..member.len() - 1])
 }
 
-struct Reader {
-    tokens: Vec<Token>,
+fn identifier(name: &str) -> bool {
+    let mut characters = name.chars();
+    characters.next().is_some_and(java_start)
+        && characters.all(java_part)
+        && !RESERVED.contains(&name)
+        && !PRIMITIVES.contains(&name)
+        && !matches!(name, "assert" | "enum")
+}
+
+/// `Type`, `Type name`, `Type...` or `Type... name`, separated by commas.
+fn parameters(list: &[char]) -> Result<(), &'static str> {
+    if list.iter().all(|character| is_space(*character)) {
+        return Ok(());
+    }
+    let mut depth = 0i32;
+    let mut from = 0usize;
+    for at in 0..=list.len() {
+        let character = list.get(at).copied().unwrap_or(',');
+        depth += i32::from(character == '<') - i32::from(character == '>');
+        if character != ',' || (depth > 0 && at < list.len()) {
+            continue;
+        }
+        let mut reader = Reader { text: &list[from..at], at: 0 };
+        from = at + 1;
+        reader.skip_space();
+        match reader.peek() {
+            None => return Err(SYNTAX),
+            Some('@') => return Err("dc.ref.annotations.not.allowed"),
+            Some(_) => {}
+        }
+        reader.kind(true)?;
+        reader.skip_space();
+        if reader.text[reader.at..].starts_with(&['.', '.', '.']) {
+            reader.at += 3;
+            reader.skip_space();
+        }
+        if let Some(name) = reader.word() {
+            if !identifier(&name) {
+                return Err(UNEXPECTED);
+            }
+        }
+        reader.skip_space();
+        if reader.peek().is_some() {
+            return Err(UNEXPECTED);
+        }
+    }
+    Ok(())
+}
+
+fn whole_type(written: &[char]) -> Result<(), &'static str> {
+    let mut reader = Reader { text: written, at: 0 };
+    reader.kind(true)?;
+    if reader.peek() == Some('@') {
+        return Err(reader.annotation());
+    }
+    if reader.peek().is_some() { Err(UNEXPECTED) } else { Ok(()) }
+}
+
+/// Reads a type as Java writes one: a qualified name with type arguments, or a primitive, then array brackets.
+struct Reader<'t> {
+    text: &'t [char],
     at: usize,
 }
 
-impl Reader {
-    fn sign(&mut self, wanted: char) -> bool {
-        let found = self.tokens.get(self.at) == Some(&Token::Sign(wanted));
-        self.at += usize::from(found);
-        found
+impl Reader<'_> {
+    fn peek(&self) -> Option<char> {
+        self.text.get(self.at).copied()
     }
-    fn name(&mut self) -> Option<String> {
-        match self.tokens.get(self.at) {
-            Some(Token::Name(name)) => {
-                self.at += 1;
-                Some(name.clone())
-            }
-            _ => None,
+
+    fn skip_space(&mut self) {
+        while self.peek().is_some_and(is_space) {
+            self.at += 1;
         }
     }
-    fn identifier(&mut self) -> bool {
-        self.name().is_some_and(|name| !RESERVED.contains(&name.as_str()) && !PRIMITIVES.contains(&name.as_str()))
+
+    fn word(&mut self) -> Option<String> {
+        let from = self.at;
+        if !self.peek().is_some_and(java_start) {
+            return None;
+        }
+        while self.peek().is_some_and(java_part) {
+            self.at += 1;
+        }
+        Some(self.text[from..self.at].iter().collect())
     }
-    fn arguments(&mut self) -> bool {
-        loop {
-            if self.sign('?') {
-                let bounded = matches!(self.tokens.get(self.at), Some(Token::Name(word)) if word == "extends" || word == "super");
-                if bounded {
-                    self.at += 1;
-                    if !self.kind() {
-                        return false;
+
+    /// The code for `@` where a type is read: an annotation is a syntax error when it is all that is left.
+    fn annotation(&mut self) -> &'static str {
+        self.at += 1;
+        let mut named = self.word().is_none_or(|name| identifier(&name));
+        while named && self.peek() == Some('.') {
+            self.at += 1;
+            named = self.word().is_some_and(|name| identifier(&name));
+        }
+        if named && self.peek().is_none() { SYNTAX } else { UNEXPECTED }
+    }
+
+    /// The code for something that is not a name where one must be: the input ending or closing early is a
+    /// syntax error, anything else is unexpected input.
+    fn missing(&self, outermost: bool) -> &'static str {
+        match self.peek() {
+            None => SYNTAX,
+            Some(',' | '>') if !outermost => SYNTAX,
+            Some(_) => UNEXPECTED,
+        }
+    }
+
+    fn kind(&mut self, outermost: bool) -> Result<(), &'static str> {
+        self.skip_space();
+        if outermost && self.peek() == Some('<') {
+            self.arguments()?;
+            return Err(if self.peek().is_none() { SYNTAX } else { UNEXPECTED });
+        }
+        if outermost && self.peek() == Some('@') {
+            return Err(self.annotation());
+        }
+        let Some(first) = self.word() else { return Err(self.missing(outermost)) };
+        if matches!(first.as_str(), "_" | "assert" | "enum") || (NO_TYPE.contains(&first.as_str()) && self.peek() != Some('.')) {
+            return Err(SYNTAX);
+        }
+        if RESERVED.contains(&first.as_str()) {
+            return Err(UNEXPECTED);
+        }
+        {
+            loop {
+                let named = self.at;
+                self.skip_space();
+                match self.peek() {
+                    Some('<') if !PRIMITIVES.contains(&first.as_str()) => self.arguments()?,
+                    Some('.') if self.text.get(self.at + 1) != Some(&'.') => {
+                        self.at += 1;
+                        match self.word() {
+                            Some(word) if matches!(word.as_str(), "this" | "super" | "class" | "new") => return Err(SYNTAX),
+                            Some(word) if RESERVED.contains(&word.as_str()) || PRIMITIVES.contains(&word.as_str()) => return Err(UNEXPECTED),
+                            Some(_) => {}
+                            None => return Err(self.missing(false)),
+                        }
+                    }
+                    _ => {
+                        self.at = named;
+                        break;
                     }
                 }
-            } else if !self.kind() {
-                return false;
-            }
-            if !self.sign(',') {
-                return self.sign('>');
             }
         }
-    }
-    /// A type: a primitive or a qualified name with type arguments, then array brackets.
-    fn kind(&mut self) -> bool {
-        let Some(first) = self.name() else { return false };
-        if RESERVED.contains(&first.as_str()) {
-            return false;
-        }
-        if !PRIMITIVES.contains(&first.as_str()) {
-            loop {
-                if self.sign('<') && !self.arguments() {
-                    return false;
-                }
-                if !self.sign('.') {
-                    break;
-                }
-                if !self.identifier() {
-                    return false;
-                }
-            }
-        }
-        while self.sign('[') {
-            if !self.sign(']') {
-                return false;
-            }
-        }
-        true
-    }
-    fn done(&self) -> bool {
-        self.at == self.tokens.len()
-    }
-}
-
-fn reader(text: &str) -> Option<Reader> {
-    tokens(text).map(|tokens| Reader { tokens, at: 0 })
-}
-
-fn type_ok(text: &str) -> bool {
-    reader(text).is_some_and(|mut reader| reader.kind() && reader.done())
-}
-
-fn member_ok(text: &str) -> bool {
-    reader(text).is_some_and(|mut reader| reader.identifier() && reader.done())
-}
-
-fn module_ok(text: &str) -> bool {
-    reader(text).is_some_and(|mut reader| {
-        if !reader.identifier() {
-            return false;
-        }
-        while reader.sign('.') {
-            if !reader.identifier() {
-                return false;
-            }
-        }
-        reader.done()
-    })
-}
-
-fn parameters_ok(text: &str) -> bool {
-    if text.trim().is_empty() {
-        return true;
-    }
-    reader(&text.replace("...", "[]")).is_some_and(|mut reader| {
         loop {
-            if !reader.kind() {
-                return false;
+            let named = self.at;
+            self.skip_space();
+            if self.peek() != Some('[') {
+                self.at = named;
+                return Ok(());
             }
-            let named = matches!(reader.tokens.get(reader.at), Some(Token::Name(name)) if !RESERVED.contains(&name.as_str()));
-            reader.at += usize::from(named);
-            if !reader.sign(',') {
-                return reader.done();
+            self.at += 1;
+            self.skip_space();
+            if self.peek() != Some(']') {
+                return Err(self.missing(false));
             }
+            self.at += 1;
         }
-    })
-}
+    }
 
-/// `ReferenceParser.parse` for the three modes: a member is required, optional or not allowed.
-pub fn reference_ok(signature: &str, required: bool, disallowed: bool, optional: bool) -> bool {
-    let slash = signature.find('/');
-    let after_slash = slash.map_or(0, |slash| slash + 1);
-    let hash = signature[after_slash..].find('#').map(|hash| hash + after_slash);
-    let after_hash = hash.map_or(0, |hash| hash + 1);
-    let from = slash.max(hash).map_or(0, |last| last + 1);
-    let paren = signature[from..].find('(').map(|paren| paren + from);
-    match slash {
-        Some(0) => return false,
-        Some(slash) if !module_ok(&signature[..slash]) => return false,
-        _ => {}
-    }
-    let member_end = paren.unwrap_or(signature.len());
-    if slash.is_some() && signature.len() == after_slash {
-    } else if let Some(hash) = hash {
-        if disallowed || (hash != after_slash && !type_ok(&signature[after_slash..hash])) {
-            return false;
-        }
-        if signature[after_hash..].starts_with('#') {
-            if !optional {
-                return false;
+    /// `<A, ? extends B>`.
+    fn arguments(&mut self) -> Result<(), &'static str> {
+        self.at += 1;
+        loop {
+            self.skip_space();
+            if self.peek() == Some('?') {
+                self.at += 1;
+                self.skip_space();
+                let bound = self.at;
+                match self.word().as_deref() {
+                    Some("extends" | "super") => self.kind(false)?,
+                    _ => self.at = bound,
+                }
+            } else {
+                self.kind(false)?;
             }
-        } else if !member_ok(&signature[after_hash..member_end.max(after_hash)]) {
-            return false;
-        }
-    } else if paren.is_none() && !required {
-        if !type_ok(&signature[after_slash..]) {
-            return false;
-        }
-    } else if disallowed || !member_ok(&signature[after_slash..member_end]) {
-        return false;
-    }
-    match paren {
-        None => true,
-        Some(paren) => {
-            let close = signature[paren..].find(')').map(|close| close + paren);
-            close == Some(signature.len() - 1) && parameters_ok(&signature[paren + 1..signature.len() - 1])
+            self.skip_space();
+            match self.peek() {
+                Some(',') => self.at += 1,
+                Some('>') => {
+                    self.at += 1;
+                    return Ok(());
+                }
+                None => return Err(SYNTAX),
+                Some(_) => return Err(UNEXPECTED),
+            }
         }
     }
 }
