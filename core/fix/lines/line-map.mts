@@ -62,26 +62,35 @@ function skipsLeft(walk: Walk, sides: Sides, lengths: Uint32Array): boolean {
 
 type Sides = { readonly left: readonly string[]; readonly right: readonly string[] };
 
+function sameAt(walk: Walk, { left, right }: Sides): boolean {
+  return (
+    walk.row < left.length && walk.column < right.length && left[walk.row] === right[walk.column]
+  );
+}
+
+function step(walk: Walk, sides: Sides, lengths: Uint32Array): void {
+  if (sameAt(walk, sides)) {
+    walk.row += 1;
+    walk.column += 1;
+    return;
+  }
+  walk.open ??= { row: walk.row, column: walk.column };
+  if (skipsLeft(walk, sides, lengths)) {
+    walk.row += 1;
+  } else {
+    walk.column += 1;
+  }
+}
+
 function walkedBlocks(sides: Sides, offset: number): Block[] {
-  const { left, right } = sides;
-  const lengths = commonLengths(left, right);
+  const lengths = commonLengths(sides.left, sides.right);
   const blocks: Block[] = [];
   const walk: Walk = { row: 0, column: 0, open: undefined };
-  while (walk.row < left.length || walk.column < right.length) {
-    const same =
-      walk.row < left.length && walk.column < right.length && left[walk.row] === right[walk.column];
-    if (same) {
+  while (walk.row < sides.left.length || walk.column < sides.right.length) {
+    if (sameAt(walk, sides)) {
       closeBlock(walk, offset, blocks);
-      walk.row += 1;
-      walk.column += 1;
-    } else {
-      walk.open ??= { row: walk.row, column: walk.column };
-      if (skipsLeft(walk, sides, lengths)) {
-        walk.row += 1;
-      } else {
-        walk.column += 1;
-      }
     }
+    step(walk, sides, lengths);
   }
   closeBlock(walk, offset, blocks);
   return blocks;
