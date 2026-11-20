@@ -67,7 +67,7 @@ impl FileRule for TreeDump {
     fn check(&self, _file: &SourceFile, _out: &mut Vec<Finding>) {}
     fn check_in(&self, file: &SourceFile, project: &Project, _out: &mut Vec<Finding>) {
         let Some(project) = project.downcast_ref::<JavaProject>() else { return };
-        let Some(scope) = project.scopes.get(&file.path) else { return };
+        let scope = &crate::java::types::scope::FileScope::of(file);
         let Ok(target) = std::env::var("NP_TREE_OUT") else { return };
         if std::env::var("NP_SEXP").is_ok() {
             eprintln!("{}", file.tree.root_node().to_sexp());

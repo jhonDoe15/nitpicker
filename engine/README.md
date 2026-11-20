@@ -52,11 +52,18 @@ Measured with all 130 rules on 4 cores (findings: same / missed / extra):
 | Code base | Files, lines | PMD 7.16.0 wall, CPU, peak | Engine | Findings |
 | --- | --- | --- | --- | --- |
 | commons-lang, javaparser, guava, jackson-databind, mybatis-3 | 2,321 files | 67 s, 250 s, 1.5-2.0 GB | 14.6 s, 50 s, 0.3-0.5 GB | 5,118 / 0 / 0 |
-| Nacos, all modules | 5,410, 844k | 77 s, 297 s, 2.4 GB | 28 s, 106 s, 1.0 GB | 3,709 / 0 / 0 |
-| Elasticsearch `server` | 5,117, 1.04M | 85 s, 328 s, 2.8 GB | 45 s, 170 s, 1.0 GB | 2,497 / 0 / 0 |
+| Nacos, all modules | 5,410, 844k | 77 s, 297 s, 2.4 GB | 27 s, 104 s, 0.4 GB | 3,709 / 0 / 0 |
+| Elasticsearch `server` | 5,117, 1.04M | 85 s, 328 s, 2.8 GB | 46 s, 171 s, 0.5 GB | 2,497 / 0 / 0 |
 
 Four more libraries and the `review-rules` fixture of the Java adapters agree as well (7,557 findings in all
 for the libraries and fixtures, none missed, none extra).
+
+## Memory
+
+The type index is built from outlines: each file with the bodies of methods, constructors and initializers
+blanked (kept when a class is declared inside). The outlines are dropped before the rules run, and each file is
+parsed again for its rules and dropped when they are done, so the peak does not grow with the full trees of the
+whole project. Class files are listed at start and read on first use.
 
 ## PMD behaviour the engine copies
 
