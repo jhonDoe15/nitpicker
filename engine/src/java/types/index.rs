@@ -332,6 +332,18 @@ impl TypeIndex {
         found
     }
 
+    /// Whether a class of the run's sources below `class` declares a method of that name and parameter count.
+    pub fn overridden_in_sources(&self, class: &str, name: &str, parameters: usize) -> bool {
+        self.classes.values().any(|slot| match slot {
+            Slot::Ready(other) => {
+                other.name != class
+                    && other.methods.iter().any(|method| method.name == name && method.parameters.len() == parameters && !method.is_static)
+                    && self.is_subtype(&other.name, class)
+            }
+            Slot::Later(..) => false,
+        })
+    }
+
     /// Whether every supertype up to the roots is known, so a negative subtype answer can be trusted.
     pub fn complete(&self, name: &str) -> bool {
         self.lineage(name).iter().all(|ancestor| ancestor.contains('&') || self.classes.contains_key(ancestor))

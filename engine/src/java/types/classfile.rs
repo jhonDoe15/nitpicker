@@ -171,6 +171,8 @@ struct Attributes<'a> {
     constant: Option<u16>,
     deprecated: bool,
     nullable: bool,
+    check_for_null: bool,
+    nickname: Option<&'a [u8]>,
     record: bool,
     permitted: Option<Vec<u16>>,
     /// For a record: the generic type of each component, in order.
@@ -244,6 +246,10 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                 found.deprecated |= kind == Some(b"Ljava/lang/Deprecated;");
                 found.starts |= kind.is_some_and(|kind| kind.ends_with(b"/Initializer;") || starter(kind));
                 found.nullable |= kind.is_some_and(|kind| kind.ends_with(b"/Nullable;") || kind.ends_with(b"/CheckForNull;") || kind.ends_with(b"/ParametricNullness;"));
+                found.check_for_null |= kind.is_some_and(|kind| kind.ends_with(b"/CheckForNull;"));
+                if kind.is_some_and(|kind| kind.ends_with(b"Nullable;") && kind != b"Ljavax/annotation/Nullable;") {
+                    found.nickname = kind;
+                }
             }
         } else if name == b"Exceptions" {
             found.throws = (0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?;
@@ -380,6 +386,12 @@ fn member_flags(access: u16, found: &Attributes) -> u16 {
     if found.nullable {
         bits |= flag::NULLABLE;
     }
+    if found.check_for_null {
+        bits |= flag::CHECK_FOR_NULL;
+    }
+    if found.nickname.is_some() {
+        bits |= flag::MAYBE_CHECK_FOR_NULL;
+    }
     bits
 }
 
@@ -442,6 +454,11 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     let superclass = class_name(reader.u2()?);
     let interfaces = (0..reader.u2()?).map(|_| reader.u2().and_then(&class_name)).collect::<Option<Vec<_>>>()?;
     let mut fields = Vec::new();
+    let mut null_nicknames: Vec<String> = Vec::new();
+    let mut nickname = |found: &Attributes| {
+        let name = found.nickname.and_then(|text| std::str::from_utf8(text).ok()).map(|text| dotted(text.trim_start_matches('L').trim_end_matches(';')));
+        null_nicknames.extend(name.filter(|name| !null_nicknames.contains(name)));
+    };
     let mut enum_constants = 0;
     for _ in 0..reader.u2()? {
         let flags = reader.u2()?;
@@ -449,6 +466,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         let field_name = utf8(reader.u2()?)?;
         let descriptor = utf8(reader.u2()?)?;
         let found = attributes(&mut reader, &utf8)?;
+        nickname(&found);
         let (signature, constant) = (found.signature, found.constant);
         if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == 0 {
             let fixed = constant.filter(|_| flags & ACC_STATIC != 0).map(|_| Vec::new());
@@ -458,7 +476,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
             });
             let kind = Signature { text: descriptor, at: 0 }.kind()?;
             let generic = signature.and_then(|text| Signature { text, at: 0 }.kind()).unwrap_or_else(|| kind.clone());
-            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, flags: member_flags(flags, &found) });
+            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, flags: member_flags(flags, &found) | if flags & 0x0040 != 0 { flag::VOLATILE } else { 0 } });
         }
     }
     let mut methods = Vec::new();
@@ -472,6 +490,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
             && std::str::from_utf8(method_name).is_ok_and(super::model::setter_name)
             && !descriptor.ends_with(returns_own.as_bytes());
         let found = attributes(&mut reader, &utf8)?;
+        nickname(&found);
         let signature = found.signature;
         if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == 0 && method_name != b"<clinit>" {
             let (_, parameters, returns) = Signature { text: descriptor, at: 0 }.method()?;
@@ -552,5 +571,6 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         permitted,
         record_components: components,
         setter_like,
+        null_nicknames,
     })
 }

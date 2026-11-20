@@ -142,7 +142,8 @@ purpose, and its source is not read. A finding carries the SpotBugs pattern name
 
 Done: `EI_EXPOSE_REP`, `MS_EXPOSE_REP`, `EI_EXPOSE_REP2` and `EI_EXPOSE_STATIC_REP2` (#2098) and
 `CT_CONSTRUCTOR_THROW` (#2112), together 76% of what SpotBugs with FindSecBugs reports on the seven code bases
-below. The rest is planned in #2097.
+below, and the null patterns `NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE`, `NP_NULL_ON_SOME_PATH` and
+`NP_ALWAYS_NULL` (#2146, see "Null patterns" below). The rest is planned in #2097.
 
 `tests/expected/spotbugs.json` holds what SpotBugs reported for the compiled `tests/fixtures/spotbugs`; each
 fixture folder is one experiment on SpotBugs' behaviour. `parity/spotbugs/run.sh` runs SpotBugs the way a Java
@@ -210,6 +211,60 @@ Also measured: the accessor of a record's varargs component is reported and its 
 variable of `instanceof` holds the tested value; one parameter stored twice in a field of one method is one
 finding; the outer-instance field of an inner class is `this$N`, N counting the inner classes around the outer
 one; the line of an inner-class constructor is the line of its opening brace.
+
+### Null patterns
+
+`src/java/spotbugs/nulls/` follows values through a method on the flow graph of `src/java/flow/`: a backward
+pass finds where a value is dereferenced whichever way the flow goes, a forward pass carries what is known about
+each local variable and field. Measured on Elasticsearch `server` (4 cores), where SpotBugs reports 647 findings
+of the three patterns (86% of its 746 null findings):
+
+| Pattern | Same | Missed | Extra |
+| --- | --- | --- | --- |
+| `NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE` | 485 | 61 | 11 |
+| `NP_NULL_ON_SOME_PATH` | 92 | 9 | 11 |
+| `NP_ALWAYS_NULL` | 0 | 0 | 0 |
+
+The three patterns alone take TIMING_REF on that code base; SpotBugs with all its patterns takes 249 s, 417 CPU
+s and 3.2 GB after a 31 s compile.
+
+What SpotBugs does, as measured (`tests/fixtures/spotbugs/null_*`, 218 findings, all the same):
+
+- Only `@CheckForNull`, or an annotation that itself carries `@CheckForNull` and `@TypeQualifierNickname`, marks
+  a method result or a field. `javax.annotation.Nullable` and other annotations named `Nullable` do nothing. The
+  mark is inherited from an overridden method, and a record component hands it to its accessor and field.
+- A value that only may be null is reported where it is dereferenced, as long as it is dereferenced whichever
+  way the flow goes from where it arose. `return` and `throw` are ways without a dereference; an exception
+  thrown by a call is not a way. A value that is certainly null (from `null`, or on the null side of a test)
+  stays reportable past a split.
+- A dereference is a call on the value, a field or array access, unboxing, `synchronized`, `throw`, the iterable
+  of a `for`, a `switch` on it, and handing it to a method of the same file that dereferences that parameter on
+  every way through (static, private, final or not overridden; followed through further calls).
+- What is known of a field of `this` ends at a call on `this`, a call handed `this` and a `synchronized` block;
+  the field then counts as read again at that point. A `volatile` field is read anew each time.
+- The test of an `assert` is run, and past any `assert` a value that only may be null is no longer reported.
+- Lambda bodies are never reported; anonymous classes, constructors, initializers and field initializers are.
+- Several results of one method dereferenced on one line make one finding.
+
+Differences on Elasticsearch `server`, 92:
+
+- Handed to a method that dereferences it, about 68 missed: the method is in another file or in the JDK. A
+  rule sees the other files of a run only as outlines without bodies, so this needs a pass over the whole
+  project that records which parameters each method dereferences; SpotBugs has such a list for the JDK built in.
+- A value arising after several null tests in a row, 6 extra: SpotBugs drops it (a field then gets
+  `NP_NULL_ON_SOME_PATH_MIGHT_BE_INFEASIBLE`). The experiments show three tests in a row are enough, and that
+  calls, other branches, loops and tests of method results in between each weaken it by a different amount; no
+  rule tried so far fits both the experiments and this code base, so none is built in.
+- A method of the same file that dereferences its parameter, 3 extra: SpotBugs did not use that knowledge,
+  probably because of the order it visits classes in.
+- A helper that always throws, 2 extra: SpotBugs knows the call does not return.
+- `switch` with `case null`, 1 extra.
+- Not looked at one by one yet: 9 extra and 2 missed of `NP_NULL_ON_SOME_PATH`, 1 line that differs.
+
+Not rebuilt yet: `NP_NULL_PARAM_DEREF` and its variants, `NP_GUARANTEED_DEREF`,
+`NP_NULL_ON_SOME_PATH_EXCEPTION`, `NP_NULL_ON_SOME_PATH_MIGHT_BE_INFEASIBLE`, `NP_LOAD_OF_KNOWN_NULL_VALUE`, the
+`RCN_` family, `NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE`, `NP_BOOLEAN_RETURN_NULL` and
+`NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT`. Other code bases are not compared yet.
 
 Known gaps in what is rebuilt: `c ? a : b` stored in a field follows a table measured on SpotBugs, which decides
 by the compiled form (`tests/fixtures/spotbugs/choices*`); a local variable with more than two values is taken

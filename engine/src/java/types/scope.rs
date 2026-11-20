@@ -529,6 +529,14 @@ impl<'a> Resolver<'a> {
         clause.map(|clause| clause.named_children(&mut cursor).filter_map(|kind| self.written(kind, false)).map(|kind| kind.name()).collect()).unwrap_or_default()
     }
 
+    /// Whether a declaration carries `@CheckForNull` or an annotation that is itself annotated with it.
+    pub fn check_for_null(&self, member: Node) -> bool {
+        super::super::helpers::annotation_names(self.file, member).iter().filter(|name| name.contains("Null")).any(|name| {
+            name.rsplit('.').next() == Some("CheckForNull")
+                || self.class_name(member, name).and_then(|class| self.index.get(&class)).is_some_and(|class| class.flags & super::model::flag::CHECK_FOR_NULL != 0)
+        })
+    }
+
     fn nullable_parameters(&self, member: Node) -> u64 {
         let list = member.child_by_field_name("parameters").map(children).unwrap_or_default();
         let listed = list.into_iter().filter(|part| matches!(part.kind(), "formal_parameter" | "spread_parameter"));
@@ -548,6 +556,9 @@ impl<'a> Resolver<'a> {
             if has(declaration, word) {
                 bits |= bit;
             }
+        }
+        if super::super::helpers::annotation_names(self.file, declaration).iter().any(|name| name.rsplit('.').next() == Some("CheckForNull")) {
+            bits |= flag::CHECK_FOR_NULL;
         }
         bits | match declaration.kind() {
             "enum_declaration" => flag::ENUM,
@@ -629,6 +640,7 @@ impl<'a> Resolver<'a> {
             record_components: (kind == "record_declaration").then(Vec::new),
             flags: self.class_flags(declaration) | super::model::flag::SOURCE,
             setter_like: false,
+            null_nicknames: Vec::new(),
         }
     }
 
@@ -731,7 +743,7 @@ impl<'a> Resolver<'a> {
         let bits = |member: Node| -> u16 {
             use super::model::flag;
             let mut bits = 0;
-            for (word, bit) in [("final", flag::FINAL), ("public", flag::PUBLIC), ("protected", flag::PROTECTED), ("static", flag::STATIC), ("abstract", flag::ABSTRACT)] {
+            for (word, bit) in [("final", flag::FINAL), ("public", flag::PUBLIC), ("protected", flag::PROTECTED), ("static", flag::STATIC), ("abstract", flag::ABSTRACT), ("volatile", flag::VOLATILE)] {
                 if has(member, word) {
                     bits |= bit;
                 }
@@ -742,6 +754,9 @@ impl<'a> Resolver<'a> {
             }
             if super::super::helpers::marked_nullable(self.file, member) {
                 bits |= flag::NULLABLE;
+            }
+            if self.check_for_null(member) {
+                bits |= flag::CHECK_FOR_NULL;
             }
             if info.is_interface {
                 bits |= flag::PUBLIC;
@@ -878,10 +893,10 @@ impl<'a> Resolver<'a> {
                 };
                 let name = self.file.text_of(name).to_string();
                 let generic = element(true).unwrap_or(kind.clone());
-                info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, fixed: None, strict: false, is_private: true, flags: super::model::flag::FINAL | bits(component) & super::model::flag::NULLABLE });
+                info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, fixed: None, strict: false, is_private: true, flags: super::model::flag::FINAL | bits(component) & (super::model::flag::NULLABLE | super::model::flag::CHECK_FOR_NULL) });
                 info.record_components.get_or_insert_with(Vec::new).push(generic.clone());
                 let accessor = plain(&name, Vec::new(), kind.erased());
-                info.methods.push(Method { generic_returns: generic, flags: accessor.flags | bits(component) & super::model::flag::NULLABLE, ..accessor });
+                info.methods.push(Method { generic_returns: generic, flags: accessor.flags | bits(component) & (super::model::flag::NULLABLE | super::model::flag::CHECK_FOR_NULL), ..accessor });
             }
         }
     }
