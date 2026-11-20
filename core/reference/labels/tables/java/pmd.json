@@ -90,6 +90,7 @@
   "pmd/HashCodeDisagreesWithEquals": ["bug"],
   "pmd/HashOrderInOrderedOutput": ["reliability"],
   "pmd/HttpWithoutTimeout": ["reliability"],
+  "pmd/IgnoredTimedWaitInTest": ["tests"],
   "pmd/ImmutableCollectionChanged": ["bug"],
   "pmd/InconsistentFieldLocking": ["bug"],
   "pmd/InstantiationToGetClass": ["simplification"],

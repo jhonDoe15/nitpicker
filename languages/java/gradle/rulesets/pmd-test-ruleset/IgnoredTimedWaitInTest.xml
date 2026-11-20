@@ -1,0 +1,28 @@
+  <rule name="IgnoredTimedWaitInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This timed wait returns false when the time runs out, and the result is dropped, so the assertions after it run whether or not the work finished: the test fails later with a misleading message, or passes without having checked anything. Assert the result, as in assertTrue(latch.await(5, TimeUnit.SECONDS)), or test it and fail with a message that says what did not happen in time.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//ExpressionStatement/MethodCall[
+     pmd-java:matchesSig('java.util.concurrent.CountDownLatch#await(long,java.util.concurrent.TimeUnit)')
+  or pmd-java:matchesSig('java.util.concurrent.locks.Lock#tryLock(long,java.util.concurrent.TimeUnit)')
+  or pmd-java:matchesSig('java.util.concurrent.Semaphore#tryAcquire(long,java.util.concurrent.TimeUnit)')
+  or pmd-java:matchesSig('java.util.concurrent.Semaphore#tryAcquire(int,long,java.util.concurrent.TimeUnit)')
+  or pmd-java:matchesSig('java.util.concurrent.BlockingQueue#offer(_,long,java.util.concurrent.TimeUnit)')
+  or pmd-java:matchesSig('java.lang.Process#waitFor(long,java.util.concurrent.TimeUnit)')
+  or (pmd-java:matchesSig('java.util.concurrent.ExecutorService#awaitTermination(long,java.util.concurrent.TimeUnit)')
+      and not(ArgumentList/*[1]/descendant-or-self::*[@Name = 'MAX_VALUE'])
+      and not(ancestor::MethodDeclaration[1]
+                [matches(@Name, '^(close|stop|shutdown|destroy|tearDown|cleanup|dispose|after)', 'i')
+                 or ModifierList/Annotation[@SimpleName = ('PreDestroy', 'AfterEach', 'AfterAll', 'After', 'AfterClass',
+                                                           'AfterMethod', 'AfterTest', 'AfterSuite')]]))]
+  [not(*[1][self::MethodCall[@MethodName = ('verify', 'when', 'should', 'given', 'expect')]])]
+  [not(ancestor::MethodDeclaration[1]//MethodCall[@MethodName = ('expectLastCall', 'replay', 'replayAll')])]
+  [(parent::ExpressionStatement
+    | parent::ExpressionStatement/parent::Block/parent::TryStatement[not(FinallyClause)])
+     /following-sibling::*//MethodCall[matches(@MethodName, '^(assert|verify)') or @MethodName = 'fail']]
+]]></value>
+      </property>
+    </properties>
+  </rule>
