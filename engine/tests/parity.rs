@@ -72,7 +72,12 @@ fn regular_expressions_match_what_pmd_matches() {
 
 #[test]
 fn review_rules_report_what_pmd_reports() {
-    same_as_pmd("formats", "review");
+    same_as_pmd("formats", "all");
+}
+
+#[test]
+fn rare_built_in_rules_and_switch_facts_match_pmd() {
+    same_as_pmd("builtins", "all");
 }
 
 #[test]
