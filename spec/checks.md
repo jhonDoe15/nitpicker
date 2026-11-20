@@ -320,6 +320,14 @@ key. The parameter forms are skipped when the `catch` sets a status, passes the 
 function sets a status as a statement of its own, and a file that mentions GraphQL is skipped. A status given in the
 call (`{ status: 500 }`, `res.status(500).json(...)`, an explicit `{ status: 200 }`) is allowed.
 
+UTC dates used as local dates: `nitpicker/no-utc-date-as-local-date` (production source, in `eslint-lint`) reports
+`<now>.toISOString()` cut to its date with `.split('T')[0]`, `.slice(0, 10)`, `.substring(0, 10)` or `.substr(0, 10)`
+(`<now>` is `new Date()`, `new Date(Date.now())` or a `const` initialized with one and never changed with `setTime` or a
+`setUTC...` method) when the value, or a `const` it initializes, is used inside the argument of `useState`,
+`useReducer`, `useForm` or `useFormik`, as `value`, `defaultValue`, `min` or `max` of a JSX element with `type="date"`,
+or as the right side of `||` or `??` whose left side is named `date` or ends in `Date`. Other uses of the expression
+(file names, keys, comparisons, plain properties, parameter defaults) are not reported.
+
 Child process deadlines: `nitpicker/require-process-timeout` (production source, in `eslint-lint`)
 reports production code that waits for a child process to exit without a deadline: a synchronous
 `child_process` or `execa` call without a positive `timeout`, and `exec`, `execFile`, an awaited

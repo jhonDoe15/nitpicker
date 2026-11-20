@@ -203,6 +203,7 @@
   "eslint/nitpicker/no-unvalidated-schema-field": ["security", "maintainability"],
   "eslint/nitpicker/no-unversioned-orm-entity": ["bug", "persistence"],
   "eslint/nitpicker/no-use-after-await-when-disposed": ["bug", "reliability", "async"],
+  "eslint/nitpicker/no-utc-date-as-local-date": ["bug"],
   "eslint/nitpicker/no-wait-for-with-fake-timers": ["tests"],
   "eslint/nitpicker/no-wall-clock-elapsed": ["bug"],
   "eslint/nitpicker/no-wasted-collection-step": ["performance"],
