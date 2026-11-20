@@ -425,10 +425,41 @@ impl<'a, 't> Builder<'a, 't> {
                 id
             }
             _ => {
-                let id = self.at(parent, "ClassType", node);
-                self.set(id, "SimpleName", text(self.text(node)));
-                id
+                let written = self.text(node);
+                match written.rfind('.') {
+                    // A record pattern's qualified type, which the grammar read as one name (see `grammar::masked`).
+                    Some(dot) if !written.contains(char::is_whitespace) => self.dotted_type(parent, node, node.start_byte(), dot),
+                    _ => {
+                        let id = self.at(parent, "ClassType", node);
+                        self.set(id, "SimpleName", text(written));
+                        id
+                    }
+                }
             }
+        }
+    }
+
+    /// A class type for `written[..]` of a single name node that holds dots; `dot` is the last one.
+    fn dotted_type(&mut self, parent: u32, node: Node<'t>, start: usize, dot: usize) -> u32 {
+        let whole = &self.file.text[start..node.end_byte()];
+        let id = self.open(parent, "ClassType", Some(node), start, node.end_byte());
+        self.set(id, "SimpleName", text(&whole[dot + 1..]));
+        self.dotted_scope(id, node, start, dot);
+        id
+    }
+
+    /// The qualifier `text[start..start + dot]` of a dotted class type: an outer class type, or a package.
+    fn dotted_scope(&mut self, id: u32, node: Node<'t>, start: usize, dot: usize) {
+        let scope = &self.file.text[start..start + dot];
+        if self.names_class(node, scope) {
+            let inner = self.open(id, "ClassType", None, start, start + dot);
+            let simple = scope.rfind('.');
+            self.set(inner, "SimpleName", text(&scope[simple.map_or(0, |at| at + 1)..]));
+            if let Some(at) = simple {
+                self.dotted_scope(inner, node, start, at);
+            }
+        } else {
+            self.set(id, "PackageQualifier", text(scope));
         }
     }
 
@@ -621,7 +652,10 @@ impl<'a, 't> Builder<'a, 't> {
                 let parts = kids(parameters);
                 let list = match (parts.first(), parts.last()) {
                     (Some(first), Some(last)) => self.open(id, "RecordComponentList", Some(parameters), first.start_byte(), last.end_byte()),
-                    _ => self.at(id, "RecordComponentList", parameters),
+                    _ => {
+                        let close = find(parameters, ")").map_or(parameters.end_byte(), |close| close.start_byte());
+                        self.open(id, "RecordComponentList", Some(parameters), close, close)
+                    }
                 };
                 for kid in kids(parameters) {
                     let component = self.at(list, "RecordComponent", kid);
@@ -1426,17 +1460,19 @@ impl<'a, 't> Builder<'a, 't> {
                                 let inner = if part.kind() == "record_pattern_component" { kids(part) } else { vec![part] };
                                 if inner.len() == 2 {
                                     let typed = self.at(list, "TypePattern", part);
+                                    self.modifiers(typed, part, &[]);
                                     self.set(typed, "Visibility", text("package"));
-                                    self.open(typed, "ModifierList", None, part.start_byte(), part.start_byte());
-                                    self.ty(typed, inner[0]);
+                                    if self.text(inner[0]) != "var" {
+                                        self.ty(typed, inner[0]);
+                                    }
                                     let variable = self.at(typed, "VariableId", inner[1]);
                                     self.variable_flags(variable, self.text(inner[1]), false, false, "local", false);
                                 } else {
                                     inner.first().into_iter().for_each(|only| self.pattern(list, *only));
                                 }
                             }
+                            self.sized(list);
                         }
-                        "identifier" => {}
                         _ => {
                             self.ty(id, kid);
                         }
@@ -1509,6 +1545,8 @@ impl<'a, 't> Builder<'a, 't> {
                         let id = self.at(parent, "AmbiguousName", node);
                         self.set(id, "Name", text(&written));
                         self.set(id, "Image", text(&written));
+                        self.set(id, "CompileTimeConstant", flag(false));
+                        self.set(id, "Parenthesized", flag(false));
                         id
                     }
                     None if written.rsplit('.').next().is_some_and(|last| last.starts_with(char::is_uppercase)) => self.type_expression(parent, node),

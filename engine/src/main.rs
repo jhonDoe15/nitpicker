@@ -39,7 +39,8 @@ fn main() {
         let text = std::fs::read_to_string(&roots[0]).expect("file");
         let mut parser = tree_sitter::Parser::new();
         parser.set_language(&language.grammar()).expect("grammar");
-        println!("{}", parser.parse(&text, None).expect("tree").root_node().to_sexp());
+        let parsed = language.grammar_text(&text).unwrap_or_else(|| text.clone());
+        println!("{}", parser.parse(&parsed, None).expect("tree").root_node().to_sexp());
         return;
     }
     let started = Instant::now();
