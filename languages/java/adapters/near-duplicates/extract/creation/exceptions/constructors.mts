@@ -89,7 +89,8 @@ function classIn(container: Node, name: string): Node | undefined {
 
 function sizeOf(declaration: Node): number | undefined {
   const parameters = namedChildren(required(declaration, 'parameters'));
-  return parameters.some(({ type }) => type === 'spread_parameter') ? undefined : parameters.length;
+  const isOpen = parameters.some((node) => node.type === 'spread_parameter' || node.hasError);
+  return isOpen ? undefined : parameters.length;
 }
 
 function throwsOf(declaration: Node): string[] {

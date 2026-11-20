@@ -127,7 +127,9 @@ function isLargeEnough({ tree }) {
 function signatureOf({ tree }) {
   const [returned, parameters] = tree.children;
   const types = [returned, ...parameters.children.map(({ children: [type] }) => type)];
-  return types.map((type) => keyOf(type, KEY_MODES.exact)).join('|');
+  return types.includes(undefined)
+    ? undefined
+    : types.map((type) => keyOf(type, KEY_MODES.exact)).join('|');
 }
 
 function optionsOf(query) {
@@ -147,7 +149,8 @@ function readable(counterexample, { tree }) {
 }
 
 export function proveSameLogic(sides) {
-  if (!sides.every(isLargeEnough) || signatureOf(sides[0]) !== signatureOf(sides[1])) {
+  const [signature, other] = sides.map(signatureOf);
+  if (!sides.every(isLargeEnough) || signature === undefined || signature !== other) {
     return undefined;
   }
   const checks = checksOf(sides);
