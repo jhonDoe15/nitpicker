@@ -114,7 +114,32 @@ pub fn sub_signature(index: &TypeIndex, origin: &ClassInfo, method: &Method, dec
     }
     let map = index.member_map(&own_type(index, &origin.name), &declaring.name);
     let seen: Vec<Type> = other.generic_parameters.iter().map(|formal| formal.substitute(&map)).collect();
-    seen == method.generic_parameters || seen.iter().map(Type::erased).eq(method.parameters.iter().cloned())
+    if seen == method.generic_parameters || seen.iter().map(Type::erased).eq(method.parameters.iter().cloned()) {
+        return true;
+    }
+    // A type variable of a class around the declaring class takes what the class around the overriding one gives it.
+    let mut around = map;
+    let mut changed = false;
+    let mut outer = declaring.name.as_str();
+    while let Some((parent, _)) = outer.rsplit_once('.') {
+        outer = parent;
+        let Some(info) = index.get(parent).filter(|info| !info.type_parameters.is_empty()) else { continue };
+        let mut inner = origin.name.as_str();
+        while let Some((child, _)) = inner.rsplit_once('.') {
+            inner = child;
+            if index.has(child) && index.is_subtype(child, parent) {
+                let given = index.member_map(&own_type(index, child), parent);
+                for (name, _) in &info.type_parameters {
+                    if let Some(kind) = given.get(name) {
+                        around.insert(name.clone(), kind.clone());
+                        changed = true;
+                    }
+                }
+                break;
+            }
+        }
+    }
+    changed && other.generic_parameters.iter().map(|formal| formal.substitute(&around).erased()).eq(method.parameters.iter().cloned())
 }
 
 /// Every method in the supertypes that the method overrides, in the order of `ASTHelpers.streamSuperMethods`.
