@@ -4,6 +4,7 @@ import type { JavaFinding } from '../adapters/typed/java-values.mts';
 import {
   copiedConstantFindings,
   copyPastedTestFindings,
+  springContextFindings,
   couplingFindingsOf,
   delegateSkipsDefaultFindings,
   featureGraphOf,
@@ -241,6 +242,7 @@ function reviewRuleFindings(
     ...roundTripFindings(projectRoot, options),
     ...copiedConstantFindings(projectRoot, options),
     ...copyPastedTestFindings(projectRoot, options),
+    ...springContextFindings(projectRoot, options),
     ...maxValueFindings(projectRoot, options),
     ...stringCallFindings(projectRoot, options),
     ...valueCheckFindings(projectRoot, options),

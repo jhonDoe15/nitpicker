@@ -85,6 +85,7 @@
   "pmd/NullMapValue": ["bug"],
   "pmd/PatternTranslation": ["bug", "security"],
   "pmd/PairSplitDropsRest": ["bug"],
+  "pmd/SpringContextPerMockSet": ["tests", "performance", "spring"],
   "pmd/SurrogateSplittingCut": ["bug"],
   "pmd/PreconditionMessageNamesOtherValue": ["bug"],
   "pmd/TodoWithoutIssue": ["maintainability"],

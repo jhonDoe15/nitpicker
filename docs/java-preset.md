@@ -88,6 +88,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Tests that never run](java-preset/tests-that-never-run.md)
 - [Tests that copy a constant](java-preset/tests-that-copy-a-constant.md)
 - [Copy-pasted tests](java-preset/copy-pasted-tests.md)
+- [Spring test contexts](java-preset/spring-test-contexts.md)
 - [Sums that overflow a maximum value](java-preset/sums-that-overflow-a-maximum-value.md)
 - [Patterns translated without escaping](java-preset/patterns-translated-without-escaping.md)
 - [Replacement strings that expand](java-preset/replacement-strings-that-expand.md)
