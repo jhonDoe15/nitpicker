@@ -96,7 +96,7 @@ npm run check
 
 `npm run check` runs the self-gate (nitpicker checks your change against the remote's default
 branch) and then the full test suite, and fails if either fails. Arguments after `--` go to vitest,
-so `npm run check -- --shard=2/2` runs only what one CI test shard runs. It needs Node.js 22.18 or newer (CI
+so `npm run check -- --shard=2/3` runs only what one CI test shard runs. It needs Node.js 22.18 or newer (CI
 uses 24) and Java 21 for the structure-metrics test. It checks your working tree, uncommitted and
 untracked files included, while CI checks the pull request merged into its target branch, so commit
 everything and merge or rebase on the latest `main` before the final run. A change to a language's
