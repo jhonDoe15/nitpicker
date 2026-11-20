@@ -126,7 +126,7 @@ function collapseInnermostGroup(
       ? expression
       : expression.replace(
           INNERMOST_GROUP,
-          ` ${VERDICT_PREFIX}${classifyFlat((group[1] ?? '').trim(), extraPermissive)} `,
+          () => ` ${VERDICT_PREFIX}${classifyFlat((group[1] ?? '').trim(), extraPermissive)} `,
         );
   };
 }

@@ -90,7 +90,7 @@ export function mergedTestFiles(patterns: readonly LayoutTestFiles[]): LayoutTes
 }
 
 export function escapedGlob(file: string): string {
-  return file.replaceAll(GLOB_SPECIAL, String.raw`\$&`);
+  return file.replaceAll(GLOB_SPECIAL, (special: string) => `\\${special}`);
 }
 
 function compiled(source: string): RegExp {

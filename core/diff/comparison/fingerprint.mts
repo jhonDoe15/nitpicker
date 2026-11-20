@@ -201,7 +201,7 @@ function remapCycle(
 function remapIdentityPaths(identity: string, moves: BaseMoves): string {
   let remappedIdentity = identity;
   for (const [oldPath, newPath] of moves.longestFirst) {
-    remappedIdentity = remappedIdentity.replaceAll(oldPath, newPath);
+    remappedIdentity = remappedIdentity.replaceAll(oldPath, () => newPath);
   }
   return remappedIdentity;
 }

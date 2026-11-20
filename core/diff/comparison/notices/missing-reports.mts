@@ -27,7 +27,7 @@ function reclassified(
     path: finding.path,
     identity: finding.identity,
     classification,
-    message: `${finding.message} ${sentence.replace('{tool}', finding.tool)}`,
+    message: `${finding.message} ${sentence.replace('{tool}', () => finding.tool)}`,
   };
 }
 
