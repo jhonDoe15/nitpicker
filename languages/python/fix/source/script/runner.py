@@ -11,6 +11,7 @@ from fixers.call_fixes import (
 )
 from fixers.declaration_fixes import falsy_default, frozen_dataclass
 from fixers.file_fixes import collected_name, comment_removals, mutate_removal
+from fixers.retry import retry_decorator
 from source_text import Decline, Source, refuse
 
 RULES_TOOL = "python-rules"
@@ -19,10 +20,13 @@ NODE_FIXES = {
     "falsy-default": falsy_default,
     "frozen-dataclass": frozen_dataclass,
     "http-without-timeout": http_timeout,
+    "retry-in-test": retry_decorator,
     "shell-command": shell_command,
     "tls-verification-off": tls_verification,
     "unsafe-deserialization": unsafe_load,
 }
+RETRY = "retry-in-test"
+MARKER_RETRIES = {"pytest.mark.flaky", "flaky.flaky"}
 UNCOLLECTED = "uncollected-tests"
 MUTANT_IGNORED = "mutant-ignored"
 
@@ -119,6 +123,12 @@ def file_fix(source, context, item):
     return [{"type": "move", "from": item["path"], "to": target}], None
 
 
+def kind_of(item):
+    if item["rule"] != RETRY:
+        return {}
+    return {"kind": "marker" if item["subject"] in MARKER_RETRIES else "library"}
+
+
 def rule_fixes(project, sources, findings):
     fixes, declines = [], []
     for item in findings:
@@ -140,9 +150,9 @@ def rule_fixes(project, sources, findings):
             RULES_TOOL, item["rule"], item["path"], item["line"]
         ).as_dict()
         if edits is None:
-            declines.append({**finding, "reason": reason})
+            declines.append({**finding, "reason": reason, **kind_of(item)})
         else:
-            fixes.append({"finding": finding, "edits": edits})
+            fixes.append({"finding": finding, "edits": edits, **kind_of(item)})
     return fixes, declines
 
 

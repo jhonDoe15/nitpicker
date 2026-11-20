@@ -1,7 +1,7 @@
 import { kotlinRecipe } from '../shared/kotlin-recipe.mts';
 import { closingIndex, escapeRegExp } from '../shared/kotlin-scan.mts';
 import type { KotlinEdit, KotlinFound, ScannedKotlin } from '../shared/kotlin-scan.mts';
-import { removalSpan } from '../shared/spans.mts';
+import { removalSpan } from '../../shared/spans.mts';
 
 const PROPERTY =
   /^([ \t]*)private[ \t]+(?:val|var)[ \t]+([A-Za-z]\w*)[ \t]*(?::[^=\n]+)?=[^\n]*$/gmu;
@@ -62,7 +62,7 @@ function continues(text: string, rest: string): boolean {
 }
 
 function removal(source: string, start: number, end: number): KotlinEdit[] {
-  return [{ ...removalSpan(source, start, end), text: '' }];
+  return [removalSpan(source, start, end)];
 }
 
 function properties({ code, source }: ScannedKotlin): KotlinFound[] {

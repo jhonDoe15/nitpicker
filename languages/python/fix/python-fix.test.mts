@@ -85,6 +85,8 @@ function read(repository: GitRepository, name: string) {
   return readFileSync(path.join(repository.root, name), 'utf8');
 }
 
+const PROBES = ['python-probe', 'python-probe', 'python-probe'];
+
 describe('--fix for Python', () => {
   it('formats the changed Python files with ruff and leaves the other files alone', () => {
     const repository = topic(
@@ -106,8 +108,7 @@ describe('--fix for Python', () => {
       'n  m  o\n',
     ]);
     expect(tools.operations()).toEqual([
-      'python-probe',
-      'python-probe',
+      ...PROBES,
       'ruff-fix',
       'ruff-fix',
       'ruff-format-fix',
@@ -202,13 +203,7 @@ describe('--fix for Python', () => {
         '-',
       ],
     });
-    expect(tools.operations()).toEqual([
-      'python-probe',
-      'python-probe',
-      'ruff-fix',
-      'black-fix',
-      'black-fix',
-    ]);
+    expect(tools.operations()).toEqual([...PROBES, 'ruff-fix', 'black-fix', 'black-fix']);
   });
   it('honours the formatter named in the python settings', () => {
     const repository = topic({ 'a.py': 'a = 1\n' }, { 'a.py': 'a  =  2\n' });
@@ -216,13 +211,7 @@ describe('--fix for Python', () => {
 
     fix(repository, tools, { config: { python: { formatter: 'black' } } });
 
-    expect(tools.operations()).toEqual([
-      'python-probe',
-      'python-probe',
-      'ruff-fix',
-      'black-fix',
-      'black-fix',
-    ]);
+    expect(tools.operations()).toEqual([...PROBES, 'ruff-fix', 'black-fix', 'black-fix']);
   });
   it('skips excluded paths and paths outside the Python sources', () => {
     const repository = topic(

@@ -12,8 +12,11 @@ import type {
 import { bindPair, chainOf } from '../jvm-views.mts';
 import { hasModifier } from './class-shape.mts';
 import {
+  ancestorsWithin,
+  childrenStep,
   codeParts,
-  descendants,
+  identifiersWhere,
+  SHAPE,
   field,
   isLiteral,
   isWritten,
@@ -27,7 +30,6 @@ import {
 import { fieldStep } from './cross/fields.mts';
 import { deferredValue } from './holes/deferred.mts';
 import { typeStep } from './holes/type-holes.mts';
-import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 const NARROWING_PARENTS = new Set([
   'assignment_expression',
@@ -36,7 +38,6 @@ const NARROWING_PARENTS = new Set([
   'ternary_expression',
   'parenthesized_expression',
 ]);
-const SHAPE = 'the copies are shaped differently';
 
 function isTypeNode(node: Node): boolean {
   return (
@@ -70,18 +71,6 @@ const CONSTANT_CONTEXTS = new Set([
   'do_statement',
   'for_statement',
 ]);
-
-function ancestorsWithin(node: Node, unit: Node): Node[] {
-  const found: Node[] = [];
-  const pending = [node.parent];
-  for (const current of pending) {
-    if (current !== null && current.id !== unit.id) {
-      found.push(current);
-      pending.push(current.parent);
-    }
-  }
-  return found;
-}
 
 function inConstantContext(node: Node, unit: Node): boolean {
   return ancestorsWithin(node, unit).some(({ type }) => CONSTANT_CONTEXTS.has(type));
@@ -206,22 +195,6 @@ function identifierStep(pair: Pair, context: FullContext, state: AlignState): st
   return x.text === y.text ? fieldStep([x, y], context, state) : addHole(state, context, [x, y]);
 }
 
-function childrenStep(pair: Pair, state: AlignState): string | undefined {
-  const [x, y] = pair;
-  const [left, right] = [codeParts(x), codeParts(y)];
-  if (left.length !== right.length) {
-    return SHAPE;
-  }
-  if (left.length === 0 && x.text !== y.text) {
-    return 'the copies differ in a token';
-  }
-  appendAll(
-    state.pending,
-    left.map((child, index): Pair => [child, present(right[index])]),
-  );
-  return undefined;
-}
-
 const CALLS: Readonly<Record<string, string>> = {
   method_invocation: 'name',
   field_access: 'field',
@@ -257,11 +230,7 @@ function step(pair: Pair, context: FullContext, state: AlignState): string | und
 }
 
 export function writtenNames(unit: Node): Set<string> {
-  return new Set(
-    descendants(unit)
-      .filter((node) => node.type === 'identifier' && isWritten(node))
-      .map(({ text }) => text),
-  );
+  return identifiersWhere(unit, isWritten);
 }
 
 export function alignUnits(

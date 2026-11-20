@@ -10,13 +10,13 @@ const readJavaExtractions: (
   mode: string,
 ) => RecipePlan = untypedReadJavaExtractions;
 
-const JAVA_FILE = /\.java$/u;
+const JVM_FILE = /\.(?:java|kt)$/u;
 const NOT_MAIN_SOURCE_SET = /(?:^|\/)src\/(?!main\/)[^/]+\//u;
 const RULE = 'near-duplicate';
 
 function eligible({ path: name }: FixFile, isExcepted: Excepted): boolean {
   return (
-    JAVA_FILE.test(name) &&
+    JVM_FILE.test(name) &&
     !NOT_MAIN_SOURCE_SET.test(name) &&
     !GENERATED.test(name) &&
     !isExcepted(RULE, name)
@@ -27,11 +27,11 @@ export function extractionRecipe({ id, mode }: Extraction): FixRecipe {
   return {
     id,
     rules: [{ tool: 'structure', rule: RULE }],
-    presets: ['java'],
+    presets: ['java', 'kotlin'],
     scope: mode === 'whole' ? 'project' : 'file',
     safety: 'review',
     accepts(name) {
-      return mode === 'whole' && JAVA_FILE.test(name);
+      return mode === 'whole' && JVM_FILE.test(name);
     },
     plan({ files, projectRoot, inputs }) {
       const isExcepted = exceptedOf(inputs);

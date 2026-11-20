@@ -232,7 +232,7 @@ suite('packed nitpicker in a separate consumer', () => {
         'eslint-lint/@typescript-eslint/no-unused-vars',
         'typescript-typecheck/TS2322',
       ]);
-      expect(spreads('native')).toEqual([`${mergeFile}:2`]);
+      expect(spreads('native')).toEqual([`${mergeFile}:4`]);
       expect(
         fieldAt(
           listOf(fieldAt(report('native'), 'tools')).find(

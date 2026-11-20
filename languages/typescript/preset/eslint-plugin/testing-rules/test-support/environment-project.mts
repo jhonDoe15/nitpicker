@@ -24,6 +24,8 @@ const PROJECT_FILES = {
   'src/support/chain-a.ts': "export { renderApp } from './chain-b';\n",
   'src/support/chain-b.ts': "export * from './render';\n",
   'src/support/dom-helper.ts': 'export const reset = () => document.body.replaceChildren();\n',
+  'src/support/setup-jest-dom.ts': "import '@testing-library/jest-dom';\n",
+  'src/support/setup-jest-dom-chain.ts': "import './setup-jest-dom';\n",
   'src/support/types-only.ts': 'export type Box = HTMLElement;\n',
   'src/support/pure.ts': 'export const sum = (a: number, b: number) => a + b;\n',
   'src/support/pure-barrel.ts': "export { sum } from './pure';\n",

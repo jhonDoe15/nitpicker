@@ -1,25 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { javaExtractNearDuplicateRecipe as recipe } from './near-duplicate-extract.mts';
-import { applied, classOf, method } from './test-support/sources.mts';
+import { classOf, method, planRecipe, type PlanOutcome } from './test-support/sources.mts';
 
 const PATH = 'src/main/java/demo/Align.java';
 
-function plan(text: string, path = PATH) {
-  const { fixes, notes = [] } = recipe.plan({
-    files: [{ path, text }],
-    projectRoot: '/nonexistent',
-  });
-  return { fixes, notes, after: fixes.length === 0 ? text : applied(text, fixes[0]?.edits ?? []) };
+function plan(text: string, path = PATH): PlanOutcome {
+  return planRecipe(recipe, text, path);
 }
 
 const PAIR = [method('top'), method('bottom', { prefix: 'bottom:' })];
 
 describe('javaExtractNearDuplicateRecipe', () => {
-  it('is a review recipe for the near-duplicate rule of the Java preset', () => {
+  it('is a review recipe for the near-duplicate rule of the Java and Kotlin presets', () => {
     expect([recipe.safety, recipe.scope, recipe.presets, recipe.rules]).toEqual([
       'review',
       'project',
-      ['java'],
+      ['java', 'kotlin'],
       [{ tool: 'structure', rule: 'near-duplicate' }],
     ]);
   });
