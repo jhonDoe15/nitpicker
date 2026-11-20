@@ -1,3 +1,4 @@
+import { rule as ruleNoNonLatin1HeaderValue } from '../rules/encoding/no-non-latin1-header-value.mts';
 import { rule as ruleNoNull } from '../rules/syntax/no-null.mts';
 import { rule as ruleNoNullBranchFallThrough } from '../rules/null-branches/no-null-branch-fall-through.mts';
 import { rule as ruleNoOperandSlip } from '../rules/operands/no-operand-slip.mts';
@@ -97,9 +98,9 @@ import { rule as ruleNoUnscopedRecordAccess } from '../rules/record-scope/no-uns
 import { rule as ruleNoUnstrippedRemoteText } from '../rules/terminal/no-unstripped-remote-text.mts';
 import { rule as ruleNoUntrimmedRequestText } from '../rules/request-text/no-untrimmed-request-text.mts';
 import { rule as ruleNoUnusedDomEnvironment } from '../rules/test-runtime/environment/no-unused-dom-environment.mts';
-import { rule as ruleNoUnvalidatedSchemaField } from '../rules/boundaries/no-unvalidated-schema-field.mts';
 
 export const partRules = {
+  'no-non-latin1-header-value': ruleNoNonLatin1HeaderValue,
   'no-null': ruleNoNull,
   'no-null-branch-fall-through': ruleNoNullBranchFallThrough,
   'no-operand-slip': ruleNoOperandSlip,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unstripped-remote-text': ruleNoUnstrippedRemoteText,
   'no-untrimmed-request-text': ruleNoUntrimmedRequestText,
   'no-unused-dom-environment': ruleNoUnusedDomEnvironment,
-  'no-unvalidated-schema-field': ruleNoUnvalidatedSchemaField,
 };

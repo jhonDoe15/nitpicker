@@ -32,6 +32,7 @@ import { rule as ruleNoCleanupSkippedOnFailure } from '../rules/lifecycles/relea
 import { rule as ruleNoCollectedStreamRows } from '../rules/streams/no-collected-stream-rows.mts';
 import { rule as ruleNoComments } from '../rules/modules/no-comments.mts';
 import { rule as ruleNoCompatibilityShim } from '../rules/signatures/no-compatibility-shim.mts';
+import { rule as ruleNoConstantLookupInLoop } from '../rules/repeated-work/constant-lookups/no-constant-lookup-in-loop.mts';
 import { rule as ruleNoCopiedConstant } from '../test-assertions/copied-constants/no-copied-constant.mts';
 import { rule as ruleNoCopyPastedTests } from '../test-quality/no-copy-pasted-tests.mts';
 import { rule as ruleNoCostlyCollectionForm } from '../rules/collections/costly-forms/no-costly-collection-form.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoNanOnlyCheck } from '../rules/numbers/no-nan-only-check.m
 import { rule as ruleNoNegativeCount } from '../rules/counts/no-negative-count.mts';
 import { rule as ruleNoNewlineOnlyLineSplit } from '../rules/line-splits/no-newline-only-line-split.mts';
 import { rule as ruleNoNodeProcessPerTest } from '../rules/test-runtime/processes/no-node-process-per-test.mts';
-import { rule as ruleNoNonLatin1HeaderValue } from '../rules/encoding/no-non-latin1-header-value.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -134,6 +134,7 @@ export const partRules = {
   'no-collected-stream-rows': ruleNoCollectedStreamRows,
   'no-comments': ruleNoComments,
   'no-compatibility-shim': ruleNoCompatibilityShim,
+  'no-constant-lookup-in-loop': ruleNoConstantLookupInLoop,
   'no-copied-constant': ruleNoCopiedConstant,
   'no-copy-pasted-tests': ruleNoCopyPastedTests,
   'no-costly-collection-form': ruleNoCostlyCollectionForm,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-negative-count': ruleNoNegativeCount,
   'no-newline-only-line-split': ruleNoNewlineOnlyLineSplit,
   'no-node-process-per-test': ruleNoNodeProcessPerTest,
-  'no-non-latin1-header-value': ruleNoNonLatin1HeaderValue,
 };

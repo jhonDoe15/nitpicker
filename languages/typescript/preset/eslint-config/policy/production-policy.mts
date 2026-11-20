@@ -121,6 +121,7 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-costly-collection-form': 'error',
     'nitpicker/no-collected-stream-rows': 'error',
     'nitpicker/no-pattern-compiled-in-loop': 'error',
+    'nitpicker/no-constant-lookup-in-loop': 'error',
     'nitpicker/no-wasted-collection-step': 'error',
     'nitpicker/no-raw-http-value': 'error',
     'nitpicker/no-repeated-string-literal': 'error',

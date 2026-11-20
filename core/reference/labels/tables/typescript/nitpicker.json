@@ -31,6 +31,7 @@
   "eslint/nitpicker/no-cleanup-skipped-on-failure": ["reliability"],
   "eslint/nitpicker/no-collected-stream-rows": ["performance"],
   "eslint/nitpicker/no-pattern-compiled-in-loop": ["performance"],
+  "eslint/nitpicker/no-constant-lookup-in-loop": ["performance"],
   "eslint/nitpicker/no-comments": ["style"],
   "eslint/nitpicker/no-compatibility-shim": ["maintainability"],
   "eslint/nitpicker/no-copied-constant": ["tests"],

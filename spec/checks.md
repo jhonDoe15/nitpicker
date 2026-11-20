@@ -396,6 +396,11 @@ there (`path.matchesGlob`, `minimatch`, `picomatch`, `micromatch`). The Python p
 counterpart, since `re` and `fnmatch` cache compiled patterns; Java and Kotlin are tracked in #2018
 and Go in #2133.
 
+`nitpicker/no-constant-lookup-in-loop` (production source, in `eslint-lint`) reports a DOM lookup on
+`document` by constant arguments in a loop or iteration callback that leaves the page alone, and a
+`new URL(constant)` there of which only parts are read. Java reflective and registry lookups by a
+constant name and the other presets follow in #2133.
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a

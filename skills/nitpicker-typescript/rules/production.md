@@ -185,6 +185,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Compile a glob once before a loop or `filter`, not per element: `const isMatch = picomatch(pattern)`
   or `new Minimatch(pattern)` outside, `isMatch(file)` inside; `path.matchesGlob`, `minimatch(file,
   pattern)` and `picomatch.isMatch` compile the pattern on every call (`nitpicker/no-pattern-compiled-in-loop`).
+- Look an element up by a constant selector, or parse a constant URL, once before a loop, not on every
+  pass (`nitpicker/no-constant-lookup-in-loop`).
 - Never run a query or a request once per item of a loop: fetch or write the items in one query
   (`findByIds`, `createMany`, `WHERE id IN (...)`), also when a helper of yours does the I/O and inside
   `Promise.all(items.map(...))`. For a remote API without a batch endpoint use a limiter or fixed-size

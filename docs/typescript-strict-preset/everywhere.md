@@ -245,6 +245,19 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `micromatch.matcher(pattern)`), or test a cheap prefix or suffix first. The Java and Kotlin presets
   report the same mistake for `String.matches`, `replaceAll`, `replaceFirst` and `Pattern.matches`
   with a constant pattern (#2018).
+- `nitpicker/no-constant-lookup-in-loop`: the same lookup by a constant repeated on every pass of a
+  loop or an iteration callback, in all production code (not in tests). It reports
+  `document.getElementById`, `querySelector`, `querySelectorAll`, `getElementsByClassName`,
+  `getElementsByTagName` and `getElementsByName` on the global `document` (also `window.document`)
+  whose arguments are all constants, when the loop or callback leaves the page alone: no `await`, no
+  call of a function of the project, no assignment or method call on anything but a value declared in
+  the loop, a plain array, object, `Map` or `Set`, or `console`, `Math`, `JSON` and the like, and no
+  DOM change (`append`, `remove`, `setAttribute`, `textContent =`, `innerHTML =` and the like) at all.
+  It also reports `new URL(constant)` of which only parts are read (`origin`, `host`, `pathname`,
+  `href`, `toString()` and the like), directly or through a `const`. A lookup by the loop variable, a
+  URL that is changed or passed on, and a loop that may change the page are not reported. Allowed
+  form: look the element up, or parse the URL, once before the loop or at module scope. `Intl`
+  formatters with constant options are `nitpicker/reusable-object-per-call`'s.
 - `nitpicker/no-wasted-collection-step`: a collection or promise step that copies for nothing or
   walks the data twice, in all production code (not in tests). It reports `filter(p)[0]` and
   `filter(p).at(0)` with a callback `p` (allowed form: `find(p)`; a selector string, as in jQuery,
