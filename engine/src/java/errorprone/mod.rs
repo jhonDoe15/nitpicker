@@ -3,6 +3,7 @@ mod hierarchy;
 mod members;
 mod operators;
 mod names;
+mod obsolete;
 mod simple;
 mod values;
 
@@ -124,6 +125,7 @@ const CHECKS: &[Check] = &[
     values::unnecessary_parentheses,
     values::unused_exception,
     values::string_splitter,
+    obsolete::jdk_obsolete,
     names::type_parameter_naming,
     names::wildcard_import,
     names::same_name_but_different,
