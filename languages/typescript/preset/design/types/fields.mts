@@ -93,12 +93,31 @@ function ownedDeclaration(
   return owned && isFieldDeclaration(declaration) ? declaration : undefined;
 }
 
+function placeOf(declaration: FieldDeclaration | undefined): readonly [string, number] {
+  return declaration === undefined
+    ? ['', 0]
+    : [declaration.getSourceFile().fileName, declaration.pos];
+}
+
+function declaredFirst(
+  left: FieldDeclaration | undefined,
+  right: FieldDeclaration | undefined,
+): number {
+  const [leftFile, leftPosition] = placeOf(left);
+  const [rightFile, rightPosition] = placeOf(right);
+  if (leftFile !== rightFile) {
+    return leftFile < rightFile ? -1 : 1;
+  }
+  return leftPosition - rightPosition;
+}
+
 export function propertyFields(state: State, entry: TypeEntry): FieldFact[] {
   const type = state.checker.getTypeAtLocation(entry.node);
   const values = ts.isClassDeclaration(entry.node) ? assignedValues(entry.node) : new Map();
   return state.checker
     .getPropertiesOfType(type)
     .map((property) => ownedDeclaration(state, property))
+    .toSorted(declaredFirst)
     .flatMap((declaration) => {
       const name = declaration === undefined ? undefined : nameOf(declaration);
       return declaration === undefined || name === undefined

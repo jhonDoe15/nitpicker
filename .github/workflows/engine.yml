@@ -8,6 +8,7 @@ on:
       - 'languages/typescript/adapters/typed-engine/**'
       - 'languages/typescript/preset/architecture/**'
       - 'languages/typescript/preset/coding-standards/**'
+      - 'languages/typescript/preset/design/**'
       - 'languages/typescript/preset/unused-api/**'
       - 'shared/engine/**'
       - 'core/tooling/**'
@@ -77,6 +78,7 @@ jobs:
           npx vitest run --config vitest.config.mts
           languages/typescript/adapters/typed-engine
           languages/typescript/preset/unused-api
+          languages/typescript/preset/design
           languages/typescript/preset/architecture/typed
           languages/typescript/preset/coding-standards
         env:

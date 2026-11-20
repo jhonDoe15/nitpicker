@@ -1,5 +1,6 @@
 //! Checks that need the compiler's types: the engine walks its own tree and asks the API server in batches.
 //! All checks of a run share one session, so the project is loaded once.
+pub mod design;
 pub mod plan;
 pub mod public_contracts;
 pub mod replay;
@@ -12,7 +13,7 @@ use sources::Sources;
 use std::path::Path;
 use std::time::Instant;
 
-pub const CHECKS: &[&str] = &["public-contracts", "unused-api"];
+pub const CHECKS: &[&str] = &["public-contracts", "unused-api", "design"];
 
 #[derive(Default)]
 pub struct Options {
@@ -34,6 +35,12 @@ fn run_check(name: &str, session: &mut Session, sources: &Sources, options: &Opt
             let input: unused_api::Input = serde_json::from_str(&text).map_err(|error| format!("cannot read {path}: {error}"))?;
             let registry = unused_api::check(session, &input)?;
             serde_json::to_value(&registry).map_err(|error| error.to_string())
+        }
+        "design" => {
+            let path = options.inputs.get(name).ok_or("the design check needs --input design=<file>")?;
+            let text = std::fs::read_to_string(path).map_err(|error| format!("cannot read {path}: {error}"))?;
+            let input: design::Input = serde_json::from_str(&text).map_err(|error| format!("cannot read {path}: {error}"))?;
+            design::check(session, &input)
         }
         other => Err(format!("unknown check {other}")),
     }

@@ -136,6 +136,11 @@ impl NodeTable {
         self.flags(index) & REPARSED != 0
     }
 
+    /// Whether the compiler added any node to the file: in a JavaScript file, the types of its documentation comments.
+    pub fn has_reparsed(&self) -> bool {
+        (1..self.count()).any(|index| self.is_reparsed(index))
+    }
+
     fn entry_named(&self, index: u32, name: &str) -> Option<u32> {
         let data = self.data(index);
         let order = child_properties(self.kind(index)).iter().position(|property| *property == name)?;
