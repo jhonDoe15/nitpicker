@@ -7,22 +7,19 @@ const MENTIONS = 'kotlin|languageVersion|apiVersion|language-version|api-version
 const COMMENT = /^\s*(?:\/\/|#|\*|<!--)/u;
 const NUMBER = String.raw`(\d+)\.(\d+)`;
 const DECLARATIONS = [
-  new RegExp(String.raw`kotlin\(\s*["'][\w.-]+["']\s*\)\s*version\s*\(?\s*["']${NUMBER}`, 'u'),
-  new RegExp(
-    String.raw`org\.jetbrains\.kotlin[\w.-]*["']\s*\)?\s*version\s*\(?\s*["']${NUMBER}`,
-    'u',
-  ),
+  new RegExp(String.raw`kotlin\(\s*["'][\w.-]+["']\s*\)\s*version[\s(]*["']${NUMBER}`, 'u'),
+  new RegExp(String.raw`org\.jetbrains\.kotlin[\w.-]*["'][\s)]*version[\s(]*["']${NUMBER}`, 'u'),
   new RegExp(String.raw`org\.jetbrains\.kotlin:kotlin-[\w-]+:${NUMBER}`, 'u'),
   new RegExp(
     String.raw`(?<![\w-]|(?<!\bext)\.)kotlin(?:[._-]?(?:version|plugin|jvm|lang))?["']?\s*[=:]\s*["']?${NUMBER}`,
     'iu',
   ),
   new RegExp(String.raw`<kotlin\.(?:compiler\.)?\w*[vV]ersion>\s*${NUMBER}`, 'u'),
-  new RegExp(String.raw`\b(?:languageVersion|apiVersion)\b[^\n]*?KOTLIN_(\d+)_(\d+)`, 'u'),
-  new RegExp(String.raw`\b(?:languageVersion|apiVersion)\b[^\n]*?["'>]${NUMBER}["'<]`, 'u'),
+  new RegExp(String.raw`\b(?:languageVersion|apiVersion)\W[^\n]*?KOTLIN_(\d+)_(\d+)`, 'u'),
+  new RegExp(String.raw`\b(?:languageVersion|apiVersion)\W[^\n]*?["'>]${NUMBER}["'<]`, 'u'),
   new RegExp(String.raw`-(?:language|api)-version\W{1,6}${NUMBER}`, 'u'),
 ];
-const UNREAD = /-(?:language|api)-version\b|kotlin[\w.-]*version\b[^\n]*\d+\.\d+/iu;
+const UNREAD = /-(?:language|api)-version\b|kotlin[\w.-]*version\W[^\n\d]*\d+\.\d/iu;
 const UNKNOWN: Version = [0, 0];
 const NON_NULL_EXTREMES: Version = [1, 7];
 

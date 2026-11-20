@@ -31,7 +31,7 @@ function extendedPattern(name: string): RegExp {
 }
 
 function matchingLines(projectRoot: string, name: string): readonly string[] | undefined {
-  return projectLines(projectRoot, { pattern: name, files: SEARCHED, words: true });
+  return projectLines(projectRoot, { pattern: name, files: SEARCHED, match: 'word' });
 }
 
 function lookup(

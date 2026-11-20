@@ -303,7 +303,7 @@ describe('labelHunks with the lines each fix edits', () => {
     );
 
     expect(new Set(groups).size).toBe(1);
-    expect(groups[0]).toBeDefined();
+    expect(groups[0]).toBe('SaveInLoop:10');
   });
 
   it('leaves a hunk on the line of another check to that check, inside the group', () => {

@@ -8,12 +8,12 @@ export type LineSearch = {
   readonly pattern: string;
   readonly files: readonly string[];
   readonly after?: number;
-  readonly words?: boolean;
+  readonly match?: 'pattern' | 'word';
 };
 
 export function projectLines(
   projectRoot: string | undefined,
-  { pattern, files, after = 0, words = false }: LineSearch,
+  { pattern, files, after = 0, match = 'pattern' }: LineSearch,
 ): readonly string[] | undefined {
   if (projectRoot === undefined) {
     return undefined;
@@ -26,7 +26,7 @@ export function projectLines(
         '-I',
         '-h',
         '--untracked',
-        ...(words ? ['-F', '-w'] : ['-E', `-A${String(after)}`]),
+        ...(match === 'word' ? ['-F', '-w'] : ['-E', `-A${String(after)}`]),
       ],
       ...['-e', pattern, '--'],
       ...files.map((name) => `:(top)${name}`),

@@ -135,7 +135,7 @@ export function verifyFixes({
   journal,
   analyze,
   mode = 'narrow',
-  narrow = false,
+  rollback = 'whole-files',
 }: VerifyRequest): VerifyResult {
   const runs = recipeRuns(journal.events);
   if (runs.length === 0) {
@@ -146,6 +146,6 @@ export function verifyFixes({
   const request = { tools: [...new Set(tools)], files: [...new Set(files)], mode };
   const analyses = bothAnalyses(journal, analyze, request);
   return analyses.failure === undefined
-    ? judged({ journal, runs, ...analyses, mode, narrow })
+    ? judged({ journal, runs, ...analyses, mode, narrow: rollback === 'bad-fixes' })
     : skipped(analyses.failure);
 }
