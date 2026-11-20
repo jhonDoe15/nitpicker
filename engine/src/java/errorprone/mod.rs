@@ -30,6 +30,13 @@ impl Context<'_> {
         if self.suppressed(check, matched) {
             return;
         }
+        self.report_always(check, offset, message);
+    }
+    /// Reports without looking for a suppression: some checks report from the file as a whole.
+    pub fn report_always(&self, check: &'static str, offset: usize, message: &str) {
+        if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == check)) {
+            return;
+        }
         let line = self.line_starts.partition_point(|start| *start <= offset) - 1;
         let mut column = 0usize;
         for character in self.file.text[self.line_starts[line]..offset].chars() {
@@ -120,6 +127,7 @@ const CHECKS: &[Check] = &[
     names::type_parameter_naming,
     names::wildcard_import,
     names::same_name_but_different,
+    names::different_name_but_same,
     names::unnecessarily_fully_qualified,
     names::suppress_warnings_without_explanation,
     names::type_parameter_unused_in_formals,

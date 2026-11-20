@@ -402,3 +402,106 @@ pub fn same_name_but_different(context: &Context, node: Node) {
         }
     }
 }
+
+fn anonymous_type(part: Node) -> bool {
+    crate::engine::source::ancestor(part, &["object_creation_expression", "block", "class_body"]).is_some_and(|holder| {
+        holder.kind() == "object_creation_expression"
+            && children(holder).iter().any(|child| child.kind() == "class_body")
+            && holder.child_by_field_name("type").is_some_and(|kind| kind.start_byte() <= part.start_byte() && part.end_byte() <= kind.end_byte())
+    })
+}
+
+const DIFFERENT_NAME: &str = "This type is referred to in different ways within this file, which may be confusing.";
+
+pub fn different_name_but_same(context: &Context, node: Node) {
+    if node.kind() != "program" {
+        return;
+    }
+    let index = context.resolver.index;
+    let mut order: Vec<String> = Vec::new();
+    let mut table: std::collections::HashMap<String, Vec<(String, Vec<Node>)>> = std::collections::HashMap::new();
+    crate::engine::source::walk(node, |part| {
+        let chain = CHAINS.contains(&part.kind());
+        if !chain && !matches!(part.kind(), "identifier" | "type_identifier") {
+            return;
+        }
+        let outside = ["import_declaration", "package_declaration", "switch_block_statement_group", "switch_rule"];
+        if crate::engine::source::ancestor(part, &outside).is_some() {
+            return;
+        }
+        let Some(holder) = crate::engine::source::parent(part) else { return };
+        if CHAINS.contains(&holder.kind()) && (holder.named_child(0) != Some(part) || named_class(context, holder).is_some()) {
+            return;
+        }
+        if part.kind() == "identifier" && !super::values::value_name(part) && !matches!(holder.kind(), "annotation" | "marker_annotation") {
+            return;
+        }
+        let inner_creation = holder.kind() == "object_creation_expression"
+            && holder.child_by_field_name("type") == Some(part)
+            && children(holder).first().is_some_and(|first| first.kind() != "new");
+        if inner_creation {
+            return;
+        }
+        let Some((written, class)) = named_class(context, part) else { return };
+        if !table.contains_key(&class) {
+            order.push(class.clone());
+        }
+        let row = table.entry(class).or_default();
+        let cell = match row.iter().position(|(other, _)| *other == written) {
+            Some(at) => at,
+            None => {
+                row.push((written, Vec::new()));
+                row.len() - 1
+            }
+        };
+        for _ in 0..visits(part) * if anonymous_type(part) { 2 } else { 1 } {
+            row[cell].1.push(part);
+        }
+    });
+    let own: Vec<String> = children(node)
+        .into_iter()
+        .filter_map(|declaration| context.resolver.scope.names.get(&declaration.id()).cloned())
+        .collect();
+    for class in order {
+        let row = &table[&class];
+        let parts: Vec<&str> = class.split('.').collect();
+        let generic = (1..=parts.len()).any(|count| index.get(&parts[..count].join(".")).is_some_and(|info| !info.type_parameters.is_empty()));
+        let here = own.iter().any(|top| class == *top || class.starts_with(&format!("{top}.")));
+        if generic || here || row.len() < 2 || row.iter().any(|(name, _)| name.starts_with(|first: char| first.is_ascii_lowercase())) {
+            continue;
+        }
+        let mut names: Vec<&str> = row.iter().map(|(name, _)| name.as_str()).collect();
+        names.sort_by(|a, b| a.len().cmp(&b.len()).then(a.cmp(b)));
+        for name in names {
+            let sites: Vec<Node> = row.iter().filter(|(other, _)| other != name).flat_map(|(_, sites)| sites.iter().copied()).collect();
+            let first = name.split('.').next().unwrap_or(name);
+            let mut meanings: Vec<String> = Vec::new();
+            let visible = sites.iter().all(|site| {
+                if context.resolver.is_variable(*site, first) {
+                    return false;
+                }
+                match context.resolver.class_name(*site, first) {
+                    Some(found) => {
+                        if !meanings.contains(&found) {
+                            meanings.push(found);
+                        }
+                        true
+                    }
+                    None => false,
+                }
+            });
+            if !visible || meanings.len() != 1 || BAD_NESTED.contains(&name) {
+                continue;
+            }
+            for at in sites {
+                let offset = if CHAINS.contains(&at.kind()) {
+                    children(at).into_iter().filter(|part| part.kind() == ".").next_back().map_or(at.start_byte(), |dot| dot.start_byte())
+                } else {
+                    at.start_byte()
+                };
+                context.report_always("DifferentNameButSame", offset, DIFFERENT_NAME);
+            }
+            break;
+        }
+    }
+}
