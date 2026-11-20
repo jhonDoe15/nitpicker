@@ -209,22 +209,23 @@ jobs:
           else
             echo "::warning title=nitpicker::The policy approval is for ${APPROVED_SHA}, but the checkout is ${head}, so it accepts nothing in this run."
           fi
-      # ESLint over this repository takes about six minutes on a CI runner, more than the five-minute
-      # default. The longer budget is set for CI only, in the checkout; a timeout is not policy, so
+      # ESLint over this repository takes about seven minutes on a CI runner and the structure
+      # analyzer, which shares its shard, about five: at or over the five-minute default. The longer
+      # budgets are set for CI only, in the checkout; a timeout is not policy, so
       # it changes no digest and both snapshots run with it. The budget is committed on top of the
       # checkout, because the gate binds an approval to the commit of a clean tree: an approval of
       # the checkout carries over to that local commit, which only adds the budget. The commit takes
       # its dates from the checkout, so every job of a run makes the same commit and the shards agree
       # on the head.
-      - name: Give eslint-lint a CI time budget
+      - name: Give the slow analyzers a CI time budget
         id: budget
         env:
           ACCEPTANCE: ${{ steps.approval.outputs.acceptance }}
         run: |
-          node -e "const fs = require('node:fs'); const file = 'nitpicker.config.json'; const config = JSON.parse(fs.readFileSync(file, 'utf8')); config.analyzerTimeoutMinutes = { ...config.analyzerTimeoutMinutes, 'eslint-lint': 15 }; fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\\n');"
+          node -e "const fs = require('node:fs'); const file = 'nitpicker.config.json'; const config = JSON.parse(fs.readFileSync(file, 'utf8')); config.analyzerTimeoutMinutes = { ...config.analyzerTimeoutMinutes, 'eslint-lint': 15, structure: 10 }; fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\\n');"
           npx prettier --write nitpicker.config.json
           checkout_date="$(git show --no-patch --format=%cI HEAD)"
-          GIT_AUTHOR_DATE="$checkout_date" GIT_COMMITTER_DATE="$checkout_date" git -c user.name=nitpicker -c user.email=nitpicker@users.noreply.github.com commit --quiet --no-verify -m 'CI time budget for eslint-lint' -- nitpicker.config.json
+          GIT_AUTHOR_DATE="$checkout_date" GIT_COMMITTER_DATE="$checkout_date" git -c user.name=nitpicker -c user.email=nitpicker@users.noreply.github.com commit --quiet --no-verify -m 'CI time budgets' -- nitpicker.config.json
           if [ -n "$ACCEPTANCE" ]; then
             echo "acceptance=commit:$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           fi
@@ -272,12 +273,12 @@ jobs:
       - run: npm ci
       # The same commit as in the shard jobs: the aggregation reads the policy from the head commit
       # the shards recorded.
-      - name: Give eslint-lint a CI time budget
+      - name: Give the slow analyzers a CI time budget
         run: |
-          node -e "const fs = require('node:fs'); const file = 'nitpicker.config.json'; const config = JSON.parse(fs.readFileSync(file, 'utf8')); config.analyzerTimeoutMinutes = { ...config.analyzerTimeoutMinutes, 'eslint-lint': 15 }; fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\\n');"
+          node -e "const fs = require('node:fs'); const file = 'nitpicker.config.json'; const config = JSON.parse(fs.readFileSync(file, 'utf8')); config.analyzerTimeoutMinutes = { ...config.analyzerTimeoutMinutes, 'eslint-lint': 15, structure: 10 }; fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\\n');"
           npx prettier --write nitpicker.config.json
           checkout_date="$(git show --no-patch --format=%cI HEAD)"
-          GIT_AUTHOR_DATE="$checkout_date" GIT_COMMITTER_DATE="$checkout_date" git -c user.name=nitpicker -c user.email=nitpicker@users.noreply.github.com commit --quiet --no-verify -m 'CI time budget for eslint-lint' -- nitpicker.config.json
+          GIT_AUTHOR_DATE="$checkout_date" GIT_COMMITTER_DATE="$checkout_date" git -c user.name=nitpicker -c user.email=nitpicker@users.noreply.github.com commit --quiet --no-verify -m 'CI time budgets' -- nitpicker.config.json
       - uses: actions/download-artifact@v8.0.2
         with:
           pattern: self-gate-shard-*

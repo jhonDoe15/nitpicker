@@ -359,18 +359,37 @@ describe('the required checks of the typescript workflow', () => {
   it('combines the reports of every self-gate shard on the commit the shards compared', () => {
     const runsOf = (job: string): string[] =>
       listOf(fieldAt(jobs, job, 'steps')).map((step) => String(fieldAt(step, 'run')));
-    const budgetOf = (job: string): string =>
-      runsOf(job).find((run) => run.includes('CI time budget for eslint-lint')) ?? '';
+    const budgetOf = (job: string): string[] =>
+      (
+        runsOf(job).find((run) =>
+          run.includes("commit --quiet --no-verify -m 'CI time budgets'"),
+        ) ?? ''
+      )
+        .trimEnd()
+        .split('\n');
     const shards = listOf(fieldAt(jobs, 'self-gate-shard', 'strategy', 'matrix', 'shard'));
+    const combining = budgetOf('self-gate');
 
     expect(fieldAt(jobs, 'self-gate', 'needs')).toBe('self-gate-shard');
     expect(shards).toEqual([1, 2, 3]);
-    expect(runsOf('self-gate')).toContain(
-      `node core/cli.mts aggregate --input-root reports/shards --shard-count ${String(shards.length)} --output reports/nitpicker`,
-    );
-    expect(budgetOf('self-gate')).toContain('GIT_COMMITTER_DATE="$checkout_date"');
+    expect(
+      runsOf('self-gate').filter((run) => run.startsWith('node core/cli.mts aggregate')),
+    ).toEqual([
+      [
+        'node core/cli.mts aggregate --input-root reports/shards',
+        `--shard-count ${String(shards.length)} --output reports/nitpicker`,
+      ].join(' '),
+    ]);
+    expect(combining.slice(-2)).toEqual([
+      'checkout_date="$(git show --no-patch --format=%cI HEAD)"',
+      [
+        'GIT_AUTHOR_DATE="$checkout_date" GIT_COMMITTER_DATE="$checkout_date"',
+        'git -c user.name=nitpicker -c user.email=nitpicker@users.noreply.github.com',
+        "commit --quiet --no-verify -m 'CI time budgets' -- nitpicker.config.json",
+      ].join(' '),
+    ]);
+    expect(budgetOf('self-gate-shard').slice(0, combining.length)).toEqual(combining);
     expect(runsOf('self-gate-shard').filter((run) => run.includes('--defer-exit'))).toEqual([]);
-    expect(budgetOf('self-gate-shard').startsWith(budgetOf('self-gate'))).toBe(true);
   });
 
   it('lets no workflow that runs on a label look at which label was added', () => {
