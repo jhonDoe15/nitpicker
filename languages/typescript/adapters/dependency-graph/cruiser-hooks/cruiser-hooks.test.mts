@@ -178,11 +178,32 @@ describe('one file dependency-cruiser cannot read', () => {
     const warnings: string[] = [];
     const stderr = `${SKIPPED_FILE_MARKER}{"file":"src/a.ts","reason":"boom"}\n${SKIPPED_FILE_MARKER}{oops\n`;
 
-    reportSkippedFiles(stderr, { write: (text: string) => warnings.push(text) });
+    reportSkippedFiles(stderr, () => 2, { write: (text: string) => warnings.push(text) });
 
     expect(warnings).toEqual([
       'dependency-cruiser could not read src/a.ts, so the dependency graph leaves out its imports: boom\n',
     ]);
     expect(failureReason('plain')).toBe('plain');
+  });
+
+  it('lists the first skipped files and counts the rest', () => {
+    const warnings: string[] = [];
+    const stderr = Array.from(
+      { length: 25 },
+      (_, index) => `${SKIPPED_FILE_MARKER}{"file":"src/f${String(index)}.ts","reason":"boom"}`,
+    ).join('\n');
+
+    reportSkippedFiles(stderr, () => 100, { write: (text: string) => warnings.push(text) });
+
+    expect(warnings).toHaveLength(21);
+    expect(warnings.at(-1)).toBe('dependency-cruiser could not read 5 more files\n');
+  });
+
+  it('fails the cruise when most files could not be read, since the cause is not one file', () => {
+    const stderr = `${SKIPPED_FILE_MARKER}{"file":"src/a.ts","reason":"bad config"}\n${SKIPPED_FILE_MARKER}{"file":"src/b.ts","reason":"bad config"}`;
+
+    expect(() => reportSkippedFiles(stderr, () => 3, { write: () => true })).toThrow(
+      'could not read 2 of 3 files; the first, src/a.ts: bad config',
+    );
   });
 });

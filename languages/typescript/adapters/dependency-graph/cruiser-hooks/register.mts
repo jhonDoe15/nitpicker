@@ -1,6 +1,7 @@
 import nodeModule, { type ResolveFnOutput, type ResolveHookContext } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { isMainThread } from 'node:worker_threads';
 import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
 
 type NextResolve = (specifier: string, context?: Partial<ResolveHookContext>) => ResolveFnOutput;
@@ -38,4 +39,6 @@ export function resolve(
 
 if (typeof nodeModule.registerHooks === 'function') {
   nodeModule.registerHooks({ resolve });
+} else if (isMainThread) {
+  nodeModule.register(import.meta.url);
 }
