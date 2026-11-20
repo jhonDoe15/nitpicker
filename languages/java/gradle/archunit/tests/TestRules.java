@@ -19,6 +19,17 @@ final class TestRules {
           "org.springframework.test.context.ContextConfiguration",
           "org.springframework.test.context.junit.jupiter.SpringJUnitConfig",
           "org.testcontainers.junit.jupiter.Testcontainers");
+  private static final List<String> OWN_CONFIGURATIONS =
+      Arrays.asList(
+          "org.springframework.context.annotation.Configuration",
+          "org.springframework.boot.test.context.TestConfiguration");
+  private static final List<String> REPLACED_BEANS =
+      Arrays.asList(
+          "org.springframework.test.context.bean.override.mockito.MockitoBean",
+          "org.springframework.test.context.bean.override.mockito.MockitoSpyBean",
+          "org.springframework.boot.test.mock.mockito.MockBean",
+          "org.springframework.boot.test.mock.mockito.SpyBean");
+  private static final String DYNAMIC_PROPERTIES = "org.springframework.test.context.DynamicPropertySource";
 
   private TestRules() {}
 
@@ -30,7 +41,7 @@ final class TestRules {
     }
     for (JavaClasses tests : List.of(unitTests, otherTests)) {
       for (JavaClass type : tests) {
-        if (dirtiesContext(type)) {
+        if (dirtiesContext(type, tests)) {
           Found.add(sink, DIRTIES_CONTEXT, type, "");
         }
       }
@@ -66,8 +77,25 @@ final class TestRules {
     return value instanceof Object[] ? Arrays.toString((Object[]) value) : String.valueOf(value);
   }
 
-  private static boolean dirtiesContext(JavaClass type) {
-    return type.isMetaAnnotatedWith(DIRTIES)
-        || type.getMethods().stream().anyMatch((JavaMethod method) -> method.isMetaAnnotatedWith(DIRTIES));
+  private static boolean dirtiesContext(JavaClass type, JavaClasses tests) {
+    boolean onMethod = type.getMethods().stream().anyMatch((JavaMethod method) -> method.isMetaAnnotatedWith(DIRTIES));
+    return onMethod || (type.isMetaAnnotatedWith(DIRTIES) && !(closesOnce(type) && ownsContext(type, tests)));
+  }
+
+  private static boolean closesOnce(JavaClass type) {
+    return type.tryGetAnnotationOfType(DIRTIES)
+        .map(annotation -> !String.valueOf(annotation.get("classMode").orElse("")).contains("EACH_TEST_METHOD"))
+        .orElse(false);
+  }
+
+  private static boolean ownsContext(JavaClass type, JavaClasses tests) {
+    for (JavaClass nested : tests) {
+      boolean inside = nested.getEnclosingClass().map(type::equals).orElse(false);
+      if (inside && OWN_CONFIGURATIONS.stream().anyMatch(nested::isMetaAnnotatedWith)) {
+        return true;
+      }
+    }
+    return type.getFields().stream().anyMatch(field -> REPLACED_BEANS.stream().anyMatch(field::isMetaAnnotatedWith))
+        || type.getMethods().stream().anyMatch(method -> method.isMetaAnnotatedWith(DYNAMIC_PROPERTIES));
   }
 }
