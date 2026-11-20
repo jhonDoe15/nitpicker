@@ -44,8 +44,28 @@ fn site_of_symbol(cx: &mut Cx, symbol: Option<Rc<Symbol>>) -> Found<Option<usize
     Ok(if found.len() == 1 { found.first().copied() } else { None })
 }
 
+/// A disk path with a root (`/a`, `\\a`, `c:/a`, `c:`, `c%3a/a`), as the compiler's `isRootedDiskPath` reads it.
+fn is_rooted(specifier: &str) -> bool {
+    let bytes = specifier.as_bytes();
+    if matches!(bytes.first(), Some(b'/' | b'\\')) {
+        return true;
+    }
+    if !bytes.first().is_some_and(u8::is_ascii_alphabetic) {
+        return false;
+    }
+    let after_volume = if bytes.get(1) == Some(&b':') {
+        2
+    } else if bytes.get(1) == Some(&b'%') && bytes.get(2) == Some(&b'3') && matches!(bytes.get(3), Some(b'a' | b'A')) {
+        4
+    } else {
+        return false;
+    };
+    matches!(bytes.get(after_volume), None | Some(b'/' | b'\\'))
+}
+
 fn may_be_project_module(cx: &Cx, specifier: &str) -> bool {
-    cx.input.any_specifier || [".", ".."].contains(&specifier) || ["./", "../", ".\\", "..\\"].iter().any(|start| specifier.starts_with(start)) || cx.input.path_prefixes.iter().any(|prefix| specifier.starts_with(prefix.as_str()))
+    let relative = [".", ".."].contains(&specifier) || ["./", "../", ".\\", "..\\"].iter().any(|start| specifier.starts_with(start));
+    cx.input.any_specifier || relative || is_rooted(specifier) || cx.input.path_prefixes.iter().any(|prefix| specifier.starts_with(prefix.as_str()))
 }
 
 fn imported_names(cx: &mut Cx, file: u32) -> Found<Rc<HashSet<String>>> {

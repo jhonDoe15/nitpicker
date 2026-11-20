@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { byId, factsOfFiles } from '../../test-support/project.mts';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import {
+  byId,
+  createProject,
+  factsOf,
+  factsOfFiles,
+  removeProject,
+} from '../../test-support/project.mts';
 
 describe('facts that do not depend on the order a compiler lists things in', () => {
   const facts = factsOfFiles({
@@ -72,4 +80,59 @@ describe('facts that do not depend on the order a compiler lists things in', () 
       { name: 'part', type: 'Part' },
     ]);
   });
+
+  it('reads template types, absolute imports, declare global and using the same way', () => {
+    const root = createProject({});
+    try {
+      const edge = factsOf(writeInto(root));
+
+      expect(byId(edge.callables, 'src/brand.ts#brand').params).toEqual([
+        { name: 'id', type: '`id-${string&{k:"a"|"z";}}`' },
+        { name: 'accent', type: '`\u00E9${string}`' },
+      ]);
+      expect(edge.types.map(({ id }) => id)).not.toContain('src/global.ts#global.Win');
+      expect(byId(edge.callables, 'src/use.ts#caller').calls).toMatchObject([
+        { target: 'src/lib.ts#helper' },
+      ]);
+      expect(byId(edge.callables, 'src/hold.ts#hold').calls).toMatchObject([
+        { target: 'src/hold.ts#Derived.constructor' },
+        { target: 'src/hold.ts#Derived.[Symbol.dispose]', cleanup: true },
+      ]);
+      expect(byId(edge.callables, 'src/hold.ts#Marked.constructor').entry).toBeUndefined();
+    } finally {
+      removeProject(root);
+    }
+  });
 });
+
+function writeInto(root: string): string {
+  const files: Record<string, string> = {
+    'src/brand.ts': [
+      "export function brand(id: `id-${string & { k: 'z' | 'a' }}`, accent: `\u00E9${string}`): void {",
+      '  void id; void accent;',
+      '}',
+    ].join('\n'),
+    'src/global.ts': 'export {};\ndeclare /* module */ global { interface Win { w: number } }\n',
+    'src/lib.ts': 'export function helper(value: string): void { void value; }\n',
+    'src/use.ts': [
+      `import { helper as h } from '${root.replaceAll('\\', '/')}/src/lib';`,
+      "export function caller(): void { h('x'); }",
+    ].join('\n'),
+    'src/symbols.d.ts': [
+      'interface SymbolConstructor { readonly dispose: unique symbol; readonly asyncDispose: unique symbol }',
+      '',
+    ].join('\n'),
+    'src/hold.ts': [
+      'declare function mark(...parts: unknown[]): never;',
+      'export class Base { async [Symbol.asyncDispose](): Promise<void> {} }',
+      'export class Derived extends Base { constructor() { super(); } [Symbol.dispose](): void {} }',
+      'export function hold(): void { using kept = new Derived(); void kept; }',
+      'export class Marked { @mark constructor() {} }',
+    ].join('\n'),
+  };
+  for (const [name, text] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
+    writeFileSync(path.join(root, name), text);
+  }
+  return root;
+}
