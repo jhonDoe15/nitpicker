@@ -172,6 +172,13 @@ React external stores: `nitpicker/react-no-unstable-store-subscribe` (production
 same component or hook body outside `useCallback` (not a function without parameters, and not in a project with the
 React Compiler), and a `getSnapshot` or `getServerSnapshot` function that returns a new object or array on every call.
 
+React effect resources: `nitpicker/react-no-leaked-effect-resource` (production source in a React project, in
+`eslint-lint`) reports, in the own statements of a `useEffect` or `useLayoutEffect` callback, a `WebSocket`,
+`EventSource`, `BroadcastChannel`, `Worker`, `SharedWorker`, `MutationObserver`, `PerformanceObserver` or
+`ReportingObserver` that is created and never closed, a `navigator.geolocation.watchPosition` call whose id is never
+used, and a `requestAnimationFrame` loop that always schedules itself again and is never cancelled. A handle that is
+stored in a ref, passed on, returned or closed anywhere in the effect is left alone.
+
 Rows changed in memory: `in-memory-update` in the Python preset reports rows loaded from a Django queryset or a
 SQLAlchemy query only to set the same values on each and write them back (`bulk_update`, `commit`), where one `update`
 statement does it; models with a `save()` override, signals, `before_update` listeners, `auto_now` fields or a version
