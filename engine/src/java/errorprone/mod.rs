@@ -116,6 +116,7 @@ const CHECKS: &[Check] = &[
     values::object_equals_for_primitives,
     values::unnecessary_parentheses,
     values::unused_exception,
+    values::string_splitter,
     names::type_parameter_naming,
     names::wildcard_import,
     names::unnecessarily_fully_qualified,
