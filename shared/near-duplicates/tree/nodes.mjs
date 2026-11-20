@@ -1,4 +1,4 @@
-import { depthFirst } from '../../traversal.mjs';
+import { preOrder } from '../../traversal.mjs';
 import { appendAll } from '../../lists/items.mjs';
 
 const STATEMENTS = new Set([
@@ -89,7 +89,7 @@ function childrenOf(node) {
 }
 
 export function nodesOf(root) {
-  return [...depthFirst(root, childrenOf)];
+  return preOrder(root, childrenOf);
 }
 
 function levelOrder(root) {
