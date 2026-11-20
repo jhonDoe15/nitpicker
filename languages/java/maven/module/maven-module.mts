@@ -13,7 +13,7 @@ import { runJdeps, runStructure } from '../parallel/module-metrics.mts';
 import { runModuleChecks, runModuleCoverage } from '../parallel/module-tasks.mts';
 import { readTestRuns } from '../quick/maven-test-phase.mts';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
-import { fieldOf, fieldsOf, textOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, fieldsOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import type { Classpaths, MavenModule } from '../typed/maven-values.mts';
 
@@ -70,6 +70,11 @@ function coverageTasks(options: ModuleOptions, coverageModule: unknown): SourceT
   return [sourceTask(runModuleCoverage, TASKS_URL, task)];
 }
 
+function insideBuild(entries: readonly string[], root: string): string[] {
+  const base = path.resolve(root);
+  return entries.filter((entry) => path.resolve(entry).startsWith(`${base}${path.sep}`));
+}
+
 function runSourceTools(options: ModuleOptions): void {
   const { module, reportDir, tools, classpaths, configs, pinned, kotlin, style } = options;
   const base = {
@@ -95,7 +100,9 @@ function runSourceTools(options: ModuleOptions): void {
     sourceTask(runSpotbugs, LINT_URL, {
       ...base,
       module: fieldOf(kotlin, 'spotbugsModule'),
-      auxClasspath: fieldOf(kotlin, 'auxClasspath'),
+      auxClasspath:
+        fieldOf(kotlin, 'auxClasspath') ??
+        insideBuild(textsOf(fieldOf(classpaths, 'mainCompile')), textOf(options['projectRoot'])),
     }),
     sourceTask(runModuleChecks, TASKS_URL, withoutFunctions({ ...options, coverageModule })),
     sourceTask(runFormat, FORMAT_URL, {
