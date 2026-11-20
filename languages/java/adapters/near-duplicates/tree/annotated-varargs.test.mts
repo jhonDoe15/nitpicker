@@ -58,6 +58,10 @@ describe('Java varargs parameters with an annotation before the ellipsis', () =>
     expect(bindingsOf(parameter)).toEqual(['bound']);
   });
 
+  it('reads a parameter name outside ASCII', () => {
+    expect(parametersOf('Object @Nullable ... größen')).toEqual(parametersOf('Object... größen'));
+  });
+
   it('keeps the type of every other annotated parameter form', () => {
     expect(typesOf('Object @Nullable [] params')).toEqual(['String', 'Object@Nullable[]']);
     expect(typesOf('@Nullable Object... params')).toEqual(['String', 'Object']);

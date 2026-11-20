@@ -74,7 +74,7 @@ export function fields(node: Node, name: string): Node[] {
 const TYPE_NODE = /type(?:_identifier)?$/u;
 const ANNOTATED_ELLIPSIS = /^(?:@[\w$]+(?:\.[\w$]+)*\s*(?:\([^()]*\)\s*)?)+\.{3}$/u;
 const ANNOTATED_ELLIPSIS_AND_NAME =
-  /^\s*(?:@[\w$]+(?:\.[\w$]+)*\s*(?:\([^()]*\)\s*)?)+\.{3}\s*(?<name>[\w$]+)$/u;
+  /^\s*(?:@[\w$]+(?:\.[\w$]+)*\s*(?:\([^()]*\)\s*)?)+\.{3}\s*(?<name>[\p{L}_$][\p{L}\p{N}_$]*)$/u;
 
 type AnnotatedRest = { readonly type: Node; readonly name: string };
 
