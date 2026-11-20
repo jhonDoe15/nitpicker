@@ -24,6 +24,7 @@ import { type JavaReport, type JavaRunOptions, budgetOf } from '../typed/java-ru
 import { fieldOf, optionalText } from '../../../../shared/values/readers.mts';
 import { stopReuseAhead } from '../../builds/reuse-ahead/reuse-ahead.mts';
 import { startGradleReuse, startMavenReuse } from '../../builds/reuse-ahead/reuse-start.mts';
+import { openGradleHosts } from '../../builds/host/gradle/gradle-hosts.mts';
 
 type KotlinArgumentsRun = (kotlinArguments: readonly string[]) => void;
 type PresetRun = JavaRunOptions & {
@@ -51,6 +52,34 @@ function withKotlinArguments(kotlinRun: unknown, run: KotlinArgumentsRun): void 
   run([]);
 }
 
+function withGradleHosts(
+  request: Parameters<typeof openGradleHosts>[0],
+  run: (hostArguments: readonly string[]) => void,
+): void {
+  const hosts = openGradleHosts(request);
+  try {
+    run(hosts.arguments);
+  } finally {
+    hosts.stop();
+  }
+}
+
+function commonArguments(
+  projectRoot: string,
+  { environment, reportBase, policy }: Pick<PresetRun, 'environment' | 'reportBase' | 'policy'>,
+  [hostArguments, kotlinArguments]: readonly [readonly string[], readonly string[]],
+): string[] {
+  return [
+    ...GRADLE_FLAGS,
+    ...gradleWorkerArguments(projectRoot, environment ?? {}),
+    `-Pnitpicker.reportDir=${reportBase}`,
+    `-Pnitpicker.node=${process.execPath}`,
+    ...hostArguments,
+    ...lintBaselineProperties(policy),
+    ...kotlinArguments,
+  ];
+}
+
 function runJavaPreset(
   projectRoot: string,
   {
@@ -64,32 +93,40 @@ function runJavaPreset(
     testsFailedModules = [],
     testsSkipped,
     environment,
+    warn = { write: () => undefined },
   }: PresetRun,
 ): void {
   const since = Date.now() - CLOCK_SLACK_MS;
   withKotlinArguments(kotlinRun, (kotlinArguments) => {
-    const common = [
-      ...GRADLE_FLAGS,
-      ...gradleWorkerArguments(projectRoot, environment ?? {}),
-      `-Pnitpicker.reportDir=${reportBase}`,
-      `-Pnitpicker.node=${process.execPath}`,
-      ...lintBaselineProperties(policy),
-      ...kotlinArguments,
-    ];
-    const stages = gradleStages(common, {
-      projectRoot,
-      initScript,
-      policy,
-      directory: path.join(reportBase, 'tool-config'),
-      testsFailedModules,
-      testsSkipped,
-      budget,
+    withGradleHosts({ timeoutMs: budget.commandTimeoutMs ?? 0, warn }, (hostArguments) => {
+      const common = commonArguments(projectRoot, { environment, reportBase, policy }, [
+        hostArguments,
+        kotlinArguments,
+      ]);
+      const stages = gradleStages(common, {
+        projectRoot,
+        initScript,
+        policy,
+        directory: path.join(reportBase, 'tool-config'),
+        testsFailedModules,
+        testsSkipped,
+        budget,
+      });
+      const checkTests = testsFailedModules.length === 0 && !testsSkipped;
+      const options = {
+        projectRoot,
+        gradle,
+        budget,
+        reportBase,
+        since,
+        policy,
+        spawn,
+        environment,
+      };
+      for (const stage of stages) {
+        runGradleStage({ args: stage(), checkTests, ...options });
+      }
     });
-    const checkTests = testsFailedModules.length === 0 && !testsSkipped;
-    const options = { projectRoot, gradle, budget, reportBase, since, policy, spawn, environment };
-    for (const stage of stages) {
-      runGradleStage({ args: stage(), checkTests, ...options });
-    }
   });
 }
 
