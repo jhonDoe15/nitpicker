@@ -63,12 +63,11 @@ async function main(requested: string | undefined): Promise<number> {
     stats: true,
   });
   const costs = ruleCosts(ruleTimes(await eslint.lintFiles(files)));
-  const lines = costs
-    .slice(0, LISTED)
-    .map(
-      ({ rule, ms, timesMean, costly }) =>
-        `${String(Math.round(ms)).padStart(8)} ms  ${timesMean.toFixed(1).padStart(6)}x  ${rule}${costly ? `  (costly: ${KNOWN_COSTLY.get(rule) ?? 'not expected'})` : ''}`,
-    );
+  const lines = costs.slice(0, LISTED).map(({ rule, ms, timesMean, costly }) => {
+    const note = costly ? `  (costly: ${KNOWN_COSTLY.get(rule) ?? 'not expected'})` : '';
+    const time = `${String(Math.round(ms)).padStart(8)} ms`;
+    return `${time}  ${timesMean.toFixed(1).padStart(6)}x  ${rule}${note}`;
+  });
   const unexpected = unexpectedCosts(costs, new Set(KNOWN_COSTLY.keys()));
   process.stdout.write(
     [
@@ -77,7 +76,8 @@ async function main(requested: string | undefined): Promise<number> {
       unexpected.length === 0
         ? 'No rule outside the known costly ones takes fifteen times the mean.'
         : `Fifteen times the mean or more: ${unexpected.map(({ rule }) => rule).join(', ')}. ` +
-          'Make the rule cheaper, or add it to KNOWN_COSTLY in scripts/rule-cost/rule-cost.mts with the reason in the pull request.',
+          'Make the rule cheaper, or add it to KNOWN_COSTLY in scripts/rule-cost/rule-cost.mts ' +
+          'with the reason in the pull request.',
       '',
     ].join('\n'),
   );

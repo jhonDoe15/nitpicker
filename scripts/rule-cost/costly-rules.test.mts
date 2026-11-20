@@ -25,14 +25,14 @@ describe('the cost of each lint rule', () => {
     ]);
   });
 
-  it('lists the slowest rule first and marks a rule that takes fifteen times the mean', () => {
-    const cheap = Array.from({ length: 19 }, (_, index) => ({ rule: `r${String(index)}`, ms: 1 }));
-    const costs = ruleCosts([...cheap, { rule: 'slow', ms: 381 }]);
+  it('lists the slowest rule first and marks a rule that takes over fifteen times the mean', () => {
+    const cheap = Array.from({ length: 19 }, (_, index) => ({ rule: `r${String(index)}`, ms: 0 }));
+    const costs = ruleCosts([...cheap, { rule: 'slow', ms: 400 }]);
 
     expect([costs[0], costs[1], unexpectedCosts(costs, new Set()).map(({ rule }) => rule)]).toEqual(
       [
-        { rule: 'slow', ms: 381, timesMean: 19.05, costly: true },
-        { rule: 'r0', ms: 1, timesMean: 0.05, costly: false },
+        { rule: 'slow', ms: 400, timesMean: 20, costly: true },
+        { rule: 'r0', ms: 0, timesMean: 0, costly: false },
         ['slow'],
       ],
     );
