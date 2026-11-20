@@ -49,10 +49,10 @@ function buildBudget(environment: JavaEnvironment, variable: string): TimeBudget
   };
 }
 
-export function gradleBudget(environment: JavaEnvironment = process.env): TimeBudget {
+export function gradleBudget(environment: JavaEnvironment = {}): TimeBudget {
   return buildBudget(environment, 'NITPICKER_GRADLE_TIMEOUT_MINUTES');
 }
 
-export function mavenBudget(environment: JavaEnvironment = process.env): TimeBudget {
+export function mavenBudget(environment: JavaEnvironment = {}): TimeBudget {
   return buildBudget(environment, 'NITPICKER_MAVEN_TIMEOUT_MINUTES');
 }

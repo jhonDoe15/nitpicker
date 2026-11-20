@@ -14,7 +14,6 @@ import type {
   MonorepoPlan,
   PlanProject,
   ProjectRow,
-  ProjectSelection,
   SelectionCli,
 } from '../project-types.mts';
 

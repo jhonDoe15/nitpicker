@@ -102,8 +102,16 @@ export function runOrNoteFailingTests<O extends { readonly policy?: JavaPolicy |
   run: FailingRun<O>,
   projectRoot: string,
   options: O,
-  stopped?: Stopped,
 ): TestsFailure[] {
+  return failingTestsUnlessStopped({ run, projectRoot, options });
+}
+
+export function failingTestsUnlessStopped<O extends { readonly policy?: JavaPolicy | undefined }>({
+  run,
+  projectRoot,
+  options,
+  stopped,
+}: FailingRuns<O>): TestsFailure[] {
   try {
     run(projectRoot, { ...options, testsFailedModules: [], testsSkipped: false });
     return [];

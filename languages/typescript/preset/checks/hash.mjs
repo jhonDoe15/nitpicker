@@ -4,25 +4,22 @@ import { importClosure } from '../../../../shared/import-closure.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 
-const packageClosures = new Map();
-
-function closureHash(relativePaths, root, closureOf) {
-  const hash = createHash('sha256');
-  const contents = closureOf(relativePaths, root);
-  for (const relativePath of [...contents.keys()].sort()) {
-    hash.update(relativePath);
-    hash.update('\0');
-    hash.update(contents.get(relativePath));
-    hash.update('\0');
-  }
-  return hash;
+function onceByKey() {
+  const known = new Map();
+  return (key, create) => {
+    if (!known.has(key)) {
+      known.set(key, create());
+    }
+    return known.get(key);
+  };
 }
 
-function packageClosureHash(relativePaths, closureOf) {
-  const key = relativePaths.join('\0');
-  const known = packageClosures.get(key) ?? closureHash(relativePaths, packageRoot, closureOf);
-  packageClosures.set(key, known);
-  return known.copy();
+const packageClosure = onceByKey();
+
+function closureContents(relativePaths, root, closureOf) {
+  return root === packageRoot
+    ? packageClosure(relativePaths.join('\0'), () => closureOf(relativePaths, root))
+    : closureOf(relativePaths, root);
 }
 
 export function hashFiles(
@@ -30,10 +27,14 @@ export function hashFiles(
   configurationValues = [],
   { root = packageRoot, closureOf = importClosure } = {},
 ) {
-  const hash =
-    root === packageRoot
-      ? packageClosureHash(relativePaths, closureOf)
-      : closureHash(relativePaths, root, closureOf);
+  const hash = createHash('sha256');
+  const contents = closureContents(relativePaths, root, closureOf);
+  for (const relativePath of [...contents.keys()].sort()) {
+    hash.update(relativePath);
+    hash.update('\0');
+    hash.update(contents.get(relativePath));
+    hash.update('\0');
+  }
   for (const configurationValue of [...new Set(configurationValues)].sort()) {
     hash.update(configurationValue);
     hash.update('\0');

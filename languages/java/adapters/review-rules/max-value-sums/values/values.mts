@@ -94,7 +94,6 @@ const NOT_A_TYPE = new Set([
   'throws',
 ]);
 const KOTLIN_DECLARES = new Set(['val', 'var']);
-const localNames = new WeakMap<Frame, ReadonlySet<string>>();
 
 function declaresAt({ tokens, kotlin }: SourceFile, index: number): boolean {
   const before = tokens[index - 1];
@@ -110,20 +109,11 @@ function declaresAt({ tokens, kotlin }: SourceFile, index: number): boolean {
   return array || ((named || generic) && tokens[index - 2]?.text !== '.');
 }
 
-function declaredLocals(source: SourceFile, frame: Frame): ReadonlySet<string> {
-  const names = new Set<string>();
-  for (let index = frame.body.from + 1; index < frame.body.to; index += 1) {
-    if (declaresAt(source, index)) {
-      names.add(source.tokens[index]?.text ?? '');
-    }
-  }
-  return names;
-}
-
 function declaresLocal(source: SourceFile, frame: Frame, name: string): boolean {
-  const names = localNames.get(frame) ?? declaredLocals(source, frame);
-  localNames.set(frame, names);
-  return names.has(name);
+  const first = frame.body.from + 1;
+  return source.tokens
+    .slice(first, frame.body.to)
+    .some((token, offset) => token.text === name && declaresAt(source, first + offset));
 }
 
 export function lookup(

@@ -5,10 +5,7 @@ import { gradleLog, withGradleLog } from '../gradle-wrapper/diagnostics/failure-
 import { condenseFailure, isRateLimited } from '../gradle-wrapper/diagnostics/failure-text.mts';
 import { gradleSpawnFailure } from '../gradle-wrapper/diagnostics/spawn-failure.mts';
 import { memoryAdvice } from '../gradle-wrapper/memory/gradle-memory.mts';
-import {
-  type FailedToolTasks,
-  noteFailedToolTasks,
-} from '../gradle-wrapper/partial/failed-tool-tasks.mts';
+import { type FailedToolRecord } from '../gradle-wrapper/partial/failed-tool-tasks.mts';
 import { usesConfigRetries } from '../../../../shared/conventions/tool-precedence.mjs';
 import { failingTestsOf } from '../gradle-reports/failing-tests.mts';
 import { failingTestsError } from '../../builds/test-failures.mts';
@@ -25,7 +22,7 @@ type StageCheck = {
   readonly policy?: JavaPolicy;
   readonly command: string;
   readonly budget: JavaBudget;
-  readonly failedTools?: FailedToolTasks | undefined;
+  readonly failedTools?: FailedToolRecord | undefined;
 };
 type StageRun = Omit<StageCheck, 'command'> & {
   readonly args: unknown;
@@ -111,7 +108,7 @@ function noteOrThrowFailure(
     throw error;
   }
   const failure: unknown = callUntyped(withCompileErrors, error, outputOf(result), projectRoot);
-  if (!noteFailedToolTasks(failedTools, { output: outputOf(result), error: failure })) {
+  if (failedTools?.noteTasks({ output: outputOf(result), error: failure }) !== true) {
     throw failure;
   }
 }

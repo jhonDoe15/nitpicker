@@ -144,14 +144,12 @@ function filesWithPrivateKeys(projectRoot) {
 }
 
 function textOf(file) {
-  try {
-    return readFileSync(file, 'utf8');
-  } catch {
-    return '';
-  }
+  return lstatSync(file, { throwIfNoEntry: false })?.isFile() === true
+    ? readFileSync(file, 'utf8')
+    : '';
 }
 
-export function holdsKeyMaterial(text) {
+function holdsKeyMaterial(text) {
   return [...text.matchAll(KEY_BLOCK_START)].some(({ index, 0: marker }) => {
     const rest = text.slice(index + marker.length, index + marker.length + MAX_KEY_BLOCK_LENGTH);
     const end = rest.indexOf(KEY_BLOCK_END);

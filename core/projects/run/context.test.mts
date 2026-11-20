@@ -3,8 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { analyzersByProject } from './context.mts';
-import type { MonorepoCli, MonorepoPlan, PlanProject } from '../project-types.mts';
-import type { Analyzer } from '../../../shared/values/analyzers.mts';
+import type { MonorepoPlan, PlanProject } from '../project-types.mts';
 
 const scratch = mkdtempSync(path.join(tmpdir(), 'nitpicker-analyzer-names-'));
 
@@ -39,11 +38,8 @@ function planOf(configs: Readonly<Record<string, string>>): MonorepoPlan {
   };
 }
 
-function cliFor(analyzerNames: readonly string[]): MonorepoCli {
-  const analyzers = [{ name: 'lint' }, { name: 'format' }].map((analyzer): Analyzer =>
-    Object.assign(Object.create(null), analyzer),
-  );
-  return Object.assign(Object.create(null), { options: { analyzerNames }, analyzers });
+function cliFor(analyzerNames: readonly string[]): Parameters<typeof analyzersByProject>[1] {
+  return { options: { analyzerNames }, analyzers: [{ name: 'lint' }, { name: 'format' }] };
 }
 
 const UNREADABLE = '{ "disable": 5 }';

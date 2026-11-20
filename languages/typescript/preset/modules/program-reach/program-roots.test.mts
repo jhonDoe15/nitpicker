@@ -1,27 +1,10 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { scratchTrees } from '../../../../../shared/test-support/scratch-trees.mts';
 import { typecheckProgramRoots as untypedProgramRoots } from './program-roots.mjs';
 
 const typecheckProgramRoots: (projectRoot: string) => string[] = untypedProgramRoots;
-const roots: string[] = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function repository(files: Readonly<Record<string, string>>): string {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-program-roots-')));
-  roots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
-}
+const repository = scratchTrees('nitpicker-program-roots-');
 
 function reached(root: string, project: string): string[] {
   return typecheckProgramRoots(path.join(root, project))
@@ -32,7 +15,13 @@ function reached(root: string, project: string): string[] {
 describe('the folders a type check program reaches', () => {
   it('are the project alone without path mappings or references', () => {
     const root = repository({
-      'app/tsconfig.json': JSON.stringify({ compilerOptions: { paths: { '@/*': ['./src/*'] } } }),
+      'app/tsconfig.json': JSON.stringify({
+        compilerOptions: {
+          types: [],
+          lib: ['ES2022'],
+          paths: { '@/*': ['./src/*'] },
+        },
+      }),
       'app/src/a.ts': '',
       'bare/src/a.ts': '',
     });
@@ -45,6 +34,8 @@ describe('the folders a type check program reaches', () => {
     const root = repository({
       'tsconfig.base.json': JSON.stringify({
         compilerOptions: {
+          types: [],
+          lib: ['ES2022'],
           baseUrl: '.',
           paths: {
             '@org/*': ['packages/*/src'],
@@ -76,7 +67,11 @@ describe('the folders a type check program reaches', () => {
   it('count a folder once when one reached folder holds another', () => {
     const root = repository({
       'app/tsconfig.json': JSON.stringify({
-        compilerOptions: { paths: { '~/*': ['../*'], '@lib/*': ['../lib/*'] } },
+        compilerOptions: {
+          types: [],
+          lib: ['ES2022'],
+          paths: { '~/*': ['../*'], '@lib/*': ['../lib/*'] },
+        },
       }),
       'lib/a.ts': '',
     });

@@ -1,6 +1,7 @@
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { fieldOf } from '../../../../shared/values/readers.mts';
 import { importClosure as untypedImportClosure } from '../../../../shared/import-closure.mjs';
 import {
   configuredAnalyzers as untypedConfiguredAnalyzers,
@@ -96,21 +97,26 @@ describe('analyzer cache keys', () => {
   });
 });
 
+const extensions = ['ts', 'tsx', 'mts', 'cts', 'js', 'jsx', 'mjs', 'cjs'];
+
 describe('the type check on a large project', () => {
   it('has a deadline that grows with the files and a memory estimate over what its tsconfig reaches', () => {
     const typecheck: unknown = configuredAnalyzers().find(
       ({ name }) => name === 'typescript-typecheck',
     );
-    const scales = Object.assign({ timeoutMs: 0, timeoutScale: {}, memoryScale: {} }, typecheck);
+    const deadline = fieldOf(typecheck, 'timeoutScale');
+    const memory = fieldOf(typecheck, 'memoryScale');
 
-    expect([scales.timeoutMs, scales.timeoutScale]).toEqual([
-      300_000,
-      { perThousandFilesMs: 120_000, extensions: expect.arrayContaining(['ts', 'tsx']) },
-    ]);
-    expect(scales.memoryScale).toEqual({
-      perThousandFilesMegabytes: 640,
-      extensions: expect.arrayContaining(['ts', 'tsx']),
-      roots: expect.any(Function),
-    });
+    expect([
+      fieldOf(typecheck, 'timeoutMs'),
+      fieldOf(deadline, 'perThousandFilesMs'),
+      fieldOf(deadline, 'extensions'),
+      typeof fieldOf(deadline, 'roots'),
+    ]).toEqual([300_000, 120_000, extensions, 'function']);
+    expect([
+      fieldOf(memory, 'perThousandFilesMegabytes'),
+      fieldOf(memory, 'extensions'),
+      typeof fieldOf(memory, 'roots'),
+    ]).toEqual([640, extensions, 'function']);
   });
 });
