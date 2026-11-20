@@ -160,7 +160,8 @@ fn typescript_structure(args: &[String]) {
     );
 }
 
-/// `typescript-lint --files <list> [--rules <a,b>] [--out <file>]`: the list is read as for `typescript-structure`.
+/// `typescript-lint --files <list> [--rules <a,b>] [--out <file>] [--testing-library-utils-module <suffix>]`: the list is
+/// read as for `typescript-structure`; the module suffix is `test-utils` unless given, and empty for none.
 fn typescript_lint(args: &[String]) {
     let (mut list, mut out, mut only) = (None, None, None::<Vec<String>>);
     let mut index = 0;
@@ -169,6 +170,10 @@ fn typescript_lint(args: &[String]) {
             "--files" => { index += 1; list = Some(&args[index]); }
             "--out" => { index += 1; out = Some(&args[index]); }
             "--rules" => { index += 1; only = Some(args[index].split(',').map(String::from).collect()); }
+            "--testing-library-utils-module" => {
+                index += 1;
+                typescript::rules::testing_library::set_utils_module(Some(args[index].clone()).filter(|module| !module.is_empty()));
+            }
             other => panic!("unknown argument {other}"),
         }
         index += 1;
