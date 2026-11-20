@@ -26,6 +26,7 @@
   "languages/java/adapters/java-e2e/overlap-probe.e2e.test.mts": 76,
   "languages/java/adapters/java-e2e/pit-history.e2e.test.mts": 15,
   "languages/java/adapters/java-e2e/pit-targets.e2e.test.mts": 12,
+  "languages/java/adapters/java-e2e/preset/classpath/inherited-equals.e2e.test.mts": 190,
   "languages/java/adapters/java-e2e/preset/comparison/java-preset-baseline.e2e.test.mts": 75,
   "languages/java/adapters/java-e2e/preset/comparison/java-preset-branches-exceptions.e2e.test.mts": 72,
   "languages/java/adapters/java-e2e/preset/comparison/java-preset-branches-uncovered.e2e.test.mts": 73,
