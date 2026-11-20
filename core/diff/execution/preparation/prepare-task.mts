@@ -12,6 +12,7 @@ import {
   type FileCounter,
   deadlineScaleOf,
   memoryEstimateMegabytes,
+  moduleAllowanceMs,
   projectFileCount,
   scaledDeadlineMs,
 } from './project-size.mts';
@@ -38,6 +39,7 @@ export type PreparedTask = {
   readonly concurrencyGroup: string | undefined;
   readonly executionPriority: number;
   readonly timeoutMs: number;
+  readonly sizeAllowanceMs: number;
   readonly memoryMegabytes: number;
   readonly configuredTimeout: boolean;
   readonly reportedTools: readonly string[];
@@ -49,18 +51,23 @@ export type PreparedTask = {
 
 const DEFAULT_ANALYZER_TIMEOUT_MS = 5 * 60 * 1000;
 
-function taskTimeoutMs(
+function sizeAllowanceMs(
   analyzer: Record<string, unknown>,
   liveProjectRoot: string,
   countFiles: FileCounter,
 ): number {
-  const base =
-    typeof analyzer['timeoutMs'] === 'number' ? analyzer['timeoutMs'] : DEFAULT_ANALYZER_TIMEOUT_MS;
   const scale = deadlineScaleOf(analyzer);
   if (analyzer['configuredTimeout'] === true || scale === undefined) {
-    return base;
+    return 0;
   }
-  return scaledDeadlineMs(base, scale, countFiles(liveProjectRoot, scale.extensions));
+  const modulesMs = moduleAllowanceMs(analyzer, liveProjectRoot);
+  return scaledDeadlineMs(modulesMs, scale, countFiles(liveProjectRoot, scale.extensions));
+}
+
+function baseTimeoutMs(analyzer: Record<string, unknown>): number {
+  return typeof analyzer['timeoutMs'] === 'number'
+    ? analyzer['timeoutMs']
+    : DEFAULT_ANALYZER_TIMEOUT_MS;
 }
 
 function logLocation(
@@ -136,6 +143,7 @@ function createTask(
     ...logLocation(context.logRoot, liveProjectRoot),
   });
   validateInvocation(analyzer.name, invocation);
+  const allowanceMs = sizeAllowanceMs(analyzer, liveProjectRoot, countFiles);
   return {
     name: analyzer.name,
     dependencies: analyzer.dependencies ?? [],
@@ -143,7 +151,8 @@ function createTask(
     concurrencyWeight: analyzer.concurrencyWeight ?? 1,
     concurrencyGroup: analyzer.concurrencyGroup,
     executionPriority: analyzer.executionPriority ?? 0,
-    timeoutMs: taskTimeoutMs(analyzer, liveProjectRoot, countFiles),
+    timeoutMs: baseTimeoutMs(analyzer) + allowanceMs,
+    sizeAllowanceMs: allowanceMs,
     memoryMegabytes: memoryEstimateMegabytes(analyzer, liveProjectRoot, countFiles),
     configuredTimeout: analyzer['configuredTimeout'] === true,
     reportedTools: [...(analyzer.reportedTools ?? []), ...carried.map(({ name }) => name)],

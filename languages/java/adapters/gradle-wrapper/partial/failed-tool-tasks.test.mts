@@ -3,6 +3,7 @@ import {
   failedProjects,
   failedToolTasks,
   noteFailedToolTasks,
+  noteStoppedBuild,
   skippedModuleFindings,
 } from './failed-tool-tasks.mts';
 import type { FailedToolTasks } from './failed-tool-tasks.mts';
@@ -122,5 +123,36 @@ describe('failed nitpicker tool tasks in a Gradle failure', () => {
         classification: 'tool-error',
       },
     ]);
+  });
+
+  it('reports a build stopped at its deadline once, naming the projects it did not reach', () => {
+    const noted: FailedToolTasks = { tasks: [], error: undefined };
+    const stopped = Object.defineProperty(new Error('stopped'), 'timedOut', {
+      value: { build: 'Gradle', minutes: 20 },
+    });
+    const skipped = Array.from({ length: 12 }, (_, index) => ({
+      path: `:m${String(index)}`,
+      dir: `m${String(index)}`,
+    }));
+
+    expect([noteStoppedBuild(noted, new Error('other')), noted.stoppedAfterMinutes]).toEqual([
+      false,
+      undefined,
+    ]);
+    expect([noteStoppedBuild(noted, stopped), noted.error]).toEqual([true, stopped]);
+    expect(skippedModuleFindings(skipped, noted)).toEqual([
+      {
+        tool: 'gradle',
+        rule: 'module-build-failed',
+        path: '.',
+        identity: 'module-build-failed:deadline',
+        message:
+          'Gradle was stopped at its 20-minute deadline before the checks of 12 Gradle projects finished ' +
+          '(:m0, :m1, :m2, :m3, :m4, :m5, :m6, :m7, :m8, :m9 and 2 more); the projects that finished were ' +
+          'checked. Set NITPICKER_GRADLE_TIMEOUT_MINUTES to give each Gradle command more time',
+        classification: 'tool-error',
+      },
+    ]);
+    expect(skippedModuleFindings([], noted)).toEqual([]);
   });
 });

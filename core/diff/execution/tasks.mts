@@ -20,6 +20,7 @@ export type AnalyzerTask = {
   readonly executionPriority?: number | undefined;
   readonly toleratedDependencyErrors?: readonly string[] | undefined;
   readonly timeoutMs: number;
+  readonly sizeAllowanceMs?: number | undefined;
   readonly memoryMegabytes?: number | undefined;
   readonly configuredTimeout?: unknown;
   readonly acceptedExitCodes: readonly number[];

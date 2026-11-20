@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 import { gradleStages } from './gradle-stages.mts';
+import { BUILD_TIMEOUT_SCALE, gradleBudget, mavenBudget } from './gradle-budget.mts';
 import { createJavaAnalyzer } from '../java-analyzer.mts';
 import { parseJavaRunnerArguments } from '../java-policy.mts';
 import type { JavaPolicy } from '../typed/java-values.mts';
@@ -94,5 +95,42 @@ describe('the PIT deadline of a Gradle run', () => {
 
   it('is not passed without a budget', () => {
     expect(deadlineProperties(undefined)).toEqual([]);
+  });
+});
+
+describe('the deadline of a build command', () => {
+  const MINUTE_MS = 60_000;
+
+  it('is 15 minutes and grows with the size allowance the run was given', () => {
+    const allowance = { NITPICKER_ANALYZER_SIZE_ALLOWANCE_MS: String(40 * MINUTE_MS) };
+
+    expect(gradleBudget({})).toEqual({
+      commandTimeoutMs: 15 * MINUTE_MS,
+      analyzerTimeoutMs: 31 * MINUTE_MS,
+    });
+    expect(gradleBudget(allowance)).toEqual({
+      commandTimeoutMs: 35 * MINUTE_MS,
+      analyzerTimeoutMs: 71 * MINUTE_MS,
+    });
+    expect(mavenBudget(allowance).commandTimeoutMs).toBe(35 * MINUTE_MS);
+  });
+
+  it('keeps a configured number of minutes whatever the size', () => {
+    const environment = {
+      NITPICKER_ANALYZER_SIZE_ALLOWANCE_MS: String(40 * MINUTE_MS),
+      NITPICKER_GRADLE_TIMEOUT_MINUTES: '5',
+    };
+
+    expect(gradleBudget(environment).commandTimeoutMs).toBe(5 * MINUTE_MS);
+  });
+
+  it('scales the analyzer by source files and build files, for both stages of a run', () => {
+    expect(createJavaAnalyzer().timeoutScale).toEqual(BUILD_TIMEOUT_SCALE);
+    expect(BUILD_TIMEOUT_SCALE).toEqual({
+      perThousandFilesMs: 4 * MINUTE_MS,
+      extensions: ['java', 'kt'],
+      perModuleMs: MINUTE_MS,
+      moduleFiles: ['build.gradle', 'build.gradle.kts', 'pom.xml'],
+    });
   });
 });
