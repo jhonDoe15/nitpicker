@@ -5,7 +5,13 @@ import {
   type SpreadKind,
 } from '../../../preset/eslint-plugin/rules/collections/accumulating-spread-messages.mts';
 import { scriptKind } from '../../eslint/syntax.mts';
-import type { OxlintDiagnostic, SpreadCheck, SpreadReport } from '../plan/oxlint-shapes.mts';
+import { loopSpreadSites } from './accumulating-loop-sites.mts';
+import type {
+  OxlintDiagnostic,
+  ReportedSpan,
+  SpreadCheck,
+  SpreadReport,
+} from '../plan/oxlint-shapes.mts';
 
 type Node = TypeScript.Node;
 
@@ -140,10 +146,29 @@ function isFixedShape(spread: Node): boolean {
   return ts.isArrayLiteralExpression(container) && isBoundingSlice(container);
 }
 
+function spanOf(sourceFile: TypeScript.SourceFile, node: Node): ReportedSpan {
+  const start = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
+  const end = sourceFile.getLineAndCharacterOfPosition(node.end);
+  return {
+    line: start.line + 1,
+    column: start.character + 1,
+    endLine: end.line + 1,
+    endColumn: end.character + 1,
+  };
+}
+
+function reportedSpreads(spread: Node, reducer: boolean): readonly Node[] {
+  if (!reducer) {
+    return loopSpreadSites(spread).filter((site) => !isFixedShape(site));
+  }
+  const fn = chainOf(spread.parent, parentOf).find((current) => FUNCTION_KINDS.has(current.kind));
+  return fn !== undefined && isDirectReducer(fn) && !isFixedShape(spread) ? [spread] : [];
+}
+
 export function accumulatingSpreadCheck(
   filePath: string,
   text: string,
-): (check: SpreadCheck) => boolean {
+): (check: SpreadCheck) => readonly ReportedSpan[] {
   const sourceFile = ts.createSourceFile(
     filePath,
     text.startsWith(BYTE_ORDER_MARK) ? text.slice(1) : text,
@@ -156,10 +181,8 @@ export function accumulatingSpreadCheck(
     const node = nodesAt(sourceFile, position)
       .filter((candidate) => SPREAD_KINDS.has(candidate.kind))
       .find((candidate) => candidate.getStart(sourceFile) === position);
-    if (node === undefined || isFixedShape(node)) {
-      return false;
-    }
-    const fn = chainOf(node.parent, parentOf).find((current) => FUNCTION_KINDS.has(current.kind));
-    return !reducer || (fn !== undefined && isDirectReducer(fn));
+    return node === undefined
+      ? []
+      : reportedSpreads(node, reducer).map((spread) => spanOf(sourceFile, spread));
   };
 }

@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { ancestorsOf, contains, type SourceCode } from '../typed/node-views.mts';
+import { ancestorsOf, type SourceCode } from '../typed/node-views.mts';
 import { TYPE_ASSERTIONS, unwrapOf } from '../typed/syntax-views.mts';
 import {
   accumulatingSpreadMessageId,
@@ -9,7 +9,8 @@ import {
   type SpreadKind,
   type SpreadMessageId,
 } from './accumulating-spread-messages.mts';
-import { isFixedShape, LOOP_TYPES } from './spread-shapes.mts';
+import { loopSites } from './loop-accumulators/loop-spread-sites.mts';
+import { isFixedShape } from './spread-shapes.mts';
 import { reduceArrayFix } from '../../fixes/collections/reduce/reduce-array-fix.mts';
 import { reduceObjectFix } from '../../fixes/collections/reduce/reduce-object-fix.mts';
 import { fixable, suggestible } from '../../fixes/support/descriptors.mts';
@@ -20,13 +21,12 @@ import type { FixPlans } from '../../fixes/edits/plans.mts';
 type Variable = TSESLint.Scope.Variable;
 type ParameterDefinition = TSESLint.Scope.Definitions.ParameterDefinition;
 type VariableDefinition = TSESLint.Scope.Definitions.VariableDefinition;
-type Location = { readonly node: TSESTree.Node } | { readonly loc: TSESTree.SourceLocation };
 type Report = {
   readonly kind: SpreadKind;
-  readonly descriptor: Location;
-  readonly declarator?: TSESTree.VariableDeclarator;
+  readonly descriptor: { readonly node: TSESTree.Node };
   readonly callback?: TSESTree.Node;
   readonly variable?: Variable;
+  readonly primary: boolean;
 };
 type LoopFinding = {
   readonly definition: VariableDefinition;
@@ -51,10 +51,6 @@ const WRAPPERS = [
 const REDUCE_KINDS = new Map<string, SpreadKind>([
   [AST_NODE_TYPES.ArrayExpression, 'reduceArray'],
   [AST_NODE_TYPES.ObjectExpression, 'reduceObject'],
-]);
-const LOOP_KINDS = new Map<string, SpreadKind>([
-  [AST_NODE_TYPES.ArrayExpression, 'loopArray'],
-  [AST_NODE_TYPES.ObjectExpression, 'loopObject'],
 ]);
 
 function innerExpression(node: TSESTree.Node): TSESTree.Node {
@@ -128,33 +124,8 @@ function reduceReport(
     return undefined;
   }
   return ancestorsOf(spread).find((node) => FUNCTION_TYPES.has(node.type)) === fn
-    ? { kind: reduceKind(call), descriptor: { node: spread }, callback: fn }
+    ? { kind: reduceKind(call), descriptor: { node: spread }, callback: fn, primary: false }
     : undefined;
-}
-
-function firstAssignment(variable: Variable): TSESTree.AssignmentExpression | undefined {
-  const write = variable.references.find((reference) => reference.isWrite() && !reference.init);
-  if (write === undefined) {
-    return undefined;
-  }
-  const assignment = write.identifier.parent;
-  return assignment.type === AST_NODE_TYPES.AssignmentExpression &&
-    assignment.left === write.identifier
-    ? assignment
-    : undefined;
-}
-
-function declaredNameLocation(
-  sourceCode: SourceCode,
-  id: TSESTree.BindingName,
-): TSESTree.SourceLocation {
-  const start = id.range[0];
-  const end =
-    id.type === AST_NODE_TYPES.Identifier
-      ? start + id.name.length
-      : ((id.typeAnnotation === undefined ? id : sourceCode.getTokenBefore(id.typeAnnotation))
-          ?.range[1] ?? id.range[1]);
-  return { start: sourceCode.getLocFromIndex(start), end: sourceCode.getLocFromIndex(end) };
 }
 
 function loopReport({ definition, variable, spread, sourceCode }: LoopFinding): Report | undefined {
@@ -162,23 +133,11 @@ function loopReport({ definition, variable, spread, sourceCode }: LoopFinding): 
   if (declaration.kind !== 'let') {
     return undefined;
   }
-  const assignment = firstAssignment(variable);
-  const value = assignment === undefined ? undefined : innerExpression(assignment.right);
-  const kind = value === undefined ? undefined : LOOP_KINDS.get(value.type);
-  if (value === undefined || kind === undefined || !contains(value, spread)) {
-    return undefined;
-  }
-  const loop = ancestorsOf(spread).find(
-    (node) => LOOP_TYPES.has(node.type) && !contains(node, declaration),
-  );
-  return loop === undefined
+  const sites = loopSites(variable, declaration, { sourceCode, inner: innerExpression });
+  const site = sites?.find((candidate) => candidate.spread === spread);
+  return site === undefined
     ? undefined
-    : {
-        declarator: definition.node,
-        variable,
-        kind,
-        descriptor: { loc: declaredNameLocation(sourceCode, definition.node.id) },
-      };
+    : { variable, kind: site.kind, primary: site === sites?.[0], descriptor: { node: spread } };
 }
 
 function resolvedVariable(
@@ -229,6 +188,7 @@ function pushPlanOf(
 ): FixPlans | undefined {
   return report.kind === 'loopArray' &&
     report.variable !== undefined &&
+    report.primary &&
     !messageId.startsWith('domain')
     ? loopPushFix(context, report.variable)
     : undefined;
@@ -248,17 +208,10 @@ export const rule: TSESLint.RuleModule<RuleMessageId> = {
   },
   create(context) {
     const { sourceCode } = context;
-    const seenDeclarators = new Set<TSESTree.VariableDeclarator | undefined>();
     return {
       SpreadElement(spread) {
         const report = spreadReport(spread, sourceCode);
-        if (report === undefined || seenDeclarators.has(report.declarator)) {
-          return;
-        }
-        if (report.declarator !== undefined) {
-          seenDeclarators.add(report.declarator);
-        }
-        if (!isFixedShape(spread)) {
+        if (report !== undefined && !isFixedShape(spread)) {
           const messageId = accumulatingSpreadMessageId(report.kind, context.filename);
           const descriptor = fixable(
             { ...report.descriptor, messageId },

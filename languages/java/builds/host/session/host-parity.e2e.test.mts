@@ -24,6 +24,9 @@ type Modules = readonly (readonly [string, string])[];
 const JAVA_MODULES: Modules = [
   ['guards-project', 'guards'],
   ['effects-project', 'effects'],
+];
+const REPEATED_MODULES: Modules = [
+  ['guards-project', 'guards'],
   ['guards-project', 'guards-again'],
 ];
 const KOTLIN_MODULES: Modules = [
@@ -170,8 +173,8 @@ type Parity = {
   readonly trace: readonly string[];
 };
 
-function parity(modules: Modules, preset: string): Parity {
-  const root = project(modules, preset);
+function parity(modules: Modules, preset: string, name = preset): Parity {
+  const root = project(modules, name);
   const trace = path.join(root, 'trace.log');
   const freshFindings = analyze(root, false, trace, preset);
   const freshReports = reports(root, modules);
@@ -197,16 +200,19 @@ function otherOutcomes(trace: readonly string[]): string[] {
 }
 
 describe.skipIf(!enabled)('the shared tool JVMs', () => {
-  it(
-    'write the reports of fresh JVMs for Java modules run back to back, and host the tools',
-    () => {
+  it.each([
+    ['two different Java modules', JAVA_MODULES, 'java'],
+    ['the same Java module twice', REPEATED_MODULES, 'java-repeated'],
+  ] as const)(
+    'write the reports of fresh JVMs for %s run back to back, and host the tools',
+    (_label, modules, name) => {
       const javaTools = Object.keys(HOSTED_TOOLS).filter((tool) => !KOTLIN_TOOLS.includes(tool));
       const tools = [...javaTools, 'javac', 'jdeps'];
-      const run = parity(JAVA_MODULES, 'java');
+      const run = parity(modules, 'java', name);
 
       expect(run.hosted.reports).toEqual(run.fresh.reports);
       expect(run.hosted.findings).toEqual(run.fresh.findings);
-      expect(hostedEvery(run.trace, tools, JAVA_MODULES)).toEqual(tools.map(() => true));
+      expect(hostedEvery(run.trace, tools, modules)).toEqual(tools.map(() => true));
       expect(otherOutcomes(run.trace)).toEqual([]);
     },
     TEST_TIMEOUT_MS,

@@ -1,7 +1,7 @@
 import { kotlinRecipe } from '../../shared/kotlin-recipe.mts';
 import { closingIndex, enclosingOpen, splitArguments } from '../../shared/kotlin-scan.mts';
 import type { KotlinFound, ScannedKotlin, Span } from '../../shared/kotlin-scan.mts';
-import { statementPrefix } from '../../shared/spans.mts';
+import { statementPrefix } from '../../../shared/spans.mts';
 import { isLongExpression } from './delay-argument.mts';
 import { delayImport } from './delay-import.mts';
 

@@ -72,6 +72,14 @@ function kept(
     filePath = 'src/a.ts',
   }: { reducer?: boolean; line?: number; filePath?: string } = {},
 ) {
+  return spansOf(code, column, { reducer, line, filePath }).length > 0;
+}
+
+function spansOf(
+  code: string,
+  column: number,
+  { reducer = false, line = 1, filePath = 'src/a.ts' } = {},
+) {
   return accumulatingSpreadCheck(
     filePath,
     code,
@@ -130,5 +138,69 @@ describe('accumulatingSpreadCheck for accumulators that cannot grow', () => {
     const loop = (next: string) => `let out = [];\nfor (const x of xs) {\n  out = ${next};\n}`;
     expect(kept(loop('[...out, x].slice(-3)'), 10, { reducer: false, line: 3 })).toBe(false);
     expect(kept(loop('[...out, x]'), 10, { reducer: false, line: 3 })).toBe(true);
+  });
+});
+
+describe('accumulatingSpreadCheck for loop accumulators', () => {
+  const body = (...lines: string[]) =>
+    ['let out = [];', 'for (const x of xs) {', ...lines.map((line) => `  ${line}`), '}'].join('\n');
+  const spread = (line: number, column: number) => ({
+    line,
+    column,
+    endLine: line,
+    endColumn: column + 6,
+  });
+  const first = { reducer: false, line: 3, filePath: 'src/a.ts' };
+
+  it('reports every write that spreads the accumulator into itself', () => {
+    const code = `${body('out = [...out, x];')}\nfor (const y of ys) {\n  out = [...out, y];\n}`;
+    expect(spansOf(code, 10, first)).toEqual([spread(3, 10), spread(6, 10)]);
+  });
+
+  it('reports the first spread of a write and skips writes that stay the same size', () => {
+    const code = body('out = [...out, x, ...out];', 'out = [...out, x].slice(-3);');
+    expect(spansOf(code, 10, first)).toEqual([]);
+    expect(spansOf(body('out = [...out, x, ...out];'), 10, first)).toEqual([spread(3, 10)]);
+  });
+
+  it.each([
+    body('out = [...out, x];', 'out = [];'),
+    body('out = [...out, x];', 'out = out.filter(keep);'),
+    body('out = [...out, x];', 'out += 1;'),
+    body('out = [...out, x];', 'out++;'),
+    body('out = [...out, x];', '[out] = [[]];'),
+    body('out = [...out, x];', 'const reset = () => { out = []; };'),
+    `${body('out = [...out, x];')}\nout = [];`,
+    `${body('out = [...out, x];')}\nfor (out of xs) {}`,
+  ])('skips an accumulator that is also written another way: %s', (code) => {
+    expect(spansOf(code, 10, first)).toEqual([]);
+  });
+
+  it.each([
+    'out.length = 0;',
+    'out[0] = 1;',
+    'cnt[out.length] = 1;',
+    'out.extra = 1;',
+    'out.length++;',
+    '[out.extra] = [1];',
+    'for (out.extra of xs) {}',
+  ])('keeps reporting when the accumulator is only a member target: %s', (statement) => {
+    expect(spansOf(body('out = [...out, x];', statement), 10, first)).toEqual([spread(3, 10)]);
+    expect(spansOf(`${body('out = [...out, x];')}\n${statement}`, 10, first)).toEqual([
+      spread(3, 10),
+    ]);
+  });
+
+  it('reports a spread write whose accumulator a closure only reads or a block shadows', () => {
+    const closure = body('out = [...out, x];', 'const peek = () => out;');
+    expect(spansOf(closure, 10, first)).toEqual([spread(3, 10)]);
+    const shadowed = body('out = [...out, x];', 'const f = (out) => { out = []; };');
+    expect(spansOf(shadowed, 10, first)).toEqual([spread(3, 10)]);
+  });
+
+  it('skips writes outside a loop, var and const accumulators and parenthesized spreads', () => {
+    expect(spansOf('let out = [];\nout = [...out, 1];', 7, { ...first, line: 2 })).toEqual([]);
+    expect(spansOf(body('out = [...out, x];').replace('let', 'var'), 10, first)).toEqual([]);
+    expect(spansOf(body('out = [...(out), x];'), 11, first)).toEqual([]);
   });
 });

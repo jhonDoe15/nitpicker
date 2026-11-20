@@ -38,7 +38,7 @@ public class Texts {
   }
 
   String pipe(String text) {
-    return text.replaceAll("|", ","); // violation: ReplaceWithWrongLiteralKind
+    return text.replaceAll("|", ","); // violation: ReplaceWithWrongLiteralKind, RegexPartDefect, RegexPartDefect
   }
 
   String joinedSeparator(String text) {

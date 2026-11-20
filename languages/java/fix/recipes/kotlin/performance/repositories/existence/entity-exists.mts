@@ -2,8 +2,8 @@ import { leftIsolated, rightIsolated } from '../../../shared/boundaries.mts';
 import { kotlinRecipe } from '../../../shared/kotlin-recipe.mts';
 import { splitArguments } from '../../../shared/kotlin-scan.mts';
 import type { KotlinEdit, KotlinFound, ScannedKotlin, Span } from '../../../shared/kotlin-scan.mts';
-import { removalSpan } from '../../../shared/spans.mts';
 import { type RepositoryTypes, repositoryTypes } from '../../../project/repository-types.mts';
+import { removalSpan } from '../../../../shared/spans.mts';
 import { isRepositoryName } from '../declared-names.mts';
 
 const NAME = String.raw`(?:this\s*\.\s*)?[A-Za-z_]\w*`;

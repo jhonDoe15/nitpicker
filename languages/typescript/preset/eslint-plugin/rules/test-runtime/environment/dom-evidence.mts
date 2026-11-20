@@ -1,6 +1,7 @@
 import type TypeScript from 'typescript';
 import { ts } from '../../typed/typescript-views.mts';
 import { DOM_GLOBAL_NAMES } from './dom-globals.mts';
+import { stubbedGlobalOf, testApiNames, unwrappedExpression } from './dom-stubs.mts';
 import { isOpaqueModuleCall, moduleSpecifierOf } from './module-specifiers.mts';
 
 type Node = TypeScript.Node;
@@ -19,7 +20,7 @@ type MemberAccess = { readonly object: TypeScript.Expression; readonly name: str
 export type DomEvidence = {
   usesDom: boolean;
   touchesDom: boolean;
-  opaqueImport: boolean;
+  opaque: boolean;
   readonly specifiers: string[];
 };
 
@@ -144,10 +145,11 @@ function memberAccess(node: Node): MemberAccess | undefined {
 
 function isDomMember(node: Node): boolean {
   const access = memberAccess(node);
-  if (access === undefined || !ts.isIdentifier(access.object)) {
+  const object = access === undefined ? undefined : unwrappedExpression(access.object);
+  if (access === undefined || object === undefined || !ts.isIdentifier(object)) {
     return false;
   }
-  const { object, name } = access;
+  const { name } = access;
   if (GLOBAL_OBJECTS.has(object.text)) {
     return DOM_GLOBAL_NAMES.has(name);
   }
@@ -163,11 +165,12 @@ export function scanDomEvidence(text: string, fileName: string): DomEvidence {
     scriptKindOf(fileName),
   );
   const declared = declaredNames(sourceFile);
+  const testApis = testApiNames(sourceFile);
   const specifiers: string[] = [];
   const evidence: DomEvidence = {
     usesDom: false,
     touchesDom: false,
-    opaqueImport: false,
+    opaque: false,
     specifiers,
   };
 
@@ -175,24 +178,37 @@ export function scanDomEvidence(text: string, fileName: string): DomEvidence {
     if (isTypePosition(node)) {
       return;
     }
-    const imported = moduleSpecifierOf(node);
-    if (imported !== undefined) {
-      if (imported.forced || isDomPackage(imported.specifier)) {
-        evidence.usesDom = true;
-      }
-      specifiers.push(imported.specifier);
-    }
-    if (isOpaqueModuleCall(node)) {
-      evidence.opaqueImport = true;
-    }
-    if (isDomMember(node) || isDomGlobalReference(node, declared)) {
-      evidence.usesDom = true;
-      evidence.touchesDom = true;
-    }
+    noteEvidence(node, { evidence, declared, testApis });
     ts.forEachChild(node, visit);
   }
   visit(sourceFile);
   return evidence;
+}
+
+function noteEvidence(
+  node: Node,
+  context: {
+    readonly evidence: DomEvidence;
+    readonly declared: ReadonlySet<string>;
+    readonly testApis: ReadonlySet<string>;
+  },
+): void {
+  const { evidence } = context;
+  const imported = moduleSpecifierOf(node);
+  const stubbed = stubbedGlobalOf(node, context.testApis);
+  const touches =
+    (imported !== undefined && (imported.forced || isDomPackage(imported.specifier))) ||
+    stubbed === 'dom' ||
+    isDomMember(node) ||
+    isDomGlobalReference(node, context.declared);
+  evidence.opaque = evidence.opaque || isOpaqueModuleCall(node) || stubbed === 'opaque';
+  if (touches) {
+    evidence.usesDom = true;
+    evidence.touchesDom = true;
+  }
+  if (imported !== undefined) {
+    evidence.specifiers.push(imported.specifier);
+  }
 }
 
 function isDomGlobalReference(node: Node, declared: ReadonlySet<string>): boolean {

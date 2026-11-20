@@ -19,6 +19,8 @@ type FakeToolOptions = {
   missingFormatter?: true;
   sourceFixes?: true;
   scanned?: string;
+  ruffDiagnostics?: (root: string) => string;
+  ruffReportFails?: true;
 };
 
 export type FakePythonTools = {
@@ -58,6 +60,8 @@ export function fakePythonTools({
   missingFormatter,
   sourceFixes,
   scanned = '{}',
+  ruffDiagnostics,
+  ruffReportFails,
 }: FakeToolOptions = {}): FakePythonTools {
   const calls: FixInvocation[] = [];
   function lint(invocation: FixInvocation): FixReply {
@@ -111,6 +115,16 @@ export function fakePythonTools({
     if (invocation.operation === 'python-probe') {
       if (invocation.args.some((arg) => arg.endsWith('import-scan.py'))) {
         return { status: 0, stdout: scanned, stderr: '' };
+      }
+      if (
+        invocation.command.endsWith('ruff') &&
+        invocation.args.includes('check') &&
+        invocation.args.includes('json')
+      ) {
+        if (ruffReportFails) {
+          return { status: 2, stdout: '', stderr: 'ruff exploded' };
+        }
+        return { status: 0, stdout: ruffDiagnostics?.(invocation.cwd) ?? '[]', stderr: '' };
       }
       return invocation.command === 'poetry' && poetryEnvironment !== undefined
         ? { status: 0, stdout: `${poetryEnvironment}\n`, stderr: '' }

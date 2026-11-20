@@ -49,3 +49,15 @@ def module_functions(tree, name):
         for node in tree.body
         if isinstance(node, FUNCTIONS + (ast.ClassDef,)) and node.name == name
     ]
+
+
+def module_mentioned(index, module):
+    word = re.compile(r"(?<![\w.])" + re.escape(module) + r"(?![\w])")
+    if any(word.search(text) for text in getattr(index, "extra_texts", [])):
+        return True
+    for tree in index.trees.values():
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                if word.match(node.value) and not any(c.isspace() for c in node.value):
+                    return True
+    return False

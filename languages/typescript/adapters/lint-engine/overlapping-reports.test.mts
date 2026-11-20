@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { withoutSupersededMessages } from './overlapping-reports.mts';
 
 const RULE = 'nitpicker/no-accumulating-spread';
-const noLet = { ruleId: 'functional/no-let', line: 4, column: 3, endLine: 4, endColumn: 40 };
+const LOOP_BAN = 'domain/ code has no loops: transform with map, filter or flatMap.';
+const loopBan = {
+  ruleId: 'no-restricted-syntax',
+  message: LOOP_BAN,
+  line: 4,
+  column: 3,
+  endLine: 8,
+  endColumn: 4,
+};
 
 function spread(messageId: string, line: number, column: number) {
   return { ruleId: RULE, messageId, line, column, endLine: line, endColumn: column + 3 };
@@ -29,32 +37,31 @@ describe('withoutSupersededMessages', () => {
     expect(withoutSupersededMessages([typed, step, other])).toEqual([typed, other]);
   });
 
-  it('drops a loop accumulator report inside a let declaration that no-let already reports', () => {
-    const messages = [noLet, spread('loopArray', 4, 7), spread('domainLoopObject', 4, 40)];
-    expect(withoutSupersededMessages(messages)).toEqual([noLet]);
+  it('drops a domain loop accumulator report inside a loop that the domain loop ban reports', () => {
+    const messages = [loopBan, spread('domainLoopArray', 6, 12), spread('domainLoopObject', 7, 5)];
+    expect(withoutSupersededMessages(messages)).toEqual([loopBan]);
   });
 
-  it('keeps reduce reports, reports outside the declaration and lines without a no-let report', () => {
+  it('keeps reduce reports, other loop messages and reports outside the loop ban', () => {
     const kept = [
-      spread('reduceArray', 4, 20),
-      spread('loopArray', 4, 2),
-      spread('loopArray', 4, 41),
-      spread('loopArray', 3, 7),
-      spread('loopArray', 5, 1),
+      spread('domainReduceArray', 6, 20),
+      spread('loopArray', 6, 12),
+      spread('domainLoopArray', 3, 7),
+      spread('domainLoopArray', 9, 1),
     ];
-    expect(withoutSupersededMessages([noLet, ...kept])).toEqual([noLet, ...kept]);
+    expect(withoutSupersededMessages([loopBan, ...kept])).toEqual([loopBan, ...kept]);
   });
 
-  it('reads a declaration over several lines and needs the end of the no-let report', () => {
-    const multiLine = { ...noLet, endLine: 6, endColumn: 2 };
-    const inside = [spread('loopArray', 5, 80), spread('loopArray', 6, 2)];
-    expect(withoutSupersededMessages([multiLine, ...inside])).toEqual([multiLine]);
-    const withoutEnd = { ruleId: 'functional/no-let', line: 4, column: 3 };
-    expect(withoutSupersededMessages([withoutEnd, spread('loopArray', 4, 7)])).toHaveLength(2);
+  it('needs the loop ban message and its end', () => {
+    const other = { ...loopBan, message: 'something else' };
+    const withoutEnd = { ruleId: 'no-restricted-syntax', message: LOOP_BAN, line: 4, column: 3 };
+    const site = spread('domainLoopArray', 6, 12);
+    expect(withoutSupersededMessages([other, site])).toHaveLength(2);
+    expect(withoutSupersededMessages([withoutEnd, site])).toHaveLength(2);
   });
 
   it('passes through entries that are not messages', () => {
-    expect(withoutSupersededMessages([null, 'text', noLet])).toEqual([null, 'text', noLet]);
+    expect(withoutSupersededMessages([null, 'text', loopBan])).toEqual([null, 'text', loopBan]);
   });
 });
 

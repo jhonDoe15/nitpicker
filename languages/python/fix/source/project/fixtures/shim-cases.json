@@ -1,0 +1,43 @@
+{
+  "shim": {
+    "app/__init__.py": "",
+    "app/client.py": "class Client:\n    pass\n\n\nOldClient = Client\n\n\ndef make() -> Client:\n    return OldClient()\n",
+    "app/use.py": "from app.client import OldClient\n\n\ndef build() -> OldClient:\n    return OldClient()\n",
+    "app/other.py": "import app.client as client\n\n\ndef build():\n    return client.OldClient()\n"
+  },
+  "shim-reexport": {
+    "app/__init__.py": "from app.client import OldClient\n",
+    "app/client.py": "class Client:\n    pass\n\n\nOldClient = Client\n\n\ndef make() -> Client:\n    return OldClient()\n",
+    "app/use.py": "from app import OldClient\n\n\ndef build():\n    return OldClient()\n"
+  },
+  "shim-named": {
+    "app/__init__.py": "",
+    "app/client.py": "__all__ = [\"Client\", \"OldClient\"]\n\n\nclass Client:\n    pass\n\n\nOldClient = Client\n",
+    "app/use.py": "from app.client import OldClient\n\n\ndef build():\n    return OldClient()\n"
+  },
+  "shim-renamed-import": {
+    "app/__init__.py": "",
+    "app/client.py": "class Client:\n    pass\n\n\nOldClient = Client\n\n\ndef make() -> Client:\n    return OldClient()\n",
+    "app/use.py": "from app.client import OldClient as Legacy\n\n\ndef build():\n    return Legacy()\n"
+  },
+  "shim-unused": {
+    "app/__init__.py": "",
+    "app/client.py": "class Client:\n    pass\n\n\nOldClient = Client\n"
+  },
+  "shim-imported-target": {
+    "app/__init__.py": "",
+    "app/core.py": "class Client:\n    pass\n",
+    "app/client.py": "from app.core import Client\n\n\nOldClient = Client\n",
+    "app/use.py": "from app.client import OldClient\n\n\ndef build():\n    return OldClient()\n"
+  },
+  "shim-caller-binds-target": {
+    "app/__init__.py": "",
+    "app/client.py": "class Client:\n    pass\n\n\nOldClient = Client\n",
+    "app/use.py": "from app.client import Client, OldClient\n\n\ndef build():\n    return Client(), OldClient()\n"
+  },
+  "shim-package-attribute": {
+    "app/__init__.py": "from app.client import OldClient\n",
+    "app/client.py": "class Client:\n    pass\n\n\nOldClient = Client\n\n\ndef make() -> Client:\n    return OldClient()\n",
+    "app/use.py": "import app\n\n\ndef build():\n    return app.OldClient()\n"
+  }
+}
