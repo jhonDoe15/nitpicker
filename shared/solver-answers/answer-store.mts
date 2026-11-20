@@ -38,7 +38,7 @@ function entryOf(line: string): readonly [string, unknown] | undefined {
 
 function linesOf(file: string): string[] {
   try {
-    return readFileSync(file, 'utf8').split('\n').slice(0, -1);
+    return readFileSync(file, 'utf8').split(/\r?\n/u).slice(0, -1);
   } catch (error) {
     return error instanceof Error ? [] : [String(error)];
   }
