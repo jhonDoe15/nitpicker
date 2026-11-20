@@ -31,10 +31,31 @@ export function skippedFiles(stderr: string): SkippedFile[] {
   return stderr.split(/\r?\n/u).flatMap(skippedFileOf);
 }
 
-export function reportSkippedFiles(stderr: string, output: TextOutput = process.stderr): void {
-  for (const { file, reason } of skippedFiles(stderr)) {
+const LISTED_SKIPPED_FILES = 20;
+
+function skippedFileWarning({ file, reason }: SkippedFile): string {
+  return `dependency-cruiser could not read ${file}, so the dependency graph leaves out its imports: ${reason}\n`;
+}
+
+export function reportSkippedFiles(
+  stderr: string,
+  moduleCount: () => number,
+  output: TextOutput = process.stderr,
+): void {
+  const skipped = skippedFiles(stderr);
+  const [first] = skipped;
+  if (first === undefined) return;
+  const modules = moduleCount();
+  if (skipped.length * 2 > modules) {
+    throw new Error(
+      `dependency-cruiser could not read ${String(skipped.length)} of ${String(modules)} files; ` +
+        `the first, ${first.file}: ${first.reason}`,
+    );
+  }
+  for (const file of skipped.slice(0, LISTED_SKIPPED_FILES)) output.write(skippedFileWarning(file));
+  if (skipped.length > LISTED_SKIPPED_FILES) {
     output.write(
-      `dependency-cruiser could not read ${file}, so the dependency graph leaves out its imports: ${reason}\n`,
+      `dependency-cruiser could not read ${String(skipped.length - LISTED_SKIPPED_FILES)} more files\n`,
     );
   }
 }

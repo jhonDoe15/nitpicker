@@ -170,8 +170,9 @@ export function cruise(
     (environment) => spawnDependencyCruiser(paths, environment),
   );
   assertSuccessful(result);
-  reportSkippedFiles(result.stderr);
-  return parseGraph(result.stdout);
+  const graph = parseGraph(result.stdout);
+  reportSkippedFiles(result.stderr, () => graph.modules.length);
+  return graph;
 }
 
 export function normalizePath(value: string): string {

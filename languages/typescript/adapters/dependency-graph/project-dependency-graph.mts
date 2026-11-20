@@ -19,7 +19,7 @@ import {
 import { readLayout } from '../../preset/head-policy.mts';
 import { revivedExpression as untypedRevivedExpression } from '../../preset/project-tools/config-values.mts';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
-import { textOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import { policyPath } from '../static-checks/shared.mts';
 import {
   type GraphLayer,
@@ -159,8 +159,9 @@ function runCruise(cruise: Cruise): string {
       },
     );
     assertCruised(result);
-    reportSkippedFiles(result.stderr);
-    return compactGraphText(result.stdout);
+    const text = compactGraphText(result.stdout);
+    reportSkippedFiles(result.stderr, () => listOf(fieldOf(JSON.parse(text), 'modules')).length);
+    return text;
   } finally {
     wrapper.remove();
   }
