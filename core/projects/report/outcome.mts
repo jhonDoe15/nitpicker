@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fieldOf, listOf, numberOr, optionalText } from '../../../shared/values/readers.mts';
 import type { ProjectOutcome } from '../project-types.mts';
@@ -13,7 +13,14 @@ type Facts = {
 };
 
 function readJson(file: string): unknown {
-  return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : undefined;
+  if (statSync(file, { throwIfNoEntry: false })?.isFile() !== true) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(readFileSync(file, 'utf8'));
+  } catch {
+    return undefined;
+  }
 }
 
 function readCounts(reportRoot: string): Counts {

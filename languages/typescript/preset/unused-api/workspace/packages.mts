@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { projectFilePaths as untypedProjectFilePaths } from '../../../../../shared/project-files/project-files.mjs';
-import { fieldsOf, fieldOf, listOf, parseJson } from '../../../../../shared/values/readers.mts';
+import { fieldsOf, fieldOf, hasField, listOf, parseJson } from '../../../../../shared/values/readers.mts';
 import { globMatcher as untypedGlobMatcher } from '../../layout.mts';
 import { pnpmPackagePatterns } from './pnpm-workspace.mts';
 import type { PackagesInfo, ProgramLayout, PublishableEntry } from './workspace-types.mts';
@@ -88,7 +88,7 @@ function memberDirectories(root: string, layout: PackageLayout): string[] {
 }
 
 function isPublished(manifest: Manifest): boolean {
-  return manifest.private !== true && PUBLISH_FIELDS.some((field) => manifest[field] !== undefined);
+  return manifest.private !== true && PUBLISH_FIELDS.some((field) => hasField(manifest, field));
 }
 
 function packageEntry(directory: string): PublishableEntry | undefined {

@@ -20,7 +20,7 @@ export type QualityCheck = {
   readonly publishesModuleImports?: true;
   readonly colocatedWith?: readonly string[];
   readonly carriedBy?: string;
-  readonly carries?: boolean;
+  readonly carries?: true;
   readonly patterns?: readonly string[];
   readonly configRelativePath?: string;
   readonly ignoreRelativePath?: string;

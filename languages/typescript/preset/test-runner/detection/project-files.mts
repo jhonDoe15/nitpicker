@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { fieldsOf } from '../../../../../shared/values/readers.mts';
+import { fieldsOf, hasField } from '../../../../../shared/values/readers.mts';
 import type { PackageManifest, RunnerEvidence } from '../typed/command-types.mts';
 
 type RunnerEntry = readonly [string, readonly string[]];
@@ -67,7 +67,7 @@ function configFile(
   if (file !== undefined) {
     return file;
   }
-  return manifest[runner] === undefined ? undefined : `package.json "${runner}"`;
+  return hasField(manifest, runner) ? `package.json "${runner}"` : undefined;
 }
 
 export function configEvidence(projectRoot: string, manifest: PackageManifest): RunnerEvidence[] {

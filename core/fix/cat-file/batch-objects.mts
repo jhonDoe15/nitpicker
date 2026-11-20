@@ -25,7 +25,7 @@ function readBatchHeader(output: Buffer, offset: number): { header: string; next
 
 function parseBlobSize(header: string): number {
   const fields = header.split(' ');
-  const size = Number(fields[2]);
+  const size = Number.parseInt(fields[2] ?? '', 10);
   if (
     fields.length !== BLOB_HEADER_FIELDS ||
     fields[1] !== 'blob' ||
