@@ -32,13 +32,6 @@ const NEGATED_MATCHERS = new Set(['toHaveBeenCalled', 'toBeCalled']);
 const CALL_RECORDS = new Set(['calls', 'results', 'callCount']);
 const MOCKED_WRAPPERS = new Set(['mocked']);
 
-const TYPE_WRAPPERS = new Set<string>([
-  AST_NODE_TYPES.TSAsExpression,
-  AST_NODE_TYPES.TSNonNullExpression,
-  AST_NODE_TYPES.TSSatisfiesExpression,
-  AST_NODE_TYPES.TSTypeAssertion,
-]);
-
 type Lists = Readonly<Record<string, readonly string[]>>;
 
 function runnerMember(apis: RunnerApis, node: TSESTree.Node, lists: Lists): boolean {
@@ -90,7 +83,10 @@ export function clearsEveryMock(apis: RunnerApis, node: TSESTree.CallExpression)
 }
 
 function withoutTypes(node: TSESTree.Node): TSESTree.Node {
-  return TYPE_WRAPPERS.has(node.type) && 'expression' in node
+  return node.type === AST_NODE_TYPES.TSAsExpression ||
+    node.type === AST_NODE_TYPES.TSNonNullExpression ||
+    node.type === AST_NODE_TYPES.TSSatisfiesExpression ||
+    node.type === AST_NODE_TYPES.TSTypeAssertion
     ? withoutTypes(node.expression)
     : node;
 }
