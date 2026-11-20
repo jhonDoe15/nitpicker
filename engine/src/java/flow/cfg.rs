@@ -210,7 +210,7 @@ impl<'t> Builder<'t, '_> {
                 }
                 self.step(node);
             }
-            "switch_expression" => self.switch(node),
+            "switch_expression" => self.switch(node, false),
             "assignment_expression" => {
                 let left = node.child_by_field_name("left").expect("left");
                 let compound = operator != Some("=");
@@ -504,7 +504,7 @@ impl<'t> Builder<'t, '_> {
                 self.dead();
             }
             "try_statement" | "try_with_resources_statement" => self.guarded(node),
-            "switch_expression" => self.switch(node),
+            "switch_expression" => self.switch(node, true),
             "synchronized_statement" => {
                 for part in named_children(node) {
                     if part.kind() == "block" { self.statement(part) } else { self.expression(part) }
@@ -597,7 +597,8 @@ impl<'t> Builder<'t, '_> {
         self.current = after;
     }
 
-    fn switch(&mut self, node: Node<'t>) {
+    /// A `switch` used as a statement can match no case when it has no `default`, with arrows too.
+    fn switch(&mut self, node: Node<'t>, statement: bool) {
         if let Some(condition) = node.child_by_field_name("condition") {
             self.expression(condition);
         }
@@ -611,7 +612,7 @@ impl<'t> Builder<'t, '_> {
         });
         let rules = cases.iter().any(|case| case.kind() == "switch_rule");
         let mut exits = blocks.clone();
-        if !total && !rules {
+        if !total && (!rules || statement) {
             exits.push(after);
         }
         if exits.is_empty() {

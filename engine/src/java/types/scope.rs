@@ -217,7 +217,12 @@ impl<'a> Resolver<'a> {
         ];
         let mut holder = Some(at);
         while let Some(node) = holder.filter(|node| !SCOPES.contains(&node.kind())) {
-            holder = crate::engine::source::parent(node);
+            // A record's components see its member types, which the places around the record do not.
+            let above = crate::engine::source::parent(node);
+            if above.is_some_and(|above| above.kind() == "record_declaration" && above.child_by_field_name("parameters") == Some(node)) {
+                return self.find_simple(at, name);
+            }
+            holder = above;
         }
         let Some(holder) = holder else { return self.find_simple(at, name) };
         let key = (holder.id(), name.to_string());
@@ -243,7 +248,9 @@ impl<'a> Resolver<'a> {
                 }
             }
             // Names in the header of a class are looked up around it: its members and what it inherits are not in scope there.
-            let header = TYPE_DECLARATIONS.contains(&node.kind()) && node.field("body") != Some(inner);
+            // The components of a record are the exception: they see the record's member types.
+            let components = node.kind() == "record_declaration" && node.child_by_field_name("parameters") == Some(inner);
+            let header = TYPE_DECLARATIONS.contains(&node.kind()) && node.child_by_field_name("body") != Some(inner) && !components;
             if let Some(owner) = class_at(self.scope, node, inner).filter(|_| !header) {
                 for ancestor in self.index.lineage(&owner).iter() {
                     let nested = format!("{ancestor}.{name}");

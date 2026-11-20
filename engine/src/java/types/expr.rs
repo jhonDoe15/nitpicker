@@ -130,6 +130,7 @@ pub enum Receiver {
     Static(String),
 }
 
+#[derive(Clone)]
 enum Shape {
     Typed(Type),
     /// A lambda or method reference, with the parameter counts it can take (empty when not known),
@@ -494,7 +495,8 @@ impl<'a> Resolver<'a> {
             if listed.iter().any(|(start, known, _)| known == name && *start < usage.start_byte() && !self.pattern_visible(*start, usage)) {
                 return None;
             }
-            return declared.find_map(|(_, _, kind)| kind.clone());
+            // Two patterns can bind the same name one after the other: the nearest one before the usage is meant.
+            return declared.last().and_then(|(_, _, kind)| kind.clone());
         }
         None
     }
@@ -694,6 +696,26 @@ impl<'a> Resolver<'a> {
             .collect()
     }
 
+    /// The shapes once more, with nothing said about arguments whose type only their target decides: calls of a
+    /// generic method whose result is a type variable that none of its parameters mention.
+    fn loosened(&self, call: Node, shapes: &[Shape]) -> Option<Vec<Shape>> {
+        let mut changed = false;
+        let mut loose = Vec::new();
+        for (argument, shape) in call_arguments(call).into_iter().zip(shapes) {
+            let argument = unwrap(argument);
+            let free = matches!(shape, Shape::Typed(_))
+                && argument.kind() == "method_invocation"
+                && argument.child_by_field_name("type_arguments").is_none()
+                && self.resolve_call(argument).is_some_and(|inner| match &inner.method.generic_returns {
+                    Type::Variable(name) => inner.method.type_parameters.contains(name) && !inner.method.generic_parameters.iter().any(|kind| mentions(kind, name)),
+                    _ => false,
+                });
+            changed |= free;
+            loose.push(if free { Shape::Unknown } else { shape.clone() });
+        }
+        changed.then_some(loose)
+    }
+
     /// Counts one step of work and tells whether the question in progress has used up its share.
     fn spent(&self) -> bool {
         self.work.set(self.work.get() + 1);
@@ -743,7 +765,9 @@ impl<'a> Resolver<'a> {
                 let chosen = self.select(owner, &candidates, &shapes)?;
                 return Some(Call { receiver: Type::class(&chosen.declaring), ..chosen });
             }
-            return self.select(owner, &candidates, &shapes).map(|call| Call { raw, ..call });
+            let strict = self.select(owner.clone(), &candidates, &shapes);
+            let found = strict.or_else(|| self.loosened(call, &shapes).and_then(|loose| self.select(owner, &candidates, &loose)));
+            return found.map(|call| Call { raw, ..call });
         }
         None
     }
@@ -989,10 +1013,11 @@ impl<'a> Resolver<'a> {
         }
         let mut found = None;
         crate::engine::source::walk(body, |node| {
-            if found.is_none() && node.kind() == "return_statement" {
+            // A `return null` says nothing about the type: the first return that has one decides.
+            if matches!(found, None | Some(Type::Null)) && node.kind() == "return_statement" {
                 let nested = crate::engine::source::ancestor(node, &["lambda_expression", "class_body"]);
                 if nested.is_some_and(|scope| scope == lambda) {
-                    found = node.named_child(0).and_then(|value| self.type_of(value));
+                    found = node.named_child(0).and_then(|value| self.type_of(value)).or(found.take());
                 }
             }
         });
