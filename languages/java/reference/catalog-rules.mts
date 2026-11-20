@@ -1,4 +1,5 @@
 import {
+  counterpartsOf,
   paragraphsOf,
   ruleEntry,
   splitFirstSentence,
@@ -207,5 +208,35 @@ export function catalogRuleEntries({
     return Object.entries(readCatalog(tool))
       .filter(([rule]) => tool !== 'pmd' || !skippedPmd.has(rule))
       .map(([rule, fields]) => entryOf({ tool, rule, fields }, describe));
+  });
+}
+
+export function pmdGuideEntry({
+  rule,
+  summary,
+  why,
+  allowed,
+  anchor,
+}: {
+  rule: string;
+  summary: string;
+  why: string;
+  allowed: string;
+  anchor: string;
+}): RuleEntry {
+  return ruleEntry({
+    page: 'java-nitpicker',
+    analyzers: JVM_ANALYZERS,
+    builds: JVM_BUILDS,
+    tool: 'pmd',
+    rule,
+    summary,
+    why,
+    allowed,
+    exception: { key: 'exceptions', rule: `pmd/${rule}` },
+    docs: [
+      { label: 'Java preset guide', path: 'docs/java-preset.md', anchor },
+      ...counterpartsOf(`pmd/${rule}`),
+    ],
   });
 }

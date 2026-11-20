@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "pair-split-drops-rest",
+    "mention": "partition"
+  }
+]

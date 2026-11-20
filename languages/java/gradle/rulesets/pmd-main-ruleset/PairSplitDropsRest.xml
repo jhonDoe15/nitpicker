@@ -1,0 +1,23 @@
+  <rule name="PairSplitDropsRest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This reads the second part of a String.split on &quot;:&quot; or &quot;=&quot;, so a value that contains the separator (a URL, a message, a base64 =) loses everything after it, and a text without the separator throws ArrayIndexOutOfBoundsException. Split once with a limit: text.split(&quot;:&quot;, 2) and check the length, or cut at text.indexOf(&quot;:&quot;). A format that cannot hold the separator twice takes an exceptions entry.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $split := function($e) {
+      exists($e[self::MethodCall][@MethodName = 'split'][ArgumentList/@Size = 1]
+        [pmd-java:matchesSig('java.lang.String#split(java.lang.String)')]
+        [ArgumentList/StringLiteral[@Image = ('":"', '"="')]]
+        [not(matches(string-join(*[1]/descendant-or-self::*/(@Name, @MethodName), ' '), 'time|clock|duration|ratio|aspect', 'i'))])
+    }
+return //ArrayAccess[*[2][self::NumericLiteral][@Image = '1']][
+  $split(*[1])
+  or *[1][self::VariableAccess][let $name := @Name return
+    ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1]
+      [.//LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name][$split(*[2])]]
+      [not(.//FieldAccess[@Name = 'length'][*[1][self::VariableAccess[@Name = $name]]])]]
+]
+]]></value>
+      </property>
+    </properties>
+  </rule>

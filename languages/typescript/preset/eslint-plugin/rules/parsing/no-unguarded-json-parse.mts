@@ -1,27 +1,19 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { ancestorsOf, nameOf } from '../typed/node-views.mts';
+import { ancestorsOf, contains, nameOf } from '../typed/node-views.mts';
 import { isJsonCall } from '../json-values/no-lossy-json-stringify.mts';
-import { inBlock } from './no-unhandled-url-parse.mts';
+import { isInsideTry } from './handled-contexts.mts';
 import { isStoredText } from './stored-text-sources.mts';
 
-const NAMED_FUNCTIONS = new Set<string>([
-  AST_NODE_TYPES.FunctionDeclaration,
-  AST_NODE_TYPES.FunctionExpression,
-]);
-
 function isHandled(node: TSESTree.Node): boolean {
-  const ancestors = ancestorsOf(node);
-  const scope = ancestors.find((ancestor) => NAMED_FUNCTIONS.has(ancestor.type));
-  return ancestors.some(
-    (ancestor) =>
-      (ancestor.type === AST_NODE_TYPES.TryStatement &&
-        ancestor.handler !== null &&
-        inBlock(ancestor.block, node) &&
-        (scope === undefined || inBlock(scope, ancestor))) ||
-      (ancestor.type === AST_NODE_TYPES.CallExpression &&
+  return (
+    isInsideTry(node) ||
+    ancestorsOf(node).some(
+      (ancestor) =>
+        ancestor.type === AST_NODE_TYPES.CallExpression &&
         ancestor.callee.type === AST_NODE_TYPES.MemberExpression &&
         nameOf(ancestor.callee.property) === 'catch' &&
-        inBlock(ancestor.callee.object, node)),
+        contains(ancestor.callee.object, node),
+    )
   );
 }
 

@@ -1,3 +1,4 @@
+import { globSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { fallbackLabels, findingLabeler, labelCounts, withLabels } from './finding-labels.mts';
 import { GOCRITIC_CHECKERS, GO_RULE_NAMES, goLabels } from './go-labels.mts';
@@ -112,5 +113,15 @@ describe('goLabels', () => {
     ];
 
     expect(all.flat().filter((label) => !LABELS.includes(label))).toEqual([]);
+  });
+
+  it('labels every analyzer of the Go rules', () => {
+    const analyzerName = /^\s+Name:\s+"([a-z0-9_]+)",$/gmu;
+    const names = globSync('languages/go/lint/rules/*/*.go').flatMap((file) =>
+      [...readFileSync(file, 'utf8').matchAll(analyzerName)].map((match) => match[1]),
+    );
+
+    expect(names.length).toBeGreaterThan(40);
+    expect(names.filter((name) => !GO_RULE_NAMES.includes(name))).toEqual([]);
   });
 });

@@ -10,5 +10,6 @@ class Config:
 
     def refresh(self) -> None:
         response = requests.get("https://config.example.com", timeout=10)
+        response.raise_for_status()
         with self._lock:
             self.value = response.json()

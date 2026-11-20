@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "host-port-colon-split",
+    "mention": "urlsplit"
+  }
+]

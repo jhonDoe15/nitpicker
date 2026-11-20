@@ -1502,6 +1502,77 @@ row.status = next; return repo.save(row);`). A retry that does not name the conf
   (`readdirSync(dir).map((name) => path.join(dir, name))`, also `for (const name of
 await readdir(dir))`, `opendir` and `Dirent.name`); joined onto another base, or with another
   parameter after it, it is still reported.
+- `nitpicker/no-prefix-without-boundary` (production code): a text prefix, suffix or substring check on a
+  path, route, package or host, where a sibling that only shares the text passes. It reports
+  `a.startsWith(b)` when `b` is named like a path (`base`, `rootDir`, `basePath`, `packageName`, `route`,
+  `pathname`, `host`, `getBase()`) or is built from a path-shaped literal and a value
+  (`` `/repos/${owner}/${name}` ``, `'/repos/' + owner`) without a separator at the end, `startsWith` with a bare
+  origin (`'http://localhost'`, `'https://example.com'`: `http://localhost.attacker.example` passes), `a.endsWith(b)`
+  where either side is a host or domain without a leading `.` or `@` (`hostname.endsWith(domain)`), and
+  with a host or domain name. A name `prefix` counts when the receiver is a directory or path. Allowed forms: `a === b || a.startsWith(`${b}/`)` (an equality test of
+  the same two values in the same condition), `b + path.sep`, a value that ends in `/`, `\\`, `.`, `:` or `-`
+  (also through a `const`), `withTrailingSlash(b)`, `host === domain || host.endsWith(`.${domain}`)`,
+  `domain.startsWith('.') && host.endsWith(domain)`, a value normalised by a conditional or `+=` before the check, a check on
+  the character or length after the prefix (`a[base.length] === '/'`), a bracket test (`host.endsWith(']')`), `includes('node_modules')`, `new URL(x).hostname === 'localhost'`, a regular
+  expression anchored on separators, and `path.relative`. A plain string literal such as `'/api'` is left alone
+  (a deliberate text prefix), and so is a `startsWith` with a position. The guard of `nitpicker/no-unsafe-path-join`
+  covers only the check in front of an `fs` call; this rule covers URL paths, route matching, module ids,
+  package names and domains. The same form runs as `pmd/AffixWithoutBoundary` (Java and Kotlin).
+- `nitpicker/no-unanchored-affix-replace` (production code): `x.replace(pattern, replacement)` with a string
+  pattern (not `replaceAll`, not a regular expression) that removes a suffix or prefix, where the first occurrence
+  anywhere is replaced: a constant that looks like a file or URL suffix with an empty replacement
+  (`name.replace('.git', '')` turns `blog.github.io` into `bloghub.io`), a value read from a parsed URL
+  (`url.replace(parsed.port, next)`, `url.replace(base.pathname, '')`), `os.homedir()` or `process.cwd()`, or a
+  name ending in `Dir`, `Root`, `Base`, `Path` or `Prefix` (`file.replace(workspaceRoot, '')`). Allowed forms: an
+  anchored pattern (`/\.git$/`), `endsWith` or `startsWith` with `slice`, setting the field on the parsed URL
+  (`url.port = next`), and a replace in the passing branch of a `startsWith` or `endsWith` check of the same
+  value, including the body of an `if` on that check, a `.map` after a `.filter` with the check, and a receiver that was
+  built with that suffix (`` `${id}.json` ``). The same form
+  runs as `pmd/AffixRemovedByReplace` (Java and Kotlin).
+- `nitpicker/no-case-mismatched-lookup` (production code): a lookup (`includes`, `has`, `get`, `indexOf`,
+  `delete`) with a key from `toLowerCase()` or `toUpperCase()` (also the locale forms) in a collection that is not
+  normalized the same way: an array, `new Set([...])` or `new Map([[...]])` of string literals of which one is not
+  already in that case (`['GET', 'POST'].includes(method.toLowerCase())` never matches), a `const set = new Set(names)`
+  copied from a parameter of the same function, and the reverse: a collection filled with `key.toLowerCase()`
+  (`add`, `set`, `push`) in the same function (or class, for `this.field`) and looked up with `key` as written.
+  Allowed forms: normalize both sides where the collection is built
+  (`new Set(names.map((name) => name.toLowerCase()))`), a key normalized into a local before both the fill and
+  the lookup, a collection of literals already in the key's case, and `localeCompare` or a case-insensitive
+  comparison. A collection that arrives as a parameter or from a call is not reported (the caller owns its case).
+  The same form runs as `pmd/CaseMismatchedLookup` (Java and Kotlin).
+- `nitpicker/no-mismatched-precondition-message` (production code): `assert(x, 'msg')`, `assert.ok`,
+  `invariant(x, 'msg')`, and `if (!x) throw new Error('msg')` or `if (x == null) throw ...` (also `=== undefined`,
+  `=== null`) whose message starts with `<word> must`, `<word> is`, `<word> cannot` and the like, where
+  `<word>` (also with a lower-case first letter) is a parameter, local or class member in scope that is not the
+  checked expression. The checked names are the identifiers of `x` (`user.id` gives `user` and `id`). Allowed forms:
+  a message that names the checked value, a message about its type or concept (the last word matches:
+  `TimeUnit` for `targetTimeUnit`), a function name at the start of the message
+  (`useThing must be used inside a provider`), a first word that is an import, a class or a function (`Stripe is not
+  configured`), a checked value derived from the named one (`const stripped = title.trim()` then `!stripped` with
+  `title must be set`), a message that also names the checked value, and conditions that read more than one value.
+  The same form runs as `pmd/PreconditionMessageNamesOtherValue` (Java and Kotlin).
+- `nitpicker/no-malformed-query-text` (production code): query text that is malformed once its literal parts are
+  joined. The text is a string, a template (interpolations are opaque) or a `+` chain that starts with a query keyword
+  (`SELECT`, `INSERT INTO`, `UPDATE ... SET`, `DELETE FROM`, `MERGE INTO`, `WITH`) or a fragment (`AND`, `OR`,
+  `WHERE`, `ORDER BY`, `JOIN`...). Reported: a comparison operator, `LIKE`, `IN` or `BETWEEN` that ends the text
+  with no operand (the text is returned as a query, passed to `query`, `execute`, `run`, `prepare`, `raw` and the
+  like, or assigned with `=` or `+=` and the next statement does not use the variable: `where += ' AND g LIKE ';`),
+  an operator followed by `AND`, `OR`, `ORDER`, `GROUP`, `LIMIT`, `HAVING` or `UNION`, an `INSERT` whose literal
+  column list and `VALUES` list differ in length, and two literal parts joined into a run-together word next to a
+  query or Lua keyword (`'FROM t' + 'WHERE a = ?'`, `'... then' + 'redis.call(...)'`). Allowed forms: a bind
+  placeholder or value after the operator, a space at the start of every appended fragment, and a fragment that
+  the next statement continues. Builder chains (`qb.append(...)`), loops and dialect syntax are not checked. The
+  same form runs as `pmd/MalformedQueryText` (Java and Kotlin).
+- `nitpicker/no-unpaged-listing` (production code): an object-store or search listing read once. `new
+  ListObjectsV2Command(input)`, `ListObjectsCommand` and `ListObjectVersionsCommand` (AWS SDK v3), and an
+  `s3.listObjectsV2({ ... })` call (AWS SDK v2) whose function never mentions a page marker
+  (`NextContinuationToken`, `ContinuationToken`, `IsTruncated`, `NextMarker`, `Marker`, `StartAfter`,
+  `paginateListObjectsV2`) and whose input has no `MaxKeys`; and a node-redis `client.ft.search(index, query)` with no
+  options or options without `LIMIT`. The API returns one page (1000 keys, or 10 search documents) and the rest is
+  silently ignored. Allowed forms: `paginateListObjectsV2(config, input)`, a loop on `NextContinuationToken` and
+  `IsTruncated`, `MaxKeys: 1` for an existence check, a result only tested for presence (`r.KeyCount > 0`,
+  `r.Contents?.length === 0`), a `LIMIT` option in a loop, and options passed as a variable.
+  The same form runs as `pmd/UnpagedListing` (Java and Kotlin).
 - Blocking calls in async code (`nitpicker/no-sync-node-api-in-async`, production code): a
   synchronous Node call inside an `async` function or a request handler blocks the event loop, so
   every other request waits. The calls are every `*Sync` function of `fs`, `fs-extra` and
@@ -1994,7 +2065,69 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `@param {boolean} [force]` with no default, and `Promise<boolean|undefined>` in `@returns`.
   `[force=false]` (a default given), `@property` tags and dotted option names
   (`@param {boolean} [options.verbose]`) are not reported.
-- `nitpicker/no-unhandled-url-parse`: `new URL(text)` or `new URL(text, base)` (also
+- `nitpicker/no-truncating-pair-split`: `const [key, value] = text.split(':')` (two names, no rest element,
+  also an assignment or a default) and `text.split('=')[1]`, on a separator of `:` or `=`. The split keeps every
+  part, so a value that contains the separator (a URL, a message with colons, a base64 `=`) loses everything after
+  its second one; `split(sep, 2)` drops the rest the same way in JavaScript. Allowed forms: cut at the first
+  separator with `indexOf` and `slice`, `[key, ...rest]` with `rest.join(sep)`, or a regular expression with a
+  group for the rest. A constant receiver, a receiver named like a clock text (`time`, `clock`, `duration`,
+  `hhmm`, `ratio`, `aspect`), destructured names such as `hours` and `minutes`, a part that is only compared to a
+  string literal (`row.split('=')[1] === 'true'`) and a receiver that a `startsWith` check on the same text
+  in the same function already tied to the key (`arg.startsWith('--scope=')`) are not reported, and a split on
+  another separator is not. The same form runs as `pmd/PairSplitDropsRest` (Java),
+  `kotlin-source/PairSplitDropsRest` (Kotlin), `pair-split-drops-rest` (Python, with `partition` and `split(sep,
+  1)` as the allowed forms) and `go-rules/pair-split-drops-rest` (Go, with `strings.Cut`), which skip the same
+  clock-like names.
+- `nitpicker/no-ambiguous-lookup-key` (type-aware): a key of `Map` or `WeakMap` `set`, `get`, `has` and
+  `delete`, of `Set` `add`, `has` and `delete`, or a computed key written into a `Record<string, ...>`
+  (`groups[key] ??= []`), built from runtime values with a delimiter: a template with two or more
+  interpolations separated by punctuation, `[a, b].join('-')` or `a + ':' + b`, directly or through a `const`.
+  Reported when two parts have type `string` (not a literal, enum or literal union, and not named like an id,
+  `hash`, `index` or `count`) or a part is an object, which becomes `[object Object]`. Different tuples then
+  share one key (`'a-b'` with `'c'` and `'a'` with `'b-c'`), so one entry overwrites another. Allowed forms:
+  `JSON.stringify([a, b])`, a nested `Map`, an encoder that escapes the delimiter, or parts that are numbers.
+  One string part with numbers is not reported, since the number cannot hold the delimiter, and neither is a
+  `toString()` of a value typed `number | bigint`, or a key that holds `Date.now()`, `Math.random()` or a
+  generated id, since it is unique anyway. The same form runs as `pmd/DelimitedLookupKey` (Java),
+  `delimited-lookup-key` (Python) and `go-rules/delimited-lookup-key` (Go).
+- `nitpicker/no-host-port-colon-split`: `host.split(':')` (with or without a limit) or
+  `host.slice(0, host.indexOf(':'))` on a value named `host`, `hostname`, `authority`, `origin` or `*Host` (also
+  as a property), or on a read of the `host`, `x-forwarded-host` or `:authority` header (`req.get('host')`,
+  `headers.get('host')`, `req.headers.host`, `req.headers['x-forwarded-host']`). An IPv6 literal (`[::1]:3000`)
+  has colons of its own, so the host becomes `[` and the port is lost or wrong. Allowed: ``new URL(`http://${host}`)``
+  with `hostname` and `port`, or cutting after the closing bracket. A function (or module) that mentions `isIPv6`
+  or a `'['` or `']'` literal is skipped, `lastIndexOf(':')` is not reported, and `address` and `addr` are not
+  host names here, since a MAC or IPv6 address is split on `:` legitimately. The same form runs as
+  `pmd/HostPortColonSplit` (Java), `kotlin-source/HostPortColonSplit` (Kotlin), `host-port-colon-split`
+  (Python) and `go-rules/host-port-colon-split` (Go). A cut at an index read first
+  (`const i = host.indexOf(':'); host.slice(0, i)`) is reported like the inline form.
+- `nitpicker/no-newline-only-line-split`: `split('\n')`, `split(/\n/)`, `indexOf('\n')` or `lastIndexOf('\n')` on text
+  read from a file (`readFile`, `readFileSync`, `readTextFile`, `Bun.file(..).text()`, awaited, `toString()` or
+  trimmed, directly or through a `const`) or on a comment's `.value`. With CRLF line endings every line keeps a
+  trailing `\r`, and text that uses a lone `\r` is not split at all. Allowed: `split(/\r\n|\r|\n/)`, `split(/\r?\n/)`,
+  `os.EOL`, or normalising the line endings once where the file is read; a function that mentions `\r` or `EOL` is
+  skipped, and text the program built itself is not reported. The write side (joining with `'\n'` and writing back)
+  is not checked. The same form runs as `pmd/NewlineOnlyLineSplit` (Java) and `kotlin-source/NewlineOnlyLineSplit`
+  (Kotlin).
+- `nitpicker/no-surrogate-splitting-cut`: `text.slice(0, n)`, `substring(0, n)` or `substr(0, n)` of a string
+  (checked with the type checker; without types only a cut joined to a `...` or `…` literal) guarded by
+  `text.length > n` (also `>=`, a flipped comparison, `&&`, a conditional, or an earlier `if (text.length <= n) return`)
+  with the bound in the cut (`max - 3` counts). It counts UTF-16 code units, so a cut between the halves of a
+  surrogate pair (an emoji, many CJK characters) leaves a lone surrogate that renders as a replacement character
+  and fails strict UTF-8 encoding. Allowed: `Array.from(text).slice(0, n).join('')`, `Intl.Segmenter`, or stepping
+  back over a high surrogate; arrays, a cut of 0 or 1 characters, names like `hash`, `hex`, `uuid`, `token`, `id`,
+  and functions that use `charCodeAt`, `codePointAt`, `Segmenter` or `Array.from` are not reported. The same form
+  runs as `pmd/SurrogateSplittingCut` (Java) and `kotlin-source/SurrogateSplittingCut` (Kotlin). Python strings are
+  code points, so Python has no rule. Go reports the byte form as `go-rules/byte-cut-splits-rune`: `s[:n]` of a
+  string under the same length guard, only when the cut is joined to a `...` or `…` literal or the text is named
+  like prose (`title`, `description`, `message`, `text`, `summary`, `label`, `body`, `content`), and not when the
+  cut is compared to a literal or placed in an error text.
+- `nitpicker/no-unhandled-url-parse`: `decodeURIComponent(text)` and `decodeURI(text)` (also through `globalThis`) on
+  text that is not constant or built by `encodeURIComponent` throw `URIError: URI malformed` on a stray `%`, so a
+  `try` with a `catch` around the call in the same function is required (a decode inside a `.then(...)` callback
+  with a `.catch(...)` or a second argument, or after a `/%/.test(text)` on the same text in the same function,
+  is accepted; `.map(decodeURIComponent)` as a bare reference is not reported; the Java and Kotlin presets report `URLDecoder.decode` the same way under
+  `UriCreateDynamic`). Also: `new URL(text)` or `new URL(text, base)` (also
   `new globalThis.URL`) where `text` or `base` is neither a constant string (a literal, a template
   or `+` of constants, or a `const` holding one) nor a `URL` value (a `new URL(...)` constant, a
   name annotated `URL`, an already parsed `.href`, `.url` or `.origin`) throws a
@@ -2294,6 +2427,53 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   this repository it flagged constant-derived patterns almost only, so the rule reports values
   built into a pattern and leaves whole patterns alone. Without types (plain JavaScript without JSDoc)
   the rule sees nothing.
+- `nitpicker/no-unescaped-pattern-translation`: a chain of two or more `replace` or `replaceAll` calls on one
+  value whose replacements are regex wildcards (`.*`, `[^/]*`, `.`) that is built into a `new RegExp(...)` or
+  `RegExp(...)` (directly, through a template literal, `+`, or a variable used that way), or whose
+  replacements are `LIKE` wildcards (`%` and `_`), when no step escapes the target language first: a root that
+  is a call with `escape` or `quote` in its name (`escapeRegExp(value)`), a `replace` with `$&` or a
+  backslash-prefixed `%` or `_` as its replacement, or a root that is constant text. A configured glob with a
+  `.` in it then matches any character and a `%` becomes a wildcard. A single `replace`, a chain that does not
+  reach a regex and a chain without a wildcard token are not reported. Allowed form: escape first
+  (`escapeRegExp(value)`) and restore the wildcards from their escaped form (`\*\*` to `.*`), tokenise the
+  pattern and map each token, or use a glob library. The same form runs as `pattern-translation` (Python and
+  Go) and `pmd/PatternTranslation` (Java and Kotlin).
+- `nitpicker/no-unescaped-filter-value`: a value that is not constant and not escaped, used as the pattern of
+  a filter that reads `%`, `_`, `\` or regex characters as wildcards: a Prisma `contains`, `startsWith` or
+  `endsWith` (and `equals` or `not` next to `mode: 'insensitive'`, which Prisma turns into `ILIKE`) in the
+  `where` of `findMany`, `findFirst`, `count`, `deleteMany`, `updateMany`, `aggregate` or `groupBy`; the
+  operand of `LIKE`, `ILIKE` or `NOT LIKE` in a `sql`, `Prisma.sql` or `$queryRaw` template; the value of a
+  Knex `whereLike`, `whereILike` or `where(column, 'like', value)`, a Drizzle `like` or `ilike`, a TypeORM
+  `Like` or `ILike`, a Sequelize `[Op.like]` or `[Op.iLike]`, a `$like`, `$ilike` or `$regex` key. A template
+  or `+` around the value (`%${term}%`) is read through to the value. Reported: the first identifier or member
+  inside the pattern that is not escaped. Allowed: a call with `escape`, `quote` or `sanitize` in its name
+  (`escapeSqlLikePattern(term)`), a `replace` whose replacement holds `$&` or a backslash, an identifier named
+  `escaped...`, a constant, a `new RegExp(...)` value and an exception when wildcards are an intended feature
+  of the input. Not covered: a filter object built in another function, a value from a call that is not a text
+  method, and `new RegExp(value)` (`nitpicker/no-string-as-regex`). The Java, Python and Go presets have no
+  counterpart yet.
+- `nitpicker/no-expanding-replacement-string` (type-aware): `replace` or `replaceAll` on a string with a
+  replacement that is not a function and not constant. The replacement string reads `$&`, `` $` ``, `$'`, `$$`
+  and `$1`, so a `$` in a value from a file, a URL, a config or a user (`css.replace(dep.placeholder, dep.url)`,
+  `prompt.replace('{conversation}', text)`) is expanded instead of inserted. The pattern may be a string or a
+  RegExp. Not reported: a constant string or a `const` holding one, a template or `+` whose constant text
+  contains a `$` (the `$1` is meant), a function, a number, a boolean, a string literal union without `$`,
+  `String(number)`, a call with `escape` or `quote` in its name, `value.replace(/\$/g, '$$$$')` and code inside
+  `if (!value.includes('$'))`. Allowed
+  form: a function (`text.replace(pattern, () => value)`) or escaping the dollars. Without types (plain
+  JavaScript without JSDoc) the rule sees nothing. The same form runs as `expanding-replacement` (Python and
+  Go) and `pmd/ExpandingReplacement` (Java and Kotlin).
+- `nitpicker/no-unescaped-html-interpolation`: a template literal or `+` chain that holds an HTML tag (`<div`,
+  `</a>`, `<td>`) and interpolates a value that is not escaped. A `<`, `&` or quote in a name, a title or a
+  message breaks the markup or injects a tag into a page, an email or a report. Not reported: a literal, a
+  number, boolean or string literal type without markup characters (when types are available), a value that
+  is the result of a call with `escape`, `encode`, `sanitize` or `html` in its name, a name or property that says
+  it is markup (`html`, `escaped`, `safe`, `nonce`, `color`), a variable whose every assignment is escaped or
+  markup, a `.replace(...)` chain that writes entities, a nested markup fragment, `.map(...).join('')` of
+  fragments, the text of `throw`, `new Error(...)`, `console.*` and `invariant`, a template with a component tag
+  (`<Link`) and a tagged template. Allowed form: escape each value (`escapeHtml(title)`) or build the page with a templating
+  library that escapes. The same form runs as `unescaped-html-value` (Python and Go) and
+  `pmd/UnescapedHtmlValue` (Java and Kotlin).
 - `nitpicker/no-compatibility-shim`: a doc comment with a `@deprecated` tag, and an exported
   `const Old = New`, `type Old = New` or `export { New as Old }` whose target `New` is also
   exported from the same module (two public names for one thing). Generic aliases, aliases of
@@ -2359,3 +2539,60 @@ Button`). `@param`, `@returns` and other tag lines are not part of the descripti
   sum with `Number.MAX_SAFE_INTEGER` loses precision above 2^53 but never wraps to a negative value, and the
   sentinel idiom is `Infinity`, which stays an upper bound under addition; `Number.MAX_SAFE_INTEGER` arithmetic is not
   reported.
+- `nitpicker/no-unchecked-response-json`: `await res.json()` (also `res.json()` returned, `(await fetch(url)).json()`
+  and `.then((res) => res.json())`) on a response that comes from `fetch` (also `globalThis.fetch`), when nothing reads `res` before it: no `res.ok`, `res.status`, `res.headers`, no helper that is handed `res`.
+  An error status from a proxy, a CDN or a gateway usually carries an HTML or empty body, so the call throws an opaque
+  `SyntaxError: Unexpected token <` and the real status is lost. Not reported: a response received as a parameter (the caller owns the check), a read after any use of `res`, a read inside
+  `try` with a `catch` or followed by `.catch(...)`, `res.text()` then a guarded `JSON.parse`, and clients that throw on a
+  non-2xx status themselves (axios, ky, got). Allowed forms: `if (!res.ok) throw new Error(...)` first, or read `res.text()`
+  and parse it in `try`. The same form runs as `UncheckedResponseBody` (Java and Kotlin), `unchecked-response-json`
+  (Python) and `go-rules/unchecked-response-json` (Go).
+- `nitpicker/no-nan-only-check`: `isNaN(x)` or `Number.isNaN(x)` used as a guard (the test of an `if`, `?:` or loop, a
+  `!`, `&&` or `||` operand, a returned or assigned boolean) on a number that is the result of `Number(...)`,
+  `parseFloat(...)`, a unary `+`, a division by something other than a non-zero literal, or a `*` or `**` of two
+  non-literals (a local with one assignment, or the expression itself), when the enclosing function never mentions
+  `isFinite`, `Number.isFinite` or `Infinity` and never compares the value with `<`, `>`, `<=` or `>=`. `Infinity` and
+  `-Infinity` pass an `isNaN` check (`Number('1e309')`, `x / 0`), so the value goes on as a limit or an amount, or is
+  written as `null` by `JSON.stringify`. `parseInt` and `Number.parseInt` results are not reported, since they are never
+  infinite, nor is a function that also calls `parseInt`, `Math.min`, `Math.max`, `Number.isInteger` or
+  `Number.isSafeInteger` (the value is clamped or truncated), a `+(value as Date)` conversion, or a probe on the
+  parameter of a `.filter` callback. Allowed form: `Number.isFinite(x)`. The same form runs as `NanOnlyGuard` (Java and Kotlin), `nan-only-guard`
+  (Python) and `go-rules/nan-only-guard` (Go).
+- `nitpicker/no-negative-count`: `text.repeat(n)`, `new Array(n)` or `Array(n)` where `n` is a subtraction of two
+  non-literals (also a sum that contains one, or a local with one assignment of that), with no guard. `String.prototype.repeat`
+  and `Array` throw a `RangeError` for a negative count, so `' '.repeat(width - text.length)` fails once the text is wider
+  than the column. Not reported: a right side that is a literal (`level - 1`), `Math.max(0, ...)` or `Math.abs(...)` around
+  the subtraction, a sink inside an `if`, `?:` or `&&` whose test compares the two sides (or the local), an earlier `if`
+  that leaves when it compares them, a subtraction of two literals, a left side named `max`, `largest`, `longest` or `lengths` or built with
+  `Math.max`, and a right side computed with `Math.min`, `Math.round`, `Math.floor` or `Math.ceil`. Allowed forms: `Math.max(0, a - b)`, or compare
+  first. The same form runs as `NegativeCountArgument` (Java and Kotlin) and `go-rules/negative-count` (Go); Python is not
+  covered because `"x" * -1` returns an empty string.
+- `nitpicker/no-index-bound-off-by-one`: a bounds check that lets `index === list.length` through before a read of
+  `list[index]`. Rejecting form: `index > list.length` (also `list.size`, `list.count`, `list.size()`, or the reversed
+  `list.length < index`) as an `||` operand or the test of an `if` whose branch leaves (`return`, `throw`, `continue`,
+  `break`) and has no `else`, when `list[index]` is read in a later `||` operand or later in the same block. Accepting
+  form: `index <= list.length` in an `&&` chain, `if`, `while` or `for` test whose later operand or body reads
+  `list[index]`. `index` is a
+  plain identifier and `list` an identifier or member chain. Not reported: insertion positions (`splice(index, 0, x)`,
+  `slice(0, end)`, `list[index] = x`), reads of another array, a function that also checks `index >= list.length`,
+  `index < list.length` or `index === list.length`, a function that reassigns `index`, and a branch that does not leave. Allowed form: `>=` to reject
+  and `<` to accept. The same form runs as `IndexBoundOffByOne` (Java and Kotlin), `index-bound-off-by-one` (Python) and
+  `go-rules/index-bound-off-by-one` (Go).
+- `nitpicker/no-overflowing-backoff`: an exponential backoff delay that overflows for a large attempt count. Rejecting
+  forms: `base * (1 << attempt)` wraps at 32 bits, so the delay turns negative or small, and `base * 2 ** attempt`
+  grows to `Infinity` (`setTimeout` treats a delay above 2147483647 ms as 1 ms, so the retries spin), when `attempt`
+  is a plain identifier that is not compared with a limit in the function and not capped by `Math.min`, and the product
+  is not itself clamped by `Math.min`. An exponent such as `attempt - 1` counts as `attempt`. Not reported: a literal exponent, a bounded exponent and a
+  clamped product.
+  Allowed form: `Math.min(maxDelay, base * 2 ** Math.min(attempt, 10))`. The same form runs as `BackoffShiftOverflow`
+  (Java and Kotlin) and `go-rules/backoff-shift-overflow` (Go).
+- `nitpicker/no-wall-clock-elapsed`: elapsed time or a timeout measured with the wall clock. Rejecting form: a `const`
+  or `let` assigned once from `Date.now()`, `new Date().getTime()`, `new Date().valueOf()` or `+new Date()` whose every
+  read is a subtraction from another wall-clock read, when the difference is compared with `<`, `>`, `<=` or `>=` or
+  passed to a `record`, `observe`, `timing`, `histogram` or `setTimeout` call. A field assigned from the wall clock
+  (`this.start = Date.now()`, a name containing `start`, `begin` or `t0`) and later subtracted from a wall-clock read is
+  reported on the subtraction. Not reported: a difference compared with a limit named for a gesture (`hold`, `tap`,
+  `press`, `click`, `double`, `debounce`), a start that is also stored,
+  sent or compared with a stored timestamp, and a variable that is reassigned. Allowed form: `performance.now()` for both
+  ends. The same form runs as `WallClockElapsed` (Java and Kotlin), `wall-clock-elapsed` (Python) and
+  `go-rules/wall-clock-elapsed` (Go).

@@ -7,6 +7,7 @@ const { findingsOf, itOutcomes, describeRules } = useScripts({
     'managed-resource-outside-composition-root',
     'unbounded-fan-out',
     'blocking-helper-in-async',
+    'unchecked-response-json',
   ],
 });
 
