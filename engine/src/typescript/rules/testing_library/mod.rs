@@ -154,9 +154,13 @@ impl<'v> Walk<'_, '_, 'v> {
 
 pub fn check(context: &mut Context) {
     let Some((view, scopes)) = context.estree else { return };
+    if context.setting("testing-library/scope") == Some("off") {
+        return;
+    }
+    let module = context.setting("testing-library/utils-module").map(|module| Some(module.to_string()).filter(|module| !module.is_empty()));
     let selected: Vec<&'static str> = RULES.iter().copied().filter(|rule| context.selected.contains(rule)).collect();
     let mut walk = Walk {
-        detect: Detection::new(utils_module()),
+        detect: Detection::new(module.unwrap_or_else(utils_module)),
         scopes,
         selected: &selected,
         found: Vec::new(),
