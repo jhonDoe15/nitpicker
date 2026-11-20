@@ -1,6 +1,6 @@
 //! Which test files the preset gives to the testing-library rules, and the module each one takes its testing
 //! utilities from: `reactTestScope` of the preset's `react-test-files`, which follows the file's imports.
-mod mocks;
+pub mod mocks;
 
 use super::nodes::string_literal;
 use crate::typescript::resolve::{Limits, Modules};
@@ -102,7 +102,7 @@ fn top_level_sources(program: Node) -> Vec<String> {
         let expressions = top_level_expressions(statement);
         sources.extend(std::iter::once(statement).chain(expressions.iter().copied()).filter_map(module_source));
         let calls = expressions.iter().filter_map(|expression| awaited(*expression)).filter(|node| node.is("CallExpression"));
-        sources.extend(calls.flat_map(|call| apis.mocked(call)).flatten());
+        sources.extend(calls.flat_map(|call| apis.mocked(call)).filter_map(|mocked| mocked.name));
     }
     sources
 }

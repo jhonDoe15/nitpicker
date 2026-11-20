@@ -72,8 +72,8 @@ fn a_test_file_takes_its_utilities_from_the_helper_its_imports_reach() {
     assert_eq!(unscoped.len(), 1, "without the scope only the direct import counts");
 }
 
-const REACT_TESTS: [&str; 3] = ["hover.test.tsx", "keyboard.test.tsx", "outside.test.ts"];
-const REACT_TEST_RULES: &str = "hover-test-needs-keyboard";
+const REACT_TESTS: [&str; 4] = ["hover.test.tsx", "internals.test.tsx", "keyboard.test.tsx", "outside.test.ts"];
+const REACT_TEST_RULES: &str = "hover-test-needs-keyboard,react-test-no-implementation-details";
 
 #[test]
 fn react_test_rules_report_what_the_eslint_rules_report() {

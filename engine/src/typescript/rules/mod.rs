@@ -83,7 +83,7 @@ impl<'a> Context<'a, '_> {
 pub type Rule = fn(&mut Context);
 
 /// Rules written against the ESTree-shaped view.
-const ON_VIEW: &[&str] = &["hover-test-needs-keyboard", "no-add-only-collection", "settle-pending-on-close"];
+const ON_VIEW: &[&str] = &["hover-test-needs-keyboard", "no-add-only-collection", "react-test-no-implementation-details", "settle-pending-on-close"];
 
 pub const ALL: &[(&str, Rule)] = &[
     ("hover-test-needs-keyboard", react_tests::hover_test_needs_keyboard::check),
@@ -91,6 +91,7 @@ pub const ALL: &[(&str, Rule)] = &[
     ("no-listen-on-all-interfaces", listeners::no_listen_on_all_interfaces::check),
     ("no-production-console", modules::no_production_console::check),
     ("no-silent-catch", errors::no_silent_catch::check),
+    ("react-test-no-implementation-details", react_tests::no_implementation_details::check),
     ("settle-pending-on-close", lifecycles::settle_pending_on_close::check),
 ];
 

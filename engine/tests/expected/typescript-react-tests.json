@@ -7,5 +7,131 @@
   "Every hover behavior needs a keyboard equivalent. Add a test that tabs to the element (`await user.tab()`) and asserts the same state.",
   6,
   51
+ ],
+ [
+  "internals.test.tsx",
+  "nitpicker/react-test-no-implementation-details",
+  10,
+  1,
+  "Do not replace `useState`, `useEffect` with a module mock. Assert what the user sees with `screen.getByRole(...)`, or test a custom hook with `renderHook`.",
+  13,
+  3
+ ],
+ [
+  "internals.test.tsx",
+  "nitpicker/react-test-no-implementation-details",
+  20,
+  3,
+  "Do not use component state or instances (setState()). Assert what the user sees with `screen.getByRole(...)`.",
+  20,
+  35
+ ],
+ [
+  "internals.test.tsx",
+  "nitpicker/react-test-no-implementation-details",
+  21,
+  3,
+  "Do not use component state or instances (state()). Assert what the user sees with `screen.getByRole(...)`.",
+  21,
+  31
+ ],
+ [
+  "internals.test.tsx",
+  "nitpicker/react-test-no-implementation-details",
+  23,
+  3,
+  "Do not use component state or instances (findByType()). Assert what the user sees with `screen.getByRole(...)`.",
+  23,
+  30
+ ],
+ [
+  "internals.test.tsx",
+  "nitpicker/react-test-no-implementation-details",
+  24,
+  3,
+  "Do not use component state or instances (instance()). Assert what the user sees with `screen.getByRole(...)`.",
+  24,
+  21
+ ],
+ [
+  "internals.test.tsx",
+  "nitpicker/react-test-no-implementation-details",
+  25,
+  3,
+  "Do not use component state or instances (instance()). Assert what the user sees with `screen.getByRole(...)`.",
+  25,
+  41
+ ],
+ [
+  "internals.test.tsx",
+  "nitpicker/react-test-no-implementation-details",
+  26,
+  3,
+  "Do not spy on the React hook `useMemo`. Assert what the user sees with `screen.getByRole(...)`, or test a custom hook with `renderHook`.",
+  26,
+  28
+ ],
+ [
+  "internals.test.tsx",
+  "nitpicker/react-test-no-implementation-details",
+  27,
+  3,
+  "Do not spy on the React hook `useRef`. Assert what the user sees with `screen.getByRole(...)`, or test a custom hook with `renderHook`.",
+  27,
+  50
+ ],
+ [
+  "internals.test.tsx",
+  "nitpicker/react-test-no-implementation-details",
+  28,
+  3,
+  "Do not spy on the React hook `useCallback`. Assert what the user sees with `screen.getByRole(...)`, or test a custom hook with `renderHook`.",
+  28,
+  29
+ ],
+ [
+  "internals.test.tsx",
+  "nitpicker/react-test-no-implementation-details",
+  29,
+  3,
+  "Do not spy on the React hook `useId`. Assert what the user sees with `screen.getByRole(...)`, or test a custom hook with `renderHook`.",
+  29,
+  66
+ ],
+ [
+  "internals.test.tsx",
+  "nitpicker/react-test-no-implementation-details",
+  32,
+  3,
+  "Do not read React internals (_reactInternals). Assert what the user sees with `screen.getByRole(...)`.",
+  32,
+  23
+ ],
+ [
+  "internals.test.tsx",
+  "nitpicker/react-test-no-implementation-details",
+  32,
+  3,
+  "Do not read React internals (memoizedState). Assert what the user sees with `screen.getByRole(...)`.",
+  32,
+  37
+ ],
+ [
+  "internals.test.tsx",
+  "nitpicker/react-test-no-implementation-details",
+  33,
+  3,
+  "Do not read React internals (__reactFiber$abc). Assert what the user sees with `screen.getByRole(...)`.",
+  33,
+  27
+ ],
+ [
+  "internals.test.tsx",
+  "nitpicker/react-test-no-implementation-details",
+  34,
+  3,
+  "Do not read React internals (stateNode). Assert what the user sees with `screen.getByRole(...)`.",
+  34,
+  17
  ]
 ]
