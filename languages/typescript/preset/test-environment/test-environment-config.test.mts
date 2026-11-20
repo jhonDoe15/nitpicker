@@ -38,6 +38,18 @@ function messages(projectEnvironments: Environments, filename: string, code = lo
 }
 
 describe('testEnvironmentConfigFor', () => {
+  it('emits no block for a project or a scope without test files', () => {
+    const withoutTests = { ...layout, runnableTestGlobs: [] };
+    const scopes = [
+      { files: [], environment: 'jsdom' },
+      { files: ['src/ui/**/*.test.ts'], environment: 'jsdom' },
+    ];
+
+    const blocks = testEnvironmentConfigFor(withoutTests, { environment: 'jsdom', scopes });
+
+    expect(blocks.map(({ files }) => files)).toEqual([['src/ui/**/*.test.ts']]);
+  });
+
   it('reports pure-logic tests when the project default is a DOM environment', () => {
     const jsdom = { environment: 'jsdom', scopes: [] };
     expect(messages(jsdom, 'src/a.test.ts')).toEqual([projectMessage('jsdom')]);
