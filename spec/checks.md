@@ -422,6 +422,70 @@ reaches about 125,000 items. With the type checker arrays, typed arrays, sets, m
 (tuples and strings are not), and `push`, `unshift` and `splice` only on an array; array and string literals and
 a function's own rest parameter passed on are allowed.
 
+Unchecked response bodies: `nitpicker/no-unchecked-response-json` (production source, in `eslint-lint`) in the TypeScript and
+JavaScript presets reports `res.json()` on a `fetch` response that nothing has read yet
+(`res.ok`, `res.status`, headers, a helper given `res`). `unchecked-response-json` (script) in Python reports `.json()` on a
+`requests` or `httpx` response before `raise_for_status()` or a status read; `pmd/UncheckedResponseBody` (Java and Kotlin) reports
+a JDK `HttpClient` or OkHttp body passed to a JSON parser before the status is read; `go-rules/unchecked-response-json` reports
+`json.NewDecoder(resp.Body).Decode` before `resp.StatusCode` is read. A read inside `try` with a handler is allowed.
+
+NaN-only checks: `nitpicker/no-nan-only-check` (production source, in `eslint-lint`) in the TypeScript and JavaScript
+presets reports `isNaN(x)` or `Number.isNaN(x)` as a guard on a number from `Number(...)`, `parseFloat`, a unary `+`, a
+division or a product of non-literals when the function never mentions `isFinite` or `Infinity` and never compares the
+value with `<` or `>`. `nan-only-guard` (script) reports `math.isnan(x)` on a `float(text)` result in Python,
+`pmd/NanOnlyGuard` `Double.isNaN` on a parsed double in Java and Kotlin, and `go-rules/nan-only-guard` `math.IsNaN` on a
+`strconv.ParseFloat` result or a float division or product in Go, under the same conditions.
+
+Negative counts: `nitpicker/no-negative-count` (production source, in `eslint-lint`) in the TypeScript and JavaScript presets
+reports `.repeat(a - b)`, `new Array(a - b)` and `Array(a - b)` (also through a local, or a sum containing a subtraction of
+non-literals) with no `Math.max(0, ...)` and no comparison of the two sides that dominates the call. `pmd/NegativeCountArgument`
+in Java and Kotlin reports `repeat`, `copyOf`, `new ArrayList<>(n)` and Kotlin `take`, `takeLast`, `drop`, `dropLast` and
+`List(n)`; `go-rules/negative-count` reports `strings.Repeat`, `bytes.Repeat`, `slices.Grow` and `make` of a slice. Python
+is not covered.
+
+Index bounds off by one: `nitpicker/no-index-bound-off-by-one` (production source, in `eslint-lint`) in the TypeScript
+and JavaScript presets, `index-bound-off-by-one` (script) in Python, `pmd/IndexBoundOffByOne` in Java and Kotlin and
+`go-rules/index-bound-off-by-one` in Go report a check that lets `index == length` through before a read: `index >
+length` (or `length < index`) in an `||` chain or an `if` whose branch leaves, followed by `x[index]` (Java `x.get(index)`
+and `x.charAt(index)`) in a later operand or later in the block; and `index <= length` in an `&&` chain or `if` whose
+later operand or branch reads `x[index]`. Insertion positions, other receivers, a function that also checks `>=` or `<`,
+and a reassigned index are not reported.
+Paths and hosts matched by text: `nitpicker/no-prefix-without-boundary` (production source, in `eslint-lint`) in the
+TypeScript and JavaScript presets and `pmd/AffixWithoutBoundary` in the Java and Kotlin presets, `prefix-without-boundary` in the Python preset and
+`go-rules/prefix-without-boundary` in the Go preset report a text prefix,
+suffix or substring check on a path, route, package or host whose argument has no separator boundary (`a.startsWith(base)`,
+`host.endsWith(domain)`, a bare origin such as `'http://localhost'`). An equality test of the
+same two values in the condition, a value that ends in a separator or is normalised earlier, a check on the character or
+length after the prefix, a dotted domain suffix and `Path.startsWith` are allowed. The substring check `includes('node_modules')` is not reported.
+
+Affixes removed by replace: `nitpicker/no-unanchored-affix-replace` (production source, in `eslint-lint`) and
+`pmd/AffixRemovedByReplace` (Java and Kotlin), `unanchored-affix-replace` (Python) and
+`go-rules/unanchored-affix-replace` (Go) report a string `replace` that removes a suffix or prefix (`name.replace('.git', '')`,
+`path.replace(root, '')`, `url.replace(parsed.port, next)`), because it rewrites the first occurrence anywhere. An anchored
+pattern, `endsWith` or `startsWith` with `slice`, `removeSuffix` and a replace guarded by the same check are allowed.
+
+Case-normalized lookups: `nitpicker/no-case-mismatched-lookup` (production source, in `eslint-lint`) and
+`pmd/CaseMismatchedLookup` (Java and Kotlin), `case-mismatched-lookup` (Python) and
+`go-rules/case-mismatched-lookup` (Go) report a lookup whose key is lower-cased or upper-cased in a collection built
+from literals of another case or from a parameter, and a collection filled with the normalized key but read with the
+key as written. Normalizing both sides, a collection of literals already in the key's case and a case-insensitive
+collection are allowed.
+
+Precondition messages: `nitpicker/no-mismatched-precondition-message` (production source, in `eslint-lint`) and
+`pmd/PreconditionMessageNamesOtherValue` (Java and Kotlin), `precondition-message-names-other-value` (Python) and
+`go-rules/precondition-message-names-other-value` (Go) report a precondition (`assert`, `invariant`, a null check that
+throws, `Assert.notNull`, `Objects.requireNonNull`, `checkState`, `require`) whose message starts with the name of
+another parameter or local in scope instead of the checked value. A message naming the checked value or its type is
+allowed.
+
+Malformed query text: `nitpicker/no-malformed-query-text` (production source, in `eslint-lint`) and `pmd/MalformedQueryText`
+(Java and Kotlin), `malformed-query-text` (Python) and `go-rules/malformed-query-text` (Go) join the literal parts of SQL text (`+`, `+=`, templates) and report an operator with no operand, an
+`INSERT` whose literal column and value lists differ in length, and parts joined into a run-together word.
+
+Unpaged listings: `nitpicker/no-unpaged-listing` (production source, in `eslint-lint`) and `pmd/UnpagedListing` (Java and
+Kotlin), `unpaged-listing` (Python) and `go-rules/unpaged-listing` (Go) report an object-store listing (`ListObjectsV2Command`, `listObjectsV2`, `listObjects`) and a RediSearch
+`FT.SEARCH` read once, when the function never follows a page marker or sets a limit. A paginator, a marker loop and
+`MaxKeys: 1` are allowed.
 Discarded new values: `discarded-new-value` (script, Python) reports a statement that calls a method of a string, bytes,
 tuple, set, datetime, `Path` or Django queryset receiver that returns a new value and changes nothing (`query.filter(...)`,
 `expires.replace(...)`), and a truth test of the always-true tuple of `QuerySet.delete()` or `get_or_create()`. The allowed
@@ -602,6 +666,39 @@ entry and idiomatic texts are not counted. The same
 definition runs as `repeated-string-literal` in the Python and Go presets, as
 `kotlin-source/RepeatedStringLiteral` in the Kotlin preset and as PMD `AvoidDuplicateLiterals` in
 the Java preset.
+Truncating pair splits: `nitpicker/no-truncating-pair-split` (production source, in `eslint-lint`) reports a
+two-name destructuring of `text.split(':')` or `text.split('=')`, or its `[1]` element, which drops everything
+after the second separator. Cutting at the first separator, `[key, ...rest]` with `rest.join(sep)` and a constant
+or clock-named receiver are allowed. The same definition runs as `pmd/PairSplitDropsRest` (Java) and
+`kotlin-source/PairSplitDropsRest` (Kotlin).
+or clock-named receiver are allowed. The same definition runs as `pmd/PairSplitDropsRest` (Java),
+`kotlin-source/PairSplitDropsRest` (Kotlin), `pair-split-drops-rest` (Python script) and
+`go-rules/pair-split-drops-rest` (Go, `[1]` of `strings.Split`).
+Ambiguous lookup keys: `nitpicker/no-ambiguous-lookup-key` (production source, in `eslint-lint`, type-aware)
+reports a `Map`, `Set` or record key joined from two runtime strings (or an object) with a delimiter, such as
+`` `${row}-${col}` ``, `[a, b].join('-')` or `a + ':' + b`, where different tuples give the same key.
+`JSON.stringify([a, b])`, a nested `Map` and numeric parts are allowed. The same definition runs as
+`pmd/DelimitedLookupKey` (Java), `delimited-lookup-key` (Python script, `str`-annotated parts) and
+`go-rules/delimited-lookup-key` (Go).
+`pmd/DelimitedLookupKey` (Java).
+Host and port splits: `nitpicker/no-host-port-colon-split` (production source, in `eslint-lint`) reports
+`split(':')` and `slice(0, indexOf(':'))` on a value named `host`, `hostname`, `authority`, `origin` or `*Host`, or
+on a `Host`, `X-Forwarded-Host` or `:authority` header read, which breaks IPv6 literals. Parsing with `new URL` is
+allowed. The same definition runs as `pmd/HostPortColonSplit` (Java) and `kotlin-source/HostPortColonSplit`
+(Kotlin), `host-port-colon-split` (Python script) and `go-rules/host-port-colon-split` (Go).
+(Kotlin).
+Newline-only line splits: `nitpicker/no-newline-only-line-split` (production source, in `eslint-lint`) reports
+`split('\n')` and `indexOf('\n')` on text read from a file or on a comment's value. `split(/\r?\n/)` and
+normalised line endings are allowed. The same definition runs as `pmd/NewlineOnlyLineSplit` (Java) and
+`kotlin-source/NewlineOnlyLineSplit` (Kotlin) and `go-rules/newline-only-line-split` (Go, text from
+`os.ReadFile`). Python reads files with universal newlines, so it has no counterpart.
+`kotlin-source/NewlineOnlyLineSplit` (Kotlin).
+Surrogate-splitting cuts: `nitpicker/no-surrogate-splitting-cut` (production source, in `eslint-lint`) reports a
+string cut by `slice(0, n)`, `substring(0, n)` or `substr(0, n)` under a `text.length > n` guard, which can split a
+surrogate pair. Cutting on code points or graphemes is allowed. The same definition runs as
+`pmd/SurrogateSplittingCut` (Java), `kotlin-source/SurrogateSplittingCut` (Kotlin) and
+`go-rules/byte-cut-splits-rune` (Go, a byte cut of a string inside a multi-byte character). Python strings are
+code points, so it has no counterpart.
 Dropped delegate results: `nitpicker/no-dropped-delegate-result` (production source, in `eslint-lint`) reports a
 function or method whose last statement calls a same-named method on another receiver (`this.delegate.update()`,
 `super.update()`, `.call`, `.apply`) without returning it, unless the type checker shows a `void`, `undefined`, `never` or
@@ -832,6 +929,31 @@ rule runs as `unordered-query` in the Python preset (SQLAlchemy, Django queryset
 `pmd/UnorderedQuery` in the Java preset (JPQL and SQL text, `setMaxResults`/`setFirstResult`, criteria queries,
 unsorted `PageRequest`) and `kotlin-source/UnorderedQuery` in the Kotlin preset. The text analysis is shared:
 [`shared/rules/queries/sql-order.mjs`](../shared/rules/queries/sql-order.mjs).
+
+Pattern translation: `nitpicker/no-unescaped-pattern-translation` (production source, in `eslint-lint`) reports a chain of
+two or more `replace` or `replaceAll` calls that turns a glob or pattern into a regex (reaching `new RegExp`) or into a
+SQL `LIKE` pattern (replacements `%` and `_`) when no step escapes the target language first. The same form runs as
+`pattern-translation` in the Python and Go presets and `pmd/PatternTranslation` in the Java and Kotlin presets (read from
+the sources of every module). Escaping first (`escapeRegExp`, `re.escape`, `regexp.QuoteMeta`, `Pattern.quote`), a single
+`replace` and constant text are allowed.
+
+Filter values: `nitpicker/no-unescaped-filter-value` (production source, in `eslint-lint`) reports a value that is not
+constant and not escaped when it is the pattern of a Prisma `contains`, `startsWith`, `endsWith` or case-insensitive
+`equals`, the operand of `LIKE` in a SQL template, or the value of a Knex, Drizzle, TypeORM or Sequelize like filter or a
+`$regex`. Escaping the value first (`escapeSqlLikePattern`, `escapeRegExp`) is allowed. There is no counterpart in the
+other presets yet.
+
+Replacement strings: `nitpicker/no-expanding-replacement-string` (production source, type-aware, in `eslint-lint`) reports
+`replace` or `replaceAll` on a string whose replacement is neither a function nor constant: `$&`, `$1` and `$$` in the
+replacement are expanded, so a value with a `$` is not inserted as written. A function replacement and escaping the
+dollars are allowed. The same rule runs as `expanding-replacement` in the Python and Go presets and as
+`pmd/ExpandingReplacement` in the Java and Kotlin presets.
+
+HTML strings: `nitpicker/no-unescaped-html-interpolation` (production source, in `eslint-lint`) reports a template literal
+or `+` chain that holds an HTML tag and interpolates a value that is not a literal, a number or the result of an escaping
+call: a `<`, `&` or quote in the value breaks the markup or injects a tag. Escaping each value or a templating library is
+allowed. The same rule runs as `unescaped-html-value` in the Python and Go presets and as `pmd/UnescapedHtmlValue` in the
+Java and Kotlin presets.
 
 Query arrays: `nitpicker/no-unbounded-query-array` reports a runtime array expanded into an SQL in list or a
 multi-row insert with no empty check, size check or chunking: an empty array renders `in ()`, and PostgreSQL

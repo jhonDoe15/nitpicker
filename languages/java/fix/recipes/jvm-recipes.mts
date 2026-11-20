@@ -12,6 +12,7 @@ import { varCouldBeValRecipe } from './kotlin/declarations/var-could-be-val.mts'
 import { explicitItRecipe } from './kotlin/idioms/explicit-it.mts';
 import { useIsNullOrEmptyRecipe, useOrEmptyRecipe } from './kotlin/idioms/null-or-empty.mts';
 import { unnecessaryLetRecipe } from './kotlin/idioms/unnecessary-let.mts';
+import { kotlinForwardingWrapperRecipe } from './kotlin/forwarding/forwarding-wrapper.mts';
 import { catchLogRecipe } from './kotlin/logging/catch-log.mts';
 import { logConcatenationRecipe } from './kotlin/logging/log-concatenation.mts';
 import {
@@ -28,16 +29,27 @@ import { plainTextRegexRecipe } from './kotlin/performance/regexes/plain-text-re
 import { saveInLoopRecipe } from './kotlin/performance/repositories/loops/save-in-loop.mts';
 import { sleepInsteadOfDelayRecipe } from './kotlin/performance/coroutines/sleep-instead-of-delay.mts';
 import { entityExistsRecipe } from './kotlin/performance/repositories/existence/entity-exists.mts';
+import { kotlinCompatibilityShimRecipe } from './kotlin/shims/compatibility-shim.mts';
+import { kotlinHttpTimeoutRecipe } from './kotlin/security/http-timeout.mts';
 import { focusedTestRecipe } from './kotlin/tests/focused-tests.mts';
+import { kotlinRetryInTestRecipe } from './kotlin/tests/retry-in-test.mts';
+import { kotlinUnrunTestRenameRecipe } from './kotlin/tests/unrun-test-rename.mts';
 import { validationTargetRecipe } from './kotlin/validation/validation-target.mts';
 import {
   javaRestatingDocCommentRecipe,
   kotlinRestatingDocCommentRecipe,
 } from './restating-doc-comment.mts';
+import { javaCommentedCodeRecipe } from './comments/commented-code.mts';
 import { upperEllRecipe } from './upper-ell.mts';
 import { javaCatchLogRecipe } from './java/catch-log.mts';
 import { javaExtractNearDuplicateRecipe } from './extract/near-duplicate-extract.mts';
 import { javaExtractPartialRunRecipe } from './extract/partial/partial-run-extract.mts';
+import {
+  compatibilityShimRecipe,
+  staticForwardingWrapperRecipe,
+} from './forwarders/forwarder-recipes.mts';
+import { httpWithoutTimeoutRecipe } from './http-timeout/http-timeout.mts';
+import { unrunTestsRecipe } from './unrun-tests/unrun-recipe.mts';
 import { shorterConditionRecipe } from './logic/shorter-condition.mts';
 import { switchLabelsRecipe } from './logic/switch-labels.mts';
 
@@ -66,6 +78,7 @@ export const JVM_RECIPES = defineRecipes([
   jvmSyntheticRecipe,
   mutationIgnoreRecipe,
   commentedCodeRecipe,
+  javaCommentedCodeRecipe,
   mayBeConstRecipe,
   mayBeConstReviewRecipe,
   explicitGcRecipe,
@@ -77,6 +90,11 @@ export const JVM_RECIPES = defineRecipes([
   sleepInsteadOfDelayRecipe,
   entityExistsRecipe,
   focusedTestRecipe,
+  kotlinRetryInTestRecipe,
+  kotlinCompatibilityShimRecipe,
+  kotlinForwardingWrapperRecipe,
+  kotlinHttpTimeoutRecipe,
+  kotlinUnrunTestRenameRecipe,
   validationTargetRecipe,
   javaRestatingDocCommentRecipe,
   kotlinRestatingDocCommentRecipe,
@@ -84,4 +102,8 @@ export const JVM_RECIPES = defineRecipes([
   javaExtractPartialRunRecipe,
   shorterConditionRecipe,
   switchLabelsRecipe,
+  staticForwardingWrapperRecipe,
+  compatibilityShimRecipe,
+  httpWithoutTimeoutRecipe,
+  unrunTestsRecipe,
 ]);

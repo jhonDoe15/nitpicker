@@ -43,7 +43,7 @@ def direct_imports(index, key):
     return found
 
 
-def deletion(source, fn):
+def deletion(source, fn, what="wrapper"):
     first = fn.lineno - 1
     while first > 0 and source.lines[first - 1].lstrip().startswith("#"):
         first -= 1
@@ -51,7 +51,7 @@ def deletion(source, fn):
     last = fn.end_lineno
     rest = source.lines[last - 1][fn.end_col_offset :]
     if rest.strip() and not rest.strip().startswith("#"):
-        refuse("another statement shares the last line of the wrapper")
+        refuse(f"another statement shares the last line of the {what}")
     end = source.starts[last] if last < len(source.starts) else len(source.text)
     while last < len(source.lines) and not source.lines[last].strip():
         last += 1

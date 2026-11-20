@@ -49,18 +49,25 @@ const CLIENT_MESSAGES = {
     'Read the data as JSON into a concrete type: `Json.decodeFromString<Order>(text)` with kotlinx.serialization or `mapper.readValue<Order>(text)` with Jackson, with polymorphism by a logical name (a `sealed` class with kotlinx.serialization, or `@JsonTypeInfo(use = JsonTypeInfo.Id.NAME)` with `@JsonSubTypes`). This reads class names or objects from the data, so a crafted payload builds any class on the classpath and runs code.',
 };
 
-function chainCalls(code: string, open: number): string[] {
-  const names: string[] = [];
+export type ChainedCall = { name: string; dot: number; gap: string };
+
+export function chainedCalls(code: string, open: number): ChainedCall[] {
+  const calls: ChainedCall[] = [];
   const opens = [open];
   for (const at of opens) {
     const close = closingIndex(code, at);
     const next = CHAINED_CALL.exec(code.slice(close + 1));
     if (next !== null) {
-      names.push(next[1] ?? '');
+      const gap = /^\s*/.exec(next[0])?.[0] ?? '';
+      calls.push({ name: next[1] ?? '', dot: close + 1 + gap.length, gap });
       opens.push(close + next[0].length);
     }
   }
-  return names;
+  return calls;
+}
+
+function chainCalls(code: string, open: number): string[] {
+  return chainedCalls(code, open).map(({ name }) => name);
 }
 
 function untimedBuilds(code: string, start: RegExp, allowed: string[]): RegExpExecArray[] {

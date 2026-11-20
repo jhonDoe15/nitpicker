@@ -15,8 +15,10 @@ type RecipeOptions = {
   inputs?: Readonly<Record<string, unknown>> | undefined;
 };
 
+type Outcome = ReturnType<typeof runRecipes>;
+
 type AppliedRecipes = {
-  outcome: ReturnType<typeof runRecipes>;
+  outcome: Outcome;
   exists: (name: string) => boolean;
   read: (name: string) => string;
 };

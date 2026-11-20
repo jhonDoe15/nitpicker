@@ -37,6 +37,25 @@ tester.run('no-unused-dom-environment fixes', rule, {
       code: lines(docblock('jsdom'), logic),
       options: [{ environment: 'jsdom', setupFiles: [support('dom-helper.ts')] }],
     },
+    { filename, code: lines(docblock('jsdom'), "vi.stubGlobal('document', {});", logic) },
+    {
+      filename,
+      code: lines(
+        docblock('jsdom', 'jest'),
+        "jest.replaceProperty(globalThis, 'window', {});",
+        logic,
+      ),
+    },
+    {
+      filename,
+      code: lines(docblock('jsdom'), logic),
+      options: [{ environment: 'jsdom', setupFiles: [support('setup-jest-dom.ts')] }],
+    },
+    {
+      filename,
+      code: lines(docblock('jsdom'), logic),
+      options: [{ environment: 'jsdom', setupFiles: ['@testing-library/jest-dom/vitest'] }],
+    },
   ],
   invalid: [
     {
@@ -107,6 +126,10 @@ tester.run('no-unused-dom-environment fixes', rule, {
     fixesTo(
       lines("import { sum } from '../support/pure';", docblock('happy-dom'), logic),
       lines("import { sum } from '../support/pure';", docblock('node'), logic),
+    ),
+    fixesTo(
+      lines(docblock('jsdom'), "vi.stubGlobal('fetch', vi.fn());", logic),
+      lines(docblock('node'), "vi.stubGlobal('fetch', vi.fn());", logic),
     ),
     declines(lines(`const text = \`${tag('jsdom')}\`;`, logic)),
     declines(lines(`const text = '${tag('happy-dom', 'jest')}';`, logic)),

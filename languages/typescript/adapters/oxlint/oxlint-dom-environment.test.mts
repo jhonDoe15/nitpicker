@@ -35,6 +35,10 @@ const SOURCES = {
   'src/docblock.test.ts': `/** ${directive} happy-dom */\n${LOGIC}`,
   'src/renders.test.ts': `import { render } from '@testing-library/react';\n${LOGIC}render(null);\n`,
   'src/globals.test.ts': `${LOGIC}document.body.innerHTML = '';\nconst url = new URL('https://example.test');\n`,
+  'src/stubs.test.ts': `vi.stubGlobal('document', { body: {} });\n${LOGIC}`,
+  'src/stubs-cast.test.ts': `Object.defineProperty(globalThis as any, 'document', { value: {} });\n${LOGIC}`,
+  'src/stubs-alias.test.ts': `import { vi as v } from 'vitest';\nv.stubGlobal('window', {});\n${LOGIC}`,
+  'src/stubs-fetch.test.ts': `vi.stubGlobal('fetch', vi.fn());\n${LOGIC}`,
   'src/node/pure.test.ts': LOGIC,
   'src/format.ts': 'export const format = String;\n',
 };
@@ -121,6 +125,20 @@ describe('no-unused-dom-environment under the oxlint engine', () => {
     expect(reportsOf(linted, 'src/renders.test.ts')).toEqual([]);
     expect(reportsOf(linted, 'src/globals.test.ts')).toEqual([]);
     expect(reportsOf(linted, 'src/node/pure.test.ts')).toEqual([]);
+  });
+
+  it('passes a file that stubs a DOM global and reports one that stubs another global', () => {
+    expect(reportsOf(linted, 'src/stubs.test.ts')).toEqual([]);
+    expect(reportsOf(linted, 'src/stubs-cast.test.ts')).toEqual([]);
+    expect(reportsOf(linted, 'src/stubs-alias.test.ts')).toEqual([]);
+    expect(reportsOf(linted, 'src/stubs-fetch.test.ts')).toEqual([
+      {
+        ruleId: RULE,
+        line: 1,
+        message: projectMessage('jsdom'),
+        messageId: 'unusedProjectEnvironment',
+      },
+    ]);
   });
 });
 

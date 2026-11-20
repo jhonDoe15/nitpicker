@@ -1,0 +1,8 @@
+{
+  "retry": {
+    "tests/test_flaky.py": "import pytest\nimport tenacity\nfrom flaky import flaky\n\n\n@pytest.mark.flaky(reruns=3)\ndef test_a():\n    assert 1\n\n\n@pytest.mark.flaky\ndef test_b():\n    assert 1\n\n\n@flaky(max_runs=3)\ndef test_c():\n    assert 1\n\n\n@tenacity.retry(\n    stop=tenacity.stop_after_attempt(3),\n)  # try again\n@pytest.mark.slow\nasync def test_d():\n    assert 1\n"
+  },
+  "retry-declined": {
+    "tests/test_flaky.py": "import pytest\nfrom flaky import flaky\n\npytestmark = pytest.mark.flaky(reruns=2)\n\nRETRY = {\"reruns\": 1}\n\n\n@pytest.mark.flaky(**RETRY)\ndef test_spread():\n    assert 1\n\n\ndef test_marker(request):\n    request.node.add_marker(\"flaky\")\n    assert 1\n\n\n@flaky(max_runs=3, min_passes=2)\ndef test_passes():\n    assert 1\n\n\n@pytest.mark.flaky(reruns=2)\ndef check_value():\n    assert 1\n\n\n@pytest.fixture\n@pytest.mark.flaky(reruns=2)\ndef test_data():\n    return 1\n"
+  }
+}

@@ -1,6 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { reachableModules as untypedReachableModules } from '../../../../modules/module-resolution.mts';
+import {
+  reachableModules as untypedReachableModules,
+  resolveModuleSpecifier as untypedResolveModuleSpecifier,
+} from '../../../../modules/module-resolution.mts';
 import { readStamped as untypedReadStamped } from '../../../../modules/stamped-file-cache.mts';
 import type { ModuleAlias } from '../../../../modules/typed/module-types.mts';
 import { scanDomEvidence, type DomEvidence } from './dom-evidence.mts';
@@ -23,6 +26,11 @@ const reachableModules: (
     readonly aliases: readonly ModuleAlias[];
   },
 ) => Iterable<ReachStep> = untypedReachableModules;
+const resolveModuleSpecifier: (
+  specifier: string,
+  containingFile: string,
+  options: { readonly aliases: readonly ModuleAlias[] },
+) => { readonly kind: string; readonly path?: string } = untypedResolveModuleSpecifier;
 const readStamped: <Value>(
   cache: StampedCache<Value>,
   file: string,
@@ -53,7 +61,7 @@ function domVerdict(file: string, signal: Signal): Verdict {
   if (evidence?.[signal] === true) {
     return true;
   }
-  return evidence?.opaqueImport === true ? undefined : false;
+  return evidence?.opaque === true ? undefined : false;
 }
 
 function closureVerdict(
@@ -90,12 +98,21 @@ export function closureUsesDom(
 
 const SETUP_ENTRY = '__nitpicker_setup_entry__.ts';
 
+function isPackageEntry(
+  entry: string,
+  directory: string,
+  aliases: readonly ModuleAlias[],
+): boolean {
+  const resolved = resolveModuleSpecifier(entry, path.join(directory, SETUP_ENTRY), { aliases });
+  return resolved.kind === 'package' && resolved.path === undefined;
+}
+
 function setupFileVerdict(
   entry: string,
   directory: string,
   aliases: readonly ModuleAlias[],
 ): Verdict {
-  if (path.isAbsolute(entry) && !existsSync(entry)) {
+  if (path.isAbsolute(entry) ? !existsSync(entry) : isPackageEntry(entry, directory, aliases)) {
     return undefined;
   }
   const syntheticFile = path.join(directory, SETUP_ENTRY);

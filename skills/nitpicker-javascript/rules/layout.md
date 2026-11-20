@@ -15,7 +15,21 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `z.unknown()` fields plus hand checks. A JSON list is `z.array(recordSchema)`; the issues'
   `path` (`[index, field]`) names the bad record: `issues.map((issue) => issue.path.join('.'))`.
   Parse a URL from runtime text with `URL.parse(text)` or after `URL.canParse(text)`; `new URL(text)`
-  throws on text that is not a URL (`nitpicker/no-unhandled-url-parse`).
+  throws on text that is not a URL, and `decodeURIComponent(text)` and `decodeURI(text)` throw on a stray `%`:
+  wrap them in a `try` with a `catch` that keeps the raw text or answers 400 (`nitpicker/no-unhandled-url-parse`).
+- Split `key:value` text at the first separator (`indexOf` and `slice`, or `[key, ...rest]` with `rest.join(':')`),
+  not with `const [key, value] = text.split(':')` or `text.split('=')[1]`, which drop what follows the second
+  separator (`nitpicker/no-truncating-pair-split`).
+- A `Map`, `Set` or object key made of several runtime strings is not joined with a delimiter
+  (`` `${row}-${col}` ``): use `JSON.stringify([row, col])` or a nested `Map`, since `'a-b'` with `'c'` and `'a'`
+  with `'b-c'` are the same key. The check needs the type checker, which TypeScript projects have.
+- Read a host and port with ``new URL(`http://${host}`)`` (`hostname`, `port`), not `host.split(':')`: an IPv6
+  literal `[::1]:3000` has colons of its own (`nitpicker/no-host-port-colon-split`).
+- Split text read from a file on every line terminator (`text.split(/\r?\n/)`), not `split('\n')`, which leaves
+  a `\r` on each line of a CRLF file (`nitpicker/no-newline-only-line-split`).
+- Truncate display text on code points or graphemes (`Array.from(text).slice(0, max).join('')`,
+  `Intl.Segmenter`), not `text.slice(0, max)`, which can split an emoji (`nitpicker/no-surrogate-splitting-cut`,
+  TypeScript projects).
 - Build an `Intl` formatter or an `Ajv` instance with fixed options once, at module scope or in a
   class field, not per call (`nitpicker/reusable-object-per-call`).
 - Test an environment variable for a value, not only for `undefined`: `if (!process.env.API_URL)`,
@@ -28,10 +42,20 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-shared-stateful-regex`); use `includes` or `startsWith` instead of `match` or
   `search` with a string, and escape a parameter before building it into `new RegExp(...)`
   (`nitpicker/no-string-as-regex`).
+  A glob or pattern turned into a regex or a `LIKE` pattern with `replace` calls is escaped for the target first
+  (`escapeRegExp(value).replace(/\\\*/g, '.*')`), then the wildcards are restored from their escaped form
+  (`nitpicker/no-unescaped-pattern-translation`).
+  User text used as a `LIKE`, `contains`, `startsWith` or `$regex` filter value is escaped first
+  (`startsWith: escapeSqlLikePattern(name)`): `%`, `_` and `\` in it are wildcards otherwise
+  (`nitpicker/no-unescaped-filter-value`).
   A pattern part that never changes the match or does not do what it looks like (an assertion that
   always accepts, a duplicate alternative, `[\w_]`, an empty group) is a `regexp/` finding: remove it
   or fix what was meant; a form with a shorter equivalent (`a{1}`, `(?:ab)c`, `[a]`) takes the
   shorter one.
+- A replacement that comes from data is passed as a function, `text.replace(pattern, () => value)`: a string
+  replacement reads `$&`, `$1` and `$$` (`nitpicker/no-expanding-replacement-string`).
+- A value put into an HTML string is escaped first, `<td>${escapeHtml(name)}</td>`
+  (`nitpicker/no-unescaped-html-interpolation`).
 - `src/main/composition-root.mjs` (or `main`/`server`) only passes things in, through named
   functions. A new feature is a new directory, never a new `if`, `?:` or `??` in a shared entry
   point: lookups and their missing-value checks go in the feature's `adapters/`.

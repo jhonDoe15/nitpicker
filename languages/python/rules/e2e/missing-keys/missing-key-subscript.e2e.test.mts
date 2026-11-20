@@ -9,6 +9,7 @@ const { itOutcomes } = useScripts({
     'module-level-mutable-state',
     'null-valued-input-key',
     'swallowed-exception',
+    'unchecked-response-json',
   ],
 });
 

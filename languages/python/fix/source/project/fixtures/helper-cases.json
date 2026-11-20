@@ -1,0 +1,61 @@
+{
+  "helper": {
+    "app/__init__.py": "",
+    "tests/__init__.py": "",
+    "app/testing.py": "def make_user() -> dict:\n    return {\"name\": \"a\"}\n",
+    "tests/test_user.py": "from app.testing import make_user\n\n\ndef test_user():\n    assert make_user()\n",
+    "tests/test_other.py": "import app.testing as helpers\n\n\ndef test_other():\n    assert helpers.make_user()\n",
+    "tests/test_pkg.py": "from app import testing\n\n\ndef test_pkg():\n    assert testing.make_user()\n"
+  },
+  "helper-folder": {
+    "app/__init__.py": "",
+    "tests/__init__.py": "",
+    "app/testing/__init__.py": "",
+    "app/testing/factories.py": "def make_user() -> dict:\n    return {\"name\": \"a\"}\n",
+    "tests/test_user.py": "from app.testing.factories import make_user\n\n\ndef test_user():\n    assert make_user()\n"
+  },
+  "helper-production": {
+    "app/__init__.py": "",
+    "tests/__init__.py": "",
+    "app/testing.py": "def make_user() -> dict:\n    return {\"name\": \"a\"}\n",
+    "app/service.py": "from app.testing import make_user\n\n\ndef run():\n    return make_user()\n",
+    "tests/test_user.py": "from app.testing import make_user\n\n\ndef test_user():\n    assert make_user()\n"
+  },
+  "helper-no-package": {
+    "app/__init__.py": "",
+    "app/testing.py": "def make_user() -> dict:\n    return {\"name\": \"a\"}\n",
+    "tests/test_user.py": "from app.testing import make_user\n\n\ndef test_user():\n    assert make_user()\n"
+  },
+  "helper-occupied": {
+    "app/__init__.py": "",
+    "tests/__init__.py": "",
+    "app/testing.py": "def make_user() -> dict:\n    return {\"name\": \"a\"}\n",
+    "tests/support/testing.py": "X = 1\n",
+    "tests/test_user.py": "from app.testing import make_user\n\n\ndef test_user():\n    assert make_user()\n"
+  },
+  "helper-attribute": {
+    "app/__init__.py": "",
+    "tests/__init__.py": "",
+    "app/testing.py": "def make_user() -> dict:\n    return {\"name\": \"a\"}\n",
+    "tests/test_user.py": "import app.testing\n\n\ndef test_user():\n    assert app.testing.make_user()\n"
+  },
+  "helper-own-path": {
+    "app/__init__.py": "",
+    "tests/__init__.py": "",
+    "app/testing.py": "from pathlib import Path\n\nDATA = Path(__file__).parent / \"data\"\n",
+    "tests/test_user.py": "from app.testing import DATA\n\n\ndef test_user():\n    assert DATA\n"
+  },
+  "helper-relative": {
+    "app/__init__.py": "",
+    "tests/__init__.py": "",
+    "app/util.py": "X = 1\n",
+    "app/testing.py": "from .util import X\n\nY = X\n",
+    "tests/test_user.py": "from app.testing import Y\n\n\ndef test_user():\n    assert Y\n"
+  },
+  "helper-string-prefix": {
+    "app/__init__.py": "",
+    "tests/__init__.py": "",
+    "app/testing.py": "def make_user() -> dict:\n    return {\"name\": \"a\"}\n",
+    "tests/test_user.py": "from app.testing import make_user\n\n\ndef test_user(mocker):\n    mocker.patch(\"app.testing.make_user\")\n    assert make_user()\n"
+  }
+}

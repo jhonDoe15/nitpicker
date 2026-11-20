@@ -5,6 +5,12 @@ import type {
   RecipeSource,
 } from '../../../../../../core/fix/typed/fix-types.mts';
 
+export type PlanOutcome = {
+  readonly fixes: readonly RecipeFix[];
+  readonly notes: readonly string[];
+  readonly after: string;
+};
+
 type Replace = Extract<RecipeEdit, { type: 'replace' }>;
 type MethodOptions = { prefix?: string; modifiers?: string; limit?: string };
 export function method(name: string, options: MethodOptions = {}): string {
@@ -60,4 +66,12 @@ export function appliedPlan(
       fixes.flatMap(({ edits }) => edits),
     ),
   };
+}
+
+export function planRecipe(recipe: FixRecipe, text: string, path: string): PlanOutcome {
+  const { fixes, notes = [] } = recipe.plan({
+    files: [{ path, text }],
+    projectRoot: '/nonexistent',
+  });
+  return { fixes, notes, after: fixes.length === 0 ? text : applied(text, fixes[0]?.edits ?? []) };
 }

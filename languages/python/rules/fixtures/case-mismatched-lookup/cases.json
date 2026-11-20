@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "case-mismatched-lookup",
+    "mention": "normalize both sides"
+  }
+]

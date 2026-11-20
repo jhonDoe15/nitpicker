@@ -5,6 +5,7 @@ type Comment = {
   readonly end: number;
 };
 type BodyLine = { readonly text: string; readonly offset: number };
+type RemovableCode = { readonly offset: number; readonly start: number; readonly end: number };
 type CodeComment = { readonly offset: number; readonly subject: string };
 
 const TOKEN = /\/\*[\s\S]*?\*\/|\/\/[^\n]*|"""[\s\S]*?"""|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'/g;
@@ -70,6 +71,11 @@ const KEYWORD_LIST = [
 const KEYWORDS = new RegExp(String.raw`\b(?:${KEYWORD_LIST.join('|')})\b`, 'g');
 const TRAILING_NOTE = /\s+\/\/.*$/;
 const PROSE_VALUE = /=\s*[\w."'-]+\s+(?!instanceof\b)[A-Za-z]\w*\s*;$/;
+const STRONG_SHAPES = new Set([0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
+const CONTROL_SHAPE = 6;
+const NEUTRAL_LINE = /^(?:[\]})]+[,;]?)?$/;
+const DIRECTIVE =
+  /\bCHECKSTYLE:|\bNOSONAR\b|\bnoinspection\b|@formatter:|\blanguage\s*=|\bNOPMD\b|\bTODO\b|\bFIXME\b/;
 const WORD_RUN = /\b[a-z]{2,}\s+[a-z]{2,}\b/;
 
 function withoutGroups(text: string): string {
@@ -92,13 +98,33 @@ function readsAsProse(text: string): boolean {
   return PROSE_VALUE.test(plain) || WORD_RUN.test(withoutGroups(plain));
 }
 
-function isCodeLine(text: string): boolean {
+function codeShape(text: string): number {
   if (text === '' || SENTENCE.test(text) || NOT_CODE.test(text)) {
-    return false;
+    return -1;
   }
   const code = text.replace(TRAILING_NOTE, '');
-  const shape = CODE_SHAPES.find(({ pattern }) => pattern.test(code));
-  return shape !== undefined && !(shape.guarded && readsAsProse(code));
+  const at = CODE_SHAPES.findIndex(({ pattern }) => pattern.test(code));
+  const shape = CODE_SHAPES[at];
+  return shape !== undefined && !(shape.guarded && readsAsProse(code)) ? at : -1;
+}
+
+function isCodeLine(text: string): boolean {
+  return codeShape(text) !== -1;
+}
+
+function confidentlyCode(lines: readonly BodyLine[]): boolean {
+  let strong = false;
+  for (const { text } of lines) {
+    if (NEUTRAL_LINE.test(text)) {
+      continue;
+    }
+    const shape = codeShape(text);
+    if (shape === -1 || DIRECTIVE.test(text)) {
+      return false;
+    }
+    strong ||= STRONG_SHAPES.has(shape) && (shape !== CONTROL_SHAPE || text.endsWith('{'));
+  }
+  return strong;
 }
 
 function bodyLines(comment: Comment): BodyLine[] {
@@ -177,5 +203,22 @@ export function commentedOutCode(source: string): CodeComment[] {
   return groupsOf(source, plain).flatMap((group) => {
     const line = firstCodeLine(group.flatMap(bodyLines));
     return line === undefined ? [] : [{ offset: line.offset, subject: line.text }];
+  });
+}
+
+export function removableCode(source: string): RemovableCode[] {
+  const plain = commentsOf(source).filter(({ kind }) => kind !== 'doc');
+  return groupsOf(source, plain).flatMap((group) => {
+    const lines = group.flatMap(bodyLines);
+    const first = firstCodeLine(lines);
+    const head = group.find(
+      ({ start, end }) => first !== undefined && start <= first.offset && first.offset < end,
+    );
+    const tail = group.at(-1);
+    if (first === undefined || head === undefined || tail === undefined) {
+      return [];
+    }
+    const run = group.length === 1 ? lines : lines.slice(lines.indexOf(first));
+    return confidentlyCode(run) ? [{ offset: first.offset, start: head.start, end: tail.end }] : [];
   });
 }
