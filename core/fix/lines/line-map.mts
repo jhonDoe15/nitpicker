@@ -1,3 +1,5 @@
+import { sharedPrefixLength } from '../../../shared/lists/lists.mts';
+
 export type LineSpan = readonly [number, number];
 
 export type Block = { readonly before: LineSpan; readonly after: LineSpan };
@@ -11,13 +13,8 @@ function descending(count: number): number[] {
   return Array.from({ length: count }, (_unused, index) => count - 1 - index);
 }
 
-function commonPrefix(left: readonly string[], right: readonly string[]): number {
-  const differing = left.findIndex((line, index) => line !== right[index]);
-  return differing === -1 ? left.length : differing;
-}
-
 function commonSuffix(left: readonly string[], right: readonly string[], skip: number): number {
-  return commonPrefix(left.slice(skip).toReversed(), right.slice(skip).toReversed());
+  return sharedPrefixLength(left.slice(skip).toReversed(), right.slice(skip).toReversed());
 }
 
 function commonLengths({ left, right }: Sides): Uint32Array {
@@ -80,10 +77,9 @@ function walkedBlocks(sides: Sides, offset: number): Block[] {
   const lengths = commonLengths(sides);
   const blocks: Block[] = [];
   const walk: Walk = { row: 0, column: 0, open: undefined };
-  const ended = (): boolean => walk.row >= sides.left.length && walk.column >= sides.right.length;
   const steps = [0];
   for (const taken of steps) {
-    if (ended()) {
+    if (walk.row >= sides.left.length && walk.column >= sides.right.length) {
       break;
     }
     if (sameAt(walk, sides)) {
@@ -124,7 +120,7 @@ export function changedBlocks(
   }
   const left = before.split('\n').map(comparable);
   const right = after.split('\n').map(comparable);
-  const prefix = Math.min(commonPrefix(left, right), right.length);
+  const prefix = Math.min(sharedPrefixLength(left, right), right.length);
   const suffix = commonSuffix(left, right, prefix);
   return middleBlocks(
     {

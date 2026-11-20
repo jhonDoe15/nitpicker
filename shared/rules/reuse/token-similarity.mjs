@@ -1,3 +1,4 @@
+import { sharedPrefixLength } from '../../lists/items.mjs';
 const MAX_COMPARED_TOKENS = 20_000;
 const GUARD_SLOTS = 3;
 const PAIR_WORK_CAP = 4_000_000;
@@ -49,11 +50,6 @@ function overlapLength(cache, left, right) {
     (shared, [id, count]) => shared + Math.min(count, large.get(id) ?? 0),
     0,
   );
-}
-
-function sharedPrefixLength(left, right) {
-  const differing = left.findIndex((id, index) => id !== right[index]);
-  return differing === -1 ? left.length : differing;
 }
 
 function matchLength(left, right, { x, y }) {

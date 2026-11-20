@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appendAll, largest, reachableFrom, smallest } from './lists.mts';
+import { appendAll, largest, reachableFrom, sharedPrefixLength, smallest } from './lists.mts';
 
 const MORE_THAN_A_CALL_TAKES = 300_000;
 
@@ -23,6 +23,13 @@ describe('list helpers that do not pass every item as a call argument', () => {
     expect(largest([])).toBe(Math.max());
     expect(smallest([])).toBe(Math.min());
     expect(largest([1, Number.NaN])).toBeNaN();
+  });
+
+  it('count the leading items two lists share', () => {
+    expect(sharedPrefixLength(['a', 'b', 'c'], ['a', 'b', 'd'])).toBe(2);
+    expect(sharedPrefixLength(['a'], ['a', 'b'])).toBe(1);
+    expect(sharedPrefixLength(['a', 'b'], ['a'])).toBe(1);
+    expect(sharedPrefixLength([], ['a'])).toBe(0);
   });
 
   it('collect everything reachable from the start once, through cycles', () => {
