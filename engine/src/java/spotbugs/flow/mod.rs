@@ -13,7 +13,8 @@ use tree_sitter::Node;
 
 #[derive(Clone, Debug)]
 pub enum Item {
-    Param,
+    /// A parameter, by its place in the parameter list.
+    Param(usize),
     /// A variable arity parameter: an array the caller may not even have.
     Spread,
     Field(FieldRef),
@@ -25,7 +26,7 @@ pub enum Item {
 impl Item {
     fn same(&self, other: &Item) -> bool {
         match (self, other) {
-            (Item::Param, Item::Param) | (Item::Other, Item::Other) | (Item::Spread, Item::Spread) | (Item::Fixed, Item::Fixed) => true,
+            (Item::Param(_), Item::Param(_)) | (Item::Other, Item::Other) | (Item::Spread, Item::Spread) | (Item::Fixed, Item::Fixed) => true,
             (Item::Field(a), Item::Field(b)) => a.declaring == b.declaring && a.name == b.name,
             _ => false,
         }
@@ -71,12 +72,9 @@ pub(super) struct Walker<'c, 'a, 't> {
 
 pub fn trace<'t>(context: &Context, parameters: &[Node<'t>], body: Node<'t>) -> Trace<'t> {
     let mut state = State::new();
-    for parameter in parameters {
-        let name = match parameter.kind() {
-            "spread_parameter" => children(*parameter).into_iter().find(|part| part.kind() == "variable_declarator").and_then(|d| d.child_by_field_name("name")),
-            _ => parameter.child_by_field_name("name"),
-        };
-        let item = if parameter.kind() == "spread_parameter" { Item::Spread } else { Item::Param };
+    for (place, parameter) in parameters.iter().enumerate() {
+        let name = super::expose::parameter_name(*parameter);
+        let item = if parameter.kind() == "spread_parameter" { Item::Spread } else { Item::Param(place) };
         state.extend(name.map(|name| (context.text(name).to_string(), item)));
     }
     let mut walker = Walker { context, returns: HashMap::new(), stores: HashMap::new(), breaks: Vec::new(), continues: Vec::new() };

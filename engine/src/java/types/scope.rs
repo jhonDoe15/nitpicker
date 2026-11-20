@@ -711,11 +711,19 @@ impl<'a> Resolver<'a> {
                 info.methods.push(Method { generic_parameters, varargs, ..plain("<init>", parameters, Type::Primitive("void")) });
             }
             for component in declaration.child_by_field_name("parameters").map(children).unwrap_or_default() {
-                let (Some(name), Some(kind)) = (component.child_by_field_name("name"), self.declared(component, None, false)) else {
+                // A variable arity component is an array field; its name sits one level down.
+                let spread = component.kind() == "spread_parameter";
+                let declarator = children(component).into_iter().find(|part| spread && part.kind() == "variable_declarator");
+                let named = declarator.unwrap_or(component).child_by_field_name("name");
+                let element = |keep: bool| match spread {
+                    true => children(component).into_iter().find_map(|child| self.written(child, keep)).map(|element| Type::Array(Box::new(element))),
+                    false => self.declared(component, None, keep),
+                };
+                let (Some(name), Some(kind)) = (named, element(false)) else {
                     continue;
                 };
                 let name = self.file.text_of(name).to_string();
-                let generic = self.declared(component, None, true).unwrap_or(kind.clone());
+                let generic = element(true).unwrap_or(kind.clone());
                 info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, fixed: None, strict: false, is_private: true, flags: super::model::flag::FINAL });
                 info.methods.push(Method { generic_returns: generic, ..plain(&name, Vec::new(), kind.erased()) });
             }

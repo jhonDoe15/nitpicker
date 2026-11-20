@@ -2,7 +2,8 @@
 //! out a mutable object it keeps in a field, or keeps a mutable object a caller handed in.
 use super::flow::{FieldRef, Item, Trace, trace};
 use super::mutable::mutable;
-use super::stores::{fixed_of, widened};
+use super::fields::widened;
+use super::stores::fixed_of;
 use super::{Context, names};
 use crate::engine::source::{children, named_children, parent};
 use crate::java::helpers::has_modifier;
@@ -93,11 +94,21 @@ impl Site<'_, '_, '_> {
                 }
             }
         }
+        let mut kept = HashSet::new();
         for store in &found.stores {
-            if matches!(store.item, Item::Param) && (store.own || self.is_static) {
+            let Item::Param(place) = store.item else { continue };
+            if (store.own || self.is_static) && kept.insert((store.field.declaring.clone(), store.field.name.clone(), place)) {
                 self.stored(self.method, self.context.line(store.node), &store.field);
             }
         }
+    }
+}
+
+/// The name of a parameter or record component; a variable arity one keeps it one level down.
+pub fn parameter_name(parameter: Node) -> Option<Node> {
+    match parameter.kind() {
+        "spread_parameter" => children(parameter).into_iter().find(|part| part.kind() == "variable_declarator")?.child_by_field_name("name"),
+        _ => parameter.child_by_field_name("name"),
     }
 }
 
@@ -164,7 +175,7 @@ fn inner_constructors(context: &Context, class: Node, own: &str, nest: &[String]
     if !mutable(index, &Type::class(outer)) || !keeps_outer(context, class, own, outer) {
         return;
     }
-    let shown = format!("{}.this${}", names::short(&names::binary(context, own)), nest.len() - 2);
+    let shown = format!("{}.{}", names::short(&names::binary(context, own)), names::outer_field(context, nest));
     let explicit: Vec<Node> = members(class).into_iter().filter(|member| member.kind() == "constructor_declaration").collect();
     if explicit.is_empty() && has_modifier(class, "public") {
         let line = class.child_by_field_name("name").map_or(context.line(class), |name| context.line(name));
@@ -175,7 +186,7 @@ fn inner_constructors(context: &Context, class: Node, own: &str, nest: &[String]
             first.kind() == "explicit_constructor_invocation" && first.child_by_field_name("constructor").is_some_and(|called| called.kind() == "this")
         });
         if has_modifier(constructor, "public") && !delegates {
-            let line = constructor.child_by_field_name("name").map_or(context.line(constructor), |name| context.line(name));
+            let line = constructor.child_by_field_name("body").map_or(context.line(constructor), |body| context.line(body));
             context.report("EI_EXPOSE_REP2", constructor, line, format!("{} {STORING} {shown}", names::method(context, own, constructor, Some(outer))));
         }
     }
@@ -192,7 +203,7 @@ fn record_members(context: &Context, class: Node, own: &str, nest: &[String]) {
         _ => false,
     });
     let field_of = |component: Node| {
-        let name = context.text(component.child_by_field_name("name")?);
+        let name = context.text(parameter_name(component)?);
         let (declaring, field) = index.field(own, name)?;
         Some(FieldRef { declaring: declaring.name.clone(), name: name.to_string(), via: own.to_string(), kind: field.kind.clone(), flags: field.flags })
     };
@@ -209,7 +220,7 @@ fn record_members(context: &Context, class: Node, own: &str, nest: &[String]) {
             site.returned(class, context.line(class), &field);
         }
         let open = has_modifier(class, "public") || parent(class).is_some_and(|holder| holder.kind() == "interface_body");
-        if !canonical && open {
+        if !canonical && open && component.kind() != "spread_parameter" {
             let site = Site { label: names::method(context, own, class, None), ..site };
             site.stored(class, name_line, &field);
         }
@@ -239,7 +250,7 @@ pub fn exposed_representation(context: &Context, class: Node) {
             for component in parameters(class) {
                 let Some(name) = component.child_by_field_name("name").map(|name| context.text(name)) else { continue };
                 let Some((declaring, field)) = context.resolver.index.field(&own, name) else { continue };
-                if matches!(end.get(name), Some(Item::Param)) {
+                if matches!(end.get(name), Some(Item::Param(_))) {
                     let field = FieldRef { declaring: declaring.name.clone(), name: name.to_string(), via: own.clone(), kind: field.kind.clone(), flags: field.flags };
                     site.stored(member, context.line(member), &field);
                 }
