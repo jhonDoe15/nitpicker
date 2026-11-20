@@ -38,7 +38,11 @@ for (const [file = '', display = file] of files) {
     [
       {
         files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
-        languageOptions: { parser, sourceType: 'module', parserOptions: { ecmaFeatures: { jsx: true } } },
+        languageOptions: {
+          parser,
+          sourceType: 'module',
+          parserOptions: { ecmaFeatures: { jsx: true } },
+        },
         linterOptions: { noInlineConfig: true },
         plugins: { 'testing-library': testingLibrary },
         settings: { 'testing-library/utils-module': 'test-utils' },
