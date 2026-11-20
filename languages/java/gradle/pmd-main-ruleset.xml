@@ -2233,15 +2233,16 @@ return //MethodCall[ArgumentList]
 //IfStatement[count(*) = 2]
   [*[2][self::ReturnStatement[BooleanLiteral[@True = false()]]
         or self::Block[count(*) = 1]/ReturnStatement[BooleanLiteral[@True = false()]]]]
+  [ancestor::MethodDeclaration[1][@Name = 'equals'][@Arity = 1]
+     [FormalParameters/FormalParameter/ClassType[@SimpleName = 'Object']]]
   [let $m := ancestor::MethodDeclaration[1],
-       $p := string($m/FormalParameters/FormalParameter/VariableId/@Name),
+       $p := string($m/FormalParameters/FormalParameter[1]/VariableId/@Name),
        $aliases := ($p, $m//VariableDeclarator[.//CastExpression/VariableAccess[@Name = $p]]/VariableId/@Name,
                     $m//TypePattern/VariableId/@Name),
        $cond := *[1],
        $last := if ($cond[self::InfixExpression[@Operator = '||']]) then $cond/*[2] else $cond,
        $call := $last[self::MethodCall[@MethodName = 'equals'][ArgumentList/@Size = (1, 2)]]
-   return exists($m[@Name = 'equals'][@Arity = 1][FormalParameters/FormalParameter/ClassType[@SimpleName = 'Object']])
-     and exists($call)
+   return exists($call)
      and (some $v in $call//VariableAccess satisfies $v/@Name = $aliases)
      and exists($m//IfStatement[count(*) = 2]
                   [*[2][self::ReturnStatement[BooleanLiteral[@True = false()]]

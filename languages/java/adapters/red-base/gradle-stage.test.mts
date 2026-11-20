@@ -5,6 +5,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { assertGradleSucceeded } from './gradle-stage.mts';
 import type { GradleResult } from '../gradle-wrapper/gradle-process.mts';
 import type { JavaPolicy } from '../typed/java-values.mts';
+import {
+  type FailedToolRecord,
+  failedToolRecord,
+} from '../gradle-wrapper/partial/failed-tool-tasks.mts';
 import { fieldOf, messageOf } from '../../../../shared/values/readers.mts';
 
 const temporaryRoots: string[] = [];
@@ -46,7 +50,12 @@ describe('assertGradleSucceeded', () => {
     {
       projectRoot = '/p',
       ...extra
-    }: { projectRoot?: string; policy?: JavaPolicy; checkTests?: boolean } = {},
+    }: {
+      projectRoot?: string;
+      policy?: JavaPolicy;
+      checkTests?: boolean;
+      failedTools?: FailedToolRecord;
+    } = {},
   ): unknown {
     try {
       assertGradleSucceeded(result, projectRoot, {
@@ -65,6 +74,30 @@ describe('assertGradleSucceeded', () => {
 
   it('does nothing for a run that succeeded', () => {
     expect(thrownBy({ status: 0, stdout: '', stderr: '' }, '/none')).toBeUndefined();
+  });
+
+  it('notes failed nitpicker tool tasks instead of failing, when the caller keeps partial results', () => {
+    const tool = {
+      status: 1,
+      stdout: '',
+      stderr:
+        "FAILURE: Build failed with an exception.\n* What went wrong:\nExecution failed for task ':docs:nitpickerForbiddenApis'.\n> too long",
+    };
+    const failedTools = failedToolRecord();
+
+    expect(thrownBy(tool, '/none', { failedTools })).toBeUndefined();
+    expect(failedTools.current().tasks).toEqual([
+      { project: ':docs', task: 'nitpickerForbiddenApis', reason: 'too long' },
+    ]);
+    expect([
+      messageOf(failedTools.current().error),
+      messageOf(thrownBy(tool, '/none')),
+      messageOf(thrownBy(failed, '/none', { failedTools })),
+    ]).toEqual([
+      "Java preset failed on your change: Execution failed for task ':docs:nitpickerForbiddenApis'.\n> too long",
+      "Java preset failed on your change: Execution failed for task ':docs:nitpickerForbiddenApis'.\n> too long",
+      "Java preset failed on your change: Execution failed for task ':test'.\n> There were failing tests.",
+    ]);
   });
 
   it('keeps the failing tests of each module on a failure whose test reports name them', () => {

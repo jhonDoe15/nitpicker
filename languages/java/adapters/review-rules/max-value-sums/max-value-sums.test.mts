@@ -166,6 +166,45 @@ describe('Java sums that overflow on a maximum-value sentinel', () => {
     ).toEqual([]);
   });
 
+  it('does not let a local that shadows a maximum field carry it', () => {
+    expect(
+      java(
+        [
+          '  private long end = Long.MAX_VALUE;',
+          '  String token(String text, int i) {',
+          '    int end = text.indexOf(62, i + 1);',
+          '    if (end < 0) throw new IllegalArgumentException("unterminated");',
+          '    return text.substring(i, end + 1);',
+          '  }',
+          '  String rest(String text, int start) {',
+          '    return text.substring(start, (int) Math.min(start + end, text.length()));',
+          '  }',
+        ].join('\n'),
+      ),
+    ).toEqual([`${MAX_VALUE_RULE} ${JAVA_FILE}:10`]);
+  });
+
+  it('sees an array local as a shadow, and a yielded field as the field', () => {
+    expect(
+      java(
+        [
+          '  private int[] sizes = {Integer.MAX_VALUE};',
+          '  private int limit = Integer.MAX_VALUE;',
+          '  int first(int start) {',
+          '    int[] limit = {1};',
+          '    return Math.min(start + limit[0], 3);',
+          '  }',
+          '  int pick(int mode, int start) {',
+          '    return switch (mode) {',
+          '      case 1 -> Math.min(start + limit, 3);',
+          '      default -> { yield limit; }',
+          '    };',
+          '  }',
+        ].join('\n'),
+      ),
+    ).toEqual([`${MAX_VALUE_RULE} ${JAVA_FILE}:11`]);
+  });
+
   it('leaves test sources alone', () => {
     expect(
       lines({
@@ -332,6 +371,26 @@ describe('Java sums: guards, returned and chosen maximums, page sizes', () => {
 });
 
 describe('Kotlin sums that overflow on a maximum-value sentinel', () => {
+  it('does not let a local that shadows a maximum property carry it, and keeps infix uses', () => {
+    expect(
+      kotlin(
+        [
+          'class Text {',
+          '  private var end = Int.MAX_VALUE',
+          '  fun token(text: String, i: Int): String {',
+          '    val end = text.indexOf(">", i + 1)',
+          '    return text.substring(i, end + 1)',
+          '  }',
+          '  fun rest(text: String, start: Int): String {',
+          '    if (start until end isEmpty()) return ""',
+          '    return text.substring(start, minOf(start + end, text.length))',
+          '  }',
+          '}',
+        ].join('\n'),
+      ),
+    ).toEqual([`${MAX_VALUE_RULE} ${KOTLIN_FILE}:10`]);
+  });
+
   it('reports a default parameter value reaching Math.min', () => {
     expect(
       kotlin(

@@ -32,7 +32,9 @@ type FailingRuns<O> = {
   readonly run: FailingRun<O>;
   readonly projectRoot: string;
   readonly options: O;
+  readonly stopped?: Stopped | undefined;
 };
+type Stopped = (error: unknown) => boolean;
 
 const ROOT_MODULE = '.';
 const TIMED_OUT = 'timedOut';
@@ -102,19 +104,40 @@ export function runOrNoteFailingTests<O extends { readonly policy?: JavaPolicy |
   projectRoot: string,
   options: O,
 ): TestsFailure[] {
+  return failingTestsUnlessStopped({ run, projectRoot, options });
+}
+
+export function failingTestsUnlessStopped<O extends { readonly policy?: JavaPolicy | undefined }>({
+  run,
+  projectRoot,
+  options,
+  stopped,
+}: FailingRuns<O>): TestsFailure[] {
   try {
     run(projectRoot, { ...options, testsFailedModules: [], testsSkipped: false });
     return [];
   } catch (error) {
     if (isTestsTimeout(error, options.policy)) {
-      run(projectRoot, { ...options, testsFailedModules: [], testsSkipped: true });
+      unlessStopped(stopped, () => {
+        run(projectRoot, { ...options, testsFailedModules: [], testsSkipped: true });
+      });
       return [timedOutTests(fieldOf(error, TIMED_OUT))];
     }
     if (!isTestFailure(error)) {
       throw error;
     }
     const failures = failuresOf(fieldOf(error, FAILURES));
-    return rerunWithoutFailingTests({ run, projectRoot, options }, failures);
+    return rerunWithoutFailingTests({ run, projectRoot, options, stopped }, failures);
+  }
+}
+
+function unlessStopped(stopped: Stopped | undefined, rerun: () => void): void {
+  try {
+    rerun();
+  } catch (error) {
+    if (stopped?.(error) !== true) {
+      throw error;
+    }
   }
 }
 
@@ -123,18 +146,23 @@ function modulesOf(failures: readonly TestsFailure[]): string[] {
 }
 
 function rerunWithoutFailingTests<O>(
-  { run, projectRoot, options }: FailingRuns<O>,
+  { run, projectRoot, options, stopped }: FailingRuns<O>,
   failures: readonly TestsFailure[],
 ): TestsFailure[] {
   try {
     run(projectRoot, { ...options, testsFailedModules: modulesOf(failures), testsSkipped: false });
     return [...failures];
   } catch (error) {
+    if (stopped?.(error) === true) {
+      return [...failures];
+    }
     if (!isTestFailure(error)) {
       throw error;
     }
     const all = [...failures, ...failuresOf(fieldOf(error, FAILURES))];
-    run(projectRoot, { ...options, testsFailedModules: modulesOf(all), testsSkipped: false });
+    unlessStopped(stopped, () => {
+      run(projectRoot, { ...options, testsFailedModules: modulesOf(all), testsSkipped: false });
+    });
     return all;
   }
 }

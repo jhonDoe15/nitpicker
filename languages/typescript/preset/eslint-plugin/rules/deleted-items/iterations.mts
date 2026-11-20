@@ -7,7 +7,6 @@ import {
   parameterSlot,
   type ParameterSlot,
 } from './including-deleted.mts';
-import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 type Callback = TypeScript.ArrowFunction | TypeScript.FunctionExpression;
 type Parts = {
@@ -58,7 +57,9 @@ function callsHelperOn(body: TypeScript.Node, elementNames: readonly string[]): 
     if (taken) {
       return true;
     }
-    appendAll(pending, node.getChildren());
+    node.forEachChild((child) => {
+      pending.push(child);
+    });
   }
   return false;
 }
@@ -170,7 +171,9 @@ function indexedReads(
     ) {
       found.push(current);
     }
-    appendAll(pending, current.getChildren());
+    current.forEachChild((child) => {
+      pending.push(child);
+    });
   }
   return found;
 }
@@ -268,7 +271,9 @@ export function iterationsIn(
     if (iteration !== undefined) {
       found.push(iteration);
     }
-    appendAll(pending, node.getChildren(sourceFile));
+    node.forEachChild((child) => {
+      pending.push(child);
+    });
   }
   return found;
 }

@@ -1,6 +1,5 @@
 import path from 'node:path';
 import { writeFileSync } from 'node:fs';
-import { stripVTControlCharacters } from 'node:util';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HEAD_POLICY_ENV } from '../../../../../shared/head-policy.mjs';
 import { runQualityDiff } from '../../../comparison/run-diff.mts';
@@ -13,7 +12,6 @@ import {
   policyFiles,
   filler,
 } from './test-support/static-check-fixtures.mts';
-import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
 import { type FileMap, writeFiles } from '../../../git/test-support/fixture-files.mts';
 import { commit } from '../../../git/test-support/git-repository.mts';
 
@@ -273,6 +271,35 @@ describe('static differential adapters: Prettier', () => {
       ]);
     },
   );
+  it.each([{ precedence: ['nitpicker'] }, { precedence: ['project', 'nitpicker'] }])(
+    'reports a file Prettier cannot parse and still checks the others, with precedence %j',
+    async ({ precedence }) => {
+      const projectRoot = generatedSnapshot();
+      const policyFile = path.join(projectRoot, '..', 'policy.json');
+      writeFileSync(policyFile, JSON.stringify({ tools: { prettier: { precedence } } }));
+      vi.stubEnv(HEAD_POLICY_ENV, policyFile);
+      writeFiles(projectRoot, {
+        'archive.json': '{\n  "a": 1\n}\n\n{\n  "b": 2\n}\n',
+        'src/main/loose.ts': 'export const a={value:1}\n',
+      });
+
+      const findings = await runPrettierOn(projectRoot, projectRoot);
+
+      const byPath = findings.toSorted((a, b) => a.path.localeCompare(b.path));
+
+      expect(
+        byPath.map(({ path: file, rule, classification }) => ({ file, rule, classification })),
+      ).toEqual([
+        { file: 'archive.json', rule: 'prettier/file-not-parsed', classification: 'descriptive' },
+        { file: 'src/main/loose.ts', rule: 'prettier/prettier', classification: 'enforceable' },
+      ]);
+      expect(byPath[0]?.message).toBe(
+        'Prettier could not parse this file (The input should contain exactly one expression, but the ' +
+          'first expression is followed by the unexpected character `{`. (5:1)), so its formatting was not ' +
+          'checked; the other files were. If the file is not meant to parse, list it in .prettierignore.',
+      );
+    },
+  );
   it('honors policy, project and layout ignores for hidden formatting candidates', async () => {
     const projectRoot = generatedSnapshot();
     const policyFile = path.join(projectRoot, '..', 'policy.json');
@@ -307,18 +334,19 @@ describe('static differential adapters: Prettier', () => {
 
     expect(findings).toEqual([]);
   });
-  it('reports a file Prettier cannot parse with the classic CLI error text', async () => {
+  it('reports a source file Prettier cannot parse as one finding next to the other files', async () => {
     const projectRoot = generatedSnapshot();
     writeFiles(projectRoot, {
       'src/main/broken.ts': 'export const = ;\n',
       'src/main/fresh.ts': 'export const fresh = "a"\n',
     });
 
-    await expect(runPrettierOn(projectRoot)).rejects.toSatisfy((error: unknown) =>
-      /^prettier exited with 2: \[error\] src\/main\/broken\.ts: SyntaxError/u.test(
-        stripVTControlCharacters(textOf(fieldOf(error, 'message'))),
-      ),
-    );
+    const findings = await runPrettierOn(projectRoot);
+
+    expect(findings.map(({ path: file, rule }) => ({ file, rule }))).toEqual([
+      { file: 'src/main/fresh.ts', rule: 'prettier/prettier' },
+      { file: 'src/main/broken.ts', rule: 'prettier/file-not-parsed' },
+    ]);
   });
   it.each([
     [['src/legacy/**'], { '.nitpicker-diff-prettier-exclude': '/src/main/**\n' }],

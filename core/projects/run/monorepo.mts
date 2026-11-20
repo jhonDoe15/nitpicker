@@ -23,7 +23,13 @@ import {
   undeclaredHint,
   unlistedHint,
 } from './messages.mts';
-import { comparisonOf, selectionOf, submodulePaths } from './selection-plan.mts';
+import {
+  comparisonOf,
+  selectedPaths,
+  selectionOf,
+  submodulePaths,
+  withRequestedAnalyzers,
+} from './selection-plan.mts';
 import { enclosingPlan, requestsProjects, singleMode } from './single-mode.mts';
 import { clearReports, extrasOf, type RunContext } from './execution/project-rows.mts';
 import { runRowsWithSharedBase } from './execution/shared-base.mts';
@@ -103,10 +109,12 @@ type Prepared = Omit<RunContext, 'cli' | 'runProject'> & {
 function prepare(plan: MonorepoPlan, cli: MonorepoCli): Prepared {
   const { all, outputRoot: given } = cli.options;
   const outputRoot = outputRootFor(plan.root, given, all ? 'snapshot' : 'diff');
-  const analyzers = analyzersByProject(plan, cli);
+  const selection = selectionOf(plan, cli);
+  const analyzers = analyzersByProject(plan, cli, selectedPaths(selection.rows));
   clearStaleProjectReports({ outputRoot, plan, clearReports });
   clearReports(outputRoot);
-  return { outputRoot, analyzers, ...selectionOf(plan, cli, analyzers) };
+  const rows = withRequestedAnalyzers(selection.rows, analyzers);
+  return { outputRoot, analyzers, ...selection, rows };
 }
 
 type Finish = (results: readonly ProjectRow[]) => number;

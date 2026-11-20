@@ -24,4 +24,17 @@ describe('the solver budget of a unit', () => {
     expect(decideSync([], binary('<', count, number('5')), { integers: true })).toBe(first);
     expect(decideSync([], binary('<', count, number('5')))).toBe('open');
   });
+
+  it('solves the same terms at another place once, and still counts the run', () => {
+    const placed = (start) => ({
+      ...binary('>=', name('placed'), number('40')),
+      range: [start, start + 9],
+    });
+    const budget = solverBudget(2);
+    const first = decideSync([], placed(10), { budget, integers: true });
+
+    expect(decideSync([], placed(500), { budget, integers: true })).toBe(first);
+    expect(budget.left).toBe(0);
+    expect(decideSync([], placed(900), { budget, integers: true })).toBe('open');
+  });
 });

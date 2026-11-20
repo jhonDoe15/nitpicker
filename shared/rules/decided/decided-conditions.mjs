@@ -8,6 +8,7 @@ import { goTypedTree } from './widths/go-typed-tree.mjs';
 import { typedTree } from './widths/typed-tree.mjs';
 import { RULE_IDS } from '../../policy.mjs';
 import { reuseFinding } from '../reuse/reuse-finding.mjs';
+import { settledAhead } from '../../logic/sync/decide-sync.mjs';
 
 const OUTCOMES = {
   true: { consequence: '', fix: 'Remove the check, or fix the condition that was meant.' },
@@ -100,5 +101,5 @@ export function decidedConditionFindings(units, { analyzerName, isExcepted }) {
   return units
     .filter((unit) => unit.tree?.kind === 'function')
     .filter((unit) => !isExcepted(RULE_IDS.decidedCondition, unit.file))
-    .flatMap((unit) => unitFindings(unit, analyzerName, shared));
+    .flatMap((unit) => settledAhead(unit, () => unitFindings(unit, analyzerName, shared)));
 }

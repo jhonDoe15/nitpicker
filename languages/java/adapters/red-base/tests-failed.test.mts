@@ -6,6 +6,7 @@ import { collectJavaFindings } from '../java-diff.mts';
 import {
   HEAD_TESTS_TOOL,
   isTestFailure,
+  failingTestsUnlessStopped,
   runOrNoteFailingTests,
   testsFailedFinding,
   withRootSourceRoots,
@@ -289,6 +290,25 @@ describe('runOrNoteFailingTests', () => {
       ],
       [[], ['core', 'api']],
     ]);
+  });
+
+  it('keeps the failing tests when the rerun is stopped at its deadline', () => {
+    const deadline = Object.assign(new Error('stopped'), {
+      timedOut: { build: 'Gradle', minutes: 9 },
+    });
+    const { run } = runner(failureOf('core'), deadline);
+    const noted: unknown[] = [];
+    const stopped = (error: unknown): boolean => noted.push(error) > 0;
+
+    expect(
+      failingTestsUnlessStopped({
+        run,
+        projectRoot: '/p',
+        options: { policy: { snapshot: 'base' } },
+        stopped,
+      }),
+    ).toEqual([{ module: 'core', tests: ['core.T.t: no'] }]);
+    expect(noted).toEqual([deadline]);
   });
 
   it('fails when the rerun fails too', () => {

@@ -5,6 +5,7 @@ import { gradleLog, withGradleLog } from '../gradle-wrapper/diagnostics/failure-
 import { condenseFailure, isRateLimited } from '../gradle-wrapper/diagnostics/failure-text.mts';
 import { gradleSpawnFailure } from '../gradle-wrapper/diagnostics/spawn-failure.mts';
 import { memoryAdvice } from '../gradle-wrapper/memory/gradle-memory.mts';
+import { type FailedToolRecord } from '../gradle-wrapper/partial/failed-tool-tasks.mts';
 import { usesConfigRetries } from '../../../../shared/conventions/tool-precedence.mjs';
 import { failingTestsOf } from '../gradle-reports/failing-tests.mts';
 import { failingTestsError } from '../../builds/test-failures.mts';
@@ -21,6 +22,7 @@ type StageCheck = {
   readonly policy?: JavaPolicy;
   readonly command: string;
   readonly budget: JavaBudget;
+  readonly failedTools?: FailedToolRecord | undefined;
 };
 type StageRun = Omit<StageCheck, 'command'> & {
   readonly args: unknown;
@@ -67,7 +69,7 @@ function pathGradleAdvice(command: string, projectRoot: string): string {
 export function assertGradleSucceeded(
   result: GradleResult,
   projectRoot: string,
-  { reportBase, since, checkTests, policy = {}, command, budget }: StageCheck,
+  { reportBase, since, checkTests, policy = {}, command, budget, failedTools }: StageCheck,
 ): void {
   const succeeded = result.error === undefined && result.status === 0;
   const failures =
@@ -88,15 +90,27 @@ export function assertGradleSucceeded(
   if (succeeded) {
     return;
   }
-  const stage = failedStage(result, projectRoot, { policy, command, budget });
-  const error = withGradleLog(stage, result, log);
+  noteOrThrowFailure(result, projectRoot, { policy, command, budget, failedTools });
+}
+
+function noteOrThrowFailure(
+  result: GradleResult,
+  projectRoot: string,
+  { failedTools, ...context }: FailureContext & Pick<StageCheck, 'failedTools'>,
+): void {
+  const stage = failedStage(result, projectRoot, context);
+  const error = withGradleLog(stage, result, gradleLog(context.policy));
   if (fieldOf(result.error, 'code') === 'ETIMEDOUT') {
-    const minutes = (budget.commandTimeoutMs ?? 0) / MINUTE_MS;
+    const minutes = Math.round((context.budget.commandTimeoutMs ?? 0) / MINUTE_MS);
     throw Object.defineProperty(error, 'timedOut', { value: { build: 'Gradle', minutes } });
   }
-  throw result.error === undefined
-    ? callUntyped(withCompileErrors, error, outputOf(result), projectRoot)
-    : error;
+  if (result.error !== undefined) {
+    throw error;
+  }
+  const failure: unknown = callUntyped(withCompileErrors, error, outputOf(result), projectRoot);
+  if (failedTools?.noteTasks({ output: outputOf(result), error: failure }) !== true) {
+    throw failure;
+  }
 }
 
 export function runGradleStage({
@@ -110,6 +124,7 @@ export function runGradleStage({
   policy,
   spawn,
   environment,
+  failedTools,
 }: StageRun): void {
   const target: unknown = gradleTarget({
     projectRoot,
@@ -130,5 +145,6 @@ export function runGradleStage({
     ...(policy === undefined ? {} : { policy }),
     command,
     budget,
+    failedTools,
   });
 }

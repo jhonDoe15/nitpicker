@@ -20,7 +20,7 @@ import { createQualityChecks } from '../quality-checks.mts';
 import { eslintVersion } from '../checks/constants.mts';
 import { hashFiles } from '../checks/hash.mts';
 import { EXECUTION_INPUTS } from '../../../../shared/input-sets/inputs.mjs';
-import { memoryScaleOf } from './memory-scales.mts';
+import { withSizeScales } from './memory-scales.mts';
 import { sourceInputs, withLegacyInventory } from './typed/shared-views.mts';
 
 const QUALITY_CHECKS_FILE = 'languages/typescript/preset/quality-checks.mjs';
@@ -119,6 +119,7 @@ function createStaticAnalyzer(check: QualityChecks['staticChecks'][number]): Pac
         includeOnly: undefined,
         exclude: undefined,
         timeoutMs: check.timeoutMs,
+        timeoutScale: check.timeoutScale,
         shardWeight: check.shardWeight,
       }),
   );
@@ -162,6 +163,7 @@ function createQualityAreaCheckAnalyzer(
         configurationHash,
         exclusions: check.exclusions,
         timeoutMs: check.timeoutMs,
+        timeoutScale: check.timeoutScale,
         dependencies: check.dependencies,
         adapterArguments,
         concurrencyWeight: check.concurrencyWeight,
@@ -187,11 +189,7 @@ function withPackagePolicy(analyzer: PackageAnalyzer): PackageAnalyzer {
   analyzer.inputs = EXECUTION_ANALYZERS.has(analyzer.name) ? EXECUTION_INPUTS : SOURCE_INPUTS;
   analyzer.resolveVersion = (projectRoot) => resolveAnalyzerVersion(analyzer.name, projectRoot);
   analyzer.policyFromPackage = true;
-  const memoryScale = memoryScaleOf(analyzer.name);
-  if (memoryScale !== undefined) {
-    analyzer.memoryScale = memoryScale;
-  }
-  return analyzer;
+  return withSizeScales(analyzer);
 }
 
 function buildPackageAnalyzers(layout: ResolvedLayout): PackageAnalyzer[] {

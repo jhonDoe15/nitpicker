@@ -61,6 +61,25 @@ afterEach(() => {
 });
 
 describe('package-owned child configs', () => {
+  it('eslint.config.mjs has no block with an empty files list in a package without tests', async () => {
+    const testFiles = {
+      include: [],
+      exclude: [],
+      includeRegexes: ['^checks/'],
+      excludeRegexes: [],
+    };
+    const withoutTests = { ...policy, tools: { tests: { runner: 'jest', testFiles } } };
+    vi.stubEnv('NITPICKER_DIFF_ESLINT_PROJECT_ROOT', temporaryProject({ 'lib/a.ts': '' }));
+
+    const config = await loadConfig(
+      'defaults/eslint.config.mjs',
+      withoutTests,
+      selectFilesAndIgnores,
+    );
+
+    expect(config.filter((entry) => entry.files?.length === 0)).toEqual([]);
+  });
+
   it('eslint.config.mjs lints the custom roots and ignores excluded paths', async () => {
     vi.stubEnv('NITPICKER_DIFF_ESLINT_PROJECT_ROOT', temporaryProject({}));
     const config = await loadConfig('defaults/eslint.config.mjs', policy, selectFilesAndIgnores);

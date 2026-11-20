@@ -1,7 +1,7 @@
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../adapters/typed/typescript-program.mts';
 import { depthFirst, syntaxChildren } from './typed/syntax-views.mts';
-import { realpathSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -20,7 +20,12 @@ type ContractEntry = {
   readonly declaration: TypeScript.InterfaceDeclaration;
 };
 
-type Context = { readonly checker: TypeScript.TypeChecker; readonly sourceRoot: string };
+type Roots = { readonly sourceRoot: string; readonly ownRoot: string };
+
+type Context = Roots & { readonly checker: TypeScript.TypeChecker };
+
+const IMPLEMENTING_CLASS = /\bimplements\b/u;
+const TEST_PATH = /(?:^|\/)(?:__tests__|tests|fixtures)\/|\.(?:test|spec)\.[cm]?tsx?$/u;
 
 type ClassCursor = {
   readonly node: TypeScript.Node;
@@ -29,14 +34,29 @@ type ClassCursor = {
 
 type UnusedMethod = { readonly file: string; readonly contract: string; readonly method: string };
 
-function isProductionSource(source: TypeScript.SourceFile, sourceRoot: string): boolean {
-  const relative = path.relative(sourceRoot, source.fileName);
+function isProductionFile(fileName: string, root: string): boolean {
+  const relative = path.relative(root, fileName).split(path.sep).join('/');
   return (
-    !source.isDeclarationFile &&
     relative !== '..' &&
-    !relative.startsWith(`..${path.sep}`) &&
-    !/(?:^|\/)(?:__tests__|tests|fixtures)\/|\.(?:test|spec)\.[cm]?tsx?$/.test(relative)
+    !relative.startsWith('../') &&
+    !path.isAbsolute(relative) &&
+    !TEST_PATH.test(relative)
   );
+}
+
+function isProductionSource(source: TypeScript.SourceFile, root: string): boolean {
+  return !source.isDeclarationFile && isProductionFile(source.fileName, root);
+}
+
+function declaresImplementingClass(fileName: string): boolean {
+  const text = ts.sys.readFile(fileName) ?? readFileSync(fileName, 'utf8');
+  return IMPLEMENTING_CLASS.test(text);
+}
+
+export function hasImplementingClass(fileNames: readonly string[], ownRoot: string): boolean {
+  return fileNames
+    .filter((fileName) => !fileName.endsWith('.d.ts') && isProductionFile(fileName, ownRoot))
+    .some(declaresImplementingClass);
 }
 
 function isExported(declaration: TypeScript.InterfaceDeclaration): boolean {
@@ -75,7 +95,7 @@ function interfaceDeclaration(
 
 function implementedContracts(
   statement: TypeScript.ClassDeclaration,
-  { checker, sourceRoot }: Context,
+  { checker, ownRoot }: Context,
 ): ContractEntry[] {
   const types = (statement.heritageClauses ?? [])
     .filter((clause) => clause.token === ts.SyntaxKind.ImplementsKeyword)
@@ -85,7 +105,7 @@ function implementedContracts(
     const declaration = interfaceDeclaration(type.symbol);
     return declaration &&
       isExported(declaration) &&
-      isProductionSource(declaration.getSourceFile(), sourceRoot)
+      isProductionSource(declaration.getSourceFile(), ownRoot)
       ? [{ type, declaration }]
       : [];
   });
@@ -212,13 +232,14 @@ function unusedMethods(
 
 export function findUnusedPublicContractMethods(
   program: TypeScript.Program,
-  { sourceRoot }: { readonly sourceRoot: string },
+  { sourceRoot, ownRoot = sourceRoot }: Pick<Roots, 'sourceRoot'> & Partial<Roots>,
 ): UnusedMethod[] {
   const checker = program.getTypeChecker();
   const sources = program
     .getSourceFiles()
     .filter((source) => isProductionSource(source, sourceRoot));
-  const contracts = collectContracts(sources, { checker, sourceRoot });
+  const own = sources.filter((source) => isProductionSource(source, ownRoot));
+  const contracts = collectContracts(own, { checker, sourceRoot, ownRoot });
   if (contracts.size === 0) {
     return [];
   }
@@ -228,24 +249,35 @@ export function findUnusedPublicContractMethods(
   );
 }
 
-export function analyzePublicContractUsage(
-  configPath: string,
-  { displayRoot }: { readonly displayRoot?: string } = {},
-): UnusedMethod[] {
-  const absoluteConfig = path.resolve(configPath);
+function parsedConfig(absoluteConfig: string): TypeScript.ParsedCommandLine {
   const config = ts.readConfigFile(absoluteConfig, (fileName) => ts.sys.readFile(fileName));
-  if (config.error)
+  if (config.error) {
     throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, '\n'));
+  }
   const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, path.dirname(absoluteConfig));
-  if (parsed.errors.length > 0)
+  if (parsed.errors.length > 0) {
     throw new Error(
       parsed.errors
         .map((error) => ts.flattenDiagnosticMessageText(error.messageText, '\n'))
         .join('\n'),
     );
-  const program = ts.createProgram(parsed.fileNames, parsed.options);
+  }
+  return parsed;
+}
+
+export function analyzePublicContractUsage(
+  configPath: string,
+  { displayRoot }: { readonly displayRoot?: string } = {},
+): UnusedMethod[] {
+  const absoluteConfig = path.resolve(configPath);
+  const parsed = parsedConfig(absoluteConfig);
   const sourceRoot = parsed.options.rootDir ?? path.dirname(absoluteConfig);
-  const findings = findUnusedPublicContractMethods(program, { sourceRoot });
+  const ownRoot = displayRoot === undefined ? sourceRoot : path.resolve(displayRoot);
+  if (!hasImplementingClass(parsed.fileNames, ownRoot)) {
+    return [];
+  }
+  const program = ts.createProgram(parsed.fileNames, parsed.options);
+  const findings = findUnusedPublicContractMethods(program, { sourceRoot, ownRoot });
   if (displayRoot === undefined) {
     return findings;
   }

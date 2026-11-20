@@ -25,4 +25,8 @@ public final class Prices {
   static void setRounding(int cents) {
     rounding = cents;
   }
+
+  static void setExact() {
+    rounding = 1;
+  }
 }

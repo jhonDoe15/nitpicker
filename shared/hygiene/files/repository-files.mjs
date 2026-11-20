@@ -18,6 +18,12 @@ import { GIT_TIMEOUT_MS } from '../../processes/deadlines.mjs';
 
 export const REPOSITORY_HYGIENE_TOOL = 'repository-hygiene';
 export const PRIVATE_KEY_HEADER = '-----BEGIN [A-Z ]*PRIVATE KEY';
+const KEY_BLOCK_START = new RegExp(`${PRIVATE_KEY_HEADER}(?: BLOCK)?-----`, 'gu');
+const KEY_BLOCK_END = '-----END';
+const MAX_KEY_BLOCK_LENGTH = 8192;
+const KEY_LINE_BREAK = /\s+|\\[nr]/u;
+const KEY_LINE_WRAPPING = /^["'`+,;()]+|["'`+,;()\\]+$/gu;
+const KEY_MATERIAL = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d+/]{40,}={0,2}$/u;
 const BINARY_EXTENSION =
   /\.(?:jar|war|ear|class|exe|dll|so|dylib|a|o|lib|bin|zip|tar|tgz|gz|bz2|xz|7z|rar|whl|egg|pyc|pyo|node)$/iu;
 const MAX_GREP_BYTES = 64 * 1024 * 1024;
@@ -131,5 +137,24 @@ function filesWithPrivateKeys(projectRoot) {
   if (result.error !== undefined || (result.status !== 0 && result.status !== 1)) {
     throw new Error(`git grep failed: ${result.error?.message ?? result.stderr}`);
   }
-  return result.stdout.split('\0').filter((entry) => entry.length > 0);
+  return result.stdout
+    .split('\0')
+    .filter((entry) => entry.length > 0)
+    .filter((file) => holdsKeyMaterial(textOf(path.join(projectRoot, file))));
+}
+
+function textOf(file) {
+  return lstatSync(file, { throwIfNoEntry: false })?.isFile() === true
+    ? readFileSync(file, 'utf8')
+    : '';
+}
+
+function holdsKeyMaterial(text) {
+  return [...text.matchAll(KEY_BLOCK_START)].some(({ index, 0: marker }) => {
+    const rest = text.slice(index + marker.length, index + marker.length + MAX_KEY_BLOCK_LENGTH);
+    const end = rest.indexOf(KEY_BLOCK_END);
+    return (end === -1 ? rest : rest.slice(0, end))
+      .split(KEY_LINE_BREAK)
+      .some((part) => KEY_MATERIAL.test(part.replaceAll(KEY_LINE_WRAPPING, '')));
+  });
 }

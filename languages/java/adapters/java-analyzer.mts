@@ -8,6 +8,7 @@ import { DOC_COMMENT_TOOL } from './doc-comments/doc-comment-findings.mts';
 import { INIT_SCRIPT, readPinnedTools } from '../builds/java-build.mts';
 import { importClosure } from '../../../shared/import-closure.mjs';
 import { javaExecutionBudget } from './java-runner.mts';
+import { BUILD_TIMEOUT_SCALE } from './gradle-wrapper/gradle-budget.mts';
 import { COMPILE_ERROR_TOOL } from '../../../shared/rules/finding-helpers.mjs';
 import { javaCommand } from '../maven/maven-command.mts';
 import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mjs';
@@ -34,6 +35,7 @@ type JavaAnalyzer = {
   readonly exclusions: readonly string[];
   readonly reportedTools: readonly unknown[];
   readonly timeoutMs: number;
+  readonly timeoutScale: typeof BUILD_TIMEOUT_SCALE;
   readonly comparisonKey: unknown;
   readonly inputs: unknown;
   readonly createInvocation: (context: InvocationContext) => Invocation;
@@ -210,6 +212,7 @@ export function createJavaAnalyzer({ kotlin = false } = {}): JavaAnalyzer {
     exclusions: [],
     reportedTools: kotlin ? [...JVM_ANALYZER_TOOLS, ...KOTLIN_TOOLS] : JVM_ANALYZER_TOOLS,
     timeoutMs: budget.analyzerTimeoutMs,
+    timeoutScale: BUILD_TIMEOUT_SCALE,
     comparisonKey: changedTestsKey,
     createInvocation({ projectRoot, toolRoot, mutationScope }) {
       return {

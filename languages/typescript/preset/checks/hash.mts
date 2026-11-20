@@ -4,19 +4,44 @@ import { importClosure } from '../../../../shared/import-closure.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 
-const closureOf: (
+type ClosureOf = (relativePaths: readonly string[], root: string) => Map<string, string>;
+const importClosureOf: ClosureOf = importClosure;
+
+function onceByKey<Value>(): (key: string, create: () => Value) => Value {
+  const known = new Map<string, Value>();
+  return (key, create) => {
+    const found = known.get(key);
+    if (found !== undefined) {
+      return found;
+    }
+    const created = create();
+    known.set(key, created);
+    return created;
+  };
+}
+
+const packageClosure = onceByKey<Map<string, string>>();
+
+function closureContents(
   relativePaths: readonly string[],
   root: string,
-  options: { stopAt?: Set<string> } | undefined,
-) => Map<string, string> = importClosure;
+  closureOf: ClosureOf,
+): Map<string, string> {
+  return root === packageRoot
+    ? packageClosure(relativePaths.join('\0'), () => closureOf(relativePaths, root))
+    : closureOf(relativePaths, root);
+}
 
 export function hashFiles(
   relativePaths: readonly string[],
   configurationValues: readonly string[] = [],
-  { root = packageRoot }: { root?: string } = {},
+  {
+    root = packageRoot,
+    closureOf = importClosureOf,
+  }: { root?: string; closureOf?: ClosureOf } = {},
 ): string {
   const hash = createHash('sha256');
-  const contents = closureOf(relativePaths, root, undefined);
+  const contents = closureContents(relativePaths, root, closureOf);
   for (const relativePath of [...contents.keys()].sort()) {
     hash.update(relativePath);
     hash.update('\0');

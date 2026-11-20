@@ -711,7 +711,10 @@ guessed at.
   matching kind, with a Kotest `SystemPropertyTestListener`, `LocaleTestListener` or `TimeZoneTestListener`, or inside
   `withSystemProperty { }`, `withSystemProperties { }`, `captureStandardOut { }`, `restoreSystemProperties { }` or a
   system-stubs `execute { }`. Outside a test class (a helper object), a restore anywhere in the file counts. The scan
-  reads text, so a restore in a superclass or another file is not followed.
+  reads text, so a restore in a superclass or another file is not followed. As in the Java
+  preset, a project static is not reported when a before-each function or Kotest `beforeTest` block resets it to
+  a literal (`null`, a number, `true` or `false`), when the change is a `set...()` call without arguments, or
+  when it happens inside a `main` function.
 - `SharedTestState`: the same rule id as the Java preset. A shared property is a `var`, or a `val` holding a
   mutable collection, map, array, `StringBuilder` or atomic (`mutableListOf()`, `ArrayList()`, `AtomicInteger()`,
   or a `MutableList<...>` type), declared at the top level of a test file with tests, in a companion object of a
@@ -798,7 +801,10 @@ guessed at.
   `forEach`, `forEachIndexed`, `onEach` and the other iteration calls), a safe call (`?.let`, `?.also`, `?.run`,
   `?.apply`), `takeIf` or `takeUnless`, the right side of `&&`, `||` or `?:`, a `try` whose `catch` swallows
   the failure (`Throwable`, `Error`, `Exception`, `RuntimeException`, `AssertionError` without a rethrow), a
-  `runCatching` not followed by `getOrThrow`, and an `if` that returns early before the assertions. An
+  `runCatching` not followed by `getOrThrow`, and an `if` that returns early before the assertions. A loop
+  that cannot pass silently is left alone, as in the Java preset: one over a literal with items
+  (`listOf("a", "b")`, `setOf`, `arrayOf`), one over a variable whose size or non-emptiness the test asserted
+  unconditionally before it, and one that writes a `var` the test asserts after it. An
   assertion is a call of a real assertion API: `assert*`, kotlin.test and Strikt `expect`, the Kotest
   `should*` matchers, MockK and Mockito `verify` (when the file imports them), Spring `andExpect`, and `fail`,
   `error` or `TODO`, any imported function whose name starts with `expect` (`import demo.expectValid`, or a star import of a

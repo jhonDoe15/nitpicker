@@ -6,6 +6,8 @@ import {
   deadlineScaleOf,
   memoizedFileCounter,
   memoryEstimateMegabytes,
+  moduleAllowanceMs,
+  projectModuleCount,
   projectFileCount,
   scaledDeadlineMs,
 } from './project-size.mts';
@@ -51,6 +53,11 @@ function contextFor(liveProjectRoot: string) {
 function preparedTimeout(source: object, liveProjectRoot: string): number | undefined {
   const preparation = prepareTask(source, contextFor(liveProjectRoot), undefined);
   return preparation.kind === 'ready' ? preparation.task.timeoutMs : undefined;
+}
+
+function preparedAllowance(source: object, liveProjectRoot: string): number | undefined {
+  const preparation = prepareTask(source, contextFor(liveProjectRoot), undefined);
+  return preparation.kind === 'ready' ? preparation.task.sizeAllowanceMs : undefined;
 }
 
 function preparedMemory(source: object, liveProjectRoot: string): number | undefined {
@@ -99,6 +106,46 @@ describe('analyzer budgets scaled with project size', () => {
     );
     expect(preparedTimeout(analyzer({ timeoutScale: undefined }), root)).toBe(5 * MINUTE_MS);
     expect(deadlineScaleOf({ timeoutScale: { perThousandFilesMs: 0 } })).toBeUndefined();
+  });
+
+  it('adds a per-module allowance for each build file of the project', () => {
+    const { root } = git.createGitRepository(
+      {
+        ...sources(2),
+        'build.gradle': '',
+        'app/build.gradle.kts': '',
+        'libs/core/pom.xml': '',
+        'docs/build.gradle.md': '',
+      },
+      { prefix: 'nitpicker-deadline-' },
+    );
+    const moduleFiles = ['build.gradle', 'build.gradle.kts', 'pom.xml'];
+    const timeoutScale = { ...SCALE, perModuleMs: MINUTE_MS, moduleFiles };
+
+    expect(projectModuleCount(root, moduleFiles)).toBe(3);
+    expect(moduleAllowanceMs({ timeoutScale }, root)).toBe(3 * MINUTE_MS);
+    expect(moduleAllowanceMs({ timeoutScale: SCALE }, root)).toBe(0);
+    expect(preparedTimeout(analyzer({ timeoutScale }), root)).toBe(10 * MINUTE_MS);
+    expect(preparedAllowance(analyzer({ timeoutScale }), root)).toBe(5 * MINUTE_MS);
+    expect(preparedAllowance(analyzer({ timeoutScale, configuredTimeout: true }), root)).toBe(0);
+  });
+
+  it('counts the files of every folder a memory scale says the analyzer reaches', () => {
+    const { root } = git.createGitRepository(
+      { ...sources(500), 'packages/kit/a.ts': '', 'packages/kit/b.ts': '' },
+      { prefix: 'nitpicker-memory-' },
+    );
+    const reach = { perThousandFilesMegabytes: 1000, extensions: ['ts'] };
+    const roots = (projectRoot: string) => [projectRoot, `${root}/packages`];
+
+    expect(memoryEstimateMegabytes({ memoryScale: reach }, `${root}/src`)).toBe(500);
+    expect(memoryEstimateMegabytes({ memoryScale: { ...reach, roots } }, `${root}/src`)).toBe(502);
+    expect(
+      preparedTimeout(
+        analyzer({ timeoutScale: { ...SCALE, extensions: ['ts'], roots } }),
+        `${root}/src`,
+      ),
+    ).toBe(preparedTimeout(analyzer({ timeoutScale: { ...SCALE, extensions: ['ts'] } }), root));
   });
 
   it('estimates an analyzer peak memory from the number of source files', () => {

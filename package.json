@@ -39,6 +39,7 @@
     "gen:checks": "node scripts/gen-checks.mts",
     "gen:schema": "node scripts/schema/gen-config-schema.mts",
     "gen:rules": "node scripts/reference/gen-rules.mjs",
+    "rules:cost": "node --max-old-space-size=8192 scripts/rule-cost/rule-cost.mts",
     "typecheck": "tsc -p tsconfig.json",
     "prepack": "node scripts/typescript/emit.mjs && node scripts/reference/gen-rules.mjs --data",
     "postpack": "node scripts/typescript/emit.mjs --clean",

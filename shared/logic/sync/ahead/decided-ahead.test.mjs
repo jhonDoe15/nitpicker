@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { decide } from '../../decide.mjs';
 import { binary, name, not, number } from '../../test-support/build.mjs';
 import { solverBudget } from '../budget.mjs';
-import { decideSync, noteQuestions } from '../decide-sync.mjs';
+import { decideSync, noteQuestions, settledAhead } from '../decide-sync.mjs';
 import { decideAll } from './decide-pool.mjs';
 import { decidedAhead } from './decided-ahead.mjs';
 
@@ -60,6 +60,40 @@ describe('decidedAhead', () => {
     };
 
     expect(decidedAhead(run, { decisionWorkers: 2 }).slice(2)).toEqual(['open', 'open']);
+  });
+
+  it('does not repeat a part of the run that asked the solver nothing in the dry run', () => {
+    const [[conditions, query]] = questions('settled');
+    const parts = { quiet: {}, asking: {} };
+    const runs = [];
+    function run() {
+      const quiet = settledAhead(parts.quiet, () => runs.push('quiet'));
+      const asking = settledAhead(parts.asking, () => {
+        runs.push('asking');
+        return decideSync(conditions, query);
+      });
+      return [quiet, asking];
+    }
+
+    expect([
+      decidedAhead(run, { decisionWorkers: 2 }),
+      runs,
+      settledAhead(parts.quiet, () => 'run again after the answers are forgotten'),
+    ]).toEqual([
+      [1, 'false'],
+      ['quiet', 'asking', 'asking'],
+      'run again after the answers are forgotten',
+    ]);
+  });
+
+  it('keeps no result of a dry run that was not asked to', () => {
+    const part = {};
+    const runs = [];
+
+    noteQuestions(() => settledAhead(part, () => runs.push('dry')));
+    settledAhead(part, () => runs.push('real'));
+
+    expect(runs).toEqual(['dry', 'real']);
   });
 
   it('runs once, as asked, with one solver thread', () => {

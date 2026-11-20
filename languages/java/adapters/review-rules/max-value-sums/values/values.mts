@@ -1,5 +1,13 @@
 import { forward } from '../source/source-file.mts';
-import type { CarrierState, Context, NumberKind, Ref, SourceFile, Span } from '../sum-types.mts';
+import type {
+  CarrierState,
+  Context,
+  Frame,
+  NumberKind,
+  Ref,
+  SourceFile,
+  Span,
+} from '../sum-types.mts';
 
 const MAX_NAMES = new Map<string, NumberKind>([
   ['Integer.MAX_VALUE', 'int'],
@@ -70,6 +78,44 @@ export function refAt(source: SourceFile, index: number): Ref | undefined {
   };
 }
 
+const NOT_A_TYPE = new Set([
+  'return',
+  'new',
+  'throw',
+  'else',
+  'case',
+  'in',
+  'is',
+  'as',
+  'do',
+  'yield',
+  'assert',
+  'instanceof',
+  'throws',
+]);
+const KOTLIN_DECLARES = new Set(['val', 'var']);
+
+function declaresAt({ tokens, kotlin }: SourceFile, index: number): boolean {
+  const before = tokens[index - 1];
+  if (before === undefined || tokens[index]?.kind !== 'identifier') {
+    return false;
+  }
+  if (kotlin) {
+    return KOTLIN_DECLARES.has(before.text);
+  }
+  const named = before.kind === 'identifier' && !NOT_A_TYPE.has(before.text);
+  const generic = before.text === '>' && tokens[index + 1]?.text === '=';
+  const array = before.text === ']' && tokens[index - 2]?.text === '[';
+  return array || ((named || generic) && tokens[index - 2]?.text !== '.');
+}
+
+function declaresLocal(source: SourceFile, frame: Frame, name: string): boolean {
+  const first = frame.body.from + 1;
+  return source.tokens
+    .slice(first, frame.body.to)
+    .some((token, offset) => token.text === name && declaresAt(source, first + offset));
+}
+
 export function lookup(
   state: CarrierState,
   { source, frame }: Context,
@@ -87,7 +133,10 @@ export function lookup(
     return own;
   }
   const local = frame === undefined ? undefined : state.frames.get(frame)?.get(ref.name);
-  if (local !== undefined || frame?.params.some(({ name }) => name === ref.name)) {
+  const shadowed =
+    frame !== undefined &&
+    (frame.params.some(({ name }) => name === ref.name) || declaresLocal(source, frame, ref.name));
+  if (local !== undefined || shadowed) {
     return local;
   }
   return own ?? (source.kotlin ? state.topLevel.get(ref.name) : undefined);

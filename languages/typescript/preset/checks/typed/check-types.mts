@@ -10,6 +10,10 @@ export type QualityCheck = {
   readonly exclusions: readonly string[];
   readonly shardWeight: number;
   readonly timeoutMs?: number;
+  readonly timeoutScale?: {
+    readonly perThousandFilesMs: number;
+    readonly extensions: readonly string[];
+  };
   readonly configurationFiles: readonly string[];
   readonly dependencies?: readonly string[];
   readonly concurrencyWeight?: number;
