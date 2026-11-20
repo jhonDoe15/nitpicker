@@ -22,6 +22,7 @@ import { ingestSarif, prepareSarif } from '../../../shared/ingest/sarif.mjs';
 import { checkstyleFindings } from '../adapters/reporting/format-findings.mts';
 import { sourceLocator } from '../adapters/reporting/kotlin-reports.mts';
 import { applyRuleMessages } from '../messages/rule-messages.mts';
+import { readSarifReport } from '../adapters/reporting/sarif/sarif-reports.mts';
 import { readGuardFindings } from './index.mts';
 import { coveredByCpd } from './cpd-duplicates.mts';
 import { readCouplingFindings } from '../adapters/metrics/java-coupling.mts';
@@ -192,14 +193,10 @@ function moduleGuardFindings(projectRoot: string, module: unknown): unknown[] {
     ]),
     mainCheckstyle: callUntyped(readMainCheckstyle, projectRoot, module, 'java'),
   };
-  const pmd = callUntyped(
-    prepareSarif,
-    parseJson(readFileSync(path.join(reportRoot, 'pmd.sarif'), 'utf8')),
-    {
-      ...context,
-      identityKey: (result: unknown) => fieldOf(fieldOf(result, 'message'), 'text'),
-    },
-  );
+  const pmd = callUntyped(prepareSarif, readSarifReport(path.join(reportRoot, 'pmd.sarif')), {
+    ...context,
+    identityKey: (result: unknown) => fieldOf(fieldOf(result, 'message'), 'text'),
+  });
   return [
     ...listOf(fieldOf(callUntyped(ingestSarif, pmd, { tool: 'pmd' }), 'findings')),
     ...listOf(callUntyped(checkstyleFindings, context)),

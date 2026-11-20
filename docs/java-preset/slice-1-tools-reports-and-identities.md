@@ -28,9 +28,12 @@ Notes on the glue in `java-reports.mts`:
   keep the gate red for a cause the project cannot fix. The finding has the same identity on both sides, so
   a file PMD fails on in both snapshots is listed in a full run and is not a new finding in a comparison;
   a file that fails only on head is new. The findings of that file are not removed from either side.
-  Both the Gradle and the Maven build read the report the same way.
+  Both the Gradle and the Maven build read the report the same way. PMD stops writing its report in the
+  middle of a failure whose text holds half of a surrogate pair (a Java string such as `"\uD83D"`). The
+  report is then read up to that point: its findings are kept and the cut-off failure keeps its file and
+  first line.
 - **Rules that crash on a file.** When one rule throws on a file, PMD logs `Exception applying rule X on
-  file Y, continuing with next rule` and checks the file with the other rules. Both builds keep PMD's
+file Y, continuing with next rule` and checks the file with the other rules. Both builds keep PMD's
   stderr in `pmd-log.txt` next to `pmd.sarif`, and each crashing rule becomes one descriptive
   `pmd/rule-crashed` note that names the files it skipped. Its identity is the rule name, so the same crash
   on both sides is not new. The report's notification for that file is not also read as a processing error.
