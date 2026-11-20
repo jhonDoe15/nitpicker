@@ -26,7 +26,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   only the names differ. Examples in this guide are Vitest.
 - Do not write `process.env.X = ...` or override `Date.now`, `Math.random` or `globalThis.fetch` in a test
   (`nitpicker/fake-timers-require-restore`): use `vi.stubEnv`, `vi.stubGlobal`, `vi.spyOn` or fake timers and
-  restore them in `afterEach`, or put the old value back in `afterEach` or `finally`.
+  restore them in `afterEach`, or put the old value back in `afterEach` or `finally`. The same goes for
+  `localStorage`/`sessionStorage`, `document.cookie`, `process.chdir` and `navigator` members: clear or
+  put them back in `afterEach`.
 - Clear a mock that several tests share before each test (`beforeEach(() => { send.mockClear(); })`,
   `vi.clearAllMocks()` or `clearMocks: true` in the runner config) when a test counts its calls
   (`toHaveBeenCalledTimes`, `mock.calls`): `nitpicker/no-uncleared-shared-mock`.
