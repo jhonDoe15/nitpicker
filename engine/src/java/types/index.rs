@@ -165,6 +165,11 @@ impl TypeIndex {
         name == of || of == "java.lang.Object" || self.lineage(name).iter().any(|ancestor| ancestor == of)
     }
 
+    /// The generic type of each component of a record, in order.
+    pub fn record_components(&self, class: &str) -> Option<Vec<Type>> {
+        self.get(class)?.record_components.clone()
+    }
+
     pub fn field(&self, class: &str, name: &str) -> Option<(&ClassInfo, &Field)> {
         self.lineage(class)
             .iter()

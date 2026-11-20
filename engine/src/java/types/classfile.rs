@@ -187,10 +187,18 @@ fn attributes<'a>(
 
 const ACC_ENUM: u16 = 0x4000;
 
-/// The attributes of the class itself: its generic signature and, for a sealed class, the classes it permits.
-fn class_attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Option<(Option<&'a [u8]>, Option<Vec<u16>>)> {
+struct ClassAttributes<'a> {
+    signature: Option<&'a [u8]>,
+    permitted: Option<Vec<u16>>,
+    components: Option<Vec<Type>>,
+}
+
+/// The attributes of the class itself: its generic signature, for a sealed class the classes it permits, and for
+/// a record its components.
+fn class_attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Option<ClassAttributes<'a>> {
     let mut signature = None;
     let mut permitted = None;
+    let mut components = None;
     for _ in 0..reader.u2()? {
         let name = utf8(reader.u2()?)?;
         let length = reader.u4()? as usize;
@@ -198,11 +206,21 @@ fn class_attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&
             signature = utf8(reader.u2()?);
         } else if name == b"PermittedSubclasses" {
             permitted = Some((0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?);
+        } else if name == b"Record" {
+            let mut listed = Vec::new();
+            for _ in 0..reader.u2()? {
+                reader.skip(2)?;
+                let descriptor = utf8(reader.u2()?)?;
+                let (generic, _) = attributes(reader, utf8)?;
+                let text = generic.unwrap_or(descriptor);
+                listed.push(Signature { text, at: 0 }.kind()?);
+            }
+            components = Some(listed);
         } else {
             reader.skip(length)?;
         }
     }
-    Some((signature, permitted))
+    Some(ClassAttributes { signature, permitted, components })
 }
 
 pub fn parse(data: &[u8]) -> Option<ClassInfo> {
@@ -309,7 +327,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
             });
         }
     }
-    let (signature, permitted) = class_attributes(&mut reader, &utf8)?;
+    let ClassAttributes { signature, permitted, components } = class_attributes(&mut reader, &utf8)?;
     let permitted = permitted.map(|listed| listed.into_iter().filter_map(&class_name).collect());
     let mut type_parameters = Vec::new();
     let mut generic_supers = Vec::new();
@@ -334,5 +352,6 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         is_interface: access & ACC_INTERFACE != 0,
         enum_constants: (access & ACC_ENUM != 0).then_some(enum_constants),
         permitted,
+        record_components: components,
     })
 }

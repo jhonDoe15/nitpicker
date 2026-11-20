@@ -58,9 +58,12 @@ Measured with all 342 rules on 4 cores (findings: same / missed / extra):
 | Nacos, all modules | 5,407, 844k | 158 s, 611 s, 2.4 GB | 44 s, 171 s, 0.5 GB | 20,506 / 1 / 4 |
 | commons-lang, main and tests | 217k lines | 52 s, 196 s, 2.7 GB | 14 s, 52 s, 0.2 GB | 4,343 / 9 / 0 |
 | jhipster-sample-app | | 10.5 s | 1.1 s | 718 / 0 / 0 |
-| Elasticsearch `server` | 5,117, 1.04M | 146 s, 565 s, 2.6 GB | 33 s, 120 s, 0.6 GB | 14,518 / 5 / 1 |
+| Elasticsearch `server` | 5,106, 1.04M | 146 s, 565 s, 2.6 GB | 31 s, 119 s, 0.6 GB | 14,458 / 2 / 0 |
 
-The first three rows were measured before the lookup caches of #2064; the Elasticsearch row after them.
+The first three rows were measured before the lookup caches of #2064; the Elasticsearch row after them and after
+#2121 and #2122. The two Elasticsearch rows the engine leaves out are wrong PMD findings: PMD leaves the type of
+two lambdas unfinished and `RetryInTest` then matches them (#2125). The PMD-shaped trees of all 5,106 files have
+the same node names in the same places as PMD's but for one (`module-info.java`).
 
 On the whole Elasticsearch tree (18,155 files, 3.3M lines) with the 130 rules of the first set the engine takes
 75 s, 264 CPU-s and 1.7 GB. PMD takes about 190 s, 750 CPU-s and 4.6 GB there and stops reporting after a

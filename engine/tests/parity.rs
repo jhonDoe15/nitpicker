@@ -42,7 +42,15 @@ fn rows(case: &str, rules: &str) -> (BTreeSet<Row>, BTreeSet<Row>) {
 }
 
 fn same_as_pmd(case: &str, rules: &str) {
-    let (found, expected) = rows(case, rules);
+    let (found, mut expected) = rows(case, rules);
+    let wrong = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("expected").join(format!("{case}-pmd-wrong.json"));
+    if let Ok(listed) = std::fs::read_to_string(&wrong) {
+        let wrong: Vec<Row> = serde_json::from_str(&listed).expect("rows");
+        for row in wrong {
+            assert!(expected.remove(&row), "{case}: {row:?} is listed as a wrong PMD finding but PMD did not report it");
+            assert!(!found.contains(&row), "{case}: {row:?} copies a wrong PMD finding");
+        }
+    }
     let missed: Vec<&Row> = expected.difference(&found).collect();
     let extra: Vec<&Row> = found.difference(&expected).collect();
     assert!(missed.is_empty() && extra.is_empty(), "{case}: missed {missed:?}, extra {extra:?}");
@@ -67,4 +75,9 @@ fn review_rules_report_what_pmd_reports() {
 #[test]
 fn rare_built_in_rules_and_switch_facts_match_pmd() {
     same_as_pmd("builtins", "all");
+}
+
+#[test]
+fn patterns_type_their_variables_like_pmd() {
+    same_as_pmd("patterns", "all");
 }
