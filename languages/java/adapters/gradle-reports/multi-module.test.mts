@@ -324,6 +324,30 @@ describe('a Gradle build with several projects', () => {
       'The java preset found no Gradle reports for project :lib (lib): its nitpickerJava task did not run',
     );
   });
+
+  it('leaves out failed projects and projects without reports when tool tasks failed', () => {
+    const base = project({
+      'modules.json': JSON.stringify([
+        { key: 'root', path: ':', dir: '' },
+        { key: 'module-lib', path: ':lib', dir: 'lib' },
+        { key: 'module-app', path: ':app', dir: 'app' },
+        { key: 'module-docs', path: ':docs', dir: 'docs' },
+      ]),
+      'root/manifest.json': '{}',
+      'module-app/manifest.json': '{}',
+      'module-docs/manifest.json': '{}',
+    });
+
+    const report = readReportModules(base, 'java', undefined, new Set([':docs']));
+
+    expect([report.modules.map((module) => module.path), report.skipped]).toEqual([
+      [':app', ':'],
+      [
+        { path: ':docs', dir: 'docs' },
+        { path: ':lib', dir: 'lib' },
+      ],
+    ]);
+  });
 });
 
 describe('a failing Gradle run', () => {

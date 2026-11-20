@@ -12,7 +12,12 @@ type ReportModule = Readonly<Record<string, unknown>> & {
   readonly reportRoot: string;
   readonly manifest: Manifest;
 };
-type ReportModules = { readonly modules: ReportModule[]; readonly manifest: Manifest };
+type SkippedModule = { readonly path: string; readonly dir: string };
+type ReportModules = {
+  readonly modules: ReportModule[];
+  readonly manifest: Manifest;
+  readonly skipped: SkippedModule[];
+};
 
 const MODULES_FILE = 'modules.json';
 const NOT_AFFECTED_FILE = 'not-affected.json';
@@ -101,14 +106,12 @@ export function withoutExcludedFiles(
     : findings.filter((finding) => !excluded.has(textOf(fieldOf(finding, 'path'))));
 }
 
-function readModule(reportBase: string, preset: string, entry: unknown): ReportModule {
+function readModule(reportBase: string, preset: string, entry: unknown): ReportModule | undefined {
   const key = textOf(fieldOf(entry, 'key'));
   const reportRoot = resolveInside(reportBase, key);
   const manifestFile: unknown = firstProjectFile(reportBase, [path.join(key, MANIFEST_FILE)]);
   if (reportRoot === undefined || typeof manifestFile !== 'string') {
-    throw new Error(
-      `The ${preset} preset found no Gradle reports for ${moduleLabel(entry)}: its nitpickerJava task did not run`,
-    );
+    return undefined;
   }
   return {
     ...fieldsOf(entry),
@@ -138,6 +141,7 @@ export function readReportModules(
   reportBase: string,
   preset: string,
   projectRoot?: string,
+  failedProjects?: ReadonlySet<string>,
 ): ReportModules {
   const listFile = path.join(reportBase, MODULES_FILE);
   const listed = existsSync(listFile) ? listOf(readJson(listFile)) : [];
@@ -148,12 +152,25 @@ export function readReportModules(
         includedBuildsHint(projectRoot),
     );
   }
-  const modules = listed
-    .toSorted((left, right) =>
-      textOf(fieldOf(left, 'key')).localeCompare(textOf(fieldOf(right, 'key'))),
-    )
-    .map((entry) => readModule(reportBase, preset, entry));
-  return { modules, manifest: mergeManifests(modules) };
+  const modules: ReportModule[] = [];
+  const skipped: SkippedModule[] = [];
+  const sorted = listed.toSorted((left, right) =>
+    textOf(fieldOf(left, 'key')).localeCompare(textOf(fieldOf(right, 'key'))),
+  );
+  for (const entry of sorted) {
+    const failed = failedProjects?.has(textOf(fieldOf(entry, 'path'))) === true;
+    const module = failed ? undefined : readModule(reportBase, preset, entry);
+    if (module !== undefined) {
+      modules.push(module);
+    } else if (failedProjects === undefined) {
+      throw new Error(
+        `The ${preset} preset found no Gradle reports for ${moduleLabel(entry)}: its nitpickerJava task did not run`,
+      );
+    } else {
+      skipped.push({ path: textOf(fieldOf(entry, 'path')), dir: textOf(fieldOf(entry, 'dir')) });
+    }
+  }
+  return { modules, manifest: mergeManifests(modules), skipped };
 }
 
 function hasMainClasses(reportRoot: string): boolean {

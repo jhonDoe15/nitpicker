@@ -50,7 +50,7 @@ describe('toolCommand', () => {
     ).toEqual([true, true, true, false, false]);
   });
 
-  it('joins the forbiddenapis libraries with the path separator', () => {
+  it('passes each forbiddenapis library as its own argument', () => {
     const command = toolCommand('forbiddenapis', {
       classDirectories: ['/p/classes', '/p/kotlin'],
       libraries: ['/l/a.jar', '/l/b.jar'],
@@ -63,12 +63,34 @@ describe('toolCommand', () => {
       '-d',
       '/p/kotlin',
       '-c',
-      ['/l/a.jar', '/l/b.jar'].join(path.delimiter),
+      '/l/a.jar',
+      '-c',
+      '/l/b.jar',
       '-f',
       '/rules/forbidden-apis.txt',
       '--allowmissingclasses',
     ]);
     expect([0, 1, 2].map((status) => command.accepts(status))).toEqual([true, true, false]);
+  });
+});
+
+describe('a classpath longer than one argument may be', () => {
+  it('keeps every forbiddenapis argument far below the 128 KB limit of one argument', () => {
+    const libraries = Array.from(
+      { length: 2500 },
+      (_, index) =>
+        `/home/build/.gradle/caches/modules-2/files-2.1/org.example/library-${String(index)}/1.0/library.jar`,
+    );
+
+    const { args } = toolCommand('forbiddenapis', {
+      classDirectories: ['/p/classes'],
+      libraries,
+      signatures: '/rules/forbidden-apis.txt',
+    });
+
+    expect(libraries.join(path.delimiter).length).toBeGreaterThan(128 * 1024);
+    expect(Math.max(...args.map((argument) => argument.length))).toBeLessThan(200);
+    expect(args.filter((argument) => argument === '-c')).toHaveLength(libraries.length);
   });
 });
 
