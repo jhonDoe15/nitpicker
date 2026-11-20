@@ -178,6 +178,12 @@ struct Attributes<'a> {
     nullable_parameters: u64,
     names: Vec<u16>,
     contract: Option<u16>,
+    starts: bool,
+}
+
+fn starter(descriptor: &[u8]) -> bool {
+    let named = descriptor.strip_prefix(b"L").and_then(|rest| rest.strip_suffix(b";"));
+    named.is_some_and(|named| super::model::STARTERS.iter().any(|known| known.len() == named.len() && known.bytes().zip(named).all(|(a, b)| a == *b || a == b'.' && *b == b'/')))
 }
 
 fn skip_element(reader: &mut Reader) -> Option<()> {
@@ -234,6 +240,7 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                     found.contract = text;
                 }
                 found.deprecated |= kind == Some(b"Ljava/lang/Deprecated;");
+                found.starts |= kind.is_some_and(|kind| kind.ends_with(b"/Initializer;") || starter(kind));
                 found.nullable |= kind.is_some_and(|kind| kind.ends_with(b"/Nullable;") || kind.ends_with(b"/CheckForNull;") || kind.ends_with(b"/ParametricNullness;"));
             }
         } else if name == b"Exceptions" {
@@ -483,6 +490,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 },
                 flags: member_flags(flags, &found),
                 contract: found.contract.and_then(&utf8).map(|text| String::from_utf8_lossy(text).into_owned()).unwrap_or_default(),
+                starts: found.starts,
                 names: found.names.iter().filter_map(|name| utf8(*name)).map(|name| String::from_utf8_lossy(name).into_owned()).collect(),
             });
         }

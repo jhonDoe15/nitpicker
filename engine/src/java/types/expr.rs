@@ -833,6 +833,7 @@ impl<'a> Resolver<'a> {
                 flags: 0,
                 names: Vec::new(),
                 contract: String::new(),
+                starts: false,
             };
             return Some(Call { raw: false, receiver: owner, declaring: info.name.clone(), method });
         }
