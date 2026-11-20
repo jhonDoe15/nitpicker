@@ -18,7 +18,7 @@ pub const TYPE_DECLARATIONS: &[&str] = &[
 pub struct FileScope {
     pub package: String,
     pub single: HashMap<String, String>,
-    on_demand: Vec<String>,
+    pub on_demand: Vec<String>,
     pub static_single: HashMap<String, Vec<String>>,
     pub static_on_demand: Vec<String>,
     /// Every class in the file by node id: members, local classes (`Outer.1Local`) and anonymous ones (`Outer.1`).

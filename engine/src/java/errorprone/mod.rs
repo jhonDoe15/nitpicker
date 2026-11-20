@@ -118,6 +118,7 @@ const CHECKS: &[Check] = &[
     values::unused_exception,
     names::type_parameter_naming,
     names::wildcard_import,
+    names::unnecessarily_fully_qualified,
     names::suppress_warnings_without_explanation,
     names::type_parameter_unused_in_formals,
 ];
