@@ -3,7 +3,9 @@ import path from 'node:path';
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../adapters/typed/typescript-program.mts';
 import type { Finding } from '../../../../shared/values/findings.mts';
-import { createProjectProgram } from './program.mts';
+import { engineRegistry } from './engine/engine-registry.mts';
+import { registryData } from './engine/registry-data.mts';
+import { type ProgramRequest, createProjectProgram } from './program.mts';
 import {
   type AnalysisLayout,
   collectReferences,
@@ -17,7 +19,7 @@ import {
   readHeadPolicy,
   readLayout,
   registerWrapperAliases,
-  unusedApiFindings,
+  registryDataFindings,
 } from './analysis-views.mts';
 
 const ts = typescriptApi();
@@ -42,6 +44,15 @@ function hasCheckableDeclarations({
     .some((file) => declaresCheckable(parsedSource(projectRoot, file), react));
 }
 
+function nodeRegistry(request: ProgramRequest & { layout: AnalysisLayout }, react: boolean) {
+  const program = createProjectProgram(request);
+  const context = { ...createContext({ ...request, program }), react };
+  const registry = collectTargets(context);
+  registerWrapperAliases(context, registry);
+  collectReferences(context, registry);
+  return { registry: registryData(registry), owned: context.owned };
+}
+
 export function analyzeUnusedApi({
   projectRoot,
   configPath,
@@ -64,13 +75,11 @@ export function analyzeUnusedApi({
     });
   if (!hasCheckableDeclarations({ projectRoot, layout, react })) return [];
   const packagesInfo = loadPackages(projectRoot, layout);
-  const program = createProjectProgram({ projectRoot, configPath, packagesInfo, layout });
-  const context = { ...createContext({ program, projectRoot, layout, packagesInfo }), react };
-  const registry = collectTargets(context);
-  registerWrapperAliases(context, registry);
-  collectReferences(context, registry);
-  return unusedApiFindings(registry, {
-    owned: context.owned,
+  const request = { projectRoot, configPath, packagesInfo, layout };
+  const { registry, owned } =
+    engineRegistry({ ...request, react, environment }) ?? nodeRegistry(request, react);
+  return registryDataFindings(registry, {
+    owned,
     analyzerName,
     isExcepted: exceptionMatcher(exceptions),
   });

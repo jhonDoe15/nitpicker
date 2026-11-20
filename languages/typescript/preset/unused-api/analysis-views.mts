@@ -16,7 +16,7 @@ export { isReactProject } from '../eslint-config/scope-support.mts';
 export { readHeadPolicy } from '../head-policy.mts';
 export const readLayout: (environment: NodeJS.ProcessEnv) => AnalysisLayout = untypedReadLayout;
 export { createContext, isAnalyzedFile } from './context.mts';
-export { unusedApiFindings } from './findings.mts';
+export { registryDataFindings } from './findings.mts';
 export { collectReferences } from './references/references.mts';
 export { declaresCheckable } from './syntax/candidates.mts';
 export { collectTargets, registerWrapperAliases } from './syntax/declarations.mts';

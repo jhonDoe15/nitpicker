@@ -83,21 +83,33 @@ whole project. Class files are listed at start and read on first use.
 
 ## TypeScript checks that need types
 
-The engine has no TypeScript type system. A check that needs types walks the engine's own tree and asks the
-TypeScript compiler's API server (`tsc --api`, TypeScript 7 and later) over a pipe: symbols, types, signatures
-and type text, by node, alone or in batches (`src/typescript/types/`). A node of the engine's tree is named to
-the compiler by its kind and extent, looked up in the compiler's node table of the file; offsets are converted
-from bytes to the UTF-16 units the compiler counts.
+The engine has no TypeScript type system. A check that needs types reads the tree the TypeScript compiler's
+API server (`tsc --api`, TypeScript 7) parsed and asks that server over a pipe: symbols, types, signatures and
+type text, by node, alone or in batches (`src/typescript/types/`). All checks of a run share one server and
+one loaded project.
 
 ```
-nitpicker-engine typescript-public-contracts --compiler <tsc of TypeScript 7> --project <tsconfig.json> [--only-named]
+nitpicker-engine typescript-typed --compiler <tsc of TypeScript 7> --project <tsconfig.json> --checks <name,name>
+    [--input <check>=<json file>] [--all-reads] [--out <file>]
 nitpicker-engine typescript-type-replay --compiler <tsc> --project <tsconfig.json> --questions <jsonl> --kinds <json>
 ```
 
-`typescript-public-contracts` is the public contract usage check of `coding-standards`. `--only-named` asks the
-compiler only about member reads named like a contract method. `typescript-type-replay` asks the compiler the
-questions `parity/typescript-type-questions.mts` recorded from the plugin rules and counts matching answers;
-`--kinds` is the compiler's `SyntaxKind` table as JSON (name to number).
+| Check | What it is |
+| --- | --- |
+| `public-contracts` | The public contract usage check of `coding-standards`. It asks the compiler only about member reads named like a contract method; `--all-reads` asks about every read. |
+| `unused-api` | The unused option and unused prop check. nitpicker decides which files the program has and what role each plays and passes that with `--input`; the engine returns the targets, their members and the references it found, and nitpicker turns them into findings. |
+
+Exit status 3 with `types unavailable: <reason>` on standard error means the compiler cannot answer here (no
+binary, a version the engine's tables were not generated from, a project that does not load): nitpicker then
+runs the check with the JavaScript compiler in its own process. `NITPICKER_TYPED_ENGINE=off` always does that;
+`NITPICKER_TYPED_ENGINE=required` fails instead when the engine or the compiler is missing.
+
+`typescript-type-replay` asks the compiler the questions `parity/typescript-type-questions.mts` recorded from
+the plugin rules and counts matching answers; `--kinds` is the compiler's `SyntaxKind` table as JSON.
+
+Where a union lists the same property in several members, the unused API check reports the declaration that
+comes first by file name and position. The two compilers order union members differently, so the check in
+nitpicker's own process uses the same rule.
 
 Measured on Grafana, 4 cores (wall, CPU, peak memory of the process tree; findings identical in every row):
 
@@ -106,6 +118,15 @@ Measured on Grafana, 4 cores (wall, CPU, peak memory of the process tree; findin
 | Root application, 6,364 production files, 61 findings | 65.0 s, 86 s, 4.4 GB | 43.2 s, 61 s, 3.7 GB | 26.9 s, 44 s, 4.3 GB | 14.5 s, 29 s, 3.4 GB |
 | `grafana-ui`, 1,185 production files, 58 findings | 10.2 s, 19 s, 1.0 GB | 6.9 s, 13 s, 0.9 GB | 4.0 s, 8 s, 0.9 GB | 1.8 s, 4 s, 0.7 GB |
 | The 15 packages with a tsconfig, 216 findings | 53.3 s, 101 s | | | 10.8 s, 30 s |
+
+Unused option and unused prop check on the same machine, whole nitpicker call (findings identical):
+
+| Project | Node check | Through the engine |
+| --- | --- | --- |
+| Root application, 2,378 targets, 17 findings | 49.8 s, 68 s, 3.8 GB | 32.2 s, 48 s, 4.5 GB |
+| `grafana-ui`, 331 targets, 9 findings | 10.0 s, 17 s, 1.0 GB | 6.1 s, 10 s, 1.1 GB |
+
+Of the 32.2 s, 24.6 s is the engine waiting for the compiler's answers to 275,680 questions.
 
 Nearly all of the engine's time is the compiler computing types, on one thread; a question costs about 10
 microseconds on the pipe once its type is known. Types the server computed for diagnostics are not reused for

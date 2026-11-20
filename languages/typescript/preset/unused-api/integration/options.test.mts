@@ -135,3 +135,33 @@ describe('unused function options', () => {
     expect(findingsIn(findings, 'src/shared')).toEqual([]);
   });
 });
+
+describe('an option declared by several members of a union', () => {
+  const UNION = {
+    'src/api.ts': `type Named = { kind: 'named'; name: string;
+  label?: string };
+type Plain = { kind: 'plain';
+  label?: string };
+export function show(options: Plain | Named) { return options.kind; }
+type Wide = { kind: 'wide'; width: number;
+  label?: string };
+type Bare = { kind: 'bare';
+  label?: string };
+export function showSwapped(options: Wide | Bare) { return options.kind; }
+`,
+    'src/app.ts': `import { show, showSwapped } from './api';
+export const shown = [show({ kind: 'plain' }), showSwapped({ kind: 'bare' })];
+`,
+  };
+
+  it('reports the first declaration in the file, whatever order the union names its members in', () => {
+    const lines = analyzeFiles(UNION).map(({ symbol, location }) => [symbol, location?.line]);
+
+    expect(lines).toEqual([
+      ['show.label', 2],
+      ['show.name', 1],
+      ['showSwapped.label', 7],
+      ['showSwapped.width', 6],
+    ]);
+  });
+});
