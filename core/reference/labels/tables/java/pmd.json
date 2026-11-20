@@ -246,6 +246,7 @@
   "pmd/SpringValueSecretDefault": ["security", "spring"],
   "pmd/StaticForwardingWrapper": ["simplification"],
   "pmd/StaticMockOfProjectType": ["tests"],
+  "pmd/StderrAsFailure": ["bug"],
   "pmd/StreamedRowsCollected": ["performance", "persistence"],
   "pmd/StringToString": ["simplification"],
   "pmd/SubtractionComparison": ["bug"],

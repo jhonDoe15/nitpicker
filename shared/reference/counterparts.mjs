@@ -15,6 +15,10 @@ const PAGES = {
 };
 const GROUPS = [
   {
+    java: 'StderrAsFailure',
+    typescript: 'nitpicker/no-stderr-as-failure',
+  },
+  {
     java: 'SurrogateSplittingCut',
     typescript: 'nitpicker/no-surrogate-splitting-cut',
     go: 'go-rules/byte-cut-splits-rune',

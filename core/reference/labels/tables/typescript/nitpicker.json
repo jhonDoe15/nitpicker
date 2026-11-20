@@ -233,6 +233,7 @@
   "eslint/nitpicker/require-error-listener": ["reliability"],
   "eslint/nitpicker/require-http-timeout": ["reliability"],
   "eslint/nitpicker/require-process-timeout": ["reliability"],
+  "eslint/nitpicker/no-stderr-as-failure": ["bug"],
   "eslint/nitpicker/no-status-only-spawn-check": ["bug"],
   "eslint/nitpicker/no-buffered-growing-output": ["bug"],
   "eslint/nitpicker/require-promise-reject": ["reliability", "async"],

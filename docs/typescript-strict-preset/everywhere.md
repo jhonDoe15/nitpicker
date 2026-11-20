@@ -1816,6 +1816,17 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   hangs the program. A program whose purpose is to run a child to completion, such as a build
   wrapper, takes an exception. The rule reads no types, so it behaves the same in the JavaScript
   preset.
+- A finished child process is not judged by text on its standard error (`nitpicker/no-stderr-as-failure`,
+  production files). Reported: an `if` or a ternary whose test (alone, or as one side of `||`) checks that the
+  standard error is not empty (`stderr`, `stderr.length`, `stderr.length > 0`, `stderr !== ''`, also through
+  `toString()`, `trim()` or `String(...)`) and whose branch throws, calls `reject` (`Promise.reject` included) or
+  calls `process.exit` with a non-zero code. The text must come from a subprocess: the `stderr` of a `spawnSync` or
+  execa result (held in a `const` or read inline), a `stderr` destructured from one or from an awaited `promisify`-ed
+  `exec`/`execFile`, or the third parameter of an `exec`/`execFile` callback. Not reported: a test joined with `&&`
+  (`status !== 0 && stderr`), a search for a specific text (`stderr.includes('fatal')`), a branch that only logs, a
+  child's `stderr` stream (`child.stderr`) and `process.stderr`. Standard error carries warnings and notices too
+  (the JVM's `Picked up JAVA_TOOL_OPTIONS`, Node.js deprecation warnings), so decide by the exit status and keep
+  standard error for the message. The Java preset has the same rule as `pmd/StderrAsFailure`.
 - A `spawnSync` result is not judged by its `status` alone (`nitpicker/no-status-only-spawn-check`, production
   files). `spawnSync` (also cross-spawn's `spawn.sync`) does not throw when the child could not start, ran past its
   timeout, wrote more than `maxBuffer` or was killed by a signal: it returns `status: null` with `error` or `signal`

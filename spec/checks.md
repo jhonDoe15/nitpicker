@@ -319,6 +319,12 @@ same rule runs as `subprocess-without-timeout` in the Python preset, `pmd/Proces
 in the Java preset and `kotlin-source/ProcessWaitWithoutTimeout` in the Kotlin preset; tests keep
 `nitpicker/require-test-process-timeout` (TypeScript) or their runner's own limits.
 
+Standard error as failure: `nitpicker/no-stderr-as-failure` (production source, in `eslint-lint`) and
+`pmd/StderrAsFailure` (Java, main sources) report a condition that fails a finished subprocess because its standard
+error is not empty, when the condition stands alone or is one side of `||` and its branch throws (or rejects, or
+exits non-zero). Standard error also carries warnings and notices, so the check fails in an environment that prints
+one; the allowed form decides by the exit status.
+
 Status-only subprocess checks: `nitpicker/no-status-only-spawn-check` (production source, in `eslint-lint`)
 reports a `spawnSync` result (or an execa result with `reject: false`) whose exit status is passed to `process.exit`
 or `process.exitCode`, put into a message, or tested so that `null` counts as success, while the code reads neither

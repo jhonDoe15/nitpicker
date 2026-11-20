@@ -3980,6 +3980,38 @@ return //MethodCall[@MethodName = 'findFirst'][ArgumentList/@Size = 0][exists($s
       </property>
     </properties>
   </rule>
+  <rule name="StderrAsFailure" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This treats any text on the standard error of a finished child process as a failure. Standard error also carries warnings, notices and progress: a JVM prints &quot;Picked up JAVA_TOOL_OPTIONS&quot; whenever that variable is set, and most tools print per-file warnings while they succeed, so the check passes on one machine and fails in a container or CI image. Decide by the exit value (process.waitFor(...) or exitValue() != 0) and keep the standard error for the message. A search for a specific text in the standard error is not reported.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $errorRead := function($n) {
+      exists($n/descendant-or-self::MethodCall[@MethodName = ('getErrorStream', 'errorReader')]
+                                             [*[1][pmd-java:typeIs('java.lang.Process')]])
+    }
+return
+//IfStatement[*[2][self::ThrowStatement or self::Block/ThrowStatement]]
+  /*[1]/descendant-or-self::*
+  [let $up := ancestor::*[not(self::InfixExpression[@Operator = '||'])][1]
+   return $up/self::IfStatement and ($up/*[1] is ancestor-or-self::*[parent::IfStatement][1])]
+  [let $tested :=
+       (self::UnaryExpression[@Operator = '!']/MethodCall[@MethodName = ('isEmpty', 'isBlank')][ArgumentList/@Size = 0]/*[1],
+        self::InfixExpression[@Operator = ('>', '!=')][*[2][self::NumericLiteral][@ValueAsInt = 0]]
+          /MethodCall[@MethodName = ('length', 'size')][ArgumentList/@Size = 0]/*[1]),
+       $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1],
+       $names := $tested/descendant-or-self::VariableAccess/@Name
+   return exists($tested)
+     and empty(ancestor::IfStatement[position() > 1]
+                 [*[1][descendant-or-self::MethodCall[@MethodName = ('waitFor', 'exitValue')]
+                       or descendant-or-self::VariableAccess[@Name = $method//VariableDeclarator
+                            [*[2]/descendant-or-self::MethodCall[@MethodName = ('waitFor', 'exitValue')]]/VariableId/@Name]]])
+     and ($errorRead($tested)
+          or exists($method//VariableDeclarator[VariableId/@Name = $names][$errorRead(*[2])]))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="StreamedRowsCollected" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This stream reads rows from the database one at a time, but the whole result is collected into one collection, so every row is held in memory at once, which is what streaming avoids and what runs out of memory on a large table. Handle each row inside forEach, or flush a fixed-size batch there (add, and at 500 rows save the batch and clear it), and the rest once after it. An exception fits only for a query that always returns a handful of rows.">
     <priority>2</priority>
