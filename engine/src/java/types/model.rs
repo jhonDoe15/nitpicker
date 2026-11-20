@@ -80,6 +80,21 @@ impl Type {
     }
 }
 
+/// Facts about a class, method or field beyond what type resolution needs, as bits of `flags`.
+pub mod flag {
+    pub const FINAL: u16 = 1;
+    pub const PUBLIC: u16 = 2;
+    pub const PROTECTED: u16 = 4;
+    pub const STATIC: u16 = 8;
+    pub const ABSTRACT: u16 = 16;
+    pub const ENUM: u16 = 32;
+    pub const RECORD: u16 = 64;
+    pub const SEALED: u16 = 128;
+    /// Carries `@java.lang.Deprecated`.
+    pub const DEPRECATED: u16 = 256;
+    pub const ANNOTATION: u16 = 512;
+}
+
 #[derive(Clone, Debug)]
 pub struct Field {
     pub name: String,
@@ -94,6 +109,7 @@ pub struct Field {
     pub strict: bool,
     /// Not seen from subclasses.
     pub is_private: bool,
+    pub flags: u16,
 }
 
 #[derive(Clone, Debug)]
@@ -114,6 +130,7 @@ pub struct Method {
     /// Not inherited.
     pub is_private: bool,
     pub varargs: bool,
+    pub flags: u16,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -132,4 +149,5 @@ pub struct ClassInfo {
     pub enum_constants: Option<u32>,
     /// For a sealed class or interface: the classes it permits.
     pub permitted: Option<Vec<String>>,
+    pub flags: u16,
 }

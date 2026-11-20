@@ -1,3 +1,4 @@
+mod errorprone;
 mod facts;
 mod helpers;
 mod magic_number;
@@ -45,6 +46,7 @@ impl Language for Java {
         rules.extend(statements::rules());
         rules.extend(pmd_sample::rules());
         rules.extend(typed_rules::rules());
+        rules.push(Box::new(errorprone::ErrorProne));
         rules.push(Box::new(pmd::dump::TreeDump));
         if let Some(rules_from_file) = pmd::rules::XPathRules::from_env() {
             rules.push(Box::new(rules_from_file));

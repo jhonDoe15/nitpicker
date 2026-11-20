@@ -7,12 +7,16 @@ use std::process::Command;
 type Row = (String, String, u64, u64);
 
 fn rows(case: &str, rules: &str) -> (BTreeSet<Row>, BTreeSet<Row>) {
+    rows_of(case, "_XPath", rules)
+}
+
+fn rows_of(case: &str, rule: &str, rules: &str) -> (BTreeSet<Row>, BTreeSet<Row>) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
     let source = root.join("fixtures").join(case);
     let out = std::env::temp_dir().join(format!("nitpicker-engine-{case}-{}.json", std::process::id()));
     let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
         .arg(&source)
-        .args(["--rules", "_XPath", "--out"])
+        .args(["--rules", rule, "--out"])
         .arg(&out)
         .env("NP_XPATH_RULES", root.join("rules").join(format!("{rules}.json")))
         .status()
@@ -67,4 +71,13 @@ fn review_rules_report_what_pmd_reports() {
 #[test]
 fn rare_built_in_rules_and_switch_facts_match_pmd() {
     same_as_pmd("builtins", "all");
+}
+
+#[test]
+fn error_prone_checks_report_what_error_prone_reports() {
+    let (found, expected) = rows_of("errorprone", "_ErrorProne", "all");
+    let missed: Vec<&Row> = expected.difference(&found).collect();
+    let extra: Vec<&Row> = found.difference(&expected).collect();
+    assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
+    assert_eq!(expected.iter().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 13);
 }
