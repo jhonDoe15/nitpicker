@@ -182,7 +182,7 @@ fn inner_constructors(context: &Context, class: Node, own: &str, nest: &[String]
         context.report("EI_EXPOSE_REP2", class, line, format!("{} {STORING} {shown}", names::method(context, own, class, Some(outer))));
     }
     for constructor in explicit {
-        let delegates = constructor.child_by_field_name("body").and_then(|body| body.named_child(0)).is_some_and(|first| {
+        let delegates = constructor.child_by_field_name("body").and_then(|body| named_children(body).into_iter().find(|part| !part.kind().ends_with("comment"))).is_some_and(|first| {
             first.kind() == "explicit_constructor_invocation" && first.child_by_field_name("constructor").is_some_and(|called| called.kind() == "this")
         });
         if has_modifier(constructor, "public") && !delegates {

@@ -4,7 +4,7 @@ use crate::engine::source::named_children;
 use tree_sitter::Node;
 
 /// The variable `p instanceof Type name` declares: it holds what was tested.
-fn pattern_variable(test: Node) -> Option<Node> {
+pub(super) fn pattern_variable(test: Node) -> Option<Node> {
     test.child_by_field_name("name").or_else(|| {
         let pattern = named_children(test).into_iter().find(|part| part.kind() == "type_pattern")?;
         named_children(pattern).into_iter().rfind(|part| part.kind() == "identifier")

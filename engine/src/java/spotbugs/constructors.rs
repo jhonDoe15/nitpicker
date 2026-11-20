@@ -26,6 +26,8 @@ struct Scan<'c, 'a, 't> {
     shared: Vec<Node<'t>>,
     /// Per method of the class: the exception types that can leave it. Empty while it is being worked out.
     leaves: RefCell<HashMap<usize, Vec<String>>>,
+    /// Set while the constructor a `this(...)` names is looked at, which stops at one level.
+    delegating: std::cell::Cell<bool>,
 }
 
 impl<'t> Scan<'_, '_, 't> {
@@ -89,7 +91,12 @@ impl<'t> Scan<'_, '_, 't> {
             others.first()
         };
         let Some((target, _)) = chosen else { return Vec::new() };
-        let mut types: Vec<String> = self.sites(*target).into_iter().filter(|(at, _, _)| at.kind() != "explicit_constructor_invocation").map(|(_, thrown, _)| thrown).collect();
+        if self.delegating.replace(true) {
+            return Vec::new();
+        }
+        let found = self.sites(*target);
+        self.delegating.set(false);
+        let mut types: Vec<String> = found.into_iter().filter(|(at, _, _)| at.kind() != "explicit_constructor_invocation").map(|(_, thrown, _)| thrown).collect();
         types.sort();
         types.dedup();
         types
@@ -130,7 +137,7 @@ impl<'t> Scan<'_, '_, 't> {
         }
         if kind == "try_statement" || kind == "try_with_resources_statement" {
             let catches = catch_types(self.context, node);
-            let cleanup = children(node).into_iter().filter(|part| part.kind() == "finally_clause").flat_map(named_children).any(|block| block.named_child_count() > 0);
+            let cleanup = children(node).into_iter().filter(|part| part.kind() == "finally_clause").flat_map(named_children).flat_map(named_children).any(|part| !part.kind().ends_with("comment"));
             let passes = if cleanup { Guard::Passes } else { guard.clone() };
             let around = if catches.is_empty() { passes.clone() } else { Guard::Takes(catches) };
             let resources = kind == "try_with_resources_statement";
@@ -141,7 +148,7 @@ impl<'t> Scan<'_, '_, 't> {
                     "block" if resources => {
                         self.walk(part, &Guard::Closes, method, sites);
                         // Without a way out of the body at its end the compiler leaves the closing call out.
-                        let ends = part.named_child(part.named_child_count().saturating_sub(1) as u32).is_some_and(|last| last.kind() == "throw_statement");
+                        let ends = named_children(part).into_iter().rfind(|last| !last.kind().ends_with("comment")).is_some_and(|last| last.kind() == "throw_statement");
                         let closing = if ends { Vec::new() } else { closing(self.context, node) };
                         sites.extend(closing.into_iter().filter(|thrown| !caught(self.context, thrown, &around, method)).map(|thrown| (part, thrown, false)));
                     }
@@ -227,7 +234,7 @@ pub fn constructor_throw(context: &Context, class: Node) {
         .copied()
         .collect();
     let constructors = of_kind("constructor_declaration");
-    let scan = Scan { context, own: &own, methods: of_kind("method_declaration"), signatures: std::cell::OnceCell::new(), constructors: constructors.clone(), shared, leaves: RefCell::new(HashMap::new()) };
+    let scan = Scan { context, own: &own, methods: of_kind("method_declaration"), signatures: std::cell::OnceCell::new(), constructors: constructors.clone(), shared, leaves: RefCell::new(HashMap::new()), delegating: std::cell::Cell::new(false) };
     let inner = !has_modifier(class, "static") && parent(class).is_some_and(|holder| holder.kind() == "class_body");
     let nest = crate::java::types::scope::enclosing_types(context.resolver.scope, class);
     let outer = nest.get(1).filter(|_| inner).map(String::as_str);
@@ -254,7 +261,7 @@ pub fn constructor_throw(context: &Context, class: Node) {
 
 /// `this` or `super` when a constructor body starts by calling another constructor.
 fn delegation<'s>(body: Node<'s>) -> Option<&'static str> {
-    let first = body.named_child(0).filter(|first| first.kind() == "explicit_constructor_invocation")?;
+    let first = named_children(body).into_iter().find(|part| !part.kind().ends_with("comment")).filter(|first| first.kind() == "explicit_constructor_invocation")?;
     match first.child_by_field_name("constructor")?.kind() {
         "this" => Some("this"),
         _ => Some("super"),

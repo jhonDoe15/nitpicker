@@ -17,27 +17,18 @@ fn local_values<'t>(context: &Context, usage: Node<'t>) -> Option<Vec<Node<'t>>>
     }
     let body = ancestor(usage, BODIES)?;
     let mut values = Vec::new();
-    let mut open = false;
     walk(body, |node| match node.kind() {
         "variable_declarator" if node.child_by_field_name("name").is_some_and(|declared| context.text(declared) == name) => {
-            match node.child_by_field_name("value") {
-                Some(value) => values.push(value),
-                None => open = true,
-            }
+            values.extend(node.child_by_field_name("value"));
         }
         "assignment_expression" if node.child_by_field_name("left").is_some_and(|left| left.kind() == "identifier" && context.text(left) == name) => {
-            match node.child_by_field_name("right") {
-                Some(value) => values.push(value),
-                None => open = true,
-            }
+            values.extend(node.child_by_field_name("right"));
         }
         _ => {}
     });
-    let _ = open;
     Some(values)
 }
 
-/// Calls whose result cannot be changed by the caller.
 /// `Arrays.asList(...)`, written in place or kept in a local variable: a list that still changes with its array.
 fn array_view(context: &Context, value: Node) -> bool {
     let value = crate::java::types::expr::unwrap(value);
@@ -126,8 +117,27 @@ fn choice(context: &Context, first: Node, second: Node) -> bool {
     }
 }
 
+thread_local! {
+    /// How deep the values are being followed. Local variables can name each other in a circle and a chain of
+    /// `c ? a : b` can be thousands long, so the way down has an end: 8 local variables or 256 nested values.
+    static FOLLOWED: std::cell::Cell<u16> = const { std::cell::Cell::new(0) };
+}
+
+const DEEPEST: u16 = 256;
+
 pub fn immutable_value(context: &Context, value: Node) -> bool {
     let value = crate::java::types::expr::unwrap(value);
+    let step = if value.kind() == "identifier" { DEEPEST / 8 } else { 1 };
+    if FOLLOWED.get() + step > DEEPEST {
+        return false;
+    }
+    FOLLOWED.set(FOLLOWED.get() + step);
+    let fixed = settled(context, value);
+    FOLLOWED.set(FOLLOWED.get() - step);
+    fixed
+}
+
+fn settled(context: &Context, value: Node) -> bool {
     match value.kind() {
         "null_literal" => true,
         "array_initializer" => named_children(value).is_empty(),
