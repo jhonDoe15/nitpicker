@@ -32,6 +32,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Clear a mock that several tests share before each test (`beforeEach(() => { send.mockClear(); })`,
   `vi.clearAllMocks()` or `clearMocks: true` in the runner config) when a test counts its calls
   (`toHaveBeenCalledTimes`, `mock.calls`): `nitpicker/no-uncleared-shared-mock`.
+- In concurrent tests (`it.concurrent`, `describe.concurrent`, `sequence.concurrent`), do not use fake
+  timers, spies, `stubGlobal`/`stubEnv`, `process.env` writes or `process.chdir`: the tests share one
+  worker (`nitpicker/no-worker-state-in-concurrent-tests`). Put those tests in `describe.sequential`.
 - Assert whole outputs with `toEqual`/`toBe` (`assert.deepStrictEqual`/`assert.equal`, chai's
   `expect(x).to.deep.equal`), not `toContain`, `toMatchObject` or `expect.any` (nor
   `assert.ok(text.includes('x'))`, `assert.partialDeepStrictEqual` or chai's `include` and

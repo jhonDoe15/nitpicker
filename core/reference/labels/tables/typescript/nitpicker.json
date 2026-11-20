@@ -209,6 +209,7 @@
   "eslint/nitpicker/no-weak-assertion": ["tests"],
   "eslint/nitpicker/no-weak-hash": ["security"],
   "eslint/nitpicker/no-whole-rows-for-one-value": ["performance", "persistence"],
+  "eslint/nitpicker/no-worker-state-in-concurrent-tests": ["tests", "async"],
   "eslint/nitpicker/preserve-error-cause": ["reliability"],
   "eslint/nitpicker/promise-wait-deadline": ["reliability", "async"],
   "eslint/nitpicker/react-controlled-input": ["bug", "react"],

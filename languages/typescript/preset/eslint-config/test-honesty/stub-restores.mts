@@ -6,8 +6,11 @@ import { firstFileIn, projectFilePaths, propertyName } from '../typed/files/file
 import { VITEST_CONFIG_NAMES } from './setup-files.mts';
 import { appendAll } from '../../../../../shared/lists/lists.mts';
 
-type RestoreScope = { readonly scope: string; readonly restores: 'globals' | 'envs' };
-type Restores = { scope: string; globals: boolean; envs: boolean };
+type RestoreScope = {
+  readonly scope: string;
+  readonly restores: 'globals' | 'envs' | 'concurrent';
+};
+type Restores = { scope: string; globals: boolean; envs: boolean; concurrent?: boolean };
 
 const ts = typescriptApi();
 
@@ -84,6 +87,23 @@ function configNodes(configPath: string): TypeScript.Node[] {
   return nodesOf(ts.createSourceFile(configPath, text, ts.ScriptTarget.Latest, true));
 }
 
+function isSequenceConcurrent(node: TypeScript.Node): boolean {
+  const holder = node.parent.parent;
+  return (
+    propertyName(node) === 'concurrent' &&
+    ts.isPropertyAssignment(holder) &&
+    propertyName(holder) === 'sequence'
+  );
+}
+
+function flagName(node: TypeScript.Node): RestoreScope['restores'] | undefined {
+  const name = propertyName(node);
+  if (name === 'unstubGlobals' || name === 'unstubEnvs') {
+    return RESTORE_FLAGS[name];
+  }
+  return isSequenceConcurrent(node) ? 'concurrent' : undefined;
+}
+
 function flagsIn(
   projectRoot: string,
   configPath: string,
@@ -91,11 +111,11 @@ function flagsIn(
 ): RestoreScope[] {
   const base = path.relative(projectRoot, path.dirname(configPath)).replaceAll('\\', '/') || '.';
   return nodes.flatMap((node) => {
-    const name = propertyName(node);
-    return ts.isPropertyAssignment(node) &&
-      (name === 'unstubGlobals' || name === 'unstubEnvs') &&
+    const restores = ts.isPropertyAssignment(node) ? flagName(node) : undefined;
+    return restores !== undefined &&
+      ts.isPropertyAssignment(node) &&
       node.initializer.kind === ts.SyntaxKind.TrueKeyword
-      ? [{ scope: flagScope(node, base), restores: RESTORE_FLAGS[name] }]
+      ? [{ scope: flagScope(node, base), restores }]
       : [];
   });
 }
