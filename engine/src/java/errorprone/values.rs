@@ -56,7 +56,7 @@ pub fn enum_ordinal(context: &Context, node: Node) {
 }
 
 /// An identifier that is read as a value, not the name of something being declared or called.
-fn value_name(node: Node) -> bool {
+pub fn value_name(node: Node) -> bool {
     let Some(holder) = parent(node) else { return false };
     if ["name", "field", "parameters"].iter().any(|field| holder.child_by_field_name(field) == Some(node)) {
         return false;
@@ -216,4 +216,50 @@ fn throws_outside_try(node: Node) -> bool {
         "try_statement" | "try_with_resources_statement" => false,
         _ => throws_outside_try(part),
     })
+}
+
+pub fn string_splitter(context: &Context, node: Node) {
+    if node.kind() != "method_invocation" || node.child_by_field_name("name").map(|name| context.text(name)) != Some("split") {
+        return;
+    }
+    let known = context.resolver.matches_sig(node, "java.lang.String#split(java.lang.String)")
+        || context.resolver.matches_sig(node, "java.util.regex.Pattern#split(java.lang.CharSequence)");
+    let Some(holder) = parent(node).filter(|_| known) else { return };
+    let direct = match holder.kind() {
+        "enhanced_for_statement" => holder.child_by_field_name("value") == Some(node),
+        "array_access" => holder.child_by_field_name("array") == Some(node),
+        "variable_declarator" => holder.child_by_field_name("value") == Some(node) && split_variable(context, holder),
+        _ => false,
+    };
+    if direct {
+        let at = node.child_by_field_name("arguments").map_or(node.start_byte(), |list| list.start_byte());
+        context.report("StringSplitter", node, at, "String.split(String) has surprising behavior");
+    }
+}
+
+/// A local variable that holds the pieces and is only looped over, indexed or asked for its length.
+fn split_variable(context: &Context, declarator: Node) -> bool {
+    let Some(name) = declarator.child_by_field_name("name").map(|name| context.text(name)) else { return false };
+    if parent(declarator).is_none_or(|holder| holder.kind() != "local_variable_declaration") {
+        return false;
+    }
+    let around = crate::engine::source::ancestor(
+        declarator,
+        &["method_declaration", "constructor_declaration", "compact_constructor_declaration", "lambda_expression", "class_body", "interface_body", "enum_body_declarations"],
+    );
+    let Some(around) = around.filter(|around| !around.kind().contains("body")) else { return false };
+    let mut fine = true;
+    crate::engine::source::walk(around, |part| {
+        if part.kind() != "identifier" || context.text(part) != name || !value_name(part) {
+            return;
+        }
+        let Some(holder) = parent(part) else { return };
+        fine &= match holder.kind() {
+            "enhanced_for_statement" => holder.child_by_field_name("value") == Some(part),
+            "array_access" => holder.child_by_field_name("array") == Some(part),
+            "field_access" => holder.child_by_field_name("object") == Some(part) && holder.child_by_field_name("field").is_some_and(|field| context.text(field) == "length"),
+            _ => false,
+        };
+    });
+    fine
 }
