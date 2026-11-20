@@ -172,6 +172,7 @@ struct Attributes<'a> {
     deprecated: bool,
     record: bool,
     permitted: Option<Vec<u16>>,
+    exceptions: Vec<u16>,
 }
 
 fn skip_element(reader: &mut Reader) -> Option<()> {
@@ -215,6 +216,8 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
             }
         } else if name == b"PermittedSubclasses" {
             found.permitted = Some((0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?);
+        } else if name == b"Exceptions" {
+            found.exceptions = (0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?;
         } else if name == b"Record" {
             found.record = true;
         }
@@ -350,6 +353,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 is_private: false,
                 varargs: flags & ACC_VARARGS != 0,
                 flags: member_flags(flags, found.deprecated),
+                throws: found.exceptions.iter().filter_map(|index| class_name(*index)).collect(),
             });
         }
     }

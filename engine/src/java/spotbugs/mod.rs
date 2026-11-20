@@ -1,5 +1,6 @@
 //! SpotBugs bug patterns rebuilt for the engine from the documented meaning of each pattern and from what
 //! SpotBugs 4.9.8 reports on test code: same pattern name, line and message, read from source instead of class files.
+mod constructors;
 mod expose;
 mod flow;
 mod mutable;
@@ -95,7 +96,7 @@ impl Context<'_> {
 /// A detector looks at one class, enum, record or interface declaration at a time.
 type Detector = fn(&Context, Node);
 
-const DETECTORS: &[Detector] = &[expose::exposed_representation];
+const DETECTORS: &[Detector] = &[expose::exposed_representation, constructors::constructor_throw];
 
 pub struct SpotBugs;
 
