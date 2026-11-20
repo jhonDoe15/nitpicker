@@ -22,7 +22,7 @@ import { validateAnalyzerTimeouts } from '../../shared/analyzer-timeouts/analyze
 import { validateTools } from './tool-settings.mts';
 import { fieldOf, textOf, textsOf } from '../../shared/values/readers.mts';
 import type { NitpickerConfig } from '../../shared/values/config-types.mts';
-import { rejectHeadBase } from './project-checks/project-config.mjs';
+import { rejectHeadBase } from './project-checks/project-config.mts';
 import { conventionDefinitions } from '../conventions/definitions.mts';
 import { validateConventions } from '../../shared/conventions/settings.mjs';
 import { validateScope, validateTestConsole } from './scopes/scope-settings.mts';
@@ -41,7 +41,7 @@ import {
   suggestionOrAllowed,
   validateExceptions,
 } from './views/validation-views.mts';
-import { validateExtends, validateProjects } from './layers/settings.mjs';
+import { validateExtends, validateProjects } from './layers/settings.mts';
 
 type OptionalValidator = (value: unknown, key: string, preset: string | undefined) => void;
 

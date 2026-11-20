@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { persistenceOfModule } from './persistence-modules.mjs';
+import { persistenceOfModule } from './persistence-modules.mts';
 
 type FactImport = {
   readonly specifier: string;

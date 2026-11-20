@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { collectArchitectureSignals } from './check.mts';
-import { resolveLayout as untypedResolveLayout } from '../layout.mjs';
+import { resolveLayout as untypedResolveLayout } from '../layout.mts';
 import type { ProjectLayout } from '../callback-protocols/typed/project-layout.mts';
 import { analyzePublicContractUsage } from '../architecture/public-contract-usage.mts';
 

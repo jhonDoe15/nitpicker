@@ -3,11 +3,11 @@ import {
   isStorybookPackage as untypedIsStorybookPackage,
   readDependencyNames as untypedReadDependencyNames,
   storySuffixes as untypedStorySuffixes,
-} from '../../eslint-config/scope-support.mjs';
+} from '../../eslint-config/scope-support.mts';
 import {
   DEFAULT_EXPORT as untypedDefaultExport,
   exportedComponents as untypedExportedComponents,
-} from '../../syntax/exported-components.mjs';
+} from '../../syntax/exported-components.mts';
 
 export const isStorybookPackage: (name: string) => boolean = untypedIsStorybookPackage;
 

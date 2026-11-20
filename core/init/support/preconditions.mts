@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mts';
 import { minimumNodeVersion, versionDifference } from '../../tooling/node-version/node-version.mts';
 import { repositoryRootOf } from '../detection/repository.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';

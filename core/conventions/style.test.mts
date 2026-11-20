@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../diff/git/test-support/git-repository.mts';
-import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
+import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mts';
 import { followedConventions } from './test-support/compare-policy.mts';
 import type { NitpickerConfig } from '../../shared/values/config-types.mts';
 

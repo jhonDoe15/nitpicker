@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import type { MatchedCode, TouchedEntry } from '../../../comparison/model/finding-types.mts';
 import { compareFindings } from '../../../comparison/test-support/typed-compare.mts';
+
+type Span = readonly [number, number];
 
 describe('count ratchet on findings inside an edited function', () => {
   function anyFinding(identity: string, line: number, count: number) {
@@ -15,8 +18,8 @@ describe('count ratchet on findings inside an edited function', () => {
       ratchet: { key: 'count:any', value: count, existingCodeOnly: true },
     };
   }
-  const touched = (inserted: readonly number[][], ranges: readonly number[][] = inserted) => ({
-    changedLines: new Map([['src/f.ts', { added: false, ranges, inserted }]]),
+  const touched = (inserted: readonly Span[], ranges: readonly Span[] = inserted): MatchedCode => ({
+    changedLines: new Map<string, TouchedEntry>([['src/f.ts', { added: false, ranges, inserted }]]),
     isStrictRule: () => false,
   });
   it('holds every edited finding while the function has no more of them', () => {
@@ -137,8 +140,10 @@ describe('growth advice on a finding that is new in a function with findings at 
       },
     };
   }
-  const inserted = (lines: readonly number[][]) => ({
-    changedLines: new Map([['src/f.ts', { added: false, ranges: lines, inserted: lines }]]),
+  const inserted = (lines: readonly Span[]): MatchedCode => ({
+    changedLines: new Map<string, TouchedEntry>([
+      ['src/f.ts', { added: false, ranges: lines, inserted: lines }],
+    ]),
     isStrictRule: () => true,
     mustMeetOnEditedLines: () => false,
   });
@@ -218,7 +223,9 @@ describe('growth advice on a finding that is new in a function with findings at 
       headFindings: [throwFinding('first-edited', 4, 2), throwFinding('second', 6, 2)],
       touchedCode: {
         ...inserted([]),
-        changedLines: new Map([['src/f.ts', { added: false, ranges: [[4, 6]], inserted: [] }]]),
+        changedLines: new Map<string, TouchedEntry>([
+          ['src/f.ts', { added: false, ranges: [[4, 6]], inserted: [] }],
+        ]),
       },
     });
 

@@ -1,9 +1,9 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
-import { resolveLayout } from '../layout.mjs';
-import { layoutTransformFor as untypedLayoutTransformFor } from '../tool-configs.mjs';
+import { describe, expect, it } from 'vitest';
+import { resolveLayout } from '../layout.mts';
+import { layoutTransformFor as untypedLayoutTransformFor } from '../tool-configs.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 
 const layoutTransformFor: (
@@ -25,28 +25,25 @@ const shippedStryker = readFileSync(
   'utf8',
 );
 const javascriptLayout = resolveLayout({}, [], { javascript: true });
-const roots: string[] = [];
-
-afterAll(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
 function typeCheckConfig(
   layout: ReturnType<typeof resolveLayout>,
   { withProjectConfig }: { readonly withProjectConfig: boolean },
 ): unknown {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-flags-'));
-  roots.push(root);
-  if (withProjectConfig) {
-    writeFileSync(path.join(root, 'tsconfig.json'), '{}');
+  try {
+    if (withProjectConfig) {
+      writeFileSync(path.join(root, 'tsconfig.json'), '{}');
+    }
+    const transform = layoutTransformFor('tsconfig.quality.json', layout);
+    return fieldOf(
+      JSON.parse(
+        transform?.(shippedQuality, path.join(root, '.nitpicker-x.json')) ?? shippedQuality,
+      ),
+      'compilerOptions',
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
-  const transform = layoutTransformFor('tsconfig.quality.json', layout);
-  return fieldOf(
-    JSON.parse(transform?.(shippedQuality, path.join(root, '.nitpicker-x.json')) ?? shippedQuality),
-    'compilerOptions',
-  );
 }
 
 describe('TypeScript-only compiler flags of the type check', () => {

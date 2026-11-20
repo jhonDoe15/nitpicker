@@ -1,27 +1,7 @@
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { fileDefinitions as untypedFileDefinitions } from './definitions.mjs';
-
-type Definition = {
-  readonly name: string;
-  readonly kind: string;
-  readonly exported: boolean;
-  readonly line: number;
-  readonly text: string;
-  readonly tokens: string[];
-  readonly untypedTokens: string[];
-  readonly isDefault: boolean;
-  readonly lines: number;
-  readonly size: number;
-  readonly literal: boolean;
-  readonly component: boolean;
-  readonly free: readonly {
-    readonly name: string;
-    readonly binding: { readonly kind: string; readonly imported?: string };
-  }[];
-};
-
-const fileDefinitions: (sourceFile: ts.SourceFile) => Definition[] = untypedFileDefinitions;
+import { fileDefinitions } from './definitions.mts';
+import type { Definition } from '../typed/syntax-types.mts';
 
 function definitionsOf(text: string, fileName = 'a.tsx'): Definition[] {
   return fileDefinitions(ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true));
@@ -196,7 +176,12 @@ describe('free identifiers', () => {
       ].join('\n'),
     ).slice(-1);
 
-    expect(definition?.free.map(({ name, binding }) => [name, binding.imported])).toEqual([
+    expect(
+      definition?.free.map(({ name, binding }) => [
+        name,
+        binding.kind === 'import' ? binding.imported : undefined,
+      ]),
+    ).toEqual([
       ['four', 'three'],
       ['one', 'default'],
       ['two', '*'],

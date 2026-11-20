@@ -3,13 +3,13 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import type TypeScript from 'typescript';
 import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../shared/project-files/project-files.mjs';
-import { selectTypeScriptApi as untypedSelectTypeScriptApi } from '../../../typescript-api/api-selection.mjs';
+import { selectTypeScriptApi as untypedSelectTypeScriptApi } from '../../../typescript-api/api-selection.mts';
 import {
   checksJavascript as untypedChecksJavascript,
   projectTsconfigs as untypedProjectTsconfigs,
   readJsonc as untypedReadJsonc,
   referencedTsconfigs as untypedReferencedTsconfigs,
-} from '../../modules/tsconfig-files.mjs';
+} from '../../modules/tsconfig-files.mts';
 
 export type JavascriptLayout = {
   readonly javascript: boolean;

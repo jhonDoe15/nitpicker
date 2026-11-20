@@ -6,8 +6,8 @@ import {
   MUTATION_SCOPE_OPTION,
   mutationScopeArguments as untypedMutationScopeArguments,
   parseMutationScope as untypedParseMutationScope,
-} from '../tooling/runner-arguments.mjs';
-import { isInMutationScope, outsideScopePatterns, scopedProjectFiles } from './mutation-scope.mjs';
+} from '../tooling/runner-arguments.mts';
+import { isInMutationScope, outsideScopePatterns, scopedProjectFiles } from './mutation-scope.mts';
 
 const parseMutationScope: (text: string | undefined) => unknown = untypedParseMutationScope;
 const mutationScopeArguments: (scope: string[] | undefined) => string[] =

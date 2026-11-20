@@ -133,7 +133,7 @@ function describedEntries(
   const configParts = [
     ...coveredPathChanges(baseConfig, headConfig, scope),
     ...listedChanges(baseConfig, headConfig),
-    timeoutChanges(baseConfig, headConfig),
+    timeoutChanges(baseConfig, headConfig, scope.basePathOf),
     hiddenCodeChanges(baseConfig, headConfig, scope),
     featureLayoutChanges(baseConfig, headConfig, scope),
   ];

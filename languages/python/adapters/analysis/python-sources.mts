@@ -3,7 +3,7 @@ import path from 'node:path';
 import {
   PYTHON_SKIPPED_FOLDERS,
   skippedFolderGlobs as untypedSkippedFolderGlobs,
-} from '../../../../core/tooling/jscpd/skipped-folders.mjs';
+} from '../../../../core/tooling/jscpd/skipped-folders.mts';
 import { projectFilesUnder, sourceLines } from './typed/shared-views.mts';
 import {
   DOCUMENTATION_DIRECTORIES,

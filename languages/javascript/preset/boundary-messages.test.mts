@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { publicIndexFor } from '../../typescript/preset/architecture/strict-boundary-rules.mjs';
+import { publicIndexFor } from '../../typescript/preset/architecture/strict-boundary-rules.mts';
 
 describe('the public index named in the boundary messages', () => {
   it('is index.js or index.mjs for a JavaScript project', () => {

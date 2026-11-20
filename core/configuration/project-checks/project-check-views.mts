@@ -1,13 +1,13 @@
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
-import { rejectUnreadableSources as untypedRejectUnreadableSources } from './project-config.mjs';
+import { rejectUnreadableSources as untypedRejectUnreadableSources } from './project-config.mts';
 import {
   detectedPreset as untypedDetectedPreset,
   rejectUndeclaredPreset as untypedRejectUndeclaredPreset,
-} from './preset-detection.mjs';
+} from './preset-detection.mts';
 import {
   markerFilesIn as untypedMarkerFilesIn,
   rejectMissingBuildFiles as untypedRejectMissingBuildFiles,
-} from './project-markers.mjs';
+} from './project-markers.mts';
 
 type DetectedPreset = {
   readonly preset: string;

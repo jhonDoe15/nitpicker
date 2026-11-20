@@ -34,7 +34,7 @@ function unsafeAnyMessage() {
   });
 }
 
-function withPreset(config: object, check: () => void): void {
+function withPreset(config: Readonly<Record<string, unknown>>, check: () => void): void {
   withHeadPolicyFile(resolveHeadPolicy(config), (policyFile) => {
     process.env[HEAD_POLICY_ENV] = policyFile;
     check();

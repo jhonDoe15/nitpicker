@@ -1,7 +1,7 @@
 import { outsideRootsNotice as untypedOutsideRootsNotice } from '../../../../shared/notices/outside-roots-message.mjs';
 import { objectOf } from '../../../../shared/values/readers.mts';
 import type { Layout } from '../../adapters/typed/head-policy.mts';
-import { EXCLUDED_PATH_PATTERN, resolveLayoutFor as untypedResolveLayoutFor } from '../layout.mjs';
+import { EXCLUDED_PATH_PATTERN, resolveLayoutFor as untypedResolveLayoutFor } from '../layout.mts';
 
 const outsideRootsNotice: (options: {
   files: string[];

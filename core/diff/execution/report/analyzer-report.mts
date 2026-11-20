@@ -1,4 +1,4 @@
-import { parseAnalyzerReportKeepingValid } from '../../comparison/schema/invalid-findings.mjs';
+import { parseAnalyzerReportKeepingValid } from '../../comparison/schema/invalid-findings.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,

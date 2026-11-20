@@ -5,13 +5,13 @@ import { DESIGN_RULES as untypedDesignRules } from '../../../../../shared/projec
 import {
   readHeadPolicy as untypedReadHeadPolicy,
   readLayout as untypedReadLayout,
-} from '../../head-policy.mjs';
+} from '../../head-policy.mts';
 import {
   createContext as untypedCreateContext,
   isGenerated as untypedIsGenerated,
-} from '../../unused-api/context.mjs';
-import { loadPackages as untypedLoadPackages } from '../../unused-api/workspace/packages.mjs';
-import type { AnalysisLayout } from '../../unused-api/typed/analysis-views.mts';
+} from '../../unused-api/context.mts';
+import { loadPackages as untypedLoadPackages } from '../../unused-api/workspace/packages.mts';
+import type { AnalysisLayout } from '../../unused-api/analysis-views.mts';
 import type { ReexportLayout } from '../../unused-api/test-only/reexported-exports.mts';
 import type { PackagesInfo } from '../../unused-api/workspace/workspace-types.mts';
 

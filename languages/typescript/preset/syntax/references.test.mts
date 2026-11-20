@@ -6,7 +6,7 @@ import {
   referenceMembers,
   referencePositions,
   referencedNames,
-} from './references.mjs';
+} from './references.mts';
 
 function compareStrings(left: string, right: string): number {
   return left < right ? -1 : 1;

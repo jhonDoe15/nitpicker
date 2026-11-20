@@ -1,15 +1,11 @@
-import { boundaryGuardRule as untypedBoundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mts';
-import { unknownInDomainRule as untypedUnknownInDomainRule } from '../eslint-plugin/rules/boundaries/no-unknown-in-domain.mts';
+import { boundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mts';
+import { unknownInDomainRule } from '../eslint-plugin/rules/boundaries/no-unknown-in-domain.mts';
 import { createTester } from './test-support/rule-tester.mts';
 
 const tester = createTester();
 
-const boundaryGuardRule: (options: { validation: string[] }) => unknown = untypedBoundaryGuardRule;
-const unknownInDomainRule: (options: { validation: string[] }) => unknown =
-  untypedUnknownInDomainRule;
-
 function guardRule(...validation: string[]) {
-  return boundaryGuardRule({ validation });
+  return boundaryGuardRule({ validation, logger: [] });
 }
 
 const PREDICATE = 'function isUser(value: unknown): value is User { return true; }';
@@ -158,7 +154,7 @@ const DOMAIN_CODE = 'export function total(order: { id: unknown }) { return orde
 
 tester.run(
   'unknown in domain names the validation library',
-  unknownInDomainRule({ validation: ['valibot'] }),
+  unknownInDomainRule({ validation: ['valibot'], logger: [] }),
   {
     valid: [],
     invalid: [
@@ -176,7 +172,7 @@ tester.run(
 
 tester.run(
   'unknown in domain names a library without a type helper',
-  unknownInDomainRule({ validation: ['joi'] }),
+  unknownInDomainRule({ validation: ['joi'], logger: [] }),
   {
     valid: [],
     invalid: [

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { hash as hashUntyped } from '../../../../shared/rules/finding-helpers.mjs';
-import { parseFinding as parseFindingUntyped } from '../../../../core/diff/comparison/finding-schema.mjs';
+import { parseFinding as parseFindingUntyped } from '../../../../core/diff/comparison/finding-schema.mts';
 import { normalizeConsoleMessage as normalizeConsoleMessageUntyped } from '../../../../shared/rules/console/console-messages.mjs';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import type { JavaFinding } from '../typed/java-values.mts';

@@ -6,7 +6,7 @@ import {
   fileNameComplies as untypedFileNameComplies,
   fileNameParts as untypedFileNameParts,
   folderCasing as untypedFolderCasing,
-} from '../../../../conventions/file-name-casing.mjs';
+} from '../../../../conventions/file-name-casing.mts';
 import { readLayout } from '../typed/policy-views.mts';
 
 type Options = readonly [Readonly<Record<string, unknown>>?];

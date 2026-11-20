@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { readStamped as untypedReadStamped } from '../../../modules/stamped-file-cache.mjs';
+import { readStamped as untypedReadStamped } from '../../../modules/stamped-file-cache.mts';
 import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../../shared/project-files/project-files.mjs';
 
 type Stamped<Value> = { readonly stamp: string; readonly value: Value };

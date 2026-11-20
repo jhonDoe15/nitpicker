@@ -1,5 +1,5 @@
 import type { DependencyType } from 'dependency-cruiser';
-import { outsideRootsRule as untypedOutsideRootsRule } from '../outside-roots/outside-roots.mjs';
+import { outsideRootsRule as untypedOutsideRootsRule } from '../outside-roots/outside-roots.mts';
 
 export type ProductionSource = {
   readonly path: string;

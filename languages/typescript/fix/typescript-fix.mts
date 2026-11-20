@@ -1,9 +1,10 @@
 import {
   headPolicyEnvironment as untypedHeadPolicyEnvironment,
-  resolveHeadPolicy as untypedResolveHeadPolicy,
+  resolveHeadPolicy,
   withHeadPolicyFile as untypedWithHeadPolicyFile,
-} from '../preset/head-policy.mjs';
-import { resolveLayoutFor as untypedResolveLayoutFor } from '../preset/layout.mjs';
+} from '../preset/head-policy.mts';
+import { resolveLayoutFor } from '../preset/layout.mts';
+import type { HeadPolicyFile, ToolSettings } from '../preset/typed/head-policy-types.mts';
 import {
   changedFiles,
   collectFixFiles,
@@ -15,8 +16,8 @@ import {
   sharedInputs,
   splitByEncoding,
   undecodableNote,
-} from '../../../core/fix/typed/fix-views.mts';
-import type { Bytes, RecipeResult } from '../../../core/fix/typed/fix-views.mts';
+} from '../../../core/fix/typed/views/fix-views.mts';
+import type { Bytes, RecipeResult } from '../../../core/fix/typed/views/fix-views.mts';
 import type {
   FixFile,
   FixOutcome,
@@ -31,11 +32,11 @@ import { eslintFixStep } from './eslint-fix.mts';
 import { prettierFixStep } from './prettier-fix.mts';
 import type { Layout } from './typed/fix-views.mts';
 
-type HeadPolicy = { readonly tools?: { readonly eslint?: unknown; readonly knip?: unknown } };
+type HeadPolicy = HeadPolicyFile;
 type PolicySettings = Omit<KnipFixSettings, 'headPolicy' | 'layout'> & {
   readonly headPolicy: HeadPolicy;
   readonly layout: Layout;
-  readonly eslintSettings: unknown;
+  readonly eslintSettings: ToolSettings | undefined;
 };
 type StepInput = {
   readonly decodable: readonly FixFile[];
@@ -50,12 +51,10 @@ type Targets = {
 
 const headPolicyEnvironment: (policyFile: string) => NodeJS.ProcessEnv =
   untypedHeadPolicyEnvironment;
-const resolveHeadPolicy: () => HeadPolicy = untypedResolveHeadPolicy;
 const withHeadPolicyFile: (
   policy: HeadPolicy,
   run: (policyFile: string) => FixOutcome,
 ) => FixOutcome = untypedWithHeadPolicyFile;
-const resolveLayoutFor: (policy: HeadPolicy) => Layout = untypedResolveLayoutFor;
 const typescriptRecipes: readonly unknown[] = TYPESCRIPT_RECIPES;
 const sharedRecipes: readonly unknown[] = SHARED_RECIPES;
 function isManifest(name: string): boolean {
@@ -169,10 +168,12 @@ function fixWithPolicy(settings: PolicySettings): FixOutcome {
   };
 }
 
+function isHeadPolicy(value: unknown): value is HeadPolicy {
+  return typeof value === 'object' && value !== null;
+}
+
 function policyOf(settings: { readonly headPolicy: unknown }): HeadPolicy {
-  return typeof settings.headPolicy === 'object' && settings.headPolicy !== null
-    ? settings.headPolicy
-    : resolveHeadPolicy();
+  return isHeadPolicy(settings.headPolicy) ? settings.headPolicy : resolveHeadPolicy();
 }
 
 export function fixTypeScript(
@@ -186,7 +187,7 @@ export function fixTypeScript(
       headPolicy,
       layout: resolveLayoutFor(headPolicy),
       eslintSettings: headPolicy.tools?.eslint,
-      knipSettings: headPolicy.tools?.knip,
+      knipSettings: headPolicy.tools?.['knip'],
       policyEnvironment: headPolicyEnvironment(policyFile),
     }),
   );

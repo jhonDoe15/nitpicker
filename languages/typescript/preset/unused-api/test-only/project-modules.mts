@@ -12,7 +12,7 @@ import {
   referenceMembers,
   resolveModuleSpecifier,
 } from './typed/module-views.mts';
-import { codeExtensionNames } from '../../layout.mjs';
+import { codeExtensionNames } from '../../layout.mts';
 import { workspacePaths } from '../workspace/entries.mts';
 import type { PackagesInfo } from '../workspace/workspace-types.mts';
 import { moduleLinks } from './reexport-graph.mts';

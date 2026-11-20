@@ -1,8 +1,5 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterAll } from 'vitest';
 import { readSlowTestFindings } from '../slow-tests.mts';
+import { temporaryProjectMaker } from '../../../__tests__/temporary-roots.mts';
 
 export type Files = Readonly<Record<string, string>>;
 
@@ -36,23 +33,7 @@ export function slowTestRuns(defaultTestRoot: string): {
     options: Omit<FindingsRequest, 'sources'>,
   ) => (sources: Files) => (string | number | undefined)[][];
 } {
-  const temporaryRoots: string[] = [];
-
-  afterAll(() => {
-    for (const root of temporaryRoots.splice(0)) {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
-
-  function directoryWith(files: Files): string {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-slow-tests-'));
-    temporaryRoots.push(root);
-    for (const [name, text] of Object.entries(files)) {
-      mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-      writeFileSync(path.join(root, name), text);
-    }
-    return root;
-  }
+  const directoryWith = temporaryProjectMaker('nitpicker-slow-tests-');
 
   function findingsFor({
     sources = {},

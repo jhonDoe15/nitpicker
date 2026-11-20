@@ -2,9 +2,9 @@ import { realpathSync } from 'node:fs';
 import {
   DIFF_ALGORITHM,
   parseChangedLines,
-} from '../../../../core/diff/git/patches/changed-lines.mjs';
-import { GitCommandError, runGit } from '../../../../core/diff/git/repository/command.mjs';
-import { diffFromBase } from '../../../../core/tooling/git/base-diff.mjs';
+} from '../../../../core/diff/git/patches/changed-lines.mts';
+import { GitCommandError, runGit } from '../../../../core/diff/git/repository/command.mts';
+import { diffFromBase } from '../../../../core/tooling/git/base-diff.mts';
 import { type NameStatus, nameStatusEntries } from '../../../../core/tooling/git/name-status.mts';
 import { isJvmProductionPath, isJvmTestPath } from './jvm-paths.mts';
 import { fieldOf, listOf, numberOr, textOf } from '../../../../shared/values/readers.mts';

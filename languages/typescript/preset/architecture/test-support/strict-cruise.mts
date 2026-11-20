@@ -1,10 +1,5 @@
 import path from 'node:path';
-import {
-  cruise,
-  type IFlattenedRuleSet,
-  type IReporterOutput,
-  type OutputType,
-} from 'dependency-cruiser';
+import { cruise, type IReporterOutput, type OutputType } from 'dependency-cruiser';
 import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 import config from '../fixtures/dependency-cruiser.strict.fixture.config.mjs';
 
@@ -16,8 +11,10 @@ type CruiseRequest = {
   readonly outputType: OutputType;
 };
 
+type FixtureRule = { readonly name?: string; readonly from?: object };
+
 export type FixtureConfig = {
-  readonly forbidden: NonNullable<IFlattenedRuleSet['forbidden']>;
+  readonly forbidden: readonly FixtureRule[];
   readonly options: {
     readonly tsConfig: { readonly fileName: string };
     readonly exclude?: { readonly path: string | undefined };
@@ -36,7 +33,7 @@ export function cruiseWithConfig(
     {},
     tsConfigFile,
   );
-  const ruleSet = {
+  const ruleSet: object = {
     ...structuredClone(fixtureConfig),
     options: { ...structuredClone(fixtureConfig.options), baseDir },
   };

@@ -1,14 +1,17 @@
+import type { HeadConfig, HeadPolicyFile } from '../../../preset/typed/head-policy-types.mts';
 import {
   resolveHeadPolicy as untypedResolveHeadPolicy,
   withHeadCheckoutFacts as untypedWithHeadCheckoutFacts,
   withHeadPolicyFile as untypedWithHeadPolicyFile,
-} from '../../../preset/head-policy.mjs';
+} from '../../../preset/head-policy.mts';
 
-export const resolveHeadPolicy: (config: object, projectRoot: string | undefined) => object =
+export const resolveHeadPolicy: (config?: HeadConfig, projectRoot?: string) => HeadPolicyFile =
   untypedResolveHeadPolicy;
 
-export const withHeadCheckoutFacts: (policy: object, headPolicy: object) => object =
-  untypedWithHeadCheckoutFacts;
+export const withHeadCheckoutFacts: (
+  policy: HeadPolicyFile,
+  headPolicy?: HeadPolicyFile,
+) => HeadPolicyFile = untypedWithHeadCheckoutFacts;
 
-export const withHeadPolicyFile: <T>(policy: object, run: (policyFile: string) => T) => T =
+export const withHeadPolicyFile: <T>(policy: HeadPolicyFile, run: (policyFile: string) => T) => T =
   untypedWithHeadPolicyFile;

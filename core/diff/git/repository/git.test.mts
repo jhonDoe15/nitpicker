@@ -2,7 +2,7 @@ import { utimesSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { commit, fixtureGit, useGitFixtures } from '../test-support/git-repository.mts';
-import { captureWorkingTree as captureWorkingTreeJs, resolveComparison } from './git.mjs';
+import { captureWorkingTree as captureWorkingTreeJs, resolveComparison } from './git.mts';
 
 const captureWorkingTree: (repositoryRoot: string, headSha: string) => string =
   captureWorkingTreeJs;

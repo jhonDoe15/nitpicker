@@ -5,7 +5,7 @@ import {
   globMatcher as untypedGlobMatcher,
   resolveLayoutFor as untypedResolveLayoutFor,
   toPosix as untypedToPosix,
-} from '../../../preset/layout.mjs';
+} from '../../../preset/layout.mts';
 import { configFileGlobsFor as untypedConfigFileGlobsFor } from '../../../preset/eslint-config/policy/production-policy.mts';
 import type { FixContext, FixInputs, FixLayout, Project } from '../typed/project-types.mts';
 

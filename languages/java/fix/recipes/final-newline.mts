@@ -1,4 +1,4 @@
-import { lineEndingOf } from '../../../../core/fix/typed/fix-views.mts';
+import { lineEndingOf } from '../../../../core/fix/typed/line-endings.mts';
 import type { FixRecipe } from '../../../../core/fix/typed/fix-types.mts';
 
 const KOTLIN_FILE = /\.kt$/u;

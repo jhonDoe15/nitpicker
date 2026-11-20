@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import type typescript from 'typescript';
-import { ts as selectedTypeScript } from '../../../languages/typescript/typescript-api/typescript-api.mjs';
+import { ts as selectedTypeScript } from '../../../languages/typescript/typescript-api/typescript-api.mts';
 import { analyzeSource } from '../analyze.mts';
 import type { AnalysisResult } from '../model/run-types.mts';
 

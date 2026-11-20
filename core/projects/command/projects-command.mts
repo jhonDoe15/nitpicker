@@ -1,9 +1,9 @@
 import { realpathSync } from 'node:fs';
 import { resolveProjectRoot } from '../../configuration/project-checks/project-root.mts';
-import { noProjectAdvice as untypedNoProjectAdvice } from '../plan/suggested-projects.mjs';
+import { noProjectAdvice as untypedNoProjectAdvice } from '../plan/suggested-projects.mts';
 import { readLayeredConfig } from '../../configuration/layers/read-layered.mts';
 import { inspectRepository } from '../plan/inspect.mts';
-import { isGitWorkTree } from '../plan/member-root.mjs';
+import { isGitWorkTree } from '../plan/member-root.mts';
 import { selectionOf } from '../run/selection-plan.mts';
 import { enclosingPlan } from '../run/single-mode.mts';
 import {

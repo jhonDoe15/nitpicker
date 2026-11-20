@@ -8,14 +8,14 @@ import reactX from 'eslint-plugin-react-x';
 import testingLibrary from 'eslint-plugin-testing-library';
 import { inReactTestFilesOnly } from '../../eslint-plugin/rules/react-tests/react-test-files.mts';
 import { projectRunnerVocabulary } from '../../test-runner/vocabulary/typed-vocabulary.mts';
-import { accessibilityRuleNames, testingLibraryHintsFor } from './react-rules.mjs';
-import { accessibilityHints, accessibilityOptionOverrides } from './rules/accessibility-rules.mjs';
+import { accessibilityRuleNames, testingLibraryHintsFor } from './react-rules.mts';
+import { accessibilityHints, accessibilityOptionOverrides } from './rules/accessibility-rules.mts';
 import {
   reactDomHints,
   reactWebApiHints,
   reactXHints,
   typedReactXRules,
-} from './rules/third-party-rules.mjs';
+} from './rules/third-party-rules.mts';
 import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
 import { ruleNamed, withHint, withoutFixes } from '../typed/rule-views.mts';
 import { createdByCallOnly } from './rules/static-components.mts';

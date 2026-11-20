@@ -5,7 +5,7 @@ import {
   nestedCheckout,
   useGitCheckouts,
 } from '../../../../core/diff/git/test-support/git-checkout.mts';
-import { resolveLayoutFor } from '../layout.mjs';
+import { resolveLayoutFor } from '../layout.mts';
 import { codeFilesUnder, walkRules } from './program.mts';
 import { createProject, removeProject } from './test-support/project.mts';
 

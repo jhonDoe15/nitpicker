@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fieldAt } from '../scripts/json/fields.mts';
 import { parseJson } from '../shared/values/readers.mts';
-import { PACKAGE_ROOT as untypedPackageRoot } from './tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT as untypedPackageRoot } from './tooling/tool-resolution.mts';
 
 const repoRoot: string = untypedPackageRoot;
 const read = (file: string): string => readFileSync(path.join(repoRoot, file), 'utf8');

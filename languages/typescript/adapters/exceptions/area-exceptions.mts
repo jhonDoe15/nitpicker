@@ -8,5 +8,5 @@ const applyFindingExceptions: (findings: Finding[], exceptions: unknown[]) => Fi
 const withExceptionRoutes: (findings: readonly Finding[]) => Finding[] = untypedWithExceptionRoutes;
 
 export function applyAreaExceptions(findings: readonly Finding[]): Finding[] {
-  return applyFindingExceptions(withExceptionRoutes(findings), readHeadPolicy().exceptions);
+  return applyFindingExceptions(withExceptionRoutes(findings), [...readHeadPolicy().exceptions]);
 }

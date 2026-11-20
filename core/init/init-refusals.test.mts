@@ -6,7 +6,7 @@ import { textOf } from '../../shared/values/readers.mts';
 import { packageVersion } from '../help/package-version.mts';
 import { INIT_USAGE_TEXT } from '../help/usage-text.mts';
 import { init, initWith, readText, useProjects } from './test-support/projects.mts';
-import { javascriptApiPin } from './test-support/typescript-pin.mjs';
+import { javascriptApiPin } from './test-support/typescript-pin.mts';
 
 const createProject = useProjects();
 const TYPESCRIPT: FileMap = { 'package.json': '{}', 'src/index.ts': 'export const value = 1;\n' };

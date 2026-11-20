@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { ESLint, type Linter } from 'eslint';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { eslintChecks } from '../../quality-checks.mjs';
+import { eslintChecks } from '../../quality-checks.mts';
 import { fileURLToPath } from 'node:url';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 import { CARRIED_VARIABLE, productionPolicy } from '../production/carried-policies.mts';

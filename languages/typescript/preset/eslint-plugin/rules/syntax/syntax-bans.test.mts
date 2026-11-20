@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { lintFixture } from '../../../failure-messages/test-support/harness.mts';
-import { applyRuleExceptions as untypedApplyRuleExceptions } from '../../../eslint-config/exceptions.mjs';
+import { applyRuleExceptions } from '../../../eslint-config/exceptions.mts';
 import { strictSyntaxConfig } from '../../../eslint-config/strict.mts';
-
-type Exception = { rule: string; paths: string[]; reason: string };
-
-const applyRuleExceptions: (config: unknown, exceptions?: Exception[]) => unknown =
-  untypedApplyRuleExceptions;
 
 const code = [
   'export const value = null;',
@@ -14,7 +9,7 @@ const code = [
   'export default function Page() { return 1; }',
 ].join('\n');
 
-function ruleIdsWith(exceptions: Exception[]) {
+function ruleIdsWith(exceptions: Parameters<typeof applyRuleExceptions>[1]) {
   const config = applyRuleExceptions(strictSyntaxConfig, exceptions);
   return lintFixture({ config, filename: 'src/app/page.ts', code }).map(({ ruleId }) => ruleId);
 }

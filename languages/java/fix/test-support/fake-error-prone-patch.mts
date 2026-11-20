@@ -1,8 +1,13 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { parseJson, textsOf } from '../../../../shared/values/readers.mts';
-import { requiredOption } from './fake-maven-patch.mts';
-import type { FakeInvocation, PatchHooks, Reply } from './fake-maven-patch.mts';
+import {
+  cwdOf,
+  requiredOption,
+  type FakeInvocation,
+  type PatchHooks,
+  type Reply,
+} from './fake-maven-patch.mts';
 
 const SETTINGS = '-Pnitpicker.errorprone.settings=';
 const REPORT_DIR = '-Pnitpicker.reportDir=';
@@ -37,13 +42,13 @@ export function fakeErrorPronePatch({ patch, diagnostics = () => [] }: Options):
     mkdirSync(directory, { recursive: true });
     writeFileSync(
       path.join(directory, 'error-prone.patch'),
-      patch(invocation.cwd, directory, checks),
+      patch(cwdOf(invocation), directory, checks),
     );
     mkdirSync(path.join(reports, 'module'), { recursive: true });
     writeFileSync(
       path.join(reports, 'module', 'errorprone.json'),
       JSON.stringify(
-        diagnostics(invocation.cwd).filter(({ message }) =>
+        diagnostics(cwdOf(invocation)).filter(({ message }) =>
           checks.some((check) => message.startsWith(`[${check}]`)),
         ),
       ),

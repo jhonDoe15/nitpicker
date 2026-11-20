@@ -106,11 +106,10 @@ function modelOf(file: string, text: string): ModelledFile {
 }
 
 function lookupOf(files: readonly ModelledFile[]): Map<string, ProjectClass[]> {
-  const lookup = new Map<string, ProjectClass[]>();
-  for (const cls of files.flatMap(({ model }) => model.classes)) {
-    lookup.set(cls.name, [...(lookup.get(cls.name) ?? []), cls]);
-  }
-  return lookup;
+  return Map.groupBy(
+    files.flatMap(({ model }) => model.classes),
+    (cls) => cls.name,
+  );
 }
 
 export type SourceText = { readonly file: string; readonly text: string };

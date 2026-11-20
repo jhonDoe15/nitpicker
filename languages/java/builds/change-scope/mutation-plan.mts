@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { isInMutationScope } from '../../../../core/scope/mutation-scope.mjs';
+import { isInMutationScope, mutationScopeOf } from '../../../../core/scope/mutation-scope.mts';
 import { type LineRange, comparisonRoots, readComparisonChanges } from './comparison-changes.mts';
 import { MAX_TESTED_SOURCES, testedSources } from './tested-sources.mts';
 import type { JavaFinding, JavaPolicy } from '../../adapters/typed/java-values.mts';
@@ -21,7 +21,7 @@ const NAMED_CAPPED = 3;
 const DIGEST_LENGTH = 16;
 
 function withinScope(files: readonly string[], mutationScope: unknown): string[] {
-  return files.filter((file) => isInMutationScope(file, mutationScope) === true);
+  return files.filter((file) => isInMutationScope(file, mutationScopeOf(mutationScope)));
 }
 
 function cappedNotice(capped: readonly string[]): JavaFinding {

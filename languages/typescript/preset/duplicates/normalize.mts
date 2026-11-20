@@ -1,3 +1,4 @@
+import { optionalText } from '../../../../shared/values/readers.mts';
 import type { Finding } from '../../adapters/static-checks/shared.mts';
 import { readLayout } from '../../adapters/typed/head-policy.mts';
 import {
@@ -54,7 +55,7 @@ export function normalizeDuplicates(
 ): Finding[] {
   const plain = withoutImportOnlyClones(
     jscpdClones(report, configuredPaths).filter(
-      (clone) => !isRepeatedTestData(clone, isTestFile, clone.fragment),
+      (clone) => !isRepeatedTestData(clone, isTestFile, optionalText(clone.fragment)),
     ),
     'typescript',
   );

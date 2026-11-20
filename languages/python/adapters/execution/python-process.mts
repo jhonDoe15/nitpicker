@@ -2,7 +2,7 @@ import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
 } from '../../../../shared/messages/troubleshooting.mjs';
-import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
+import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mts';
 
 import type {
   Accepted,
@@ -15,11 +15,18 @@ import type {
 } from './typed/process-types.mts';
 
 const troubleshoot: (message: string, anchor: string) => string = withTroubleshooting;
-const spawnWithOutputFile: SpawnFunction = spawnSyncWithOutputFile;
-
 function isSpawn(value: unknown): value is SpawnFunction {
   return typeof value === 'function';
 }
+
+function spawnFunction(candidate: unknown): SpawnFunction {
+  if (!isSpawn(candidate)) {
+    throw new TypeError('spawnSyncWithOutputFile is not a function');
+  }
+  return candidate;
+}
+
+const spawnWithOutputFile: SpawnFunction = spawnFunction(spawnSyncWithOutputFile);
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TOOL_TIMEOUT_MS = 25 * 60 * 1000;

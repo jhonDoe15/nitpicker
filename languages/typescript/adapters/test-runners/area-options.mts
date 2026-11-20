@@ -1,8 +1,6 @@
-import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
-import { compareFindings as untypedCompareFindings } from '../../../../core/diff/comparison/compare.mjs';
+import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mts';
 import { parseArguments } from '../quality-areas/arguments.mts';
 import type { QualityAreaOptions } from '../quality-areas/typed/area-types.mts';
-import type { Finding } from '../static-checks/shared.mts';
 
 export type PickLanguage = {
   readonly extension: string;
@@ -10,12 +8,7 @@ export type PickLanguage = {
   readonly config: Readonly<Record<string, unknown>>;
 };
 
-export const compareFindings: (input: {
-  readonly baseFindings: readonly Finding[];
-  readonly headFindings: readonly Finding[];
-  readonly touchedCode: undefined;
-  readonly unknownOnBase: undefined;
-}) => Readonly<Record<string, readonly Finding[] | undefined>> = untypedCompareFindings;
+export { compareFindings } from '../../../../core/diff/comparison/compare.mts';
 
 export function areaOptions(kind: string, projectRoot: string): QualityAreaOptions {
   return parseArguments([

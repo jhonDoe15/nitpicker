@@ -1,4 +1,4 @@
-import { planSnapshotSkips } from './plan.mjs';
+import { planSnapshotSkips, type PlannedAnalyzer } from './plan.mts';
 import { layoutRoots } from './layout-roots.mts';
 import { fieldOf, listOf, objectOf } from '../../../shared/values/readers.mts';
 import type { AnalyzerRun } from '../execution/run-analyzers.mts';
@@ -25,15 +25,20 @@ function nameOf(analyzer: unknown): unknown {
   return fieldOf(analyzer, 'name');
 }
 
+function isPlanned(analyzer: unknown): analyzer is PlannedAnalyzer {
+  return typeof nameOf(analyzer) === 'string';
+}
+
 export function skipPlanOf(settings: SkipSettings, comparison: Snapshots): SkipPlan {
   const everything = settings.analyzers.map(nameOf);
   const unplanned = { skipped: [], affected: everything };
-  const wellFormed = settings.analyzers.every((analyzer) => typeof nameOf(analyzer) === 'string');
+  const planned = settings.analyzers.filter(isPlanned);
+  const wellFormed = planned.length === settings.analyzers.length;
   if (!wellFormed || settings.sharded === true || listOf(settings.configOverrides).length > 0) {
     return unplanned;
   }
   return planSnapshotSkips({
-    analyzers: settings.analyzers,
+    analyzers: planned,
     roots: layoutRoots(settings),
     repositoryRoot: settings.repositoryRoot,
     mergeBaseSha: comparison.mergeBaseSha,

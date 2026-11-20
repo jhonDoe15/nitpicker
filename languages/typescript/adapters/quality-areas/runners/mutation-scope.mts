@@ -1,4 +1,4 @@
-import { DIFF_ALGORITHM } from '../../../../../core/diff/git/patches/changed-lines.mjs';
+import { DIFF_ALGORITHM } from '../../../../../core/diff/git/patches/changed-lines.mts';
 import type { Layout } from '../../typed/head-policy.mts';
 import type { QualityAreaOptions } from '../typed/area-types.mts';
 import {

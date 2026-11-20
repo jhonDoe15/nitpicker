@@ -4,8 +4,9 @@ import { reportFolder } from '../plan/project-entry.mts';
 import type { CliOptions } from '../../cli-context.mts';
 import type {
   MonorepoPlan,
+  PlanProject,
   ProjectOutcome,
-  ProjectRow,
+  ProjectSelection,
   RepositoryPolicy,
 } from '../project-types.mts';
 
@@ -35,7 +36,15 @@ export type CombinedSummary = {
   readonly source: MonorepoPlan['source'];
   readonly overallStatus: string;
   readonly newEnforceableFindings: number;
-  readonly counts: Readonly<Record<string, number>>;
+  readonly counts: {
+    readonly projects: number;
+    readonly run: number;
+    readonly passed: number;
+    readonly failed: number;
+    readonly errored: number;
+    readonly incomplete: number;
+    readonly skipped: number;
+  };
   readonly projects: readonly SummaryEntry[];
   readonly repositoryPolicy?: RepositorySummary;
   readonly outsideProjects: unknown;
@@ -43,9 +52,17 @@ export type CombinedSummary = {
   readonly elapsedMs: number;
 };
 
+type ResultRow = {
+  readonly project: Pick<PlanProject, 'path' | 'preset'>;
+  readonly selection: Pick<ProjectSelection, 'selected' | 'reason'>;
+  readonly outcome?: ProjectOutcome;
+};
+
+type PolicyStatus = Pick<RepositoryPolicy, 'accepted' | 'toolErrors'>;
+
 type SummaryInput = {
-  readonly plan: MonorepoPlan;
-  readonly results: readonly ProjectRow[];
+  readonly plan: Pick<MonorepoPlan, 'source'>;
+  readonly results: readonly ResultRow[];
   readonly outside: unknown;
   readonly notices: readonly string[];
   readonly repository: RepositoryPolicy | undefined;
@@ -58,16 +75,19 @@ const SKIPPED = 'skipped';
 const REPORT_FILE = 'report.txt';
 export const SUMMARY_FILE = 'summary.json';
 
-function repositoryFailed(repository: RepositoryPolicy | undefined): boolean {
+function repositoryFailed(repository: PolicyStatus | undefined): boolean {
   return repository !== undefined && !repository.accepted;
 }
 
-function repositoryIncomplete(repository: RepositoryPolicy | undefined): boolean {
+function repositoryIncomplete(repository: PolicyStatus | undefined): boolean {
   return (repository?.toolErrors ?? []).length > 0;
 }
 
 export function exitCodeOf(
-  summary: Pick<CombinedSummary, 'projects'> & { readonly repositoryPolicy?: RepositoryPolicy },
+  summary: {
+    readonly projects: readonly Pick<SummaryEntry, 'status' | 'overallStatus'>[];
+    readonly repositoryPolicy?: PolicyStatus;
+  },
   { deferExit = false }: Partial<Pick<CliOptions, 'deferExit'>> = {},
 ): number {
   const { projects, repositoryPolicy } = summary;
@@ -96,7 +116,7 @@ function ranFields(outcome: ProjectOutcome, folder: string): RanFields {
   };
 }
 
-function entryOf(result: ProjectRow): SummaryEntry {
+function entryOf(result: ResultRow): SummaryEntry {
   const { project, selection, outcome } = result;
   return {
     path: project.path,
@@ -155,11 +175,7 @@ export function combinedSummary({
   };
 }
 
-export function writeCombinedReports(
-  outputRoot: string,
-  summary: CombinedSummary,
-  text: string,
-): void {
+export function writeCombinedReports(outputRoot: string, summary: object, text: string): void {
   mkdirSync(outputRoot, { recursive: true });
   writeFileSync(path.join(outputRoot, SUMMARY_FILE), `${JSON.stringify(summary, null, 2)}\n`);
   writeFileSync(path.join(outputRoot, REPORT_FILE), text);

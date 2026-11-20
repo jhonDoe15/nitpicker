@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { javaJarLicenseViolations } from '../../../../../../core/licensing/test-support/dependency-licenses.mjs';
-import { resolveToolJars } from '../../../../../../core/licensing/test-support/java-tool-jars.mjs';
+import { javaJarLicenseViolations } from '../../../../../../core/licensing/test-support/dependency-licenses.mts';
+import { resolveToolJars } from '../../../../../../core/licensing/test-support/java-tool-jars.mts';
 import { readPinnedTools } from '../../../../builds/java-build.mts';
 
 const enabled = process.env['NITPICKER_JAVA_E2E'] === '1';

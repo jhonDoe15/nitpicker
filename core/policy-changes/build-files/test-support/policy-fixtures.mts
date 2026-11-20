@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { expect } from 'vitest';
-import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mts';
 import { hasSpecificGuidance } from '../../../diff/reporting/review/policy-guidance.mts';
 import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mts';
 import { policyChangeFields } from '../../describe-policy-changes.mts';

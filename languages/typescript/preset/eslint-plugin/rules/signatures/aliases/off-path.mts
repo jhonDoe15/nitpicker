@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { ancestorsOf, type Ranged } from '../../typed/node-views.mts';
+import { contains } from '../../analysis/ancestry.mts';
 
 const LOOPS = new Set<string>([
   AST_NODE_TYPES.ForStatement,
@@ -8,10 +9,6 @@ const LOOPS = new Set<string>([
   AST_NODE_TYPES.WhileStatement,
   AST_NODE_TYPES.DoWhileStatement,
 ]);
-
-function contains(outer: Ranged, inner: Ranged): boolean {
-  return outer.range[0] <= inner.range[0] && inner.range[1] <= outer.range[1];
-}
 
 function inDifferentArms(write: TSESTree.Node, mutation: Ranged): boolean {
   return ancestorsOf(write).some((ancestor) => {

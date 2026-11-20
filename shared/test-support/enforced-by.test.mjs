@@ -48,7 +48,7 @@ const NOT_ENFORCED_ALTHOUGH_EMITTED = {
   javascript: {
     'unused-prop': {
       file: 'languages/typescript/preset/unused-api/analyze.mjs',
-      evidence: /!layout\.javascript && isReactProject/u,
+      evidence: /!layout\.javascript\s*&&\s*isReactProject/u,
     },
     'javascript-in-typescript-project': {
       file: 'languages/typescript/preset/structure/sources/javascript-files.mjs',
@@ -161,7 +161,7 @@ describe('the enforcedBy column of every catalogued rule', () => {
       found(
         'typescript',
         'duplicate-definition',
-        'languages/typescript/preset/structure/reuse/reuse-findings.mjs',
+        'languages/typescript/preset/structure/reuse/reuse-findings.mts',
       ),
     ]).toEqual([
       ['languages/java/adapters/design/design-findings.mts'],

@@ -4,7 +4,7 @@ import {
 } from '../../../../../shared/fix/recipes/extract/candidates.mjs';
 import { nearDuplicateMatches as untypedNearDuplicateMatches } from '../../../../../shared/rules/near-duplicates/near-duplicates.mjs';
 import { declineNote as untypedDeclineNote } from '../../../../../shared/fix/recipes/extract/names.mjs';
-import { REVIEW } from '../../../../../core/fix/engine/safety.mjs';
+import { REVIEW } from '../../../../../core/fix/engine/safety.mts';
 import type {
   Decline,
   PlanContext,

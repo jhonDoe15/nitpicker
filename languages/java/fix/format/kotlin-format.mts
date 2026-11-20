@@ -1,5 +1,5 @@
-import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
-import { failureText } from '../../../../core/fix/common/fix-command.mjs';
+import { containedPath } from '../../../../core/fix/tool-steps/paths/contained-path.mts';
+import { failureOf } from '../tools/failure-of.mts';
 import { KOTLIN_FORMATTERS } from '../../adapters/style/jvm-formatters.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
@@ -161,7 +161,7 @@ export function kotlinFormat({
       });
       const unformattable = parseFailures(result, names, reported);
       if (formatter === 'ktfmt' && fieldOf(result, 'status') !== 0 && unformattable.length === 0) {
-        throw new Error(`${label} failed: ${textOf(failureText(result))}`);
+        throw new Error(`${label} failed: ${failureOf(result)}`);
       }
       return {
         formatted: new Map(names.map((name) => [name, readWorkspaceFile(root, name)])),

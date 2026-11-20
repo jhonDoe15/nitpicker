@@ -1,6 +1,6 @@
 import type TypeScript from 'typescript';
 import { parentOf } from '../../../../adapters/typed/typescript-program.mts';
-import { lazyTypeScriptApi as untypedLazyTypeScriptApi } from '../../../../typescript-api/lazy-typescript-api.mjs';
+import { lazyTypeScriptApi as untypedLazyTypeScriptApi } from '../../../../typescript-api/lazy-typescript-api.mts';
 
 const lazyTypeScriptApi: () => typeof TypeScript = untypedLazyTypeScriptApi;
 

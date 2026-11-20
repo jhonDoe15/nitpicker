@@ -15,7 +15,7 @@ import {
   testTimeoutMs,
   workerCount,
 } from '../test-run.mts';
-import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
+import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mts';
 import { assertSourcesCovered, coverageArguments, shownConfig } from './jest-coverage.mts';
 import { jestArguments, jestScriptArguments, jestTool } from './jest-launcher.mts';
 import { consoleProducerPath, jestAssertImport, startTestConsole } from '../test-console-run.mts';

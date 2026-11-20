@@ -15,7 +15,7 @@ import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
 } from '../../../shared/messages/troubleshooting.mjs';
-import { runGit } from '../git/repository/command.mjs';
+import { runGit } from '../git/repository/command.mts';
 import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
 import { textOf } from '../../../shared/values/readers.mts';
 

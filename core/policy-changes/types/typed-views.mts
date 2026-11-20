@@ -8,12 +8,12 @@ import {
   defaultResolvedLayout as untypedDefaultResolvedLayout,
   resolveLayout as untypedResolveLayout,
   resolveLayoutFor as untypedResolveLayoutFor,
-} from '../../../languages/typescript/preset/layout.mjs';
+} from '../../../languages/typescript/preset/layout.mts';
 import {
   directlyImportedFiles as untypedDirectlyImportedFiles,
   packageEntryFiles as untypedPackageEntryFiles,
   productionReach as untypedProductionReach,
-} from '../../../languages/typescript/preset/modules/production-imports.mjs';
+} from '../../../languages/typescript/preset/modules/production-imports.mts';
 import {
   pythonImportedFiles as untypedPythonImportedFiles,
   pythonProductionReach as untypedPythonProductionReach,
@@ -32,12 +32,12 @@ import { detectSourceRoots as untypedDetectSourceRoots } from '../../../language
 import {
   checksJavascript as untypedChecksJavascript,
   projectTsconfigs as untypedProjectTsconfigs,
-} from '../../../languages/typescript/preset/modules/tsconfig-files.mjs';
+} from '../../../languages/typescript/preset/modules/tsconfig-files.mts';
 import { checkedJavascriptFiles as untypedCheckedJavascriptFiles } from '../../../languages/typescript/preset/eslint-config/policy/untyped-javascript.mts';
-import { presetToDeclare as untypedPresetToDeclare } from '../../configuration/project-checks/preset-detection.mjs';
+import { presetToDeclare as untypedPresetToDeclare } from '../../configuration/project-checks/preset-detection.mts';
 import { isGeneratedJvm as untypedIsGeneratedJvm } from '../../../languages/java/adapters/generated/generated-sources.mts';
 import { isGeneratedPython as untypedIsGeneratedPython } from '../../../languages/python/libraries/generated-files.mts';
-import { isMarkedGenerated as untypedIsMarkedGenerated } from '../../../languages/typescript/preset/layout/generated-files.mjs';
+import { isMarkedGenerated as untypedIsMarkedGenerated } from '../../../languages/typescript/preset/layout/generated-files.mts';
 import { isGeneratedGo as untypedIsGeneratedGo } from '../../../languages/go/adapters/structure/go-generated.mts';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
 import type { BuildSource, LayoutConfig, PolicyConfig } from './policy-types.mts';
@@ -71,7 +71,7 @@ const resolveLayoutFor: (config: PolicyConfig) => ResolvedLayout = untypedResolv
 const resolveLayout: (
   layout: LayoutConfig | undefined,
   exclude: string[],
-  options: { readonly javascript: boolean },
+  options: { readonly javascript?: true },
 ) => ResolvedLayout = untypedResolveLayout;
 const defaultResolvedLayout: ResolvedLayout = untypedDefaultResolvedLayout;
 const sourceRoots = defaultResolvedLayout.sourceRoots;
@@ -123,7 +123,7 @@ const checkedJavascriptFiles: (projectRoot: string, layout: ResolvedLayout) => s
 const projectTsconfigs: (
   projectRoot: string,
   files: readonly string[],
-  isHidden: (...args: never[]) => boolean,
+  isHidden: (file: string) => boolean,
 ) => string[] = untypedProjectTsconfigs;
 const presetToDeclare: (config: PolicyConfig, projectRoot: string) => unknown =
   untypedPresetToDeclare;

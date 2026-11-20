@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../comparison/test-support/typed-compare.mts';
-import { parseFinding } from '../../../comparison/finding-schema.mjs';
-import { canonicalCycleIdentity } from '../../../comparison/fingerprint.mjs';
+import { parseFinding } from '../../../comparison/finding-schema.mts';
+import { canonicalCycleIdentity } from '../../../comparison/fingerprint.mts';
 import { finding } from '../../../execution/test-support/analyzer-findings.mts';
 
 describe('quality diff finding identities', () => {

@@ -1,8 +1,8 @@
 import { cpSync, existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { insideProject } from '../../libraries/project-files.mts';
-import { runGit as untypedRunGit } from '../../../../core/diff/git/repository/command.mjs';
-import { diffFromBase } from '../../../../core/tooling/git/base-diff.mjs';
+import { runGit as untypedRunGit } from '../../../../core/diff/git/repository/command.mts';
+import { diffFromBase } from '../../../../core/tooling/git/base-diff.mts';
 import { callUntyped as call } from '../../../../shared/values/boundaries/untyped-call.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 import { collectImports, importEdges } from '../analysis/python-coupling.mts';

@@ -13,7 +13,7 @@ const checkoutModuleUrl: (url: URL) => URL = untypedCheckoutModuleUrl;
 
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
 import { i18nScopeConfigFor } from ${JSON.stringify(checkoutModuleUrl(new URL('./i18n-scope.mjs', import.meta.url)).href)};
-import { resolveLayout } from ${JSON.stringify(import.meta.resolve('../../layout.mjs'))};
+import { resolveLayout } from ${JSON.stringify(import.meta.resolve('../../layout.mts'))};
 
 export default [
   { languageOptions: { parser: tseslint.parser } },

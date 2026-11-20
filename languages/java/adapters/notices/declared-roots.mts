@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { runGit } from '../../../../core/diff/git/repository/command.mjs';
+import { runGit } from '../../../../core/diff/git/repository/command.mts';
 import { readBuildSources } from '../../builds/narrowing/build-sources.mts';
 
 const BUILD_FILE = /(?:^|\/)(?:build\.gradle(?:\.kts)?|pom\.xml)$/u;

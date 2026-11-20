@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { parseAnalyzerReport as parseAnalyzerReportUntyped } from '../../../../core/diff/comparison/finding-schema.mjs';
+import { parseAnalyzerReport as parseAnalyzerReportUntyped } from '../../../../core/diff/comparison/finding-schema.mts';
 import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mts';
 import { ingestFormatCheck } from '../../../../shared/ingest/format-check.mjs';
 import type { Finding } from '../../../../shared/values/findings.mts';

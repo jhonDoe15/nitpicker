@@ -2,7 +2,7 @@ import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mts';
 import { functionalPlugin } from '../../eslint-plugin/type-identity/functional-plugin.mts';
-import { codeExtensions, builtInExcludedGlobs } from '../../layout.mjs';
+import { codeExtensions, builtInExcludedGlobs } from '../../layout.mts';
 
 export function domainGlobsFor(sourceRoots: readonly string[]): string[] {
   return sourceRoots.map((root) =>

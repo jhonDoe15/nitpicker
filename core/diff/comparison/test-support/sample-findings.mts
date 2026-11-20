@@ -10,7 +10,7 @@ import {
   normalizeMutation,
 } from '../../../../languages/typescript/adapters/quality-areas/reporting/tests.mts';
 import { normalizeDuplicates as normalizeDuplicatesJs } from '../../../../languages/typescript/preset/duplicates/normalize.mts';
-import { toEntryPointDiffFindings as toEntryPointDiffFindingsJs } from '../../../../languages/typescript/adapters/entry-points.mjs';
+import { toEntryPointDiffFindings } from '../../../../languages/typescript/adapters/entry-points.mts';
 import type { Finding } from '../../../../shared/values/findings.mts';
 
 const normalizeDuplicates: (
@@ -18,7 +18,6 @@ const normalizeDuplicates: (
   analyzerName: string,
   options: { readonly configuredPaths: string[] },
 ) => Finding[] = normalizeDuplicatesJs;
-const toEntryPointDiffFindings: (report: unknown) => Finding[] = toEntryPointDiffFindingsJs;
 
 const MODULE_A = 'src/main/a.ts';
 

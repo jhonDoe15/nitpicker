@@ -1,4 +1,4 @@
-import dependencyCruiser from '../preset/defaults/dependency-cruiser.config.mjs';
+import dependencyCruiser from '../preset/defaults/dependency-cruiser.config.mts';
 import { ruleEntry, wordsOfKebab, type RuleEntry } from './typed/entry-types.mts';
 
 const GUIDE = 'docs/typescript-strict-preset.md';
@@ -25,7 +25,7 @@ function cruiserEntry({
   comment,
 }: {
   readonly name: string;
-  readonly comment: string;
+  readonly comment?: string | undefined;
 }): RuleEntry {
   const [summary, why, allowed] = CRUISER_NOTES[name] ?? [wordsOfKebab(name), CRUISER_WHY, comment];
   const outsideRoots = name === 'no-import-outside-roots';

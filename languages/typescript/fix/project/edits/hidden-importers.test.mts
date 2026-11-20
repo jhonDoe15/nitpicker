@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fileNameCasingRecipe as recipe } from '../moves/file-name-casing.mts';
 import { useFixtureProjects } from '../test-support/fixture-project.mts';
-import { resolveLayoutFor } from '../../../preset/layout.mjs';
+import { resolveLayoutFor } from '../../../preset/layout.mts';
 
 const projects = useFixtureProjects();
 const RULE = 'eslint/nitpicker/file-name-casing';

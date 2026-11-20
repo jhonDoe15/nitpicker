@@ -4,11 +4,11 @@ import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { withDefaultAnalyzerParallelism as untypedParallelism } from '../../../../core/diff/execution/test-support/analyzer-parallelism.mts';
 import { runAnalyzers } from '../../../../core/diff/execution/run-analyzers.mts';
-import { configuredAnalyzers as untypedConfiguredAnalyzers } from '../diff/configured-analyzers.mjs';
+import { configuredAnalyzers as untypedConfiguredAnalyzers } from '../diff/configured-analyzers.mts';
 import {
-  resolveHeadPolicy as untypedResolveHeadPolicy,
+  resolveHeadPolicy,
   withHeadPolicyFile as untypedWithHeadPolicyFile,
-} from '../head-policy.mjs';
+} from '../head-policy.mts';
 
 type Files = Readonly<Record<string, string>>;
 type Dependencies = 'installed' | 'symlinked' | 'absent';
@@ -16,7 +16,6 @@ type FindingView = { readonly rule: string; readonly path: string; readonly mess
 
 const withDefaultAnalyzerParallelism: <T>(run: () => T) => T = untypedParallelism;
 const configuredAnalyzers: () => readonly { readonly name: string }[] = untypedConfiguredAnalyzers;
-const resolveHeadPolicy: (config: object) => unknown = untypedResolveHeadPolicy;
 const withHeadPolicyFile: <T>(policy: unknown, operation: (headPolicyFile: string) => T) => T =
   untypedWithHeadPolicyFile;
 

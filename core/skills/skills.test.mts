@@ -6,7 +6,7 @@ import { SUPPORTED_PRESETS } from '../configuration/validate.mts';
 import { packageVersion } from '../help/package-version.mts';
 import { fieldAt, fieldsOf } from '../../scripts/json/fields.mts';
 import { textOf } from '../../shared/values/readers.mts';
-import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../tooling/tool-resolution.mts';
 
 const skillsRoot = path.join(PACKAGE_ROOT, 'skills');
 const skillNames = readdirSync(skillsRoot, { withFileTypes: true })

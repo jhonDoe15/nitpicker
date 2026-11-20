@@ -1,4 +1,4 @@
-import { parseRunnerArguments } from '../../../../core/tooling/runner-arguments.mjs';
+import { parseRunnerArguments } from '../../../../core/tooling/runner-arguments.mts';
 import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
 import { sharedRouteRule } from '../../../../shared/exceptions/routes.mjs';
 import { withLegacyInventory } from '../../../../shared/legacy-inventory.mjs';

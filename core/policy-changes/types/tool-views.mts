@@ -12,42 +12,42 @@ import {
   precedenceLayers as untypedPrecedenceLayers,
 } from '../../../shared/conventions/tool-precedence.mjs';
 import { kotlinStyleFiles as untypedKotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mts';
-import { PRETTIER_PROJECT_FILES as UNTYPED_PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
+import { PRETTIER_PROJECT_FILES as UNTYPED_PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mts';
 import {
   appliedStrykerConfig as untypedAppliedStrykerConfig,
   STRYKER_PROJECT_FILES as UNTYPED_STRYKER_PROJECT_FILES,
-} from '../../../languages/typescript/preset/project-configs/stryker-project-config.mjs';
+} from '../../../languages/typescript/preset/project-configs/stryker-project-config.mts';
 import {
   appliedTypescriptOptions as untypedAppliedTypescriptOptions,
   projectTsconfigFiles as untypedProjectTsconfigFiles,
-} from '../../../languages/typescript/preset/project-configs/typescript/typescript-project-options.mjs';
+} from '../../../languages/typescript/preset/project-configs/typescript/typescript-project-options.mts';
 import {
   appliedRunnerRetry as untypedAppliedRunnerRetry,
   TESTS_TOOL as UNTYPED_TESTS_TOOL,
   testRunnerProjectFiles as untypedTestRunnerProjectFiles,
-} from '../../../languages/typescript/preset/project-configs/test-runner/test-runner-config.mjs';
+} from '../../../languages/typescript/preset/project-configs/test-runner/test-runner-config.mts';
 import {
   isProjectConfigTool as untypedIsProjectConfigTool,
   manifestSection as untypedManifestSection,
   packageJsonKey as untypedPackageJsonKey,
   projectConfigCandidates as untypedProjectConfigCandidates,
   projectConfigTools as untypedProjectConfigTools,
-} from '../../../languages/typescript/preset/project-tools/project-config-files.mjs';
+} from '../../../languages/typescript/preset/project-tools/project-config-files.mts';
 import {
   appliedProjectConfigs as untypedAppliedProjectConfigs,
   hasProjectConfigChanges as untypedHasProjectConfigChanges,
   projectConfigChanges as untypedProjectConfigChanges,
-} from '../../../languages/typescript/preset/project-tools/changes/project-config-changes.mjs';
+} from '../../../languages/typescript/preset/project-tools/changes/project-config-changes.mts';
 import {
   eslintConfigFiles as untypedEslintConfigFiles,
   readEslintConfigFile as untypedReadEslintConfigFile,
-} from '../../../languages/typescript/preset/eslint-project/project-config.mjs';
+} from '../../../languages/typescript/preset/eslint-project/project-config.mts';
 import { replacedEslintOptions as untypedReplacedEslintOptions } from '../../../languages/typescript/adapters/lint-engine/replaced-options.mts';
-import { strykerConfigChanges as untypedStrykerConfigChanges } from '../../../languages/typescript/preset/project-configs/stryker-config-changes.mjs';
-import { testsConfigChanges as untypedTestsConfigChanges } from '../build-files/applied-values/retry-changes.mjs';
-import { typescriptConfigChanges as untypedTypescriptConfigChanges } from '../../../languages/typescript/preset/project-configs/typescript/typescript-config-changes.mjs';
+import { strykerConfigChanges as untypedStrykerConfigChanges } from '../../../languages/typescript/preset/project-configs/stryker-config-changes.mts';
+import { testsConfigChanges as untypedTestsConfigChanges } from '../build-files/applied-values/retry-changes.mts';
+import { typescriptConfigChanges as untypedTypescriptConfigChanges } from '../../../languages/typescript/preset/project-configs/typescript/typescript-config-changes.mts';
 import { jscpdConfigChanges as untypedJscpdConfigChanges } from '../../tooling/jscpd/changes/config-changes.mts';
-import { appliedJscpdConfig as untypedAppliedJscpdConfig } from '../../tooling/jscpd/config.mjs';
+import { appliedJscpdConfig as untypedAppliedJscpdConfig } from '../../tooling/jscpd/config.mts';
 import { readImportLinterConfig as untypedReadImportLinterConfig } from '../../../languages/python/adapters/analysis/import-linter/import-linter-config.mts';
 import { attempt as untypedAttempt } from '../../../languages/python/adapters/project-tools/project-tool-layers.mts';
 import { readPytestRetries as untypedReadPytestRetries } from '../../../languages/python/adapters/test-runs/retries/pytest-retries.mts';
@@ -140,8 +140,9 @@ const projectTsconfigFiles: (projectRoot: string, layout: ResolvedLayout) => str
 const testRunnerProjectFiles: (projectRoot: string, config: PolicyConfig) => string[] =
   untypedTestRunnerProjectFiles;
 const isProjectConfigTool: (tool: string) => boolean = untypedIsProjectConfigTool;
-const manifestSection: (text: string, key: string | undefined) => ManifestSection =
-  untypedManifestSection;
+function manifestSection(text: string, key: string | undefined): ManifestSection {
+  return untypedManifestSection(text, String(key));
+}
 const packageJsonKey: (tool: string) => string | undefined = untypedPackageJsonKey;
 const projectConfigCandidates: (tool: string) => string[] = untypedProjectConfigCandidates;
 const projectConfigTools: () => string[] = untypedProjectConfigTools;
@@ -157,12 +158,7 @@ const readEslintConfigFile: (root: string, relative: string) => Buffer | undefin
   untypedReadEslintConfigFile;
 const replacedEslintOptions: (config: PolicyConfig, projectRoot: string) => ReplacedOptions =
   untypedReplacedEslintOptions;
-function appliedJscpdConfig(text: string): JscpdApplied {
-  const applied = untypedAppliedJscpdConfig(text);
-  return applied.kind === 'applied' && applied.config !== undefined
-    ? { kind: 'applied', config: applied.config }
-    : { kind: 'rejected' };
-}
+const appliedJscpdConfig: (text: string) => JscpdApplied = untypedAppliedJscpdConfig;
 const appliedStrykerConfig: (projectRoot: string) => {
   readonly values: Values;
   readonly file?: string;

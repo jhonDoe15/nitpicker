@@ -1,27 +1,15 @@
 import {
-  headTestFailuresOf,
-  mutationFailuresOf,
-  unknownMutantsFor,
-  unknownOnBaseFor,
-} from './unknown-base.mjs';
+  headTestFailuresOf as headTestFailures,
+  mutationFailuresOf as mutationFailures,
+  unknownMutantsFor as unknownMutants,
+  unknownOnBaseFor as unknownOnBase,
+} from './unknown-base.mts';
+import type { TouchedCode } from '../model/finding-types.mts';
 import type { AnalyzerReport, Finding } from '../../../../shared/values/findings.mts';
 
 type FindingTest = (finding: Finding) => boolean;
 
 type ReportsRun = { readonly reports: ReadonlyMap<string, AnalyzerReport> };
-
-const unknownOnBase: (
-  failures: readonly Finding[],
-  touchedCode: unknown,
-) => FindingTest | undefined = unknownOnBaseFor;
-const mutationFailures: (report: AnalyzerReport | undefined) => readonly Finding[] =
-  mutationFailuresOf;
-const headTestFailures: (report: AnalyzerReport | undefined, name: string) => readonly Finding[] =
-  headTestFailuresOf;
-const unknownMutants: (
-  failures: readonly Finding[],
-  touchedCode?: unknown,
-) => FindingTest | undefined = unknownMutantsFor;
 
 function eitherOf(
   first: FindingTest | undefined,
@@ -40,7 +28,7 @@ export function unknownOnBaseOf({
 }: {
   readonly name: string;
   readonly baseRun: ReportsRun;
-  readonly touchedCode?: unknown;
+  readonly touchedCode?: Pick<TouchedCode, 'testsRemoved'> | undefined;
   readonly unknownFailures: readonly Finding[] | undefined;
 }): FindingTest | undefined {
   return eitherOf(

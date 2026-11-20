@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { commitOf } from '../../../diff/git/repository/base-ref.mts';
-import { captureWorkingTree } from '../../../diff/git/repository/git.mjs';
-import { addTemporaryWorktree } from '../../../diff/git/repository/worktree.mjs';
+import { captureWorkingTree } from '../../../diff/git/repository/git.mts';
+import { addTemporaryWorktree } from '../../../diff/git/repository/worktree.mts';
 import type { PlanProject, ProjectRow } from '../../project-types.mts';
 import type { RunContext, SharedBase } from './project-rows.mts';
 

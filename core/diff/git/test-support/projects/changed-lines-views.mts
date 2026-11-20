@@ -1,27 +1,8 @@
-import {
-  parseChangedLines as parseChangedLinesJs,
-  readChangedLines as readChangedLinesJs,
-} from '../../patches/changed-lines.mjs';
-import { lineMapOf as lineMapOfJs } from '../../unchanged-lines.mjs';
+import type { ChangedFile } from '../../line-types.mts';
 
-export type ChangedFile = {
-  readonly path: string;
-  readonly ranges: readonly (readonly [number, number])[];
-  readonly [field: string]: unknown;
-};
-
-type LineMap = {
-  readonly baseLineOf: (line: number) => number | undefined;
-  readonly headLineOf: (line: number) => number | undefined;
-};
-
-export const lineMapOf: (file: unknown) => LineMap = lineMapOfJs;
-
-export const parseChangedLines: (
-  diffText: string,
-  projectRelativePath?: string,
-  readSources?: () => Map<string, unknown>,
-) => Map<string, ChangedFile> = parseChangedLinesJs;
+export type { ChangedFile } from '../../line-types.mts';
+export { parseChangedLines, readChangedLines } from '../../patches/changed-lines.mts';
+export { lineMapOf } from '../../unchanged-lines.mts';
 
 export function changedFile(changes: ReadonlyMap<string, ChangedFile>, name: string): ChangedFile {
   const file = changes.get(name);
@@ -30,10 +11,3 @@ export function changedFile(changes: ReadonlyMap<string, ChangedFile>, name: str
   }
   return file;
 }
-
-export const readChangedLines: (request: {
-  readonly repositoryRoot: string;
-  readonly mergeBaseSha: string;
-  readonly headSha: string;
-  readonly projectRelativePath: string;
-}) => Map<string, ChangedFile> = readChangedLinesJs;

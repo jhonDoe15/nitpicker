@@ -7,16 +7,18 @@ import { beforeAll, afterEach, describe, expect, it } from 'vitest';
 import { fieldOf } from '../../../shared/values/readers.mts';
 import { isStrictRule } from '../../../languages/typescript/preset/strict-rules.mts';
 import { compareFindings } from '../comparison/test-support/typed-compare.mts';
-import { withEditedLineReason as withEditedLineReasonJs } from '../comparison/positions/touched-lines.mjs';
+import { withEditedLineReason } from '../comparison/positions/touched-lines.mts';
+import type {
+  TouchedCode,
+  TouchedEntry,
+  TrackedFinding,
+} from '../comparison/model/finding-types.mts';
 import {
   type ChangedFile,
   changedFile,
   parseChangedLines,
   readChangedLines,
 } from './test-support/projects/changed-lines-views.mts';
-
-const withEditedLineReason: (finding: unknown, touchedCode: unknown) => unknown =
-  withEditedLineReasonJs;
 
 const temporaryRoots: string[] = [];
 
@@ -30,7 +32,7 @@ afterEach(() => {
   }
 });
 
-function finding(overrides: Readonly<Record<string, unknown>> = {}) {
+function finding(overrides: Readonly<Record<string, unknown>> = {}): TrackedFinding {
   return {
     tool: 'eslint-lint',
     rule: 'no-restricted-syntax',
@@ -43,8 +45,10 @@ function finding(overrides: Readonly<Record<string, unknown>> = {}) {
   };
 }
 
-function touched(changed: Readonly<Record<string, unknown>>) {
-  return { changedLines: new Map(Object.entries(changed)), isStrictRule };
+function touched(
+  changed: Readonly<Record<string, Pick<TouchedEntry, 'added' | 'ranges'>>>,
+): TouchedCode {
+  return { changedLines: new Map(Object.entries(changed)), isStrictRule, testsRemoved: false };
 }
 
 describe('changed line ranges', () => {
@@ -294,7 +298,7 @@ describe('strict rules in touched code', () => {
   });
 
   it('keeps an existing finding baselined when the edit is elsewhere in the file', () => {
-    const changed = { 'src/main/a.ts': { added: false, ranges: [[1, 3]] } };
+    const changed = { 'src/main/a.ts': { added: false, ranges: [[1, 3]] } } as const;
     const result = compareFindings({
       baseFindings: base,
       headFindings: head,
@@ -305,7 +309,7 @@ describe('strict rules in touched code', () => {
   });
 
   it('makes an existing finding new when its line is in a changed range', () => {
-    const changed = { 'src/main/a.ts': { added: false, ranges: [[11, 13]] } };
+    const changed = { 'src/main/a.ts': { added: false, ranges: [[11, 13]] } } as const;
     const result = compareFindings({
       baseFindings: base,
       headFindings: head,
@@ -321,7 +325,7 @@ describe('strict rules in touched code', () => {
 
   it('treats every finding of a newly added file as touched, with or without a location', () => {
     const noLocation = finding({ location: undefined, identity: 'other' });
-    const changed = { 'src/main/a.ts': { added: true, ranges: [] } };
+    const changed = { 'src/main/a.ts': { added: true, ranges: [] } } as const;
     const result = compareFindings({
       baseFindings: [...base, noLocation],
       headFindings: [...head, noLocation],
@@ -333,7 +337,7 @@ describe('strict rules in touched code', () => {
 
   it('keeps a location-less finding baselined in a merely edited file', () => {
     const noLocation = finding({ location: undefined, identity: 'other' });
-    const changed = { 'src/main/a.ts': { added: false, ranges: [[1, 100]] } };
+    const changed = { 'src/main/a.ts': { added: false, ranges: [[1, 100]] } } as const;
     const result = compareFindings({
       baseFindings: [noLocation],
       headFindings: [noLocation],
@@ -345,7 +349,7 @@ describe('strict rules in touched code', () => {
 
   it('does not promote findings of rules outside the strict set', () => {
     const other = finding({ rule: 'max-statements' });
-    const changed = { 'src/main/a.ts': { added: false, ranges: [[1, 100]] } };
+    const changed = { 'src/main/a.ts': { added: false, ranges: [[1, 100]] } } as const;
     const result = compareFindings({
       baseFindings: [other],
       headFindings: [other],
@@ -361,7 +365,7 @@ describe('strict rules in touched code', () => {
       classification: 'descriptive',
       metric: { name: 'm', value: 1 },
     });
-    const changed = { 'src/main/a.ts': { added: false, ranges: [[1, 100]] } };
+    const changed = { 'src/main/a.ts': { added: false, ranges: [[1, 100]] } } as const;
     const result = compareFindings({
       baseFindings: [metric],
       headFindings: [metric],

@@ -1,15 +1,11 @@
+import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
 import { afterEach, describe, expect, it } from 'vitest';
 import { validateConfig, withHeadCheckoutFacts } from '../test-support/policy-views.mts';
-import type { ToolSettings } from '../test-support/policy-views.mts';
-import { vitestRetryArguments as untypedVitestRetryArguments } from './test-retry.mjs';
+import { vitestRetryArguments } from './test-retry.mts';
 import { runArea } from './test-support/runner-views.mts';
-import { projectTestRetry as untypedProjectTestRetry } from './test-runner-config.mjs';
+import { projectTestRetry } from './test-runner-config.mts';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 import { OPT_IN, TESTS_FAILED, createRetryProjects } from './test-support/retry-projects.mts';
-
-const vitestRetryArguments: (retry: unknown) => string[] = untypedVitestRetryArguments;
-const projectTestRetry: (runner: string, settings: ToolSettings) => unknown =
-  untypedProjectTestRetry;
 
 const projects = createRetryProjects();
 
@@ -141,11 +137,13 @@ describe('the retry captured from the head checkout', () => {
     });
 
     const tests = projects.headTests(root, OPT_IN);
-    expect(tests.projectConfig).toEqual({
+    expect(fieldOf(tests, 'projectConfig')).toEqual({
       runner: 'vitest',
       retry: { count: 2, delay: 5, condition: { source: 'flaky', flags: '' } },
     });
-    expect(projectTestRetry('vitest', tests)).toEqual(tests.projectConfig?.retry);
+    expect(projectTestRetry('vitest', tests)).toEqual(
+      fieldOf(fieldOf(tests, 'projectConfig'), 'retry'),
+    );
     expect(vitestRetryArguments(projectTestRetry('vitest', tests))).toEqual([
       '--retry.count=2',
       '--retry.delay=5',
@@ -166,7 +164,7 @@ describe('the retry captured from the head checkout', () => {
       { tools: { tests: head } },
     );
 
-    expect(base.tools.tests.projectConfig).toEqual({ runner: 'mocha', retry: 3 });
+    expect(base.tools?.tests?.['projectConfig']).toEqual({ runner: 'mocha', retry: 3 });
   });
 
   it('never reads the config without the opt-in or while nitpicker wins', () => {
@@ -243,9 +241,11 @@ describe('the retry captured from the head checkout', () => {
   ])('makes %s a tool error of the test run', (_name, create, message) => {
     const tests = projects.headTests(create(), OPT_IN);
 
-    expect(tests.projectConfig).toBe(undefined);
-    expect(tests.projectConfigError).toBe(message);
-    expect(() => projectTestRetry('vitest', tests)).toThrow(tests.projectConfigError);
+    expect(fieldOf(tests, 'projectConfig')).toBe(undefined);
+    expect(fieldOf(tests, 'projectConfigError')).toBe(message);
+    expect(() => projectTestRetry('vitest', tests)).toThrow(
+      textOf(fieldOf(tests, 'projectConfigError')),
+    );
   });
 
   it.each([
@@ -254,7 +254,7 @@ describe('the retry captured from the head checkout', () => {
   ])('rejects the opt-in for %s, whose config nitpicker reads as it is', (runner, name) => {
     const tests = projects.headTests(projects.vitestProject({}), OPT_IN, runner);
 
-    expect(tests.projectConfigError).toBe(
+    expect(fieldOf(tests, 'projectConfigError')).toBe(
       `"tools.tests.precedence" lists "project", but ${name} has no config option it changes: remove "project" from tools.tests.precedence`,
     );
   });

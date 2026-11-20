@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../comparison/test-support/typed-compare.mts';
+import type { TouchedEntry } from '../../../comparison/model/finding-types.mts';
+import type { HunkTuple } from '../../../git/line-types.mts';
 
 type Span = readonly [number, number];
 type Hunk = {
@@ -38,15 +40,15 @@ function hunk(oldStart: number, oldCount: number, newStart: number, newCount: nu
   return { oldStart, oldCount, newStart, newCount };
 }
 
-function changedFile(hunks: readonly Hunk[]) {
+function changedFile(hunks: readonly Hunk[]): TouchedEntry {
   const ranges = hunks
     .filter(({ newCount }) => newCount > 0)
-    .map(({ newStart, newCount }) => [newStart, newStart + newCount - 1]);
+    .map(({ newStart, newCount }): Span => [newStart, newStart + newCount - 1]);
   return {
     added: false,
     ranges,
     inserted: [],
-    hunks: hunks.map(({ oldStart, oldCount, newStart, newCount }) => [
+    hunks: hunks.map(({ oldStart, oldCount, newStart, newCount }): HunkTuple => [
       oldStart,
       oldCount,
       newStart,
@@ -66,7 +68,10 @@ function compared(
     headFindings,
     touchedCode: {
       changedLines: new Map(
-        Object.entries(files).map(([file, hunks]) => [file, changedFile(hunks)]),
+        Object.entries(files).map(([file, hunks]): [string, TouchedEntry] => [
+          file,
+          changedFile(hunks),
+        ]),
       ),
       isStrictRule: () => false,
     },
@@ -191,7 +196,7 @@ describe('duplicate clones held only on the unchanged lines of a base clone', ()
       baseFindings: base,
       headFindings: head,
       touchedCode: {
-        changedLines: new Map([
+        changedLines: new Map<string, TouchedEntry>([
           ['a.py', { added: false, ranges: [[45, 45]], inserted: [] }],
           [
             'b.py',

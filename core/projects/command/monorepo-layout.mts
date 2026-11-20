@@ -1,8 +1,8 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { detectedPreset } from '../../configuration/project-checks/preset-detection.mjs';
+import { detectedPreset } from '../../configuration/project-checks/preset-detection.mts';
 import { inspectRepository } from '../plan/inspect.mts';
-import { suggestedProjects } from '../plan/suggested-projects.mjs';
+import { suggestedProjects } from '../plan/suggested-projects.mts';
 import { existingConfig } from '../../init/files/config-file.mts';
 import { frontendPairLayout } from './frontend-pair.mts';
 import type { Member, MonorepoLayout, ProjectEntry } from '../../init/monorepo/monorepo-types.mts';

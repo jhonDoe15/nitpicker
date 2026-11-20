@@ -1,4 +1,4 @@
-import { projectLine, scopeLine } from '../scope/scope-findings.mjs';
+import { projectLine, scopeLine } from '../scope/scope-findings.mts';
 import { renderSnapshotSarifReport as sarifOf } from '../diff/reporting/sarif.mts';
 import {
   type ReferenceLinks,

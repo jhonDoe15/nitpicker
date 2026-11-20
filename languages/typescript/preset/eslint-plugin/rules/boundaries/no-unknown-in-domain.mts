@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
-import { librariesForFile as untypedLibrariesForFile } from '../../../libraries/file-libraries.mjs';
-import { validationBehavior as untypedValidationBehavior } from '../../../libraries/project-libraries.mjs';
+import { librariesForFile } from '../../../libraries/file-libraries.mts';
+import { validationBehavior } from '../../../libraries/project-libraries.mts';
 import {
   jsdocOptionSchema,
   unknownMemberTags,
@@ -23,13 +23,6 @@ import { isParameterOwner } from './no-handwritten-boundary-guard.mts';
 type Context = Readonly<TSESLint.RuleContext<'unknownType', JsdocOptions>>;
 type Docs = { readonly requiresTypeChecking: boolean };
 type Services = SourceCode['parserServices'];
-
-const librariesForFile: (
-  context: { readonly filename: string; readonly cwd: string },
-  libraries: LibraryChoices,
-) => LibraryChoices = untypedLibrariesForFile;
-const validationBehavior: (libraries: LibraryChoices) => { readonly phrase: string } =
-  untypedValidationBehavior;
 
 const PARAMETER_WRAPPERS = new Set<string>([
   AST_NODE_TYPES.AssignmentPattern,

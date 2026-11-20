@@ -3,7 +3,7 @@ import path from 'node:path';
 import { parse } from 'yaml';
 import { type Fields, fieldAt, fieldsOf, listOf } from '../json/fields.mts';
 import { type ExpectedDifference, EXPECTED_DIFFERENCES } from './compare-runs.mts';
-import { containedPath } from '../../core/fix/common/contained-path.mjs';
+import { containedPath } from '../../core/fix/tool-steps/paths/contained-path.mts';
 import { markdownTableLines } from '../../shared/markdown/table.mts';
 
 const ROOT = path.resolve(import.meta.dirname, '../..');

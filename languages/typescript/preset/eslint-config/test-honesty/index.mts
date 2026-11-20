@@ -3,7 +3,7 @@ import vitest from '@vitest/eslint-plugin';
 import type { ESLint, Linter } from 'eslint';
 import jest from 'eslint-plugin-jest';
 import { nitpickerRules } from '../../eslint-plugin/index.mts';
-import { codeExtensions } from '../../layout.mjs';
+import { codeExtensions } from '../../layout.mts';
 import { escapeHatchLinterOptions } from '../strict/strict-escape-hatches.mts';
 import { type ScopeLayout, linterConfigs } from '../typed/config-types.mts';
 import { testAreaGlobsFor } from '../typed/glob-views.mts';

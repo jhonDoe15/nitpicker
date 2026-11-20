@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { resolveHeadPolicy, withHeadPolicyFile } from '../../../typescript/preset/head-policy.mjs';
+import { resolveHeadPolicy, withHeadPolicyFile } from '../../../typescript/preset/head-policy.mts';
 import { readDuplicateFindings, runJavaDuplicates } from '../metrics/java-duplicates.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../typed/java-values.mts';
 import { parseJson, textsOf } from '../../../../shared/values/readers.mts';

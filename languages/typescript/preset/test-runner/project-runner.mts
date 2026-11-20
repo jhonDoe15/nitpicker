@@ -1,9 +1,7 @@
-import {
-  readHeadPolicy as untypedReadHeadPolicy,
-  readLayout as untypedReadLayout,
-} from '../head-policy.mjs';
-import { testRunnerFor as untypedTestRunnerFor } from './detect-runner.mjs';
-import { runnerCommand as untypedRunnerCommand } from './script-command.mjs';
+import { readHeadPolicy, readLayout as untypedReadLayout } from '../head-policy.mts';
+import { testRunnerFor } from './detect-runner.mts';
+import { runnerCommand } from './script-command.mts';
+import type { DetectionLayout } from './typed/command-types.mts';
 
 type ProjectRunnerOptions = {
   readonly projectRoot: string;
@@ -26,23 +24,7 @@ type DetectedRunner = {
 
 type ProjectRunner = DetectedRunner & { readonly command: RunnerCommand };
 
-type TestsPolicy = {
-  readonly runner?: string | undefined;
-  readonly runnerAmbiguity?: unknown;
-  readonly detectedRunner?: string | undefined;
-  readonly snapshotRunner?: string | undefined;
-};
-
-const readHeadPolicy: () => { readonly tools: { readonly tests?: TestsPolicy } } =
-  untypedReadHeadPolicy;
-const readLayout: () => unknown = untypedReadLayout;
-const testRunnerFor: (
-  root: string,
-  preferred: string | undefined,
-  layout?: unknown,
-) => DetectedRunner = untypedTestRunnerFor;
-const runnerCommand: (command: unknown, runner: string) => RunnerCommand | undefined =
-  untypedRunnerCommand;
+const readLayout: () => DetectionLayout = untypedReadLayout;
 
 const NO_COMMAND: RunnerCommand = {
   environment: {},
@@ -57,7 +39,7 @@ function detectionRoot({ projectRoot, runnerProjectRoot }: ProjectRunnerOptions)
 
 function snapshotTestRunner(options: ProjectRunnerOptions): DetectedRunner {
   const tests = readHeadPolicy().tools.tests ?? {};
-  const chosen = tests.runnerAmbiguity === undefined ? tests.runner : tests.detectedRunner;
+  const chosen = tests['runnerAmbiguity'] === undefined ? tests.runner : tests.detectedRunner;
   return tests.snapshotRunner === undefined
     ? testRunnerFor(detectionRoot(options), chosen, readLayout())
     : testRunnerFor(options.projectRoot, tests.snapshotRunner);

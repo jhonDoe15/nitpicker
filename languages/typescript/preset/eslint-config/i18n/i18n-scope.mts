@@ -1,7 +1,7 @@
 import type { Linter } from 'eslint';
 import { type I18nSettings, type ScopeLayout, linterConfigs } from '../typed/config-types.mts';
 import { hasScopePackage, productionScope, storyGlobs } from '../typed/scope-views.mts';
-import { i18nRules } from './i18n-rules.mjs';
+import { i18nRules } from './i18n-rules.mts';
 
 export function isI18nProject({
   projectRoot,

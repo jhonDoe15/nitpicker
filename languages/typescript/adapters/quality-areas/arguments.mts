@@ -3,7 +3,7 @@ import type { QualityAreaOptions } from './typed/area-types.mts';
 import { realpathSync, lstatSync } from 'node:fs';
 import { TRUSTED_TOOL_ROOT } from './runners/tooling.mts';
 import path from 'node:path';
-import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mts';
 import { DEFAULT_LEGACY_INVENTORY } from '../../preset/coding-standards/inventory-path.mts';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
 import { parsePositiveNumber } from '../../preset/checks/numbers.mts';
@@ -11,7 +11,7 @@ import { validatedSnapshotRoot } from '../static-checks/arguments.mts';
 import {
   MUTATION_SCOPE_OPTION,
   parseMutationScope as parseUntypedMutationScope,
-} from '../../../../core/tooling/runner-arguments.mjs';
+} from '../../../../core/tooling/runner-arguments.mts';
 
 const LIVE_PROJECT_ROOT_OPTION = '--live-project-root';
 

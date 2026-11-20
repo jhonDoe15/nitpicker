@@ -7,7 +7,7 @@ import {
   planCarried,
   withCarriedOutcomes,
 } from './carried/carried-analyzers.mts';
-import { namedReports, namedToolErrors } from '../snapshot-root/snapshot-root.mjs';
+import { namedReports, namedToolErrors } from '../snapshot-root/snapshot-root.mts';
 import path from 'node:path';
 import { describeError } from '../../../shared/messages/error-chain.mjs';
 import { LOG_DIRECTORY as logDirectory } from '../reporting/reporters.mts';
@@ -15,7 +15,7 @@ import type { RunTasks } from './progress.mts';
 import type { Checkpoints } from './tasks.mts';
 import { runScheduler } from './scheduler/run-scheduler.mts';
 import type { AnalyzerMetadata, MetadataMap } from './report/analyzer-metadata.mts';
-import type { AnalyzerReport, ReportEntry } from '../../../shared/values/findings.mts';
+import type { AnalyzerReport, Finding, ReportEntry } from '../../../shared/values/findings.mts';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
 
 export { selectAnalyzers } from './selection/select-analyzers.mts';
@@ -48,17 +48,9 @@ export type AnalyzerRequest = {
 };
 
 type ScheduledRun = Omit<AnalyzerRun, 'reports' | 'metadata'> & {
-  readonly reports: Map<string, unknown>;
+  readonly reports: Map<string, AnalyzerReport>;
 };
 
-const reportsNamed: (
-  reports: Map<string, unknown>,
-  snapshotRoot: object | undefined,
-) => Map<string, AnalyzerReport> = namedReports;
-const errorsNamed: (
-  toolErrors: readonly ReportEntry[],
-  snapshotRoot: object | undefined,
-) => ReportEntry[] = namedToolErrors;
 const errorText: (error: unknown) => string = describeError;
 
 function isRunTasks(value: unknown): value is RunTasks {
@@ -123,18 +115,30 @@ function namedRun(
 ): AnalyzerRun {
   const snapshotRoot = projectRoot === liveProjectRoot ? undefined : { projectRoot, snapshot };
   return {
-    reports: reportsNamed(scheduled.reports, snapshotRoot),
+    reports: namedReports(scheduled.reports, snapshotRoot),
     timings: scheduled.timings,
-    toolErrors: errorsNamed(scheduled.toolErrors, snapshotRoot),
+    toolErrors: namedToolErrors(scheduled.toolErrors, snapshotRoot),
     skipped: scheduled.skipped,
     metadata: scheduled.metadata,
   };
 }
 
+function isFinding(value: unknown): value is Finding {
+  return typeof value === 'object' && value !== null;
+}
+
+function isAnalyzerReport(value: unknown): value is AnalyzerReport {
+  return (
+    Array.isArray(fieldOf(value, 'findings')) && listOf(fieldOf(value, 'findings')).every(isFinding)
+  );
+}
+
 function recordScheduled(outcome: ScheduledRun, scheduled: unknown, snapshot: string): void {
   for (const entry of listOf(fieldOf(scheduled, 'reports'))) {
     const [name, report] = listOf(entry);
-    outcome.reports.set(textOf(name), report);
+    if (isAnalyzerReport(report)) {
+      outcome.reports.set(textOf(name), report);
+    }
   }
   for (const error of listOf(fieldOf(scheduled, 'errors'))) {
     outcome.toolErrors.push({

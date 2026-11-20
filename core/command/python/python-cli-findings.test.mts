@@ -2,7 +2,7 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { jscpdVersion as readJscpdVersion } from '../../tooling/jscpd/run-jscpd.mjs';
+import { jscpdVersion as readJscpdVersion } from '../../tooling/jscpd/run-jscpd.mts';
 import { commit } from '../../diff/git/test-support/git-repository.mts';
 import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mts';
 import { pickFields } from '../test-support/report-readers.mts';

@@ -8,9 +8,9 @@ import {
   findPackageJSON as untypedFindPackageJSON,
   findPackageJsonByWalking as untypedFindPackageJsonByWalking,
   selectFindPackageJson as untypedSelectFindPackageJson,
-} from './package-json.mjs';
+} from './package-json.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
-import { PACKAGE_ROOT } from '../tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../tool-resolution.mts';
 
 type Finder = (specifier: string, base: string | URL) => string | undefined;
 

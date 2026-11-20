@@ -19,8 +19,8 @@ import { withRunLock } from './command/run-lock.mts';
 import { runSnapshotCli } from './command/snapshot.mts';
 import { noticeDescriber, snapshotNotes } from './command/policy-review/notices.mts';
 import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mts';
-import { runGit } from './diff/git/repository/command.mjs';
-import { resolveComparison } from './diff/git/repository/git.mjs';
+import { runGit } from './diff/git/repository/command.mts';
+import { resolveComparison } from './diff/git/repository/git.mts';
 import { detachLocalGitVariables } from './diff/git/environment/local-variables.mts';
 import path from 'node:path';
 import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mts';
@@ -39,8 +39,8 @@ import { printedInformation } from './command/information/printed-information.mt
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mts';
 import { runMonorepo } from './projects/run/monorepo.mts';
 import { runScoped } from './projects/run/refusal.mts';
-import { noProjectAdvice } from './projects/plan/suggested-projects.mjs';
-import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
+import { noProjectAdvice } from './projects/plan/suggested-projects.mts';
+import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mts';
 import { fieldOf, listOf, numberOr, textOf } from '../shared/values/readers.mts';
 import {
   type ComparisonCli,
@@ -66,7 +66,7 @@ import { describeFailure } from '../shared/messages/crashes/internal-error.mts';
 
 const CHECK_COMMANDS: Readonly<Record<string, (cli: CheckCli) => ExitCode>> = {
   hygiene: async (cli) => {
-    const { yamlDocuments } = await import('./tooling/yaml/yaml-documents.mjs');
+    const { yamlDocuments } = await import('./tooling/yaml/yaml-documents.mts');
     return runHygieneCli({ ...cli, parseYaml: yamlDocuments });
   },
   history: runHistoryCli,
@@ -99,15 +99,22 @@ export function runCli(options: CliInput = {}): ExitCode {
     );
   }
   try {
+    if (name !== 'changelog') {
+      Object.assign(cli.environment, redirectToBundledTypeScriptApi(cli.environment));
+    }
     return runCommand(cli);
   } catch (error) {
-    const description = describeFailure(error) || 'unknown error';
-    cli.stderr.write(`nitpicker failed: ${description}\n`);
-    if (wantsJson(cli.arguments_)) {
-      cli.stdout.write(`${JSON.stringify({ status: 'error', exitCode: 2, error: description })}\n`);
-    }
-    return 2;
+    return reportedFailure(cli, error);
   }
+}
+
+function reportedFailure(cli: Cli, error: unknown): ExitCode {
+  const description = describeFailure(error) || 'unknown error';
+  cli.stderr.write(`nitpicker failed: ${description}\n`);
+  if (wantsJson(cli.arguments_)) {
+    cli.stdout.write(`${JSON.stringify({ status: 'error', exitCode: 2, error: description })}\n`);
+  }
+  return 2;
 }
 
 function wantsJson(commandLine: readonly string[]): boolean {
@@ -120,7 +127,6 @@ function runCommand(cli: Cli): ExitCode {
   if (name === 'changelog') {
     return runChangelogCommand({ ...cli, arguments_: rest });
   }
-  redirectToBundledTypeScriptApi(cli.environment);
   const subcommand = Object.hasOwn(SUBCOMMANDS, name) ? SUBCOMMANDS[name] : undefined;
   if (subcommand !== undefined) {
     return subcommand(cli, rest);

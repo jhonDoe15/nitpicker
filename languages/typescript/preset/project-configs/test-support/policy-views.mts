@@ -1,56 +1,28 @@
-import { validateConfig as untypedValidateConfig } from '../../../../../core/configuration/validate.mts';
-import { layoutTransformFor as untypedLayoutTransformFor } from '../../tool-configs.mjs';
-import {
-  resolveHeadPolicy as untypedResolveHeadPolicy,
-  withHeadCheckoutFacts as untypedWithHeadCheckoutFacts,
-} from '../../head-policy.mjs';
-import { resolveLayoutFor as untypedResolveLayoutFor } from '../../layout.mjs';
-import { layeredStrykerConfig as untypedLayeredStrykerConfig } from '../stryker-project-config.mjs';
+import { validateConfig } from '../../../../../core/configuration/validate.mts';
+import { layoutTransformFor as untypedLayoutTransformFor } from '../../tool-configs.mts';
+import { resolveHeadPolicy, withHeadCheckoutFacts } from '../../head-policy.mts';
+import { resolveLayoutFor } from '../../layout.mts';
+import { layeredStrykerConfig } from '../stryker-project-config.mts';
+import type { HeadPolicyFile, ToolSettings } from '../../typed/head-policy-types.mts';
 
-export type ToolSettings = {
-  precedence?: string[];
-  projectConfigError?: string;
-  projectConfig?: {
-    runner?: string;
-    retry?: unknown;
-    compilerOptions?: Record<string, unknown>;
-  };
-} & Record<string, unknown>;
-
-export type StrykerConfig = {
-  mutator?: { excludedMutations?: string[] };
-  concurrency?: number;
-} & Record<string, unknown>;
-
-export type Policy = {
-  tools: { stryker: ToolSettings; typescript: ToolSettings; tests: ToolSettings };
-} & Record<string, unknown>;
-
-export const resolveHeadPolicy: (config: Record<string, unknown>, projectRoot?: string) => Policy =
-  untypedResolveHeadPolicy;
-
-export const withHeadCheckoutFacts: (
-  policy: Record<string, unknown>,
-  head?: { tools?: Partial<Policy['tools']> },
-) => Policy = untypedWithHeadCheckoutFacts;
-
-export const resolveLayoutFor: (policy: Policy) => unknown = untypedResolveLayoutFor;
+export type Policy = HeadPolicyFile;
+export type { ToolSettings };
 
 export function layoutTransformFor(
   name: string,
-  layout: unknown,
+  layout: Parameters<typeof untypedLayoutTransformFor>[1],
 ): (text: string, target: string) => string {
-  const transform: ((text: string, target: string) => string) | undefined =
-    untypedLayoutTransformFor(name, layout);
+  const transform = untypedLayoutTransformFor(name, layout);
   if (transform === undefined) {
     throw new Error(`no layout transform for ${name}`);
   }
   return transform;
 }
 
-export const layeredStrykerConfig: (
-  config: StrykerConfig,
-  settings?: ToolSettings,
-) => StrykerConfig = untypedLayeredStrykerConfig;
-
-export const validateConfig: (config: Record<string, unknown>) => unknown = untypedValidateConfig;
+export {
+  layeredStrykerConfig,
+  resolveHeadPolicy,
+  resolveLayoutFor,
+  validateConfig,
+  withHeadCheckoutFacts,
+};

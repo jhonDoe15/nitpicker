@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mts';
 import { describe, expect, it } from 'vitest';
 import { fieldOf, parseJson, textOf } from '../../../shared/values/readers.mts';
 import { policyHash } from '../../../core/diff/reporting/report-model.mts';
@@ -7,7 +7,7 @@ import {
   ESLINT_PLUGIN_PACKAGES as UNTYPED_ESLINT_PLUGIN_PACKAGES,
   resolveAnalyzerVersion as untypedResolveAnalyzerVersion,
   testRunnerAnalyzerVersion,
-} from './analyzer-versions.mjs';
+} from './analyzer-versions.mts';
 
 type ToolOptions = { projectRoot?: string | undefined; packageRoot?: string | undefined };
 type Resolver = (name: string, options?: ToolOptions) => ReturnType<typeof resolvedTool>;

@@ -3,15 +3,15 @@ import path from 'node:path';
 import {
   packageSpecifierPattern as untypedPackageSpecifierPattern,
   uiFrameworks,
-} from '../../../architecture/domain-packages.mjs';
+} from '../../../architecture/domain-packages.mts';
 import {
   reachableModules as untypedReachableModules,
   resolveModuleSpecifier as untypedResolveModuleSpecifier,
-} from '../../../modules/module-resolution.mjs';
+} from '../../../modules/module-resolution.mts';
 import {
   moduleSourceOf as untypedModuleSourceOf,
   moduleSourcesOf as untypedModuleSourcesOf,
-} from '../../../modules/module-sources.mjs';
+} from '../../../modules/module-sources.mts';
 
 type MessageIds = 'uiFramework' | 'jsxInDomain' | 'uiFrameworkThroughShared';
 type ReachStep =

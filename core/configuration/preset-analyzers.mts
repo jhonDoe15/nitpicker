@@ -15,7 +15,7 @@ import { createGoAnalyzers } from '../../languages/go/adapters/go-analyzer.mts';
 import {
   configuredAnalyzers,
   javascriptAnalyzers,
-} from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
+} from '../../languages/typescript/preset/diff/configured-analyzers.mts';
 import { checkoutModuleUrl } from '../../shared/paths/checkout-module.mjs';
 
 export const configureAll: (

@@ -1,11 +1,11 @@
 import path from 'node:path';
-import { repositoryRootOf } from '../../configuration/layers/layers.mjs';
+import { repositoryRootOf } from '../../configuration/layers/layers.mts';
 import { readLayeredConfig } from '../../configuration/layers/read-layered.mts';
 import { enclosingMember } from '../plan/enclosing.mts';
 import { baseDeclaresProjects, basePlanOf } from '../policy/base-plan.mts';
 import { asProjectLoosenings, projectSetLoosenings } from '../policy/project-set.mts';
 import { comparisonBase, toolErrorsOf } from './context.mts';
-import { undeclaredHint } from './messages.mjs';
+import { undeclaredHint } from './messages.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import type { ReportEntry } from '../../../shared/values/findings.mts';
 import type { ProjectLoosening } from '../policy/project-set.mts';

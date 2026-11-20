@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT as packageRoot } from '../../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT as packageRoot } from '../../tooling/tool-resolution.mts';
 import { runTasksInProcess } from '../../diff/execution/test-support/in-process-analyzers.mts';
 import { fixAnalysis } from './verify-analysis.mts';
 

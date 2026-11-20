@@ -3,13 +3,13 @@ import type { StructureLayout, StructurePolicy, SizedFile } from './structure-ty
 import {
   readHeadPolicy as untypedReadHeadPolicy,
   readLayout as untypedReadLayout,
-} from '../../head-policy.mjs';
-import { isJavascriptPolicy as untypedIsJavascriptPolicy } from '../../../../javascript/preset/javascript-preset.mjs';
+} from '../../head-policy.mts';
+import { isJavascriptPolicy as untypedIsJavascriptPolicy } from '../../../../javascript/preset/javascript-preset.mts';
 import {
   projectFilePaths as untypedProjectFilePaths,
   projectFilesUnder as untypedProjectFilesUnder,
 } from '../../../../../shared/project-files/project-files.mjs';
-import { rootPattern as untypedRootPattern } from '../../layout/source-root/root-paths.mjs';
+import { rootPattern as untypedRootPattern } from '../../layout/source-root/root-paths.mts';
 import { collectFileLimitFindings as untypedCollectFileLimitFindings } from '../../../../../shared/rules/file-limits.mjs';
 import { folderDepthFindings as untypedFolderDepthFindings } from '../../../../../shared/rules/size/folder-depth.mjs';
 import { FOLDER_DEPTH_DEFAULTS as untypedFolderDepthDefaults } from '../../../../../shared/project-rules/size-rules.mjs';
@@ -22,11 +22,11 @@ import {
   RULE_IDS as untypedRuleIds,
   messageFields as untypedMessageFields,
 } from '../../../../../shared/policy.mjs';
-import { projectTsconfigs as untypedProjectTsconfigs } from '../../modules/tsconfig-files.mjs';
-import { reuseFindings as untypedReuseFindings } from '../reuse/reuse-findings.mjs';
+import { projectTsconfigs as untypedProjectTsconfigs } from '../../modules/tsconfig-files.mts';
+import { reuseFindings as untypedReuseFindings } from '../reuse/reuse-findings.mts';
 import { firstFileIn as untypedFirstFileIn } from '../../../../../shared/filesystem.mjs';
 import { exceptionRoute as untypedExceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
-import { codeExtensionNames as untypedCodeExtensionNames } from '../../layout.mjs';
+import { codeExtensionNames as untypedCodeExtensionNames } from '../../layout.mts';
 
 type Wording = {
   readonly subject: string;
@@ -60,7 +60,7 @@ export const collectFileLimitFindings: (
   options: {
     readonly analyzerName: string;
     readonly thresholds: unknown;
-    readonly exceptions: unknown[];
+    readonly exceptions: readonly unknown[];
   },
 ) => Finding[] = untypedCollectFileLimitFindings;
 
@@ -69,7 +69,7 @@ export const folderDepthFindings: (
   options: {
     readonly analyzerName: string;
     readonly limit: number;
-    readonly exceptions: unknown[];
+    readonly exceptions: readonly unknown[];
     readonly wording: Wording;
     readonly depthOf: (file: SizedFile) => number | undefined;
   },
@@ -78,7 +78,7 @@ export const folderDepthFindings: (
 export const FOLDER_DEPTH_DEFAULTS: { readonly typescript: number } = untypedFolderDepthDefaults;
 
 export const exceptionMatcher: (
-  exceptions: unknown[],
+  exceptions: readonly unknown[],
 ) => (rule: string, ...candidates: readonly string[]) => boolean = untypedExceptionMatcher;
 
 export const exceptionText: (rule: string, path: string) => string = untypedExceptionText;

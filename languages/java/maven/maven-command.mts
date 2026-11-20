@@ -1,5 +1,5 @@
 import type { SpawnSyncReturns } from 'node:child_process';
-import { spawnSyncWithOutputFile } from '../../../core/tooling/output-file/output-file.mjs';
+import { spawnSyncWithOutputFile } from '../../../core/tooling/output-file/output-file.mts';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

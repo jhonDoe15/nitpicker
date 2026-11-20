@@ -1,10 +1,10 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { parseYaml as untypedParseYaml } from '../../tooling/yaml/yaml-documents.mjs';
+import { parseYaml as untypedParseYaml } from '../../tooling/yaml/yaml-documents.mts';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import { chainOf as untypedChainOf } from '../../../shared/traversal.mjs';
-import { runGit } from '../../diff/git/repository/command.mjs';
-import { declaresUvWorkspace as untypedDeclaresUvWorkspace } from '../../configuration/project-checks/uv-workspace.mjs';
+import { runGit } from '../../diff/git/repository/command.mts';
+import { declaresUvWorkspace as untypedDeclaresUvWorkspace } from '../../configuration/project-checks/uv-workspace.mts';
 import { inspectRepository } from './inspect.mts';
 import { fieldOf, fieldsOf } from '../../../shared/values/readers.mts';
 import type { Inspection, PlanProject } from '../project-types.mts';

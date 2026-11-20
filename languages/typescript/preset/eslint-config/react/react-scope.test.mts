@@ -3,20 +3,20 @@ import accessibility from 'eslint-plugin-jsx-a11y-x';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterEach, describe, expect, it } from 'vitest';
-import { resolveLayout as untypedResolveLayout } from '../../layout.mjs';
+import { resolveLayout as untypedResolveLayout } from '../../layout.mts';
 import { fieldOf, fieldsOf, listOf } from '../../../../../shared/values/readers.mts';
 import { type ResolvedLayout } from '../typed/config-types.mts';
 import { lintFixture } from '../typed/lint-fixture.mts';
 import { ruleNamed } from '../typed/rule-views.mts';
-import { storyGlobs } from '../scope-support.mjs';
+import { storyGlobs } from '../scope-support.mts';
 import { installReact, manifestWith, temporaryProjects } from './test-support/react-projects.mts';
-import { extraAccessibilityRuleNames } from './rules/accessibility-rules.mjs';
+import { extraAccessibilityRuleNames } from './rules/accessibility-rules.mts';
 import {
   accessibilityRuleNames,
   reactRuleIds,
   reactTestRuleIds,
   testingLibraryHintsFor,
-} from './react-rules.mjs';
+} from './react-rules.mts';
 import { reactScopeConfigFor, reactSyntaxConfigFor } from './react-scope.mts';
 import { fileURLToPath } from 'node:url';
 import { runnerVocabulary } from '../../test-runner/vocabulary/typed-vocabulary.mts';

@@ -1,4 +1,4 @@
-import { withoutSnapshotRoot } from '../../../../../core/diff/snapshot-root/snapshot-root.mjs';
+import { withoutSnapshotRoot } from '../../../../../core/diff/snapshot-root/snapshot-root.mts';
 import { compileErrorsIn } from '../../../builds/compile-errors/compiler-output.mts';
 import { fieldOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 

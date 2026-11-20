@@ -1,7 +1,7 @@
 import {
   parseAnalyzerReport as parseAnalyzerReportJs,
   parseFinding as parseFindingJs,
-} from '../finding-schema.mjs';
+} from '../finding-schema.mts';
 
 export type ParsedFinding = Readonly<Record<string, unknown>>;
 

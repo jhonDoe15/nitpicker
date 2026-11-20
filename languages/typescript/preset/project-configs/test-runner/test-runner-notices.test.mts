@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { testsIgnoredNotices as untypedTestsIgnoredNotices } from './test-runner-notices.mjs';
+import { testsIgnoredNotices as untypedTestsIgnoredNotices } from './test-runner-notices.mts';
 import { createRetryProjects } from './test-support/retry-projects.mts';
 
 const testsIgnoredNotices: (options: {

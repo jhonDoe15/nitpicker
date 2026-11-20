@@ -1,13 +1,18 @@
-import { applyFixes as untypedApplyFixes } from '../engine/edits/apply-edits.mjs';
-import { acceptFixes as untypedAcceptFixes } from '../engine/edits/check-fixes.mjs';
-import { createSnapshot as untypedCreateSnapshot } from '../engine/edits/snapshot.mjs';
+import { applyFixes as untypedApplyFixes } from '../engine/edits/apply-edits.mts';
+import { acceptFixes as untypedAcceptFixes } from '../engine/edits/check-fixes.mts';
+import { createSnapshot as untypedCreateSnapshot } from '../engine/edits/snapshot.mts';
 import {
   activeRecipes as untypedActiveRecipes,
   defineRecipes as untypedDefineRecipes,
-} from '../engine/recipes.mjs';
-import { runRecipes as untypedRunRecipes } from '../engine/run-recipes.mjs';
-import { writeTexts as untypedWriteTexts } from '../engine/write-texts.mjs';
+} from '../engine/recipes.mts';
+import { runRecipes as untypedRunRecipes } from '../engine/run-recipes.mts';
+import { writeTexts as untypedWriteTexts } from '../engine/write-texts.mts';
+import { callUntyped } from '../../../shared/values/boundaries/untyped-call.mts';
+import { fieldOf } from '../../../shared/values/readers.mts';
+import type { Snapshot } from '../typed/edit-types.mts';
 import type { FixWriter } from '../typed/fix-types.mts';
+
+export type { Snapshot };
 
 type Rule = { readonly tool: string; readonly rule: string };
 
@@ -73,8 +78,6 @@ export type RunResult = {
   readonly notes: readonly string[];
 };
 
-export type Snapshot = { readonly read: (name: string) => string | undefined };
-
 function isRecipeSpecs(value: unknown): value is readonly RecipeSpec[] {
   return Array.isArray(value);
 }
@@ -86,7 +89,7 @@ export function recipeSpecs(value: unknown): readonly RecipeSpec[] {
 export const defineRecipes: (recipes: readonly RecipeSpec[]) => readonly RecipeSpec[] =
   untypedDefineRecipes;
 
-export const runRecipes: (options: {
+type RunOptions = {
   readonly projectRoot: string;
   readonly files: readonly { readonly path: string }[];
   readonly recipes: readonly RecipeSpec[];
@@ -95,16 +98,42 @@ export const runRecipes: (options: {
   readonly accepts: (name: string) => boolean;
   readonly writer?: FixWriter | undefined;
   readonly inputs: unknown;
-}) => RunResult = untypedRunRecipes;
+};
+
+function isRunResult(value: unknown): value is RunResult {
+  return ['fixedFindings', 'files', 'toolErrors', 'notes'].every((key) =>
+    Array.isArray(fieldOf(value, key)),
+  );
+}
+
+export function runRecipes(options: RunOptions): RunResult {
+  const result = callUntyped(untypedRunRecipes, options);
+  if (!isRunResult(result)) {
+    throw new TypeError('runRecipes returned no result');
+  }
+  return result;
+}
 
 export const createSnapshot: (projectRoot: string, names: readonly string[]) => Snapshot =
   untypedCreateSnapshot;
 
-export const applyFixes: (
+function isApplyOutcome(value: unknown): value is ApplyOutcome {
+  return ['applied', 'changedMeanwhile', 'errors'].every((key) =>
+    Array.isArray(fieldOf(value, key)),
+  );
+}
+
+export function applyFixes(
   projectRoot: string,
   snapshot: Snapshot,
   entries: readonly EngineEntry[],
-) => ApplyOutcome = untypedApplyFixes;
+): ApplyOutcome {
+  const outcome = callUntyped(untypedApplyFixes, projectRoot, snapshot, entries);
+  if (!isApplyOutcome(outcome)) {
+    throw new TypeError('applyFixes returned no outcome');
+  }
+  return outcome;
+}
 
 export const writeTexts: (
   writer: FixWriter,

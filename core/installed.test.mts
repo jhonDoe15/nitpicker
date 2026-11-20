@@ -15,11 +15,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readSnippet } from './init/files/agents-md.mts';
-import { PACKAGE_ROOT as untypedPackageRoot } from './tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT as untypedPackageRoot } from './tooling/tool-resolution.mts';
 import {
   MINIMUM_NODE as untypedMinimumNode,
   supportsRedirect as untypedSupportsRedirect,
-} from '../languages/typescript/typescript-api/api-redirect.mjs';
+} from '../languages/typescript/typescript-api/api-redirect.mts';
 import { fieldAt } from '../scripts/json/fields.mts';
 import { listOf, parseJson, textOf } from '../shared/values/readers.mts';
 import {

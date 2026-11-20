@@ -15,7 +15,7 @@ import {
   staleReferenceFiles,
 } from './generate.mts';
 import { ALL_RECIPES as UNTYPED_RECIPES } from '../fix/engine/all-recipes.mts';
-import { defineRecipes as untypedDefineRecipes } from '../fix/engine/recipes.mjs';
+import { defineRecipes as untypedDefineRecipes } from '../fix/engine/recipes.mts';
 import { DEFAULT_FIX_SOURCES } from '../fix/status/fix-status.mts';
 import { PAGES as UNTYPED_PAGES } from '../../shared/reference/pages.mjs';
 import { ruleEntry as untypedRuleEntry } from '../../shared/reference/entry.mjs';

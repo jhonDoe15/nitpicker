@@ -8,7 +8,7 @@ import { configurationFiles, createHygieneAnalyzers } from './analyzers.mjs';
 import { parseCheckArguments } from './cli.mjs';
 import { runHygieneCheck, runHygieneCli } from './runner.mjs';
 import { linkSentence } from '../messages/test-support/link-sentence.mjs';
-import { yamlDocuments } from '../../core/tooling/yaml/yaml-documents.mjs';
+import { yamlDocuments } from '../../core/tooling/yaml/yaml-documents.mts';
 
 const temporaryDirectories = [];
 const { createGitRepository } = useGitFixtures();

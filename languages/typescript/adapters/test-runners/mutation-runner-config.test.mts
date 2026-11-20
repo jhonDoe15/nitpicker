@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mts';
 import { RESTORE_SINON_PLUGIN } from './mocha/mocha.mts';
 import {
   CRACO_JEST_CONFIG,
@@ -13,8 +13,9 @@ import {
   unsupportedMutationRunner,
 } from './mutation-runner-config.mts';
 import { testOptions } from './typed/test-options.mts';
-import type { RunnerCommand, RunnerName } from './typed/runner-types.mts';
-import type { StrykerConfig } from '../quality-areas/typed/mutation.mts';
+import type { RunnerCommand } from './typed/runner-types.mts';
+import type { RunnerName } from '../../preset/test-runner/typed/command-types.mts';
+import type { StrykerConfig } from '../../preset/project-configs/project-config-types.mts';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
 import { temporaryRoots } from '../test-support/temporary-roots.mts';
 

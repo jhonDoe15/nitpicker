@@ -66,16 +66,17 @@ function fanOutLead([collection, starter]: [string, string?]): string {
 }
 
 describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring project', () => {
-  let runs: Runs;
+  const runs: Runs = { markers: [], gradle: [], maven: [] };
 
   beforeAll(() => {
     const gradleProject = copyWithout('pom.xml');
+    runs.markers = markedReviewViolations(gradleProject);
+    runs.gradle = [...collectJavaFindings(gradleProject, { gradle, policy: {} })];
+  }, 300_000);
+
+  beforeAll(() => {
     const mavenProject = copyWithout('build.gradle', 'settings.gradle');
-    runs = {
-      markers: markedReviewViolations(gradleProject),
-      gradle: [...collectJavaFindings(gradleProject, { gradle, policy: {} })],
-      maven: [...collectJavaFindings(mavenProject, { maven, policy: {} })],
-    };
+    runs.maven = [...collectJavaFindings(mavenProject, { maven, policy: {} })];
   }, 300_000);
 
   afterAll(() => {

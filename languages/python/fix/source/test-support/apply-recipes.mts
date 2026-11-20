@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { containedPath } from '../../../../../core/fix/common/contained-path.mjs';
+import { containedPath } from '../../../../../core/fix/tool-steps/paths/contained-path.mts';
 import { useGitFixtures } from '../../test-support/git-fixtures.mts';
-import { runRecipes } from '../../../../../core/fix/engine/run-recipes.mjs';
+import { runRecipes } from '../../../../../core/fix/engine/run-recipes.mts';
 import { scriptRecipes } from '../python-recipes.mts';
 import { localRunScript } from '../script-edits.mts';
 
@@ -12,25 +12,10 @@ const SCRIPT_RECIPES = scriptRecipes({ runScript: localRunScript, optionsFor: ()
 type RecipeOptions = {
   selectedRules?: readonly string[];
   recipes?: readonly unknown[];
-  inputs?: unknown;
+  inputs?: Readonly<Record<string, unknown>> | undefined;
 };
 
-type Outcome = {
-  notes: string[];
-  fixedFindings: string[];
-  files: { path: string }[];
-  toolErrors: unknown[];
-};
-type RunOptions = {
-  projectRoot: string;
-  files: { path: string }[];
-  recipes: readonly unknown[];
-  preset: string;
-  selectedRules: readonly string[];
-  accepts: (name: string) => boolean;
-  inputs: unknown;
-};
-const run: (options: RunOptions) => Outcome = runRecipes;
+type Outcome = ReturnType<typeof runRecipes>;
 
 type AppliedRecipes = {
   outcome: Outcome;
@@ -44,7 +29,7 @@ export function applyRecipes(
 ): AppliedRecipes {
   const { selectedRules = [], recipes = SCRIPT_RECIPES, inputs } = options;
   const { root: projectRoot } = createGitRepository(files, { prefix: 'nitpicker-python-recipes-' });
-  const outcome = run({
+  const outcome = runRecipes({
     projectRoot,
     files: Object.keys(files).map((name) => ({ path: name })),
     recipes,

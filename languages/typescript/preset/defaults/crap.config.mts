@@ -1,4 +1,4 @@
-import { readLayout as readUntypedLayout } from '../head-policy.mjs';
+import { readLayout as readUntypedLayout } from '../head-policy.mts';
 
 const readLayout: () => {
   readonly sourceRoots: readonly string[];

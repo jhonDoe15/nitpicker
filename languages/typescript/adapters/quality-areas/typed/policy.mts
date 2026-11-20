@@ -14,15 +14,15 @@ import type {
   KnipConfig,
   KnipReport,
 } from '../../../preset/unused-api/test-only/typed/knip-types.mts';
-import { loadPackages as untypedLoadPackages } from '../../../preset/unused-api/workspace/packages.mjs';
+import { loadPackages as untypedLoadPackages } from '../../../preset/unused-api/workspace/packages.mts';
 import { testConsoleFindings as untypedTestConsoleFindings } from '../../../../../shared/rules/console/console-findings.mjs';
 
 export const testConsoleFindings: (
   report: { readonly entries: readonly unknown[] },
   context: {
     readonly analyzerName: string;
-    readonly allow: unknown[] | undefined;
-    readonly exceptions: unknown[];
+    readonly allow: unknown;
+    readonly exceptions: readonly unknown[];
   },
 ) => Finding[] = untypedTestConsoleFindings;
 
@@ -30,7 +30,8 @@ export type { KnipConfig };
 
 export type IsExcepted = (rule: string, ...candidates: readonly unknown[]) => boolean;
 
-export const exceptionMatcher: (exceptions: unknown[]) => IsExcepted = untypedExceptionMatcher;
+export const exceptionMatcher: (exceptions: readonly unknown[]) => IsExcepted =
+  untypedExceptionMatcher;
 
 export const layoutKnipProductionConfig: (config: KnipConfig, layout: Layout) => KnipConfig =
   untypedLayoutKnipProductionConfig;

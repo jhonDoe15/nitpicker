@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { runProjectTests } from './run-project-tests.mts';
-import { RUNNER_NAMES } from '../../preset/test-runner/runners.mjs';
+import { RUNNER_NAMES } from '../../preset/test-runner/runners.mts';
 import type { TestOptions, TestReport, TestRun } from './typed/runner-types.mts';
 import type { TextOutput } from '../quality-areas/typed/area-types.mts';
 import { NO_RERUN_VERDICT, type RerunVerdict, testKey } from './reruns/rerun-verdict.mts';

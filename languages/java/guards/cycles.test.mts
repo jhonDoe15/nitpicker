@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
+import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mts';
 import type { Finding } from '../../../shared/values/findings.mts';
 import { cycleFindings, cyclicComponents } from './cycles.mts';
 import type { CycleEdge, CycleFeatures } from './typed/cycle-types.mts';

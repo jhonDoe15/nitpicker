@@ -1,10 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { containedPath } from '../../../shared/paths/contained-path.mjs';
 import { policyDigest, policyFindings } from '../../diff/reporting/review/policy-findings.mts';
-import { runGit } from '../../diff/git/repository/command.mjs';
-import { captureWorkingTree } from '../../diff/git/repository/git.mjs';
+import { runGit } from '../../diff/git/repository/command.mts';
+import { captureWorkingTree } from '../../diff/git/repository/git.mts';
 import { gitBlobId } from '../../policy-changes/policy-scope.mts';
-import { isInside } from '../discovery/repository-files.mjs';
+import { isInside } from '../discovery/repository-files.mts';
 import { DECLARATION_FILES } from '../plan/enclosing.mts';
 import { byText } from '../../../shared/text-order/by-text.mjs';
 import type { MonorepoPlan, RepositoryPolicy } from '../project-types.mts';

@@ -4,10 +4,10 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
-import { createEntryPointAnalyzer } from '../../adapters/entry-points.mjs';
-import { createEslintAnalyzer } from '../../adapters/eslint/analyzer.mjs';
-import { createStaticCheckAnalyzer } from '../../adapters/static-checks/analyzer.mjs';
-import { createQualityAreaAnalyzer } from '../../adapters/quality-areas/analyzer.mjs';
+import { createEntryPointAnalyzer } from '../../adapters/entry-points.mts';
+import { createEslintAnalyzer } from '../../adapters/eslint/analyzer.mts';
+import { createStaticCheckAnalyzer } from '../../adapters/static-checks/analyzer.mts';
+import { createQualityAreaAnalyzer } from '../../adapters/quality-areas/analyzer.mts';
 import { withDefaultAnalyzerParallelism as untypedParallelism } from '../../../../core/diff/execution/test-support/analyzer-parallelism.mts';
 import { runAnalyzers, type AnalyzerRun } from '../../../../core/diff/execution/run-analyzers.mts';
 import {
@@ -15,12 +15,12 @@ import {
   eslintChecks,
   staticChecks,
   qualityAreaChecks,
-} from '../quality-checks.mjs';
+} from '../quality-checks.mts';
 import { writeProjectFiles } from '../test-support/temporary-projects.mts';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const POLICY_PATHS = [
-  'core/fix/common/contained-path.mjs',
+  'core/fix/tool-steps/paths/contained-path.mjs',
   'core/tooling/host-environment.mjs',
   'core/tooling/policy-links.mjs',
   'core/tooling/temporary-files.mjs',
@@ -30,6 +30,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/defaults',
   'languages/javascript/preset/javascript-preset.mjs',
   'languages/javascript/preset/documentation/jsdoc.mjs',
+  'languages/javascript/preset/documentation/tri-state-tags.mjs',
   'languages/javascript/preset/eslint-dialect.mjs',
   'languages/typescript/conventions/file-name-casing.mjs',
   'languages/typescript/conventions/layout-measures.mjs',
@@ -41,6 +42,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/layout',
   'languages/typescript/preset/head-policy.mjs',
+  'languages/typescript/preset/typed',
   'languages/typescript/preset/project-configs',
   'languages/typescript/preset/project-tools',
   'languages/typescript/preset/libraries',
@@ -160,7 +162,6 @@ describe('default configs used in place', () => {
             version: 'fixture',
             configurationHash: 'fixture',
             exclusions: fieldOf(entryPointsCheck, 'exclusions'),
-            sourceRoot: fieldOf(entryPointsCheck, 'sourceRoot'),
           }),
           analyzerFrom(createEslintAnalyzer, {
             ...lintCheck,
@@ -185,7 +186,7 @@ describe('default configs used in place', () => {
     it('reports no error for every file-driven quality analyzer with no source or tests', () => {
       const run = runEmptyProject();
       const names = fileDrivenChecks.map(({ name }) => name);
-      expect(names).not.toHaveLength(0);
+      expect(names.includes('coding-standards')).toBe(true);
       expect(toolErrorsFor(run, names)).toEqual([]);
       expect(names.map((name) => run.reports.get(name)?.findings)).toEqual(names.map(() => []));
     });
@@ -237,7 +238,6 @@ describe('default configs used in place', () => {
               version: 'fixture',
               configurationHash: 'fixture',
               exclusions: fieldOf(entryPointsCheck, 'exclusions'),
-              sourceRoot: fieldOf(entryPointsCheck, 'sourceRoot'),
             }),
           ],
           projectRoot,
@@ -357,7 +357,7 @@ function oldLayoutFiles(): Record<string, string> {
   return {
     'src/main/shared/greeting.ts': [
       'export function greeting(name: string): string {',
-      '  return `Hello, ${name}`;',
+      ['  return `Hello, ', '$', '{name}`;'].join(''),
       '}',
       '',
     ].join('\n'),

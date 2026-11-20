@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { analyzeProductionFiles } from './analyze.mts';
-import { resolveLayout } from '../layout.mjs';
+import { resolveLayout } from '../layout.mts';
 
 const roots: string[] = [];
 afterEach(() => {

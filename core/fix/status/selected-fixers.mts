@@ -1,4 +1,4 @@
-import { REVIEW, SAFE } from '../engine/safety.mjs';
+import { REVIEW, SAFE } from '../engine/safety.mts';
 import { codeFixes } from '../../../languages/typescript/fix/code-fixes/code-fix-rules.mts';
 import { OWN_SUGGESTION_RULES } from '../../../languages/typescript/fix/suggestions/own-suggestion-rules.mts';
 import { RUFF_PROMOTED_FIXES } from '../../../languages/python/adapters/configuration/python-rule-ids.mts';

@@ -129,7 +129,7 @@ describe('the links of one module', () => {
   }: {
     exports?: Partial<ModuleExports>;
     referenced?: readonly string[];
-    members?: ReadonlyMap<string, readonly string[] | undefined>;
+    members?: ReadonlyMap<string, readonly (string | undefined)[] | undefined>;
     imports?: Parameters<typeof moduleLinks>[0]['imports'];
   }) {
     return moduleLinks({

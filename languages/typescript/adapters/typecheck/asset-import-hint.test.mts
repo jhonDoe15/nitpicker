@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { staticChecks } from '../../preset/quality-checks.mjs';
+import { staticChecks } from '../../preset/quality-checks.mts';
 import { withAssetImportHint } from './asset-import-hint.mts';
 
 const hint =

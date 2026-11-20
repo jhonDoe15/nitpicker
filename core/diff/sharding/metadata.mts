@@ -1,8 +1,8 @@
 import { analyzerName as nameOf } from '../reporting/report-model.mts';
 import { realpathSync } from 'node:fs';
-import { runGit } from '../git/repository/command.mjs';
+import { runGit } from '../git/repository/command.mts';
 import path from 'node:path';
-import { withNamedTemporaryWorktree } from '../git/repository/worktree.mjs';
+import { withNamedTemporaryWorktree } from '../git/repository/worktree.mts';
 import { readJson } from './read-shards.mts';
 import {
   type AnalyzerMetadata,
