@@ -134,7 +134,8 @@ fn signature(written: &str) -> Option<Rc<Signature>> {
             .borrow_mut()
             .entry(written.to_string())
             .or_insert_with(|| {
-                let compact: String = written.split_whitespace().collect();
+                // A nested class may be written the binary way (`Map$Entry`); the index names it `Map.Entry`.
+                let compact: String = written.split_whitespace().collect::<String>().replace('$', ".");
                 let (owner, rest) = compact.split_once('#')?;
                 let (name, parameters) = rest.strip_suffix(')')?.split_once('(')?;
                 let parameters = match parameters {
@@ -315,11 +316,14 @@ impl<'a, 't> Machine<'a, 't> {
         }))
     }
 
-    fn type_is(&self, focus: &Focus, name: &str, exactly: bool) -> bool {
+    pub(super) fn type_is(&self, focus: &Focus, name: &str, exactly: bool) -> bool {
         let Some(Item::Node(id)) = focus.item else { return false };
         let Some(kind) = self.node_type(*id) else { return false };
+        let dotted = name.replace('$', ".");
+        let name = dotted.as_str();
         if exactly {
-            return !matches!(kind, Type::Null) && kind.erased().name() == name;
+            // A type variable is exactly no class, not even the class it erases to.
+            return !matches!(kind, Type::Null | Type::Variable(_) | Type::Wildcard) && kind.erased().name() == name;
         }
         self.kind_is(&kind, name)
     }
@@ -400,7 +404,8 @@ impl<'a, 't> Machine<'a, 't> {
 
     fn modifiers(&self, focus: &Focus, key: &str) -> Seq {
         let Some(Item::Node(id)) = focus.item else { return Seq::Empty };
-        let list = self.tree.nodes[*id as usize].children.iter().copied().find(|kid| self.tree.nodes[*kid as usize].name == "ModifierList");
+        let Some(owner) = self.modifier_owner(*id) else { return Seq::Empty };
+        let list = self.tree.nodes[owner as usize].children.iter().copied().find(|kid| self.tree.nodes[*kid as usize].name == "ModifierList");
         match list.and_then(|list| self.tree.attribute(self.file, list, key)) {
             Some(Value::List(all)) => Seq::from(all.iter().map(|entry| Item::text(entry)).collect()),
             _ => Seq::Empty,
@@ -471,6 +476,8 @@ impl<'a, 't> Machine<'a, 't> {
             ("pmd-java:matchesSig", 1) => Seq::flag(self.matches_sig(focus, &text(0))),
             ("pmd-java:modifiers", 0) => self.modifiers(focus, "EffectiveModifiers"),
             ("pmd-java:explicitModifiers", 0) => self.modifiers(focus, "ExplicitModifiers"),
+            ("pmd-java:hasAnnotation", 1) => Seq::flag(self.has_annotation(focus, &text(0))),
+            ("pmd-java:nodeIs", 1) => Seq::flag(self.node_is(focus, &text(0))),
             ("true", 0) => Seq::flag(true),
             ("false", 0) => Seq::flag(false),
             ("not", 1) => Seq::flag(!self.truth(&arguments[0])),
@@ -565,9 +572,15 @@ impl<'a, 't> Machine<'a, 't> {
             ("codepoints-to-string", 1) => {
                 Seq::owned(self.atoms(&arguments[0]).iter().filter_map(|atom| char::from_u32(self.number_of(atom) as u32)).collect())
             }
-            ("matches", 2 | 3) => match pattern(1, 2) {
+            ("matches", 2 | 3) => match regex(&text(1), &text(2)) {
                 Some(built) => Seq::flag(built.is_match(&text(0))),
-                None => Seq::flag(false),
+                None => match super::extra::backtracking_match(&translated(&text(1), &text(2)), &text(0)) {
+                    Some(matched) => Seq::flag(matched),
+                    None => {
+                        self.fail(|| format!("regular expression not understood: {}", text(1)));
+                        Seq::flag(false)
+                    }
+                },
             },
             ("replace", 3 | 4) => match pattern(1, 3) {
                 Some(built) => Seq::owned(built.replace_all(&text(0), replacement(&text(2)).as_str()).into_owned()),
@@ -613,6 +626,16 @@ impl<'a, 't> Machine<'a, 't> {
                     }
                 }
                 Seq::from(kept)
+            }
+            ("sort", 1) => {
+                let mut all = self.atoms(&arguments[0]);
+                let numeric = all.iter().all(|atom| matches!(atom, Item::Whole(_) | Item::Real(_)));
+                if numeric {
+                    all.sort_by(|a, b| self.number_of(a).total_cmp(&self.number_of(b)));
+                } else {
+                    all.sort_by_cached_key(|atom| self.string(&Seq::One(atom.clone())));
+                }
+                Seq::from(all)
             }
             ("reverse", 1) => {
                 let mut all = arguments[0].clone().into_vec();
