@@ -2,6 +2,7 @@ import type { Node } from 'web-tree-sitter';
 import type { ParseText, SourceFile, TypeSources } from '../../../extract-types.mts';
 import { chainOf, readRealInside } from '../../../jvm-views.mts';
 import { JDK_THROWS, SAFE_JDK } from './jdk-throws.mts';
+import { annotatedRest } from '../../../tree/nodes.mts';
 import { field, namedChildren, parentOf, present, required, squashed } from '../../syntax.mts';
 
 type ConstructorInfo = { readonly size: number; readonly throws: string[] };
@@ -89,7 +90,9 @@ function classIn(container: Node, name: string): Node | undefined {
 
 function sizeOf(declaration: Node): number | undefined {
   const parameters = namedChildren(required(declaration, 'parameters'));
-  const isOpen = parameters.some((node) => node.type === 'spread_parameter' || node.hasError);
+  const isOpen = parameters.some(
+    (node) => node.type === 'spread_parameter' || annotatedRest(node) !== undefined,
+  );
   return isOpen ? undefined : parameters.length;
 }
 

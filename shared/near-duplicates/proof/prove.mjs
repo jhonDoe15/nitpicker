@@ -132,6 +132,11 @@ function signatureOf({ tree }) {
     : types.map((type) => keyOf(type, KEY_MODES.exact)).join('|');
 }
 
+function isSameSignature(sides) {
+  const [signature, other] = sides.map(signatureOf);
+  return signature !== undefined && signature === other;
+}
+
 function optionsOf(query) {
   return { timeoutMs: SOLVER_TIMEOUT_MS, integers: isIntegerQuery(query) };
 }
@@ -149,8 +154,7 @@ function readable(counterexample, { tree }) {
 }
 
 export function proveSameLogic(sides) {
-  const [signature, other] = sides.map(signatureOf);
-  if (!sides.every(isLargeEnough) || signature === undefined || signature !== other) {
+  if (!sides.every(isLargeEnough) || !isSameSignature(sides)) {
     return undefined;
   }
   const checks = checksOf(sides);
