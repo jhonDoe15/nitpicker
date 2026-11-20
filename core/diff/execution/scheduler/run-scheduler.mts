@@ -7,6 +7,7 @@ import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
 } from '../../../../shared/messages/troubleshooting.mjs';
+import { MAX_ANALYZER_STDOUT_BYTES } from '../../../../shared/report-output/fit-findings.mts';
 import type { RunTaskOptions } from '../progress.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 
@@ -23,8 +24,6 @@ const spawnCollected: (command: string, args: readonly string[], options: object
   spawnSyncWithOutputFile;
 const policyEnvironment: (headPolicyFile: unknown) => NodeJS.ProcessEnv = headPolicyEnvironment;
 const parseJson: (text: string) => unknown = JSON.parse;
-
-const MAX_ANALYZER_OUTPUT_BYTES = 128 * 1024 * 1024;
 
 const SCHEDULER_OUTPUT_OVERHEAD_BYTES = 1024 * 1024;
 
@@ -65,7 +64,7 @@ export function runScheduler(
       }),
       stdio: ['pipe', 'pipe', 'pipe', ...(liveProgress ? [progress?.stream.fd] : [])],
       encoding: 'utf8',
-      maxBuffer: tasks.length * MAX_ANALYZER_OUTPUT_BYTES + SCHEDULER_OUTPUT_OVERHEAD_BYTES,
+      maxBuffer: tasks.length * MAX_ANALYZER_STDOUT_BYTES + SCHEDULER_OUTPUT_OVERHEAD_BYTES,
       timeout: schedulerDeadline(tasks),
     }),
   );
