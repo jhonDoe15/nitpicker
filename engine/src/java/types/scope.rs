@@ -177,6 +177,8 @@ pub struct Resolver<'a> {
     pub(super) work: Cell<u32>,
     /// Calls whose method is being picked right now: asking again from inside would repeat all of that work.
     pub(super) resolving: RefCell<HashMap<usize, u8>>,
+    /// Type variables in scope stay themselves instead of standing for their bounds.
+    pub(super) symbolic: bool,
     pub(super) mapping: RefCell<HashMap<usize, u8>>,
     pub(super) loose: RefCell<HashMap<usize, Option<Type>>>,
     /// What each type node stands for, asked many times by the rules.
@@ -199,7 +201,12 @@ fn written_names<'f>(file: &'f SourceFile, list: Option<Node>) -> Vec<&'f str> {
 
 impl<'a> Resolver<'a> {
     pub fn new(index: &'a TypeIndex, file: &'a SourceFile, scope: &'a FileScope) -> Resolver<'a> {
-        Resolver { index, file, scope, cache: RefCell::new(HashMap::new()), depth: Cell::new(0), busy: RefCell::new(std::collections::HashSet::new()), skipped: Cell::new(0), work: Cell::new(0), resolving: RefCell::new(HashMap::new()), loose: RefCell::new(HashMap::new()), written: RefCell::new(HashMap::new()), simples: RefCell::new(HashMap::new()), locals: RefCell::new(HashMap::new()), patterns: RefCell::new(HashMap::new()), mapping: RefCell::new(HashMap::new()) }
+        Resolver { index, file, scope, cache: RefCell::new(HashMap::new()), depth: Cell::new(0), busy: RefCell::new(std::collections::HashSet::new()), skipped: Cell::new(0), work: Cell::new(0), resolving: RefCell::new(HashMap::new()), symbolic: false, loose: RefCell::new(HashMap::new()), written: RefCell::new(HashMap::new()), simples: RefCell::new(HashMap::new()), locals: RefCell::new(HashMap::new()), patterns: RefCell::new(HashMap::new()), mapping: RefCell::new(HashMap::new()) }
+    }
+
+    /// A second resolver for the same file whose types keep the type variables in scope, as javac prints them.
+    pub fn symbolic(&self) -> Resolver<'a> {
+        Resolver { symbolic: true, ..Resolver::new(self.index, self.file, self.scope) }
     }
 
     /// The class a simple name stands for at a place. Every place directly inside the same block or class body
@@ -317,6 +324,7 @@ impl<'a> Resolver<'a> {
     /// The type a type node stands for. Type variables stay variables for member signatures
     /// (`keep`), and become their bound where an expression of that type is used.
     pub fn written(&self, node: Node, keep: bool) -> Option<Type> {
+        let keep = keep || self.symbolic;
         let key = (node.id(), keep);
         if let Some(known) = self.written.borrow().get(&key) {
             return known.clone();
@@ -425,11 +433,109 @@ impl<'a> Resolver<'a> {
                 _ => None,
             };
             let Some(kind) = both(false) else { continue };
-            varargs |= parameter.kind() == "spread_parameter";
+            varargs |= parameter.kind() == "spread_parameter" || self.file.text_of(parameter).contains("...");
             erased.push(kind.erased());
             generic.push(both(true).unwrap_or(unknown));
         }
         (erased, generic, varargs)
+    }
+
+    /// A written type the way javac prints it: qualified names, type arguments, no spaces after commas.
+    fn shown_type(&self, node: Node, nested: bool) -> String {
+        fn named(node: Node) -> Vec<Node> {
+            crate::engine::source::named_children(node).into_iter().filter(|part| !part.kind().ends_with("comment") && !part.kind().ends_with("annotation")).collect()
+        }
+        match node.kind() {
+            "array_type" => {
+                let element = node.child_by_field_name("element").map(|element| self.shown_type(element, nested)).unwrap_or_default();
+                let count = node.child_by_field_name("dimensions").map_or(1, |dimensions| self.file.text_of(dimensions).matches('[').count());
+                format!("{element}{}", "[]".repeat(count))
+            }
+            "generic_type" => {
+                let parts = named(node);
+                let base = parts.first().map(|base| self.shown_type(*base, nested)).unwrap_or_default();
+                let given = parts.iter().find(|part| part.kind() == "type_arguments").map(|list| named(*list)).unwrap_or_default();
+                format!("{base}<{}>", given.into_iter().map(|one| self.shown_type(one, true)).collect::<Vec<_>>().join(","))
+            }
+            "wildcard" => {
+                let bound = named(node).into_iter().last().map(|bound| self.shown_type(bound, true));
+                let word = if children(node).iter().any(|part| part.kind() == "super") { "super" } else { "extends" };
+                bound.map_or("?".to_string(), |bound| format!("? {word} {bound}"))
+            }
+            "annotated_type" => {
+                let inner = named(node).into_iter().last().map(|inner| self.shown_type(inner, nested)).unwrap_or_default();
+                let marks = crate::engine::source::named_children(node).into_iter().filter(|part| nested && part.kind().ends_with("annotation"));
+                let names = marks.filter_map(|mark| mark.child_by_field_name("name")).map(|name| self.written(name, true).map_or_else(|| self.file.text_of(name).to_string(), |kind| kind.name()));
+                names.map(|name| format!("@{name} ")).collect::<String>() + &inner
+            }
+            "type_identifier" | "scoped_type_identifier" => self.written(node, true).map_or_else(|| self.file.text_of(node).to_string(), |kind| kind.name()),
+            _ => self.file.text_of(node).to_string(),
+        }
+    }
+
+    fn shown_parameters(&self, member: Node) -> String {
+        let list = member.child_by_field_name("parameters").map(children).unwrap_or_default();
+        let listed = list.into_iter().filter(|part| matches!(part.kind(), "formal_parameter" | "spread_parameter"));
+        let one = |part: Node| {
+            let written = part.child_by_field_name("type").or_else(|| crate::engine::source::named_children(part).into_iter().find(|child| child.kind().ends_with("type") || child.kind().ends_with("identifier")));
+            let shown = written.map(|written| self.shown_type(written, false)).unwrap_or_default();
+            if part.kind() == "spread_parameter" { format!("{shown}...") } else { shown }
+        };
+        listed.map(one).collect::<Vec<_>>().join(",")
+    }
+
+    /// Whether a method carries an annotation that makes it an initializer.
+    fn starts(&self, member: Node) -> bool {
+        crate::java::helpers::annotation_names(self.file, member).into_iter().any(|written| {
+            written.rsplit('.').next() == Some("Initializer")
+                || self.class_name(member, written).is_some_and(|name| super::model::STARTERS.contains(&name.as_str()))
+        })
+    }
+
+    /// The text given to an annotation named `Contract`, when it is written as one string.
+    fn contract(&self, member: Node) -> String {
+        let modifiers = children(member).into_iter().find(|part| part.kind() == "modifiers");
+        let marks = modifiers.map(children).unwrap_or_default().into_iter().filter(|part| part.kind() == "annotation");
+        let named = |mark: &Node| mark.child_by_field_name("name").is_some_and(|name| self.file.text_of(name).rsplit('.').next() == Some("Contract"));
+        let Some(given) = marks.into_iter().find(named).and_then(|mark| mark.child_by_field_name("arguments")) else { return String::new() };
+        let mut text = None;
+        for part in crate::engine::source::named_children(given) {
+            let value = match part.kind() {
+                "element_value_pair" if part.child_by_field_name("key").is_some_and(|key| self.file.text_of(key) == "value") => part.child_by_field_name("value"),
+                "string_literal" => Some(part),
+                _ => None,
+            };
+            text = text.or(value.and_then(|value| super::expr::literal_text(self.file, value)));
+        }
+        text.unwrap_or_default()
+    }
+
+    fn parameter_names(&self, member: Node) -> Vec<String> {
+        let list = member.child_by_field_name("parameters").map(children).unwrap_or_default();
+        let listed = list.into_iter().filter(|part| matches!(part.kind(), "formal_parameter" | "spread_parameter"));
+        let mut names = Vec::new();
+        for part in listed {
+            let name = part.child_by_field_name("name").or_else(|| children(part).into_iter().find(|inner| inner.kind() == "variable_declarator").and_then(|inner| inner.child_by_field_name("name")));
+            names.push(name.map(|name| self.file.text_of(name).to_string()).unwrap_or_default());
+        }
+        names
+    }
+
+    fn throws(&self, member: Node) -> Vec<String> {
+        let clause = children(member).into_iter().find(|part| part.kind() == "throws");
+        let mut cursor = member.walk();
+        clause.map(|clause| clause.named_children(&mut cursor).filter_map(|kind| self.written(kind, false)).map(|kind| kind.name()).collect()).unwrap_or_default()
+    }
+
+    fn nullable_parameters(&self, member: Node) -> u64 {
+        let list = member.child_by_field_name("parameters").map(children).unwrap_or_default();
+        let listed = list.into_iter().filter(|part| matches!(part.kind(), "formal_parameter" | "spread_parameter"));
+        let marked = |part: Node| {
+            let spread = part.kind() == "spread_parameter" || self.file.text_of(part).contains("...");
+            let names = super::super::helpers::annotation_names(self.file, part);
+            if spread { names.iter().any(|name| name.ends_with("Nullable")) } else { super::super::helpers::marked_nullable(self.file, part) }
+        };
+        listed.enumerate().filter(|(position, part)| *position < 64 && marked(*part)).fold(0, |bits, (position, _)| bits | 1 << position)
     }
 
     fn class_flags(&self, declaration: Node) -> u16 {
@@ -519,7 +625,7 @@ impl<'a> Resolver<'a> {
             }),
             permitted: self.permitted(declaration, &own_name, &listed("permits")),
             record_components: (kind == "record_declaration").then(Vec::new),
-            flags: self.class_flags(declaration),
+            flags: self.class_flags(declaration) | super::model::flag::SOURCE,
         }
     }
 
@@ -611,7 +717,13 @@ impl<'a> Resolver<'a> {
             is_static: false,
             is_private: false,
             varargs: false,
+            shown: String::new(),
+            throws: Vec::new(),
+            nullable_parameters: 0,
             flags: super::model::flag::PUBLIC,
+            names: Vec::new(),
+            contract: String::new(),
+            starts: false,
         };
         let bits = |member: Node| -> u16 {
             use super::model::flag;
@@ -624,6 +736,9 @@ impl<'a> Resolver<'a> {
             let deprecated = super::super::helpers::annotation_names(self.file, member).iter().any(|name| matches!(*name, "Deprecated" | "java.lang.Deprecated"));
             if deprecated {
                 bits |= flag::DEPRECATED;
+            }
+            if super::super::helpers::marked_nullable(self.file, member) {
+                bits |= flag::NULLABLE;
             }
             if info.is_interface {
                 bits |= flag::PUBLIC;
@@ -706,6 +821,12 @@ impl<'a> Resolver<'a> {
                         is_abstract: member.field("body").is_none()
                             && (info.is_interface || has(member, "abstract")),
                         varargs,
+                        shown: self.shown_parameters(member),
+                        throws: self.throws(member),
+                        nullable_parameters: self.nullable_parameters(member),
+                        names: self.parameter_names(member),
+                        contract: self.contract(member),
+                        starts: self.starts(member),
                         flags: bits(member) | if member.field("body").is_none() && info.is_interface { super::model::flag::ABSTRACT } else { 0 },
                     });
                 }
@@ -714,6 +835,11 @@ impl<'a> Resolver<'a> {
                     info.methods.push(Method {
                         generic_parameters,
                         varargs,
+                        shown: self.shown_parameters(member),
+                        throws: self.throws(member),
+                        nullable_parameters: self.nullable_parameters(member),
+                        names: self.parameter_names(member),
+                        contract: self.contract(member),
                         ..plain("<init>", parameters, Type::Primitive("void"))
                     });
                 }
@@ -731,7 +857,7 @@ impl<'a> Resolver<'a> {
         if declaration.kind() == "record_declaration" {
             let (parameters, generic_parameters, varargs) = self.parameters(declaration.field("parameters"));
             if !info.methods.iter().any(|method| method.name == "<init>" && method.parameters == parameters) {
-                info.methods.push(Method { generic_parameters, varargs, ..plain("<init>", parameters, Type::Primitive("void")) });
+                info.methods.push(Method { generic_parameters, varargs, nullable_parameters: self.nullable_parameters(declaration), names: self.parameter_names(declaration), ..plain("<init>", parameters, Type::Primitive("void")) });
             }
             for component in declaration.field("parameters").map(children).unwrap_or_default() {
                 let (Some(name), Some(kind)) = (component.field("name"), self.declared(component, None, false)) else {
@@ -739,9 +865,10 @@ impl<'a> Resolver<'a> {
                 };
                 let name = self.file.text_of(name).to_string();
                 let generic = self.declared(component, None, true).unwrap_or(kind.clone());
-                info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, fixed: None, strict: false, is_private: true, flags: super::model::flag::FINAL });
+                info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, fixed: None, strict: false, is_private: true, flags: super::model::flag::FINAL | bits(component) & super::model::flag::NULLABLE });
                 info.record_components.get_or_insert_with(Vec::new).push(generic.clone());
-                info.methods.push(Method { generic_returns: generic, ..plain(&name, Vec::new(), kind.erased()) });
+                let accessor = plain(&name, Vec::new(), kind.erased());
+                info.methods.push(Method { generic_returns: generic, flags: accessor.flags | bits(component) & super::model::flag::NULLABLE, ..accessor });
             }
         }
     }

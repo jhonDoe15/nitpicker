@@ -93,6 +93,10 @@ pub mod flag {
     /// Carries `@java.lang.Deprecated`.
     pub const DEPRECATED: u16 = 256;
     pub const ANNOTATION: u16 = 512;
+    /// A field or a method's result carries an annotation named `Nullable` or `CheckForNull`.
+    pub const NULLABLE: u16 = 1024;
+    /// The class comes from a source file of the run, not from the class path.
+    pub const SOURCE: u16 = 2048;
 }
 
 #[derive(Clone, Debug)]
@@ -130,8 +134,31 @@ pub struct Method {
     /// Not inherited.
     pub is_private: bool,
     pub varargs: bool,
+    /// Declared exception classes.
+    pub throws: Vec<String>,
+    /// The parameter types as javac prints them in a method's name: qualified, with type arguments, comma separated.
+    pub shown: String,
+    /// Bit per parameter position that is marked nullable.
+    pub nullable_parameters: u64,
     pub flags: u16,
+    /// Parameter names, when the source or the class file gives them; empty otherwise.
+    pub names: Vec<String>,
+    /// The text of a `@Contract` annotation on the method; empty without one.
+    pub contract: String,
+    /// Marked as run right after construction: an annotation named `Initializer` or one of `STARTERS`.
+    pub starts: bool,
 }
+
+/// Annotations that make a method an initializer for NullAway: its defaults and the project's own list.
+pub const STARTERS: &[&str] = &[
+    "jakarta.annotation.PostConstruct",
+    "javax.annotation.PostConstruct",
+    "org.junit.Before",
+    "org.junit.BeforeClass",
+    "org.junit.jupiter.api.BeforeAll",
+    "org.junit.jupiter.api.BeforeEach",
+    "org.springframework.beans.factory.annotation.Autowired",
+];
 
 #[derive(Clone, Debug, Default)]
 pub struct ClassInfo {

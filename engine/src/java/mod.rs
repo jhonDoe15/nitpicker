@@ -2,6 +2,7 @@ mod errorprone;
 mod facts;
 mod grammar;
 pub(crate) mod fields;
+mod flow;
 mod helpers;
 mod magic_number;
 mod naming;

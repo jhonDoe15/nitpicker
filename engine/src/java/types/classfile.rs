@@ -170,10 +170,22 @@ struct Attributes<'a> {
     signature: Option<&'a [u8]>,
     constant: Option<u16>,
     deprecated: bool,
+    nullable: bool,
     record: bool,
     permitted: Option<Vec<u16>>,
     /// For a record: the generic type of each component, in order.
     components: Option<Vec<Type>>,
+    throws: Vec<u16>,
+    annotated_parameters: usize,
+    nullable_parameters: u64,
+    names: Vec<u16>,
+    contract: Option<u16>,
+    starts: bool,
+}
+
+fn starter(descriptor: &[u8]) -> bool {
+    let named = descriptor.strip_prefix(b"L").and_then(|rest| rest.strip_suffix(b";"));
+    named.is_some_and(|named| super::model::STARTERS.iter().any(|known| known.len() == named.len() && known.bytes().zip(named).all(|(a, b)| a == *b || a == b'.' && *b == b'/')))
 }
 
 fn skip_element(reader: &mut Reader) -> Option<()> {
@@ -192,12 +204,24 @@ fn skip_element(reader: &mut Reader) -> Option<()> {
 
 /// Skips one annotation and gives the index of its type descriptor.
 fn skip_annotation(reader: &mut Reader) -> Option<u16> {
+    read_annotation(reader).map(|(kind, _)| kind)
+}
+
+/// Reads one annotation: the index of its type descriptor and, when its first element is a string, that string's index.
+fn read_annotation(reader: &mut Reader) -> Option<(u16, Option<u16>)> {
     let kind = reader.u2()?;
-    for _ in 0..reader.u2()? {
+    let mut text = None;
+    for position in 0..reader.u2()? {
         reader.skip(2)?;
-        skip_element(reader)?;
+        let before = reader.at;
+        if reader.u1()? == b's' && position == 0 {
+            text = Some(reader.u2()?);
+        } else {
+            reader.at = before;
+            skip_element(reader)?;
+        }
     }
-    Some(kind)
+    Some((kind, text))
 }
 
 fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Option<Attributes<'a>> {
@@ -210,10 +234,34 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
             found.signature = utf8(reader.u2()?);
         } else if name == b"ConstantValue" && length == 2 {
             found.constant = Some(reader.u2()?);
-        } else if name == b"RuntimeVisibleAnnotations" {
+        } else if name == b"RuntimeVisibleAnnotations" || name == b"RuntimeInvisibleAnnotations" {
             for _ in 0..reader.u2()? {
-                let kind = skip_annotation(reader)?;
-                found.deprecated |= utf8(kind) == Some(b"Ljava/lang/Deprecated;");
+                let (kind, text) = read_annotation(reader)?;
+                let kind = utf8(kind);
+                if kind.is_some_and(|kind| kind.ends_with(b"/Contract;")) {
+                    found.contract = text;
+                }
+                found.deprecated |= kind == Some(b"Ljava/lang/Deprecated;");
+                found.starts |= kind.is_some_and(|kind| kind.ends_with(b"/Initializer;") || starter(kind));
+                found.nullable |= kind.is_some_and(|kind| kind.ends_with(b"/Nullable;") || kind.ends_with(b"/CheckForNull;") || kind.ends_with(b"/ParametricNullness;"));
+            }
+        } else if name == b"Exceptions" {
+            found.throws = (0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?;
+        } else if name == b"RuntimeVisibleParameterAnnotations" || name == b"RuntimeInvisibleParameterAnnotations" {
+            let count = reader.u1()? as usize;
+            found.annotated_parameters = found.annotated_parameters.max(count);
+            for position in 0..count {
+                for _ in 0..reader.u2()? {
+                    let kind = utf8(skip_annotation(reader)?);
+                    if kind.is_some_and(|kind| kind.ends_with(b"/Nullable;") || kind.ends_with(b"/CheckForNull;") || kind.ends_with(b"/ParametricNullness;")) && position < 64 {
+                        found.nullable_parameters |= 1 << position;
+                    }
+                }
+            }
+        } else if name == b"MethodParameters" {
+            for _ in 0..reader.u1()? {
+                found.names.push(reader.u2()?);
+                reader.skip(2)?;
             }
         } else if name == b"PermittedSubclasses" {
             found.permitted = Some((0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?);
@@ -236,7 +284,90 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
     Some(found)
 }
 
-fn member_flags(access: u16, deprecated: bool) -> u16 {
+/// One type of a descriptor or generic signature, printed the way javac prints a type.
+fn show_type(text: &[u8], at: &mut usize) -> Option<String> {
+    let tag = *text.get(*at)?;
+    *at += 1;
+    let named = |name: &str| Some(name.to_string());
+    match tag {
+        b'B' => named("byte"),
+        b'C' => named("char"),
+        b'D' => named("double"),
+        b'F' => named("float"),
+        b'I' => named("int"),
+        b'J' => named("long"),
+        b'S' => named("short"),
+        b'Z' => named("boolean"),
+        b'V' => named("void"),
+        b'[' => Some(format!("{}[]", show_type(text, at)?)),
+        b'T' => {
+            let end = *at + text[*at..].iter().position(|byte| *byte == b';')?;
+            let name = String::from_utf8_lossy(&text[*at..end]).into_owned();
+            *at = end + 1;
+            Some(name)
+        }
+        b'L' => {
+            let mut out = String::new();
+            loop {
+                match *text.get(*at)? {
+                    b';' => {
+                        *at += 1;
+                        return Some(out);
+                    }
+                    b'<' => {
+                        *at += 1;
+                        let mut given = Vec::new();
+                        while *text.get(*at)? != b'>' {
+                            given.push(match text[*at] {
+                                b'*' => {
+                                    *at += 1;
+                                    "?".to_string()
+                                }
+                                b'+' => {
+                                    *at += 1;
+                                    format!("? extends {}", show_type(text, at)?)
+                                }
+                                b'-' => {
+                                    *at += 1;
+                                    format!("? super {}", show_type(text, at)?)
+                                }
+                                _ => show_type(text, at)?,
+                            });
+                        }
+                        *at += 1;
+                        out.push_str(&format!("<{}>", given.join(",")));
+                    }
+                    b'/' | b'$' | b'.' => {
+                        *at += 1;
+                        out.push('.');
+                    }
+                    other => {
+                        *at += 1;
+                        out.push(other as char);
+                    }
+                }
+            }
+        }
+        _ => None,
+    }
+}
+
+/// The parameter types of a method descriptor or signature, as javac prints them.
+fn show_parameters(text: &[u8], varargs: bool) -> Option<String> {
+    let mut at = text.iter().position(|byte| *byte == b'(')? + 1;
+    let mut all = Vec::new();
+    while *text.get(at)? != b')' {
+        all.push(show_type(text, &mut at)?);
+    }
+    if let Some(last) = all.last_mut().filter(|last| varargs && last.ends_with("[]")) {
+        last.truncate(last.len() - 2);
+        last.push_str("...");
+    }
+    Some(all.join(","))
+}
+
+fn member_flags(access: u16, found: &Attributes) -> u16 {
+    let deprecated = found.deprecated;
     let mut bits = 0;
     for (mask, bit) in [(0x0010, flag::FINAL), (0x0001, flag::PUBLIC), (0x0004, flag::PROTECTED), (0x0008, flag::STATIC), (0x0400, flag::ABSTRACT)] {
         if access & mask != 0 {
@@ -245,6 +376,9 @@ fn member_flags(access: u16, deprecated: bool) -> u16 {
     }
     if deprecated {
         bits |= flag::DEPRECATED;
+    }
+    if found.nullable {
+        bits |= flag::NULLABLE;
     }
     bits
 }
@@ -324,7 +458,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
             });
             let kind = Signature { text: descriptor, at: 0 }.kind()?;
             let generic = signature.and_then(|text| Signature { text, at: 0 }.kind()).unwrap_or_else(|| kind.clone());
-            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, flags: member_flags(flags, found.deprecated) });
+            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, flags: member_flags(flags, &found) });
         }
     }
     let mut methods = Vec::new();
@@ -341,6 +475,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 .filter(|(_, generic, _)| generic.len() == parameters.len());
             let (type_parameters, generic_parameters, generic_returns) =
                 generic.unwrap_or_else(|| (Vec::new(), parameters.clone(), returns.clone()));
+            let parameters_count = parameters.len();
             methods.push(Method {
                 name: String::from_utf8_lossy(method_name).into_owned(),
                 parameters,
@@ -354,13 +489,25 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 is_static: flags & ACC_STATIC != 0,
                 is_private: false,
                 varargs: flags & ACC_VARARGS != 0,
-                flags: member_flags(flags, found.deprecated),
+                shown: {
+                    let written = signature.filter(|text| show_parameters(text, false).is_some_and(|all| all.matches(',').count() + 1 == parameters_count.max(1)));
+                    show_parameters(written.unwrap_or(descriptor), flags & ACC_VARARGS != 0).unwrap_or_default()
+                },
+                throws: found.throws.iter().filter_map(|index| class_name(*index)).collect(),
+                nullable_parameters: {
+                    let shift = parameters_count.saturating_sub(found.annotated_parameters.max(1)).min(63);
+                    if found.annotated_parameters == 0 { 0 } else { found.nullable_parameters << shift }
+                },
+                flags: member_flags(flags, &found),
+                contract: found.contract.and_then(&utf8).map(|text| String::from_utf8_lossy(text).into_owned()).unwrap_or_default(),
+                starts: found.starts,
+                names: found.names.iter().filter_map(|name| utf8(*name)).map(|name| String::from_utf8_lossy(name).into_owned()).collect(),
             });
         }
     }
     let found = attributes(&mut reader, &utf8)?;
     let signature = found.signature;
-    let mut class_flags = member_flags(access, found.deprecated);
+    let mut class_flags = member_flags(access, &found);
     for (mask, bit) in [(0x4000, flag::ENUM), (0x2000, flag::ANNOTATION)] {
         if access & mask != 0 {
             class_flags |= bit;

@@ -202,7 +202,8 @@ fn call_arguments<'t>(call: Node<'t>) -> Vec<Node<'t>> {
 impl<'a> Resolver<'a> {
     /// The class seen from inside itself: its type parameters stand for their bounds.
     fn own_type(&self, name: &str) -> Type {
-        let bounds = self.index.get(name).map(|info| info.type_parameters.iter().map(|(_, bound)| bound.clone()).collect());
+        let own = |(variable, bound): &(String, Type)| if self.symbolic { Type::Variable(variable.clone()) } else { bound.clone() };
+        let bounds = self.index.get(name).map(|info| info.type_parameters.iter().map(own).collect());
         Type::Class(name.to_string(), bounds.unwrap_or_default())
     }
 
@@ -257,7 +258,7 @@ impl<'a> Resolver<'a> {
         declared
     }
 
-    fn binding(&self, usage: Node, name: &str) -> Option<Binding<'a>> {
+    pub fn binding(&self, usage: Node, name: &str) -> Option<Binding<'a>> {
         let mut inner = usage;
         let mut scope = crate::engine::source::parent(usage);
         while let Some(node) = scope {
@@ -484,7 +485,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn pattern_variable(&self, usage: Node, name: &str) -> Option<Type> {
+    pub fn pattern_variable(&self, usage: Node, name: &str) -> Option<Type> {
         for listed in self.pattern_scopes(usage) {
             let mut declared = listed.iter().filter(|(start, known, _)| *start < usage.start_byte() && known == name).peekable();
             if declared.peek().is_none() {
@@ -704,19 +705,7 @@ impl<'a> Resolver<'a> {
         if self.spent() {
             return None;
         }
-        let turns = *self.resolving.borrow().get(&call.id()).unwrap_or(&0u8);
-        if turns >= 2 {
-            self.skipped.set(self.skipped.get() + 1);
-            return None;
-        }
-        self.resolving.borrow_mut().insert(call.id(), turns + 1);
-        let found = self.pick_call(call);
-        if turns == 0 {
-            self.resolving.borrow_mut().remove(&call.id());
-        } else {
-            self.resolving.borrow_mut().insert(call.id(), turns);
-        }
-        found
+        self.in_turn(call, || self.pick_call(call))
     }
 
     fn pick_call(&self, call: Node) -> Option<Call> {
@@ -874,7 +863,23 @@ impl<'a> Resolver<'a> {
                 }
                 several => {
                     let exact = typed.as_ref().and_then(|actual| several.iter().find(|(_, method)| method.parameters == *actual));
-                    exact.or_else(|| several.iter().find(|(_, method)| several.iter().all(|(_, other)| narrower(method, other)))).copied()
+                    let found = exact.or_else(|| several.iter().find(|(_, method)| several.iter().all(|(_, other)| narrower(method, other))));
+                    // Variable arity: compare the parameter types each one offers for the arguments given.
+                    let spread = |method: &Method| -> Vec<Type> {
+                        let fixed = method.parameters.len().saturating_sub(1);
+                        let element = match method.parameters.last() {
+                            Some(Type::Array(element)) => (**element).clone(),
+                            Some(other) => other.clone(),
+                            None => Type::class("java.lang.Object"),
+                        };
+                        (0..shapes.len().max(fixed + 1)).map(|at| if at < fixed { method.parameters[at].clone() } else { element.clone() }).collect()
+                    };
+                    let narrower_spread = |method: &Method, other: &Method| {
+                        let (mine, theirs) = (spread(method), spread(other));
+                        mine.len() >= theirs.len() && mine.iter().zip(&theirs).all(|(a, b)| self.assignable(a, b, true))
+                    };
+                    let varied = || several.iter().find(|(_, method)| several.iter().all(|(_, other)| narrower_spread(method, other)));
+                    found.or_else(|| if phase == 2 { varied() } else { None }).copied()
                 }
             };
             return chosen.map(|(class, method)| Call { raw: false, receiver: owner, declaring: class.name.clone(), method: (*method).clone() });
@@ -887,7 +892,11 @@ impl<'a> Resolver<'a> {
         if self.spent() {
             return None;
         }
-        let owner = self.type_node(creation.field("type")?)?;
+        self.in_turn(creation, || self.pick_constructor(creation))
+    }
+
+    fn pick_constructor(&self, creation: Node) -> Option<Call> {
+        let owner = self.type_node(creation.child_by_field_name("type")?)?;
         let info = self.index.get(&owner.name())?;
         if info.is_interface && children(creation).iter().any(|part| part.kind() == "class_body") {
             let void = Type::Primitive("void");
@@ -904,7 +913,13 @@ impl<'a> Resolver<'a> {
                 is_static: false,
                 is_private: false,
                 varargs: false,
+                shown: String::new(),
+                throws: Vec::new(),
+                nullable_parameters: 0,
                 flags: 0,
+                names: Vec::new(),
+                contract: String::new(),
+                starts: false,
             };
             return Some(Call { raw: false, receiver: owner, declaring: info.name.clone(), method });
         }
@@ -934,7 +949,7 @@ impl<'a> Resolver<'a> {
         match (pattern, actual) {
             (_, Type::Null | Type::Wildcard) => {}
             (Type::Variable(name), _) if variables.contains(name) => {
-                if actual.open() {
+                if actual.open() && !self.symbolic {
                     return;
                 }
                 let actual = actual.clone().boxed();
@@ -984,21 +999,19 @@ impl<'a> Resolver<'a> {
         found
     }
 
-    /// The result type of a method reference used as a function taking `taken`.
-    fn reference_result(&self, reference: Node, taken: &[Type]) -> Option<Type> {
-        let parts = children(reference);
-        let qualifier = *parts.first()?;
-        let name = self.file.text_of(*parts.last()?);
-        let (owner, value) = match self.receiver(qualifier) {
-            Some(Receiver::Value(kind)) => (kind, true),
-            Some(Receiver::Static(owner)) => (Type::class(&owner), false),
-            None => (self.type_node(qualifier)?, false),
+    /// The method a method reference names when it is used as a function taking `taken`: the type it is looked up
+    /// in, the class that declares it, the method, and whether the first of `taken` stands where its receiver would.
+    pub fn reference_method(&self, reference: Node, taken: &[Type]) -> Option<(Type, &'a ClassInfo, &'a Method, bool)> {
+        let (owner, value) = self.reference_owner(reference)?;
+        let name = self.file.text_of(*children(reference).last()?);
+        let created = name == "new";
+        let methods: Vec<(&ClassInfo, &Method)> = if created {
+            let info = self.index.get(&owner.name())?;
+            info.methods.iter().filter(|method| method.name == "<init>").map(|method| (info, method)).collect()
+        } else {
+            self.index.methods(&owner.name(), name)
         };
-        if name == "new" {
-            return Some(owner);
-        }
-        let methods = self.index.methods(&owner.name(), name);
-        let offset = |method: &Method| usize::from(!value && method.parameters.len() + 1 == taken.len());
+        let offset = |method: &Method| usize::from(!created && !value && method.parameters.len() + 1 == taken.len());
         let fits = |method: &Method| {
             let given = &taken[offset(method).min(taken.len())..];
             given.len() == method.parameters.len()
@@ -1020,8 +1033,26 @@ impl<'a> Resolver<'a> {
             [one] => **one,
             several => **several.iter().find(|(_, method)| several.iter().all(|(_, other)| narrower(method, other)))?,
         };
+        Some((owner, declaring, method, offset(method) == 1))
+    }
+
+    /// The type a method reference looks its method up in, and whether that is a value's type.
+    fn reference_owner(&self, reference: Node) -> Option<(Type, bool)> {
+        Some(match self.receiver(*children(reference).first()?) {
+            Some(Receiver::Value(kind)) => (kind, true),
+            Some(Receiver::Static(owner)) => (Type::class(&owner), false),
+            None => (self.type_node(*children(reference).first()?)?, false),
+        })
+    }
+
+    /// The result type of a method reference used as a function taking `taken`.
+    fn reference_result(&self, reference: Node, taken: &[Type]) -> Option<Type> {
+        if children(reference).last().is_some_and(|name| self.file.text_of(*name) == "new") {
+            return self.reference_owner(reference).map(|(owner, _)| owner);
+        }
+        let (owner, declaring, method, unbound) = self.reference_method(reference, taken)?;
         let receiver = match taken.first() {
-            Some(first @ Type::Class(given, _)) if offset(method) == 1 && self.index.is_subtype(given, &owner.name()) => first.clone(),
+            Some(first @ Type::Class(given, _)) if unbound && self.index.is_subtype(given, &owner.name()) => first.clone(),
             _ => owner,
         };
         let mut map = self.index.member_map(&receiver, &declaring.name);
@@ -1030,7 +1061,7 @@ impl<'a> Resolver<'a> {
                 map.remove(name);
             }
             let mut inferred = HashMap::new();
-            for (pattern, actual) in method.generic_parameters.iter().zip(taken.iter().skip(offset(method))) {
+            for (pattern, actual) in method.generic_parameters.iter().zip(taken.iter().skip(usize::from(unbound))) {
                 self.unify(&pattern.substitute(&map), actual, &method.type_parameters, &mut inferred);
             }
             for (name, bound) in method.type_parameters.iter().zip(&method.type_bounds) {
@@ -1084,7 +1115,7 @@ impl<'a> Resolver<'a> {
             return None;
         }
         let map = self.index.member_map(&owner, &declaring.name);
-        Some(method.generic_parameters.iter().map(|kind| kind.substitute(&map)).filter(|kind| !kind.open()).collect())
+        Some(method.generic_parameters.iter().map(|kind| kind.substitute(&map)).collect())
     }
 
     fn is_busy(&self, node: Node) -> bool {
@@ -1285,7 +1316,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// The functional interface type a lambda is checked against.
-    fn lambda_target(&self, lambda: Node) -> Option<Type> {
+    pub fn lambda_target(&self, lambda: Node) -> Option<Type> {
         self.target(lambda, true)
     }
 
@@ -1372,10 +1403,31 @@ impl<'a> Resolver<'a> {
     }
 
     /// `this(...)` or `super(...)` at the start of a constructor.
+    /// One more turn at a call whose arguments may ask for it again; the third turn in a row is refused.
+    fn in_turn(&self, call: Node, pick: impl FnOnce() -> Option<Call>) -> Option<Call> {
+        let turns = *self.resolving.borrow().get(&call.id()).unwrap_or(&0u8);
+        if turns >= 2 {
+            self.skipped.set(self.skipped.get() + 1);
+            return None;
+        }
+        self.resolving.borrow_mut().insert(call.id(), turns + 1);
+        let found = pick();
+        if turns == 0 {
+            self.resolving.borrow_mut().remove(&call.id());
+        } else {
+            self.resolving.borrow_mut().insert(call.id(), turns);
+        }
+        found
+    }
+
     fn resolve_delegation(&self, call: Node) -> Option<Call> {
         if self.spent() {
             return None;
         }
+        self.in_turn(call, || self.pick_delegation(call))
+    }
+
+    fn pick_delegation(&self, call: Node) -> Option<Call> {
         let own = enclosing_type(self.file, self.scope, call)?;
         let delegate = call.field("constructor").map(|part| part.kind());
         let owner = if delegate == Some("super") { self.type_of_super(&own)? } else { self.own_type(&own) };

@@ -1,6 +1,7 @@
 //! Error Prone checks written for the engine: same check name, line and column as Error Prone reports.
 mod hierarchy;
 mod members;
+mod nullaway;
 mod operators;
 mod simple;
 
@@ -102,6 +103,7 @@ const CHECKS: &[Check] = &[
     simple::system_out,
     simple::java_util_date,
     simple::string_case_locale_usage,
+    nullaway::null_away,
 ];
 
 pub struct ErrorProne;
