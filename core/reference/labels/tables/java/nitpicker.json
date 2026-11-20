@@ -65,6 +65,7 @@
   "pmd/AssertionInControlFlow": ["tests"],
   "pmd/CollectorsToList": ["simplification"],
   "pmd/CopyPastedTest": ["tests", "maintainability"],
+  "pmd/DelegateSkipsDefaultMethod": ["bug"],
   "pmd/DisabledTest": ["tests"],
   "pmd/DroppedCallbackInTest": ["tests"],
   "pmd/ForEachSideEffect": ["maintainability"],
