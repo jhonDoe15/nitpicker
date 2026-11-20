@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
+import { CARRIED_VARIABLE } from '../../preset/eslint-config/production/carried-variable.mjs';
 
 const runnerPath = checkoutModulePath(
   path.join(fileURLToPath(new URL('../', import.meta.url)), 'eslint-runner.mjs'),
@@ -8,7 +9,8 @@ const runnerPath = checkoutModulePath(
 
 function invocationOf(settings, roots) {
   const { name, configRelativePath, patterns, policyFiles = [], environment = {} } = settings;
-  const { projectRoot, policyRoot, toolRoot, liveProjectRoot } = roots;
+  const { projectRoot, policyRoot, toolRoot, liveProjectRoot, carried = [] } = roots;
+  const carriedEnvironment = carried.length === 0 ? {} : { [CARRIED_VARIABLE]: carried.join(',') };
   const args = [
     runnerPath,
     '--analyzer-name',
@@ -22,7 +24,7 @@ function invocationOf(settings, roots) {
     '--config',
     configRelativePath,
     ...optionalArguments({ ...settings, liveProjectRoot }),
-    ...environmentArguments(environment),
+    ...environmentArguments({ ...environment, ...carriedEnvironment }),
     ...patterns.flatMap((pattern) => ['--pattern', pattern]),
     ...policyFiles.flatMap((policyFile) => ['--policy-file', policyFile]),
   ];
@@ -36,6 +38,8 @@ export function createEslintAnalyzer(settings) {
     shardWeight = 1,
     policyFromPackage = false,
     colocatedWith,
+    carriedBy,
+    carries = false,
   } = settings;
   return {
     name: settings.name,
@@ -46,6 +50,8 @@ export function createEslintAnalyzer(settings) {
     timeoutMs: settings.timeoutMs,
     shardWeight,
     ...(colocatedWith === undefined ? {} : { colocatedWith }),
+    ...(carriedBy === undefined ? {} : { carriedBy }),
+    ...(carries ? { carries: true } : {}),
     requiresDependencies: true,
     ...(policyFromPackage ? {} : { concurrencyGroup: 'eslint-snapshot-dependencies' }),
     createInvocation(roots) {

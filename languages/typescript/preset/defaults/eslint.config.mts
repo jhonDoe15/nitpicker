@@ -9,6 +9,7 @@ import {
   applyJavascriptDialect,
   applyRuleExceptions,
   assertionFunctionNames,
+  carriedPolicyConfigFor,
   detachedWorkRunnerNames,
   domProductionConfigFor,
   errorWrappingPolicy,
@@ -176,6 +177,7 @@ const presetConfig = defineConfig(
     plugins: { nitpicker: nitpickerRules },
     rules: { 'nitpicker/no-silent-catch': 'off' },
   },
+  ...carriedPolicyConfigFor(process.env),
   {
     files: productionFiles,
     ignores: testFiles,

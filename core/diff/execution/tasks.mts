@@ -27,6 +27,12 @@ export type AnalyzerTask = {
   readonly invocation: Invocation;
   readonly progress?: unknown;
   readonly checkpoint?: TaskCheckpoint | undefined;
+  readonly carried?: readonly CarriedTask[] | undefined;
+};
+
+export type CarriedTask = {
+  readonly name: string;
+  readonly checkpoint?: TaskCheckpoint | undefined;
 };
 
 type Frame = { readonly task: AnalyzerTask; readonly exiting: boolean };

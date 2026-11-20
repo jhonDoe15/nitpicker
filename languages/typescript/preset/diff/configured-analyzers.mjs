@@ -89,6 +89,8 @@ function buildAnalyzers(checks) {
           policyFiles: check.policyFiles,
           shardWeight: check.shardWeight,
           colocatedWith: check.colocatedWith,
+          carriedBy: check.carriedBy,
+          carries: check.carries,
           policyFromPackage: true,
         }),
       ),
