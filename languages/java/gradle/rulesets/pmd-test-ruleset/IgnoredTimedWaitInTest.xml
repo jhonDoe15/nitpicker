@@ -21,7 +21,13 @@
   [not(ancestor::MethodDeclaration[1]//MethodCall[@MethodName = ('expectLastCall', 'replay', 'replayAll')])]
   [(parent::ExpressionStatement
     | parent::ExpressionStatement/parent::Block/parent::TryStatement[not(FinallyClause)])
-     /following-sibling::*//MethodCall[matches(@MethodName, '^(assert|verify)') or @MethodName = 'fail']]
+     /following-sibling::*//MethodCall[matches(@MethodName, '^assert')
+       or @MethodName = ('fail', 'verify', 'verifyNoInteractions', 'verifyNoMoreInteractions')]]
+  [let $waited := *[1]/descendant-or-self::*[self::VariableAccess or self::FieldAccess]/@Name return
+     empty((parent::ExpressionStatement
+            | parent::ExpressionStatement/parent::Block/parent::TryStatement[not(FinallyClause)])
+             /following-sibling::*//MethodCall[matches(@MethodName, '^assert')]
+             //*[self::VariableAccess or self::FieldAccess][@Name = $waited])]
 ]]></value>
       </property>
     </properties>

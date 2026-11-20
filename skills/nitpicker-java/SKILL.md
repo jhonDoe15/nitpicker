@@ -105,7 +105,7 @@ The allowed forms are on one page per topic. Before you write code, read the pag
 - [Threads, I/O and remote calls](rules/concurrency-and-io.md): locks, logging, bounded fan-out, child processes, HTTP deadlines, resources and `finally`, work at class load.
 - [Errors](rules/errors.md): catching, rethrowing and failures as values.
 - [Structure and dependencies](rules/structure.md): method, file and folder limits, CRAP, duplicates, test-only code, aggregates, package dependencies.
-- [Tests](rules/tests.md): branch coverage, mutation testing, fast tests, waits, retries, shared state, servers and containers, console output.
+- [Tests](rules/tests.md): branch coverage, mutation testing, fast tests, waits and their results, time limits, fixed ports, unordered collections, retries, shared state, servers and containers, console output.
 
 ## Security
 

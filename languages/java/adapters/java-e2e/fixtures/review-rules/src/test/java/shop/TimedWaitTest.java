@@ -61,8 +61,19 @@ class TimedWaitTest {
     queue.offer("order", 1, TimeUnit.SECONDS); // violation: IgnoredTimedWaitInTest
     pool.shutdown();
     pool.awaitTermination(1, TimeUnit.SECONDS); // violation: IgnoredTimedWaitInTest
-    assertThat(queue).containsExactly("order");
+    assertEquals(List.of(), received);
     lock.unlock();
+  }
+
+  @Test
+  void assertsTheStateItWaitedFor() throws InterruptedException {
+    CountDownLatch latch = new CountDownLatch(1);
+    BlockingQueue<String> queue = new ArrayBlockingQueue<>(1);
+    pool.execute(() -> deliver(latch));
+    latch.await(1, TimeUnit.SECONDS);
+    assertEquals(0, latch.getCount());
+    queue.offer("order", 1, TimeUnit.SECONDS);
+    assertThat(queue).containsExactly("order");
   }
 
   @Test

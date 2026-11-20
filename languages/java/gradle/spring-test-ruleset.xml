@@ -8,7 +8,7 @@
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
   <description>Nitpicker Spring rules for test sources.</description>
   <rule name="SpringTransactionalHttpTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="@Transactional does not clean up after this test: with RANDOM_PORT or DEFINED_PORT the request runs on a server thread in its own transaction, which commits, so the rows it writes stay for the next test, and rows the test wrote before the request are not committed yet, so the server does not see them. Remove @Transactional and clean up with @Sql or a delete in @AfterEach, or call the application through MockMvc, which runs on the test thread, when a rollback is wanted.">
+        message="Remove @Transactional from this test and clean up with @Sql or a delete in @AfterEach, or call the application through MockMvc, which runs on the test thread, when a rollback is wanted. With RANDOM_PORT or DEFINED_PORT the request runs on a server thread in its own transaction, which commits, so the rollback of the test does not undo the rows it writes, and rows the test wrote before the request are not committed yet, so the server does not see them.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //ClassDeclaration
@@ -18,14 +18,16 @@
   [not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.test.annotation.Commit')])]
   [not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.test.annotation.Rollback')]
          [.//BooleanLiteral[@True = false()]])]
-  /(.[ClassBody/FieldDeclaration[
-          ClassType[pmd-java:typeIs('org.springframework.boot.test.web.client.TestRestTemplate')
-                    or pmd-java:typeIs('org.springframework.test.web.reactive.server.WebTestClient')]
-          or ModifierList/Annotation[pmd-java:typeIs('org.springframework.boot.test.web.server.LocalServerPort')
-                                     or pmd-java:typeIs('org.springframework.boot.web.server.LocalServerPort')
-                                     or pmd-java:typeIs('org.springframework.boot.context.embedded.LocalServerPort')]
+  /(.[let $port := ClassBody/FieldDeclaration[
+          ModifierList/Annotation[pmd-java:typeIs('org.springframework.boot.test.web.server.LocalServerPort')
+                                  or pmd-java:typeIs('org.springframework.boot.web.server.LocalServerPort')
+                                  or pmd-java:typeIs('org.springframework.boot.context.embedded.LocalServerPort')]
           or ModifierList/Annotation[pmd-java:typeIs('org.springframework.beans.factory.annotation.Value')]
-               //StringLiteral[contains(@ConstValue, 'local.server.port')]]]
+               //StringLiteral[contains(@ConstValue, 'local.server.port')]]/VariableDeclarator/VariableId/@Name
+      return ClassBody/MethodDeclaration/Block//(VariableAccess | FieldAccess)[@Name = $port]
+        or ClassBody/MethodDeclaration/Block
+             //MethodCall[*[1][pmd-java:typeIs('org.springframework.boot.test.web.client.TestRestTemplate')
+                               or pmd-java:typeIs('org.springframework.test.web.reactive.server.WebTestClient')]]]
       /ModifierList
     | ClassBody/MethodDeclaration
         [ModifierList/Annotation[@SimpleName = ('Test', 'ParameterizedTest', 'RepeatedTest', 'TestFactory', 'TestTemplate')]]
@@ -35,7 +37,7 @@
   /Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')
               or pmd-java:typeIs('jakarta.transaction.Transactional')
               or pmd-java:typeIs('javax.transaction.Transactional')]
-    [not(.//MemberValuePair[@Name = 'propagation']//(FieldAccess | VariableAccess)[@Name = ('NOT_SUPPORTED', 'NEVER')])]
+    [not(.//(FieldAccess | VariableAccess)[@Name = ('NOT_SUPPORTED', 'NEVER')])]
 ]]></value></property></properties>
   </rule>
   <rule name="SpringUnusedContext" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"

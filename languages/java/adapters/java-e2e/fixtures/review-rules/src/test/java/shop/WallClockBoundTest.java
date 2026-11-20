@@ -80,6 +80,14 @@ abstract class WallClockBoundTest {
   }
 
   @Test
+  void comparesNumbersNamedLikeTheClockReads() {
+    long startedAt = 100;
+    long elapsed = 150 - startedAt;
+    assertTrue(elapsed < 500);
+    assertTrue(150 - startedAt < 100);
+  }
+
+  @Test
   void expectsTheLimitToBeHit() {
     assertThrows(
         AssertionFailedError.class,

@@ -17,6 +17,8 @@ const BOOT_TEST_USE = /@SpringBootTest\b/u;
 const EXPLICIT_CLASSES = /^@(?:SpringBootTest\(.*\bclasses=|ContextConfiguration\b)/u;
 const LOCAL_CONFIGURATION = /@SpringBoot(?:Application|Configuration)\b/u;
 const WORTH_READING = /@SpringBootTest\b|\bextends\b|\babstract\b/u;
+const EXTENDED = /\bextends\s+(?:\w+\.)*(\w+)/gu;
+const APPLICATION = /@SpringBootApplication\b/u;
 const OUTSIDE_CONTEXT = new RegExp(
   [
     '^@(?:Slf4j|Log4j2|CommonsLog|DisplayName|DisplayNameGeneration|Tags?|TestMethodOrder|TestClassOrder',
@@ -35,16 +37,22 @@ type Context = { readonly mocks: string; readonly classes: readonly Located[] };
 export function springContextMessage({
   contexts,
   sharing,
+  alike = 0,
   example,
   mocks,
 }: {
   contexts: number;
   sharing: number;
+  alike?: number;
   example: string;
   mocks: readonly string[];
 }): string {
   const own = mocks.length === 0 ? 'no mock beans' : `the mock beans ${mocks.join(', ')}`;
-  return `This test class starts its own application context. Its configuration is the same as that of ${String(sharing)} other test classes of the module (${example} is one) except for its mock beans (${own}), and every distinct set of @MockBean, @MockitoBean, @SpyBean and @MockitoSpyBean fields is a separate entry in Spring's context cache, so these classes start ${String(contexts)} contexts between them. Declare the mocks in a base class or @TestConfiguration that all of them share, or test this class without the whole context: a slice such as @WebMvcTest or a unit test that creates the class with new.`;
+  const starts =
+    alike === 0
+      ? 'This test class starts its own application context.'
+      : `This test class and ${String(alike)} more with the same mock beans start an application context of their own.`;
+  return `${starts} Its configuration is the same as that of ${String(sharing)} other test classes of the module (${example} is one) except for its mock beans (${own}), and every distinct set of @MockBean, @MockitoBean, @SpyBean and @MockitoSpyBean fields is a separate entry in Spring's context cache, so these classes start ${String(contexts)} contexts between them. Declare the mocks in a base class or @TestConfiguration that all of them share, or test this class without the whole context: a slice such as @WebMvcTest or a unit test that creates the class with new.`;
 }
 
 export const SPRING_CONTEXT_ALLOWED = springContextMessage({
@@ -152,6 +160,7 @@ function moduleFindings(
             message: springContextMessage({
               contexts: contexts.length,
               sharing,
+              alike: extra.classes.length - 1,
               example: example.name,
               mocks: extra.mocks === '' ? [] : extra.mocks.split(', '),
             }),
@@ -163,9 +172,16 @@ function moduleFindings(
   });
 }
 
+function severalApplications(projectRoot: string, project: SourceProject): boolean {
+  const applications = sourceRootsOf(project, { kotlin: false, test: false })
+    .flatMap((root) => sourceFilesUnder(pathInside(projectRoot, root), ['.java']))
+    .filter((file) => APPLICATION.test(readFileSync(file, 'utf8')));
+  return applications.length > 1;
+}
+
 function projectFindings(
   projectRoot: string,
-  files: readonly string[],
+  { files, project }: { files: readonly string[]; project: SourceProject },
   finding: ReturnType<typeof findingFactory>,
 ): ReviewFinding[] {
   const texts = files.map((file) => ({
@@ -175,14 +191,22 @@ function projectFindings(
   if (!texts.some(({ text }) => BOOT_TEST_USE.test(text))) {
     return [];
   }
+  const parents = new Set(
+    texts.flatMap(({ text }) => [...text.matchAll(EXTENDED)].map((match) => match[1])),
+  );
   const classes = texts
-    .filter(({ text }) => WORTH_READING.test(text))
+    .filter(
+      ({ file, text }) => WORTH_READING.test(text) || parents.has(path.basename(file, '.java')),
+    )
     .flatMap(({ file, text }): Located[] => {
       const found = testClassOf(text);
       return found === undefined ? [] : [{ ...found, file }];
     });
   const localConfiguration = texts.some(({ text }) => LOCAL_CONFIGURATION.test(text));
-  return moduleFindings(classes, localConfiguration, finding);
+  const findings = moduleFindings(classes, localConfiguration, finding);
+  return findings.length > 0 && !localConfiguration && severalApplications(projectRoot, project)
+    ? moduleFindings(classes, true, finding)
+    : findings;
 }
 
 export function readSpringContextFindings(
@@ -208,6 +232,6 @@ export function readSpringContextFindings(
     for (const file of files) {
       seen.add(file);
     }
-    return projectFindings(projectRoot, files, finding);
+    return projectFindings(projectRoot, { files, project }, finding);
   });
 }

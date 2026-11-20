@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -55,6 +56,10 @@ abstract class HashOrderTest {
     assertEquals(Set.of("ADMIN", "AUDITOR"), roles);
     assertThat(Set.of("pen")).containsExactly("pen");
     assertArrayEquals(new String[] {"classes"}, new File("build").list());
+    String[] sorted = new File("build").list();
+    Arrays.sort(sorted);
+    assertArrayEquals(new String[] {"classes", "libs"}, sorted);
+    assertThat(sorted).containsExactly("classes", "libs");
   }
 
   @Test
