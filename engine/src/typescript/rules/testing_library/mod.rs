@@ -3,7 +3,7 @@
 //! and a rule sees a node only once a Testing Library module has been imported, as in the plugin.
 mod checks;
 mod detect;
-mod nodes;
+pub mod nodes;
 mod promises;
 mod resolve;
 pub mod scope;
@@ -174,11 +174,11 @@ pub fn check(context: &mut Context) {
     }
     let mut module = context.setting("testing-library/utils-module").map(|module| Some(module.to_string()).filter(|module| !module.is_empty()));
     if module.is_none() && FOLLOW_IMPORTS.get().copied().unwrap_or(false) {
-        let found = scope::of(view.program(), context.file.path, context.display());
+        let Some(found) = context.react_test_scope() else { return };
         if !found.inside {
             return;
         }
-        module = found.utils_module.map(Some);
+        module = found.utils_module.clone().map(Some);
     }
     let selected: Vec<&'static str> = RULES.iter().copied().filter(|rule| context.selected.contains(rule)).collect();
     let mut walk = Walk {

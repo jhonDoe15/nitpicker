@@ -1,5 +1,5 @@
-//! Runs the engine's testing-library rules on fixtures and compares the findings with what the ESLint plugin
-//! reported for the same files. The expected file comes from `parity/typescript-lint-expected.mts`.
+//! Runs the engine's lint rules on fixtures and compares the findings with what the ESLint rules reported for
+//! the same files. The expected files come from `parity/typescript-lint-expected.mts`.
 use std::path::Path;
 use std::process::Command;
 
@@ -70,4 +70,21 @@ fn a_test_file_takes_its_utilities_from_the_helper_its_imports_reach() {
     assert_eq!(sorted(found), rows(&expected));
     let unscoped: Vec<Row> = serde_json::from_str(&engine_on_scope_fixtures(&["typescript-lint"])).expect("json");
     assert_eq!(unscoped.len(), 1, "without the scope only the direct import counts");
+}
+
+const REACT_TESTS: [&str; 3] = ["hover.test.tsx", "keyboard.test.tsx", "outside.test.ts"];
+const REACT_TEST_RULES: &str = "hover-test-needs-keyboard";
+
+#[test]
+fn react_test_rules_report_what_the_eslint_rules_report() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
+    let fixtures = root.join("fixtures").join("typescript-react-tests");
+    let list = std::env::temp_dir().join(format!("nitpicker-engine-react-tests-{}.tsv", std::process::id()));
+    let lines: Vec<String> = REACT_TESTS.iter().map(|name| format!("{}\t{name}", fixtures.join(name).display())).collect();
+    std::fs::write(&list, lines.join("\n")).expect("list");
+    let output = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine")).args(["typescript-lint", "--rules", REACT_TEST_RULES, "--files"]).arg(&list).output().expect("engine runs");
+    let _ = std::fs::remove_file(&list);
+    assert!(output.status.success());
+    let found: Vec<Row> = serde_json::from_slice(&output.stdout).expect("json");
+    assert_eq!(sorted(found), rows(&root.join("expected").join("typescript-react-tests.json")));
 }

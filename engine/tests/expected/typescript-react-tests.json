@@ -1,0 +1,11 @@
+[
+ [
+  "hover.test.tsx",
+  "nitpicker/hover-test-needs-keyboard",
+  6,
+  3,
+  "Every hover behavior needs a keyboard equivalent. Add a test that tabs to the element (`await user.tab()`) and asserts the same state.",
+  6,
+  51
+ ]
+]
