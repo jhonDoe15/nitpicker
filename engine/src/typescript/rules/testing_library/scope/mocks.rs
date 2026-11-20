@@ -6,6 +6,9 @@ use std::collections::HashMap;
 const DEFAULT: &str = "default";
 const WHOLE_MODULE: &[&str] = &[DEFAULT, "*"];
 
+const SINON_FUNCTIONS: &[&str] = &["useFakeTimers", "createSandbox", "restore", "stub", "spy", "replace", "replaceGetter", "replaceSetter"];
+const TIMER_FUNCTIONS: &[&str] = &["install", "createClock", "withGlobal"];
+
 /// Module, the imported names that are the API object, and the kind of that object.
 const IMPORTS: &[(&str, &[&str], &str)] = &[
     ("vitest", &["vi", "vitest"], "vitest"),
@@ -61,7 +64,7 @@ fn chained_require(init: Option<Node>) -> Option<Node> {
     Some(current)
 }
 
-fn member_name(node: Node) -> Option<String> {
+pub fn member_name(node: Node) -> Option<String> {
     let property = node.filter_kind("MemberExpression")?.node("property")?;
     if node.flag("computed") { string_literal(Some(property)) } else { identifier_name(Some(property)) }
 }
@@ -77,11 +80,34 @@ impl<'v> Kinded<'v> for Node<'v> {
 }
 
 /// `runnerApisOf`: the names that stand for a runner or mocking API in this file.
-pub struct Apis(HashMap<String, &'static str>);
+pub struct Apis(HashMap<String, &'static str>, HashMap<String, (&'static str, String)>);
+
+/// A module a call replaces: its name when the call spells it out, and what replaces it.
+pub struct Mocked<'v> {
+    pub name: Option<String>,
+    pub replacement: Option<Node<'v>>,
+}
+
+fn functions_of(kind: &str) -> &'static [&'static str] {
+    match kind {
+        "sinon" => SINON_FUNCTIONS,
+        "fakeTimers" => TIMER_FUNCTIONS,
+        _ => &[],
+    }
+}
+
+fn produced(kind: &str, method: &str) -> Option<&'static str> {
+    match (kind, method) {
+        ("sinon", "createSandbox") => Some("sinon"),
+        ("sinon", "useFakeTimers") | ("fakeTimers", "install" | "createClock") => Some("clock"),
+        _ => None,
+    }
+}
 
 impl Apis {
     pub fn of(program: Node) -> Apis {
-        let mut apis = Apis(HashMap::from([("vi".to_string(), "vitest"), ("vitest".to_string(), "vitest"), ("jest".to_string(), "jest"), ("sinon".to_string(), "sinon")]));
+        let globals = HashMap::from([("vi".to_string(), "vitest"), ("vitest".to_string(), "vitest"), ("jest".to_string(), "jest"), ("sinon".to_string(), "sinon")]);
+        let mut apis = Apis(globals, HashMap::new());
         let body = program.nodes("body");
         for import in body.iter().filter(|statement| statement.is("ImportDeclaration") && statement.text("importKind").as_deref() != Some("type")) {
             apis.import(*import);
@@ -101,14 +127,38 @@ impl Apis {
                 _ => specifier.node("imported").and_then(|imported| imported.name().map(|name| name.into_owned()).or_else(|| string_literal(Some(imported)))),
             };
             if let (Some(imported), Some(local)) = (imported, identifier_name(specifier.node("local"))) {
-                if names.contains(&imported.as_str()) {
-                    self.0.insert(local, kind);
-                }
+                self.bind(names, kind, imported, local);
             }
         }
     }
 
+    fn bind(&mut self, names: &[&str], kind: &'static str, name: String, local: String) {
+        if names.contains(&name.as_str()) {
+            self.0.insert(local, kind);
+        } else if functions_of(kind).contains(&name.as_str()) {
+            self.1.insert(local, (kind, name));
+        }
+    }
+
     fn declarator(&mut self, node: Node) {
+        self.required_bindings(node);
+        let made = node.node("init").filter(|init| init.is("CallExpression")).and_then(|init| init.node("callee")).and_then(|callee| self.called(callee));
+        let kind = made.and_then(|(kind, method)| produced(kind?, &method.unwrap_or_default()));
+        if let (Some(local), Some(kind)) = (identifier_name(node.node("id")), kind) {
+            self.0.insert(local, kind);
+        }
+    }
+
+    /// `calledMethod`: the API a callee belongs to and the method it names.
+    pub fn called(&self, callee: Node) -> Option<(Option<&'static str>, Option<String>)> {
+        if let Some((kind, method)) = callee.name().filter(|_| callee.is("Identifier")).and_then(|name| self.1.get(name.as_ref())) {
+            return Some((Some(*kind), Some(method.clone())));
+        }
+        let object = callee.filter_kind("MemberExpression")?.node("object")?;
+        Some((self.kind_of_object(object), member_name(callee)))
+    }
+
+    fn required_bindings(&mut self, node: Node) {
         let init = node.node("init");
         let direct = required(init).and_then(|source| spec_for(&source));
         let chained = || required(chained_require(init)).and_then(|source| spec_for(&source)).filter(|(_, kind)| *kind == "proxyquire");
@@ -117,9 +167,7 @@ impl Apis {
         if id.is("ObjectPattern") {
             for property in id.nodes("properties").into_iter().filter(|property| property.is("Property")) {
                 if let (Some(key), Some(value)) = (identifier_name(property.node("key")), identifier_name(property.node("value"))) {
-                    if names.contains(&key.as_str()) {
-                        self.0.insert(value, kind);
-                    }
+                    self.bind(names, kind, key, value);
                 }
             }
         } else if let Some(local) = identifier_name(Some(id)).filter(|_| names.contains(&DEFAULT)) {
@@ -138,7 +186,7 @@ impl Apis {
     }
 
     /// `moduleMocks`: the names of the modules this call replaces; a name the call does not spell out is `None`.
-    pub fn mocked(&self, call: Node) -> Vec<Option<String>> {
+    pub fn mocked<'v>(&self, call: Node<'v>) -> Vec<Mocked<'v>> {
         let Some(callee) = call.node("callee") else { return Vec::new() };
         let direct = callee.is("Identifier");
         let method = if direct { None } else { member_name(callee) };
@@ -151,11 +199,11 @@ impl Apis {
         let method = method.unwrap_or_default();
         let arguments = call.list("arguments");
         if loader_mocks(kind).is_some_and(|methods| direct || methods.contains(&method.as_str())) {
-            return arguments.iter().skip(1).take(2).flatten().filter(|argument| argument.is("ObjectExpression")).flat_map(|argument| argument.nodes("properties")).map(key_name).collect();
+            return arguments.iter().skip(1).take(2).flatten().filter(|argument| argument.is("ObjectExpression")).flat_map(|argument| argument.nodes("properties")).map(loader_mock).collect();
         }
         let mocks = if direct { matches!(kind, "mockRequire" | "quibble") } else { module_mocks(kind).contains(&method.as_str()) };
         match arguments.first() {
-            Some(source) if mocks => vec![mocked_name(*source)],
+            Some(source) if mocks => vec![Mocked { name: mocked_name(*source), replacement: arguments.get(1).copied().flatten() }],
             _ => Vec::new(),
         }
     }
@@ -164,6 +212,11 @@ impl Apis {
 fn mocked_name(node: Option<Node>) -> Option<String> {
     let node = node?;
     string_literal(if node.is("ImportExpression") { node.node("source") } else { Some(node) })
+}
+
+fn loader_mock(property: Node) -> Mocked {
+    let replacement = if property.is("Property") { property.node("value") } else { property.node("argument") };
+    Mocked { name: key_name(property), replacement }
 }
 
 fn key_name(property: Node) -> Option<String> {
