@@ -1,7 +1,8 @@
 """pmd-expected.py <rules.json> <source dir> <out.json> [aux class path file]
 
 Runs PMD with the XPath rules of a rule list and writes what it reports as a sorted list of
-[file, rule, line, column]. A rule whose query fails on a file is listed as "!<rule>" at 0:0.
+[file, rule, line, column]. A rule whose query fails on a file is listed as "!<rule>" at 0:0, and a file PMD cannot read as "!parse".
+A row PMD reports twice is listed twice.
 PMD_CLASSPATH holds the class path of the PMD command line (PMD 7).
 """
 import json, os, re, subprocess, sys, tempfile
@@ -31,13 +32,13 @@ with tempfile.TemporaryDirectory() as work:
     subprocess.run(command, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     found = json.load(open(report))
 root = os.path.abspath(source)
-rows = set()
+rows = []
 for file in found["files"]:
     for seen in file["violations"]:
-        rows.add((os.path.relpath(file["filename"], root), seen["rule"], seen["beginline"], seen["begincolumn"]))
+        rows.append((os.path.relpath(file["filename"], root), seen["rule"], seen["beginline"], seen["begincolumn"]))
 for trouble in found.get("processingErrors", []):
-    rule = re.search(r"Rule=(\w+)\]", trouble.get("detail", ""))
-    if rule:
-        rows.add((os.path.relpath(trouble["filename"], root), "!" + rule.group(1), 0, 0))
+    rule = re.search(r"Rule=([^\]]+)\]", trouble.get("detail", ""))
+    failed = "!" + rule.group(1) if rule else "!parse"
+    rows.append((os.path.relpath(trouble["filename"], root), failed, 0, 0))
 open(out, "w").write("[\n" + ",\n".join(json.dumps(row) for row in sorted(rows)) + "\n]\n")
 print(len(rows), "rows")
