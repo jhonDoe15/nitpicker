@@ -237,6 +237,7 @@
   "pmd/SpringStaticPostProcessorBean": ["bug", "spring"],
   "pmd/SpringTransactionalAnnotation": ["bug", "spring", "persistence"],
   "pmd/SpringTransactionalCheckedRollback": ["bug", "spring", "persistence"],
+  "pmd/SpringTransactionalHttpTest": ["tests", "spring"],
   "pmd/SpringTransactionalReadOnlyWrite": ["bug", "spring", "persistence"],
   "pmd/SpringTypedConfiguration": ["maintainability", "spring"],
   "pmd/SpringTypedRequestBody": ["maintainability", "security", "spring"],
