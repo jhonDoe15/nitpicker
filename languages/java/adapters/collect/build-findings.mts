@@ -25,6 +25,12 @@ import { fieldOf, optionalText } from '../../../../shared/values/readers.mts';
 import { stopReuseAhead } from '../../builds/reuse-ahead/reuse-ahead.mts';
 import { startGradleReuse, startMavenReuse } from '../../builds/reuse-ahead/reuse-start.mts';
 import { openGradleHosts } from '../../builds/host/gradle/gradle-hosts.mts';
+import {
+  type FailedToolTasks,
+  noteStoppedBuild,
+  skippedModuleFindings,
+} from '../gradle-wrapper/partial/failed-tool-tasks.mts';
+import { checkedModules } from './checked-modules.mts';
 
 type KotlinArgumentsRun = (kotlinArguments: readonly string[]) => void;
 type PresetRun = JavaRunOptions & {
@@ -32,6 +38,7 @@ type PresetRun = JavaRunOptions & {
   readonly kotlinRun?: unknown;
   readonly testsFailedModules?: readonly string[];
   readonly testsSkipped: boolean;
+  readonly failedTools?: FailedToolTasks;
 };
 
 const CLOCK_SLACK_MS = 2000;
@@ -93,6 +100,7 @@ function runJavaPreset(
     testsFailedModules = [],
     testsSkipped,
     environment,
+    failedTools,
     warn = { write: () => undefined },
   }: PresetRun,
 ): void {
@@ -113,18 +121,9 @@ function runJavaPreset(
         budget,
       });
       const checkTests = testsFailedModules.length === 0 && !testsSkipped;
-      const options = {
-        projectRoot,
-        gradle,
-        budget,
-        reportBase,
-        since,
-        policy,
-        spawn,
-        environment,
-      };
+      const run = { gradle, budget, reportBase, policy, spawn, environment, failedTools };
       for (const stage of stages) {
-        runGradleStage({ args: stage(), checkTests, ...options });
+        runGradleStage({ args: stage(), checkTests, projectRoot, since, ...run });
       }
     });
   });
@@ -136,6 +135,23 @@ function withoutReportBase(error: unknown, reportBase: string): unknown {
     : error;
 }
 
+function testsFailuresOrStopped(
+  projectRoot: string,
+  options: Omit<PresetRun, 'testsFailedModules' | 'testsSkipped'> & {
+    readonly failedTools: FailedToolTasks;
+  },
+): ReturnType<typeof runOrNoteFailingTests> {
+  const stopped = (error: unknown): boolean => noteStoppedBuild(options.failedTools, error);
+  try {
+    return runOrNoteFailingTests(runJavaPreset, projectRoot, options, stopped);
+  } catch (error) {
+    if (!stopped(error)) {
+      throw error;
+    }
+    return [];
+  }
+}
+
 function gradleFindings(
   projectRoot: string,
   options: JavaRunOptions,
@@ -143,12 +159,14 @@ function gradleFindings(
 ): JavaReport {
   const preset = options.policy?.preset ?? 'java';
   const kotlinRun: unknown = resolveKotlinRun(projectRoot, options.policy);
-  const testsFailures = runOrNoteFailingTests(runJavaPreset, projectRoot, {
+  const failedTools: FailedToolTasks = { tasks: [], error: undefined };
+  const testsFailures = testsFailuresOrStopped(projectRoot, {
     ...options,
     reportBase,
     kotlinRun,
+    failedTools,
   });
-  const report: unknown = readReportModules(reportBase, preset, projectRoot);
+  const report = checkedModules(failedTools, { reportBase, preset, projectRoot });
   startGradleReuse(projectRoot, report, options.policy);
   const duplicates = {
     reportRoot: reportBase,
@@ -167,9 +185,13 @@ function gradleFindings(
   });
   const design = gradleDesignFindings({ projectRoot, report, options, reportBase });
   return {
-    findings: [...findingsOf(fieldOf(read, 'findings')), ...design],
+    findings: [
+      ...findingsOf(fieldOf(read, 'findings')),
+      ...design,
+      ...skippedModuleFindings(report.skipped, failedTools),
+    ],
     imports: fieldOf(read, 'imports'),
-    testsFailures: withRootSourceRoots(testsFailures, fieldOf(report, 'modules')),
+    testsFailures: withRootSourceRoots(testsFailures, report.modules),
     notAffected: readNotAffected(reportBase),
   };
 }

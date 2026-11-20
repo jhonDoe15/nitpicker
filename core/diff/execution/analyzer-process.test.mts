@@ -63,6 +63,28 @@ describe('analyzer process execution', () => {
 
     expect(report.findings.map((finding) => fieldOf(finding, 'message'))).toEqual([seen]);
   });
+  it.each([
+    [240_000, '240000'],
+    [0, 'unset'],
+  ])('passes the size allowance of the deadline (%s) to the analyzer process', async (ms, seen) => {
+    const probe = {
+      ...task('probe'),
+      sizeAllowanceMs: ms,
+      invocation: {
+        command: process.execPath,
+        args: [
+          '-e',
+          "process.stdout.write(JSON.stringify({findings:[{tool:'probe',rule:'r',path:'a',identity:'i',message:process.env.NITPICKER_ANALYZER_SIZE_ALLOWANCE_MS ?? 'unset',classification:'enforceable'}]}))",
+        ],
+        cwd: fileURLToPath(new URL('../', import.meta.url)),
+        env: { PATH: process.env['PATH'] },
+      },
+    };
+
+    const report = await executeAnalyzerTask(probe);
+
+    expect(report.findings.map((finding) => fieldOf(finding, 'message'))).toEqual([seen]);
+  });
   it('hides the CI job summary path from analyzers and keeps the rest of the environment', async () => {
     const probe = {
       ...task('probe'),

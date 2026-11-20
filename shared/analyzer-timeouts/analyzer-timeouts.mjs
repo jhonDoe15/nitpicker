@@ -4,6 +4,7 @@ import { byText } from '../text-order/by-text.mjs';
 
 export const ANALYZER_TIMEOUT_KEY = 'analyzerTimeoutMinutes';
 export const ANALYZER_TIMEOUT_VARIABLE = 'NITPICKER_ANALYZER_TIMEOUT_MS';
+export const SIZE_ALLOWANCE_VARIABLE = 'NITPICKER_ANALYZER_SIZE_ALLOWANCE_MS';
 export const MINUTE_MS = 60_000;
 export const MAX_TIMER_MS = 2 ** 31 - 1;
 const MAX_ANALYZER_TIMEOUT_MINUTES = Math.floor(MAX_TIMER_MS / MINUTE_MS);
@@ -28,6 +29,11 @@ export function validateAnalyzerTimeouts(timeouts) {
 export function analyzerDeadlineMs(environment) {
   const value = environment[ANALYZER_TIMEOUT_VARIABLE];
   return value !== undefined && WHOLE_NUMBER.test(value) ? Number(value) : undefined;
+}
+
+export function sizeAllowanceMs(environment) {
+  const value = environment[SIZE_ALLOWANCE_VARIABLE];
+  return value !== undefined && WHOLE_NUMBER.test(value) ? Number(value) : 0;
 }
 
 export function minutesSetting(environment, variable, { fallbackMs, maxMinutes }) {

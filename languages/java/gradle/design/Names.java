@@ -21,10 +21,19 @@ public final class Names {
   private static String nameText(Tree type) {
     return switch (type) {
       case IdentifierTree identifier -> identifier.getName().toString();
-      case MemberSelectTree select -> trimPackage(segments(select));
+      case MemberSelectTree select -> selectText(select);
       case WildcardTree wildcard -> "?";
-      default -> type.toString().replaceAll("\\s+", "");
+      default -> sourceText(type);
     };
+  }
+
+  private static String selectText(MemberSelectTree select) {
+    List<String> segments = segments(select);
+    return segments.isEmpty() ? sourceText(select) : trimPackage(segments);
+  }
+
+  private static String sourceText(Tree type) {
+    return type.toString().replaceAll("\\s+", "");
   }
 
   private static String trimPackage(List<String> segments) {
@@ -40,13 +49,24 @@ public final class Names {
     Tree current = tree;
     while (current instanceof MemberSelectTree select) {
       parts.addFirst(select.getIdentifier().toString());
-      current = select.getExpression();
+      current = rawType(select.getExpression());
     }
     if (current instanceof IdentifierTree identifier) {
       parts.addFirst(identifier.getName().toString());
       return parts;
     }
     return List.of();
+  }
+
+  private static Tree rawType(Tree tree) {
+    Tree current = tree;
+    while (current instanceof ParameterizedTypeTree || current instanceof AnnotatedTypeTree) {
+      current =
+          current instanceof ParameterizedTypeTree parameterized
+              ? parameterized.getType()
+              : ((AnnotatedTypeTree) current).getUnderlyingType();
+    }
+    return current;
   }
 
   public static boolean isThis(Tree tree) {

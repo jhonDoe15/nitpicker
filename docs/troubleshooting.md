@@ -237,6 +237,11 @@ match the finding schema (`tool` must equal the entry's `name`). An `internal-er
 Kotlin analyzer means the build ran but nitpicker's own code failed on it, often while reading a tool
 report the build left empty or cut off.
 
+An analyzer's findings report may be up to 384 MB (its error output 128 MB). The Java and Kotlin
+analyzers stay under it on their own: when a very large module produces more than 256 MB, they leave out the
+findings of their largest rules, report the rest, and add one `output-limit` tool error that names the
+rules and counts that were left out.
+
 **Fix.** The message ends with the process's own output; start there. For an out-of-memory kill, give the
 job more memory or run fewer analyzers at once with `NITPICKER_MAX_PARALLEL`. Every Node analyzer, ESLint
 included, gets a heap of three quarters of the memory less 1.5 GB for each other analyzer that can run beside
@@ -949,8 +954,11 @@ coverage, CRAP, slow-test or mutation results: on the head it is a `tests/tests-
 and the head's results of those rules count as new only on changed lines, as for a base whose tests
 fail. A `--quick` run, which runs no tests, and a second timeout stay the plain timeout error above.
 
-**Cause.** Each Gradle command has a 15 minute budget (two commands per analyzer, the optional
-Checkstyle export and the analysis), and each Maven command 15 minutes. A cold Gradle cache, a wrapper
+**Cause.** Each Gradle command has a budget of 15 minutes plus 30 seconds for each build file and 2
+minutes for each started thousand `.java` and `.kt` files (two commands per analyzer, the optional
+Checkstyle export and the analysis), and each Maven command the same. When Gradle is stopped after some
+projects finished, those projects are reported and one `gradle/module-build-failed` tool error names
+the projects that were not reached. A cold Gradle cache, a wrapper
 that is downloading a distribution, a large test suite, or mutation testing with PIT exceed it. Maven's
 message warns that its post-integration-test steps may not have run, so containers or servers the build
 started may still be running.

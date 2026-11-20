@@ -14,6 +14,7 @@ export const TESTS_UNMEASURED_RULES = [TESTS_FAILED_RULE, TESTS_TIMED_OUT_RULE];
 export const TESTS_FAILED_RULES = [...TESTS_UNMEASURED_RULES, TESTS_FAILED_SKIPPED_RULE];
 /** One tool of an analyzer did not run; its findings are left out of the comparison on both snapshots. */
 export const TOOL_SKIPPED_RULE = 'tool-skipped';
+export const MODULE_BUILD_FAILED_RULE = 'module-build-failed';
 /** A tests-failed finding's `symbol` lists the directories it covers, joined by this. */
 export const TESTS_FAILED_SCOPE_SEPARATOR = ',';
 /** A mutation run that failed for one module; its `symbol` is that module's directory. */
