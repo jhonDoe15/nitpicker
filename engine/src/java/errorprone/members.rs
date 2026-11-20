@@ -322,3 +322,53 @@ pub fn inconsistent_overloads(context: &Context, node: Node) {
         }
     }
 }
+
+fn builder_owner(name: &str) -> bool {
+    name.rsplit(['.', '$']).next().is_some_and(|simple| simple.ends_with("Builder"))
+}
+
+fn builder_return(context: &Context, owner: &str, returns: &crate::java::types::model::Type) -> bool {
+    match returns {
+        crate::java::types::model::Type::Class(name, _) => {
+            builder_owner(owner) && name != crate::java::types::model::OBJECT && context.resolver.index.is_subtype(owner, name)
+        }
+        _ => false,
+    }
+}
+
+fn gives_this(context: &Context, expression: Node) -> bool {
+    let inner = |field: &str| expression.child_by_field_name(field).is_some_and(|part| gives_this(context, part));
+    match expression.kind() {
+        "this" => true,
+        "method_invocation" => context.resolver.resolve_call(expression).is_some_and(|call| {
+            !call.method.is_static && builder_return(context, &call.declaring, &call.method.returns)
+        }),
+        "ternary_expression" => inner("consequence") && inner("alternative"),
+        "parenthesized_expression" => named_children(expression).into_iter().next().is_some_and(|part| gives_this(context, part)),
+        "cast_expression" => inner("value"),
+        "field_access" => inner("object"),
+        "assignment_expression" | "binary_expression" => inner("right"),
+        _ => false,
+    }
+}
+
+fn other_return(context: &Context, node: Node) -> bool {
+    children(node).into_iter().any(|part| match part.kind() {
+        "lambda_expression" | "method_declaration" | "constructor_declaration" => false,
+        "return_statement" => {
+            named_children(part).into_iter().next().is_none_or(|value| !gives_this(context, value)) || other_return(context, part)
+        }
+        _ => other_return(context, part),
+    })
+}
+
+pub fn builder_return_this(context: &Context, node: Node) {
+    if node.kind() != "method_declaration" || crate::java::helpers::has_modifier(node, "static") {
+        return;
+    }
+    let (Some(body), Some(name)) = (node.child_by_field_name("body"), node.child_by_field_name("name")) else { return };
+    let Some((owner, method)) = super::hierarchy::declared_method(context, node) else { return };
+    if builder_return(context, &owner.name, &method.returns) && other_return(context, body) {
+        context.report("BuilderReturnThis", node, name.start_byte(), "Builder instance method does not return 'this'");
+    }
+}

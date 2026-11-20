@@ -101,6 +101,7 @@ const CHECKS: &[Check] = &[
     members::missing_override,
     members::private_constructor_for_utility_class,
     members::inconsistent_overloads,
+    members::builder_return_this,
     simple::missing_braces,
     simple::empty_catch,
     simple::non_final_static_field,
