@@ -4,6 +4,7 @@ import {
   normalizeUri as untypedNormalizeUri,
   prepareSarif as untypedPrepareSarif,
 } from '../../../../../../shared/ingest/sarif.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../../../shared/paths/glob.mjs';
 import {
   fieldOf,
   isPlainObject,
@@ -11,7 +12,6 @@ import {
   type Fields,
 } from '../../../../../../shared/values/readers.mts';
 import { isRuleCrashText } from './pmd-rule-crashes.mts';
-import { escapeRegExp } from '../../../../builds/typed/regex-views.mts';
 
 type SarifRoots = {
   readonly roots: readonly string[];
@@ -21,6 +21,7 @@ type SarifRoots = {
 type ProcessingOptions = SarifRoots & { readonly loggedCrashFiles?: ReadonlySet<string> };
 type Prepared = { readonly runs: readonly { readonly results: readonly unknown[] }[] };
 
+const escapeRegExp: (value: string) => string = untypedEscapeRegExp;
 const normalizeUri: (uri: string) => string | undefined = untypedNormalizeUri;
 const prepareSarif: (
   log: { readonly runs: readonly { readonly results: readonly Fields[] }[] },
