@@ -14,6 +14,11 @@ public class Slot {
     this.codes = codes.clone();
   }
 
+  public boolean accepts(String candidate, int[] other) {
+    if (key.equals(candidate)) return false;
+    return Arrays.equals(codes, other);
+  }
+
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
