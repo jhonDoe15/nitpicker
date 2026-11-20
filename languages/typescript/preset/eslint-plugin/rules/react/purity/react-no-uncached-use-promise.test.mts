@@ -1,12 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll } from 'vitest';
+import { useTemporaryProjects } from '../../../../test-support/temporary-projects.mts';
 import { createReactRuleTester } from '../test-support/tester.mts';
 import { rule } from './react-no-uncached-use-promise.mts';
 
-const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-use-promise-'));
-const files: Readonly<Record<string, string>> = {
+const projects = useTemporaryProjects('nitpicker-use-promise-', { keepForFile: true });
+const root = projects.projectWith({
   'spa/package.json': '{"name":"spa","dependencies":{"react":"19.0.0"}}',
   'spa/src/api.ts': [
     'export async function loadUser(id: string) { return { name: id }; }',
@@ -20,14 +18,6 @@ const files: Readonly<Record<string, string>> = {
   'site/package.json': '{"name":"site","dependencies":{"next":"15.0.0"}}',
   'mixed/package.json': '{"name":"mixed"}',
   'mixed/src/button.tsx': "'use client';\nexport const Button = () => null;",
-};
-for (const [file, text] of Object.entries(files)) {
-  mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-  writeFileSync(path.join(root, file), text);
-}
-
-afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
 });
 
 const spa = path.join(root, 'spa/src/profile.tsx');
