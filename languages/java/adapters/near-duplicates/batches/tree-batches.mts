@@ -15,7 +15,14 @@ type Batches = { readonly closed: string[][]; readonly open: string[]; readonly 
 const BATCH_SOURCE_BYTES = 8 * 1024 * 1024;
 
 function sizeOnDisk(root: string): SizeOf {
-  return (file) => statSync(path.resolve(root, file), { throwIfNoEntry: false })?.size ?? 0;
+  const base = path.resolve(root);
+  return (file) => {
+    const full = path.resolve(base, file);
+    if (!full.startsWith(base + path.sep)) {
+      return 0;
+    }
+    return statSync(full, { throwIfNoEntry: false })?.size ?? 0;
+  };
 }
 
 export function sourceBatches(

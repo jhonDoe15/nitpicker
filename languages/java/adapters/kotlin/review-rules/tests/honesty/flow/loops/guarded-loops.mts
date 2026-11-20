@@ -6,7 +6,7 @@ import { assertsIn } from '../assertion-calls.mts';
 const RECEIVER_WINDOW = 160;
 const BUILDERS = 'listOf|setOf|arrayOf|sequenceOf|mutableListOf|mutableSetOf|arrayListOf';
 const FIXED = new RegExp(String.raw`^(?:${BUILDERS})\s*(?:<[^<>]*>\s*)?\(\s*[^)*\s][^()]*\)$`, 'u');
-const HEADER_SOURCE = /\sin\s+(?<source>[\s\S]+)$/u;
+const HEADER_IN = /\sin\s/u;
 const RECEIVER = new RegExp(
   String.raw`(?<source>(?:${BUILDERS})\s*(?:<[^<>]*>\s*)?\([^()]*\)|(?<![\w.])[A-Za-z_]\w*)\s*$`,
   'u',
@@ -17,10 +17,12 @@ const LINE = /[^\n]+/gu;
 type Loop = { readonly construct: Construct; readonly body: Span; readonly all: Construct[] };
 
 function sourceOf({ code }: TestScanned, { header, from }: Construct): string {
-  const found =
-    header === undefined
-      ? RECEIVER.exec(code.slice(Math.max(0, from - RECEIVER_WINDOW), from))
-      : HEADER_SOURCE.exec(code.slice(header.start, header.end));
+  if (header !== undefined) {
+    const text = code.slice(header.start, header.end);
+    const found = HEADER_IN.exec(text);
+    return found === null ? '' : text.slice(found.index + found[0].length).trim();
+  }
+  const found = RECEIVER.exec(code.slice(Math.max(0, from - RECEIVER_WINDOW), from));
   return found?.groups?.['source']?.trim() ?? '';
 }
 

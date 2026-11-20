@@ -10,6 +10,8 @@ const SOURCES = '{core,shared,languages/typescript}/**/*.mts';
 const SKIPPED = /(?:^|\/)(?:fixtures|node_modules)\//u;
 const DEFAULT_FILES = 400;
 const LISTED = 15;
+const TIME_WIDTH = 8;
+const FACTOR_WIDTH = 6;
 const KNOWN_COSTLY = new Map([
   ['nitpicker/no-decided-condition', 'asks the solver about each condition'],
   [
@@ -65,8 +67,8 @@ async function main(requested: string | undefined): Promise<number> {
   const costs = ruleCosts(ruleTimes(await eslint.lintFiles(files)));
   const lines = costs.slice(0, LISTED).map(({ rule, ms, timesMean, costly }) => {
     const note = costly ? `  (costly: ${KNOWN_COSTLY.get(rule) ?? 'not expected'})` : '';
-    const time = `${String(Math.round(ms)).padStart(8)} ms`;
-    return `${time}  ${timesMean.toFixed(1).padStart(6)}x  ${rule}${note}`;
+    const time = `${String(Math.round(ms)).padStart(TIME_WIDTH)} ms`;
+    return `${time}  ${timesMean.toFixed(1).padStart(FACTOR_WIDTH)}x  ${rule}${note}`;
   });
   const unexpected = unexpectedCosts(costs, new Set(KNOWN_COSTLY.keys()));
   process.stdout.write(
