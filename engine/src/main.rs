@@ -6,6 +6,12 @@ use engine::Language;
 use std::path::PathBuf;
 use std::time::Instant;
 
+/// The allocator of musl, which the packaged Linux binaries link, is many times slower when threads allocate at
+/// once; this one is not.
+#[cfg(target_env = "musl")]
+#[global_allocator]
+static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.first().map(String::as_str) == Some("typescript-estree") {
