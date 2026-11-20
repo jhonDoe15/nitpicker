@@ -1,4 +1,4 @@
-use super::Context;
+use crate::typescript::rules::Context;
 use oxc_ast::AstKind;
 use oxc_ast::ast::{CatchClause, Expression, Statement};
 
