@@ -112,6 +112,21 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `produce(...)`), setters that do not come from `useState` (`setSearchParams`) and a method call on
   a value whose kind the `useState` call does not show (`current.add(1, 'month')` on a date) are
   left alone. The rule needs no type information.
+- **No `use` of a promise created in the same render** (`nitpicker/react-no-uncached-use-promise`).
+  `use(promise)` suspends, and React renders the component again when the promise settles; a
+  promise created in that render is a new one each time, so the component never finishes or sends
+  the request again on every render. Reported as the argument of `use` from `react` (directly, or
+  through a `const` of the component body): a call of an `async` function declared in the same file
+  or exported by a project module the file imports, an inline async function called in place,
+  `new Promise(...)`, `Promise.all`, `allSettled`, `race` or `any`, and a `.then`, `.catch` or
+  `.finally` chain. Create the promise outside render: pass it in as a prop (from a parent, a route
+  loader or a Server Component) or wrap the function in `cache`. A promise from props, context,
+  `useMemo` or `useState`, a function whose declaration is not `async` or is not found, and an
+  async component are left alone; `use(fetch(url))` is reported by `react-x/purity`. A Server
+  Component may create the promise it reads, so in a package that depends on a framework with
+  Server Components (`next`, `waku`, `@vitejs/plugin-rsc`, `react-server-dom-*` and others) or has a
+  `'use client'` file, only a file with `'use client'` or a component that calls a client hook
+  (`useState`, `useEffect`, `useRef`, `useContext`, ...) is checked.
 - **No double-escaped i18next values** (`nitpicker/react-i18next-escape-value`, needs
   `react-i18next` in `package.json`). A `t(...)` call (from `useTranslation()`, `i18next` or
   `i18n.t`) or a `<Trans values={{ ... }}>` that passes interpolation values and whose text React

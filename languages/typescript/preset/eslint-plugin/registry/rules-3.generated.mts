@@ -21,6 +21,7 @@ import { rule as ruleReactNoHardcodedColors } from '../rules/react/theme/react-n
 import { rule as ruleReactNoLiteralIdInListComponent } from '../rules/react/ids/react-no-literal-id-in-list-component.mts';
 import { rule as ruleReactNoRandomKey } from '../rules/react/render/react-no-random-key.mts';
 import { rule as ruleReactNoStaleStateUpdate } from '../rules/react/state/react-no-stale-state-update.mts';
+import { rule as ruleReactNoUncachedUsePromise } from '../rules/react/purity/react-no-uncached-use-promise.mts';
 import { rule as ruleReactPureStateUpdater } from '../rules/react/state/react-pure-state-updater.mts';
 import { rule as ruleReactSingleStylingApproach } from '../rules/react/react-single-styling-approach.mts';
 import { rule as ruleReactTestNoImplementationDetails } from '../rules/react-tests/react-test-no-implementation-details.mts';
@@ -72,6 +73,7 @@ export const partRules = {
   'react-no-literal-id-in-list-component': ruleReactNoLiteralIdInListComponent,
   'react-no-random-key': ruleReactNoRandomKey,
   'react-no-stale-state-update': ruleReactNoStaleStateUpdate,
+  'react-no-uncached-use-promise': ruleReactNoUncachedUsePromise,
   'react-pure-state-updater': ruleReactPureStateUpdater,
   'react-single-styling-approach': ruleReactSingleStylingApproach,
   'react-test-no-implementation-details': ruleReactTestNoImplementationDetails,
