@@ -8,6 +8,7 @@ import {
   troubleshootingError,
 } from '../../../../shared/messages/troubleshooting.mjs';
 import type { RunTaskOptions } from '../progress.mts';
+import { solverAnswersOnce } from './solver-answers.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 
 type SchedulerRun = {
@@ -23,6 +24,7 @@ const spawnCollected: (command: string, args: readonly string[], options: object
   spawnSyncWithOutputFile;
 const policyEnvironment: (headPolicyFile: unknown) => NodeJS.ProcessEnv = headPolicyEnvironment;
 const parseJson: (text: string) => unknown = JSON.parse;
+const solverAnswers = solverAnswersOnce();
 
 const MAX_ANALYZER_OUTPUT_BYTES = 128 * 1024 * 1024;
 
@@ -61,6 +63,7 @@ export function runScheduler(
         environment: {
           ...(headPolicyFile === undefined ? {} : policyEnvironment(headPolicyFile)),
           ...sharedEnvironment,
+          ...solverAnswers(),
         },
       }),
       stdio: ['pipe', 'pipe', 'pipe', ...(liveProgress ? [progress?.stream.fd] : [])],
