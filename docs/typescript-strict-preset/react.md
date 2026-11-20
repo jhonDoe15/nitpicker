@@ -328,7 +328,12 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `await-async-events`. Create the user with `const user = userEvent.setup()`
   (`testing-library/prefer-user-event-setup`, for the default and the named `userEvent`
   import alike). Check presence with `getBy*` and absence with
-  `queryBy*` (`testing-library/prefer-presence-queries`). Do not wrap `render` or `user` calls
+  `queryBy*` (`testing-library/prefer-presence-queries`). Keep side effects such as `fireEvent`,
+  `userEvent` calls and `render` out of a `waitFor` callback, which may run them many times
+  (`testing-library/no-wait-for-side-effects`); do not wait for a snapshot, which passes on the
+  first try (`testing-library/no-wait-for-snapshot`); and do not pass a regular expression with the
+  `g` flag to a query, since its `lastIndex` makes every other query miss
+  (`testing-library/no-global-regexp-flag-in-query`). Do not wrap `render` or `user` calls
   in `act` (`testing-library/no-unnecessary-act`), leave `screen.debug()` and other debug
   output in (`testing-library/no-debugging-utils`) or call `cleanup` yourself
   (`testing-library/no-manual-cleanup`, on where Testing Library cleans up by itself: under Jest
