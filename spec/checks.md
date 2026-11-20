@@ -319,6 +319,13 @@ same rule runs as `subprocess-without-timeout` in the Python preset, `pmd/Proces
 in the Java preset and `kotlin-source/ProcessWaitWithoutTimeout` in the Kotlin preset; tests keep
 `nitpicker/require-test-process-timeout` (TypeScript) or their runner's own limits.
 
+Deadlines that stop only a wrapper: `nitpicker/no-wrapper-only-timeout` (production source, in `eslint-lint`)
+reports a subprocess call with a `timeout` or abort signal whose command is a shell, a launcher (`npm`, `npx`,
+`gradlew`, `mvnw`, a `.sh` or `.cmd` file) or a compound shell command, unless it is started `detached` and the
+function kills the group. `pmd/DestroyLeavesDescendants` (Java, main sources) reports `destroy()` or
+`destroyForcibly()` after a timed `waitFor` on a process the method started through such a command, when the method
+never reads `descendants()`. The timed-out wrapper dies and its child keeps running.
+
 Error output cut to its start: `nitpicker/no-head-cut-error-output` (production source, in `eslint-lint`) and
 `pmd/HeadCutErrorOutput` (Java, main sources) report a cut from the start (`slice(0, n)`, `substring(0, n)`,
 `StringUtils.left` or `abbreviate`) of a tool's output or a stack trace that goes into an exception, a rejection or

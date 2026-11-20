@@ -300,6 +300,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
+- A deadline on a shell or launcher (`npm run`, `npx`, `./gradlew`, `sh -c 'a && b'`, `exec` with `&&`) kills only
+  the wrapper: start the executable directly, or start it `detached: true` and kill the group
+  (`process.kill(-child.pid)`) on timeout (`nitpicker/no-wrapper-only-timeout`).
 - Keep the end of a tool's output or a stack trace when an error message has to shorten it
   (`stderr.slice(-4000)`, or the start and the end with a marker between them): the cause is printed last
   (`nitpicker/no-head-cut-error-output`).

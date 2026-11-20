@@ -54,6 +54,7 @@
   "pmd/DefaultLabelNotLastInSwitch": ["style"],
   "pmd/DefaultLabelNotLastInSwitchStmt": ["style"],
   "pmd/DefaultTimeZone": ["bug"],
+  "pmd/DestroyLeavesDescendants": ["bug"],
   "pmd/DetachedTestCase": ["tests"],
   "pmd/DoNotCallGarbageCollectionExplicitly": ["performance"],
   "pmd/DoNotExtendJavaLangThrowable": ["maintainability"],

@@ -9,6 +9,7 @@ import { rule as ruleNoWastedCollectionStep } from '../rules/collections/pipelin
 import { rule as ruleNoWeakAssertion } from '../test-assertions/weak-assertion/no-weak-assertion.mts';
 import { rule as ruleNoWeakHash } from '../rules/security/hash/no-weak-hash.mts';
 import { rule as ruleNoWholeRowsForOneValue } from '../rules/queries/columns/no-whole-rows-for-one-value.mts';
+import { rule as ruleNoWrapperOnlyTimeout } from '../rules/processes/wrappers/no-wrapper-only-timeout.mts';
 import { rule as rulePreserveErrorCause } from '../rules/errors/preserve-error-cause.mts';
 import { rule as rulePromiseWaitDeadline } from '../rules/promises/executors/promise-wait-deadline.mts';
 import { rule as ruleReactControlledInput } from '../rules/react/forms/react-controlled-input.mts';
@@ -62,6 +63,7 @@ export const partRules = {
   'no-weak-assertion': ruleNoWeakAssertion,
   'no-weak-hash': ruleNoWeakHash,
   'no-whole-rows-for-one-value': ruleNoWholeRowsForOneValue,
+  'no-wrapper-only-timeout': ruleNoWrapperOnlyTimeout,
   'preserve-error-cause': rulePreserveErrorCause,
   'promise-wait-deadline': rulePromiseWaitDeadline,
   'react-controlled-input': ruleReactControlledInput,

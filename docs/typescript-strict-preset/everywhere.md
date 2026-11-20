@@ -1816,6 +1816,17 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   hangs the program. A program whose purpose is to run a child to completion, such as a build
   wrapper, takes an exception. The rule reads no types, so it behaves the same in the JavaScript
   preset.
+- A subprocess deadline stops the work, not only a wrapper around it (`nitpicker/no-wrapper-only-timeout`,
+  production files). A `timeout`, `signal` or `cancelSignal` kills only the process that was started; when that is a
+  shell, a launcher or a script, the real work runs in its child and keeps running after the call returns. Reported:
+  a `child_process` or execa call with such a deadline whose command is a launcher (`npx`, `npm`, `yarn` or `pnpm`
+  running a script (`run`, `exec`, `dlx`, `test`, `start` and the like), `gradlew`, `mvnw`, `cmd`, `powershell`, `pwsh`, a `.sh`, `.bat`, `.cmd` or `.ps1` file, or `sh`, `bash`, `zsh`,
+  `dash` or `ksh` running a script file or a `-c` script that is itself compound or a launcher), an `exec`/`execSync`
+  command string that starts with one or holds a list, a pipe or a background job (`cd app && make`), or a
+  `shell: true` command with one. Not reported: plain executables (`git`, `node`, `java`), a single command in
+  `sh -c` or `exec` (POSIX shells run it in place), execa's `execaCommand` (no shell), options from a parameter or a
+  spread, and a call with `detached: true` in a function that kills the group (`process.kill(-child.pid)`,
+  `taskkill`, `tree-kill`). The Java preset has the same rule as `pmd/DestroyLeavesDescendants`.
 - Tool output and stack traces are not cut to their start in an error (`nitpicker/no-head-cut-error-output`,
   production files). Reported: `text.slice(0, n)`, `substring(0, n)` or `substr(0, n)` of a value named for output
   (`stderr`, `stdout`, `output`, `stack`, `stackTrace`, `log`, `logs`, `trace`, or a name ending in one of them, such

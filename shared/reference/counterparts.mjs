@@ -15,6 +15,10 @@ const PAGES = {
 };
 const GROUPS = [
   {
+    java: 'DestroyLeavesDescendants',
+    typescript: 'nitpicker/no-wrapper-only-timeout',
+  },
+  {
     java: 'HeadCutErrorOutput',
     typescript: 'nitpicker/no-head-cut-error-output',
   },
