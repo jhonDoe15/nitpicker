@@ -34,7 +34,8 @@ function parseBatch(output: Buffer, specs: readonly string[]): Map<string, strin
   const cursor = { at: 0 };
   for (const spec of specs) {
     const headerEnd = output.indexOf(10, cursor.at);
-    const size = Number(output.subarray(cursor.at, headerEnd).toString('utf8').split(' ').at(-1));
+    const sizeText = output.subarray(cursor.at, headerEnd).toString('utf8').split(' ').at(-1);
+    const size = Number.parseInt(sizeText ?? '', 10);
     if (headerEnd === -1 || !Number.isInteger(size)) {
       return texts;
     }

@@ -1,3 +1,4 @@
+import { hasField } from '../../../shared/values/readers.mts';
 import { normalizeGitPath } from '../git/normalize.mts';
 import { parseFix } from './schema/fix-field.mts';
 import { parseNotRunFields } from './schema/not-run-fields.mts';
@@ -124,7 +125,7 @@ function parseOptionalFields(
 ): Record<string, unknown> {
   const fields: Record<string, unknown> = {};
   for (const [name, parse] of Object.entries(OPTIONAL_PARSERS)) {
-    if (value[name] !== undefined) {
+    if (hasField(value, name)) {
       fields[name] = parse(value[name], `${context}.${name}`);
     }
   }

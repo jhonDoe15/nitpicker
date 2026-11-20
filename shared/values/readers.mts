@@ -80,3 +80,7 @@ export function textListsOf(value: unknown): Record<string, string[]> {
     Object.entries(fieldsOf(value)).map(([name, found]) => [name, textsOf(found)]),
   );
 }
+
+export function hasField(value: Fields, key: string): boolean {
+  return Object.hasOwn(value, key) && value[key] !== undefined;
+}

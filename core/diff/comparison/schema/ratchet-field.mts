@@ -1,3 +1,4 @@
+import { hasField } from '../../../../shared/values/readers.mts';
 import type { Ratchet } from '../model/finding-types.mts';
 import { parseLineRanges } from './not-run-fields.mts';
 import { finiteNumber, positiveInteger, requiredRecord, requiredString } from './values.mts';
@@ -21,7 +22,7 @@ function ratchetTexts(
   context: string,
 ): Record<string, string> {
   return Object.fromEntries(
-    RATCHET_TEXT_FIELDS.filter((name) => value[name] !== undefined).map((name) => [
+    RATCHET_TEXT_FIELDS.filter((name) => hasField(value, name)).map((name) => [
       name,
       requiredString(value[name], `${context}.${name}`),
     ]),
@@ -42,7 +43,7 @@ function ratchetFlags(
   context: string,
 ): Record<string, boolean> {
   const flags: Record<string, boolean> = {};
-  for (const name of RATCHET_FLAGS.filter((flag) => value[flag] !== undefined)) {
+  for (const name of RATCHET_FLAGS.filter((flag) => hasField(value, flag))) {
     const flag = value[name];
     if (typeof flag !== 'boolean') {
       throw new TypeError(`${context}.${name} must be a boolean`);

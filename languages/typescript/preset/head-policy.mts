@@ -22,7 +22,7 @@ import {
   readPolicySource,
   resolveSharedPolicy,
 } from './typed/head-policy-views.mts';
-import { optionalText, textsOf } from '../../../shared/values/readers.mts';
+import { hasField, optionalText, textsOf } from '../../../shared/values/readers.mts';
 import type { Environment } from '../../../shared/processes/environment.mts';
 import { projectConfigTools } from './project-tools/project-config-files.mts';
 import { headCapturedFacts, withProjectToolConfigs } from './project-tools/project-tool-policy.mts';
@@ -199,7 +199,7 @@ export function withHeadCheckoutFacts(
     ...headTestPlacement(policy, headPolicy),
     ...picked(headPolicy, HEAD_CHECKOUT_FACTS),
     ...Object.fromEntries(
-      SCOPE_FACTS.filter(([scope]) => headPolicy[scope] !== undefined).map(([scope, keys]) => [
+      SCOPE_FACTS.filter(([scope]) => hasField(headPolicy, scope)).map(([scope, keys]) => [
         scope,
         { ...policy[scope], ...picked(headPolicy[scope] ?? {}, keys) },
       ]),

@@ -89,8 +89,7 @@ function reportedOutcome(
   if (statSync(resultFile).size > MAX_RESULT_BYTES) {
     throw new Error(`${name} returned more than ${String(MAX_RESULT_MB)} MB of config`);
   }
-  const outcome: unknown = JSON.parse(readFileSync(resultFile, 'utf8'));
-  return outcome;
+  return parsedJson(resultFile, `The loaded result of ${name}`);
 }
 
 function spawnedOutcome(

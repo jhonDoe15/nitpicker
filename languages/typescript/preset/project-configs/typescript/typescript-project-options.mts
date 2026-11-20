@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { fieldOf, isPlainObject, textOf } from '../../../../../shared/values/readers.mts';
+import { fieldOf, hasField, isPlainObject, textOf } from '../../../../../shared/values/readers.mts';
 import {
   isRealPathInside,
   missingProjectConfig,
@@ -112,7 +112,7 @@ export function projectStrictValues(
   javascript: boolean,
 ): Record<string, unknown> {
   const strict = strictCompilerOptions({ javascript });
-  const family = STRICT_FAMILY.filter((key) => options[key] === undefined);
+  const family = STRICT_FAMILY.filter((key) => !hasField(options, key));
   const values = {
     ...(typeof fieldOf(options, 'strict') === 'boolean'
       ? Object.fromEntries(family.map((key) => [key, fieldOf(options, 'strict')]))
@@ -176,7 +176,7 @@ export function relaxedStrictOptions(
   return {
     file: tsconfig.name,
     relaxed: Object.keys(strict)
-      .filter((key) => tsconfig.options[key] !== undefined && tsconfig.options[key] !== strict[key])
+      .filter((key) => hasField(tsconfig.options, key) && tsconfig.options[key] !== strict[key])
       .map((key) => `${key}: ${String(tsconfig.options[key])}`),
   };
 }

@@ -136,7 +136,7 @@ export function productionFacts(
 
 const escapeRegExp: (value: string) => string = untypedEscapeRegExp;
 const SVG_TAG = /<svg\b[^>]*>/iu;
-const SVG_HEAD_BYTES = 4096;
+const SVG_HEAD_CHARACTERS = 4096;
 
 function attributeNumbers(tag: string, name: string): number[] {
   const value = new RegExp(`\\s${escapeRegExp(name)}\\s*=\\s*["']([^"']*)["']`, 'iu').exec(
@@ -151,7 +151,7 @@ function attributeNumbers(tag: string, name: string): number[] {
 }
 
 function svgSize(text: string): SvgSize {
-  const tag = SVG_TAG.exec(text.slice(0, SVG_HEAD_BYTES))?.[0] ?? '';
+  const tag = SVG_TAG.exec(text.slice(0, SVG_HEAD_CHARACTERS))?.[0] ?? '';
   const [, , boxWidth, boxHeight] = attributeNumbers(tag, 'viewBox');
   const [width] = attributeNumbers(tag, 'width');
   const [height] = attributeNumbers(tag, 'height');

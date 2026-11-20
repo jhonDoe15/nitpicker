@@ -13,7 +13,7 @@ import { ownedPolicy, withProjectSettings } from './project-rules.mts';
 import { listField, recordField } from './typed/flat-config.mts';
 import type { FlatEntry, OwnedPolicy, ProjectLayer } from './typed/flat-config.mts';
 import type { Environment } from '../../../../shared/processes/environment.mts';
-import { fieldOf, parseJson, textOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, hasField, parseJson, textOf } from '../../../../shared/values/readers.mts';
 
 export const PROJECT_LAYER_VARIABLE = 'NITPICKER_DIFF_ESLINT_PROJECT_LAYER';
 
@@ -169,7 +169,7 @@ function appliedEntry(entry: FlatEntry, owned: OwnedPolicy, layer: ProjectLayer)
   if (effects.length === 0) {
     return [];
   }
-  const scope = SCOPE_KEYS.filter((key) => entry[key] !== undefined).map(
+  const scope = SCOPE_KEYS.filter((key) => hasField(entry, key)).map(
     (key): [string, unknown] => [key, entry[key]],
   );
   return [Object.fromEntries([...scope, ...effects])];

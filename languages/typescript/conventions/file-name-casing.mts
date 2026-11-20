@@ -1,3 +1,4 @@
+import { hasField } from '../../../shared/values/readers.mts';
 import { escapeRegExp as untypedEscapeRegExp } from '../../../shared/paths/glob.mjs';
 import { FIXTURE_PATH } from '../preset/layout.mts';
 
@@ -51,7 +52,7 @@ export function fileNameRuleOptions({
 } = {}): { readonly casing: unknown; readonly pinned?: true } {
   return {
     casing: conventions[FILE_NAME_CONVENTION.id] ?? FILE_NAME_CONVENTION.fallback,
-    ...(conventionPins[FILE_NAME_CONVENTION.id] === undefined ? {} : { pinned: true }),
+    ...(hasField(conventionPins, FILE_NAME_CONVENTION.id) ? { pinned: true } : {}),
   };
 }
 

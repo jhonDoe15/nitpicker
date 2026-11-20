@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { fieldOf, fieldsOf, parseJson } from '../../../../../shared/values/readers.mts';
+import { fieldOf, fieldsOf, hasField, parseJson } from '../../../../../shared/values/readers.mts';
 
 const configuredPackages: Readonly<Record<string, () => string>> = {
   'global-jsdom': () => import.meta.resolve('global-jsdom/register'),
@@ -15,7 +15,7 @@ export function verifyRunnerFixtureDependencies(fixtureRoot: string): void {
     ...fieldsOf(fieldOf(manifest, 'devDependencies')),
   };
   for (const [name, resolve] of Object.entries(configuredPackages)) {
-    if (dependencies[name] !== undefined) {
+    if (hasField(dependencies, name)) {
       resolve();
     }
   }

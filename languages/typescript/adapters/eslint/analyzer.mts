@@ -24,7 +24,7 @@ type EslintAnalyzerSettings = {
   readonly policyFromPackage?: true | undefined;
   readonly colocatedWith?: string | undefined;
   readonly carriedBy?: string | undefined;
-  readonly carries?: boolean | undefined;
+  readonly carries?: true | undefined;
   readonly eslintTimeoutMs?: number | undefined;
   readonly eslintCliPath?: string | undefined;
 };
@@ -86,7 +86,7 @@ export function createEslintAnalyzer(settings: EslintAnalyzerSettings): {
     policyFromPackage = false,
     colocatedWith,
     carriedBy,
-    carries = false,
+    carries,
   } = settings;
   return {
     name: settings.name,
@@ -98,7 +98,7 @@ export function createEslintAnalyzer(settings: EslintAnalyzerSettings): {
     shardWeight,
     ...(colocatedWith === undefined ? {} : { colocatedWith }),
     ...(carriedBy === undefined ? {} : { carriedBy }),
-    ...(carries ? { carries: true } : {}),
+    ...(carries === undefined ? {} : { carries }),
     requiresDependencies: true,
     ...(policyFromPackage ? {} : { concurrencyGroup: 'eslint-snapshot-dependencies' }),
     createInvocation(roots) {
