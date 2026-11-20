@@ -186,6 +186,7 @@ struct Attributes<'a> {
     permitted: Option<Vec<u16>>,
     inner: Vec<(u16, u16)>,
     exceptions: Vec<u16>,
+    names: Vec<u16>,
 }
 
 fn skip_element(reader: &mut Reader) -> Option<()> {
@@ -234,6 +235,11 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                 let class = reader.u2()?;
                 reader.skip(4)?;
                 found.inner.push((class, reader.u2()?));
+            }
+        } else if name == b"MethodParameters" {
+            for _ in 0..reader.u1()? {
+                found.names.push(reader.u2()?);
+                reader.skip(2)?;
             }
         } else if name == b"Exceptions" {
             found.exceptions = (0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?;
@@ -377,6 +383,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 varargs: flags & ACC_VARARGS != 0,
                 flags: member_flags(flags, found.deprecated),
                 throws,
+                names: found.names.iter().filter_map(|name| utf8(*name)).map(|name| String::from_utf8_lossy(name).into_owned()).collect(),
             });
         }
     }

@@ -3,6 +3,7 @@ mod hierarchy;
 mod members;
 mod operators;
 mod names;
+mod naming;
 mod obsolete;
 mod simple;
 mod targets;
@@ -129,6 +130,7 @@ const CHECKS: &[Check] = &[
     values::string_splitter,
     obsolete::jdk_obsolete,
     targets::boolean_literal,
+    naming::identifier_name,
     throws::checked_exception_not_thrown,
     names::type_parameter_naming,
     names::wildcard_import,

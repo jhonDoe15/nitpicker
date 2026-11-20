@@ -30,5 +30,6 @@
  "DifferentNameButSame",
  "JdkObsolete",
  "BooleanLiteral",
- "CheckedExceptionNotThrown"
+ "CheckedExceptionNotThrown",
+ "IdentifierName"
 ]

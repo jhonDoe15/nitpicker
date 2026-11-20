@@ -375,6 +375,22 @@ impl<'a> Resolver<'a> {
     }
 
     /// Erased and generic parameter types, and whether the last one is variable arity.
+    fn parameter_names(&self, member: Node) -> Vec<String> {
+        let mut names = Vec::new();
+        for parameter in member.child_by_field_name("parameters").map(children).unwrap_or_default() {
+            let holder = match parameter.kind() {
+                "formal_parameter" => parameter,
+                "spread_parameter" => match children(parameter).into_iter().find(|part| part.kind() == "variable_declarator") {
+                    Some(declarator) => declarator,
+                    None => continue,
+                },
+                _ => continue,
+            };
+            names.push(holder.child_by_field_name("name").map(|name| self.file.text_of(name).to_string()).unwrap_or_default());
+        }
+        names
+    }
+
     /// The types a `throws` clause lists; one that cannot be read is kept as `?`.
     fn thrown(&self, member: Node) -> Vec<Type> {
         let Some(clause) = children(member).into_iter().find(|part| part.kind() == "throws") else { return Vec::new() };
@@ -585,6 +601,7 @@ impl<'a> Resolver<'a> {
             varargs: false,
             flags: super::model::flag::PUBLIC,
             throws: Vec::new(),
+            names: Vec::new(),
         };
         let bits = |member: Node| -> u16 {
             use super::model::flag;
@@ -681,6 +698,7 @@ impl<'a> Resolver<'a> {
                         varargs,
                         flags: bits(member) | if member.child_by_field_name("body").is_none() && info.is_interface { super::model::flag::ABSTRACT } else { 0 },
                         throws: self.thrown(member),
+                        names: self.parameter_names(member),
                     });
                 }
                 "constructor_declaration" => {
@@ -689,6 +707,7 @@ impl<'a> Resolver<'a> {
                         generic_parameters,
                         varargs,
                         throws: self.thrown(member),
+                        names: self.parameter_names(member),
                         ..plain("<init>", parameters, Type::Primitive("void"))
                     });
                 }
