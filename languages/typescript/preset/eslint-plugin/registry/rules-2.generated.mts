@@ -1,3 +1,15 @@
+import { rule as ruleNoNull } from '../rules/syntax/no-null.mts';
+import { rule as ruleNoNullBranchFallThrough } from '../rules/null-branches/no-null-branch-fall-through.mts';
+import { rule as ruleNoOperandSlip } from '../rules/operands/no-operand-slip.mts';
+import { rule as ruleNoOrmQueryLogging } from '../rules/database/no-orm-query-logging.mts';
+import { rule as ruleNoOrmSchemaSync } from '../rules/database/no-orm-schema-sync.mts';
+import { rule as ruleNoOverflowingBackoff } from '../rules/backoff/no-overflowing-backoff.mts';
+import { rule as ruleNoParameterMutation } from '../rules/signatures/no-parameter-mutation.mts';
+import { rule as ruleNoPartialOutputAssertion } from '../rules/test-runtime/assertions/no-partial-output-assertion.mts';
+import { rule as ruleNoPerCallDebounce } from '../rules/lifecycles/debounce/no-per-call-debounce.mts';
+import { rule as ruleNoPerCallRegistration } from '../rules/lifecycles/registrations/no-per-call-registration.mts';
+import { rule as ruleNoPipeDroppingErrors } from '../rules/streams/no-pipe-dropping-errors.mts';
+import { rule as ruleNoPrefixWithoutBoundary } from '../rules/affixes/no-prefix-without-boundary.mts';
 import { rule as ruleNoPresenceTruthiness } from '../rules/truthiness/no-presence-truthiness.mts';
 import { rule as ruleNoProcessAccessOutsideCompositionRoot } from '../rules/guards/no-process-access-outside-composition-root.mts';
 import { rule as ruleNoProcessGlobalsOutsideMainGuard } from '../rules/modules/no-process-globals-outside-main-guard.mts';
@@ -5,8 +17,6 @@ import { rule as ruleNoProductionConsole } from '../rules/modules/no-production-
 import { rule as ruleNoProductionImportsInSetupFiles } from '../test-isolation/no-production-imports-in-setup-files.mts';
 import { rule as ruleNoPromiseChain } from '../rules/syntax/no-promise-chain.mts';
 import { rule as ruleNoPrototypeKeyAccess } from '../rules/prototype-keys/no-prototype-key-access.mts';
-import { rule as ruleNoProductionImportsInSetupFiles } from '../test-isolation/no-production-imports-in-setup-files.mts';
-import { rule as ruleNoPromiseChain } from '../rules/syntax/no-promise-chain.mts';
 import { rule as ruleNoQueryPerParent } from '../rules/resolvers/no-query-per-parent.mts';
 import { rule as ruleNoRaisedTestTimeout } from '../rules/test-runtime/assertions/no-raised-test-timeout.mts';
 import { rule as ruleNoRawHttpValue } from '../rules/http-values/no-raw-http-value.mts';
@@ -44,14 +54,14 @@ import { rule as ruleNoTestRetry } from '../test-assertions/no-test-retry.mts';
 import { rule as ruleNoThrow } from '../rules/errors/no-throw.mts';
 import { rule as ruleNoTimeOnlyUniqueName } from '../rules/unique-names/no-time-only-unique-name.mts';
 import { rule as ruleNoTriStateBoolean } from '../rules/signatures/no-tri-state-boolean.mts';
-import { rule as ruleNoTruncatingSplitLimit } from '../rules/split-limits/no-truncating-split-limit.mts';
 import { rule as ruleNoTruncatingPairSplit } from '../rules/pair-splits/no-truncating-pair-split.mts';
+import { rule as ruleNoTruncatingSplitLimit } from '../rules/split-limits/no-truncating-split-limit.mts';
 import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framework-in-domain.mts';
 import { rule as ruleNoUnanchoredAffixReplace } from '../rules/affixes/no-unanchored-affix-replace.mts';
 import { rule as ruleNoUnatomicWrites } from '../rules/transactions/no-unatomic-writes.mts';
 import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mts';
-import { rule as ruleNoUncheckedUrlSink } from '../rules/urls/links/no-unchecked-url-sink.mts';
 import { rule as ruleNoUncheckedResponseJson } from '../rules/response-json/no-unchecked-response-json.mts';
+import { rule as ruleNoUncheckedUrlSink } from '../rules/urls/links/no-unchecked-url-sink.mts';
 import { rule as ruleNoUnclearedTimeout } from '../rules/lifecycles/timers/no-uncleared-timeout.mts';
 import { rule as ruleNoUnclosedFileDescriptor } from '../rules/resources/descriptors/no-unclosed-file-descriptor.mts';
 import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mts';
@@ -88,29 +98,20 @@ import { rule as ruleNoUntrimmedRequestText } from '../rules/request-text/no-unt
 import { rule as ruleNoUnusedDomEnvironment } from '../rules/test-runtime/environment/no-unused-dom-environment.mts';
 import { rule as ruleNoUnvalidatedSchemaField } from '../rules/boundaries/no-unvalidated-schema-field.mts';
 import { rule as ruleNoUnversionedOrmEntity } from '../rules/database/versions/no-unversioned-orm-entity.mts';
-import { rule as ruleNoUseAfterAwaitWhenDisposed } from '../rules/cancellation/disposal/no-use-after-await-when-disposed.mts';
-import { rule as ruleNoWaitForWithFakeTimers } from '../rules/test-runtime/assertions/no-wait-for-with-fake-timers.mts';
-import { rule as ruleNoWallClockElapsed } from '../rules/wall-clock/no-wall-clock-elapsed.mts';
-import { rule as ruleNoWastedCollectionStep } from '../rules/collections/pipelines/no-wasted-collection-step.mts';
-import { rule as ruleNoWeakAssertion } from '../test-assertions/weak-assertion/no-weak-assertion.mts';
-import { rule as ruleNoWeakHash } from '../rules/security/hash/no-weak-hash.mts';
-import { rule as ruleNoWholeRowsForOneValue } from '../rules/queries/columns/no-whole-rows-for-one-value.mts';
-import { rule as rulePreserveErrorCause } from '../rules/errors/preserve-error-cause.mts';
-import { rule as rulePromiseWaitDeadline } from '../rules/promises/executors/promise-wait-deadline.mts';
-import { rule as ruleReactControlledInput } from '../rules/react/forms/react-controlled-input.mts';
-import { rule as ruleReactEffectNeedsDependencies } from '../rules/react/effects/react-effect-needs-dependencies.mts';
-import { rule as ruleReactFieldHasLabel } from '../rules/react/forms/react-field-has-label.mts';
-import { rule as ruleReactI18nextEscapeValue } from '../rules/react/i18n/react-i18next-escape-value.mts';
-import { rule as ruleReactMutationDropsFailure } from '../rules/react/mutations/react-mutation-drops-failure.mts';
-import { rule as ruleReactNoDirectDom } from '../rules/react/render/react-no-direct-dom.mts';
-import { rule as ruleReactNoEagerInitialValue } from '../rules/react/initial-values/react-no-eager-initial-value.mts';
-import { rule as ruleReactNoEffectDataFetching } from '../rules/react/react-no-effect-data-fetching.mts';
-import { rule as ruleReactNoEffectDerivedState } from '../rules/react/react-no-effect-derived-state.mts';
-import { rule as ruleReactNoEffectEventHandling } from '../rules/react/render/react-no-effect-event-handling.mts';
-import { rule as ruleReactNoHardcodedColors } from '../rules/react/theme/react-no-hardcoded-colors.mts';
-import { rule as ruleReactNoLiteralIdInListComponent } from '../rules/react/ids/react-no-literal-id-in-list-component.mts';
 
 export const partRules = {
+  'no-null': ruleNoNull,
+  'no-null-branch-fall-through': ruleNoNullBranchFallThrough,
+  'no-operand-slip': ruleNoOperandSlip,
+  'no-orm-query-logging': ruleNoOrmQueryLogging,
+  'no-orm-schema-sync': ruleNoOrmSchemaSync,
+  'no-overflowing-backoff': ruleNoOverflowingBackoff,
+  'no-parameter-mutation': ruleNoParameterMutation,
+  'no-partial-output-assertion': ruleNoPartialOutputAssertion,
+  'no-per-call-debounce': ruleNoPerCallDebounce,
+  'no-per-call-registration': ruleNoPerCallRegistration,
+  'no-pipe-dropping-errors': ruleNoPipeDroppingErrors,
+  'no-prefix-without-boundary': ruleNoPrefixWithoutBoundary,
   'no-presence-truthiness': ruleNoPresenceTruthiness,
   'no-process-access-outside-composition-root': ruleNoProcessAccessOutsideCompositionRoot,
   'no-process-globals-outside-main-guard': ruleNoProcessGlobalsOutsideMainGuard,
@@ -118,17 +119,6 @@ export const partRules = {
   'no-production-imports-in-setup-files': ruleNoProductionImportsInSetupFiles,
   'no-promise-chain': ruleNoPromiseChain,
   'no-prototype-key-access': ruleNoPrototypeKeyAccess,
-import { rule as ruleReactNoRandomKey } from '../rules/react/render/react-no-random-key.mts';
-import { rule as ruleReactSingleStylingApproach } from '../rules/react/react-single-styling-approach.mjs';
-import { rule as ruleReactTestNoImplementationDetails } from '../rules/react-tests/react-test-no-implementation-details.mts';
-import { rule as ruleReleaseListenersOnClose } from '../rules/lifecycles/handles/release-listeners-on-close.mts';
-import { rule as ruleReportModuleLoadEffects } from '../rules/modules/report-module-load-effects.mts';
-import { rule as ruleRequireAbortSignalForwarding } from '../rules/cancellation/abort-signal/require-abort-signal-forwarding.mts';
-import { rule as ruleRequireAtomicUpdates } from '../rules/wrapped/require-atomic-updates.mts';
-
-export const partRules = {
-  'no-production-imports-in-setup-files': ruleNoProductionImportsInSetupFiles,
-  'no-promise-chain': ruleNoPromiseChain,
   'no-query-per-parent': ruleNoQueryPerParent,
   'no-raised-test-timeout': ruleNoRaisedTestTimeout,
   'no-raw-http-value': ruleNoRawHttpValue,
@@ -166,14 +156,14 @@ export const partRules = {
   'no-throw': ruleNoThrow,
   'no-time-only-unique-name': ruleNoTimeOnlyUniqueName,
   'no-tri-state-boolean': ruleNoTriStateBoolean,
-  'no-truncating-split-limit': ruleNoTruncatingSplitLimit,
   'no-truncating-pair-split': ruleNoTruncatingPairSplit,
+  'no-truncating-split-limit': ruleNoTruncatingSplitLimit,
   'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
   'no-unanchored-affix-replace': ruleNoUnanchoredAffixReplace,
   'no-unatomic-writes': ruleNoUnatomicWrites,
   'no-unbounded-query-array': ruleNoUnboundedQueryArray,
-  'no-unchecked-url-sink': ruleNoUncheckedUrlSink,
   'no-unchecked-response-json': ruleNoUncheckedResponseJson,
+  'no-unchecked-url-sink': ruleNoUncheckedUrlSink,
   'no-uncleared-timeout': ruleNoUnclearedTimeout,
   'no-unclosed-file-descriptor': ruleNoUnclosedFileDescriptor,
   'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
@@ -210,32 +200,4 @@ export const partRules = {
   'no-unused-dom-environment': ruleNoUnusedDomEnvironment,
   'no-unvalidated-schema-field': ruleNoUnvalidatedSchemaField,
   'no-unversioned-orm-entity': ruleNoUnversionedOrmEntity,
-  'no-use-after-await-when-disposed': ruleNoUseAfterAwaitWhenDisposed,
-  'no-wait-for-with-fake-timers': ruleNoWaitForWithFakeTimers,
-  'no-wall-clock-elapsed': ruleNoWallClockElapsed,
-  'no-wasted-collection-step': ruleNoWastedCollectionStep,
-  'no-weak-assertion': ruleNoWeakAssertion,
-  'no-weak-hash': ruleNoWeakHash,
-  'no-whole-rows-for-one-value': ruleNoWholeRowsForOneValue,
-  'preserve-error-cause': rulePreserveErrorCause,
-  'promise-wait-deadline': rulePromiseWaitDeadline,
-  'react-controlled-input': ruleReactControlledInput,
-  'react-effect-needs-dependencies': ruleReactEffectNeedsDependencies,
-  'react-field-has-label': ruleReactFieldHasLabel,
-  'react-i18next-escape-value': ruleReactI18nextEscapeValue,
-  'react-mutation-drops-failure': ruleReactMutationDropsFailure,
-  'react-no-direct-dom': ruleReactNoDirectDom,
-  'react-no-eager-initial-value': ruleReactNoEagerInitialValue,
-  'react-no-effect-data-fetching': ruleReactNoEffectDataFetching,
-  'react-no-effect-derived-state': ruleReactNoEffectDerivedState,
-  'react-no-effect-event-handling': ruleReactNoEffectEventHandling,
-  'react-no-hardcoded-colors': ruleReactNoHardcodedColors,
-  'react-no-literal-id-in-list-component': ruleReactNoLiteralIdInListComponent,
-  'react-no-random-key': ruleReactNoRandomKey,
-  'react-single-styling-approach': ruleReactSingleStylingApproach,
-  'react-test-no-implementation-details': ruleReactTestNoImplementationDetails,
-  'release-listeners-on-close': ruleReleaseListenersOnClose,
-  'report-module-load-effects': ruleReportModuleLoadEffects,
-  'require-abort-signal-forwarding': ruleRequireAbortSignalForwarding,
-  'require-atomic-updates': ruleRequireAtomicUpdates,
 };

@@ -1,12 +1,11 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { orderedOperandsOf } from '../typed/syntax-views.mts';
+import { isFunction, orderedOperandsOf, unwrapped } from '../typed/syntax-views.mts';
 import type TypeScript from 'typescript';
 import { suggestible } from '../../fixes/support/descriptors.mts';
 import { nullishDefaultFix } from '../../fixes/code/nullish-default-fix.mts';
 import { partsOf } from '../analysis/narrowing/type-parts.mts';
 import { typedScopeOf, type TypedScope } from '../promises/cannot-reject.mts';
 import { ancestorsOf, variableNamed, type SourceCode } from '../typed/node-views.mts';
-import { isFunction, unwrapped } from '../typed/syntax-views.mts';
 import { isComputedMember, isIntentionalMemberDefault } from '../truthiness/falsy-members.mts';
 import { ts } from '../typed/typescript-views.mts';
 
