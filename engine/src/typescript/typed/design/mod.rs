@@ -209,6 +209,15 @@ fn exported_nodes(cx: &mut Cx, file: u32) -> Found<(HashSet<At>, Vec<(At, String
     Ok((nodes, names))
 }
 
+/// `export = x` in a file that exports something else as well: an error in both compilers.
+fn mixes_export_forms(table: &NodeTable) -> bool {
+    use crate::typescript::types::tables::kind as K;
+    let statements = table.listed(ROOT, "statements");
+    let assigns = |statement: &u32| table.kind(*statement) == K::EXPORT_ASSIGNMENT && table.data_bit(*statement, 24);
+    let exports = |statement: &u32| table.kind(*statement) == K::EXPORT_DECLARATION || table.has_modifier(*statement, K::EXPORT_KEYWORD);
+    statements.iter().any(assigns) && statements.iter().any(exports)
+}
+
 fn export_names(names: &HashMap<u32, Vec<(At, String)>>, declaration: At) -> Vec<&String> {
     names.get(&declaration.file).into_iter().flatten().filter(|(node, _)| *node == declaration).map(|(_, name)| name).collect()
 }
@@ -221,6 +230,9 @@ pub fn check(session: &mut Session, input: &Input) -> Found<Value> {
         let file = cx.file(name)?;
         if [".js", ".jsx", ".mjs", ".cjs"].iter().any(|extension| name.ends_with(extension)) && cx.table(file).has_reparsed() {
             return Err(format!("{name} declares types in documentation comments, which the two compilers read differently"));
+        }
+        if mixes_export_forms(&cx.table(file)) {
+            return Err(format!("{name} has `export =` beside other exports, which the two compilers resolve differently"));
         }
         let (exported, exported_names) = exported_nodes(&mut cx, file)?;
         cx.registry.owned.insert(file);
@@ -272,5 +284,9 @@ pub fn check(session: &mut Session, input: &Input) -> Found<Value> {
         }
         callables.push(fact);
     }
-    Ok(json!({ "types": type_facts, "callables": callables }))
+    let facts = json!({ "types": type_facts, "callables": callables });
+    if facts.to_string().contains('\u{fffd}') {
+        return Err("a name or text has a character the compiler's tree cannot carry".to_string());
+    }
+    Ok(facts)
 }

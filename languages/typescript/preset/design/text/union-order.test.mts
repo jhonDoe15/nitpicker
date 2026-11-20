@@ -19,6 +19,14 @@ const CASES: readonly (readonly [string, string])[] = [
   ['B) | A', 'B) | A'],
   ['{ z: { d: 1; c: 2;}; (a: Q): R; a: 1;}[]', '{(a:Q):R;a:1;z:{c:2;d:1;};}[]'],
   ['a; b', 'a;b'],
+  ['`id-${string & { k: "z" | "a"; }}` | A', 'A | `id-${string & {k:"a" | "z";}}`'],
+  ['`p${B | A}q${D | C}` | `a`', '`a` | `p${A | B}q${C | D}`'],
+  [
+    '`\\u00E9\\uD83D\\uDE00\\uD800\\u0041\\\\u00E9${string}`',
+    '`\u{e9}\u{1f600}\\uD800\\u0041\\\\u00E9${string}`',
+  ],
+  ['`a${`b${Z | Y}`}`', '`a${`b${Y | Z}`}`'],
+  ['"\ud800" | A', '"\\uD800" | A'],
 ];
 
 describe('the order of union and object members in type text', () => {

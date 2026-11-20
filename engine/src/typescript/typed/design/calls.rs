@@ -231,6 +231,9 @@ fn call_fact(cx: &mut Cx, scope: &mut Scope, node: u32, target: usize) -> Found<
     Ok(fact)
 }
 
+/// `await using`: the flags of `using` and of `const` together.
+const AWAIT_USING: u32 = node_flags::USING | node_flags::CONST;
+
 fn using_calls(cx: &mut Cx, scope: &mut Scope) -> Found<Vec<(u32, Value)>> {
     let table = cx.table(scope.file);
     let t = &*table;
@@ -239,8 +242,11 @@ fn using_calls(cx: &mut Cx, scope: &mut Scope) -> Found<Vec<(u32, Value)>> {
     for declaration in lists.into_iter().flat_map(|list| t.listed(list, "declarations")) {
         let Some(name) = name_of(t, declaration).filter(|name| t.kind(*name) == K::IDENTIFIER) else { continue };
         let Some(kind) = cx.type_at(At { file: scope.file, node: name })? else { continue };
-        let property = cx.properties(&kind)?.into_iter().find(|property| property.name.starts_with("__@dispose@") || property.name.starts_with("__@asyncDispose@"));
-        let Some(method) = cx.value_declaration(property.as_ref())? else { continue };
+        let awaited = t.parent(declaration).is_some_and(|list| t.flags(list) & AWAIT_USING == AWAIT_USING);
+        let hooks = if awaited { ["__@asyncDispose@", "__@dispose@"] } else { ["__@dispose@", "__@asyncDispose@"] };
+        let properties = cx.properties(&kind)?;
+        let property = hooks.iter().find_map(|hook| properties.iter().find(|property| property.name.starts_with(hook)));
+        let Some(method) = cx.value_declaration(property)? else { continue };
         let Some(site) = cx.registry.site_by_node.get(&method).copied() else { continue };
         let receiver = local_key(cx, scope, name)?;
         let block = t.parent(declaration).and_then(|list| t.parent(list)).and_then(|statement| t.parent(statement)).ok_or("a using declaration outside a block")?;
@@ -487,7 +493,8 @@ fn is_entry(cx: &mut Cx, index: usize) -> Found<bool> {
         let framework = cx.input.files.iter().find(|(name, _)| name == cx.path(site.node.file)).is_some_and(|(_, info)| info.framework_default);
         return Ok(site.name == "main" || (is_default && framework));
     };
-    let decorated = |node: u32| has_modifier(t, node, K::DECORATOR);
+    // Decorators count where the language allows them: not on a constructor or a signature.
+    let decorated = |node: u32| matches!(t.kind(node), K::PROPERTY_DECLARATION | K::METHOD_DECLARATION | K::GET_ACCESSOR | K::SET_ACCESSOR | K::CLASS_DECLARATION | K::CLASS_EXPRESSION) && has_modifier(t, node, K::DECORATOR);
     if has_modifier(t, member, K::OVERRIDE_KEYWORD) || decorated(member) || site.name.starts_with("[Symbol.") {
         return Ok(true);
     }

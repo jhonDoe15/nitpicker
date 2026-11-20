@@ -41,10 +41,9 @@ impl Scoped {
 }
 
 fn is_global_augmentation(t: T, statement: u32, name: u32) -> bool {
-    own_text(t, name) == "global" && {
-        let before = t.source().slice(t.start(statement), t.start(name));
-        !before.contains("namespace") && !before.contains("module")
-    }
+    // `declare global {}` has no `namespace` or `module` word: its name is the first token after the modifiers.
+    let after_modifiers = t.listed(statement, "modifiers").last().map_or(t.pos(statement), |modifier| t.end(*modifier));
+    own_text(t, name) == "global" && t.source().skip_trivia(after_modifiers, false) == t.start(name)
 }
 
 fn namespace_body(t: T, statement: u32) -> Option<u32> {
