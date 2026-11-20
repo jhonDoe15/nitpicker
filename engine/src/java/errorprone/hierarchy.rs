@@ -31,8 +31,7 @@ fn rank(index: &TypeIndex, name: &str, known: &mut HashMap<String, u32>) -> u32 
 }
 
 /// Every supertype of a class, the class itself left out, in the order of javac's `Types.closure`: farthest from
-/// `Object` first. Among types of the same rank javac puts the one whose name it met last first; here that is
-/// the reverse of the order in which a walk up the supertypes meets them.
+/// `Object` first, and among types of the same rank the one whose full name sorts first.
 pub fn closure(index: &TypeIndex, name: &str) -> Vec<String> {
     let mut order: Vec<String> = Vec::new();
     let mut queue: std::collections::VecDeque<String> = supers(index, name).into();
@@ -44,10 +43,9 @@ pub fn closure(index: &TypeIndex, name: &str) -> Vec<String> {
         order.push(current);
     }
     let mut known = HashMap::new();
-    let mut ranked: Vec<(u32, usize, String)> =
-        order.into_iter().enumerate().map(|(met, parent)| (rank(index, &parent, &mut known), met, parent)).collect();
-    ranked.sort_by(|a, b| b.0.cmp(&a.0).then(b.1.cmp(&a.1)));
-    ranked.into_iter().map(|(_, _, parent)| parent).collect()
+    let mut ranked: Vec<(u32, String)> = order.into_iter().map(|parent| (rank(index, &parent, &mut known), parent)).collect();
+    ranked.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
+    ranked.into_iter().map(|(_, parent)| parent).collect()
 }
 
 pub fn own_type(index: &TypeIndex, name: &str) -> Type {
