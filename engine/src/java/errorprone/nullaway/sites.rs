@@ -279,21 +279,10 @@ pub(super) fn overriding(context: &Context, method: Node) {
     let generic = if above.type_parameters.is_empty() { String::new() } else { format!("<{}>", above.type_parameters.join(",")) };
     let shown = format!("{}.{generic}{}({})", declaring.name, above.name, above.shown);
     let void = matches!(&above.returns, Type::Primitive(name) if *name == "void");
-    let rows = |table: &'static [super::models::Model], class: &str, method: &crate::java::types::model::Method| {
-        let erased = erase(&method.shown);
-        let (class, name) = (class.to_string(), method.name.clone());
-        table.iter().filter(move |row| row.0 == class && row.1 == name && row.2 == erased).map(|row| row.3).collect::<Vec<_>>()
-    };
     let models = super::models::NONNULL_RETURNS;
     let nullable_above = (above.flags & flag::NULLABLE != 0 || !rows(super::models::ALWAYS_NULLABLE_RETURNS, &declaring.name, above).is_empty()) && rows(models, &declaring.name, above).is_empty();
     let nullable_own = (own.flags & flag::NULLABLE != 0 || !rows(super::models::ALWAYS_NULLABLE_RETURNS, &origin.name, own).is_empty()) && rows(models, &origin.name, own).is_empty();
-    let mut accepted = above.nullable_parameters;
-    for at in rows(super::models::EXPLICITLY_NULLABLE_PARAMETERS, &declaring.name, above) {
-        accepted |= 1 << at.min(63);
-    }
-    for at in rows(super::models::NON_NULL_PARAMETERS, &declaring.name, above) {
-        accepted &= !(1 << at.min(63));
-    }
+    let accepted = accepted(&declaring.name, above);
     if !void && !nullable_above && nullable_own {
         if let Some(name) = method.child_by_field_name("name") {
             context.report("NullAway", method, name.start_byte(), &format!("method returns @Nullable, but superclass method {shown} returns @NonNull"));
@@ -311,6 +300,24 @@ pub(super) fn overriding(context: &Context, method: Node) {
             return;
         }
     }
+}
+
+/// The parameter positions a library model table gives for exactly this method of this class.
+pub(super) fn rows(table: &'static [super::models::Model], class: &str, method: &crate::java::types::model::Method) -> Vec<usize> {
+    let erased = erase(&method.shown);
+    table.iter().filter(|row| row.0 == class && row.1 == method.name && row.2 == erased).map(|row| row.3).collect()
+}
+
+/// The parameters of a method that accept null: its own marks where its class is checked, then the library models.
+pub(super) fn accepted(class: &str, method: &crate::java::types::model::Method) -> u64 {
+    let mut accepted = if annotated(class) { method.nullable_parameters } else { 0 };
+    for at in rows(super::models::EXPLICITLY_NULLABLE_PARAMETERS, class, method) {
+        accepted |= 1 << at.min(63);
+    }
+    for at in rows(super::models::NON_NULL_PARAMETERS, class, method) {
+        accepted &= !(1 << at.min(63));
+    }
+    accepted
 }
 
 /// A printed parameter list without type arguments, as the library model tables write signatures.

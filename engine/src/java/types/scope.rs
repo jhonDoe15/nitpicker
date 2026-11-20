@@ -175,6 +175,8 @@ pub struct Resolver<'a> {
     pub(super) work: Cell<u32>,
     /// Calls whose method is being picked right now: asking again from inside would repeat all of that work.
     pub(super) resolving: RefCell<HashMap<usize, u8>>,
+    /// Type variables in scope stay themselves instead of standing for their bounds.
+    pub(super) symbolic: bool,
     pub(super) mapping: RefCell<HashMap<usize, u8>>,
     pub(super) loose: RefCell<HashMap<usize, Option<Type>>>,
     /// What each type node stands for, asked many times by the rules.
@@ -194,7 +196,12 @@ fn written_names<'f>(file: &'f SourceFile, list: Option<Node>) -> Vec<&'f str> {
 
 impl<'a> Resolver<'a> {
     pub fn new(index: &'a TypeIndex, file: &'a SourceFile, scope: &'a FileScope) -> Resolver<'a> {
-        Resolver { index, file, scope, cache: RefCell::new(HashMap::new()), depth: Cell::new(0), busy: RefCell::new(std::collections::HashSet::new()), skipped: Cell::new(0), work: Cell::new(0), resolving: RefCell::new(HashMap::new()), loose: RefCell::new(HashMap::new()), written: RefCell::new(HashMap::new()), locals: RefCell::new(HashMap::new()), mapping: RefCell::new(HashMap::new()) }
+        Resolver { index, file, scope, cache: RefCell::new(HashMap::new()), depth: Cell::new(0), busy: RefCell::new(std::collections::HashSet::new()), skipped: Cell::new(0), work: Cell::new(0), resolving: RefCell::new(HashMap::new()), symbolic: false, loose: RefCell::new(HashMap::new()), written: RefCell::new(HashMap::new()), locals: RefCell::new(HashMap::new()), mapping: RefCell::new(HashMap::new()) }
+    }
+
+    /// A second resolver for the same file whose types keep the type variables in scope, as javac prints them.
+    pub fn symbolic(&self) -> Resolver<'a> {
+        Resolver { symbolic: true, ..Resolver::new(self.index, self.file, self.scope) }
     }
 
     fn simple(&self, at: Node, name: &str) -> Option<String> {
@@ -290,6 +297,7 @@ impl<'a> Resolver<'a> {
     /// The type a type node stands for. Type variables stay variables for member signatures
     /// (`keep`), and become their bound where an expression of that type is used.
     pub fn written(&self, node: Node, keep: bool) -> Option<Type> {
+        let keep = keep || self.symbolic;
         let key = (node.id(), keep);
         if let Some(known) = self.written.borrow().get(&key) {
             return known.clone();
@@ -441,6 +449,35 @@ impl<'a> Resolver<'a> {
             if part.kind() == "spread_parameter" { format!("{shown}...") } else { shown }
         };
         listed.map(one).collect::<Vec<_>>().join(",")
+    }
+
+    /// The text given to an annotation named `Contract`, when it is written as one string.
+    fn contract(&self, member: Node) -> String {
+        let modifiers = children(member).into_iter().find(|part| part.kind() == "modifiers");
+        let marks = modifiers.map(children).unwrap_or_default().into_iter().filter(|part| part.kind() == "annotation");
+        let named = |mark: &Node| mark.child_by_field_name("name").is_some_and(|name| self.file.text_of(name).rsplit('.').next() == Some("Contract"));
+        let Some(given) = marks.into_iter().find(named).and_then(|mark| mark.child_by_field_name("arguments")) else { return String::new() };
+        let mut text = None;
+        for part in crate::engine::source::named_children(given) {
+            let value = match part.kind() {
+                "element_value_pair" if part.child_by_field_name("key").is_some_and(|key| self.file.text_of(key) == "value") => part.child_by_field_name("value"),
+                "string_literal" => Some(part),
+                _ => None,
+            };
+            text = text.or(value.and_then(|value| super::expr::literal_text(self.file, value)));
+        }
+        text.unwrap_or_default()
+    }
+
+    fn parameter_names(&self, member: Node) -> Vec<String> {
+        let list = member.child_by_field_name("parameters").map(children).unwrap_or_default();
+        let listed = list.into_iter().filter(|part| matches!(part.kind(), "formal_parameter" | "spread_parameter"));
+        let mut names = Vec::new();
+        for part in listed {
+            let name = part.child_by_field_name("name").or_else(|| children(part).into_iter().find(|inner| inner.kind() == "variable_declarator").and_then(|inner| inner.child_by_field_name("name")));
+            names.push(name.map(|name| self.file.text_of(name).to_string()).unwrap_or_default());
+        }
+        names
     }
 
     fn throws(&self, member: Node) -> Vec<String> {
@@ -655,6 +692,8 @@ impl<'a> Resolver<'a> {
             throws: Vec::new(),
             nullable_parameters: 0,
             flags: super::model::flag::PUBLIC,
+            names: Vec::new(),
+            contract: String::new(),
         };
         let bits = |member: Node| -> u16 {
             use super::model::flag;
@@ -758,6 +797,8 @@ impl<'a> Resolver<'a> {
                         shown: self.shown_parameters(member),
                         throws: self.throws(member),
                         nullable_parameters: self.nullable_parameters(member),
+                        names: self.parameter_names(member),
+                        contract: self.contract(member),
                         flags: bits(member) | if member.child_by_field_name("body").is_none() && info.is_interface { super::model::flag::ABSTRACT } else { 0 },
                     });
                 }
@@ -769,6 +810,8 @@ impl<'a> Resolver<'a> {
                         shown: self.shown_parameters(member),
                         throws: self.throws(member),
                         nullable_parameters: self.nullable_parameters(member),
+                        names: self.parameter_names(member),
+                        contract: self.contract(member),
                         ..plain("<init>", parameters, Type::Primitive("void"))
                     });
                 }
@@ -788,7 +831,7 @@ impl<'a> Resolver<'a> {
         if declaration.kind() == "record_declaration" {
             let (parameters, generic_parameters, varargs) = self.parameters(declaration.child_by_field_name("parameters"));
             if !info.methods.iter().any(|method| method.name == "<init>" && method.parameters == parameters) {
-                info.methods.push(Method { generic_parameters, varargs, nullable_parameters: self.nullable_parameters(declaration), ..plain("<init>", parameters, Type::Primitive("void")) });
+                info.methods.push(Method { generic_parameters, varargs, nullable_parameters: self.nullable_parameters(declaration), names: self.parameter_names(declaration), ..plain("<init>", parameters, Type::Primitive("void")) });
             }
             for component in declaration.child_by_field_name("parameters").map(children).unwrap_or_default() {
                 let (Some(name), Some(kind)) = (component.child_by_field_name("name"), self.declared(component, None, false)) else {
