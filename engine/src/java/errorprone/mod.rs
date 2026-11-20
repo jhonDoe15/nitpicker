@@ -106,6 +106,9 @@ const CHECKS: &[Check] = &[
     values::assert_false,
     values::enum_ordinal,
     values::void_used,
+    values::object_equals_for_primitives,
+    values::unnecessary_parentheses,
+    values::unused_exception,
 ];
 
 pub struct ErrorProne;
