@@ -10,6 +10,8 @@ import { collectRepositoryFindings } from './repository-files.mjs';
 const { createGitRepository } = useGitFixtures();
 
 const PRIVATE_KEY_HEADER = ['-----BEGIN', 'PRIVATE KEY-----'].join(' ');
+const PRIVATE_KEY_FOOTER = ['-----END', 'PRIVATE KEY-----'].join(' ');
+const KEY_BODY = 'MIIEvQIBADANBgkqhkiG9w0BAQEFAASC'.repeat(2);
 
 function check(files, change = () => undefined) {
   const { root } = createGitRepository(files);
@@ -125,9 +127,15 @@ describe('committed private keys', () => {
     const findings = check({
       'deploy/id_rsa': 'x\n',
       'ssl/server.p12': 'x\n',
-      'ssl/server.pem': `${PRIVATE_KEY_HEADER}\nabc\n`,
+      'ssl/server.pem': `${PRIVATE_KEY_HEADER}\n${KEY_BODY}\n${KEY_BODY.slice(0, 20)}==\n${PRIVATE_KEY_FOOTER}\n`,
       'ssl/ca.pem': '-----BEGIN CERTIFICATE-----\nabc\n',
-      'src/fixture.json': `{"key": "${PRIVATE_KEY_HEADER}"}\n`,
+      'src/fixture.json': `{"key": "${PRIVATE_KEY_HEADER}\\n${KEY_BODY}\\n${PRIVATE_KEY_FOOTER}"}\n`,
+      'src/Keys.java': `String pem = "${PRIVATE_KEY_HEADER}\\n"\n    + "${KEY_BODY}\\n"\n    + "${PRIVATE_KEY_FOOTER}";\n`,
+      'src/Armour.java': `pem.replace("${PRIVATE_KEY_HEADER}", "").replace("${PRIVATE_KEY_FOOTER}", "");\n`,
+      'src/Upload.java': `String notAKey = "${PRIVATE_KEY_HEADER}\\nnot a key\\n${PRIVATE_KEY_FOOTER}";\n`,
+      'src/Check.java': `if (pem.contains("${PRIVATE_KEY_HEADER}")) {\n  return parsePrivateKeyFromArmouredTextWithDefaultProvider(pem);\n}\n`,
+      'src/Digest.java': `if (pem.startsWith("${PRIVATE_KEY_HEADER}")) {\n  String sha = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";\n  shouldRejectTheRequestWhenTheUserHasNoRoleAssigned();\n}\n`,
+      'keys/secret.asc': `-----BEGIN PGP PRIVATE KEY BLOCK-----\n\n${KEY_BODY}\n-----END PGP PRIVATE KEY BLOCK-----\n`,
       'src/test/resources/truststore.jks': 'x\n',
       'jre/lib/security/cacerts': 'x\n',
       'ssh/id_rsa.pub': 'ssh-rsa AAAA\n',
@@ -135,6 +143,8 @@ describe('committed private keys', () => {
 
     expect(findings.map(({ message }) => message.split('. ')[0])).toEqual([
       'deploy/id_rsa may hold a private key',
+      'keys/secret.asc holds a private key',
+      'src/Keys.java holds a private key',
       'src/fixture.json holds a private key',
       'ssl/server.p12 may hold a private key',
       'ssl/server.pem holds a private key',

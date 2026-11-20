@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import type { RecipePlan } from '../../../../core/fix/typed/fix-types.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
+import { readTreeUnits } from './batches/tree-batches.mts';
 import { runTreeProcess } from './tree-process.mts';
 import type { Unit } from './jvm-types.mts';
 
@@ -29,10 +30,12 @@ function runTrees(request: TreesRequest): unknown {
 }
 
 export function readJvmUnits(projectRoot: string, files: readonly string[]): Unit[] {
-  if (files.length === 0) {
-    return [];
-  }
-  const units = runTrees({ root: projectRoot, files });
+  const units = readTreeUnits({
+    script: TREES_PROCESS,
+    root: projectRoot,
+    files,
+    subject: 'Java and Kotlin',
+  });
   if (!isUnits(units)) {
     throw new TypeError('Reading Java and Kotlin syntax trees returned no list');
   }

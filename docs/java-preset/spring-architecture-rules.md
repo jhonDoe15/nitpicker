@@ -278,12 +278,17 @@ base classes are not tests themselves and are never placed.
 | Rule                        | Fails when                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `spring-test-placement`     | such a test is in the unit test source set (`test` on Gradle, the one test source directory on Maven) and is not an integration test by the shared rule of the [slow-test check](slow-tests.md): a class named `*IT`, `*ITCase`, `*IntegrationTest(s)`, `*IntegrationSpec` or `*ISpec`, or a package with an `integration`, `it` or `e2e` segment. The message offers the forms that keep the package (an `*IT` name, an integration test source set), so a slice test of a package-private controller still compiles; plain unit tests live anywhere |
-| `spring-no-dirties-context` | a test class or method has `@DirtiesContext`, anywhere                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `spring-no-dirties-context` | a test class or method has `@DirtiesContext`, unless the class owns its context (below)                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 
 `spring-no-dirties-context` reads every test source set, a separate one such as
 `src/integrationTest/java` included; `spring-test-placement` reads only the unit one, since every
 other test source set is an integration one. A test that sleeps is covered by the test-honesty rules for
-Java, not here.
+Java, not here. It leaves out a class whose context no other class shares and that closes it once: a
+class-level `@DirtiesContext` without a per-method `classMode`, on a class that declares a nested
+`@Configuration`, `@SpringBootConfiguration` or `@TestConfiguration` class, a `@MockitoBean`,
+`@MockitoSpyBean`, `@MockBean` or `@SpyBean` field, or a `@DynamicPropertySource` method. Nothing is
+rebuilt there; the annotation only releases what the context holds when the class ends. A
+`@DirtiesContext` on a method is always reported.
 
 **Limits.** The rules read bytecode, so generated classes without a source file are skipped (no
 finding can be placed), and a use of another package's compile-time constant (`static final` of a

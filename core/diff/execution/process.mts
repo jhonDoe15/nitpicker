@@ -1,9 +1,6 @@
 import { ChildProcess, spawn } from 'node:child_process';
 import { openOutputFile } from '../../tooling/output-file/output-file.mts';
-import {
-  ANALYZER_TIMEOUT_KEY,
-  ANALYZER_TIMEOUT_VARIABLE,
-} from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+import { ANALYZER_TIMEOUT_KEY } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import {
   TROUBLESHOOTING_ANCHORS,
@@ -13,7 +10,11 @@ import { withoutHostCiOutputs } from '../../tooling/host-environment.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 import { withCompileCache } from '../../../shared/processes/environment.mts';
 import { withNodeHeap } from '../../../shared/processes/memory/node-heap.mts';
-import type { AnalyzerTask } from './tasks.mts';
+import {
+  FITTED_ANALYZER_STDOUT_BYTES,
+  MAX_ANALYZER_STDOUT_BYTES,
+} from '../../../shared/report-output/fit-findings.mts';
+import { type AnalyzerTask, taskLimitEnvironment } from './tasks.mts';
 import { type AnalyzerReport, reportFromAnalyzerOutput } from './report/analyzer-report.mts';
 
 type OutputFile = {
@@ -53,10 +54,9 @@ type Settle = {
 const openOutput: () => OutputFile = openOutputFile;
 const hostEnvironment: (environment: NodeJS.ProcessEnv) => NodeJS.ProcessEnv = withoutHostCiOutputs;
 const timeoutKey: string = ANALYZER_TIMEOUT_KEY;
-const timeoutVariable: string = ANALYZER_TIMEOUT_VARIABLE;
 const configFile: string = CONFIG_FILE_NAME;
 
-const MAX_ANALYZER_OUTPUT_BYTES = 128 * 1024 * 1024;
+const MAX_ANALYZER_STDERR_BYTES = 128 * 1024 * 1024;
 
 export const FORCE_KILL_DELAY_MS = 1_000;
 
@@ -72,8 +72,10 @@ function analyzerEnvironment(
 ): NodeJS.ProcessEnv {
   const base = hostEnvironment(withCompileCache(environment));
   return {
-    ...(task.invocation.command === process.execPath ? withNodeHeap(base) : base),
-    ...(task.configuredTimeout === true ? { [timeoutVariable]: String(task.timeoutMs) } : {}),
+    ...(task.invocation.command === process.execPath
+      ? withNodeHeap(base, undefined, task.memoryMegabytes ?? 0)
+      : base),
+    ...taskLimitEnvironment(task, FITTED_ANALYZER_STDOUT_BYTES),
   };
 }
 
@@ -123,7 +125,9 @@ function createOutputCollector(stdoutFile: OutputFile, onOverflow: () => void): 
   const stderr: Buffer[] = [];
   const state = { stderrBytes: 0 };
   function exceeded(): boolean {
-    return stdoutFile.size() + state.stderrBytes > MAX_ANALYZER_OUTPUT_BYTES;
+    return (
+      stdoutFile.size() > MAX_ANALYZER_STDOUT_BYTES || state.stderrBytes > MAX_ANALYZER_STDERR_BYTES
+    );
   }
   function check(): void {
     if (exceeded()) {

@@ -55,6 +55,10 @@ export function checkExceptionRules(
   }
 }
 
+function withoutEmptyFileBlocks(configEntries: readonly Linter.Config[]): Linter.Config[] {
+  return configEntries.filter(({ files }) => !Array.isArray(files) || files.length > 0);
+}
+
 export function applyRuleExceptions(
   configEntries: readonly Linter.Config[],
   allExceptions: readonly ExceptionRule[] = [],
@@ -72,14 +76,14 @@ export function applyRuleExceptions(
   if (!projectRules && unknown.length > 0) {
     throw unknownRulesError(unknown.map(({ rule }) => rule));
   }
-  return [
+  return withoutEmptyFileBlocks([
     ...configEntries,
     ...exceptions.map(({ rule, paths }) => ({
       name: RULE_EXCEPTION_ENTRY,
       files: [...paths],
       rules: { [rule]: 'off' as const },
     })),
-  ];
+  ]);
 }
 
 export function applyMatchingRuleExceptions(

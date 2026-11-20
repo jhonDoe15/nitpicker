@@ -3,6 +3,7 @@ import type { Access } from '../typed/rule-types.mts';
 import { compactType } from '../../kotlin-facts.mts';
 import { classesOf } from '../discovery/declarations.mts';
 import { importsOf, packageOf } from '../discovery/imports.mts';
+import { resetsBeforeEachTest } from './state-resets.mts';
 
 const SET_DEFAULT = 'setDefault';
 const JAVA_NET = 'java.net';
@@ -171,7 +172,10 @@ export function isJdkGlobal(access: Access): boolean {
 
 export function stateChanges(scanned: TestScanned): Access[] {
   const declared = new Set(classesOf(scanned).map(({ name }) => name));
+  const resets = resetsBeforeEachTest(scanned);
   return memberAccesses(scanned.code).filter(
-    (access) => isGlobalSetter(scanned, access) || isProjectState(scanned, access, declared),
+    (access) =>
+      isGlobalSetter(scanned, access) ||
+      (isProjectState(scanned, access, declared) && !resets(access)),
   );
 }

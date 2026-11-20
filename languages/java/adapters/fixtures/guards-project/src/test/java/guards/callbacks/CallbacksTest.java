@@ -31,22 +31,22 @@ class CallbacksTest {
   }
 
   @Test
-  void dropsAHelperCheck() {
+  void dropsAHelperCheck() { // violation: pmd/UnitTestShouldIncludeAssert
     hasLength(3); // violation: pmd/DroppedCallbackInTest
   }
 
   @Test
-  void dropsTheCheckInALambda() {
+  void dropsTheCheckInALambda() { // violation: pmd/UnitTestShouldIncludeAssert
     run(name -> hasLength(3)); // violation: pmd/DroppedCallbackInTest
   }
 
   @Test
-  void dropsAConsumer() {
+  void dropsAConsumer() { // violation: pmd/UnitTestShouldIncludeAssert
     isUpper(); // violation: pmd/DroppedCallbackInTest
   }
 
   @Test
-  void runsTheCheck() {
+  void runsTheCheck() { // violation: pmd/UnitTestShouldIncludeAssert
     run(hasLength(3));
     isUpper().accept(name());
     hasLength(3).on(name());

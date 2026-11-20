@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mts';
 import { fakeGradleRun } from '../test-support/in-process-gradle.mts';
-import { readReportModules } from './report-modules.mts';
+import { readFinishedModules, readReportModules } from './report-modules.mts';
 import {
   fieldOf,
   messageOf,
@@ -323,6 +323,30 @@ describe('a Gradle build with several projects', () => {
     expect(() => readReportModules(base, 'java')).toThrow(
       'The java preset found no Gradle reports for project :lib (lib): its nitpickerJava task did not run',
     );
+  });
+
+  it('leaves out failed projects and projects without reports when tool tasks failed', () => {
+    const base = project({
+      'modules.json': JSON.stringify([
+        { key: 'root', path: ':', dir: '' },
+        { key: 'module-lib', path: ':lib', dir: 'lib' },
+        { key: 'module-app', path: ':app', dir: 'app' },
+        { key: 'module-docs', path: ':docs', dir: 'docs' },
+      ]),
+      'root/manifest.json': '{}',
+      'module-app/manifest.json': '{}',
+      'module-docs/manifest.json': '{}',
+    });
+
+    const report = readFinishedModules(base, 'java', new Set([':docs']));
+
+    expect([report.modules.map((module) => module.path), report.skipped]).toEqual([
+      [':app', ':'],
+      [
+        { path: ':docs', dir: 'docs' },
+        { path: ':lib', dir: 'lib' },
+      ],
+    ]);
   });
 });
 

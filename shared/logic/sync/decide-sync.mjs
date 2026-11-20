@@ -62,22 +62,37 @@ function answerCache() {
 function aheadAnswers() {
   const known = new Map();
   const asked = new Map();
-  const state = { noting: false };
+  const settled = new Map();
+  const state = { noting: false, settling: false, notes: 0 };
   return {
     isNoting: () => state.noting,
     find: (id) => known.get(id),
     note(id, request) {
+      state.notes += 1;
       asked.set(id, request);
     },
-    noted(run) {
+    noted(run, keepSettled) {
       state.noting = true;
+      state.settling = keepSettled;
       try {
         run();
         return [...asked];
       } finally {
         state.noting = false;
+        state.settling = false;
         asked.clear();
       }
+    },
+    settledOr(key, run) {
+      if (settled.has(key)) {
+        return settled.get(key);
+      }
+      const before = state.notes;
+      const result = run();
+      if (state.settling && state.notes === before) {
+        settled.set(key, result);
+      }
+      return result;
     },
     keep(found) {
       for (const [id, result] of found) {
@@ -86,6 +101,7 @@ function aheadAnswers() {
     },
     forget() {
       known.clear();
+      settled.clear();
     },
   };
 }
@@ -102,6 +118,7 @@ function sharedAnswers() {
 }
 
 const answers = answerCache();
+const answersByTerms = answerCache();
 const ahead = aheadAnswers();
 const shared = sharedAnswers();
 
@@ -161,6 +178,22 @@ function ask(request, timeoutMs) {
   return reply;
 }
 
+function withoutRange(key, value) {
+  return key === 'range' ? undefined : value;
+}
+
+function solved(request, timeoutMs) {
+  if (request.explain) {
+    return ask(request, timeoutMs);
+  }
+  const sameTerms = JSON.stringify(request, withoutRange);
+  const reply = answersByTerms.find(sameTerms) ?? ask(JSON.parse(sameTerms), timeoutMs);
+  if (reply?.result !== undefined) {
+    answersByTerms.keep(sameTerms, reply);
+  }
+  return reply;
+}
+
 function answered(request, { timeoutMs = SAFETY_NET_MS, budget }) {
   const id = JSON.stringify(request);
   const known = answers.find(id);
@@ -170,7 +203,7 @@ function answered(request, { timeoutMs = SAFETY_NET_MS, budget }) {
   if (!spendRun(budget)) {
     return undefined;
   }
-  return ahead.isNoting() ? noted(id, request) : settled(id, () => ask(request, timeoutMs));
+  return ahead.isNoting() ? noted(id, request) : settled(id, () => solved(request, timeoutMs));
 }
 
 function noted(id, request) {
@@ -207,10 +240,11 @@ export function shareSolverAnswers(store) {
 /**
  * Runs `run` with every question the solver has not answered yet noted instead of asked; such a
  * question is 'open' in that run. The run leaves the answers kept by the terms asked as they were.
- * Returns the questions noted, by the terms asked.
+ * Returns the questions noted, by the terms asked. With `keepSettled`, the parts of the run given
+ * to `settledAhead` that note no question keep their result for the run that follows.
  */
-export function noteQuestions(run) {
-  return ahead.noted(run);
+export function noteQuestions(run, { keepSettled = false } = {}) {
+  return ahead.noted(run, keepSettled);
 }
 
 /**
@@ -220,6 +254,15 @@ export function noteQuestions(run) {
  */
 export function answerAhead(found) {
   ahead.keep(found);
+}
+
+/**
+ * The result of `run()` for `key`. A dry run that notes no question while it runs `run()` already
+ * has the final result, so the run that follows it takes that result instead of running again.
+ * Results are kept until the answers found ahead are forgotten.
+ */
+export function settledAhead(key, run) {
+  return ahead.settledOr(key, run);
 }
 
 export function forgetAnswersAhead() {

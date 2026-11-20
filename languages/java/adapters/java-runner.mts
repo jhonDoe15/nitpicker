@@ -7,6 +7,7 @@ import { parseJavaRunnerArguments } from './java-policy.mts';
 import { featureLayout } from '../../../shared/rules/features/feature-roles.mjs';
 import { javaStyle } from './style/java-style.mts';
 import { gradleBudget, mavenBudget } from './gradle-wrapper/gradle-budget.mts';
+import { withinOutputLimit } from './reporting/output-limit/output-limit.mts';
 import {
   MINUTE_MS,
   analyzerDeadlineMs,
@@ -231,7 +232,10 @@ export function runJava(
 }
 
 function main(runnerArguments: readonly string[]): void {
-  process.stdout.write(`${JSON.stringify(runJava(runnerArguments, { warn: process.stderr }))}\n`);
+  const snapshot = runJava(runnerArguments, { warn: process.stderr });
+  const { policy } = readRunnerPolicy(runnerArguments);
+  const fitted = withinOutputLimit(snapshot, policy.preset ?? 'java', process.env);
+  process.stdout.write(`${JSON.stringify(fitted)}\n`);
 }
 
 const entry = { moduleFile: import.meta.filename, adapter: 'Java', main };

@@ -21,6 +21,7 @@ type StaticCheckSettings = {
   readonly includeOnly?: string | undefined;
   readonly exclude?: string | undefined;
   readonly timeoutMs?: number | undefined;
+  readonly timeoutScale?: unknown;
   readonly shardWeight?: number | undefined;
 };
 
@@ -54,6 +55,7 @@ export function createStaticCheckAnalyzer({
   includeOnly,
   exclude,
   timeoutMs,
+  timeoutScale,
   shardWeight = 1,
 }: StaticCheckSettings): StaticCheckAnalyzer {
   return {
@@ -62,6 +64,7 @@ export function createStaticCheckAnalyzer({
     configurationHash,
     exclusions,
     timeoutMs,
+    ...(timeoutScale === undefined ? {} : { timeoutScale }),
     shardWeight,
     requiresDependencies: kind === 'typecheck',
     createInvocation({ projectRoot, policyRoot, toolRoot, liveProjectRoot }) {

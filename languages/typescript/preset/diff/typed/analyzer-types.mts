@@ -17,6 +17,7 @@ export type AnalyzerBody = {
   inputs?: unknown;
   resolveVersion?: (projectRoot: string) => unknown;
   policyFromPackage?: true;
+  timeoutScale?: unknown;
   memoryScale?: {
     readonly perThousandFilesMegabytes: number;
     readonly extensions: readonly string[];
@@ -80,6 +81,7 @@ export type QualityAreaSettings = {
   readonly configurationHash: string;
   readonly exclusions: readonly string[];
   readonly timeoutMs: number | undefined;
+  readonly timeoutScale: unknown;
   readonly dependencies: readonly string[] | undefined;
   readonly adapterArguments: readonly string[] | undefined;
   readonly concurrencyWeight: number | undefined;
@@ -102,5 +104,6 @@ export type StaticCheckSettings = {
   readonly includeOnly: undefined;
   readonly exclude: undefined;
   readonly timeoutMs: number | undefined;
+  readonly timeoutScale: unknown;
   readonly shardWeight: number;
 };

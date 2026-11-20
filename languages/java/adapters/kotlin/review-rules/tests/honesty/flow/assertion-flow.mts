@@ -2,6 +2,7 @@ import type { Span, TestNode, TestScanned } from '../../typed/discovery-types.mt
 import type { Construct, FlowHit, LoopScope, RangeScope } from '../../typed/rule-types.mts';
 import { assertsIn, endsBranch } from './assertion-calls.mts';
 import { constructsIn } from './flow-constructs.mts';
+import { cannotPassSilently } from './loops/guarded-loops.mts';
 import { exemptRanges, insideAny, outermost, runsAtLeastOnce } from './loops/loop-scope.mts';
 
 export const CONTROL_FLOW_RULE = 'AssertionInControlFlow';
@@ -64,6 +65,7 @@ export function assertionsInControlFlow(
       !(
         insideAny(exempt, entry.from) ||
         runsAtLeastOnce(scanned, entry) ||
+        cannotPassSilently(scanned, { construct: entry, body, all }) ||
         (operators.has(entry.construct) && insideAny(headers, entry.from))
       ),
   );

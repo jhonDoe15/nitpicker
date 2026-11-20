@@ -6,6 +6,22 @@ import { reportFromAnalyzerOutput } from '../report/analyzer-report.mts';
 import type { AnalyzerTask } from '../tasks.mts';
 import { task } from '../test-support/analyzer-task.mts';
 import { runTaskGraph } from './task-graph.mts';
+import {
+  admittedHeapMegabytes,
+  usableMemoryMegabytes,
+  withNodeHeap,
+} from '../../../../shared/processes/memory/node-heap.mts';
+import { memoryScaleOf as untypedMemoryScaleOf } from '../../../../languages/typescript/preset/diff/memory-scales.mts';
+
+const memoryScaleOf: (name: string) => { readonly perThousandFilesMegabytes: number } | undefined =
+  untypedMemoryScaleOf;
+const GIB = 1024 ** 3;
+const LARGE_PROJECT_THOUSAND_FILES = 15.3;
+
+function estimated(name: string): AnalyzerTask {
+  const perThousand = memoryScaleOf(name)?.perThousandFilesMegabytes ?? 0;
+  return sized(name, Math.round(perThousand * LARGE_PROJECT_THOUSAND_FILES));
+}
 
 async function flushScheduling(): Promise<void> {
   await new Promise((resolve) => setImmediate(resolve));
@@ -67,6 +83,48 @@ describe('memory-aware scheduling', () => {
   });
 });
 
+describe('a 15,300-file project on a 4-core, 10 GB budget', () => {
+  it('runs the light analyzers together and the lint pass alone', async () => {
+    const running = new Set<string>();
+    const together: string[][] = [];
+    const names = ['eslint-lint', 'coupling', 'test-runtime', 'coding-standards'];
+    const execution = runTaskGraph(names.map(estimated), {
+      maxParallel: 4,
+      memoryMegabytes: 10_000,
+      execute: async ({ name }: AnalyzerTask) => {
+        running.add(name);
+        together.push([...running].toSorted());
+        await flushScheduling();
+        running.delete(name);
+        return { findings: [] };
+      },
+    });
+
+    expect((await execution).errors).toEqual([]);
+    expect(together).toEqual([
+      ['eslint-lint'],
+      ['coupling'],
+      ['coupling', 'test-runtime'],
+      ['coding-standards', 'coupling', 'test-runtime'],
+    ]);
+  });
+
+  it('gives an analyzer the heap of the memory it was admitted with', () => {
+    const budget = { memory: 16 * GIB, parallel: 4, defaultLimit: 2 * GIB };
+
+    expect(admittedHeapMegabytes(budget, 0)).toBe(7680);
+    expect(admittedHeapMegabytes(budget, 9000)).toBe(9000);
+    expect(admittedHeapMegabytes(budget, 50_000)).toBe(12_288);
+    expect(
+      withNodeHeap(
+        { NITPICKER_MAX_PARALLEL: '4' },
+        { memory: 16 * GIB, defaultLimit: 2 * GIB },
+        11_750,
+      ),
+    ).toEqual({ NITPICKER_MAX_PARALLEL: '4', NODE_OPTIONS: '--max-old-space-size=11750' });
+  });
+});
+
 describe('analyzer memory errors', () => {
   it('names the settings to change when an analyzer runs out of heap', () => {
     const output = {
@@ -90,9 +148,10 @@ describe('analyzer memory errors', () => {
     );
   });
 
-  it('gives a Node analyzer a heap sized from the machine', async () => {
+  async function heapOf(memoryMegabytes: number | undefined): Promise<number> {
     const report = await executeAnalyzerTask({
       ...task('probe'),
+      memoryMegabytes,
       invocation: {
         command: process.execPath,
         args: [
@@ -103,9 +162,20 @@ describe('analyzer memory errors', () => {
         env: { PATH: process.env['PATH'] },
       },
     });
-
     const messages = report.findings.map((finding) => textOf(fieldOf(finding, 'message')));
-    expect(messages).toHaveLength(1);
-    expect(messages[0]).toMatch(/^(?:.* )?--max-old-space-size=\d+$/u);
+    return Number(
+      /^(?:.* )?--max-old-space-size=(?<megabytes>\d+)$/u.exec(messages[0] ?? '')?.groups?.[
+        'megabytes'
+      ],
+    );
+  }
+
+  it('gives a Node analyzer a heap sized from the machine, and all of it when admitted alone', async () => {
+    const shared = await heapOf(undefined);
+    const alone = await heapOf(Number.MAX_SAFE_INTEGER);
+
+    expect(shared).toBeGreaterThan(0);
+    expect(alone).toBe(usableMemoryMegabytes());
+    expect(alone).toBeGreaterThanOrEqual(shared);
   });
 });

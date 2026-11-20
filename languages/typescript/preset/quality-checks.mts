@@ -163,6 +163,7 @@ function typeAndArchitectureChecksFor(layout: ResolvedLayout): QualityCheck[] {
     {
       name: 'typescript-typecheck',
       kind: 'typecheck',
+      ...SIZE_SCALED_DEADLINE,
       version: typeScriptVersion,
       patterns: [],
       exclusions: ['dist/**', ...layout.exclude],

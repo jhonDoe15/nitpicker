@@ -1,6 +1,7 @@
 import { RULE_IDS } from '../../policy.mjs';
 import { functionUnitRule, identityCounter, reuseFinding } from '../reuse/reuse-finding.mjs';
 import { shorterConditions } from './condition-sites.mjs';
+import { settledAhead } from '../../logic/sync/decide-sync.mjs';
 
 function unitFindings(unit, analyzerName) {
   const numbered = identityCounter();
@@ -23,4 +24,7 @@ function unitFindings(unit, analyzerName) {
   });
 }
 
-export const shorterConditionFindings = functionUnitRule(RULE_IDS.shorterCondition, unitFindings);
+export const shorterConditionFindings = functionUnitRule(
+  RULE_IDS.shorterCondition,
+  (unit, analyzerName) => settledAhead(unit, () => unitFindings(unit, analyzerName)),
+);

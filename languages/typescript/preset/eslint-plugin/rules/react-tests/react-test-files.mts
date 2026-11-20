@@ -13,6 +13,7 @@ import { isNode, nameOf, type SourceCode } from '../typed/node-views.mts';
 import { readLayout } from '../typed/policy-views.mts';
 import { calleeNameOf } from '../typed/syntax-views.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
+import { cachedValue } from '../../../../../../shared/values/caching/cached-value.mts';
 
 type ReachStep =
   | { readonly file: string; readonly truncated?: undefined }
@@ -124,23 +125,33 @@ function testHelperOf(sources: readonly string[], filename: string): string | un
     : undefined;
 }
 
-function reactTestScope(context: ScopeContext): {
+type ReactTestScope = {
   readonly inScope: boolean;
   readonly utilsModule: string | undefined;
-} {
+};
+
+function reactTestScope(context: ScopeContext): ReactTestScope {
   const sources = topLevelSources(context.sourceCode.ast).filter(
     (source) => typeof source === 'string',
   );
+  if (sources.some((source) => testingLibraryQueryModule.test(source))) {
+    return { inScope: true, utilsModule: undefined };
+  }
   const helper = testHelperOf(sources, context.filename);
   const projectFile = path.relative(context.cwd, context.filename).replaceAll('\\', '/');
   const component =
     componentFile.test(context.filename) &&
     !isBrowserEndToEndTest({ sources, projectFile, layout });
-  const direct = sources.some((source) => testingLibraryQueryModule.test(source));
   return {
     inScope: component || helper !== undefined || sources.some(isReactTestModule),
-    utilsModule: direct ? undefined : helper,
+    utilsModule: helper,
   };
+}
+
+const scopes = new WeakMap<TSESTree.Program, ReactTestScope>();
+
+function scopeOfFile(context: ScopeContext): ReactTestScope {
+  return cachedValue(scopes, context.sourceCode.ast, () => reactTestScope(context));
 }
 
 function withUtilsModule<Context extends ScopeContext>(context: Context, helper: string): Context {
@@ -152,7 +163,7 @@ export function inReactTestFilesOnly<MessageIds extends string, Options extends 
   create: TSESLint.RuleCreateFunction<MessageIds, Options>,
 ): TSESLint.RuleCreateFunction<MessageIds, Options> {
   return (context) => {
-    const { inScope, utilsModule } = reactTestScope(context);
+    const { inScope, utilsModule } = scopeOfFile(context);
     if (!inScope) {
       return {};
     }

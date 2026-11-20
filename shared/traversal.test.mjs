@@ -5,6 +5,7 @@ import {
   expandsFully,
   foldTree,
   parentDirectory,
+  preOrder,
   whileHolds,
 } from './traversal.mjs';
 
@@ -16,7 +17,11 @@ describe('iterative tree traversal', () => {
       children: [{ name: 'first', children: [leaf] }, { name: 'last' }],
     };
     const visited = [...depthFirst(tree, (node) => node.children ?? [])];
-    expect(visited.map((node) => node.name)).toEqual(['root', 'first', 'leaf', 'last']);
+    const listed = preOrder(tree, (node) => node.children ?? []);
+    expect([visited, listed].map((nodes) => nodes.map((node) => node.name))).toEqual([
+      ['root', 'first', 'leaf', 'last'],
+      ['root', 'first', 'leaf', 'last'],
+    ]);
   });
 
   it('handles a parent chain deeper than the JavaScript call stack', () => {
