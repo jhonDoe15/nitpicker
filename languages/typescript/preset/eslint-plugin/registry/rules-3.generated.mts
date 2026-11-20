@@ -20,6 +20,7 @@ import { rule as ruleReactNoEffectEventHandling } from '../rules/react/render/re
 import { rule as ruleReactNoHardcodedColors } from '../rules/react/theme/react-no-hardcoded-colors.mts';
 import { rule as ruleReactNoLiteralIdInListComponent } from '../rules/react/ids/react-no-literal-id-in-list-component.mts';
 import { rule as ruleReactNoRandomKey } from '../rules/react/render/react-no-random-key.mts';
+import { rule as ruleReactNoRenderSideEffect } from '../rules/react/purity/react-no-render-side-effect.mts';
 import { rule as ruleReactNoStaleStateUpdate } from '../rules/react/state/react-no-stale-state-update.mts';
 import { rule as ruleReactNoUncachedUsePromise } from '../rules/react/purity/react-no-uncached-use-promise.mts';
 import { rule as ruleReactPureStateUpdater } from '../rules/react/state/react-pure-state-updater.mts';
@@ -72,6 +73,7 @@ export const partRules = {
   'react-no-hardcoded-colors': ruleReactNoHardcodedColors,
   'react-no-literal-id-in-list-component': ruleReactNoLiteralIdInListComponent,
   'react-no-random-key': ruleReactNoRandomKey,
+  'react-no-render-side-effect': ruleReactNoRenderSideEffect,
   'react-no-stale-state-update': ruleReactNoStaleStateUpdate,
   'react-no-uncached-use-promise': ruleReactNoUncachedUsePromise,
   'react-pure-state-updater': ruleReactPureStateUpdater,

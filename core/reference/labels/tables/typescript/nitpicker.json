@@ -226,6 +226,7 @@
   "eslint/nitpicker/react-no-stale-state-update": ["bug", "react"],
   "eslint/nitpicker/react-pure-state-updater": ["bug", "react"],
   "eslint/nitpicker/react-no-uncached-use-promise": ["bug", "react"],
+  "eslint/nitpicker/react-no-render-side-effect": ["bug", "react"],
   "eslint/nitpicker/react-single-styling-approach": ["maintainability", "react"],
   "eslint/nitpicker/react-test-no-implementation-details": ["tests", "react"],
   "eslint/nitpicker/release-listeners-on-close": ["reliability"],
