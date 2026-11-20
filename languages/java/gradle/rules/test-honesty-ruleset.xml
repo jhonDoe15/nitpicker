@@ -33,6 +33,33 @@ let $tests := //MethodDeclaration[ModifierList/Annotation[@SimpleName = ('Test',
     $helpers := $first | $second | $third,
     $ranges := //MethodCall[(@MethodName = 'range' and (ArgumentList/*[1]/@ValueAsInt) < (ArgumentList/*[2]/@ValueAsInt))
       or (@MethodName = 'rangeClosed' and (ArgumentList/*[1]/@ValueAsInt) <= (ArgumentList/*[2]/@ValueAsInt))],
+    $asserts := function($n) { $n//MethodCall[matches(@MethodName, '^(assert.*|andExpect(All)?|verifyNo.*|verifyZero.*|verify(Complete|Error|Timeout)?|should(HaveNo.*)?|expect(Status|Body|Header|Next.*|Complete|Error.*))$')] },
+    $conditional := function($n) {
+      exists($n/ancestor::*[self::IfStatement or self::ForeachStatement or self::ForStatement or self::WhileStatement
+                            or self::LambdaExpression or self::SwitchStatement or self::SwitchExpression
+                            or self::ConditionalExpression or self::CatchClause]) },
+    $fixed := function($n) {
+      exists($n/self::MethodCall[@MethodName = ('of', 'asList')][ArgumentList[@Size >= 2 or (@Size = 1 and not(VariableAccess or FieldAccess or MethodCall))]]
+               [*[1][self::TypeExpression/ClassType/@SimpleName = ('List', 'Set', 'Arrays', 'Stream', 'EnumSet')
+                     or self::AmbiguousName/@Name = ('List', 'Set', 'Arrays', 'Stream', 'EnumSet')]]
+             | $n/self::ArrayAllocation/ArrayInitializer/*) },
+    $sized := function($loop, $n) {
+      let $name := string($n/self::VariableAccess/@Name), $before := $loop/ancestor::MethodDeclaration[1]//MethodCall[. << $loop][not($conditional(.))]
+      return $name != '' and (
+        exists($asserts($before/..)[not(.//NumericLiteral[@ValueAsInt = 0])]/descendant-or-self::*[self::MethodCall[@MethodName = ('size', 'length')] or self::FieldAccess[@Name = 'length']]
+                 [*[1][self::VariableAccess][@Name = $name]])
+        or exists($before[@MethodName = 'assertFalse']//MethodCall[@MethodName = 'isEmpty'][*[1][self::VariableAccess][@Name = $name]])
+        or exists($before[@MethodName = ('hasSize', 'isNotEmpty', 'hasSizeGreaterThan', 'hasSizeGreaterThanOrEqualTo', 'containsExactly',
+                                         'containsExactlyInAnyOrder', 'containsOnly', 'hasSameSizeAs')][not(ArgumentList[@Size = 0 or NumericLiteral[@ValueAsInt = 0]]) or @MethodName = 'isNotEmpty']
+                   [.//MethodCall[@MethodName = 'assertThat'][ArgumentList/*[1][self::VariableAccess][@Name = $name]]])) },
+    $checkedAfter := function($loop) {
+      let $written := $loop//(AssignmentExpression/*[1][self::VariableAccess] | UnaryExpression[@Operator = ('++', '--')]/VariableAccess)/@Name,
+          $own := $loop//VariableId/@Name
+      return exists($asserts($loop/ancestor::MethodDeclaration[1])[. >> $loop][not($conditional(.))]
+                      //VariableAccess[@Name = $written][not(@Name = $own)]) },
+    $bothWays := function($if) {
+      exists($if[@Else = true()][exists($asserts(*[2]/..) intersect *[2]/descendant-or-self::*)]
+               [*[3][not(self::IfStatement)][exists($asserts(..) intersect descendant-or-self::*)]]) },
     $pass := ('map', 'mapToObj', 'mapToInt', 'mapToLong', 'mapToDouble', 'boxed', 'asLongStream', 'asDoubleStream', 'parallel', 'sequential'),
     $loops := ($tests | $helpers)
       //(ForStatement[not(
@@ -40,13 +67,13 @@ let $tests := //MethodDeclaration[ModifierList/Annotation[@SimpleName = ('Test',
           or (ForInit/LocalVariableDeclaration/VariableDeclarator/NumericLiteral/@ValueAsInt) <= (InfixExpression[@Operator = '<='][VariableAccess]/NumericLiteral/@ValueAsInt)
           or (ForInit/LocalVariableDeclaration/VariableDeclarator/NumericLiteral/@ValueAsInt) > (InfixExpression[@Operator = '>'][VariableAccess]/NumericLiteral/@ValueAsInt)
           or (ForInit/LocalVariableDeclaration/VariableDeclarator/NumericLiteral/@ValueAsInt) >= (InfixExpression[@Operator = '>='][VariableAccess]/NumericLiteral/@ValueAsInt))]
-        | ForeachStatement | WhileStatement
+        | ForeachStatement[not($fixed(*[2]) or $sized(., *[2]) or $checkedAfter(.))] | WhileStatement
         | LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'mapToObj', 'mapToInt', 'mapToLong', 'mapToDouble', 'flatMap', 'filter', 'peek', 'anyMatch', 'allMatch', 'noneMatch', 'takeWhile', 'dropWhile', 'reduce')]]
-          [not((../../*[1] | ../../*[1][@MethodName = $pass]/*[1] | ../../*[1][@MethodName = $pass]/*[1][@MethodName = $pass]/*[1]) intersect $ranges)]),
-    $branches := ($tests | $helpers)//(IfStatement | SwitchStatement | SwitchExpression | ConditionalExpression),
+          [not((../../*[1] | ../../*[1][@MethodName = $pass]/*[1] | ../../*[1][@MethodName = $pass]/*[1][@MethodName = $pass]/*[1]) intersect $ranges)]
+          [not($fixed(../../*[1]) or ../..[@MethodName = ('forEach', 'forEachOrdered')]/*[1][$sized(../.., .)])]),
+    $branches := ($tests | $helpers)//(IfStatement[not($bothWays(.))] | SwitchStatement | SwitchExpression | ConditionalExpression),
     $controls := $loops | $branches
-return $controls[not(ancestor::* intersect $controls)]
-  [.//MethodCall[matches(@MethodName, '^(assert.*|andExpect(All)?|verifyNo.*|verifyZero.*|verify(Complete|Error|Timeout)?|should(HaveNo.*)?|expect(Status|Body|Header|Next.*|Complete|Error.*))$')]]
+return $controls[not(ancestor::* intersect $controls)][exists($asserts(.))]
 ]]></value></property></properties>
   </rule>
 
