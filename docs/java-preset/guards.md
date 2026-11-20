@@ -328,7 +328,11 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
   unannotated parameter and its class registers an extension (`@ExtendWith` or a `@RegisterExtension` field,
   other than Mockito's and Spring's) that implements `AfterEachCallback` or `AfterTestExecutionCallback`:
   a recorder that such an extension injects and compares after the test, as in golden-file suites. An
-  extension registered only through a composed annotation is not seen. An assumption on a real condition (`assumeTrue(isLinux())`) and a test
+  extension registered only through a composed annotation is not seen. `pmd/UnitTestShouldUseTestAnnotation`
+  (a public `test...` method without `@Test`) is not reported where a runner finds tests by name: a class that
+  extends JUnit 3's `TestCase`, Lucene's `LuceneTestCase` or `RandomizedTest`, or that carries
+  `@TestMethodProviders` or `@RunWith` of `RandomizedRunner`, `JUnit38ClassRunner` or `AllTests`. With such a
+  runner, `pmd/TestClassWithoutTestCases` counts the public `test...` methods as test cases too. An assumption on a real condition (`assumeTrue(isLinux())`) and a test
   that only `verify`s a call are not reported: environment guards and verifying a `void` collaborator are
   legitimate.
 - **Test honesty by preset.** The four checks that keep a test honest exist in every preset that

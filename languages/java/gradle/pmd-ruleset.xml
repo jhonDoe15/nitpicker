@@ -90,6 +90,7 @@ return .[
     <exclude name="UnitTestAssertionsShouldIncludeMessage"/>
     <exclude name="UnitTestContainsTooManyAsserts"/>
     <exclude name="UnitTestShouldIncludeAssert"/>
+    <exclude name="UnitTestShouldUseTestAnnotation"/>
     <exclude name="UnusedFormalParameter"/>
   </rule>
   <rule ref="category/java/bestpractices.xml/UnusedFormalParameter">
@@ -118,6 +119,22 @@ return .[
     <properties>
       <property name="violationSuppressXPath"
                 value="./ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.MappedSuperclass') or pmd-java:typeIs('javax.persistence.MappedSuperclass')]"/>
+    </properties>
+  </rule>
+  <rule ref="category/java/bestpractices.xml/UnitTestShouldUseTestAnnotation">
+    <properties>
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+.[ancestor::ClassDeclaration[
+    pmd-java:typeIs('junit.framework.TestCase')
+    or pmd-java:typeIs('org.apache.lucene.tests.util.LuceneTestCase')
+    or pmd-java:typeIs('org.apache.lucene.util.LuceneTestCase')
+    or pmd-java:typeIs('com.carrotsearch.randomizedtesting.RandomizedTest')
+    or ModifierList/Annotation[@SimpleName = 'TestMethodProviders']
+    or ModifierList/Annotation[@SimpleName = 'RunWith']
+         //ClassLiteral/ClassType[@SimpleName = ('RandomizedRunner', 'JUnit38ClassRunner', 'AllTests')]]]
+]]></value>
+      </property>
     </properties>
   </rule>
   <rule ref="category/java/bestpractices.xml/UnitTestShouldIncludeAssert">

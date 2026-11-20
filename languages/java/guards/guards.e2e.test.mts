@@ -84,6 +84,7 @@ const GUARD_TOOLS = new Set(['javac', 'forbiddenapis', 'dependencies', 'coupling
 const GUARD_RULES = new Set([
   'OptionalGet',
   'UnitTestShouldIncludeAssert',
+  'UnitTestShouldUseTestAnnotation',
   'OptionalAsFieldOrParameter',
   'OptionalOfCollection',
   'InstanceofThenCast',
