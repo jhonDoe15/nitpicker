@@ -37,6 +37,10 @@ export function checkExceptionRules(configEntries, exceptionEntries) {
   }
 }
 
+function withoutEmptyFileBlocks(configEntries) {
+  return configEntries.filter(({ files }) => !Array.isArray(files) || files.length > 0);
+}
+
 export function applyRuleExceptions(
   configEntries,
   allExceptions = [],
@@ -52,14 +56,14 @@ export function applyRuleExceptions(
   if (!projectRules && unknown.length > 0) {
     throw unknownRulesError(unknown.map(({ rule }) => rule));
   }
-  return [
+  return withoutEmptyFileBlocks([
     ...configEntries,
     ...exceptions.map(({ rule, paths }) => ({
       name: RULE_EXCEPTION_ENTRY,
       files: paths,
       rules: { [rule]: 'off' },
     })),
-  ];
+  ]);
 }
 
 export function applyMatchingRuleExceptions(configEntries, exceptions = []) {

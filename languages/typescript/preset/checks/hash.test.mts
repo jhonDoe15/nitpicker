@@ -3,9 +3,15 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { hashFiles as untypedHashFiles } from './hash.mjs';
+import { importClosure } from '../../../../shared/import-closure.mjs';
 
-const hashFiles: (files: string[], extra: string[], options: { root: string }) => string =
-  untypedHashFiles;
+type Closure = (files: readonly string[], root: string) => Map<string, string>;
+const closure: Closure = importClosure;
+const hashFiles: (
+  files: string[],
+  extra: string[],
+  options?: { root?: string; closureOf?: Closure },
+) => string = untypedHashFiles;
 
 const roots: string[] = [];
 afterEach(() => {
@@ -70,4 +76,18 @@ it('follows static, side-effect and dynamic relative imports without loading Typ
     return hashFiles(['policy.mjs'], [], { root }) !== before;
   });
   expect(changes).toEqual(names.map(() => true));
+});
+
+it('walks the package files of an analyzer once and still tells configurations apart', () => {
+  const files = ['languages/typescript/preset/checks/hash.mjs'];
+  const walked: string[] = [];
+  const closureOf: Closure = (paths, root) => {
+    walked.push(root);
+    return closure(paths, root);
+  };
+  const first = hashFiles(files, ['a'], { closureOf });
+
+  expect(hashFiles(files, ['a'], { closureOf })).toBe(first);
+  expect(hashFiles(files, ['b'], { closureOf })).not.toBe(first);
+  expect(walked).toHaveLength(1);
 });

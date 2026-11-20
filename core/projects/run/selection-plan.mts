@@ -86,32 +86,40 @@ export function submodulePaths(plan: MonorepoPlan): readonly string[] {
   );
 }
 
-function withAnalyzers(
-  selection: readonly ProjectSelection[],
+export function withRequestedAnalyzers(
+  rows: readonly ProjectRow[],
   analyzers: Analyzers,
-): readonly ProjectSelection[] {
+): readonly ProjectRow[] {
   if (analyzers.size === 0) {
-    return selection;
+    return rows;
   }
-  return selection.map((entry) =>
-    entry.selected && analyzers.get(entry.path)?.length === 0
-      ? { ...entry, selected: false, reason: 'has none of the requested analyzers' }
-      : entry,
+  return rows.map((row) =>
+    row.selection.selected && analyzers.get(row.selection.path)?.length === 0
+      ? {
+          ...row,
+          selection: {
+            ...row.selection,
+            selected: false,
+            reason: 'has none of the requested analyzers',
+          },
+        }
+      : row,
   );
 }
 
-export function selectionOf(
-  plan: MonorepoPlan,
-  cli: SelectionCli,
-  analyzers: Analyzers = new Map(),
-): PlannedSelection {
+export function selectedPaths(rows: readonly ProjectRow[]): ReadonlySet<string> {
+  return new Set(
+    rows.filter(({ selection }) => selection.selected).map(({ selection }) => selection.path),
+  );
+}
+
+export function selectionOf(plan: MonorepoPlan, cli: SelectionCli): PlannedSelection {
   const comparison = comparisonOf(plan, cli);
   const { selection, outside: unclaimed } = choose(plan, cli, comparison);
   const submodules = submodulePaths(plan);
   const outside = unclaimed.filter((file) => !submodules.includes(file));
-  const chosen = withAnalyzers(selection, analyzers);
   const rows = plan.projects.flatMap((project, index) => {
-    const entry = chosen[index];
+    const entry = selection[index];
     return entry === undefined ? [] : [{ project, selection: entry }];
   });
   return { comparison, rows, outside };
