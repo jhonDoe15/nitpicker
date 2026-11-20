@@ -1,5 +1,5 @@
   <rule name="HashOrderAssertedInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This assertion expects a fixed order from a value whose order nothing promises: a HashSet, a HashMap view, Set.of or Map.of, Collectors.toSet(), a directory listing or the members reflection returns. It passes on one JDK, file system or machine and fails on another. Use containsExactlyInAnyOrder, compare with a Set, or sort the value before the assertion.">
+        message="This assertion expects a fixed order from a value whose order nothing promises: a HashSet, a HashMap view, Set.of or Map.of, Collectors.toSet(), a directory listing or the members reflection returns. It passes on one JDK, file system or machine and fails on another. Use containsExactlyInAnyOrder, compare with a Set, or sort the value before the assertion (Arrays.sort for an array).">
     <priority>2</priority>
     <properties>
       <property name="xpath">
@@ -22,7 +22,9 @@ let $hashMap := function($e) {
       $e/self::VariableAccess/(let $n := @Name, $method := ancestor::MethodDeclaration[1] return
         $method//LocalVariableDeclaration/VariableDeclarator[VariableId[@Name = $n]]
           [count($method//VariableId[@Name = $n]) = 1]
-          [empty($method//AssignmentExpression[*[1][self::VariableAccess[@Name = $n]]])]/*[2]) },
+          [empty($method//AssignmentExpression[*[1][self::VariableAccess[@Name = $n]]])]
+          [empty($method//ArgumentList/VariableAccess[@Name = $n]
+                   [not(parent::ArgumentList/parent::MethodCall[matches(@MethodName, '^assert')])])]/*[2]) },
     $unordered := function($e) {
       $direct($e) or $direct($local($e))
       or exists($e/self::MethodCall[@MethodName = ('keySet', 'values', 'entrySet')][ArgumentList/@Size = 0]

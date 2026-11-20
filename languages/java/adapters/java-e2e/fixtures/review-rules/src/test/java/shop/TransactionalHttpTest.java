@@ -63,6 +63,29 @@ abstract class TransactionalHttpTest {
     }
   }
 
+  @SpringBootTest(webEnvironment = RANDOM_PORT)
+  @jakarta.transaction.Transactional(jakarta.transaction.Transactional.TxType.NEVER)
+  abstract static class TurnsTheJakartaTransactionOff {
+    @Autowired private TestRestTemplate rest;
+
+    @Test
+    void readsAnOrder() {
+      assertThat(rest.getForObject("/orders/1", String.class)).isEqualTo("NEW");
+    }
+  }
+
+  @SpringBootTest(webEnvironment = RANDOM_PORT)
+  @Transactional
+  abstract static class HoldsAClientItNeverCalls {
+    @Autowired private TestRestTemplate rest;
+    @Autowired private OrderService service;
+
+    @Test
+    void usesTheService() {
+      assertThat(service).isInstanceOf(OrderService.class);
+    }
+  }
+
   @SpringBootTest
   @Transactional
   abstract static class RunsOnTheTestThread {

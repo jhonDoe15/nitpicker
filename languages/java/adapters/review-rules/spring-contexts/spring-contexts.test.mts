@@ -101,6 +101,54 @@ describe('Spring test contexts that differ only in their mock beans', () => {
     ]);
   });
 
+  it('reads a base class that carries only the mock beans, and compares mocked types by simple name', () => {
+    const base = {
+      'src/test/java/shop/Mocks.java':
+        'package shop;\nclass Mocks {\n  @MockBean Ledger ledger;\n}\n',
+    };
+    const qualified = { members: `  @MockBean private shop.Ledger ledger;\n${TEST_METHOD}` };
+    expect(
+      reported(
+        base,
+        testClass('OrderTest'),
+        testClass('InvoiceTest'),
+        testClass('MailTest', mocking('MailClient')),
+        testClass('LedgerTest', { parent: 'Mocks' }),
+        testClass('PaymentTest', qualified),
+      ),
+    ).toEqual([
+      `${SPRING_CONTEXT_RULE} src/test/java/shop/LedgerTest.java:3`,
+      `${SPRING_CONTEXT_RULE} src/test/java/shop/MailTest.java:3`,
+    ]);
+  });
+
+  it('counts the classes that share the reported mock set', () => {
+    const [first] = found(
+      testClass('OrderTest'),
+      testClass('InvoiceTest'),
+      testClass('StockTest'),
+      testClass('MailTest', mocking('MailClient')),
+      testClass('LetterTest', mocking('MailClient')),
+      testClass('PaymentTest', mocking('PaymentClient')),
+    );
+    expect(first?.message).toContain('This test class and 1 more with the same mock beans start');
+  });
+
+  it('compares inside one package when the main sources hold several applications', () => {
+    const application = (name: string) => ({
+      [`src/main/java/${name}/App.java`]: `package ${name};\n@SpringBootApplication\nclass App {}\n`,
+    });
+    expect(
+      reported(
+        application('mail'),
+        application('pay'),
+        testClass('OrderTest', { packageName: 'shop' }),
+        testClass('MailTest', { ...mocking('MailClient'), packageName: 'mail' }),
+        testClass('PaymentTest', { ...mocking('PaymentClient'), packageName: 'pay' }),
+      ),
+    ).toEqual([]);
+  });
+
   it('reports nothing for two contexts', () => {
     expect(
       reported(

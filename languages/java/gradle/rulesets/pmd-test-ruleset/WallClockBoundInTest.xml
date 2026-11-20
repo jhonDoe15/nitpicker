@@ -9,9 +9,11 @@ let $read := function($e, $nanos) {
                                  else pmd-java:matchesSig('java.lang.System#currentTimeMillis()')]) },
     $moment := function($e, $nanos) {
       $read($e, $nanos)
-      or exists($e/self::VariableAccess[let $n := @Name return
-           ancestor::ClassDeclaration[last()]//VariableDeclarator[VariableId[@Name = $n]][$read(*[2], $nanos)]
-           or ancestor::ClassDeclaration[last()]//AssignmentExpression[*[1][@Name = $n]][$read(*[2], $nanos)]]) },
+      or exists($e/self::VariableAccess[let $n := @Name, $method := ancestor::MethodDeclaration[last()],
+                                            $scope := if (exists($method//VariableId[@Name = $n])) then $method
+                                                      else ancestor::ClassDeclaration[1] return
+           $scope//VariableDeclarator[VariableId[@Name = $n]][$read(*[2], $nanos)]
+           or $scope//AssignmentExpression[*[1][@Name = $n]][$read(*[2], $nanos)]]) },
     $elapsed := function($e, $nanos) {
       exists(($e/self::InfixExpression
               | $e/self::VariableAccess/(let $n := @Name return

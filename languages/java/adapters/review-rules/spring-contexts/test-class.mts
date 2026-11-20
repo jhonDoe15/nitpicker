@@ -104,7 +104,8 @@ function mockedType(tokens: readonly Token[], layout: Layout, annotation: Annota
     .filter((token) => !MODIFIERS.has(token.text))
     .slice(0, -1)
     .map((token) => token.text)
-    .join('');
+    .join('')
+    .replace(/^(?:\w+\.)+/u, '');
 }
 
 function parentOf(tokens: readonly Token[], from: number, bodyStart: number): string | undefined {

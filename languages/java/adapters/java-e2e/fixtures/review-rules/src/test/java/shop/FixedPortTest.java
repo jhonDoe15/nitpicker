@@ -36,13 +36,21 @@ abstract class FixedPortTest {
   }
 
   @Test
+  void bindsALocalPortNamedLikeTheConstant() throws IOException {
+    int STUB_PORT = ANY_PORT;
+    try (ServerSocket socket = new ServerSocket(STUB_PORT)) {
+      assertThat(socket.getLocalPort()).isPositive();
+    }
+  }
+
+  @Test
   void bindsFreePorts() throws IOException {
     try (ServerSocket socket = new ServerSocket(0)) {
       assertThat(socket.getLocalPort()).isPositive();
     }
     HttpServer server = HttpServer.create(new InetSocketAddress(ANY_PORT), 0);
     server.stop(0);
-    WireMockServer stub = new WireMockServer(options().dynamicPort());
+    WireMockServer stub = new WireMockServer(options().port(18086).dynamicPort());
     InetSocketAddress remote = new InetSocketAddress("orders.example", 8080);
     assertThat(remote.getPort()).isEqualTo(8080);
     assertThat(stub.isRunning()).isFalse();
