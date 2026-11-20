@@ -125,9 +125,16 @@ function hookCall(node: TSESTree.Node): TSESTree.CallExpression | undefined {
 }
 
 function weightOf(test: TestCall): number {
-  return REPEATED_CASES.some((name) => chainHasProperty(test.call.callee, name))
-    ? REPEATED_WEIGHT
-    : 1;
+  if (!REPEATED_CASES.some((name) => chainHasProperty(test.call.callee, name))) {
+    return 1;
+  }
+  const cases =
+    test.call.callee.type === AST_NODE_TYPES.CallExpression
+      ? test.call.callee.arguments[0]
+      : undefined;
+  return cases?.type === AST_NODE_TYPES.ArrayExpression
+    ? Math.min(cases.elements.length, REPEATED_WEIGHT)
+    : REPEATED_WEIGHT;
 }
 
 function containerOf(call: TSESTree.CallExpression): Container | undefined {
@@ -179,6 +186,7 @@ export const rule: TSESLint.RuleModule<'sharedMock', []> = {
     const tests: TestCall[] = [];
     const reads: CountRead[] = [];
     const cleared = new Set<string>();
+    const clears: { readonly name: string | null; readonly node: TSESTree.Node }[] = [];
     const mockedSources = new Map<string, string | undefined>();
     const imports: TSESTree.ImportDeclaration[] = [];
     const state = { clearsAll: false };
@@ -213,7 +221,8 @@ export const rule: TSESLint.RuleModule<'sharedMock', []> = {
       const weight = [...using].reduce((total, test) => total + weightOf(test), 0);
       const read = reads.find(
         (each) =>
-          each.name === variable.name && tests.some((test) => contains(test.body, each.node)),
+          references.some((reference) => contains(each.node, reference.identifier)) &&
+          tests.some((test) => contains(test.body, each.node)),
       );
       if (weight < 2 || read === undefined) {
         return;
@@ -256,7 +265,7 @@ export const rule: TSESLint.RuleModule<'sharedMock', []> = {
         state.clearsAll ||= clearsEveryMock(apis, node);
         const name = clearedMockName(apis, node);
         if (name !== undefined) {
-          cleared.add(name);
+          clears.push({ name, node });
         }
       },
       MemberExpression(node) {
@@ -266,9 +275,6 @@ export const rule: TSESLint.RuleModule<'sharedMock', []> = {
         }
       },
       'Program:exit'() {
-        if (state.clearsAll) {
-          return;
-        }
         const imported = imports
           .filter((declaration) => mockedSources.has(declaration.source.value))
           .flatMap((declaration) =>
@@ -278,7 +284,19 @@ export const rule: TSESLint.RuleModule<'sharedMock', []> = {
               kind: mockedSources.get(declaration.source.value),
             })),
           );
-        for (const each of [...shared, ...imported]) {
+        const candidates = [...shared, ...imported];
+        const names = new Set(candidates.map(({ variable }) => variable.name));
+        for (const { name, node } of clears) {
+          const inTest = tests.some((test) => contains(test.body, node));
+          state.clearsAll ||= !inTest && (name === null || !names.has(name));
+          if (name !== null) {
+            cleared.add(name);
+          }
+        }
+        if (state.clearsAll) {
+          return;
+        }
+        for (const each of candidates) {
           report(each);
         }
       },

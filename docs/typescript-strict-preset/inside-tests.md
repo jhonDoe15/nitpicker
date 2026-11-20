@@ -352,18 +352,21 @@ the spec for Mocha.
   `describe` callback, in `vi.hoisted`, or the exports of a module mocked with `vi.mock`/`jest.mock`)
   keeps its calls from one test to the next. When a test then checks how often or in which order it
   was called (`toHaveBeenCalledTimes`, `toHaveBeenCalledOnce`, `toHaveBeenNthCalledWith`,
-  `toHaveBeenLastCalledWith`, `not.toHaveBeenCalled` and their aliases, or `mock.calls`,
-  `mock.results`, `mock.lastCall` and `node:test`'s `mock.callCount()`), the result depends on the
-  tests that ran before it. The rule reports such a mock when two or more tests use it (an `it.each`
-  counts as two; a use in `beforeEach`/`beforeAll` or in a top-level helper counts for the tests that
-  run it). Clear it in `beforeEach` (`send.mockClear()`, `mockReset`, `mockRestore`,
-  `vi.clearAllMocks()` and the other `*AllMocks` calls, `send.mock.resetCalls()` under `node:test`),
-  give it a new `vi.fn()` in `beforeEach`, or create it inside the test. The rule is off for the
-  folders whose runner clears mocks itself: a Vitest or Jest config (or the `jest` key of
-  `package.json`) that sets `clearMocks`, `mockReset` or `restoreMocks`, a setup file the config names
-  that calls one of the `*AllMocks` functions, `react-scripts` (and CRACO or `react-app-rewired`),
-  which reset mocks by default, and a config that spreads a shared config or preset that cannot be
-  read, since that one may clear them.
+  `not.toHaveBeenCalled` and their aliases, or `mock.calls`, `mock.results` and `node:test`'s
+  `mock.callCount()`), the result depends on the tests that ran before it. The last call is the
+  test's own, so `toHaveBeenLastCalledWith` is not counted. The rule reports such a mock when two or
+  more tests use it (an `it.each` with two or more rows counts as two; a use in
+  `beforeEach`/`beforeAll` or in a top-level helper counts for the tests that run it). Clear it in
+  `beforeEach` (`send.mockClear()`, `mockReset`, `mockRestore`, `vi.clearAllMocks()` and the other
+  `*AllMocks` calls, also passed as `beforeEach(vi.clearAllMocks)`, `send.mock.resetCalls()` under
+  `node:test`), give it a new `vi.fn()` in `beforeEach`, or create it inside the test. A clear in a
+  hook or helper whose target the rule cannot name (a loop over mocks) counts as clearing every
+  mock. The rule is off for the folders whose runner clears mocks itself: a Vitest or Jest config
+  (or the `jest` key of `package.json`) that sets `clearMocks`, `resetMocks`, `mockReset` or
+  `restoreMocks` (to anything but `false`), a setup file or module the config names (followed
+  through its imports) that clears mocks, `react-scripts` (and CRACO or `react-app-rewired`), which
+  reset mocks by default, and a config that builds on a shared config, a preset or a project alias
+  (`@/`, `~/`, `#`) that cannot be read, since that one may clear them.
 - `nitpicker/no-worker-state-in-concurrent-tests`: concurrent tests (`it.concurrent`,
   `describe.concurrent`, `{ concurrent: true }`, or every test when the Vitest config sets
   `sequence.concurrent: true`) run interleaved in one worker, so state that belongs to the worker is

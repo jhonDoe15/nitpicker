@@ -57,6 +57,44 @@ tester.run('no-uncleared-shared-mock', rule, {
       "it('a', () => { notify(send); assert.equal(send.mock.callCount(), 1); });",
       "it('b', () => { notify(send); });",
     ),
+    lines(IMPORTS, 'const send = vi.fn();', 'afterEach(vi.restoreAllMocks);', ...SEND_TESTS),
+    lines(
+      IMPORTS,
+      'const send = vi.fn();',
+      "it('a', () => { notify(send); });",
+      "it('b', () => { notify(send); });",
+      "it('c', () => { const send = vi.fn(); notify(send); expect(send).toHaveBeenCalledTimes(1); });",
+    ),
+    lines(
+      IMPORTS,
+      'const send = vi.fn();',
+      'const other = vi.fn();',
+      'beforeEach(() => { [send, other].forEach((each) => each.mockClear()); });',
+      ...SEND_TESTS,
+    ),
+    lines(
+      IMPORTS,
+      'const send = vi.fn();',
+      'beforeEach(() => { (send as Mock).mockClear(); });',
+      ...SEND_TESTS,
+    ),
+    lines(
+      IMPORTS,
+      'const send = vi.fn();',
+      'beforeEach(() => { send!.mockClear(); });',
+      ...SEND_TESTS,
+    ),
+    lines(
+      IMPORTS,
+      'const send = vi.fn();',
+      "it('a', () => { send(1); expect(send).toHaveBeenLastCalledWith(1); });",
+      "it('b', () => { send(2); expect(send).toHaveBeenLastCalledWith(2); });",
+    ),
+    lines(
+      IMPORTS,
+      'const send = vi.fn();',
+      "it.each([1])('a %s', () => { notify(send); expect(send).toHaveBeenCalledTimes(1); });",
+    ),
   ],
   invalid: [
     {
@@ -79,9 +117,9 @@ tester.run('no-uncleared-shared-mock', rule, {
         IMPORTS,
         "import { send } from './mail';",
         "vi.mock('./mail');",
-        "it.each([1, 2])('sends %s', (count) => { notify(count); expect(send).toHaveBeenLastCalledWith(count); });",
+        "it.each([1, 2])('sends %s', (count) => { notify(count); expect(send).toHaveBeenCalledTimes(1); });",
       ),
-      errors: [shared('send', '2', 'toHaveBeenLastCalledWith')],
+      errors: [shared('send', '2', 'toHaveBeenCalledTimes')],
     },
     {
       code: lines(
