@@ -300,6 +300,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
+- Read `error` and `signal` of a `spawnSync` result before its `status`: a child that could not start, timed out or
+  was killed has `status: null`, `process.exit(null)` exits with 0, and a message says "exited with null"
+  (`nitpicker/no-status-only-spawn-check`).
 - Output that grows with the project (`git ls-files`, `git diff`, `find`, a tool's JSON report) is read as a stream
   (`spawn` and its `stdout` line by line) or from a file the tool writes, not through `execFileSync`/`spawnSync`
   and a `maxBuffer`, which fails with `ENOBUFS` on a large project (`nitpicker/no-buffered-growing-output`).

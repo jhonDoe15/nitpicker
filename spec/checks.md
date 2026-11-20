@@ -319,6 +319,12 @@ same rule runs as `subprocess-without-timeout` in the Python preset, `pmd/Proces
 in the Java preset and `kotlin-source/ProcessWaitWithoutTimeout` in the Kotlin preset; tests keep
 `nitpicker/require-test-process-timeout` (TypeScript) or their runner's own limits.
 
+Status-only subprocess checks: `nitpicker/no-status-only-spawn-check` (production source, in `eslint-lint`)
+reports a `spawnSync` result (or an execa result with `reject: false`) whose exit status is passed to `process.exit`
+or `process.exitCode`, put into a message, or tested so that `null` counts as success, while the code reads neither
+`error` nor `signal` of that result. A child that could not start, timed out, overflowed `maxBuffer` or was killed has
+a `null` status, and `process.exit(null)` exits with 0.
+
 Buffered output that grows: `nitpicker/no-buffered-growing-output` (production source, in `eslint-lint`) reports
 a buffered `child_process` or `execa` call whose output is read when the command's output grows with the project
 (`git ls-files`, `git diff`, `git log`, `find`, `rg`, `npm ls` and the like) and `maxBuffer` is left out or a

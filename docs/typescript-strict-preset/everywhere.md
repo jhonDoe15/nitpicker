@@ -1816,6 +1816,16 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   hangs the program. A program whose purpose is to run a child to completion, such as a build
   wrapper, takes an exception. The rule reads no types, so it behaves the same in the JavaScript
   preset.
+- A `spawnSync` result is not judged by its `status` alone (`nitpicker/no-status-only-spawn-check`, production
+  files). `spawnSync` (also cross-spawn's `spawn.sync`) does not throw when the child could not start, ran past its
+  timeout, wrote more than `maxBuffer` or was killed by a signal: it returns `status: null` with `error` or `signal`
+  set. Reported when the code reads neither `error` nor `signal` of the result and passes `status` to `process.exit`
+  or `process.exitCode` (`null` exits with 0), puts it in a message (a template or a `+` with text: "exited with
+  null"), or tests it so that `null` lands with exit code 0 (`status > 0`, `if (status)`, `!status`). The same holds
+  for execa with `reject: false` and its `exitCode`, unless the code reads `failed`, `signal`, `timedOut`,
+  `isTerminated`, `isCanceled`, `killed` or `cause`. Not reported: `status !== 0` and `status === 0` (null counts as a
+  failure), a check of `status` against `null` or `undefined`, `status ?? 1`, and a result passed whole to a helper.
+  The allowed form handles `result.error` and `result.signal` first.
 - Output that grows with the project is not read through a fixed-size buffer
   (`nitpicker/no-buffered-growing-output`, production files). `execSync`, `execFileSync`, `spawnSync`, `exec` and
   `execFile` (with a callback or through `promisify`) and the buffered `execa` calls keep the whole output in memory, up
