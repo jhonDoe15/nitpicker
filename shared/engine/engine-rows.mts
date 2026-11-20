@@ -1,6 +1,10 @@
 import { createReadStream, readFileSync } from 'node:fs';
 import { createInterface } from 'node:readline';
-import { parseJson } from '../values/readers.mts';
+
+function parsed(text: string): unknown {
+  const value: unknown = JSON.parse(text);
+  return value;
+}
 
 export type EngineFinding = {
   readonly file: string;
@@ -43,7 +47,7 @@ export function engineFindings(report: unknown): EngineFinding[] {
 }
 
 export function readEngineFindings(file: string): EngineFinding[] {
-  return engineFindings(parseJson(readFileSync(file, 'utf8')));
+  return engineFindings(parsed(readFileSync(file, 'utf8')));
 }
 
 export function unparsedFiles(findings: readonly EngineFinding[]): Set<string> {
@@ -56,7 +60,7 @@ export async function* readEngineLines(file: string): AsyncGenerator<unknown, vo
   const lines = createInterface({ input: createReadStream(file, 'utf8'), crlfDelay: Infinity });
   for await (const line of lines) {
     if (line !== '') {
-      yield parseJson(line);
+      yield parsed(line);
     }
   }
 }

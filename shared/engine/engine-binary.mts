@@ -1,7 +1,8 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { Environment } from '../processes/environment.mts';
+
+type Environment = Readonly<Record<string, string | undefined>>;
 
 export type EngineHost = {
   readonly platform: string;
@@ -10,8 +11,8 @@ export type EngineHost = {
   readonly exists: (file: string) => boolean;
 };
 
-export const ENGINE_OVERRIDE = 'NITPICKER_ENGINE';
-export const ENGINE_OFF = 'off';
+const ENGINE_OVERRIDE = 'NITPICKER_ENGINE';
+const ENGINE_OFF = 'off';
 
 const PACKAGE_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 
