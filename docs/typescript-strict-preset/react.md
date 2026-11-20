@@ -96,6 +96,22 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   array lists the state (the effect runs again when it changes). A setter given a literal, a
   fetched value, a method call or an updater function is not
   reported. The rule needs no type information.
+- **Pure state updaters and reducers** (`nitpicker/react-pure-state-updater`). The function passed
+  to a `useState` setter and the reducer of `useReducer` (inline, or a function declared in the
+  same file) may run more than once, twice under StrictMode, and must return a new value. Inside
+  them the rule reports a call of a state setter or a `dispatch` (the inner update repeats), a prop
+  callback called as a statement (`onChange(next)`, `props.onChange(next)`: the parent is told
+  twice, during render), and a change to the previous state in place: an assignment, `delete`,
+  `++` or `--` on a property of the parameter (`state.open = true`), and a mutating method when the `useState`
+  call or the reducer's parameter type shows the kind of value (`push`, `pop`, `shift`, `unshift`,
+  `splice`, `sort`, `reverse`, `fill`, `copyWithin` for `useState<string[]>(...)` or
+  `useState([])`; `add`, `delete`, `clear` for a `Set`; `set`, `delete`, `clear` for a `Map`).
+  Compute the next value first, then call each setter and callback in the handler:
+  `const next = [...items, item]; setItems(next); onChange(next);`. A parameter that is first
+  reassigned to a copy, calls inside a nested function, Immer (`useImmer`, `useImmerReducer`,
+  `produce(...)`), setters that do not come from `useState` (`setSearchParams`) and a method call on
+  a value whose kind the `useState` call does not show (`current.add(1, 'month')` on a date) are
+  left alone. The rule needs no type information.
 - **No double-escaped i18next values** (`nitpicker/react-i18next-escape-value`, needs
   `react-i18next` in `package.json`). A `t(...)` call (from `useTranslation()`, `i18next` or
   `i18n.t`) or a `<Trans values={{ ... }}>` that passes interpolation values and whose text React
