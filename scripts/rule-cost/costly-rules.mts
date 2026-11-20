@@ -41,3 +41,11 @@ export function unexpectedCosts(
 ): RuleCost[] {
   return costs.filter(({ rule, costly }) => costly && !known.has(rule));
 }
+
+export function evenSample<Item>(items: readonly Item[], count: number): Item[] {
+  const taken = Math.min(count, items.length);
+  return Array.from(
+    { length: taken },
+    (_, index) => items[Math.floor((index * items.length) / taken)],
+  ).filter((item) => item !== undefined);
+}

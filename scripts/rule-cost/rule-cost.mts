@@ -3,7 +3,7 @@ import path from 'node:path';
 import { ESLint, type Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../languages/typescript/preset/eslint-plugin/index.mts';
-import { ruleCosts, ruleTimes, unexpectedCosts } from './costly-rules.mts';
+import { evenSample, ruleCosts, ruleTimes, unexpectedCosts } from './costly-rules.mts';
 
 const toolRoot = path.resolve(import.meta.dirname, '../..');
 const SOURCES = '{core,shared,languages/typescript}/**/*.mts';
@@ -22,13 +22,12 @@ const KNOWN_COSTLY = new Map([
   ],
 ]);
 
-function sampledFiles(count: number): string[] {
+function sampledFiles(requested: number): string[] {
   const files = globSync(SOURCES, { cwd: toolRoot })
     .map((file) => file.replaceAll('\\', '/'))
     .filter((file) => !SKIPPED.test(file))
     .toSorted((first, second) => first.localeCompare(second));
-  const step = Math.max(1, Math.floor(files.length / count));
-  return files.filter((_, index) => index % step === 0).slice(0, count);
+  return evenSample(files, requested);
 }
 
 function ownRulesConfig(): Linter.Config[] {
@@ -50,7 +49,13 @@ function ownRulesConfig(): Linter.Config[] {
 }
 
 async function main(requested: string | undefined): Promise<number> {
-  const files = sampledFiles(Number(requested ?? DEFAULT_FILES));
+  const count = Number(requested ?? DEFAULT_FILES);
+  if (!Number.isInteger(count) || count < 1) {
+    throw new Error(
+      `The number of files to sample must be a positive whole number, not ${String(requested)}`,
+    );
+  }
+  const files = sampledFiles(count);
   const eslint = new ESLint({
     cwd: toolRoot,
     overrideConfigFile: true,

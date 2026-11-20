@@ -74,6 +74,15 @@ describe('a PMD report that was cut off while writing a processing error', () =>
       cutOffSarifReport('{"version":'),
       cutOffSarifReport('not json'),
       cutOffSarifReport(`${HEAD}]}]}]}`),
-    ]).toEqual([undefined, undefined, undefined]);
+      cutOffSarifReport(`${HEAD}{ "message": { "text": "one" }, "level": tru ]}]}]}`),
+    ]).toEqual([undefined, undefined, undefined, undefined]);
+  });
+
+  it('keeps a whole report as it is when only an older report follows it', () => {
+    const whole = `${HEAD}{ "message": { "text": "one\\ntwo" }, "level": "error" }]}]}]}`;
+
+    expect(JSON.parse(cutOffSarifReport(`${whole}\n  "stale": [1] }`) ?? '')).toEqual(
+      JSON.parse(whole),
+    );
   });
 });

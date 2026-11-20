@@ -13,7 +13,7 @@ import { isNode, nameOf, type SourceCode } from '../typed/node-views.mts';
 import { readLayout } from '../typed/policy-views.mts';
 import { calleeNameOf } from '../typed/syntax-views.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
-import { lastValue } from '../../../../../../shared/values/caching/last-value.mts';
+import { cachedValue } from '../../../../../../shared/values/caching/cached-value.mts';
 
 type ReachStep =
   | { readonly file: string; readonly truncated?: undefined }
@@ -148,10 +148,11 @@ function reactTestScope(context: ScopeContext): ReactTestScope {
   };
 }
 
-const scopeOfFile = lastValue(
-  ({ cwd, filename, sourceCode }: ScopeContext) => `${cwd}\0${filename}\0${sourceCode.text}`,
-  reactTestScope,
-);
+const scopes = new WeakMap<TSESTree.Program, ReactTestScope>();
+
+function scopeOfFile(context: ScopeContext): ReactTestScope {
+  return cachedValue(scopes, context.sourceCode.ast, () => reactTestScope(context));
+}
 
 function withUtilsModule<Context extends ScopeContext>(context: Context, helper: string): Context {
   const settings = { ...context.settings, [UTILS_MODULE_SETTING]: helper };
