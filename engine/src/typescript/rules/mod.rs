@@ -4,6 +4,7 @@ mod lifecycles;
 mod listeners;
 mod modules;
 pub mod support;
+pub mod testing_library;
 
 use super::ParsedFile;
 use crate::engine::finding::Finding;
@@ -16,6 +17,8 @@ pub struct Context<'a, 's> {
     pub semantic: &'s Semantic<'a>,
     /// The ESTree-shaped view and its scopes, built when a selected rule asks for them.
     pub estree: Option<(&'s support::view::View, &'s support::scope::Scopes<'a, 's>)>,
+    /// The ids of the rules this run reports.
+    pub selected: &'s [&'static str],
     display: &'s str,
     findings: Vec<Finding>,
 }
@@ -34,7 +37,7 @@ impl<'a> Context<'a, '_> {
             file: self.display.to_string(),
             line: self.file.lines.line(start) as usize,
             column: self.file.lines.column_utf16(self.file.text, start) as usize + 1,
-            rule: format!("nitpicker/{rule}"),
+            rule: if rule.contains('/') { rule.to_string() } else { format!("nitpicker/{rule}") },
             message,
         });
     }
@@ -53,19 +56,32 @@ pub const ALL: &[(&str, Rule)] = &[
     ("settle-pending-on-close", lifecycles::settle_pending_on_close::check),
 ];
 
+fn known() -> impl Iterator<Item = (&'static str, Rule)> {
+    ALL.iter().copied().chain(testing_library::RULES.iter().map(|name| (*name, testing_library::check as Rule)))
+}
+
+
 pub struct Selection {
+    names: Vec<&'static str>,
     rules: Vec<Rule>,
     view: bool,
 }
 
 pub fn selected(only: Option<&[String]>) -> Selection {
-    let chosen: Vec<_> = ALL.iter().filter(|(name, _)| only.is_none_or(|names| names.iter().any(|wanted| wanted == name))).collect();
-    Selection { rules: chosen.iter().map(|(_, rule)| *rule).collect(), view: chosen.iter().any(|(name, _)| ON_VIEW.contains(name)) }
+    let chosen: Vec<_> = known().filter(|(name, _)| only.is_none_or(|names| names.iter().any(|wanted| wanted == name))).collect();
+    let mut rules: Vec<Rule> = Vec::new();
+    for (_, rule) in &chosen {
+        if !rules.iter().any(|kept| std::ptr::fn_addr_eq(*kept, *rule)) {
+            rules.push(*rule);
+        }
+    }
+    let view = chosen.iter().any(|(name, _)| ON_VIEW.contains(name) || name.starts_with("testing-library/"));
+    Selection { names: chosen.iter().map(|(name, _)| *name).collect(), rules, view }
 }
 
 impl Selection {
     pub fn len(&self) -> usize {
-        self.rules.len()
+        self.names.len()
     }
 }
 
@@ -79,7 +95,7 @@ fn lint_file(path: &str, display: &str, selection: &Selection) -> Vec<Finding> {
         let view = selection.view.then(|| support::view::View::of(file.program.to_estree_json(true, true)));
         let scopes = view.as_ref().map(|view| support::scope::Scopes::of(&semantic, view));
         let estree = view.as_ref().zip(scopes.as_ref());
-        let mut context = Context { file, semantic: &semantic, estree, display, findings: Vec::new() };
+        let mut context = Context { file, semantic: &semantic, estree, selected: &selection.names, display, findings: Vec::new() };
         for rule in &selection.rules {
             rule(&mut context);
         }
