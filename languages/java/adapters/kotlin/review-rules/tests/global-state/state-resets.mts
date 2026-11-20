@@ -5,7 +5,7 @@ import { closeOf, marksFrom } from '../discovery/text-scan.mts';
 
 const BEFORE_EACH_ANNOTATIONS = new Set(['BeforeEach', 'Before', 'BeforeMethod']);
 const KOTEST_BEFORE_EACH = /(?<![\w.])(?:beforeTest|beforeEach|beforeAny)\s*(?:\([^()]*\)\s*)?\{/gu;
-const WRITTEN_LITERAL = /\s*=(?!=)\s*(?:null|true|false|-?\d[\w.]*)\s*(?:;|\r?\n|\}|$)/uy;
+const WRITTEN_LITERAL = /\s*=\s*(?:null|true|false|-?\d[\w.]*)\s*(?:;|\n|\}|$)/uy;
 const EMPTY_CALL = /\(\s*\)/uy;
 const SETTER = /^set[A-Z]/u;
 const MAIN = 'main';
