@@ -6,7 +6,7 @@ export function applyRecipe(
   recipe: FixRecipe,
   text: string,
   path: string = MAIN,
-  projectRoot: string | undefined = undefined,
+  projectRoot?: string,
 ): string {
   const { fixes } = recipe.plan({
     files: [{ path, text }],
@@ -27,7 +27,7 @@ export function plannedLines(
   recipe: FixRecipe,
   text: string,
   path: string = MAIN,
-  projectRoot: string | undefined = undefined,
+  projectRoot?: string,
 ): number[] {
   return recipe
     .plan({ files: [{ path, text }], ...(projectRoot === undefined ? {} : { projectRoot }) })

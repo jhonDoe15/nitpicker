@@ -69,7 +69,7 @@ const verifyFixes: (options: {
   readonly journal: Journal;
   readonly analyze: unknown;
   readonly mode: string;
-  readonly narrow: boolean;
+  readonly rollback: 'whole-files' | 'bad-fixes';
 }) => {
   readonly rolledBack: readonly RolledBack[];
   readonly leftOut: readonly LeftOutFix[];
@@ -200,7 +200,7 @@ function fixVerified(options: RunOptions, journal: Journal, earlier?: FixOutcome
     journal,
     analyze: options.analyzeFixes,
     mode: options.verifyMode,
-    narrow: earlier === undefined,
+    rollback: earlier === undefined ? 'bad-fixes' : 'whole-files',
   });
   const result = withoutUndone(merged(earlier, fixed), rolledBack);
   const undone = new Set(rolledBack.flatMap(({ files }) => files));

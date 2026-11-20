@@ -82,10 +82,11 @@ ${COLLECTED}
 
 const RISKY = savesClass('SaveRisky', RISKY_BODY).replace(
   'import org.springframework.transaction.annotation.Transactional;',
-  [
-    'import org.springframework.transaction.annotation.Propagation;',
-    'import org.springframework.transaction.annotation.Transactional;',
-  ].join('\n'),
+  () =>
+    [
+      'import org.springframework.transaction.annotation.Propagation;',
+      'import org.springframework.transaction.annotation.Transactional;',
+    ].join('\n'),
 );
 const UNPROTECTED = savesClass('SaveUnprotected', UNPROTECTED_BODY, '');
 

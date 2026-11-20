@@ -126,7 +126,7 @@ const ALL = [swapping('swap', ['FLAG:t/first', 'FLAG:t/second', 'FLAG:t/third'])
 describe('verifyFixes asked to narrow a rollback', () => {
   it('names the fix that added a finding, and the next run keeps the other fixes', () => {
     const { fix, journal, analyze, text } = fixing(TEXT, ALL);
-    const first = verifyFixes({ journal: fix(), analyze, narrow: true });
+    const first = verifyFixes({ journal: fix(), analyze, rollback: 'bad-fixes' });
 
     expect(text()).toBe(TEXT);
     expect(first.leftOut).toEqual([
@@ -153,7 +153,7 @@ describe('verifyFixes asked to narrow a rollback', () => {
   it('names the fixes of a rule that is still reported, also from another recipe', () => {
     const recipes = [swapping('swap', ['FLAG:t/first']), swapping('other', ['FLAG:t/stuck'])];
     const { fix, analyze } = fixing('FLAG:t/first\n\n\nFLAG:t/stuck\n', recipes);
-    const { leftOut, rolledBack } = verifyFixes({ journal: fix(), analyze, narrow: true });
+    const { leftOut, rolledBack } = verifyFixes({ journal: fix(), analyze, rollback: 'bad-fixes' });
 
     expect(rolledBack.map(({ recipe }) => recipe)).toEqual(['swap', 'other']);
     expect(leftOut.map(({ rule, line }) => [rule, line])).toEqual([['stuck', 4]]);
@@ -173,11 +173,12 @@ describe('verifyFixes asked to narrow a rollback', () => {
         rules.map((rule) => `FLAG:t/${rule}`),
       ),
     ]);
-    const { leftOut, notes } = verifyFixes({ journal: fix(), analyze, narrow: true });
+    const { leftOut, notes } = verifyFixes({ journal: fix(), analyze, rollback: 'bad-fixes' });
 
     expect(leftOut).toEqual([]);
-    expect(notes).toHaveLength(1);
-    expect(notes[0]).toContain('--fix rolled back swap (m.txt)');
+    expect(notes.map((note) => note.slice(0, note.indexOf(':')))).toEqual([
+      '--fix rolled back swap (m.txt)',
+    ]);
     expect(text()).toBe(before);
   });
 
@@ -189,11 +190,12 @@ describe('verifyFixes asked to narrow a rollback', () => {
 
   it('leaves a fix out by the lines it edits, not by the line it was reported on', () => {
     const { fix, journal, analyze, text } = fixing(TEXT, ALL);
-    const first = verifyFixes({ journal: fix(), analyze, narrow: true });
+    const first = verifyFixes({ journal: fix(), analyze, rollback: 'bad-fixes' });
     journal.leftOut = first.leftOut.map((left) => ({ ...left, line: 99 }));
     verifyFixes({ journal: fix(), analyze });
 
-    expect(text()).toContain('FLAG:t/second');
-    expect(text()).toContain('done-first');
+    expect(text()).toBe(
+      TEXT.replace('FLAG:t/first', 'done-first').replace('FLAG:t/third', 'done-third'),
+    );
   });
 });

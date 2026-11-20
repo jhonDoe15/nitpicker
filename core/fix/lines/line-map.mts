@@ -2,31 +2,30 @@ export type LineSpan = readonly [number, number];
 
 export type Block = { readonly before: LineSpan; readonly after: LineSpan };
 
+type Sides = { readonly left: readonly string[]; readonly right: readonly string[] };
+type Walk = { row: number; column: number; open: { row: number; column: number } | undefined };
+
 const MAX_CELLS = 4_000_000;
 
+function descending(count: number): number[] {
+  return Array.from({ length: count }, (_unused, index) => count - 1 - index);
+}
+
 function commonPrefix(left: readonly string[], right: readonly string[]): number {
-  const limit = Math.min(left.length, right.length);
-  let count = 0;
-  while (count < limit && left[count] === right[count]) {
-    count += 1;
-  }
-  return count;
+  const differing = left.findIndex((line, index) => line !== right[index]);
+  return differing === -1 ? left.length : differing;
 }
 
 function commonSuffix(left: readonly string[], right: readonly string[], skip: number): number {
-  const limit = Math.min(left.length, right.length) - skip;
-  let count = 0;
-  while (count < limit && left.at(-1 - count) === right.at(-1 - count)) {
-    count += 1;
-  }
-  return count;
+  return commonPrefix(left.slice(skip).toReversed(), right.slice(skip).toReversed());
 }
 
-function commonLengths(left: readonly string[], right: readonly string[]): Uint32Array {
+function commonLengths({ left, right }: Sides): Uint32Array {
   const width = right.length + 1;
   const lengths = new Uint32Array((left.length + 1) * width);
-  for (let row = left.length - 1; row >= 0; row -= 1) {
-    for (let column = right.length - 1; column >= 0; column -= 1) {
+  const columns = descending(right.length);
+  for (const row of descending(left.length)) {
+    for (const column of columns) {
       lengths[row * width + column] =
         left[row] === right[column]
           ? (lengths[(row + 1) * width + column + 1] ?? 0) + 1
@@ -39,8 +38,6 @@ function commonLengths(left: readonly string[], right: readonly string[]): Uint3
   return lengths;
 }
 
-type Walk = { row: number; column: number; open: { row: number; column: number } | undefined };
-
 function closeBlock(walk: Walk, offset: number, blocks: Block[]): void {
   if (walk.open !== undefined) {
     blocks.push({
@@ -51,16 +48,13 @@ function closeBlock(walk: Walk, offset: number, blocks: Block[]): void {
   }
 }
 
-function skipsLeft(walk: Walk, sides: Sides, lengths: Uint32Array): boolean {
-  const { left, right } = sides;
+function skipsLeft(walk: Walk, { left, right }: Sides, lengths: Uint32Array): boolean {
   const width = right.length + 1;
   const down = walk.row < left.length ? (lengths[(walk.row + 1) * width + walk.column] ?? 0) : -1;
   const across =
     walk.column < right.length ? (lengths[walk.row * width + walk.column + 1] ?? 0) : -1;
   return down >= across;
 }
-
-type Sides = { readonly left: readonly string[]; readonly right: readonly string[] };
 
 function sameAt(walk: Walk, { left, right }: Sides): boolean {
   return (
@@ -83,26 +77,33 @@ function step(walk: Walk, sides: Sides, lengths: Uint32Array): void {
 }
 
 function walkedBlocks(sides: Sides, offset: number): Block[] {
-  const lengths = commonLengths(sides.left, sides.right);
+  const lengths = commonLengths(sides);
   const blocks: Block[] = [];
   const walk: Walk = { row: 0, column: 0, open: undefined };
-  while (walk.row < sides.left.length || walk.column < sides.right.length) {
+  const ended = (): boolean => walk.row >= sides.left.length && walk.column >= sides.right.length;
+  const steps = [0];
+  for (const taken of steps) {
+    if (ended()) {
+      break;
+    }
     if (sameAt(walk, sides)) {
       closeBlock(walk, offset, blocks);
     }
     step(walk, sides, lengths);
+    steps.push(taken + 1);
   }
   closeBlock(walk, offset, blocks);
   return blocks;
 }
 
-function middleBlocks(left: readonly string[], right: readonly string[], offset: number): Block[] {
+function middleBlocks(sides: Sides, offset: number): Block[] {
+  const { left, right } = sides;
   if (left.length * right.length > MAX_CELLS) {
     return [
       { before: [offset + 1, offset + left.length], after: [offset + 1, offset + right.length] },
     ];
   }
-  return walkedBlocks({ left, right }, offset);
+  return walkedBlocks(sides, offset);
 }
 
 function sameLine(line: string): string {
@@ -123,11 +124,13 @@ export function changedBlocks(
   }
   const left = before.split('\n').map(comparable);
   const right = after.split('\n').map(comparable);
-  const prefix = commonPrefix(left, right);
+  const prefix = Math.min(commonPrefix(left, right), right.length);
   const suffix = commonSuffix(left, right, prefix);
   return middleBlocks(
-    left.slice(prefix, left.length - suffix),
-    right.slice(prefix, right.length - suffix),
+    {
+      left: left.slice(prefix, left.length - suffix),
+      right: right.slice(prefix, right.length - suffix),
+    },
     prefix,
   );
 }
@@ -147,25 +150,19 @@ export function beforeLines(blocks: readonly Block[], line: number, slack = 0): 
 }
 
 export function lineStarts(text: string): number[] {
-  const starts = [0];
-  for (let index = text.indexOf('\n'); index !== -1; index = text.indexOf('\n', index + 1)) {
-    starts.push(index + 1);
-  }
-  return starts;
+  return [0, ...Array.from(text.matchAll(/\n/gu), (match) => match.index + 1)];
 }
 
 export function lineAt(starts: readonly number[], offset: number): number {
-  let low = 0;
-  let high = starts.length - 1;
-  while (low < high) {
-    const middle = Math.ceil((low + high) / 2);
-    if ((starts[middle] ?? 0) <= offset) {
-      low = middle;
-    } else {
-      high = middle - 1;
+  const spans: LineSpan[] = [[0, starts.length - 1]];
+  for (const [low, high] of spans) {
+    if (low >= high) {
+      return low + 1;
     }
+    const middle = Math.ceil((low + high) / 2);
+    spans.push((starts[middle] ?? 0) <= offset ? [middle, high] : [low, middle - 1]);
   }
-  return low + 1;
+  return 1;
 }
 
 export function overlaps(left: LineSpan, right: LineSpan, slack = 0): boolean {

@@ -1,7 +1,13 @@
 import { fieldOf } from '../../../shared/values/readers.mts';
-import { beforeLines, changedBlocks, lineAt, lineStarts, overlaps } from './line-map.mts';
-import type { Block } from './line-map.mts';
-import type { LineSpan } from './line-map.mts';
+import {
+  beforeLines,
+  changedBlocks,
+  lineAt,
+  lineStarts,
+  overlaps,
+  type Block,
+  type LineSpan,
+} from './line-map.mts';
 
 type FindingRef = { readonly tool: string; readonly rule: string; readonly path: string };
 
@@ -25,9 +31,14 @@ type Texts = { readonly starts: readonly number[]; readonly blocks: readonly Blo
 
 export type EditLines = (entry: EditedEntry) => readonly LineSpan[] | undefined;
 
+type Reader = { readonly read: (name: string) => unknown };
+
+function isReader(value: unknown): value is Reader {
+  return typeof fieldOf(value, 'read') === 'function';
+}
+
 function reader(snapshot: unknown): (name: string) => unknown {
-  const read = fieldOf(snapshot, 'read');
-  return typeof read === 'function' ? (name) => Reflect.apply(read, snapshot, [name]) : () => null;
+  return isReader(snapshot) ? (name) => snapshot.read(name) : () => undefined;
 }
 
 function textsOf(original: string | undefined, current: unknown): Texts | undefined {

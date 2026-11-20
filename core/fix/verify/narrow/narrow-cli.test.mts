@@ -83,9 +83,10 @@ function fix() {
     stdout: output.stdout,
     stderr: output.stderr,
   };
-  runCli(input);
+  const exitCode = runCli(input);
   const stdout = output.stdoutText;
   return {
+    exitCode,
     text: readFileSync(path.join(created.root, NAME), 'utf8'),
     summary: stdout.slice(0, stdout.indexOf('Base: ')),
   };

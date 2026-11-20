@@ -84,7 +84,7 @@ export type VerifyRequest = {
   readonly journal: Journal;
   readonly analyze: unknown;
   readonly mode?: string;
-  readonly narrow?: boolean;
+  readonly rollback?: 'whole-files' | 'bad-fixes';
 };
 
 export function isAnalyze(value: unknown): value is Analyze {

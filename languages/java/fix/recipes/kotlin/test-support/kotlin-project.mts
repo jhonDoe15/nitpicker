@@ -5,7 +5,6 @@ import path from 'node:path';
 import type { FixRecipe } from '../../../../../../core/fix/typed/fix-types.mts';
 import { applyRecipe } from './apply-recipe.mts';
 
-const HERMETIC = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
 const GIT_TIMEOUT = 10_000;
 
 export const KOTLIN_BUILD = {
@@ -22,10 +21,14 @@ export function kotlinProject(files: Readonly<Record<string, string>>): {
   readonly remove: () => void;
 } {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-project-'));
-  spawnSync('git', ['init', '-q'], { cwd: root, env: HERMETIC, timeout: GIT_TIMEOUT });
+  spawnSync('git', ['init', '-q'], { cwd: root, timeout: GIT_TIMEOUT });
   for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
+    const file = path.resolve(root, name);
+    if (!file.startsWith(root + path.sep)) {
+      throw new Error(`${name} is outside the project`);
+    }
+    mkdirSync(path.dirname(file), { recursive: true });
+    writeFileSync(file, text);
   }
   return {
     root,

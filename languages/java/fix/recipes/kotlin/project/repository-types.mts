@@ -8,6 +8,7 @@ const BATCH_BASES = new Set([
   ...['CrudRepository', 'ListCrudRepository', 'JpaRepository', 'MongoRepository'],
   ...['ElasticsearchRepository', 'CassandraRepository', 'Neo4jRepository', 'KeyValueRepository'],
 ]);
+const NESTING = [1, 2, 3, 4, 5, 6];
 const GENERICS = /<[^<>]*>/gu;
 const CHUNK_BREAK = /^--$/u;
 const COMMENT_LINE = /^\s*(?:\/\/|\/\*|\*)/u;
@@ -16,13 +17,7 @@ const LINE_COMMENT = /\/\/.*$|\/\*.*?\*\//gu;
 export type RepositoryTypes = { readonly hasBatchCalls: (type: string) => boolean };
 
 function withoutGenerics(text: string): string {
-  let current = text;
-  let stripped = current.replace(GENERICS, '');
-  while (stripped !== current) {
-    current = stripped;
-    stripped = current.replace(GENERICS, '');
-  }
-  return current;
+  return NESTING.reduce((current) => current.replace(GENERICS, ''), text);
 }
 
 function chunksOf(lines: readonly string[]): string[] {
@@ -78,17 +73,34 @@ export function repositoryTypes(projectRoot: string | undefined): RepositoryType
     }
     return known.get(type);
   }
-  function hasBatchCalls(type: string, depth = 0): boolean {
-    const declarations = declarationsOf(type);
-    if (declarations === undefined || depth > MAX_DEPTH) {
-      return false;
+  function reachable(type: string): string[] {
+    const pending = [{ type, depth: 0 }];
+    const seen = new Set([type]);
+    for (const current of pending) {
+      const supertypes = (declarationsOf(current.type) ?? []).flat();
+      for (const supertype of current.depth < MAX_DEPTH ? supertypes : []) {
+        if (!seen.has(supertype)) {
+          seen.add(supertype);
+          pending.push({ type: supertype, depth: current.depth + 1 });
+        }
+      }
     }
-    if (declarations.length === 0) {
-      return BATCH_BASES.has(type);
-    }
-    return declarations.every((supertypes) =>
-      supertypes.some((supertype) => hasBatchCalls(supertype, depth + 1)),
-    );
+    return [...seen];
   }
-  return { hasBatchCalls: (type) => hasBatchCalls(type) };
+  function batching(type: string, good: ReadonlySet<string>): boolean {
+    const declarations = declarationsOf(type);
+    if (declarations === undefined || declarations.length === 0) {
+      return declarations !== undefined && BATCH_BASES.has(type);
+    }
+    return declarations.every((supertypes) => supertypes.some((supertype) => good.has(supertype)));
+  }
+  function hasBatchCalls(type: string): boolean {
+    const types = reachable(type);
+    const good = types.reduce<ReadonlySet<string>>(
+      (found) => new Set(types.filter((candidate) => batching(candidate, found))),
+      new Set(),
+    );
+    return good.has(type);
+  }
+  return { hasBatchCalls };
 }
