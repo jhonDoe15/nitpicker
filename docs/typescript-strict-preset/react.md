@@ -330,8 +330,8 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   import alike). Check presence with `getBy*` and absence with
   `queryBy*` (`testing-library/prefer-presence-queries`). Keep side effects such as `fireEvent`,
   `userEvent` calls and `render` out of a `waitFor` callback, which may run them many times
-  (`testing-library/no-wait-for-side-effects`); do not wait for a snapshot, which passes on the
-  first try (`testing-library/no-wait-for-snapshot`); and do not pass a regular expression with the
+  (`testing-library/no-wait-for-side-effects`); do not wait for a snapshot, which is then
+  compared at an unknown moment (`testing-library/no-wait-for-snapshot`); and do not pass a regular expression with the
   `g` flag to a query, since its `lastIndex` makes every other query miss
   (`testing-library/no-global-regexp-flag-in-query`). Do not wrap `render` or `user` calls
   in `act` (`testing-library/no-unnecessary-act`), leave `screen.debug()` and other debug
