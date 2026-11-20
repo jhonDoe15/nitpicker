@@ -79,8 +79,10 @@ export function savedValueKey(
   return init === undefined || init === null ? undefined : keyOf(init);
 }
 
-const PAGE_CALLBACKS = new Set([
+export const PAGE_CALLBACKS = new Set([
   'evaluate',
+  'execute',
+  'executeAsync',
   'evaluateHandle',
   'evaluateOnNewDocument',
   'addInitScript',

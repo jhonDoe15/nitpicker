@@ -343,8 +343,13 @@ the spec for Mocha.
   or asserted empty with `expect(sessionStorage.length).toBe(0)` or a `getItem(...)` checked to be
   `null` in the same test), `document.cookie = ...` and `process.chdir(...)`, and an override of a
   member of `navigator`. A write that puts back a value saved in the same function
-  (`const old = process.env.MODE; ... process.env.MODE = old;`) restores it too. Code that runs in
-  the browser page (the callbacks of Playwright's `page.evaluate`, `addInitScript` and the like) is
+  (`const old = process.env.MODE; ... process.env.MODE = old;`) restores it too, and so does a later
+  `clear`/`removeItem` in the same function, a second `process.chdir`, cookie write or `navigator`
+  override there, and a clear in a helper that a hook calls or is given (`afterEach(resetStorage)`).
+  Storage, `document`, `navigator` or `process.chdir` replaced with `vi.stubGlobal` or `vi.spyOn`
+  are not checked. Code that runs in
+  the browser page (the callbacks of Playwright's `page.evaluate`, `addInitScript` and the like, also when
+  passed by name, and WebdriverIO's `browser.execute`) is
   not checked, and in a Cypress spec (one that uses `cy`) storage and cookies are not checked,
   since Cypress clears them before each test.
   The allowed forms are `vi.stubEnv`, `vi.stubGlobal`, `vi.spyOn` and fake timers, restored as above.

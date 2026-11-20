@@ -12,6 +12,17 @@ import {
   savedValueKey,
   stateCall,
 } from './state-writes.mts';
+import {
+  CLEARING_HOOKS,
+  enclosingFunctionName,
+  inEachHook,
+  innermostFunction,
+  isNamedPageFunction,
+  isPutBackByLaterWrite,
+  isStubbedAway,
+  restoresLater,
+  stubbedName,
+} from './restore-signals.mts';
 
 type SyntheticMember = {
   readonly type: AST_NODE_TYPES.MemberExpression;
@@ -119,18 +130,6 @@ function writingCallKey(sourceCode: SourceCode, call: TSESTree.CallExpression): 
   });
 }
 
-function enclosingFunctionName(node: TSESTree.Node): string | undefined {
-  const owner = ancestorsOf(node).find((ancestor) => FUNCTIONS.has(ancestor.type));
-  if (owner?.type === AST_NODE_TYPES.FunctionDeclaration) {
-    return owner.id?.name;
-  }
-  const holder = owner?.parent;
-  return holder?.type === AST_NODE_TYPES.VariableDeclarator &&
-    holder.id.type === AST_NODE_TYPES.Identifier
-    ? holder.id.name
-    : undefined;
-}
-
 function directWriteKey(sourceCode: SourceCode, node: WriteNode): string | undefined {
   if (node.type === AST_NODE_TYPES.AssignmentExpression) {
     return targetKey(sourceCode, node.left) ?? cookieKey(sourceCode, node.left);
@@ -189,31 +188,6 @@ function writeMessageId(key: string): WriteMessageId {
   return key === DIRECTORY_KEY ? 'unrestoredDirectoryChange' : 'unrestoredGlobalWrite';
 }
 
-const EACH_HOOKS = new Set(['beforeEach', 'afterEach']);
-
-function inEachHook(node: TSESTree.Node): boolean {
-  return ancestorsOf(node).some(
-    (ancestor) =>
-      ancestor.type === AST_NODE_TYPES.CallExpression &&
-      ancestor.callee.type === AST_NODE_TYPES.Identifier &&
-      EACH_HOOKS.has(ancestor.callee.name),
-  );
-}
-
-function innermostFunction(node: TSESTree.Node): TSESTree.Node | undefined {
-  return ancestorsOf(node).find((ancestor) => FUNCTIONS.has(ancestor.type));
-}
-
-function restoresLater(write: Recorded, restores: readonly Recorded[]): boolean {
-  const owner = innermostFunction(write.node);
-  return restores.some(
-    (restore) =>
-      restore.key === write.key &&
-      restore.node.range[0] > write.node.range[0] &&
-      innermostFunction(restore.node) === owner,
-  );
-}
-
 export function createWriteTracker(
   sourceCode: SourceCode,
   isRestored: (node: TSESTree.Node) => boolean,
@@ -223,6 +197,9 @@ export function createWriteTracker(
   const bodyRestores: Recorded[] = [];
   const restoredKeys = new Set<string>();
   const hookCalls = new Set<string>();
+  const clearingCalls = new Set<string>();
+  const stubbed = new Set<string>();
+  const clears: Recorded[] = [];
   function readKey(target: TSESTree.Node): string | undefined {
     return targetKey(sourceCode, target) ?? cookieKey(sourceCode, target);
   }
@@ -247,21 +224,30 @@ export function createWriteTracker(
       restoredKeys.add(state.key);
       return;
     }
+    if (state?.writes === false) {
+      clears.push({ node, key: state.key });
+    }
     const key = state?.key ?? directWriteKey(sourceCode, node);
     if (
       key === undefined ||
       !runsPerTest(node) ||
       runsInPage(ancestorsOf(node)) ||
+      isNamedPageFunction(sourceCode, ancestorsOf(node)) ||
       isPageState(key)
     ) {
       return;
     }
     if (isRestored(node)) {
       restoredKeys.add(key);
-    } else if (putsBackSavedValue(node, key)) {
+    } else if (putsBackSavedValue(node, key) || state?.writes === false) {
       bodyRestores.push({ node, key });
-    } else if (state?.writes !== false) {
-      writes.push({ node, key });
+    } else {
+      const putsBack =
+        isPutBackByLaterWrite(key) &&
+        writes.some(
+          (write) => write.key === key && innermostFunction(write.node) === innermostFunction(node),
+        );
+      (putsBack ? bodyRestores : writes).push({ node, key });
     }
   }
   return {
@@ -271,15 +257,39 @@ export function createWriteTracker(
       if (node.callee.type === AST_NODE_TYPES.Identifier && isRestored(node)) {
         hookCalls.add(node.callee.name);
       }
+      const named = [node.callee, ...node.arguments].flatMap((each) =>
+        each.type === AST_NODE_TYPES.Identifier ? [each.name] : [],
+      );
+      const hook =
+        node.callee.type === AST_NODE_TYPES.Identifier && CLEARING_HOOKS.has(node.callee.name);
+      for (const name of hook || inEachHook(node) || isRestored(node) ? named : []) {
+        clearingCalls.add(name);
+      }
+      const stub = stubbedName(node);
+      if (stub !== undefined) {
+        stubbed.add(stub);
+      }
     },
     unrestored() {
       const viaHelpers = writes.filter(({ node }) => {
         const name = enclosingFunctionName(node);
         return name !== undefined && hookCalls.has(name);
       });
-      const restored = new Set([...restoredKeys, ...viaHelpers.map(({ key }) => key)]);
+      const clearedInHooks = clears.filter(({ node }) =>
+        clearingCalls.has(enclosingFunctionName(node) ?? ''),
+      );
+      const restored = new Set(
+        [...restoredKeys, ...viaHelpers, ...clearedInHooks].map((each) =>
+          typeof each === 'string' ? each : each.key,
+        ),
+      );
       return writes
-        .filter((write) => !restored.has(write.key) && !restoresLater(write, bodyRestores))
+        .filter(
+          (write) =>
+            !restored.has(write.key) &&
+            !isStubbedAway(write.key, stubbed) &&
+            !restoresLater(write, bodyRestores),
+        )
         .map(({ node, key }) => ({ node, messageId: writeMessageId(key) }));
     },
   };
