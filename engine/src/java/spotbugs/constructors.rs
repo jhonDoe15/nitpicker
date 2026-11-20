@@ -1,5 +1,6 @@
 //! CT_CONSTRUCTOR_THROW: an exception can leave a constructor of a class that can be subclassed, which leaves a
-//! half-built object a finalizer could get hold of.
+//! half-built object a finalizer could get hold of. An anonymous class counts too: its field initializers and
+//! initializer blocks run in the constructor the compiler writes for it.
 use super::handlers::{caught, catch_types, closing, Guard, UNKNOWN};
 use super::{Context, names};
 use crate::engine::source::{children, named_children, parent};
@@ -214,11 +215,12 @@ fn sealed_finalizer(context: &Context, own: &str) -> bool {
 }
 
 pub fn constructor_throw(context: &Context, class: Node) {
-    if class.kind() != "class_declaration" || has_modifier(class, "final") {
+    let anonymous = class.kind() == "object_creation_expression";
+    if !anonymous && (class.kind() != "class_declaration" || has_modifier(class, "final")) {
         return;
     }
     let Some(own) = context.resolver.scope.names.get(&class.id()).cloned() else { return };
-    let Some(body) = class.child_by_field_name("body") else { return };
+    let Some(body) = children(class).into_iter().find(|part| part.kind() == "class_body") else { return };
     if sealed_finalizer(context, &own) {
         return;
     }
@@ -235,11 +237,9 @@ pub fn constructor_throw(context: &Context, class: Node) {
         .collect();
     let constructors = of_kind("constructor_declaration");
     let scan = Scan { context, own: &own, methods: of_kind("method_declaration"), signatures: std::cell::OnceCell::new(), constructors: constructors.clone(), shared, leaves: RefCell::new(HashMap::new()), delegating: std::cell::Cell::new(false) };
-    let inner = !has_modifier(class, "static") && parent(class).is_some_and(|holder| holder.kind() == "class_body");
-    let nest = crate::java::types::scope::enclosing_types(context.resolver.scope, class);
-    let outer = nest.get(1).filter(|_| inner).map(String::as_str);
+    let outer = if anonymous { None } else { crate::java::javac::instance_around(context.resolver, class) };
     let report = |declaration: Node, site: Node| {
-        let label = names::method(context, &own, declaration, outer);
+        let label = if anonymous { names::anonymous(context, &own, class) } else { names::method(context, &own, declaration, outer.as_deref()) };
         let message = format!("Exception thrown in class {} at {label} {TAIL}", names::binary(context, &own));
         context.report("CT_CONSTRUCTOR_THROW", declaration, site_line(context, site), message);
     };

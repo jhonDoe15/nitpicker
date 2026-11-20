@@ -6,18 +6,7 @@ use tree_sitter::Node;
 
 /// `pkg.Outer$Inner` for the index's `pkg.Outer.Inner`.
 pub fn binary(context: &Context, class: &str) -> String {
-    let package = match context.resolver.index.get(class) {
-        Some(info) => info.package.clone(),
-        None => {
-            let parts: Vec<&str> = class.split('.').collect();
-            let first_class = parts.iter().position(|part| part.starts_with(|c: char| c.is_uppercase() || c.is_ascii_digit()));
-            parts[..first_class.unwrap_or(parts.len().saturating_sub(1))].join(".")
-        }
-    };
-    if package.is_empty() || !class.starts_with(&format!("{package}.")) {
-        return class.replace('.', "$");
-    }
-    format!("{package}.{}", class[package.len() + 1..].replace('.', "$"))
+    crate::java::javac::binary(context.resolver.index, class)
 }
 
 pub fn package_of(binary: &str) -> &str {
@@ -45,10 +34,55 @@ pub fn method(context: &Context, class: &str, declaration: Node, outer: Option<&
     shown.extend(erased.iter().map(|kind| simple(context, kind)));
     let owner = binary(context, class);
     if TYPE_DECLARATIONS.contains(&declaration.kind()) || declaration.kind().ends_with("constructor_declaration") {
+        let holder = if TYPE_DECLARATIONS.contains(&declaration.kind()) { Some(declaration) } else { crate::engine::source::ancestor(declaration, TYPE_DECLARATIONS) };
+        let local = holder.filter(|holder| crate::java::javac::declared_locally(*holder));
+        shown.extend(local.map(|local| context.compiled().local_class_extras(context.resolver, local)).unwrap_or_default().iter().map(|kind| shown_type(context, kind)));
         return format!("new {owner}({})", shown.join(", "));
     }
     let name = declaration.child_by_field_name("name").map(|name| context.text(name)).unwrap_or_default();
     format!("{owner}.{name}({})", shown.join(", "))
+}
+
+fn shown_type(context: &Context, kind: &Option<Type>) -> String {
+    kind.as_ref().map_or_else(|| "?".to_string(), |kind| simple(context, kind))
+}
+
+/// `new pkg.Outer$1(Outer, A)`: the constructor the compiler writes for an anonymous class.
+pub fn anonymous(context: &Context, class: &str, creation: Node) -> String {
+    let shown: Vec<String> = context.compiled().anonymous_constructor(context.resolver, creation).iter().map(|kind| shown_type(context, kind)).collect();
+    format!("new {}({})", binary(context, class), shown.join(", "))
+}
+
+/// `pkg.Outer.lambda$method$0(A, B)`: the hidden method that holds the body of a lambda. Not known for a
+/// serializable lambda.
+#[allow(dead_code)]
+pub fn lambda(context: &Context, lambda: Node) -> Option<String> {
+    let compiled = context.compiled();
+    let synthetic = compiled.lambda(lambda)?;
+    let shown: Vec<String> = compiled.lambda_parameters(context.resolver, lambda).iter().map(|kind| shown_type(context, kind)).collect();
+    Some(format!("{}.{}({})", binary(context, &synthetic.owner), synthetic.name.as_ref()?, shown.join(", ")))
+}
+
+/// The method SpotBugs names for code at `node`: the lambda around it, else the method or constructor, else
+/// the constructor of the anonymous class whose initializers hold it. For patterns that report inside method bodies.
+#[allow(dead_code)]
+pub fn around(context: &Context, node: Node) -> Option<String> {
+    const BODIES: &[&str] = &["lambda_expression", "method_declaration", "constructor_declaration", "compact_constructor_declaration", "class_body"];
+    let body = crate::engine::source::ancestor(node, BODIES)?;
+    let scope = context.resolver.scope;
+    match body.kind() {
+        "lambda_expression" => lambda(context, body),
+        "class_body" => {
+            let creation = crate::engine::source::parent(body).filter(|holder| holder.kind() == "object_creation_expression")?;
+            Some(anonymous(context, scope.names.get(&creation.id())?, creation))
+        }
+        _ => {
+            let nest = crate::java::types::scope::enclosing_types(scope, body);
+            let holder = crate::engine::source::ancestor(body, TYPE_DECLARATIONS);
+            let outer = if body.kind() == "constructor_declaration" { holder.and_then(|holder| crate::java::javac::instance_around(context.resolver, holder)) } else { None };
+            Some(method(context, nest.first()?, body, outer.as_deref()))
+        }
+    }
 }
 
 /// A field as a message names it from inside `from`: without the package when both are in the same one.
