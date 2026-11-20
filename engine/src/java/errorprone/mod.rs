@@ -19,6 +19,9 @@ mod signatures;
 mod statements;
 mod targets;
 mod throws;
+mod time;
+mod locale;
+mod futures;
 mod unused;
 mod values;
 
@@ -159,6 +162,9 @@ const CHECKS: &[Check] = &[
     assigned::int_long_math,
     assigned::initialize_inline,
     signatures::exposed_private_type,
+    time::prefer_java_time_overload,
+    locale::default_locale,
+    futures::future_return_value_ignored,
     names::type_parameter_naming,
     names::wildcard_import,
     names::same_name_but_different,

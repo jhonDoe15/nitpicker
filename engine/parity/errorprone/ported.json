@@ -47,5 +47,8 @@
  "UnnecessaryBoxedAssignment",
  "IntLongMath",
  "InitializeInline",
- "ExposedPrivateType"
+ "ExposedPrivateType",
+ "PreferJavaTimeOverload",
+ "FutureReturnValueIgnored",
+ "DefaultLocale"
 ]
