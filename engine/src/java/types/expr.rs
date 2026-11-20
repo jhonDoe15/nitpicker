@@ -1009,7 +1009,7 @@ impl<'a> Resolver<'a> {
             return None;
         }
         let map = self.index.member_map(&owner, &declaring.name);
-        Some(method.generic_parameters.iter().map(|kind| kind.substitute(&map)).filter(|kind| !kind.open()).collect())
+        Some(method.generic_parameters.iter().map(|kind| kind.substitute(&map)).collect())
     }
 
     fn is_busy(&self, node: Node) -> bool {
