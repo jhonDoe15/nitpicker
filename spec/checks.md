@@ -311,6 +311,15 @@ without `else` whose last statement sends a response (`res.json`, `res.status(..
 calls `next`, `callback`, `cb` or `done` (the last parameter of the function) when more statements follow the branch in
 the same block. `return res.status(400).json(...)`, `return next()`, a `return;` after the call and an `else` are allowed.
 
+Error answers without a status: `nitpicker/no-error-response-without-status` (production source, in `eslint-lint`)
+reports, inside a `catch` block, `NextResponse.json(body)` or `Response.json(body)` without a `status`,
+`res.json(body)`, `res.send(body)` or `reply.send(body)` on a response parameter, and `c.json(body)` with one argument
+in a file that imports `hono`, where `body` is an object literal with an `error`, `errors` or `err` property and no
+outcome field (`status`, `statusCode`, `code`, `success`, `ok`, `data`, `result`, `jsonrpc`, `id`), spread or computed
+key. The parameter forms are skipped when the `catch` sets a status, passes the response to another call, or the
+function sets a status as a statement of its own, and a file that mentions GraphQL is skipped. A status given in the
+call (`{ status: 500 }`, `res.status(500).json(...)`, an explicit `{ status: 200 }`) is allowed.
+
 Child process deadlines: `nitpicker/require-process-timeout` (production source, in `eslint-lint`)
 reports production code that waits for a child process to exit without a deadline: a synchronous
 `child_process` or `execa` call without a positive `timeout`, and `exec`, `execFile`, an awaited
