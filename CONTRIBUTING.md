@@ -216,6 +216,13 @@ first time it builds them; timings are in `scripts/test-shards/go-e2e.json`.
 without one). The Python end-to-end suite (`npm run test:python`) needs more tools and the
 network; see [docs/python-preset.md](docs/python-preset.md).
 
+A pull request that adds or changes a rule of the ESLint plugin runs `npm run rules:cost` as well. It
+lints a sample of this repository with every rule of the plugin and lists the time each rule takes. It
+fails when a rule takes fifteen times the mean of all the rules or more and is not one of the known
+costly rules in `scripts/rule-cost/rule-cost.mts`: make the rule cheaper, or add it there with the
+reason. `npm run rules:cost -- 800` samples more files than the default 400. It needs about 6 GB of
+memory.
+
 ## Licenses
 
 Code nitpicker writes or copies stays permissive (MIT, Apache-2.0, BSD, ISC). A tool nitpicker runs
