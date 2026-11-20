@@ -214,11 +214,37 @@ impl<'t> Flow<'_, 't> {
         }
     }
 
+    /// The selector of a `switch` without a `case null`.
+    fn selected(&mut self, selector: Node<'t>, reported: &mut std::collections::HashSet<usize>) {
+        let Some(switch) = parent(selector).filter(|above| matches!(above.kind(), "switch_expression" | "switch_statement")) else { return };
+        if switch.child_by_field_name("condition") != Some(selector) {
+            return;
+        }
+        let Some(inner) = named_children(selector).into_iter().find(|part| !part.kind().ends_with("comment")) else { return };
+        let labels = switch.child_by_field_name("body").map(named_children).unwrap_or_default();
+        let null_case = labels.into_iter().flat_map(|case| children(case)).filter(|part| part.kind() == "switch_label").any(|label| {
+            named_children(label).into_iter().any(|part| part.kind() == "null_literal" || named_children(part).into_iter().any(|inner| inner.kind() == "null_literal"))
+        });
+        if !null_case && self.may_be_null(inner) && reported.insert(selector.id()) {
+            let message = format!("switch selector expression '{}' is @Nullable", self.context.text(inner));
+            self.context.report("NullAway", inner, position(inner), &message);
+        }
+    }
+
     pub(super) fn sites(&mut self, node: Node<'t>, unit: Node<'t>, reported: &mut std::collections::HashSet<usize>) {
         match node.kind() {
             "method_invocation" | "object_creation_expression" | "explicit_constructor_invocation" | "enum_constant" => self.arguments_passed(node, reported),
             "return_statement" => self.returned(node, unit, reported),
             "assignment_expression" => self.stored(node, reported),
+            "enhanced_for_statement" => {
+                if let Some(value) = node.child_by_field_name("value").filter(|value| self.may_be_null(*value)) {
+                    if reported.insert(node.id()) {
+                        let message = format!("enhanced-for expression '{}' is @Nullable", self.context.text(value));
+                        self.context.report("NullAway", value, position(value), &message);
+                    }
+                }
+            }
+            "parenthesized_expression" => self.selected(node, reported),
             _ => {}
         }
     }
