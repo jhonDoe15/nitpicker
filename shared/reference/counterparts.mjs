@@ -2,7 +2,7 @@ import { anchorOf } from './entry.mjs';
 
 const SPRING_PAGE = 'docs/rules/java-nitpicker.md';
 const PAGES = {
-  java: { label: 'Java and Kotlin', path: 'docs/rules/java-pmd.md', tool: 'pmd' },
+  java: { label: 'Java and Kotlin', path: 'docs/rules/java-pmd-nitpicker.md', tool: 'pmd' },
   jvm: { label: 'Java and Kotlin', path: SPRING_PAGE, tool: 'pmd' },
   typescript: {
     label: 'TypeScript and JavaScript',
