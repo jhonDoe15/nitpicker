@@ -48,6 +48,18 @@ impl Scan<'_> {
             }
         }
     }
+    /// The parentheses around an assignment target that is a cast, which the parser does not keep as a node.
+    fn wrapping(&mut self, start: u32, end: u32) {
+        let (before, after) = (self.at(start), self.at(end));
+        if before == 0 {
+            return;
+        }
+        let (open, close) = (self.tokens[before - 1], self.tokens.get(after).copied());
+        if open.kind() == Kind::LParen && close.is_some_and(|close| close.kind() == Kind::RParen) {
+            self.found.tokens.insert(open.start());
+            self.found.tokens.extend(close.map(|close| close.start()));
+        }
+    }
     fn separator(&mut self, end: u32) {
         self.next(end, &[Kind::Comma, Kind::Semicolon]);
     }
@@ -164,8 +176,20 @@ impl Scan<'_> {
 impl TypeOnly {
     pub fn of(file: &ParsedFile, tree: &Tree) -> TypeOnly {
         let mut scan = Scan { tokens: file.tokens, found: TypeOnly { spans: Vec::new(), tokens: HashSet::new() } };
-        for node in &tree.nodes {
+        for (index, node) in tree.nodes.iter().enumerate() {
             scan.node(node.kind, node.start, node.end);
+            let cast = matches!(
+                node.kind,
+                AstKind::TSAsExpression(_) | AstKind::TSSatisfiesExpression(_) | AstKind::TSNonNullExpression(_) | AstKind::TSTypeAssertion(_)
+            );
+            let target = match tree.parent(index as u32).map(|parent| tree.kind(parent)) {
+                Some(AstKind::AssignmentExpression(assignment)) => assignment.left.span().start == node.start,
+                Some(AstKind::UpdateExpression(_)) => true,
+                _ => false,
+            };
+            if cast && target {
+                scan.wrapping(node.start, node.end);
+            }
         }
         scan.found.spans.sort_unstable();
         scan.found
