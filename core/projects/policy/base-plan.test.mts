@@ -49,7 +49,6 @@ describe('the plan of the base', () => {
 
     const fromTree = basePlanOf({ repositoryRoot: root, prefix: '.', mergeBaseSha: baseSha });
 
-    expect(fromTree.error).toBeUndefined();
     expect(shapeOf(fromTree.plan)).toEqual(shapeOf(inspectRepository({ root }).plan));
   });
 
@@ -79,19 +78,18 @@ describe('the plan of the base', () => {
 
     const result = basePlanOf({ repositoryRoot: root, prefix: '.', mergeBaseSha: baseSha });
 
-    expect(result.error).toBeUndefined();
     expect(result.plan?.projects.map(({ path, preset }) => [path, preset])).toEqual([
       ['web', 'typescript'],
       ['tools', 'python'],
     ]);
   });
 
-  it('returns the error of a base whose projects cannot be read', () => {
+  it('has no plan for a base whose projects cannot be read', () => {
     const { root, baseSha } = repository({ 'nitpicker.config.json': '{"projects":["gone"]}' });
 
-    const result = basePlanOf({ repositoryRoot: root, prefix: '.', mergeBaseSha: baseSha });
-
-    expect([result.plan, result.error instanceof Error]).toEqual([undefined, true]);
+    expect(basePlanOf({ repositoryRoot: root, prefix: '.', mergeBaseSha: baseSha }).plan).toBe(
+      undefined,
+    );
   });
 });
 

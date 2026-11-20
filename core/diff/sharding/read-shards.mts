@@ -91,7 +91,7 @@ export function readAndValidateShard(
     }
   }
   const check = {
-    expectedNames: new Set([...expectedNames, 'nitpicker-config']),
+    expectedNames: new Set(expectedNames),
     shardIndex: index,
   };
   return { summary: shardSummary, ...checkedShardEntries(raw, check) };

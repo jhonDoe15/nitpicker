@@ -59,9 +59,7 @@ const TOP_LEVEL: SchemaTable = {
     { uniqueItems: true },
   ),
   thresholds: areas.thresholds,
-  exclude: stringArray(
-    'Globs, relative to the project root, of files every analyzer skips. Excluding code is a policy loosening.',
-  ),
+  exclude: stringArray('Globs, relative to the project root, of files every analyzer skips.'),
   layout: areas.layout,
   exceptions: exceptionList(
     'Rules lifted for some paths. Each finding prints the entry that lifts it.',

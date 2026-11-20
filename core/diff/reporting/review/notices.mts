@@ -1,4 +1,3 @@
-import { policyChangeSummaryLines } from './policy-changes.mts';
 import { listOf, fieldOf } from '../../../../shared/values/readers.mts';
 
 type Emphasize = (text: string) => string;
@@ -17,8 +16,5 @@ function noticeSummaryLines(notices: unknown, emphasize: Emphasize): string[] {
 }
 
 export function reviewSummaryLines(summary: unknown, emphasize: Emphasize): string[] {
-  return [
-    ...policyChangeSummaryLines(summary, emphasize),
-    ...noticeSummaryLines(fieldOf(summary, 'notices'), emphasize),
-  ];
+  return noticeSummaryLines(fieldOf(summary, 'notices'), emphasize);
 }

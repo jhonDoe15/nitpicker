@@ -3,12 +3,7 @@ import { packageVersion } from '../help/package-version.mts';
 import { INIT_USAGE_TEXT } from '../help/usage-text.mts';
 import { detectProject } from './detection/detect-project.mts';
 import { appendSnippet, hasSnippet, INSTRUCTION_FILES } from './files/agents-md.mts';
-import {
-  APPROVAL_WORKFLOW,
-  placeApprovalWorkflow,
-  placeWorkflow,
-  workflowPath,
-} from './files/ci-workflow.mts';
+import { placeWorkflow, workflowPath } from './files/ci-workflow.mts';
 import { placeConfig } from './files/config-file.mts';
 import { parseInitArguments } from './init-arguments.mts';
 import { type Peers, type Placed, type Project, renderReport } from './init-report.mts';
@@ -65,7 +60,7 @@ function initProject(
   const files = placeFiles(projectRoot, options, { project, peers, repository });
   const source = skillSource(projectRoot, { repository, version: packageVersion() });
   cli.stdout.write(renderReport({ project, peers, ...files, skillSource: source }));
-  const placed = [files.config, files.workflow, files.approval];
+  const placed = [files.config, files.workflow];
   return placed.some((result) => result?.status === 'differs') ? 1 : 0;
 }
 
@@ -91,13 +86,7 @@ function checkTargets(
   options: InitOptions,
   { repository, workflowFile }: Targets,
 ): void {
-  const ciTargets: readonly Target[] =
-    options.ci.length === 0
-      ? []
-      : [
-          [repository, workflowFile],
-          [repository, APPROVAL_WORKFLOW],
-        ];
+  const ciTargets: readonly Target[] = options.ci.length === 0 ? [] : [[repository, workflowFile]];
   const agentTargets = options.agentsMd
     ? INSTRUCTION_FILES.map((name): Target => [projectRoot, name])
     : [];
@@ -117,7 +106,6 @@ function placeFiles(
   return {
     config: placeConfig(projectRoot, project.preset, project.settings),
     workflow: options.ci.length === 0 ? undefined : placeWorkflow(projectRoot, context),
-    approval: options.ci.length === 0 ? undefined : placeApprovalWorkflow(repository),
     workflowFile,
     agents: options.agentsMd ? appendSnippet(projectRoot) : undefined,
     offers: {

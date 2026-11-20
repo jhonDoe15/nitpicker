@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
 import {
-  declaredConfigFiles,
   declaredToolChoices,
   declaredToolDigest,
   declaredToolNotices,
@@ -154,22 +153,5 @@ describe('the notices about SpotBugs settings in the build', () => {
     expect(declaredToolNotices({}, directorySource(projectWith({ 'build.gradle': '' })))).toEqual(
       [],
     );
-  });
-});
-
-describe('the files that hold the SpotBugs settings', () => {
-  it('names each build file with its settings and the filter files they name', () => {
-    const root = projectWith({ ...HEAD, 'lib/build.gradle': 'dependencies { }\n' });
-    const found = declaredConfigFiles('spotbugs', {
-      root,
-      files: ['build.gradle', 'lib/build.gradle', 'config/spotbugs/exclude.xml'],
-    });
-
-    expect([...found.declarations.keys()]).toEqual(['build.gradle']);
-    expect(JSON.parse(found.declarations.get('build.gradle') ?? '')).toEqual([
-      { setting: 'effort', value: 'max' },
-      { setting: 'excludeFilter', path: 'config/spotbugs/exclude.xml' },
-    ]);
-    expect(found.files).toEqual(['config/spotbugs/exclude.xml']);
   });
 });

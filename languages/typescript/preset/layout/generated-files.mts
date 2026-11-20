@@ -11,7 +11,7 @@ const projectFilePaths: (root: string) => string[] = untypedProjectFilePaths;
 
 const CODE_FILE = new RegExp(`\\.(?:${codeExtensionNames.join('|')})$`, 'u');
 
-export function isMarkedGenerated(projectRoot: string, file: string): boolean {
+function isMarkedGenerated(projectRoot: string, file: string): boolean {
   const absolute = pathInside(projectRoot, file);
   if (!CODE_FILE.test(file) || absolute === undefined || !existsSync(absolute)) {
     return false;

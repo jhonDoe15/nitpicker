@@ -38,14 +38,8 @@ export function summaryFields(
   configOverrides: unknown,
   shardSummary: Readonly<Record<string, unknown>>,
 ): Readonly<Record<string, unknown>> {
-  const { policyDigest, policyAcceptanceSource } = shardSummary;
   return {
     configOverrides,
-    policyChanges: shardSummary['policyChanges'] ?? [],
-    policyLoosenings: shardSummary['policyLoosenings'] ?? [],
-    ...(policyDigest === undefined ? {} : { policyDigest }),
-    policyChangeAccepted: shardSummary['policyChangeAccepted'] === true,
-    ...(policyAcceptanceSource === undefined ? {} : { policyAcceptanceSource }),
     notices: shardSummary['notices'] ?? [],
   };
 }

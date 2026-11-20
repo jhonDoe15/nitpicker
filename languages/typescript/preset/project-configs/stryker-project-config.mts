@@ -1,6 +1,5 @@
 import {
   fieldOf,
-  fieldsOf,
   isPlainObject,
   listOf,
   messageOf,
@@ -21,7 +20,7 @@ import type { StrykerConfig, StrykerMutant } from './project-config-types.mts';
 
 export const STRYKER_TOOL = 'stryker';
 
-export const STRYKER_PROJECT_FILES = ['', '.'].flatMap((prefix) =>
+const STRYKER_PROJECT_FILES = ['', '.'].flatMap((prefix) =>
   ['.conf', '.config'].flatMap((suffix) =>
     ['json', 'js', 'mjs', 'cjs'].map((extension) => `${prefix}stryker${suffix}.${extension}`),
   ),
@@ -96,26 +95,6 @@ export function readStrykerProjectConfig(projectRoot: string): StrykerConfig {
     picked(readConfigObject(projectRoot, name), [...RANKED_KEYS, ...LIST_KEYS]),
     name,
   );
-}
-
-export function appliedStrykerConfig(projectRoot: string): {
-  file?: string;
-  values: Record<string, unknown>;
-} {
-  const file = strykerProjectFile(projectRoot);
-  if (file === undefined) {
-    return { values: {} };
-  }
-  const { mutator, ...values } = readStrykerProjectConfig(projectRoot);
-  return {
-    file,
-    values: {
-      ...values,
-      ...Object.fromEntries(
-        Object.entries(fieldsOf(mutator)).map(([key, value]) => [`mutator.${key}`, value]),
-      ),
-    },
-  };
 }
 
 function projectStrykerConfig(settings: ToolSettings | undefined): StrykerConfig | undefined {

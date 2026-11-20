@@ -33,7 +33,6 @@
   "entry-points/public-alternative-bypass": ["maintainability"],
   "mutation/mutant-nocoverage": ["tests"],
   "mutation/mutant-survived": ["tests"],
-  "nitpicker-config/policy-loosened": ["maintainability"],
   "repository-hygiene/committed-binary": ["maintainability"],
   "repository-hygiene/committed-build-output": ["maintainability"],
   "repository-hygiene/committed-env-file": ["security"],

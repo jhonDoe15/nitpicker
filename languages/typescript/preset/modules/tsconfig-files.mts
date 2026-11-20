@@ -1,9 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { isRealPathInside, isRegularFile } from '../../../../shared/conventions/read-inside.mjs';
 import type TypeScript from 'typescript';
 import { lazyTypeScriptApi } from '../../typescript-api/lazy-typescript-api.mts';
-import { appendAll } from '../../../../shared/lists/lists.mts';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 
 export const PROJECT_TSCONFIG = 'tsconfig.json';
@@ -149,33 +147,4 @@ export function tsconfigProblems(configFile: string): string[] {
   return problems.map((problem) =>
     typescript.flattenDiagnosticMessageText(problem.messageText, '\n'),
   );
-}
-
-function extendedFiles(configFile: string): string[] {
-  const extended = fieldOf(readJsonc(configFile), 'extends');
-  const entries: unknown[] = Array.isArray(extended) ? extended : [extended];
-  return entries
-    .filter((entry): entry is string => typeof entry === 'string' && entry.startsWith('.'))
-    .map((entry) => path.resolve(path.dirname(configFile), entry))
-    .map((file) => (isRegularFile(file) || file.endsWith('.json') ? file : `${file}.json`));
-}
-
-function isTrackedInside(root: string, file: string): boolean {
-  return (
-    file.startsWith(`${root}${path.sep}`) && isRegularFile(file) && isRealPathInside(root, file)
-  );
-}
-
-export function tsconfigChain(projectRoot: string, relativeConfig: string): string[] {
-  const root = path.resolve(projectRoot);
-  const found = [path.resolve(root, relativeConfig)];
-  for (const file of found) {
-    appendAll(
-      found,
-      extendedFiles(file).filter((next) => !found.includes(next) && isTrackedInside(root, next)),
-    );
-  }
-  return found
-    .filter((file) => isTrackedInside(root, file))
-    .map((file) => path.relative(root, file).split(path.sep).join('/'));
 }

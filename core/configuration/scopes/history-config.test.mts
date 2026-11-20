@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
-import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mts';
+import { baseConfigCoveringHead } from '../../command/base-config/base-coverage.mts';
 import { describeConfigOverrides } from '../config.mts';
 import { configureAnalyzers } from '../configure-analyzers.mts';
 import { presetAnalyzers } from '../preset-analyzers.mts';

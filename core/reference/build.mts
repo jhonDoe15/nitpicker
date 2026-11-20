@@ -6,7 +6,6 @@ import { typescriptRuleEntries } from '../../languages/typescript/reference/inde
 import { sharedCheckEntries } from '../../shared/reference/checks/check-entries.mjs';
 import { typescriptCheckEntries } from '../../shared/reference/checks/other-entries.mjs';
 import { PAGE_IDS } from '../../shared/reference/pages.mjs';
-import { coreRuleEntries } from './config-entries.mts';
 import { entryLabeler } from './labels/entry-labels.mts';
 import { withFixStatus, DEFAULT_FIX_SOURCES } from '../fix/status/fix-status.mts';
 import { guideLink, headingAnchors } from '../../shared/reference/build/guide-pages.mjs';
@@ -125,7 +124,6 @@ export function buildReference(
   const entries = [
     ...sharedChecks(),
     ...typescriptChecks(),
-    ...coreRuleEntries(),
     ...typescriptRules(),
     ...jvmRules(),
     ...pythonRules(),

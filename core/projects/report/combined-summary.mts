@@ -7,7 +7,6 @@ import type {
   PlanProject,
   ProjectOutcome,
   ProjectSelection,
-  RepositoryPolicy,
 } from '../project-types.mts';
 
 type RanFields = {
@@ -24,12 +23,7 @@ type SummaryEntry = Partial<RanFields> & {
   readonly preset: string;
   readonly status: string;
   readonly reason?: string | undefined;
-  readonly policyDigest?: string;
   readonly error?: string;
-};
-
-type RepositorySummary = Omit<RepositoryPolicy, 'findings'> & {
-  readonly newEnforceableFindings: number;
 };
 
 export type CombinedSummary = {
@@ -46,7 +40,6 @@ export type CombinedSummary = {
     readonly skipped: number;
   };
   readonly projects: readonly SummaryEntry[];
-  readonly repositoryPolicy?: RepositorySummary;
   readonly outsideProjects: unknown;
   readonly notices: readonly string[];
   readonly elapsedMs: number;
@@ -58,14 +51,11 @@ type ResultRow = {
   readonly outcome?: ProjectOutcome;
 };
 
-type PolicyStatus = Pick<RepositoryPolicy, 'accepted' | 'toolErrors'>;
-
 type SummaryInput = {
   readonly plan: Pick<MonorepoPlan, 'source'>;
   readonly results: readonly ResultRow[];
   readonly outside: unknown;
   readonly notices: readonly string[];
-  readonly repository: RepositoryPolicy | undefined;
   readonly elapsedMs: number;
 };
 
@@ -75,30 +65,20 @@ const SKIPPED = 'skipped';
 const REPORT_FILE = 'report.txt';
 export const SUMMARY_FILE = 'summary.json';
 
-function repositoryFailed(repository: PolicyStatus | undefined): boolean {
-  return repository !== undefined && !repository.accepted;
-}
-
-function repositoryIncomplete(repository: PolicyStatus | undefined): boolean {
-  return (repository?.toolErrors ?? []).length > 0;
-}
-
 export function exitCodeOf(
   summary: {
     readonly projects: readonly Pick<SummaryEntry, 'status' | 'overallStatus'>[];
-    readonly repositoryPolicy?: PolicyStatus;
   },
   { deferExit = false }: Partial<Pick<CliOptions, 'deferExit'>> = {},
 ): number {
-  const { projects, repositoryPolicy } = summary;
-  const incomplete = repositoryIncomplete(repositoryPolicy);
+  const { projects } = summary;
   if (deferExit) {
-    return incomplete || projects.some(({ overallStatus }) => overallStatus === TOOL_ERROR) ? 2 : 0;
+    return projects.some(({ overallStatus }) => overallStatus === TOOL_ERROR) ? 2 : 0;
   }
-  if (repositoryFailed(repositoryPolicy) || projects.some(({ status }) => status === 'failed')) {
+  if (projects.some(({ status }) => status === 'failed')) {
     return 1;
   }
-  return incomplete || projects.some(({ status }) => status === 'error') ? 2 : 0;
+  return projects.some(({ status }) => status === 'error') ? 2 : 0;
 }
 
 function countOf(results: readonly SummaryEntry[], status: string): number {
@@ -124,19 +104,8 @@ function entryOf(result: ResultRow): SummaryEntry {
     status: outcome === undefined ? SKIPPED : outcome.status,
     reason: selection.reason,
     ...(outcome === undefined ? {} : ranFields(outcome, reportFolder(project.path))),
-    ...(outcome?.policyDigest === undefined ? {} : { policyDigest: outcome.policyDigest }),
     ...(outcome?.error === undefined ? {} : { error: outcome.error }),
   };
-}
-
-function repositoryFields(repository: RepositoryPolicy | undefined): {
-  readonly repositoryPolicy?: RepositorySummary;
-} {
-  if (repository === undefined) {
-    return {};
-  }
-  const { findings, ...fields } = repository;
-  return { repositoryPolicy: { ...fields, newEnforceableFindings: (findings ?? []).length } };
 }
 
 export function combinedSummary({
@@ -144,7 +113,6 @@ export function combinedSummary({
   results,
   outside,
   notices,
-  repository,
   elapsedMs,
 }: SummaryInput): CombinedSummary {
   const projects = results.map(entryOf);
@@ -155,9 +123,8 @@ export function combinedSummary({
   );
   return {
     source: plan.source,
-    overallStatus:
-      incomplete.length > 0 || repositoryIncomplete(repository) ? TOOL_ERROR : 'completed',
-    newEnforceableFindings: ownFindings + (repository?.findings?.length ?? 0),
+    overallStatus: incomplete.length > 0 ? TOOL_ERROR : 'completed',
+    newEnforceableFindings: ownFindings,
     counts: {
       projects: projects.length,
       run: projects.length - countOf(projects, SKIPPED),
@@ -168,7 +135,6 @@ export function combinedSummary({
       skipped: countOf(projects, SKIPPED),
     },
     projects,
-    ...repositoryFields(repository),
     outsideProjects: outside,
     notices,
     elapsedMs,

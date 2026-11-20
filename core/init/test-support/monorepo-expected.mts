@@ -73,14 +73,7 @@ const SHARED_SETTINGS = [
   'To add the agent guidance to AGENTS.md, run: npx nitpicker init --agents-md',
 ];
 
-const CREATED_WORKFLOWS = [
-  'created .github/workflows/nitpicker.yml',
-  'created .github/workflows/nitpicker-policy-approval.yml',
-  'A person accepts a policy loosening with the accept-policy-change label; create it once:' +
-    ' gh label create accept-policy-change',
-  'Public repo: allow pull_request_target in Settings > Actions > Policies',
-  '',
-];
+const CREATED_WORKFLOWS = ['created .github/workflows/nitpicker.yml', ''];
 
 const OFFERED_WORKFLOW = [
   'To write .github/workflows/nitpicker.yml, run: npx nitpicker init --ci github',
@@ -164,7 +157,6 @@ export const REPEATED_OUTPUT = [
   ...skills(PYTHON, JAVA, TYPESCRIPT),
   ...SHARED_SETTINGS,
   '.github/workflows/nitpicker.yml is already set up',
-  '.github/workflows/nitpicker-policy-approval.yml is already set up',
   '',
   ...THEN_RUN,
 ];
@@ -210,7 +202,6 @@ function workflow(setup: readonly string[]): string[] {
     '',
     'permissions:',
     '  contents: read',
-    '  statuses: read',
     '',
     'jobs:',
     '  nitpicker:',

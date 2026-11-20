@@ -95,21 +95,6 @@ function readOptions(projectRoot: string): Options | undefined {
       };
 }
 
-export function mutmutDoNotMutate(
-  projectRoot: string,
-):
-  | { file: string; patterns: string[]; matches: (file: string, pattern: string) => boolean }
-  | undefined {
-  const config = readOptions(projectRoot);
-  return config === undefined
-    ? undefined
-    : {
-        file: config.file,
-        patterns: listOf(config.options['do_not_mutate']),
-        matches: (file: string, pattern: string) => fnmatch(pattern).test(file),
-      };
-}
-
 function isTrue(value: unknown): boolean {
   return value === true || /^(?:true|1|yes|on)$/iu.test(textOf(value ?? ''));
 }

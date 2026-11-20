@@ -36,10 +36,6 @@ export type GateResult = {
   readonly text: string;
   readonly reports: string;
 };
-export type PolicyChanges = {
-  readonly policyLoosenings: readonly string[];
-  readonly policyDigest?: string;
-};
 export type Files = Readonly<Record<string, string>>;
 export type GateOptions = {
   readonly extra?: readonly string[];

@@ -1,10 +1,8 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { runGit } from '../../diff/git/repository/command.mts';
-import { declaresProjects } from '../plan/enclosing.mts';
 import { inspectRepository } from '../plan/inspect.mts';
 import { canChangePlan, isPlanInput, withBaseTree as untypedWithBaseTree } from './base-tree.mts';
-import { messageOf } from '../../../shared/values/readers.mts';
 import type { MonorepoPlan } from '../project-types.mts';
 
 type BaseQuery = {
@@ -15,10 +13,7 @@ type BaseQuery = {
 
 type BaseTree = { readonly root: string; readonly files: readonly string[] };
 
-export type BasePlanResult = {
-  readonly plan: MonorepoPlan | undefined;
-  readonly error?: unknown;
-};
+export type BasePlanResult = { readonly plan: MonorepoPlan | undefined };
 
 const withBaseTree: <Result>(
   query: { readonly repositoryRoot: string; readonly mergeBaseSha: string },
@@ -32,8 +27,8 @@ function inspectedPlan(inspection: {
 }): BasePlanResult {
   try {
     return { plan: inspectRepository(inspection).plan };
-  } catch (error) {
-    return { plan: undefined, error };
+  } catch {
+    return { plan: undefined };
   }
 }
 
@@ -59,13 +54,6 @@ export function planInputsChanged({
   );
 }
 
-function atRepository(
-  error: unknown,
-  { tree, repositoryRoot }: { readonly tree: string; readonly repositoryRoot: string },
-): Error {
-  return new Error(messageOf(error).replaceAll(tree, repositoryRoot), { cause: error });
-}
-
 function underPrefix(files: readonly string[], prefix: string): readonly string[] {
   if (prefix === '.') {
     return files;
@@ -81,28 +69,6 @@ export function basePlanOf({ repositoryRoot, prefix, mergeBaseSha }: BaseQuery):
     if ((root !== tree && !root.startsWith(tree + path.sep)) || !existsSync(root)) {
       return { plan: undefined };
     }
-    const inspected = inspectedPlan({
-      root,
-      files: underPrefix(files, prefix),
-      repositoryRoot: tree,
-    });
-    return inspected.error === undefined
-      ? inspected
-      : { plan: undefined, error: atRepository(inspected.error, { tree, repositoryRoot }) };
+    return inspectedPlan({ root, files: underPrefix(files, prefix), repositoryRoot: tree });
   });
-}
-
-function baseText(repositoryRoot: string, sha: string, file: string): string {
-  return runGit(repositoryRoot, ['show', `${sha}:${file}`]);
-}
-
-export function baseDeclaresProjects({ repositoryRoot, prefix, mergeBaseSha }: BaseQuery): boolean {
-  const folder = prefix === '.' ? '' : `${prefix}/`;
-  const listing = ['ls-tree', '--name-only', mergeBaseSha, ...(folder === '' ? [] : [folder])];
-  const present = runGit(repositoryRoot, listing)
-    .split('\n')
-    .map((entry) => entry.slice(folder.length));
-  return declaresProjects((file: string) =>
-    present.includes(file) ? baseText(repositoryRoot, mergeBaseSha, `${folder}${file}`) : undefined,
-  );
 }
