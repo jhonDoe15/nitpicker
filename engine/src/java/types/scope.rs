@@ -130,7 +130,7 @@ pub fn enclosing_types(scope: &FileScope, at: Node) -> Vec<String> {
     while let Some(node) = current {
         found.extend(class_at(scope, node, inner));
         inner = node;
-        current = node.parent();
+        current = crate::engine::source::parent(node);
     }
     found
 }
@@ -156,7 +156,7 @@ pub fn type_parameter<'t>(file: &SourceFile, at: Node<'t>, name: &str) -> Option
                 }
             }
         }
-        current = node.parent();
+        current = crate::engine::source::parent(node);
     }
     None
 }
@@ -177,6 +177,9 @@ pub struct Resolver<'a> {
     pub(super) resolving: RefCell<HashMap<usize, u8>>,
     pub(super) mapping: RefCell<HashMap<usize, u8>>,
     pub(super) loose: RefCell<HashMap<usize, Option<Type>>>,
+    /// What each type node stands for, asked many times by the rules.
+    written: RefCell<HashMap<(usize, bool), Option<Type>>>,
+    pub(super) locals: RefCell<HashMap<usize, std::rc::Rc<Vec<(String, usize, u32, u32)>>>>,
 }
 
 fn written_names<'f>(file: &'f SourceFile, list: Option<Node>) -> Vec<&'f str> {
@@ -191,7 +194,7 @@ fn written_names<'f>(file: &'f SourceFile, list: Option<Node>) -> Vec<&'f str> {
 
 impl<'a> Resolver<'a> {
     pub fn new(index: &'a TypeIndex, file: &'a SourceFile, scope: &'a FileScope) -> Resolver<'a> {
-        Resolver { index, file, scope, cache: RefCell::new(HashMap::new()), depth: Cell::new(0), busy: RefCell::new(std::collections::HashSet::new()), skipped: Cell::new(0), work: Cell::new(0), resolving: RefCell::new(HashMap::new()), loose: RefCell::new(HashMap::new()), mapping: RefCell::new(HashMap::new()) }
+        Resolver { index, file, scope, cache: RefCell::new(HashMap::new()), depth: Cell::new(0), busy: RefCell::new(std::collections::HashSet::new()), skipped: Cell::new(0), work: Cell::new(0), resolving: RefCell::new(HashMap::new()), loose: RefCell::new(HashMap::new()), written: RefCell::new(HashMap::new()), locals: RefCell::new(HashMap::new()), mapping: RefCell::new(HashMap::new()) }
     }
 
     fn simple(&self, at: Node, name: &str) -> Option<String> {
@@ -223,7 +226,7 @@ impl<'a> Resolver<'a> {
                 }
             }
             inner = node;
-            current = node.parent();
+            current = crate::engine::source::parent(node);
         }
         if let Some(imported) = self.scope.single.get(name) {
             return Some(imported.clone());
@@ -285,6 +288,16 @@ impl<'a> Resolver<'a> {
     /// The type a type node stands for. Type variables stay variables for member signatures
     /// (`keep`), and become their bound where an expression of that type is used.
     pub fn written(&self, node: Node, keep: bool) -> Option<Type> {
+        let key = (node.id(), keep);
+        if let Some(known) = self.written.borrow().get(&key) {
+            return known.clone();
+        }
+        let kind = self.read_written(node, keep);
+        self.written.borrow_mut().insert(key, kind.clone());
+        kind
+    }
+
+    fn read_written(&self, node: Node, keep: bool) -> Option<Type> {
         match node.kind() {
             "integral_type" | "floating_point_type" | "boolean_type" | "void_type" => {
                 let name = ["byte", "short", "int", "long", "char", "float", "double", "boolean", "void"]
@@ -402,7 +415,7 @@ impl<'a> Resolver<'a> {
         let own = Type::class(&name);
         if matches!(kind, "object_creation_expression" | "enum_constant") {
             let base = match kind {
-                "enum_constant" => declaration.parent().and_then(|body| body.parent()).and_then(|owner| self.scope.names.get(&owner.id())).map(|owner| Type::class(owner)),
+                "enum_constant" => crate::engine::source::parent(declaration).and_then(|body| crate::engine::source::parent(body)).and_then(|owner| self.scope.names.get(&owner.id())).map(|owner| Type::class(owner)),
                 _ => declaration.child_by_field_name("type").and_then(|written| self.written(written, true)),
             };
             let interface = base.as_ref().is_some_and(|base| self.index.get(&base.name()).is_some_and(|info| info.is_interface));

@@ -21,12 +21,12 @@ pub fn has_modifier(declaration: Node, keyword: &str) -> bool {
 
 /// Checkstyle's ScopeUtil.isInInterfaceOrAnnotationBlock: the nearest type scope decides.
 pub fn in_interface_or_annotation(node: Node) -> bool {
-    let mut current = node.parent();
+    let mut current = crate::engine::source::parent(node);
     while let Some(parent) = current {
         if TYPE_SCOPES.contains(&parent.kind()) {
             return matches!(parent.kind(), "interface_declaration" | "annotation_type_declaration");
         }
-        current = parent.parent();
+        current = crate::engine::source::parent(parent);
     }
     false
 }
