@@ -110,7 +110,7 @@ impl<'a, 't> Machine<'a, 't> {
             Item::Whole(whole) => *whole as f64,
             Item::Real(real) => *real,
             Item::Flag(flag) => f64::from(u8::from(*flag)),
-            Item::Text(text) => text.trim().parse().unwrap_or(f64::NAN),
+            Item::Text(text) => written_number(text).unwrap_or(f64::NAN),
             other => match self.atoms(&Seq::One(other.clone())).first() {
                 Some(atom) if !atom.is_node() => self.number_of(atom),
                 _ => f64::NAN,
@@ -486,7 +486,8 @@ impl<'a, 't> Machine<'a, 't> {
                 Math::Mul => a.checked_mul(*b),
                 Math::WholeDiv => a.checked_div(*b),
                 Math::Rest => a.checked_rem(*b),
-                Math::Div => (*b != 0 && a % b == 0).then(|| a / b),
+                Math::Div if *b == 0 => return self.fail(|| "whole number division by zero".to_string()),
+                Math::Div => (a % b == 0).then(|| a / b),
             };
             if let Some(whole) = whole {
                 return Seq::whole(whole);
@@ -767,4 +768,20 @@ fn conditional(predicate: &Expr) -> bool {
         Expr::Call(name, arguments) => arguments.len() == 1 && matches!(name.as_ref(), "exists" | "empty" | "not" | "boolean"),
         _ => nodes_only(predicate),
     }
+}
+
+/// A number written as XPath reads one: decimal or exponent notation, `INF`, `-INF` or `NaN`; anything else is not one.
+pub fn written_number(text: &str) -> Option<f64> {
+    let text = text.trim_matches([' ', '\t', '\n', '\r']);
+    match text {
+        "INF" | "+INF" => return Some(f64::INFINITY),
+        "-INF" => return Some(f64::NEG_INFINITY),
+        "NaN" => return Some(f64::NAN),
+        _ => {}
+    }
+    let digits = text.strip_prefix(['+', '-']).unwrap_or(text);
+    if digits.is_empty() || !digits.chars().all(|c| c.is_ascii_digit() || matches!(c, '.' | 'e' | 'E' | '+' | '-')) {
+        return None;
+    }
+    text.parse().ok()
 }

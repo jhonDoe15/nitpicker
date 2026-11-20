@@ -20,6 +20,11 @@ thread_local! {
     static TYPING: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
 }
 
+/// Rounding as XPath rounds: half way goes up.
+fn half_up(value: f64) -> f64 {
+    (value + 0.5).floor()
+}
+
 /// An XPath regular expression in the syntax of the regex crate.
 fn translated(pattern: &str, flags: &str) -> String {
     if flags.contains('q') {
@@ -65,6 +70,8 @@ fn translated(pattern: &str, flags: &str) -> String {
                     at += 1;
                 }
             }
+            // `.` in XPath matches anything but a line feed or carriage return unless the `s` flag is given.
+            '.' if depth == 0 && !flags.contains('s') => out.push_str("[^\\n\\r]"),
             ']' if depth > 0 => {
                 depth -= 1;
                 out.push(c);
@@ -467,9 +474,10 @@ impl<'a, 't> Machine<'a, 't> {
             built
         };
         match (name, arguments.len()) {
-            ("pmd-java:typeIs", 1) => Seq::flag(self.type_is(focus, &text(0), false)),
-            ("pmd-java:typeIsExactly", 1) => Seq::flag(self.type_is(focus, &text(0), true)),
-            ("pmd-java:matchesSig", 1) => Seq::flag(self.matches_sig(focus, &text(0))),
+            // PMD takes a nested class by its binary name (`Outer$Inner`) or its canonical name (`Outer.Inner`).
+            ("pmd-java:typeIs", 1) => Seq::flag(self.type_is(focus, &text(0).replace('$', "."), false)),
+            ("pmd-java:typeIsExactly", 1) => Seq::flag(self.type_is(focus, &text(0).replace('$', "."), true)),
+            ("pmd-java:matchesSig", 1) => Seq::flag(self.matches_sig(focus, &text(0).replace('$', "."))),
             ("pmd-java:modifiers", 0) => self.modifiers(focus, "EffectiveModifiers"),
             ("pmd-java:explicitModifiers", 0) => self.modifiers(focus, "ExplicitModifiers"),
             ("true", 0) => Seq::flag(true),
@@ -489,6 +497,9 @@ impl<'a, 't> Machine<'a, 't> {
             ("number" | "xs:double" | "xs:decimal" | "xs:float", 0 | 1) => {
                 let from = if arguments.is_empty() { own() } else { arguments[0].clone() };
                 match self.atoms(&from).first() {
+                    Some(Item::Text(written)) if name != "number" && super::eval::written_number(written).is_none() => {
+                        self.fail(|| format!("{written:?} is not a number"))
+                    }
                     Some(atom) => Seq::One(Item::Real(self.number_of(atom))),
                     None if name == "number" => Seq::One(Item::Real(f64::NAN)),
                     None => Seq::Empty,
@@ -533,9 +544,9 @@ impl<'a, 't> Machine<'a, 't> {
             }
             ("substring", 2 | 3) => {
                 let whole = text(0);
-                let start = self.number_of(arguments[1].items().first().unwrap_or(&Item::Whole(1))).round();
+                let start = half_up(self.number_of(arguments[1].items().first().unwrap_or(&Item::Whole(1))));
                 let end = match arguments.get(2) {
-                    Some(length) => start + self.number_of(length.items().first().unwrap_or(&Item::Whole(0))).round(),
+                    Some(length) => start + half_up(self.number_of(length.items().first().unwrap_or(&Item::Whole(0)))),
                     None => f64::INFINITY,
                 };
                 Seq::owned(whole.chars().enumerate().filter(|(at, _)| (*at as f64 + 1.0) >= start && (*at as f64 + 1.0) < end).map(|(_, c)| c).collect())
@@ -543,7 +554,9 @@ impl<'a, 't> Machine<'a, 't> {
             ("string-length", 0 | 1) => Seq::whole(subject(0).chars().count() as i64),
             ("lower-case", 1) => Seq::owned(text(0).to_lowercase()),
             ("upper-case", 1) => Seq::owned(text(0).to_uppercase()),
-            ("normalize-space", 0 | 1) => Seq::owned(subject(0).split_whitespace().collect::<Vec<_>>().join(" ")),
+            ("normalize-space", 0 | 1) => {
+                Seq::owned(subject(0).split([' ', '\t', '\n', '\r']).filter(|word| !word.is_empty()).collect::<Vec<_>>().join(" "))
+            }
             ("translate", 3) => {
                 let (from, to): (Vec<char>, Vec<char>) = (text(1).chars().collect(), text(2).chars().collect());
                 Seq::owned(
@@ -623,9 +636,9 @@ impl<'a, 't> Machine<'a, 't> {
             ("head", 1) => arguments[0].items().first().map_or(Seq::Empty, |first| Seq::One(first.clone())),
             ("tail", 1) => Seq::from(arguments[0].items().iter().skip(1).cloned().collect()),
             ("subsequence", 2 | 3) => {
-                let start = self.number_of(arguments[1].items().first().unwrap_or(&Item::Whole(1))).round();
+                let start = half_up(self.number_of(arguments[1].items().first().unwrap_or(&Item::Whole(1))));
                 let end = match arguments.get(2) {
-                    Some(length) => start + self.number_of(length.items().first().unwrap_or(&Item::Whole(0))).round(),
+                    Some(length) => start + half_up(self.number_of(length.items().first().unwrap_or(&Item::Whole(0)))),
                     None => f64::INFINITY,
                 };
                 let items = arguments[0].items().iter().enumerate();
@@ -674,7 +687,7 @@ impl<'a, 't> Machine<'a, 't> {
             },
             ("floor", 1) => self.rounded(&arguments[0], f64::floor),
             ("ceiling", 1) => self.rounded(&arguments[0], f64::ceil),
-            ("round", 1) => self.rounded(&arguments[0], |value| (value + 0.5).floor()),
+            ("round", 1) => self.rounded(&arguments[0], half_up),
             ("fold-left", 3) => {
                 let Some(function) = arguments[2].items().first() else { return Seq::Empty };
                 let mut total = arguments[1].clone();

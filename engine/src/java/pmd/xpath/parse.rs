@@ -768,7 +768,7 @@ impl Parser {
     fn below(&mut self, left: Expr) -> Parsed {
         let from = self.at;
         let step = self.step()?;
-        let positional = self.tokens[from..self.at].iter().any(|token| matches!(token, Tok::Name(name) if name == "position" || name == "last"));
+        let positional = self.tokens[from..self.at].iter().any(|token| matches!(token, Tok::Name(name) if matches!(name.trim_start_matches("fn:"), "position" | "last")));
         match deepened(step, !positional) {
             Ok(direct) => Ok(Expr::Path(boxed(left), boxed(direct))),
             Err(step) => {
