@@ -15,16 +15,14 @@ function usedTargets(item) {
 }
 
 function usingFilesByTarget(index) {
+  const uses = [...index.callables, ...index.types].flatMap((user) =>
+    usedTargets(user).map((target) => ({ target, file: user.file })),
+  );
   const files = new Map();
-  for (const user of [...index.callables, ...index.types]) {
-    for (const target of usedTargets(user)) {
-      const known = files.get(target);
-      if (known === undefined) {
-        files.set(target, [user.file]);
-      } else {
-        known.push(user.file);
-      }
-    }
+  for (const { target, file } of uses) {
+    const known = files.get(target) ?? [];
+    known.push(file);
+    files.set(target, known);
   }
   return files;
 }
