@@ -57,22 +57,30 @@ function analyzerNamesOf(
 export function analyzersByProject(
   plan: MonorepoPlan,
   cli: MonorepoCli,
+  selected?: ReadonlySet<string>,
 ): Map<string, readonly string[]> {
   const requested = cli.options.analyzerNames;
   if (requested.length === 0) {
     return new Map();
   }
   const readable = plan.projects.filter(({ configError }) => configError === undefined);
+  const running = readable.filter((project) => selected?.has(project.path) === true);
   const byProject = new Map(
-    readable.map((project) => [project.path, analyzerNamesOf(project, cli.analyzers)]),
+    (running.length === 0 ? readable : running).map((project) => [
+      project.path,
+      analyzerNamesOf(project, cli.analyzers),
+    ]),
   );
-  const known = new Set([...byProject.values()].flat());
-  const unknown = requested.filter((name) => !known.has(name));
-  if (unknown.length > 0) {
-    throw new Error(
-      `Unknown --analyzer: ${unknown.join(', ')}. Known analyzers of the projects in this monorepo: ` +
-        [...known].toSorted(byText).join(', '),
-    );
+  const missing = requested.filter((name) => ![...byProject.values()].flat().includes(name));
+  if (missing.length > 0) {
+    const known = new Set(readable.flatMap((project) => analyzerNamesOf(project, cli.analyzers)));
+    const unknown = missing.filter((name) => !known.has(name));
+    if (unknown.length > 0) {
+      throw new Error(
+        `Unknown --analyzer: ${unknown.join(', ')}. Known analyzers of the projects in this ` +
+          `monorepo: ${[...known].toSorted(byText).join(', ')}`,
+      );
+    }
   }
   return new Map(
     [...byProject].map(([folder, names]) => [
