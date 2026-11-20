@@ -1,4 +1,5 @@
 import { CONVENTION_POLICY_FILES } from '../conventions/convention-policy-files.mjs';
+import { VALUE_WEB_RULE_FILES } from './value-web-rule-files.mjs';
 import { TEXT_PATH_NUMBER_RULE_FILES } from './text-path-number-rule-files.mjs';
 
 export const PLUGIN_RULE_FILES = [
@@ -277,5 +278,6 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/wrapped/report-filter.mjs',
   'languages/typescript/preset/eslint-plugin/rules/wrapped/require-atomic-updates.mjs',
   'languages/typescript/preset/eslint-plugin/rules/wrapped/strict-boolean-expressions.mjs',
+  ...VALUE_WEB_RULE_FILES,
   ...TEXT_PATH_NUMBER_RULE_FILES,
 ];

@@ -24,6 +24,7 @@ export type TypedCases = {
 export function typedCases(
   prefix: string,
   compilerOptions: Readonly<Record<string, unknown>> = {},
+  extension: 'ts' | 'tsx' = 'ts',
 ): TypedCases {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), prefix)));
   writeFileSync(
@@ -44,7 +45,11 @@ export function typedCases(
   function typed(code: string): TypedCase;
   function typed(code: string, errors: CaseError[]): InvalidCase;
   function typed(code: string, errors?: CaseError[]): TypedCase | InvalidCase {
-    const filename = path.join(root, `src/case-${randomUUID()}.ts`);
+    const filename = path.join(
+      root,
+      'src',
+      extension === 'tsx' ? `case-${randomUUID()}.tsx` : `case-${randomUUID()}.ts`,
+    );
     writeFileSync(filename, code);
     return errors === undefined ? { filename, code } : { filename, code, errors };
   }
@@ -53,6 +58,10 @@ export function typedCases(
     rmSync(root, { recursive: true, force: true });
   }
 
-  const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
+  const tester = typescriptRuleTester({
+    project: './tsconfig.json',
+    tsconfigRootDir: root,
+    ...(extension === 'tsx' ? { ecmaFeatures: { jsx: true } } : {}),
+  });
   return { tester, cleanup, typed };
 }

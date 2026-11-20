@@ -37,12 +37,16 @@ tester.run('no-parameter-mutation', rule, {
     'export function wrap(error: Error) { error.message = "x"; }',
     'import type { Request } from "http-lib";\nexport function login(request: Request) { request.user = "x"; }',
     'import type { Request } from "http-lib";\nexport function login(request: Request) { request.locals.id = "x"; }',
-    'import type { Request } from "http-lib";\nexport function login(request: Request & { id?: string }) { request.id = "x"; }',
-    'import type { Request } from "http-lib";\ninterface Session extends Request { id?: string }\nexport function login(request: Session) { request.id = "x"; }',
+    'import type { Request } from "http-lib";\nexport function login(request: Request & { id?: string }) { ' +
+      'request.id = "x"; }',
+    'import type { Request } from "http-lib";\ninterface Session extends Request { id?: string }\nexport function ' +
+      'login(request: Session) { request.id = "x"; }',
     'import type { Options } from "http-lib";\nexport function retry(options: Options) { options.retries = 1; }',
     'function fill(user: { name: string }) { user.name = "x"; }',
-    'export function run(user: { name: string }) { const fill = (target: { name: string }) => { target.name = "x"; }; fill(user); }',
-    'export function rename(user: { name: string }) { let next = user; next = { ...next }; next.name = "x"; return next; }',
+    'export function run(user: { name: string }) { const fill = (target: { name: string }) => { target.name = "x"; ' +
+      '}; fill(user); }',
+    'export function rename(user: { name: string }) { let next = user; next = { ...next }; next.name = "x"; return ' +
+      'next; }',
     'export function count(input: { items: string[] }) { return input.items.length; }',
     'export function fill(o: { size?: number }) { o = { ...o }; o.size ||= 1; return o; }',
     'export class Counter { static count = 0; }\nexport function reset(counter: typeof Counter) { counter.count = 0; }',
@@ -52,9 +56,12 @@ tester.run('no-parameter-mutation', rule, {
     'export function touch(options: { size?: number }) { return Object.assign(options); }',
     'export function rename(state: { items: string[] }) { state.items.length; }',
     'export function total(items: number[]) { return items.reduce((sum, item) => sum + item, 0); }',
-    'export function index(items: string[]) { return items.reduce((table: Record<string, number>, item) => { table[item] = 1; return table; }, {}); }',
-    'export function index(items: string[]) { return items.reduce((table: string[], item) => { table.push(item); return table; }, []); }',
-    'declare function produce<T>(value: T, recipe: (draft: T) => void): T;\nexport function add(list: string[]) { return produce(list, (draft) => { draft.push("x"); }); }',
+    'export function index(items: string[]) { return items.reduce((table: Record<string, number>, item) => { ' +
+      'table[item] = 1; return table; }, {}); }',
+    'export function index(items: string[]) { return items.reduce((table: string[], item) => { table.push(item); ' +
+      'return table; }, []); }',
+    'declare function produce<T>(value: T, recipe: (draft: T) => void): T;\nexport function add(list: string[]) { ' +
+      'return produce(list, (draft) => { draft.push("x"); }); }',
     'export function names(table: Readonly<Record<string, number>>) { return Object.keys(table); }',
     'export function first(items: string[]) { return items[0]; }',
     'export function add(items: string[]) { let next = items; next = [...next, "x"]; return next; }',
@@ -67,13 +74,27 @@ tester.run('no-parameter-mutation', rule, {
     'export function add(items: string[]) { items = structuredClone(items); items.push("x"); return items; }',
     'function add(items: string[]) { items.push("x"); }',
     'export class Bag { private fill(items: string[]) { items.push("x"); } #drain(items: string[]) { items.pop(); } }',
-    'export function run(items: string[]) { const collect = (list: string[]) => { list.push("x"); }; return collect(items); }',
-    'function collect(table: string[], item: string) { table.push(item); return table; }\nexport function all(items: string[]) { return items.reduce(collect, []); }',
+    'export function run(items: string[]) { const collect = (list: string[]) => { list.push("x"); }; return ' +
+      'collect(items); }',
+    'function collect(table: string[], item: string) { table.push(item); return table; }\nexport function ' +
+      'all(items: string[]) { return items.reduce(collect, []); }',
     'export function collect(table: string[] = [], item = "") { table.push(item); return table; }',
     'export function collect(table: Record<string, number> = {}, key = "") { table[key] = 1; return table; }',
+    'interface State { items: string[] }\nexport function run(state: State) { state.items.push("x"); ' +
+      'state.items.pop(); }',
+    'export function run(cache: Map<string, number>) { cache.set("a", 1); cache.set("b", 2); }',
+    'export function run(out: string[]) { out.push("x"); }',
+    'export function run(packageCache: Set<string>) { packageCache.add("x"); }',
+    'export function resolveConfig(config: { build?: object }) { config.build ??= {}; }',
+    'export function resolveConfig(input: { build?: object }) { let config = input; config.build ??= {}; }',
+    'export function run(items: string[]) { const out: string[] = []; out.push(items[0] ?? ""); }',
   ].map((code) => typed(code)),
   invalid: [
     typed('export function add(items: string[], item: string) { items.push(item); }', 'items.push'),
+    typed(
+      'export function add(items: string[]) { items.push("a"); items.push("b"); items.pop(); }',
+      'items.push',
+    ),
     typed('export function drop(items: string[]) { items.pop(); }', 'items.pop'),
     typed('export function order(items: string[]) { items.sort(); }', 'items.sort'),
     typed('export function clear(items: string[]) { items.length = 0; }', 'items[…]'),
@@ -168,7 +189,7 @@ tester.run('no-parameter-mutation property writes', rule, {
       'Object.assign(o, …)',
     ),
     written(
-      'interface Options { length?: number }\nexport function fill(options: Options) { options.length ??= 8; }',
+      'interface Options { length?: number }\nexport function pad(options: Options) { options.length ??= 8; }',
       'options.length',
     ),
     written(
@@ -204,7 +225,8 @@ tester.run('no-parameter-mutation property writes', rule, {
       'options.size',
     ),
     written(
-      'import type { Request } from "http-lib";\nexport function tag(input: { request: Request; id?: string }) { input.id = "x"; }',
+      'import type { Request } from "http-lib";\nexport function tag(input: { request: Request; id?: string }) { ' +
+        'input.id = "x"; }',
       'input.id',
     ),
     written(
@@ -213,7 +235,8 @@ tester.run('no-parameter-mutation property writes', rule, {
       'js',
     ),
     written(
-      '/** @typedef {{ id?: string }} Message */\n/** @param {Message} message */\nexport function tag(message) { message.id = "x"; }',
+      '/** @typedef {{ id?: string }} Message */\n/** @param {Message} message */\nexport function tag(message) { ' +
+        'message.id = "x"; }',
       'message.id',
       'js',
     ),
