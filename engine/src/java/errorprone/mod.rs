@@ -162,8 +162,6 @@ const CHECKS: &[Check] = &[
     targets::boolean_literal,
     naming::identifier_name,
     javadoc::javadoc,
-    docplaced::not_javadoc,
-    docplaced::almost_javadoc,
     annotated::annotation_position,
     redundant::redundant_override,
     throws::checked_exception_not_thrown,
@@ -196,7 +194,7 @@ const CHECKS: &[Check] = &[
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
 /// leave the resolver with answers found in a different order.
-const FILE_CHECKS: &[Check] = &[boxed::unnecessary_boxed_variable, unused_methods::unused_method];
+const FILE_CHECKS: &[Check] = &[boxed::unnecessary_boxed_variable, unused_methods::unused_method, docplaced::not_javadoc, docplaced::almost_javadoc];
 
 pub struct ErrorProne;
 

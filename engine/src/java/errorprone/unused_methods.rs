@@ -107,7 +107,7 @@ fn candidates<'t>(context: &Context, root: Node<'t>) -> Option<Vec<Candidate<'t>
         if suppressed(context, node) || (marked && should_keep(context, node, METHODS)) {
             continue;
         }
-        if constructor && (node.kind() == "compact_constructor_declaration" || formals(node).is_empty()) {
+        if constructor && formals(node).is_empty() {
             continue;
         }
         let Some((origin, declared)) = declared_method(context, node) else { continue };

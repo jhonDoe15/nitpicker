@@ -53,8 +53,14 @@ pub fn own_type(index: &TypeIndex, name: &str) -> Type {
     Type::Class(name.to_string(), bounds.unwrap_or_default())
 }
 
+/// The parameters of a method or constructor; a compact constructor has the components of its record.
 pub fn formals<'t>(method: Node<'t>) -> Vec<Node<'t>> {
-    method
+    let header = if method.kind() == "compact_constructor_declaration" {
+        crate::engine::source::parent(method).and_then(crate::engine::source::parent).unwrap_or(method)
+    } else {
+        method
+    };
+    header
         .child_by_field_name("parameters")
         .map(named_children)
         .unwrap_or_default()
