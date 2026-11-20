@@ -210,8 +210,10 @@ impl<'a> Resolver<'a> {
                     return Some(found.clone());
                 }
             }
-            // Names in the header of a class are looked up around it: its members and what it inherits are not in scope there.
-            let header = TYPE_DECLARATIONS.contains(&node.kind()) && node.child_by_field_name("body") != Some(inner);
+            // Names in the header of a class are looked up around it: its members and what it inherits are not in scope there,
+            // except for the components of a record.
+            let components = node.kind() == "record_declaration" && node.child_by_field_name("parameters") == Some(inner);
+            let header = TYPE_DECLARATIONS.contains(&node.kind()) && node.child_by_field_name("body") != Some(inner) && !components;
             if let Some(owner) = class_at(self.scope, node, inner).filter(|_| !header) {
                 for ancestor in self.index.lineage(&owner) {
                     let nested = format!("{ancestor}.{name}");
