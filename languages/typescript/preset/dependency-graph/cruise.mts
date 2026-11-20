@@ -10,6 +10,10 @@ import { layoutTransformFor as untypedLayoutTransformFor } from '../tool-configs
 import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
 import { fieldsOf, parseJson } from '../../../../shared/values/readers.mts';
 import type { Layout } from '../../adapters/typed/head-policy.mts';
+import {
+  cruiserNodeArguments,
+  reportSkippedFiles,
+} from '../../adapters/dependency-graph/shared-graph/cruiser-process.mts';
 import type {
   DependencyGraph,
   GraphDependency,
@@ -96,6 +100,7 @@ function spawnDependencyCruiser(
   return spawnSyncWithOutputFile(
     process.execPath,
     [
+      ...cruiserNodeArguments(),
       dependencyCruiser,
       ...paths,
       '--config',
@@ -165,6 +170,7 @@ export function cruise(
     (environment) => spawnDependencyCruiser(paths, environment),
   );
   assertSuccessful(result);
+  reportSkippedFiles(result.stderr);
   return parseGraph(result.stdout);
 }
 
