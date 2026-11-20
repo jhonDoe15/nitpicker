@@ -30,7 +30,7 @@ pub fn event_on_query<'v>(node: Node<'v>, tools: &mut Tools<'_, '_, 'v>) {
     if resolve(node, tools.scopes, tools.detect.setting.as_deref()).is_some() {
         let property = callee.node("property");
         let place = property.filter(|property| property.is("Literal")).or_else(|| deepest_identifier(property)).unwrap_or(node);
-        tools.report(ACCESS, place, ACCESS_MESSAGE.to_string());
+        tools.report_point(ACCESS, place, ACCESS_MESSAGE.to_string());
     }
 }
 
@@ -48,7 +48,7 @@ pub fn member(node: Node, tools: &mut Tools) {
         return;
     }
     for _ in 0..times {
-        tools.report(ACCESS, property, ACCESS_MESSAGE.to_string());
+        tools.report_point(ACCESS, property, ACCESS_MESSAGE.to_string());
     }
 }
 

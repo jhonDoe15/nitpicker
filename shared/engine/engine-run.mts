@@ -8,9 +8,9 @@ export type EngineRun = {
 };
 
 export type EngineOptions = {
-  readonly cwd?: string;
-  readonly timeoutMs?: number;
-  readonly binary?: string;
+  readonly cwd?: string | undefined;
+  readonly timeoutMs?: number | undefined;
+  readonly binary?: string | undefined;
 };
 
 const MAX_OUTPUT_BYTES = 200 * 1024 * 1024;

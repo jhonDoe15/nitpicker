@@ -32,7 +32,7 @@ const files = readFileSync(list, 'utf8')
   .map((line) => line.split('\t'));
 const linter = new Linter();
 const rows = [];
-for (const [file, display = file] of files) {
+for (const [file = '', display = file] of files) {
   const messages = linter.verify(
     readFileSync(file, 'utf8'),
     [
@@ -48,7 +48,14 @@ for (const [file, display = file] of files) {
     { filename: file },
   );
   for (const message of messages) {
-    rows.push([display, message.ruleId, message.line, message.column, message.message]);
+    rows.push([
+      display,
+      message.ruleId,
+      message.line,
+      message.column,
+      message.message,
+      ...(message.endLine === undefined ? [] : [message.endLine, message.endColumn]),
+    ]);
   }
 }
 writeFileSync(out, JSON.stringify(rows.toSorted(), undefined, 1));
