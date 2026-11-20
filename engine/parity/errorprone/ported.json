@@ -41,5 +41,10 @@
  "ArrayRecordComponent",
  "ReturnAtTheEndOfVoidFunction",
  "AssignmentExpression",
- "ProtectedMembersInFinalClass"
+ "ProtectedMembersInFinalClass",
+ "UnnecessarySemicolon",
+ "RedundantThrows",
+ "UnnecessaryBoxedAssignment",
+ "IntLongMath",
+ "InitializeInline"
 ]

@@ -14,6 +14,7 @@ mod names;
 mod naming;
 mod obsolete;
 mod simple;
+mod assigned;
 mod statements;
 mod targets;
 mod throws;
@@ -151,6 +152,11 @@ const CHECKS: &[Check] = &[
     statements::return_at_the_end_of_void_function,
     statements::assignment_expression,
     statements::protected_members_in_final_class,
+    statements::unnecessary_semicolon,
+    statements::redundant_throws,
+    assigned::unnecessary_boxed_assignment,
+    assigned::int_long_math,
+    assigned::initialize_inline,
     names::type_parameter_naming,
     names::wildcard_import,
     names::same_name_but_different,

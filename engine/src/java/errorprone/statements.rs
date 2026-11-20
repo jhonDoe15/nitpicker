@@ -116,3 +116,223 @@ pub fn protected_members_in_final_class(context: &Context, node: Node) {
         context.report(NAME, node, at, &format!("Make members of final classes package-private: {}", names.join(", ")));
     }
 }
+
+const SEMICOLON: &str =
+    "Unnecessary semicolons should be omitted. For empty block statements, prefer {}.";
+
+fn member_place(member: Node) -> usize {
+    match member.kind() {
+        "field_declaration" | "constant_declaration" => declarators(member)
+            .last()
+            .map_or(member.start_byte(), |last| name_start(*last)),
+        "class_declaration"
+        | "interface_declaration"
+        | "enum_declaration"
+        | "record_declaration"
+        | "annotation_type_declaration" => children(member)
+            .into_iter()
+            .find(|part| part.kind() != "modifiers")
+            .map_or(member.start_byte(), |keyword| keyword.start_byte()),
+        _ => name_start(member),
+    }
+}
+
+fn semicolons_between_members(context: &Context, body: Node) {
+    let record = parent(body).filter(|holder| holder.kind() == "record_declaration");
+    let component = record
+        .and_then(|record| record.child_by_field_name("parameters"))
+        .and_then(|list| named_children(list).into_iter().next_back());
+    let mut current: Option<(usize, bool)> =
+        component.map(|component| (name_start(component), false));
+    let mut waiting: Vec<usize> = Vec::new();
+    let mut parts = Vec::new();
+    for child in children(body) {
+        if child.kind() == "enum_body_declarations" {
+            parts.extend(children(child))
+        } else {
+            parts.push(child)
+        }
+    }
+    for part in parts {
+        if part.kind() == ";" {
+            waiting.push(part.start_byte());
+            continue;
+        }
+        if !part.is_named() || part.kind().ends_with("comment") {
+            continue;
+        }
+        let constant = part.kind() == "enum_constant";
+        if let Some((at, _)) = current.filter(|(_, before)| !(*before && !constant)) {
+            for _ in &waiting {
+                context.report("UnnecessarySemicolon", body, at, SEMICOLON);
+            }
+        }
+        waiting.clear();
+        current = Some((
+            if constant {
+                part.start_byte()
+            } else {
+                member_place(part)
+            },
+            constant,
+        ));
+    }
+    if let Some((at, false)) = current {
+        for _ in &waiting {
+            context.report("UnnecessarySemicolon", body, at, SEMICOLON);
+        }
+    }
+}
+
+pub fn unnecessary_semicolon(context: &Context, node: Node) {
+    let empty: Vec<Node> = match node.kind() {
+        "block" | "constructor_body" | "switch_block_statement_group" => children(node),
+        "if_statement" => ["consequence", "alternative"]
+            .iter()
+            .filter_map(|field| node.child_by_field_name(field))
+            .collect(),
+        "while_statement" | "for_statement" | "enhanced_for_statement" | "do_statement" => {
+            node.child_by_field_name("body").into_iter().collect()
+        }
+        "labeled_statement" => children(node).into_iter().next_back().into_iter().collect(),
+        kind if BODIES.contains(&kind) => {
+            semicolons_between_members(context, node);
+            return;
+        }
+        _ => return,
+    };
+    for statement in empty
+        .into_iter()
+        .filter(|statement| statement.kind() == ";")
+    {
+        context.report(
+            "UnnecessarySemicolon",
+            node,
+            statement.start_byte(),
+            SEMICOLON,
+        );
+    }
+}
+
+fn join(on: &str, pieces: &[String]) -> String {
+    if pieces.len() == 2 {
+        return pieces.join(" and ");
+    }
+    let mut joined = String::new();
+    for (place, piece) in pieces.iter().enumerate() {
+        if place > 0 {
+            joined.push_str(on);
+            if place == pieces.len() - 1 {
+                joined.push_str("and ");
+            }
+        }
+        joined.push_str(piece);
+    }
+    joined
+}
+
+pub fn redundant_throws(context: &Context, node: Node) {
+    if !matches!(
+        node.kind(),
+        "method_declaration" | "constructor_declaration"
+    ) {
+        return;
+    }
+    let Some(clause) = children(node)
+        .into_iter()
+        .find(|part| part.kind() == "throws")
+    else {
+        return;
+    };
+    let index = context.resolver.index;
+    let thrown: Vec<(Node, Option<String>, Vec<String>)> = named_children(clause)
+        .into_iter()
+        .filter(|part| !part.kind().ends_with("comment"))
+        .map(|written| {
+            let variable = Some(written)
+                .filter(|written| written.kind() == "type_identifier")
+                .and_then(|written| {
+                    crate::java::types::scope::type_parameter(
+                        context.file,
+                        written,
+                        context.text(written),
+                    )
+                });
+            if let Some(parameter) = variable {
+                let bound = children(parameter)
+                    .into_iter()
+                    .find(|part| part.kind() == "type_bound")
+                    .and_then(|bound| {
+                        named_children(bound)
+                            .into_iter()
+                            .find_map(|first| context.resolver.type_node(first))
+                    })
+                    .map(|bound| bound.erased().name());
+                return (
+                    written,
+                    None,
+                    bound
+                        .map(|bound| index.superclasses(&bound))
+                        .unwrap_or_default(),
+                );
+            }
+            match context.resolver.type_node(written) {
+                Some(kind) => {
+                    let name = kind.erased().name();
+                    let above = index.superclasses(&name).split_off(1);
+                    (written, Some(name), above)
+                }
+                None => (written, None, Vec::new()),
+            }
+        })
+        .collect();
+    let mut messages = Vec::new();
+    let mut first: Option<Node> = None;
+    let mut removed: Vec<usize> = Vec::new();
+    for (_, name, _) in &thrown {
+        let Some(name) = name else { continue };
+        let below: Vec<usize> = thrown
+            .iter()
+            .enumerate()
+            .filter(|(_, (_, _, above))| above.contains(name))
+            .map(|(place, _)| place)
+            .collect();
+        if below.is_empty() {
+            continue;
+        }
+        let texts: Vec<String> = below
+            .iter()
+            .map(|place| context.text(thrown[*place].0).to_string())
+            .collect();
+        let verb = if texts.len() == 1 {
+            "is a subtype"
+        } else {
+            "are subtypes"
+        };
+        messages.push(format!(
+            "{} {} of {}",
+            join(", ", &texts),
+            verb,
+            super::hierarchy::simple_name(name)
+        ));
+        removed.extend(below);
+    }
+    if let Some(place) = removed.iter().min() {
+        first = Some(thrown[*place].0);
+    }
+    let Some(first) = first else { return };
+    let at = match first.kind() {
+        "scoped_type_identifier" => children(first)
+            .into_iter()
+            .filter(|part| part.kind() == ".")
+            .next_back()
+            .map_or(first.start_byte(), |dot| dot.start_byte()),
+        _ => first.start_byte(),
+    };
+    context.report(
+        "RedundantThrows",
+        node,
+        at,
+        &format!("Redundant throws clause: {}", join("; ", &messages)),
+    );
+}
