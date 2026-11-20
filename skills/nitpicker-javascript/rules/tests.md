@@ -37,6 +37,10 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - In concurrent tests (`it.concurrent`, `describe.concurrent`, `sequence.concurrent`), do not use fake
   timers, spies, `stubGlobal`/`stubEnv`, `process.env` writes or `process.chdir`: the tests share one
   worker (`nitpicker/no-worker-state-in-concurrent-tests`). Put those tests in `describe.sequential`.
+- In Playwright tests, assert with the retrying form (`await expect(locator).toHaveText('42')`), not a
+  one-time read (`expect(await locator.textContent())`); do not wait for `networkidle`, use element
+  handles or leave an action without `await`. In Cypress tests, do not keep a command's result in a
+  variable (use `.then` or an alias) or make a test or hook `async`.
 - Test data typed from a literal widens (`status: string`): write the array as
   `/** @type {const} */ ([...])`, or annotate the `const` with the typedef.
 - Assert whole outputs with `toEqual`/`toBe` (`assert.deepStrictEqual`/`assert.equal`, chai's

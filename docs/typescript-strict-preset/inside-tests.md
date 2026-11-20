@@ -109,6 +109,16 @@ the spec for Mocha.
   `cy.wait('@request')`). The rule covers every test-area file: the test roots (e2e folders under
   them included), `*.test.*`/`*.spec.*` next to sources, and `__tests__` directories (their
   fixtures are skipped). A wait that cannot be avoided gets an exception for the rule.
+- Browser tests: in a file that imports `@playwright/test` (or another `playwright` module), a read
+  that checks the page once is reported (`playwright/prefer-web-first-assertions`:
+  `expect(await locator.textContent()).toBe('42')` fails when the page is still updating; use
+  `await expect(locator).toHaveText('42')`, which retries), and so are `waitForLoadState('networkidle')`
+  (`playwright/no-networkidle`), element handles from `page.$`/`page.$$` (`playwright/no-element-handle`,
+  use a locator), an action or retrying assertion without `await` (`playwright/missing-playwright-await`)
+  and `page.pause()` (`playwright/no-page-pause`). In a Cypress spec (one that uses `cy`), keeping a
+  command's result in a variable (`cypress/no-assigning-return-values`; use `.then` or an alias), an
+  `async` test or hook (`cypress/no-async-tests`) and `cy.pause()` (`cypress/no-pause`) are reported.
+  The messages name the allowed form.
 - `nitpicker/no-raised-test-timeout`: no test, suite or hook timeout above 10 000 ms. That is the
   test timeout nitpicker runs a project's tests with (`languages/typescript/preset/defaults/vitest.quality.config.ts`, which
   Stryker also uses, and the timeout it passes to Vitest, Jest, `node:test` and Mocha; a test keeps them in step; the
