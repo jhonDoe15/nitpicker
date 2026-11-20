@@ -99,9 +99,12 @@ function validateExtendsOf(layer: ConfigLayer): void {
   try {
     validateExtends(fieldOf(layer.config, 'extends'));
   } catch (error) {
-    throw new Error(messageOf(error).replace(`${CONFIG_FILE_NAME}:`, `${layer.label}:`), {
-      cause: error,
-    });
+    throw new Error(
+      messageOf(error).replace(`${CONFIG_FILE_NAME}:`, () => `${layer.label}:`),
+      {
+        cause: error,
+      },
+    );
   }
 }
 

@@ -144,7 +144,7 @@ function grepOption(loaded: MochaOptions): { grep?: string } {
     return { grep };
   }
   return typeof fgrep === 'string'
-    ? { grep: fgrep.replaceAll(REGEXP_SPECIAL, String.raw`\$&`) }
+    ? { grep: fgrep.replaceAll(REGEXP_SPECIAL, (special: string) => `\\${special}`) }
     : {};
 }
 

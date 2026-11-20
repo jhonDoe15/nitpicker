@@ -260,7 +260,7 @@ function remapPrefix(
     .find(({ key }) => moves.has(key.replaceAll('/', '.')));
   return found === undefined
     ? undefined
-    : (moves.get(found.key.replaceAll('/', '.')) ?? '').replaceAll('.', separator) +
+    : (moves.get(found.key.replaceAll('/', '.')) ?? '').replaceAll('.', () => separator) +
         token.slice(found.end);
 }
 

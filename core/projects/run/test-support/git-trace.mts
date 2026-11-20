@@ -11,6 +11,6 @@ export function tracedWorktrees(
   vi.stubEnv('GIT_TRACE', file);
   return () =>
     readFileSync(file, 'utf8')
-      .split('\n')
+      .split(/\r?\n/u)
       .filter((line) => worktreeLine.test(line));
 }

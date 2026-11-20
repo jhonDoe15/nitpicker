@@ -8,6 +8,7 @@ import {
   chainOf as untypedChainOf,
   parentDirectory as untypedParentDirectory,
 } from '../../../../shared/traversal.mjs';
+import { aliasedSpecifier } from './specifiers/aliased-specifier.mts';
 import { packageName as packageNameOf } from './specifiers/package-name.mts';
 import { parsedTsconfig, readJsonc, referencedTsconfigs } from './tsconfig-files.mts';
 import type {
@@ -155,17 +156,6 @@ function workspaceSource(
 ): string | undefined {
   const file = resolvedModule(resolver, specifier, containingFile)?.resolvedFileName;
   return file === undefined || isInstalledFile(file) ? undefined : file;
-}
-
-function matchesAlias(find: string | RegExp, specifier: string): boolean {
-  return typeof find === 'string'
-    ? specifier === find || specifier.startsWith(`${find}/`)
-    : find.test(specifier);
-}
-
-function aliasedSpecifier(aliases: readonly ModuleAlias[], specifier: string): string {
-  const alias = aliases.find(({ find }) => matchesAlias(find, specifier));
-  return alias === undefined ? specifier : specifier.replace(alias.find, alias.replacement);
 }
 
 function packageResult(
