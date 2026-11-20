@@ -328,6 +328,24 @@ UTC dates used as local dates: `nitpicker/no-utc-date-as-local-date` (production
 or as the right side of `||` or `??` whose left side is named `date` or ends in `Date`. Other uses of the expression
 (file names, keys, comparisons, plain properties, parameter defaults) are not reported.
 
+Placeholder implementations: `nitpicker/no-placeholder-implementation` (TypeScript and JavaScript presets, production
+source, in `eslint-lint`) and `pmd/PlaceholderImplementation` (Java preset, main sources, found by the scan of the
+source comments, on `.java` files of Kotlin projects too) report code that a comment calls a stand-in for the real work
+and that is one by its shape. The comment phrases are one list for both
+(`shared/rules/placeholders/placeholder-comments.mts`): "in a real app / application / implementation / scenario /
+world", "simulate (an / the) API / network / backend / server / HTTP / database / db", "simulate (a / the) request /
+delay / latency", "mock data / implementation / response for now", "placeholder implementation", "replace (this / it)
+with (a / the / your) real / actual", "for now (we) (just) return a dummy / mock / fake / hardcoded / placeholder /
+stub". The statement on the comment's line or right under it is a `return` of a literal outside an `if` or a loop
+(TypeScript: also an array or object literal of literals; Java: also an empty collection), fixed data (TypeScript: a
+variable initialized with a non-empty array or object literal of literals), a bare delay (`await sleep(...)`, `await new
+Promise((resolve) => setTimeout(resolve, ...))`, `Thread.sleep(...)`, `TimeUnit.X.sleep(...)`), a copy of one plain name
+(`converted = amount;`), or a function or method body that holds only the comment. Neither the comment alone nor the
+code alone is reported, and files whose path has a `test`, `tests`, `__tests__`, `spec`, `stories`, `story`,
+`storybook`, `example`, `fixture`, `mock`, `__mocks__`, `seed`, `doc`, `documentation`, `template`, `demo`, `sample`,
+`e2e`, `playground`, `cypress` or `playwright` part (also in the plural) are skipped. The Kotlin, Python and Go presets
+do not have this check yet.
+
 Child process deadlines: `nitpicker/require-process-timeout` (production source, in `eslint-lint`)
 reports production code that waits for a child process to exit without a deadline: a synchronous
 `child_process` or `execa` call without a positive `timeout`, and `exec`, `execFile`, an awaited

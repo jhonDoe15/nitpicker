@@ -102,6 +102,7 @@
   "pmd/OptionalGet": ["simplification"],
   "pmd/OptionalOfCollection": ["simplification"],
   "pmd/PathFromParameter": ["security"],
+  "pmd/PlaceholderImplementation": ["bug"],
   "pmd/ReactiveEagerFallback": ["bug", "async"],
   "pmd/ReactiveSubscribeAndReturn": ["bug", "async"],
   "pmd/ReactorBlockInReactiveMethod": ["bug", "async"],
