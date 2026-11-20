@@ -93,6 +93,8 @@ pub mod flag {
     /// Carries `@java.lang.Deprecated`.
     pub const DEPRECATED: u16 = 256;
     pub const ANNOTATION: u16 = 512;
+    /// A member class only its outer class sees.
+    pub const PRIVATE: u16 = 1024;
 }
 
 #[derive(Clone, Debug)]

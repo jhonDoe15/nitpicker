@@ -174,6 +174,7 @@ struct Attributes<'a> {
     permitted: Option<Vec<u16>>,
     /// For a record: the generic type of each component, in order.
     components: Option<Vec<Type>>,
+    inner: Vec<(u16, u16)>,
 }
 
 fn skip_element(reader: &mut Reader) -> Option<()> {
@@ -217,6 +218,12 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
             }
         } else if name == b"PermittedSubclasses" {
             found.permitted = Some((0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?);
+        } else if name == b"InnerClasses" {
+            for _ in 0..reader.u2()? {
+                let class = reader.u2()?;
+                reader.skip(4)?;
+                found.inner.push((class, reader.u2()?));
+            }
         } else if name == b"Record" {
             found.record = true;
             let mut listed = Vec::new();
@@ -368,6 +375,10 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     }
     if found.record {
         class_flags |= flag::RECORD;
+    }
+    let own_private = found.inner.iter().any(|(class, access)| access & ACC_PRIVATE != 0 && class_name(*class).as_deref() == Some(name.as_str()));
+    if own_private {
+        class_flags |= flag::PRIVATE;
     }
     let permitted: Option<Vec<String>> = found.permitted.map(|listed| listed.into_iter().filter_map(&class_name).collect());
     if permitted.is_some() {

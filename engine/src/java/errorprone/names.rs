@@ -189,7 +189,7 @@ fn chain_class(context: &Context, node: Node) -> Option<String> {
     let top = (1..=parts.len()).find(|count| index.has(&parts[..*count].join(".")))?;
     let mut class = parts[..top].join(".");
     for part in &parts[top..] {
-        class = index.lineage(&class).into_iter().map(|above| format!("{above}.{part}")).find(|candidate| index.has(candidate))?;
+        class = index.lineage(&class).iter().map(|above| format!("{above}.{part}")).find(|candidate| index.has(candidate))?;
     }
     Some(class)
 }
@@ -252,14 +252,7 @@ pub fn unnecessarily_fully_qualified(context: &Context, node: Node) {
         if !found.contains_key(&simple) {
             order.push(simple.clone());
         }
-        let shared = crate::engine::source::ancestor(at, &["field_declaration", "local_variable_declaration"])
-            .filter(|holder| holder.child_by_field_name("type").is_some_and(|kind| kind.start_byte() <= at.start_byte() && at.end_byte() <= kind.end_byte()))
-            .map_or(1, |holder| children(holder).into_iter().filter(|part| part.kind() == "variable_declarator").count());
-        let component = crate::engine::source::ancestor(at, &["record_declaration", "block", "class_body"]).is_some_and(|holder| {
-            holder.kind() == "record_declaration" && holder.child_by_field_name("parameters").is_some_and(|list| list.end_byte() >= at.end_byte())
-                && holder.child_by_field_name("body").is_some_and(|body| children(body).iter().any(|member| member.kind() == "compact_constructor_declaration"))
-        });
-        for _ in 0..if component { 2 } else { shared.max(1) } {
+        for _ in 0..visits(at) {
             found.entry(simple.clone()).or_default().push((class.clone(), at));
         }
     });
@@ -285,6 +278,127 @@ pub fn unnecessarily_fully_qualified(context: &Context, node: Node) {
         for (_, at) in uses {
             let dot = children(*at).into_iter().filter(|part| part.kind() == ".").next_back().map_or(at.start_byte(), |dot| dot.start_byte());
             context.report("UnnecessarilyFullyQualified", *at, dot, &message);
+        }
+    }
+}
+
+/// How often javac's tree holds this type: declarators of one declaration share their type, and a record with a
+/// compact constructor gives each component's type to the field and to the parameter.
+fn visits(at: Node) -> usize {
+    let component = crate::engine::source::ancestor(at, &["record_declaration", "block", "class_body"]).is_some_and(|holder| {
+        holder.kind() == "record_declaration"
+            && holder.child_by_field_name("parameters").is_some_and(|list| list.end_byte() >= at.end_byte())
+            && holder.child_by_field_name("body").is_some_and(|body| children(body).iter().any(|member| member.kind() == "compact_constructor_declaration"))
+    });
+    if component {
+        return 2;
+    }
+    crate::engine::source::ancestor(at, &["field_declaration", "local_variable_declaration"])
+        .filter(|holder| holder.child_by_field_name("type").is_some_and(|kind| kind.start_byte() <= at.start_byte() && at.end_byte() <= kind.end_byte()))
+        .map_or(1, |holder| children(holder).into_iter().filter(|part| part.kind() == "variable_declarator").count().max(1))
+}
+
+/// The class a name or a dotted chain stands for, with the name as written.
+fn named_class(context: &Context, node: Node) -> Option<(String, String)> {
+    let written = dotted(context, node)?;
+    let first = written.split('.').next().unwrap_or_default();
+    let mut leftmost = node;
+    while let Some(inner) = leftmost.named_child(0).filter(|_| CHAINS.contains(&leftmost.kind())) {
+        leftmost = inner;
+    }
+    if context.resolver.is_variable(leftmost, first) {
+        return None;
+    }
+    let index = context.resolver.index;
+    let parts: Vec<&str> = written.split('.').collect();
+    let (mut class, rest) = match context.resolver.class_name(node, first).filter(|name| index.has(name)) {
+        Some(class) => (class, &parts[1..]),
+        None => {
+            let top = (1..=parts.len()).find(|count| index.has(&parts[..*count].join(".")))?;
+            (parts[..top].join("."), &parts[top..])
+        }
+    };
+    for part in rest {
+        class = index.lineage(&class).iter().map(|above| format!("{above}.{part}")).find(|candidate| index.has(candidate))?;
+    }
+    Some((written, class))
+}
+
+pub fn same_name_but_different(context: &Context, node: Node) {
+    if node.kind() != "program" {
+        return;
+    }
+    let mut order: Vec<String> = Vec::new();
+    let mut table: std::collections::HashMap<String, Vec<(String, Vec<Node>)>> = std::collections::HashMap::new();
+    crate::engine::source::walk(node, |part| {
+        let chain = CHAINS.contains(&part.kind());
+        if !chain && !matches!(part.kind(), "identifier" | "type_identifier") {
+            return;
+        }
+        if crate::engine::source::ancestor(part, &["import_declaration", "package_declaration"]).is_some() {
+            return;
+        }
+        let Some(holder) = crate::engine::source::parent(part) else { return };
+        if CHAINS.contains(&holder.kind()) && (holder.named_child(0) != Some(part) || named_class(context, holder).is_some()) {
+            return;
+        }
+        if part.kind() == "identifier" && !super::values::value_name(part) && !matches!(holder.kind(), "annotation" | "marker_annotation") {
+            return;
+        }
+        if !chain && context.text(part) == "Builder" {
+            return;
+        }
+        let Some((written, class)) = named_class(context, part) else { return };
+        if !chain && crate::java::types::scope::enclosing_type(context.file, context.resolver.scope, part).as_deref() == Some(class.as_str()) {
+            return;
+        }
+        if context.suppressed("SameNameButDifferent", part) {
+            return;
+        }
+        if !table.contains_key(&written) {
+            order.push(written.clone());
+        }
+        let row = table.entry(written).or_default();
+        let cell = match row.iter().position(|(other, _)| *other == class) {
+            Some(at) => at,
+            None => {
+                row.push((class, Vec::new()));
+                row.len() - 1
+            }
+        };
+        let anonymous = crate::engine::source::ancestor(part, &["object_creation_expression", "block", "class_body"]).is_some_and(|holder| {
+            holder.kind() == "object_creation_expression"
+                && children(holder).iter().any(|child| child.kind() == "class_body")
+                && holder.child_by_field_name("type").is_some_and(|kind| kind.start_byte() <= part.start_byte() && part.end_byte() <= kind.end_byte())
+        });
+        for _ in 0..visits(part) * if anonymous { 2 } else { 1 } {
+            row[cell].1.push(part);
+        }
+    });
+    for written in order {
+        if table[&written].len() < 2 {
+            continue;
+        }
+        let local = |class: &str| class.rsplit('.').next().is_some_and(|last| last.starts_with(|first: char| first.is_ascii_digit()));
+        let row: Vec<&(String, Vec<Node>)> =
+            table[&written].iter().filter(|(class, uses)| !local(class) || uses.iter().any(|at| CHAINS.contains(&at.kind()))).collect();
+        if row.len() < 2 {
+            continue;
+        }
+        let classes: Vec<&str> = row.iter().map(|(class, _)| class.as_str()).collect();
+        let message = format!(
+            "The name `{written}` refers to [{}] within this file. It may be confusing to have the same name refer to multiple types. Consider qualifying them for clarity.",
+            classes.join(", ")
+        );
+        for (_, uses) in row {
+            for at in uses {
+                let offset = if CHAINS.contains(&at.kind()) {
+                    children(*at).into_iter().filter(|part| part.kind() == ".").next_back().map_or(at.start_byte(), |dot| dot.start_byte())
+                } else {
+                    at.start_byte()
+                };
+                context.report("SameNameButDifferent", *at, offset, &message);
+            }
         }
     }
 }

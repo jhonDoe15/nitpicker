@@ -240,7 +240,8 @@ impl<'a> Resolver<'a> {
             if let Some(owner) = class_at(self.scope, node, inner).filter(|_| !header) {
                 for ancestor in self.index.lineage(&owner).iter() {
                     let nested = format!("{ancestor}.{name}");
-                    if self.index.has(&nested) {
+                    let hidden = *ancestor != owner && self.index.get(&nested).is_some_and(|info| info.flags & super::model::flag::PRIVATE != 0);
+                    if self.index.has(&nested) && !hidden {
                         return Some(nested);
                     }
                 }
@@ -436,7 +437,7 @@ impl<'a> Resolver<'a> {
         use super::model::flag;
         let has = super::super::helpers::has_modifier;
         let mut bits = 0;
-        for (word, bit) in [("final", flag::FINAL), ("public", flag::PUBLIC), ("protected", flag::PROTECTED), ("static", flag::STATIC), ("abstract", flag::ABSTRACT), ("sealed", flag::SEALED)] {
+        for (word, bit) in [("final", flag::FINAL), ("public", flag::PUBLIC), ("protected", flag::PROTECTED), ("static", flag::STATIC), ("abstract", flag::ABSTRACT), ("sealed", flag::SEALED), ("private", flag::PRIVATE)] {
             if has(declaration, word) {
                 bits |= bit;
             }
