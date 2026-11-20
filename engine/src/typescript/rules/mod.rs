@@ -3,6 +3,7 @@ mod errors;
 mod lifecycles;
 mod listeners;
 mod modules;
+mod react_tests;
 pub mod support;
 pub mod testing_library;
 
@@ -22,6 +23,7 @@ pub struct Context<'a, 's> {
     /// Settings given for this file alone, as `key=value`.
     pub settings: &'s [String],
     display: &'s str,
+    scope: std::cell::OnceCell<testing_library::scope::Scope>,
     findings: Vec<Reported>,
 }
 
@@ -45,6 +47,12 @@ impl<'a> Context<'a, '_> {
 
     pub fn display(&self) -> &str {
         self.display
+    }
+
+    /// Whether the preset counts this file as a React test, and the module it takes its testing utilities from.
+    pub fn react_test_scope(&self) -> Option<&testing_library::scope::Scope> {
+        let (view, _) = self.estree?;
+        Some(self.scope.get_or_init(|| testing_library::scope::of(view.program(), self.file.path, self.display)))
     }
 
     pub fn text(&self, span: Span) -> &'a str {
@@ -75,9 +83,10 @@ impl<'a> Context<'a, '_> {
 pub type Rule = fn(&mut Context);
 
 /// Rules written against the ESTree-shaped view.
-const ON_VIEW: &[&str] = &["no-add-only-collection", "settle-pending-on-close"];
+const ON_VIEW: &[&str] = &["hover-test-needs-keyboard", "no-add-only-collection", "settle-pending-on-close"];
 
 pub const ALL: &[(&str, Rule)] = &[
+    ("hover-test-needs-keyboard", react_tests::hover_test_needs_keyboard::check),
     ("no-add-only-collection", lifecycles::no_add_only_collection::check),
     ("no-listen-on-all-interfaces", listeners::no_listen_on_all_interfaces::check),
     ("no-production-console", modules::no_production_console::check),
@@ -124,7 +133,7 @@ fn lint_file(path: &str, display: &str, settings: &[String], selection: &Selecti
         let view = selection.view.then(|| support::view::View::of(file.program.to_estree_json(true, true)));
         let scopes = view.as_ref().map(|view| support::scope::Scopes::of(&semantic, view));
         let estree = view.as_ref().zip(scopes.as_ref());
-        let mut context = Context { file, semantic: &semantic, estree, selected: &selection.names, settings, display, findings: Vec::new() };
+        let mut context = Context { file, semantic: &semantic, estree, selected: &selection.names, settings, display, scope: Default::default(), findings: Vec::new() };
         for rule in &selection.rules {
             rule(&mut context);
         }
