@@ -1,4 +1,3 @@
-import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { scratchTrees } from '../../../../shared/test-support/scratch-trees.mts';
 import { checkedModules } from './checked-modules.mts';
