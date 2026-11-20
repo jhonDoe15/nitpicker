@@ -1,5 +1,6 @@
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../adapters/typed/typescript-program.mts';
+import { type UnusedMethod, engineUnusedMethods } from './typed/contract-engine.mts';
 import { depthFirst, syntaxChildren } from './typed/syntax-views.mts';
 import { realpathSync } from 'node:fs';
 import path from 'node:path';
@@ -26,8 +27,6 @@ type ClassCursor = {
   readonly node: TypeScript.Node;
   readonly containingClass: TypeScript.Node | undefined;
 };
-
-type UnusedMethod = { readonly file: string; readonly contract: string; readonly method: string };
 
 function isProductionSource(source: TypeScript.SourceFile, sourceRoot: string): boolean {
   const relative = path.relative(sourceRoot, source.fileName);
@@ -228,11 +227,10 @@ export function findUnusedPublicContractMethods(
   );
 }
 
-export function analyzePublicContractUsage(
-  configPath: string,
-  { displayRoot }: { readonly displayRoot?: string } = {},
-): UnusedMethod[] {
-  const absoluteConfig = path.resolve(configPath);
+function nodeUnusedMethods(absoluteConfig: string): {
+  readonly sourceRoot: string;
+  readonly findings: UnusedMethod[];
+} {
   const config = ts.readConfigFile(absoluteConfig, (fileName) => ts.sys.readFile(fileName));
   if (config.error)
     throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, '\n'));
@@ -245,7 +243,19 @@ export function analyzePublicContractUsage(
     );
   const program = ts.createProgram(parsed.fileNames, parsed.options);
   const sourceRoot = parsed.options.rootDir ?? path.dirname(absoluteConfig);
-  const findings = findUnusedPublicContractMethods(program, { sourceRoot });
+  return { sourceRoot, findings: findUnusedPublicContractMethods(program, { sourceRoot }) };
+}
+
+export function analyzePublicContractUsage(
+  configPath: string,
+  {
+    displayRoot,
+    environment = process.env,
+  }: { readonly displayRoot?: string; readonly environment?: NodeJS.ProcessEnv } = {},
+): UnusedMethod[] {
+  const absoluteConfig = path.resolve(configPath);
+  const { sourceRoot, findings } =
+    engineUnusedMethods(absoluteConfig, environment) ?? nodeUnusedMethods(absoluteConfig);
   if (displayRoot === undefined) {
     return findings;
   }
