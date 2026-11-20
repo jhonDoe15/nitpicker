@@ -113,6 +113,34 @@ pub mod flag {
     pub const ANNOTATION: u16 = 512;
     /// A member class only its outer class sees.
     pub const PRIVATE: u16 = 1024;
+    /// Carries an annotation named `CheckReturnValue` or `MustUseReturnValues`; set for packages too.
+    pub const CHECK_RESULT: u16 = 2048;
+    /// Carries an annotation named `CanIgnoreReturnValue` or `IgnorableReturnValue`.
+    pub const IGNORE_RESULT: u16 = 4096;
+    /// A class with `@AutoValue`.
+    pub const AUTO_VALUE: u16 = 8192;
+    /// A class with `@AutoValue.Builder` or `@AutoBuilder`.
+    pub const AUTO_BUILDER: u16 = 16384;
+    /// A class with one of Dagger's component builder annotations.
+    pub const DAGGER_BUILDER: u16 = 32768;
+
+    /// The bits an annotation gives, by its full name with `.` between a class and its member class.
+    pub fn of_annotation(name: &str) -> u16 {
+        match name {
+            "com.google.auto.value.AutoValue" => return AUTO_VALUE,
+            "com.google.auto.value.AutoValue.Builder" | "com.google.auto.value.AutoBuilder" => return AUTO_BUILDER,
+            "dagger.Component.Builder"
+            | "dagger.Subcomponent.Builder"
+            | "dagger.producers.ProductionComponent.Builder"
+            | "dagger.producers.ProductionSubcomponent.Builder" => return DAGGER_BUILDER,
+            _ => {}
+        }
+        match name.rsplit('.').next().unwrap_or(name) {
+            "CheckReturnValue" | "MustUseReturnValues" => CHECK_RESULT,
+            "CanIgnoreReturnValue" | "IgnorableReturnValue" => IGNORE_RESULT,
+            _ => 0,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

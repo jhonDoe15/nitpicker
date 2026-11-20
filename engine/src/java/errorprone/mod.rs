@@ -5,12 +5,14 @@ mod hierarchy;
 mod javadoc;
 mod members;
 mod operators;
+mod returns;
 mod names;
 mod naming;
 mod obsolete;
 mod simple;
 mod targets;
 mod throws;
+mod unused;
 mod values;
 
 use super::types::project::JavaProject;
@@ -136,6 +138,7 @@ const CHECKS: &[Check] = &[
     naming::identifier_name,
     javadoc::javadoc,
     throws::checked_exception_not_thrown,
+    returns::check_return_value,
     names::type_parameter_naming,
     names::wildcard_import,
     names::same_name_but_different,

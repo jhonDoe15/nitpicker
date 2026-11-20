@@ -189,6 +189,7 @@ struct Attributes<'a> {
     inner: Vec<(u16, u16)>,
     exceptions: Vec<u16>,
     names: Vec<u16>,
+    marks: u16,
 }
 
 fn skip_element(reader: &mut Reader) -> Option<()> {
@@ -225,10 +226,12 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
             found.signature = utf8(reader.u2()?);
         } else if name == b"ConstantValue" && length == 2 {
             found.constant = Some(reader.u2()?);
-        } else if name == b"RuntimeVisibleAnnotations" {
+        } else if name == b"RuntimeVisibleAnnotations" || name == b"RuntimeInvisibleAnnotations" {
             for _ in 0..reader.u2()? {
-                let kind = skip_annotation(reader)?;
-                found.deprecated |= utf8(kind) == Some(b"Ljava/lang/Deprecated;");
+                let kind = utf8(skip_annotation(reader)?);
+                found.deprecated |= kind == Some(b"Ljava/lang/Deprecated;");
+                let written = kind.and_then(|text| std::str::from_utf8(text).ok()).and_then(|text| text.strip_prefix('L')?.strip_suffix(';'));
+                found.marks |= written.map_or(0, |text| flag::of_annotation(&text.replace(['/', '$'], ".")));
             }
         } else if name == b"PermittedSubclasses" {
             found.permitted = Some((0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?);
@@ -264,8 +267,8 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
     Some(found)
 }
 
-fn member_flags(access: u16, deprecated: bool) -> u16 {
-    let mut bits = 0;
+fn member_flags(access: u16, deprecated: bool, marks: u16) -> u16 {
+    let mut bits = marks;
     for (mask, bit) in [(0x0010, flag::FINAL), (0x0001, flag::PUBLIC), (0x0004, flag::PROTECTED), (0x0008, flag::STATIC), (0x0400, flag::ABSTRACT)] {
         if access & mask != 0 {
             bits |= bit;
@@ -352,7 +355,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
             });
             let kind = Signature { text: descriptor, at: 0 }.kind()?;
             let generic = signature.and_then(|text| Signature { text, at: 0 }.kind()).unwrap_or_else(|| kind.clone());
-            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, flags: member_flags(flags, found.deprecated) });
+            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, flags: member_flags(flags, found.deprecated, found.marks) });
         }
     }
     let mut methods = Vec::new();
@@ -391,7 +394,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 is_static: flags & ACC_STATIC != 0,
                 is_private: false,
                 varargs: flags & ACC_VARARGS != 0,
-                flags: member_flags(flags, found.deprecated),
+                flags: member_flags(flags, found.deprecated, found.marks),
                 throws,
                 names: found.names.iter().filter_map(|name| utf8(*name)).map(|name| String::from_utf8_lossy(name).into_owned()).collect(),
             });
@@ -399,7 +402,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     }
     let found = attributes(&mut reader, &utf8)?;
     let signature = found.signature;
-    let mut class_flags = member_flags(access, found.deprecated);
+    let mut class_flags = member_flags(access, found.deprecated, found.marks);
     for (mask, bit) in [(0x4000, flag::ENUM), (0x2000, flag::ANNOTATION)] {
         if access & mask != 0 {
             class_flags |= bit;

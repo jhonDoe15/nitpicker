@@ -35,5 +35,6 @@
  "EmptyBlockTag",
  "MissingSummary",
  "InvalidBlockTag",
- "UnescapedEntity"
+ "UnescapedEntity",
+ "CheckReturnValue"
 ]

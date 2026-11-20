@@ -76,6 +76,18 @@ pub fn build(files: &[SourceFile], classpath: &[PathBuf]) -> JavaProject {
             index.put(info);
         }
     }
+    for (file, scope) in files.iter().zip(&scopes) {
+        let declaration = crate::engine::source::children(file.tree.root_node()).into_iter().find(|part| part.kind() == "package_declaration");
+        if let Some(declaration) = declaration.filter(|_| file.path.ends_with("package-info.java")) {
+            let flags = Resolver::new(&index, file, scope).marks(declaration);
+            index.put(ClassInfo { flags, package: scope.package.clone(), ..stub(format!("{}.package-info", scope.package)) });
+        }
+    }
+    let mut packages: Vec<&String> = scopes.iter().map(|scope| &scope.package).filter(|package| !package.is_empty()).collect();
+    packages.sort();
+    packages.dedup();
+    index.checked_packages =
+        packages.iter().filter(|name| !packages.iter().any(|other| name.starts_with(&format!("{other}.")))).map(|name| (*name).clone()).collect();
     eprintln!(
         "type index: {} binary classes from {} entries in {binaries_ms:.0} ms, {} source classes in {:.0} ms",
         index.binary_classes,
