@@ -155,6 +155,10 @@ label again. Coding agents never add the label. The
 self-gate runs the pull request's own code and workflow, so changes to `.github/workflows/`,
 `core/`, `package.json` and `nitpicker.config.json` need a careful review whatever the gate says.
 
+The self-gate runs as three parallel `self-gate shard` jobs, each with its share of the analyzers
+([Sharding in CI](docs/usage.md#sharding-in-ci)); the required `self-gate` check combines their
+reports with `nitpicker aggregate` and is the one that fails on a finding.
+
 CI splits the test files into shards that run as parallel jobs, and the required `test` check passes
 only when every shard passed. `scripts/test-shards/sequencer.mts` gives each shard about the same
 total time, from the per-file times in `scripts/test-shards/durations.json`; a file that is not
