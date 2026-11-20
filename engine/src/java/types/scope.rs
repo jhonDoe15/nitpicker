@@ -60,55 +60,8 @@ impl FileScope {
             }
         }
         let package = scope.package.clone();
-        name_classes(file, file.tree.root_node(), &package, true, &mut HashMap::new(), &mut scope.names);
+        crate::java::javac::classes::number(file, &package, &mut scope.names);
         scope
-    }
-}
-
-const MEMBER_HOLDERS: &[&str] =
-    &["program", "class_body", "interface_body", "enum_body", "enum_body_declarations", "annotation_type_body"];
-
-fn name_classes(
-    file: &SourceFile,
-    node: Node,
-    enclosing: &str,
-    top: bool,
-    counters: &mut HashMap<(String, String), u32>,
-    names: &mut HashMap<usize, String>,
-) {
-    fn local(counters: &mut HashMap<(String, String), u32>, enclosing: &str, simple: &str) -> String {
-        let count = counters.entry((enclosing.to_string(), simple.to_string())).or_insert(0);
-        *count += 1;
-        format!("{enclosing}.{count}{simple}")
-    }
-    for child in children(node) {
-        let kind = child.kind();
-        if TYPE_DECLARATIONS.contains(&kind) {
-            let simple = child.child_by_field_name("name").map(|name| file.text_of(name)).unwrap_or_default();
-            let name = if !MEMBER_HOLDERS.contains(&node.kind()) {
-                local(counters, enclosing, simple)
-            } else if top && enclosing.is_empty() {
-                simple.to_string()
-            } else {
-                format!("{enclosing}.{simple}")
-            };
-            names.insert(child.id(), name.clone());
-            name_classes(file, child, &name, false, counters, names);
-        } else if matches!(kind, "object_creation_expression" | "enum_constant")
-            && children(child).iter().any(|part| part.kind() == "class_body")
-        {
-            let name = local(counters, enclosing, "");
-            names.insert(child.id(), name.clone());
-            for part in children(child) {
-                if part.kind() == "class_body" {
-                    name_classes(file, part, &name, false, counters, names);
-                } else {
-                    name_classes(file, part, enclosing, top, counters, names);
-                }
-            }
-        } else {
-            name_classes(file, child, enclosing, top, counters, names);
-        }
     }
 }
 
