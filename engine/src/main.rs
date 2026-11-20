@@ -31,6 +31,14 @@ fn main() {
         typescript_reuse(&args[1..]);
         return;
     }
+    if args.first().map(String::as_str) == Some("typescript-public-contracts") {
+        typescript_public_contracts(&args[1..]);
+        return;
+    }
+    if args.first().map(String::as_str) == Some("typescript-type-replay") {
+        typescript_type_replay(&args[1..]);
+        return;
+    }
     if args.first().map(String::as_str) == Some("typescript-structure") {
         typescript_structure(&args[1..]);
         return;
@@ -194,60 +202,51 @@ fn typescript_structure(args: &[String]) {
     );
 }
 
-/// `typescript-lint --files <list> [--rules <a,b>] [--out <file>] [--testing-library-utils-module <suffix>]`: each line of
-/// the list is the path to read, the path to report and `key=value` settings for that file, tabs between them. The
-/// module suffix is `test-utils` unless given, and empty for none; `testing-library/utils-module=<suffix>` sets it for
-/// one file and `testing-library/scope=off` leaves the file to no testing-library rule.
-/// A row of the output is file, rule, line, column and message, then the end line and column of a reported range.
-/// `--testing-library-scope` has the engine decide both for every file without such settings, by following the file's
-/// imports as the preset does; `--end-to-end-root <folder>` names the folder of browser tests for that decision.
-fn typescript_lint(args: &[String]) {
-    let (mut list, mut out, mut only) = (None, None, None::<Vec<String>>);
+/// `typescript-public-contracts --compiler <tsc of TypeScript 7> --project <tsconfig.json> [--only-named] [--by-position] [--diagnostics-first] [--out <file>]`:
+/// unused methods of implemented, exported interfaces, with the types asked from the compiler's API server.
+fn typescript_public_contracts(args: &[String]) {
+    let started = Instant::now();
+    let mut compiler = None;
+    let mut project = None;
+    let mut out = None;
+    let mut only_named = false;
+    let mut by_position = false;
+    let mut diagnostics_first = false;
     let mut index = 0;
     while index < args.len() {
         match args[index].as_str() {
-            "--files" => { index += 1; list = Some(&args[index]); }
-            "--out" => { index += 1; out = Some(&args[index]); }
-            "--rules" => { index += 1; only = Some(args[index].split(',').map(String::from).collect()); }
-            "--testing-library-utils-module" => {
-                index += 1;
-                typescript::rules::testing_library::set_utils_module(Some(args[index].clone()).filter(|module| !module.is_empty()));
-            }
-            "--testing-library-scope" => typescript::rules::testing_library::set_scope_from_imports(),
-            "--end-to-end-root" => { index += 1; typescript::rules::testing_library::scope::set_end_to_end_root(args[index].clone()); }
-            "--testing-library-upstream" => typescript::rules::testing_library::set_upstream_only(),
+            "--compiler" => { index += 1; compiler = Some(PathBuf::from(&args[index])); }
+            "--project" => { index += 1; project = Some(args[index].clone()); }
+            "--out" => { index += 1; out = Some(args[index].clone()); }
+            "--only-named" => only_named = true,
+            "--by-position" => by_position = true,
+            "--diagnostics-first" => diagnostics_first = true,
             other => panic!("unknown argument {other}"),
         }
         index += 1;
     }
-    let started = Instant::now();
-    let files: Vec<typescript::rules::Listed> = std::fs::read_to_string(list.expect("--files"))
-        .expect("list")
-        .lines()
-        .filter(|line| !line.is_empty())
-        .map(|line| {
-            let mut columns = line.split('\t').map(String::from);
-            let path = columns.next().unwrap_or_default();
-            let display = columns.next().unwrap_or_else(|| path.clone());
-            typescript::rules::Listed { path, display, settings: columns.collect() }
-        })
-        .collect();
-    let rules = typescript::rules::selected(only.as_deref());
-    let findings = typescript::rules::lint_files(&files, &rules);
-    let rows: Vec<_> = findings
-        .iter()
-        .map(|reported| {
-            let found = &reported.finding;
-            match reported.end {
-                Some((line, column)) => serde_json::json!([found.file, found.rule, found.line, found.column, found.message, line, column]),
-                None => serde_json::json!([found.file, found.rule, found.line, found.column, found.message]),
-            }
-        })
-        .collect();
-    let text = serde_json::to_string(&rows).expect("json");
+    let (findings, counts) = typescript::typed::public_contracts::run(&compiler.expect("--compiler"), &project.expect("--project"), only_named, by_position, diagnostics_first).unwrap_or_else(|error| {
+        eprintln!("{error}");
+        std::process::exit(2);
+    });
+    let text = serde_json::to_string_pretty(&serde_json::json!({ "findings": findings })).expect("json");
     match out {
         Some(path) => std::fs::write(path, text).expect("write"),
         None => println!("{text}"),
     }
-    eprintln!("{} files, {} rules, {} findings; {:.0} ms", files.len(), rules.len(), findings.len(), started.elapsed().as_secs_f64() * 1e3);
+    eprintln!("{} findings; {:.0} ms; {}", findings.len(), started.elapsed().as_secs_f64() * 1e3, serde_json::to_string(&counts).expect("json"));
+}
+
+/// `typescript-type-replay --compiler <tsc> --project <tsconfig.json> --questions <jsonl> --kinds <json> [--out <jsonl>]`:
+/// asks the compiler the recorded questions and counts the answers that match the recorded ones.
+fn typescript_type_replay(args: &[String]) {
+    let mut named = std::collections::HashMap::new();
+    for pair in args.chunks(2) {
+        named.insert(pair[0].as_str(), pair[1].clone());
+    }
+    let tallies = typescript::typed::replay::run(std::path::Path::new(&named["--compiler"]), &named["--project"], &named["--questions"], &named["--kinds"], named.get("--out").map(String::as_str)).unwrap_or_else(|error| {
+        eprintln!("{error}");
+        std::process::exit(2);
+    });
+    println!("{}", serde_json::to_string_pretty(&tallies).expect("json"));
 }
