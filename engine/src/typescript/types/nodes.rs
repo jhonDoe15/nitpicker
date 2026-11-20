@@ -2,6 +2,7 @@
 //! and the file text. Checks walk it the way the JavaScript checks walk the compiler's tree: children by
 //! property name, lists, token kinds. A node is its index in the table, which is also how the server names it.
 use super::tables::kind::{JSX_TEXT, JS_DOC, SOURCE_FILE};
+use super::tables::node_flags::REPARSED;
 use super::tables::shape::child_properties;
 use super::text::SourceText;
 use std::borrow::Cow;
@@ -126,6 +127,13 @@ impl NodeTable {
                 Box::new(std::iter::once(entry))
             }
         })
+        .filter(move |child| !self.is_reparsed(*child))
+    }
+    /// Whether the compiler made the node from a documentation comment of a JavaScript file (a parameter's
+    /// type from `@param`, a type alias from `@typedef`). The JavaScript compiler's tree has no such nodes,
+    /// so `children`, `child` and `listed` leave them out.
+    pub fn is_reparsed(&self, index: u32) -> bool {
+        self.flags(index) & REPARSED != 0
     }
 
     fn entry_named(&self, index: u32, name: &str) -> Option<u32> {
@@ -142,17 +150,17 @@ impl NodeTable {
     /// The child a property of the compiler's tree names (`name`, `expression`, `initializer`), when present
     /// and a single node.
     pub fn child(&self, index: u32, name: &str) -> Option<u32> {
-        self.entry_named(index, name).filter(|entry| self.kind(*entry) != NODE_LIST)
+        self.entry_named(index, name).filter(|entry| self.kind(*entry) != NODE_LIST && !self.is_reparsed(*entry))
     }
     /// The elements of a list property (`statements`, `members`, `modifiers`); empty when absent.
     pub fn listed(&self, index: u32, name: &str) -> Vec<u32> {
         match self.entry_named(index, name) {
-            Some(entry) if self.kind(entry) == NODE_LIST => self.list(entry).collect(),
+            Some(entry) if self.kind(entry) == NODE_LIST => self.list(entry).filter(|element| !self.is_reparsed(*element)).collect(),
             _ => Vec::new(),
         }
     }
     pub fn has_list(&self, index: u32, name: &str) -> bool {
-        self.entry_named(index, name).is_some_and(|entry| self.kind(entry) == NODE_LIST)
+        self.entry_named(index, name).is_some_and(|entry| self.kind(entry) == NODE_LIST && (self.data(entry) == 0 || self.list(entry).any(|element| !self.is_reparsed(element))))
     }
     pub fn has_modifier(&self, index: u32, kind: u32) -> bool {
         self.listed(index, "modifiers").iter().any(|modifier| self.kind(*modifier) == kind)

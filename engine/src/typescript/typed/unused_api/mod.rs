@@ -115,5 +115,9 @@ pub fn check(session: &mut Session, input: &Input) -> Result<Registry, String> {
     targets::collect(&mut analysis)?;
     targets::register_wrapper_aliases(&mut analysis)?;
     references::collect(&mut analysis)?;
+    let written = serde_json::to_string(&analysis.registry).map_err(|error| error.to_string())?;
+    if written.contains('\u{FFFD}') {
+        return Err("a name is not valid Unicode".to_string());
+    }
     Ok(analysis.registry)
 }

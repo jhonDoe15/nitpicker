@@ -18,11 +18,26 @@ export type TypedChecksOutcome =
       readonly checks: Readonly<Record<string, unknown>>;
       readonly report: unknown;
       readonly unavailable?: undefined;
+      readonly failed?: undefined;
     }
-  | { readonly unavailable: string; readonly checks?: undefined; readonly report?: undefined };
+  | {
+      readonly unavailable: string;
+      readonly failed?: true;
+      readonly checks?: undefined;
+      readonly report?: undefined;
+    };
 
 const TYPES_UNAVAILABLE = 3;
 const SWITCH = 'NITPICKER_TYPED_ENGINE';
+const TIME_LIMIT_MS = 20 * 60 * 1000;
+
+function writtenReport(out: string): unknown {
+  try {
+    return JSON.parse(readFileSync(out, 'utf8'));
+  } catch {
+    return undefined;
+  }
+}
 
 function inputArguments(folder: string, inputs: Readonly<Record<string, unknown>>): string[] {
   return Object.entries(inputs).flatMap(([check, input]) => {
@@ -52,19 +67,23 @@ function engineOutcome(
       '--out',
       out,
     ],
-    { binary: engine },
+    { binary: engine, timeoutMs: TIME_LIMIT_MS },
   );
   if (status === TYPES_UNAVAILABLE) {
     return { unavailable: stderr.trim().split('\n').at(-1) ?? 'types unavailable' };
   }
-  if (status !== 0) {
-    return { unavailable: `the engine ended with status ${String(status)}: ${stderr.trim()}` };
-  }
-  const report: unknown = JSON.parse(readFileSync(out, 'utf8'));
+  const report = status === 0 ? writtenReport(out) : undefined;
   const results = fieldOf(report, 'checks');
-  return typeof results === 'object' && results !== null
-    ? { checks: { ...results }, report }
-    : { unavailable: 'the engine wrote no results' };
+  if (typeof results === 'object' && results !== null) {
+    return { checks: { ...results }, report };
+  }
+  return {
+    failed: true,
+    unavailable:
+      status === 0
+        ? 'the engine wrote no results'
+        : `the engine ended with status ${String(status)}: ${stderr.trim()}`,
+  };
 }
 
 export function runTypedChecks(request: TypedChecksRequest): TypedChecksOutcome {
@@ -83,7 +102,11 @@ export function runTypedChecks(request: TypedChecksRequest): TypedChecksOutcome 
   }
   const folder = mkdtempSync(path.join(tmpdir(), 'nitpicker-typed-'));
   try {
-    return engineOutcome({ engine, compiler }, request, folder);
+    const outcome = engineOutcome({ engine, compiler }, request, folder);
+    if (outcome.failed === true && environment[SWITCH] === 'required') {
+      throw new Error(`${SWITCH}=required, but ${outcome.unavailable}`);
+    }
+    return outcome;
   } finally {
     rmSync(folder, { recursive: true, force: true });
   }

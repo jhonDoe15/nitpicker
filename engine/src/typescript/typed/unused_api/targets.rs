@@ -177,7 +177,7 @@ fn shared_types(analysis: &mut Analysis, owners: &HashSet<String>) -> Result<Has
 
 /// Nodes of documentation comments are in the table but not in the tree the checks walk.
 pub fn in_documentation(table: &NodeTable, node: u32) -> bool {
-    std::iter::successors(Some(node), |node| table.parent(*node)).any(|node| table.kind(node) == K::JS_DOC)
+    std::iter::successors(Some(node), |node| table.parent(*node)).any(|node| table.kind(node) == K::JS_DOC || table.is_reparsed(node))
 }
 
 pub fn collect(analysis: &mut Analysis) -> Result<(), String> {

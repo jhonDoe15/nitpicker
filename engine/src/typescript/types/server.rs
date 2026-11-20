@@ -15,6 +15,8 @@ pub struct Symbol {
     pub flags: u32,
     #[serde(default)]
     pub declarations: Vec<String>,
+    #[serde(default, rename = "valueDeclaration")]
+    pub value_declaration: Option<String>,
 }
 
 /// The server sends names as the compiler stores them: a name that starts with two underscores has a third
@@ -25,6 +27,9 @@ fn plain_name<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Strin
 }
 
 pub fn unescaped(mut name: String) -> String {
+    if let Some(private) = name.strip_prefix("__#").and_then(|rest| rest.split_once('@')).map(|(_, private)| private).filter(|private| private.starts_with('#')) {
+        return private.to_string();
+    }
     if name.starts_with("___") {
         name.remove(0);
     }
