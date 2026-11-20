@@ -28,5 +28,6 @@
  "StringSplitter",
  "SameNameButDifferent",
  "DifferentNameButSame",
- "JdkObsolete"
+ "JdkObsolete",
+ "BooleanLiteral"
 ]
