@@ -28,6 +28,8 @@ pub struct Context<'a> {
     line_starts: Vec<usize>,
     selected: Option<Vec<String>>,
     out: std::cell::RefCell<Vec<Finding>>,
+    /// The class each name in the file stands for, as written and in full: two checks read every name.
+    pub named: std::cell::RefCell<std::collections::HashMap<usize, Option<(String, String)>>>,
 }
 
 impl Context<'_> {
@@ -166,7 +168,7 @@ impl FileRule for ErrorProne {
         let mut line_starts = vec![0];
         line_starts.extend(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1));
         let selected = std::env::var("NP_EP_ONLY").ok().map(|names| names.split(',').map(String::from).collect());
-        let context = Context { resolver, file, line_starts, selected, out: std::cell::RefCell::new(Vec::new()) };
+        let context = Context { resolver, file, line_starts, selected, out: std::cell::RefCell::new(Vec::new()), named: std::cell::RefCell::new(std::collections::HashMap::new()) };
         walk(file.tree.root_node(), |node| {
             if node.is_named() {
                 for check in CHECKS {

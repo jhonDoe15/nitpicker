@@ -185,6 +185,8 @@ pub struct Resolver<'a> {
     pub(super) locals: RefCell<HashMap<usize, std::rc::Rc<Vec<(String, usize, u32, u32)>>>>,
     /// The pattern variables declared in a method, lambda or class body: where each starts, its name and its type.
     pub(super) patterns: RefCell<HashMap<usize, std::rc::Rc<Vec<(usize, String, Option<Type>)>>>>,
+    /// The method each call resolved to when asked from the outside: several rules ask about the same call.
+    pub(super) calls: RefCell<HashMap<usize, Option<std::rc::Rc<super::expr::Call>>>>,
 }
 
 fn written_names<'f>(file: &'f SourceFile, list: Option<Node>) -> Vec<&'f str> {
@@ -199,30 +201,42 @@ fn written_names<'f>(file: &'f SourceFile, list: Option<Node>) -> Vec<&'f str> {
 
 impl<'a> Resolver<'a> {
     pub fn new(index: &'a TypeIndex, file: &'a SourceFile, scope: &'a FileScope) -> Resolver<'a> {
-        Resolver { index, file, scope, cache: RefCell::new(HashMap::new()), depth: Cell::new(0), busy: RefCell::new(std::collections::HashSet::new()), skipped: Cell::new(0), work: Cell::new(0), resolving: RefCell::new(HashMap::new()), loose: RefCell::new(HashMap::new()), written: RefCell::new(HashMap::new()), simples: RefCell::new(HashMap::new()), locals: RefCell::new(HashMap::new()), patterns: RefCell::new(HashMap::new()), mapping: RefCell::new(HashMap::new()) }
+        Resolver { index, file, scope, cache: RefCell::new(HashMap::new()), depth: Cell::new(0), busy: RefCell::new(std::collections::HashSet::new()), skipped: Cell::new(0), work: Cell::new(0), resolving: RefCell::new(HashMap::new()), loose: RefCell::new(HashMap::new()), written: RefCell::new(HashMap::new()), locals: RefCell::new(HashMap::new()), mapping: RefCell::new(HashMap::new()), patterns: RefCell::new(HashMap::new()), calls: RefCell::new(HashMap::new()), simples: RefCell::new(HashMap::new()) }
+    }
+
+    /// Where the lookup of a simple name starts to matter: every node below the same place sees the same classes.
+    fn lookup_place(at: Node) -> usize {
+        let mut inner = at;
+        let mut current = Some(at);
+        while let Some(node) = current {
+            let holds = matches!(node.kind(), "block" | "constructor_body" | "switch_block_statement_group" | "program");
+            let around = crate::engine::source::parent(node);
+            let member = around.is_some_and(|owner| {
+                TYPE_DECLARATIONS.contains(&owner.kind())
+                    && (owner.field("body") == Some(node) || (owner.kind() == "record_declaration" && owner.field("parameters") == Some(node)))
+            });
+            if (holds || member || node.kind() == "class_body") && node.id() != at.id() {
+                return node.id();
+            }
+            inner = node;
+            current = around;
+        }
+        inner.id()
     }
 
     /// The class a simple name stands for at a place. Every place directly inside the same block or class body
     /// gets the same answer, so it is kept per block or body.
     fn simple(&self, at: Node, name: &str) -> Option<String> {
-        const SCOPES: [&str; 8] = [
-            "block", "constructor_body", "switch_block_statement_group", "class_body", "enum_body", "interface_body", "annotation_type_body", "program",
-        ];
-        let mut holder = Some(at);
-        while let Some(node) = holder.filter(|node| !SCOPES.contains(&node.kind())) {
-            holder = crate::engine::source::parent(node);
-        }
-        let Some(holder) = holder else { return self.find_simple(at, name) };
-        let key = (holder.id(), name.to_string());
+        let key = (Self::lookup_place(at), name.to_string());
         if let Some(known) = self.simples.borrow().get(&key) {
             return known.clone();
         }
-        let found = self.find_simple(at, name);
+        let found = self.read_simple(at, name);
         self.simples.borrow_mut().insert(key, found.clone());
         found
     }
 
-    fn find_simple(&self, at: Node, name: &str) -> Option<String> {
+    fn read_simple(&self, at: Node, name: &str) -> Option<String> {
         let mut inner = at;
         let mut current = Some(at);
         while let Some(node) = current {

@@ -300,15 +300,17 @@ fn visits(at: Node) -> usize {
 
 /// The class a name or a dotted chain stands for, with the name as written.
 fn named_class(context: &Context, node: Node) -> Option<(String, String)> {
+    if let Some(known) = context.named.borrow().get(&node.id()) {
+        return known.clone();
+    }
+    let found = read_named_class(context, node);
+    context.named.borrow_mut().insert(node.id(), found.clone());
+    found
+}
+
+fn read_named_class(context: &Context, node: Node) -> Option<(String, String)> {
     let written = dotted(context, node)?;
     let first = written.split('.').next().unwrap_or_default();
-    let mut leftmost = node;
-    while let Some(inner) = leftmost.named_child(0).filter(|_| CHAINS.contains(&leftmost.kind())) {
-        leftmost = inner;
-    }
-    if context.resolver.is_variable(leftmost, first) {
-        return None;
-    }
     let index = context.resolver.index;
     let parts: Vec<&str> = written.split('.').collect();
     let (mut class, rest) = match context.resolver.class_name(node, first).filter(|name| index.has(name)) {
@@ -318,6 +320,13 @@ fn named_class(context: &Context, node: Node) -> Option<(String, String)> {
             (parts[..top].join("."), &parts[top..])
         }
     };
+    let mut leftmost = node;
+    while let Some(inner) = leftmost.named_child(0).filter(|_| CHAINS.contains(&leftmost.kind())) {
+        leftmost = inner;
+    }
+    if context.resolver.is_variable(leftmost, first) {
+        return None;
+    }
     for part in rest {
         class = index.lineage(&class).iter().map(|above| format!("{above}.{part}")).find(|candidate| index.has(candidate))?;
     }
