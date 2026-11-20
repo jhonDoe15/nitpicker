@@ -415,6 +415,11 @@ moving them would change which error the exit path raises) declared right before
 that does not read it. Java (where PMD `PrematureDeclaration` treats calls as impure and so skips this
 case), Kotlin, Python and Go follow in #2133.
 
+`nitpicker/no-read-all-before-pass` (production source, in `eslint-lint`) reports every file read
+into one array that is then only walked once. `nitpicker/no-collected-stream-rows` is the same idea
+for streamed rows. Java (`Files.readString`, `readAllBytes`, `readAllLines`, `ObjectMapper.readValue`),
+Kotlin, Python and Go follow in #2133.
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a

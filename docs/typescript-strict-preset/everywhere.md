@@ -300,6 +300,17 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   functions, `sort` and other changes in place, clocks and ids, a test that reads `x`, an initializer
   that is a `?:`, `&&` or `||`, and an exit that calls a local function reading `x` are not reported. Allowed form: declare the value below the exit; keep it above only when its error must
   be raised on the early path too.
+- `nitpicker/no-read-all-before-pass`: every input read into memory before a single pass over
+  them, in all production code (not in tests). It reports a `const` array filled with one file read
+  per element, `await Promise.all(xs.map((x) => readFile(x)))`, `xs.map((x) =>
+  readFileSync(x))` or an empty array that the next statement fills in a `for...of` loop whose only
+  statement is `list.push(readFile...)` (a read through `fs`, `node:fs/promises` or `fs-extra`,
+  optionally awaited or inside `JSON.parse`), when the array is then used exactly once: as the
+  source of one `for...of` loop or one `forEach` statement that does not read the array again and
+  does not itself run more than once. Peak memory is then the sum of all inputs instead of the
+  largest one. A literal list of inputs, an array that is returned, sorted, sized, indexed or passed
+  on, and reads through a project function are not reported. Allowed forms: read and handle one input
+  at a time, a bounded pool for parallel reads, or keep only what the pass needs from each input.
 - `nitpicker/no-wasted-collection-step`: a collection or promise step that copies for nothing or
   walks the data twice, in all production code (not in tests). It reports `filter(p)[0]` and
   `filter(p).at(0)` with a callback `p` (allowed form: `find(p)`; a selector string, as in jQuery,

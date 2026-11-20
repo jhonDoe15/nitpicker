@@ -1,6 +1,7 @@
 import { CONVENTION_POLICY_FILES } from '../conventions/convention-policy-files.mts';
 import { VALUE_WEB_RULE_FILES } from './value-web-rule-files.mts';
 import { TEXT_PATH_NUMBER_RULE_FILES } from './text-path-number-rule-files.mts';
+import { REPEATED_WORK_RULE_FILES } from './repeated-work-rule-files.mts';
 
 export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/checks/plugin-rules/plugin-rule-files.mjs',
@@ -91,23 +92,6 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/arguments/swapped-names.mjs',
   'languages/typescript/preset/eslint-plugin/rules/parsing/no-unhandled-url-parse.mjs',
   'languages/typescript/preset/eslint-plugin/rules/reuse/reusable-object-per-call.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/repeated-work/support/loop-invariance.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/repeated-work/patterns/glob-calls.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/repeated-work/patterns/pattern-guards.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/repeated-work/patterns/no-pattern-compiled-in-loop.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/repeated-work/constant-lookups/dom-quiet.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/repeated-work/constant-lookups/url-reads.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/repeated-work/constant-lookups/no-constant-lookup-in-loop.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/repeated-work/ancestors/parent-steps.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/repeated-work/ancestors/subtree-searches.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/repeated-work/ancestors/no-subtree-search-per-ancestor.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/repeated-work/repeated-calls/call-shapes.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/repeated-work/repeated-calls/tested-then-used.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/repeated-work/repeated-calls/repeated-recursion.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/repeated-work/repeated-calls/no-repeated-call.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/repeated-work/early-exits/pure-work.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/repeated-work/early-exits/early-guards.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/repeated-work/early-exits/no-work-before-early-exit.mjs',
   'languages/typescript/preset/eslint-plugin/rules/config/env-reads.mjs',
   'languages/typescript/preset/eslint-plugin/rules/config/no-undefined-only-env-check.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-props/react-components.mjs',
@@ -297,4 +281,5 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/wrapped/strict-boolean-expressions.mjs',
   ...VALUE_WEB_RULE_FILES,
   ...TEXT_PATH_NUMBER_RULE_FILES,
+  ...REPEATED_WORK_RULE_FILES,
 ];

@@ -22,6 +22,7 @@ import { rule as ruleNoPrototypeKeyAccess } from '../rules/prototype-keys/no-pro
 import { rule as ruleNoQueryPerParent } from '../rules/resolvers/no-query-per-parent.mts';
 import { rule as ruleNoRaisedTestTimeout } from '../rules/test-runtime/assertions/no-raised-test-timeout.mts';
 import { rule as ruleNoRawHttpValue } from '../rules/http-values/no-raw-http-value.mts';
+import { rule as ruleNoReadAllBeforePass } from '../rules/repeated-work/read-all/no-read-all-before-pass.mts';
 import { rule as ruleNoRealTimeRandomOrNetwork } from '../test-isolation/no-real-time-random-or-network.mts';
 import { rule as ruleNoReleaseOutsideFinally } from '../rules/resources/release/no-release-outside-finally.mts';
 import { rule as ruleNoRemoteCallInTransaction } from '../rules/effects/no-remote-call-in-transaction.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnresolvedRelativeUrl } from '../rules/urls/construction/
 import { rule as ruleNoUnsafeDeserialization } from '../rules/security/deserialization/no-unsafe-deserialization.mts';
 import { rule as ruleNoUnsafePathJoin } from '../rules/guards/no-unsafe-path-join.mts';
 import { rule as ruleNoUnscopedRecordAccess } from '../rules/record-scope/no-unscoped-record-access.mts';
-import { rule as ruleNoUnstrippedRemoteText } from '../rules/terminal/no-unstripped-remote-text.mts';
 
 export const partRules = {
   'no-non-latin1-header-value': ruleNoNonLatin1HeaderValue,
@@ -124,6 +124,7 @@ export const partRules = {
   'no-query-per-parent': ruleNoQueryPerParent,
   'no-raised-test-timeout': ruleNoRaisedTestTimeout,
   'no-raw-http-value': ruleNoRawHttpValue,
+  'no-read-all-before-pass': ruleNoReadAllBeforePass,
   'no-real-time-random-or-network': ruleNoRealTimeRandomOrNetwork,
   'no-release-outside-finally': ruleNoReleaseOutsideFinally,
   'no-remote-call-in-transaction': ruleNoRemoteCallInTransaction,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unsafe-deserialization': ruleNoUnsafeDeserialization,
   'no-unsafe-path-join': ruleNoUnsafePathJoin,
   'no-unscoped-record-access': ruleNoUnscopedRecordAccess,
-  'no-unstripped-remote-text': ruleNoUnstrippedRemoteText,
 };

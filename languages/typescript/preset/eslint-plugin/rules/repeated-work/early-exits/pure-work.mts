@@ -84,7 +84,7 @@ function isGlobal(sourceCode: SourceCode, node: TSESTree.Node): boolean {
   return variable === undefined || variable.defs.length === 0;
 }
 
-function isFsRead(sourceCode: SourceCode, callee: TSESTree.Node): boolean {
+export function isFsRead(sourceCode: SourceCode, callee: TSESTree.Node): boolean {
   const name = callee.type === AST_NODE_TYPES.Identifier ? callee.name : (memberName(callee) ?? '');
   return FS_READS.has(name) && isFsCall(sourceCode, callee);
 }

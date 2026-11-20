@@ -35,6 +35,7 @@
   "eslint/nitpicker/no-subtree-search-per-ancestor": ["performance"],
   "eslint/nitpicker/no-repeated-call": ["performance"],
   "eslint/nitpicker/no-work-before-early-exit": ["performance"],
+  "eslint/nitpicker/no-read-all-before-pass": ["performance", "reliability"],
   "eslint/nitpicker/no-comments": ["style"],
   "eslint/nitpicker/no-compatibility-shim": ["maintainability"],
   "eslint/nitpicker/no-copied-constant": ["tests"],

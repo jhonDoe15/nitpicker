@@ -62,6 +62,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-subtree-search-per-ancestor',
   'nitpicker/no-repeated-call',
   'nitpicker/no-work-before-early-exit',
+  'nitpicker/no-read-all-before-pass',
   'nitpicker/no-wasted-collection-step',
   'nitpicker/no-raw-http-value',
   'nitpicker/no-hardcoded-secret',
