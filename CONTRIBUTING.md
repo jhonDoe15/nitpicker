@@ -96,7 +96,7 @@ npm run check
 
 `npm run check` runs the self-gate (nitpicker checks your change against the remote's default
 branch) and then the full test suite, and fails if either fails. Arguments after `--` go to vitest,
-so `npm run check -- --shard=2/2` runs only what one CI test shard runs. It needs Node.js 22.18 or newer (CI
+so `npm run check -- --shard=2/3` runs only what one CI test shard runs. It needs Node.js 22.18 or newer (CI
 uses 24) and Java 21 for the structure-metrics test. It checks your working tree, uncommitted and
 untracked files included, while CI checks the pull request merged into its target branch, so commit
 everything and merge or rebase on the latest `main` before the final run. A change to a language's
@@ -154,6 +154,11 @@ failed jobs, so the self-gate passes for that commit. A later push is a new comm
 label again. Coding agents never add the label. The
 self-gate runs the pull request's own code and workflow, so changes to `.github/workflows/`,
 `core/`, `package.json` and `nitpicker.config.json` need a careful review whatever the gate says.
+
+The self-gate runs as three parallel `self-gate shard` jobs, each with its share of the analyzers
+([Sharding in CI](docs/usage.md#sharding-in-ci)); the required `self-gate` check combines their
+reports with `nitpicker aggregate` and lists the findings of all shards. A shard fails on its own
+findings too, so that the policy approval workflow, which re-runs the failed jobs, runs it again.
 
 CI splits the test files into shards that run as parallel jobs, and the required `test` check passes
 only when every shard passed. `scripts/test-shards/sequencer.mts` gives each shard about the same
