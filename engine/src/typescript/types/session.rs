@@ -1,0 +1,138 @@
+//! One server and one loaded project for a whole engine run. Every typed check asks through the same session,
+//! so the program is loaded once, each type is computed once, and answers that several checks need are kept.
+use super::compiler;
+use super::nodes::NodeTable;
+use super::server::{Project, Server, Symbol, Type};
+use serde::Serialize;
+use std::collections::HashMap;
+use std::path::Path;
+use std::rc::Rc;
+use std::time::Instant;
+
+#[derive(Serialize, Default, Clone)]
+pub struct SessionCounts {
+    pub program_files: usize,
+    pub open_ms: u128,
+    pub node_tables: usize,
+    pub places_not_found: usize,
+    pub requests: u64,
+    pub bytes_sent: u64,
+    pub bytes_received: u64,
+    pub waiting_on_compiler_ms: u128,
+}
+
+pub struct Session {
+    pub server: Server,
+    pub project: Project,
+    /// The compiler version, one of `compiler::SUPPORTED`.
+    pub version: String,
+    /// Folder of the tsconfig.
+    pub directory: String,
+    /// `rootDir` of the project, or the folder of the tsconfig.
+    pub root: String,
+    /// Every file of the program, as the compiler names it.
+    pub files: Vec<String>,
+    tables: HashMap<String, Rc<NodeTable>>,
+    type_symbols: HashMap<u64, Option<Rc<Symbol>>>,
+    properties: HashMap<(u64, String), Option<Rc<Symbol>>>,
+    pub counts: SessionCounts,
+}
+
+impl Session {
+    /// Starts the server and loads the project. Any error here means "no types from this compiler": the
+    /// caller reports it and the check runs elsewhere.
+    pub fn open(executable: &Path, tsconfig: &str) -> Result<Session, String> {
+        let started = Instant::now();
+        let version = compiler::supported_version(executable)?;
+        let absolute = std::path::absolute(tsconfig).map_err(|error| format!("{tsconfig}: {error}"))?;
+        let tsconfig = absolute.to_str().ok_or("the tsconfig path is not UTF-8")?.replace('\\', "/");
+        let directory = Path::new(&tsconfig).parent().and_then(Path::to_str).ok_or("the tsconfig has no folder")?.to_string();
+        if !Path::new(&tsconfig).is_file() {
+            return Err(format!("{tsconfig} does not exist"));
+        }
+        let mut server = Server::start(executable, Path::new(&directory))?;
+        let project = server.open(&tsconfig)?;
+        let problems = server.raw(&project, "getConfigFileParsingDiagnostics", serde_json::json!({}))?;
+        if let Some(first) = problems.as_array().and_then(|problems| problems.first()) {
+            return Err(format!("{tsconfig} has configuration errors: {}", first["text"].as_str().unwrap_or("unknown")));
+        }
+        let files = server.source_file_names(&project)?;
+        let root = project.root_dir.clone().unwrap_or_else(|| directory.clone()).trim_end_matches('/').to_string();
+        let counts = SessionCounts { program_files: files.len(), open_ms: started.elapsed().as_millis(), ..SessionCounts::default() };
+        Ok(Session { server, project, version, directory, root, files, tables: HashMap::new(), type_symbols: HashMap::new(), properties: HashMap::new(), counts })
+    }
+
+    /// A path of the program relative to the source root, when it is inside it.
+    pub fn relative<'p>(&self, path: &'p str) -> Option<&'p str> {
+        path.strip_prefix(self.root.as_str())?.strip_prefix('/')
+    }
+
+    /// The compiler's node table of a file, fetched once.
+    pub fn table(&mut self, path: &str) -> Result<Rc<NodeTable>, String> {
+        if let Some(table) = self.tables.get(path) {
+            return Ok(Rc::clone(table));
+        }
+        let table = Rc::new(self.server.node_table(&self.project, path)?);
+        self.tables.insert(path.to_string(), Rc::clone(&table));
+        self.counts.node_tables += 1;
+        Ok(table)
+    }
+
+    /// Forgets the node table of a file, for checks that visit each file once.
+    pub fn release_table(&mut self, path: &str) {
+        self.tables.remove(path);
+    }
+
+    /// The compiler's name for a node of the engine's tree: its kind there (or `None` for "the expression
+    /// with this extent") and its extent in UTF-16 units.
+    pub fn handle(&mut self, path: &str, kind: Option<u32>, start: u32, end: u32) -> Result<Option<String>, String> {
+        let table = self.table(path)?;
+        let found = match kind {
+            Some(kind) => table.find(kind, start, end),
+            None => table.find_outer(start, end),
+        };
+        if found.is_none() {
+            if std::env::var_os("NITPICKER_ENGINE_TRACE").is_some() {
+                eprintln!("no compiler node for {path} {kind:?} {start}-{end}");
+            }
+            self.counts.places_not_found += 1;
+        }
+        Ok(found.map(|index| format!("{index}.{}.{path}", table.kind(index))))
+    }
+
+    pub fn symbols_at(&mut self, handles: &[String]) -> Result<Vec<Option<Symbol>>, String> {
+        self.server.symbols_at(&self.project, handles)
+    }
+
+    pub fn types_at(&mut self, handles: &[String]) -> Result<Vec<Option<Type>>, String> {
+        self.server.types_at(&self.project, handles)
+    }
+
+    pub fn symbol_of_type(&mut self, kind: &Type) -> Result<Option<Rc<Symbol>>, String> {
+        if let Some(known) = self.type_symbols.get(&kind.id) {
+            return Ok(known.clone());
+        }
+        let symbol = self.server.symbol_of_type(&self.project, kind)?.map(Rc::new);
+        self.type_symbols.insert(kind.id, symbol.clone());
+        Ok(symbol)
+    }
+
+    pub fn property_of(&mut self, kind: u64, name: &str) -> Result<Option<Rc<Symbol>>, String> {
+        let key = (kind, name.to_string());
+        if let Some(known) = self.properties.get(&key) {
+            return Ok(known.clone());
+        }
+        let property = self.server.property_of(&self.project, kind, name)?.map(Rc::new);
+        self.properties.insert(key, property.clone());
+        Ok(property)
+    }
+
+    pub fn counts(&self) -> SessionCounts {
+        let mut counts = self.counts.clone();
+        counts.requests = self.server.channel.requests;
+        counts.bytes_sent = self.server.channel.sent;
+        counts.bytes_received = self.server.channel.received;
+        counts.waiting_on_compiler_ms = self.server.channel.waited.as_millis();
+        counts
+    }
+}

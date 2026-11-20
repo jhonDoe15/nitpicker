@@ -3,15 +3,8 @@ use crate::typescript::tree::Tree;
 use crate::typescript::{ParsedFile, with_parsed};
 use oxc_ast::AstKind;
 use oxc_ast::ast::{BindingPattern, ClassType, Declaration, ExportDefaultDeclarationKind, PropertyKey, Statement};
+use crate::typescript::types::tables::kind::{CLASS_DECLARATION, EXPRESSION_WITH_TYPE_ARGUMENTS, IDENTIFIER, PRIVATE_IDENTIFIER};
 use oxc_span::GetSpan;
-
-pub const IDENTIFIER: u32 = 79;
-pub const PRIVATE_IDENTIFIER: u32 = 80;
-pub const EXPORT_KEYWORD: u32 = 94;
-pub const PROPERTY_ACCESS: u32 = 212;
-pub const HERITAGE_TYPE: u32 = 234;
-pub const CLASS_DECLARATION: u32 = 264;
-pub const INTERFACE_DECLARATION: u32 = 265;
 
 /// A node the compiler is asked about: its kind there, or `None` for "the expression with this extent".
 #[derive(Clone, Copy)]
@@ -114,7 +107,7 @@ pub fn plan_of(path: &str, text: &str) -> FilePlan {
             .into_iter()
             .map(|class| TopClass {
                 place: place(CLASS_DECLARATION, class.span),
-                implements: class.implements.iter().map(|heritage| place(HERITAGE_TYPE, heritage.span)).collect(),
+                implements: class.implements.iter().map(|heritage| place(EXPRESSION_WITH_TYPE_ARGUMENTS, heritage.span)).collect(),
             })
             .collect();
         let mut plan = FilePlan { classes, reads: Vec::new(), picks: Vec::new(), unparsed: file.panicked, wide: wide_of(text) };

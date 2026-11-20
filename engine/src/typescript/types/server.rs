@@ -9,11 +9,31 @@ use std::path::Path;
 #[derive(Deserialize, Clone, Debug)]
 pub struct Symbol {
     pub id: u64,
+    #[serde(deserialize_with = "plain_name")]
     pub name: String,
     #[serde(default)]
     pub flags: u32,
     #[serde(default)]
     pub declarations: Vec<String>,
+}
+
+/// The server sends names as the compiler stores them: a name that starts with two underscores has a third
+/// one in front. Callers get the name as written in the source.
+fn plain_name<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<String, D::Error> {
+    let name = String::deserialize(deserializer)?;
+    Ok(unescaped(name))
+}
+
+pub fn unescaped(mut name: String) -> String {
+    if name.starts_with("___") {
+        name.remove(0);
+    }
+    name
+}
+
+/// A name as the compiler stores it, for questions that take a name.
+pub fn escaped(name: &str) -> String {
+    if name.starts_with("__") { format!("_{name}") } else { name.to_string() }
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -89,7 +109,7 @@ impl Server {
 
     pub fn node_table(&mut self, project: &Project, file: &str) -> Result<NodeTable, String> {
         let parameters = json!({ "snapshot": self.snapshot, "project": project.id, "file": file });
-        Ok(NodeTable::of(self.channel.request("getSourceFile", parameters.to_string().as_bytes())?))
+        NodeTable::read(self.channel.request("getSourceFile", parameters.to_string().as_bytes())?).map_err(|error| format!("{file}: {error}"))
     }
 
     pub fn symbols_at(&mut self, project: &Project, locations: &[String]) -> Result<Vec<Option<Symbol>>, String> {
