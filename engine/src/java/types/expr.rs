@@ -1462,6 +1462,8 @@ impl<'a> Resolver<'a> {
                 if std::env::var("NP_DBG").is_ok() {
                     eprintln!("gave up: {}:{}", self.file.path, expression.start_position().row + 1);
                 }
+                // The same question would use up the same work again: the answer stays unknown.
+                self.cache.borrow_mut().insert(expression.id(), None);
             }
             return None;
         }
