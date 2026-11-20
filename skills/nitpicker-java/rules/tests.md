@@ -82,6 +82,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `localhost` (MockWebServer, WireMock, `MockRestServiceServer`) or a mock. Measuring time is fine (`System.nanoTime()`,
   `now()` compared with a deadline in a polling loop). Calls to a real service belong in an integration test (`*IT`,
   an integration source set, or `@SpringBootTest`).
+- Use the result of a timed wait (`IgnoredTimedWaitInTest`): `assertTrue(latch.await(5, TimeUnit.SECONDS))`,
+  not `latch.await(5, TimeUnit.SECONDS);` followed by assertions. `await`, `tryLock`, `tryAcquire`, `offer`,
+  `waitFor` and `awaitTermination` with a timeout return `false` when the time runs out, and the test then
+  asserts against work that has not finished.
 - Start a container, server or process once, not for each test (`ServerOrContainerPerTest`): a
   Testcontainers `@Container` field is `static`, a WireMock `@RegisterExtension` is `static`, a JUnit 4
   server or container is a `@ClassRule`, and `@BeforeEach`/`@Before` does not create and start one
