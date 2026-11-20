@@ -210,8 +210,10 @@ impl<'a> Resolver<'a> {
                     return Some(found.clone());
                 }
             }
-            // Names in the header of a class are looked up around it: its members and what it inherits are not in scope there.
-            let header = TYPE_DECLARATIONS.contains(&node.kind()) && node.child_by_field_name("body") != Some(inner);
+            // Names in the header of a class are looked up around it: its members and what it inherits are not in scope there,
+            // except for the components of a record.
+            let components = node.kind() == "record_declaration" && node.child_by_field_name("parameters") == Some(inner);
+            let header = TYPE_DECLARATIONS.contains(&node.kind()) && node.child_by_field_name("body") != Some(inner) && !components;
             if let Some(owner) = class_at(self.scope, node, inner).filter(|_| !header) {
                 for ancestor in self.index.lineage(&owner) {
                     let nested = format!("{ancestor}.{name}");
@@ -374,7 +376,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// Erased and generic parameter types, and whether the last one is variable arity.
-    fn parameters(&self, list: Option<Node>) -> (Vec<Type>, Vec<Type>, bool) {
+    pub fn parameters(&self, list: Option<Node>) -> (Vec<Type>, Vec<Type>, bool) {
         let mut erased = Vec::new();
         let mut generic = Vec::new();
         let mut varargs = false;
@@ -545,6 +547,7 @@ impl<'a> Resolver<'a> {
             }),
             permitted: self.permitted(declaration, &own_name, &listed("permits")),
             flags: self.class_flags(declaration) | super::model::flag::SOURCE,
+            setter_like: false,
         }
     }
 
@@ -757,6 +760,8 @@ impl<'a> Resolver<'a> {
                 _ => {}
             }
         }
+        let own = Type::class(&info.name);
+        info.setter_like = info.methods.iter().any(|method| !method.is_static && super::model::setter_name(&method.name) && method.returns != own);
         if matches!(declaration.kind(), "class_declaration" | "enum_declaration") && !info.methods.iter().any(|method| method.name == "<init>") {
             info.methods.push(plain("<init>", Vec::new(), Type::Primitive("void")));
         }
