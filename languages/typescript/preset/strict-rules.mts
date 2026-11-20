@@ -197,6 +197,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-falsy-error-check',
   'nitpicker/no-send-without-return',
   'nitpicker/require-process-timeout',
+  'nitpicker/no-unguarded-option-list',
   'nitpicker/no-growing-process-arguments',
   'nitpicker/no-wrapper-only-timeout',
   'nitpicker/no-head-cut-error-output',

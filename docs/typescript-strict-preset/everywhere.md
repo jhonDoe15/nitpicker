@@ -1816,36 +1816,51 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   hangs the program. A program whose purpose is to run a child to completion, such as a build
   wrapper, takes an exception. The rule reads no types, so it behaves the same in the JavaScript
   preset.
+- An option built from a list that can be empty is guarded (`nitpicker/no-unguarded-option-list`, production files).
+  With an empty list a tool gets `--dir ''` or takes the next flag as the value, and most tools then fall back to
+  their default (the working directory, every file) or reject the run. Reported: in the argument list of `spawn`,
+  `spawnSync`, `execFile`, `execFileSync`, `fork` or execa, a flag (`-x`, `--name`) followed by `list.join(...)`,
+  and an object with `files` and a configuration key (`rules`, `languageOptions`, `plugins`, `settings`,
+  `linterOptions`, `processor`) that is pushed or put into an array with `files` taken from such a list (ESLint
+  rejects an empty `files`). Only lists that the same function builds with `filter` or `flatMap` or from a file
+  listing or glob are reported, and only when the join is the only read of the list, so a size check or any other
+  use of it (a loop, a destructuring, a second join) keeps it from being reported. Not reported: lists from a
+  parameter, literal lists, a `map` of a list, `--flag=${...}` in one argument, and a flag followed by a spread
+  (`'--fix', ...files`), since the rule cannot tell a flag that takes a value from one that does not. The Java
+  preset has the same rule as `pmd/UnguardedOptionList`.
 - A list that grows with the project is not passed as process arguments (`nitpicker/no-growing-process-arguments`,
   production files). Linux limits one argument to 128 KiB and the command line to a few MiB, Windows the command
   line to 32,767 characters; past that the process does not start (`E2BIG`). Reported in the argument list of
   `spawn`, `spawnSync`, `execFile`, `execFileSync`, `fork` and execa (and in the `${...}` parts of an `exec` or
   `execSync` command): a spread of a file listing or glob result (`readdirSync`, `readdir`, `glob`, `globSync`,
-  `fast-glob`, `globby`, `glob.sync`, also through `filter`, `map`, `flatMap`, `sort`, `concat`, `Array.from` or a
-  `const`), and one argument that joins such a list or joins any list that is not a literal with `path.delimiter`
-  (a class path or a path list). Not reported: lists the rule cannot trace to a listing (`...changedFiles` from a
-  parameter), a `slice` of a listing, chunks, literal lists, the list in `env` (`CLASSPATH`) and an `@args` file.
-  The Java preset reports the class-path form as `pmd/GrowingProcessArguments`.
+  `fast-glob`, `globby`, `glob.sync`, a `readdir` on `fs` or `fs/promises`, also through `filter`, `map`, `flatMap`,
+  `sort`, `concat`, `Array.from` or a `const`), and one argument that joins such a list or joins any list that is
+  not a literal with `path.delimiter` (a class path or a path list). An array literal joined with `path.delimiter`
+  is reported only when it spreads a listing. Not reported: lists the rule cannot trace to a listing
+  (`...changedFiles` from a parameter), a `slice` of a listing, chunks, literal lists, the list in `env`
+  (`CLASSPATH`) and an `@args` file. The Java preset reports the class-path form as `pmd/GrowingProcessArguments`.
 - A subprocess deadline stops the work, not only a wrapper around it (`nitpicker/no-wrapper-only-timeout`,
   production files). A `timeout`, `signal` or `cancelSignal` kills only the process that was started; when that is a
   shell, a launcher or a script, the real work runs in its child and keeps running after the call returns. Reported:
   a `child_process` or execa call with such a deadline whose command is a launcher (`npx`, `npm`, `yarn` or `pnpm`
-  running a script (`run`, `exec`, `dlx`, `test`, `start` and the like), `gradlew`, `mvnw`, `cmd`, `powershell`, `pwsh`, a `.sh`, `.bat`, `.cmd` or `.ps1` file, or `sh`, `bash`, `zsh`,
+  running a script (`run`, `exec`, `dlx`, `test`, `start` and the like), `gradlew.bat`, `mvnw.cmd`, `cmd`,
+  `powershell`, `pwsh`, a `.sh`, `.bat`, `.cmd` or `.ps1` file, or `sh`, `bash`, `zsh`,
   `dash` or `ksh` running a script file or a `-c` script that is itself compound or a launcher), an `exec`/`execSync`
   command string that starts with one or holds a list, a pipe or a background job (`cd app && make`), or a
   `shell: true` command with one. Not reported: plain executables (`git`, `node`, `java`), a single command in
   `sh -c` or `exec` (POSIX shells run it in place), execa's `execaCommand` (no shell), options from a parameter or a
   spread, and a call with `detached: true` in a function that kills the group (`process.kill(-child.pid)`,
   `taskkill`, `tree-kill`). The Java preset has the same rule as `pmd/DestroyLeavesDescendants`.
-- Tool output and stack traces are not cut to their start in an error (`nitpicker/no-head-cut-error-output`,
+- Tool output is not cut to its start in an error (`nitpicker/no-head-cut-error-output`,
   production files). Reported: `text.slice(0, n)`, `substring(0, n)` or `substr(0, n)` of a value named for output
-  (`stderr`, `stdout`, `output`, `stack`, `stackTrace`, `log`, `logs`, `trace`, or a name ending in one of them, such
-  as `buildOutput` or `error.stack`; also through `toString()`, `trim()` or `String(...)`) when the cut text goes,
+  (`stderr`, `stdout`, `stack`, `stackTrace`, `errorOutput`, or a name ending in one of them, such
+  as `buildStderr` or `error.stack`; also through `toString()`, `trim()` or `String(...)`) when the cut text goes,
   directly or through a template, a `+`, a ternary, an object property or a `const`, into `new XError(...)` or
   `XError(...)`, a `throw`, `reject(...)`, `fail(...)`, or a `.error(...)` or `.fatal(...)` log call. Build tools,
-  compilers, test runners and stack traces print the cause at the end, so the kept part is the banner. Not
+  compilers and test runners print the cause at the end, so the kept part is the banner. Not
   reported: cuts that keep the end (`slice(-4000)`, `substring(start)`), an error that also holds such a cut (start
-  and end with a marker between them), cuts of other text (titles, previews) and cuts that go elsewhere. Cuts that
+  and end with a marker between them), cuts of other text (titles, previews, hashes), cuts to a literal length under
+  40 and cuts that go elsewhere. Cuts that
   can split a character are `nitpicker/no-surrogate-splitting-cut`. The Java preset has the same rule as
   `pmd/HeadCutErrorOutput`.
 - A finished child process is not judged by text on its standard error (`nitpicker/no-stderr-as-failure`,
@@ -1880,7 +1895,8 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   parsed whole (`JSON.parse`, `split`). Not reported: output that is ignored or not piped (`stdio: 'inherit'` or
   `'ignore'`, `stdio` from a variable), execa's `buffer: false`, `maxBuffer: Infinity` or a computed size, options
   from a parameter or a spread, bounded forms (`git log -1`, `-n`, `--max-count`, `--max-parents`, `git diff --quiet`,
-  `--shortstat`, `rev-list --count`, `-q`), argument lists with a spread, and shell commands with a pipe, a
+  `--shortstat`, `rev-list --count`, `-q`, `--version`, `--help`, `du -s`, `find -maxdepth 0`, single files after
+  `--`), argument lists with a spread, and shell commands with a pipe, a
   redirection or a list (`git log | head -5`). Allowed forms: `spawn` with the output read as a stream, `stdio` set
   to a file descriptor, or a tool that writes its report to a file.
 - Waits without a timeout (`pmd/UnboundedWait`, `unbounded-wait`, `pmd/ReactorBlockWithoutTimeout` in the JVM and

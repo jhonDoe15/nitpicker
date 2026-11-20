@@ -1,0 +1,36 @@
+  <rule name="UnguardedOptionList" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This option of a process the method starts takes its value from a list that a filter or a directory listing in this method can leave empty, and nothing checks its size. With an empty list the tool gets an empty value (--dir &quot;&quot;), and most tools then fall back to their default (the working directory, every file) or reject the run. Check the list first (if (dirs.isEmpty()) return) and skip the option, or the run, when it is empty.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $method := function($n) {
+      $n/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer or self::LambdaExpression][1]
+    },
+    $listed := function($init) {
+      exists($init/descendant-or-self::MethodCall[@MethodName = 'filter']
+             | $init/descendant-or-self::MethodCall[@MethodName = ('list', 'walk', 'find', 'listFiles', 'newDirectoryStream')]
+                 [*[1][pmd-java:typeIs('java.nio.file.Files') or pmd-java:typeIs('java.io.File')]])
+    },
+    $joinedName := function($e) {
+      ($e/self::MethodCall[@MethodName = 'join'][*[1][self::TypeExpression][pmd-java:typeIs('java.lang.String')]]/ArgumentList/*[2]/self::VariableAccess/@Name,
+       $e/self::MethodCall[@MethodName = 'collect'][ArgumentList/MethodCall[@MethodName = 'joining']]
+          /*[1]/descendant-or-self::MethodCall[@MethodName = 'stream'][1]/*[1]/self::VariableAccess/@Name)
+    }
+return
+//StringLiteral[matches(@Image, '^"--?[A-Za-z][\w-]*"$')]
+  [ancestor::ArgumentList[1]
+     [parent::ConstructorCall[pmd-java:typeIs('java.lang.ProcessBuilder')]
+      or parent::MethodCall[@MethodName = ('command', 'of', 'asList', 'exec')]]]
+  /following-sibling::*[1]
+  [let $name := $joinedName(.),
+       $m := $method(.)
+   return exists($name)
+     and exists($m//LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name][$listed(*[2])])
+     and count($m//VariableAccess[@Name = $name]) = 1
+     and exists($m//(ConstructorCall[pmd-java:typeIs('java.lang.ProcessBuilder')]
+                     | MethodCall[@MethodName = 'exec'][*[1][pmd-java:typeIs('java.lang.Runtime')]]))]
+]]></value>
+      </property>
+    </properties>
+  </rule>

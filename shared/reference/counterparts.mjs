@@ -14,22 +14,11 @@ const PAGES = {
   go: { label: 'Go', path: 'docs/go-preset.md', anchor: 'own-rules' },
 };
 const GROUPS = [
-  {
-    java: 'GrowingProcessArguments',
-    typescript: 'nitpicker/no-growing-process-arguments',
-  },
-  {
-    java: 'DestroyLeavesDescendants',
-    typescript: 'nitpicker/no-wrapper-only-timeout',
-  },
-  {
-    java: 'HeadCutErrorOutput',
-    typescript: 'nitpicker/no-head-cut-error-output',
-  },
-  {
-    java: 'StderrAsFailure',
-    typescript: 'nitpicker/no-stderr-as-failure',
-  },
+  { java: 'UnguardedOptionList', typescript: 'nitpicker/no-unguarded-option-list' },
+  { java: 'GrowingProcessArguments', typescript: 'nitpicker/no-growing-process-arguments' },
+  { java: 'DestroyLeavesDescendants', typescript: 'nitpicker/no-wrapper-only-timeout' },
+  { java: 'HeadCutErrorOutput', typescript: 'nitpicker/no-head-cut-error-output' },
+  { java: 'StderrAsFailure', typescript: 'nitpicker/no-stderr-as-failure' },
   {
     java: 'SurrogateSplittingCut',
     typescript: 'nitpicker/no-surrogate-splitting-cut',

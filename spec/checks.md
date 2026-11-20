@@ -319,24 +319,32 @@ same rule runs as `subprocess-without-timeout` in the Python preset, `pmd/Proces
 in the Java preset and `kotlin-source/ProcessWaitWithoutTimeout` in the Kotlin preset; tests keep
 `nitpicker/require-test-process-timeout` (TypeScript) or their runner's own limits.
 
+Unguarded option lists: `nitpicker/no-unguarded-option-list` (production source, in `eslint-lint`) and
+`pmd/UnguardedOptionList` (Java, main sources) report a process option (a flag followed by a joined list) or an ESLint
+configuration block's `files`, built from a list that a filter or a listing in the same function can leave empty, when
+the join (or the `files` entry) is the only read of the list. Tools read an empty value as "everything" or reject it;
+the allowed form skips the option or the run for an empty list.
+
 Project-sized process arguments: `nitpicker/no-growing-process-arguments` (production source, in
 `eslint-lint`) reports a file listing or glob result spread into the arguments of a child process, or joined into
-one argument, and any non-literal list joined with `path.delimiter` into one argument. `pmd/GrowingProcessArguments`
+one argument, and any list joined with `path.delimiter` into one argument unless it is an array literal that
+spreads no listing. `pmd/GrowingProcessArguments`
 (Java, main sources) reports a class path or path list joined with `File.pathSeparator` into an argument of a
 process the method starts. Past the operating system's argument limits the process does not start; the allowed
 forms are an argument file, standard input, the `CLASSPATH` variable or chunks.
 
 Deadlines that stop only a wrapper: `nitpicker/no-wrapper-only-timeout` (production source, in `eslint-lint`)
 reports a subprocess call with a `timeout` or abort signal whose command is a shell, a launcher (`npm`, `npx`,
-`gradlew`, `mvnw`, a `.sh` or `.cmd` file) or a compound shell command, unless it is started `detached` and the
+`gradlew.bat`, `mvnw.cmd`, a `.sh` or `.cmd` file) or a compound shell command, unless it is started `detached` and the
 function kills the group. `pmd/DestroyLeavesDescendants` (Java, main sources) reports `destroy()` or
 `destroyForcibly()` after a timed `waitFor` on a process the method started through such a command, when the method
 never reads `descendants()`. The timed-out wrapper dies and its child keeps running.
 
 Error output cut to its start: `nitpicker/no-head-cut-error-output` (production source, in `eslint-lint`) and
 `pmd/HeadCutErrorOutput` (Java, main sources) report a cut from the start (`slice(0, n)`, `substring(0, n)`,
-`StringUtils.left` or `abbreviate`) of a tool's output or a stack trace that goes into an exception, a rejection or
-an error-level log. The cause is usually at the end of such text; the allowed forms keep the end, or both ends.
+`StringUtils.left` or `abbreviate`) of a tool's output (in Java also a printed stack trace) that goes into an
+exception, a rejection or an error-level log. The cause is usually at the end of such text; the allowed forms keep the
+end, or both ends.
 
 Standard error as failure: `nitpicker/no-stderr-as-failure` (production source, in `eslint-lint`) and
 `pmd/StderrAsFailure` (Java, main sources) report a condition that fails a finished subprocess because its standard
