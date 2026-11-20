@@ -1,7 +1,7 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { trackTemporaryPath } from '../../../tooling/temporary-files.mjs';
+import { trackTemporaryPath } from '../../../tooling/temporary-files.mts';
 import { SOLVER_ANSWERS_ENVIRONMENT } from '../../../../shared/solver-answers/answer-store.mts';
 
 const trackPath: (filePath: string) => string = trackTemporaryPath;
