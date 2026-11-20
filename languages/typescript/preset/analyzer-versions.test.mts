@@ -54,7 +54,7 @@ describe('ESLint analyzer versions', () => {
     );
     const plugins = ESLINT_PLUGIN_PACKAGES.map((plugin) => `${plugin}@1.0.0`);
     expect(version).toBe(
-      `eslint@1.0.0;typescript@1.0.0;plugins:${[...plugins, `nitpicker-plugin@${packageVersion}`].join(',')}`,
+      `eslint@1.0.0;typescript@1.0.0;plugins:${[...plugins, `nitpicker-plugin@${packageVersion}`].join(',')};oxlint@1.0.0,oxlint-tsgolint@1.0.0`,
     );
   });
 
