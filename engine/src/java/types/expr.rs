@@ -618,19 +618,7 @@ impl<'a> Resolver<'a> {
         if self.spent() {
             return None;
         }
-        let turns = *self.resolving.borrow().get(&call.id()).unwrap_or(&0u8);
-        if turns >= 2 {
-            self.skipped.set(self.skipped.get() + 1);
-            return None;
-        }
-        self.resolving.borrow_mut().insert(call.id(), turns + 1);
-        let found = self.pick_call(call);
-        if turns == 0 {
-            self.resolving.borrow_mut().remove(&call.id());
-        } else {
-            self.resolving.borrow_mut().insert(call.id(), turns);
-        }
-        found
+        self.in_turn(call, || self.pick_call(call))
     }
 
     fn pick_call(&self, call: Node) -> Option<Call> {
@@ -817,6 +805,10 @@ impl<'a> Resolver<'a> {
         if self.spent() {
             return None;
         }
+        self.in_turn(creation, || self.pick_constructor(creation))
+    }
+
+    fn pick_constructor(&self, creation: Node) -> Option<Call> {
         let owner = self.type_node(creation.child_by_field_name("type")?)?;
         let info = self.index.get(&owner.name())?;
         if info.is_interface && children(creation).iter().any(|part| part.kind() == "class_body") {
@@ -1305,10 +1297,31 @@ impl<'a> Resolver<'a> {
     }
 
     /// `this(...)` or `super(...)` at the start of a constructor.
+    /// One more turn at a call whose arguments may ask for it again; the third turn in a row is refused.
+    fn in_turn(&self, call: Node, pick: impl FnOnce() -> Option<Call>) -> Option<Call> {
+        let turns = *self.resolving.borrow().get(&call.id()).unwrap_or(&0u8);
+        if turns >= 2 {
+            self.skipped.set(self.skipped.get() + 1);
+            return None;
+        }
+        self.resolving.borrow_mut().insert(call.id(), turns + 1);
+        let found = pick();
+        if turns == 0 {
+            self.resolving.borrow_mut().remove(&call.id());
+        } else {
+            self.resolving.borrow_mut().insert(call.id(), turns);
+        }
+        found
+    }
+
     fn resolve_delegation(&self, call: Node) -> Option<Call> {
         if self.spent() {
             return None;
         }
+        self.in_turn(call, || self.pick_delegation(call))
+    }
+
+    fn pick_delegation(&self, call: Node) -> Option<Call> {
         let own = enclosing_type(self.file, self.scope, call)?;
         let delegate = call.child_by_field_name("constructor").map(|part| part.kind());
         let owner = if delegate == Some("super") { self.type_of_super(&own)? } else { self.own_type(&own) };
