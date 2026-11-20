@@ -73,7 +73,7 @@ impl Suppressions {
                                 names.push(value.to_string());
                             }
                         }
-                        "VariableAccess" | "FieldAccess" => names.extend(node.source.and_then(|source| resolver.constant_string(source))),
+                        "VariableAccess" | "FieldAccess" | "InfixExpression" => names.extend(node.source.and_then(|source| resolver.constant_string(source))),
                         "ClassType" => {}
                         _ => stack.extend(node.children.iter().copied()),
                     }
