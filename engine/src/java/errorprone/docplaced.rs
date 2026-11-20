@@ -1,0 +1,217 @@
+//! Checks about where doc comments stand: NotJavadoc, AlmostJavadoc. Like Error Prone they read the comments
+//! before each token of the file, and a declaration owns the comments before its first token.
+use super::Context;
+use crate::engine::source::{children, parent, walk};
+use regex::Regex;
+use std::collections::HashMap;
+use std::sync::LazyLock;
+use tree_sitter::Node;
+
+const TYPES: &[&str] = &["class_declaration", "interface_declaration", "enum_declaration", "record_declaration", "annotation_type_declaration"];
+const METHODS: &[&str] = &["method_declaration", "constructor_declaration", "compact_constructor_declaration", "annotation_type_element_declaration"];
+const BODIES: &[&str] = &["class_body", "interface_body", "enum_body", "enum_body_declarations", "annotation_type_body"];
+
+#[derive(Clone, Copy, PartialEq)]
+enum Seeming {
+    Class,
+    Method,
+    Component,
+}
+
+/// The comments before each token, by the token's offset.
+fn comments_by_token<'t>(context: &Context, root: Node<'t>) -> Vec<(usize, Vec<Node<'t>>)> {
+    let mut comments = Vec::new();
+    walk(root, |node| {
+        if matches!(node.kind(), "line_comment" | "block_comment") {
+            comments.push(node);
+        }
+    });
+    comments.sort_by_key(Node::start_byte);
+    let text = context.file.text.as_bytes();
+    let mut groups: Vec<(usize, Vec<Node>)> = Vec::new();
+    let mut at = 0usize;
+    while at < comments.len() {
+        let mut group = vec![comments[at]];
+        let mut end = comments[at].end_byte();
+        at += 1;
+        let token = loop {
+            let mut next = end;
+            while next < text.len() && text[next].is_ascii_whitespace() {
+                next += 1;
+            }
+            match comments.get(at) {
+                Some(comment) if comment.start_byte() == next => {
+                    group.push(*comment);
+                    end = comment.end_byte();
+                    at += 1;
+                }
+                _ => break next,
+            }
+        };
+        groups.push((token, group));
+    }
+    groups
+}
+
+/// Whether a class may carry a doc comment: it is not local, not anonymous, and not inside one that is.
+fn documentable_class(node: Node) -> bool {
+    let mut current = parent(node);
+    while let Some(at) = current {
+        if !(TYPES.contains(&at.kind()) || BODIES.contains(&at.kind()) || at.kind() == "program") {
+            return false;
+        }
+        current = parent(at);
+    }
+    true
+}
+
+fn enclosing_class(node: Node) -> Option<Node> {
+    let mut current = parent(node);
+    while let Some(at) = current {
+        if TYPES.contains(&at.kind()) {
+            return Some(at);
+        }
+        if !BODIES.contains(&at.kind()) {
+            return None;
+        }
+        current = parent(at);
+    }
+    None
+}
+
+/// The declarations a doc comment belongs to, by where javac says they start.
+fn documentable(root: Node) -> HashMap<usize, Node> {
+    let mut out = HashMap::new();
+    walk(root, |node| {
+        let kind = node.kind();
+        let owned = match kind {
+            "package_declaration" | "module_declaration" => true,
+            _ if TYPES.contains(&kind) => documentable_class(node),
+            _ if METHODS.contains(&kind) || matches!(kind, "field_declaration" | "constant_declaration" | "enum_constant") => {
+                enclosing_class(node).is_some_and(documentable_class)
+            }
+            _ => false,
+        };
+        if owned {
+            out.insert(node.start_byte(), node);
+        }
+    });
+    out
+}
+
+/// Classes, methods and record components anywhere, by start. A class that is not a record or interface, has no
+/// modifiers and declares no constructor gets one from javac at the same place, so the place counts as a method.
+fn seemingly_documentable(root: Node) -> HashMap<usize, Seeming> {
+    let mut out = HashMap::new();
+    walk(root, |node| {
+        let kind = node.kind();
+        if TYPES.contains(&kind) {
+            let modified = children(node).into_iter().any(|child| child.kind() == "modifiers");
+            let constructed = matches!(kind, "class_declaration" | "enum_declaration") && !modified && !declares_constructor(node);
+            out.insert(node.start_byte(), if constructed { Seeming::Method } else { Seeming::Class });
+        } else if METHODS.contains(&kind) {
+            out.insert(node.start_byte(), Seeming::Method);
+        } else if kind == "formal_parameter" && parent(node).and_then(parent).is_some_and(|owner| owner.kind() == "record_declaration") {
+            out.insert(node.start_byte(), Seeming::Component);
+        }
+    });
+    out
+}
+
+fn declares_constructor(declaration: Node) -> bool {
+    let Some(body) = declaration.child_by_field_name("body") else { return false };
+    let members = children(body).into_iter().flat_map(|member| if member.kind() == "enum_body_declarations" { children(member) } else { vec![member] });
+    members.into_iter().any(|member| member.kind() == "constructor_declaration")
+}
+
+fn is_doc(text: &str) -> bool {
+    text.starts_with("/**")
+}
+
+pub fn not_javadoc(context: &Context, node: Node) {
+    const CHECK: &str = "NotJavadoc";
+    if node.kind() != "program" {
+        return;
+    }
+    let owned = documentable(node);
+    let seeming = seemingly_documentable(node);
+    for (token, comments) in comments_by_token(context, node) {
+        let docs: Vec<Node> = comments.iter().copied().filter(|comment| is_doc(context.text(*comment))).collect();
+        if docs.len() > 1 {
+            context.report_always(CHECK, docs[0].start_byte(), "This element has multiple Javadoc comments; only the last one will be used.");
+        }
+        if owned.contains_key(&token) {
+            continue;
+        }
+        for comment in docs {
+            if context.text(comment) == "/**/" || context.suppressed(CHECK, comment) {
+                continue;
+            }
+            let message = match seeming.get(&token) {
+                Some(Seeming::Class) => {
+                    "This comment is attached to a local class, but local classes cannot be documented with Javadoc. Please convert this to a \
+                     regular comment."
+                }
+                Some(Seeming::Method) => {
+                    "This comment is attached to a method inside a local class, but methods inside local classes cannot be documented with \
+                     Javadoc. Please convert this to a regular comment."
+                }
+                Some(Seeming::Component) => {
+                    "This comment seems to be attached to a record component, but record components cannot be documented with Javadoc. \
+                     Please move this to an @param tag on the record class."
+                }
+                None => "Avoid using `/**` for comments which aren't actually Javadoc.",
+            };
+            context.report_always(CHECK, comment.start_byte(), message);
+        }
+    }
+}
+
+static HAS_TAG: LazyLock<Regex> = LazyLock::new(|| {
+    let tags = [
+        "code", "deprecated", "docRoot", "link", "linkplain", "literal", "see", "since", "snippet", "author", "inheritDoc", "param", "value", "version",
+        "exception", "return", "serial", "throws", "serialData", "serialField",
+    ];
+    Regex::new(&format!("</(em|b|a|strong|i|pre|code)>|@({})", tags.join("|"))).expect("a pattern")
+});
+
+/// Whether Error Prone would offer to turn the comment into a doc comment.
+fn almost(text: &str) -> bool {
+    if text.starts_with("/*") && !text.starts_with("/**") {
+        return HAS_TAG.is_match(text);
+    }
+    if !(text.starts_with("//") && text.ends_with("*/") && HAS_TAG.is_match(text)) {
+        return false;
+    }
+    if text.starts_with("// /**") {
+        return true;
+    }
+    for character in text.chars().skip(2) {
+        match character {
+            '/' => return false,
+            '*' | ' ' => {}
+            _ => return true,
+        }
+    }
+    true
+}
+
+pub fn almost_javadoc(context: &Context, node: Node) {
+    const CHECK: &str = "AlmostJavadoc";
+    if node.kind() != "program" {
+        return;
+    }
+    let owned = documentable(node);
+    for (token, comments) in comments_by_token(context, node) {
+        let Some(declaration) = owned.get(&token) else { continue };
+        if comments.iter().any(|comment| is_doc(context.text(*comment))) || context.suppressed(CHECK, *declaration) {
+            continue;
+        }
+        for comment in comments {
+            if almost(context.text(comment)) {
+                let message = "This comment contains Javadoc or HTML tags, but isn't started with a double asterisk (/**); is it meant to be Javadoc?";
+                context.report_always(CHECK, comment.start_byte(), message);
+            }
+        }
+    }
+}

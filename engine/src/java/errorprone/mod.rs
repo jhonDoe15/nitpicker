@@ -2,6 +2,8 @@
 mod doc;
 mod docparse;
 mod docref;
+mod docplaced;
+mod doctagged;
 mod doctags;
 #[cfg(test)]
 mod doctest;
@@ -157,6 +159,8 @@ const CHECKS: &[Check] = &[
     targets::boolean_literal,
     naming::identifier_name,
     javadoc::javadoc,
+    docplaced::not_javadoc,
+    docplaced::almost_javadoc,
     throws::checked_exception_not_thrown,
     returns::check_return_value,
     statements::multi_variable_declaration,

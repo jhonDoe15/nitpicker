@@ -55,5 +55,9 @@
  "UnusedException",
  "UnusedMethod",
  "VoidUsed",
- "WildcardImport"
+ "WildcardImport",
+ "EscapedEntity",
+ "InvalidInlineTag",
+ "NotJavadoc",
+ "AlmostJavadoc"
 ]

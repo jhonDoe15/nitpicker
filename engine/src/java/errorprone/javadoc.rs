@@ -1,4 +1,4 @@
-//! The checks that read doc comments: EmptyBlockTag, MissingSummary, InvalidBlockTag, UnescapedEntity.
+//! The checks that read doc comments: EmptyBlockTag, MissingSummary, InvalidBlockTag, UnescapedEntity; more in `doctagged`.
 use super::Context;
 use super::doc::{Comment, DocComment, Kind, Tree, parse};
 use super::hierarchy::{annotation_names, declared_method, super_method};
@@ -12,32 +12,32 @@ const TYPES: &[&str] = &["class_declaration", "interface_declaration", "enum_dec
 const METHODS: &[&str] = &["method_declaration", "constructor_declaration", "compact_constructor_declaration", "annotation_type_element_declaration"];
 
 #[derive(Clone, Copy, PartialEq)]
-enum Element {
+pub(super) enum Element {
     Class,
     Method,
     Variable,
 }
 
-struct Documented<'a, 'c, 't> {
-    context: &'c Context<'a>,
+pub(super) struct Documented<'a, 'c, 't> {
+    pub context: &'c Context<'a>,
     /// The class, method, field declarator or enum constant.
-    node: Node<'t>,
+    pub node: Node<'t>,
     /// Where javac says the declaration starts: its modifiers.
-    start: usize,
-    element: Element,
-    comment: Comment,
-    doc: DocComment,
+    pub start: usize,
+    pub element: Element,
+    pub comment: Comment,
+    pub doc: DocComment,
 }
 
 impl Documented<'_, '_, '_> {
-    fn source(&self, pos: usize) -> usize {
+    pub fn source(&self, pos: usize) -> usize {
         self.comment.source_pos(pos).unwrap_or(self.start)
     }
-    fn report(&self, check: &'static str, pos: usize, message: &str) {
+    pub fn report(&self, check: &'static str, pos: usize, message: &str) {
         self.context.report(check, self.node, self.source(pos), message);
     }
     /// Reports where javac says the comment itself is; an empty comment has no place, so its declaration stands in.
-    fn report_comment(&self, check: &'static str, message: &str) {
+    pub fn report_comment(&self, check: &'static str, message: &str) {
         self.context.report(check, self.node, self.doc.start.unwrap_or(self.start), message);
     }
 }
@@ -74,6 +74,8 @@ pub fn javadoc(context: &Context, node: Node) {
     missing_summary(&documented, declaration);
     invalid_block_tag(&documented, declaration);
     unescaped_entity(&documented);
+    super::doctagged::escaped_entity(&documented);
+    super::doctagged::invalid_inline_tag(&documented, declaration);
 }
 
 fn empty_block_tag(documented: &Documented) {
@@ -150,7 +152,7 @@ const VARIABLE_BLOCKS: &[&str] = &["serial", "serialData", "serialField"];
 const METHOD_BLOCKS: &[&str] = &["author", "exception", "param", "return", "serial", "throws", "serialData", "serialField", "version"];
 const OTHER_BLOCKS: &[&str] = &["apiNote", "attr", "contact", "fails", "hide", "implNote", "implSpec", "removed", "required", "team"];
 
-fn edit_distance(from: &str, to: &str) -> usize {
+pub(super) fn edit_distance(from: &str, to: &str) -> usize {
     let (from, to): (Vec<char>, Vec<char>) = (from.chars().collect(), to.chars().collect());
     let mut row: Vec<usize> = (0..=to.len()).collect();
     for (at, letter) in from.iter().enumerate() {
@@ -163,8 +165,10 @@ fn edit_distance(from: &str, to: &str) -> usize {
     row[to.len()]
 }
 
-fn parameter_names<'f>(context: &'f Context, method: Node) -> Vec<&'f str> {
-    let list = method.child_by_field_name("parameters").map(children).unwrap_or_default();
+/// The parameters javac gives a method; a compact constructor gets the components of its record.
+pub(super) fn parameter_names<'f>(context: &'f Context, method: Node) -> Vec<&'f str> {
+    let header = if method.kind() == "compact_constructor_declaration" { parent(method).and_then(parent) } else { Some(method) };
+    let list = header.and_then(|header| header.child_by_field_name("parameters")).map(children).unwrap_or_default();
     list.into_iter()
         .filter_map(|parameter| match parameter.kind() {
             "formal_parameter" => parameter.child_by_field_name("name"),
