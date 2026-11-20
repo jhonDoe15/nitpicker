@@ -10,7 +10,25 @@ pub struct Xml {
     pub children: Vec<Rc<Xml>>,
 }
 
-pub type Env = Vec<(u32, Seq)>;
+pub type Env = Vec<(u32, Bound)>;
+
+/// What a variable is bound to. A `let` value is worked out on first use, as XPath processors do,
+/// so a query pays nothing for the variables a file never reaches.
+#[derive(Clone)]
+pub enum Bound {
+    Now(Seq),
+    Later(Rc<Later>),
+}
+
+pub struct Later {
+    pub value: Rc<super::parse::Expr>,
+    pub item: Option<Item>,
+    pub position: usize,
+    pub size: usize,
+    /// How many bindings were in scope where the variable was declared.
+    pub depth: usize,
+    pub done: std::cell::RefCell<Option<Seq>>,
+}
 
 pub enum Function {
     Inline(Rc<Lambda>, Env),
