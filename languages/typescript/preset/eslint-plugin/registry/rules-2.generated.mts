@@ -62,6 +62,7 @@ import { rule as ruleNoUnatomicWrites } from '../rules/transactions/no-unatomic-
 import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mts';
 import { rule as ruleNoUncheckedResponseJson } from '../rules/response-json/no-unchecked-response-json.mts';
 import { rule as ruleNoUncheckedUrlSink } from '../rules/urls/links/no-unchecked-url-sink.mts';
+import { rule as ruleNoUnclearedSharedMock } from '../test-quality/shared-mocks/no-uncleared-shared-mock.mts';
 import { rule as ruleNoUnclearedTimeout } from '../rules/lifecycles/timers/no-uncleared-timeout.mts';
 import { rule as ruleNoUnclosedFileDescriptor } from '../rules/resources/descriptors/no-unclosed-file-descriptor.mts';
 import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnstrippedRemoteText } from '../rules/terminal/no-unstrip
 import { rule as ruleNoUntrimmedRequestText } from '../rules/request-text/no-untrimmed-request-text.mts';
 import { rule as ruleNoUnusedDomEnvironment } from '../rules/test-runtime/environment/no-unused-dom-environment.mts';
 import { rule as ruleNoUnvalidatedSchemaField } from '../rules/boundaries/no-unvalidated-schema-field.mts';
-import { rule as ruleNoUnversionedOrmEntity } from '../rules/database/versions/no-unversioned-orm-entity.mts';
 
 export const partRules = {
   'no-null': ruleNoNull,
@@ -164,6 +164,7 @@ export const partRules = {
   'no-unbounded-query-array': ruleNoUnboundedQueryArray,
   'no-unchecked-response-json': ruleNoUncheckedResponseJson,
   'no-unchecked-url-sink': ruleNoUncheckedUrlSink,
+  'no-uncleared-shared-mock': ruleNoUnclearedSharedMock,
   'no-uncleared-timeout': ruleNoUnclearedTimeout,
   'no-unclosed-file-descriptor': ruleNoUnclosedFileDescriptor,
   'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-untrimmed-request-text': ruleNoUntrimmedRequestText,
   'no-unused-dom-environment': ruleNoUnusedDomEnvironment,
   'no-unvalidated-schema-field': ruleNoUnvalidatedSchemaField,
-  'no-unversioned-orm-entity': ruleNoUnversionedOrmEntity,
 };

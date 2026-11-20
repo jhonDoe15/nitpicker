@@ -1,3 +1,4 @@
+import { rule as ruleNoUnversionedOrmEntity } from '../rules/database/versions/no-unversioned-orm-entity.mts';
 import { rule as ruleNoUseAfterAwaitWhenDisposed } from '../rules/cancellation/disposal/no-use-after-await-when-disposed.mts';
 import { rule as ruleNoWaitForWithFakeTimers } from '../rules/test-runtime/assertions/no-wait-for-with-fake-timers.mts';
 import { rule as ruleNoWallClockElapsed } from '../rules/wall-clock/no-wall-clock-elapsed.mts';
@@ -47,6 +48,7 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-unversioned-orm-entity': ruleNoUnversionedOrmEntity,
   'no-use-after-await-when-disposed': ruleNoUseAfterAwaitWhenDisposed,
   'no-wait-for-with-fake-timers': ruleNoWaitForWithFakeTimers,
   'no-wall-clock-elapsed': ruleNoWallClockElapsed,

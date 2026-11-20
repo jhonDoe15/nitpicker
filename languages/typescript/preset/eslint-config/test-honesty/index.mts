@@ -19,6 +19,7 @@ type StubOptions = {
   readonly runner?: string;
   readonly setupFiles?: string[];
   readonly stubRestores?: readonly Restores[];
+  readonly mockClearingScopes?: readonly string[];
   readonly testRootsOnDisk?: string[];
   readonly assertionFunctionNames?: string[];
 };
@@ -115,6 +116,7 @@ function honestyRulesBlock(
     rules: {
       'nitpicker/no-comments': [ERROR, { suppressionsOnly: true }],
       'nitpicker/no-shared-test-state': ERROR,
+      'nitpicker/no-uncleared-shared-mock': ERROR,
       'nitpicker/no-copy-pasted-tests': [ERROR, runnerOption],
       'nitpicker/fake-timers-require-restore': ERROR,
       'nitpicker/no-real-time-random-or-network': [ERROR, runnerOption],
@@ -127,6 +129,21 @@ function honestyRulesBlock(
       ...matcherRules(runner),
     },
   };
+}
+
+function mockClearingBlocks(scopes: readonly string[]) {
+  if (scopes.length === 0) {
+    return [];
+  }
+  return [
+    {
+      files: scopes.map((scope) =>
+        scope === '.' ? `**/*.${codeExtensions}` : path.posix.join(scope, `**/*.${codeExtensions}`),
+      ),
+      plugins: { nitpicker: nitpickerRules },
+      rules: { 'nitpicker/no-uncleared-shared-mock': 'off' },
+    },
+  ];
 }
 
 function setupFileBlocks(setupFiles: string[]) {
@@ -148,6 +165,7 @@ export function testHonestyConfigFor(
     runner = 'vitest',
     setupFiles = [],
     stubRestores = [],
+    mockClearingScopes = [],
     testRootsOnDisk = layout.testRoots,
     assertionFunctionNames = [],
   }: StubOptions = {},
@@ -173,5 +191,6 @@ export function testHonestyConfigFor(
       rules: { 'nitpicker/no-uncollected-tests': [ERROR, runnerOption] },
     },
     ...setupFileBlocks(setupFiles),
+    ...mockClearingBlocks(mockClearingScopes),
   ]);
 }

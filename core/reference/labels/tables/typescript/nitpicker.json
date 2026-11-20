@@ -166,6 +166,7 @@
   "eslint/nitpicker/no-unchecked-url-sink": ["security", "react"],
   "eslint/nitpicker/no-truncating-pair-split": ["bug"],
   "eslint/nitpicker/no-unchecked-response-json": ["bug"],
+  "eslint/nitpicker/no-uncleared-shared-mock": ["tests"],
   "eslint/nitpicker/no-uncleared-timeout": ["bug", "reliability"],
   "eslint/nitpicker/no-unclosed-file-descriptor": ["reliability"],
   "eslint/nitpicker/no-uncoerced-request-input": ["bug"],
