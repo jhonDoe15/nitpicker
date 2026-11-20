@@ -34,6 +34,7 @@ import {
 import { testHonestyConfigFor as untypedTestHonestyConfigFor } from '../eslint-config/test-honesty/index.mts';
 import { setupFilesIn as untypedSetupFilesIn } from '../eslint-config/test-honesty/setup-files.mts';
 import { stubRestoresIn as untypedStubRestoresIn } from '../eslint-config/test-honesty/stub-restores.mts';
+import { mockClearingScopes as untypedMockClearingScopes } from '../eslint-config/test-honesty/mock-clearing/mock-clearing.mts';
 import { readDependencyNames as untypedReadDependencyNames } from '../eslint-config/scope-support.mts';
 import { securityFactsFor as untypedSecurityFactsFor } from '../eslint-config/policy/security-facts.mts';
 import { i18nRuleIds as untypedI18nRuleIds } from '../eslint-config/i18n/i18n-rules.mts';
@@ -143,6 +144,7 @@ export const withRunnerTestPaths: (layout: PresetLayout, projectRoot: string) =>
 export { testRunnerLintConfig } from '../eslint-config/runner/runner-lint-config.mts';
 export { domProductionConfigFor } from '../test-environment/dom-code/dom-code.mts';
 export const stubRestoresIn: (projectRoot: string) => unknown[] = untypedStubRestoresIn;
+export const mockClearingScopes: (projectRoot: string) => string[] = untypedMockClearingScopes;
 export const existingRoots: (projectRoot: string, roots: readonly string[]) => string[] =
   untypedExistingRoots;
 export const testEnvironmentsFromVariables: (variables: NodeJS.ProcessEnv) => TestEnvironments =
@@ -232,6 +234,7 @@ export function testHonestyConfigFor(
     readonly assertionFunctionNames: readonly string[];
     readonly setupFiles: readonly string[];
     readonly stubRestores: readonly unknown[];
+    readonly mockClearingScopes: readonly string[];
     readonly testRootsOnDisk: readonly string[];
   },
 ): Entry[] {

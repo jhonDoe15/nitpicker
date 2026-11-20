@@ -329,6 +329,22 @@ the spec for Mocha.
   `beforeEach`, `vi.hoisted`, `vi.mock` or `vi.doMock` are not checked: they set the same state for
   every test in the file.
   The allowed forms are `vi.stubEnv`, `vi.stubGlobal`, `vi.spyOn` and fake timers, restored as above.
+- `nitpicker/no-uncleared-shared-mock`: a mock created once for several tests (at module level, in a
+  `describe` callback, in `vi.hoisted`, or the exports of a module mocked with `vi.mock`/`jest.mock`)
+  keeps its calls from one test to the next. When a test then checks how often or in which order it
+  was called (`toHaveBeenCalledTimes`, `toHaveBeenCalledOnce`, `toHaveBeenNthCalledWith`,
+  `toHaveBeenLastCalledWith`, `not.toHaveBeenCalled` and their aliases, or `mock.calls`,
+  `mock.results`, `mock.lastCall` and `node:test`'s `mock.callCount()`), the result depends on the
+  tests that ran before it. The rule reports such a mock when two or more tests use it (an `it.each`
+  counts as two; a use in `beforeEach`/`beforeAll` or in a top-level helper counts for the tests that
+  run it). Clear it in `beforeEach` (`send.mockClear()`, `mockReset`, `mockRestore`,
+  `vi.clearAllMocks()` and the other `*AllMocks` calls, `send.mock.resetCalls()` under `node:test`),
+  give it a new `vi.fn()` in `beforeEach`, or create it inside the test. The rule is off for the
+  folders whose runner clears mocks itself: a Vitest or Jest config (or the `jest` key of
+  `package.json`) that sets `clearMocks`, `mockReset` or `restoreMocks`, a setup file the config names
+  that calls one of the `*AllMocks` functions, `react-scripts` (and CRACO or `react-app-rewired`),
+  which reset mocks by default, and a config that spreads a shared config or preset that cannot be
+  read, since that one may clear them.
 - `nitpicker/no-switched-off-tests`: no `it.todo`/`test.todo`/`describe.todo` (`vitest/no-disabled-tests`
   already reports `skip`; neither is a way to switch a test off) and no `skipIf(true)`/`runIf(false)`.
   A condition that folds to a constant counts as a literal: `skipIf(1 === 1)`, `skipIf(!false)`,
