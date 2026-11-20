@@ -29,6 +29,7 @@ const UNKNOWN = 'unknown';
 const MANIFEST = 'package.json';
 const RULE = 'nitpicker/no-uncollected-tests';
 const TEST_FILES = '**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}';
+const TEST_FILE_NAME = /\.(?:test|spec)\.(?:[cm]?[jt]s|[jt]sx)$/u;
 const SKIPPED = /(?:^|\/)(?:node_modules|dist|build|coverage)(?:\/|$)/u;
 const ROOT_CONFIGS = ['vitest', 'vite', 'jest'].flatMap((name) =>
   ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs'].map((extension) => `${name}.config.${extension}`),
@@ -248,7 +249,12 @@ export function uncollectedWorkspaceTestFindings(
     if (hasTestScript(readJson(path.join(projectRoot, directory, MANIFEST)))) {
       return [];
     }
-    const testFiles = files.filter((file) => path.matchesGlob(file, `${directory}/${TEST_FILES}`));
+    const testFiles = files.filter(
+      (file) =>
+        file.startsWith(`${directory}/`) &&
+        TEST_FILE_NAME.test(file) &&
+        path.matchesGlob(file, `${directory}/${TEST_FILES}`),
+    );
     if (testFiles.length === 0 || isCollectedByRoot(selection, directory, testFiles)) {
       return [];
     }
