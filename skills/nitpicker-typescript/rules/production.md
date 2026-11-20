@@ -92,6 +92,23 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   that rejects by itself: `once` from `node:events`, `pipeline`/`finished` from
   `node:stream/promises`, or `util.promisify` (`nitpicker/require-promise-reject`). A wait on a
   socket or network stream also gets a deadline: a timer that rejects or `AbortSignal.timeout(ms)`.
+- A `sort` comparator returns `0` for equal items and treats a missing `a` and a missing `b` differently: `a - b`,
+  `a.localeCompare(b)`, or a nulls-first/nulls-last helper, never `x < y ? 1 : -1`
+  (`nitpicker/no-inconsistent-comparator`).
+- A merge or lookup keyed by input text skips `__proto__`, `constructor` and `prototype`, or uses
+  `Object.hasOwn(table, key)`, a `Map` or an `Object.create(null)` table, never `key in table` on an object literal
+  (`nitpicker/no-prototype-key-access`).
+- `JSON.stringify` gets values it can write: convert a `bigint`, `Map`, `Set` or `RegExp` first (`String(id)`,
+  `[...map]`, `regex.source`) or pass a replacer, never the raw value as a cache key or id
+  (`nitpicker/no-lossy-json-stringify`).
+- `text.split(separator, limit)` drops everything past `limit` parts: split once at `indexOf(separator)` and `slice`
+  both sides, or take `[head, ...rest]` and `rest.join(separator)` when the last field may hold the separator
+  (`nitpicker/no-truncating-split-limit`).
+- `JSON.parse` of text read from a file, `localStorage`, a response body or a message runs inside `try { ... } catch {
+  ... }` that returns a failure result or a default, then the value is validated
+  (`nitpicker/no-unguarded-json-parse`).
+- A temp directory or record id is not made unique by the clock alone: `fs.mkdtemp(path.join(os.tmpdir(), 'prefix-'))`
+  and `crypto.randomUUID()`, or a timestamp next to a unique part (`nitpicker/no-time-only-unique-name`).
 - A function that receives an `AbortSignal` passes it on to the awaited calls that accept one (`await sleep(1000, { signal })`,
   `fetch(url, { signal })`) and an endless polling loop checks `signal.aborted` or passes the signal on
   (`nitpicker/require-abort-signal-forwarding`).
@@ -224,6 +241,48 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Secrets come from the environment or a secrets manager, never from a literal given to `password`, `token`,
   `apiKey` and the like (`nitpicker/no-hardcoded-secret`), and a log call or error message says a secret is
   set or shows a masked tail, never the value (`nitpicker/no-secret-in-log`).
+- Base64 of text goes through UTF-8 bytes (`Buffer.from(text, 'utf8').toString('base64')` or `TextEncoder` with a
+  bytes-to-base64 step), because `btoa` throws for any character above U+00FF (`nitpicker/no-btoa-on-runtime-text`).
+- A header value made from a path, route, user name, request data or JSON is encoded first (`encodeURIComponent`, base64),
+  because headers throw for characters above U+00FF (`nitpicker/no-non-latin1-header-value`).
+- Bytes that are parsed, compared or written back are decoded with `new TextDecoder('utf-8', { fatal: true })`, not with a
+  lenient decoder or a `'utf8'` read written to the same file, which turn invalid bytes into U+FFFD
+  (`nitpicker/no-lossy-utf8-decode`).
+- A limit stated in bytes is checked on bytes: `Buffer.byteLength(text, 'utf8')` or the length of the `TextEncoder` output,
+  not `text.length`, and chunks are cut from the encoded bytes (`nitpicker/no-string-length-as-byte-count`).
+- Escaping for another syntax covers the escape character too: one regex with a callback over the backslash and the quote
+  (`value.replace(/[\\"]/g, (c) => '\\' + c)`), or `JSON.stringify`, and unescaping is one pass with a callback
+  (`nitpicker/no-incomplete-escaping`).
+- Generated source code writes a value as `JSON.stringify(value)`, not between hand-written quotes
+  (`nitpicker/no-hand-quoted-generated-code`).
+- Text received from a socket or an HTTP response is passed through `util.stripVTControlCharacters` (or `strip-ansi`) before it is
+  printed to the terminal (`nitpicker/no-unstripped-remote-text`).
+- A value in a CSS selector goes through `CSS.escape` (`#${CSS.escape(id)}`, `[data-name="${CSS.escape(name)}"]`), not through
+  hand-written quote escaping (`nitpicker/no-unescaped-css-selector`).
+- A value put into a URL is encoded or set through `URL`: `encodeURIComponent(value)` in a query value or a path segment,
+  `url.searchParams.set(name, value)` on `new URL(base)` instead of appending `?name=value` to a base that may carry a query,
+  and an encoded user name and password in a connection URL (`nitpicker/no-unencoded-url-part`).
+- A dynamic `import()` of a file goes through a file URL: `await import(pathToFileURL(file).href)`, never a path from
+  `path.resolve`, `path.join` or `require.resolve`, which fails on Windows drive paths (`nitpicker/no-dynamic-import-of-path`).
+- A URL that comes from data (a stored field, a profile, a document) becomes an `href`, an `iframe` `src` or a
+  `window.open` target only through one helper that returns it for `http:` and `https:` and nothing else, with plain text
+  as the fallback (`nitpicker/no-unchecked-url-sink`).
+- File paths and host names compared across sources are compared with case folded: `path.relative(a, b) === ''`, a normalize and
+  lowercase helper on win32 and darwin, or `toLowerCase()` on both hosts, never `===` or `startsWith` on plain strings
+  (`nitpicker/no-case-sensitive-path-compare`).
+- A query or route value is used as it arrives: `URLSearchParams`, `router.query`, `req.query`, `req.params` and `ctx.query` are
+  already decoded, so `decodeURIComponent` goes only on raw text such as `location.search` (`nitpicker/no-double-decode`).
+- A path that comes from configuration or the caller is checked with `stat(p)` and `isFile()` (or read in a `try` that handles
+  `ENOENT` and `EISDIR`) before it is read, not with `existsSync`, `access` or `pathExists`, which a directory passes
+  (`nitpicker/no-directory-passing-existence-check`).
+- A `Location` header or a configured path is resolved against the request URL before it is followed or redirected to:
+  `new URL(location, requestUrl)`, `Response.redirect(new URL(path, request.url))` (`nitpicker/no-unresolved-relative-url`).
+- A redirect or callback target taken from the request is never accepted because it starts with `/`: `//host` and `/\host` are other
+  sites. Resolve it against a fixed origin and compare the origin back, allow only exact paths, or reject `//`, backslashes and
+  encoded separators (`nitpicker/no-slash-only-redirect-guard`).
+- Request headers from a caller are merged through `new Headers(init)` with `has` and `set` (or with every key lowercased), not spread
+  into an object next to `Content-Type` or `Authorization` keys, because header names ignore case and the object keys do not
+  (`nitpicker/no-case-mixed-header-merge`).
 - A glob or pattern turned into a regex or a `LIKE` pattern with `replace` calls is escaped for the target first
   (`escapeRegExp(value).replace(/\\\*/g, '.*')`), then the wildcards are restored from their escaped form
   (`nitpicker/no-unescaped-pattern-translation`).

@@ -1,3 +1,31 @@
+import { rule as ruleNoUseAfterAwaitWhenDisposed } from '../rules/cancellation/disposal/no-use-after-await-when-disposed.mts';
+import { rule as ruleNoWaitForWithFakeTimers } from '../rules/test-runtime/assertions/no-wait-for-with-fake-timers.mts';
+import { rule as ruleNoWallClockElapsed } from '../rules/wall-clock/no-wall-clock-elapsed.mts';
+import { rule as ruleNoWastedCollectionStep } from '../rules/collections/pipelines/no-wasted-collection-step.mts';
+import { rule as ruleNoWeakAssertion } from '../test-assertions/weak-assertion/no-weak-assertion.mts';
+import { rule as ruleNoWeakHash } from '../rules/security/hash/no-weak-hash.mts';
+import { rule as ruleNoWholeRowsForOneValue } from '../rules/queries/columns/no-whole-rows-for-one-value.mts';
+import { rule as rulePreserveErrorCause } from '../rules/errors/preserve-error-cause.mts';
+import { rule as rulePromiseWaitDeadline } from '../rules/promises/executors/promise-wait-deadline.mts';
+import { rule as ruleReactControlledInput } from '../rules/react/forms/react-controlled-input.mts';
+import { rule as ruleReactEffectNeedsDependencies } from '../rules/react/effects/react-effect-needs-dependencies.mts';
+import { rule as ruleReactFieldHasLabel } from '../rules/react/forms/react-field-has-label.mts';
+import { rule as ruleReactI18nextEscapeValue } from '../rules/react/i18n/react-i18next-escape-value.mts';
+import { rule as ruleReactMutationDropsFailure } from '../rules/react/mutations/react-mutation-drops-failure.mts';
+import { rule as ruleReactNoDirectDom } from '../rules/react/render/react-no-direct-dom.mts';
+import { rule as ruleReactNoEagerInitialValue } from '../rules/react/initial-values/react-no-eager-initial-value.mts';
+import { rule as ruleReactNoEffectDataFetching } from '../rules/react/react-no-effect-data-fetching.mts';
+import { rule as ruleReactNoEffectDerivedState } from '../rules/react/react-no-effect-derived-state.mts';
+import { rule as ruleReactNoEffectEventHandling } from '../rules/react/render/react-no-effect-event-handling.mts';
+import { rule as ruleReactNoHardcodedColors } from '../rules/react/theme/react-no-hardcoded-colors.mts';
+import { rule as ruleReactNoLiteralIdInListComponent } from '../rules/react/ids/react-no-literal-id-in-list-component.mts';
+import { rule as ruleReactNoRandomKey } from '../rules/react/render/react-no-random-key.mts';
+import { rule as ruleReactSingleStylingApproach } from '../rules/react/react-single-styling-approach.mjs';
+import { rule as ruleReactTestNoImplementationDetails } from '../rules/react-tests/react-test-no-implementation-details.mts';
+import { rule as ruleReleaseListenersOnClose } from '../rules/lifecycles/handles/release-listeners-on-close.mts';
+import { rule as ruleReportModuleLoadEffects } from '../rules/modules/report-module-load-effects.mts';
+import { rule as ruleRequireAbortSignalForwarding } from '../rules/cancellation/abort-signal/require-abort-signal-forwarding.mts';
+import { rule as ruleRequireAtomicUpdates } from '../rules/wrapped/require-atomic-updates.mts';
 import { rule as ruleRequireClientTimeout } from '../rules/clients/require-client-timeout.mts';
 import { rule as ruleRequireErrorListener } from '../rules/events/require-error-listener.mts';
 import { rule as ruleRequireHttpTimeout } from '../rules/security/http/require-http-timeout.mts';
@@ -19,6 +47,34 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-use-after-await-when-disposed': ruleNoUseAfterAwaitWhenDisposed,
+  'no-wait-for-with-fake-timers': ruleNoWaitForWithFakeTimers,
+  'no-wall-clock-elapsed': ruleNoWallClockElapsed,
+  'no-wasted-collection-step': ruleNoWastedCollectionStep,
+  'no-weak-assertion': ruleNoWeakAssertion,
+  'no-weak-hash': ruleNoWeakHash,
+  'no-whole-rows-for-one-value': ruleNoWholeRowsForOneValue,
+  'preserve-error-cause': rulePreserveErrorCause,
+  'promise-wait-deadline': rulePromiseWaitDeadline,
+  'react-controlled-input': ruleReactControlledInput,
+  'react-effect-needs-dependencies': ruleReactEffectNeedsDependencies,
+  'react-field-has-label': ruleReactFieldHasLabel,
+  'react-i18next-escape-value': ruleReactI18nextEscapeValue,
+  'react-mutation-drops-failure': ruleReactMutationDropsFailure,
+  'react-no-direct-dom': ruleReactNoDirectDom,
+  'react-no-eager-initial-value': ruleReactNoEagerInitialValue,
+  'react-no-effect-data-fetching': ruleReactNoEffectDataFetching,
+  'react-no-effect-derived-state': ruleReactNoEffectDerivedState,
+  'react-no-effect-event-handling': ruleReactNoEffectEventHandling,
+  'react-no-hardcoded-colors': ruleReactNoHardcodedColors,
+  'react-no-literal-id-in-list-component': ruleReactNoLiteralIdInListComponent,
+  'react-no-random-key': ruleReactNoRandomKey,
+  'react-single-styling-approach': ruleReactSingleStylingApproach,
+  'react-test-no-implementation-details': ruleReactTestNoImplementationDetails,
+  'release-listeners-on-close': ruleReleaseListenersOnClose,
+  'report-module-load-effects': ruleReportModuleLoadEffects,
+  'require-abort-signal-forwarding': ruleRequireAbortSignalForwarding,
+  'require-atomic-updates': ruleRequireAtomicUpdates,
   'require-client-timeout': ruleRequireClientTimeout,
   'require-error-listener': ruleRequireErrorListener,
   'require-http-timeout': ruleRequireHttpTimeout,

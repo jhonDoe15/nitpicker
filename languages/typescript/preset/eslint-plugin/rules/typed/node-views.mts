@@ -108,3 +108,17 @@ export function requiredLiteral(
   const [first] = init.arguments;
   return first?.type === AST_NODE_TYPES.Literal ? first.value : undefined;
 }
+
+export function plainText(node: TSESTree.Node, sourceCode: SourceCode): string {
+  return sourceCode.getText(node).replaceAll('?.', '.').replaceAll('!', '');
+}
+
+export function concatOperands(plain: TSESTree.Node): readonly TSESTree.Node[] | undefined {
+  if (plain.type === AST_NODE_TYPES.TemplateLiteral) {
+    return plain.expressions;
+  }
+  if (plain.type === AST_NODE_TYPES.BinaryExpression) {
+    return plain.operator === '+' ? [plain.left, plain.right] : [];
+  }
+  return undefined;
+}
