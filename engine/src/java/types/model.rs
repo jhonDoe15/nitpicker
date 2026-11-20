@@ -62,6 +62,24 @@ impl Type {
             _ => false,
         }
     }
+    /// The primitive a wrapper class stands for; any other type as it is.
+    pub fn unboxed_or_same(self) -> Type {
+        let primitive = match &self {
+            Type::Class(name, _) => match name.as_str() {
+                "java.lang.Integer" => "int",
+                "java.lang.Long" => "long",
+                "java.lang.Short" => "short",
+                "java.lang.Byte" => "byte",
+                "java.lang.Character" => "char",
+                "java.lang.Double" => "double",
+                "java.lang.Float" => "float",
+                "java.lang.Boolean" => "boolean",
+                _ => return self,
+            },
+            _ => return self,
+        };
+        Type::Primitive(primitive)
+    }
     pub fn boxed(self) -> Type {
         match self {
             Type::Primitive(name) => Type::class(match name {

@@ -1305,6 +1305,14 @@ impl<'a> Resolver<'a> {
         }
     }
 
+    /// The type the place of an expression asks for, when a declaration, a call, a return or a lambda gives one.
+    pub fn expected(&self, expression: Node) -> Option<Type> {
+        if self.depth.get() == 0 {
+            self.work.set(0);
+        }
+        self.target(expression, true)
+    }
+
     /// The type the context expects from an expression: a declared type, a parameter, a return type.
     /// `arguments` is off when the caller is itself needed to pick the method the argument goes to.
     fn target(&self, expression: Node, arguments: bool) -> Option<Type> {
