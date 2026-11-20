@@ -44,6 +44,9 @@ import { QUERY_FILTER_HINTS } from './hints/filters/query-filters.mts';
 import { DATALOADER_HINTS } from './hints/dataloaders/batches.mts';
 import { AIRFLOW_HINTS } from './hints/airflow/templates.mts';
 import { HTTP_VALUE_HINTS } from './hints/http/http-values.mts';
+import { VALUE_HINTS } from './hints/values/value-bugs.mts';
+import { TEXT_SPLIT_HINTS } from './hints/text/text-splits.mts';
+import { MINED_HINTS } from './hints/mined/mined-rules.mts';
 import { RESULT_HINTS } from './hints/results/results.mts';
 import { OVERRIDE_HINTS } from './hints/overrides/overrides.mts';
 import { TWIN_HINTS } from './hints/twins/twins.mts';
@@ -131,6 +134,9 @@ export const RULE_HINTS: readonly RuleHint[] = [
   ...LIFECYCLE_HINTS,
   ...FAILURE_HINTS,
   ...HTTP_VALUE_HINTS,
+  ...VALUE_HINTS,
+  ...TEXT_SPLIT_HINTS,
+  ...MINED_HINTS,
   ...AIRFLOW_HINTS,
   ...DATALOADER_HINTS,
   ...QUERY_FILTER_HINTS,

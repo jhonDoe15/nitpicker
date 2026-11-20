@@ -1,6 +1,8 @@
 import { isField, initialises } from './fields.mts';
 import { useText } from './use-text.mts';
-import { forward, frameAt, startsNewLine } from '../max-value-sums/source/source-file.mts';
+import { frameAt, startsNewLine } from '../max-value-sums/source/source-file.mts';
+import { blockBranch, statementStop } from '../value-checks/scan.mts';
+import type { Branch } from '../value-checks/scan.mts';
 import type { BareSource, SourceFile, Span } from '../max-value-sums/sum-types.mts';
 import type { Token } from '../../reuse/jvm-reuse-types.mts';
 
@@ -56,25 +58,15 @@ function nullCheck(
 }
 
 function statementEnd(source: BareSource, from: number): number {
-  const { tokens, kotlin } = source;
-  for (const { index, group } of forward(source, from)) {
-    const text = tokens[index]?.text;
-    const ends = kotlin ? index > from && startsNewLine(tokens, index) : text === ';' && !group;
-    if (ends || text === '}') {
-      return ends && !kotlin ? index + 1 : index;
-    }
-  }
-  return tokens.length;
+  const { index, ends } = statementStop(source, from);
+  return ends && !source.kotlin ? index + 1 : index;
 }
 
-type Branch = Span & { readonly next: number };
-
 function branchOf(source: BareSource, open: number): Branch {
-  const { tokens, partner } = source;
-  const start = (partner[open] ?? -1) + 1;
-  const close = partner[start] ?? -1;
-  if (tokens[start]?.text === '{' && close > start) {
-    return { from: start + 1, to: close, next: close + 1 };
+  const start = (source.partner[open] ?? -1) + 1;
+  const block = blockBranch(source, start);
+  if (block !== undefined) {
+    return block;
   }
   const end = statementEnd(source, start);
   return { from: start, to: end, next: end };

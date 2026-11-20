@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "unescaped-html-value",
+    "mention": "html.escape"
+  }
+]

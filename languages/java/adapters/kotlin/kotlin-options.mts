@@ -30,6 +30,9 @@ import {
   textOf,
 } from '../../../../shared/values/readers.mts';
 import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
+import { MINED_EXCEPTION_RULES } from '../review-rules/mined/mined-rules.mts';
+import { STRING_CALL_EXCEPTION_RULES } from '../review-rules/string-calls/string-calls.mts';
+import { VALUE_CHECK_EXCEPTION_RULES } from '../review-rules/value-checks/value-checks.mts';
 
 const canonical: (rule: string) => string = canonicalRule;
 const isKotlinFinding: (rule: string) => boolean = isKotlinFindingRule;
@@ -56,6 +59,9 @@ export const KOTLIN_EXCEPTION_RULES: string[] = [
     ROUND_TRIP_EXCEPTION_RULE,
     COPIED_CONSTANT_EXCEPTION_RULE,
     MAX_VALUE_EXCEPTION_RULE,
+    ...STRING_CALL_EXCEPTION_RULES,
+    ...VALUE_CHECK_EXCEPTION_RULES,
+    ...MINED_EXCEPTION_RULES,
     NULL_FALL_THROUGH_EXCEPTION_RULE,
     NULLABLE_RETURN_EXCEPTION_RULE,
     SELF_RECURSION_EXCEPTION_RULE,
