@@ -25,6 +25,15 @@ async function ruleSeverity(config: Linter.Config[], file: string, name = rule) 
 }
 
 describe('strict rule exceptions', () => {
+  it('leaves out a config block whose files list is empty, which ESLint rejects', () => {
+    const scoped = { files: ['src/**/*.ts'], rules: { [rule]: 'error' as const } };
+    const global = { rules: { [rule]: 'error' as const } };
+
+    const config = applyRuleExceptions([scoped, { ...scoped, files: [] }, global], []);
+
+    expect(config).toEqual([scoped, global]);
+  });
+
   it('turns the rule off only for the configured paths', async () => {
     const config = applyRuleExceptions(presetConfig, [exception]);
     await expect(ruleSeverity(config, 'src/legacy/old.ts')).resolves.toBe(0);

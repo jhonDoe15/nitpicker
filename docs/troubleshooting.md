@@ -245,7 +245,7 @@ rules and counts that were left out.
 **Fix.** The message ends with the process's own output; start there. For an out-of-memory kill, give the
 job more memory or run fewer analyzers at once with `NITPICKER_MAX_PARALLEL`. Every Node analyzer, ESLint
 included, gets a heap of three quarters of the memory less 1.5 GB for each other analyzer that can run beside
-it (never less than Node's default), so `<analyzer> ran out of memory` means that share was too small: lower
+it (never less than Node's default, and at least its own memory estimate on a large project), so `<analyzer> ran out of memory` means that share was too small: lower
 `NITPICKER_MAX_PARALLEL`, or set `NODE_OPTIONS=--max-old-space-size=<MB>`, which nitpicker then leaves as
 it is. For a custom analyzer, run
 its `command` in the checkout by hand and check that it prints only `{"findings": [...]}` and exits 0.
@@ -697,6 +697,11 @@ usable result. Typical reasons are a project config the tool rejects (a broken E
 Jest or Vitest config, or a `tsconfig.json` with an unknown option), a file the tool cannot parse,
 a test runner that crashed before it wrote its report (a setup file that throws, a worker that ran
 out of memory), or a tool version that does not match the config.
+
+A file Prettier cannot parse does not fail the formatting check: it is one descriptive
+`prettier/file-not-parsed` finding on that file, and every other file is still checked. List a file
+that is not meant to parse (several JSON documents in one `.json` file, a template) in
+`.prettierignore`.
 
 A tool that was killed by a signal reads `ESLint was killed by SIGKILL (usually the out-of-memory
 killer; ...)` instead of an exit status. Warnings the tool printed at startup (Node's `(node:NNN)

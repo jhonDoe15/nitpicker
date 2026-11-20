@@ -72,7 +72,9 @@ function analyzerEnvironment(
 ): NodeJS.ProcessEnv {
   const base = hostEnvironment(withCompileCache(environment));
   return {
-    ...(task.invocation.command === process.execPath ? withNodeHeap(base) : base),
+    ...(task.invocation.command === process.execPath
+      ? withNodeHeap(base, undefined, task.memoryMegabytes ?? 0)
+      : base),
     ...taskLimitEnvironment(task, FITTED_ANALYZER_STDOUT_BYTES),
   };
 }

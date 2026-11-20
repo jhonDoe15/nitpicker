@@ -15,6 +15,7 @@ import {
   moduleAllowanceMs,
   projectFileCount,
   scaledDeadlineMs,
+  scaledFileCount,
 } from './project-size.mts';
 
 export type TaskContext = {
@@ -61,7 +62,7 @@ function sizeAllowanceMs(
     return 0;
   }
   const modulesMs = moduleAllowanceMs(analyzer, liveProjectRoot);
-  return scaledDeadlineMs(modulesMs, scale, countFiles(liveProjectRoot, scale.extensions));
+  return scaledDeadlineMs(modulesMs, scale, scaledFileCount(scale, liveProjectRoot, countFiles));
 }
 
 function baseTimeoutMs(analyzer: Record<string, unknown>): number {
