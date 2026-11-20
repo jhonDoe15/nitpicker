@@ -1,5 +1,6 @@
 mod engine;
 mod java;
+mod typescript;
 
 use engine::Language;
 use std::path::PathBuf;
@@ -7,6 +8,10 @@ use std::time::Instant;
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(String::as_str) == Some("typescript-structure") {
+        typescript_structure(&args[1..]);
+        return;
+    }
     let mut roots = Vec::new();
     let mut only: Option<Vec<String>> = None;
     let mut out: Option<String> = None;
@@ -89,4 +94,40 @@ fn main() {
 fn fail(problem: &str) -> ! {
     eprintln!("nitpicker-engine: {problem}");
     std::process::exit(2)
+}
+
+/// `typescript-structure --files <list> [--out <file>]`: each line of the list is the path to read, a tab, the path to report.
+fn typescript_structure(args: &[String]) {
+    let mut list: Option<&String> = None;
+    let mut out: Option<&String> = None;
+    let mut index = 0;
+    while index < args.len() {
+        match args[index].as_str() {
+            "--files" => { index += 1; list = Some(&args[index]); }
+            "--out" => { index += 1; out = Some(&args[index]); }
+            other => panic!("unknown argument {other}"),
+        }
+        index += 1;
+    }
+    let started = Instant::now();
+    let files: Vec<(String, String)> = std::fs::read_to_string(list.expect("--files"))
+        .expect("list")
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(|line| match line.split_once('\t') {
+            Some((path, display)) => (path.to_string(), display.to_string()),
+            None => (line.to_string(), line.to_string()),
+        })
+        .collect();
+    let analysis = typescript::structure::analyze_files(&files);
+    let text = serde_json::to_string(&analysis).expect("json");
+    match out {
+        Some(path) => std::fs::write(path, text).expect("write"),
+        None => println!("{text}"),
+    }
+    eprintln!(
+        "{} files, {} lines, {} functions, {} classes, {} unparsed; {:.0} ms",
+        analysis.summary.files, analysis.summary.lines, analysis.summary.functions, analysis.summary.classes,
+        analysis.unparsed.len(), started.elapsed().as_secs_f64() * 1e3
+    );
 }
