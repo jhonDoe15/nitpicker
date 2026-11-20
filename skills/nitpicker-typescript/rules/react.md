@@ -10,6 +10,9 @@ exception route in the message: write that form, don't work around the rule.
 - `useState` and `useRef` take a function or a lazy fill, not a built value: `useState(() => getTimes(range, now))`,
   `useRef<Runner | null>(null)`; a router, store or `QueryClient` is created once, not in the component body
   (`nitpicker/react-no-eager-initial-value`).
+- A state update that reads its own state after an `await`, or after an earlier call of the same setter, takes an
+  updater: `setItems((current) => [...current, tag])`, not `setItems([...items, tag])`
+  (`nitpicker/react-no-stale-state-update`).
 - With react-i18next, set `interpolation: { escapeValue: false }` at init (or per call) when `t()` values are
   rendered by React; otherwise `R&D` shows as `R&amp;D` (`nitpicker/react-i18next-escape-value`).
 - A component rendered per item gets its DOM ids from `useId()` or from the item, not a literal that a label or

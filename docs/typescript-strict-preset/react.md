@@ -82,6 +82,20 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   ternary or `&&` guard, since each render builds a new one (not in an async component or a
   `*.server.*` file, where each request builds one); `react-x/no-create-ref` reports
   `createRef()` in a function component.
+- **No state update built from a stale value** (`nitpicker/react-no-stale-state-update`). A
+  `useState` setter given an array, an object or arithmetic that reads its own state
+  (`setItems([...items, tag])`, `setForm({ ...form, dirty: true })`, `setPage(page + 1)`) uses the
+  value of the render that created the function. After an `await` in the same function that value
+  can be old, so an update made while the function waited is overwritten; and a second call of the
+  same setter in the same block overwrites the first, because the state does not change until the
+  next render. Pass an updater, which receives the current value:
+  `setItems((current) => [...current, tag])`. Only an `await` that certainly ran counts: one
+  outside any `if`, ternary, `&&`, `switch`, loop, `catch`, labelled statement or optional call
+  (their conditions included), and inside a `try` only one in its first statement. A call inside a
+  `catch` or a nested function is left alone, and so is a call inside an effect whose dependency
+  array lists the state (the effect runs again when it changes). A setter given a literal, a
+  fetched value, a method call or an updater function is not
+  reported. The rule needs no type information.
 - **No double-escaped i18next values** (`nitpicker/react-i18next-escape-value`, needs
   `react-i18next` in `package.json`). A `t(...)` call (from `useTranslation()`, `i18next` or
   `i18n.t`) or a `<Trans values={{ ... }}>` that passes interpolation values and whose text React
