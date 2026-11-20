@@ -432,6 +432,23 @@ impl<'a> Resolver<'a> {
         (erased, generic, varargs)
     }
 
+    fn class_flags(&self, declaration: Node) -> u16 {
+        use super::model::flag;
+        let has = super::super::helpers::has_modifier;
+        let mut bits = 0;
+        for (word, bit) in [("final", flag::FINAL), ("public", flag::PUBLIC), ("protected", flag::PROTECTED), ("static", flag::STATIC), ("abstract", flag::ABSTRACT), ("sealed", flag::SEALED)] {
+            if has(declaration, word) {
+                bits |= bit;
+            }
+        }
+        bits | match declaration.kind() {
+            "enum_declaration" => flag::ENUM,
+            "record_declaration" => flag::RECORD | flag::FINAL,
+            "annotation_type_declaration" => flag::ANNOTATION,
+            _ => 0,
+        }
+    }
+
     /// Supertypes and type parameters; members are filled in by `members` once every source class is registered.
     pub fn class_header(&self, declaration: Node, name: String) -> ClassInfo {
         let listed = |field: &'static str| -> Vec<Type> {
@@ -502,6 +519,7 @@ impl<'a> Resolver<'a> {
             }),
             permitted: self.permitted(declaration, &own_name, &listed("permits")),
             record_components: (kind == "record_declaration").then(Vec::new),
+            flags: self.class_flags(declaration),
         }
     }
 
@@ -593,6 +611,24 @@ impl<'a> Resolver<'a> {
             is_static: false,
             is_private: false,
             varargs: false,
+            flags: super::model::flag::PUBLIC,
+        };
+        let bits = |member: Node| -> u16 {
+            use super::model::flag;
+            let mut bits = 0;
+            for (word, bit) in [("final", flag::FINAL), ("public", flag::PUBLIC), ("protected", flag::PROTECTED), ("static", flag::STATIC), ("abstract", flag::ABSTRACT)] {
+                if has(member, word) {
+                    bits |= bit;
+                }
+            }
+            let deprecated = super::super::helpers::annotation_names(self.file, member).iter().any(|name| matches!(*name, "Deprecated" | "java.lang.Deprecated"));
+            if deprecated {
+                bits |= flag::DEPRECATED;
+            }
+            if info.is_interface {
+                bits |= flag::PUBLIC;
+            }
+            bits
         };
         let mut members = children(body);
         members.extend(children(body).into_iter().filter(|child| child.kind() == "enum_body_declarations").flat_map(children));
@@ -619,6 +655,7 @@ impl<'a> Resolver<'a> {
                             strict: (matches!(&kind, Type::Primitive(_)) || kind.name() == "java.lang.String")
                                 && declarator.field("value").is_some_and(|value| value.kind() != "array_initializer"),
                             is_private: has(member, "private"),
+                            flags: bits(member) | if info.is_interface { super::model::flag::STATIC | super::model::flag::FINAL } else { 0 },
                         });
                     }
                 }
@@ -633,6 +670,7 @@ impl<'a> Resolver<'a> {
                             fixed: None,
                             strict: false,
                             is_private: false,
+                            flags: super::model::flag::PUBLIC | super::model::flag::STATIC | super::model::flag::FINAL,
                         });
                     }
                 }
@@ -668,6 +706,7 @@ impl<'a> Resolver<'a> {
                         is_abstract: member.field("body").is_none()
                             && (info.is_interface || has(member, "abstract")),
                         varargs,
+                        flags: bits(member) | if member.field("body").is_none() && info.is_interface { super::model::flag::ABSTRACT } else { 0 },
                     });
                 }
                 "constructor_declaration" => {
@@ -700,7 +739,7 @@ impl<'a> Resolver<'a> {
                 };
                 let name = self.file.text_of(name).to_string();
                 let generic = self.declared(component, None, true).unwrap_or(kind.clone());
-                info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, fixed: None, strict: false, is_private: true });
+                info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, fixed: None, strict: false, is_private: true, flags: super::model::flag::FINAL });
                 info.record_components.get_or_insert_with(Vec::new).push(generic.clone());
                 info.methods.push(Method { generic_returns: generic, ..plain(&name, Vec::new(), kind.erased()) });
             }
