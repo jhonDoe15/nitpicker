@@ -1,5 +1,8 @@
 //! Error Prone checks written for the engine: same check name, line and column as Error Prone reports.
+mod doc;
+mod docref;
 mod hierarchy;
+mod javadoc;
 mod members;
 mod operators;
 mod names;
@@ -131,6 +134,7 @@ const CHECKS: &[Check] = &[
     obsolete::jdk_obsolete,
     targets::boolean_literal,
     naming::identifier_name,
+    javadoc::javadoc,
     throws::checked_exception_not_thrown,
     names::type_parameter_naming,
     names::wildcard_import,
