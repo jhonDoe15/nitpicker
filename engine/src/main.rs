@@ -17,6 +17,14 @@ fn main() {
         typescript_lint(&args[1..]);
         return;
     }
+    if args.first().map(String::as_str) == Some("typescript-imports") {
+        typescript_imports(&args[1..]);
+        return;
+    }
+    if args.first().map(String::as_str) == Some("typescript-reuse") {
+        typescript_reuse(&args[1..]);
+        return;
+    }
     if args.first().map(String::as_str) == Some("typescript-structure") {
         typescript_structure(&args[1..]);
         return;
@@ -143,6 +151,26 @@ fn typescript_reuse(args: &[String]) {
     eprintln!("{} files; {:.0} ms", files.len(), started.elapsed().as_secs_f64() * 1e3);
 }
 
+/// `typescript-imports --files <list> [--out <file>]`: one JSON line per file with every module it names and the
+/// project file each one resolves to, if any.
+fn typescript_imports(args: &[String]) {
+    let (files, out) = listed_files(args);
+    let modules = typescript::resolve::Modules::shared();
+    let mut sink: Box<dyn std::io::Write> = match out {
+        Some(path) => Box::new(std::io::BufWriter::new(std::fs::File::create(path).expect("create"))),
+        None => Box::new(std::io::BufWriter::new(std::io::stdout().lock())),
+    };
+    for (path, display) in &files {
+        let file = std::path::Path::new(path);
+        let imports: Vec<_> = modules
+            .sources(file)
+            .iter()
+            .map(|source| serde_json::json!({ "source": source, "path": modules.followed(source, file) }))
+            .collect();
+        writeln!(sink, "{}", serde_json::json!({ "file": display, "imports": imports })).expect("write");
+    }
+}
+
 /// `typescript-structure --files <list> [--out <file>]`: function and class metrics of the listed files.
 fn typescript_structure(args: &[String]) {
     let started = Instant::now();
@@ -164,6 +192,8 @@ fn typescript_structure(args: &[String]) {
 /// the list is the path to read, the path to report and `key=value` settings for that file, tabs between them. The
 /// module suffix is `test-utils` unless given, and empty for none; `testing-library/utils-module=<suffix>` sets it for
 /// one file and `testing-library/scope=off` leaves the file to no testing-library rule.
+/// `--testing-library-scope` has the engine decide both for every file without such settings, by following the file's
+/// imports as the preset does; `--end-to-end-root <folder>` names the folder of browser tests for that decision.
 fn typescript_lint(args: &[String]) {
     let (mut list, mut out, mut only) = (None, None, None::<Vec<String>>);
     let mut index = 0;
@@ -176,6 +206,8 @@ fn typescript_lint(args: &[String]) {
                 index += 1;
                 typescript::rules::testing_library::set_utils_module(Some(args[index].clone()).filter(|module| !module.is_empty()));
             }
+            "--testing-library-scope" => typescript::rules::testing_library::set_scope_from_imports(),
+            "--end-to-end-root" => { index += 1; typescript::rules::testing_library::scope::set_end_to_end_root(args[index].clone()); }
             "--testing-library-upstream" => typescript::rules::testing_library::set_upstream_only(),
             other => panic!("unknown argument {other}"),
         }
