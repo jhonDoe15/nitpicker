@@ -424,9 +424,7 @@ impl<'t> Builder<'t, '_> {
             }
             "return_statement" | "throw_statement" => {
                 self.parts(node);
-                if node.kind() == "throw_statement" {
-                    self.step(node);
-                }
+                self.step(node);
                 self.leave(Exit::End);
                 self.dead();
             }

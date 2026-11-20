@@ -2,7 +2,6 @@
 mod hierarchy;
 mod members;
 mod nullaway;
-mod nullaway_models;
 mod operators;
 mod simple;
 

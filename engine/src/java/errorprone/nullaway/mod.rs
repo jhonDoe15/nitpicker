@@ -2,7 +2,8 @@
 //! they are dereferenced. Follows NullAway 0.14.2 (MIT licence, Copyright (c) 2017 Uber Technologies, Inc.):
 //! facts are kept per access path (a local, a field chain, a call without arguments), joined where paths meet.
 use super::Context;
-use super::nullaway_models as models;
+mod models;
+mod sites;
 use crate::engine::source::{children, named_children, parent, walk};
 use crate::java::flow::cfg::{self, Cfg, Exit, unwrap};
 use crate::java::types::expr::{Binding, Call, Receiver};
@@ -340,7 +341,11 @@ impl<'a, 't> Flow<'a, 't> {
                 value
             }
             "variable_declarator" | "resource" => {
-                let (Some(name), Some(value)) = (node.child_by_field_name("name"), node.child_by_field_name("value")) else { return NONNULL };
+                let Some(name) = node.child_by_field_name("name") else { return NONNULL };
+                let Some(value) = node.child_by_field_name("value") else {
+                    self.local(name);
+                    return NONNULL;
+                };
                 let value = self.value(value);
                 let path = self.local(name);
                 write(store, path, value);
@@ -562,15 +567,14 @@ impl<'a, 't> Flow<'a, 't> {
         let unchecked = || vec!["java.lang.RuntimeException".to_string(), "java.lang.Error".to_string()];
         let null_pointer = "java.lang.NullPointerException".to_string();
         match node.kind() {
-            "method_invocation" | "object_creation_expression" => match resolver.resolve_call(node) {
-                Some(call) => {
+            "method_invocation" | "object_creation_expression" | "explicit_constructor_invocation" => match resolver.call_formals(node) {
+                Some((call, _)) => {
                     let mut all = call.method.throws.clone();
                     all.extend(unchecked());
                     all
                 }
                 None => unchecked(),
             },
-            "explicit_constructor_invocation" => vec!["java.lang.Throwable".to_string()],
             "field_access" if !self.fixed(node, self.field(node)) => vec![null_pointer],
             "array_access" => vec![null_pointer, "java.lang.ArrayIndexOutOfBoundsException".to_string()],
             "cast_expression" => vec!["java.lang.ClassCastException".to_string()],
@@ -751,7 +755,8 @@ fn unit<'t>(node: Node<'t>) -> Option<(Node<'t>, Option<Node<'t>>)> {
         "method_declaration" | "constructor_declaration" | "compact_constructor_declaration" | "lambda_expression" => {
             Some((node.child_by_field_name("body")?, node.child_by_field_name("parameters")))
         }
-        "static_initializer" => Some((children(node).into_iter().find(|part| part.kind() == "block")?, None)),
+        "enum_constant" => Some((node.child_by_field_name("arguments")?, None)),
+                "static_initializer" => Some((children(node).into_iter().find(|part| part.kind() == "block")?, None)),
         "block" if parent(node).is_some_and(|above| above.kind() == "class_body") => Some((node, None)),
         "variable_declarator" if parent(node).is_some_and(|above| matches!(above.kind(), "field_declaration" | "constant_declaration")) => {
             Some((node.child_by_field_name("value")?, None))
@@ -807,6 +812,7 @@ pub fn null_away(context: &Context, root: Node) {
     let mut reported = std::collections::HashSet::new();
     walk(root, |node| {
         let Some((body, parameters)) = unit(node) else { return };
+        let unit_node = node;
         if unmarked(context, node) {
             return;
         }
@@ -855,6 +861,7 @@ pub fn null_away(context: &Context, root: Node) {
             flow.copy = flow.cfg.blocks[block].copy;
             for position in 0..flow.cfg.blocks[block].steps.len() {
                 let node = flow.cfg.blocks[block].steps[position];
+                flow.sites(node, unit_node, &mut reported);
                 let (object, mark) = match node.kind() {
                     "field_access" | "method_invocation" => (node.child_by_field_name("object"), "."),
                     "array_access" => (node.child_by_field_name("array"), "["),
@@ -869,6 +876,13 @@ pub fn null_away(context: &Context, root: Node) {
                 let at = sign.filter(|_| mark != "::").map_or(node.start_byte(), |sign| sign.start_byte());
                 context.report("NullAway", node, at, &format!("dereferenced expression '{}' is @Nullable", context.text(object)));
             }
+        }
+        flow.copy = 0;
+        match unit_node.kind() {
+            "variable_declarator" => flow.initialized(unit_node),
+            "lambda_expression" => flow.lambda_value(unit_node),
+            "enum_constant" => flow.sites(unit_node, unit_node, &mut reported),
+            _ => {}
         }
         inner.extend(flow.inner);
     });

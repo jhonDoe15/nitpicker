@@ -1201,7 +1201,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// The functional interface type a lambda is checked against.
-    fn lambda_target(&self, lambda: Node) -> Option<Type> {
+    pub fn lambda_target(&self, lambda: Node) -> Option<Type> {
         self.target(lambda, true)
     }
 
