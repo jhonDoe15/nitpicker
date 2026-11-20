@@ -501,6 +501,7 @@ impl<'a> Resolver<'a> {
                 body.map_or(0, |body| children(body).into_iter().filter(|member| member.kind() == "enum_constant").count() as u32)
             }),
             permitted: self.permitted(declaration, &own_name, &listed("permits")),
+            record_components: (kind == "record_declaration").then(Vec::new),
         }
     }
 
@@ -700,6 +701,7 @@ impl<'a> Resolver<'a> {
                 let name = self.file.text_of(name).to_string();
                 let generic = self.declared(component, None, true).unwrap_or(kind.clone());
                 info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, fixed: None, strict: false, is_private: true });
+                info.record_components.get_or_insert_with(Vec::new).push(generic.clone());
                 info.methods.push(Method { generic_returns: generic, ..plain(&name, Vec::new(), kind.erased()) });
             }
         }
