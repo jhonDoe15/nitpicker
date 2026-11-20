@@ -1,12 +1,11 @@
 import type TypeScript from 'typescript';
 import { isProjectSource } from '../program-rules/project-source-files.mts';
 import { cachedValue } from '../../../../../../shared/values/caching/cached-value.mts';
-import { isReference, ts } from '../typed/typescript-views.mts';
+import { descendantsOf, isReference, ts } from '../typed/typescript-views.mts';
 import { flagOf } from './flags.mts';
 import { iterationsIn, type Iteration } from './iterations.mts';
 import {
   calleeNameOf,
-  descendantsOf,
   namesOfOwners,
   receivesIncludingDeleted,
   recordCallSites,
@@ -20,8 +19,8 @@ type Entry = {
   alias: string | undefined;
   total: number;
   guarded: number;
-  readonly helpers: Map<string, number>;
 };
+type HelperCounts = Map<string, Map<string, number>>;
 export type Followed = {
   readonly name: string;
   readonly alias: string | undefined;
@@ -34,8 +33,13 @@ const MIN_SHARE = 0.8;
 const TEST_PATH =
   /(?:^|\/)(?:test|tests|__tests__|__mocks__|test-support|e2e|fixtures|__fixtures__)\/|\.(?:test|spec)\.[^/]+$/u;
 const fileIterations = new WeakMap<TypeScript.SourceFile, Iteration[]>();
-type Index = { readonly entries: Map<string, Entry>; readonly intended: WeakSet<TypeScript.Node> };
+type Index = {
+  readonly entries: Map<string, Entry>;
+  readonly intended: WeakSet<TypeScript.Node>;
+  readonly files: readonly TypeScript.SourceFile[];
+};
 const indexes = new WeakMap<TypeScript.Program, Index>();
+const helperCounts = new WeakMap<TypeScript.Program, HelperCounts>();
 
 export function iterationsOf(
   sourceFile: TypeScript.SourceFile,
@@ -61,15 +65,26 @@ function narrowedHelper(
 function recordHelpers(
   sourceFile: TypeScript.SourceFile,
   checker: TypeScript.TypeChecker,
-  entries: Map<string, Entry>,
+  { entries, counts }: { readonly entries: Map<string, Entry>; readonly counts: HelperCounts },
 ): void {
   for (const node of descendantsOf(sourceFile)) {
     const helper = ts.isCallExpression(node) ? narrowedHelper(node, checker) : undefined;
-    if (helper !== undefined) {
-      const counts = entries.get(helper.key)?.helpers;
-      counts?.set(helper.name, (counts.get(helper.name) ?? 0) + 1);
+    if (helper !== undefined && entries.has(helper.key)) {
+      const named = cachedValue(counts, helper.key, () => new Map<string, number>());
+      named.set(helper.name, (named.get(helper.name) ?? 0) + 1);
     }
   }
+}
+
+function helpersOf(program: TypeScript.Program): HelperCounts {
+  return cachedValue(helperCounts, program, () => {
+    const { entries, files } = cachedValue(indexes, program, buildIndex);
+    const counts: HelperCounts = new Map();
+    for (const file of files) {
+      recordHelpers(file, program.getTypeChecker(), { entries, counts });
+    }
+    return counts;
+  });
 }
 
 function callSitesOf(
@@ -110,7 +125,6 @@ function tally(entries: Map<string, Entry>, iteration: Iteration): void {
     alias: undefined,
     total: 0,
     guarded: 0,
-    helpers: new Map(),
   };
   entry.total += 1;
   entry.guarded += guarded ? 1 : 0;
@@ -128,10 +142,7 @@ function buildIndex(program: TypeScript.Program): Index {
       tally(entries, iteration);
     }
   }
-  for (const file of files) {
-    recordHelpers(file, checker, entries);
-  }
-  return { entries, intended };
+  return { entries, intended, files };
 }
 
 export function isIntended(program: TypeScript.Program, node: TypeScript.Node): boolean {
@@ -147,7 +158,7 @@ export function followedFlag(program: TypeScript.Program, key: string): Followed
   if (!follows) {
     return undefined;
   }
-  const best = [...entry.helpers].reduce<[string, number] | undefined>(
+  const best = [...(helpersOf(program).get(key) ?? [])].reduce<[string, number] | undefined>(
     (top, each) => (top === undefined || each[1] > top[1] ? each : top),
     undefined,
   );

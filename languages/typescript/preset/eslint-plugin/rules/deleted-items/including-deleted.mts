@@ -1,6 +1,6 @@
 import type TypeScript from 'typescript';
 import { wordsOf as untypedWordsOf } from '../../../../../../shared/naming/secret-words.mjs';
-import { parentOf, ts, withoutParentheses } from '../typed/typescript-views.mts';
+import { descendantsOf, parentOf, ts, withoutParentheses } from '../typed/typescript-views.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
 import { chainOf } from '../typed/node-views.mts';
 
@@ -177,14 +177,6 @@ function recordCall(scan: Scan, call: TypeScript.CallExpression): void {
     positions.set(position, passes);
   }
   scan.sites.set(owner, positions);
-}
-
-export function descendantsOf(file: TypeScript.SourceFile): TypeScript.Node[] {
-  const pending: TypeScript.Node[] = [file];
-  for (const node of pending) {
-    appendAll(pending, node.getChildren(file));
-  }
-  return pending;
 }
 
 export function recordCallSites(scan: Scan, file: TypeScript.SourceFile): void {
