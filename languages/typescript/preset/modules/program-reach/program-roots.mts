@@ -15,7 +15,7 @@ function directoryOf(target: string): string | undefined {
 }
 
 function pathsBaseOf(options: Readonly<Record<string, unknown>>): string | undefined {
-  const base = options['pathsBasePath'];
+  const base = options['pathsBasePath'] ?? options['baseUrl'];
   return typeof base === 'string' ? base : undefined;
 }
 
@@ -33,7 +33,7 @@ function outermost(directories: readonly string[]): string[] {
 
 function reachedDirectories(configFile: string): string[] {
   const { options, projectReferences = [] } = parsedTsconfig(configFile);
-  const base = pathsBaseOf(options) ?? options.baseUrl ?? path.dirname(configFile);
+  const base = pathsBaseOf(options) ?? path.dirname(configFile);
   const mapped = Object.values(options.paths ?? {})
     .flat()
     .map((target) => directoryOf(path.resolve(base, target)));
