@@ -110,8 +110,17 @@ tasks.register('nitpickerEffects') {
             compileFiles.findAll(inBuild).collect { "dependency ${it.absolutePath}" } +
             effectsOptions().collect { "option ${it}" })
             .collect { it + '\n' }.join('')
-        run([bin('java'), '-cp', classes.absolutePath + File.pathSeparator + classpath, 'nitpicker.effects.Effects',
-             output.absolutePath, input.absolutePath])
+        def result = project.ext.nitpickerToolHost.java(project, [
+            java     : bin('java'),
+            jvmArgs  : [],
+            classpath: [classes.absolutePath] + libraries*.absolutePath,
+            mainClass: 'nitpicker.effects.Effects',
+            args     : [output.absolutePath, input.absolutePath],
+            cwd      : projectDir.absolutePath,
+        ])
+        if (result.status != 0) {
+            throw new GradleException("The effects engine failed: ${(result.stdout + result.stderr).trim()}")
+        }
     }
 }
 tasks.named('nitpickerJava') { dependsOn 'nitpickerEffects' }

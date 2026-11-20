@@ -5,6 +5,93 @@ function toMap(name: string, index: number): string {
 
 const MAIN = 'src/main/java/demo';
 
+const DECLINED = `package demo;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
+public class LookupDeclined {
+  record Item(long id, String name, double score, Kind kind) {}
+
+  record Order(long itemId, String itemName, double score) {}
+
+  enum Kind {
+    A,
+    B
+  }
+
+  private static final List<Item> ITEMS = List.of(new Item(1, "a", 1.5, Kind.A));
+  private List<Item> mutable = new ArrayList<>();
+
+  void collections(List<Order> orders, List<Item> parameter) {
+    List<Item> local = new ArrayList<>();
+    List<Item> copy = new ArrayList<>(ITEMS);
+    for (Order order : orders) {
+      System.out.println(parameter.stream().anyMatch(item -> item.id() == order.itemId()));
+      System.out.println(local.stream().anyMatch(item -> item.id() == order.itemId()));
+      System.out.println(copy.stream().anyMatch(item -> item.id() == order.itemId()));
+      System.out.println(mutable.stream().anyMatch(item -> item.id() == order.itemId()));
+      List<Item> inLoop = List.of();
+      System.out.println(inLoop.stream().anyMatch(item -> item.id() == order.itemId()));
+    }
+  }
+
+  void predicates(List<Order> orders) {
+    for (Order order : orders) {
+      System.out.println(ITEMS.stream().anyMatch(item -> item.name().equalsIgnoreCase(order.itemName())));
+      System.out.println(ITEMS.stream().anyMatch(item -> item.name() == order.itemName()));
+      System.out.println(ITEMS.stream().anyMatch(item -> item.kind() == Kind.A));
+      System.out.println(ITEMS.stream().anyMatch(item -> item.id() == order.itemId() && item.kind() == Kind.A));
+      System.out.println(ITEMS.stream().anyMatch(item -> Objects.equals(item.name(), order.itemName())));
+      System.out.println(ITEMS.stream().anyMatch(item -> item.score() == order.score()));
+      System.out.println(ITEMS.stream().anyMatch(item -> item.id() == order.itemId() + 1));
+      System.out.println(ITEMS.stream().anyMatch(item -> item.name().equals(item.name())));
+      System.out.println(ITEMS.stream().anyMatch(item -> item.id() == ITEMS.size()));
+      System.out.println(ITEMS.stream().anyMatch(item -> item.id() == orders.get(0).itemId()));
+      System.out.println(ITEMS.stream().anyMatch(item -> item.id() == (int) order.itemId()));
+      System.out.println(ITEMS.stream().filter(item -> item.id() == order.itemId()).count());
+      System.out.println(ITEMS.stream().map(Item::id).anyMatch(id -> id == order.itemId()));
+      System.out.println(ITEMS.stream().sorted().anyMatch(item -> item.id() == order.itemId()));
+    }
+  }
+
+  void positions(List<Order> orders) {
+    orders.forEach(order -> System.out.println(ITEMS.stream().anyMatch(item -> item.id() == order.itemId())));
+    for (Order order : orders) {
+      Runnable later = () -> System.out.println(ITEMS.stream().anyMatch(item -> item.id() == order.itemId()));
+      later.run();
+    }
+    outer:
+    for (Order order : orders) {
+      System.out.println(ITEMS.stream().anyMatch(item -> item.id() == order.itemId()));
+      continue outer;
+    }
+    boolean once = ITEMS.stream().anyMatch(item -> item.id() == orders.size());
+  }
+
+  static final class Tag {
+    private final String name;
+
+    Tag(String name) {
+      this.name = name;
+    }
+
+    String getName() {
+      return name.trim();
+    }
+  }
+
+  private static final List<Tag> TAGS = List.of(new Tag("a"));
+
+  void computedKeys(List<Order> orders) {
+    for (Order order : orders) {
+      System.out.println(TAGS.stream().anyMatch(tag -> tag.getName().equals(order.itemName())));
+    }
+  }
+}
+`;
+
 export const LINEAR_LOOKUP_CASES = [
   {
     check: 'LinearLookupInLoop',
@@ -65,6 +152,25 @@ public class LookupFixed {
         System.out.println(ITEMS.stream().anyMatch(item -> item.id() == order.itemId()));
       }
       System.out.println(ITEMS.stream().anyMatch(item -> item.id() == wanted));
+    }
+  }
+  static final class Label {
+    private final String text;
+
+    Label(String text) {
+      this.text = text;
+    }
+
+    String getText() {
+      return this.text;
+    }
+  }
+
+  private static final List<Label> LABELS = List.of(new Label("a"));
+
+  void plainGetter(List<Order> orders) {
+    for (Order order : orders) {
+      System.out.println(LABELS.stream().anyMatch(label -> label.getText().equals(order.itemName())));
     }
   }
 }
@@ -137,145 +243,35 @@ public class LookupFixed {
       System.out.println(itemsIdSet.contains(wanted));
     }
   }
+  static final class Label {
+    private final String text;
+
+    Label(String text) {
+      this.text = text;
+    }
+
+    String getText() {
+      return this.text;
+    }
+  }
+
+  private static final List<Label> LABELS = List.of(new Label("a"));
+
+  void plainGetter(List<Order> orders) {
+    Set<String> labelsTextSet = LABELS.stream().map(label -> label.getText()).collect(Collectors.toSet());
+    for (Order order : orders) {
+      System.out.println(labelsTextSet.contains(order.itemName()));
+    }
+  }
 }
 `,
-    lines: [20, 27, 43, 52],
+    lines: [20, 27, 43, 53, 74],
   },
   {
     check: 'LinearLookupInLoop',
     file: `${MAIN}/LookupDeclined.java`,
-    before: `package demo;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
-public class LookupDeclined {
-  record Item(long id, String name, double score, Kind kind) {}
-
-  record Order(long itemId, String itemName, double score) {}
-
-  enum Kind {
-    A,
-    B
-  }
-
-  private static final List<Item> ITEMS = List.of(new Item(1, "a", 1.5, Kind.A));
-  private List<Item> mutable = new ArrayList<>();
-
-  void collections(List<Order> orders, List<Item> parameter) {
-    List<Item> local = new ArrayList<>();
-    List<Item> copy = new ArrayList<>(ITEMS);
-    for (Order order : orders) {
-      System.out.println(parameter.stream().anyMatch(item -> item.id() == order.itemId()));
-      System.out.println(local.stream().anyMatch(item -> item.id() == order.itemId()));
-      System.out.println(copy.stream().anyMatch(item -> item.id() == order.itemId()));
-      System.out.println(mutable.stream().anyMatch(item -> item.id() == order.itemId()));
-      List<Item> inLoop = List.of();
-      System.out.println(inLoop.stream().anyMatch(item -> item.id() == order.itemId()));
-    }
-  }
-
-  void predicates(List<Order> orders) {
-    for (Order order : orders) {
-      System.out.println(ITEMS.stream().anyMatch(item -> item.name().equalsIgnoreCase(order.itemName())));
-      System.out.println(ITEMS.stream().anyMatch(item -> item.name() == order.itemName()));
-      System.out.println(ITEMS.stream().anyMatch(item -> item.kind() == Kind.A));
-      System.out.println(ITEMS.stream().anyMatch(item -> item.id() == order.itemId() && item.kind() == Kind.A));
-      System.out.println(ITEMS.stream().anyMatch(item -> Objects.equals(item.name(), order.itemName())));
-      System.out.println(ITEMS.stream().anyMatch(item -> item.score() == order.score()));
-      System.out.println(ITEMS.stream().anyMatch(item -> item.id() == order.itemId() + 1));
-      System.out.println(ITEMS.stream().anyMatch(item -> item.name().equals(item.name())));
-      System.out.println(ITEMS.stream().anyMatch(item -> item.id() == ITEMS.size()));
-      System.out.println(ITEMS.stream().anyMatch(item -> item.id() == orders.get(0).itemId()));
-      System.out.println(ITEMS.stream().anyMatch(item -> item.id() == (int) order.itemId()));
-      System.out.println(ITEMS.stream().filter(item -> item.id() == order.itemId()).count());
-      System.out.println(ITEMS.stream().map(Item::id).anyMatch(id -> id == order.itemId()));
-      System.out.println(ITEMS.stream().sorted().anyMatch(item -> item.id() == order.itemId()));
-    }
-  }
-
-  void positions(List<Order> orders) {
-    orders.forEach(order -> System.out.println(ITEMS.stream().anyMatch(item -> item.id() == order.itemId())));
-    for (Order order : orders) {
-      Runnable later = () -> System.out.println(ITEMS.stream().anyMatch(item -> item.id() == order.itemId()));
-      later.run();
-    }
-    outer:
-    for (Order order : orders) {
-      System.out.println(ITEMS.stream().anyMatch(item -> item.id() == order.itemId()));
-      continue outer;
-    }
-    boolean once = ITEMS.stream().anyMatch(item -> item.id() == orders.size());
-  }
-}
-`,
-    after: `package demo;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
-public class LookupDeclined {
-  record Item(long id, String name, double score, Kind kind) {}
-
-  record Order(long itemId, String itemName, double score) {}
-
-  enum Kind {
-    A,
-    B
-  }
-
-  private static final List<Item> ITEMS = List.of(new Item(1, "a", 1.5, Kind.A));
-  private List<Item> mutable = new ArrayList<>();
-
-  void collections(List<Order> orders, List<Item> parameter) {
-    List<Item> local = new ArrayList<>();
-    List<Item> copy = new ArrayList<>(ITEMS);
-    for (Order order : orders) {
-      System.out.println(parameter.stream().anyMatch(item -> item.id() == order.itemId()));
-      System.out.println(local.stream().anyMatch(item -> item.id() == order.itemId()));
-      System.out.println(copy.stream().anyMatch(item -> item.id() == order.itemId()));
-      System.out.println(mutable.stream().anyMatch(item -> item.id() == order.itemId()));
-      List<Item> inLoop = List.of();
-      System.out.println(inLoop.stream().anyMatch(item -> item.id() == order.itemId()));
-    }
-  }
-
-  void predicates(List<Order> orders) {
-    for (Order order : orders) {
-      System.out.println(ITEMS.stream().anyMatch(item -> item.name().equalsIgnoreCase(order.itemName())));
-      System.out.println(ITEMS.stream().anyMatch(item -> item.name() == order.itemName()));
-      System.out.println(ITEMS.stream().anyMatch(item -> item.kind() == Kind.A));
-      System.out.println(ITEMS.stream().anyMatch(item -> item.id() == order.itemId() && item.kind() == Kind.A));
-      System.out.println(ITEMS.stream().anyMatch(item -> Objects.equals(item.name(), order.itemName())));
-      System.out.println(ITEMS.stream().anyMatch(item -> item.score() == order.score()));
-      System.out.println(ITEMS.stream().anyMatch(item -> item.id() == order.itemId() + 1));
-      System.out.println(ITEMS.stream().anyMatch(item -> item.name().equals(item.name())));
-      System.out.println(ITEMS.stream().anyMatch(item -> item.id() == ITEMS.size()));
-      System.out.println(ITEMS.stream().anyMatch(item -> item.id() == orders.get(0).itemId()));
-      System.out.println(ITEMS.stream().anyMatch(item -> item.id() == (int) order.itemId()));
-      System.out.println(ITEMS.stream().filter(item -> item.id() == order.itemId()).count());
-      System.out.println(ITEMS.stream().map(Item::id).anyMatch(id -> id == order.itemId()));
-      System.out.println(ITEMS.stream().sorted().anyMatch(item -> item.id() == order.itemId()));
-    }
-  }
-
-  void positions(List<Order> orders) {
-    orders.forEach(order -> System.out.println(ITEMS.stream().anyMatch(item -> item.id() == order.itemId())));
-    for (Order order : orders) {
-      Runnable later = () -> System.out.println(ITEMS.stream().anyMatch(item -> item.id() == order.itemId()));
-      later.run();
-    }
-    outer:
-    for (Order order : orders) {
-      System.out.println(ITEMS.stream().anyMatch(item -> item.id() == order.itemId()));
-      continue outer;
-    }
-    boolean once = ITEMS.stream().anyMatch(item -> item.id() == orders.size());
-  }
-}
-`,
+    before: DECLINED,
+    after: DECLINED,
     lines: [],
   },
 ];

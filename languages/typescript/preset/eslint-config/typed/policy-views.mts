@@ -22,6 +22,22 @@ type HeadPolicy = { readonly exceptions: readonly ExceptionRule[] };
 
 export const readLayout: () => PolicyLayout = untypedReadLayout;
 
+export function productionLayout(): {
+  readonly sourceGlobs: string[];
+  readonly entryPoints: string[];
+  readonly testIgnores: string[];
+  readonly ignores: string[];
+} {
+  const layout = readLayout();
+  const testIgnores = [...layout.sourceTestDirectoryGlobs, ...layout.testGlobs, '.stryker-tmp/**'];
+  return {
+    sourceGlobs: layout.sourceGlobs,
+    entryPoints: layout.entryPoints,
+    testIgnores,
+    ignores: [...layout.excludedGlobs, ...testIgnores],
+  };
+}
+
 export const readHeadPolicy: () => HeadPolicy = untypedReadHeadPolicy;
 
 const dialectApplied: (

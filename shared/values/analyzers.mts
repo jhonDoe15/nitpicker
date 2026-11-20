@@ -23,6 +23,7 @@ export type ProfiledAnalyzer = {
   readonly resolveConfigurationHash?: (root: string) => unknown;
   readonly createInvocation: (context: unknown) => Invocation;
   readonly dependencies?: readonly string[];
+  readonly carriedBy?: string | undefined;
   readonly quick?: true;
 };
 

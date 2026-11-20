@@ -95,6 +95,8 @@ function createEslintCheckAnalyzer(check: QualityChecks['eslintChecks'][number])
       policyFiles: check.policyFiles,
       shardWeight: check.shardWeight,
       colocatedWith: check.colocatedWith,
+      carriedBy: check.carriedBy,
+      carries: check.carries,
       policyFromPackage: true,
     }),
   );

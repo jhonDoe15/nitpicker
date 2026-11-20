@@ -11,14 +11,14 @@ import type {
 } from './verify-types.mts';
 import { appendAll } from '../../../shared/lists/lists.mts';
 
-function keyOf({ tool, rule, path }: FindingKey) {
+export function findingKeyOf({ tool, rule, path }: FindingKey): string {
   return `${tool}\0${rule}\0${path}`;
 }
 
 export function countFindings(findings: readonly AnalyzedFinding[]): Counts {
   const counts = new Map<string, CountedFinding>();
   for (const finding of findings.filter(({ classification }) => classification === 'enforceable')) {
-    const key = keyOf(finding);
+    const key = findingKeyOf(finding);
     const entry = counts.get(key) ?? { ...finding, count: 0 };
     counts.set(key, { ...entry, count: entry.count + 1 });
   }
@@ -49,15 +49,20 @@ export function recipeRuns(events: readonly RunEvent[]): RecipeRun[] {
   return [...runs.values()];
 }
 
-function stillThere(run: RecipeRun, { before, after }: Comparison) {
-  const fixed = Map.groupBy(run.findings, keyOf);
+export function unfixedFindings(run: RecipeRun, { before, after }: Comparison): FindingKey[] {
+  const fixed = Map.groupBy(run.findings, findingKeyOf);
   return [...fixed]
     .filter(([key, entries]) => {
       const was = before.get(key)?.count ?? 0;
       return was > 0 && (after.get(key)?.count ?? 0) > was - entries.length;
     })
-    .flatMap(([, [first]]) => (first === undefined ? [] : [first]))
-    .map(({ tool, rule, path }) => `${tool}/${rule} is still reported in ${path}`);
+    .flatMap(([, [first]]) => (first === undefined ? [] : [first]));
+}
+
+function stillThere(run: RecipeRun, comparison: Comparison) {
+  return unfixedFindings(run, comparison).map(
+    ({ tool, rule, path }) => `${tool}/${rule} is still reported in ${path}`,
+  );
 }
 
 function introduced({ tool, rule, path }: FindingKey) {
@@ -66,26 +71,40 @@ function introduced({ tool, rule, path }: FindingKey) {
     : `adds ${tool}/${rule} in ${path}`;
 }
 
-export function judgeFindings({
-  runs,
+export function addedFindings({
   before,
   after,
   breaking,
   surfaced = () => false,
-}: Judgement): Map<string, string[]> {
+}: Omit<Judgement, 'runs'>): CountedFinding[] {
+  return [...after]
+    .filter(
+      ([key, finding]) =>
+        finding.count > (before.get(key)?.count ?? 0) &&
+        (breaking(finding.tool) || !surfaced(finding)),
+    )
+    .map(([key, finding]) => ({
+      ...finding,
+      count: finding.count - (before.get(key)?.count ?? 0),
+    }));
+}
+
+export function ownersOf(
+  runs: readonly RecipeRun[],
+  finding: FindingKey,
+  breaking: (tool: string) => boolean,
+): readonly RecipeRun[] {
+  const owners = runs.filter((run) => run.files.has(finding.path));
+  return owners.length > 0 || !breaking(finding.tool) ? owners : runs;
+}
+
+export function judgeFindings(judgement: Judgement): Map<string, string[]> {
+  const { runs, before, after, breaking } = judgement;
   const reasons = new Map<string, Set<string>>(
     runs.map((run) => [run.key, new Set(stillThere(run, { before, after }))]),
   );
-  for (const [key, finding] of after) {
-    if (
-      finding.count <= (before.get(key)?.count ?? 0) ||
-      (!breaking(finding.tool) && surfaced(finding))
-    ) {
-      continue;
-    }
-    const owners = runs.filter((run) => run.files.has(finding.path));
-    const blamed = owners.length > 0 || !breaking(finding.tool) ? owners : runs;
-    for (const { key: owner } of blamed) {
+  for (const finding of addedFindings(judgement)) {
+    for (const { key: owner } of ownersOf(runs, finding, breaking)) {
       reasons.get(owner)?.add(introduced(finding));
     }
   }

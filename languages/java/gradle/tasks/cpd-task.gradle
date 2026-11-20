@@ -31,13 +31,10 @@ tasks.register('nitpickerCpd') {
             report     : report.get().asFile.absolutePath,
             directories: directories*.absolutePath,
         ], temporaryDir)
-        def launch = [java, '-cp', configurations.nitpickerPmd.asPath, command.launcher.absolutePath]
-        def process = new ProcessBuilder(launch + command.args)
-            .directory(projectDir).redirectOutput(ProcessBuilder.Redirect.DISCARD).start()
-        def errors = process.errorStream.getText('UTF-8')
-        def code = process.waitFor()
-        if (!command.accepts(code)) {
-            failure.get().asFile.text = "${code}\n${errors}"
+        def result = project.ext.nitpickerRunHelper('cpd-report', command.launcher, java,
+            command.args.collect { it.toString() }, configurations.nitpickerPmd.files.toList())
+        if (!command.accepts(result.status)) {
+            failure.get().asFile.text = "${result.status}\n${result.stderr}"
             report.get().asFile.delete()
         }
     }

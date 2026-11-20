@@ -48,7 +48,7 @@ public final class SpringComposedMapping extends BugChecker implements MethodTre
       TreePath path = new TreePath(new TreePath(state.getPath(), tree.getModifiers()), annotation);
       Plan plan = plan(path, state);
       if (plan != null) {
-        return describeMatch(annotation, fix(annotation, plan, state));
+        return Support.describe(this, annotation, fix(annotation, plan, state), state);
       }
     }
     return Description.NO_MATCH;

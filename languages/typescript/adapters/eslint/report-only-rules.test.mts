@@ -28,12 +28,12 @@ function classificationOf(ruleId: string): string | undefined {
 }
 
 describe('report-only ESLint rules', () => {
-  it('classifies the presence truthiness rule as descriptive', () => {
-    expect(classificationOf('nitpicker/no-presence-truthiness')).toBe('descriptive');
-  });
-
-  it('keeps other rules enforceable', () => {
-    expect(classificationOf('nitpicker/no-decided-condition')).toBe('enforceable');
+  it.each([
+    ['nitpicker/no-presence-truthiness', 'descriptive'],
+    ['nitpicker/no-empty-every-signal', 'descriptive'],
+    ['nitpicker/no-decided-condition', 'enforceable'],
+  ])('classifies %s as %s', (ruleId, expected) => {
+    expect(classificationOf(ruleId)).toBe(expected);
   });
 });
 

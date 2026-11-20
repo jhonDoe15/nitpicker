@@ -10,9 +10,12 @@ function hostSources(): string[] {
   return programSources(HOST_DIRECTORY, { recursive: true });
 }
 
+export const HOST_PROGRAM: HostRequest['program'] = {
+  compile: compiledProgram,
+  root: HOST_DIRECTORY,
+  sources: hostSources,
+};
+
 export function startJavaToolHosts(request: Omit<HostRequest, 'program'>): ToolHosts | undefined {
-  return startToolHosts({
-    ...request,
-    program: { compile: compiledProgram, root: HOST_DIRECTORY, sources: hostSources },
-  });
+  return startToolHosts({ ...request, program: HOST_PROGRAM });
 }

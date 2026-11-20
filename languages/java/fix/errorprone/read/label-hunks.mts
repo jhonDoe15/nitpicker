@@ -2,11 +2,13 @@ import { changedLines } from '../patch/hunk-edits.mts';
 import type { LabeledHunk } from '../patch/select-hunks.mts';
 import type { Hunk } from '../patch/unified-diff.mts';
 import { largest, smallest } from '../../../../../shared/lists/lists.mts';
+import type { LineSpan } from '../../../../../core/fix/lines/line-map.mts';
 
 export type Diagnostic = {
   readonly check: string;
   readonly line: number;
   readonly endLine?: number;
+  readonly edits?: readonly LineSpan[];
 };
 type Placed = Diagnostic & { readonly gap: number };
 type Scope = {
@@ -34,13 +36,42 @@ function narrower(best: Diagnostic | undefined, next: Diagnostic, anchor: number
   return width(next) === width(best) && next.line === anchor ? next : best;
 }
 
+function slackOf(hunk: Hunk): number {
+  return hunk.lines.some(({ kind }) => kind === '-') ? 0 : 1;
+}
+
+function edited(edits: readonly LineSpan[], line: number, slack: number): boolean {
+  return edits.some(([from, to]) => line >= from - slack && line <= to + slack);
+}
+
+function editSize(edits: readonly LineSpan[]): number {
+  return edits.reduce((sum, [from, to]) => sum + to - from + 1, 0);
+}
+
+function editing(
+  hunk: Hunk,
+  diagnostics: readonly Diagnostic[],
+  wanted: ReadonlySet<string>,
+): Diagnostic | undefined {
+  const lines = changedLines(hunk);
+  const slack = slackOf(hunk);
+  return diagnostics
+    .filter(({ check, edits }) => wanted.has(check) && edits !== undefined)
+    .filter(({ edits = [] }) => lines.every((changed) => edited(edits, changed, slack)))
+    .reduce<Diagnostic | undefined>(
+      (best, next) =>
+        best === undefined || editSize(next.edits ?? []) < editSize(best.edits ?? []) ? next : best,
+      undefined,
+    );
+}
+
 function spanning(
   hunk: Hunk,
   diagnostics: readonly Diagnostic[],
   wanted: ReadonlySet<string>,
 ): Diagnostic | undefined {
   const lines = changedLines(hunk);
-  const slack = hunk.lines.some(({ kind }) => kind === '-') ? 0 : 1;
+  const slack = slackOf(hunk);
   const anchor = largest(lines);
   return diagnostics
     .filter((diagnostic) => wanted.has(diagnostic.check) && isSpan(diagnostic))
@@ -59,7 +90,7 @@ function ownLine(
   if (!hunk.lines.some(({ kind }) => kind === '-')) {
     return undefined;
   }
-  const asked = diagnostics.filter(({ check }) => wanted.has(check));
+  const asked = diagnostics.filter(({ check, edits }) => wanted.has(check) && edits === undefined);
   const single = asked.filter(
     (diagnostic) => !isSpan(diagnostic) && lines.every((changed) => changed === diagnostic.line),
   );
@@ -94,39 +125,66 @@ export function labelOf(
 }
 
 function spanFor(hunk: Hunk, scope: Scope, nearest: Placed | undefined): Diagnostic | undefined {
-  const span = spanning(hunk, scope.diagnostics, scope.spanChecks);
+  const span = spanning(
+    hunk,
+    scope.diagnostics.filter(({ edits }) => edits === undefined),
+    scope.spanChecks,
+  );
   const onLine = nearest !== undefined && nearest.gap === 0 && !scope.spanChecks.has(nearest.check);
   return onLine ? undefined : span;
 }
 
-function labeled(hunk: Hunk, scope: Scope): LabeledHunk[] {
-  const { diagnostics, checks } = scope;
-  const own = ownLine(hunk, diagnostics, new Set(checks));
-  if (own !== undefined) {
-    return [{ label: own.check, hunk, line: own.line }];
+function editedBy(hunk: Hunk, scope: Scope, nearest: Placed | undefined): LabeledHunk | undefined {
+  const exact = editing(hunk, scope.diagnostics, scope.spanChecks);
+  if (exact === undefined) {
+    return undefined;
   }
-  const nearest = nearestDiagnostic(hunk, diagnostics, checks);
+  const rival =
+    nearest !== undefined && nearest.gap === 0 && !scope.spanChecks.has(nearest.check)
+      ? nearest
+      : exact;
+  return { label: rival.check, hunk, line: rival.line, group: groupOf(exact) };
+}
+
+function nearestLabel(hunk: Hunk, scope: Scope, nearest: Placed | undefined): LabeledHunk[] {
   const span = spanFor(hunk, scope, nearest);
   if (span !== undefined) {
     return [{ label: span.check, hunk, line: span.line, group: groupOf(span) }];
   }
-  const label = nearest?.check ?? (checks.length === 1 ? checks[0] : undefined);
+  const label = nearest?.check ?? (scope.checks.length === 1 ? scope.checks[0] : undefined);
   if (label === undefined) {
     return [];
   }
   return [nearest === undefined ? { label, hunk } : { label, hunk, line: nearest.line }];
 }
 
+function labeled(hunk: Hunk, scope: Scope): LabeledHunk[] {
+  const { diagnostics, checks } = scope;
+  const nearest = nearestDiagnostic(hunk, diagnostics, checks);
+  const exact = editedBy(hunk, scope, nearest);
+  if (exact !== undefined) {
+    return [exact];
+  }
+  const own = ownLine(hunk, diagnostics, new Set(checks));
+  return own === undefined
+    ? nearestLabel(hunk, scope, nearest)
+    : [{ label: own.check, hunk, line: own.line }];
+}
+
 function groupOf({ check, line }: Diagnostic): string {
   return `${check}:${String(line)}`;
 }
 
-function straddled(hunk: Hunk, spans: readonly Diagnostic[]): string[] {
+function straddled(hunk: Hunk, spans: readonly Diagnostic[], grouped: boolean): string[] {
   const lines = changedLines(hunk);
+  const slack = slackOf(hunk);
   return spans
-    .filter(({ line, endLine = line }) => {
+    .filter(({ line, endLine = line, edits }) => {
+      if (edits !== undefined) {
+        return lines.some((changed) => edited(edits, changed, slack));
+      }
       const inside = lines.filter((changed) => changed >= line && changed <= endLine);
-      return inside.length > 0 && inside.length < lines.length;
+      return !grouped && inside.length > 0 && inside.length < lines.length;
     })
     .map(groupOf);
 }
@@ -158,11 +216,14 @@ function joinedGroups(straddles: readonly (readonly string[])[]): Map<string, st
 
 function joinStraddling(entries: readonly LabeledHunk[], scope: Scope): LabeledHunk[] {
   const spans = scope.diagnostics.filter(
-    (diagnostic) => scope.spanChecks.has(diagnostic.check) && isSpan(diagnostic),
+    (diagnostic) =>
+      scope.spanChecks.has(diagnostic.check) &&
+      (isSpan(diagnostic) || diagnostic.edits !== undefined),
   );
-  const straddles = entries.map((entry) =>
-    entry.group === undefined ? straddled(entry.hunk, spans) : [],
-  );
+  const straddles = entries.map((entry) => [
+    ...(entry.group === undefined ? [] : [entry.group]),
+    ...straddled(entry.hunk, spans, entry.group !== undefined),
+  ]);
   const root = joinedGroups(straddles);
   return entries.map((entry, index) => {
     const first = entry.group ?? straddles[index]?.[0];

@@ -60,6 +60,8 @@ export type EslintSettings = {
   readonly policyFiles: readonly string[];
   readonly shardWeight: number;
   readonly colocatedWith: readonly string[] | undefined;
+  readonly carriedBy: string | undefined;
+  readonly carries: boolean | undefined;
   readonly policyFromPackage: true;
 };
 

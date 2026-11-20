@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { applyRecipe, plannedLines } from '../../../test-support/apply-recipe.mts';
+import { afterAll, describe, expect, it } from 'vitest';
+import { plannedLines } from '../../../test-support/apply-recipe.mts';
+import { ORDER_REPOSITORY, fixerIn } from '../../../test-support/kotlin-project.mts';
 import { entityExistsRecipe } from './entity-exists.mts';
 
 const IMPORT = 'import org.springframework.data.repository.findByIdOrNull\n';
@@ -17,7 +18,10 @@ function inClass(
   return `package demo\n\n${imports}\nclass Checker(private val ${parameter}) {\n    fun check(id: Long): Boolean {\n${lines}\n    }\n}\n`;
 }
 
-const fix = (text: string): string => applyRecipe(entityExistsRecipe, text);
+const project = fixerIn(entityExistsRecipe, ORDER_REPOSITORY);
+const { fix } = project;
+
+afterAll(project.remove);
 
 describe('entityExistsRecipe fixes', () => {
   it.each([
@@ -74,7 +78,7 @@ describe('entityExistsRecipe fixes', () => {
 
   it('reports the line of the finder call', () => {
     const before = inClass('val a = 1\nreturn orderRepository\n    .findById(id)\n    .isPresent');
-    expect(plannedLines(entityExistsRecipe, before)).toEqual([8]);
+    expect(plannedLines(entityExistsRecipe, before, undefined, project.root)).toEqual([8]);
   });
 
   it('rewrites a field, a lateinit property and a parameter repository', () => {
@@ -100,6 +104,7 @@ describe('entityExistsRecipe fixes', () => {
     );
     const fixes = entityExistsRecipe.plan({
       files: [{ path: 'src/main/kotlin/demo/A.kt', text: before }],
+      projectRoot: project.root,
     }).fixes;
     expect(fixes).toHaveLength(1);
     expect(fixes[0]?.alsoFixes).toHaveLength(1);

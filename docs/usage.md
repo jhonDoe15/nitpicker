@@ -1198,9 +1198,9 @@ A full run always runs its head.
   Optional `NITPICKER_CACHE_AUTH_HEADER` and `NITPICKER_CACHE_TIMEOUT_MS`. Comparison runs only
   read the remote; give write credentials only to the job that runs `cache publish` on `main`.
 - `NITPICKER_NO_TOOL_HOSTS`: any value turns off the shared tool JVMs a Maven run with two or more
-  modules uses (see [tool hosting](troubleshooting.md#tool-hosting-misbehaves)). Each tool then starts
+  modules, or a Gradle run with three or more projects, uses (see [tool hosting](troubleshooting.md#tool-hosting-misbehaves)). Each tool then starts
   its own JVM per module, as before. Results are identical; only the time differs.
-- `NITPICKER_TOOL_HOSTS`: set by a Maven run for the tool processes it starts, to the directory of its
+- `NITPICKER_TOOL_HOSTS`: set by a Maven or Gradle run for the tool processes it starts, to the directory of its
   tool JVMs. Do not set it yourself.
 - `NITPICKER_TOOL_HOSTS_TRACE`: a file the run appends one line to for each tool job
   (`hosted <tool>`, `fallback <tool>`, `relative <tool>`, or `off <reason>`), for finding out which
@@ -1545,6 +1545,14 @@ The built-in set: `eslint-lint`, `eslint-errors`, `eslint-logging`, `eslint-modu
 `coding-standards`, `coupling`, `test-runtime`, `structure`, `duplicates`, `dead-code`, `coverage`,
 `test-console`, `crap` and `mutation`. The Java and Kotlin presets have one analyzer each (`java`, `kotlin`), which `disable` also lets you run without PIT through the name `mutation`; the Python preset has
 two, `python` and `mutation`, and the Go preset two, `go` and `mutation`. Every preset also runs `repository-hygiene`, and `change-history` once `history.coChange` is on.
+
+`eslint-errors`, `eslint-logging` and `eslint-module-effects` are small rule sets for production
+source. When `eslint-lint` is part of the same run it carries their rules in its own lint pass, so a
+project starts one lint pass instead of four; their findings keep their analyzer name, rule ids and
+labels, `disable` and `--analyzer` work as before, and each still runs by itself when `eslint-lint`
+is not in the run (`--analyzer eslint-errors`, `"disable": ["eslint-lint"]`, a quick run). If the
+`eslint-lint` pass fails, the analyzers it carried fail with it. Inline `eslint-disable` comments
+have no effect on their rules either way; use `exceptions`.
 
 ### Editor support
 
@@ -2753,7 +2761,7 @@ runs only when `--fix --rule` names one of its rules.
 | java, kotlin | `pmd/<Rule>` for the rules in [Fix-only Error Prone checks](#fix-only-error-prone-checks) | `java-source-safe`, `java-source-review` | applies the rewrite of a check nitpicker ships, to the changed lines of `.java` files |
 | kotlin | detekt `UseRequire`, `UseCheckOrError`, `UseRequireNotNull`, `UseCheckNotNull`, `MayBeConst` (private properties; the others are `review`), `ModifierOrder`, `OptionalAbstractKeyword`, `ExplicitItLambdaParameter`, `UnnecessaryLet`, `VarCouldBeVal` and the empty class, finally, init and default constructor rules | `kotlin-use-require`, `kotlin-may-be-const` and the other `kotlin-*` recipes in `skills/nitpicker-kotlin/SOURCES.md` | rewrites the Kotlin text the rule flags |
 | kotlin | `catch-log-without-exception`, `CommentedOutCode`, `GeneratedOnHandWrittenCode`, `FocusedTest`, `ValidationAnnotationTarget` | `kotlin-catch-log-without-exception` and its siblings | passes the exception to the logger, deletes commented-out code, drops the marker or focus, writes `@field:` |
-| kotlin | `LogStringConcatenation`, `MayBeConst` on non-private properties, `UseIsNullOrEmpty`, `UseOrEmpty`, `UnusedPrivateProperty`, `UnusedPrivateMember`, `ExplicitGarbageCollectionCall`, `JvmSyntheticOnHandWrittenCode`, `MutationIgnoreMarker`, `SortForExtreme` (needs Kotlin 1.7 or later), `PlainTextRegex`, `SpringDataNoSaveInLoop`, `SleepInsteadOfDelay`, `EntityLoadedForExistence` (`findById` forms) | `kotlin-use-is-null-or-empty` and its siblings | `review`, `SortForExtreme`, `PlainTextRegex`, `SpringDataNoSaveInLoop` recipes: they run only when their rule is selected, because the text does not prove them |
+| kotlin | `LogStringConcatenation`, `MayBeConst` on non-private properties, `UseIsNullOrEmpty`, `UseOrEmpty`, `UnusedPrivateProperty`, `UnusedPrivateMember`, `ExplicitGarbageCollectionCall`, `JvmSyntheticOnHandWrittenCode`, `MutationIgnoreMarker`, `SortForExtreme` (the `first()` forms only when the build files declare Kotlin 1.7 or later), `PlainTextRegex`, `SpringDataNoSaveInLoop`, `SleepInsteadOfDelay`, `EntityLoadedForExistence` (`findById` forms) | `kotlin-use-is-null-or-empty` and its siblings | `review`, `SortForExtreme`, `PlainTextRegex`, `SpringDataNoSaveInLoop` recipes: they run only when their rule is selected, because the text does not prove them |
 | kotlin | `test-runtime/test-not-run` | `kotlin-unrun-test-rename` | `review` recipe: renames a Kotlin `IT` test class and its file to `Test` in a Maven build that configures neither Failsafe nor Surefire, so Surefire collects it; Gradle builds, taken names and referenced classes stay |
 | kotlin | `kotlin-source/HttpWithoutTimeout` | `kotlin-http-timeout` | `review` recipe: adds a ten-second timeout to a java.net.http request, a JAX-RS client builder or an HttpURLConnection; other clients stay |
 | kotlin | `pmd/StaticForwardingWrapper` | `kotlin-forwarding-wrapper` | `review` recipe: points the callers of a top-level function that only passes its parameters to a same-signature function at the target and deletes the wrapper; stays when Java code calls it, a caller names arguments, or the wrapper has an annotation or another overload |
@@ -2997,6 +3005,16 @@ checks every recipe that applied a fix:
    broke are rolled back. The other recipes stay applied, and the comparison runs on the tree that
    is left. The files of a rolled back recipe are not
    formatted either, and they are not listed under "Fixed files:" or "Fixed findings:".
+4. When nitpicker can tell which fixes of a rolled back file are to blame, it runs the fixers once
+   more without them and verifies again, so one bad fix does not undo the other fixes of the file.
+   The fixes to blame are the ones of a rule that is still reported, and the ones that edited the
+   lines a new finding is reported on (layout changes of a formatter are ignored for this). A
+   "Fix notes:" line names each fix that was left out:
+   `--fix left out the fix of <file>:<line> <tool>/<rule>: <reason>`.
+   The file is rolled back whole, as in step 3, when a new finding sits on a line no fix edited,
+   when every fix of the file is to blame, when a recipe that edits several files touched it, or
+   when the second verification fails too. The second run happens at most once and only after a
+   rollback, and it costs one more fixer run and one more verification.
 
 When no recipe fixed anything, nothing is verified. When the analyzers fail, or none reports the
 fixed rules, every fix stays and a "Fix notes:" line says that the fixes were not verified.
@@ -3150,9 +3168,10 @@ compile, and they never run in the gate. Each check edits one file, so none rena
 `pmd/RetryInTest`, `pmd/MutationIgnoreMarker`, `pmd/GeneratedOnHandWrittenCode`, `pmd/SpringDataNoSaveInLoop`, `pmd/SpringDataBatchOfOne`, `effects/EntityLoadedForExistence`, `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop`, `pmd/ReusableObjectPerCall`, `spotbugs/IIL_PREPARE_STATEMENT_IN_LOOP`, `pmd/UseEnumCollections`, `pmd/SortForExtreme`, `pmd/PlainTextRegex`, `pmd/DoNotCallGarbageCollectionExplicitly`) change what the
 code does or what the tests measure, so they run only when a run selects their rule. When two
 fixes sit within a few lines of each other, Error Prone writes one hunk and nitpicker reports it
-under the nearest rule. A fix that rewrites a whole statement, such as a loop whose saves are
-collected into one `saveAll`, is applied whole or not at all, also when only one of its lines
-changed. Which rules have a check, and why the others do not, is in
+under the nearest rule. Each fix reports the lines it edits, so a fix that edits several places,
+such as a loop whose saves are collected into one `saveAll` or a field added far from the call that
+uses it, is applied whole or not at all, also when only one of its lines changed. A fix nested in
+the statement of another fix stays a fix of its own. Which rules have a check, and why the others do not, is in
 `skills/nitpicker-java/SOURCES.md`.
 
 ## Java preset
@@ -4067,8 +4086,9 @@ Only these parts of each entry of the project's config apply:
 
 An `eslint-disable` comment that suppresses nothing is reported once as `eslint/unused-disable-directive`,
 not once per ESLint analyzer: a directive counts as unused only when every ESLint analyzer that lints its
-file found nothing for it to suppress, so a directive that `eslint-errors` or `eslint-logging` needs is
-not reported by `eslint-lint`. This holds for the `oxlint` and `eslint` engines and in the JavaScript
+file found nothing for it to suppress, so a directive that `coding-standards` needs is
+not reported by `eslint-lint`. A directive in a file with locked inline configuration is reported
+once as `eslint/inline-config-disabled`, by `eslint-lint` when it ran. This holds for the `oxlint` and `eslint` engines and in the JavaScript
 preset.
 An `eslint-enable` comment with no `eslint-disable` before it is reported once the same way, as
 `eslint/unused-enable-directive`. Any other ESLint message that names no rule is kept as

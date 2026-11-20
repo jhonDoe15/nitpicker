@@ -2,7 +2,6 @@ import { EXCLUDED_PATH_PATTERN, prettierPatterns, resolveLayout } from './layout
 import { testExecutionChecksFor } from './checks/test-execution.mts';
 import type {
   CheckExclusions,
-  EslintCheckOptions,
   EntryPointsCheck,
   EslintCheck,
   QualityCheck,
@@ -24,6 +23,7 @@ import { PROJECT_TOOL_FILES } from './project-tools/project-config-files.mts';
 const LAYOUT_FILE = 'languages/typescript/preset/layout.mjs';
 const HEAD_POLICY_FILE = 'languages/typescript/preset/head-policy.mjs';
 const TSCONFIG_QUALITY_FILE = 'languages/typescript/preset/defaults/tsconfig.quality.json';
+const ESLINT_LINT = 'eslint-lint';
 
 const dependencyCruiserVersion = 'unresolved';
 const prettierVersion = 'unresolved';
@@ -62,43 +62,46 @@ function checkExclusions(layout: ResolvedLayout): CheckExclusions {
 function eslintChecksFor(layout: ResolvedLayout, exclusions: CheckExclusions): EslintCheck[] {
   return [
     {
-      name: 'eslint-lint',
+      name: ESLINT_LINT,
       configRelativePath: 'languages/typescript/preset/defaults/eslint.config.mjs',
       patterns: [...layout.sourceGlobs, ...layout.testGlobs],
       exclusions: exclusions.general,
       policyFiles: [TSCONFIG_QUALITY_FILE],
       shardWeight: 25,
+      carries: true,
       configurationFiles: [
         'languages/typescript/preset/defaults/eslint.config.mjs',
+        'languages/typescript/preset/eslint-config/policies/base.mjs',
+        'languages/typescript/preset/eslint-config/production/carried-policies.mjs',
+        'languages/typescript/preset/eslint-config/production/carried-variable.mjs',
+        'languages/typescript/adapters/eslint/carried/carried-reports.mjs',
         TSCONFIG_QUALITY_FILE,
         ...POLICY_FILES,
       ],
     },
-    productionEslintCheck(layout, exclusions, {
-      name: 'errors',
-      shardWeight: 9,
-      colocatedWith: ['eslint-lint'],
-    }),
-    productionEslintCheck(layout, exclusions, { name: 'logging', shardWeight: 9 }),
-    productionEslintCheck(layout, exclusions, { name: 'module-effects', shardWeight: 11 }),
+    ...['errors', 'logging', 'module-effects'].map((name) =>
+      productionEslintCheck(layout, exclusions, name),
+    ),
   ];
 }
 
 function productionEslintCheck(
   layout: ResolvedLayout,
   exclusions: CheckExclusions,
-  { name, shardWeight, colocatedWith }: EslintCheckOptions,
+  name: string,
 ): EslintCheck {
   return {
-    ...(colocatedWith === undefined ? {} : { colocatedWith }),
+    colocatedWith: [ESLINT_LINT],
+    carriedBy: ESLINT_LINT,
     name: `eslint-${name}`,
     configRelativePath: `languages/typescript/preset/eslint-config/policies/${name}.config.mjs`,
     patterns: layout.sourceGlobs,
     exclusions: exclusions.production,
     policyFiles: [],
-    shardWeight,
+    shardWeight: 1,
     configurationFiles: [
       'languages/typescript/preset/eslint-config/policies/base.mjs',
+      'languages/typescript/preset/eslint-config/production/carried-policies.mjs',
       `languages/typescript/preset/eslint-config/policies/${name}.config.mjs`,
       ...POLICY_FILES,
     ],

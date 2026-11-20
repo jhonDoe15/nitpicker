@@ -75,7 +75,7 @@ public final class UseEnumCollections extends BugChecker implements NewClassTree
             && matchNewClass(other, state.withPath(path)) != Description.NO_MATCH
             ? replacedName(other, ASTHelpers.getType(other).tsym.getQualifiedName().contentEquals("java.util.HashSet"), state)
             : null);
-    return describeMatch(tree, fix.build());
+    return Support.describe(this, tree, fix.build(), state);
   }
 
   private static int[] replacedName(NewClassTree tree, boolean set, VisitorState state) {

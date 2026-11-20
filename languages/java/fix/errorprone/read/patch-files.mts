@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fieldOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 import { type Hunk, parseUnifiedDiff } from '../patch/unified-diff.mts';
 import type { Diagnostic } from './label-hunks.mts';
+import type { LineSpan } from '../../../../../core/fix/lines/line-map.mts';
 import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 type Entry<T> = readonly [string, T];
@@ -10,6 +11,7 @@ type Entry<T> = readonly [string, T];
 const PATCH_NAME = 'error-prone.patch';
 const REPORT_NAME = 'errorprone.json';
 const CHECK = /^\[(\w+)\]/u;
+const EDITS = / \(edits: (\d+-\d+(?:,\d+-\d+)*)\)$/mu;
 
 function filesNamed(directory: string, name: string): string[] {
   const pending = [directory];
@@ -58,6 +60,15 @@ function patchEntries(patchFile: string, projectRoot: string): Entry<readonly Hu
   );
 }
 
+function editsOf(message: string): LineSpan[] | undefined {
+  return EDITS.exec(message)?.[1]
+    ?.split(',')
+    .map((range): LineSpan => {
+      const [from = '', to = ''] = range.split('-');
+      return [Number(from), Number(to)];
+    });
+}
+
 function reportEntries(reportFile: string, projectRoot: string): Entry<Diagnostic[]>[] {
   const report: unknown = JSON.parse(readFileSync(reportFile, 'utf8'));
   if (!Array.isArray(report)) {
@@ -70,22 +81,17 @@ function reportEntries(reportFile: string, projectRoot: string): Entry<Diagnosti
       reportFile,
       file === undefined ? undefined : textOf(file),
     );
-    const check = CHECK.exec(textOf(fieldOf(entry, 'message') ?? ''))?.[1];
+    const message = textOf(fieldOf(entry, 'message') ?? '');
+    const check = CHECK.exec(message)?.[1];
+    const edits = editsOf(message);
     const line = fieldOf(entry, 'line');
     const endLine = fieldOf(entry, 'endLine');
     if (name === undefined || check === undefined || typeof line !== 'number') {
       return [];
     }
-    return [
-      [
-        name,
-        [
-          typeof endLine === 'number' && endLine > line
-            ? { check, line, endLine }
-            : { check, line },
-        ],
-      ],
-    ];
+    const placed =
+      typeof endLine === 'number' && endLine > line ? { check, line, endLine } : { check, line };
+    return [[name, [edits === undefined ? placed : { ...placed, edits }]]];
   });
 }
 

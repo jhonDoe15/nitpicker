@@ -1,5 +1,7 @@
 import { type EslintFinding, isFieldRecord } from '../typed/engine.mts';
 
+export const UNPARSED_FILE = 'unparsed-file';
+
 function positionOf(value: unknown): number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0 ? value : 1;
 }
@@ -33,9 +35,9 @@ function unparsedFileNote({
   const reason = typeof fields.message === 'string' ? fields.message : 'parse failed';
   return {
     tool: analyzerName,
-    rule: 'unparsed-file',
+    rule: UNPARSED_FILE,
     path: relativePath,
-    identity: 'unparsed-file',
+    identity: UNPARSED_FILE,
     message: [
       `${analyzerName} could not parse ${relativePath} (${reason}),`,
       'so it did not lint this file; the other files were linted.',

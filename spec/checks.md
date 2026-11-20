@@ -704,6 +704,139 @@ function or method whose last statement calls a same-named method on another rec
 `super.update()`, `.call`, `.apply`) without returning it, unless the type checker shows a `void`, `undefined`, `never` or
 `Promise<void>` result or the delegate is declared in the default library or a declaration file (collection, emitter and stream methods; without types, a fixed list of their names). Lifecycle and event hooks, constructors, accessors and a declared `void` return are allowed.
 
+In-operator presence checks: `nitpicker/no-in-presence-check` (production source, in `eslint-lint`, type-aware) reports
+`'key' in obj` used as a condition (`if`, `while`, `?:`, `&&`/`||`/`!` in one, `Boolean(...)`, a `filter` callback) when the
+type of `obj` declares the key as optional or `| undefined`, or as an index signature value that includes `undefined`,
+because `in` is true for a key that holds `undefined`. A union discriminant (a member without the key or with the key
+typed only `undefined`), a condition that also reads `obj.key`, a ternary that passes `obj.key` on and a branch that throws or type-checks it are not reported; `obj.key !== undefined` is the allowed form.
+
+Lookup tested as presence: `nitpicker/no-lookup-as-presence` (production source, in `eslint-lint`, type-aware) reports a
+`Map`, `WeakMap` or `ReadonlyMap` read (`m.get(k)`, directly or through a variable) tested by truthiness, `=== undefined`
+or `== null` when the branch that handles the miss stores the same key with `m.set(k, ...)` and the value type can be falsy
+or can hold the tested value, and `record[key] !== undefined` with a variable key on a record of `unknown` values. The
+allowed forms are `m.has(k)`, `key in record` and `Object.hasOwn(record, key)`. A `|| 0` or `|| ''` fallback and a text or
+number map that only stores non-empty values are not reported.
+
+Shadowed spread keys: `nitpicker/no-shadowed-spread-key` (production source, in `eslint-lint`, type-aware) reports a function
+parameter written before a spread (an object literal property or a JSX attribute) whose type declares the same key as optional,
+and a string or number literal written after a spread of a parameter typed `*Options`, `*Config`, `*Settings` or `*Props` that
+declares the key as optional. A spread named `overrides` or `defaults`, test-support files, a default before the spread, a value read from the spread and a forced boolean are allowed.
+
+Empty every signals: `nitpicker/no-empty-every-signal` (production source, in `eslint-lint`, type-aware, report-only) reports
+`xs.every(...)` over a parameter, property, `.filter(...)` result or variable holding one, when the result is assigned to an
+`all`, `every` or `each` name or is the test of an `if` or `?:` whose branch stops, finishes, cancels, deletes, removes or
+sends, and nothing in the function reads `xs.length`, `xs[0]`, `xs.some`, `xs.find` or `isNonEmpty(xs)`. The guarded form
+`xs.length > 0 && xs.every(...)` is the allowed form.
+
+Blank number coercion: `nitpicker/no-blank-number-coercion` (production source, in `eslint-lint`, type-aware) reports `Number(x)` or `+x`
+of a string that can be empty (or an untyped env, query, form or config read) when the result is checked only with `isNaN`,
+`Number.isNaN` or `Number.isFinite`, because `Number("")` is 0. A blank check on the text, `parseInt` or `parseFloat`, and a
+check at the zero boundary (`> 0`, `>= 1`) are allowed.
+
+Base64 of runtime text: `nitpicker/no-btoa-on-runtime-text` (production source, in `eslint-lint`) reports `btoa`, `window.btoa`,
+`globalThis.btoa` and `self.btoa` called on a value that is not a constant, a `String.fromCharCode` binary string or an
+`encodeURIComponent` result and not inside a `try` with a `catch`, because `btoa` throws for characters above U+00FF.
+The other presets take bytes in their base64 APIs.
+
+Header values from text: `nitpicker/no-non-latin1-header-value` (production source, in `eslint-lint`) reports a file path, route, user
+name, request data or `JSON.stringify` result given to `setHeader`, `headers.set`, `writeHead`, `new Headers` or a `headers`
+object of a call, unless it is encoded, because header values throw for characters above U+00FF.
+
+Lossy UTF-8 decoding: `nitpicker/no-lossy-utf8-decode` (production source, in `eslint-lint`) reports a lenient `TextDecoder` whose
+text reaches `JSON.parse`, a hash, a write or a non-constant equality test, and a `'utf8'` file read whose text is written back to
+the same path, because invalid UTF-8 is replaced by U+FFFD without an error. Base64 input, text and config files and build
+scripts are not reported.
+
+String length against byte limits: `nitpicker/no-string-length-as-byte-count` (production source, in `eslint-lint`) reports the
+`.length` of a string compared with, added to, stepped by or sliced with a value whose name says bytes, because `.length` counts
+UTF-16 code units and not encoded bytes.
+
+Incomplete escaping: `nitpicker/no-incomplete-escaping` (production source, in `eslint-lint`) reports a `replace` chain that
+adds a backslash before a quote or brace without escaping the backslash, and a chain that unescapes `\\` in a separate step
+from other escape sequences.
+
+Hand-quoted generated code: `nitpicker/no-hand-quoted-generated-code` (production source, in `eslint-lint`) reports a template literal
+that writes JavaScript or TypeScript source and puts a runtime value between two matching quotes after `from`, `import`, `require(`, `[`,
+`.default(` or a declaration `=`; `JSON.stringify(value)` is the allowed form. Error, `throw` and `console` messages are not reported.
+
+Remote text in the terminal: `nitpicker/no-unstripped-remote-text` (production source, in `eslint-lint`, Node files only) reports
+`console`, `stdout`/`stderr` writes and bare `logger` calls (not `this.logger`) that print a socket message or an HTTP response body without
+`stripVTControlCharacters`, because control sequences can rewrite the terminal.
+
+CSS selectors from runtime values: `nitpicker/no-unescaped-css-selector` (production source, in `eslint-lint`) reports a selector
+passed to `querySelector`, `querySelectorAll`, `closest`, `matches`, `cy.get` or `page.$` that places a variable after `#`, `.` or an
+attribute `=` without `CSS.escape`; constant members, count-like names and a backslash `replace` are allowed.
+
+Unencoded URL parts: `nitpicker/no-unencoded-url-part` (production source, in `eslint-lint`) reports a template literal that
+puts a free-text value into a URL query value or path segment without `encodeURIComponent`, appends `?` to a callback or
+redirect URL that may carry a query, passes a path that may start with `//` to `new URL(path, base)`, or puts a raw user
+name or password into a database connection URL. `URL` with `searchParams`, encoded values, numbers, ids and constants are
+allowed. Constant routes that keep slashes (`/archive/`, `/branch/`) and mock files are skipped.
+
+Dynamic import of a path: `nitpicker/no-dynamic-import-of-path` (production source, in `eslint-lint`) reports `import(x)` where `x`
+is a filesystem path (a `path.resolve`, `path.join`, `require.resolve`, `fileURLToPath` or `realpathSync` result, a current-directory
+concatenation, or a variable named like a path in a Node file that never builds a file URL). `import(pathToFileURL(x).href)`,
+literals, package names and `file:` templates are allowed.
+
+Unchecked URL sinks: `nitpicker/no-unchecked-url-sink` (production source, in `eslint-lint`) reports a runtime URL value (a member
+or variable named `...Url`, `...Uri`, `website`, `homepage` and the like) used as `href`, an `iframe`/`embed` `src`, a form `action`,
+`window.open` or a `location` assignment without a protocol check in the same function. Constants, relative and `http(s)` text,
+call results, items of an array literal in the same file and a scheme-checking helper are allowed.
+
+Case-sensitive path comparison: `nitpicker/no-case-sensitive-path-compare` (production source, in `eslint-lint`) reports `===`,
+`!==`, `startsWith`, `endsWith` and `includes` on two file paths (one of them a property of another object, such as a message
+field or `.fsPath`) or two URI authorities or host names, when neither side is case-folded and no platform check is in
+the function. `path.relative(a, b) === ''`, lowercased sides, equality helpers, constants, two members of one object and
+host names of two URL objects are allowed.
+
+Double decoding: `nitpicker/no-double-decode` (production source, in `eslint-lint`) reports `decodeURIComponent` and `decodeURI` applied to a
+value read from `URLSearchParams`, `searchParams`, `router.query`, `req.query`, `ctx.query`, `req.params` or `c.req.query()`, which the framework has
+already decoded. Raw text from `location.search`, `request.url`, headers and cookies is allowed.
+
+Directory-passing existence checks: `nitpicker/no-directory-passing-existence-check` (production source, in `eslint-lint`) reports a
+file read of a configured or caller-supplied path whose guard is `existsSync`, `access` or `pathExists` alone, which a directory passes. A
+`stat` with `isFile()`, a `try` around the read, and paths the program builds itself are allowed.
+
+Unresolved relative URLs: `nitpicker/no-unresolved-relative-url` (production source, in `eslint-lint`) reports a `Location` header used as a
+request target or in `new URL(location)` with no base, `Response.redirect(path)` with a path, and `new URL(path)` with a literal path and no base.
+`new URL(x, base)` and a check for an absolute URL are allowed.
+
+Slash-only redirect guards: `nitpicker/no-slash-only-redirect-guard` (production source, in `eslint-lint`) reports a redirect target
+(`callbackUrl`, `redirectTo`, `returnTo`, `next`) accepted by `startsWith('/')`, `v[0] === '/'` or a bare `^/` regex and then returned or redirected
+to in a function with no `//`, backslash or origin check, and `router.push(url.pathname + ...)` after an origin check that does not reject a `//` pathname.
+
+Case-mixed header merges: `nitpicker/no-case-mixed-header-merge` (production source, in `eslint-lint`) reports an object literal used as `headers` that spreads caller
+headers and also has a literal key for a known header name, so a caller key in another case is sent twice. `new Headers(init)` with `set`, lowercased keys, and a lowercase key next to `req.headers`, are allowed.
+
+Inconsistent comparators: `nitpicker/no-inconsistent-comparator` (production source, in `eslint-lint`) reports a
+`sort` or `toSorted` comparator whose every result is a non-zero number literal (equal items are never `0`), and a
+branch that returns one constant for both a missing `a` and a missing `b`. `a - b`, `localeCompare`, a `0` result and
+separate null checks per side are allowed.
+
+Prototype keys: `nitpicker/no-prototype-key-access` (production source, in `eslint-lint`) reports a merge loop that
+writes `target[key]` for every input key and recurses into `target[key]` without skipping `__proto__`, `constructor`
+and `prototype` or checking `Object.hasOwn(target, key)`, and `key in table` on a constant object literal with a
+free-text key.
+
+Lossy JSON: `nitpicker/no-lossy-json-stringify` (production source with type information, in `eslint-lint`) reports
+`JSON.stringify` without a replacer on a value whose type holds a `bigint` (throws) or a `Map`, `Set`, `WeakMap`,
+`WeakSet` or `RegExp` (serialized as `{}`). A replacer, a `toJSON` member and converting before the call are allowed.
+
+Truncating split limits: `nitpicker/no-truncating-split-limit` (production source, in `eslint-lint`) reports
+`split(separator, limit)` with a limit of 2 or more whose last part is read (destructured into `limit` names, indexed
+at `limit - 1`, `.pop()` or `.at(-1)`), because the rest of the text is dropped. Splitting at `indexOf` and `slice`,
+or `[head, ...rest]` with `rest.join(separator)`, is allowed.
+
+Unguarded JSON parse: `nitpicker/no-unguarded-json-parse` (production source, in `eslint-lint`) reports `JSON.parse`
+of text read from a file, web storage, a response body or a message handler outside a `try` with a `catch`, because
+corrupt or foreign text throws a `SyntaxError`. Project files such as `package.json`, tooling folders and standard
+input are not checked.
+
+Time-only unique names: `nitpicker/no-time-only-unique-name` (production source, in `eslint-lint`) reports a temp
+directory, file name or record id whose only varying part is the current time (`Date.now()`, `new
+Date().toISOString()`, `performance.now()`): a path under `tmpdir()`, the path given to `mkdir` or `writeFile`, and an
+`id`, `_id`, `uid`, `key` or `name` value or fallback. A random or counter part, or any other variable in the name, is
+allowed.
 Release outside finally: `nitpicker/no-release-outside-finally` (production source, in `eslint-lint`) reports a pooled
 connection, query runner, session, lock, stream reader or bundle taken from a known acquire call (`createQueryRunner`,
 `getConnection`, awaited `connect`, `acquire` or `lock`, `checkout`, `getReader`, `startSession`, `rollup`) and released by a

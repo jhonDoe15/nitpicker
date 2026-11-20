@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { largest } from '../../../../shared/lists/items.mjs';
+import { largest, sharedPrefixLength } from '../../../../shared/lists/lists.mts';
 
 const NAMED_SOURCES = /\.(java|kt|groovy|scala|py)$/u;
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/u;
@@ -186,19 +186,16 @@ function matchingRootLength(
   }));
   const best = largest(scored.map(({ shared }) => shared));
   if (best === 0) {
-    return sharedHead(oldRoot, to) > 0 && oldRoot.length < to.length ? oldRoot.length : undefined;
+    return sharedPrefixLength(oldRoot, to) > 0 && oldRoot.length < to.length
+      ? oldRoot.length
+      : undefined;
   }
   const winners = scored.filter(({ shared }) => shared === best);
   return winners.length === 1 ? winners[0]?.length : undefined;
 }
 
 function sharedTail(left: readonly string[], right: readonly string[]): number {
-  return sharedHead(left.toReversed(), right.toReversed());
-}
-
-function sharedHead(left: readonly string[], right: readonly string[]): number {
-  const mismatch = left.findIndex((segment, index) => segment !== right[index]);
-  return mismatch === -1 ? left.length : mismatch;
+  return sharedPrefixLength(left.toReversed(), right.toReversed());
 }
 
 export function remapQualifiedNames(

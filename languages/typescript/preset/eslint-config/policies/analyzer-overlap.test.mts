@@ -1,9 +1,10 @@
 import path from 'node:path';
-import { ESLint } from 'eslint';
-import { describe, expect, it } from 'vitest';
+import { ESLint, type Linter } from 'eslint';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { eslintChecks } from '../../quality-checks.mts';
 import { fileURLToPath } from 'node:url';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
+import { CARRIED_VARIABLE, productionPolicy } from '../production/carried-policies.mts';
 import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
 
 const packageRoot = path.resolve(fileURLToPath(new URL('../', import.meta.url)), '../../../..');
@@ -45,6 +46,83 @@ async function errorRulesByAnalyzer(file: string) {
   }
   return byRule;
 }
+
+const CARRIED = ['eslint-errors', 'eslint-logging', 'eslint-module-effects'];
+const CARRIED_RULES = CARRIED.flatMap((name) => Object.keys(productionPolicy(name).rules));
+function configsOf(value: unknown): Linter.Config[] {
+  return listOf(value).map((entry) => fieldsOf(entry));
+}
+
+function severityOf(setting: unknown): unknown {
+  return Array.isArray(setting) ? [listOf(setting)[0], ...listOf(setting).slice(1)] : [setting];
+}
+
+function carriedSettings(rules: unknown) {
+  return CARRIED_RULES.map((rule) => [rule, severityOf(fieldOf(rules, rule) ?? 0)]);
+}
+
+async function lintSettings(carried: string): Promise<unknown[]> {
+  vi.stubEnv(CARRIED_VARIABLE, carried);
+  vi.resetModules();
+  const loaded: unknown = await import(policyConfigFile('eslint-lint'));
+  const eslint = new ESLint({
+    cwd: packageRoot,
+    overrideConfigFile: true,
+    overrideConfig: configsOf(fieldOf(loaded, 'default')),
+  });
+  const settings: unknown[] = [];
+  for (const file of SAMPLE_FILES) {
+    const calculated: unknown = await eslint.calculateConfigForFile(path.join(packageRoot, file));
+    settings.push(carriedSettings(fieldOf(calculated, 'rules')));
+  }
+  return settings;
+}
+
+function standaloneLinters(): ESLint[] {
+  return CARRIED.map(
+    (name) => new ESLint({ cwd: packageRoot, overrideConfigFile: policyConfigFile(name) }),
+  );
+}
+
+async function standaloneSettings(linters: readonly ESLint[], file: string) {
+  const rules: Record<string, unknown> = {};
+  for (const eslint of linters) {
+    const calculated: unknown = await eslint.calculateConfigForFile(path.join(packageRoot, file));
+    Object.assign(rules, fieldsOf(fieldOf(calculated, 'rules') ?? {}));
+  }
+  return carriedSettings(rules);
+}
+
+describe('eslint-lint carrying the production policy analyzers', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  let carried: unknown[];
+
+  beforeAll(async () => {
+    carried = await lintSettings(CARRIED.join(','));
+  });
+
+  it('sets their rules as they set them, file by file', async () => {
+    const linters = standaloneLinters();
+
+    expect(carried).toEqual(
+      await Promise.all(SAMPLE_FILES.map((file) => standaloneSettings(linters, file))),
+    );
+  });
+
+  it('carries only the analyzers it is given', async () => {
+    const settings = await lintSettings('eslint-errors');
+
+    expect(settings[0]).toEqual([
+      ['nitpicker/no-silent-catch', [2]],
+      ['nitpicker/no-production-console', [0]],
+      ['nitpicker/structured-catch-logging', [0]],
+      ['nitpicker/report-module-load-effects', [0]],
+    ]);
+  });
+});
 
 describe('ESLint analyzers do not report the same rule on the same file', () => {
   it.each(SAMPLE_FILES)('%s', async (file) => {
