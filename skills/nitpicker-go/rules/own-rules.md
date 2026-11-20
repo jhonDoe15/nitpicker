@@ -78,6 +78,25 @@ the allowed form and ends with its exception entry.
   managers of a named resource are fine.
 - A getter is named after the value (`go-rules/get-prefixed-getter`): `Owner()`, never
   `GetOwner()`, unless an imported interface requires the Get name.
+- A value put into an HTML string goes through `html.EscapeString`, or the page uses `html/template`
+  (`go-rules/unescaped-html-value`).
+- A replacement from data goes to `ReplaceAllLiteralString` (`go-rules/expanding-replacement`):
+  `ReplaceAllString` reads `$1` and `${name}` in it, so a `$` in the value is lost.
+- A glob or pattern turned into a regexp or a `LIKE` pattern with `strings.ReplaceAll` steps is quoted for the
+  target first (`go-rules/pattern-translation`): `strings.ReplaceAll(regexp.QuoteMeta(glob), `\*`, ".*")`,
+  never the raw value.
+- A parsed or computed float is checked for infinity as well as NaN (`go-rules/nan-only-guard`): `math.IsNaN(x)`
+  alone lets `+Inf` and `-Inf` through; add `math.IsInf(x, 0)` or a range check.
+- A count computed by subtraction is never negative when it reaches `strings.Repeat`, `bytes.Repeat`, `slices.Grow` or
+  `make` (`go-rules/negative-count`): `if pad := width - len(text); pad > 0 { ... }` or `max(0, width-len(text))`.
+- A bounds check before an index read rejects with `i >= len(x)` (`go-rules/index-bound-off-by-one`): `i > len(x)`
+  lets `i == len(x)` through and `x[i]` panics; `>` is right only for an insertion position.
+- A backoff delay does not grow by `1 << attempt` without a bound (`go-rules/backoff-shift-overflow`): cap the exponent
+  (`min(attempt, 20)`) or stop growing at a maximum delay; the shift wraps and the delay turns negative.
+- A duration or a timeout is measured with a monotonic clock, not two wall-clock reads (`go-rules/wall-clock-elapsed`):
+  keep the `time.Time` and use `time.Since(start)` instead of subtracting two `time.Now().Unix()` values.
+- A response is checked before its body is decoded (`go-rules/unchecked-response-json`): test
+  `resp.StatusCode` first and return an error that names it; a proxy error page is not JSON.
 - A nil branch that does not leave is not followed by a use of the same value
   (`go-rules/nil-branch-fall-through`): `if v == nil { log.Println(...) }` then `v.Field` panics on the nil
   path. End the branch with `return` (or `continue`), or use an `else`.
@@ -171,3 +190,27 @@ the allowed form and ends with its exception entry.
   `http.ParseCookie` instead of `strings.Split(value, ",")`. `Header.Get` canonicalises the name; index
   `Header` only with a canonical key (`http.CanonicalHeaderKey`). A library that is itself the parser
   takes an exception. `url.Parse` already lowercases the scheme, so `u.Scheme == "https"` is fine.
+- Split `key:value` text once (`strings.Cut(text, ":")` or `strings.SplitN(text, ":", 2)`), not with
+  `strings.Split(text, ":")[1]`, which drops what follows the second separator
+  (`go-rules/pair-split-drops-rest`). Check `len(parts) != 2` when the shape is exact.
+- Key a map by a struct or an array (`map[[2]string]T`, `map[key]T`), not by two strings joined with `:` or `-`
+  (`go-rules/delimited-lookup-key`): `"a-b"` with `"c"` and `"a"` with `"b-c"` give the same key.
+- Split a host and port with `net.SplitHostPort` (or `url.Hostname()` and `url.Port()`), not with
+  `strings.Split(host, ":")`, which breaks IPv6 literals such as `[::1]:3000` (`go-rules/host-port-colon-split`).
+- Read lines of a file with `bufio.Scanner` (it drops `\r\n`), or normalise `\r\n` first, instead of
+  `strings.Split(string(data), "\n")`, which keeps a `\r` on every line of a CRLF file
+  (`go-rules/newline-only-line-split`).
+- Truncate text on runes (`string([]rune(text)[:max])`) or step back to `utf8.RuneStart`, not with `text[:max-3]` under
+  `len(text) > max`, which can cut a multi-byte character in two (`go-rules/byte-cut-splits-rune`).
+- Paths and hosts are matched by whole segments (`go-rules/prefix-without-boundary`): write
+  `x == base || strings.HasPrefix(x, base+"/")` and `host == domain || strings.HasSuffix(host, "."+domain)`, not a bare
+  `strings.HasPrefix(x, base)`. Remove a suffix or prefix with `strings.TrimSuffix` and `TrimPrefix`, not
+  `strings.Replace(name, ".git", "", 1)` (`go-rules/unanchored-affix-replace`).
+- A lookup key and its collection are normalized the same way (`go-rules/case-mismatched-lookup`): lower-case
+  the keys where the map is filled when the lookup uses `strings.ToLower`.
+- A precondition message names the checked value (`go-rules/precondition-message-names-other-value`):
+  `if name == "" { return errors.New("name must not be empty") }`.
+- Query text built from parts is well formed once joined (`go-rules/malformed-query-text`): a bind placeholder
+  after each operator (`LIKE ?`), one value for each `INSERT` column, a leading space on each appended fragment.
+- An object-store or search listing follows its page marker (`go-rules/unpaged-listing`): use
+  `s3.NewListObjectsV2Paginator`, or loop on `NextContinuationToken`; give `FTSearch` a `Limit` and an offset loop.

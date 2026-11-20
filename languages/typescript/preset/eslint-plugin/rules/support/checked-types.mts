@@ -9,18 +9,28 @@ function answer(holds: boolean): TypeAnswer {
   return holds ? 'yes' : 'no';
 }
 
+type CheckedType = { readonly checker: TypeScript.TypeChecker; readonly type: TypeScript.Type };
+
+export function nonNullableTypeOf(context: Context, node: TSESTree.Node): CheckedType | undefined {
+  const services = typeServices(context);
+  if (services === undefined) {
+    return undefined;
+  }
+  const checker = services.program.getTypeChecker();
+  return { checker, type: checker.getNonNullableType(services.getTypeAtLocation(node)) };
+}
+
 function memberTypes(
   context: Context,
   node: TSESTree.Node,
 ):
   | { readonly checker: TypeScript.TypeChecker; readonly members: readonly TypeScript.Type[] }
   | undefined {
-  const services = typeServices(context);
-  if (services === undefined) {
+  const typed = nonNullableTypeOf(context, node);
+  if (typed === undefined) {
     return undefined;
   }
-  const checker = services.program.getTypeChecker();
-  const type = checker.getNonNullableType(services.getTypeAtLocation(node));
+  const { checker, type } = typed;
   return { checker, members: type.isUnion() ? type.types : [type] };
 }
 

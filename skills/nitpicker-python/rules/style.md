@@ -47,6 +47,12 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   tuple, `frozenset` or `MappingProxyType` from a `@cache` function (`shared-state-mutation`). When code
   moves, change every caller and delete the old
   name: no alias (`Old = New`), module `__getattr__`, `@deprecated` or `DeprecationWarning` shim.
+- A value put into an HTML string is escaped first, `f"<td>{html.escape(name)}</td>"`
+  (`unescaped-html-value`).
+- A replacement that comes from data goes to `re.sub` as a function, `re.sub(pattern, lambda _: value, text)`:
+  a string template reads `\1` and `\g<name>` (`expanding-replacement`).
+- A glob or pattern turned into a regex or `LIKE` pattern with `replace` calls is escaped for the target first
+  (`re.escape(glob).replace("\\*", ".*")`), never rewritten from the raw value (`pattern-translation`).
 - Arguments go in the order of the parameters: passing `docs` into the slot of `proc` when `docs` is another
   parameter of the callee is a swap (`swapped-arguments`); pass by keyword when the order is easy to mix up.
 - A branch that handles `None` either leaves or is the whole story (`null-branch-fall-through`):
@@ -98,6 +104,31 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `email.message`, `werkzeug.http` or `http.cookies.SimpleCookie` instead of `split(",")` or `split(";")`
   (`http-value-case`, `hand-split-http-header`). The request header mapping ignores the case of a name; a
   library that is itself the parser takes an exception.
+- Check a response (`raise_for_status()`, `status_code`, `ok`) before `.json()` reads it, or read `.text` and parse it in
+  `try`: an error page from a proxy is HTML and the `ValueError` hides the status (`unchecked-response-json`).
+- A parsed float is checked with `math.isfinite(x)`, not only `math.isnan(x)`: `float("inf")` passes `isnan`
+  (`nan-only-guard`).
+- A bounds check before a read rejects with `index >= len(items)` (or accepts with `index < len(items)`): `index > len(items)`
+  lets `index == len(items)` through to an `IndexError` (`index-bound-off-by-one`); `>` is right only for an insertion
+  position.
+- A duration or a timeout is measured with a monotonic clock, not two wall-clock reads (`wall-clock-elapsed`):
+  read `time.monotonic()` for both ends of a duration or a timeout; keep `time.time()` for stored timestamps.
+- Split `key:value` text once (`text.partition(":")` or `text.split(":", 1)`), not with `text.split(":")[1]`,
+  which drops what follows the second separator (`pair-split-drops-rest`).
+- Key a dict or set by a tuple (`(tenant, name)`) or a `NamedTuple`, not by `f"{tenant}:{name}"`, which collides when a
+  part holds the delimiter (`delimited-lookup-key`).
+- Split a host and port with `urllib.parse.urlsplit("//" + host)` (`.hostname` and `.port`) or `ipaddress`, not with
+  `host.split(":")`, which breaks IPv6 literals such as `[::1]:3000` (`host-port-colon-split`).
+- Paths, routes and hosts are matched by whole segments (`prefix-without-boundary`): `x == base or
+x.startswith(base + "/")`, `host == domain or host.endswith("." + domain)`. Remove a suffix or prefix with
+  `removesuffix` and `removeprefix`, not `name.replace(".git", "")` (`unanchored-affix-replace`).
+- A lookup key and its collection are normalized the same way (`case-mismatched-lookup`): build the set with
+  `{v.lower() for v in values}` when the key is `x.lower()`.
+- A precondition message names the checked value (`precondition-message-names-other-value`).
+- Query text built from parts is well formed once joined (`malformed-query-text`): a placeholder after each
+  operator, one value per `INSERT` column, a leading space on each appended fragment.
+- A listing follows its page marker (`unpaged-listing`): `get_paginator("list_objects_v2")`, or a loop on
+  `NextContinuationToken`; RediSearch `Query(...).paging(offset, count)` in a loop.
 - Call the base member when you override one that carries state: `super().available and ...`,
   `super().save(*args, **kwargs)`, `super().setUp()`; the overrides of a member in the project, and the known
   contracts of Home Assistant, Django and test cases, build on it (`override-without-super`).

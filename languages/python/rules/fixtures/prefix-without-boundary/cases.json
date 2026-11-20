@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "prefix-without-boundary",
+    "mention": "whole segments"
+  }
+]
