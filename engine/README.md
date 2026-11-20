@@ -120,8 +120,8 @@ Measured on 4 cores against Error Prone running only these checks (findings: sam
 
 | Code base | Files, lines | Error Prone wall, CPU, peak | Engine | Findings |
 | --- | --- | --- | --- | --- |
-| Elasticsearch `server` | 5,106, 1,035k | 26.5 s, 75.6 s, 3.4 GB | 7.8 s, 28.6 s, 0.5 GB | 5,476 / 4 / 0 |
-| Nacos | 3,118, 548k | 13.4 s, 42.3 s, 1.5 GB | 5.5 s, 13.1 s, 0.3 GB | 4,837 / 7 / 7 |
+| Elasticsearch `server` | 5,106, 1,035k | 249 s, 417 s, 3.2 GB | 8.0 s, 28.9 s, 0.5 GB | 4,330 / 5 / 1 | 1,532 / 7 / 1 |
+| Nacos | 3,118, 548k | 108 s, 242 s, 2.9 GB | 5.2 s, 13.0 s, 0.3 GB | 2,438 / 2 / 4 | 85 / 0 / 0 |
 | javaparser-core | 594, 121k | 7.8 s, 24.2 s, 0.9 GB | 1.0 s, 3.5 s, 0.1 GB | 5,399 / 0 / 6 |
 | Guava | 610, 183k | 7.2 s, 22.8 s, 0.8 GB | 1.1 s, 3.8 s, 0.1 GB | 198 / 0 / 0 |
 | jackson-databind | 478, 134k | 5.0 s, 16.0 s, 0.5 GB | 0.8 s, 2.7 s, 0.1 GB | 1,130 / 0 / 0 |
@@ -163,34 +163,56 @@ these five patterns from source:
 | commons-lang | 264, 106k | 19.9 s, 50.5 s, 1.2 GB | 0.7 s, 2.2 s, 0.1 GB | 15 / 0 / 0 | 17 / 0 / 0 |
 | MyBatis | 393, 40k | 15.5 s, 50.3 s, 0.9 GB | 0.4 s, 1.2 s, 0.1 GB | 173 / 0 / 0 | 32 / 0 / 0 |
 
-Exposed representation, 22 differences (7,689 same):
+Exposed representation, 12 differences (7,694 same):
 
-- Class order, 2 (protobuf-generated classes in Nacos): whether SpotBugs knows that a field of another class
-  only holds unchangeable values depends on the order it visits classes in, and it differs between runs.
-- Values stored from another class, 3: the engine judges a field by the stores in the field's own class (and
-  the stored types by the stores in the file); SpotBugs also sees stores from other classes.
-- A parameter narrowed by `instanceof` with a pattern variable and then stored, 2: not followed yet.
-- A local variable that takes a field's value and is returned after a branch that writes the field, 1.
-- Line or name of an inner-class constructor, 4 (2 findings): a constructor whose first statement spans lines,
-  and a constructor without parameters two classes deep.
-- 10 not explained yet (tracked in #2098): 4 getters of protobuf-generated builders and 2 other getters the
-  engine reports alone, 3 getters and 1 constructor only SpotBugs reports.
+- A value stored from a class in another file, 1: the engine judges a field by the stores in its own file;
+  SpotBugs also counts stores from classes it visited earlier, wherever they are.
+- A field that only ever takes a parameter, read back from another object and stored, 1 constructor missed.
+- A field of the superclass returned through a field typed with that superclass, 1 missed.
+- 9 not explained yet (tracked in #2098): 4 getters of one protobuf-generated builder and 1 other getter the
+  engine reports alone; 2 getters of a protobuf-generated message and 2 other getters only SpotBugs reports.
+  Small classes of the same shape do not reproduce them, so the cause is in their surroundings.
 
-Constructor throw, 11 differences (1,698 same):
+Constructor throw, 8 differences (1,700 same):
 
 - Anonymous classes, 6 missed: a field initializer or initializer block of an anonymous class that can throw is
   not looked at yet.
 - A local class, 2 (1 finding): the engine names it differently in the message.
-- 3 not explained yet (tracked in #2112): a constructor where SpotBugs reports an earlier line (2, 1 finding)
-  and one constructor in Nacos only SpotBugs reports.
 
 What SpotBugs counts as "an exception can leave the constructor", as measured (`tests/fixtures/spotbugs/ctor_*`):
-a `throw` or `assert` no enclosing `catch` takes; a call to a method that declares exceptions; a call to a
-method of the same class from which one of those can leave, however deep; `this(...)` to a constructor with one
-of those, one level deep. Not counted: calls to constructors, to undeclared methods of other classes, anything
+a `throw` or `assert` the handler around it does not take; a call to a method that declares exceptions; a call
+to a method of the same class from which one of those can leave, however deep; `this(...)` to a constructor with
+one of those, one level deep. Not counted: calls to constructors, to undeclared methods of other classes, anything
 before the first constructor call of the body (which a `new` among the arguments of `super(...)` already ends),
 and a rethrown `Throwable`. Final classes, enums, records and classes with a final `finalize()` are exempt.
 
+Only the innermost handler around a place is asked, as the compiled exception table lists it
+(`ctor_finally`, `ctor_nested`, `ctor_order`, `ctor_helpers*`): the `catch` clauses of the nearest `try`, and an
+outer `try` never. A `try` with a `finally` block and no `catch`, a `catch` block of a `try` with `finally`, and
+a `synchronized` block let everything through. The body of a `try` with resources lets nothing through, and
+the `close()` the compiler adds after it counts as a call under the `catch` clauses of that `try`. In a
+constructor one matching `catch` clause is enough; for a call in a method every `catch` clause of the `try`
+has to take the exception.
+
+How a field counts as holding only unchangeable values (`loads*`, `visits`, `values`):
+
+- Every store in the field's own class counts. A store from another class counts only when SpotBugs visits that
+  class first, and it visits classes in the order of a Java `HashMap` keyed by the class name with slashes,
+  sized for the number of classes in the run. The engine takes the classes of the run as that number.
+- A call result stored from another class counts against the field only when the called method's class is part
+  of the run and was visited before the storing class.
+- A value read from another field is fine when that field was given an unchangeable value at least once. The
+  field read back into itself (`this.f = other.f`) says nothing, and counts against the field when it went
+  through a local variable first.
+- A local variable with two values is judged the way `c ? first : second` is.
+
+Also measured: the accessor of a record's varargs component is reported and its constructor is not; a pattern
+variable of `instanceof` holds the tested value; one parameter stored twice in a field of one method is one
+finding; the outer-instance field of an inner class is `this$N`, N counting the inner classes around the outer
+one; the line of an inner-class constructor is the line of its opening brace.
+
 Known gaps in what is rebuilt: `c ? a : b` stored in a field follows a table measured on SpotBugs, which decides
-by the compiled form (`tests/fixtures/spotbugs/choices*`); a local variable with more than one value is taken
-as changeable.
+by the compiled form (`tests/fixtures/spotbugs/choices*`); a local variable with more than two values is taken
+as changeable; stores from other files are not seen; a branch SpotBugs finds dead because it compares a field
+nothing writes with a constant is still looked at; a call that is the very first instruction of a `finally`
+block is still covered by the handler before it in the compiled form, which the engine does not rebuild.
