@@ -82,12 +82,13 @@ jobs:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')
     name: test shard ${{ matrix.shard }}/${{ strategy.job-total }}
     runs-on: ubuntu-latest
-    # A healthy shard takes 6 to 9 minutes; this stops a hung one well before the 6-hour default.
+    # With two shards a shard took 20 to 30 minutes and ran into this limit; a third brings a
+    # healthy shard to about 15. The limit stops a hung one well before the 6-hour default.
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -110,7 +111,10 @@ jobs:
           distribution: temurin
           java-version: 21
       # One worker per vCPU: Vitest defaults to one fewer, and most tests wait on child processes.
-      - run: npm test -- --maxWorkers=100% --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+      # With every vCPU busy a test or hook that runs the CLI can pass 30 seconds, so both get 90 here.
+      - run: >-
+          npm test -- --maxWorkers=100% --testTimeout=90000 --hookTimeout=90000
+          --shard=${{ matrix.shard }}/${{ strategy.job-total }}
 
   test:
     if: always()
@@ -132,13 +136,23 @@ jobs:
   # needs only `npm ci` (about 2 minutes), so it reports in parallel with the test shards
   # and a failing gate never hides test results (or the other way round). Not on main: there the
   # head is the base, so there is nothing to compare.
-  self-gate:
+  # The gate of this repository on itself, with its analyzers split over parallel jobs the way
+  # docs/usage.md describes under "Sharding in CI": each shard job compares the merge base with the
+  # head for its share of the analyzers, and the required `self-gate` check below combines the
+  # reports and is the gate. ESLint sets the time of a shard, so more shards do not make it shorter.
+  self-gate-shard:
     if: github.ref != 'refs/heads/main'
+    name: self-gate shard ${{ matrix.shard }}/${{ strategy.job-total }}
     runs-on: ubuntu-latest
+    # A healthy shard takes about 15 minutes, nearly all of it ESLint on the two snapshots.
     timeout-minutes: 30
     permissions:
       contents: read
       statuses: read
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -199,28 +213,83 @@ jobs:
           else
             echo "::warning title=nitpicker::The policy approval is for ${APPROVED_SHA}, but the checkout is ${head}, so it accepts nothing in this run."
           fi
-      # ESLint over this repository takes eight to ten minutes on a busy CI runner, past the
-      # five-minute default. The longer budget is set for CI only, in the checkout; a timeout is not
-      # policy, so it changes no digest and both snapshots run with it. The budget is committed on
-      # top of the checkout, because the gate binds an approval to the commit of a clean tree: an
-      # approval of the checkout carries over to that local commit, which only adds the budget.
-      - name: Give eslint-lint a CI time budget
+      # ESLint over this repository takes about seven minutes on a CI runner and the structure
+      # analyzer, which shares its shard, about five: at or over the five-minute default. The longer
+      # budgets are set for CI only, in the checkout; a timeout is not policy, so
+      # it changes no digest and both snapshots run with it. The budget is committed on top of the
+      # checkout, because the gate binds an approval to the commit of a clean tree: an approval of
+      # the checkout carries over to that local commit, which only adds the budget. The commit takes
+      # its dates from the checkout, so every job of a run makes the same commit and the shards agree
+      # on the head.
+      - name: Give the slow analyzers a CI time budget
         id: budget
         env:
           ACCEPTANCE: ${{ steps.approval.outputs.acceptance }}
         run: |
-          node -e "const fs = require('node:fs'); const file = 'nitpicker.config.json'; const config = JSON.parse(fs.readFileSync(file, 'utf8')); config.analyzerTimeoutMinutes = { ...config.analyzerTimeoutMinutes, 'eslint-lint': 15 }; fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\\n');"
+          node -e "const fs = require('node:fs'); const file = 'nitpicker.config.json'; const config = JSON.parse(fs.readFileSync(file, 'utf8')); config.analyzerTimeoutMinutes = { ...config.analyzerTimeoutMinutes, 'eslint-lint': 15, structure: 10 }; fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\\n');"
           npx prettier --write nitpicker.config.json
-          git -c user.name=nitpicker -c user.email=nitpicker@users.noreply.github.com commit --quiet --no-verify -m 'CI time budget for eslint-lint' -- nitpicker.config.json
+          checkout_date="$(git show --no-patch --format=%cI HEAD)"
+          GIT_AUTHOR_DATE="$checkout_date" GIT_COMMITTER_DATE="$checkout_date" git -c user.name=nitpicker -c user.email=nitpicker@users.noreply.github.com commit --quiet --no-verify -m 'CI time budgets' -- nitpicker.config.json
           if [ -n "$ACCEPTANCE" ]; then
             echo "acceptance=commit:$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           fi
       # The CLI takes the base from GITHUB_BASE_REF on a pull request and origin/main on a manual run;
-      # policy is nitpicker.config.json.
-      - name: nitpicker on itself
-        run: node core/cli.mts --output reports/nitpicker
+      # policy is nitpicker.config.json. A shard runs without --defer-exit, so it fails on its own
+      # findings after writing its reports: the policy approval workflow re-runs the failed jobs of
+      # a run, and a shard that had passed with a finding in its report would keep that report.
+      - name: nitpicker on itself, one shard
         env:
           NITPICKER_ACCEPT_POLICY_CHANGE: ${{ steps.budget.outputs.acceptance || vars.NITPICKER_ACCEPT_POLICY_CHANGE }}
+          SHARD: ${{ matrix.shard }}
+          SHARD_COUNT: ${{ strategy.job-total }}
+        run: |
+          node core/cli.mts --shard-count "$SHARD_COUNT" --shard-index "$((SHARD - 1))" \
+            --output "reports/shards/$((SHARD - 1))"
+      - uses: actions/upload-artifact@v7.0.2
+        if: ${{ !cancelled() }}
+        with:
+          name: self-gate-shard-${{ matrix.shard }}
+          path: reports/shards
+          if-no-files-found: ignore
+          # A re-run of the job replaces the report of its earlier attempt.
+          overwrite: true
+
+  # The required check. It runs when a shard failed or was cancelled too (`always()`), since GitHub
+  # counts a skipped required check as passed: it reports the findings of every shard together, and
+  # a shard without a report fails the aggregation.
+  self-gate:
+    if: always() && github.ref != 'refs/heads/main'
+    needs: self-gate-shard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          # The merge base with the target branch must be reachable.
+          fetch-depth: 0
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      # The same commit as in the shard jobs: the aggregation reads the policy from the head commit
+      # the shards recorded.
+      - name: Give the slow analyzers a CI time budget
+        run: |
+          node -e "const fs = require('node:fs'); const file = 'nitpicker.config.json'; const config = JSON.parse(fs.readFileSync(file, 'utf8')); config.analyzerTimeoutMinutes = { ...config.analyzerTimeoutMinutes, 'eslint-lint': 15, structure: 10 }; fs.writeFileSync(file, JSON.stringify(config, null, 2) + '\\n');"
+          npx prettier --write nitpicker.config.json
+          checkout_date="$(git show --no-patch --format=%cI HEAD)"
+          GIT_AUTHOR_DATE="$checkout_date" GIT_COMMITTER_DATE="$checkout_date" git -c user.name=nitpicker -c user.email=nitpicker@users.noreply.github.com commit --quiet --no-verify -m 'CI time budgets' -- nitpicker.config.json
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          pattern: self-gate-shard-*
+          path: reports/shards
+          merge-multiple: true
+      - name: Combine the shard reports
+        run: node core/cli.mts aggregate --input-root reports/shards --shard-count 3 --output reports/nitpicker
       - uses: actions/upload-artifact@v7.0.2
         if: failure()
         with:
