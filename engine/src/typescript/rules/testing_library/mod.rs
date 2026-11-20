@@ -6,6 +6,7 @@ mod detect;
 mod nodes;
 mod promises;
 mod resolve;
+pub mod scope;
 mod utils;
 
 use super::Context;
@@ -35,6 +36,13 @@ static UTILS_MODULE: OnceLock<Option<String>> = OnceLock::new();
 /// Sets `testing-library/utils-module` for the run; `None` reports every matching name whatever it was imported from.
 pub fn set_utils_module(setting: Option<String>) {
     let _ = UTILS_MODULE.set(setting);
+}
+
+static FOLLOW_IMPORTS: OnceLock<bool> = OnceLock::new();
+
+/// Has every file without settings of its own scoped as the preset scopes it, by following its imports.
+pub fn set_scope_from_imports() {
+    let _ = FOLLOW_IMPORTS.set(true);
 }
 
 static UPSTREAM_ONLY: OnceLock<bool> = OnceLock::new();
@@ -157,7 +165,14 @@ pub fn check(context: &mut Context) {
     if context.setting("testing-library/scope") == Some("off") {
         return;
     }
-    let module = context.setting("testing-library/utils-module").map(|module| Some(module.to_string()).filter(|module| !module.is_empty()));
+    let mut module = context.setting("testing-library/utils-module").map(|module| Some(module.to_string()).filter(|module| !module.is_empty()));
+    if module.is_none() && FOLLOW_IMPORTS.get().copied().unwrap_or(false) {
+        let found = scope::of(view.program(), context.file.path, context.display());
+        if !found.inside {
+            return;
+        }
+        module = found.utils_module.map(Some);
+    }
     let selected: Vec<&'static str> = RULES.iter().copied().filter(|rule| context.selected.contains(rule)).collect();
     let mut walk = Walk {
         detect: Detection::new(module.unwrap_or_else(utils_module)),
