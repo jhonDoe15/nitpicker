@@ -199,6 +199,13 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   (`on`, `once`, `addListener`, `prependListener`, `addEventListener`, `subscribe`), on a binding declared outside it that is never
   reassigned or changed in place (`push`, `splice`, `sort` and the like), or a `this` field that
   only the constructor assigns. Allowed form: a `Map` built once, before the loop or handler. It
+  reports `filter` with such a callback in a loop or iteration callback (allowed form: group once with
+  `Map.groupBy` and `get`), and `includes(value)` or `indexOf(value)` there on a binding that is an
+  array (annotated `T[]`, `readonly T[]` or `Array<T>`, or built by `map`, `filter`, `slice`, `split`,
+  `[...x]`, `Array.from` or `Object.keys` and the like, not from a literal) and never changed, when
+  `value` reads the loop variable or a callback parameter (allowed form: a `Set` of the items, or a
+  `Map` from item to position for `indexOf`). A `filter`, `includes` or `indexOf` whose loops all run
+  over an array literal or up to a literal bound (`for (let i = 0; i < 3; i++)`) is not reported. It
   reports `sort(...)` or `toSorted(...)` followed by `[0]`, `.at(0)`, `.at(-1)`, `.pop()`, `.shift()`
   or a one-element destructuring (`const [first] = xs.toSorted(cmp)`); `xs.sort()` on a binding read
   again later, or on a property, keeps the sorted array and is left alone. Allowed form: one pass

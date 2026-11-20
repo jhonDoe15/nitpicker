@@ -369,8 +369,9 @@ Maven; the overlap keeps `pmd/MixedTimeUnits` over Error Prone's `TimeUnitMismat
 Costly collection forms: `nitpicker/no-costly-collection-form` (production source, in `eslint-lint`)
 reports three forms with a cheaper equivalent: an array that is appended to and searched with
 `includes`, `indexOf` or an identity `some` inside a loop, callback or recursive function (a `Set`); a
-`find`, `findIndex` or `some` by one property of the item, in a loop, iteration callback or listener,
-over a binding that does not change (a `Map` built once); and a sort that keeps only its first or last
+`find`, `findIndex`, `some` or `filter` by one property of the item, in a loop, iteration callback or
+listener, over a binding that does not change (a `Map` built once, or `Map.groupBy` for `filter`); an
+`includes` or `indexOf` of a loop value on an array that does not change (a `Set`); and a sort that keeps only its first or last
 element (one pass). The same forms run as `list-used-as-set`, `linear-lookup-in-loop` and ruff
 `FURB192` in the Python preset, `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop` and `pmd/SortForExtreme`
 in the Java preset (main sources, Gradle and Maven) and `kotlin-source/` rules of the same names in the

@@ -113,7 +113,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `@MaxLength(30)` for `varchar(30)`), and keep the OpenAPI `maxLength`, `minLength` and `pattern` equal to the
   validation of the same property (`field-limit-mismatch`). A column wider than the validation is fine.
 - Pick the cheaper collection form: a `Set` (`add`, `has`) for items you search while you collect
-  them, a `Map` built once before a loop or handler instead of `find((x) => x.key === key)` in it,
+  them, a `Map` built once before a loop or handler instead of `find((x) => x.key === key)` in it
+  (`Map.groupBy` instead of `filter((x) => x.key === key)`, a `Set` instead of `ids.includes(x.id)`),
   and one `reduce` pass instead of `sort(...)[0]` or `toSorted(...).at(-1)`
   (`nitpicker/no-costly-collection-form`).
 - Rows read with `for await` (any source that is not an array) are handled as they arrive: flush
