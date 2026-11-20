@@ -107,12 +107,17 @@ nitpicker-engine typescript-type-replay --compiler <tsc> --project <tsconfig.jso
 | `unused-api` | The unused option and unused prop check. nitpicker decides which files the program has and what role each plays and passes that with `--input`; the engine returns the targets, their members and the references it found, and nitpicker turns them into findings. |
 
 Exit status 3 with `types unavailable: <reason>` on standard error means the compiler cannot answer here (no
-binary, a version the engine's tables were not generated from, a project that does not load): nitpicker then
-runs the check with the JavaScript compiler in its own process. `NITPICKER_TYPED_ENGINE=off` always does that;
-`NITPICKER_TYPED_ENGINE=required` fails instead when the engine or the compiler is missing.
+binary, a version the engine's tables were not generated from, a project that does not load, a compiler option
+TypeScript 7 removed such as `baseUrl` or `moduleResolution: node10`): nitpicker then runs the check with the
+JavaScript compiler in its own process. `NITPICKER_TYPED_ENGINE=off` always does that; `NITPICKER_TYPED_ENGINE=required` fails
+instead when the engine or the compiler is missing or the engine stops in any other way.
 
 `typescript-type-replay` asks the compiler the questions `parity/typescript-type-questions.mts` recorded from
 the plugin rules and counts matching answers; `--kinds` is the compiler's `SyntaxKind` table as JSON.
+
+In a JavaScript file TypeScript 7 turns documentation comments into syntax (a parameter's type from `@param`,
+a type alias from `@typedef`). The JavaScript compiler's tree has no such nodes, so the tree reader leaves
+them out.
 
 Where a union lists the same property in several members, the unused API check reports the declaration that
 comes first by file name and position. The two compilers order union members differently, so the check in

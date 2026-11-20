@@ -53,7 +53,7 @@ pub fn dirname(path: &str) -> &str {
 /// slash) is not ported.
 pub fn glob_is_supported(pattern: &str) -> bool {
     let last = pattern.rsplit('/').next().unwrap_or_default();
-    !pattern.contains(['{', '}', '[', ']', '(', ')', '!', '+', '@', '\\', '#'])
+    !pattern.contains(['{', '}', '[', ']', '(', ')', '!', '+', '@', '\\', '#', '?'])
         && pattern.split('/').all(|segment| segment == "**" || !segment.contains("**"))
         && last != "**"
         && !last.is_empty()

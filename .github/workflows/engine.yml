@@ -7,8 +7,11 @@ on:
       - 'engine/**'
       - 'languages/typescript/adapters/typed-engine/**'
       - 'languages/typescript/preset/architecture/**'
+      - 'languages/typescript/preset/coding-standards/**'
       - 'languages/typescript/preset/unused-api/**'
       - 'shared/engine/**'
+      - 'core/tooling/**'
+      - 'package-lock.json'
       - 'scripts/ci/**'
       - '.github/workflows/engine.yml'
   pull_request:

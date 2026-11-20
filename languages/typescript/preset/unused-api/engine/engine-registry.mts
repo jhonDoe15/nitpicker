@@ -63,6 +63,9 @@ function targetOf(value: unknown, entries: ReadonlyMap<string, FileInfo>): Targe
 }
 
 export function engineRegistry(request: Request): EngineRegistry | undefined {
+  if (path.dirname(path.resolve(request.configPath)) !== path.resolve(request.projectRoot)) {
+    return undefined;
+  }
   const inputs = projectProgramInputs(request);
   const files = engineFiles({ ...request, rootNames: inputs.rootNames });
   const outcome = runTypedChecks({

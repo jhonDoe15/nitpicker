@@ -10,6 +10,7 @@ const PROJECT = path.resolve(
   '../../../../../engine/tests/fixtures/typescript-typed/contracts/tsconfig.json',
 );
 const NODE_ONLY = { ...process.env, NITPICKER_TYPED_ENGINE: 'off' };
+const ENGINE = { ...process.env, NITPICKER_TYPED_ENGINE: 'required' };
 const hasEngine = findEngine() !== undefined && nativeCompilerPath() !== undefined;
 
 it('leaves the check to the compiler in this process when the engine is switched off', () => {
@@ -23,13 +24,18 @@ it('leaves the check to the compiler in this process when the project cannot be 
 });
 
 it.runIf(hasEngine)('reports through the engine what the compiler in this process reports', () => {
-  const viaEngine = engineUnusedMethods(PROJECT);
+  const viaEngine = engineUnusedMethods(PROJECT, ENGINE);
 
   expect(viaEngine?.findings).toEqual(
     analyzePublicContractUsage(PROJECT, { environment: NODE_ONLY }),
   );
   expect(viaEngine?.findings).not.toHaveLength(0);
-  expect(analyzePublicContractUsage(PROJECT, { displayRoot: path.dirname(PROJECT) })).toEqual(
+  expect(
+    analyzePublicContractUsage(PROJECT, {
+      displayRoot: path.dirname(PROJECT),
+      environment: ENGINE,
+    }),
+  ).toEqual(
     analyzePublicContractUsage(PROJECT, {
       displayRoot: path.dirname(PROJECT),
       environment: NODE_ONLY,

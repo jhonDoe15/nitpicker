@@ -59,6 +59,13 @@ impl Session {
         if let Some(first) = problems.as_array().and_then(|problems| problems.first()) {
             return Err(format!("{tsconfig} has configuration errors: {}", first["text"].as_str().unwrap_or("unknown")));
         }
+        // A compiler option this compiler no longer has (a `baseUrl`, an old module resolution) is reported here
+        // and otherwise ignored, so the program would differ from the one the option's author gets.
+        let rejected = server.raw(&project, "getProgramDiagnostics", serde_json::json!({}))?;
+        let is_option_error = |problem: &&serde_json::Value| problem["code"].as_u64().is_some_and(|code| (5000..6000).contains(&code));
+        if let Some(first) = rejected.as_array().and_then(|problems| problems.iter().find(is_option_error)) {
+            return Err(format!("{tsconfig} uses compiler options this compiler rejects: {}", first["text"].as_str().unwrap_or("unknown")));
+        }
         let files = server.source_file_names(&project)?;
         let root = project.root_dir.clone().unwrap_or_else(|| directory.clone()).trim_end_matches('/').to_string();
         let counts = SessionCounts { program_files: files.len(), open_ms: started.elapsed().as_millis(), ..SessionCounts::default() };
