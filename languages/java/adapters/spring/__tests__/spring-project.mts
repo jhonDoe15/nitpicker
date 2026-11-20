@@ -174,6 +174,7 @@ const REVIEW_RULES = new Set([
   'LockOrderInversion',
   'InconsistentFieldLocking',
   'SpringUnusedContext',
+  'SpringTransactionalHttpTest',
   'TaskOutlivesTryResource',
   'ReactorBlockingInOperator',
   'ReactorBlockInReactiveMethod',

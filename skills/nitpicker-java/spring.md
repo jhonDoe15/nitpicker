@@ -142,6 +142,10 @@ Tests:
 - `@SpringBootTest` is for integration and component tests that use the context (an injected bean,
   `MockMvc`, `WebTestClient`, `TestRestTemplate`). Unit-test a class by creating it with `new`, and
   test one layer with a slice such as `@WebMvcTest` or `@DataJpaTest` (`SpringUnusedContext`).
+- No `@Transactional` on a test that calls the application over HTTP (`SpringTransactionalHttpTest`): with
+  `webEnvironment = RANDOM_PORT` or `DEFINED_PORT` and a `TestRestTemplate`, `WebTestClient` or `@LocalServerPort`,
+  the request commits on a server thread, so the test's rollback cleans nothing and the server does not see
+  rows the test has not committed. Clean up with `@Sql` or a delete in `@AfterEach`, or call through `MockMvc`.
 - Text from a search or filter field is trimmed before it reaches a repository finder (`findBy...StartingWith`,
   `Containing`, `Like`, `IgnoreCase`, `Equals`) or a query parameter: `lastName.strip()` in the handler, or one
   `StringTrimmerEditor` registered in an `@InitBinder` of a `@ControllerAdvice` for every controller, since a
