@@ -20,6 +20,12 @@ mod statements;
 mod targets;
 mod throws;
 mod time;
+mod unused_methods;
+mod keep;
+mod boxed;
+mod interrupts;
+mod vars;
+mod mutability;
 mod locale;
 mod futures;
 mod unused;
@@ -164,6 +170,8 @@ const CHECKS: &[Check] = &[
     signatures::exposed_private_type,
     time::prefer_java_time_overload,
     locale::default_locale,
+    mutability::mixed_mutability_return_type,
+    interrupts::interrupted_exception_swallowed,
     futures::future_return_value_ignored,
     names::type_parameter_naming,
     names::wildcard_import,
@@ -173,6 +181,10 @@ const CHECKS: &[Check] = &[
     names::suppress_warnings_without_explanation,
     names::type_parameter_unused_in_formals,
 ];
+
+/// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
+/// leave the resolver with answers found in a different order.
+const FILE_CHECKS: &[Check] = &[boxed::unnecessary_boxed_variable, unused_methods::unused_method];
 
 pub struct ErrorProne;
 
@@ -200,6 +212,9 @@ impl FileRule for ErrorProne {
                 }
             }
         });
+        for check in FILE_CHECKS {
+            check(&context, file.tree.root_node());
+        }
         out.append(&mut context.out.into_inner());
     }
 }

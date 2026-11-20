@@ -185,6 +185,21 @@ pub fn thrown_by(context: &Context, trees: &[Node]) -> Option<Vec<String>> {
     Some(all)
 }
 
+/// What the resources and the block of a `try` can throw before any of its `catch` clauses sees it.
+pub fn thrown_in_try(context: &Context, attempt: Node) -> Option<Vec<String>> {
+    let mut scanner = Thrown { context, frames: vec![Vec::new()], held: HashMap::new(), unknown: false };
+    if let Some(resources) = attempt.child_by_field_name("resources") {
+        for resource in named_children(resources) {
+            scanner.resource(resource);
+        }
+        scanner.scan(resources);
+    }
+    if let Some(body) = attempt.child_by_field_name("body") {
+        scanner.scan(body);
+    }
+    (!scanner.unknown).then(|| scanner.frames.swap_remove(0))
+}
+
 /// `Some(true)` for a checked exception; `None` when the class is not fully known.
 fn checked(context: &Context, name: &str) -> Option<bool> {
     let index = context.resolver.index;
@@ -195,7 +210,7 @@ fn checked(context: &Context, name: &str) -> Option<bool> {
     Some(under("java.lang.Throwable") && !under("java.lang.RuntimeException") && !under("java.lang.Error"))
 }
 
-fn can_be_overridden(method: Node) -> bool {
+pub fn can_be_overridden(method: Node) -> bool {
     if method.kind() != "method_declaration" || ["static", "private", "final"].iter().any(|word| has_modifier(method, word)) {
         return false;
     }

@@ -50,5 +50,9 @@
  "ExposedPrivateType",
  "PreferJavaTimeOverload",
  "FutureReturnValueIgnored",
- "DefaultLocale"
+ "DefaultLocale",
+ "MixedMutabilityReturnType",
+ "InterruptedExceptionSwallowed",
+ "UnnecessaryBoxedVariable",
+ "UnusedMethod"
 ]
