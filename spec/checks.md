@@ -143,6 +143,13 @@ statement), or follows another call of the same setter in the same block. An upd
 that does not read the state, a call in a `catch` or a nested function and a call in an effect whose dependencies list
 the state are left alone.
 
+React state updaters: `nitpicker/react-pure-state-updater` (production source in a React project, in `eslint-lint`)
+reports, inside the function passed to a `useState` setter or the reducer of `useReducer`, a call of a state setter or
+dispatch, a prop callback called as a statement, an assignment, `delete` or update on a property of the previous-state parameter,
+and a mutating array, `Set` or `Map` method on it when the `useState` type argument or initial value (or the reducer's
+parameter type) shows that kind of value. A parameter reassigned to a copy, calls in nested functions, Immer and
+setters not from `useState` are left alone.
+
 React i18next: `nitpicker/react-i18next-escape-value` (production source in a React project that depends on
 `react-i18next`, in `eslint-lint`) reports a `t(...)` or `<Trans values>` call that interpolates values into text React
 renders while no source file of the package sets `interpolation.escapeValue: false` and the call does not. The init

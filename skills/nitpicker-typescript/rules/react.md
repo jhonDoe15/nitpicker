@@ -13,6 +13,9 @@ exception route in the message: write that form, don't work around the rule.
 - A state update that reads its own state after an `await`, or after an earlier call of the same setter, takes an
   updater: `setItems((current) => [...current, tag])`, not `setItems([...items, tag])`
   (`nitpicker/react-no-stale-state-update`).
+- A state updater or reducer only returns the next value: no setter, `dispatch` or prop callback call inside it,
+  and no `push`, `sort`, `delete` or assignment on the previous state; compute `next` first, then
+  `setItems(next); onChange(next);` (`nitpicker/react-pure-state-updater`).
 - With react-i18next, set `interpolation: { escapeValue: false }` at init (or per call) when `t()` values are
   rendered by React; otherwise `R&D` shows as `R&amp;D` (`nitpicker/react-i18next-escape-value`).
 - A component rendered per item gets its DOM ids from `useId()` or from the item, not a literal that a label or
