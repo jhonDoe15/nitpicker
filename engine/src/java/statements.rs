@@ -1,4 +1,5 @@
 //! Statement and declaration shape checks from google_checks.xml.
+use crate::java::fields::Fields;
 use super::helpers::{declarators, modifiers, report};
 use crate::engine::source::{SourceFile, children, walk};
 use crate::engine::{FileRule, finding::Finding};
@@ -33,14 +34,14 @@ fn need_braces(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
     };
     match node.kind() {
         "if_statement" => {
-            flag("if", node.child_by_field_name("consequence"), false);
+            flag("if", node.field("consequence"), false);
             if keyword(node, "else").is_some() {
-                flag("else", node.child_by_field_name("alternative"), true);
+                flag("else", node.field("alternative"), true);
             }
         }
-        "for_statement" | "enhanced_for_statement" => flag("for", node.child_by_field_name("body"), false),
-        "while_statement" => flag("while", node.child_by_field_name("body"), false),
-        "do_statement" => flag("do", node.child_by_field_name("body"), false),
+        "for_statement" | "enhanced_for_statement" => flag("for", node.field("body"), false),
+        "while_statement" => flag("while", node.field("body"), false),
+        "do_statement" => flag("do", node.field("body"), false),
         _ => {}
     }
 }
@@ -96,7 +97,7 @@ fn array_type_style(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
     if !holder {
         return;
     }
-    if let Some(dimensions) = node.child_by_field_name("dimensions") {
+    if let Some(dimensions) = node.field("dimensions") {
         report(out, file, dimensions, "ArrayTypeStyle", "Array brackets at illegal position.".to_string());
     }
 }
@@ -148,7 +149,7 @@ fn one_top_level_class(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
         rest.remove(0);
     }
     for declaration in rest {
-        let name = declaration.child_by_field_name("name").map(|n| file.text_of(n)).unwrap_or_default();
+        let name = declaration.field("name").map(|n| file.text_of(n)).unwrap_or_default();
         let message = format!("Top-level class {name} has to reside in its own source file.");
         report(out, file, *declaration, "OneTopLevelClass", message);
     }
@@ -158,8 +159,8 @@ fn no_finalizer(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
     if node.kind() != "method_declaration" {
         return;
     }
-    let named = node.child_by_field_name("name").is_some_and(|n| file.text_of(n) == "finalize");
-    let empty = node.child_by_field_name("parameters").is_some_and(|p| p.named_child_count() == 0);
+    let named = node.field("name").is_some_and(|n| file.text_of(n) == "finalize");
+    let empty = node.field("parameters").is_some_and(|p| p.named_child_count() == 0);
     if named && empty {
         report(out, file, node, "NoFinalizer", "Avoid using finalizer method.".to_string());
     }
@@ -176,7 +177,7 @@ fn annotation_on_type(list: Node) -> bool {
         "field_declaration" | "local_variable_declaration" | "constant_declaration" | "formal_parameter"
         | "spread_parameter" | "constructor_declaration" | "resource" | "enhanced_for_statement"
         | "catch_formal_parameter" => true,
-        "method_declaration" => owner.child_by_field_name("type").is_some_and(|t| t.kind() != "void_type"),
+        "method_declaration" => owner.field("type").is_some_and(|t| t.kind() != "void_type"),
         _ => false,
     }
 }

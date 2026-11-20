@@ -109,7 +109,8 @@ pub enum Expr {
     Lookup(Box<Expr>, Key),
     OwnLookup(Key),
     For(u32, Box<Expr>, Box<Expr>),
-    Let(u32, Box<Expr>, Box<Expr>),
+    /// The flag is on when the value is worked out on first use instead of at the declaration.
+    Let(u32, std::rc::Rc<Expr>, Box<Expr>, bool),
     Quantified(bool, u32, Box<Expr>, Box<Expr>),
     If(Box<Expr>, Box<Expr>, Box<Expr>),
     Or(Box<Expr>, Box<Expr>),
@@ -293,6 +294,8 @@ pub struct Parser {
     tokens: Vec<Tok>,
     at: usize,
     pub names: Vec<String>,
+    /// Variables that hold at most one item wherever they are declared.
+    singles: std::collections::HashSet<u32>,
 }
 
 type Parsed = Result<Expr, String>;
@@ -301,9 +304,128 @@ fn boxed(expr: Expr) -> Box<Expr> {
     Box::new(expr)
 }
 
+/// Counts the reads of a variable in an expression, and notes whether one of them sits where the expression
+/// around it runs once per item: a predicate, the right side of a path, the body of a loop or of a function.
+fn count_reads(expr: &Expr, name: u32, looped: bool, reads: &mut (usize, bool)) {
+    let mut see = |part: &Expr, looped: bool| count_reads(part, name, looped, reads);
+    match expr {
+        Expr::Variable(known) => {
+            if *known == name {
+                reads.0 += 1;
+                reads.1 |= looped;
+            }
+        }
+        Expr::Whole(_) | Expr::Real(_) | Expr::Text(_) | Expr::Fixed(_) | Expr::Context | Expr::Root | Expr::Reference(..) => {}
+        Expr::Sequence(parts) | Expr::Array(parts) | Expr::Call(_, parts) => parts.iter().for_each(|part| see(part, looped)),
+        Expr::Path(base, step) | Expr::Filter(base, step) | Expr::Each(base, step) => {
+            see(base, looped);
+            see(step, true);
+        }
+        Expr::Step(_, _, predicates) => predicates.iter().for_each(|predicate| see(predicate, true)),
+        Expr::Dynamic(function, arguments) => {
+            see(function, looped);
+            arguments.iter().for_each(|argument| see(argument, looped));
+        }
+        Expr::Inline(lambda) => see(&lambda.body, true),
+        Expr::Map(entries) => entries.iter().for_each(|(key, value)| {
+            see(key, looped);
+            see(value, looped);
+        }),
+        Expr::Lookup(base, key) => {
+            see(base, looped);
+            if let Key::Computed(key) = key {
+                see(key, looped);
+            }
+        }
+        Expr::OwnLookup(key) => {
+            if let Key::Computed(key) = key {
+                see(key, looped);
+            }
+        }
+        Expr::For(_, range, body) | Expr::Quantified(_, _, range, body) => {
+            see(range, looped);
+            see(body, true);
+        }
+        Expr::Let(_, value, body, _) => {
+            see(value, looped);
+            see(body, looped);
+        }
+        Expr::If(condition, then, otherwise) => {
+            see(condition, looped);
+            see(then, looped);
+            see(otherwise, looped);
+        }
+        Expr::Or(left, right)
+        | Expr::And(left, right)
+        | Expr::General(_, left, right)
+        | Expr::Single(_, left, right)
+        | Expr::Nodes(_, left, right)
+        | Expr::Concat(left, right)
+        | Expr::Range(left, right)
+        | Expr::Math(_, left, right)
+        | Expr::Sets(_, left, right) => {
+            see(left, looped);
+            see(right, looped);
+        }
+        Expr::Negate(inner) => see(inner, looped),
+    }
+}
+
+/// Whether an expression reads nothing of the item, position or size it is evaluated at.
+/// Anything not known to be free of them counts as reading them.
+fn unfocused(expr: &Expr) -> bool {
+    match expr {
+        Expr::Whole(_) | Expr::Real(_) | Expr::Text(_) | Expr::Fixed(_) | Expr::Variable(_) | Expr::Inline(_) | Expr::Reference(..) => true,
+        Expr::Path(base, _) | Expr::Filter(base, _) | Expr::Each(base, _) => unfocused(base),
+        Expr::Lookup(base, key) => unfocused(base) && !matches!(key, Key::Computed(_)),
+        Expr::Call(name, arguments) => !arguments.is_empty() && !name.starts_with("pmd-java:") && arguments.iter().all(unfocused),
+        Expr::Dynamic(function, arguments) => unfocused(function) && arguments.iter().all(unfocused),
+        Expr::Sequence(parts) | Expr::Array(parts) => parts.iter().all(unfocused),
+        Expr::Map(entries) => entries.iter().all(|(key, value)| unfocused(key) && unfocused(value)),
+        Expr::For(_, range, body) | Expr::Quantified(_, _, range, body) => unfocused(range) && unfocused(body),
+        Expr::Let(_, value, body, _) => unfocused(value) && unfocused(body),
+        Expr::If(condition, then, otherwise) => unfocused(condition) && unfocused(then) && unfocused(otherwise),
+        Expr::Or(left, right)
+        | Expr::And(left, right)
+        | Expr::General(_, left, right)
+        | Expr::Single(_, left, right)
+        | Expr::Nodes(_, left, right)
+        | Expr::Concat(left, right)
+        | Expr::Range(left, right)
+        | Expr::Math(_, left, right)
+        | Expr::Sets(_, left, right) => unfocused(left) && unfocused(right),
+        Expr::Negate(inner) => unfocused(inner),
+        Expr::Context | Expr::Root | Expr::Step(..) | Expr::OwnLookup(_) => false,
+    }
+}
+
 impl Parser {
+    /// Whether an expression can give more than one item, as far as its shape tells. PMD's XPath library works
+    /// out a `let` value at its declaration unless it can be several items, and this copies that choice;
+    /// when in doubt the answer is no, which keeps the value at the declaration.
+    fn several(&self, expr: &Expr) -> bool {
+        match expr {
+            Expr::Step(axis, test, _) => !matches!((axis, test), (Axis::Parent | Axis::Own, _) | (Axis::Attribute, Test::Named(_))),
+            Expr::Path(base, step) => self.several(base) || self.several(step),
+            Expr::Filter(base, predicate) => {
+                let place = match predicate.as_ref() {
+                    Expr::Whole(_) | Expr::Real(_) | Expr::Math(..) | Expr::Negate(_) => true,
+                    Expr::Call(name, _) => matches!(name.as_ref(), "last" | "position" | "count"),
+                    _ => false,
+                };
+                !place && self.several(base)
+            }
+            Expr::Sets(..) | Expr::For(..) | Expr::Range(..) | Expr::Each(..) => true,
+            Expr::Sequence(parts) => parts.len() > 1 || parts.iter().any(|part| self.several(part)),
+            Expr::Variable(name) => !self.singles.contains(name),
+            Expr::If(_, then, otherwise) => self.several(then) || self.several(otherwise),
+            Expr::Let(_, _, body, _) => self.several(body),
+            _ => false,
+        }
+    }
+
     pub fn parse(source: &str, names: Vec<String>) -> Result<(Expr, Vec<String>), String> {
-        let mut parser = Parser { tokens: lex(source)?, at: 0, names };
+        let mut parser = Parser { tokens: lex(source)?, at: 0, names, singles: std::collections::HashSet::new() };
         let expr = parser.expr()?;
         if parser.peek() != &Tok::End {
             return Err(format!("unexpected {:?} at token {}", parser.peek(), parser.at));
@@ -404,15 +526,28 @@ impl Parser {
                 } else {
                     self.expect(":=")?;
                 }
-                bindings.push((name, self.single()?));
+                if each {
+                    self.singles.insert(name);
+                }
+                let value = self.single()?;
+                let several = self.several(&value);
+                if !each && !several {
+                    self.singles.insert(name);
+                }
+                let later = several && unfocused(&value);
+                bindings.push((name, value, later));
                 if !self.take(",") {
                     break;
                 }
             }
             self.expect_word("return")?;
             let mut body = self.single()?;
-            for (name, value) in bindings.into_iter().rev() {
-                body = if each { Expr::For(name, boxed(value), boxed(body)) } else { Expr::Let(name, boxed(value), boxed(body)) };
+            for (name, value, later) in bindings.into_iter().rev() {
+                // A variable read at most once, and not from inside a loop, is worked out where it is read.
+                let mut reads = (0, false);
+                count_reads(&body, name, false, &mut reads);
+                let later = later || (!each && reads.0 <= 1 && !reads.1);
+                body = if each { Expr::For(name, boxed(value), boxed(body)) } else { Expr::Let(name, std::rc::Rc::new(value), boxed(body), later) };
             }
             return Ok(body);
         }
@@ -422,6 +557,7 @@ impl Parser {
             let mut bindings = Vec::new();
             loop {
                 let name = self.variable()?;
+                self.singles.insert(name);
                 self.expect_word("in")?;
                 bindings.push((name, self.single()?));
                 if !self.take(",") {

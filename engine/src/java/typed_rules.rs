@@ -1,4 +1,5 @@
 //! nitpicker PMD XPath rules that need types (typeIs, matchesSig), run against the project type index.
+use crate::java::fields::Fields;
 use super::helpers::{annotation_names, declarators, has_modifier, in_interface_or_annotation, report};
 use super::types::expr::unwrap;
 use super::types::model::Type;
@@ -34,17 +35,17 @@ impl FileRule for Typed {
 }
 
 fn call_name<'f>(file: &'f SourceFile, call: Node) -> &'f str {
-    call.child_by_field_name("name").map(|name| file.text_of(name)).unwrap_or_default()
+    call.field("name").map(|name| file.text_of(name)).unwrap_or_default()
 }
 
 fn arguments<'t>(call: Node<'t>) -> Vec<Node<'t>> {
-    let Some(list) = call.child_by_field_name("arguments") else { return Vec::new() };
+    let Some(list) = call.field("arguments") else { return Vec::new() };
     let mut cursor = list.walk();
     list.named_children(&mut cursor).filter(|node| !node.kind().ends_with("comment")).collect()
 }
 
 fn receiver<'t>(call: Node<'t>) -> Option<Node<'t>> {
-    call.child_by_field_name("object").map(unwrap)
+    call.field("object").map(unwrap)
 }
 
 fn any_type(resolver: &Resolver, expression: Node, names: &[&str]) -> bool {
@@ -54,8 +55,8 @@ fn any_type(resolver: &Resolver, expression: Node, names: &[&str]) -> bool {
 fn variable_use(node: Node) -> bool {
     node.kind() == "identifier"
         && node.parent().is_none_or(|parent| match parent.kind() {
-            "method_invocation" => parent.child_by_field_name("name") != Some(node),
-            "field_access" => parent.child_by_field_name("field") != Some(node),
+            "method_invocation" => parent.field("name") != Some(node),
+            "field_access" => parent.field("field") != Some(node),
             _ => true,
         })
 }
@@ -132,7 +133,7 @@ fn array_root<'t>(access: Node<'t>, depth: usize) -> Option<Node<'t>> {
         if current.kind() != "array_access" {
             return None;
         }
-        current = unwrap(current.child_by_field_name("array")?);
+        current = unwrap(current.field("array")?);
         if current.kind() == "identifier" {
             return Some(current);
         }
@@ -148,7 +149,7 @@ fn mutation_targets<'t>(resolver: &Resolver, node: Node<'t>) -> Vec<Node<'t>> {
             let Some(object) = receiver(node) else { return targets };
             let name = call_name(file, node);
             let on_this = object.kind() == "field_access"
-                && object.child_by_field_name("object").is_some_and(|owner| owner.kind() == "this");
+                && object.field("object").is_some_and(|owner| owner.kind() == "this");
             if MUTATORS.contains(&name)
                 && (object.kind() == "identifier" || on_this)
                 && any_type(resolver, object, &["java.util.Collection", "java.util.Map"])
@@ -163,7 +164,7 @@ fn mutation_targets<'t>(resolver: &Resolver, node: Node<'t>) -> Vec<Node<'t>> {
                 targets.extend(arguments(node).first().map(|first| unwrap(*first)).filter(|first| first.kind() == "identifier"));
             }
         }
-        "assignment_expression" => targets.extend(node.child_by_field_name("left").and_then(|left| array_root(left, 3))),
+        "assignment_expression" => targets.extend(node.field("left").and_then(|left| array_root(left, 3))),
         "update_expression" => {
             targets.extend(children(node).into_iter().find(|part| part.is_named()).and_then(|operand| array_root(operand, 2)));
         }
@@ -173,12 +174,12 @@ fn mutation_targets<'t>(resolver: &Resolver, node: Node<'t>) -> Vec<Node<'t>> {
 }
 
 fn parameter_names<'f>(file: &'f SourceFile, method: Node) -> Vec<&'f str> {
-    let Some(list) = method.child_by_field_name("parameters") else { return Vec::new() };
+    let Some(list) = method.field("parameters") else { return Vec::new() };
     children(list)
         .into_iter()
         .filter_map(|parameter| match parameter.kind() {
-            "formal_parameter" => parameter.child_by_field_name("name"),
-            "spread_parameter" => declarators(parameter).first().and_then(|declarator| declarator.child_by_field_name("name")),
+            "formal_parameter" => parameter.field("name"),
+            "spread_parameter" => declarators(parameter).first().and_then(|declarator| declarator.field("name")),
             _ => None,
         })
         .map(|name| file.text_of(name))
@@ -188,7 +189,7 @@ fn parameter_names<'f>(file: &'f SourceFile, method: Node) -> Vec<&'f str> {
 fn parameter_mutation(resolver: &Resolver, node: Node, id: &'static str, out: &mut Vec<Finding>) {
     let file = resolver.file;
     for at in mutation_targets(resolver, node) {
-        let name = file.text_of(if at.kind() == "identifier" { at } else { at.child_by_field_name("field").unwrap_or(at) });
+        let name = file.text_of(if at.kind() == "identifier" { at } else { at.field("field").unwrap_or(at) });
         let Some(method) = ancestor(at, &["method_declaration", "constructor_declaration"]) else { continue };
         if has_modifier(method, "private") || annotation_names(file, method).iter().any(|n| n.rsplit('.').next() == Some("Override")) {
             continue;
@@ -210,16 +211,16 @@ fn parameter_mutation(resolver: &Resolver, node: Node, id: &'static str, out: &m
         let is_parameter = |value: Option<Node>| {
             value.map(unwrap).is_some_and(|value| value.kind() == "identifier" && parameters.contains(&file.text_of(value)))
         };
-        let named = |holder: Node, field: &str| holder.child_by_field_name(field).is_some_and(|n| file.text_of(n) == name);
+        let named = |holder: Node, field: &'static str| holder.field(field).is_some_and(|n| file.text_of(n) == name);
         let mut aliased = at.kind() == "identifier" && parameters.contains(&name);
         let mut replaced = false;
         walk(method, |inner| match inner.kind() {
             "variable_declarator" | "resource" => {
-                aliased |= named(inner, "name") && is_parameter(inner.child_by_field_name("value"));
+                aliased |= named(inner, "name") && is_parameter(inner.field("value"));
             }
-            "assignment_expression" if inner.child_by_field_name("operator").is_some_and(|o| file.text_of(o) == "=") => {
-                let Some(left) = inner.child_by_field_name("left").map(unwrap) else { return };
-                let Some(right) = inner.child_by_field_name("right").map(unwrap) else { return };
+            "assignment_expression" if inner.field("operator").is_some_and(|o| file.text_of(o) == "=") => {
+                let Some(left) = inner.field("left").map(unwrap) else { return };
+                let Some(right) = inner.field("right").map(unwrap) else { return };
                 let onto = match left.kind() {
                     "identifier" => file.text_of(left) == name,
                     "field_access" => named(left, "field"),
@@ -255,7 +256,7 @@ fn declared_in<'t>(file: &SourceFile, block: Node<'t>, name: &str) -> Option<Nod
         .into_iter()
         .filter(|statement| statement.kind() == "local_variable_declaration")
         .flat_map(declarators)
-        .find(|declarator| declarator.child_by_field_name("name").is_some_and(|n| file.text_of(n) == name))
+        .find(|declarator| declarator.field("name").is_some_and(|n| file.text_of(n) == name))
 }
 
 fn list_used_as_set(resolver: &Resolver, node: Node, id: &'static str, out: &mut Vec<Finding>) {
@@ -277,7 +278,7 @@ fn list_used_as_set(resolver: &Resolver, node: Node, id: &'static str, out: &mut
         current = scope.parent();
     }
     let Some((block, declarator)) = found else { return };
-    let created = declarator.child_by_field_name("value").map(unwrap).is_some_and(|value| {
+    let created = declarator.field("value").map(unwrap).is_some_and(|value| {
         value.kind() == "object_creation_expression" && any_type(resolver, value, &["java.util.ArrayList", "java.util.LinkedList"])
     });
     if !created || declarator.start_byte() >= node.start_byte() {
@@ -341,7 +342,7 @@ fn mutable_static_collection(resolver: &Resolver, node: Node, id: &'static str, 
     }
     let created: Vec<Node> = declarators(node)
         .into_iter()
-        .filter_map(|declarator| declarator.child_by_field_name("value").map(unwrap))
+        .filter_map(|declarator| declarator.field("value").map(unwrap))
         .filter(|value| value.kind() == "object_creation_expression")
         .collect();
     if !created.iter().any(|value| any_type(resolver, *value, &["java.util.Collection", "java.util.Map"])) {
@@ -351,13 +352,13 @@ fn mutable_static_collection(resolver: &Resolver, node: Node, id: &'static str, 
         return;
     }
     let names: Vec<&str> =
-        declarators(node).into_iter().filter_map(|d| d.child_by_field_name("name")).map(|n| file.text_of(n)).collect();
+        declarators(node).into_iter().filter_map(|d| d.field("name")).map(|n| file.text_of(n)).collect();
     let mutated = || {
         let Some(body) = ancestor(node, &["class_body", "interface_body", "enum_body"]) else { return false };
         calls_in(body).into_iter().any(|call| {
             let target = receiver(call).and_then(|object| match object.kind() {
                 "identifier" => Some(object),
-                "field_access" => object.child_by_field_name("field"),
+                "field_access" => object.field("field"),
                 _ => None,
             });
             COLLECTION_MUTATORS.contains(&call_name(file, call))
@@ -411,12 +412,12 @@ fn unbounded_wait(resolver: &Resolver, node: Node, id: &'static str, out: &mut V
         return;
     }
     let variable = (object.kind() == "identifier").then(|| file.text_of(object));
-    let named = |holder: Node| holder.child_by_field_name("name").is_some_and(|n| Some(file.text_of(n)) == variable);
+    let named = |holder: Node| holder.field("name").is_some_and(|n| Some(file.text_of(n)) == variable);
     if let (Some(_), Some(method)) = (variable, ancestor(node, &["method_declaration"])) {
         let mut bounded = false;
         walk(method, |inner| {
             if inner.kind() == "variable_declarator" && named(inner) {
-                bounded |= inner.child_by_field_name("value").is_some_and(|value| calls_named(file, value, &timeouts));
+                bounded |= inner.field("value").is_some_and(|value| calls_named(file, value, &timeouts));
             }
         });
         if bounded {
@@ -448,7 +449,7 @@ fn unbounded_wait(resolver: &Resolver, node: Node, id: &'static str, out: &mut V
     while let Some(outer) = current {
         let invoked = outer.kind() == "enhanced_for_statement"
             && named(outer)
-            && outer.child_by_field_name("value").is_some_and(|source| calls_named(file, source, &["invokeAll"]));
+            && outer.field("value").is_some_and(|source| calls_named(file, source, &["invokeAll"]));
         if invoked {
             return;
         }
@@ -471,7 +472,7 @@ fn call_probe(resolver: &Resolver, node: Node, id: &'static str, out: &mut Vec<F
     if node.kind() != "method_invocation" {
         return;
     }
-    let target = match node.child_by_field_name("object") {
+    let target = match node.field("object") {
         None => "-".to_string(),
         Some(object) if object.kind() == "super" => "super".to_string(),
         Some(object) => match resolver.receiver(object) {
@@ -522,7 +523,7 @@ fn type_probe(resolver: &Resolver, node: Node, id: &'static str, out: &mut Vec<F
     report(out, resolver.file, node, id, format!("{place}|{}|{named}", node.kind()));
     // `Outer.super` before a call is one expression for PMD and two tokens here.
     let qualified = crate::engine::source::children(node).into_iter().find(|part| part.kind() == "super");
-    if let (Some(owner), Some(keyword), "method_invocation") = (node.child_by_field_name("object"), qualified, node.kind()) {
+    if let (Some(owner), Some(keyword), "method_invocation") = (node.field("object"), qualified, node.kind()) {
         if let Some(kind) = resolver.type_node(owner) {
             let (from, to) = (owner.start_position(), keyword.end_position());
             let place = format!(

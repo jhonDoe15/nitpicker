@@ -1,4 +1,5 @@
 //! A sample of nitpicker's own PMD XPath rules, to test how far syntax plus file-local type lookup goes.
+use crate::java::fields::Fields;
 use super::helpers::{annotation_names, declarators, report};
 use crate::engine::source::{SourceFile, children, walk};
 use crate::engine::{FileRule, finding::Finding};
@@ -29,7 +30,7 @@ fn annotations<'t>(list: Node<'t>) -> Vec<Node<'t>> {
 }
 
 fn annotation_name<'f>(file: &'f SourceFile, annotation: Node) -> &'f str {
-    annotation.child_by_field_name("name").map(|name| simple_name(file.text_of(name))).unwrap_or_default()
+    annotation.field("name").map(|name| simple_name(file.text_of(name))).unwrap_or_default()
 }
 
 fn generated_on_hand_written(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
@@ -74,7 +75,7 @@ fn unwrap<'t>(mut node: Node<'t>) -> Node<'t> {
 }
 
 fn operator<'f>(file: &'f SourceFile, node: Node) -> &'f str {
-    node.child_by_field_name("operator").map(|op| file.text_of(op)).unwrap_or_default()
+    node.field("operator").map(|op| file.text_of(op)).unwrap_or_default()
 }
 
 fn logical_parent<'t>(node: Node<'t>) -> Option<Node<'t>> {
@@ -87,7 +88,7 @@ fn logical_parent<'t>(node: Node<'t>) -> Option<Node<'t>> {
 
 fn operands<'t>(file: &SourceFile, node: Node<'t>, op: &str, out: &mut Vec<Node<'t>>) {
     for side in ["left", "right"] {
-        let Some(child) = node.child_by_field_name(side).map(unwrap) else { continue };
+        let Some(child) = node.field(side).map(unwrap) else { continue };
         if child.kind() == "binary_expression" && operator(file, child) == op {
             operands(file, child, op, out);
         } else {
@@ -150,23 +151,23 @@ fn declared_type<'f>(file: &'f SourceFile, usage: Node, name: &str) -> Option<&'
                 "local_variable_declaration" | "field_declaration" => {
                     let named = declarators(child)
                         .iter()
-                        .any(|d| d.child_by_field_name("name").is_some_and(|n| file.text_of(n) == name));
+                        .any(|d| d.field("name").is_some_and(|n| file.text_of(n) == name));
                     if named {
-                        found = child.child_by_field_name("type").map(|t| file.text_of(t));
+                        found = child.field("type").map(|t| file.text_of(t));
                     }
                 }
                 "formal_parameters" => {
                     for parameter in children(child) {
-                        if parameter.child_by_field_name("name").is_some_and(|n| file.text_of(n) == name) {
-                            found = parameter.child_by_field_name("type").map(|t| file.text_of(t));
+                        if parameter.field("name").is_some_and(|n| file.text_of(n) == name) {
+                            found = parameter.field("type").map(|t| file.text_of(t));
                         }
                     }
                 }
                 _ => {}
             }
         }
-        if node.kind() == "enhanced_for_statement" && node.child_by_field_name("name").is_some_and(|n| file.text_of(n) == name) {
-            found = node.child_by_field_name("type").map(|t| file.text_of(t));
+        if node.kind() == "enhanced_for_statement" && node.field("name").is_some_and(|n| file.text_of(n) == name) {
+            found = node.field("type").map(|t| file.text_of(t));
         }
         if found.is_some() {
             return found;
@@ -190,11 +191,11 @@ fn is_string(file: &SourceFile, expression: Node) -> bool {
             matches!(declared, Some("String" | "java.lang.String"))
         }
         "method_invocation" => {
-            expression.child_by_field_name("name").is_some_and(|n| STRING_METHODS.contains(&file.text_of(n)))
+            expression.field("name").is_some_and(|n| STRING_METHODS.contains(&file.text_of(n)))
         }
         "binary_expression" => {
             operator(file, expression) == "+"
-                && ["left", "right"].iter().any(|s| expression.child_by_field_name(s).is_some_and(|e| is_string(file, e)))
+                && ["left", "right"].iter().any(|s| expression.field(*s).is_some_and(|e| is_string(file, e)))
         }
         _ => false,
     }
@@ -205,9 +206,9 @@ fn plain_text_regex(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
     if node.kind() != "method_invocation" {
         return;
     }
-    let named = node.child_by_field_name("name").is_some_and(|n| file.text_of(n) == "replaceAll");
-    let Some(arguments) = node.child_by_field_name("arguments") else { return };
-    let Some(receiver) = node.child_by_field_name("object") else { return };
+    let named = node.field("name").is_some_and(|n| file.text_of(n) == "replaceAll");
+    let Some(arguments) = node.field("arguments") else { return };
+    let Some(receiver) = node.field("object") else { return };
     if !named || arguments.named_child_count() != 2 || !is_string(file, receiver) {
         return;
     }

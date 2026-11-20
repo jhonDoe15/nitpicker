@@ -88,11 +88,11 @@ impl XPathRules {
                                             // A list is a sequence of its entries, written with commas between them.
                                             kind if kind.starts_with("List[") => {
                                                 let entries = property.value.split(',').map(str::trim).filter(|entry| !entry.is_empty());
-                                                return (slot as u32, Seq::from(entries.map(Item::text).collect()));
+                                                return (slot as u32, super::xpath::value::Bound::Now(Seq::from(entries.map(Item::text).collect())));
                                             }
                                             _ => Item::text(&property.value),
                                         };
-                                        (slot as u32, Seq::One(value))
+                                        (slot as u32, super::xpath::value::Bound::Now(Seq::One(value)))
                                     })
                                     .collect(),
                             })

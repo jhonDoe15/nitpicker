@@ -1,3 +1,4 @@
+use crate::java::fields::Fields;
 use crate::engine::finding::Finding;
 use crate::engine::source::{SourceFile, children};
 use tree_sitter::Node;
@@ -37,7 +38,7 @@ pub fn annotation_names<'f>(file: &'f SourceFile, declaration: Node) -> Vec<&'f 
             children(m)
                 .into_iter()
                 .filter(|child| matches!(child.kind(), "marker_annotation" | "annotation"))
-                .filter_map(|annotation| annotation.child_by_field_name("name"))
+                .filter_map(|annotation| annotation.field("name"))
                 .map(|name| file.text_of(name))
                 .collect()
         })

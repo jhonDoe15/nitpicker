@@ -1,4 +1,5 @@
 mod facts;
+pub(crate) mod fields;
 mod helpers;
 mod magic_number;
 mod naming;

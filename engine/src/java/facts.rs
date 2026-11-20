@@ -1,4 +1,5 @@
 //! Per-file facts for project passes: a token stream for duplicate detection and per-method metrics.
+use crate::java::fields::Fields;
 use crate::engine::source::{SourceFile, Token};
 use crate::engine::{FileFacts, FunctionMetric};
 use std::hash::{Hash, Hasher};
@@ -35,7 +36,7 @@ fn metric(file: &SourceFile, method: Node) -> FunctionMetric {
             cyclomatic += 1;
         }
         if kind == "binary_expression" {
-            let logical = node.child_by_field_name("operator").is_some_and(|op| matches!(op.kind(), "&&" | "||"));
+            let logical = node.field("operator").is_some_and(|op| matches!(op.kind(), "&&" | "||"));
             cyclomatic += u32::from(logical);
         }
         let nests = NESTING.contains(&kind);
@@ -67,11 +68,11 @@ fn metric(file: &SourceFile, method: Node) -> FunctionMetric {
     }
     FunctionMetric {
         file: file.path.clone(),
-        name: method.child_by_field_name("name").map(|n| file.text_of(n).to_string()).unwrap_or_default(),
+        name: method.field("name").map(|n| file.text_of(n).to_string()).unwrap_or_default(),
         line: file.line(method),
         lines: method.end_position().row - method.start_position().row + 1,
         cyclomatic,
-        parameters: method.child_by_field_name("parameters").map_or(0, |p| p.named_child_count() as u32),
+        parameters: method.field("parameters").map_or(0, |p| p.named_child_count() as u32),
         max_nesting,
     }
 }

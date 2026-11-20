@@ -58,6 +58,13 @@ Measured with all 342 rules on 4 cores (findings: same / missed / extra):
 | Nacos, all modules | 5,407, 844k | 158 s, 611 s, 2.4 GB | 44 s, 171 s, 0.5 GB | 20,506 / 1 / 4 |
 | commons-lang, main and tests | 217k lines | 52 s, 196 s, 2.7 GB | 14 s, 52 s, 0.2 GB | 4,343 / 9 / 0 |
 | jhipster-sample-app | | 10.5 s | 1.1 s | 718 / 0 / 0 |
+| Elasticsearch `server` | 5,117, 1.04M | 146 s, 565 s, 2.6 GB | 33 s, 120 s, 0.6 GB | 14,518 / 5 / 1 |
+
+The first three rows were measured before the lookup caches of #2064; the Elasticsearch row after them.
+
+On the whole Elasticsearch tree (18,155 files, 3.3M lines) with the 130 rules of the first set the engine takes
+75 s, 264 CPU-s and 1.7 GB. PMD takes about 190 s, 750 CPU-s and 4.6 GB there and stops reporting after a
+StackOverflowError in its type inference, so findings on that tree are compared part by part.
 
 With spring-petclinic and five fixture projects of the Java adapters that is 27,983 findings the same, 12
 missed and 7 extra. The 19 differences are type questions (a raw `Constructor` receiver, a primitive varargs
@@ -82,6 +89,9 @@ whole project. Class files are listed at start and read on first use.
 - A rule's `violationSuppressXPath` runs on the node of each finding and drops the finding when it selects
   anything.
 - In XPath regular expressions `\w` does not match `_`, and `\s` is space, tab, line feed and carriage return.
+- A `let` value is worked out on first use when it can be several items and does not read the context item,
+  or when the variable is read at most once outside a loop; otherwise at the declaration. A query that fails in
+  PMD on a value it never uses therefore fails here too.
 - `matchesSig` compares the parameter types after type arguments are filled in; a single-type import names a
   class even when its jar is missing; columns count UTF-16 units.
 

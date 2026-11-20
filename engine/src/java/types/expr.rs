@@ -1,4 +1,5 @@
 //! Static types of expressions, as far as declarations, the index and erased signatures give them.
+use crate::java::fields::Fields;
 use std::rc::Rc;
 use super::model::{ClassInfo, Field, Method, OBJECT, Type};
 use std::collections::HashMap;
@@ -156,7 +157,7 @@ const FUNCTIONS: &[&str] = &["lambda_expression", "method_reference"];
 
 /// Whether a lambda can stand for a function without a result, and for one with a result.
 fn lambda_results(lambda: Node) -> (bool, bool) {
-    let Some(body) = lambda.child_by_field_name("body") else { return (true, true) };
+    let Some(body) = lambda.field("body") else { return (true, true) };
     if body.kind() != "block" {
         let statement = matches!(body.kind(), "method_invocation" | "assignment_expression" | "update_expression" | "object_creation_expression");
         return (statement, true);
@@ -193,7 +194,7 @@ fn mentions(kind: &Type, variable: &str) -> bool {
 }
 
 fn call_arguments<'t>(call: Node<'t>) -> Vec<Node<'t>> {
-    let Some(list) = call.child_by_field_name("arguments") else { return Vec::new() };
+    let Some(list) = call.field("arguments") else { return Vec::new() };
     let mut cursor = list.walk();
     list.named_children(&mut cursor).filter(|node| !node.kind().ends_with("comment")).collect()
 }
@@ -246,7 +247,7 @@ impl<'a> Resolver<'a> {
                 if declarator.kind() != "variable_declarator" {
                     continue;
                 }
-                if let Some(name) = declarator.child_by_field_name("name") {
+                if let Some(name) = declarator.field("name") {
                     declared.push((self.file.text_of(name).to_string(), statement.start_byte(), place as u32, at as u32));
                 }
             }
@@ -261,14 +262,14 @@ impl<'a> Resolver<'a> {
         let mut scope = crate::engine::source::parent(usage);
         while let Some(node) = scope {
             let typed = |declaration: Node, declarator: Option<Node>| -> Option<Type> {
-                let written = declaration.child_by_field_name("type")?;
+                let written = declaration.field("type")?;
                 if self.file.text_of(written) == "var" {
-                    let value = declarator.unwrap_or(declaration).child_by_field_name("value")?;
+                    let value = declarator.unwrap_or(declaration).field("value")?;
                     return self.type_of(value);
                 }
                 self.declared_type(declaration, declarator)
             };
-            let named = |holder: Node| holder.child_by_field_name("name").is_some_and(|n| self.file.text_of(n) == name);
+            let named = |holder: Node| holder.field("name").is_some_and(|n| self.file.text_of(n) == name);
             match node.kind() {
                 "block" | "constructor_body" | "switch_block_statement_group" | "program" => {
                     let declared = self.locals_of(node);
@@ -289,10 +290,10 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 "enhanced_for_statement" => {
-                    if named(node) && node.child_by_field_name("value") != Some(inner) {
-                        let inferred = node.child_by_field_name("type").is_none_or(|kind| self.file.text_of(kind) == "var");
+                    if named(node) && node.field("value") != Some(inner) {
+                        let inferred = node.field("type").is_none_or(|kind| self.file.text_of(kind) == "var");
                         let kind = if inferred {
-                            node.child_by_field_name("value").and_then(|value| self.type_of(value)).and_then(|kind| self.element(kind))
+                            node.field("value").and_then(|value| self.type_of(value)).and_then(|kind| self.element(kind))
                         } else {
                             self.declared_type(node, None)
                         };
@@ -300,7 +301,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 "try_with_resources_statement" => {
-                    let resources = node.child_by_field_name("resources")?;
+                    let resources = node.field("resources")?;
                     for resource in children(resources).into_iter().filter(|r| r.kind() == "resource") {
                         if named(resource) && resource.start_byte() < usage.start_byte() {
                             return Some(Binding::Local(typed(resource, None)));
@@ -329,7 +330,7 @@ impl<'a> Resolver<'a> {
                 }
                 "method_declaration" | "constructor_declaration" | "compact_constructor_declaration" | "lambda_expression"
                 | "record_declaration" => {
-                    if let Some(parameters) = node.child_by_field_name("parameters") {
+                    if let Some(parameters) = node.field("parameters") {
                         if parameters.kind() == "identifier" && self.file.text_of(parameters) == name {
                             return Some(Binding::Local(self.lambda_parameter(node, 0)));
                         }
@@ -340,7 +341,7 @@ impl<'a> Resolver<'a> {
                                     return Some(Binding::Local(self.lambda_parameter(node, position)));
                                 }
                                 "formal_parameter" if named(parameter) => {
-                                    let inferred = parameter.child_by_field_name("type").is_some_and(|k| self.file.text_of(k) == "var");
+                                    let inferred = parameter.field("type").is_some_and(|k| self.file.text_of(k) == "var");
                                     let kind = if inferred { self.lambda_parameter(node, position) } else { self.declared_type(parameter, None) };
                                     return Some(Binding::Local(kind));
                                 }
@@ -386,16 +387,16 @@ impl<'a> Resolver<'a> {
             },
             "method_invocation" => match self.resolve_call(expression) {
                 Some(_) => "call returning an uninferred type variable",
-                None => match expression.child_by_field_name("object") {
+                None => match expression.field("object") {
                     Some(object) if self.receiver(object).is_none() => self.untyped_cause(object),
                     _ => "call not resolved",
                 },
             },
-            "field_access" => match expression.child_by_field_name("object") {
+            "field_access" => match expression.field("object") {
                 Some(object) if self.receiver(object).is_none() => self.untyped_cause(object),
                 _ => "field not found",
             },
-            "array_access" => expression.child_by_field_name("array").map_or("other", |array| self.untyped_cause(array)),
+            "array_access" => expression.field("array").map_or("other", |array| self.untyped_cause(array)),
             "ternary_expression" | "switch_expression" => "conditional expression",
             _ => "other",
         }
@@ -422,8 +423,8 @@ impl<'a> Resolver<'a> {
             },
             "field_access" | "scoped_identifier" => {
                 let (Some(object), Some(field)) = (
-                    expression.child_by_field_name("object").or_else(|| expression.child_by_field_name("scope")),
-                    expression.child_by_field_name("field").or_else(|| expression.child_by_field_name("name")),
+                    expression.field("object").or_else(|| expression.field("scope")),
+                    expression.field("field").or_else(|| expression.field("name")),
                 ) else {
                     return false;
                 };
@@ -443,17 +444,17 @@ impl<'a> Resolver<'a> {
         let expression = unwrap(expression);
         match expression.kind() {
             "string_literal" => literal_text(self.file, expression),
-            "binary_expression" if self.file.text_of(expression.child_by_field_name("operator")?) == "+" => {
-                let left = self.constant_string(expression.child_by_field_name("left")?)?;
-                Some(left + &self.constant_string(expression.child_by_field_name("right")?)?)
+            "binary_expression" if self.file.text_of(expression.field("operator")?) == "+" => {
+                let left = self.constant_string(expression.field("left")?)?;
+                Some(left + &self.constant_string(expression.field("right")?)?)
             }
             "identifier" => match self.binding(expression, self.file.text_of(expression))? {
                 Binding::Field(_, _, field) => field.constant.clone(),
                 Binding::Local(_) => None,
             },
             "field_access" => {
-                let field = self.file.text_of(expression.child_by_field_name("field")?);
-                match self.receiver(expression.child_by_field_name("object")?)? {
+                let field = self.file.text_of(expression.field("field")?);
+                match self.receiver(expression.field("object")?)? {
                     Receiver::Static(owner) | Receiver::Value(Type::Class(owner, _)) => self.index.field(&owner, field)?.1.constant.clone(),
                     _ => None,
                 }
@@ -466,20 +467,22 @@ impl<'a> Resolver<'a> {
         let mut scope = crate::engine::source::parent(usage);
         while let Some(node) = scope {
             if matches!(node.kind(), "method_declaration" | "constructor_declaration" | "lambda_expression" | "class_body") {
-                let mut found = None;
-                crate::engine::source::walk(node, |candidate| {
-                    if found.is_none()
-                        && matches!(candidate.kind(), "instanceof_expression" | "type_pattern")
-                        && candidate.start_byte() < usage.start_byte()
-                        && candidate.child_by_field_name("name").is_some_and(|n| self.file.text_of(n) == name)
-                    {
-                        let written = candidate
-                            .child_by_field_name("right")
-                            .or_else(|| candidate.named_child(0).filter(|_| candidate.kind() == "type_pattern"));
-                        found = written.and_then(|kind| self.type_node(kind));
-                    }
+                let known = self.patterns.borrow().get(&node.id()).cloned();
+                let listed = known.unwrap_or_else(|| {
+                    let mut listed = Vec::new();
+                    crate::engine::source::walk(node, |candidate| {
+                        if matches!(candidate.kind(), "instanceof_expression" | "type_pattern") {
+                            if let Some(named) = candidate.field("name") {
+                                let written = candidate.field("right").or_else(|| candidate.named_child(0).filter(|_| candidate.kind() == "type_pattern"));
+                                listed.push((candidate.start_byte(), self.file.text_of(named).to_string(), written.and_then(|kind| self.type_node(kind))));
+                            }
+                        }
+                    });
+                    let listed = std::rc::Rc::new(listed);
+                    self.patterns.borrow_mut().insert(node.id(), listed.clone());
+                    listed
                 });
-                return found;
+                return listed.iter().filter(|(start, known, _)| *start < usage.start_byte() && known == name).find_map(|(_, _, kind)| kind.clone());
             }
             scope = crate::engine::source::parent(node);
         }
@@ -549,8 +552,8 @@ impl<'a> Resolver<'a> {
 
     /// The type of the body of a lambda without parameters whose body is one expression.
     fn plain_body(&self, lambda: Node) -> Option<Type> {
-        let empty = lambda.child_by_field_name("parameters").is_some_and(|list| list.kind() != "identifier" && list.named_child_count() == 0);
-        let body = lambda.child_by_field_name("body").filter(|body| empty && body.kind() != "block")?;
+        let empty = lambda.field("parameters").is_some_and(|list| list.kind() != "identifier" && list.named_child_count() == 0);
+        let body = lambda.field("body").filter(|body| empty && body.kind() != "block")?;
         if !self.busy.borrow_mut().insert(lambda.id()) {
             return None;
         }
@@ -581,7 +584,7 @@ impl<'a> Resolver<'a> {
                         let valued = valued && body != Some(Type::Primitive("void"));
                         Shape::Function(
                             argument
-                                .child_by_field_name("parameters")
+                                .field("parameters")
                                 .map(|list| {
                                     if list.kind() == "identifier" {
                                         1
@@ -597,7 +600,7 @@ impl<'a> Resolver<'a> {
                         )
                     }
                     "ternary_expression" if ["consequence", "alternative"].iter().any(|branch| {
-                        argument.child_by_field_name(branch).is_some_and(|part| FUNCTIONS.contains(&unwrap(part).kind()))
+                        argument.field(*branch).is_some_and(|part| FUNCTIONS.contains(&unwrap(part).kind()))
                     }) => Shape::Function(Vec::new(), true, true, false),
                     _ if self.is_busy(argument) => Shape::Unknown,
                     _ if nested => self.settled(argument).map_or(Shape::Unknown, Shape::Typed),
@@ -634,10 +637,10 @@ impl<'a> Resolver<'a> {
     }
 
     fn pick_call(&self, call: Node) -> Option<Call> {
-        let name = self.file.text_of(call.child_by_field_name("name")?);
+        let name = self.file.text_of(call.field("name")?);
         let shapes = self.shapes(call);
         let mut raw = false;
-        let owners: Vec<Type> = match call.child_by_field_name("object") {
+        let owners: Vec<Type> = match call.field("object") {
             Some(object) => match self.receiver(object)? {
                 Receiver::Value(owner @ Type::Class(..)) => {
                     raw = self.raw(&owner);
@@ -657,7 +660,7 @@ impl<'a> Resolver<'a> {
             }
         };
         // Several static imports can bring the same name from different classes: the first that fits wins.
-        let imported = call.child_by_field_name("object").is_none() && self.scope.static_single.get(name).is_some_and(|from| from.len() > 1);
+        let imported = call.field("object").is_none() && self.scope.static_single.get(name).is_some_and(|from| from.len() > 1);
         for owner in owners {
             let mut candidates = self.index.methods(&owner.name(), name);
             if candidates.is_empty() {
@@ -705,7 +708,7 @@ impl<'a> Resolver<'a> {
         }
         let mut map = self.call_map(&resolved, call, true);
         // A type the context asks for decides a type variable ahead of the arguments: `Map<String, Object> m = Map.of("a", 1)`.
-        if call.kind() == "method_invocation" && !method.type_parameters.is_empty() && call.child_by_field_name("type_arguments").is_none() {
+        if call.kind() == "method_invocation" && !method.type_parameters.is_empty() && call.field("type_arguments").is_none() {
             if let Some(wanted) = self.target(call, true).filter(|wanted| !wanted.open()) {
                 let mut wider = HashMap::new();
                 let mut own = self.index.member_map(&resolved.receiver, &resolved.declaring);
@@ -801,7 +804,7 @@ impl<'a> Resolver<'a> {
         if self.spent() {
             return None;
         }
-        let owner = self.type_node(creation.child_by_field_name("type")?)?;
+        let owner = self.type_node(creation.field("type")?)?;
         let info = self.index.get(&owner.name())?;
         if info.is_interface && children(creation).iter().any(|part| part.kind() == "class_body") {
             let void = Type::Primitive("void");
@@ -832,7 +835,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn created_type(&self, creation: Node) -> Option<Type> {
-        let written = self.type_node(creation.child_by_field_name("type")?)?;
+        let written = self.type_node(creation.field("type")?)?;
         let Some(info) = self.index.get(&written.name()).filter(|info| !info.type_parameters.is_empty()) else { return Some(written) };
         if !matches!(&written, Type::Class(_, given) if given.is_empty()) {
             return Some(written);
@@ -881,7 +884,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn lambda_result(&self, lambda: Node) -> Option<Type> {
-        let body = lambda.child_by_field_name("body")?;
+        let body = lambda.field("body")?;
         if body.kind() != "block" {
             return self.type_of(body);
         }
@@ -1050,7 +1053,7 @@ impl<'a> Resolver<'a> {
             }
         };
         let mut inferred = HashMap::new();
-        if let Some(list) = call.child_by_field_name("type_arguments") {
+        if let Some(list) = call.field("type_arguments") {
             let given = crate::engine::source::named_children(list);
             for (name, written) in method.type_parameters.iter().zip(given) {
                 if let Some(kind) = self.type_node(written) {
@@ -1094,10 +1097,10 @@ impl<'a> Resolver<'a> {
                 continue;
             };
             if argument.kind() == "lambda_expression" {
-                let written = argument.child_by_field_name("parameters").map(children).unwrap_or_default();
+                let written = argument.field("parameters").map(children).unwrap_or_default();
                 let written = written.into_iter().filter(|part| part.kind() == "formal_parameter");
                 for (wanted, parameter) in taken.iter().zip(written) {
-                    let declared = parameter.child_by_field_name("type").filter(|kind| self.file.text_of(*kind) != "var");
+                    let declared = parameter.field("type").filter(|kind| self.file.text_of(*kind) != "var");
                     if let Some(declared) = declared.and_then(|_| self.declared_type(parameter, None)) {
                         self.unify(wanted, &declared, &method.type_parameters, &mut inferred);
                     }
@@ -1165,13 +1168,13 @@ impl<'a> Resolver<'a> {
     fn case_constant(&self, usage: Node, name: &str) -> Option<Type> {
         crate::engine::source::parent(usage).filter(|label| label.kind() == "switch_label")?;
         let switch = crate::engine::source::ancestor(usage, &["switch_expression", "switch_statement"])?;
-        let selector = self.type_of(switch.child_by_field_name("condition")?)?;
+        let selector = self.type_of(switch.field("condition")?)?;
         self.index.field(&selector.name(), name).is_some().then_some(selector)
     }
 
     fn call_type(&self, call: Node) -> Option<Type> {
-        if self.file.text_of(call.child_by_field_name("name")?) == "clone" && call_arguments(call).is_empty() {
-            if let Some(Receiver::Value(array @ Type::Array(_))) = call.child_by_field_name("object").and_then(|object| self.receiver(object)) {
+        if self.file.text_of(call.field("name")?) == "clone" && call_arguments(call).is_empty() {
+            if let Some(Receiver::Value(array @ Type::Array(_))) = call.field("object").and_then(|object| self.receiver(object)) {
                 return Some(array);
             }
         }
@@ -1206,8 +1209,8 @@ impl<'a> Resolver<'a> {
         let scope = crate::engine::source::ancestor(at, &["lambda_expression", "method_declaration", "class_body"])?;
         match scope.kind() {
             "method_declaration" => {
-                let kind = self.type_node(scope.child_by_field_name("type")?)?;
-                let extra = scope.child_by_field_name("dimensions").map_or(0, |d| self.file.text_of(d).matches('[').count());
+                let kind = self.type_node(scope.field("type")?)?;
+                let extra = scope.field("dimensions").map_or(0, |d| self.file.text_of(d).matches('[').count());
                 Some((0..extra).fold(kind, |kind, _| Type::Array(Box::new(kind))))
             }
             "lambda_expression" => {
@@ -1262,20 +1265,20 @@ impl<'a> Resolver<'a> {
             }
             "variable_declarator" => {
                 let declaration = crate::engine::source::parent(holder)?;
-                declaration.child_by_field_name("type").filter(|kind| self.file.text_of(*kind) != "var")?;
+                declaration.field("type").filter(|kind| self.file.text_of(*kind) != "var")?;
                 self.declared_type(declaration, Some(holder))
             }
-            "assignment_expression" if holder.child_by_field_name("right") == Some(inner) => {
-                self.type_of(holder.child_by_field_name("left")?)
+            "assignment_expression" if holder.field("right") == Some(inner) => {
+                self.type_of(holder.field("left")?)
             }
-            "cast_expression" if FUNCTIONS.contains(&unwrap(inner).kind()) => self.type_node(holder.child_by_field_name("type")?),
-            "resource" => self.type_node(holder.child_by_field_name("type")?),
+            "cast_expression" if FUNCTIONS.contains(&unwrap(inner).kind()) => self.type_node(holder.field("type")?),
+            "resource" => self.type_node(holder.field("type")?),
             "return_statement" => self.returned_type(holder),
-            "lambda_expression" if holder.child_by_field_name("body") == Some(inner) => {
+            "lambda_expression" if holder.field("body") == Some(inner) => {
                 let (_, returned) = self.function_type(&self.target(holder, true)?)?;
                 (!returned.open() && returned != Type::Primitive("void")).then_some(returned)
             }
-            "ternary_expression" if holder.child_by_field_name("condition") != Some(inner) => self.target(holder, arguments),
+            "ternary_expression" if holder.field("condition") != Some(inner) => self.target(holder, arguments),
             "array_initializer" => match self.type_of(holder)? {
                 Type::Array(element) => Some(*element),
                 _ => None,
@@ -1290,7 +1293,7 @@ impl<'a> Resolver<'a> {
             return None;
         }
         let own = enclosing_type(self.file, self.scope, call)?;
-        let delegate = call.child_by_field_name("constructor").map(|part| part.kind());
+        let delegate = call.field("constructor").map(|part| part.kind());
         let owner = if delegate == Some("super") { self.type_of_super(&own)? } else { self.own_type(&own) };
         let info = self.index.get(&owner.name())?;
         let candidates: Vec<(&ClassInfo, &Method)> =
@@ -1316,13 +1319,13 @@ impl<'a> Resolver<'a> {
         }
         let class = self.index.superclasses(&left).into_iter().find(|ancestor| ancestor != OBJECT && self.index.is_subtype(&right, ancestor));
         let found = class.or_else(|| {
-            self.index.lineage(&left).into_iter().find(|ancestor| ancestor != OBJECT && self.index.is_subtype(&right, ancestor))
+            self.index.lineage(&left).iter().find(|ancestor| *ancestor != OBJECT && self.index.is_subtype(&right, ancestor)).cloned()
         });
         Type::class(found.as_deref().unwrap_or(OBJECT))
     }
 
     fn conditional(&self, expression: Node) -> Option<Type> {
-        let branch = |field: &str| expression.child_by_field_name(field).and_then(|node| self.type_of(node));
+        let branch = |field: &'static str| expression.field(field).and_then(|node| self.type_of(node));
         let (first, second) = (branch("consequence"), branch("alternative"));
         let unboxed = |kind: &Type| match kind {
             Type::Primitive(name) => Some(*name),
@@ -1459,6 +1462,8 @@ impl<'a> Resolver<'a> {
                 if std::env::var("NP_DBG").is_ok() {
                     eprintln!("gave up: {}:{}", self.file.path, expression.start_position().row + 1);
                 }
+                // The same question would use up the same work again: the answer stays unknown.
+                self.cache.borrow_mut().insert(expression.id(), None);
             }
             return None;
         }
@@ -1470,7 +1475,7 @@ impl<'a> Resolver<'a> {
 
     fn compute_type(&self, expression: Node) -> Option<Type> {
         let text = self.file.text_of(expression);
-        let operand = |field: &str| expression.child_by_field_name(field).and_then(|node| self.type_of(node));
+        let operand = |field: &'static str| expression.field(field).and_then(|node| self.type_of(node));
         match expression.kind() {
             "string_literal" => Some(Type::class(STRING)),
             "character_literal" => Some(Type::Primitive("char")),
@@ -1497,8 +1502,8 @@ impl<'a> Resolver<'a> {
                 self.class_name(expression, &outer).map(|name| Type::class(&name))
             }
             "field_access" => {
-                let object = expression.child_by_field_name("object")?;
-                let field = self.file.text_of(expression.child_by_field_name("field")?);
+                let object = expression.field("object")?;
+                let field = self.file.text_of(expression.field("field")?);
                 match self.receiver(object)? {
                     Receiver::Value(Type::Array(_)) if field == "length" => Some(Type::Primitive("int")),
                     Receiver::Value(owner @ Type::Class(..)) => self.field_of(&owner, field),
@@ -1510,13 +1515,13 @@ impl<'a> Resolver<'a> {
             "lambda_expression" | "method_reference" => self.lambda_target(expression).filter(|kind| !kind.open()),
             "object_creation_expression" => self.created_type(expression),
             "array_creation_expression" => {
-                let mut kind = self.type_node(expression.child_by_field_name("type")?)?;
+                let mut kind = self.type_node(expression.field("type")?)?;
                 for _ in 0..text.split('{').next().unwrap_or(text).matches('[').count() {
                     kind = Type::Array(Box::new(kind));
                 }
                 Some(kind)
             }
-            "cast_expression" => self.type_node(expression.child_by_field_name("type")?),
+            "cast_expression" => self.type_node(expression.field("type")?),
             "array_access" => match operand("array")? {
                 Type::Array(element) => Some(*element),
                 _ => None,
@@ -1526,7 +1531,7 @@ impl<'a> Resolver<'a> {
             "update_expression" => expression.named_child(0).and_then(|node| self.type_of(node)),
             "unary_expression" => {
                 let inner = operand("operand")?;
-                match self.file.text_of(expression.child_by_field_name("operator")?) {
+                match self.file.text_of(expression.field("operator")?) {
                     "!" => Some(Type::Primitive("boolean")),
                     _ => Some(Type::Primitive(match numeric_rank(&inner)? {
                         0 => "int",
@@ -1537,15 +1542,15 @@ impl<'a> Resolver<'a> {
                 }
             }
             "binary_expression" => {
-                let operator = self.file.text_of(expression.child_by_field_name("operator")?);
+                let operator = self.file.text_of(expression.field("operator")?);
                 if operator == "+" {
                     // A long chain of string pieces is one deep left spine: walk it without recursion.
                     let mut spine = expression;
-                    while spine.kind() == "binary_expression" && spine.child_by_field_name("operator").is_some_and(|sign| self.file.text_of(sign) == "+") {
-                        if spine.child_by_field_name("right").is_some_and(|right| right.kind() == "string_literal") {
+                    while spine.kind() == "binary_expression" && spine.field("operator").is_some_and(|sign| self.file.text_of(sign) == "+") {
+                        if spine.field("right").is_some_and(|right| right.kind() == "string_literal") {
                             return Some(Type::class(STRING));
                         }
-                        spine = spine.child_by_field_name("left")?;
+                        spine = spine.field("left")?;
                     }
                 }
                 match operator {
@@ -1591,11 +1596,11 @@ impl<'a> Resolver<'a> {
     pub fn matches_sig(&self, call: Node, signature: &str) -> bool {
         let Some((owner, rest)) = signature.split_once('#') else { return false };
         let Some((name, parameters)) = rest.trim_end_matches(')').split_once('(') else { return false };
-        if call.child_by_field_name("name").is_none_or(|node| self.file.text_of(node) != name) {
+        if call.field("name").is_none_or(|node| self.file.text_of(node) != name) {
             return false;
         }
         let Some(resolved) = self.resolve_call(call) else { return false };
-        let receiver = match call.child_by_field_name("object").filter(|object| object.kind() != "super") {
+        let receiver = match call.field("object").filter(|object| object.kind() != "super") {
             Some(_) => resolved.receiver.name(),
             None => resolved.declaring,
         };

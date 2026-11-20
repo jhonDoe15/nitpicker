@@ -1,4 +1,5 @@
 //! Name resolution inside one file: package, imports, enclosing types, type parameters.
+use crate::java::fields::Fields;
 use super::index::TypeIndex;
 use super::model::{ClassInfo, Field, Method, OBJECT, Type};
 use std::cell::{Cell, RefCell};
@@ -84,7 +85,7 @@ fn name_classes(
     for child in children(node) {
         let kind = child.kind();
         if TYPE_DECLARATIONS.contains(&kind) {
-            let simple = child.child_by_field_name("name").map(|name| file.text_of(name)).unwrap_or_default();
+            let simple = child.field("name").map(|name| file.text_of(name)).unwrap_or_default();
             let name = if !MEMBER_HOLDERS.contains(&node.kind()) {
                 local(counters, enclosing, simple)
             } else if top && enclosing.is_empty() {
@@ -142,10 +143,11 @@ pub fn enclosing_type(_file: &SourceFile, scope: &FileScope, at: Node) -> Option
 pub fn type_parameter<'t>(file: &SourceFile, at: Node<'t>, name: &str) -> Option<Node<'t>> {
     let mut current = Some(at);
     while let Some(node) = current {
-        let list = node
-            .child_by_field_name("type_parameters")
-            .or_else(|| children(node).into_iter().find(|child| child.kind() == "type_parameters"));
-        if let Some(list) = list {
+        // Only declarations carry type parameters: the bodies and blocks in between are not searched.
+        let list = node.kind().ends_with("_declaration").then(|| {
+            node.field("type_parameters").or_else(|| children(node).into_iter().find(|child| child.kind() == "type_parameters"))
+        });
+        if let Some(list) = list.flatten() {
             for parameter in children(list).into_iter().filter(|child| child.kind() == "type_parameter") {
                 let named = children(parameter)
                     .into_iter()
@@ -179,7 +181,10 @@ pub struct Resolver<'a> {
     pub(super) loose: RefCell<HashMap<usize, Option<Type>>>,
     /// What each type node stands for, asked many times by the rules.
     written: RefCell<HashMap<(usize, bool), Option<Type>>>,
+    simples: RefCell<HashMap<(usize, String), Option<String>>>,
     pub(super) locals: RefCell<HashMap<usize, std::rc::Rc<Vec<(String, usize, u32, u32)>>>>,
+    /// The pattern variables declared in a method, lambda or class body: where each starts, its name and its type.
+    pub(super) patterns: RefCell<HashMap<usize, std::rc::Rc<Vec<(usize, String, Option<Type>)>>>>,
 }
 
 fn written_names<'f>(file: &'f SourceFile, list: Option<Node>) -> Vec<&'f str> {
@@ -194,33 +199,53 @@ fn written_names<'f>(file: &'f SourceFile, list: Option<Node>) -> Vec<&'f str> {
 
 impl<'a> Resolver<'a> {
     pub fn new(index: &'a TypeIndex, file: &'a SourceFile, scope: &'a FileScope) -> Resolver<'a> {
-        Resolver { index, file, scope, cache: RefCell::new(HashMap::new()), depth: Cell::new(0), busy: RefCell::new(std::collections::HashSet::new()), skipped: Cell::new(0), work: Cell::new(0), resolving: RefCell::new(HashMap::new()), loose: RefCell::new(HashMap::new()), written: RefCell::new(HashMap::new()), locals: RefCell::new(HashMap::new()), mapping: RefCell::new(HashMap::new()) }
+        Resolver { index, file, scope, cache: RefCell::new(HashMap::new()), depth: Cell::new(0), busy: RefCell::new(std::collections::HashSet::new()), skipped: Cell::new(0), work: Cell::new(0), resolving: RefCell::new(HashMap::new()), loose: RefCell::new(HashMap::new()), written: RefCell::new(HashMap::new()), simples: RefCell::new(HashMap::new()), locals: RefCell::new(HashMap::new()), patterns: RefCell::new(HashMap::new()), mapping: RefCell::new(HashMap::new()) }
     }
 
+    /// The class a simple name stands for at a place. Every place directly inside the same block or class body
+    /// gets the same answer, so it is kept per block or body.
     fn simple(&self, at: Node, name: &str) -> Option<String> {
+        const SCOPES: [&str; 8] = [
+            "block", "constructor_body", "switch_block_statement_group", "class_body", "enum_body", "interface_body", "annotation_type_body", "program",
+        ];
+        let mut holder = Some(at);
+        while let Some(node) = holder.filter(|node| !SCOPES.contains(&node.kind())) {
+            holder = crate::engine::source::parent(node);
+        }
+        let Some(holder) = holder else { return self.find_simple(at, name) };
+        let key = (holder.id(), name.to_string());
+        if let Some(known) = self.simples.borrow().get(&key) {
+            return known.clone();
+        }
+        let found = self.find_simple(at, name);
+        self.simples.borrow_mut().insert(key, found.clone());
+        found
+    }
+
+    fn find_simple(&self, at: Node, name: &str) -> Option<String> {
         let mut inner = at;
         let mut current = Some(at);
         while let Some(node) = current {
             if matches!(node.kind(), "block" | "constructor_body" | "switch_block_statement_group") {
                 let local = children(node).into_iter().find(|child| {
                     TYPE_DECLARATIONS.contains(&child.kind())
-                        && child.child_by_field_name("name").is_some_and(|written| self.file.text_of(written) == name)
+                        && child.field("name").is_some_and(|written| self.file.text_of(written) == name)
                 });
                 if let Some(found) = local.and_then(|local| self.scope.names.get(&local.id())) {
                     return Some(found.clone());
                 }
             }
             // Names in the header of a class are looked up around it: its members and what it inherits are not in scope there.
-            let header = TYPE_DECLARATIONS.contains(&node.kind()) && node.child_by_field_name("body") != Some(inner);
+            let header = TYPE_DECLARATIONS.contains(&node.kind()) && node.field("body") != Some(inner);
             if let Some(owner) = class_at(self.scope, node, inner).filter(|_| !header) {
-                for ancestor in self.index.lineage(&owner) {
+                for ancestor in self.index.lineage(&owner).iter() {
                     let nested = format!("{ancestor}.{name}");
                     if self.index.has(&nested) {
                         return Some(nested);
                     }
                 }
                 if TYPE_DECLARATIONS.contains(&node.kind())
-                    && node.child_by_field_name("name").is_some_and(|written| self.file.text_of(written) == name)
+                    && node.field("name").is_some_and(|written| self.file.text_of(written) == name)
                 {
                     return Some(owner);
                 }
@@ -259,7 +284,7 @@ impl<'a> Resolver<'a> {
                 let nested = self
                     .index
                     .lineage(&name)
-                    .into_iter()
+                    .iter()
                     .map(|ancestor| format!("{ancestor}.{segment}"))
                     .find(|candidate| self.index.has(candidate));
                 name = nested.unwrap_or(format!("{name}.{segment}"));
@@ -306,8 +331,8 @@ impl<'a> Resolver<'a> {
                 Some(Type::Primitive(name))
             }
             "array_type" => {
-                let mut kind = self.written(node.child_by_field_name("element")?, keep)?;
-                let dimensions = node.child_by_field_name("dimensions")?;
+                let mut kind = self.written(node.field("element")?, keep)?;
+                let dimensions = node.field("dimensions")?;
                 for _ in 0..self.file.text_of(dimensions).matches('[').count() {
                     kind = Type::Array(Box::new(kind));
                 }
@@ -332,7 +357,13 @@ impl<'a> Resolver<'a> {
             "annotated_type" => self.written(crate::engine::source::named_children(node).pop()?, keep),
             "type_identifier" | "scoped_type_identifier" | "identifier" | "scoped_identifier" => {
                 let mut segments = Vec::new();
+                if node.child_count() == 0 {
+                    segments.push(self.file.text_of(node));
+                }
                 crate::engine::source::walk(node, |part| {
+                    if node.child_count() == 0 {
+                        return;
+                    }
                     let annotation = crate::engine::source::ancestor(part, &["marker_annotation", "annotation", "type_arguments"]);
                     let inside = annotation.is_some_and(|found| found.start_byte() >= node.start_byte() && found.end_byte() <= node.end_byte());
                     if matches!(part.kind(), "identifier" | "type_identifier") && part.child_count() == 0 && !inside {
@@ -356,7 +387,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn with_dimensions(&self, holder: Node, mut kind: Type) -> Type {
-        if let Some(dimensions) = holder.child_by_field_name("dimensions") {
+        if let Some(dimensions) = holder.field("dimensions") {
             for _ in 0..self.file.text_of(dimensions).matches('[').count() {
                 kind = Type::Array(Box::new(kind));
             }
@@ -365,7 +396,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn declared(&self, declaration: Node, declarator: Option<Node>, keep: bool) -> Option<Type> {
-        let kind = self.written(declaration.child_by_field_name("type")?, keep)?;
+        let kind = self.written(declaration.field("type")?, keep)?;
         Some(self.with_dimensions(declarator.unwrap_or(declaration), kind))
     }
 
@@ -399,9 +430,9 @@ impl<'a> Resolver<'a> {
 
     /// Supertypes and type parameters; members are filled in by `members` once every source class is registered.
     pub fn class_header(&self, declaration: Node, name: String) -> ClassInfo {
-        let listed = |field: &str| -> Vec<Type> {
+        let listed = |field: &'static str| -> Vec<Type> {
             let holder = declaration
-                .child_by_field_name(field)
+                .field(field)
                 .or_else(|| children(declaration).into_iter().find(|child| child.kind() == field));
             let Some(holder) = holder else { return Vec::new() };
             let list = children(holder).into_iter().find(|child| child.kind() == "type_list").unwrap_or(holder);
@@ -417,7 +448,7 @@ impl<'a> Resolver<'a> {
         if matches!(kind, "object_creation_expression" | "enum_constant") {
             let base = match kind {
                 "enum_constant" => crate::engine::source::parent(declaration).and_then(|body| crate::engine::source::parent(body)).and_then(|owner| self.scope.names.get(&owner.id())).map(|owner| Type::class(owner)),
-                _ => declaration.child_by_field_name("type").and_then(|written| self.written(written, true)),
+                _ => declaration.field("type").and_then(|written| self.written(written, true)),
             };
             let interface = base.as_ref().is_some_and(|base| self.index.get(&base.name()).is_some_and(|info| info.is_interface));
             let named = base.as_ref().map(Type::name);
@@ -516,11 +547,11 @@ impl<'a> Resolver<'a> {
             | "decimal_floating_point_literal" | "hex_floating_point_literal" | "character_literal" | "string_literal" | "true" | "false" => true,
             "parenthesized_expression" | "binary_expression" | "ternary_expression" | "unary_expression" | "array_initializer" => all(uses),
             "cast_expression" => {
-                let simple = expression.child_by_field_name("type").is_some_and(|written| {
+                let simple = expression.field("type").is_some_and(|written| {
                     matches!(written.kind(), "integral_type" | "floating_point_type" | "boolean_type")
                         || matches!(self.file.text_of(written), "String" | "java.lang.String")
                 });
-                simple && expression.child_by_field_name("value").is_some_and(|value| self.constant_shape(value, uses))
+                simple && expression.field("value").is_some_and(|value| self.constant_shape(value, uses))
             }
             "identifier" => {
                 uses.push((String::new(), self.file.text_of(expression).to_string()));
@@ -541,7 +572,7 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn members(&self, declaration: Node, info: &mut ClassInfo) {
-        let body = declaration.child_by_field_name("body").or_else(|| children(declaration).into_iter().find(|part| part.kind() == "class_body"));
+        let body = declaration.field("body").or_else(|| children(declaration).into_iter().find(|part| part.kind() == "class_body"));
         let Some(body) = body else { return };
         let has = super::super::helpers::has_modifier;
         let plain = |name: &str, parameters: Vec<Type>, returns: Type| Method {
@@ -564,30 +595,30 @@ impl<'a> Resolver<'a> {
             match member.kind() {
                 "field_declaration" | "constant_declaration" => {
                     for declarator in super::super::helpers::declarators(member) {
-                        let Some(name) = declarator.child_by_field_name("name") else { continue };
+                        let Some(name) = declarator.field("name") else { continue };
                         let Some(kind) = self.declared(member, Some(declarator), false) else { continue };
                         info.fields.push(Field {
                             name: self.file.text_of(name).to_string(),
                             kind: kind.erased(),
                             generic: self.declared(member, Some(declarator), true).unwrap_or(kind.clone()),
                             constant: (info.is_interface || has(member, "final"))
-                                .then(|| declarator.child_by_field_name("value"))
+                                .then(|| declarator.field("value"))
                                 .flatten()
                                 .and_then(|value| super::expr::literal_text(self.file, value)),
-                            fixed: (info.is_interface || (has(member, "final") && has(member, "static"))).then(|| declarator.child_by_field_name("value")).flatten().and_then(
+                            fixed: (info.is_interface || (has(member, "final") && has(member, "static"))).then(|| declarator.field("value")).flatten().and_then(
                                 |value| {
                                     let mut uses = Vec::new();
                                     self.constant_shape(value, &mut uses).then_some(uses)
                                 },
                             ),
                             strict: (matches!(&kind, Type::Primitive(_)) || kind.name() == "java.lang.String")
-                                && declarator.child_by_field_name("value").is_some_and(|value| value.kind() != "array_initializer"),
+                                && declarator.field("value").is_some_and(|value| value.kind() != "array_initializer"),
                             is_private: has(member, "private"),
                         });
                     }
                 }
                 "enum_constant" => {
-                    if let Some(name) = member.child_by_field_name("name") {
+                    if let Some(name) = member.field("name") {
                         let own = Type::class(&info.name);
                         info.fields.push(Field {
                             name: self.file.text_of(name).to_string(),
@@ -601,25 +632,25 @@ impl<'a> Resolver<'a> {
                     }
                 }
                 "method_declaration" | "annotation_type_element_declaration" => {
-                    let Some(name) = member.child_by_field_name("name") else { continue };
+                    let Some(name) = member.field("name") else { continue };
                     let unknown = Type::class("?");
                     let returned = |keep: bool| {
-                        let kind = member.child_by_field_name("type").and_then(|kind| self.written(kind, keep));
+                        let kind = member.field("type").and_then(|kind| self.written(kind, keep));
                         self.with_dimensions(member, kind.unwrap_or(unknown.clone()))
                     };
-                    let (parameters, generic_parameters, varargs) = self.parameters(member.child_by_field_name("parameters"));
+                    let (parameters, generic_parameters, varargs) = self.parameters(member.field("parameters"));
                     info.methods.push(Method {
                         name: self.file.text_of(name).to_string(),
                         parameters,
                         returns: returned(false).erased(),
                         generic_parameters,
                         generic_returns: returned(true),
-                        type_parameters: written_names(self.file, member.child_by_field_name("type_parameters"))
+                        type_parameters: written_names(self.file, member.field("type_parameters"))
                             .into_iter()
                             .map(String::from)
                             .collect(),
                         type_bounds: member
-                            .child_by_field_name("type_parameters")
+                            .field("type_parameters")
                             .map(children)
                             .unwrap_or_default()
                             .into_iter()
@@ -629,13 +660,13 @@ impl<'a> Resolver<'a> {
                         package_private: !info.is_interface && !has(member, "public") && !has(member, "protected") && !has(member, "private"),
                         is_static: has(member, "static"),
                         is_private: has(member, "private"),
-                        is_abstract: member.child_by_field_name("body").is_none()
+                        is_abstract: member.field("body").is_none()
                             && (info.is_interface || has(member, "abstract")),
                         varargs,
                     });
                 }
                 "constructor_declaration" => {
-                    let (parameters, generic_parameters, varargs) = self.parameters(member.child_by_field_name("parameters"));
+                    let (parameters, generic_parameters, varargs) = self.parameters(member.field("parameters"));
                     info.methods.push(Method {
                         generic_parameters,
                         varargs,
@@ -654,12 +685,12 @@ impl<'a> Resolver<'a> {
             info.methods.push(Method { is_static: true, ..plain("valueOf", vec![Type::class("java.lang.String")], own) });
         }
         if declaration.kind() == "record_declaration" {
-            let (parameters, generic_parameters, varargs) = self.parameters(declaration.child_by_field_name("parameters"));
+            let (parameters, generic_parameters, varargs) = self.parameters(declaration.field("parameters"));
             if !info.methods.iter().any(|method| method.name == "<init>" && method.parameters == parameters) {
                 info.methods.push(Method { generic_parameters, varargs, ..plain("<init>", parameters, Type::Primitive("void")) });
             }
-            for component in declaration.child_by_field_name("parameters").map(children).unwrap_or_default() {
-                let (Some(name), Some(kind)) = (component.child_by_field_name("name"), self.declared(component, None, false)) else {
+            for component in declaration.field("parameters").map(children).unwrap_or_default() {
+                let (Some(name), Some(kind)) = (component.field("name"), self.declared(component, None, false)) else {
                     continue;
                 };
                 let name = self.file.text_of(name).to_string();

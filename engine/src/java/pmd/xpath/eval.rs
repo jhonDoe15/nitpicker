@@ -1,6 +1,6 @@
 //! Evaluates XPath expressions over the PMD-shaped tree of one file.
 use super::parse::{Axis, Cmp, Expr, Key, Math, Order, Sets, Test};
-use super::value::{Env, Function, Item, Seq, Xml, real_text};
+use super::value::{Bound, Env, Function, Item, Later, Seq, Xml, real_text};
 use crate::engine::source::SourceFile;
 use crate::java::pmd::tree::{PmdTree, ROOT, Value};
 use crate::java::types::model::Type;
@@ -299,25 +299,96 @@ impl<'a, 't> Machine<'a, 't> {
         }
     }
 
-    fn filter(&self, candidates: Vec<Item>, predicate: &Expr, env: &mut Env) -> Vec<Item> {
+    /// Whether an expression gives at least one item. Stops at the first one, as XPath processors do,
+    /// so `exists(a//b[...])` does not visit every `b`.
+    fn any(&self, expr: &Expr, focus: &Focus, env: &mut Env) -> bool {
+        match expr {
+            Expr::Step(axis, test, predicates) => match focus.item {
+                Some(item) => {
+                    let mut reached = Vec::new();
+                    self.reach(item, *axis, test, &mut reached);
+                    let Some((last, earlier)) = predicates.split_last() else { return !reached.is_empty() };
+                    for predicate in earlier {
+                        reached = self.filter(reached, predicate, env);
+                    }
+                    self.any_kept(&reached, last, env)
+                }
+                None => !self.eval(expr, focus, env).is_empty(),
+            },
+            Expr::Path(left, right) => {
+                let from = self.eval(left, focus, env);
+                let size = from.len();
+                from.items().iter().enumerate().any(|(index, item)| self.any(right, &Focus { item: Some(item), position: index + 1, size }, env))
+            }
+            Expr::Filter(base, predicate) => {
+                let from = self.eval(base, focus, env);
+                self.any_kept(from.items(), predicate, env)
+            }
+            _ => !self.eval(expr, focus, env).is_empty(),
+        }
+    }
+
+    fn any_kept(&self, candidates: &[Item], predicate: &Expr, env: &mut Env) -> bool {
         if let Expr::Whole(wanted) = predicate {
-            let at = *wanted as usize;
-            return if at >= 1 && at <= candidates.len() { vec![candidates[at - 1].clone()] } else { Vec::new() };
+            return *wanted >= 1 && *wanted as usize <= candidates.len();
         }
         let size = candidates.len();
-        let mut kept = Vec::new();
-        for (index, candidate) in candidates.iter().enumerate() {
-            let found = self.eval(predicate, &Focus { item: Some(candidate), position: index + 1, size }, env);
-            let keep = match found.items() {
-                [Item::Whole(wanted)] => *wanted == index as i64 + 1,
-                [Item::Real(wanted)] => *wanted == index as f64 + 1.0,
-                _ => self.truth(&found),
-            };
-            if keep {
-                kept.push(candidate.clone());
+        candidates.iter().enumerate().any(|(index, candidate)| self.keeps(predicate, candidate, index, size, env))
+    }
+
+    /// Whether a predicate keeps the candidate at a place: a number names the place, anything else is a condition.
+    fn keeps(&self, predicate: &Expr, candidate: &Item, index: usize, size: usize, env: &mut Env) -> bool {
+        let focus = Focus { item: Some(candidate), position: index + 1, size };
+        if conditional(predicate) {
+            return self.test(predicate, &focus, env);
+        }
+        let found = self.eval(predicate, &focus, env);
+        match found.items() {
+            [Item::Whole(wanted)] => *wanted == index as i64 + 1,
+            [Item::Real(wanted)] => *wanted == index as f64 + 1.0,
+            _ => self.truth(&found),
+        }
+    }
+
+    /// The boolean value of an expression, looking no further than needed.
+    pub fn test(&self, expr: &Expr, focus: &Focus, env: &mut Env) -> bool {
+        match expr {
+            Expr::And(left, right) => self.test(left, focus, env) && self.test(right, focus, env),
+            Expr::Or(left, right) => self.test(left, focus, env) || self.test(right, focus, env),
+            Expr::Call(name, arguments) if arguments.len() == 1 => match name.as_ref() {
+                "exists" => self.any(&arguments[0], focus, env),
+                "empty" => !self.any(&arguments[0], focus, env),
+                "not" => !self.test(&arguments[0], focus, env),
+                "boolean" => self.test(&arguments[0], focus, env),
+                _ => self.truth(&self.eval(expr, focus, env)),
+            },
+            _ if nodes_only(expr) => self.any(expr, focus, env),
+            _ => self.truth(&self.eval(expr, focus, env)),
+        }
+    }
+
+    fn filter(&self, mut candidates: Vec<Item>, predicate: &Expr, env: &mut Env) -> Vec<Item> {
+        if let Expr::Whole(wanted) = predicate {
+            let at = *wanted as usize;
+            if at >= 1 && at <= candidates.len() {
+                candidates.swap(0, at - 1);
+                candidates.truncate(1);
+            } else {
+                candidates.clear();
+            }
+            return candidates;
+        }
+        // Kept candidates move to the front; the ones still to be asked stay where they are.
+        let size = candidates.len();
+        let mut kept = 0;
+        for index in 0..size {
+            if self.keeps(predicate, &candidates[index], index, size, env) {
+                candidates.swap(kept, index);
+                kept += 1;
             }
         }
-        kept
+        candidates.truncate(kept);
+        candidates
     }
 
     fn step(&self, from: &[Item], axis: Axis, test: &Test, predicates: &[Expr], env: &mut Env) -> Seq {
@@ -382,7 +453,7 @@ impl<'a, 't> Machine<'a, 't> {
                         return self.fail(|| format!("a function of {} parameters got {} arguments", lambda.parameters.len(), arguments.len()));
                     }
                     let mut inner: Env = captured.clone();
-                    inner.extend(lambda.parameters.iter().copied().zip(arguments));
+                    inner.extend(lambda.parameters.iter().copied().zip(arguments.into_iter().map(Bound::Now)));
                     self.eval(&lambda.body, &NOWHERE, &mut inner)
                 }
                 Function::Named(name, _) => self.call(name, arguments, &NOWHERE, env),
@@ -435,8 +506,21 @@ impl<'a, 't> Machine<'a, 't> {
         })
     }
 
-    pub fn variable(&self, env: &Env, name: u32) -> Option<Seq> {
-        env.iter().rev().find(|(known, _)| *known == name).map(|(_, value)| value.clone())
+    pub fn variable(&self, env: &mut Env, name: u32) -> Option<Seq> {
+        let later = match &env.iter().rev().find(|(known, _)| *known == name)?.1 {
+            Bound::Now(value) => return Some(value.clone()),
+            Bound::Later(later) => later.clone(),
+        };
+        if let Some(value) = later.done.borrow().as_ref() {
+            return Some(value.clone());
+        }
+        // The value sees the bindings that were in scope at its declaration: those are still the first ones.
+        let newer = env.split_off(later.depth.min(env.len()));
+        let focus = Focus { item: later.item.as_ref(), position: later.position, size: later.size };
+        let value = self.eval(&later.value, &focus, env);
+        env.extend(newer);
+        *later.done.borrow_mut() = Some(value.clone());
+        Some(value)
     }
 
     pub fn eval(&self, expr: &Expr, focus: &Focus, env: &mut Env) -> Seq {
@@ -497,6 +581,9 @@ impl<'a, 't> Machine<'a, 't> {
                 }
                 Seq::from(self.filter(from.into_vec(), predicate, env))
             }
+            Expr::Call(name, arguments) if arguments.len() == 1 && matches!(name.as_ref(), "exists" | "empty" | "not" | "boolean") => {
+                Seq::flag(self.test(expr, focus, env))
+            }
             Expr::Call(name, arguments) => {
                 let values: Vec<Seq> = arguments.iter().map(|argument| self.eval(argument, focus, env)).collect();
                 self.call(name, values, focus, env)
@@ -528,9 +615,23 @@ impl<'a, 't> Machine<'a, 't> {
                 Some(item) => self.lookup(&Seq::One(item.clone()), key, focus, env),
                 None => self.fail(|| "a lookup without a context item".to_string()),
             },
-            Expr::Let(name, value, body) => {
+            Expr::Let(name, value, body, false) => {
                 let value = self.eval(value, focus, env);
-                env.push((*name, value));
+                env.push((*name, Bound::Now(value)));
+                let result = self.eval(body, focus, env);
+                env.pop();
+                result
+            }
+            Expr::Let(name, value, body, true) => {
+                let later = Later {
+                    value: value.clone(),
+                    item: focus.item.cloned(),
+                    position: focus.position,
+                    size: focus.size,
+                    depth: env.len(),
+                    done: std::cell::RefCell::new(None),
+                };
+                env.push((*name, Bound::Later(Rc::new(later))));
                 let result = self.eval(body, focus, env);
                 env.pop();
                 result
@@ -539,7 +640,7 @@ impl<'a, 't> Machine<'a, 't> {
                 let range = self.eval(range, focus, env);
                 let mut all = Vec::new();
                 for item in range.items() {
-                    env.push((*name, Seq::One(item.clone())));
+                    env.push((*name, Bound::Now(Seq::One(item.clone()))));
                     match self.eval(body, focus, env) {
                         Seq::Empty => {}
                         Seq::One(item) => all.push(item),
@@ -552,8 +653,8 @@ impl<'a, 't> Machine<'a, 't> {
             Expr::Quantified(every, name, range, body) => {
                 let range = self.eval(range, focus, env);
                 for item in range.items() {
-                    env.push((*name, Seq::One(item.clone())));
-                    let holds = self.truth(&self.eval(body, focus, env));
+                    env.push((*name, Bound::Now(Seq::One(item.clone()))));
+                    let holds = self.test(body, focus, env);
                     env.pop();
                     if holds != *every {
                         return Seq::flag(!*every);
@@ -562,10 +663,9 @@ impl<'a, 't> Machine<'a, 't> {
                 Seq::flag(*every)
             }
             Expr::If(condition, then, otherwise) => {
-                if self.truth(&self.eval(condition, focus, env)) { self.eval(then, focus, env) } else { self.eval(otherwise, focus, env) }
+                if self.test(condition, focus, env) { self.eval(then, focus, env) } else { self.eval(otherwise, focus, env) }
             }
-            Expr::Or(left, right) => Seq::flag(self.truth(&self.eval(left, focus, env)) || self.truth(&self.eval(right, focus, env))),
-            Expr::And(left, right) => Seq::flag(self.truth(&self.eval(left, focus, env)) && self.truth(&self.eval(right, focus, env))),
+            Expr::Or(..) | Expr::And(..) => Seq::flag(self.test(expr, focus, env)),
             Expr::General(cmp, left, right) => {
                 let left = self.eval(left, focus, env);
                 if left.is_empty() {
@@ -647,5 +747,24 @@ impl<'a, 't> Machine<'a, 't> {
 
     pub fn xml(name: &'static str, text: &str, number: Option<i64>, children: Vec<Rc<Xml>>) -> Rc<Xml> {
         Rc::new(Xml { name, text: text.to_string(), number, children })
+    }
+}
+
+/// Whether an expression can only give nodes: a path that ends in a step.
+fn nodes_only(expr: &Expr) -> bool {
+    match expr {
+        Expr::Step(..) => true,
+        Expr::Path(_, right) => nodes_only(right),
+        Expr::Filter(base, _) => nodes_only(base),
+        _ => false,
+    }
+}
+
+/// Whether a predicate is a condition whatever it gives, never the number of a place.
+fn conditional(predicate: &Expr) -> bool {
+    match predicate {
+        Expr::And(..) | Expr::Or(..) => true,
+        Expr::Call(name, arguments) => arguments.len() == 1 && matches!(name.as_ref(), "exists" | "empty" | "not" | "boolean"),
+        _ => nodes_only(predicate),
     }
 }

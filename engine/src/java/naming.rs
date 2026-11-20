@@ -1,4 +1,5 @@
 //! Checkstyle naming checks with the formats of google_checks.xml and nitpicker's edits.
+use crate::java::fields::Fields;
 use super::helpers::{declarators, has_modifier, in_interface_or_annotation, report};
 use crate::engine::source::{SourceFile, children, walk};
 use crate::engine::{FileRule, finding::Finding};
@@ -28,7 +29,7 @@ const CONSTANT_TYPES: &[&str] = &[
 ];
 
 fn name_of<'t>(node: Node<'t>, out: &mut Vec<Node<'t>>) {
-    if let Some(name) = node.child_by_field_name("name") {
+    if let Some(name) = node.field("name") {
         out.push(name);
     }
 }
@@ -44,7 +45,7 @@ fn constant_names<'t>(file: &SourceFile, node: Node<'t>, out: &mut Vec<Node<'t>>
     if !field {
         return;
     }
-    let Some(kind) = node.child_by_field_name("type") else { return };
+    let Some(kind) = node.field("type") else { return };
     let checked = match kind.kind() {
         "type_identifier" => CONSTANT_TYPES.contains(&file.text_of(kind)),
         "integral_type" | "floating_point_type" | "boolean_type" => true,
@@ -54,10 +55,10 @@ fn constant_names<'t>(file: &SourceFile, node: Node<'t>, out: &mut Vec<Node<'t>>
         return;
     }
     for declarator in declarators(node) {
-        if declarator.child_by_field_name("dimensions").is_some() {
+        if declarator.field("dimensions").is_some() {
             continue;
         }
-        if let Some(name) = declarator.child_by_field_name("name") {
+        if let Some(name) = declarator.field("name") {
             if !matches!(file.text_of(name), "serialVersionUID" | "serialPersistentFields") {
                 out.push(name);
             }
@@ -85,7 +86,7 @@ fn method_names<'t>(file: &SourceFile, node: Node<'t>, out: &mut Vec<Node<'t>>) 
         return;
     }
     let test = super::helpers::annotation_names(file, node).iter().any(|name| name.contains("Test"));
-    let Some(name) = node.child_by_field_name("name") else { return };
+    let Some(name) = node.field("name") else { return };
     if test && test_method_format().is_match(file.text_of(name)) {
         return;
     }
@@ -117,7 +118,7 @@ fn lambda_parameter_names<'t>(_: &SourceFile, node: Node<'t>, out: &mut Vec<Node
     if node.kind() != "lambda_expression" {
         return;
     }
-    let Some(parameters) = node.child_by_field_name("parameters") else { return };
+    let Some(parameters) = node.field("parameters") else { return };
     match parameters.kind() {
         "identifier" => out.push(parameters),
         "inferred_parameters" => {
