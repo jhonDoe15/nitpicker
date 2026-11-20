@@ -141,12 +141,13 @@ function warnOfSkipped(failed) {
   }
 }
 
-export function nearDuplicateMatches(units, { isExcepted }) {
+export function nearDuplicateMatches(units, options) {
+  const { isExcepted } = options;
   const byId = new Map(units.map((unit) => [unitIdOf(unit), unit]));
   const rule = RULE_IDS.nearDuplicate;
   const failed = [];
   const identified = units.map((unit) => ({ ...unit, id: unitIdOf(unit) }));
-  const findings = findNearDuplicates(identified, { failed });
+  const findings = findNearDuplicates(identified, { failed, proveLogic: options.proveLogic });
   warnOfSkipped(failed);
   return findings
     .map((finding) => ({ finding, pair: sides(finding, byId) }))
