@@ -1,6 +1,7 @@
 //! The token texts the Node analyzer reads off the compiler's tree: one text per token, with string and
 //! template tokens written as the compiler's token kind and cooked value, and JSX text trimmed.
 use super::ParsedFile;
+use super::strings::is_space;
 use super::tree::Tree;
 use oxc_ast::AstKind;
 use oxc_parser::Kind;
@@ -20,7 +21,7 @@ pub struct TokenTexts<'t, 'a> {
 }
 
 fn collapsed(text: &str) -> String {
-    text.split_whitespace().collect::<Vec<_>>().join(" ")
+    text.split(is_space).filter(|part| !part.is_empty()).collect::<Vec<_>>().join(" ")
 }
 
 impl<'t, 'a> TokenTexts<'t, 'a> {
@@ -29,10 +30,10 @@ impl<'t, 'a> TokenTexts<'t, 'a> {
         for node in &tree.nodes {
             match node.kind {
                 AstKind::StringLiteral(literal) => {
-                    cooked.insert(node.start, literal.value.display().to_string());
+                    cooked.insert(node.start, file.halves.string(literal.value));
                 }
                 AstKind::TemplateElement(element) => {
-                    cooked.insert(node.start, element.value.cooked.map(|value| value.display().to_string()).unwrap_or_default());
+                    cooked.insert(node.start, file.halves.template(element));
                 }
                 _ => {}
             }

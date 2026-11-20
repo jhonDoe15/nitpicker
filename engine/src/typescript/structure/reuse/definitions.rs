@@ -3,6 +3,7 @@ use super::parts::Parts;
 use super::references::{Names, Span};
 use super::untyped::TypeOnly;
 use crate::typescript::ParsedFile;
+use crate::typescript::strings::Halves;
 use crate::typescript::tokens::TokenTexts;
 use oxc_ast::ast::{
     ArrayExpressionElement, BindingPattern, ChainElement, Class, Declaration, ExportDefaultDeclarationKind, Expression, Function, ObjectPropertyKind,
@@ -186,8 +187,8 @@ pub fn normalized(texts: Vec<String>) -> Vec<String> {
     kept.into_iter().zip(drop).filter(|(_, drop)| !drop).map(|(text, _)| text).collect()
 }
 
-pub fn hash(text: &str) -> String {
-    Sha256::digest(text.as_bytes()).iter().take(12).map(|byte| format!("{byte:02x}")).collect()
+pub fn hash(halves: Halves, text: &str) -> String {
+    Sha256::digest(halves.encoded(text).as_bytes()).iter().take(12).map(|byte| format!("{byte:02x}")).collect()
 }
 
 struct Spec<'a> {
@@ -233,7 +234,8 @@ impl<'t, 'a> Reader<'t, 'a> {
             let erased = self.type_only.inside((start, end));
             let keep = |token: &oxc_parser::Token| {
                 let at = token.start();
-                !self.type_only.token(at) && !erased.iter().any(|(from, to)| at >= *from && at < *to)
+                let before = erased.partition_point(|(from, _)| *from <= at);
+                !self.type_only.token(at) && !(before > 0 && at < erased[before - 1].1)
             };
             self.texts.within(start, end, keep, &mut texts);
         }
@@ -256,7 +258,7 @@ impl<'t, 'a> Reader<'t, 'a> {
             Declared::Alias(node) => vec![node.id.name.to_string()],
             Declared::Enum(node) => vec![node.id.name.to_string()],
             Declared::Namespace(node) => vec![node.id.name.to_string()],
-            Declared::External(node) => vec![node.id.value.display().to_string()],
+            Declared::External(node) => vec![self.file.halves.string(node.id.value)],
             Declared::Global(_) => vec!["global".to_string()],
             Declared::ImportEquals(node) => vec![node.id.name.to_string()],
             Declared::NamespaceExport(node) => vec![node.id.name.to_string()],
@@ -343,7 +345,7 @@ impl<'t, 'a> Reader<'t, 'a> {
             .hashed
             .borrow_mut()
             .entry(index)
-            .or_insert_with(|| hash(&normalized(self.typed_texts(&self.statement_spans(&lookup.tops[index]))).join(" ")))
+            .or_insert_with(|| hash(self.file.halves, &normalized(self.typed_texts(&self.statement_spans(&lookup.tops[index]))).join(" ")))
             .clone();
         Some(Binding::Local { text })
     }
@@ -389,6 +391,14 @@ impl<'t, 'a> Reader<'t, 'a> {
         'a: 't,
     {
         let mut specs = Vec::new();
+        let mut overloads: HashMap<&str, Vec<&Function<'a>>> = HashMap::new();
+        for top in tops {
+            if let Declared::Function(function) = &top.declared {
+                if let (None, Some(id)) = (&function.body, &function.id) {
+                    overloads.entry(id.name.as_str()).or_default().push(function);
+                }
+            }
+        }
         for top in tops {
             let mut parts = Parts::default();
             let (name, kind, tag, component) = match &top.declared {
@@ -398,12 +408,8 @@ impl<'t, 'a> Reader<'t, 'a> {
                 }
                 Declared::Function(function) => {
                     let (Some(id), Some(_)) = (&function.id, &function.body) else { continue };
-                    for other in tops {
-                        if let Declared::Function(overload) = &other.declared {
-                            if overload.body.is_none() && overload.id.as_ref().is_some_and(|name| name.name == id.name) {
-                                parts.function(overload);
-                            }
-                        }
+                    for overload in overloads.get(id.name.as_str()).into_iter().flatten() {
+                        parts.function(overload);
                     }
                     parts.untyped.clear();
                     parts.function(function);

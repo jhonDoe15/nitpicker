@@ -149,7 +149,7 @@ impl Scan<'_> {
                 self.modifiers(start, &parameter.decorators, parameter.pattern.span().start);
                 self.next(parameter.pattern.span().end, &[Kind::Question, Kind::Bang]);
             }
-            AstKind::VariableDeclarator(declarator) => self.next(declarator.id.span().end, &[Kind::Bang]),
+            AstKind::VariableDeclarator(declarator) if declarator.definite => self.next(declarator.id.span().end, &[Kind::Bang]),
             AstKind::VariableDeclaration(declaration) if declaration.declare => self.span(start, end),
             AstKind::Class(class) => {
                 let from = self.at(class.decorators.last().map_or(start, |decorator| decorator.span.end.max(start)));
@@ -184,7 +184,11 @@ impl TypeOnly {
             );
             let target = match tree.parent(index as u32).map(|parent| tree.kind(parent)) {
                 Some(AstKind::AssignmentExpression(assignment)) => assignment.left.span().start == node.start,
-                Some(AstKind::UpdateExpression(_)) => true,
+                Some(AstKind::AssignmentTargetWithDefault(target)) => target.binding.span().start == node.start,
+                Some(AstKind::AssignmentTargetPropertyProperty(property)) => property.binding.span().start == node.start,
+                Some(AstKind::ForInStatement(statement)) => statement.left.span().start == node.start,
+                Some(AstKind::ForOfStatement(statement)) => statement.left.span().start == node.start,
+                Some(AstKind::UpdateExpression(_) | AstKind::ArrayAssignmentTarget(_) | AstKind::AssignmentTargetRest(_)) => true,
                 _ => false,
             };
             if cast && target {

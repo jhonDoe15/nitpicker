@@ -1,5 +1,6 @@
 //! TypeScript and JavaScript front end: one oxc parse per file, shared by every check of this language.
 pub mod lines;
+pub mod strings;
 pub mod tokens;
 pub mod structure;
 pub mod tree;
@@ -21,7 +22,10 @@ pub struct ParsedFile<'a> {
     pub lines: lines::LineTable,
     /// Lexed tokens in source order; empty unless the file was parsed with `with_tokens`.
     pub tokens: &'a [Token],
-    /// The parser gave up, or reported an error that leaves no usable tree.
+    /// How this file's string values keep lone surrogate halves.
+    pub halves: strings::Halves,
+    /// The parser gave up, reported an error that leaves no usable tree, or reads the file another way than the
+    /// compiler does. The Node analyzer has to read such a file.
     pub panicked: bool,
     pub errors: Vec<String>,
 }
@@ -67,10 +71,17 @@ fn parsed<R>(path: &str, text: &str, tokens: bool, run: impl FnOnce(&ParsedFile)
     } else {
         Parser::new(&allocator, text, source_type).with_options(options).parse()
     };
-    let panicked = parsed.fatal_error;
-    let errors = parsed.diagnostics.iter().map(|error| error.to_string()).collect();
+    let html_comment = parsed.program.comments.iter().any(|comment| {
+        let written = &text[comment.span.start as usize..];
+        written.starts_with("<!--") || written.starts_with("-->")
+    });
+    let panicked = parsed.fatal_error || html_comment;
+    let mut errors: Vec<String> = parsed.diagnostics.iter().map(|error| error.to_string()).collect();
+    if html_comment {
+        errors.push("HTML-like comment".to_string());
+    }
     let tokens: &[Token] = allocator.alloc(parsed.tokens);
     let program = allocator.alloc(parsed.program);
-    let file = ParsedFile { path, text, source_type, program, lines: lines::LineTable::of(text), tokens, panicked, errors };
+    let file = ParsedFile { path, text, source_type, program, lines: lines::LineTable::of(text), tokens, halves: strings::Halves::of(text), panicked, errors };
     run(&file)
 }
