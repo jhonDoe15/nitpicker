@@ -789,12 +789,16 @@ allprojects {
             systemProperty 'findsecbugs.injection.customconfigfile.PathTraversalDetector',
                 "${new File(initScriptDir, 'security/path-sinks.txt').absolutePath}|PATH_TRAVERSAL_IN".toString()
             ignoreExitValue = true
+            def buildRoot = project.rootDir.toPath().toAbsolutePath().normalize()
             doFirst {
                 reportDir.get().asFile.mkdirs()
                 def sourcePath = mainSources.files.findAll { it.exists() }.join(File.pathSeparator)
                 def classDirs = analyzedClassDirs().findAll { it.exists() }
-                def auxiliary = kotlinPreset
-                    ? sourceSets.main.runtimeClasspath.files.findAll { it.exists() && !classDirs.contains(it) } : []
+                def auxiliary = (kotlinPreset ? sourceSets.main.runtimeClasspath.files
+                        : sourceSets.main.compileClasspath.files.findAll {
+                            it.toPath().toAbsolutePath().normalize().startsWith(buildRoot)
+                        })
+                    .findAll { it.exists() && !classDirs.contains(it) }
                 def targets = classDirs.collect { it.absolutePath }
                 if (!analyzeGenerated) {
                     def processorOutput = tasks.named('compileJava').get().options
@@ -822,12 +826,14 @@ allprojects {
                         auxiliary = (auxiliary + classDirs).unique()
                     }
                 }
+                def auxiliaryFile = reportDir.get().file('spotbugs-aux-classpath.txt').asFile
+                auxiliaryFile.text = auxiliary*.absolutePath.join('\n')
                 args(nitpickerSettings('spotbugs', ['-effort:default', '-medium']) + ['-sarif',
                       '-pluginList', configurations.nitpickerSpotbugsPlugins.files*.absolutePath.join(File.pathSeparator),
                       '-exclude', new File(initScriptDir, 'security/exclude.xml').absolutePath,
                       '-output', reportDir.get().file('spotbugs.sarif').asFile.absolutePath,
                       '-sourcepath', sourcePath] +
-                    (auxiliary.isEmpty() ? [] : ['-auxclasspath', auxiliary.join(File.pathSeparator)]) +
+                    (auxiliary.isEmpty() ? [] : ['-auxclasspathFromFile', auxiliaryFile.absolutePath]) +
                     targets)
             }
             onlyIf { analyzedClassDirs().any { it.exists() && it.list()?.length } }

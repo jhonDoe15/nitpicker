@@ -50,8 +50,11 @@ export function eslintShapedResults(
     return {
       filePath,
       messages: converted
-        .filter(({ check }) => check === undefined || keeps?.(check) === true)
-        .map(({ message }) => message)
+        .flatMap(({ message, check }) =>
+          check === undefined
+            ? [message]
+            : (keeps?.(check) ?? []).map((span) => ({ ...message, ...span })),
+        )
         .filter((message) => !isNeutralizerWhitespace(message, neutralized)),
     };
   });

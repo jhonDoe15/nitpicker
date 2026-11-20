@@ -21,11 +21,11 @@ function plan(text: string) {
 }
 
 describe('javaExtractPartialRunRecipe', () => {
-  it('is a review recipe for the near-duplicate rule of the Java preset', () => {
+  it('is a review recipe for the near-duplicate rule of the Java and Kotlin presets', () => {
     expect([recipe.safety, recipe.scope, recipe.presets, recipe.rules]).toEqual([
       'review',
       'file',
-      ['java'],
+      ['java', 'kotlin'],
       [{ tool: 'structure', rule: 'near-duplicate' }],
     ]);
   });

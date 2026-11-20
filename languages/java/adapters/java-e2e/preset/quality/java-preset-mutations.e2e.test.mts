@@ -6,6 +6,8 @@ import {
   BASELINED_FINDINGS,
 } from '../../__tests__/java-preset-project.mts';
 
+const CATEGORY_COUNT = 'test-runtime category-count .';
+
 describe.skipIf(!enabled)('Java preset end to end', () => {
   const fixture = useJavaPresetProject();
   it('fails a new surviving mutant in changed code', () => {
@@ -19,7 +21,9 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     expect(survivor.newEnforceable.find((finding) => finding.tool === 'pit')?.message).toEqual(
       'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return, a field set to the value it already has, a redundant trim() or sorted()), simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/main/java/demo/Calc.java"],"function":"Calc.clamp","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
-    expect([...new Set(summarize(survivor.unchangedFindings))].sort()).toEqual(BASELINED_FINDINGS);
+    expect([...new Set(summarize(survivor.unchangedFindings))].sort()).toEqual(
+      BASELINED_FINDINGS.filter((finding) => finding !== CATEGORY_COUNT),
+    );
   }, 180_000);
   it('baselines an uncovered branch whose line only moves', () => {
     const result = fixture.diffOf('branch-moved');

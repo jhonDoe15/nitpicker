@@ -11,6 +11,7 @@ export type OxlintDiagnostic = {
 };
 
 export type Position = { readonly line: number; readonly column: number };
+export type ReportedSpan = Position & { readonly endLine: number; readonly endColumn: number };
 
 export type LintMessage = Position & {
   readonly ruleId?: string | undefined;
@@ -138,7 +139,10 @@ export type OwnedNativeRule = {
     diagnostic: OxlintDiagnostic,
     filePath: string,
   ) => { readonly messageId: string; readonly check: SpreadReport };
-  readonly checkerOf: (filePath: string, text: string) => (check: SpreadCheck) => boolean;
+  readonly checkerOf: (
+    filePath: string,
+    text: string,
+  ) => (check: SpreadCheck) => readonly ReportedSpan[];
 };
 
 export type OwnedMessage = {

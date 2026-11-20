@@ -39,6 +39,14 @@ tester.run('no-accumulating-spread', rule, {
     'xs.reduce((acc, x) => [...acc, x].slice(-3), [])',
     'xs.reduce((acc, x) => [...acc, x].slice(0, 3), [])',
     'let last = []; for (const x of xs) { last = [...last, x].slice(-3); }',
+    'let out = [];\nfor (const x of xs) {\n  out = [...out, x];\n  out = [];\n}',
+    'let out = [];\nfor (const x of xs) {\n  out = [...out, x];\n}\nout = [];',
+    'let out = [];\nfor (const x of xs) {\n  out = [...out, x];\n  out = out.filter(keep);\n}',
+    'let out = [];\nfor (const x of xs) {\n  out = [...out, x];\n  out = other;\n}',
+    'let out = [];\nfor (const x of xs) {\n  out = [...out, x];\n}\nconst reset = () => { out = []; };',
+    'let out = [];\nconst reset = () => { out = []; };\nfor (const x of xs) {\n  out = [...out, x];\n}',
+    'let out = [];\nfor (const x of xs) {\n  out = [...out, x];\n  out += 1;\n}',
+    'let out = [];\nfor (const x of xs) {\n  out = [...out, x];\n}\n[out] = [[]];',
   ].map((code) => ({ filename, code })),
   invalid: [
     {
@@ -71,19 +79,19 @@ tester.run('no-accumulating-spread', rule, {
     },
     {
       code: 'let out: number[] = [];\nfor (const x of xs) {\n  out = [...out, x, ...out];\n}',
-      errors: [at('loopArray', 1, 5, 8)],
+      errors: [at('loopArray', 3, 10, 16)],
     },
     {
       code: 'let merged = {};\nfor (const part of parts) {\n  merged = { ...merged, ...part } as Merged;\n}',
-      errors: [at('loopObject', 1, 5, 11)],
+      errors: [at('loopObject', 3, 14, 23)],
     },
     {
       code: 'let out = [];\nwhile (more()) {\n  out = [f(...out), next()];\n}',
-      errors: [at('loopArray', 1, 5, 8)],
+      errors: [at('loopArray', 3, 12, 18)],
     },
     {
       code: 'let [out] = [[]];\nfor (const x of xs) {\n  xs.map(() => { out = [...out, x]; });\n}',
-      errors: [at('loopArray', 1, 5, 10)],
+      errors: [at('loopArray', 3, 25, 31)],
     },
     {
       code: 'xs.reduce((acc, x) => ({ ...acc, [x.id]: x }), {})',
@@ -96,6 +104,26 @@ tester.run('no-accumulating-spread', rule, {
     {
       code: 'xs.reduce((acc, x) => [...acc, x].slice(-n), [])',
       errors: [at('reduceArray', 1, 24, 30)],
+    },
+    {
+      code: 'let out: readonly unknown[] = [];\nfor (const x of xs) {\n  out = [...out, x];\n}\nfor (const y of ys) {\n  out = [...out, y];\n}',
+      errors: [at('loopArray', 3, 10, 16), at('loopArray', 6, 10, 16)],
+    },
+    {
+      code: 'let out = {};\nfor (const x of xs) {\n  out = { ...out, ...x };\n  out = [...out];\n}',
+      errors: [at('loopObject', 3, 11, 17), at('loopArray', 4, 10, 16)],
+    },
+    {
+      code: 'let out: readonly unknown[] = [];\nfor (const x of xs) {\n  if (x) out = [...out, x];\n  else out = [...out, 0];\n}',
+      errors: [at('loopArray', 3, 17, 23), at('loopArray', 4, 15, 21)],
+    },
+    {
+      code: 'let out: readonly unknown[] = [];\nfor (const x of xs) {\n  out = [...out, x];\n  out.length = 0;\n  out[0] = 1;\n}\nout.extra = 1;',
+      errors: [at('loopArray', 3, 10, 16)],
+    },
+    {
+      code: 'let out = [];\nconst keep = () => out;\nfor (const x of xs) {\n  out = [...out, x];\n}',
+      errors: [at('loopArray', 4, 10, 16)],
     },
   ].map((testCase) => ({ filename, ...testCase })),
 });
@@ -119,11 +147,11 @@ tester.run('no-accumulating-spread in domain/', rule, {
     },
     {
       code: 'let out = {};\nfor (const x of xs) {\n  out = { ...out, ...x };\n}',
-      errors: [at('domainLoopObject', 1, 5, 8)],
+      errors: [at('domainLoopObject', 3, 11, 17)],
     },
     {
       code: 'let out = [];\nfor (const x of xs) {\n  out = [...out, x];\n}',
-      errors: [at('domainLoopArray', 1, 5, 8)],
+      errors: [at('domainLoopArray', 3, 10, 16)],
     },
   ].map((testCase) => ({ filename: domain, ...testCase })),
 });

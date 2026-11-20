@@ -14,6 +14,12 @@ def run(payload):
     sys.path[:0] = [HERE, RULES]
     sys.dont_write_bytecode = True
     mode = payload.get("mode")
+    if mode in ("near-units", "near-extract"):
+        facts = os.path.join(os.path.dirname(RULES), "adapters", "facts")
+        sys.path[:0] = [facts, os.path.join(facts, "trees")]
+        import extract_runner
+
+        return extract_runner.units_main(payload) if mode == "near-units" else extract_runner.extract_main(payload)
     if mode == "project":
         from project_runner import main
     elif mode == "ignores":

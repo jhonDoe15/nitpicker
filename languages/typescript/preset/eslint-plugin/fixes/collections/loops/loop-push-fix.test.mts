@@ -27,6 +27,11 @@ const { pushes, declines } = suggestionCases({
   suggestionId: 'pushOntoArray',
 });
 
+function twice<Case extends { errors: { messageId: string }[] }>(case_: Case): Case {
+  const [first] = case_.errors;
+  return { ...case_, errors: [first, { messageId: first?.messageId }] };
+}
+
 const loopOf = (statement: string, before = '', after = '  return out;') =>
   `${before}  let out: string[] = [];\n  for (const x of xs) {\n    ${statement}\n  }\n${after}`;
 const constLoopOf = (statement: string, before = '', after = '  return out;') =>
@@ -40,7 +45,13 @@ function asAsync(body: string): string {
 }
 
 tester.run('no-accumulating-spread loop suggestion', rule, {
-  valid: [],
+  valid: [
+    typed(wrap(loopOf('out = [...out, x.id];\n    if (x.n) out = [];'))),
+    typed(wrap(loopOf('out = [...out, x.id];\n    out = out.filter(Boolean);'))),
+    typed(wrap(loopOf('out = [...out, x.id];\n    out += "";'))),
+    typed(wrap(loopOf('out = [...out, x.id];', '', '  out = [];\n  return out;'))),
+    typed(wrap(loopOf('out = [...out, x.id];', '', '  out = [...out, "end"];\n  return out;'))),
+  ],
   invalid: [
     pushes(loopOf('out = [...out, x.id];'), constLoopOf('out.push(x.id);')),
     pushes(
@@ -63,9 +74,11 @@ tester.run('no-accumulating-spread loop suggestion', rule, {
       ),
     ),
     pushes(loopOf('out = [...out, (use(x), x.id)];'), constLoopOf('out.push((use(x), x.id));')),
-    pushes(
-      loopOf('if (x.n) out = [...out, x.id]; else out = [...out, "-"];'),
-      constLoopOf('if (x.n) out.push(x.id); else out.push("-");'),
+    twice(
+      pushes(
+        loopOf('if (x.n) out = [...out, x.id]; else out = [...out, "-"];'),
+        constLoopOf('if (x.n) out.push(x.id); else out.push("-");'),
+      ),
     ),
     pushes(
       loopOf('if (x.n) out = [...out, ...x.tags];'),
@@ -79,9 +92,11 @@ tester.run('no-accumulating-spread loop suggestion', rule, {
       loopOf('out = [...out, out[out.length - 1] ?? x.id];'),
       constLoopOf('out.push(out[out.length - 1] ?? x.id);'),
     ),
-    pushes(
-      loopOf('out = [...out, x.id];\n    out = [...out, x.id.toUpperCase()];'),
-      constLoopOf('out.push(x.id);\n    out.push(x.id.toUpperCase());'),
+    twice(
+      pushes(
+        loopOf('out = [...out, x.id];\n    out = [...out, x.id.toUpperCase()];'),
+        constLoopOf('out.push(x.id);\n    out.push(x.id.toUpperCase());'),
+      ),
     ),
     pushes(
       loopOf('out = [...out, x.id];', '', '  use(out);\n  return out.length;'),
@@ -162,9 +177,6 @@ tester.run('no-accumulating-spread loop suggestion', rule, {
         '  return peek();',
       ),
     ),
-    declines(loopOf('out = [...out, x.id];\n    if (x.n) out = [];')),
-    declines(loopOf('out = [...out, x.id];\n    out = out.filter(Boolean);')),
-    declines(loopOf('out = [...out, x.id];\n    out += "";')),
     declines(loopOf('out = [x.id, ...out];')),
     declines(loopOf('out = [...out];')),
     declines(loopOf('out = [...out, , x.id];')),
@@ -177,13 +189,13 @@ tester.run('no-accumulating-spread loop suggestion', rule, {
     declines(loopOf('out = [...out, ...out.slice(1)];')),
     declines(loopOf('const next = (out = [...out, x.id]);\n    use(next);')),
     declines(loopOf('out = [...out, x.id /* why */];')),
-    declines(loopOf('out = [...out, x.id];', '', '  out = [];\n  return out;')),
-    declines(
-      loopOf(
-        'out = [...out, x.id];\n  }\n  use(out);\n  for (const y of xs) {\n    out = [...out, y.id];',
+    twice(
+      declines(
+        loopOf(
+          'out = [...out, x.id];\n  }\n  use(out);\n  for (const y of xs) {\n    out = [...out, y.id];',
+        ),
       ),
     ),
-    declines(loopOf('out = [...out, x.id];', '', '  out = [...out, "end"];\n  return out;')),
     declines(
       '  let out: string[] = existing;\n  for (const x of xs) {\n    out = [...out, x.id];\n  }\n  return out;',
     ),

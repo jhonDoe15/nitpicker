@@ -24,6 +24,7 @@ import { formatStep, formatterOf, formattedFiles, lintStep } from './python-fix-
 import { fixOptions } from './source/fix-options.mts';
 import { FIX_SCRIPT, SCRIPT_OPERATION } from './source/script-edits.mts';
 import { createPythonRecipes } from './recipes/python-recipes.mts';
+import { commentedCodeInputs } from './recipes/inputs/commented-code-inputs.mts';
 import { dependencyInputs } from './recipes/inputs/dependency-inputs.mts';
 import { docstringInputs } from './recipes/inputs/docstring-inputs.mts';
 import { unusedIgnoreInputs } from './recipes/inputs/unused-ignore-inputs.mts';
@@ -70,9 +71,32 @@ function recipeInputs(
           : {}),
       },
       toolErrors: [],
+      notes: [],
     };
   } catch (error) {
-    return { inputs: {}, toolErrors: [fixFailure('python-recipe-inputs', error)] };
+    return { inputs: {}, toolErrors: [fixFailure('python-recipe-inputs', error)], notes: [] };
+  }
+}
+
+function firstLine(error: unknown): string {
+  return error instanceof Error ? (error.message.split('\n')[0] ?? '') : String(error);
+}
+
+function commentedCode(
+  context: ToolContext,
+  files: readonly FixFile[],
+  selectedRules: readonly string[],
+): Pick<Gathered, 'inputs' | 'notes'> {
+  if (selectedRules.length > 0 && !selectedRules.includes('ruff/ERA001')) {
+    return { inputs: {}, notes: [] };
+  }
+  try {
+    return { inputs: { pythonCommentedCode: commentedCodeInputs(context, files) }, notes: [] };
+  } catch (error) {
+    return {
+      inputs: {},
+      notes: [`--fix left ruff/ERA001 as is: ruff could not report it (${firstLine(error)})`],
+    };
   }
 }
 
@@ -109,6 +133,7 @@ function recipeStep({
     selectedRules,
   });
   const gathered = recipeInputs(context, files, selectedRules);
+  const commented = commentedCode(context, files, selectedRules);
   const recipes = runRecipes({
     projectRoot: settings.projectRoot,
     files,
@@ -117,13 +142,13 @@ function recipeStep({
     preset: settings.config.preset ?? 'python',
     selectedRules,
     accepts,
-    inputs: { ...shared.inputs, ...gathered.inputs },
+    inputs: { ...shared.inputs, ...gathered.inputs, ...commented.inputs },
   });
   return {
     files: recipes.files,
     fixedFindings: recipes.fixedFindings,
     toolErrors: [...shared.toolErrors, ...gathered.toolErrors, ...recipes.toolErrors],
-    notes: [...recipes.notes],
+    notes: [...commented.notes, ...recipes.notes],
   };
 }
 

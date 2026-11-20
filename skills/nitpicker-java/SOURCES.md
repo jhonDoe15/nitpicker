@@ -236,6 +236,26 @@ reflective or framework injection names it, and `PrivateConstructorForUtilityCla
 another project class extends, which then no longer compiles. The declines are in
 `languages/java/fix/errorprone/declines/`.
 
+`java-static-forwarding-wrapper` and `java-compatibility-shim` are review recipes for
+`pmd/StaticForwardingWrapper` and `pmd/CompatibilityShim`. They read every Java source of the project
+and rewrite each call of the wrapper (or of the private or package-private `@Deprecated` static
+method) to its target, then delete it. They leave a public, protected or interface method, a target
+that is overloaded, inherited, private, outside the project or typed differently (type names are
+compared by what they resolve to), a name that Kotlin code, a method reference, a doc link or a
+string uses, and a declaration that shares its line with another.
+
+`java-http-without-timeout` is a review recipe for `pmd/HttpWithoutTimeout`: it adds a ten-second
+deadline (`java.time.Duration` and `TimeUnit` written in full, so no import can shadow a class) to
+a finished `java.net.http` builder chain, `HttpClient.newHttpClient()`, a Jakarta `ClientBuilder`
+and an `HttpURLConnection` opened from a `URL`. It leaves `javax.ws.rs` (its first release has no
+timeouts), Apache clients and builders kept in a variable.
+
+`java-unrun-tests` is a review recipe for `test-runtime/test-not-run`. Maven: it renames `*IT`
+classes to `<Name>IntegrationTest` when no pom of the project mentions Failsafe or Surefire, no
+file names the class, and the name is free. Gradle: it appends a `Test` task for a declared source
+set to the module's build file, unless a root script, `apply from` or another script may already
+configure it. It plans from file names, not from the findings.
+
 ## Left out
 
 33 checks never get a fix from `--fix`, listed in

@@ -26,6 +26,14 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   writes to `build/nitpicker/` of each project. The tools resolve from Maven Central, which the init script adds to each
   project, unless `settings.gradle(.kts)` sets `repositoriesMode` to `FAIL_ON_PROJECT_REPOS` (Gradle then refuses a
   project repository): the repositories the settings declare are used, and they must include Maven Central or a mirror.
+- **SpotBugs classpath.** SpotBugs analyzes a module's own classes and reads the classes of the build's
+  other modules from `spotbugs-aux-classpath.txt` in its report directory: on Gradle the entries of the
+  main compile classpath inside the root project directory, on Maven the entries of the
+  module's compile classpath inside the reactor root. Detectors that need a supertype declared in
+  another module see it: `EQ_DOESNT_OVERRIDE_EQUALS` reports a subclass that adds fields to a value
+  class of another module and inherits its `equals`. Library jars stay off it, as before: with them,
+  `EI_EXPOSE_REP2` would report every injected framework object (an `EntityManager`, a `JdbcTemplate`)
+  as stored mutable state. The Kotlin preset passes the whole classpath.
 - **Multi-project builds.** Every project that applies the `java` plugin is analyzed, the root
   included when it applies it; paths in findings are relative to the directory Gradle runs in, so a
   subproject's findings carry its folder (`lib/src/main/java/...`). A build where no project applies

@@ -1,5 +1,32 @@
 # Using nitpicker
 
+Python extraction. The two Python recipes are `review` recipes and look at one file at a time, never at
+test files. Two functions of one module, or two methods of one class, whose parameters are plain
+positional ones (no `*args`, `**kwargs`, keyword-only or positional-only parameters; defaults and
+annotations are accepted, and annotations are copied) share a function named `_shared_` and the first
+copy's name, placed after the first copy, as a module function or, for two methods, as a method. Both
+copies must be plain functions or both `async`. A differing string, number or boolean literal becomes a
+parameter, except inside an f-string or an annotation. A partial run is a run of whole statements of the
+function body; at most one value it defines is used after it, and that value is always assigned in the
+run. The recipes leave a pair as it is when a copy has a decorator, a nested function or class,
+`global`, `nonlocal`, `yield`, an import, `super()` or `locals()`, when a run assigns a variable
+declared before it, awaits, returns or has an async comprehension, when a comment of the second copy
+would be dropped, or when the copies are in two files. For two methods they also decline when the first
+parameter is not named `self`, when a method is `__new__`, `__init_subclass__` or `__class_getitem__`,
+when the class is a protocol, and when a subclass in the project defines a member with the name of the
+shared method.
+Kotlin extraction. The same two recipes handle `.kt` files. Two functions of one class, one `object`
+or one file, with plain parameters (no defaults, `vararg` or annotations), a declared return type
+(a block body without one returns `Unit`) and the same `suspend` modifier, share a `private` function
+placed after the first copy, as a member or at the top level. A differing string, character, boolean
+or `Int`, `Long`, `Double` or `Float` literal assigned to a local becomes a parameter; a literal in any
+other place that needs a number is left. A partial run is a run of whole statements of the function
+body. The values it reads must be parameters or locals with a written type that is not nullable, and
+the one value it defines and the code after it uses needs a written type. The recipes leave a pair as
+it is when a copy has an annotation, type parameters, a receiver, `inline`, `tailrec` or `external`, sits
+in an interface, declares a local function, class or object or calls `super`, when the copies read
+differently named outer values or call differently named functions, when a run assigns a variable
+declared before it, or when the copies are in two files.
 The full reference: install, how the comparison works, reports, exit codes, every command-line
 option, configuration, the presets, adopting nitpicker on existing code, and running it in CI.
 For a short introduction, see the [README](../README.md).
@@ -2706,20 +2733,32 @@ runs only when `--fix --rule` names one of its rules.
 
 | Preset | Rule | Recipe | What it does |
 | ------------ | -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------, ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------, --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| java | `structure/near-duplicate` (copies in one class, or in two files of one folder) | `java-extract-near-duplicate` | extracts the shared method of a proved copy and calls it from both copies (review) |
-| java | `structure/near-duplicate` (a run shared by two methods of a class) | `java-extract-partial-run` | extracts the shared statements of a `partial-run` pair into a method and calls it from both (review) |
+| java, kotlin | `structure/near-duplicate` (copies in one class, or in two files of one folder; in Kotlin, copies in one class or file) | `java-extract-near-duplicate` | extracts the shared method of a proved copy and calls it from both copies (review) |
+| java, kotlin | `structure/near-duplicate` (a run shared by two methods of a class, or two Kotlin functions of a file) | `java-extract-partial-run` | extracts the shared statements of a `partial-run` pair into a method and calls it from both (review) |
+| python | `structure/near-duplicate` (copies in one file or one class) | `python-extract-near-duplicate` | extracts the shared function of a proved copy and calls it from both copies; a differing string, number or boolean literal becomes a parameter (review) |
+| python | `structure/near-duplicate` (a run shared by two functions or methods of a file) | `python-extract-partial-run` | extracts the shared statements of a `partial-run` pair into a function and calls it from both (review) |
 | typescript | `structure/near-duplicate` (copies in one file) | `typescript-extract-near-duplicate` | extracts the shared function of a proved copy and calls it from both copies; a differing string or number literal becomes a parameter typed with the union of both literals, or their base type (with a note) when the union does not compile |
 | typescript | `structure/near-duplicate` (a run shared by two functions of a file) | `typescript-extract-partial-run` | extracts the shared statements of a `partial-run` pair into a function and calls it from both (review) |
 | java, kotlin | `structure/shorter-condition` | `jvm-shorter-condition` | writes the shorter form the finding names in place of the condition (review) |
 | java, kotlin | `structure/duplicate-branch` (switch cases and `when` entries) | `jvm-merge-switch-labels` | merges the labels of cases with the same body into the first case (review) |
+| java | `pmd/StaticForwardingWrapper` | `java-static-forwarding-wrapper` | `review`: points the callers of a private or package-private static method that only passes its parameters on at the target in another class of the project, and deletes the wrapper; leaves what it cannot prove (see below) |
+| java | `pmd/CompatibilityShim` | `java-compatibility-shim` | `review`: points the callers of a private or package-private `@Deprecated` static method that only forwards to a sibling method at that method, and deletes the deprecated one with its Javadoc; leaves what it cannot prove (see below) |
+| java | `pmd/HttpWithoutTimeout` | `java-http-without-timeout` | `review`: adds a ten-second deadline to a `java.net.http` request or client, a JAX-RS `ClientBuilder` and an `HttpURLConnection` that has none; leaves an Apache client and a builder kept in a variable |
+| java | `test-runtime/test-not-run` | `java-unrun-tests` | `review`: renames a `*IT` class of a Maven module without Failsafe so that Surefire collects it; registers a `Test` task in the Gradle build file for a source set that no task runs |
 | java | `checkstyle/UpperEll` | `java-upper-ell` | turns the `l` suffix of a `long` literal into `L`, outside strings, text blocks and comments |
 | java | `pmd/CatchLogWithoutException` |
+| java | `pmd/CommentedOutCode` | `java-commented-out-code` | deletes the lines of commented-out code, from its first code line to the end of the comment, and keeps a sentence above it; leaves prose, Javadoc, licence headers, tool directives such as `CHECKSTYLE:OFF`, `NOSONAR` or `@formatter:off`, a lone call or assignment, and a comment that mixes code with prose |
 | kotlin | `detekt/detekt.style.NewLineAtEndOfFile` | `kotlin-final-newline` | ends a file with a line break, CRLF when the file uses CRLF |
 | java, kotlin | `errorprone/<Check>` for the checks in [Error Prone fixes](#error-prone-fixes) | `java-error-prone-safe`, `java-error-prone-review` | applies the fix Error Prone suggests, to the changed lines of `.java` files |
 | java, kotlin | `pmd/<Rule>` for the rules in [Fix-only Error Prone checks](#fix-only-error-prone-checks) | `java-source-safe`, `java-source-review` | applies the rewrite of a check nitpicker ships, to the changed lines of `.java` files |
 | kotlin | detekt `UseRequire`, `UseCheckOrError`, `UseRequireNotNull`, `UseCheckNotNull`, `MayBeConst` (private properties; the others are `review`), `ModifierOrder`, `OptionalAbstractKeyword`, `ExplicitItLambdaParameter`, `UnnecessaryLet`, `VarCouldBeVal` and the empty class, finally, init and default constructor rules | `kotlin-use-require`, `kotlin-may-be-const` and the other `kotlin-*` recipes in `skills/nitpicker-kotlin/SOURCES.md` | rewrites the Kotlin text the rule flags |
 | kotlin | `catch-log-without-exception`, `CommentedOutCode`, `GeneratedOnHandWrittenCode`, `FocusedTest`, `ValidationAnnotationTarget` | `kotlin-catch-log-without-exception` and its siblings | passes the exception to the logger, deletes commented-out code, drops the marker or focus, writes `@field:` |
 | kotlin | `LogStringConcatenation`, `MayBeConst` on non-private properties, `UseIsNullOrEmpty`, `UseOrEmpty`, `UnusedPrivateProperty`, `UnusedPrivateMember`, `ExplicitGarbageCollectionCall`, `JvmSyntheticOnHandWrittenCode`, `MutationIgnoreMarker`, `SortForExtreme` (the `first()` forms only when the build files declare Kotlin 1.7 or later), `PlainTextRegex`, `SpringDataNoSaveInLoop`, `SleepInsteadOfDelay`, `EntityLoadedForExistence` (`findById` forms) | `kotlin-use-is-null-or-empty` and its siblings | `review`, `SortForExtreme`, `PlainTextRegex`, `SpringDataNoSaveInLoop` recipes: they run only when their rule is selected, because the text does not prove them |
+| kotlin | `test-runtime/test-not-run` | `kotlin-unrun-test-rename` | `review` recipe: renames a Kotlin `IT` test class and its file to `Test` in a Maven build that configures neither Failsafe nor Surefire, so Surefire collects it; Gradle builds, taken names and referenced classes stay |
+| kotlin | `kotlin-source/HttpWithoutTimeout` | `kotlin-http-timeout` | `review` recipe: adds a ten-second timeout to a java.net.http request, a JAX-RS client builder or an HttpURLConnection; other clients stay |
+| kotlin | `pmd/StaticForwardingWrapper` | `kotlin-forwarding-wrapper` | `review` recipe: points the callers of a top-level function that only passes its parameters to a same-signature function at the target and deletes the wrapper; stays when Java code calls it, a caller names arguments, or the wrapper has an annotation or another overload |
+| kotlin | `kotlin-source/CompatibilityShim` | `kotlin-compatibility-shim` | `review` recipe: moves the users of a type alias to its target, or the callers of a deprecated function that only forwards its parameters, and deletes the shim; stays when Java code, a clashing name, named arguments or extra behaviour are involved |
+| kotlin | `pmd/RetryInTest` | `kotlin-retry-in-test` | `review` recipe: turns a Pioneer or rerunner retry annotation into a plain JUnit test, drops the TestNG `retryAnalyzer` argument and the Kotest `retries` setting; retry analyzer classes and multi-line values stay |
 | python | `python-rules/catch-log-without-exception` | `python-exc-info` | adds `exc_info=True` to a standard-library `logging` call in an `except` handler (safe) |
 | python | `python-rules/falsy-default` | `python-falsy-default` | rewrites `x or d` to `x if x is not None else d` and `x if x else d` to `x if x is not None else d` (review) |
 | python | `python-rules/frozen-dataclass` | `python-frozen-dataclass` | adds `frozen=True` to a `@dataclass` with no bases, no subclass and no assigned field (review) |
@@ -2731,6 +2770,10 @@ runs only when `--fix --rule` names one of its rules.
 | python | `mutmut/mutant-ignored` | `python-mutmut-pragma` | removes `# pragma: no mutate` comments from production code (review) |
 | python | `python-rules/forwarding-wrapper` | `python-forwarding-wrapper` | points every caller at the wrapped function and deletes the wrapper, when every caller is found by name in the project; callers outside the project are not seen (review) |
 | python | `python-rules/unused-option` | `python-unused-option` | removes a defaulted parameter no caller passes, and inlines a literal default the body reads; callers outside the project are not seen (review) |
+| python | `python-rules/retry-in-test` | `python-test-retry` | removes `@pytest.mark.flaky` and `@flaky` from a test function, unless `@flaky` asks for more than one passing run; a module-level mark, a marker added at run time and a decorator that spreads its arguments stay |
+| python | `python-rules/retry-in-test` | `python-test-retry-library` | removes a `tenacity`, `backoff`, `stamina`, `retry` or `retrying` decorator from a test function, which can change a test that polls until a service is ready (review) |
+| python | `python-rules/compatibility-shim` | `python-compatibility-alias` | points every caller at the class or function an alias (`Old = New`) names and deletes the alias, when every caller is found by name in the project; callers outside the project are not seen (review) |
+| python | `python-rules/test-helper-in-source` | `python-test-helper-location` | moves a test helper module (`testing.py`, `fixtures.py`, a `testing/` folder) into `tests/support/` (adding an empty `__init__.py` there when it is missing) and updates the imports of the tests, when the project has an importable `tests` package and no production code imports the helper (review) |
 | python | `mypy/unused-ignore` | `python-unused-ignore` | drops the `# type: ignore` comment, or the unused codes in its brackets; runs mypy when this rule is selected (review: mypy judges the ignore for this interpreter and platform only) |
 | java, kotlin | `spring/ddl-auto`, `open-in-view`, `error-details`, `actuator-exposure`, `risky-startup-flags`, `unsafe-diagnostics`, `literal-secret`, `active-profile` | `spring-<rule>` | edits the one setting in `application*.properties` and `application*.yml` under `src/main/resources`, and nothing else in the file (review fix) |
 | java, kotlin | `spring/missing-enable` | `spring-missing-enable` | adds the missing `@Enable...` annotation and its import to the `@SpringBootApplication` class (review fix) |
@@ -2745,6 +2788,7 @@ runs only when `--fix --rule` names one of its rules.
 | java | `facts/doc-comment-content` | `java-restating-doc-comment` | deletes the lines of a Javadoc comment in a main source set that only restates the name of its declaration |
 | kotlin | `facts/doc-comment-content` | `kotlin-restating-doc-comment` | the same for KDoc, and for Javadoc in the Java files of the project |
 | python | `facts/doc-comment-content` | `python-restating-docstring` | deletes the lines of a docstring that only restates the name of its function or class, or turns a docstring that is the whole body into `pass` |
+| python | `ruff/ERA001` | `python-commented-out-code` | deletes the comment lines ruff reports as commented-out code and keeps a sentence above them; leaves docstrings, licence, shebang and encoding headers, tool directives (`noqa`, `type:`, `pragma`, `fmt:`, `pyright:`, `mypy:`, `ruff:`, `isort:`, `pylint:`), trailing comments and a line that may be prose |
 
 Shorter conditions. `jvm-shorter-condition` writes the form that `structure/shorter-condition`
 names in place of the condition, in Java and Kotlin functions, and puts it in parentheses where an
@@ -2761,6 +2805,32 @@ case enters, a case that declares a local, pattern labels, guards, `null`, `defa
 cases with comments, and Kotlin entries that are not next to each other (their conditions are tested
 in order) or that test a type (the body may rely on the smart cast). It is a `review` recipe, as the
 merged case may be one that was meant to differ.
+
+Forwarding wrappers and compatibility shims. `java-static-forwarding-wrapper` and
+`java-compatibility-shim` change every caller in the project to the method the wrapper or the
+deprecated method forwards to, then delete it (with its Javadoc). They run over the Java sources of
+the whole project, not only the changed files, and rewrite only when each use of the name is a call
+they can place: `Owner.name(...)` and the unqualified calls inside the owner. The target has to be a
+static method of a class of the project that is the only one of its name, with the same parameter
+types and return type and no `throws` clause, and the callers have to be allowed to see it (the
+fix adds the import of its class where a caller lacks one). Both are `review` recipes, since a
+public or protected method may have callers outside the project, and are left as is in that case.
+
+HTTP deadlines. `java-http-without-timeout` adds a fixed ten-second deadline to the calls that
+`pmd/HttpWithoutTimeout` reports in a main source set, for `java.net.http`, `HttpURLConnection`
+and the JAX-RS `ClientBuilder`. It writes `java.time.Duration` and `java.util.concurrent.TimeUnit` in
+full, so no import can shadow a class. It is a `review` recipe because a deadline changes what
+a slow server does to the caller; choose another duration by editing the call afterwards.
+
+Tests that no runner collects. `java-unrun-tests` fixes `test-runtime/test-not-run` in two ways.
+Maven: a class named `*IT`, `IT*` or `*ITCase` in a module that has no Failsafe configuration (no
+`pom.xml` of the project mentions Failsafe or Surefire) is renamed to `<Name>IntegrationTest`, which
+Surefire collects; it stays when another file names the class, or the new name is taken. Gradle: a
+test source set that no `Test` task runs gets a `Test` task in the `build.gradle` or
+`build.gradle.kts` of its module, wired into `check`, when that build file declares the source set;
+a build file that already registers a task of that name, declares `testing` suites or runs TestNG is
+left as is. It runs only with `--fix --rule test-runtime/test-not-run`, which also lets the fix edit
+the build file.
 
 Near-duplicate extraction. The `near-duplicate` recipes handle a `same` or `parameterizable` pair
 whose copies sit in one file (TypeScript, JavaScript), in one class (Java), or in two files of one
@@ -2804,8 +2874,8 @@ in two TypeScript files, in two Java folders, in two packages, in generated sour
 class, is not looked at. The
 TypeScript recipe also checks the result with the compiler before it writes. The Java recipes do
 not compile the result, so they are `review` recipes, and so is the TypeScript partial-run recipe,
-whose closures and aliasing a type check cannot prove. A file that uses CRLF keeps CRLF. Kotlin,
-Python and Go have no extraction recipe.
+whose closures and aliasing a type check cannot prove. A file that uses CRLF keeps CRLF. Go has no
+extraction recipe.
 
 Partial-run extraction. The `partial-run` recipes handle a pair that shares a run of three or more
 statements, in two functions of one file or two methods of one class. The shared run becomes a
@@ -3003,6 +3073,10 @@ rules, in the same ESLint step as the rest. A fix is offered only when one rewri
 case the rule reports. When nitpicker cannot prove the rewrite is safe (a computed key, a spread, a
 dynamic callee, a comment inside the text it would replace, a name that is not in scope), it leaves the
 finding as it is. No fix adds a comment.
+
+In the source and test scopes where `nitpicker/no-comments` runs, ESLint's `noInlineConfig` is on, so an
+`eslint-disable` comment disables nothing there: the finding under it is live, `--fix` applies its fix,
+and `nitpicker/no-comments` removes the comment (with `--fix --rule` and no `no-comments`, the fix applies and the comment stays).
 
 | Rule                                                 | Kind   | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | ---------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
