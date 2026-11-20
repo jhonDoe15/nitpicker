@@ -34,6 +34,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Clear a mock that several tests share before each test (`beforeEach(() => { send.mockClear(); })`,
   `vi.clearAllMocks()` or `clearMocks: true` in the runner config) when a test counts its calls
   (`toHaveBeenCalledTimes`, `mock.calls`): `nitpicker/no-uncleared-shared-mock`.
+- In concurrent tests (`it.concurrent`, `describe.concurrent`, `sequence.concurrent`), do not use fake
+  timers, spies, `stubGlobal`/`stubEnv`, `process.env` writes or `process.chdir`: the tests share one
+  worker (`nitpicker/no-worker-state-in-concurrent-tests`). Put those tests in `describe.sequential`.
 - Test data typed from a literal widens (`status: string`): write the array as
   `/** @type {const} */ ([...])`, or annotate the `const` with the typedef.
 - Assert whole outputs with `toEqual`/`toBe` (`assert.deepStrictEqual`/`assert.equal`, chai's

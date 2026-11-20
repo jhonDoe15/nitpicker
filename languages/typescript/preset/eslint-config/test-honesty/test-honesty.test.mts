@@ -377,7 +377,12 @@ describe('stub restores the project vitest config switches on', () => {
       },
       [restores('packages/web', true, false)],
     ],
-  ])('reads %s', (_name, files, expected) => {
+    [
+      'sequence.concurrent, which runs every test of a file concurrently',
+      { 'vitest.config.ts': 'export default { test: { sequence: { concurrent: true } } };' },
+      [{ ...restores('.', false, false), concurrent: true }],
+    ],
+  ])('reads %s',(_name, files, expected) => {
     expect(stubRestoresIn(projectWith(files))).toEqual(expected);
   });
 

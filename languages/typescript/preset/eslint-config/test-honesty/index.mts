@@ -14,7 +14,12 @@ type TestLayout = ScopeLayout & {
   readonly colocatedTests: boolean;
   readonly runnerSourceTestGlobs?: readonly string[];
 };
-type Restores = { readonly scope: string; readonly globals: boolean; readonly envs: boolean };
+type Restores = {
+  readonly scope: string;
+  readonly globals: boolean;
+  readonly envs: boolean;
+  readonly concurrent?: boolean;
+};
 type StubOptions = {
   readonly runner?: string;
   readonly setupFiles?: string[];
@@ -66,6 +71,10 @@ function stubRestoreBlock(
       'nitpicker/fake-timers-require-restore': [
         ERROR,
         { globals: !restores.globals, envs: !restores.envs },
+      ],
+      'nitpicker/no-worker-state-in-concurrent-tests': [
+        ERROR,
+        { concurrent: restores.concurrent === true },
       ],
     },
   };
