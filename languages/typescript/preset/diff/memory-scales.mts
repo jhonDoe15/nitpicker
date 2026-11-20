@@ -38,14 +38,12 @@ export function withSizeScales<
   Analyzer extends { readonly name: string; timeoutScale?: unknown; memoryScale?: MemoryScale },
 >(analyzer: Analyzer): Analyzer {
   const timeoutScale = withProgramRoots(analyzer.name, analyzer.timeoutScale);
-  if (timeoutScale !== undefined) {
-    analyzer.timeoutScale = timeoutScale;
-  }
   const memoryScale = memoryScaleOf(analyzer.name);
-  if (memoryScale !== undefined) {
-    analyzer.memoryScale = memoryScale;
-  }
-  return analyzer;
+  return {
+    ...analyzer,
+    ...(timeoutScale === undefined ? {} : { timeoutScale }),
+    ...(memoryScale === undefined ? {} : { memoryScale }),
+  };
 }
 
 export function memoryScaleOf(analyzerName: string): MemoryScale | undefined {
