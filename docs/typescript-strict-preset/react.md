@@ -138,6 +138,21 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   never renders again by itself), a `memo` with a comparison function, components from packages
   and a project that lists `babel-plugin-react-compiler` or `react-compiler-runtime` in an
   enclosing `package.json` (the compiler memoizes the values) are not reported.
+- **No store selector that returns a new value** (`nitpicker/react-no-unstable-selector-result`).
+  An inline selector whose returned expression is an object or array literal,
+  `Object.keys`/`values`/`entries`/`fromEntries(...)`, or ends in `.filter`, `.map`, `.flatMap`,
+  `.toSorted` or `.toReversed`, passed alone to react-redux `useSelector` (also a typed hook made
+  with `useSelector.withTypes()` or `TypedUseSelectorHook`), to a hook made with Zustand `create`,
+  or as the second argument of Zustand `useStore(store, selector)`. With react-redux the component
+  renders again after every dispatched action; Zustand 5 throws "Maximum update depth exceeded" and
+  Zustand 4 renders on every store change. Select each value with its own call; with react-redux
+  use `createSelector` or pass `shallowEqual`, with Zustand wrap the selector in `useShallow(...)`.
+  The hook must be named `use*` and is resolved through its import to the project file that
+  creates it (re-exports are followed), so a `createWithEqualityFn` store, a hook wrapped by a
+  helper, a hook from a package, a call with an equality argument, a selector defined elsewhere
+  and one that returns a stored value or a primitive (`find`, `length`) are not reported. `slice`
+  and `concat` (a string result is a primitive), `sort` (the same array) and a fallback such as
+  `state.items ?? []` (new only while the value is missing) are not treated as new values.
 - **No array index as `key`** (`react-x/no-array-index-key`): use a stable id from the item. Every
   element rendered from a list has a `key` (`react-x/no-missing-key`) and siblings do not repeat
   one (`react-x/no-duplicate-key`). A `key` built from `Math.random()`, `Date.now()`,
