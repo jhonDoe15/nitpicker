@@ -21,10 +21,12 @@ function endOf(line: unknown, column: unknown): Pick<EngineFinding, 'end'> {
   return typeof line === 'number' && typeof column === 'number' ? { end: { line, column } } : {};
 }
 
+function cellsOf(row: unknown): readonly unknown[] {
+  return Array.isArray(row) ? row : [];
+}
+
 function findingOf(row: unknown): EngineFinding {
-  const [file, rule, line, column, message, endLine, endColumn]: unknown[] = Array.isArray(row)
-    ? row
-    : [];
+  const [file, rule, line, column, message, endLine, endColumn] = cellsOf(row);
   if (
     typeof file !== 'string' ||
     typeof rule !== 'string' ||
@@ -50,10 +52,17 @@ export function readEngineFindings(file: string): EngineFinding[] {
   return engineFindings(parsed(readFileSync(file, 'utf8')));
 }
 
-export function unparsedFiles(findings: readonly EngineFinding[]): Set<string> {
-  return new Set(
-    findings.filter(({ rule }) => rule === PARSE_FAILURE_RULE).map(({ file }) => file),
-  );
+export function parsedFiles(
+  files: readonly string[],
+  findings: readonly EngineFinding[],
+): string[] {
+  const unparsed = new Set<string>();
+  for (const { rule, file } of findings) {
+    if (rule === PARSE_FAILURE_RULE) {
+      unparsed.add(file);
+    }
+  }
+  return files.filter((file) => !unparsed.has(file));
 }
 
 export async function* readEngineLines(file: string): AsyncGenerator<unknown, void> {

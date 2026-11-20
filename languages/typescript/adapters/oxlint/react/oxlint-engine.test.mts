@@ -6,7 +6,6 @@ import { lintWithOxlint } from '../oxlint-runner.mts';
 import { createProject, presetModule } from '../test-support/oxlint-project.mts';
 import { oxlintOptions } from '../test-support/oxlint-runs.mts';
 
-const OXLINT_TIMEOUT_MS = 60_000;
 const STUB_MESSAGE = 'reported by the stub engine';
 
 const policy = [
@@ -81,6 +80,14 @@ async function reported(engine: string): Promise<string[]> {
   );
 }
 
+function placeOf(line: string): string[] {
+  return line.split(' | ').slice(0, 5);
+}
+
+function hintOf(line: string): boolean {
+  return line.split(' | ').slice(5).join(' | ').startsWith(`${STUB_MESSAGE}. `);
+}
+
 describe('testing-library rules handed to the engine', () => {
   it.skipIf(process.platform === 'win32')(
     'reports what the engine found, honours disable comments, and leaves unparsed files to the rules',
@@ -91,28 +98,29 @@ describe('testing-library rules handed to the engine', () => {
         (line) => line.includes('no-test-id-queries') && !replayed.includes(line),
       );
 
-      expect(replayed).toHaveLength(1);
-      expect(replayed[0]).toMatch(
-        /^queries\.test\.tsx \| 4 \| 3 \| 29 \| testing-library\/no-test-id-queries \| reported by the stub engine\. \S/u,
-      );
-      expect(own).toHaveLength(1);
-      expect(own[0]).toMatch(/^second\.test\.tsx \| 4 \| 3 \| 29 \| /u);
+      expect(replayed.map(placeOf)).toEqual([
+        ['queries.test.tsx', '4', '3', '29', 'testing-library/no-test-id-queries'],
+      ]);
+      expect(replayed.map(hintOf)).toEqual([true]);
+      expect(own.map(placeOf)).toEqual([
+        ['second.test.tsx', '4', '3', '29', 'testing-library/no-test-id-queries'],
+      ]);
       expect(lines.filter((line) => line.includes('Unused eslint-disable directive'))).toHaveLength(
         2,
       );
     },
-    OXLINT_TIMEOUT_MS,
   );
 
-  it.skipIf(findEngine() === undefined)(
+  it.skipIf(findEngine(process.env) === undefined)(
     'gets the same report from the engine as from the rules themselves',
     async () => {
-      const fromEngine = await reported(String(findEngine()));
-      const fromRules = await reported('off');
+      const [fromEngine, fromRules] = await Promise.all([
+        reported(String(findEngine(process.env))),
+        reported('off'),
+      ]);
 
       expect(fromEngine).toEqual(fromRules);
       expect(fromEngine.filter((line) => line.includes('no-test-id-queries'))).toHaveLength(2);
     },
-    2 * OXLINT_TIMEOUT_MS,
   );
 });

@@ -1,11 +1,14 @@
 import { writeFileSync } from 'node:fs';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { findEngine } from '../../../../../shared/engine/engine-binary.mts';
-import { readEngineFindings, unparsedFiles } from '../../../../../shared/engine/engine-rows.mts';
+import { parsedFiles, readEngineFindings } from '../../../../../shared/engine/engine-rows.mts';
 import { runEngineSync } from '../../../../../shared/engine/engine-run.mts';
 import type { Environment } from '../../../../../shared/processes/environment.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import { ENGINE_FINDINGS_FILE } from '../../../preset/eslint-config/react/engine-replay.mts';
+import { trackTemporaryPath, untrackTemporaryPath } from '../../typed/tooling.mts';
 import type { OxlintPlan, PlanGroup } from '../plan/oxlint-shapes.mts';
 
 type EnginePass = {
@@ -59,7 +62,7 @@ function engineArguments(
   };
 }
 
-export function engineLintEnvironment(pass: EnginePass): Environment {
+function engineLintEnvironment(pass: EnginePass): Environment {
   const groups = pass.plan.groups.filter(isEngineGroup);
   const binary = findEngine(pass.environment);
   if (binary === undefined || groups.length === 0 || !groups.every(hasEngineSettings)) {
@@ -71,12 +74,11 @@ export function engineLintEnvironment(pass: EnginePass): Environment {
     return pass.environment;
   }
   const findings = readEngineFindings(out);
-  const unparsed = unparsedFiles(findings);
   const replay = path.join(pass.directory, 'replay.json');
   writeFileSync(
     replay,
     JSON.stringify({
-      files: files.filter((file) => !unparsed.has(file)),
+      files: parsedFiles(files, findings),
       findings: findings.map(({ file, rule, line, column, message, end }) => [
         file,
         rule,
@@ -88,4 +90,19 @@ export function engineLintEnvironment(pass: EnginePass): Environment {
     }),
   );
   return { ...pass.environment, [ENGINE_FINDINGS_FILE]: replay };
+}
+
+export async function withEngineLint<Result>(
+  pass: Omit<EnginePass, 'directory'>,
+  lint: (environment: Environment) => Promise<Result>,
+): Promise<Result> {
+  const directory = trackTemporaryPath(
+    await mkdtemp(path.join(tmpdir(), 'nitpicker-engine-lint-')),
+  );
+  try {
+    return await lint(engineLintEnvironment({ ...pass, directory }));
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+    untrackTemporaryPath(directory);
+  }
 }
