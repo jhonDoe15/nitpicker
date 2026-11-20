@@ -29,9 +29,23 @@ type MemoryScale = {
   roots?: ProgramRoots;
 };
 
-export function withProgramRoots<Scale>(analyzerName: string, scale: Scale): Scale {
+function withProgramRoots<Scale>(analyzerName: string, scale: Scale): Scale {
   const roots = PROGRAM_ROOTS.get(analyzerName);
   return scale === undefined || scale === null || roots === undefined ? scale : { ...scale, roots };
+}
+
+export function withSizeScales<
+  Analyzer extends { readonly name: string; timeoutScale?: unknown; memoryScale?: MemoryScale },
+>(analyzer: Analyzer): Analyzer {
+  const timeoutScale = withProgramRoots(analyzer.name, analyzer.timeoutScale);
+  if (timeoutScale !== undefined) {
+    analyzer.timeoutScale = timeoutScale;
+  }
+  const memoryScale = memoryScaleOf(analyzer.name);
+  if (memoryScale !== undefined) {
+    analyzer.memoryScale = memoryScale;
+  }
+  return analyzer;
 }
 
 export function memoryScaleOf(analyzerName: string): MemoryScale | undefined {

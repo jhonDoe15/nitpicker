@@ -1,9 +1,6 @@
 import { ChildProcess, spawn } from 'node:child_process';
 import { openOutputFile } from '../../tooling/output-file/output-file.mts';
-import {
-  ANALYZER_TIMEOUT_KEY,
-  ANALYZER_TIMEOUT_VARIABLE,
-} from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+import { ANALYZER_TIMEOUT_KEY } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import {
   TROUBLESHOOTING_ANCHORS,
