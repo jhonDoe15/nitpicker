@@ -2,10 +2,7 @@ import { format as formatOutput } from 'node:util';
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { ESLint, type Linter } from 'eslint';
-import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
-import { fieldOf, listOf, objectOf } from '../../../../shared/values/readers.mts';
-import { linterConfigs } from '../eslint-config/typed/config-types.mts';
+import { type LintMessage, type LintResult, lintPolicy } from './lint/policy-lint.mts';
 import { analyzePublicContractUsage } from '../architecture/public-contract-usage.mts';
 import { analyzeRuntimeBoundaries } from '../architecture/runtime-dependency-boundaries.mts';
 import { analyzeProductionCallbacks } from '../callback-protocols/analyze.mts';
@@ -39,51 +36,30 @@ const defaultLegacyInventoryPath = path.join(projectRoot, DEFAULT_LEGACY_INVENTO
 
 export { compareSignals };
 
-const sourcePath: (file: string) => string = checkoutModulePath;
-
-async function policyConfig(policyRoot: string): Promise<Linter.Config[]> {
-  const loaded: unknown = await import(
-    pathToFileURL(
-      sourcePath(
-        path.join(
-          policyRoot,
-          'languages/typescript/preset/eslint-config/policies/coding-standards.config.mjs',
-        ),
-      ),
-    ).href
-  );
-  return linterConfigs(
-    listOf(fieldOf(loaded, 'default')).flatMap((entry) => objectOf(entry) ?? []),
-  );
-}
-
 export async function collectSignals(
   root = projectRoot,
   policyRoot = root,
   layout: ProjectLayout = readLayout(),
 ): Promise<Signal[]> {
-  const eslint = new ESLint({
-    cwd: root,
-    overrideConfigFile: true,
-    overrideConfig: await policyConfig(policyRoot),
-    allowInlineConfig: false,
+  const results = await lintPolicy({
+    root,
+    policyRoot,
+    files: layout.projectCodeFiles(root),
+    environment: process.env,
   });
-  const files = layout.projectCodeFiles(root);
-  if (files.length === 0) {
-    return [];
-  }
-  const results = await eslint.lintFiles([...files]);
   return results.flatMap((result) => resultSignals(root, result));
 }
 
-function resultSignals(root: string, result: ESLint.LintResult): Signal[] {
+function resultSignals(root: string, result: LintResult): Signal[] {
   const file = path.relative(root, result.filePath).replaceAll('\\', '/');
-  if (result.fatalErrorCount > 0) return [unparsedSignal(file, result.messages)];
+  if (result.messages.some((message) => message.fatal === true)) {
+    return [unparsedSignal(file, result.messages)];
+  }
   const lines = readFileSync(result.filePath, 'utf8').split('\n');
   return result.messages.map((message) => messageSignal(file, lines, message));
 }
 
-function unparsedSignal(file: string, messages: readonly Linter.LintMessage[]): Signal {
+function unparsedSignal(file: string, messages: readonly LintMessage[]): Signal {
   const reason = messages.find((message) => message.fatal === true)?.message ?? 'parse failed';
   return {
     file,
@@ -94,11 +70,7 @@ function unparsedSignal(file: string, messages: readonly Linter.LintMessage[]): 
   };
 }
 
-function messageSignal(
-  file: string,
-  lines: readonly string[],
-  message: Linter.LintMessage,
-): Signal {
+function messageSignal(file: string, lines: readonly string[], message: LintMessage): Signal {
   if (!message.ruleId) {
     throw new Error(message.message);
   }
@@ -110,7 +82,7 @@ function messageSignal(
   };
 }
 
-function messageSource(lines: readonly string[], message: Linter.LintMessage): string {
+function messageSource(lines: readonly string[], message: LintMessage): string {
   const line = message.line;
   const last = message.endLine ?? line;
   const sourceLines = lines.slice(line - 1, last);

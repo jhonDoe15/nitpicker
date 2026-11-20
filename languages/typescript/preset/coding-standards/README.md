@@ -50,6 +50,12 @@ finding present right now, with no baseline.
 
 ## Verification and limits
 
+The lint rules of this gate read no types. A project of 1,500 code files or more runs them through
+oxlint's JS plugin bridge (`lint/policy-lint.mjs`), the way `eslint-lint` runs its rules; a smaller
+project, where the start-up of oxlint costs more than it saves, and a project with
+`tools.eslint.engine: "eslint"` run them in ESLint. Both paths ignore inline `eslint-disable`
+comments, and a file oxlint cannot parse is linted by ESLint, so the findings are the same.
+
 Run the policy tests after changing a detector or policy. Include bad and good synthetic examples
 and run the actual standards gate. Behavioral bug regressions belong with the affected production
 API; they are separate from these general rules.

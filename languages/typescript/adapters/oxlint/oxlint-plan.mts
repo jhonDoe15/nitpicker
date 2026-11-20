@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { ESLint } from 'eslint';
 import { listNativeRules } from './plan/rule-listing.mts';
+import { listedFiles } from './plan/listed-files.mts';
 import { parsedTsconfig } from '../../preset/modules/tsconfig-files.mts';
 import { isInvokedModule } from '../typed/static-checks.mts';
 import { incompatiblePackageMessage } from '../lint-engine/compatibility/incompatible-package.mts';
@@ -107,10 +108,12 @@ function addFile(plan: Plan, { root, file }: { root: string; file: string }, con
 }
 
 function candidateFiles(root: string, globs: readonly string[]) {
-  const files = globSync([...globs], {
-    cwd: root,
-    exclude: (entry) => entry === 'node_modules' || entry.endsWith('/node_modules'),
-  });
+  const files =
+    listedFiles(process.env) ??
+    globSync([...globs], {
+      cwd: root,
+      exclude: (entry) => entry === 'node_modules' || entry.endsWith('/node_modules'),
+    });
   return [...new Set(files.map((file) => file.replaceAll('\\', '/')))].sort();
 }
 

@@ -44,6 +44,7 @@ const TYPESCRIPT_CONSUMERS = new Set([
 ]);
 
 const OXLINT_PACKAGES = ['oxlint', 'oxlint-tsgolint'];
+const OXLINT_CONSUMERS = /^(?:eslint-|coding-standards$)/u;
 
 export const ESLINT_PLUGIN_PACKAGES = [
   '@eslint/js',
@@ -156,7 +157,7 @@ function withTypeScriptVersions(
     return version;
   }
   const base = `${toolName}@${version};typescript@${typeScriptApiVersion(resolve, bundled)};plugins:${resolveEslintPluginVersions(resolve)}`;
-  return analyzerName.startsWith('eslint-') ? `${base};${resolveOxlintVersions(resolve)}` : base;
+  return OXLINT_CONSUMERS.test(analyzerName) ? `${base};${resolveOxlintVersions(resolve)}` : base;
 }
 
 function resolveOxlintVersions(resolve: Resolver): string {
