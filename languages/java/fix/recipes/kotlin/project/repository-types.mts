@@ -77,12 +77,11 @@ export function repositoryTypes(projectRoot: string | undefined): RepositoryType
     const pending = [{ type, depth: 0 }];
     const seen = new Set([type]);
     for (const current of pending) {
-      const supertypes = (declarationsOf(current.type) ?? []).flat();
-      for (const supertype of current.depth < MAX_DEPTH ? supertypes : []) {
-        if (!seen.has(supertype)) {
-          seen.add(supertype);
-          pending.push({ type: supertype, depth: current.depth + 1 });
-        }
+      const supertypes =
+        current.depth < MAX_DEPTH ? (declarationsOf(current.type) ?? []).flat() : [];
+      for (const supertype of new Set(supertypes.filter((candidate) => !seen.has(candidate)))) {
+        seen.add(supertype);
+        pending.push({ type: supertype, depth: current.depth + 1 });
       }
     }
     return [...seen];
