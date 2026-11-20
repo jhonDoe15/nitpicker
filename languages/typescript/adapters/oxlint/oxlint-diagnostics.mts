@@ -24,6 +24,8 @@ type ReportedPosition = Position & { readonly endLine: number; readonly endColum
 const SENTINEL_HINT = / Unused [a-z ]+ should match \/\[\^\\s\\S\]\/\./gu;
 const IRREGULAR_WHITESPACE_RULE = 'no-irregular-whitespace';
 const MESSAGE_IN_HELP_RULES = new Set(['no-restricted-imports', 'no-restricted-properties']);
+export class UnmappedDiagnosticError extends Error {}
+
 const TSCONFIG_ERROR_CODE = 'typescript(tsconfig-error)';
 
 export function eslintShapedResults(
@@ -149,7 +151,7 @@ function eslintMessage(
   }
   const ruleId = naming.ruleNames.get(key);
   if (ruleId === undefined) {
-    throw new Error(
+    throw new UnmappedDiagnosticError(
       `oxlint reported ${String(diagnostic.code)}: ${diagnostic.message} ${diagnostic.help ?? ''}`.trim(),
     );
   }
