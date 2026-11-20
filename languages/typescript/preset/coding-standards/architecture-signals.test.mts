@@ -5,7 +5,10 @@ import path from 'node:path';
 import { collectArchitectureSignals } from './check.mts';
 import { resolveLayout as untypedResolveLayout } from '../layout.mjs';
 import type { ProjectLayout } from '../callback-protocols/typed/project-layout.mts';
-import { analyzePublicContractUsage } from '../architecture/public-contract-usage.mts';
+import {
+  analyzePublicContractUsage,
+  hasImplementingClass,
+} from '../architecture/public-contract-usage.mts';
 
 const resolveLayout: (
   layout?: { readonly sourceRoots?: string[] },
@@ -106,6 +109,59 @@ describe('architecture signal paths', () => {
       signal('core/contract.ts'),
       signal('packages/app/contract.ts'),
     ]);
+  });
+
+  it('reports only contracts declared in the project when the config reaches a sibling', () => {
+    write(
+      'packages/app/tsconfig.json',
+      JSON.stringify({
+        compilerOptions: { noLib: true, types: [], rootDir: '..' },
+        include: ['*.ts', '../data/*.ts'],
+      }),
+    );
+    contract('packages/app/contract.ts');
+    contract('packages/data/contract.ts');
+    const appRoot = path.join(root, 'packages/app');
+
+    expect(collectArchitectureSignals(appRoot, resolveLayout({ sourceRoots: ['.'] }))).toEqual([
+      signal('contract.ts'),
+    ]);
+  });
+
+  it('counts a use in a sibling the config reaches', () => {
+    write(
+      'packages/app/tsconfig.json',
+      JSON.stringify({
+        compilerOptions: { noLib: true, types: [], rootDir: '..' },
+        include: ['*.ts', '../data/*.ts'],
+      }),
+    );
+    contract('packages/app/contract.ts');
+    write(
+      'packages/data/use.ts',
+      "import { Adapter } from '../app/contract'; new Adapter().send();",
+    );
+    const appRoot = path.join(root, 'packages/app');
+
+    expect(collectArchitectureSignals(appRoot, resolveLayout({ sourceRoots: ['.'] }))).toEqual([]);
+  });
+
+  it('builds no program when no production class of the project implements an interface', () => {
+    config('tsconfig.json', ['src/**/*.ts']);
+    write('src/port.ts', 'export interface Port { send(): void; }');
+    write('src/plain.ts', 'export class Plain { implementsNothing(): void {} }');
+    write(
+      'src/adapter.test.ts',
+      "import { Port } from './port'; class Fake implements Port { send() {} }",
+    );
+    const files = ['src/port.ts', 'src/plain.ts', 'src/adapter.test.ts'].map((file) =>
+      path.join(root, file),
+    );
+
+    expect(hasImplementingClass(files, root)).toBe(false);
+    expect(collectArchitectureSignals(root, resolveLayout())).toEqual([]);
+    contract('src/contract.ts');
+    expect(hasImplementingClass([...files, path.join(root, 'src/contract.ts')], root)).toBe(true);
   });
 
   it('returns no contract findings when no tsconfig exists', () => {
