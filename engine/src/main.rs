@@ -8,6 +8,11 @@ use std::time::Instant;
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(String::as_str) == Some("typescript-estree") {
+        let text = std::fs::read_to_string(&args[1]).expect("file");
+        typescript::with_parsed(&args[1], &text, |file| println!("{}", file.program.to_estree_json(true, true)));
+        return;
+    }
     if args.first().map(String::as_str) == Some("typescript-lint") {
         typescript_lint(&args[1..]);
         return;
