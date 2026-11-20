@@ -36,6 +36,7 @@ fn local_name(shape: &Shape, index: u32) -> String {
             }
         }
         AstKind::ObjectProperty(property) => shape.key_text(&property.key, property.computed),
+        AstKind::TSMethodSignature(signature) => shape.key_text(&signature.key, signature.computed),
         AstKind::Function(function) => match &function.id {
             Some(id) => id.name.to_string(),
             None => {
