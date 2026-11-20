@@ -3,6 +3,8 @@ pub mod lines;
 pub mod tokens;
 pub mod structure;
 pub mod tree;
+pub mod typed;
+pub mod types;
 
 use oxc_allocator::Allocator;
 use oxc_ast::ast::Program;

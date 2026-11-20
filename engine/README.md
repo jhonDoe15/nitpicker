@@ -80,3 +80,39 @@ whole project. Class files are listed at start and read on first use.
 - nitpicker does not start the engine; rule lists are a snapshot, not generated from the ruleset XML.
 - Rules PMD implements in Java, Error Prone and SpotBugs are untouched.
 - A type question that needs more than 20,000 resolution steps is answered "unknown" (29 on Elasticsearch).
+
+## TypeScript checks that need types
+
+The engine has no TypeScript type system. A check that needs types walks the engine's own tree and asks the
+TypeScript compiler's API server (`tsc --api`, TypeScript 7 and later) over a pipe: symbols, types, signatures
+and type text, by node, alone or in batches (`src/typescript/types/`). A node of the engine's tree is named to
+the compiler by its kind and extent, looked up in the compiler's node table of the file; offsets are converted
+from bytes to the UTF-16 units the compiler counts.
+
+```
+nitpicker-engine typescript-public-contracts --compiler <tsc of TypeScript 7> --project <tsconfig.json> [--only-named]
+nitpicker-engine typescript-type-replay --compiler <tsc> --project <tsconfig.json> --questions <jsonl> --kinds <json>
+```
+
+`typescript-public-contracts` is the public contract usage check of `coding-standards`. `--only-named` asks the
+compiler only about member reads named like a contract method. `typescript-type-replay` asks the compiler the
+questions `parity/typescript-type-questions.mts` recorded from the plugin rules and counts matching answers;
+`--kinds` is the compiler's `SyntaxKind` table as JSON (name to number).
+
+Measured on Grafana, 4 cores (wall, CPU, peak memory of the process tree; findings identical in every row):
+
+| Project | Node check | Node, only named reads | Engine | Engine, `--only-named` |
+| --- | --- | --- | --- | --- |
+| Root application, 6,364 production files, 61 findings | 65.0 s, 86 s, 4.4 GB | 43.2 s, 61 s, 3.7 GB | 26.9 s, 44 s, 4.3 GB | 14.5 s, 29 s, 3.4 GB |
+| `grafana-ui`, 1,185 production files, 58 findings | 10.2 s, 19 s, 1.0 GB | 6.9 s, 13 s, 0.9 GB | 4.0 s, 8 s, 0.9 GB | 1.8 s, 4 s, 0.7 GB |
+| The 15 packages with a tsconfig, 216 findings | 53.3 s, 101 s | | | 10.8 s, 30 s |
+
+Nearly all of the engine's time is the compiler computing types, on one thread; a question costs about 10
+microseconds on the pipe once its type is known. Types the server computed for diagnostics are not reused for
+questions.
+
+The 42 type-aware plugin rules ask 134,885 distinct questions about nodes on `grafana-ui`. The native compiler
+gives the same answer as the JavaScript compiler for 132,720 (98.4%); 2,058 differ only in the order of union
+members or properties in the type text, or in the escaping of names that start with two underscores; 107
+(0.08%) differ in substance (index-signature symbols, the declaration node of a property assigned onto a
+function, standard library versions).
