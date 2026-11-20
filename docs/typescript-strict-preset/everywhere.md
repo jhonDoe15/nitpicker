@@ -271,6 +271,22 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `Map` by the level (`cache.get(el)`), a search on another value and a search in a function the loop
   only creates are not reported. Allowed forms: `el.closest(selector)` for elements, a test of the
   level's kind before the search, or an answer kept per level.
+- `nitpicker/no-repeated-call`: the same call made twice where one result would do, in all
+  production code (not in tests). It reports a call whose result is tested and then made again to
+  use it: the last operand of the left side of `&&`, `||` or `??`, the test of `?:` or of an `if`,
+  against the start of the right side, of a branch, or of the first statement of the `if` block
+  (`lookup(key) !== undefined && lookup(key).enabled`, `resolve(node).isPresent() ?
+  resolve(node).get() : x`). The two calls must read the same tokens, take at least one argument,
+  and their callee and arguments make no call, assignment or `await` of their own; nothing but
+  member reads and calls on the first result runs between them. Calls named like cheap accessors
+  (`get`, `has`, `at`, `indexOf`, `includes` and the like), calls named like actions (`next`,
+  `read...`, `pop`, `shift`, `push`, `set...`, `create...`, `save...`, `send...`, `random`, `now`
+  and the like) and global helpers other than `JSON` (`Number`, `Math.max`) are not reported. It
+  also reports a function that calls itself twice with the same arguments on the same path through
+  its body, using both results, when the arguments are not reassigned in it and it reads no `Map`
+  by them (`height(node.left) + height(node.left)`, `typeOf(argument)` twice in one loop pass):
+  each level doubles the work. Allowed form: keep the first result in a local, or remember the
+  answers per argument.
 - `nitpicker/no-wasted-collection-step`: a collection or promise step that copies for nothing or
   walks the data twice, in all production code (not in tests). It reports `filter(p)[0]` and
   `filter(p).at(0)` with a callback `p` (allowed form: `find(p)`; a selector string, as in jQuery,

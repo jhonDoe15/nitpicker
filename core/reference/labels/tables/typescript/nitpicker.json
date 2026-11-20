@@ -33,6 +33,7 @@
   "eslint/nitpicker/no-pattern-compiled-in-loop": ["performance"],
   "eslint/nitpicker/no-constant-lookup-in-loop": ["performance"],
   "eslint/nitpicker/no-subtree-search-per-ancestor": ["performance"],
+  "eslint/nitpicker/no-repeated-call": ["performance"],
   "eslint/nitpicker/no-comments": ["style"],
   "eslint/nitpicker/no-compatibility-shim": ["maintainability"],
   "eslint/nitpicker/no-copied-constant": ["tests"],

@@ -26,6 +26,7 @@ import { rule as ruleNoRealTimeRandomOrNetwork } from '../test-isolation/no-real
 import { rule as ruleNoReleaseOutsideFinally } from '../rules/resources/release/no-release-outside-finally.mts';
 import { rule as ruleNoRemoteCallInTransaction } from '../rules/effects/no-remote-call-in-transaction.mts';
 import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-call-under-lock.mts';
+import { rule as ruleNoRepeatedCall } from '../rules/repeated-work/repeated-calls/no-repeated-call.mts';
 import { rule as ruleNoRepeatedStringLiteral } from '../rules/literals/no-repeated-string-literal.mts';
 import { rule as ruleNoRetryWithoutIdempotency } from '../rules/writes/no-retry-without-idempotency.mts';
 import { rule as ruleNoRouteWithoutAuth } from '../rules/route-auth/no-route-without-auth.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnsafeDeserialization } from '../rules/security/deseriali
 import { rule as ruleNoUnsafePathJoin } from '../rules/guards/no-unsafe-path-join.mts';
 import { rule as ruleNoUnscopedRecordAccess } from '../rules/record-scope/no-unscoped-record-access.mts';
 import { rule as ruleNoUnstrippedRemoteText } from '../rules/terminal/no-unstripped-remote-text.mts';
-import { rule as ruleNoUntrimmedRequestText } from '../rules/request-text/no-untrimmed-request-text.mts';
 
 export const partRules = {
   'no-non-latin1-header-value': ruleNoNonLatin1HeaderValue,
@@ -128,6 +128,7 @@ export const partRules = {
   'no-release-outside-finally': ruleNoReleaseOutsideFinally,
   'no-remote-call-in-transaction': ruleNoRemoteCallInTransaction,
   'no-remote-call-under-lock': ruleNoRemoteCallUnderLock,
+  'no-repeated-call': ruleNoRepeatedCall,
   'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
   'no-retry-without-idempotency': ruleNoRetryWithoutIdempotency,
   'no-route-without-auth': ruleNoRouteWithoutAuth,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unsafe-path-join': ruleNoUnsafePathJoin,
   'no-unscoped-record-access': ruleNoUnscopedRecordAccess,
   'no-unstripped-remote-text': ruleNoUnstrippedRemoteText,
-  'no-untrimmed-request-text': ruleNoUntrimmedRequestText,
 };

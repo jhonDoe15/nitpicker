@@ -405,6 +405,10 @@ constant name and the other presets follow in #2133.
 climbs a parent chain and searches the children or the whole subtree of every level without testing
 the level's kind first. Java, Kotlin, Python and Go follow in #2133.
 
+`nitpicker/no-repeated-call` (production source, in `eslint-lint`) reports a call made once to test
+its result and again to use it, and a recursive call repeated with the same arguments on one path.
+Java (`resolve(x).isPresent() && resolve(x).get()`), Kotlin, Python and Go follow in #2133.
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a

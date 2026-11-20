@@ -190,6 +190,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Climbing to the root, test each level's kind before searching its children or subtree, or use
   `el.closest(selector)`; a `querySelector` or a scan of `children` at every level costs depth times width
   (`nitpicker/no-subtree-search-per-ancestor`).
+- Keep a result you test in a local instead of calling again to use it (`const found = lookup(key);
+  if (found) use(found)`), and call a recursive function once per sub-result (`nitpicker/no-repeated-call`).
 - Never run a query or a request once per item of a loop: fetch or write the items in one query
   (`findByIds`, `createMany`, `WHERE id IN (...)`), also when a helper of yours does the I/O and inside
   `Promise.all(items.map(...))`. For a remote API without a batch endpoint use a limiter or fixed-size
