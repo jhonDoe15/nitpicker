@@ -144,6 +144,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`, reading the output on
   another thread first; never `waitFor()` or `getInputStream().readAllBytes()` alone
   (`pmd/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).
+- When an exception message has to shorten a tool's output or a stack trace, keep the end
+  (`output.substring(Math.max(0, output.length() - 4000))`), not the start: the cause is printed last
+  (`pmd/HeadCutErrorOutput`).
 - Decide whether a child process failed by its exit value, not by text on its standard error, which also carries
   warnings and notices such as the JVM's `Picked up JAVA_TOOL_OPTIONS` (`pmd/StderrAsFailure`).
 - Waits for other work have a deadline: `future.get(30, TimeUnit.SECONDS)`, `latch.await(30, TimeUnit.SECONDS)`,

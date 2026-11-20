@@ -1816,6 +1816,17 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   hangs the program. A program whose purpose is to run a child to completion, such as a build
   wrapper, takes an exception. The rule reads no types, so it behaves the same in the JavaScript
   preset.
+- Tool output and stack traces are not cut to their start in an error (`nitpicker/no-head-cut-error-output`,
+  production files). Reported: `text.slice(0, n)`, `substring(0, n)` or `substr(0, n)` of a value named for output
+  (`stderr`, `stdout`, `output`, `stack`, `stackTrace`, `log`, `logs`, `trace`, or a name ending in one of them, such
+  as `buildOutput` or `error.stack`; also through `toString()`, `trim()` or `String(...)`) when the cut text goes,
+  directly or through a template, a `+`, a ternary, an object property or a `const`, into `new XError(...)` or
+  `XError(...)`, a `throw`, `reject(...)`, `fail(...)`, or a `.error(...)` or `.fatal(...)` log call. Build tools,
+  compilers, test runners and stack traces print the cause at the end, so the kept part is the banner. Not
+  reported: cuts that keep the end (`slice(-4000)`, `substring(start)`), an error that also holds such a cut (start
+  and end with a marker between them), cuts of other text (titles, previews) and cuts that go elsewhere. Cuts that
+  can split a character are `nitpicker/no-surrogate-splitting-cut`. The Java preset has the same rule as
+  `pmd/HeadCutErrorOutput`.
 - A finished child process is not judged by text on its standard error (`nitpicker/no-stderr-as-failure`,
   production files). Reported: an `if` or a ternary whose test (alone, or as one side of `||`) checks that the
   standard error is not empty (`stderr`, `stderr.length`, `stderr.length > 0`, `stderr !== ''`, also through

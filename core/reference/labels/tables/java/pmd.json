@@ -89,6 +89,7 @@
   "pmd/HardcodedSecret": ["security"],
   "pmd/HashCodeDisagreesWithEquals": ["bug"],
   "pmd/HashOrderInOrderedOutput": ["reliability"],
+  "pmd/HeadCutErrorOutput": ["bug"],
   "pmd/HttpWithoutTimeout": ["reliability"],
   "pmd/ImmutableCollectionChanged": ["bug"],
   "pmd/InconsistentFieldLocking": ["bug"],

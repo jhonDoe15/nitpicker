@@ -198,6 +198,7 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/handlers/fall-through/no-send-without-return.mjs',
   'languages/typescript/preset/eslint-plugin/rules/handlers/fall-through/response-calls.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/require-process-timeout.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/processes/messages/no-head-cut-error-output.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/results/no-stderr-as-failure.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/results/stderr-sources.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/results/no-status-only-spawn-check.mjs',

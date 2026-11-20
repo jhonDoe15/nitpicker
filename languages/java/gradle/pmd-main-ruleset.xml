@@ -1893,6 +1893,49 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="HeadCutErrorOutput" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This keeps only the start of the output of a tool or of a stack trace and puts it into an exception or an error log. Build tools, compilers, test runners and stack traces print the cause at the end (the failing task, the last &quot;Caused by:&quot;, the summary), so the message keeps the banner and drops the reason. Keep the end (output.substring(Math.max(0, output.length() - 4000))), or the start and the end with a marker between them.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $outputName := function($n) {
+      matches(string($n), '^(stderr|stdout|stackTrace|errorOutput)$|(Stderr|Stdout|StackTrace|ErrorOutput)$')
+    },
+    $outputText := function($e) {
+      let $base := $e/descendant-or-self::*[not(self::MethodCall[@MethodName = ('toString', 'trim', 'strip')][not(*[1][pmd-java:typeIs('java.io.StringWriter')])])][1]
+      return exists($base/self::VariableAccess[$outputName(@Name)])
+          or exists($base/self::FieldAccess[$outputName(@Name)])
+          or exists($base/self::MethodCall[@MethodName = 'toString'][*[1][pmd-java:typeIs('java.io.StringWriter')]])
+    },
+    $sink := function($n) {
+      $n/ancestor::*[self::ConstructorCall[pmd-java:typeIs('java.lang.Throwable')]
+                     or self::MethodCall[@MethodName = ('error', 'fatal')][*[1][self::VariableAccess or self::FieldAccess]]
+                     or self::ExpressionStatement or self::LocalVariableDeclaration or self::ReturnStatement
+                     or self::LambdaExpression or self::IfStatement or self::ThrowStatement][1]
+                    [self::ConstructorCall or self::MethodCall]
+    },
+    $keepsEnd := function($s) {
+      exists($s//MethodCall[@MethodName = 'substring'][ArgumentList/@Size = 1])
+    }
+return
+(//MethodCall[@MethodName = 'substring'][ArgumentList/@Size = 2][ArgumentList/*[1][self::NumericLiteral][@ValueAsInt = 0]]
+   [not(ArgumentList/*[2][self::NumericLiteral[@ValueAsInt < 40]
+                          or self::InfixExpression[@Operator = '-']
+                          or self::MethodCall[@MethodName = ('indexOf', 'lastIndexOf')]])]
+   [$outputText(*[1])]
+ | //MethodCall[@MethodName = ('left', 'abbreviate', 'truncate')][ArgumentList/@Size = 2][*[1][self::TypeExpression]]
+   [$outputText(ArgumentList/*[1])][not(ArgumentList/*[2][self::NumericLiteral][@ValueAsInt < 40])])
+  [let $direct := $sink(.),
+       $held := ancestor::VariableDeclarator[1][parent::LocalVariableDeclaration][VariableId/@Name],
+       $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1],
+       $heldSinks := for $use in $method//VariableAccess[@Name = $held/VariableId/@Name] return $sink($use)
+   return not($keepsEnd($method))
+     and (exists($direct) or (exists($held) and $held/*[2] is . and exists($heldSinks)))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="HostPortColonSplit" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This cuts a host and port at &quot;:&quot;. An IPv6 literal such as [::1]:3000 has colons of its own, so the host becomes &quot;[&quot; and the port is lost or wrong. Parse it with URI (new URI(&quot;http://&quot; + host).getHost() and getPort()), Guava HostAndPort.fromString(host), or cut after the closing bracket. A value that is known not to be an IPv6 address takes an exceptions entry.">
     <priority>3</priority>

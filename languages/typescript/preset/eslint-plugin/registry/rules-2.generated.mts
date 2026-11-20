@@ -1,3 +1,4 @@
+import { rule as ruleNoNodeProcessPerTest } from '../rules/test-runtime/processes/no-node-process-per-test.mts';
 import { rule as ruleNoNonLatin1HeaderValue } from '../rules/encoding/no-non-latin1-header-value.mts';
 import { rule as ruleNoNull } from '../rules/syntax/no-null.mts';
 import { rule as ruleNoNullBranchFallThrough } from '../rules/null-branches/no-null-branch-fall-through.mts';
@@ -97,9 +98,9 @@ import { rule as ruleNoUnsafeDeserialization } from '../rules/security/deseriali
 import { rule as ruleNoUnsafePathJoin } from '../rules/guards/no-unsafe-path-join.mts';
 import { rule as ruleNoUnscopedRecordAccess } from '../rules/record-scope/no-unscoped-record-access.mts';
 import { rule as ruleNoUnstrippedRemoteText } from '../rules/terminal/no-unstripped-remote-text.mts';
-import { rule as ruleNoUntrimmedRequestText } from '../rules/request-text/no-untrimmed-request-text.mts';
 
 export const partRules = {
+  'no-node-process-per-test': ruleNoNodeProcessPerTest,
   'no-non-latin1-header-value': ruleNoNonLatin1HeaderValue,
   'no-null': ruleNoNull,
   'no-null-branch-fall-through': ruleNoNullBranchFallThrough,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unsafe-path-join': ruleNoUnsafePathJoin,
   'no-unscoped-record-access': ruleNoUnscopedRecordAccess,
   'no-unstripped-remote-text': ruleNoUnstrippedRemoteText,
-  'no-untrimmed-request-text': ruleNoUntrimmedRequestText,
 };

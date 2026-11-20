@@ -65,6 +65,7 @@ import { rule as ruleNoGitRepositoryPerTest } from '../rules/test-runtime/proces
 import { rule as ruleNoHandQuotedGeneratedCode } from '../rules/generated-code/no-hand-quoted-generated-code.mts';
 import { rule as ruleNoHandwrittenBoundaryGuard } from '../rules/boundaries/no-handwritten-boundary-guard.mts';
 import { rule as ruleNoHardcodedSecret } from '../rules/secrets/no-hardcoded-secret.mts';
+import { rule as ruleNoHeadCutErrorOutput } from '../rules/processes/messages/no-head-cut-error-output.mts';
 import { rule as ruleNoHostPortColonSplit } from '../rules/host-splits/no-host-port-colon-split.mts';
 import { rule as ruleNoInMemoryQuery } from '../rules/queries/no-in-memory-query.mts';
 import { rule as ruleNoInPresenceCheck } from '../rules/presence/no-in-presence-check.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutatin
 import { rule as ruleNoNanOnlyCheck } from '../rules/numbers/no-nan-only-check.mts';
 import { rule as ruleNoNegativeCount } from '../rules/counts/no-negative-count.mts';
 import { rule as ruleNoNewlineOnlyLineSplit } from '../rules/line-splits/no-newline-only-line-split.mts';
-import { rule as ruleNoNodeProcessPerTest } from '../rules/test-runtime/processes/no-node-process-per-test.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -167,6 +167,7 @@ export const partRules = {
   'no-hand-quoted-generated-code': ruleNoHandQuotedGeneratedCode,
   'no-handwritten-boundary-guard': ruleNoHandwrittenBoundaryGuard,
   'no-hardcoded-secret': ruleNoHardcodedSecret,
+  'no-head-cut-error-output': ruleNoHeadCutErrorOutput,
   'no-host-port-colon-split': ruleNoHostPortColonSplit,
   'no-in-memory-query': ruleNoInMemoryQuery,
   'no-in-presence-check': ruleNoInPresenceCheck,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-nan-only-check': ruleNoNanOnlyCheck,
   'no-negative-count': ruleNoNegativeCount,
   'no-newline-only-line-split': ruleNoNewlineOnlyLineSplit,
-  'no-node-process-per-test': ruleNoNodeProcessPerTest,
 };

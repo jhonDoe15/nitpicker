@@ -319,6 +319,11 @@ same rule runs as `subprocess-without-timeout` in the Python preset, `pmd/Proces
 in the Java preset and `kotlin-source/ProcessWaitWithoutTimeout` in the Kotlin preset; tests keep
 `nitpicker/require-test-process-timeout` (TypeScript) or their runner's own limits.
 
+Error output cut to its start: `nitpicker/no-head-cut-error-output` (production source, in `eslint-lint`) and
+`pmd/HeadCutErrorOutput` (Java, main sources) report a cut from the start (`slice(0, n)`, `substring(0, n)`,
+`StringUtils.left` or `abbreviate`) of a tool's output or a stack trace that goes into an exception, a rejection or
+an error-level log. The cause is usually at the end of such text; the allowed forms keep the end, or both ends.
+
 Standard error as failure: `nitpicker/no-stderr-as-failure` (production source, in `eslint-lint`) and
 `pmd/StderrAsFailure` (Java, main sources) report a condition that fails a finished subprocess because its standard
 error is not empty, when the condition stands alone or is one side of `||` and its branch throws (or rejects, or

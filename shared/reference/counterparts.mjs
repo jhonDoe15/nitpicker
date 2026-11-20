@@ -15,6 +15,10 @@ const PAGES = {
 };
 const GROUPS = [
   {
+    java: 'HeadCutErrorOutput',
+    typescript: 'nitpicker/no-head-cut-error-output',
+  },
+  {
     java: 'StderrAsFailure',
     typescript: 'nitpicker/no-stderr-as-failure',
   },
