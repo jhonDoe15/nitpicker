@@ -52,6 +52,29 @@ public class SqlFixed {
       }
     }
   }
+
+  void flagged(Connection connection, List<Item> items) throws SQLException {
+    for (Item item : items) {
+      try (PreparedStatement statement = connection.prepareStatement(SQL)) {
+        statement.setLong(1, item.id());
+        statement.setString(2, item.name());
+        if (statement.executeUpdate() == 0) {
+          continue;
+        }
+        System.out.println(item);
+      }
+    }
+  }
+
+  void followed(Connection connection, long[] ids) throws SQLException {
+    for (long id : ids) {
+      try (PreparedStatement statement = connection.prepareStatement("delete from item where id = ?")) {
+        statement.setLong(1, id);
+        statement.executeUpdate();
+      }
+    }
+    System.out.println("done");
+  }
 }
 `,
     after: `package demo;
@@ -67,13 +90,14 @@ public class SqlFixed {
   record Item(long id, String name) {}
 
   void insert(Connection connection, List<Item> items) throws SQLException {
-    if (!items.isEmpty()) {
-      try (PreparedStatement statement = connection.prepareStatement(SQL)) {
-        for (Item item : items) {
-          statement.setLong(1, item.id());
-          statement.setString(2, item.name());
-          statement.executeUpdate();
-        }
+    if (items.isEmpty()) {
+      return;
+    }
+    try (PreparedStatement statement = connection.prepareStatement(SQL)) {
+      for (Item item : items) {
+        statement.setLong(1, item.id());
+        statement.setString(2, item.name());
+        statement.executeUpdate();
       }
     }
   }
@@ -96,19 +120,48 @@ public class SqlFixed {
 
   void loop(Connection connection, List<Item> items) throws SQLException {
     int next = 0;
-    if (next < items.size()) {
-      try (PreparedStatement statement = connection.prepareStatement("update item set name = ? where id = ?")) {
-        while (next < items.size()) {
-          statement.setLong(2, items.get(next).id());
-          statement.setString(1, items.get(next++).name());
-          statement.execute();
-        }
+    if (next >= items.size()) {
+      return;
+    }
+    try (PreparedStatement statement = connection.prepareStatement("update item set name = ? where id = ?")) {
+      while (next < items.size()) {
+        statement.setLong(2, items.get(next).id());
+        statement.setString(1, items.get(next++).name());
+        statement.execute();
       }
     }
   }
+
+  void flagged(Connection connection, List<Item> items) throws SQLException {
+    if (items.isEmpty()) {
+      return;
+    }
+    try (PreparedStatement statement = connection.prepareStatement(SQL)) {
+      for (Item item : items) {
+        statement.setLong(1, item.id());
+        statement.setString(2, item.name());
+        if (statement.executeUpdate() == 0) {
+          continue;
+        }
+        System.out.println(item);
+      }
+    }
+  }
+
+  void followed(Connection connection, long[] ids) throws SQLException {
+    if (ids.length > 0) {
+      try (PreparedStatement statement = connection.prepareStatement("delete from item where id = ?")) {
+        for (long id : ids) {
+          statement.setLong(1, id);
+          statement.executeUpdate();
+        }
+      }
+    }
+    System.out.println("done");
+  }
 }
 `,
-    lines: [14, 25, 39],
+    lines: [14, 25, 39, 49, 62],
   },
   {
     check: 'IIL_PREPARE_STATEMENT_IN_LOOP',
