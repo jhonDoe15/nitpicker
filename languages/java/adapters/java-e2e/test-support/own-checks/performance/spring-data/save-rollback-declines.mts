@@ -62,10 +62,10 @@ ${COLLECTED}
 ${COLLECTED}
   }
 
-  public void written(List<String> names) throws java.io.UncheckedIOException {
+  public void written(List<String> names) {
     for (String name : names) {
       Item item = new Item();
-      item.setName(String.valueOf(java.nio.file.Files.exists(java.nio.file.Path.of(name))));
+      item.setName(name + Thread.currentThread().getName());
       items.save(item);
     }
   }
