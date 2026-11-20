@@ -1,4 +1,4 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
 import { findEngine } from './engine-binary.mts';
 
 export type EngineRun = {
@@ -53,24 +53,24 @@ export function runEngine(
     return Promise.resolve(NOT_FOUND);
   }
   return new Promise((resolve) => {
-    const child = spawn(binary, argumentList, {
-      cwd: options.cwd,
-      timeout: options.timeoutMs,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    const stdout: Buffer[] = [];
-    const stderr: Buffer[] = [];
-    child.stdout.on('data', (chunk: Buffer) => stdout.push(chunk));
-    child.stderr.on('data', (chunk: Buffer) => stderr.push(chunk));
-    child.on('error', (error) => {
-      resolve(notStarted(error));
-    });
-    child.on('close', (status) => {
-      resolve({
-        status,
-        stdout: Buffer.concat(stdout).toString('utf8'),
-        stderr: Buffer.concat(stderr).toString('utf8'),
-      });
-    });
+    execFile(
+      binary,
+      [...argumentList],
+      {
+        cwd: options.cwd,
+        timeout: options.timeoutMs,
+        encoding: 'utf8',
+        maxBuffer: MAX_OUTPUT_BYTES,
+      },
+      (error, stdout, stderr) => {
+        if (error === null) {
+          resolve({ status: 0, stdout, stderr });
+        } else if (typeof error.code === 'number') {
+          resolve({ status: error.code, stdout, stderr });
+        } else {
+          resolve(notStarted(error));
+        }
+      },
+    );
   });
 }

@@ -2,19 +2,12 @@ import { chmodSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { findEngine } from '../../../../../shared/engine/engine-binary.mts';
-import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
 import { lintWithOxlint } from '../oxlint-runner.mts';
-import { createProject } from '../test-support/oxlint-project.mts';
+import { createProject, presetModule } from '../test-support/oxlint-project.mts';
 import { oxlintOptions } from '../test-support/oxlint-runs.mts';
 
-const packageRoot = path.resolve(import.meta.dirname, '../../../../..');
-const preset = path.join(packageRoot, 'languages/typescript/preset');
 const OXLINT_TIMEOUT_MS = 60_000;
 const STUB_MESSAGE = 'reported by the stub engine';
-
-function presetModule(file: string): string {
-  return JSON.stringify(checkoutModulePath(`${preset}/${file}`));
-}
 
 const policy = [
   `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};`,
