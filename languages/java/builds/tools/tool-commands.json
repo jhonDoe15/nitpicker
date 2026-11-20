@@ -7,8 +7,7 @@
   "forbiddenapis": {
     "args": [
       { "each": "classDirectories", "flag": "-d" },
-      "-c",
-      { "join": "libraries", "separator": "path" },
+      { "each": "libraries", "flag": "-c" },
       "-f",
       { "value": "signatures" },
       "--allowmissingclasses"

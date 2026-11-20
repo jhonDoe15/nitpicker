@@ -1,5 +1,10 @@
 import { depthFirst } from '../../../shared/traversal.mjs';
 import { fieldOf } from '../../../shared/values/readers.mts';
+import {
+  ANALYZER_TIMEOUT_VARIABLE,
+  SIZE_ALLOWANCE_VARIABLE,
+} from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+import { OUTPUT_LIMIT_VARIABLE } from '../../../shared/report-output/fit-findings.mts';
 
 type Invocation = {
   readonly command: string;
@@ -20,6 +25,7 @@ export type AnalyzerTask = {
   readonly executionPriority?: number | undefined;
   readonly toleratedDependencyErrors?: readonly string[] | undefined;
   readonly timeoutMs: number;
+  readonly sizeAllowanceMs?: number | undefined;
   readonly memoryMegabytes?: number | undefined;
   readonly configuredTimeout?: unknown;
   readonly acceptedExitCodes: readonly number[];
@@ -202,4 +208,19 @@ export function dependencyOrder(
     }
   }
   return state.ordered;
+}
+
+const timeoutVariable: string = ANALYZER_TIMEOUT_VARIABLE;
+const allowanceVariable: string = SIZE_ALLOWANCE_VARIABLE;
+
+export function taskLimitEnvironment(
+  task: Pick<AnalyzerTask, 'configuredTimeout' | 'timeoutMs' | 'sizeAllowanceMs'>,
+  outputLimitBytes: number,
+): Record<string, string> {
+  const allowance = task.sizeAllowanceMs ?? 0;
+  return {
+    ...(task.configuredTimeout === true ? { [timeoutVariable]: String(task.timeoutMs) } : {}),
+    ...(allowance > 0 ? { [allowanceVariable]: String(allowance) } : {}),
+    [OUTPUT_LIMIT_VARIABLE]: String(outputLimitBytes),
+  };
 }

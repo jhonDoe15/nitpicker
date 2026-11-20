@@ -51,8 +51,9 @@ Part of the [Java preset guide](../java-preset.md).
   Gradle version it pins.
   The wrapper downloads the Gradle distribution named in the head snapshot's
   `gradle-wrapper.properties`, and base and head each use their own wrapper.
-- **Gradle timeout.** Each Gradle command has a 15-minute budget by default, for both Java
-  and Kotlin. Set `NITPICKER_GRADLE_TIMEOUT_MINUTES` to a positive whole number of minutes,
+- **Gradle timeout.** Each Gradle command has a budget of 15 minutes plus 30 seconds for each
+  build file (`build.gradle`, `build.gradle.kts`, `pom.xml`) and 2 minutes for each started
+  thousand `.java` and `.kt` files of the project, for both Java and Kotlin. Set `NITPICKER_GRADLE_TIMEOUT_MINUTES` to a positive whole number of minutes,
   for example `NITPICKER_GRADLE_TIMEOUT_MINUTES=45 npx nitpicker --base main` for a slow PIT
   suite. The same budget applies to base and head. Empty values, fractions, units such as
   `45m`, and values outside 1–17895 are errors. The upper bound keeps the analyzer's Node.js
@@ -61,9 +62,12 @@ Part of the [Java preset guide](../java-preset.md).
   not change Maven's command budget or configure individual PIT phases. When the analysis
   command times out outside `--quick`, it runs once more with every test task, JaCoCo and PIT
   off (`-Pnitpicker.testsSkipped=true`, which marks every project like a failing one of a red
-  base), so the static findings are kept next to one `tests-timed-out` tool error.
+  base), so the static findings are kept next to one `tests-timed-out` tool error. When Gradle
+  is still stopped at the deadline, the projects whose checks finished are reported and one
+  `module-build-failed` tool error names the projects that were not reached; a run in which no
+  project finished fails with the timeout error.
 - **Maven timeout.** Each Maven command, and each tool nitpicker runs on the Maven build's
-  output, has a 15-minute budget by default. Set `NITPICKER_MAVEN_TIMEOUT_MINUTES` the same way
+  output, has the same size-scaled budget by default. Set `NITPICKER_MAVEN_TIMEOUT_MINUTES` the same way
   as the Gradle variable, with the same limits. The analyzer deadline allows two commands plus
   one minute; when both variables are set, the larger budget sets it. When the build and test
   command times out outside `--quick`, it runs once more with the goals of a quick run (only

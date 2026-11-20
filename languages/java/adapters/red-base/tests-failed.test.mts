@@ -291,6 +291,20 @@ describe('runOrNoteFailingTests', () => {
     ]);
   });
 
+  it('keeps the failing tests when the rerun is stopped at its deadline', () => {
+    const deadline = Object.assign(new Error('stopped'), {
+      timedOut: { build: 'Gradle', minutes: 9 },
+    });
+    const { run } = runner(failureOf('core'), deadline);
+    const noted: unknown[] = [];
+    const stopped = (error: unknown): boolean => noted.push(error) > 0;
+
+    expect(runOrNoteFailingTests(run, '/p', { policy: { snapshot: 'base' } }, stopped)).toEqual([
+      { module: 'core', tests: ['core.T.t: no'] },
+    ]);
+    expect(noted).toEqual([deadline]);
+  });
+
   it('fails when the rerun fails too', () => {
     const second = new Error('compile');
     const { run } = runner(failureOf('core'), second);
