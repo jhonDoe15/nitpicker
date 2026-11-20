@@ -1,0 +1,3 @@
+{"file":"src/direct.test.tsx","imports":[{"source":"@testing-library/react","path":null},{"source":"support/render-helper","path":"support/render-helper.ts"}]}
+{"file":"src/no-react.test.ts","imports":[{"source":"../support/data.json","path":"support/data.json"},{"source":"support/plain","path":"support/plain.ts"},{"source":"./missing","path":null}]}
+{"file":"src/through-helper.test.ts","imports":[{"source":"support/render-helper","path":"support/render-helper.ts"}]}

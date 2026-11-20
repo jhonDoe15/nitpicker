@@ -30,6 +30,10 @@ impl<'a> Context<'a, '_> {
         self.settings.iter().find_map(|setting| setting.strip_prefix(key).and_then(|rest| rest.strip_prefix('=')))
     }
 
+    pub fn display(&self) -> &str {
+        self.display
+    }
+
     pub fn text(&self, span: Span) -> &'a str {
         self.file.slice(span.start, span.end)
     }

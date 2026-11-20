@@ -1,0 +1,6 @@
+{
+  // comments are allowed here
+  "compilerOptions": {
+    "paths": { "support/*": ["./support/*"] },
+  },
+}
