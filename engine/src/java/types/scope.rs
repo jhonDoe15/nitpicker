@@ -256,6 +256,11 @@ impl<'a> Resolver<'a> {
         if let Some(imported) = self.scope.single.get(name) {
             return Some(imported.clone());
         }
+        // A single static import of a member type shadows the package's own types, like a single type import.
+        let nested = self.scope.static_single.get(name).into_iter().flatten().map(|owner| format!("{owner}.{name}"));
+        if let Some(found) = nested.into_iter().find(|candidate| self.index.has(candidate)) {
+            return Some(found);
+        }
         let local = if self.scope.package.is_empty() { name.to_string() } else { format!("{}.{name}", self.scope.package) };
         if self.index.has(&local) {
             return Some(local);
@@ -266,9 +271,8 @@ impl<'a> Resolver<'a> {
                 return Some(candidate);
             }
         }
-        let nested = self.scope.static_single.get(name).into_iter().flatten().map(|owner| format!("{owner}.{name}"));
-        let wide = self.scope.static_on_demand.iter().map(|owner| format!("{owner}.{name}"));
-        if let Some(found) = nested.into_iter().chain(wide).find(|candidate| self.index.has(candidate)) {
+        let mut wide = self.scope.static_on_demand.iter().map(|owner| format!("{owner}.{name}"));
+        if let Some(found) = wide.find(|candidate| self.index.has(candidate)) {
             return Some(found);
         }
         let lang = format!("java.lang.{name}");

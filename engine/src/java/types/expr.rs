@@ -1587,6 +1587,7 @@ impl<'a> Resolver<'a> {
     pub fn type_is(&self, expression: Node, name: &str) -> bool {
         match self.type_of(expression) {
             Some(Type::Class(actual, _)) => self.index.is_subtype(&actual, name),
+            Some(Type::Array(_)) if matches!(name, "java.lang.Object" | "java.lang.Cloneable" | "java.io.Serializable") => true,
             Some(other) => other.name() == name,
             None => false,
         }
