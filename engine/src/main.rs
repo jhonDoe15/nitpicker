@@ -129,11 +129,12 @@ fn listed_files(args: &[String]) -> (Vec<(String, String)>, Option<String>) {
 fn typescript_reuse(args: &[String]) {
     let started = Instant::now();
     let (files, out) = listed_files(args);
-    let text = typescript::structure::reuse::facts_lines(&files);
-    match out {
-        Some(path) => std::fs::write(path, text).expect("write"),
-        None => print!("{text}"),
-    }
+    let mut sink: Box<dyn std::io::Write> = match out {
+        Some(path) => Box::new(std::io::BufWriter::new(std::fs::File::create(path).expect("create"))),
+        None => Box::new(std::io::BufWriter::new(std::io::stdout().lock())),
+    };
+    typescript::structure::reuse::write_facts(&files, &mut sink).expect("write");
+    drop(sink);
     eprintln!("{} files; {:.0} ms", files.len(), started.elapsed().as_secs_f64() * 1e3);
 }
 
