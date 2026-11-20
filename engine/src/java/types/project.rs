@@ -12,9 +12,13 @@ pub struct JavaProject {
     pub index: TypeIndex,
 }
 
+fn jdk_home() -> PathBuf {
+    PathBuf::from(std::env::var("NITPICKER_JDK").or_else(|_| std::env::var("JAVA_HOME")).unwrap_or_default())
+}
+
 fn jdk_modules() -> Vec<PathBuf> {
-    let home = std::env::var("NITPICKER_JDK").or_else(|_| std::env::var("JAVA_HOME")).unwrap_or_default();
-    let mut modules: Vec<PathBuf> = std::fs::read_dir(PathBuf::from(home).join("jmods"))
+    let home = jdk_home();
+    let mut modules: Vec<PathBuf> = std::fs::read_dir(home.join("jmods"))
         .map(|entries| entries.filter_map(Result::ok).map(|entry| entry.path()).collect())
         .unwrap_or_default();
     modules.sort();
@@ -25,12 +29,17 @@ fn stub(name: String) -> ClassInfo {
     ClassInfo { name, ..ClassInfo::default() }
 }
 
-pub fn build(files: &[SourceFile], classpath: &[PathBuf]) -> JavaProject {
+pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>) -> JavaProject {
     let started = std::time::Instant::now();
     let mut index = TypeIndex::default();
     let mut entries = classpath.to_vec();
-    entries.extend(jdk_modules());
     index.load_binaries(&entries);
+    // An older release sees the library as it was then: the JDK keeps those signatures in `lib/ct.sym`.
+    if !release.is_some_and(|release| index.load_release(&jdk_home().join("lib").join("ct.sym"), release)) {
+        let modules = jdk_modules();
+        index.load_binaries(&modules);
+        entries.extend(modules);
+    }
     let binaries_ms = started.elapsed().as_secs_f64() * 1e3;
     let scopes: Vec<FileScope> = files.par_iter().map(FileScope::of).collect();
     let declared: Vec<Vec<(Node, String)>> = files

@@ -115,7 +115,9 @@ Measured on 4 cores against Error Prone running only these checks (findings: sam
 | commons-lang | 264, 106k | 3.3 s, 10.6 s, 0.4 GB | 0.5 s, 1.5 s, 0.1 GB | 302 / 0 / 0 |
 | MyBatis | 393, 40k | 3.3 s, 10.6 s, 0.4 GB | 0.3 s, 0.9 s, 0.1 GB | 155 / 0 / 0 |
 
-The 24 differences are type questions: a record component typed with the record's own member class, the
-type of an implicitly typed lambda parameter, a member class inherited through a qualified name (the message
-names a different owner), and `List` methods of Java 21 seen by code compiled with `--release 17`.
+`--release <n>` gives the Java release the sources are compiled for. When it is older than the JDK, the type
+index reads the library of that release from the JDK's `lib/ct.sym`, as javac does, so a `List` method added in
+Java 21 is not there for code compiled with `--release 17`. With it (javaparser-core is built for 17) the seven
+code bases give the same findings as Error Prone; the differences in the table were type questions closed since
+it was measured.
 
