@@ -63,6 +63,7 @@ impl<'t, 'a> Shape<'t, 'a> {
     pub fn function_like(&self, index: u32) -> bool {
         match self.kind(index) {
             AstKind::ArrowFunctionExpression(_) | AstKind::MethodDefinition(_) => true,
+            AstKind::TSMethodSignature(signature) => signature.kind != TSMethodSignatureKind::Method,
             AstKind::ObjectProperty(property) => is_method_property(property),
             AstKind::Function(function) => match self.parent_kind(index) {
                 Some(AstKind::MethodDefinition(_)) => false,
@@ -97,7 +98,12 @@ impl<'t, 'a> Shape<'t, 'a> {
                 function.params.items.len() as u32 + u32::from(function.params.rest.is_some()) + u32::from(function.this_param.is_some())
             }
             Some((Callable::Arrow(arrow), _)) => arrow.params.items.len() as u32 + u32::from(arrow.params.rest.is_some()),
-            None => 0,
+            None => match self.kind(index) {
+                AstKind::TSMethodSignature(signature) => {
+                    signature.params.items.len() as u32 + u32::from(signature.params.rest.is_some()) + u32::from(signature.this_param.is_some())
+                }
+                _ => 0,
+            },
         }
     }
 

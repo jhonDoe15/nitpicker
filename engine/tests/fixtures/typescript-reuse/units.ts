@@ -54,3 +54,10 @@ export default class Component {
 const lazy = function () { return () => () => 1; };
 let mutable = () => 1;
 export default function () { return lazy; }
+
+export function castTargets(target: { count?: number }, list: unknown[]) {
+  (target.count as number) = 1;
+  (target.count!)++;
+  (<number>target.count) += list.length;
+  return target;
+}
