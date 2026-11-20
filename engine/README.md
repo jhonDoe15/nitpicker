@@ -225,8 +225,10 @@ of the three patterns (86% of its 746 null findings):
 | `NP_NULL_ON_SOME_PATH` | 92 | 9 | 11 |
 | `NP_ALWAYS_NULL` | 0 | 0 | 0 |
 
-The three patterns alone take TIMING_REF on that code base; SpotBugs with all its patterns takes 249 s, 417 CPU
-s and 3.2 GB after a 31 s compile.
+With the three patterns the run takes 18.0 s, 67 CPU s and 0.58 GB at its peak on that code base, 8.0 s and
+30 CPU s more than the other five patterns alone; SpotBugs with all its patterns takes 249 s, 417 CPU s and
+3.2 GB after a 31 s compile. The callee summaries are worked out once per class, not once per file, and whether
+a method is overridden is looked up over every class of the run: both are still to be made cheaper.
 
 What SpotBugs does, as measured (`tests/fixtures/spotbugs/null_*`, 218 findings, all the same):
 
