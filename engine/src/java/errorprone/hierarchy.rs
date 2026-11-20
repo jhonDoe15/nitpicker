@@ -169,6 +169,27 @@ pub fn super_method<'c>(context: &'c Context, origin: &ClassInfo, method: &Metho
     super_methods(context.resolver.index, origin, method).into_iter().next()
 }
 
+/// Whether a method declaration overrides something. An anonymous class written with `<>` takes its type arguments
+/// from the place it stands in, so there a parameter that is a type variable above fits any type. A method whose
+/// class is not known counts as overriding.
+pub fn overrides(context: &Context, method: Node) -> bool {
+    let Some((origin, declared)) = declared_method(context, method) else { return true };
+    let index = context.resolver.index;
+    if !super_methods(index, origin, declared).is_empty() {
+        return true;
+    }
+    let creation = crate::engine::source::parent(method).and_then(crate::engine::source::parent).filter(|owner| owner.kind() == "object_creation_expression");
+    let diamond = creation.and_then(|owner| owner.child_by_field_name("type")).is_some_and(|written| context.text(written).ends_with("<>"));
+    let alike = |other: &Method| {
+        other.name == declared.name
+            && other.parameters.len() == declared.parameters.len()
+            && !other.is_static
+            && !other.is_private
+            && other.generic_parameters.iter().zip(&other.parameters).zip(&declared.parameters).all(|((generic, erased), own)| generic.mentions_variable() || erased == own)
+    };
+    diamond && closure(index, &origin.name).iter().filter_map(|class| index.get(class)).any(|class| class.methods.iter().any(alike))
+}
+
 pub fn simple_name(class: &str) -> &str {
     let last = class.rsplit('.').next().unwrap_or(class);
     if last.starts_with(|first: char| first.is_ascii_digit()) { last.trim_start_matches(|digit: char| digit.is_ascii_digit()) } else { last }

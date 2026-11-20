@@ -125,6 +125,8 @@ pub mod flag {
     pub const DAGGER_BUILDER: u32 = 32768;
     /// Carries Error Prone's own `@CanIgnoreReturnValue`.
     pub const MAY_IGNORE: u32 = 1 << 16;
+    /// Carries an annotation named `Keep` or `UsedReflectively`.
+    pub const KEPT: u32 = 1 << 17;
 
     /// The bits an annotation gives, by its full name with `.` between a class and its member class.
     pub fn of_annotation(name: &str) -> u32 {
@@ -141,6 +143,7 @@ pub mod flag {
         exact | match name.rsplit('.').next().unwrap_or(name) {
             "CheckReturnValue" | "MustUseReturnValues" => CHECK_RESULT,
             "CanIgnoreReturnValue" | "IgnorableReturnValue" => IGNORE_RESULT,
+            "Keep" | "UsedReflectively" => KEPT,
             _ => 0,
         }
     }
