@@ -114,6 +114,7 @@ const REVIEW_RULES = new Set([
   'StaticMockOfProjectType',
   'GlobalStateLeakInTest',
   'RealClockInTest',
+  'WallClockBoundInTest',
   'RandomInTest',
   'NetworkInTest',
   'FixedPortInTest',

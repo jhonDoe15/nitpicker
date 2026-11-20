@@ -95,6 +95,11 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   for a `HashSet`, `Set.of`, `Collectors.toSet()`, a `HashMap` view, `File.list()` or `getDeclaredMethods()`, use
   `containsExactlyInAnyOrder(...)`, compare with a `Set`, or sort first; `containsExactly("a", "b")` and
   `assertArrayEquals` pass on one JDK or file system and fail on another.
+- Do not assert that something was fast (`WallClockBoundInTest`): no `assertTrue(elapsed < 500)`,
+  `assertThat(elapsed).isLessThan(500L)`, `assertTimeout(Duration.ofMillis(50), ...)`,
+  `@Timeout(value = 200, unit = MILLISECONDS)` or `@Test(timeout = 200)` with a limit under one second; a busy
+  CI runner or a GC pause breaks it. Assert the behaviour (calls made, a counter of the work) and keep speed
+  checks in a benchmark. A limit of a second or more as a hang guard is fine.
 - Start a container, server or process once, not for each test (`ServerOrContainerPerTest`): a
   Testcontainers `@Container` field is `static`, a WireMock `@RegisterExtension` is `static`, a JUnit 4
   server or container is a `@ClassRule`, and `@BeforeEach`/`@Before` does not create and start one
