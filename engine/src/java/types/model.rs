@@ -179,4 +179,14 @@ pub struct ClassInfo {
     /// For a record: the generic type of each component, in order.
     pub record_components: Option<Vec<Type>>,
     pub flags: u16,
+    /// Declares an instance method, of any visibility, whose name starts like a setter and that does not
+    /// return the class itself.
+    pub setter_like: bool,
+}
+
+const SETTER_STARTS: &[&str] =
+    &["set", "put", "add", "insert", "delete", "remove", "erase", "clear", "push", "pop", "enqueue", "dequeue", "write", "append", "replace"];
+
+pub fn setter_name(name: &str) -> bool {
+    SETTER_STARTS.iter().any(|start| name.starts_with(start))
 }

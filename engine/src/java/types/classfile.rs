@@ -462,10 +462,15 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         }
     }
     let mut methods = Vec::new();
+    let mut setter_like = false;
+    let returns_own = format!(")L{internal};");
     for _ in 0..reader.u2()? {
         let flags = reader.u2()?;
         let method_name = utf8(reader.u2()?)?;
         let descriptor = utf8(reader.u2()?)?;
+        setter_like |= flags & ACC_STATIC == 0
+            && std::str::from_utf8(method_name).is_ok_and(super::model::setter_name)
+            && !descriptor.ends_with(returns_own.as_bytes());
         let found = attributes(&mut reader, &utf8)?;
         let signature = found.signature;
         if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == 0 && method_name != b"<clinit>" {
@@ -546,5 +551,6 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         flags: class_flags,
         permitted,
         record_components: components,
+        setter_like,
     })
 }

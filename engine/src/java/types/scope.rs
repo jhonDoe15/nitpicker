@@ -242,8 +242,10 @@ impl<'a> Resolver<'a> {
                     return Some(found.clone());
                 }
             }
-            // Names in the header of a class are looked up around it: its members and what it inherits are not in scope there.
-            let header = TYPE_DECLARATIONS.contains(&node.kind()) && node.field("body") != Some(inner);
+            // Names in the header of a class are looked up around it: its members and what it inherits are not in scope there,
+            // except for the components of a record.
+            let components = node.kind() == "record_declaration" && node.field("parameters") == Some(inner);
+            let header = TYPE_DECLARATIONS.contains(&node.kind()) && node.field("body") != Some(inner) && !components;
             if let Some(owner) = class_at(self.scope, node, inner).filter(|_| !header) {
                 for ancestor in self.index.lineage(&owner).iter() {
                     let nested = format!("{ancestor}.{name}");
@@ -417,7 +419,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// Erased and generic parameter types, and whether the last one is variable arity.
-    fn parameters(&self, list: Option<Node>) -> (Vec<Type>, Vec<Type>, bool) {
+    pub fn parameters(&self, list: Option<Node>) -> (Vec<Type>, Vec<Type>, bool) {
         let mut erased = Vec::new();
         let mut generic = Vec::new();
         let mut varargs = false;
@@ -626,6 +628,7 @@ impl<'a> Resolver<'a> {
             permitted: self.permitted(declaration, &own_name, &listed("permits")),
             record_components: (kind == "record_declaration").then(Vec::new),
             flags: self.class_flags(declaration) | super::model::flag::SOURCE,
+            setter_like: false,
         }
     }
 
@@ -846,6 +849,8 @@ impl<'a> Resolver<'a> {
                 _ => {}
             }
         }
+        let own = Type::class(&info.name);
+        info.setter_like = info.methods.iter().any(|method| !method.is_static && super::model::setter_name(&method.name) && method.returns != own);
         if matches!(declaration.kind(), "class_declaration" | "enum_declaration") && !info.methods.iter().any(|method| method.name == "<init>") {
             info.methods.push(plain("<init>", Vec::new(), Type::Primitive("void")));
         }
@@ -860,11 +865,19 @@ impl<'a> Resolver<'a> {
                 info.methods.push(Method { generic_parameters, varargs, nullable_parameters: self.nullable_parameters(declaration), names: self.parameter_names(declaration), ..plain("<init>", parameters, Type::Primitive("void")) });
             }
             for component in declaration.field("parameters").map(children).unwrap_or_default() {
-                let (Some(name), Some(kind)) = (component.field("name"), self.declared(component, None, false)) else {
+                // A variable arity component is an array field; its name sits one level down.
+                let spread = component.kind() == "spread_parameter";
+                let declarator = children(component).into_iter().find(|part| spread && part.kind() == "variable_declarator");
+                let named = declarator.unwrap_or(component).field("name");
+                let element = |keep: bool| match spread {
+                    true => children(component).into_iter().find_map(|child| self.written(child, keep)).map(|element| Type::Array(Box::new(element))),
+                    false => self.declared(component, None, keep),
+                };
+                let (Some(name), Some(kind)) = (named, element(false)) else {
                     continue;
                 };
                 let name = self.file.text_of(name).to_string();
-                let generic = self.declared(component, None, true).unwrap_or(kind.clone());
+                let generic = element(true).unwrap_or(kind.clone());
                 info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, fixed: None, strict: false, is_private: true, flags: super::model::flag::FINAL | bits(component) & super::model::flag::NULLABLE });
                 info.record_components.get_or_insert_with(Vec::new).push(generic.clone());
                 let accessor = plain(&name, Vec::new(), kind.erased());
