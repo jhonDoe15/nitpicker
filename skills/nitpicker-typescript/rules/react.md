@@ -19,6 +19,9 @@ exception route in the message: write that form, don't work around the rule.
 - `use()` reads a promise that was created outside the render (a prop, a route loader, a `cache`d function),
   never `use(loadUser(id))` with an async function or `use(new Promise(...))`
   (`nitpicker/react-no-uncached-use-promise`).
+- Render starts nothing: `navigate(...)`, `router.push(...)`, `document.addEventListener(...)` and
+  `document.title = ...` go in a handler or an effect, and a redirect is rendered (`<Navigate to="/login" />`)
+  (`nitpicker/react-no-render-side-effect`; timers, `fetch` and `window` listeners: `react-x/purity`).
 - With react-i18next, set `interpolation: { escapeValue: false }` at init (or per call) when `t()` values are
   rendered by React; otherwise `R&D` shows as `R&amp;D` (`nitpicker/react-i18next-escape-value`).
 - A component rendered per item gets its DOM ids from `useId()` or from the item, not a literal that a label or

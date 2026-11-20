@@ -157,6 +157,14 @@ reports `use(...)` from `react` whose argument, directly or through a `const` of
 or `useState`, functions not declared `async`, async components, and, where Server Components are possible, files
 without `'use client'` whose component calls no client hook are left alone.
 
+React render side effects: `nitpicker/react-no-render-side-effect` (production source in a React project, in
+`eslint-lint`) reports, as a statement of a component or custom hook body outside nested functions, a call of the
+`useNavigate()` result, `push`, `replace`, `back` or `navigate` on a `useRouter()` or `useHistory()` result (hooks
+imported from a router package),
+`addEventListener` on `document` or a member of it, and an assignment to `document.title`. Async components and server
+files are left alone; timers, `fetch`, `window` listeners, sockets and observers in render are reported by
+`react-x/purity`.
+
 React i18next: `nitpicker/react-i18next-escape-value` (production source in a React project that depends on
 `react-i18next`, in `eslint-lint`) reports a `t(...)` or `<Trans values>` call that interpolates values into text React
 renders while no source file of the package sets `interpolation.escapeValue: false` and the call does not. The init

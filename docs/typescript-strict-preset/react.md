@@ -127,6 +127,21 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   Server Components (`next`, `waku`, `@vitejs/plugin-rsc`, `react-server-dom-*` and others) or has a
   `'use client'` file, only a file with `'use client'` or a component that calls a client hook
   (`useState`, `useEffect`, `useRef`, `useContext`, ...) is checked.
+- **No navigation, document listener or title write during render**
+  (`nitpicker/react-no-render-side-effect`). In the body of a component (a capitalised function that
+  renders JSX) or a custom hook (a `use*` function that calls a hook), outside nested functions and
+  also under an `if`, `&&` or a ternary: a call of the function returned by `useNavigate()`, `push`,
+  `replace`, `back` or `navigate` on the result of `useRouter()` or `useHistory()` (hooks imported
+  from React Router, Next.js, TanStack Router or Expo Router), `addEventListener` on `document`
+  or something reached from it (`document.body`), and an assignment to `document.title`. Render runs
+  more than once and for renders React throws away, so the router ignores or repeats the call and a
+  listener is added per render and never removed. Navigate in the handler or effect that causes it
+  or render a redirect (`<Navigate to="/login" />`, `redirect()`); add the listener in `useEffect`
+  with a cleanup; set the title in `useEffect` or render `<title>`. Async components,
+  `*.server.*` files and methods destructured from the router (`const { push } = useRouter()`) are
+  left alone. `react-x/purity` reports the other work started in render:
+  `setTimeout`, `setInterval`, `requestAnimationFrame`, `fetch`, `window.addEventListener`,
+  `new WebSocket(...)`, observers and storage.
 - **No double-escaped i18next values** (`nitpicker/react-i18next-escape-value`, needs
   `react-i18next` in `package.json`). A `t(...)` call (from `useTranslation()`, `i18next` or
   `i18n.t`) or a `<Trans values={{ ... }}>` that passes interpolation values and whose text React
