@@ -327,6 +327,22 @@ or `useFormik`, as `value`, `defaultValue`, `min` or `max` of a JSX element with
 `??`, a parameter or destructuring default) for a name that ends in `date` or `Date`. Other uses of the expression (file
 names, keys, comparisons, plain properties) are not reported.
 
+Placeholder implementations: `nitpicker/no-placeholder-implementation` (TypeScript and JavaScript presets, production
+source, in `eslint-lint`) and `pmd/PlaceholderImplementation` (Java preset, main sources, found by the scan of the
+source comments, on `.java` files of Kotlin projects too) report code that a comment calls a stand-in for the real work
+and that is one by its shape. The comment phrases are one list for both
+(`shared/rules/placeholders/placeholder-comments.mts`): "in a real app / application / implementation / scenario / world
+/ project / system", "simulate (an / the) API / network / backend / server / HTTP / database ...", "simulate (a / the)
+request / delay / latency", "mock data / implementation / response for now", "placeholder implementation", "replace
+(this / it) with (a / the / your) real / actual ...", "for now (we) (just) return a dummy / mock / fake / hardcoded /
+placeholder / stub ...". The statement on the comment's line or right under it is a `return` of a literal (TypeScript:
+also an array or object literal of literals; Java: also an empty collection), fixed data (TypeScript: a variable
+initialized with a non-empty array or object literal of literals), a bare delay (`await sleep(...)`, `await new
+Promise((resolve) => setTimeout(resolve, ...))`, `Thread.sleep(...)`, `TimeUnit.X.sleep(...)`), a copy of a plain name
+(`converted = amount;`), or a function or method body that holds only the comment. Neither the comment alone nor the
+code alone is reported, and paths with a test, spec, stories, example, fixture, mock, seed, documentation, template,
+demo, sample, e2e or playground part are skipped. The Kotlin, Python and Go presets do not have this check yet.
+
 Child process deadlines: `nitpicker/require-process-timeout` (production source, in `eslint-lint`)
 reports production code that waits for a child process to exit without a deadline: a synchronous
 `child_process` or `execa` call without a positive `timeout`, and `exec`, `execFile`, an awaited

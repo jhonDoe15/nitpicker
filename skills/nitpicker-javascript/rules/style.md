@@ -304,6 +304,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   formatted in their time zone, `new Intl.DateTimeFormat('en-CA').format(new Date())` or the date library's `format(new
   Date(), 'yyyy-MM-dd')`, not cut out of `new Date().toISOString()`, which is the date in UTC and a day off for part of
   every day (`nitpicker/no-utc-date-as-local-date`).
+- Code that a comment calls a stand-in ("in a real app ...", "simulate the API call", "mock data for now", "placeholder
+  implementation") does the real work or throws a not-implemented error: no fixed return value, fixed data, bare delay,
+  unchanged copy or empty function under such a comment (`nitpicker/no-placeholder-implementation`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

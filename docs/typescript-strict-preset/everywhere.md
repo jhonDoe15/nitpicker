@@ -1828,6 +1828,24 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   built with `Date.UTC`). Allowed forms: `new Intl.DateTimeFormat('en-CA').format(new Date())` (local `YYYY-MM-DD` in a
   browser or command line tool; with `timeZone` on a server) or `format(new Date(), 'yyyy-MM-dd')` of the date library
   in use.
+- `nitpicker/no-placeholder-implementation` (production files): code that a comment calls a stand-in for the real work
+  and that is one by its shape, so the stand-in ships: a fixed delay instead of a request, a constant instead of a
+  query, an amount that is never converted. Both conditions are needed. The comment holds one of these phrases, in any
+  letter case: "in a real app / application / implementation / scenario / world / project / system", "simulate (an /
+  the) API / network / backend / server / HTTP / database ...", "simulate (a / the) request / delay / latency", "mock
+  data / implementation / response for now", "placeholder implementation", "replace (this / it) with (a / the / your)
+  real / actual ...", "for now (we) (just) return a dummy / mock / fake / hardcoded / placeholder / stub ...". The
+  statement on the same line as the comment, or the one that starts on the line after the comment (or after the comments
+  that directly follow it), is a `return` of a literal or of an array or object literal that holds only literals; a
+  `const`, `let` or `var` initialized with a non-empty array or object literal that holds only literals; a bare `await`
+  of `sleep(...)`, `delay(...)`, `wait(...)` or `new Promise((resolve) => setTimeout(resolve, ...))`; an assignment or
+  declaration that copies a plain name or member chain unchanged (`convertedBalance = balance;`); or the comment is all
+  a function body holds. Not reported: the comment alone, the code alone, "for now" on its own, a comment about someone
+  else's behaviour ("in a real browser the event fires twice"), and files whose path has a `test`, `spec`, `stories`,
+  `example`, `fixture`, `mock`, `seed`, `doc`, `template`, `demo`, `sample`, `e2e`, `playground`, `cypress` or
+  `playwright` part. Allowed forms: do the real work, or throw an error that says the function is not implemented.
+  Deleting the comment leaves the stand-in in place. The same check runs as `pmd/PlaceholderImplementation` on Java
+  sources.
 - Child processes the code waits for have a deadline (`nitpicker/require-process-timeout`, production
   files; test files have `nitpicker/require-test-process-timeout`). From `child_process`, `execa` and
   `cross-spawn`: `execSync`, `execFileSync`, `spawnSync`, `execaSync` and `execaCommandSync` need a
