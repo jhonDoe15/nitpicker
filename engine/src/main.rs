@@ -49,7 +49,8 @@ fn main() {
         let text = engine::source::read_text(path).unwrap_or_else(|| fail(&format!("cannot read {}", path.display())));
         let mut parser = tree_sitter::Parser::new();
         parser.set_language(&language.grammar()).expect("grammar");
-        println!("{}", parser.parse(&text, None).expect("tree").root_node().to_sexp());
+        let parsed = language.grammar_text(&text).unwrap_or_else(|| text.clone());
+        println!("{}", parser.parse(&parsed, None).expect("tree").root_node().to_sexp());
         return;
     }
     let started = Instant::now();
