@@ -21,6 +21,12 @@ function spiedChecker(program: ts.Program, spy: LookupSpy): void {
             spy(name);
           };
         }
+        if (name === 'getTypeAtLocation') {
+          return (node: ts.Node) => {
+            spy(name);
+            return target.getTypeAtLocation(node);
+          };
+        }
         const value: unknown = Reflect.get(target, name);
         return value;
       },
@@ -131,7 +137,33 @@ it('asks the checker only about accesses that can name a contract method', () =>
     { file: 'contract.ts', contract: 'Port', method: 'optional' },
     { file: 'contract.ts', contract: 'Port', method: 'required' },
   ]);
-  expect(lookups).toEqual(['getSymbolAtLocation', 'getSymbolAtLocation']);
+  expect(lookups).toEqual([
+    'getTypeAtLocation',
+    'getTypeAtLocation',
+    'getSymbolAtLocation',
+    'getSymbolAtLocation',
+  ]);
+});
+
+function typeLookups(consumer: string): (string | symbol)[] {
+  const lookups: (string | symbol)[] = [];
+  analyzeFixture(consumer, '', {
+    spy: (name) => {
+      lookups.push(name);
+    },
+  });
+  return lookups;
+}
+
+it('asks for the type of a destructured value only when a binding can name a contract method', () => {
+  const contractOnly = typeLookups('');
+  expect(typeLookups('const { unrelated } = { unrelated() {} }; unrelated();')).toEqual(
+    contractOnly,
+  );
+  expect(typeLookups('const { required } = new Implementation(); required();')).toEqual([
+    ...contractOnly,
+    'getTypeAtLocation',
+  ]);
 });
 
 it('counts a use through a renamed binding and still not one through a variable key', () => {
