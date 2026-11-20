@@ -23,7 +23,7 @@ const TEST_HELPER_PATH =
   /(?:^|\/)(?:test-support|testing|__tests__|tests?|specs?|fixtures|test-?utils)(?:\/|$)|\.(?:test|spec)\.[^/]+$/iu;
 const layout = readLayout();
 
-function calleeName(callee: TSESTree.Node): string {
+export function calleeName(callee: TSESTree.Node): string {
   if (callee.type === AST_NODE_TYPES.Identifier) {
     return callee.name;
   }

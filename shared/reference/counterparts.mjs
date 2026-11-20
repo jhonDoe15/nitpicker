@@ -15,6 +15,34 @@ const PAGES = {
 };
 const GROUPS = [
   {
+    java: 'SurrogateSplittingCut',
+    typescript: 'nitpicker/no-surrogate-splitting-cut',
+    go: 'go-rules/byte-cut-splits-rune',
+  },
+  {
+    java: 'NewlineOnlyLineSplit',
+    typescript: 'nitpicker/no-newline-only-line-split',
+    go: 'go-rules/newline-only-line-split',
+  },
+  {
+    java: 'HostPortColonSplit',
+    typescript: 'nitpicker/no-host-port-colon-split',
+    python: 'host-port-colon-split',
+    go: 'go-rules/host-port-colon-split',
+  },
+  {
+    java: 'DelimitedLookupKey',
+    typescript: 'nitpicker/no-ambiguous-lookup-key',
+    python: 'delimited-lookup-key',
+    go: 'go-rules/delimited-lookup-key',
+  },
+  {
+    java: 'PairSplitDropsRest',
+    typescript: 'nitpicker/no-truncating-pair-split',
+    python: 'pair-split-drops-rest',
+    go: 'go-rules/pair-split-drops-rest',
+  },
+  {
     java: 'SpringDataFilterInQuery',
     typescript: 'nitpicker/no-in-memory-query',
     python: 'in-memory-query',
@@ -85,6 +113,94 @@ const GROUPS = [
   {
     jvm: 'MaxValueOverflow',
     go: 'go-rules/max-value-overflow',
+  },
+  {
+    jvm: 'PatternTranslation',
+    typescript: 'nitpicker/no-unescaped-pattern-translation',
+    python: 'pattern-translation',
+    go: 'go-rules/pattern-translation',
+  },
+  {
+    jvm: 'ExpandingReplacement',
+    typescript: 'nitpicker/no-expanding-replacement-string',
+    python: 'expanding-replacement',
+    go: 'go-rules/expanding-replacement',
+  },
+  {
+    jvm: 'UnescapedHtmlValue',
+    typescript: 'nitpicker/no-unescaped-html-interpolation',
+    python: 'unescaped-html-value',
+    go: 'go-rules/unescaped-html-value',
+  },
+  {
+    jvm: 'UncheckedResponseBody',
+    typescript: 'nitpicker/no-unchecked-response-json',
+    python: 'unchecked-response-json',
+    go: 'go-rules/unchecked-response-json',
+  },
+  {
+    jvm: 'NanOnlyGuard',
+    typescript: 'nitpicker/no-nan-only-check',
+    python: 'nan-only-guard',
+    go: 'go-rules/nan-only-guard',
+  },
+  {
+    jvm: 'NegativeCountArgument',
+    typescript: 'nitpicker/no-negative-count',
+    go: 'go-rules/negative-count',
+  },
+  {
+    jvm: 'IndexBoundOffByOne',
+    typescript: 'nitpicker/no-index-bound-off-by-one',
+    python: 'index-bound-off-by-one',
+    go: 'go-rules/index-bound-off-by-one',
+  },
+  {
+    jvm: 'BackoffShiftOverflow',
+    typescript: 'nitpicker/no-overflowing-backoff',
+    go: 'go-rules/backoff-shift-overflow',
+  },
+  {
+    jvm: 'WallClockElapsed',
+    typescript: 'nitpicker/no-wall-clock-elapsed',
+    python: 'wall-clock-elapsed',
+    go: 'go-rules/wall-clock-elapsed',
+  },
+  {
+    jvm: 'AffixWithoutBoundary',
+    typescript: 'nitpicker/no-prefix-without-boundary',
+    python: 'prefix-without-boundary',
+    go: 'go-rules/prefix-without-boundary',
+  },
+  {
+    jvm: 'AffixRemovedByReplace',
+    typescript: 'nitpicker/no-unanchored-affix-replace',
+    python: 'unanchored-affix-replace',
+    go: 'go-rules/unanchored-affix-replace',
+  },
+  {
+    jvm: 'CaseMismatchedLookup',
+    typescript: 'nitpicker/no-case-mismatched-lookup',
+    python: 'case-mismatched-lookup',
+    go: 'go-rules/case-mismatched-lookup',
+  },
+  {
+    jvm: 'PreconditionMessageNamesOtherValue',
+    typescript: 'nitpicker/no-mismatched-precondition-message',
+    python: 'precondition-message-names-other-value',
+    go: 'go-rules/precondition-message-names-other-value',
+  },
+  {
+    jvm: 'MalformedQueryText',
+    typescript: 'nitpicker/no-malformed-query-text',
+    python: 'malformed-query-text',
+    go: 'go-rules/malformed-query-text',
+  },
+  {
+    jvm: 'UnpagedListing',
+    typescript: 'nitpicker/no-unpaged-listing',
+    python: 'unpaged-listing',
+    go: 'go-rules/unpaged-listing',
   },
   {
     jvm: 'NullBranchFallThrough',

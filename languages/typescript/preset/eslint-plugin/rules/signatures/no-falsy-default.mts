@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { orderedOperandsOf } from '../typed/syntax-views.mts';
 import type TypeScript from 'typescript';
 import { suggestible } from '../../fixes/support/descriptors.mts';
 import { nullishDefaultFix } from '../../fixes/code/nullish-default-fix.mts';
@@ -9,7 +10,6 @@ import { ts } from '../typed/typescript-views.mts';
 
 type Docs = { readonly requiresTypeChecking: boolean };
 type MessageIds = 'falsyDefault' | 'useNullishCoalescing';
-type OrExpression = TSESTree.LogicalExpression & { readonly operator: '||' };
 type AndExpression = TSESTree.LogicalExpression & { readonly operator: '&&' };
 
 const FUNCTIONS = new Set<string>([
@@ -81,23 +81,6 @@ function isAbsentValue(node: TSESTree.Node): boolean {
     (node.type === AST_NODE_TYPES.Identifier && node.name === 'undefined') ||
     (node.type === AST_NODE_TYPES.Literal && node.value === null)
   );
-}
-
-function isOr(node: TSESTree.Node): node is OrExpression {
-  return node.type === AST_NODE_TYPES.LogicalExpression && node.operator === '||';
-}
-
-function operandsOf(node: TSESTree.Node): TSESTree.Node[] {
-  const pending = [node];
-  const operands: TSESTree.Node[] = [];
-  for (const current of pending) {
-    if (isOr(current)) {
-      pending.push(current.left, current.right);
-    } else {
-      operands.push(current);
-    }
-  }
-  return operands.toSorted((left, right) => left.range[0] - right.range[0]);
 }
 
 function isOuterChain(node: TSESTree.Node): boolean {
@@ -216,7 +199,7 @@ export const rule: TSESLint.RuleModule<MessageIds, [], Docs> = {
     return {
       LogicalExpression(node: TSESTree.LogicalExpression) {
         if (node.operator === '||' && isOuterChain(node)) {
-          const operands = operandsOf(node);
+          const operands = orderedOperandsOf(node, '||');
           const fallback = operands.at(-1);
           if (fallback !== undefined) {
             checkDefault(scope, node, { identifiers: operands.slice(0, -1), fallback });

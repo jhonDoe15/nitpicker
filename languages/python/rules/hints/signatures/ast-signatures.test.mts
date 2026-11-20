@@ -66,6 +66,22 @@ describe('signature rule messages', () => {
       '`OldOrder` is an alias that keeps the old name of `Order` working',
     ],
     ['compatibility-shim', 'odd', '`odd` keeps an old name working'],
+    ['unescaped-html-value', 'name', 'The value `name` goes into an HTML string without escaping'],
+    [
+      'expanding-replacement',
+      'name',
+      'The replacement `name` is built at run time, and `re.sub` reads `\\1`, `\\g<name>` and backslash escapes in it',
+    ],
+    [
+      'pattern-translation',
+      'regex|glob',
+      "`glob` is turned into a regular expression by `replace` calls that leave the target's metacharacters unescaped",
+    ],
+    [
+      'pattern-translation',
+      'like|term',
+      "`term` is turned into a SQL `LIKE` pattern by `replace` calls that leave the target's metacharacters unescaped",
+    ],
     [
       'swapped-arguments',
       'docs|proc|pipe|docs',

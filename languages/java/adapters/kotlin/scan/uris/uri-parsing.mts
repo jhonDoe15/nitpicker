@@ -23,10 +23,22 @@ const URI_RULE = 'UriCreateDynamic';
 
 const URI_MESSAGES = {
   [URI_RULE]:
-    'Build the URI with an encoding builder (`UriComponentsBuilder.fromUriString(base).path(path).queryParam(name, value).encode().build().toUri()` with Spring, or `URI(scheme, host, path, fragment)`), or parse the text where the failure is handled: `runCatching { URI.create(text) }`, or a `try` that catches `IllegalArgumentException` (`URISyntaxException` for `URI(text)`). `URI.create(text)` and `URI(text)` throw on a space, a non-ASCII character or any other character that is not encoded, so one odd stored, user or header value turns this call into an error response. A constant is fine, and so is a project helper that does one of these. A value read from configuration at startup also matches, because a bad value fails only at runtime.',
+    'Build the URI with an encoding builder ' +
+    '(`UriComponentsBuilder.fromUriString(base).path(path).queryParam(name, ' +
+    'value).encode().build().toUri()` with Spring, or `URI(scheme, host, path, fragment)`), or parse the ' +
+    'text where the failure is handled: `runCatching { URI.create(text) }`, or a `try` that catches ' +
+    '`IllegalArgumentException` (`URISyntaxException` for `URI(text)`). `URI.create(text)` and ' +
+    '`URI(text)` throw on a space, a non-ASCII character or any other character that is not encoded, and ' +
+    '`URLDecoder.decode(text, charset)` throws `IllegalArgumentException` on a `%` that does not start a ' +
+    'valid escape (wrap it in `runCatching` or a `try` that catches `IllegalArgumentException`), so one ' +
+    'odd stored, user or header value turns this call into an error response. A constant is fine, and so ' +
+    'is a project helper that does one of these. A value read from configuration at startup also ' +
+    'matches, because a bad value fails only at runtime.',
 };
 
 const URI_IMPORT = /^[ \t]*import\s+java\.net\.(?:URI\b(?!\s+as\b)|\*)/m;
+const DECODER_IMPORT = /^[ \t]*import\s+java\.net\.(?:URLDecoder\b(?!\s+as\b)|\*)/m;
+const DECODE = /(?<![\w.])(java\.net\.)?URLDecoder\s*\.\s*decode\s*\(/g;
 const CREATE = /(?<![\w.])(java\.net\.)?URI\s*\.\s*create\s*\(/g;
 const CONSTRUCTOR = /(?<![\w.])(java\.net\.)?URI\s*\(/g;
 const REFERENCE =
@@ -182,27 +194,34 @@ function isHandled(file: UriFile, offset: number, caught: Set<string>): boolean 
   return false;
 }
 
-function onlyArgument(code: string, match: RegExpExecArray): Span | undefined {
+function leadingArgument(code: string, match: RegExpExecArray, maximum: number): Span | undefined {
   const { parts } = splitArguments(code, match.index + match[0].length - 1);
-  const [only] = parts;
-  return parts.length === 1 && only !== undefined ? trimmed(code, only) : undefined;
+  const [first] = parts;
+  return parts.length <= maximum && first !== undefined ? trimmed(code, first) : undefined;
 }
 
-function isSkipped(file: UriFile, match: RegExpExecArray): boolean {
+function isSkipped(file: UriFile, match: RegExpExecArray, imported = file.imported): boolean {
   const { code } = file.scanned;
   const qualified = match.slice(1).some((group: string | undefined) => group !== undefined);
   return (
-    (!qualified && !file.imported) ||
+    !(qualified || imported) ||
     inImport(code, match.index) ||
     DECLARED.test(code.slice(Math.max(0, match.index - MODIFIER_WINDOW), match.index))
   );
 }
 
-function callsOf(file: UriFile, pattern: RegExp, caught: Set<string>): UriHit[] {
+type CallPattern = {
+  readonly pattern: RegExp;
+  readonly caught: Set<string>;
+  readonly imported: boolean;
+  readonly maximum?: number;
+};
+
+function callsOf(file: UriFile, { pattern, caught, imported, maximum = 1 }: CallPattern): UriHit[] {
   const { code } = file.scanned;
   return [...code.matchAll(pattern)].flatMap((match) => {
-    const argument = onlyArgument(code, match);
-    return isSkipped(file, match) ||
+    const argument = leadingArgument(code, match, maximum);
+    return isSkipped(file, match, imported) ||
       argument === undefined ||
       plusOperands(file, argument).every((operand) => isConstantOperand(file, operand)) ||
       isHandled(file, match.index, caught)
@@ -229,8 +248,14 @@ export function dynamicUris(scanned: Scanned): UriHit[] {
     names: new Map(),
   };
   return [
-    ...callsOf(file, CREATE, CREATE_CAUGHT),
-    ...callsOf(file, CONSTRUCTOR, CONSTRUCTOR_CAUGHT),
+    ...callsOf(file, { pattern: CREATE, caught: CREATE_CAUGHT, imported: file.imported }),
+    ...callsOf(file, { pattern: CONSTRUCTOR, caught: CONSTRUCTOR_CAUGHT, imported: file.imported }),
+    ...callsOf(file, {
+      pattern: DECODE,
+      caught: CREATE_CAUGHT,
+      imported: DECODER_IMPORT.test(scanned.code),
+      maximum: 2,
+    }),
     ...referencesOf(file),
   ];
 }

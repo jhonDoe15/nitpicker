@@ -2,6 +2,8 @@ package shop;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,6 +31,18 @@ public final class Links {
 
   public static URI joined(String path) {
     return URI.create(HOME + path); // violation: UriCreateDynamic
+  }
+
+  public static String decoded(String text) {
+    return URLDecoder.decode(text, StandardCharsets.UTF_8); // violation: UriCreateDynamic
+  }
+
+  public static String decodedSafely(String text) {
+    try {
+      return URLDecoder.decode(text, StandardCharsets.UTF_8);
+    } catch (IllegalArgumentException e) {
+      return text;
+    }
   }
 
   public static Optional<URI> parsed(String text) {
