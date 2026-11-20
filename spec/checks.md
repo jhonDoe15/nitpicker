@@ -150,6 +150,13 @@ and a mutating array, `Set` or `Map` method on it when the `useState` type argum
 parameter type) shows that kind of value. A parameter reassigned to a copy, calls in nested functions, Immer and
 setters not from `useState` are left alone.
 
+React `use`: `nitpicker/react-no-uncached-use-promise` (production source in a React project, in `eslint-lint`)
+reports `use(...)` from `react` whose argument, directly or through a `const` of the same component, is a call of an
+`async` function (declared in the file or exported by an imported project module), an inline async function call,
+`new Promise`, a `Promise` combinator or a `.then`/`.catch`/`.finally` chain. Promises from props, context, `useMemo`
+or `useState`, functions not declared `async`, async components, and, where Server Components are possible, files
+without `'use client'` whose component calls no client hook are left alone.
+
 React i18next: `nitpicker/react-i18next-escape-value` (production source in a React project that depends on
 `react-i18next`, in `eslint-lint`) reports a `t(...)` or `<Trans values>` call that interpolates values into text React
 renders while no source file of the package sets `interpolation.escapeValue: false` and the call does not. The init
