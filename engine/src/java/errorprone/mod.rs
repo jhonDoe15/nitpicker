@@ -6,6 +6,7 @@ mod names;
 mod obsolete;
 mod simple;
 mod targets;
+mod throws;
 mod values;
 
 use super::types::project::JavaProject;
@@ -128,6 +129,7 @@ const CHECKS: &[Check] = &[
     values::string_splitter,
     obsolete::jdk_obsolete,
     targets::boolean_literal,
+    throws::checked_exception_not_thrown,
     names::type_parameter_naming,
     names::wildcard_import,
     names::same_name_but_different,

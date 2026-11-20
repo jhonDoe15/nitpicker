@@ -163,6 +163,18 @@ impl<'a> Signature<'a> {
         self.at += 1;
         Some((type_parameters, parameters, self.kind()?))
     }
+    /// The `throws` part, after `method` has read the rest.
+    fn throws(&mut self) -> Vec<Type> {
+        let mut listed = Vec::new();
+        while self.peek() == Some(b'^') {
+            self.at += 1;
+            match self.kind() {
+                Some(kind) => listed.push(kind),
+                None => break,
+            }
+        }
+        listed
+    }
 }
 
 #[derive(Default)]
@@ -173,6 +185,7 @@ struct Attributes<'a> {
     record: bool,
     permitted: Option<Vec<u16>>,
     inner: Vec<(u16, u16)>,
+    exceptions: Vec<u16>,
 }
 
 fn skip_element(reader: &mut Reader) -> Option<()> {
@@ -222,6 +235,8 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                 reader.skip(4)?;
                 found.inner.push((class, reader.u2()?));
             }
+        } else if name == b"Exceptions" {
+            found.exceptions = (0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?;
         } else if name == b"Record" {
             found.record = true;
         }
@@ -333,8 +348,17 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         let signature = found.signature;
         if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == 0 && method_name != b"<clinit>" {
             let (_, parameters, returns) = Signature { text: descriptor, at: 0 }.method()?;
+            let mut throws: Vec<Type> = found.exceptions.iter().filter_map(|class| class_name(*class)).map(|name| Type::class(&name)).collect();
             let generic = signature
-                .and_then(|text| Signature { text, at: 0 }.method())
+                .and_then(|text| {
+                    let mut reader = Signature { text, at: 0 };
+                    let read = reader.method()?;
+                    let listed = reader.throws();
+                    if listed.len() == throws.len() {
+                        throws = listed;
+                    }
+                    Some(read)
+                })
                 .filter(|(_, generic, _)| generic.len() == parameters.len());
             let (type_parameters, generic_parameters, generic_returns) =
                 generic.unwrap_or_else(|| (Vec::new(), parameters.clone(), returns.clone()));
@@ -352,6 +376,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 is_private: false,
                 varargs: flags & ACC_VARARGS != 0,
                 flags: member_flags(flags, found.deprecated),
+                throws,
             });
         }
     }

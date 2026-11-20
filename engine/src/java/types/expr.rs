@@ -732,6 +732,28 @@ impl<'a> Resolver<'a> {
         Some((resolved, formals))
     }
 
+    /// What a call can throw by the `throws` clause of its method or constructor, erased; a type variable of the
+    /// method stands for what this call makes of it, or for itself when the call does not say.
+    pub fn call_throws(&self, call: Node) -> Option<Vec<Type>> {
+        let (resolved, _) = self.call_formals(call)?;
+        if resolved.method.throws.iter().all(|thrown| matches!(thrown, Type::Class(..))) {
+            return Some(resolved.method.throws.iter().map(Type::erased).collect());
+        }
+        let map = if resolved.raw { HashMap::new() } else { self.call_map(&resolved, call, true) };
+        let method = &resolved.method;
+        let listed = method.throws.iter().map(|thrown| {
+            let fitted = thrown.substitute(&map);
+            // A type variable that stayed at its bound was not decided by the arguments we can read: a lambda body decides it.
+            let own = matches!(thrown, Type::Variable(name) if method.type_parameters.contains(name));
+            let bound = method.type_parameters.iter().position(|name| *name == thrown.name()).and_then(|at| method.type_bounds.get(at));
+            if own && (call.child_by_field_name("type_arguments").is_none() && Some(&fitted.erased()) == bound) {
+                return None;
+            }
+            Some(if matches!(fitted, Type::Class(..)) { fitted.erased() } else { fitted })
+        });
+        listed.collect()
+    }
+
     fn select(&self, owner: Type, candidates: &[(&ClassInfo, &Method)], shapes: &[Shape]) -> Option<Call> {
         let visible: Vec<(&ClassInfo, &Method)> = candidates
             .iter()
@@ -788,7 +810,19 @@ impl<'a> Resolver<'a> {
                 }
                 several => {
                     let exact = typed.as_ref().and_then(|actual| several.iter().find(|(_, method)| method.parameters == *actual));
-                    exact.or_else(|| several.iter().find(|(_, method)| several.iter().all(|(_, other)| narrower(method, other)))).copied()
+                    let spread = |method: &Method, other: &Method| {
+                        let width = method.parameters.len().max(other.parameters.len());
+                        let at = |method: &Method, place: usize| match method.parameters.get(place.min(method.parameters.len() - 1)) {
+                            Some(Type::Array(element)) if place + 1 >= method.parameters.len() => Some((**element).clone()),
+                            other => other.cloned(),
+                        };
+                        (0..width).all(|place| matches!((at(method, place), at(other, place)), (Some(a), Some(b)) if self.assignable(&a, &b, true)))
+                    };
+                    let all_spread = phase == 2 && several.iter().all(|(_, method)| method.varargs && !method.parameters.is_empty());
+                    exact
+                        .or_else(|| several.iter().find(|(_, method)| several.iter().all(|(_, other)| narrower(method, other))))
+                        .or_else(|| several.iter().filter(|_| all_spread).find(|(_, method)| several.iter().all(|(_, other)| spread(method, other))))
+                        .copied()
                 }
             };
             return chosen.map(|(class, method)| Call { raw: false, receiver: owner, declaring: class.name.clone(), method: (*method).clone() });
@@ -819,6 +853,7 @@ impl<'a> Resolver<'a> {
                 is_private: false,
                 varargs: false,
                 flags: 0,
+                throws: Vec::new(),
             };
             return Some(Call { raw: false, receiver: owner, declaring: info.name.clone(), method });
         }
