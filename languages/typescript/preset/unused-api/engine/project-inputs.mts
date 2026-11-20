@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 import type { ProgramInputs } from '../program.mts';
 import type { ContextLayout, FileInfo } from '../typed/context-types.mts';
 import type { PackagesInfo } from '../workspace/workspace-types.mts';
@@ -20,6 +21,7 @@ type FilesRequest = {
   readonly layout: ContextLayout;
 };
 
+const ts = typescriptApi();
 const DECLARATION_FILE = /\.d\.(?:[cm]?ts|[^./]+\.ts)$/u;
 
 function absolutePaths(
@@ -47,6 +49,7 @@ export function engineProjectConfig(
       checkJs: false,
       skipLibCheck: true,
       types: [],
+      typeRoots: ts.getEffectiveTypeRoots(options, ts.sys) ?? [],
       ...(parsed.options.jsx === undefined ? { jsx: 'react-jsx' } : {}),
       paths: absolutePaths(options.paths ?? {}, pathsBase),
     },
