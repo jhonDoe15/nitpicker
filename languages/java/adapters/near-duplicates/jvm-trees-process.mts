@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs';
-import { Parser } from 'web-tree-sitter';
+import { Parser, type Node } from 'web-tree-sitter';
 import { pathInside } from '../../../../shared/filesystem.mjs';
 import { fileRequest as untypedFileRequest } from '../../../../shared/near-duplicates/trees-request.mjs';
 import { isText } from '../../../../shared/values/readers.mts';
 import { loadGrammar } from './grammar/load-grammar.mts';
 import { kotlinUnits } from './kotlin/units.mts';
 import { javaExtractions } from './extract/file-extractions.mts';
+import { kotlinExtractions } from './extract/kotlin/extractions.mts';
 import { javaUnits } from './tree/units.mts';
 import { shorterFixes, type Grammar } from './simplify/shorter-fixes.mts';
 import { switchLabelFixes } from './simplify/switch-labels.mts';
@@ -72,20 +73,21 @@ function unitsOf({ parser, unitsOf: convert }: Grammar, root: string, file: stri
 
 type Source = { readonly file: string; readonly text: string };
 
+type Collected = { readonly fixes: unknown[]; readonly notes: unknown[] };
+type Parsed = { readonly rootNode: Node; readonly file: string; readonly text: string };
+type Extract = (parsed: Parsed[]) => Collected;
+
 function extractionsOf(
   { parser }: Grammar,
   sources: readonly Source[],
-  options: { readonly root: string; readonly mode: string },
-): unknown {
+  extract: Extract,
+): Collected {
   const trees = sources.flatMap(({ file, text }) => {
     const tree = parser.parse(text);
     return tree === null ? [] : [{ tree, file, text }];
   });
   try {
-    return javaExtractions(
-      trees.map(({ tree, file, text }) => ({ rootNode: tree.rootNode, file, text })),
-      { ...options, parse: (text: string) => parser.parse(text) },
-    );
+    return extract(trees.map(({ tree, file, text }) => ({ rootNode: tree.rootNode, file, text })));
   } finally {
     for (const { tree } of trees) {
       tree.delete();
@@ -93,33 +95,80 @@ function extractionsOf(
   }
 }
 
+function joined(parts: readonly Collected[]): Collected {
+  return {
+    fixes: parts.flatMap(({ fixes }) => fixes),
+    notes: parts.flatMap(({ notes }) => notes),
+  };
+}
+
+type Grammars = { readonly java: Grammar; readonly kotlin: Grammar };
+type Texts = Readonly<Record<string, string>>;
+
+function isKotlin(file: string): boolean {
+  return file.endsWith('.kt');
+}
+
+async function grammarsFor(files: readonly string[]): Promise<Grammars> {
+  const java = await grammarOf('java');
+  return { java, kotlin: files.some(isKotlin) ? await grammarOf('kotlin') : java };
+}
+
+function grammarFor(grammars: Grammars, file: string): Grammar {
+  return isKotlin(file) ? grammars.kotlin : grammars.java;
+}
+
+function isFixerMode(mode: string): mode is keyof typeof FIXERS {
+  return mode === 'shorter' || mode === 'switches';
+}
+
+function sourcesOf(texts: Texts, files: readonly string[]): Source[] {
+  return files.map((file) => ({ file, text: texts[file] ?? '' }));
+}
+
+function fixesResult(request: TreesRequest, texts: Texts, grammars: Grammars): unknown {
+  const { mode, files } = request;
+  const fixer = isFixerMode(mode) ? FIXERS[mode] : undefined;
+  return {
+    fixes: files.flatMap((file) =>
+      fixer === undefined
+        ? []
+        : fixer(grammarFor(grammars, file), { file, text: texts[file] ?? '' }),
+    ),
+  };
+}
+
+function extractionResult(request: TreesRequest, texts: Texts, grammars: Grammars): Collected {
+  const { root, mode, files } = request;
+  const { java, kotlin } = grammars;
+  return joined([
+    extractionsOf(
+      java,
+      sourcesOf(
+        texts,
+        files.filter((file) => !isKotlin(file)),
+      ),
+      (parsed) =>
+        javaExtractions(parsed, { root, mode, parse: (text: string) => java.parser.parse(text) }),
+    ),
+    extractionsOf(kotlin, sourcesOf(texts, files.filter(isKotlin)), (parsed) =>
+      kotlinExtractions(parsed, { mode }),
+    ),
+  ]);
+}
+
 async function main(): Promise<unknown> {
   const request = treesRequest(JSON.parse(readFileSync(0, 'utf8')));
   await Parser.init();
-  const java = await grammarOf('java');
-  const { texts } = request;
-  if (texts !== undefined && (request.mode === 'shorter' || request.mode === 'switches')) {
-    const kotlin = await grammarOf('kotlin');
-    const fixer = FIXERS[request.mode];
-    return {
-      fixes: request.files.flatMap((file) =>
-        fixer(file.endsWith('.kt') ? kotlin : java, { file, text: texts[file] ?? '' }),
-      ),
-    };
+  const grammars = await grammarsFor(request.files);
+  const { texts, mode } = request;
+  if (texts !== undefined && isFixerMode(mode)) {
+    return fixesResult(request, texts, grammars);
   }
   if (texts !== undefined) {
-    return extractionsOf(
-      java,
-      request.files.map((file) => ({ file, text: texts[file] ?? '' })),
-      { root: request.root, mode: request.mode },
-    );
+    return extractionResult(request, texts, grammars);
   }
-  const kotlin = request.files.some((file) => file.endsWith('.kt'))
-    ? await grammarOf('kotlin')
-    : java;
-  return request.files.flatMap((file) =>
-    unitsOf(file.endsWith('.kt') ? kotlin : java, request.root, file),
-  );
+  return request.files.flatMap((file) => unitsOf(grammarFor(grammars, file), request.root, file));
 }
 
 process.stdout.write(JSON.stringify(await main()));

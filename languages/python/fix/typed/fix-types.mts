@@ -58,10 +58,13 @@ export type DependencyInputs = {
 
 export type UnusedIgnore = { readonly line: number | undefined; readonly message: string };
 
+export type CommentedCode = { readonly text: string; readonly lines: number[] };
+
 export type RecipeInputs = {
   readonly isExcepted?: (rule: string, name: string) => boolean;
   readonly pythonDocstrings?: Readonly<Record<string, readonly DocComment[]>>;
   readonly pythonDependencies?: DependencyInputs;
+  readonly pythonCommentedCode?: Readonly<Record<string, CommentedCode>>;
   readonly pythonUnusedIgnores?: Readonly<
     Record<string, { readonly text: string | undefined; readonly ignores: readonly UnusedIgnore[] }>
   >;
@@ -121,7 +124,7 @@ export type TomlArray = {
   readonly elements: TomlElement[];
 };
 
-export type TextEdit = { readonly start: number; readonly end: number; readonly text: string };
+export type TextEdit = Pick<ReplaceEdit, 'start' | 'end' | 'text'>;
 
 export type DeclaredEntry = {
   readonly kind: 'array' | 'table';
@@ -132,11 +135,16 @@ export type DeclaredEntry = {
   readonly raw: string;
 };
 
-type ScriptFix = { readonly finding: RecipeFinding; readonly edits: readonly PlanEdit[] };
+type ScriptFix = {
+  readonly finding: RecipeFinding;
+  readonly edits: readonly PlanEdit[];
+  readonly kind?: string;
+};
 export type Decline = {
   readonly rule: string;
   readonly path: string;
   readonly line: number;
   readonly reason: string;
+  readonly kind?: string;
 };
 export type ScriptResult = { readonly fixes: readonly ScriptFix[]; readonly declines: Decline[] };

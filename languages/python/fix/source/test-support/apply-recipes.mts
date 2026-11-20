@@ -15,8 +15,25 @@ type RecipeOptions = {
   inputs?: unknown;
 };
 
+type Outcome = {
+  notes: string[];
+  fixedFindings: string[];
+  files: { path: string }[];
+  toolErrors: unknown[];
+};
+type RunOptions = {
+  projectRoot: string;
+  files: { path: string }[];
+  recipes: readonly unknown[];
+  preset: string;
+  selectedRules: readonly string[];
+  accepts: (name: string) => boolean;
+  inputs: unknown;
+};
+const run: (options: RunOptions) => Outcome = runRecipes;
+
 type AppliedRecipes = {
-  outcome: ReturnType<typeof runRecipes>;
+  outcome: Outcome;
   exists: (name: string) => boolean;
   read: (name: string) => string;
 };
@@ -27,7 +44,7 @@ export function applyRecipes(
 ): AppliedRecipes {
   const { selectedRules = [], recipes = SCRIPT_RECIPES, inputs } = options;
   const { root: projectRoot } = createGitRepository(files, { prefix: 'nitpicker-python-recipes-' });
-  const outcome = runRecipes({
+  const outcome = run({
     projectRoot,
     files: Object.keys(files).map((name) => ({ path: name })),
     recipes,

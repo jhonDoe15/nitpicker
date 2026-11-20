@@ -127,7 +127,7 @@ describe('ownedNativeMessage', () => {
 
   it('confirms each check with the checker of its owned rule', () => {
     const keeps = ownedNativeChecker(ADAPTER, 'xs.reduce((acc, x) => [...acc, x].slice(-3), []);');
-    expect(keeps({ ruleId: RULE, reducer: true, spread: { line: 1, column: 24 } })).toBe(false);
+    expect(keeps({ ruleId: RULE, reducer: true, spread: { line: 1, column: 24 } })).toEqual([]);
   });
 });
 
