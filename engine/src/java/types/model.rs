@@ -100,32 +100,34 @@ impl Type {
 
 /// Facts about a class, method or field beyond what type resolution needs, as bits of `flags`.
 pub mod flag {
-    pub const FINAL: u16 = 1;
-    pub const PUBLIC: u16 = 2;
-    pub const PROTECTED: u16 = 4;
-    pub const STATIC: u16 = 8;
-    pub const ABSTRACT: u16 = 16;
-    pub const ENUM: u16 = 32;
-    pub const RECORD: u16 = 64;
-    pub const SEALED: u16 = 128;
+    pub const FINAL: u32 = 1;
+    pub const PUBLIC: u32 = 2;
+    pub const PROTECTED: u32 = 4;
+    pub const STATIC: u32 = 8;
+    pub const ABSTRACT: u32 = 16;
+    pub const ENUM: u32 = 32;
+    pub const RECORD: u32 = 64;
+    pub const SEALED: u32 = 128;
     /// Carries `@java.lang.Deprecated`.
-    pub const DEPRECATED: u16 = 256;
-    pub const ANNOTATION: u16 = 512;
+    pub const DEPRECATED: u32 = 256;
+    pub const ANNOTATION: u32 = 512;
     /// A member class only its outer class sees.
-    pub const PRIVATE: u16 = 1024;
+    pub const PRIVATE: u32 = 1024;
     /// Carries an annotation named `CheckReturnValue` or `MustUseReturnValues`; set for packages too.
-    pub const CHECK_RESULT: u16 = 2048;
+    pub const CHECK_RESULT: u32 = 2048;
     /// Carries an annotation named `CanIgnoreReturnValue` or `IgnorableReturnValue`.
-    pub const IGNORE_RESULT: u16 = 4096;
+    pub const IGNORE_RESULT: u32 = 4096;
     /// A class with `@AutoValue`.
-    pub const AUTO_VALUE: u16 = 8192;
+    pub const AUTO_VALUE: u32 = 8192;
     /// A class with `@AutoValue.Builder` or `@AutoBuilder`.
-    pub const AUTO_BUILDER: u16 = 16384;
+    pub const AUTO_BUILDER: u32 = 16384;
     /// A class with one of Dagger's component builder annotations.
-    pub const DAGGER_BUILDER: u16 = 32768;
+    pub const DAGGER_BUILDER: u32 = 32768;
+    /// Carries Error Prone's own `@CanIgnoreReturnValue`.
+    pub const MAY_IGNORE: u32 = 1 << 16;
 
     /// The bits an annotation gives, by its full name with `.` between a class and its member class.
-    pub fn of_annotation(name: &str) -> u16 {
+    pub fn of_annotation(name: &str) -> u32 {
         match name {
             "com.google.auto.value.AutoValue" => return AUTO_VALUE,
             "com.google.auto.value.AutoValue.Builder" | "com.google.auto.value.AutoBuilder" => return AUTO_BUILDER,
@@ -135,7 +137,8 @@ pub mod flag {
             | "dagger.producers.ProductionSubcomponent.Builder" => return DAGGER_BUILDER,
             _ => {}
         }
-        match name.rsplit('.').next().unwrap_or(name) {
+        let exact = if name == "com.google.errorprone.annotations.CanIgnoreReturnValue" { MAY_IGNORE } else { 0 };
+        exact | match name.rsplit('.').next().unwrap_or(name) {
             "CheckReturnValue" | "MustUseReturnValues" => CHECK_RESULT,
             "CanIgnoreReturnValue" | "IgnorableReturnValue" => IGNORE_RESULT,
             _ => 0,
@@ -157,7 +160,7 @@ pub struct Field {
     pub strict: bool,
     /// Not seen from subclasses.
     pub is_private: bool,
-    pub flags: u16,
+    pub flags: u32,
 }
 
 #[derive(Clone, Debug)]
@@ -178,7 +181,7 @@ pub struct Method {
     /// Not inherited.
     pub is_private: bool,
     pub varargs: bool,
-    pub flags: u16,
+    pub flags: u32,
     /// What the `throws` clause lists, type variables kept.
     pub throws: Vec<Type>,
     /// Parameter names, when the source or the class file gives them; empty otherwise.
@@ -203,5 +206,5 @@ pub struct ClassInfo {
     pub permitted: Option<Vec<String>>,
     /// For a record: the generic type of each component, in order.
     pub record_components: Option<Vec<Type>>,
-    pub flags: u16,
+    pub flags: u32,
 }

@@ -189,7 +189,7 @@ struct Attributes<'a> {
     inner: Vec<(u16, u16)>,
     exceptions: Vec<u16>,
     names: Vec<u16>,
-    marks: u16,
+    marks: u32,
 }
 
 fn skip_element(reader: &mut Reader) -> Option<()> {
@@ -267,7 +267,7 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
     Some(found)
 }
 
-fn member_flags(access: u16, deprecated: bool, marks: u16) -> u16 {
+fn member_flags(access: u16, deprecated: bool, marks: u32) -> u32 {
     let mut bits = marks;
     for (mask, bit) in [(0x0010, flag::FINAL), (0x0001, flag::PUBLIC), (0x0004, flag::PROTECTED), (0x0008, flag::STATIC), (0x0400, flag::ABSTRACT)] {
         if access & mask != 0 {

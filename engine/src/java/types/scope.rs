@@ -479,8 +479,18 @@ impl<'a> Resolver<'a> {
         (erased, generic, varargs)
     }
 
+    /// The value of string literals joined by `+`.
+    fn joined(&self, value: Node) -> Option<String> {
+        let value = super::expr::unwrap(value);
+        if value.kind() == "binary_expression" && self.file.text_of(value.child_by_field_name("operator")?) == "+" {
+            let left = self.joined(value.child_by_field_name("left")?)?;
+            return Some(left + &self.joined(value.child_by_field_name("right")?)?);
+        }
+        super::expr::literal_text(self.file, value)
+    }
+
     /// The bits the annotations of a declaration give.
-    pub fn marks(&self, declaration: Node) -> u16 {
+    pub fn marks(&self, declaration: Node) -> u32 {
         let holder = super::super::helpers::modifiers(declaration).unwrap_or(declaration);
         let annotations = children(holder).into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation"));
         let names = annotations.filter_map(|annotation| annotation.child_by_field_name("name")).map(|name| self.file.text_of(name));
@@ -490,7 +500,7 @@ impl<'a> Resolver<'a> {
         })
     }
 
-    fn class_flags(&self, declaration: Node) -> u16 {
+    fn class_flags(&self, declaration: Node) -> u32 {
         use super::model::flag;
         let has = super::super::helpers::has_modifier;
         let mut bits = self.marks(declaration);
@@ -673,7 +683,7 @@ impl<'a> Resolver<'a> {
             throws: Vec::new(),
             names: Vec::new(),
         };
-        let bits = |member: Node| -> u16 {
+        let bits = |member: Node| -> u32 {
             use super::model::flag;
             let mut bits = 0;
             for (word, bit) in [("final", flag::FINAL), ("public", flag::PUBLIC), ("protected", flag::PROTECTED), ("static", flag::STATIC), ("abstract", flag::ABSTRACT)] {
@@ -705,7 +715,7 @@ impl<'a> Resolver<'a> {
                             constant: (info.is_interface || has(member, "final"))
                                 .then(|| declarator.field("value"))
                                 .flatten()
-                                .and_then(|value| super::expr::literal_text(self.file, value)),
+                                .and_then(|value| self.joined(value)),
                             fixed: (info.is_interface || (has(member, "final") && has(member, "static"))).then(|| declarator.field("value")).flatten().and_then(
                                 |value| {
                                     let mut uses = Vec::new();
