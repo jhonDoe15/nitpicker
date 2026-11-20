@@ -119,6 +119,7 @@ const CHECKS: &[Check] = &[
     values::string_splitter,
     names::type_parameter_naming,
     names::wildcard_import,
+    names::same_name_but_different,
     names::unnecessarily_fully_qualified,
     names::suppress_warnings_without_explanation,
     names::type_parameter_unused_in_formals,
