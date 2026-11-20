@@ -41,6 +41,10 @@ pub struct Cfg<'t> {
     pub blocks: Vec<Block<'t>>,
     /// For a `switch` used as a value: the expressions that give its result.
     pub results: HashMap<usize, Vec<Node<'t>>>,
+    /// The block the body falls out of when it runs to its end.
+    pub end: usize,
+    /// The blocks that end with a `return`, after the `finally` bodies it passes through.
+    pub returns: Vec<usize>,
 }
 
 struct Target {
@@ -49,6 +53,8 @@ struct Target {
     continues: Option<usize>,
     /// A plain `break` stops here: loops and switches, not labelled blocks.
     plain: bool,
+    /// How many `finally` bodies were open where the target was set up.
+    finals: usize,
 }
 
 struct Builder<'t, 'f> {
@@ -63,6 +69,9 @@ struct Builder<'t, 'f> {
     switches: Vec<(usize, usize)>,
     copy: usize,
     copies: usize,
+    /// The `finally` clauses around the statement being lowered, outermost first, each with the number of
+    /// handler frames that were open outside its `try`.
+    finals: Vec<(Node<'t>, usize)>,
 }
 
 const TYPE_PARTS: &[&str] = &[
@@ -95,7 +104,8 @@ pub fn build_with<'t>(file: &SourceFile, body: Node<'t>, guards: &dyn Fn(Node) -
         file,
         guards,
         assertions,
-        cfg: Cfg { blocks: Vec::new(), results: HashMap::new() },
+        cfg: Cfg { blocks: Vec::new(), results: HashMap::new(), end: 0, returns: Vec::new() },
+        finals: Vec::new(),
         current: 0,
         targets: Vec::new(),
         handlers: Vec::new(),
@@ -110,6 +120,7 @@ pub fn build_with<'t>(file: &SourceFile, body: Node<'t>, guards: &dyn Fn(Node) -
     } else {
         builder.expression(body);
     }
+    builder.cfg.end = builder.current;
     builder.cfg
 }
 
@@ -160,6 +171,17 @@ impl<'t> Builder<'t, '_> {
         }
     }
 
+    /// A loop condition. One that is the literal `true` never lets the loop end by itself.
+    fn until(&mut self, condition: Node<'t>, body: usize, after: usize) {
+        let plain = unwrap(condition);
+        if plain.kind() == "true" {
+            self.step(plain);
+            self.jump(body);
+        } else {
+            self.test(condition, body, after);
+        }
+    }
+
     fn joined(&mut self, node: Node<'t>) {
         let (holds, fails, after) = (self.block(), self.block(), self.block());
         self.test(node, holds, fails);
@@ -198,7 +220,9 @@ impl<'t> Builder<'t, '_> {
             "switch_expression" => self.switch(node),
             "assignment_expression" => {
                 let left = node.child_by_field_name("left").expect("left");
+                let compound = operator != Some("=");
                 match left.kind() {
+                    "identifier" | "field_access" if compound => self.expression(left),
                     "field_access" => {
                         if let Some(object) = left.child_by_field_name("object") {
                             self.expression(object);
@@ -291,7 +315,32 @@ impl<'t> Builder<'t, '_> {
         }
     }
 
-    fn target(&self, label: Option<&str>, continues: bool) -> Option<usize> {
+    /// Lowers once more the `finally` bodies that a jump out of their `try` passes through, innermost first.
+    fn unwind(&mut self, keep: usize) {
+        let passed: Vec<(Node<'t>, usize)> = self.finals.drain(keep..).collect();
+        let outer = (self.copy, std::mem::take(&mut self.handlers));
+        let mut frames = outer.1.clone();
+        for (position, (last, open)) in passed.iter().enumerate().rev() {
+            frames.truncate(*open);
+            self.handlers = frames.clone();
+            self.finals.truncate(keep);
+            self.finals.extend(passed[..position].iter().copied());
+            self.copies += 1;
+            self.copy = self.copies;
+            let inner = self.block();
+            self.jump(inner);
+            self.current = inner;
+            for part in named_children(*last) {
+                self.statement(part);
+            }
+        }
+        self.finals.truncate(keep);
+        self.finals.extend(passed);
+        self.copy = outer.0;
+        self.handlers = outer.1;
+    }
+
+    fn target(&self, label: Option<&str>, continues: bool) -> Option<(usize, usize)> {
         self.targets.iter().rev().find_map(|target| {
             let fits = match label {
                 Some(label) => target.label.as_deref() == Some(label),
@@ -300,13 +349,14 @@ impl<'t> Builder<'t, '_> {
             if !fits {
                 return None;
             }
-            if continues { target.continues } else { Some(target.breaks) }
+            let to = if continues { target.continues } else { Some(target.breaks) };
+            to.map(|to| (to, target.finals))
         })
     }
 
     fn looped(&mut self, breaks: usize, continues: usize, body: Option<Node<'t>>) {
         let label = self.label.take();
-        self.targets.push(Target { label, breaks, continues: Some(continues), plain: true });
+        self.targets.push(Target { label, breaks, continues: Some(continues), plain: true, finals: self.finals.len() });
         if let Some(body) = body {
             self.statement(body);
         }
@@ -349,7 +399,7 @@ impl<'t> Builder<'t, '_> {
                 let (head, body, after) = (self.block(), self.block(), self.block());
                 self.jump(head);
                 self.current = head;
-                self.test(field("condition").expect("condition"), body, after);
+                self.until(field("condition").expect("condition"), body, after);
                 self.current = body;
                 self.label = label;
                 self.looped(after, head, field("body"));
@@ -364,7 +414,7 @@ impl<'t> Builder<'t, '_> {
                 self.looped(after, tail, field("body"));
                 self.jump(tail);
                 self.current = tail;
-                self.test(field("condition").expect("condition"), body, after);
+                self.until(field("condition").expect("condition"), body, after);
                 self.current = after;
             }
             "for_statement" => {
@@ -377,7 +427,7 @@ impl<'t> Builder<'t, '_> {
                 self.jump(head);
                 self.current = head;
                 match field("condition") {
-                    Some(condition) => self.test(condition, body, after),
+                    Some(condition) => self.until(condition, body, after),
                     None => self.jump(body),
                 }
                 self.current = body;
@@ -412,7 +462,7 @@ impl<'t> Builder<'t, '_> {
                 let after = self.block();
                 let mut parts = named_children(node).into_iter().filter(|part| !part.kind().ends_with("comment"));
                 let name = parts.next().map(|name| self.text(name).to_string());
-                self.targets.push(Target { label: name.clone(), breaks: after, continues: None, plain: false });
+                self.targets.push(Target { label: name.clone(), breaks: after, continues: None, plain: false, finals: self.finals.len() });
                 if let Some(inner) = parts.next() {
                     self.label = name;
                     self.statement(inner);
@@ -424,12 +474,23 @@ impl<'t> Builder<'t, '_> {
             "break_statement" | "continue_statement" => {
                 let name = named_children(node).into_iter().find(|part| part.kind() == "identifier").map(|name| self.text(name).to_string());
                 match self.target(name.as_deref(), node.kind() == "continue_statement") {
-                    Some(to) => self.jump(to),
+                    Some((to, finals)) => {
+                        self.unwind(finals);
+                        self.jump(to);
+                    }
                     None => self.leave(Exit::End),
                 }
                 self.dead();
             }
-            "return_statement" | "throw_statement" => {
+            "return_statement" => {
+                self.parts(node);
+                self.step(node);
+                self.unwind(0);
+                self.cfg.returns.push(self.current);
+                self.leave(Exit::End);
+                self.dead();
+            }
+            "throw_statement" => {
                 self.parts(node);
                 self.step(node);
                 self.leave(Exit::End);
@@ -486,6 +547,9 @@ impl<'t> Builder<'t, '_> {
         let everything = thrown.map(|block| Catch { block, types: Vec::new() });
         let typed = clauses.iter().zip(&handlers).map(|(clause, block)| Catch { block: *block, types: caught(*clause) });
         self.handlers.push(typed.chain(everything.clone()).collect());
+        let open = self.handlers.len() - 1;
+        let marked = self.finals.len();
+        self.finals.extend(last.map(|last| (last, open)));
         let body = self.block();
         self.jump(body);
         self.current = body;
@@ -522,6 +586,7 @@ impl<'t> Builder<'t, '_> {
             self.jump(next);
         }
         self.handlers.pop();
+        self.finals.truncate(marked);
         if let (Some(landing), Some(thrown), Some(last)) = (landing, thrown, last) {
             let inner = self.block();
             self.cfg.blocks[landing].exit = Exit::Jump(inner);
@@ -566,7 +631,7 @@ impl<'t> Builder<'t, '_> {
             exits.push(after);
         }
         self.cfg.blocks[head].exit = Exit::Any(exits);
-        self.targets.push(Target { label: None, breaks: after, continues: None, plain: true });
+        self.targets.push(Target { label: None, breaks: after, continues: None, plain: true, finals: self.finals.len() });
         self.switches.push((node.id(), after));
         for (position, case) in cases.iter().enumerate() {
             self.current = blocks[position];

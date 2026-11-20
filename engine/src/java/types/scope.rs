@@ -451,6 +451,14 @@ impl<'a> Resolver<'a> {
         listed.map(one).collect::<Vec<_>>().join(",")
     }
 
+    /// Whether a method carries an annotation that makes it an initializer.
+    fn starts(&self, member: Node) -> bool {
+        crate::java::helpers::annotation_names(self.file, member).into_iter().any(|written| {
+            written.rsplit('.').next() == Some("Initializer")
+                || self.class_name(member, written).is_some_and(|name| super::model::STARTERS.contains(&name.as_str()))
+        })
+    }
+
     /// The text given to an annotation named `Contract`, when it is written as one string.
     fn contract(&self, member: Node) -> String {
         let modifiers = children(member).into_iter().find(|part| part.kind() == "modifiers");
@@ -694,6 +702,7 @@ impl<'a> Resolver<'a> {
             flags: super::model::flag::PUBLIC,
             names: Vec::new(),
             contract: String::new(),
+            starts: false,
         };
         let bits = |member: Node| -> u16 {
             use super::model::flag;
@@ -799,6 +808,7 @@ impl<'a> Resolver<'a> {
                         nullable_parameters: self.nullable_parameters(member),
                         names: self.parameter_names(member),
                         contract: self.contract(member),
+                        starts: self.starts(member),
                         flags: bits(member) | if member.child_by_field_name("body").is_none() && info.is_interface { super::model::flag::ABSTRACT } else { 0 },
                     });
                 }

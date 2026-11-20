@@ -2,6 +2,7 @@
 //! they are dereferenced. Follows NullAway 0.14.2 (MIT licence, Copyright (c) 2017 Uber Technologies, Inc.):
 //! facts are kept per access path (a local, a field chain, a call without arguments), joined where paths meet.
 use super::Context;
+mod fields;
 mod functional;
 mod models;
 mod sites;
@@ -318,11 +319,9 @@ impl<'a, 't> Flow<'a, 't> {
             }
             "method_invocation" => self.call(node, store),
             "assignment_expression" => {
-                if node.child_by_field_name("operator").is_none_or(|operator| operator.kind() != "=") {
-                    return NONNULL;
-                }
                 let (Some(left), Some(right)) = (node.child_by_field_name("left"), node.child_by_field_name("right")) else { return NONNULL };
-                let value = self.value(right);
+                let plain = node.child_by_field_name("operator").is_some_and(|operator| operator.kind() == "=");
+                let value = if plain { self.value(right) } else { NONNULL };
                 match left.kind() {
                     "identifier" => self.settle(store, left, value),
                     "field_access" => {
@@ -340,6 +339,17 @@ impl<'a, 't> Flow<'a, 't> {
                     _ => {}
                 }
                 value
+            }
+            // A comparison used as a value: both outcomes meet again, and what each side was is then in the store.
+            "binary_expression" if node.child_by_field_name("operator").is_some_and(|operator| matches!(operator.kind(), "==" | "!=")) => {
+                for side in ["left", "right"].into_iter().filter_map(|side| node.child_by_field_name(side)) {
+                    let whole = unwrap(side);
+                    let target = if whole.kind() == "assignment_expression" { whole.child_by_field_name("left").unwrap_or(whole) } else { whole };
+                    if let (Some(own), Some(path)) = (self.known(whole), self.path_of(target)) {
+                        write(store, path, own);
+                    }
+                }
+                NONNULL
             }
             "variable_declarator" | "resource" => {
                 let Some(name) = node.child_by_field_name("name") else { return NONNULL };
@@ -621,6 +631,19 @@ impl<'a, 't> Flow<'a, 't> {
         found
     }
 
+    /// Evaluates one step: its value, and what the store knows afterwards.
+    fn advance(&mut self, node: Node<'t>, store: &mut Store) {
+        let value = self.step(node, store);
+        self.values.insert((node.id(), self.copy), value);
+        if self.unboxes(node) {
+            self.settle(store, node, NONNULL);
+        }
+        if let Some(owner) = self.owner(node) {
+            let path = self.path(format!("(result {owner}"));
+            write(store, path, value);
+        }
+    }
+
     fn run(&mut self, start: Store) -> Vec<Option<Store>> {
         let count = self.cfg.blocks.len();
         let mut inputs: Vec<Option<Store>> = vec![None; count];
@@ -652,21 +675,7 @@ impl<'a, 't> Flow<'a, 't> {
                         reach(&mut inputs, handler, &store);
                     }
                 }
-                let value = self.step(node, &mut store);
-                self.values.insert((node.id(), self.copy), value);
-                if self.unboxes(node) {
-                    self.settle(&mut store, node, NONNULL);
-                }
-                if let Some(owner) = self.owner(node) {
-                    let path = self.path(format!("(result {owner}"));
-                    write(&mut store, path, value);
-                }
-            }
-            if matches!(self.cfg.blocks[block].exit, Exit::End) {
-                let last = catches.iter().flatten().find(|handler| handler.types.is_empty());
-                if let Some(last) = last {
-                    reach(&mut inputs, last.block, &store);
-                }
+                self.advance(node, &mut store);
             }
             match &self.cfg.blocks[block].exit {
                 Exit::End => {}
@@ -771,7 +780,7 @@ fn unit<'t>(node: Node<'t>) -> Option<(Node<'t>, Option<Node<'t>>)> {
         }
         "enum_constant" => Some((node.child_by_field_name("arguments")?, None)),
                 "static_initializer" => Some((children(node).into_iter().find(|part| part.kind() == "block")?, None)),
-        "block" if parent(node).is_some_and(|above| above.kind() == "class_body") => Some((node, None)),
+        "block" if parent(node).is_some_and(|above| matches!(above.kind(), "class_body" | "enum_body_declarations")) => Some((node, None)),
         "variable_declarator" if parent(node).is_some_and(|above| matches!(above.kind(), "field_declaration" | "constant_declaration")) => {
             Some((node.child_by_field_name("value")?, None))
         }
@@ -824,6 +833,7 @@ pub fn null_away(context: &Context, root: Node) {
     }
     let mut inner: HashMap<usize, Vec<(String, u8)>> = HashMap::new();
     let mut reported = std::collections::HashSet::new();
+    let mut summary = fields::Summary::default();
     walk(root, |node| {
         if node.kind() == "method_declaration" && !unmarked(context, node) {
             sites::overriding(context, node);
@@ -886,6 +896,10 @@ pub fn null_away(context: &Context, root: Node) {
             write(&mut start, path, if inherited & 1 != 0 { NULLABLE } else { NONNULL });
         }
         let inputs = flow.run(start);
+        let wanted = fields::wanted(context, unit_node);
+        if wanted.0 || wanted.1 {
+            flow.observe(&inputs, unit_node, wanted, &mut summary);
+        }
         for block in 0..flow.cfg.blocks.len() {
             if inputs[block].is_none() {
                 continue;
@@ -930,4 +944,5 @@ pub fn null_away(context: &Context, root: Node) {
         }
         inner.extend(flow.inner);
     });
+    fields::check(context, root, &summary);
 }

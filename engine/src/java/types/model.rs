@@ -153,7 +153,20 @@ pub struct Method {
     pub names: Vec<String>,
     /// The text of a `@Contract` annotation on the method; empty without one.
     pub contract: String,
+    /// Marked as run right after construction: an annotation named `Initializer` or one of `STARTERS`.
+    pub starts: bool,
 }
+
+/// Annotations that make a method an initializer for NullAway: its defaults and the project's own list.
+pub const STARTERS: &[&str] = &[
+    "jakarta.annotation.PostConstruct",
+    "javax.annotation.PostConstruct",
+    "org.junit.Before",
+    "org.junit.BeforeClass",
+    "org.junit.jupiter.api.BeforeAll",
+    "org.junit.jupiter.api.BeforeEach",
+    "org.springframework.beans.factory.annotation.Autowired",
+];
 
 #[derive(Clone, Debug, Default)]
 pub struct ClassInfo {
