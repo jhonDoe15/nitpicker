@@ -1,5 +1,3 @@
-import { productionPolicyConfig } from './base.mts';
+import { namedPolicyConfig } from './base.mts';
 
-export default productionPolicyConfig({
-  'nitpicker/report-module-load-effects': 'error',
-});
+export default namedPolicyConfig('eslint-module-effects');

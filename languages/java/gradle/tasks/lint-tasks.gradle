@@ -24,12 +24,20 @@ tasks.register('nitpickerForbiddenApis', JavaExec) {
     inputs.files(project.ext.nitpickerToolCommandInputs).withPropertyName('toolCommands')
     outputs.file(report).withPropertyName('report')
     def log = new ByteArrayOutputStream()
+    def errors = new ByteArrayOutputStream()
     def command = null
+    def checkExit = { int code, String text ->
+        report.get().asFile.text = text
+        if (!command.accepts(code)) {
+            throw new GradleException("forbiddenapis failed with exit code ${code}: ${text.trim()}")
+        }
+    }
+    gradle.ext.nitpickerToolHost.exec(it) { int status, String output, String failures -> checkExit(status, output + failures) }
     onlyIf { analyzedClassDirs().any { it.exists() && it.list()?.length } }
     doFirst {
         reportDir.get().asFile.mkdirs()
         standardOutput = log
-        errorOutput = log
+        errorOutput = errors
         def classDirs = analyzedClassDirs().findAll { it.exists() }
         def libraries = sourceSets.main.compileClasspath.files.findAll { it.exists() }
         command = toolCommand('forbiddenapis', [
@@ -40,11 +48,7 @@ tasks.register('nitpickerForbiddenApis', JavaExec) {
         args(command.args)
     }
     doLast {
-        def code = executionResult.get().exitValue
-        report.get().asFile.text = log.toString('UTF-8')
-        if (!command.accepts(code)) {
-            throw new GradleException("forbiddenapis failed with exit code ${code}: ${log.toString('UTF-8').trim()}")
-        }
+        checkExit(executionResult.get().exitValue, log.toString('UTF-8') + errors.toString('UTF-8'))
     }
 }
 
@@ -100,7 +104,7 @@ tasks.register('nitpickerLint') {
             ]),
         ])
         runNode(guardsRunner, [reportDir.get().asFile.absolutePath] + (lintBaseline ? [lintBaseline.toString()] : []),
-            'nitpicker could not run the javac lint')
+            'nitpicker could not run the javac lint', gradle.ext.nitpickerToolHost.environment(project))
     }
 }
 

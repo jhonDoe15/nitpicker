@@ -2,6 +2,7 @@ import type { ESLint, Linter } from 'eslint';
 import type { Layout } from '../../adapters/typed/head-policy.mts';
 import { nitpickerRules as untypedNitpickerRules } from '../eslint-plugin/index.mts';
 import { errorWrappingPolicy as untypedErrorWrappingPolicy } from '../eslint-config/policies/error-wrapping-policy.mts';
+export { carriedPolicyConfigFor } from '../eslint-config/policies/base.mts';
 import { strictPresetConfig as untypedStrictPresetConfig } from '../eslint-config/strict.mts';
 import {
   UNUSED_PARAMETERS as untypedUnusedParameters,

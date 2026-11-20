@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mjs';
 import { type Invocation, validateAnalyzer, validateInvocation } from '../validation/analyzers.mts';
-import type { TaskCheckpoint } from '../tasks.mts';
+import type { CarriedTask, TaskCheckpoint } from '../tasks.mts';
 import {
   type AnalyzerMetadata,
   recoverAnalyzerVersion,
@@ -27,6 +27,7 @@ export type TaskContext = {
   readonly mutationScope: unknown;
   readonly logRoot: unknown;
   readonly countFiles?: FileCounter;
+  readonly carried?: readonly CarriedTask[];
 };
 
 export type PreparedTask = {
@@ -43,6 +44,7 @@ export type PreparedTask = {
   readonly acceptedExitCodes: readonly number[];
   readonly invocation: Invocation;
   readonly checkpoint?: TaskCheckpoint | undefined;
+  readonly carried?: readonly CarriedTask[] | undefined;
 };
 
 const DEFAULT_ANALYZER_TIMEOUT_MS = 5 * 60 * 1000;
@@ -117,6 +119,7 @@ function createTask(
 ): PreparedTask {
   const { projectRoot, policyRoot, toolRoot, snapshot, liveProjectRoot } = context;
   const countFiles = context.countFiles ?? projectFileCount;
+  const carried = context.carried ?? [];
   const analyzer = withResolvedMetadata(source, metadata);
   validateAnalyzer(analyzer);
   const invocation = analyzer.createInvocation.call(source, {
@@ -129,6 +132,7 @@ function createTask(
     baselineMovesFile: context.baselineMovesFile,
     liveProjectRoot,
     ...(context.mutationScope === undefined ? {} : { mutationScope: context.mutationScope }),
+    ...(carried.length === 0 ? {} : { carried: carried.map(({ name }) => name) }),
     ...logLocation(context.logRoot, liveProjectRoot),
   });
   validateInvocation(analyzer.name, invocation);
@@ -142,8 +146,9 @@ function createTask(
     timeoutMs: taskTimeoutMs(analyzer, liveProjectRoot, countFiles),
     memoryMegabytes: memoryEstimateMegabytes(analyzer, liveProjectRoot, countFiles),
     configuredTimeout: analyzer['configuredTimeout'] === true,
-    reportedTools: analyzer.reportedTools ?? [],
+    reportedTools: [...(analyzer.reportedTools ?? []), ...carried.map(({ name }) => name)],
     acceptedExitCodes: [0, ...(analyzer.findingExitCodes ?? [])],
     invocation,
+    ...(carried.length === 0 ? {} : { carried }),
   };
 }

@@ -9,6 +9,11 @@ export type Positions = {
   readonly endPosition: number | undefined;
 };
 
+function positionOf(sourceFile: TypeScript.SourceFile, line: number, column: number): number {
+  const lineStart = sourceFile.getPositionOfLineAndCharacter(line - 1, 0);
+  return Math.min(lineStart + column - 1, sourceFile.getLineEndOfPosition(lineStart));
+}
+
 export function reportedPositions(
   message: EslintMessage,
   context: string,
@@ -16,13 +21,14 @@ export function reportedPositions(
 ): Positions {
   const line = positiveInteger(message.line, `${context}.line`);
   const column = positiveInteger(message.column, `${context}.column`);
-  const sourcePosition = sourceFile.getPositionOfLineAndCharacter(line - 1, column - 1);
+  const sourcePosition = positionOf(sourceFile, line, column);
   const endPosition =
     message.endLine === undefined || message.endColumn === undefined
       ? undefined
-      : sourceFile.getPositionOfLineAndCharacter(
-          positiveInteger(message.endLine, `${context}.endLine`) - 1,
-          positiveInteger(message.endColumn, `${context}.endColumn`) - 1,
+      : positionOf(
+          sourceFile,
+          positiveInteger(message.endLine, `${context}.endLine`),
+          positiveInteger(message.endColumn, `${context}.endColumn`),
         );
   return { line, column, sourcePosition, endPosition };
 }
