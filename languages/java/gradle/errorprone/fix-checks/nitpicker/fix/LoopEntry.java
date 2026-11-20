@@ -31,7 +31,35 @@ final class LoopEntry {
       Tree.Kind.LESS_THAN, "<", Tree.Kind.LESS_THAN_EQUAL, "<=", Tree.Kind.GREATER_THAN, ">",
       Tree.Kind.GREATER_THAN_EQUAL, ">=", Tree.Kind.NOT_EQUAL_TO, "!=");
 
+  private static final Map<Tree.Kind, String> OPPOSITES = Map.of(
+      Tree.Kind.LESS_THAN, ">=", Tree.Kind.LESS_THAN_EQUAL, ">", Tree.Kind.GREATER_THAN, "<=",
+      Tree.Kind.GREATER_THAN_EQUAL, "<", Tree.Kind.NOT_EQUAL_TO, "==", Tree.Kind.EQUAL_TO, "!=");
+
   private LoopEntry() {}
+
+  /** Source of the condition that holds exactly when the loop body does not run, or null. */
+  static String skipped(StatementTree loop, VisitorState state) {
+    if (condition(loop, state) == null) {
+      return null;
+    }
+    if (loop instanceof EnhancedForLoopTree each) {
+      ExpressionTree plain = Support.unparenthesized(each.getExpression());
+      String source = Support.source(plain, state);
+      return ASTHelpers.getType(plain).getKind() == TypeKind.ARRAY ? source + ".length == 0" : source + ".isEmpty()";
+    }
+    if (loop instanceof ForLoopTree counted) {
+      BinaryTree test = (BinaryTree) Support.unparenthesized(counted.getCondition());
+      VariableTree variable = (VariableTree) counted.getInitializer().get(0);
+      return Support.source(Support.unparenthesized(variable.getInitializer()), state) + " "
+          + OPPOSITES.get(test.getKind()) + " " + Support.source(test.getRightOperand(), state);
+    }
+    ExpressionTree test = Support.unparenthesized(((WhileLoopTree) loop).getCondition());
+    if (test instanceof BinaryTree compared && OPPOSITES.containsKey(compared.getKind())) {
+      return Support.source(compared.getLeftOperand(), state) + " " + OPPOSITES.get(compared.getKind()) + " "
+          + Support.source(compared.getRightOperand(), state);
+    }
+    return "!(" + Support.source(test, state) + ")";
+  }
 
   /** Source of a side-effect-free condition that holds exactly when the loop body runs, or null. */
   static String condition(StatementTree loop, VisitorState state) {

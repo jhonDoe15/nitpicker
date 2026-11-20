@@ -18,6 +18,8 @@ import com.sun.source.tree.ForLoopTree;
 import com.sun.source.tree.LabeledStatementTree;
 import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.MethodInvocationTree;
+import com.sun.source.tree.MethodTree;
+import com.sun.source.tree.PrimitiveTypeTree;
 import com.sun.source.tree.StatementTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.TryTree;
@@ -25,6 +27,7 @@ import com.sun.source.tree.VariableTree;
 import com.sun.source.tree.WhileLoopTree;
 import com.sun.tools.javac.code.Symbol;
 import com.sun.tools.javac.code.Type;
+import javax.lang.model.type.TypeKind;
 
 @BugPattern(
     name = "IIL_PREPARE_STATEMENT_IN_LOOP",
@@ -71,11 +74,24 @@ public final class PrepareStatementInLoop extends BugChecker
     String indent = Support.indentAt(Support.start(loop), state);
     String header = text.subSequence(Support.start(loop), Support.start(body)).toString();
     String inner = text.subSequence(Support.start(block) + 1, Support.end(block, state) - 1).toString().stripTrailing();
-    String replacement =
-        "if (" + entered + ") {\n" + indent + "  try (" + Support.source(resource, state) + ") {\n" + indent + "    "
-            + header + "{" + inner.replaceAll("\n(?=[^\n])", "\n  ") + "\n" + indent + "    }\n" + indent + "  }\n"
-            + indent + "}";
+    String skipped = endsVoidMethod(state) ? LoopEntry.skipped(loop, state) : null;
+    String replacement = skipped == null
+        ? "if (" + entered + ") {\n" + indent + "  try (" + Support.source(resource, state) + ") {\n" + indent
+            + "    " + header + "{" + inner.replaceAll("\n(?=[^\n])", "\n  ") + "\n" + indent + "    }\n" + indent
+            + "  }\n" + indent + "}"
+        : "if (" + skipped + ") {\n" + indent + "  return;\n" + indent + "}\n" + indent + "try ("
+            + Support.source(resource, state) + ") {\n" + indent + "  " + header + "{" + inner + "\n" + indent
+            + "  }\n" + indent + "}";
     return Support.describe(this, loop, SuggestedFix.replace(loop, replacement), state);
+  }
+
+  private static boolean endsVoidMethod(VisitorState state) {
+    Tree loop = state.getPath().getLeaf();
+    return state.getPath().getParentPath().getLeaf() instanceof BlockTree block
+        && block.getStatements().get(block.getStatements().size() - 1) == loop
+        && state.getPath().getParentPath().getParentPath().getLeaf() instanceof MethodTree method
+        && method.getReturnType() instanceof PrimitiveTypeTree returned
+        && returned.getPrimitiveTypeKind() == TypeKind.VOID;
   }
 
   private static TryTree onlyTry(StatementTree body) {
