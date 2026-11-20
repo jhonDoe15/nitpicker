@@ -165,6 +165,13 @@ impl Server {
         self.read("typeToString", json!({ "snapshot": self.snapshot, "project": project.id, "type": kind }))
     }
 
+    /// Any other question, decoded: `parameters` without the snapshot and the project.
+    pub fn answer<T: for<'de> Deserialize<'de>>(&mut self, project: &Project, method: &str, mut parameters: Value) -> Result<T, String> {
+        parameters["snapshot"] = json!(self.snapshot);
+        parameters["project"] = json!(project.id);
+        self.read(method, parameters)
+    }
+
     /// Any other method of the server, for questions that have no wrapper yet.
     pub fn raw(&mut self, project: &Project, method: &str, mut parameters: Value) -> Result<Value, String> {
         parameters["snapshot"] = json!(self.snapshot);

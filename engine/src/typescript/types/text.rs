@@ -46,6 +46,24 @@ impl SourceText {
         &self.text[self.byte(start)..self.byte(end.max(start))]
     }
 
+    /// The 1-based line of a position; lines end at `\n`, `\r\n`, `\r` and the two Unicode line separators.
+    pub fn line_of(&self, unit: u32) -> u32 {
+        let before = &self.text[..self.byte(unit)];
+        let mut line = 1;
+        let mut characters = before.chars().peekable();
+        while let Some(character) = characters.next() {
+            if character == '\r' {
+                if characters.peek() == Some(&'\n') {
+                    characters.next();
+                }
+                line += 1;
+            } else if matches!(character, '\n' | '\u{2028}' | '\u{2029}') {
+                line += 1;
+            }
+        }
+        line
+    }
+
     fn unit_at(&self, unit: u32) -> Option<char> {
         self.text[self.byte(unit)..].chars().next()
     }

@@ -223,6 +223,11 @@ fn typescript_typed(args: &[String]) {
             "--checks" => { index += 1; checks = args[index].split(',').filter(|name| !name.is_empty()).map(String::from).collect(); }
             "--out" => { index += 1; out = Some(args[index].clone()); }
             "--all-reads" => options.all_reads = true,
+            "--input" => {
+                index += 1;
+                let (check, file) = args[index].split_once('=').expect("--input <check>=<file>");
+                options.inputs.insert(check.to_string(), file.to_string());
+            }
             other => panic!("unknown argument {other}"),
         }
         index += 1;

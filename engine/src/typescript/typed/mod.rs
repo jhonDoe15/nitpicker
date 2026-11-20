@@ -4,6 +4,7 @@ pub mod plan;
 pub mod public_contracts;
 pub mod replay;
 pub mod sources;
+pub mod unused_api;
 
 use crate::typescript::types::session::Session;
 use serde_json::{Value, json};
@@ -11,12 +12,14 @@ use sources::Sources;
 use std::path::Path;
 use std::time::Instant;
 
-pub const CHECKS: &[&str] = &["public-contracts"];
+pub const CHECKS: &[&str] = &["public-contracts", "unused-api"];
 
 #[derive(Default)]
 pub struct Options {
     /// Ask about every member read, not only those named like something a check looks for.
     pub all_reads: bool,
+    /// What the caller knows that a check needs, as a JSON file per check name.
+    pub inputs: std::collections::HashMap<String, String>,
 }
 
 fn run_check(name: &str, session: &mut Session, sources: &Sources, options: &Options) -> Result<Value, String> {
@@ -24,6 +27,13 @@ fn run_check(name: &str, session: &mut Session, sources: &Sources, options: &Opt
         "public-contracts" => {
             let (findings, counts) = public_contracts::check(session, sources, options.all_reads)?;
             Ok(json!({ "findings": findings, "counts": counts }))
+        }
+        "unused-api" => {
+            let path = options.inputs.get(name).ok_or("the unused-api check needs --input unused-api=<file>")?;
+            let text = std::fs::read_to_string(path).map_err(|error| format!("cannot read {path}: {error}"))?;
+            let input: unused_api::Input = serde_json::from_str(&text).map_err(|error| format!("cannot read {path}: {error}"))?;
+            let registry = unused_api::check(session, &input)?;
+            serde_json::to_value(&registry).map_err(|error| error.to_string())
         }
         other => Err(format!("unknown check {other}")),
     }
