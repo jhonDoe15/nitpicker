@@ -19,5 +19,8 @@ exception route in the message: write that form, don't work around the rule.
   `onError` in the project covers every mutation.
 - A `memo` component gets props that stay the same between renders: constants at module level, `useMemo` values and
   `useCallback` functions, not `style={{ ... }}` or `onPick={() => ...}` (`nitpicker/react-no-unstable-memo-props`).
+- A `useSelector` or Zustand selector returns a stored value or a primitive; for several values use one call each,
+  `createSelector`, `shallowEqual` or `useShallow(...)`, never `(s) => ({ a: s.a, b: s.b })` or `s.items.filter(...)`
+  alone (`nitpicker/react-no-unstable-selector-result`).
 - Component tests query through `screen` and assert what the user sees (text, roles, focus), never
   component state, instances or hook internals.

@@ -160,6 +160,13 @@ those. `key`, `ref`, `children`, elements with JSX or expression children, eleme
 components, components with no parameters and no hook call, components from packages and projects with the React
 Compiler are left alone.
 
+React store selectors: `nitpicker/react-no-unstable-selector-result` (production source in a React project, in
+`eslint-lint`) reports an inline selector that returns an object or array literal, `Object.keys`, `values`, `entries`
+or `fromEntries`, or the result of `filter`, `map`, `flatMap`, `toSorted` or `toReversed`, passed without an equality
+argument to react-redux `useSelector` (also typed hooks made from it), to a hook made with Zustand `create`, or to
+Zustand `useStore(store, selector)`. Hooks are resolved to the project file that creates them; `createWithEqualityFn`
+stores, wrapped hooks and hooks from packages are left alone.
+
 Rows changed in memory: `in-memory-update` in the Python preset reports rows loaded from a Django queryset or a
 SQLAlchemy query only to set the same values on each and write them back (`bulk_update`, `commit`), where one `update`
 statement does it; models with a `save()` override, signals, `before_update` listeners, `auto_now` fields or a version
