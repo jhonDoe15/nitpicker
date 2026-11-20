@@ -13,6 +13,7 @@
       "languages/go/adapters/near-duplicates/go-trees-process.mts",
       "languages/java/maven/parallel/tool-supervisor.mts",
       "languages/java/builds/host/client/host-connect.mts",
+      "languages/java/builds/host/gradle/host-job.mts",
       "scripts/typescript/convert.mts",
       "scripts/typescript/ready.mts",
       "scripts/test-shards/repository-timeouts.mts",

@@ -23,13 +23,14 @@ export type HostRequest = {
   readonly pinned: unknown;
   readonly warn: { readonly write: (text: string) => unknown };
   readonly program: HostProgram;
+  readonly java?: string | undefined;
 };
 
 const HOSTS_FOLDER = 'hosts';
 const MINIMUM_MODULES = 2;
 const PRIVATE_MODE = 0o700;
 
-function stopAll(directory: string): void {
+export function stopAllHosts(directory: string): void {
   for (const name of readdirSync(directory)) {
     if (name.endsWith('.ready')) {
       stopHost(directory, name.slice(0, -'.ready'.length));
@@ -37,7 +38,13 @@ function stopAll(directory: string): void {
   }
 }
 
-function compiledHost({ work, tools, pinned, program }: HostRequest): {
+export function compiledHost({
+  work,
+  tools,
+  pinned,
+  program,
+  java,
+}: Omit<HostRequest, 'modules' | 'warn'>): {
   classpath: string;
 } {
   const libraries = textsOf(fieldOf(tools, 'effects')).filter((entry) => existsSync(entry));
@@ -50,6 +57,7 @@ function compiledHost({ work, tools, pinned, program }: HostRequest): {
     release: HOST_RELEASE,
     libraries,
     cwd: work,
+    ...(java === undefined ? {} : { java }),
   });
   return { classpath: [classes, ...libraries].join(path.delimiter) };
 }
@@ -62,7 +70,7 @@ function privateDirectoryAt(directory: string): void {
   }
 }
 
-function warnOff(reason: unknown, warn: HostRequest['warn']): void {
+export function warnOff(reason: unknown, warn: HostRequest['warn']): void {
   const text = reason instanceof Error ? reason.message : String(reason);
   const firstLine = text.split('\n')[0] ?? '';
   traceHosting('off', firstLine);
@@ -82,23 +90,26 @@ function launch(request: HostRequest, maxHosts: number): ToolHosts {
   const restore = exportHostsDirectory(directory);
   return {
     stop() {
-      stopAll(directory);
+      stopAllHosts(directory);
       restore();
     },
   };
 }
 
-export function startToolHosts(request: HostRequest): ToolHosts | undefined {
-  if (
-    process.platform === 'win32' ||
-    hostEnvironment().hostingOff ||
-    request.modules < MINIMUM_MODULES
-  ) {
+export function affordableHosts(warn: HostRequest['warn']): number | undefined {
+  if (process.platform === 'win32' || hostEnvironment().hostingOff) {
     return undefined;
   }
   const maxHosts = hostCap(machineMemory());
   if (maxHosts === undefined) {
-    warnOff('this machine has too little memory to keep the tool JVMs idle', request.warn);
+    warnOff('this machine has too little memory to keep the tool JVMs idle', warn);
+  }
+  return maxHosts;
+}
+
+export function startToolHosts(request: HostRequest): ToolHosts | undefined {
+  const maxHosts = request.modules < MINIMUM_MODULES ? undefined : affordableHosts(request.warn);
+  if (maxHosts === undefined) {
     return undefined;
   }
   const started = attempt(() => launch(request, maxHosts));

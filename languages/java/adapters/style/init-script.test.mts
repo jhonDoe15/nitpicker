@@ -31,16 +31,18 @@ function linesContaining(text: string): string[] {
   return LINES.filter((line) => line.includes(text)).map((line) => line.trim());
 }
 
+const RUN_NODE =
+  'def runNode = { File script, List<String> arguments, String failure, Map environment = [:] ->';
+
 describe('the Gradle init script node runner', () => {
   it('reports a node that cannot start as clearly as a node that exits non-zero', () => {
-    expect(
-      blockStartingWith('def runNode = { File script, List<String> arguments, String failure ->'),
-    ).toEqual([
-      'def runNode = { File script, List<String> arguments, String failure ->',
+    expect(blockStartingWith(RUN_NODE)).toEqual([
+      RUN_NODE,
       'def process',
       'try {',
-      'process = new ProcessBuilder([nodeCommand, script.absolutePath] + arguments)',
-      '.redirectErrorStream(true).start()',
+      'def builder = new ProcessBuilder([nodeCommand, script.absolutePath] + arguments).redirectErrorStream(true)',
+      'builder.environment().putAll(environment)',
+      'process = builder.start()',
       '} catch (IOException error) {',
       `throw new GradleException("\${failure}: could not run \${nodeCommand}: \${error.message}")`,
       '}',
@@ -101,19 +103,26 @@ describe('the Gradle init script and the formatter style', () => {
       '})',
       'def formatErrors = new ByteArrayOutputStream()',
       'errorOutput = formatErrors',
+      'def checkFormatExit = { int exit, String errors ->',
+      'if (exit != 0) {',
+      'def detail = errors.readLines()',
+      ".findAll { it.trim() && !(it ==~ /^(?:NOTE: )?Picked up .*/) }.take(20).join('\\n')",
+      `throw new GradleException("\${mainClass.get().contains('palantir') ? 'palantir-java-format' : 'google-java-format'} " +`,
+      `"failed with exit code \${exit}: \${detail}")`,
+      '}',
+      '}',
+      'toolHost.exec(it) { int status, String output, String errors ->',
+      'standardOutput.close()',
+      "reportDir.get().file('format.txt').asFile.setText(output, 'UTF-8')",
+      'checkFormatExit(status, errors)',
+      '}',
       'doFirst {',
       'reportDir.get().asFile.mkdirs()',
       "standardOutput = new FileOutputStream(reportDir.get().file('format.txt').asFile)",
       "args(['--dry-run'] + ([aosp: ['--aosp'], palantir: ['--palantir']][javaStyle] ?: []) + javaFormatterFlags + javaFiles()*.absolutePath)",
       '}',
       'doLast {',
-      'def exit = executionResult.get().exitValue',
-      'if (exit != 0) {',
-      "def detail = formatErrors.toString('UTF-8').readLines()",
-      ".findAll { it.trim() && !(it ==~ /^(?:NOTE: )?Picked up .*/) }.take(20).join('\\n')",
-      `throw new GradleException("\${mainClass.get().contains('palantir') ? 'palantir-java-format' : 'google-java-format'} " +`,
-      `"failed with exit code \${exit}: \${detail}")`,
-      '}',
+      "checkFormatExit(executionResult.get().exitValue, formatErrors.toString('UTF-8'))",
       '}',
       '}',
     ]);

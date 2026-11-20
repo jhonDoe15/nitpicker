@@ -128,13 +128,18 @@ function hostedProvider(
   });
 }
 
+export function hostedToolRun(
+  command: string,
+  args: readonly string[],
+  options: ToolOptions,
+): SpawnSyncReturns<string> | undefined {
+  return hostsDirectory() === undefined ? undefined : hostedProvider(command, args, options);
+}
+
 export function hostedToolSpawn(
   command: string,
   args: readonly string[],
   options: ToolOptions,
 ): SpawnSyncReturns<string> {
-  return (
-    (hostsDirectory() === undefined ? undefined : hostedProvider(command, args, options)) ??
-    spawnSync(command, [...args], options)
-  );
+  return hostedToolRun(command, args, options) ?? spawnSync(command, [...args], options);
 }
