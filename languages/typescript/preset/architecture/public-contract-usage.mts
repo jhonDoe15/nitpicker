@@ -1,6 +1,7 @@
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../adapters/typed/typescript-program.mts';
 import { depthFirst, syntaxChildren } from './typed/syntax-views.mts';
+import { accessedSymbol, type SymbolLookup } from './contract-usage/accessed-symbol.mts';
 import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -64,27 +65,6 @@ function isExported(declaration: TypeScript.InterfaceDeclaration): boolean {
     declaration.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword) ??
     false
   );
-}
-
-function accessedSymbol(
-  checker: TypeScript.TypeChecker,
-  node: TypeScript.Node,
-): TypeScript.Symbol | undefined {
-  let symbol: TypeScript.Symbol | undefined;
-  if (ts.isPropertyAccessExpression(node)) symbol = checker.getSymbolAtLocation(node.name);
-  if (ts.isElementAccessExpression(node))
-    symbol = checker.getSymbolAtLocation(node.argumentExpression);
-  if (
-    ts.isBindingElement(node) &&
-    ts.isObjectBindingPattern(node.parent) &&
-    ts.isVariableDeclaration(node.parent.parent) &&
-    node.parent.parent.initializer
-  ) {
-    const name = node.propertyName ?? node.name;
-    if (ts.isIdentifier(name))
-      symbol = checker.getTypeAtLocation(node.parent.parent.initializer).getProperty(name.text);
-  }
-  return symbol;
 }
 
 function interfaceDeclaration(
@@ -199,9 +179,15 @@ function classChildren({ node, containingClass }: ClassCursor): ClassCursor[] {
   return syntaxChildren(node).map((child) => ({ node: child, containingClass: currentClass }));
 }
 
+function methodNames(
+  contracts: ReadonlyMap<TypeScript.InterfaceDeclaration, Contract>,
+): Set<string> {
+  return new Set([...contracts.values()].flatMap((contract) => [...contract.keys()]));
+}
+
 function recordUses(
   sources: readonly TypeScript.SourceFile[],
-  checker: TypeScript.TypeChecker,
+  lookup: SymbolLookup,
   index: ReadonlyMap<TypeScript.Declaration, ReadonlySet<Method>>,
 ): void {
   for (const source of sources) {
@@ -210,7 +196,7 @@ function recordUses(
       classChildren,
     )) {
       const currentClass = ts.isClassDeclaration(node) ? node : containingClass;
-      recordSymbolUse(accessedSymbol(checker, node), currentClass, index);
+      recordSymbolUse(accessedSymbol(node, lookup), currentClass, index);
     }
   }
 }
@@ -243,7 +229,8 @@ export function findUnusedPublicContractMethods(
   if (contracts.size === 0) {
     return [];
   }
-  recordUses(sources, checker, indexMethodDeclarations(contracts));
+  const lookup = { checker, names: methodNames(contracts) };
+  recordUses(sources, lookup, indexMethodDeclarations(contracts));
   return unusedMethods(contracts, sourceRoot).sort((left, right) =>
     JSON.stringify(left).localeCompare(JSON.stringify(right)),
   );
