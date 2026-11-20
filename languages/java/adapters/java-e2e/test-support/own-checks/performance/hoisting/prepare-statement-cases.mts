@@ -75,6 +75,15 @@ public class SqlFixed {
     }
     System.out.println("done");
   }
+
+  void scaled(Connection connection, double limit) throws SQLException {
+    for (int index = 0; index < limit; index++) {
+      try (PreparedStatement statement = connection.prepareStatement("delete from item where id = ?")) {
+        statement.setLong(1, index);
+        statement.executeUpdate();
+      }
+    }
+  }
 }
 `,
     after: `package demo;
@@ -159,9 +168,20 @@ public class SqlFixed {
     }
     System.out.println("done");
   }
+
+  void scaled(Connection connection, double limit) throws SQLException {
+    if (0 < limit) {
+      try (PreparedStatement statement = connection.prepareStatement("delete from item where id = ?")) {
+        for (int index = 0; index < limit; index++) {
+          statement.setLong(1, index);
+          statement.executeUpdate();
+        }
+      }
+    }
+  }
 }
 `,
-    lines: [14, 25, 39, 49, 62],
+    lines: [14, 25, 39, 49, 62, 72],
   },
   {
     check: 'IIL_PREPARE_STATEMENT_IN_LOOP',

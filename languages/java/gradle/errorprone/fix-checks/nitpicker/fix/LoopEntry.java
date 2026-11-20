@@ -35,9 +35,12 @@ final class LoopEntry {
       Tree.Kind.LESS_THAN, ">=", Tree.Kind.LESS_THAN_EQUAL, ">", Tree.Kind.GREATER_THAN, "<=",
       Tree.Kind.GREATER_THAN_EQUAL, "<", Tree.Kind.NOT_EQUAL_TO, "==", Tree.Kind.EQUAL_TO, "!=");
 
+  private static final Set<TypeKind> WHOLE =
+      Set.of(TypeKind.INT, TypeKind.LONG, TypeKind.SHORT, TypeKind.BYTE, TypeKind.CHAR);
+
   private LoopEntry() {}
 
-  /** Source of the condition that holds exactly when the loop body does not run, or null. */
+  /** Source of the condition that holds exactly when the loop body does not run, or null when only a negation tells. */
   static String skipped(StatementTree loop, VisitorState state) {
     if (condition(loop, state) == null) {
       return null;
@@ -50,15 +53,28 @@ final class LoopEntry {
     if (loop instanceof ForLoopTree counted) {
       BinaryTree test = (BinaryTree) Support.unparenthesized(counted.getCondition());
       VariableTree variable = (VariableTree) counted.getInitializer().get(0);
-      return Support.source(Support.unparenthesized(variable.getInitializer()), state) + " "
-          + OPPOSITES.get(test.getKind()) + " " + Support.source(test.getRightOperand(), state);
+      return opposite(test, Support.unparenthesized(variable.getInitializer()), state);
     }
     ExpressionTree test = Support.unparenthesized(((WhileLoopTree) loop).getCondition());
-    if (test instanceof BinaryTree compared && OPPOSITES.containsKey(compared.getKind())) {
-      return Support.source(compared.getLeftOperand(), state) + " " + OPPOSITES.get(compared.getKind()) + " "
-          + Support.source(compared.getRightOperand(), state);
+    if (test instanceof UnaryTree negated && negated.getKind() == Tree.Kind.LOGICAL_COMPLEMENT) {
+      return Support.source(Support.unparenthesized(negated.getExpression()), state);
     }
-    return "!(" + Support.source(test, state) + ")";
+    return test instanceof BinaryTree compared && OPPOSITES.containsKey(compared.getKind())
+        ? opposite(compared, compared.getLeftOperand(), state)
+        : "!(" + Support.source(test, state) + ")";
+  }
+
+  private static String opposite(BinaryTree test, ExpressionTree left, VisitorState state) {
+    boolean exact = WHOLE.contains(kindOf(left)) && WHOLE.contains(kindOf(test.getRightOperand()));
+    return exact
+        ? Support.source(left, state) + " " + OPPOSITES.get(test.getKind()) + " "
+            + Support.source(test.getRightOperand(), state)
+        : null;
+  }
+
+  private static TypeKind kindOf(ExpressionTree tree) {
+    Type type = ASTHelpers.getType(tree);
+    return type == null ? TypeKind.NONE : type.getKind();
   }
 
   /** Source of a side-effect-free condition that holds exactly when the loop body runs, or null. */
