@@ -2,6 +2,7 @@
 //! they are dereferenced. Follows NullAway 0.14.2 (MIT licence, Copyright (c) 2017 Uber Technologies, Inc.):
 //! facts are kept per access path (a local, a field chain, a call without arguments), joined where paths meet.
 use super::Context;
+mod functional;
 mod models;
 mod sites;
 use crate::engine::source::{children, named_children, parent, walk};
@@ -826,6 +827,9 @@ pub fn null_away(context: &Context, root: Node) {
     walk(root, |node| {
         if node.kind() == "method_declaration" && !unmarked(context, node) {
             sites::overriding(context, node);
+        }
+        if matches!(node.kind(), "lambda_expression" | "method_reference") && !unmarked(context, node) {
+            functional::standing_in(context, node);
         }
         let Some((body, parameters)) = unit(node) else { return };
         let unit_node = node;

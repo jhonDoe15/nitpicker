@@ -176,6 +176,8 @@ struct Attributes<'a> {
     throws: Vec<u16>,
     annotated_parameters: usize,
     nullable_parameters: u64,
+    names: Vec<u16>,
+    contract: Option<u16>,
 }
 
 fn skip_element(reader: &mut Reader) -> Option<()> {
@@ -194,12 +196,24 @@ fn skip_element(reader: &mut Reader) -> Option<()> {
 
 /// Skips one annotation and gives the index of its type descriptor.
 fn skip_annotation(reader: &mut Reader) -> Option<u16> {
+    read_annotation(reader).map(|(kind, _)| kind)
+}
+
+/// Reads one annotation: the index of its type descriptor and, when its first element is a string, that string's index.
+fn read_annotation(reader: &mut Reader) -> Option<(u16, Option<u16>)> {
     let kind = reader.u2()?;
-    for _ in 0..reader.u2()? {
+    let mut text = None;
+    for position in 0..reader.u2()? {
         reader.skip(2)?;
-        skip_element(reader)?;
+        let before = reader.at;
+        if reader.u1()? == b's' && position == 0 {
+            text = Some(reader.u2()?);
+        } else {
+            reader.at = before;
+            skip_element(reader)?;
+        }
     }
-    Some(kind)
+    Some((kind, text))
 }
 
 fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Option<Attributes<'a>> {
@@ -214,7 +228,11 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
             found.constant = Some(reader.u2()?);
         } else if name == b"RuntimeVisibleAnnotations" || name == b"RuntimeInvisibleAnnotations" {
             for _ in 0..reader.u2()? {
-                let kind = utf8(skip_annotation(reader)?);
+                let (kind, text) = read_annotation(reader)?;
+                let kind = utf8(kind);
+                if kind.is_some_and(|kind| kind.ends_with(b"/Contract;")) {
+                    found.contract = text;
+                }
                 found.deprecated |= kind == Some(b"Ljava/lang/Deprecated;");
                 found.nullable |= kind.is_some_and(|kind| kind.ends_with(b"/Nullable;") || kind.ends_with(b"/CheckForNull;") || kind.ends_with(b"/ParametricNullness;"));
             }
@@ -230,6 +248,11 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                         found.nullable_parameters |= 1 << position;
                     }
                 }
+            }
+        } else if name == b"MethodParameters" {
+            for _ in 0..reader.u1()? {
+                found.names.push(reader.u2()?);
+                reader.skip(2)?;
             }
         } else if name == b"PermittedSubclasses" {
             found.permitted = Some((0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?);
@@ -459,6 +482,8 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                     if found.annotated_parameters == 0 { 0 } else { found.nullable_parameters << shift }
                 },
                 flags: member_flags(flags, &found),
+                contract: found.contract.and_then(&utf8).map(|text| String::from_utf8_lossy(text).into_owned()).unwrap_or_default(),
+                names: found.names.iter().filter_map(|name| utf8(*name)).map(|name| String::from_utf8_lossy(name).into_owned()).collect(),
             });
         }
     }

@@ -141,6 +141,10 @@ pub struct Method {
     /// Bit per parameter position that is marked nullable.
     pub nullable_parameters: u64,
     pub flags: u16,
+    /// Parameter names, when the source or the class file gives them; empty otherwise.
+    pub names: Vec<String>,
+    /// The text of a `@Contract` annotation on the method; empty without one.
+    pub contract: String,
 }
 
 #[derive(Clone, Debug, Default)]
