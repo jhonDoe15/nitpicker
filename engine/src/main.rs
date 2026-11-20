@@ -160,8 +160,10 @@ fn typescript_structure(args: &[String]) {
     );
 }
 
-/// `typescript-lint --files <list> [--rules <a,b>] [--out <file>] [--testing-library-utils-module <suffix>]`: the list is
-/// read as for `typescript-structure`; the module suffix is `test-utils` unless given, and empty for none.
+/// `typescript-lint --files <list> [--rules <a,b>] [--out <file>] [--testing-library-utils-module <suffix>]`: each line of
+/// the list is the path to read, the path to report and `key=value` settings for that file, tabs between them. The
+/// module suffix is `test-utils` unless given, and empty for none; `testing-library/utils-module=<suffix>` sets it for
+/// one file and `testing-library/scope=off` leaves the file to no testing-library rule.
 fn typescript_lint(args: &[String]) {
     let (mut list, mut out, mut only) = (None, None, None::<Vec<String>>);
     let mut index = 0;
@@ -180,13 +182,15 @@ fn typescript_lint(args: &[String]) {
         index += 1;
     }
     let started = Instant::now();
-    let files: Vec<(String, String)> = std::fs::read_to_string(list.expect("--files"))
+    let files: Vec<typescript::rules::Listed> = std::fs::read_to_string(list.expect("--files"))
         .expect("list")
         .lines()
         .filter(|line| !line.is_empty())
-        .map(|line| match line.split_once('\t') {
-            Some((path, display)) => (path.to_string(), display.to_string()),
-            None => (line.to_string(), line.to_string()),
+        .map(|line| {
+            let mut columns = line.split('\t').map(String::from);
+            let path = columns.next().unwrap_or_default();
+            let display = columns.next().unwrap_or_else(|| path.clone());
+            typescript::rules::Listed { path, display, settings: columns.collect() }
         })
         .collect();
     let rules = typescript::rules::selected(only.as_deref());
