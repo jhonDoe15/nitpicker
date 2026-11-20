@@ -25,6 +25,8 @@ pub type Project = dyn std::any::Any + Send + Sync;
 #[derive(Default)]
 pub struct Options {
     pub classpath: Vec<std::path::PathBuf>,
+    /// The Java release the sources are compiled for (`--release`), when it is older than the JDK: the library of that release is used.
+    pub release: Option<u32>,
 }
 
 /// Facts a language extracts from one file for whole-project passes (duplicates, metrics).
