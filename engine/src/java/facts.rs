@@ -5,12 +5,25 @@ use std::hash::{Hash, Hasher};
 use tree_sitter::Node;
 
 const DECISIONS: &[&str] = &[
-    "if_statement", "for_statement", "enhanced_for_statement", "while_statement", "do_statement",
-    "catch_clause", "ternary_expression", "switch_label", "switch_rule",
+    "if_statement",
+    "for_statement",
+    "enhanced_for_statement",
+    "while_statement",
+    "do_statement",
+    "catch_clause",
+    "ternary_expression",
+    "switch_label",
+    "switch_rule",
 ];
 const NESTING: &[&str] = &[
-    "if_statement", "for_statement", "enhanced_for_statement", "while_statement", "do_statement",
-    "try_statement", "switch_expression", "lambda_expression",
+    "if_statement",
+    "for_statement",
+    "enhanced_for_statement",
+    "while_statement",
+    "do_statement",
+    "try_statement",
+    "switch_expression",
+    "lambda_expression",
 ];
 
 fn token_kind(file: &SourceFile, node: Node) -> u32 {
@@ -35,7 +48,9 @@ fn metric(file: &SourceFile, method: Node) -> FunctionMetric {
             cyclomatic += 1;
         }
         if kind == "binary_expression" {
-            let logical = node.child_by_field_name("operator").is_some_and(|op| matches!(op.kind(), "&&" | "||"));
+            let logical = node
+                .child_by_field_name("operator")
+                .is_some_and(|op| matches!(op.kind(), "&&" | "||"));
             cyclomatic += u32::from(logical);
         }
         let nests = NESTING.contains(&kind);
@@ -67,11 +82,16 @@ fn metric(file: &SourceFile, method: Node) -> FunctionMetric {
     }
     FunctionMetric {
         file: file.path.clone(),
-        name: method.child_by_field_name("name").map(|n| file.text_of(n).to_string()).unwrap_or_default(),
+        name: method
+            .child_by_field_name("name")
+            .map(|n| file.text_of(n).to_string())
+            .unwrap_or_default(),
         line: file.line(method),
         lines: method.end_position().row - method.start_position().row + 1,
         cyclomatic,
-        parameters: method.child_by_field_name("parameters").map_or(0, |p| p.named_child_count() as u32),
+        parameters: method
+            .child_by_field_name("parameters")
+            .map_or(0, |p| p.named_child_count() as u32),
         max_nesting,
     }
 }
@@ -86,10 +106,16 @@ pub fn facts(file: &SourceFile) -> FileFacts {
         if matches!(kind, "method_declaration" | "constructor_declaration") {
             facts.functions.push(metric(file, node));
         }
-        skip_imports = matches!(kind, "import_declaration" | "package_declaration" | "line_comment" | "block_comment");
+        skip_imports = matches!(
+            kind,
+            "import_declaration" | "package_declaration" | "line_comment" | "block_comment"
+        );
         let leaf = node.child_count() == 0;
         if leaf && !skip_imports {
-            facts.tokens.push(Token { kind: token_kind(file, node), line: node.start_position().row as u32 + 1 });
+            facts.tokens.push(Token {
+                kind: token_kind(file, node),
+                line: node.start_position().row as u32 + 1,
+            });
         }
         if !skip_imports && cursor.goto_first_child() {
             continue;

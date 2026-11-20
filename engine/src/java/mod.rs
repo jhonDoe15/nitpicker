@@ -1,11 +1,12 @@
 mod errorprone;
 mod facts;
+mod flow;
 mod helpers;
 mod magic_number;
 mod naming;
+mod pmd;
 mod pmd_sample;
 mod statements;
-mod pmd;
 mod typed_rules;
 mod types;
 mod visibility;
@@ -16,13 +17,21 @@ use crate::engine::{FileFacts, FileRule, Language, Options, Project};
 pub struct Java;
 
 impl Language for Java {
-    fn id(&self) -> &'static str { "java" }
-    fn extensions(&self) -> &'static [&'static str] { &["java"] }
-    fn grammar(&self) -> tree_sitter::Language { tree_sitter_java::LANGUAGE.into() }
+    fn id(&self) -> &'static str {
+        "java"
+    }
+    fn extensions(&self) -> &'static [&'static str] {
+        &["java"]
+    }
+    fn grammar(&self) -> tree_sitter::Language {
+        tree_sitter_java::LANGUAGE.into()
+    }
     /// The grammar rejects an annotation between a type and `...`; it is blanked out for parsing only.
     fn grammar_text(&self, text: &str) -> Option<String> {
         static ANNOTATED_SPREAD: std::sync::LazyLock<regex::Regex> =
-            std::sync::LazyLock::new(|| regex::Regex::new(r"@[A-Za-z_][\w.]*(\s*\([^()]*\))?(\s*)\.\.\.").expect("pattern"));
+            std::sync::LazyLock::new(|| {
+                regex::Regex::new(r"@[A-Za-z_][\w.]*(\s*\([^()]*\))?(\s*)\.\.\.").expect("pattern")
+            });
         if !text.contains("...") {
             return None;
         }
@@ -53,9 +62,17 @@ impl Language for Java {
         }
         rules
     }
-    fn facts(&self, file: &SourceFile) -> FileFacts { facts::facts(file) }
-    fn outline(&self, file: &SourceFile) -> Option<String> { Some(types::project::outline(file)) }
+    fn facts(&self, file: &SourceFile) -> FileFacts {
+        facts::facts(file)
+    }
+    fn outline(&self, file: &SourceFile) -> Option<String> {
+        Some(types::project::outline(file))
+    }
     fn project(&self, files: &[SourceFile], options: &Options, needed: bool) -> Box<Project> {
-        if needed { Box::new(types::project::build(files, &options.classpath)) } else { Box::new(()) }
+        if needed {
+            Box::new(types::project::build(files, &options.classpath))
+        } else {
+            Box::new(())
+        }
     }
 }

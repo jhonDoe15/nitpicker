@@ -29,7 +29,11 @@ thread_local! {
 pub fn collect_files(roots: &[PathBuf], language: &dyn Language) -> Vec<PathBuf> {
     let mut files: Vec<PathBuf> = roots
         .iter()
-        .flat_map(|root| walkdir::WalkDir::new(root).into_iter().filter_map(Result::ok))
+        .flat_map(|root| {
+            walkdir::WalkDir::new(root)
+                .into_iter()
+                .filter_map(Result::ok)
+        })
         .filter(|entry| entry.file_type().is_file())
         .map(|entry| entry.into_path())
         .filter(|path| {
@@ -60,14 +64,28 @@ fn parse_text(text: &str, language: &dyn Language) -> Option<tree_sitter::Tree> 
 fn parse(path: &PathBuf, language: &dyn Language) -> Option<SourceFile> {
     let text = std::fs::read_to_string(path).ok()?;
     let tree = parse_text(&text, language)?;
-    Some(SourceFile { path: path.to_string_lossy().into_owned(), text, tree })
+    Some(SourceFile {
+        path: path.to_string_lossy().into_owned(),
+        text,
+        tree,
+    })
 }
 
-pub fn run(files: &[PathBuf], language: &dyn Language, only: Option<&[String]>, min_tokens: usize, options: &Options) -> RunResult {
+pub fn run(
+    files: &[PathBuf],
+    language: &dyn Language,
+    only: Option<&[String]>,
+    min_tokens: usize,
+    options: &Options,
+) -> RunResult {
     let rules: Vec<_> = language
         .rules()
         .into_iter()
-        .filter(|rule| only.map_or(!rule.id().starts_with('_'), |ids| ids.iter().any(|id| id == rule.id())))
+        .filter(|rule| {
+            only.map_or(!rule.id().starts_with('_'), |ids| {
+                ids.iter().any(|id| id == rule.id())
+            })
+        })
         .collect();
     let started = std::time::Instant::now();
     let needed = rules.iter().any(|rule| rule.needs_project());
@@ -80,7 +98,11 @@ pub fn run(files: &[PathBuf], language: &dyn Language, only: Option<&[String]>, 
                 match language.outline(&file) {
                     Some(text) => {
                         let tree = parse_text(&text, language)?;
-                        Some(SourceFile { path: file.path, text, tree })
+                        Some(SourceFile {
+                            path: file.path,
+                            text,
+                            tree,
+                        })
                     }
                     None => Some(file),
                 }
@@ -150,13 +172,18 @@ fn duplicates(files: &[(String, Vec<super::source::Token>)], window: usize) -> V
             let mut out = Vec::with_capacity(tokens.len() - window + 1);
             let mut hash = 0u64;
             for token in &tokens[..window] {
-                hash = hash.wrapping_mul(BASE).wrapping_add(u64::from(token.kind) + 1);
+                hash = hash
+                    .wrapping_mul(BASE)
+                    .wrapping_add(u64::from(token.kind) + 1);
             }
             out.push((hash, 0u32));
             for start in 1..=tokens.len() - window {
                 let gone = u64::from(tokens[start - 1].kind) + 1;
                 let come = u64::from(tokens[start + window - 1].kind) + 1;
-                hash = hash.wrapping_sub(gone.wrapping_mul(power)).wrapping_mul(BASE).wrapping_add(come);
+                hash = hash
+                    .wrapping_sub(gone.wrapping_mul(power))
+                    .wrapping_mul(BASE)
+                    .wrapping_add(come);
                 out.push((hash, start as u32));
             }
             out
@@ -190,7 +217,10 @@ fn duplicates(files: &[(String, Vec<super::source::Token>)], window: usize) -> V
                     covered.insert(key, start + window as u32);
                     found.push(Duplicate {
                         tokens: window,
-                        first: (files[other as usize].0.clone(), a[other_start as usize].line),
+                        first: (
+                            files[other as usize].0.clone(),
+                            a[other_start as usize].line,
+                        ),
                         second: (files[index].0.clone(), b[start as usize].line),
                     });
                 }

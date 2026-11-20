@@ -82,7 +82,8 @@ impl std::hash::Hasher for IdHasher {
     }
 }
 
-type Parents = std::collections::HashMap<usize, Node<'static>, std::hash::BuildHasherDefault<IdHasher>>;
+type Parents =
+    std::collections::HashMap<usize, Node<'static>, std::hash::BuildHasherDefault<IdHasher>>;
 
 thread_local! {
     static PARENTS: std::cell::RefCell<Option<Parents>> = const { std::cell::RefCell::new(None) };
@@ -102,7 +103,9 @@ impl ParentTable {
             let node = cursor.node();
             if let Some(parent) = above.last() {
                 // SAFETY: the entry is only read while the table lives, and the table is dropped before the tree.
-                table.insert(node.id(), unsafe { std::mem::transmute::<Node<'_>, Node<'static>>(*parent) });
+                table.insert(node.id(), unsafe {
+                    std::mem::transmute::<Node<'_>, Node<'static>>(*parent)
+                });
             }
             if cursor.goto_first_child() {
                 above.push(node);
@@ -131,7 +134,12 @@ impl Drop for ParentTable {
 
 /// The parent of a node, from the table of the current thread when there is one.
 pub fn parent<'t>(node: Node<'t>) -> Option<Node<'t>> {
-    let known = PARENTS.with(|parents| parents.borrow().as_ref().map(|table| table.get(&node.id()).copied()));
+    let known = PARENTS.with(|parents| {
+        parents
+            .borrow()
+            .as_ref()
+            .map(|table| table.get(&node.id()).copied())
+    });
     match known {
         Some(Some(parent)) => Some(parent),
         _ => node.parent(),

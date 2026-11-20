@@ -39,9 +39,13 @@ impl Type {
     pub fn substitute(&self, map: &HashMap<String, Type>) -> Type {
         match self {
             Type::Variable(name) => map.get(name).cloned().unwrap_or_else(|| self.clone()),
-            Type::Class(name, arguments) => {
-                Type::Class(name.clone(), arguments.iter().map(|argument| argument.substitute(map)).collect())
-            }
+            Type::Class(name, arguments) => Type::Class(
+                name.clone(),
+                arguments
+                    .iter()
+                    .map(|argument| argument.substitute(map))
+                    .collect(),
+            ),
             Type::Array(element) => Type::Array(Box::new(element.substitute(map))),
             other => other.clone(),
         }
@@ -93,6 +97,8 @@ pub mod flag {
     /// Carries `@java.lang.Deprecated`.
     pub const DEPRECATED: u16 = 256;
     pub const ANNOTATION: u16 = 512;
+    /// A field or a method's result carries an annotation named `Nullable` or `CheckForNull`.
+    pub const NULLABLE: u16 = 1024;
 }
 
 #[derive(Clone, Debug)]

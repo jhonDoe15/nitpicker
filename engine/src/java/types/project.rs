@@ -13,16 +13,26 @@ pub struct JavaProject {
 }
 
 fn jdk_modules() -> Vec<PathBuf> {
-    let home = std::env::var("NITPICKER_JDK").or_else(|_| std::env::var("JAVA_HOME")).unwrap_or_default();
+    let home = std::env::var("NITPICKER_JDK")
+        .or_else(|_| std::env::var("JAVA_HOME"))
+        .unwrap_or_default();
     let mut modules: Vec<PathBuf> = std::fs::read_dir(PathBuf::from(home).join("jmods"))
-        .map(|entries| entries.filter_map(Result::ok).map(|entry| entry.path()).collect())
+        .map(|entries| {
+            entries
+                .filter_map(Result::ok)
+                .map(|entry| entry.path())
+                .collect()
+        })
         .unwrap_or_default();
     modules.sort();
     modules
 }
 
 fn stub(name: String) -> ClassInfo {
-    ClassInfo { name, ..ClassInfo::default() }
+    ClassInfo {
+        name,
+        ..ClassInfo::default()
+    }
 }
 
 pub fn build(files: &[SourceFile], classpath: &[PathBuf]) -> JavaProject {
@@ -83,7 +93,12 @@ pub fn build(files: &[SourceFile], classpath: &[PathBuf]) -> JavaProject {
     JavaProject { index }
 }
 
-const CLASS_BODIES: [&str; 4] = ["class_body", "interface_body", "enum_body", "annotation_type_body"];
+const CLASS_BODIES: [&str; 4] = [
+    "class_body",
+    "interface_body",
+    "enum_body",
+    "annotation_type_body",
+];
 
 /// The file with the bodies of methods, constructors and initializers blanked, unless a class is declared inside.
 /// Every byte keeps its place, so what is left sits at the same line and column.
@@ -95,12 +110,18 @@ pub fn outline(file: &SourceFile) -> String {
             && node.parent().is_some_and(|parent| {
                 matches!(
                     parent.kind(),
-                    "method_declaration" | "constructor_declaration" | "compact_constructor_declaration" | "static_initializer" | "class_body"
+                    "method_declaration"
+                        | "constructor_declaration"
+                        | "compact_constructor_declaration"
+                        | "static_initializer"
+                        | "class_body"
                 )
             });
         if body && node.end_byte() - node.start_byte() >= 2 {
             let mut classes = false;
-            walk(node, |inner| classes |= CLASS_BODIES.contains(&inner.kind()));
+            walk(node, |inner| {
+                classes |= CLASS_BODIES.contains(&inner.kind())
+            });
             if !classes {
                 for byte in &mut bytes[node.start_byte() + 1..node.end_byte() - 1] {
                     if *byte != b'\n' && *byte != b'\r' {

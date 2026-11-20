@@ -126,20 +126,42 @@ pub enum Expr {
 }
 
 const SYMBOLS: &[&str] = &[
-    "//", "||", "!=", "<=", ">=", "<<", ">>", "::", ":=", "=>", "..", "(", ")", "[", "]", "{", "}", ",", "/", "|", "!", "=", "<", ">", "+", "-",
-    "*", "@", ".", "$", "?", "#", ":",
+    "//", "||", "!=", "<=", ">=", "<<", ">>", "::", ":=", "=>", "..", "(", ")", "[", "]", "{", "}",
+    ",", "/", "|", "!", "=", "<", ">", "+", "-", "*", "@", ".", "$", "?", "#", ":",
 ];
 
 /// Whether a predicate can only be true or false, never a position.
 fn yes_or_no(predicate: &Expr) -> bool {
     match predicate {
         Expr::Or(left, right) | Expr::And(left, right) => yes_or_no(left) && yes_or_no(right),
-        Expr::General(..) | Expr::Single(..) | Expr::Nodes(..) | Expr::Quantified(..) | Expr::Step(..) | Expr::Path(..) | Expr::Sets(..) => true,
-        Expr::Filter(base, _) => matches!(base.as_ref(), Expr::Step(..) | Expr::Path(..) | Expr::Sets(..) | Expr::Context),
+        Expr::General(..)
+        | Expr::Single(..)
+        | Expr::Nodes(..)
+        | Expr::Quantified(..)
+        | Expr::Step(..)
+        | Expr::Path(..)
+        | Expr::Sets(..) => true,
+        Expr::Filter(base, _) => matches!(
+            base.as_ref(),
+            Expr::Step(..) | Expr::Path(..) | Expr::Sets(..) | Expr::Context
+        ),
         Expr::Call(name, _) => matches!(
             name.as_ref(),
-            "not" | "exists" | "empty" | "starts-with" | "ends-with" | "contains" | "matches" | "boolean" | "true" | "false"
-                | "pmd-java:typeIs" | "pmd-java:typeIsExactly" | "pmd-java:matchesSig" | "pmd-java:hasAnnotation" | "pmd-java:nodeIs"
+            "not"
+                | "exists"
+                | "empty"
+                | "starts-with"
+                | "ends-with"
+                | "contains"
+                | "matches"
+                | "boolean"
+                | "true"
+                | "false"
+                | "pmd-java:typeIs"
+                | "pmd-java:typeIsExactly"
+                | "pmd-java:matchesSig"
+                | "pmd-java:hasAnnotation"
+                | "pmd-java:nodeIs"
         ),
         _ => false,
     }
@@ -151,17 +173,25 @@ fn deepened(step: Expr, allowed: bool) -> Result<Expr, Expr> {
         return Err(step);
     }
     match step {
-        Expr::Step(Axis::Child, test, predicates) if predicates.iter().all(yes_or_no) => Ok(Expr::Step(Axis::Descendant, test, predicates)),
+        Expr::Step(Axis::Child, test, predicates) if predicates.iter().all(yes_or_no) => {
+            Ok(Expr::Step(Axis::Descendant, test, predicates))
+        }
         Expr::Filter(base, predicate) if yes_or_no(&predicate) => match deepened(*base, true) {
             Ok(base) => Ok(Expr::Filter(boxed(base), predicate)),
             Err(base) => Err(Expr::Filter(boxed(base), predicate)),
         },
-        Expr::Sets(Sets::Union, left, right) => match (deepened(*left, true), deepened(*right, true)) {
-            (Ok(left), Ok(right)) => Ok(Expr::Sets(Sets::Union, boxed(left), boxed(right))),
-            (Ok(left), Err(right)) => Err(Expr::Sets(Sets::Union, boxed(shallow(left)), boxed(right))),
-            (Err(left), Ok(right)) => Err(Expr::Sets(Sets::Union, boxed(left), boxed(shallow(right)))),
-            (Err(left), Err(right)) => Err(Expr::Sets(Sets::Union, boxed(left), boxed(right))),
-        },
+        Expr::Sets(Sets::Union, left, right) => {
+            match (deepened(*left, true), deepened(*right, true)) {
+                (Ok(left), Ok(right)) => Ok(Expr::Sets(Sets::Union, boxed(left), boxed(right))),
+                (Ok(left), Err(right)) => {
+                    Err(Expr::Sets(Sets::Union, boxed(shallow(left)), boxed(right)))
+                }
+                (Err(left), Ok(right)) => {
+                    Err(Expr::Sets(Sets::Union, boxed(left), boxed(shallow(right))))
+                }
+                (Err(left), Err(right)) => Err(Expr::Sets(Sets::Union, boxed(left), boxed(right))),
+            }
+        }
         other => Err(other),
     }
 }
@@ -171,7 +201,9 @@ fn shallow(step: Expr) -> Expr {
     match step {
         Expr::Step(Axis::Descendant, test, predicates) => Expr::Step(Axis::Child, test, predicates),
         Expr::Filter(base, predicate) => Expr::Filter(boxed(shallow(*base)), predicate),
-        Expr::Sets(kind, left, right) => Expr::Sets(kind, boxed(shallow(*left)), boxed(shallow(*right))),
+        Expr::Sets(kind, left, right) => {
+            Expr::Sets(kind, boxed(shallow(*left)), boxed(shallow(*right)))
+        }
         other => other,
     }
 }
@@ -200,7 +232,9 @@ fn lex(source: &str) -> Result<Vec<Tok>, String> {
                     at += 1;
                 }
             }
-        } else if c.is_ascii_digit() || (c == '.' && chars.get(at + 1).is_some_and(char::is_ascii_digit)) {
+        } else if c.is_ascii_digit()
+            || (c == '.' && chars.get(at + 1).is_some_and(char::is_ascii_digit))
+        {
             let start = at;
             while at < chars.len() && chars[at].is_ascii_digit() {
                 at += 1;
@@ -215,7 +249,8 @@ fn lex(source: &str) -> Result<Vec<Tok>, String> {
             }
             if matches!(chars.get(at), Some('e' | 'E'))
                 && (chars.get(at + 1).is_some_and(char::is_ascii_digit)
-                    || (matches!(chars.get(at + 1), Some('+' | '-')) && chars.get(at + 2).is_some_and(char::is_ascii_digit)))
+                    || (matches!(chars.get(at + 1), Some('+' | '-'))
+                        && chars.get(at + 2).is_some_and(char::is_ascii_digit)))
             {
                 real = true;
                 at += 2;
@@ -251,7 +286,11 @@ fn lex(source: &str) -> Result<Vec<Tok>, String> {
                 }
             }
             tokens.push(Tok::Text(value));
-        } else if starts_name(c) || (c == '*' && chars.get(at + 1) == Some(&':') && chars.get(at + 2).copied().is_some_and(starts_name)) {
+        } else if starts_name(c)
+            || (c == '*'
+                && chars.get(at + 1) == Some(&':')
+                && chars.get(at + 2).copied().is_some_and(starts_name))
+        {
             let start = at;
             if c == '*' {
                 at += 2;
@@ -262,7 +301,13 @@ fn lex(source: &str) -> Result<Vec<Tok>, String> {
             while at > start + 1 && matches!(chars[at - 1], '-' | '.') {
                 at -= 1;
             }
-            if c != '*' && chars.get(at) == Some(&':') && chars.get(at + 1).copied().is_some_and(|next| starts_name(next) || next == '*') {
+            if c != '*'
+                && chars.get(at) == Some(&':')
+                && chars
+                    .get(at + 1)
+                    .copied()
+                    .is_some_and(|next| starts_name(next) || next == '*')
+            {
                 at += 1;
                 if chars[at] == '*' {
                     at += 1;
@@ -303,10 +348,18 @@ fn boxed(expr: Expr) -> Box<Expr> {
 
 impl Parser {
     pub fn parse(source: &str, names: Vec<String>) -> Result<(Expr, Vec<String>), String> {
-        let mut parser = Parser { tokens: lex(source)?, at: 0, names };
+        let mut parser = Parser {
+            tokens: lex(source)?,
+            at: 0,
+            names,
+        };
         let expr = parser.expr()?;
         if parser.peek() != &Tok::End {
-            return Err(format!("unexpected {:?} at token {}", parser.peek(), parser.at));
+            return Err(format!(
+                "unexpected {:?} at token {}",
+                parser.peek(),
+                parser.at
+            ));
         }
         Ok((expr, parser.names))
     }
@@ -340,11 +393,27 @@ impl Parser {
     }
 
     fn expect(&mut self, symbol: &str) -> Result<(), String> {
-        if self.take(symbol) { Ok(()) } else { Err(format!("expected {symbol}, found {:?} at token {}", self.peek(), self.at)) }
+        if self.take(symbol) {
+            Ok(())
+        } else {
+            Err(format!(
+                "expected {symbol}, found {:?} at token {}",
+                self.peek(),
+                self.at
+            ))
+        }
     }
 
     fn expect_word(&mut self, word: &str) -> Result<(), String> {
-        if self.take_word(word) { Ok(()) } else { Err(format!("expected {word}, found {:?} at token {}", self.peek(), self.at)) }
+        if self.take_word(word) {
+            Ok(())
+        } else {
+            Err(format!(
+                "expected {word}, found {:?} at token {}",
+                self.peek(),
+                self.at
+            ))
+        }
     }
 
     fn name(&mut self) -> Result<String, String> {
@@ -353,7 +422,10 @@ impl Parser {
                 self.at += 1;
                 Ok(name)
             }
-            other => Err(format!("expected a name, found {other:?} at token {}", self.at)),
+            other => Err(format!(
+                "expected a name, found {other:?} at token {}",
+                self.at
+            )),
         }
     }
 
@@ -412,7 +484,11 @@ impl Parser {
             self.expect_word("return")?;
             let mut body = self.single()?;
             for (name, value) in bindings.into_iter().rev() {
-                body = if each { Expr::For(name, boxed(value), boxed(body)) } else { Expr::Let(name, boxed(value), boxed(body)) };
+                body = if each {
+                    Expr::For(name, boxed(value), boxed(body))
+                } else {
+                    Expr::Let(name, boxed(value), boxed(body))
+                };
             }
             return Ok(body);
         }
@@ -594,11 +670,31 @@ impl Parser {
 
     fn starts_step(&self) -> bool {
         match self.peek() {
-            Tok::Name(word) => !matches!(
-                word.as_str(),
-                "or" | "and" | "div" | "idiv" | "mod" | "to" | "eq" | "ne" | "lt" | "le" | "gt" | "ge" | "is" | "union" | "intersect" | "except"
-                    | "return" | "satisfies" | "then" | "else" | "in"
-            ) || matches!(self.ahead(1), Tok::Sym("(" | "::")),
+            Tok::Name(word) => {
+                !matches!(
+                    word.as_str(),
+                    "or" | "and"
+                        | "div"
+                        | "idiv"
+                        | "mod"
+                        | "to"
+                        | "eq"
+                        | "ne"
+                        | "lt"
+                        | "le"
+                        | "gt"
+                        | "ge"
+                        | "is"
+                        | "union"
+                        | "intersect"
+                        | "except"
+                        | "return"
+                        | "satisfies"
+                        | "then"
+                        | "else"
+                        | "in"
+                ) || matches!(self.ahead(1), Tok::Sym("(" | "::"))
+            }
             Tok::Int(_) | Tok::Real(_) | Tok::Text(_) => true,
             Tok::Sym(symbol) => matches!(*symbol, "(" | "@" | "." | ".." | "$" | "*" | "?" | "["),
             Tok::End => false,
@@ -632,11 +728,16 @@ impl Parser {
     fn below(&mut self, left: Expr) -> Parsed {
         let from = self.at;
         let step = self.step()?;
-        let positional = self.tokens[from..self.at].iter().any(|token| matches!(token, Tok::Name(name) if name == "position" || name == "last"));
+        let positional = self.tokens[from..self.at]
+            .iter()
+            .any(|token| matches!(token, Tok::Name(name) if name == "position" || name == "last"));
         match deepened(step, !positional) {
             Ok(direct) => Ok(Expr::Path(boxed(left), boxed(direct))),
             Err(step) => {
-                let all = Expr::Path(boxed(left), boxed(Expr::Step(Axis::DescendantOrSelf, Test::Any, Vec::new())));
+                let all = Expr::Path(
+                    boxed(left),
+                    boxed(Expr::Step(Axis::DescendantOrSelf, Test::Any, Vec::new())),
+                );
                 Ok(Expr::Path(boxed(all), boxed(step)))
             }
         }
@@ -656,9 +757,24 @@ impl Parser {
             return Ok(Test::Wild);
         }
         let name = self.name()?;
-        if self.sym("(") && matches!(name.as_str(), "node" | "text" | "element" | "attribute" | "comment" | "processing-instruction" | "document-node") {
+        if self.sym("(")
+            && matches!(
+                name.as_str(),
+                "node"
+                    | "text"
+                    | "element"
+                    | "attribute"
+                    | "comment"
+                    | "processing-instruction"
+                    | "document-node"
+            )
+        {
             self.at += 1;
-            let inner = if self.sym(")") { None } else { Some(self.test()?) };
+            let inner = if self.sym(")") {
+                None
+            } else {
+                Some(self.test()?)
+            };
             self.expect(")")?;
             return Ok(match (name.as_str(), inner) {
                 ("node", _) => Test::Any,
@@ -667,7 +783,11 @@ impl Parser {
                 _ => Test::Nothing,
             });
         }
-        Ok(if name == "*:*" { Test::Wild } else { Test::Named(Rc::from(name.as_str())) })
+        Ok(if name == "*:*" {
+            Test::Wild
+        } else {
+            Test::Named(Rc::from(name.as_str()))
+        })
     }
 
     fn step(&mut self) -> Parsed {
@@ -705,10 +825,24 @@ impl Parser {
             Tok::Sym("*") => None,
             Tok::Name(name) => {
                 let called = matches!(self.ahead(1), Tok::Sym("("));
-                let kind = matches!(name.as_str(), "node" | "text" | "element" | "attribute" | "comment" | "processing-instruction" | "document-node");
-                let built = matches!(self.ahead(1), Tok::Sym("{")) && matches!(name.as_str(), "map" | "array");
+                let kind = matches!(
+                    name.as_str(),
+                    "node"
+                        | "text"
+                        | "element"
+                        | "attribute"
+                        | "comment"
+                        | "processing-instruction"
+                        | "document-node"
+                );
+                let built = matches!(self.ahead(1), Tok::Sym("{"))
+                    && matches!(name.as_str(), "map" | "array");
                 let reference = matches!(self.ahead(1), Tok::Sym("#"));
-                if (called && !kind) || built || reference { Some(self.primary()?) } else { None }
+                if (called && !kind) || built || reference {
+                    Some(self.primary()?)
+                } else {
+                    None
+                }
             }
             _ => Some(self.primary()?),
         };
@@ -751,7 +885,11 @@ impl Parser {
             }
             Tok::Sym("(") => {
                 self.at += 1;
-                let inner = if self.sym(")") { Expr::Sequence(Vec::new()) } else { self.expr()? };
+                let inner = if self.sym(")") {
+                    Expr::Sequence(Vec::new())
+                } else {
+                    self.expr()?
+                };
                 self.expect(")")?;
                 Ok(Key::Computed(boxed(inner)))
             }
@@ -841,7 +979,11 @@ impl Parser {
                         self.sequence_type()?;
                     }
                     self.expect("{")?;
-                    let body = if self.sym("}") { Expr::Sequence(Vec::new()) } else { self.expr()? };
+                    let body = if self.sym("}") {
+                        Expr::Sequence(Vec::new())
+                    } else {
+                        self.expr()?
+                    };
                     self.expect("}")?;
                     return Ok(Expr::Inline(Rc::new(Lambda { parameters, body })));
                 }
@@ -861,17 +1003,29 @@ impl Parser {
                     return Ok(Expr::Map(entries));
                 }
                 if name == "array" && self.take("{") {
-                    let inner = if self.sym("}") { Expr::Sequence(Vec::new()) } else { self.expr()? };
+                    let inner = if self.sym("}") {
+                        Expr::Sequence(Vec::new())
+                    } else {
+                        self.expr()?
+                    };
                     self.expect("}")?;
                     return Ok(Expr::Call(Rc::from("array:of"), vec![inner]));
                 }
                 if self.take("#") {
-                    let Tok::Int(arity) = self.peek().clone() else { return Err("expected an arity".to_string()) };
+                    let Tok::Int(arity) = self.peek().clone() else {
+                        return Err("expected an arity".to_string());
+                    };
                     self.at += 1;
-                    return Ok(Expr::Reference(Rc::from(name.trim_start_matches("fn:")), arity as usize));
+                    return Ok(Expr::Reference(
+                        Rc::from(name.trim_start_matches("fn:")),
+                        arity as usize,
+                    ));
                 }
                 let arguments = self.arguments()?;
-                Ok(Expr::Call(Rc::from(name.trim_start_matches("fn:")), arguments))
+                Ok(Expr::Call(
+                    Rc::from(name.trim_start_matches("fn:")),
+                    arguments,
+                ))
             }
             other => Err(format!("unexpected {other:?} at token {}", self.at)),
         }

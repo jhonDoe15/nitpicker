@@ -17,7 +17,11 @@ pub struct Focus<'f> {
     pub size: usize,
 }
 
-pub const NOWHERE: Focus<'static> = Focus { item: None, position: 0, size: 0 };
+pub const NOWHERE: Focus<'static> = Focus {
+    item: None,
+    position: 0,
+    size: 0,
+};
 
 pub struct Machine<'a, 't> {
     pub tree: &'a PmdTree<'t>,
@@ -35,7 +39,8 @@ fn sorted(items: &[Item]) -> bool {
 
 /// Nodes in document order, each once.
 pub fn in_order(mut items: Vec<Item>) -> Vec<Item> {
-    if items.len() > 1 && !sorted(&items) && items.iter().all(|item| !matches!(item, Item::Xml(_))) {
+    if items.len() > 1 && !sorted(&items) && items.iter().all(|item| !matches!(item, Item::Xml(_)))
+    {
         items.sort_by_key(Item::rank);
         items.dedup_by_key(|item| item.rank());
     }
@@ -43,8 +48,19 @@ pub fn in_order(mut items: Vec<Item>) -> Vec<Item> {
 }
 
 impl<'a, 't> Machine<'a, 't> {
-    pub fn new(tree: &'a PmdTree<'t>, file: &'a SourceFile, resolver: &'a Resolver<'a>) -> Machine<'a, 't> {
-        Machine { tree, file, resolver, trouble: RefCell::new(None), types: RefCell::new(HashMap::new()), calls: RefCell::new(HashMap::new()) }
+    pub fn new(
+        tree: &'a PmdTree<'t>,
+        file: &'a SourceFile,
+        resolver: &'a Resolver<'a>,
+    ) -> Machine<'a, 't> {
+        Machine {
+            tree,
+            file,
+            resolver,
+            trouble: RefCell::new(None),
+            types: RefCell::new(HashMap::new()),
+            calls: RefCell::new(HashMap::new()),
+        }
     }
 
     pub fn fail(&self, message: impl FnOnce() -> String) -> Seq {
@@ -78,7 +94,9 @@ impl<'a, 't> Machine<'a, 't> {
                 }),
                 Item::Doc => out.push(Item::text("")),
                 Item::Xml(xml) => out.push(Item::text(&xml.text)),
-                Item::Array(members) => members.iter().for_each(|member| out.extend(self.atoms(member))),
+                Item::Array(members) => members
+                    .iter()
+                    .for_each(|member| out.extend(self.atoms(member))),
                 Item::Function(_) | Item::Map(_) => {}
                 other => out.push(other.clone()),
             }
@@ -94,7 +112,11 @@ impl<'a, 't> Machine<'a, 't> {
             Item::Real(real) => real_text(*real),
             Item::Attr(..) | Item::Node(_) | Item::Doc | Item::Xml(_) | Item::Array(_) => {
                 let atoms = self.atoms(&Seq::One(item.clone()));
-                atoms.iter().map(|atom| self.string_of(atom)).collect::<Vec<_>>().join(" ")
+                atoms
+                    .iter()
+                    .map(|atom| self.string_of(atom))
+                    .collect::<Vec<_>>()
+                    .join(" ")
             }
             Item::Function(_) | Item::Map(_) => String::new(),
         }
@@ -102,7 +124,10 @@ impl<'a, 't> Machine<'a, 't> {
 
     /// The string value of the first item; empty for nothing.
     pub fn string(&self, seq: &Seq) -> String {
-        seq.items().first().map(|item| self.string_of(item)).unwrap_or_default()
+        seq.items()
+            .first()
+            .map(|item| self.string_of(item))
+            .unwrap_or_default()
     }
 
     pub fn number_of(&self, item: &Item) -> f64 {
@@ -136,7 +161,9 @@ impl<'a, 't> Machine<'a, 't> {
     pub fn compare(&self, left: &Item, right: &Item) -> Option<Ordering> {
         match (left, right) {
             (Item::Whole(a), Item::Whole(b)) => Some(a.cmp(b)),
-            (Item::Whole(_) | Item::Real(_), Item::Whole(_) | Item::Real(_)) => self.number_of(left).partial_cmp(&self.number_of(right)),
+            (Item::Whole(_) | Item::Real(_), Item::Whole(_) | Item::Real(_)) => {
+                self.number_of(left).partial_cmp(&self.number_of(right))
+            }
             (Item::Text(a), Item::Text(b)) => Some(a.as_ref().cmp(b.as_ref())),
             (Item::Flag(a), Item::Flag(b)) => Some(a.cmp(b)),
             _ => None,
@@ -147,7 +174,13 @@ impl<'a, 't> Machine<'a, 't> {
         let Some(order) = self.compare(left, right) else {
             let number = |item: &Item| matches!(item, Item::Whole(_) | Item::Real(_));
             if !(number(left) && number(right)) {
-                self.fail(|| format!("cannot compare {} with {}", self.kind_name(left), self.kind_name(right)));
+                self.fail(|| {
+                    format!(
+                        "cannot compare {} with {}",
+                        self.kind_name(left),
+                        self.kind_name(right)
+                    )
+                });
             }
             return cmp == Cmp::Ne;
         };
@@ -182,7 +215,9 @@ impl<'a, 't> Machine<'a, 't> {
             (Test::Wild, Item::Attr(..)) => attribute,
             (Test::Wild, Item::Node(_) | Item::Xml(_)) => !attribute,
             (Test::Wild, _) => false,
-            (Test::Named(name), Item::Node(id)) => !attribute && self.tree.nodes[*id as usize].name == name.as_ref(),
+            (Test::Named(name), Item::Node(id)) => {
+                !attribute && self.tree.nodes[*id as usize].name == name.as_ref()
+            }
             (Test::Named(name), Item::Attr(_, key)) => attribute && *key == name.as_ref(),
             (Test::Named(name), Item::Xml(xml)) => name.rsplit(':').next() == Some(xml.name),
             (Test::Named(_), _) => false,
@@ -196,7 +231,12 @@ impl<'a, 't> Machine<'a, 't> {
         let start = out.len();
         match (from, axis) {
             (_, Axis::Own) => out.push(from.clone()),
-            (Item::Node(id), Axis::Child) => out.extend(tree.nodes[*id as usize].children.iter().map(|kid| Item::Node(*kid))),
+            (Item::Node(id), Axis::Child) => out.extend(
+                tree.nodes[*id as usize]
+                    .children
+                    .iter()
+                    .map(|kid| Item::Node(*kid)),
+            ),
             (Item::Node(id), Axis::Descendant | Axis::DescendantOrSelf) => {
                 if axis == Axis::DescendantOrSelf {
                     out.push(from.clone());
@@ -217,7 +257,11 @@ impl<'a, 't> Machine<'a, 't> {
             }
             (Item::Node(id), Axis::Parent) => {
                 let parent = tree.nodes[*id as usize].parent;
-                out.push(if parent == ROOT { Item::Doc } else { Item::Node(parent) });
+                out.push(if parent == ROOT {
+                    Item::Doc
+                } else {
+                    Item::Node(parent)
+                });
             }
             (Item::Node(id), Axis::Ancestor | Axis::AncestorOrSelf) => {
                 if axis == Axis::AncestorOrSelf {
@@ -234,30 +278,64 @@ impl<'a, 't> Machine<'a, 't> {
                 let parent = tree.nodes[*id as usize].parent;
                 if parent != ROOT {
                     let siblings = &tree.nodes[parent as usize].children;
-                    let own = siblings.iter().position(|sibling| sibling == id).unwrap_or(0);
+                    let own = siblings
+                        .iter()
+                        .position(|sibling| sibling == id)
+                        .unwrap_or(0);
                     if axis == Axis::FollowingSibling {
-                        out.extend(siblings[own + 1..].iter().map(|sibling| Item::Node(*sibling)));
+                        out.extend(
+                            siblings[own + 1..]
+                                .iter()
+                                .map(|sibling| Item::Node(*sibling)),
+                        );
                     } else {
-                        out.extend(siblings[..own].iter().rev().map(|sibling| Item::Node(*sibling)));
+                        out.extend(
+                            siblings[..own]
+                                .iter()
+                                .rev()
+                                .map(|sibling| Item::Node(*sibling)),
+                        );
                     }
                 }
             }
-            (Item::Node(id), Axis::Following) => out.extend((tree.last[*id as usize] + 1..tree.nodes.len() as u32).map(Item::Node)),
+            (Item::Node(id), Axis::Following) => {
+                out.extend((tree.last[*id as usize] + 1..tree.nodes.len() as u32).map(Item::Node))
+            }
             (Item::Node(id), Axis::Preceding) => {
-                out.extend((0..*id).rev().filter(|before| tree.last[*before as usize] < *id).map(Item::Node));
+                out.extend(
+                    (0..*id)
+                        .rev()
+                        .filter(|before| tree.last[*before as usize] < *id)
+                        .map(Item::Node),
+                );
             }
             (Item::Node(id), Axis::Attribute) => match test {
-                Test::Named(name) => out.extend(tree.attribute_key(*id, name).map(|key| Item::Attr(*id, key))),
-                _ => out.extend(tree.attribute_names(*id).into_iter().map(|key| Item::Attr(*id, key))),
+                Test::Named(name) => out.extend(
+                    tree.attribute_key(*id, name)
+                        .map(|key| Item::Attr(*id, key)),
+                ),
+                _ => out.extend(
+                    tree.attribute_names(*id)
+                        .into_iter()
+                        .map(|key| Item::Attr(*id, key)),
+                ),
             },
-            (Item::Doc, Axis::Child) => out.extend((!tree.nodes.is_empty()).then_some(Item::Node(0))),
+            (Item::Doc, Axis::Child) => {
+                out.extend((!tree.nodes.is_empty()).then_some(Item::Node(0)))
+            }
             (Item::Doc, Axis::Descendant | Axis::DescendantOrSelf) => {
                 if axis == Axis::DescendantOrSelf {
                     out.push(Item::Doc);
                 }
                 if let Test::Named(name) = test {
                     out.truncate(start);
-                    out.extend(tree.named.get(name.as_ref()).into_iter().flatten().map(|found| Item::Node(*found)));
+                    out.extend(
+                        tree.named
+                            .get(name.as_ref())
+                            .into_iter()
+                            .flatten()
+                            .map(|found| Item::Node(*found)),
+                    );
                     return;
                 }
                 out.extend((0..tree.nodes.len() as u32).map(Item::Node));
@@ -270,13 +348,20 @@ impl<'a, 't> Machine<'a, 't> {
                 self.reach(&Item::Node(*id), Axis::AncestorOrSelf, &Test::Any, out);
             }
             (Item::Attr(..), Axis::DescendantOrSelf) => out.push(from.clone()),
-            (Item::Xml(xml), Axis::Child) => out.extend(xml.children.iter().map(|kid| Item::Xml(kid.clone()))),
+            (Item::Xml(xml), Axis::Child) => {
+                out.extend(xml.children.iter().map(|kid| Item::Xml(kid.clone())))
+            }
             (Item::Xml(xml), Axis::Descendant | Axis::DescendantOrSelf) => {
                 if axis == Axis::DescendantOrSelf {
                     out.push(from.clone());
                 }
                 for kid in &xml.children {
-                    self.reach(&Item::Xml(kid.clone()), Axis::DescendantOrSelf, &Test::Any, out);
+                    self.reach(
+                        &Item::Xml(kid.clone()),
+                        Axis::DescendantOrSelf,
+                        &Test::Any,
+                        out,
+                    );
                 }
             }
             (Item::Xml(xml), Axis::Attribute) => {
@@ -302,12 +387,24 @@ impl<'a, 't> Machine<'a, 't> {
     fn filter(&self, candidates: Vec<Item>, predicate: &Expr, env: &mut Env) -> Vec<Item> {
         if let Expr::Whole(wanted) = predicate {
             let at = *wanted as usize;
-            return if at >= 1 && at <= candidates.len() { vec![candidates[at - 1].clone()] } else { Vec::new() };
+            return if at >= 1 && at <= candidates.len() {
+                vec![candidates[at - 1].clone()]
+            } else {
+                Vec::new()
+            };
         }
         let size = candidates.len();
         let mut kept = Vec::new();
         for (index, candidate) in candidates.iter().enumerate() {
-            let found = self.eval(predicate, &Focus { item: Some(candidate), position: index + 1, size }, env);
+            let found = self.eval(
+                predicate,
+                &Focus {
+                    item: Some(candidate),
+                    position: index + 1,
+                    size,
+                },
+                env,
+            );
             let keep = match found.items() {
                 [Item::Whole(wanted)] => *wanted == index as i64 + 1,
                 [Item::Real(wanted)] => *wanted == index as f64 + 1.0,
@@ -320,9 +417,19 @@ impl<'a, 't> Machine<'a, 't> {
         kept
     }
 
-    fn step(&self, from: &[Item], axis: Axis, test: &Test, predicates: &[Expr], env: &mut Env) -> Seq {
+    fn step(
+        &self,
+        from: &[Item],
+        axis: Axis,
+        test: &Test,
+        predicates: &[Expr],
+        env: &mut Env,
+    ) -> Seq {
         let mut all = Vec::new();
-        let backwards = matches!(axis, Axis::Ancestor | Axis::AncestorOrSelf | Axis::PrecedingSibling | Axis::Preceding);
+        let backwards = matches!(
+            axis,
+            Axis::Ancestor | Axis::AncestorOrSelf | Axis::PrecedingSibling | Axis::Preceding
+        );
         for item in from {
             if predicates.is_empty() {
                 self.reach(item, axis, test, &mut all);
@@ -353,12 +460,16 @@ impl<'a, 't> Machine<'a, 't> {
             match (item, &keys) {
                 (Item::Map(entries), Some(keys)) => {
                     for key in keys {
-                        if let Some((_, value)) = entries.iter().find(|(known, _)| self.same(known, key)) {
+                        if let Some((_, value)) =
+                            entries.iter().find(|(known, _)| self.same(known, key))
+                        {
                             out.extend_from_slice(value.items());
                         }
                     }
                 }
-                (Item::Map(entries), None) => entries.iter().for_each(|(_, value)| out.extend_from_slice(value.items())),
+                (Item::Map(entries), None) => entries
+                    .iter()
+                    .for_each(|(_, value)| out.extend_from_slice(value.items())),
                 (Item::Array(members), Some(keys)) => {
                     for key in keys {
                         let at = self.number_of(key) as usize;
@@ -367,7 +478,9 @@ impl<'a, 't> Machine<'a, 't> {
                         }
                     }
                 }
-                (Item::Array(members), None) => members.iter().for_each(|member| out.extend_from_slice(member.items())),
+                (Item::Array(members), None) => members
+                    .iter()
+                    .for_each(|member| out.extend_from_slice(member.items())),
                 _ => {}
             }
         }
@@ -379,7 +492,13 @@ impl<'a, 't> Machine<'a, 't> {
             Item::Function(function) => match function.as_ref() {
                 Function::Inline(lambda, captured) => {
                     if lambda.parameters.len() != arguments.len() {
-                        return self.fail(|| format!("a function of {} parameters got {} arguments", lambda.parameters.len(), arguments.len()));
+                        return self.fail(|| {
+                            format!(
+                                "a function of {} parameters got {} arguments",
+                                lambda.parameters.len(),
+                                arguments.len()
+                            )
+                        });
                     }
                     let mut inner: Env = captured.clone();
                     inner.extend(lambda.parameters.iter().copied().zip(arguments));
@@ -388,12 +507,26 @@ impl<'a, 't> Machine<'a, 't> {
                 Function::Named(name, _) => self.call(name, arguments, &NOWHERE, env),
             },
             Item::Map(entries) => {
-                let key = arguments.first().and_then(|key| self.atoms(key).into_iter().next());
-                key.and_then(|key| entries.iter().find(|(known, _)| self.same(known, &key)).map(|(_, value)| value.clone())).unwrap_or(Seq::Empty)
+                let key = arguments
+                    .first()
+                    .and_then(|key| self.atoms(key).into_iter().next());
+                key.and_then(|key| {
+                    entries
+                        .iter()
+                        .find(|(known, _)| self.same(known, &key))
+                        .map(|(_, value)| value.clone())
+                })
+                .unwrap_or(Seq::Empty)
             }
             Item::Array(members) => {
-                let at = arguments.first().map_or(0, |at| self.number_of(at.items().first().unwrap_or(&Item::Whole(0))) as usize);
-                if at >= 1 && at <= members.len() { members[at - 1].clone() } else { Seq::Empty }
+                let at = arguments.first().map_or(0, |at| {
+                    self.number_of(at.items().first().unwrap_or(&Item::Whole(0))) as usize
+                });
+                if at >= 1 && at <= members.len() {
+                    members[at - 1].clone()
+                } else {
+                    Seq::Empty
+                }
             }
             _ => self.fail(|| "called something that is no function".to_string()),
         }
@@ -404,8 +537,12 @@ impl<'a, 't> Machine<'a, 't> {
         if left.len() > 1 || right.len() > 1 {
             return self.fail(|| "arithmetic on a sequence of several values".to_string());
         }
-        let (Some(left), Some(right)) = (left.first(), right.first()) else { return Seq::Empty };
-        if matches!(left, Item::Text(_) | Item::Flag(_)) || matches!(right, Item::Text(_) | Item::Flag(_)) {
+        let (Some(left), Some(right)) = (left.first(), right.first()) else {
+            return Seq::Empty;
+        };
+        if matches!(left, Item::Text(_) | Item::Flag(_))
+            || matches!(right, Item::Text(_) | Item::Flag(_))
+        {
             return self.fail(|| "arithmetic on a value that is no number".to_string());
         }
         if let (Item::Whole(a), Item::Whole(b)) = (left, right) {
@@ -436,7 +573,10 @@ impl<'a, 't> Machine<'a, 't> {
     }
 
     pub fn variable(&self, env: &Env, name: u32) -> Option<Seq> {
-        env.iter().rev().find(|(known, _)| *known == name).map(|(_, value)| value.clone())
+        env.iter()
+            .rev()
+            .find(|(known, _)| *known == name)
+            .map(|(_, value)| value.clone())
     }
 
     pub fn eval(&self, expr: &Expr, focus: &Focus, env: &mut Env) -> Seq {
@@ -444,7 +584,9 @@ impl<'a, 't> Machine<'a, 't> {
             Expr::Whole(whole) => Seq::whole(*whole),
             Expr::Real(real) => Seq::One(Item::Real(*real)),
             Expr::Text(text) => Seq::One(Item::Text(text.clone())),
-            Expr::Variable(name) => self.variable(env, *name).unwrap_or_else(|| self.fail(|| format!("variable {name} is not set"))),
+            Expr::Variable(name) => self
+                .variable(env, *name)
+                .unwrap_or_else(|| self.fail(|| format!("variable {name} is not set"))),
             Expr::Context => match focus.item {
                 Some(item) => Seq::One(item.clone()),
                 None => self.fail(|| "no context item".to_string()),
@@ -477,16 +619,42 @@ impl<'a, 't> Machine<'a, 't> {
                 let size = from.len();
                 let mut all = Vec::new();
                 for (index, item) in from.items().iter().enumerate() {
-                    all.extend(self.eval(right, &Focus { item: Some(item), position: index + 1, size }, env).into_vec());
+                    all.extend(
+                        self.eval(
+                            right,
+                            &Focus {
+                                item: Some(item),
+                                position: index + 1,
+                                size,
+                            },
+                            env,
+                        )
+                        .into_vec(),
+                    );
                 }
-                Seq::from(if all.iter().all(Item::is_node) { in_order(all) } else { all })
+                Seq::from(if all.iter().all(Item::is_node) {
+                    in_order(all)
+                } else {
+                    all
+                })
             }
             Expr::Each(left, right) => {
                 let from = self.eval(left, focus, env);
                 let size = from.len();
                 let mut all = Vec::new();
                 for (index, item) in from.items().iter().enumerate() {
-                    all.extend(self.eval(right, &Focus { item: Some(item), position: index + 1, size }, env).into_vec());
+                    all.extend(
+                        self.eval(
+                            right,
+                            &Focus {
+                                item: Some(item),
+                                position: index + 1,
+                                size,
+                            },
+                            env,
+                        )
+                        .into_vec(),
+                    );
                 }
                 Seq::from(all)
             }
@@ -498,28 +666,49 @@ impl<'a, 't> Machine<'a, 't> {
                 Seq::from(self.filter(from.into_vec(), predicate, env))
             }
             Expr::Call(name, arguments) => {
-                let values: Vec<Seq> = arguments.iter().map(|argument| self.eval(argument, focus, env)).collect();
+                let values: Vec<Seq> = arguments
+                    .iter()
+                    .map(|argument| self.eval(argument, focus, env))
+                    .collect();
                 self.call(name, values, focus, env)
             }
             Expr::Dynamic(base, arguments) => {
                 let function = self.eval(base, focus, env);
-                let values: Vec<Seq> = arguments.iter().map(|argument| self.eval(argument, focus, env)).collect();
+                let values: Vec<Seq> = arguments
+                    .iter()
+                    .map(|argument| self.eval(argument, focus, env))
+                    .collect();
                 match function.items() {
                     [only] => self.apply(only, values, env),
                     _ => self.fail(|| "called a sequence that is not one function".to_string()),
                 }
             }
-            Expr::Inline(lambda) => Seq::One(Item::Function(Rc::new(Function::Inline(lambda.clone(), env.clone())))),
-            Expr::Reference(name, arity) => Seq::One(Item::Function(Rc::new(Function::Named(name.clone(), *arity)))),
+            Expr::Inline(lambda) => Seq::One(Item::Function(Rc::new(Function::Inline(
+                lambda.clone(),
+                env.clone(),
+            )))),
+            Expr::Reference(name, arity) => Seq::One(Item::Function(Rc::new(Function::Named(
+                name.clone(),
+                *arity,
+            )))),
             Expr::Map(entries) => {
                 let mut built = Vec::with_capacity(entries.len());
                 for (key, value) in entries {
-                    let key = self.atoms(&self.eval(key, focus, env)).into_iter().next().unwrap_or(Item::text(""));
+                    let key = self
+                        .atoms(&self.eval(key, focus, env))
+                        .into_iter()
+                        .next()
+                        .unwrap_or(Item::text(""));
                     built.push((key, self.eval(value, focus, env)));
                 }
                 Seq::One(Item::Map(Rc::new(built)))
             }
-            Expr::Array(members) => Seq::One(Item::Array(Rc::new(members.iter().map(|member| self.eval(member, focus, env)).collect()))),
+            Expr::Array(members) => Seq::One(Item::Array(Rc::new(
+                members
+                    .iter()
+                    .map(|member| self.eval(member, focus, env))
+                    .collect(),
+            ))),
             Expr::Lookup(base, key) => {
                 let from = self.eval(base, focus, env);
                 self.lookup(&from, key, focus, env)
@@ -562,10 +751,20 @@ impl<'a, 't> Machine<'a, 't> {
                 Seq::flag(*every)
             }
             Expr::If(condition, then, otherwise) => {
-                if self.truth(&self.eval(condition, focus, env)) { self.eval(then, focus, env) } else { self.eval(otherwise, focus, env) }
+                if self.truth(&self.eval(condition, focus, env)) {
+                    self.eval(then, focus, env)
+                } else {
+                    self.eval(otherwise, focus, env)
+                }
             }
-            Expr::Or(left, right) => Seq::flag(self.truth(&self.eval(left, focus, env)) || self.truth(&self.eval(right, focus, env))),
-            Expr::And(left, right) => Seq::flag(self.truth(&self.eval(left, focus, env)) && self.truth(&self.eval(right, focus, env))),
+            Expr::Or(left, right) => Seq::flag(
+                self.truth(&self.eval(left, focus, env))
+                    || self.truth(&self.eval(right, focus, env)),
+            ),
+            Expr::And(left, right) => Seq::flag(
+                self.truth(&self.eval(left, focus, env))
+                    && self.truth(&self.eval(right, focus, env)),
+            ),
             Expr::General(cmp, left, right) => {
                 let left = self.eval(left, focus, env);
                 if left.is_empty() {
@@ -573,12 +772,19 @@ impl<'a, 't> Machine<'a, 't> {
                 }
                 let right = self.eval(right, focus, env);
                 let (left, right) = (self.atoms(&left), self.atoms(&right));
-                Seq::flag(left.iter().any(|a| right.iter().any(|b| self.holds(*cmp, a, b))))
+                Seq::flag(
+                    left.iter()
+                        .any(|a| right.iter().any(|b| self.holds(*cmp, a, b))),
+                )
             }
             Expr::Single(cmp, left, right) => {
-                let (left, right) = (self.atoms(&self.eval(left, focus, env)), self.atoms(&self.eval(right, focus, env)));
+                let (left, right) = (
+                    self.atoms(&self.eval(left, focus, env)),
+                    self.atoms(&self.eval(right, focus, env)),
+                );
                 if left.len() > 1 || right.len() > 1 {
-                    return self.fail(|| "a value comparison of a sequence of several values".to_string());
+                    return self
+                        .fail(|| "a value comparison of a sequence of several values".to_string());
                 }
                 match (left.first(), right.first()) {
                     (Some(a), Some(b)) => Seq::flag(self.holds(*cmp, a, b)),
@@ -592,7 +798,9 @@ impl<'a, 't> Machine<'a, 't> {
                         Order::Same => match (a, b) {
                             (Item::Xml(a), Item::Xml(b)) => Rc::ptr_eq(a, b),
                             (Item::Doc, Item::Doc) => true,
-                            (Item::Node(_) | Item::Attr(..), Item::Node(_) | Item::Attr(..)) => a.rank() == b.rank(),
+                            (Item::Node(_) | Item::Attr(..), Item::Node(_) | Item::Attr(..)) => {
+                                a.rank() == b.rank()
+                            }
                             _ => false,
                         },
                         Order::Before => a.rank() < b.rank(),
@@ -606,7 +814,10 @@ impl<'a, 't> Machine<'a, 't> {
                 Seq::owned(self.string(&left) + &self.string(&right))
             }
             Expr::Range(left, right) => {
-                let (left, right) = (self.atoms(&self.eval(left, focus, env)), self.atoms(&self.eval(right, focus, env)));
+                let (left, right) = (
+                    self.atoms(&self.eval(left, focus, env)),
+                    self.atoms(&self.eval(right, focus, env)),
+                );
                 match (left.first(), right.first()) {
                     (Some(from), Some(to)) => {
                         let (from, to) = (self.number_of(from) as i64, self.number_of(to) as i64);
@@ -633,8 +844,12 @@ impl<'a, 't> Machine<'a, 't> {
                         all
                     }
                     Sets::Intersect | Sets::Except => {
-                        let other: std::collections::HashSet<(u32, u8, &'static str)> = right.items().iter().map(Item::rank).collect();
-                        left.into_vec().into_iter().filter(|item| other.contains(&item.rank()) == (*op == Sets::Intersect)).collect()
+                        let other: std::collections::HashSet<(u32, u8, &'static str)> =
+                            right.items().iter().map(Item::rank).collect();
+                        left.into_vec()
+                            .into_iter()
+                            .filter(|item| other.contains(&item.rank()) == (*op == Sets::Intersect))
+                            .collect()
                     }
                 };
                 let mut all = all;
@@ -645,7 +860,17 @@ impl<'a, 't> Machine<'a, 't> {
         }
     }
 
-    pub fn xml(name: &'static str, text: &str, number: Option<i64>, children: Vec<Rc<Xml>>) -> Rc<Xml> {
-        Rc::new(Xml { name, text: text.to_string(), number, children })
+    pub fn xml(
+        name: &'static str,
+        text: &str,
+        number: Option<i64>,
+        children: Vec<Rc<Xml>>,
+    ) -> Rc<Xml> {
+        Rc::new(Xml {
+            name,
+            text: text.to_string(),
+            number,
+            children,
+        })
     }
 }

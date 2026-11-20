@@ -31,8 +31,12 @@ pub struct TypeIndex {
 
 /// The class names of an archive, with where each one is.
 fn archive_classes(path: &Path) -> Vec<(String, Origin)> {
-    let Ok(file) = std::fs::File::open(path) else { return Vec::new() };
-    let Ok(archive) = zip::ZipArchive::new(std::io::BufReader::new(file)) else { return Vec::new() };
+    let Ok(file) = std::fs::File::open(path) else {
+        return Vec::new();
+    };
+    let Ok(archive) = zip::ZipArchive::new(std::io::BufReader::new(file)) else {
+        return Vec::new();
+    };
     let named: Vec<(String, usize)> = (0..archive.len())
         .filter_map(|position| {
             let name = archive.name_for_index(position)?.ok()?;
@@ -40,11 +44,17 @@ fn archive_classes(path: &Path) -> Vec<(String, Origin)> {
             if inner.ends_with("module-info") || name.contains("META-INF/versions") {
                 return None;
             }
-            Some((classfile::dotted(inner.strip_prefix("classes/").unwrap_or(inner)), position))
+            Some((
+                classfile::dotted(inner.strip_prefix("classes/").unwrap_or(inner)),
+                position,
+            ))
         })
         .collect();
     let shared = Arc::new(Mutex::new(archive));
-    named.into_iter().map(|(name, position)| (name, Origin::Archive(shared.clone(), position))).collect()
+    named
+        .into_iter()
+        .map(|(name, position)| (name, Origin::Archive(shared.clone(), position)))
+        .collect()
 }
 
 fn folder_classes(path: &Path) -> Vec<(String, Origin)> {
@@ -55,7 +65,11 @@ fn folder_classes(path: &Path) -> Vec<(String, Origin)> {
         .filter(|file| file.extension().is_some_and(|e| e == "class"))
         .filter_map(|file| {
             let inner = file.strip_prefix(path).ok()?.with_extension("");
-            let name = classfile::dotted(&inner.to_string_lossy().replace(std::path::MAIN_SEPARATOR, "/"));
+            let name = classfile::dotted(
+                &inner
+                    .to_string_lossy()
+                    .replace(std::path::MAIN_SEPARATOR, "/"),
+            );
             (!name.ends_with("module-info")).then_some((name, Origin::File(file)))
         })
         .collect()
@@ -76,7 +90,9 @@ fn read(origin: &Origin) -> Option<ClassInfo> {
 }
 
 fn anonymous(name: &str) -> bool {
-    name.rsplit('.').next().is_some_and(|last| last.chars().next().is_some_and(|c| c.is_ascii_digit()))
+    name.rsplit('.')
+        .next()
+        .is_some_and(|last| last.chars().next().is_some_and(|c| c.is_ascii_digit()))
 }
 
 impl TypeIndex {
@@ -84,11 +100,18 @@ impl TypeIndex {
     pub fn load_binaries(&mut self, entries: &[PathBuf]) {
         let loaded: Vec<Vec<(String, Origin)>> = entries
             .par_iter()
-            .map(|entry| if entry.is_dir() { folder_classes(entry) } else { archive_classes(entry) })
+            .map(|entry| {
+                if entry.is_dir() {
+                    folder_classes(entry)
+                } else {
+                    archive_classes(entry)
+                }
+            })
             .collect();
         for (name, origin) in loaded.into_iter().flatten() {
             if !anonymous(&name) && !self.classes.contains_key(&name) {
-                self.classes.insert(name, Slot::Later(origin, OnceLock::new()));
+                self.classes
+                    .insert(name, Slot::Later(origin, OnceLock::new()));
                 self.binary_classes += 1;
             }
         }
@@ -139,29 +162,53 @@ impl TypeIndex {
         if of.contains('&') && name != of {
             return of.split('&').all(|part| self.is_subtype(name, part));
         }
-        name == of || of == "java.lang.Object" || self.lineage(name).iter().any(|ancestor| ancestor == of)
+        name == of
+            || of == "java.lang.Object"
+            || self.lineage(name).iter().any(|ancestor| ancestor == of)
     }
 
     pub fn field(&self, class: &str, name: &str) -> Option<(&ClassInfo, &Field)> {
         self.lineage(class)
             .iter()
             .filter_map(|ancestor| self.get(ancestor))
-            .find_map(|info| info.fields.iter().find(|field| field.name == name && (!field.is_private || info.name == class)).map(|field| (info, field)))
+            .find_map(|info| {
+                info.fields
+                    .iter()
+                    .find(|field| field.name == name && (!field.is_private || info.name == class))
+                    .map(|field| (info, field))
+            })
     }
 
     /// Whether a field read through that class is a compile-time constant. PMD takes more for a constant when the
     /// field is declared in the file that reads it (`near` tells): any type, and arrays written in braces.
-    pub fn constant_field(&self, class: &str, name: &str, near: &dyn Fn(&str) -> bool, strict: bool, depth: usize) -> bool {
+    pub fn constant_field(
+        &self,
+        class: &str,
+        name: &str,
+        near: &dyn Fn(&str) -> bool,
+        strict: bool,
+        depth: usize,
+    ) -> bool {
         let Some((info, field)) = self.field(class, name) else {
             // A constant of a class around this one.
-            return class.rsplit_once('.').is_some_and(|(outer, _)| self.has(outer) && self.constant_field(outer, name, near, strict, depth));
+            return class.rsplit_once('.').is_some_and(|(outer, _)| {
+                self.has(outer) && self.constant_field(outer, name, near, strict, depth)
+            });
         };
-        let Some(uses) = &field.fixed else { return false };
+        let Some(uses) = &field.fixed else {
+            return false;
+        };
         let strict = strict || !near(&info.name);
         depth < 12
             && (field.strict || !strict)
             && uses.iter().all(|(owner, used)| {
-                self.constant_field(if owner.is_empty() { &info.name } else { owner }, used, near, strict, depth + 1)
+                self.constant_field(
+                    if owner.is_empty() { &info.name } else { owner },
+                    used,
+                    near,
+                    strict,
+                    depth + 1,
+                )
             })
     }
 
@@ -171,31 +218,50 @@ impl TypeIndex {
             .iter()
             .enumerate()
             .map(|(position, (name, bound))| {
-                let given = arguments.get(position).filter(|given| !raw && **given != Type::Wildcard);
+                let given = arguments
+                    .get(position)
+                    .filter(|given| !raw && **given != Type::Wildcard);
                 (name.clone(), given.unwrap_or(bound).clone())
             })
             .collect()
     }
 
-    fn arguments_at(&self, name: &str, arguments: &[Type], target: &str, depth: u8) -> Option<Vec<Type>> {
+    fn arguments_at(
+        &self,
+        name: &str,
+        arguments: &[Type],
+        target: &str,
+        depth: u8,
+    ) -> Option<Vec<Type>> {
         if name.contains('&') && name != target {
-            return name.split('&').find_map(|part| self.arguments_at(part, &[], target, depth + 1));
+            return name
+                .split('&')
+                .find_map(|part| self.arguments_at(part, &[], target, depth + 1));
         }
         let info = self.get(name);
-        let map = info.map(|info| self.bindings(info, arguments)).unwrap_or_default();
+        let map = info
+            .map(|info| self.bindings(info, arguments))
+            .unwrap_or_default();
         if name == target {
             return Some(match info {
-                Some(info) => info.type_parameters.iter().map(|(parameter, _)| map[parameter].clone()).collect(),
+                Some(info) => info
+                    .type_parameters
+                    .iter()
+                    .map(|(parameter, _)| map[parameter].clone())
+                    .collect(),
                 None => arguments.to_vec(),
             });
         }
         if depth > 24 {
             return None;
         }
-        info?.generic_supers.iter().find_map(|ancestor| match ancestor.substitute(&map) {
-            Type::Class(next, given) => self.arguments_at(&next, &given, target, depth + 1),
-            _ => None,
-        })
+        info?
+            .generic_supers
+            .iter()
+            .find_map(|ancestor| match ancestor.substitute(&map) {
+                Type::Class(next, given) => self.arguments_at(&next, &given, target, depth + 1),
+                _ => None,
+            })
     }
 
     /// The type arguments a type has when seen as one of its supertypes: ArrayList<String> as Iterable gives [String].
@@ -208,7 +274,9 @@ impl TypeIndex {
 
     /// What the type parameters of `declaring` stand for when a member is used through `receiver`.
     pub fn member_map(&self, receiver: &Type, declaring: &str) -> HashMap<String, Type> {
-        let Some(info) = self.get(declaring) else { return HashMap::new() };
+        let Some(info) = self.get(declaring) else {
+            return HashMap::new();
+        };
         let arguments = self.arguments_as(receiver, declaring).unwrap_or_default();
         let mut map = self.bindings(info, &arguments);
         // An inner class also sees the type parameters of the classes around it; those stand for their bounds here.
@@ -216,7 +284,11 @@ impl TypeIndex {
         for start in [receiver.name(), declaring.to_string()] {
             let mut outer = start.as_str();
             while let Some((parent, _)) = outer.rsplit_once('.') {
-                for (name, bound) in self.get(parent).map(|info| info.type_parameters.as_slice()).unwrap_or_default() {
+                for (name, bound) in self
+                    .get(parent)
+                    .map(|info| info.type_parameters.as_slice())
+                    .unwrap_or_default()
+                {
                     around.entry(name.clone()).or_insert_with(|| bound.clone());
                 }
                 outer = parent;
@@ -236,7 +308,8 @@ impl TypeIndex {
     }
 
     pub fn generic(&self, name: &str) -> bool {
-        self.get(name).is_some_and(|info| !info.type_parameters.is_empty())
+        self.get(name)
+            .is_some_and(|info| !info.type_parameters.is_empty())
     }
 
     /// The single abstract method of a functional interface.
@@ -244,10 +317,14 @@ impl TypeIndex {
         let mut seen: Vec<(&ClassInfo, &Method)> = Vec::new();
         self.get(interface).filter(|info| info.is_interface)?;
         for ancestor in self.lineage(interface) {
-            let Some(info) = self.get(&ancestor).filter(|info| info.is_interface) else { continue };
+            let Some(info) = self.get(&ancestor).filter(|info| info.is_interface) else {
+                continue;
+            };
             for method in &info.methods {
                 let inherited = matches!(method.name.as_str(), "equals" | "hashCode" | "toString");
-                let known = seen.iter().any(|(_, other)| other.name == method.name && other.parameters.len() == method.parameters.len());
+                let known = seen.iter().any(|(_, other)| {
+                    other.name == method.name && other.parameters.len() == method.parameters.len()
+                });
                 if !inherited && !known {
                     seen.push((info, method));
                 }
@@ -279,7 +356,11 @@ impl TypeIndex {
         if !chain.iter().any(|name| name == OBJECT) {
             chain.push(OBJECT.to_string());
         }
-        let rest: Vec<String> = self.lineage(class).into_iter().filter(|name| !chain.contains(name)).collect();
+        let rest: Vec<String> = self
+            .lineage(class)
+            .into_iter()
+            .filter(|name| !chain.contains(name))
+            .collect();
         chain.extend(rest);
         chain
     }
@@ -288,10 +369,21 @@ impl TypeIndex {
     pub fn methods(&self, class: &str, name: &str) -> Vec<(&ClassInfo, &Method)> {
         let mut found: Vec<(&ClassInfo, &Method)> = Vec::new();
         for ancestor in self.member_order(class) {
-            let Some(info) = self.get(&ancestor) else { continue };
-            let hidden = |method: &Method| info.name != class && (method.is_private || (info.is_interface && method.is_static));
-            for method in info.methods.iter().filter(|method| method.name == name && !hidden(method)) {
-                if !found.iter().any(|(_, other)| other.parameters == method.parameters) {
+            let Some(info) = self.get(&ancestor) else {
+                continue;
+            };
+            let hidden = |method: &Method| {
+                info.name != class && (method.is_private || (info.is_interface && method.is_static))
+            };
+            for method in info
+                .methods
+                .iter()
+                .filter(|method| method.name == name && !hidden(method))
+            {
+                if !found
+                    .iter()
+                    .any(|(_, other)| other.parameters == method.parameters)
+                {
                     found.push((info, method));
                 }
             }
@@ -301,6 +393,8 @@ impl TypeIndex {
 
     /// Whether every supertype up to the roots is known, so a negative subtype answer can be trusted.
     pub fn complete(&self, name: &str) -> bool {
-        self.lineage(name).iter().all(|ancestor| ancestor.contains('&') || self.classes.contains_key(ancestor))
+        self.lineage(name)
+            .iter()
+            .all(|ancestor| ancestor.contains('&') || self.classes.contains_key(ancestor))
     }
 }

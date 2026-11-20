@@ -19,15 +19,24 @@ impl FileRule for Simple {
 }
 
 fn keyword<'t>(node: Node<'t>, word: &str) -> Option<Node<'t>> {
-    children(node).into_iter().find(|child| child.kind() == word)
+    children(node)
+        .into_iter()
+        .find(|child| child.kind() == word)
 }
 
 fn need_braces(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
     let mut flag = |word: &str, body: Option<Node>, else_if: bool| {
-        let braced = body.is_some_and(|b| b.kind() == "block" || (else_if && b.kind() == "if_statement"));
+        let braced =
+            body.is_some_and(|b| b.kind() == "block" || (else_if && b.kind() == "if_statement"));
         if !braced {
             if let Some(at) = keyword(node, word) {
-                report(out, file, at, "NeedBraces", format!("'{word}' construct must use '{{}}'s."));
+                report(
+                    out,
+                    file,
+                    at,
+                    "NeedBraces",
+                    format!("'{word}' construct must use '{{}}'s."),
+                );
             }
         }
     };
@@ -38,7 +47,9 @@ fn need_braces(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
                 flag("else", node.child_by_field_name("alternative"), true);
             }
         }
-        "for_statement" | "enhanced_for_statement" => flag("for", node.child_by_field_name("body"), false),
+        "for_statement" | "enhanced_for_statement" => {
+            flag("for", node.child_by_field_name("body"), false)
+        }
         "while_statement" => flag("while", node.child_by_field_name("body"), false),
         "do_statement" => flag("do", node.child_by_field_name("body"), false),
         _ => {}
@@ -46,12 +57,23 @@ fn need_braces(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
 }
 
 const STATEMENT_PARENTS: &[&str] = &[
-    "block", "constructor_body", "switch_block_statement_group", "if_statement", "while_statement",
-    "for_statement", "enhanced_for_statement", "do_statement", "labeled_statement",
+    "block",
+    "constructor_body",
+    "switch_block_statement_group",
+    "if_statement",
+    "while_statement",
+    "for_statement",
+    "enhanced_for_statement",
+    "do_statement",
+    "labeled_statement",
 ];
 
 fn missing_switch_default(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
-    if node.kind() != "switch_expression" || !node.parent().is_some_and(|p| STATEMENT_PARENTS.contains(&p.kind())) {
+    if node.kind() != "switch_expression"
+        || !node
+            .parent()
+            .is_some_and(|p| STATEMENT_PARENTS.contains(&p.kind()))
+    {
         return;
     }
     let mut has_default = false;
@@ -73,36 +95,73 @@ fn missing_switch_default(file: &SourceFile, node: Node, out: &mut Vec<Finding>)
         let parts = children(inner);
         has_default = has_default || parts.iter().any(|part| part.kind() == "default");
         special = special
-            || parts.iter().any(|part| matches!(part.kind(), "pattern" | "type_pattern" | "record_pattern" | "null_literal"));
+            || parts.iter().any(|part| {
+                matches!(
+                    part.kind(),
+                    "pattern" | "type_pattern" | "record_pattern" | "null_literal"
+                )
+            });
     });
     if !has_default && !special {
-        report(out, file, node, "MissingSwitchDefault", "switch without \"default\" clause.".to_string());
+        report(
+            out,
+            file,
+            node,
+            "MissingSwitchDefault",
+            "switch without \"default\" clause.".to_string(),
+        );
     }
 }
 
 fn upper_ell(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
     let integer = matches!(
         node.kind(),
-        "decimal_integer_literal" | "hex_integer_literal" | "octal_integer_literal" | "binary_integer_literal"
+        "decimal_integer_literal"
+            | "hex_integer_literal"
+            | "octal_integer_literal"
+            | "binary_integer_literal"
     );
     if integer && file.text_of(node).ends_with('l') {
-        report(out, file, node, "UpperEll", "Should use uppercase 'L'.".to_string());
+        report(
+            out,
+            file,
+            node,
+            "UpperEll",
+            "Should use uppercase 'L'.".to_string(),
+        );
     }
 }
 
 fn array_type_style(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
-    let holder = matches!(node.kind(), "variable_declarator" | "formal_parameter" | "method_declaration" | "resource"
-        | "enhanced_for_statement" | "catch_formal_parameter" | "annotation_type_element_declaration");
+    let holder = matches!(
+        node.kind(),
+        "variable_declarator"
+            | "formal_parameter"
+            | "method_declaration"
+            | "resource"
+            | "enhanced_for_statement"
+            | "catch_formal_parameter"
+            | "annotation_type_element_declaration"
+    );
     if !holder {
         return;
     }
     if let Some(dimensions) = node.child_by_field_name("dimensions") {
-        report(out, file, dimensions, "ArrayTypeStyle", "Array brackets at illegal position.".to_string());
+        report(
+            out,
+            file,
+            dimensions,
+            "ArrayTypeStyle",
+            "Array brackets at illegal position.".to_string(),
+        );
     }
 }
 
 fn multiple_variable_declarations(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
-    if !matches!(node.kind(), "field_declaration" | "local_variable_declaration" | "constant_declaration") {
+    if !matches!(
+        node.kind(),
+        "field_declaration" | "local_variable_declaration" | "constant_declaration"
+    ) {
         return;
     }
     let in_for = node.parent().is_some_and(|p| p.kind() == "for_statement");
@@ -112,7 +171,10 @@ fn multiple_variable_declarations(file: &SourceFile, node: Node, out: &mut Vec<F
         report(out, file, node, "MultipleVariableDeclarations", message);
     }
     if let Some(next) = node.next_sibling() {
-        if next.kind() == node.kind() && !in_for && next.start_position().row == node.end_position().row {
+        if next.kind() == node.kind()
+            && !in_for
+            && next.start_position().row == node.end_position().row
+        {
             let message = "Only one variable definition per line allowed.".to_string();
             report(out, file, node, "MultipleVariableDeclarations", message);
         }
@@ -132,7 +194,10 @@ fn avoid_star_import(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
 }
 
 const TOP_LEVEL: &[&str] = &[
-    "class_declaration", "interface_declaration", "enum_declaration", "record_declaration",
+    "class_declaration",
+    "interface_declaration",
+    "enum_declaration",
+    "record_declaration",
     "annotation_type_declaration",
 ];
 
@@ -140,15 +205,24 @@ fn one_top_level_class(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
     if node.kind() != "program" {
         return;
     }
-    let types: Vec<Node> = children(node).into_iter().filter(|child| TOP_LEVEL.contains(&child.kind())).collect();
+    let types: Vec<Node> = children(node)
+        .into_iter()
+        .filter(|child| TOP_LEVEL.contains(&child.kind()))
+        .collect();
     let public = |declaration: &Node| super::helpers::has_modifier(*declaration, "public");
     let any_public = types.iter().any(public);
-    let mut rest: Vec<&Node> = types.iter().filter(|declaration| !public(declaration)).collect();
+    let mut rest: Vec<&Node> = types
+        .iter()
+        .filter(|declaration| !public(declaration))
+        .collect();
     if !any_public && !rest.is_empty() {
         rest.remove(0);
     }
     for declaration in rest {
-        let name = declaration.child_by_field_name("name").map(|n| file.text_of(n)).unwrap_or_default();
+        let name = declaration
+            .child_by_field_name("name")
+            .map(|n| file.text_of(n))
+            .unwrap_or_default();
         let message = format!("Top-level class {name} has to reside in its own source file.");
         report(out, file, *declaration, "OneTopLevelClass", message);
     }
@@ -158,25 +232,57 @@ fn no_finalizer(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
     if node.kind() != "method_declaration" {
         return;
     }
-    let named = node.child_by_field_name("name").is_some_and(|n| file.text_of(n) == "finalize");
-    let empty = node.child_by_field_name("parameters").is_some_and(|p| p.named_child_count() == 0);
+    let named = node
+        .child_by_field_name("name")
+        .is_some_and(|n| file.text_of(n) == "finalize");
+    let empty = node
+        .child_by_field_name("parameters")
+        .is_some_and(|p| p.named_child_count() == 0);
     if named && empty {
-        report(out, file, node, "NoFinalizer", "Avoid using finalizer method.".to_string());
+        report(
+            out,
+            file,
+            node,
+            "NoFinalizer",
+            "Avoid using finalizer method.".to_string(),
+        );
     }
 }
 
 const JLS_ORDER: &[&str] = &[
-    "public", "protected", "private", "abstract", "default", "static", "sealed", "non-sealed", "final",
-    "transient", "volatile", "synchronized", "native", "strictfp",
+    "public",
+    "protected",
+    "private",
+    "abstract",
+    "default",
+    "static",
+    "sealed",
+    "non-sealed",
+    "final",
+    "transient",
+    "volatile",
+    "synchronized",
+    "native",
+    "strictfp",
 ];
 
 fn annotation_on_type(list: Node) -> bool {
-    let Some(owner) = list.parent() else { return false };
+    let Some(owner) = list.parent() else {
+        return false;
+    };
     match owner.kind() {
-        "field_declaration" | "local_variable_declaration" | "constant_declaration" | "formal_parameter"
-        | "spread_parameter" | "constructor_declaration" | "resource" | "enhanced_for_statement"
+        "field_declaration"
+        | "local_variable_declaration"
+        | "constant_declaration"
+        | "formal_parameter"
+        | "spread_parameter"
+        | "constructor_declaration"
+        | "resource"
+        | "enhanced_for_statement"
         | "catch_formal_parameter" => true,
-        "method_declaration" => owner.child_by_field_name("type").is_some_and(|t| t.kind() != "void_type"),
+        "method_declaration" => owner
+            .child_by_field_name("type")
+            .is_some_and(|t| t.kind() != "void_type"),
         _ => false,
     }
 }
@@ -186,14 +292,19 @@ fn modifier_order(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
         return;
     }
     let annotation = |part: &Node| matches!(part.kind(), "marker_annotation" | "annotation");
-    let parts: Vec<Node> = children(node).into_iter().filter(|part| !part.kind().ends_with("comment")).collect();
+    let parts: Vec<Node> = children(node)
+        .into_iter()
+        .filter(|part| !part.kind().ends_with("comment"))
+        .collect();
     let mut rest = parts.iter().skip_while(|part| annotation(part)).peekable();
     let mut index = 0;
     while let Some(part) = rest.next() {
         if annotation(part) {
             if !annotation_on_type(node) {
                 let name = file.text_of(*part);
-                let message = format!("'{name}' annotation modifier does not precede non-annotation modifiers.");
+                let message = format!(
+                    "'{name}' annotation modifier does not precede non-annotation modifiers."
+                );
                 report(out, file, *part, "ModifierOrder", message);
             }
             return;
@@ -218,7 +329,10 @@ pub fn rules() -> Vec<Box<dyn FileRule>> {
         simple("MissingSwitchDefault", missing_switch_default),
         simple("UpperEll", upper_ell),
         simple("ArrayTypeStyle", array_type_style),
-        simple("MultipleVariableDeclarations", multiple_variable_declarations),
+        simple(
+            "MultipleVariableDeclarations",
+            multiple_variable_declarations,
+        ),
         simple("AvoidStarImport", avoid_star_import),
         simple("OneTopLevelClass", one_top_level_class),
         simple("NoFinalizer", no_finalizer),

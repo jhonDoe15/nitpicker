@@ -8,7 +8,9 @@ use std::collections::HashMap;
 use tree_sitter::Node;
 
 fn supers(index: &TypeIndex, name: &str) -> Vec<String> {
-    let Some(info) = index.get(name) else { return Vec::new() };
+    let Some(info) = index.get(name) else {
+        return Vec::new();
+    };
     let mut list: Vec<String> = info.superclass.iter().cloned().collect();
     if info.superclass.is_none() && name != OBJECT {
         list.push(OBJECT.to_string());
@@ -25,7 +27,11 @@ fn rank(index: &TypeIndex, name: &str, known: &mut HashMap<String, u32>) -> u32 
         return *found;
     }
     known.insert(name.to_string(), 1);
-    let above = supers(index, name).iter().map(|parent| rank(index, parent, known)).max().unwrap_or(0);
+    let above = supers(index, name)
+        .iter()
+        .map(|parent| rank(index, parent, known))
+        .max()
+        .unwrap_or(0);
     known.insert(name.to_string(), above + 1);
     above + 1
 }
@@ -44,14 +50,22 @@ pub fn closure(index: &TypeIndex, name: &str) -> Vec<String> {
         order.push(current);
     }
     let mut known = HashMap::new();
-    let mut ranked: Vec<(u32, usize, String)> =
-        order.into_iter().enumerate().map(|(met, parent)| (rank(index, &parent, &mut known), met, parent)).collect();
+    let mut ranked: Vec<(u32, usize, String)> = order
+        .into_iter()
+        .enumerate()
+        .map(|(met, parent)| (rank(index, &parent, &mut known), met, parent))
+        .collect();
     ranked.sort_by(|a, b| b.0.cmp(&a.0).then(b.1.cmp(&a.1)));
     ranked.into_iter().map(|(_, _, parent)| parent).collect()
 }
 
 pub fn own_type(index: &TypeIndex, name: &str) -> Type {
-    let bounds = index.get(name).map(|info| info.type_parameters.iter().map(|(_, bound)| bound.clone()).collect());
+    let bounds = index.get(name).map(|info| {
+        info.type_parameters
+            .iter()
+            .map(|(_, bound)| bound.clone())
+            .collect()
+    });
     Type::Class(name.to_string(), bounds.unwrap_or_default())
 }
 
@@ -66,16 +80,26 @@ pub fn formals<'t>(method: Node<'t>) -> Vec<Node<'t>> {
 }
 
 /// The index entry of a method declaration, with the name of its class.
-pub fn declared_method<'c>(context: &'c Context, method: Node) -> Option<(&'c ClassInfo, &'c Method)> {
+pub fn declared_method<'c>(
+    context: &'c Context,
+    method: Node,
+) -> Option<(&'c ClassInfo, &'c Method)> {
     let owner = enclosing_type(context.file, context.resolver.scope, method)?;
     let info = context.resolver.index.get(&owner)?;
     let name = match method.kind() {
-        "method_declaration" | "annotation_type_element_declaration" => context.text(method.child_by_field_name("name")?),
+        "method_declaration" | "annotation_type_element_declaration" => {
+            context.text(method.child_by_field_name("name")?)
+        }
         _ => "<init>",
     };
     let parameters = formals(method);
-    let candidates: Vec<&Method> =
-        info.methods.iter().filter(|candidate| candidate.name == name && candidate.parameters.len() == parameters.len()).collect();
+    let candidates: Vec<&Method> = info
+        .methods
+        .iter()
+        .filter(|candidate| {
+            candidate.name == name && candidate.parameters.len() == parameters.len()
+        })
+        .collect();
     if candidates.len() == 1 {
         return Some((info, candidates[0]));
     }
@@ -86,12 +110,21 @@ pub fn declared_method<'c>(context: &'c Context, method: Node) -> Option<(&'c Cl
                 .into_iter()
                 .find_map(|part| context.resolver.type_node(part))
                 .map(|element| format!("{}[]", element.erased().name())),
-            _ => context.resolver.declared_type(*parameter, None).map(|kind| kind.erased().name()),
+            _ => context
+                .resolver
+                .declared_type(*parameter, None)
+                .map(|kind| kind.erased().name()),
         })
         .collect();
     candidates
         .into_iter()
-        .find(|candidate| candidate.parameters.iter().zip(&written).all(|(formal, own)| own.as_ref().is_none_or(|own| *own == formal.name())))
+        .find(|candidate| {
+            candidate
+                .parameters
+                .iter()
+                .zip(&written)
+                .all(|(formal, own)| own.as_ref().is_none_or(|own| *own == formal.name()))
+        })
         .map(|found| (info, found))
 }
 
@@ -102,10 +135,17 @@ fn overridable_in(other: &Method, declaring: &ClassInfo, origin: &ClassInfo) -> 
     if other.flags & flag::PUBLIC != 0 || declaring.is_interface {
         return true;
     }
-    !origin.is_interface && (other.flags & flag::PROTECTED != 0 || declaring.package == origin.package)
+    !origin.is_interface
+        && (other.flags & flag::PROTECTED != 0 || declaring.package == origin.package)
 }
 
-pub fn sub_signature(index: &TypeIndex, origin: &ClassInfo, method: &Method, declaring: &ClassInfo, other: &Method) -> bool {
+pub fn sub_signature(
+    index: &TypeIndex,
+    origin: &ClassInfo,
+    method: &Method,
+    declaring: &ClassInfo,
+    other: &Method,
+) -> bool {
     if method.parameters.len() != other.parameters.len() {
         return false;
     }
@@ -113,18 +153,32 @@ pub fn sub_signature(index: &TypeIndex, origin: &ClassInfo, method: &Method, dec
         return true;
     }
     let map = index.member_map(&own_type(index, &origin.name), &declaring.name);
-    let seen: Vec<Type> = other.generic_parameters.iter().map(|formal| formal.substitute(&map)).collect();
-    seen == method.generic_parameters || seen.iter().map(Type::erased).eq(method.parameters.iter().cloned())
+    let seen: Vec<Type> = other
+        .generic_parameters
+        .iter()
+        .map(|formal| formal.substitute(&map))
+        .collect();
+    seen == method.generic_parameters
+        || seen
+            .iter()
+            .map(Type::erased)
+            .eq(method.parameters.iter().cloned())
 }
 
 /// The first method in the supertypes that the method overrides, as `ASTHelpers.streamSuperMethods` finds it.
-pub fn super_method<'c>(context: &'c Context, origin: &ClassInfo, method: &Method) -> Option<(&'c ClassInfo, &'c Method)> {
+pub fn super_method<'c>(
+    context: &'c Context,
+    origin: &ClassInfo,
+    method: &Method,
+) -> Option<(&'c ClassInfo, &'c Method)> {
     if method.is_static || method.name == "<init>" {
         return None;
     }
     let index = context.resolver.index;
     for parent in closure(index, &origin.name) {
-        let Some(declaring) = index.get(&parent) else { continue };
+        let Some(declaring) = index.get(&parent) else {
+            continue;
+        };
         let found = declaring.methods.iter().find(|other| {
             other.name == method.name
                 && !other.is_static
@@ -140,7 +194,11 @@ pub fn super_method<'c>(context: &'c Context, origin: &ClassInfo, method: &Metho
 
 pub fn simple_name(class: &str) -> &str {
     let last = class.rsplit('.').next().unwrap_or(class);
-    if last.starts_with(|first: char| first.is_ascii_digit()) { last.trim_start_matches(|digit: char| digit.is_ascii_digit()) } else { last }
+    if last.starts_with(|first: char| first.is_ascii_digit()) {
+        last.trim_start_matches(|digit: char| digit.is_ascii_digit())
+    } else {
+        last
+    }
 }
 
 pub fn annotation_names<'f>(context: &'f Context, declaration: Node) -> Vec<&'f str> {
@@ -155,5 +213,7 @@ pub fn annotation_names<'f>(context: &'f Context, declaration: Node) -> Vec<&'f 
 }
 
 pub fn has_annotation(context: &Context, declaration: Node, simple: &str) -> bool {
-    annotation_names(context, declaration).iter().any(|name| name.rsplit('.').next() == Some(simple))
+    annotation_names(context, declaration)
+        .iter()
+        .any(|name| name.rsplit('.').next() == Some(simple))
 }
