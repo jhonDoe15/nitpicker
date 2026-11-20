@@ -1,7 +1,7 @@
-import { fixerError, fixSpawn } from '../../../../core/fix/common/fix-command.mjs';
-import { formatNotes } from '../../../../core/fix/common/fix-notes.mjs';
-import { rewriteFormatted } from '../../../../core/fix/common/format-rewrite.mjs';
-import { toolPrecedenceOf } from '../../../../core/fix/common/tool-precedence.mjs';
+import { fixerError, fixSpawn } from '../../../../core/fix/tool-steps/commands/fix-command.mts';
+import { formatNotes } from '../../../../core/fix/tool-steps/fix-notes.mts';
+import { rewriteFormatted } from '../../../../core/fix/tool-steps/format-rewrite.mts';
+import { toolPrecedenceOf } from '../../../../core/fix/tool-steps/tool-precedence.mts';
 import type { FixFile, FixStep, FixWriter } from '../../../../core/fix/typed/fix-types.mts';
 import { kotlinStyleFile, resolveKotlinTools } from '../../adapters/kotlin/kotlin-tools.mts';
 import {
@@ -156,6 +156,7 @@ function applyStep(step: FormatStep, classpaths: Classpaths, scope: object): Fix
       files: step.files,
       format: step.formatWith(classpaths),
       touchedLinesOnly: step.touchedLinesOnly,
+      keepLineEndings: true,
       tool: step.plan.label,
     });
     return { toolErrors: [], notes: textsOf(callUntyped(formatNotes, step.plan.label, rewritten)) };

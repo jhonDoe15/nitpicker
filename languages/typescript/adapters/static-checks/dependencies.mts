@@ -1,4 +1,4 @@
-import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mts';
 import { resolveDependencyHook } from '../dependency-graph/dependency-hooks.mts';
 import { detectPackageManager } from '../dependency-graph/package-managers/detect.mts';
 import { containedPath } from '../dependency-graph/package-managers/contained-path.mts';

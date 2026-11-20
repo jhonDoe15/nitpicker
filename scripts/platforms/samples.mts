@@ -10,7 +10,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { containedPath } from '../../core/fix/common/contained-path.mjs';
+import { containedPath } from '../../core/fix/tool-steps/paths/contained-path.mts';
 
 export const REPOSITORY_ROOT = path.resolve(import.meta.dirname, '../..');
 const GRADLE_PROJECT = 'languages/java/adapters/fixtures/gradle-project';

@@ -1,11 +1,14 @@
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { snapshotOf as untypedSnapshotOf } from '../../../../core/fix/engine/edits/snapshot.mjs';
+import type { KnipConfig, ToolLayout } from '../../preset/typed/tool-config/tool-config-types.mts';
+import { fieldsOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
+import type { ToolSettings } from '../../preset/typed/head-policy-types.mts';
+import { snapshotOf } from '../../../../core/fix/engine/edits/snapshot.mts';
 import {
   PACKAGE_ROOT,
   resolveTool as untypedResolveTool,
-} from '../../../../core/tooling/tool-resolution.mjs';
-import { realTemporaryDirectory as untypedRealTemporaryDirectory } from '../../../../core/tooling/temporary-files.mjs';
+} from '../../../../core/tooling/tool-resolution.mts';
+import { realTemporaryDirectory as untypedRealTemporaryDirectory } from '../../../../core/tooling/temporary-files.mts';
 import type {
   FixEdit,
   FixFile,
@@ -15,9 +18,9 @@ import type {
 import { knipConfigFile } from '../../adapters/quality-areas/knip/knip-run.mts';
 import { layeredKnipConfig } from '../../adapters/quality-areas/knip/knip-layers.mts';
 import { spawnedEntryFiles } from '../../adapters/dependency-graph/spawned-entries.mts';
-import { KNIP_TOOL } from '../../preset/project-tools/project-config-files.mjs';
-import { projectToolLayer as untypedProjectToolLayer } from '../../preset/project-tools/project-tool-policy.mjs';
-import { layoutKnipConfig as untypedLayoutKnipConfig } from '../../preset/project-configs/typescript/layout-rewrites.mjs';
+import { KNIP_TOOL } from '../../preset/project-tools/project-config-files.mts';
+import { projectToolLayer as untypedProjectToolLayer } from '../../preset/project-tools/project-tool-policy.mts';
+import { layoutKnipConfig } from '../../preset/project-configs/typescript/layout-rewrites.mts';
 import { guardDeletions as untypedGuardDeletions } from '../project/dead-files/dead-file-guard.mts';
 import {
   containedPath,
@@ -26,28 +29,28 @@ import {
   readBytes,
   runFixCommand,
   type Bytes,
-} from '../../../../core/fix/typed/fix-views.mts';
+} from '../../../../core/fix/typed/views/fix-views.mts';
 import { copyProject as untypedCopyProject } from './project-copy.mts';
 import { knipFixTypes as untypedKnipFixTypes } from './knip-fix-types.mts';
 
 type Planned = { readonly name: string; readonly edit: FixEdit; readonly deleted: boolean };
 type KnipLayer = Parameters<typeof layeredKnipConfig>[1];
-type KnipBase = { readonly entry: readonly string[]; readonly [key: string]: unknown };
 
 export type KnipFixSettings = FixSettings & {
-  readonly layout: unknown;
-  readonly knipSettings: unknown;
+  readonly layout: ToolLayout;
+  readonly knipSettings: ToolSettings | undefined;
   readonly policyEnvironment: NodeJS.ProcessEnv;
 };
 
-const snapshotOf: (bytes: Bytes) => unknown = untypedSnapshotOf;
 const resolveKnip: (
   name: string,
   options: { readonly bin: string; readonly packageRoot?: string },
 ) => { readonly binPath: string | undefined } = untypedResolveTool;
 const realTemporaryDirectory: () => string = untypedRealTemporaryDirectory;
-const projectToolLayer: (tool: string, settings: unknown) => KnipLayer = untypedProjectToolLayer;
-const layoutKnipConfig: (config: unknown, layout: unknown) => KnipBase = untypedLayoutKnipConfig;
+const projectToolLayer: (
+  tool: string,
+  settings: ToolSettings | undefined,
+) => KnipLayer | undefined = untypedProjectToolLayer;
 const guardDeletions: (
   projectRoot: string,
   planned: readonly Planned[],
@@ -59,14 +62,21 @@ const knipFixTypes: (selectedRules: readonly string[]) => readonly string[] = un
 const TOOL = 'knip --fix';
 const DEFAULTS = 'languages/typescript/preset/defaults/knip.json';
 
+function defaultKnipConfig(): KnipConfig {
+  const fields = fieldsOf(parseJson(readFileSync(path.join(PACKAGE_ROOT, DEFAULTS), 'utf8')));
+  return {
+    ...fields,
+    entry: textsOf(fields['entry']),
+    project: textsOf(fields['project']),
+    ignore: textsOf(fields['ignore']),
+  };
+}
+
 function knipConfig(settings: KnipFixSettings) {
-  const base = layoutKnipConfig(
-    JSON.parse(readFileSync(path.join(PACKAGE_ROOT, DEFAULTS), 'utf8')),
-    settings.layout,
-  );
+  const base = layoutKnipConfig(defaultKnipConfig(), settings.layout);
   const withEntries = {
     ...base,
-    entry: [...base.entry, ...spawnedEntryFiles(settings.projectRoot)],
+    entry: [...textsOf(base['entry']), ...spawnedEntryFiles(settings.projectRoot)],
   };
   return layeredKnipConfig(withEntries, projectToolLayer(KNIP_TOOL, settings.knipSettings));
 }

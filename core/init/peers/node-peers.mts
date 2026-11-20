@@ -1,13 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ancestorDirectories } from '../../../shared/filesystem.mjs';
-import { readManifest } from '../../../languages/typescript/preset/eslint-config/scope-support.mjs';
+import { readManifest } from '../../../languages/typescript/preset/eslint-config/scope-support.mts';
 import {
   MINIMUM_NODE,
   supportsRedirect,
-} from '../../../languages/typescript/typescript-api/api-redirect.mjs';
+} from '../../../languages/typescript/typescript-api/api-redirect.mts';
 import { packageVersion } from '../../help/package-version.mts';
-import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mts';
 import { describePackageManager } from '../detection/package-manager.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 import {

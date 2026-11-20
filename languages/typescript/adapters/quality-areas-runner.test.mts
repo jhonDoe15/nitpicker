@@ -1,16 +1,7 @@
-import {
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  realpathSync,
-  rmSync,
-  symlinkSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mts';
 import {
   createdFilesTracker,
   installStrykerTsconfig,
@@ -25,24 +16,14 @@ import type { QualityAreaOptions } from './quality-areas/typed/area-types.mts';
 import type { CrapEntry } from './quality-areas/typed/reporting.mts';
 import type { Finding } from './static-checks/shared.mts';
 import { fieldOf, fieldsOf, listOf, parseJson, textOf } from '../../../shared/values/readers.mts';
+import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mts';
+import { useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mts';
 
-const temporaryRoots: string[] = [];
-
-afterEach(() => {
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { temporaryRoot } = useGitFixtures();
 
 function snapshotWith(files: Readonly<Record<string, string>>): string {
-  const parent = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-')));
-  temporaryRoots.push(parent);
-  const root = path.join(parent, 'head');
-  for (const [file, text] of Object.entries(files)) {
-    const filePath = path.join(root, file);
-    mkdirSync(path.dirname(filePath), { recursive: true });
-    writeFileSync(filePath, text);
-  }
+  const root = path.join(temporaryRoot('nitpicker-diff-'), 'head');
+  writeFiles(root, files);
   return root;
 }
 

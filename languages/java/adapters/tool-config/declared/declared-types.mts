@@ -39,11 +39,11 @@ export type Declaration = {
   readonly conditional?: true;
 };
 
-export type PrecedenceLayers = { readonly usesProject: boolean; readonly nitpickerFirst: boolean };
+export type ChoiceLayers = { readonly nitpickerFirst: boolean };
+
+export type PrecedenceLayers = ChoiceLayers & { readonly usesProject: boolean };
 
 export type ToolChoice = { readonly arguments: unknown; readonly files: readonly string[] };
-
-export type ChoiceLayers = Pick<PrecedenceLayers, 'nitpickerFirst'>;
 
 export type ChoiceContext = { readonly layers: ChoiceLayers; readonly root: string };
 

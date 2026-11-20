@@ -7,7 +7,7 @@ import {
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import { fixWorkingTree } from '../../../../core/fix/run-fix.mts';
 import type { FixOutcome } from '../../../../core/fix/typed/fix-types.mts';
-import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
+import { containedPath } from '../../../../core/fix/tool-steps/paths/contained-path.mts';
 import { linkSentence as untypedLinkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 import { textOf } from '../../../../shared/values/readers.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';

@@ -2,12 +2,13 @@ import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { byCodeUnits } from '../../../core/scope/mutation-scope.mjs';
-import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
-import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
+import { byCodeUnits } from '../../../core/scope/mutation-scope.mts';
+import { compareFindings } from '../../../core/diff/comparison/compare.mts';
+import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mts';
 import { fieldOf, parseJson, textOf } from '../../../shared/values/readers.mts';
 import { withoutRouteFields } from '../../../core/exceptions/test-support/route-check.mts';
-import { findingsOf, type JavaFinding } from '../adapters/typed/java-values.mts';
+import type { TrackedFinding } from '../../../core/diff/comparison/model/finding-types.mts';
+import { findingsOf, trackedFindingsOf, type JavaFinding } from '../adapters/typed/java-values.mts';
 import { defined } from './test-support/defined.mts';
 import { prefixedFinding, readModuleFindings, readModuleReport } from './java-modules.mts';
 import { registerTemporaryRoots } from '../__tests__/temporary-roots.mts';
@@ -431,7 +432,7 @@ function cpdModule(moduleDir: string, outcome: string): void {
 function reactor(
   modules: Readonly<Record<string, string>>,
   sourceRootsOf?: (module: string) => string[],
-): JavaFinding[] {
+): TrackedFinding[] {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-java-reactor-')));
   temporaryRoots.push(root);
   writeProjectDuplicates(root);
@@ -445,7 +446,9 @@ function reactor(
     }
   }
   const moduleDirs = Object.keys(modules).map((module) => path.join(root, module));
-  return readModuleFindings(root, moduleDirs, { reportDirectory: REPORT_DIRECTORY });
+  return trackedFindingsOf(
+    readModuleFindings(root, moduleDirs, { reportDirectory: REPORT_DIRECTORY }),
+  );
 }
 
 describe('readModuleReport', () => {

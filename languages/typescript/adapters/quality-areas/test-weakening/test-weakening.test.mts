@@ -5,7 +5,7 @@ import {
   fixtureGit,
   useGitFixtures,
 } from '../../../../../core/diff/git/test-support/git-repository.mts';
-import { defaultResolvedLayout as layout } from '../../../preset/layout.mjs';
+import { defaultResolvedLayout as layout } from '../../../preset/layout.mts';
 import { normalizeMutation } from '../reporting/tests.mts';
 import { strykerRunConfig } from '../runners/stryker/stryker-config.mts';
 import { runScopedMutation } from './scoped-mutation.mts';

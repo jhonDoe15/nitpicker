@@ -5,7 +5,7 @@ import {
   renderConsoleSummary as diffConsole,
   renderSnapshotConsole as snapshotConsole,
 } from '../../diff/reporting/summary.mts';
-import { workingTreeDigest as untypedDigest } from '../../diff/reporting/run-stamp/run-stamp.mjs';
+import { workingTreeDigest as untypedDigest } from '../../diff/reporting/run-stamp/run-stamp.mts';
 import {
   colorEnabled as untypedColorEnabled,
   displayPath as untypedDisplayPath,

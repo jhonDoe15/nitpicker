@@ -1,5 +1,5 @@
-import { existingRoots as untypedExistingRoots } from '../../layout.mjs';
-import { cruise as untypedCruise } from '../cruise.mjs';
+import { existingRoots as untypedExistingRoots } from '../../layout.mts';
+import { cruise as untypedCruise } from '../cruise.mts';
 
 export const cruise: (paths: readonly string[]) => unknown = untypedCruise;
 

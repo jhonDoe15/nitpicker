@@ -1,3 +1,4 @@
+import type { PackageAnalyzer } from '../diff/typed/analyzer-types.mts';
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -6,13 +7,13 @@ import { runAnalyzers } from '../../../../core/diff/execution/run-analyzers.mts'
 import { withDefaultAnalyzerParallelism as untypedWithDefaultAnalyzerParallelism } from '../../../../core/diff/execution/test-support/analyzer-parallelism.mts';
 import type { Finding } from '../../adapters/static-checks/shared.mts';
 import {
-  applyLayout as untypedApplyLayout,
+  applyLayout,
   configuredAnalyzers as untypedConfiguredAnalyzers,
-} from '../diff/configured-analyzers.mjs';
+} from '../diff/configured-analyzers.mts';
 import {
-  resolveHeadPolicy as untypedResolveHeadPolicy,
+  resolveHeadPolicy,
   withHeadPolicyFile as untypedWithHeadPolicyFile,
-} from '../head-policy.mjs';
+} from '../head-policy.mts';
 import { writeProjectFiles } from '../test-support/temporary-projects.mts';
 
 type Names = {
@@ -37,15 +38,11 @@ type CounterNames = {
 
 type Numbers = readonly [string, string, string, string, string];
 
-type NamedAnalyzer = { readonly name: string };
+type NamedAnalyzer = PackageAnalyzer;
 
 const withDefaultAnalyzerParallelism: <Result>(run: () => Result) => Result =
   untypedWithDefaultAnalyzerParallelism;
 const configuredAnalyzers: () => NamedAnalyzer[] = untypedConfiguredAnalyzers;
-const applyLayout: (analyzers: NamedAnalyzer[], policy: unknown) => NamedAnalyzer[] =
-  untypedApplyLayout;
-const resolveHeadPolicy: (config: Readonly<Record<string, unknown>>) => unknown =
-  untypedResolveHeadPolicy;
 const withHeadPolicyFile: <Result>(
   policy: unknown,
   run: (headPolicyFile: string) => Result,

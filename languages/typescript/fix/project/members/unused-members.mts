@@ -1,6 +1,6 @@
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
-import { fieldOf } from '../../../../../shared/values/readers.mts';
+import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
 import { layoutOf, withProject } from '../model/project-model.mts';
 import type {
   FixContext,
@@ -20,6 +20,7 @@ import {
   recordPlan,
   registerWrapperAliases,
   unusedApiFindings,
+  withSymbol,
 } from '../typed/reuse-views.mts';
 import type {
   PlanResult,
@@ -42,7 +43,7 @@ function registryOf(
   const layout = layoutOf(context.inputs);
   const react = isReactProject({
     projectRoot: context.projectRoot,
-    react: context.inputs?.headPolicy?.react,
+    react: context.inputs?.headPolicy?.react ?? {},
   });
   const packagesInfo = loadPackages(context.projectRoot, layout);
   const shared = createContext({
@@ -55,14 +56,14 @@ function registryOf(
   const registry = collectTargets(analysis);
   registerWrapperAliases(analysis, registry);
   collectReferences(analysis, registry);
-  const isExcepted = exceptionMatcher(fieldOf(context.inputs?.headPolicy, 'exceptions') ?? []);
+  const isExcepted = exceptionMatcher(listOf(fieldOf(context.inputs?.headPolicy, 'exceptions')));
   return {
     registry,
     findings: unusedApiFindings(registry, {
       owned: analysis.owned,
       analyzerName: 'structure',
       isExcepted,
-    }),
+    }).flatMap(withSymbol),
   };
 }
 

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach } from 'vitest';
-import { containedPath as untypedContainedPath } from '../../../../core/fix/common/contained-path.mjs';
+import { containedPath as untypedContainedPath } from '../../../../core/fix/tool-steps/paths/contained-path.mts';
 
 const containedPath: (root: string, name: string) => string = untypedContainedPath;
 

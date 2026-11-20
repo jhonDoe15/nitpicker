@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { parseAnalyzerReport as untypedParseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
+import { parseAnalyzerReport as untypedParseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mts';
 import { analyzeJavaCoupling, parseJdeps, readCouplingFindings } from './java-coupling.mts';
 import { kotlinModules as untypedKotlinModules } from '../kotlin/kotlin-metrics.mts';
 import type { Metrics } from '../kotlin/kotlin-metrics.mts';

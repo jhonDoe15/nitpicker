@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { readReportModules } from '../../adapters/gradle-reports/report-modules.mts';
-import { includedBuilds, includedSourceBuilds, includesSubprojects } from './included-builds.mjs';
+import { includedBuilds, includedSourceBuilds, includesSubprojects } from './included-builds.mts';
 
 const roots: string[] = [];
 

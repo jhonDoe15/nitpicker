@@ -1,22 +1,22 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
-import type { Inspection, MonorepoPlan, ProjectEntry } from '../project-types.mts';
+import type { Inspection, MonorepoPlan, ProjectEntry, WorkspaceMember } from '../project-types.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import { fieldOf } from '../../../shared/values/readers.mts';
 import { SUPPORTED_PRESETS } from '../../configuration/validate.mts';
-import { parseConfigFile, repositoryRootOf } from '../../configuration/layers/layers.mjs';
+import { parseConfigFile, repositoryRootOf } from '../../configuration/layers/layers.mts';
 import { readLayeredConfig } from '../../configuration/layers/read-layered.mts';
-import { validateProjects as untypedValidateProjects } from '../../configuration/layers/settings.mjs';
-import { resolveDeclaredProjects as untypedResolveDeclared } from '../discovery/declared-projects.mjs';
+import { validateProjects as untypedValidateProjects } from '../../configuration/layers/settings.mts';
+import { resolveDeclaredProjects as untypedResolveDeclared } from '../discovery/declared-projects.mts';
 import {
   detectProjects as untypedDetectProjects,
   undeclaredProjects as untypedUndeclaredProjects,
-} from '../discovery/detect.mjs';
+} from '../discovery/detect.mts';
 import {
   listRepositoryFiles as untypedListFiles,
   listSubmodules as untypedListSubmodules,
-} from '../discovery/repository-files.mjs';
+} from '../discovery/repository-files.mts';
 import { describeProject, rejectReportFolderClash } from './project-entry.mts';
 
 type Listed = {
@@ -58,8 +58,8 @@ type Discovery = {
     readonly root: string;
     readonly files: readonly string[];
     readonly projects: readonly { readonly path: string }[];
-    readonly exclude?: unknown;
-  }): readonly unknown[];
+    readonly exclude?: readonly string[] | undefined;
+  }): readonly WorkspaceMember[];
 };
 
 const discovery: Discovery = {

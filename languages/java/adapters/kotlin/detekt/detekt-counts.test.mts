@@ -1,9 +1,9 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { compareFindings as untypedCompareFindings } from '../../../../../core/diff/comparison/compare.mjs';
-import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
-import type { JavaFinding as Finding } from '../../typed/java-values.mts';
+import { compareFindings as compareFindingsUntyped } from '../../../../../core/diff/comparison/compare.mts';
+import { fieldOf, fieldsOf, textOf } from '../../../../../shared/values/readers.mts';
+import { callUntyped, findingsOf, type JavaFinding as Finding } from '../../typed/java-values.mts';
 import {
   kotlinFindings as untypedKotlinFindings,
   projectWithKotlinReports,
@@ -26,12 +26,14 @@ type Comparison = {
 };
 
 const kotlinFindings: (root: string, tool: string) => Finding[] = untypedKotlinFindings;
-const compareWith: (input: {
+function compareWith(input: {
   baseFindings: Finding[];
   headFindings: Finding[];
   touchedCode: Touched;
   unknownOnBase: undefined;
-}) => Record<string, Finding[]> = untypedCompareFindings;
+}): Record<string, unknown> {
+  return fieldsOf(callUntyped(compareFindingsUntyped, input));
+}
 
 function compareFindings(input: {
   baseFindings: Finding[];
@@ -40,9 +42,9 @@ function compareFindings(input: {
 }): Comparison {
   const compared = compareWith({ ...input, unknownOnBase: undefined });
   return {
-    newFindings: compared['newFindings'] ?? [],
-    unchangedFindings: compared['unchangedFindings'] ?? [],
-    resolvedFindings: compared['resolvedFindings'] ?? [],
+    newFindings: findingsOf(compared['newFindings']),
+    unchangedFindings: findingsOf(compared['unchangedFindings']),
+    resolvedFindings: findingsOf(compared['resolvedFindings']),
   };
 }
 

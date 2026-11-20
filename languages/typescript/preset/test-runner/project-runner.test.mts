@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { projectTestRunner } from './project-runner.mts';
-import { policyTestRunner as untypedPolicyTestRunner } from './policy-runner.mjs';
-import { recordedTestRunner as untypedRecordedTestRunner } from './vocabulary/runner-vocabulary.mjs';
+import { policyTestRunner as untypedPolicyTestRunner } from './policy-runner.mts';
+import { recordedTestRunner as untypedRecordedTestRunner } from './vocabulary/runner-vocabulary.mts';
 import {
   headPolicyEnvironment,
   withHeadPolicyFile,

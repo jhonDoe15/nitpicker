@@ -5,7 +5,7 @@ import {
   weightsFromSeconds,
 } from '../../../scripts/shard-weights/weights.mts';
 import { fieldOf, listOf, numberOr, textOf } from '../../../shared/values/readers.mts';
-import { configuredAnalyzers } from './diff/configured-analyzers.mjs';
+import { configuredAnalyzers } from './diff/configured-analyzers.mts';
 
 const packageAnalyzers = listOf(configuredAnalyzers()).map((analyzer) => ({
   name: textOf(fieldOf(analyzer, 'name')),

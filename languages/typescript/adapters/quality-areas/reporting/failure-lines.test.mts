@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
+import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mts';
 import { formatTestFailures } from './test-report.mts';
 import { assertionDetails } from './failure-lines.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';

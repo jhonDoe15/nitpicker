@@ -1,8 +1,8 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { runGit } from '../../diff/git/repository/command.mjs';
+import { runGit } from '../../diff/git/repository/command.mts';
 import { gitBlobId } from '../../policy-changes/policy-scope.mts';
-import { isInside as untypedIsInside } from '../discovery/repository-files.mjs';
+import { isInside as untypedIsInside } from '../discovery/repository-files.mts';
 
 import type { Comparison, MonorepoPlan } from '../project-types.mts';
 

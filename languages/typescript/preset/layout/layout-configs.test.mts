@@ -7,13 +7,13 @@ import {
   useGitCheckouts,
 } from '../../../../core/diff/git/test-support/git-checkout.mts';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
-import { globMatcher as untypedGlobMatcher } from '../layout.mjs';
-import { readDefaultTsconfig } from './test-support/layout-readers.mts';
+import { globMatcher as untypedGlobMatcher } from '../layout.mts';
 import {
-  customLayout,
-  readDefault,
-  trackTemporaryRoot,
-} from './test-support/layout-config-loading.mts';
+  readDefaultJscpd,
+  readDefaultKnip,
+  readDefaultTsconfig,
+} from './test-support/layout-readers.mts';
+import { customLayout, trackTemporaryRoot } from './test-support/layout-config-loading.mts';
 import {
   compareText,
   isCustomLayout,
@@ -169,13 +169,13 @@ describe('layout-aware tool configurations', () => {
     expect(pairs.map(({ rewritten }) => rewritten.exclude)).toEqual(
       pairs.map(({ base }) => base.exclude),
     );
-    const knip = readDefault('knip.json');
+    const knip = readDefaultKnip('knip.json');
     const rewrittenKnip = layoutKnipConfig(knip, defaultLayout);
     const keys = ['entry', 'project', 'ignore'];
     expect(keys.map((key) => sorted(textsOf(fieldOf(rewrittenKnip, key))))).toEqual(
       keys.map((key) => sorted(textsOf(fieldOf(knip, key)))),
     );
-    const jscpd = readDefault('jscpd.json');
+    const jscpd = readDefaultJscpd('jscpd.json');
     expect(layoutJscpdConfig(jscpd, defaultLayout)).toEqual(jscpd);
   });
   it('link the shipped files unchanged for the default layout', () => {
@@ -269,7 +269,7 @@ describe('layout-aware tool configurations', () => {
       'target/**',
     ]);
 
-    const knip = layoutKnipConfig(readDefault('knip.json'), customLayout);
+    const knip = layoutKnipConfig(readDefaultKnip('knip.json'), customLayout);
     expect(sortedUnique(knip.entry)).toEqual([
       '.mocharc.{js,cjs,mjs}',
       'jest.config.{ts,mts}',
@@ -302,7 +302,7 @@ describe('layout-aware tool configurations', () => {
       'reports/quality/**',
     ]);
 
-    const jscpd = layoutJscpdConfig(readDefault('jscpd.json'), customLayout);
+    const jscpd = layoutJscpdConfig(readDefaultJscpd('jscpd.json'), customLayout);
     expect(jscpd.path).toEqual(['lib', 'spec']);
     expect(sortedUnique(jscpd.ignore)).toEqual([
       '**/*.d.ts',
@@ -320,7 +320,7 @@ describe('layout-aware tool configurations', () => {
   it('add the configured entry points to the knip entries', () => {
     const layout = { ...customLayout, entryPoints: ['lib/tools/*-runner.mjs'] };
 
-    const knip = layoutKnipConfig(readDefault('knip.json'), layout);
+    const knip = layoutKnipConfig(readDefaultKnip('knip.json'), layout);
 
     expect(sortedUnique(knip.entry)).toEqual([
       '.mocharc.{js,cjs,mjs}',

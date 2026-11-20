@@ -1,5 +1,5 @@
 import { basePlanOf, planInputsChanged } from '../policy/base-plan.mts';
-import { changedFiles } from '../selection/changed-files.mjs';
+import { changedFiles } from '../selection/changed-files.mts';
 import { dependencyGraph } from '../selection/dependencies/graph.mts';
 import { requestedProjects } from '../selection/requested-projects.mts';
 import {
@@ -7,7 +7,7 @@ import {
   type Selected,
   type ToolchainImpact,
 } from '../selection/select-projects.mts';
-import { lockfileImpact } from '../selection/lockfile-impact.mjs';
+import { lockfileImpact } from '../selection/lockfile-impact.mts';
 import { comparisonBase, rootConfigFiles, toolErrorsOf } from './context.mts';
 import type {
   Comparison,

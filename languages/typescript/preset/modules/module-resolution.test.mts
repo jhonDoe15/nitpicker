@@ -6,7 +6,7 @@ import {
   packageNameOf,
   reachableModules as untypedReachableModules,
   resolveModuleSpecifier as untypedResolveModuleSpecifier,
-} from './module-resolution.mjs';
+} from './module-resolution.mts';
 
 type Alias = { readonly find: string | RegExp; readonly replacement: string };
 

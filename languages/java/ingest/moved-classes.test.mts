@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { baseMoves, comparisonKey } from '../../../core/diff/comparison/fingerprint.mjs';
+import { baseMoves, comparisonKey } from '../../../core/diff/comparison/fingerprint.mts';
 import { ingestCheckstyle } from './formatting/checkstyle.mts';
 import { ingestErrorProne } from './errorprone/errorprone.mts';
 import { ingestJacoco } from './coverage-reports/jacoco.mts';

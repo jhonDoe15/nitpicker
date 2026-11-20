@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mts';
 import { parseArguments } from '../quality-areas/arguments.mts';
 import { retimeWithoutCoverage } from './rerun-timings.mts';
 import {

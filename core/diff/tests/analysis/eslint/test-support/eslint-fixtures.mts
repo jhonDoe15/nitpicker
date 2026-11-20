@@ -1,8 +1,8 @@
 import path from 'node:path';
-import { createEslintAnalyzer } from '../../../../../../languages/typescript/adapters/eslint/analyzer.mjs';
+import { createEslintAnalyzer } from '../../../../../../languages/typescript/adapters/eslint/analyzer.mts';
 import type { ProfiledAnalyzer } from '../../../../../../shared/values/analyzers.mts';
 import { fieldOf } from '../../../../../../shared/values/readers.mts';
-import { PACKAGE_ROOT } from '../../../../../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../../tooling/tool-resolution.mts';
 import type { FileMap } from '../../../../git/test-support/fixture-files.mts';
 import { useGitFixtures } from '../../../../git/test-support/git-repository.mts';
 

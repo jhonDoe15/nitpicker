@@ -36,7 +36,7 @@ function createRepository() {
 
 function touchedResult(outcome: ReturnType<typeof runJavaDiff>) {
   return {
-    newFindings: outcome.newFindings.map(({ rule, path: file, message = '', location }) => ({
+    newFindings: outcome.newFindings.map(({ rule, path: file, message, location }) => ({
       rule,
       path: file,
       message,

@@ -10,7 +10,7 @@ import {
 } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
-import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
+import { containedPath } from '../../../../core/fix/tool-steps/paths/contained-path.mts';
 import { readGoModule } from './go-module.mts';
 import { run } from './go-process.mts';
 import type { Environment } from '../../../../shared/processes/environment.mts';

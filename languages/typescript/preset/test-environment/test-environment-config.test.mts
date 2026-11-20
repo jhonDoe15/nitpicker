@@ -5,7 +5,7 @@ import { rule } from '../eslint-plugin/rules/test-runtime/environment/no-unused-
 import { failureMessagesFor } from '../failure-messages/test-support/harness.mts';
 import type { Layout } from '../../adapters/typed/head-policy.mts';
 import type { Environments } from './typed/environment-types.mts';
-import { resolveLayout } from '../layout.mjs';
+import { resolveLayout } from '../layout.mts';
 import {
   testEnvironmentConfigFor,
   testEnvironmentsFromVariables,

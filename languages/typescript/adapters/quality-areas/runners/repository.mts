@@ -10,7 +10,7 @@ import {
 import { normalizeDeadCode, withDeadCodeSourceHashes } from '../reporting/dead-code.mts';
 import path from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
-import { containedPath } from '../../../../../core/fix/common/contained-path.mjs';
+import { containedPath } from '../../../../../core/fix/tool-steps/paths/contained-path.mts';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 import { existingRoots } from '../../typed/static-checks.mts';
 import { type Layout, readHeadPolicy, readLayout } from '../../typed/head-policy.mts';
@@ -29,8 +29,9 @@ import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mts';
 import { runDesignSignals } from './program/design-signals.mts';
 import { runTestOnlyExports, runUnusedApi } from './unused-api.mts';
 import { withPackageEntries as untypedWithPackageEntries } from '../knip/package-entries.mts';
+import { knipConfigOf } from '../../../preset/typed/tool-config/tool-config-guards.mts';
 import { knipReport, withProjectKnipConfig } from '../knip/knip-run.mts';
-import { wholeFileHash } from '../hashing/whole-file-hash.mjs';
+import { wholeFileHash } from '../hashing/whole-file-hash.mts';
 import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 const CODING_STANDARDS = 'languages/typescript/preset/coding-standards/check.mjs';
@@ -225,10 +226,12 @@ export function runDeadCode(options: QualityAreaOptions): Finding[] {
     withProjectKnipConfig(
       withSpawnedEntries(
         layoutKnipConfig(
-          parseReportJson(
-            readFileSync(
-              path.join(options.policyRoot, 'languages/typescript/preset/defaults/knip.json'),
-              'utf8',
+          knipConfigOf(
+            parseReportJson(
+              readFileSync(
+                path.join(options.policyRoot, 'languages/typescript/preset/defaults/knip.json'),
+                'utf8',
+              ),
             ),
           ),
           layout,

@@ -1,20 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { textOf } from '../../../../shared/values/readers.mts';
 import {
   bareFileMoves,
   packageMoves,
   qualifiedNameMoves,
   remapBareNames,
   remapQualifiedNames,
-} from './qualified-names.mjs';
-
-const bareFileMovesOf: (
-  renames: Map<string, string>,
-  options: { packageDirs: Set<string> },
-) => Map<string, string[]> = bareFileMoves;
+} from './qualified-names.mts';
 
 function bareMoves(renames: Map<string, string>, packageDirs: Set<string>) {
-  return bareFileMovesOf(renames, { packageDirs });
+  return bareFileMoves(renames, { packageDirs });
 }
 
 const MOVED = new Map([
@@ -23,8 +17,7 @@ const MOVED = new Map([
 ]);
 
 function remapped(text: string, renames: ReadonlyMap<string, string> = MOVED): string {
-  const moves: unknown = qualifiedNameMoves(renames);
-  return textOf(remapQualifiedNames(text, moves));
+  return remapQualifiedNames(text, qualifiedNameMoves(renames));
 }
 
 describe('qualified names of moved sources', () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isOpaqueChange } from './opaque-token.mjs';
+import { isOpaqueChange } from './opaque-token.mts';
 
 describe('a changed word that looks like a random value', () => {
   it.each([

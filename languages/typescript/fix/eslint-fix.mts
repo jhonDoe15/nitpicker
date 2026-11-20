@@ -1,12 +1,13 @@
 import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { eslintChecks } from '../preset/quality-checks.mjs';
+import { eslintChecks } from '../preset/quality-checks.mts';
 import {
   PROJECT_LAYER_VARIABLE,
   projectLayerValue,
-} from '../adapters/lint-engine/project-layer.mjs';
-import { layoutTransformFor } from '../preset/tool-configs.mjs';
-import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
+} from '../adapters/lint-engine/project-layer.mts';
+import { layoutTransformFor } from '../preset/tool-configs.mts';
+import type { ToolSettings } from '../preset/typed/head-policy-types.mts';
+import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mts';
 import { checkoutModulePath as untypedCheckoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 import type { FixFile, FixSettings, FixStep } from '../../../core/fix/typed/fix-types.mts';
 import { linkPolicyFile, resolveTool, type LinkedPolicyFile } from '../adapters/typed/tooling.mts';
@@ -19,7 +20,7 @@ import {
   formatNotes,
   readBytes,
   runFixCommand,
-} from '../../../core/fix/typed/fix-views.mts';
+} from '../../../core/fix/typed/views/fix-views.mts';
 import type { Layout } from './typed/fix-views.mts';
 
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
@@ -29,7 +30,7 @@ type EslintSettings = Pick<
   'projectRoot' | 'executeFixCommand' | 'selectedRules' | 'writer'
 > & {
   readonly policyEnvironment: NodeJS.ProcessEnv;
-  readonly eslintSettings: unknown;
+  readonly eslintSettings: ToolSettings | undefined;
   readonly layout: Layout;
 };
 type Attempt = {

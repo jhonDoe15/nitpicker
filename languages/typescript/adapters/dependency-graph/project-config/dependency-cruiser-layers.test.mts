@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
-import { TYPESCRIPT_CONFIG_ENVIRONMENT } from '../../../preset/dependency-graph/cruise.mjs';
-import { isDependencyCruiserOwnedOption } from '../../../preset/project-tools/config-values.mjs';
+import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mts';
+import { TYPESCRIPT_CONFIG_ENVIRONMENT } from '../../../preset/dependency-graph/cruise.mts';
+import { isDependencyCruiserOwnedOption } from '../../../preset/project-tools/config-values.mts';
 import {
   layeredDependencyCruiserConfig,
   projectExcludePaths,

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../diff/git/test-support/fixture-files.mts';
-import { checkFix, fixOrder } from './check-fixes.mjs';
+import { checkFix, fixOrder } from './check-fixes.mts';
 import { acceptFixes, createSnapshot } from '../../test-support/engine-views.mts';
 
 const { temporaryRoot } = useGitFixtures();

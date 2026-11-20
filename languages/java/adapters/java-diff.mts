@@ -2,14 +2,14 @@ import path from 'node:path';
 import {
   testFailuresOf,
   unknownOnBaseFor,
-} from '../../../core/diff/comparison/base-red/unknown-base.mjs';
-import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
-import { parseAnalyzerReportKeepingValid } from '../../../core/diff/comparison/schema/invalid-findings.mjs';
-import { resolveComparison } from '../../../core/diff/git/repository/git.mjs';
-import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.mjs';
-import { readRemovesTests } from '../../../core/diff/git/patches/test-removal.mjs';
-import { readRenameMap } from '../../../core/diff/git/patches/project-moves.mjs';
-import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktree.mjs';
+} from '../../../core/diff/comparison/base-red/unknown-base.mts';
+import { compareFindings } from '../../../core/diff/comparison/compare.mts';
+import { parseAnalyzerReportKeepingValid } from '../../../core/diff/comparison/schema/invalid-findings.mts';
+import { resolveComparison } from '../../../core/diff/git/repository/git.mts';
+import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.mts';
+import { readRemovesTests } from '../../../core/diff/git/patches/test-removal.mts';
+import { readRenameMap } from '../../../core/diff/git/patches/project-moves.mts';
+import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktree.mts';
 import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
 import { javaRouteRule } from './java-policy.mts';
 import { withoutFollowedImports } from './imports/followed-imports.mts';
@@ -29,12 +29,13 @@ import {
 import { buildFindings } from './collect/build-findings.mts';
 import { withoutDuplicateIdentities } from './collect/duplicate-identities.mts';
 import {
-  type JavaFinding,
   type JavaPolicy,
   callUntyped,
   findingsOf,
+  trackedFindingsOf,
 } from './typed/java-values.mts';
 import type { JavaRunOptions } from './typed/java-run-options.mts';
+import type { TrackedFinding } from '../../../core/diff/comparison/model/finding-types.mts';
 import { fieldOf, fieldsOf, textOf } from '../../../shared/values/readers.mts';
 
 type Comparison = { readonly mergeBaseSha: string; readonly headSha: string };
@@ -47,17 +48,20 @@ type SnapshotRequest = {
   readonly warn: (message: string) => void;
 };
 type ComparedSnapshots = {
-  readonly notes: readonly JavaFinding[];
-  readonly baseFindings: readonly JavaFinding[];
-  readonly headFindings: readonly JavaFinding[];
+  readonly notes: readonly TrackedFinding[];
+  readonly baseFindings: readonly TrackedFinding[];
+  readonly headFindings: readonly TrackedFinding[];
 };
 type DiffRange = Comparison & {
   readonly repositoryRoot: string;
   readonly projectRelativePath: string;
 };
-type Outcome = { readonly newFindings: readonly JavaFinding[]; readonly [field: string]: unknown };
+type Outcome = {
+  readonly newFindings: readonly TrackedFinding[];
+  readonly [field: string]: unknown;
+};
 type EnforcedOutcome = Outcome & {
-  readonly newEnforceable: JavaFinding[];
+  readonly newEnforceable: TrackedFinding[];
   readonly failed: boolean;
 };
 type JavaDiffRequest = JavaRunOptions & {
@@ -69,14 +73,14 @@ type JavaDiffRequest = JavaRunOptions & {
 export function collectJavaFindings(
   root: string,
   options: JavaRunOptions = {},
-): readonly JavaFinding[] {
+): readonly TrackedFinding[] {
   return collectJavaReport(root, options).findings;
 }
 
 export function collectJavaReport(
   root: string,
   options: JavaRunOptions = {},
-): { readonly findings: readonly JavaFinding[]; readonly imports: unknown } {
+): { readonly findings: readonly TrackedFinding[]; readonly imports: unknown } {
   const projectRoot = path.resolve(root);
   const plan = mutationPlanOf(projectRoot, withChangedFiles(options, projectRoot));
   const built = buildFindings(projectRoot, plan.options);
@@ -103,20 +107,24 @@ export function collectJavaReport(
     ),
     { ...options.policy, inventoryTool: preset, routeRule: javaRouteRule },
     options.resolveOverlaps ??
-      ((reported: readonly JavaFinding[]) => withoutOverlaps(reported, { readSource })),
+      ((reported: readonly TrackedFinding[]) => withoutOverlaps(reported, { readSource })),
   );
   const snapshot = options.policy?.snapshot === 'base' ? 'base' : 'head';
   return {
-    findings: withTestsFailures(findingsOf(policed), { preset, failures: testsFailures, snapshot }),
+    findings: withTestsFailures(trackedFindingsOf(policed), {
+      preset,
+      failures: testsFailures,
+      snapshot,
+    }),
     imports,
   };
 }
 
 function snapshotsOf(value: unknown): ComparedSnapshots {
   return {
-    notes: findingsOf(fieldOf(value, 'notes')),
-    baseFindings: findingsOf(fieldOf(value, 'baseFindings')),
-    headFindings: findingsOf(fieldOf(value, 'headFindings')),
+    notes: trackedFindingsOf(fieldOf(value, 'notes')),
+    baseFindings: trackedFindingsOf(fieldOf(value, 'baseFindings')),
+    headFindings: trackedFindingsOf(fieldOf(value, 'headFindings')),
   };
 }
 
@@ -138,7 +146,7 @@ function collectBothSnapshots({
         worktreeRoot: string,
         snapshot: string,
         extra: JavaPolicy = {},
-      ): readonly JavaFinding[] {
+      ): readonly TrackedFinding[] {
         return collectJavaFindings(path.join(worktreeRoot, projectRelativePath), {
           ...options,
           policy: { ...policy, snapshot, policyRoot, ...extra },
@@ -152,7 +160,7 @@ function collectBothSnapshots({
           const headFindings = collectIn(headWorktree, 'head', {
             baselineRoot: path.join(baseWorktree, projectRelativePath),
           });
-          const notes = findingsOf(testFailuresOf({ findings: collectedBase }));
+          const notes = trackedFindingsOf(testFailuresOf({ findings: collectedBase }));
           return skippedToolsLeftOut({
             notes,
             baseFindings: collectedBase.filter((finding) => !notes.includes(finding)),
@@ -170,8 +178,8 @@ function skippedToolsLeftOut(snapshots: ComparedSnapshots): ComparedSnapshots {
   const kept = callUntyped(withoutSkippedTools, snapshots);
   return {
     notes: snapshots.notes,
-    baseFindings: findingsOf(fieldOf(kept, 'baseFindings')),
-    headFindings: findingsOf(fieldOf(kept, 'headFindings')),
+    baseFindings: trackedFindingsOf(fieldOf(kept, 'baseFindings')),
+    headFindings: trackedFindingsOf(fieldOf(kept, 'headFindings')),
   };
 }
 
@@ -190,7 +198,7 @@ function compareSnapshots(
   { notes, baseFindings, headFindings }: ComparedSnapshots,
   warn: (message: string) => void,
 ): Readonly<Record<string, unknown>> {
-  const testsRemoved: unknown = readRemovesTests(range);
+  const testsRemoved = readRemovesTests(range);
   const touchedCode = {
     changedLines: readChangedLines(range),
     isStrictRule: isJavaTouchedRule,
@@ -217,7 +225,7 @@ export function runJavaDiff({
   initScript,
   policy,
 }: JavaDiffRequest): EnforcedOutcome {
-  const resolved: unknown = resolveComparison(repositoryRoot, requestedBaseRef);
+  const resolved: unknown = resolveComparison(repositoryRoot, String(requestedBaseRef));
   const comparison = {
     ...fieldsOf(resolved),
     mergeBaseSha: textOf(fieldOf(resolved, 'mergeBaseSha')),
@@ -242,7 +250,7 @@ export function runJavaDiff({
   return withEnforceable({
     comparison,
     ...result,
-    newFindings: findingsOf(result['newFindings']),
+    newFindings: trackedFindingsOf(result['newFindings']),
     notes: snapshots.notes,
     warnings,
   });

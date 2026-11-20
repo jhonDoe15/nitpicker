@@ -1,9 +1,9 @@
 import { writeDiffReports } from '../reporting/reporters.mts';
 import { partialRunField as partialRunOf } from '../reporting/partial-run/partial-run.mts';
-import { runStamp } from '../reporting/run-stamp/run-stamp.mjs';
+import { runStamp } from '../reporting/run-stamp/run-stamp.mts';
 import path from 'node:path';
-import { resolveComparison, captureWorkingTree, hasSameTree } from '../git/repository/git.mjs';
-import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
+import { resolveComparison, captureWorkingTree, hasSameTree } from '../git/repository/git.mts';
+import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mts';
 import { withMovesFile } from '../git/patches/moves-file.mts';
 import { withComparisonKeys } from '../cache/keys/comparison-keys.mts';
 import { finishResume, resumeDirectory } from '../cache/resume/resume-cache.mts';
@@ -39,8 +39,6 @@ import { entriesOf } from '../../../shared/values/findings.mts';
 
 export type { DiffOptions } from './snapshots/diff-types.mts';
 
-const comparisonOf: (repositoryRoot: string, requestedBaseRef: unknown) => Comparison =
-  resolveComparison;
 const sameTree: (repositoryRoot: string, left: string, right: string) => boolean = hasSameTree;
 const captureTree: CaptureHead = captureWorkingTree;
 type ReportPlace = { readonly projectPath: string; readonly repositoryRoot: string };
@@ -106,7 +104,7 @@ function resolveSnapshots({
   includeWorkingTree,
   captureHead,
 }: Settings): Comparison {
-  const committed = comparisonOf(repositoryRoot, requestedBaseRef);
+  const committed = resolveComparison(repositoryRoot, String(requestedBaseRef));
   return includeWorkingTree
     ? { ...committed, headSha: textOf(captureHead(repositoryRoot, committed.headSha)) }
     : committed;

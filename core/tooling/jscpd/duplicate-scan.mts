@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fieldOf, listOf, messageOf, parseJson, textOf } from '../../../shared/values/readers.mts';
-import { jscpdClones as untypedJscpdClones } from './jscpd-clones.mjs';
-import { withoutImportOnlyClones as untypedWithoutImportOnly } from './import-only.mjs';
-import { DUPLICATES_REPORT, runJscpd as untypedRunJscpd } from './run-jscpd.mjs';
+import { jscpdClones as untypedJscpdClones } from './jscpd-clones.mts';
+import { withoutImportOnlyClones as untypedWithoutImportOnly } from './import-only.mts';
+import { DUPLICATES_REPORT, runJscpd as untypedRunJscpd } from './run-jscpd.mts';
 
 export type DuplicateClone = Readonly<Record<string, unknown>>;
 

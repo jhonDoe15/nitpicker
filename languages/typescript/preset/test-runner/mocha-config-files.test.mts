@@ -4,7 +4,7 @@ import {
   PACKAGE_JSON,
   mochaConfigFiles,
   mochaSources,
-} from './mocha-config-files.mjs';
+} from './mocha-config-files.mts';
 import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
 const { projectWith } = useTemporaryProjects('nitpicker-mocha-files-');

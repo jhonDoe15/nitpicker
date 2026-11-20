@@ -1,7 +1,7 @@
 import { realpathSync } from 'node:fs';
 import { loadConfig } from '../configuration/config.mts';
 import { resolveBase } from '../diff/git/repository/base-ref.mts';
-import { runGit } from '../diff/git/repository/command.mjs';
+import { runGit } from '../diff/git/repository/command.mts';
 import { resolveProjectRoot } from '../configuration/project-checks/project-root.mts';
 import { takeOptionValue, unknownArgumentError } from '../diff/comparison/cli.mts';
 import type { TextOutput } from '../cli-context.mts';

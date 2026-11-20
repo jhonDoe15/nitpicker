@@ -13,7 +13,7 @@ import { fieldAt } from '../../scripts/json/fields.mts';
 import { parseJson, textOf } from '../../shared/values/readers.mts';
 import { fileURLToPath } from 'node:url';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
-import { PROJECT_LAYER_VARIABLE as projectLayerVariable } from '../../languages/typescript/adapters/lint-engine/project-layer.mjs';
+import { PROJECT_LAYER_VARIABLE as projectLayerVariable } from '../../languages/typescript/adapters/lint-engine/project-layer.mts';
 
 const anyNumber: unknown = expect.any(Number);
 const anyString: unknown = expect.any(String);

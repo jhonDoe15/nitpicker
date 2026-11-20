@@ -6,24 +6,19 @@ import {
   isDirectory as untypedIsDirectory,
   isFile as untypedIsFile,
 } from '../../../../../shared/filesystem.mjs';
-import {
-  manifestScripts as untypedManifestScripts,
-  testScriptCommands as untypedTestScriptCommands,
-} from '../../test-runner/detection/test-scripts.mjs';
+import { manifestScripts, testScriptCommands } from '../../test-runner/detection/test-scripts.mts';
 import {
   optionEntries as untypedOptionEntries,
   rootDirIn as untypedRootDirIn,
   scriptPreloads as untypedScriptPreloads,
   withoutComments as untypedWithoutComments,
-} from './setup-option-text.mjs';
+} from './setup-option-text.mts';
 import { fieldOf, parseJson } from '../../../../../shared/values/readers.mts';
 
 const firstFileIn: (root: string, names: readonly string[]) => string | undefined =
   untypedFirstFileIn;
 const isDirectory: (directory: string) => boolean = untypedIsDirectory;
 const isFile: (file: string) => boolean = untypedIsFile;
-const manifestScripts: (manifest: unknown) => unknown = untypedManifestScripts;
-const testScriptCommands: (scripts: unknown) => string[] = untypedTestScriptCommands;
 const optionEntries: (text: string, keys: readonly string[]) => string[] = untypedOptionEntries;
 const rootDirIn: (text: string) => string | undefined = untypedRootDirIn;
 const scriptPreloads: (command: string) => string[] = untypedScriptPreloads;

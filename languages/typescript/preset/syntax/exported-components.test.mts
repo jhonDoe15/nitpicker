@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { exportedComponents } from './exported-components.mjs';
+import { DEFAULT_EXPORT, exportedComponents } from './exported-components.mts';
 
 function names(code: string, fileName = 'src/widget.tsx'): string[] {
   return exportedComponents(code, fileName).map(({ name }: { name: string }) => name);
@@ -37,8 +37,8 @@ describe('exported components', () => {
     expect(names('function Card() { return <b />; }\nexport default Card;')).toEqual(['Card']);
     expect(names('const Card = () => <b />;\nexport default memo(Card);')).toEqual(['Card']);
     expect(names('export default function Card() { return <b />; }')).toEqual(['Card']);
-    expect(names('export default () => <b />;')).toEqual(['default']);
-    expect(names('export default memo(() => <b />);')).toEqual(['default']);
+    expect(names('export default () => <b />;')).toEqual([DEFAULT_EXPORT]);
+    expect(names('export default memo(() => <b />);')).toEqual([DEFAULT_EXPORT]);
     expect(names('const A = () => <a />;\nconst B = () => <b />;\nexport { B, A };')).toEqual([
       'A',
       'B',
@@ -70,7 +70,7 @@ describe('exported components', () => {
     expect(exportedComponents(code, 'src/card.tsx')).toEqual([
       { name: 'Card', line: 2 },
       { name: 'Row', line: 3 },
-      { name: 'default', line: 5 },
+      { name: DEFAULT_EXPORT, line: 5 },
     ]);
   });
 

@@ -3,7 +3,7 @@ import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
 import { productionRuntimeRule } from './test-support/runtime-rule.mts';
-import { END_TO_END_ROOT, resolveLayout as untypedResolveLayout } from '../layout.mjs';
+import { END_TO_END_ROOT, resolveLayout as untypedResolveLayout } from '../layout.mts';
 import { analyzeTestRuntime } from '../test-runtime/analyze.mts';
 
 const resolveLayout: (layout?: { testRoots: string[] }) => {

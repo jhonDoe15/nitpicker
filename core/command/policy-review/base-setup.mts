@@ -6,16 +6,17 @@ import {
   withConfiguredTimeout,
 } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
-import { withHeadCheckoutFacts } from '../../../languages/typescript/preset/head-policy.mjs';
+import { withHeadCheckoutFacts } from '../../../languages/typescript/preset/head-policy.mts';
 import { describeConfigOverrides, readConfigFile } from '../../configuration/config.mts';
 import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mts';
 import { policyChangeFields } from '../../policy-changes/describe-policy-changes.mts';
 import { readPolicyScope } from '../../policy-changes/policy-scope.mts';
 import { configureAll, presetAnalyzers } from '../../configuration/preset-analyzers.mts';
-import { withBaseTestRunner as untypedWithBaseTestRunner } from '../../../languages/typescript/preset/diff/base-runner.mjs';
+import { withBaseTestRunner as untypedWithBaseTestRunner } from '../../../languages/typescript/preset/diff/base-runner.mts';
 import { applyRunProfile, withoutTestRun } from '../../quick/profile.mts';
 import { withoutTroubleshooting } from '../../../shared/messages/troubleshooting.mjs';
 import type { Analyzer, ProfiledAnalyzer } from '../../../shared/values/analyzers.mts';
+import { callUntyped } from '../../../shared/values/boundaries/untyped-call.mts';
 import { objectOf, textOf } from '../../../shared/values/readers.mts';
 import type { NitpickerConfig, ProjectOverlay } from '../../../shared/values/config-types.mts';
 import type {
@@ -64,16 +65,18 @@ type BaseSetupCli = {
   readonly stderr: { write(text: string): unknown };
 };
 
-const withBaseTestRunner: (
-  setup: object,
-  context: {
-    readonly headPolicy: unknown;
-    readonly baseProjectRoot: string;
-    readonly liveProjectRoot: string | undefined;
-    readonly analyzers: readonly Analyzer[];
-    readonly warn: Warn;
-  },
-) => object = untypedWithBaseTestRunner;
+type BaseRunnerContext = {
+  readonly headPolicy: unknown;
+  readonly baseProjectRoot: string;
+  readonly liveProjectRoot: string | undefined;
+  readonly analyzers: readonly Analyzer[];
+  readonly warn: Warn;
+};
+
+function withBaseTestRunner(setup: object, context: BaseRunnerContext): object {
+  const result: unknown = callUntyped(untypedWithBaseTestRunner, setup, context);
+  return objectOf(result) ?? {};
+}
 
 const configuredTimeout: (analyzer: Analyzer, timeouts: object | undefined) => Analyzer =
   withConfiguredTimeout;
@@ -194,7 +197,8 @@ function measuredBase({
   analyzers,
 }: MeasuredBase): object {
   const measured = withoutTimeouts(baseConfigCoveringHead(baseConfig, headConfig));
-  const baseHeadPolicy: unknown = withHeadCheckoutFacts(
+  const baseHeadPolicy: unknown = callUntyped(
+    withHeadCheckoutFacts,
     resolveHeadPolicy(measured),
     objectOf(headPolicy),
   );

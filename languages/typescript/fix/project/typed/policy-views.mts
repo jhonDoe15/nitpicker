@@ -2,7 +2,7 @@ import {
   frameworkConventions as untypedFrameworkConventions,
   isReactProject as untypedIsReactProject,
   readDependencyNames as untypedReadDependencyNames,
-} from '../../../preset/eslint-config/scope-support.mjs';
+} from '../../../preset/eslint-config/scope-support.mts';
 import {
   namingConvention as untypedNamingConvention,
   usesRouteHandlerFramework as untypedUsesRouteHandlerFramework,
@@ -14,7 +14,7 @@ const frameworkConventions: (projectRoot: string) => { readonly defaultExports: 
 
 const isReactProject: (settings: {
   readonly projectRoot: string;
-  readonly react: object | undefined;
+  readonly react: { readonly enabled?: true; readonly [field: string]: unknown };
 }) => boolean = untypedIsReactProject;
 
 const readDependencyNames: (projectRoot: string) => string[] = untypedReadDependencyNames;

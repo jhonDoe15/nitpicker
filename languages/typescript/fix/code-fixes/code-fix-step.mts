@@ -6,7 +6,7 @@ import {
   withFixedLineEndingsOf,
   writeTexts,
   type Bytes,
-} from '../../../../core/fix/typed/fix-views.mts';
+} from '../../../../core/fix/typed/views/fix-views.mts';
 import type { Layout } from '../typed/fix-views.mts';
 import { planCodeFixes } from './plan-code-fixes.mts';
 

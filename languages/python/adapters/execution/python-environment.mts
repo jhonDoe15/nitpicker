@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { uvWorkspaceOf as untypedUvWorkspaceOf } from '../../../../core/configuration/project-checks/uv-workspace.mjs';
+import { uvWorkspaceOf as untypedUvWorkspaceOf } from '../../../../core/configuration/project-checks/uv-workspace.mts';
 import type { Launcher } from '../typed/environment/launcher-types.mts';
 import type { EnvironmentSpec } from './environments/typed/environment-types.mts';
 import type { SpawnFunction } from './typed/process-types.mts';

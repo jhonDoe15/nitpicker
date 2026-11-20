@@ -6,10 +6,10 @@ import type {
   RuntimeReport,
   TestClassification,
 } from './analysis-types.mts';
-import { containedPath as untypedContainedPath } from '../../../../core/fix/common/contained-path.mjs';
+import { containedPath as untypedContainedPath } from '../../../../core/fix/tool-steps/paths/contained-path.mts';
 import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mjs';
 import { depthFirst as untypedDepthFirst } from '../../../../shared/traversal.mjs';
-import { syntaxChildren as untypedSyntaxChildren } from '../syntax/children.mjs';
+import { syntaxChildren as untypedSyntaxChildren } from '../syntax/children.mts';
 import {
   classifyTestRuntime as untypedClassifyTestRuntime,
   testRuntimeReport as untypedTestRuntimeReport,
@@ -18,8 +18,8 @@ import {
   isExcludedPath as untypedIsExcludedPath,
   isTypeOnlyDependency as untypedIsTypeOnlyDependency,
   normalizePath as untypedNormalizePath,
-} from '../dependency-graph/cruise.mjs';
-import { defaultResolvedLayout } from '../layout.mjs';
+} from '../dependency-graph/cruise.mts';
+import { defaultResolvedLayout } from '../layout.mts';
 
 export const depthFirst: <T>(root: T, children: (node: T) => readonly T[]) => Iterable<T> =
   untypedDepthFirst;
@@ -27,8 +27,12 @@ export const containedPath: (root: string, name: string) => string = untypedCont
 export const escapeRegExp: (text: string) => string = untypedEscapeRegExp;
 export const syntaxChildren: (node: TypeScript.Node) => TypeScript.Node[] = untypedSyntaxChildren;
 export const isExcludedPath: (value: string) => boolean = untypedIsExcludedPath;
-export const isTypeOnlyDependency: (dependency: GraphDependency) => boolean =
-  untypedIsTypeOnlyDependency;
+export function isTypeOnlyDependency(dependency: GraphDependency): boolean {
+  return untypedIsTypeOnlyDependency({
+    ...dependency,
+    preCompilationOnly: dependency.preCompilationOnly === true,
+  });
+}
 export const normalizePath: (value: string) => string = untypedNormalizePath;
 export const defaultLayout: AnalysisLayout = defaultResolvedLayout;
 export const classifier: {

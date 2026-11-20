@@ -13,14 +13,16 @@ import {
   untypedJavascriptConfig,
   type JavascriptLayout,
 } from './untyped-javascript.mts';
-import { resolveHeadPolicy as untypedResolveHeadPolicy } from '../../head-policy.mjs';
+import { resolveHeadPolicy as untypedResolveHeadPolicy } from '../../head-policy.mts';
 import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
-import { resolveLayout as untypedResolveLayout } from '../../layout.mjs';
+import { resolveLayout as untypedResolveLayout } from '../../layout.mts';
 import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
 
 const resolveLayout: () => JavascriptLayout = untypedResolveLayout;
-const resolveHeadPolicy: (config: object, projectRoot: string) => unknown =
-  untypedResolveHeadPolicy;
+const resolveHeadPolicy: (
+  config: Readonly<Record<string, unknown>>,
+  projectRoot: string,
+) => unknown = untypedResolveHeadPolicy;
 
 function isConfigList(value: unknown): value is Linter.Config[] {
   return Array.isArray(value);
@@ -53,7 +55,7 @@ afterEach(() => vi.unstubAllEnvs());
 
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
 import { untypedJavascriptConfig } from ${JSON.stringify(checkoutModuleUrl(new URL('./untyped-javascript.mjs', import.meta.url)).href)};
-import { resolveLayout } from ${JSON.stringify(import.meta.resolve('../../layout.mjs'))};
+import { resolveLayout } from ${JSON.stringify(import.meta.resolve('../../layout.mts'))};
 
 const parserOptions = { project: './tsconfig.json', tsconfigRootDir: import.meta.dirname };
 export default [

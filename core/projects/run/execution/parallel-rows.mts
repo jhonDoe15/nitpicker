@@ -5,8 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { createWeightedSemaphore } from '../../../diff/execution/capacity.mts';
 import { projectFilePaths } from '../../../../shared/project-files/project-files.mjs';
-import { projectHeading } from '../../report/console.mjs';
-import { outcomeOf } from '../../report/outcome.mjs';
+import { projectHeading } from '../../report/console.mts';
+import { outcomeOf } from '../../report/outcome.mts';
 import { type Finished, type Launch, launchProject, type ProjectJob } from './launch.mts';
 import {
   clearReports,

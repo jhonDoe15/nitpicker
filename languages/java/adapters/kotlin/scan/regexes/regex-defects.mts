@@ -5,7 +5,7 @@ import {
 import {
   REGEX_DIALECTS,
   patternDefects,
-} from '../../../../../../core/tooling/regex-patterns/pattern-defects.mjs';
+} from '../../../../../../core/tooling/regex-patterns/pattern-defects.mts';
 import { literalText, regexSites } from './regex-values.mts';
 import type { RegexSite } from './regex-values.mts';
 import type { Scanned, Subjected } from '../typed/scan-shapes.mts';

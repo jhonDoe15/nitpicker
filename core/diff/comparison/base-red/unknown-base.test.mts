@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import type { TouchedEntry } from '../model/finding-types.mts';
 import type { AnalyzerReport, Finding, ReportEntry } from '../../../../shared/values/findings.mts';
 import {
-  baseFailuresOf as baseFailuresOfJs,
-  baseNoteOf as baseNoteOfJs,
-  changedByDiff as changedByDiffJs,
-  isTestResultFinding as isTestResultFindingJs,
-  redBaseAnalyzers as redBaseAnalyzersJs,
-  testFailuresOf as testFailuresOfJs,
-  unknownOnBaseFor as unknownOnBaseForJs,
-} from './unknown-base.mjs';
+  baseFailuresOf,
+  baseNoteOf,
+  changedByDiff,
+  isTestResultFinding,
+  redBaseAnalyzers,
+  testFailuresOf,
+  unknownOnBaseFor,
+} from './unknown-base.mts';
 
 type RunLike = {
   readonly reports: Map<string, AnalyzerReport>;
@@ -22,29 +23,10 @@ type RunSpec = {
   readonly skipped?: Readonly<Record<string, string>>;
 };
 
-type FindingTest = (finding: Finding) => boolean;
-
-const isTestResultFinding: FindingTest = isTestResultFindingJs;
-const changedByDiff: (finding: Finding, touchedCode: unknown) => boolean = changedByDiffJs;
-const testFailuresOf: (report: AnalyzerReport | undefined) => Finding[] = testFailuresOfJs;
-const redBaseAnalyzers: (request: {
-  readonly names: readonly string[];
-  readonly baseRun: RunLike;
-  readonly headRun: RunLike;
-}) => Map<string, Finding[]> = redBaseAnalyzersJs;
-const baseFailuresOf: (request: {
-  readonly name: string;
-  readonly baseRun: RunLike;
-  readonly headRun: RunLike;
-  readonly redBase: Map<string, Finding[]>;
-}) => Finding[] | undefined = baseFailuresOfJs;
-const unknownOnBaseFor: (
+function coverageOf(
   failures: readonly Finding[],
-  touchedCode: unknown,
-) => FindingTest | undefined = unknownOnBaseForJs;
-const baseNoteOf: (name: string, finding: Finding) => unknown = baseNoteOfJs;
-
-function coverageOf(failures: readonly Finding[], touchedCode: unknown): FindingTest {
+  touchedCode: Parameters<typeof unknownOnBaseFor>[1],
+): (finding: Finding) => boolean {
   const covers = unknownOnBaseFor(failures, touchedCode);
   if (covers === undefined) {
     throw new Error('expected the failures to cover findings');
@@ -103,7 +85,7 @@ describe('which findings depend on test results', () => {
 
 describe('changedByDiff', () => {
   const touchedCode = {
-    changedLines: new Map([
+    changedLines: new Map<string, TouchedEntry>([
       ['added.py', { path: 'added.py', added: true, ranges: [[1, 40]], inserted: [] }],
       ['edited.py', { path: 'edited.py', added: false, ranges: [[10, 12]], inserted: [] }],
       [
@@ -281,7 +263,7 @@ describe('unknownOnBaseFor', () => {
   const inModule = (path: string, finding = crap): Finding => ({ ...finding, path });
 
   it('covers the test results of the whole analyzer when a failure names no module', () => {
-    const unknown = coverageOf([testsFailed], { changedLines: new Map() });
+    const unknown = coverageOf([testsFailed], { testsRemoved: false });
 
     expect([unknown(inModule('a/src/A.java')), unknown(lint)]).toEqual([true, false]);
   });

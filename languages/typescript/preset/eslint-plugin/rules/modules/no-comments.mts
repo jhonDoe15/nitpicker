@@ -1,11 +1,12 @@
 import { type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import {
   docCommentContentReports as untypedDocCommentContentReports,
+  commentSource,
   publicApiNode as untypedPublicApiNode,
-} from './doc-comment-content.mjs';
+} from './doc-comment-content.mts';
 import { commentRemoval } from '../../fixes/comments/comment-removal.mts';
 import { fixable } from '../../fixes/support/descriptors.mts';
-import { validationBehavior as untypedValidationBehavior } from '../../../libraries/project-libraries.mjs';
+import { validationBehavior as untypedValidationBehavior } from '../../../libraries/project-libraries.mts';
 import {
   castTags,
   isJsdocBlock,
@@ -45,10 +46,12 @@ const docCommentContentReports: (
   comment: TSESTree.Comment,
   node: TSESTree.Node,
 ) => CommentReport[] = untypedDocCommentContentReports;
-const publicApiNode: (
+function publicApiNode(
   sourceCode: SourceCode,
   comment: TSESTree.Comment,
-) => TSESTree.Node | undefined = untypedPublicApiNode;
+): TSESTree.Node | undefined {
+  return untypedPublicApiNode(commentSource(sourceCode), comment);
+}
 const validationBehavior: (libraries: LibraryChoices) => { readonly name: string } =
   untypedValidationBehavior;
 

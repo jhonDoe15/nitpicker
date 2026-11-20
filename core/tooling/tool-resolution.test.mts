@@ -16,11 +16,12 @@ import {
   missingToolMessage,
   PACKAGE_ROOT,
   resolveTool as untypedResolveTool,
-} from './tool-resolution.mjs';
+} from './tool-resolution.mts';
 import {
   applyLegacyInventory as untypedApplyLegacyInventory,
   configuredAnalyzers as untypedConfiguredAnalyzers,
-} from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
+} from '../../languages/typescript/preset/diff/configured-analyzers.mts';
+import { callUntyped } from '../../shared/values/boundaries/untyped-call.mts';
 import { fieldOf, parseJson, textOf } from '../../shared/values/readers.mts';
 import { runQualitySnapshot } from '../snapshot/run-snapshot.mts';
 
@@ -37,11 +38,29 @@ const resolveTool: (
   options?: ToolOptions,
 ) => { root: string; version: string; binPath: string | undefined } = untypedResolveTool;
 const isToolInstalled: (name: string, options?: ToolOptions) => boolean = untypedIsToolInstalled;
-const configuredAnalyzers: () => ConfiguredAnalyzer[] = untypedConfiguredAnalyzers;
-const applyLegacyInventory: (
+function isConfigured(value: unknown): value is ConfiguredAnalyzer {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'name' in value &&
+    typeof value.name === 'string' &&
+    'createInvocation' in value &&
+    typeof value.createInvocation === 'function'
+  );
+}
+
+function configuredAnalyzers(): ConfiguredAnalyzer[] {
+  const analyzers: readonly unknown[] = untypedConfiguredAnalyzers();
+  return analyzers.filter(isConfigured);
+}
+
+function applyLegacyInventory(
   analyzers: ConfiguredAnalyzer[],
   legacyInventory: string,
-) => ConfiguredAnalyzer[] = untypedApplyLegacyInventory;
+): ConfiguredAnalyzer[] {
+  const applied: unknown = callUntyped(untypedApplyLegacyInventory, analyzers, legacyInventory);
+  return Array.isArray(applied) ? applied.filter(isConfigured) : [];
+}
 
 const packageAnalyzers = configuredAnalyzers();
 const temporaryRoots: string[] = [];

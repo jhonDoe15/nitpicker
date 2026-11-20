@@ -6,7 +6,7 @@ import { exceptionHint as untypedExceptionHint } from '../../../shared/rules/exc
 
 const exceptionHint: (rule: string, path: string) => string = untypedExceptionHint;
 const anyText: unknown = expect.any(String);
-import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
+import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mts';
 import { fieldOf, fieldsOf, listOf } from '../../../shared/values/readers.mts';
 import { parseLintWarnings, readLintFindings } from './javac-lint.mts';
 import { compare, type GuardFinding } from './test-support/guard-compare.mts';

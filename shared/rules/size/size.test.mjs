@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
-import { parseFinding } from '../../../core/diff/comparison/finding-schema.mjs';
+import { compareFindings } from '../../../core/diff/comparison/compare.mts';
+import { parseFinding } from '../../../core/diff/comparison/finding-schema.mts';
 import { classLimitFindings } from './class-limits.mjs';
 import { folderDepthFindings } from './folder-depth.mjs';
 

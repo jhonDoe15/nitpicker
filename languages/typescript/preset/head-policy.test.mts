@@ -16,21 +16,23 @@ import {
   resolveHeadPolicy as untypedResolveHeadPolicy,
   typecheckEngine as untypedTypecheckEngine,
   withHeadPolicyFile as untypedWithHeadPolicyFile,
-} from './head-policy.mjs';
+} from './head-policy.mts';
 import { useTemporaryProjects } from './test-support/temporary-projects.mts';
 
 type Section = Readonly<Record<string, unknown>>;
 type PolicySections = {
-  readonly react: Section;
-  readonly tools: { readonly prettier: Section };
-  readonly duplicates: Section;
-  readonly frameworks: Section;
+  readonly react?: Section | undefined;
+  readonly tools?: { readonly prettier?: Section | undefined } | undefined;
+  readonly duplicates?: Section | undefined;
+  readonly frameworks?: Section | undefined;
 };
 type Environment = NodeJS.ProcessEnv;
 
 const defaultLayout: Readonly<Record<string, readonly string[]>> = untypedDefaultLayout;
-const resolveHeadPolicy: (config?: object, projectRoot?: string) => PolicySections =
-  untypedResolveHeadPolicy;
+const resolveHeadPolicy: (
+  config?: Readonly<Record<string, unknown>>,
+  projectRoot?: string,
+) => PolicySections = untypedResolveHeadPolicy;
 const withHeadPolicyFile: (policy: object, operation: (policyFile: string) => void) => void =
   untypedWithHeadPolicyFile;
 const readHeadPolicy: (environment?: Environment) => PolicySections = untypedReadHeadPolicy;
@@ -137,14 +139,14 @@ describe('head policy reader', () => {
     writeFileSync(path.join(root, '.prettierrc'), '{ "semi": false }\n');
     const projectConfig = { tools: { prettier: { precedence: ['project'] } } };
     const nitpickerOnly = { tools: { prettier: { precedence: ['nitpicker'] } } };
-    const before = resolveHeadPolicy(projectConfig, root).tools.prettier['projectConfigDigest'];
-    expect(resolveHeadPolicy(nitpickerOnly, root).tools.prettier).toEqual({
+    const before = resolveHeadPolicy(projectConfig, root).tools?.prettier?.['projectConfigDigest'];
+    expect(resolveHeadPolicy(nitpickerOnly, root).tools?.prettier).toEqual({
       precedence: ['nitpicker'],
     });
     writeFileSync(path.join(root, '.prettierrc'), '{ "semi": true }\n');
-    expect(resolveHeadPolicy(projectConfig, root).tools.prettier['projectConfigDigest']).not.toBe(
-      before,
-    );
+    expect(
+      resolveHeadPolicy(projectConfig, root).tools?.prettier?.['projectConfigDigest'],
+    ).not.toBe(before);
     expect(resolveHeadPolicy({}, root).tools).toEqual({ tests: { detectedRunner: 'vitest' } });
   });
 

@@ -8,7 +8,7 @@ import {
   type AnalyzerRun,
   runAnalyzers,
 } from '../../execution/run-analyzers.mts';
-import { runGit } from '../../git/repository/command.mjs';
+import { runGit } from '../../git/repository/command.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 
 export type SnapshotResume = ResumeCache & { readonly report: (line: string) => unknown };

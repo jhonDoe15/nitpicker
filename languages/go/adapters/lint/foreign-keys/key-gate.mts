@@ -3,7 +3,7 @@ import {
   foreignKeyGate,
   schemaProjectFiles,
 } from '../../../../../shared/hygiene/schema/foreign-key-gate.mjs';
-import { yamlDocuments } from '../../../../../core/tooling/yaml/yaml-documents.mjs';
+import { yamlDocuments } from '../../../../../core/tooling/yaml/yaml-documents.mts';
 
 type GateEntry = { readonly tool: string; readonly rule: string; readonly file: string };
 

@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import type { FixInvocation as CoreFixInvocation } from '../../../../core/fix/typed/fix-types.mts';
 
-type FixInvocation = CoreFixInvocation & { operation?: string; acceptedStatuses?: number[] };
+type FixInvocation = CoreFixInvocation;
 
 type FixReply = {
   status?: ReturnType<typeof spawnSync>['status'];
@@ -107,6 +107,16 @@ export function fakePythonTools({
     });
     return { status: run.status, stdout: run.stdout, stderr: run.stderr };
   }
+  function ruffCheck(invocation: FixInvocation): FixReply {
+    if (ruffReportFails) {
+      return { status: 2, stdout: '', stderr: 'ruff exploded' };
+    }
+    const stdout =
+      ruffDiagnostics === undefined || invocation.cwd === undefined
+        ? '[]'
+        : ruffDiagnostics(invocation.cwd);
+    return { status: 0, stdout, stderr: '' };
+  }
   function executeFixCommand(invocation: FixInvocation): FixReply {
     if (invocation.operation === 'python-fix-edits') {
       return sourceEdits(invocation);
@@ -121,10 +131,7 @@ export function fakePythonTools({
         invocation.args.includes('check') &&
         invocation.args.includes('json')
       ) {
-        if (ruffReportFails) {
-          return { status: 2, stdout: '', stderr: 'ruff exploded' };
-        }
-        return { status: 0, stdout: ruffDiagnostics?.(invocation.cwd) ?? '[]', stderr: '' };
+        return ruffCheck(invocation);
       }
       return invocation.command === 'poetry' && poetryEnvironment !== undefined
         ? { status: 0, stdout: `${poetryEnvironment}\n`, stderr: '' }

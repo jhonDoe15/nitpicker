@@ -1,17 +1,17 @@
 import type TypeScript from 'typescript';
-import { analyzeEntryPoints as untypedAnalyzeEntryPoints } from '../../../preset/entry-points/analyze.mjs';
-import { layoutFeatures as untypedLayoutFeatures } from '../../../preset/architecture/strict-layout.mjs';
-import { productionFilter as untypedProductionFilter } from '../../../preset/coupling/analyze.mjs';
-import { sharedUsedByOneFeature as untypedSharedUsedByOneFeature } from '../../../preset/coupling/shared-usage.mjs';
-import { createContext as untypedCreateContext } from '../../../preset/unused-api/context.mjs';
-import { unusedApiFindings as untypedUnusedApiFindings } from '../../../preset/unused-api/findings.mjs';
-import { collectReferences as untypedCollectReferences } from '../../../preset/unused-api/references/references.mjs';
+import { analyzeEntryPoints as untypedAnalyzeEntryPoints } from '../../../preset/entry-points/analyze.mts';
+import { layoutFeatures as untypedLayoutFeatures } from '../../../preset/architecture/strict-layout.mts';
+import { productionFilter as untypedProductionFilter } from '../../../preset/coupling/analyze.mts';
+import { sharedUsedByOneFeature as untypedSharedUsedByOneFeature } from '../../../preset/coupling/shared-usage.mts';
+import { createContext } from '../../../preset/unused-api/context.mts';
+import { unusedApiFindings } from '../../../preset/unused-api/findings.mts';
+import { collectReferences } from '../../../preset/unused-api/references/references.mts';
 import {
-  collectTargets as untypedCollectTargets,
-  registerWrapperAliases as untypedRegisterWrapperAliases,
-} from '../../../preset/unused-api/syntax/declarations.mjs';
-import { loadPackages as untypedLoadPackages } from '../../../preset/unused-api/workspace/packages.mjs';
-import { exceptionMatcher as untypedExceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
+  collectTargets,
+  registerWrapperAliases,
+} from '../../../preset/unused-api/syntax/declarations.mts';
+import { loadPackages } from '../../../preset/unused-api/workspace/packages.mts';
+import { exceptionMatcher } from '../../../preset/unused-api/analysis-views.mts';
 import { layoutOf } from '../model/project-model.mts';
 import { projectGraph as untypedProjectGraph } from '../model/project-graph.mts';
 import { recordPlan as untypedRecordPlan } from '../plan/record-plan.mts';
@@ -37,14 +37,13 @@ export type ProjectGraph = {
   }[];
 };
 
-export type ToolFinding = {
-  readonly tool: string;
-  readonly rule: string;
-  readonly path: string;
-  readonly symbol: string;
-  readonly identity: string;
-  readonly location?: { readonly line: number };
-};
+type RealFinding = ReturnType<typeof unusedApiFindings>[number];
+
+export type ToolFinding = RealFinding & { readonly symbol: string };
+
+export function withSymbol(finding: RealFinding): ToolFinding[] {
+  return finding.symbol === undefined ? [] : [{ ...finding, symbol: finding.symbol }];
+}
 
 export type UnusedTarget = {
   readonly name: string;
@@ -53,15 +52,7 @@ export type UnusedTarget = {
   readonly members: ReadonlyMap<string, TypeScript.Node>;
 };
 
-export type UnusedRegistry = { readonly targets: readonly UnusedTarget[] };
-
-type AnalysisBase = { readonly owned: unknown };
-
-type Analysis = AnalysisBase & { readonly react: boolean };
-
-type PackagesInfo = {
-  readonly packageOf: (file: string) => { readonly published?: true } | undefined;
-};
+export type UnusedRegistry = ReturnType<typeof collectTargets>;
 
 type EngineLayout = NonNullable<
   NonNullable<Parameters<typeof untypedAnalyzeEntryPoints>[2]>['layout']
@@ -97,36 +88,6 @@ const sharedUsedByOneFeature: (
   options: { readonly sourceRoot: string; readonly isProduction: (file: string) => boolean },
 ) => readonly { readonly source: string; readonly directory: string }[] =
   untypedSharedUsedByOneFeature;
-
-const createContext: (settings: {
-  readonly program: TypeScript.Program;
-  readonly projectRoot: string;
-  readonly layout: FixLayout;
-  readonly packagesInfo: PackagesInfo;
-}) => AnalysisBase = untypedCreateContext;
-
-const unusedApiFindings: (
-  registry: UnusedRegistry,
-  context: {
-    readonly owned: unknown;
-    readonly analyzerName: string;
-    readonly isExcepted: (rule: string, ...candidates: string[]) => boolean;
-  },
-) => readonly ToolFinding[] = untypedUnusedApiFindings;
-
-const collectReferences: (context: Analysis, registry: UnusedRegistry) => void =
-  untypedCollectReferences;
-
-const collectTargets: (context: Analysis) => UnusedRegistry = untypedCollectTargets;
-
-const registerWrapperAliases: (context: Analysis, registry: UnusedRegistry) => void =
-  untypedRegisterWrapperAliases;
-
-const loadPackages: (projectRoot: string, layout: FixLayout) => PackagesInfo = untypedLoadPackages;
-
-const exceptionMatcher: (
-  exceptions: unknown,
-) => (rule: string, ...candidates: string[]) => boolean = untypedExceptionMatcher;
 
 function isFullLayout(layout: FixLayout): layout is FullLayout {
   return typeof Reflect.get(layout, 'isSourceUnderRoot') === 'function';

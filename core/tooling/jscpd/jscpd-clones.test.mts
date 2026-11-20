@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { jscpdClones as untypedJscpdClones } from './jscpd-clones.mjs';
+import { jscpdClones as untypedJscpdClones } from './jscpd-clones.mts';
 
 type Duplicate = { firstFile?: { name?: string }; secondFile?: { name?: string } };
 

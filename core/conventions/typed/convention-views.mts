@@ -7,12 +7,12 @@ import {
   ignoredChoiceNote as untypedIgnoredChoiceNote,
   isValidChoice as untypedIsValidChoice,
 } from '../../../shared/conventions/settings.mjs';
-import { isJavascriptPolicy as untypedIsJavascriptPolicy } from '../../../languages/javascript/preset/javascript-preset.mjs';
+import { isJavascriptPolicy as untypedIsJavascriptPolicy } from '../../../languages/javascript/preset/javascript-preset.mts';
 import {
   builtInExcludedGlobs as untypedBuiltInExcludedGlobs,
   prettierPatterns as untypedPrettierPatterns,
   resolveLayout as untypedResolveLayout,
-} from '../../../languages/typescript/preset/layout.mjs';
+} from '../../../languages/typescript/preset/layout.mts';
 import { globMatcher as untypedGlobMatcher } from '../../../shared/paths/glob.mjs';
 import { textsOf } from '../../../shared/values/readers.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';

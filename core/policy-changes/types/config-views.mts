@@ -9,7 +9,7 @@ import {
   featureLayout as untypedFeatureLayout,
   featureRoles as untypedFeatureRoles,
 } from '../../../shared/rules/features/feature-roles.mjs';
-import { typescriptFeatureLayout as untypedTypescriptFeatureLayout } from '../../../languages/typescript/preset/coupling/feature-layout.mjs';
+import { typescriptFeatureLayout as untypedTypescriptFeatureLayout } from '../../../languages/typescript/preset/coupling/feature-layout.mts';
 import {
   DEFAULT_CRAP_SCORE_LIMIT as UNTYPED_DEFAULT_CRAP_SCORE_LIMIT,
   FILE_LIMIT_DEFAULTS as UNTYPED_FILE_LIMIT_DEFAULTS,

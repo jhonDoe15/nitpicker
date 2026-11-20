@@ -6,7 +6,7 @@ import { runQualityDiff } from '../../../comparison/run-diff.mts';
 import type { DiffReport } from '../../../comparison/results.mts';
 import { fieldAt } from '../../../../../scripts/json/fields.mts';
 import type { Finding } from '../../../../../shared/values/findings.mts';
-import { configuredAnalyzers as configuredAnalyzersJs } from '../../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
+import { configuredAnalyzers as configuredAnalyzersJs } from '../../../../../languages/typescript/preset/diff/configured-analyzers.mts';
 import {
   toolRoot,
   useStaticCheckFixtures,

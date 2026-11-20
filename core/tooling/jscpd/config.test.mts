@@ -7,18 +7,20 @@ import { conventionStyle } from '../../conventions/definitions.mts';
 import {
   resolveHeadPolicy as untypedResolveHeadPolicy,
   withHeadCheckoutFacts as untypedWithHeadCheckoutFacts,
-} from '../../../languages/typescript/preset/head-policy.mjs';
+} from '../../../languages/typescript/preset/head-policy.mts';
 import { fieldAt, fieldsOf, listOf } from '../../../scripts/json/fields.mts';
 import {
   HEAD_POLICY_ENV,
   withHeadPolicyFile as untypedWithHeadPolicyFile,
 } from '../../../shared/head-policy.mjs';
+import { callUntyped } from '../../../shared/values/boundaries/untyped-call.mts';
+import { objectOf } from '../../../shared/values/readers.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import {
   layeredJscpdConfig as untypedLayeredJscpdConfig,
   resolveJscpdPolicy as untypedResolveJscpdPolicy,
-} from './config.mjs';
-import { DUPLICATES_REPORT, DUPLICATES_TOOL, runJscpd as untypedRunJscpd } from './run-jscpd.mjs';
+} from './config.mts';
+import { DUPLICATES_REPORT, DUPLICATES_TOOL, runJscpd as untypedRunJscpd } from './run-jscpd.mts';
 
 type JscpdRun = {
   cwd: string;
@@ -26,15 +28,19 @@ type JscpdRun = {
   format: string;
   ignore: string[];
   reportRoot: string;
+  together: boolean;
   renamed: undefined;
 };
 
 const resolveJscpdPolicy: (settings: unknown, projectRoot: string) => unknown =
   untypedResolveJscpdPolicy;
 const layeredJscpdConfig: (base: object, settings: unknown) => unknown = untypedLayeredJscpdConfig;
-const resolveHeadPolicy: (config: object, projectRoot: string) => object = untypedResolveHeadPolicy;
-const withHeadCheckoutFacts: (policy: object, headPolicy: object) => unknown =
-  untypedWithHeadCheckoutFacts;
+function resolveHeadPolicy(config: object, projectRoot: string): object {
+  return objectOf(callUntyped(untypedResolveHeadPolicy, config, projectRoot)) ?? {};
+}
+function withHeadCheckoutFacts(policy: object, headPolicy: object): unknown {
+  return callUntyped(untypedWithHeadCheckoutFacts, policy, headPolicy);
+}
 const NOT_OBJECTS: unknown[][] = [[[]], [null], [42]];
 const runJscpd: (run: JscpdRun) => void = untypedRunJscpd;
 const withHeadPolicyFile: (policy: unknown, operation: (policyFile: string) => void) => void =
@@ -257,6 +263,7 @@ describe('jscpd project config', () => {
         format: 'python',
         ignore: [],
         reportRoot,
+        together: false,
         renamed: undefined,
       });
     });
@@ -289,6 +296,7 @@ describe('jscpd project config', () => {
         format: 'python',
         ignore: [],
         reportRoot,
+        together: false,
         renamed: undefined,
       });
     });

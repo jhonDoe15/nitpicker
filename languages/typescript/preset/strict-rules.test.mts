@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { fieldOf, listOf, textOf, textsOf } from '../../../shared/values/readers.mts';
-import { strictBoundaryRules } from './architecture/strict-boundary-rules.mjs';
-import { reactRuleIds as untypedReactRuleIds } from './eslint-config/react/react-rules.mjs';
+import { strictBoundaryRules } from './architecture/strict-boundary-rules.mts';
+import { reactRuleIds as untypedReactRuleIds } from './eslint-config/react/react-rules.mts';
 import { strictPresetConfig } from './eslint-config/strict.mts';
-import { defaultResolvedLayout } from './layout.mjs';
+import { defaultResolvedLayout } from './layout.mts';
 import { isStrictRule, strictEslintRuleIds } from './strict-rules.mts';
 
 const reactRuleIds = textsOf(untypedReactRuleIds);

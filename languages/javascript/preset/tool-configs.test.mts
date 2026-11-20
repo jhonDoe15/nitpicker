@@ -4,36 +4,37 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fieldsOf, listOf, parseJson, textsOf } from '../../../shared/values/readers.mts';
 import { rootsRemovedAfterAll } from '../../typescript/adapters/test-support/temporary-roots.mts';
-import { resolveLayout as untypedResolveLayout } from '../../typescript/preset/layout.mjs';
-import { layoutTransformFor as untypedLayoutTransformFor } from '../../typescript/preset/tool-configs.mjs';
+import { resolveLayout as untypedResolveLayout } from '../../typescript/preset/layout.mts';
+import { layoutTransformFor as untypedLayoutTransformFor } from '../../typescript/preset/tool-configs.mts';
+import {
+  jscpdConfigOf,
+  knipConfigOf,
+  tsconfigOf,
+} from '../../typescript/preset/typed/tool-config/tool-config-guards.mts';
+import type { ToolLayout } from '../../typescript/preset/typed/tool-config/tool-config-types.mts';
 import {
   jsonTransform as untypedJsonTransform,
   layoutJscpdConfig as untypedLayoutJscpdConfig,
   layoutKnipConfig as untypedLayoutKnipConfig,
   layoutTsconfig as untypedLayoutTsconfig,
-} from '../../typescript/preset/project-configs/typescript/layout-rewrites.mjs';
+} from '../../typescript/preset/project-configs/typescript/layout-rewrites.mts';
 
 type Layout = ReturnType<typeof untypedResolveLayout>;
 type Json = Readonly<Record<string, unknown>>;
-type ConfigRewrite = (config: Json, layout: Layout) => Json;
 
-const resolveLayout: (
-  config?: object,
-  roots?: string[],
-  options?: { javascript: boolean },
-) => Layout = untypedResolveLayout;
-const layoutTsconfig: ConfigRewrite = untypedLayoutTsconfig;
-const layoutKnipConfig: (base: Json, layout: Layout & { readonly entryPoints?: string[] }) => Json =
-  untypedLayoutKnipConfig;
-const layoutJscpdConfig: ConfigRewrite = untypedLayoutJscpdConfig;
-const jsonTransform: (
-  rewrite: ConfigRewrite,
-  layout: Layout,
-) => ((text: string) => string) | undefined = untypedJsonTransform;
-const layoutTransformFor: (
-  policyFileName: string,
-  layout: Layout,
-) => ((text: string, file: string) => string) | undefined = untypedLayoutTransformFor;
+const resolveLayout: (config?: object, roots?: string[], options?: { javascript: true }) => Layout =
+  untypedResolveLayout;
+function layoutTsconfig(base: unknown, layout: ToolLayout): Json {
+  return untypedLayoutTsconfig(tsconfigOf(base), layout);
+}
+function layoutKnipConfig(base: unknown, layout: ToolLayout): Json {
+  return untypedLayoutKnipConfig(knipConfigOf(base), layout);
+}
+function layoutJscpdConfig(base: unknown, layout: ToolLayout): Json {
+  return untypedLayoutJscpdConfig(jscpdConfigOf(base), layout);
+}
+const jsonTransform = untypedJsonTransform;
+const layoutTransformFor = untypedLayoutTransformFor;
 
 const defaults = path.join(import.meta.dirname, '../../typescript/preset/defaults');
 const javascriptLayout = resolveLayout({}, [], { javascript: true });

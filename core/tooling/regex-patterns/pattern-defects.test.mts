@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { REGEX_DIALECTS, patternDefects as untypedPatternDefects } from './pattern-defects.mjs';
+import { REGEX_DIALECTS, patternDefects as untypedPatternDefects } from './pattern-defects.mts';
 
 type Dialect = { dot: string; unicodeClasses: boolean };
 type Defects = {

@@ -4,7 +4,7 @@ import {
   fileNameRuleOptions,
   fittingCasings,
   folderCasing,
-} from './file-name-casing.mjs';
+} from './file-name-casing.mts';
 import {
   conventionChoices,
   detectedFor,

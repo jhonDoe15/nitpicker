@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parseAnalyzerReport as parseUntyped } from '../../../../core/diff/comparison/finding-schema.mjs';
+import { parseAnalyzerReport as parseUntyped } from '../../../../core/diff/comparison/finding-schema.mts';
 import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mts';
 import { SPRING_ARCH_REPORT } from './spring-arch.mts';
 import {

@@ -11,7 +11,7 @@ import { inPriorityOrder } from './format/rule-groups/finding-order.mts';
 import { foldStyle } from './format/rule-groups/style-fold.mts';
 import { reviewSummaryLines } from './review/notices.mts';
 import { quickLines } from '../../quick/summary.mts';
-import { scopeLine } from '../../scope/scope-findings.mjs';
+import { scopeLine } from '../../scope/scope-findings.mts';
 import { partialRunLines } from './partial-run/partial-run.mts';
 import { labelCountLine } from '../../labels/label-filter.mts';
 import { skippedLines, unaffectedLine } from '../skipping/lines.mts';

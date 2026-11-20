@@ -1,20 +1,15 @@
 import type { NodeToolResult } from '../../static-checks/shared.mts';
-import type {
-  RunnerCommand,
-  RunnerName,
-  TestOptions,
-  TestReport,
-  TestRunner,
-} from './runner-types.mts';
+import type { RunnerCommand, TestOptions, TestReport, TestRunner } from './runner-types.mts';
 import type { TimeoutPolicy } from './timeouts.mts';
-import { withoutOptions as untypedWithoutOptions } from '../../../preset/test-runner/script-command.mjs';
+import type { RunnerName } from '../../../preset/test-runner/typed/command-types.mts';
+import { withoutOptions as untypedWithoutOptions } from '../../../preset/test-runner/script-command.mts';
 import { projectTestRunner as untypedProjectTestRunner } from '../../../preset/test-runner/project-runner.mts';
-import { projectTestRetry as untypedProjectTestRetry } from '../../../preset/project-configs/test-runner/test-runner-config.mjs';
-import { vitestRetryArguments as untypedVitestRetryArguments } from '../../../preset/project-configs/test-runner/test-retry.mjs';
+import { projectTestRetry as untypedProjectTestRetry } from '../../../preset/project-configs/test-runner/test-runner-config.mts';
+import { vitestRetryArguments as untypedVitestRetryArguments } from '../../../preset/project-configs/test-runner/test-retry.mts';
 import {
   mochaMutationOptions as untypedMochaMutationOptions,
   projectMocha as untypedProjectMocha,
-} from '../../../preset/test-runner/test-files/mocha-options.mjs';
+} from '../../../preset/test-runner/test-files/mocha-options.mts';
 import { readHeadPolicyFile as untypedReadHeadPolicyFile } from '../../../../../shared/head-policy.mjs';
 import { readTestReport as readTestReportJson } from '../../quality-areas/reporting/test-report.mts';
 import {

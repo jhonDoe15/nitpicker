@@ -1,8 +1,9 @@
-import { existsSync, readFileSync, readdirSync, rmdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, rmdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { chainOf as untypedChainOf } from '../../../shared/traversal.mjs';
 import { renderJunitReport } from '../../diff/reporting/junit.mts';
 import { renderSarifReport } from '../../diff/reporting/sarif.mts';
+import { readTextOr } from '../discovery/repository-files.mts';
 import { reportFolder as untypedReportFolder } from '../plan/project-entry.mts';
 import { SUMMARY_FILE } from './combined-summary.mts';
 import type { ReportData } from '../../../shared/values/findings.mts';
@@ -39,11 +40,7 @@ function insideOutput(outputRoot: string, folder: string): string | undefined {
 }
 
 function readInside(outputRoot: string, ...segments: readonly string[]): string | undefined {
-  const full = path.resolve(outputRoot, ...segments);
-  if (!full.startsWith(outputRoot + path.sep)) {
-    return undefined;
-  }
-  return existsSync(full) ? readFileSync(full, 'utf8') : undefined;
+  return readTextOr(outputRoot, segments, undefined);
 }
 
 function relocatedRun(run: SarifRun, category: string): SarifRun {

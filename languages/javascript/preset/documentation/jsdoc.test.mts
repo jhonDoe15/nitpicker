@@ -6,7 +6,7 @@ import {
   typePredicateTags as untypedTypePredicateTags,
   unknownMemberTags as untypedUnknownMemberTags,
   withJsdoc as untypedWithJsdoc,
-} from './jsdoc.mjs';
+} from './jsdoc.mts';
 
 type Tag = { readonly tag: string; readonly type?: string; readonly name?: string };
 type Problem = { readonly messageId: string; readonly data?: Readonly<Record<string, string>> };
@@ -16,11 +16,11 @@ type Comment = {
   readonly loc: { readonly line: number };
 };
 type Report = { readonly loc: { readonly line: number }; readonly messageId: string };
-type Visitors = { Program(): void; [visitor: string]: () => void };
+type Visitors = Record<string, (() => void) | undefined>;
 
 const castTags: (tags: Tag[]) => Tag[] = untypedCastTags;
 const typePredicateTags: (tags: Tag[]) => Tag[] = untypedTypePredicateTags;
-const unknownMemberTags: (tags: Tag[]) => Tag[] = untypedUnknownMemberTags;
+const unknownMemberTags: (tags: readonly Tag[]) => Tag[] = untypedUnknownMemberTags;
 const parseJsdoc: (value: string) => { tags: Tag[]; problems: Problem[] } = untypedParseJsdoc;
 const withJsdoc: (
   context: {
@@ -30,7 +30,7 @@ const withJsdoc: (
   },
   visitors: Record<string, () => void>,
   selection: {
-    readonly selectTags: (tags: Tag[]) => Tag[];
+    readonly selectTags: (tags: readonly Tag[]) => readonly Tag[];
     readonly messageId: string;
     readonly data: undefined;
   },
@@ -328,13 +328,13 @@ describe('withJsdoc', () => {
     const visitors = { Identifier() {} };
     const combined = withJsdoc(context, visitors, selection);
     expect(Object.keys(combined)).toEqual(['Identifier', 'Program']);
-    combined.Program();
+    combined['Program']?.();
     expect(reports).toEqual([{ loc: { line: 3 }, messageId: 'unknownType' }]);
   });
 
   it('reports nothing when no tag is selected', () => {
     const { context, reports } = recordingContext([{ jsdoc: true }], '* @param {string} value');
-    withJsdoc(context, {}, selection).Program();
+    withJsdoc(context, {}, selection)['Program']?.();
     expect(reports).toEqual([]);
   });
 });

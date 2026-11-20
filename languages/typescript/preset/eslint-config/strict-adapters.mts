@@ -8,7 +8,7 @@ import {
   controlFlowSelectors,
   controlFlowTypedRules,
 } from './strict/strict-control-flow.mts';
-import { codeExtensions, builtInExcludedGlobs } from '../layout.mjs';
+import { codeExtensions, builtInExcludedGlobs } from '../layout.mts';
 
 export function adapterGlobsFor(sourceRoots: readonly string[]): string[] {
   return sourceRoots.map((root: string) =>

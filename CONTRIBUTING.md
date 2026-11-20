@@ -243,7 +243,7 @@ which `eslint-plugin-jsx-a11y-x` installs (MPL-2.0); and the Checker Framework d
 Error Prone and NullAway pull in (GPL-2.0 with the Classpath exception). PMD itself is BSD-style,
 which the Java tool list accepts as permissive.
 
-`core/licensing/dependency-licenses.test.mjs` enforces what it can read on every test run: each
+`core/licensing/dependency-licenses.test.mts` enforces what it can read on every test run: each
 tool pinned in `languages/java/gradle/nitpicker.init.gradle` must have a license entry in
 `core/licensing/test-support/` that the allowlist accepts and an exact version, and every package in
 `package-lock.json` must declare an allowed license, with its installed LICENSE text scanned for a
@@ -258,7 +258,7 @@ Maven and the network. It resolves every tool nitpicker downloads with Maven, tr
 dependencies included (the formatters and the Kotlin tools through the coordinates in the Gradle
 scripts), and checks the license each jar's POM declares, or the nearest parent POM that declares
 one; several licenses in one POM are a choice, as Maven defines them. Free-text names become SPDX
-ids in `core/licensing/test-support/pom-licenses.mjs`, and a name it does not know fails until it is
+ids in `core/licensing/test-support/pom-licenses.mts`, and a name it does not know fails until it is
 added there after reading the license (dom4j's POM says "Plexus" for its BSD-style license, so it
 has its own entry). The license texts inside the jars are not read, and lizard, a Python tool, keeps
 only its hand entry.

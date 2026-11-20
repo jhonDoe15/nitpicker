@@ -2,24 +2,21 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
-import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mts';
 import {
   collectArchitectureSignals,
   collectSignals,
 } from '../../../../languages/typescript/preset/coding-standards/check.mts';
-import { configuredAnalyzers as configuredAnalyzersJs } from '../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
+import { configuredAnalyzers } from '../../../../languages/typescript/preset/diff/configured-analyzers.mts';
 import {
-  resolveHeadPolicy as resolveHeadPolicyJs,
-  withHeadPolicyFile as withHeadPolicyFileJs,
-} from '../../../../languages/typescript/preset/head-policy.mjs';
+  resolveHeadPolicy,
+  withHeadPolicyFile,
+} from '../../../../languages/typescript/preset/head-policy.mts';
 import { compareFindings } from '../../comparison/test-support/typed-compare.mts';
 import { type AnalyzerRequest, runAnalyzers } from '../../execution/run-analyzers.mts';
 import type { Finding } from '../../../../shared/values/findings.mts';
 
-const configuredAnalyzers: () => { readonly name: string }[] = configuredAnalyzersJs;
-const resolveHeadPolicy: (config: object, projectRoot: undefined) => object = resolveHeadPolicyJs;
-const withHeadPolicyFile: <T>(policy: object, run: (policyFile: string) => T) => T =
-  withHeadPolicyFileJs;
+const inPolicyFile: <T>(policy: object, run: (policyFile: string) => T) => T = withHeadPolicyFile;
 const packageAnalyzers = configuredAnalyzers();
 const LOST_CAUSE = [
   'Preserve the original cause when wrapping a caught failure: `new AppError(message, { cause: error })`.',
@@ -111,10 +108,10 @@ function analyzerRequest(
   };
 }
 
-function headFindings(config: object) {
+function headFindings(config: Parameters<typeof resolveHeadPolicy>[0]) {
   const projectRoot = createSnapshotRoot();
   writeProject(projectRoot);
-  const run = withHeadPolicyFile(resolveHeadPolicy(config, undefined), (headPolicyFile) =>
+  const run = inPolicyFile(resolveHeadPolicy(config, undefined), (headPolicyFile) =>
     runAnalyzers(
       analyzerRequest({
         analyzers: packageAnalyzers.filter(({ name }) => name === 'coding-standards'),

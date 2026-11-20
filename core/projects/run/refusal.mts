@@ -1,9 +1,9 @@
 import { realpathSync } from 'node:fs';
 import { resolveProjectRoot } from '../../configuration/project-checks/project-root.mts';
-import { isGitWorkTree, memberProjectOf as untypedMemberProjectOf } from '../plan/member-root.mjs';
+import { isGitWorkTree, memberProjectOf as untypedMemberProjectOf } from '../plan/member-root.mts';
 import { enclosingMember } from '../plan/enclosing.mts';
 import { planMonorepo } from '../plan/inspect.mts';
-import { oneProjectCommandMessage as untypedCommandMessage } from './messages.mjs';
+import { oneProjectCommandMessage as untypedCommandMessage } from './messages.mts';
 import type { Cli, ExitCode } from '../../cli-context.mts';
 import type { MonorepoPlan, PlanProject } from '../project-types.mts';
 import type { ProjectOverlay } from '../../../shared/values/config-types.mts';

@@ -1,6 +1,6 @@
-import { analyzeEntryPoints as untypedAnalyzeEntryPoints } from '../analyze.mjs';
-import type { resolveLayout } from '../../layout.mjs';
-import { readLayout as untypedReadLayout } from '../../head-policy.mjs';
+import { analyzeEntryPoints as untypedAnalyzeEntryPoints } from '../analyze.mts';
+import type { resolveLayout } from '../../layout.mts';
+import { readLayout as untypedReadLayout } from '../../head-policy.mts';
 
 export type EntryPointLayout = Omit<ReturnType<typeof resolveLayout>, 'sourceRoot'> & {
   readonly sourceRoot: string;

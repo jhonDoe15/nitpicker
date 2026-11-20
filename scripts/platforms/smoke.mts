@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { type Fields, fieldsOf, listOf } from '../json/fields.mts';
 import { createSampleRepository, REPOSITORY_ROOT } from './samples.mts';
-import { containedPath } from '../../core/fix/common/contained-path.mjs';
+import { containedPath } from '../../core/fix/tool-steps/paths/contained-path.mts';
 import { checkoutModulePath } from '../../shared/paths/checkout-module.mjs';
 
 const sourcePath: (file: string) => string = checkoutModulePath;

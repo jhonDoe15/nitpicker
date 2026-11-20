@@ -1,6 +1,6 @@
 import { readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mts';
 import { insideProject, projectFileText, writableProjectFile } from '../support/inside-project.mts';
 
 type AgentsResult = { readonly relative: string; readonly status: string };

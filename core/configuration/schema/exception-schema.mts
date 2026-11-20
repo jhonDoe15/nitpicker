@@ -24,7 +24,7 @@ import {
   GO_EXCEPTION_RULES,
   GO_LINT_TOOLS,
 } from '../../../languages/go/adapters/configuration/go-config.mts';
-import { i18nRuleIds } from '../../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
+import { i18nRuleIds } from '../../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mts';
 import { NITPICKER_RULES, RENAMED_TYPESCRIPT_RULES } from '../validate.mts';
 import {
   ABSOLUTE_PATH,

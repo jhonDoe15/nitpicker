@@ -1,6 +1,5 @@
 import type { EslintOptions } from '../../eslint/arguments.mts';
-import type { EslintToolSettings } from '../../typed/head-policy.mts';
-import { projectLayerValue as untypedProjectLayerValue } from '../project-layer.mjs';
+export { projectLayerValue } from '../project-layer.mts';
 import {
   troubleshootingError as untypedTroubleshootingError,
   withTroubleshooting as untypedWithTroubleshooting,
@@ -15,11 +14,6 @@ export type RunEslintCli = (
   patterns: readonly string[],
   extraEnvironment?: Readonly<Record<string, string>>,
 ) => Promise<unknown>;
-
-export const projectLayerValue: (
-  settings: EslintToolSettings | undefined,
-  context: { readonly liveProjectRoot: string; readonly addsRules: boolean },
-) => string = untypedProjectLayerValue;
 
 export const troubleshootingError: (
   message: string,

@@ -1,13 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { resolveHeadPolicy as untypedResolveHeadPolicy } from '../head-policy.mjs';
+import { fieldsOf } from '../../../../shared/values/readers.mts';
+import { resolveHeadPolicy as resolvedHeadPolicy } from '../head-policy.mts';
 import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
 type Section = Readonly<Record<string, unknown>>;
 
-const resolveHeadPolicy: (
-  config: object,
+function resolveHeadPolicy(
+  config: Readonly<Record<string, unknown>>,
   projectRoot: string,
-) => { readonly react: Section; readonly frameworks: Section } = untypedResolveHeadPolicy;
+): { readonly react: Section; readonly frameworks: Section | undefined } {
+  const policy = resolvedHeadPolicy(config, projectRoot);
+  return {
+    react: fieldsOf(policy.react),
+    frameworks: policy.frameworks === undefined ? undefined : fieldsOf(policy.frameworks),
+  };
+}
 
 const { projectWith: filesIn } = useTemporaryProjects('nitpicker-head-policy-react-');
 
@@ -72,7 +79,7 @@ describe('head policy styling approach', () => {
   function stylingOf(
     manifest: object,
     files: Readonly<Record<string, string>>,
-    config: object = {},
+    config: Readonly<Record<string, unknown>> = {},
   ) {
     return resolveHeadPolicy(config, manifestProject(manifest, files)).react['styling'];
   }

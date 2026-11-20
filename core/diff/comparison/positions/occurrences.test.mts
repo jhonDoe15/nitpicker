@@ -4,7 +4,7 @@ import { fieldAt } from '../../../../scripts/json/fields.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { parseChangedLines } from '../../git/test-support/projects/changed-lines-views.mts';
 import { type ComparedFinding, compareFindings } from '../test-support/typed-compare.mts';
-import { EDITED_LINE_SENTENCE } from './touched-lines.mjs';
+import { EDITED_LINE_SENTENCE } from './touched-lines.mts';
 
 const ROUTE =
   'If this is intended, add {"rule":"T201"} to "python.exceptions" in nitpicker.config.json.';
@@ -27,10 +27,8 @@ function ruff(rule: string, subject: string, lines: readonly number[]) {
 function touched(hunks: readonly (readonly string[])[], sources?: Sources, file = 'src/mod.py') {
   const diff = [`diff --git a/${file} b/${file}`, `--- a/${file}`, `+++ b/${file}`];
   return {
-    changedLines: parseChangedLines(
-      [...diff, ...hunks.flat()].join('\n'),
-      '.',
-      () => new Map([[file, sources]]),
+    changedLines: parseChangedLines([...diff, ...hunks.flat()].join('\n'), '.', () =>
+      sources === undefined ? new Map<string, Sources>() : new Map([[file, sources]]),
     ),
     isStrictRule: isPythonTouchedRule,
   };

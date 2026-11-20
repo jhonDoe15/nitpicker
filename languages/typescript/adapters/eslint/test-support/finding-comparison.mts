@@ -1,36 +1,16 @@
-import { compareFindings as untypedCompareFindings } from '../../../../../core/diff/comparison/compare.mjs';
+import { compareFindings as untypedCompareFindings } from '../../../../../core/diff/comparison/compare.mts';
 import { isStrictRule as untypedIsStrictRule } from '../../../preset/strict-rules.mts';
-import type { EslintFinding } from '../typed/engine.mts';
-
-type Ranges = readonly (readonly [number, number])[];
-
-type TouchedCode = {
-  readonly changedLines: ReadonlyMap<
-    string,
-    { readonly added: boolean; readonly ranges: Ranges; readonly inserted: Ranges }
-  >;
-  readonly isStrictRule: (rule: string) => boolean;
-};
-
-type ComparedFinding = EslintFinding & { readonly heldAtBase?: number };
+import type { CompareRequest } from '../../../../../core/diff/comparison/compare.mts';
+import type { TrackedFinding } from '../../../../../core/diff/comparison/model/finding-types.mts';
 
 type Comparison = {
-  readonly newFindings: ComparedFinding[];
-  readonly resolvedFindings: ComparedFinding[];
-  readonly unchangedFindings: ComparedFinding[];
+  readonly newFindings: TrackedFinding[];
+  readonly resolvedFindings: TrackedFinding[];
+  readonly unchangedFindings: TrackedFinding[];
 };
 
-const comparisonOf: (input: {
-  readonly baseFindings: readonly EslintFinding[];
-  readonly headFindings: readonly EslintFinding[];
-  readonly baseToHeadRenames?: Map<string, string> | undefined;
-  readonly baseToHeadDirectories?: Map<string, string> | undefined;
-  readonly touchedCode: TouchedCode | undefined;
-  readonly unknownOnBase: ((finding: EslintFinding) => boolean) | undefined;
-}) => Readonly<Record<string, ComparedFinding[]>> = untypedCompareFindings;
-
-export function compareFindings(input: Parameters<typeof comparisonOf>[0]): Comparison {
-  const { newFindings = [], resolvedFindings = [], unchangedFindings = [] } = comparisonOf(input);
+export function compareFindings(input: CompareRequest): Comparison {
+  const { newFindings, resolvedFindings, unchangedFindings } = untypedCompareFindings(input);
   return { newFindings, resolvedFindings, unchangedFindings };
 }
 

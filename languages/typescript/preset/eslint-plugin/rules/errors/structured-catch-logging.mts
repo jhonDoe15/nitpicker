@@ -1,8 +1,8 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { catchLoggingFix } from '../../fixes/errors/catch-logging-fix.mts';
 import { fixable } from '../../fixes/support/descriptors.mts';
-import { librariesForFile as untypedLibrariesForFile } from '../../../libraries/file-libraries.mjs';
-import { loggerShapes as untypedLoggerShapes } from '../../../libraries/project-libraries.mjs';
+import { librariesForFile as untypedLibrariesForFile } from '../../../libraries/file-libraries.mts';
+import { loggerShapes as untypedLoggerShapes } from '../../../libraries/project-libraries.mts';
 import { contains, type Ranged, type SourceCode } from '../typed/node-views.mts';
 import { readHeadPolicy, type LibraryChoices } from '../typed/policy-views.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';

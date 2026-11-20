@@ -1,4 +1,5 @@
 import { appendAll } from '../../../../shared/lists/lists.mts';
+import { beyondReplacedOffsets } from '../../../../core/diff/git/edited-lines.mts';
 const MAX_TABLE_CELLS = 40_000_000;
 
 export type FormattingHunk = {
@@ -40,7 +41,9 @@ export function formattingHunks(source: string, formatted: string): FormattingHu
 
 function commonPrefixLength(left: readonly string[], right: readonly string[]): number {
   const shorter = Math.min(left.length, right.length);
-  const firstDifference = indexesFrom(0, shorter).find((index) => left[index] !== right[index]);
+  const firstDifference = beyondReplacedOffsets(0, shorter).find(
+    (index) => left[index] !== right[index],
+  );
   return firstDifference ?? shorter;
 }
 
@@ -57,8 +60,8 @@ function commonSubsequenceLengths(left: readonly string[], right: readonly strin
   function cell(row: number, column: number): number {
     return table[row * width + column] ?? 0;
   }
-  for (const row of indexesFrom(0, left.length).toReversed()) {
-    for (const column of indexesFrom(0, right.length).toReversed()) {
+  for (const row of beyondReplacedOffsets(0, left.length).toReversed()) {
+    for (const column of beyondReplacedOffsets(0, right.length).toReversed()) {
       table[row * width + column] =
         left[row] === right[column]
           ? cell(row + 1, column + 1) + 1
@@ -94,7 +97,7 @@ function insertionsBefore(
   right: readonly string[],
   lengthAt: LengthAt,
 ): EditStep[] {
-  const stop = indexesFrom(column, right.length).find(
+  const stop = beyondReplacedOffsets(column, right.length).find(
     (candidate) =>
       line === right[candidate] || lengthAt(row + 1, candidate) >= lengthAt(row, candidate + 1),
   );
@@ -118,8 +121,4 @@ function groupedRuns(steps: readonly EditStep[]): Run[] {
     (step.kind === 'delete' ? current.original : current.formatted).push(step.line);
   }
   return runs;
-}
-
-function indexesFrom(first: number, end: number): number[] {
-  return Array.from({ length: Math.max(end - first, 0) }, (_, offset) => first + offset);
 }

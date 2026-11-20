@@ -1,14 +1,14 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
-import { presetToDeclare as untypedPresetToDeclare } from '../../configuration/project-checks/preset-detection.mjs';
-import { parseConfigFile } from '../../configuration/layers/layers.mjs';
+import { presetToDeclare as untypedPresetToDeclare } from '../../configuration/project-checks/preset-detection.mts';
+import { parseConfigFile } from '../../configuration/layers/layers.mts';
 import { fieldOf, messageOf } from '../../../shared/values/readers.mts';
 import type { PlanContext, PlanProject, ProjectEntry } from '../project-types.mts';
 import type { NitpickerConfig, ProjectOverlay } from '../../../shared/values/config-types.mts';
 import { readLayeredConfig } from '../../configuration/layers/read-layered.mts';
 import { sharedConfigFiles } from '../../configuration/layers/shared-files.mts';
-import { isInside as untypedIsInside } from '../discovery/repository-files.mjs';
+import { isInside as untypedIsInside } from '../discovery/repository-files.mts';
 import { containedPath as untypedContainedPath } from '../../../shared/paths/contained-path.mjs';
 
 const presetToDeclare: (

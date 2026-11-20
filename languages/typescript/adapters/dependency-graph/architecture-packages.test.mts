@@ -1,4 +1,4 @@
-import { cruise } from 'dependency-cruiser';
+import { cruise, type IFlattenedRuleSet } from 'dependency-cruiser';
 import { ESLint, type Linter } from 'eslint';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -6,18 +6,22 @@ import path from 'node:path';
 import ts from 'typescript';
 import tseslint from 'typescript-eslint';
 import { afterAll, describe, expect, it } from 'vitest';
-import architectureConfig from '../../preset/defaults/dependency-cruiser.config.mjs';
+import architectureConfig from '../../preset/defaults/dependency-cruiser.config.mts';
 import { strictSyntaxConfigFor as untypedStrictSyntaxConfigFor } from '../../preset/eslint-config/strict.mts';
-import { resolveLayout as untypedResolveLayout } from '../../preset/layout.mjs';
-import { staticChecks } from '../../preset/quality-checks.mjs';
-import { REACH_THROUGH_SHARED_RULE } from '../../preset/architecture/strict-boundary-rules.mjs';
-import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
+import { resolveLayout as untypedResolveLayout } from '../../preset/layout.mts';
+import { staticChecks } from '../../preset/quality-checks.mts';
+import { REACH_THROUGH_SHARED_RULE } from '../../preset/architecture/strict-boundary-rules.mts';
+import { fieldOf, isPlainObject, textOf } from '../../../../shared/values/readers.mts';
 import { sharedReachPath } from '../typed/static-checks.mts';
 import { writeFileTree } from '../test-support/file-tree.mts';
 
 const resolveLayout: () => ReturnType<typeof untypedResolveLayout> = untypedResolveLayout;
 const strictSyntaxConfigFor: (layout: ReturnType<typeof untypedResolveLayout>) => unknown[] =
   untypedStrictSyntaxConfigFor;
+
+function isRuleSet(value: unknown): value is IFlattenedRuleSet {
+  return isPlainObject(value) && Array.isArray(value['forbidden']);
+}
 
 function isLinterConfig(value: unknown): value is Linter.Config {
   return typeof value === 'object' && value !== null;
@@ -57,7 +61,7 @@ const architectureCheck = staticChecks.find(({ name }) => name === 'dependency-a
 const architectureExclude = textOf(fieldOf(architectureCheck, 'exclude'));
 
 async function architectureViolations() {
-  const ruleSet = {
+  const ruleSet: unknown = {
     ...architectureConfig,
     options: {
       ...architectureConfig.options,
@@ -65,6 +69,9 @@ async function architectureViolations() {
       tsConfig: { fileName: path.join(root, 'tsconfig.json') },
     },
   };
+  if (!isRuleSet(ruleSet)) {
+    throw new TypeError('the architecture config has no forbidden rules');
+  }
   const tsConfig = ts.parseJsonConfigFileContent({ compilerOptions }, ts.sys, root);
   const result = await cruise(
     [domain],

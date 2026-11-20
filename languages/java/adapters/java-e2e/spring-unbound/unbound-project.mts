@@ -47,8 +47,7 @@ export function unboundProjects(): {
       collectJavaFindings(copyFixture(roots, build), options)
         .filter(({ rule }) => rule === 'unbound-property')
         .map(
-          ({ path: file, location, identity }) =>
-            `${file}:${String(location?.line)} ${String(identity)}`,
+          ({ path: file, location, identity }) => `${file}:${String(location?.line)} ${identity}`,
         )
         .sort(),
     remove: () => {

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mts';
 import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mjs';
 import { applyFindingExceptions } from '../../../../shared/exceptions/finding-exceptions.mjs';
 import type { Finding } from '../static-checks/shared.mts';

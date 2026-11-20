@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultResolvedLayout } from '../../layout.mjs';
+import { defaultResolvedLayout } from '../../layout.mts';
 import { strictSyntaxConfig, strictSyntaxConfigFor } from '../strict.mts';
 import { lintFixture } from '../typed/lint-fixture.mts';
 import { nestClassMessage } from './nest-forms.mts';

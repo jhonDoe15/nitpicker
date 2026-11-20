@@ -1,16 +1,11 @@
 import path from 'node:path';
-import { isInside } from '../../discovery/repository-files.mjs';
-import { javascriptUnit, nxUnit } from './javascript.mjs';
-import { jvmUnit } from './jvm.mjs';
-import { pythonUnit } from './python.mjs';
-import { typescriptUnit } from './typescript.mjs';
+import { isInside } from '../../discovery/repository-files.mts';
+import { javascriptUnit, nxUnit } from './javascript.mts';
+import { jvmUnit } from './jvm.mts';
+import { pythonUnit } from './python.mts';
+import { typescriptUnit } from './typescript.mts';
+import type { DependencyUnit } from '../../project-types.mts';
 
-type DependencyUnit = {
-  readonly names: readonly string[];
-  readonly needs: readonly string[];
-  readonly folders: readonly string[];
-  readonly labels?: ReadonlyMap<string, string>;
-};
 export type DependencyGraph = ReadonlyMap<string, ReadonlySet<string>> & {
   readonly labels?: ReadonlyMap<string, string>;
 };

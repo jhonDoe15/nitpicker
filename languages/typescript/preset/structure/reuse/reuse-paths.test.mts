@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from 'node:
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { isReuseProductionPath, projectPathOf } from './reuse-paths.mjs';
+import { isReuseProductionPath, projectPathOf } from './reuse-paths.mts';
 
 describe('reuse production paths', () => {
   it.each(['src/a.ts', 'src/history.ts', 'src/storybook.ts'])('keeps %s', (file) => {

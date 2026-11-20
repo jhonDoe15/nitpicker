@@ -12,13 +12,14 @@ export type FixLayout = {
   readonly sourceTestDirectoryGlobs: readonly string[];
   readonly isSourceFile: (name: string) => boolean;
   readonly isTestFile: (name: string) => boolean;
+  readonly isTestFixture: (file: string, name?: string) => boolean;
   readonly isExcluded: (name: string) => boolean;
 };
 
 export type FixHeadPolicy = {
-  readonly react?: object;
-  readonly conventions?: object;
-  readonly conventionPins?: object;
+  readonly react?: { readonly enabled?: true; readonly [field: string]: unknown };
+  readonly conventions?: Readonly<Record<string, unknown>>;
+  readonly conventionPins?: Readonly<Record<string, unknown>>;
 };
 
 export type FixInputs = {

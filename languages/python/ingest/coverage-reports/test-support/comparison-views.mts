@@ -1,10 +1,11 @@
-import { compareFindings as untypedCompare } from '../../../../../core/diff/comparison/compare.mjs';
+import { callUntyped } from '../../../../../shared/values/boundaries/untyped-call.mts';
+import { compareFindings as untypedCompare } from '../../../../../core/diff/comparison/compare.mts';
 import {
   baseMoves as untypedBaseMoves,
   comparisonKey as untypedComparisonKey,
-} from '../../../../../core/diff/comparison/fingerprint.mjs';
-import { parseAnalyzerReport as untypedParseReport } from '../../../../../core/diff/comparison/finding-schema.mjs';
-import { parseChangedLines as untypedChangedLines } from '../../../../../core/diff/git/patches/changed-lines.mjs';
+} from '../../../../../core/diff/comparison/fingerprint.mts';
+import { parseAnalyzerReport as untypedParseReport } from '../../../../../core/diff/comparison/finding-schema.mts';
+import { parseChangedLines as untypedChangedLines } from '../../../../../core/diff/git/patches/changed-lines.mts';
 import { isStrictRule as untypedStrictRule } from '../../../../typescript/preset/strict-rules.mts';
 import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
 import type { IngestedFinding } from '../../typed/ingest-types.mts';
@@ -24,7 +25,7 @@ export function compareFindings(input: {
   headFindings: readonly IngestedFinding[];
   touchedCode: TouchedCode;
 }): Comparison {
-  const result: unknown = untypedCompare({ ...input, unknownOnBase: undefined });
+  const result = callUntyped(untypedCompare, { ...input, unknownOnBase: undefined });
   return {
     newFindings: listOf(fieldOf(result, 'newFindings')).filter(isFinding),
     unchangedFindings: listOf(fieldOf(result, 'unchangedFindings')).filter(isFinding),

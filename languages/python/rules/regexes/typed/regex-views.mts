@@ -1,7 +1,7 @@
 import {
   REGEX_DIALECTS,
   patternDefects,
-} from '../../../../../core/tooling/regex-patterns/pattern-defects.mjs';
+} from '../../../../../core/tooling/regex-patterns/pattern-defects.mts';
 import { callUntyped } from '../../../../../shared/values/boundaries/untyped-call.mts';
 import { fieldOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 

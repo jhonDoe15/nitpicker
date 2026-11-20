@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { type CacheStore, createDirectoryStore, resolveCacheDirectory } from './cache-stores.mts';
 import { cacheEntryText } from './entries/cache-entry.mts';
-import { parseAnalyzerReport } from '../comparison/finding-schema.mjs';
+import { parseAnalyzerReport } from '../comparison/finding-schema.mts';
 import { type AnalyzerMetadata, metadataValue } from '../execution/report/analyzer-metadata.mts';
 import type { TaskCheckpoint } from '../execution/tasks.mts';
 import { nitpickerCodeFingerprint } from './code-fingerprint.mts';
@@ -42,7 +42,6 @@ type Attempt<T> =
   | { readonly kind: 'done'; readonly value: T }
   | { readonly kind: 'failed'; readonly error: unknown };
 
-const reportOf: (value: unknown, analyzerName: unknown) => AnalyzerReport = parseAnalyzerReport;
 const parseJson: (text: string) => unknown = JSON.parse;
 
 const CACHE_SCHEMA = 1;
@@ -85,7 +84,7 @@ function readReport(store: CacheStore, key: string, analyzer: unknown): Analyzer
   if (text === undefined || fieldOf(entry, 'key') !== key) {
     return undefined;
   }
-  const report = reportOf(entry, fieldOf(analyzer, 'name'));
+  const report = parseAnalyzerReport(entry, String(fieldOf(analyzer, 'name')));
   store.keep?.(key, text);
   return report;
 }

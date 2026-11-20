@@ -3,7 +3,7 @@ import path from 'node:path';
 import { ALL_RECIPES } from '../fix/engine/all-recipes.mts';
 import { fixWorkingTree } from '../fix/run-fix.mts';
 import type { FixInvocation, FixOutcome } from '../fix/typed/fix-types.mts';
-import { runGit } from '../diff/git/repository/command.mjs';
+import { runGit } from '../diff/git/repository/command.mts';
 import { outputRootFor } from '../diff/reporting/reporters.mts';
 
 export const FIX_RECIPES: unknown = ALL_RECIPES;
