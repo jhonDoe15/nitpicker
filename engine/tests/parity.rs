@@ -98,7 +98,7 @@ fn error_prone_checks_report_what_error_prone_reports() {
     let missed: Vec<&Row> = expected.iter().filter(|(row, count)| found.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     let extra: Vec<&Row> = found.iter().filter(|(row, count)| expected.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(expected.keys().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 56);
+    assert_eq!(expected.keys().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 57);
 }
 
 #[test]
