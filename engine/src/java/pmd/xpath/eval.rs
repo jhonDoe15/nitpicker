@@ -367,19 +367,28 @@ impl<'a, 't> Machine<'a, 't> {
         }
     }
 
-    fn filter(&self, candidates: Vec<Item>, predicate: &Expr, env: &mut Env) -> Vec<Item> {
+    fn filter(&self, mut candidates: Vec<Item>, predicate: &Expr, env: &mut Env) -> Vec<Item> {
         if let Expr::Whole(wanted) = predicate {
             let at = *wanted as usize;
-            return if at >= 1 && at <= candidates.len() { vec![candidates[at - 1].clone()] } else { Vec::new() };
+            if at >= 1 && at <= candidates.len() {
+                candidates.swap(0, at - 1);
+                candidates.truncate(1);
+            } else {
+                candidates.clear();
+            }
+            return candidates;
         }
+        // Kept candidates move to the front; the ones still to be asked stay where they are.
         let size = candidates.len();
-        let mut kept = Vec::new();
-        for (index, candidate) in candidates.iter().enumerate() {
-            if self.keeps(predicate, candidate, index, size, env) {
-                kept.push(candidate.clone());
+        let mut kept = 0;
+        for index in 0..size {
+            if self.keeps(predicate, &candidates[index], index, size, env) {
+                candidates.swap(kept, index);
+                kept += 1;
             }
         }
-        kept
+        candidates.truncate(kept);
+        candidates
     }
 
     fn step(&self, from: &[Item], axis: Axis, test: &Test, predicates: &[Expr], env: &mut Env) -> Seq {

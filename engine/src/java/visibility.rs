@@ -1,5 +1,6 @@
 //! Checkstyle VisibilityModifier with allowPublicFinalFields, plus nitpicker's two suppressions
 //! (protected fields of @MappedSuperclass, package fields of Lombok @Value / @FieldDefaults(PRIVATE)).
+use crate::java::fields::Fields;
 use super::helpers::{annotation_names, declarators, has_modifier, in_interface_or_annotation, modifiers, report};
 use crate::engine::source::{SourceFile, children, walk};
 use crate::engine::{FileRule, finding::Finding};
@@ -54,7 +55,7 @@ fn suppressed(file: &SourceFile, field: Node) -> bool {
     let private_defaults = modifiers(owner).is_some_and(|m| {
         children(m).into_iter().any(|annotation| {
             annotation.kind() == "annotation"
-                && annotation.child_by_field_name("name").is_some_and(|n| short(file.text_of(n)) == "FieldDefaults")
+                && annotation.field("name").is_some_and(|n| short(file.text_of(n)) == "FieldDefaults")
                 && file.text_of(annotation).contains("PRIVATE")
         })
     });
@@ -79,7 +80,7 @@ impl FileRule for VisibilityModifier {
                 return;
             }
             for declarator in declarators(field) {
-                let Some(name) = declarator.child_by_field_name("name") else { continue };
+                let Some(name) = declarator.field("name") else { continue };
                 let text = file.text_of(name);
                 if public && text == "serialVersionUID" {
                     continue;

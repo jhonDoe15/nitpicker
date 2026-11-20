@@ -52,10 +52,10 @@ Measured with all 130 rules on 4 cores (findings: same / missed / extra):
 | Code base | Files, lines | PMD 7.16.0 wall, CPU, peak | Engine | Findings |
 | --- | --- | --- | --- | --- |
 | commons-lang, javaparser, guava, jackson-databind, mybatis-3 | 2,321 files | 67 s, 250 s, 1.5-2.0 GB | 14.6 s, 50 s, 0.3-0.5 GB | 5,118 / 0 / 0 |
-| Nacos, all modules | 5,410, 844k | 77 s, 297 s, 2.4 GB | 21 s, 80 s, 0.4 GB | 3,709 / 0 / 0 |
-| Elasticsearch `server` | 5,117, 1.04M | 85 s, 328 s, 2.8 GB | 30 s, 112 s, 0.5 GB | 2,497 / 0 / 0 |
+| Nacos, all modules | 5,410, 844k | 77 s, 297 s, 2.4 GB | 17 s, 64 s, 0.4 GB | 3,709 / 0 / 0 |
+| Elasticsearch `server` | 5,117, 1.04M | 85 s, 328 s, 2.8 GB | 24 s, 89 s, 0.5 GB | 2,497 / 0 / 0 |
 
-On the whole Elasticsearch tree (18,155 files, 3.3M lines) the engine takes 88 s, 341 CPU-s and 1.7 GB. PMD
+On the whole Elasticsearch tree (18,155 files, 3.3M lines) the engine takes 75 s, 264 CPU-s and 1.7 GB. PMD
 takes about 190 s, 750 CPU-s and 4.6 GB there and stops reporting after a StackOverflowError in its type
 inference, so findings on that tree are compared part by part.
 

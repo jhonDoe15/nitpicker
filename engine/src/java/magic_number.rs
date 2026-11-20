@@ -1,5 +1,6 @@
 //! Checkstyle MagicNumber as nitpicker configures it:
 //! ignoreHashCodeMethod, ignoreAnnotation, default ignoreNumbers (-1, 0, 1, 2) and waiver tokens.
+use crate::java::fields::Fields;
 use super::helpers::{has_modifier, in_interface_or_annotation, report};
 use crate::engine::source::{SourceFile, walk};
 use crate::engine::{FileRule, finding::Finding};
@@ -49,7 +50,7 @@ fn unary_sign<'t>(file: &SourceFile, literal: Node<'t>) -> Option<(Node<'t>, &'s
     if parent.kind() != "unary_expression" {
         return None;
     }
-    match file.text_of(parent.child_by_field_name("operator")?) {
+    match file.text_of(parent.field("operator")?) {
         "-" => Some((parent, "-")),
         "+" => Some((parent, "+")),
         _ => None,
@@ -68,8 +69,8 @@ fn in_hash_code(file: &SourceFile, literal: Node) -> bool {
     let mut current = literal.parent();
     while let Some(node) = current {
         if node.kind() == "method_declaration" {
-            let name = node.child_by_field_name("name").map(|n| file.text_of(n));
-            let empty = node.child_by_field_name("parameters").is_some_and(|p| p.named_child_count() == 0);
+            let name = node.field("name").map(|n| file.text_of(n));
+            let empty = node.field("parameters").is_some_and(|p| p.named_child_count() == 0);
             return name == Some("hashCode") && empty;
         }
         current = node.parent();
@@ -94,13 +95,13 @@ fn waived_step(file: &SourceFile, child: Node, parent: Node) -> bool {
         "parenthesized_expression" | "argument_list" | "array_initializer" | "cast_expression"
         | "ternary_expression" | "variable_declarator" | "enum_constant" => true,
         "object_creation_expression" => child.kind() != "class_body",
-        "method_invocation" => parent.child_by_field_name("object") != Some(child),
-        "assignment_expression" => parent.child_by_field_name("operator").is_some_and(|op| file.text_of(op) == "="),
+        "method_invocation" => parent.field("object") != Some(child),
+        "assignment_expression" => parent.field("operator").is_some_and(|op| file.text_of(op) == "="),
         "binary_expression" => {
-            parent.child_by_field_name("operator").is_some_and(|op| WAIVED_BINARY.contains(&file.text_of(op)))
+            parent.field("operator").is_some_and(|op| WAIVED_BINARY.contains(&file.text_of(op)))
         }
         "unary_expression" => {
-            parent.child_by_field_name("operator").is_some_and(|op| matches!(file.text_of(op), "-" | "+" | "~"))
+            parent.field("operator").is_some_and(|op| matches!(file.text_of(op), "-" | "+" | "~"))
         }
         _ => false,
     }

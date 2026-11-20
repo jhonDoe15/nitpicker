@@ -80,6 +80,7 @@ pub fn build(files: &[SourceFile], classpath: &[PathBuf]) -> JavaProject {
         index.source_classes,
         started.elapsed().as_secs_f64() * 1e3 - binaries_ms
     );
+    index.settle();
     JavaProject { index }
 }
 
