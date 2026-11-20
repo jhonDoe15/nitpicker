@@ -322,7 +322,13 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
   non-final fields or a static
   collection it changes is an `errorprone/NonFinalStaticField` or `pmd/MutableStaticCollection` finding
   like production code. A test with no assertion at all is still
-  `pmd/UnitTestShouldIncludeAssert`. An assumption on a real condition (`assumeTrue(isLinux())`) and a test
+  `pmd/UnitTestShouldIncludeAssert`. An assertion inside a lambda of the test counts (a transaction or
+  context callback, `dynamicTest(name, () -> assertEquals(...))` in a `@TestFactory`), and so does a snapshot
+  call (`toMatchSnapshot`, `matchesSnapshot`). A test is also taken as verified when it calls a method on an
+  unannotated parameter and its class registers an extension (`@ExtendWith` or a `@RegisterExtension` field,
+  other than Mockito's and Spring's) that implements `AfterEachCallback` or `AfterTestExecutionCallback`:
+  a recorder that such an extension injects and compares after the test, as in golden-file suites. An
+  extension registered only through a composed annotation is not seen. An assumption on a real condition (`assumeTrue(isLinux())`) and a test
   that only `verify`s a call are not reported: environment guards and verifying a `void` collaborator are
   legitimate.
 - **Test honesty by preset.** The four checks that keep a test honest exist in every preset that

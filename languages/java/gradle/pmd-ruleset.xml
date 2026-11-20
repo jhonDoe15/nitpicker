@@ -123,7 +123,26 @@ return .[
   <rule ref="category/java/bestpractices.xml/UnitTestShouldIncludeAssert">
     <properties>
       <property name="extraAssertMethodNames"
-                value="andExpect,andExpectAll,should,shouldHaveNoInteractions,shouldHaveNoMoreInteractions,expectStatus,expectBody,expectHeader,expectNext,expectNextCount,expectComplete,expectError,verifyComplete,verifyError,verifyTimeout"/>
+                value="andExpect,andExpectAll,should,shouldHaveNoInteractions,shouldHaveNoMoreInteractions,expectStatus,expectBody,expectHeader,expectNext,expectNextCount,expectComplete,expectError,verifyComplete,verifyError,verifyTimeout,toMatchSnapshot,matchesSnapshot"/>
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+.[.//LambdaExpression//MethodCall[matches(@MethodName,
+    '^(assert.*|fail|verify.*|andExpect(All)?|should(HaveNo.*)?|expect(Status|Body|Header|Next.*|Complete|Error.*)|toMatchSnapshot|matchesSnapshot)$')]]
+| .[let $method := .,
+        $classes := ancestor::ClassDeclaration,
+        $callback := function($type) {
+          exists($type[pmd-java:typeIs('org.junit.jupiter.api.extension.AfterEachCallback')
+                       or pmd-java:typeIs('org.junit.jupiter.api.extension.AfterTestExecutionCallback')]
+                      [not(pmd-java:typeIs('org.mockito.junit.jupiter.MockitoExtension')
+                           or pmd-java:typeIs('org.springframework.test.context.junit.jupiter.SpringExtension'))]) }
+    return exists(FormalParameters/FormalParameter[not(ModifierList/Annotation)]
+                    [let $name := VariableId/@Name
+                     return exists($method/Block//MethodCall[*[1][self::VariableAccess][@Name = $name]])])
+      and (some $type in ($classes/ModifierList/Annotation[@SimpleName = 'ExtendWith']//ClassLiteral/ClassType,
+                          $classes/ClassBody/FieldDeclaration[ModifierList/Annotation/@SimpleName = 'RegisterExtension']/ClassType)
+           satisfies $callback($type))]
+]]></value>
+      </property>
     </properties>
   </rule>
   <rule ref="category/java/bestpractices.xml/CheckResultSet">

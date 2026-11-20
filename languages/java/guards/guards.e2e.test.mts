@@ -83,6 +83,7 @@ const UNRELATED_TASKS = [
 const GUARD_TOOLS = new Set(['javac', 'forbiddenapis', 'dependencies', 'coupling', 'duplicates']);
 const GUARD_RULES = new Set([
   'OptionalGet',
+  'UnitTestShouldIncludeAssert',
   'OptionalAsFieldOrParameter',
   'OptionalOfCollection',
   'InstanceofThenCast',
