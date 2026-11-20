@@ -24,5 +24,7 @@ exception route in the message: write that form, don't work around the rule.
   alone (`nitpicker/react-no-unstable-selector-result`).
 - `useSyncExternalStore` gets a `subscribe` declared at module level (or in `useCallback`) and a `getSnapshot` that
   returns a value the store keeps, not a new object or array (`nitpicker/react-no-unstable-store-subscribe`).
+- An effect that opens a `WebSocket`, `EventSource`, `BroadcastChannel`, worker, observer, `watchPosition` or a
+  `requestAnimationFrame` loop returns a cleanup that closes it (`nitpicker/react-no-leaked-effect-resource`).
 - Component tests query through `screen` and assert what the user sees (text, roles, focus), never
   component state, instances or hook internals.

@@ -166,6 +166,19 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `fromEntries(...)` or the result of `.filter`, `.map`, `.flatMap`, `.toSorted` or `.toReversed` is
   never the same value twice, so React renders in a loop: return a value the store keeps. The hook
   from `react`, `use-sync-external-store` and `use-sync-external-store/shim` counts.
+- **Effects close what they open** (`nitpicker/react-no-leaked-effect-resource`). The
+  `react-web-api/no-leaked-*` rules cover listeners, timers, `ResizeObserver` and
+  `IntersectionObserver`; this rule covers the rest. Reported in the effect's own statements:
+  `new WebSocket`, `EventSource`, `BroadcastChannel`, `Worker`, `SharedWorker`, `MutationObserver`,
+  `PerformanceObserver` or `ReportingObserver` (also through `window.`) whose handle is dropped or
+  kept in a local variable that is only read through named members, none of them `close`,
+  `terminate` or `disconnect`;
+  `navigator.geolocation.watchPosition(...)` whose id is dropped or never used; and a
+  `requestAnimationFrame` loop whose callback always schedules itself again while the effect never
+  mentions `cancelAnimationFrame`. A handle stored in a ref, passed to a function, returned or
+  closed anywhere in the effect, a resource opened in a nested function, a loop that stops on a
+  condition, and an effect with `[]` in a file that mounts the app (it calls `createRoot`,
+  `hydrateRoot`, `ReactDOM.render` or `registerComponent`) are not reported.
 - **No array index as `key`** (`react-x/no-array-index-key`): use a stable id from the item. Every
   element rendered from a list has a `key` (`react-x/no-missing-key`) and siblings do not repeat
   one (`react-x/no-duplicate-key`). A `key` built from `Math.random()`, `Date.now()`,

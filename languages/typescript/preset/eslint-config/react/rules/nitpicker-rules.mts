@@ -8,6 +8,7 @@ export const nitpickerReactRuleIds = [
   'nitpicker/react-mutation-drops-failure',
   'nitpicker/react-no-eager-initial-value',
   'nitpicker/react-no-effect-event-handling',
+  'nitpicker/react-no-leaked-effect-resource',
   'nitpicker/react-no-random-key',
   'nitpicker/react-no-unstable-memo-props',
   'nitpicker/react-no-unstable-selector-result',

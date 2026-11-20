@@ -18,6 +18,7 @@ import { rule as ruleReactNoEffectDataFetching } from '../rules/react/react-no-e
 import { rule as ruleReactNoEffectDerivedState } from '../rules/react/react-no-effect-derived-state.mts';
 import { rule as ruleReactNoEffectEventHandling } from '../rules/react/render/react-no-effect-event-handling.mts';
 import { rule as ruleReactNoHardcodedColors } from '../rules/react/theme/react-no-hardcoded-colors.mts';
+import { rule as ruleReactNoLeakedEffectResource } from '../rules/react/effects/react-no-leaked-effect-resource.mts';
 import { rule as ruleReactNoLiteralIdInListComponent } from '../rules/react/ids/react-no-literal-id-in-list-component.mts';
 import { rule as ruleReactNoRandomKey } from '../rules/react/render/react-no-random-key.mts';
 import { rule as ruleReactNoUnstableMemoProps } from '../rules/react/memo-props/react-no-unstable-memo-props.mts';
@@ -70,6 +71,7 @@ export const partRules = {
   'react-no-effect-derived-state': ruleReactNoEffectDerivedState,
   'react-no-effect-event-handling': ruleReactNoEffectEventHandling,
   'react-no-hardcoded-colors': ruleReactNoHardcodedColors,
+  'react-no-leaked-effect-resource': ruleReactNoLeakedEffectResource,
   'react-no-literal-id-in-list-component': ruleReactNoLiteralIdInListComponent,
   'react-no-random-key': ruleReactNoRandomKey,
   'react-no-unstable-memo-props': ruleReactNoUnstableMemoProps,
