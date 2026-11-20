@@ -5,6 +5,7 @@ mod expose;
 mod flow;
 mod mutable;
 mod names;
+mod nulls;
 mod stores;
 
 use super::types::project::JavaProject;
@@ -32,6 +33,10 @@ pub struct Context<'a> {
 }
 
 impl Context<'_> {
+    /// Whether a run restricted to some patterns asks for one of these.
+    pub fn wants(&self, patterns: &[&str]) -> bool {
+        self.selected.as_ref().is_none_or(|names| names.iter().any(|name| patterns.contains(&name.as_str())))
+    }
     /// Reports a pattern on a line unless an enclosing declaration suppresses it.
     pub fn report(&self, pattern: &'static str, at: Node, line: usize, message: String) {
         if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == pattern)) {
@@ -96,7 +101,7 @@ impl Context<'_> {
 /// A detector looks at one class, enum, record or interface declaration at a time.
 type Detector = fn(&Context, Node);
 
-const DETECTORS: &[Detector] = &[expose::exposed_representation, constructors::constructor_throw];
+const DETECTORS: &[Detector] = &[expose::exposed_representation, constructors::constructor_throw, nulls::null_dereference];
 
 pub struct SpotBugs;
 

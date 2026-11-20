@@ -54,6 +54,7 @@ struct Target {
 struct Builder<'t, 'f> {
     file: &'f SourceFile,
     guards: &'f dyn Fn(Node) -> bool,
+    assertions: bool,
     cfg: Cfg<'t>,
     current: usize,
     targets: Vec<Target>,
@@ -85,9 +86,15 @@ pub fn unwrap(mut node: Node) -> Node {
 /// The graph of a method, constructor or initializer body, a lambda body, or a field's initial value.
 /// `guards` names the calls that throw unless their first argument holds (Guava's `checkState`, for instance).
 pub fn build<'t>(file: &SourceFile, body: Node<'t>, guards: &dyn Fn(Node) -> bool) -> Cfg<'t> {
+    build_with(file, body, guards, false)
+}
+
+/// The same graph; with `assertions`, the test of an `assert` is run before the statement's own step.
+pub fn build_with<'t>(file: &SourceFile, body: Node<'t>, guards: &dyn Fn(Node) -> bool, assertions: bool) -> Cfg<'t> {
     let mut builder = Builder {
         file,
         guards,
+        assertions,
         cfg: Cfg { blocks: Vec::new(), results: HashMap::new() },
         current: 0,
         targets: Vec::new(),
@@ -449,8 +456,14 @@ impl<'t> Builder<'t, '_> {
                     if part.kind() == "block" { self.statement(part) } else { self.expression(part) }
                 }
             }
-            // Assertions count as switched off, as NullAway assumes by default: the test is never run.
-            "assert_statement" => {}
+            // Assertions count as switched off unless asked for, as NullAway assumes by default: the test is never
+            // run. The statement is still a step, for an analysis that wants to know a test was written there.
+            "assert_statement" => {
+                if let Some(test) = node.named_child(0).filter(|_| self.assertions) {
+                    self.expression(test);
+                }
+                self.step(node);
+            }
             "explicit_constructor_invocation" => {
                 if let Some(arguments) = field("arguments") {
                     self.parts(arguments);
