@@ -108,6 +108,7 @@
   "eslint/nitpicker/no-partial-output-assertion": ["tests"],
   "eslint/nitpicker/no-unanchored-affix-replace": ["bug"],
   "eslint/nitpicker/no-case-mismatched-lookup": ["bug"],
+  "eslint/nitpicker/no-error-response-without-status": ["bug", "reliability"],
   "eslint/nitpicker/no-mismatched-precondition-message": ["bug"],
   "eslint/nitpicker/no-malformed-query-text": ["bug", "persistence"],
   "eslint/nitpicker/no-unpaged-listing": ["bug"],

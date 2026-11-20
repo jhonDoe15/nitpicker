@@ -50,6 +50,7 @@ export const productionGuardEntries: Record<string, Linter.RuleEntry> = {
   'nitpicker/no-use-after-await-when-disposed': 'error',
   'nitpicker/no-falsy-error-check': 'error',
   'nitpicker/no-send-without-return': 'error',
+  'nitpicker/no-error-response-without-status': 'error',
   'nitpicker/require-process-timeout': 'error',
   'nitpicker/require-client-timeout': 'error',
   'nitpicker/time-unit-mismatch': 'error',

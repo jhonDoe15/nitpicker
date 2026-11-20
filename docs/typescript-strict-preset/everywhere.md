@@ -1798,6 +1798,20 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   logging call, `return;`, `break` or `continue`. `res.write`, a branch that returns or throws, an `else`, and a branch
   that is the last statement of its block are not reported. Allowed forms: `return res.status(400).json(...)`,
   `return next()`, a `return;` after the call, or an `else` around the rest.
+- `nitpicker/no-error-response-without-status` (production files): a `catch` block of a request handler that answers
+  with an error body and no status, so the failure is sent as `200 OK`: the caller's `response.ok` is true, a scheduler
+  records the run as succeeded and nothing retries. Reported inside a `catch` (not in a function nested in it):
+  `NextResponse.json(body)` (imported from `next/server`) or the global `Response.json(body)` with no second argument,
+  or with an object literal that has no `status`; `res`, `response` or `reply` (a parameter of an enclosing function)
+  with `json` or `send`, also behind `set(...)` or `header(...)`, when the `catch` has no `status(...)`,
+  `sendStatus(...)`, `code(...)`, `writeHead(...)` or assignment to `statusCode` and the function sets none as a
+  statement of its own; and `c.json(body)` with one argument on the context parameter (`c`, `ctx`, `context`) of a file
+  that imports `hono`. The body is an object literal with an `error`, `errors` or `err` property (not `null`, `false` or
+  `[]`), no spread, and no outcome field of its own: `status`, `statusCode`, `code`, `success`, `ok`, `data`, `result`,
+  `jsonrpc` or `id` next to the error means the project answers with an envelope or by a protocol (JSON-RPC, GraphQL)
+  and is not reported. Allowed forms: `NextResponse.json({ error }, { status: 500 })`, `res.status(500).json({ error
+  })`, and a status written out when 200 is meant, for example for a webhook sender that must not retry (`{ status: 200
+  }`).
 - Child processes the code waits for have a deadline (`nitpicker/require-process-timeout`, production
   files; test files have `nitpicker/require-test-process-timeout`). From `child_process`, `execa` and
   `cross-spawn`: `execSync`, `execFileSync`, `spawnSync`, `execaSync` and `execaCommandSync` need a
