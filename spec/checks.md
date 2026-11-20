@@ -136,6 +136,13 @@ generate, load, read or init, `JSON.parse`, `localStorage.getItem`), and `create
 `configureStore` and `new QueryClient()` called directly in a component or hook body, except in an async component or a server file. Getters, translations,
 type conversions, hook calls, `Date.now()` and built-in constructors are allowed, as are a function argument and a guarded lazy fill.
 
+React stale state: `nitpicker/react-no-stale-state-update` (production source in a React project, in `eslint-lint`)
+reports a `useState` setter called with an array, an object or arithmetic that reads the setter's own state when the
+call follows an `await` that certainly ran (outside branches, loops and optional calls; in a `try`, only its first
+statement), or follows another call of the same setter in the same block. An updater function, a literal, a value
+that does not read the state, a call in a `catch` or a nested function and a call in an effect whose dependencies list
+the state are left alone.
+
 React i18next: `nitpicker/react-i18next-escape-value` (production source in a React project that depends on
 `react-i18next`, in `eslint-lint`) reports a `t(...)` or `<Trans values>` call that interpolates values into text React
 renders while no source file of the package sets `interpolation.escapeValue: false` and the call does not. The init
