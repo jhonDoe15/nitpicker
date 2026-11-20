@@ -834,6 +834,7 @@ impl<'a> Resolver<'a> {
                 is_static: false,
                 is_private: false,
                 varargs: false,
+                shown: String::new(),
                 throws: Vec::new(),
                 nullable_parameters: 0,
                 flags: 0,

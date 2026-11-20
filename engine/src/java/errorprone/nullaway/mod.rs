@@ -824,6 +824,9 @@ pub fn null_away(context: &Context, root: Node) {
     let mut inner: HashMap<usize, Vec<(String, u8)>> = HashMap::new();
     let mut reported = std::collections::HashSet::new();
     walk(root, |node| {
+        if node.kind() == "method_declaration" && !unmarked(context, node) {
+            sites::overriding(context, node);
+        }
         let Some((body, parameters)) = unit(node) else { return };
         let unit_node = node;
         if unmarked(context, node) {

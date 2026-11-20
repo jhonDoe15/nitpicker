@@ -397,6 +397,50 @@ impl<'a> Resolver<'a> {
         (erased, generic, varargs)
     }
 
+    /// A written type the way javac prints it: qualified names, type arguments, no spaces after commas.
+    fn shown_type(&self, node: Node, nested: bool) -> String {
+        fn named(node: Node) -> Vec<Node> {
+            crate::engine::source::named_children(node).into_iter().filter(|part| !part.kind().ends_with("comment") && !part.kind().ends_with("annotation")).collect()
+        }
+        match node.kind() {
+            "array_type" => {
+                let element = node.child_by_field_name("element").map(|element| self.shown_type(element, nested)).unwrap_or_default();
+                let count = node.child_by_field_name("dimensions").map_or(1, |dimensions| self.file.text_of(dimensions).matches('[').count());
+                format!("{element}{}", "[]".repeat(count))
+            }
+            "generic_type" => {
+                let parts = named(node);
+                let base = parts.first().map(|base| self.shown_type(*base, nested)).unwrap_or_default();
+                let given = parts.iter().find(|part| part.kind() == "type_arguments").map(|list| named(*list)).unwrap_or_default();
+                format!("{base}<{}>", given.into_iter().map(|one| self.shown_type(one, true)).collect::<Vec<_>>().join(","))
+            }
+            "wildcard" => {
+                let bound = named(node).into_iter().last().map(|bound| self.shown_type(bound, true));
+                let word = if children(node).iter().any(|part| part.kind() == "super") { "super" } else { "extends" };
+                bound.map_or("?".to_string(), |bound| format!("? {word} {bound}"))
+            }
+            "annotated_type" => {
+                let inner = named(node).into_iter().last().map(|inner| self.shown_type(inner, nested)).unwrap_or_default();
+                let marks = crate::engine::source::named_children(node).into_iter().filter(|part| nested && part.kind().ends_with("annotation"));
+                let names = marks.filter_map(|mark| mark.child_by_field_name("name")).map(|name| self.written(name, true).map_or_else(|| self.file.text_of(name).to_string(), |kind| kind.name()));
+                names.map(|name| format!("@{name} ")).collect::<String>() + &inner
+            }
+            "type_identifier" | "scoped_type_identifier" => self.written(node, true).map_or_else(|| self.file.text_of(node).to_string(), |kind| kind.name()),
+            _ => self.file.text_of(node).to_string(),
+        }
+    }
+
+    fn shown_parameters(&self, member: Node) -> String {
+        let list = member.child_by_field_name("parameters").map(children).unwrap_or_default();
+        let listed = list.into_iter().filter(|part| matches!(part.kind(), "formal_parameter" | "spread_parameter"));
+        let one = |part: Node| {
+            let written = part.child_by_field_name("type").or_else(|| crate::engine::source::named_children(part).into_iter().find(|child| child.kind().ends_with("type") || child.kind().ends_with("identifier")));
+            let shown = written.map(|written| self.shown_type(written, false)).unwrap_or_default();
+            if part.kind() == "spread_parameter" { format!("{shown}...") } else { shown }
+        };
+        listed.map(one).collect::<Vec<_>>().join(",")
+    }
+
     fn throws(&self, member: Node) -> Vec<String> {
         let clause = children(member).into_iter().find(|part| part.kind() == "throws");
         let mut cursor = member.walk();
@@ -500,7 +544,7 @@ impl<'a> Resolver<'a> {
                 body.map_or(0, |body| children(body).into_iter().filter(|member| member.kind() == "enum_constant").count() as u32)
             }),
             permitted: self.permitted(declaration, &own_name, &listed("permits")),
-            flags: self.class_flags(declaration),
+            flags: self.class_flags(declaration) | super::model::flag::SOURCE,
         }
     }
 
@@ -592,6 +636,7 @@ impl<'a> Resolver<'a> {
             is_static: false,
             is_private: false,
             varargs: false,
+            shown: String::new(),
             throws: Vec::new(),
             nullable_parameters: 0,
             flags: super::model::flag::PUBLIC,
@@ -692,6 +737,7 @@ impl<'a> Resolver<'a> {
                         is_abstract: member.child_by_field_name("body").is_none()
                             && (info.is_interface || has(member, "abstract")),
                         varargs,
+                        shown: self.shown_parameters(member),
                         throws: self.throws(member),
                         nullable_parameters: self.nullable_parameters(member),
                         flags: bits(member) | if member.child_by_field_name("body").is_none() && info.is_interface { super::model::flag::ABSTRACT } else { 0 },
@@ -702,6 +748,7 @@ impl<'a> Resolver<'a> {
                     info.methods.push(Method {
                         generic_parameters,
                         varargs,
+                        shown: self.shown_parameters(member),
                         throws: self.throws(member),
                         nullable_parameters: self.nullable_parameters(member),
                         ..plain("<init>", parameters, Type::Primitive("void"))

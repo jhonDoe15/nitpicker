@@ -260,3 +260,70 @@ impl<'t> Flow<'_, 't> {
         }
     }
 }
+
+/// A method against the one it overrides: it may not return null where that one does not, nor refuse null
+/// in a parameter where that one accepts it.
+pub(super) fn overriding(context: &Context, method: Node) {
+    use crate::java::errorprone::hierarchy;
+    if method.kind() != "method_declaration" {
+        return;
+    }
+    let Some((origin, own)) = hierarchy::declared_method(context, method) else { return };
+    if own.is_static || !annotated(&origin.name) {
+        return;
+    }
+    let Some((declaring, above)) = hierarchy::super_method(context, origin, own) else { return };
+    if !annotated(&declaring.name) {
+        return;
+    }
+    let generic = if above.type_parameters.is_empty() { String::new() } else { format!("<{}>", above.type_parameters.join(",")) };
+    let shown = format!("{}.{generic}{}({})", declaring.name, above.name, above.shown);
+    let void = matches!(&above.returns, Type::Primitive(name) if *name == "void");
+    let rows = |table: &'static [super::models::Model], class: &str, method: &crate::java::types::model::Method| {
+        let erased = erase(&method.shown);
+        let (class, name) = (class.to_string(), method.name.clone());
+        table.iter().filter(move |row| row.0 == class && row.1 == name && row.2 == erased).map(|row| row.3).collect::<Vec<_>>()
+    };
+    let models = super::models::NONNULL_RETURNS;
+    let nullable_above = (above.flags & flag::NULLABLE != 0 || !rows(super::models::ALWAYS_NULLABLE_RETURNS, &declaring.name, above).is_empty()) && rows(models, &declaring.name, above).is_empty();
+    let nullable_own = (own.flags & flag::NULLABLE != 0 || !rows(super::models::ALWAYS_NULLABLE_RETURNS, &origin.name, own).is_empty()) && rows(models, &origin.name, own).is_empty();
+    let mut accepted = above.nullable_parameters;
+    for at in rows(super::models::EXPLICITLY_NULLABLE_PARAMETERS, &declaring.name, above) {
+        accepted |= 1 << at.min(63);
+    }
+    for at in rows(super::models::NON_NULL_PARAMETERS, &declaring.name, above) {
+        accepted &= !(1 << at.min(63));
+    }
+    if !void && !nullable_above && nullable_own {
+        if let Some(name) = method.child_by_field_name("name") {
+            context.report("NullAway", method, name.start_byte(), &format!("method returns @Nullable, but superclass method {shown} returns @NonNull"));
+        }
+        return;
+    }
+    let formals = hierarchy::formals(method);
+    for (at, formal) in formals.iter().enumerate().take(64) {
+        let accepts = accepted & (1 << at) != 0;
+        let refuses = own.nullable_parameters & (1 << at) == 0;
+        let name = formal.child_by_field_name("name").or_else(|| children(*formal).into_iter().find(|part| part.kind() == "variable_declarator").and_then(|part| part.child_by_field_name("name")));
+        if let (true, true, Some(name)) = (accepts, refuses, name) {
+            let message = format!("parameter {} is @NonNull, but parameter in superclass method {shown} is @Nullable", context.text(name));
+            context.report("NullAway", *formal, name.start_byte(), &message);
+            return;
+        }
+    }
+}
+
+/// A printed parameter list without type arguments, as the library model tables write signatures.
+fn erase(shown: &str) -> String {
+    let mut depth = 0;
+    let mut out = String::new();
+    for character in shown.chars() {
+        match character {
+            '<' => depth += 1,
+            '>' => depth -= 1,
+            _ if depth == 0 => out.push(character),
+            _ => {}
+        }
+    }
+    out
+}

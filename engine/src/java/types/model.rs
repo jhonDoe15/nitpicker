@@ -95,6 +95,8 @@ pub mod flag {
     pub const ANNOTATION: u16 = 512;
     /// A field or a method's result carries an annotation named `Nullable` or `CheckForNull`.
     pub const NULLABLE: u16 = 1024;
+    /// The class comes from a source file of the run, not from the class path.
+    pub const SOURCE: u16 = 2048;
 }
 
 #[derive(Clone, Debug)]
@@ -134,6 +136,8 @@ pub struct Method {
     pub varargs: bool,
     /// Declared exception classes.
     pub throws: Vec<String>,
+    /// The parameter types as javac prints them in a method's name: qualified, with type arguments, comma separated.
+    pub shown: String,
     /// Bit per parameter position that is marked nullable.
     pub nullable_parameters: u64,
     pub flags: u16,

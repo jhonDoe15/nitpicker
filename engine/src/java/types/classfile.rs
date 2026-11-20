@@ -244,6 +244,88 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
     Some(found)
 }
 
+/// One type of a descriptor or generic signature, printed the way javac prints a type.
+fn show_type(text: &[u8], at: &mut usize) -> Option<String> {
+    let tag = *text.get(*at)?;
+    *at += 1;
+    let named = |name: &str| Some(name.to_string());
+    match tag {
+        b'B' => named("byte"),
+        b'C' => named("char"),
+        b'D' => named("double"),
+        b'F' => named("float"),
+        b'I' => named("int"),
+        b'J' => named("long"),
+        b'S' => named("short"),
+        b'Z' => named("boolean"),
+        b'V' => named("void"),
+        b'[' => Some(format!("{}[]", show_type(text, at)?)),
+        b'T' => {
+            let end = *at + text[*at..].iter().position(|byte| *byte == b';')?;
+            let name = String::from_utf8_lossy(&text[*at..end]).into_owned();
+            *at = end + 1;
+            Some(name)
+        }
+        b'L' => {
+            let mut out = String::new();
+            loop {
+                match *text.get(*at)? {
+                    b';' => {
+                        *at += 1;
+                        return Some(out);
+                    }
+                    b'<' => {
+                        *at += 1;
+                        let mut given = Vec::new();
+                        while *text.get(*at)? != b'>' {
+                            given.push(match text[*at] {
+                                b'*' => {
+                                    *at += 1;
+                                    "?".to_string()
+                                }
+                                b'+' => {
+                                    *at += 1;
+                                    format!("? extends {}", show_type(text, at)?)
+                                }
+                                b'-' => {
+                                    *at += 1;
+                                    format!("? super {}", show_type(text, at)?)
+                                }
+                                _ => show_type(text, at)?,
+                            });
+                        }
+                        *at += 1;
+                        out.push_str(&format!("<{}>", given.join(",")));
+                    }
+                    b'/' | b'$' | b'.' => {
+                        *at += 1;
+                        out.push('.');
+                    }
+                    other => {
+                        *at += 1;
+                        out.push(other as char);
+                    }
+                }
+            }
+        }
+        _ => None,
+    }
+}
+
+/// The parameter types of a method descriptor or signature, as javac prints them.
+fn show_parameters(text: &[u8], varargs: bool) -> Option<String> {
+    let mut at = text.iter().position(|byte| *byte == b'(')? + 1;
+    let mut all = Vec::new();
+    while *text.get(at)? != b')' {
+        all.push(show_type(text, &mut at)?);
+    }
+    if let Some(last) = all.last_mut().filter(|last| varargs && last.ends_with("[]")) {
+        last.truncate(last.len() - 2);
+        last.push_str("...");
+    }
+    Some(all.join(","))
+}
+
 fn member_flags(access: u16, found: &Attributes) -> u16 {
     let deprecated = found.deprecated;
     let mut bits = 0;
@@ -367,6 +449,10 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 is_static: flags & ACC_STATIC != 0,
                 is_private: false,
                 varargs: flags & ACC_VARARGS != 0,
+                shown: {
+                    let written = signature.filter(|text| show_parameters(text, false).is_some_and(|all| all.matches(',').count() + 1 == parameters_count.max(1)));
+                    show_parameters(written.unwrap_or(descriptor), flags & ACC_VARARGS != 0).unwrap_or_default()
+                },
                 throws: found.throws.iter().filter_map(|index| class_name(*index)).collect(),
                 nullable_parameters: {
                     let shift = parameters_count.saturating_sub(found.annotated_parameters.max(1)).min(63);
