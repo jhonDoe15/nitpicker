@@ -169,9 +169,10 @@ function appliedEntry(entry: FlatEntry, owned: OwnedPolicy, layer: ProjectLayer)
   if (effects.length === 0) {
     return [];
   }
-  const scope = SCOPE_KEYS.filter((key) => hasField(entry, key)).map(
-    (key): [string, unknown] => [key, entry[key]],
-  );
+  const scope = SCOPE_KEYS.filter((key) => hasField(entry, key)).map((key): [string, unknown] => [
+    key,
+    entry[key],
+  ]);
   return [Object.fromEntries([...scope, ...effects])];
 }
 
