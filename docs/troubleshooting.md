@@ -693,6 +693,11 @@ Jest or Vitest config, or a `tsconfig.json` with an unknown option), a file the 
 a test runner that crashed before it wrote its report (a setup file that throws, a worker that ran
 out of memory), or a tool version that does not match the config.
 
+A file Prettier cannot parse does not fail the formatting check: it is one descriptive
+`prettier/file-not-parsed` finding on that file, and every other file is still checked. List a file
+that is not meant to parse (several JSON documents in one `.json` file, a template) in
+`.prettierignore`.
+
 A tool that was killed by a signal reads `ESLint was killed by SIGKILL (usually the out-of-memory
 killer; ...)` instead of an exit status. Warnings the tool printed at startup (Node's `(node:NNN)
 ...Warning` lines) are left out of the message, so they are not mistaken for the cause. Run fewer jobs
