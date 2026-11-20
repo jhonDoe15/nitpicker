@@ -215,4 +215,30 @@ class SettingsTest {
 
     expect(leaks(text)).toEqual(['SettingsTest.settings@12', 'SettingsTest.settings@14']);
   });
+
+  it('leaves a literal reset before each test, a set call without arguments and a main function', () => {
+    const text = `${HEAD}import org.junit.jupiter.api.BeforeEach
+
+class ResetTest {
+    @BeforeEach
+    fun reset() {
+        Clock.offset = 0
+        Clock.frozen = false
+        Clock.zone = "UTC"
+    }
+
+    @Test
+    fun toggles() {
+        Clock.setFrozen()
+        Clock.offset = 0
+    }
+}
+
+fun main(args: Array<String>) {
+    Clock.offset = 5
+}
+`;
+
+    expect(leaks(text)).toEqual(['ResetTest.reset@17', 'ResetTest.toggles@23']);
+  });
 });

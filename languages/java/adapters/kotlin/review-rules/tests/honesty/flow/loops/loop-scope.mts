@@ -12,6 +12,7 @@ import { functionOwners, functionsOf } from '../../../discovery/functions.mts';
 import { closeOf, repeatUntil, skipSpace } from '../../../discovery/text-scan.mts';
 import { assertsIn } from '../assertion-calls.mts';
 import { constructsIn } from '../flow-constructs.mts';
+import { cannotPassSilently } from './guarded-loops.mts';
 import { appendAll } from '../../../../../../../../../shared/lists/lists.mts';
 
 type HelperFn = FunctionInfo & { owner: ClassInfo | undefined };
@@ -195,12 +196,14 @@ function loopsIn(
   callsAsserting: (range: Span, owner: ClassInfo | undefined) => boolean,
 ): Construct[] {
   const exempt = exemptRanges(scanned, fn.body);
-  const loops = constructsIn(scanned, fn.body).filter(
+  const all = constructsIn(scanned, fn.body);
+  const loops = all.filter(
     (entry) =>
       entry.construct === 'loop' &&
       entry.to <= fn.body.end + 1 &&
       !insideAny(exempt, entry.from) &&
       !runsAtLeastOnce(scanned, entry) &&
+      !cannotPassSilently(scanned, { construct: entry, body: fn.body, all }) &&
       entry.scans.some(
         (range) => assertsIn(scanned, range.start, range.end) || callsAsserting(range, fn.owner),
       ),
