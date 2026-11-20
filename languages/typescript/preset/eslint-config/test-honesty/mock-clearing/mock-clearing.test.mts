@@ -25,6 +25,16 @@ describe('folders whose runner clears mocks between tests', () => {
       ['.'],
     ],
     [
+      'clearMocks set to false',
+      { 'jest.config.js': 'module.exports = { clearMocks: false, restoreMocks: false };' },
+      [],
+    ],
+    [
+      'a script that names clearAllMocks outside the jest key',
+      { 'package.json': JSON.stringify({ scripts: { clearAllMocks: 'x' }, jest: {} }) },
+      [],
+    ],
+    [
       'mockReset in a package Vitest config',
       { 'packages/web/vitest.config.ts': 'export default { test: { mockReset: true } };' },
       ['packages/web'],
@@ -35,6 +45,20 @@ describe('folders whose runner clears mocks between tests', () => {
         'vitest.config.mts': "export default { test: { setupFiles: ['./test/setup.ts'] } };",
         'test/setup.ts': 'afterEach(() => { vi.clearAllMocks(); });',
       },
+      ['.'],
+    ],
+    [
+      'an extensionless setup file that imports the file that clears',
+      {
+        'vitest.config.ts': "export default { test: { setupFiles: ['./test/setup'] } };",
+        'test/setup.ts': "import './clear';",
+        'test/clear.ts': 'afterEach(() => { for (const each of mocks) each.mockClear(); });',
+      },
+      ['.'],
+    ],
+    [
+      'a base config behind a project alias',
+      { 'vitest.config.ts': "import base from '@/vitest.shared';\nexport default base;" },
       ['.'],
     ],
     [

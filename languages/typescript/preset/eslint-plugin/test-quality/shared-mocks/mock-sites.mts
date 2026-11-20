@@ -27,28 +27,31 @@ const COUNT_MATCHERS = new Set([
   'toHaveBeenCalledOnce',
   'toHaveBeenNthCalledWith',
   'nthCalledWith',
-  'toHaveBeenLastCalledWith',
-  'lastCalledWith',
 ]);
 const NEGATED_MATCHERS = new Set(['toHaveBeenCalled', 'toBeCalled']);
-const CALL_RECORDS = new Set(['calls', 'results', 'lastCall', 'callCount']);
+const CALL_RECORDS = new Set(['calls', 'results', 'callCount']);
 const MOCKED_WRAPPERS = new Set(['mocked']);
 
-function runnerCall(
-  apis: RunnerApis,
-  node: TSESTree.Node,
-  lists: Readonly<Record<string, readonly string[]>>,
-): boolean {
-  if (node.type !== AST_NODE_TYPES.CallExpression) {
+const TYPE_WRAPPERS = new Set<string>([
+  AST_NODE_TYPES.TSAsExpression,
+  AST_NODE_TYPES.TSNonNullExpression,
+  AST_NODE_TYPES.TSSatisfiesExpression,
+  AST_NODE_TYPES.TSTypeAssertion,
+]);
+
+type Lists = Readonly<Record<string, readonly string[]>>;
+
+function runnerMember(apis: RunnerApis, node: TSESTree.Node, lists: Lists): boolean {
+  if (node.type !== AST_NODE_TYPES.MemberExpression) {
     return false;
   }
-  const { callee } = node;
-  if (callee.type !== AST_NODE_TYPES.MemberExpression) {
-    return false;
-  }
-  const kind = kindOfObject(apis, callee.object);
-  const method = propertyName(callee);
+  const kind = kindOfObject(apis, node.object);
+  const method = propertyName(node);
   return method !== undefined && lists[kind ?? '']?.includes(method) === true;
+}
+
+function runnerCall(apis: RunnerApis, node: TSESTree.Node, lists: Lists): boolean {
+  return node.type === AST_NODE_TYPES.CallExpression && runnerMember(apis, node.callee, lists);
 }
 
 function chainRoot(node: TSESTree.Node): TSESTree.Node {
@@ -80,10 +83,20 @@ export function mockedModule(
 }
 
 export function clearsEveryMock(apis: RunnerApis, node: TSESTree.CallExpression): boolean {
-  return runnerCall(apis, node, CLEARING_ALL);
+  return (
+    runnerCall(apis, node, CLEARING_ALL) ||
+    node.arguments.some((argument) => runnerMember(apis, argument, CLEARING_ALL))
+  );
 }
 
-function unwrapMocked(apis: RunnerApis, node: TSESTree.Node): TSESTree.Node {
+function withoutTypes(node: TSESTree.Node): TSESTree.Node {
+  return TYPE_WRAPPERS.has(node.type) && 'expression' in node
+    ? withoutTypes(node.expression)
+    : node;
+}
+
+function unwrapMocked(apis: RunnerApis, wrapped: TSESTree.Node): TSESTree.Node {
+  const node = withoutTypes(wrapped);
   if (
     node.type === AST_NODE_TYPES.CallExpression &&
     node.callee.type === AST_NODE_TYPES.MemberExpression &&
@@ -91,7 +104,7 @@ function unwrapMocked(apis: RunnerApis, node: TSESTree.Node): TSESTree.Node {
     kindOfObject(apis, node.callee.object) !== undefined &&
     node.arguments[0] !== undefined
   ) {
-    return node.arguments[0];
+    return withoutTypes(node.arguments[0]);
   }
   return node;
 }
@@ -104,7 +117,7 @@ function identifierName(apis: RunnerApis, node: TSESTree.Node | undefined): stri
 export function clearedMockName(
   apis: RunnerApis,
   node: TSESTree.CallExpression,
-): string | undefined {
+): string | null | undefined {
   const { callee } = node;
   if (
     callee.type !== AST_NODE_TYPES.MemberExpression ||
@@ -116,7 +129,7 @@ export function clearedMockName(
     callee.object.type === AST_NODE_TYPES.MemberExpression && propertyName(callee.object) === 'mock'
       ? callee.object.object
       : callee.object;
-  return identifierName(apis, target);
+  return identifierName(apis, target) ?? null;
 }
 
 function matcherOf(member: TSESTree.MemberExpression): { name: string; negated: boolean } {
