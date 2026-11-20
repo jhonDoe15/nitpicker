@@ -85,3 +85,9 @@ namespace Legacy {
   export function helper() {}
 }
 void Legacy;
+
+export interface WithAccessors {
+  get priority(): number;
+  set priority(value: number);
+  plain(): void;
+}

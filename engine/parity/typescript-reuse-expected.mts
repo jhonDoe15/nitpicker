@@ -2,8 +2,10 @@
 // one JSON line per file, for comparison with `nitpicker-engine typescript-reuse --files <list>`.
 // Usage: node engine/parity/typescript-reuse-expected.mts <list> <out.jsonl>
 // Each line of the list is the path to read, a tab, and the path to report.
+// Imported names in the unit trees keep their module specifier: resolving it to a module is left to the caller.
 import { readFileSync, writeFileSync } from 'node:fs';
 import ts from 'typescript';
+import { nearDuplicateUnits } from '../../languages/typescript/preset/structure/reuse/near-duplicates/units.mts';
 import { fileDefinitions } from '../../languages/typescript/preset/structure/reuse/syntax/definitions.mts';
 import {
   fileDynamicImports,
@@ -44,6 +46,7 @@ const lines = readFileSync(list, 'utf8')
       dynamicImports: fileDynamicImports(sourceFile),
       exports: fileExports(sourceFile),
       jsxTags: [...jsxTagNames(sourceFile)].toSorted(),
+      nearDuplicateUnits: nearDuplicateUnits(sourceFile, display),
     });
   });
 writeFileSync(out, lines.map((line) => `${line}\n`).join(''));

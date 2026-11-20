@@ -1,4 +1,4 @@
-//! Runs the engine on TypeScript fixtures and compares the definitions, imports and exports it reads with what
+//! Runs the engine on TypeScript fixtures and compares the definitions, imports, exports and near-duplicate units it reads with what
 //! the Node analyzer read from the same files. The expected file comes from `parity/typescript-reuse-expected.mts`.
 use std::path::Path;
 use std::process::Command;
@@ -26,10 +26,12 @@ fn reuse_facts_match_the_node_analyzer() {
     let _ = std::fs::remove_file(&out);
     assert_eq!(found.len(), expected.len());
     for (found, expected) in found.iter().zip(&expected) {
-        for key in ["definitions", "imports", "dynamicImports", "exports", "jsxTags"] {
+        for key in ["definitions", "imports", "dynamicImports", "exports", "jsxTags", "nearDuplicateUnits"] {
             assert_eq!(found[key], expected[key], "{key} of {} differ", expected["path"]);
         }
     }
     let definitions: usize = expected.iter().map(|file| file["definitions"].as_array().map_or(0, Vec::len)).sum();
     assert!(definitions > 30);
+    let units: usize = expected.iter().map(|file| file["nearDuplicateUnits"].as_array().map_or(0, Vec::len)).sum();
+    assert!(units > 30);
 }
