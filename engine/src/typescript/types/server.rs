@@ -49,6 +49,8 @@ pub struct Type {
     pub object_flags: u32,
     #[serde(default)]
     pub symbol: Option<u64>,
+    #[serde(default, rename = "aliasSymbol")]
+    pub alias_symbol: Option<u64>,
     #[serde(default)]
     pub value: Option<Value>,
     #[serde(default, rename = "intrinsicName")]

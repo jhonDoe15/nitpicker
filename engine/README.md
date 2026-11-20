@@ -98,6 +98,7 @@ nitpicker-engine typescript-type-replay --compiler <tsc> --project <tsconfig.jso
 | --- | --- |
 | `public-contracts` | The public contract usage check of `coding-standards`. It asks the compiler only about member reads named like a contract method; `--all-reads` asks about every read. |
 | `unused-api` | The unused option and unused prop check. nitpicker decides which files the program has and what role each plays and passes that with `--input`; the engine returns the targets, their members and the references it found, and nitpicker turns them into findings. |
+| `design` | The facts of the design signals check: the project's types with their fields, and its callables with their parameters, calls, reads and decisions (`src/typescript/typed/design/`). nitpicker names the files that count with `--input`, marks what is published and evaluates the rules. |
 
 Exit status 3 with `types unavailable: <reason>` on standard error means the compiler cannot answer here (no
 binary, a version the engine's tables were not generated from, a project that does not load, a compiler option
@@ -115,6 +116,13 @@ them out.
 Where a union lists the same property in several members, the unused API check reports the declaration that
 comes first by file name and position. The two compilers order union members differently, so the check in
 nitpicker's own process uses the same rule.
+
+The design facts do not depend on the order a compiler lists things in either: type text has the members of
+every union and every object type sorted, and the fields of a type are listed by the file and position of
+their declarations. A return type is read from a comment only in a JavaScript file. The engine hands a project
+back when a JavaScript file of it has types in documentation comments, or a property is declared by
+assignment. The generated project names the type roots of the original one, so `/// <reference types>` lines
+find the same packages.
 
 Measured on Grafana, 4 cores (wall, CPU, peak memory of the process tree; findings identical in every row):
 
