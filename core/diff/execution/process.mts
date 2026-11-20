@@ -3,6 +3,7 @@ import { openOutputFile } from '../../tooling/output-file/output-file.mjs';
 import {
   ANALYZER_TIMEOUT_KEY,
   ANALYZER_TIMEOUT_VARIABLE,
+  SIZE_ALLOWANCE_VARIABLE,
 } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import {
@@ -54,6 +55,7 @@ const openOutput: () => OutputFile = openOutputFile;
 const hostEnvironment: (environment: NodeJS.ProcessEnv) => NodeJS.ProcessEnv = withoutHostCiOutputs;
 const timeoutKey: string = ANALYZER_TIMEOUT_KEY;
 const timeoutVariable: string = ANALYZER_TIMEOUT_VARIABLE;
+const allowanceVariable: string = SIZE_ALLOWANCE_VARIABLE;
 const configFile: string = CONFIG_FILE_NAME;
 
 const MAX_ANALYZER_OUTPUT_BYTES = 128 * 1024 * 1024;
@@ -74,6 +76,9 @@ function analyzerEnvironment(
   return {
     ...(task.invocation.command === process.execPath ? withNodeHeap(base) : base),
     ...(task.configuredTimeout === true ? { [timeoutVariable]: String(task.timeoutMs) } : {}),
+    ...(task.sizeAllowanceMs === undefined || task.sizeAllowanceMs <= 0
+      ? {}
+      : { [allowanceVariable]: String(task.sizeAllowanceMs) }),
   };
 }
 

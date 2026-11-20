@@ -7,6 +7,8 @@ type SizeScale = {
   readonly extensions: readonly string[];
 };
 
+type ModuleScale = { readonly perModuleMs: number; readonly moduleFiles: readonly string[] };
+
 export type FileCounter = (root: string, extensions: readonly string[]) => number;
 
 const FILES_PER_STEP = 1000;
@@ -22,6 +24,26 @@ function sizeScaleOf(analyzer: unknown, field: string, amountKey: string): SizeS
 
 export function deadlineScaleOf(analyzer: unknown): SizeScale | undefined {
   return sizeScaleOf(analyzer, 'timeoutScale', 'perThousandFilesMs');
+}
+
+function moduleScaleOf(analyzer: unknown): ModuleScale | undefined {
+  const scale = fieldOf(analyzer, 'timeoutScale');
+  const perModuleMs = fieldOf(scale, 'perModuleMs');
+  const moduleFiles = textsOf(fieldOf(scale, 'moduleFiles'));
+  return typeof perModuleMs === 'number' && perModuleMs > 0 && moduleFiles.length > 0
+    ? { perModuleMs, moduleFiles }
+    : undefined;
+}
+
+export function moduleAllowanceMs(
+  analyzer: unknown,
+  liveProjectRoot: string,
+  countModules: FileCounter = projectModuleCount,
+): number {
+  const scale = moduleScaleOf(analyzer);
+  return scale === undefined
+    ? 0
+    : countModules(liveProjectRoot, scale.moduleFiles) * scale.perModuleMs;
 }
 
 export function memoryEstimateMegabytes(
@@ -51,21 +73,27 @@ export function memoizedFileCounter(): FileCounter {
   };
 }
 
-export function projectFileCount(root: string, extensions: readonly string[]): number {
+function listedFileCount(root: string, patterns: readonly string[]): number {
   const listed = spawnSync(
     'git',
-    [
-      'ls-files',
-      '-z',
-      '--cached',
-      '--others',
-      '--exclude-standard',
-      '--',
-      ...extensions.map((extension) => `*.${extension}`),
-    ],
+    ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', ...patterns],
     { cwd: root, encoding: 'utf8', maxBuffer: GIT_OUTPUT_LIMIT_BYTES, timeout: GIT_TIMEOUT_MS },
   );
   return listed.status === 0
     ? listed.stdout.split('\0').filter((file) => file.length > 0).length
     : 0;
+}
+
+export function projectFileCount(root: string, extensions: readonly string[]): number {
+  return listedFileCount(
+    root,
+    extensions.map((extension) => `*.${extension}`),
+  );
+}
+
+export function projectModuleCount(root: string, moduleFiles: readonly string[]): number {
+  return listedFileCount(
+    root,
+    moduleFiles.map((name) => `:(glob)**/${name}`),
+  );
 }

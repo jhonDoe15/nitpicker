@@ -137,12 +137,7 @@ function includedBuildsHint(projectRoot: string | undefined): string {
   );
 }
 
-export function readReportModules(
-  reportBase: string,
-  preset: string,
-  projectRoot?: string,
-  failedProjects?: ReadonlySet<string>,
-): ReportModules {
+function listedModules(reportBase: string, preset: string, projectRoot?: string): unknown[] {
   const listFile = path.join(reportBase, MODULES_FILE);
   const listed = existsSync(listFile) ? listOf(readJson(listFile)) : [];
   if (listed.length === 0) {
@@ -152,22 +147,44 @@ export function readReportModules(
         includedBuildsHint(projectRoot),
     );
   }
-  const modules: ReportModule[] = [];
-  const skipped: SkippedModule[] = [];
-  const sorted = listed.toSorted((left, right) =>
+  return listed.toSorted((left, right) =>
     textOf(fieldOf(left, 'key')).localeCompare(textOf(fieldOf(right, 'key'))),
   );
-  for (const entry of sorted) {
-    const failed = failedProjects?.has(textOf(fieldOf(entry, 'path'))) === true;
-    const module = failed ? undefined : readModule(reportBase, preset, entry);
-    if (module !== undefined) {
-      modules.push(module);
-    } else if (failedProjects === undefined) {
+}
+
+export function readReportModules(
+  reportBase: string,
+  preset: string,
+  projectRoot?: string,
+): ReportModules {
+  const modules = listedModules(reportBase, preset, projectRoot).map((entry) => {
+    const module = readModule(reportBase, preset, entry);
+    if (module === undefined) {
       throw new Error(
         `The ${preset} preset found no Gradle reports for ${moduleLabel(entry)}: its nitpickerJava task did not run`,
       );
+    }
+    return module;
+  });
+  return { modules, manifest: mergeManifests(modules), skipped: [] };
+}
+
+export function readFinishedModules(
+  reportBase: string,
+  preset: string,
+  failedProjects: ReadonlySet<string>,
+): ReportModules {
+  const modules: ReportModule[] = [];
+  const skipped: SkippedModule[] = [];
+  for (const entry of listedModules(reportBase, preset)) {
+    const projectPath = textOf(fieldOf(entry, 'path'));
+    const module = failedProjects.has(projectPath)
+      ? undefined
+      : readModule(reportBase, preset, entry);
+    if (module === undefined) {
+      skipped.push({ path: projectPath, dir: textOf(fieldOf(entry, 'dir')) });
     } else {
-      skipped.push({ path: textOf(fieldOf(entry, 'path')), dir: textOf(fieldOf(entry, 'dir')) });
+      modules.push(module);
     }
   }
   return { modules, manifest: mergeManifests(modules), skipped };

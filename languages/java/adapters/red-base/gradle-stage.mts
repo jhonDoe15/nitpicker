@@ -93,10 +93,18 @@ export function assertGradleSucceeded(
   if (succeeded) {
     return;
   }
-  const stage = failedStage(result, projectRoot, { policy, command, budget });
-  const error = withGradleLog(stage, result, log);
+  noteOrThrowFailure(result, projectRoot, { policy, command, budget, failedTools });
+}
+
+function noteOrThrowFailure(
+  result: GradleResult,
+  projectRoot: string,
+  { failedTools, ...context }: FailureContext & Pick<StageCheck, 'failedTools'>,
+): void {
+  const stage = failedStage(result, projectRoot, context);
+  const error = withGradleLog(stage, result, gradleLog(context.policy));
   if (fieldOf(result.error, 'code') === 'ETIMEDOUT') {
-    const minutes = (budget.commandTimeoutMs ?? 0) / MINUTE_MS;
+    const minutes = Math.round((context.budget.commandTimeoutMs ?? 0) / MINUTE_MS);
     throw Object.defineProperty(error, 'timedOut', { value: { build: 'Gradle', minutes } });
   }
   if (result.error !== undefined) {

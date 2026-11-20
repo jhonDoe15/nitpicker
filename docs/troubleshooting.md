@@ -949,8 +949,11 @@ coverage, CRAP, slow-test or mutation results: on the head it is a `tests/tests-
 and the head's results of those rules count as new only on changed lines, as for a base whose tests
 fail. A `--quick` run, which runs no tests, and a second timeout stay the plain timeout error above.
 
-**Cause.** Each Gradle command has a 15 minute budget (two commands per analyzer, the optional
-Checkstyle export and the analysis), and each Maven command 15 minutes. A cold Gradle cache, a wrapper
+**Cause.** Each Gradle command has a budget of 15 minutes plus 30 seconds for each build file and 2
+minutes for each started thousand `.java` and `.kt` files (two commands per analyzer, the optional
+Checkstyle export and the analysis), and each Maven command the same. When Gradle is stopped after some
+projects finished, those projects are reported and one `gradle/module-build-failed` tool error names
+the projects that were not reached. A cold Gradle cache, a wrapper
 that is downloading a distribution, a large test suite, or mutation testing with PIT exceed it. Maven's
 message warns that its post-integration-test steps may not have run, so containers or servers the build
 started may still be running.

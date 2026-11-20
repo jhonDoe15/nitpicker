@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mts';
 import { fakeGradleRun } from '../test-support/in-process-gradle.mts';
-import { readReportModules } from './report-modules.mts';
+import { readFinishedModules, readReportModules } from './report-modules.mts';
 import {
   fieldOf,
   messageOf,
@@ -338,7 +338,7 @@ describe('a Gradle build with several projects', () => {
       'module-docs/manifest.json': '{}',
     });
 
-    const report = readReportModules(base, 'java', undefined, new Set([':docs']));
+    const report = readFinishedModules(base, 'java', new Set([':docs']));
 
     expect([report.modules.map((module) => module.path), report.skipped]).toEqual([
       [':app', ':'],
