@@ -1,5 +1,6 @@
 //! Lint rules on the shared parse. Ids, messages and positions are those of the ESLint-plugin rule of the same name.
 mod errors;
+mod listeners;
 mod modules;
 pub mod support;
 
@@ -35,6 +36,7 @@ impl<'a> Context<'a, '_> {
 pub type Rule = fn(&mut Context);
 
 pub const ALL: &[(&str, Rule)] = &[
+    ("no-listen-on-all-interfaces", listeners::no_listen_on_all_interfaces::check),
     ("no-production-console", modules::no_production_console::check),
     ("no-silent-catch", errors::no_silent_catch::check),
 ];
