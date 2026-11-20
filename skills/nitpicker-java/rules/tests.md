@@ -91,6 +91,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `webEnvironment = RANDOM_PORT` with `@LocalServerPort`, and `getMappedPort(...)` of a container, never a
   number such as `8089`, `DEFINED_PORT` with `server.port=8081`, `withFixedExposedPort` or `setPortBindings`.
   A fixed port fails when a second run, a parallel worker or a local application holds it.
+- Do not expect an order from a hash collection, a directory listing or reflection (`HashOrderAssertedInTest`):
+  for a `HashSet`, `Set.of`, `Collectors.toSet()`, a `HashMap` view, `File.list()` or `getDeclaredMethods()`, use
+  `containsExactlyInAnyOrder(...)`, compare with a `Set`, or sort first; `containsExactly("a", "b")` and
+  `assertArrayEquals` pass on one JDK or file system and fail on another.
 - Start a container, server or process once, not for each test (`ServerOrContainerPerTest`): a
   Testcontainers `@Container` field is `static`, a WireMock `@RegisterExtension` is `static`, a JUnit 4
   server or container is a `@ClassRule`, and `@BeforeEach`/`@Before` does not create and start one

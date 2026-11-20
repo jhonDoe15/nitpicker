@@ -1,0 +1,43 @@
+  <rule name="HashOrderAssertedInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This assertion expects a fixed order from a value whose order nothing promises: a HashSet, a HashMap view, Set.of or Map.of, Collectors.toSet(), a directory listing or the members reflection returns. It passes on one JDK, file system or machine and fails on another. Use containsExactlyInAnyOrder, compare with a Set, or sort the value before the assertion.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $hashMap := function($e) {
+      exists($e/self::ConstructorCall[pmd-java:typeIsExactly('java.util.HashMap')])
+      or exists($e/self::MethodCall[pmd-java:matchesSig('java.util.Map#of(_*)')][ArgumentList/@Size >= 4]) },
+    $direct := function($e) {
+      exists($e/self::ConstructorCall[pmd-java:typeIsExactly('java.util.HashSet')])
+      or exists($e/self::MethodCall[pmd-java:matchesSig('java.util.Set#of(_*)')][ArgumentList/@Size >= 2])
+      or exists($e/self::MethodCall[@MethodName = 'collect']
+                  [ArgumentList[@Size = 1]/MethodCall[pmd-java:matchesSig('java.util.stream.Collectors#toSet()')]])
+      or exists($e/self::MethodCall[pmd-java:matchesSig('java.io.File#list()')
+                                    or pmd-java:matchesSig('java.io.File#listFiles()')
+                                    or pmd-java:matchesSig('java.lang.Class#getDeclaredMethods()')
+                                    or pmd-java:matchesSig('java.lang.Class#getMethods()')
+                                    or pmd-java:matchesSig('java.lang.Class#getDeclaredFields()')
+                                    or pmd-java:matchesSig('java.lang.Class#getDeclaredConstructors()')]) },
+    $local := function($e) {
+      $e/self::VariableAccess/(let $n := @Name, $method := ancestor::MethodDeclaration[1] return
+        $method//LocalVariableDeclaration/VariableDeclarator[VariableId[@Name = $n]]
+          [count($method//VariableId[@Name = $n]) = 1]
+          [empty($method//AssignmentExpression[*[1][self::VariableAccess[@Name = $n]]])]/*[2]) },
+    $unordered := function($e) {
+      $direct($e) or $direct($local($e))
+      or exists($e/self::MethodCall[@MethodName = ('keySet', 'values', 'entrySet')][ArgumentList/@Size = 0]
+                  [$hashMap(*[1]) or $hashMap($local(*[1]))]) }
+return (
+  //MethodCall[@MethodName = 'containsExactly'][ArgumentList/@Size >= 2]
+    [*[1]/self::MethodCall[pmd-java:matchesSig('org.assertj.core.api.Assertions#assertThat(_)')
+                           or pmd-java:matchesSig('org.assertj.core.api.AssertionsForInterfaceTypes#assertThat(_)')
+                           or pmd-java:matchesSig('org.assertj.core.api.AssertionsForClassTypes#assertThat(_)')]
+       [$unordered(ArgumentList/*[1])]]
+| //MethodCall[pmd-java:matchesSig('org.junit.jupiter.api.Assertions#assertArrayEquals(_*)')
+               or pmd-java:matchesSig('org.junit.Assert#assertArrayEquals(_*)')]
+    [ArgumentList[ArrayAllocation/ArrayInitializer[count(*) >= 2]][some $actual in * satisfies $unordered($actual)]]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>

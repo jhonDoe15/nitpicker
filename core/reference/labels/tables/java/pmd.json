@@ -89,6 +89,7 @@
   "pmd/HandleReleasedOnlyOnSuccess": ["bug", "async"],
   "pmd/HardcodedSecret": ["security"],
   "pmd/HashCodeDisagreesWithEquals": ["bug"],
+  "pmd/HashOrderAssertedInTest": ["tests"],
   "pmd/HashOrderInOrderedOutput": ["reliability"],
   "pmd/HttpWithoutTimeout": ["reliability"],
   "pmd/IgnoredTimedWaitInTest": ["tests"],
