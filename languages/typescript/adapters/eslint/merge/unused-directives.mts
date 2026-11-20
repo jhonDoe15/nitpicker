@@ -125,6 +125,21 @@ function keptFindings(reports: Reports, scopes: ReadonlyMap<string, Scope>) {
   return kept;
 }
 
+function isInlineDisabled(finding: Finding) {
+  return finding.rule === INLINE_DISABLED_RULE;
+}
+
+function inlineDisabledOwners(reports: Reports, scopes: ReadonlyMap<string, Scope>) {
+  const reporters = new Map<string, Reporter[]>();
+  for (const [name, report] of reports) {
+    for (const finding of scopes.has(name) ? report.findings.filter(isInlineDisabled) : []) {
+      const key = directiveKey(finding);
+      reporters.set(key, [...(reporters.get(key) ?? []), { name, finding }]);
+    }
+  }
+  return new Map([...reporters].map(([key, group]) => [key, owner(group).name]));
+}
+
 export function withSharedUnusedDirectives<R extends Run>(
   run: R,
   analyzers: readonly unknown[] | undefined,
@@ -134,6 +149,7 @@ export function withSharedUnusedDirectives<R extends Run>(
     return run;
   }
   const kept = keptFindings(run.reports, scopes);
+  const inlineOwners = inlineDisabledOwners(run.reports, scopes);
   const reports = new Map(
     [...run.reports].map(([name, report]) => [
       name,
@@ -141,7 +157,11 @@ export function withSharedUnusedDirectives<R extends Run>(
         ? {
             ...report,
             findings: [
-              ...report.findings.filter((finding) => !isUnusedDirective(finding)),
+              ...report.findings.filter(
+                (finding) =>
+                  !isUnusedDirective(finding) &&
+                  (!isInlineDisabled(finding) || inlineOwners.get(directiveKey(finding)) === name),
+              ),
               ...[...kept.values()]
                 .filter((reporter) => reporter.name === name)
                 .map(({ finding }) => finding),

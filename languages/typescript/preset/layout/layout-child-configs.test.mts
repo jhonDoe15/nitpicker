@@ -48,6 +48,14 @@ function buildProduction(module: object): ConfigEntry[] {
   return build({});
 }
 
+function buildCarried(module: object, names: string): ConfigEntry[] {
+  const build: unknown = Reflect.get(module, 'carriedPolicyConfigFor');
+  if (!isProductionPolicyConfig(build)) {
+    throw new TypeError('The policy does not export carriedPolicyConfigFor');
+  }
+  return build({ NITPICKER_ESLINT_CARRIED: names });
+}
+
 afterEach(() => {
   vi.unstubAllEnvs();
 });
@@ -169,6 +177,49 @@ describe('package-owned child configs', () => {
       files: ['lib/tools/run.mjs'],
       rules: { 'nitpicker/report-module-load-effects': 'off' },
     });
+  });
+  it('eslint-lint carries a production policy with its scope and entry points', async () => {
+    const entryPolicy = {
+      ...policy,
+      layout: { ...policy.layout, entryPoints: ['lib/tools/run.mjs'] },
+    };
+    const carried = await loadConfig('eslint-config/policies/base.mjs', entryPolicy, (module) =>
+      buildCarried(module, 'eslint-logging,eslint-module-effects,unknown'),
+    );
+    const ignores = [
+      'lib/**/__tests__/**',
+      'spec/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      'lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
+      '.stryker-tmp/**',
+    ];
+
+    expect(
+      carried.map(({ files, ignores: ignored, rules }) => ({ files, ignored, rules })),
+    ).toEqual([
+      {
+        files: ['lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'],
+        ignored: ignores,
+        rules: {
+          'nitpicker/no-production-console': 'error',
+          'nitpicker/structured-catch-logging': 'error',
+        },
+      },
+      {
+        files: ['lib/tools/run.mjs'],
+        ignored: ignores,
+        rules: { 'nitpicker/no-production-console': ['error', { allowStandardStreams: true }] },
+      },
+      {
+        files: ['lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'],
+        ignored: ignores,
+        rules: { 'nitpicker/report-module-load-effects': 'error' },
+      },
+      {
+        files: ['lib/tools/run.mjs'],
+        ignored: ignores,
+        rules: { 'nitpicker/report-module-load-effects': 'off' },
+      },
+    ]);
   });
   it('the logging policy lets entry points reference the standard streams', async () => {
     const entryPolicy = {

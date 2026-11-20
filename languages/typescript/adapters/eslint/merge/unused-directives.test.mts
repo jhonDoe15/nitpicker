@@ -209,3 +209,31 @@ describe('an unused eslint-disable directive reported by several ESLint analyzer
     expect(result.reports.get('eslint-logging')?.findings).toEqual([]);
   });
 });
+
+describe('a directive in a file with locked inline configuration', () => {
+  it('is reported once, by eslint-lint when it ran', () => {
+    const result = merged({
+      'eslint-lint': [inlineDisabled('eslint-lint')],
+      'eslint-errors': [inlineDisabled('eslint-errors'), other('eslint-errors')],
+      'eslint-logging': [inlineDisabled('eslint-logging')],
+    });
+
+    expect(result).toEqual({
+      'eslint-lint': ['eslint/inline-config-disabled src/a.ts'],
+      'eslint-errors': ['no-debugger src/a.ts'],
+      'eslint-logging': [],
+    });
+  });
+
+  it('is reported by the first analyzer by name when eslint-lint did not run', () => {
+    const result = merged({
+      'eslint-logging': [inlineDisabled('eslint-logging')],
+      'eslint-errors': [inlineDisabled('eslint-errors')],
+    });
+
+    expect(result).toEqual({
+      'eslint-logging': [],
+      'eslint-errors': ['eslint/inline-config-disabled src/a.ts'],
+    });
+  });
+});

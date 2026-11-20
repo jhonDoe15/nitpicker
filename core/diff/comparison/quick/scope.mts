@@ -81,6 +81,7 @@ function scopedAnalyzer(
   const { resolveConfigurationHash } = analyzer;
   return {
     ...analyzer,
+    carriedBy: undefined,
     configurationHash: scopeHash(analyzer.configurationHash, digest),
     ...(resolveConfigurationHash === undefined
       ? {}

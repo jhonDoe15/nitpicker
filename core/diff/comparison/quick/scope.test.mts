@@ -104,4 +104,19 @@ describe('scopeToTouchedFiles', () => {
 
     expect(scopeToTouchedFiles(analyzers, new Set(['src/a.ts']))).toEqual(analyzers);
   });
+
+  it('lets a scoped analyzer run by itself instead of inside its carrier', () => {
+    const [scoped, whole] = scopeToTouchedFiles(
+      [
+        analyzer('eslint-errors', { carriedBy: 'eslint-lint' }),
+        analyzer('eslint-lint', { carriedBy: 'other' }),
+      ],
+      new Set(['src/a.ts']),
+    );
+
+    expect([fieldOf(scoped, 'carriedBy'), fieldOf(whole, 'carriedBy')]).toEqual([
+      undefined,
+      'other',
+    ]);
+  });
 });
