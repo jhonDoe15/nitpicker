@@ -337,9 +337,11 @@ describe('the required checks of the typescript workflow', () => {
     expect([
       fieldAt(jobs, 'test', 'if'),
       fieldAt(jobs, 'self-gate', 'if'),
+      fieldAt(jobs, 'self-gate-shard', 'if'),
       fieldAt(jobs, 'test-shard', 'if'),
     ]).toEqual([
       'always()',
+      "always() && github.ref != 'refs/heads/main'",
       "github.ref != 'refs/heads/main'",
       "github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')",
     ]);
@@ -352,6 +354,22 @@ describe('the required checks of the typescript workflow', () => {
         '',
       ].join('\n'),
     );
+  });
+
+  it('combines the reports of every self-gate shard on the commit the shards compared', () => {
+    const runsOf = (job: string): string[] =>
+      listOf(fieldAt(jobs, job, 'steps')).map((step) => String(fieldAt(step, 'run')));
+    const budgetOf = (job: string): string =>
+      runsOf(job).find((run) => run.includes('CI time budget for eslint-lint')) ?? '';
+    const shards = listOf(fieldAt(jobs, 'self-gate-shard', 'strategy', 'matrix', 'shard'));
+
+    expect(fieldAt(jobs, 'self-gate', 'needs')).toBe('self-gate-shard');
+    expect(shards).toEqual([1, 2, 3]);
+    expect(runsOf('self-gate')).toContain(
+      `node core/cli.mts aggregate --input-root reports/shards --shard-count ${String(shards.length)} --output reports/nitpicker`,
+    );
+    expect(budgetOf('self-gate')).toContain('GIT_COMMITTER_DATE="$checkout_date"');
+    expect(budgetOf('self-gate-shard').startsWith(budgetOf('self-gate'))).toBe(true);
   });
 
   it('lets no workflow that runs on a label look at which label was added', () => {
