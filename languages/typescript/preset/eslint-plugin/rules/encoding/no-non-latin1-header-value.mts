@@ -2,10 +2,9 @@ import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint
 import { stringValue } from '../analysis/constant-resolution.mts';
 import { memberName, staticKey, unwrapped, type Context } from '../security/security-values.mts';
 import { plainName } from './plain-names.mts';
-import { concatOperands } from '../typed/concat-operands.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
 import { valueKind } from './value-kinds.mts';
-import { chainOf } from '../typed/node-views.mts';
+import { chainOf, concatOperands } from '../typed/node-views.mts';
 import { memberChain } from '../collections/costly-forms/repeated-runs.mts';
 
 type MessageId = 'encodeHeader';
