@@ -89,6 +89,7 @@ describe.skipIf(!enabled)('Maven guard parity and compile modes', () => {
     ).toEqual([
       'src/test/java/guards/GreetingFixturesTest.java:3',
       'src/test/java/guards/HelpersTest.java:3',
+      'src/test/java/guards/NamedTestsTest.java:23',
     ]);
   }, 180_000);
 

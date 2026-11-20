@@ -11,7 +11,10 @@ export function scratchTrees(prefix: string): (files: Readonly<Record<string, st
   return (files) => {
     const root = mkdtempSync(path.join(scratch, 'tree-'));
     for (const [name, text] of Object.entries(files)) {
-      const file = path.join(root, name);
+      const file = path.resolve(root, name);
+      if (!file.startsWith(root + path.sep)) {
+        throw new Error(`${name} is outside the scratch tree`);
+      }
       mkdirSync(path.dirname(file), { recursive: true });
       writeFileSync(file, text);
     }

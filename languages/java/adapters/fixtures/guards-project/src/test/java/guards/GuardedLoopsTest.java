@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 class GuardedLoopsTest {
   private static final List<String> NAMES = List.of("ada", "bob");
+  private static final List<String> NONE = NAMES.subList(0, 0);
 
   @Test
   void loopsOverFixedValues() {
@@ -59,7 +60,7 @@ class GuardedLoopsTest {
 
   @Test
   void assertsAnEmptySizeFirst() {
-    List<String> names = NAMES;
+    List<String> names = NONE;
     assertEquals(0, names.size());
     for (String name : names) { // violation: pmd/AssertionInControlFlow
       assertEquals(3, name.length());
@@ -86,7 +87,7 @@ class GuardedLoopsTest {
 
   @Test
   void assertsTheSizeAfterwards() {
-    List<String> names = NAMES;
+    List<String> names = NONE;
     for (String name : names) { // violation: pmd/AssertionInControlFlow
       assertEquals(3, name.length());
     }

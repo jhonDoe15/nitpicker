@@ -19,6 +19,12 @@ describe('files Prettier cannot parse', () => {
     ).toEqual(['src/data.json', 'a b.ts']);
   });
 
+  it('are read from output that a terminal with colors wrote', () => {
+    const colored = PARSE_FAILURE.replaceAll('[error]', '[\u001B[31merror\u001B[39m]');
+
+    expect(unparsedFilesOf(colored)).toEqual(['src/data.json']);
+  });
+
   it('are not assumed when the run failed for another reason', () => {
     expect(unparsedFilesOf('[error] Invalid configuration for file "/p/a.ts":\n')).toBeUndefined();
     expect(unparsedFilesOf(`${PARSE_FAILURE}[error] Cannot find package 'x'\n`)).toBeUndefined();

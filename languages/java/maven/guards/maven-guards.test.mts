@@ -93,15 +93,20 @@ function guards(
   return reportDir;
 }
 
-function expectedArguments({ module, libraries }: { module: string; libraries: string }): string {
+function expectedArguments({
+  module,
+  libraries,
+}: {
+  module: string;
+  libraries: readonly string[];
+}): string {
   return [
     '-cp',
     TOOLS.forbiddenapis.join(path.delimiter),
     'de.thetaphi.forbiddenapis.cli.CliMain',
     '-d',
     module,
-    '-c',
-    libraries,
+    ...libraries.flatMap((library) => ['-c', library]),
     '-f',
     path.join(GRADLE_DIRECTORY, 'rules/forbidden-apis.txt'),
     '--allowmissingclasses',
@@ -142,7 +147,7 @@ describe.skipIf(process.platform === 'win32')('runGuards forbiddenapis', () => {
     );
   });
 
-  it('passes the classes, the rule file and only the libraries that exist', () => {
+  it('passes the classes, the rule file and each library that exists on its own', () => {
     const root = workspace();
     fakeJava(root, 0);
     const first = path.join(root, 'first.jar');
@@ -158,19 +163,19 @@ describe.skipIf(process.platform === 'win32')('runGuards forbiddenapis', () => {
     expect(readFileSync(path.join(root, 'java-arguments'), 'utf8')).toBe(
       expectedArguments({
         module: path.join(root, 'app/target/classes'),
-        libraries: [first, second].join(path.delimiter),
+        libraries: [first, second],
       }),
     );
   });
 
-  it('passes an empty library list when none of the libraries exist', () => {
+  it('passes no library when none of the libraries exist', () => {
     const root = workspace();
     fakeJava(root, 0);
 
     guards(root, { files: ['demo/App.class'], mainCompile: [path.join(root, 'missing.jar')] });
 
     expect(readFileSync(path.join(root, 'java-arguments'), 'utf8')).toBe(
-      expectedArguments({ module: path.join(root, 'app/target/classes'), libraries: '' }),
+      expectedArguments({ module: path.join(root, 'app/target/classes'), libraries: [] }),
     );
   });
 

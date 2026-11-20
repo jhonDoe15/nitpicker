@@ -1,3 +1,4 @@
+import { stripVTControlCharacters } from 'node:util';
 import { messageOf } from '../../../../../shared/values/readers.mts';
 
 const UNPARSED_FILE_RULE = 'prettier/file-not-parsed';
@@ -51,7 +52,7 @@ export function unparsedFileFinding(
 }
 
 export function unparsedFilesOf(errorOutput: string): string[] | undefined {
-  const lines = errorOutput
+  const lines = stripVTControlCharacters(errorOutput)
     .split(/\r?\n/u)
     .filter((line) => line.trim().length > 0 && !CODE_FRAME_LINE.test(line));
   const files = lines.flatMap((line) => {
