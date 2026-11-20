@@ -211,7 +211,9 @@ impl<'a> Resolver<'a> {
                 }
             }
             // Names in the header of a class are looked up around it: its members and what it inherits are not in scope there.
-            let header = TYPE_DECLARATIONS.contains(&node.kind()) && node.child_by_field_name("body") != Some(inner);
+            // The components of a record are the exception: they see the members.
+            let inside = |field: &str| node.child_by_field_name(field) == Some(inner);
+            let header = TYPE_DECLARATIONS.contains(&node.kind()) && !inside("body") && !(node.kind() == "record_declaration" && inside("parameters"));
             if let Some(owner) = class_at(self.scope, node, inner).filter(|_| !header) {
                 for ancestor in self.index.lineage(&owner) {
                     let nested = format!("{ancestor}.{name}");
@@ -421,10 +423,21 @@ impl<'a> Resolver<'a> {
         (erased, generic, varargs)
     }
 
+    /// The bits the annotations of a declaration give.
+    pub fn marks(&self, declaration: Node) -> u16 {
+        let holder = super::super::helpers::modifiers(declaration).unwrap_or(declaration);
+        let annotations = children(holder).into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation"));
+        let names = annotations.filter_map(|annotation| annotation.child_by_field_name("name")).map(|name| self.file.text_of(name));
+        names.fold(0, |bits, written| {
+            let full = self.class_name(declaration, written).unwrap_or_else(|| written.to_string());
+            bits | super::model::flag::of_annotation(&full)
+        })
+    }
+
     fn class_flags(&self, declaration: Node) -> u16 {
         use super::model::flag;
         let has = super::super::helpers::has_modifier;
-        let mut bits = 0;
+        let mut bits = self.marks(declaration);
         for (word, bit) in [("final", flag::FINAL), ("public", flag::PUBLIC), ("protected", flag::PROTECTED), ("static", flag::STATIC), ("abstract", flag::ABSTRACT), ("sealed", flag::SEALED), ("private", flag::PRIVATE)] {
             if has(declaration, word) {
                 bits |= bit;
@@ -618,7 +631,7 @@ impl<'a> Resolver<'a> {
             if info.is_interface {
                 bits |= flag::PUBLIC;
             }
-            bits
+            bits | self.marks(member)
         };
         let mut members = children(body);
         members.extend(children(body).into_iter().filter(|child| child.kind() == "enum_body_declarations").flat_map(children));
@@ -708,6 +721,7 @@ impl<'a> Resolver<'a> {
                         varargs,
                         throws: self.thrown(member),
                         names: self.parameter_names(member),
+                        flags: bits(member),
                         ..plain("<init>", parameters, Type::Primitive("void"))
                     });
                 }
