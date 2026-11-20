@@ -27,7 +27,7 @@ impl FileRule for Typed {
     fn check(&self, _file: &SourceFile, _out: &mut Vec<Finding>) {}
     fn check_in(&self, file: &SourceFile, project: &Project, out: &mut Vec<Finding>) {
         let Some(project) = project.downcast_ref::<JavaProject>() else { return };
-        let Some(scope) = project.scopes.get(&file.path) else { return };
+        let scope = &crate::java::types::scope::FileScope::of(file);
         let resolver = Resolver::new(&project.index, file, scope);
         walk(file.tree.root_node(), |node| (self.check)(&resolver, node, self.id, out));
     }

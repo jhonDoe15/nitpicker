@@ -56,6 +56,11 @@ pub trait Language: Sync + Send {
     fn grammar_text(&self, _text: &str) -> Option<String> {
         None
     }
+    /// The file with everything blanked that the project pass does not read (method bodies, for instance),
+    /// byte for byte as long as the file. `None` keeps the file as it is.
+    fn outline(&self, _file: &SourceFile) -> Option<String> {
+        None
+    }
     fn project(&self, _files: &[SourceFile], _options: &Options, _needed: bool) -> Box<Project> {
         Box::new(())
     }

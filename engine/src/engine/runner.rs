@@ -42,6 +42,27 @@ pub fn collect_files(roots: &[PathBuf], language: &dyn Language) -> Vec<PathBuf>
     files
 }
 
+fn parse_text(text: &str, language: &dyn Language) -> Option<tree_sitter::Tree> {
+    PARSERS.with(|parsers| {
+        let mut parsers = parsers.borrow_mut();
+        let parser = parsers.entry(language.id()).or_insert_with(|| {
+            let mut parser = tree_sitter::Parser::new();
+            parser.set_language(&language.grammar()).expect("grammar");
+            parser
+        });
+        match language.grammar_text(text) {
+            Some(masked) => parser.parse(&masked, None),
+            None => parser.parse(text, None),
+        }
+    })
+}
+
+fn parse(path: &PathBuf, language: &dyn Language) -> Option<SourceFile> {
+    let text = std::fs::read_to_string(path).ok()?;
+    let tree = parse_text(&text, language)?;
+    Some(SourceFile { path: path.to_string_lossy().into_owned(), text, tree })
+}
+
 pub fn run(files: &[PathBuf], language: &dyn Language, only: Option<&[String]>, min_tokens: usize, options: &Options) -> RunResult {
     let rules: Vec<_> = language
         .rules()
@@ -49,39 +70,44 @@ pub fn run(files: &[PathBuf], language: &dyn Language, only: Option<&[String]>, 
         .filter(|rule| only.map_or(!rule.id().starts_with('_'), |ids| ids.iter().any(|id| id == rule.id())))
         .collect();
     let started = std::time::Instant::now();
-    let parsed: Vec<SourceFile> = files
+    let needed = rules.iter().any(|rule| rule.needs_project());
+    // The project is built from outlines, which are dropped before the rules run: a file's full tree lives only while its rules run.
+    let outlines: Vec<SourceFile> = if needed {
+        files
+            .par_iter()
+            .filter_map(|path| {
+                let file = parse(path, language)?;
+                match language.outline(&file) {
+                    Some(text) => {
+                        let tree = parse_text(&text, language)?;
+                        Some(SourceFile { path: file.path, text, tree })
+                    }
+                    None => Some(file),
+                }
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let parse_ms = started.elapsed().as_secs_f64() * 1e3;
+    let project = language.project(&outlines, options, needed);
+    drop(outlines);
+    let project_ms = started.elapsed().as_secs_f64() * 1e3 - parse_ms;
+    let per_file: Vec<(Vec<Finding>, FileFacts, usize, bool, String)> = files
         .par_iter()
         .filter_map(|path| {
-            let text = std::fs::read_to_string(path).ok()?;
-            let tree = PARSERS.with(|parsers| {
-                let mut parsers = parsers.borrow_mut();
-                let parser = parsers.entry(language.id()).or_insert_with(|| {
-                    let mut parser = tree_sitter::Parser::new();
-                    parser.set_language(&language.grammar()).expect("grammar");
-                    parser
-                });
-                match language.grammar_text(&text) {
-                    Some(masked) => parser.parse(&masked, None),
-                    None => parser.parse(&text, None),
-                }
-            })?;
-            Some(SourceFile { path: path.to_string_lossy().into_owned(), text, tree })
-        })
-        .collect();
-    let parse_ms = started.elapsed().as_secs_f64() * 1e3;
-    let project = language.project(&parsed, options, rules.iter().any(|rule| rule.needs_project()));
-    let project_ms = started.elapsed().as_secs_f64() * 1e3 - parse_ms;
-    let per_file: Vec<(Vec<Finding>, FileFacts, usize, bool, String)> = parsed
-        .par_iter()
-        .map(|file| {
+            let file = parse(path, language)?;
             let mut findings = Vec::new();
             for rule in &rules {
-                rule.check_in(file, project.as_ref(), &mut findings);
+                rule.check_in(&file, project.as_ref(), &mut findings);
             }
-            let facts = language.facts(file);
+            let mut facts = language.facts(&file);
+            if min_tokens == 0 {
+                facts.tokens = Vec::new();
+            }
             let lines = file.text.lines().count();
             let broken = file.tree.root_node().has_error();
-            (findings, facts, lines, broken, file.path.clone())
+            Some((findings, facts, lines, broken, file.path))
         })
         .collect();
     eprintln!(

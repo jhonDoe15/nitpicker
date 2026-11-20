@@ -4,14 +4,12 @@ use super::model::ClassInfo;
 use super::scope::{FileScope, Resolver, declared_name};
 use crate::engine::source::{SourceFile, walk};
 use rayon::prelude::*;
-use std::collections::HashMap;
 use std::path::PathBuf;
 use tree_sitter::Node;
 
 #[derive(Default)]
 pub struct JavaProject {
     pub index: TypeIndex,
-    pub scopes: HashMap<String, FileScope>,
 }
 
 fn jdk_modules() -> Vec<PathBuf> {
@@ -82,6 +80,38 @@ pub fn build(files: &[SourceFile], classpath: &[PathBuf]) -> JavaProject {
         index.source_classes,
         started.elapsed().as_secs_f64() * 1e3 - binaries_ms
     );
-    let scopes = files.iter().map(|file| file.path.clone()).zip(scopes).collect();
-    JavaProject { index, scopes }
+    JavaProject { index }
+}
+
+const CLASS_BODIES: [&str; 4] = ["class_body", "interface_body", "enum_body", "annotation_type_body"];
+
+/// The file with the bodies of methods, constructors and initializers blanked, unless a class is declared inside.
+/// Every byte keeps its place, so what is left sits at the same line and column.
+pub fn outline(file: &SourceFile) -> String {
+    let mut bytes = file.text.as_bytes().to_vec();
+    let mut pending = vec![file.tree.root_node()];
+    while let Some(node) = pending.pop() {
+        let body = matches!(node.kind(), "block" | "constructor_body")
+            && node.parent().is_some_and(|parent| {
+                matches!(
+                    parent.kind(),
+                    "method_declaration" | "constructor_declaration" | "compact_constructor_declaration" | "static_initializer" | "class_body"
+                )
+            });
+        if body && node.end_byte() - node.start_byte() >= 2 {
+            let mut classes = false;
+            walk(node, |inner| classes |= CLASS_BODIES.contains(&inner.kind()));
+            if !classes {
+                for byte in &mut bytes[node.start_byte() + 1..node.end_byte() - 1] {
+                    if *byte != b'\n' && *byte != b'\r' {
+                        *byte = b' ';
+                    }
+                }
+            }
+            continue;
+        }
+        let mut cursor = node.walk();
+        pending.extend(node.children(&mut cursor));
+    }
+    String::from_utf8(bytes).expect("blanking keeps the text valid")
 }
