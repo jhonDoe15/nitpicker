@@ -12,7 +12,7 @@ type LaunchOptions = {
   readonly report: string;
   readonly tools: ToolClasspaths;
   readonly settings: readonly string[];
-  readonly auxClasspath?: readonly string[];
+  readonly auxClasspathFile?: string | undefined;
   readonly targets?: readonly string[];
 };
 type SpotbugsLaunch = {
@@ -34,7 +34,7 @@ export function spotbugsLaunch({
   report,
   tools,
   settings,
-  auxClasspath = [],
+  auxClasspathFile,
   targets = [module.outputDirectory],
 }: LaunchOptions): SpotbugsLaunch {
   return {
@@ -55,12 +55,7 @@ export function spotbugsLaunch({
       report,
       '-sourcepath',
       module.sourceRoots.filter((root) => existsSync(root)).join(path.delimiter),
-      ...(auxClasspath.length === 0
-        ? []
-        : [
-            '-auxclasspath',
-            auxClasspath.filter((entry) => existsSync(entry)).join(path.delimiter),
-          ]),
+      ...(auxClasspathFile === undefined ? [] : ['-auxclasspathFromFile', auxClasspathFile]),
       ...targets,
     ],
   };

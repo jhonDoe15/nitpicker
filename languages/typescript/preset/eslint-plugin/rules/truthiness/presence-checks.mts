@@ -11,6 +11,7 @@ import {
   depthFirst,
   isNode,
   nameOf,
+  plainText,
   variableNamed,
   type SourceCode,
 } from '../typed/node-views.mts';
@@ -44,10 +45,6 @@ const REFERENCES = new Set<string>([
 ]);
 function isReference(node: TSESTree.Node): boolean {
   return REFERENCES.has(node.type);
-}
-
-function plainText(node: TSESTree.Node, sourceCode: SourceCode): string {
-  return sourceCode.getText(node).replaceAll('?.', '.').replaceAll('!', '');
 }
 
 function usesValue(branch: TSESTree.Node, test: TSESTree.Node, sourceCode: SourceCode): boolean {
