@@ -291,20 +291,27 @@ impl<'a> Resolver<'a> {
     pub fn class_name(&self, at: Node, text: &str) -> Option<String> {
         let segments: Vec<&str> = text.split('.').map(str::trim).collect();
         if let Some(first) = self.simple(at, segments[0]) {
-            let mut name = first;
-            for segment in &segments[1..] {
-                let nested = self
-                    .index
-                    .lineage(&name)
-                    .into_iter()
-                    .map(|ancestor| format!("{ancestor}.{segment}"))
-                    .find(|candidate| self.index.has(candidate));
-                name = nested.unwrap_or(format!("{name}.{segment}"));
-            }
-            return Some(name);
+            return Some(self.member_class(first, &segments[1..]));
         }
         let joined = segments.join(".");
-        (segments.len() > 1 && (self.index.has(&joined) || segments[0].chars().all(|c| c.is_lowercase()))).then_some(joined)
+        if self.index.has(&joined) {
+            return Some(joined);
+        }
+        // A package, then a class, then member classes: a member class can be one a supertype declares.
+        let outer = (2..segments.len()).find(|end| self.index.has(&segments[..*end].join(".")));
+        if let Some(end) = outer {
+            return Some(self.member_class(segments[..end].join("."), &segments[end..]));
+        }
+        (segments.len() > 1 && segments[0].chars().all(|c| c.is_lowercase())).then_some(joined)
+    }
+
+    /// The member class a path of names leads to from a class; each step also looks in the supertypes.
+    fn member_class(&self, mut name: String, path: &[&str]) -> String {
+        for segment in path {
+            let nested = self.index.lineage(&name).into_iter().map(|ancestor| format!("{ancestor}.{segment}")).find(|candidate| self.index.has(candidate));
+            name = nested.unwrap_or(format!("{name}.{segment}"));
+        }
+        name
     }
 
     /// The bound of a type parameter. Several bounds become one class type named `A&B`.
