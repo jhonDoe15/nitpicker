@@ -20,6 +20,7 @@ import { rule as ruleReactNoEffectEventHandling } from '../rules/react/render/re
 import { rule as ruleReactNoHardcodedColors } from '../rules/react/theme/react-no-hardcoded-colors.mts';
 import { rule as ruleReactNoLiteralIdInListComponent } from '../rules/react/ids/react-no-literal-id-in-list-component.mts';
 import { rule as ruleReactNoRandomKey } from '../rules/react/render/react-no-random-key.mts';
+import { rule as ruleReactNoUnstableMemoProps } from '../rules/react/memo-props/react-no-unstable-memo-props.mts';
 import { rule as ruleReactSingleStylingApproach } from '../rules/react/react-single-styling-approach.mts';
 import { rule as ruleReactTestNoImplementationDetails } from '../rules/react-tests/react-test-no-implementation-details.mts';
 import { rule as ruleReleaseListenersOnClose } from '../rules/lifecycles/handles/release-listeners-on-close.mts';
@@ -69,6 +70,7 @@ export const partRules = {
   'react-no-hardcoded-colors': ruleReactNoHardcodedColors,
   'react-no-literal-id-in-list-component': ruleReactNoLiteralIdInListComponent,
   'react-no-random-key': ruleReactNoRandomKey,
+  'react-no-unstable-memo-props': ruleReactNoUnstableMemoProps,
   'react-single-styling-approach': ruleReactSingleStylingApproach,
   'react-test-no-implementation-details': ruleReactTestNoImplementationDetails,
   'release-listeners-on-close': ruleReleaseListenersOnClose,
