@@ -67,10 +67,10 @@ describe('the policy approval of action.yml', () => {
     expect(approval.if).toBe("${{ steps.approval-status.outputs.approved-sha != '' }}");
   });
 
-  it('runs the same two steps as the self-gate of this repository', () => {
+  it('runs the same two steps as the self-gate shards of this repository', () => {
     const selfGate = jobNamed(
       parseWorkflow(readText('.github/workflows/typescript.yml')),
-      'self-gate',
+      'self-gate-shard',
     );
 
     expect(scriptOf(stepWithId(selfGate.steps, 'approval-status'))).toBe(scriptOf(approvalStatus));
