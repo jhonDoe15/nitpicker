@@ -8,6 +8,10 @@ use std::time::Instant;
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(String::as_str) == Some("typescript-reuse") {
+        typescript_reuse(&args[1..]);
+        return;
+    }
     if args.first().map(String::as_str) == Some("typescript-structure") {
         typescript_structure(&args[1..]);
         return;
@@ -96,21 +100,20 @@ fn fail(problem: &str) -> ! {
     std::process::exit(2)
 }
 
-/// `typescript-structure --files <list> [--out <file>]`: each line of the list is the path to read, a tab, the path to report.
-fn typescript_structure(args: &[String]) {
+/// Reads `--files <list> [--out <file>]`: each line of the list is the path to read, a tab, the path to report.
+fn listed_files(args: &[String]) -> (Vec<(String, String)>, Option<String>) {
     let mut list: Option<&String> = None;
-    let mut out: Option<&String> = None;
+    let mut out: Option<String> = None;
     let mut index = 0;
     while index < args.len() {
         match args[index].as_str() {
             "--files" => { index += 1; list = Some(&args[index]); }
-            "--out" => { index += 1; out = Some(&args[index]); }
+            "--out" => { index += 1; out = Some(args[index].clone()); }
             other => panic!("unknown argument {other}"),
         }
         index += 1;
     }
-    let started = Instant::now();
-    let files: Vec<(String, String)> = std::fs::read_to_string(list.expect("--files"))
+    let files = std::fs::read_to_string(list.expect("--files"))
         .expect("list")
         .lines()
         .filter(|line| !line.is_empty())
@@ -119,6 +122,25 @@ fn typescript_structure(args: &[String]) {
             None => (line.to_string(), line.to_string()),
         })
         .collect();
+    (files, out)
+}
+
+/// `typescript-reuse --files <list> [--out <file>]`: one JSON line per file with its definitions, imports and exports.
+fn typescript_reuse(args: &[String]) {
+    let started = Instant::now();
+    let (files, out) = listed_files(args);
+    let text = typescript::structure::reuse::facts_lines(&files);
+    match out {
+        Some(path) => std::fs::write(path, text).expect("write"),
+        None => print!("{text}"),
+    }
+    eprintln!("{} files; {:.0} ms", files.len(), started.elapsed().as_secs_f64() * 1e3);
+}
+
+/// `typescript-structure --files <list> [--out <file>]`: function and class metrics of the listed files.
+fn typescript_structure(args: &[String]) {
+    let started = Instant::now();
+    let (files, out) = listed_files(args);
     let analysis = typescript::structure::analyze_files(&files);
     let text = serde_json::to_string(&analysis).expect("json");
     match out {

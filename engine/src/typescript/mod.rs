@@ -1,11 +1,13 @@
 //! TypeScript and JavaScript front end: one oxc parse per file, shared by every check of this language.
 pub mod lines;
+pub mod tokens;
 pub mod structure;
 pub mod tree;
 
 use oxc_allocator::Allocator;
 use oxc_ast::ast::Program;
-use oxc_parser::{ParseOptions, Parser};
+use oxc_parser::config::TokensParserConfig;
+use oxc_parser::{ParseOptions, Parser, Token};
 use oxc_span::SourceType;
 
 pub const EXTENSIONS: &[&str] = &["ts", "tsx", "mts", "cts", "js", "jsx", "mjs", "cjs"];
@@ -17,6 +19,8 @@ pub struct ParsedFile<'a> {
     pub source_type: SourceType,
     pub program: &'a Program<'a>,
     pub lines: lines::LineTable,
+    /// Lexed tokens in source order; empty unless the file was parsed with `with_tokens`.
+    pub tokens: &'a [Token],
     /// The parser gave up, or reported an error that leaves no usable tree.
     pub panicked: bool,
     pub errors: Vec<String>,
@@ -46,20 +50,27 @@ pub fn source_type_of(path: &str) -> SourceType {
 }
 
 pub fn with_parsed<R>(path: &str, text: &str, run: impl FnOnce(&ParsedFile) -> R) -> R {
+    parsed(path, text, false, run)
+}
+
+/// Like `with_parsed`, and keeps the tokens the parser lexed.
+pub fn with_tokens<R>(path: &str, text: &str, run: impl FnOnce(&ParsedFile) -> R) -> R {
+    parsed(path, text, true, run)
+}
+
+fn parsed<R>(path: &str, text: &str, tokens: bool, run: impl FnOnce(&ParsedFile) -> R) -> R {
     let allocator = Allocator::default();
     let source_type = source_type_of(path);
-    let parsed = Parser::new(&allocator, text, source_type)
-        .with_options(ParseOptions { preserve_parens: true, allow_return_outside_function: true, ..ParseOptions::default() })
-        .parse();
-    let program = allocator.alloc(parsed.program);
-    let file = ParsedFile {
-        path,
-        text,
-        source_type,
-        program,
-        lines: lines::LineTable::of(text),
-        panicked: parsed.fatal_error,
-        errors: parsed.diagnostics.iter().map(|error| error.to_string()).collect(),
+    let options = ParseOptions { preserve_parens: true, allow_return_outside_function: true, ..ParseOptions::default() };
+    let parsed = if tokens {
+        Parser::new(&allocator, text, source_type).with_options(options).with_config(TokensParserConfig).parse()
+    } else {
+        Parser::new(&allocator, text, source_type).with_options(options).parse()
     };
+    let panicked = parsed.fatal_error;
+    let errors = parsed.diagnostics.iter().map(|error| error.to_string()).collect();
+    let tokens: &[Token] = allocator.alloc(parsed.tokens);
+    let program = allocator.alloc(parsed.program);
+    let file = ParsedFile { path, text, source_type, program, lines: lines::LineTable::of(text), tokens, panicked, errors };
     run(&file)
 }

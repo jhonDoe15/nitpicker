@@ -1,6 +1,7 @@
 //! The structure checks of the TypeScript preset: the same facts the Node analyzer hands to the shared rules.
 pub mod metrics;
 pub mod names;
+pub mod reuse;
 pub mod shape;
 
 use super::tree::Tree;
