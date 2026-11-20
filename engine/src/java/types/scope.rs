@@ -410,6 +410,13 @@ impl<'a> Resolver<'a> {
     }
 
     /// Erased and generic parameter types, and whether the last one is variable arity.
+    /// The types a `throws` clause lists; one that cannot be read is kept as `?`.
+    fn thrown(&self, member: Node) -> Vec<Type> {
+        let Some(clause) = children(member).into_iter().find(|part| part.kind() == "throws") else { return Vec::new() };
+        let mut cursor = clause.walk();
+        clause.named_children(&mut cursor).map(|kind| self.written(kind, true).unwrap_or(Type::class("?"))).collect()
+    }
+
     fn parameters(&self, list: Option<Node>) -> (Vec<Type>, Vec<Type>, bool) {
         let mut erased = Vec::new();
         let mut generic = Vec::new();
@@ -613,6 +620,7 @@ impl<'a> Resolver<'a> {
             is_private: false,
             varargs: false,
             flags: super::model::flag::PUBLIC,
+            throws: Vec::new(),
         };
         let bits = |member: Node| -> u16 {
             use super::model::flag;
@@ -708,6 +716,7 @@ impl<'a> Resolver<'a> {
                             && (info.is_interface || has(member, "abstract")),
                         varargs,
                         flags: bits(member) | if member.field("body").is_none() && info.is_interface { super::model::flag::ABSTRACT } else { 0 },
+                        throws: self.thrown(member),
                     });
                 }
                 "constructor_declaration" => {
@@ -715,6 +724,7 @@ impl<'a> Resolver<'a> {
                     info.methods.push(Method {
                         generic_parameters,
                         varargs,
+                        throws: self.thrown(member),
                         ..plain("<init>", parameters, Type::Primitive("void"))
                     });
                 }

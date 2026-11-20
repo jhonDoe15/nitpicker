@@ -151,6 +151,8 @@ pub struct Method {
     pub is_private: bool,
     pub varargs: bool,
     pub flags: u16,
+    /// What the `throws` clause lists, type variables kept.
+    pub throws: Vec<Type>,
 }
 
 #[derive(Clone, Debug, Default)]

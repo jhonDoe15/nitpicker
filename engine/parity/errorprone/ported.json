@@ -29,5 +29,6 @@
  "SameNameButDifferent",
  "DifferentNameButSame",
  "JdkObsolete",
- "BooleanLiteral"
+ "BooleanLiteral",
+ "CheckedExceptionNotThrown"
 ]
