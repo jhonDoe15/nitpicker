@@ -2,6 +2,7 @@ const DOCUMENT_START = /\{\s*"\$schema"/gu;
 const NOTIFICATIONS = '"toolExecutionNotifications": [';
 const MESSAGE_TEXT = /"message":\s*\{\s*"text":\s*"/gu;
 const FIRST_LINE = /^(?:[^"\\\n]|\\(?!n)[^u\n]|\\u[\da-f]{4})*/iu;
+const END_OF_INPUT = 'end of JSON input';
 const FAILED_AT = /position (?<position>\d+)/u;
 const CLOSE_MESSAGE = '"}}';
 const CLOSE_REPORT = ']}]}]}';
@@ -16,11 +17,19 @@ function parseFailure(text: string): number | undefined {
     return undefined;
   } catch (error) {
     const position = FAILED_AT.exec(String(error))?.groups?.['position'];
-    return position === undefined ? text.length : Number(position);
+    const atEnd = String(error).includes(END_OF_INPUT) ? text.length : Number.NaN;
+    return position === undefined ? atEnd : Number(position);
   }
 }
 
+function isComplete(written: string): boolean {
+  return parseFailure(written) === undefined;
+}
+
 function repaired(written: string): string | undefined {
+  if (isComplete(written)) {
+    return written;
+  }
   const notifications = written.lastIndexOf(NOTIFICATIONS);
   if (notifications < 0) {
     return undefined;
@@ -39,5 +48,7 @@ export function cutOffSarifReport(text: string): string | undefined {
   const start = lastMatchOf(text, DOCUMENT_START)?.index;
   const document = start === undefined ? '' : text.slice(start);
   const failed = parseFailure(document);
-  return failed === undefined ? undefined : repaired(document.slice(0, failed));
+  return failed === undefined || Number.isNaN(failed)
+    ? undefined
+    : repaired(document.slice(0, failed));
 }

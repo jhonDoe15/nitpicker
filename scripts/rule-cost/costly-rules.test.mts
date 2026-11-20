@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ruleCosts, ruleTimes, unexpectedCosts } from './costly-rules.mts';
+import { evenSample, ruleCosts, ruleTimes, unexpectedCosts } from './costly-rules.mts';
 
 function passOf(rules: Readonly<Record<string, number>>) {
   return {
@@ -38,5 +38,15 @@ describe('the cost of each lint rule', () => {
     );
     expect(unexpectedCosts(costs, new Set(['slow']))).toEqual([]);
     expect(ruleCosts([])).toEqual([]);
+  });
+
+  it('samples evenly over the whole list', () => {
+    const items = Array.from({ length: 10 }, (_, index) => index);
+
+    expect([evenSample(items, 4), evenSample(items, 20), evenSample([], 3)]).toEqual([
+      [0, 2, 5, 7],
+      items,
+      [],
+    ]);
   });
 });

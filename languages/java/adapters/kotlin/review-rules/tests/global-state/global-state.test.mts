@@ -225,6 +225,7 @@ class ResetTest {
         Clock.offset = 0
         Clock.frozen = false
         Clock.zone = "UTC"
+        Clock.ticks += 1
     }
 
     @Test
@@ -239,6 +240,10 @@ fun main(args: Array<String>) {
 }
 `;
 
-    expect(leaks(text)).toEqual(['ResetTest.reset@17', 'ResetTest.toggles@23']);
+    expect(leaks(text)).toEqual([
+      'ResetTest.reset@17',
+      'ResetTest.reset@18',
+      'ResetTest.toggles@24',
+    ]);
   });
 });

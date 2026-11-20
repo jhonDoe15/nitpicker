@@ -8,15 +8,15 @@ type Call = TypeScript.CallExpression | TypeScript.NewExpression;
 type Named = TypeScript.PropertyAssignment | TypeScript.BinaryExpression;
 type Candidates = {
   readonly named: Map<string, Named[]>;
+  readonly unnamed: Named[];
   readonly calls: Call[];
 };
 type Index = Scan & {
   readonly candidates: Candidates;
-  readonly resolved: Set<string>;
+  readonly resolvedNames: Set<string>;
+  readonly pending: { unnamed: boolean; calls: boolean };
 };
 
-const ANY_NAME = '';
-const CALLS = '()';
 const indexes = new WeakMap<TypeScript.Program, Index>();
 
 function isFalsyLiteral(node: TypeScript.Node | undefined): boolean {
@@ -75,7 +75,11 @@ function assignedName(node: TypeScript.BinaryExpression): string | undefined {
   return isFalsyWrite && ts.isPropertyAccessExpression(node.left) ? node.left.name.text : undefined;
 }
 
-function keep(candidates: Candidates, name: string, node: Named): void {
+function keep(candidates: Candidates, name: string | undefined, node: Named): void {
+  if (name === undefined) {
+    candidates.unnamed.push(node);
+    return;
+  }
   const kept = candidates.named.get(name);
   if (kept === undefined) {
     candidates.named.set(name, [node]);
@@ -87,7 +91,7 @@ function keep(candidates: Candidates, name: string, node: Named): void {
 function collect(candidates: Candidates, node: TypeScript.Node): void {
   if (ts.isPropertyAssignment(node)) {
     if (isFalsyLiteral(node.initializer)) {
-      keep(candidates, propertyName(node.name) ?? ANY_NAME, node);
+      keep(candidates, propertyName(node.name), node);
     }
   } else if (ts.isBinaryExpression(node)) {
     const name = assignedName(node);
@@ -103,7 +107,7 @@ function collect(candidates: Candidates, node: TypeScript.Node): void {
 }
 
 function candidatesIn(program: TypeScript.Program): Candidates {
-  const candidates: Candidates = { named: new Map(), calls: [] };
+  const candidates: Candidates = { named: new Map(), unnamed: [], calls: [] };
   for (const file of program.getSourceFiles().filter(isProjectFile)) {
     const pending: TypeScript.Node[] = [file];
     for (const node of pending) {
@@ -121,16 +125,13 @@ function buildIndex(program: TypeScript.Program): Index {
     checker: program.getTypeChecker(),
     sites: new Set(),
     candidates: candidatesIn(program),
-    resolved: new Set(),
+    resolvedNames: new Set(),
+    pending: { unnamed: true, calls: true },
   };
 }
 
-function resolveNamed(index: Index, name: string): void {
-  if (index.resolved.has(name)) {
-    return;
-  }
-  index.resolved.add(name);
-  for (const node of index.candidates.named.get(name) ?? []) {
+function resolveAll(index: Index, nodes: readonly Named[]): void {
+  for (const node of nodes) {
     if (ts.isPropertyAssignment(node)) {
       recordProperty(index, node);
     } else {
@@ -139,11 +140,22 @@ function resolveNamed(index: Index, name: string): void {
   }
 }
 
+function resolveNamed(index: Index, name: string): void {
+  if (!index.resolvedNames.has(name)) {
+    index.resolvedNames.add(name);
+    resolveAll(index, index.candidates.named.get(name) ?? []);
+  }
+  if (index.pending.unnamed) {
+    index.pending.unnamed = false;
+    resolveAll(index, index.candidates.unnamed);
+  }
+}
+
 function resolveCalls(index: Index): void {
-  if (index.resolved.has(CALLS)) {
+  if (!index.pending.calls) {
     return;
   }
-  index.resolved.add(CALLS);
+  index.pending.calls = false;
   for (const call of index.candidates.calls) {
     recordArguments(index, call);
   }
@@ -173,7 +185,6 @@ export function isSetToFalsy(
   }
   const index = cachedValue(indexes, program, buildIndex);
   resolveNamed(index, symbol.name);
-  resolveNamed(index, ANY_NAME);
   if (!declarations.every(isMemberDeclaration)) {
     resolveCalls(index);
   }

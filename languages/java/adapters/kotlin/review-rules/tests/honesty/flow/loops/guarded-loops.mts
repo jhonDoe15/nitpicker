@@ -8,7 +8,7 @@ const BUILDERS = 'listOf|setOf|arrayOf|sequenceOf|mutableListOf|mutableSetOf|arr
 const FIXED = new RegExp(String.raw`^(?:${BUILDERS})\s*(?:<[^<>]*>\s*)?\(\s*[^)*\s][^()]*\)$`, 'u');
 const HEADER_SOURCE = /\sin\s+(?<source>[\s\S]+)$/u;
 const RECEIVER = new RegExp(
-  String.raw`(?<source>(?:${BUILDERS})\s*(?:<[^<>]*>\s*)?\([^()]*\)|[A-Za-z_]\w*)\s*$`,
+  String.raw`(?<source>(?:${BUILDERS})\s*(?:<[^<>]*>\s*)?\([^()]*\)|(?<![\w.])[A-Za-z_]\w*)\s*$`,
   'u',
 );
 const NAME = /^[A-Za-z_]\w*$/u;
