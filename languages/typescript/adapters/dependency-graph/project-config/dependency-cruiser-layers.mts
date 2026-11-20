@@ -7,7 +7,7 @@ import { precedenceLayers as untypedPrecedenceLayers } from '../../../../../shar
 import {
   isDependencyCruiserOwnedOption as untypedIsOwnedOption,
   patternSource as untypedPatternSource,
-} from '../../../preset/project-tools/config-values.mjs';
+} from '../../../preset/project-tools/config-values.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 
 type Rule = Readonly<Record<string, unknown>>;

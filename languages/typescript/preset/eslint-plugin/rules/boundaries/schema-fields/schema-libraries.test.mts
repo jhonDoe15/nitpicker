@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import tseslint from 'typescript-eslint';
 import { configuredRuleTester } from '../../../test-support/rule-tester.mts';
-import { VALIDATION_LIBRARIES } from '../../../../libraries/validation-libraries.mjs';
+import { VALIDATION_LIBRARIES } from '../../../../libraries/validation-libraries.mts';
 import { rule } from '../no-unvalidated-schema-field.mts';
 import { SCHEMA_FORMS } from './schema-forms.mts';
 

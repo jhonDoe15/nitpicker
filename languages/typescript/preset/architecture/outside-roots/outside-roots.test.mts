@@ -5,8 +5,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { cruiseWithConfig, outputText } from '../test-support/strict-cruise.mts';
 import { outsideRootsRule, type OutsideRootsOptions } from '../test-support/outside-roots-view.mts';
 import { fieldOf, listOf, parseJson, textOf } from '../../../../../shared/values/readers.mts';
-import { createQualityChecks } from '../../quality-checks.mjs';
-import { NO_IMPORT_OUTSIDE_ROOTS } from './outside-roots.mjs';
+import { createQualityChecks } from '../../quality-checks.mts';
+import { NO_IMPORT_OUTSIDE_ROOTS } from './outside-roots.mts';
 
 const tsConfig = path.resolve(import.meta.dirname, '../fixtures/tsconfig.fixture.json');
 const created: string[] = [];

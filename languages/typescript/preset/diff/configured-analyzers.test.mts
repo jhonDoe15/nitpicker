@@ -3,33 +3,17 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { importClosure as untypedImportClosure } from '../../../../shared/import-closure.mjs';
-import {
-  configuredAnalyzers as untypedConfiguredAnalyzers,
-  javascriptAnalyzers as untypedJavascriptAnalyzers,
-} from './configured-analyzers.mjs';
-
-type Analyzer = {
-  readonly name: string;
-  readonly cacheKeyFiles: string[];
-  createInvocation(request: {
-    readonly projectRoot: string;
-    readonly policyRoot: string;
-    readonly toolRoot: string;
-    readonly liveProjectRoot: string;
-    readonly snapshot: string;
-  }): { readonly args: string[] };
-};
+import { configuredAnalyzers, javascriptAnalyzers } from './configured-analyzers.mts';
+import type { PackageAnalyzer as Analyzer } from './typed/analyzer-types.mts';
 
 const importClosure: (files: readonly string[], root: string) => Map<string, unknown> =
   untypedImportClosure;
-const configuredAnalyzers: () => Analyzer[] = untypedConfiguredAnalyzers;
-const javascriptAnalyzers: () => Analyzer[] = untypedJavascriptAnalyzers;
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 
 function packageFile(candidate: string): string | undefined {
   const relative = path.relative(packageRoot, candidate).split(path.sep).join('/');
-  const inside = !relative.startsWith('../') && !path.isAbsolute(relative);
+  const inside = !(relative.startsWith('../') || path.isAbsolute(relative));
   return inside && existsSync(candidate) && statSync(candidate).isFile() ? relative : undefined;
 }
 
@@ -79,8 +63,8 @@ describe('analyzer cache keys', () => {
 
     expect(
       missing('eslint-lint', [
-        'languages/typescript/preset/architecture/strict-boundary-rules.mjs',
-        'languages/typescript/preset/architecture/strict-layout.mjs',
+        'languages/typescript/preset/architecture/strict-boundary-rules.mts',
+        'languages/typescript/preset/architecture/strict-layout.mts',
         'languages/typescript/preset/eslint-plugin/rules/analysis/constant-resolution.mts',
         ...['no-dev-dependency-in-production.mts', 'package-manifest.mts', 'test-support.mts'].map(
           (file) => `languages/typescript/preset/eslint-plugin/rules/dependencies/${file}`,

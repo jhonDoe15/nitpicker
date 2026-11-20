@@ -7,6 +7,7 @@ import {
   type FindingComparison,
   compareAnalyzers,
 } from './compare-analyzers.mts';
+import type { TouchedEntry } from '../model/finding-types.mts';
 
 const COMPILE_ERROR: Finding = {
   tool: 'build',
@@ -50,7 +51,7 @@ function resultOf(outcomes: readonly AnalyzerOutcome[]): FindingComparison {
 function comparedRuns(
   baseFindings: readonly Finding[],
   headFindings: readonly Finding[],
-  changedLines: ReadonlyMap<string, unknown> = new Map(),
+  changedLines: ReadonlyMap<string, TouchedEntry> = new Map(),
 ) {
   const toolErrors: ReportEntry[] = [];
   const { outcomes, notes } = compareAnalyzers({
@@ -58,7 +59,7 @@ function comparedRuns(
     baseRun: run(baseFindings),
     headRun: run(headFindings),
     toolErrors,
-    touchedCode: { changedLines, isStrictRule: () => false },
+    touchedCode: { changedLines, isStrictRule: () => false, testsRemoved: false },
   });
   return { result: resultOf(outcomes), notes, toolErrors };
 }
@@ -70,7 +71,7 @@ function compared(baseRun: AnalyzerRun) {
     baseRun,
     headRun: run([COMPILE_ERROR, STOPPED]),
     toolErrors,
-    touchedCode: { changedLines: new Map() },
+    touchedCode: { changedLines: new Map(), isStrictRule: () => false, testsRemoved: false },
   });
   return {
     new: resultOf(outcomes).newFindings.map(({ rule }) => rule),

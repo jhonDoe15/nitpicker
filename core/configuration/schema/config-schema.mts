@@ -4,7 +4,7 @@ import { GRADLE_PRESETS } from '../../../languages/java/adapters/gradle-presets.
 import { NATIVE_LINE_LENGTH } from '../../../languages/java/adapters/java-policy.mts';
 import { conventionDefinitions } from '../../conventions/definitions.mts';
 import { KEYS, NITPICKER_RULES, SUPPORTED_PRESETS } from '../validate.mts';
-import { HEAD_NAMES } from '../project-checks/project-config.mjs';
+import { HEAD_NAMES } from '../project-checks/project-config.mts';
 import { LAYOUT_KEYS, layoutKeysFor } from '../scopes/layout-settings.mts';
 import * as areas from './area-schemas.mts';
 import * as languageAreas from './languages/language-schemas.mts';

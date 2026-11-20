@@ -7,7 +7,7 @@ import {
   removeSnapshotDependencies,
   writeAdapterFindings,
 } from './typed/static-checks.mts';
-import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mts';
 import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 import {
   linkDependencies,

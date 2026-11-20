@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT } from '../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../core/tooling/tool-resolution.mts';
 
 const root = PACKAGE_ROOT;
 const SCRIPT = path.join(root, 'scripts/check-public-text.sh');

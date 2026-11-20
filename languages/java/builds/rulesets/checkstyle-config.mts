@@ -31,6 +31,19 @@ const FIELD_MESSAGE =
 const DIGIT_UNDERSCORE_MESSAGE =
   "Non-constant field name ''{0}'' must be lowerCamelCase, with no underscore, not even between " +
   'digits.';
+const XML_COMMENT = /<!--[\s\S]*?-->/gu;
+const ALWAYS_SUPPRESSED = /<suppress\s+checks="([^"]*)"\s+files="\."\s*\/>/gu;
+const LEAF_MODULE = /<module name="([^"]+)"\s*(?:\/>|>(?:(?!<module )[\s\S])*?<\/module>)/gu;
+const KEPT_MODULE = /(?:Filter|Holder)$/u;
+const SUPPRESSIONS = {
+  formatted: 'checkstyle-suppressions.xml',
+  unformatted: 'checkstyle-suppressions-unformatted.xml',
+} as const;
+const SUPPRESSION_PATHS = {
+  formatted: path.join(GRADLE_DIRECTORY, SUPPRESSIONS.formatted),
+  unformatted: path.join(GRADLE_DIRECTORY, SUPPRESSIONS.unformatted),
+} as const;
+export type Formatting = keyof typeof SUPPRESSIONS;
 type Edit = {
   readonly pattern: RegExp;
   readonly replacement: (...groups: string[]) => string;
@@ -122,4 +135,30 @@ export function withGuardChecks(config: string, files: readonly string[]): strin
   }
   const modules = files.map((file) => checkstyleRuleModules(file)).join('\n');
   return config.replace(TREE_WALKER, () => `${TREE_WALKER}\n${modules}`);
+}
+
+export function suppressionsFile(formatting: Formatting): string {
+  return SUPPRESSIONS[formatting];
+}
+
+function alwaysSuppressed(suppressions: string): RegExp[] {
+  return [...suppressions.replaceAll(XML_COMMENT, '').matchAll(ALWAYS_SUPPRESSED)].map(
+    ([, checks]) => new RegExp(checks ?? '', 'u'),
+  );
+}
+
+function checkClass(name: string): string {
+  const simple = name.slice(name.lastIndexOf('.') + 1);
+  return simple.endsWith('Check') ? simple : `${simple}Check`;
+}
+
+export function withoutSuppressedChecks(config: string, suppressions: string): string {
+  const checks = alwaysSuppressed(suppressions);
+  return config.replaceAll(LEAF_MODULE, (module: string, name: string) =>
+    !KEPT_MODULE.test(name) && checks.some((check) => check.test(checkClass(name))) ? '' : module,
+  );
+}
+
+export function reportingCheckstyleConfig(config: string, formatting: Formatting): string {
+  return withoutSuppressedChecks(config, readFileSync(SUPPRESSION_PATHS[formatting], 'utf8'));
 }

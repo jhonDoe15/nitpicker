@@ -6,7 +6,7 @@ import {
   TEST_ENVIRONMENTS_VARIABLE,
   TEST_ENVIRONMENT_RULE,
   isDomEnvironment as untypedIsDomEnvironment,
-} from './environments.mjs';
+} from './environments.mts';
 
 type RunnerLayout = Layout & { readonly runnableTestGlobs: readonly string[] };
 

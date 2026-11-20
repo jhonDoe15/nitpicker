@@ -1,9 +1,10 @@
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { containedPath } from '../../../../../core/fix/common/contained-path.mjs';
-import { readBaseFiles as untypedReadBaseFiles } from '../../../../../core/fix/changes.mjs';
+import { containedPath } from '../../../../../core/fix/tool-steps/paths/contained-path.mts';
+import { readBaseFiles } from '../../../../../core/fix/changes.mts';
 import type { FixFile } from '../../../../../core/fix/typed/fix-types.mts';
+import type { BaseFile } from '../../../../../core/fix/typed/edit-types.mts';
 import { toolConfigChoices } from '../../../adapters/tool-config/tool-config-choices.mts';
 import { detectJavaBuild } from '../../../builds/java-build.mts';
 import { callUntyped } from '../../../adapters/typed/java-values.mts';
@@ -26,11 +27,6 @@ export type PatchSettings = Pick<PatchRun, 'projectRoot' | 'environment' | 'exec
 
 const JAVA_FILE = /\.java$/u;
 const OWN_CHECK_NAMES: ReadonlySet<string> = new Set(OWN_CHECKS.map(({ check }) => check));
-const readBaseFiles: (options: {
-  readonly repositoryRoot: string;
-  readonly mergeBaseSha: string | undefined;
-  readonly files: readonly FixFile[];
-}) => ReadonlyMap<string, string> = untypedReadBaseFiles;
 
 function declaredFlags(projectRoot: string, headPolicy: unknown): string[] {
   const choices = callUntyped(toolConfigChoices, projectRoot, headPolicy);
@@ -48,6 +44,14 @@ function compileForPatch(settings: PatchSettings, checks: readonly string[], wor
     checks,
     flags: declaredFlags(projectRoot, headPolicy),
   });
+}
+
+function baseFileOf(file: FixFile): BaseFile {
+  const baseRepositoryPath = fieldOf(file, 'baseRepositoryPath');
+  if (typeof baseRepositoryPath !== 'string') {
+    throw new TypeError(`The changed file ${file.path} has no base repository path`);
+  }
+  return { path: file.path, baseRepositoryPath };
 }
 
 function liveTexts(projectRoot: string, files: readonly FixFile[]): Map<string, string> {
@@ -77,7 +81,7 @@ export function errorPronePatch(
       files: javaFiles,
       baseSources: settings.allFiles
         ? new Map()
-        : readBaseFiles({ repositoryRoot, mergeBaseSha, files: javaFiles }),
+        : readBaseFiles({ repositoryRoot, mergeBaseSha, files: javaFiles.map(baseFileOf) }),
       live,
       allFiles: settings.allFiles,
     });

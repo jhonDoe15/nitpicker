@@ -1,5 +1,7 @@
 import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import type { ReachModule } from '../../preset/architecture/typed/rule-types.mts';
+import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import type { Finding } from '../static-checks/shared.mts';
 import type { CruiseViolation } from '../dependency-graph/project-dependency-graph.mts';
 import { withTypeScriptHint } from '../hints/tool-failure-hint.mts';
@@ -7,8 +9,8 @@ import {
   prepareSnapshotDependencies as prepareUntypedSnapshotDependencies,
   removeSnapshotDependencies as removeUntypedSnapshotDependencies,
 } from '../static-checks/dependencies.mts';
-import { sharedReachPath as untypedSharedReachPath } from '../../preset/architecture/strict-boundary-rules.mjs';
-import { existingRoots as untypedExistingRoots } from '../../preset/layout.mjs';
+import { sharedReachPath as untypedSharedReachPath } from '../../preset/architecture/strict-boundary-rules.mts';
+import { existingRoots as untypedExistingRoots } from '../../preset/layout.mts';
 import { compactMetricFindings as untypedCompactMetricFindings } from '../../../../shared/report-output/metric-groups.mjs';
 
 export type SnapshotDependencyRequest = {
@@ -24,10 +26,47 @@ export {
   loadDependencyGraph,
 } from '../dependency-graph/project-dependency-graph.mts';
 
-export const sharedReachPath: (
+type ReachDependency = NonNullable<ReachModule['dependencies']>[number];
+
+function reachDependencyOf(value: unknown): ReachDependency[] {
+  const resolved = fieldOf(value, 'resolved');
+  const types = fieldOf(value, 'dependencyTypes');
+  const preCompilationOnly = fieldOf(value, 'preCompilationOnly');
+  return typeof resolved === 'string'
+    ? [
+        {
+          resolved,
+          ...(Array.isArray(types) ? { dependencyTypes: types.map(textOf) } : {}),
+          ...(preCompilationOnly === true ? { preCompilationOnly } : {}),
+        },
+      ]
+    : [];
+}
+
+export function reachModuleOf(value: unknown): ReachModule[] {
+  const source = fieldOf(value, 'source');
+  const dependencies = fieldOf(value, 'dependencies');
+  return typeof source === 'string'
+    ? [
+        {
+          source,
+          ...(Array.isArray(dependencies)
+            ? { dependencies: dependencies.flatMap(reachDependencyOf) }
+            : {}),
+        },
+      ]
+    : [];
+}
+
+export function sharedReachPath(
   violation: CruiseViolation,
   modules: readonly unknown[],
-) => string[] | undefined = untypedSharedReachPath;
+): string[] | undefined {
+  const { from, to } = violation;
+  return typeof from === 'string' && typeof to === 'string'
+    ? untypedSharedReachPath({ from, to }, modules.flatMap(reachModuleOf))
+    : undefined;
+}
 
 export const existingRoots: (projectRoot: string, roots: readonly string[]) => string[] =
   untypedExistingRoots;

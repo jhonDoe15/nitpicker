@@ -1,15 +1,7 @@
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { textOf } from '../../../../shared/values/readers.mts';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { spawnInvocation } from '../../../../core/fix/run-fix.mts';
 import type { FixInvocation } from '../../../../core/fix/typed/fix-types.mts';
 import {
@@ -21,23 +13,12 @@ import {
 import project from './fixtures/project.json' with { type: 'json' };
 import { knipFixStep, type KnipFixSettings } from './knip-fix-step.mts';
 import { knipFixTypes } from './knip-fix-types.mts';
+import { tempProjects } from '../../preset/eslint-config/test-support/temp-projects.mts';
 
-const roots: string[] = [];
+const projectWith = tempProjects('nitpicker-knip-fix-test-');
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function createProject() {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-knip-fix-test-'));
-  roots.push(root);
-  for (const [name, text] of Object.entries(project)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
+function createProject(): string {
+  return projectWith(project);
 }
 
 function settingsFor(root: string, overrides: Partial<KnipFixSettings>): KnipFixSettings {
@@ -56,7 +37,7 @@ function settingsFor(root: string, overrides: Partial<KnipFixSettings>): KnipFix
     recipes: undefined,
     writer: directWriter(root),
     layout: resolveLayoutFor(policy),
-    knipSettings: policy.tools?.knip,
+    knipSettings: policy.tools?.['knip'],
     policyEnvironment: {},
     ...overrides,
   };
@@ -135,7 +116,7 @@ describe('knipFixStep', () => {
     const root = createProject();
     function dropping(invocation: FixInvocation): unknown {
       const result = spawnInvocation(invocation, undefined);
-      const copy = path.join(invocation.cwd, 'package.json');
+      const copy = path.join(textOf(invocation.cwd), 'package.json');
       writeFileSync(copy, readFileSync(copy, 'utf8').trimEnd());
       return result;
     }

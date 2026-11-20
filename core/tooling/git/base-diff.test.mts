@@ -1,10 +1,10 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runGit } from '../../diff/git/repository/command.mjs';
+import { runGit } from '../../diff/git/repository/command.mts';
 import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
 import { textOf } from '../../../shared/values/readers.mts';
-import { diffFromBase as untypedDiffFromBase } from './base-diff.mjs';
+import { diffFromBase as untypedDiffFromBase } from './base-diff.mts';
 
 type DiffRequest = {
   runGit: typeof runGit;

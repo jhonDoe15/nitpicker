@@ -2,28 +2,15 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { defineRecipes as untypedDefineRecipes } from '../../../../../core/fix/engine/recipes.mjs';
-import { runRecipes as untypedRunRecipes } from '../../../../../core/fix/engine/run-recipes.mjs';
-import type { RecipeResult } from '../../../../../core/fix/typed/fix-views.mts';
-import type { FixFile, FixRecipe } from '../../../../../core/fix/typed/fix-types.mts';
+import { defineRecipes } from '../../../../../core/fix/engine/recipes.mts';
+import { runRecipes } from '../../../../../core/fix/engine/run-recipes.mts';
+import type { RunOutcome } from '../../../../../core/fix/typed/command-types.mts';
 import type { LabeledHunk } from '../patch/select-hunks.mts';
 import { ruleOf, SAFE_CHECKS } from '../checks/error-prone-checks.mts';
 import { twinsOf } from '../checks/twin-rules.mts';
 import { errorProneRecipes } from './error-prone-recipes.mts';
 import { labeledHunk } from '../patch/test-support/labeled-hunks.mts';
 
-type RunOptions = {
-  readonly projectRoot: string;
-  readonly files: readonly FixFile[];
-  readonly recipes: readonly FixRecipe[];
-  readonly preset: string;
-  readonly selectedRules: readonly string[];
-  readonly inputs: object;
-  readonly accepts: (name: string) => boolean;
-};
-
-const defineRecipes: (recipes: readonly FixRecipe[]) => readonly FixRecipe[] = untypedDefineRecipes;
-const runRecipes: (options: RunOptions) => RecipeResult = untypedRunRecipes;
 const roots: string[] = [];
 const NAME = 'src/A.java';
 const SOURCE = 'class A {\n  class Inner {}\n  void run() {}\n}\n';
@@ -51,7 +38,7 @@ function run(
   root: string,
   entries: readonly LabeledHunk[],
   selectedRules: readonly string[] = [],
-): RecipeResult {
+): RunOutcome {
   return runRecipes({
     projectRoot: root,
     files: [{ path: NAME }],

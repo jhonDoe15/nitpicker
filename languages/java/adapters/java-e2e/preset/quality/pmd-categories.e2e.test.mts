@@ -2,7 +2,7 @@ import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { applyFindingPolicy as applyFindingPolicyUntyped } from '../../../../../../shared/findings/finding-policy.mjs';
-import { compareFindings as compareFindingsUntyped } from '../../../../../../core/diff/comparison/compare.mjs';
+import { compareFindings as compareFindingsUntyped } from '../../../../../../core/diff/comparison/compare.mts';
 import { fieldOf, textOf } from '../../../../../../shared/values/readers.mts';
 import {
   preparePmdProbe,

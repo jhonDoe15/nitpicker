@@ -1,10 +1,10 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import path from 'node:path';
-import { reachableModules as untypedReachableModules } from '../../../modules/module-resolution.mjs';
+import { reachableModules as untypedReachableModules } from '../../../modules/module-resolution.mts';
 import {
   moduleSourcesOf as untypedModuleSourcesOf,
   statementSources as untypedStatementSources,
-} from '../../../modules/module-sources.mjs';
+} from '../../../modules/module-sources.mts';
 import { isBrowserEndToEndTest } from '../analysis/test-code-analysis.mts';
 import { moduleMocks } from '../runner-apis/module-mocks.mts';
 import { type RunnerApis, runnerApisOf } from '../runner-apis/runner-apis.mts';

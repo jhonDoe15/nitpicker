@@ -7,9 +7,9 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { fieldOf, fieldsOf, parseJson, textOf } from '../../../shared/values/readers.mts';
 import { type ComparedFinding, compareFindings } from './test-support/typed-compare.mts';
 import { parseAnalyzerReport } from './test-support/parsed-findings.mts';
-import { readProjectMoves as readProjectMovesJs } from '../git/patches/project-moves.mjs';
-import { resolveComparison as resolveComparisonJs } from '../git/repository/git.mjs';
-import { runGit as runGitJs } from '../git/repository/command.mjs';
+import { readProjectMoves as readProjectMovesJs } from '../git/patches/project-moves.mts';
+import { resolveComparison as resolveComparisonJs } from '../git/repository/git.mts';
+import { runGit as runGitJs } from '../git/repository/command.mts';
 
 const readProjectMoves: (request: {
   readonly repositoryRoot: string;

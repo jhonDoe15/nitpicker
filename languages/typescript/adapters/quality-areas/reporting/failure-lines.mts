@@ -7,7 +7,7 @@ import {
   stripAnsi,
   valuesInMessage,
 } from '../typed/reporting.mts';
-import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
+import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mts';
 
 export type ReportedAssertion = {
   readonly status?: unknown;

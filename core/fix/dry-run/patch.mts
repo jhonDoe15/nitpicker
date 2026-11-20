@@ -3,7 +3,7 @@ import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:f
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { GIT_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
-import { containedPath } from '../common/contained-path.mjs';
+import { containedPath } from '../tool-steps/paths/contained-path.mts';
 import type { Change, FileState } from './journal-types.mts';
 
 const MAX_PATCH_BYTES = 256 * 1024 * 1024;

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { DEFAULT_LEGACY_INVENTORY } from '../../../shared/legacy-inventory.mjs';
-import { containedPath } from '../common/contained-path.mjs';
+import { containedPath } from '../tool-steps/paths/contained-path.mts';
 import { messageOf, parseJson } from '../../../shared/values/readers.mts';
 import {
   configuredInventory,

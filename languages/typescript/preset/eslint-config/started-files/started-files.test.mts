@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { tempProjects } from '../test-support/temp-projects.mts';
-import { frameworkConventions } from '../scope-support.mjs';
-import { filesStartedByBuildTool } from './build-tool-commands.mjs';
-import { filesStartedByCommand } from './command-files.mjs';
-import { filesStartedBySource } from './source-starts.mjs';
-import { startedFiles } from './started-files.mjs';
+import { frameworkConventions } from '../scope-support.mts';
+import { filesStartedByBuildTool } from './build-tool-commands.mts';
+import { filesStartedByCommand } from './command-files.mts';
+import { filesStartedBySource } from './source-starts.mts';
+import { startedFiles } from './started-files.mts';
 
 const projectWith = tempProjects('nitpicker-started-files-');
 

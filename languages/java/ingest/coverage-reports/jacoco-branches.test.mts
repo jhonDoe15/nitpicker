@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
-import { parseChangedLines } from '../../../../core/diff/git/patches/changed-lines.mjs';
+import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mts';
+import { parseChangedLines } from '../../../../core/diff/git/patches/changed-lines.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { callUntyped, findingsOf } from '../../adapters/typed/java-values.mts';
 import type { JavaFinding } from '../../adapters/typed/java-values.mts';

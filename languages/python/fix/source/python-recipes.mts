@@ -9,7 +9,7 @@ import type {
 } from '../typed/fix-types.mts';
 import type { ScriptSettings } from '../typed/script-types.mts';
 import { defineRecipes } from '../typed/core-views.mts';
-import { REVIEW, SAFE } from '../../../../core/fix/engine/safety.mjs';
+import { REVIEW, SAFE } from '../../../../core/fix/engine/safety.mts';
 import { scriptEdits } from './script-edits.mts';
 
 const RULES_TOOL = 'python-rules';

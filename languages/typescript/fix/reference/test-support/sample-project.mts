@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { containedPath } from '../../../../../core/fix/typed/fix-views.mts';
+import { containedPath } from '../../../../../core/fix/typed/views/fix-views.mts';
 import { fixWorkingTree, type FixOptions } from '../../../../../core/fix/run-fix.mts';
 import {
   fixOptions,

@@ -1,15 +1,12 @@
 import { existsSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  resolveHeadPolicy as untypedResolveHeadPolicy,
-  withHeadCheckoutFacts as untypedWithHeadCheckoutFacts,
-} from '../head-policy.mjs';
+import { resolveHeadPolicy, withHeadCheckoutFacts } from '../head-policy.mts';
 import { projectStyle as conventionStyle } from '../../../../core/conventions/test-support/project-style.mts';
 import {
   projectToolLayer as untypedProjectToolLayer,
   withProjectToolConfigs as untypedWithProjectToolConfigs,
-} from './project-tool-policy.mjs';
+} from './project-tool-policy.mts';
 import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
@@ -20,12 +17,6 @@ type Settings = {
   projectConfig?: { options?: unknown };
 };
 type ToolMap = { knip?: Settings; prettier?: Settings; 'dependency-cruiser'?: Settings };
-type HeadPolicy = { tools?: ToolMap };
-
-const resolveHeadPolicy: (config: { tools?: ToolMap }, projectRoot?: string) => HeadPolicy =
-  untypedResolveHeadPolicy;
-const withHeadCheckoutFacts: (policy: HeadPolicy, head: HeadPolicy) => HeadPolicy =
-  untypedWithHeadCheckoutFacts;
 const withProjectToolConfigs: (
   tools: ToolMap | undefined,
   projectRoot: string,
@@ -165,8 +156,8 @@ describe('project tool configs in the head policy', () => {
     const head = resolveHeadPolicy({ tools: OPTED_IN }, root);
     const firstOnly = { knip: { precedence: ['nitpicker', 'project'] } };
     expect(
-      withHeadCheckoutFacts(resolveHeadPolicy({ tools: firstOnly }), head).tools?.knip,
-    ).toEqual({ ...head.tools?.knip, precedence: ['nitpicker', 'project'] });
+      withHeadCheckoutFacts(resolveHeadPolicy({ tools: firstOnly }), head).tools?.['knip'],
+    ).toEqual({ ...head.tools?.['knip'], precedence: ['nitpicker', 'project'] });
     const plain = { knip: { precedence: ['nitpicker'] } };
     expect(withHeadCheckoutFacts(resolveHeadPolicy({ tools: plain }), head).tools).toEqual(plain);
     expect(withHeadCheckoutFacts(resolveHeadPolicy({}), head).tools).toBeUndefined();

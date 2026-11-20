@@ -25,12 +25,15 @@ function projectIdentity(project: TimeoutProject): string {
   return JSON.stringify([project.language, [...new Set(project.include)].toSorted()]);
 }
 
-function projectsOf(config: PolicyConfig): ProjectEntry[] {
+function projectsOf(
+  config: PolicyConfig,
+  basePathOf: (file: string) => string = (file) => file,
+): ProjectEntry[] {
   const projects = fieldsOf(fieldOf(settingsOf(config), 'projects'));
   return Object.entries(projects).map(([name, raw]) => {
     const project = {
       language: textOf(fieldOf(raw, 'language')),
-      include: textsOf(fieldOf(raw, 'include')),
+      include: textsOf(fieldOf(raw, 'include')).map(basePathOf),
     };
     return { name, project, identity: projectIdentity(project) };
   });
@@ -151,9 +154,13 @@ function validateProjectScopes(projects: readonly ProjectEntry[]): void {
   }
 }
 
-function effectiveChanges(baseConfig: PolicyConfig, headConfig: PolicyConfig): ChangePart {
+function effectiveChanges(
+  baseConfig: PolicyConfig,
+  headConfig: PolicyConfig,
+  basePathOf: (file: string) => string,
+): ChangePart {
   const baseProjects = projectsOf(baseConfig);
-  const headProjects = projectsOf(headConfig);
+  const headProjects = projectsOf(headConfig, basePathOf);
   validateProjectScopes(headProjects);
   const parts = [
     ...TEST_TIMEOUT_LANGUAGES.map((language) =>
@@ -180,7 +187,11 @@ function effectiveChanges(baseConfig: PolicyConfig, headConfig: PolicyConfig): C
   };
 }
 
-export function timeoutChanges(baseConfig: PolicyConfig, headConfig: PolicyConfig): ChangePart {
+export function timeoutChanges(
+  baseConfig: PolicyConfig,
+  headConfig: PolicyConfig,
+  basePathOf: (file: string) => string = (file) => file,
+): ChangePart {
   if (JSON.stringify(settingsOf(baseConfig)) === JSON.stringify(settingsOf(headConfig))) {
     return { loosened: [], changed: [] };
   }
@@ -191,7 +202,7 @@ export function timeoutChanges(baseConfig: PolicyConfig, headConfig: PolicyConfi
         validateTestTimeouts(settings);
       }
     }
-    return effectiveChanges(baseConfig, headConfig);
+    return effectiveChanges(baseConfig, headConfig, basePathOf);
   } catch (error) {
     return {
       loosened: [

@@ -4,44 +4,18 @@ import {
   readLayout as readUntypedLayout,
   typecheckEngine as untypedTypecheckEngine,
   usesLayeredPrettier as untypedUsesLayeredPrettier,
-} from '../../preset/head-policy.mjs';
-import { layoutTransformFor as untypedLayoutTransformFor } from '../../preset/tool-configs.mjs';
+} from '../../preset/head-policy.mts';
+import { layoutTransformFor } from '../../preset/tool-configs.mts';
+import type { HeadPolicy as RealHeadPolicy } from '../../preset/typed/head-policy-types.mts';
+import type { ResolvedLayout } from '../../preset/typed/layout-types.mts';
 import { globMatcher as untypedGlobMatcher } from '../../../../shared/paths/glob.mjs';
 
 export const globMatcher: (pattern: string) => { test(value: string): boolean } =
   untypedGlobMatcher;
 
-export type EslintToolSettings = { readonly engine?: string };
+export type HeadPolicy = RealHeadPolicy;
 
-export type HeadPolicy = {
-  readonly exceptions: unknown[];
-  readonly testConsole: { readonly allow?: unknown[] };
-  readonly tools: { readonly knip?: unknown; readonly eslint?: EslintToolSettings };
-  readonly history: unknown;
-  readonly thresholds?: unknown;
-  readonly layout?: unknown;
-};
-
-export type Layout = {
-  readonly exclude: readonly string[];
-  readonly graphRoots: readonly string[];
-  readonly sourceRoots: readonly string[];
-  readonly javascript: boolean;
-  isExcluded(relativePath: string): boolean;
-  readonly isSourceFile: (relativePath: string) => boolean;
-  readonly isRunnableTestFile: (relativePath: string) => boolean;
-  readonly isTestFile: (relativePath: string) => boolean;
-  readonly isTestFixture: (file: string, name?: string) => boolean;
-  readonly testGlobs: readonly string[];
-  readonly entryPoints?: readonly string[];
-  readonly testRoots: readonly string[];
-  readonly sourceGlobs: readonly string[];
-  readonly sourceTestDirectoryGlobs: readonly string[];
-  readonly runnerSourceTestGlobs: readonly string[];
-  readonly excludedGlobs: readonly string[];
-  readonly isEndToEndTest: (relativePath: string) => boolean;
-  projectCodeFiles(projectRoot: string, roots?: readonly string[]): readonly string[];
-};
+export type Layout = ResolvedLayout;
 
 export const readHeadPolicy: () => HeadPolicy = readUntypedHeadPolicy;
 
@@ -53,8 +27,4 @@ export const prettierPrecedence: () => readonly string[] = untypedPrettierPreced
 
 export const usesLayeredPrettier: () => boolean = untypedUsesLayeredPrettier;
 
-export const layoutTransformFor: (
-  policyFileName: string,
-  layout: Layout,
-  options?: { readonly projectRootFiles: boolean },
-) => unknown = untypedLayoutTransformFor;
+export { layoutTransformFor };

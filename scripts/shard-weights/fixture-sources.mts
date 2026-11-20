@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { containedPath } from '../../core/fix/common/contained-path.mjs';
+import { containedPath } from '../../core/fix/tool-steps/paths/contained-path.mts';
 
 export const EXCLUDED_FROM_SELF_FIXTURE = new RegExp(
   [

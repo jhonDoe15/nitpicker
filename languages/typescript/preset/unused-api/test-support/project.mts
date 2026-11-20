@@ -5,22 +5,18 @@ import type { Finding } from '../../../../../shared/values/findings.mts';
 import {
   withHeadPolicyFile as untypedWithHeadPolicyFile,
   headPolicyEnvironment as untypedHeadPolicyEnvironment,
-} from '../../head-policy.mjs';
-import { resolveLayoutFor as untypedResolveLayoutFor } from '../../layout.mjs';
-import { layoutTransformFor as untypedLayoutTransformFor } from '../../tool-configs.mjs';
+} from '../../head-policy.mts';
+import { resolveLayoutFor } from '../../layout.mts';
+import { layoutTransformFor } from '../../tool-configs.mts';
 import { analyzeUnusedApi } from '../analyze.mts';
 
 type Files = Readonly<Record<string, unknown>>;
 type Policy = Readonly<Record<string, unknown>>;
-type Transform = (text: string, targetPath: string) => string;
 
 const withHeadPolicyFile: <T>(policy: Policy, operation: (policyFile: string) => T) => T =
   untypedWithHeadPolicyFile;
 const headPolicyEnvironment: (policyFile: string) => NodeJS.ProcessEnv =
   untypedHeadPolicyEnvironment;
-const resolveLayoutFor: (policy: Policy) => unknown = untypedResolveLayoutFor;
-const layoutTransformFor: (policyFileName: string, layout: unknown) => Transform | undefined =
-  untypedLayoutTransformFor;
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../../..');
 const TYPESCRIPT_CONFIG = 'languages/typescript/preset/defaults/tsconfig.quality.json';

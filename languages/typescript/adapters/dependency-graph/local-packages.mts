@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import { TEMPORARY_WORKTREE_PREFIX } from '../../../../core/diff/git/repository/worktree.mjs';
+import { TEMPORARY_WORKTREE_PREFIX } from '../../../../core/diff/git/repository/worktree.mts';
 import { containedPath } from './package-managers/contained-path.mts';
 import { manifestDirectories } from './package-managers/members.mts';
 import { fieldOf, fieldsOf } from '../../../../shared/values/readers.mts';

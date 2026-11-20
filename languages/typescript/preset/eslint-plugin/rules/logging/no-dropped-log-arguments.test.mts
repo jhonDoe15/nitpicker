@@ -3,7 +3,7 @@ import { noDroppedLogArgumentsRule } from './no-dropped-log-arguments.mts';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/service.ts';
-const withPino = noDroppedLogArgumentsRule({ logger: ['pino'] });
+const withPino = noDroppedLogArgumentsRule({ validation: [], logger: ['pino'] });
 
 const PINO = "import pino from 'pino';\nconst log = pino();\n";
 const BUNYAN = "import bunyan from 'bunyan';\nconst log = bunyan.createLogger({ name: 'app' });\n";
@@ -94,7 +94,7 @@ tester.run('no-dropped-log-arguments for pino factories and children', withPino,
 
 tester.run(
   'no-dropped-log-arguments for bunyan',
-  noDroppedLogArgumentsRule({ logger: ['bunyan'] }),
+  noDroppedLogArgumentsRule({ validation: [], logger: ['bunyan'] }),
   {
     valid: [
       "log.info({ config }, 'loaded config');",
@@ -119,14 +119,14 @@ tester.run(
 
 tester.run(
   'no-dropped-log-arguments without a logger library',
-  noDroppedLogArgumentsRule({ logger: ['log4js'] }),
+  noDroppedLogArgumentsRule({ validation: [], logger: ['log4js'] }),
   {
     valid: [{ filename, code: `${PINO}log.info('loaded config', config);` }],
     invalid: [],
   },
 );
 
-const withWinston = noDroppedLogArgumentsRule({ logger: ['winston'] });
+const withWinston = noDroppedLogArgumentsRule({ validation: [], logger: ['winston'] });
 const PLAIN = `${WINSTON}const logger = winston.createLogger({ transports: [new winston.transports.Console()] });\n`;
 const SPLAT = `${WINSTON}const { format } = winston;\nconst logger = winston.createLogger({\n  format: format.combine(format.splat(), format.json()),\n});\n`;
 

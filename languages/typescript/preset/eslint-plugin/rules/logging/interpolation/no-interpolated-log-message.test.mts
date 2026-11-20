@@ -47,7 +47,7 @@ for (const library of ['pino', 'bunyan', 'winston'] as const) {
     const banned = library === 'winston' ? BANNED : [...BANNED, ...BANNED_FIELDS_FIRST];
     tester.run(
       `no-interpolated-log-message for ${library} in ${extension}`,
-      noInterpolatedLogMessageRule({ logger: [library] }),
+      noInterpolatedLogMessageRule({ validation: [], logger: [library] }),
       {
         valid: [...ALLOWED[library], ...COMMON_ALLOWED].map((code) => ({
           filename,
@@ -67,7 +67,7 @@ for (const library of ['pino', 'bunyan', 'winston'] as const) {
 
 tester.run(
   'no-interpolated-log-message without a logging library',
-  noInterpolatedLogMessageRule({}),
+  noInterpolatedLogMessageRule({ validation: [], logger: [] }),
   {
     valid: [
       { filename: '/repo/src/service.ts', code: `${IMPORTS.pino}log.info(\`loaded @{id}\`);` },

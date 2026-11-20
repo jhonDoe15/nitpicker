@@ -1,15 +1,15 @@
 import { helperName as untypedHelperName } from '../../../preset/eslint-plugin/test-placement/no-test-helpers-in-source.mts';
 import { testAreaGlobsFor as untypedTestAreaGlobsFor } from '../../../preset/eslint-config/strict-tests.mts';
-import { pathBelowRoot as untypedPathBelowRoot } from '../../../preset/layout/source-root/root-paths.mjs';
+import { pathBelowRoot as untypedPathBelowRoot } from '../../../preset/layout/source-root/root-paths.mts';
 import {
   existingRoots as untypedExistingRoots,
   globMatcher as untypedGlobMatcher,
-} from '../../../preset/layout.mjs';
+} from '../../../preset/layout.mts';
 import {
   fileNameComplies as untypedFileNameComplies,
   fileNameParts as untypedFileNameParts,
   fileNameRuleOptions as untypedFileNameRuleOptions,
-} from '../../../conventions/file-name-casing.mjs';
+} from '../../../conventions/file-name-casing.mts';
 import { nearestManifest as untypedNearestManifest } from '../../../preset/eslint-plugin/rules/dependencies/package-manifest.mts';
 import type { FixHeadPolicy, FixLayout } from './project-types.mts';
 

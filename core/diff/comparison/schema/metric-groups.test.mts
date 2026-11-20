@@ -3,7 +3,7 @@ import { normalizeStructure } from '../../../../languages/typescript/adapters/qu
 import { compactMetricFindings as untypedCompact } from '../../../../shared/report-output/metric-groups.mjs';
 import { compareFindings } from '../test-support/typed-compare.mts';
 import { parseAnalyzerReport } from '../test-support/parsed-findings.mts';
-import { parseAnalyzerReportKeepingValid as untypedKeepingValid } from './invalid-findings.mjs';
+import { parseAnalyzerReportKeepingValid as untypedKeepingValid } from './invalid-findings.mts';
 
 type Findings = readonly Readonly<Record<string, unknown>>[];
 

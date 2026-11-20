@@ -2,15 +2,15 @@ import type TypeScript from 'typescript';
 import {
   packageNameOf as untypedPackageNameOf,
   resolveModuleSpecifier as untypedResolveModuleSpecifier,
-} from '../../../modules/module-resolution.mjs';
+} from '../../../modules/module-resolution.mts';
 import {
   exportLine as untypedExportLine,
   fileAliasReads as untypedFileAliasReads,
   fileDynamicImports as untypedFileDynamicImports,
   fileExports as untypedFileExports,
   fileImports as untypedFileImports,
-} from '../../../syntax/module-facts.mjs';
-import { referenceMembers as untypedReferenceMembers } from '../../../syntax/references.mjs';
+} from '../../../syntax/module-facts.mts';
+import { referenceMembers as untypedReferenceMembers } from '../../../syntax/references.mts';
 import type { ImportFact, ModuleExports } from './graph-types.mts';
 
 type SourceFile = TypeScript.SourceFile;
@@ -27,6 +27,6 @@ export const fileDynamicImports: (sourceFile: SourceFile) => string[] = untypedF
 export const fileExports: (sourceFile: SourceFile) => ModuleExports = untypedFileExports;
 export const fileImports: (sourceFile: SourceFile) => ImportFact[] = untypedFileImports;
 export const referenceMembers: (
-  nodes: readonly SourceFile[],
+  nodes: readonly TypeScript.Node[],
   ignored: TypeScript.Node[],
-) => Map<string, string[] | undefined> = untypedReferenceMembers;
+) => Map<string, (string | undefined)[] | undefined> = untypedReferenceMembers;

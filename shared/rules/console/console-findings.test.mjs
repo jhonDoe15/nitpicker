@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
-import { parseFinding } from '../../../core/diff/comparison/finding-schema.mjs';
+import { compareFindings } from '../../../core/diff/comparison/compare.mts';
+import { parseFinding } from '../../../core/diff/comparison/finding-schema.mts';
 import { testConsoleFindings } from './console-findings.mjs';
 
 function entry(file, message, test = 'works') {

@@ -8,8 +8,8 @@ import {
 import { javaProjectStyle } from '../../languages/java/conventions/java-project-style.mts';
 import { kotlinStyle } from '../../languages/java/conventions/kotlin-style.mts';
 import { pythonStyle } from '../../languages/python/conventions/python-style.mts';
-import { eslintConfigStyle } from '../../languages/typescript/preset/eslint-project/eslint-style.mjs';
-import { scriptProjectToolNotices } from '../../languages/typescript/preset/project-tools/ignored-notices.mjs';
+import { eslintConfigStyle } from '../../languages/typescript/preset/eslint-project/eslint-style.mts';
+import { scriptProjectToolNotices } from '../../languages/typescript/preset/project-tools/ignored-notices.mts';
 import {
   jscpdIgnoredNotices,
   strykerIgnoredNotices,

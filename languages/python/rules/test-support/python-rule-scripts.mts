@@ -220,3 +220,18 @@ const RELATION_SCHEMA_RULES = ['unindexed-foreign-key', 'eager-relationship', 'r
 export function useRelationScripts(enabled: boolean): ReturnType<typeof useScripts> {
   return useScripts({ enabled, hidden: RELATION_SCHEMA_RULES });
 }
+
+export const DJANGO = ['from django.db import models, transaction', '', '', ''];
+
+export function useWriteScripts(enabled: boolean): ReturnType<typeof useScripts> {
+  return useScripts({ enabled, hidden: ['test-without-assertion'] });
+}
+
+export function modelProject(
+  models: string,
+  module: { readonly file: string; readonly head: string },
+): (body: string) => { files: Record<string, string> } {
+  return (body) => ({
+    files: { 'shop/models.py': models, [module.file]: `${module.head}${body}` },
+  });
+}

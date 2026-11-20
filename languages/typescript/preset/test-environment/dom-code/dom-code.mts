@@ -2,18 +2,19 @@ import path from 'node:path';
 import globals from 'globals';
 import picomatch from 'picomatch';
 import type { Linter } from 'eslint';
-import { restrictedBrowserGlobals as untypedRestrictedBrowserGlobals } from '../../eslint-config/react/react-rules.mjs';
-import { productionScope as untypedProductionScope } from '../../eslint-config/scope-support.mjs';
+import { restrictedBrowserGlobals as untypedRestrictedBrowserGlobals } from '../../eslint-config/react/react-rules.mts';
+import { productionScope } from '../../eslint-config/scope-support.mts';
 import { domainGlobsFor } from '../../eslint-config/strict/strict-domain.mts';
-import { escapedGlob as untypedEscapedGlob } from '../../test-runner/test-files/test-file-patterns.mjs';
-import { isDomEnvironment as untypedIsDomEnvironment } from '../environments.mjs';
+import { escapedGlob as untypedEscapedGlob } from '../../test-runner/test-files/test-file-patterns.mts';
+import { isDomEnvironment as untypedIsDomEnvironment } from '../environments.mts';
 import {
   hasDomDirective as untypedHasDomDirective,
   projectText as untypedProjectText,
-} from './dom-tests.mjs';
+} from './dom-tests.mts';
 import type { EnvironmentScope, Environments } from '../typed/environment-types.mts';
+import type { ResolvedLayout } from '../../typed/layout-types.mts';
 
-type DomLayout = {
+type DomLayout = Pick<ResolvedLayout, 'sourceGlobs' | 'testGlobs' | 'sourceTestDirectoryGlobs'> & {
   readonly sourceRoots: readonly string[];
   readonly excludedGlobs: readonly string[];
   projectCodeFiles(projectRoot: string): readonly string[];
@@ -27,8 +28,6 @@ const restrictedBrowserGlobals: Linter.RuleEntry = [
   'error',
   ...untypedRestrictedBrowserGlobals.slice(1),
 ];
-const productionScope: (layout: DomLayout) => { readonly ignores: readonly string[] } =
-  untypedProductionScope;
 const escapedGlob: (file: string) => string = untypedEscapedGlob;
 const isDomEnvironment: (environment: string | undefined) => boolean = untypedIsDomEnvironment;
 const hasDomDirective: (projectRoot: string, file: string) => boolean = untypedHasDomDirective;

@@ -1,19 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { knipConfigChanges as untypedKnipConfigChanges } from './knip-config-changes.mjs';
+import { knipConfigChanges } from './knip-config-changes.mts';
 
-type ChangeInputs = {
-  base: unknown;
-  head: unknown;
-  precedence: string[];
-  label: string;
-  files: string[];
-};
-
-const knipConfigChanges: (inputs: ChangeInputs) => unknown = untypedKnipConfigChanges;
+type Values = Readonly<Record<string, unknown>>;
 
 const FILES = ['knip.json'];
 
-function changes(base: unknown, head: unknown, precedence = ['project', 'nitpicker']) {
+function changes(base: Values, head: Values, precedence = ['project', 'nitpicker']) {
   return knipConfigChanges({ base, head, precedence, label: 'knip knip.json', files: FILES });
 }
 

@@ -1,3 +1,4 @@
+import type { LineSource } from './line-types.mts';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { changeRepositories, lines } from './test-support/projects/changes-between.mts';
 import {
@@ -40,7 +41,7 @@ describe('lines that moved within a file', () => {
   });
 
   it('maps a head line to its base line, around hunks and through carried lines', () => {
-    const file = {
+    const file: LineSource = {
       hunks: [
         [1, 2, 1, 1],
         [5, 0, 5, 6],

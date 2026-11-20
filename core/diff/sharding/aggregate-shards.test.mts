@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mts';
 import { readJson } from '../git/test-support/fixture-files.mts';
 import { useGitFixtures } from '../git/test-support/git-repository.mts';
 import { exactText } from '../reporting/test-support/output-expectations.mts';

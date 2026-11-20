@@ -1,11 +1,11 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { nitpickerRules } from '../../languages/typescript/preset/eslint-plugin/index.mts';
-import { i18nRuleIds as untypedI18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
+import { i18nRuleIds as untypedI18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mts';
 import {
   reactRuleIds as untypedReactRuleIds,
   reactTestRuleIds as untypedReactTestRuleIds,
-} from '../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
+} from '../../languages/typescript/preset/eslint-config/react/react-rules.mts';
 import { SPRING_ARCH_RULES as UNTYPED_SPRING_ARCH_RULES } from '../../languages/java/adapters/spring-arch/spring-arch.mts';
 import { KOTLIN_EXCEPTION_RULES as UNTYPED_KOTLIN_EXCEPTION_RULES } from '../../languages/java/adapters/kotlin/kotlin-options.mts';
 import { KOTLIN_SOURCE_MESSAGES as UNTYPED_KOTLIN_SOURCE_MESSAGES } from '../../languages/java/adapters/kotlin/scan/kotlin-scan.mts';

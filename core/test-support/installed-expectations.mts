@@ -1,5 +1,5 @@
 import { runCli } from '../cli.mts';
-import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../tooling/tool-resolution.mts';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mts';
 import {
   docsRef as untypedDocsRef,

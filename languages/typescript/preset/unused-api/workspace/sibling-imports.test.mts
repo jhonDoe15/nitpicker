@@ -2,11 +2,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { resolveLayoutFor as untypedResolveLayoutFor } from '../../layout.mjs';
+import { resolveLayoutFor as untypedResolveLayoutFor } from '../../layout.mts';
 import { createProjectProgram } from '../program.mts';
 import { relevantSiblingFiles } from './sibling-imports.mts';
-import { loadPackages } from '../typed/analysis-views.mts';
-import type { AnalysisLayout } from '../typed/analysis-views.mts';
+import { loadPackages } from '../analysis-views.mts';
+import type { AnalysisLayout } from '../analysis-views.mts';
 import type { ProgramLayout } from './workspace-types.mts';
 
 const resolveLayoutFor: (policy: object) => ProgramLayout & AnalysisLayout =

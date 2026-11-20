@@ -5,16 +5,7 @@ import { resolveHeadPolicy } from '../../test-support/policy-views.mts';
 import type { ToolSettings } from '../../test-support/policy-views.mts';
 import { PICK_SOURCE, createRunnerProjects, rulesOf, runArea } from './runner-views.mts';
 import type { ProjectFiles } from './runner-views.mts';
-import { withProjectTestFiles as untypedWithProjectTestFiles } from '../../../test-runner/test-files/project-test-files.mjs';
-
-const withProjectTestFiles: (
-  policy: unknown,
-  options: {
-    readonly projectRoot: string;
-    readonly liveProjectRoot: string;
-    readonly analyzers: readonly object[];
-  },
-) => unknown = untypedWithProjectTestFiles;
+import { withProjectTestFiles } from '../../../test-runner/test-files/project-test-files.mts';
 
 export const OPT_IN = ['project', 'nitpicker'];
 const MOCHA_TESTS = "mocha 'test/**/*.test.ts'";
@@ -28,7 +19,7 @@ type RetryProjects = {
   vitestProject(files: ProjectFiles): string;
   mochaProject(files: ProjectFiles, test?: string): string;
   plainProject(files: ProjectFiles, options?: { linkDependencies?: false }): string;
-  headTests(root: string, precedence: string[], runner?: string): ToolSettings;
+  headTests(root: string, precedence: string[], runner?: string): ToolSettings | undefined;
   coverageWith(root: string, precedence: string[]): Promise<string[]>;
 };
 
@@ -82,9 +73,9 @@ export function createRetryProjects(): RetryProjects {
     plainProject(files: ProjectFiles, options?: { linkDependencies?: false }): string {
       return projects.project(files, options);
     },
-    headTests(root: string, precedence: string[], runner?: string): ToolSettings {
+    headTests(root: string, precedence: string[], runner?: string): ToolSettings | undefined {
       const tests = { precedence, ...(runner === undefined ? {} : { runner }) };
-      return resolveHeadPolicy({ tools: { tests } }, root).tools.tests;
+      return resolveHeadPolicy({ tools: { tests } }, root).tools?.tests;
     },
     async coverageWith(root: string, precedence: string[]): Promise<string[]> {
       const policyFile = path.join(path.dirname(root), 'policy.json');

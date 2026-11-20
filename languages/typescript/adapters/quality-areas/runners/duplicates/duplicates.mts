@@ -6,6 +6,7 @@ import { fieldOf, fieldsOf, listOf } from '../../../../../../shared/values/reade
 import { existingRoots } from '../../../typed/static-checks.mts';
 import { readLayout } from '../../../typed/head-policy.mts';
 import { trackTemporaryPath } from '../../../typed/tooling.mts';
+import { jscpdConfigOf } from '../../../../preset/typed/tool-config/tool-config-guards.mts';
 import { parseReportJson, runNodeTool } from '../../typed/tooling.mts';
 import {
   type JscpdConfig,
@@ -20,10 +21,12 @@ import {
 
 function duplicatesJscpdConfig(options: QualityAreaOptions): JscpdConfig {
   const config = layoutJscpdConfig(
-    parseReportJson(
-      readFileSync(
-        path.join(options.policyRoot, 'languages/typescript/preset/defaults/jscpd.json'),
-        'utf8',
+    jscpdConfigOf(
+      parseReportJson(
+        readFileSync(
+          path.join(options.policyRoot, 'languages/typescript/preset/defaults/jscpd.json'),
+          'utf8',
+        ),
       ),
     ),
     readLayout(),

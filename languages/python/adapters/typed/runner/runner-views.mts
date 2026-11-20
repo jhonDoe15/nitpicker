@@ -1,10 +1,10 @@
 import { analyzerDeadlineMs as untypedDeadline } from '../../../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 import { applyFindingPolicy as untypedApplyPolicy } from '../../../../../shared/findings/finding-policy.mjs';
 import { readHeadPolicyFile as untypedHeadPolicy } from '../../../../../shared/head-policy.mjs';
-import { trackTemporaryPath as untypedTrack } from '../../../../../core/tooling/temporary-files.mjs';
+import { trackTemporaryPath as untypedTrack } from '../../../../../core/tooling/temporary-files.mts';
 import { withTroubleshooting as untypedTroubleshooting } from '../../../../../shared/messages/troubleshooting.mjs';
 import { applyRuleHints as untypedHints } from '../../../rules/rule-hints.mts';
-import { parseRunnerArguments as untypedParse } from '../../../../../core/tooling/runner-arguments.mjs';
+import { parseRunnerArguments as untypedParse } from '../../../../../core/tooling/runner-arguments.mts';
 import { precedenceToolNames as untypedPrecedence } from '../../../../java/adapters/gradle-presets.mts';
 import {
   createToolContext as untypedContext,

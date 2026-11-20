@@ -1,23 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { dependencyCruiserConfigChanges as untypedDependencyCruiserConfigChanges } from './dependency-cruiser-config-changes.mjs';
+import { dependencyCruiserConfigChanges } from './dependency-cruiser-config-changes.mts';
 
-type ChangeInputs = {
-  base: unknown;
-  head: unknown;
-  precedence: string[];
-  label: string;
-  files: string[];
-};
-
-const dependencyCruiserConfigChanges: (inputs: ChangeInputs) => unknown =
-  untypedDependencyCruiserConfigChanges;
+type Values = Readonly<Record<string, unknown>>;
 
 const FILES = ['.dependency-cruiser.json'];
 const LABEL = 'dependency-cruiser .dependency-cruiser.json';
 const RULE = { name: 'no-lib', severity: 'error', from: { path: '^src' }, to: { path: '^lib' } };
 const UNNAMED = { severity: 'error', from: { path: '^src' }, to: { path: '^vendor' } };
 
-function changes(base: unknown, head: unknown) {
+function changes(base: Values, head: Values) {
   return dependencyCruiserConfigChanges({
     base,
     head,

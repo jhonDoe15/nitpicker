@@ -1,11 +1,11 @@
 import path from 'node:path';
-import { runGit } from '../diff/git/repository/command.mjs';
+import { runGit } from '../diff/git/repository/command.mts';
 import { byText } from '../../shared/text-order/by-text.mjs';
 
 const git: (
   root: string,
   commandArguments: readonly string[],
-  options: { readonly environment: NodeJS.ProcessEnv | undefined },
+  options: { readonly environment: Readonly<Record<string, string>> | undefined },
 ) => string = runGit;
 const textOrder: (first: string, second: string) => number = byText;
 

@@ -6,7 +6,7 @@ import {
   removeTrackedTemporaryPaths,
   trackTemporaryPath,
   untrackTemporaryPath,
-} from '../../core/tooling/temporary-files.mjs';
+} from '../../core/tooling/temporary-files.mts';
 import { nestedCheckout, useGitCheckouts } from '../../core/diff/git/test-support/git-checkout.mts';
 import { sourceFilesUnder } from './files.mjs';
 import { withNormalizedTree } from './tree.mjs';

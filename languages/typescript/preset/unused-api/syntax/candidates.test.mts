@@ -1,6 +1,6 @@
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { declaresCheckable as untypedDeclaresCheckable } from './candidates.mjs';
+import { declaresCheckable as untypedDeclaresCheckable } from './candidates.mts';
 
 const declaresCheckable: (sourceFile: ts.SourceFile, react: boolean) => boolean =
   untypedDeclaresCheckable;

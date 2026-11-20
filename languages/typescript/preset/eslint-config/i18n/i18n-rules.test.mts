@@ -1,8 +1,8 @@
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
-import { defaultResolvedLayout } from '../../layout.mjs';
+import { defaultResolvedLayout } from '../../layout.mts';
 import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
-import { i18nRuleNames, i18nRules } from './i18n-rules.mjs';
+import { i18nRuleNames, i18nRules } from './i18n-rules.mts';
 import { ruleNamed } from '../typed/rule-views.mts';
 import { lintFixture } from '../typed/lint-fixture.mts';
 import { i18nPlugin } from './i18n-plugin.mts';

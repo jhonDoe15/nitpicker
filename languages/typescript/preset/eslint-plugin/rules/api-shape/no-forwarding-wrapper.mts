@@ -4,7 +4,7 @@ import {
   type TSESLint,
   type TSESTree,
 } from '@typescript-eslint/utils';
-import { isComponentName as untypedIsComponentName } from '../../../syntax/component-names.mjs';
+import { isComponentName as untypedIsComponentName } from '../../../syntax/component-names.mts';
 import { hasTypeInformation } from '../promises/cannot-reject.mts';
 import { variableNamed, type SourceCode } from '../typed/node-views.mts';
 import { soleReturnedValue } from '../typed/syntax-views.mts';

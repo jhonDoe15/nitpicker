@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterAll, describe, expect, it } from 'vitest';
-import { resolveLayout } from '../../layout.mjs';
+import { resolveLayout } from '../../layout.mts';
 import { reactSyntaxConfigFor } from './react-scope.mts';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-user-event-setup-'));

@@ -6,9 +6,9 @@ import {
   isTrivialValue as untypedIsTrivialValue,
   valueKey as untypedValueKey,
 } from '../../../../../../shared/rules/copied-constants/copied-constants.mjs';
-import { resolveModuleSpecifier as untypedResolveModuleSpecifier } from '../../../modules/module-resolution.mjs';
-import { readStamped as untypedReadStamped } from '../../../modules/stamped-file-cache.mjs';
-import { DEFAULT_EXPORT as untypedDefaultExport } from '../../../syntax/exported-components.mjs';
+import { resolveModuleSpecifier as untypedResolveModuleSpecifier } from '../../../modules/module-resolution.mts';
+import { readStamped as untypedReadStamped } from '../../../modules/stamped-file-cache.mts';
+import { DEFAULT_EXPORT as untypedDefaultExport } from '../../../syntax/exported-components.mts';
 
 export type ConstantValue =
   | { readonly kind: 'string'; readonly value: string }

@@ -1,4 +1,4 @@
-import { linesOf as untypedLinesOf } from '../../../../../core/fix/common/rewrite/line-hunks.mjs';
+import { linesOf as untypedLinesOf } from '../../../../../core/fix/tool-steps/rewrite/line-hunks.mts';
 import type { Hunk, HunkLine } from './unified-diff.mts';
 
 export type HunkEdit = {

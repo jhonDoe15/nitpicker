@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mts';
 import {
   type ResolvedHeadPolicy,
   resolveHeadPolicy,
@@ -181,7 +181,9 @@ describe('dependency-cruiser project config precedence', () => {
       resolveHeadPolicy(cruiserConfig(['project', 'nitpicker'])),
       headPolicy,
     );
-    expect(basePolicy.tools['dependency-cruiser']).toEqual(headPolicy.tools['dependency-cruiser']);
+    expect(basePolicy.tools?.['dependency-cruiser']).toEqual(
+      headPolicy.tools?.['dependency-cruiser'],
+    );
     expect(architecture(base, basePolicy)).toEqual(PROJECT_FIRST);
     const notOptedIn = withHeadCheckoutFacts(resolveHeadPolicy({}), headPolicy);
     expect(architecture(base, notOptedIn)).toEqual(NITPICKER_ONLY);

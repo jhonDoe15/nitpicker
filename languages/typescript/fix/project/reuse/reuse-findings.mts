@@ -1,9 +1,12 @@
 import { createRequire } from 'node:module';
+import path from 'node:path';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import type { FixContext } from '../typed/project-types.mts';
 import type { ToolFinding } from '../typed/reuse-views.mts';
 
 const require = createRequire(import.meta.url);
+const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 
 type ReuseFindings = (
   settings: { readonly projectRoot: string; readonly analyzerName: string },
@@ -15,7 +18,11 @@ function isReuseModule(value: unknown): value is { readonly reuseFindings: Reuse
 }
 
 export function reuseFindingsFor(context: FixContext, rule: string): ToolFinding[] {
-  const loaded: unknown = require('../../../preset/structure/reuse/reuse-findings.mjs');
+  const loaded: unknown = require(
+    checkoutModulePath(
+      path.join(import.meta.dirname, '../../../preset/structure/reuse/reuse-findings.mjs'),
+    ),
+  );
   if (!isReuseModule(loaded)) {
     throw new TypeError('The reuse findings module does not export reuseFindings');
   }

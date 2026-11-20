@@ -3,12 +3,12 @@ import path from 'node:path';
 import type TypeScript from 'typescript';
 import { ts } from '../typed/typescript-views.mts';
 import { readLayout } from '../typed/policy-views.mts';
-import { readStamped as untypedReadStamped } from '../../../modules/stamped-file-cache.mjs';
-import { scriptKindOf as untypedScriptKindOf } from '../../../modules/module-sources.mjs';
+import { readStamped as untypedReadStamped } from '../../../modules/stamped-file-cache.mts';
+import { scriptKindOf as untypedScriptKindOf } from '../../../modules/module-sources.mts';
 import {
   EXCLUDED_PATH_PATTERN as untypedExcludedPattern,
   toPosix as untypedToPosix,
-} from '../../../layout.mjs';
+} from '../../../layout.mts';
 import { walkedPaths as untypedWalkedPaths } from '../../../../../../shared/project-files/tree-walk.mjs';
 import { reachableNames as untypedReachableNames } from '../../../../../../shared/rules/round-trips/round-trips.mjs';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';

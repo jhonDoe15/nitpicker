@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { librariesForFile as untypedLibrariesForFile } from '../../../libraries/file-libraries.mjs';
+import { librariesForFile as untypedLibrariesForFile } from '../../../libraries/file-libraries.mts';
 import { type LibraryChoices } from '../typed/policy-views.mts';
 import { type Context, unwrapped } from '../security/security-values.mts';
 import { loggerOf, type Library, type Logger } from './origins/logger-origins.mts';

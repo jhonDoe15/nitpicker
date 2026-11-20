@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { isComponentName as untypedIsComponentName } from '../../../syntax/component-names.mjs';
+import { isComponentName as untypedIsComponentName } from '../../../syntax/component-names.mts';
 import { nameOf } from '../typed/node-views.mts';
 import type { FunctionNode } from '../react/react-effects.mts';
 

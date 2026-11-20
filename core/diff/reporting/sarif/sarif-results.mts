@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
-import { comparisonKey } from '../../comparison/fingerprint.mjs';
+import { entryKey } from '../../comparison/fingerprint.mts';
 import { plainText } from '../../../../shared/reference/facts.mjs';
 import { entryForFinding, referenceUrl } from '../../../../shared/reference/store.mjs';
-import { repositoryFindingPath } from '../../git/paths.mjs';
+import { repositoryFindingPath } from '../../git/paths.mts';
 import type { ReferenceLinks, ReportEntry } from '../../../../shared/values/findings.mts';
 import { sarifFixes } from './sarif-fixes.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
@@ -11,14 +11,12 @@ import { areaOf } from '../format/rule-groups/finding-areas.mts';
 
 export type SarifEntry = { readonly finding: ReportEntry; readonly baselineState?: string };
 
-const keyOf: (finding: ReportEntry) => string = comparisonKey;
 const plain: (text: unknown, root: unknown) => string = plainText;
 const ruleEntry: (
   index: unknown,
   rule: { readonly tool: unknown; readonly rule: unknown },
 ) => unknown = entryForFinding;
 const ruleUrl: (entry: unknown, root: unknown) => string | undefined = referenceUrl;
-const findingPathIn: (projectPath: string, findingPath: unknown) => string = repositoryFindingPath;
 
 const SARIF_FINGERPRINT_KEY = 'nitpickerIdentity/v1';
 
@@ -45,11 +43,11 @@ function regionOf(location: unknown): object {
   };
 }
 
-function sarifArtifactLocation(findingPath: unknown, projectPath: string | undefined): object {
+function sarifArtifactLocation(findingPath: string, projectPath: string | undefined): object {
   return projectPath === undefined
-    ? { uri: encodePath(findingPathIn('.', findingPath)) }
+    ? { uri: encodePath(repositoryFindingPath('.', findingPath)) }
     : {
-        uri: encodePath(findingPathIn(projectPath, findingPath)),
+        uri: encodePath(repositoryFindingPath(projectPath, findingPath)),
         uriBaseId: SOURCE_ROOT_ID,
       };
 }
@@ -61,7 +59,7 @@ export function toSarifResult(
   { finding, baselineState }: SarifEntry,
   projectPath: string | undefined,
 ): object {
-  const artifactLocation = sarifArtifactLocation(finding.path, projectPath);
+  const artifactLocation = sarifArtifactLocation(textOf(finding.path), projectPath);
   const physicalLocation = { artifactLocation, ...regionOf(finding['location']) };
   return {
     ruleId: ruleIdOf(finding),
@@ -70,7 +68,7 @@ export function toSarifResult(
     message: { text: finding.message },
     locations: [{ physicalLocation }],
     partialFingerprints: {
-      [SARIF_FINGERPRINT_KEY]: createHash('sha256').update(keyOf(finding)).digest('hex'),
+      [SARIF_FINGERPRINT_KEY]: createHash('sha256').update(entryKey(finding)).digest('hex'),
     },
     ...fixesOf(finding, (name) => sarifArtifactLocation(name, projectPath)),
   };

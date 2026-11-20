@@ -16,7 +16,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   Narrowing tsconfig coverage so existing JavaScript loses those checks is reported as a policy
   loosening. The JavaScript preset keeps its own type-checked policy.
 - A project that opts in with `tools.eslint.precedence` has its own `eslint.config.*` layered over these
-  configs (`layeredPolicy` in `languages/typescript/adapters/lint-engine/project-layer.mjs`), on both lint
+  configs (`layeredPolicy` in `languages/typescript/adapters/lint-engine/project-layer.mts`), on both lint
   engines and for the JavaScript preset too. It can add rules and tune nitpicker's, only on the files
   nitpicker runs each rule on, and never switch one of them off. Its `no-restricted-syntax`,
   `no-restricted-globals` and `no-restricted-properties` entries are added to nitpicker's, and a `max-*`
@@ -57,7 +57,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   detector and this list report the same constructs in a test file.
 - `domain/` and `adapters/` rules are scoped by the globs `<sourceRoot>/main/features/*/domain/**`
   and `<sourceRoot>/main/features/*/adapters/**`. They follow the layout's source roots.
-- The boundary rules (`languages/typescript/preset/architecture/strict-boundary-rules.mjs`) are part of the default
+- The boundary rules (`languages/typescript/preset/architecture/strict-boundary-rules.mts`) are part of the default
   dependency-cruiser config used by the `dependency-architecture` analyzer.
 - `no-import-outside-roots` (`languages/typescript/preset/architecture/outside-roots/`) fails production code that
   imports a project file under no source or test root. Packages, Node built-ins, `.json` files,

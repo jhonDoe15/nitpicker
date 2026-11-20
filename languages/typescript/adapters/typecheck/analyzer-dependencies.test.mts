@@ -6,6 +6,7 @@ describe('analyzers that need the installed dependencies in the snapshot', () =>
     const lint = createEslintAnalyzer({
       name: 'eslint-lint',
       configRelativePath: 'eslint.config.mjs',
+      patterns: [],
     });
     const typecheck = createStaticCheckAnalyzer({
       name: 'typescript-typecheck',
@@ -22,7 +23,8 @@ describe('analyzers that need the installed dependencies in the snapshot', () =>
       createEslintAnalyzer({
         name: 'eslint-lint',
         configRelativePath: 'eslint.config.mjs',
-        policyFromPackage,
+        patterns: [],
+        policyFromPackage: policyFromPackage || undefined,
       });
 
     expect([analyzer(true).concurrencyGroup, analyzer(false).concurrencyGroup]).toEqual([

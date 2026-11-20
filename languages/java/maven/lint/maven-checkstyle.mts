@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
   nitpickerCheckstyleConfig,
+  reportingCheckstyleConfig,
+  suppressionsFile,
   withGuardChecks,
 } from '../../builds/rulesets/checkstyle-config.mts';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mts';
@@ -51,7 +53,6 @@ type ReportRequest = Pick<
 };
 
 const LAYOUT_SUPPRESSIONS = 'checkstyle-suppressions.xml';
-const UNFORMATTED_SUPPRESSIONS = 'checkstyle-suppressions-unformatted.xml';
 const TOOL = 'Checkstyle';
 const CHECKSTYLE = 'checkstyle';
 const CHECKSTYLE_XML = 'checkstyle.xml';
@@ -89,16 +90,20 @@ function checkstyleSetup(
   );
   const bundled = textOf(nitpickerCheckstyleConfig(bundledGoogleChecks(jar, spawn ?? spawnSync)));
   const unformatted = fieldOf(style, 'javaStyle') === 'none';
+  const formatting = unformatted ? 'unformatted' : 'formatted';
   const declared = fieldsOf(fieldOf(configs, CHECKSTYLE));
   return writeCheckstyleSetup({
     directory: path.join(reportDir, test ? 'checkstyle-test-config' : 'checkstyle-config'),
     nitpickerConfig: textOf(
       withGuardChecks(
-        unformatted ? unformattedCheckstyle(bundled, fieldOf(style, 'indentation')) : bundled,
+        reportingCheckstyleConfig(
+          unformatted ? unformattedCheckstyle(bundled, fieldOf(style, 'indentation')) : bundled,
+          formatting,
+        ),
         ['checkstyle-all.xml', ...(test ? [] : ['checkstyle-main.xml'])],
       ),
     ),
-    suppressions: unformatted ? UNFORMATTED_SUPPRESSIONS : LAYOUT_SUPPRESSIONS,
+    suppressions: suppressionsFile(formatting),
     project: optionalText(declared['project']),
     projectWins: declared['projectWins'] !== false,
   });

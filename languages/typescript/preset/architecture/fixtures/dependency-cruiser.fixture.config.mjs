@@ -1,5 +1,5 @@
 import path from 'node:path';
-import defaults from '../../defaults/dependency-cruiser.config.mjs';
+import defaults from '../../defaults/dependency-cruiser.config.mts';
 
 export default {
   ...defaults,

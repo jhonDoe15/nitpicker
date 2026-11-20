@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { ESLint } from 'eslint';
 import { listNativeRules } from './plan/rule-listing.mts';
-import { parsedTsconfig } from '../../preset/modules/tsconfig-files.mjs';
+import { parsedTsconfig } from '../../preset/modules/tsconfig-files.mts';
 import { isInvokedModule } from '../typed/static-checks.mts';
 import { incompatiblePackageMessage } from '../lint-engine/compatibility/incompatible-package.mts';
 import { fieldOf, fieldsOf } from '../../../../shared/values/readers.mts';

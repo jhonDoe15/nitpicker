@@ -87,17 +87,18 @@ function onwardEdges({
     });
 }
 
+type MemberMap = ReadonlyMap<string, readonly (string | undefined)[] | undefined>;
+
 function readMembers(
   local: string,
   binding: Binding,
-  {
-    exports,
-    members,
-  }: { exports: ModuleExports; members: ReadonlyMap<string, readonly string[] | undefined> },
+  { exports, members }: { exports: ModuleExports; members: MemberMap },
 ): Binding {
   const escapes = [...exports.locals, ...exports.aliases].some((link) => link.local === local);
   const only = escapes || binding.imported === EVERYTHING ? undefined : members.get(local);
-  return only === undefined ? binding : { ...binding, members: only };
+  return only === undefined
+    ? binding
+    : { ...binding, members: only.flatMap((name) => (name === undefined ? [] : [name])) };
 }
 
 export function moduleLinks({
@@ -111,7 +112,7 @@ export function moduleLinks({
   dynamicImports: readonly string[];
   exports: ModuleExports;
   referenced: Iterable<string>;
-  members?: ReadonlyMap<string, readonly string[] | undefined>;
+  members?: MemberMap;
 }): ModuleFacts {
   const bindings = bindingsOf(imports);
   const used = usedNames({ aliases: exports.aliases, referenced });

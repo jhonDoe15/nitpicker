@@ -1,9 +1,9 @@
 import { pathToFileURL } from 'node:url';
-import { resolveTool as untypedResolveTool } from '../../../../../core/tooling/tool-resolution.mjs';
+import { resolveTool as untypedResolveTool } from '../../../../../core/tooling/tool-resolution.mts';
 import {
   encodedValue as untypedEncodedValue,
   withoutKnipCompilers as untypedWithoutKnipCompilers,
-} from '../config-values.mjs';
+} from '../config-values.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 
 export type LoaderEntry = {

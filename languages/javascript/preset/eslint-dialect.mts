@@ -3,7 +3,7 @@ import {
   isJavascriptPolicy as untypedIsJavascriptPolicy,
   JAVASCRIPT_EXTENSIONS as untypedJavascriptExtensions,
   TYPESCRIPT_EXTENSIONS_IN_JAVASCRIPT_PROJECT as untypedTypescriptExtensions,
-} from './javascript-preset.mjs';
+} from './javascript-preset.mts';
 
 type Setting = Linter.RuleEntry | undefined;
 type Restriction = string | { readonly selector: string };

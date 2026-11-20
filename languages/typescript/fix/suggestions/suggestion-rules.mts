@@ -1,7 +1,7 @@
 import {
   REVIEW as untypedReview,
   SAFE as untypedSafe,
-} from '../../../../core/fix/engine/safety.mjs';
+} from '../../../../core/fix/engine/safety.mts';
 import { GUARDED_FIX_MESSAGE } from '../../preset/eslint-config/fix-guards/guard-message.mts';
 
 const REVIEW: string = untypedReview;

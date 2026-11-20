@@ -5,9 +5,9 @@ import {
   fixtureGit,
   useGitFixtures,
 } from '../../../../core/diff/git/test-support/git-repository.mts';
-import { isSourceFile, resolveLayout } from '../../preset/layout.mjs';
+import { isSourceFile, resolveLayout } from '../../preset/layout.mts';
 import { configuredTargets, mutationTargets } from './runners/mutation-scope.mts';
-import { createQualityAreaAnalyzer as untypedCreateQualityAreaAnalyzer } from './analyzer.mjs';
+import { createQualityAreaAnalyzer as untypedCreateQualityAreaAnalyzer } from './analyzer.mts';
 import { testOptions } from '../test-runners/typed/test-options.mts';
 
 type Roots = {
@@ -23,7 +23,7 @@ type Analyzer = {
     readonly toolRoot: string;
     readonly snapshot: string;
     readonly mutationScope: readonly string[] | undefined;
-  }) => { readonly args: string[] };
+  }) => { readonly args: (string | undefined)[] };
 };
 
 function createQualityAreaAnalyzer(options: {
@@ -247,7 +247,7 @@ describe('the mutation scope argument', () => {
   function invocationArguments(
     kind: string,
     mutationScope: readonly string[] | undefined,
-  ): string[] {
+  ): (string | undefined)[] {
     return createQualityAreaAnalyzer({ name: kind, kind }).createInvocation({
       projectRoot: '/project',
       policyRoot: '/policy',

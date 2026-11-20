@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mts';
 import { runTypecheck } from '../../static-checks/typescript.mts';
 import { resolveTool } from '../../typed/tooling.mts';
 

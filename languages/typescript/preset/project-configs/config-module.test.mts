@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { readConfigObject as untypedReadConfigObject } from './config-module.mjs';
-import { readStrykerProjectConfig, strykerProjectFile } from './stryker-project-config.mjs';
+import { readConfigObject as untypedReadConfigObject } from './config-module.mts';
+import { readStrykerProjectConfig, strykerProjectFile } from './stryker-project-config.mts';
 import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
 const readConfigObject: (projectRoot: string, name: string, timeoutMs?: number) => unknown =

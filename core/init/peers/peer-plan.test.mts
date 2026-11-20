@@ -3,9 +3,9 @@ import { textOf } from '../../../shared/values/readers.mts';
 import { packageVersion } from '../../help/package-version.mts';
 import { useProjects, withPeers } from '../test-support/projects.mts';
 import type { InitProject } from '../init-types.mts';
-import { quotedTypescriptPin } from '../test-support/typescript-pin.mjs';
+import { quotedTypescriptPin } from '../test-support/typescript-pin.mts';
 import { installCommand, planPeers, pythonInstaller, shellQuoted } from './peer-plan.mts';
-import { javascriptApiPin } from '../test-support/typescript-pin.mjs';
+import { javascriptApiPin } from '../test-support/typescript-pin.mts';
 
 const project = useProjects();
 const MUTMUT = 'mutmut>=3,<4';

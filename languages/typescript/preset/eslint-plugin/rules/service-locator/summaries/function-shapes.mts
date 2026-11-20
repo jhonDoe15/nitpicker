@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { syntaxChildren as untypedSyntaxChildren } from '../../../../syntax/children.mjs';
+import { syntaxChildren as untypedSyntaxChildren } from '../../../../syntax/children.mts';
 import { chainOf } from '../../typed/node-views.mts';
 import { ts } from '../../typed/typescript-views.mts';
 import { appendAll } from '../../../../../../../shared/lists/lists.mts';

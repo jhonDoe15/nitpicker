@@ -2,28 +2,28 @@ import path from 'node:path';
 import { readHeadPolicy, readLayout } from '../../adapters/typed/head-policy.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import type { EnvironmentOptions, Environments } from './typed/environment-types.mts';
-import { DEFAULT_TEST_RUNNER } from '../test-runner/runners.mjs';
+import { DEFAULT_TEST_RUNNER } from '../test-runner/runners.mts';
 import { projectTestRunner, type RunnerCommand } from '../test-runner/project-runner.mts';
 import {
   loadedProjectMocha as untypedLoadedProjectMocha,
   mochaSetupEntries as untypedMochaSetupEntries,
-} from '../test-runner/test-files/mocha-test-files.mjs';
-import { projectConfigFile as untypedProjectConfigFile } from './config-files.mjs';
+} from '../test-runner/test-files/mocha-test-files.mts';
+import { projectConfigFile as untypedProjectConfigFile } from './config-files.mts';
 import {
   DEFAULT_ENVIRONMENT,
   TEST_ENVIRONMENT_RULE,
   TEST_ENVIRONMENTS_VARIABLE,
-} from './environments.mjs';
+} from './environments.mts';
 import {
   globalDomEnvironments as untypedGlobalDomEnvironments,
   nodeSetupEntries as untypedNodeSetupEntries,
-} from './global-dom/global-dom.mjs';
-import { environmentsFromJestConfig as untypedEnvironmentsFromJestConfig } from './jest/jest-environment.mjs';
+} from './global-dom/global-dom.mts';
+import { environmentsFromJestConfig as untypedEnvironmentsFromJestConfig } from './jest/jest-environment.mts';
 import {
   jestConfigFile as untypedJestConfigFile,
   readJestConfig as untypedReadJestConfig,
-} from './jest/read-jest-config.mjs';
-import { readViteConfig as untypedReadViteConfig } from './vite/vite-reader.mjs';
+} from './jest/read-jest-config.mts';
+import { readViteConfig as untypedReadViteConfig } from './vite/vite-reader.mts';
 
 type EnvironmentNotice = {
   readonly tool: string;

@@ -1,7 +1,6 @@
 import type { QualityAreaOptions } from '../../quality-areas/typed/area-types.mts';
 import type { NodeToolResult } from '../../static-checks/shared.mts';
-
-export type RunnerName = 'vitest' | 'jest' | 'node' | 'mocha';
+import type { RunnerName } from '../../../preset/test-runner/typed/command-types.mts';
 
 export type Rerun = {
   readonly files: readonly string[];

@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { resolveModuleSpecifier as untypedResolveModuleSpecifier } from '../../../../modules/module-resolution.mjs';
+import { resolveModuleSpecifier as untypedResolveModuleSpecifier } from '../../../../modules/module-resolution.mts';
 import { nameOf, nodeChildren, variableNamed, type SourceCode } from '../../typed/node-views.mts';
 import { isFunctionNode, type FunctionNode } from '../react-effects.mts';
 import { attributeNamed, inKeyAttribute } from '../jsx.mts';

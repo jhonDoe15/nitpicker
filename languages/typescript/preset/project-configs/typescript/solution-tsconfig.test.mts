@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useTemporaryProjects } from '../../test-support/temporary-projects.mts';
-import { typescriptIgnoredNotices as untypedNotices } from '../ignored-notices.mjs';
+import { typescriptIgnoredNotices as typescriptNotices } from '../ignored-notices.mts';
 import {
   BUILD,
   COMMON,
@@ -12,25 +12,7 @@ import {
   diagnostics,
   json,
 } from '../test-support/solution-fixtures.mts';
-import {
-  extendedProjectTsconfig as untypedExtendedProjectTsconfig,
-  projectTsconfigFiles as untypedProjectTsconfigFiles,
-} from './typescript-project-options.mjs';
-
-type ProjectLayout = {
-  javascript: boolean;
-  sourceRoots: string[];
-  isTestFile?: (file: string) => boolean;
-};
-
-const extendedProjectTsconfig: (root: string, layout: ProjectLayout) => string | undefined =
-  untypedExtendedProjectTsconfig;
-const projectTsconfigFiles: (root: string, layout: ProjectLayout) => string[] =
-  untypedProjectTsconfigFiles;
-const typescriptNotices: (options: {
-  config: Record<string, unknown>;
-  projectRoot: string;
-}) => unknown = untypedNotices;
+import { extendedProjectTsconfig, projectTsconfigFiles } from './typescript-project-options.mts';
 
 const { projectWith } = useTemporaryProjects('nitpicker-ts-solution-', { resolveSymlinks: true });
 

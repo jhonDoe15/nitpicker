@@ -231,7 +231,7 @@ function uncollectedFinding(
 
 export function uncollectedWorkspaceTestFindings(
   projectRoot: string,
-  { analyzerName, exceptions = [] }: { analyzerName: string; exceptions?: unknown[] },
+  { analyzerName, exceptions = [] }: { analyzerName: string; exceptions?: readonly unknown[] },
 ): Finding[] {
   const manifest = readJson(path.join(projectRoot, MANIFEST));
   const files = projectFilePaths(projectRoot, {

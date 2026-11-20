@@ -4,7 +4,7 @@ import {
   chainOf as untypedChainOf,
   depthFirst as untypedDepthFirst,
 } from '../../../../../shared/traversal.mjs';
-import { syntaxChildren as untypedSyntaxChildren } from '../../syntax/children.mjs';
+import { syntaxChildren as untypedSyntaxChildren } from '../../syntax/children.mts';
 
 const api = typescriptApi();
 

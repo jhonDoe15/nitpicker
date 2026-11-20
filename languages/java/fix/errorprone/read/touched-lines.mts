@@ -1,7 +1,7 @@
 import {
   lineHunks as untypedLineHunks,
   linesOf as untypedLinesOf,
-} from '../../../../../core/fix/common/rewrite/line-hunks.mjs';
+} from '../../../../../core/fix/tool-steps/rewrite/line-hunks.mts';
 import type { FixFile } from '../../../../../core/fix/typed/fix-types.mts';
 import type { Touched } from '../patch/select-hunks.mts';
 

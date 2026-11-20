@@ -2,7 +2,7 @@ import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { resolveProjectRoot } from '../configuration/project-checks/project-root.mts';
 import { publishHeadPolicy } from '../conventions/resolve.mts';
-import { withProjectTestFiles } from '../../languages/typescript/preset/test-runner/test-files/project-test-files.mjs';
+import { withProjectTestFiles } from '../../languages/typescript/preset/test-runner/test-files/project-test-files.mts';
 import {
   configureAll,
   presetAnalyzers,
@@ -17,7 +17,7 @@ import {
   resolveCacheStore,
 } from '../diff/cache/cache-stores.mts';
 import { publishBaseSnapshot, WITHOUT_CHANGED_TESTS } from '../diff/cache/publish-cache.mts';
-import { runGit } from '../diff/git/repository/command.mjs';
+import { runGit } from '../diff/git/repository/command.mts';
 import { selectAnalyzers } from '../diff/execution/run-analyzers.mts';
 import { selectAnalyzerShard } from '../diff/sharding/sharding.mts';
 import { CACHE_PUBLISH_USAGE_TEXT } from '../help/usage-text.mts';
@@ -172,7 +172,7 @@ function publishedAnalyzers(
   cli: CacheCli,
   { config, projectRoot, options }: PublishTarget,
 ): { readonly headPolicy: unknown; readonly selected: Analyzer[] } {
-  const detectedPolicy: unknown = publishHeadPolicy(config, projectRoot, {
+  const detectedPolicy = publishHeadPolicy(config, projectRoot, {
     maven: cli.environment['NITPICKER_MAVEN'],
   });
   const headPolicy: unknown = withProjectTestFiles(detectedPolicy, {

@@ -2,10 +2,10 @@ import {
   analyzerMetadata as metadataOf,
   analyzerName as nameOf,
 } from '../diff/reporting/report-model.mts';
-import { withHeadPolicyFile } from '../../languages/typescript/preset/head-policy.mjs';
+import { withHeadPolicyFile } from '../../languages/typescript/preset/head-policy.mts';
 import type { MetadataMap } from '../diff/execution/report/analyzer-metadata.mts';
 import { resumedAnalyzerRun } from '../diff/cache/resume/snapshot-resume.mts';
-import { scopeSummary } from '../scope/scope-findings.mjs';
+import { type Scope as ScopeValue, scopeSummary } from '../scope/scope-findings.mts';
 import { fieldOf, textOf } from '../../shared/values/readers.mts';
 import { type ReportEntry, entriesOf } from '../../shared/values/findings.mts';
 import { inFocus, isEnforceable, labelSummary } from './snapshot-labels.mts';
@@ -16,7 +16,7 @@ import { appendAll } from '../../shared/lists/lists.mts';
 
 type Finding = ReportEntry;
 
-type Scope = unknown;
+type Scope = ScopeValue | undefined;
 
 type SnapshotRun = {
   readonly reports: ReadonlyMap<string, { readonly findings: readonly Finding[] }>;
@@ -62,7 +62,6 @@ export type QualitySnapshot = {
 const withPolicyFile: <Run>(headPolicy: object, run: (headPolicyFile: unknown) => Run) => Run =
   withHeadPolicyFile;
 const withoutOverlaps: <Run>(run: Run) => Run = withoutCrossToolOverlaps;
-const scopeFields: (scope: Scope, outside: number) => object = scopeSummary;
 
 function sortKey(value: unknown): string {
   return typeof value === 'string' ? value : '';
@@ -173,7 +172,7 @@ function snapshotSummary({
   const exclusions = declaredExclusions(analyzers);
   const overallStatus = overallStatusFor({ toolErrors, enforceableFindings });
   return {
-    ...scopeFields(scope, outside),
+    ...scopeSummary(scope, outside),
     tools,
     exclusions,
     elapsedMs: Date.now() - startedAt,

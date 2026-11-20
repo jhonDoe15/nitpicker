@@ -3,8 +3,8 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
 import { recipeSpecs, runRecipes } from '../test-support/engine-views.mts';
-import { sharedInputs } from './shared-inputs.mjs';
-import { SHARED_RECIPES } from './shared-recipes.mjs';
+import { sharedInputs } from './shared-inputs.mts';
+import { SHARED_RECIPES } from './shared-recipes.mts';
 
 const { createGitRepository } = useGitFixtures();
 

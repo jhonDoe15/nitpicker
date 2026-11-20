@@ -1,5 +1,5 @@
 import { appendFileSync } from 'node:fs';
-import { readHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
+import { readHeadPolicy } from '../../../languages/typescript/preset/head-policy.mts';
 
 const [root, logPath] = process.argv.slice(2);
 appendFileSync(logPath, `${JSON.stringify({ root, policy: readHeadPolicy() })}\n`);

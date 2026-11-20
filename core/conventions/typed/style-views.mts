@@ -2,8 +2,8 @@ import { jscpdIgnoredNotices as untypedJscpdIgnoredNotices } from '../../../shar
 import {
   strykerIgnoredNotices as untypedStrykerIgnoredNotices,
   typescriptIgnoredNotices as untypedTypescriptIgnoredNotices,
-} from '../../../languages/typescript/preset/project-configs/ignored-notices.mjs';
-import { testsIgnoredNotices as untypedTestsIgnoredNotices } from '../../../languages/typescript/preset/project-configs/test-runner/test-runner-notices.mjs';
+} from '../../../languages/typescript/preset/project-configs/ignored-notices.mts';
+import { testsIgnoredNotices as untypedTestsIgnoredNotices } from '../../../languages/typescript/preset/project-configs/test-runner/test-runner-notices.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import type { StyleContext } from './convention-types.mts';
 

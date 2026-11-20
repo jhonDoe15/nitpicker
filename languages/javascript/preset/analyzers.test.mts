@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { analyzeEntryPoints as untypedAnalyzeEntryPoints } from '../../typescript/preset/entry-points/analyze.mjs';
-import { resolveLayout as untypedResolveLayout } from '../../typescript/preset/layout.mjs';
+import { analyzeEntryPoints as untypedAnalyzeEntryPoints } from '../../typescript/preset/entry-points/analyze.mts';
+import { resolveLayout as untypedResolveLayout } from '../../typescript/preset/layout.mts';
 import { analyzeTestRuntime } from '../../typescript/preset/test-runtime/analyze.mts';
 
 type Layout = ReturnType<typeof untypedResolveLayout>;
@@ -35,11 +35,8 @@ type TestRuntimeUsage = ReturnType<typeof analyzeTestRuntime>['tests'][number];
 
 const analyzeEntryPoints: (graph: Graph, sourceRoot: string, options: EntryOptions) => EntryReport =
   untypedAnalyzeEntryPoints;
-const resolveLayout: (
-  config?: object,
-  roots?: string[],
-  options?: { javascript: boolean },
-) => Layout = untypedResolveLayout;
+const resolveLayout: (config?: object, roots?: string[], options?: { javascript: true }) => Layout =
+  untypedResolveLayout;
 
 const javascriptLayout = resolveLayout({}, [], { javascript: true });
 const typescriptLayout = resolveLayout();

@@ -1,7 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
-import { failureText, fixSpawn, runFixCommand } from '../../../../core/fix/common/fix-command.mjs';
+import { containedPath } from '../../../../core/fix/tool-steps/paths/contained-path.mts';
+import { fixSpawn, runFixCommand } from '../../../../core/fix/tool-steps/commands/fix-command.mts';
 import { gradleTarget } from '../../adapters/gradle-wrapper/gradle-command.mts';
 import { detectJavaBuild } from '../../builds/java-build.mts';
 import {
@@ -13,6 +13,7 @@ import {
   resolveToolSet,
   toolsKey,
 } from '../../maven/maven-tools.mts';
+import { failureOf } from './failure-of.mts';
 import { resolutionSettings } from './project-repositories.mts';
 import type { Environment } from '../../../../shared/processes/environment.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
@@ -126,8 +127,7 @@ function resolveWithGradle({ projectRoot, tools, environment, executeFixCommand 
       shell: fieldOf(target, 'shell'),
       timeout: TOOL_RESOLUTION_TIMEOUT_MS,
       executeFixCommand,
-      describe: (failed: unknown) =>
-        `${textOf(failureText(failed))} (${resolutionHint(directory, sources)})`,
+      describe: (failed: unknown) => `${failureOf(failed)} (${resolutionHint(directory, sources)})`,
     });
     const classpaths = parseToolClasspaths(textOf(fieldOf(result, 'stdout')));
     storeClasspaths(staging, classpaths);

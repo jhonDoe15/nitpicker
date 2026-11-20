@@ -44,11 +44,13 @@ export function dataFileKind(relativePath: string): DataKind | undefined {
 
 export function dataConventionOptions(
   kind: DataKind,
-  conventions: Readonly<Record<string, string>> = {},
+  conventions: Readonly<Record<string, unknown>> = {},
   { followed }: { readonly followed: boolean } = { followed: false },
 ): DataConventionOptions {
   const definition = DATA_CONVENTIONS.find(({ id }) => id === DATA_KINDS[kind].id);
-  const value = conventions[DATA_KINDS[kind].id] ?? (followed ? definition?.fallback : undefined);
+  const configured = conventions[DATA_KINDS[kind].id];
+  const inherited = followed ? definition?.fallback : undefined;
+  const value = typeof configured === 'string' ? configured : inherited;
   if (value === undefined) {
     return {};
   }

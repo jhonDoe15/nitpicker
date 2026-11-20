@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { DUPLICATES_REPORT } from '../../../../core/tooling/jscpd/run-jscpd.mjs';
+import { DUPLICATES_REPORT } from '../../../../core/tooling/jscpd/run-jscpd.mts';
 import { execute, failure, probeVersion } from './python-process.mts';
 import type {
   ProcessContext,

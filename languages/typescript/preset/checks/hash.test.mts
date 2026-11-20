@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
-import { hashFiles as untypedHashFiles } from './hash.mjs';
+import { hashFiles as untypedHashFiles } from './hash.mts';
 import { importClosure } from '../../../../shared/import-closure.mjs';
 
 type Closure = (files: readonly string[], root: string) => Map<string, string>;

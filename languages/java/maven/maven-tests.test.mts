@@ -1,15 +1,6 @@
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  utimesSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readFileSync, utimesSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   archunitMatcher,
   collectTestResults,
@@ -23,20 +14,11 @@ import { javaArgumentFile, runPit } from './pit/maven-pit.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 import { readPitMutators as untypedPitMutators } from '../builds/java-build.mts';
 import { pitTargets } from './module/pit-scope.mts';
+import { temporaryProjectMaker } from '../__tests__/temporary-roots.mts';
 
 const readPitMutators: () => string[] = untypedPitMutators;
 
-const roots: string[] = [];
-
-function tree(files: Readonly<Record<string, string>>): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-tests-'));
-  roots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
-}
+const tree = temporaryProjectMaker('nitpicker-maven-tests-');
 
 const suite = (name: string, cases: readonly (readonly [string, string?])[]): string =>
   `<?xml version="1.0"?><testsuite name="${name}">${cases
@@ -46,12 +28,6 @@ const suite = (name: string, cases: readonly (readonly [string, string?])[]): st
         : `<testcase classname="${name}" name="${test}"><failure message="${failure}" type="AssertionError">trace</failure></testcase>`,
     )
     .join('')}</testsuite>`;
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
 
 describe('archunitMatcher', () => {
   it('matches the default ArchUnit class names and nested classes, or the configured patterns', () => {

@@ -7,7 +7,7 @@ import {
   readManifest as untypedReadManifest,
   storyGlobs as untypedStoryGlobs,
   testsCleanUpAutomatically as untypedTestsCleanUpAutomatically,
-} from '../scope-support.mjs';
+} from '../scope-support.mts';
 import type { ScopeLayout } from './config-types.mts';
 
 type Manifest = {

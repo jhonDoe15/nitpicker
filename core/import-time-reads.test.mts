@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT as untypedPackageRoot } from './tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT as untypedPackageRoot } from './tooling/tool-resolution.mts';
 
 const root: string = untypedPackageRoot;
 const SHIPPED_FOLDERS = ['core', 'shared', 'languages'];

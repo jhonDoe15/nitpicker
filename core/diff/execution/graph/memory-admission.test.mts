@@ -11,7 +11,7 @@ import {
   usableMemoryMegabytes,
   withNodeHeap,
 } from '../../../../shared/processes/memory/node-heap.mts';
-import { memoryScaleOf as untypedMemoryScaleOf } from '../../../../languages/typescript/preset/diff/memory-scales.mjs';
+import { memoryScaleOf as untypedMemoryScaleOf } from '../../../../languages/typescript/preset/diff/memory-scales.mts';
 
 const memoryScaleOf: (name: string) => { readonly perThousandFilesMegabytes: number } | undefined =
   untypedMemoryScaleOf;

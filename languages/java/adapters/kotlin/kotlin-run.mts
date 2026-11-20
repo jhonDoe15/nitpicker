@@ -4,7 +4,7 @@ import path from 'node:path';
 import {
   trackTemporaryPath,
   untrackTemporaryPath,
-} from '../../../../core/tooling/temporary-files.mjs';
+} from '../../../../core/tooling/temporary-files.mts';
 import { callUntyped, type JavaPolicy } from '../typed/java-values.mts';
 import { textsOf } from '../../../../shared/values/readers.mts';
 import { kotlinFormatAdvice } from './style/kotlin-format-advice.mts';

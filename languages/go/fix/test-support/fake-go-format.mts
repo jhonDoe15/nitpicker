@@ -2,7 +2,7 @@ type Invocation = {
   command: string;
   args: readonly string[];
   input: string | undefined;
-  cwd: string;
+  cwd: string | undefined;
 };
 type Reply = { status: number; stdout: string; stderr: string };
 

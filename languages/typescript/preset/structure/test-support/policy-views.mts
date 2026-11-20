@@ -2,7 +2,7 @@ import {
   headPolicyEnvironment as untypedHeadPolicyEnvironment,
   resolveHeadPolicy as untypedResolveHeadPolicy,
   withHeadPolicyFile as untypedWithHeadPolicyFile,
-} from '../../head-policy.mjs';
+} from '../../head-policy.mts';
 
 export type PolicyInput = Readonly<Record<string, unknown>>;
 

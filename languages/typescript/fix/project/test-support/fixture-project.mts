@@ -1,7 +1,7 @@
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
-import { runRecipes as untypedRunRecipes } from '../../../../../core/fix/engine/run-recipes.mjs';
+import { runRecipes as untypedRunRecipes } from '../../../../../core/fix/engine/run-recipes.mts';
 import type { FixInputs, ProjectRecipe } from '../typed/project-types.mts';
 
 type FixtureFiles = Readonly<Record<string, string | undefined>>;

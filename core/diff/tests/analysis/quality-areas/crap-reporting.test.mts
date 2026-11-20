@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
-  applyThresholds as applyThresholdsJs,
+  applyThresholds,
   configuredAnalyzers,
-} from '../../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
+} from '../../../../../languages/typescript/preset/diff/configured-analyzers.mts';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../../shared/policy.mjs';
-import { hashFiles } from '../../../../../languages/typescript/preset/checks/hash.mjs';
+import { hashFiles } from '../../../../../languages/typescript/preset/checks/hash.mts';
 import { compareFindings } from '../../../comparison/test-support/typed-compare.mts';
 import { fieldOf, parseJson } from '../../../../../shared/values/readers.mts';
 import { fieldAt } from '../../../../../scripts/json/fields.mts';
@@ -12,24 +12,7 @@ import type { Finding } from '../../../../../shared/values/findings.mts';
 import type { CrapEntry } from '../../../../../languages/typescript/adapters/quality-areas/typed/reporting.mts';
 import { normalizeCrap } from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mts';
 
-type CrapAnalyzer = {
-  readonly name: string;
-  readonly configurationHash: unknown;
-  readonly resolveVersion: unknown;
-  readonly createInvocation: (context: {
-    readonly projectRoot: string;
-    readonly policyRoot: string;
-    readonly toolRoot: string;
-    readonly snapshot: string;
-  }) => { readonly args: readonly string[] };
-};
-
-const catalog: () => CrapAnalyzer[] = configuredAnalyzers;
-const applyThresholds: (
-  analyzers: CrapAnalyzer[],
-  thresholds: { readonly crapLimit: number },
-) => CrapAnalyzer[] = applyThresholdsJs;
-const packageAnalyzers = catalog();
+const packageAnalyzers = configuredAnalyzers();
 
 function isCrapEntry(value: unknown): value is CrapEntry {
   return typeof fieldOf(value, 'source') === 'string';
@@ -189,11 +172,12 @@ describe('CRAP reporting in the quality-area analyzers', () => {
       projectRoot: '/project',
       policyRoot: '/policy',
       toolRoot: '/tools',
+      liveProjectRoot: '/project',
       snapshot: 'head',
     });
     expect(invocation?.args.slice(-2)).toEqual(['--crap-score-limit', '12']);
     const defaultCrap = packageAnalyzers.find(({ name }) => name === 'crap');
-    expect(configured?.configurationHash).not.toBe(defaultCrap?.configurationHash);
+    expect(configured?.['configurationHash']).not.toBe(defaultCrap?.['configurationHash']);
     expect(typeof configured?.resolveVersion).toBe('function');
   });
   it('includes the active CRAP limit in the configuration hash', () => {

@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
+import { compareFindings } from '../../../../../core/diff/comparison/compare.mts';
 import type { IngestedFinding } from '../../../ingest/typed/ingest-types.mts';
 import { ingestRulesReport } from '../../../ingest/rules-report.mts';
 import { applyRuleHints, exceptionRoute } from '../../typed/rule-hint-views.mts';
+import { callUntyped } from '../../../../../shared/values/boundaries/untyped-call.mts';
 import {
   createScripts,
   type ScriptFiles,
@@ -28,12 +29,14 @@ type Comparison = {
   readonly newFindings: readonly IngestedFinding[];
   readonly unchangedFindings: readonly IngestedFinding[];
 };
-const compareView: (input: {
+function compareView(input: {
   baseFindings: readonly IngestedFinding[];
   headFindings: readonly IngestedFinding[];
   touchedCode: undefined;
   unknownOnBase: undefined;
-}) => unknown = compareFindings;
+}): unknown {
+  return callUntyped(compareFindings, input);
+}
 function isComparison(value: unknown): value is Comparison {
   return (
     typeof value === 'object' &&

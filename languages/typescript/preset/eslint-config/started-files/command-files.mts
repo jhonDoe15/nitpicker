@@ -1,0 +1,143 @@
+import path from 'node:path';
+import { shellCommands as untypedShellCommands } from '../../../../../shared/started-files/shell-commands.mjs';
+import { appendAll } from '../../../../../shared/lists/lists.mts';
+
+type Found = { entryPoints: string[]; defaultExports: string[] };
+type ScanStep = Found & { skip: number; stop: boolean };
+type Segment = { readonly tokens: readonly string[]; readonly directory: string };
+
+const shellCommands: (command: string, baseDirectory?: string) => Segment[] = untypedShellCommands;
+
+const RUNNERS = new Set([
+  'node',
+  'nodejs',
+  'tsx',
+  'ts-node',
+  'ts-node-esm',
+  'bun',
+  'nodemon',
+  'babel-node',
+  'esno',
+  'jiti',
+  'vite-node',
+]);
+const SUBCOMMANDS = new Set(['run', 'watch', 'exec', 'x']);
+const LOADER_OPTIONS = new Set([
+  '--import',
+  '--loader',
+  '--experimental-loader',
+  '--require',
+  '-r',
+  '--test-reporter',
+]);
+const VALUE_OPTIONS = new Set([
+  '--conditions',
+  '-C',
+  '--env-file',
+  '--eval',
+  '-e',
+  '--print',
+  '-p',
+  '--inspect-port',
+  '--stack-size',
+  '--tsconfig',
+  '--test-reporter-destination',
+  '--test-name-pattern',
+]);
+const CODE_FILE = /\.[cm]?[jt]sx?$/u;
+const ASSIGNMENT = /^[A-Za-z_]\w*=/u;
+const UNRESOLVED = /[$*{}`()<>]/u;
+
+function runnerName(token: string): string {
+  return token.slice(token.lastIndexOf('/') + 1);
+}
+
+function normalized(candidate: string | undefined, directory: string): string | undefined {
+  if (candidate === undefined || UNRESOLVED.test(candidate) || !CODE_FILE.test(candidate)) {
+    return undefined;
+  }
+  return path.posix.normalize(path.posix.join(directory, candidate));
+}
+
+function loaderValue(
+  token: string,
+  next: string | undefined,
+): { value: string | undefined; consumed: number } | undefined {
+  const separator = token.indexOf('=');
+  if (separator > 0 && LOADER_OPTIONS.has(token.slice(0, separator))) {
+    return { value: token.slice(separator + 1), consumed: 0 };
+  }
+  return LOADER_OPTIONS.has(token) ? { value: next, consumed: 1 } : undefined;
+}
+
+function isOptionValue(tokens: readonly string[], index: number): boolean {
+  const previous = tokens[index - 1];
+  return index > 0 && previous !== undefined && previous.startsWith('-') && !previous.includes('=');
+}
+
+function isSkippedToken(tokens: readonly string[], index: number): boolean {
+  const token = tokens[index] ?? '';
+  return (
+    token.startsWith('-') ||
+    SUBCOMMANDS.has(token) ||
+    (isOptionValue(tokens, index) && !CODE_FILE.test(token))
+  );
+}
+
+function listOf(file: string | undefined): string[] {
+  return file === undefined ? [] : [file];
+}
+
+function scanToken(tokens: readonly string[], index: number, directory: string): ScanStep {
+  const token = tokens[index] ?? '';
+  const loader = loaderValue(token, tokens[index + 1]);
+  if (loader !== undefined) {
+    const files = listOf(normalized(loader.value, directory));
+    return { entryPoints: files, defaultExports: files, skip: loader.consumed, stop: false };
+  }
+  const skip = VALUE_OPTIONS.has(token) ? 1 : 0;
+  if (skip > 0 || isSkippedToken(tokens, index)) {
+    return { entryPoints: [], defaultExports: [], skip, stop: false };
+  }
+  return {
+    entryPoints: listOf(normalized(token, directory)),
+    defaultExports: [],
+    skip,
+    stop: true,
+  };
+}
+
+function scanRunnerArguments(tokens: readonly string[], directory: string): Found {
+  const found: Found = { entryPoints: [], defaultExports: [] };
+  let skip = 0;
+  for (const index of tokens.keys()) {
+    if (skip > 0) {
+      skip -= 1;
+      continue;
+    }
+    const step = scanToken(tokens, index, directory);
+    appendAll(found.entryPoints, step.entryPoints);
+    appendAll(found.defaultExports, step.defaultExports);
+    skip = step.skip;
+    if (step.stop) {
+      break;
+    }
+  }
+  return found;
+}
+
+function scanSegment({ tokens: all, directory }: Segment): Found {
+  const tokens = all.filter((token) => !ASSIGNMENT.test(token));
+  const start = tokens.findIndex((token) => RUNNERS.has(runnerName(token)));
+  return start < 0
+    ? { entryPoints: [], defaultExports: [] }
+    : scanRunnerArguments(tokens.slice(start + 1), directory);
+}
+
+export function filesStartedByCommand(command: string, directory: string = ''): Found {
+  const results = shellCommands(command, directory).map((segment) => scanSegment(segment));
+  return {
+    entryPoints: results.flatMap((result) => result.entryPoints),
+    defaultExports: results.flatMap((result) => result.defaultExports),
+  };
+}

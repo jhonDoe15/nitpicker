@@ -1,9 +1,8 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { scratchTrees } from '../../../../../shared/test-support/scratch-trees.mts';
-import { typecheckProgramRoots as untypedProgramRoots } from './program-roots.mjs';
+import { typecheckProgramRoots } from './program-roots.mts';
 
-const typecheckProgramRoots: (projectRoot: string) => string[] = untypedProgramRoots;
 const repository = scratchTrees('nitpicker-program-roots-');
 
 function reached(root: string, project: string): string[] {

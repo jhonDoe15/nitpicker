@@ -10,8 +10,8 @@ import {
   projectRelative,
   runnerOf,
 } from '../../runner-apis/runner-option.mts';
-import { statementSources as untypedStatementSources } from '../../../../modules/module-sources.mjs';
-import { registeredEnvironment as untypedRegisteredEnvironment } from '../../../../test-environment/global-dom/global-dom.mjs';
+import { statementSources as untypedStatementSources } from '../../../../modules/module-sources.mts';
+import { registeredEnvironment as untypedRegisteredEnvironment } from '../../../../test-environment/global-dom/global-dom.mts';
 
 type MessageId =
   | 'unusedDirectiveEnvironment'

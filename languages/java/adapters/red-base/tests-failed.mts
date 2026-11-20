@@ -10,6 +10,7 @@ import {
 } from '../../../../shared/messages/troubleshooting.mjs';
 import { failingTestsText } from '../../builds/test-failures.mts';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
+import type { TrackedFinding } from '../../../../core/diff/comparison/model/finding-types.mts';
 import type { JavaFinding, JavaPolicy } from '../typed/java-values.mts';
 
 type TestsFailure = Readonly<Record<string, unknown>> & {
@@ -200,7 +201,7 @@ export function testsFailedFinding(
   preset: string,
   failure: TestsFailure,
   snapshot: Snapshot = 'base',
-): JavaFinding {
+): TrackedFinding {
   const { module, roots = [] } = failure;
   const rule = failure.timedOut === undefined ? TESTS_FAILED_RULE : TESTS_TIMED_OUT_RULE;
   return {
@@ -217,14 +218,14 @@ export function testsFailedFinding(
   };
 }
 
-export function withTestsFailures(
-  findings: readonly JavaFinding[],
+export function withTestsFailures<F extends JavaFinding>(
+  findings: readonly F[],
   {
     preset,
     failures = [],
     snapshot = 'base',
   }: { readonly preset: string; readonly failures?: unknown; readonly snapshot?: Snapshot },
-): JavaFinding[] {
+): (F | TrackedFinding)[] {
   return [
     ...findings,
     ...failuresOf(failures).map((failure) => testsFailedFinding(preset, failure, snapshot)),

@@ -1,7 +1,7 @@
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { untrackTemporaryPath } from '../../../core/tooling/temporary-files.mjs';
+import { untrackTemporaryPath } from '../../../core/tooling/temporary-files.mts';
 import { MUTATION_ANALYZER_NAME, PYTHON_ANALYZER_NAME } from './python-analyzer.mts';
 import { applyPythonExceptions, pythonRouteRule } from './configuration/python-exceptions.mts';
 import { readPythonFindings } from './python-reports.mts';

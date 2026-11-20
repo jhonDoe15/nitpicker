@@ -1,7 +1,8 @@
+import type { StdioOptions } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { withSharedBuildDirectory } from '../../../tooling/build-once/build-once.mts';
-import { spawnSyncWithOutputFile } from '../../../tooling/output-file/output-file.mjs';
-import { headPolicyEnvironment } from '../../../../languages/typescript/preset/head-policy.mjs';
+import { spawnSyncWithOutputFile } from '../../../tooling/output-file/output-file.mts';
+import { headPolicyEnvironment } from '../../../../languages/typescript/preset/head-policy.mts';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import {
   TROUBLESHOOTING_ANCHORS,
@@ -9,21 +10,14 @@ import {
 } from '../../../../shared/messages/troubleshooting.mjs';
 import { MAX_ANALYZER_STDOUT_BYTES } from '../../../../shared/report-output/fit-findings.mts';
 import type { RunTaskOptions } from '../progress.mts';
+import { solverAnswersOnce } from './solver-answers.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
-
-type SchedulerRun = {
-  readonly status: unknown;
-  readonly stdout: string;
-  readonly stderr: string;
-  readonly error?: unknown;
-};
 
 const inSharedBuild: <T>(operation: (environment: NodeJS.ProcessEnv) => T) => T =
   withSharedBuildDirectory;
-const spawnCollected: (command: string, args: readonly string[], options: object) => SchedulerRun =
-  spawnSyncWithOutputFile;
 const policyEnvironment: (headPolicyFile: unknown) => NodeJS.ProcessEnv = headPolicyEnvironment;
 const parseJson: (text: string) => unknown = JSON.parse;
+const solverAnswers = solverAnswersOnce();
 
 const SCHEDULER_OUTPUT_OVERHEAD_BYTES = 1024 * 1024;
 
@@ -52,17 +46,25 @@ export function runScheduler(
   { progress }: Partial<RunTaskOptions> = {},
 ): unknown {
   const liveProgress = hasLiveStream(progress);
+  const liveFd = progress?.stream.fd;
+  const stdio: StdioOptions = [
+    'pipe',
+    'pipe',
+    'pipe',
+    ...(liveProgress && typeof liveFd === 'number' ? [liveFd] : []),
+  ];
   const result = inSharedBuild((sharedEnvironment) =>
-    spawnCollected(process.execPath, [schedulerPath], {
+    spawnSyncWithOutputFile(process.execPath, [schedulerPath], {
       input: JSON.stringify({
         tasks:
           liveProgress && progress !== undefined ? withProgressLabel(tasks, progress.label) : tasks,
         environment: {
           ...(headPolicyFile === undefined ? {} : policyEnvironment(headPolicyFile)),
           ...sharedEnvironment,
+          ...solverAnswers(),
         },
       }),
-      stdio: ['pipe', 'pipe', 'pipe', ...(liveProgress ? [progress?.stream.fd] : [])],
+      stdio,
       encoding: 'utf8',
       maxBuffer: tasks.length * MAX_ANALYZER_STDOUT_BYTES + SCHEDULER_OUTPUT_OVERHEAD_BYTES,
       timeout: schedulerDeadline(tasks),

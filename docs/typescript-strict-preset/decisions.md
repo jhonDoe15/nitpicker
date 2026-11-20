@@ -54,17 +54,17 @@ Recommendation: strict replaces the current rules in a single release, adopted t
 ## How touched code is detected and held to strict rules
 
 Today the gate classifies a finding as new only when its comparison key is missing from the base.
-The key (`core/diff/comparison/fingerprint.mjs`) is tool, rule, rename-mapped path, symbol,
+The key (`core/diff/comparison/fingerprint.mts`) is tool, rule, rename-mapped path, symbol,
 identity, classification and metric name. It contains no line number, so an existing violation in an
 edited file keeps matching the base and stays baselined. That is the behavior to change for strict.
 
 Recommendation: line-hunk promotion, implemented in the diff engine (folded into S13 and
-implemented there: `readChangedLines` in `core/diff/git/repository/git.mjs`, applied by `compareFindings` in
-`core/diff/comparison/compare.mjs`, with the rule set from `languages/typescript/preset/strict-rules.mjs`).
+implemented there: `readChangedLines` in `core/diff/git/repository/git.mts`, applied by `compareFindings` in
+`core/diff/comparison/compare.mts`, with the rule set from `languages/typescript/preset/strict-rules.mjs`).
 
 - Compute the changed line ranges of each file on the head side from
   `git diff --unified=0 --find-renames <base>...HEAD` (the engine already shells out to git in
-  `core/diff/git/repository/git.mjs` for renames; hunk headers `@@ -a,b +c,d @@` give the head ranges `c..c+d-1`).
+  `core/diff/git/repository/git.mts` for renames; hunk headers `@@ -a,b +c,d @@` give the head ranges `c..c+d-1`).
 - After `compareFindings`, move a finding from `unchangedFindings` to `newFindings` when its rule
   is in the strict set and its head `location.line` falls inside a changed range of its file.
   Findings with no `location` (file- or graph-level findings) are promoted only when the file is

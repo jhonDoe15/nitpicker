@@ -2,7 +2,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { createVitest } from 'vitest/node';
 import { describe, expect, it, vi } from 'vitest';
-import { END_TO_END_ROOT, resolveLayout as untypedResolveLayout } from '../layout.mjs';
+import { END_TO_END_ROOT, resolveLayout as untypedResolveLayout } from '../layout.mts';
 import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
 type Policy = { readonly exclude?: string[]; readonly layout?: { readonly testRoots: string[] } };

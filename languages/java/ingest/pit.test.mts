@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { baseMoves, comparisonKey } from '../../../core/diff/comparison/fingerprint.mjs';
-import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
-import { callUntyped, findingsOf } from '../adapters/typed/java-values.mts';
+import { baseMoves, comparisonKey } from '../../../core/diff/comparison/fingerprint.mts';
+import { compareFindings } from '../../../core/diff/comparison/compare.mts';
+import { callUntyped, findingsOf, trackedFindingsOf } from '../adapters/typed/java-values.mts';
 import { fieldOf } from '../../../shared/values/readers.mts';
 import { ingestPit } from './pit.mts';
 import { fixture, resolveJavaPath, resolveMainPath } from './__tests__/ingest-fixtures.mts';
@@ -117,7 +117,7 @@ describe('pit', () => {
     const report = (packageName: string): string =>
       `<mutations><mutation detected='false' status='NO_COVERAGE'><sourceFile>AuditService.java</sourceFile><mutatedClass>shop.${packageName}.AuditService</mutatedClass><mutatedMethod>agent</mutatedMethod><methodDescription>(Lshop/${packageName}/Request;)Ljava/lang/String;</methodDescription><lineNumber>9</lineNumber><mutator>org.pitest.mutationtest.engine.gregor.mutators.EmptyObjectReturnValsMutator</mutator><description>replaced return value with &quot;&quot; for shop/${packageName}/AuditService::agent</description></mutation></mutations>`;
     const keys = (packageName: string, renames?: Map<string, string>): unknown[] =>
-      findingsOf(ingestPit(report(packageName), { resolvePath: resolveJavaPath }).findings)
+      trackedFindingsOf(ingestPit(report(packageName), { resolvePath: resolveJavaPath }).findings)
         .filter((finding) => finding.rule === 'mutant-nocoverage')
         .map((finding) => comparisonKey(finding, renames && baseMoves(renames)));
     const moved = 'src/main/java/shop/audit/AuditService.java';

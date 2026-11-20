@@ -8,7 +8,7 @@ import {
   ruleTable,
   toolErrorList,
 } from './markdown.mts';
-import { scopeLine } from '../../../scope/scope-findings.mjs';
+import { scopeLine } from '../../../scope/scope-findings.mts';
 import { partialRunLines as partialLinesOf } from '../partial-run/partial-run.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 

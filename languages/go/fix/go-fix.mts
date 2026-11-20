@@ -1,5 +1,5 @@
-import { fixSpawn } from '../../../core/fix/common/fix-command.mjs';
-import { toolPrecedenceOf } from '../../../core/fix/common/tool-precedence.mjs';
+import { fixSpawn } from '../../../core/fix/tool-steps/commands/fix-command.mts';
+import { toolPrecedenceOf } from '../../../core/fix/tool-steps/tool-precedence.mts';
 import { failure, run } from '../adapters/execution/go-process.mts';
 import { formatterCommand } from '../adapters/formatting/go-format.mts';
 import { createGoContext } from '../adapters/go-steps.mts';
@@ -13,12 +13,12 @@ import {
   readBytes,
   rewriteFormatted,
   rewrittenPaths,
-} from '../../../core/fix/typed/fix-views.mts';
+} from '../../../core/fix/typed/views/fix-views.mts';
 import { isGeneratedGo } from '../adapters/structure/go-generated.mts';
 import { fieldOf, fieldsOf, textsOf } from '../../../shared/values/readers.mts';
 import type { Environment } from '../../../shared/processes/environment.mts';
 import type { FixFile, FixOutcome, FixSettings } from '../../../core/fix/typed/fix-types.mts';
-import type { GoContext } from '../adapters/go-types.mts';
+import type { GoContext, Spawn } from '../adapters/go-types.mts';
 
 type GoFixSettings = FixSettings & { readonly spawnEnvironment?: Environment | undefined };
 type FormatCommand = { formatter: string; command: readonly string[] };
@@ -28,6 +28,27 @@ const FIX_TOOL = 'go-format-fix';
 const ORDER = ['gofmt', 'goimports', 'gofumpt'];
 const SYNTAX_ERROR = /^<standard input>:\d+:\d+: /mu;
 const SYNTAX_STATUS = 2;
+
+function precedenceTools(headPolicy: unknown): Record<string, { readonly precedence?: string[] }> {
+  return Object.fromEntries(
+    Object.entries(fieldsOf(fieldOf(headPolicy, 'tools'))).map(([tool, settings]) => {
+      const precedence = fieldOf(settings, 'precedence');
+      return [tool, Array.isArray(precedence) ? { precedence: textsOf(precedence) } : {}];
+    }),
+  );
+}
+
+function isSpawn(value: unknown): value is Spawn {
+  return typeof value === 'function';
+}
+
+function goSpawn(executeFixCommand: FixSettings['executeFixCommand']): Spawn {
+  const spawn = fixSpawn({ operation: FIX_TOOL, executeFixCommand });
+  if (!isSpawn(spawn)) {
+    throw new TypeError('fixSpawn did not return a spawn function');
+  }
+  return spawn;
+}
 
 function fixContext({
   projectRoot,
@@ -41,10 +62,10 @@ function fixContext({
     reportRoot: '',
     settings: fieldsOf(fieldOf(config, 'go')),
     policy: {
-      toolPrecedence: toolPrecedenceOf(fieldsOf(fieldOf(headPolicy, 'tools'))),
+      toolPrecedence: toolPrecedenceOf(precedenceTools(headPolicy)),
       exclude: textsOf(fieldOf(headPolicy, 'exclude')),
     },
-    spawn: fixSpawn({ operation: FIX_TOOL, executeFixCommand }),
+    spawn: goSpawn(executeFixCommand),
     environment: spawnEnvironment ?? {},
   });
 }

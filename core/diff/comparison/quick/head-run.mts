@@ -1,4 +1,4 @@
-import { runGit } from '../../git/repository/command.mjs';
+import { runGit } from '../../git/repository/command.mts';
 import { createFindingsCache } from '../../cache/findings-cache.mts';
 import { runBaseWithCache } from '../../cache/entries/run-with-cache.mts';
 import { cachedLine, resumedLine } from '../../execution/progress.mts';
@@ -8,7 +8,7 @@ import {
   analyzerRunOptions,
   runAnalyzers,
 } from '../../execution/run-analyzers.mts';
-import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mts';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import { scopeToTouchedFiles } from './scope.mts';
 import { unlessSkipped } from '../snapshots/skips.mts';

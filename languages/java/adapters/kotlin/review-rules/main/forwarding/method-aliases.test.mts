@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../../../../../../core/diff/git/test-support/git-repository.mts';
-import { compareFindings } from '../../../../../../../core/diff/comparison/compare.mjs';
+import { compareFindings } from '../../../../../../../core/diff/comparison/compare.mts';
 import { withoutGeneratedSources } from '../../../../generated/generated-sources.mts';
 import { fieldOf, listOf } from '../../../../../../../shared/values/readers.mts';
 import type { ClassFact, FunctionFact, RuleFinding } from '../../test-support/facts.mts';

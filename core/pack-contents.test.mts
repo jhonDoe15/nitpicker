@@ -16,7 +16,7 @@ import { fieldAt } from '../scripts/json/fields.mts';
 import { listOf, parseJson, textOf } from '../shared/values/readers.mts';
 import { PAGE_IDS as UNTYPED_PAGE_IDS } from '../shared/reference/pages.mjs';
 import { REFERENCE_DATA_DIRECTORY as UNTYPED_DATA_DIRECTORY } from '../shared/reference/store.mjs';
-import { PACKAGE_ROOT as untypedPackageRoot } from './tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT as untypedPackageRoot } from './tooling/tool-resolution.mts';
 
 const root: string = untypedPackageRoot;
 const PAGE_IDS: readonly string[] = UNTYPED_PAGE_IDS;
@@ -106,28 +106,44 @@ describe('npm package contents', () => {
     }
   });
 
-  beforeAll(() => {
-    let listing: unknown;
-    const packed = checkoutCopy();
-    copy = packed;
+  function packedCopy(): string {
+    if (copy === undefined) {
+      throw new Error('The checkout copy was not made');
+    }
+    return copy;
+  }
+
+  function inCopy(step: string, run: (packed: string) => void): void {
     try {
+      run(packedCopy());
+    } catch (error) {
+      throw new Error(`${step} for the npm pack listing failed`, { cause: error });
+    }
+  }
+
+  beforeAll(() => {
+    copy = checkoutCopy();
+  });
+
+  beforeAll(() => {
+    inCopy('Emitting the JavaScript', (packed) => {
       execFileSync(process.execPath, [EMIT], { cwd: packed, stdio: 'pipe', timeout: 120_000 });
-      listing = parseJson(
+    });
+  });
+
+  beforeAll(() => {
+    inCopy('Listing the package', (packed) => {
+      const listing = parseJson(
         execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
           cwd: packed,
           encoding: 'utf8',
           timeout: 120_000,
         }),
       );
-    } catch (error) {
-      throw new Error('Building the npm pack listing failed', {
-        cause: error,
-      });
-    }
-
-    packedFiles = new Set(
-      listOf(fieldAt(listing, 0, 'files')).map((file) => textOf(fieldAt(file, 'path'))),
-    );
+      packedFiles = new Set(
+        listOf(fieldAt(listing, 0, 'files')).map((file) => textOf(fieldAt(file, 'path'))),
+      );
+    });
   });
 
   it('replays prepack: the emit runs in the copy, the rule data comes from the global setup', () => {

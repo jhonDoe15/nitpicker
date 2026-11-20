@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
-import { gradleAppliesKotlin } from './kotlin-plugin.mjs';
+import { gradleAppliesKotlin } from './kotlin-plugin.mts';
 
 const { temporaryRoot } = useGitFixtures();
 const CATALOG = 'gradle/libs.versions.toml';

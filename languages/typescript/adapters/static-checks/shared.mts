@@ -4,8 +4,11 @@ import { realpathSync, lstatSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { type StaticCheckOptions, normalizedRelativePath } from './arguments.mts';
 import { createHash } from 'node:crypto';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
 import { describeProcessEnd } from '../../../../shared/processes/process-failure.mjs';
+
+const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 
@@ -99,7 +102,7 @@ export function policyPath(
   resolved = relativePath,
 ): string {
   const root = path.resolve(policyRoot);
-  const filePath = path.resolve(root, resolved);
+  const filePath = checkoutModulePath(path.resolve(root, resolved));
   if (!filePath.startsWith(root + path.sep)) {
     throw new Error(`Policy path must stay within the policy root: ${relativePath}`);
   }

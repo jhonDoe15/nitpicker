@@ -1,40 +1,32 @@
-export type FixFile = { readonly path: string };
+import type { FixEdit, FixEntry, PlannedFinding, RecipeEdit, Snapshot } from './edit-types.mts';
 
-export type FixEdit =
-  | { readonly type: 'delete'; readonly path: string }
-  | { readonly type: 'write'; readonly path: string; readonly text: string };
+export type { FixEdit, RecipeEdit };
+
+export type FixFile = { readonly path: string };
 
 export type FixWriter = {
   readonly projectRoot: string;
-  readonly apply: (
-    snapshot: unknown,
-    entries: readonly {
-      readonly name: string;
-      readonly fix: { readonly edits: readonly FixEdit[] };
-    }[],
+  readonly apply: <Entry extends FixEntry>(
+    snapshot: Snapshot,
+    entries: readonly Entry[],
     tool?: string,
   ) => {
-    readonly applied: { readonly name: string }[];
+    readonly applied: readonly Entry[];
     readonly changedMeanwhile: string[];
     readonly errors: string[];
   };
 };
 
 export type FixInvocation = {
+  readonly operation?: string;
+  readonly acceptedStatuses?: readonly number[];
   readonly command: string;
   readonly args: readonly string[];
-  readonly cwd: string;
+  readonly cwd: string | undefined;
   readonly input: string | undefined;
   readonly environment: NodeJS.ProcessEnv | undefined;
   readonly shell?: true;
   readonly timeout?: number;
-};
-
-type PlannedFinding = {
-  readonly tool: string;
-  readonly rule: string;
-  readonly path: string;
-  readonly line: number;
 };
 
 export type PlannedFix = {
@@ -81,22 +73,12 @@ export type RuleRef = { readonly tool: string; readonly rule: string };
 
 export type RecipeSource = FixFile & { readonly text: string };
 
-export type RecipeEdit =
-  | FixEdit
-  | {
-      readonly type: 'replace';
-      readonly path: string;
-      readonly start: number;
-      readonly end: number;
-      readonly text: string;
-    }
-  | { readonly type: 'move'; readonly from: string; readonly to: string }
-  | { readonly type: 'untrack'; readonly path: string };
-
 type RecipeFinding = RuleRef & { readonly path: string; readonly line: number };
 
 export type RecipeFix = {
   readonly finding: RecipeFinding;
+  readonly stays?: string;
+  readonly note?: string;
   readonly alsoFixes?: readonly RecipeFinding[];
   readonly edits: readonly RecipeEdit[];
 };
@@ -152,3 +134,7 @@ export type FixStatusSources = {
 export function concatenated(...lists: readonly (readonly unknown[])[]): unknown[] {
   return lists.flat();
 }
+
+export type Tools = Readonly<Record<string, { readonly precedence?: string[] }>>;
+
+export type Precedence = Record<string, string[] | undefined>;

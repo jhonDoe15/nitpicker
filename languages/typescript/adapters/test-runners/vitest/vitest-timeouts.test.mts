@@ -1,7 +1,7 @@
 import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mts';
 import { createRunnerProjects } from '../test-support/runner-project.mts';
 import { runVitest } from './vitest.mts';
 import { testOptions } from '../typed/test-options.mts';
