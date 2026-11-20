@@ -198,6 +198,29 @@ pub struct Method {
     pub throws: Vec<Type>,
     /// Parameter names, when the source or the class file gives them; empty otherwise.
     pub names: Vec<String>,
+    pub detail: Detail,
+}
+
+/// What javac's method symbol gives beyond its signature: modifiers and annotations as written, for checks that compare
+/// an override with the method it overrides.
+#[derive(Clone, Debug, Default)]
+pub struct Detail {
+    /// Access bits as in a class file: public, private, protected, static, final, synchronized, native, abstract, strictfp.
+    pub access: u16,
+    /// Full names of the annotations on the method, and on each parameter, with `.` before a member class.
+    pub annotations: Vec<String>,
+    pub parameter_annotations: Vec<Vec<String>>,
+}
+
+/// Where an annotation type may be used, as bits of `ClassInfo::targets`, from its `@Target`.
+pub mod target {
+    pub const NAMES: &[&str] = &[
+        "TYPE", "FIELD", "METHOD", "PARAMETER", "CONSTRUCTOR", "LOCAL_VARIABLE", "ANNOTATION_TYPE", "PACKAGE", "TYPE_PARAMETER", "TYPE_USE", "MODULE",
+        "RECORD_COMPONENT",
+    ];
+    pub fn bit(name: &str) -> u16 {
+        NAMES.iter().position(|known| *known == name).map_or(0, |at| 1 << at)
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -218,6 +241,8 @@ pub struct ClassInfo {
     pub permitted: Option<Vec<String>>,
     /// For a record: the generic type of each component, in order.
     pub record_components: Option<Vec<Type>>,
+    /// For an annotation type with `@Target`: the bits of `target` it lists.
+    pub targets: Option<u16>,
     pub flags: u32,
     /// The type parameters that `containerOf` of the class's `@Immutable` names.
     pub container_of: Vec<String>,

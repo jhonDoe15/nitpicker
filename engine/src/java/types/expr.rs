@@ -985,6 +985,7 @@ impl<'a> Resolver<'a> {
                 flags: 0,
                 throws: Vec::new(),
                 names: Vec::new(),
+                detail: Default::default(),
             };
             return Some(Call { raw: false, receiver: owner, declaring: info.name.clone(), method });
         }

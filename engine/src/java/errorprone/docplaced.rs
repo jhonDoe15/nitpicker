@@ -101,14 +101,16 @@ fn documentable(root: Node) -> HashMap<usize, Node> {
 
 /// Classes, methods and record components anywhere, by start. A class that is not a record or interface, has no
 /// modifiers and declares no constructor gets one from javac at the same place, so the place counts as a method.
-fn seemingly_documentable(root: Node) -> HashMap<usize, Seeming> {
+fn seemingly_documentable(text: &str, root: Node) -> HashMap<usize, Seeming> {
     let mut out = HashMap::new();
     walk(root, |node| {
         let kind = node.kind();
         if TYPES.contains(&kind) {
-            let modified = children(node).into_iter().any(|child| child.kind() == "modifiers");
-            let constructed = matches!(kind, "class_declaration" | "enum_declaration") && !modified && !declares_constructor(node);
-            out.insert(node.start_byte(), if constructed { Seeming::Method } else { Seeming::Class });
+            out.insert(node.start_byte(), Seeming::Class);
+            if matches!(kind, "class_declaration" | "enum_declaration" | "record_declaration") && !declares_constructor(text, node) {
+                let keyword = children(node).into_iter().find(|part| matches!(part.kind(), "class" | "enum" | "record"));
+                out.insert(keyword.map_or(node.start_byte(), |keyword| keyword.start_byte()), Seeming::Method);
+            }
         } else if METHODS.contains(&kind) {
             out.insert(node.start_byte(), Seeming::Method);
         } else if kind == "formal_parameter" && parent(node).and_then(parent).is_some_and(|owner| owner.kind() == "record_declaration") {
@@ -118,10 +120,28 @@ fn seemingly_documentable(root: Node) -> HashMap<usize, Seeming> {
     out
 }
 
-fn declares_constructor(declaration: Node) -> bool {
+/// Whether javac finds the constructor it would otherwise add: any constructor of a class or enum, the canonical one
+/// of a record (compact, or with the components' types).
+fn declares_constructor(text: &str, declaration: Node) -> bool {
     let Some(body) = declaration.child_by_field_name("body") else { return false };
     let members = children(body).into_iter().flat_map(|member| if member.kind() == "enum_body_declarations" { children(member) } else { vec![member] });
-    members.into_iter().any(|member| member.kind() == "constructor_declaration")
+    let mut constructors = members.filter(|member| matches!(member.kind(), "constructor_declaration" | "compact_constructor_declaration"));
+    if declaration.kind() != "record_declaration" {
+        return constructors.next().is_some();
+    }
+    let types = |list: Option<Node>| -> Vec<String> {
+        let parameters = list.map(children).unwrap_or_default();
+        parameters
+            .into_iter()
+            .filter(|parameter| matches!(parameter.kind(), "formal_parameter" | "spread_parameter"))
+            .map(|parameter| {
+                let written = parameter.child_by_field_name("type").or_else(|| children(parameter).into_iter().find(|part| part.kind().ends_with("type") || part.kind() == "type_identifier"));
+                written.map(|written| text[written.byte_range()].split_whitespace().collect::<String>()).unwrap_or_default()
+            })
+            .collect()
+    };
+    let components = types(declaration.child_by_field_name("parameters"));
+    constructors.any(|constructor| constructor.kind() == "compact_constructor_declaration" || types(constructor.child_by_field_name("parameters")) == components)
 }
 
 fn is_doc(text: &str) -> bool {
@@ -134,7 +154,7 @@ pub fn not_javadoc(context: &Context, node: Node) {
         return;
     }
     let owned = documentable(node);
-    let seeming = seemingly_documentable(node);
+    let seeming = seemingly_documentable(&context.file.text, node);
     for (token, comments) in comments_by_token(context, node) {
         let docs: Vec<Node> = comments.iter().copied().filter(|comment| is_doc(context.text(*comment))).collect();
         if docs.len() > 1 {

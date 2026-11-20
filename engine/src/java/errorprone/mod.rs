@@ -2,6 +2,7 @@
 mod doc;
 mod docparse;
 mod docref;
+mod annotated;
 mod docplaced;
 mod doctagged;
 mod doctags;
@@ -32,6 +33,8 @@ mod vars;
 mod mutability;
 mod locale;
 mod futures;
+mod redundant;
+mod tokens;
 mod unused;
 mod values;
 
@@ -161,6 +164,8 @@ const CHECKS: &[Check] = &[
     javadoc::javadoc,
     docplaced::not_javadoc,
     docplaced::almost_javadoc,
+    annotated::annotation_position,
+    redundant::redundant_override,
     throws::checked_exception_not_thrown,
     returns::check_return_value,
     statements::multi_variable_declaration,

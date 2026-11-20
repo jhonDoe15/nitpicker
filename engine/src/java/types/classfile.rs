@@ -1,5 +1,5 @@
 //! A minimal class-file reader: name, supertypes, fields and method descriptors. Nothing else is read.
-use super::model::{ClassInfo, Field, Method, OBJECT, Type, flag};
+use super::model::{ClassInfo, Detail, Field, Method, OBJECT, Type, flag};
 
 struct Reader<'a> {
     data: &'a [u8],
@@ -194,6 +194,9 @@ struct Attributes<'a> {
     held: Vec<u16>,
     /// Positions of the type parameters with `@ImmutableTypeParameter`.
     strict: Vec<u8>,
+    annotations: Vec<&'a [u8]>,
+    parameter_annotations: Vec<Vec<&'a [u8]>>,
+    targets: Option<u16>,
 }
 
 fn skip_element(reader: &mut Reader) -> Option<()> {
@@ -208,6 +211,51 @@ fn skip_element(reader: &mut Reader) -> Option<()> {
         }
         _ => reader.skip(2),
     }
+}
+
+/// Reads one element value and adds the constant names of the enum values in it.
+fn enum_names<'a>(reader: &mut Reader, utf8: &impl Fn(u16) -> Option<&'a [u8]>, out: &mut Vec<&'a [u8]>) -> Option<()> {
+    match reader.u1()? {
+        b'e' => {
+            reader.skip(2)?;
+            out.extend(utf8(reader.u2()?));
+            Some(())
+        }
+        b'[' => {
+            for _ in 0..reader.u2()? {
+                enum_names(reader, utf8, out)?;
+            }
+            Some(())
+        }
+        b'@' => skip_annotation(reader).map(|_| ()),
+        _ => reader.skip(2),
+    }
+}
+
+/// Reads one annotation: its type descriptor, and for `@Target` the element types it lists.
+fn annotation<'a>(reader: &mut Reader, utf8: &impl Fn(u16) -> Option<&'a [u8]>, targets: &mut Option<u16>) -> Option<&'a [u8]> {
+    let kind = utf8(reader.u2()?)?;
+    let target = kind == b"Ljava/lang/annotation/Target;";
+    for _ in 0..reader.u2()? {
+        reader.skip(2)?;
+        if target {
+            let mut names = Vec::new();
+            enum_names(reader, utf8, &mut names)?;
+            let bits = names.iter().filter_map(|name| std::str::from_utf8(name).ok()).fold(0, |bits, name| bits | super::model::target::bit(name));
+            *targets = Some(targets.unwrap_or(0) | bits);
+        } else {
+            skip_element(reader)?;
+        }
+    }
+    if target && targets.is_none() {
+        *targets = Some(0);
+    }
+    Some(kind)
+}
+
+fn annotation_name(descriptor: &[u8]) -> Option<String> {
+    let text = std::str::from_utf8(descriptor).ok()?.strip_prefix('L')?.strip_suffix(';')?;
+    Some(text.replace(['/', '$'], "."))
 }
 
 /// Skips one annotation and gives the index of its type descriptor.
@@ -265,8 +313,8 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
         } else if name == b"RuntimeVisibleAnnotations" || name == b"RuntimeInvisibleAnnotations" {
             for _ in 0..reader.u2()? {
                 let begin = reader.at;
-                let kind = utf8(skip_annotation(reader)?);
-                if kind == Some(b"Lcom/google/errorprone/annotations/Immutable;") {
+                let kind = annotation(reader, utf8, &mut found.targets)?;
+                if kind == b"Lcom/google/errorprone/annotations/Immutable;" {
                     reader.at = begin + 2;
                     for _ in 0..reader.u2()? {
                         if utf8(reader.u2()?) == Some(b"containerOf") {
@@ -276,9 +324,20 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                         }
                     }
                 }
-                found.deprecated |= kind == Some(b"Ljava/lang/Deprecated;");
-                let written = kind.and_then(|text| std::str::from_utf8(text).ok()).and_then(|text| text.strip_prefix('L')?.strip_suffix(';'));
-                found.marks |= written.map_or(0, |text| flag::of_annotation(&text.replace(['/', '$'], ".")));
+                found.deprecated |= kind == b"Ljava/lang/Deprecated;";
+                found.marks |= annotation_name(kind).map_or(0, |name| flag::of_annotation(&name));
+                found.annotations.push(kind);
+            }
+        } else if name == b"RuntimeVisibleParameterAnnotations" || name == b"RuntimeInvisibleParameterAnnotations" {
+            let count = reader.u1()? as usize;
+            if found.parameter_annotations.len() < count {
+                found.parameter_annotations.resize(count, Vec::new());
+            }
+            for at in 0..count {
+                for _ in 0..reader.u2()? {
+                    let kind = utf8(skip_annotation(reader)?)?;
+                    found.parameter_annotations[at].push(kind);
+                }
             }
         } else if name == b"RuntimeVisibleTypeAnnotations" {
             for _ in 0..reader.u2()? {
@@ -451,6 +510,15 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 flags: member_flags(flags, found.deprecated, found.marks),
                 throws,
                 names: found.names.iter().filter_map(|name| utf8(*name)).map(|name| String::from_utf8_lossy(name).into_owned()).collect(),
+                detail: Detail {
+                    access: flags & 0x0d3f,
+                    annotations: found.annotations.iter().filter_map(|kind| annotation_name(kind)).collect(),
+                    parameter_annotations: found
+                        .parameter_annotations
+                        .iter()
+                        .map(|listed| listed.iter().filter_map(|kind| annotation_name(kind)).collect())
+                        .collect(),
+                },
             });
         }
     }
@@ -502,5 +570,6 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         record_components: components,
         container_of: found.held.iter().filter_map(|entry| utf8(*entry)).map(|text| String::from_utf8_lossy(text).into_owned()).collect(),
         immutable_parameters,
+        targets: found.targets,
     })
 }

@@ -489,6 +489,38 @@ impl<'a> Resolver<'a> {
         super::expr::literal_text(self.file, value)
     }
 
+    /// Full names of the annotations of a declaration, as javac resolves them; a name that is not found stays as written.
+    pub fn annotation_names(&self, declaration: Node) -> Vec<String> {
+        let holder = super::super::helpers::modifiers(declaration);
+        let annotations = holder.map(children).unwrap_or_default().into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation"));
+        let names = annotations.filter_map(|annotation| annotation.child_by_field_name("name")).map(|name| self.file.text_of(name));
+        names.map(|written| self.class_name(declaration, written).unwrap_or_else(|| written.to_string())).collect()
+    }
+
+    /// Modifiers and annotations of a method or constructor, the way a class file would hold them.
+    fn detail(&self, member: Node, interface: bool) -> super::model::Detail {
+        let has = super::super::helpers::has_modifier;
+        let mut access = 0u16;
+        for (word, bit) in [("public", 1), ("private", 2), ("protected", 4), ("static", 8), ("final", 0x10), ("synchronized", 0x20), ("native", 0x100), ("abstract", 0x400), ("strictfp", 0x800)] {
+            if has(member, word) {
+                access |= bit;
+            }
+        }
+        if interface && access & 2 == 0 {
+            access |= 1;
+            if member.child_by_field_name("body").is_none() && access & 8 == 0 {
+                access |= 0x400;
+            }
+        }
+        let parameters = member.child_by_field_name("parameters").map(children).unwrap_or_default();
+        let parameter_annotations = parameters
+            .into_iter()
+            .filter(|parameter| matches!(parameter.kind(), "formal_parameter" | "spread_parameter"))
+            .map(|parameter| self.annotation_names(parameter))
+            .collect();
+        super::model::Detail { access, annotations: self.annotation_names(member), parameter_annotations }
+    }
+
     /// The bits the annotations of a declaration give.
     pub fn marks(&self, declaration: Node) -> u32 {
         let holder = super::super::helpers::modifiers(declaration).unwrap_or(declaration);
@@ -588,6 +620,7 @@ impl<'a> Resolver<'a> {
             }),
             permitted: self.permitted(declaration, &own_name, &listed("permits")),
             record_components: (kind == "record_declaration").then(Vec::new),
+            targets: self.targets(declaration),
             flags: self.class_flags(declaration),
             container_of,
             immutable_parameters,
@@ -630,6 +663,27 @@ impl<'a> Resolver<'a> {
     }
 
     /// The classes a sealed declaration permits: the ones it lists, else the ones in its file that extend it directly.
+    /// The element types the `@Target` of an annotation type lists.
+    fn targets(&self, declaration: Node) -> Option<u16> {
+        if declaration.kind() != "annotation_type_declaration" {
+            return None;
+        }
+        let holder = super::super::helpers::modifiers(declaration)?;
+        let target = children(holder).into_iter().find(|annotation| {
+            annotation.kind() == "annotation"
+                && annotation.child_by_field_name("name").is_some_and(|name| {
+                    self.class_name(declaration, self.file.text_of(name)).as_deref() == Some("java.lang.annotation.Target")
+                })
+        })?;
+        let mut bits = 0;
+        crate::engine::source::walk(target.child_by_field_name("arguments")?, |part| {
+            if part.kind() == "identifier" {
+                bits |= super::model::target::bit(self.file.text_of(part));
+            }
+        });
+        Some(bits)
+    }
+
     fn permitted(&self, declaration: Node, name: &str, listed: &[Type]) -> Option<Vec<String>> {
         let modifiers = children(declaration).into_iter().find(|child| child.kind() == "modifiers")?;
         if !self.file.text_of(modifiers).split_whitespace().any(|word| word == "sealed") {
@@ -720,6 +774,7 @@ impl<'a> Resolver<'a> {
             flags: super::model::flag::PUBLIC,
             throws: Vec::new(),
             names: Vec::new(),
+            detail: super::model::Detail { access: 1, ..Default::default() },
         };
         let bits = |member: Node| -> u32 {
             use super::model::flag;
@@ -817,6 +872,7 @@ impl<'a> Resolver<'a> {
                         flags: bits(member) | if member.field("body").is_none() && info.is_interface { super::model::flag::ABSTRACT } else { 0 },
                         throws: self.thrown(member),
                         names: self.parameter_names(member),
+                        detail: self.detail(member, info.is_interface),
                     });
                 }
                 "constructor_declaration" => {
@@ -827,6 +883,7 @@ impl<'a> Resolver<'a> {
                         throws: self.thrown(member),
                         names: self.parameter_names(member),
                         flags: bits(member),
+                        detail: self.detail(member, false),
                         ..plain("<init>", parameters, Type::Primitive("void"))
                     });
                 }
