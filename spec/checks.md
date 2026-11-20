@@ -401,6 +401,10 @@ and Go in #2133.
 `new URL(constant)` there of which only parts are read. Java reflective and registry lookups by a
 constant name and the other presets follow in #2133.
 
+`nitpicker/no-subtree-search-per-ancestor` (production source, in `eslint-lint`) reports a loop that
+climbs a parent chain and searches the children or the whole subtree of every level without testing
+the level's kind first. Java, Kotlin, Python and Go follow in #2133.
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a

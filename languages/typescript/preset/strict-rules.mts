@@ -59,6 +59,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-collected-stream-rows',
   'nitpicker/no-pattern-compiled-in-loop',
   'nitpicker/no-constant-lookup-in-loop',
+  'nitpicker/no-subtree-search-per-ancestor',
   'nitpicker/no-wasted-collection-step',
   'nitpicker/no-raw-http-value',
   'nitpicker/no-hardcoded-secret',

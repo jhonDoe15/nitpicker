@@ -46,6 +46,7 @@ import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-st
 import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mts';
 import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mts';
 import { rule as ruleNoStringLengthAsByteCount } from '../rules/byte-limits/no-string-length-as-byte-count.mts';
+import { rule as ruleNoSubtreeSearchPerAncestor } from '../rules/repeated-work/ancestors/no-subtree-search-per-ancestor.mts';
 import { rule as ruleNoSurrogateSplittingCut } from '../rules/text-truncation/no-surrogate-splitting-cut.mts';
 import { rule as ruleNoSwappedArguments } from '../rules/arguments/no-swapped-arguments.mts';
 import { rule as ruleNoSwitchedOffTests } from '../test-assertions/no-switched-off-tests.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnsafePathJoin } from '../rules/guards/no-unsafe-path-joi
 import { rule as ruleNoUnscopedRecordAccess } from '../rules/record-scope/no-unscoped-record-access.mts';
 import { rule as ruleNoUnstrippedRemoteText } from '../rules/terminal/no-unstripped-remote-text.mts';
 import { rule as ruleNoUntrimmedRequestText } from '../rules/request-text/no-untrimmed-request-text.mts';
-import { rule as ruleNoUnusedDomEnvironment } from '../rules/test-runtime/environment/no-unused-dom-environment.mts';
 
 export const partRules = {
   'no-non-latin1-header-value': ruleNoNonLatin1HeaderValue,
@@ -148,6 +148,7 @@ export const partRules = {
   'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
   'no-string-as-regex': ruleNoStringAsRegex,
   'no-string-length-as-byte-count': ruleNoStringLengthAsByteCount,
+  'no-subtree-search-per-ancestor': ruleNoSubtreeSearchPerAncestor,
   'no-surrogate-splitting-cut': ruleNoSurrogateSplittingCut,
   'no-swapped-arguments': ruleNoSwappedArguments,
   'no-switched-off-tests': ruleNoSwitchedOffTests,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unscoped-record-access': ruleNoUnscopedRecordAccess,
   'no-unstripped-remote-text': ruleNoUnstrippedRemoteText,
   'no-untrimmed-request-text': ruleNoUntrimmedRequestText,
-  'no-unused-dom-environment': ruleNoUnusedDomEnvironment,
 };

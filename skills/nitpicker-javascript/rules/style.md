@@ -125,6 +125,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   pattern)` and `picomatch.isMatch` compile the pattern on every call (`nitpicker/no-pattern-compiled-in-loop`).
 - Look an element up by a constant selector, or parse a constant URL, once before a loop, not on every
   pass (`nitpicker/no-constant-lookup-in-loop`).
+- Climbing to the root, test each level's kind before searching its children or subtree, or use
+  `el.closest(selector)`; a `querySelector` or a scan of `children` at every level costs depth times width
+  (`nitpicker/no-subtree-search-per-ancestor`).
 - Never run a query or a request once per item of a loop: fetch or write the items in one query
   (`findByIds`, `createMany`, `WHERE id IN (...)`), also when a helper of yours does the I/O and inside
   `Promise.all(items.map(...))`. For a remote API without a batch endpoint use a limiter or fixed-size

@@ -258,6 +258,19 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   URL that is changed or passed on, and a loop that may change the page are not reported. Allowed
   form: look the element up, or parse the URL, once before the loop or at module scope. `Intl`
   formatters with constant options are `nitpicker/reusable-object-per-call`'s.
+- `nitpicker/no-subtree-search-per-ancestor`: a walk up a parent chain that searches every child or
+  the whole subtree at each level, in all production code (not in tests). It reports a `for` loop
+  whose update, or a `while` or `do` loop whose body, steps a name to its parent (`el =
+  el.parentElement`, `parentNode`, `parent`, `parentPath`, `getParent()`), when the body runs on that
+  name a subtree search (`querySelector`, `querySelectorAll`, `getElementsByClassName`,
+  `getElementsByTagName`, `descendants()`, `findAll`, `traverse`, `ts.forEachChild(at, ...)`) or goes
+  over its children (`for...of`, a spread, `Array.from` or `find`, `some`, `filter`, `forEach` and the
+  like on `children`, `childNodes` or `getChildren()`). One lookup then costs depth times width, and
+  near the root the width is the whole document or file. A search behind an earlier test of the
+  level (`if (el.tagName !== "SECTION") continue;`, `if (at.kind === "block")`), a loop that reads a
+  `Map` by the level (`cache.get(el)`), a search on another value and a search in a function the loop
+  only creates are not reported. Allowed forms: `el.closest(selector)` for elements, a test of the
+  level's kind before the search, or an answer kept per level.
 - `nitpicker/no-wasted-collection-step`: a collection or promise step that copies for nothing or
   walks the data twice, in all production code (not in tests). It reports `filter(p)[0]` and
   `filter(p).at(0)` with a callback `p` (allowed form: `find(p)`; a selector string, as in jQuery,
