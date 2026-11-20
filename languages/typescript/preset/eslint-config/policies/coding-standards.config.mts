@@ -12,6 +12,7 @@ const config = linterConfigs([
   {
     files: [...sourceGlobs, ...testGlobs],
     languageOptions: { parser: scriptTolerantParser },
+    linterOptions: { noInlineConfig: true },
     plugins: { nitpicker: nitpickerRules, '@typescript-eslint': tseslint.plugin },
     rules: {
       'nitpicker/no-wait-for-with-fake-timers': 'error',

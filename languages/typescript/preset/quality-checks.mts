@@ -226,6 +226,9 @@ function standardsChecksFor(exclusions: CheckExclusions): QualityCheck[] {
       shardWeight: 10,
       configurationFiles: [
         'languages/typescript/preset/coding-standards/check.mjs',
+        'languages/typescript/preset/coding-standards/lint/policy-lint.mjs',
+        'languages/typescript/adapters/oxlint/oxlint-plan.mjs',
+        'languages/typescript/adapters/eslint-wrapper.config.mjs',
         'languages/typescript/preset/eslint-config/policies/coding-standards.config.mjs',
         ...POLICY_FILES,
       ],
