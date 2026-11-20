@@ -52,8 +52,12 @@ Measured with all 130 rules on 4 cores (findings: same / missed / extra):
 | Code base | Files, lines | PMD 7.16.0 wall, CPU, peak | Engine | Findings |
 | --- | --- | --- | --- | --- |
 | commons-lang, javaparser, guava, jackson-databind, mybatis-3 | 2,321 files | 67 s, 250 s, 1.5-2.0 GB | 14.6 s, 50 s, 0.3-0.5 GB | 5,118 / 0 / 0 |
-| Nacos, all modules | 5,410, 844k | 77 s, 297 s, 2.4 GB | 23 s, 88 s, 0.4 GB | 3,709 / 0 / 0 |
-| Elasticsearch `server` | 5,117, 1.04M | 85 s, 328 s, 2.8 GB | 34 s, 128 s, 0.5 GB | 2,497 / 0 / 0 |
+| Nacos, all modules | 5,410, 844k | 77 s, 297 s, 2.4 GB | 21 s, 80 s, 0.4 GB | 3,709 / 0 / 0 |
+| Elasticsearch `server` | 5,117, 1.04M | 85 s, 328 s, 2.8 GB | 30 s, 112 s, 0.5 GB | 2,497 / 0 / 0 |
+
+On the whole Elasticsearch tree (18,155 files, 3.3M lines) the engine takes 88 s, 341 CPU-s and 1.7 GB. PMD
+takes about 190 s, 750 CPU-s and 4.6 GB there and stops reporting after a StackOverflowError in its type
+inference, so findings on that tree are compared part by part.
 
 Four more libraries and the `review-rules` fixture of the Java adapters agree as well (7,557 findings in all
 for the libraries and fixtures, none missed, none extra).
@@ -72,6 +76,9 @@ whole project. Class files are listed at start and read on first use.
 - `// NOPMD` on the first line of a finding and `@SuppressWarnings` with `"PMD"`, `"PMD.<Rule>"` or `"all"` on
   any enclosing declaration hide the finding. Block comments and other spellings do not.
 - In XPath regular expressions `\w` does not match `_`, and `\s` is space, tab, line feed and carriage return.
+- A `let` value is worked out on first use when it can be several items and does not read the context item,
+  or when the variable is read at most once outside a loop; otherwise at the declaration. A query that fails in
+  PMD on a value it never uses therefore fails here too.
 - `matchesSig` compares the parameter types after type arguments are filled in; a single-type import names a
   class even when its jar is missing; columns count UTF-16 units.
 

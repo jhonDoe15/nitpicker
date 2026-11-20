@@ -31,6 +31,9 @@ fn main() {
         }
         index += 1;
     }
+    // Generated sources nest expressions thousands deep (one string built from thousands of pieces); the walks
+    // over them recurse, so the workers get a large stack. Only the part that is used takes memory.
+    let _ = rayon::ThreadPoolBuilder::new().stack_size(512 << 20).build_global();
     let language = java::Java;
     if dump {
         let text = std::fs::read_to_string(&roots[0]).expect("file");

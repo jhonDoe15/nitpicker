@@ -81,7 +81,7 @@ impl XPathRules {
                                             "Integer" | "Long" => Item::Whole(property.value.trim().parse().unwrap_or(0)),
                                             _ => Item::text(&property.value),
                                         };
-                                        (slot as u32, Seq::One(value))
+                                        (slot as u32, super::xpath::value::Bound::Now(Seq::One(value)))
                                     })
                                     .collect(),
                             })
