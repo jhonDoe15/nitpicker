@@ -6,6 +6,7 @@ const JVM_NOTICE = /^(?:NOTE: )?Picked up /u;
 const WORK_DIRECTORY = /\/tmp\/nitpicker-maven-\w+/gu;
 const SECONDS = /in \d+(?:\.\d+)?s/gu;
 const TIMESTAMP = /timestamp="[^"]*"/gu;
+const FRAME_LOADER = /(?<=\bat )\w+\/\/(?=[\w.$<>]+\()/gu;
 
 function sortedKeys(_key: string, value: unknown): unknown {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -24,7 +25,8 @@ function normalized(text: string, root: string, name: string): string {
     .join('\n')
     .replaceAll(WORK_DIRECTORY, '<work>')
     .replaceAll(SECONDS, 'in <seconds>')
-    .replaceAll(TIMESTAMP, 'timestamp="<time>"');
+    .replaceAll(TIMESTAMP, 'timestamp="<time>"')
+    .replaceAll(FRAME_LOADER, '');
 }
 
 export function reportsUnder(directory: string, root: string): Record<string, string> {

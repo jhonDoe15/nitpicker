@@ -37,7 +37,7 @@ public final class TemplateLocator {
   }
 
   public File decoded(URL location) {
-    return new File(URLDecoder.decode(location.getFile(), StandardCharsets.UTF_8));
+    return new File(URLDecoder.decode(location.getFile(), StandardCharsets.UTF_8)); // violation: UriCreateDynamic
   }
 
   public String describe(URL location) {
@@ -65,7 +65,7 @@ public final class TemplateLocator {
     if (direct.exists()) {
       return direct;
     }
-    return new File(location.getFile() + URLDecoder.decode(entry, StandardCharsets.UTF_8));
+    return new File(location.getFile() + URLDecoder.decode(entry, StandardCharsets.UTF_8)); // violation: UriCreateDynamic
   }
 
   public boolean sameUri(URL location) throws URISyntaxException {
