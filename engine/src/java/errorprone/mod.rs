@@ -15,6 +15,7 @@ mod naming;
 mod obsolete;
 mod simple;
 mod assigned;
+mod signatures;
 mod statements;
 mod targets;
 mod throws;
@@ -157,6 +158,7 @@ const CHECKS: &[Check] = &[
     assigned::unnecessary_boxed_assignment,
     assigned::int_long_math,
     assigned::initialize_inline,
+    signatures::exposed_private_type,
     names::type_parameter_naming,
     names::wildcard_import,
     names::same_name_but_different,
