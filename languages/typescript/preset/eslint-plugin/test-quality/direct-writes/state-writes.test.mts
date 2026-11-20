@@ -24,6 +24,16 @@ tester.run('fake-timers-require-restore storage, cookies and the working directo
     "it('a', () => { page.addInitScript(() => { document.cookie = 'a=1'; }); });",
     "it('a', () => { cy.visit('/'); localStorage.setItem('k', '1'); document.cookie = 'a=1'; });",
     "jest.mock('./a', () => { Object.defineProperty(navigator, 'clipboard', { value: {} }); return {}; });",
+    "it('a', () => { localStorage.setItem('k', '1'); run(); localStorage.removeItem('k'); });",
+    "it('a', () => { const home = process.cwd(); process.chdir('/tmp'); run(); process.chdir(home); });",
+    "it('a', () => { document.cookie = 'a=1'; run(); document.cookie = 'a=; max-age=0'; });",
+    "it('a', () => { Object.defineProperty(navigator, 'x', { value: 1 }); run(); Object.defineProperty(navigator, 'x', saved); });",
+    "function reset() { localStorage.clear(); } afterEach(reset); it('a', () => { localStorage.setItem('k', '1'); });",
+    "afterEach(() => { resetStorage(); }); it('a', () => { localStorage.setItem('k', '1'); }); function resetStorage() { localStorage.clear(); }",
+    "beforeEach(() => { vi.stubGlobal('localStorage', fake); }); it('a', () => { localStorage.setItem('k', '1'); });",
+    "beforeEach(() => { vi.spyOn(process, 'chdir').mockImplementation(() => {}); }); it('a', () => { process.chdir('/x'); });",
+    "it('a', async () => { const seed = () => { localStorage.setItem('k', '1'); }; await page.evaluate(seed); });",
+    "it('a', async () => { await browser.execute(() => localStorage.setItem('k', '1')); });",
   ],
   invalid: [
     {
@@ -50,6 +60,14 @@ tester.run('fake-timers-require-restore storage, cookies and the working directo
     },
     {
       code: "it('a', async () => { localStorage.setItem('k', '1'); await page.evaluate(() => 1); });",
+      errors: [storage],
+    },
+    {
+      code: "it('a', () => { process.chdir('/tmp'); localStorage.setItem('k', '1'); localStorage.setItem('j', '2'); });",
+      errors: [directory, storage, storage],
+    },
+    {
+      code: "beforeEach(() => { seed(); }); it('a', () => {}); function seed() { localStorage.setItem('k', '1'); }",
       errors: [storage],
     },
   ],
