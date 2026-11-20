@@ -122,6 +122,22 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   dependency array runs after every render and is reported too. A call inside a nested function (a
   subscription, a timer) and an effect with `[]` are left alone; an effect that synchronizes with
   an external system needs an exception.
+- **No fresh props on a `memo` component** (`nitpicker/react-no-unstable-memo-props`). `memo` skips a
+  render only when every prop is the same value as last time. A component made with `memo(...)` or
+  `React.memo(...)` and no comparison function (declared in the same file, or exported by a project
+  file the file imports, also through `export { Row } from './row'`) that is rendered, in a
+  component body or in a `.map`, `.flatMap` or `Array.from` callback there, with a prop written as
+  an object or array literal, a function, a `.bind(...)` call or a JSX element, or with a `const`
+  or function declared in that body to one of those, never skips. One finding per element names
+  each such prop and its stable form: a constant at module level or `useMemo` for objects, arrays
+  and elements, `useCallback` for functions. Inside a list callback, where hooks cannot be called,
+  the message says to pass the item and a stable handler or to move the row into its own
+  component. `key`, `ref` and `children`, an element with JSX or `{expression}` children, a prop
+  followed by a spread, an element built in an event handler, effect, `useMemo` or helper
+  function, an `async` (server) component, a component with no parameters and no hook call (it
+  never renders again by itself), a `memo` with a comparison function, components from packages
+  and a project that lists `babel-plugin-react-compiler` or `react-compiler-runtime` in an
+  enclosing `package.json` (the compiler memoizes the values) are not reported.
 - **No array index as `key`** (`react-x/no-array-index-key`): use a stable id from the item. Every
   element rendered from a list has a `key` (`react-x/no-missing-key`) and siblings do not repeat
   one (`react-x/no-duplicate-key`). A `key` built from `Math.random()`, `Date.now()`,

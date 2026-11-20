@@ -152,6 +152,14 @@ reports a React Query `mutate(...)` or `mutateAsync(...)` call, or a `useMutatio
 the result. A `mutateAsync` call with `try`/`catch` or `.catch`, and a project whose source sets `MutationCache`
 `onError`, are left alone.
 
+React memo props: `nitpicker/react-no-unstable-memo-props` (production source in a React project, in `eslint-lint`)
+reports a JSX element of a component made with `memo(...)` and no comparison function (same file, or a project file it
+is imported from) that is rendered in a component body with a prop that is new on every render: an object or array
+literal, a function, a `.bind(...)` call, a JSX element, or a `const` or function declared in that body to one of
+those. `key`, `ref`, `children`, elements with JSX or expression children, elements built outside render, `async`
+components, components with no parameters and no hook call, components from packages and projects with the React
+Compiler are left alone.
+
 Rows changed in memory: `in-memory-update` in the Python preset reports rows loaded from a Django queryset or a
 SQLAlchemy query only to set the same values on each and write them back (`bulk_update`, `commit`), where one `update`
 statement does it; models with a `save()` override, signals, `before_update` listeners, `auto_now` fields or a version

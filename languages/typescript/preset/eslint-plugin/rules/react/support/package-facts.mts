@@ -68,18 +68,32 @@ export function projectSourceFiles(filename: string): readonly string[] {
   return root === undefined ? [] : projectFiles(root);
 }
 
-export function packageDependsOn(filename: string, names: readonly string[]): boolean {
-  const root = nearestPackage(filename);
-  const manifest = root === undefined ? undefined : readManifest(root);
-  const tables = ['dependencies', 'devDependencies', 'peerDependencies'].map(
-    (key) => manifest?.[key],
-  );
-  return tables.some(
-    (table) =>
+const COMPILER_PACKAGES = ['babel-plugin-react-compiler', 'react-compiler-runtime'];
+const compilerVerdicts = new Map<string, { readonly compiled: boolean }>();
+
+function manifestLists(manifest: Manifest | undefined, names: readonly string[]): boolean {
+  return ['dependencies', 'devDependencies', 'peerDependencies'].some((key) => {
+    const table = manifest?.[key];
+    return (
       typeof table === 'object' &&
       table !== null &&
-      names.some((name) => Object.hasOwn(table, name)),
-  );
+      names.some((name) => Object.hasOwn(table, name))
+    );
+  });
+}
+
+export function packageDependsOn(filename: string, names: readonly string[]): boolean {
+  const root = nearestPackage(filename);
+  return manifestLists(root === undefined ? undefined : readManifest(root), names);
+}
+
+export function usesReactCompiler(filename: string): boolean {
+  const start = path.dirname(filename);
+  return cachedValue(compilerVerdicts, start, () => ({
+    compiled: ancestorDirectories(start).some((directory) =>
+      manifestLists(readManifest(directory), COMPILER_PACKAGES),
+    ),
+  })).compiled;
 }
 
 function fileMatches(file: string, pattern: RegExp): boolean {
