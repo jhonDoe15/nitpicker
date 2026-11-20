@@ -18,4 +18,5 @@ exception route in the message: write that form, don't work around the rule.
   options or show `error` from the mutation (`nitpicker/react-mutation-drops-failure`); a `MutationCache`
   `onError` in the project covers every mutation.
 - Component tests query through `screen` and assert what the user sees (text, roles, focus), never
-  component state, instances or hook internals.
+  component state, instances or hook internals. Keep `fireEvent`, `user` calls and `render` out of
+  `waitFor` callbacks, do not wait for a snapshot, and do not use a regex with the `g` flag in a query.
