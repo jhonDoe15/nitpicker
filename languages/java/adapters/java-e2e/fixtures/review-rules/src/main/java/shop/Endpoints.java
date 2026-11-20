@@ -21,7 +21,7 @@ public final class Endpoints {
   }
 
   public static String parsed(String host) {
-    return URI.create("http://" + host).getHost();
+    return URI.create("http://" + host).getHost(); // violation: UriCreateDynamic
   }
 
   public static String other(String line) {
