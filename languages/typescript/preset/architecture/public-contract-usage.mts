@@ -1,5 +1,6 @@
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../adapters/typed/typescript-program.mts';
+import { type UnusedMethod, engineUnusedMethods } from './typed/contract-engine.mts';
 import { depthFirst, syntaxChildren } from './typed/syntax-views.mts';
 import { accessedSymbol, type SymbolLookup } from './contract-usage/accessed-symbol.mts';
 import { readFileSync, realpathSync } from 'node:fs';
@@ -33,10 +34,8 @@ type ClassCursor = {
   readonly containingClass: TypeScript.Node | undefined;
 };
 
-type UnusedMethod = { readonly file: string; readonly contract: string; readonly method: string };
-
-function isProductionFile(fileName: string, root: string): boolean {
-  const relative = path.relative(root, fileName).split(path.sep).join('/');
+function isProductionSource(source: TypeScript.SourceFile, sourceRoot: string): boolean {
+  const relative = path.relative(sourceRoot, source.fileName);
   return (
     relative !== '..' &&
     !relative.startsWith('../') &&
@@ -236,35 +235,35 @@ export function findUnusedPublicContractMethods(
   );
 }
 
-function parsedConfig(absoluteConfig: string): TypeScript.ParsedCommandLine {
+function nodeUnusedMethods(absoluteConfig: string): {
+  readonly sourceRoot: string;
+  readonly findings: UnusedMethod[];
+} {
   const config = ts.readConfigFile(absoluteConfig, (fileName) => ts.sys.readFile(fileName));
-  if (config.error) {
+  if (config.error)
     throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, '\n'));
-  }
   const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, path.dirname(absoluteConfig));
-  if (parsed.errors.length > 0) {
+  if (parsed.errors.length > 0)
     throw new Error(
       parsed.errors
         .map((error) => ts.flattenDiagnosticMessageText(error.messageText, '\n'))
         .join('\n'),
     );
-  }
-  return parsed;
+  const program = ts.createProgram(parsed.fileNames, parsed.options);
+  const sourceRoot = parsed.options.rootDir ?? path.dirname(absoluteConfig);
+  return { sourceRoot, findings: findUnusedPublicContractMethods(program, { sourceRoot }) };
 }
 
 export function analyzePublicContractUsage(
   configPath: string,
-  { displayRoot }: { readonly displayRoot?: string } = {},
+  {
+    displayRoot,
+    environment = process.env,
+  }: { readonly displayRoot?: string; readonly environment?: NodeJS.ProcessEnv } = {},
 ): UnusedMethod[] {
   const absoluteConfig = path.resolve(configPath);
-  const parsed = parsedConfig(absoluteConfig);
-  const sourceRoot = parsed.options.rootDir ?? path.dirname(absoluteConfig);
-  const ownRoot = displayRoot === undefined ? sourceRoot : path.resolve(displayRoot);
-  if (!hasImplementingClass(parsed.fileNames, ownRoot)) {
-    return [];
-  }
-  const program = ts.createProgram(parsed.fileNames, parsed.options);
-  const findings = findUnusedPublicContractMethods(program, { sourceRoot, ownRoot });
+  const { sourceRoot, findings } =
+    engineUnusedMethods(absoluteConfig, environment) ?? nodeUnusedMethods(absoluteConfig);
   if (displayRoot === undefined) {
     return findings;
   }
