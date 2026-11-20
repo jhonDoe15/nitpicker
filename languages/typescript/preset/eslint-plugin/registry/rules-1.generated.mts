@@ -20,6 +20,7 @@ import { rule as ruleNoBlankNumberCoercion } from '../rules/number-input/no-blan
 import { rule as ruleNoBooleanFlagParameter } from '../rules/flags/no-boolean-flag-parameter.mts';
 import { rule as ruleNoBranchInCompositionRoot } from '../rules/boundaries/no-branch-in-composition-root.mts';
 import { rule as ruleNoBtoaOnRuntimeText } from '../rules/encoding/no-btoa-on-runtime-text.mts';
+import { rule as ruleNoBufferedGrowingOutput } from '../rules/processes/output/no-buffered-growing-output.mts';
 import { rule as ruleNoCacheWriteInTransaction } from '../rules/transactions/cache-writes/no-cache-write-in-transaction.mts';
 import { rule as ruleNoCachedRejection } from '../rules/lifecycles/memo/no-cached-rejection.mts';
 import { rule as ruleNoCaseMismatchedLookup } from '../rules/lookups/no-case-mismatched-lookup.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoNanOnlyCheck } from '../rules/numbers/no-nan-only-check.m
 import { rule as ruleNoNegativeCount } from '../rules/counts/no-negative-count.mts';
 import { rule as ruleNoNewlineOnlyLineSplit } from '../rules/line-splits/no-newline-only-line-split.mts';
 import { rule as ruleNoNodeProcessPerTest } from '../rules/test-runtime/processes/no-node-process-per-test.mts';
-import { rule as ruleNoNonLatin1HeaderValue } from '../rules/encoding/no-non-latin1-header-value.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -122,6 +122,7 @@ export const partRules = {
   'no-boolean-flag-parameter': ruleNoBooleanFlagParameter,
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
   'no-btoa-on-runtime-text': ruleNoBtoaOnRuntimeText,
+  'no-buffered-growing-output': ruleNoBufferedGrowingOutput,
   'no-cache-write-in-transaction': ruleNoCacheWriteInTransaction,
   'no-cached-rejection': ruleNoCachedRejection,
   'no-case-mismatched-lookup': ruleNoCaseMismatchedLookup,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-negative-count': ruleNoNegativeCount,
   'no-newline-only-line-split': ruleNoNewlineOnlyLineSplit,
   'no-node-process-per-test': ruleNoNodeProcessPerTest,
-  'no-non-latin1-header-value': ruleNoNonLatin1HeaderValue,
 };

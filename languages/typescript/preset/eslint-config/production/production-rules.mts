@@ -51,6 +51,7 @@ export const productionGuardEntries: Record<string, Linter.RuleEntry> = {
   'nitpicker/no-falsy-error-check': 'error',
   'nitpicker/no-send-without-return': 'error',
   'nitpicker/require-process-timeout': 'error',
+  'nitpicker/no-buffered-growing-output': 'error',
   'nitpicker/require-client-timeout': 'error',
   'nitpicker/time-unit-mismatch': 'error',
   'nitpicker/no-sync-node-api-in-async': 'error',

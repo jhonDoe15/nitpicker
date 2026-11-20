@@ -319,6 +319,12 @@ same rule runs as `subprocess-without-timeout` in the Python preset, `pmd/Proces
 in the Java preset and `kotlin-source/ProcessWaitWithoutTimeout` in the Kotlin preset; tests keep
 `nitpicker/require-test-process-timeout` (TypeScript) or their runner's own limits.
 
+Buffered output that grows: `nitpicker/no-buffered-growing-output` (production source, in `eslint-lint`) reports
+a buffered `child_process` or `execa` call whose output is read when the command's output grows with the project
+(`git ls-files`, `git diff`, `git log`, `find`, `rg`, `npm ls` and the like) and `maxBuffer` is left out or a
+constant, or when `maxBuffer` is a constant and the output is parsed whole (`JSON.parse`, `split`). Past the limit
+the child is killed and the call fails with `ENOBUFS`; the allowed forms read the output as a stream or from a file.
+
 Unbounded waits: `pmd/UnboundedWait` (Java, main sources) reports `get()` or `join()` without a timeout on a
 `Future` or `CompletableFuture`, `Thread.join()` and `CountDownLatch.await()`, and
 `pmd/ReactorBlockWithoutTimeout` (with `reactor-core` on the compile classpath) reports `block()`,

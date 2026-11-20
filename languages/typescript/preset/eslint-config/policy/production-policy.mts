@@ -196,6 +196,7 @@ function productionGuardRules({
     'nitpicker/no-unversioned-orm-entity': 'error',
     'nitpicker/no-shell-string-command': 'error',
     'nitpicker/require-process-timeout': 'error',
+    'nitpicker/no-buffered-growing-output': 'error',
     'nitpicker/require-client-timeout': 'error',
     'nitpicker/time-unit-mismatch': 'error',
     'nitpicker/no-sync-node-api-in-async': 'error',

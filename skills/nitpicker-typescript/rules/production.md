@@ -123,6 +123,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
+- Output that grows with the project (`git ls-files`, `git diff`, `find`, a tool's JSON report) is read as a stream
+  (`spawn` and its `stdout` line by line) or from a file the tool writes, not through `execFileSync`/`spawnSync`
+  and a `maxBuffer`, which fails with `ENOBUFS` on a large project (`nitpicker/no-buffered-growing-output`).
 - A page of rows has an order: `limit`/`offset`/`take`/`skip`, a Prisma `cursor` or SQL `LIMIT` comes with
   `orderBy` on a unique key (or a tie-breaker after a non-unique one), and `json_agg`/`array_agg` or
   Kysely `jsonArrayFrom` lists sort inside (`json_agg(t ORDER BY t.name)`) (`nitpicker/no-unordered-query`).

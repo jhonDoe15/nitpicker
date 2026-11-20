@@ -1816,6 +1816,20 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   hangs the program. A program whose purpose is to run a child to completion, such as a build
   wrapper, takes an exception. The rule reads no types, so it behaves the same in the JavaScript
   preset.
+- Output that grows with the project is not read through a fixed-size buffer
+  (`nitpicker/no-buffered-growing-output`, production files). `execSync`, `execFileSync`, `spawnSync`, `exec` and
+  `execFile` (with a callback or through `promisify`) and the buffered `execa` calls keep the whole output in memory, up
+  to `maxBuffer` (1 MiB in Node.js, 100,000,000 bytes in execa); past it the child is killed and the call fails with
+  `ENOBUFS`. Reported when the output is read (the returned text, `.stdout`, `.output` or `.all` of the result, a
+  destructured `stdout`, or the callback's second parameter) and either the command's output grows with the project
+  (`git ls-files`, `ls-tree -r`, `diff`, `log`, `rev-list`, `status` and `grep`; `find`, `rg`, `du`, `tree`, `npm ls`,
+  `ls -R` and `grep -r`) while `maxBuffer` is left out or a constant, or `maxBuffer` is a constant and the output is
+  parsed whole (`JSON.parse`, `split`). Not reported: output that is ignored or not piped (`stdio: 'inherit'` or
+  `'ignore'`, `stdio` from a variable), execa's `buffer: false`, `maxBuffer: Infinity` or a computed size, options
+  from a parameter or a spread, bounded forms (`git log -1`, `-n`, `--max-count`, `--max-parents`, `git diff --quiet`,
+  `--shortstat`, `rev-list --count`, `-q`), argument lists with a spread, and shell commands with a pipe, a
+  redirection or a list (`git log | head -5`). Allowed forms: `spawn` with the output read as a stream, `stdio` set
+  to a file descriptor, or a tool that writes its report to a file.
 - Waits without a timeout (`pmd/UnboundedWait`, `unbounded-wait`, `pmd/ReactorBlockWithoutTimeout` in the JVM and
   Python presets) have no TypeScript or JavaScript counterpart: nothing blocks a thread on a promise, and a promise
   that never settles is a missing deadline for `await`, which `nitpicker/require-client-timeout` and
