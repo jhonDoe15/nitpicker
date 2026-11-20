@@ -8,6 +8,7 @@ import { escapeHatchLinterOptions } from '../strict/strict-escape-hatches.mts';
 import { type ScopeLayout, linterConfigs } from '../typed/config-types.mts';
 import { testAreaGlobsFor } from '../typed/glob-views.mts';
 import { restrictedMatchers } from './restricted-matchers.mts';
+import { browserTestPlugins, browserTestRuleIds } from './browser-tests/browser-test-rules.mts';
 
 type TestLayout = ScopeLayout & {
   readonly unitTestGlobs: string[];
@@ -121,8 +122,9 @@ function honestyRulesBlock(
     files,
     ignores: layout.excludedGlobs,
     linterOptions: escapeHatchLinterOptions,
-    plugins: { nitpicker: nitpickerRules, ...MATCHER_PLUGINS[runner] },
+    plugins: { nitpicker: nitpickerRules, ...browserTestPlugins, ...MATCHER_PLUGINS[runner] },
     rules: {
+      ...Object.fromEntries(browserTestRuleIds.map((id) => [id, ERROR])),
       'nitpicker/no-comments': [ERROR, { suppressionsOnly: true }],
       'nitpicker/no-shared-test-state': ERROR,
       'nitpicker/no-uncleared-shared-mock': ERROR,
