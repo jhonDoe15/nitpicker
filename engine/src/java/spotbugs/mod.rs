@@ -2,9 +2,11 @@
 //! SpotBugs 4.9.8 reports on test code: same pattern name, line and message, read from source instead of class files.
 mod constructors;
 mod expose;
+mod fields;
 mod flow;
 mod mutable;
 mod names;
+mod order;
 mod stores;
 
 use super::types::project::JavaProject;
@@ -26,6 +28,10 @@ pub struct Context<'a> {
     pub fixed: RefCell<HashMap<String, Rc<HashSet<String>>>>,
     /// Fields whose stored values are all of one changeable type, worked out once.
     pub widened: RefCell<Option<Rc<HashSet<(String, String)>>>>,
+    /// Every value the file stores in a field, worked out once.
+    pub stored: RefCell<Option<Rc<fields::StoredMap<'a>>>>,
+    /// Fields being judged by the values stored in them, so that fields stored into each other end the question.
+    pub loading: RefCell<HashSet<(String, String)>>,
     line_starts: Vec<usize>,
     selected: Option<Vec<String>>,
     out: RefCell<Vec<Finding>>,
@@ -124,7 +130,7 @@ impl FileRule for SpotBugs {
         });
         let classes = declared.iter().filter_map(|node| Some((scope.names.get(&node.id())?.clone(), *node))).collect();
         let fixed = RefCell::new(HashMap::new());
-        let context = Context { resolver, file, classes, fixed, widened: RefCell::new(None), line_starts, selected, out: RefCell::new(Vec::new()) };
+        let context = Context { resolver, file, classes, fixed, widened: RefCell::new(None), stored: RefCell::new(None), loading: RefCell::new(HashSet::new()), line_starts, selected, out: RefCell::new(Vec::new()) };
         for node in declared {
             for detector in DETECTORS {
                 detector(&context, node);

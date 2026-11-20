@@ -1,11 +1,8 @@
 //! What a class stores in its fields: whether every stored value is one nobody can change, and whether the values
 //! are all of one type that says more than the declared type of the field.
-use super::mutable::mutable;
 use super::Context;
 use crate::engine::source::{ancestor, children, named_children, walk};
-use crate::java::types::expr::{Binding, Receiver};
-use crate::java::types::model::Type;
-use crate::java::types::scope::{TYPE_DECLARATIONS, enclosing_types};
+use crate::java::types::expr::Binding;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use tree_sitter::Node;
@@ -146,11 +143,43 @@ pub fn immutable_value(context: &Context, value: Node) -> bool {
             let (Some(first), Some(second)) = (value.child_by_field_name("consequence"), value.child_by_field_name("alternative")) else { return false };
             choice(context, crate::java::types::expr::unwrap(first), crate::java::types::expr::unwrap(second))
         }
-        "identifier" => local_values(context, value).is_some_and(|values| {
-            let apart = |held: Node| held.kind() != "identifier" && !(held.start_byte() <= value.start_byte() && value.end_byte() <= held.end_byte());
-            values.len() == 1 && apart(values[0]) && immutable_value(context, values[0])
-        }),
+        "identifier" => match local_values(context, value) {
+            Some(values) => {
+                // A local variable is judged by the values it is given: one value by itself, two values the way
+                // the two sides of `c ? first : second` are. A value read from a field is judged by that field.
+                let outside = |held: Node| !(held.start_byte() <= value.start_byte() && value.end_byte() <= held.end_byte());
+                let apart = |held: Node| match held.kind() {
+                    "identifier" => local_values(context, held).is_none(),
+                    _ => outside(held),
+                };
+                let plain: Vec<Node> = values.iter().map(|held| crate::java::types::expr::unwrap(*held)).collect();
+                match plain[..] {
+                    [only] => apart(only) && immutable_value(context, only),
+                    [first, second] => apart(first) && apart(second) && choice(context, first, second),
+                    _ => false,
+                }
+            }
+            None => false,
+        },
         _ => false,
+    }
+}
+
+/// Whether a value stored in the field `target` is one nobody can change, `None` when the store says nothing.
+/// A value read from another field is judged by that field. The field read back into itself says nothing when
+/// stored directly and counts against the field when it went through a local variable first.
+fn stored_fixed(context: &Context, value: Node, target: &(String, String)) -> Option<bool> {
+    let value = crate::java::types::expr::unwrap(value);
+    let held = (value.kind() == "identifier").then(|| local_values(context, value)).flatten();
+    let (source, direct) = match held.as_deref() {
+        Some([only]) => (crate::java::types::expr::unwrap(*only), false),
+        Some(_) => return Some(immutable_value(context, value)),
+        None => (value, true),
+    };
+    match super::fields::field_key(context, source) {
+        Some(key) if key == *target => (!direct).then_some(false),
+        Some(_) => Some(super::fields::loaded_fixed(context, source)),
+        None => Some(immutable_value(context, value)),
     }
 }
 
@@ -164,7 +193,22 @@ pub fn fixed_of(context: &Context, own: &str) -> Rc<HashSet<String>> {
     found
 }
 
-/// Fields of the class that are written at least once and only ever with values nobody can change.
+/// A value another class stores in the field. A call counts against the field only when SpotBugs has already
+/// been through the class of the called method by the time it reads the store.
+fn spoils(context: &Context, value: Node, by: &str, target: &(String, String)) -> bool {
+    if stored_fixed(context, value, target) != Some(false) {
+        return false;
+    }
+    let value = crate::java::types::expr::unwrap(value);
+    if value.kind() != "method_invocation" {
+        return true;
+    }
+    let index = context.resolver.index;
+    context.resolver.resolve_call(value).is_some_and(|called| index.from_source(&called.declaring) && super::order::before(context, &called.declaring, by))
+}
+
+/// Fields of the class that are written at least once and only ever with values nobody can change. Stores of
+/// another class count when SpotBugs comes to that class first.
 fn fixed_fields(context: &Context, class: Node, own: &str) -> HashSet<String> {
     let mut verdicts: HashMap<String, bool> = HashMap::new();
     let mut settle = |name: &str, fine: bool| {
@@ -180,110 +224,17 @@ fn fixed_fields(context: &Context, class: Node, own: &str) -> HashSet<String> {
             settle(name, matches!(item, super::flow::Item::Fixed));
         }
     }
-    let mut stack = vec![body];
-    while let Some(node) = stack.pop() {
-        for part in children(node) {
-            if TYPE_DECLARATIONS.contains(&part.kind()) || part.kind() == "class_body" {
-                continue;
-            }
-            match part.kind() {
-                "field_declaration" => {
-                    for declarator in children(part).into_iter().filter(|d| d.kind() == "variable_declarator") {
-                        if let (Some(name), Some(value)) = (declarator.child_by_field_name("name"), declarator.child_by_field_name("value")) {
-                            settle(context.text(name), immutable_value(context, value));
-                        }
-                    }
+    let stores = super::fields::stored(context);
+    for (key, values) in stores.iter().filter(|((declaring, _), _)| declaring == own) {
+        for store in values {
+            if store.by == key.0 {
+                if let Some(fine) = stored_fixed(context, store.value, key) {
+                    settle(&key.1, fine);
                 }
-                "assignment_expression" => {
-                    let (Some(left), Some(right)) = (part.child_by_field_name("left"), part.child_by_field_name("right")) else { continue };
-                    let name = match left.kind() {
-                        "identifier" => match context.resolver.binding(left, context.text(left)) {
-                            Some(Binding::Field(_, declaring, field)) if declaring.name == own => Some(field.name.clone()),
-                            _ => None,
-                        },
-                        "field_access" => {
-                            let through_own = left.child_by_field_name("object").is_some_and(|object| {
-                                object.kind() == "this"
-                                    || matches!(context.resolver.receiver(object), Some(Receiver::Value(Type::Class(class, _)) | Receiver::Static(class)) if class == own)
-                            });
-                            left.child_by_field_name("field").filter(|_| through_own).map(|field| context.text(field).to_string())
-                        }
-                        _ => None,
-                    };
-                    if let Some(name) = name {
-                        settle(&name, immutable_value(context, right));
-                    }
-                }
-                _ => {}
+            } else if super::order::before(context, &store.by, own) {
+                settle(&key.1, !spoils(context, store.value, &store.by, key));
             }
-            stack.push(part);
         }
     }
     verdicts.into_iter().filter(|(_, fine)| *fine).map(|(name, _)| name).collect()
-}
-
-/// Fields whose stored values, anywhere in the file, all have one type that can be changed although the declared
-/// type of the field cannot.
-pub fn widened(context: &Context) -> Rc<HashSet<(String, String)>> {
-    if let Some(known) = context.widened.borrow().as_ref() {
-        return known.clone();
-    }
-    let index = context.resolver.index;
-    let mut stored: HashMap<(String, String), Option<Type>> = HashMap::new();
-    let mut note = |key: (String, String), value: Node| {
-        let value = crate::java::types::expr::unwrap(value);
-        if value.kind() == "null_literal" {
-            return;
-        }
-        let branches = (value.kind() == "ternary_expression").then(|| value.child_by_field_name("consequence").zip(value.child_by_field_name("alternative"))).flatten();
-        let kind = match branches {
-            Some((first, second)) => {
-                let (first, second) = (context.resolver.type_of(first), context.resolver.type_of(second));
-                first.filter(|first| second.as_ref().map(Type::name) == Some(first.name()))
-            }
-            None => context.resolver.type_of(value),
-        };
-        stored.entry(key).and_modify(|all| {
-            if all.as_ref().map(Type::name) != kind.as_ref().map(Type::name) {
-                *all = None;
-            }
-        }).or_insert(kind);
-    };
-    walk(context.file.tree.root_node(), |node| match node.kind() {
-        "variable_declarator" if crate::engine::source::parent(node).is_some_and(|holder| holder.kind() == "field_declaration") => {
-            let class = enclosing_types(context.resolver.scope, node).into_iter().next();
-            if let (Some(class), Some(name), Some(value)) = (class, node.child_by_field_name("name"), node.child_by_field_name("value")) {
-                note((class, context.text(name).to_string()), value);
-            }
-        }
-        "assignment_expression" => {
-            let (Some(left), Some(right)) = (node.child_by_field_name("left"), node.child_by_field_name("right")) else { return };
-            let key = match left.kind() {
-                "identifier" => match context.resolver.binding(left, context.text(left)) {
-                    Some(Binding::Field(_, declaring, field)) => Some((declaring.name.clone(), field.name.clone())),
-                    _ => None,
-                },
-                "field_access" => {
-                    let holder = left.child_by_field_name("object").and_then(|object| match object.kind() {
-                        "this" => enclosing_types(context.resolver.scope, object).into_iter().next(),
-                        _ => match context.resolver.receiver(object) {
-                            Some(Receiver::Value(Type::Class(class, _)) | Receiver::Static(class)) => Some(class.to_string()),
-                            _ => None,
-                        },
-                    });
-                    let name = left.child_by_field_name("field").map(|field| context.text(field));
-                    holder.zip(name).and_then(|(holder, name)| index.field(&holder, name)).map(|(declaring, field)| (declaring.name.clone(), field.name.clone()))
-                }
-                _ => None,
-            };
-            if let Some(key) = key {
-                note(key, right);
-            }
-        }
-        _ => {}
-    });
-    let found: HashSet<(String, String)> = stored.into_iter().filter(|(_, kind)| kind.as_ref().is_some_and(|kind| mutable(index, kind))).map(|(key, _)| key).collect();
-    let found = Rc::new(found);
-    *context.widened.borrow_mut() = Some(found.clone());
-    found
 }

@@ -3,6 +3,14 @@ use super::{Item, State, Store, Walker};
 use crate::engine::source::named_children;
 use tree_sitter::Node;
 
+/// The variable `p instanceof Type name` declares: it holds what was tested.
+fn pattern_variable(test: Node) -> Option<Node> {
+    test.child_by_field_name("name").or_else(|| {
+        let pattern = named_children(test).into_iter().find(|part| part.kind() == "type_pattern")?;
+        named_children(pattern).into_iter().rfind(|part| part.kind() == "identifier")
+    })
+}
+
 const SKIPPED: &[&str] = &["lambda_expression", "class_body", "class_declaration", "interface_declaration", "enum_declaration", "record_declaration"];
 
 impl<'t> Walker<'_, '_, 't> {
@@ -57,7 +65,7 @@ impl<'t> Walker<'_, '_, 't> {
                 let items: Vec<Item> = arguments.into_iter().map(|argument| self.eval(argument, state)).collect();
                 if items.len() == 1 && self.passes_argument(node) {
                     return match items.into_iter().next() {
-                        Some(Item::Spread) => Item::Param,
+                        Some(Item::Spread) => Item::Param(usize::MAX),
                         Some(item) => item,
                         None => Item::Other,
                     };
@@ -76,6 +84,13 @@ impl<'t> Walker<'_, '_, 't> {
             }
             "switch_expression" => {
                 self.switch(node, state);
+                Item::Other
+            }
+            "instanceof_expression" => {
+                let tested = node.child_by_field_name("left").map_or(Item::Other, |left| self.eval(left, state));
+                if let Some(name) = pattern_variable(node) {
+                    state.insert(self.text(name).to_string(), tested);
+                }
                 Item::Other
             }
             kind if SKIPPED.contains(&kind) => Item::Other,

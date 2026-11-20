@@ -60,3 +60,17 @@ pub fn field(context: &Context, from: &str, declaring: &str, name: &str) -> Stri
         format!("{declaring}.{name}")
     }
 }
+
+/// The hidden field an inner class keeps its outer instance in: `this$0` when the outer class is a top-level or
+/// static one, one more for every inner class the outer class itself sits in. `nest` is the class and the
+/// classes around it.
+pub fn outer_field(context: &Context, nest: &[String]) -> String {
+    let inner = |name: &&String| {
+        context.classes.get(*name).is_some_and(|class| {
+            class.kind() == "class_declaration"
+                && !crate::java::helpers::has_modifier(*class, "static")
+                && crate::engine::source::parent(*class).is_some_and(|holder| holder.kind() == "class_body")
+        })
+    };
+    format!("this${}", nest.iter().skip(1).take_while(inner).count())
+}

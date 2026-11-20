@@ -83,7 +83,7 @@ impl Walker<'_, '_, '_> {
         if nest.get(1) != Some(&outer) {
             return None;
         }
-        let name = format!("this${}", nest.len() - 2);
+        let name = super::super::names::outer_field(self.context, &nest);
         Some(FieldRef { declaring: nest[0].clone(), name, via: nest[0].clone(), kind: Type::class(&outer), flags: flag::FINAL })
     }
 }

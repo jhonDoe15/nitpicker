@@ -1,0 +1,22 @@
+REP	4	p.G$R1.ms() returning G$R1.ms
+REP	5	p.G$R2.ms() returning G$R2.ms
+REP	6	p.G$R3.xs() returning G$R3.xs
+REP	18	p.G$U1.get(int) returning G$U1.f
+REP	19	p.G$U2.get() returning G$U2.f
+REP	20	p.G$U3.get() returning G$U3.f
+REP	21	p.G$U4.get() returning G$U4.f
+REP	24	p.G$U5.get() returning G$U5.f
+REP	25	p.G$U6.get() returning G$U6.f
+REP	26	p.G$U7.get() returning G$U7.f
+REP	27	p.G$U8.get() returning G$U8.f
+REP2	35	new p.G$Mid$It(G$Mid) storing an externally mutable object into G$Mid$It.this$0
+REP2	37	new p.G$In1$In2(G$In1) storing an externally mutable object into G$In1$In2.this$1
+REP2	40	new p.G$In3(G, int, int) storing an externally mutable object into G$In3.this$0
+REP2	43	p.G$X1.add(Mut) storing an externally mutable object into G$X1.head
+REP2	43	p.G$X1.add(Mut) storing an externally mutable object into G$X1.tail
+REP2	44	p.G$X2.m(Mut, boolean) storing an externally mutable object into G$X2.a
+REP2	45	p.G$X3.m(Mut, Mut) storing an externally mutable object into G$X3.a
+REP2	45	p.G$X3.m(Mut, Mut) storing an externally mutable object into G$X3.a
+REP2	47	new p.G$Y2(Object) storing an externally mutable object into G$Y2.v
+REP2	48	p.G$Y3.m(Object) storing an externally mutable object into G$Y3.v
+REP2	49	p.G$Y4.m(Object) storing an externally mutable object into G$Y4.v
