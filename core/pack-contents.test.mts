@@ -106,28 +106,44 @@ describe('npm package contents', () => {
     }
   });
 
-  beforeAll(() => {
-    let listing: unknown;
-    const packed = checkoutCopy();
-    copy = packed;
+  function packedCopy(): string {
+    if (copy === undefined) {
+      throw new Error('The checkout copy was not made');
+    }
+    return copy;
+  }
+
+  function inCopy(step: string, run: (packed: string) => void): void {
     try {
+      run(packedCopy());
+    } catch (error) {
+      throw new Error(`${step} for the npm pack listing failed`, { cause: error });
+    }
+  }
+
+  beforeAll(() => {
+    copy = checkoutCopy();
+  });
+
+  beforeAll(() => {
+    inCopy('Emitting the JavaScript', (packed) => {
       execFileSync(process.execPath, [EMIT], { cwd: packed, stdio: 'pipe', timeout: 120_000 });
-      listing = parseJson(
+    });
+  });
+
+  beforeAll(() => {
+    inCopy('Listing the package', (packed) => {
+      const listing = parseJson(
         execFileSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
           cwd: packed,
           encoding: 'utf8',
           timeout: 120_000,
         }),
       );
-    } catch (error) {
-      throw new Error('Building the npm pack listing failed', {
-        cause: error,
-      });
-    }
-
-    packedFiles = new Set(
-      listOf(fieldAt(listing, 0, 'files')).map((file) => textOf(fieldAt(file, 'path'))),
-    );
+      packedFiles = new Set(
+        listOf(fieldAt(listing, 0, 'files')).map((file) => textOf(fieldAt(file, 'path'))),
+      );
+    });
   });
 
   it('replays prepack: the emit runs in the copy, the rule data comes from the global setup', () => {
