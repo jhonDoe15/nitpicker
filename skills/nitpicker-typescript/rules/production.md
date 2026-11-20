@@ -192,6 +192,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-subtree-search-per-ancestor`).
 - Keep a result you test in a local instead of calling again to use it (`const found = lookup(key);
   if (found) use(found)`), and call a recursive function once per sub-result (`nitpicker/no-repeated-call`).
+- Put cheap early exits first: map, filter or index a collection only after the `if (...) return` that does not
+  need the value (`nitpicker/no-work-before-early-exit`).
 - Never run a query or a request once per item of a loop: fetch or write the items in one query
   (`findByIds`, `createMany`, `WHERE id IN (...)`), also when a helper of yours does the I/O and inside
   `Promise.all(items.map(...))`. For a remote API without a batch endpoint use a limiter or fixed-size

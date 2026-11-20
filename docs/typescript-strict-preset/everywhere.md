@@ -287,6 +287,19 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   by them (`height(node.left) + height(node.left)`, `typeOf(argument)` twice in one loop pass):
   each level doubles the work. Allowed form: keep the first result in a local, or remember the
   answers per argument.
+- `nitpicker/no-work-before-early-exit`: a value worked out right before an early exit that leaves
+  without it, in all production code (not in tests). It reports `const x = ...` followed directly by
+  an `if` without `else` whose block ends in `return`, `throw`, `continue` or `break`, when neither the
+  test nor the block reads `x`, `x` is read later, the test makes no call, assignment or `await`,
+  and the initializer is in-memory work with no effect that does not throw on bad input:
+  `Object.entries`, `Object.keys`, `Object.values`, `Object.fromEntries`,
+  `Array.from`, `new Map` and `new Set`, a spread array, or `map`, `filter`, `flatMap`, `reduce`,
+  `slice`, `split`, `join` and the like on such values with callbacks that are expressions of the
+  same kind. An initializer with an `await` is reported only when the test reads nothing but
+  parameters and `const` names, since other state may change while it waits. Calls of project
+  functions, `sort` and other changes in place, clocks and ids, a test that reads `x`, an initializer
+  that is a `?:`, `&&` or `||`, and an exit that calls a local function reading `x` are not reported. Allowed form: declare the value below the exit; keep it above only when its error must
+  be raised on the early path too.
 - `nitpicker/no-wasted-collection-step`: a collection or promise step that copies for nothing or
   walks the data twice, in all production code (not in tests). It reports `filter(p)[0]` and
   `filter(p).at(0)` with a callback `p` (allowed form: `find(p)`; a selector string, as in jQuery,

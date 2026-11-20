@@ -124,6 +124,7 @@ function productionRules({ react, routeHandlers }: ProductionScope): RuleEntries
     'nitpicker/no-constant-lookup-in-loop': 'error',
     'nitpicker/no-subtree-search-per-ancestor': 'error',
     'nitpicker/no-repeated-call': 'error',
+    'nitpicker/no-work-before-early-exit': 'error',
     'nitpicker/no-wasted-collection-step': 'error',
     'nitpicker/no-raw-http-value': 'error',
     'nitpicker/no-repeated-string-literal': 'error',
