@@ -19,11 +19,17 @@ pub struct Context<'a, 's> {
     pub estree: Option<(&'s support::view::View, &'s support::scope::Scopes<'a, 's>)>,
     /// The ids of the rules this run reports.
     pub selected: &'s [&'static str],
+    /// Settings given for this file alone, as `key=value`.
+    pub settings: &'s [String],
     display: &'s str,
     findings: Vec<Finding>,
 }
 
 impl<'a> Context<'a, '_> {
+    pub fn setting(&self, key: &str) -> Option<&str> {
+        self.settings.iter().find_map(|setting| setting.strip_prefix(key).and_then(|rest| rest.strip_prefix('=')))
+    }
+
     pub fn text(&self, span: Span) -> &'a str {
         self.file.slice(span.start, span.end)
     }
@@ -85,7 +91,7 @@ impl Selection {
     }
 }
 
-fn lint_file(path: &str, display: &str, selection: &Selection) -> Vec<Finding> {
+fn lint_file(path: &str, display: &str, settings: &[String], selection: &Selection) -> Vec<Finding> {
     let Ok(text) = std::fs::read_to_string(path) else { return Vec::new() };
     super::with_parsed(path, &text, |file| {
         if file.panicked {
@@ -95,7 +101,7 @@ fn lint_file(path: &str, display: &str, selection: &Selection) -> Vec<Finding> {
         let view = selection.view.then(|| support::view::View::of(file.program.to_estree_json(true, true)));
         let scopes = view.as_ref().map(|view| support::scope::Scopes::of(&semantic, view));
         let estree = view.as_ref().zip(scopes.as_ref());
-        let mut context = Context { file, semantic: &semantic, estree, selected: &selection.names, display, findings: Vec::new() };
+        let mut context = Context { file, semantic: &semantic, estree, selected: &selection.names, settings, display, findings: Vec::new() };
         for rule in &selection.rules {
             rule(&mut context);
         }
@@ -103,9 +109,15 @@ fn lint_file(path: &str, display: &str, selection: &Selection) -> Vec<Finding> {
     })
 }
 
-/// Each entry is the path to read and the path to report.
-pub fn lint_files(files: &[(String, String)], rules: &Selection) -> Vec<Finding> {
-    let mut findings: Vec<Finding> = files.par_iter().flat_map_iter(|(path, display)| lint_file(path, display, rules)).collect();
+/// A file to lint: the path to read, the path to report, and settings for this file alone.
+pub struct Listed {
+    pub path: String,
+    pub display: String,
+    pub settings: Vec<String>,
+}
+
+pub fn lint_files(files: &[Listed], rules: &Selection) -> Vec<Finding> {
+    let mut findings: Vec<Finding> = files.par_iter().flat_map_iter(|file| lint_file(&file.path, &file.display, &file.settings, rules)).collect();
     findings.sort();
     findings
 }
