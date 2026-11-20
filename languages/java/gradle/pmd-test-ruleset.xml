@@ -11,6 +11,18 @@
     <properties>
       <property name="testClassPattern"
                 value="^(?:.*\.)?Test[^\.]*$|^(?:.*\.)?.*(?&lt;!Arch|Architecture)Tests?$|^(?:.*\.)?.*TestCase$"/>
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+.[ancestor-or-self::ClassDeclaration[
+    pmd-java:typeIs('org.apache.lucene.tests.util.LuceneTestCase')
+    or pmd-java:typeIs('org.apache.lucene.util.LuceneTestCase')
+    or pmd-java:typeIs('com.carrotsearch.randomizedtesting.RandomizedTest')
+    or ModifierList/Annotation[@SimpleName = 'TestMethodProviders']
+    or ModifierList/Annotation[@SimpleName = 'RunWith']
+         //ClassLiteral/ClassType[@SimpleName = ('RandomizedRunner', 'JUnit38ClassRunner', 'AllTests')]]
+   [.//MethodDeclaration[@Visibility = 'public'][starts-with(@Name, 'test')]]]
+]]></value>
+      </property>
     </properties>
   </rule>
   <rule name="FixedSleepInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
