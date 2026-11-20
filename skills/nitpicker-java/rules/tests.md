@@ -86,6 +86,11 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   not `latch.await(5, TimeUnit.SECONDS);` followed by assertions. `await`, `tryLock`, `tryAcquire`, `offer`,
   `waitFor` and `awaitTermination` with a timeout return `false` when the time runs out, and the test then
   asserts against work that has not finished.
+- Let the system choose the port (`FixedPortInTest`): `new ServerSocket(0)` and `getLocalPort()`,
+  `HttpServer.create(new InetSocketAddress(0), 0)`, WireMock `options().dynamicPort()`, `MockWebServer.start()`,
+  `webEnvironment = RANDOM_PORT` with `@LocalServerPort`, and `getMappedPort(...)` of a container, never a
+  number such as `8089`, `DEFINED_PORT` with `server.port=8081`, `withFixedExposedPort` or `setPortBindings`.
+  A fixed port fails when a second run, a parallel worker or a local application holds it.
 - Start a container, server or process once, not for each test (`ServerOrContainerPerTest`): a
   Testcontainers `@Container` field is `static`, a WireMock `@RegisterExtension` is `static`, a JUnit 4
   server or container is a `@ClassRule`, and `@BeforeEach`/`@Before` does not create and start one

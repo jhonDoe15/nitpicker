@@ -116,6 +116,7 @@ const REVIEW_RULES = new Set([
   'RealClockInTest',
   'RandomInTest',
   'NetworkInTest',
+  'FixedPortInTest',
   'ServerOrContainerPerTest',
   'SharedTestState',
   'ExhaustiveEnumPredicate',
