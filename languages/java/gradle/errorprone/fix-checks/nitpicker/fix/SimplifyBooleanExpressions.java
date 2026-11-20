@@ -41,7 +41,7 @@ public final class SimplifyBooleanExpressions extends BugChecker implements Bina
         ? Support.source(operand, state)
         : "!" + Precedence.wrap(operand, Precedence.UNARY, state);
     int precedence = keep ? Precedence.of(operand) : Precedence.UNARY;
-    return describeMatch(tree, SuggestedFix.replace(tree, Precedence.inContext(text, precedence, state)));
+    return Support.describe(this, tree, SuggestedFix.replace(tree, Precedence.inContext(text, precedence, state)), state);
   }
 
   private static boolean hasComment(ExpressionTree left, ExpressionTree right, VisitorState state) {

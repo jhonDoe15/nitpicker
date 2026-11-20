@@ -33,7 +33,7 @@ public final class CollapsibleIfStatements extends BugChecker implements IfTreeM
     String condition =
         Precedence.wrap(first, Precedence.AND, state) + " && " + Precedence.wrap(second, Precedence.AND, state);
     String text = "if (" + condition + ") " + shifted(Support.source(body, state), outer, inner, state);
-    return describeMatch(outer, SuggestedFix.replace(outer, text));
+    return Support.describe(this, outer, SuggestedFix.replace(outer, text), state);
   }
 
   private static IfTree innerIf(IfTree outer) {

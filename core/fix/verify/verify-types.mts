@@ -1,4 +1,4 @@
-import type { Journal } from '../dry-run/journal-types.mts';
+import type { Journal, LeftOutFix } from '../dry-run/journal-types.mts';
 
 export type VerifiableAnalyzer = {
   readonly name: string;
@@ -11,7 +11,10 @@ export type FindingKey = {
   readonly path: string;
 };
 
-export type AnalyzedFinding = FindingKey & { readonly classification: string };
+export type AnalyzedFinding = FindingKey & {
+  readonly classification: string;
+  readonly location?: unknown;
+};
 
 export type CountedFinding = FindingKey & { readonly count: number };
 
@@ -38,20 +41,25 @@ type AnalyzeResult = {
 
 export type Analyze = (request: AnalyzeRequest) => AnalyzeResult;
 
+export type FindingLines = ReadonlyMap<string, readonly number[]>;
+
 export type Analysis = {
   readonly findings: Counts;
+  readonly lines: FindingLines;
   readonly errors: readonly string[];
   readonly unmatched: readonly string[];
 };
 
 type RolledBackRun = {
   readonly recipe: string;
+  readonly whole: boolean;
   readonly files: readonly string[];
   readonly reasons: readonly string[];
 };
 
 export type VerifyResult = {
   readonly rolledBack: readonly RolledBackRun[];
+  readonly leftOut: readonly LeftOutFix[];
   readonly notes: readonly string[];
 };
 
@@ -76,6 +84,7 @@ export type VerifyRequest = {
   readonly journal: Journal;
   readonly analyze: unknown;
   readonly mode?: string;
+  readonly rollback?: 'whole-files' | 'bad-fixes';
 };
 
 export function isAnalyze(value: unknown): value is Analyze {

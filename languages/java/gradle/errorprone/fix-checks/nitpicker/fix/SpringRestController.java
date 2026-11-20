@@ -54,7 +54,7 @@ public final class SpringRestController extends BugChecker implements ClassTreeM
     }
     Support.dropImportIfUnused(fix, state, "Controller", controllers);
     Support.dropImportIfUnused(fix, state, "ResponseBody", bodies);
-    return describeMatch(plan.bodies.get(0), fix.build());
+    return Support.describe(this, plan.bodies.get(0), fix.build(), state);
   }
 
   private static Plan plan(ClassTree tree) {

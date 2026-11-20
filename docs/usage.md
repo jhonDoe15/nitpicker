@@ -2753,7 +2753,7 @@ runs only when `--fix --rule` names one of its rules.
 | java, kotlin | `pmd/<Rule>` for the rules in [Fix-only Error Prone checks](#fix-only-error-prone-checks) | `java-source-safe`, `java-source-review` | applies the rewrite of a check nitpicker ships, to the changed lines of `.java` files |
 | kotlin | detekt `UseRequire`, `UseCheckOrError`, `UseRequireNotNull`, `UseCheckNotNull`, `MayBeConst` (private properties; the others are `review`), `ModifierOrder`, `OptionalAbstractKeyword`, `ExplicitItLambdaParameter`, `UnnecessaryLet`, `VarCouldBeVal` and the empty class, finally, init and default constructor rules | `kotlin-use-require`, `kotlin-may-be-const` and the other `kotlin-*` recipes in `skills/nitpicker-kotlin/SOURCES.md` | rewrites the Kotlin text the rule flags |
 | kotlin | `catch-log-without-exception`, `CommentedOutCode`, `GeneratedOnHandWrittenCode`, `FocusedTest`, `ValidationAnnotationTarget` | `kotlin-catch-log-without-exception` and its siblings | passes the exception to the logger, deletes commented-out code, drops the marker or focus, writes `@field:` |
-| kotlin | `LogStringConcatenation`, `MayBeConst` on non-private properties, `UseIsNullOrEmpty`, `UseOrEmpty`, `UnusedPrivateProperty`, `UnusedPrivateMember`, `ExplicitGarbageCollectionCall`, `JvmSyntheticOnHandWrittenCode`, `MutationIgnoreMarker`, `SortForExtreme` (needs Kotlin 1.7 or later), `PlainTextRegex`, `SpringDataNoSaveInLoop`, `SleepInsteadOfDelay`, `EntityLoadedForExistence` (`findById` forms) | `kotlin-use-is-null-or-empty` and its siblings | `review`, `SortForExtreme`, `PlainTextRegex`, `SpringDataNoSaveInLoop` recipes: they run only when their rule is selected, because the text does not prove them |
+| kotlin | `LogStringConcatenation`, `MayBeConst` on non-private properties, `UseIsNullOrEmpty`, `UseOrEmpty`, `UnusedPrivateProperty`, `UnusedPrivateMember`, `ExplicitGarbageCollectionCall`, `JvmSyntheticOnHandWrittenCode`, `MutationIgnoreMarker`, `SortForExtreme` (the `first()` forms only when the build files declare Kotlin 1.7 or later), `PlainTextRegex`, `SpringDataNoSaveInLoop`, `SleepInsteadOfDelay`, `EntityLoadedForExistence` (`findById` forms) | `kotlin-use-is-null-or-empty` and its siblings | `review`, `SortForExtreme`, `PlainTextRegex`, `SpringDataNoSaveInLoop` recipes: they run only when their rule is selected, because the text does not prove them |
 | kotlin | `test-runtime/test-not-run` | `kotlin-unrun-test-rename` | `review` recipe: renames a Kotlin `IT` test class and its file to `Test` in a Maven build that configures neither Failsafe nor Surefire, so Surefire collects it; Gradle builds, taken names and referenced classes stay |
 | kotlin | `kotlin-source/HttpWithoutTimeout` | `kotlin-http-timeout` | `review` recipe: adds a ten-second timeout to a java.net.http request, a JAX-RS client builder or an HttpURLConnection; other clients stay |
 | kotlin | `pmd/StaticForwardingWrapper` | `kotlin-forwarding-wrapper` | `review` recipe: points the callers of a top-level function that only passes its parameters to a same-signature function at the target and deletes the wrapper; stays when Java code calls it, a caller names arguments, or the wrapper has an annotation or another overload |
@@ -2997,6 +2997,16 @@ checks every recipe that applied a fix:
    broke are rolled back. The other recipes stay applied, and the comparison runs on the tree that
    is left. The files of a rolled back recipe are not
    formatted either, and they are not listed under "Fixed files:" or "Fixed findings:".
+4. When nitpicker can tell which fixes of a rolled back file are to blame, it runs the fixers once
+   more without them and verifies again, so one bad fix does not undo the other fixes of the file.
+   The fixes to blame are the ones of a rule that is still reported, and the ones that edited the
+   lines a new finding is reported on (layout changes of a formatter are ignored for this). A
+   "Fix notes:" line names each fix that was left out:
+   `--fix left out the fix of <file>:<line> <tool>/<rule>: <reason>`.
+   The file is rolled back whole, as in step 3, when a new finding sits on a line no fix edited,
+   when every fix of the file is to blame, when a recipe that edits several files touched it, or
+   when the second verification fails too. The second run happens at most once and only after a
+   rollback, and it costs one more fixer run and one more verification.
 
 When no recipe fixed anything, nothing is verified. When the analyzers fail, or none reports the
 fixed rules, every fix stays and a "Fix notes:" line says that the fixes were not verified.
@@ -3150,9 +3160,10 @@ compile, and they never run in the gate. Each check edits one file, so none rena
 `pmd/RetryInTest`, `pmd/MutationIgnoreMarker`, `pmd/GeneratedOnHandWrittenCode`, `pmd/SpringDataNoSaveInLoop`, `pmd/SpringDataBatchOfOne`, `effects/EntityLoadedForExistence`, `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop`, `pmd/ReusableObjectPerCall`, `spotbugs/IIL_PREPARE_STATEMENT_IN_LOOP`, `pmd/UseEnumCollections`, `pmd/SortForExtreme`, `pmd/PlainTextRegex`, `pmd/DoNotCallGarbageCollectionExplicitly`) change what the
 code does or what the tests measure, so they run only when a run selects their rule. When two
 fixes sit within a few lines of each other, Error Prone writes one hunk and nitpicker reports it
-under the nearest rule. A fix that rewrites a whole statement, such as a loop whose saves are
-collected into one `saveAll`, is applied whole or not at all, also when only one of its lines
-changed. Which rules have a check, and why the others do not, is in
+under the nearest rule. Each fix reports the lines it edits, so a fix that edits several places,
+such as a loop whose saves are collected into one `saveAll` or a field added far from the call that
+uses it, is applied whole or not at all, also when only one of its lines changed. A fix nested in
+the statement of another fix stays a fix of its own. Which rules have a check, and why the others do not, is in
 `skills/nitpicker-java/SOURCES.md`.
 
 ## Java preset

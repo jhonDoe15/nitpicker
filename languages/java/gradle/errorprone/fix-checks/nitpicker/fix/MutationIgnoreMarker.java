@@ -35,6 +35,6 @@ public final class MutationIgnoreMarker extends BugChecker implements Annotation
       }
     }
     Support.dropImportIfUnused(fix, state, name, all);
-    return describeMatch(tree, fix.build());
+    return Support.describe(this, tree, fix.build(), state);
   }
 }

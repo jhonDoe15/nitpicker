@@ -8,6 +8,9 @@ import {
 import { trackCleanup as untypedTrackCleanup } from '../../tooling/temporary-files.mjs';
 import { fieldOf, listOf, numberOr, parseJson, textOf } from '../../../shared/values/readers.mts';
 import type { PlannedFix } from '../typed/fix-types.mts';
+import type { EditedLines, LeftOutFix } from '../lines/edit-lines.mts';
+
+export type { EditedLines, LeftOutFix } from '../lines/edit-lines.mts';
 
 export type FileState = { readonly bytes: Buffer; readonly mode: number };
 
@@ -43,6 +46,7 @@ export type ApplyResult = {
 export type JournalEvent = Omit<PlannedFix, 'files'> & {
   readonly files: readonly string[];
   readonly scope?: string | undefined;
+  readonly lines?: EditedLines | undefined;
 };
 
 export type Journal = {
@@ -51,6 +55,7 @@ export type Journal = {
   readonly fixed: Map<string, FixedState>;
   readonly indexListings: Map<string, string>;
   events: JournalEvent[];
+  leftOut: readonly LeftOutFix[];
   readonly savers: (() => void)[];
 };
 

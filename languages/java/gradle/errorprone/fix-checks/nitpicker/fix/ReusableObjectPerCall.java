@@ -53,7 +53,7 @@ public final class ReusableObjectPerCall extends BugChecker implements ClassTree
       }
     }
     fix.replace(brace + 1, brace + 1, fields + "\n");
-    return describeMatch(tree, fix.build());
+    return Support.describe(this, tree, fix.build(), state);
   }
 
   private static int openingBrace(ClassTree tree, VisitorState state) {

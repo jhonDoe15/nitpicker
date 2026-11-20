@@ -42,7 +42,7 @@ public final class UselessStringValueOf extends BugChecker implements MethodInvo
     }
     boolean left = binary.getLeftOperand() == tree;
     int minimum = left ? Precedence.of(binary) : Precedence.of(binary) + 1;
-    return describeMatch(tree, SuggestedFix.replace(tree, Precedence.wrap(argument, minimum, state)));
+    return Support.describe(this, tree, SuggestedFix.replace(tree, Precedence.wrap(argument, minimum, state)), state);
   }
 
   private static boolean hasComment(MethodInvocationTree tree, ExpressionTree argument, VisitorState state) {

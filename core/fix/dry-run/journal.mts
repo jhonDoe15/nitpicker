@@ -7,6 +7,7 @@ import {
   indexListing,
   sourceOf,
   type Journal,
+  type EditedLines,
   type JournalEdit,
   type JournalEntry,
   type JournalEvent,
@@ -15,6 +16,7 @@ import {
   type Original,
 } from './journal-types.mts';
 import { appendAll } from '../../../shared/lists/lists.mts';
+import { isLeftOut, originalEditLines } from '../lines/edit-lines.mts';
 
 export function createJournal(projectRoot: string): Journal {
   return {
@@ -23,6 +25,7 @@ export function createJournal(projectRoot: string): Journal {
     fixed: new Map(),
     indexListings: new Map(),
     events: [],
+    leftOut: [],
     savers: [],
   };
 }
@@ -100,6 +103,14 @@ function noteFixed(journal: Journal, entries: readonly JournalEntry[]) {
   }
 }
 
+function originalText(journal: Journal, name: string): string | undefined {
+  const { file } = locate(journal.projectRoot, name);
+  const original = file === undefined ? undefined : journal.originals.get(file);
+  return original !== undefined && 'bytes' in original
+    ? original.bytes.toString('utf8')
+    : undefined;
+}
+
 function alsoFindingsOf({ finding, alsoFixes = [] }: JournalEntry['fix']): JournalFinding[] {
   const seen = new Set(finding === undefined ? [] : [findingKey(finding)]);
   const found: JournalFinding[] = [];
@@ -112,7 +123,11 @@ function alsoFindingsOf({ finding, alsoFixes = [] }: JournalEntry['fix']): Journ
   return found;
 }
 
-function eventOf(entry: JournalEntry, tool: string | undefined): JournalEvent {
+function eventOf(
+  entry: JournalEntry,
+  tool: string | undefined,
+  lines: EditedLines | undefined,
+): JournalEvent {
   const files = [...new Set(entry.fix.edits.flatMap(namesOf))];
   if (entry.recipe === undefined) {
     return { tool, safety: 'safe', files };
@@ -124,6 +139,7 @@ function eventOf(entry: JournalEntry, tool: string | undefined): JournalEvent {
     ...(entry.scope === undefined ? {} : { scope: entry.scope }),
     finding: entry.fix.finding,
     ...(also.length === 0 ? {} : { alsoFindings: also }),
+    ...(lines === undefined ? {} : { lines }),
     files,
   };
 }
@@ -137,8 +153,13 @@ function saveAll(journal: Journal) {
 export function journalWriter(journal: Journal): JournalWriter {
   return {
     projectRoot: journal.projectRoot,
-    apply(snapshot, entries, tool) {
-      noteOriginals(journal, entries);
+    apply(snapshot, planned, tool) {
+      noteOriginals(journal, planned);
+      const linesOf = originalEditLines((name) => originalText(journal, name), snapshot);
+      const lines = new Map(planned.map((entry) => [entry, linesOf(entry)]));
+      const entries = planned.filter(
+        (entry) => !isLeftOut(journal.leftOut, entry, lines.get(entry)),
+      );
       saveAll(journal);
       const result = applyFixes(journal.projectRoot, snapshot, entries);
       noteFixed(journal, entries);
@@ -146,7 +167,7 @@ export function journalWriter(journal: Journal): JournalWriter {
       const { events } = journal;
       appendAll(
         events,
-        result.applied.map((entry) => eventOf(entry, tool)),
+        result.applied.map((entry) => eventOf(entry, tool, lines.get(entry))),
       );
       return result;
     },

@@ -56,7 +56,7 @@ public final class DetachedTestCase extends BugChecker implements ClassTreeMatch
         int start = Support.start(method);
         String indent = Support.startsLine(start, state) ? Support.indentAt(start, state) : null;
         fix.prefixWith(method, "@" + name + (indent == null ? " " : "\n" + indent));
-        state.reportMatch(describeMatch(method, fix.build()));
+        state.reportMatch(Support.describe(this, method, fix.build(), state));
       }
     }
     return Description.NO_MATCH;

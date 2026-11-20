@@ -194,3 +194,134 @@ describe('labelHunks spans among other fixes', () => {
     expect(labeled[0]?.group).toBe('Sort:11');
   });
 });
+
+describe('labelHunks with the lines each fix edits', () => {
+  const OWN = new Set(['SaveInLoop', 'LogConcat', 'Injection']);
+  const checks = [...OWN, 'MissingOverride'];
+
+  function groupsOf(
+    hunks: readonly Hunk[],
+    diagnostics: Parameters<typeof labelHunks>[1],
+  ): (readonly [string, string | undefined])[] {
+    return labelHunks(hunks, diagnostics, { checks, spanChecks: OWN }).map(
+      ({ label, group }) => [label, group] as const,
+    );
+  }
+
+  it('keeps a hunk of an outer fix out of the group of a fix nested in its statement', () => {
+    const diagnostics = [
+      {
+        check: 'SaveInLoop',
+        line: 10,
+        endLine: 30,
+        edits: [
+          [10, 10],
+          [22, 22],
+          [30, 30],
+        ] as const,
+      },
+      { check: 'LogConcat', line: 20, endLine: 24, edits: [[21, 21]] as const },
+    ];
+
+    expect(groupsOf([hunkAt(10), hunkAt(21), hunkAt(22), hunkAt(30)], diagnostics)).toEqual([
+      ['SaveInLoop', 'SaveInLoop:10'],
+      ['LogConcat', 'LogConcat:20'],
+      ['SaveInLoop', 'SaveInLoop:10'],
+      ['SaveInLoop', 'SaveInLoop:10'],
+    ]);
+  });
+
+  it('groups the edits a fix makes outside the statement it is reported on', () => {
+    const diagnostics = [
+      {
+        check: 'Injection',
+        line: 5,
+        edits: [
+          [5, 5],
+          [40, 42],
+        ] as const,
+      },
+    ];
+
+    expect(groupsOf([hunkAt(5), hunkChanging(40, 42)], diagnostics)).toEqual([
+      ['Injection', 'Injection:5'],
+      ['Injection', 'Injection:5'],
+    ]);
+  });
+
+  it('does not stretch a fix over the class its diagnostic starts', () => {
+    const diagnostics = [
+      { check: 'Injection', line: 3, endLine: 90, edits: [[3, 3]] as const },
+      { check: 'MissingOverride', line: 50 },
+    ];
+
+    expect(groupsOf([hunkAt(3), hunkAt(50)], diagnostics)).toEqual([
+      ['Injection', 'Injection:3'],
+      ['MissingOverride', undefined],
+    ]);
+  });
+
+  it('counts a line added next to an edited line as part of that fix', () => {
+    const diagnostics = [
+      {
+        check: 'SaveInLoop',
+        line: 12,
+        edits: [
+          [12, 12],
+          [20, 20],
+        ] as const,
+      },
+    ];
+
+    expect(groupsOf([insertionAfter(11), hunkAt(20)], diagnostics)).toEqual([
+      ['SaveInLoop', 'SaveInLoop:12'],
+      ['SaveInLoop', 'SaveInLoop:12'],
+    ]);
+  });
+
+  it('joins two fixes whose edits one hunk covers', () => {
+    const diagnostics = [
+      {
+        check: 'SaveInLoop',
+        line: 10,
+        edits: [
+          [10, 10],
+          [30, 30],
+        ] as const,
+      },
+      {
+        check: 'LogConcat',
+        line: 12,
+        edits: [
+          [12, 12],
+          [40, 40],
+        ] as const,
+      },
+    ];
+    const groups = groupsOf([hunkChanging(10, 12), hunkAt(30), hunkAt(40)], diagnostics).map(
+      ([, group]) => group,
+    );
+
+    expect(new Set(groups).size).toBe(1);
+    expect(groups[0]).toBe('SaveInLoop:10');
+  });
+
+  it('leaves a hunk on the line of another check to that check, inside the group', () => {
+    const diagnostics = [
+      {
+        check: 'SaveInLoop',
+        line: 10,
+        edits: [
+          [10, 10],
+          [50, 50],
+        ] as const,
+      },
+      { check: 'MissingOverride', line: 50 },
+    ];
+
+    expect(groupsOf([hunkAt(10), hunkAt(50)], diagnostics)).toEqual([
+      ['SaveInLoop', 'SaveInLoop:10'],
+      ['MissingOverride', 'SaveInLoop:10'],
+    ]);
+  });
+});

@@ -32,7 +32,7 @@ public final class DoNotCallGarbageCollectionExplicitly extends BugChecker
       return Description.NO_MATCH;
     }
     int[] range = lineRange(tree, state);
-    return describeMatch(tree, SuggestedFix.replace(range[0], range[1], ""));
+    return Support.describe(this, tree, SuggestedFix.replace(range[0], range[1], ""), state);
   }
 
   private static boolean isCollectorCall(ExpressionTree expression) {

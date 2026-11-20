@@ -1,6 +1,7 @@
 import { kotlinRecipe } from '../../../shared/kotlin-recipe.mts';
 import { closingIndex, splitArguments } from '../../../shared/kotlin-scan.mts';
 import type { KotlinFound, ScannedKotlin, Span } from '../../../shared/kotlin-scan.mts';
+import { type RepositoryTypes, repositoryTypes } from '../../../project/repository-types.mts';
 import { isIterableName, isRepositoryName } from '../declared-names.mts';
 import { isDiscardedStatement } from '../statement-position.mts';
 
@@ -26,6 +27,8 @@ const CALL = new RegExp(
 const REFERENCE = new RegExp(String.raw`^(${NAME})\s*::\s*(save|delete|deleteById)$`, 'u');
 const LAMBDA = /^\s*(?:([A-Za-z_]\w*)\s*->)?/u;
 
+type Searched = ScannedKotlin & { readonly known: RepositoryTypes };
+
 type Site = {
   readonly start: number;
   readonly end: number;
@@ -39,22 +42,22 @@ function plain(text: string): string {
   return text.replace(/^this\s*\.\s*/u, '').replaceAll(/\s+/gu, '');
 }
 
-function iterableSource(code: string, text: string): boolean {
+function iterableSource(code: string, text: string, known: RepositoryTypes): boolean {
   const findAll = /^(.+)\.findAll\(\)$/u.exec(plain(text));
   return findAll === null
     ? isIterableName(code, plain(text))
-    : isRepositoryName(code, findAll[1] ?? '');
+    : isRepositoryName(code, findAll[1] ?? '', known);
 }
 
-function accepted(scanned: ScannedKotlin, site: Site): KotlinFound | undefined {
+function accepted(scanned: Searched, site: Site): KotlinFound | undefined {
   const { code, source } = scanned;
   const { start, end, iterated, receiver, method, call } = site;
   const operation = WHOLE_OPERATIONS[method];
   const iteratedText = source.slice(iterated.start, iterated.end);
   if (
     operation === undefined ||
-    !isRepositoryName(code, plain(receiver)) ||
-    !iterableSource(code, iteratedText) ||
+    !isRepositoryName(code, plain(receiver), scanned.known) ||
+    !iterableSource(code, iteratedText, scanned.known) ||
     !isDiscardedStatement(code, start, end)
   ) {
     return undefined;
@@ -77,7 +80,7 @@ function callOffset(code: string, text: string, from: number): number {
   return code.indexOf(text.trim(), from);
 }
 
-function forLoops(scanned: ScannedKotlin): readonly KotlinFound[] {
+function forLoops(scanned: Searched): readonly KotlinFound[] {
   const { code } = scanned;
   return [...code.matchAll(FOR_HEADER)].flatMap((match) => {
     const [headerText = '', variable = ''] = match;
@@ -101,7 +104,7 @@ function forLoops(scanned: ScannedKotlin): readonly KotlinFound[] {
 }
 
 function lambdaSite(
-  scanned: ScannedKotlin,
+  scanned: Searched,
   match: RegExpExecArray,
   open: number,
 ): KotlinFound | undefined {
@@ -126,7 +129,7 @@ function lambdaSite(
 }
 
 function referenceSite(
-  scanned: ScannedKotlin,
+  scanned: Searched,
   match: RegExpExecArray,
   open: number,
 ): KotlinFound | undefined {
@@ -154,7 +157,7 @@ function referenceSite(
   });
 }
 
-function forEachLoops(scanned: ScannedKotlin): readonly KotlinFound[] {
+function forEachLoops(scanned: Searched): readonly KotlinFound[] {
   const { code } = scanned;
   return [...code.matchAll(FOR_EACH)].flatMap((match) => {
     const open = match.index + match[0].length;
@@ -169,7 +172,8 @@ export const saveInLoopRecipe = kotlinRecipe({
   rules: [{ tool: 'pmd', rule: 'SpringDataNoSaveInLoop' }],
   safety: 'review',
   keepComments: true,
-  find(scanned): readonly KotlinFound[] {
-    return [...forLoops(scanned), ...forEachLoops(scanned)];
+  find(scanned, _file, projectRoot): readonly KotlinFound[] {
+    const searched = { ...scanned, known: repositoryTypes(projectRoot) };
+    return [...forLoops(searched), ...forEachLoops(searched)];
   },
 });

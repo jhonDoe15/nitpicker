@@ -40,7 +40,7 @@ public final class LiteralsFirstInComparisons extends BugChecker implements Meth
     String literal = Support.source(tree.getArguments().get(0), state);
     String text = Support.source(Support.unparenthesized(receiver), state);
     String call = select.getIdentifier().toString();
-    return describeMatch(tree, SuggestedFix.replace(tree, literal + "." + call + "(" + text + ")"));
+    return Support.describe(this, tree, SuggestedFix.replace(tree, literal + "." + call + "(" + text + ")"), state);
   }
 
   private static boolean isStringLiteral(Tree tree) {

@@ -43,7 +43,7 @@ public final class RetryInTest extends BugChecker implements AnnotationTreeMatch
         }
       }
       Support.dropImportIfUnused(fix, state, Support.simpleName(tree), removed);
-      return describeMatch(tree, fix.build());
+      return Support.describe(this, tree, fix.build(), state);
     }
     if (Support.isAnnotation(tree, TESTNG_TEST)) {
       return withoutRetryAnalyzer(tree, state);
@@ -67,7 +67,7 @@ public final class RetryInTest extends BugChecker implements AnnotationTreeMatch
       return Description.NO_MATCH;
     }
     String type = Support.source(tree.getAnnotationType(), state);
-    return describeMatch(
-        tree, SuggestedFix.replace(tree, "@" + type + (kept.isEmpty() ? "" : "(" + String.join(", ", kept) + ")")));
+    return Support.describe(this, 
+        tree, SuggestedFix.replace(tree, "@" + type + (kept.isEmpty() ? "" : "(" + String.join(", ", kept) + ")")), state);
   }
 }
