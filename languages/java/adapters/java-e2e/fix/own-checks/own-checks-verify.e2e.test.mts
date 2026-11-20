@@ -39,6 +39,12 @@ const GUARDED_LOOP_NESTING = {
   function: 'SqlFixed.count',
   reason: 'the guard around the hoisted statement nests the loop one level deeper',
 };
+
+function configOf(cases: readonly OwnCheckCase[]): object {
+  const guarded = cases.some(({ file }) => GUARDED_LOOP_NESTING.paths.includes(file));
+  return { preset: 'java', exceptions: guarded ? [GUARDED_LOOP_NESTING] : [] };
+}
+
 const RUNS = (['gradle', 'maven'] as const).flatMap((tool) =>
   GROUPS.map(([name, cases]) => [tool, name, cases] as const),
 );
@@ -65,7 +71,7 @@ describe.skipIf(!enabled).each(RUNS)(
   (tool, _name, cases) => {
     it('keeps the declined files, verifies the fixed ones and drops the finding of each fixed rule', () => {
       const result = fix({
-        ...ownCheckRepository({ build: BUILDS[tool], config: { preset: 'java', exceptions: [GUARDED_LOOP_NESTING] }, cases }),
+        ...ownCheckRepository({ build: BUILDS[tool], config: configOf(cases), cases }),
         cliArguments: ['--fix', '--no-cache', ...rulesOf(cases)],
         realAnalyzers: true,
       });
