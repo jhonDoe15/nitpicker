@@ -14,10 +14,13 @@ use crate::typescript::tree::Tree;
 use rayon::prelude::*;
 use serde::Serialize;
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct FileFacts {
     pub path: String,
+    /// Set when the engine cannot read the file the way the compiler does; the other facts are then empty.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unparsed: Option<String>,
     pub definitions: Vec<definitions::Definition>,
     pub imports: Vec<modules::Import>,
     pub dynamic_imports: Vec<String>,
@@ -28,6 +31,9 @@ pub struct FileFacts {
 
 /// `file` must have been parsed with its tokens kept.
 pub fn file_facts(file: &ParsedFile, display: &str) -> FileFacts {
+    if file.panicked {
+        return FileFacts { path: display.to_string(), unparsed: Some(file.errors.join("; ")), ..FileFacts::default() };
+    }
     let tree = Tree::of(file.program);
     let texts = TokenTexts::of(file, &tree);
     let names = references::Names::of(&tree);
@@ -48,10 +54,11 @@ pub fn file_facts(file: &ParsedFile, display: &str) -> FileFacts {
     }
     FileFacts {
         path: display.to_string(),
+        unparsed: None,
         definitions: reader.definitions(),
         near_duplicate_units: units::units(file, &tree, display, &imported),
         imports,
-        dynamic_imports: modules::dynamic_imports(&tree),
+        dynamic_imports: modules::dynamic_imports(file.halves, &tree),
         exports: modules::exports(file),
         jsx_tags: modules::jsx_tags(file, &tree),
     }
@@ -66,9 +73,10 @@ pub fn write_facts(files: &[(String, String)], out: &mut dyn std::io::Write) -> 
             batch
                 .par_iter()
                 .map(|(path, display)| {
-                    let text = std::fs::read_to_string(path).unwrap_or_default();
+                    let bytes = std::fs::read(path).unwrap_or_default();
+                    let text = String::from_utf8_lossy(&bytes);
                     let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
-                    with_tokens(path, text, |file| serde_json::to_string(&file_facts(file, display)).expect("json"))
+                    with_tokens(path, text, |file| file.halves.json(serde_json::to_string(&file_facts(file, display)).expect("json")))
                 })
                 .collect()
         });

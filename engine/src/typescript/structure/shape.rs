@@ -251,7 +251,7 @@ impl<'t, 'a> Shape<'t, 'a> {
             return text[open..close].to_string();
         }
         match key {
-            PropertyKey::StringLiteral(literal) => literal.value.display().to_string(),
+            PropertyKey::StringLiteral(literal) => self.file.halves.string(literal.value),
             _ => self.text(span).to_string(),
         }
     }
