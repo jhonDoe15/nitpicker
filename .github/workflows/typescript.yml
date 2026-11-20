@@ -111,9 +111,9 @@ jobs:
           distribution: temurin
           java-version: 21
       # One worker per vCPU: Vitest defaults to one fewer, and most tests wait on child processes.
-      # With every vCPU busy a hook that packs the package can pass 30 seconds, so hooks get 90 here.
+      # With every vCPU busy a test or hook that runs the CLI can pass 30 seconds, so both get 90 here.
       - run: >-
-          npm test -- --maxWorkers=100% --hookTimeout=90000
+          npm test -- --maxWorkers=100% --testTimeout=90000 --hookTimeout=90000
           --shard=${{ matrix.shard }}/${{ strategy.job-total }}
 
   test:
