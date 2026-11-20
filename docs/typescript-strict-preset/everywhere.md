@@ -1812,6 +1812,22 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   and is not reported. Allowed forms: `NextResponse.json({ error }, { status: 500 })`, `res.status(500).json({ error
   })`, and a status written out when 200 is meant, for example for a webhook sender that must not retry (`{ status: 200
   }`).
+- `nitpicker/no-utc-date-as-local-date` (production files): the calendar date cut out of `toISOString()`, which is the
+  date in UTC, used as today's date for a person: for part of every day it is yesterday or tomorrow for them (already
+  tomorrow in the evening in the Americas, still yesterday in the morning in Asia), so a date field opens on the wrong
+  day and a record gets the wrong issue date. The expression is `<now>.toISOString()` followed by `.split('T')[0]`,
+  `.slice(0, 10)`, `.substring(0, 10)` or `.substr(0, 10)`, where `<now>` is `new Date()`, `new Date(Date.now())` or a
+  variable initialized with one of them and never changed with a `setUTC...` method. It is reported only where its use
+  makes it a date the person sees or enters, directly or through a `const` it initializes: inside the argument of
+  `useState`, `useReducer`, `useForm` or `useFormik` (also in an object or array literal, a conditional, the right side
+  of `||` or `??`, or a lazy initializer); as `value`, `defaultValue`, `min` or `max` of a JSX element with
+  `type="date"`; and as the default for a date that was not given, which is the right side of `||` or `??` or a
+  parameter or destructuring default whose other side is a name that ends in `date` or `Date` (`opts.issueDate || ...`,
+  `{ dueDate = ... }`). Not reported: a file name, log label, cache or partition key, sitemap date, a comparison, a
+  plain object property, and a date that is not the current instant (`row.createdAt.toISOString().slice(0, 10)`, a date
+  built with `Date.UTC`). Allowed forms: `new Intl.DateTimeFormat('en-CA').format(new Date())` (local `YYYY-MM-DD` in a
+  browser or command line tool; with `timeZone` on a server) or `format(new Date(), 'yyyy-MM-dd')` of the date library
+  in use.
 - Child processes the code waits for have a deadline (`nitpicker/require-process-timeout`, production
   files; test files have `nitpicker/require-test-process-timeout`). From `child_process`, `execa` and
   `cross-spawn`: `execSync`, `execFileSync`, `spawnSync`, `execaSync` and `execaCommandSync` need a
