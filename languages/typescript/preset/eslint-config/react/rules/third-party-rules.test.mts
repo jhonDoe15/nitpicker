@@ -75,6 +75,34 @@ describe('rules from the React plugins', () => {
     expect(await ruleIdsFor(code)).toEqual([]);
   });
 
+  it.each([
+    ['a prop sorted in the body', 'const ranked = items.sort((a, b) => b - a);', 1],
+    ['a prop reversed in JSX', 'return <List items={items.reverse()} />;', 1],
+    ['a prop spliced through props', 'const rest = props.items.splice(0, 1);', 1],
+    ['a prop sorted inside useMemo', 'const ranked = useMemo(() => items.sort(), [items]);', 2],
+    [
+      'a state value sorted in the body',
+      'const [list] = useState<number[]>([]); const ranked = list.sort();',
+      1,
+    ],
+  ])('reports %s as a mutation', async (_name, body, count) => {
+    const code = `import { useMemo, useState } from 'react'; import { List } from './list'; export function Panel(props: { items: number[] }) { const { items } = props; ${body} return <div />; }`;
+
+    expect(await ruleIdsFor(code)).toEqual(
+      Array.from({ length: count }, () => 'react-x/immutability'),
+    );
+  });
+
+  it.each([
+    ['a timer', 'setInterval(() => undefined, 1000);'],
+    ['a window listener', "window.addEventListener('resize', () => undefined);"],
+    ['a request', "void fetch('/api');"],
+  ])('reports %s started in render once', async (_name, body) => {
+    const code = `export function Panel() { ${body} return <div />; }`;
+
+    expect(await ruleIdsFor(code)).toEqual(['react-x/purity']);
+  });
+
   it('reports a ref read during render after the lazy init', async () => {
     const code = `import { useRef } from 'react'; export function Panel() { const seen = useRef<Set<number> | null>(null); if (seen.current === null) { seen.current = new Set(); } return <p>{seen.current.size}</p>; }`;
 

@@ -197,7 +197,11 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `no-restricted-properties` is dropped where this rule reports the same call, so it is reported
   once.
 - **Pure render, no mutation.** State, props and hook results are not mutated
-  (`react-x/immutability`: `setList([...list, item])`, `items.toSorted()`); render does not call
+  (`react-x/immutability`: `setList([...list, item])`, `items.toSorted()`). That includes `sort`,
+  `reverse` and `splice` called on a prop or a state value in the component body, in JSX or inside
+  `useMemo` (`players.sort(byScore)`, `items={items.reverse()}`): they change the array in place, so
+  the parent's list is reordered and `reverse` flips back on the second StrictMode render; write
+  `players.toSorted(byScore)` or `[...players].sort(byScore)`. Render does not call
   `Date.now()`, `Math.random()` or storage, read or write refs, or set state
   (`react-x/purity`, `react-x/refs`, `react-x/set-state-in-render`). A lazy `useState(() => ...)`
   initialiser is the place for a one-time read; a ref may be lazily initialised in render
