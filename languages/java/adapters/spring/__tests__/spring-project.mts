@@ -119,6 +119,7 @@ const REVIEW_RULES = new Set([
   'FixedPortInTest',
   'ServerOrContainerPerTest',
   'SharedTestState',
+  'HashOrderAssertedInTest',
   'ExhaustiveEnumPredicate',
   'StaticForwardingWrapper',
   'ForwardingMethodAlias',
