@@ -138,6 +138,82 @@ impl<'t> Flow<'_, 't> {
         }
     }
 
+    fn maybe(&self, node: Node) -> bool {
+        matches!(self.known(strip(node)), Some(NULL | NULLABLE))
+    }
+
+    fn boxed(&self, node: Node) -> bool {
+        matches!(self.context.resolver.type_of(node), Some(Type::Class(..)))
+    }
+
+    fn primitive(&self, node: Node) -> bool {
+        matches!(self.context.resolver.type_of(node), Some(Type::Primitive(_)))
+    }
+
+    /// Whether a condition is a boxed value that may be null: testing it unboxes it.
+    pub(super) fn unboxed_test(&self, test: Node) -> bool {
+        self.maybe(test) && self.boxed(test)
+    }
+
+    /// Whether the place a value is used in unboxes it. Unboxing is a dereference: the value is known to be
+    /// non-null afterwards, and it happens as soon as the operand has been evaluated.
+    pub(super) fn unboxes(&self, node: Node<'t>) -> bool {
+        if !self.maybe(node) {
+            return false;
+        }
+        let Some(above) = parent(node) else { return false };
+        let field = |name: &str| above.child_by_field_name(name);
+        let operator = field("operator").map(|operator| operator.kind());
+        let primitive_name = |kind: Option<Node>| kind.is_some_and(|kind| matches!(kind.kind(), "integral_type" | "floating_point_type" | "boolean_type"));
+        let used = match above.kind() {
+            "binary_expression" if matches!(operator, Some("&&" | "||")) => false,
+            "binary_expression" if matches!(operator, Some("==" | "!=")) => {
+                let other = if field("left") == Some(node) { field("right") } else { field("left") };
+                other.is_some_and(|other| self.primitive(other))
+            }
+            "binary_expression" => self.primitive(above),
+            "unary_expression" | "update_expression" => true,
+            "assignment_expression" if operator == Some("=") => field("right") == Some(node) && field("left").is_some_and(|left| self.primitive(left)),
+            "assignment_expression" => field("left").and_then(|left| self.context.resolver.type_of(left)).is_none_or(|kind| kind.name() != "java.lang.String"),
+            "variable_declarator" => field("value") == Some(node) && primitive_name(parent(above).and_then(|declaration| declaration.child_by_field_name("type"))),
+            "cast_expression" => field("value") == Some(node) && primitive_name(field("type")),
+            "array_access" => field("index") == Some(node),
+            "return_statement" => {
+                let method = crate::engine::source::ancestor(above, &["lambda_expression", "method_declaration", "class_body"]);
+                primitive_name(method.filter(|method| method.kind() == "method_declaration").and_then(|method| method.child_by_field_name("type")))
+            }
+            "argument_list" => {
+                let Some(call) = parent(above) else { return false };
+                let at = Self::arguments(call).iter().position(|actual| *actual == node);
+                let formals = self.context.resolver.call_formals(call).map(|(call, _)| call.method.parameters);
+                let formal = at.and_then(|at| formals.as_ref().and_then(|formals| formals.get(at.min(formals.len().saturating_sub(1)))));
+                matches!(formal, Some(Type::Primitive(_)))
+            }
+            _ => false,
+        };
+        used && self.boxed(node)
+    }
+
+    /// Reports a condition that is unboxed where it is tested; a ternary's condition is not reported.
+    pub(super) fn unboxing_test(&mut self, test: Node<'t>, reported: &mut std::collections::HashSet<usize>) {
+        let mut whole = test;
+        while let Some(above) = parent(whole).filter(|above| above.kind() == "parenthesized_expression") {
+            whole = above;
+        }
+        let ternary = parent(whole).is_some_and(|above| above.kind() == "ternary_expression" && above.child_by_field_name("condition") == Some(whole));
+        if !ternary && self.may_be_null(test) && reported.insert(whole.id() ^ usize::MAX) {
+            let message = format!("unboxing of a @Nullable expression '{}'", self.context.text(whole));
+            self.context.report("NullAway", whole, position(whole), &message);
+        }
+    }
+
+    pub(super) fn unboxing(&mut self, operand: Node<'t>, reported: &mut std::collections::HashSet<usize>) {
+        if self.may_be_null(operand) && reported.insert(operand.id() ^ usize::MAX) {
+            let message = format!("unboxing of a @Nullable expression '{}'", self.context.text(operand));
+            self.context.report("NullAway", operand, position(operand), &message);
+        }
+    }
+
     pub(super) fn sites(&mut self, node: Node<'t>, unit: Node<'t>, reported: &mut std::collections::HashSet<usize>) {
         match node.kind() {
             "method_invocation" | "object_creation_expression" | "explicit_constructor_invocation" | "enum_constant" => self.arguments_passed(node, reported),

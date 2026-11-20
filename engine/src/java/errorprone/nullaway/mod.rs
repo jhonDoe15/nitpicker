@@ -653,6 +653,9 @@ impl<'a, 't> Flow<'a, 't> {
                 }
                 let value = self.step(node, &mut store);
                 self.values.insert((node.id(), self.copy), value);
+                if self.unboxes(node) {
+                    self.settle(&mut store, node, NONNULL);
+                }
                 if let Some(owner) = self.owner(node) {
                     let path = self.path(format!("(result {owner}"));
                     write(&mut store, path, value);
@@ -674,6 +677,9 @@ impl<'a, 't> Flow<'a, 't> {
                 }
                 Exit::Branch(test, holds, fails) => {
                     let (test, holds, fails) = (*test, *holds, *fails);
+                    if self.unboxed_test(test) {
+                        self.settle(&mut store, test, NONNULL);
+                    }
                     let (when_holds, when_fails) = self.sides(test, &store);
                     reach(&mut inputs, holds, &when_holds);
                     reach(&mut inputs, fails, &when_fails);
@@ -718,8 +724,15 @@ fn arity(written: &str) -> usize {
 }
 
 fn fits(resolver: &crate::java::types::scope::Resolver, row: &models::Model, call: &Call, inherited: bool) -> bool {
+    let same_types = || {
+        row.2.split(',').zip(&call.method.parameters).all(|(written, kind)| {
+            let written = written.trim();
+            !written.contains('.') || written.ends_with("[]") || written.ends_with("...") || written == kind.name()
+        })
+    };
     row.1 == call.method.name
         && arity(row.2) == call.method.parameters.len()
+        && (row.2.is_empty() || same_types())
         && (row.0 == call.declaring || inherited && resolver.index.is_subtype(&call.declaring, row.0) || resolver.index.is_subtype(row.0, &call.declaring) && inherited)
 }
 
@@ -874,6 +887,9 @@ pub fn null_away(context: &Context, root: Node) {
             for position in 0..flow.cfg.blocks[block].steps.len() {
                 let node = flow.cfg.blocks[block].steps[position];
                 flow.sites(node, unit_node, &mut reported);
+                if flow.unboxes(node) {
+                    flow.unboxing(node, &mut reported);
+                }
                 let (object, mark) = match node.kind() {
                     "field_access" | "method_invocation" => (node.child_by_field_name("object"), "."),
                     "array_access" => (node.child_by_field_name("array"), "["),
@@ -887,6 +903,15 @@ pub fn null_away(context: &Context, root: Node) {
                 let sign = children(node).into_iter().find(|part| part.kind() == mark && part.start_byte() >= object.end_byte());
                 let at = sign.filter(|_| mark != "::").map_or(node.start_byte(), |sign| sign.start_byte());
                 context.report("NullAway", node, at, &format!("dereferenced expression '{}' is @Nullable", context.text(object)));
+            }
+        }
+        for block in 0..flow.cfg.blocks.len() {
+            if let (Some(_), Exit::Branch(test, _, _)) = (&inputs[block], &flow.cfg.blocks[block].exit) {
+                let test = *test;
+                flow.copy = flow.cfg.blocks[block].copy;
+                if flow.unboxed_test(test) {
+                    flow.unboxing_test(test, &mut reported);
+                }
             }
         }
         flow.copy = 0;
