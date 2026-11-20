@@ -296,6 +296,7 @@
   "pmd/UseStandardCharsets": ["simplification"],
   "pmd/UseTryWithResources": ["reliability"],
   "pmd/UselessStringValueOf": ["simplification"],
+  "pmd/WallClockBoundInTest": ["tests"],
   "pmd/WeakAssertionInTest": ["tests"],
   "pmd/WeakHmac": ["security"],
   "pmd/WhileLoopWithLiteralBoolean": ["simplification"]

@@ -1,0 +1,47 @@
+  <rule name="WallClockBoundInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This test fails when the machine is slow: it puts a limit of under one second on measured wall-clock time, and a busy CI runner, a garbage collection pause or a cold cache can take longer than that. Assert the behaviour instead (the calls made, a counter of the work done) and keep speed checks in a benchmark. A limit of a second or more that only guards against a hang is allowed.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $read := function($e, $nanos) {
+      exists($e/self::MethodCall[if ($nanos) then pmd-java:matchesSig('java.lang.System#nanoTime()')
+                                 else pmd-java:matchesSig('java.lang.System#currentTimeMillis()')]) },
+    $moment := function($e, $nanos) {
+      $read($e, $nanos)
+      or exists($e/self::VariableAccess[let $n := @Name return
+           ancestor::ClassDeclaration[last()]//VariableDeclarator[VariableId[@Name = $n]][$read(*[2], $nanos)]
+           or ancestor::ClassDeclaration[last()]//AssignmentExpression[*[1][@Name = $n]][$read(*[2], $nanos)]]) },
+    $elapsed := function($e, $nanos) {
+      exists(($e/self::InfixExpression
+              | $e/self::VariableAccess/(let $n := @Name return
+                  ancestor::*[self::MethodDeclaration or self::LambdaExpression][1]
+                    //LocalVariableDeclaration[count(.//VariableId[@Name = $n]) = 1]
+                    /VariableDeclarator[VariableId[@Name = $n]]/InfixExpression))
+               [@Operator = '-'][$moment(*[1], $nanos)][$moment(*[2], $nanos)][not($read(*[2], $nanos))]) },
+    $number := function($l) { number(replace($l/@Image, '[_lL]', '')) },
+    $short := function($e, $l) {
+      exists($l/self::NumericLiteral[@IntLiteral = true() or @LongLiteral = true()][$number(.) > 0])
+      and (($elapsed($e, false()) and $number($l) < 1000) or ($elapsed($e, true()) and $number($l) < 1000000000)) }
+return (
+  //MethodCall[@MethodName = 'assertTrue']
+    [ArgumentList/InfixExpression[@Operator = ('<', '<=')][$short(*[1], *[2])]
+     or ArgumentList/InfixExpression[@Operator = ('>', '>=')][$short(*[2], *[1])]]
+| //MethodCall[@MethodName = ('isLessThan', 'isLessThanOrEqualTo')][ArgumentList/@Size = 1]
+    [*[1]/self::MethodCall[@MethodName = 'assertThat'][ArgumentList/@Size = 1]
+       [$short(ArgumentList/*[1], ../ArgumentList/*[1])]]
+| //MethodCall[@MethodName = ('assertTimeout', 'assertTimeoutPreemptively')]
+    [ArgumentList/*[1]/self::MethodCall[pmd-java:matchesSig('java.time.Duration#ofMillis(long)')]
+       [ArgumentList/NumericLiteral[$number(.) < 1000]]]
+    [not(ancestor::MethodCall[@MethodName = ('assertThrows', 'assertThrowsExactly', 'assertThatThrownBy')])]
+| //Annotation[pmd-java:typeIs('org.junit.jupiter.api.Timeout')]
+    [.//MemberValuePair[@Name = 'unit']//(FieldAccess | VariableAccess)[@Name = 'MILLISECONDS']]
+    [.//MemberValuePair[@Name = 'value']/NumericLiteral[$number(.) < 1000]]
+| //Annotation[pmd-java:typeIs('org.junit.Test')]
+    [.//MemberValuePair[@Name = 'timeout']/NumericLiteral[$number(.) < 1000]]
+)[not(ancestor-or-self::*[self::MethodDeclaration or self::ClassDeclaration]
+        /ModifierList/Annotation[@SimpleName = ('Disabled', 'Ignore')])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
