@@ -3,6 +3,7 @@ mod hierarchy;
 mod members;
 mod operators;
 mod simple;
+mod values;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -102,6 +103,9 @@ const CHECKS: &[Check] = &[
     simple::system_out,
     simple::java_util_date,
     simple::string_case_locale_usage,
+    values::assert_false,
+    values::enum_ordinal,
+    values::void_used,
 ];
 
 pub struct ErrorProne;
