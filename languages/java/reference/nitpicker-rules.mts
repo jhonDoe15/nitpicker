@@ -40,6 +40,7 @@ import { valueCheckEntries } from './review-entries/mined/value-checks.mts';
 import { minedEntries } from './review-entries/mined/mined-rules.mts';
 import { fixedDelayEntry } from './review-entries/fixed-delay.mts';
 import { mutatingMethodEntry } from './review-entries/mutating-method.mts';
+import { delegateSkipsDefaultEntry } from './review-entries/wrappers/delegate-skips-default.mts';
 import { nullFallThroughEntry } from './review-entries/null-fall-through.mts';
 import { nullableReturnEntry } from './review-entries/nullable-return.mts';
 import { selfRecursionEntry } from './review-entries/self-recursion.mts';
@@ -288,6 +289,7 @@ export function jvmNitpickerEntries(): RuleEntry[] {
     selfRecursionEntry(),
     fixedDelayEntry(),
     mutatingMethodEntry(),
+    delegateSkipsDefaultEntry(),
     formatEntry('google'),
     formatEntry('palantir'),
     ...suppressionEntries(),

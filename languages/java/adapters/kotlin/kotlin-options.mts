@@ -19,6 +19,7 @@ import { COPIED_CONSTANT_EXCEPTION_RULE } from '../review-rules/copied-constants
 import { MAX_VALUE_EXCEPTION_RULE } from '../review-rules/max-value-sums/max-value-sums.mts';
 import { FIXED_DELAY_EXCEPTION_RULE } from '../review-rules/fixed-delays/fixed-delays.mts';
 import { MUTATING_METHOD_EXCEPTION_RULE } from '../review-rules/mutating-methods/mutating-methods.mts';
+import { DELEGATE_SKIPS_DEFAULT_EXCEPTION_RULE } from '../review-rules/delegate-defaults/delegate-skips-default.mts';
 import { NULL_FALL_THROUGH_EXCEPTION_RULE } from '../review-rules/null-fall-through/null-fall-through.mts';
 import { NULLABLE_RETURN_EXCEPTION_RULE } from '../review-rules/nullable-returns/nullable-returns.mts';
 import { SELF_RECURSION_EXCEPTION_RULE } from '../review-rules/self-recursion/self-recursion.mts';
@@ -67,6 +68,7 @@ export const KOTLIN_EXCEPTION_RULES: string[] = [
     SELF_RECURSION_EXCEPTION_RULE,
     FIXED_DELAY_EXCEPTION_RULE,
     MUTATING_METHOD_EXCEPTION_RULE,
+    DELEGATE_SKIPS_DEFAULT_EXCEPTION_RULE,
     ...KOTLIN_LISTED_RULES,
     ...KOTLIN_REVIEW_EXCEPTION_RULES,
   ]),

@@ -33,7 +33,7 @@ function orDefault(
 
 function ternaryDefault(
   sourceCode: SourceCode,
-  identifier: TSESTree.Identifier,
+  identifier: TSESTree.Node,
   expression: TSESTree.ConditionalExpression,
 ): FixPlan | undefined {
   if (
@@ -43,14 +43,17 @@ function ternaryDefault(
     return undefined;
   }
   const fallback = sourceCode.getText(expression.alternate);
-  return replacing(expression.range, `${identifier.name} ?? ${fallback}`);
+  return replacing(expression.range, `${sourceCode.getText(identifier)} ?? ${fallback}`);
 }
 
 export function nullishDefaultFix(
   sourceCode: SourceCode,
-  identifier: TSESTree.Identifier,
+  identifier: TSESTree.Node,
 ): FixPlan | undefined {
   const expression = identifier.parent;
+  if (expression === undefined) {
+    return undefined;
+  }
   if (expression.type === AST_NODE_TYPES.LogicalExpression) {
     return expression.left === identifier ? orDefault(sourceCode, expression) : undefined;
   }

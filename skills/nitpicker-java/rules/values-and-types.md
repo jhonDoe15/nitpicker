@@ -266,3 +266,7 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `items.add(x)`, `index.put(k, v)`, `list.sort(...)` or `date.setTime(...)` on a parameter. Build a new value:
   `List.copyOf` plus the change, `Stream.toList()`, `Map.copyOf`, or a new collection created and filled
   in the same method.
+- A wrapper that forwards an interface to its delegate forwards its constant or no-op `default` methods too
+  (`pmd/DelegateSkipsDefaultMethod`): when `getMetrics()` or `isAsync()` is a `default` the wrapper does not
+  override, callers get the default and the delegate's value is lost. Forward it, or override it calling
+  `Interface.super.method()` to keep the default on purpose.

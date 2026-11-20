@@ -109,6 +109,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Self-recursion](java-preset/self-recursion.md)
 - [Delays that tests cannot override](java-preset/delays-that-tests-cannot-override.md)
 - [Mutating methods in domain code](java-preset/mutating-methods-in-domain-code.md)
+- [Wrappers that skip a default method](java-preset/wrappers-that-skip-a-default-method.md)
 - [Console output of tests](java-preset/console-output-of-tests.md)
 - [Round-trip tests](java-preset/round-trip-tests.md)
 - [Error Prone and NullAway](java-preset/error-prone-and-nullaway.md)

@@ -23,6 +23,23 @@ describe('spotbugsLaunch', () => {
     expect(launch.args.at(-1)).toBe('/work/classes');
   });
 
+  it('reads the classpath of the analysed classes from a file, and passes none without one', () => {
+    const withClasspath = spotbugsLaunch({
+      module,
+      report: '/work/spotbugs.sarif',
+      tools: {},
+      settings: [],
+      auxClasspathFile: '/work/spotbugs-aux-classpath.txt',
+    });
+
+    expect(withClasspath.args.slice(-3)).toEqual([
+      '-auxclasspathFromFile',
+      '/work/spotbugs-aux-classpath.txt',
+      '/work/classes',
+    ]);
+    expect(launch.args).not.toContain('-auxclasspathFromFile');
+  });
+
   it('gives the plugin the same sink files and types as the Gradle init script', () => {
     const init = readFileSync(INIT_SCRIPT, 'utf8');
     const gradleFiles = [
