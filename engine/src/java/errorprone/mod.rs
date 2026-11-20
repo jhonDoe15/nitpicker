@@ -14,6 +14,7 @@ mod names;
 mod naming;
 mod obsolete;
 mod simple;
+mod statements;
 mod targets;
 mod throws;
 mod unused;
@@ -145,6 +146,11 @@ const CHECKS: &[Check] = &[
     javadoc::javadoc,
     throws::checked_exception_not_thrown,
     returns::check_return_value,
+    statements::multi_variable_declaration,
+    statements::array_record_component,
+    statements::return_at_the_end_of_void_function,
+    statements::assignment_expression,
+    statements::protected_members_in_final_class,
     names::type_parameter_naming,
     names::wildcard_import,
     names::same_name_but_different,

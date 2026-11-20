@@ -36,5 +36,10 @@
  "MissingSummary",
  "InvalidBlockTag",
  "UnescapedEntity",
- "CheckReturnValue"
+ "CheckReturnValue",
+ "MultiVariableDeclaration",
+ "ArrayRecordComponent",
+ "ReturnAtTheEndOfVoidFunction",
+ "AssignmentExpression",
+ "ProtectedMembersInFinalClass"
 ]
