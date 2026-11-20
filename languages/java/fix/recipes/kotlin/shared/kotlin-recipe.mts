@@ -19,7 +19,11 @@ type KotlinOptions = {
   readonly safety?: string;
   readonly where?: 'main' | 'test' | 'both';
   readonly keepComments?: true;
-  readonly find: (scanned: ScannedKotlin, file: RecipeSource) => readonly KotlinFound[];
+  readonly find: (
+    scanned: ScannedKotlin,
+    file: RecipeSource,
+    projectRoot: string | undefined,
+  ) => readonly KotlinFound[];
 };
 
 export function isKotlinTestPath(name: string): boolean {
@@ -40,7 +44,11 @@ function touchesComment(
   );
 }
 
-function planFile(options: KotlinOptions, file: RecipeSource): readonly RecipeFix[] {
+function planFile(
+  options: KotlinOptions,
+  file: RecipeSource,
+  projectRoot: string | undefined,
+): readonly RecipeFix[] {
   const { rules, keepComments, find } = options;
   const { path: name, text } = file;
   const byRule = new Map(rules.map((entry) => [entry.rule, entry]));
@@ -48,7 +56,7 @@ function planFile(options: KotlinOptions, file: RecipeSource): readonly RecipeFi
   if (generatedFile(scanned)) {
     return [];
   }
-  return find(scanned, file)
+  return find(scanned, file, projectRoot)
     .filter(({ edits }) => !(keepComments === true && touchesComment(scanned, edits)))
     .map(({ rule, offset, alsoOffsets, edits }) => {
       const entry = byRule.get(rule ?? '') ?? rules[0];
@@ -84,11 +92,11 @@ export function kotlinRecipe(options: KotlinOptions): FixRecipe {
     presets: ['kotlin'],
     scope: 'file',
     safety,
-    plan({ files }) {
+    plan({ files, projectRoot }) {
       return {
         fixes: files
           .filter(({ path: name }) => KOTLIN_FILE.test(name) && wanted(where, name))
-          .flatMap((file) => planFile(options, file)),
+          .flatMap((file) => planFile(options, file, projectRoot)),
       };
     },
   };

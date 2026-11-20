@@ -1,3 +1,4 @@
+import { sharedPrefixLength } from '../../../shared/lists/lists.mts';
 import { addMetric, hash } from '../../../shared/rules/finding-helpers.mjs';
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 import { assertNeverArmLines } from './coverage-reports/exhaustive-match.mts';
@@ -226,8 +227,8 @@ function describeChange({
 function changedRegion(original: string, mutated: string): ChangedRegion | undefined {
   const before = original.match(TOKEN) ?? [];
   const after = mutated.match(TOKEN) ?? [];
-  const head = commonLength(before, after);
-  const tail = commonLength(before.slice(head).reverse(), after.slice(head).reverse());
+  const head = sharedPrefixLength(before, after);
+  const tail = sharedPrefixLength(before.slice(head).reverse(), after.slice(head).reverse());
   const removedText = before.slice(head, before.length - tail).join('');
   const removed = removedText.trim();
   const added = after
@@ -250,11 +251,6 @@ function insideAssertNeverArm(original: string[], change: ChangedRegion): boolea
   return assertNeverArmLines(original.join('\n')).some(
     (arm) => arm.first <= change.lineOffset && last <= arm.last,
   );
-}
-
-function commonLength(left: string[], right: string[]): number {
-  const differing = left.findIndex((token, index) => token !== right[index]);
-  return differing === -1 ? left.length : differing;
 }
 
 function labelOf({ original, replacement }: ChangedRegion): string {

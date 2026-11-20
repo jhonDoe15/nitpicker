@@ -28,7 +28,7 @@ import com.sun.tools.javac.code.Type;
 
 @BugPattern(
     name = "IIL_PREPARE_STATEMENT_IN_LOOP",
-    summary = "Prepares the statement once, around the loop, instead of on every pass.",
+    summary = "Prepares the statement once, around the loop, instead of on every pass, when the loop runs at all.",
     severity = WARNING)
 public final class PrepareStatementInLoop extends BugChecker
     implements ForLoopTreeMatcher, EnhancedForLoopTreeMatcher, WhileLoopTreeMatcher {
@@ -62,7 +62,8 @@ public final class PrepareStatementInLoop extends BugChecker
         || resource.getInitializer() == null) {
       return Description.NO_MATCH;
     }
-    if (!PreparedStatementUse.reusable(loop, tryTree, resource, state)) {
+    String entered = LoopEntry.condition(loop, state);
+    if (entered == null || !PreparedStatementUse.reusable(loop, tryTree, resource, state)) {
       return Description.NO_MATCH;
     }
     BlockTree block = tryTree.getBlock();
@@ -71,9 +72,10 @@ public final class PrepareStatementInLoop extends BugChecker
     String header = text.subSequence(Support.start(loop), Support.start(body)).toString();
     String inner = text.subSequence(Support.start(block) + 1, Support.end(block, state) - 1).toString().stripTrailing();
     String replacement =
-        "try (" + Support.source(resource, state) + ") {\n" + indent + "  " + header + "{" + inner + "\n" + indent
-            + "  }\n" + indent + "}";
-    return describeMatch(loop, SuggestedFix.replace(loop, replacement));
+        "if (" + entered + ") {\n" + indent + "  try (" + Support.source(resource, state) + ") {\n" + indent + "    "
+            + header + "{" + inner.replaceAll("\n(?=[^\n])", "\n  ") + "\n" + indent + "    }\n" + indent + "  }\n"
+            + indent + "}";
+    return Support.describe(this, loop, SuggestedFix.replace(loop, replacement), state);
   }
 
   private static TryTree onlyTry(StatementTree body) {

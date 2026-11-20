@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { applyRecipe, plannedLines } from '../../../test-support/apply-recipe.mts';
+import { afterAll, describe, expect, it } from 'vitest';
+import { plannedLines } from '../../../test-support/apply-recipe.mts';
+import { ORDER_REPOSITORY, fixerIn } from '../../../test-support/kotlin-project.mts';
 import { saveInLoopRecipe } from './save-in-loop.mts';
 
 const HEAD = 'class Saver(private val orderRepository: OrderRepository, val ids: List<Long>) {\n';
@@ -11,7 +12,10 @@ function inFunction(body: string, parameters = 'items: List<Order>'): string {
     .join('\n')}\n    }\n}\n`;
 }
 
-const fix = (text: string): string => applyRecipe(saveInLoopRecipe, text);
+const project = fixerIn(saveInLoopRecipe, ORDER_REPOSITORY);
+const { fix } = project;
+
+afterAll(project.remove);
 
 describe('saveInLoopRecipe fixes', () => {
   it.each([
@@ -48,7 +52,7 @@ describe('saveInLoopRecipe fixes', () => {
     expect(fix(before)).toBe(
       inFunction('log.info("saving")\norderRepository.saveAll(items)\nlog.info("done")'),
     );
-    expect(plannedLines(saveInLoopRecipe, before)).toEqual([5]);
+    expect(plannedLines(saveInLoopRecipe, before, undefined, project.root)).toEqual([5]);
   });
 
   it('rewrites a loop in a property, a field and a parameter repository', () => {

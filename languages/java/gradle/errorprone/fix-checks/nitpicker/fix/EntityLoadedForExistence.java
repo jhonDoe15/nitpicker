@@ -33,7 +33,7 @@ public final class EntityLoadedForExistence extends BugChecker
     String exists = optionalFinder(select.getExpression(), state);
     return exists == null
         ? Description.NO_MATCH
-        : describeMatch(tree, SuggestedFix.replace(tree, (method.equals("isEmpty") ? "!" : "") + exists));
+        : Support.describe(this, tree, SuggestedFix.replace(tree, (method.equals("isEmpty") ? "!" : "") + exists), state);
   }
 
   @Override
@@ -63,7 +63,7 @@ public final class EntityLoadedForExistence extends BugChecker
     }
     return exists == null
         ? Description.NO_MATCH
-        : describeMatch(tree, SuggestedFix.replace(tree, (present ? "" : "!") + exists));
+        : Support.describe(this, tree, SuggestedFix.replace(tree, (present ? "" : "!") + exists), state);
   }
 
   private static String nullTested(ExpressionTree tested, VisitorState state) {

@@ -39,7 +39,7 @@ public final class ListUsedAsSet extends BugChecker implements BlockTreeMatcher 
       if (statements.get(index) instanceof VariableTree declaration) {
         SuggestedFix fix = rewrite(block, declaration, statements.subList(index + 1, statements.size()), state);
         if (fix != null) {
-          state.reportMatch(describeMatch(block, fix));
+          state.reportMatch(Support.describe(this, block, fix, state));
         }
       }
     }

@@ -125,6 +125,12 @@ final class LoopEffects {
       }
 
       @Override
+      public Void visitNewClass(NewClassTree node, Integer depth) {
+        blocked[0] |= OpaqueTypes.opaque(ASTHelpers.getType(node), state);
+        return super.visitNewClass(node, depth);
+      }
+
+      @Override
       public Void visitMemberReference(MemberReferenceTree node, Integer depth) {
         blocked[0] |= node != write && effectfulReceiver(node.getQualifierExpression(), state);
         return super.visitMemberReference(node, depth);
@@ -196,13 +202,16 @@ final class LoopEffects {
     if (method == null) {
       return true;
     }
+    if (method.isStatic()) {
+      return OpaqueTypes.opaque(method.owner.type, state);
+    }
     if (!(call.getMethodSelect() instanceof MemberSelectTree select)) {
-      return !method.isStatic();
+      return true;
     }
     ExpressionTree receiver = select.getExpression();
     boolean self = receiver instanceof IdentifierTree name
         && (name.getName().contentEquals("this") || name.getName().contentEquals("super"));
-    return self || !method.isStatic() && effectfulReceiver(receiver, state);
+    return self || effectfulReceiver(receiver, state);
   }
 
   private static boolean effectfulReceiver(ExpressionTree receiver, VisitorState state) {
@@ -222,7 +231,8 @@ final class LoopEffects {
     }
     Symbol symbol = ASTHelpers.getSymbol(receiver);
     boolean field = symbol != null && symbol.getKind() == javax.lang.model.element.ElementKind.FIELD;
-    return field && BEAN_NAME.matcher(type.tsym.getSimpleName().toString()).matches();
+    return field && BEAN_NAME.matcher(type.tsym.getSimpleName().toString()).matches()
+        || OpaqueTypes.opaque(type, state);
   }
 
   private static boolean isA(Type type, String name, VisitorState state) {

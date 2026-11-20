@@ -53,7 +53,8 @@ public final class SortForExtreme extends BugChecker implements MethodInvocation
     if (comparator == null || joint == null) {
       return Description.NO_MATCH;
     }
-    String unwrap = Source.instance(state.context).compareTo(Source.JDK10) >= 0 ? ".orElseThrow()" : ".get()";
+    String unwrap = name.equals("get") ? ".orElseThrow(IndexOutOfBoundsException::new)"
+        : Source.instance(state.context).compareTo(Source.JDK10) >= 0 ? ".orElseThrow()" : ".get()";
     String replacement = joint + "min(" + comparator + ")" + (first ? unwrap : "");
     int from = Support.end(sortedSelect.getExpression(), state);
     fix.replace(from, Support.end(tree, state), replacement);
@@ -65,7 +66,7 @@ public final class SortForExtreme extends BugChecker implements MethodInvocation
               ? new int[] {sortedFrom(other, state), Support.end(other, state)}
               : null);
     }
-    return describeMatch(tree, fix.build());
+    return Support.describe(this, tree, fix.build(), state);
   }
 
   private static boolean reusesCollectors(MethodInvocationTree sorted, VisitorState state) {
