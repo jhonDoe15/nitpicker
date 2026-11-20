@@ -468,10 +468,12 @@ impl<'a> Resolver<'a> {
             if matches!(node.kind(), "method_declaration" | "constructor_declaration" | "lambda_expression" | "class_body") {
                 let mut found = None;
                 crate::engine::source::walk(node, |candidate| {
-                    if found.is_none()
-                        && matches!(candidate.kind(), "instanceof_expression" | "type_pattern")
+                    if matches!(candidate.kind(), "instanceof_expression" | "type_pattern")
                         && candidate.start_byte() < usage.start_byte()
-                        && candidate.child_by_field_name("name").is_some_and(|n| self.file.text_of(n) == name)
+                        && candidate
+                            .child_by_field_name("name")
+                            .or_else(|| candidate.named_child((candidate.named_child_count().saturating_sub(1)) as u32).filter(|_| candidate.kind() == "type_pattern"))
+                            .is_some_and(|n| self.file.text_of(n) == name)
                     {
                         let written = candidate
                             .child_by_field_name("right")
@@ -999,14 +1001,20 @@ impl<'a> Resolver<'a> {
         }
         let parts = children(reference);
         let (Some(qualifier), Some(name)) = (parts.first(), parts.last().map(|name| self.file.text_of(*name))) else { return Vec::new() };
-        if name == "new" || matches!(qualifier.kind(), "super" | "this") {
+        if name == "new" {
             return Vec::new();
         }
-        let (owner, value) = match self.receiver(*qualifier) {
+        let own = || enclosing_type(self.file, self.scope, reference);
+        let around = match qualifier.kind() {
+            "this" => own().map(|own| Receiver::Value(self.own_type(&own))),
+            "super" => own().and_then(|own| self.type_of_super(&own)).map(Receiver::Value),
+            _ => self.receiver(*qualifier),
+        };
+        let (owner, value) = match around {
             Some(Receiver::Value(kind)) => (kind, true),
             Some(Receiver::Static(owner)) => (Type::class(&owner), false),
             None => match self.type_node(*qualifier) {
-                Some(kind) => (kind, false),
+                Some(kind) => (kind.erased(), false),
                 None => return Vec::new(),
             },
         };
@@ -1015,10 +1023,7 @@ impl<'a> Resolver<'a> {
             if method.varargs {
                 return Vec::new();
             }
-            counts.push(method.parameters.len());
-            if !value {
-                counts.push(method.parameters.len() + 1);
-            }
+            counts.push(method.parameters.len() + usize::from(!value && !method.is_static));
         }
         counts
     }
@@ -1164,7 +1169,9 @@ impl<'a> Resolver<'a> {
                 None => wait(&returned, &mut pending),
             }
         }
-        if inferred.len() < method.type_parameters.len() && self.busy.borrow_mut().insert(call.id()) {
+        // An argument whose own type waits for its context can leave a variable at `Object`: the context then knows better.
+        let loose = |kind: &Type| matches!(kind, Type::Class(name, _) if name == OBJECT);
+        if (inferred.len() < method.type_parameters.len() || inferred.values().any(loose)) && self.busy.borrow_mut().insert(call.id()) {
             if let Some(wanted) = self.target(call, true) {
                 let mut wider = HashMap::new();
                 let made = match self.index.get(&resolved.declaring) {
@@ -1183,7 +1190,9 @@ impl<'a> Resolver<'a> {
                 for (name, kind) in wider {
                     let bound = method.type_parameters.iter().position(|known| *known == name).and_then(|at| method.type_bounds.get(at));
                     if bound.is_none_or(|bound| self.assignable(&kind, bound, true)) {
-                        inferred.entry(name).or_insert(kind);
+                        if inferred.get(&name).is_none_or(|known| loose(known) && matches!(kind, Type::Class(..))) {
+                            inferred.insert(name, kind);
+                        }
                     }
                 }
             }
