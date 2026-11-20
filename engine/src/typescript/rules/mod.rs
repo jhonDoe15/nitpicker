@@ -1,5 +1,6 @@
 //! Lint rules on the shared parse. Ids, messages and positions are those of the ESLint-plugin rule of the same name.
 mod errors;
+mod lifecycles;
 mod listeners;
 mod modules;
 pub mod support;
@@ -13,6 +14,8 @@ use rayon::prelude::*;
 pub struct Context<'a, 's> {
     pub file: &'s ParsedFile<'a>,
     pub semantic: &'s Semantic<'a>,
+    /// The ESTree-shaped view and its scopes, built when a selected rule asks for them.
+    pub estree: Option<(&'s support::view::View, &'s support::scope::Scopes<'a, 's>)>,
     display: &'s str,
     findings: Vec<Finding>,
 }
@@ -23,10 +26,14 @@ impl<'a> Context<'a, '_> {
     }
 
     pub fn report(&mut self, rule: &str, span: Span, message: String) {
+        self.report_at(rule, span.start, message);
+    }
+
+    pub fn report_at(&mut self, rule: &str, start: u32, message: String) {
         self.findings.push(Finding {
             file: self.display.to_string(),
-            line: self.file.lines.line(span.start) as usize,
-            column: self.file.lines.column_utf16(self.file.text, span.start) as usize + 1,
+            line: self.file.lines.line(start) as usize,
+            column: self.file.lines.column_utf16(self.file.text, start) as usize + 1,
             rule: format!("nitpicker/{rule}"),
             message,
         });
@@ -35,25 +42,45 @@ impl<'a> Context<'a, '_> {
 
 pub type Rule = fn(&mut Context);
 
+/// Rules written against the ESTree-shaped view.
+const ON_VIEW: &[&str] = &["no-add-only-collection", "settle-pending-on-close"];
+
 pub const ALL: &[(&str, Rule)] = &[
+    ("no-add-only-collection", lifecycles::no_add_only_collection::check),
     ("no-listen-on-all-interfaces", listeners::no_listen_on_all_interfaces::check),
     ("no-production-console", modules::no_production_console::check),
     ("no-silent-catch", errors::no_silent_catch::check),
+    ("settle-pending-on-close", lifecycles::settle_pending_on_close::check),
 ];
 
-pub fn selected(only: Option<&[String]>) -> Vec<Rule> {
-    ALL.iter().filter(|(name, _)| only.is_none_or(|names| names.iter().any(|wanted| wanted == name))).map(|(_, rule)| *rule).collect()
+pub struct Selection {
+    rules: Vec<Rule>,
+    view: bool,
 }
 
-fn lint_file(path: &str, display: &str, rules: &[Rule]) -> Vec<Finding> {
+pub fn selected(only: Option<&[String]>) -> Selection {
+    let chosen: Vec<_> = ALL.iter().filter(|(name, _)| only.is_none_or(|names| names.iter().any(|wanted| wanted == name))).collect();
+    Selection { rules: chosen.iter().map(|(_, rule)| *rule).collect(), view: chosen.iter().any(|(name, _)| ON_VIEW.contains(name)) }
+}
+
+impl Selection {
+    pub fn len(&self) -> usize {
+        self.rules.len()
+    }
+}
+
+fn lint_file(path: &str, display: &str, selection: &Selection) -> Vec<Finding> {
     let Ok(text) = std::fs::read_to_string(path) else { return Vec::new() };
     super::with_parsed(path, &text, |file| {
         if file.panicked {
             return vec![Finding { file: display.to_string(), line: 1, column: 1, rule: "!parse".into(), message: String::new() }];
         }
         let semantic = SemanticBuilder::new().with_build_nodes(true).build(file.program).semantic;
-        let mut context = Context { file, semantic: &semantic, display, findings: Vec::new() };
-        for rule in rules {
+        let view = selection.view.then(|| support::view::View::of(file.program.to_estree_json(true, true)));
+        let scopes = view.as_ref().map(|view| support::scope::Scopes::of(&semantic, view));
+        let estree = view.as_ref().zip(scopes.as_ref());
+        let mut context = Context { file, semantic: &semantic, estree, display, findings: Vec::new() };
+        for rule in &selection.rules {
             rule(&mut context);
         }
         context.findings
@@ -61,7 +88,7 @@ fn lint_file(path: &str, display: &str, rules: &[Rule]) -> Vec<Finding> {
 }
 
 /// Each entry is the path to read and the path to report.
-pub fn lint_files(files: &[(String, String)], rules: &[Rule]) -> Vec<Finding> {
+pub fn lint_files(files: &[(String, String)], rules: &Selection) -> Vec<Finding> {
     let mut findings: Vec<Finding> = files.par_iter().flat_map_iter(|(path, display)| lint_file(path, display, rules)).collect();
     findings.sort();
     findings
