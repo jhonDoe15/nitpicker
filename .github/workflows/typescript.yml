@@ -229,15 +229,16 @@ jobs:
             echo "acceptance=commit:$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           fi
       # The CLI takes the base from GITHUB_BASE_REF on a pull request and origin/main on a manual run;
-      # policy is nitpicker.config.json. A shard exits 0 once its reports are written (--defer-exit):
-      # findings and analyzer failures fail the `self-gate` job, which reads the reports.
+      # policy is nitpicker.config.json. A shard runs without --defer-exit, so it fails on its own
+      # findings after writing its reports: the policy approval workflow re-runs the failed jobs of
+      # a run, and a shard that had passed with a finding in its report would keep that report.
       - name: nitpicker on itself, one shard
         env:
           NITPICKER_ACCEPT_POLICY_CHANGE: ${{ steps.budget.outputs.acceptance || vars.NITPICKER_ACCEPT_POLICY_CHANGE }}
           SHARD: ${{ matrix.shard }}
           SHARD_COUNT: ${{ strategy.job-total }}
         run: |
-          node core/cli.mts --shard-count "$SHARD_COUNT" --shard-index "$((SHARD - 1))" --defer-exit \
+          node core/cli.mts --shard-count "$SHARD_COUNT" --shard-index "$((SHARD - 1))" \
             --output "reports/shards/$((SHARD - 1))"
       - uses: actions/upload-artifact@v7.0.2
         if: ${{ !cancelled() }}
@@ -245,9 +246,12 @@ jobs:
           name: self-gate-shard-${{ matrix.shard }}
           path: reports/shards
           if-no-files-found: ignore
+          # A re-run of the job replaces the report of its earlier attempt.
+          overwrite: true
 
   # The required check. It runs when a shard failed or was cancelled too (`always()`), since GitHub
-  # counts a skipped required check as passed: a shard without a report then fails the aggregation.
+  # counts a skipped required check as passed: it reports the findings of every shard together, and
+  # a shard without a report fails the aggregation.
   self-gate:
     if: always() && github.ref != 'refs/heads/main'
     needs: self-gate-shard
