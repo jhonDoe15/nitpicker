@@ -74,8 +74,39 @@ describe('a PMD report that was cut off while writing a processing error', () =>
       cutOffSarifReport('{"version":'),
       cutOffSarifReport('not json'),
       cutOffSarifReport(`${HEAD}]}]}]}`),
-      cutOffSarifReport(`${HEAD}{ "message": { "text": "one" }, "level": tru ]}]}]}`),
+      cutOffSarifReport(HEAD.replace('"EmptyCatchBlock" }', 'tru }')),
     ]).toEqual([undefined, undefined, undefined, undefined]);
+  });
+
+  it('cuts at the first error an older report runs into, however often that happened before', () => {
+    const whole = '            { "message": { "text": "First failure\\nits trace" } },\n';
+    const stale =
+      'lder result."\n          },\n          "level": "warning"\n        }\n      ],\n' +
+      '      "invocations": [\n        {\n          "toolExecutionNotifications": [\n';
+    const overwritten = `${HEAD}${whole}${LOCATION}${CUT_MESSAGE}${stale}${LOCATION}${CUT_MESSAGE}`;
+    const notifications: unknown = fieldOf(
+      fieldOf(
+        fieldOf(
+          fieldOf(fieldOf(JSON.parse(cutOffSarifReport(overwritten) ?? '{}'), 'runs'), '0'),
+          'invocations',
+        ),
+        '0',
+      ),
+      'toolExecutionNotifications',
+    );
+    const betweenErrors = cutOffSarifReport(`${HEAD}${whole}            { "locations": [`);
+
+    expect([
+      fieldOf(fieldOf(fieldOf(notifications, '0'), 'message'), 'text'),
+      fieldOf(fieldOf(fieldOf(notifications, '1'), 'message'), 'text'),
+      fieldOf(notifications, 'length'),
+      messageTextOf(betweenErrors),
+    ]).toEqual([
+      'First failure\nits trace',
+      'StringIndexOutOfBoundsException',
+      2,
+      'First failure\nits trace',
+    ]);
   });
 
   it('keeps a whole report as it is when only an older report follows it', () => {
