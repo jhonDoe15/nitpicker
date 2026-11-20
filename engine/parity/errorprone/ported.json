@@ -31,5 +31,9 @@
  "JdkObsolete",
  "BooleanLiteral",
  "CheckedExceptionNotThrown",
- "IdentifierName"
+ "IdentifierName",
+ "EmptyBlockTag",
+ "MissingSummary",
+ "InvalidBlockTag",
+ "UnescapedEntity"
 ]

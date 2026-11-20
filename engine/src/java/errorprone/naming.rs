@@ -143,7 +143,7 @@ fn renamed_class(name: &str) -> String {
 }
 
 /// Private, or inside something private, an anonymous class or a class declared in a method.
-fn effectively_private(node: Node) -> bool {
+pub fn effectively_private(node: Node) -> bool {
     let mut current = Some(node);
     while let Some(at) = current {
         let holder = parent(at);
