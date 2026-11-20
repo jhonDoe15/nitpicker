@@ -43,7 +43,8 @@ export const HYGIENE_RULES = [
   {
     id: HYGIENE_RULE_IDS.committedPrivateKey,
     check: REPOSITORY_HYGIENE,
-    limit: 'a committed private key: a key file, or any text file holding a private-key block',
+    limit:
+      'a committed private key: a key file, or any text file holding a private-key block with key material (the marker text alone is not one)',
     enforcedBy: EVERY_LANGUAGE,
   },
   {
