@@ -42,6 +42,35 @@ tester.run('no-worker-state-in-concurrent-tests', rule, {
       code: lines(IMPORTS, "it('a', () => { vi.useFakeTimers(); });", "it('b', () => {});"),
       options: [{ concurrent: false }],
     },
+    lines(
+      IMPORTS,
+      "describe.concurrent('x', () => {",
+      "  it('a', async () => { const service = make(); vi.spyOn(service, 'run'); await service.go(); });",
+      "  it('b', async () => { const o = { f() {} }; vi.spyOn(o, 'f'); vi.spyOn(make(), 'g'); });",
+      "  it('c', { concurrent: false }, async () => { vi.useFakeTimers(); });",
+      '});',
+    ),
+    lines(
+      IMPORTS,
+      "describe.concurrent('x', () => { it('a', async () => { vi.useFakeTimers(); }); });",
+      "describe.concurrent('y', () => { it('b', async () => {}); });",
+    ),
+    lines(
+      IMPORTS,
+      "describe.concurrent('x', () => {",
+      "  it('a', async () => { vi.useFakeTimers(); });",
+      "  it.skip('b', async () => {});",
+      "  it.todo('c');",
+      '});',
+    ),
+    lines(
+      IMPORTS,
+      "describe.concurrent('x', () => {",
+      "  describe('clock', { concurrent: false }, () => { it('c', () => { vi.useFakeTimers(); }); });",
+      OTHER,
+      OTHER,
+      '});',
+    ),
   ],
   invalid: [
     {

@@ -373,14 +373,17 @@ the spec for Mocha.
   reset mocks by default, and a config that builds on a shared config, a preset or a project alias
   (`@/`, `~/`, `#`) that cannot be read, since that one may clear them.
 - `nitpicker/no-worker-state-in-concurrent-tests`: concurrent tests (`it.concurrent`,
-  `describe.concurrent`, `{ concurrent: true }`, or every test when the Vitest config sets
-  `sequence.concurrent: true`) run interleaved in one worker, so state that belongs to the worker is
-  shared between them while they await. In a file with two or more concurrent tests, the rule reports
-  fake timers (`useFakeTimers`, `setSystemTime`), `spyOn`, `stubGlobal`, `stubEnv`, `process.chdir`,
-  writes to `process.env` and setting the implementation of a mock declared outside the test, in a
-  concurrent test or in a `beforeEach`/`afterEach` hook those tests run. `describe.sequential` (or
-  `{ sequential: true }`) opts a block out. Run the tests that change such state in sequence, or keep
-  the state inside the test.
+  `describe.concurrent`, `{ concurrent: true }`, or every test when the root Vitest config, or a
+  project with its own `root`, sets `test.sequence.concurrent: true`) run interleaved in one worker,
+  so state that belongs to the worker is shared between them while they await. When two or more
+  concurrent tests of the same suite run side by side (skipped and `todo` tests do not count), the
+  rule reports fake timers (`useFakeTimers`, `setSystemTime`), `spyOn` on a global or on an object
+  declared outside the test, `stubGlobal`, `stubEnv`, `process.chdir`, writes to `process.env` and
+  setting the implementation of a mock declared outside the test, in such a test or in a
+  `beforeEach`/`afterEach` hook those tests run. `describe.sequential`, `{ sequential: true }` and
+  `{ concurrent: false }` opt a block or test out, and a project that sets
+  `sequence.concurrent: false` anywhere turns the config flag off. Run the tests that change such
+  state in sequence, or keep the state inside the test.
 - `nitpicker/no-switched-off-tests`: no `it.todo`/`test.todo`/`describe.todo` (`vitest/no-disabled-tests`
   already reports `skip`; neither is a way to switch a test off) and no `skipIf(true)`/`runIf(false)`.
   A condition that folds to a constant counts as a literal: `skipIf(1 === 1)`, `skipIf(!false)`,

@@ -66,6 +66,24 @@ function sharedMockSetter(
   );
 }
 
+function rootOf(node: TSESTree.Node): TSESTree.Node {
+  return node.type === AST_NODE_TYPES.MemberExpression ? rootOf(node.object) : node;
+}
+
+function spiesOnLocalObject(
+  sourceCode: SourceCode,
+  call: TSESTree.CallExpression,
+  owner: TSESTree.Node,
+): boolean {
+  const target = call.arguments[0];
+  const root = target === undefined ? undefined : rootOf(target);
+  if (root?.type !== AST_NODE_TYPES.Identifier) {
+    return true;
+  }
+  const definition = variableNamed(sourceCode, root)?.defs[0];
+  return definition !== undefined && contains(owner, definition.name);
+}
+
 export function workerStateCall(
   apis: RunnerApis,
   sourceCode: SourceCode,
@@ -77,7 +95,9 @@ export function workerStateCall(
   }
   const method = propertyName(callee) ?? '';
   if (RUNNER_KINDS.has(kindOfObject(apis, callee.object) ?? '') && method in WORKER_CALLS) {
-    return WORKER_CALLS[method];
+    return method === 'spyOn' && spiesOnLocalObject(sourceCode, call, owner)
+      ? undefined
+      : WORKER_CALLS[method];
   }
   if (isProcessMember(sourceCode, callee, 'chdir')) {
     return 'the working directory change';

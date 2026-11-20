@@ -16,9 +16,10 @@ type Change = { readonly node: TSESTree.Node; readonly owner: Owner; readonly wh
 const EACH_HOOKS = new Set(['beforeEach', 'afterEach']);
 const REPEATED_CASES = ['each', 'for'];
 const REPEATED_WEIGHT = 2;
+const SWITCHED_OFF = ['skip', 'todo'];
 const ENV_WRITE = 'the write to `process.env`';
 
-function optionSet(call: TSESTree.CallExpression, name: string): boolean {
+function optionIs(call: TSESTree.CallExpression, name: string, value: boolean): boolean {
   return call.arguments.some(
     (argument) =>
       argument.type === AST_NODE_TYPES.ObjectExpression &&
@@ -28,18 +29,30 @@ function optionSet(call: TSESTree.CallExpression, name: string): boolean {
           property.key.type === AST_NODE_TYPES.Identifier &&
           property.key.name === name &&
           property.value.type === AST_NODE_TYPES.Literal &&
-          property.value.value === true,
+          property.value.value === value,
       ),
   );
 }
 
 function modeOf(call: TSESTree.CallExpression): boolean | undefined {
-  if (chainHasProperty(call.callee, 'sequential') || optionSet(call, 'sequential')) {
+  if (
+    chainHasProperty(call.callee, 'sequential') ||
+    optionIs(call, 'sequential', true) ||
+    optionIs(call, 'concurrent', false)
+  ) {
     return false;
   }
-  return chainHasProperty(call.callee, 'concurrent') || optionSet(call, 'concurrent')
+  return chainHasProperty(call.callee, 'concurrent') || optionIs(call, 'concurrent', true)
     ? true
     : undefined;
+}
+
+function isSwitchedOff(call: TSESTree.CallExpression): boolean {
+  return SWITCHED_OFF.some((name) => chainHasProperty(call.callee, name));
+}
+
+function suiteOf(call: TSESTree.Node): TSESTree.Node | undefined {
+  return ancestorsOf(call).find((ancestor) => isSuiteCall(ancestor));
 }
 
 function runsConcurrently(call: TSESTree.CallExpression, byDefault: boolean): boolean {
@@ -108,12 +121,24 @@ export const rule: TSESLint.RuleModule<'workerState', Options> = {
       }
     }
 
+    function concurrentTestsBeside(suite: TSESTree.Node | undefined): number {
+      return owners
+        .filter((test) => !test.hook && test.concurrent && suiteOf(test.call) === suite)
+        .reduce((total, test) => total + weightOf(test), 0);
+    }
+
     function runsBesideOthers(owner: Owner): boolean {
       if (!owner.hook) {
-        return owner.concurrent;
+        return owner.concurrent && concurrentTestsBeside(suiteOf(owner.call)) >= 2;
       }
       const container = hookContainer(owner.call);
-      return owners.some((test) => !test.hook && test.concurrent && contains(container, test.call));
+      return owners.some(
+        (test) =>
+          !test.hook &&
+          test.concurrent &&
+          contains(container, test.call) &&
+          concurrentTestsBeside(suiteOf(test.call)) >= 2,
+      );
     }
 
     return {
@@ -123,7 +148,8 @@ export const rule: TSESLint.RuleModule<'workerState', Options> = {
         const hook = test === undefined ? eachHookBody(node) : undefined;
         const body = test ?? hook;
         if (body !== undefined) {
-          const concurrent = test !== undefined && runsConcurrently(node, byDefault);
+          const concurrent =
+            test !== undefined && !isSwitchedOff(node) && runsConcurrently(node, byDefault);
           owners.push({ call: node, body, hook: hook !== undefined, concurrent });
         }
         const owner = ownerOf(node);
@@ -145,12 +171,6 @@ export const rule: TSESLint.RuleModule<'workerState', Options> = {
         );
       },
       'Program:exit'() {
-        const concurrentTests = owners
-          .filter((owner) => !owner.hook && owner.concurrent)
-          .reduce((total, owner) => total + weightOf(owner), 0);
-        if (concurrentTests < 2) {
-          return;
-        }
         for (const { node, owner, what } of changes) {
           if (runsBesideOthers(owner)) {
             context.report({ node, messageId: 'workerState', data: { what } });
