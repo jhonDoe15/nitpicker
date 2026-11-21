@@ -4,7 +4,7 @@ import type { ReportEntry } from '../../../../shared/values/findings.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingUrl,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 
 const ROOT = '/home/me/app';
 const ANALYZERS = Array.from({ length: 12 }, (_, index) => `analyzer-${String(index)}`);

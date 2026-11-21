@@ -5,11 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../../cli.mts';
 import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mts';
 import { finding, policy } from '../../execution/test-support/analyzer-findings.mts';
-import {
-  helpUriFor as untypedHelpUriFor,
-  referenceLinks as untypedReferenceLinks,
-} from '../../../../shared/reference/store.mjs';
-import { docsUrl as untypedDocsUrl } from '../../../../shared/messages/docs-url.mjs';
+import { helpUriFor, referenceLinks } from '../../../../shared/reference/store.mts';
+import { docsUrl } from '../../../../shared/messages/docs-url.mts';
 import {
   fieldOf,
   fieldsOf,
@@ -30,13 +27,6 @@ import type {
   FixtureInvocationContext,
   FixtureRepository,
 } from '../../../command/test-support/fixture-types.mts';
-
-const helpUriFor: (
-  links: unknown,
-  finding: { readonly tool: string; readonly rule: string },
-) => unknown = untypedHelpUriFor;
-const referenceLinks: () => unknown = untypedReferenceLinks;
-const docsUrl: (relativePath: string, anchor: string) => string | undefined = untypedDocsUrl;
 
 const { createRepository, makeOutputRoot, runCli } = useCliFixtures(nitpickerCli);
 

@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { DYNAMIC } from '../../../../../../shared/rules/security/sql-text.mjs';
-import { sqlOrderGaps as untypedSqlOrderGaps } from '../../../../../../shared/rules/queries/sql-order.mjs';
+import { DYNAMIC } from '../../../../../../shared/rules/security/sql-text.mts';
+import { sqlOrderGaps as untypedSqlOrderGaps } from '../../../../../../shared/rules/queries/sql-order.mts';
 import { stringValue } from '../analysis/constant-resolution.mts';
 import {
   memberName,

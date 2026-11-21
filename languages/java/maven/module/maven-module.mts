@@ -12,7 +12,7 @@ import { runToolsConcurrently } from '../parallel/concurrent-tools.mts';
 import { runJdeps, runStructure } from '../parallel/module-metrics.mts';
 import { runModuleChecks, runModuleCoverage } from '../parallel/module-tasks.mts';
 import { readTestRuns } from '../quick/maven-test-phase.mts';
-import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { fieldOf, fieldsOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import type { Classpaths, MavenModule } from '../typed/maven-values.mts';

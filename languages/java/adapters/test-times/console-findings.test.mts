@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { hash as hashUntyped } from '../../../../shared/rules/finding-helpers.mjs';
+import { hash as hashUntyped } from '../../../../shared/rules/finding-parts.mts';
 import { parseFinding as parseFindingUntyped } from '../../../../core/diff/comparison/finding-schema.mts';
-import { normalizeConsoleMessage as normalizeConsoleMessageUntyped } from '../../../../shared/rules/console/console-messages.mjs';
+import { normalizeConsoleMessage as normalizeConsoleMessageUntyped } from '../../../../shared/rules/console/console-messages.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import type { JavaFinding } from '../typed/java-values.mts';
 import { testConsoleFindings } from './console-findings.mts';

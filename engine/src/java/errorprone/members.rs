@@ -322,3 +322,170 @@ pub fn inconsistent_overloads(context: &Context, node: Node) {
         }
     }
 }
+
+fn builder_owner(name: &str) -> bool {
+    name.rsplit(['.', '$']).next().is_some_and(|simple| simple.ends_with("Builder"))
+}
+
+fn builder_return(context: &Context, owner: &str, returns: &crate::java::types::model::Type) -> bool {
+    match returns {
+        crate::java::types::model::Type::Class(name, _) => {
+            builder_owner(owner) && name != crate::java::types::model::OBJECT && context.resolver.index.is_subtype(owner, name)
+        }
+        _ => false,
+    }
+}
+
+fn gives_this(context: &Context, expression: Node) -> bool {
+    let inner = |field: &str| expression.child_by_field_name(field).is_some_and(|part| gives_this(context, part));
+    match expression.kind() {
+        "this" => true,
+        "method_invocation" => context.resolver.resolve_call(expression).is_some_and(|call| {
+            !call.method.is_static && builder_return(context, &call.declaring, &call.method.returns)
+        }),
+        "ternary_expression" => inner("consequence") && inner("alternative"),
+        "parenthesized_expression" => named_children(expression).into_iter().next().is_some_and(|part| gives_this(context, part)),
+        "cast_expression" => inner("value"),
+        "field_access" => inner("object"),
+        "assignment_expression" | "binary_expression" => inner("right"),
+        _ => false,
+    }
+}
+
+fn other_return(context: &Context, node: Node) -> bool {
+    children(node).into_iter().any(|part| match part.kind() {
+        "lambda_expression" | "method_declaration" | "constructor_declaration" => false,
+        "return_statement" => {
+            named_children(part).into_iter().next().is_none_or(|value| !gives_this(context, value)) || other_return(context, part)
+        }
+        _ => other_return(context, part),
+    })
+}
+
+pub fn builder_return_this(context: &Context, node: Node) {
+    if node.kind() != "method_declaration" || crate::java::helpers::has_modifier(node, "static") {
+        return;
+    }
+    let (Some(body), Some(name)) = (node.child_by_field_name("body"), node.child_by_field_name("name")) else { return };
+    let Some((owner, method)) = super::hierarchy::declared_method(context, node) else { return };
+    if builder_return(context, &owner.name, &method.returns) && other_return(context, body) {
+        context.report("BuilderReturnThis", node, name.start_byte(), "Builder instance method does not return 'this'");
+    }
+}
+
+const KEEP_FIELD: &[&str] = &[
+    "jakarta.persistence.Basic", "jakarta.persistence.Column", "jakarta.persistence.Id", "jakarta.persistence.Version",
+    "jakarta.xml.bind.annotation.XmlElement", "javax.persistence.Basic", "javax.persistence.Column", "javax.persistence.Id",
+    "javax.persistence.Version", "javax.xml.bind.annotation.XmlElement", "net.starlark.java.annot.StarlarkBuiltin", "org.junit.Rule",
+    "org.junit.jupiter.api.extension.RegisterExtension", "org.openqa.selenium.support.FindAll", "org.openqa.selenium.support.FindBy",
+    "org.openqa.selenium.support.FindBys", "org.apache.beam.sdk.transforms.DoFn.TimerId", "org.apache.beam.sdk.transforms.DoFn.StateId",
+    "org.springframework.boot.test.mock.mockito.MockBean", "org.springframework.test.context.bean.override.mockito.MockitoBean",
+];
+
+const KEEP_METHOD: &[&str] = &[
+    "com.google.inject.Inject", "javax.inject.Inject", "jakarta.inject.Inject", "com.google.inject.Provides", "dagger.Provides",
+    "com.google.inject.multibindings.ProvidesIntoMap", "com.google.inject.multibindings.ProvidesIntoSet",
+    "com.google.inject.multibindings.ProvidesIntoOptional", "android.webkit.JavascriptInterface",
+    "com.fasterxml.jackson.annotation.JsonCreator", "com.fasterxml.jackson.annotation.JsonProperty",
+    "com.fasterxml.jackson.annotation.JsonSetter", "com.fasterxml.jackson.annotation.JsonValue", "com.google.acai.AfterTest",
+    "com.google.acai.BeforeSuite", "com.google.acai.BeforeTest", "com.google.caliper.Benchmark", "com.google.common.eventbus.Subscribe",
+    "com.google.inject.throwingproviders.CheckedProvides", "com.tngtech.java.junit.dataprovider.DataProvider",
+    "jakarta.annotation.PreDestroy", "jakarta.annotation.PostConstruct", "jakarta.persistence.PostLoad", "jakarta.persistence.PostPersist",
+    "jakarta.persistence.PostRemove", "jakarta.persistence.PostUpdate", "jakarta.persistence.PrePersist", "jakarta.persistence.PreRemove",
+    "jakarta.persistence.PreUpdate", "jakarta.validation.constraints.AssertFalse", "jakarta.validation.constraints.AssertTrue",
+    "javax.annotation.PreDestroy", "javax.annotation.PostConstruct", "javax.persistence.PostLoad", "javax.persistence.PostPersist",
+    "javax.persistence.PostRemove", "javax.persistence.PostUpdate", "javax.persistence.PrePersist", "javax.persistence.PreRemove",
+    "javax.persistence.PreUpdate", "javax.validation.constraints.AssertFalse", "javax.validation.constraints.AssertTrue",
+    "net.bytebuddy.asm.Advice.OnMethodEnter", "net.bytebuddy.asm.Advice.OnMethodExit", "org.apache.beam.sdk.transforms.DoFn.FinishBundle",
+    "org.apache.beam.sdk.transforms.DoFn.ProcessElement", "org.apache.beam.sdk.transforms.DoFn.StartBundle",
+    "org.aspectj.lang.annotation.Pointcut", "org.aspectj.lang.annotation.After", "org.aspectj.lang.annotation.Before",
+    "org.springframework.context.annotation.Bean", "org.testng.annotations.AfterClass", "org.testng.annotations.AfterMethod",
+    "org.testng.annotations.BeforeClass", "org.testng.annotations.BeforeMethod", "org.testng.annotations.DataProvider",
+    "org.junit.jupiter.api.BeforeAll", "org.junit.jupiter.api.AfterAll", "org.junit.jupiter.api.AfterEach", "org.junit.jupiter.api.BeforeEach",
+    "org.junit.jupiter.api.RepeatedTest", "org.junit.jupiter.api.Test", "org.junit.jupiter.params.ParameterizedTest",
+];
+
+const KEEP_ALWAYS: &[&str] = &["org.apache.beam.sdk.transforms.DoFn.ProcessElement", "org.junit.jupiter.api.Nested"];
+
+const TYPES: &[&str] =
+    &["class_declaration", "interface_declaration", "enum_declaration", "record_declaration", "annotation_type_declaration"];
+
+/// Kept for a framework: an annotation named `Keep` or `UsedReflectively`, or one of the listed ones.
+pub fn kept(context: &Context, declaration: Node, listed: &[&str]) -> bool {
+    let Some(modifiers) = crate::java::helpers::modifiers(declaration) else { return false };
+    children(modifiers).into_iter().filter(|part| matches!(part.kind(), "annotation" | "marker_annotation")).any(|annotation| {
+        let Some(name) = annotation.child_by_field_name("name") else { return false };
+        let written = context.text(name);
+        let simple = written.rsplit('.').next().unwrap_or(written);
+        if matches!(simple, "Keep" | "UsedReflectively") {
+            return true;
+        }
+        let full = context.resolver.class_name(annotation, written).unwrap_or_else(|| written.to_string());
+        listed.contains(&full.as_str()) || KEEP_ALWAYS.contains(&full.as_str())
+    })
+}
+
+fn hidden(node: Node) -> bool {
+    let mut current = Some(node);
+    while let Some(at) = current {
+        let holder = crate::engine::source::parent(at);
+        if TYPES.contains(&at.kind()) {
+            let member = holder.is_some_and(|holder| holder.kind().ends_with("_body") || holder.kind() == "enum_body_declarations" || holder.kind() == "program");
+            if !member {
+                return true;
+            }
+        }
+        if at.kind() == "class_body" && holder.is_some_and(|holder| matches!(holder.kind(), "object_creation_expression" | "enum_constant")) {
+            return true;
+        }
+        let declares = TYPES.contains(&at.kind())
+            || matches!(at.kind(), "method_declaration" | "constructor_declaration" | "compact_constructor_declaration" | "field_declaration");
+        if declares && crate::java::helpers::has_modifier(at, "private") {
+            return true;
+        }
+        current = holder;
+    }
+    false
+}
+
+const EFFECTIVELY_PRIVATE: &str = "This declaration has public or protected modifiers, but is effectively private.";
+
+pub fn effectively_private(context: &Context, node: Node) {
+    let kind = node.kind();
+    let method = matches!(kind, "method_declaration" | "constructor_declaration" | "compact_constructor_declaration" | "annotation_type_element_declaration");
+    let field = matches!(kind, "field_declaration" | "constant_declaration");
+    if !method && !field && !TYPES.contains(&kind) {
+        return;
+    }
+    let open = crate::java::helpers::has_modifier(node, "public") || crate::java::helpers::has_modifier(node, "protected");
+    if !open || !hidden(node) {
+        return;
+    }
+    if kept(context, node, if method { KEEP_METHOD } else if field { KEEP_FIELD } else { &["org.junit.jupiter.api.Nested"] }) {
+        return;
+    }
+    if method {
+        if super::hierarchy::has_annotation(context, node, "Override") {
+            return;
+        }
+        let inherited = super::hierarchy::declared_method(context, node)
+            .is_some_and(|(origin, own)| super::hierarchy::super_method(context, origin, own).is_some());
+        if inherited {
+            return;
+        }
+    }
+    if field {
+        for declarator in children(node).into_iter().filter(|part| part.kind() == "variable_declarator") {
+            if let Some(name) = declarator.child_by_field_name("name") {
+                context.report("EffectivelyPrivate", node, name.start_byte(), EFFECTIVELY_PRIVATE);
+            }
+        }
+        return;
+    }
+    let at = if method {
+        node.child_by_field_name("name").map(|name| name.start_byte())
+    } else {
+        children(node).into_iter().find(|part| matches!(part.kind(), "class" | "interface" | "enum" | "record" | "@interface")).map(|word| word.start_byte())
+    };
+    context.report("EffectivelyPrivate", node, at.unwrap_or(node.start_byte()), EFFECTIVELY_PRIVATE);
+}

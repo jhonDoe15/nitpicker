@@ -1,5 +1,5 @@
 import { forward, startsNewLine } from '../max-value-sums/source/source-file.mts';
-import { OPAQUE } from '../../../../../shared/rules/query-text/query-text.mjs';
+import { OPAQUE } from '../../../../../shared/rules/query-text/query-text.mts';
 import { literalText } from '../affix-boundaries/boundaries.mts';
 import type { Token } from '../../reuse/jvm-reuse-types.mts';
 import type { BareSource } from '../max-value-sums/sum-types.mts';

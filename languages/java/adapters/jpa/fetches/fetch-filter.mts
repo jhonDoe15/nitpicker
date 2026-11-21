@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { pathInside } from '../../../../../shared/filesystem.mjs';
+import { pathInside } from '../../../../../shared/filesystem.mts';
 import type { JavaFinding } from '../../typed/java-values.mts';
 import type { JpaFilterOptions } from '../jpa-types.mts';
 import type { FetchSource } from './fetch-types.mts';

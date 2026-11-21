@@ -31,9 +31,7 @@ fn rank(index: &TypeIndex, name: &str, known: &mut HashMap<String, u32>) -> u32 
 }
 
 /// Every supertype of a class, the class itself left out, in the order of javac's `Types.closure`: farthest from
-/// `Object` first. Among types of the same rank javac puts the one whose name it
-/// entered first: classes of the compiled sources come before library classes, then the reverse of the order in
-/// which a walk up the supertypes meets them.
+/// `Object` first, and among types of the same rank the one whose full name sorts first.
 pub fn closure(index: &TypeIndex, name: &str) -> Vec<String> {
     let mut order: Vec<String> = Vec::new();
     let mut queue: std::collections::VecDeque<String> = supers(index, name).into();
@@ -45,11 +43,9 @@ pub fn closure(index: &TypeIndex, name: &str) -> Vec<String> {
         order.push(current);
     }
     let mut known = HashMap::new();
-    let library = |parent: &str| index.get(parent).is_none_or(|info| info.flags & flag::SOURCE == 0);
-    let mut ranked: Vec<(u32, bool, usize, String)> =
-        order.into_iter().enumerate().map(|(met, parent)| (rank(index, &parent, &mut known), library(&parent), met, parent)).collect();
-    ranked.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)).then(b.2.cmp(&a.2)));
-    ranked.into_iter().map(|(_, _, _, parent)| parent).collect()
+    let mut ranked: Vec<(u32, String)> = order.into_iter().map(|parent| (rank(index, &parent, &mut known), parent)).collect();
+    ranked.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
+    ranked.into_iter().map(|(_, parent)| parent).collect()
 }
 
 pub fn own_type(index: &TypeIndex, name: &str) -> Type {
@@ -57,8 +53,14 @@ pub fn own_type(index: &TypeIndex, name: &str) -> Type {
     Type::Class(name.to_string(), bounds.unwrap_or_default())
 }
 
+/// The parameters of a method or constructor; a compact constructor has the components of its record.
 pub fn formals<'t>(method: Node<'t>) -> Vec<Node<'t>> {
-    method
+    let header = if method.kind() == "compact_constructor_declaration" {
+        crate::engine::source::parent(method).and_then(crate::engine::source::parent).unwrap_or(method)
+    } else {
+        method
+    };
+    header
         .child_by_field_name("parameters")
         .map(named_children)
         .unwrap_or_default()
@@ -116,28 +118,82 @@ pub fn sub_signature(index: &TypeIndex, origin: &ClassInfo, method: &Method, dec
     }
     let map = index.member_map(&own_type(index, &origin.name), &declaring.name);
     let seen: Vec<Type> = other.generic_parameters.iter().map(|formal| formal.substitute(&map)).collect();
-    seen == method.generic_parameters || seen.iter().map(Type::erased).eq(method.parameters.iter().cloned())
-}
-
-/// The first method in the supertypes that the method overrides, as `ASTHelpers.streamSuperMethods` finds it.
-pub fn super_method<'c>(context: &'c Context, origin: &ClassInfo, method: &Method) -> Option<(&'c ClassInfo, &'c Method)> {
-    if method.is_static || method.name == "<init>" {
-        return None;
+    if seen == method.generic_parameters || seen.iter().map(Type::erased).eq(method.parameters.iter().cloned()) {
+        return true;
     }
-    let index = context.resolver.index;
-    for parent in closure(index, &origin.name) {
-        let Some(declaring) = index.get(&parent) else { continue };
-        let found = declaring.methods.iter().find(|other| {
-            other.name == method.name
-                && !other.is_static
-                && overridable_in(other, declaring, origin)
-                && sub_signature(index, origin, method, declaring, other)
-        });
-        if let Some(other) = found {
-            return Some((declaring, other));
+    // A type variable of a class around the declaring class takes what the class around the overriding one gives it.
+    let mut around = map;
+    let mut changed = false;
+    let mut outer = declaring.name.as_str();
+    while let Some((parent, _)) = outer.rsplit_once('.') {
+        outer = parent;
+        let Some(info) = index.get(parent).filter(|info| !info.type_parameters.is_empty()) else { continue };
+        let mut inner = origin.name.as_str();
+        while let Some((child, _)) = inner.rsplit_once('.') {
+            inner = child;
+            if index.has(child) && index.is_subtype(child, parent) {
+                let given = index.member_map(&own_type(index, child), parent);
+                for (name, _) in &info.type_parameters {
+                    if let Some(kind) = given.get(name) {
+                        around.insert(name.clone(), kind.clone());
+                        changed = true;
+                    }
+                }
+                break;
+            }
         }
     }
-    None
+    changed && other.generic_parameters.iter().map(|formal| formal.substitute(&around).erased()).eq(method.parameters.iter().cloned())
+}
+
+/// Every method in the supertypes that the method overrides, in the order of `ASTHelpers.streamSuperMethods`.
+pub fn super_methods<'c>(index: &'c TypeIndex, origin: &ClassInfo, method: &Method) -> Vec<(&'c ClassInfo, &'c Method)> {
+    if method.is_static || method.name == "<init>" {
+        return Vec::new();
+    }
+    let mut found = Vec::new();
+    for parent in closure(index, &origin.name) {
+        let Some(declaring) = index.get(&parent) else { continue };
+        found.extend(
+            declaring
+                .methods
+                .iter()
+                .find(|other| {
+                    other.name == method.name
+                        && !other.is_static
+                        && overridable_in(other, declaring, origin)
+                        && sub_signature(index, origin, method, declaring, other)
+                })
+                .map(|other| (declaring, other)),
+        );
+    }
+    found
+}
+
+/// The first method in the supertypes that the method overrides.
+pub fn super_method<'c>(context: &'c Context, origin: &ClassInfo, method: &Method) -> Option<(&'c ClassInfo, &'c Method)> {
+    super_methods(context.resolver.index, origin, method).into_iter().next()
+}
+
+/// Whether a method declaration overrides something. An anonymous class written with `<>` takes its type arguments
+/// from the place it stands in, so there a parameter that is a type variable above fits any type. A method whose
+/// class is not known counts as overriding.
+pub fn overrides(context: &Context, method: Node) -> bool {
+    let Some((origin, declared)) = declared_method(context, method) else { return true };
+    let index = context.resolver.index;
+    if !super_methods(index, origin, declared).is_empty() {
+        return true;
+    }
+    let creation = crate::engine::source::parent(method).and_then(crate::engine::source::parent).filter(|owner| owner.kind() == "object_creation_expression");
+    let diamond = creation.and_then(|owner| owner.child_by_field_name("type")).is_some_and(|written| context.text(written).ends_with("<>"));
+    let alike = |other: &Method| {
+        other.name == declared.name
+            && other.parameters.len() == declared.parameters.len()
+            && !other.is_static
+            && !other.is_private
+            && other.generic_parameters.iter().zip(&other.parameters).zip(&declared.parameters).all(|((generic, erased), own)| generic.mentions_variable() || erased == own)
+    };
+    diamond && closure(index, &origin.name).iter().filter_map(|class| index.get(class)).any(|class| class.methods.iter().any(alike))
 }
 
 pub fn simple_name(class: &str) -> &str {

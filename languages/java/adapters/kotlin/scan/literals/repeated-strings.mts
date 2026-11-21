@@ -4,7 +4,7 @@ import {
   MINIMUM_LENGTH,
   TRANSLATION_CALLS,
   isIdiomaticText,
-} from '../../../../../../shared/literals/repeated-literal-exemptions.mjs';
+} from '../../../../../../shared/literals/repeated-literal-exemptions.mts';
 import { braceDepths, closingIndex, lineStart } from '../kotlin-source.mts';
 import type { Scanned, Literal, Messaged, Range, Subjected } from '../typed/scan-shapes.mts';
 

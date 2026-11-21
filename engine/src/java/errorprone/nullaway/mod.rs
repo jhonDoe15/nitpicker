@@ -627,7 +627,11 @@ impl<'a, 't> Flow<'a, 't> {
         match node.kind() {
             "method_invocation" | "object_creation_expression" | "explicit_constructor_invocation" => match resolver.call_formals(node) {
                 Some((call, _)) => {
-                    let mut all = call.method.throws.clone();
+                    let named = |kind: &Type| match kind {
+                        Type::Class(name, _) if name != "?" => Some(name.clone()),
+                        _ => None,
+                    };
+                    let mut all: Vec<String> = call.method.throws.iter().filter_map(named).collect();
                     all.extend(unchecked());
                     all
                 }

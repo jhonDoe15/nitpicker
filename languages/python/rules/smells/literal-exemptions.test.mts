@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { byText } from '../../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mts';
 import {
   DISCRIMINANT_KEYS,
   IDIOMATIC_TEXTS,
@@ -10,13 +10,13 @@ import {
   MIME_TYPE_PATTERN,
   TIME_FORMAT_PATTERN,
   TRANSLATION_CALLS,
-} from '../../../../shared/literals/repeated-literal-exemptions.mjs';
+} from '../../../../shared/literals/repeated-literal-exemptions.mts';
 
 const source = readFileSync(path.join(import.meta.dirname, 'literals.py'), 'utf8');
 
-function pythonSet(name: string): (string | undefined)[] {
+function pythonSet(name: string): string[] {
   const body = new RegExp(String.raw`^${name} = \{([^}]*)\}`, 'mu').exec(source)?.[1] ?? '';
-  return [...body.matchAll(/"([^"]*)"/gu)].map(([, item]) => item).toSorted(byText);
+  return [...body.matchAll(/"([^"]*)"/gu)].map(([, item]) => item ?? '').toSorted(byText);
 }
 
 function pythonPattern(name: string): string | undefined {

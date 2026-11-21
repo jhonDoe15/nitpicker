@@ -33,8 +33,8 @@ import { labeledRun } from './labels/analyzer-labels.mts';
 import { stagedCapture, withIndexFile } from './staged/capture-index.mts';
 import { writeComparisonOutcome } from './command/comparison/outcome.mts';
 import { baseSetupResolver } from './command/policy-review/base-setup.mts';
-import { runHistoryCli } from '../shared/history/runner.mjs';
-import { runHygieneCli } from '../shared/hygiene/runner.mjs';
+import { runHistoryCli } from '../shared/history/runner.mts';
+import { runHygieneCli } from '../shared/hygiene/runner.mts';
 import { printedInformation } from './command/information/printed-information.mts';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mts';
 import { runMonorepo } from './projects/run/monorepo.mts';
@@ -45,7 +45,6 @@ import { fieldOf, listOf, numberOr, textOf } from '../shared/values/readers.mts'
 import {
   type ComparisonCli,
   type ConfiguredCli,
-  acceptanceOf,
   comparisonBaseOf,
   resolveRunCacheStore,
   writeNotes,
@@ -269,16 +268,11 @@ function runComparisonCli(cli: ComparisonCli): unknown {
     captureHead: cli.captureHead,
     quick: cli.quick,
     staged: options.staged,
-    additionalToolErrors: [
-      ...listOf(fieldOf(fixResult, 'toolErrors')),
-      ...cli.setupErrors,
-      ...(cli.repositoryToolErrors ?? []),
-    ],
+    additionalToolErrors: [...listOf(fieldOf(fixResult, 'toolErrors')), ...cli.setupErrors],
     configOverrides: describeConfigOverrides(config),
     headPolicy,
     resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
     describeNotices: noticeDescriber(config, headPolicy, currentProjectRoot),
-    ...acceptanceOf(cli),
     ...runnerOptions(cli),
   });
   return writeComparisonOutcome({ cli, report, base, outputRoot });

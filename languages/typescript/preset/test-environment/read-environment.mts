@@ -15,7 +15,7 @@ import { environmentsFromConfig, testFilesFromConfig } from './environments.mts'
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 
 const READ_SCRIPT = loaderScript(
   "process.env.VITEST = 'true';",

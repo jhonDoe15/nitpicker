@@ -84,8 +84,9 @@ export function createRetryProjects(): RetryProjects {
         { projectRoot: root, liveProjectRoot: root, analyzers: [COVERAGE_ANALYZER] },
       );
       await writeFile(policyFile, JSON.stringify(policy));
-      vi.stubEnv('NITPICKER_POLICY', policyFile);
-      return rulesOf(await runArea('coverage', root)).filter((rule) => TEST_RUN_FAILURE.test(rule));
+      return rulesOf(await runArea('coverage', root, { NITPICKER_POLICY: policyFile })).filter(
+        (rule) => TEST_RUN_FAILURE.test(rule),
+      );
     },
   };
 }

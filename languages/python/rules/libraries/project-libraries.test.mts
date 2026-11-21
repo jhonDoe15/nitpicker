@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { byText } from '../../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import {

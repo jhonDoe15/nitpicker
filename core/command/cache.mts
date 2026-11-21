@@ -10,7 +10,7 @@ import {
 } from '../configuration/preset-analyzers.mts';
 import { describeConfigOverrides, loadConfig } from '../configuration/config.mts';
 import { parseDrillDownOptions, unknownArgumentError } from '../diff/comparison/cli.mts';
-import { didYouMean } from '../../shared/messages/closest-match.mjs';
+import { didYouMean } from '../../shared/messages/closest-match.mts';
 import {
   type CacheStore,
   createLayeredStore,
@@ -37,7 +37,7 @@ import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
   troubleshootingSentence,
-} from '../../shared/messages/troubleshooting.mjs';
+} from '../../shared/messages/troubleshooting.mts';
 
 type CacheCli = {
   readonly arguments_: readonly string[];

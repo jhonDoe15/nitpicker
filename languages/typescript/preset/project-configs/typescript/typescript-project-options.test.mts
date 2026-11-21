@@ -18,11 +18,7 @@ import type { Policy } from '../test-support/policy-views.mts';
 import { useTemporaryProjects } from '../../test-support/temporary-projects.mts';
 import { typescriptIgnoredNotices } from '../ignored-notices.mts';
 import { typescriptVersion } from '../../modules/tsconfig-files.mts';
-import {
-  projectStrictValues,
-  projectTsconfigFiles,
-  readTypescriptProjectConfig,
-} from './typescript-project-options.mts';
+import { projectStrictValues, readTypescriptProjectConfig } from './typescript-project-options.mts';
 
 const { projectWith } = useTemporaryProjects('nitpicker-ts-options-', { resolveSymlinks: true });
 
@@ -336,7 +332,6 @@ describe('the project tsconfig compiler options that nitpicker owns or does not 
     const layout = { javascript: true, sourceRoots: ['src'] };
 
     expect(readTypescriptProjectConfig(root, layout).compilerOptions['strict']).toBe(false);
-    expect(projectTsconfigFiles(root, layout)).toEqual(['tsconfig.app.json', 'tsconfig.json']);
   });
 });
 

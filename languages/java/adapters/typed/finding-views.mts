@@ -1,10 +1,9 @@
-import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
+import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../shared/project-files/project-files.mts';
 import {
   hash as untypedHash,
-  nextOccurrence as untypedNextOccurrence,
-} from '../../../../shared/rules/finding-helpers.mjs';
+  occurrenceCounter as untypedOccurrenceCounter,
+} from '../../../../shared/rules/finding-parts.mts';
 
 export const hash: (value: string) => string = untypedHash;
-export const nextOccurrence: (occurrences: Map<string, number>, key: string) => number =
-  untypedNextOccurrence;
+export const occurrenceCounter: () => (key: string) => number = untypedOccurrenceCounter;
 export const projectFilesUnder: (directory: string) => string[] = untypedProjectFilesUnder;

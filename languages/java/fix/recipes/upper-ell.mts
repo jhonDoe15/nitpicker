@@ -1,4 +1,4 @@
-import { lineAt as untypedLineAt } from '../../../../shared/conventions/lines.mjs';
+import { lineAt as untypedLineAt } from '../../../../shared/conventions/lines.mts';
 import type { FixRecipe } from '../../../../core/fix/typed/fix-types.mts';
 
 const JAVA_FILE = /\.java$/u;

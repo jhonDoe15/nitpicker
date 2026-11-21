@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 import { isIntegrationTestFor, resolveTestTimeouts } from '../typed/timeouts.mts';
 import type { TimeoutLimits } from '../typed/runner-types.mts';
 
@@ -28,7 +28,9 @@ export function applyVitestTimeouts(
 }
 
 export function timeoutSetupSource(policyRoot: string): string {
-  const shared = pathToFileURL(path.join(policyRoot, 'shared')).href;
+  const headPolicy = checkoutModuleUrl(
+    pathToFileURL(path.join(policyRoot, 'shared/head-policy.mjs')),
+  ).href;
   const setup = checkoutModuleUrl(
     pathToFileURL(
       path.join(
@@ -39,8 +41,8 @@ export function timeoutSetupSource(policyRoot: string): string {
   ).href;
   return `import { expect, vi } from 'vitest';
 import { applyVitestTimeouts } from ${JSON.stringify(setup)};
-import { readHeadPolicyFile } from ${JSON.stringify(`${shared}/head-policy.mjs`)};
-applyVitestTimeouts(readHeadPolicyFile(), { file: expect.getState().testPath }, (settings) => {
+import { readHeadPolicyFile } from ${JSON.stringify(headPolicy)};
+applyVitestTimeouts(readHeadPolicyFile(process.env), { file: expect.getState().testPath }, (settings) => {
   vi.setConfig(settings);
 });
 `;

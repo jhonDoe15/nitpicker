@@ -1,28 +1,22 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
 import {
   ANALYZER_TIMEOUT_KEY,
   withConfiguredTimeout,
-} from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
-import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
+} from '../../../shared/analyzer-timeouts/analyzer-timeouts.mts';
+import { resolveHeadPolicy } from '../../../shared/head-policy.mts';
 import { withHeadCheckoutFacts } from '../../../languages/typescript/preset/head-policy.mts';
 import { describeConfigOverrides, readConfigFile } from '../../configuration/config.mts';
-import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mts';
-import { policyChangeFields } from '../../policy-changes/describe-policy-changes.mts';
-import { readPolicyScope } from '../../policy-changes/policy-scope.mts';
+import { baseConfigCoveringHead } from '../base-config/base-coverage.mts';
 import { configureAll, presetAnalyzers } from '../../configuration/preset-analyzers.mts';
 import { withBaseTestRunner as untypedWithBaseTestRunner } from '../../../languages/typescript/preset/diff/base-runner.mts';
 import { applyRunProfile, withoutTestRun } from '../../quick/profile.mts';
-import { withoutTroubleshooting } from '../../../shared/messages/troubleshooting.mjs';
+import { withoutTroubleshooting } from '../../../shared/messages/troubleshooting.mts';
 import type { Analyzer, ProfiledAnalyzer } from '../../../shared/values/analyzers.mts';
 import { callUntyped } from '../../../shared/values/boundaries/untyped-call.mts';
 import { objectOf, textOf } from '../../../shared/values/readers.mts';
 import type { NitpickerConfig, ProjectOverlay } from '../../../shared/values/config-types.mts';
-import type {
-  Loosening as PolicyLoosening,
-  ScopeInputs,
-} from '../../policy-changes/types/policy-types.mts';
 
 type Warn = (message: string) => unknown;
 
@@ -32,23 +26,19 @@ type ResolverOptions = {
   readonly injectedAnalyzers?: readonly Analyzer[] | undefined;
   readonly liveProjectRoot?: string | undefined;
   readonly overlay?: ProjectOverlay | undefined;
-  readonly inherits?: string | undefined;
-  readonly repositoryLoosenings?: readonly PolicyLoosening[];
   readonly profile?: object;
   readonly warn?: Warn;
 };
 
 type BaseSnapshot = {
   readonly baseProjectRoot: string;
-  readonly headSnapshotRoot: string;
   readonly liveProjectRoot?: string | undefined;
-  readonly moves: ScopeInputs['moves'];
   readonly analyzers: readonly Analyzer[];
 };
 
 type MeasuredBase = Omit<
   Required<ResolverOptions>,
-  'warn' | 'injectedAnalyzers' | 'liveProjectRoot' | 'overlay' | 'inherits' | 'repositoryLoosenings'
+  'warn' | 'injectedAnalyzers' | 'liveProjectRoot' | 'overlay'
 > & {
   readonly baseConfig: NitpickerConfig;
   readonly injectedAnalyzers: readonly Analyzer[] | undefined;
@@ -59,8 +49,6 @@ type BaseSetupCli = {
   readonly currentProjectRoot?: string | undefined;
   readonly injectedAnalyzers: readonly Analyzer[] | undefined;
   readonly baseConfigOverlay?: ProjectOverlay | undefined;
-  readonly configOverlay?: ProjectOverlay | undefined;
-  readonly repositoryLoosenings?: readonly PolicyLoosening[] | undefined;
   readonly options: object;
   readonly stderr: { write(text: string): unknown };
 };
@@ -96,7 +84,7 @@ function readBaseConfig(
       withoutTroubleshooting(error instanceof Error ? error.message : String(error)),
     );
     warn(
-      `The base's ${CONFIG_FILE_NAME} cannot be applied (${reason}); the base is analysed with the head config, and the head config is compared with the defaults.`,
+      `The base's ${CONFIG_FILE_NAME} cannot be applied (${reason}); the base is analysed with the head config.`,
     );
     return undefined;
   }
@@ -113,8 +101,6 @@ export function baseSetupResolver(
     liveProjectRoot: cli.currentProjectRoot,
     injectedAnalyzers: cli.injectedAnalyzers,
     overlay: cli.baseConfigOverlay,
-    inherits: cli.configOverlay?.inherits,
-    repositoryLoosenings: cli.repositoryLoosenings ?? [],
     profile: cli.options,
     warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
   });
@@ -141,40 +127,24 @@ function configuredBaseSetup({
   headPolicy,
   injectedAnalyzers,
   overlay,
-  inherits,
-  repositoryLoosenings = [],
   profile = {},
   warn,
 }: ResolverOptions & { readonly headPolicy: unknown; readonly warn: Warn }): (
   snapshot: BaseSnapshot,
 ) => object {
-  return ({ baseProjectRoot, headSnapshotRoot, liveProjectRoot, moves, analyzers }) => {
+  return ({ baseProjectRoot, analyzers }) => {
     const baseConfig = readBaseConfig(baseProjectRoot, warn, overlay);
-    const compared = baseConfig ?? {};
-    const scope = readPolicyScope({
-      baseConfig: compared,
-      headConfig,
-      baseProjectRoot,
-      headProjectRoot: headSnapshotRoot,
-      liveProjectRoot: liveProjectRoot ?? headSnapshotRoot,
-      moves,
-      replacedOptions: undefined,
-      inherits,
-    });
-    const unchanged = JSON.stringify(compared) === JSON.stringify(headConfig);
-    return {
-      ...(baseConfig === undefined || unchanged
-        ? {}
-        : measuredBase({
-            baseConfig,
-            headConfig,
-            headPolicy,
-            injectedAnalyzers,
-            profile,
-            analyzers,
-          })),
-      ...policyChangeFields(compared, headConfig, { ...scope, repositoryLoosenings }),
-    };
+    const unchanged = JSON.stringify(baseConfig ?? {}) === JSON.stringify(headConfig);
+    return baseConfig === undefined || unchanged
+      ? {}
+      : measuredBase({
+          baseConfig,
+          headConfig,
+          headPolicy,
+          injectedAnalyzers,
+          profile,
+          analyzers,
+        });
   };
 }
 

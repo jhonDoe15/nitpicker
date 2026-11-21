@@ -5,13 +5,11 @@ import { sharedConfigFiles } from '../../configuration/layers/shared-files.mts';
 import { presetAnalyzers, withRepositoryChecks } from '../../configuration/preset-analyzers.mts';
 import { resolveBase } from '../../diff/git/repository/base-ref.mts';
 import { resolveComparison } from '../../diff/git/repository/git.mts';
-import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
 import { PROJECT_FILES } from '../discovery/declared-projects.mts';
 import { isInside, isSkippedLocation } from '../discovery/repository-files.mts';
-import { projectsToolError } from '../policy/project-set.mts';
-import { byText } from '../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../shared/text-order/by-text.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
-import type { ReportEntry } from '../../../shared/values/findings.mts';
 import type { Analyzer } from '../../../shared/values/analyzers.mts';
 import type { MonorepoCli, MonorepoPlan, PlanProject, SelectionCli } from '../project-types.mts';
 
@@ -114,8 +112,4 @@ export function unlistedFolders(plan: MonorepoPlan, changed: readonly string[]):
     .filter((folder) => !isSkippedLocation(folder))
     .filter((folder) => !plan.projects.some(({ repoPath }) => isInside(folder, repoPath)));
   return [...new Set(folders)].toSorted(byText);
-}
-
-export function toolErrorsOf(error: unknown): readonly ReportEntry[] {
-  return error === undefined ? [] : [projectsToolError(error)];
 }

@@ -48,6 +48,7 @@ export type OxlintPlan = {
   readonly typedPluginRules: readonly string[];
   readonly ruleMessages: RuleMessages;
   readonly nativeRules: readonly ListedRule[];
+  readonly endToEndRoot?: string;
 };
 
 export type NativeRules = ReadonlyMap<string, { readonly typeAware: boolean }>;

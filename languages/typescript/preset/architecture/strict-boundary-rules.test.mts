@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { DEPENDENCY_RULES as untypedDependencyRules } from '../../../../shared/exceptions/rule-tools.mjs';
+import { DEPENDENCY_RULES as untypedDependencyRules } from '../../../../shared/exceptions/rule-tools.mts';
 import untypedCruiserConfig from '../defaults/dependency-cruiser.config.mts';
 import { fieldOf, listOf, parseJson, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { NO_IMPORT_OUTSIDE_ROOTS } from './outside-roots/outside-roots.mts';

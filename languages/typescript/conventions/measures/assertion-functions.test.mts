@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   describeConventions,
   validateConventions,
-} from '../../../../shared/conventions/settings.mjs';
-import { conventionChoices, detectedFor } from '../typed/convention-views.mts';
+} from '../../../../shared/conventions/settings.mts';
+import { conventionChoices } from '../../../../shared/conventions/detect.mts';
+import { detectedFor } from '../typed/convention-views.mts';
 import { ASSERTION_HELPERS_CONVENTION, assertionFunctionNames } from './assertion-functions.mts';
 
 function evidence(text: string): unknown {

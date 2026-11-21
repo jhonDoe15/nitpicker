@@ -1,7 +1,10 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { childAt, parseXml } from '../../../../../shared/values/xml.mts';
-import type { XmlElement } from '../../../../../shared/values/xml.mts';
+import {
+  childAt,
+  parseXml,
+  type XmlElement,
+} from '../../../../../shared/ingest/report-records.mts';
 import { configurations, pluginsNamed } from '../../../builds/narrowing/maven-sources.mts';
 import type {
   BuildSource,
@@ -12,7 +15,7 @@ import type {
   Pom,
   Script,
 } from './declared-types.mts';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mts';
 import { messageOf, textOf } from '../../../../../shared/values/readers.mts';
 import { gradleStatements, quotedGroups } from '../../../builds/narrowing/gradle-script.mts';
 import { buildFiles } from '../../../conventions/build-style/build-files.mts';

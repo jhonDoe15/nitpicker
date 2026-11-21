@@ -1,8 +1,13 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { hash, nextOccurrence, projectFilesUnder } from '../typed/finding-views.mts';
+import { hash, occurrenceCounter, projectFilesUnder } from '../typed/finding-views.mts';
 import { lineOf } from '../suppressions/java-suppressions.mts';
 import { commentLines, commentedOutCode } from './commented-out-code.mts';
+import {
+  PLACEHOLDER_MESSAGE,
+  PLACEHOLDER_RULE,
+  placeholderCode,
+} from './placeholders/placeholder-code.mts';
 import { TASK_MARKER_MESSAGE, unreferencedMarker } from './task-markers.mts';
 import type { InlineFinding } from '../suppressions/suppression-types.mts';
 
@@ -38,12 +43,21 @@ function codeFindings(source: string): Marker[] {
   }));
 }
 
+function placeholders(source: string, filePath: string): Marker[] {
+  return placeholderCode(source, filePath).map(({ offset, subject }) => ({
+    rule: PLACEHOLDER_RULE,
+    message: PLACEHOLDER_MESSAGE,
+    offset,
+    subject,
+  }));
+}
+
 export function commentFindings(source: string, filePath: string): InlineFinding[] {
-  const occurrences = new Map<string, number>();
-  return [...markers(source), ...codeFindings(source)]
+  const nextOccurrence = occurrenceCounter();
+  return [...markers(source), ...codeFindings(source), ...placeholders(source, filePath)]
     .sort((left, right) => left.offset - right.offset)
     .map(({ rule, message, offset, subject }) => {
-      const occurrence = nextOccurrence(occurrences, `${rule}\0${subject}`);
+      const occurrence = nextOccurrence(`${rule}\0${subject}`);
       return {
         tool: 'pmd',
         rule,

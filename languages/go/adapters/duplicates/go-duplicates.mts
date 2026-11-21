@@ -40,6 +40,7 @@ export function duplicates(context: GoContext): void {
       ignore: goDuplicateIgnores(report, context.duplicateSkippedFolders),
       reportRoot: context.reportRoot,
       together: true,
+      environment: context.environment,
       renamed: { syntax: SYNTAX, files: files.map(({ path: file }) => file) },
     },
     'duplicates-failed',

@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
-import { expandsFully as untypedExpandsFully } from '../../../../../../shared/traversal.mjs';
+import { expandsFully as untypedExpandsFully } from '../../../../../../shared/traversal.mts';
 
 const LEAVES = new Set<string>([
   AST_NODE_TYPES.Literal,

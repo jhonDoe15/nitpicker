@@ -3,7 +3,7 @@ import { staticChecks } from '../preset/quality-checks.mts';
 import { usesLayeredPrettier as untypedUsesLayeredPrettier } from '../preset/head-policy.mts';
 import { fileURLToPath } from 'node:url';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mts';
-import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mts';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
 import type { FixFile, FixSettings, FixStep } from '../../../core/fix/typed/fix-types.mts';
 import {

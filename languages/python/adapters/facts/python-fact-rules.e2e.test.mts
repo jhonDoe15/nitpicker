@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 import { createFactsProjects } from './test-support/facts-projects.mts';
 

@@ -118,16 +118,6 @@ export function revivedExpression(value: unknown): string {
   return `JSON.parse(${JSON.stringify(JSON.stringify(value))}, ${reviver})`;
 }
 
-export function shownValue(value: unknown): string {
-  if (value === undefined) {
-    return 'not set';
-  }
-  return JSON.stringify(value, (_key: string, item: unknown) => {
-    const tagged = fieldOf(item, REGEXP_KEY);
-    return Array.isArray(tagged) ? `/${String(tagged[0])}/${String(tagged[1])}` : item;
-  });
-}
-
 function withoutKeys(config: object, keys: ReadonlySet<string>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(config).filter(([key]) => !keys.has(key)));
 }

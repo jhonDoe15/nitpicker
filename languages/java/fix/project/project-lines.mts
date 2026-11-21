@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
+import { GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mts';
 
 const NO_MATCH = 1;
 const OUTPUT_BYTES = 16 * 1024 * 1024;

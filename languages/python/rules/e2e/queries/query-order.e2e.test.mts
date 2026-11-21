@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { expect, it } from 'vitest';
-import { sqlOrderGaps } from '../../../../../shared/rules/queries/sql-order.mjs';
+import { sqlOrderGaps } from '../../../../../shared/rules/queries/sql-order.mts';
 import { useRuleScripts } from '../../test-support/python-rule-scripts.mts';
 
 const parseCases: (text: string) => {

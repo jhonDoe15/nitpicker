@@ -27,7 +27,7 @@
       "uniqueItems": true
     },
     "thresholds": {
-      "description": "Size and time limits, replacing the preset defaults. A raised limit is a policy loosening.",
+      "description": "Size and time limits, replacing the preset defaults.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -89,7 +89,7 @@
       }
     },
     "exclude": {
-      "description": "Globs, relative to the project root, of files every analyzer skips. Excluding code is a policy loosening.",
+      "description": "Globs, relative to the project root, of files every analyzer skips.",
       "type": "array",
       "items": { "type": "string", "minLength": 1 }
     },
@@ -374,6 +374,8 @@
                         "repository-hygiene/foreign-key-index",
                         "field-limit-mismatch",
                         "repository-hygiene/field-limit-mismatch",
+                        "musl-default-allocator",
+                        "repository-hygiene/musl-default-allocator",
                         "co-change",
                         "change-history/co-change",
                         "duplicate-definition",
@@ -1232,7 +1234,7 @@
       "additionalProperties": false,
       "properties": {
         "roles": {
-          "description": "Annotation or type names, by role, whose classes count in that role for the Spring architecture rules, on top of Spring stereotypes. Removing a name loosens the policy.",
+          "description": "Annotation or type names, by role, whose classes count in that role for the Spring architecture rules, on top of Spring stereotypes.",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -1606,6 +1608,7 @@
                     "foreign-key-index",
                     "field-limit-mismatch",
                     "start-schema-push",
+                    "musl-default-allocator",
                     "unused-dependency",
                     "unlisted-dependency",
                     "unresolved-import",
@@ -1851,6 +1854,7 @@
                     "foreign-key-index",
                     "field-limit-mismatch",
                     "start-schema-push",
+                    "musl-default-allocator",
                     "unused-dependency",
                     "unlisted-dependency",
                     "unresolved-import",
@@ -2030,6 +2034,8 @@
                             "repository-hygiene/foreign-key-index",
                             "field-limit-mismatch",
                             "repository-hygiene/field-limit-mismatch",
+                            "musl-default-allocator",
+                            "repository-hygiene/musl-default-allocator",
                             "co-change",
                             "change-history/co-change",
                             "duplicate-definition",
@@ -2318,6 +2324,8 @@
                             "repository-hygiene/foreign-key-index",
                             "field-limit-mismatch",
                             "repository-hygiene/field-limit-mismatch",
+                            "musl-default-allocator",
+                            "repository-hygiene/musl-default-allocator",
                             "co-change",
                             "change-history/co-change",
                             "duplicate-definition",
@@ -2766,6 +2774,8 @@
                         "repository-hygiene/foreign-key-index",
                         "field-limit-mismatch",
                         "repository-hygiene/field-limit-mismatch",
+                        "musl-default-allocator",
+                        "repository-hygiene/musl-default-allocator",
                         "co-change",
                         "change-history/co-change",
                         "duplicate-definition",
@@ -2962,6 +2972,8 @@
                             "repository-hygiene/foreign-key-index",
                             "field-limit-mismatch",
                             "repository-hygiene/field-limit-mismatch",
+                            "musl-default-allocator",
+                            "repository-hygiene/musl-default-allocator",
                             "co-change",
                             "change-history/co-change",
                             "duplicate-definition",
@@ -3364,6 +3376,8 @@
         "repository-hygiene/field-limit-mismatch",
         "start-schema-push",
         "repository-hygiene/start-schema-push",
+        "musl-default-allocator",
+        "repository-hygiene/musl-default-allocator",
         "unused-dependency",
         "dead-code/unused-dependency",
         "unlisted-dependency",

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
-import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mts';
 import { createEntryPointAnalyzer } from '../../adapters/entry-points.mts';
 import { createEslintAnalyzer } from '../../adapters/eslint/analyzer.mts';
 import { createStaticCheckAnalyzer } from '../../adapters/static-checks/analyzer.mts';
@@ -73,6 +73,8 @@ const POLICY_PATHS = [
   'languages/typescript/adapters/immutable-types',
   'languages/typescript/adapters/test-runners/jest',
   'languages/typescript/adapters/typed',
+  'languages/typescript/adapters/dependency-graph/cruiser-hooks',
+  'languages/typescript/adapters/dependency-graph/shared-graph/cruiser-process.mjs',
   'languages/typescript/preset/structure/reuse/reuse-paths.mjs',
   'languages/typescript/preset/syntax',
   'languages/typescript/preset/modules',

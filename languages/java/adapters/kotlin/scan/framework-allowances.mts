@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { pathInside } from '../../../../../shared/filesystem.mjs';
+import { pathInside } from '../../../../../shared/filesystem.mts';
 import { listEntriesOf, MERGED_LISTS } from '../detekt/detekt-lists.mts';
 import { ONE_WAY_RULES } from '../rules/kotlin-rules.mts';
 import { lineText, scanKotlinSource } from './kotlin-source.mts';

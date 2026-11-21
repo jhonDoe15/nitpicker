@@ -1,4 +1,4 @@
-import { describeError } from '../../../shared/messages/error-chain.mjs';
+import { describeError } from '../../../shared/messages/error-chain.mts';
 import { applyDisable, loadConfig } from '../../configuration/config.mts';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
 import { resolveRunTarget } from '../../scope/run-target.mts';

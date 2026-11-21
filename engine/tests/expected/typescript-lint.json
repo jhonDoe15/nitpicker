@@ -1,0 +1,509 @@
+[
+ [
+  "access.test.tsx",
+  "testing-library/no-debugging-utils",
+  21,
+  3,
+  "Unexpected debug statement",
+  21,
+  8
+ ],
+ [
+  "access.test.tsx",
+  "testing-library/no-debugging-utils",
+  22,
+  10,
+  "Unexpected debug statement",
+  22,
+  15
+ ],
+ [
+  "access.test.tsx",
+  "testing-library/no-debugging-utils",
+  23,
+  10,
+  "Unexpected debug statement",
+  23,
+  33
+ ],
+ [
+  "access.test.tsx",
+  "testing-library/no-debugging-utils",
+  24,
+  3,
+  "Unexpected debug statement",
+  24,
+  12
+ ],
+ [
+  "access.test.tsx",
+  "testing-library/no-debugging-utils",
+  25,
+  11,
+  "Unexpected debug statement",
+  25,
+  16
+ ],
+ [
+  "access.test.tsx",
+  "testing-library/no-manual-cleanup",
+  1,
+  15,
+  "`cleanup` is performed automatically by your test runner, you don't need manual cleanups.",
+  1,
+  22
+ ],
+ [
+  "access.test.tsx",
+  "testing-library/no-manual-cleanup",
+  4,
+  21,
+  "`cleanup` is performed automatically by your test runner, you don't need manual cleanups.",
+  4,
+  28
+ ],
+ [
+  "access.test.tsx",
+  "testing-library/no-node-access",
+  10,
+  28,
+  "Avoid direct Node access. Prefer using the methods from Testing Library."
+ ],
+ [
+  "access.test.tsx",
+  "testing-library/no-node-access",
+  11,
+  42,
+  "Avoid direct Node access. Prefer using the methods from Testing Library."
+ ],
+ [
+  "access.test.tsx",
+  "testing-library/no-node-access",
+  12,
+  30,
+  "Avoid direct Node access. Prefer using the methods from Testing Library."
+ ],
+ [
+  "access.test.tsx",
+  "testing-library/no-node-access",
+  13,
+  28,
+  "Avoid direct Node access. Prefer using the methods from Testing Library."
+ ],
+ [
+  "access.test.tsx",
+  "testing-library/no-node-access",
+  14,
+  12,
+  "Avoid direct Node access. Prefer using the methods from Testing Library."
+ ],
+ [
+  "access.test.tsx",
+  "testing-library/no-node-access",
+  18,
+  29,
+  "Avoid direct Node access. Prefer using the methods from Testing Library."
+ ],
+ [
+  "access.test.tsx",
+  "testing-library/no-node-access",
+  18,
+  29,
+  "Avoid direct Node access. Prefer using the methods from Testing Library."
+ ],
+ [
+  "access.test.tsx",
+  "testing-library/no-node-access",
+  8,
+  27,
+  "Avoid direct Node access. Prefer using the methods from Testing Library."
+ ],
+ [
+  "access.test.tsx",
+  "testing-library/no-node-access",
+  8,
+  27,
+  "Avoid direct Node access. Prefer using the methods from Testing Library."
+ ],
+ [
+  "access.test.tsx",
+  "testing-library/no-node-access",
+  9,
+  26,
+  "Avoid direct Node access. Prefer using the methods from Testing Library."
+ ],
+ [
+  "access.test.tsx",
+  "testing-library/no-node-access",
+  9,
+  26,
+  "Avoid direct Node access. Prefer using the methods from Testing Library."
+ ],
+ [
+  "awaits.test.tsx",
+  "testing-library/await-async-events",
+  22,
+  3,
+  "Promise returned from async event method `click` must be handled",
+  22,
+  18
+ ],
+ [
+  "awaits.test.tsx",
+  "testing-library/await-async-events",
+  24,
+  3,
+  "Promise returned from async event method `type` must be handled",
+  24,
+  12
+ ],
+ [
+  "awaits.test.tsx",
+  "testing-library/await-async-events",
+  26,
+  3,
+  "Promise returned from async event method `keyboard` must be handled",
+  26,
+  18
+ ],
+ [
+  "awaits.test.tsx",
+  "testing-library/await-async-queries",
+  15,
+  10,
+  "promise returned from `findByText` query must be handled",
+  15,
+  20
+ ],
+ [
+  "awaits.test.tsx",
+  "testing-library/await-async-queries",
+  16,
+  26,
+  "promise returned from `findByLabelText` query must be handled",
+  16,
+  41
+ ],
+ [
+  "awaits.test.tsx",
+  "testing-library/await-async-queries",
+  18,
+  3,
+  "promise returned from `findSave` wrapper over async query must be handled",
+  18,
+  11
+ ],
+ [
+  "awaits.test.tsx",
+  "testing-library/await-async-utils",
+  19,
+  3,
+  "Promise returned from `waitFor` must be handled",
+  19,
+  10
+ ],
+ [
+  "awaits.test.tsx",
+  "testing-library/await-async-utils",
+  20,
+  3,
+  "Promise returned from waitForSaved wrapper over async util must be handled",
+  20,
+  15
+ ],
+ [
+  "awaits.test.tsx",
+  "testing-library/await-async-utils",
+  21,
+  3,
+  "Promise returned from `waitForElementToBeRemoved` must be handled",
+  21,
+  28
+ ],
+ [
+  "awaits.test.tsx",
+  "testing-library/prefer-user-event-setup",
+  22,
+  3,
+  "Prefer using userEvent with setup() instead of direct click() call. Use: const user = userEvent.setup(); await user.click(...)",
+  22,
+  18
+ ],
+ [
+  "custom-module.test.ts",
+  "testing-library/no-manual-cleanup",
+  1,
+  25,
+  "`cleanup` is performed automatically by your test runner, you don't need manual cleanups.",
+  1,
+  32
+ ],
+ [
+  "custom-module.test.ts",
+  "testing-library/no-node-access",
+  8,
+  31,
+  "Avoid direct Node access. Prefer using the methods from Testing Library."
+ ],
+ [
+  "custom-module.test.ts",
+  "testing-library/no-test-id-queries",
+  8,
+  3,
+  "Using `data-testid` queries is not recommended. Use a more descriptive query instead.",
+  8,
+  30
+ ],
+ [
+  "custom-module.test.ts",
+  "testing-library/prefer-screen-queries",
+  7,
+  3,
+  "Avoid destructuring queries from `render` result, use `screen.getByRole` instead",
+  7,
+  12
+ ],
+ [
+  "custom-module.test.ts",
+  "testing-library/prefer-user-event",
+  9,
+  3,
+  "Prefer using userEvent.hover, userEvent.selectOptions, or userEvent.deselectOptions over fireEvent.mouseOver",
+  9,
+  22
+ ],
+ [
+  "events.test.tsx",
+  "testing-library/no-unnecessary-act",
+  24,
+  3,
+  "Avoid wrapping empty function in `act`",
+  24,
+  6
+ ],
+ [
+  "events.test.tsx",
+  "testing-library/no-unnecessary-act",
+  25,
+  3,
+  "Avoid wrapping Testing Library util calls in `act`",
+  25,
+  6
+ ],
+ [
+  "events.test.tsx",
+  "testing-library/no-unnecessary-act",
+  28,
+  9,
+  "Avoid wrapping Testing Library util calls in `act`",
+  28,
+  12
+ ],
+ [
+  "events.test.tsx",
+  "testing-library/no-unnecessary-act",
+  31,
+  3,
+  "Avoid wrapping Testing Library util calls in `act`",
+  31,
+  6
+ ],
+ [
+  "events.test.tsx",
+  "testing-library/prefer-user-event",
+  10,
+  3,
+  "Prefer using userEvent.click, userEvent.type, userEvent.selectOptions, or userEvent.deselectOptions over fireEvent.click",
+  10,
+  18
+ ],
+ [
+  "events.test.tsx",
+  "testing-library/prefer-user-event",
+  11,
+  3,
+  "Prefer using userEvent.upload, userEvent.type, userEvent.clear, userEvent.selectOptions, or userEvent.deselectOptions over fireEvent.change",
+  11,
+  19
+ ],
+ [
+  "events.test.tsx",
+  "testing-library/prefer-user-event",
+  13,
+  3,
+  "Prefer using userEvent.type, or userEvent.tab over fireEvent.keyDown",
+  13,
+  12
+ ],
+ [
+  "events.test.tsx",
+  "testing-library/prefer-user-event",
+  15,
+  3,
+  "Prefer using userEvent.paste over fireEvent.paste",
+  15,
+  12
+ ],
+ [
+  "events.test.tsx",
+  "testing-library/prefer-user-event",
+  26,
+  5,
+  "Prefer using userEvent.click, userEvent.type, userEvent.selectOptions, or userEvent.deselectOptions over fireEvent.click",
+  26,
+  20
+ ],
+ [
+  "events.test.tsx",
+  "testing-library/prefer-user-event-setup",
+  17,
+  9,
+  "Prefer using userEvent with setup() instead of direct click() call. Use: const user = userEvent.setup(); await user.click(...)",
+  17,
+  24
+ ],
+ [
+  "events.test.tsx",
+  "testing-library/prefer-user-event-setup",
+  18,
+  9,
+  "Prefer using userEvent with setup() instead of direct type() call. Use: const user = userEvent.setup(); await user.type(...)",
+  18,
+  23
+ ],
+ [
+  "queries.test.tsx",
+  "testing-library/await-async-queries",
+  21,
+  8,
+  "promise returned from `findByTestId` query must be handled",
+  21,
+  20
+ ],
+ [
+  "queries.test.tsx",
+  "testing-library/no-test-id-queries",
+  19,
+  3,
+  "Using `data-testid` queries is not recommended. Use a more descriptive query instead.",
+  19,
+  30
+ ],
+ [
+  "queries.test.tsx",
+  "testing-library/no-test-id-queries",
+  20,
+  3,
+  "Using `data-testid` queries is not recommended. Use a more descriptive query instead.",
+  20,
+  33
+ ],
+ [
+  "queries.test.tsx",
+  "testing-library/no-test-id-queries",
+  21,
+  3,
+  "Using `data-testid` queries is not recommended. Use a more descriptive query instead.",
+  21,
+  28
+ ],
+ [
+  "queries.test.tsx",
+  "testing-library/prefer-presence-queries",
+  23,
+  17,
+  "Use `getBy*` queries rather than `queryBy*` for checking element is present",
+  23,
+  28
+ ],
+ [
+  "queries.test.tsx",
+  "testing-library/prefer-presence-queries",
+  24,
+  17,
+  "Use `getBy*` queries rather than `queryBy*` for checking element is present",
+  24,
+  28
+ ],
+ [
+  "queries.test.tsx",
+  "testing-library/prefer-presence-queries",
+  25,
+  17,
+  "Use `queryBy*` queries rather than `getBy*` for checking element is NOT present",
+  25,
+  26
+ ],
+ [
+  "queries.test.tsx",
+  "testing-library/prefer-presence-queries",
+  26,
+  17,
+  "Use `queryBy*` queries rather than `getBy*` for checking element is NOT present",
+  26,
+  26
+ ],
+ [
+  "queries.test.tsx",
+  "testing-library/prefer-presence-queries",
+  30,
+  10,
+  "Use `getBy*` queries rather than `queryBy*` for checking element is present",
+  30,
+  21
+ ],
+ [
+  "queries.test.tsx",
+  "testing-library/prefer-screen-queries",
+  10,
+  23,
+  "Avoid destructuring queries from `render` result, use `screen.getByText` instead",
+  10,
+  32
+ ],
+ [
+  "queries.test.tsx",
+  "testing-library/prefer-screen-queries",
+  11,
+  17,
+  "Avoid destructuring queries from `render` result, use `screen.getByText` instead",
+  11,
+  26
+ ],
+ [
+  "queries.test.tsx",
+  "testing-library/prefer-screen-queries",
+  21,
+  8,
+  "Avoid destructuring queries from `render` result, use `screen.findByTestId` instead",
+  21,
+  20
+ ],
+ [
+  "queries.test.tsx",
+  "testing-library/prefer-screen-queries",
+  30,
+  10,
+  "Avoid destructuring queries from `render` result, use `screen.queryByRole` instead",
+  30,
+  21
+ ],
+ [
+  "queries.test.tsx",
+  "testing-library/prefer-screen-queries",
+  7,
+  3,
+  "Avoid destructuring queries from `render` result, use `screen.getByText` instead",
+  7,
+  12
+ ],
+ [
+  "queries.test.tsx",
+  "testing-library/prefer-screen-queries",
+  9,
+  8,
+  "Avoid destructuring queries from `render` result, use `screen.getByRole` instead",
+  9,
+  17
+ ]
+]

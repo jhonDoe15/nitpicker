@@ -1,5 +1,5 @@
-import { partsOf as untypedPartsOf } from '../../../../../shared/rules/stability/test-support/library-project.mjs';
-import { byText } from '../../../../../shared/text-order/by-text.mjs';
+import { partsOf as untypedPartsOf } from '../../../../../shared/rules/stability/test-support/library-project.mts';
+import { byText } from '../../../../../shared/text-order/by-text.mts';
 
 import type { CouplingGraph } from './analyze-view.mts';
 

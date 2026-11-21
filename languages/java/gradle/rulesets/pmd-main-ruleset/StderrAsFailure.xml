@@ -1,0 +1,32 @@
+  <rule name="StderrAsFailure" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This treats any text on the standard error of a finished child process as a failure. Standard error also carries warnings, notices and progress: a JVM prints &quot;Picked up JAVA_TOOL_OPTIONS&quot; whenever that variable is set, and most tools print per-file warnings while they succeed, so the check passes on one machine and fails in a container or CI image. Decide by the exit value (process.waitFor(...) or exitValue() != 0) and keep the standard error for the message. A search for a specific text in the standard error is not reported.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $errorRead := function($n) {
+      exists($n/descendant-or-self::MethodCall[@MethodName = ('getErrorStream', 'errorReader')]
+                                             [*[1][pmd-java:typeIs('java.lang.Process')]])
+    }
+return
+//IfStatement[*[2][self::ThrowStatement or self::Block/ThrowStatement]]
+  /*[1]/descendant-or-self::*
+  [let $up := ancestor::*[not(self::InfixExpression[@Operator = '||'])][1]
+   return $up/self::IfStatement and ($up/*[1] is ancestor-or-self::*[parent::IfStatement][1])]
+  [let $tested :=
+       (self::UnaryExpression[@Operator = '!']/MethodCall[@MethodName = ('isEmpty', 'isBlank')][ArgumentList/@Size = 0]/*[1],
+        self::InfixExpression[@Operator = ('>', '!=')][*[2][self::NumericLiteral][@ValueAsInt = 0]]
+          /MethodCall[@MethodName = ('length', 'size')][ArgumentList/@Size = 0]/*[1]),
+       $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1],
+       $names := $tested/descendant-or-self::VariableAccess/@Name
+   return exists($tested)
+     and empty(ancestor::IfStatement[position() > 1]
+                 [*[1][descendant-or-self::MethodCall[@MethodName = ('waitFor', 'exitValue')]
+                       or descendant-or-self::VariableAccess[@Name = $method//VariableDeclarator
+                            [*[2]/descendant-or-self::MethodCall[@MethodName = ('waitFor', 'exitValue')]]/VariableId/@Name]]])
+     and ($errorRead($tested)
+          or exists($method//VariableDeclarator[VariableId/@Name = $names][$errorRead(*[2])]))]
+]]></value>
+      </property>
+    </properties>
+  </rule>

@@ -51,8 +51,7 @@ Part of the [Java preset guide](../java-preset.md).
   `@DoNotMutate` and `@CoverageIgnore`. An
   annotation whose value names a known generator (MapStruct, Dagger, AutoValue, Immutables and the
   others the generated-sources check lists) makes the whole file generated, so its findings are
-  dropped and no `pmd/GeneratedOnHandWrittenCode` is reported; adding one to a file the base checked
-  is a policy loosening. Any other such annotation is the `pmd/GeneratedOnHandWrittenCode` finding
+  dropped and no `pmd/GeneratedOnHandWrittenCode` is reported. Any other such annotation is the `pmd/GeneratedOnHandWrittenCode` finding
   (also JPA `@GeneratedValue` on a getter: put it on the field), and `@DoNotMutate` or
   `@CoverageIgnore` is `pmd/MutationIgnoreMarker`.
   Only violations are findings; the

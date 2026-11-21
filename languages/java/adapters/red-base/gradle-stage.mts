@@ -6,11 +6,11 @@ import { condenseFailure, isRateLimited } from '../gradle-wrapper/diagnostics/fa
 import { gradleSpawnFailure } from '../gradle-wrapper/diagnostics/spawn-failure.mts';
 import { memoryAdvice } from '../gradle-wrapper/memory/gradle-memory.mts';
 import { type FailedToolRecord } from '../gradle-wrapper/partial/failed-tool-tasks.mts';
-import { usesConfigRetries } from '../../../../shared/conventions/tool-precedence.mjs';
+import { usesConfigRetries } from '../../../../shared/conventions/tool-precedence.mts';
 import { failingTestsOf } from '../gradle-reports/failing-tests.mts';
 import { failingTestsError } from '../../builds/test-failures.mts';
 import { presetLabel, withCompileErrors } from '../../builds/compile-errors/compile-findings.mts';
-import { MINUTE_MS } from '../../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+import { MINUTE_MS } from '../../../../shared/analyzer-timeouts/analyzer-timeouts.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { type JavaPolicy, callUntyped } from '../typed/java-values.mts';
 import type { JavaBudget } from '../typed/java-run-options.mts';

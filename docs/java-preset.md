@@ -16,7 +16,7 @@ the base runs PIT only for the latter, in a multi-module Maven or Gradle build a
 alike, so PIT's time tracks the change; see
 [Mutation in a comparison](java-preset/mutation-in-a-comparison.md).
 
-Every rule the preset can report has an entry in the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md): [PMD](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-pmd.md), [Checkstyle](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-checkstyle.md), [SpotBugs](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-spotbugs.md), Error Prone ([A to L](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-errorprone.md) and [M to Z](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-errorprone-m-z.md)) and [nitpicker's own rules](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-nitpicker.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.
+Every rule the preset can report has an entry in the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md): PMD ([its own rules](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-pmd.md) and [the rules nitpicker adds](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-pmd-nitpicker.md)), [Checkstyle](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-checkstyle.md), [SpotBugs](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-spotbugs.md), Error Prone ([A to L](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-errorprone.md) and [M to Z](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-errorprone-m-z.md)) and [nitpicker's own rules](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-nitpicker.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.
 
 The JDK, Gradle or Maven a CI job needs, and recipes for GitHub Actions, GitLab CI and Jenkins, are in
 [nitpicker in CI](ci.md#toolchains-by-preset).
@@ -88,6 +88,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Tests that never run](java-preset/tests-that-never-run.md)
 - [Tests that copy a constant](java-preset/tests-that-copy-a-constant.md)
 - [Copy-pasted tests](java-preset/copy-pasted-tests.md)
+- [Spring test contexts](java-preset/spring-test-contexts.md)
 - [Sums that overflow a maximum value](java-preset/sums-that-overflow-a-maximum-value.md)
 - [Patterns translated without escaping](java-preset/patterns-translated-without-escaping.md)
 - [Replacement strings that expand](java-preset/replacement-strings-that-expand.md)

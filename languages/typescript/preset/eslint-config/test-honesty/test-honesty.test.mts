@@ -377,6 +377,24 @@ describe('stub restores the project vitest config switches on', () => {
       },
       [restores('packages/web', true, false)],
     ],
+    [
+      'sequence.concurrent, which runs every test of a file concurrently',
+      { 'vitest.config.ts': 'export default { test: { sequence: { concurrent: true } } };' },
+      [{ ...restores('.', false, false), concurrent: true }],
+    ],
+    [
+      'no concurrency from an inline project without its own root, a benchmark or a project opting out',
+      {
+        'vitest.config.ts': [
+          'export default { test: { benchmark: { sequence: { concurrent: true } }, projects: [',
+          "  { test: { name: 'unit', include: ['unit/**'], sequence: { concurrent: true } } },",
+          '] } };',
+        ].join('\n'),
+        'other/vitest.config.ts':
+          'export default { test: { sequence: { concurrent: true }, projects: [{ test: { sequence: { concurrent: false } } }] } };',
+      },
+      [],
+    ],
   ])('reads %s', (_name, files, expected) => {
     expect(stubRestoresIn(projectWith(files))).toEqual(expected);
   });

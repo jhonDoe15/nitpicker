@@ -25,7 +25,7 @@ import {
   reportedGroups,
   withoutMutants,
 } from '../test-support/python-gate-support.mts';
-import { helpUriProblems } from '../../../../../shared/reference/test-support/help-uris.mjs';
+import { helpUriProblems } from '../../../../../shared/reference/test-support/help-uris.mts';
 
 const { fixtureRepository, removeRepositories } = useRepositories();
 

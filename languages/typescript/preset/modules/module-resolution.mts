@@ -7,7 +7,7 @@ import { lazyTypeScriptApi } from '../../typescript-api/lazy-typescript-api.mts'
 import {
   chainOf as untypedChainOf,
   parentDirectory as untypedParentDirectory,
-} from '../../../../shared/traversal.mjs';
+} from '../../../../shared/traversal.mts';
 import { aliasedSpecifier } from './specifiers/aliased-specifier.mts';
 import { packageName as packageNameOf } from './specifiers/package-name.mts';
 import { parsedTsconfig, readJsonc, referencedTsconfigs } from './tsconfig-files.mts';

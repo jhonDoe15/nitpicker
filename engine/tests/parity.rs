@@ -99,7 +99,7 @@ fn error_prone_checks_report_what_error_prone_reports() {
     let missed: Vec<&Row> = expected.iter().filter(|(row, count)| found.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     let extra: Vec<&Row> = found.iter().filter(|(row, count)| expected.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(expected.keys().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 13);
+    assert_eq!(expected.keys().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 63);
 }
 
 #[test]
@@ -143,6 +143,30 @@ fn one_deeply_nested_file_is_analysed() {
 #[test]
 fn patterns_type_their_variables_like_pmd() {
     same_as_pmd("patterns", "all");
+}
+
+fn override_lines(release: &str) -> Vec<u64> {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures").join("release");
+    let out = std::env::temp_dir().join(format!("nitpicker-engine-release-{release}-{}.json", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
+        .arg(&source)
+        .args(["--rules", "_ErrorProne", "--release", release, "--out"])
+        .arg(&out)
+        .status()
+        .expect("engine runs");
+    assert!(status.success());
+    let report: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&out).expect("report")).expect("json");
+    let _ = std::fs::remove_file(&out);
+    let findings = report["findings"].as_array().expect("findings").iter();
+    let mut lines: Vec<u64> = findings.filter(|finding| finding["rule"] == "MissingOverride").map(|finding| finding["line"].as_u64().expect("line")).collect();
+    lines.sort();
+    lines
+}
+
+#[test]
+fn an_older_release_sees_the_library_of_that_release() {
+    assert_eq!(override_lines("17"), [6, 10]);
+    assert_eq!(override_lines("21"), [6, 10, 14, 18]);
 }
 
 #[test]

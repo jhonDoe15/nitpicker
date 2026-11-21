@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { wholeLines } from '../../../../../shared/fix/recipes/doc-comments/restating-comment.mjs';
+import { wholeLines } from '../../../../../shared/fix/recipes/doc-comments/restating-comment.mts';
 
 type SourceCode = TSESLint.SourceCode;
 

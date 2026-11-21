@@ -1,7 +1,7 @@
 import {
   featureRoleContract,
   PUBLIC_FACES,
-} from '../../../../shared/rules/features/feature-roles.mjs';
+} from '../../../../shared/rules/features/feature-roles.mts';
 import { inModule } from '../../builds/paths/module-path.mts';
 
 export const CONTRACT_RULE = 'contract-infrastructure-type';
@@ -56,11 +56,6 @@ export function contractEntry(
   };
 }
 
-type FeatureRole = { readonly kind: string; readonly isPublic: boolean };
-
-const contractRoles: (layout: unknown, face: unknown) => (file: string) => FeatureRole =
-  featureRoleContract;
-
 export function featureFaceMatcher({
   layout,
   modulePath,
@@ -68,10 +63,10 @@ export function featureFaceMatcher({
   layout: unknown;
   modulePath: string;
 }): (file: string) => boolean {
-  const roleOf = contractRoles(layout, PUBLIC_FACES.jvm);
+  const roleOf = featureRoleContract(layout, PUBLIC_FACES.jvm);
   return (file: string): boolean => {
     const role = roleOf(inModule(modulePath, file));
-    return role.kind === 'feature' && role.isPublic;
+    return role.kind === 'feature' && role.isPublic === true;
   };
 }
 

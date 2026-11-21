@@ -1,6 +1,7 @@
 import type TypeScript from 'typescript';
 import { ts } from '../syntax/typed.mts';
 import type { Registry, TypeEntry } from '../design-types.mts';
+import { withSortedUnions } from '../text/union-order.mts';
 import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 type Scope = { readonly registry: Registry; readonly checker: TypeScript.TypeChecker };
@@ -106,8 +107,9 @@ export function withoutGenerics(text: string): string {
 }
 
 export function normalizedTypeText(checker: TypeScript.TypeChecker, type: TypeScript.Type): string {
-  const text = checker.typeToString(type, undefined, FORMAT_FLAGS).replaceAll(/\s+/gu, '');
-  const plain = withoutGenerics(text).replaceAll(/\|undefined|undefined\|/gu, '');
+  const written = withoutGenerics(checker.typeToString(type, undefined, FORMAT_FLAGS));
+  const text = withSortedUnions(written).replaceAll(/\s+/gu, '');
+  const plain = text.replaceAll(/\|undefined|undefined\|/gu, '');
   return plain === '' ? 'undefined' : plain;
 }
 

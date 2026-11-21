@@ -1,17 +1,16 @@
 import path from 'node:path';
 import type { Finding } from '../../../adapters/static-checks/shared.mts';
+import { isExplainedCycle } from '../../../../../shared/graph/explained-cycles.mts';
+import { stronglyConnected } from '../../../../../shared/graph/strongly-connected.mts';
+import { featureCycleAnalysis } from '../../../../../shared/rules/features/feature-cycles.mts';
 import {
-  type FeatureView,
-  type FolderEdge,
-  type ImportEdge,
-  TYPESCRIPT_FACE,
-  exceptionHint,
-  featureCycleAnalysis,
+  PUBLIC_FACES,
   featureRoleContract,
-  isExplainedCycle,
-  listed,
-  stronglyConnected,
-} from './cycle-views.mts';
+  isFeatureSide,
+} from '../../../../../shared/rules/features/feature-roles.mts';
+import { listed } from '../../../../../shared/rules/features/feature-boundaries.mts';
+import { exceptionHint } from '../../../../../shared/rules/exceptions.mts';
+import type { FeatureView, FolderEdge, ImportEdge } from './cycle-views.mts';
 
 const RULE = 'package-cycle';
 
@@ -31,14 +30,17 @@ function isNested(left: string, right: string): boolean {
 }
 
 function featureView(edges: readonly ImportEdge[], options: Options): FeatureView {
-  const roleOf = featureRoleContract(options.layout, TYPESCRIPT_FACE);
+  const roleOf = featureRoleContract(options.layout, PUBLIC_FACES.typescript);
   const { cycles } = featureCycleAnalysis(
     { imports: edges.map((edge) => ({ ...edge, role: 'production' })) },
     { analyzerName: options.analyzerName, isExcepted: options.isExcepted, roleOf },
   );
   return {
     explainedCycles: cycles,
-    featureOf: (file) => (file === undefined ? undefined : roleOf(file).directory),
+    featureOf: (file) => {
+      const role = file === undefined ? undefined : roleOf(file);
+      return role !== undefined && isFeatureSide(role) ? role.directory : undefined;
+    },
   };
 }
 

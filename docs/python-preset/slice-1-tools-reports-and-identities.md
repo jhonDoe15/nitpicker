@@ -59,8 +59,7 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   `source`, `include`, `data_file`, `[paths]` and the report settings stay nitpicker's.
   `["nitpicker", "project"]` takes only those run options and keeps nitpicker's exclusions and
   omits. The
-  opted-in config is read from the head checkout for both sides, and an edit of its coverage
-  settings is a policy change a person reviews. Test files are not scored for
+  opted-in config is read from the head checkout for both sides. Test files are not scored for
   CRAP either, and a source file the project omits has unknown coverage
   (`crap-coverage-unknown`). Exit status 5 (no tests collected) is accepted; any other
   non-zero status is a tool error. A snapshot where no test ran has an enforceable

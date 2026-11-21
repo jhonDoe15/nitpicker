@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseXml } from '../../../../shared/values/xml.mts';
+import { parseXml } from '../../../../shared/ingest/report-records.mts';
 import type { Counts } from '../units/unit-types.mts';
 import { jacocoLineUnits } from './jacoco-lines.mts';
 

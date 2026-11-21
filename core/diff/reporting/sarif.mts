@@ -1,6 +1,6 @@
 import { pathToFileURL } from 'node:url';
 import { sarifRunProfile } from '../../quick/report-formats.mts';
-import { referenceLinks } from '../../../shared/reference/store.mjs';
+import { referenceLinks } from '../../../shared/reference/store.mts';
 import { noteText as textOfNote } from './format/notes.mts';
 import { heldFindingsOf as heldFindings } from './report-model.mts';
 import {
@@ -15,7 +15,8 @@ import {
   collectSarifRules,
   toSarifResult,
 } from './sarif/sarif-results.mts';
-import type { ReferenceLinks, ReportData, ReportEntry } from '../../../shared/values/findings.mts';
+import type { ReportData, ReportEntry } from '../../../shared/values/findings.mts';
+import type { ReferenceLinks } from '../../../shared/reference/typed/entry-types.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 
 type RunProfile = {

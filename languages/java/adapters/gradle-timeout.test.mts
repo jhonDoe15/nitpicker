@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createJavaAnalyzer } from './java-analyzer.mts';
 import { MAVEN_FAILURE_RULE, analyzeJavaSnapshot, withPitDeadline } from './java-runner.mts';
 import { fieldOf, parseJson, textOf } from '../../../shared/values/readers.mts';
-import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mts';
 
 const spawnMock = vi.hoisted(() => vi.fn<(...args: unknown[]) => unknown>());
 

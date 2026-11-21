@@ -2,7 +2,7 @@ import type { QualityCheck, QualityChecks } from '../checks/typed/check-types.mt
 import type { HeadPolicyFile } from '../typed/head-policy-types.mts';
 import type { ResolvedLayout } from '../typed/layout-types.mts';
 import type { AnalyzerBody, PackageAnalyzer } from './typed/analyzer-types.mts';
-import { DEFAULT_LEGACY_INVENTORY } from '../../../../shared/legacy-inventory.mjs';
+import { DEFAULT_LEGACY_INVENTORY } from '../../../../shared/legacy-inventory.mts';
 import { resolveAnalyzerVersion, testRunnerAnalyzerVersion } from '../analyzer-versions.mts';
 import {
   createEntryPointAnalyzer,
@@ -19,7 +19,7 @@ import {
 import { createQualityChecks } from '../quality-checks.mts';
 import { eslintVersion } from '../checks/constants.mts';
 import { hashFiles } from '../checks/hash.mts';
-import { EXECUTION_INPUTS } from '../../../../shared/input-sets/inputs.mjs';
+import { EXECUTION_INPUTS } from '../../../../shared/input-sets/inputs.mts';
 import { withSizeScales } from './memory-scales.mts';
 import { sourceInputs, withLegacyInventory } from './typed/shared-views.mts';
 

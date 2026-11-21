@@ -226,14 +226,9 @@ describe('renderDiffSummary', () => {
     ]);
   });
 
-  it('lists the policy changes and names the digest to accept for a loosening', () => {
+  it('lists the notices', () => {
     const base = report();
-    Object.assign(base.summary, {
-      policyChanges: ['exceptions: added mutant-survived for src/**'],
-      policyLoosenings: ['exceptions: added mutant-survived for src/**'],
-      policyDigest: 'abc123def456',
-      notices: ['3 changed files are outside the checked roots'],
-    });
+    Object.assign(base.summary, { notices: ['3 changed files are outside the checked roots'] });
 
     expect(lines(renderDiffSummary(base, context))).toEqual([
       '## nitpicker',
@@ -242,38 +237,26 @@ describe('renderDiffSummary', () => {
       '',
       ...HEADER,
       '',
-      '### Policy changed in this change',
-      '',
-      '- exceptions: added mutant-survived for src/\\*\\*',
-      '',
       '### Notices (not failing)',
       '',
       '- 3 changed files are outside the checked roots',
       '',
-      '### Disagree with a finding?',
-      '',
-      '- A loosening of `nitpicker.config.json` fails until a person with write access has ' +
-        'reviewed it and added the `accept-policy-change` label to the pull request, which ' +
-        'accepts the loosenings of this commit and runs the job again (a later push needs the ' +
-        'label again). Without the approval workflow, set the repository variable ' +
-        '`NITPICKER_ACCEPT_POLICY_CHANGE` to `abc123def456`, which covers exactly the ' +
-        'loosenings listed above, and re-run the job.',
-      '',
     ]);
   });
 
-  it('lists the first policy changes and notices only', () => {
+  it('lists the first notices only', () => {
     const base = report();
-    const many = (label: string): string[] =>
-      Array.from({ length: LISTED_NOTES + 2 }, (_, index) => `${label} ${String(index)}`);
-    Object.assign(base.summary, { policyChanges: many('change'), notices: many('notice') });
+    const notices = Array.from(
+      { length: LISTED_NOTES + 2 },
+      (_, index) => `notice ${String(index)}`,
+    );
+    Object.assign(base.summary, { notices });
     const listed = lines(renderDiffSummary(base, context));
 
     expect([
-      listed.filter((line) => line.startsWith('- change ')).length,
       listed.filter((line) => line.startsWith('- notice ')).length,
       listed.filter((line) => line === '2 more in `report.txt`.').length,
-    ]).toEqual([LISTED_NOTES, LISTED_NOTES, 2]);
+    ]).toEqual([LISTED_NOTES, 1]);
   });
 
   it('escapes a pipe in a rule name so that the table keeps its columns', () => {
@@ -286,23 +269,6 @@ describe('renderDiffSummary', () => {
 
     expect(lines(markdown).filter((line) => line.startsWith('| `'))).toEqual([
       '| `semgrep` | `a\\|b` | 0 | 1 |',
-    ]);
-  });
-
-  it('does not ask for the digest once the loosening is accepted', () => {
-    const base = report();
-    Object.assign(base.summary, {
-      policyChanges: ['exclude: added dist/**'],
-      policyLoosenings: ['exclude: added dist/**'],
-      policyDigest: 'abc123def456',
-      policyChangeAccepted: true,
-    });
-
-    expect(lines(renderDiffSummary(base, context)).slice(7)).toEqual([
-      '### Policy changed in this change (loosening accepted)',
-      '',
-      '- exclude: added dist/\\*\\*',
-      '',
     ]);
   });
 

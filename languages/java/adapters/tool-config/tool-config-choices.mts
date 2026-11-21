@@ -1,10 +1,10 @@
 import path from 'node:path';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { resolveInside as untypedResolveInside } from '../../../../shared/conventions/read-inside.mjs';
+import { resolveInside as untypedResolveInside } from '../../../../shared/conventions/read-inside.mts';
 import {
   missingProjectConfig as untypedMissingProjectConfig,
   precedenceLayers as untypedPrecedenceLayers,
-} from '../../../../shared/conventions/tool-precedence.mjs';
+} from '../../../../shared/conventions/tool-precedence.mts';
 import { fieldOf, fieldsOf, textsOf } from '../../../../shared/values/readers.mts';
 import type { JavaPolicy } from '../typed/java-values.mts';
 import type { PrecedenceLayers, ToolChoice } from './declared/declared-types.mts';

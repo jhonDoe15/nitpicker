@@ -4,7 +4,7 @@ import {
   countPattern,
   REMEDIES,
   withCountRatchets,
-} from '../../../../../shared/rules/counts/count-ratchet.mjs';
+} from '../../../../../shared/rules/counts/count-ratchet.mts';
 
 import { fieldOf, fieldsOf, textOf } from '../../../../../shared/values/readers.mts';
 import { callUntyped } from '../../typed/java-values.mts';

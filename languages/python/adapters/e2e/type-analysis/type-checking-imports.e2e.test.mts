@@ -1,5 +1,4 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { acceptedDigest } from '../../../../../core/command/test-support/accepted-digest.mts';
 import { LAYERED_FILES } from '../test-support/python-preset-data.mts';
 import {
   commitBranch,
@@ -54,12 +53,7 @@ describe.skipIf(!pythonE2eEnabled)('Python imports under if TYPE_CHECKING end to
   afterAll(removeRepositories);
 
   it('does not count an import under if TYPE_CHECKING as a stability inversion', () => {
-    const digest = acceptedDigest(['python.importLinter: not set -> false'], {
-      'nitpicker.config.json': IMPORT_LINTER_OFF,
-    });
-    const result = gate(project, 'stability', {
-      environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: digest },
-    });
+    const result = gate(project, 'stability', { environment: { CI: 'true' } });
 
     expect(result.exitCode, result.text).toBe(0);
     expect(newRules(result)).toEqual([]);
@@ -67,24 +61,13 @@ describe.skipIf(!pythonE2eEnabled)('Python imports under if TYPE_CHECKING end to
 
   it('leaves an import under if TYPE_CHECKING to the project contracts', () => {
     const broken = gate(project, 'contract');
-    const unreviewed = gate(project, 'contract-excluded');
-    const digest = acceptedDigest(
-      ['import-linter exclude_type_checking_imports: not set -> "True"'],
-      {
-        '.importlinter': EXCLUDING_CONTRACTS,
-      },
-    );
-    const excluded = gate(project, 'contract-excluded', {
-      environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: digest },
-    });
+    const excluded = gate(project, 'contract-excluded', { environment: { CI: 'true' } });
 
     expect(broken.exitCode, broken.text).toBe(1);
     expect(newRules(broken)).toEqual([
       'import-linter contract-broken',
       'import-linter contract-broken',
     ]);
-    expect(unreviewed.exitCode, unreviewed.text).toBe(1);
-    expect(newRules(unreviewed)).toEqual(['nitpicker-config policy-loosened']);
     expect(excluded.exitCode, excluded.text).toBe(0);
     expect(newRules(excluded)).toEqual([]);
   });

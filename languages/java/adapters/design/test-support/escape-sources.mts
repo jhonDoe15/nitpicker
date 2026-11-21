@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { resolveInside as resolveInsideUntyped } from '../../../../../shared/conventions/read-inside.mjs';
+import { resolveInside as resolveInsideUntyped } from '../../../../../shared/conventions/read-inside.mts';
 import type { JavaFinding } from '../../typed/java-values.mts';
 
 type Side = { readonly root: string; readonly package: string };

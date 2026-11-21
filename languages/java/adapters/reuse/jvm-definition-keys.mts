@@ -1,5 +1,5 @@
-import { hash } from '../../../../shared/rules/finding-helpers.mjs';
-import { compareText } from '../../../../shared/paths/path-order.mjs';
+import { hash } from '../../../../shared/rules/finding-parts.mts';
+import { compareText } from '../../../../shared/paths/path-order.mts';
 import { namesOf } from './source/tokens/jvm-tokens.mts';
 import { type BoundEntry, type Definition, type Scope } from './jvm-reuse-types.mts';
 import { isCallSeparator } from './jvm-references.mts';

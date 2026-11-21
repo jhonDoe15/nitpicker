@@ -1,5 +1,5 @@
 import { appendAll } from '../../../../shared/lists/items.mjs';
-import type { XmlElement } from '../../../../shared/values/xml.mts';
+import type { XmlElement } from '../../../../shared/ingest/report-records.mts';
 
 export type XmlNode = {
   readonly name: string;

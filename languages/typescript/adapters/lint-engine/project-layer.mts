@@ -2,7 +2,7 @@ import path from 'node:path';
 import {
   missingProjectConfig,
   precedenceLayers,
-} from '../../../../shared/conventions/tool-precedence.mjs';
+} from '../../../../shared/conventions/tool-precedence.mts';
 import {
   checkExceptionRules,
   RULE_EXCEPTION_ENTRY,
@@ -72,7 +72,7 @@ export async function layeredPolicy(
   return [...ordered, ...exceptions];
 }
 
-export async function layerEntries(file: string): Promise<FlatEntry[]> {
+async function layerEntries(file: string): Promise<FlatEntry[]> {
   return (await projectEntries(file)).map((entry) => withoutBasePath(entry, path.dirname(file)));
 }
 

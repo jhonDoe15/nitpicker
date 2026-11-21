@@ -1,4 +1,4 @@
-import { balancedEnd } from '../../../../../shared/source-text/brackets/balanced.mjs';
+import { balancedEnd } from '../../../../../shared/source-text/brackets/balanced.mts';
 
 type StepCall = { name: string; argument: string };
 export type FormatterStep = { name: string; version: string; chain: StepCall[] };

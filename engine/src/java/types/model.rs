@@ -62,6 +62,24 @@ impl Type {
             _ => false,
         }
     }
+    /// The primitive a wrapper class stands for; any other type as it is.
+    pub fn unboxed_or_same(self) -> Type {
+        let primitive = match &self {
+            Type::Class(name, _) => match name.as_str() {
+                "java.lang.Integer" => "int",
+                "java.lang.Long" => "long",
+                "java.lang.Short" => "short",
+                "java.lang.Byte" => "byte",
+                "java.lang.Character" => "char",
+                "java.lang.Double" => "double",
+                "java.lang.Float" => "float",
+                "java.lang.Boolean" => "boolean",
+                _ => return self,
+            },
+            _ => return self,
+        };
+        Type::Primitive(primitive)
+    }
     pub fn boxed(self) -> Type {
         match self {
             Type::Primitive(name) => Type::class(match name {
@@ -82,29 +100,74 @@ impl Type {
 
 /// Facts about a class, method or field beyond what type resolution needs, as bits of `flags`.
 pub mod flag {
-    pub const FINAL: u16 = 1;
-    pub const PUBLIC: u16 = 2;
-    pub const PROTECTED: u16 = 4;
-    pub const STATIC: u16 = 8;
-    pub const ABSTRACT: u16 = 16;
-    pub const ENUM: u16 = 32;
-    pub const RECORD: u16 = 64;
-    pub const SEALED: u16 = 128;
+    pub const FINAL: u32 = 1;
+    pub const PUBLIC: u32 = 2;
+    pub const PROTECTED: u32 = 4;
+    pub const STATIC: u32 = 8;
+    pub const ABSTRACT: u32 = 16;
+    pub const ENUM: u32 = 32;
+    pub const RECORD: u32 = 64;
+    pub const SEALED: u32 = 128;
     /// Carries `@java.lang.Deprecated`.
-    pub const DEPRECATED: u16 = 256;
-    pub const ANNOTATION: u16 = 512;
+    pub const DEPRECATED: u32 = 256;
+    pub const ANNOTATION: u32 = 512;
+    /// A member class only its outer class sees.
+    pub const PRIVATE: u32 = 1024;
+    /// Carries an annotation named `CheckReturnValue` or `MustUseReturnValues`; set for packages too.
+    pub const CHECK_RESULT: u32 = 2048;
+    /// Carries an annotation named `CanIgnoreReturnValue` or `IgnorableReturnValue`.
+    pub const IGNORE_RESULT: u32 = 4096;
+    /// A class with `@AutoValue`.
+    pub const AUTO_VALUE: u32 = 8192;
+    /// A class with `@AutoValue.Builder` or `@AutoBuilder`.
+    pub const AUTO_BUILDER: u32 = 16384;
+    /// A class with one of Dagger's component builder annotations.
+    pub const DAGGER_BUILDER: u32 = 32768;
+    /// Carries Error Prone's own `@CanIgnoreReturnValue`.
+    pub const MAY_IGNORE: u32 = 1 << 16;
+    /// Carries an annotation named `Keep` or `UsedReflectively`.
+    pub const KEPT: u32 = 1 << 17;
+    /// Carries Error Prone's `@Immutable`.
+    pub const IMMUTABLE: u32 = 1 << 18;
     /// A field or a method's result carries an annotation named `Nullable` or `CheckForNull`.
-    pub const NULLABLE: u16 = 1024;
+    pub const NULLABLE: u32 = 1 << 19;
     /// The class comes from a source file of the run, not from the class path.
-    pub const SOURCE: u16 = 2048;
+    pub const SOURCE: u32 = 1 << 20;
     /// A field or a method's result carries `@CheckForNull`, or an annotation that is a nickname for it. On an
     /// annotation class: the class itself carries `@CheckForNull`, which makes it such a nickname.
-    pub const CHECK_FOR_NULL: u16 = 4096;
+    pub const CHECK_FOR_NULL: u32 = 1 << 21;
     /// A member read from a class file carries an annotation that may be such a nickname: one of the
     /// class's `null_nicknames`.
-    pub const MAYBE_CHECK_FOR_NULL: u16 = 8192;
+    pub const MAYBE_CHECK_FOR_NULL: u32 = 1 << 22;
     /// A `volatile` field.
-    pub const VOLATILE: u16 = 16384;
+    pub const VOLATILE: u32 = 1 << 23;
+
+    pub const IMMUTABLE_NAME: &str = "com.google.errorprone.annotations.Immutable";
+    pub const IMMUTABLE_PARAMETER_NAME: &str = "com.google.errorprone.annotations.ImmutableTypeParameter";
+
+    /// The bits an annotation gives, by its full name with `.` between a class and its member class.
+    pub fn of_annotation(name: &str) -> u32 {
+        match name {
+            "com.google.auto.value.AutoValue" => return AUTO_VALUE,
+            "com.google.auto.value.AutoValue.Builder" | "com.google.auto.value.AutoBuilder" => return AUTO_BUILDER,
+            "dagger.Component.Builder"
+            | "dagger.Subcomponent.Builder"
+            | "dagger.producers.ProductionComponent.Builder"
+            | "dagger.producers.ProductionSubcomponent.Builder" => return DAGGER_BUILDER,
+            _ => {}
+        }
+        let exact = match name {
+            "com.google.errorprone.annotations.CanIgnoreReturnValue" => MAY_IGNORE,
+            IMMUTABLE_NAME => IMMUTABLE,
+            _ => 0,
+        };
+        exact | match name.rsplit('.').next().unwrap_or(name) {
+            "CheckReturnValue" | "MustUseReturnValues" => CHECK_RESULT,
+            "CanIgnoreReturnValue" | "IgnorableReturnValue" => IGNORE_RESULT,
+            "Keep" | "UsedReflectively" => KEPT,
+            _ => 0,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -121,7 +184,7 @@ pub struct Field {
     pub strict: bool,
     /// Not seen from subclasses.
     pub is_private: bool,
-    pub flags: u16,
+    pub flags: u32,
 }
 
 #[derive(Clone, Debug)]
@@ -142,19 +205,42 @@ pub struct Method {
     /// Not inherited.
     pub is_private: bool,
     pub varargs: bool,
-    /// Declared exception classes.
-    pub throws: Vec<String>,
+    pub flags: u32,
+    /// What the `throws` clause lists, type variables kept.
+    pub throws: Vec<Type>,
+    /// Parameter names, when the source or the class file gives them; empty otherwise.
+    pub names: Vec<String>,
+    pub detail: Detail,
     /// The parameter types as javac prints them in a method's name: qualified, with type arguments, comma separated.
     pub shown: String,
     /// Bit per parameter position that is marked nullable.
     pub nullable_parameters: u64,
-    pub flags: u16,
-    /// Parameter names, when the source or the class file gives them; empty otherwise.
-    pub names: Vec<String>,
     /// The text of a `@Contract` annotation on the method; empty without one.
     pub contract: String,
     /// Marked as run right after construction: an annotation named `Initializer` or one of `STARTERS`.
     pub starts: bool,
+}
+
+/// What javac's method symbol gives beyond its signature: modifiers and annotations as written, for checks that compare
+/// an override with the method it overrides.
+#[derive(Clone, Debug, Default)]
+pub struct Detail {
+    /// Access bits as in a class file: public, private, protected, static, final, synchronized, native, abstract, strictfp.
+    pub access: u16,
+    /// Full names of the annotations on the method, and on each parameter, with `.` before a member class.
+    pub annotations: Vec<String>,
+    pub parameter_annotations: Vec<Vec<String>>,
+}
+
+/// Where an annotation type may be used, as bits of `ClassInfo::targets`, from its `@Target`.
+pub mod target {
+    pub const NAMES: &[&str] = &[
+        "TYPE", "FIELD", "METHOD", "PARAMETER", "CONSTRUCTOR", "LOCAL_VARIABLE", "ANNOTATION_TYPE", "PACKAGE", "TYPE_PARAMETER", "TYPE_USE", "MODULE",
+        "RECORD_COMPONENT",
+    ];
+    pub fn bit(name: &str) -> u16 {
+        NAMES.iter().position(|known| *known == name).map_or(0, |at| 1 << at)
+    }
 }
 
 /// Annotations that make a method an initializer for NullAway: its defaults and the project's own list.
@@ -186,7 +272,13 @@ pub struct ClassInfo {
     pub permitted: Option<Vec<String>>,
     /// For a record: the generic type of each component, in order.
     pub record_components: Option<Vec<Type>>,
-    pub flags: u16,
+    /// For an annotation type with `@Target`: the bits of `target` it lists.
+    pub targets: Option<u16>,
+    pub flags: u32,
+    /// The type parameters that `containerOf` of the class's `@Immutable` names.
+    pub container_of: Vec<String>,
+    /// The type parameters marked `@ImmutableTypeParameter`.
+    pub immutable_parameters: Vec<String>,
     /// Declares an instance method, of any visibility, whose name starts like a setter and that does not
     /// return the class itself.
     pub setter_like: bool,

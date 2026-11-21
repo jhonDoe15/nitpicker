@@ -19,7 +19,7 @@ pub const TYPE_DECLARATIONS: &[&str] = &[
 pub struct FileScope {
     pub package: String,
     pub single: HashMap<String, String>,
-    on_demand: Vec<String>,
+    pub on_demand: Vec<String>,
     pub static_single: HashMap<String, Vec<String>>,
     pub static_on_demand: Vec<String>,
     /// Every class in the file by node id: members, local classes (`Outer.1Local`) and anonymous ones (`Outer.1`).
@@ -187,6 +187,8 @@ pub struct Resolver<'a> {
     pub(super) locals: RefCell<HashMap<usize, std::rc::Rc<Vec<(String, usize, u32, u32)>>>>,
     /// The pattern variables declared in a method, lambda or class body: where each starts, its name and its type.
     pub(super) patterns: RefCell<HashMap<usize, std::rc::Rc<Vec<(usize, String, Option<Type>)>>>>,
+    /// The method each call resolved to when asked from the outside: several rules ask about the same call.
+    pub(super) calls: RefCell<HashMap<usize, Option<std::rc::Rc<super::expr::Call>>>>,
 }
 
 fn written_names<'f>(file: &'f SourceFile, list: Option<Node>) -> Vec<&'f str> {
@@ -201,7 +203,27 @@ fn written_names<'f>(file: &'f SourceFile, list: Option<Node>) -> Vec<&'f str> {
 
 impl<'a> Resolver<'a> {
     pub fn new(index: &'a TypeIndex, file: &'a SourceFile, scope: &'a FileScope) -> Resolver<'a> {
-        Resolver { index, file, scope, cache: RefCell::new(HashMap::new()), depth: Cell::new(0), busy: RefCell::new(std::collections::HashSet::new()), skipped: Cell::new(0), work: Cell::new(0), resolving: RefCell::new(HashMap::new()), symbolic: false, loose: RefCell::new(HashMap::new()), written: RefCell::new(HashMap::new()), simples: RefCell::new(HashMap::new()), locals: RefCell::new(HashMap::new()), patterns: RefCell::new(HashMap::new()), mapping: RefCell::new(HashMap::new()) }
+        Resolver { index, file, scope, cache: RefCell::new(HashMap::new()), depth: Cell::new(0), busy: RefCell::new(std::collections::HashSet::new()), skipped: Cell::new(0), work: Cell::new(0), resolving: RefCell::new(HashMap::new()), symbolic: false, loose: RefCell::new(HashMap::new()), written: RefCell::new(HashMap::new()), locals: RefCell::new(HashMap::new()), mapping: RefCell::new(HashMap::new()), patterns: RefCell::new(HashMap::new()), calls: RefCell::new(HashMap::new()), simples: RefCell::new(HashMap::new()) }
+    }
+
+    /// Where the lookup of a simple name starts to matter: every node below the same place sees the same classes.
+    fn lookup_place(at: Node) -> usize {
+        let mut inner = at;
+        let mut current = Some(at);
+        while let Some(node) = current {
+            let holds = matches!(node.kind(), "block" | "constructor_body" | "switch_block_statement_group" | "program");
+            let around = crate::engine::source::parent(node);
+            let member = around.is_some_and(|owner| {
+                TYPE_DECLARATIONS.contains(&owner.kind())
+                    && (owner.field("body") == Some(node) || (owner.kind() == "record_declaration" && owner.field("parameters") == Some(node)))
+            });
+            if (holds || member || node.kind() == "class_body") && node.id() != at.id() {
+                return node.id();
+            }
+            inner = node;
+            current = around;
+        }
+        inner.id()
     }
 
     /// A second resolver for the same file whose types keep the type variables in scope, as javac prints them.
@@ -212,29 +234,16 @@ impl<'a> Resolver<'a> {
     /// The class a simple name stands for at a place. Every place directly inside the same block or class body
     /// gets the same answer, so it is kept per block or body.
     fn simple(&self, at: Node, name: &str) -> Option<String> {
-        const SCOPES: [&str; 8] = [
-            "block", "constructor_body", "switch_block_statement_group", "class_body", "enum_body", "interface_body", "annotation_type_body", "program",
-        ];
-        let mut holder = Some(at);
-        while let Some(node) = holder.filter(|node| !SCOPES.contains(&node.kind())) {
-            // A record's components see its member types, which the places around the record do not.
-            let above = crate::engine::source::parent(node);
-            if above.is_some_and(|above| above.kind() == "record_declaration" && above.child_by_field_name("parameters") == Some(node)) {
-                return self.find_simple(at, name);
-            }
-            holder = above;
-        }
-        let Some(holder) = holder else { return self.find_simple(at, name) };
-        let key = (holder.id(), name.to_string());
+        let key = (Self::lookup_place(at), name.to_string());
         if let Some(known) = self.simples.borrow().get(&key) {
             return known.clone();
         }
-        let found = self.find_simple(at, name);
+        let found = self.read_simple(at, name);
         self.simples.borrow_mut().insert(key, found.clone());
         found
     }
 
-    fn find_simple(&self, at: Node, name: &str) -> Option<String> {
+    fn read_simple(&self, at: Node, name: &str) -> Option<String> {
         let mut inner = at;
         let mut current = Some(at);
         while let Some(node) = current {
@@ -247,14 +256,15 @@ impl<'a> Resolver<'a> {
                     return Some(found.clone());
                 }
             }
-            // Names in the header of a class are looked up around it: its members and what it inherits are not in scope there,
-            // except for the components of a record.
-            let components = node.kind() == "record_declaration" && node.field("parameters") == Some(inner);
-            let header = TYPE_DECLARATIONS.contains(&node.kind()) && node.field("body") != Some(inner) && !components;
+            // Names in the header of a class are looked up around it: its members and what it inherits are not in scope there.
+            // The components of a record are the exception: they see the members.
+            let inside = |field: &'static str| node.field(field) == Some(inner);
+            let header = TYPE_DECLARATIONS.contains(&node.kind()) && !inside("body") && !(node.kind() == "record_declaration" && inside("parameters"));
             if let Some(owner) = class_at(self.scope, node, inner).filter(|_| !header) {
                 for ancestor in self.index.lineage(&owner).iter() {
                     let nested = format!("{ancestor}.{name}");
-                    if self.index.has(&nested) {
+                    let hidden = *ancestor != owner && self.index.get(&nested).is_some_and(|info| info.flags & super::model::flag::PRIVATE != 0);
+                    if self.index.has(&nested) && !hidden {
                         return Some(nested);
                     }
                 }
@@ -297,20 +307,27 @@ impl<'a> Resolver<'a> {
     pub fn class_name(&self, at: Node, text: &str) -> Option<String> {
         let segments: Vec<&str> = text.split('.').map(str::trim).collect();
         if let Some(first) = self.simple(at, segments[0]) {
-            let mut name = first;
-            for segment in &segments[1..] {
-                let nested = self
-                    .index
-                    .lineage(&name)
-                    .iter()
-                    .map(|ancestor| format!("{ancestor}.{segment}"))
-                    .find(|candidate| self.index.has(candidate));
-                name = nested.unwrap_or(format!("{name}.{segment}"));
-            }
-            return Some(name);
+            return Some(self.member_class(first, &segments[1..]));
         }
         let joined = segments.join(".");
-        (segments.len() > 1 && (self.index.has(&joined) || segments[0].chars().all(|c| c.is_lowercase()))).then_some(joined)
+        if self.index.has(&joined) {
+            return Some(joined);
+        }
+        // A package, then a class, then member classes: a member class can be one a supertype declares.
+        let outer = (2..segments.len()).find(|end| self.index.has(&segments[..*end].join(".")));
+        if let Some(end) = outer {
+            return Some(self.member_class(segments[..end].join("."), &segments[end..]));
+        }
+        (segments.len() > 1 && segments[0].chars().all(|c| c.is_lowercase())).then_some(joined)
+    }
+
+    /// The member class a path of names leads to from a class; each step also looks in the supertypes.
+    fn member_class(&self, mut name: String, path: &[&str]) -> String {
+        for segment in path {
+            let nested = self.index.lineage(&name).iter().map(|ancestor| format!("{ancestor}.{segment}")).find(|candidate| self.index.has(candidate));
+            name = nested.unwrap_or(format!("{name}.{segment}"));
+        }
+        name
     }
 
     /// The bound of a type parameter. Several bounds become one class type named `A&B`.
@@ -424,6 +441,29 @@ impl<'a> Resolver<'a> {
     }
 
     /// Erased and generic parameter types, and whether the last one is variable arity.
+    fn parameter_names(&self, member: Node) -> Vec<String> {
+        let mut names = Vec::new();
+        for parameter in member.child_by_field_name("parameters").map(children).unwrap_or_default() {
+            let holder = match parameter.kind() {
+                "formal_parameter" => parameter,
+                "spread_parameter" => match children(parameter).into_iter().find(|part| part.kind() == "variable_declarator") {
+                    Some(declarator) => declarator,
+                    None => continue,
+                },
+                _ => continue,
+            };
+            names.push(holder.child_by_field_name("name").map(|name| self.file.text_of(name).to_string()).unwrap_or_default());
+        }
+        names
+    }
+
+    /// The types a `throws` clause lists; one that cannot be read is kept as `?`.
+    fn thrown(&self, member: Node) -> Vec<Type> {
+        let Some(clause) = children(member).into_iter().find(|part| part.kind() == "throws") else { return Vec::new() };
+        let mut cursor = clause.walk();
+        clause.named_children(&mut cursor).map(|kind| self.written(kind, true).unwrap_or(Type::class("?"))).collect()
+    }
+
     pub fn parameters(&self, list: Option<Node>) -> (Vec<Type>, Vec<Type>, bool) {
         let mut erased = Vec::new();
         let mut generic = Vec::new();
@@ -517,31 +557,6 @@ impl<'a> Resolver<'a> {
         text.unwrap_or_default()
     }
 
-    fn parameter_names(&self, member: Node) -> Vec<String> {
-        let list = member.child_by_field_name("parameters").map(children).unwrap_or_default();
-        let listed = list.into_iter().filter(|part| matches!(part.kind(), "formal_parameter" | "spread_parameter"));
-        let mut names = Vec::new();
-        for part in listed {
-            let name = part.child_by_field_name("name").or_else(|| children(part).into_iter().find(|inner| inner.kind() == "variable_declarator").and_then(|inner| inner.child_by_field_name("name")));
-            names.push(name.map(|name| self.file.text_of(name).to_string()).unwrap_or_default());
-        }
-        names
-    }
-
-    fn throws(&self, member: Node) -> Vec<String> {
-        let clause = children(member).into_iter().find(|part| part.kind() == "throws");
-        let mut cursor = member.walk();
-        clause.map(|clause| clause.named_children(&mut cursor).filter_map(|kind| self.written(kind, false)).map(|kind| kind.name()).collect()).unwrap_or_default()
-    }
-
-    /// Whether a declaration carries `@CheckForNull` or an annotation that is itself annotated with it.
-    pub fn check_for_null(&self, member: Node) -> bool {
-        super::super::helpers::annotation_names(self.file, member).iter().filter(|name| name.contains("Null")).any(|name| {
-            name.rsplit('.').next() == Some("CheckForNull")
-                || self.class_name(member, name).and_then(|class| self.index.get(&class)).is_some_and(|class| class.flags & super::model::flag::CHECK_FOR_NULL != 0)
-        })
-    }
-
     fn nullable_parameters(&self, member: Node) -> u64 {
         let list = member.child_by_field_name("parameters").map(children).unwrap_or_default();
         let listed = list.into_iter().filter(|part| matches!(part.kind(), "formal_parameter" | "spread_parameter"));
@@ -553,17 +568,78 @@ impl<'a> Resolver<'a> {
         listed.enumerate().filter(|(position, part)| *position < 64 && marked(*part)).fold(0, |bits, (position, _)| bits | 1 << position)
     }
 
-    fn class_flags(&self, declaration: Node) -> u16 {
+    /// The value of string literals joined by `+`.
+    fn joined(&self, value: Node) -> Option<String> {
+        let value = super::expr::unwrap(value);
+        if value.kind() == "binary_expression" && self.file.text_of(value.child_by_field_name("operator")?) == "+" {
+            let left = self.joined(value.child_by_field_name("left")?)?;
+            return Some(left + &self.joined(value.child_by_field_name("right")?)?);
+        }
+        super::expr::literal_text(self.file, value)
+    }
+
+    /// Full names of the annotations of a declaration, as javac resolves them; a name that is not found stays as written.
+    pub fn annotation_names(&self, declaration: Node) -> Vec<String> {
+        let holder = super::super::helpers::modifiers(declaration);
+        let annotations = holder.map(children).unwrap_or_default().into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation"));
+        let names = annotations.filter_map(|annotation| annotation.child_by_field_name("name")).map(|name| self.file.text_of(name));
+        names.map(|written| self.class_name(declaration, written).unwrap_or_else(|| written.to_string())).collect()
+    }
+
+    /// Modifiers and annotations of a method or constructor, the way a class file would hold them.
+    fn detail(&self, member: Node, interface: bool) -> super::model::Detail {
+        let has = super::super::helpers::has_modifier;
+        let mut access = 0u16;
+        for (word, bit) in [("public", 1), ("private", 2), ("protected", 4), ("static", 8), ("final", 0x10), ("synchronized", 0x20), ("native", 0x100), ("abstract", 0x400), ("strictfp", 0x800)] {
+            if has(member, word) {
+                access |= bit;
+            }
+        }
+        if interface && access & 2 == 0 {
+            access |= 1;
+            if member.child_by_field_name("body").is_none() && access & 8 == 0 {
+                access |= 0x400;
+            }
+        }
+        let parameters = member.child_by_field_name("parameters").map(children).unwrap_or_default();
+        let parameter_annotations = parameters
+            .into_iter()
+            .filter(|parameter| matches!(parameter.kind(), "formal_parameter" | "spread_parameter"))
+            .map(|parameter| self.annotation_names(parameter))
+            .collect();
+        super::model::Detail { access, annotations: self.annotation_names(member), parameter_annotations }
+    }
+
+    /// The bits the annotations of a declaration give.
+    /// Whether a declaration carries `@CheckForNull` or an annotation that is itself annotated with it.
+    pub fn check_for_null(&self, member: Node) -> bool {
+        super::super::helpers::annotation_names(self.file, member).iter().filter(|name| name.contains("Null")).any(|name| {
+            name.rsplit('.').next() == Some("CheckForNull")
+                || self.class_name(member, name).and_then(|class| self.index.get(&class)).is_some_and(|class| class.flags & super::model::flag::CHECK_FOR_NULL != 0)
+        })
+    }
+
+    pub fn marks(&self, declaration: Node) -> u32 {
+        let holder = super::super::helpers::modifiers(declaration).unwrap_or(declaration);
+        let annotations = children(holder).into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation"));
+        let names = annotations.filter_map(|annotation| annotation.child_by_field_name("name")).map(|name| self.file.text_of(name));
+        names.fold(0, |bits, written| {
+            let full = self.class_name(declaration, written).unwrap_or_else(|| written.to_string());
+            bits | super::model::flag::of_annotation(&full)
+        })
+    }
+
+    fn class_flags(&self, declaration: Node) -> u32 {
         use super::model::flag;
         let has = super::super::helpers::has_modifier;
-        let mut bits = 0;
-        for (word, bit) in [("final", flag::FINAL), ("public", flag::PUBLIC), ("protected", flag::PROTECTED), ("static", flag::STATIC), ("abstract", flag::ABSTRACT), ("sealed", flag::SEALED)] {
+        let mut bits = self.marks(declaration);
+        if super::super::helpers::annotation_names(self.file, declaration).iter().any(|name| name.rsplit('.').next() == Some("CheckForNull")) {
+            bits |= flag::CHECK_FOR_NULL;
+        }
+        for (word, bit) in [("final", flag::FINAL), ("public", flag::PUBLIC), ("protected", flag::PROTECTED), ("static", flag::STATIC), ("abstract", flag::ABSTRACT), ("sealed", flag::SEALED), ("private", flag::PRIVATE)] {
             if has(declaration, word) {
                 bits |= bit;
             }
-        }
-        if super::super::helpers::annotation_names(self.file, declaration).iter().any(|name| name.rsplit('.').next() == Some("CheckForNull")) {
-            bits |= flag::CHECK_FOR_NULL;
         }
         bits | match declaration.kind() {
             "enum_declaration" => flag::ENUM,
@@ -627,6 +703,7 @@ impl<'a> Resolver<'a> {
                 Some((self.file.text_of(named).to_string(), self.bound(parameter)))
             })
             .collect();
+        let (container_of, immutable_parameters) = self.immutable_marks(declaration);
         ClassInfo {
             name,
             superclass: parent.as_ref().map(Type::name),
@@ -643,13 +720,72 @@ impl<'a> Resolver<'a> {
             }),
             permitted: self.permitted(declaration, &own_name, &listed("permits")),
             record_components: (kind == "record_declaration").then(Vec::new),
+            targets: self.targets(declaration),
             flags: self.class_flags(declaration) | super::model::flag::SOURCE,
+            container_of,
+            immutable_parameters,
             setter_like: false,
             null_nicknames: Vec::new(),
         }
     }
 
+    /// What `containerOf` of the class's `@Immutable` names, and the type parameters with `@ImmutableTypeParameter`.
+    fn immutable_marks(&self, declaration: Node) -> (Vec<String>, Vec<String>) {
+        use super::model::flag::{IMMUTABLE_NAME, IMMUTABLE_PARAMETER_NAME};
+        fn annotations<'t>(holder: Node<'t>) -> impl Iterator<Item = Node<'t>> {
+            children(holder).into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation"))
+        }
+        let named = |annotation: &Node, wanted: &str| {
+            annotation.child_by_field_name("name").is_some_and(|name| {
+                let written = self.file.text_of(name);
+                wanted.ends_with(written.rsplit('.').next().unwrap_or(written)) && self.class_name(declaration, written).as_deref() == Some(wanted)
+            })
+        };
+        let mut held = Vec::new();
+        let marked = super::super::helpers::modifiers(declaration).into_iter().flat_map(annotations).find(|annotation| named(annotation, IMMUTABLE_NAME));
+        for pair in marked.and_then(|annotation| annotation.child_by_field_name("arguments")).map(children).unwrap_or_default() {
+            let key = pair.child_by_field_name("key").map(|key| self.file.text_of(key));
+            if pair.kind() == "element_value_pair" && key == Some("containerOf") {
+                crate::engine::source::walk(pair, |part| {
+                    if part.kind() == "string_literal" {
+                        held.extend(super::expr::literal_text(self.file, part));
+                    }
+                });
+            }
+        }
+        let strict = children(declaration)
+            .into_iter()
+            .filter(|child| child.kind() == "type_parameters")
+            .flat_map(children)
+            .filter(|parameter| parameter.kind() == "type_parameter" && annotations(*parameter).any(|annotation| named(&annotation, IMMUTABLE_PARAMETER_NAME)))
+            .filter_map(|parameter| children(parameter).into_iter().find(|c| matches!(c.kind(), "type_identifier" | "identifier")))
+            .map(|name| self.file.text_of(name).to_string())
+            .collect();
+        (held, strict)
+    }
+
     /// The classes a sealed declaration permits: the ones it lists, else the ones in its file that extend it directly.
+    /// The element types the `@Target` of an annotation type lists.
+    fn targets(&self, declaration: Node) -> Option<u16> {
+        if declaration.kind() != "annotation_type_declaration" {
+            return None;
+        }
+        let holder = super::super::helpers::modifiers(declaration)?;
+        let target = children(holder).into_iter().find(|annotation| {
+            annotation.kind() == "annotation"
+                && annotation.child_by_field_name("name").is_some_and(|name| {
+                    self.class_name(declaration, self.file.text_of(name)).as_deref() == Some("java.lang.annotation.Target")
+                })
+        })?;
+        let mut bits = 0;
+        crate::engine::source::walk(target.child_by_field_name("arguments")?, |part| {
+            if part.kind() == "identifier" {
+                bits |= super::model::target::bit(self.file.text_of(part));
+            }
+        });
+        Some(bits)
+    }
+
     fn permitted(&self, declaration: Node, name: &str, listed: &[Type]) -> Option<Vec<String>> {
         let modifiers = children(declaration).into_iter().find(|child| child.kind() == "modifiers")?;
         if !self.file.text_of(modifiers).split_whitespace().any(|word| word == "sealed") {
@@ -738,17 +874,18 @@ impl<'a> Resolver<'a> {
             is_private: false,
             varargs: false,
             shown: String::new(),
-            throws: Vec::new(),
             nullable_parameters: 0,
             flags: super::model::flag::PUBLIC,
+            throws: Vec::new(),
             names: Vec::new(),
+            detail: super::model::Detail { access: 1, ..Default::default() },
             contract: String::new(),
             starts: false,
         };
-        let bits = |member: Node| -> u16 {
+        let bits = |member: Node| -> u32 {
             use super::model::flag;
             let mut bits = 0;
-            for (word, bit) in [("final", flag::FINAL), ("public", flag::PUBLIC), ("protected", flag::PROTECTED), ("static", flag::STATIC), ("abstract", flag::ABSTRACT), ("volatile", flag::VOLATILE)] {
+            for (word, bit) in [("final", flag::FINAL), ("public", flag::PUBLIC), ("protected", flag::PROTECTED), ("static", flag::STATIC), ("abstract", flag::ABSTRACT)] {
                 if has(member, word) {
                     bits |= bit;
                 }
@@ -763,10 +900,13 @@ impl<'a> Resolver<'a> {
             if self.check_for_null(member) {
                 bits |= flag::CHECK_FOR_NULL;
             }
+            if has(member, "volatile") {
+                bits |= flag::VOLATILE;
+            }
             if info.is_interface {
                 bits |= flag::PUBLIC;
             }
-            bits
+            bits | self.marks(member)
         };
         let mut members = children(body);
         members.extend(children(body).into_iter().filter(|child| child.kind() == "enum_body_declarations").flat_map(children));
@@ -783,7 +923,7 @@ impl<'a> Resolver<'a> {
                             constant: (info.is_interface || has(member, "final"))
                                 .then(|| declarator.field("value"))
                                 .flatten()
-                                .and_then(|value| super::expr::literal_text(self.file, value)),
+                                .and_then(|value| self.joined(value)),
                             fixed: (info.is_interface || (has(member, "final") && has(member, "static"))).then(|| declarator.field("value")).flatten().and_then(
                                 |value| {
                                     let mut uses = Vec::new();
@@ -845,12 +985,13 @@ impl<'a> Resolver<'a> {
                             && (info.is_interface || has(member, "abstract")),
                         varargs,
                         shown: self.shown_parameters(member),
-                        throws: self.throws(member),
                         nullable_parameters: self.nullable_parameters(member),
                         names: self.parameter_names(member),
                         contract: self.contract(member),
                         starts: self.starts(member),
                         flags: bits(member) | if member.field("body").is_none() && info.is_interface { super::model::flag::ABSTRACT } else { 0 },
+                        throws: self.thrown(member),
+                        detail: self.detail(member, info.is_interface),
                     });
                 }
                 "constructor_declaration" => {
@@ -858,10 +999,12 @@ impl<'a> Resolver<'a> {
                     info.methods.push(Method {
                         generic_parameters,
                         varargs,
-                        shown: self.shown_parameters(member),
-                        throws: self.throws(member),
-                        nullable_parameters: self.nullable_parameters(member),
+                        throws: self.thrown(member),
                         names: self.parameter_names(member),
+                        flags: bits(member),
+                        detail: self.detail(member, false),
+                        shown: self.shown_parameters(member),
+                        nullable_parameters: self.nullable_parameters(member),
                         contract: self.contract(member),
                         ..plain("<init>", parameters, Type::Primitive("void"))
                     });

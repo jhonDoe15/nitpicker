@@ -1,6 +1,6 @@
 //! CT_CONSTRUCTOR_THROW: an exception can leave a constructor of a class that can be subclassed, which leaves a
 //! half-built object a finalizer could get hold of.
-use super::handlers::{caught, catch_types, closing, Guard, UNKNOWN};
+use super::handlers::{caught, catch_types, closing, declares, Guard, UNKNOWN};
 use super::{Context, names};
 use crate::engine::source::{children, named_children, parent};
 use crate::java::helpers::has_modifier;
@@ -54,7 +54,7 @@ impl<'t> Scan<'_, '_, 't> {
     fn call(&self, call: Node<'t>) -> Vec<String> {
         let Some(found) = self.context.resolver.resolve_call(call) else { return Vec::new() };
         if found.declaring != self.own {
-            return found.method.throws.clone();
+            return declares(&found.method);
         }
         let name = call.child_by_field_name("name").map(|name| self.context.text(name)).unwrap_or_default();
         let signatures = self.signatures.get_or_init(|| {
@@ -62,7 +62,7 @@ impl<'t> Scan<'_, '_, 't> {
             self.methods.iter().map(|method| (named(method), self.context.resolver.parameters(method.child_by_field_name("parameters")).0)).collect()
         });
         let target = signatures.iter().position(|(declared, formals)| declared == name && *formals == found.method.parameters).map(|at| &self.methods[at]);
-        let mut thrown = found.method.throws.clone();
+        let mut thrown = declares(&found.method);
         thrown.extend(target.map(|target| self.leaving(*target)).unwrap_or_default());
         thrown
     }

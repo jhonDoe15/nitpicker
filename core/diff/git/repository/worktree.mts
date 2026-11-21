@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { runGit } from './command.mts';
 import { realTemporaryDirectory } from '../../../tooling/temporary-files.mts';
-import { firstErrorLine } from '../../../../shared/messages/error-chain.mjs';
+import { firstErrorLine } from '../../../../shared/messages/error-chain.mts';
 
 const REMOVAL_RETRIES = 10;
 const REMOVAL_RETRY_DELAY_MS = 100;

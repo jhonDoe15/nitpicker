@@ -7,7 +7,7 @@ import { runAnalyzers } from './run-analyzers.mts';
 import { resolveAnalyzerVersion } from '../../../languages/typescript/preset/analyzer-versions.mts';
 import { fieldAt } from '../../../scripts/json/fields.mts';
 import { parseJson, textOf } from '../../../shared/values/readers.mts';
-import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mts';
 
 const toolInstalled: (
   name: string,

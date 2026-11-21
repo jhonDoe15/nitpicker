@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseJson } from '../../../shared/values/readers.mts';
-import { functionBlocks, hash, ingestMutmut, statusOfExitCode } from './typed/ingest-views.mts';
+import { functionBlocks, ingestMutmut, statusOfExitCode } from './typed/ingest-views.mts';
+import { hash } from '../../../shared/rules/finding-parts.mts';
 
 const recorded = parseJson(
   readFileSync(path.join(import.meta.dirname, 'fixtures/mutmut-run.json'), 'utf8'),

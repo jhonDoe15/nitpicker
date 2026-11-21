@@ -1,5 +1,5 @@
 import { CATCH_LOG_RULE } from '../../../source/catch-logging.mts';
-import { appendSentence as untypedAppendSentence } from '../../../../../shared/messages/exception-sentence.mjs';
+import { appendSentence as untypedAppendSentence } from '../../../../../shared/messages/exception-sentence.mts';
 export type RuleFinding = {
   readonly tool: string;
   readonly rule: string;

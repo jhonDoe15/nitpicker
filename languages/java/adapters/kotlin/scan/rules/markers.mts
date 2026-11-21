@@ -1,4 +1,4 @@
-import { hasGeneratorHeader } from '../../../../../../shared/conventions/generator-marker.mjs';
+import { hasGeneratorHeader } from '../../../../../../shared/conventions/generated/generator-marker.mts';
 import { afterGroup } from '../kotlin-source.mts';
 import type { Comment, Scanned } from '../typed/scan-shapes.mts';
 

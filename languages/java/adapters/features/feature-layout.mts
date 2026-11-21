@@ -1,9 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { RULE_IDS } from '../../../../shared/policy.mjs';
+import { RULE_IDS } from '../../../../shared/policy.mts';
 import { SPRING_ARCH_REPORT } from '../spring-arch/spring-arch.mts';
 import { featureUnits } from './feature-units.mts';
-import { byText as byTextUntyped } from '../../../../shared/text-order/by-text.mjs';
+import { byText as byTextUntyped } from '../../../../shared/text-order/by-text.mts';
 import { fieldOf, listOf, parseJson, textOf } from '../../../../shared/values/readers.mts';
 import type { ClassEntry, ClassProject, ResolvedGraph } from '../domain/domain-types.mts';
 import type { FeatureLayout, FeaturePlan, SpringReport } from './feature-types.mts';

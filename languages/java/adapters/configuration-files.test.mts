@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { configurationFiles, createJavaAnalyzer, javaRuntimeVersion } from './java-analyzer.mts';
 import { spawnResult } from './test-support/spawn-result.mts';
-import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath } from '../../../shared/paths/checkout-module.mts';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const STATIC_IMPORT = /(?:^|\n)\s*(?:import|export)\b[^'";]*?\bfrom\s*['"](\.[^'"]+)['"]/g;
@@ -84,7 +84,7 @@ describe('Java analyzer configuration files', () => {
   });
 
   it('reach shared and core modules the runner uses', () => {
-    const expected = ['core/diff/git/paths.mts', 'shared/rules/structure.mjs'];
+    const expected = ['core/diff/git/paths.mts', 'shared/rules/structure.mts'];
 
     expect(hashedAmong(expected).sort()).toEqual(expected);
   });

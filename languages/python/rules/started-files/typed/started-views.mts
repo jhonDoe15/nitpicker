@@ -1,7 +1,7 @@
-import { readTextIfExists as untypedRead } from '../../../../../shared/filesystem.mjs';
-import { shellCommands as untypedShell } from '../../../../../shared/started-files/shell-commands.mjs';
-import { workflowCommands as untypedWorkflow } from '../../../../../shared/started-files/workflow-commands.mjs';
-import { depthFirst as untypedDepthFirst } from '../../../../../shared/traversal.mjs';
+import { readTextIfExists as untypedRead } from '../../../../../shared/filesystem.mts';
+import { shellCommands as untypedShell } from '../../../../../shared/started-files/shell-commands.mts';
+import { workflowCommands as untypedWorkflow } from '../../../../../shared/started-files/workflow-commands.mts';
+import { depthFirst as untypedDepthFirst } from '../../../../../shared/traversal.mts';
 
 export type ShellSegment = { readonly tokens: readonly string[]; readonly directory: string };
 export type WorkflowCommand = { readonly command: string; readonly directory: string };

@@ -6,7 +6,7 @@ import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
-} from '../../../shared/messages/troubleshooting.mjs';
+} from '../../../shared/messages/troubleshooting.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 import { MAX_PASSES } from './run-recipes.mts';
 import { defineRecipes, runRecipes } from '../test-support/engine-views.mts';

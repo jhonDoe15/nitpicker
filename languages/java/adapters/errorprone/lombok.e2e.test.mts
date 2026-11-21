@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 import { collectJavaFindings } from '../java-diff.mts';
 import type { JavaFinding } from '../typed/java-values.mts';

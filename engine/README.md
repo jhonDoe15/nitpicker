@@ -104,17 +104,100 @@ whole project. Class files are listed at start and read on first use.
 - The 77 rules PMD implements in Java (#2031), Error Prone and SpotBugs are untouched.
 - A type question that needs more than 20,000 resolution steps is answered "unknown" (29 on Elasticsearch).
 
+## TypeScript checks that need types
+
+The engine has no TypeScript type system. A check that needs types reads the tree the TypeScript compiler's
+API server (`tsc --api`, TypeScript 7) parsed and asks that server over a pipe: symbols, types, signatures and
+type text, by node, alone or in batches (`src/typescript/types/`). All checks of a run share one server and
+one loaded project.
+
+```
+nitpicker-engine typescript-typed --compiler <tsc of TypeScript 7> --project <tsconfig.json> --checks <name,name>
+    [--input <check>=<json file>] [--all-reads] [--out <file>]
+nitpicker-engine typescript-type-replay --compiler <tsc> --project <tsconfig.json> --questions <jsonl> --kinds <json>
+```
+
+| Check | What it is |
+| --- | --- |
+| `public-contracts` | The public contract usage check of `coding-standards`. It asks the compiler only about member reads named like a contract method; `--all-reads` asks about every read. |
+| `unused-api` | The unused option and unused prop check. nitpicker decides which files the program has and what role each plays and passes that with `--input`; the engine returns the targets, their members and the references it found, and nitpicker turns them into findings. |
+| `design` | The facts of the design signals check: the project's types with their fields, and its callables with their parameters, calls, reads and decisions (`src/typescript/typed/design/`). nitpicker names the files that count with `--input`, marks what is published and evaluates the rules. |
+
+Exit status 3 with `types unavailable: <reason>` on standard error means the compiler cannot answer here (no
+binary, a version the engine's tables were not generated from, a project that does not load, a compiler option
+TypeScript 7 removed such as `baseUrl` or `moduleResolution: node10`): nitpicker then runs the check with the
+JavaScript compiler in its own process. `NITPICKER_TYPED_ENGINE=off` always does that; `NITPICKER_TYPED_ENGINE=required` fails
+instead when the engine or the compiler is missing or the engine stops in any other way.
+
+`typescript-type-replay` asks the compiler the questions `parity/typescript-type-questions.mts` recorded from
+the plugin rules and counts matching answers; `--kinds` is the compiler's `SyntaxKind` table as JSON.
+
+In a JavaScript file TypeScript 7 turns documentation comments into syntax (a parameter's type from `@param`,
+a type alias from `@typedef`). The JavaScript compiler's tree has no such nodes, so the tree reader leaves
+them out.
+
+Where a union lists the same property in several members, the unused API check reports the declaration that
+comes first by file name and position. The two compilers order union members differently, so the check in
+nitpicker's own process uses the same rule.
+
+The design facts do not depend on the order a compiler lists things in either: type text has the members of
+every union and every object type sorted, and the fields of a type are listed by the file and position of
+their declarations. A return type is read from a comment only in a JavaScript file. The engine hands a project
+back when a JavaScript file of it has types in documentation comments, or a property is declared by
+assignment. The generated project names the type roots of the original one, so `/// <reference types>` lines
+find the same packages.
+
+Measured on Grafana, 4 cores (wall, CPU, peak memory of the process tree; findings identical in every row):
+
+| Project | Node check | Node, only named reads | Engine | Engine, `--only-named` |
+| --- | --- | --- | --- | --- |
+| Root application, 6,364 production files, 61 findings | 65.0 s, 86 s, 4.4 GB | 43.2 s, 61 s, 3.7 GB | 26.9 s, 44 s, 4.3 GB | 14.5 s, 29 s, 3.4 GB |
+| `grafana-ui`, 1,185 production files, 58 findings | 10.2 s, 19 s, 1.0 GB | 6.9 s, 13 s, 0.9 GB | 4.0 s, 8 s, 0.9 GB | 1.8 s, 4 s, 0.7 GB |
+| The 15 packages with a tsconfig, 216 findings | 53.3 s, 101 s | | | 10.8 s, 30 s |
+
+Unused option and unused prop check on the same machine, whole nitpicker call (findings identical):
+
+| Project | Node check | Through the engine |
+| --- | --- | --- |
+| Root application, 2,378 targets, 17 findings | 49.8 s, 68 s, 3.8 GB | 32.2 s, 48 s, 4.5 GB |
+| `grafana-ui`, 331 targets, 9 findings | 10.0 s, 17 s, 1.0 GB | 6.1 s, 10 s, 1.1 GB |
+
+Of the 32.2 s, 24.6 s is the engine waiting for the compiler's answers to 275,680 questions.
+
+Nearly all of the engine's time is the compiler computing types, on one thread; a question costs about 10
+microseconds on the pipe once its type is known. Types the server computed for diagnostics are not reused for
+questions.
+
+The 42 type-aware plugin rules ask 134,885 distinct questions about nodes on `grafana-ui`. The native compiler
+gives the same answer as the JavaScript compiler for 132,720 (98.4%); 2,058 differ only in the order of union
+members or properties in the type text, or in the escaping of names that start with two underscores; 107
+(0.08%) differ in substance (index-signature symbols, the declaration node of a property assigned onto a
+function, standard library versions).
+
 ## Error Prone checks
 
 `--rules _ErrorProne` runs checks written after Error Prone 2.50.0 (`src/java/errorprone/`): `OperatorPrecedence`,
 `UngroupedOverloads`, `MissingBraces`, `EmptyCatch`, `NonFinalStaticField`, `ThrowSpecificExceptions`, `SystemOut`,
 `JavaUtilDate`, `StringCaseLocaleUsage`, `MissingOverride`, `ReferenceEquality`, `PrivateConstructorForUtilityClass`
-and `InconsistentOverloads`. A finding carries the check, the line and column javac reports for it, and the
+and `InconsistentOverloads`, and the ones added since: `parity/errorprone/ported.json` lists every check. A finding carries the check, the line and column javac reports for it, and the
 message; `@SuppressWarnings` with the check name or `all` hides it. `NP_EP_ONLY=<check>` runs one check.
 
 `tests/expected/errorprone.json` holds what Error Prone reported for `tests/fixtures/errorprone`. For a real
 project, `parity/errorprone/ErrorProneRun.java` compiles a source list with Error Prone and writes its findings
 and the time of each check, and `parity/errorprone/compare.py report.json ep.json [check] [-v]` compares.
+
+`ImmutableEnumChecker` runs only when `com.google.errorprone.annotations.Immutable` is among the classes of the
+project, since nitpicker turns the check off in Error Prone when the annotation is out of reach. The fixtures
+carry their own copy of the three annotations the check reads; to run Error Prone on them, put an entry whose
+path contains `error_prone_annotations` on the class path so `ErrorProneRun` leaves the check on.
+
+The checks are ports of Error Prone's (Apache-2.0, see `NOTICE` at the root of the repository). The doc comment
+parser under them (`doc.rs`, `docparse.rs`, `doctags.rs`, `docref.rs`) is written from the Documentation Comment
+Specification for the Standard Doclet. `tests/expected/doctrees.txt` holds the trees javac 21 builds for
+`tests/fixtures/doctrees`, printed through the public `com.sun.source.doctree` API by
+`parity/errorprone/DocTreeDump.java <source list> <out>` (run from the fixture folder), and a unit test compares
+them part by part. `NP_DOC_TREES=<dump of any code base, absolute paths> cargo test --release doc_comments`
+compares a whole code base the same way.
 
 Measured on 4 cores against Error Prone running only these checks (findings: same / missed / extra):
 
@@ -128,9 +211,11 @@ Measured on 4 cores against Error Prone running only these checks (findings: sam
 | commons-lang | 264, 106k | 3.3 s, 10.6 s, 0.4 GB | 0.5 s, 1.5 s, 0.1 GB | 302 / 0 / 0 |
 | MyBatis | 393, 40k | 3.3 s, 10.6 s, 0.4 GB | 0.3 s, 0.9 s, 0.1 GB | 155 / 0 / 0 |
 
-The 24 differences are type questions: a record component typed with the record's own member class, the
-type of an implicitly typed lambda parameter, a member class inherited through a qualified name (the message
-names a different owner), and `List` methods of Java 21 seen by code compiled with `--release 17`.
+`--release <n>` gives the Java release the sources are compiled for. When it is older than the JDK, the type
+index reads the library of that release from the JDK's `lib/ct.sym`, as javac does, so a `List` method added in
+Java 21 is not there for code compiled with `--release 17`. With it (javaparser-core is built for 17) the seven
+code bases give the same findings as Error Prone; the differences in the table were type questions closed since
+it was measured.
 
 
 ## SpotBugs patterns
@@ -235,7 +320,7 @@ With the three patterns the run takes 18.0 s, 67 CPU s and 0.58 GB at its peak o
 3.2 GB after a 31 s compile. The callee summaries are worked out once per class, not once per file, and whether
 a method is overridden is looked up over every class of the run: both are still to be made cheaper.
 
-What SpotBugs does, as measured (`tests/fixtures/spotbugs/null_*`, 218 findings, all the same):
+What SpotBugs does, as measured (`tests/fixtures/spotbugs/null_*`, 229 findings, all the same):
 
 - Only `@CheckForNull`, or an annotation whose own declaration carries `@CheckForNull` (a nickname, as measured
   with `@TypeQualifierNickname` beside it), marks a method result or a field. `javax.annotation.Nullable` and

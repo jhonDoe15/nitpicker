@@ -4,7 +4,7 @@ import { homedir } from 'node:os';
 import path from 'node:path';
 import { JAVA_FORMATTERS } from '../adapters/style/jvm-formatters.mts';
 import { runMaven } from './maven-command.mts';
-import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
+import { explainedError } from '../../../shared/messages/troubleshooting.mts';
 import { fieldOf, fieldsOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import type { JavaEnvironment, JavaSpawn } from '../adapters/typed/java-values.mts';
 import { POM, toolPath, writeToolsProject } from './programs/tools-project.mts';

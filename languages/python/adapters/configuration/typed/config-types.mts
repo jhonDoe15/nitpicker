@@ -42,28 +42,6 @@ export type TestFileSettings = {
   readonly django: boolean;
 };
 
-export type RootsEntry = {
-  readonly type: 'roots';
-  readonly key: string;
-  readonly file: string;
-  readonly label: string;
-  readonly kind: string;
-  readonly roots: readonly string[] | undefined;
-  readonly contains: (file: string, root: string) => boolean;
-  readonly applies: (file: string) => boolean;
-};
-
-export type ExcludesEntry = {
-  readonly type: 'excludes';
-  readonly key: string;
-  readonly file: string;
-  readonly label: string;
-  readonly patterns: readonly string[];
-  readonly covers: (file: string, pattern: string) => boolean;
-};
-
-export type SelectionEntry = RootsEntry | ExcludesEntry;
-
 export type IniFile = Map<string, IniOptions>;
 
 export type IniFileState = { options: IniOptions | undefined; current: string | undefined };

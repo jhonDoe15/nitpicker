@@ -14,7 +14,7 @@ import { ruffFindings } from '../../../../adapters/python-reports.mts';
 import { RUFF_REPORT, lint } from '../../../../adapters/python-tools.mts';
 import type { IngestedFinding } from '../../../../ingest/typed/ingest-types.mts';
 import { createToolContext } from '../../../../adapters/test-support/typed/tool-context.mts';
-import { PROBE_TIMEOUT_MS } from '../../../../../../shared/processes/deadlines.mjs';
+import { PROBE_TIMEOUT_MS } from '../../../../../../shared/processes/deadlines.mts';
 
 const RULES_DIR = path.resolve(import.meta.dirname, '../../..');
 

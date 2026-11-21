@@ -3,7 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { applySkillSection, applySnippetSections } from '../core/skills/fix-loop.mts';
 import { SLOTS } from '../core/skills/fix-loop-slots.mts';
-import { applyGeneratedBlock, applyJscpdMode } from '../shared/checks-catalog.mjs';
+import { applyGeneratedBlock, applyJscpdMode } from '../shared/checks-catalog.mts';
 import { applyExamples } from './docs-examples/render.mts';
 import { applyActionReference } from './action-inputs.mts';
 import { applySupportMatrix } from './platforms/support-matrix.mts';
@@ -41,7 +41,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.ar
     }
   } else {
     for (const { file, generate } of GENERATED_FILES) {
-      writeFileSync(file, String(generate(readFileSync(file, 'utf8'))));
+      writeFileSync(file, generate(readFileSync(file, 'utf8')));
     }
   }
 }

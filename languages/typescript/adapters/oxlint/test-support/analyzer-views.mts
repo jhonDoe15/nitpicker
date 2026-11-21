@@ -1,5 +1,5 @@
-import { importClosure as untypedImportClosure } from '../../../../../shared/import-closure.mjs';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
+import { importClosure as untypedImportClosure } from '../../../../../shared/import-closure.mts';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../../shared/paths/checkout-module.mts';
 import { transpiled as untypedTranspiled } from '../../../../../scripts/typescript/emit.mjs';
 import { parseAnalyzerReport as untypedParseAnalyzerReport } from '../../../../../core/diff/comparison/finding-schema.mts';
 import { resolveAnalyzerVersion as untypedResolveAnalyzerVersion } from '../../../preset/analyzer-versions.mts';

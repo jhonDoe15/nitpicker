@@ -1,8 +1,8 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { pathInside } from '../../../../shared/filesystem.mjs';
-import { RULE_IDS } from '../../../../shared/policy.mjs';
-import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
+import { pathInside } from '../../../../shared/filesystem.mts';
+import { RULE_IDS } from '../../../../shared/policy.mts';
+import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mts';
 import { javaDocComments } from './java-doc-comments.mts';
 import { kotlinDocComments } from './kotlin-doc-comments.mts';
 import { callUntyped } from '../typed/java-values.mts';

@@ -7,6 +7,7 @@ import {
   replacing,
   type ReportFix,
 } from '../../../../../fixes/support/ranges.mts';
+import { capitalized } from '../../../../../../../../../shared/naming/name-words.mts';
 import { isDeclared } from '../../../../../fixes/support/scope.mts';
 import type { Context } from '../../../../security/security-values.mts';
 import { variableNamed, type SourceCode } from '../../../../typed/node-views.mts';
@@ -65,10 +66,6 @@ function isKeyWritten(sourceCode: SourceCode, key: string): boolean {
       )
     );
   });
-}
-
-function capitalized(text: string): string {
-  return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
 }
 
 type Plan = {

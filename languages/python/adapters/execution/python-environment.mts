@@ -5,7 +5,7 @@ import type { Launcher } from '../typed/environment/launcher-types.mts';
 import type { EnvironmentSpec } from './environments/typed/environment-types.mts';
 import type { SpawnFunction } from './typed/process-types.mts';
 import { spawnText } from './typed/spawn-text.mts';
-import { ancestorDirectories } from '../../../../shared/filesystem.mjs';
+import { ancestorDirectories } from '../../../../shared/filesystem.mts';
 import { baseEnvironment } from './environments/base/base-environment.mts';
 import { environmentError, OVERRIDE_HINT } from './environments/environment-error.mts';
 import { INSTALL_HINTS, installHint, isMissing } from './environments/install-hints.mts';

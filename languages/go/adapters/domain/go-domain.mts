@@ -1,6 +1,6 @@
-import { RULE_IDS } from '../../../../shared/policy.mjs';
+import { RULE_IDS } from '../../../../shared/policy.mts';
 import { libraryConcern } from './go-domain-libraries.mts';
-import { byText } from '../../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mts';
 import { adapterMessage, domainFinding, libraryMessage, listed } from '../typed/shared-readers.mts';
 import type { FindingRow, GoFile, GoImport, GoUsage, InspectReport } from '../go-types.mts';
 

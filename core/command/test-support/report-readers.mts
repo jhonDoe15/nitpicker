@@ -1,5 +1,5 @@
 import { expect } from 'vitest';
-import { linkSentence as renderLinkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence as renderLinkSentence } from '../../../shared/messages/test-support/link-sentence.mts';
 import type { FakeCall } from './fixture-types.mts';
 import { fieldOf, listOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 

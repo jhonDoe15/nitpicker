@@ -29,7 +29,7 @@ import type {
   InstallStep,
   PlannedSteps,
 } from '../typed/environment-types.mts';
-import { TROUBLESHOOTING_ANCHORS } from '../../../../../../shared/messages/troubleshooting.mjs';
+import { TROUBLESHOOTING_ANCHORS } from '../../../../../../shared/messages/troubleshooting.mts';
 
 const trackTemporaryPath: (target: string) => string = untypedTrack;
 const INSTALL_TIMEOUT_MS = 20 * 60 * 1000;

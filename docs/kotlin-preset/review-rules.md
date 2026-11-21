@@ -1005,7 +1005,7 @@ Kotlin-specific choices:
 - `UnhandledRootCoroutine` is a text scan: it reads `launch` and `async` calls whose receiver is a root scope built in
   the file, so a scope handed in as a parameter, built by a helper or provided by the framework is not judged, and a
   scope built from the caller's context or a parent job is skipped. A project runner that handles the failure is named
-  in `conventions` `kotlin.detachedWorkRunners` (never measured, adding a name is reported as a loosening). The
+  in `conventions` `kotlin.detachedWorkRunners` (never measured). The
   Java preset has Error Prone's `FutureReturnValueIgnored`, the TypeScript presets `nitpicker/no-unhandled-void-promise`
   and Python ruff `RUF006` for the same failure. It runs on Gradle and Maven alike, since the scan is shared.
 - `UnboundedWait` and `ReactorBlockWithoutTimeout` are text scans (the Java preset's `pmd/UnboundedWait` and

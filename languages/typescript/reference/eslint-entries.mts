@@ -3,7 +3,9 @@ import { i18nRuleIds } from '../preset/eslint-config/i18n/i18n-rules.mts';
 import { readEslintInventory } from './eslint-inventory.mts';
 import { fixerRuns, suggestionApplies } from './fixer-options.mts';
 import { ruleSets, type RuleSet } from './rule-sets.mts';
-import { counterpartsOf, ruleEntry, type RuleEntry } from './typed/entry-types.mts';
+import { counterpartsOf } from '../../../shared/reference/counterparts.mts';
+import { ruleEntry } from '../../../shared/reference/entry.mts';
+import type { DocsLink, RuleEntry } from '../../../shared/reference/typed/entry-types.mts';
 import type { RuleFacts, RuleForm } from './typed/inventory-types.mts';
 
 const GUIDE = 'docs/typescript-strict-preset.md';
@@ -11,7 +13,7 @@ const FIX_TOOL = 'eslint-lint';
 const NITPICKER_PREFIX = 'nitpicker/';
 const REACT_IDS = new Set([...reactRuleIds, ...reactTestRuleIds]);
 const I18N_IDS = new Set(i18nRuleIds);
-const TEST_PREFIXES = ['vitest/', 'testing-library/'];
+const TEST_PREFIXES = ['vitest/', 'testing-library/', 'playwright/', 'cypress/'];
 const WHY = {
   nitpicker:
     "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
@@ -40,6 +42,10 @@ const PLUGIN_WHY: Readonly<Record<string, string>> = {
   regexp: 'The preset turns on this rule to keep regular expressions safe and readable.',
   functional: 'The preset turns on this rule to keep data immutable.',
   vitest: 'The preset turns on this rule of the Vitest plugin for tests.',
+  playwright:
+    'The preset turns on this rule of the Playwright plugin in test files that import Playwright, so browser tests use the steps that wait for the page.',
+  cypress:
+    'The preset turns on this rule of the Cypress plugin in test files that use `cy`, so tests follow the command queue and leave no debugging stops.',
 };
 const RESTRICTED = /^(?:[\w-]+\/)?no-restricted-/u;
 const REACT_SCOPE =
@@ -97,7 +103,7 @@ function guideAnchorOf(id: string): string | undefined {
   return TEST_PREFIXES.some((prefix) => id.startsWith(prefix)) ? 'inside-tests' : undefined;
 }
 
-function docsOf(id: string): readonly object[] {
+function docsOf(id: string): readonly DocsLink[] {
   const anchor = guideAnchorOf(id);
   return [
     { label: 'Strict preset guide', path: GUIDE, ...(anchor === undefined ? {} : { anchor }) },

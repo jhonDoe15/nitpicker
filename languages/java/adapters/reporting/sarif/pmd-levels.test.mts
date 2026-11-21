@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
 import { callUntyped } from '../../typed/java-values.mts';
-import { ingestSarif } from '../../../../../shared/ingest/sarif.mjs';
+import { ingestSarif } from '../../../../../shared/ingest/sarif.mts';
 import { withPmdLevels } from './pmd-levels.mts';
 
 function report(level: string): object {

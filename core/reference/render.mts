@@ -1,8 +1,11 @@
 import path from 'node:path';
-import { entryFacts, entryLinks } from '../../shared/reference/facts.mjs';
-import { PAGES } from '../../shared/reference/pages.mjs';
+import { ruleEntry } from '../../shared/reference/entry.mts';
+import { entryFacts, entryLinks } from '../../shared/reference/facts.mts';
+import { PAGES } from '../../shared/reference/pages.mts';
 import { pageCredits } from './pages/credits.mts';
 import { pageExceptionTexts } from './pages/page-exceptions.mts';
+import { isEntryFields } from '../../shared/reference/typed/entry-fields.mts';
+import type { RuleEntry } from '../../shared/reference/typed/entry-types.mts';
 import type { ReferenceEntry } from './build.mts';
 import { textOf } from '../../shared/values/readers.mts';
 import { markdownTableLines } from '../../shared/markdown/table.mts';
@@ -34,8 +37,6 @@ type PageNotes = {
   readonly exceptions: Readonly<Record<string, string>>;
 };
 
-const factsOf: (entry: ReferenceEntry) => readonly Fact[] = entryFacts;
-const linksOf: (entry: ReferenceEntry) => readonly Link[] = entryLinks;
 const pages: readonly Page[] = PAGES;
 
 const REFERENCE_DIRECTORY = 'docs/rules';
@@ -127,19 +128,19 @@ function factLines({ label, text, items, code, language }: Fact): string[] {
 }
 
 function entryMarkdown(
-  entry: ReferenceEntry,
+  entry: RuleEntry,
   { common, guide }: { readonly common: readonly Fact[]; readonly guide: string },
 ): string[] {
-  const facts = factsOf(entry).filter(
+  const facts = entryFacts(entry).filter(
     (fact) => !common.some(({ label, text }) => label === fact.label && text === fact.text),
   );
-  const links = linksOf(entry).filter((link) => !isGuide(link, guide));
+  const links = entryLinks(entry).filter((link) => !isGuide(link, guide));
   return [
-    `<a id="${textOf(entry['anchor'])}"></a>`,
+    `<a id="${encodeURIComponent(entry.anchor)}"></a>`,
     '',
-    `### \`${textOf(entry['id'])}\``,
+    `### \`${entry.id}\``,
     '',
-    markdownText(sentence(textOf(entry['summary']))),
+    markdownText(sentence(entry.summary)),
     '',
     ...facts.flatMap(factLines),
     ...(links.length === 0 ? [] : [`- **See also:** ${links.map(relativeLink).join(', ')}`]),
@@ -149,14 +150,14 @@ function entryMarkdown(
 
 function pageMarkdown(
   page: Page,
-  entries: readonly ReferenceEntry[],
+  entries: readonly RuleEntry[],
   {
     credit,
     exceptions,
   }: { readonly credit: string | undefined; readonly exceptions: string | undefined },
 ): string {
   const [guidePath = '', guideAnchor] = page.guide.split('#');
-  const common = commonFacts(entries.map(factsOf));
+  const common = commonFacts(entries.map(entryFacts));
   return [
     `# ${page.title}`,
     '',
@@ -177,7 +178,7 @@ function tableLines([header, ...rows]: readonly (readonly string[])[]): string[]
   return header === undefined ? [] : markdownTableLines(header, rows);
 }
 
-function indexMarkdown(byPage: ReadonlyMap<unknown, readonly ReferenceEntry[]>): string {
+function indexMarkdown(byPage: ReadonlyMap<unknown, readonly RuleEntry[]>): string {
   return [
     '# Rule reference',
     '',
@@ -201,10 +202,18 @@ function indexMarkdown(byPage: ReadonlyMap<unknown, readonly ReferenceEntry[]>):
   ].join('\n');
 }
 
+function completeEntry(entry: ReferenceEntry): RuleEntry {
+  if (!isEntryFields(entry)) {
+    throw new TypeError(`The reference entry ${textOf(entry['id'])} lacks its required fields`);
+  }
+  return ruleEntry(entry);
+}
+
 export function renderReference(
-  entries: readonly ReferenceEntry[],
+  referenceEntries: readonly ReferenceEntry[],
   notes: PageNotes = { credits: pageCredits(), exceptions: pageExceptionTexts() },
 ): Map<string, string> {
+  const entries = referenceEntries.map(completeEntry);
   const byPage = Map.groupBy(entries, ({ page }) => page);
   for (const page of pages) {
     byPage.set(page.id, byPage.get(page.id) ?? []);
@@ -215,9 +224,7 @@ export function renderReference(
       `${REFERENCE_DIRECTORY}/${page.id}.md`,
       pageMarkdown(
         page,
-        (byPage.get(page.id) ?? []).toSorted((a, b) =>
-          textOf(a['id']).localeCompare(textOf(b['id'])),
-        ),
+        (byPage.get(page.id) ?? []).toSorted((a, b) => a.id.localeCompare(b.id)),
         { credit: notes.credits[page.id], exceptions: notes.exceptions[page.id] },
       ),
     ]),

@@ -4,7 +4,7 @@
 use crate::java::types::index::TypeIndex;
 use crate::java::types::model::{ClassInfo, Field, Method, flag};
 
-fn flagged(index: &TypeIndex, class: &ClassInfo, flags: u16) -> bool {
+fn flagged(index: &TypeIndex, class: &ClassInfo, flags: u32) -> bool {
     let nickname = |name: &String| index.get(name).is_some_and(|annotation| annotation.flags & flag::CHECK_FOR_NULL != 0);
     flags & flag::CHECK_FOR_NULL != 0 || (flags & flag::MAYBE_CHECK_FOR_NULL != 0 && class.null_nicknames.iter().any(nickname))
 }

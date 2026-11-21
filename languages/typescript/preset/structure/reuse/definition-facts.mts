@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { hash as hashText } from '../../../../../shared/rules/finding-helpers.mjs';
+import { hash as hashText } from '../../../../../shared/rules/finding-parts.mts';
 import { persistenceOfModule } from './persistence-modules.mts';
 import type {
   ModuleResolution,

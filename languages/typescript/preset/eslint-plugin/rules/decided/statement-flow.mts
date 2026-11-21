@@ -7,7 +7,7 @@ import { assertionFacts } from './flow/assertions.mts';
 import { assignedFacts } from './flow/assignments.mts';
 import { recordCaptures } from './flow/closures.mts';
 import { switchFlow, type LabelCheck } from './flow/switch.mts';
-import { appendAll } from '../../../../../../shared/lists/lists.mts';
+import { walkConditionChecks } from '../../../../../../shared/rules/decided/flow/walk.mts';
 
 type Statement = TSESTree.Statement;
 type Task = { readonly statements: readonly Statement[]; readonly facts: readonly Fact[] };
@@ -236,11 +236,8 @@ function otherFlow(node: Statement, facts: readonly Fact[], context: FlowContext
   };
 }
 
-function statementFlow(node: Statement, facts: readonly Fact[], context: FlowContext): Flow {
-  if (node.type === AST_NODE_TYPES.IfStatement) {
-    return ifFlow(node, facts, context);
-  }
-  return isLoop(node) ? loopFlow(node, facts, context) : otherFlow(node, facts, context);
+function isIf(node: Statement): node is TSESTree.IfStatement {
+  return node.type === AST_NODE_TYPES.IfStatement;
 }
 
 function shadowed(facts: readonly Fact[], statements: readonly Statement[]): Fact[] {
@@ -255,19 +252,12 @@ function shadowed(facts: readonly Fact[], statements: readonly Statement[]): Fac
  * a statement's own expressions.
  */
 export function conditionChecks(body: readonly Statement[], context: FlowContext): Check[] {
-  const pending: Task[] = [{ statements: body, facts: [] }];
-  const checks: Check[] = [];
-  for (const task of pending) {
-    let facts: readonly Fact[] = shadowed(task.facts, task.statements);
-    for (const statement of task.statements) {
-      const flow = statementFlow(statement, facts, context);
-      appendAll(checks, flow.checks);
-      appendAll(
-        pending,
-        flow.children.filter(({ statements }) => statements.length > 0),
-      );
-      facts = flow.after;
-    }
-  }
-  return checks;
+  return walkConditionChecks(body, context, {
+    shadowed,
+    isIf,
+    isLoop,
+    ifFlow,
+    loopFlow,
+    otherFlow,
+  });
 }
