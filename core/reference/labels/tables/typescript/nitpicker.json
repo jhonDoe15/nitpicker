@@ -151,6 +151,7 @@
   "eslint/nitpicker/no-string-length-as-byte-count": ["bug", "reliability"],
   "eslint/nitpicker/no-surrogate-splitting-cut": ["bug"],
   "eslint/nitpicker/no-swapped-arguments": ["bug"],
+  "eslint/nitpicker/no-type-lookup-per-node": ["performance"],
   "eslint/nitpicker/no-switched-off-tests": ["tests"],
   "eslint/nitpicker/no-sync-node-api-in-async": ["performance", "async"],
   "eslint/nitpicker/no-task-outliving-resource": ["bug", "reliability", "async"],

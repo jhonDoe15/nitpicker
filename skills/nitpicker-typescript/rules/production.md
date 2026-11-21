@@ -314,6 +314,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Arguments go in the order of the parameters: passing `docs` into the slot of `proc` when `docs` is another
   parameter of the callee is a swap (`nitpicker/no-swapped-arguments`); pass an options object when the
   order is easy to mix up.
+- In a tree walk (a lint listener on a broad node type, a `forEachChild` visitor, a loop over nodes), test the
+  node's kind, name or text before asking the type checker about it; look up a symbol only for nodes whose
+  name can be one you want (`nitpicker/no-type-lookup-per-node`).
 - A pooled connection, query runner, session, lock or bundle is released in `finally` (or declared with `await using`), not by
   a statement after the work that a throw or early return skips (`nitpicker/no-release-outside-finally`).
 - A descriptor from `fs.openSync` or a `FileHandle` from `open` is closed in `finally` (or declared with `await using`);

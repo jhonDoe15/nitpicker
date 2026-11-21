@@ -56,6 +56,7 @@ import { rule as ruleNoTimeOnlyUniqueName } from '../rules/unique-names/no-time-
 import { rule as ruleNoTriStateBoolean } from '../rules/signatures/no-tri-state-boolean.mts';
 import { rule as ruleNoTruncatingPairSplit } from '../rules/pair-splits/no-truncating-pair-split.mts';
 import { rule as ruleNoTruncatingSplitLimit } from '../rules/split-limits/no-truncating-split-limit.mts';
+import { rule as ruleNoTypeLookupPerNode } from '../rules/type-lookups/no-type-lookup-per-node.mts';
 import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framework-in-domain.mts';
 import { rule as ruleNoUnanchoredAffixReplace } from '../rules/affixes/no-unanchored-affix-replace.mts';
 import { rule as ruleNoUnatomicWrites } from '../rules/transactions/no-unatomic-writes.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnstrippedRemoteText } from '../rules/terminal/no-unstrip
 import { rule as ruleNoUntrimmedRequestText } from '../rules/request-text/no-untrimmed-request-text.mts';
 import { rule as ruleNoUnusedDomEnvironment } from '../rules/test-runtime/environment/no-unused-dom-environment.mts';
 import { rule as ruleNoUnvalidatedSchemaField } from '../rules/boundaries/no-unvalidated-schema-field.mts';
-import { rule as ruleNoUnversionedOrmEntity } from '../rules/database/versions/no-unversioned-orm-entity.mts';
 
 export const partRules = {
   'no-null': ruleNoNull,
@@ -158,6 +158,7 @@ export const partRules = {
   'no-tri-state-boolean': ruleNoTriStateBoolean,
   'no-truncating-pair-split': ruleNoTruncatingPairSplit,
   'no-truncating-split-limit': ruleNoTruncatingSplitLimit,
+  'no-type-lookup-per-node': ruleNoTypeLookupPerNode,
   'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
   'no-unanchored-affix-replace': ruleNoUnanchoredAffixReplace,
   'no-unatomic-writes': ruleNoUnatomicWrites,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-untrimmed-request-text': ruleNoUntrimmedRequestText,
   'no-unused-dom-environment': ruleNoUnusedDomEnvironment,
   'no-unvalidated-schema-field': ruleNoUnvalidatedSchemaField,
-  'no-unversioned-orm-entity': ruleNoUnversionedOrmEntity,
 };

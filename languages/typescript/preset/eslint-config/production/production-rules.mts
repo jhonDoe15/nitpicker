@@ -19,6 +19,7 @@ export const productionSourceRules: Record<string, Linter.RuleEntry> = {
   'nitpicker/reusable-object-per-call': 'error',
   'nitpicker/no-compatibility-shim': 'error',
   'nitpicker/untested-round-trip': 'error',
+  'nitpicker/no-type-lookup-per-node': 'error',
 };
 
 export const productionGuardEntries: Record<string, Linter.RuleEntry> = {

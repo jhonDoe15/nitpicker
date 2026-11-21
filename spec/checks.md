@@ -899,6 +899,14 @@ a different parameter whose own slot gets a different name. Callees outside the 
 arguments, single-letter, numbered or `left`/`right` parameter names are not reported. The same form runs as
 `swapped-arguments` in the Python preset and Error Prone `ArgumentSelectionDefectChecker` in the Java preset.
 
+Type lookups per node: `nitpicker/no-type-lookup-per-node` (production source, in `eslint-lint`) reports a
+`getSymbolAtLocation`, `getTypeAtLocation` or `getTypeOfSymbolAtLocation` call that runs once per node of a tree walk
+(a lint listener on a broad selector such as `Identifier`, `MemberExpression` or `CallExpression`, a `forEachChild`
+visitor, or a `for...of` loop) when either the next statement is an early `return` or `continue` whose test is
+syntax-only and does not use the answer, or the answer for the node's name is only looked up (`has`, `get`) in a
+collection declared outside the walk and only node-kind tests come before the lookup. A collection that the walk's
+enclosing function also writes to (`add`, `set`, `delete`) does not count as built before the walk.
+
 Interpolated log messages: `nitpicker/no-interpolated-log-message` (production source, in `eslint-lint`, when the project
 depends on pino, bunyan or winston) reports a `trace` to `fatal` call whose message is a template literal with
 expressions or a `+` concatenation with a non-literal. pino and bunyan take the values as fields first
