@@ -17,6 +17,8 @@ pub trait FileRule: Sync + Send {
     fn check_in(&self, file: &SourceFile, _project: &Project, out: &mut Vec<Finding>) {
         self.check(file, out);
     }
+    /// Called once after every file was checked, for findings that hang on what other files hold.
+    fn finish(&self, _project: &Project, _out: &mut Vec<Finding>) {}
 }
 
 /// Whatever a language knows about the whole project; rules of that language downcast it.
