@@ -43,26 +43,21 @@ the npm package.
 
 ## TypeScript sources
 
-The code is moving from JavaScript (`.mjs`) to TypeScript (`.mts`) one area at a time; issue #147
-tracks the plan. Node.js strips the types itself, so a checkout runs `.mts` files with no build
-step, and `npm pack` emits a `.mjs` file beside each shipped `.mts` (`scripts/typescript/emit.mjs`)
-so the package stays plain JavaScript.
+Node.js strips the types itself, so a checkout runs `.mts` files with no build step, and `npm pack`
+emits a `.mjs` file beside each shipped `.mts` (`scripts/typescript/emit.mjs`) so the package stays
+plain JavaScript.
 
-- Import a converted module by its real name (`./a.mts`); `npm run typecheck` checks every `.mts`
-  file against `tsconfig.json`, the flags of the strict preset.
+- Import a module by its real name (`./a.mts`); `npm run typecheck` checks every `.mts` file against
+  `tsconfig.json`, the flags of the strict preset.
 - Use only syntax that Node.js can strip: no enums, namespaces or parameter properties.
-- A shipped `.mjs` file must not import a `.mts` file, so shipped code converts from the importers
-  down. `node scripts/typescript/ready.mts <folder>` lists the modules of a folder that can convert
-  now, and `node scripts/typescript/convert.mts <files>` renames them and rewrites their imports and
-  their `nitpicker.config.json` entries, then lists the places that name them by path.
 - Code that opens a module by path (a worker, a spawned runner, a config file handed to a tool, a
   file list that is hashed) keeps the packaged `.mjs` name and resolves it with
-  `checkoutModulePath` or `checkoutModuleUrl` from `shared/paths/checkout-module.mjs`, which pick
+  `checkoutModulePath` or `checkoutModuleUrl` from `shared/paths/checkout-module.mts`, which pick
   the `.mts` source in a checkout when Node.js strips types and the emitted `.mjs` otherwise.
 - `npm pack` and the container build run on Node.js 22.14, which cannot strip types: they emit the
   `.mjs` files first (`node scripts/typescript/emit.mjs`, cleaned with `--clean`). Their own
   scripts, `scripts/typescript/emit.mjs` and `scripts/reference/gen-rules.mjs` with the
-  `scripts/reference/` modules it imports, stay JavaScript; `ready.mts` holds them.
+  `scripts/reference/` modules it imports and `shared/lists/items.mjs`, stay JavaScript.
 
 ## Batching issues into pull requests
 

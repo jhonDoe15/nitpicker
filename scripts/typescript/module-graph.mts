@@ -11,25 +11,18 @@ export type ModuleImport = {
   readonly start: number;
 };
 
-export type Output = { write(text: string): void };
-
-export const GIT_TIMEOUT_MS = 60_000;
+const GIT_TIMEOUT_MS = 60_000;
 const MODULE = /\.(?:mjs|mts|cjs)$/u;
 const FIXTURE = /(?:^|\/)fixtures\//u;
 const MODULE_URL = /new URL\(\s*(['"])(?<specifier>[^'"]+)\1,\s*import\.meta\.url/gu;
 const NODE_22_14_SCRIPTS = ['scripts/typescript/emit.mjs', 'scripts/reference/gen-rules.mjs'];
-const NODE_22_14_BUILD = 'the package build on Node.js 22.14';
 
-export function repositoryFile(root: string, file: string): string {
+function repositoryFile(root: string, file: string): string {
   const full = path.resolve(root, file);
   if (!full.startsWith(`${path.resolve(root)}${path.sep}`)) {
     throw new Error(`${file} is outside the repository`);
   }
   return full;
-}
-
-export function writeLines(output: Output, lines: readonly string[]): void {
-  output.write(`${lines.join('\n')}\n`);
 }
 
 export function trackedModules(root: string): string[] {
@@ -60,7 +53,7 @@ export function moduleImports(root: string, modules: readonly string[]): ModuleI
   return modules.flatMap((importer) => importsOf(root, importer));
 }
 
-export function isConverted(file: string): boolean {
+function isConverted(file: string): boolean {
   return file.endsWith('.mts');
 }
 
@@ -106,91 +99,8 @@ export function convertedNodeBuildModules(
     .filter((file) => isConverted(file) && tracked.has(file));
 }
 
-function runsOnNodeBuild(importer: string, build: ReadonlySet<string>): boolean {
-  return build.has(importer) && !isShipped(importer);
-}
-
-function waits(
-  { importer, target }: ModuleImport,
-  converting: ReadonlySet<string>,
-  build: ReadonlySet<string>,
-): boolean {
-  return (
-    runsOnNodeBuild(importer, build) ||
-    (isShipped(target) &&
-      isShipped(importer) &&
-      !isConverted(importer) &&
-      !converting.has(importer))
-  );
-}
-
-function importerName(importer: string, build: ReadonlySet<string>): string {
-  return runsOnNodeBuild(importer, build) ? `${importer} on Node.js 22.14` : importer;
-}
-
-type ImportGraph = {
-  readonly byTarget: ReadonlyMap<string, readonly ModuleImport[]>;
-  readonly build: ReadonlySet<string>;
-};
-
-function importGraph(imports: readonly ModuleImport[]): ImportGraph {
-  return {
-    byTarget: Map.groupBy(imports, ({ target }) => target),
-    build: nodeBuildModules(imports),
-  };
-}
-
-function waitingImporters(
-  { byTarget, build }: ImportGraph,
-  file: string,
-  converting: ReadonlySet<string>,
-): string[] {
-  const roots = NODE_22_14_SCRIPTS.includes(file) ? [NODE_22_14_BUILD] : [];
-  return [
-    ...roots,
-    ...(byTarget.get(file) ?? [])
-      .filter((moduleImport) => waits(moduleImport, converting, build))
-      .map(({ importer }) => importerName(importer, build)),
-  ];
-}
-
-export function blockingImporters(
-  imports: readonly ModuleImport[],
-  candidates: ReadonlySet<string>,
-): Map<string, string[]> {
-  const graph = importGraph(imports);
-  return new Map(
-    [...candidates]
-      .map((file): [string, string[]] => [file, waitingImporters(graph, file, candidates)])
-      .filter(([, importers]) => importers.length > 0),
-  );
-}
-
-export function convertibleTogether(
-  imports: readonly ModuleImport[],
-  candidates: Iterable<string>,
-): Set<string> {
-  const rounds = [new Set(candidates)];
-  for (const convertible of rounds) {
-    const blocked = blockingImporters(imports, convertible);
-    if (blocked.size === 0) {
-      return convertible;
-    }
-    rounds.push(new Set([...convertible].filter((file) => !blocked.has(file))));
-  }
-  return new Set();
-}
-
-export function waitingOn(
-  imports: readonly ModuleImport[],
-  file: string,
-  converting: ReadonlySet<string>,
-): string[] {
-  return waitingImporters(importGraph(imports), file, converting);
-}
-
 function unwrappedReferences(root: string, file: string): string[] {
-  const lines = readFileSync(repositoryFile(root, file), 'utf8').split('\n');
+  const lines = readFileSync(repositoryFile(root, file), 'utf8').split(/\r?\n/u);
   return lines.flatMap((line, index) =>
     [...line.matchAll(MODULE_URL)].flatMap((match) => {
       const specifier = match.groups?.['specifier'] ?? '';
