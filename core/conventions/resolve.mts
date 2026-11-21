@@ -1,4 +1,4 @@
-import { configError } from '../../shared/config.mjs';
+import { configError } from '../../shared/config.mts';
 import { resolveProjectHeadPolicy } from './project-head-policy.mts';
 import { conventionDefinitions, conventionStyle } from './definitions.mts';
 import { lazyConfigRoot } from './style-snapshot.mts';

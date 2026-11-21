@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { hash } from '../../../../shared/rules/finding-helpers.mjs';
+import { hash } from '../../../../shared/rules/finding-parts.mts';
 import type { FindingRow, RaceAccess, RaceReport } from '../go-types.mts';
 import { appendAll, smallest } from '../../../../shared/lists/lists.mts';
 

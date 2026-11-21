@@ -1,4 +1,4 @@
-import { COMMON_EXCEPTION_RULES } from '../../../shared/policy.mjs';
+import { COMMON_EXCEPTION_RULES } from '../../../shared/policy.mts';
 import { definedField, exceptionRoute } from './typed/route-views.mts';
 import type { HintData, RuleHint } from './hints/hint-types.mts';
 import type { IngestedFinding } from '../ingest/typed/ingest-types.mts';

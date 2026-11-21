@@ -145,7 +145,7 @@ describe('strict test rules', () => {
   });
 
   it('keeps declaration ceilings separate from resolved runtime deadlines', () => {
-    expect(testTimeouts()['testDeclarationCeilingMs']).toBe(TEST_TIMEOUT_CEILING_MS);
-    expect(testTimeouts().testTimeoutMs).toBe(40_000);
+    expect(testTimeouts(undefined, {})['testDeclarationCeilingMs']).toBe(TEST_TIMEOUT_CEILING_MS);
+    expect(testTimeouts(undefined, {}).testTimeoutMs).toBe(40_000);
   });
 });

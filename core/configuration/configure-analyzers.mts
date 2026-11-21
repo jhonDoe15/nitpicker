@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
-import { configError } from '../../shared/config.mjs';
-import { DEFAULT_LEGACY_INVENTORY } from '../../shared/legacy-inventory.mjs';
+import { configError } from '../../shared/config.mts';
+import { DEFAULT_LEGACY_INVENTORY } from '../../shared/legacy-inventory.mts';
 import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mts';
 import {
   MUTATION_ANALYZER_NAME,

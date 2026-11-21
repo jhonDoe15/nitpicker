@@ -16,7 +16,7 @@ import {
   startTestHttpServer,
 } from './test-support/test-http-server.mts';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
-import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mts';
 
 const cleanups: (() => unknown)[] = [];
 

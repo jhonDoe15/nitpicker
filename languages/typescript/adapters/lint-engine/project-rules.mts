@@ -1,6 +1,5 @@
-import { sameJson } from '../../../../core/policy-changes/types/config-views.mts';
+import { sameJson } from '../../../../core/command/base-config/base-config-views.mts';
 import { isPlainObject } from '../../../../shared/values/readers.mts';
-import { byCodeUnits } from '../../../../core/scope/mutation-scope.mts';
 import { listField, recordField } from './typed/flat-config.mts';
 import type { FlatEntry, OwnedPolicy } from './typed/flat-config.mts';
 
@@ -66,25 +65,21 @@ function clamped(nitpicker: Options, project: Options): Options | undefined {
   return [typeof nitpicker[0] === 'number' ? limit : { ...own.rest, max: limit }];
 }
 
-function mergedOptions(ruleId: string, nitpicker: Options, project: Options) {
+function mergedOptions(ruleId: string, nitpicker: Options, project: Options): Options {
   if (project.length === 0 || sameJson(nitpicker, project)) {
-    return { options: nitpicker, replaced: false };
+    return nitpicker;
   }
   if (LIST_OPTION_RULES.has(ruleId)) {
     const added = project.filter((option) => !nitpicker.some((own) => sameJson(own, option)));
-    return { options: [...nitpicker, ...added], replaced: false };
+    return [...nitpicker, ...added];
   }
-  const limited = THRESHOLD_RULE.test(ruleId) ? clamped(nitpicker, project) : undefined;
-  return limited === undefined
-    ? { options: project, replaced: true }
-    : { options: limited, replaced: false };
+  return (THRESHOLD_RULE.test(ruleId) ? clamped(nitpicker, project) : undefined) ?? project;
 }
 
 function mergedSetting(ruleId: string, nitpickerSetting: unknown, projectSetting: unknown) {
   const [, nitpickerOptions] = parts(nitpickerSetting);
   const [severity, projectOptions] = parts(projectSetting);
-  const { options, replaced } = mergedOptions(ruleId, nitpickerOptions, projectOptions);
-  return { setting: [severity, ...options], replaced };
+  return [severity, ...mergedOptions(ruleId, nitpickerOptions, projectOptions)];
 }
 
 function asList(pattern: unknown): readonly unknown[] {
@@ -117,7 +112,7 @@ function projectSettingsFor(policyEntry: FlatEntry, projectEntry: FlatEntry) {
     const projectSetting = recordField(projectEntry, RULES)?.[ruleId];
     return isOff(setting) || projectSetting === undefined || isOff(projectSetting)
       ? []
-      : [{ ruleId, ...mergedSetting(ruleId, setting, projectSetting) }];
+      : [{ ruleId, setting: mergedSetting(ruleId, setting, projectSetting) }];
   });
 }
 
@@ -139,15 +134,4 @@ function entriesAfter(policyEntry: FlatEntry, projectEntries: Entries): FlatEntr
 
 export function withProjectSettings(policyEntries: Entries, projectEntries: Entries): FlatEntry[] {
   return policyEntries.flatMap((entry) => [entry, ...entriesAfter(entry, projectEntries)]);
-}
-
-export function replacedOptionRules(policyEntries: Entries, projectEntries: Entries): string[] {
-  const replaced = policyEntries.flatMap((policyEntry) =>
-    projectEntries.flatMap((projectEntry) =>
-      projectSettingsFor(policyEntry, projectEntry)
-        .filter((setting) => setting.replaced)
-        .map(({ ruleId }) => ruleId),
-    ),
-  );
-  return [...new Set(replaced)].toSorted(byCodeUnits);
 }

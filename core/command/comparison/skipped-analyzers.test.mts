@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
-import { EXECUTION_INPUTS, sourceInputs } from '../../../shared/input-sets/inputs.mjs';
+import { EXECUTION_INPUTS, sourceInputs } from '../../../shared/input-sets/inputs.mts';
 import { crashingAnalyzer, fakeAnalyzer, useCliFixtures } from '../test-support/cli-harness.mts';
 import type { FixtureAnalyzer } from '../test-support/fixture-types.mts';
 import { fieldOf, fieldsOf, listOf } from '../../../shared/values/readers.mts';

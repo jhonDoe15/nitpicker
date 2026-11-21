@@ -10,7 +10,7 @@ import {
   readJavaSource,
   staticImportsOf,
 } from './java-sources.mts';
-import { lazy as lazyUntyped } from '../../../../shared/rules/finding-helpers.mjs';
+import { lazy as lazyUntyped } from '../../../../shared/rules/finding-parts.mts';
 import type { JavaFinding } from '../typed/java-values.mts';
 import type { StaticImport } from './review-types.mts';
 import {

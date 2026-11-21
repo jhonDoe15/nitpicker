@@ -1,7 +1,7 @@
 import {
   JVM_REGEX_RULES,
   jvmPatternFlags,
-} from '../../../../../../shared/rules/regex/jvm-patterns.mjs';
+} from '../../../../../../shared/rules/regex/jvm-patterns.mts';
 import {
   REGEX_DIALECTS,
   patternDefects,

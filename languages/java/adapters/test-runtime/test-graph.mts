@@ -7,7 +7,7 @@ import {
 import { parseJdeps } from '../metrics/java-coupling.mts';
 import { pathInside as untypedPathInside } from '../review-rules/java-sources.mts';
 import { ownersOf, resolver } from '../review-rules/test-only/test-only-classes.mts';
-import { EDGE_KINDS } from '../../../../shared/rules/test-runtime/classify.mjs';
+import { EDGE_KINDS } from '../../../../shared/rules/test-runtime/classify.mts';
 import {
   isFrameworkBridge as untypedIsFrameworkBridge,
   isTestMarker as untypedIsTestMarker,

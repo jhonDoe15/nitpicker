@@ -13,7 +13,7 @@ import {
   readSpringConfigFindings,
 } from './__tests__/spring-config-projects.mts';
 import { readTestProfiles as readProfilesUntyped } from './spring-profiles.mts';
-import { byText } from '../../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mts';
 
 const readTestProfiles: (
   projectRoot: string,

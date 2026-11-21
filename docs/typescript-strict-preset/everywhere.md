@@ -199,6 +199,13 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   (`on`, `once`, `addListener`, `prependListener`, `addEventListener`, `subscribe`), on a binding declared outside it that is never
   reassigned or changed in place (`push`, `splice`, `sort` and the like), or a `this` field that
   only the constructor assigns. Allowed form: a `Map` built once, before the loop or handler. It
+  reports `filter` with such a callback in a loop or iteration callback (allowed form: group once with
+  `Map.groupBy` and `get`), and `includes(value)` or `indexOf(value)` there on a binding that is an
+  array (annotated `T[]`, `readonly T[]` or `Array<T>`, or built by `map`, `filter`, `slice`, `split`,
+  `[...x]`, `Array.from` or `Object.keys` and the like, not from a literal) and never changed, when
+  `value` reads the loop variable or a callback parameter (allowed form: a `Set` of the items, or a
+  `Map` from item to position for `indexOf`). A `filter`, `includes` or `indexOf` whose loops all run
+  over an array literal or up to a literal bound (`for (let i = 0; i < 3; i++)`) is not reported. It
   reports `sort(...)` or `toSorted(...)` followed by `[0]`, `.at(0)`, `.at(-1)`, `.pop()`, `.shift()`
   or a one-element destructuring (`const [first] = xs.toSorted(cmp)`); `xs.sort()` on a binding read
   again later, or on a property, keeps the sorted array and is left alone. Allowed form: one pass
@@ -220,6 +227,90 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   flush a fixed-size batch inside the loop (`if (batch.length >= 500) await save(batch.splice(0))`)
   and the rest once after it. An exception fits only for a source that always stays small. The same
   form runs as `streamed-rows-collected` (Python) and `pmd/StreamedRowsCollected` (Java and Kotlin).
+- `nitpicker/no-pattern-compiled-in-loop`: a glob compiled again on every pass of a loop or an
+  iteration callback (`map`, `filter`, `some`, `forEach`, `reduce` and the like) although the pattern
+  does not change inside it, in all production code (not in tests). It reports `path.matchesGlob`
+  (also `path.posix` and `path.win32`, and `matchesGlob` imported from `node:path`), `minimatch(value,
+  pattern)`, `minimatch.match`, `minimatch.makeRe`, `minimatch.filter`, `new Minimatch(pattern)`,
+  `picomatch(pattern)`, `picomatch.isMatch`, `picomatch.makeRe`, `micromatch(list, pattern)`,
+  `micromatch.isMatch`, `micromatch.matcher` and the other `micromatch` list tests, each imported or
+  required from its package, when every name the pattern reads is declared outside the loop or
+  callback and not assigned inside it, and the pattern makes no call. None of these calls caches the
+  compiled matcher, so `files.filter((file) => path.matchesGlob(file, `${dir}/**`))` compiles the same
+  glob once per file. A pattern that reads the loop variable or a parameter of the callback (a new
+  pattern per element) and a matcher compiled before the loop (`const isMatch = picomatch(pattern)`)
+  are not reported. `new RegExp(pattern)` is not reported either: V8 keeps compiled regular
+  expressions by source and flags, so a repeated `new RegExp` with the same text does not compile
+  again. Allowed form: compile once before the loop (`picomatch(pattern)`, `new Minimatch(pattern)`,
+  `micromatch.matcher(pattern)`), or test a cheap prefix or suffix first. The Java and Kotlin presets
+  report the same mistake for `String.matches`, `replaceAll`, `replaceFirst` and `Pattern.matches`
+  with a constant pattern (#2018).
+- `nitpicker/no-constant-lookup-in-loop`: the same lookup by a constant repeated on every pass of a
+  loop or an iteration callback, in all production code (not in tests). It reports
+  `document.getElementById`, `querySelector`, `querySelectorAll`, `getElementsByClassName`,
+  `getElementsByTagName` and `getElementsByName` on the global `document` (also `window.document`)
+  whose arguments are all constants, when the loop or callback leaves the page alone: no `await`, no
+  call of a function of the project, no assignment or method call on anything but a value declared in
+  the loop, a plain array, object, `Map` or `Set`, or `console`, `Math`, `JSON` and the like, and no
+  DOM change (`append`, `remove`, `setAttribute`, `textContent =`, `innerHTML =` and the like) at all.
+  It also reports `new URL(constant)` of which only parts are read (`origin`, `host`, `pathname`,
+  `href`, `toString()` and the like), directly or through a `const`. A lookup by the loop variable, a
+  URL that is changed or passed on, and a loop that may change the page are not reported. Allowed
+  form: look the element up, or parse the URL, once before the loop or at module scope. `Intl`
+  formatters with constant options are `nitpicker/reusable-object-per-call`'s.
+- `nitpicker/no-subtree-search-per-ancestor`: a walk up a parent chain that searches every child or
+  the whole subtree at each level, in all production code (not in tests). It reports a `for` loop
+  whose update, or a `while` or `do` loop whose body, steps a name to its parent (`el =
+  el.parentElement`, `parentNode`, `parent`, `parentPath`, `getParent()`), when the body runs on that
+  name a subtree search (`querySelector`, `querySelectorAll`, `getElementsByClassName`,
+  `getElementsByTagName`, `descendants()`, `findAll`, `traverse`, `ts.forEachChild(at, ...)`) or goes
+  over its children (`for...of`, a spread, `Array.from` or `find`, `some`, `filter`, `forEach` and the
+  like on `children`, `childNodes` or `getChildren()`). One lookup then costs depth times width, and
+  near the root the width is the whole document or file. A search behind an earlier test of the
+  level (`if (el.tagName !== "SECTION") continue;`, `if (at.kind === "block")`), a loop that reads a
+  `Map` by the level (`cache.get(el)`), a search on another value and a search in a function the loop
+  only creates are not reported. Allowed forms: `el.closest(selector)` for elements, a test of the
+  level's kind before the search, or an answer kept per level.
+- `nitpicker/no-repeated-call`: the same call made twice where one result would do, in all
+  production code (not in tests). It reports a call whose result is tested and then made again to
+  use it: the last operand of the left side of `&&`, `||` or `??`, the test of `?:` or of an `if`,
+  against the start of the right side, of a branch, or of the first statement of the `if` block
+  (`lookup(key) !== undefined && lookup(key).enabled`, `resolve(node).isPresent() ?
+  resolve(node).get() : x`). The two calls must read the same tokens, take at least one argument,
+  and their callee and arguments make no call, assignment or `await` of their own; nothing but
+  member reads and calls on the first result runs between them. Calls named like cheap accessors
+  (`get`, `has`, `at`, `indexOf`, `includes` and the like), calls named like actions (`next`,
+  `read...`, `pop`, `shift`, `push`, `set...`, `create...`, `save...`, `send...`, `random`, `now`
+  and the like) and global helpers other than `JSON` (`Number`, `Math.max`) are not reported. It
+  also reports a function that calls itself twice with the same arguments on the same path through
+  its body, using both results, when the arguments are not reassigned in it and it reads no `Map`
+  by them (`height(node.left) + height(node.left)`, `typeOf(argument)` twice in one loop pass):
+  each level doubles the work. Allowed form: keep the first result in a local, or remember the
+  answers per argument.
+- `nitpicker/no-work-before-early-exit`: a value worked out right before an early exit that leaves
+  without it, in all production code (not in tests). It reports `const x = ...` followed directly by
+  an `if` without `else` whose block ends in `return`, `throw`, `continue` or `break`, when neither the
+  test nor the block reads `x`, `x` is read later, the test makes no call, assignment or `await`,
+  and the initializer is in-memory work with no effect that does not throw on bad input:
+  `Object.entries`, `Object.keys`, `Object.values`, `Object.fromEntries`,
+  `Array.from`, `new Map` and `new Set`, a spread array, or `map`, `filter`, `flatMap`, `reduce`,
+  `slice`, `split`, `join` and the like on such values with callbacks that are expressions of the
+  same kind. An initializer with an `await` is reported only when the test reads nothing but
+  parameters and `const` names, since other state may change while it waits. Calls of project
+  functions, `sort` and other changes in place, clocks and ids, a test that reads `x`, an initializer
+  that is a `?:`, `&&` or `||`, and an exit that calls a local function reading `x` are not reported. Allowed form: declare the value below the exit; keep it above only when its error must
+  be raised on the early path too.
+- `nitpicker/no-read-all-before-pass`: every input read into memory before a single pass over
+  them, in all production code (not in tests). It reports a `const` array filled with one file read
+  per element, `await Promise.all(xs.map((x) => readFile(x)))`, `xs.map((x) =>
+  readFileSync(x))` or an empty array that the next statement fills in a `for...of` loop whose only
+  statement is `list.push(readFile...)` (a read through `fs`, `node:fs/promises` or `fs-extra`,
+  optionally awaited or inside `JSON.parse`), when the array is then used exactly once: as the
+  source of one `for...of` loop or one `forEach` statement that does not read the array again and
+  does not itself run more than once. Peak memory is then the sum of all inputs instead of the
+  largest one. A literal list of inputs, an array that is returned, sorted, sized, indexed or passed
+  on, and reads through a project function are not reported. Allowed forms: read and handle one input
+  at a time, a bounded pool for parallel reads, or keep only what the pass needs from each input.
 - `nitpicker/no-wasted-collection-step`: a collection or promise step that copies for nothing or
   walks the data twice, in all production code (not in tests). It reports `filter(p)[0]` and
   `filter(p).at(0)` with a callback `p` (allowed form: `find(p)`; a selector string, as in jQuery,
@@ -264,7 +355,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `kotlin-source/HandSplitHttpHeader` (Kotlin), `http-value-case` and `hand-split-http-header`
   (Python) and `go-rules/http-value-case` and `go-rules/hand-split-http-header` (Go).
 - `nitpicker/no-hardcoded-secret`: a secret string written into production code. It reports a string
-  that looks like a secret (`shared/naming/secret-words.mjs`, the same definition as every other
+  that looks like a secret (`shared/naming/secret-words.mts`, the same definition as every other
   preset: six characters or more with letters and digits, or three character classes; placeholders,
   paths, message keys, URLs and a value equal to the name are not secrets) given to a name ending in
   `password`, `passwd`, `pwd`, `passphrase`, `secret`, `token`, `credentials`, `apiKey`, `privateKey`,
@@ -652,6 +743,35 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `logger.info('loaded order', { orderId })`. Loggers are found as in `nitpicker/no-dropped-log-arguments`;
   `console.*` stays with `nitpicker/no-production-console`. The same form runs as `pmd/LogStringConcatenation`
   (Java), `kotlin-source/LogStringConcatenation` (Kotlin) and ruff `G001` to `G004` (Python).
+- `nitpicker/no-type-lookup-per-node`: in code that walks a syntax tree, a type-checker lookup
+  (`getSymbolAtLocation`, `getTypeAtLocation`, `getTypeOfSymbolAtLocation`, or the typescript-eslint parser
+  services of the same names) that runs for every visited node before a test that needs no types. Type lookups
+  are lazy, so asking about every node type-checks most of the program. A walk is a lint listener on a broad
+  selector (`Identifier`, `MemberExpression`, `CallExpression`, `Property` and the like), a function passed to or
+  calling `forEachChild`/`visitEachChild` on itself, or a `for...of` loop. Two forms are reported: the lookup is
+  followed by `if (test) return;` or `continue` whose test reads only the node, constants and collections from
+  outside the walk (`const type = services.getTypeAtLocation(node.object); if (node.property.name !== 'then')
+  return;`), and a symbol lookup of the node's name whose answer is only checked with `has` or `get` on a
+  collection built before the walk, with only node-kind tests before it (`if (symbol && wanted.has(symbol))`).
+  A collection that the function holding the walk also writes to (`add`, `set`, `delete`, `clear`, `push`,
+  or a new value) is not built before the walk, and a `continue` or `return` inside a loop or `switch` nested
+  in the walk is not an early exit from it.
+  The allowed form tests the kind and name first (`wantedNames.has(node.name.text)`) and looks up the symbol
+  only for nodes that pass.
+- `nitpicker/no-union-order-dependence` (needs the type checker): a result read from a TypeScript union or
+  intersection in the order the checker lists its members: `type.types[0]`, `.at(0)`, `.at(-1)`, `.find(...)`,
+  `.findLast(...)`, `const [first] = type.types` (also after `filter`, `map`, `flatMap` or `slice`),
+  `new Map(...)` or `Object.fromEntries(...)` over `type.types.flatMap(...)`, and `===` between a
+  `checker.typeToString(...)` result and text with ` | `. TypeScript 6 lists union members in the order
+  their types were created and TypeScript 7 sorts them, so the same source gives different results. Not
+  reported: a pick used only as a presence test (`if`, `!`, `?:`, `Boolean(...)`, a comparison with
+  `undefined`); a `find` whose test can match one member only: identity (`member === stringType`), `.value`
+  equal to a literal, or a positive test of one flag a union holds once (`(member.flags & TypeFlags.Null) !== 0`
+  for `Null`, `Undefined`, `Any`, `Unknown`, `Void`, `Never`, `String`, `Number`, `BigInt`, `ESSymbol`,
+  `NonPrimitive`; a negated test is reported); and a function that compares the same union's `.types.length`
+  with 1 using `===` or `!==`. Two `typeToString` results of one run are compared safely, since a union type
+  prints the same way each time. The allowed form chooses by something the source decides
+  (declaration file and position, a name) or compares types with `checker.isTypeAssignableTo` or by symbol.
 - `nitpicker/no-secret-in-log`: a secret-named value passed to a `console` method, a logger call (`log`,
   `logger`, `winston`, `pino`, `req.log`, `this.logger` and the like), `process.stdout.write`,
   `process.stderr.write` or an `Error` constructor: as an argument, a member (not of a `tokenizer`), in a
@@ -1454,7 +1574,7 @@ row.status = next; return repo.save(row);`). A retry that does not name the conf
   domain term of the project (`PackageManager`) takes the exception. Allowed form: a name that says
   what the code does (`price-rounding.ts`, `PriceRounder`); pure logic shared between features goes
   in the shared folder under such a name. The word list is shared with Python, Kotlin and Go
-  (`shared/naming/smell-words.mjs`); Java reports the same as `pmd/GenericTypeName` and
+  (`shared/naming/smell-words.mts`); Java reports the same as `pmd/GenericTypeName` and
   `pmd/GenericPackageName`. An exception fits only for a name a tool or framework requires.
 - No repeated string literals (`nitpicker/no-repeated-string-literal`, production code of both
   presets, both lint engines; tests are exempt). A string of five characters or more with a letter
@@ -1474,7 +1594,7 @@ row.status = next; return repo.save(row);`). A retry that does not name the conf
   translation call (`t`, `formatMessage`, `getTranslations` and the like), tagged templates, and
   idiomatic text (encodings, HTTP methods, MIME types, time formats). The lists and the thresholds
   are shared with the Python, Kotlin and Go counterparts in
-  [`shared/literals/repeated-literal-exemptions.mjs`](../../shared/literals/repeated-literal-exemptions.mjs).
+  [`shared/literals/repeated-literal-exemptions.mts`](../../shared/literals/repeated-literal-exemptions.mts).
   An exception fits only for text that must stay inline. Java reports the same through PMD
   `AvoidDuplicateLiterals`, Kotlin as `kotlin-source/RepeatedStringLiteral`, Python and Go as
   `repeated-string-literal`. Python, Kotlin and Go exempt the discriminant comparison the same way;
@@ -1798,6 +1918,57 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   logging call, `return;`, `break` or `continue`. `res.write`, a branch that returns or throws, an `else`, and a branch
   that is the last statement of its block are not reported. Allowed forms: `return res.status(400).json(...)`,
   `return next()`, a `return;` after the call, or an `else` around the rest.
+- `nitpicker/no-error-response-without-status` (production files): a `catch` block of a request handler that answers
+  with an error body and no status, so the failure is sent as `200 OK`: the caller's `response.ok` is true, a scheduler
+  records the run as succeeded and nothing retries. Reported inside a `catch` (not in a function nested in it):
+  `NextResponse.json(body)` (imported from `next/server`) or the global `Response.json(body)` with no second argument,
+  or with an object literal that has no `status` and no spread; `json` or `send` on `res`, `response` or `reply` (a
+  parameter of an enclosing function), also behind chained calls other than `status(...)`, `sendStatus(...)`,
+  `code(...)` and `writeHead(...)`; and `c.json(body)` with one argument on the context parameter (`c`, `ctx`,
+  `context`) of a file that imports `hono`. The parameter forms are not reported when the `catch` calls `status`,
+  `sendStatus`, `code` or `writeHead`, assigns `status` or `statusCode`, or passes the response to another call
+  (`fail(res, error)`), or when the function sets a status as a statement of its own. The body is an object literal with
+  an `error`, `errors` or `err` property (not `null`, `false`, `undefined` or `[]`), no spread or computed key, and no
+  outcome field of its own: `status`, `statusCode`, `code`, `success`, `ok`, `data`, `result`, `jsonrpc` or `id` next to
+  the error means the project answers with an envelope or by a protocol and is not reported. A file that mentions
+  GraphQL is skipped, because GraphQL over HTTP answers a failed operation with 200 and `errors`. Allowed forms:
+  `NextResponse.json({ error }, { status: 500 })`, `res.status(500).json({ error })`, and a status written out when 200
+  is meant, for example for a webhook sender that must not retry (`{ status: 200 }`).
+- `nitpicker/no-utc-date-as-local-date` (production files): the calendar date cut out of `toISOString()`, which is the
+  date in UTC, used as today's date for a person: for part of every day it is yesterday or tomorrow for them (already
+  tomorrow in the evening in the Americas, still yesterday in the morning in Asia), so a date field opens on the wrong
+  day and a record gets the wrong issue date. The expression is `<now>.toISOString()` followed by `.split('T')[0]`,
+  `.slice(0, 10)`, `.substring(0, 10)` or `.substr(0, 10)`, where `<now>` is `new Date()`, `new Date(Date.now())` or a
+  `const` initialized with one of them and never changed with `setTime` or a `setUTC...` method. It is reported only
+  where its use makes it a date the person sees or enters, directly or through a `const` it initializes: inside the
+  argument of `useState`, `useReducer`, `useForm` or `useFormik` (also in an object or array literal, a conditional, a
+  `||` or `??`, or the lazy initializer `useState(() => ...)`); as `value`, `defaultValue`, `min` or `max` of a JSX
+  element with `type="date"`; and as the value for a date that was not given, which is the right side of `||` or `??`
+  whose left side is named `date` or ends in `Date` (`opts.issueDate || ...`). Not reported: a file name, log label,
+  cache or partition key, sitemap date, a comparison, a plain object property, a parameter default, and a date that is
+  not the current instant (`row.createdAt.toISOString().slice(0, 10)`, a date built with `Date.UTC`). Allowed forms:
+  `new Intl.DateTimeFormat('en-CA').format(new Date())` (local `YYYY-MM-DD` in a browser or command line tool; with
+  `timeZone` on a server) or `format(new Date(), 'yyyy-MM-dd')` of the date library in use.
+- `nitpicker/no-placeholder-implementation` (production files): code that a comment calls a stand-in for the real work
+  and that is one by its shape, so the stand-in ships: a fixed delay instead of a request, a constant instead of a
+  query, an amount that is never converted. Both conditions are needed. The comment holds one of these phrases, in any
+  letter case: "in a real app / application / implementation / scenario / world", "simulate (an / the) API / network /
+  backend / server / HTTP / database / db", "simulate (a / the) request / delay / latency", "mock data / implementation
+  / response for now", "placeholder implementation", "replace (this / it) with (a / the / your) real / actual", "for now
+  (we) (just) return a dummy / mock / fake / hardcoded / placeholder / stub". The statement that ends on the comment's
+  line, or the one that starts on the line after the comment (or after the comments that directly follow it, or after a
+  comment on the opening line of the block), is a `return` of a literal or of an array or object literal that holds only
+  literals, as a direct statement of a function body; a `const`, `let` or `var` initialized with a non-empty array or
+  object literal that holds only literals; a bare `await` of `sleep(...)`, `delay(...)`, `wait(...)`, `setTimeout(...)`
+  or `new Promise((resolve) => setTimeout(resolve, ...))`; an assignment or declaration whose value is one plain name
+  (`convertedBalance = balance;`); or the comment is all a function body holds. Not reported: the comment alone, the
+  code alone, "for now" on its own, a comment about someone else's behaviour ("in a real browser the event fires
+  twice"), a `return` inside an `if` or a loop, a copied member (`config.domain`, `process.env.KEY`), and files whose
+  path below the working directory has a `test`, `tests`, `__tests__`, `spec`, `stories`, `story`, `storybook`,
+  `example`, `fixture`, `mock`, `__mocks__`, `seed`, `doc`, `documentation`, `template`, `demo`, `sample`, `e2e`,
+  `playground`, `cypress` or `playwright` part (also in the plural). Allowed forms: do the real work, or throw an error
+  that says the function is not implemented. Deleting the comment leaves the stand-in in place. The same check runs as
+  `pmd/PlaceholderImplementation` on Java sources.
 - Child processes the code waits for have a deadline (`nitpicker/require-process-timeout`, production
   files; test files have `nitpicker/require-test-process-timeout`). From `child_process`, `execa` and
   `cross-spawn`: `execSync`, `execFileSync`, `spawnSync`, `execaSync` and `execaCommandSync` need a
@@ -1816,6 +1987,89 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   hangs the program. A program whose purpose is to run a child to completion, such as a build
   wrapper, takes an exception. The rule reads no types, so it behaves the same in the JavaScript
   preset.
+- An option built from a list that can be empty is guarded (`nitpicker/no-unguarded-option-list`, production files).
+  With an empty list a tool gets `--dir ''` or takes the next flag as the value, and most tools then fall back to
+  their default (the working directory, every file) or reject the run. Reported: in the argument list of `spawn`,
+  `spawnSync`, `execFile`, `execFileSync`, `fork` or execa, a flag (`-x`, `--name`) followed by `list.join(...)`,
+  and an object with `files` and a configuration key (`rules`, `languageOptions`, `plugins`, `settings`,
+  `linterOptions`, `processor`) that is pushed or put into an array with `files` taken from such a list (ESLint
+  rejects an empty `files`). Only lists that the same function builds with `filter` or `flatMap` or from a file
+  listing or glob are reported, and only when the join is the only read of the list, so a size check or any other
+  use of it (a loop, a destructuring, a second join) keeps it from being reported. Not reported: lists from a
+  parameter, literal lists, a `map` of a list, `--flag=${...}` in one argument, and a flag followed by a spread
+  (`'--fix', ...files`), since the rule cannot tell a flag that takes a value from one that does not. The Java
+  preset has the same rule as `pmd/UnguardedOptionList`.
+- A list that grows with the project is not passed as process arguments (`nitpicker/no-growing-process-arguments`,
+  production files). Linux limits one argument to 128 KiB and the command line to a few MiB, Windows the command
+  line to 32,767 characters; past that the process does not start (`E2BIG`). Reported in the argument list of
+  `spawn`, `spawnSync`, `execFile`, `execFileSync`, `fork` and execa (and in the `${...}` parts of an `exec` or
+  `execSync` command): a spread of a file listing or glob result (`readdirSync`, `readdir`, `glob`, `globSync`,
+  `fast-glob`, `globby`, `glob.sync`, a `readdir` on `fs` or `fs/promises`, also through `filter`, `map`, `flatMap`,
+  `sort`, `concat`, `Array.from` or a `const`), and one argument that joins such a list or joins any list that is
+  not a literal with `path.delimiter` (a class path or a path list). An array literal joined with `path.delimiter`
+  is reported only when it spreads a listing. Not reported: lists the rule cannot trace to a listing
+  (`...changedFiles` from a parameter), a `slice` of a listing, chunks, literal lists, the list in `env`
+  (`CLASSPATH`) and an `@args` file. The Java preset reports the class-path form as `pmd/GrowingProcessArguments`.
+- A subprocess deadline stops the work, not only a wrapper around it (`nitpicker/no-wrapper-only-timeout`,
+  production files). A `timeout`, `signal` or `cancelSignal` kills only the process that was started; when that is a
+  shell, a launcher or a script, the real work runs in its child and keeps running after the call returns. Reported:
+  a `child_process` or execa call with such a deadline whose command is a launcher (`npx`, `npm`, `yarn` or `pnpm`
+  running a script (`run`, `exec`, `dlx`, `test`, `start` and the like), `gradlew.bat`, `mvnw.cmd`, `cmd`,
+  `powershell`, `pwsh`, a `.sh`, `.bat`, `.cmd` or `.ps1` file, or `sh`, `bash`, `zsh`,
+  `dash` or `ksh` running a script file or a `-c` script that is itself compound or a launcher), an `exec`/`execSync`
+  command string that starts with one or holds a list, a pipe or a background job (`cd app && make`), or a
+  `shell: true` command with one. Not reported: plain executables (`git`, `node`, `java`), a single command in
+  `sh -c` or `exec` (POSIX shells run it in place), execa's `execaCommand` (no shell), options from a parameter or a
+  spread, and a call with `detached: true` in a function that kills the group (`process.kill(-child.pid)`,
+  `taskkill`, `tree-kill`). The Java preset has the same rule as `pmd/DestroyLeavesDescendants`.
+- Tool output is not cut to its start in an error (`nitpicker/no-head-cut-error-output`,
+  production files). Reported: `text.slice(0, n)`, `substring(0, n)` or `substr(0, n)` of a value named for output
+  (`stderr`, `stdout`, `stack`, `stackTrace`, `errorOutput`, or a name ending in one of them, such
+  as `buildStderr` or `error.stack`; also through `toString()`, `trim()` or `String(...)`) when the cut text goes,
+  directly or through a template, a `+`, a ternary, an object property or a `const`, into `new XError(...)` or
+  `XError(...)`, a `throw`, `reject(...)`, `fail(...)`, or a `.error(...)` or `.fatal(...)` log call. Build tools,
+  compilers and test runners print the cause at the end, so the kept part is the banner. Not
+  reported: cuts that keep the end (`slice(-4000)`, `substring(start)`), an error that also holds such a cut (start
+  and end with a marker between them), cuts of other text (titles, previews, hashes), cuts to a literal length under
+  40 and cuts that go elsewhere. Cuts that
+  can split a character are `nitpicker/no-surrogate-splitting-cut`. The Java preset has the same rule as
+  `pmd/HeadCutErrorOutput`.
+- A finished child process is not judged by text on its standard error (`nitpicker/no-stderr-as-failure`,
+  production files). Reported: an `if` or a ternary whose test (alone, or as one side of `||`) checks that the
+  standard error is not empty (`stderr`, `stderr.length`, `stderr.length > 0`, `stderr !== ''`, also through
+  `toString()`, `trim()` or `String(...)`) and whose branch throws, calls `reject` (`Promise.reject` included) or
+  calls `process.exit` with a non-zero code. The text must come from a subprocess: the `stderr` of a `spawnSync` or
+  execa result (held in a `const` or read inline), a `stderr` destructured from one or from an awaited `promisify`-ed
+  `exec`/`execFile`, or the third parameter of an `exec`/`execFile` callback. Not reported: a test joined with `&&`
+  (`status !== 0 && stderr`), a search for a specific text (`stderr.includes('fatal')`), a branch that only logs, a
+  child's `stderr` stream (`child.stderr`) and `process.stderr`. Standard error carries warnings and notices too
+  (the JVM's `Picked up JAVA_TOOL_OPTIONS`, Node.js deprecation warnings), so decide by the exit status and keep
+  standard error for the message. The Java preset has the same rule as `pmd/StderrAsFailure`.
+- A `spawnSync` result is not judged by its `status` alone (`nitpicker/no-status-only-spawn-check`, production
+  files). `spawnSync` (also cross-spawn's `spawn.sync`) does not throw when the child could not start, ran past its
+  timeout, wrote more than `maxBuffer` or was killed by a signal: it returns `status: null` with `error` or `signal`
+  set. Reported when the code reads neither `error` nor `signal` of the result and passes `status` to `process.exit`
+  or `process.exitCode` (`null` exits with 0), puts it in a message (a template or a `+` with text: "exited with
+  null"), or tests it so that `null` lands with exit code 0 (`status > 0`, `if (status)`, `!status`). The same holds
+  for execa with `reject: false` and its `exitCode`, unless the code reads `failed`, `signal`, `timedOut`,
+  `isTerminated`, `isCanceled`, `killed` or `cause`. Not reported: `status !== 0` and `status === 0` (null counts as a
+  failure), a check of `status` against `null` or `undefined`, `status ?? 1`, and a result passed whole to a helper.
+  The allowed form handles `result.error` and `result.signal` first.
+- Output that grows with the project is not read through a fixed-size buffer
+  (`nitpicker/no-buffered-growing-output`, production files). `execSync`, `execFileSync`, `spawnSync`, `exec` and
+  `execFile` (with a callback or through `promisify`) and the buffered `execa` calls keep the whole output in memory, up
+  to `maxBuffer` (1 MiB in Node.js, 100,000,000 bytes in execa); past it the child is killed and the call fails with
+  `ENOBUFS`. Reported when the output is read (the returned text, `.stdout`, `.output` or `.all` of the result, a
+  destructured `stdout`, or the callback's second parameter) and either the command's output grows with the project
+  (`git ls-files`, `ls-tree -r`, `diff`, `log`, `rev-list`, `status` and `grep`; `find`, `rg`, `du`, `tree`, `npm ls`,
+  `ls -R` and `grep -r`) while `maxBuffer` is left out or a constant, or `maxBuffer` is a constant and the output is
+  parsed whole (`JSON.parse`, `split`). Not reported: output that is ignored or not piped (`stdio: 'inherit'` or
+  `'ignore'`, `stdio` from a variable), execa's `buffer: false`, `maxBuffer: Infinity` or a computed size, options
+  from a parameter or a spread, bounded forms (`git log -1`, `-n`, `--max-count`, `--max-parents`, `git diff --quiet`,
+  `--shortstat`, `rev-list --count`, `-q`, `--version`, `--help`, `du -s`, `find -maxdepth 0`, single files after
+  `--`), argument lists with a spread, and shell commands with a pipe, a
+  redirection or a list (`git log | head -5`). Allowed forms: `spawn` with the output read as a stream, `stdio` set
+  to a file descriptor, or a tool that writes its report to a file.
 - Waits without a timeout (`pmd/UnboundedWait`, `unbounded-wait`, `pmd/ReactorBlockWithoutTimeout` in the JVM and
   Python presets) have no TypeScript or JavaScript counterpart: nothing blocks a thread on a promise, and a promise
   that never settles is a missing deadline for `await`, which `nitpicker/require-client-timeout` and

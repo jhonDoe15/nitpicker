@@ -47,15 +47,15 @@ export function isGenerated(sourceFile: TypeScript.SourceFile): boolean {
   return GENERATED_MARKER.test(sourceFile.text.slice(0, HEADER_LENGTH));
 }
 
-function fileEntry({
-  sourceFile,
+export function fileEntry({
+  fileName,
   projectRoot,
   packagesInfo,
   layout,
-}: Omit<ContextOptions, 'program'> & { readonly sourceFile: TypeScript.SourceFile }): FileInfo {
-  const owner = packagesInfo.packageOf(sourceFile.fileName);
-  const relative = toPosix(path.relative(owner?.dir ?? projectRoot, sourceFile.fileName));
-  const projectRelative = toPosix(path.relative(projectRoot, sourceFile.fileName));
+}: Omit<ContextOptions, 'program'> & { readonly fileName: string }): FileInfo {
+  const owner = packagesInfo.packageOf(fileName);
+  const relative = toPosix(path.relative(owner?.dir ?? projectRoot, fileName));
+  const projectRelative = toPosix(path.relative(projectRoot, fileName));
   const insideProject = !projectRelative.startsWith('..') && !path.isAbsolute(projectRelative);
   const isSupport =
     isSupportPath(relative, layout) || (insideProject && isSupportPath(projectRelative, layout));
@@ -68,9 +68,8 @@ function fileEntry({
   };
 }
 
-function isOwnable(
+export function isOwnablePath(
   entry: FileInfo | undefined,
-  sourceFile: TypeScript.SourceFile,
   layout: ContextLayout,
 ): entry is FileInfo {
   return (
@@ -78,9 +77,16 @@ function isOwnable(
     entry.insideProject &&
     entry.role === 'production' &&
     isAnalyzedFile(entry.path, layout) &&
-    layout.isSourceFile(entry.path) &&
-    !isGenerated(sourceFile)
+    layout.isSourceFile(entry.path)
   );
+}
+
+function isOwnable(
+  entry: FileInfo | undefined,
+  sourceFile: TypeScript.SourceFile,
+  layout: ContextLayout,
+): entry is FileInfo {
+  return isOwnablePath(entry, layout) && !isGenerated(sourceFile);
 }
 
 export function createContext({
@@ -96,7 +102,7 @@ export function createContext({
   const fileInfo = new Map(
     files.map((sourceFile): [string, FileInfo] => [
       sourceFile.fileName,
-      fileEntry({ sourceFile, projectRoot, packagesInfo, layout }),
+      fileEntry({ fileName: sourceFile.fileName, projectRoot, packagesInfo, layout }),
     ]),
   );
   const owned = new Map(

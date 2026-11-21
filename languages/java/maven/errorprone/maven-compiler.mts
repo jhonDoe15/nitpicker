@@ -3,7 +3,7 @@ import {
   childAt,
   childrenAt,
   childrenNamed,
-} from '../../../../shared/values/xml.mts';
+} from '../../../../shared/ingest/report-records.mts';
 import type { CompilerLevel, CompilerSettings } from './compiler-types.mts';
 import { textAt } from '../configuration/pom-elements.mts';
 

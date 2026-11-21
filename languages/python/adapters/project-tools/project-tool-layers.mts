@@ -1,11 +1,11 @@
 import {
   missingProjectConfig,
   precedenceLayers,
-} from '../../../../shared/conventions/tool-precedence.mjs';
+} from '../../../../shared/conventions/tool-precedence.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 import { isTable } from '../configuration/project-files.mts';
 import type {

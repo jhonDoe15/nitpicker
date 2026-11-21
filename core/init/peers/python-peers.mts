@@ -4,7 +4,7 @@ import {
   readFileEntries,
   requirementFiles,
 } from '../../../languages/python/adapters/execution/python-project.mts';
-import { escapeRegExp } from '../../../shared/paths/glob.mjs';
+import { escapeRegExp } from '../../../shared/paths/glob.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 
 type PythonTools = { readonly testRunner?: string; readonly typeChecker?: string };

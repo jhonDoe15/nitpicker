@@ -1,7 +1,7 @@
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mts';
 import { JAVA_EXCEPTION_RULES } from '../../../languages/java/adapters/java-policy.mts';
 import { KOTLIN_EXCEPTION_RULES } from '../../../languages/java/adapters/kotlin/kotlin-options.mts';
-import { joinedWords } from '../../../shared/reference/entry.mjs';
+import { joinedWords } from '../../../shared/reference/entry.mts';
 
 const wordsJoined: (words: readonly string[]) => string = joinedWords;
 const javaTools: readonly string[] = JAVA_TOOLS;
@@ -10,6 +10,7 @@ const kotlinExceptionRules: readonly string[] = KOTLIN_EXCEPTION_RULES;
 
 const JAVA_PAGES = [
   'java-pmd',
+  'java-pmd-nitpicker',
   'java-checkstyle',
   'java-spotbugs',
   'java-errorprone',

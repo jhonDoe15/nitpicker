@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { libraryProject as untypedLibraryProject } from '../../../../shared/rules/stability/test-support/library-project.mjs';
+import { libraryProject as untypedLibraryProject } from '../../../../shared/rules/stability/test-support/library-project.mts';
 import { analyzeCoupling, type CouplingOptions } from './test-support/analyze-view.mts';
 import { LIBRARY_ROOT, libraryGraph } from './test-support/library-graph.mts';
 

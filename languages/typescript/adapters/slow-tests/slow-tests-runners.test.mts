@@ -95,11 +95,14 @@ const NAMED_RERUNS = [
 ];
 
 function coverageOptions(root: string) {
-  return parseArguments([
-    ...['--analyzer-name', 'coverage', '--kind', 'coverage'],
-    ...['--project-root', root, '--policy-root', PACKAGE_ROOT],
-    ...['--tool-root', PACKAGE_ROOT, '--snapshot', 'head'],
-  ]);
+  return parseArguments(
+    [
+      ...['--analyzer-name', 'coverage', '--kind', 'coverage'],
+      ...['--project-root', root, '--policy-root', PACKAGE_ROOT],
+      ...['--tool-root', PACKAGE_ROOT, '--snapshot', 'head'],
+    ],
+    process.env,
+  );
 }
 
 beforeEach(() => {

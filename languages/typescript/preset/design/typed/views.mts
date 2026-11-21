@@ -1,7 +1,7 @@
 import type TypeScript from 'typescript';
 import type { Finding } from '../../../../../shared/values/findings.mts';
-import { sharedFactFindings as untypedSharedFactFindings } from '../../../../../shared/rules/facts/evaluate.mjs';
-import { DESIGN_RULES as untypedDesignRules } from '../../../../../shared/project-rules/design/design-rules.mjs';
+import { sharedFactFindings as untypedSharedFactFindings } from '../../../../../shared/rules/facts/evaluate.mts';
+import { DESIGN_RULES as untypedDesignRules } from '../../../../../shared/project-rules/design/design-rules.mts';
 import {
   readHeadPolicy as untypedReadHeadPolicy,
   readLayout as untypedReadLayout,

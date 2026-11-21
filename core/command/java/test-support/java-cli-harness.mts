@@ -16,7 +16,7 @@ import {
 import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mts';
 import { usePresetFixtures } from '../../test-support/preset-fixtures.mts';
 import { readCatalog as readRuleCatalog } from '../../../../languages/java/messages/rule-messages.mts';
-import { exceptionHint as renderExceptionHint } from '../../../../shared/rules/exceptions.mjs';
+import { exceptionHint as renderExceptionHint } from '../../../../shared/rules/exceptions.mts';
 import { fakeMavenRun, spawnFakeMaven } from './in-process-maven.mts';
 
 export const exceptionHint: (rule: string, file: string) => string = renderExceptionHint;

@@ -1,6 +1,6 @@
 import { cssInJsSource, stylesheetSpecifier } from '../../../layout.mts';
 import { variableNamed } from '../analysis/ancestry.mts';
-import { expandsFully as untypedExpandsFully } from '../../../../../../shared/traversal.mjs';
+import { expandsFully as untypedExpandsFully } from '../../../../../../shared/traversal.mts';
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import type {
   ApproachName,

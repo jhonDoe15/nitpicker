@@ -8,7 +8,7 @@ import { REPORT_FILE_NAMES } from './reporters.mts';
 import {
   guidePages as untypedGuidePages,
   guideText as untypedGuideText,
-} from '../../../shared/reference/build/guide-pages.mjs';
+} from '../../../shared/reference/build/guide-pages.mts';
 
 const guidePages: (guide: string) => string[] = untypedGuidePages;
 const guideText: (page: string) => string = untypedGuideText;

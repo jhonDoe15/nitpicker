@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { createLineIdentity, projectFile } from '../../../shared/ingest/common.mjs';
-import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
+import { createLineIdentity, projectFile } from '../../../shared/ingest/report-records.mts';
+import { exceptionHint } from '../../../shared/rules/exceptions.mts';
 import { rootsScope } from '../builds/paths/module-path.mts';
 
 type Identity = (parts: {

@@ -1,4 +1,4 @@
-import { exceptionHint as untypedExceptionHint } from '../../../../../../shared/rules/exceptions.mjs';
+import { exceptionHint as untypedExceptionHint } from '../../../../../../shared/rules/exceptions.mts';
 
 export { applyKotlinRuleMessages, withKotlinRuleMessage } from '../kotlin-messages.mts';
 export { type RuleFinding, withAllowedForm } from '../kotlin-rules.mts';

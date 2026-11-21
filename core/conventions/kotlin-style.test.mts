@@ -7,7 +7,7 @@ import {
   readRunnerPolicy,
 } from '../../languages/java/adapters/java-runner.mts';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mts';
-import { withHeadPolicyFile } from '../../shared/head-policy.mjs';
+import { withHeadPolicyFile } from '../../shared/head-policy.mts';
 import { useGitFixtures } from '../diff/git/test-support/git-repository.mts';
 import { resolveComparison } from '../diff/git/repository/git.mts';
 import { fakeGradleRun } from '../../languages/java/adapters/test-support/in-process-gradle.mts';

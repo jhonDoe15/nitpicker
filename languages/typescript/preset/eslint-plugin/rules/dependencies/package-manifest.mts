@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { ancestorDirectories as untypedAncestorDirectories } from '../../../../../../shared/filesystem.mjs';
+import { ancestorDirectories as untypedAncestorDirectories } from '../../../../../../shared/filesystem.mts';
 
 type ManifestObject = Readonly<Record<string, unknown>>;
 export type Manifest =

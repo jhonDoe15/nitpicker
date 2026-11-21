@@ -4,7 +4,7 @@ import { linkSentence } from '../../test-support/link-sentence.mts';
 import { testOptions } from '../../test-runners/typed/test-options.mts';
 import type { CrapReport } from '../typed/reporting.mts';
 import type { TestReport } from '../../test-runners/typed/runner-types.mts';
-import { MESSAGES, renderMessage } from '../../../../../shared/policy.mjs';
+import { MESSAGES, renderMessage } from '../../../../../shared/policy.mts';
 import { mutationSkipFor } from '../runners/skips/mutation-skips.mts';
 import { normalizeCrap, normalizeMutation, crapUnknownMessage } from './tests.mts';
 import {

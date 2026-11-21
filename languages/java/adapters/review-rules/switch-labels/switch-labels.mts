@@ -1,4 +1,4 @@
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mts';
 import { appendAll } from '../../../../../shared/lists/items.mjs';
 import type { DepthChanges } from '../review-types.mts';
 

@@ -1,4 +1,4 @@
-import { jscpdIgnoredNotices as untypedJscpdIgnoredNotices } from '../../../shared/conventions/tool-precedence.mjs';
+import { jscpdIgnoredNotices as untypedJscpdIgnoredNotices } from '../../../shared/conventions/tool-precedence.mts';
 import {
   strykerIgnoredNotices as untypedStrykerIgnoredNotices,
   typescriptIgnoredNotices as untypedTypescriptIgnoredNotices,

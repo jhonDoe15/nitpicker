@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
-import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mts';
+import { resolveHeadPolicy } from '../../../shared/head-policy.mts';
+import { baseConfigCoveringHead } from '../../command/base-config/base-coverage.mts';
 import { describeConfigOverrides } from '../config.mts';
 import { configureAnalyzers } from '../configure-analyzers.mts';
 import { presetAnalyzers } from '../preset-analyzers.mts';
@@ -9,7 +9,7 @@ import { validateConfig } from '../validate.mts';
 import { invocationArgs } from '../test-support/analyzer-access.mts';
 import { fieldOf } from '../../../shared/values/readers.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
-import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mts';
 
 const ENTRY = fileURLToPath(checkoutModuleUrl(new URL('../../cli.mjs', import.meta.url)));
 const PRESETS = ['typescript', 'javascript', 'java', 'kotlin', 'python'];

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 import { parseAnalyzerReportKeepingValid } from './invalid-findings.mts';
 

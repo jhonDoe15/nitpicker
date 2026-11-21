@@ -1,10 +1,12 @@
+import type {
+  FeatureRole as SharedFeatureRole,
+  PublicFeatureRole,
+} from '../../../../shared/rules/features/typed/role-types.mts';
+import type { CouplingReport } from '../../../../shared/rules/typed/coupling-report-types.mts';
+
 export type CouplingEdge = { readonly source: string; readonly target: string };
 
-export type FeatureRole = {
-  readonly kind: string;
-  readonly directory: string;
-  readonly [field: string]: unknown;
-};
+export type FeatureRole = SharedFeatureRole | PublicFeatureRole;
 
 export type CouplingFeatures = {
   readonly classFiles?: ReadonlyMap<string, string> | undefined;
@@ -33,21 +35,4 @@ export type CouplingProject = {
   readonly features?: CouplingFeatures | undefined;
 };
 
-type CouplingModule = {
-  readonly file: string;
-  readonly fanIn: number;
-  readonly fanOut: number;
-  readonly totalCoupling: number;
-  readonly instability: number;
-};
-
-type CouplingPackage = { readonly name: string; readonly [field: string]: unknown };
-
-type StabilityViolation = { readonly source: string; readonly target: string };
-
-export type CouplingReport = {
-  readonly summary: unknown;
-  readonly modules: readonly CouplingModule[];
-  readonly packages: readonly CouplingPackage[];
-  readonly stabilityDirection: readonly StabilityViolation[];
-};
+export type { CouplingReport };

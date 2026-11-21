@@ -50,6 +50,31 @@ describe('Java sums that overflow on a maximum-value sentinel', () => {
     ).toEqual([`${MAX_VALUE_RULE} ${JAVA_FILE}:5`]);
   });
 
+  it('carries a maximum into every method that shares the called name and parameter count', () => {
+    expect(
+      java(
+        [
+          '  int wrap(String text, int width) {',
+          '    return Math.min(1 + width, text.length());',
+          '  }',
+          '  int whole(String text) {',
+          '    return wrap(text, Integer.MAX_VALUE) + new Other().wrap(text, Integer.MAX_VALUE);',
+          '  }',
+        ].join('\n'),
+        [
+          'class Other {',
+          '  int wrap(String text, int width) {',
+          '    return Math.min(2 + width, text.length());',
+          '  }',
+          '  int wrap(String text) {',
+          '    return text.length();',
+          '  }',
+          '}',
+        ].join('\n'),
+      ),
+    ).toEqual([`${MAX_VALUE_RULE} ${JAVA_FILE}:4`, `${MAX_VALUE_RULE} ${JAVA_FILE}:12`]);
+  });
+
   it('reports a field default reaching a sum through an accessor', () => {
     expect(
       java(

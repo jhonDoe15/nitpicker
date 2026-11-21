@@ -2,7 +2,7 @@ import nodeModule from 'node:module';
 import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { chainOf } from '../../../shared/traversal.mjs';
+import { chainOf } from '../../../shared/traversal.mts';
 import { fieldOf, parseJson } from '../../../shared/values/readers.mts';
 
 const PACKAGE_MANIFEST = 'package.json';

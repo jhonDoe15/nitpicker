@@ -1,7 +1,7 @@
-import { mutantFindings } from '../../../shared/rules/mutation.mjs';
-import { decodeEntities } from '../../../shared/ingest/common.mjs';
-import { hash } from '../../../shared/rules/finding-helpers.mjs';
-import { escapeRegExp as escapedText } from '../../../shared/paths/glob.mjs';
+import { mutantFindings } from '../../../shared/rules/mutation.mts';
+import { decodeEntities } from '../../../shared/ingest/report-records.mts';
+import { hash } from '../../../shared/rules/finding-parts.mts';
+import { escapeRegExp as escapedText } from '../../../shared/paths/glob.mts';
 import { listOf, textOf } from '../../../shared/values/readers.mts';
 
 type Mutant = {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { crapFindings } from '../../../../../shared/rules/crap.mjs';
+import { crapFindings } from '../../../../../shared/rules/crap.mts';
 import { compareFindings } from '../../../comparison/test-support/typed-compare.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import { parseFinding } from '../../../comparison/finding-schema.mts';

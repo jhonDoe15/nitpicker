@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { projectFilesUnder as projectFilesUnderUntyped } from '../../../../../shared/project-files/project-files.mjs';
+import { projectFilesUnder as projectFilesUnderUntyped } from '../../../../../shared/project-files/project-files.mts';
 import { parseJava, type JavaSource } from './java-model.mts';
 
 const projectFilesUnder: (root: string) => string[] = projectFilesUnderUntyped;

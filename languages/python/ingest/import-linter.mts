@@ -1,5 +1,5 @@
 import type { FindingsResult, IngestedFinding } from './typed/ingest-types.mts';
-import { createIdentityCounter } from '../../../shared/ingest/common.mjs';
+import { createIdentityCounter } from '../../../shared/ingest/report-records.mts';
 
 const SUMMARY_LINE = /^Contracts: \d+ kept, \d+ broken\.$/m;
 const BROKEN_SECTION = /^Broken contracts$/m;

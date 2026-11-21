@@ -1,4 +1,4 @@
-import { bracketGroups as untypedBracketGroups } from '../../../../shared/conventions/lines.mjs';
+import { bracketGroups as untypedBracketGroups } from '../../../../shared/conventions/lines.mts';
 
 type BracketGroup = { opener: string; inner: string[]; closer: string };
 

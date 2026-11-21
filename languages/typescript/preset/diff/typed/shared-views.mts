@@ -1,5 +1,5 @@
-import { withLegacyInventory as untypedWithLegacyInventory } from '../../../../../shared/legacy-inventory.mjs';
-import { sourceInputs as untypedSourceInputs } from '../../../../../shared/input-sets/inputs.mjs';
+import { withLegacyInventory as untypedWithLegacyInventory } from '../../../../../shared/legacy-inventory.mts';
+import { sourceInputs as untypedSourceInputs } from '../../../../../shared/input-sets/inputs.mts';
 import type { PackageAnalyzer } from './analyzer-types.mts';
 
 export const sourceInputs: (extensions: readonly string[]) => unknown = untypedSourceInputs;

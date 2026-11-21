@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
 import { isTable, tomlTable, type TomlTable } from '../../configuration/project-files.mts';
-import { byText } from '../../../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../../../shared/text-order/by-text.mts';
 
 const PRIVATE_CLASSIFIER = 'Private :: Do Not Upload';
 

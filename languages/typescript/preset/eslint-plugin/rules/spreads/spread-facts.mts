@@ -27,8 +27,15 @@ export function optionalPropertyOf(
     property,
     services.esTreeNodeToTSNodeMap.get(spread),
   );
-  const first: TypeScript.Type = type.isUnion() ? (type.types[0] ?? type) : type;
-  const name = type.aliasSymbol?.getName() ?? first.getSymbol()?.getName() ?? '';
+  const members: readonly TypeScript.Type[] = type.isUnion() ? type.types : [type];
+  const names = members.map((member) => member.getSymbol()?.getName() ?? '');
+  const named = names.filter((each) => !isOptionsType(each));
+  const pool = named.length > 0 ? named : names;
+  const least = pool.reduce<string | undefined>(
+    (best, each) => (best === undefined || each < best ? each : best),
+    undefined,
+  );
+  const name = type.aliasSymbol?.getName() ?? least ?? '';
   return includesUndefined(valueType) ? { typeName: name } : undefined;
 }
 

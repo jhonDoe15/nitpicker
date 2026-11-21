@@ -1,5 +1,5 @@
-import { JAVA_LINE_LENGTH } from '../../../../shared/project-rules/size-rules.mjs';
-import { evaluateFileLimits } from '../../../../shared/rules/file-limits.mjs';
+import { JAVA_LINE_LENGTH } from '../../../../shared/project-rules/size-rules.mts';
+import { evaluateFileLimits } from '../../../../shared/rules/file-limits.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../typed/java-values.mts';
 
 type LineLengthFile = { readonly path: string; readonly text: string };

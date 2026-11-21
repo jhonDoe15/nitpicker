@@ -3,9 +3,9 @@ import type TypeScript from 'typescript';
 import {
   formatAgnosticTokens as untypedFormatAgnosticTokens,
   sourceLanguage as untypedSourceLanguage,
-} from '../../../../shared/source-text/format-tokens.mjs';
+} from '../../../../shared/source-text/format-tokens.mts';
 import { chainOf, parentOf, typescriptApi } from '../typed/typescript-program.mts';
-import { nameFreeHash as untypedNameFreeHash } from '../../../../shared/rules/finding-helpers.mjs';
+import { nameFreeHash as untypedNameFreeHash } from '../../../../shared/rules/finding-parts.mts';
 
 type Node = TypeScript.Node;
 type SourceFile = TypeScript.SourceFile;

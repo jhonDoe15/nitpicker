@@ -2,7 +2,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import type { JavaFinding } from '../typed/java-values.mts';
-import { exceptionHint as untypedExceptionHint } from '../../../../shared/rules/exceptions.mjs';
+import { exceptionHint as untypedExceptionHint } from '../../../../shared/rules/exceptions.mts';
 import { jvmReuseFacts, readJvmReuse, readJvmReuseFindings } from './jvm-reuse-facts.mts';
 import {
   createReuseProjects,

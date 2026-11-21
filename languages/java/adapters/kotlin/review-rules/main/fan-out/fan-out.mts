@@ -8,6 +8,7 @@ import type {
   Task,
   MessageWork,
 } from './typed/fan-out-types.mts';
+import { occurrenceCounter } from '../../../../../../../shared/rules/finding-parts.mts';
 import { fanOutReport } from './typed/fan-out-views.mts';
 import { springViews } from '../../spring/view/spring-view.mts';
 import {
@@ -67,7 +68,7 @@ function sitesOf(view: SpringView, tasks: Task[]): SiteTasks[] {
 }
 
 function findingsOf(project: ProjectIndex, view: SpringView): FanOutReport[] {
-  const occurrences = new Map<string, number>();
+  const nextOccurrence = occurrenceCounter();
   return sitesOf(view, startedTasks(project, view))
     .toSorted((left, right) => left.site.line - right.site.line)
     .map(({ site, tasks: [first, ...rest] }) => {
@@ -77,7 +78,7 @@ function findingsOf(project: ProjectIndex, view: SpringView): FanOutReport[] {
       return fanOutReport(view, {
         rule: RULE,
         subject,
-        occurrences,
+        nextOccurrence,
         message: fanOutMessage({ starter: first.starter, collection, work: first.work }),
         line: site.line,
         lines: [first, ...rest].flatMap(({ work }) => work.lines),

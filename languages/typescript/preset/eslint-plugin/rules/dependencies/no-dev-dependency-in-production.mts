@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import path from 'node:path';
-import { exceptionHint as untypedExceptionHint } from '../../../../../../shared/hygiene/rules.mjs';
+import { exceptionHint as untypedExceptionHint } from '../../../../../../shared/hygiene/rules.mts';
 import { stringValue } from '../analysis/constant-resolution.mts';
 import { nearestManifest, packageNameOf, type Manifest } from './package-manifest.mts';
 import { isTestSupportFile } from './test-support.mts';

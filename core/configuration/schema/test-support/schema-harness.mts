@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { Ajv, type ValidateFunction } from 'ajv';
-import { withCanonicalRules } from '../../../../shared/exceptions/validation.mjs';
+import { withCanonicalRules } from '../../../../shared/exceptions/validation.mts';
 import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mts';
 import { validateConfig } from '../../validate.mts';
 import { fieldOf, fieldsOf, parseJson, textOf } from '../../../../shared/values/readers.mts';

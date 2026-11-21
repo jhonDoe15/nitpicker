@@ -1,19 +1,17 @@
 import { existsSync, readdirSync, rmdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { chainOf as untypedChainOf } from '../../../shared/traversal.mjs';
-import { renderJunitReport } from '../../diff/reporting/junit.mts';
+import { chainOf as untypedChainOf } from '../../../shared/traversal.mts';
 import { renderSarifReport } from '../../diff/reporting/sarif.mts';
 import { readTextOr } from '../discovery/repository-files.mts';
 import { reportFolder as untypedReportFolder } from '../plan/project-entry.mts';
 import { SUMMARY_FILE } from './combined-summary.mts';
 import type { ReportData } from '../../../shared/values/findings.mts';
-import type { MonorepoPlan, PlanProject, RepositoryPolicy } from '../project-types.mts';
+import type { MonorepoPlan, PlanProject } from '../project-types.mts';
 
 type SarifRun = Readonly<Record<string, unknown>>;
 type CombinedContext = {
   readonly outputRoot: string;
   readonly plan: MonorepoPlan;
-  readonly repository: RepositoryPolicy | undefined;
 };
 type Render = (context: CombinedContext, file: string) => string | undefined;
 type StaleReports = {
@@ -28,8 +26,6 @@ const SARIF_FILES = ['report.sarif', 'report-baseline.sarif'];
 const JUNIT_FILE = 'report.junit.xml';
 const TESTSUITE = /<testsuite\b[\s\S]*?<\/testsuite>/u;
 const FINDING_CASE = /(classname="quality\.diff\.new-findings" name="[^" ]+ )/gu;
-const REPOSITORY_CATEGORY = 'nitpicker-repository/';
-const REPOSITORY_SUITE = '(repository policy)';
 
 function insideOutput(outputRoot: string, folder: string): string | undefined {
   const full = path.resolve(outputRoot, folder);
@@ -47,16 +43,14 @@ function relocatedRun(run: SarifRun, category: string): SarifRun {
   return { ...run, automationDetails: { id: category } };
 }
 
-function repositoryReport(repository: RepositoryPolicy | undefined): ReportData {
-  return {
-    summary: { tools: [], elapsedMs: 0 },
-    newFindings: repository?.findings ?? [],
-    resolvedFindings: [],
-    unchangedFindings: [],
-    changedMetrics: [],
-    toolErrors: repository?.toolErrors ?? [],
-  };
-}
+const EMPTY_REPORT: ReportData = {
+  summary: { tools: [], elapsedMs: 0 },
+  newFindings: [],
+  resolvedFindings: [],
+  unchangedFindings: [],
+  changedMetrics: [],
+  toolErrors: [],
+};
 
 const reportFolder: (projectPath: string) => string = untypedReportFolder;
 const parseSarif: (text: string) => { readonly runs: SarifRun[] } = JSON.parse;
@@ -79,22 +73,13 @@ function projectRuns(
   });
 }
 
-function combinedSarif(
-  { outputRoot, plan, repository }: CombinedContext,
-  file: string,
-): string | undefined {
+function combinedSarif({ outputRoot, plan }: CombinedContext, file: string): string | undefined {
   const runs = projectRuns(outputRoot, plan.projects, file);
-  const options = { projectPath: plan.prefix };
-  const policy =
-    repository === undefined
-      ? []
-      : runsOf(renderSarifReport(repositoryReport(repository), options));
-  if (runs.length === 0 && policy.length === 0) {
+  if (runs.length === 0) {
     return undefined;
   }
-  const log = parseLog(renderSarifReport(repositoryReport(undefined), options));
-  const repositoryRuns = policy.map((run) => relocatedRun(run, REPOSITORY_CATEGORY));
-  return `${JSON.stringify({ ...log, runs: [...runs, ...repositoryRuns] }, null, 2)}\n`;
+  const log = parseLog(renderSarifReport(EMPTY_REPORT, { projectPath: plan.prefix }));
+  return `${JSON.stringify({ ...log, runs }, null, 2)}\n`;
 }
 
 function escapedXml(value: string): string {
@@ -127,21 +112,15 @@ function projectSuites(outputRoot: string, projects: readonly PlanProject[]): st
   });
 }
 
-function combinedJunit({ outputRoot, plan, repository }: CombinedContext): string | undefined {
+function combinedJunit({ outputRoot, plan }: CombinedContext): string | undefined {
   const suites = projectSuites(outputRoot, plan.projects);
-  const policySuite =
-    repository === undefined
-      ? undefined
-      : renamedSuite(renderJunitReport(repositoryReport(repository)), REPOSITORY_SUITE);
-  const policy = policySuite === undefined ? [] : [fromRepositoryRoot(policySuite, plan.prefix)];
-  if (suites.length === 0 && policy.length === 0) {
+  if (suites.length === 0) {
     return undefined;
   }
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<testsuites>',
     ...suites,
-    ...policy,
     '</testsuites>',
     '',
   ].join('\n');

@@ -2,15 +2,15 @@ import type { Linter } from 'eslint';
 import {
   canonicalRule as untypedCanonicalRule,
   isAddedRule as untypedIsAddedRule,
-} from '../../../../shared/exceptions/rule-names.mjs';
-import { TYPESCRIPT_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
+} from '../../../../shared/exceptions/rule-names.mts';
+import { TYPESCRIPT_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mts';
 import {
   MUTATION_EXCEPTION_RULES,
   SHARED_EXCEPTION_RULES,
   TEST_RUN_EXCEPTION_RULES,
   TYPESCRIPT_PROJECT_EXCEPTION_RULES as untypedProjectExceptionRules,
-} from '../../../../shared/policy.mjs';
-import { PACKAGE_EXCEPTION_RULES as untypedPackageExceptionRules } from '../../../../shared/project-rules/hygiene-rules.mjs';
+} from '../../../../shared/policy.mts';
+import { PACKAGE_EXCEPTION_RULES as untypedPackageExceptionRules } from '../../../../shared/project-rules/hygiene-rules.mts';
 import { strictBoundaryRules } from '../architecture/strict-boundary-rules.mts';
 
 export type ExceptionRule = {

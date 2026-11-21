@@ -55,13 +55,17 @@ export function bodyDeclaredNames(loop: LoopNode, visitorKeys: VisitorKeys): Set
   );
 }
 
-export function isConsumingCall(node: TSESTree.Node): boolean {
+export function callsMethodIn(node: TSESTree.Node, methods: ReadonlySet<string>): boolean {
   const value = node.type === AST_NODE_TYPES.AwaitExpression ? node.argument : node;
   return (
     value.type === AST_NODE_TYPES.CallExpression &&
     value.callee.type === AST_NODE_TYPES.MemberExpression &&
-    CONSUMING_METHODS.has(nameOf(value.callee.property) ?? '')
+    methods.has(nameOf(value.callee.property) ?? '')
   );
+}
+
+export function isConsumingCall(node: TSESTree.Node): boolean {
+  return callsMethodIn(node, CONSUMING_METHODS);
 }
 
 function isOwnStep(node: TSESTree.AssignmentExpression, visitorKeys: VisitorKeys): boolean {

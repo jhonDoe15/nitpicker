@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { TOOL_SKIPPED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
+import { TOOL_SKIPPED_RULE } from '../../../../../shared/rules/finding-parts.mts';
 import { JAVA_FORMATTER_TOOLS } from '../../style/java-style.mts';
 
 type ToolSkipped = {

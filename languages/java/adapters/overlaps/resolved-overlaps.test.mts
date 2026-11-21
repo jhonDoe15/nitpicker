@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
+import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mts';
 import {
   fieldOf,
   fieldsOf,
@@ -18,7 +18,7 @@ import {
   withoutOverlaps,
   type OverlapPair,
 } from './static-overlaps.mts';
-import { guidePages, guideText } from '../../../../shared/reference/build/guide-pages.mjs';
+import { guidePages, guideText } from '../../../../shared/reference/build/guide-pages.mts';
 
 const OVERLAP_PAIRS = overlapPairs();
 

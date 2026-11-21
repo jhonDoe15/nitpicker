@@ -2,6 +2,7 @@ import type { Node } from 'web-tree-sitter';
 import type { BaseContext, Converter, PlacedNode, ShapeNode } from '../jvm-types.mts';
 import {
   NONE,
+  annotatedRest,
   at,
   codeChildren,
   field,
@@ -17,6 +18,20 @@ import {
 
 const NUMBER_KIND = 'number';
 const PARAMETER_KIND = 'parameter';
+
+function restOf(name: ShapeNode, source: Node): PlacedNode {
+  return at({ kind: 'expression', value: 'rest' }, source, [name]);
+}
+
+export function annotatedRestParameter(source: Node, context: BaseContext): PlacedNode | undefined {
+  const rest = annotatedRest(source);
+  return rest === undefined
+    ? undefined
+    : at(PARAMETER_KIND, source, [
+        typeNode(rest.type),
+        restOf(context.name(rest.name, source), source),
+      ]);
+}
 
 function operation(kind: string): Converter {
   return (source, context) =>
@@ -180,9 +195,6 @@ export const EXPRESSIONS: Readonly<Record<string, Converter>> = {
     const [type, found] = codeChildren(source).filter((child) => child.type !== 'modifiers');
     const declarator = present(found);
     const name = declarator.type === 'variable_declarator' ? field(declarator, 'name') : declarator;
-    return at(PARAMETER_KIND, source, [
-      typeNode(type),
-      at({ kind: 'expression', value: 'rest' }, declarator, [context.get(name)]),
-    ]);
+    return at(PARAMETER_KIND, source, [typeNode(type), restOf(context.get(name), declarator)]);
   },
 };

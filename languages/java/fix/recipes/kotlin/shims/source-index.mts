@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../../shared/project-files/project-files.mjs';
+import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../../shared/project-files/project-files.mts';
 import type { FixRecipe, RecipeFix, RuleRef } from '../../../../../../core/fix/typed/fix-types.mts';
 import { isKotlinTestPath } from '../shared/kotlin-recipe.mts';
 import { escapeRegExp, scanKotlinSource } from '../shared/kotlin-scan.mts';

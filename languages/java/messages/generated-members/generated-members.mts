@@ -1,9 +1,9 @@
 import path from 'node:path';
-import { lazy as untypedLazy } from '../../../../shared/rules/finding-helpers.mjs';
+import { lazy as untypedLazy } from '../../../../shared/rules/finding-parts.mts';
 import {
   cycleText as untypedCycleText,
   memberCycles as untypedMemberCycles,
-} from '../../../../shared/rules/generated-members/member-cycles.mjs';
+} from '../../../../shared/rules/generated-members/member-cycles.mts';
 import { offsetOf } from '../../adapters/review-rules/java-sources.mts';
 import {
   fieldDeclaringClass,

@@ -1,12 +1,13 @@
 import { Parser } from 'web-tree-sitter';
 import { loadGrammar } from '../../../../java/adapters/near-duplicates/grammar/load-grammar.mts';
 import { goProjectUnits } from '../project-units.mts';
+import type { Finding } from '../../../../../shared/values/findings.mts';
 import type { GoUnit } from '../types/go-types.mts';
 
 export type RuleFindings = (
   units: readonly GoUnit[],
   context: { readonly analyzerName: string; readonly isExcepted: () => boolean },
-) => readonly { readonly location: { readonly line: number }; readonly message: string }[];
+) => readonly Pick<Finding, 'location' | 'message'>[];
 
 export type GoParse = ((text: string, file?: string) => GoUnit[]) & { readonly parser: Parser };
 

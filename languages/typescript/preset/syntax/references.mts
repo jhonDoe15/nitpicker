@@ -1,7 +1,7 @@
 import type TypeScript from 'typescript';
 import { ts } from './typed/typescript-compiler.mts';
 import { cachedValue } from '../../../../shared/values/caching/cached-value.mts';
-import { byText } from '../../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mts';
 
 type Matcher = (node: TypeScript.Node) => boolean;
 
@@ -113,9 +113,10 @@ export function referenceMembers(
   return new Map(
     [...reads].map(([name, identifiers]) => {
       const members = identifiers.map(memberOf);
+      const names = members.filter((member) => member !== undefined);
       return [
         name,
-        members.includes(undefined) ? undefined : [...new Set(members)].toSorted(byText),
+        names.length < members.length ? undefined : [...new Set(names)].toSorted(byText),
       ];
     }),
   );

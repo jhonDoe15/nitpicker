@@ -1,12 +1,10 @@
 import { resolveBase } from '../../diff/git/repository/base-ref.mts';
-import { policyAcceptance } from '../../projects/policy/policy-acceptance.mts';
 import { javascriptPresetHint } from '../../configuration/project-checks/preset-detection.mts';
 import { type CacheStore, resolveCacheStore } from '../../diff/cache/cache-stores.mts';
-import { fieldsOf, textOf, textsOf } from '../../../shared/values/readers.mts';
+import { textsOf } from '../../../shared/values/readers.mts';
 import type { Analyzer } from '../../../shared/values/analyzers.mts';
 import type { Cli, CliOptions, RunSetup, TextOutput } from '../../cli-context.mts';
 import type { Scope } from '../../scope/scope-findings.mts';
-import type { Loosening as PolicyLoosening } from '../../policy-changes/types/policy-types.mts';
 import type { NitpickerConfig, ProjectOverlay } from '../../../shared/values/config-types.mts';
 import type { SharedWorktree } from '../../diff/comparison/snapshots/run-types.mts';
 
@@ -18,11 +16,9 @@ export type ConfiguredCli = Cli & {
   readonly configOverlay?: ProjectOverlay | undefined;
   readonly projectKey?: string | undefined;
   readonly baseConfigOverlay?: ProjectOverlay | undefined;
-  readonly repositoryLoosenings?: readonly PolicyLoosening[];
   readonly sharedBase?: ReturnType<typeof resolveBase>;
   readonly sharedBaseWorktree?: SharedWorktree | undefined;
   readonly sharedHeadWorktree?: SharedWorktree | undefined;
-  readonly repositoryToolErrors?: readonly object[];
 };
 
 export type ComparisonCli = Omit<ConfiguredCli, 'analyzers' | 'currentProjectRoot'> &
@@ -49,18 +45,6 @@ export function writeNotes(stderr: TextOutput, notes: unknown): void {
   for (const note of textsOf(notes)) {
     stderr.write(`nitpicker: ${note}\n`);
   }
-}
-
-export function acceptanceOf(
-  cli: Pick<ConfiguredCli, 'options' | 'environment' | 'interactive' | 'stderr'>,
-): object {
-  const { ignoredAcceptance, ...acceptance } = fieldsOf(
-    policyAcceptance(cli.options, cli.environment, cli.interactive),
-  );
-  if (ignoredAcceptance !== undefined) {
-    cli.stderr.write(`nitpicker: ${textOf(ignoredAcceptance)}\n`);
-  }
-  return acceptance;
 }
 
 export function resolveRunCacheStore(

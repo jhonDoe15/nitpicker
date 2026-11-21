@@ -1,5 +1,5 @@
 import { textOf } from '../../../../../shared/values/readers.mts';
-import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mts';
 import { projectTestRetry, spawnNodeTool, withoutOptions } from '../typed/runner-tools.mts';
 import { readTestReport as readTestReportJson } from '../../quality-areas/reporting/test-report.mts';
 import type { NodeToolResult } from '../../static-checks/shared.mts';
@@ -57,7 +57,7 @@ function mochaReport({
 }
 
 export async function runMocha(options: TestOptions, command: RunnerCommand): Promise<TestRun> {
-  const retries = projectTestRetry('mocha') ?? 0;
+  const retries = projectTestRetry('mocha', options.environment) ?? 0;
   const testFiles = options.rerun?.files ?? runnableTestFiles(options);
   const mochaReportPath = temporaryProjectPath(options, 'mocha-output.json');
   const testConsole = startTestConsole(options, { collectsLines: true });

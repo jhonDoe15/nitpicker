@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { actionPinProblems } from './action-pins/action-pins.mts';
-import { TOOL_RUN_CEILING_MS } from '../shared/processes/deadlines.mjs';
+import { TOOL_RUN_CEILING_MS } from '../shared/processes/deadlines.mts';
 
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
 

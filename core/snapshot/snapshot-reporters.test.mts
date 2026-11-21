@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { docsUrl as untypedDocsUrl } from '../../shared/messages/docs-url.mjs';
+import { docsUrl as untypedDocsUrl } from '../../shared/messages/docs-url.mts';
 import { parseJson, textOf } from '../../shared/values/readers.mts';
 import { writeSnapshotReports } from './reporters.mts';
 

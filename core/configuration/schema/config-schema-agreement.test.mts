@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { THRESHOLD_KEYS, WHOLE_NUMBER_THRESHOLD_KEYS } from '../../../shared/config.mjs';
+import { THRESHOLD_KEYS, WHOLE_NUMBER_THRESHOLD_KEYS } from '../../../shared/config.mts';
 import { conventionDefinitions } from '../../conventions/definitions.mts';
 import { LAYOUT_KEYS } from '../scopes/layout-settings.mts';
 import { RULES } from '../views/validation-views.mts';

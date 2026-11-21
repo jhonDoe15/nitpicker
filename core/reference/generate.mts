@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import * as prettier from 'prettier';
-import { encodePage, REFERENCE_DATA_DIRECTORY } from '../../shared/reference/store.mjs';
-import { containedPath as untypedContainedPath } from '../../shared/paths/contained-path.mjs';
-import { PAGES } from '../../shared/reference/pages.mjs';
+import { encodePage, REFERENCE_DATA_DIRECTORY } from '../../shared/reference/store.mts';
+import { containedPath as untypedContainedPath } from '../../shared/paths/contained-path.mts';
+import { PAGES } from '../../shared/reference/pages.mts';
 import { buildReference } from './build.mts';
 import { renderReference } from './render.mts';
 import type { FixSources, ReferenceEntry } from './build.mts';

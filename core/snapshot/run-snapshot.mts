@@ -10,7 +10,7 @@ import { fieldOf, textOf } from '../../shared/values/readers.mts';
 import { type ReportEntry, entriesOf } from '../../shared/values/findings.mts';
 import { inFocus, isEnforceable, labelSummary } from './snapshot-labels.mts';
 import type { LabelFilter } from '../labels/taxonomy.mts';
-import { withoutCrossToolOverlaps } from '../../shared/findings/overlaps/cross-tool.mjs';
+import { withoutCrossToolOverlaps } from '../../shared/findings/overlaps/cross-tool.mts';
 import { withSharedUnusedDirectives } from '../../languages/typescript/adapters/eslint/merge/unused-directives.mts';
 import { appendAll } from '../../shared/lists/lists.mts';
 
@@ -61,7 +61,6 @@ export type QualitySnapshot = {
 
 const withPolicyFile: <Run>(headPolicy: object, run: (headPolicyFile: unknown) => Run) => Run =
   withHeadPolicyFile;
-const withoutOverlaps: <Run>(run: Run) => Run = withoutCrossToolOverlaps;
 
 function sortKey(value: unknown): string {
   return typeof value === 'string' ? value : '';
@@ -79,7 +78,7 @@ type HeadRunRequest = {
 };
 
 function headRun({ analyzers, headPolicy, scope, execution, ...roots }: HeadRunRequest) {
-  return withoutOverlaps(
+  return withoutCrossToolOverlaps(
     withSharedUnusedDirectives(
       withPolicyFile(headPolicy, (headPolicyFile) =>
         resumedAnalyzerRun(execution['resume'], {

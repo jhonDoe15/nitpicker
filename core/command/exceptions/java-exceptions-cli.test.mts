@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mts';
-import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
-import { JAVA_SIZE_RULES } from '../../../shared/project-rules/size-rules.mjs';
+import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mts';
+import { JAVA_SIZE_RULES } from '../../../shared/project-rules/size-rules.mts';
 import { runCli as nitpickerCli } from '../../cli.mts';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 import { commit } from '../../diff/git/test-support/git-repository.mts';
@@ -79,13 +79,11 @@ describe('exceptions with "preset": "java"', () => {
       ]);
     });
 
-    it('reports an exception added with the method as a loosening of the base policy', () => {
+    it('lifts a method with an exception added in the same change', () => {
       const result = change(configWith(entry('Wide.sum')), '{ "preset": "java" }\n');
 
-      expect(result.exitCode, result.output.out + result.output.err).toBe(1);
-      expect(pickFields(enforceableFindings(result.json('new-findings.json')), 'rule')).toEqual([
-        ['policy-loosened'],
-      ]);
+      expect(result.exitCode, result.output.out + result.output.err).toBe(0);
+      expect(enforceableFindings(result.json('new-findings.json'))).toEqual([]);
     });
 
     it.each([

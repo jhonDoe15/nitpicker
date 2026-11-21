@@ -4,8 +4,8 @@ import {
   hasScriptSources,
   scriptProjectPreset,
 } from '../../configuration/project-checks/preset-detection.mts';
-import { CONFIG_FILE_NAME, configError as untypedConfigError } from '../../../shared/config.mjs';
-import { globMatcher as untypedGlobMatcher } from '../../../shared/paths/glob.mjs';
+import { CONFIG_FILE_NAME, configError as untypedConfigError } from '../../../shared/config.mts';
+import { globMatcher as untypedGlobMatcher } from '../../../shared/paths/glob.mts';
 import { angularWorkspace, javascriptWorkspaces, nxWorkspace } from './javascript-workspaces.mts';
 import { JVM_MARKERS, gradleComposite, jvmBuilds } from './jvm-builds.mts';
 import { PYTHON_MARKERS, PYTHON_PROJECT_MARKERS, pythonWorkspace } from './python-projects.mts';

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { globMatcher as untypedGlobMatcher } from '../../../../shared/paths/glob.mjs';
+import { globMatcher as untypedGlobMatcher } from '../../../../shared/paths/glob.mts';
 
 type ExclusionReason = {
   readonly source: string;

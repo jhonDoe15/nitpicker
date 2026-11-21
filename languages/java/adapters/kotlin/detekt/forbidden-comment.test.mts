@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
-import { taskMarkerCases as untypedTaskMarkerCases } from '../../../../../shared/naming/test-support/task-marker-cases.mjs';
+import { taskMarkerCases as untypedTaskMarkerCases } from '../../../../../shared/naming/test-support/task-marker-cases.mts';
 import { fieldAt } from '../../../../../scripts/json/fields.mts';
 import { listEntriesOf, MERGED_LISTS } from './detekt-lists.mts';
 

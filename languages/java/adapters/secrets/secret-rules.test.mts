@@ -9,7 +9,7 @@ import {
   PLACEHOLDER_PATTERNS,
   SECRET_NAME_WORDS,
   SECRET_VALUE_SUFFIXES,
-} from '../../../../shared/naming/secret-words.mjs';
+} from '../../../../shared/naming/secret-words.mts';
 
 const RULES = path.resolve(import.meta.dirname, '../../gradle/rulesets/pmd-main-ruleset/secrets');
 const read = (name: string) => readFileSync(path.join(RULES, `${name}.xml`), 'utf8');

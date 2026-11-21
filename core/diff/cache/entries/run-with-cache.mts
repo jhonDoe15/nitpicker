@@ -14,7 +14,7 @@ import { analyzerNameOf as nameOf } from '../../../../shared/values/analyzers.mt
 
 export type CachedRun = {
   readonly reports: Map<string, AnalyzerReport>;
-  readonly timings: ReadonlyMap<string, unknown>;
+  readonly timings: ReadonlyMap<string, number | undefined>;
   readonly toolErrors: readonly ReportEntry[];
   readonly metadata?: MetadataMap;
 };

@@ -41,7 +41,7 @@ function comparedKey(test: TSESTree.BinaryExpression): string | undefined {
   return isNullish(test.left) ? targetKey(test.right) : undefined;
 }
 
-function orOperands(test: TSESTree.Node): TSESTree.Node[] {
+export function orOperands(test: TSESTree.Node): TSESTree.Node[] {
   const operands = [test];
   const found: TSESTree.Node[] = [];
   for (const operand of operands) {

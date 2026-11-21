@@ -1,6 +1,6 @@
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
-import { resolveModuleSpecifier } from './class-views.mts';
+import { resolveModuleSpecifier } from '../../modules/module-resolution.mts';
 import type { ClassMeasure } from './class-measures.mts';
 import { appendAll } from '../../../../../shared/lists/lists.mts';
 

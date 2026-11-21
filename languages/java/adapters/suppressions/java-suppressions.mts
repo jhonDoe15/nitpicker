@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { exceptionRoute as untypedExceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
-import { appendSentence as untypedAppendSentence } from '../../../../shared/messages/exception-sentence.mjs';
+import { exceptionRoute as untypedExceptionRoute } from '../../../../shared/exceptions/rule-names.mts';
+import { appendSentence as untypedAppendSentence } from '../../../../shared/messages/exception-sentence.mts';
 import { ERROR_PRONE_MESSAGE, errorProneEscapes } from './errorprone/errorprone-escapes.mts';
-import { hash, nextOccurrence, projectFilesUnder } from '../typed/finding-views.mts';
+import { hash, occurrenceCounter, projectFilesUnder } from '../typed/finding-views.mts';
 import type {
   InlineFinding,
   SourceViews,
@@ -83,7 +83,7 @@ export function fileFindings(source: string, filePath: string): InlineFinding[] 
       String.fromCodePoint(Number.parseInt(code, 16)),
     ),
   );
-  const occurrences = new Map<string, number>();
+  const nextOccurrence = occurrenceCounter();
   const spotbugsOwnsSuppressWarnings = SPOTBUGS_SUPPRESS_WARNINGS_IMPORT.test(views.code);
   const javaLangAnnotations = spotbugsOwnsSuppressWarnings
     ? JAVA_LANG_SUPPRESS_WARNINGS
@@ -106,7 +106,7 @@ export function fileFindings(source: string, filePath: string): InlineFinding[] 
       key: undefined,
     });
     const key = `${found}\0${declarationAfter(views.code, offset)}\0${lineText(views.code, offset)}`;
-    const occurrence = nextOccurrence(occurrences, `${tool}\0${key}`);
+    const occurrence = nextOccurrence(`${tool}\0${key}`);
     return {
       tool,
       rule: INLINE_SUPPRESSION_RULE,

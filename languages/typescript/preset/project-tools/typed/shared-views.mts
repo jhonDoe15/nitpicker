@@ -1,30 +1,27 @@
 import {
   isCount as untypedIsCount,
   isStringList as untypedIsStringList,
-  listOf as untypedListOf,
   picked as untypedPicked,
-} from '../../../../../shared/config.mjs';
+} from '../../../../../shared/config.mts';
 import {
   ignoredConfigNotice as untypedIgnoredConfigNotice,
   missingProjectConfig as untypedMissingProjectConfig,
   precedenceLayers as untypedPrecedenceLayers,
-} from '../../../../../shared/conventions/tool-precedence.mjs';
+} from '../../../../../shared/conventions/tool-precedence.mts';
 import {
   firstProjectFile as untypedFirstProjectFile,
   isRealPathInside as untypedIsRealPathInside,
   readRealInside as untypedReadRealInside,
   realFileInside as untypedRealFileInside,
   resolveInside as untypedResolveInside,
-} from '../../../../../shared/conventions/read-inside.mjs';
-import { parsedJsonc as untypedParsedJsonc } from '../../../../../shared/jsonc/jsonc.mjs';
-import { readHeadPolicyFile as untypedReadHeadPolicyFile } from '../../../../../shared/head-policy.mjs';
+} from '../../../../../shared/conventions/read-inside.mts';
+import { parsedJsonc as untypedParsedJsonc } from '../../../../../shared/jsonc/jsonc.mts';
+import { readHeadPolicyFile as untypedReadHeadPolicyFile } from '../../../../../shared/head-policy.mts';
 import type { JsoncResult, PrecedenceLayers, ToolSettings, ToolValues } from './tool-types.mts';
 
 export const isCount: (value: unknown) => boolean = untypedIsCount;
 
 export const isStringList: (value: unknown) => boolean = untypedIsStringList;
-
-export const configList: (value: unknown) => unknown[] = untypedListOf;
 
 export const picked: (source: ToolValues, keys: readonly string[]) => ToolValues = untypedPicked;
 
@@ -68,6 +65,6 @@ export function readRealInside(root: string, relative: string): string | undefin
   return readRealInsideRaw(root, relative, 'utf8')?.toString();
 }
 
-export const readHeadPolicyFile: () => {
+export const readHeadPolicyFile: (environment: Readonly<Record<string, string | undefined>>) => {
   readonly tools?: Readonly<Record<string, ToolSettings | undefined>>;
 } = untypedReadHeadPolicyFile;

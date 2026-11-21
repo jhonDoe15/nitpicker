@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { TROUBLESHOOTING_ANCHORS } from '../../../../../shared/messages/troubleshooting.mjs';
+import { TROUBLESHOOTING_ANCHORS } from '../../../../../shared/messages/troubleshooting.mts';
 import { withTroubleshooting } from '../typed/tools.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 

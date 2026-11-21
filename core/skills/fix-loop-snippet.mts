@@ -101,9 +101,7 @@ function exitCodes(): string {
 function readReport(): string {
   const intro =
     'The console summary lists each new code violation as `<tool>/<rule> <path>:<line>` ' +
-    'followed by its message. A change to `nitpicker.config.json` that checks less is not listed ' +
-    'that way: it appears under "Policy changed in this change", followed by `Unapproved policy ' +
-    'changes (nitpicker-config/policy-loosened): N`, and fails the run.';
+    'followed by its message.';
   const folder =
     `${REPORT_FILES} Full reports are written to \`${REPORT_FOLDER}\` ` +
     '(`reports/quality/snapshot/` for `--all`):';
@@ -142,9 +140,7 @@ function handleFinding(): string {
     '`exceptions` in `nitpicker.config.json`, add to `nitpicker.legacy.json`, mark a file you ' +
     'wrote as generated (`@generated`, `DO NOT EDIT`), or delete or weaken tests to make the ' +
     'gate pass. Those overrides are listed in the report and change the policy hash, so they ' +
-    'are visible in review. Never pass `--accept-policy-change`, set ' +
-    '`NITPICKER_ACCEPT_POLICY_CHANGE` or add the `accept-policy-change` label: a ' +
-    '`nitpicker-config/policy-loosened` finding means stop and ask a person to review the change.';
+    'are visible in review.';
   const items = [
     'Read the message. It says what is wrong.',
     'Fix the code so the finding goes away, then rerun `npx nitpicker` until it exits 0. ' +

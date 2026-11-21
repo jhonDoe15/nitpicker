@@ -1,4 +1,4 @@
-import { escapeRegExp as escapeRegExpJs } from '../../../../shared/paths/glob.mjs';
+import { escapeRegExp as escapeRegExpJs } from '../../../../shared/paths/glob.mts';
 
 export const escapeRegExp: (value: string) => string = escapeRegExpJs;
 

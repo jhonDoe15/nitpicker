@@ -5,7 +5,7 @@ import { readEffectivePom } from './configuration/effective-pom.mts';
 import { readReactor } from './maven-project.mts';
 import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mts';
 import { missingLauncherVersions } from './maven-tests.mts';
-import { usesConfigRetries } from '../../../shared/conventions/tool-precedence.mjs';
+import { usesConfigRetries } from '../../../shared/conventions/tool-precedence.mts';
 import {
   checkstyleIndentation,
   javaFormatterFlags,

@@ -1,6 +1,6 @@
 import { branchOutcomes } from './go-branch-coverage.mts';
 import { comparePositions } from '../typed/go-readers.mts';
-import { ingestCrapRows } from '../typed/shared-readers.mts';
+import { ingestCrapRows } from '../../../../shared/ingest/lizard-crap.mts';
 import type { Branch, CoverProfile, FindingRow, GoFunction, Position } from '../go-types.mts';
 
 const FULL = 100;
@@ -65,12 +65,8 @@ export function goCrapFindings({
     numberedAmongSameSource: true,
     fn,
   }));
-  return ingestCrapRows(
-    rows,
-    { limit, sourceText: functionText },
-    (row: { name: string; fn: GoFunction }) => ({
-      name: row.name,
-      ...(known ? { coverage: functionCoverage(row.fn, { functions, branches, profile }) } : {}),
-    }),
-  ).findings;
+  return ingestCrapRows(rows, { limit, sourceText: functionText }, (row) => ({
+    name: row.name,
+    ...(known ? { coverage: functionCoverage(row.fn, { functions, branches, profile }) } : {}),
+  })).findings;
 }

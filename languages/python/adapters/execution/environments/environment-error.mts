@@ -1,7 +1,7 @@
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
-} from '../../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../../shared/messages/troubleshooting.mts';
 
 export const ENVIRONMENT_FAILED_RULE = 'environment-failed';
 

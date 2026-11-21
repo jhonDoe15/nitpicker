@@ -1,10 +1,10 @@
 import { existsSync } from 'node:fs';
-import { resolveInside as untypedResolveInside } from '../../../../../shared/conventions/read-inside.mjs';
+import { resolveInside as untypedResolveInside } from '../../../../../shared/conventions/read-inside.mts';
 import {
   missingProjectConfig as untypedMissingProjectConfig,
   precedenceLayers as untypedPrecedenceLayers,
-} from '../../../../../shared/conventions/tool-precedence.mjs';
-import { troubleshootingError as untypedTroubleshootingError } from '../../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../../shared/conventions/tool-precedence.mts';
+import { troubleshootingError as untypedTroubleshootingError } from '../../../../../shared/messages/troubleshooting.mts';
 
 const resolveInside: (root: string, relative: string) => string | undefined = untypedResolveInside;
 export const missingProjectConfig: (tool: string, looked: string) => string =

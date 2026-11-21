@@ -11,7 +11,7 @@ Part of the [Python preset guide](../python-preset.md).
   finding per line whose taken outcomes are below 95% (the minimum of the other languages). Lines
   without branches are never reported. The tool name is `coverage-py`, not `coverage`: `coverage`
   is also the name of the TypeScript coverage analyzer, whose identity scheme differs, and the
-  touched-code rule in `shared/policy.mjs` (`TOUCHED_CODE_RULES`) is scoped by tool name.
+  touched-code rule in `shared/policy.mts` (`TOUCHED_CODE_RULES`) is scoped by tool name.
 - **What makes it "changed".** The same mechanism as Java slice 8: the differential comparison maps
   head lines to the merge base through the zero-context diff, and `TOUCHED_CODE_RULES` lists
   `coverage-py` for this rule, so an uncovered branch whose head line lies in a changed range, or in

@@ -1,9 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { pathInside } from '../../../../shared/filesystem.mjs';
-import { withMessage } from '../../../../shared/messages/advice/finding-advice.mjs';
-import { ROUTE_SENTENCE, appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
-import { hash, nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
-import { JVM_REGEX_RULES, jvmPatternFlags } from '../../../../shared/rules/regex/jvm-patterns.mjs';
+import { pathInside } from '../../../../shared/filesystem.mts';
+import { withMessage } from '../../../../shared/messages/advice/finding-advice.mts';
+import { ROUTE_SENTENCE, appendSentence } from '../../../../shared/messages/exception-sentence.mts';
+import {
+  type OccurrenceCounter,
+  hash,
+  occurrenceCounter,
+} from '../../../../shared/rules/finding-parts.mts';
+import { JVM_REGEX_RULES, jvmPatternFlags } from '../../../../shared/rules/regex/jvm-patterns.mts';
 import {
   REGEX_DIALECTS,
   patternDefects,
@@ -106,8 +110,8 @@ function defectFindings(
   finding: JavaFinding,
   {
     projectRoot,
-    occurrences,
-  }: { readonly projectRoot: string; readonly occurrences: Map<string, number> },
+    nextOccurrence,
+  }: { readonly projectRoot: string; readonly nextOccurrence: OccurrenceCounter },
 ): JavaFinding[] {
   const site = patternAt(projectRoot, finding);
   if (site === undefined) {
@@ -126,7 +130,7 @@ function defectFindings(
     .filter((defect) => fieldOf(defect, 'kind') === KINDS.get(finding.rule))
     .flatMap((defect) => {
       const key = `${textOf(fieldOf(defect, 'rule'))}\0${site.pattern}`;
-      const occurrence: unknown = nextOccurrence(occurrences, `${finding.path}\0${key}`);
+      const occurrence: unknown = nextOccurrence(`${finding.path}\0${key}`);
       const suffix = occurrence === 1 ? '' : `#${String(occurrence)}`;
       const route = routeSentence.exec(textOf(finding.message))?.[0];
       const message: unknown = appendSentence(textOf(fieldOf(defect, 'message')), route);
@@ -144,10 +148,10 @@ export function withRegexDefects(
   findings: readonly JavaFinding[],
   projectRoot: string,
 ): JavaFinding[] {
-  const occurrences = new Map<string, number>();
+  const nextOccurrence = occurrenceCounter();
   return findings.flatMap((finding) =>
     finding.tool === 'pmd' && KINDS.has(finding.rule) && finding.path.endsWith('.java')
-      ? defectFindings(finding, { projectRoot, occurrences })
+      ? defectFindings(finding, { projectRoot, nextOccurrence })
       : [finding],
   );
 }

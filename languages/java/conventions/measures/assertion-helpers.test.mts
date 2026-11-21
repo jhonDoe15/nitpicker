@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fieldOf } from '../../../../shared/values/readers.mts';
-import { detectConventions } from '../../../../shared/conventions/detect.mjs';
+import { detectConventions } from '../../../../shared/conventions/detect.mts';
 import { JAVA_ASSERTION_HELPERS, JAVA_CONVENTIONS } from '../java-conventions.mts';
 import { KOTLIN_CONVENTIONS } from '../kotlin-conventions.mts';
 import type { ConventionDefinition } from '../../../../shared/values/config-types.mts';

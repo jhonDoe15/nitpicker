@@ -6,9 +6,9 @@ import { useGitFixtures } from '../../../../../../core/diff/git/test-support/git
 import {
   DESIGN_RULE_IDS,
   DESIGN_RULES,
-} from '../../../../../../shared/project-rules/design/design-rules.mjs';
+} from '../../../../../../shared/project-rules/design/design-rules.mts';
 import { fieldOf, listOf } from '../../../../../../shared/values/readers.mts';
-import { validateFacts } from '../../../../../../shared/rules/facts/schema.mjs';
+import { validateFacts } from '../../../../../../shared/rules/facts/schema.mts';
 import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from '../../kotlin-options.mts';
 import { bundleOf, callsOf, designFindings, recordedFacts } from './design-support.mts';
 import { DESIGN_FAILURE_RULE, DESIGN_TOOL } from './kotlin-design.mts';

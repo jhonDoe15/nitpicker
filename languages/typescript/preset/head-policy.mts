@@ -20,9 +20,9 @@ import {
   picked,
   readPolicyFile,
   readPolicySource,
-  resolveSharedPolicy,
 } from './typed/head-policy-views.mts';
-import { hasField, optionalText, textsOf } from '../../../shared/values/readers.mts';
+import { resolveHeadPolicy as resolveSharedPolicy } from '../../../shared/head-policy.mts';
+import { hasField, isPlainObject, optionalText, textsOf } from '../../../shared/values/readers.mts';
 import type { Environment } from '../../../shared/processes/environment.mts';
 import { projectConfigTools } from './project-tools/project-config-files.mts';
 import { headCapturedFacts, withProjectToolConfigs } from './project-tools/project-tool-policy.mts';
@@ -40,11 +40,11 @@ type Fields = Readonly<Record<string, unknown>>;
 type ToolRecord = Record<string, ToolSettings | undefined>;
 type FileMatcher = (file: string) => boolean;
 
-export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
+export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mts';
 
 export const defaultLayout = { sourceRoots, testRoots, excludedGlobs: builtInExcludedGlobs };
 
-export const PRETTIER_PROJECT_FILES = [
+const PRETTIER_PROJECT_FILES = [
   '.prettierrc',
   '.prettierrc.json',
   '.prettierrc.json5',
@@ -84,7 +84,15 @@ function withTestPlacement(
 const SCOPED_PRESETS = [undefined, 'typescript', 'javascript'];
 
 export function resolveHeadPolicy(config: HeadConfig = {}, projectRoot?: string): HeadPolicyFile {
-  const policy = withTestPlacement(resolveSharedPolicy(config), projectRoot);
+  const { react, i18n, ...shared } = resolveSharedPolicy(config);
+  const policy = withTestPlacement(
+    {
+      ...shared,
+      ...(isPlainObject(react) ? { react } : {}),
+      ...(isPlainObject(i18n) ? { i18n } : {}),
+    },
+    projectRoot,
+  );
   return projectRoot === undefined ? policy : withProjectFacts(policy, config, projectRoot);
 }
 

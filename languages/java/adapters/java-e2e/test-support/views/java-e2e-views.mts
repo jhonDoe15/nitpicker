@@ -1,5 +1,5 @@
-import { exceptionRoute as exceptionRouteUntyped } from '../../../../../../shared/exceptions/rule-names.mjs';
-import { appendSentence as appendSentenceUntyped } from '../../../../../../shared/messages/exception-sentence.mjs';
+import { exceptionRoute as exceptionRouteUntyped } from '../../../../../../shared/exceptions/rule-names.mts';
+import { appendSentence as appendSentenceUntyped } from '../../../../../../shared/messages/exception-sentence.mts';
 
 type Route = {
   readonly rule: string;

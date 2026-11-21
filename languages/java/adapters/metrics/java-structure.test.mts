@@ -6,7 +6,7 @@ import {
   useGitCheckouts,
 } from '../../../../core/diff/git/test-support/git-checkout.mts';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { RULE_IDS } from '../../../../shared/policy.mjs';
+import { RULE_IDS } from '../../../../shared/policy.mts';
 import { readJavaFileLimitFindings, readJavaStructureFindings } from './java-structure.mts';
 import type { JavaFinding } from '../typed/java-values.mts';
 

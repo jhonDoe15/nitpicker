@@ -5,7 +5,7 @@ import { bareReport } from '../test-support/bare-report.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingUrl,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 
 const HELP_LINE = `Help with tool errors: ${textOf(troubleshootingUrl(TROUBLESHOOTING_ANCHORS.exitCode2))}`;
 

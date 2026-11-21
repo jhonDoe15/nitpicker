@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
-import { HEAD_POLICY_ENV } from '../../../../../../shared/head-policy.mjs';
+import { HEAD_POLICY_ENV } from '../../../../../../shared/head-policy.mts';
 import { ruleModule, typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './file-name-casing.mts';
 

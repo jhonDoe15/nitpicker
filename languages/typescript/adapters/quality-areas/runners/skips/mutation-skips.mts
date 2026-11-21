@@ -1,8 +1,8 @@
 import {
   TYPECHECK_FAILED_SKIPPED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
-} from '../../../../../../shared/rules/finding-helpers.mjs';
-import { TROUBLESHOOTING_ANCHORS } from '../../../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../../../shared/rules/finding-parts.mts';
+import { TROUBLESHOOTING_ANCHORS } from '../../../../../../shared/messages/troubleshooting.mts';
 
 const INITIAL_TEST_RUN_FAILED_PATTERN =
   /failed tests in the initial test run|Something went wrong in the initial test run/u;

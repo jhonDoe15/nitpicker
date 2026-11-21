@@ -1,6 +1,28 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { ancestorsOf, variableNamed, type SourceCode } from '../../rules/typed/node-views.mts';
 import { memberKeyOf } from '../../rules/typed/syntax-views.mts';
+import {
+  COOKIE_KEY,
+  DIRECTORY_KEY,
+  STORAGE_KEYS,
+  assertedEmptyStorage,
+  isCypressSpec,
+  cookieKey,
+  runsInPage,
+  savedValueKey,
+  stateCall,
+} from './state-writes.mts';
+import {
+  CLEARING_HOOKS,
+  enclosingFunctionName,
+  inEachHook,
+  innermostFunction,
+  isNamedPageFunction,
+  isPutBackByLaterWrite,
+  isStubbedAway,
+  restoresLater,
+  stubbedName,
+} from './restore-signals.mts';
 
 type SyntheticMember = {
   readonly type: AST_NODE_TYPES.MemberExpression;
@@ -11,10 +33,16 @@ type SyntheticMember = {
 type Target = TSESTree.Node | SyntheticMember;
 type ProcessEnv = SyntheticMember & { readonly object: TSESTree.Identifier };
 type WriteNode = TSESTree.AssignmentExpression | TSESTree.UnaryExpression | TSESTree.CallExpression;
-type WriteMessageId = 'unrestoredEnvWrite' | 'unrestoredGlobalWrite';
+export type WriteMessageId =
+  | 'unrestoredEnvWrite'
+  | 'unrestoredGlobalWrite'
+  | 'unrestoredStorageWrite'
+  | 'unrestoredCookieWrite'
+  | 'unrestoredDirectoryChange';
+type Recorded = { readonly node: WriteNode; readonly key: string };
 
 const GLOBAL_OBJECTS = new Set(['globalThis', 'global', 'window', 'self']);
-const OVERRIDDEN_OBJECTS = new Set(['Date', 'Math', 'Intl', 'console']);
+const OVERRIDDEN_OBJECTS = new Set(['Date', 'Math', 'Intl', 'console', 'navigator']);
 const COMPUTED_KEY = '[computed]';
 const ENV_KEY = 'process.env';
 const FUNCTIONS = new Set<string>([
@@ -102,21 +130,9 @@ function writingCallKey(sourceCode: SourceCode, call: TSESTree.CallExpression): 
   });
 }
 
-function enclosingFunctionName(node: TSESTree.Node): string | undefined {
-  const owner = ancestorsOf(node).find((ancestor) => FUNCTIONS.has(ancestor.type));
-  if (owner?.type === AST_NODE_TYPES.FunctionDeclaration) {
-    return owner.id?.name;
-  }
-  const holder = owner?.parent;
-  return holder?.type === AST_NODE_TYPES.VariableDeclarator &&
-    holder.id.type === AST_NODE_TYPES.Identifier
-    ? holder.id.name
-    : undefined;
-}
-
 function directWriteKey(sourceCode: SourceCode, node: WriteNode): string | undefined {
   if (node.type === AST_NODE_TYPES.AssignmentExpression) {
-    return targetKey(sourceCode, node.left);
+    return targetKey(sourceCode, node.left) ?? cookieKey(sourceCode, node.left);
   }
   if (node.type === AST_NODE_TYPES.UnaryExpression && node.operator === 'delete') {
     return targetKey(sourceCode, node.argument);
@@ -127,7 +143,15 @@ function directWriteKey(sourceCode: SourceCode, node: WriteNode): string | undef
   return undefined;
 }
 
-const FILE_SETUP_CALLS = new Set(['beforeAll', 'beforeEach', 'vi.hoisted', 'vi.mock', 'vi.doMock']);
+const FILE_SETUP_CALLS = new Set([
+  'beforeAll',
+  'beforeEach',
+  'vi.hoisted',
+  'vi.mock',
+  'vi.doMock',
+  'jest.mock',
+  'jest.doMock',
+]);
 
 function setupName(call: TSESTree.CallExpression): string {
   return call.callee.type === AST_NODE_TYPES.Identifier
@@ -152,25 +176,78 @@ function runsPerTest(node: TSESTree.Node): boolean {
 }
 
 function writeMessageId(key: string): WriteMessageId {
-  return key === ENV_KEY ? 'unrestoredEnvWrite' : 'unrestoredGlobalWrite';
+  if (key === ENV_KEY) {
+    return 'unrestoredEnvWrite';
+  }
+  if (STORAGE_KEYS.has(key)) {
+    return 'unrestoredStorageWrite';
+  }
+  if (key === COOKIE_KEY) {
+    return 'unrestoredCookieWrite';
+  }
+  return key === DIRECTORY_KEY ? 'unrestoredDirectoryChange' : 'unrestoredGlobalWrite';
 }
 
 export function createWriteTracker(
   sourceCode: SourceCode,
   isRestored: (node: TSESTree.Node) => boolean,
 ): WriteTracker {
-  const writes: { node: WriteNode; key: string }[] = [];
+  const resetPerTest = isCypressSpec(sourceCode);
+  const writes: Recorded[] = [];
+  const bodyRestores: Recorded[] = [];
   const restoredKeys = new Set<string>();
   const hookCalls = new Set<string>();
+  const clearingCalls = new Set<string>();
+  const stubbed = new Set<string>();
+  const clears: Recorded[] = [];
+  function readKey(target: TSESTree.Node): string | undefined {
+    return targetKey(sourceCode, target) ?? cookieKey(sourceCode, target);
+  }
+  function putsBackSavedValue(node: WriteNode, key: string): boolean {
+    return (
+      node.type === AST_NODE_TYPES.AssignmentExpression &&
+      savedValueKey(sourceCode, node.right, readKey) === key
+    );
+  }
+  function isPageState(key: string): boolean {
+    return resetPerTest && (STORAGE_KEYS.has(key) || key === COOKIE_KEY);
+  }
   function record(node: WriteNode): void {
-    const key = directWriteKey(sourceCode, node);
-    if (key === undefined || !runsPerTest(node)) {
+    const isCall = node.type === AST_NODE_TYPES.CallExpression;
+    const emptied = isCall ? assertedEmptyStorage(sourceCode, node) : undefined;
+    if (emptied !== undefined) {
+      bodyRestores.push({ node, key: emptied });
+      return;
+    }
+    const state = isCall ? stateCall(sourceCode, node) : undefined;
+    if (state?.writes === false && inEachHook(node)) {
+      restoredKeys.add(state.key);
+      return;
+    }
+    if (state?.writes === false) {
+      clears.push({ node, key: state.key });
+    }
+    const key = state?.key ?? directWriteKey(sourceCode, node);
+    if (
+      key === undefined ||
+      !runsPerTest(node) ||
+      runsInPage(ancestorsOf(node)) ||
+      isNamedPageFunction(sourceCode, ancestorsOf(node)) ||
+      isPageState(key)
+    ) {
       return;
     }
     if (isRestored(node)) {
       restoredKeys.add(key);
+    } else if (putsBackSavedValue(node, key) || state?.writes === false) {
+      bodyRestores.push({ node, key });
     } else {
-      writes.push({ node, key });
+      const putsBack =
+        isPutBackByLaterWrite(key) &&
+        writes.some(
+          (write) => write.key === key && innermostFunction(write.node) === innermostFunction(node),
+        );
+      (putsBack ? bodyRestores : writes).push({ node, key });
     }
   }
   return {
@@ -180,15 +257,39 @@ export function createWriteTracker(
       if (node.callee.type === AST_NODE_TYPES.Identifier && isRestored(node)) {
         hookCalls.add(node.callee.name);
       }
+      const named = [node.callee, ...node.arguments].flatMap((each) =>
+        each.type === AST_NODE_TYPES.Identifier ? [each.name] : [],
+      );
+      const hook =
+        node.callee.type === AST_NODE_TYPES.Identifier && CLEARING_HOOKS.has(node.callee.name);
+      for (const name of hook || inEachHook(node) || isRestored(node) ? named : []) {
+        clearingCalls.add(name);
+      }
+      const stub = stubbedName(node);
+      if (stub !== undefined) {
+        stubbed.add(stub);
+      }
     },
     unrestored() {
       const viaHelpers = writes.filter(({ node }) => {
         const name = enclosingFunctionName(node);
         return name !== undefined && hookCalls.has(name);
       });
-      const restored = new Set([...restoredKeys, ...viaHelpers.map(({ key }) => key)]);
+      const clearedInHooks = clears.filter(({ node }) =>
+        clearingCalls.has(enclosingFunctionName(node) ?? ''),
+      );
+      const restored = new Set(
+        [...restoredKeys, ...viaHelpers, ...clearedInHooks].map((each) =>
+          typeof each === 'string' ? each : each.key,
+        ),
+      );
       return writes
-        .filter(({ key }) => !restored.has(key))
+        .filter(
+          (write) =>
+            !restored.has(write.key) &&
+            !isStubbedAway(write.key, stubbed) &&
+            !restoresLater(write, bodyRestores),
+        )
         .map(({ node, key }) => ({ node, messageId: writeMessageId(key) }));
     },
   };

@@ -19,5 +19,5 @@ Slice order follows what each one needs: PY2 to PY6 all reuse PY1's environment 
 snapshot handling, PY3 and PY4 reuse its coverage report, and PY6 is last because it is the
 slowest and needs the tests to pass reliably under the environment PY1 established. The custom
 rules each slice adds are listed in [`spec/checks.md`](../../spec/checks.md) (generated from
-`shared/policy.mjs`) when they become enforced for Python; PY1 adds none, PY3 adds the six structure
+`shared/policy.mts`) when they become enforced for Python; PY1 adds none, PY3 adds the six structure
 and CRAP rules.

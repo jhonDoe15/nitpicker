@@ -6,7 +6,7 @@ import {
   type TypescriptProject,
   createTypescriptProject,
 } from './test-support/typescript-project.mts';
-import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mts';
 
 const enabled = process.env['NITPICKER_TS_RED_BASE'] === '1';
 

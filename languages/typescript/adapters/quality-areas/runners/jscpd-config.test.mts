@@ -35,6 +35,7 @@ function analyze(precedence: string[], projectConfig: object): Finding[] {
         policyRoot: PACKAGE_ROOT,
         liveProjectRoot: PACKAGE_ROOT,
         analyzerName: 'duplicates',
+        environment: { NITPICKER_POLICY: policyFile },
       }),
     );
   });

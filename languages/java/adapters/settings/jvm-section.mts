@@ -1,6 +1,6 @@
 import { GRADLE_PRESETS } from '../gradle-presets.mts';
-import { configError as untypedConfigError } from '../../../../shared/config.mjs';
-import { suggestionOrAllowed as untypedSuggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
+import { configError as untypedConfigError } from '../../../../shared/config.mts';
+import { suggestionOrAllowed as untypedSuggestionOrAllowed } from '../../../../shared/messages/closest-match.mts';
 import { isPlainObject, textOf, type Fields } from '../../../../shared/values/readers.mts';
 
 const configError: (message: string, anchor?: string) => Error = untypedConfigError;

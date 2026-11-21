@@ -5,8 +5,8 @@ import {
   untrackTemporaryPath as untrackUntypedTemporaryPath,
 } from '../../../../core/tooling/temporary-files.mts';
 import { spawnSyncWithOutputFile as spawnUntypedWithOutputFile } from '../../../../core/tooling/output-file/output-file.mts';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mjs';
-import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mts';
+import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../shared/project-files/project-files.mts';
 import {
   isToolInstalled as untypedIsToolInstalled,
   resolveTool as resolveUntypedTool,

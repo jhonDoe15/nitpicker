@@ -1,5 +1,5 @@
 import { hasField } from '../../../shared/values/readers.mts';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../shared/paths/glob.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../shared/paths/glob.mts';
 import { FIXTURE_PATH } from '../preset/layout.mts';
 
 const escapeRegExp: (text: string) => string = untypedEscapeRegExp;

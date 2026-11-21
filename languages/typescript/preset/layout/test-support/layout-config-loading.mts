@@ -6,7 +6,7 @@ import {
   resolveLayout,
 } from './layout-views.mts';
 import { parseJson } from '../../../../../shared/values/readers.mts';
-import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mts';
 import { onTestFinished, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';

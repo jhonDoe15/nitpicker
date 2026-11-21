@@ -5,7 +5,7 @@ import type { ToolContext } from '../typed/context/tool-context-types.mts';
 import type { PytestProbe } from './typed/project-types.mts';
 import type { SpawnResult } from './typed/process-types.mts';
 import { environmentError } from './python-environment.mts';
-import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
+import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mts';
 import { probe, probeVersion, VERSION_PATTERN } from './python-process.mts';
 import { readOptional, readProjectHints, ROOT_TEST_DIRECTORIES } from './python-project.mts';
 import { DJANGO_SCRIPT, readDjangoScript } from './python-django.mts';

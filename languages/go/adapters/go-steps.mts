@@ -11,7 +11,7 @@ import { unformattedFiles } from './formatting/go-format.mts';
 import { inspect, readInspect } from './structure/go-inspect.mts';
 import { lint } from './lint/go-lint.mts';
 import { goTest } from './tests/go-test.mts';
-import { analyzerDeadlineMs } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+import { analyzerDeadlineMs } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mts';
 import { mutate } from './mutation/go-mutation.mts';
 import { fieldOf, fieldsOf, parseJson, textOf, textsOf } from '../../../shared/values/readers.mts';
 import type { Environment } from '../../../shared/processes/environment.mts';

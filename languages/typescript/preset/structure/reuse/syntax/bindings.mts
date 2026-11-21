@@ -1,6 +1,6 @@
 import type TypeScript from 'typescript';
 import { ts } from '../../../../typescript-api/typescript-api.mts';
-import { hash as hashText } from '../../../../../../shared/rules/finding-helpers.mjs';
+import { hash as hashText } from '../../../../../../shared/rules/finding-parts.mts';
 import { importEntries } from './import-entries.mts';
 import { declaredNames, referencedNames } from '../../../syntax/references.mts';
 import { leafTexts, normalizedTexts } from './tokens.mts';

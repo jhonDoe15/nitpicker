@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { useProjects } from '../../../../core/init/test-support/projects.mts';
 import { EMPTY_SOURCES_TOOL, emptySourcesErrors, emptySourcesMessage } from './empty-sources.mts';
-import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mts';
 
 const project = useProjects();
 const CODE = 'export const value = 1;\n';

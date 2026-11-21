@@ -1,6 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { type XmlElement, childrenNamed, parseXml } from '../../../../shared/values/xml.mts';
+import {
+  type XmlElement,
+  childrenNamed,
+  parseXml,
+} from '../../../../shared/ingest/report-records.mts';
 import type { JunitFailure, JunitTestCase } from './typed/run-types.mts';
 
 export const JUNIT_REPORT = 'pytest-junit.xml';

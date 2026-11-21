@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { toolBinaryPath } from '../typed/tooling.mts';
 import { parseJson } from '../../../../shared/values/readers.mts';
 import { readHeadPolicy } from '../typed/head-policy.mts';
@@ -7,7 +7,7 @@ import {
   LINT_CONFIG,
   TEST_ENVIRONMENTS_VARIABLE,
 } from '../../preset/test-environment/resolve-environment.mts';
-import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
+import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mts';
 import { incompatiblePackageMessage } from './compatibility/incompatible-package.mts';
 import { PROJECT_LAYER_VARIABLE } from './project-layer.mts';
 import type { TestEnvironments } from '../eslint/typed/engine.mts';
@@ -17,7 +17,7 @@ import { lintWithOxlint } from '../oxlint/oxlint-runner.mts';
 import {
   describeProcessEnd,
   failureDetail,
-} from '../../../../shared/processes/process-failure.mjs';
+} from '../../../../shared/processes/process-failure.mts';
 import { nativeConfigFlags } from './compatibility/native-config.mts';
 import {
   MAX_SKIPPED_FILES,

@@ -8,6 +8,7 @@ import reactX from 'eslint-plugin-react-x';
 import testingLibrary from 'eslint-plugin-testing-library';
 import { inReactTestFilesOnly } from '../../eslint-plugin/rules/react-tests/react-test-files.mts';
 import { projectRunnerVocabulary } from '../../test-runner/vocabulary/typed-vocabulary.mts';
+import { engineCovers, replayedByEngine } from './engine-replay.mts';
 import { accessibilityRuleNames, testingLibraryHintsFor } from './react-rules.mts';
 import { accessibilityHints, accessibilityOptionOverrides } from './rules/accessibility-rules.mts';
 import {
@@ -231,8 +232,13 @@ function testingLibraryRule(name: string, hint: string): Rule.RuleModule {
     name === 'prefer-user-event-setup'
       ? extendedTestingLibraryRules['prefer-user-event-setup']
       : ruleNamed(testingLibrary.rules, name);
-  const rule = withoutFixes(withHint(upstream, hint));
-  return { ...rule, create: testFilesOnly(rule) };
+  const replayed = replayedByEngine(`testing-library/${name}`, upstream);
+  const rule = withoutFixes(withHint(replayed, hint));
+  const inTestFiles = testFilesOnly(rule);
+  return {
+    ...rule,
+    create: (context) => (engineCovers(context) ? rule.create(context) : inTestFiles(context)),
+  };
 }
 
 export const testingLibraryPlugin = {

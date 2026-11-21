@@ -1192,6 +1192,52 @@ return //MethodCall[@MethodName = $keyCalls][*[1][pmd-java:typeIs('java.util.Map
       </property>
     </properties>
   </rule>
+  <rule name="DestroyLeavesDescendants" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This destroys a process that the method started through a shell, a launcher or a script (sh, cmd, npm, npx, yarn, pnpm, gradlew.bat, mvnw.cmd, a .sh, .bat or .cmd file), after a wait with a deadline. destroy() and destroyForcibly() stop only that process; the real work runs in a child of it and keeps running, holding CPU, memory, files and ports, and may still write into a folder the caller is deleting. Destroy the descendants first: process.descendants().forEach(ProcessHandle::destroyForcibly), then the process itself, or start the executable directly without the wrapper.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $bare := function($text) { lower-case(replace(replace(string($text), '^"|"$', ''), '^.*[/\\]', '')) },
+    $runsScript := function($literals) {
+      let $name := lower-case(replace(replace(string($literals[1]/@Image), '^"|"$', ''), '^.*[/\\]', '')),
+          $sub := $literals[position() > 1][not(starts-with(@Image, '"-'))][1]
+      return $name = ('npm', 'npm.cmd', 'yarn', 'yarn.cmd', 'pnpm', 'pnpm.cmd')
+         and replace(string($sub/@Image), '"', '') = ('run', 'run-script', 'exec', 'x', 'dlx', 'test', 't', 'start', 'stop', 'restart')
+    },
+    $launcher := function($text) {
+      let $name := lower-case(replace(replace(string($text), '^"|"$', ''), '^.*[/\\]', ''))
+      return $name = ('sh', 'bash', 'zsh', 'dash', 'ksh', 'cmd', 'cmd.exe', 'powershell', 'powershell.exe', 'pwsh',
+                      'npx', 'npx.cmd')
+          or matches($name, '\.(sh|bat|cmd|ps1)$')
+    }
+return
+//MethodCall[@MethodName = ('destroy', 'destroyForcibly')][ArgumentList/@Size = 0]
+  [*[1][pmd-java:typeIs('java.lang.Process')]]
+  [let $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1],
+       $process := *[1]/self::VariableAccess/@Name,
+       $inits := ($method//VariableDeclarator[VariableId/@Name = $process]/*[2],
+                  $method//AssignmentExpression[*[1][self::VariableAccess[@Name = $process]]]/*[2]),
+       $builders := $inits/descendant-or-self::MethodCall[@MethodName = 'start']/*[1]/self::VariableAccess/@Name,
+       $sources := ($inits, $method//VariableDeclarator[VariableId/@Name = $builders]/*[2],
+                    $method//MethodCall[@MethodName = 'command'][*[1][self::VariableAccess[@Name = $builders]]])
+   return exists($process)
+     and exists($method//MethodCall[@MethodName = 'waitFor'][ArgumentList/@Size = 2])
+     and empty($method//MethodCall[@MethodName = 'descendants'])
+     and exists($sources/descendant-or-self::*[self::ConstructorCall[pmd-java:typeIs('java.lang.ProcessBuilder')]
+                          or self::MethodCall[@MethodName = 'command'][*[1][pmd-java:typeIs('java.lang.ProcessBuilder')]]
+                          or self::MethodCall[@MethodName = 'exec'][*[1][pmd-java:typeIs('java.lang.Runtime')]]]
+                         /ArgumentList[*[1]/descendant-or-self::StringLiteral[1][$launcher(@Image)]
+                                       or $runsScript(.//StringLiteral)]
+                         [let $first := *[1]/descendant-or-self::StringLiteral[1],
+                              $rest := .//StringLiteral[. >> $first]
+                          return not(replace(replace(string($first/@Image), '^"|"$', ''), '^.*/', '') = ('sh', 'bash', 'zsh', 'dash', 'ksh'))
+                              or empty($rest[matches(@Image, '^"-[a-z]*c[a-z]*"$')])
+                              or exists($rest[matches(@Image, '&&|\|\||[;|&`]|\\n|\$\(')])])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="EpochNarrowedToInt" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="An epoch time is cut to a 32-bit int here: epoch milliseconds overflow at once, and epoch seconds overflow in 2038 and turn a long lifetime into a date in the past. Keep epoch times in a long or an Instant (long expiresAt = Instant.now().getEpochSecond() + lifetimeSeconds), and compare them as long values.">
     <priority>3</priority>
@@ -1672,6 +1718,46 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="GrowingProcessArguments" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This joins a class path or path list into one argument of a process the method starts. The operating system limits a single argument (128 KiB on Linux) and the whole command line (32,767 characters on Windows), so the process does not start (&quot;Argument list too long&quot;, &quot;The command line is too long&quot;) once the project has enough modules or dependencies. Pass the list another way: an argument file (@args.txt for java, javac and many tools), the CLASSPATH environment variable or a manifest-only jar for a class path, or standard input.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $sep := function($e) {
+      exists($e[self::FieldAccess[@Name = ('pathSeparator', 'pathSeparatorChar')][*[1][pmd-java:typeIs('java.io.File')]]
+             or self::MethodCall[@MethodName = 'getProperty'][ArgumentList/StringLiteral[@Image = '"path.separator"']]])
+    }
+return
+(//MethodCall[@MethodName = 'join'][ArgumentList/@Size = 2][*[1][self::TypeExpression][pmd-java:typeIs('java.lang.String')]]
+   [$sep(ArgumentList/*[1])]
+ | //MethodCall[@MethodName = 'collect']
+   [ArgumentList/MethodCall[@MethodName = 'joining'][ArgumentList/@Size = 1][$sep(ArgumentList/*[1])]])
+  [let $m := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer or self::LambdaExpression][1],
+       $starts := $m//(ConstructorCall[pmd-java:typeIs('java.lang.ProcessBuilder')]
+                       | MethodCall[@MethodName = 'command'][*[1][pmd-java:typeIs('java.lang.ProcessBuilder')]]
+                       | MethodCall[@MethodName = 'exec'][*[1][pmd-java:typeIs('java.lang.Runtime')]]),
+       $direct := function($args) {
+         $args/(VariableAccess | MethodCall[@MethodName = ('of', 'asList')]/ArgumentList/VariableAccess)/@Name
+       },
+       $argNames := $direct($starts/ArgumentList),
+       $adds := $m//MethodCall[@MethodName = ('add', 'addAll')][*[1][self::VariableAccess[@Name = $argNames]]],
+       $listInits := $m//VariableDeclarator[VariableId/@Name = $argNames]/*[2],
+       $flow := ($argNames, $direct($adds/ArgumentList), $direct($listInits/ArgumentList),
+                 $listInits/self::VariableAccess/@Name),
+       $held := ancestor::VariableDeclarator[1][parent::LocalVariableDeclaration],
+       $holder := $held[empty($m//MethodCall[@MethodName = 'length'][*[1][self::VariableAccess[@Name = $held/VariableId/@Name]]])],
+       $top := ancestor-or-self::*[not(parent::InfixExpression[@Operator = '+']
+                                     or parent::ArgumentList/parent::MethodCall[@MethodName = ('of', 'asList')]
+                                     or self::ArgumentList[parent::MethodCall[@MethodName = ('of', 'asList')]])][1],
+       $slot := $top/parent::ArgumentList
+   return exists($slot[some $s in ($starts, $adds, $listInits) satisfies . is $s/ArgumentList])
+       or exists($top[some $i in $listInits satisfies . is $i])
+       or exists($holder[VariableId/@Name = $flow])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="HandSplitHttpHeader" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This splits a structured header by hand, which breaks on quoted values, whitespace around separators and quality weights. Parse it instead: MediaType.parseMediaType(value) or MediaType.parseMediaTypes(value) for Content-Type and Accept, ContentDisposition.parse(value), HttpCookie.parse(value) or the servlet cookie API for cookies. A library that is itself the parser takes an exceptions entry.">
     <priority>3</priority>
@@ -1889,6 +1975,49 @@ return (
   //ReturnStatement/MethodCall[@MethodName = 'collect'][ArgumentList/MethodCall[@MethodName = 'toList']]
     [$hashChain(*[1], true())]
 )
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="HeadCutErrorOutput" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This keeps only the start of the output of a tool or of a stack trace and puts it into an exception or an error log. Build tools, compilers, test runners and stack traces print the cause at the end (the failing task, the last &quot;Caused by:&quot;, the summary), so the message keeps the banner and drops the reason. Keep the end (output.substring(Math.max(0, output.length() - 4000))), or the start and the end with a marker between them.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $outputName := function($n) {
+      matches(string($n), '^(stderr|stdout|stackTrace|errorOutput)$|(Stderr|Stdout|StackTrace|ErrorOutput)$')
+    },
+    $outputText := function($e) {
+      let $base := $e/descendant-or-self::*[not(self::MethodCall[@MethodName = ('toString', 'trim', 'strip')][not(*[1][pmd-java:typeIs('java.io.StringWriter')])])][1]
+      return exists($base/self::VariableAccess[$outputName(@Name)])
+          or exists($base/self::FieldAccess[$outputName(@Name)])
+          or exists($base/self::MethodCall[@MethodName = 'toString'][*[1][pmd-java:typeIs('java.io.StringWriter')]])
+    },
+    $sink := function($n) {
+      $n/ancestor::*[self::ConstructorCall[pmd-java:typeIs('java.lang.Throwable')]
+                     or self::MethodCall[@MethodName = ('error', 'fatal')][*[1][self::VariableAccess or self::FieldAccess]]
+                     or self::ExpressionStatement or self::LocalVariableDeclaration or self::ReturnStatement
+                     or self::LambdaExpression or self::IfStatement or self::ThrowStatement][1]
+                    [self::ConstructorCall or self::MethodCall]
+    },
+    $keepsEnd := function($s) {
+      exists($s//MethodCall[@MethodName = 'substring'][ArgumentList/@Size = 1])
+    }
+return
+(//MethodCall[@MethodName = 'substring'][ArgumentList/@Size = 2][ArgumentList/*[1][self::NumericLiteral][@ValueAsInt = 0]]
+   [not(ArgumentList/*[2][self::NumericLiteral[@ValueAsInt < 40]
+                          or self::InfixExpression[@Operator = '-']
+                          or self::MethodCall[@MethodName = ('indexOf', 'lastIndexOf')]])]
+   [$outputText(*[1])]
+ | //MethodCall[@MethodName = ('left', 'abbreviate', 'truncate')][ArgumentList/@Size = 2][*[1][self::TypeExpression]]
+   [$outputText(ArgumentList/*[1])][not(ArgumentList/*[2][self::NumericLiteral][@ValueAsInt < 40])])
+  [let $direct := $sink(.),
+       $held := ancestor::VariableDeclarator[1][parent::LocalVariableDeclaration][VariableId/@Name],
+       $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1],
+       $heldSinks := for $use in $method//VariableAccess[@Name = $held/VariableId/@Name] return $sink($use)
+   return not($keepsEnd($method))
+     and (exists($direct) or (exists($held) and $held/*[2] is . and exists($heldSinks)))]
 ]]></value>
       </property>
     </properties>
@@ -3980,6 +4109,38 @@ return //MethodCall[@MethodName = 'findFirst'][ArgumentList/@Size = 0][exists($s
       </property>
     </properties>
   </rule>
+  <rule name="StderrAsFailure" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This treats any text on the standard error of a finished child process as a failure. Standard error also carries warnings, notices and progress: a JVM prints &quot;Picked up JAVA_TOOL_OPTIONS&quot; whenever that variable is set, and most tools print per-file warnings while they succeed, so the check passes on one machine and fails in a container or CI image. Decide by the exit value (process.waitFor(...) or exitValue() != 0) and keep the standard error for the message. A search for a specific text in the standard error is not reported.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $errorRead := function($n) {
+      exists($n/descendant-or-self::MethodCall[@MethodName = ('getErrorStream', 'errorReader')]
+                                             [*[1][pmd-java:typeIs('java.lang.Process')]])
+    }
+return
+//IfStatement[*[2][self::ThrowStatement or self::Block/ThrowStatement]]
+  /*[1]/descendant-or-self::*
+  [let $up := ancestor::*[not(self::InfixExpression[@Operator = '||'])][1]
+   return $up/self::IfStatement and ($up/*[1] is ancestor-or-self::*[parent::IfStatement][1])]
+  [let $tested :=
+       (self::UnaryExpression[@Operator = '!']/MethodCall[@MethodName = ('isEmpty', 'isBlank')][ArgumentList/@Size = 0]/*[1],
+        self::InfixExpression[@Operator = ('>', '!=')][*[2][self::NumericLiteral][@ValueAsInt = 0]]
+          /MethodCall[@MethodName = ('length', 'size')][ArgumentList/@Size = 0]/*[1]),
+       $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression or self::Initializer][1],
+       $names := $tested/descendant-or-self::VariableAccess/@Name
+   return exists($tested)
+     and empty(ancestor::IfStatement[position() > 1]
+                 [*[1][descendant-or-self::MethodCall[@MethodName = ('waitFor', 'exitValue')]
+                       or descendant-or-self::VariableAccess[@Name = $method//VariableDeclarator
+                            [*[2]/descendant-or-self::MethodCall[@MethodName = ('waitFor', 'exitValue')]]/VariableId/@Name]]])
+     and ($errorRead($tested)
+          or exists($method//VariableDeclarator[VariableId/@Name = $names][$errorRead(*[2])]))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="StreamedRowsCollected" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This stream reads rows from the database one at a time, but the whole result is collected into one collection, so every row is held in memory at once, which is what streaming avoids and what runs out of memory on a large table. Handle each row inside forEach, or flush a fixed-size batch there (add, and at 500 rows save the batch and clear it), and the rest once after it. An exception fits only for a query that always returns a handful of rows.">
     <priority>2</priority>
@@ -4756,6 +4917,42 @@ return //(MethodCall | ConstructorCall)[$fresh(., $fresh)]
                     or pmd-java:typeIs('tools.jackson.databind.ObjectMapper')
                     or pmd-java:typeIs('tools.jackson.databind.ObjectReader')])]
        [not(../*[1][self::TypeExpression][pmd-java:typeIs('org.springframework.util.FileCopyUtils')])]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="UnguardedOptionList" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This option of a process the method starts takes its value from a list that a filter or a directory listing in this method can leave empty, and nothing checks its size. With an empty list the tool gets an empty value (--dir &quot;&quot;), and most tools then fall back to their default (the working directory, every file) or reject the run. Check the list first (if (dirs.isEmpty()) return) and skip the option, or the run, when it is empty.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $method := function($n) {
+      $n/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer or self::LambdaExpression][1]
+    },
+    $listed := function($init) {
+      exists($init/descendant-or-self::MethodCall[@MethodName = 'filter']
+             | $init/descendant-or-self::MethodCall[@MethodName = ('list', 'walk', 'find', 'listFiles', 'newDirectoryStream')]
+                 [*[1][pmd-java:typeIs('java.nio.file.Files') or pmd-java:typeIs('java.io.File')]])
+    },
+    $joinedName := function($e) {
+      ($e/self::MethodCall[@MethodName = 'join'][*[1][self::TypeExpression][pmd-java:typeIs('java.lang.String')]]/ArgumentList/*[2]/self::VariableAccess/@Name,
+       $e/self::MethodCall[@MethodName = 'collect'][ArgumentList/MethodCall[@MethodName = 'joining']]
+          /*[1]/descendant-or-self::MethodCall[@MethodName = 'stream'][1]/*[1]/self::VariableAccess/@Name)
+    }
+return
+//StringLiteral[matches(@Image, '^"--?[A-Za-z][\w-]*"$')]
+  [ancestor::ArgumentList[1]
+     [parent::ConstructorCall[pmd-java:typeIs('java.lang.ProcessBuilder')]
+      or parent::MethodCall[@MethodName = ('command', 'of', 'asList', 'exec')]]]
+  /following-sibling::*[1]
+  [let $name := $joinedName(.),
+       $m := $method(.)
+   return exists($name)
+     and exists($m//LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name][$listed(*[2])])
+     and count($m//VariableAccess[@Name = $name]) = 1
+     and exists($m//(ConstructorCall[pmd-java:typeIs('java.lang.ProcessBuilder')]
+                     | MethodCall[@MethodName = 'exec'][*[1][pmd-java:typeIs('java.lang.Runtime')]]))]
 ]]></value>
       </property>
     </properties>

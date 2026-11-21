@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { blankLiterals as untypedBlankLiterals } from '../../../../adapters/review-rules/java-sources.mts';
 import { springWiringProblems as untypedSpringWiringProblems } from '../../../../adapters/spring/wiring/spring-wiring.mts';
-import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../../shared/project-files/project-files.mjs';
+import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../../shared/project-files/project-files.mts';
 import { callUntyped } from '../../../../adapters/typed/java-values.mts';
 import { fieldOf, listOf, textsOf } from '../../../../../../shared/values/readers.mts';
 import type { FixRecipe, RecipeFix } from '../../../../../../core/fix/typed/fix-types.mts';

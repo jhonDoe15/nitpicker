@@ -1,11 +1,7 @@
 import { createHash } from 'node:crypto';
 import { appendFileSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-
-export type AnswerStore = {
-  readonly find: (id: string) => unknown;
-  readonly keep: (id: string, result: unknown) => void;
-};
+import type { AnswerStore } from '../logic/typed/solver-types.mts';
 
 export const SOLVER_ANSWERS_ENVIRONMENT = 'NITPICKER_SOLVER_ANSWERS';
 
