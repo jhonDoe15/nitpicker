@@ -28,7 +28,19 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `clock.restore()`).
 - Do not write `process.env.X = ...` or override `Date.now`, `Math.random` or `globalThis.fetch` in a test
   (`nitpicker/fake-timers-require-restore`): use `vi.stubEnv`, `vi.stubGlobal`, `vi.spyOn` or fake timers and
-  restore them in `afterEach`, or put the old value back in `afterEach` or `finally`.
+  restore them in `afterEach`, or put the old value back in `afterEach` or `finally`. The same goes for
+  `localStorage`/`sessionStorage`, `document.cookie`, `process.chdir` and `navigator` members: clear or
+  put them back in `afterEach`.
+- Clear a mock that several tests share before each test (`beforeEach(() => { send.mockClear(); })`,
+  `vi.clearAllMocks()` or `clearMocks: true` in the runner config) when a test counts its calls
+  (`toHaveBeenCalledTimes`, `mock.calls`): `nitpicker/no-uncleared-shared-mock`.
+- In concurrent tests (`it.concurrent`, `describe.concurrent`, Vitest's `sequence.concurrent`), do not use fake
+  timers, spies, `stubGlobal`/`stubEnv`, `process.env` writes or `process.chdir`: the tests share one
+  worker (`nitpicker/no-worker-state-in-concurrent-tests`). Put those tests in `describe.sequential`.
+- In Playwright tests, assert with the retrying form (`await expect(locator).toHaveText('42')`), not a
+  one-time read (`expect(await locator.textContent())`); do not wait for `networkidle`, use element
+  handles or leave an action without `await`. In Cypress tests, do not keep a command's result in a
+  variable (use `.then` or an alias) or make a test or hook `async`.
 - Test data typed from a literal widens (`status: string`): write the array as
   `/** @type {const} */ ([...])`, or annotate the `const` with the typedef.
 - Assert whole outputs with `toEqual`/`toBe` (`assert.deepStrictEqual`/`assert.equal`, chai's

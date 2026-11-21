@@ -41,9 +41,7 @@ function baseSetup(profile: {
     fieldOf(
       resolve({
         baseProjectRoot: root,
-        headSnapshotRoot: root,
         liveProjectRoot: root,
-        moves: undefined,
         analyzers,
       }),
       'analyzers',

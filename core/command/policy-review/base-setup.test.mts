@@ -9,9 +9,7 @@ const { createGitRepository } = useGitFixtures();
 function snapshotOf(root: string, analyzers: readonly Analyzer[]) {
   return {
     baseProjectRoot: root,
-    headSnapshotRoot: root,
     liveProjectRoot: root,
-    moves: undefined,
     analyzers,
   };
 }
@@ -27,10 +25,6 @@ describe('createBaseSetupResolver', () => {
     const setup = resolve(snapshotOf(root, []));
 
     expect(fieldOf(fieldOf(setup, 'headPolicy'), 'thresholds')).toEqual({ fileLines: 300 });
-    expect(fieldOf(setup, 'policyChanges')).toEqual([
-      'threshold fileLines lowered from 500 to 300',
-    ]);
-    expect(fieldOf(setup, 'policyLoosenings')).toEqual([]);
   });
 
   it('gives a base with its own config the facts read from the head checkout', () => {
@@ -125,6 +119,5 @@ describe('createBaseSetupResolver', () => {
       ['other', undefined],
     ]);
     expect(fieldOf(listOf(fieldOf(setup, 'analyzers'))[0], 'configuredTimeout')).toBe(true);
-    expect(fieldOf(setup, 'policyChanges')).toEqual(['analyzer enabled: crap']);
   });
 });

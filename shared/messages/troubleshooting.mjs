@@ -21,7 +21,6 @@ export const TROUBLESHOOTING_ANCHORS = {
   typescriptToolFails: 'a-typescript-or-javascript-tool-fails',
   testTimeoutsNeedVitest: 'test-timeouts-need-vitest',
   projectToolConfigMissing: 'a-project-tool-config-is-missing-or-broken',
-  policyLoosened: 'a-policy-loosened-finding',
   staleCache: 'a-stale-or-shared-cache',
   cachePublishFails: 'cache-publish-fails',
   analyzerTimeout: 'an-analyzer-times-out',

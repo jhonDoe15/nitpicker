@@ -247,7 +247,7 @@ function usedFactSettings(config) {
   ];
 }
 
-export function acceptedFactSettings(config) {
+function acceptedFactSettings(config) {
   return [
     ...factRuleSettings(config.preset ?? 'typescript'),
     ...(config.history?.coChange === true ? ['layout.featureRoots'] : []),
@@ -267,8 +267,4 @@ export function validateFactRuleSettings(config) {
   throw configError(
     `"${unsupported}" is not supported with "preset": "${language}": it configures ${rules.join(', ')}, which the ${language} preset does not run yet. Remove it`,
   );
-}
-
-export function shownSetting(value) {
-  return value === undefined ? 'not set' : JSON.stringify(value);
 }

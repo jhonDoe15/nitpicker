@@ -141,7 +141,7 @@ function loadedConfig(
   };
 }
 
-export function evaluatedProjectConfig(
+function evaluatedProjectConfig(
   tool: string,
   projectRoot: string,
   timeout?: number,

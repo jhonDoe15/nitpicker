@@ -115,8 +115,6 @@ function resolvedBaseSetup({ settings, layout, roots }: SnapshotContext): BaseSe
     analyzers: settings.analyzers,
     headPolicy: settings.headPolicy,
     configOverrides: settings.configOverrides,
-    policyChanges: [],
-    policyLoosenings: [],
     ...fieldsOf(
       settings.resolveBaseSetup?.({
         ...roots,
@@ -132,7 +130,7 @@ function compareSnapshots(context: SnapshotContext): DiffReport {
   const { settings, roots, comparison, startedAt } = context;
   const skipPlan = planOf(settings, comparison);
   const baseSetup = resolvedBaseSetup(context);
-  if (stopsEarly(skipPlan, baseSetup)) {
+  if (stopsEarly(skipPlan)) {
     return allSkippedReport({
       ...settings,
       comparison,
@@ -204,16 +202,9 @@ function runAndCombine(context: RunContext): DiffReport {
     startedAt,
     additionalToolErrors: settings.additionalToolErrors,
     configOverrides: settings.configOverrides,
-    policyChanges: baseSetup.policyChanges,
-    policyLoosenings: listOf(baseSetup.policyLoosenings),
-    policyKinds: baseSetup.policyKinds,
-    policyDigest: baseSetup.policyDigest,
     policies: { base: baseSetup.headPolicy, head: settings.headPolicy },
-    acceptPolicyChange: settings.acceptPolicyChange,
     scope: settings.scope,
     labels: settings.labels,
-    policyAcceptanceSource: settings.policyAcceptanceSource,
-    reportsPolicy: settings.reportsPolicy !== false,
     quick: settings.quick,
     staged: settings.staged,
     notices: listOf(

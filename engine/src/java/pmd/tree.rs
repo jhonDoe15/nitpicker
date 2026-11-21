@@ -191,6 +191,8 @@ impl<'t> PmdTree<'t> {
             "BeginColumn" => whole(self.place(file, start).1),
             "EndLine" => whole(self.place(file, end).0),
             "EndColumn" => whole(self.place(file, end).1),
+            // Every node has an image for XPath; it is empty where PMD keeps none.
+            "Image" => Some(Value::Text("".into())),
             _ => None,
         }
     }
@@ -198,7 +200,7 @@ impl<'t> PmdTree<'t> {
     /// The name of an attribute as the tree keeps it, when the node has it.
     pub fn attribute_key(&self, id: u32, name: &str) -> Option<&'static str> {
         let node = &self.nodes[id as usize];
-        node.attributes.iter().map(|(key, _)| *key).chain(PLACES).find(|key| *key == name)
+        node.attributes.iter().map(|(key, _)| *key).chain(PLACES).chain(["Image"]).find(|key| *key == name)
     }
 
     pub fn attribute_names(&self, id: u32) -> Vec<&'static str> {
@@ -258,13 +260,16 @@ impl<'a, 't> Builder<'a, 't> {
         let all = kids(root);
         let start = all.first().map_or(0, |first| first.start_byte());
         let id = self.open(ROOT, "CompilationUnit", Some(root), start, self.file.text.len());
+        self.set(id, "PackageName", text(""));
         for kid in all {
             match kid.kind() {
                 "package_declaration" => {
                     let declaration = self.at(id, "PackageDeclaration", kid);
                     let name = kids(kid).into_iter().rev().find(|part| matches!(part.kind(), "identifier" | "scoped_identifier"));
                     self.nodes[declaration as usize].report = name.map(|name| (name.start_byte(), name.end_byte()));
-                    self.set(declaration, "Name", text(&name.map(|name| self.text(name)).unwrap_or_default().split_whitespace().collect::<String>()));
+                    let package: String = name.map(|name| self.text(name)).unwrap_or_default().split_whitespace().collect();
+                    self.set(declaration, "Name", text(&package));
+                    self.set(id, "PackageName", text(&package));
                     self.modifiers(declaration, kid, &[]);
                 }
                 "import_declaration" => {
@@ -421,10 +426,41 @@ impl<'a, 't> Builder<'a, 't> {
                 id
             }
             _ => {
-                let id = self.at(parent, "ClassType", node);
-                self.set(id, "SimpleName", text(self.text(node)));
-                id
+                let written = self.text(node);
+                match written.rfind('.') {
+                    // A record pattern's qualified type, which the grammar read as one name (see `grammar::masked`).
+                    Some(dot) if !written.contains(char::is_whitespace) => self.dotted_type(parent, node, node.start_byte(), dot),
+                    _ => {
+                        let id = self.at(parent, "ClassType", node);
+                        self.set(id, "SimpleName", text(written));
+                        id
+                    }
+                }
             }
+        }
+    }
+
+    /// A class type for `written[..]` of a single name node that holds dots; `dot` is the last one.
+    fn dotted_type(&mut self, parent: u32, node: Node<'t>, start: usize, dot: usize) -> u32 {
+        let whole = &self.file.text[start..node.end_byte()];
+        let id = self.open(parent, "ClassType", Some(node), start, node.end_byte());
+        self.set(id, "SimpleName", text(&whole[dot + 1..]));
+        self.dotted_scope(id, node, start, dot);
+        id
+    }
+
+    /// The qualifier `text[start..start + dot]` of a dotted class type: an outer class type, or a package.
+    fn dotted_scope(&mut self, id: u32, node: Node<'t>, start: usize, dot: usize) {
+        let scope = &self.file.text[start..start + dot];
+        if self.names_class(node, scope) {
+            let inner = self.open(id, "ClassType", None, start, start + dot);
+            let simple = scope.rfind('.');
+            self.set(inner, "SimpleName", text(&scope[simple.map_or(0, |at| at + 1)..]));
+            if let Some(at) = simple {
+                self.dotted_scope(inner, node, start, at);
+            }
+        } else {
+            self.set(id, "PackageQualifier", text(scope));
         }
     }
 
@@ -617,7 +653,10 @@ impl<'a, 't> Builder<'a, 't> {
                 let parts = kids(parameters);
                 let list = match (parts.first(), parts.last()) {
                     (Some(first), Some(last)) => self.open(id, "RecordComponentList", Some(parameters), first.start_byte(), last.end_byte()),
-                    _ => self.at(id, "RecordComponentList", parameters),
+                    _ => {
+                        let close = find(parameters, ")").map_or(parameters.end_byte(), |close| close.start_byte());
+                        self.open(id, "RecordComponentList", Some(parameters), close, close)
+                    }
                 };
                 for kid in kids(parameters) {
                     let component = self.at(list, "RecordComponent", kid);
@@ -1330,6 +1369,8 @@ impl<'a, 't> Builder<'a, 't> {
             self.condition(id, condition);
         }
         let Some(body) = node.field("body") else { return id };
+        let tested = node.field("condition");
+        let mut seen: Vec<u32> = Vec::new();
         for group in kids(body) {
             let parts = kids(group);
             let labels: Vec<Node> = parts.iter().filter(|part| part.kind() == "switch_label").copied().collect();
@@ -1338,11 +1379,14 @@ impl<'a, 't> Builder<'a, 't> {
                 let last = position + 1 == labels.len();
                 let end = if last { group.end_byte() } else { label.end_byte() + 1 };
                 let branch = self.open(id, if arrow { "SwitchArrowBranch" } else { "SwitchFallthroughBranch" }, None, label.start_byte(), end);
-                let default = self.text(*label).trim_start().starts_with("default");
+                // `case null, default` is the default label too; the grammar reads its `default` as a name.
+                let default = self.text(*label).trim_start().starts_with("default") || kids(*label).iter().any(|part| self.text(*part) == "default");
                 self.set(branch, "Default", flag(default));
                 let written = self.at(branch, "SwitchLabel", *label);
                 self.set(written, "Default", flag(default));
-                for constant in kids(*label) {
+                seen.push(written);
+                let constants: Vec<Node<'t>> = kids(*label).into_iter().filter(|part| self.text(*part) != "default").collect();
+                for constant in constants {
                     match constant.kind() {
                         "guard" => {
                             let guard = self.at(written, "Guard", constant);
@@ -1372,7 +1416,34 @@ impl<'a, 't> Builder<'a, 't> {
                 }
             }
         }
+        self.switch_facts(id, tested, &seen);
         id
+    }
+
+    /// The attributes of a switch that look at all its labels at once.
+    fn switch_facts(&mut self, id: u32, tested: Option<Node<'t>>, labels: &[u32]) {
+        const PATTERNS: &[&str] = &["TypePattern", "RecordPattern", "UnnamedPattern"];
+        let mut default_case = false;
+        let mut any_pattern = false;
+        let mut count = 0;
+        let mut written: Vec<Node<'t>> = Vec::new();
+        for label in labels {
+            let kids = self.nodes[*label as usize].children.clone();
+            let patterned = kids.iter().any(|kid| PATTERNS.contains(&self.nodes[*kid as usize].name));
+            self.set(*label, "PatternLabel", flag(patterned));
+            default_case |= self.is(*label, "Default");
+            any_pattern |= patterned;
+            count += kids.len();
+            for kid in kids.iter().filter(|kid| self.nodes[**kid as usize].name == "TypePattern") {
+                let kind = self.nodes[*kid as usize].children.iter().find(|part| self.nodes[**part as usize].name != "ModifierList");
+                written.extend(kind.and_then(|kind| self.nodes[*kind as usize].source));
+            }
+        }
+        let tested = tested.map(|tested| if tested.kind() == "parenthesized_expression" { kids(tested).first().copied().unwrap_or(tested) } else { tested });
+        let facts = super::switches::facts(self.resolver, tested, default_case, any_pattern, count, &written);
+        self.set(id, "DefaultCase", flag(facts.default_case));
+        self.set(id, "ExhaustiveEnumSwitch", flag(facts.exhaustive_enum));
+        self.set(id, "Exhaustive", flag(facts.exhaustive));
     }
 
     fn pattern(&mut self, parent: u32, node: Node<'t>) {
@@ -1390,17 +1461,19 @@ impl<'a, 't> Builder<'a, 't> {
                                 let inner = if part.kind() == "record_pattern_component" { kids(part) } else { vec![part] };
                                 if inner.len() == 2 {
                                     let typed = self.at(list, "TypePattern", part);
+                                    self.modifiers(typed, part, &[]);
                                     self.set(typed, "Visibility", text("package"));
-                                    self.open(typed, "ModifierList", None, part.start_byte(), part.start_byte());
-                                    self.ty(typed, inner[0]);
+                                    if self.text(inner[0]) != "var" {
+                                        self.ty(typed, inner[0]);
+                                    }
                                     let variable = self.at(typed, "VariableId", inner[1]);
                                     self.variable_flags(variable, self.text(inner[1]), false, false, "local", false);
                                 } else {
                                     inner.first().into_iter().for_each(|only| self.pattern(list, *only));
                                 }
                             }
+                            self.sized(list);
                         }
-                        "identifier" => {}
                         _ => {
                             self.ty(id, kid);
                         }
@@ -1473,6 +1546,8 @@ impl<'a, 't> Builder<'a, 't> {
                         let id = self.at(parent, "AmbiguousName", node);
                         self.set(id, "Name", text(&written));
                         self.set(id, "Image", text(&written));
+                        self.set(id, "CompileTimeConstant", flag(false));
+                        self.set(id, "Parenthesized", flag(false));
                         id
                     }
                     None if written.rsplit('.').next().is_some_and(|last| last.starts_with(char::is_uppercase)) => self.type_expression(parent, node),

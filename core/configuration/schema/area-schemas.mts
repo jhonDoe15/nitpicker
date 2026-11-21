@@ -76,8 +76,7 @@ function described(
 }
 
 export const thresholds = {
-  description:
-    'Size and time limits, replacing the preset defaults. A raised limit is a policy loosening.',
+  description: 'Size and time limits, replacing the preset defaults.',
   type: 'object',
   additionalProperties: false,
   properties: Object.fromEntries(

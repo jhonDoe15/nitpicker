@@ -10,15 +10,10 @@ import {
 import { calleeTimerChange, fakeTimerChange } from '../rules/runner-apis/runner-doubles.mts';
 import { fixable } from '../fixes/support/descriptors.mts';
 import { restoreHookFix } from '../fixes/tests/restore-hook-fix.mts';
-import { createWriteTracker } from './direct-writes/direct-writes.mts';
+import { type WriteMessageId, createWriteTracker } from './direct-writes/direct-writes.mts';
 
 type MessageId =
-  | 'unrestored'
-  | 'unrestoredWithUserEvent'
-  | 'unrestoredGlobal'
-  | 'unrestoredEnv'
-  | 'unrestoredEnvWrite'
-  | 'unrestoredGlobalWrite';
+  'unrestored' | 'unrestoredWithUserEvent' | 'unrestoredGlobal' | 'unrestoredEnv' | WriteMessageId;
 type Options = readonly [Readonly<Record<string, unknown>>?];
 type Context = Readonly<TSESLint.RuleContext<MessageId, Options>>;
 type TrackedCall = {
@@ -239,6 +234,12 @@ export const rule: TSESLint.RuleModule<MessageId, Options> = {
         'This write to `process.env` stays for the tests that follow, so they pass or fail depending on the order they run in. Use `vi.stubEnv(name, value)` with `afterEach(() => { vi.unstubAllEnvs(); })`, or save the old value and put it back in `afterEach` or `finally`.',
       unrestoredGlobalWrite:
         'This global override stays for the tests that follow, so they pass or fail depending on the order they run in. Use `vi.stubGlobal`, `vi.spyOn(object, name)` or `vi.useFakeTimers()` and restore them in `afterEach`, or save the old value and put it back in `afterEach` or `finally`.',
+      unrestoredStorageWrite:
+        'This storage entry stays for the tests that follow, so they pass or fail depending on the order they run in. Clear it after each test: `afterEach(() => { localStorage.clear(); });` (`sessionStorage.clear()` for session storage), or remove the key in `finally`.',
+      unrestoredCookieWrite:
+        "This cookie stays for the tests that follow, so they pass or fail depending on the order they run in. Expire it after each test (`afterEach(() => { document.cookie = 'session=; max-age=0'; })`), or save `document.cookie` and put it back in `afterEach` or `finally`.",
+      unrestoredDirectoryChange:
+        'This working directory change stays for the tests that follow, so relative paths in them resolve from a different folder. Pass the folder to the code under test instead, or save `process.cwd()` and change back to it in `afterEach` or `finally`.',
     },
   },
   create(context) {

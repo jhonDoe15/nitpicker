@@ -1,4 +1,3 @@
-import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { writeFiles } from '../../../diff/git/test-support/fixture-files.mts';
 import {
@@ -41,21 +40,6 @@ function reportOf(result: MonorepoRun, project: string) {
   };
 }
 
-function loosenings(result: MonorepoRun, project: string) {
-  return reportOf(result, project).findings.filter(({ rule }) => rule === 'policy-loosened');
-}
-
-const EXCEPTIONS = {
-  thresholds: { fileLines: 200 },
-  exceptions: [{ rule: 'file-lines-limit', paths: ['src/**'], reason: 'tables' }],
-};
-
-function exceptionsMonorepo() {
-  const root = sharedMonorepo(JSON.stringify({ thresholds: { fileLines: 200 } }));
-  writeFiles(root, { 'shared/base.json': JSON.stringify(EXCEPTIONS) });
-  return root;
-}
-
 describe('projects that extend a shared config', () => {
   it('run with the merged config, and the cache key shows it', () => {
     const root = sharedMonorepo();
@@ -85,96 +69,6 @@ describe('projects that extend a shared config', () => {
       '  run  api (typescript): shared config shared/base.json changed',
       '  skip 1 project: no changed files (--details lists them)',
     ]);
-  });
-
-  it('report a loosening made in the shared file for every project that uses it', () => {
-    const root = sharedMonorepo();
-    writeFiles(root, {
-      'shared/base.json': JSON.stringify({ thresholds: { fileLines: 400, crapLimit: 8 } }),
-    });
-
-    const result = run(root);
-
-    expect(result.exitCode).toBe(1);
-    expect(loosenings(result, 'web')).toHaveLength(1);
-    expect(loosenings(result, 'web')[0]?.['identity']).toBe(
-      'threshold fileLines raised from 200 to 400 (from shared/base.json)',
-    );
-    expect(loosenings(result, 'api')).toHaveLength(0);
-    expect(reportOf(result, 'api').summary.policyChanges).toEqual([]);
-    expect(statusList(result)).toEqual(['failed', 'passed', 'skipped']);
-  });
-
-  it('report a loosening for each project it reaches, each with a digest that covers the shared file', () => {
-    const result = run(exceptionsMonorepo());
-
-    const web = reportOf(result, 'web').summary;
-    const api = reportOf(result, 'api').summary;
-    expect(web.policyLoosenings).toEqual(api.policyLoosenings);
-    expect(web.policyLoosenings).toEqual([
-      'exception added: file-lines-limit for src/** (tables) (from shared/base.json)',
-    ]);
-    expect(web.policyDigest).toMatch(/^[0-9a-f]{12}$/u);
-    expect(api.policyDigest).toMatch(/^[0-9a-f]{12}$/u);
-    expect(result.exitCode).toBe(1);
-    expect(result.summary.split('\n').slice(-3)).toEqual([
-      'Policy loosenings in 2 projects. A person who accepts them all sets ' +
-        `NITPICKER_ACCEPT_POLICY_CHANGE=${web.policyDigest},${api.policyDigest} in CI.`,
-      'Combined report: <reports>/summary.json',
-      '',
-    ]);
-  });
-
-  it('let a person accept each project by its digest in a list joined by commas', () => {
-    const root = exceptionsMonorepo();
-    const first = run(root);
-    const digests = ['web', 'api'].map((project) => reportOf(first, project).summary.policyDigest);
-
-    const partly = run(root, [], {
-      environment: {
-        CI: 'true',
-        NITPICKER_ACCEPT_POLICY_CHANGE: `000000000000,${digests[0] ?? ''}`,
-      },
-    });
-
-    expect(partly.exitCode).toBe(1);
-    expect(loosenings(partly, 'web')).toHaveLength(0);
-    expect(loosenings(partly, 'api')).toHaveLength(1);
-  });
-
-  it('change the digest when the shared file changes in another way', () => {
-    const first = sharedMonorepo();
-    writeFiles(first, {
-      'shared/base.json': JSON.stringify({ thresholds: { fileLines: 400, crapLimit: 8 } }),
-    });
-    const second = sharedMonorepo();
-    writeFiles(second, {
-      'shared/base.json': JSON.stringify({
-        thresholds: { fileLines: 400, crapLimit: 8 },
-        exclude: ['gen/**'],
-      }),
-    });
-
-    const digests = [first, second].map((root) => reportOf(run(root), 'web').summary.policyDigest);
-
-    expect(digests[0]).toMatch(/^[0-9a-f]{12}$/u);
-    expect(digests[1]).toMatch(/^[0-9a-f]{12}$/u);
-    expect(digests[0]).not.toBe(digests[1]);
-  });
-
-  it('let a person accept the loosening once for every project', () => {
-    const root = sharedMonorepo();
-    writeFiles(root, {
-      'shared/base.json': JSON.stringify({ thresholds: { fileLines: 400, crapLimit: 8 } }),
-    });
-    const digest = reportOf(run(root), 'web').summary.policyDigest;
-
-    const accepted = run(root, [], {
-      environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: digest },
-    });
-
-    expect(accepted.exitCode).toBe(0);
-    expect(loosenings(accepted, 'web')).toHaveLength(0);
   });
 
   it('name the shared file when it is not valid, and fail every project that uses it', () => {
@@ -223,38 +117,6 @@ describe('the root config of a workspace', () => {
     const result = run(root);
 
     expect(reportOf(result, 'packages/a').summary.configOverrides).toEqual(['exclude: ["src/**"]']);
-  });
-
-  it('is policy of every member: loosening it is reported with the root config named', () => {
-    const root = workspaceWithRootConfig({ thresholds: { fileLines: 200 } });
-    writeFiles(root, {
-      'nitpicker.config.json': JSON.stringify({ thresholds: { fileLines: 400 } }),
-    });
-
-    const result = run(root);
-
-    expect(result.exitCode).toBe(1);
-    expect(loosenings(result, 'packages/a').map(({ identity }) => identity)).toEqual([
-      'threshold fileLines raised from 200 to 400 (from ../../nitpicker.config.json)',
-    ]);
-  });
-
-  it('is policy of a run started in a member folder that has its own package.json', () => {
-    const root = workspaceWithRootConfig({ thresholds: { fileLines: 200 } });
-    writeFiles(root, {
-      'nitpicker.config.json': JSON.stringify({ thresholds: { fileLines: 900 } }),
-      'packages/a/src/a.ts': 'export const a = 2;\n',
-    });
-
-    const inside = run(root, [], { workingDirectory: path.join(root, 'packages/a') });
-
-    expect(inside.exitCode).toBe(1);
-    expect(
-      inside
-        .json('new-findings.json')
-        .filter(({ rule }) => rule === 'policy-loosened')
-        .map(({ identity }) => identity),
-    ).toEqual(['threshold fileLines raised from 200 to 900 (from ../../nitpicker.config.json)']);
   });
 
   it('still applies when the root holds files of another language', () => {

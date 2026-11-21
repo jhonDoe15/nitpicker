@@ -7,7 +7,7 @@ export function resolveInside(root, relative) {
   return full.startsWith(base + path.sep) ? full : undefined;
 }
 
-export function isRegularFile(file) {
+function isRegularFile(file) {
   return statSync(file, { throwIfNoEntry: false })?.isFile() === true;
 }
 

@@ -134,14 +134,6 @@ type JavascriptOptions = {
   readonly projectRoot: string;
 };
 
-export function checkedJavascriptFiles(projectRoot: string, layout: JavascriptLayout): string[] {
-  if (layout.javascript || typeof layout.projectCodeFiles !== 'function') {
-    return [];
-  }
-  const tsconfigFile = path.join(projectRoot, layout.typescriptProject ?? 'tsconfig.json');
-  return checkedFiles({ projectRoot, tsconfigFile, layout }, layout.projectCodeFiles);
-}
-
 export function untypedJavascriptConfig({
   tsconfigFile,
   layout,

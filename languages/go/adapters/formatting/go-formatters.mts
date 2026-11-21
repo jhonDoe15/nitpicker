@@ -22,12 +22,7 @@ const firstFileIn: (root: string, names: readonly string[]) => string | undefine
 const GOFMT = 'gofmt';
 
 export const FORMATTERS = [GOFMT, 'gofumpt', 'goimports'];
-export const GOLANGCI_FILES = [
-  '.golangci.yml',
-  '.golangci.yaml',
-  '.golangci.toml',
-  '.golangci.json',
-];
+const GOLANGCI_FILES = ['.golangci.yml', '.golangci.yaml', '.golangci.toml', '.golangci.json'];
 const load = createRequire(import.meta.url);
 
 function parseWith(moduleName: string, text: string): unknown {

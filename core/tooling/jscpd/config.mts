@@ -43,8 +43,8 @@ function isStringList(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(isText);
 }
 
-export const JSCPD_MODES: readonly string[] = ['strict', 'mild', 'weak'];
-export const JSCPD_SIZE = /^(\d+(?:\.\d+)?)\s*(b|kb?|mb?|gb?)?$/iu;
+const JSCPD_MODES: readonly string[] = ['strict', 'mild', 'weak'];
+const JSCPD_SIZE = /^(\d+(?:\.\d+)?)\s*(b|kb?|mb?|gb?)?$/iu;
 const AT_LEAST_ONE = 'a whole number of 1 or more';
 function isPositive(value: unknown): boolean {
   return typeof value === 'number' && Number.isInteger(value) && value >= 1;
@@ -129,16 +129,6 @@ function parsedProjectConfig(text: string): ProjectConfig {
         .map((key) => [key, checkedValue(key, parsed[key])]),
     ),
   );
-}
-
-export function appliedJscpdConfig(
-  text: string,
-): { kind: 'applied'; config: ProjectConfig } | { kind: 'rejected' } {
-  try {
-    return { kind: 'applied', config: parsedProjectConfig(text) };
-  } catch {
-    return { kind: 'rejected' };
-  }
 }
 
 export function resolveJscpdPolicy(settings: unknown, projectRoot: string): unknown {

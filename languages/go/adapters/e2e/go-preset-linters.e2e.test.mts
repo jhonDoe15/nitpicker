@@ -153,23 +153,12 @@ describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
     ]);
   });
 
-  it('reads staticcheck.conf once the project opts in, as a policy change', () => {
-    const result = gate(project, 'conf-opted-in');
-    expect(newFindings(result)).toEqual([
+  it('reads staticcheck.conf once the project opts in', () => {
+    expect(newFindings(gate(project, 'conf-opted-in'))).toEqual([
       'errcheck/unchecked shop/lookup.go',
       'gocritic/wrapperFunc shop/lookup.go',
       'modernize/any shop/lookup.go',
-      'nitpicker-config/policy-loosened nitpicker.config.json',
-      'nitpicker-config/policy-loosened nitpicker.config.json',
       'revive/enforce-map-style shop/lookup.go',
-    ]);
-    expect(
-      newMessages(result)
-        .filter((message) => message.includes('staticcheck'))
-        .map((message) => message.split('. ')[0]),
-    ).toEqual([
-      'staticcheck project config changed: staticcheck.conf',
-      'tools.staticcheck.precedence: not set -> ["project"]',
     ]);
   });
 });

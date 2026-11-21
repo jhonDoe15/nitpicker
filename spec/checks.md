@@ -181,6 +181,33 @@ reports a React Query `mutate(...)` or `mutateAsync(...)` call, or a `useMutatio
 the result. A `mutateAsync` call with `try`/`catch` or `.catch`, and a project whose source sets `MutationCache`
 `onError`, are left alone.
 
+React memo props: `nitpicker/react-no-unstable-memo-props` (production source in a React project, in `eslint-lint`)
+reports a JSX element of a component made with `memo(...)` and no comparison function (same file, or a project file it
+is imported from) that is rendered in a component body with a prop that is new on every render: an object or array
+literal, a function, a `.bind(...)` call, a JSX element, or a `const` or function declared in that body to one of
+those. `key`, `ref`, `children`, elements with JSX or expression children, elements built outside render, `async`
+components, components with no parameters and no hook call, components from packages and projects with the React
+Compiler are left alone.
+
+React store selectors: `nitpicker/react-no-unstable-selector-result` (production source in a React project, in
+`eslint-lint`) reports an inline selector that returns an object or array literal, `Object.keys`, `values`, `entries`
+or `fromEntries`, or the result of `filter`, `map`, `flatMap`, `toSorted` or `toReversed`, passed without an equality
+argument to react-redux `useSelector` (also typed hooks made from it), to a hook made with Zustand `create`, or to
+Zustand `useStore(store, selector)`. Hooks are resolved to the project file that creates them; `createWithEqualityFn`
+stores, wrapped hooks and hooks from packages are left alone.
+
+React external stores: `nitpicker/react-no-unstable-store-subscribe` (production source in a React project, in
+`eslint-lint`) reports a `useSyncExternalStore` call whose `subscribe` argument is written inline or declared in the
+same component or hook body outside `useCallback` (not a function without parameters, and not in a project with the
+React Compiler), and a `getSnapshot` or `getServerSnapshot` function that returns a new object or array on every call.
+
+React effect resources: `nitpicker/react-no-leaked-effect-resource` (production source in a React project, in
+`eslint-lint`) reports, in the own statements of a `useEffect` or `useLayoutEffect` callback, a `WebSocket`,
+`EventSource`, `BroadcastChannel`, `Worker`, `SharedWorker`, `MutationObserver`, `PerformanceObserver` or
+`ReportingObserver` that is created and never closed, a `navigator.geolocation.watchPosition` call whose id is never
+used, and a `requestAnimationFrame` loop that always schedules itself again and is never cancelled. A handle that is
+stored in a ref, passed on, returned or closed anywhere in the effect is left alone.
+
 Rows changed in memory: `in-memory-update` in the Python preset reports rows loaded from a Django queryset or a
 SQLAlchemy query only to set the same values on each and write them back (`bulk_update`, `commit`), where one `update`
 statement does it; models with a `save()` override, signals, `before_update` listeners, `auto_now` fields or a version

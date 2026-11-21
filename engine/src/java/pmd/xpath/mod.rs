@@ -3,3 +3,4 @@ pub mod eval;
 pub mod library;
 pub mod parse;
 pub mod value;
+pub mod extra;

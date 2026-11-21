@@ -1,5 +1,4 @@
 export {
-  declaredConfigFiles,
   declaredToolChoices,
   declaredToolDigest,
   declaredToolNotices,

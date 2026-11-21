@@ -72,7 +72,7 @@ export async function layeredPolicy(
   return [...ordered, ...exceptions];
 }
 
-export async function layerEntries(file: string): Promise<FlatEntry[]> {
+async function layerEntries(file: string): Promise<FlatEntry[]> {
   return (await projectEntries(file)).map((entry) => withoutBasePath(entry, path.dirname(file)));
 }
 

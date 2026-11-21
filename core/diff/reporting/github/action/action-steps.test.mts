@@ -114,7 +114,6 @@ describe('every run step of action.yml', () => {
     expect(runSteps.map((step) => fieldAt(step, 'id') ?? fieldAt(step, 'name'))).toEqual([
       INSTALL,
       'prepare',
-      'approval',
       'gate',
       PUBLISH,
       FAIL,

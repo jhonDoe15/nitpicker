@@ -79,13 +79,11 @@ describe('exceptions with "preset": "java"', () => {
       ]);
     });
 
-    it('reports an exception added with the method as a loosening of the base policy', () => {
+    it('lifts a method with an exception added in the same change', () => {
       const result = change(configWith(entry('Wide.sum')), '{ "preset": "java" }\n');
 
-      expect(result.exitCode, result.output.out + result.output.err).toBe(1);
-      expect(pickFields(enforceableFindings(result.json('new-findings.json')), 'rule')).toEqual([
-        ['policy-loosened'],
-      ]);
+      expect(result.exitCode, result.output.out + result.output.err).toBe(0);
+      expect(enforceableFindings(result.json('new-findings.json'))).toEqual([]);
     });
 
     it.each([

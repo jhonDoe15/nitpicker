@@ -17,7 +17,6 @@ const EVERY_PRESET = [
   'tests-fail',
   'tests-fail-on-the-base',
   'another-run-is-in-progress',
-  'a-policy-loosened-finding',
 ];
 const SECTION_LINK = /\]\(\.\.\/troubleshooting\.md#([a-z0-9-]+)\)/gu;
 const PROJECT_TOOL_CONFIG = 'a-project-tool-config-is-missing-or-broken';

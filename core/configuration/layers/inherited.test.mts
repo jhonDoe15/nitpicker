@@ -2,7 +2,6 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
 import { readLayeredConfig } from './read-layered.mts';
-import { configLayersOf } from './shared-files.mts';
 import type { FileMap } from '../../diff/git/test-support/fixture-files.mts';
 import type { NitpickerConfig, ProjectOverlay } from '../../../shared/values/config-types.mts';
 
@@ -138,20 +137,5 @@ describe('the root config of a monorepo as the base layer of each member', () =>
     });
 
     expect(member(root)).toEqual({ preset: 'javascript' });
-  });
-
-  it('puts the root config into the shared files of a member policy digest', () => {
-    const root = repository({
-      'nitpicker.config.json': '{"exclude":["packages/a/src/**"]}',
-      'packages/a/src/a.ts': '',
-    });
-    const blobId = (content: Buffer) => `blob:${String(content.length)}`;
-    const projectRoot = path.join(root, 'packages/a');
-
-    expect(configLayersOf(projectRoot, projectRoot, { blobId, inherits: '../..' })).toEqual({
-      shared: [['../../nitpicker.config.json', 'blob:33']],
-      changed: [],
-    });
-    expect(configLayersOf(projectRoot, projectRoot, { blobId }).shared).toEqual([]);
   });
 });

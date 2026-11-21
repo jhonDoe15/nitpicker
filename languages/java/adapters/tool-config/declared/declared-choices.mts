@@ -119,28 +119,3 @@ export function declaredToolNotices(config: unknown, source: BuildSource): strin
       : [ignoredConfigNotice(`the ${spec.label} settings in ${filesOf(relevant)}`, tool)];
   });
 }
-
-function pathsOf(declarations: readonly Declaration[]): string[] {
-  return declarations.flatMap((declaration) =>
-    declaration.path === undefined ? [] : [declaration.path],
-  );
-}
-
-export function declaredConfigFiles(
-  tool: string,
-  { root, files }: { root: string; files: readonly string[] },
-): { declarations: Map<string, string>; files: string[] } {
-  const declarations = toolOf(tool).declarations(
-    readDeclaredBuild({ paths: () => [...files], readMany: directorySource(root).readMany }),
-  );
-  const byFile = Object.groupBy(declarations, (declaration) => declaration.file);
-  return {
-    declarations: new Map(
-      Object.entries(byFile).map(([file, found]) => [
-        file,
-        JSON.stringify((found ?? []).map(({ setting, value, path }) => ({ setting, value, path }))),
-      ]),
-    ),
-    files: pathsOf(declarations),
-  };
-}
