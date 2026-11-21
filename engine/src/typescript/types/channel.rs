@@ -7,6 +7,8 @@ use std::time::{Duration, Instant};
 const REQUEST: u8 = 1;
 const RESPONSE: u8 = 4;
 const ERROR: u8 = 5;
+const GARBAGE_TARGET: &str = "GOGC";
+const GARBAGE_PERCENT: &str = "50";
 
 pub struct Channel {
     child: Child,
@@ -20,7 +22,11 @@ pub struct Channel {
 
 impl Channel {
     pub fn start(executable: &Path, directory: &Path) -> std::io::Result<Channel> {
-        let mut child = Command::new(executable)
+        let mut command = Command::new(executable);
+        if std::env::var_os(GARBAGE_TARGET).is_none() {
+            command.env(GARBAGE_TARGET, GARBAGE_PERCENT);
+        }
+        let mut child = command
             .arg("--api")
             .arg("--cwd")
             .arg(directory)
