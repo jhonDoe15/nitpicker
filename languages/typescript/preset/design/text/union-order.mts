@@ -139,16 +139,8 @@ function levelStep(reading: Reading, frame: LevelFrame, place: Place): number {
   return plainStep(frame, place);
 }
 
-function templateStep(reading: Reading, frame: TemplateFrame, place: Place): number {
-  const { text, index } = place;
-  const unit = escapedUnit(place);
+function writtenStep(reading: Reading, frame: TemplateFrame, { text, index }: Place): number {
   const char = text.charAt(index);
-  if (unit !== undefined) {
-    frame.units += unit;
-    return index + UNIT_LENGTH;
-  }
-  frame.text += withLoneSurrogatesEscaped(frame.units);
-  frame.units = '';
   if (char === TEMPLATE_QUOTE) {
     close(reading, char);
     return index + 1;
@@ -159,6 +151,17 @@ function templateStep(reading: Reading, frame: TemplateFrame, place: Place): num
   }
   frame.text += char === '\\' ? text.slice(index, index + 2) : char;
   return index + (char === '\\' ? 2 : 1);
+}
+
+function templateStep(reading: Reading, frame: TemplateFrame, place: Place): number {
+  const unit = escapedUnit(place);
+  if (unit !== undefined) {
+    frame.units += unit;
+    return place.index + UNIT_LENGTH;
+  }
+  frame.text += withLoneSurrogatesEscaped(frame.units);
+  frame.units = '';
+  return writtenStep(reading, frame, place);
 }
 
 function step(reading: Reading, place: Place): number {
