@@ -31,5 +31,14 @@ exception route in the message: write that form, don't work around the rule.
 - A React Query mutation that handles `onSuccess` also handles failure: pass `onError` in the hook or call
   options or show `error` from the mutation (`nitpicker/react-mutation-drops-failure`); a `MutationCache`
   `onError` in the project covers every mutation.
+- A `memo` component gets props that stay the same between renders: constants at module level, `useMemo` values and
+  `useCallback` functions, not `style={{ ... }}` or `onPick={() => ...}` (`nitpicker/react-no-unstable-memo-props`).
+- A `useSelector` or Zustand selector returns a stored value or a primitive; for several values use one call each,
+  `createSelector`, `shallowEqual` or `useShallow(...)`, never `(s) => ({ a: s.a, b: s.b })` or `s.items.filter(...)`
+  alone (`nitpicker/react-no-unstable-selector-result`).
+- `useSyncExternalStore` gets a `subscribe` declared at module level (or in `useCallback`) and a `getSnapshot` that
+  returns a value the store keeps, not a new object or array (`nitpicker/react-no-unstable-store-subscribe`).
+- An effect that opens a `WebSocket`, `EventSource`, `BroadcastChannel`, worker, observer, `watchPosition` or a
+  `requestAnimationFrame` loop returns a cleanup that closes it (`nitpicker/react-no-leaked-effect-resource`).
 - Component tests query through `screen` and assert what the user sees (text, roles, focus), never
   component state, instances or hook internals.

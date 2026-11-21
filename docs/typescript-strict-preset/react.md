@@ -182,6 +182,63 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   dependency array runs after every render and is reported too. A call inside a nested function (a
   subscription, a timer) and an effect with `[]` are left alone; an effect that synchronizes with
   an external system needs an exception.
+- **No fresh props on a `memo` component** (`nitpicker/react-no-unstable-memo-props`). `memo` skips a
+  render only when every prop is the same value as last time. A component made with `memo(...)` or
+  `React.memo(...)` and no comparison function (declared in the same file, or exported by a project
+  file the file imports, also through `export { Row } from './row'`) that is rendered, in a
+  component body or in a `.map`, `.flatMap` or `Array.from` callback there, with a prop written as
+  an object or array literal, a function, a `.bind(...)` call or a JSX element, or with a `const`
+  or function declared in that body to one of those, never skips. One finding per element names
+  each such prop and its stable form: a constant at module level or `useMemo` for objects, arrays
+  and elements, `useCallback` for functions. Inside a list callback, where hooks cannot be called,
+  the message says to pass the item and a stable handler or to move the row into its own
+  component. `key`, `ref` and `children`, an element with JSX or `{expression}` children, a prop
+  followed by a spread, an element built in an event handler, effect, `useMemo` or helper
+  function, an `async` (server) component, a component with no parameters and no hook call (it
+  never renders again by itself), a `memo` with a comparison function, components from packages
+  and a project that lists `babel-plugin-react-compiler` or `react-compiler-runtime` in an
+  enclosing `package.json` (the compiler memoizes the values) are not reported.
+- **No store selector that returns a new value** (`nitpicker/react-no-unstable-selector-result`).
+  An inline selector whose returned expression is an object or array literal,
+  `Object.keys`/`values`/`entries`/`fromEntries(...)`, or ends in `.filter`, `.map`, `.flatMap`,
+  `.toSorted` or `.toReversed`, passed alone to react-redux `useSelector` (also a typed hook made
+  with `useSelector.withTypes()` or `TypedUseSelectorHook`), to a hook made with Zustand `create`,
+  or as the second argument of Zustand `useStore(store, selector)`. With react-redux the component
+  renders again after every dispatched action; Zustand 5 throws "Maximum update depth exceeded" and
+  Zustand 4 renders on every store change. Select each value with its own call; with react-redux
+  use `createSelector` or pass `shallowEqual`, with Zustand wrap the selector in `useShallow(...)`.
+  The hook must be named `use*` and is resolved through its import to the project file that
+  creates it (re-exports are followed), so a `createWithEqualityFn` store, a hook wrapped by a
+  helper, a hook from a package, a call with an equality argument, a selector defined elsewhere
+  and one that returns a stored value or a primitive (`find`, `length`) are not reported. `slice`
+  and `concat` (a string result is a primitive), `sort` (the same array) and a fallback such as
+  `state.items ?? []` (new only while the value is missing) are not treated as new values.
+- **A stable `subscribe` and a cached snapshot for `useSyncExternalStore`**
+  (`nitpicker/react-no-unstable-store-subscribe`). A `subscribe` argument written inline, or bound
+  to a function declared in the same component or hook body outside `useCallback`, is a new
+  function on every render, so React unsubscribes and subscribes again each time: declare it at
+  module level or wrap it in `useCallback`. A function that takes no parameter (the no-op
+  `() => () => {}` used to detect hydration), one made once by an enclosing factory function and
+  a project with the React Compiler are not reported for this. A `getSnapshot` or
+  `getServerSnapshot` argument (inline, or a function of the same file) that returns an object or
+  array literal, `new Map`, `Set`, `Date`, `Array`, `Object`, `URL` or `URLSearchParams`,
+  `Object.keys`/`values`/`entries`/
+  `fromEntries(...)` or the result of `.filter`, `.map`, `.flatMap`, `.toSorted` or `.toReversed` is
+  never the same value twice, so React renders in a loop: return a value the store keeps. The hook
+  from `react`, `use-sync-external-store` and `use-sync-external-store/shim` counts.
+- **Effects close what they open** (`nitpicker/react-no-leaked-effect-resource`). The
+  `react-web-api/no-leaked-*` rules cover listeners, timers, `ResizeObserver` and
+  `IntersectionObserver`; this rule covers the rest. Reported in the effect's own statements:
+  `new WebSocket`, `EventSource`, `BroadcastChannel`, `Worker`, `SharedWorker`, `MutationObserver`,
+  `PerformanceObserver` or `ReportingObserver` (also through `window.`) whose handle is dropped or
+  kept in a local variable that is only read through named members, none of them `close`,
+  `terminate` or `disconnect`;
+  `navigator.geolocation.watchPosition(...)` whose id is dropped or never used; and a
+  `requestAnimationFrame` loop whose callback always schedules itself again while the effect never
+  mentions `cancelAnimationFrame`. A handle stored in a ref, passed to a function, returned or
+  closed anywhere in the effect, a resource opened in a nested function, a loop that stops on a
+  condition, and an effect with `[]` in a file that mounts the app (it calls `createRoot`,
+  `hydrateRoot`, `ReactDOM.render` or `registerComponent`) are not reported.
 - **No array index as `key`** (`react-x/no-array-index-key`): use a stable id from the item. Every
   element rendered from a list has a `key` (`react-x/no-missing-key`) and siblings do not repeat
   one (`react-x/no-duplicate-key`). A `key` built from `Math.random()`, `Date.now()`,
