@@ -73,4 +73,22 @@ describe('project code traversal', () => {
       'test/value.test.ts',
     ]);
   });
+
+  it("skips Yarn's own files under .yarn like node_modules, at any depth", () => {
+    const files = [
+      'index.js',
+      '.yarn/releases/yarn-4.13.0.cjs',
+      '.yarn/plugins/plugin.cjs',
+      'templates/app/.yarn/releases/yarn-4.13.0.cjs',
+      'templates/app/src/main.js',
+    ];
+    const root = repository(Object.fromEntries(files.map((file) => [file, 'module.exports = 1;'])));
+    const layout = resolveLayout({ sourceRoots: ['.'] }, [], { javascript: true });
+
+    expect(codeFilesUnder(layout, root, ['.']).filter(layout.isSourceFile)).toEqual([
+      'index.js',
+      'templates/app/src/main.js',
+    ]);
+    expect(layout.isGeneratedPath('templates/app/.yarn/releases/yarn-4.13.0.cjs')).toBe(true);
+  });
 });
