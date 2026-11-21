@@ -863,5 +863,10 @@
 ["calls/p/Yssi.java", "EI_EXPOSE_REP", 3, "p.Yssi.get() may expose internal representation by returning Yssi.f"],
 ["calls/p/Zbxk.java", "EI_EXPOSE_REP", 3, "p.Zbxk.get() may expose internal representation by returning Zbxk.f"],
 ["calls/p/Zlnrz.java", "EI_EXPOSE_REP", 3, "p.Zlnrz.get() may expose internal representation by returning Zlnrz.f"],
-["calls/p/Zxxkmj.java", "EI_EXPOSE_REP", 3, "p.Zxxkmj.get() may expose internal representation by returning Zxxkmj.f"]
+["calls/p/Zxxkmj.java", "EI_EXPOSE_REP", 3, "p.Zxxkmj.get() may expose internal representation by returning Zxxkmj.f"],
+["names/p/Rv.java", "EI_EXPOSE_REP2", 16, "p.Rv.copyOfCheck(Date) may expose internal representation by storing an externally mutable object into Rv.a"],
+["names/p/Rv.java", "EI_EXPOSE_REP2", 24, "p.Rv.loopMerge(Date, Date, boolean) may expose internal representation by storing an externally mutable object into Rv.b"],
+["names/p/Rv.java", "EI_EXPOSE_REP2", 30, "p.Rv.storeInLoop(Date, Date, boolean) may expose internal representation by storing an externally mutable object into Rv.c"],
+["names/p/Rv.java", "EI_EXPOSE_REP2", 42, "p.Rv.sibling(Date, List) may expose internal representation by storing an externally mutable object into Rv.d"],
+["names/p/Rv.java", "EI_EXPOSE_REP2", 51, "p.Rv.pattern(Object, Date, String) may expose internal representation by storing an externally mutable object into Rv.e"]
 ]

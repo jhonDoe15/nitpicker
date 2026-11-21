@@ -384,6 +384,13 @@ is a call on a lambda parameter without a declared type inside nested call argum
 resolve. `NP_SB_CALLS=<file>` writes the calls the order is built from; `parity/spotbugs/calls.py` reads the same from
 class files and compares (Nacos: 10,350 same, 76 only in class files, 2 only in the engine).
 
+A stored value also carries the variable SpotBugs names as the place of the finding (`symbol` in the report,
+`<method>#<variable>`, `tests/expected/spotbugs-variables.json`): the first variable, parameters first and then
+locals in the order they are declared, that holds the very value stored, so a copy of a parameter or a cast or
+pattern variable of it is named after the parameter; a variable given different values on two paths is named
+itself; a value only a call made (`Objects.requireNonNull(p)`) or a `?:` choice right in the store is `?`; the
+outer instance of an inner class is `this$N` and a record component its own name.
+
 ### Null patterns
 
 `src/java/spotbugs/nulls/` follows values through a method on the flow graph of `src/java/flow/`: a backward

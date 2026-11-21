@@ -52,6 +52,7 @@ pub fn report(out: &mut Vec<Finding>, file: &SourceFile, at: Node, rule: &str, m
         column: file.column(at),
         rule: rule.to_string(),
         message,
+        symbol: None,
     });
 }
 
