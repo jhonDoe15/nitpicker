@@ -11,6 +11,10 @@ import type { AnswerStore } from '../../../shared/logic/typed/solver-types.mts';
 import { fieldOf, fieldsOf, listOf, parseJson, textsOf } from '../../../shared/values/readers.mts';
 import type { Environment } from '../../../shared/processes/environment.mts';
 import { guardedEntries } from '../preset/eslint-config/fix-guards/guarded-plugins.mts';
+import {
+  ENGINE_FINDINGS_FILE,
+  replayEngineFindingsFrom,
+} from '../preset/eslint-config/react/engine-replay.mts';
 
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 
@@ -48,6 +52,8 @@ if (!(
 const selectedRules = selectedRuleIds(process.env['NITPICKER_DIFF_ESLINT_ONLY_RULES']);
 
 shareSolverAnswers(answerStore(optionalEnvironmentPath(SOLVER_ANSWERS_ENVIRONMENT)));
+
+replayEngineFindingsFrom(optionalEnvironmentPath(ENGINE_FINDINGS_FILE));
 
 export default guardedEntries(
   (

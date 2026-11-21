@@ -61,6 +61,7 @@
     "shared/**/*.mjs",
     "shared/reference/rules/*.json",
     "languages/**",
+    "engine/bin/**",
     "!**/*.test.mjs",
     "!**/*.mts",
     "!**/*_test.go",

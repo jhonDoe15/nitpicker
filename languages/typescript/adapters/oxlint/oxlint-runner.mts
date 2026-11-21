@@ -13,6 +13,8 @@ import {
   lintResultsOf,
   planOf,
 } from './plan/oxlint-shapes.mts';
+import { withEngineLint } from './run/engine-pass.mts';
+import { mergeResults } from './run/merged-results.mts';
 import { type LintTiming, type StageRun, lintConfigs, settledBeside } from './run/stage-lint.mts';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { oxlintBinary, spawnJson } from './oxlint-process.mts';
@@ -68,14 +70,7 @@ export async function lintWithOxlint({
   readonly projectConfigPath: string | undefined;
   readonly runEslintCli: RunEslintCli;
 }): Promise<LintResult[]> {
-  const plan = planOf(
-    spawnJson([PLAN_PATH, options.projectRoot, ...options.patterns], {
-      cwd: options.projectRoot,
-      env: environment,
-      context: 'oxlint planning',
-      timeoutMs: options.timeoutMs,
-    }),
-  );
+  const plan = planFor(options, environment);
   const files = plan.groups.flatMap((group) => group.files);
   const stage = trackTemporaryPath(createStage(options.projectRoot, projectConfigPath));
   try {
@@ -84,19 +79,24 @@ export async function lintWithOxlint({
     }
     const inlineConfig = neutralizeInlineConfig(stage, options.projectRoot, plan.noInlineConfig);
     const directiveFiles = directiveFilesOf(options.projectRoot, files, plan.noInlineConfig);
-    const { results, residual } = await lintUntilAccepted({
-      plan,
-      stage,
-      projectRoot: options.projectRoot,
-      runEslintCli,
-      environment,
-      timeoutMs: options.timeoutMs,
-      neutralized: new Map([
-        ...inlineConfig.neutralized,
-        ...oxlintDirectiveLocations(directiveFiles),
-      ]),
-      directiveFiles,
-    });
+    const { projectRoot, timeoutMs } = options;
+    const { results, residual } = await withEngineLint(
+      { plan, projectRoot, environment, timeoutMs },
+      (engineEnvironment) =>
+        lintUntilAccepted({
+          plan,
+          stage,
+          projectRoot,
+          runEslintCli,
+          environment: engineEnvironment,
+          timeoutMs,
+          neutralized: new Map([
+            ...inlineConfig.neutralized,
+            ...oxlintDirectiveLocations(directiveFiles),
+          ]),
+          directiveFiles,
+        }),
+    );
     return mergeResults([...results, ...inlineConfig.results, ...residual]).map((result) => ({
       ...result,
       filePath: path.join(options.projectRoot, result.filePath),
@@ -105,6 +105,17 @@ export async function lintWithOxlint({
     rmSync(stage, { recursive: true, force: true });
     untrackTemporaryPath(stage);
   }
+}
+
+function planFor(options: LintEngineOptions, environment: Environment): OxlintPlan {
+  return planOf(
+    spawnJson([PLAN_PATH, options.projectRoot, ...options.patterns], {
+      cwd: options.projectRoot,
+      env: environment,
+      context: 'oxlint planning',
+      timeoutMs: options.timeoutMs,
+    }),
+  );
 }
 
 async function lintUntilAccepted({
@@ -267,26 +278,4 @@ async function residualResults(
       (message) => message.ruleId !== undefined && rules.includes(message.ruleId),
     ),
   }));
-}
-
-function mergeResults(results: readonly LintResult[]): LintResult[] {
-  const byFile = new Map<string, LintResult['messages'][number][]>();
-  for (const result of results) {
-    byFile.set(result.filePath, [...(byFile.get(result.filePath) ?? []), ...result.messages]);
-  }
-  return [...byFile]
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([filePath, messages]) => ({ filePath, messages: messages.sort(byPosition) }));
-}
-
-function byPosition(
-  left: LintResult['messages'][number],
-  right: LintResult['messages'][number],
-): number {
-  return (
-    left.line - right.line ||
-    left.column - right.column ||
-    String(left.ruleId).localeCompare(String(right.ruleId)) ||
-    left.message.localeCompare(right.message)
-  );
 }

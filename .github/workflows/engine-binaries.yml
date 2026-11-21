@@ -1,0 +1,70 @@
+name: engine-binaries
+
+# Builds the engine for every platform the npm package carries a binary for and uploads each one as
+# the artifact engine-<platform>-<arch>, named after Node's process.platform and process.arch. The
+# release workflow calls this and packs the binaries; a manual run checks that every platform builds.
+on:
+  workflow_call:
+    inputs:
+      commit:
+        description: Commit to build
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Commit to build
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  binary:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux binaries link musl statically, so one binary runs on glibc and musl systems alike.
+          - name: linux-x64
+            runner: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+          - name: linux-arm64
+            runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+          - name: darwin-x64
+            runner: macos-latest
+            target: x86_64-apple-darwin
+          - name: darwin-arm64
+            runner: macos-latest
+            target: aarch64-apple-darwin
+          - name: win32-x64
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.commit }}
+      - name: Install the musl toolchain
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes musl-tools
+      - name: Build
+        shell: bash
+        working-directory: engine
+        env:
+          TARGET: ${{ matrix.target }}
+          NAME: ${{ matrix.name }}
+        run: |
+          set -euo pipefail
+          rustup target add "$TARGET"
+          cargo build --release --locked --target "$TARGET"
+          mkdir -p "bin/$NAME"
+          cp "target/$TARGET/release/nitpicker-engine${{ runner.os == 'Windows' && '.exe' || '' }}" "bin/$NAME/"
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: engine-${{ matrix.name }}
+          path: engine/bin/${{ matrix.name }}
+          if-no-files-found: error
+          retention-days: 7

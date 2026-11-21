@@ -6,8 +6,27 @@ use engine::Language;
 use std::path::PathBuf;
 use std::time::Instant;
 
+/// The allocator of musl, which the packaged Linux binaries link, is many times slower when threads allocate at
+/// once; this one is not.
+#[cfg(target_env = "musl")]
+#[global_allocator]
+static ALLOCATOR: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(String::as_str) == Some("typescript-estree") {
+        let text = std::fs::read_to_string(&args[1]).expect("file");
+        typescript::with_parsed(&args[1], &text, |file| println!("{}", file.program.to_estree_json(true, true)));
+        return;
+    }
+    if args.first().map(String::as_str) == Some("typescript-lint") {
+        typescript_lint(&args[1..]);
+        return;
+    }
+    if args.first().map(String::as_str) == Some("typescript-imports") {
+        typescript_imports(&args[1..]);
+        return;
+    }
     if args.first().map(String::as_str) == Some("typescript-reuse") {
         typescript_reuse(&args[1..]);
         return;
@@ -140,6 +159,26 @@ fn typescript_reuse(args: &[String]) {
     eprintln!("{} files; {:.0} ms", files.len(), started.elapsed().as_secs_f64() * 1e3);
 }
 
+/// `typescript-imports --files <list> [--out <file>]`: one JSON line per file with every module it names and the
+/// project file each one resolves to, if any.
+fn typescript_imports(args: &[String]) {
+    let (files, out) = listed_files(args);
+    let modules = typescript::resolve::Modules::shared();
+    let mut sink: Box<dyn std::io::Write> = match out {
+        Some(path) => Box::new(std::io::BufWriter::new(std::fs::File::create(path).expect("create"))),
+        None => Box::new(std::io::BufWriter::new(std::io::stdout().lock())),
+    };
+    for (path, display) in &files {
+        let file = std::path::Path::new(path);
+        let imports: Vec<_> = modules
+            .sources(file)
+            .iter()
+            .map(|source| serde_json::json!({ "source": source, "path": modules.followed(source, file) }))
+            .collect();
+        writeln!(sink, "{}", serde_json::json!({ "file": display, "imports": imports })).expect("write");
+    }
+}
+
 /// `typescript-structure --files <list> [--out <file>]`: function and class metrics of the listed files.
 fn typescript_structure(args: &[String]) {
     let started = Instant::now();
@@ -155,4 +194,62 @@ fn typescript_structure(args: &[String]) {
         analysis.summary.files, analysis.summary.lines, analysis.summary.functions, analysis.summary.classes,
         analysis.unparsed.len(), started.elapsed().as_secs_f64() * 1e3
     );
+}
+
+/// `typescript-lint --files <list> [--rules <a,b>] [--out <file>] [--testing-library-utils-module <suffix>]`: each line of
+/// the list is the path to read, the path to report and `key=value` settings for that file, tabs between them. The
+/// module suffix is `test-utils` unless given, and empty for none; `testing-library/utils-module=<suffix>` sets it for
+/// one file and `testing-library/scope=off` leaves the file to no testing-library rule.
+/// A row of the output is file, rule, line, column and message, then the end line and column of a reported range.
+/// `--testing-library-scope` has the engine decide both for every file without such settings, by following the file's
+/// imports as the preset does; `--end-to-end-root <folder>` names the folder of browser tests for that decision.
+fn typescript_lint(args: &[String]) {
+    let (mut list, mut out, mut only) = (None, None, None::<Vec<String>>);
+    let mut index = 0;
+    while index < args.len() {
+        match args[index].as_str() {
+            "--files" => { index += 1; list = Some(&args[index]); }
+            "--out" => { index += 1; out = Some(&args[index]); }
+            "--rules" => { index += 1; only = Some(args[index].split(',').map(String::from).collect()); }
+            "--testing-library-utils-module" => {
+                index += 1;
+                typescript::rules::testing_library::set_utils_module(Some(args[index].clone()).filter(|module| !module.is_empty()));
+            }
+            "--testing-library-scope" => typescript::rules::testing_library::set_scope_from_imports(),
+            "--end-to-end-root" => { index += 1; typescript::rules::testing_library::scope::set_end_to_end_root(args[index].clone()); }
+            "--testing-library-upstream" => typescript::rules::testing_library::set_upstream_only(),
+            other => panic!("unknown argument {other}"),
+        }
+        index += 1;
+    }
+    let started = Instant::now();
+    let files: Vec<typescript::rules::Listed> = std::fs::read_to_string(list.expect("--files"))
+        .expect("list")
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(|line| {
+            let mut columns = line.split('\t').map(String::from);
+            let path = columns.next().unwrap_or_default();
+            let display = columns.next().unwrap_or_else(|| path.clone());
+            typescript::rules::Listed { path, display, settings: columns.collect() }
+        })
+        .collect();
+    let rules = typescript::rules::selected(only.as_deref());
+    let findings = typescript::rules::lint_files(&files, &rules);
+    let rows: Vec<_> = findings
+        .iter()
+        .map(|reported| {
+            let found = &reported.finding;
+            match reported.end {
+                Some((line, column)) => serde_json::json!([found.file, found.rule, found.line, found.column, found.message, line, column]),
+                None => serde_json::json!([found.file, found.rule, found.line, found.column, found.message]),
+            }
+        })
+        .collect();
+    let text = serde_json::to_string(&rows).expect("json");
+    match out {
+        Some(path) => std::fs::write(path, text).expect("write"),
+        None => println!("{text}"),
+    }
+    eprintln!("{} files, {} rules, {} findings; {:.0} ms", files.len(), rules.len(), findings.len(), started.elapsed().as_secs_f64() * 1e3);
 }
