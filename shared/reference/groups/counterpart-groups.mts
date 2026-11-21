@@ -1,11 +1,55 @@
 import type { Group } from '../typed/entry-types.mts';
 
 export const GROUPS: readonly Group[] = [
-  { java: 'UnguardedOptionList', typescript: 'nitpicker/no-unguarded-option-list' },
-  { java: 'GrowingProcessArguments', typescript: 'nitpicker/no-growing-process-arguments' },
-  { java: 'DestroyLeavesDescendants', typescript: 'nitpicker/no-wrapper-only-timeout' },
-  { java: 'HeadCutErrorOutput', typescript: 'nitpicker/no-head-cut-error-output' },
-  { java: 'StderrAsFailure', typescript: 'nitpicker/no-stderr-as-failure' },
+  {
+    java: 'UnguardedOptionList',
+    typescript: 'nitpicker/no-unguarded-option-list',
+    python: 'unguarded-option-list',
+  },
+  {
+    java: 'GrowingProcessArguments',
+    typescript: 'nitpicker/no-growing-process-arguments',
+    python: 'growing-process-arguments',
+  },
+  {
+    java: 'DestroyLeavesDescendants',
+    typescript: 'nitpicker/no-wrapper-only-timeout',
+    python: 'wrapper-only-timeout',
+  },
+  {
+    java: 'HeadCutErrorOutput',
+    typescript: 'nitpicker/no-head-cut-error-output',
+    python: 'head-cut-error-output',
+  },
+  {
+    java: 'StderrAsFailure',
+    typescript: 'nitpicker/no-stderr-as-failure',
+    python: 'stderr-as-failure',
+  },
+  {
+    typescript: 'nitpicker/no-status-only-spawn-check',
+    python: 'status-only-spawn-check',
+  },
+  {
+    typescript: 'nitpicker/no-constant-lookup-in-loop',
+    python: 'constant-lookup-in-loop',
+  },
+  {
+    typescript: 'nitpicker/no-subtree-search-per-ancestor',
+    python: 'subtree-search-per-ancestor',
+  },
+  {
+    typescript: 'nitpicker/no-repeated-call',
+    python: 'repeated-call',
+  },
+  {
+    typescript: 'nitpicker/no-work-before-early-exit',
+    python: 'work-before-early-exit',
+  },
+  {
+    typescript: 'nitpicker/no-read-all-before-pass',
+    python: 'read-all-before-pass',
+  },
   {
     java: 'SurrogateSplittingCut',
     typescript: 'nitpicker/no-surrogate-splitting-cut',
