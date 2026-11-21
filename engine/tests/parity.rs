@@ -53,7 +53,15 @@ fn rows(case: &str, rules: &str) -> (Rows, Rows) {
 }
 
 fn same_as_pmd(case: &str, rules: &str) {
-    let (found, expected) = rows(case, rules);
+    let (found, mut expected) = rows(case, rules);
+    let wrong = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("expected").join(format!("{case}-pmd-wrong.json"));
+    if let Ok(listed) = std::fs::read_to_string(&wrong) {
+        let wrong: Vec<Row> = serde_json::from_str(&listed).expect("rows");
+        for row in wrong {
+            assert!(expected.remove(&row).is_some(), "{case}: {row:?} is listed as a wrong PMD finding but PMD did not report it");
+            assert!(!found.contains_key(&row), "{case}: {row:?} copies a wrong PMD finding");
+        }
+    }
     let missed: Vec<&Row> = expected.iter().filter(|(row, count)| found.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     let extra: Vec<&Row> = found.iter().filter(|(row, count)| expected.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     assert!(missed.is_empty() && extra.is_empty(), "{case}: missed {missed:?}, extra {extra:?}");
@@ -72,7 +80,12 @@ fn regular_expressions_match_what_pmd_matches() {
 
 #[test]
 fn review_rules_report_what_pmd_reports() {
-    same_as_pmd("formats", "review");
+    same_as_pmd("formats", "all");
+}
+
+#[test]
+fn rare_built_in_rules_and_switch_facts_match_pmd() {
+    same_as_pmd("builtins", "all");
 }
 
 #[test]
@@ -111,4 +124,9 @@ fn one_deeply_nested_file_is_analysed() {
     assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
     let report: serde_json::Value = serde_json::from_slice(&output.stdout).expect("json");
     assert_eq!(report["findings"].as_array().map(Vec::len), Some(1));
+}
+
+#[test]
+fn patterns_type_their_variables_like_pmd() {
+    same_as_pmd("patterns", "all");
 }

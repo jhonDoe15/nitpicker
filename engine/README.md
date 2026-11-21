@@ -21,12 +21,16 @@ of the npm package.
 
 ```
 cargo build --release
-NP_XPATH_RULES=tests/rules/review.json JAVA_HOME=<jdk 21> target/release/nitpicker-engine <source dir> \
+NP_XPATH_RULES=tests/rules/all.json JAVA_HOME=<jdk 21> target/release/nitpicker-engine <source dir> \
   --rules _XPath --classpath <file with one jar or class folder per line, absolute paths> --out report.json
 ```
 
-`tests/rules/review.json` is a snapshot of the 130 XPath rules of the Java rulesets (name, message, query,
-properties). Other switches: `NP_XPATH_ONLY=<rule,rule>` runs some rules, `NP_XPATH_STATS=<file>` writes time
+`tests/rules/all.json` holds the 342 XPath rules a Java run sends to PMD (name, message, query, properties):
+the 241 XPath rules of the Java rulesets and the 101 built-in PMD XPath rules those rulesets switch on, with
+their property overrides. `parity/rules-from-rulesets.py <rulesets dir> <pmd-java jar> <out.json>` writes it
+and prints the built-in rules PMD implements in Java, which the engine does not run.
+
+Other switches: `NP_XPATH_ONLY=<rule,rule>` runs some rules, `NP_XPATH_STATS=<file>` writes time
 and findings per rule, `NP_SLOW=<ms>` prints the files slower than that, `NP_DBG=1` prints each type question
 the resolver gave up on.
 
@@ -37,30 +41,39 @@ the resolver gave up on.
 
 ```
 PMD_CLASSPATH=<class path of the PMD 7 command line> \
-  python3 parity/pmd-expected.py tests/rules/review.json tests/fixtures/formats tests/expected/formats.json
+  python3 parity/pmd-expected.py tests/rules/all.json tests/fixtures/formats tests/expected/formats.json
 ```
 
 For a real project, write PMD's rows once and compare an engine report with them:
 
 ```
-python3 parity/pmd-expected.py tests/rules/review.json <source dir> pmd-rows.json <class path file>
+python3 parity/pmd-expected.py tests/rules/all.json <source dir> pmd-rows.json <class path file>
 python3 parity/compare.py report.json pmd-rows.json <source dir> [rule]
 ```
 
-Measured with all 130 rules on 4 cores (findings: same / missed / extra):
+Measured with all 342 rules on 4 cores (findings: same / missed / extra):
 
 | Code base | Files, lines | PMD 7.16.0 wall, CPU, peak | Engine | Findings |
 | --- | --- | --- | --- | --- |
-| commons-lang, javaparser, guava, jackson-databind, mybatis-3 | 2,321 files | 67 s, 250 s, 1.5-2.0 GB | 14.6 s, 50 s, 0.3-0.5 GB | 5,118 / 0 / 0 |
-| Nacos, all modules | 5,410, 844k | 77 s, 297 s, 2.4 GB | 17 s, 64 s, 0.4 GB | 3,709 / 0 / 0 |
-| Elasticsearch `server` | 5,117, 1.04M | 85 s, 328 s, 2.8 GB | 24 s, 89 s, 0.5 GB | 2,497 / 0 / 0 |
+| Nacos, all modules | 5,407, 844k | 158 s, 611 s, 2.4 GB | 44 s, 171 s, 0.5 GB | 20,506 / 1 / 4 |
+| commons-lang, main and tests | 217k lines | 52 s, 196 s, 2.7 GB | 14 s, 52 s, 0.2 GB | 4,343 / 9 / 0 |
+| jhipster-sample-app | | 10.5 s | 1.1 s | 718 / 0 / 0 |
+| Elasticsearch `server` | 5,106, 1.04M | 146 s, 565 s, 2.6 GB | 31 s, 119 s, 0.6 GB | 14,458 / 2 / 0 |
 
-On the whole Elasticsearch tree (18,155 files, 3.3M lines) the engine takes 75 s, 264 CPU-s and 1.7 GB. PMD
-takes about 190 s, 750 CPU-s and 4.6 GB there and stops reporting after a StackOverflowError in its type
-inference, so findings on that tree are compared part by part.
+The first three rows were measured before the lookup caches of #2064; the Elasticsearch row after them and after
+#2121 and #2122. The two Elasticsearch rows the engine leaves out are wrong PMD findings: PMD leaves the type of
+two lambdas unfinished and `RetryInTest` then matches them (#2125). The PMD-shaped trees of all 5,106 files have
+the same node names in the same places as PMD's but for one (`module-info.java`).
 
-Four more libraries and the `review-rules` fixture of the Java adapters agree as well (7,557 findings in all
-for the libraries and fixtures, none missed, none extra).
+On the whole Elasticsearch tree (18,155 files, 3.3M lines) with the 130 rules of the first set the engine takes
+75 s, 264 CPU-s and 1.7 GB. PMD takes about 190 s, 750 CPU-s and 4.6 GB there and stops reporting after a
+StackOverflowError in its type inference, so findings on that tree are compared part by part.
+
+With spring-petclinic and five fixture projects of the Java adapters that is 27,983 findings the same, 12
+missed and 7 extra. The 19 differences are type questions (a raw `Constructor` receiver, a primitive varargs
+overload, a lambda parameter inside `argThat`, the diamond on a self-bounded class) and one file tree-sitter
+parses differently. 302 of the 342 rules fire on these projects; `tests/fixtures/builtins` makes most of the
+rest fire.
 
 ## Memory
 
@@ -74,7 +87,10 @@ whole project. Class files are listed at start and read on first use.
 - A query that fails at run time on a file gives no findings for that rule and file. The report lists it as
   rule `!<name>`.
 - `// NOPMD` on the first line of a finding and `@SuppressWarnings` with `"PMD"`, `"PMD.<Rule>"` or `"all"` on
-  any enclosing declaration hide the finding. Block comments and other spellings do not.
+  any enclosing declaration hide the finding. Block comments and other spellings do not. `"serial"`,
+  `"unused"` and `"fallthrough"` hide the rules PMD maps them to.
+- A rule's `violationSuppressXPath` runs on the node of each finding and drops the finding when it selects
+  anything.
 - In XPath regular expressions `\w` does not match `_`, and `\s` is space, tab, line feed and carriage return.
 - A `let` value is worked out on first use when it can be several items and does not read the context item,
   or when the variable is read at most once outside a loop; otherwise at the declaration. A query that fails in
@@ -84,6 +100,6 @@ whole project. Class files are listed at start and read on first use.
 
 ## Not done yet
 
-- nitpicker does not start the engine; rule lists are a snapshot, not generated from the ruleset XML.
-- Rules PMD implements in Java, Error Prone and SpotBugs are untouched.
+- nitpicker does not start the engine; `tests/rules/all.json` is generated but checked in.
+- The 77 rules PMD implements in Java (#2031), Error Prone and SpotBugs are untouched.
 - A type question that needs more than 20,000 resolution steps is answered "unknown" (29 on Elasticsearch).
