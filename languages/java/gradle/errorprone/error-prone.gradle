@@ -169,6 +169,20 @@ tasks.register('nitpickerErrorProne') {
         [tasks.named('classes')] + project.ext.nitpickerTestSourceSets().collect { tasks.named(it.classesTaskName) }
     }
     def runner = new File(scriptDir, 'ErrorProneReport.java')
+    def compileTasks = {
+        [main: tasks.named('compileJava').get()] + project.ext.nitpickerTestSourceSets()
+            .collectEntries { [(it.name): tasks.named(it.compileJavaTaskName).get()] }
+    }
+    onlyIf {
+        if (!compileTasks().values().every { it.source.isEmpty() }) {
+            return true
+        }
+        def report = reportFile.get().asFile
+        report.parentFile.mkdirs()
+        new File(report.parentFile, 'errorprone-skipped.txt').delete()
+        report.text = '[]\n'
+        false
+    }
     doLast {
         project.delete(workDir)
         workDir.get().asFile.mkdirs()
@@ -176,12 +190,7 @@ tasks.register('nitpickerErrorProne') {
         report.delete()
         def skipped = new File(report.parentFile, 'errorprone-skipped.txt')
         skipped.delete()
-        def compiles = [main: tasks.named('compileJava').get()] + project.ext.nitpickerTestSourceSets()
-            .collectEntries { [(it.name): tasks.named(it.compileJavaTaskName).get()] }
-        if (compiles.values().every { it.source.isEmpty() }) {
-            report.text = '[]\n'
-            return
-        }
+        def compiles = compileTasks()
         def errorProne = errorProneClasspath()
         def modular = compiles.main.source.files.any { it.name == 'module-info.java' }
         def java

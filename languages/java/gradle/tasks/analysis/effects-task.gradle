@@ -49,6 +49,17 @@ tasks.register('nitpickerEffects') {
     inputs.property('options', providers.provider { effectsOptions().join(',') })
     inputs.property('jdk', "${System.getProperty('java.vendor')}|${System.getProperty('java.version')}")
     outputs.file(reportDir.map { it.file('effects.json') }).withPropertyName('report')
+    onlyIf {
+        if (sourceSets.main.output.classesDirs.files.any { it.exists() && it.list()?.length }) {
+            return true
+        }
+        def directory = reportDir.get().asFile
+        directory.mkdirs()
+        new File(directory, 'effects.json').text =
+            '{"classes":0,"skipped":0,"unreadableLibraries":0,"unresolved":{"supertypes":0,"total":0},' +
+            '"degraded":{"oversizedMethods":0,"timeBudgetExceeded":false},"covered":[],"violations":[]}\n'
+        false
+    }
     doLast {
         def directory = reportDir.get().asFile
         directory.mkdirs()

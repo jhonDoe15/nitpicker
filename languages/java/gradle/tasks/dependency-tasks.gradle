@@ -11,6 +11,11 @@ tasks.register('nitpickerDependencies') {
         } ?: []
     } })
     outputs.file(reportDir.map { it.file('dependencies.json') }).withPropertyName('report')
+    onlyIf {
+        sourceSets.main.output.classesDirs.files.any {
+            it.exists() && !project.fileTree(it) { include '**/*.class' }.isEmpty()
+        }
+    }
     doLast {
         reportDir.get().asFile.mkdirs()
         def archivesOf = [:]

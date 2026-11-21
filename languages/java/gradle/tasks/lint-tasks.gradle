@@ -66,6 +66,13 @@ tasks.register('nitpickerLint') {
     description = 'Runs the javac lint and reads the sealed permits from guards-plan.json.'
     dependsOn tasks.named('classes')
     dependsOn { project.ext.nitpickerTestSourceSets().collect { tasks.named(it.classesTaskName) } }
+    onlyIf {
+        def sets = [sourceSets.main] + project.ext.nitpickerTestSourceSets()
+        sets.any { !it.allJava.matching { include '**/*.java' }.isEmpty() } ||
+            sourceSets.main.output.classesDirs.files.any {
+                it.exists() && !project.fileTree(it) { include '**/*.class' }.isEmpty()
+            }
+    }
     doLast {
         def compile = tasks.named('compileJava').get()
         def testSets = project.ext.nitpickerTestSourceSets().findAll { !it.allJava.files.isEmpty() }
