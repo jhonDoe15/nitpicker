@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { runJavaDuplicates } from '../metrics/java-duplicates.mts';
@@ -24,6 +24,7 @@ import { type JavaReport, type JavaRunOptions, budgetOf } from '../typed/java-ru
 import { fieldOf, optionalText } from '../../../../shared/values/readers.mts';
 import { stopReuseAhead } from '../../builds/reuse-ahead/reuse-ahead.mts';
 import { startGradleReuse, startMavenReuse } from '../../builds/reuse-ahead/reuse-start.mts';
+import { removeQuietly } from '../../builds/cleanup/remove-quietly.mts';
 import { openGradleHosts } from '../../builds/host/gradle/gradle-hosts.mts';
 import {
   type FailedToolRecord,
@@ -211,7 +212,7 @@ function withGradleReports(projectRoot: string, options: JavaRunOptions): JavaRe
     throw withoutReportBase(error, reportBase);
   } finally {
     if (options.reportDirectory === undefined) {
-      rmSync(reportBase, { recursive: true, force: true });
+      removeQuietly(reportBase, options.warn);
     }
   }
 }

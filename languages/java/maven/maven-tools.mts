@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync } 
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { JAVA_FORMATTERS } from '../adapters/style/jvm-formatters.mts';
+import { removeQuietly } from '../builds/cleanup/remove-quietly.mts';
 import { runMaven } from './maven-command.mts';
 import { explainedError } from '../../../shared/messages/troubleshooting.mts';
 import { fieldOf, fieldsOf, textOf, textsOf } from '../../../shared/values/readers.mts';
@@ -202,7 +203,7 @@ export function publishDirectory(staging: string, target: string): void {
   try {
     renameSync(staging, target);
   } catch (raced) {
-    rmSync(staging, { recursive: true, force: true });
+    removeQuietly(staging);
     if (!existsSync(target)) {
       throw raced;
     }
@@ -252,7 +253,7 @@ export function resolveToolSet(request: ToolSetRequest): ToolClasspathLists {
     publishDirectory(staging, directory);
     return resolved;
   } finally {
-    rmSync(staging, { recursive: true, force: true });
+    removeQuietly(staging);
   }
 }
 

@@ -1,7 +1,8 @@
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { connect, type Socket } from 'node:net';
 import { text } from 'node:stream/consumers';
+import { removeQuietly } from '../../cleanup/remove-quietly.mts';
 import { HOST_MAIN_CLASS } from '../config/host-config.mts';
 import { decode, encode } from './wire/host-wire.mts';
 import {
@@ -137,14 +138,14 @@ async function ensureHost(job: Job): Promise<boolean> {
   try {
     return await startHost(job);
   } finally {
-    rmSync(lock, { recursive: true, force: true });
+    removeQuietly(lock);
   }
 }
 
 function lockReleased(lock: string): boolean {
   const age = Date.now() - (statSync(lock, { throwIfNoEntry: false })?.mtimeMs ?? Date.now());
   if (age > STALE_LOCK_MS) {
-    rmSync(lock, { recursive: true, force: true });
+    removeQuietly(lock);
     return true;
   }
   return !existsSync(lock);
@@ -279,5 +280,5 @@ const lease = takeLease(job.dir, job.key);
 try {
   process.stdout.write(JSON.stringify(await exchange(job)));
 } finally {
-  rmSync(lease, { force: true });
+  removeQuietly(lease);
 }

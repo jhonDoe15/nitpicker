@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -8,6 +8,7 @@ import {
   suppressionsFile,
   withGuardChecks,
 } from '../../builds/rulesets/checkstyle-config.mts';
+import { removeQuietly } from '../../builds/cleanup/remove-quietly.mts';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mts';
 import { layerCheckstyle } from '../../adapters/tool-config/checkstyle/checkstyle-layers.mts';
 import { unformattedCheckstyle } from '../../adapters/tool-config/checkstyle/unformatted-checks.mts';
@@ -73,7 +74,7 @@ function bundledGoogleChecks(checkstyleJar: string | undefined, spawn: JavaSpawn
     }
     return readFileSync(file, 'utf8');
   } finally {
-    rmSync(directory, { recursive: true, force: true });
+    removeQuietly(directory);
   }
 }
 

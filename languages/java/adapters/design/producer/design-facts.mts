@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { isGeneratedJvm } from '../../generated/generated-sources.mts';
 import { compileDesignProgram, runDesignProgram } from './design-program.mts';
+import { removeQuietly } from '../../../builds/cleanup/remove-quietly.mts';
 import type { JavaEnvironment } from '../../typed/java-values.mts';
 import { resolveInside } from '../../../../../shared/conventions/read-inside.mts';
 import { byText } from '../../../../../shared/text-order/by-text.mts';
@@ -164,6 +165,6 @@ export function produceDesignFacts({
     writeFileSync(target, `${JSON.stringify(bundle)}\n`);
     return bundle;
   } finally {
-    rmSync(work, { recursive: true, force: true });
+    removeQuietly(work);
   }
 }

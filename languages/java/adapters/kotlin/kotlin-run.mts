@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
@@ -8,6 +8,7 @@ import {
 import { callUntyped, type JavaPolicy } from '../typed/java-values.mts';
 import { textsOf } from '../../../../shared/values/readers.mts';
 import { kotlinFormatAdvice } from './style/kotlin-format-advice.mts';
+import { removeQuietly } from '../../builds/cleanup/remove-quietly.mts';
 import { kotlinGradleArguments, kotlinStyleFile, resolveKotlinTools } from './kotlin-tools.mts';
 
 type KotlinRun = {
@@ -41,7 +42,7 @@ function withStyleFile<Result>(style: unknown, use: (file: string | undefined) =
     writeFileSync(file, JSON.stringify(style));
     return use(file);
   } finally {
-    rmSync(directory, { recursive: true, force: true });
+    removeQuietly(directory);
     untrackPath(directory);
   }
 }

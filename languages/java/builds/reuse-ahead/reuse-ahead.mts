@@ -1,5 +1,5 @@
 import { type ChildProcess, spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +16,7 @@ import {
   SILENCE_LIMIT_MS,
   reusePartOf,
 } from './reuse-files.mts';
+import { removeQuietly } from '../cleanup/remove-quietly.mts';
 import { requestOf, reuseRequest, sourceStamps } from './reuse-request.mts';
 
 type Launch = (folder: string) => ChildProcess;
@@ -79,7 +80,7 @@ function stop({ folder, child }: Started): void {
   if (child.exitCode === null && child.signalCode === null) {
     child.kill();
   }
-  rmSync(folder, { recursive: true, force: true });
+  removeQuietly(folder);
 }
 
 export function stopReuseAhead(): void {
