@@ -17,7 +17,6 @@ type Parser = {
 };
 
 const load = createRequire(import.meta.url);
-const loadBesidePlugin = createRequire(load.resolve('typescript-eslint'));
 
 function isParser(value: unknown): value is Parser {
   return typeof fieldOf(value, 'parseForESLint') === 'function';
@@ -33,7 +32,9 @@ function isProgram(value: unknown): value is TSESTree.Program {
 
 export function parseProgram(text: string, file: string): ProgramResult {
   try {
-    const parser: unknown = loadBesidePlugin('@typescript-eslint/parser');
+    const parser: unknown = createRequire(load.resolve('typescript-eslint'))(
+      '@typescript-eslint/parser',
+    );
     if (!isParser(parser)) {
       throw new TypeError('@typescript-eslint/parser does not export a parser');
     }

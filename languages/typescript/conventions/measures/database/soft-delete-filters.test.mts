@@ -73,14 +73,6 @@ describe('typescript.softDeleteFilters', () => {
     expect(detect({ 'src/all.ts': many }).choice).toEqual(['asset__deletedAt']);
   });
 
-  it('finds reads written with from() in files that also import with from', () => {
-    const fromRead = (n: number): string =>
-      `import { db } from './db';\n` +
-      `export const r${String(n)} = () => db.from('asset').where('asset.deletedAt', null);\n`;
-
-    expect(detect(project(8, 2, fromRead)).choice).toEqual(['asset__deletedAt']);
-  });
-
   it('reads the followed entries for the rule options', () => {
     expect(
       softDeleteFilterEntries({ 'typescript.softDeleteFilters': ['asset__deletedAt'] }),

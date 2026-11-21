@@ -9,7 +9,7 @@ import {
 import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 const ALL_ORMS = ['drizzle', 'knex', 'kysely', 'mikro', 'prisma', 'sequelize', 'typeorm'];
-const READ_HINT = /\b(?:find|select|from(?!\s*['"])|createQueryBuilder|knex|query)/iu;
+const READ_HINT = /\b(?:find|select|from|createQueryBuilder|knex|query)/iu;
 const MAX_READS_PER_TABLE = 40;
 
 function consumedCalls(program: ParsedProgram): TSESTree.CallExpression[] {
