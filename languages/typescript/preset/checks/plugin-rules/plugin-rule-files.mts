@@ -1,6 +1,7 @@
 import { CONVENTION_POLICY_FILES } from '../conventions/convention-policy-files.mts';
 import { VALUE_WEB_RULE_FILES } from './value-web-rule-files.mts';
 import { TEXT_PATH_NUMBER_RULE_FILES } from './text-path-number-rule-files.mts';
+import { REPEATED_WORK_RULE_FILES } from './repeated-work-rule-files.mts';
 
 export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/checks/plugin-rules/plugin-rule-files.mjs',
@@ -288,4 +289,5 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/wrapped/strict-boolean-expressions.mjs',
   ...VALUE_WEB_RULE_FILES,
   ...TEXT_PATH_NUMBER_RULE_FILES,
+  ...REPEATED_WORK_RULE_FILES,
 ];

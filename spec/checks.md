@@ -460,8 +460,9 @@ Maven; the overlap keeps `pmd/MixedTimeUnits` over Error Prone's `TimeUnitMismat
 Costly collection forms: `nitpicker/no-costly-collection-form` (production source, in `eslint-lint`)
 reports three forms with a cheaper equivalent: an array that is appended to and searched with
 `includes`, `indexOf` or an identity `some` inside a loop, callback or recursive function (a `Set`); a
-`find`, `findIndex` or `some` by one property of the item, in a loop, iteration callback or listener,
-over a binding that does not change (a `Map` built once); and a sort that keeps only its first or last
+`find`, `findIndex`, `some` or `filter` by one property of the item, in a loop, iteration callback or
+listener, over a binding that does not change (a `Map` built once, or `Map.groupBy` for `filter`); an
+`includes` or `indexOf` of a loop value on an array that does not change (a `Set`); and a sort that keeps only its first or last
 element (one pass). The same forms run as `list-used-as-set`, `linear-lookup-in-loop` and ruff
 `FURB192` in the Python preset, `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop` and `pmd/SortForExtreme`
 in the Java preset (main sources, Gradle and Maven) and `kotlin-source/` rules of the same names in the
@@ -479,6 +480,36 @@ preset (a `Stream` from a Spring Data repository, `getResultStream()`, `queryFor
 `return`, and a Kotlin `Stream` collected inside `use { }` are left alone. A Kotlin `Flow` is not read:
 it is the default return type of a coroutine repository, so `toList()` on it is the usual read of a
 small result. The Go preset has no own rule engine yet.
+
+Repeated work: `nitpicker/no-pattern-compiled-in-loop` (production source, in `eslint-lint`) reports
+a glob compiled on every pass of a loop or iteration callback with a pattern that does not change
+there (`path.matchesGlob`, `minimatch`, `picomatch`, `micromatch`). The Python preset has no
+counterpart, since `re` and `fnmatch` cache compiled patterns; Java and Kotlin are tracked in #2018
+and Go in #2133.
+
+`nitpicker/no-constant-lookup-in-loop` (production source, in `eslint-lint`) reports a DOM lookup on
+`document` by constant arguments in a loop or iteration callback that leaves the page alone, and a
+`new URL(constant)` there of which only parts are read. Java reflective and registry lookups by a
+constant name and the other presets follow in #2133.
+
+`nitpicker/no-subtree-search-per-ancestor` (production source, in `eslint-lint`) reports a loop that
+climbs a parent chain and searches the children or the whole subtree of every level without testing
+the level's kind first. Java, Kotlin, Python and Go follow in #2133.
+
+`nitpicker/no-repeated-call` (production source, in `eslint-lint`) reports a call made once to test
+its result and again to use it, and a recursive call repeated with the same arguments on one path.
+Java (`resolve(x).isPresent() && resolve(x).get()`), Kotlin, Python and Go follow in #2133.
+
+`nitpicker/no-work-before-early-exit` (production source, in `eslint-lint`) reports effect-free
+in-memory work (a collection pass, a `Map` or `Set` built; file reads and parses are left alone, since
+moving them would change which error the exit path raises) declared right before an early exit
+that does not read it. Java (where PMD `PrematureDeclaration` treats calls as impure and so skips this
+case), Kotlin, Python and Go follow in #2133.
+
+`nitpicker/no-read-all-before-pass` (production source, in `eslint-lint`) reports every file read
+into one array that is then only walked once. `nitpicker/no-collected-stream-rows` is the same idea
+for streamed rows. Java (`Files.readString`, `readAllBytes`, `readAllLines`, `ObjectMapper.readValue`),
+Kotlin, Python and Go follow in #2133.
 
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a

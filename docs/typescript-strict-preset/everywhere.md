@@ -199,6 +199,13 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   (`on`, `once`, `addListener`, `prependListener`, `addEventListener`, `subscribe`), on a binding declared outside it that is never
   reassigned or changed in place (`push`, `splice`, `sort` and the like), or a `this` field that
   only the constructor assigns. Allowed form: a `Map` built once, before the loop or handler. It
+  reports `filter` with such a callback in a loop or iteration callback (allowed form: group once with
+  `Map.groupBy` and `get`), and `includes(value)` or `indexOf(value)` there on a binding that is an
+  array (annotated `T[]`, `readonly T[]` or `Array<T>`, or built by `map`, `filter`, `slice`, `split`,
+  `[...x]`, `Array.from` or `Object.keys` and the like, not from a literal) and never changed, when
+  `value` reads the loop variable or a callback parameter (allowed form: a `Set` of the items, or a
+  `Map` from item to position for `indexOf`). A `filter`, `includes` or `indexOf` whose loops all run
+  over an array literal or up to a literal bound (`for (let i = 0; i < 3; i++)`) is not reported. It
   reports `sort(...)` or `toSorted(...)` followed by `[0]`, `.at(0)`, `.at(-1)`, `.pop()`, `.shift()`
   or a one-element destructuring (`const [first] = xs.toSorted(cmp)`); `xs.sort()` on a binding read
   again later, or on a property, keeps the sorted array and is left alone. Allowed form: one pass
@@ -220,6 +227,90 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   flush a fixed-size batch inside the loop (`if (batch.length >= 500) await save(batch.splice(0))`)
   and the rest once after it. An exception fits only for a source that always stays small. The same
   form runs as `streamed-rows-collected` (Python) and `pmd/StreamedRowsCollected` (Java and Kotlin).
+- `nitpicker/no-pattern-compiled-in-loop`: a glob compiled again on every pass of a loop or an
+  iteration callback (`map`, `filter`, `some`, `forEach`, `reduce` and the like) although the pattern
+  does not change inside it, in all production code (not in tests). It reports `path.matchesGlob`
+  (also `path.posix` and `path.win32`, and `matchesGlob` imported from `node:path`), `minimatch(value,
+  pattern)`, `minimatch.match`, `minimatch.makeRe`, `minimatch.filter`, `new Minimatch(pattern)`,
+  `picomatch(pattern)`, `picomatch.isMatch`, `picomatch.makeRe`, `micromatch(list, pattern)`,
+  `micromatch.isMatch`, `micromatch.matcher` and the other `micromatch` list tests, each imported or
+  required from its package, when every name the pattern reads is declared outside the loop or
+  callback and not assigned inside it, and the pattern makes no call. None of these calls caches the
+  compiled matcher, so `files.filter((file) => path.matchesGlob(file, `${dir}/**`))` compiles the same
+  glob once per file. A pattern that reads the loop variable or a parameter of the callback (a new
+  pattern per element) and a matcher compiled before the loop (`const isMatch = picomatch(pattern)`)
+  are not reported. `new RegExp(pattern)` is not reported either: V8 keeps compiled regular
+  expressions by source and flags, so a repeated `new RegExp` with the same text does not compile
+  again. Allowed form: compile once before the loop (`picomatch(pattern)`, `new Minimatch(pattern)`,
+  `micromatch.matcher(pattern)`), or test a cheap prefix or suffix first. The Java and Kotlin presets
+  report the same mistake for `String.matches`, `replaceAll`, `replaceFirst` and `Pattern.matches`
+  with a constant pattern (#2018).
+- `nitpicker/no-constant-lookup-in-loop`: the same lookup by a constant repeated on every pass of a
+  loop or an iteration callback, in all production code (not in tests). It reports
+  `document.getElementById`, `querySelector`, `querySelectorAll`, `getElementsByClassName`,
+  `getElementsByTagName` and `getElementsByName` on the global `document` (also `window.document`)
+  whose arguments are all constants, when the loop or callback leaves the page alone: no `await`, no
+  call of a function of the project, no assignment or method call on anything but a value declared in
+  the loop, a plain array, object, `Map` or `Set`, or `console`, `Math`, `JSON` and the like, and no
+  DOM change (`append`, `remove`, `setAttribute`, `textContent =`, `innerHTML =` and the like) at all.
+  It also reports `new URL(constant)` of which only parts are read (`origin`, `host`, `pathname`,
+  `href`, `toString()` and the like), directly or through a `const`. A lookup by the loop variable, a
+  URL that is changed or passed on, and a loop that may change the page are not reported. Allowed
+  form: look the element up, or parse the URL, once before the loop or at module scope. `Intl`
+  formatters with constant options are `nitpicker/reusable-object-per-call`'s.
+- `nitpicker/no-subtree-search-per-ancestor`: a walk up a parent chain that searches every child or
+  the whole subtree at each level, in all production code (not in tests). It reports a `for` loop
+  whose update, or a `while` or `do` loop whose body, steps a name to its parent (`el =
+  el.parentElement`, `parentNode`, `parent`, `parentPath`, `getParent()`), when the body runs on that
+  name a subtree search (`querySelector`, `querySelectorAll`, `getElementsByClassName`,
+  `getElementsByTagName`, `descendants()`, `findAll`, `traverse`, `ts.forEachChild(at, ...)`) or goes
+  over its children (`for...of`, a spread, `Array.from` or `find`, `some`, `filter`, `forEach` and the
+  like on `children`, `childNodes` or `getChildren()`). One lookup then costs depth times width, and
+  near the root the width is the whole document or file. A search behind an earlier test of the
+  level (`if (el.tagName !== "SECTION") continue;`, `if (at.kind === "block")`), a loop that reads a
+  `Map` by the level (`cache.get(el)`), a search on another value and a search in a function the loop
+  only creates are not reported. Allowed forms: `el.closest(selector)` for elements, a test of the
+  level's kind before the search, or an answer kept per level.
+- `nitpicker/no-repeated-call`: the same call made twice where one result would do, in all
+  production code (not in tests). It reports a call whose result is tested and then made again to
+  use it: the last operand of the left side of `&&`, `||` or `??`, the test of `?:` or of an `if`,
+  against the start of the right side, of a branch, or of the first statement of the `if` block
+  (`lookup(key) !== undefined && lookup(key).enabled`, `resolve(node).isPresent() ?
+  resolve(node).get() : x`). The two calls must read the same tokens, take at least one argument,
+  and their callee and arguments make no call, assignment or `await` of their own; nothing but
+  member reads and calls on the first result runs between them. Calls named like cheap accessors
+  (`get`, `has`, `at`, `indexOf`, `includes` and the like), calls named like actions (`next`,
+  `read...`, `pop`, `shift`, `push`, `set...`, `create...`, `save...`, `send...`, `random`, `now`
+  and the like) and global helpers other than `JSON` (`Number`, `Math.max`) are not reported. It
+  also reports a function that calls itself twice with the same arguments on the same path through
+  its body, using both results, when the arguments are not reassigned in it and it reads no `Map`
+  by them (`height(node.left) + height(node.left)`, `typeOf(argument)` twice in one loop pass):
+  each level doubles the work. Allowed form: keep the first result in a local, or remember the
+  answers per argument.
+- `nitpicker/no-work-before-early-exit`: a value worked out right before an early exit that leaves
+  without it, in all production code (not in tests). It reports `const x = ...` followed directly by
+  an `if` without `else` whose block ends in `return`, `throw`, `continue` or `break`, when neither the
+  test nor the block reads `x`, `x` is read later, the test makes no call, assignment or `await`,
+  and the initializer is in-memory work with no effect that does not throw on bad input:
+  `Object.entries`, `Object.keys`, `Object.values`, `Object.fromEntries`,
+  `Array.from`, `new Map` and `new Set`, a spread array, or `map`, `filter`, `flatMap`, `reduce`,
+  `slice`, `split`, `join` and the like on such values with callbacks that are expressions of the
+  same kind. An initializer with an `await` is reported only when the test reads nothing but
+  parameters and `const` names, since other state may change while it waits. Calls of project
+  functions, `sort` and other changes in place, clocks and ids, a test that reads `x`, an initializer
+  that is a `?:`, `&&` or `||`, and an exit that calls a local function reading `x` are not reported. Allowed form: declare the value below the exit; keep it above only when its error must
+  be raised on the early path too.
+- `nitpicker/no-read-all-before-pass`: every input read into memory before a single pass over
+  them, in all production code (not in tests). It reports a `const` array filled with one file read
+  per element, `await Promise.all(xs.map((x) => readFile(x)))`, `xs.map((x) =>
+  readFileSync(x))` or an empty array that the next statement fills in a `for...of` loop whose only
+  statement is `list.push(readFile...)` (a read through `fs`, `node:fs/promises` or `fs-extra`,
+  optionally awaited or inside `JSON.parse`), when the array is then used exactly once: as the
+  source of one `for...of` loop or one `forEach` statement that does not read the array again and
+  does not itself run more than once. Peak memory is then the sum of all inputs instead of the
+  largest one. A literal list of inputs, an array that is returned, sorted, sized, indexed or passed
+  on, and reads through a project function are not reported. Allowed forms: read and handle one input
+  at a time, a bounded pool for parallel reads, or keep only what the pass needs from each input.
 - `nitpicker/no-wasted-collection-step`: a collection or promise step that copies for nothing or
   walks the data twice, in all production code (not in tests). It reports `filter(p)[0]` and
   `filter(p).at(0)` with a callback `p` (allowed form: `find(p)`; a selector string, as in jQuery,

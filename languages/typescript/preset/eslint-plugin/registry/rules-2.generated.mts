@@ -1,3 +1,4 @@
+import { rule as ruleNoNodeProcessPerTest } from '../rules/test-runtime/processes/no-node-process-per-test.mts';
 import { rule as ruleNoNonLatin1HeaderValue } from '../rules/encoding/no-non-latin1-header-value.mts';
 import { rule as ruleNoNull } from '../rules/syntax/no-null.mts';
 import { rule as ruleNoNullBranchFallThrough } from '../rules/null-branches/no-null-branch-fall-through.mts';
@@ -7,6 +8,7 @@ import { rule as ruleNoOrmSchemaSync } from '../rules/database/no-orm-schema-syn
 import { rule as ruleNoOverflowingBackoff } from '../rules/backoff/no-overflowing-backoff.mts';
 import { rule as ruleNoParameterMutation } from '../rules/signatures/no-parameter-mutation.mts';
 import { rule as ruleNoPartialOutputAssertion } from '../rules/test-runtime/assertions/no-partial-output-assertion.mts';
+import { rule as ruleNoPatternCompiledInLoop } from '../rules/repeated-work/patterns/no-pattern-compiled-in-loop.mts';
 import { rule as ruleNoPerCallDebounce } from '../rules/lifecycles/debounce/no-per-call-debounce.mts';
 import { rule as ruleNoPerCallRegistration } from '../rules/lifecycles/registrations/no-per-call-registration.mts';
 import { rule as ruleNoPipeDroppingErrors } from '../rules/streams/no-pipe-dropping-errors.mts';
@@ -22,10 +24,12 @@ import { rule as ruleNoPrototypeKeyAccess } from '../rules/prototype-keys/no-pro
 import { rule as ruleNoQueryPerParent } from '../rules/resolvers/no-query-per-parent.mts';
 import { rule as ruleNoRaisedTestTimeout } from '../rules/test-runtime/assertions/no-raised-test-timeout.mts';
 import { rule as ruleNoRawHttpValue } from '../rules/http-values/no-raw-http-value.mts';
+import { rule as ruleNoReadAllBeforePass } from '../rules/repeated-work/read-all/no-read-all-before-pass.mts';
 import { rule as ruleNoRealTimeRandomOrNetwork } from '../test-isolation/no-real-time-random-or-network.mts';
 import { rule as ruleNoReleaseOutsideFinally } from '../rules/resources/release/no-release-outside-finally.mts';
 import { rule as ruleNoRemoteCallInTransaction } from '../rules/effects/no-remote-call-in-transaction.mts';
 import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-call-under-lock.mts';
+import { rule as ruleNoRepeatedCall } from '../rules/repeated-work/repeated-calls/no-repeated-call.mts';
 import { rule as ruleNoRepeatedStringLiteral } from '../rules/literals/no-repeated-string-literal.mts';
 import { rule as ruleNoRetryWithoutIdempotency } from '../rules/writes/no-retry-without-idempotency.mts';
 import { rule as ruleNoRouteWithoutAuth } from '../rules/route-auth/no-route-without-auth.mts';
@@ -46,6 +50,7 @@ import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-st
 import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mts';
 import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mts';
 import { rule as ruleNoStringLengthAsByteCount } from '../rules/byte-limits/no-string-length-as-byte-count.mts';
+import { rule as ruleNoSubtreeSearchPerAncestor } from '../rules/repeated-work/ancestors/no-subtree-search-per-ancestor.mts';
 import { rule as ruleNoSurrogateSplittingCut } from '../rules/text-truncation/no-surrogate-splitting-cut.mts';
 import { rule as ruleNoSwappedArguments } from '../rules/arguments/no-swapped-arguments.mts';
 import { rule as ruleNoSwitchedOffTests } from '../test-assertions/no-switched-off-tests.mts';
@@ -93,13 +98,9 @@ import { rule as ruleNoUnownedAsyncAssertion } from '../test-assertions/unowned-
 import { rule as ruleNoUnpagedListing } from '../rules/listings/no-unpaged-listing.mts';
 import { rule as ruleNoUnpinnedAssertion } from '../test-assertions/no-unpinned-assertion.mts';
 import { rule as ruleNoUnresolvedRelativeUrl } from '../rules/urls/construction/no-unresolved-relative-url.mts';
-import { rule as ruleNoUnsafeDeserialization } from '../rules/security/deserialization/no-unsafe-deserialization.mts';
-import { rule as ruleNoUnsafePathJoin } from '../rules/guards/no-unsafe-path-join.mts';
-import { rule as ruleNoUnscopedRecordAccess } from '../rules/record-scope/no-unscoped-record-access.mts';
-import { rule as ruleNoUnstrippedRemoteText } from '../rules/terminal/no-unstripped-remote-text.mts';
-import { rule as ruleNoUntrimmedRequestText } from '../rules/request-text/no-untrimmed-request-text.mts';
 
 export const partRules = {
+  'no-node-process-per-test': ruleNoNodeProcessPerTest,
   'no-non-latin1-header-value': ruleNoNonLatin1HeaderValue,
   'no-null': ruleNoNull,
   'no-null-branch-fall-through': ruleNoNullBranchFallThrough,
@@ -109,6 +110,7 @@ export const partRules = {
   'no-overflowing-backoff': ruleNoOverflowingBackoff,
   'no-parameter-mutation': ruleNoParameterMutation,
   'no-partial-output-assertion': ruleNoPartialOutputAssertion,
+  'no-pattern-compiled-in-loop': ruleNoPatternCompiledInLoop,
   'no-per-call-debounce': ruleNoPerCallDebounce,
   'no-per-call-registration': ruleNoPerCallRegistration,
   'no-pipe-dropping-errors': ruleNoPipeDroppingErrors,
@@ -124,10 +126,12 @@ export const partRules = {
   'no-query-per-parent': ruleNoQueryPerParent,
   'no-raised-test-timeout': ruleNoRaisedTestTimeout,
   'no-raw-http-value': ruleNoRawHttpValue,
+  'no-read-all-before-pass': ruleNoReadAllBeforePass,
   'no-real-time-random-or-network': ruleNoRealTimeRandomOrNetwork,
   'no-release-outside-finally': ruleNoReleaseOutsideFinally,
   'no-remote-call-in-transaction': ruleNoRemoteCallInTransaction,
   'no-remote-call-under-lock': ruleNoRemoteCallUnderLock,
+  'no-repeated-call': ruleNoRepeatedCall,
   'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
   'no-retry-without-idempotency': ruleNoRetryWithoutIdempotency,
   'no-route-without-auth': ruleNoRouteWithoutAuth,
@@ -148,6 +152,7 @@ export const partRules = {
   'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
   'no-string-as-regex': ruleNoStringAsRegex,
   'no-string-length-as-byte-count': ruleNoStringLengthAsByteCount,
+  'no-subtree-search-per-ancestor': ruleNoSubtreeSearchPerAncestor,
   'no-surrogate-splitting-cut': ruleNoSurrogateSplittingCut,
   'no-swapped-arguments': ruleNoSwappedArguments,
   'no-switched-off-tests': ruleNoSwitchedOffTests,
@@ -195,9 +200,4 @@ export const partRules = {
   'no-unpaged-listing': ruleNoUnpagedListing,
   'no-unpinned-assertion': ruleNoUnpinnedAssertion,
   'no-unresolved-relative-url': ruleNoUnresolvedRelativeUrl,
-  'no-unsafe-deserialization': ruleNoUnsafeDeserialization,
-  'no-unsafe-path-join': ruleNoUnsafePathJoin,
-  'no-unscoped-record-access': ruleNoUnscopedRecordAccess,
-  'no-unstripped-remote-text': ruleNoUnstrippedRemoteText,
-  'no-untrimmed-request-text': ruleNoUntrimmedRequestText,
 };

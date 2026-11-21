@@ -113,12 +113,27 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `@MaxLength(30)` for `varchar(30)`), and keep the OpenAPI `maxLength`, `minLength` and `pattern` equal to the
   validation of the same property (`field-limit-mismatch`). A column wider than the validation is fine.
 - Pick the cheaper collection form: a `Set` (`add`, `has`) for items you search while you collect
-  them, a `Map` built once before a loop or handler instead of `find((x) => x.key === key)` in it,
+  them, a `Map` built once before a loop or handler instead of `find((x) => x.key === key)` in it
+  (`Map.groupBy` instead of `filter((x) => x.key === key)`, a `Set` instead of `ids.includes(x.id)`),
   and one `reduce` pass instead of `sort(...)[0]` or `toSorted(...).at(-1)`
   (`nitpicker/no-costly-collection-form`).
 - Rows read with `for await` (any source that is not an array) are handled as they arrive: flush
   a fixed-size batch inside the loop and the rest after it, never one array of every row
   (`nitpicker/no-collected-stream-rows`).
+- Compile a glob once before a loop or `filter`, not per element: `const isMatch = picomatch(pattern)`
+  or `new Minimatch(pattern)` outside, `isMatch(file)` inside; `path.matchesGlob`, `minimatch(file,
+  pattern)` and `picomatch.isMatch` compile the pattern on every call (`nitpicker/no-pattern-compiled-in-loop`).
+- Look an element up by a constant selector, or parse a constant URL, once before a loop, not on every
+  pass (`nitpicker/no-constant-lookup-in-loop`).
+- Climbing to the root, test each level's kind before searching its children or subtree, or use
+  `el.closest(selector)`; a `querySelector` or a scan of `children` at every level costs depth times width
+  (`nitpicker/no-subtree-search-per-ancestor`).
+- Keep a result you test in a local instead of calling again to use it (`const found = lookup(key);
+  if (found) use(found)`), and call a recursive function once per sub-result (`nitpicker/no-repeated-call`).
+- Put cheap early exits first: map, filter or index a collection only after the `if (...) return` that does not
+  need the value (`nitpicker/no-work-before-early-exit`).
+- Read and handle files one at a time (or through a bounded pool), not all into one array that a later
+  loop walks once (`nitpicker/no-read-all-before-pass`).
 - Never run a query or a request once per item of a loop: fetch or write the items in one query
   (`findByIds`, `createMany`, `WHERE id IN (...)`), also when a helper of yours does the I/O and inside
   `Promise.all(items.map(...))`. For a remote API without a batch endpoint use a limiter or fixed-size

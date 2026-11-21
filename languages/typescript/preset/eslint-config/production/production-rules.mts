@@ -22,6 +22,12 @@ export const productionSourceRules: Record<string, Linter.RuleEntry> = {
 };
 
 export const productionGuardEntries: Record<string, Linter.RuleEntry> = {
+  'nitpicker/no-pattern-compiled-in-loop': 'error',
+  'nitpicker/no-constant-lookup-in-loop': 'error',
+  'nitpicker/no-subtree-search-per-ancestor': 'error',
+  'nitpicker/no-repeated-call': 'error',
+  'nitpicker/no-work-before-early-exit': 'error',
+  'nitpicker/no-read-all-before-pass': 'error',
   'nitpicker/no-io-in-loop': 'error',
   'nitpicker/no-accumulator-concat': 'error',
   'nitpicker/no-array-spread-arguments': 'error',
