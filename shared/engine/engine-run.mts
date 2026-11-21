@@ -13,6 +13,12 @@ export type EngineOptions = {
   readonly environment?: Readonly<Record<string, string | undefined>> | undefined;
 };
 
+export type EngineEnvironment = Readonly<Record<string, string | undefined>>;
+export type EngineStart = (
+  argumentList: readonly string[],
+  options: { readonly binary: string; readonly environment: EngineEnvironment },
+) => EngineRun;
+
 const MAX_OUTPUT_BYTES = 200 * 1024 * 1024;
 const NOT_FOUND: EngineRun = {
   status: undefined,

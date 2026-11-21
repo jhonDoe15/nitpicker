@@ -27,6 +27,8 @@ pub struct TypeIndex {
     classes: HashMap<String, Slot>,
     /// Ancestors per class, kept once the index no longer changes.
     lineages: std::sync::RwLock<HashMap<String, std::sync::Arc<Vec<String>>>>,
+    /// Per class, whether NullAway takes its code as checked.
+    checked: std::sync::RwLock<HashMap<String, bool>>,
     settled: bool,
     /// The classes of the source files that the class path holds too.
     compiled: HashSet<String>,
@@ -155,6 +157,43 @@ impl TypeIndex {
             Slot::Ready(class) => Some(class),
             Slot::Later(origin, cell) => cell.get_or_init(|| read(origin)).as_ref(),
         }
+    }
+
+    /// Whether NullAway takes the code of a class as checked. `listed` says that the configured packages hold
+    /// the class. A top-level class counts when its package is listed or carries `@NullMarked`, unless the
+    /// package carries `@NullUnmarked`, or when the class itself carries `@NullMarked`; `@NullUnmarked` on the
+    /// class switches it off. A member class follows the class around it unless it carries one of the two.
+    pub fn null_checked(&self, name: &str, listed: bool) -> bool {
+        if let Some(known) = self.checked.read().ok().and_then(|known| known.get(name).copied()) {
+            return known;
+        }
+        let found = self.read_null_checked(name, listed);
+        if self.settled && let Ok(mut known) = self.checked.write() {
+            known.insert(name.to_string(), found);
+        }
+        found
+    }
+
+    fn read_null_checked(&self, name: &str, listed: bool) -> bool {
+        use super::model::flag;
+        let Some(package) = self.get(name).map(|class| class.package.as_str()) else { return listed };
+        let flags_of = |class: &str| self.get(class).map_or(0, |info| info.flags);
+        let start = if package.is_empty() { 0 } else { package.len() + 1 };
+        let mut end = name[start..].find('.').map_or(name.len(), |dot| start + dot);
+        let on_package = flags_of(&format!("{package}.package-info"));
+        let on_top = flags_of(&name[..end]);
+        let by_package = (listed || on_package & flag::NULL_MARKED != 0) && on_package & flag::NULL_UNMARKED == 0;
+        let mut checked = on_top & flag::NULL_UNMARKED == 0 && (by_package || on_top & flag::NULL_MARKED != 0);
+        while end < name.len() {
+            end = name[end + 1..].find('.').map_or(name.len(), |dot| end + 1 + dot);
+            let flags = flags_of(&name[..end]);
+            if flags & flag::NULL_UNMARKED != 0 {
+                checked = false;
+            } else if flags & flag::NULL_MARKED != 0 {
+                checked = true;
+            }
+        }
+        checked
     }
 
     pub fn has(&self, name: &str) -> bool {

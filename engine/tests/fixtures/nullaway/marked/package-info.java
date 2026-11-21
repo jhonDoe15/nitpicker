@@ -1,0 +1,2 @@
+@marks.NullMarked
+package marked;

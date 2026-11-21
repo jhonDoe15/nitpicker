@@ -12,6 +12,7 @@ mod hierarchy;
 mod javadoc;
 mod members;
 mod nullaway;
+pub use nullaway::unread_marks;
 mod operators;
 mod returns;
 mod names;
@@ -136,67 +137,73 @@ pub const DECLARATIONS: &[&str] = &[
 
 type Check = fn(&Context, Node);
 
-const CHECKS: &[Check] = &[
-    operators::operator_precedence,
-    operators::reference_equality,
-    members::ungrouped_overloads,
-    members::missing_override,
-    members::private_constructor_for_utility_class,
-    members::inconsistent_overloads,
-    members::builder_return_this,
-    members::effectively_private,
-    simple::missing_braces,
-    simple::empty_catch,
-    simple::non_final_static_field,
-    simple::throw_specific_exceptions,
-    simple::system_out,
-    simple::java_util_date,
-    simple::string_case_locale_usage,
-    values::assert_false,
-    values::enum_ordinal,
-    values::void_used,
-    values::object_equals_for_primitives,
-    values::unnecessary_parentheses,
-    values::unused_exception,
-    values::string_splitter,
-    obsolete::jdk_obsolete,
-    targets::boolean_literal,
-    naming::identifier_name,
-    javadoc::javadoc,
-    annotated::annotation_position,
-    redundant::redundant_override,
-    throws::checked_exception_not_thrown,
-    returns::check_return_value,
-    statements::multi_variable_declaration,
-    statements::array_record_component,
-    statements::return_at_the_end_of_void_function,
-    statements::assignment_expression,
-    statements::protected_members_in_final_class,
-    statements::unnecessary_semicolon,
-    statements::redundant_throws,
-    assigned::unnecessary_boxed_assignment,
-    assigned::int_long_math,
-    assigned::initialize_inline,
-    signatures::exposed_private_type,
-    time::prefer_java_time_overload,
-    locale::default_locale,
-    mutability::mixed_mutability_return_type,
-    interrupts::interrupted_exception_swallowed,
-    futures::future_return_value_ignored,
-    immutable::immutable_enum_checker,
-    names::type_parameter_naming,
-    names::wildcard_import,
-    names::same_name_but_different,
-    names::different_name_but_same,
-    names::unnecessarily_fully_qualified,
-    names::suppress_warnings_without_explanation,
-    names::type_parameter_unused_in_formals,
-    nullaway::null_away,
+/// Each check with the names it reports under: a run that selects checks skips the others.
+const CHECKS: &[(&[&str], Check)] = &[
+    (&["OperatorPrecedence"], operators::operator_precedence),
+    (&["ReferenceEquality"], operators::reference_equality),
+    (&["UngroupedOverloads"], members::ungrouped_overloads),
+    (&["MissingOverride"], members::missing_override),
+    (&["PrivateConstructorForUtilityClass"], members::private_constructor_for_utility_class),
+    (&["InconsistentOverloads"], members::inconsistent_overloads),
+    (&["BuilderReturnThis"], members::builder_return_this),
+    (&["EffectivelyPrivate"], members::effectively_private),
+    (&["MissingBraces"], simple::missing_braces),
+    (&["EmptyCatch"], simple::empty_catch),
+    (&["NonFinalStaticField"], simple::non_final_static_field),
+    (&["ThrowSpecificExceptions"], simple::throw_specific_exceptions),
+    (&["SystemOut"], simple::system_out),
+    (&["JavaUtilDate"], simple::java_util_date),
+    (&["StringCaseLocaleUsage"], simple::string_case_locale_usage),
+    (&["AssertFalse"], values::assert_false),
+    (&["EnumOrdinal"], values::enum_ordinal),
+    (&["VoidUsed"], values::void_used),
+    (&["ObjectEqualsForPrimitives"], values::object_equals_for_primitives),
+    (&["UnnecessaryParentheses"], values::unnecessary_parentheses),
+    (&["UnusedException"], values::unused_exception),
+    (&["StringSplitter"], values::string_splitter),
+    (&["JdkObsolete"], obsolete::jdk_obsolete),
+    (&["BooleanLiteral"], targets::boolean_literal),
+    (&["IdentifierName"], naming::identifier_name),
+    (&["EmptyBlockTag", "MissingSummary", "InvalidBlockTag", "UnescapedEntity", "EscapedEntity", "InvalidInlineTag"], javadoc::javadoc),
+    (&["AnnotationPosition"], annotated::annotation_position),
+    (&["RedundantOverride"], redundant::redundant_override),
+    (&["CheckedExceptionNotThrown"], throws::checked_exception_not_thrown),
+    (&["CheckReturnValue"], returns::check_return_value),
+    (&["MultiVariableDeclaration"], statements::multi_variable_declaration),
+    (&["ArrayRecordComponent"], statements::array_record_component),
+    (&["ReturnAtTheEndOfVoidFunction"], statements::return_at_the_end_of_void_function),
+    (&["AssignmentExpression"], statements::assignment_expression),
+    (&["ProtectedMembersInFinalClass"], statements::protected_members_in_final_class),
+    (&["UnnecessarySemicolon"], statements::unnecessary_semicolon),
+    (&["RedundantThrows"], statements::redundant_throws),
+    (&["UnnecessaryBoxedAssignment"], assigned::unnecessary_boxed_assignment),
+    (&["IntLongMath"], assigned::int_long_math),
+    (&["InitializeInline"], assigned::initialize_inline),
+    (&["ExposedPrivateType"], signatures::exposed_private_type),
+    (&["PreferJavaTimeOverload"], time::prefer_java_time_overload),
+    (&["DefaultLocale"], locale::default_locale),
+    (&["MixedMutabilityReturnType"], mutability::mixed_mutability_return_type),
+    (&["InterruptedExceptionSwallowed"], interrupts::interrupted_exception_swallowed),
+    (&["FutureReturnValueIgnored"], futures::future_return_value_ignored),
+    (&["ImmutableEnumChecker"], immutable::immutable_enum_checker),
+    (&["TypeParameterNaming"], names::type_parameter_naming),
+    (&["WildcardImport"], names::wildcard_import),
+    (&["SameNameButDifferent"], names::same_name_but_different),
+    (&["DifferentNameButSame"], names::different_name_but_same),
+    (&["UnnecessarilyFullyQualified"], names::unnecessarily_fully_qualified),
+    (&["SuppressWarningsWithoutExplanation"], names::suppress_warnings_without_explanation),
+    (&["TypeParameterUnusedInFormals"], names::type_parameter_unused_in_formals),
+    (&["NullAway"], nullaway::null_away),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
 /// leave the resolver with answers found in a different order.
-const FILE_CHECKS: &[Check] = &[boxed::unnecessary_boxed_variable, unused_methods::unused_method, docplaced::not_javadoc, docplaced::almost_javadoc];
+const FILE_CHECKS: &[(&[&str], Check)] = &[
+    (&["UnnecessaryBoxedVariable"], boxed::unnecessary_boxed_variable),
+    (&["UnusedMethod"], unused_methods::unused_method),
+    (&["NotJavadoc"], docplaced::not_javadoc),
+    (&["AlmostJavadoc"], docplaced::almost_javadoc),
+];
 
 pub struct ErrorProne;
 
@@ -217,14 +224,16 @@ impl FileRule for ErrorProne {
         line_starts.extend(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1));
         let selected = std::env::var("NP_EP_ONLY").ok().map(|names| names.split(',').map(String::from).collect());
         let context = Context { resolver, file, line_starts, selected, out: std::cell::RefCell::new(Vec::new()), named: std::cell::RefCell::new(std::collections::HashMap::new()) };
+        let wanted = |names: &[&str]| context.selected.as_ref().is_none_or(|selected| names.iter().any(|name| selected.iter().any(|one| one == name)));
+        let checks: Vec<Check> = CHECKS.iter().filter(|(names, _)| wanted(names)).map(|(_, check)| *check).collect();
         walk(file.tree.root_node(), |node| {
             if node.is_named() {
-                for check in CHECKS {
+                for check in &checks {
                     check(&context, node);
                 }
             }
         });
-        for check in FILE_CHECKS {
+        for (_, check) in FILE_CHECKS.iter().filter(|(names, _)| wanted(names)) {
             check(&context, file.tree.root_node());
         }
         out.append(&mut context.out.into_inner());

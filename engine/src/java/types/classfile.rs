@@ -208,6 +208,8 @@ struct Attributes<'a> {
     nullable_parameters: u64,
     contract: Option<u16>,
     starts: bool,
+    /// Carries type annotations, which this reader takes no nullness from.
+    typed: bool,
 }
 
 fn starter(descriptor: &[u8]) -> bool {
@@ -334,6 +336,7 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
         let name = utf8(reader.u2()?)?;
         let length = reader.u4()? as usize;
         let end = reader.at + length;
+        found.typed |= name == b"RuntimeVisibleTypeAnnotations" || name == b"RuntimeInvisibleTypeAnnotations";
         if name == b"Signature" && length == 2 {
             found.signature = utf8(reader.u2()?);
         } else if name == b"ConstantValue" && length == 2 {
@@ -587,7 +590,9 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     let superclass = class_name(reader.u2()?);
     let interfaces = (0..reader.u2()?).map(|_| reader.u2().and_then(&class_name)).collect::<Option<Vec<_>>>()?;
     let mut null_nicknames: Vec<String> = Vec::new();
+    let mut typed = false;
     let mut nickname = |found: &Attributes| {
+        typed |= found.typed;
         let name = found.nickname.and_then(|text| std::str::from_utf8(text).ok()).map(|text| dotted(text.trim_start_matches('L').trim_end_matches(';')));
         null_nicknames.extend(name.filter(|name| !null_nicknames.contains(name)));
     };
@@ -683,6 +688,9 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     let found = attributes(&mut reader, &utf8)?;
     let signature = found.signature;
     let mut class_flags = member_flags(access, &found);
+    if typed || found.typed {
+        class_flags |= flag::TYPE_MARKS;
+    }
     for (mask, bit) in [(0x4000, flag::ENUM), (0x2000, flag::ANNOTATION)] {
         if access & mask != 0 {
             class_flags |= bit;

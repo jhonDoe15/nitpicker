@@ -349,6 +349,20 @@ Part of the [Java preset guide](../java-preset.md).
   findings are lost, as an `Error Prone did not run` tool error, and the other tools of the Java
   analyzer still report.
 
+## Checks that run on nitpicker's engine
+
+When nitpicker's engine binary is there (`engine/README.md`, "In a Java run"), NullAway and the Error Prone
+checks `ArrayRecordComponent`, `EmptyCatch`, `EnumOrdinal`, `EscapedEntity`, `InconsistentOverloads`, `JavaUtilDate`,
+`SuppressWarningsWithoutExplanation`, `SystemOut` and
+`TypeParameterUnusedInFormals` run on the engine, and the Error Prone run gets `-Xep:<Check>:OFF` for them.
+The findings are the same: file, line, column and message. The engine writes them to `errorprone-engine.json`
+in the report folder, in the shape of `errorprone.json`, and they are read together. A source set whose
+compile runs an annotation processor, or for which the project passes Error Prone options other than check
+levels, stays with Error Prone as a whole, and so does every source set with `NITPICKER_ENGINE=off`. NullAway
+alone stays with Error Prone for test sources (where it is off), for a source set compiled with a module path,
+and for a source set that uses a null-marked library whose `@Nullable` is written on types, as Spring Framework
+7 does with JSpecify.
+
 ## Checks that are off
 
 `Default` is Error Prone's own default for the check.

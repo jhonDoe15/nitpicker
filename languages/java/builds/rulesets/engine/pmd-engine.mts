@@ -2,7 +2,16 @@ import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { findEngine } from '../../../../../shared/engine/engine-binary.mts';
-import { runEngineSync, type EngineRun } from '../../../../../shared/engine/engine-run.mts';
+import {
+  runEngineSync,
+  type EngineEnvironment as Environment,
+  type EngineRun,
+  type EngineStart,
+} from '../../../../../shared/engine/engine-run.mts';
+import {
+  engineFindingOf,
+  type EngineFinding as Row,
+} from '../../../../../shared/engine/engine-rows.mts';
 import {
   fieldOf,
   listOf,
@@ -24,25 +33,12 @@ export type PmdEnginePlan = {
   readonly javaHome: string;
   readonly suppressMarker: string;
 };
-type Environment = Readonly<Record<string, string | undefined>>;
-type EngineStart = (
-  argumentList: readonly string[],
-  options: { readonly binary: string; readonly environment: Environment },
-) => EngineRun;
 type Split = RulesetScope & {
   readonly file: string;
   readonly name: string;
   readonly onEngine: readonly ResolvedRule[];
   readonly onPmd: readonly ResolvedRule[];
 };
-type Row = {
-  readonly file: string;
-  readonly rule: string;
-  readonly line: number;
-  readonly column: number;
-  readonly message: string;
-};
-
 export const ENGINE_SARIF = 'pmd-engine.sarif';
 export const ENGINE_LOG = 'pmd-engine-log.txt';
 const ENGINE_RULES = 'pmd-engine-rules.json';
@@ -90,16 +86,6 @@ function covers({ include, exclude }: RulesetScope, file: string): boolean {
   const matches = (pattern: string): boolean =>
     new RegExp(`^(?:${portablePattern(pattern)})$`).test(file);
   return !exclude.some(matches) || include.some(matches);
-}
-
-function rowOf(finding: unknown): Row {
-  return {
-    file: String(fieldOf(finding, 'file')),
-    rule: String(fieldOf(finding, 'rule')),
-    line: Number(fieldOf(finding, 'line')),
-    column: Number(fieldOf(finding, 'column')),
-    message: String(fieldOf(finding, 'message')),
-  };
 }
 
 function sarifOf(rows: readonly Row[], levels: ReadonlyMap<string, string>): string {
@@ -244,7 +230,7 @@ function rulesetsAfterEngine(
     return [...rulesets];
   }
   const rows = listOf(fieldOf(report, 'findings'))
-    .map(rowOf)
+    .map(engineFindingOf)
     .filter(({ file }) => !unparsed.includes(file));
   const levels = new Map(
     [...splits.values()].flatMap(({ onEngine }) =>
