@@ -7,6 +7,12 @@ use std::time::{Duration, Instant};
 const REQUEST: u8 = 1;
 const RESPONSE: u8 = 4;
 const ERROR: u8 = 5;
+const GOGC_NAME: &str = "GOGC";
+const GOGC_DEFAULT: &str = "50";
+
+fn collector_setting(current: Option<std::ffi::OsString>) -> Option<(&'static str, &'static str)> {
+    current.is_none().then_some((GOGC_NAME, GOGC_DEFAULT))
+}
 
 pub struct Channel {
     child: Child,
@@ -20,7 +26,11 @@ pub struct Channel {
 
 impl Channel {
     pub fn start(executable: &Path, directory: &Path) -> std::io::Result<Channel> {
-        let mut child = Command::new(executable)
+        let mut command = Command::new(executable);
+        if let Some((name, value)) = collector_setting(std::env::var_os(GOGC_NAME)) {
+            command.env(name, value);
+        }
+        let mut child = command
             .arg("--api")
             .arg("--cwd")
             .arg(directory)
@@ -116,4 +126,16 @@ fn read_bin(input: &mut impl Read) -> std::io::Result<Vec<u8>> {
     let mut bytes = vec![0u8; length];
     input.read_exact(&mut bytes)?;
     Ok(bytes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sets_a_collector_target_unless_the_caller_chose_one() {
+        assert_eq!(collector_setting(None), Some(("GOGC", "50")));
+        assert_eq!(collector_setting(Some("200".into())), None);
+        assert_eq!(collector_setting(Some("".into())), None);
+    }
 }

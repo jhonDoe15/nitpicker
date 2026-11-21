@@ -235,3 +235,9 @@ function takenOrBuilt(
 export function createProjectProgram(request: ProgramRequest): TypeScript.Program {
   return takenOrBuilt(reusablePrograms, request);
 }
+
+export function takeProjectProgram(request: ProgramRequest): TypeScript.Program {
+  const program = takenOrBuilt(reusablePrograms, request);
+  reusablePrograms.clear();
+  return program;
+}
