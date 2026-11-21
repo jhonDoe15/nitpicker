@@ -27,6 +27,8 @@ pub struct Machine<'a, 't> {
     pub trouble: RefCell<Option<String>>,
     pub types: RefCell<HashMap<u32, Option<Type>>>,
     pub calls: RefCell<HashMap<u32, Option<std::rc::Rc<super::library::CallFacts>>>>,
+    /// A resolver that keeps type variables, made when typeIsExactly first needs to tell a variable from its bound.
+    pub symbolic: std::cell::OnceCell<Resolver<'a>>,
 }
 
 fn sorted(items: &[Item]) -> bool {
@@ -44,7 +46,7 @@ pub fn in_order(mut items: Vec<Item>) -> Vec<Item> {
 
 impl<'a, 't> Machine<'a, 't> {
     pub fn new(tree: &'a PmdTree<'t>, file: &'a SourceFile, resolver: &'a Resolver<'a>) -> Machine<'a, 't> {
-        Machine { tree, file, resolver, trouble: RefCell::new(None), types: RefCell::new(HashMap::new()), calls: RefCell::new(HashMap::new()) }
+        Machine { tree, file, resolver, trouble: RefCell::new(None), types: RefCell::new(HashMap::new()), calls: RefCell::new(HashMap::new()), symbolic: std::cell::OnceCell::new() }
     }
 
     pub fn fail(&self, message: impl FnOnce() -> String) -> Seq {

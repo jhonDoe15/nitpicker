@@ -263,6 +263,8 @@ pub struct ClassInfo {
     pub generic_supers: Vec<Type>,
     /// Name and erased bound of each type parameter.
     pub type_parameters: Vec<(String, Type)>,
+    /// The first bound of each type parameter with its type arguments, when a class file gives it.
+    pub written_bounds: Vec<Type>,
     pub fields: Vec<Field>,
     pub methods: Vec<Method>,
     pub is_interface: bool,

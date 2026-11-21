@@ -10,6 +10,7 @@ export type EngineOptions = {
   readonly binary: string | undefined;
   readonly cwd?: string | undefined;
   readonly timeoutMs?: number | undefined;
+  readonly environment?: Readonly<Record<string, string | undefined>> | undefined;
 };
 
 const MAX_OUTPUT_BYTES = 200 * 1024 * 1024;
@@ -25,13 +26,14 @@ function notStarted(error: Error): EngineRun {
 
 export function runEngineSync(
   argumentList: readonly string[],
-  { binary, cwd, timeoutMs }: EngineOptions,
+  { binary, cwd, timeoutMs, environment }: EngineOptions,
 ): EngineRun {
   if (binary === undefined) {
     return NOT_FOUND;
   }
   const result = spawnSync(binary, argumentList, {
     cwd,
+    ...(environment === undefined ? {} : { env: environment }),
     timeout: timeoutMs,
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,

@@ -113,6 +113,7 @@ fn main() {
         "files": result.files,
         "lines": result.lines,
         "filesWithSyntaxErrors": result.parse_errors,
+        "syntaxErrorFiles": result.broken_files,
         "findings": result.findings,
         "functions": result.functions,
         "duplicates": result.duplicates,

@@ -286,9 +286,16 @@ impl<'a> Resolver<'a> {
     /// The bound of a type parameter. Several bounds become one class type named `A&B`.
     fn bound(&self, parameter: Node) -> Type {
         let list = children(parameter).into_iter().find(|child| child.kind() == "type_bound");
-        let parts: Vec<String> = list
-            .map(crate::engine::source::named_children)
-            .unwrap_or_default()
+        let written: Vec<Node> = list.map(crate::engine::source::named_children).unwrap_or_default();
+        // A lone bound with type arguments keeps one wildcard each, so that it does not read as a raw type.
+        if let [only] = written.as_slice() {
+            let given = only.child_by_field_name("type_arguments").or_else(|| only.named_child(1)).filter(|_| only.kind() == "generic_type");
+            let count = given.map_or(0, |given| crate::engine::source::named_children(given).len());
+            if let (true, Some(Type::Class(name, _))) = (count > 0, only.named_child(0).and_then(|named| self.written(named, false))) {
+                return Type::Class(name, vec![Type::Wildcard; count]);
+            }
+        }
+        let parts: Vec<String> = written
             .into_iter()
             .map(|part| if part.kind() == "generic_type" { part.named_child(0).unwrap_or(part) } else { part })
             .filter_map(|part| self.written(part, false))
@@ -622,7 +629,12 @@ impl<'a> Resolver<'a> {
         if matches!(kind, "object_creation_expression" | "enum_constant") {
             let base = match kind {
                 "enum_constant" => crate::engine::source::parent(declaration).and_then(|body| crate::engine::source::parent(body)).and_then(|owner| self.scope.names.get(&owner.id())).map(|owner| Type::class(owner)),
-                _ => declaration.field("type").and_then(|written| self.written(written, true)),
+                // `new Foo<>() {}`: the diamond stands for type arguments, so the parent is not a raw type.
+                _ => declaration.field("type").and_then(|written| {
+                    let kind = self.written(written, true)?;
+                    let diamond = written.kind() == "generic_type" && matches!(&kind, Type::Class(_, given) if given.is_empty());
+                    Some(if diamond { self.index.declared(&kind.name()) } else { kind })
+                }),
             };
             let interface = base.as_ref().is_some_and(|base| self.index.get(&base.name()).is_some_and(|info| info.is_interface));
             let named = base.as_ref().map(Type::name);
@@ -664,6 +676,7 @@ impl<'a> Resolver<'a> {
             generic_supers: parent.into_iter().chain(above).collect(),
             package: self.scope.package.clone(),
             type_parameters,
+            written_bounds: Vec::new(),
             fields: Vec::new(),
             methods: Vec::new(),
             is_interface: matches!(kind, "interface_declaration" | "annotation_type_declaration"),

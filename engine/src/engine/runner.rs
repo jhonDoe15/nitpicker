@@ -13,6 +13,8 @@ pub struct RunResult {
     pub functions: Vec<FunctionMetric>,
     pub duplicates: Vec<Duplicate>,
     pub parse_errors: usize,
+    /// The files the grammar could not read in full; their findings may be incomplete.
+    pub broken_files: Vec<String>,
 }
 
 #[derive(serde::Serialize)]
@@ -121,6 +123,7 @@ pub fn run(files: &[PathBuf], language: &dyn Language, only: Option<&[String]>, 
         functions: Vec::new(),
         duplicates: Vec::new(),
         parse_errors: 0,
+        broken_files: Vec::new(),
     };
     let mut token_files = Vec::new();
     for (findings, facts, lines, broken, path) in per_file {
@@ -128,6 +131,9 @@ pub fn run(files: &[PathBuf], language: &dyn Language, only: Option<&[String]>, 
         result.functions.extend(facts.functions);
         result.lines += lines;
         result.parse_errors += usize::from(broken);
+        if broken {
+            result.broken_files.push(path.clone());
+        }
         token_files.push((path, facts.tokens));
     }
     for rule in &rules {

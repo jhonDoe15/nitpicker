@@ -2,8 +2,8 @@
 
 A Rust program that runs nitpicker's Java rules without a JVM: tree-sitter parses the sources, a type index
 reads class files, and an XPath 3.1 evaluator runs the PMD XPath rules of the Java rulesets unchanged. The
-goal is the same findings as PMD in a fraction of the time. nitpicker does not call it yet, and it is not part
-of the npm package.
+goal is the same findings as PMD in a fraction of the time. A Java run of nitpicker sends the XPath rules of a
+module to the engine and leaves PMD the rules it implements in Java (see "In a Java run").
 
 ## Layout
 
@@ -33,6 +33,22 @@ and prints the built-in rules PMD implements in Java, which the engine does not 
 Other switches: `NP_XPATH_ONLY=<rule,rule>` runs some rules, `NP_XPATH_STATS=<file>` writes time
 and findings per rule, `NP_SLOW=<ms>` prints the files slower than that, `NP_DBG=1` prints each type question
 the resolver gave up on.
+
+## In a Java run
+
+The PMD step of a module (Gradle or Maven) resolves its rulesets the way PMD does and splits them
+(`languages/java/builds/rulesets/engine/`): each rule whose class is `XPathRule` goes to the engine with the
+include and exclude patterns of the ruleset it runs in, and the rules PMD implements in Java go to PMD in
+generated rulesets. The engine reads the same source folders and class path file as PMD and the JDK PMD runs
+on (`NITPICKER_JDK`), and takes PMD's `--suppress-marker` from `NP_SUPPRESS_MARKER`. Its findings are written
+as `pmd-engine.sarif` next to `pmd.sarif` and join PMD's findings when the reports are read.
+
+- A file the grammar cannot read in full (`syntaxErrorFiles` in the report) goes back to PMD with the XPath
+  rules that cover it, and the engine's findings in it are dropped.
+- The engine's findings in a file PMD could not read are dropped: PMD reports none there.
+- A project's own PMD ruleset stays with PMD as it is.
+- PMD runs every rule, as before, when `NITPICKER_ENGINE=off`, when there is no engine binary for the
+  platform, when the engine fails, or when the JDK has no `jmods` folder.
 
 ## Same findings as PMD
 
@@ -100,8 +116,10 @@ whole project. Class files are listed at start and read on first use.
 
 ## Not done yet
 
-- nitpicker does not start the engine; `tests/rules/all.json` is generated but checked in.
-- The 77 rules PMD implements in Java (#2031), Error Prone and SpotBugs are untouched.
+- `tests/rules/all.json` is generated but checked in; a Java run builds its rule list from the rulesets.
+- The rules PMD implements in Java (#2031) still run in PMD. A Java run does not start the engine's Error
+  Prone, NullAway and SpotBugs checks yet.
+- The JDK classes are read from `jmods`; a JDK without that folder leaves all rules to PMD.
 - A type question that needs more than 20,000 resolution steps is answered "unknown" (29 on Elasticsearch).
 
 ## TypeScript structure and reuse facts
