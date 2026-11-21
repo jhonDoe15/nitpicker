@@ -2,20 +2,15 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { runTypedChecks } from '../../../adapters/typed-engine/typed-checks.mts';
 import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
-import { fieldOf, listOf, textsOf } from '../../../../../shared/values/readers.mts';
+import type { Environment } from '../../../../../shared/processes/environment.mts';
+import { fieldOf, fieldsOf, listOf, textsOf } from '../../../../../shared/values/readers.mts';
 import { fileEntry } from '../../unused-api/context.mts';
 import { engineProjectConfig } from '../../unused-api/engine/project-inputs.mts';
 import { projectProgramInputs } from '../../unused-api/program.mts';
 import { globMatcher } from '../../unused-api/test-only/typed/layout-views.mts';
 import type { PackagesInfo } from '../../unused-api/workspace/workspace-types.mts';
-import type {
-  CallableFact,
-  DesignFacts,
-  Fact,
-  ModuleFact,
-  TypeFact,
-  TypeKind,
-} from '../design-types.mts';
+import type { CallableFact, DesignFacts, Fact, TypeFact, TypeKind } from '../design-types.mts';
+import { moduleFacts } from '../project.mts';
 import { type PublishedNames, publishedNames } from '../publication.mts';
 import type { DesignLayout, Frameworks } from '../typed/views.mts';
 
@@ -25,20 +20,20 @@ type Request = {
   readonly packagesInfo: PackagesInfo;
   readonly layout: DesignLayout;
   readonly frameworks: Frameworks | undefined;
-  readonly environment: NodeJS.ProcessEnv;
+  readonly environment: Environment;
 };
 
 type Owned = { readonly fileName: string; readonly path: string };
 
 const ts = typescriptApi();
 const CHECK = 'design';
-const TYPE_KINDS: readonly TypeKind[] = ['module', 'class', 'data', 'enum', 'interface'];
-const CALLABLE_KINDS: readonly CallableFact['kind'][] = [
+const TYPE_KINDS = ['data', 'module', 'class', 'enum', 'interface'] as const satisfies TypeKind[];
+const CALLABLE_KINDS = [
   'function',
   'method',
   'constructor',
   'accessor',
-];
+] as const satisfies CallableFact['kind'][];
 const DECLARATION_FILE = /\.d\.(?:[cm]?ts|[^./]+\.ts)$/u;
 const GENERATED_MARKER =
   /@generated|auto-?generated|generated (?:by|from|file)|do not (?:edit|modify)/iu;
@@ -65,15 +60,6 @@ function ownedFiles(rootNames: readonly string[], request: Request): Owned[] {
     });
 }
 
-function moduleFacts(files: readonly Owned[], layout: DesignLayout): ModuleFact[] {
-  const entries = (layout.entryPoints ?? []).map((glob) => globMatcher(glob));
-  return files.map((file) => ({
-    file: file.path,
-    role: 'production',
-    ...(entries.some((matcher) => matcher.test(file.path)) ? { entry: true } : {}),
-  }));
-}
-
 function isPublished(value: unknown, published: PublishedNames | undefined): boolean {
   if (published === undefined) {
     return false;
@@ -88,7 +74,7 @@ function isPublished(value: unknown, published: PublishedNames | undefined): boo
 }
 
 function factFields(value: unknown, published: PublishedNames | undefined): Fact {
-  const entries = Object.entries(Object(value)).filter(
+  const entries = Object.entries(fieldsOf(value)).filter(
     ([name]) => name !== 'moduleFile' && name !== 'exportedAs',
   );
   return Object.fromEntries(
@@ -106,14 +92,16 @@ function identityOf(value: unknown): Pick<TypeFact, 'id' | 'file' | 'name' | 'li
   };
 }
 
-function typeFactOf(value: unknown, published: PublishedNames | undefined): TypeFact {
-  const kind = TYPE_KINDS.find((known) => known === fieldOf(value, 'kind')) ?? 'data';
-  return { ...factFields(value, published), ...identityOf(value), kind };
-}
-
-function callableFactOf(value: unknown, published: PublishedNames | undefined): CallableFact {
-  const kind = CALLABLE_KINDS.find((known) => known === fieldOf(value, 'kind')) ?? 'function';
-  return { ...factFields(value, published), ...identityOf(value), kind };
+function factsOf<Kind extends string>(
+  values: unknown,
+  published: PublishedNames | undefined,
+  kinds: readonly [Kind, ...Kind[]],
+): (Fact & ReturnType<typeof identityOf> & { readonly kind: Kind })[] {
+  return listOf(values).map((value) => ({
+    ...factFields(value, published),
+    ...identityOf(value),
+    kind: kinds.find((known) => known === fieldOf(value, 'kind')) ?? kinds[0],
+  }));
 }
 
 export function engineDesignFacts(request: Request): DesignFacts | undefined {
@@ -148,7 +136,7 @@ export function engineDesignFacts(request: Request): DesignFacts | undefined {
         published: published !== undefined,
       },
     },
-    environment: { ...process.env, ...request.environment },
+    environment: request.environment,
   });
   const result = outcome.checks?.[CHECK];
   if (result === undefined) {
@@ -156,7 +144,7 @@ export function engineDesignFacts(request: Request): DesignFacts | undefined {
   }
   return {
     modules: moduleFacts(files, layout),
-    types: listOf(fieldOf(result, 'types')).map((fact) => typeFactOf(fact, published)),
-    callables: listOf(fieldOf(result, 'callables')).map((fact) => callableFactOf(fact, published)),
+    types: factsOf(fieldOf(result, 'types'), published, TYPE_KINDS),
+    callables: factsOf(fieldOf(result, 'callables'), published, CALLABLE_KINDS),
   };
 }

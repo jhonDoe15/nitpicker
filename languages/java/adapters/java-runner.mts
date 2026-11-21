@@ -9,6 +9,10 @@ import { javaStyle } from './style/java-style.mts';
 import { gradleBudget, mavenBudget } from './gradle-wrapper/gradle-budget.mts';
 import { withinOutputLimit } from './reporting/output-limit/output-limit.mts';
 import {
+  compactJsonLines,
+  writePieces,
+} from '../../../shared/report-output/pieces/json-pieces.mts';
+import {
   MINUTE_MS,
   analyzerDeadlineMs,
 } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mts';
@@ -235,7 +239,8 @@ function main(runnerArguments: readonly string[]): void {
   const snapshot = runJava(runnerArguments, { warn: process.stderr });
   const { policy } = readRunnerPolicy(runnerArguments);
   const fitted = withinOutputLimit(snapshot, policy.preset ?? 'java', process.env);
-  process.stdout.write(`${JSON.stringify(fitted)}\n`);
+  writePieces(compactJsonLines(fitted), (text) => process.stdout.write(text));
+  process.stdout.write('\n');
 }
 
 const entry = { moduleFile: import.meta.filename, adapter: 'Java', main };

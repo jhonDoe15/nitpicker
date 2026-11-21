@@ -28,6 +28,8 @@ describe('the E2E gate candidates', () => {
       'languages/a/unit.test.mjs': "vi.stubEnv('NITPICKER_JAVA_E2E', '1');\n",
       'scripts/typo.test.mjs': `const on = ${ENV}['NITPICKER_JAAVA_E2E'] === '1';\n`,
       'docs/other.test.mjs': `const on = ${ENV}.NITPICKER_JAVA_E2E === '1';\n`,
+      'languages/a/folder/inner.mjs': 'export const inner = 1;\n',
+      'languages/a/folder.test.mjs': 'const code = "import { inner } from \'./folder\';";\n',
     });
 
     expect(gateCandidates(root)).toEqual([

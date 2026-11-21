@@ -36,16 +36,14 @@ export function ownedFiles(context: DesignContext, layout: DesignLayout): OwnedF
   });
 }
 
-function entryMatcher(layout: DesignLayout): (path: string) => boolean {
-  const matchers = (layout.entryPoints ?? []).map((glob) => globMatcher(glob));
-  return (path) => matchers.some((matcher) => matcher.test(path));
-}
-
-export function moduleFacts(files: readonly OwnedFile[], layout: DesignLayout): ModuleFact[] {
-  const isEntry = entryMatcher(layout);
-  return files.map(({ path }) => ({
-    file: path,
+export function moduleFacts(
+  files: readonly Pick<OwnedFile, 'path'>[],
+  layout: DesignLayout,
+): ModuleFact[] {
+  const entries = (layout.entryPoints ?? []).map((glob) => globMatcher(glob));
+  return files.map((file) => ({
+    file: file.path,
     role: 'production',
-    ...(isEntry(path) ? { entry: true } : {}),
+    ...(entries.some((matcher) => matcher.test(file.path)) ? { entry: true } : {}),
   }));
 }

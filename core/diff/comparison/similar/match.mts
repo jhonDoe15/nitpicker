@@ -1,6 +1,7 @@
 import { normalizeGitPath } from '../../git/normalize.mts';
 import { opaqueClassOf, opaquePartners } from './opaque-token.mts';
 import type { TrackedFinding } from '../model/finding-types.mts';
+import { addToGroup } from '../../../../shared/lists/lists.mts';
 
 const MIN_SIMILAR_TOKENS = 3;
 const MAX_NEIGHBOR_VISITS = 2_000_000;
@@ -56,7 +57,7 @@ function lookupKeys(group: string, tokens: readonly string[]): string[] {
 }
 
 function addToIndex(index: Map<string, Tokenized[]>, key: string, finding: Tokenized): void {
-  index.set(key, [...(index.get(key) ?? []), finding]);
+  addToGroup(index, key, finding);
 }
 
 function indexBase(

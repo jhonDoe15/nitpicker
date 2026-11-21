@@ -65,7 +65,7 @@ export function runQualityDiff(options: DiffOptions): DiffReport {
     projectPath: projectPath.replaceAll(path.sep, '/'),
   });
   const location = { projectPath, repositoryRoot: settings.repositoryRoot };
-  report.text = writeReports(settings.outputRoot, report, location);
+  writeReports(settings.outputRoot, report, location);
   const resumed = headResumePlace(settings, comparison);
   finishResume(resumed === undefined ? undefined : resumeDirectory(resumed), report.toolErrors);
   return report;

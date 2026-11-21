@@ -3,6 +3,7 @@ mod spotbugs;
 mod facts;
 mod grammar;
 pub(crate) mod fields;
+mod flow;
 mod helpers;
 pub mod javac;
 mod magic_number;

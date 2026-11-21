@@ -47,7 +47,6 @@ export type AggregateRequest = {
 
 export type AggregateReport = ReportData & {
   readonly summary: Entry;
-  text?: unknown;
 };
 
 export type AggregateOptions = {

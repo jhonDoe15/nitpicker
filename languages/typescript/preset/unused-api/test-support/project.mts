@@ -57,7 +57,7 @@ export function analyzeProject(
     ...policy,
   };
   return withHeadPolicyFile(fullPolicy, (policyFile) => {
-    const environment = headPolicyEnvironment(policyFile);
+    const environment = { ...process.env, ...headPolicyEnvironment(policyFile) };
     const configPath = path.join(root, '.nitpicker-test-tsconfig.json');
     const transform = layoutTransformFor(TYPESCRIPT_CONFIG, resolveLayoutFor(fullPolicy));
     const source = readFileSync(path.join(packageRoot, TYPESCRIPT_CONFIG), 'utf8');

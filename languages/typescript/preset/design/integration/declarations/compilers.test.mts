@@ -90,7 +90,16 @@ describe('facts that do not depend on the order a compiler lists things in', () 
         { name: 'id', type: `\`id-\${string&{k:"a"|"z";}}\`` },
         { name: 'accent', type: `\`\u00E9\${string}\`` },
       ]);
-      expect(edge.types.map(({ id }) => id)).not.toContain('src/global.ts#global.Win');
+      expect(edge.types.map(({ id }) => id)).toEqual([
+        'src/brand.ts',
+        'src/global.ts',
+        'src/hold.ts',
+        'src/hold.ts#Base',
+        'src/hold.ts#Derived',
+        'src/hold.ts#Marked',
+        'src/lib.ts',
+        'src/use.ts',
+      ]);
       expect(byId(edge.callables, 'src/use.ts#caller').calls).toEqual([
         { target: 'src/lib.ts#helper', line: 2 },
       ]);
@@ -99,8 +108,8 @@ describe('facts that do not depend on the order a compiler lists things in', () 
         {
           target: 'src/hold.ts#Derived.[Symbol.dispose]',
           line: 4,
-          receiver: 'kept',
           cleanup: true,
+          receiver: 'kept',
         },
       ]);
       expect(byId(edge.callables, 'src/hold.ts#Marked.constructor').entry).toBeUndefined();

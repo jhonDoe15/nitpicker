@@ -41,6 +41,7 @@ function analyze(
       projectRoot: options.projectRoot,
       configPath: installed.targetPath,
       analyzerName: options.analyzerName,
+      environment: options.environment,
     });
   } finally {
     installed.remove();

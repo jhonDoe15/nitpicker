@@ -1,7 +1,8 @@
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fieldAt } from '../../../scripts/json/fields.mts';
-import { fieldOf, textOf } from '../../../shared/values/readers.mts';
+import { fieldOf } from '../../../shared/values/readers.mts';
 import { createBaseSetupResolver } from '../../command/policy-review/base-setup.mts';
 import {
   commitHead,
@@ -257,7 +258,7 @@ describe('notices about the change', () => {
       'src/kept.mjs',
     ]);
     expect(report.summary['notices']).toEqual(['a notice']);
-    const lines = textOf(report.text).split('\n');
+    const lines = readFileSync(path.join(root, 'reports', 'report.txt'), 'utf8').split('\n');
     const start = lines.indexOf('Notices (not failing):');
     expect(lines.slice(start, start + 2)).toEqual(['Notices (not failing):', '  a notice']);
   });
