@@ -18,6 +18,6 @@ export function ruleLines(
 
   return (...lines) =>
     rule(parse(inPackage(...lines)), { analyzerName, isExcepted: () => false }).map(
-      ({ location, message }) => `${String(location.line)}: ${summary(message)}`,
+      ({ location, message }) => `${String(location?.line)}: ${summary(message)}`,
     );
 }

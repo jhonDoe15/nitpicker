@@ -1,8 +1,8 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import type { JSONSchema } from '@typescript-eslint/utils';
-import { ancestorDirectories as untypedAncestorDirectories } from '../../../../../../shared/filesystem.mjs';
-import { posixRelative as untypedPosixRelative } from '../../../../../../shared/project-files/tree-walk.mjs';
+import { ancestorDirectories as untypedAncestorDirectories } from '../../../../../../shared/filesystem.mts';
+import { posixRelative as untypedPosixRelative } from '../../../../../../shared/project-files/tree-walk.mts';
 import { readHeadPolicy, readLayout } from '../typed/policy-views.mts';
 import { DEFAULT_TEST_RUNNER, TEST_RUNNERS } from '../../../test-runner/runners.mts';
 import { recordedTestRunner as untypedRecordedTestRunner } from '../../../test-runner/vocabulary/runner-vocabulary.mts';

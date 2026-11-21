@@ -11,7 +11,7 @@ import {
 } from './lint-baseline.mts';
 import { lintedWarnings, relocated, hasUnreadWarnings } from './lint-output.mts';
 import { posix, stageSources } from './lint-staging.mts';
-import { filesEndingWith } from '../../../../shared/filesystem.mjs';
+import { filesEndingWith } from '../../../../shared/filesystem.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { type LintPlan, lintPlanOf } from '../typed/lint-plan.mts';
 import { fieldOf, fieldsOf, textOf, textsOf } from '../../../../shared/values/readers.mts';

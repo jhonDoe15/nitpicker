@@ -1,5 +1,5 @@
-import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
-import { nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
+import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mts';
+import { occurrenceCounter } from '../../../../shared/rules/finding-parts.mts';
 import { readSpringDocuments, usesJpa } from './spring-config-files.mts';
 import { ENTRY_RULES } from './config-rules/entry-rules.mts';
 import {
@@ -37,7 +37,6 @@ type RouteInput = {
 };
 
 const routeSentence: (input: RouteInput) => string | undefined = exceptionRoute;
-const nextCount: (occurrences: Occurrences, key: string) => number = nextOccurrence;
 
 const SPRING_TOOL = 'spring';
 const DEFAULT_RESOURCE_ROOTS = ['src/main/resources'];
@@ -105,7 +104,7 @@ export function readSpringConfigFindings(
   const { sourceRoots = [], resourceRoots, testSourceRoots, baselineRoot } = options;
   const resources = Array.isArray(resourceRoots) ? resourceRoots : DEFAULT_RESOURCE_ROOTS;
   const read = readSpringDocuments(projectRoot, resources);
-  const occurrences: Occurrences = new Map();
+  const occurrences: Occurrences = occurrenceCounter();
   return [
     ...problemFindings(
       'missing-enable',
@@ -252,7 +251,7 @@ function buildFinding({
   message,
   occurrences,
 }: FindingSpec): SpringFinding {
-  const occurrence = nextCount(occurrences, `${document.path}\0${rule}\0${key}`);
+  const occurrence = occurrences(`${document.path}\0${rule}\0${key}`);
   return {
     tool: SPRING_TOOL,
     rule,

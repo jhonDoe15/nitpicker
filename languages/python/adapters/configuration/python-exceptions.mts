@@ -1,5 +1,5 @@
-import { sharedRouteRule } from '../../../../shared/exceptions/routes.mjs';
-import { FUNCTION_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import { sharedRouteRule } from '../../../../shared/exceptions/routes.mts';
+import { FUNCTION_EXCEPTION_RULES } from '../../../../shared/policy.mts';
 import {
   applyFindingExceptions,
   findingPaths,

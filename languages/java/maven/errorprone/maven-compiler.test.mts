@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseXml } from '../../../../shared/values/xml.mts';
+import { parseXml } from '../../../../shared/ingest/report-records.mts';
 import { defined } from '../../builds/test-support/defined.mts';
 import { compilerSettings } from './maven-compiler.mts';
 import { processorTool } from './maven-errorprone.mts';

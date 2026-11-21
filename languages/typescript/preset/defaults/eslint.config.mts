@@ -1,3 +1,4 @@
+import { readHeadPolicyFile } from '../../../../shared/head-policy.mts';
 import path from 'node:path';
 import eslint from '@eslint/js';
 import { defineConfig } from 'eslint/config';
@@ -193,7 +194,10 @@ const presetConfig = defineConfig(
       ...runnerConfig.plugins,
       nitpicker: nitpickerRules,
     },
-    settings: runnerConfig.settings,
+    settings: {
+      ...runnerConfig.settings,
+      nitpickerTestTimeoutPolicy: readHeadPolicyFile(process.env),
+    },
     languageOptions: {
       globals: {
         ...globals.node,

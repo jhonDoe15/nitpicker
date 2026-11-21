@@ -1,8 +1,8 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { readInside as readInsideUntyped } from '../../../../shared/conventions/read-inside.mjs';
-import { projectFilePaths as projectFilePathsUntyped } from '../../../../shared/project-files/project-files.mjs';
+import { readInside as readInsideUntyped } from '../../../../shared/conventions/read-inside.mts';
+import { projectFilePaths as projectFilePathsUntyped } from '../../../../shared/project-files/project-files.mts';
 import { messageOf, optionalText } from '../../../../shared/values/readers.mts';
 import { detectJavaBuild as detectJavaBuildUntyped } from '../../builds/java-build.mts';
 import { readEffectivePom as readEffectivePomUntyped } from '../../maven/configuration/effective-pom.mts';

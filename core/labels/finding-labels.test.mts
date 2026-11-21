@@ -3,21 +3,20 @@ import { describe, expect, it } from 'vitest';
 import { fallbackLabels, findingLabeler, labelCounts, withLabels } from './finding-labels.mts';
 import { GOCRITIC_CHECKERS, GO_RULE_NAMES, goLabels } from './go-labels.mts';
 import { LABELS } from './taxonomy.mts';
+import { ruleEntry } from '../../shared/reference/entry.mts';
+import { indexEntries } from '../../shared/reference/store.mts';
 import { areaOf } from '../diff/reporting/format/rule-groups/finding-areas.mts';
 
-const index = {
-  entries: [
-    {
-      id: 'pmd/UnorderedQuery',
-      tool: 'pmd',
-      rule: 'UnorderedQuery',
-      labels: ['bug', 'persistence'],
-    },
-  ],
-  exact: new Map(),
-  lowercase: new Map(),
-  patterns: [],
-};
+const index = indexEntries([
+  ruleEntry({
+    tool: 'pmd',
+    rule: 'UnorderedQuery',
+    summary: 'x',
+    analyzers: {},
+    exception: {},
+    labels: ['bug', 'persistence'],
+  }),
+]);
 
 describe('findingLabeler', () => {
   it('reads the labels of the reference entry', () => {

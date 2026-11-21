@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { pathInside } from '../../../shared/filesystem.mjs';
+import { pathInside } from '../../../shared/filesystem.mts';
 
 const MAVEN = 'maven';
 const GRADLE = 'gradle';

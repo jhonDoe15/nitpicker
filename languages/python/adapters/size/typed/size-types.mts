@@ -1,5 +1,5 @@
-import { classLimitFindings as untypedClassLimits } from '../../../../../shared/rules/size/class-limits.mjs';
-import { folderDepthFindings as untypedFolderDepth } from '../../../../../shared/rules/size/folder-depth.mjs';
+import { classLimitFindings as untypedClassLimits } from '../../../../../shared/rules/size/class-limits.mts';
+import { folderDepthFindings as untypedFolderDepth } from '../../../../../shared/rules/size/folder-depth.mts';
 import type { IngestedFinding } from '../../../ingest/typed/ingest-types.mts';
 import type {
   ClassEntry,

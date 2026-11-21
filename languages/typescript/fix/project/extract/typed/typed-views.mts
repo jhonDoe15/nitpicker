@@ -3,53 +3,27 @@ import {
   bindPair as untypedBindPair,
   recordTypeHole as untypedRecordTypeHole,
   typePairProblem as untypedTypePairProblem,
-} from '../../../../../../shared/fix/recipes/extract/bijection.mjs';
-import {
-  partialCandidates as untypedPartialCandidates,
-  wholeCandidates as untypedWholeCandidates,
-} from '../../../../../../shared/fix/recipes/extract/candidates.mjs';
+} from '../../../../../../shared/fix/recipes/extract/bijection.mts';
 import {
   declineNote as untypedDeclineNote,
   helperNameFor as untypedHelperNameFor,
   nameHoles as untypedNameHoles,
-} from '../../../../../../shared/fix/recipes/extract/names.mjs';
-import {
-  collected as untypedCollected,
-  outcomeOf as untypedOutcomeOf,
-} from '../../../../../../shared/fix/recipes/extract/outcomes.mjs';
+} from '../../../../../../shared/fix/recipes/extract/names.mts';
 import {
   dedentedToLeast as untypedDedentedToLeast,
   indentedBy as untypedIndentedBy,
   withLineEndingOf as untypedWithLineEndingOf,
   withReplacements as untypedWithReplacements,
-} from '../../../../../../shared/fix/recipes/extract/text.mjs';
-import { statementWindows as untypedStatementWindows } from '../../../../../../shared/fix/recipes/extract/windows.mjs';
-import { nearDuplicateMatches as untypedNearDuplicateMatches } from '../../../../../../shared/rules/near-duplicates/near-duplicates.mjs';
-import type { Planned, ProjectFix, ReplaceEdit } from '../../typed/project-types.mts';
-import type {
-  AlignEnv,
-  Both,
-  Candidate,
-  Candidates,
-  Extracted,
-  Hole,
-  PartialCandidate,
-} from './extract-types.mts';
-
-type Outcome =
-  | { readonly note: string; readonly fix?: undefined }
-  | { readonly fix: ProjectFix; readonly note?: undefined };
+} from '../../../../../../shared/fix/recipes/extract/text.mts';
+import { statementWindows as untypedStatementWindows } from '../../../../../../shared/fix/recipes/extract/windows.mts';
+import type { ReplaceEdit } from '../../typed/project-types.mts';
+import type { AlignEnv, Both, Extracted, Hole } from './extract-types.mts';
 
 const bindPair: (
   env: AlignEnv,
   left: TypeScript.Symbol | undefined,
   right: TypeScript.Symbol | undefined,
 ) => boolean = untypedBindPair;
-
-const wholeCandidates: (matches: unknown) => Candidates<Candidate> = untypedWholeCandidates;
-
-const partialCandidates: (matches: unknown) => Candidates<PartialCandidate> =
-  untypedPartialCandidates;
 
 const declineNote: (
   finding: { readonly path: string; readonly line: number },
@@ -83,13 +57,6 @@ const typePairProblem: (
 const helperNameFor: (label: string, taken: ReadonlySet<string>) => string | undefined =
   untypedHelperNameFor;
 
-const outcomeOf: (candidate: Candidate, result: Planned<ReplaceEdit>) => Outcome = untypedOutcomeOf;
-
-const collected: (
-  outcomes: readonly Outcome[],
-  notes: readonly string[],
-) => { readonly fixes: ProjectFix[]; readonly notes: string[] } = untypedCollected;
-
 function withWidened(edits: readonly ReplaceEdit[], widened: readonly ReplaceEdit[]): Extracted {
   const same = edits.every((edit, index) => edit.text === widened[index]?.text);
   return same ? { edits } : { edits, widened };
@@ -107,27 +74,17 @@ const withLineEndingOf: (source: string, text: string) => string = untypedWithLi
 
 const statementWindows: <T>(list: readonly T[]) => T[][] = untypedStatementWindows;
 
-const nearDuplicateMatches: (
-  units: readonly object[],
-  options: { readonly isExcepted: (ruleId: string, name: string) => boolean },
-) => unknown = untypedNearDuplicateMatches;
-
 export {
   bindPair,
-  collected,
   declineNote,
   dedentedToLeast,
   withReplacements,
   helperNameFor,
   indentedBy,
   nameHoles,
-  nearDuplicateMatches,
-  outcomeOf,
-  partialCandidates,
   recordTypeHole,
   statementWindows,
   typePairProblem,
-  wholeCandidates,
   withLineEndingOf,
   withWidened,
 };

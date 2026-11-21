@@ -1,6 +1,6 @@
 import { lineStarts } from '../../../doc-comments/doc-scopes.mts';
-import { escapeRegExp } from '../../../../../../shared/paths/glob.mjs';
-import { crossedCollections } from '../../../../../../shared/joins/crossed-collections.mjs';
+import { escapeRegExp } from '../../../../../../shared/paths/glob.mts';
+import { crossedCollections } from '../../../../../../shared/joins/crossed-collections.mts';
 import { blankComments, blankLiterals } from '../../../review-rules/java-sources.mts';
 import type { FetchSite, FetchSource, Joined, RelationOf } from '../fetch-types.mts';
 import { graphFetches, jpqlFetches, resolvedFetches } from '../fetch-paths.mts';

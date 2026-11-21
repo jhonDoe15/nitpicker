@@ -5,8 +5,8 @@ import {
   LANGUAGES,
   type Language,
 } from '../../projects/plan/preset-languages.mts';
-import { globMatcher } from '../../../shared/paths/glob.mjs';
-import { containedPath } from '../../../shared/paths/contained-path.mjs';
+import { globMatcher } from '../../../shared/paths/glob.mts';
+import { containedPath } from '../../../shared/paths/contained-path.mts';
 
 type Request = {
   readonly preset: string | undefined;

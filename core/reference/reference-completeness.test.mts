@@ -20,20 +20,20 @@ import {
 } from '../../languages/python/adapters/configuration/python-rule-ids.mts';
 import { PYTHON_TOP_LEVEL_EXCEPTION_RULES as UNTYPED_PYTHON_TOP_LEVEL_EXCEPTION_RULES } from '../../languages/python/adapters/configuration/python-config.mts';
 import { RULE_HINTS as UNTYPED_RULE_HINTS } from '../../languages/python/rules/rule-hints.mts';
-import { RULES as UNTYPED_RULES } from '../../shared/policy.mjs';
+import { RULES as UNTYPED_RULES } from '../../shared/policy.mts';
 import {
   CODING_STANDARDS_RULES as UNTYPED_CODING_STANDARDS_RULES,
   DEPENDENCY_RULES as UNTYPED_DEPENDENCY_RULES,
   toolsOf as untypedToolsOf,
-} from '../../shared/exceptions/rule-tools.mjs';
+} from '../../shared/exceptions/rule-tools.mts';
+import { PRESETS } from '../../shared/reference/entry.mts';
+import { PAGES } from '../../shared/reference/pages.mts';
 import {
-  PAGES,
-  PRESETS,
   entryForFinding,
   indexEntries,
   lookupEntries,
   readReferenceEntries,
-} from './reference-views.mts';
+} from '../../shared/reference/store.mts';
 import { fieldAt, fieldsOf } from '../../scripts/json/fields.mts';
 import { parseJson, textsOf } from '../../shared/values/readers.mts';
 
@@ -218,25 +218,22 @@ describe('the rule reference', () => {
   });
 
   it('sends the Python exception of a shared check to python.exceptions unless the top-level list takes it', () => {
-    const checks = entries.filter(
-      ({ analyzers, exception }) =>
-        analyzers['python'] !== undefined && exception.key === 'exceptions',
+    const checks = entries.flatMap(({ tool, analyzers, exception: { key, rule, presetKeys } }) =>
+      analyzers['python'] !== undefined && key === 'exceptions' && rule !== undefined
+        ? [{ tool, rule, presetKeys }]
+        : [],
     );
-    const sent = checks.filter(
-      ({ exception }) => exception.presetKeys?.['python'] === 'python.exceptions',
-    );
+    const sent = checks.filter(({ presetKeys }) => presetKeys?.['python'] === 'python.exceptions');
 
     expect(sent.length).toBeGreaterThan(0);
-    expect(
-      sent.filter(({ exception }) => PYTHON_TOP_LEVEL_EXCEPTION_RULES.includes(exception.rule)),
-    ).toEqual([]);
+    expect(sent.filter(({ rule }) => PYTHON_TOP_LEVEL_EXCEPTION_RULES.includes(rule))).toEqual([]);
     expect(
       checks.filter(
-        ({ tool, exception }) =>
-          tool === exception.rule.split('/')[0] &&
-          !exception.rule.includes('/') &&
-          exception.presetKeys === undefined &&
-          !PYTHON_TOP_LEVEL_EXCEPTION_RULES.includes(exception.rule),
+        ({ tool, rule, presetKeys }) =>
+          tool === rule.split('/')[0] &&
+          !rule.includes('/') &&
+          presetKeys === undefined &&
+          !PYTHON_TOP_LEVEL_EXCEPTION_RULES.includes(rule),
       ),
     ).toEqual([]);
   });

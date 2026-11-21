@@ -2,7 +2,7 @@
 
 Part of the [Kotlin preset guide](../kotlin-preset.md).
 
-The shared file-limit rule (`shared/rules/file-limits.mjs`) checks the `.kt` and `.java` files of the
+The shared file-limit rule (`shared/rules/file-limits.mts`) checks the `.kt` and `.java` files of the
 Kotlin and Java source roots, main and test (roots under `build/` are generated and skipped): 300
 lines per file, 500 per test file, and 6 files (and separately 6 test files) directly in one package
 folder. The thresholds are `fileLines`, `testFileLines` and `folderFiles`. Packages more than 4 levels

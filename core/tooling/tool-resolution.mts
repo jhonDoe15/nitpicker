@@ -7,7 +7,7 @@ import { realTemporaryDirectory } from './temporary-files.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
-} from '../../shared/messages/troubleshooting.mjs';
+} from '../../shared/messages/troubleshooting.mts';
 import type {
   Declared,
   DeclaredCheck,

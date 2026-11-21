@@ -11,7 +11,7 @@ import {
   withProjectEnumPredicates,
 } from './enum-predicates.mts';
 import type { JavaFinding } from '../typed/java-values.mts';
-import { byText as untypedByText } from '../../../../shared/text-order/by-text.mjs';
+import { byText as untypedByText } from '../../../../shared/text-order/by-text.mts';
 
 const readEnums: (projectRoot: string) => ReadonlyMap<string, unknown> = untypedReadEnums;
 const byText: (left: string, right: string) => number = untypedByText;

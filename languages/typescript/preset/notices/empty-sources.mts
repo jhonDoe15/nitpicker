@@ -1,10 +1,10 @@
 import type { DetectedPreset } from '../../../../core/configuration/project-checks/preset-detection.mts';
 import { detectedPreset as untypedDetectedPreset } from '../../../../core/configuration/project-checks/preset-detection.mts';
-import { projectFilePaths as untypedProjectFilePaths } from '../../../../shared/project-files/project-files.mjs';
+import { projectFilePaths as untypedProjectFilePaths } from '../../../../shared/project-files/project-files.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting as untypedWithTroubleshooting,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 import { objectOf } from '../../../../shared/values/readers.mts';
 import type { Layout } from '../../adapters/typed/head-policy.mts';
 import {

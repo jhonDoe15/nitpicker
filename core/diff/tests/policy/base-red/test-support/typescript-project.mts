@@ -11,7 +11,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fieldOf, listOf, parseJson, textOf } from '../../../../../../shared/values/readers.mts';
-import { checkoutModulePath } from '../../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath } from '../../../../../../shared/paths/checkout-module.mts';
 
 const COMMAND_TIMEOUT_MS = 60_000;
 const GATE_TIMEOUT_MS = 5 * 60_000;

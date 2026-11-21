@@ -3,7 +3,7 @@ import { chainOf, typescriptApi } from '../../../adapters/typed/typescript-progr
 import type { Hole, NamedHole } from './typed/extract-types.mts';
 import { nameHoles as sharedNameHoles, withReplacements } from './typed/typed-views.mts';
 import { descendants } from './syntax.mts';
-import { TYPE_PARAMETER_NAMES } from '../../../../../shared/fix/recipes/extract/names.mjs';
+import { TYPE_PARAMETER_NAMES } from '../../../../../shared/fix/recipes/extract/names.mts';
 
 const ts = typescriptApi();
 

@@ -1,4 +1,4 @@
-import { foreignKeyGate as sharedGate } from '../../../../../shared/hygiene/schema/foreign-key-gate.mjs';
+import { foreignKeyGate as sharedGate } from '../../../../../shared/hygiene/schema/foreign-key-gate.mts';
 import { yamlDocuments } from '../../../../../core/tooling/yaml/yaml-documents.mts';
 
 export const FOREIGN_KEY_RULE = 'JpaUnindexedForeignKey';

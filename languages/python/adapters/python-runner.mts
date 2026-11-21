@@ -10,11 +10,11 @@ import {
   TESTS_FAILED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
   TESTS_NOT_RUN_RULE,
-} from '../../../shared/rules/finding-helpers.mjs';
+} from '../../../shared/rules/finding-parts.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   testsFailAnchor,
-} from '../../../shared/messages/troubleshooting.mjs';
+} from '../../../shared/messages/troubleshooting.mts';
 import { fieldOf, fieldsOf, parseJson, textOf } from '../../../shared/values/readers.mts';
 import type { IngestedFinding } from './typed/report/report-types.mts';
 import type {
@@ -30,11 +30,11 @@ import {
   createToolContext,
   mutationFindings,
   parseSharedArguments,
-  readHeadPolicyFile,
   runPythonTools,
   trackTemporaryPath,
   withTroubleshooting,
 } from './typed/runner/runner-views.mts';
+import { readHeadPolicyFile } from '../../../shared/head-policy.mts';
 import { runAdapterMain } from '../../../shared/processes/adapter-main.mts';
 import { withInternalFrames } from '../../../shared/messages/crashes/internal-error.mts';
 
@@ -235,7 +235,7 @@ export function runPython(
   { spawn }: { readonly spawn?: unknown } = {},
 ): RunnerReport {
   const { part, projectRoot, liveRoot, settings, policy } = parsePythonArguments(runnerArguments);
-  const headPolicy = readHeadPolicyFile();
+  const headPolicy = readHeadPolicyFile(process.env);
   const { conventions, layout, history } = headPolicy;
   return analyzePythonSnapshot({
     part,

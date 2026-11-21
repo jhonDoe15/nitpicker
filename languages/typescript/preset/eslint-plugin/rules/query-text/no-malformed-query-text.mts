@@ -6,7 +6,7 @@ import {
   queryProblemMessage as untypedMessage,
   queryTextProblem as untypedProblem,
   runTogether as untypedTogether,
-} from '../../../../../../shared/rules/query-text/query-text.mjs';
+} from '../../../../../../shared/rules/query-text/query-text.mts';
 import { isConcatenation } from '../guards/no-unsafe-path-join.mts';
 import { stringKey } from '../secrets/secret-nodes.mts';
 import { depthFirst, nodeChildren } from '../typed/node-views.mts';

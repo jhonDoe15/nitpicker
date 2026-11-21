@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { ingestFormatCheck as untypedIngestFormatCheck } from '../../../../shared/ingest/format-check.mjs';
-import { ingestSarif as untypedIngestSarif } from '../../../../shared/ingest/sarif.mjs';
+import { ingestFormatCheck as untypedIngestFormatCheck } from '../../../../shared/ingest/format-check.mts';
+import { ingestSarif as untypedIngestSarif } from '../../../../shared/ingest/sarif.mts';
 import { ONE_WAY_RULE_IDS } from '../kotlin/rules/kotlin-rules.mts';
-import { appendSentence as untypedAppendSentence } from '../../../../shared/messages/exception-sentence.mjs';
+import { appendSentence as untypedAppendSentence } from '../../../../shared/messages/exception-sentence.mts';
 import { readSarifReport } from './sarif/sarif-reports.mts';
 import type { SarifLog } from '../jpa/jpa-types.mts';
 import type { JavaFinding } from '../typed/java-values.mts';

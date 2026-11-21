@@ -10,7 +10,8 @@ import {
   mochaMutationOptions as untypedMochaMutationOptions,
   projectMocha as untypedProjectMocha,
 } from '../../../preset/test-runner/test-files/mocha-options.mts';
-import { readHeadPolicyFile as untypedReadHeadPolicyFile } from '../../../../../shared/head-policy.mjs';
+import { readHeadPolicyFile as toolPolicy } from '../../../preset/project-tools/typed/shared-views.mts';
+import { readHeadPolicyFile as untypedReadHeadPolicyFile } from '../../../../../shared/head-policy.mts';
 import { readTestReport as readTestReportJson } from '../../quality-areas/reporting/test-report.mts';
 import {
   consoleEntry as untypedConsoleEntry,
@@ -65,7 +66,12 @@ export function projectTestRunner(options: TestOptions): TestRunner {
   return { runner, command };
 }
 
-export const projectTestRetry: (runner: string) => unknown = untypedProjectTestRetry;
+export function projectTestRetry(
+  runner: string,
+  environment: Readonly<Record<string, string | undefined>>,
+): unknown {
+  return untypedProjectTestRetry(runner, toolPolicy(environment).tools?.['tests']);
+}
 
 export const vitestRetryArguments: (retry: unknown) => string[] = untypedVitestRetryArguments;
 
@@ -84,7 +90,9 @@ export const mochaMutationOptions: (request: {
   readonly nodeArguments: readonly string[];
 } = untypedMochaMutationOptions;
 
-export const readHeadPolicyFile: () => TimeoutPolicy = untypedReadHeadPolicyFile;
+export const readHeadPolicyFile: (
+  environment: Readonly<Record<string, string | undefined>>,
+) => TimeoutPolicy = untypedReadHeadPolicyFile;
 
 function isTestReport(value: unknown): value is TestReport {
   return typeof value === 'object' && value !== null;

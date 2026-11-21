@@ -6,7 +6,7 @@ import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mts';
 import { readJson } from '../git/test-support/fixture-files.mts';
 import { useGitFixtures } from '../git/test-support/git-repository.mts';
 import { exactText } from '../reporting/test-support/output-expectations.mts';
-import { docsUrl } from '../../../shared/messages/docs-url.mjs';
+import { docsUrl } from '../../../shared/messages/docs-url.mts';
 import { aggregateShardReports } from './aggregate-shards.mts';
 import type { AggregateReport, AggregateRequest } from './aggregate-summary.mts';
 import { fieldAt } from '../../../scripts/json/fields.mts';

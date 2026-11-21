@@ -4,7 +4,7 @@ import {
   minutesSetting as untypedMinutesSetting,
   analyzerDeadlineMs as untypedAnalyzerDeadlineMs,
   sizeAllowanceMs as untypedSizeAllowanceMs,
-} from '../../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+} from '../../../../shared/analyzer-timeouts/analyzer-timeouts.mts';
 import type { JavaEnvironment } from '../typed/java-values.mts';
 import type { TimeBudget } from '../typed/java-run-options.mts';
 

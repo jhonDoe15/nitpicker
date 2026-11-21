@@ -2,7 +2,7 @@ import {
   coverageMetricFinding,
   normalizeReportPath,
   uncoveredFinding,
-} from '../../../../shared/ingest/common.mjs';
+} from '../../../../shared/ingest/report-records.mts';
 
 const TOOL = 'lcov';
 
@@ -12,8 +12,9 @@ type LcovRecord = {
   readonly lines: Map<string | undefined, boolean>;
   readonly functions: Map<string, number>;
 };
+type LocatedRecord = LcovRecord & { readonly path: string };
 type RecordHandler = (record: LcovRecord, payload: string) => void;
-type LcovFinding = ReturnType<typeof coverageMetricFinding> | ReturnType<typeof uncoveredFinding>;
+type LcovFinding = ReturnType<typeof coverageMetricFinding>;
 
 const RECORD_HANDLERS: readonly (readonly [string, RecordHandler])[] = [
   ['DA:', recordLineHits],
@@ -82,13 +83,15 @@ function recordFunctionHits(record: LcovRecord, payload: string): void {
 }
 
 function recordFindings(record: LcovRecord, tool: string): LcovFinding[] {
-  if (record.path === undefined) {
+  const { path: located } = record;
+  if (located === undefined) {
     return [];
   }
-  return [...lineCoverageFindings(record, tool), ...uncoveredFunctionFindings(record, tool)];
+  const found = { ...record, path: located };
+  return [...lineCoverageFindings(found, tool), ...uncoveredFunctionFindings(found, tool)];
 }
 
-function lineCoverageFindings(record: LcovRecord, tool: string): LcovFinding[] {
+function lineCoverageFindings(record: LocatedRecord, tool: string): LcovFinding[] {
   const total = record.lines.size;
   if (total === 0) {
     return [];
@@ -99,7 +102,7 @@ function lineCoverageFindings(record: LcovRecord, tool: string): LcovFinding[] {
   ];
 }
 
-function uncoveredFunctionFindings(record: LcovRecord, tool: string): LcovFinding[] {
+function uncoveredFunctionFindings(record: LocatedRecord, tool: string): LcovFinding[] {
   return [...record.functions]
     .filter(([name, hits]) => hits === 0 && name !== '')
     .map(([name]) =>

@@ -1,10 +1,10 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { exactFixText as untypedExactFixText } from '../../../../../../shared/logic/fixes/exact-fix.mjs';
-import { simplerForms as untypedSimplerForms } from '../../../../../../shared/logic/simplify/simpler-forms.mjs';
+import { exactFixText as untypedExactFixText } from '../../../../../../shared/logic/fixes/exact-fix.mts';
+import { simplerForms as untypedSimplerForms } from '../../../../../../shared/logic/simplify/simpler-forms.mts';
 import {
   term as untypedTerm,
   withRange as untypedWithRange,
-} from '../../../../../../shared/logic/terms.mjs';
+} from '../../../../../../shared/logic/terms.mts';
 import { isTermPart, toTerm, type Term } from '../analysis/logic/estree-terms.mts';
 import { partsOf } from '../analysis/narrowing/type-parts.mts';
 import { typeServices } from '../security/security-values.mts';

@@ -1,10 +1,10 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync, realpathSync, statSync, type Stats } from 'node:fs';
 import path from 'node:path';
-import { projectFilePaths as untypedProjectFilePaths } from '../../shared/project-files/project-files.mjs';
+import { projectFilePaths as untypedProjectFilePaths } from '../../shared/project-files/project-files.mts';
 import { fieldOf } from '../../shared/values/readers.mts';
 import type { CommitRef, ConventionSource, PathsOptions } from './typed/convention-types.mts';
-import { GIT_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
+import { GIT_TIMEOUT_MS } from '../../shared/processes/deadlines.mts';
 
 type Blob = {
   readonly file: string;

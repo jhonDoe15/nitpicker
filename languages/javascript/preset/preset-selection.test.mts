@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { presetAnalyzers } from '../../../core/configuration/preset-analyzers.mts';
-import { createHygieneAnalyzers } from '../../../shared/hygiene/analyzers.mjs';
+import { createHygieneAnalyzers } from '../../../shared/hygiene/analyzers.mts';
 import type { PackageAnalyzer } from '../../typescript/preset/diff/typed/analyzer-types.mts';
 import type { Layout as ProjectLayout } from '../../typescript/adapters/typed/head-policy.mts';
 import { type Analyzer, analyzersOf } from '../../../shared/values/analyzers.mts';
@@ -26,7 +26,7 @@ import {
 import { createQualityChecks as untypedCreateQualityChecks } from '../../typescript/preset/quality-checks.mts';
 import { isJavascriptPolicy } from './javascript-preset.mts';
 import { fileURLToPath } from 'node:url';
-import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mts';
 
 type Layout = ProjectLayout & {
   readonly unitTestGlobs: readonly string[];

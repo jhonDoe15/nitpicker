@@ -2,7 +2,7 @@ import { ESLint, type Linter } from 'eslint';
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { checkoutModuleUrl as untypedCheckoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl as untypedCheckoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 import type { LintMessage, LintResult } from '../../../adapters/oxlint/plan/oxlint-shapes.mts';
 import {
   createProject,

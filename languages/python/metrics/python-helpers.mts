@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { PROBE_TIMEOUT_MS, TOOL_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
+import { PROBE_TIMEOUT_MS, TOOL_TIMEOUT_MS } from '../../../shared/processes/deadlines.mts';
 
 type MetricEntry = {
   file: string;

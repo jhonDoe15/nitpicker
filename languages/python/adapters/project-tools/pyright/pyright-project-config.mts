@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { parseJsonc } from '../../../../../shared/jsonc/jsonc.mjs';
+import { parseJsonc } from '../../../../../shared/jsonc/jsonc.mts';
 import {
   fieldOf,
   fieldsOf,

@@ -2,7 +2,7 @@ import {
   ignoredConfigNotice as untypedNotice,
   missingProjectConfig as untypedMissing,
   precedenceLayers as untypedLayers,
-} from '../../../../../shared/conventions/tool-precedence.mjs';
+} from '../../../../../shared/conventions/tool-precedence.mts';
 import { toolLayers } from '../../project-tools/project-tool-layers.mts';
 import { readPytestOptions, shellWords } from '../pytest-pins.mts';
 import { textOf } from '../../../../../shared/values/readers.mts';

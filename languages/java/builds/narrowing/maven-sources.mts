@@ -1,7 +1,11 @@
 import path from 'node:path';
-import { childAt, childrenAt, parseXml } from '../../../../shared/values/xml.mts';
+import {
+  childAt,
+  childrenAt,
+  parseXml,
+  type XmlElement,
+} from '../../../../shared/ingest/report-records.mts';
 import { messageOf } from '../../../../shared/values/readers.mts';
-import type { XmlElement } from '../../../../shared/values/xml.mts';
 import type {
   FileReader,
   FilterEntry,

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
-import { normalizeReportPath } from '../../../../shared/ingest/common.mjs';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mts';
+import { normalizeReportPath } from '../../../../shared/ingest/report-records.mts';
 import { ingestErrorProne } from '../../ingest/errorprone/errorprone.mts';
 import { isClassExempt } from './exemptions/class-exemptions.mts';
 import { isFormatterOwned } from './layout/formatter-owned.mts';

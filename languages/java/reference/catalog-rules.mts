@@ -114,7 +114,7 @@ function pmdText(rule: string, texts: ToolText<PmdText>): TextFields {
   const { first: summary, rest: more } = splitFirstSentence(first);
   const why = withoutLeadIn([more, ...rest].filter((part) => part !== '').join(' '));
   return {
-    summary,
+    summary: summary ?? '',
     why: why === '' ? PMD_WHY : why,
     links: [{ label: 'PMD rule documentation', url: text.url ?? '' }],
   };

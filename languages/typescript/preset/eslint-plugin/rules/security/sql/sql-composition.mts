@@ -5,7 +5,7 @@ import {
   LOOSE_STATEMENT,
   STRONG_STATEMENT,
   VALUE_POSITION,
-} from '../../../../../../../shared/rules/security/sql-text.mjs';
+} from '../../../../../../../shared/rules/security/sql-text.mts';
 import { stringValue } from '../../analysis/constant-resolution.mts';
 import { depthFirst } from '../../typed/node-views.mts';
 import { memberName, unwrapped, type Context } from '../security-values.mts';

@@ -1,4 +1,4 @@
-import { readInside } from '../../../../../shared/conventions/read-inside.mjs';
+import { readInside } from '../../../../../shared/conventions/read-inside.mts';
 import { parseIni } from '../../configuration/ini-parser.mts';
 import {
   fieldOf,
@@ -79,11 +79,10 @@ function tomlConfig(text: string): Config | undefined {
 }
 
 function configIn(root: string, file: string): ImportLinterConfig | undefined {
-  const read = readInside(root, file, 'utf8');
-  if (read === undefined) {
+  const text = readInside(root, file, 'utf8');
+  if (text === undefined) {
     return undefined;
   }
-  const text = read.toString();
   const { value, error } = attempt(() => (file === PYPROJECT ? tomlConfig(text) : iniConfig(text)));
   if (error !== undefined) {
     throw Object.assign(new Error(`${file}: ${messageOf(error)}`, { cause: error }), { file });

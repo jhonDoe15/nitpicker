@@ -1,4 +1,5 @@
 import type { Finding } from '../../../../shared/values/findings.mts';
+import type { Cause } from '../../../../shared/rules/stability/stability-types.mts';
 import type { LineSource } from '../../git/line-types.mts';
 
 export type Metric = { readonly name: string; readonly value: number };
@@ -26,15 +27,6 @@ export type Ratchet = {
 };
 
 export type Anchor = { readonly key: string; readonly requireUnchangedLine?: true };
-
-export type CauseUnit = {
-  readonly unit: string;
-  readonly folders: readonly string[];
-  readonly files: readonly string[];
-  readonly count: number;
-};
-
-export type Cause = { readonly folders: readonly string[]; readonly units: readonly CauseUnit[] };
 
 export type FixEdit = {
   readonly type: 'replace' | 'write';

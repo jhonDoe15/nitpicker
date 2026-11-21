@@ -1,4 +1,4 @@
-import { referenceLinks } from '../../shared/reference/store.mjs';
+import { referenceLinks } from '../../shared/reference/store.mts';
 import { withDependencies, withoutTestRun } from '../quick/profile.mts';
 import { type LabelFilter, labelFilter, matchesFilter, selectedLabels } from './taxonomy.mts';
 import { fieldOf, listOf, textOf, textsOf } from '../../shared/values/readers.mts';

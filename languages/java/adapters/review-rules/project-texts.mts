@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mjs';
-import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mts';
+import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../shared/project-files/project-files.mts';
 import {
   blankComments as untypedBlankComments,
   blankLiterals as untypedBlankLiterals,

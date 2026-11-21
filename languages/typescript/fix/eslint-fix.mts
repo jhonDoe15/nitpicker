@@ -8,7 +8,7 @@ import {
 import { layoutTransformFor } from '../preset/tool-configs.mts';
 import type { ToolSettings } from '../preset/typed/head-policy-types.mts';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mts';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../shared/paths/checkout-module.mts';
 import type { FixFile, FixSettings, FixStep } from '../../../core/fix/typed/fix-types.mts';
 import { linkPolicyFile, resolveTool, type LinkedPolicyFile } from '../adapters/typed/tooling.mts';
 import { selectedEslintRules } from './selection/selected-fixes.mts';

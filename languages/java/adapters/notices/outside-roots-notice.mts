@@ -1,5 +1,5 @@
-import { outsideRootsNotice as untypedOutsideRootsNotice } from '../../../../shared/notices/outside-roots-message.mjs';
-import { globMatcher as untypedGlobMatcher } from '../../../../shared/paths/glob.mjs';
+import { outsideRootsNotice as untypedOutsideRootsNotice } from '../../../../shared/notices/outside-roots-message.mts';
+import { globMatcher as untypedGlobMatcher } from '../../../../shared/paths/glob.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
 const outsideRootsNotice: (request: {

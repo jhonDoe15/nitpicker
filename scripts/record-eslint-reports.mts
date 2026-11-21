@@ -12,7 +12,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { type Fields, requiredFields } from './json/fields.mts';
 import { containedPath } from '../core/fix/tool-steps/paths/contained-path.mts';
-import { TOOL_RUN_CEILING_MS } from '../shared/processes/deadlines.mjs';
+import { TOOL_RUN_CEILING_MS } from '../shared/processes/deadlines.mts';
 import { installedVersions } from '../core/diff/tests/analysis/eslint/test-support/eslint-recording-key.mts';
 
 const toolRoot = path.resolve(import.meta.dirname, '..');

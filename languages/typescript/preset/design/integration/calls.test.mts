@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { validateFacts } from '../../../../../shared/rules/facts/schema.mjs';
+import { validateFacts } from '../../../../../shared/rules/facts/schema.mts';
 import { type ProjectFacts, byId, factsOfFiles, factsOfFixture } from '../test-support/project.mts';
 
 let facts: ProjectFacts;

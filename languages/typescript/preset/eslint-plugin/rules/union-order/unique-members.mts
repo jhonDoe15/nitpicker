@@ -1,11 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { chainOf, nodeChildren } from '../typed/node-views.mts';
-import { preOrder as untypedPreOrder } from '../../../../../../shared/traversal.mjs';
-
-const preOrder: (
-  root: TSESTree.Node,
-  children: (node: TSESTree.Node) => TSESTree.Node[],
-) => TSESTree.Node[] = untypedPreOrder;
+import { preOrder } from '../../../../../../shared/traversal.mts';
 
 const SINGLETON_FLAGS = new Set([
   'Any',

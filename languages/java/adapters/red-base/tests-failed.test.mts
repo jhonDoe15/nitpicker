@@ -12,7 +12,7 @@ import {
   withRootSourceRoots,
   withTestsFailures,
 } from './tests-failed.mts';
-import { linkSentence as linkSentenceUntyped } from '../../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence as linkSentenceUntyped } from '../../../../shared/messages/test-support/link-sentence.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 import type { JavaFinding } from '../typed/java-values.mts';
 

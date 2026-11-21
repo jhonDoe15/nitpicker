@@ -12,7 +12,7 @@ import {
   depthFirst as untypedDepthFirst,
   foldTree as untypedFoldTree,
   objectChildren as untypedObjectChildren,
-} from '../../../../../../shared/traversal.mjs';
+} from '../../../../../../shared/traversal.mts';
 
 export type Ranged = { readonly range: readonly [number, number] };
 

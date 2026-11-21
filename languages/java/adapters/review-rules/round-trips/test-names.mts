@@ -1,4 +1,4 @@
-import { reachableNames as untypedReachableNames } from '../../../../../shared/rules/round-trips/round-trips.mjs';
+import { reachableNames as untypedReachableNames } from '../../../../../shared/rules/round-trips/round-trips.mts';
 import { bodyOf, LANGUAGE_RULES, parseStructure } from '../../reuse/source/jvm-declarations.mts';
 import type { Member, MemberInfo, Range, Structure } from '../../reuse/source/jvm-source-types.mts';
 import type { Token } from '../../reuse/jvm-reuse-types.mts';

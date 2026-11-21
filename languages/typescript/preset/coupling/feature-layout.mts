@@ -1,7 +1,8 @@
 import path from 'node:path';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
 import { isInsideRoot, relativeToRoot, underRoot } from '../layout/source-root/root-paths.mts';
-import type { FeatureLayoutInput, Matcher, RoleOf } from './typed/coupling-types.mts';
+import type { RoleLayout, RoleOf } from '../../../../shared/rules/features/typed/role-types.mts';
+import type { Matcher } from './typed/coupling-types.mts';
 
 export const FEATURES_FOLDER = 'main/features';
 export const SHARED_FOLDER = 'main/shared';
@@ -14,7 +15,7 @@ function configuredRoots(layout: unknown, key: string): string[] | undefined {
 export function typescriptFeatureLayout(
   layout: unknown,
   sourceRoots: readonly string[],
-): FeatureLayoutInput {
+): RoleLayout {
   const sharedRoots = configuredRoots(layout, 'sharedRoots');
   const featureRoots = configuredRoots(layout, 'featureRoots');
   return {

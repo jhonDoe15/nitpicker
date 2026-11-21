@@ -1,4 +1,4 @@
-import { FUNCTION_NAME } from '../../../shared/conventions/settings.mjs';
+import { FUNCTION_NAME } from '../../../shared/conventions/settings.mts';
 import { CO_CHANGE_DEFAULTS } from '../views/schema-views.mts';
 import {
   BINARY_NAME,

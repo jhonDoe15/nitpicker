@@ -1,7 +1,7 @@
 import type TypeScript from 'typescript';
 import { listOf } from '../../../../../shared/values/readers.mts';
-import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../shared/project-files/project-files.mjs';
-import { depthFirst as untypedDepthFirst } from '../../../../../shared/traversal.mjs';
+import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../shared/project-files/project-files.mts';
+import { depthFirst as untypedDepthFirst } from '../../../../../shared/traversal.mts';
 import { syntaxChildren as untypedSyntaxChildren } from '../../syntax/children.mts';
 
 const walk: <T>(root: T, children: (node: T) => readonly T[]) => Iterable<T> = untypedDepthFirst;

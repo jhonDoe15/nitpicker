@@ -3,8 +3,8 @@ import {
   TIMEOUT_LIMIT_KEYS,
   TIMEOUT_PROJECT_KEYS,
   TIMEOUT_SECTION_KEYS,
-} from '../../../shared/test-timeouts/resolve.mjs';
-import { DRIVE_LETTER, GLOB_CHARACTER, PARENT_SEGMENT } from '../../../shared/config.mjs';
+} from '../../../shared/test-timeouts/resolve.mts';
+import { DRIVE_LETTER, GLOB_CHARACTER, PARENT_SEGMENT } from '../../../shared/config.mts';
 import { SUPPORTED_PRESETS } from '../validate.mts';
 import {
   ORDERED_PRECEDENCE_TOOLS,

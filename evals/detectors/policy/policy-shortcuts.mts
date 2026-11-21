@@ -2,7 +2,7 @@ import {
   hasGeneratorAnnotation,
   hasGeneratorHeader,
   hasGeneratorMarker,
-} from '../../../shared/conventions/generator-marker.mjs';
+} from '../../../shared/conventions/generated/generator-marker.mts';
 import type { Shortcut, TreeLike } from '../common/types.mts';
 import { toTree } from '../tree.mts';
 import { isSourcePath } from '../typescript.mts';

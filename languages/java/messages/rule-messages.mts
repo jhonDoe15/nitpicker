@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
-import { hasExceptionRoute } from '../../../shared/messages/exception-sentence.mjs';
-import { definedField } from '../../../shared/messages/messages.mjs';
-import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
+import { hasExceptionRoute } from '../../../shared/messages/exception-sentence.mts';
+import { definedField } from '../../../shared/messages/messages.mts';
+import { exceptionHint } from '../../../shared/rules/exceptions.mts';
 import { JAVA_FORMATTER_TOOLS, NOT_YOUR_JAVA_FORMATTER } from '../adapters/style/java-style.mts';
-import { lazy } from '../../../shared/rules/finding-helpers.mjs';
+import { lazy } from '../../../shared/rules/finding-parts.mts';
 import { SOURCE_RULE_IDS } from '../adapters/kotlin/rules/kotlin-rules.mts';
 
 export type CatalogEntry = {

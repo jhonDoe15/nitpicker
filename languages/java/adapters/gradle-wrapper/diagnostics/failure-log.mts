@@ -4,7 +4,7 @@ import {
   isExplainedError,
   troubleshootingLinkOf,
   withoutTroubleshooting,
-} from '../../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../../shared/messages/troubleshooting.mts';
 import { textOf } from '../../../../../shared/values/readers.mts';
 import type { JavaPolicy } from '../../typed/java-values.mts';
 

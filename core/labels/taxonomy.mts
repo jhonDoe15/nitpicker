@@ -1,4 +1,4 @@
-import { didYouMean } from '../../shared/messages/closest-match.mjs';
+import { didYouMean } from '../../shared/messages/closest-match.mts';
 
 type LabelRow = readonly [label: string, description: string];
 

@@ -53,7 +53,7 @@ import {
   readHeadPolicy as untypedReadHeadPolicy,
   readLayout as untypedReadLayout,
 } from '../head-policy.mts';
-import { precedenceLayers as untypedPrecedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
+import { precedenceLayers as untypedPrecedenceLayers } from '../../../../shared/conventions/tool-precedence.mts';
 import { existingRoots as untypedExistingRoots } from '../layout.mts';
 import { assertionFunctionNames as untypedAssertionFunctionNames } from '../../conventions/measures/assertion-functions.mts';
 import { typeImportFixStyle as untypedTypeImportFixStyle } from '../../conventions/type-import-style.mts';

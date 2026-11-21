@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 
 export type SkippedFile = { readonly file: string; readonly reason: string };
 type TextOutput = { write(text: string): unknown };

@@ -1,13 +1,13 @@
 import { failingHeadTests } from '../failing-tests/failing-tests.mts';
-import { escapeRegExp as untypedEscape } from '../../../../shared/paths/glob.mjs';
+import { escapeRegExp as untypedEscape } from '../../../../shared/paths/glob.mts';
 import {
   toolErrorHelpLine,
   troubleshootingLinkOf,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 import {
   TESTS_FAILED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
-} from '../../../../shared/rules/finding-helpers.mjs';
+} from '../../../../shared/rules/finding-parts.mts';
 import { singleLine } from '../format/text.mts';
 import { ANSI, pluralize, style } from './style.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';

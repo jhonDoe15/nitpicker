@@ -122,7 +122,7 @@ describe('analyzeJavaCoupling', () => {
       instability: 0.4,
       cohesion: {
         internalEdges: 0,
-        edgeDensity: null,
+        edgeDensity: undefined,
         connectedComponents: 1,
         largestComponentShare: 1,
       },
@@ -135,7 +135,7 @@ describe('analyzeJavaCoupling', () => {
       instability: 0.5,
       cohesion: {
         internalEdges: 0,
-        edgeDensity: null,
+        edgeDensity: undefined,
         connectedComponents: 1,
         largestComponentShare: 1,
       },
@@ -148,7 +148,7 @@ describe('analyzeJavaCoupling', () => {
       instability: 0,
       cohesion: {
         internalEdges: 0,
-        edgeDensity: null,
+        edgeDensity: undefined,
         connectedComponents: 1,
         largestComponentShare: 1,
       },
@@ -161,7 +161,7 @@ describe('analyzeJavaCoupling', () => {
       instability: 1,
       cohesion: {
         internalEdges: 0,
-        edgeDensity: null,
+        edgeDensity: undefined,
         connectedComponents: 1,
         largestComponentShare: 1,
       },

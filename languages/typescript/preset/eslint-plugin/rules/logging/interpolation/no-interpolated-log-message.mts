@@ -2,7 +2,7 @@ import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint
 import { readHeadPolicy, type LibraryChoices } from '../../typed/policy-views.mts';
 import { unwrapped } from '../../security/security-values.mts';
 import { isObjectArgument } from '../argument-kinds.mts';
-import { expandsFully as untypedExpandsFully } from '../../../../../../../shared/traversal.mjs';
+import { expandsFully as untypedExpandsFully } from '../../../../../../../shared/traversal.mts';
 import { logReceiver, presentLibraries, presentLogger } from '../logger-calls.mts';
 
 type MessageId = 'structuredFields' | 'trailingFields';

@@ -1,4 +1,4 @@
-import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

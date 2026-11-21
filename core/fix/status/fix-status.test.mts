@@ -10,13 +10,25 @@ import {
 import { matcherOf, recipeListings } from './status-types.mts';
 import type { Fields } from './status-types.mts';
 import type { FixStatusSources } from '../typed/fix-types.mts';
-import { ruleEntry as untypedRuleEntry } from '../../../shared/reference/entry.mjs';
-import { fixText as untypedFixText } from '../../../shared/reference/fix-status.mjs';
-import { fieldOf, textOf } from '../../../shared/values/readers.mts';
+import { fixText } from '../../../shared/reference/fix-status.mts';
+import { fieldOf, fieldsOf, textOf } from '../../../shared/values/readers.mts';
 
-const ruleEntry: (fields: { readonly tool: string; readonly rule: string } & Fields) => Fields =
-  untypedRuleEntry;
-const fixText: (entry: Fields, presets: readonly string[]) => string = untypedFixText;
+function ruleEntry({
+  tool,
+  rule,
+  ...fields
+}: { readonly tool: string; readonly rule: string } & Fields) {
+  return { id: `${tool}/${rule}`, tool, rule, ...fields };
+}
+
+function fixOf(fields: Fields): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(fieldsOf(fieldOf(fields, 'fix'))).map(([preset, status]) => [
+      preset,
+      textOf(status),
+    ]),
+  );
+}
 
 function fixStatusFor(candidate: Fields, preset: string, own?: FixStatusSources) {
   return typedFixStatusFor(matcherOf(candidate), preset, own);
@@ -127,7 +139,9 @@ describe('fixText', () => {
     const found = withFixStatus(entry('checkstyle', 'Demo'), sources([recipe('d')]));
     const review = { id: 'checkstyle/Demo', fix: { java: 'review' } };
 
-    expect(fixText(found, ['java', 'kotlin'])).toBe('Automatic in Java, none in Kotlin.');
+    expect(fixText({ id: 'checkstyle/Demo', fix: fixOf(found) }, ['java', 'kotlin'])).toBe(
+      'Automatic in Java, none in Kotlin.',
+    );
     expect(fixText(review, ['java'])).toBe(
       'With `nitpicker --fix --rule checkstyle/Demo`: `--fix` alone skips the rewrite, because it needs a review.',
     );

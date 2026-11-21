@@ -1,6 +1,6 @@
 import type { Span } from '../../../../adapters/near-duplicates/extract-types.mts';
-import { lineAt as untypedLineAt } from '../../../../../../shared/conventions/lines.mjs';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../../../shared/paths/glob.mjs';
+import { lineAt as untypedLineAt } from '../../../../../../shared/conventions/lines.mts';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../../../shared/paths/glob.mts';
 import {
   afterGroup as untypedAfterGroup,
   braceDepths as untypedBraceDepths,

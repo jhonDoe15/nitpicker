@@ -9,7 +9,7 @@ import {
   projectFindings,
   rows,
 } from './test-support/feature-project.mts';
-import { byText as byTextUntyped } from '../../../../shared/text-order/by-text.mjs';
+import { byText as byTextUntyped } from '../../../../shared/text-order/by-text.mts';
 
 const byText: (left: string, right: string) => number = byTextUntyped;
 const { project: featureProject, remove } = featureProjects();

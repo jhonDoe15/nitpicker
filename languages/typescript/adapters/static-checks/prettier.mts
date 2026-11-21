@@ -4,7 +4,7 @@ import { prettierPrecedence, usesLayeredPrettier, readLayout } from '../typed/he
 import type * as Prettier from 'prettier';
 import type { StaticCheckOptions } from './arguments.mts';
 import { type Finding, runNodeTool, projectFile, policyFile, hash } from './shared.mts';
-import { describeProcessEnd } from '../../../../shared/processes/process-failure.mjs';
+import { describeProcessEnd } from '../../../../shared/processes/process-failure.mts';
 import { resolveTool, toolBinaryPath, trackTemporaryPath } from '../typed/tooling.mts';
 import {
   importPrettier as importPrettierApi,
@@ -24,7 +24,7 @@ import {
   unparsedFileFinding,
   unparsedFilesOf,
 } from '../prettier/unparsed/unparsed-files.mts';
-import { formatAdvice } from '../../../../shared/messages/format/format-advice.mjs';
+import { formatAdvice } from '../../../../shared/messages/format/format-advice.mts';
 
 const PRETTIER_ERROR_STATUS = 2;
 const PRETTIER_MESSAGE = `These lines are not formatted with Prettier. ${formatAdvice()}`;

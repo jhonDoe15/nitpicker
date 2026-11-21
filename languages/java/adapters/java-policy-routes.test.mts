@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
+import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mts';
 import { callUntyped } from './typed/java-values.mts';
 import { javaRouteRule } from './java-policy.mts';
 

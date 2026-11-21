@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { HEAD_POLICY_ENV } from '../../../shared/head-policy.mjs';
+import { HEAD_POLICY_ENV } from '../../../shared/head-policy.mts';
 import { fieldOf } from '../../../shared/values/readers.mts';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mts';
 import { parseArguments } from '../../typescript/adapters/quality-areas/arguments.mts';
@@ -48,20 +48,23 @@ async function measuredFiles(config: Readonly<Record<string, unknown>>): Promise
   const policyFile = path.join(parent, 'policy.json');
   writeFileSync(policyFile, JSON.stringify(resolveHeadPolicy(config)));
   process.env[HEAD_POLICY_ENV] = policyFile;
-  const options = parseArguments([
-    '--analyzer-name',
-    'crap',
-    '--kind',
-    'crap',
-    '--project-root',
-    root,
-    '--policy-root',
-    PACKAGE_ROOT,
-    '--tool-root',
-    PACKAGE_ROOT,
-    '--snapshot',
-    'head',
-  ]);
+  const options = parseArguments(
+    [
+      '--analyzer-name',
+      'crap',
+      '--kind',
+      'crap',
+      '--project-root',
+      root,
+      '--policy-root',
+      PACKAGE_ROOT,
+      '--tool-root',
+      PACKAGE_ROOT,
+      '--snapshot',
+      'head',
+    ],
+    process.env,
+  );
   const findings = await runQualityArea(options);
   const summary = findings.find(({ identity }) => identity === 'summary:files');
   return fieldOf(fieldOf(summary, 'metric'), 'value');

@@ -24,7 +24,7 @@ import {
   weightOf,
 } from './sequencer.mts';
 import { fieldsOf } from '../json/fields.mts';
-import { TOOL_RUN_CEILING_MS } from '../../shared/processes/deadlines.mjs';
+import { TOOL_RUN_CEILING_MS } from '../../shared/processes/deadlines.mts';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const VITEST_CONFIG = path.join(root, 'vitest.config.mts');

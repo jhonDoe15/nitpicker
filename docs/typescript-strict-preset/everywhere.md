@@ -355,7 +355,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `kotlin-source/HandSplitHttpHeader` (Kotlin), `http-value-case` and `hand-split-http-header`
   (Python) and `go-rules/http-value-case` and `go-rules/hand-split-http-header` (Go).
 - `nitpicker/no-hardcoded-secret`: a secret string written into production code. It reports a string
-  that looks like a secret (`shared/naming/secret-words.mjs`, the same definition as every other
+  that looks like a secret (`shared/naming/secret-words.mts`, the same definition as every other
   preset: six characters or more with letters and digits, or three character classes; placeholders,
   paths, message keys, URLs and a value equal to the name are not secrets) given to a name ending in
   `password`, `passwd`, `pwd`, `passphrase`, `secret`, `token`, `credentials`, `apiKey`, `privateKey`,
@@ -1574,7 +1574,7 @@ row.status = next; return repo.save(row);`). A retry that does not name the conf
   domain term of the project (`PackageManager`) takes the exception. Allowed form: a name that says
   what the code does (`price-rounding.ts`, `PriceRounder`); pure logic shared between features goes
   in the shared folder under such a name. The word list is shared with Python, Kotlin and Go
-  (`shared/naming/smell-words.mjs`); Java reports the same as `pmd/GenericTypeName` and
+  (`shared/naming/smell-words.mts`); Java reports the same as `pmd/GenericTypeName` and
   `pmd/GenericPackageName`. An exception fits only for a name a tool or framework requires.
 - No repeated string literals (`nitpicker/no-repeated-string-literal`, production code of both
   presets, both lint engines; tests are exempt). A string of five characters or more with a letter
@@ -1594,7 +1594,7 @@ row.status = next; return repo.save(row);`). A retry that does not name the conf
   translation call (`t`, `formatMessage`, `getTranslations` and the like), tagged templates, and
   idiomatic text (encodings, HTTP methods, MIME types, time formats). The lists and the thresholds
   are shared with the Python, Kotlin and Go counterparts in
-  [`shared/literals/repeated-literal-exemptions.mjs`](../../shared/literals/repeated-literal-exemptions.mjs).
+  [`shared/literals/repeated-literal-exemptions.mts`](../../shared/literals/repeated-literal-exemptions.mts).
   An exception fits only for text that must stay inline. Java reports the same through PMD
   `AvoidDuplicateLiterals`, Kotlin as `kotlin-source/RepeatedStringLiteral`, Python and Go as
   `repeated-string-literal`. Python, Kotlin and Go exempt the discriminant comparison the same way;

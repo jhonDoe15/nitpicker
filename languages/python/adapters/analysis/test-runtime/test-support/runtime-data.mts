@@ -1,4 +1,4 @@
-import { evaluateTestRuntime } from '../../../../../../shared/rules/test-runtime/evaluate.mjs';
+import { evaluateTestRuntime } from '../../../../../../shared/rules/test-runtime/evaluate.mts';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../../shared/values/readers.mts';
 import { analyzePythonTestRuntime } from '../python-test-runtime.mts';
 import { JSON_NULL } from '../../typed/json-null.mts';

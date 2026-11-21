@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { isFunctionNode } from '../../analysis/constant-resolution.mts';
 import { memberName, unwrapped } from '../../security/security-values.mts';
-import { expandsFully as untypedExpandsFully } from '../../../../../../../shared/traversal.mjs';
+import { expandsFully } from '../../../../../../../shared/traversal.mts';
 
 type Children = readonly TSESTree.Node[] | undefined;
 type Loop = {
@@ -9,9 +9,6 @@ type Loop = {
   readonly element: string;
   readonly body: TSESTree.Node;
 };
-
-const expandsFully: <Item>(root: Item, children: (item: Item) => Children) => boolean =
-  untypedExpandsFully;
 
 function isDateNow(node: TSESTree.CallExpression): boolean {
   const callee = unwrapped(node.callee);

@@ -5,7 +5,7 @@ import { createBaseSetupResolver } from './base-setup.mts';
 import { configureAnalyzers } from '../../configuration/configure-analyzers.mts';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
 import { fieldOf, listOf } from '../../../shared/values/readers.mts';
-import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
+import { resolveHeadPolicy } from '../../../shared/head-policy.mts';
 
 const { createGitRepository } = useGitFixtures();
 

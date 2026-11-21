@@ -6,7 +6,7 @@ import type {
   TestFileOptions,
   TestFileSettings,
 } from '../typed/config-types.mts';
-import { escapeRegExp as untypedEscape } from '../../../../../shared/paths/glob.mjs';
+import { escapeRegExp as untypedEscape } from '../../../../../shared/paths/glob.mts';
 import { readPythonDependencies } from '../../../libraries/python-dependencies.mts';
 import { readPytestConfig } from './pytest-config.mts';
 import { TOP_LEVEL_TEST_DIRECTORIES } from '../../execution/python-project.mts';

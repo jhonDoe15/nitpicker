@@ -1,7 +1,7 @@
 import { globSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { ESLint } from 'eslint';
 import { listNativeRules } from './plan/rule-listing.mts';
 import { listedFiles } from './plan/listed-files.mts';

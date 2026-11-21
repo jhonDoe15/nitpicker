@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { javaStringLiteral, withRegexDefects } from './regex-defects.mts';
-import { adviceProblems } from '../../../../shared/messages/advice/finding-advice.mjs';
+import { adviceProblems } from '../../../../shared/messages/advice/finding-advice.mts';
 import { callUntyped } from '../typed/java-values.mts';
-import { routeFields } from '../../../../shared/messages/exception-sentence.mjs';
+import { routeFields } from '../../../../shared/messages/exception-sentence.mts';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-regex-'));
 afterAll(() => {
@@ -138,7 +138,7 @@ describe('Java regex pattern defects', () => {
         `of the regex. Write the simpler form: it matches the same text. ${route}`,
       [],
     ]);
-    expect(routeFields(defect.message)).toEqual(routeFields(message));
+    expect(routeFields(defect.message ?? '')).toEqual(routeFields(message));
   });
 
   it('keeps findings of other rules', () => {

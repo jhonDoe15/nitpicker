@@ -11,7 +11,7 @@ import {
 } from '../static-checks/dependencies.mts';
 import { sharedReachPath as untypedSharedReachPath } from '../../preset/architecture/strict-boundary-rules.mts';
 import { existingRoots as untypedExistingRoots } from '../../preset/layout.mts';
-import { compactMetricFindings as untypedCompactMetricFindings } from '../../../../shared/report-output/metric-groups.mjs';
+import { compactMetricFindings as untypedCompactMetricFindings } from '../../../../shared/report-output/metric-groups.mts';
 
 export type SnapshotDependencyRequest = {
   readonly projectRoot: string;

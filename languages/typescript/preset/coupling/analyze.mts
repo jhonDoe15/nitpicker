@@ -11,21 +11,18 @@ import { isReuseProductionPath, projectPathOf } from '../structure/reuse/reuse-p
 import { sharedUsedByOneFeature } from './shared-usage.mts';
 import { featureLayout } from '../architecture/strict-layout.mts';
 import { stabilityUnits } from './feature-layout.mts';
-import type {
-  CouplingLayout,
-  CouplingMetrics,
-  ModuleMetric,
-  PackageMetric,
-  RoleOf,
-  SharedEntry,
-} from './typed/coupling-types.mts';
+import { globMatcher } from '../../../../shared/paths/glob.mts';
+import { computeCoupling } from '../../../../shared/rules/coupling.mts';
 import {
-  computeCoupling,
   featureRoles,
-  globMatcher,
   PUBLIC_FACES,
   withPublicFace,
-} from './typed/rule-views.mts';
+} from '../../../../shared/rules/features/feature-roles.mts';
+import type { SharedEntry } from '../../../../shared/rules/features/shared-usage.mts';
+import type { RoleOf } from '../../../../shared/rules/features/typed/role-types.mts';
+import type { CouplingLayout, ModuleMetric, PackageMetric } from './typed/coupling-types.mts';
+
+type CouplingMetrics = ReturnType<typeof computeCoupling>;
 
 export type CouplingOptions = {
   readonly layout?: CouplingLayout;

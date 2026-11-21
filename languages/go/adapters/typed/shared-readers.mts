@@ -1,38 +1,36 @@
-import { exceptionHint as untypedExceptionHintSource } from '../../../../shared/rules/exceptions.mjs';
-import { branchCoverageFindings as untypedBranchCoverageFindings } from '../../../../shared/rules/branch-coverage.mjs';
-import { hashIdentity as untypedHashIdentity } from '../../../../shared/ingest/common.mjs';
-import { formatAgnosticText as untypedFormatAgnosticText } from '../../../../shared/source-text/format-tokens.mjs';
-import { ingestCrapRows as untypedIngestCrapRows } from '../../../../shared/ingest/lizard-crap.mjs';
+import { exceptionHint as untypedExceptionHintSource } from '../../../../shared/rules/exceptions.mts';
+import { branchCoverageFindings as untypedBranchCoverageFindings } from '../../../../shared/rules/branch-coverage.mts';
+import { hashIdentity as untypedHashIdentity } from '../../../../shared/ingest/report-records.mts';
+import { formatAgnosticText as untypedFormatAgnosticText } from '../../../../shared/source-text/format-tokens.mts';
 import {
   buildCouplingReport as untypedBuildCouplingReport,
   evaluateCoupling as untypedEvaluateCoupling,
-} from '../../../../shared/rules/coupling.mjs';
+} from '../../../../shared/rules/coupling.mts';
 import {
   adapterMessage as untypedAdapterMessage,
   domainFinding as untypedDomainFinding,
   libraryMessage as untypedLibraryMessage,
-} from '../../../../shared/rules/domain/domain-messages.mjs';
-import { listed as untypedListed } from '../../../../shared/rules/features/feature-boundaries.mjs';
-import { registeredFactRules as untypedRegisteredFactRules } from '../../../../shared/project-rules/fact-rules.mjs';
-import { structureFindings as untypedStructureFindings } from '../../../../shared/ingest/structure-report.mjs';
-import { collectFileLimitFindings as untypedCollectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
-import { classLimitFindings as untypedClassLimitFindings } from '../../../../shared/rules/size/class-limits.mjs';
-import { folderDepthFindings as untypedFolderDepthFindings } from '../../../../shared/rules/size/folder-depth.mjs';
+} from '../../../../shared/rules/domain/domain-messages.mts';
+import { listed as untypedListed } from '../../../../shared/rules/features/feature-boundaries.mts';
+import { registeredFactRules as untypedRegisteredFactRules } from '../../../../shared/project-rules/fact-rules.mts';
+import { structureFindings as untypedStructureFindings } from '../../../../shared/ingest/structure-report.mts';
+import { collectFileLimitFindings as untypedCollectFileLimitFindings } from '../../../../shared/rules/file-limits.mts';
+import { classLimitFindings as untypedClassLimitFindings } from '../../../../shared/rules/size/class-limits.mts';
 import {
   classifyTestRuntime as untypedClassifyTestRuntime,
   testRuntimeReport as untypedTestRuntimeReport,
-} from '../../../../shared/rules/test-runtime/classify.mjs';
-import { evaluateTestRuntime as untypedEvaluateTestRuntime } from '../../../../shared/rules/test-runtime/evaluate.mjs';
+} from '../../../../shared/rules/test-runtime/classify.mts';
+import { evaluateTestRuntime as untypedEvaluateTestRuntime } from '../../../../shared/rules/test-runtime/evaluate.mts';
 import {
   hash as untypedHash,
-  nextOccurrence as untypedNextOccurrence,
-} from '../../../../shared/rules/finding-helpers.mjs';
+  occurrenceCounter as untypedOccurrenceCounter,
+} from '../../../../shared/rules/finding-parts.mts';
 import {
   slowTestBudget as untypedSlowTestBudget,
   slowTestFindings as untypedSlowTestFindings,
-} from '../../../../shared/rules/slow-tests/slow-test-finding.mjs';
+} from '../../../../shared/rules/slow-tests/slow-test-finding.mts';
 import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
-import type { FindingRow, GoFunction } from '../go-types.mts';
+import type { FindingRow } from '../go-types.mts';
 
 type Fields = { readonly [field: string]: unknown };
 type Exceptions = readonly unknown[];
@@ -43,11 +41,6 @@ const branchCoverageFindings: (
 ) => FindingRow[] = untypedBranchCoverageFindings;
 const hashIdentity: (prefix: string, parts: readonly string[]) => string = untypedHashIdentity;
 const formatAgnosticText: (text: string, filePath: string) => string = untypedFormatAgnosticText;
-const ingestCrapRows: (
-  rows: readonly { file: string; fn: GoFunction }[] & readonly object[],
-  options: { limit: number | undefined; sourceText: (fn: never) => string },
-  resolve: (row: never) => object,
-) => { findings: FindingRow[] } = untypedIngestCrapRows;
 const buildCouplingReport: (input: {
   modules: readonly string[];
   edges: readonly { source: string; target: string }[];
@@ -84,8 +77,6 @@ const classLimitFindings: (
     exceptions: Exceptions;
   },
 ) => FindingRow[] = untypedClassLimitFindings;
-const folderDepthFindings: (files: readonly object[], options: Fields) => FindingRow[] =
-  untypedFolderDepthFindings;
 const classifyTestRuntime: (
   file: string,
   options: {
@@ -100,8 +91,7 @@ const slowTestBudget: (limits: unknown) => {
 const evaluateTestRuntime: (report: object, analyzer: string) => FindingRow[] =
   untypedEvaluateTestRuntime;
 const hash: (text: string) => string = untypedHash;
-const nextOccurrence: (occurrences: Map<string, number>, key: string) => number =
-  untypedNextOccurrence;
+const occurrenceCounter: () => (key: string) => number = untypedOccurrenceCounter;
 export type RuntimeReport = {
   readonly summary: { readonly discoveredTests: number };
   readonly findings: readonly { readonly test: string }[];
@@ -160,14 +150,12 @@ export {
   domainFinding,
   evaluateCoupling,
   evaluateTestRuntime,
-  folderDepthFindings,
   formatAgnosticText,
   hash,
   hashIdentity,
-  ingestCrapRows,
   libraryMessage,
   listed,
-  nextOccurrence,
+  occurrenceCounter,
   registeredFactRules,
   slowTestBudget,
   slowTestFindings,

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../shared/project-files/project-files.mjs';
+import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../shared/project-files/project-files.mts';
 import { callUntyped } from '../../../adapters/typed/java-values.mts';
 import { textsOf } from '../../../../../shared/values/readers.mts';
 import { GENERATED } from '../logic/tree-fix-recipe.mts';

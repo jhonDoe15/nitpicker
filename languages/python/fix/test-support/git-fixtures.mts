@@ -7,7 +7,7 @@ import {
   fixReport as untypedFixReport,
   useFixProject as untypedUseFixProject,
 } from '../../../../core/fix/test-support/fix-project.mts';
-import { linkSentence as untypedLinkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence as untypedLinkSentence } from '../../../../shared/messages/test-support/link-sentence.mts';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import type { FixOptions } from '../../../../core/fix/run-fix.mts';
 

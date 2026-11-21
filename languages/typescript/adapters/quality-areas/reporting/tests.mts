@@ -1,18 +1,16 @@
 import path from 'node:path';
 import type { Finding } from '../../static-checks/shared.mts';
-import { DEFAULT_CRAP_SCORE_LIMIT, MESSAGES } from '../../../../../shared/policy.mjs';
 import { hash } from '../typed/repository.mts';
 import type * as Report from '../typed/reporting.mts';
 import {
-  addMetric,
   branchCoverageFindings,
-  crapFindings,
+  metricFindings,
   mutantFindings,
-  nextOccurrence,
+  occurrenceCounter,
   positiveInteger,
-  summaryMetrics,
 } from '../typed/reporting.mts';
 import type { Mutant, MutationReport } from '../typed/mutation.mts';
+export { crapUnknownMessage, normalizeCrap } from './crap/crap-findings.mts';
 import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 export function normalizeCoverage(
@@ -39,15 +37,18 @@ function addFileCoverage(
 ): number {
   const branchEntries = Object.entries(coverage.b ?? {});
   const branchOutcomes = branchEntries.flatMap(([, outcomes]) => outcomes);
-  addMetric(findings, {
-    analyzerName,
-    rule: 'coverage',
-    path: relativePath,
-    identity: 'branches',
-    message: `Branch coverage for ${relativePath}`,
-    metricName: 'branches',
-    value: coveragePercent(branchOutcomes),
-  });
+  appendAll(
+    findings,
+    metricFindings({
+      analyzerName,
+      rule: 'coverage',
+      path: relativePath,
+      identity: 'branches',
+      message: `Branch coverage for ${relativePath}`,
+      metricName: 'branches',
+      value: coveragePercent(branchOutcomes),
+    }),
+  );
   const branches = branchEntries.map(([branchId, outcomes]) => {
     const line = coverage.branchMap?.[branchId]?.loc?.start?.line;
     return {
@@ -76,143 +77,53 @@ function addTestEfficiency(
   analyzerName: string,
   { coveredBranchOutcomes, testCount }: Report.Efficiency,
 ): void {
-  addMetric(findings, {
-    analyzerName,
-    rule: 'test-efficiency',
-    path: '.',
-    identity: 'covered-branches-per-test',
-    message: 'Covered branch outcomes per test',
-    metricName: 'coveredBranchesPerTest',
-    value: coveredBranchOutcomes / testCount,
-  });
-  addMetric(findings, {
-    analyzerName,
-    rule: 'test-efficiency',
-    path: '.',
-    identity: 'test-count',
-    message: 'Executed test count',
-    metricName: 'testCount',
-    value: testCount,
-  });
-}
-
-const COMPOSITION_ROOT_FILE = /(?:^|\/)(?:main|server|composition-root)\.[cm]?[jt]sx?$/u;
-
-export function crapUnknownMessage(sourcePath: string): string {
-  return COMPOSITION_ROOT_FILE.test(sourcePath)
-    ? MESSAGES.crapCoverageUnknown
-    : MESSAGES.crapCoverageUnknownPlain;
-}
-
-export function normalizeCrap(
-  report: Report.CrapReport,
-  analyzerName: string,
-  { scoreLimit }: { readonly scoreLimit: number } = { scoreLimit: DEFAULT_CRAP_SCORE_LIMIT },
-): Finding[] {
-  const findings = summaryMetrics(analyzerName, report.summary, 'crap');
-  const occurrences = new Map<string, number>();
-  const violations = new Map<string, number>();
-  const functions = [...(report.functions ?? [])].sort(compareCrapSites);
-  for (const entry of functions) {
-    const occurrence = nextOccurrence(occurrences, `${entry.source}\0${entry.function}`);
-    const overLimit = !(
-      typeof entry.crap === 'number' &&
-      Number.isFinite(entry.crap) &&
-      entry.crap < scoreLimit
-    );
-    const violationOccurrence = overLimit
-      ? nextOccurrence(violations, `${entry.source}\0${entry.function}\0${crapSourceHash(entry)}`)
-      : occurrence;
-    addCrapFunction(findings, entry, { analyzerName, scoreLimit, occurrence, violationOccurrence });
-  }
-  return findings;
-}
-
-function crapSourceHash(entry: Report.CrapEntry): string {
-  return (
-    entry.sourceHash ??
-    hash(`${entry.source}:${String(entry.lines?.start)}:${String(entry.lines?.end)}`)
-  );
-}
-
-function compareCrapSites(left: Report.CrapEntry, right: Report.CrapEntry): number {
-  return (
-    left.source.localeCompare(right.source) ||
-    (left.lines?.start ?? 0) - (right.lines?.start ?? 0) ||
-    (left.lines?.end ?? 0) - (right.lines?.end ?? 0) ||
-    left.function.localeCompare(right.function)
-  );
-}
-
-function addCrapFunction(
-  findings: Finding[],
-  entry: Report.CrapEntry,
-  { analyzerName, scoreLimit, occurrence, violationOccurrence }: Report.CrapSite,
-): void {
-  const violationIdentity = `function:${entry.function}:occurrence:${String(violationOccurrence)}:source:${crapSourceHash(entry)}`;
   appendAll(
     findings,
-    crapFindings(
-      [
-        {
-          path: entry.source,
-          name: entry.function,
-          identity: violationIdentity,
-          ratchetKey: `function:${entry.function}:occurrence:${String(violationOccurrence)}:crap`,
-          ...(entry.anchorHash === undefined
-            ? {}
-            : {
-                anchor: `function:crap:text:${entry.anchorHash}`,
-                declarationKey: `function:${entry.function}:declaration:${String(entry.declarationHash)}:crap`,
-              }),
-          line: entry.lines?.start,
-          endLine: entry.lines?.end,
-          crap: entry.crap,
-        },
-      ],
-      { tool: analyzerName, limit: scoreLimit, unknownMessage: crapUnknownMessage(entry.source) },
-    ),
-  );
-  const values = {
-    complexity: entry.complexity,
-    statementCoverage: entry.statementCoverage?.percent,
-    branchCoverage: entry.branchCoverage?.percent,
-    effectiveCoverage: entry.effectiveCoverage?.percent,
-    crap: entry.crap,
-  };
-  for (const [metricName, value] of Object.entries(values)) {
-    addMetric(findings, {
+    metricFindings({
       analyzerName,
-      rule: 'function-crap',
-      path: entry.source,
-      identity: `function:${entry.function}:occurrence:${String(occurrence)}:${metricName}`,
-      message: `${metricName} for ${entry.function}`,
-      metricName,
-      value,
-      symbol: entry.function,
-      line: entry.lines?.start,
-    });
-  }
+      rule: 'test-efficiency',
+      path: '.',
+      identity: 'covered-branches-per-test',
+      message: 'Covered branch outcomes per test',
+      metricName: 'coveredBranchesPerTest',
+      value: coveredBranchOutcomes / testCount,
+    }),
+  );
+  appendAll(
+    findings,
+    metricFindings({
+      analyzerName,
+      rule: 'test-efficiency',
+      path: '.',
+      identity: 'test-count',
+      message: 'Executed test count',
+      metricName: 'testCount',
+      value: testCount,
+    }),
+  );
 }
 
 export function normalizeMutation(report: MutationReport, analyzerName: string): Finding[] {
   const mutants: Report.NeutralMutant[] = [];
   const statusCounts = new Map<string, number>();
-  const occurrences = new Map<string, number>();
+  const nextOccurrence = occurrenceCounter();
   for (const [filePath, file] of Object.entries(report.files ?? {})) {
-    collectFileMutants(file, { filePath, mutants, statusCounts, occurrences });
+    collectFileMutants(file, { filePath, mutants, statusCounts, nextOccurrence });
   }
   const findings = mutantFindings(mutants, { tool: analyzerName });
   for (const [status, value] of statusCounts) {
-    addMetric(findings, {
-      analyzerName,
-      rule: 'mutation-summary',
-      path: '.',
-      identity: `status:${status}`,
-      message: `${status} mutants`,
-      metricName: status,
-      value,
-    });
+    appendAll(
+      findings,
+      metricFindings({
+        analyzerName,
+        rule: 'mutation-summary',
+        path: '.',
+        identity: `status:${status}`,
+        message: `${status} mutants`,
+        metricName: status,
+        value,
+      }),
+    );
   }
   return findings;
 }
@@ -250,27 +161,27 @@ export function withUnreachedMutantsUncovered(
 
 function collectFileMutants(
   file: Report.ReportedFile,
-  { filePath, mutants, statusCounts, occurrences }: Report.MutantTally,
+  { filePath, mutants, statusCounts, nextOccurrence }: Report.MutantTally,
 ): void {
   for (const mutant of file.mutants ?? []) {
     const status = mutant.status ?? 'Unknown';
     statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
     if (status !== 'Killed') {
-      mutants.push(neutralMutant(mutant, { filePath, status, occurrences }));
+      mutants.push(neutralMutant(mutant, { filePath, status, nextOccurrence }));
     }
   }
 }
 
 function neutralMutant(
   mutant: Partial<Mutant>,
-  { filePath, status, occurrences }: Report.MutantSite,
+  { filePath, status, nextOccurrence }: Report.MutantSite,
 ): Report.NeutralMutant {
   const semanticIdentity = [
     mutant.mutatorName ?? 'unknown',
     hash(mutant.replacement ?? ''),
     mutant.sourceHash ?? hash(filePath),
   ].join('|');
-  const occurrence = nextOccurrence(occurrences, `${filePath}\0${status}\0${semanticIdentity}`);
+  const occurrence = nextOccurrence(`${filePath}\0${status}\0${semanticIdentity}`);
   return {
     path: filePath,
     identity: `${semanticIdentity}|occurrence:${String(occurrence)}`,

@@ -1,30 +1,12 @@
 import type { Finding } from '../../static-checks/shared.mts';
 import { fieldOf, fieldsOf } from '../../../../../shared/values/readers.mts';
-import { evaluateBaselineExpansions as untypedBaselineExpansions } from '../../../../../shared/rules/baseline-expansion.mjs';
+import { evaluateBaselineExpansions } from '../../../../../shared/rules/baseline-expansion.mts';
 import {
-  evaluateCoupling as untypedCoupling,
+  evaluateCoupling,
   type CouplingOptions,
 } from '../../../preset/coupling/evaluate-coupling.mts';
-import { evaluateTestRuntime as untypedTestRuntime } from '../../../../../shared/rules/test-runtime/evaluate.mjs';
-import { evaluateStructure as untypedStructure } from '../../../../../shared/rules/structure.mjs';
-
-const evaluateBaselineExpansions: (
-  baseSites: readonly unknown[],
-  headSites: readonly unknown[],
-  analyzerName: string,
-) => Finding[] = untypedBaselineExpansions;
-const evaluateCoupling: (
-  report: unknown,
-  analyzerName: string,
-  options: CouplingOptions,
-) => Finding[] = untypedCoupling;
-const evaluateTestRuntime: (report: unknown, analyzerName: string) => Finding[] =
-  untypedTestRuntime;
-const evaluateStructure: (
-  report: unknown,
-  analyzerName: string,
-  options: { readonly hints: Readonly<Record<string, string>> },
-) => Finding[] = untypedStructure;
+import { evaluateTestRuntime } from '../../../../../shared/rules/test-runtime/evaluate.mts';
+import { evaluateStructure } from '../../../../../shared/rules/structure.mts';
 
 const STRUCTURE_HINTS = {
   lines:

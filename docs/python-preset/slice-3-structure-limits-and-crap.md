@@ -2,17 +2,17 @@
 
 Part of the [Python preset guide](../python-preset.md).
 
-- **File limits.** The shared file-limit rule (`shared/rules/file-limits.mjs`) checks every `.py`
+- **File limits.** The shared file-limit rule (`shared/rules/file-limits.mts`) checks every `.py`
   file outside dot, virtualenv (`venv`, `env`), build, `migrations` and `__pycache__` folders: 300 lines per module, 500 per test
   module (a test file as defined under the rules),
   120 characters per line, and 6 modules (and separately 6 test modules) directly in one folder, where an `__init__.py` is checked but not counted. A
   file or folder already over a limit fails only when it grows, and a folder moved to a new path is
   matched to its old path.
-- **Rules.** The shared structure rule (`shared/rules/structure.mjs`) and CRAP rule
-  (`shared/rules/crap.mjs`) run on Python with the TypeScript and Java ids, limits and messages:
+- **Rules.** The shared structure rule (`shared/rules/structure.mts`) and CRAP rule
+  (`shared/rules/crap.mts`) run on Python with the TypeScript and Java ids, limits and messages:
   `function-lines-limit` (50), `function-statements-limit` (15), `function-control-nesting-limit`
   (2), `function-parameters-limit` (3), `crap-score-limit` (9, `thresholds.crapLimit` overrides it)
-  and `crap-coverage-unknown`. `shared/policy.mjs` marks them enforced for Python and
+  and `crap-coverage-unknown`. `shared/policy.mts` marks them enforced for Python and
   `spec/checks.md` is regenerated. A function that already breaks a limit on the base and is edited
   fails only when the change makes that metric worse, exactly as for the other languages (the
   `ratchet` field of the finding, handled by the core comparison); a new function over a limit, or
@@ -111,7 +111,7 @@ Part of the [Python preset guide](../python-preset.md).
   inside the range from the `def` line to the last line of the function. `start_line` is not used, because only recent coverage.py
   versions report it. Coverage of a function is the lower of its line and branch percentage, as for
   JaCoCo, and CRAP is `ccn^2 * (1 - coverage)^3 + ccn`, shared with Java
-  (`ingestCrapRows` in `shared/ingest/lizard-crap.mjs`). A function with no statements and no
+  (`ingestCrapRows` in `shared/ingest/lizard-crap.mts`). A function with no statements and no
   branches counts as fully covered: a docstring-only stub, and a function whose lines coverage.py
   excludes (`# pragma: no cover`, `if TYPE_CHECKING:`, a multi-line `@overload` stub). Definitions
   that share a name in a scope (a `@property` getter and its `@x.setter`, `@singledispatch`
@@ -134,7 +134,7 @@ Part of the [Python preset guide](../python-preset.md).
   Identity: qualified name plus the same function-text hash, ratchet key the name, so an edited
   function over the limit fails only when its score rises.
 - **Cache invalidation.** The metrics script, the new adapters, the shared structure and CRAP rule
-  files and `shared/policy.mjs` are in the Python analyzer's configuration hash.
+  files and `shared/policy.mts` are in the Python analyzer's configuration hash.
 - **Tests.** `ingest/crap.test.mjs` (the join, on structure entries and a coverage.py report),
   `python-structure.test.mts`, `python-crap.test.mts`, `python-sources.test.mts` (all with the fake
   toolchain) and `metrics/structure-metrics.test.mts` (the script itself, on the real `python3`:

@@ -2,12 +2,12 @@ import { existsSync, readFileSync } from 'node:fs';
 import { outerClass as untypedOuterClass } from '../../../ingest/class-names.mts';
 import { parseJdeps } from '../../metrics/java-coupling.mts';
 import type { CouplingEdge } from '../../metrics/java-coupling-types.mts';
-import { exceptionText as untypedExceptionText } from '../../../../../shared/rules/exceptions.mjs';
+import { exceptionText as untypedExceptionText } from '../../../../../shared/rules/exceptions.mts';
 import {
   EXCEPTION_HINT,
   allowedForm as untypedAllowedForm,
   messageFields as untypedMessageFields,
-} from '../../../../../shared/policy.mjs';
+} from '../../../../../shared/policy.mts';
 import { pathInside as untypedPathInside } from '../java-sources.mts';
 import { isNamedElsewhere, readProjectTexts, type TextProject } from '../project-texts.mts';
 import { readDeclarations } from '../source-declarations.mts';

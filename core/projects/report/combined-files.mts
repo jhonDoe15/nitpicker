@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, rmdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { chainOf as untypedChainOf } from '../../../shared/traversal.mjs';
+import { chainOf as untypedChainOf } from '../../../shared/traversal.mts';
 import { renderSarifReport } from '../../diff/reporting/sarif.mts';
 import { readTextOr } from '../discovery/repository-files.mts';
 import { reportFolder as untypedReportFolder } from '../plan/project-entry.mts';

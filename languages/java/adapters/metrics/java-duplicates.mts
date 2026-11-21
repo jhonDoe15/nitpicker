@@ -30,6 +30,7 @@ type DuplicatesRun = {
   reportFile?: string;
   skippedFolders?: readonly string[];
   renamedExtensions?: string[];
+  environment?: Readonly<Record<string, string | undefined>> | undefined;
 };
 
 type DuplicateRead = {
@@ -56,6 +57,7 @@ export function runJavaDuplicates(
     reportFile = DUPLICATES_REPORT,
     skippedFolders = JVM_SKIPPED_FOLDERS,
     renamedExtensions = ['.java'],
+    environment = {},
   }: DuplicatesRun,
 ): void {
   const roots = textsOf(fieldOf(manifest, rootsKey)).filter((root) =>
@@ -71,6 +73,7 @@ export function runJavaDuplicates(
     reportRoot,
     reportFile,
     together: false,
+    environment,
     renamed: {
       syntax: format,
       files: sourceFilesUnder(projectRoot, roots, renamedExtensions).filter(

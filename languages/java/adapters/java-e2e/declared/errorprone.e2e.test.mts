@@ -18,7 +18,7 @@ import {
   useDeclaredProjects,
 } from './__tests__/declared-projects.mts';
 import { orderingCases } from './__tests__/ordering-cases.mts';
-import { byText as byTextUntyped } from '../../../../../shared/text-order/by-text.mjs';
+import { byText as byTextUntyped } from '../../../../../shared/text-order/by-text.mts';
 
 const byText: (left: string, right: string) => number = byTextUntyped;
 const runErrorProne: (context: {

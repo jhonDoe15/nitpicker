@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { validateConfig } from '../../configuration/validate.mts';
-import { RULE_IDS } from '../../../shared/policy.mjs';
+import { RULE_IDS } from '../../../shared/policy.mts';
 import { runCli as nitpickerCli } from '../../cli.mts';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 import { commit } from '../../diff/git/test-support/git-repository.mts';

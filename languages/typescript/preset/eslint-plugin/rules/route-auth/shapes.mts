@@ -1,4 +1,4 @@
-import { wordsOf as untypedWordsOf } from '../../../../../../shared/naming/secret-words.mjs';
+import { wordsOf as untypedWordsOf } from '../../../../../../shared/naming/secret-words.mts';
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { stringValue } from '../analysis/constant-resolution.mts';
 import { calleeNameOf } from '../typed/syntax-views.mts';

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { childrenNamed, parseXml, type XmlElement } from '../../../../shared/values/xml.mts';
+import {
+  childrenNamed,
+  parseXml,
+  type XmlElement,
+} from '../../../../shared/ingest/report-records.mts';
 import {
   reportingCheckstyleConfig,
   withGuardChecks,

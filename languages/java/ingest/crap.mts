@@ -1,11 +1,11 @@
-import { MESSAGES } from '../../../shared/policy.mjs';
-import { repeatsInSource as untypedRepeatsInSource } from '../../../shared/rules/finding-helpers.mjs';
+import { MESSAGES } from '../../../shared/policy.mts';
+import { repeatsInSource as untypedRepeatsInSource } from '../../../shared/rules/finding-parts.mts';
 import {
   descriptorTypes,
   sameConstructor,
   simpleClassName,
 } from './constructors/constructor-match.mts';
-import { ingestCrapRows } from '../../../shared/ingest/lizard-crap.mjs';
+import { ingestCrapRows } from '../../../shared/ingest/lizard-crap.mts';
 import {
   fieldOf,
   listOf,
@@ -13,8 +13,11 @@ import {
   optionalText,
   textOf,
 } from '../../../shared/values/readers.mts';
-import { childrenNamed, parseXml } from '../../../shared/values/xml.mts';
-import type { XmlElement } from '../../../shared/values/xml.mts';
+import {
+  childrenNamed,
+  parseXml,
+  type XmlElement,
+} from '../../../shared/ingest/report-records.mts';
 import type { JavaFinding } from '../adapters/typed/java-values.mts';
 import { jacocoLineUnits, joinedPath } from './coverage-reports/jacoco-lines.mts';
 import { coverageLookup, ownRange } from './units/unit-coverage.mts';
@@ -33,11 +36,6 @@ export type CrapOptions = {
 };
 type CrapResult = { findings: JavaFinding[] };
 
-const crapRows: (
-  parsed: readonly FunctionUnit[],
-  options: CrapOptions,
-  resolve: (fn: FunctionUnit, filePath: string) => { readonly coverage: number | undefined },
-) => CrapResult = ingestCrapRows;
 const repeatsInSource: (name: string) => boolean = untypedRepeatsInSource;
 const unknownMessage: string = MESSAGES.crapCoverageUnknownJava;
 
@@ -71,7 +69,7 @@ export function ingestCrapFunctions(
     selectMethods: options.selectMethods ?? selectJavaMethods,
     parsed,
   });
-  return crapRows(parsed, options, (fn, filePath) => ({
+  return ingestCrapRows(parsed, options, (fn, filePath) => ({
     coverage: coverageOf(fn, filePath),
   }));
 }
