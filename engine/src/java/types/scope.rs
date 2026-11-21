@@ -217,7 +217,12 @@ impl<'a> Resolver<'a> {
         ];
         let mut holder = Some(at);
         while let Some(node) = holder.filter(|node| !SCOPES.contains(&node.kind())) {
-            holder = crate::engine::source::parent(node);
+            // A record's components see its member types, which the places around the record do not.
+            let above = crate::engine::source::parent(node);
+            if above.is_some_and(|above| above.kind() == "record_declaration" && above.child_by_field_name("parameters") == Some(node)) {
+                return self.find_simple(at, name);
+            }
+            holder = above;
         }
         let Some(holder) = holder else { return self.find_simple(at, name) };
         let key = (holder.id(), name.to_string());

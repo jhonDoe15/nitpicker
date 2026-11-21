@@ -146,7 +146,7 @@ fn patterns_type_their_variables_like_pmd() {
 }
 
 #[test]
-fn null_away_reports_what_null_away_reports_for_lambdas_method_references_and_fields() {
+fn null_away_reports_what_null_away_reports() {
     type Told = (String, u64, u64, String);
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
     let source = root.join("fixtures").join("nullaway");
@@ -179,5 +179,5 @@ fn null_away_reports_what_null_away_reports_for_lambdas_method_references_and_fi
     let missed: Vec<&Told> = expected.difference(&found).collect();
     let extra: Vec<&Told> = found.difference(&expected).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(expected.len(), 81);
+    assert_eq!(expected.len(), 102);
 }

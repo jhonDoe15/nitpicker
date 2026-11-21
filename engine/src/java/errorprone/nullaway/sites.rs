@@ -45,16 +45,20 @@ impl<'t> Flow<'_, 't> {
         required
     }
 
-    fn arguments_passed(&mut self, node: Node<'t>, reported: &mut std::collections::HashSet<usize>) {
+    fn arguments_passed(&mut self, node: Node<'t>, reported: &mut Seen) {
         let resolver = self.context.resolver;
         let resolved = resolver.call_formals(node);
-        if let Ok(wanted) = std::env::var("NP_DBG") {
-            let line = self.context.file.text[..node.start_byte()].matches('\n').count() + 1;
-            if wanted.split(',').any(|one| format!("{}:{line}", self.context.file.path).ends_with(one)) {
-                eprintln!("DBG {line} {} -> {:?}", self.context.text(node).lines().next().unwrap_or(""), resolved.as_ref().map(|(call, _)| (&call.declaring, &call.method.name, &call.method.parameters, call.method.nullable_parameters, call.method.varargs)));
-                for actual in Self::arguments(node) {
-                    eprintln!("   arg {} may {} known {:?}", self.context.text(actual).lines().next().unwrap_or(""), self.may_be_null(actual), self.known(strip(actual)));
-                }
+        if traced(self.context, node, "NP_DBG") {
+            let line = node.start_position().row + 1;
+            eprintln!("DBG {line} {} -> {:?}", self.context.text(node).lines().next().unwrap_or(""), resolved.as_ref().map(|(call, _)| (&call.declaring, &call.method.name, &call.method.parameters, call.method.nullable_parameters, call.method.varargs)));
+            if let (None, Some(object)) = (&resolved, node.child_by_field_name("object")) {
+                let name = node.child_by_field_name("name").map(|name| self.context.text(name)).unwrap_or_default();
+                let owner = resolver.type_of(object);
+                let known = owner.as_ref().map(|owner| resolver.index.methods(&owner.name(), name).iter().map(|(class, method)| format!("{}{:?}", class.name, method.parameters)).collect::<Vec<_>>());
+                eprintln!("   UNRESOLVED receiver {owner:?} methods {known:?}");
+            }
+            for actual in Self::arguments(node) {
+                eprintln!("   arg {} may {} known {:?}", self.context.text(actual).lines().next().unwrap_or(""), self.may_be_null(actual), self.known(strip(actual)));
             }
         }
         let Some((call, _)) = resolved else { return };
@@ -62,7 +66,10 @@ impl<'t> Flow<'_, 't> {
         if formals == 0 {
             return;
         }
-        let required = self.required(&call);
+        let mut required = self.required(&call);
+        for (slot, open) in required.iter_mut().zip(self.declared_open(node).unwrap_or_default()) {
+            *slot &= !open;
+        }
         let actuals = Self::arguments(node);
         for (at, actual) in actuals.iter().enumerate() {
             let slot = at.min(formals - 1);
@@ -72,7 +79,7 @@ impl<'t> Flow<'_, 't> {
                 strip(*actual).kind() == "null_literal" || matches!(kind, Some(Type::Array(_)))
             };
             let needed = if whole { annotated(&call.declaring) } else { required[slot] };
-            if !needed || !self.may_be_null(*actual) || !reported.insert(actual.id()) {
+            if !needed || !self.may_be_null(*actual) || !reported.insert((actual.id(), PASSED)) {
                 continue;
             }
             let message = format!("passing @Nullable parameter '{}' where @NonNull is required", self.context.text(*actual));
@@ -80,8 +87,10 @@ impl<'t> Flow<'_, 't> {
         }
     }
 
-    /// Whether a value returned from this method or lambda must not be null.
-    fn returns_required(&self, unit: Node) -> bool {
+    /// Whether a value returned from this method or lambda must not be null. A lambda whose body is one
+    /// expression (`whole`) is only checked when its functional interface is in checked code; a `return`
+    /// inside a lambda also when a library model says the interface method does not return null.
+    fn returns_required(&self, unit: Node, whole: bool) -> bool {
         match unit.kind() {
             "method_declaration" => {
                 let Some(kind) = unit.child_by_field_name("type") else { return false };
@@ -93,16 +102,18 @@ impl<'t> Flow<'_, 't> {
                 let Some(target) = resolver.lambda_target(unit) else { return false };
                 let Some((declaring, method)) = resolver.index.functional_method(&target.name()) else { return false };
                 let plain = !matches!(method.returns, Type::Primitive(_)) && method.returns.name() != "java.lang.Void";
-                plain && annotated(&declaring.name) && method.flags & flag::NULLABLE == 0
+                let open = method.flags & flag::NULLABLE != 0 || !rows(models::ALWAYS_NULLABLE_RETURNS, &declaring.name, method).is_empty();
+                let modelled = !rows(models::NONNULL_RETURNS, &declaring.name, method).is_empty();
+                plain && (annotated(&declaring.name) || !whole) && (modelled || annotated(&declaring.name) && !open)
             }
             _ => false,
         }
     }
 
-    fn returned(&mut self, node: Node<'t>, unit: Node<'t>, reported: &mut std::collections::HashSet<usize>) {
+    fn returned(&mut self, node: Node<'t>, unit: Node<'t>, reported: &mut Seen) {
         let value = named_children(node).into_iter().find(|part| !part.kind().ends_with("comment"));
         let Some(value) = value else { return };
-        if self.returns_required(unit) && self.may_be_null(value) && reported.insert(node.id()) {
+        if self.returns_required(unit, false) && self.may_be_null(value) && reported.insert((node.id(), RETURNED)) {
             self.context.report("NullAway", node, node.start_byte(), "returning @Nullable expression from method with @NonNull return type");
         }
     }
@@ -110,12 +121,12 @@ impl<'t> Flow<'_, 't> {
     /// The value of a lambda whose body is an expression.
     pub(super) fn lambda_value(&mut self, lambda: Node<'t>) {
         let Some(body) = lambda.child_by_field_name("body").filter(|body| body.kind() != "block") else { return };
-        if self.returns_required(lambda) && self.may_be_null(body) {
+        if self.returns_required(lambda, true) && self.may_be_null(body) {
             self.context.report("NullAway", lambda, lambda.start_byte(), "returning @Nullable expression from method with @NonNull return type");
         }
     }
 
-    fn stored(&mut self, node: Node<'t>, reported: &mut std::collections::HashSet<usize>) {
+    fn stored(&mut self, node: Node<'t>, reported: &mut Seen) {
         let resolver = self.context.resolver;
         if node.child_by_field_name("operator").is_none_or(|operator| operator.kind() != "=") {
             return;
@@ -133,7 +144,7 @@ impl<'t> Flow<'_, 't> {
         if !annotated(&class.name) || field.flags & flag::NULLABLE != 0 {
             return;
         }
-        if self.may_be_null(right) && reported.insert(node.id()) {
+        if self.may_be_null(right) && reported.insert((node.id(), STORED)) {
             self.context.report("NullAway", node, position(node), "assigning @Nullable expression to @NonNull field");
         }
     }
@@ -142,11 +153,11 @@ impl<'t> Flow<'_, 't> {
         matches!(self.known(strip(node)), Some(NULL | NULLABLE))
     }
 
-    fn boxed(&self, node: Node) -> bool {
+    pub(super) fn boxed(&self, node: Node) -> bool {
         matches!(self.context.resolver.type_of(node), Some(Type::Class(..)))
     }
 
-    fn primitive(&self, node: Node) -> bool {
+    pub(super) fn primitive(&self, node: Node) -> bool {
         matches!(self.context.resolver.type_of(node), Some(Type::Primitive(_)))
     }
 
@@ -194,28 +205,27 @@ impl<'t> Flow<'_, 't> {
         used && self.boxed(node)
     }
 
-    /// Reports a condition that is unboxed where it is tested; a ternary's condition is not reported.
-    pub(super) fn unboxing_test(&mut self, test: Node<'t>, reported: &mut std::collections::HashSet<usize>) {
+    /// Reports a condition that is unboxed where it is tested.
+    pub(super) fn unboxing_test(&mut self, test: Node<'t>, reported: &mut Seen) {
         let mut whole = test;
         while let Some(above) = parent(whole).filter(|above| above.kind() == "parenthesized_expression") {
             whole = above;
         }
-        let ternary = parent(whole).is_some_and(|above| above.kind() == "ternary_expression" && above.child_by_field_name("condition") == Some(whole));
-        if !ternary && self.may_be_null(test) && reported.insert(whole.id() ^ usize::MAX) {
+        if self.may_be_null(test) && reported.insert((whole.id(), UNBOXED)) {
             let message = format!("unboxing of a @Nullable expression '{}'", self.context.text(whole));
             self.context.report("NullAway", whole, position(whole), &message);
         }
     }
 
-    pub(super) fn unboxing(&mut self, operand: Node<'t>, reported: &mut std::collections::HashSet<usize>) {
-        if self.may_be_null(operand) && reported.insert(operand.id() ^ usize::MAX) {
+    pub(super) fn unboxing(&mut self, operand: Node<'t>, reported: &mut Seen) {
+        if self.may_be_null(operand) && reported.insert((operand.id(), UNBOXED)) {
             let message = format!("unboxing of a @Nullable expression '{}'", self.context.text(operand));
             self.context.report("NullAway", operand, position(operand), &message);
         }
     }
 
     /// The selector of a `switch` without a `case null`.
-    fn selected(&mut self, selector: Node<'t>, reported: &mut std::collections::HashSet<usize>) {
+    fn selected(&mut self, selector: Node<'t>, reported: &mut Seen) {
         let Some(switch) = parent(selector).filter(|above| matches!(above.kind(), "switch_expression" | "switch_statement")) else { return };
         if switch.child_by_field_name("condition") != Some(selector) {
             return;
@@ -225,20 +235,20 @@ impl<'t> Flow<'_, 't> {
         let null_case = labels.into_iter().flat_map(|case| children(case)).filter(|part| part.kind() == "switch_label").any(|label| {
             named_children(label).into_iter().any(|part| part.kind() == "null_literal" || named_children(part).into_iter().any(|inner| inner.kind() == "null_literal"))
         });
-        if !null_case && self.may_be_null(inner) && reported.insert(selector.id()) {
+        if !null_case && self.may_be_null(inner) && reported.insert((selector.id(), SELECTED)) {
             let message = format!("switch selector expression '{}' is @Nullable", self.context.text(inner));
             self.context.report("NullAway", inner, position(inner), &message);
         }
     }
 
-    pub(super) fn sites(&mut self, node: Node<'t>, unit: Node<'t>, reported: &mut std::collections::HashSet<usize>) {
+    pub(super) fn sites(&mut self, node: Node<'t>, unit: Node<'t>, reported: &mut Seen) {
         match node.kind() {
             "method_invocation" | "object_creation_expression" | "explicit_constructor_invocation" | "enum_constant" => self.arguments_passed(node, reported),
             "return_statement" => self.returned(node, unit, reported),
             "assignment_expression" => self.stored(node, reported),
             "enhanced_for_statement" => {
                 if let Some(value) = node.child_by_field_name("value").filter(|value| self.may_be_null(*value)) {
-                    if reported.insert(node.id()) {
+                    if reported.insert((node.id(), LOOPED)) {
                         let message = format!("enhanced-for expression '{}' is @Nullable", self.context.text(value));
                         self.context.report("NullAway", value, position(value), &message);
                     }

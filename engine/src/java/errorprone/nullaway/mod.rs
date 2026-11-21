@@ -6,6 +6,7 @@ mod fields;
 mod functional;
 mod models;
 mod sites;
+mod streams;
 use crate::engine::source::{children, named_children, parent, walk};
 use crate::java::flow::cfg::{self, Cfg, Exit, unwrap};
 use crate::java::types::expr::{Binding, Call, Receiver};
@@ -41,6 +42,16 @@ fn greatest_lower(a: u8, b: u8) -> u8 {
 
 type Store = Vec<u8>;
 
+/// What was already reported: a node and the kind of finding, since one node can carry two kinds.
+type Seen = std::collections::HashSet<(usize, u8)>;
+const DEREFERENCED: u8 = 0;
+const PASSED: u8 = 1;
+const RETURNED: u8 = 2;
+const STORED: u8 = 3;
+const UNBOXED: u8 = 4;
+const SELECTED: u8 = 5;
+const LOOPED: u8 = 6;
+
 fn read(store: &Store, path: usize) -> u8 {
     store.get(path).copied().unwrap_or(ABSENT)
 }
@@ -73,6 +84,21 @@ fn join(target: &mut Option<Store>, from: &Store) -> bool {
 fn annotated_packages() -> &'static [String] {
     static PACKAGES: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
     PACKAGES.get_or_init(|| std::env::var("NP_NULLAWAY_PACKAGES").map(|list| list.split(',').map(String::from).collect()).unwrap_or_default())
+}
+
+/// Whether a debug switch (`NP_DBG` for call resolution, `NP_TRACE` for step values) names the line of a node,
+/// as a list of `File.java:line` path endings.
+fn traced(context: &Context, node: Node, switch: &'static str) -> bool {
+    static WANTED: std::sync::OnceLock<HashMap<&'static str, Vec<String>>> = std::sync::OnceLock::new();
+    let wanted = WANTED.get_or_init(|| {
+        let listed = |name: &'static str| (name, std::env::var(name).map(|list| list.split(',').map(String::from).collect()).unwrap_or_default());
+        HashMap::from([listed("NP_DBG"), listed("NP_TRACE")])
+    });
+    let lines = &wanted[switch];
+    !lines.is_empty() && {
+        let place = format!("{}:{}", context.file.path, node.start_position().row + 1);
+        lines.iter().any(|one| place.ends_with(one.as_str()))
+    }
 }
 
 fn annotated(class: &str) -> bool {
@@ -199,6 +225,25 @@ impl<'a, 't> Flow<'a, 't> {
         None
     }
 
+    /// What names a map entry: a string or whole-number literal, such a literal boxed by `valueOf`, or a path.
+    fn key(&mut self, node: Node) -> Option<String> {
+        let plain = unwrap(node);
+        match plain.kind() {
+            "string_literal" | "decimal_integer_literal" | "hex_integer_literal" | "octal_integer_literal" | "binary_integer_literal" => {
+                Some(self.text(plain).to_string())
+            }
+            "method_invocation" if plain.child_by_field_name("name").is_some_and(|name| self.text(name) == "valueOf") => {
+                let boxing = self.context.resolver.resolve_call(plain).filter(|call| matches!(call.declaring.as_str(), "java.lang.Integer" | "java.lang.Long"));
+                let given: Vec<Node> = plain.child_by_field_name("arguments").map(named_children).unwrap_or_default();
+                match (boxing, given.as_slice()) {
+                    (Some(_), [only]) => self.key(*only),
+                    _ => self.name_of(node),
+                }
+            }
+            _ => self.name_of(node),
+        }
+    }
+
     fn name_of(&mut self, node: Node) -> Option<String> {
         let node = strip(node);
         let resolver = self.context.resolver;
@@ -226,10 +271,7 @@ impl<'a, 't> Flow<'a, 't> {
                 let arguments: Vec<Node> = arguments.into_iter().filter(|argument| !argument.kind().ends_with("comment")).collect();
                 let object = node.child_by_field_name("object");
                 if map_method(resolver, &call, "get", 1) {
-                    let key = match self.constant(arguments[0]) {
-                        Some(key) => key,
-                        None => self.name_of(arguments[0])?,
-                    };
+                    let key = self.key(arguments[0])?;
                     let base = match object {
                         Some(object) => self.base(object)?,
                         None => "this".to_string(),
@@ -342,8 +384,12 @@ impl<'a, 't> Flow<'a, 't> {
             }
             // A comparison used as a value: both outcomes meet again, and what each side was is then in the store.
             "binary_expression" if node.child_by_field_name("operator").is_some_and(|operator| matches!(operator.kind(), "==" | "!=")) => {
-                for side in ["left", "right"].into_iter().filter_map(|side| node.child_by_field_name(side)) {
-                    let whole = unwrap(side);
+                let sides: Vec<Node> = ["left", "right"].into_iter().filter_map(|side| node.child_by_field_name(side)).collect();
+                for (at, side) in sides.iter().enumerate() {
+                    if sides.len() == 2 && self.boxed(*side) && self.primitive(sides[1 - at]) {
+                        continue;
+                    }
+                    let whole = unwrap(*side);
                     let target = if whole.kind() == "assignment_expression" { whole.child_by_field_name("left").unwrap_or(whole) } else { whole };
                     if let (Some(own), Some(path)) = (self.known(whole), self.path_of(target)) {
                         write(store, path, own);
@@ -506,10 +552,7 @@ impl<'a, 't> Flow<'a, 't> {
     }
 
     fn map_path(&mut self, call: Node, key: Node) -> Option<usize> {
-        let key = match self.constant(key) {
-            Some(key) => key,
-            None => self.name_of(key)?,
-        };
+        let key = self.key(key)?;
         let base = match call.child_by_field_name("object") {
             Some(object) => self.base(object)?,
             None => "this".to_string(),
@@ -531,7 +574,11 @@ impl<'a, 't> Flow<'a, 't> {
                 let (left_value, right_value) = (self.value(left), self.value(right));
                 let (same, other) = if operator == Some("==") { (&mut holds, &mut fails) } else { (&mut fails, &mut holds) };
                 let unequal = |value: u8| if value == NULL { NONNULL } else { NULLABLE };
-                for (side, own, opposite) in [(left, left_value, right_value), (right, right_value, left_value)] {
+                for (side, other_side, own, opposite) in [(left, right, left_value, right_value), (right, left, right_value, left_value)] {
+                    // A boxed value compared with a primitive is unboxed first: the comparison says nothing about it.
+                    if self.boxed(side) && self.primitive(other_side) {
+                        continue;
+                    }
                     let side = match unwrap(side) {
                         assigned if assigned.kind() == "assignment_expression" => assigned.child_by_field_name("left").unwrap_or(assigned),
                         plain => plain,
@@ -635,6 +682,10 @@ impl<'a, 't> Flow<'a, 't> {
     fn advance(&mut self, node: Node<'t>, store: &mut Store) {
         let value = self.step(node, store);
         self.values.insert((node.id(), self.copy), value);
+        if traced(self.context, node, "NP_TRACE") {
+            let (name, line) = (self.name_of(node), node.start_position().row + 1);
+            eprintln!("TRACE {line} copy {} {} `{}` = {value} unboxes {} path {name:?}", self.copy, node.kind(), self.text(node).lines().next().unwrap_or(""), self.unboxes(node));
+        }
         if self.unboxes(node) {
             self.settle(store, node, NONNULL);
         }
@@ -740,7 +791,8 @@ fn fits(resolver: &crate::java::types::scope::Resolver, row: &models::Model, cal
             !written.contains('.') || written.ends_with("[]") || written.ends_with("...") || written == kind.name()
         })
     };
-    row.1 == call.method.name
+    let creates = call.method.name == "<init>" && row.0 == call.declaring && row.0.rsplit('.').next() == Some(row.1);
+    (row.1 == call.method.name || creates)
         && arity(row.2) == call.method.parameters.len()
         && (row.2.is_empty() || same_types())
         && (row.0 == call.declaring || inherited && resolver.index.is_subtype(&call.declaring, row.0) || resolver.index.is_subtype(row.0, &call.declaring) && inherited)
@@ -832,7 +884,8 @@ pub fn null_away(context: &Context, root: Node) {
         return;
     }
     let mut inner: HashMap<usize, Vec<(String, u8)>> = HashMap::new();
-    let mut reported = std::collections::HashSet::new();
+    let mut reported = Seen::new();
+    let mut streamed: HashMap<usize, Vec<String>> = HashMap::new();
     let mut summary = fields::Summary::default();
     walk(root, |node| {
         if node.kind() == "method_declaration" && !unmarked(context, node) {
@@ -867,7 +920,7 @@ pub fn null_away(context: &Context, root: Node) {
         let inherited: u64 = if node.kind() == "lambda_expression" {
             let target = context.resolver.lambda_target(node);
             let found = target.as_ref().and_then(|target| context.resolver.index.functional_method(&target.name()));
-            found.filter(|(declaring, _)| annotated(&declaring.name)).map_or(0, |(_, method)| method.nullable_parameters)
+            found.map_or(0, |(declaring, method)| sites::accepted(&declaring.name, method))
         } else {
             0
         };
@@ -895,7 +948,17 @@ pub fn null_away(context: &Context, root: Node) {
             let path = flow.local(parameters);
             write(&mut start, path, if inherited & 1 != 0 { NULLABLE } else { NONNULL });
         }
+        for name in streamed.get(&node.id()).into_iter().flatten() {
+            let path = flow.path(name.clone());
+            write(&mut start, path, NONNULL);
+        }
         let inputs = flow.run(start);
+        if let Some(taker) = Some(node).filter(|node| node.kind() == "lambda_expression").and_then(|node| streams::taker(context, node)) {
+            if let Some(to) = streams::parameter_names(context, taker).into_iter().next() {
+                let held = flow.passed(&inputs, node, to);
+                streamed.insert(taker.id(), held);
+            }
+        }
         let wanted = fields::wanted(context, unit_node);
         if wanted.0 || wanted.1 {
             flow.observe(&inputs, unit_node, wanted, &mut summary);
@@ -918,7 +981,7 @@ pub fn null_away(context: &Context, root: Node) {
                     _ => continue,
                 };
                 let Some(object) = object else { continue };
-                if !flow.may_be_null(object) || !reported.insert(node.id()) {
+                if !flow.may_be_null(object) || !reported.insert((node.id(), DEREFERENCED)) {
                     continue;
                 }
                 let sign = children(node).into_iter().find(|part| part.kind() == mark && part.start_byte() >= object.end_byte());
