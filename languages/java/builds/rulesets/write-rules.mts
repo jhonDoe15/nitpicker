@@ -12,6 +12,11 @@ import {
 } from './rules-plan.mts';
 import { enginePlanOf, pmdRulesetsWithEngine } from './engine/pmd-engine.mts';
 import { errorProneOnEngine, errorPronePlanOf } from '../errorprone/errorprone-engine.mts';
+import {
+  SPOTBUGS_ENGINE_ARGUMENTS,
+  spotbugsOnEngine,
+  spotbugsPlanOf,
+} from '../spotbugs/spotbugs-engine.mts';
 
 export const PMD_RULESETS_LIST = 'pmd-rulesets.txt';
 export const PMD_RUN_RULESETS_LIST = 'pmd-run-rulesets.txt';
@@ -36,6 +41,12 @@ export function writeRules(kind: string | undefined, plan: RulesPlan): void {
   }
   if (kind === 'errorprone-engine') {
     errorProneOnEngine(errorPronePlanOf(plan), process.env, { log: process.stderr });
+    return;
+  }
+  if (kind === 'spotbugs-engine') {
+    const engine = spotbugsPlanOf(plan);
+    const added = spotbugsOnEngine(engine, process.env, { log: process.stderr });
+    writeFileSync(path.join(engine.reportDir, SPOTBUGS_ENGINE_ARGUMENTS), added.join('\n'));
     return;
   }
   if (kind === 'checkstyle-config') {

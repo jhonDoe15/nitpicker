@@ -847,6 +847,7 @@ allprojects {
             def buildRoot = project.rootDir.toPath().toAbsolutePath().normalize()
             doFirst {
                 reportDir.get().asFile.mkdirs()
+                reportDir.get().file('spotbugs-engine.sarif').asFile.delete()
                 def sourcePath = mainSources.files.findAll { it.exists() }.join(File.pathSeparator)
                 def classDirs = analyzedClassDirs().findAll { it.exists() }
                 def auxiliary = (kotlinPreset ? sourceSets.main.runtimeClasspath.files
@@ -855,11 +856,13 @@ allprojects {
                         })
                     .findAll { it.exists() && !classDirs.contains(it) }
                 def targets = classDirs.collect { it.absolutePath }
+                def generatedJava = false
                 if (!analyzeGenerated) {
                     def processorOutput = tasks.named('compileJava').get().options
                         .generatedSourceOutputDirectory.asFile.orNull
                     def generatedRoots = (mainSources.files.findAll { isGeneratedRoot(project, it) } +
                         [processorOutput]).findAll { it != null && it.exists() }
+                    generatedJava = generatedRoots.any { root -> !fileTree(root) { include '**/*.java' }.isEmpty() }
                     if (!generatedRoots.isEmpty()) {
                         def list = reportDir.get().file('spotbugs-targets.txt').asFile
                         def helper = new File(initScriptDir, 'generated/GeneratedClasses.java')
@@ -881,7 +884,30 @@ allprojects {
                 }
                 def auxiliaryFile = reportDir.get().file('spotbugs-aux-classpath.txt').asFile
                 auxiliaryFile.text = auxiliary*.absolutePath.join('\n')
-                args(nitpickerSettings('spotbugs', ['-effort:default', '-medium']) + ['-sarif',
+                // The patterns nitpicker's engine has rebuilt run on it, from the sources, when the classes
+                // SpotBugs reads all come from the Java sources javac compiled.
+                def engineArguments = []
+                def compileTask = tasks.named('compileJava').get()
+                def processorArguments = compileTask.options.compilerArgs.any {
+                    it in ['-processor', '-processorpath', '--processor-path', '--processor-module-path']
+                }
+                if (!kotlinPreset && classDirs.toList() == [compileTask.destinationDirectory.get().asFile] &&
+                        !generatedJava && !processorArguments &&
+                        nitpickerArgument('nitpicker.spotbugs.settings') == null) {
+                    def enginePlan = reportDir.get().file('spotbugs-engine-plan.json').asFile
+                    enginePlan.text = groovy.json.JsonOutput.toJson([
+                        reportDir    : reportDir.get().asFile.absolutePath,
+                        sources      : compileTask.source.files.findAll { it.name.endsWith('.java') }*.absolutePath.sort(),
+                        classpath    : auxiliary.findAll { !classDirs.contains(it) }*.absolutePath,
+                        processorPath: (compileTask.options.annotationProcessorPath?.files ?: [])*.absolutePath,
+                        javaHome     : (javaLauncher.orNull?.metadata?.installationPath?.asFile
+                            ?: new File(System.getProperty('java.home'))).absolutePath,
+                    ])
+                    writeRules('spotbugs-engine', enginePlan)
+                    engineArguments = reportDir.get().file('spotbugs-engine-arguments.txt').asFile.readLines()
+                        .findAll { !it.isEmpty() }
+                }
+                args(nitpickerSettings('spotbugs', ['-effort:default', '-medium']) + engineArguments + ['-sarif',
                       '-pluginList', configurations.nitpickerSpotbugsPlugins.files*.absolutePath.join(File.pathSeparator),
                       '-exclude', new File(initScriptDir, 'security/exclude.xml').absolutePath,
                       '-output', reportDir.get().file('spotbugs.sarif').asFile.absolutePath,
