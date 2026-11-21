@@ -73,6 +73,8 @@ const POLICY_PATHS = [
   'languages/typescript/adapters/immutable-types',
   'languages/typescript/adapters/test-runners/jest',
   'languages/typescript/adapters/typed',
+  'languages/typescript/adapters/dependency-graph/cruiser-hooks',
+  'languages/typescript/adapters/dependency-graph/shared-graph/cruiser-process.mjs',
   'languages/typescript/preset/structure/reuse/reuse-paths.mjs',
   'languages/typescript/preset/syntax',
   'languages/typescript/preset/modules',
