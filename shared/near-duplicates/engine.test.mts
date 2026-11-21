@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { findNearDuplicates } from './engine.mts';
 import type { NearFinding } from './engine.mts';
 import { COPIES as FIXTURE } from './test-support/copies.mts';
@@ -7,6 +7,13 @@ import { javascriptUnits } from './test-support/javascript.mts';
 function summary(findings: readonly NearFinding[]) {
   return findings.map(({ verdict, units, templateHash }) => ({ verdict, units, templateHash }));
 }
+
+const LONE = '\uD83D';
+const MARKED = [
+  `function markLeft(text) {\n  const mark = '${LONE}';\n  let result = '';\n  for (const part of text.split(',')) {`,
+  `    if (part.length > 0) {\n      result = result + mark + part.trim() + '${LONE}x';\n    }\n  }`,
+  '  return result;\n}',
+].join('\n');
 
 function functionsOf(source: string): string[] {
   return source.split(/\n(?=function )/u);
@@ -88,5 +95,20 @@ describe('finding near-duplicate functions', () => {
       finding?.parameters.map(({ kind, a, b }) => [kind, a.value, b.value, a.start, b.start]),
     ).toEqual([['type', 'URI', 'URL', 19, 7]]);
     expect(finding?.rewritten).toBe(true);
+  });
+
+  it('finds the same pairs whether or not the engine searches, even in text with lone surrogates', () => {
+    const source = `${FIXTURE}\n\n${MARKED}\n\n${MARKED.replace('markLeft', 'markRight')}`;
+    const units = javascriptUnits(source, { file: 'copies.js' });
+    const found = findNearDuplicates(units);
+    vi.stubEnv('NITPICKER_NEAR_DUPLICATE_ENGINE', 'off');
+    const inNode = findNearDuplicates(units);
+    vi.unstubAllEnvs();
+
+    expect(found).toEqual(inNode);
+    expect(found.map(({ units: pair }) => pair)).toContainEqual([
+      'copies.js#markLeft',
+      'copies.js#markRight',
+    ]);
   });
 });
