@@ -985,6 +985,7 @@ impl<'a> Resolver<'a> {
                 flags: 0,
                 throws: Vec::new(),
                 names: Vec::new(),
+                detail: Default::default(),
             };
             return Some(Call { raw: false, receiver: owner, declaring: info.name.clone(), method });
         }
@@ -1179,7 +1180,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// What the type variables of the called method and of its class stand for at this call.
-    fn call_map(&self, resolved: &Call, call: Node, functions: bool) -> HashMap<String, Type> {
+    pub fn call_map(&self, resolved: &Call, call: Node, functions: bool) -> HashMap<String, Type> {
         let turns = *self.mapping.borrow().get(&call.id()).unwrap_or(&0u8);
         self.mapping.borrow_mut().insert(call.id(), turns + 1);
         let map = self.fill_map(resolved, call, functions, turns > 0);

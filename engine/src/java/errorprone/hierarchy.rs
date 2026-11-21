@@ -53,8 +53,14 @@ pub fn own_type(index: &TypeIndex, name: &str) -> Type {
     Type::Class(name.to_string(), bounds.unwrap_or_default())
 }
 
+/// The parameters of a method or constructor; a compact constructor has the components of its record.
 pub fn formals<'t>(method: Node<'t>) -> Vec<Node<'t>> {
-    method
+    let header = if method.kind() == "compact_constructor_declaration" {
+        crate::engine::source::parent(method).and_then(crate::engine::source::parent).unwrap_or(method)
+    } else {
+        method
+    };
+    header
         .child_by_field_name("parameters")
         .map(named_children)
         .unwrap_or_default()
@@ -112,7 +118,32 @@ pub fn sub_signature(index: &TypeIndex, origin: &ClassInfo, method: &Method, dec
     }
     let map = index.member_map(&own_type(index, &origin.name), &declaring.name);
     let seen: Vec<Type> = other.generic_parameters.iter().map(|formal| formal.substitute(&map)).collect();
-    seen == method.generic_parameters || seen.iter().map(Type::erased).eq(method.parameters.iter().cloned())
+    if seen == method.generic_parameters || seen.iter().map(Type::erased).eq(method.parameters.iter().cloned()) {
+        return true;
+    }
+    // A type variable of a class around the declaring class takes what the class around the overriding one gives it.
+    let mut around = map;
+    let mut changed = false;
+    let mut outer = declaring.name.as_str();
+    while let Some((parent, _)) = outer.rsplit_once('.') {
+        outer = parent;
+        let Some(info) = index.get(parent).filter(|info| !info.type_parameters.is_empty()) else { continue };
+        let mut inner = origin.name.as_str();
+        while let Some((child, _)) = inner.rsplit_once('.') {
+            inner = child;
+            if index.has(child) && index.is_subtype(child, parent) {
+                let given = index.member_map(&own_type(index, child), parent);
+                for (name, _) in &info.type_parameters {
+                    if let Some(kind) = given.get(name) {
+                        around.insert(name.clone(), kind.clone());
+                        changed = true;
+                    }
+                }
+                break;
+            }
+        }
+    }
+    changed && other.generic_parameters.iter().map(|formal| formal.substitute(&around).erased()).eq(method.parameters.iter().cloned())
 }
 
 /// Every method in the supertypes that the method overrides, in the order of `ASTHelpers.streamSuperMethods`.
@@ -142,6 +173,27 @@ pub fn super_methods<'c>(index: &'c TypeIndex, origin: &ClassInfo, method: &Meth
 /// The first method in the supertypes that the method overrides.
 pub fn super_method<'c>(context: &'c Context, origin: &ClassInfo, method: &Method) -> Option<(&'c ClassInfo, &'c Method)> {
     super_methods(context.resolver.index, origin, method).into_iter().next()
+}
+
+/// Whether a method declaration overrides something. An anonymous class written with `<>` takes its type arguments
+/// from the place it stands in, so there a parameter that is a type variable above fits any type. A method whose
+/// class is not known counts as overriding.
+pub fn overrides(context: &Context, method: Node) -> bool {
+    let Some((origin, declared)) = declared_method(context, method) else { return true };
+    let index = context.resolver.index;
+    if !super_methods(index, origin, declared).is_empty() {
+        return true;
+    }
+    let creation = crate::engine::source::parent(method).and_then(crate::engine::source::parent).filter(|owner| owner.kind() == "object_creation_expression");
+    let diamond = creation.and_then(|owner| owner.child_by_field_name("type")).is_some_and(|written| context.text(written).ends_with("<>"));
+    let alike = |other: &Method| {
+        other.name == declared.name
+            && other.parameters.len() == declared.parameters.len()
+            && !other.is_static
+            && !other.is_private
+            && other.generic_parameters.iter().zip(&other.parameters).zip(&declared.parameters).all(|((generic, erased), own)| generic.mentions_variable() || erased == own)
+    };
+    diamond && closure(index, &origin.name).iter().filter_map(|class| index.get(class)).any(|class| class.methods.iter().any(alike))
 }
 
 pub fn simple_name(class: &str) -> &str {

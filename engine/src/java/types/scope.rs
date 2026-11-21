@@ -479,8 +479,50 @@ impl<'a> Resolver<'a> {
         (erased, generic, varargs)
     }
 
+    /// The value of string literals joined by `+`.
+    fn joined(&self, value: Node) -> Option<String> {
+        let value = super::expr::unwrap(value);
+        if value.kind() == "binary_expression" && self.file.text_of(value.child_by_field_name("operator")?) == "+" {
+            let left = self.joined(value.child_by_field_name("left")?)?;
+            return Some(left + &self.joined(value.child_by_field_name("right")?)?);
+        }
+        super::expr::literal_text(self.file, value)
+    }
+
+    /// Full names of the annotations of a declaration, as javac resolves them; a name that is not found stays as written.
+    pub fn annotation_names(&self, declaration: Node) -> Vec<String> {
+        let holder = super::super::helpers::modifiers(declaration);
+        let annotations = holder.map(children).unwrap_or_default().into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation"));
+        let names = annotations.filter_map(|annotation| annotation.child_by_field_name("name")).map(|name| self.file.text_of(name));
+        names.map(|written| self.class_name(declaration, written).unwrap_or_else(|| written.to_string())).collect()
+    }
+
+    /// Modifiers and annotations of a method or constructor, the way a class file would hold them.
+    fn detail(&self, member: Node, interface: bool) -> super::model::Detail {
+        let has = super::super::helpers::has_modifier;
+        let mut access = 0u16;
+        for (word, bit) in [("public", 1), ("private", 2), ("protected", 4), ("static", 8), ("final", 0x10), ("synchronized", 0x20), ("native", 0x100), ("abstract", 0x400), ("strictfp", 0x800)] {
+            if has(member, word) {
+                access |= bit;
+            }
+        }
+        if interface && access & 2 == 0 {
+            access |= 1;
+            if member.child_by_field_name("body").is_none() && access & 8 == 0 {
+                access |= 0x400;
+            }
+        }
+        let parameters = member.child_by_field_name("parameters").map(children).unwrap_or_default();
+        let parameter_annotations = parameters
+            .into_iter()
+            .filter(|parameter| matches!(parameter.kind(), "formal_parameter" | "spread_parameter"))
+            .map(|parameter| self.annotation_names(parameter))
+            .collect();
+        super::model::Detail { access, annotations: self.annotation_names(member), parameter_annotations }
+    }
+
     /// The bits the annotations of a declaration give.
-    pub fn marks(&self, declaration: Node) -> u16 {
+    pub fn marks(&self, declaration: Node) -> u32 {
         let holder = super::super::helpers::modifiers(declaration).unwrap_or(declaration);
         let annotations = children(holder).into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation"));
         let names = annotations.filter_map(|annotation| annotation.child_by_field_name("name")).map(|name| self.file.text_of(name));
@@ -490,7 +532,7 @@ impl<'a> Resolver<'a> {
         })
     }
 
-    fn class_flags(&self, declaration: Node) -> u16 {
+    fn class_flags(&self, declaration: Node) -> u32 {
         use super::model::flag;
         let has = super::super::helpers::has_modifier;
         let mut bits = self.marks(declaration);
@@ -561,6 +603,7 @@ impl<'a> Resolver<'a> {
                 Some((self.file.text_of(named).to_string(), self.bound(parameter)))
             })
             .collect();
+        let (container_of, immutable_parameters) = self.immutable_marks(declaration);
         ClassInfo {
             name,
             superclass: parent.as_ref().map(Type::name),
@@ -577,11 +620,70 @@ impl<'a> Resolver<'a> {
             }),
             permitted: self.permitted(declaration, &own_name, &listed("permits")),
             record_components: (kind == "record_declaration").then(Vec::new),
+            targets: self.targets(declaration),
             flags: self.class_flags(declaration),
+            container_of,
+            immutable_parameters,
         }
     }
 
+    /// What `containerOf` of the class's `@Immutable` names, and the type parameters with `@ImmutableTypeParameter`.
+    fn immutable_marks(&self, declaration: Node) -> (Vec<String>, Vec<String>) {
+        use super::model::flag::{IMMUTABLE_NAME, IMMUTABLE_PARAMETER_NAME};
+        fn annotations<'t>(holder: Node<'t>) -> impl Iterator<Item = Node<'t>> {
+            children(holder).into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation"))
+        }
+        let named = |annotation: &Node, wanted: &str| {
+            annotation.child_by_field_name("name").is_some_and(|name| {
+                let written = self.file.text_of(name);
+                wanted.ends_with(written.rsplit('.').next().unwrap_or(written)) && self.class_name(declaration, written).as_deref() == Some(wanted)
+            })
+        };
+        let mut held = Vec::new();
+        let marked = super::super::helpers::modifiers(declaration).into_iter().flat_map(annotations).find(|annotation| named(annotation, IMMUTABLE_NAME));
+        for pair in marked.and_then(|annotation| annotation.child_by_field_name("arguments")).map(children).unwrap_or_default() {
+            let key = pair.child_by_field_name("key").map(|key| self.file.text_of(key));
+            if pair.kind() == "element_value_pair" && key == Some("containerOf") {
+                crate::engine::source::walk(pair, |part| {
+                    if part.kind() == "string_literal" {
+                        held.extend(super::expr::literal_text(self.file, part));
+                    }
+                });
+            }
+        }
+        let strict = children(declaration)
+            .into_iter()
+            .filter(|child| child.kind() == "type_parameters")
+            .flat_map(children)
+            .filter(|parameter| parameter.kind() == "type_parameter" && annotations(*parameter).any(|annotation| named(&annotation, IMMUTABLE_PARAMETER_NAME)))
+            .filter_map(|parameter| children(parameter).into_iter().find(|c| matches!(c.kind(), "type_identifier" | "identifier")))
+            .map(|name| self.file.text_of(name).to_string())
+            .collect();
+        (held, strict)
+    }
+
     /// The classes a sealed declaration permits: the ones it lists, else the ones in its file that extend it directly.
+    /// The element types the `@Target` of an annotation type lists.
+    fn targets(&self, declaration: Node) -> Option<u16> {
+        if declaration.kind() != "annotation_type_declaration" {
+            return None;
+        }
+        let holder = super::super::helpers::modifiers(declaration)?;
+        let target = children(holder).into_iter().find(|annotation| {
+            annotation.kind() == "annotation"
+                && annotation.child_by_field_name("name").is_some_and(|name| {
+                    self.class_name(declaration, self.file.text_of(name)).as_deref() == Some("java.lang.annotation.Target")
+                })
+        })?;
+        let mut bits = 0;
+        crate::engine::source::walk(target.child_by_field_name("arguments")?, |part| {
+            if part.kind() == "identifier" {
+                bits |= super::model::target::bit(self.file.text_of(part));
+            }
+        });
+        Some(bits)
+    }
+
     fn permitted(&self, declaration: Node, name: &str, listed: &[Type]) -> Option<Vec<String>> {
         let modifiers = children(declaration).into_iter().find(|child| child.kind() == "modifiers")?;
         if !self.file.text_of(modifiers).split_whitespace().any(|word| word == "sealed") {
@@ -672,8 +774,9 @@ impl<'a> Resolver<'a> {
             flags: super::model::flag::PUBLIC,
             throws: Vec::new(),
             names: Vec::new(),
+            detail: super::model::Detail { access: 1, ..Default::default() },
         };
-        let bits = |member: Node| -> u16 {
+        let bits = |member: Node| -> u32 {
             use super::model::flag;
             let mut bits = 0;
             for (word, bit) in [("final", flag::FINAL), ("public", flag::PUBLIC), ("protected", flag::PROTECTED), ("static", flag::STATIC), ("abstract", flag::ABSTRACT)] {
@@ -705,7 +808,7 @@ impl<'a> Resolver<'a> {
                             constant: (info.is_interface || has(member, "final"))
                                 .then(|| declarator.field("value"))
                                 .flatten()
-                                .and_then(|value| super::expr::literal_text(self.file, value)),
+                                .and_then(|value| self.joined(value)),
                             fixed: (info.is_interface || (has(member, "final") && has(member, "static"))).then(|| declarator.field("value")).flatten().and_then(
                                 |value| {
                                     let mut uses = Vec::new();
@@ -769,6 +872,7 @@ impl<'a> Resolver<'a> {
                         flags: bits(member) | if member.field("body").is_none() && info.is_interface { super::model::flag::ABSTRACT } else { 0 },
                         throws: self.thrown(member),
                         names: self.parameter_names(member),
+                        detail: self.detail(member, info.is_interface),
                     });
                 }
                 "constructor_declaration" => {
@@ -779,6 +883,7 @@ impl<'a> Resolver<'a> {
                         throws: self.thrown(member),
                         names: self.parameter_names(member),
                         flags: bits(member),
+                        detail: self.detail(member, false),
                         ..plain("<init>", parameters, Type::Primitive("void"))
                     });
                 }

@@ -32,7 +32,7 @@ fn method_rules(index: &TypeIndex, declaring: &ClassInfo, method: &Method) -> Op
     if chain.iter().any(|(_, each)| each.flags & flag::IGNORE_RESULT != 0) || proto_rule(index, declaring, method) {
         return Some(false);
     }
-    let generated = |bit: u16| chain.iter().find(|(class, each)| each.is_abstract && class.flags & bit != 0);
+    let generated = |bit: u32| chain.iter().find(|(class, each)| each.is_abstract && class.flags & bit != 0);
     if generated(flag::AUTO_VALUE).is_some() {
         return Some(true);
     }
@@ -49,7 +49,7 @@ fn expected(index: &TypeIndex, declaring: &ClassInfo, method: &Method) -> bool {
     if let Some(decided) = method_rules(index, declaring, method) {
         return decided;
     }
-    let marked = |flags: u16| match flags & (flag::CHECK_RESULT | flag::IGNORE_RESULT) {
+    let marked = |flags: u32| match flags & (flag::CHECK_RESULT | flag::IGNORE_RESULT) {
         0 => None,
         bits => Some(bits & flag::CHECK_RESULT != 0),
     };
@@ -112,7 +112,7 @@ fn call(context: &Context, node: Node) {
 }
 
 /// The methods a method reference can stand for when the function it implements takes `arity` arguments.
-fn referenced<'c>(context: &'c Context, qualifier: Node, name: &str, arity: usize) -> Vec<(&'c ClassInfo, &'c Method)> {
+pub fn referenced<'c>(context: &'c Context, qualifier: Node, name: &str, arity: usize) -> Vec<(&'c ClassInfo, &'c Method)> {
     use crate::java::types::expr::Receiver;
     let resolver = context.resolver;
     let index = resolver.index;

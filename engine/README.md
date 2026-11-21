@@ -109,12 +109,17 @@ whole project. Class files are listed at start and read on first use.
 `--rules _ErrorProne` runs checks written after Error Prone 2.50.0 (`src/java/errorprone/`): `OperatorPrecedence`,
 `UngroupedOverloads`, `MissingBraces`, `EmptyCatch`, `NonFinalStaticField`, `ThrowSpecificExceptions`, `SystemOut`,
 `JavaUtilDate`, `StringCaseLocaleUsage`, `MissingOverride`, `ReferenceEquality`, `PrivateConstructorForUtilityClass`
-and `InconsistentOverloads`. A finding carries the check, the line and column javac reports for it, and the
+and `InconsistentOverloads`, and the ones added since: `parity/errorprone/ported.json` lists every check. A finding carries the check, the line and column javac reports for it, and the
 message; `@SuppressWarnings` with the check name or `all` hides it. `NP_EP_ONLY=<check>` runs one check.
 
 `tests/expected/errorprone.json` holds what Error Prone reported for `tests/fixtures/errorprone`. For a real
 project, `parity/errorprone/ErrorProneRun.java` compiles a source list with Error Prone and writes its findings
 and the time of each check, and `parity/errorprone/compare.py report.json ep.json [check] [-v]` compares.
+
+`ImmutableEnumChecker` runs only when `com.google.errorprone.annotations.Immutable` is among the classes of the
+project, since nitpicker turns the check off in Error Prone when the annotation is out of reach. The fixtures
+carry their own copy of the three annotations the check reads; to run Error Prone on them, put an entry whose
+path contains `error_prone_annotations` on the class path so `ErrorProneRun` leaves the check on.
 
 The checks are ports of Error Prone's (Apache-2.0, see `NOTICE` at the root of the repository). The doc comment
 parser under them (`doc.rs`, `docparse.rs`, `doctags.rs`, `docref.rs`) is written from the Documentation Comment
