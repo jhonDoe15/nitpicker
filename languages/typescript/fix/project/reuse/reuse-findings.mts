@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../../shared/paths/checkout-module.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import type { FixContext } from '../typed/project-types.mts';
 import type { ToolFinding } from '../typed/reuse-views.mts';

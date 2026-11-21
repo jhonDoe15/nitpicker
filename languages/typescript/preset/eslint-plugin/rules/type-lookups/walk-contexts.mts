@@ -3,7 +3,7 @@ import { ancestorsOf, contains } from '../analysis/ancestry.mts';
 import { isFunctionNode } from '../analysis/constant-resolution.mts';
 import { calleeName } from '../null-branches/branch-calls/leaving-calls.mts';
 import { nodeChildren } from '../typed/node-views.mts';
-import { preOrder as untypedPreOrder } from '../../../../../../shared/traversal.mjs';
+import { preOrder } from '../../../../../../shared/traversal.mts';
 
 type FunctionNode =
   TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression | TSESTree.FunctionDeclaration;
@@ -16,11 +16,6 @@ export type Walk = {
   readonly nodeName: string;
   readonly selector?: string;
 };
-
-const preOrder: (
-  root: TSESTree.Node,
-  children: (node: TSESTree.Node) => TSESTree.Node[],
-) => TSESTree.Node[] = untypedPreOrder;
 
 const BROAD_SELECTORS = new Set([
   '*',

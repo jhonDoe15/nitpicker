@@ -4,8 +4,8 @@ import { afterEach, expect, it } from 'vitest';
 import { compareFindings } from '../../../../../core/diff/comparison/compare.mts';
 import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
 import { callUntyped, type JavaFinding } from '../../typed/java-values.mts';
-import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
-import { applyFindingPolicy } from '../../../../../shared/findings/finding-policy.mjs';
+import { exceptionHint } from '../../../../../shared/rules/exceptions.mts';
+import { applyFindingPolicy } from '../../../../../shared/findings/finding-policy.mts';
 import { kotlinRuleCases } from '../../kotlin/rules/test-support/kotlin-rule-cases.mts';
 import {
   kotlinFindings,
@@ -64,7 +64,7 @@ it('baselines cancellation findings across line movement in main and test source
     ]),
   ).toEqual(sources.map(() => [`fp:nitpicker/subject=${message}`, 'enforceable', 20]));
   expect(headFindings[0]?.message).toBe(
-    `${message} Make a direct suspend call and catch only the specific exception you expect, so cancellation still reaches the coroutine. ${textOf(exceptionHint(rule, sources[0]))}`,
+    `${message} Make a direct suspend call and catch only the specific exception you expect, so cancellation still reaches the coroutine. ${textOf(exceptionHint(rule, sources[0] ?? ''))}`,
   );
 });
 

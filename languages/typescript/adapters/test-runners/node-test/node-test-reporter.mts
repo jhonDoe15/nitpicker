@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { formattedValue } from '../../../../../shared/rules/failing-tests/failing-tests.mjs';
+import { formattedValue } from '../../../../../shared/rules/failing-tests/failing-tests.mts';
 
 import type {
   FailureDetail,

@@ -1,4 +1,4 @@
-import { escapeRegExp as untypedEscapeRegExp } from '../../../shared/paths/glob.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../shared/paths/glob.mts';
 import { closingIndex } from './brackets.mts';
 import { isFailureCall, logCalls, topLevelArguments, type LogCall } from './loggers.mts';
 

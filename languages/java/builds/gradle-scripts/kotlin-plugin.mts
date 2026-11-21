@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import {
   filesUnder as untypedFilesUnder,
   pathInside as untypedPathInside,
-} from '../../../../shared/filesystem.mjs';
+} from '../../../../shared/filesystem.mts';
 import { fieldOf, fieldsOf, textOf } from '../../../../shared/values/readers.mts';
 
 type Catalog = { readonly name: string; readonly file: string };

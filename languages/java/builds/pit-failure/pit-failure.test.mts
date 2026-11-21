@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 import { pitTimeoutMs, runPit } from '../../maven/pit/maven-pit.mts';
 import { gradlePitDeadlineMs, pitFailureFindings } from './pit-failure.mts';
 

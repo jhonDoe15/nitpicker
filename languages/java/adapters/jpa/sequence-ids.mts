@@ -1,5 +1,5 @@
-import { databaseKinds } from '../../../../shared/hygiene/schema/database-kind.mjs';
-import { schemaProjectFiles } from '../../../../shared/hygiene/schema/foreign-key-gate.mjs';
+import { databaseKinds } from '../../../../shared/hygiene/schema/database-kind.mts';
+import { schemaProjectFiles } from '../../../../shared/hygiene/schema/foreign-key-gate.mts';
 import type { JavaFinding } from '../typed/java-values.mts';
 
 export const SEQUENCE_RULE = 'JpaSequenceIds';

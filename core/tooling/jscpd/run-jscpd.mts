@@ -2,20 +2,20 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { SpawnSyncReturns } from 'node:child_process';
-import { pathInside as untypedPathInside } from '../../../shared/filesystem.mjs';
-import { globMatcher as untypedGlobMatcher } from '../../../shared/paths/glob.mjs';
-import { DUPLICATES_MODE } from '../../../shared/policy.mjs';
+import { pathInside as untypedPathInside } from '../../../shared/filesystem.mts';
+import { globMatcher } from '../../../shared/paths/glob.mts';
+import { DUPLICATES_MODE } from '../../../shared/policy.mts';
 import {
   RENAMED_SETTINGS,
   withNormalizedTree as untypedWithNormalizedTree,
-} from '../../../shared/renamed-clones/tree.mjs';
+} from '../../../shared/renamed-clones/tree.mts';
 import { parseJson } from '../../../shared/values/readers.mts';
-import { layeredJscpdConfig, renamedJscpdSettings } from './config.mts';
+import { headJscpdSettings, layeredJscpdConfig, renamedJscpdSettings } from './config.mts';
 import type { JscpdSettings } from './config.mts';
 import { trackTemporaryPath, untrackTemporaryPath } from '../temporary-files.mts';
 import { resolveTool } from '../tool-resolution.mts';
 import { rootsPattern } from './skipped-folders.mts';
-import { describeProcessEnd as untypedDescribeProcessEnd } from '../../../shared/processes/process-failure.mjs';
+import { describeProcessEnd as untypedDescribeProcessEnd } from '../../../shared/processes/process-failure.mts';
 
 type RenamedInput = { readonly syntax: string; readonly files: readonly string[] };
 type Run = { readonly root: string | undefined; readonly report: unknown };
@@ -30,7 +30,6 @@ type GroupOptions = ToolOptions & {
 };
 
 const pathInside: (root: string, relative: string) => string | undefined = untypedPathInside;
-const globMatcher: (glob: string) => RegExp = untypedGlobMatcher;
 const describeProcessEnd: (
   name: string,
   result: SpawnSyncReturns<string>,
@@ -218,7 +217,9 @@ export function runJscpd({
   reportFile = DUPLICATES_REPORT,
   together,
   renamed,
+  environment,
 }: ToolOptions & {
+  readonly environment: Readonly<Record<string, string | undefined>>;
   readonly cwd: string;
   readonly roots: readonly string[];
   readonly ignore: readonly string[];
@@ -226,7 +227,10 @@ export function runJscpd({
   readonly reportFile?: string;
   readonly renamed: RenamedInput | undefined;
 }): void {
-  const { ignore: projectIgnore = [], ...settings } = layeredJscpdConfig(JSCPD_SETTINGS);
+  const { ignore: projectIgnore = [], ...settings } = layeredJscpdConfig(
+    JSCPD_SETTINGS,
+    headJscpdSettings(environment),
+  );
   const ignores = [...new Set([...ignore, ...projectIgnore])];
   const runs = runGroups({
     cwd,

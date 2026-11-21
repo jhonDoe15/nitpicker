@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
+import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
-import { hash } from '../../../../shared/rules/finding-helpers.mjs';
-import { NO_PRODUCTION_RUNTIME_MESSAGE } from '../../../../shared/test-support/test-runtime-messages.mjs';
+import { hash } from '../../../../shared/rules/finding-parts.mts';
+import { NO_PRODUCTION_RUNTIME_MESSAGE } from '../../../../shared/test-support/test-runtime-messages.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../typed/java-values.mts';
 import { javaRouteRule } from '../java-policy.mts';
 import { readTestRuntimeFindings } from './test-runtime-findings.mts';

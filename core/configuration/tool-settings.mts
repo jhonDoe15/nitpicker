@@ -5,12 +5,12 @@ import {
   PROJECT_TOOL_CONFIGS,
   styleToolsOf,
 } from '../../languages/java/adapters/gradle-presets.mts';
-import { configError, DRIVE_LETTER, GLOB_CHARACTER, PARENT_SEGMENT } from '../../shared/config.mjs';
+import { configError, DRIVE_LETTER, GLOB_CHARACTER, PARENT_SEGMENT } from '../../shared/config.mts';
 import { isPlainObject } from './views/config-views.mts';
 import { textOf, textsOf } from '../../shared/values/readers.mts';
 import { TEST_RUNNERS } from '../../languages/typescript/preset/test-runner/runners.mts';
-import { validateTestTimeouts } from '../../shared/test-timeouts/resolve.mjs';
-import { suggestionOrAllowed } from '../../shared/messages/closest-match.mjs';
+import { validateTestTimeouts } from '../../shared/test-timeouts/resolve.mts';
+import { suggestionOrAllowed } from '../../shared/messages/closest-match.mts';
 
 type EngineSetting = {
   readonly key: string;

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { exceptionHint as untypedExceptionHint } from '../../../shared/rules/exceptions.mjs';
+import { exceptionHint as untypedExceptionHint } from '../../../shared/rules/exceptions.mts';
 
 const exceptionHint: (rule: string, path: string) => string = untypedExceptionHint;
 const anyText: unknown = expect.any(String);

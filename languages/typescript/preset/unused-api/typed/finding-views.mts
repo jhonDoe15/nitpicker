@@ -1,13 +1,13 @@
 import {
   MESSAGES as UNTYPED_MESSAGES,
   messageFields as untypedMessageFields,
-} from '../../../../../shared/policy.mjs';
-import { exceptionText as untypedExceptionText } from '../../../../../shared/rules/exceptions.mjs';
-import { nextOccurrence as untypedNextOccurrence } from '../../../../../shared/rules/finding-helpers.mjs';
+} from '../../../../../shared/policy.mts';
+import { exceptionText as untypedExceptionText } from '../../../../../shared/rules/exceptions.mts';
+import { occurrenceCounter as untypedOccurrenceCounter } from '../../../../../shared/rules/finding-parts.mts';
 import {
   UNUSED_API_RULE_IDS as UNTYPED_RULE_IDS,
   UNUSED_OPTION_SCOPES as UNTYPED_SCOPES,
-} from '../../../../../shared/unused-api/unused-api-policy.mjs';
+} from '../../../../../shared/unused-api/unused-api-policy.mts';
 
 export const MESSAGES: { readonly unusedProp: unknown; readonly unusedOption: unknown } =
   UNTYPED_MESSAGES;
@@ -19,8 +19,7 @@ export const messageFields: (
 
 export const exceptionText: (rule: string, path: string) => string = untypedExceptionText;
 
-export const nextOccurrence: (occurrences: Map<string, number>, key: string) => number =
-  untypedNextOccurrence;
+export const occurrenceCounter: () => (key: string) => number = untypedOccurrenceCounter;
 
 export const UNUSED_API_RULE_IDS: { readonly unusedProp: string; readonly unusedOption: string } =
   UNTYPED_RULE_IDS;

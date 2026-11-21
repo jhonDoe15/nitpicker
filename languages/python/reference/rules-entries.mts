@@ -14,7 +14,7 @@ export function pythonRulesEntries(): EntryView[] {
         rule,
         page: 'python-nitpicker',
         analyzers: PYTHON_ANALYZERS,
-        summary: describedBy(hint),
+        summary: describedBy(hint) ?? '',
         why: "One of the checks of nitpicker's own Python script. It runs on the Python source and tests and names one allowed form.",
         allowed: allowedOf(hint),
         exception:

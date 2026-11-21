@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { pathsOutsideProject } from '../../java-e2e/test-support/project-paths.mts';
 import { gradle, kotlinE2eEnabled, kotlinPolicy } from '../__tests__/kotlin-e2e-project.mts';
-import { byText } from '../../../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../../../shared/text-order/by-text.mts';
 import { collectJavaFindings } from '../test-support/views/kotlin-e2e-views.mts';
 import type { Finding } from '../../../../../shared/values/findings.mts';
 import { fieldOf, numberOr, textOf } from '../../../../../shared/values/readers.mts';
@@ -160,11 +160,11 @@ describe.skipIf(!kotlinE2eEnabled)('a Gradle build with a Kotlin Multiplatform p
           ({ tool, rule, identity }) =>
             tool === 'pit' && rule === 'mutation-summary' && identity.endsWith('@:shared'),
         )
-        .map(({ metric }) => [
+        .map(({ metric }): [string, boolean] => [
           textOf(fieldOf(metric, 'name')),
           numberOr(fieldOf(metric, 'value'), 0) > 0,
         ])
-        .toSorted(byText),
+        .toSorted(([left], [right]) => byText(left, right)),
     ).toEqual([
       ['GeneratedCode', true],
       ['Killed', true],

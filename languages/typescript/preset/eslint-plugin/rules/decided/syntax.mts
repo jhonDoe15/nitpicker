@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { rangeKey as untypedRangeKey } from '../../../../../../shared/logic/terms.mjs';
+import { rangeKey as untypedRangeKey } from '../../../../../../shared/logic/terms.mts';
 import type { Range } from '../analysis/logic/term-views.mts';
 import { chainOf, depthFirst, isNode } from '../typed/node-views.mts';
 import { isFunction } from '../typed/syntax-views.mts';

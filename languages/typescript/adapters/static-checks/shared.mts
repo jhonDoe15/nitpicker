@@ -4,9 +4,9 @@ import { realpathSync, lstatSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { type StaticCheckOptions, normalizedRelativePath } from './arguments.mts';
 import { createHash } from 'node:crypto';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
-import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
-import { describeProcessEnd } from '../../../../shared/processes/process-failure.mjs';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mts';
+import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mts';
+import { describeProcessEnd } from '../../../../shared/processes/process-failure.mts';
 
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 

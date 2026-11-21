@@ -1,6 +1,6 @@
 import { isUtf8 } from 'node:buffer';
 import { existsSync, lstatSync, readFileSync } from 'node:fs';
-import { globsMatcher } from '../../../shared/paths/glob.mjs';
+import { globsMatcher } from '../../../shared/paths/glob.mts';
 import { collectWorkingTreeChanges } from '../changes.mts';
 import { isInScope } from '../../scope/scope-findings.mts';
 import { collectProjectFiles } from '../all-files/project-files.mts';

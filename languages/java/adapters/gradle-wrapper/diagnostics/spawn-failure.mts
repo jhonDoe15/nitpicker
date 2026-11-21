@@ -1,4 +1,4 @@
-import { explainedError } from '../../../../../shared/messages/troubleshooting.mjs';
+import { explainedError } from '../../../../../shared/messages/troubleshooting.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import type { JavaBudget } from '../../typed/java-run-options.mts';
 

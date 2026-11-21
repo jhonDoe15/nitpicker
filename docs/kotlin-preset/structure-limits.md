@@ -2,7 +2,7 @@
 
 Part of the [Kotlin preset guide](../kotlin-preset.md).
 
-The shared structure rule (`shared/rules/structure.mjs`) runs on Kotlin functions: more than 50 lines,
+The shared structure rule (`shared/rules/structure.mts`) runs on Kotlin functions: more than 50 lines,
 15 statements or 3 parameters, or control nesting deeper than 2, fails with the rule ids
 `function-lines-limit`, `function-statements-limit`, `function-parameters-limit` and
 `function-control-nesting-limit` and the messages of the other languages, under the tool name

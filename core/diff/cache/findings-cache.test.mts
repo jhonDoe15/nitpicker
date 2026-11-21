@@ -144,7 +144,7 @@ describe('findings cache', () => {
         reports: new Map<string, AnalyzerReport>(
           names.filter((name) => name !== 'broken').map((name) => [name, { findings: [] }]),
         ),
-        timings: new Map<string, unknown>(),
+        timings: new Map<string, number | undefined>(),
         toolErrors: names.includes('broken')
           ? [{ tool: 'broken', snapshot: 'base', message: 'boom' }]
           : [],
@@ -184,7 +184,7 @@ describe('findings cache', () => {
         ['coverage', { findings: [testsFailed] }],
         ['crap', { findings: [{ ...finding, tool: 'crap', rule: 'crap-coverage-unknown' }] }],
       ]),
-      timings: new Map<string, unknown>(),
+      timings: new Map<string, number | undefined>(),
       toolErrors: [],
     });
 

@@ -8,7 +8,7 @@ import {
   TYPESCRIPT_ONLY_KEYS,
   validateProjectRelativePath,
   validateFactRuleSettings,
-} from '../../shared/config.mjs';
+} from '../../shared/config.mts';
 import { validateJavaConfig } from '../../languages/java/adapters/java-policy.mts';
 import { validateKotlinOptions } from '../../languages/java/adapters/kotlin/kotlin-options.mts';
 import { validateJavaBuildSetting } from '../../languages/java/builds/build-tool/build-tool-setting.mts';
@@ -18,13 +18,13 @@ import {
   validatePythonConfig,
 } from '../../languages/python/adapters/configuration/python-config.mts';
 import { validateGoConfig } from '../../languages/go/adapters/configuration/go-config.mts';
-import { validateAnalyzerTimeouts } from '../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+import { validateAnalyzerTimeouts } from '../../shared/analyzer-timeouts/analyzer-timeouts.mts';
 import { validateTools } from './tool-settings.mts';
 import { fieldOf, textOf, textsOf } from '../../shared/values/readers.mts';
 import type { NitpickerConfig } from '../../shared/values/config-types.mts';
 import { rejectHeadBase } from './project-checks/project-config.mts';
 import { conventionDefinitions } from '../conventions/definitions.mts';
-import { validateConventions } from '../../shared/conventions/settings.mjs';
+import { validateConventions } from '../../shared/conventions/settings.mts';
 import { validateScope, validateTestConsole } from './scopes/scope-settings.mts';
 import { validateHistory } from './scopes/history-settings.mts';
 import { validateProtocols } from './scopes/protocols/protocol-settings.mts';

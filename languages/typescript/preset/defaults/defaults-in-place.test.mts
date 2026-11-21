@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
-import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mts';
 import { createEntryPointAnalyzer } from '../../adapters/entry-points.mts';
 import { createEslintAnalyzer } from '../../adapters/eslint/analyzer.mts';
 import { createStaticCheckAnalyzer } from '../../adapters/static-checks/analyzer.mts';

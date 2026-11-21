@@ -1,5 +1,5 @@
 import type { FetchOwner, Joined, RelationOf } from '../../../../jpa/fetches/fetch-types.mts';
-import { crossedCollections } from '../../../../../../../shared/joins/crossed-collections.mjs';
+import { crossedCollections } from '../../../../../../../shared/joins/crossed-collections.mts';
 import {
   graphFetches,
   jpqlFetches,

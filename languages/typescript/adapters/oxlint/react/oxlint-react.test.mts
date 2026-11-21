@@ -2,7 +2,7 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mts';
 import { lintWithOxlint } from '../oxlint-runner.mts';
 import type { LintResult } from '../plan/oxlint-shapes.mts';
 import { oxlintOptions, residualRecorder, type ResidualRun } from '../test-support/oxlint-runs.mts';

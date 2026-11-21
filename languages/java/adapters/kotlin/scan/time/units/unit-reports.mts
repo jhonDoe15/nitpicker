@@ -4,8 +4,8 @@ import {
   unitFactor as untypedUnitFactor,
   unitLabel as untypedUnitLabel,
   unitOfName as untypedUnitOfName,
-} from '../../../../../../../shared/naming/time-units/unit-names.mjs';
-import { unitMessage as untypedUnitMessage } from '../../../../../../../shared/naming/time-units/unit-messages.mjs';
+} from '../../../../../../../shared/naming/time-units/unit-names.mts';
+import { unitMessage as untypedUnitMessage } from '../../../../../../../shared/naming/time-units/unit-messages.mts';
 import type { CallInfo, UnitArgument, UnitBase, UnitToken, UnitValue } from './unit-shapes.mts';
 
 type Values = Record<string, string>;

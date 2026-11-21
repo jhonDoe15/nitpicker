@@ -1,18 +1,18 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
 import {
   ANALYZER_TIMEOUT_KEY,
   withConfiguredTimeout,
-} from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
-import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
+} from '../../../shared/analyzer-timeouts/analyzer-timeouts.mts';
+import { resolveHeadPolicy } from '../../../shared/head-policy.mts';
 import { withHeadCheckoutFacts } from '../../../languages/typescript/preset/head-policy.mts';
 import { describeConfigOverrides, readConfigFile } from '../../configuration/config.mts';
 import { baseConfigCoveringHead } from '../base-config/base-coverage.mts';
 import { configureAll, presetAnalyzers } from '../../configuration/preset-analyzers.mts';
 import { withBaseTestRunner as untypedWithBaseTestRunner } from '../../../languages/typescript/preset/diff/base-runner.mts';
 import { applyRunProfile, withoutTestRun } from '../../quick/profile.mts';
-import { withoutTroubleshooting } from '../../../shared/messages/troubleshooting.mjs';
+import { withoutTroubleshooting } from '../../../shared/messages/troubleshooting.mts';
 import type { Analyzer, ProfiledAnalyzer } from '../../../shared/values/analyzers.mts';
 import { callUntyped } from '../../../shared/values/boundaries/untyped-call.mts';
 import { objectOf, textOf } from '../../../shared/values/readers.mts';

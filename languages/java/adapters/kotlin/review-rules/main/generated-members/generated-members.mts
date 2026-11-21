@@ -12,7 +12,7 @@ import type {
 import {
   cycleText as untypedCycleText,
   memberCycles as untypedMemberCycles,
-} from '../../../../../../../shared/rules/generated-members/member-cycles.mjs';
+} from '../../../../../../../shared/rules/generated-members/member-cycles.mts';
 import {
   MEMBER_CYCLE_RULE,
   SKIPPED_SUPER_RULE,

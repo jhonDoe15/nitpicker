@@ -883,12 +883,12 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `Literal[...]` subscripts, `__all__` and class-body lists, the first argument of a translation or
   message-key call, and idiomatic text (encodings, HTTP methods, argparse actions, MIME types, time
   formats). The minimum length, the number of allowed uses and those lists are defined once in
-  [`shared/literals/repeated-literal-exemptions.mjs`](../../shared/literals/repeated-literal-exemptions.mjs);
+  [`shared/literals/repeated-literal-exemptions.mts`](../../shared/literals/repeated-literal-exemptions.mts);
   `literal-exemptions.test.mts` fails when `literals.py` drifts from it. The message ends with the
   `exceptions` route for the rule like every other Python rule.
 - `generic-name` reports a file, a folder or a class (nested ones too) whose last name word is `util`,
   `utils`, `utility`, `utilities`, `helper`, `helpers`, `manager`, `managers`, `common`, `commons`,
-  `misc` or `miscellaneous` (the list in `shared/naming/smell-words.mjs`, which the Kotlin preset uses
+  `misc` or `miscellaneous` (the list in `shared/naming/smell-words.mts`, which the Kotlin preset uses
   too; trailing digits and version words such as `v2` are ignored). A last word that only wraps the
   real one (`functions`, `funcs`, `methods`, `module`, `modules`, `mixin`, `mixins`, `base`, `classes`,
   the container words of the same module) is skipped, so `util_functions`, `helper_module`,
@@ -949,7 +949,7 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `auth_key`, `signing_key`, `encryption_key`, `hmac_key` or `jwt_key` (a trailing `value`, `raw`,
   `str`, `string`, `text` or `plain` is ignored; tokenizer marker tokens such as `eos_token` and
   `pad_token` are not secrets). The value rules are shared with the other presets
-  (`shared/naming/secret-words.mjs`, mirrored in `rules/credentials/spec.py`): six characters or more
+  (`shared/naming/secret-words.mts`, mirrored in `rules/credentials/spec.py`): six characters or more
   with letters and digits, or three character classes; for a `password`, `passwd` or `passphrase`
   name also eight characters or more with a lowercase letter followed by an uppercase one
   (`CorrectHorseBatteryStaple`, not a single word such as `Elephantine` or an all-lowercase
@@ -994,7 +994,7 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `ordering`). `limit(1)` on a `select` of only counts or constants and `LIMIT 1` on a constant or a
   count pass; `.first()` and an index (`[0]`) are not reported. It is the counterpart of
   `nitpicker/no-unordered-query` and reads SQL text with a port of
-  `shared/rules/queries/sql-order.mjs` that the e2e tests check against it.
+  `shared/rules/queries/sql-order.mts` that the e2e tests check against it.
 - `unbounded-query-array` reports, in main sources of a file that imports SQLAlchemy or SQLModel, a
   runtime list passed to `in_`, `not_in` or `notin_`, or to `values(...)` on an `insert(...)`: a
   parameter (unannotated or annotated as a list, set, sequence, iterable or `tuple[X, ...]`; for

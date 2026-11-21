@@ -5,9 +5,9 @@ import {
   readPyproject as untypedReadPyproject,
   parseToml as untypedParseToml,
 } from '../../configuration/project-checks/uv-workspace.mts';
-import { containedPath as untypedContainedPath } from '../../../shared/paths/contained-path.mjs';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../shared/paths/glob.mjs';
-import { memoized as untypedMemoized } from '../../../shared/values/caching/memoized.mjs';
+import { containedPath as untypedContainedPath } from '../../../shared/paths/contained-path.mts';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../shared/paths/glob.mts';
+import { memoized as untypedMemoized } from '../../../shared/values/caching/memoized.mts';
 import { fieldOf, fieldsOf, isPlainObject, textOf } from '../../../shared/values/readers.mts';
 import type { PlanProject } from '../project-types.mts';
 import { isInside } from '../discovery/repository-files.mts';

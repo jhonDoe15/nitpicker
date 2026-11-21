@@ -2,8 +2,8 @@ import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { cachedValue } from '../../../../../../../shared/values/caching/cached-value.mts';
 import { parseJson, readTextFile } from './file-reads.mts';
-import { projectFilesUnder } from '../../../../../../../shared/project-files/project-files.mjs';
-import { ancestorDirectories as untypedAncestorDirectories } from '../../../../../../../shared/filesystem.mjs';
+import { projectFilesUnder } from '../../../../../../../shared/project-files/project-files.mts';
+import { ancestorDirectories as untypedAncestorDirectories } from '../../../../../../../shared/filesystem.mts';
 
 const ancestorDirectories: (directory: string) => string[] = untypedAncestorDirectories;
 

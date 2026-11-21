@@ -3,7 +3,7 @@ import {
   hasCredentialShape,
   isHardcodedSecret,
   isSecretName,
-} from '../../../../../../shared/naming/secret-words.mjs';
+} from '../../../../../../shared/naming/secret-words.mts';
 import { envKey, literalParts, type LiteralPart, memberName, stringKey } from './secret-nodes.mts';
 
 type MessageIds = 'hardcodedSecret' | 'credentialLiteral';

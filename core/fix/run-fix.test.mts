@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
-import { TOOL_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
+import { TOOL_TIMEOUT_MS } from '../../shared/processes/deadlines.mts';
 import { fixWorkingTree, spawnInvocation } from './run-fix.mts';
 import { fakeGoFormat, fakeJvmTools, fakePythonTools } from './test-support/tool-views.mts';
 import { fieldAt } from '../../scripts/json/fields.mts';

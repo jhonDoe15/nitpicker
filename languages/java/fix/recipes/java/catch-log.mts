@@ -1,5 +1,5 @@
 import type { FixRecipe, RecipeFix } from '../../../../../core/fix/typed/fix-types.mts';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mts';
 import {
   catchLogCalls as untypedCatchLogCalls,
   endOfText,

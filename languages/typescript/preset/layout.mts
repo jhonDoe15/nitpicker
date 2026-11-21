@@ -16,7 +16,7 @@ import {
   escapeRegExp as untypedEscapeRegExp,
   globMatcher,
   globToRegExpSource,
-} from '../../../shared/paths/glob.mjs';
+} from '../../../shared/paths/glob.mts';
 import type {
   ClassifierInput,
   ExcludedGlobs,

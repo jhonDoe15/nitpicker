@@ -1,4 +1,4 @@
-import { isSecretName } from '../../../../../../../shared/naming/secret-words.mjs';
+import { isSecretName } from '../../../../../../../shared/naming/secret-words.mts';
 import { splitArguments } from '../../kotlin-source.mts';
 import { literalsWithin, withLiteralIndex } from './literal-index.mts';
 import { secretSinks } from './secret-sinks.mts';

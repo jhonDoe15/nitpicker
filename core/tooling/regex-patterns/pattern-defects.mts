@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 import type { ESLint, Linter } from 'eslint';
-import { lazy as untypedLazy } from '../../../shared/rules/finding-helpers.mjs';
-import { patternRuleHints } from '../../../shared/rules/regex/pattern-rules.mjs';
+import { lazy as untypedLazy } from '../../../shared/rules/finding-parts.mts';
+import { patternRuleHints } from '../../../shared/rules/regex/pattern-rules.mts';
 import { fieldOf } from '../../../shared/values/readers.mts';
 
 type Dialect = { readonly dot: string; readonly unicodeClasses: boolean };

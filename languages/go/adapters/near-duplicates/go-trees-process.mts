@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { Parser } from 'web-tree-sitter';
-import { pathInside } from '../../../../shared/filesystem.mjs';
-import { fileRequest as untypedFileRequest } from '../../../../shared/near-duplicates/trees-request.mjs';
+import { pathInside } from '../../../../shared/filesystem.mts';
+import { fileRequest as untypedFileRequest } from '../../../../shared/near-duplicates/trees-request.mts';
 import { loadGrammar } from '../../../java/adapters/near-duplicates/grammar/load-grammar.mts';
 import { goProjectUnits } from './project-units.mts';
 

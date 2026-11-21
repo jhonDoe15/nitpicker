@@ -1,6 +1,6 @@
-import { applyFindingExceptions as untypedApply } from '../../../../../shared/exceptions/finding-exceptions.mjs';
-import { findingPaths as untypedPaths } from '../../../../../shared/exceptions/matching.mjs';
-import { globMatcher as untypedMatcher } from '../../../../../shared/paths/glob.mjs';
+import { applyFindingExceptions as untypedApply } from '../../../../../shared/exceptions/finding-exceptions.mts';
+import { findingPaths as untypedPaths } from '../../../../../shared/exceptions/matching.mts';
+import { globMatcher as untypedMatcher } from '../../../../../shared/paths/glob.mts';
 import { callUntyped as call } from '../../../../../shared/values/boundaries/untyped-call.mts';
 import { fieldOf, listOf, textsOf } from '../../../../../shared/values/readers.mts';
 

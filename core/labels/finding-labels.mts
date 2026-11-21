@@ -1,7 +1,8 @@
-import { entryForFinding, referenceLinks } from '../../shared/reference/store.mjs';
+import { entryForFinding, referenceLinks } from '../../shared/reference/store.mts';
+import type { EntryIndex, RuleEntry } from '../../shared/reference/typed/entry-types.mts';
 import { goLabels } from './go-labels.mts';
 import { LABELS } from './taxonomy.mts';
-import { fieldOf, textOf, textsOf } from '../../shared/values/readers.mts';
+import { textOf, textsOf } from '../../shared/values/readers.mts';
 
 type Labels = readonly string[];
 type Located = { readonly tool?: unknown; readonly rule?: unknown };
@@ -10,11 +11,7 @@ export type LabelsOf = (finding: Located) => Labels;
 
 type AreaOf = (tool: string) => string;
 
-type LabelerSource = { readonly areaOf: AreaOf; readonly index?: () => unknown };
-
-const findEntry: (index: unknown, finding: { tool: string; rule: string }) => unknown =
-  entryForFinding;
-const links: () => { index(): unknown } = referenceLinks;
+type LabelerSource = { readonly areaOf: AreaOf; readonly index?: () => EntryIndex };
 
 const TESTS: Labels = ['tests'];
 const AREA_LABELS: ReadonlyMap<string, Labels> = new Map([
@@ -31,21 +28,21 @@ export function fallbackLabels(area: string): Labels {
   return AREA_LABELS.get(area) ?? FALLBACK;
 }
 
-function entryLabels(index: unknown, tool: string, rule: string): Labels | undefined {
-  const labels = textsOf(fieldOf(findEntry(index, { tool, rule }), 'labels')).filter((label) =>
+function entryLabels(index: EntryIndex, tool: string, rule: string): Labels | undefined {
+  const labels = (entryForFinding(index, { tool, rule })?.labels ?? []).filter((label) =>
     LABELS.includes(label),
   );
   return labels.length === 0 ? undefined : labels;
 }
 
-const SHARED_LINKS = links();
+const SHARED_LINKS = referenceLinks();
 
-function referenceIndex(): unknown {
+function referenceIndex(): EntryIndex {
   return SHARED_LINKS.index();
 }
 
-export function referenceEntryOf(tool: string, rule: string): unknown {
-  return findEntry(referenceIndex(), { tool, rule });
+export function referenceEntryOf(tool: string, rule: string): RuleEntry | undefined {
+  return entryForFinding(referenceIndex(), { tool, rule });
 }
 
 export function perRule<T>(compute: (tool: string, rule: string) => T): (finding: Located) => T {

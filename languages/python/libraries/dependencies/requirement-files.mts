@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { isFile as untypedIsFile } from '../../../../shared/filesystem.mjs';
+import { isFile as untypedIsFile } from '../../../../shared/filesystem.mts';
 import { readProjectText } from '../project-files.mts';
 import type { RequirementLines } from '../typed/dependency-types.mts';
 import { isDevelopmentGroup } from './requirement-names.mts';

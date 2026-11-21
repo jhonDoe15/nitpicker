@@ -1,5 +1,4 @@
-import { childAt } from '../../../../../shared/values/xml.mts';
-import type { XmlElement } from '../../../../../shared/values/xml.mts';
+import { childAt, type XmlElement } from '../../../../../shared/ingest/report-records.mts';
 import { appendAll } from '../../../../../shared/lists/items.mjs';
 
 export const SPRING_JAVA_FORMAT = 'spring';

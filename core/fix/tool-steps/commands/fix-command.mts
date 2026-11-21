@@ -1,10 +1,10 @@
 import type { SpawnSyncReturns } from 'node:child_process';
-import { withoutAnsi } from '../../../../shared/messages/terminal/terminal-text.mjs';
+import { withoutAnsi } from '../../../../shared/messages/terminal/terminal-text.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
-} from '../../../../shared/messages/troubleshooting.mjs';
-import { withoutJvmNoise } from '../../../../shared/messages/jvm/jvm-noise.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
+import { withoutJvmNoise } from '../../../../shared/messages/jvm/jvm-noise.mts';
 import { fieldOf, messageOf, textOf } from '../../../../shared/values/readers.mts';
 import type { FixCommandResult, FixSpawn } from '../../typed/command-types.mts';
 import type { FixInvocation } from '../../typed/fix-types.mts';

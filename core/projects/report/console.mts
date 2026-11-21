@@ -1,4 +1,4 @@
-import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 import { DECLARED_ORIGIN } from '../discovery/declared-projects.mts';
 import type { MonorepoPlan, PlanProject } from '../project-types.mts';

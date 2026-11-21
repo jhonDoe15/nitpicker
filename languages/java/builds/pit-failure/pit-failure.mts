@@ -2,11 +2,11 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { textOf } from '../../../../shared/values/readers.mts';
 import type { JavaFinding } from '../../adapters/typed/java-values.mts';
-import { MUTATION_FAILED_PART_RULE } from '../../../../shared/rules/finding-helpers.mjs';
+import { MUTATION_FAILED_PART_RULE } from '../../../../shared/rules/finding-parts.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 import { leadWithUnmutatedSummary, pitPartFiles } from './pit-skipped.mts';
 
 const PIT_FAILURE_FILE = 'failure.txt';

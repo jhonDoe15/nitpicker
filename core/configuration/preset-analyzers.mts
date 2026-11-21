@@ -6,8 +6,8 @@ import {
 } from '../../shared/values/analyzers.mts';
 import type { NitpickerConfig, ProjectOverlay } from '../../shared/values/config-types.mts';
 import { configureAnalyzers } from './configure-analyzers.mts';
-import { createHistoryAnalyzers } from '../../shared/history/analyzers.mjs';
-import { createHygieneAnalyzers } from '../../shared/hygiene/analyzers.mjs';
+import { createHistoryAnalyzers } from '../../shared/history/analyzers.mts';
+import { createHygieneAnalyzers } from '../../shared/hygiene/analyzers.mts';
 import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mts';
 import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mts';
 import { createPythonAnalyzers } from '../../languages/python/adapters/python-analyzer.mts';
@@ -16,7 +16,7 @@ import {
   configuredAnalyzers,
   javascriptAnalyzers,
 } from '../../languages/typescript/preset/diff/configured-analyzers.mts';
-import { checkoutModuleUrl } from '../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../shared/paths/checkout-module.mts';
 
 export const configureAll: (
   ...request: Parameters<typeof configureAnalyzers>

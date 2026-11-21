@@ -283,7 +283,10 @@ describe('readKotlinCrapFindings', () => {
       return readKotlinCrapFindings(
         { ...METRICS, functions },
         { projectRoot: root, jacoco: jacocoReport, crapLimit },
-      ).map(({ symbol, message }) => `${symbol}: ${String(/CRAP (\d+\.\d+)/.exec(message)?.[1])}`);
+      ).map(
+        ({ symbol, message }) =>
+          `${String(symbol)}: ${String(/CRAP (\d+\.\d+)/.exec(message)?.[1])}`,
+      );
     };
 
     it('is scored from the coverage of its source lines, and the function around it is scored without them', () => {
@@ -345,7 +348,7 @@ describe('readKotlinCrapFindings', () => {
       jacoco: '<report name="demo"></report>',
     });
 
-    expect(findings.map(({ rule, symbol }) => `${rule} ${symbol}`)).toEqual([
+    expect(findings.map(({ rule, symbol }) => `${rule} ${String(symbol)}`)).toEqual([
       'crap-coverage-unknown tier',
       'crap-coverage-unknown Counter.doubled.get',
       'crap-coverage-unknown Counter.wide',
@@ -376,7 +379,7 @@ describe('readKotlinCrapFindings', () => {
       readKotlinCrapFindings(flat, { projectRoot: root, jacoco: report(counters), crapLimit: 2 });
 
     expect(run(lines(1, 0))).toEqual([]);
-    expect(run(lines(0, 1)).map(({ rule, symbol }) => `${rule} ${symbol}`)).toEqual([
+    expect(run(lines(0, 1)).map(({ rule, symbol }) => `${rule} ${String(symbol)}`)).toEqual([
       'crap-score-limit flat',
     ]);
   });

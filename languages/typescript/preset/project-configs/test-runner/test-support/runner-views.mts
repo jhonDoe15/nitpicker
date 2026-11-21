@@ -17,5 +17,8 @@ export const createRunnerProjects: () => {
 
 export const rulesOf: (findings: readonly Finding[]) => string[] = untypedRulesOf;
 
-export const runArea: (kind: string, projectRoot: string) => Promise<readonly Finding[]> =
-  untypedRunArea;
+export const runArea: (
+  kind: string,
+  projectRoot: string,
+  environment?: Readonly<Record<string, string | undefined>>,
+) => Promise<readonly Finding[]> = untypedRunArea;

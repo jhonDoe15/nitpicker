@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { decidingFact as untypedDecidingFact } from '../../../../../../../shared/logic/sync/solve-facts.mjs';
+import { decidingFact } from '../../../../../../../shared/logic/sync/solve-facts.mts';
 import { term, type Term } from '../../analysis/logic/term-views.mts';
 import { toTerm } from '../../analysis/logic/estree-terms.mts';
 import { chainOf, type SourceCode } from '../../typed/node-views.mts';
@@ -9,7 +9,6 @@ import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 
 type Statement = TSESTree.Statement;
 type Expression = TSESTree.Expression;
-type Verdict = 'true' | 'false';
 type Group = {
   readonly cases: TSESTree.SwitchCase[];
   last: TSESTree.SwitchCase;
@@ -33,9 +32,6 @@ type LabelScan = {
     }): void;
   };
 };
-
-const decidingFact: (facts: readonly Fact[], query: Term, verdict: Verdict) => Fact | undefined =
-  untypedDecidingFact;
 
 const JUMP_TYPES = new Set<string>([
   AST_NODE_TYPES.ReturnStatement,

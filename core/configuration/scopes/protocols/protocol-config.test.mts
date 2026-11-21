@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { resolveHeadPolicy } from '../../../../shared/head-policy.mjs';
+import { resolveHeadPolicy } from '../../../../shared/head-policy.mts';
 import { validateConfig } from '../../validate.mts';
 import {
   DESIGN_RULE_IDS,
   DESIGN_RULE_LANGUAGES,
-} from '../../../../shared/project-rules/design/design-rules.mjs';
-import { registeredFactRules } from '../../../../shared/project-rules/fact-rules.mjs';
+} from '../../../../shared/project-rules/design/design-rules.mts';
+import { registeredFactRules } from '../../../../shared/project-rules/fact-rules.mts';
 
 const session = { type: 'Session', open: ['begin'], close: ['commit', 'rollback'] };
 const PRESETS = Object.keys(DESIGN_RULE_LANGUAGES[DESIGN_RULE_IDS.protocolContract] ?? {});

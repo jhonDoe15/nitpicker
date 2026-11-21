@@ -1,17 +1,19 @@
 import { describe, expect, it, vi } from 'vitest';
-import { solverBudget } from '../budget.mjs';
-import { binary, name, not, number } from '../../test-support/build.mjs';
+import { solverBudget } from '../budget.mts';
+import type { Term } from '../../typed/term-types.mts';
+import { term } from '../../terms.mts';
+import { binary, name, not, number } from '../../test-support/build.mts';
 
-type Bridge = typeof import('../decide-sync.mjs');
+type Bridge = typeof import('../decide-sync.mts');
 
-const count: unknown = name('count');
-const conditions: unknown[] = [not(binary('>', count, number('10')))];
-const query: unknown = binary('>', count, number('20'));
+const count: Term = name('count');
+const conditions: Term[] = [not(binary('>', count, number('10')))];
+const query: Term = binary('>', count, number('20'));
 const question = JSON.stringify({ explain: false, conditions, query, options: {} });
 
 async function processSharing(answers: Map<string, unknown>): Promise<Bridge> {
   vi.resetModules();
-  const bridge = await import('../decide-sync.mjs');
+  const bridge = await import('../decide-sync.mts');
   bridge.shareSolverAnswers({
     find: (id: string) => answers.get(id),
     keep: (id: string, result: unknown) => answers.set(id, result),
@@ -45,24 +47,27 @@ describe('solver answers shared by the processes of a run', () => {
     expect([
       decideSync(conditions, query, { budget: spent }),
       decideSync(conditions, query, { budget }),
-      budget,
-    ]).toEqual(['open', 'stored', { left: 0 }]);
+      budget.remaining(),
+    ]).toEqual(['open', 'stored', 0]);
   });
 
   it('notes no question a shared answer settles when questions are answered ahead', async () => {
     const { decideSync, noteQuestions } = await processSharing(new Map([[question, 'stored']]));
 
     expect(
-      noteQuestions(() => {
-        decideSync(conditions, query);
-      }),
+      noteQuestions(
+        () => {
+          decideSync(conditions, query);
+        },
+        { keepSettled: false },
+      ),
     ).toEqual([]);
   });
 
   it('keeps no answer the solver failed on, so a later process asks again', async () => {
     const answers = new Map<string, unknown>();
     const { decideSync } = await processSharing(answers);
-    const broken: unknown = { kind: 'no such term' };
+    const broken: Term = term('binary', '+', []);
 
     expect(decideSync([], broken, { integers: true })).toBe('open');
     expect([...answers]).toEqual([]);
@@ -70,7 +75,7 @@ describe('solver answers shared by the processes of a run', () => {
 
   it('asks the solver as before when no answers are shared', async () => {
     vi.resetModules();
-    const { decideSync } = await import('../decide-sync.mjs');
+    const { decideSync } = await import('../decide-sync.mts');
 
     expect(decideSync(conditions, query)).toBe('false');
   });

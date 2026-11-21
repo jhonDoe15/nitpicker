@@ -1,5 +1,5 @@
 import { textOf } from '../../../../../shared/values/readers.mts';
-import { foldTree as untypedFoldTree } from '../../../../../shared/traversal.mjs';
+import { foldTree as untypedFoldTree } from '../../../../../shared/traversal.mts';
 import type { ShapeNode } from '../../../../java/adapters/near-duplicates/jvm-types.mts';
 import type { GoUnit } from '../types/go-types.mts';
 

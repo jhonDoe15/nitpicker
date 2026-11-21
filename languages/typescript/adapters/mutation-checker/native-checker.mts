@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { trackTemporaryPath, untrackTemporaryPath } from '../typed/tooling.mts';
 import { typecheckEngine } from '../typed/head-policy.mts';
 import { typescriptApi } from '../typed/typescript-program.mts';
-import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { fieldsOf, listOf, objectOf } from '../../../../shared/values/readers.mts';
 import { spawnNodeTool } from '../quality-areas/typed/tooling.mts';
 import type { QualityAreaOptions } from '../quality-areas/typed/area-types.mts';

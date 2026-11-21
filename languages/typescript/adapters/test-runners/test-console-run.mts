@@ -5,7 +5,7 @@ import { TEST_CONSOLE_REPORT_PATH } from '../quality-areas/reporting/test-report
 import {
   checkoutModulePath,
   checkoutModuleUrl,
-} from '../../../../shared/paths/checkout-module.mjs';
+} from '../../../../shared/paths/checkout-module.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { temporaryProjectPath } from './test-run.mts';
 import { consoleEntry, writeReportFile } from './typed/runner-tools.mts';

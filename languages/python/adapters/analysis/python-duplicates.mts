@@ -2,7 +2,10 @@ import { textsOf } from '../../../../shared/values/readers.mts';
 import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
 import type { ScanContext } from './typed/coupling-types.mts';
 
-type DuplicatesContext = ScanContext & { readonly duplicateSkippedFolders?: unknown };
+type DuplicatesContext = ScanContext & {
+  readonly duplicateSkippedFolders?: unknown;
+  readonly env: Readonly<Record<string, string | undefined>>;
+};
 import { DUPLICATES_REPORT } from '../../../../core/tooling/jscpd/run-jscpd.mts';
 import { duplicateFindings } from './typed/shared-views.mts';
 import {
@@ -32,6 +35,7 @@ export function runDuplicates(context: DuplicatesContext): void {
       ),
       reportRoot: context.reportRoot,
       together: true,
+      environment: context.env,
       renamed: {
         syntax: PYTHON,
         files: pythonSourceFiles(context.projectRoot, context.project.sourceRoots).filter(

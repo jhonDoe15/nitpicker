@@ -13,7 +13,7 @@ Kotlin mutants report-only, because a list of rules tuned to one fixture "would 
 mutants it has not seen and cannot be satisfied". Two things changed. First, a finding the filter
 misses can now be satisfied: `mutant-survived` and `mutant-nocoverage` take a function-scoped
 `exceptions` entry like every enforceable mutant finding, and the message prints it (see
-`shared/exceptions/routes.mjs`), so the cost of a missed kind of junk is one reviewed entry for one
+`shared/exceptions/routes.mts`), so the cost of a missed kind of junk is one reviewed entry for one
 function, not a gate that cannot pass. Second, the kinds are not read off one fixture: each rule
 names a construct the compiler writes (a coroutine state machine, an intrinsic, an inline body
 copy, a data class member), the facts are read from the sources, and every rule has a test with

@@ -9,11 +9,11 @@ import {
   EXCLUDED_PATH_PATTERN as untypedExcludedPattern,
   toPosix as untypedToPosix,
 } from '../../../layout.mts';
-import { walkedPaths as untypedWalkedPaths } from '../../../../../../shared/project-files/tree-walk.mjs';
-import { reachableNames as untypedReachableNames } from '../../../../../../shared/rules/round-trips/round-trips.mjs';
+import { walkedPaths as untypedWalkedPaths } from '../../../../../../shared/project-files/tree-walk.mts';
+import { reachableNames as untypedReachableNames } from '../../../../../../shared/rules/round-trips/round-trips.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
 import { attempt } from '../../../../../../shared/values/attempt/attempt.mts';
-import { containedPath } from '../../../../../../shared/paths/contained-path.mjs';
+import { containedPath } from '../../../../../../shared/paths/contained-path.mts';
 
 type Scan = {
   readonly tests: Set<string>[];

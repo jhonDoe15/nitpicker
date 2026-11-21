@@ -2,7 +2,7 @@ import {
   ACCEPTED_MANAGER_ROLES,
   CONTAINER_NAME_WORDS,
   GENERIC_NAME_WORDS,
-} from '../../../../../../shared/naming/smell-words.mjs';
+} from '../../../../../../shared/naming/smell-words.mts';
 import { braceDepths, closingIndex, parenDepths } from '../kotlin-source.mts';
 import { smallest } from '../../../../../../shared/lists/lists.mts';
 import type { Scanned } from '../typed/scan-shapes.mts';

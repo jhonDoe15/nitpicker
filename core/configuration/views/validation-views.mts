@@ -1,19 +1,17 @@
 import {
   liftsOnlyRules as untypedLiftsOnlyRules,
   validateExceptions as untypedValidateExceptions,
-} from '../../../shared/exceptions/validation.mjs';
-import { canonicalRule as untypedCanonicalRule } from '../../../shared/exceptions/rule-names.mjs';
-import { RULES as untypedRules } from '../../../shared/policy.mjs';
+} from '../../../shared/exceptions/validation.mts';
+import { canonicalRule as untypedCanonicalRule } from '../../../shared/exceptions/rule-names.mts';
+import { RULES as untypedRules } from '../../../shared/policy.mts';
 import {
   didYouMean as untypedDidYouMean,
   suggestionOrAllowed as untypedSuggestionOrAllowed,
-} from '../../../shared/messages/closest-match.mjs';
+} from '../../../shared/messages/closest-match.mts';
 import { stylingApproaches as untypedStylingApproaches } from '../../../languages/typescript/preset/eslint-config/react/react-rules.mts';
 import { i18nRuleIds as untypedI18nRuleIds } from '../../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mts';
 
-export function isNonEmptyString(value: unknown): value is string {
-  return typeof value === 'string' && value.length > 0;
-}
+export { isNonEmptyString } from '../../../shared/config.mts';
 
 export const liftsOnlyRules: (exceptions: unknown, rules: readonly string[]) => boolean =
   untypedLiftsOnlyRules;

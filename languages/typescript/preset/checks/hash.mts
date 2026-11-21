@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { importClosure } from '../../../../shared/import-closure.mjs';
+import { importClosure } from '../../../../shared/import-closure.mts';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 

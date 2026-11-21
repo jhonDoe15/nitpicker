@@ -31,8 +31,6 @@ export type AnalyzerReport = {
   readonly moduleImports?: readonly { readonly from: string; readonly to: string }[];
 };
 
-export type ReferenceLinks = { index(): unknown; root(): unknown };
-
 export type ReportData = {
   readonly summary: Readonly<Record<string, unknown>>;
   readonly newFindings: readonly ReportEntry[];

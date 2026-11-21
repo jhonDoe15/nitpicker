@@ -38,13 +38,21 @@ function forbiddenMessages(): Map<string, string> {
   );
 }
 
+function summaryOf(summaries: Readonly<Record<string, string>>, rule: string): string {
+  const summary = summaries[rule];
+  if (summary === undefined) {
+    throw new TypeError(`The guard rule ${rule} has no summary`);
+  }
+  return summary;
+}
+
 function forbiddenEntries(): RuleEntry[] {
   return [...forbiddenMessages()].map(([rule, allowed]) =>
     ruleEntry({
       ...JVM,
       tool: 'forbiddenapis',
       rule,
-      summary: FORBIDDEN_SUMMARIES[rule],
+      summary: summaryOf(FORBIDDEN_SUMMARIES, rule),
       why: FORBIDDEN_WHY,
       allowed,
       exception: { key: 'exceptions', rule: `forbiddenapis/${rule}` },
@@ -59,7 +67,7 @@ function lintEntries(): RuleEntry[] {
       ...JVM,
       tool: 'javac',
       rule,
-      summary: LINT_SUMMARIES[rule],
+      summary: summaryOf(LINT_SUMMARIES, rule),
       why: LINT_WHY,
       allowed,
       exception: { key: 'exceptions', rule: `javac/${rule}` },

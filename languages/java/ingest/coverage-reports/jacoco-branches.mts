@@ -1,10 +1,15 @@
-import { MINIMUM_BRANCH_COVERAGE } from '../../../../shared/policy.mjs';
-import { branchCoverageFindings } from '../../../../shared/rules/branch-coverage.mjs';
-import { enclosingFunctionName } from '../../../../shared/rules/finding-helpers.mjs';
-import { hashIdentity, normalizeReportPath } from '../../../../shared/ingest/common.mjs';
-import { type XmlElement, childrenNamed, parseXml } from '../../../../shared/values/xml.mts';
+import { MINIMUM_BRANCH_COVERAGE } from '../../../../shared/policy.mts';
+import { branchCoverageFindings } from '../../../../shared/rules/branch-coverage.mts';
+import { enclosingFunctionName } from '../../../../shared/rules/finding-parts.mts';
+import {
+  hashIdentity,
+  normalizeReportPath,
+  type XmlElement,
+  childrenNamed,
+  parseXml,
+} from '../../../../shared/ingest/report-records.mts';
 import { listOf, textOf } from '../../../../shared/values/readers.mts';
-import { formatAgnosticText } from '../../../../shared/source-text/format-tokens.mjs';
+import { formatAgnosticText } from '../../../../shared/source-text/format-tokens.mts';
 import {
   isCompilerGeneratedBranchLine,
   libraryBranchCount,
@@ -131,8 +136,7 @@ function fileFindings(sourcefile: XmlElement, file: SourceLines, run: FileRun): 
     branchCoverageFindings(branches, {
       tool: run.tool,
       minimum: run.minimum,
-      identify: (key: unknown, occurrence: number) =>
-        occurrence === 1 ? key : `${textOf(key)}#${String(occurrence)}`,
+      identify: (key, occurrence) => (occurrence === 1 ? key : `${key}#${String(occurrence)}`),
     }),
   );
 }
@@ -156,7 +160,9 @@ function lineBranch(
   const arm = kotlin ? generatedArm(source) : undefined;
   return {
     path: filePath,
-    key: hashIdentity('branch-source', [formatAgnosticText(sourceLines[lineNumber - 1], filePath)]),
+    key: hashIdentity('branch-source', [
+      formatAgnosticText(sourceLines[lineNumber - 1] ?? '', filePath),
+    ]),
     percent: (covered / total) * 100,
     line: lineNumber,
     ...(arm === undefined ? {} : { arms: [arm] }),

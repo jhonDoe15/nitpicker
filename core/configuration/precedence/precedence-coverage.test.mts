@@ -4,7 +4,7 @@ import { createPythonAnalyzers } from '../../../languages/python/adapters/python
 import { KOTLIN_FORMATTERS } from '../../../languages/java/adapters/style/jvm-formatters.mts';
 import { GO_LINT_TOOLS } from '../../../languages/go/adapters/configuration/go-config.mts';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mts';
-import { PRESET_TOOLS } from '../../../shared/exceptions/rule-tools.mjs';
+import { PRESET_TOOLS } from '../../../shared/exceptions/rule-tools.mts';
 import { SUPPORTED_PRESETS } from '../validate.mts';
 import { toolSettingKeysOf } from '../tool-settings.mts';
 import { precedenceExemption, precedenceExemptions } from './precedence-exempt-tools.mts';

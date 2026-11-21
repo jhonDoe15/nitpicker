@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { fieldOf, fieldsOf, listOf, parseJson, textOf } from '../../../shared/values/readers.mts';
 import { parseAnalyzerReport, parseFinding } from './test-support/parsed-findings.mts';
 import { sampleFindings } from './test-support/sample-findings.mts';
-import { compactMetricFindings as untypedCompactMetricFindings } from '../../../shared/report-output/metric-groups.mjs';
+import { compactMetricFindings as untypedCompactMetricFindings } from '../../../shared/report-output/metric-groups.mts';
 
 const compactMetricFindings: (findings: readonly unknown[]) => readonly unknown[] =
   untypedCompactMetricFindings;

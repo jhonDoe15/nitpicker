@@ -10,7 +10,7 @@ import { SCHEMA_URL } from './config-schema.mts';
 import {
   guidePages as untypedGuidePages,
   guideText as untypedGuideText,
-} from '../../../shared/reference/build/guide-pages.mjs';
+} from '../../../shared/reference/build/guide-pages.mts';
 import { fieldOf, fieldsOf, parseJson, textsOf } from '../../../shared/values/readers.mts';
 import { documentedConfigs } from './test-support/doc-examples.mts';
 import {

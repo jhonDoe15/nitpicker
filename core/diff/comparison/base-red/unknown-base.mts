@@ -1,11 +1,11 @@
-import { RULE_IDS } from '../../../../shared/policy.mjs';
+import { RULE_IDS } from '../../../../shared/policy.mts';
 import {
   MUTATION_FAILED_PART_RULE,
   TESTS_FAILED_RULES,
   TESTS_FAILED_SCOPE_SEPARATOR,
   TESTS_UNMEASURED_RULES,
   TOOL_SKIPPED_RULE,
-} from '../../../../shared/rules/finding-helpers.mjs';
+} from '../../../../shared/rules/finding-parts.mts';
 import type { Finding } from '../../../../shared/values/findings.mts';
 import type { ChangedLines, TouchedCode } from '../model/finding-types.mts';
 

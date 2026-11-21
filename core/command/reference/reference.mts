@@ -1,32 +1,35 @@
 import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { CONFIG_FILE_NAME, configError } from '../../../shared/config.mjs';
-import { PRESETS } from '../../../shared/reference/entry.mjs';
-import { repositoryUrl } from '../../../shared/reference/facts.mjs';
+import { CONFIG_FILE_NAME, configError } from '../../../shared/config.mts';
+import { PRESETS, PRESET_TITLES } from '../../../shared/reference/entry.mts';
+import {
+  entryFacts,
+  entryLinks,
+  linkUrl,
+  plainText,
+  repositoryUrl,
+} from '../../../shared/reference/facts.mts';
+import { fixStatusIn } from '../../../shared/reference/fix-status.mts';
+import {
+  closestIds,
+  indexEntries,
+  lookupEntries,
+  readReferenceEntries,
+  referenceUrl,
+} from '../../../shared/reference/store.mts';
+import type {
+  EntryIndex,
+  FactLine,
+  RuleEntry,
+} from '../../../shared/reference/typed/entry-types.mts';
+import { chainOf } from '../../../shared/traversal.mts';
 import { applyDisable, readConfigFile } from '../../configuration/config.mts';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
-import { docsRootUrl } from '../../../shared/messages/docs-url.mjs';
+import { docsRootUrl } from '../../../shared/messages/docs-url.mts';
 import { analyzersOf } from '../../../shared/values/analyzers.mts';
 import type { TextOutput } from '../../cli-context.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import { filterText, labelFilter, matchesFilter } from '../../labels/taxonomy.mts';
-import {
-  type Entry,
-  type EntryIndex,
-  type Fact,
-  closestNames,
-  fixStatusOf,
-  directoriesUp,
-  entriesNamed,
-  entryUrl,
-  factsOf,
-  indexOf,
-  linkTarget,
-  linksOf,
-  presetTitles,
-  readEntries,
-  textFor,
-} from './reference-entries.mts';
 
 type Reference = { readonly index: EntryIndex; readonly root: string | undefined };
 
@@ -48,32 +51,35 @@ const CHECKS_PAGE = 'checks';
 const CHECKS_CATALOG = 'spec/checks.md';
 const CATEGORY_ANCHOR = 'quality-area-checks';
 
-function factLines({ label, text = '', items, code }: Fact, root: string | undefined): string[] {
+function factLines(
+  { label, text = '', items, code }: FactLine,
+  root: string | undefined,
+): string[] {
   if (code !== undefined) {
     return [`${label}:`, ...code.split('\n').map((line) => `${INDENT}${line}`)];
   }
   return items === undefined
-    ? [`${label}: ${textFor(text, root)}`]
-    : [`${label}:`, ...items.map((item) => `${INDENT}- ${textFor(item, root)}`)];
+    ? [`${label}: ${plainText(text, root)}`]
+    : [`${label}:`, ...items.map((item) => `${INDENT}- ${plainText(item, root)}`)];
 }
 
 function urlLines(label: string, url: string | undefined): string[] {
   return url === undefined ? [] : [`${label}: ${url}`];
 }
 
-function explainText(entry: Entry, root: string | undefined): string {
+function explainText(entry: RuleEntry, root: string | undefined): string {
   return [
     entry.id,
-    textFor(entry.summary, root),
+    plainText(entry.summary, root),
     '',
-    ...factsOf(entry).flatMap((fact) => factLines(fact, root)),
-    ...linksOf(entry).flatMap((link) => urlLines(link.label, linkTarget(link, root))),
-    ...urlLines('Reference', entryUrl(entry, root)),
+    ...entryFacts(entry).flatMap((fact) => factLines(fact, root)),
+    ...entryLinks(entry).flatMap((link) => urlLines(link.label, linkUrl(link, root))),
+    ...urlLines('Reference', referenceUrl(entry, root)),
     '',
   ].join('\n');
 }
 
-function categoryText(name: string, rules: readonly Entry[], root: string | undefined): string {
+function categoryText(name: string, rules: readonly RuleEntry[], root: string | undefined): string {
   return [
     name,
     'A check nitpicker runs itself. Its rules (nitpicker explain <rule> describes one):',
@@ -84,7 +90,7 @@ function categoryText(name: string, rules: readonly Entry[], root: string | unde
 }
 
 function explained({ index, root }: Reference, name: string): string[] {
-  const found = entriesNamed(index, name);
+  const found = lookupEntries(index, name);
   if (found.length > 0) {
     return found.map((entry) => explainText(entry, root));
   }
@@ -104,13 +110,13 @@ export function runExplainCommand({ commandArguments, stdout, stderr }: Referenc
     stderr.write(EXPLAIN_USAGE);
     return 2;
   }
-  const reference: Reference = { index: indexOf(readEntries()), root: docsRootUrl() };
+  const reference: Reference = { index: indexEntries(readReferenceEntries()), root: docsRootUrl() };
   const index = reference.index;
   const texts = new Map(commandArguments.map((name) => [name, explained(reference, name)]));
   const unknown = commandArguments.filter((name) => (texts.get(name) ?? []).length === 0);
   stdout.write([...texts.values()].flat().join('\n'));
   for (const name of unknown) {
-    const closest = closestNames(index, name);
+    const closest = closestIds(index, name);
     stderr.write(
       `nitpicker: unknown rule "${name}".${closest.length === 0 ? '' : ` Closest: ${closest.join(', ')}.`} ` +
         'Run nitpicker rules to list the rules.\n',
@@ -183,7 +189,7 @@ function readRulesOptions(
 }
 
 function configRootFrom(start: string): string | undefined {
-  const directories = directoriesUp(start, (directory) => {
+  const directories = chainOf(start, (directory) => {
     const parent = path.dirname(directory);
     return parent === directory ? undefined : parent;
   });
@@ -200,24 +206,24 @@ function reportsFor(names: readonly string[] | undefined, enabled: ReadonlySet<s
   return names !== undefined && (names.length === 0 || names.some((name) => enabled.has(name)));
 }
 
-function summaryLine(entry: Entry, root: string | undefined): string {
+function summaryLine(entry: RuleEntry, root: string | undefined): string {
   const sentence = FIRST_SENTENCE.exec(entry.summary)?.[0] ?? entry.summary;
-  return `${entry.id}  ${textFor(sentence.replaceAll(/\s+/gu, ' '), root)}`;
+  return `${entry.id}  ${plainText(sentence.replaceAll(/\s+/gu, ' '), root)}`;
 }
 
 function listedEntries(
   preset: string,
   config: NitpickerConfig,
   { tool, fixable, labels }: RulesOptions,
-): readonly Entry[] {
+): readonly RuleEntry[] {
   const enabled = enabledAnalyzers(preset, config);
   const filter = labelFilter(labels);
-  return readEntries()
+  return readReferenceEntries()
     .filter(({ analyzers }) => reportsFor(analyzers[preset], enabled))
     .filter(
       (entry) => tool === undefined || [entry.tool, ...(entry.findingTools ?? [])].includes(tool),
     )
-    .filter((entry) => !fixable || FIXABLE_STATUSES.has(fixStatusOf(entry, preset)))
+    .filter((entry) => !fixable || FIXABLE_STATUSES.has(fixStatusIn(entry, preset)))
     .filter((entry) => filter === undefined || matchesFilter(entry.labels ?? [], filter));
 }
 
@@ -234,20 +240,20 @@ function rulesPreset(
   return { preset, config };
 }
 
-function ruleLine(entry: Entry, preset: string, fixable: boolean): string {
+function ruleLine(entry: RuleEntry, preset: string, fixable: boolean): string {
   const line = summaryLine(entry, docsRootUrl());
-  return fixable ? `${line} [${FIXABLE_STATUSES.get(fixStatusOf(entry, preset)) ?? ''}]` : line;
+  return fixable ? `${line} [${FIXABLE_STATUSES.get(fixStatusIn(entry, preset)) ?? ''}]` : line;
 }
 
 function rulesText(
   preset: string,
-  listed: readonly Entry[],
+  listed: readonly RuleEntry[],
   { fixable, labels }: RulesOptions,
 ): string {
   const filter = labelFilter(labels);
   const labeled = filter === undefined ? '' : ` labeled ${filterText(filter)}`;
   return (
-    `${presetTitles[preset] ?? preset} preset: ${String(listed.length)} ${fixable ? 'fixable ' : ''}rules${labeled}. ` +
+    `${PRESET_TITLES[preset] ?? preset} preset: ${String(listed.length)} ${fixable ? 'fixable ' : ''}rules${labeled}. ` +
     'nitpicker explain <tool/rule> describes one.\n' +
     listed.map((entry) => `${ruleLine(entry, preset, fixable)}\n`).join('')
   );

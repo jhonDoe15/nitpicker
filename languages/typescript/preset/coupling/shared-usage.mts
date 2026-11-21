@@ -2,8 +2,12 @@ import { featureLayout } from '../architecture/strict-layout.mts';
 import { normalizePath } from '../dependency-graph/cruise.mts';
 import { isInsideRoot } from '../layout/source-root/root-paths.mts';
 import type { DependencyGraph } from '../dependency-graph/graph-types.mts';
-import type { SharedEntry, SharedImport } from './typed/coupling-types.mts';
-import { featureRoles, sharedUsage } from './typed/rule-views.mts';
+import { featureRoles } from '../../../../shared/rules/features/feature-roles.mts';
+import {
+  sharedUsedByOneFeature as sharedUsage,
+  type SharedEntry,
+} from '../../../../shared/rules/features/shared-usage.mts';
+import type { SharedImport } from './typed/coupling-types.mts';
 
 const roleOf = featureRoles(featureLayout);
 

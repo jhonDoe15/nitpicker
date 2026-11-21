@@ -2,7 +2,7 @@ import {
   indentOf as untypedIndentOf,
   leadingSpaces as untypedLeadingSpaces,
   majorityStep as untypedMajorityStep,
-} from '../../../../shared/conventions/lines.mjs';
+} from '../../../../shared/conventions/lines.mts';
 import { measuredLineLength, UNBREAKABLE_LINE, withoutRawStrings } from './kotlin-line-length.mts';
 
 const indentOf: (line: string) => number = untypedIndentOf;

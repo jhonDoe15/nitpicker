@@ -1,8 +1,8 @@
 import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { withoutAnsi } from '../../../shared/messages/terminal/terminal-text.mjs';
-import { escapeRegExp } from '../../../shared/paths/glob.mjs';
-import { withMessage } from '../../../shared/messages/advice/finding-advice.mjs';
+import { withoutAnsi } from '../../../shared/messages/terminal/terminal-text.mts';
+import { escapeRegExp } from '../../../shared/paths/glob.mts';
+import { withMessage } from '../../../shared/messages/advice/finding-advice.mts';
 import type { AnalyzerReport, Finding, ReportEntry } from '../../../shared/values/findings.mts';
 
 export type SnapshotRoot = { readonly projectRoot: string; readonly snapshot: string };

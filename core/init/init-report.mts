@@ -1,4 +1,4 @@
-import { listNames } from '../../shared/messages/messages.mjs';
+import { listNames } from '../../shared/messages/messages.mts';
 import { fieldOf, textOf } from '../../shared/values/readers.mts';
 import type { InitProject as Project, Peers } from './init-types.mts';
 

@@ -1,4 +1,4 @@
-import { TESTS_FAILED_SKIPPED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
+import { TESTS_FAILED_SKIPPED_RULE } from '../../../../../shared/rules/finding-parts.mts';
 import { execute, run } from '../../execution/python-process.mts';
 import { pytestCommand } from '../../execution/python-test-runner.mts';
 import { failingModules, readJunit } from '../../test-runs/junit-results.mts';

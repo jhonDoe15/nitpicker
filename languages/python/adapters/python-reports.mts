@@ -143,7 +143,7 @@ export function readPythonFindings({
       ...readTestRuntimeFindings({ reportRoot, projectRoot, runner: manifest.testRunner }),
       ...(manifest.quick ? [] : testFailureFindings(manifest, policy.snapshot)),
       ...projectShapeFindings({ projectRoot, reportRoot, policy, imports, manifest }),
-      ...readConsoleFindings(reportRoot, { projectRoot, manifest }),
+      ...readConsoleFindings(reportRoot, { projectRoot, manifest, headPolicy: policy.headPolicy }),
       ...readFactFindings(reportRoot, policy),
     ],
     libraries,

@@ -1,4 +1,4 @@
-import { docsUrl } from '../../../shared/messages/docs-url.mjs';
+import { docsUrl } from '../../../shared/messages/docs-url.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 import { packageVersion } from '../../help/package-version.mts';
 import { type InformationCli, projectAnalyzers } from './project-analyzers.mts';

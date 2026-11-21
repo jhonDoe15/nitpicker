@@ -1,15 +1,12 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { integerSlipFindings as untypedIntegerSlipFindings } from '../../../../../../shared/rules/decided/slips/integer-slips.mjs';
-import { resultSlipFindings as untypedResultSlipFindings } from '../../../../../../shared/rules/slips/slip-findings.mjs';
+import { integerSlipFindings } from '../../../../../../shared/rules/decided/slips/integer-slips.mts';
+import { resultSlipFindings } from '../../../../../../shared/rules/slips/slip-findings.mts';
 import {
   type GoParse,
   type RuleFindings,
   goParser,
   inPackage,
 } from '../../test-support/parse-go.mts';
-
-const integerSlipFindings: RuleFindings = untypedIntegerSlipFindings;
-const resultSlipFindings: RuleFindings = untypedResultSlipFindings;
 
 let parse: GoParse;
 
@@ -19,7 +16,7 @@ beforeAll(async () => {
 
 function found(rule: RuleFindings, lines: readonly string[]) {
   return rule(parse(inPackage(...lines)), { analyzerName: 'facts', isExcepted: () => false }).map(
-    ({ location, message }) => `${String(location.line)}: ${message.split('. ')[0] ?? ''}`,
+    ({ location, message }) => `${String(location?.line)}: ${message.split('. ')[0] ?? ''}`,
   );
 }
 

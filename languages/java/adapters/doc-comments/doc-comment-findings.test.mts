@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
-import { exceptionHint as untypedExceptionHint } from '../../../../shared/rules/exceptions.mjs';
+import { exceptionHint as untypedExceptionHint } from '../../../../shared/rules/exceptions.mts';
 import { findingsOf } from '../typed/java-values.mts';
 import { DOC_COMMENT_TOOL, readDocCommentFindings } from './doc-comment-findings.mts';
 

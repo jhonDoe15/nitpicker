@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { checkoutModuleUrl as untypedCheckoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl as untypedCheckoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 import { cachedValue } from '../../../../../shared/values/caching/cached-value.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 

@@ -1,7 +1,6 @@
 import type { TSESLint } from '@typescript-eslint/utils';
-import { resolveTestTimeouts as untypedResolveTestTimeouts } from '../../../../../../../../shared/test-timeouts/resolve.mjs';
-import { fieldsOf, objectOf } from '../../../../../../../../shared/values/readers.mts';
-import { readHeadPolicyFile } from '../../../typed/policy-views.mts';
+import { resolveTestTimeouts as untypedResolveTestTimeouts } from '../../../../../../../../shared/test-timeouts/resolve.mts';
+import { fieldsOf } from '../../../../../../../../shared/values/readers.mts';
 
 export type TimeoutLimits = {
   readonly hookDeclarationCeilingMs: number;
@@ -17,7 +16,7 @@ const resolveTestTimeouts: (
 
 export function timeoutPolicy(settings: TSESLint.SharedConfigurationSettings): Policy {
   const configured = settings['nitpickerTestTimeoutPolicy'];
-  return objectOf(configured) === undefined ? readHeadPolicyFile() : fieldsOf(configured);
+  return fieldsOf(configured);
 }
 
 export function timeoutLimits(policy: Policy, file: string, integration: boolean): TimeoutLimits {

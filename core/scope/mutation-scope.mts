@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { GIT_OUTPUT_LIMIT_BYTES, GIT_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
+import { GIT_OUTPUT_LIMIT_BYTES, GIT_TIMEOUT_MS } from '../../shared/processes/deadlines.mts';
 import { isInScope } from './scope-findings.mts';
 
 export function byCodeUnits(left: string, right: string): number {

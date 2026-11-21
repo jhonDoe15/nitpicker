@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync, type Stats } from 'node:fs';
 import path from 'node:path';
 import { runGit } from '../../diff/git/repository/command.mts';
-import { byText } from '../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../shared/text-order/by-text.mts';
 
 const SKIPPED_SEGMENTS = new Set([
   'node_modules',

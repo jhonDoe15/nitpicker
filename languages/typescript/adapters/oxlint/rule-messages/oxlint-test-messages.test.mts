@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mts';
 import { normalizeEslintResults } from '../../eslint/normalize.mts';
 import type { EslintFinding } from '../../eslint/typed/engine.mts';
 import { lintWithOxlint } from '../oxlint-runner.mts';

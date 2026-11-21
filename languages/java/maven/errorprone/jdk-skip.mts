@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { explainedError } from '../../../../shared/messages/troubleshooting.mjs';
+import { explainedError } from '../../../../shared/messages/troubleshooting.mts';
 import { fieldOf, messageOf } from '../../../../shared/values/readers.mts';
 
 type SkipRequest = {

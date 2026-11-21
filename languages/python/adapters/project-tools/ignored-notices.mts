@@ -2,7 +2,7 @@ import type { NitpickerConfig } from '../../../../shared/values/config-types.mts
 import {
   ignoredConfigNotice,
   precedenceLayers,
-} from '../../../../shared/conventions/tool-precedence.mjs';
+} from '../../../../shared/conventions/tool-precedence.mts';
 import {
   COVERAGE_TOOL,
   optInKeys,

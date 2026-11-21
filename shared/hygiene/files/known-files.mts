@@ -1,0 +1,100 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { pathInside } from '../../filesystem.mts';
+import { fieldOf, fieldsOf, parseJson } from '../../values/readers.mts';
+
+export type JsonRead = { readonly value?: object; readonly error?: unknown };
+
+const LOCK_FILES = new Set([
+  'package-lock.json',
+  'npm-shrinkwrap.json',
+  'yarn.lock',
+  'pnpm-lock.yaml',
+  'bun.lock',
+  'bun.lockb',
+  'deno.lock',
+  'gradle.lockfile',
+  'settings-gradle.lockfile',
+  'Cargo.lock',
+  'poetry.lock',
+  'uv.lock',
+  'Pipfile.lock',
+  'pdm.lock',
+  'composer.lock',
+  'Gemfile.lock',
+  'go.sum',
+  'packages.lock.json',
+  'Podfile.lock',
+  'pubspec.lock',
+  'mix.lock',
+  'flake.lock',
+]);
+const TOOLING_PATHS = [
+  /(?:^|\/)gradle\/wrapper\/gradle-wrapper\.jar$/u,
+  /(?:^|\/)\.mvn\/wrapper\/maven-wrapper\.jar$/u,
+  /(?:^|\/)\.yarn\/(?:releases|plugins|cache)\//u,
+  /(?:^|\/)\.pnp\.(?:cjs|loader\.mjs)$/u,
+];
+const KEY_FILE = /^id_(?:rsa|dsa|ecdsa|ed25519)$|\.(?:p12|pfx|jks|keystore|ppk)$/iu;
+const TRUST_STORE = /truststore|cacerts/iu;
+const LOCAL_PROTOCOL = /^(?:file|link|portal):/u;
+const RELATIVE_PATH = /^\.\.?\//u;
+const BARE_ARCHIVE = /^[\w.-]+(?:\/[\w.-]+)*\.(?:tgz|tar\.gz)$/u;
+const DEPENDENCY_SECTIONS = [
+  'dependencies',
+  'devDependencies',
+  'optionalDependencies',
+  'peerDependencies',
+];
+
+export function isLockFile(base: string): boolean {
+  return LOCK_FILES.has(base);
+}
+
+export function isKeyFileName(base: string): boolean {
+  return KEY_FILE.test(base) && !TRUST_STORE.test(base);
+}
+
+export function committedTooling(
+  projectRoot: string,
+  files: readonly string[],
+): (file: string) => boolean {
+  const packedDependencies = new Set(
+    files
+      .filter((file) => path.posix.basename(file) === 'package.json')
+      .flatMap((manifest) => localPackageFiles(projectRoot, manifest)),
+  );
+  return (file) =>
+    packedDependencies.has(file) || TOOLING_PATHS.some((pattern) => pattern.test(file));
+}
+
+function localPath(spec: string): string | undefined {
+  const protocol = LOCAL_PROTOCOL.exec(spec);
+  if (protocol !== null) {
+    return spec.slice(protocol[0].length);
+  }
+  return RELATIVE_PATH.test(spec) || BARE_ARCHIVE.test(spec) ? spec : undefined;
+}
+
+function localPackageFiles(projectRoot: string, manifest: string): string[] {
+  const { value } = readJson(path.join(projectRoot, manifest));
+  const directory = path.posix.dirname(manifest);
+  return DEPENDENCY_SECTIONS.flatMap((section) => Object.values(fieldsOf(fieldOf(value, section))))
+    .map((spec) => (typeof spec === 'string' ? localPath(spec) : undefined))
+    .filter((local): local is string => local !== undefined)
+    .map((local) => path.posix.normalize(path.posix.join(directory, local)));
+}
+
+export function trackedText(projectRoot: string, file: string): string {
+  const full = pathInside(projectRoot, file);
+  return full === undefined ? '' : readFileSync(full, 'utf8');
+}
+
+export function readJson(file: string): JsonRead {
+  try {
+    const parsed = parseJson(readFileSync(file, 'utf8'));
+    return typeof parsed === 'object' && parsed !== null ? { value: parsed } : {};
+  } catch (error) {
+    return { error };
+  }
+}

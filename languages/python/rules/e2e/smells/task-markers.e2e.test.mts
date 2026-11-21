@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { taskMarkerCases } from '../../../../../shared/naming/test-support/task-marker-cases.mjs';
+import { taskMarkerCases } from '../../../../../shared/naming/test-support/task-marker-cases.mts';
 import { useScripts } from '../../test-support/python-rule-scripts.mts';
 
 const markerCases: (

@@ -1,10 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  normalizeUri as untypedNormalizeUri,
-  prepareSarif as untypedPrepareSarif,
-} from '../../../../../../shared/ingest/sarif.mjs';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../../../shared/paths/glob.mjs';
+import { normalizeUri, prepareSarif } from '../../../../../../shared/ingest/sarif.mts';
+import { escapeRegExp } from '../../../../../../shared/paths/glob.mts';
 import {
   fieldOf,
   isPlainObject,
@@ -19,14 +16,6 @@ type SarifRoots = {
   readonly projectRoot: string;
 };
 type ProcessingOptions = SarifRoots & { readonly loggedCrashFiles?: ReadonlySet<string> };
-type Prepared = { readonly runs: readonly { readonly results: readonly unknown[] }[] };
-
-const escapeRegExp: (value: string) => string = untypedEscapeRegExp;
-const normalizeUri: (uri: string) => string | undefined = untypedNormalizeUri;
-const prepareSarif: (
-  log: { readonly runs: readonly { readonly results: readonly Fields[] }[] },
-  options: SarifRoots & { readonly identityKey: () => string },
-) => Prepared = untypedPrepareSarif;
 
 type PmdProcessingError = {
   readonly tool: string;
@@ -127,11 +116,11 @@ export function pmdProcessingErrors(
   if (notifications.length === 0) {
     return [];
   }
-  const results =
-    prepareSarif(
-      { runs: [{ results: notifications.map(asResult) }] },
-      { roots, sourceRoots, projectRoot, identityKey: () => '' },
-    ).runs[0]?.results ?? [];
+  const prepared = prepareSarif(
+    { runs: [{ results: notifications.map(asResult) }] },
+    { roots, sourceRoots, projectRoot, identityKey: () => '' },
+  );
+  const results = listOf(fieldOf(listOf(prepared['runs'])[0], 'results'));
   const identities = new Set<string>();
   return notifications.flatMap((notification, index) => {
     const filePath = relativePath(results[index]);

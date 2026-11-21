@@ -1,4 +1,4 @@
-import { compactMetricFindings as untypedCompactMetricFindings } from '../../../../shared/report-output/metric-groups.mjs';
+import { compactMetricFindings as untypedCompactMetricFindings } from '../../../../shared/report-output/metric-groups.mts';
 
 const compactMetricFindings: (findings: readonly unknown[]) => readonly unknown[] =
   untypedCompactMetricFindings;

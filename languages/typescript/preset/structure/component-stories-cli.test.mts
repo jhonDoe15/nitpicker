@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { docsUrl as untypedDocsUrl } from '../../../../shared/messages/docs-url.mjs';
+import { docsUrl as untypedDocsUrl } from '../../../../shared/messages/docs-url.mts';
 import {
   readReport,
   runNitpicker,

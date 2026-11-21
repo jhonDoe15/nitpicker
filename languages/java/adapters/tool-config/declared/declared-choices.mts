@@ -3,7 +3,7 @@ import path from 'node:path';
 import {
   ignoredConfigNotice as untypedIgnoredConfigNotice,
   precedenceLayers as untypedPrecedenceLayers,
-} from '../../../../../shared/conventions/tool-precedence.mjs';
+} from '../../../../../shared/conventions/tool-precedence.mts';
 import { fieldOf, messageOf, textOf } from '../../../../../shared/values/readers.mts';
 import type {
   BuildSource,

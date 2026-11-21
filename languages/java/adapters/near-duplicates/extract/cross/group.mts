@@ -14,11 +14,19 @@ import type {
   ReplaceEdit,
   Scan,
   TypeSources,
-  WriteEdit,
 } from '../../extract-types.mts';
+import type { WriteEdit } from '../../../../../../shared/fix/recipes/hygiene/typed/hygiene-types.mts';
 import { outcomeOf, withLineEndingOf } from '../../jvm-views.mts';
 import { indentUnit } from '../java-extract.mts';
-import { nameCollisions, pairOf, parentOf, present, required, suppressions } from '../syntax.mts';
+import {
+  holesOf,
+  nameCollisions,
+  pairOf,
+  parentOf,
+  present,
+  required,
+  suppressions,
+} from '../syntax.mts';
 import { crossExtraction } from './cross-extract.mts';
 import { codeOf, headerOf, importsFor, meaningProblem, packageOf } from './names/imports.mts';
 import { inheritedProblem } from './names/inherited.mts';
@@ -169,7 +177,7 @@ function extractedAll(
       methods: present(group.pairs[index]),
       sources: group.sources,
       label: candidate.first.name,
-      engineHoles: candidate.finding.parameters.length,
+      engineHoles: holesOf(candidate),
       claimed,
       typeSources,
       names: { className: found.name },
