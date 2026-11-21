@@ -3,6 +3,7 @@ import path from 'node:path';
 import type TypeScript from 'typescript';
 import type { Environment } from '../../../../../shared/processes/environment.mts';
 import { isStrictlyInside } from '../../../../../shared/filesystem.mts';
+import { fieldsOf } from '../../../../../shared/values/readers.mts';
 import { typescriptApi } from '../../typed/typescript-program.mts';
 import { nativeCompilerPath } from '../../typed-engine/compiler-binary.mts';
 import { spawnCollected } from '../oxlint-process.mts';
@@ -37,8 +38,22 @@ export async function listProgramFiles({
   if (run.status !== 0 || run.error !== undefined) {
     return undefined;
   }
-  const files = run.stdout.split(/\r?\n/u).filter((line) => path.isAbsolute(line));
+  const files = run.stdout
+    .split(/\r?\n/u)
+    .filter((line) => path.isAbsolute(line))
+    .map((line) => path.resolve(line));
   return { files, libraryDirectory: path.dirname(compiler) };
+}
+
+export function resolvesImports(configPath: string): boolean {
+  const ts = typescriptApi();
+  const read = ts.readConfigFile(configPath, (file) => ts.sys.readFile(file));
+  const parsed = ts.parseJsonConfigFileContent(
+    { ...fieldsOf(read.config), include: [], files: [] },
+    ts.sys,
+    path.dirname(configPath),
+  );
+  return parsed.options.noResolve !== true;
 }
 
 export function globalDeclarationFiles({ files, libraryDirectory }: ProgramListing): string[] {

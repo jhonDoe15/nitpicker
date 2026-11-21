@@ -4,7 +4,11 @@ import type { Environment } from '../../../../../shared/processes/environment.mt
 import { appendAll } from '../../../../../shared/lists/lists.mts';
 import { fieldsOf, listOf, parseJson } from '../../../../../shared/values/readers.mts';
 import type { LintResult } from '../plan/oxlint-shapes.mts';
-import { globalDeclarationFiles, listProgramFiles } from './global-declarations.mts';
+import {
+  globalDeclarationFiles,
+  listProgramFiles,
+  resolvesImports,
+} from './global-declarations.mts';
 
 export const FILES_PER_PROGRAM_VARIABLE = 'NITPICKER_TYPE_AWARE_FILES_PER_PROGRAM';
 
@@ -29,30 +33,53 @@ export function programSlices(files: readonly string[], perProgram: number): str
   ).filter((slice) => slice.length > 0);
 }
 
-export function filesPerProgram(environment: Environment): number {
+function filesPerProgram(environment: Environment): number {
   const configured = Number(environment[FILES_PER_PROGRAM_VARIABLE]);
   return Number.isInteger(configured) && configured > 0 ? configured : FILES_PER_PROGRAM;
+}
+
+function splits(configPath: string, fileCount: number, perProgram: number): boolean {
+  return fileCount > perProgram && isWrittenConfig(configPath) && resolvesImports(configPath);
 }
 
 export async function lintInPrograms(run: ProgramRun, lint: Lint): Promise<LintResult[]> {
   const configPath = path.join(run.stage, STAGE_CONFIG);
   const perProgram = filesPerProgram(run.environment);
-  if (run.files.length <= perProgram || !isWrittenConfig(configPath)) {
-    return lint(run.files);
-  }
-  const listing = await listProgramFiles(run);
+  const listing = splits(configPath, run.files.length, perProgram)
+    ? await listProgramFiles(run)
+    : undefined;
   const listed = new Set(listing?.files ?? []);
   const inProgram = run.files.filter((file) => listed.has(path.join(run.stage, file)));
   if (listing === undefined || inProgram.length <= perProgram) {
     return lint(run.files);
   }
   const outside = run.files.filter((file) => !listed.has(path.join(run.stage, file)));
-  const shared = globalDeclarationFiles(listing);
-  const original = readFileSync(configPath, 'utf8');
   const results: LintResult[] = outside.length === 0 ? [] : await lint(outside);
+  const slices = programSlices(inProgram, perProgram);
+  return appendAll(
+    results,
+    await lintSlices({ stage: run.stage, slices, shared: globalDeclarationFiles(listing) }, lint),
+  );
+}
+
+async function lintSlices(
+  {
+    stage,
+    slices,
+    shared,
+  }: {
+    readonly stage: string;
+    readonly slices: readonly (readonly string[])[];
+    readonly shared: readonly string[];
+  },
+  lint: Lint,
+): Promise<LintResult[]> {
+  const configPath = path.join(stage, STAGE_CONFIG);
+  const original = readFileSync(configPath, 'utf8');
+  const results: LintResult[] = [];
   try {
-    for (const slice of programSlices(inProgram, perProgram)) {
-      const roots = [...shared, ...slice.map((file) => path.join(run.stage, file))];
+    for (const slice of slices) {
+      const roots = [...shared, ...slice.map((file) => path.join(stage, file))];
       writeFileSync(configPath, slicedConfig(original, roots));
       appendAll(results, await lint(slice));
     }
@@ -68,9 +95,9 @@ function isWrittenConfig(configPath: string): boolean {
 
 function slicedConfig(original: string, roots: readonly string[]): string {
   const config = fieldsOf(parseJson(original));
-  const kept = Object.fromEntries(Object.entries(config).filter(([key]) => key !== 'include'));
   return JSON.stringify({
-    ...kept,
+    ...config,
+    include: [],
     files: [...new Set([...listOf(config['files']), ...roots])],
     compilerOptions: { ...fieldsOf(config['compilerOptions']), checkers: 1 },
   });

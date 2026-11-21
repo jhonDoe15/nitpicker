@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { LintResult } from '../plan/oxlint-shapes.mts';
 import { TYPED_POLICY, createProject, lintProject } from '../test-support/oxlint-project.mts';
 import { FILES_PER_PROGRAM_VARIABLE, programSlices } from './type-aware-programs.mts';
+import { resolvesImports } from './global-declarations.mts';
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>();
@@ -42,7 +43,13 @@ async function lintWith(filesPerProgram: string): Promise<{ findings: string[]; 
 beforeAll(() => {
   root = createProject('nitpicker-oxlint-programs-', {
     'policy.mjs': TYPED_POLICY,
+    'base.json': JSON.stringify({ include: ['**/*.ts'] }),
+    'no-resolve-base.json': JSON.stringify({ compilerOptions: { noResolve: true } }),
+    'no-resolve.json': JSON.stringify({ extends: './no-resolve-base.json', include: ['src'] }),
+    'stray/outside.ts': 'declare const outside: string;\n',
+    'src/outside.ts': 'export const seen = outside as string;\n',
     'tsconfig.nitpicker.json': JSON.stringify({
+      extends: './base.json',
       compilerOptions: { strict: true, skipLibCheck: true, types: [], lib: ['ES2022'] },
       include: ['src/**/*.ts'],
     }),
@@ -68,6 +75,11 @@ describe('the type-aware pass of a large project', () => {
     expect(programSlices(['b', 'a'], 5)).toEqual([['a', 'b']]);
   });
 
+  it('keeps one program when the config turns off import resolution, even through extends', () => {
+    expect(resolvesImports(path.join(root, 'tsconfig.nitpicker.json'))).toBe(true);
+    expect(resolvesImports(path.join(root, 'no-resolve.json'))).toBe(false);
+  });
+
   it('runs one smaller program per run and keeps every finding of the whole program', async () => {
     const whole = await lintWith('100');
     const split = await lintWith('1');
@@ -76,7 +88,7 @@ describe('the type-aware pass of a large project', () => {
     expect(whole.findings).toEqual(
       USERS.map((file) => `${file}:${file === 'src/shape.ts' ? 2 : 1} ${RULE}`),
     );
-    expect(split.runs).toBe(7);
+    expect(split.runs).toBe(8);
     expect(split.findings).toEqual(whole.findings);
   });
 });
