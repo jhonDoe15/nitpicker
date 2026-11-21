@@ -6,16 +6,21 @@
 //! - A value may be null when it comes from a method or a field marked `@CheckForNull` (or with a nickname for it),
 //!   from `null`, or from the null side of a test.
 //! - Such a value is reported where it is dereferenced. A value that only may be null is not reported once the
-//!   flow has split, unless it is dereferenced whichever way the flow goes; a `throw` statement and a `return`
-//!   count as ways that do not dereference, exceptions thrown by calls do not count as ways at all.
-//! - A test of the value and `Objects.requireNonNull` end the report. A comparison with `null` that is only
-//!   turned into a boolean is not a test.
+//!   flow has split, unless it is dereferenced whichever way the flow goes; a `return` and a `throw` (which
+//!   dereferences only what it throws) count as ways that do not dereference, exceptions thrown by calls do not
+//!   count as ways at all, and nothing that may be null crosses into an exception handler.
+//! - A method of the same file that dereferences a parameter whichever way it goes dereferences what it is handed.
+//!   Methods with a variable number of parameters and calls more than twelve deep are not followed.
+//! - A test of the value (`== null`, `!= null`, `Objects.isNull`, `Objects.nonNull`, `instanceof`) and
+//!   `Objects.requireNonNull` end the report. A comparison with `null` that is only turned into a boolean is not
+//!   a test, and neither is a test of a `volatile` field.
 //! - The test of an `assert` is run: a dereference in it is reported. Past any `assert`, nothing is reported for
-//!   a value that only may be null before it.
+//!   a value that only may be null before it, and what the assertion compares with `null` is not null after it.
 //! - Results of one method dereferenced on one line make one finding.
-//! - What is known about a field of `this` ends at a call on `this`, a call handed `this`, and a `synchronized`
-//!   block. A `volatile` field is read anew each time. Static fields and fields of other objects are kept.
-//! - Lambda bodies are not looked at.
+//! - What is known about a field of `this` ends at a call on `this` (written with or without `this.`, or with
+//!   `super.`), a call or constructor handed `this`, `this(...)` or `super(...)`, and a `synchronized` block. A `volatile` field is read anew each time. Static fields and fields of other objects are kept.
+//! - Lambda bodies are not looked at; an anonymous class inside one is.
+//! - A `switch` statement of the old form without `default`: the way past every case counts as not taken.
 mod effects;
 mod forward;
 mod marks;

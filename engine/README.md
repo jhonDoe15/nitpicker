@@ -141,8 +141,8 @@ purpose, and its source is not read. A finding carries the SpotBugs pattern name
 `@SuppressFBWarnings` with the pattern name, or without a value, hides it. `NP_SB_ONLY=<pattern,...>` runs some.
 
 Done: `EI_EXPOSE_REP`, `MS_EXPOSE_REP`, `EI_EXPOSE_REP2` and `EI_EXPOSE_STATIC_REP2` (#2098) and
-`CT_CONSTRUCTOR_THROW` (#2112), together 76% of what SpotBugs with FindSecBugs reports on the seven code bases
-below, and the null patterns `NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE`, `NP_NULL_ON_SOME_PATH` and
+`CT_CONSTRUCTOR_THROW` (#2112), those five together 76% of what SpotBugs with FindSecBugs reports on the seven
+code bases below, and the null patterns `NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE`, `NP_NULL_ON_SOME_PATH` and
 `NP_ALWAYS_NULL` (#2146, see "Null patterns" below). The rest is planned in #2097.
 
 `tests/expected/spotbugs.json` holds what SpotBugs reported for the compiled `tests/fixtures/spotbugs`; each
@@ -212,12 +212,17 @@ variable of `instanceof` holds the tested value; one parameter stored twice in a
 finding; the outer-instance field of an inner class is `this$N`, N counting the inner classes around the outer
 one; the line of an inner-class constructor is the line of its opening brace.
 
+Known gaps in what is rebuilt: `c ? a : b` stored in a field follows a table measured on SpotBugs, which decides
+by the compiled form (`tests/fixtures/spotbugs/choices*`); a local variable with more than two values is taken
+as changeable, and so is a value more than 8 local variables or 256 nested values deep; stores from other files are not seen; a branch SpotBugs finds dead because it compares a field
+nothing writes with a constant is still looked at; a call that is the very first instruction of a `finally`
+block is still covered by the handler before it in the compiled form, which the engine does not rebuild.
 ### Null patterns
 
 `src/java/spotbugs/nulls/` follows values through a method on the flow graph of `src/java/flow/`: a backward
 pass finds where a value is dereferenced whichever way the flow goes, a forward pass carries what is known about
 each local variable and field. Measured on Elasticsearch `server` (4 cores), where SpotBugs reports 647 findings
-of the three patterns (86% of its 746 null findings):
+of the three patterns (87% of its 746 null findings):
 
 | Pattern | Same | Missed | Extra |
 | --- | --- | --- | --- |
@@ -232,8 +237,9 @@ a method is overridden is looked up over every class of the run: both are still 
 
 What SpotBugs does, as measured (`tests/fixtures/spotbugs/null_*`, 218 findings, all the same):
 
-- Only `@CheckForNull`, or an annotation that itself carries `@CheckForNull` and `@TypeQualifierNickname`, marks
-  a method result or a field. `javax.annotation.Nullable` and other annotations named `Nullable` do nothing. The
+- Only `@CheckForNull`, or an annotation whose own declaration carries `@CheckForNull` (a nickname, as measured
+  with `@TypeQualifierNickname` beside it), marks a method result or a field. `javax.annotation.Nullable` and
+  other annotations named `Nullable` that are not such nicknames do nothing. The
   mark is inherited from an overridden method, and a record component hands it to its accessor and field.
 - A value that only may be null is reported where it is dereferenced, as long as it is dereferenced whichever
   way the flow goes from where it arose. `return` and `throw` are ways without a dereference; an exception
@@ -242,7 +248,8 @@ What SpotBugs does, as measured (`tests/fixtures/spotbugs/null_*`, 218 findings,
 - A dereference is a call on the value, a field or array access, unboxing, `synchronized`, `throw`, the iterable
   of a `for`, a `switch` on it, and handing it to a method of the same file that dereferences that parameter on
   every way through (static, private, final or not overridden; followed through further calls).
-- What is known of a field of `this` ends at a call on `this`, a call handed `this` and a `synchronized` block;
+- What is known of a field of `this` ends at a call on `this` (also `super.` and `this(...)`), a call or
+  constructor handed `this` and a `synchronized` block;
   the field then counts as read again at that point. A `volatile` field is read anew each time.
 - The test of an `assert` is run, and past any `assert` a value that only may be null is no longer reported.
 - Lambda bodies are never reported; anonymous classes, constructors, initializers and field initializers are.
@@ -267,9 +274,3 @@ Not rebuilt yet: `NP_NULL_PARAM_DEREF` and its variants, `NP_GUARANTEED_DEREF`,
 `NP_NULL_ON_SOME_PATH_EXCEPTION`, `NP_NULL_ON_SOME_PATH_MIGHT_BE_INFEASIBLE`, `NP_LOAD_OF_KNOWN_NULL_VALUE`, the
 `RCN_` family, `NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE`, `NP_BOOLEAN_RETURN_NULL` and
 `NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT`. Other code bases are not compared yet.
-
-Known gaps in what is rebuilt: `c ? a : b` stored in a field follows a table measured on SpotBugs, which decides
-by the compiled form (`tests/fixtures/spotbugs/choices*`); a local variable with more than two values is taken
-as changeable, and so is a value more than 8 local variables or 256 nested values deep; stores from other files are not seen; a branch SpotBugs finds dead because it compares a field
-nothing writes with a constant is still looked at; a call that is the very first instruction of a `finally`
-block is still covered by the handler before it in the compiled form, which the engine does not rebuild.

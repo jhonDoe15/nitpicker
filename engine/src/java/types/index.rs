@@ -332,7 +332,8 @@ impl TypeIndex {
         found
     }
 
-    /// Whether a class of the run's sources below `class` declares a method of that name and parameter count.
+    /// Whether a known class below `class`, from the run's sources or already read from the class path, declares
+    /// an instance method of that name and parameter count.
     pub fn overridden_in_sources(&self, class: &str, name: &str, parameters: usize) -> bool {
         self.classes.values().any(|slot| match slot {
             Slot::Ready(other) => {
