@@ -11,6 +11,7 @@ mod doctest;
 mod hierarchy;
 mod javadoc;
 mod members;
+mod nullaway;
 mod operators;
 mod returns;
 mod names;
@@ -190,6 +191,7 @@ const CHECKS: &[Check] = &[
     names::unnecessarily_fully_qualified,
     names::suppress_warnings_without_explanation,
     names::type_parameter_unused_in_formals,
+    nullaway::null_away,
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would

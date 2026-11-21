@@ -129,6 +129,10 @@ pub mod flag {
     pub const KEPT: u32 = 1 << 17;
     /// Carries Error Prone's `@Immutable`.
     pub const IMMUTABLE: u32 = 1 << 18;
+    /// A field or a method's result carries an annotation named `Nullable` or `CheckForNull`.
+    pub const NULLABLE: u32 = 1 << 19;
+    /// The class comes from a source file of the run, not from the class path.
+    pub const SOURCE: u32 = 1 << 20;
 
     pub const IMMUTABLE_NAME: &str = "com.google.errorprone.annotations.Immutable";
     pub const IMMUTABLE_PARAMETER_NAME: &str = "com.google.errorprone.annotations.ImmutableTypeParameter";
@@ -199,6 +203,14 @@ pub struct Method {
     /// Parameter names, when the source or the class file gives them; empty otherwise.
     pub names: Vec<String>,
     pub detail: Detail,
+    /// The parameter types as javac prints them in a method's name: qualified, with type arguments, comma separated.
+    pub shown: String,
+    /// Bit per parameter position that is marked nullable.
+    pub nullable_parameters: u64,
+    /// The text of a `@Contract` annotation on the method; empty without one.
+    pub contract: String,
+    /// Marked as run right after construction: an annotation named `Initializer` or one of `STARTERS`.
+    pub starts: bool,
 }
 
 /// What javac's method symbol gives beyond its signature: modifiers and annotations as written, for checks that compare
@@ -222,6 +234,17 @@ pub mod target {
         NAMES.iter().position(|known| *known == name).map_or(0, |at| 1 << at)
     }
 }
+
+/// Annotations that make a method an initializer for NullAway: its defaults and the project's own list.
+pub const STARTERS: &[&str] = &[
+    "jakarta.annotation.PostConstruct",
+    "javax.annotation.PostConstruct",
+    "org.junit.Before",
+    "org.junit.BeforeClass",
+    "org.junit.jupiter.api.BeforeAll",
+    "org.junit.jupiter.api.BeforeEach",
+    "org.springframework.beans.factory.annotation.Autowired",
+];
 
 #[derive(Clone, Debug, Default)]
 pub struct ClassInfo {
