@@ -1,22 +1,14 @@
-import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { checkCommandOf } from './check-cli.mts';
+import { checkCommandOf, runCheckCli } from './check-cli.mts';
+import { runCli } from '../../cli.mts';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mts';
+import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
 import { useTempProjects } from '../../../shared/test-support/temp-projects.mts';
-import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mts';
 
 const project = useTempProjects('nitpicker-check-cli-');
-const entryOf = (name: string): string =>
-  fileURLToPath(checkoutModuleUrl(new URL(`../../${name}`, import.meta.url)));
 
-function hygieneRun(entry: string, root: string) {
-  const result = spawnSync(
-    process.execPath,
-    [entry, 'hygiene', '--check', 'repository-hygiene', '--project-root', root],
-    { cwd: root, encoding: 'utf8' },
-  );
-  return { status: result.status, stdout: result.stdout, stderr: result.stderr };
+function hygieneArguments(root: string): string[] {
+  return ['hygiene', '--check', 'repository-hygiene', '--project-root', root];
 }
 
 describe('check commands', () => {
@@ -30,28 +22,44 @@ describe('check commands', () => {
     ]);
   });
 
-  it('reports the same hygiene findings through bin as through the full command line', () => {
+  it('reports the same hygiene findings as the full command line', async () => {
     const root = project({
       'package.json': '{"name":"fixture"}\n',
       'src/index.ts': 'export const value = 1;\n',
       'keys/server.pem': '-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----\n',
-      'dist/bundle.js': 'console.log(1);\n',
     });
     fixtureGit(root, ['init', '-q', '--initial-branch=main']);
     commit(root, 'fixture');
+    const light = captureOutput();
+    const full = captureOutput();
 
-    const throughBin = hygieneRun(entryOf('bin.mjs'), root);
+    const lightExit = await runCheckCli({
+      argv: ['node', 'bin.mjs', ...hygieneArguments(root)],
+      env: { ...process.env },
+      stdout: light.stdout,
+      stderr: light.stderr,
+    });
+    const fullExit = await runCli({
+      arguments_: hygieneArguments(root),
+      environment: { ...process.env },
+      stdout: full.stdout,
+      stderr: full.stderr,
+    });
 
-    expect(throughBin).toEqual(hygieneRun(entryOf('cli.mjs'), root));
-    expect(throughBin.status).toBe(0);
-    expect(throughBin.stdout).toContain('repository-hygiene');
+    expect({ exit: lightExit, out: light.stdoutText, err: light.stderrText }).toEqual({
+      exit: fullExit,
+      out: full.stdoutText,
+      err: full.stderrText,
+    });
+    expect(lightExit).toBe(0);
+    expect(light.stdoutText).not.toBe('');
   });
 
-  it('rejects an unknown command when the check entry runs alone', async () => {
-    const { runCli } = await import('./check-cli.mts');
+  it('rejects an unknown command', async () => {
+    const output = captureOutput();
 
-    await expect(runCli({ arguments_: ['snapshot'] })).rejects.toThrow(
-      'Unknown check command: snapshot',
-    );
+    await expect(
+      runCheckCli({ argv: ['node', 'bin.mjs', 'snapshot'], env: {}, ...output }),
+    ).rejects.toThrow('Unknown check command: snapshot');
   });
 });

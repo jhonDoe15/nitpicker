@@ -22,7 +22,9 @@ function onceByKey<Value>(): (key: string, create: () => Value) => Value {
 
 const packageClosure = onceByKey<Map<string, string>>();
 const packageFiles = unchangingImportClosure(packageRoot);
-const packageFilesOf: ClosureOf = (relativePaths) => packageFiles(relativePaths);
+function packageFilesOf(relativePaths: readonly string[]): Map<string, string> {
+  return packageFiles(relativePaths);
+}
 
 function closureContents(
   relativePaths: readonly string[],
