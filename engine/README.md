@@ -241,22 +241,22 @@ these five patterns from source:
 | Code base | Files, lines | SpotBugs wall, CPU, peak | Engine | Exposed representation | Constructor throw |
 | --- | --- | --- | --- | --- | --- |
 | Elasticsearch `server` | 5,106, 1,035k | 249 s, 417 s, 3.2 GB | 8.0 s, 28.9 s, 0.5 GB | 4,330 / 5 / 1 | 1,532 / 7 / 1 |
-| Nacos | 3,118, 548k | 108 s, 242 s, 2.9 GB | 5.2 s, 13.0 s, 0.3 GB | 2,438 / 2 / 4 | 85 / 0 / 0 |
+| Nacos | 3,118, 548k | 108 s, 242 s, 2.9 GB | 5.6 s, 18.0 s, 0.3 GB | 2,440 / 0 / 6 | 85 / 0 / 0 |
 | javaparser-core | 594, 121k | 48.3 s, 97.2 s, 2.3 GB | 0.9 s, 3.0 s, 0.1 GB | 500 / 0 / 0 | 17 / 0 / 0 |
 | Guava | 610, 183k | 43.6 s, 99.8 s, 1.8 GB | 1.3 s, 4.3 s, 0.1 GB | 14 / 0 / 0 | 0 / 0 / 0 |
 | jackson-databind | 478, 134k | 35.7 s, 78.2 s, 1.7 GB | 0.9 s, 3.3 s, 0.1 GB | 224 / 0 / 0 | 17 / 0 / 0 |
 | commons-lang | 264, 106k | 19.9 s, 50.5 s, 1.2 GB | 0.7 s, 2.2 s, 0.1 GB | 15 / 0 / 0 | 17 / 0 / 0 |
 | MyBatis | 393, 40k | 15.5 s, 50.3 s, 0.9 GB | 0.4 s, 1.2 s, 0.1 GB | 173 / 0 / 0 | 32 / 0 / 0 |
 
-Exposed representation, 12 differences (7,694 same):
+Exposed representation, 12 differences (7,696 same):
 
-- A value stored from a class in another file, 1: the engine judges a field by the stores in its own file;
-  SpotBugs also counts stores from classes it visited earlier, wherever they are.
 - A field that only ever takes a parameter, read back from another object and stored, 1 constructor missed.
 - A field of the superclass returned through a field typed with that superclass, 1 missed.
-- 9 not explained yet (tracked in #2098): 4 getters of one protobuf-generated builder and 1 other getter the
-  engine reports alone; 2 getters of a protobuf-generated message and 2 other getters only SpotBugs reports.
-  Small classes of the same shape do not reproduce them, so the cause is in their surroundings.
+- 10 not explained yet (tracked in #2098). The engine reports alone: 4 getters of one protobuf-generated builder
+  whose field is typed `Object` and only ever takes one message type, 2 getters of a protobuf-generated message
+  whose place in the visiting order among classes that call each other is not known, and 1 other getter. Only
+  SpotBugs reports: 3 getters over a field that takes nothing but `Map.of` or `Map.copyOf` results, two of
+  them in a subclass of the class with the field. Small classes of the same shape do not reproduce them.
 
 Constructor throw, 8 differences (1,700 same):
 
@@ -279,16 +279,33 @@ the `close()` the compiler adds after it counts as a call under the `catch` clau
 constructor one matching `catch` clause is enough; for a call in a method every `catch` clause of the `try`
 has to take the exception.
 
-How a field counts as holding only unchangeable values (`loads*`, `visits`, `values`):
+How a field counts as holding only unchangeable values (`loads*`, `visits`, `values`, `across`, `calls`):
 
-- Every store in the field's own class counts. A store from another class counts only when SpotBugs visits that
-  class first, and it visits classes in the order of a Java `HashMap` keyed by the class name with slashes,
-  sized for the number of classes in the run. The engine takes the classes of the run as that number.
-- A call result stored from another class counts against the field only when the called method's class is part
-  of the run and was visited before the storing class.
-- A value read from another field is fine when that field was given an unchangeable value at least once. The
-  field read back into itself (`this.f = other.f`) says nothing, and counts against the field when it went
-  through a local variable first.
+- Stores are gathered over the whole run, from every file, while the files are checked; a getter that hangs on
+  them is decided after the last file (`known.rs`).
+- For a getter in class G, the stores G makes and the stores of classes visited before G are asked first: one
+  changeable value among them and the getter is reported, otherwise one unchangeable value (`null` too) and it
+  is not. When they say nothing, all stores of the run are asked: no changeable value and at least one
+  unchangeable value other than `null` and the getter is not reported.
+- A call result that is stored counts as changeable, whichever class the method is in, unless the call is one
+  of the library calls known to make an unchangeable value (`List.of`, `Map.copyOf`,
+  `Collections.unmodifiableList` and their like).
+- A field of an unchangeable declared type that every store of the run gives one changeable type is reported;
+  `null` stores are passed over and a store whose type is not known ends it.
+- Classes are visited in the order of a Java `HashMap` keyed by the class name with slashes, sized for the
+  number of classes in the run. A class is put off until all others are done when it calls a method or
+  constructor that takes or returns an object, of a class of the run that is not an interface and was not
+  visited yet; methods `Object` declares and calls between classes that call each other in a circle put
+  nothing off. Classes put off are visited last one first (`order.rs`, `calls.rs`).
+- What counts as such a call, as the compiled form has it: the constructor of an inner class (it takes the
+  outer object) and of an anonymous class outside a static place or with arguments; `super(...)` and
+  `super.m()` go to the superclass, a bare `m()` to the nearest class around that has an `m`; a call belongs
+  to the innermost class around it. The engine asks the overloads of that name and argument count and
+  resolves the call only when they disagree. A call into a class in the same `HashMap` slot puts the caller
+  off.
+- A value read from another field is fine when that field was given an unchangeable value at least once, anywhere in
+  the run. The field read back into itself (`this.f = other.f`) says nothing, and counts against the field when it
+  went through a local variable first.
 - A local variable with two values is judged the way `c ? first : second` is.
 
 Also measured: the accessor of a record's varargs component is reported and its constructor is not; a pattern
@@ -296,8 +313,14 @@ variable of `instanceof` holds the tested value; one parameter stored twice in a
 finding; the outer-instance field of an inner class is `this$N`, N counting the inner classes around the outer
 one; the line of an inner-class constructor is the line of its opening brace.
 
-Known gaps in what is rebuilt: `c ? a : b` stored in a field follows a table measured on SpotBugs, which decides
-by the compiled form (`tests/fixtures/spotbugs/choices*`); a local variable with more than two values is taken
-as changeable, and so is a value more than 8 local variables or 256 nested values deep; stores from other files are not seen; a branch SpotBugs finds dead because it compares a field
-nothing writes with a constant is still looked at; a call that is the very first instruction of a `finally`
-block is still covered by the handler before it in the compiled form, which the engine does not rebuild.
+Known gaps in what is rebuilt: `c ? a : b` stored in a field follows a table measured on SpotBugs, which decides by
+the compiled form (`tests/fixtures/spotbugs/choices*`); a local variable with more than two values is taken as
+changeable, and so is a value more than 8 local variables or 256 nested values deep; a branch SpotBugs finds dead
+because it compares a field nothing writes with a constant is still looked at; a call that is the very first
+instruction of a `finally` block is still covered by the handler before it in the compiled form, which the engine does
+not rebuild. Of the visiting order: two classes in the same `HashMap` slot are taken as neither before the other; the
+classes the compiler adds for a `switch` over an enum, the bodies of enum constants, and the calls the compiler adds
+(the iterator of a `for` over a collection, the constructor call of an inner superclass) are not counted, and neither
+is a call on a lambda parameter without a declared type inside nested call arguments, which costs seconds per file to
+resolve. `NP_SB_CALLS=<file>` writes the calls the order is built from; `parity/spotbugs/calls.py` reads the same from
+class files and compares (Nacos: 10,350 same, 76 only in class files, 2 only in the engine).
