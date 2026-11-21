@@ -9,6 +9,7 @@ mod flow;
 mod known;
 mod mutable;
 mod names;
+mod nulls;
 mod order;
 mod stores;
 
@@ -36,6 +37,10 @@ pub struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
+    /// Whether a run restricted to some patterns asks for one of these.
+    pub fn wants(&self, patterns: &[&str]) -> bool {
+        self.selected.as_ref().is_none_or(|names| names.iter().any(|name| patterns.contains(&name.as_str())))
+    }
     pub fn compiled(&self) -> &crate::java::javac::Names<'a> {
         self.compiled.get_or_init(|| crate::java::javac::Names::of(self.resolver, self.file.tree.root_node()))
     }
@@ -109,9 +114,9 @@ impl<'a> Context<'a> {
 
 /// A detector looks at one class, enum, record or interface declaration at a time, or at the `new` expression or
 /// enum constant that carries the body of an anonymous class.
-type Detector = fn(&Context, Node);
+type Detector = for<'a> fn(&Context<'a>, Node<'a>);
 
-const DETECTORS: &[Detector] = &[expose::exposed_representation, constructors::constructor_throw];
+const DETECTORS: &[Detector] = &[expose::exposed_representation as Detector, constructors::constructor_throw as Detector, nulls::null_dereference as Detector];
 
 #[derive(Default)]
 pub struct SpotBugs {
