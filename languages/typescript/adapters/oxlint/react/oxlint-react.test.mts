@@ -14,6 +14,7 @@ const adapters = 'src/main/features/profile/adapters';
 const domain = 'src/main/features/profile/domain';
 const ui = 'src/main/features/profile/ui';
 const typedRules = new Set([
+  'nitpicker/no-union-order-dependence',
   'nitpicker/no-unknown-in-domain',
   'react-x/no-leaked-conditional-rendering',
 ]);
