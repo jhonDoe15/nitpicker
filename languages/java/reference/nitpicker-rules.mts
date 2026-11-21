@@ -43,6 +43,7 @@ import { mutatingMethodEntry } from './review-entries/mutating-method.mts';
 import { delegateSkipsDefaultEntry } from './review-entries/wrappers/delegate-skips-default.mts';
 import { nullFallThroughEntry } from './review-entries/null-fall-through.mts';
 import { nullableReturnEntry } from './review-entries/nullable-return.mts';
+import { springContextEntry } from './review-entries/tests/spring-context.mts';
 import { selfRecursionEntry } from './review-entries/self-recursion.mts';
 import { springConfigForms } from './spring-config-messages.mts';
 import {
@@ -280,6 +281,7 @@ export function jvmNitpickerEntries(): RuleEntry[] {
     roundTripEntry(),
     copiedConstantEntry(),
     copyPastedTestEntry(),
+    springContextEntry(),
     maxValueEntry(),
     ...stringCallEntries(),
     ...valueCheckEntries(),
