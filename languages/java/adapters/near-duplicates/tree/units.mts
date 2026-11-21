@@ -1,6 +1,6 @@
 import type { Node } from 'web-tree-sitter';
 import type { BaseContext, Language, PlacedNode, Unit, UnitEntry } from '../jvm-types.mts';
-import { EXPRESSIONS, lambdaOf } from './expressions.mts';
+import { EXPRESSIONS, annotatedRestParameter, lambdaOf } from './expressions.mts';
 import { EMPTY_CLASS_SCOPE, boundNames, classScope, fileScope } from './names.mts';
 import {
   NONE,
@@ -142,7 +142,7 @@ function functionOf(source: Node, context: BaseContext): PlacedNode {
     at(
       PARAMETERS_KIND,
       parameters ?? source,
-      list.map((parameter) => context.get(parameter)),
+      list.map((parameter) => annotatedRestParameter(parameter, context) ?? context.get(parameter)),
     ),
     context.get(field(source, 'body')),
   ]);
