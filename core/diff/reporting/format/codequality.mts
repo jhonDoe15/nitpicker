@@ -36,10 +36,16 @@ function firstOfEachFingerprint(issues: readonly Issue[]): Issue[] {
   });
 }
 
-export function renderCodeQualityReport(
+export function codeQualityIssues(
   findings: readonly ReportEntry[],
   { projectPath = '.' }: { readonly projectPath?: string | undefined } = {},
+): unknown[] {
+  return firstOfEachFingerprint(findings.map((finding) => toIssue(finding, projectPath)));
+}
+
+export function renderCodeQualityReport(
+  findings: readonly ReportEntry[],
+  options: { readonly projectPath?: string | undefined } = {},
 ): string {
-  const issues = firstOfEachFingerprint(findings.map((finding) => toIssue(finding, projectPath)));
-  return `${JSON.stringify(issues, null, 2)}\n`;
+  return `${JSON.stringify(codeQualityIssues(findings, options), null, 2)}\n`;
 }

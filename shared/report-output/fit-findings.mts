@@ -1,6 +1,6 @@
 export const OUTPUT_LIMIT_VARIABLE = 'NITPICKER_ANALYZER_OUTPUT_LIMIT_BYTES';
 export const OUTPUT_LIMIT_RULE = 'output-limit';
-export const MAX_ANALYZER_STDOUT_BYTES = 384 * 1024 * 1024;
+export const MAX_ANALYZER_STDOUT_BYTES = 1024 * 1024 * 1024;
 export const FITTED_ANALYZER_STDOUT_BYTES = 256 * 1024 * 1024;
 
 export type CutRule = { readonly rule: string; readonly findings: number };

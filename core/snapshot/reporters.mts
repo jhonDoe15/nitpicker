@@ -6,6 +6,7 @@ import {
   clearLogs,
   clearReports,
   json,
+  linePieces,
   writeReports,
 } from '../diff/reporting/reporters.mts';
 import { quickLines, stagedLines } from '../quick/summary.mts';
@@ -16,7 +17,7 @@ import { ruleReferenceLines as referenceLinesOf } from '../diff/reporting/text.m
 import { withHelpLinks } from '../diff/reporting/report-model.mts';
 import {
   CODE_QUALITY_REPORT_FILE_NAME as codeQualityFile,
-  renderCodeQualityReport as codeQualityOf,
+  codeQualityIssues,
 } from '../diff/reporting/format/codequality.mts';
 
 import {
@@ -104,12 +105,15 @@ const SNAPSHOT_REPORTS: readonly SnapshotFile[] = [
     render: (report, { reference }) => json(withHelpLinks(report.findings, reference)),
   },
   { name: 'tool-errors.json', render: (report) => json(report.toolErrors) },
-  { name: 'report.txt', render: (report, { reference }) => renderTextReport(report, reference) },
+  {
+    name: 'report.txt',
+    render: (report, { reference }) => linePieces(textReportLines(report, reference)),
+  },
   { name: 'report.junit.xml', render: (report) => renderJunitReport(report) },
   { name: 'report.sarif', render: sarifOf },
   {
     name: codeQualityFile,
-    render: (report, options) => codeQualityOf(report.findings, options),
+    render: (report, options) => json(codeQualityIssues(report.findings, options)),
   },
 ];
 
@@ -127,11 +131,8 @@ export function writeSnapshotReports(
     projectPath,
     repositoryRoot,
   }: { readonly projectPath?: string; readonly repositoryRoot?: string } = {},
-): unknown {
-  return writeReports(outputRoot, SNAPSHOT_REPORTS, {
-    report,
-    options: { projectPath, repositoryRoot },
-  }).get('report.txt');
+): void {
+  writeReports(outputRoot, SNAPSHOT_REPORTS, { report, options: { projectPath, repositoryRoot } });
 }
 
 export function renderSnapshotConsoleSummary(
@@ -141,7 +142,7 @@ export function renderSnapshotConsoleSummary(
   return renderSnapshotConsole(report, options);
 }
 
-function renderTextReport(report: SnapshotReport, reference: ReferenceLinks): string {
+function textReportLines(report: SnapshotReport, reference: ReferenceLinks): string[] {
   const enforceable = report.findings.filter((finding) => finding.classification === 'enforceable');
   const descriptive = report.findings.filter((finding) => finding.classification === 'descriptive');
   const lines = [
@@ -166,7 +167,7 @@ function renderTextReport(report: SnapshotReport, reference: ReferenceLinks): st
   if (help !== undefined) {
     lines.push(help);
   }
-  return `${lines.join('\n')}\n`;
+  return lines;
 }
 
 export function renderRuleFilterSection(

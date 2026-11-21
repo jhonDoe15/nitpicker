@@ -42,8 +42,15 @@ function field(value: unknown, key: string): string {
 
 export function renderTextReport(
   report: ReportData,
-  { reference = referenceLinks() }: { readonly reference?: ReferenceLinks } = {},
+  options: { readonly reference?: ReferenceLinks } = {},
 ): string {
+  return `${textReportLines(report, options).join('\n')}\n`;
+}
+
+export function textReportLines(
+  report: ReportData,
+  { reference = referenceLinks() }: { readonly reference?: ReferenceLinks } = {},
+): unknown[] {
   const lines: unknown[] = [
     ...summaryLines(report),
     ...configOverrideLines(listOf(report.summary['configOverrides'])),
@@ -57,7 +64,7 @@ export function renderTextReport(
   appendMetricSection(lines, report.changedMetrics);
   appendAll(lines, toolErrorSectionLines(report.toolErrors));
   appendAll(lines, noteLines(report.notes));
-  return `${lines.join('\n')}\n`;
+  return lines;
 }
 
 function summaryLines(report: ReportData): unknown[] {

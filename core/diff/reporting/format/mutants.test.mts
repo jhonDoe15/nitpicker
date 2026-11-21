@@ -249,7 +249,7 @@ describe('mutation entries in the console summary', () => {
         strykerFindings([2, 3, 4, 5, 6, 7].map((line) => strykerMutant('NoCoverage', line))),
       ),
     ];
-    const written = json(findings);
+    const written = [...json(findings)].join('');
 
     const summary = summaryOf(findings);
 
@@ -270,6 +270,6 @@ describe('mutation entries in the console summary', () => {
         '',
       ].join('\n'),
     );
-    expect(json(findings)).toBe(written);
+    expect([...json(findings)].join('')).toBe(written);
   });
 });

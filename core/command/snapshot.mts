@@ -176,7 +176,7 @@ function writeAndFinish(
     readonly resume: unknown;
   },
 ): void {
-  report.text = writeSnapshotReports(place.outputRoot, report, {
+  writeSnapshotReports(place.outputRoot, report, {
     projectPath: place.relativeProjectPath,
     repositoryRoot: place.repositoryRoot,
   });

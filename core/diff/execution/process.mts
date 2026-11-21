@@ -15,7 +15,7 @@ import {
   MAX_ANALYZER_STDOUT_BYTES,
 } from '../../../shared/report-output/fit-findings.mts';
 import { type AnalyzerTask, taskLimitEnvironment } from './tasks.mts';
-import { type AnalyzerReport, reportFromAnalyzerOutput } from './report/analyzer-report.mts';
+import { type AnalyzerReport, reportFromAnalyzerFile } from './report/analyzer-report.mts';
 
 type OutputFile = {
   readonly descriptor: number;
@@ -98,10 +98,13 @@ function settleClose(
   }
   try {
     resolve(
-      reportFromAnalyzerOutput(task, {
+      reportFromAnalyzerFile(task, {
         status,
         signal,
-        stdoutText: textOf(stdoutFile.read('utf8')),
+        stdoutFile: {
+          descriptor: stdoutFile.descriptor,
+          read: (encoding) => textOf(stdoutFile.read(encoding)),
+        },
         stderrText: Buffer.concat(output.stderr).toString('utf8'),
       }),
     );
