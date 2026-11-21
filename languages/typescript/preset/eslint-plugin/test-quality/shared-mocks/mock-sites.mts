@@ -58,8 +58,8 @@ function chainRoot(node: TSESTree.Node): TSESTree.Node {
   return links.at(-1) ?? node;
 }
 
-export function isMockCreation(apis: RunnerApis, node: TSESTree.Node | null | undefined): boolean {
-  return node !== null && node !== undefined && runnerCall(apis, chainRoot(node), MOCK_FACTORIES);
+export function isMockCreation(apis: RunnerApis, node: TSESTree.Node | undefined): boolean {
+  return node !== undefined && runnerCall(apis, chainRoot(node), MOCK_FACTORIES);
 }
 
 export function mockedModule(
@@ -83,12 +83,15 @@ export function clearsEveryMock(apis: RunnerApis, node: TSESTree.CallExpression)
 }
 
 function withoutTypes(node: TSESTree.Node): TSESTree.Node {
-  return node.type === AST_NODE_TYPES.TSAsExpression ||
-    node.type === AST_NODE_TYPES.TSNonNullExpression ||
-    node.type === AST_NODE_TYPES.TSSatisfiesExpression ||
-    node.type === AST_NODE_TYPES.TSTypeAssertion
-    ? withoutTypes(node.expression)
-    : node;
+  const links = chainOf(node, (current) =>
+    current.type === AST_NODE_TYPES.TSAsExpression ||
+    current.type === AST_NODE_TYPES.TSNonNullExpression ||
+    current.type === AST_NODE_TYPES.TSSatisfiesExpression ||
+    current.type === AST_NODE_TYPES.TSTypeAssertion
+      ? current.expression
+      : undefined,
+  );
+  return links.at(-1) ?? node;
 }
 
 function unwrapMocked(apis: RunnerApis, wrapped: TSESTree.Node): TSESTree.Node {
@@ -110,10 +113,12 @@ function identifierName(apis: RunnerApis, node: TSESTree.Node | undefined): stri
   return target?.type === AST_NODE_TYPES.Identifier ? target.name : undefined;
 }
 
-export function clearedMockName(
+export type ClearedMock = { readonly name: string | undefined };
+
+export function clearedMock(
   apis: RunnerApis,
   node: TSESTree.CallExpression,
-): string | null | undefined {
+): ClearedMock | undefined {
   const { callee } = node;
   if (
     callee.type !== AST_NODE_TYPES.MemberExpression ||
@@ -125,7 +130,7 @@ export function clearedMockName(
     callee.object.type === AST_NODE_TYPES.MemberExpression && propertyName(callee.object) === 'mock'
       ? callee.object.object
       : callee.object;
-  return identifierName(apis, target) ?? null;
+  return { name: identifierName(apis, target) };
 }
 
 function matcherOf(member: TSESTree.MemberExpression): { name: string; negated: boolean } {

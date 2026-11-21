@@ -70,7 +70,7 @@ tester.run('react-no-render-side-effect', rule, {
     invalid("void navigate?.('/login');", 'navigation', 'navigate(...)'),
     invalid('document.title += title;', 'title'),
     invalid('document.title = title;', 'title'),
-    invalid('if (title) { window.document.title = `${title} | App`; }', 'title'),
+    invalid(`if (title) { window.document.title = \`\${title} | App\`; }`, 'title'),
   ],
 });
 
@@ -96,7 +96,10 @@ export function Panel({ title }) { const router = useRouter(); router.push('/x')
     {
       filename,
       code: `${head}
-export function useTitle(title) { const [shown] = useState(title); useEffect(() => { document.title = shown; }, [shown]); }`,
+export function useTitle(title) {
+  const [shown] = useState(title);
+  useEffect(() => { document.title = shown; }, [shown]);
+}`,
     },
     {
       filename,

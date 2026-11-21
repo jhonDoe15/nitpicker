@@ -1,11 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import {
-  subprocessBindings,
-  withPromisified,
-  type ModuleBindings,
-} from '../../analysis/subprocess-calls.mts';
 import { nameOf } from '../../typed/node-views.mts';
-import { promisifiedBinding } from '../process-callees.mts';
+import { trackedBindings } from '../process-callees.mts';
 import { orOperands } from '../../null-branches/null-targets.mts';
 import { isStderrText } from './stderr-sources.mts';
 
@@ -110,20 +105,13 @@ export const rule: TSESLint.RuleModule<'stderrAsFailure'> = {
     },
   },
   create(context) {
-    let bindings: ModuleBindings = { named: new Map(), namespaces: new Set() };
-    return {
-      Program(node) {
-        bindings = withPromisified(node, subprocessBindings(node));
-      },
-      VariableDeclarator(node) {
-        bindings = promisifiedBinding(node, bindings);
-      },
+    return trackedBindings('promisified-imports-and-aliases', (current) => ({
       IfStatement(node) {
-        check(context, { context, bindings }, node);
+        check(context, { context, bindings: current() }, node);
       },
       ConditionalExpression(node) {
-        check(context, { context, bindings }, node);
+        check(context, { context, bindings: current() }, node);
       },
-    };
+    }));
   },
 };

@@ -46,7 +46,7 @@ export function freshValue(node: TSESTree.Node): string | undefined {
   return plain.type === AST_NODE_TYPES.CallExpression ? freshCall(plain) : undefined;
 }
 
-export function returnedExpressions(fn: FunctionNode): TSESTree.Node[] {
+function returnedExpressions(fn: FunctionNode): TSESTree.Node[] {
   if (fn.body.type !== AST_NODE_TYPES.BlockStatement) {
     return [fn.body];
   }

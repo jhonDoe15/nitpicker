@@ -1,5 +1,11 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { contains, nameOf, variableNamed, type SourceCode } from '../../typed/node-views.mts';
+import {
+  chainOf,
+  contains,
+  nameOf,
+  variableNamed,
+  type SourceCode,
+} from '../../typed/node-views.mts';
 import { isFunction, unwrapped, type FunctionNode } from '../../typed/syntax-views.mts';
 import { hookName, nodesOutsideNestedFunctions } from '../react-effects.mts';
 import { functionLabel, isComponentName } from '../support/component-names.mts';
@@ -64,14 +70,12 @@ function effectOf(sourceCode: SourceCode, node: TSESTree.Node): Report | undefin
 }
 
 function memberRoot(identifier: TSESTree.Node): TSESTree.Node {
-  let current = identifier;
-  while (
-    current.parent?.type === AST_NODE_TYPES.MemberExpression &&
-    current.parent.object === current
-  ) {
-    current = current.parent;
-  }
-  return current;
+  const chain = chainOf(identifier, (current) =>
+    current.parent?.type === AST_NODE_TYPES.MemberExpression && current.parent.object === current
+      ? current.parent
+      : undefined,
+  );
+  return chain.at(-1) ?? identifier;
 }
 
 function changesInPlace(

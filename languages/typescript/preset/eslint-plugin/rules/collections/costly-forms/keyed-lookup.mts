@@ -25,7 +25,8 @@ type Finding = TSESLint.ReportDescriptor<'lookupInLoop' | 'groupInLoop'>;
 
 const { DefinitionType } = TSESLint.Scope;
 
-const LOOKUPS = new Set(['filter', 'find', 'findIndex', 'findLast', 'findLastIndex', 'some']);
+const FILTER = 'filter';
+const LOOKUPS = new Set([FILTER, 'find', 'findIndex', 'findLast', 'findLastIndex', 'some']);
 const MUTATORS = new Set([
   'copyWithin',
   'fill',
@@ -193,7 +194,7 @@ export function keyedLookup(
     role === undefined ||
     role === 'handler' ||
     isDedupe(sourceCode, call) ||
-    (method === 'filter' &&
+    (method === FILTER &&
       (onlyFixedRepeats(call, boundary) ||
         compared === undefined ||
         !readsElement(sourceCode, compared, call)))
@@ -202,7 +203,7 @@ export function keyedLookup(
   }
   return {
     node: call,
-    messageId: method === 'filter' ? 'groupInLoop' : 'lookupInLoop',
+    messageId: method === FILTER ? 'groupInLoop' : 'lookupInLoop',
     data: { name: sourceCode.getText(receiver), method, key },
   };
 }

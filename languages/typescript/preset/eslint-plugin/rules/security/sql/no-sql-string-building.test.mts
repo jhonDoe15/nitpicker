@@ -11,7 +11,7 @@ const template = built('a template literal');
 const concatenation = built('concatenation');
 const DIAMONDS = 7;
 const sharedInertParts = [
-  'const part0 = `${Number(n)}${Number(n)}${Number(n)}`;',
+  `const part0 = \`\${Number(n)}\${Number(n)}\${Number(n)}\`;`,
   ...Array.from(
     { length: DIAMONDS },
     (_, index) =>

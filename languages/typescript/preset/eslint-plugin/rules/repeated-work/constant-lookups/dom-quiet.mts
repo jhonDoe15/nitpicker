@@ -98,11 +98,7 @@ export function isDocumentLookup(sourceCode: SourceCode, call: TSESTree.Node): b
   );
 }
 
-function ownedRoot(
-  sourceCode: SourceCode,
-  root: TSESTree.Node | undefined,
-  boundary: TSESTree.Node,
-): boolean {
+function ownedRoot(sourceCode: SourceCode, root: TSESTree.Node | undefined): boolean {
   if (root?.type !== AST_NODE_TYPES.Identifier) {
     return false;
   }
@@ -140,8 +136,7 @@ function changesPage(sourceCode: SourceCode, node: TSESTree.Node, boundary: TSES
   if (node.type === AST_NODE_TYPES.AssignmentExpression) {
     return (
       !ownedName(sourceCode, node.left, boundary) &&
-      (DOM_CHANGES.has(memberName(node.left) ?? '') ||
-        !ownedRoot(sourceCode, rootOf(node.left), boundary))
+      (DOM_CHANGES.has(memberName(node.left) ?? '') || !ownedRoot(sourceCode, rootOf(node.left)))
     );
   }
   if (node.type !== AST_NODE_TYPES.CallExpression || isDocumentLookup(sourceCode, node)) {
@@ -149,12 +144,12 @@ function changesPage(sourceCode: SourceCode, node: TSESTree.Node, boundary: TSES
   }
   const callee = unwrapped(node.callee);
   if (callee.type === AST_NODE_TYPES.Identifier) {
-    return !PURE_FUNCTIONS.has(callee.name) || !ownedRoot(sourceCode, callee, boundary);
+    return !(PURE_FUNCTIONS.has(callee.name) && ownedRoot(sourceCode, callee));
   }
   return (
     callee.type !== AST_NODE_TYPES.MemberExpression ||
     DOM_CHANGES.has(memberName(callee) ?? '') ||
-    !ownedRoot(sourceCode, rootOf(callee.object), boundary)
+    !ownedRoot(sourceCode, rootOf(callee.object))
   );
 }
 

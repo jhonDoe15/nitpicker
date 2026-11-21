@@ -5,13 +5,8 @@ import {
   resolveConstant,
   type SourceContext,
 } from '../../analysis/constant-resolution.mts';
-import {
-  describeSubprocess,
-  subprocessBindings,
-  withPromisified,
-  type ModuleBindings,
-} from '../../analysis/subprocess-calls.mts';
-import { calleeMethod, promisifiedBinding } from '../process-callees.mts';
+import { describeSubprocess, type ModuleBindings } from '../../analysis/subprocess-calls.mts';
+import { calleeMethod, trackedBindings } from '../process-callees.mts';
 import { isAwaited } from '../process-completion.mts';
 import { optionsArgument } from '../process-timeout-options.mts';
 import { growingCommand } from './growing-commands.mts';
@@ -155,16 +150,9 @@ export const rule: TSESLint.RuleModule<MessageIds> = {
     },
   },
   create(context) {
-    let bindings: ModuleBindings = { named: new Map(), namespaces: new Set() };
-    return {
-      Program(node) {
-        bindings = withPromisified(node, subprocessBindings(node));
-      },
-      VariableDeclarator(node) {
-        bindings = promisifiedBinding(node, bindings);
-      },
+    return trackedBindings('promisified-imports-and-aliases', (current) => ({
       CallExpression(node) {
-        const method = calleeMethod(node.callee, bindings);
+        const method = calleeMethod(node.callee, current());
         const shape = method === undefined ? undefined : shapeOf(context, node, method);
         if (method === undefined || shape === undefined) {
           return;
@@ -179,12 +167,12 @@ export const rule: TSESLint.RuleModule<MessageIds> = {
           return;
         }
         const data = { method, limit: limit?.text ?? defaultLimit(method) };
-        if (outputGrows(context, node, { method, bindings })) {
+        if (outputGrows(context, node, { method, bindings: current() })) {
           context.report({ node, messageId: 'growingOutput', data });
         } else if (limit !== undefined && reads.parsed) {
           context.report({ node, messageId: 'sizedParse', data });
         }
       },
-    };
+    }));
   },
 };

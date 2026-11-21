@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { calleeName } from '../../analysis/node/call-text.mts';
 import { syntaxChildren } from '../../decided/syntax.mts';
 import {
   ancestorsOf,
@@ -37,18 +38,6 @@ function rootsAtThis(node: TSESTree.Node): boolean {
   return chain.at(-1)?.type === AST_NODE_TYPES.ThisExpression;
 }
 
-function calleeName(call: TSESTree.CallExpression): string | undefined {
-  const callee = call.callee;
-  if (callee.type === AST_NODE_TYPES.Identifier) {
-    return callee.name;
-  }
-  return callee.type === AST_NODE_TYPES.MemberExpression &&
-    !callee.computed &&
-    callee.property.type === AST_NODE_TYPES.Identifier
-    ? callee.property.name
-    : undefined;
-}
-
 const ANY_RECEIVER = new Set<string>(['createModel', 'createTerminal']);
 const PROCESS_RECEIVERS = new Set<string>(['cp', 'child_process', 'childProcess']);
 const GLOBAL_RECEIVERS = new Set<string>(['window', 'globalThis', 'self', 'global']);
@@ -64,7 +53,7 @@ function memberResource(name: string, receiver: TSESTree.Expression): boolean {
 }
 
 function useOf(node: TSESTree.Node): Use | undefined {
-  const name = node.type === AST_NODE_TYPES.CallExpression ? calleeName(node) : undefined;
+  const name = node.type === AST_NODE_TYPES.CallExpression ? calleeName(node.callee) : undefined;
   if (node.type !== AST_NODE_TYPES.CallExpression || name === undefined) {
     return undefined;
   }

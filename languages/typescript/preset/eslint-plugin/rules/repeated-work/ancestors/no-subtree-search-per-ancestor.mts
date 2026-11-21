@@ -6,6 +6,9 @@ import { readsMemo } from '../support/loop-invariance.mts';
 import { climbingName } from './parent-steps.mts';
 import { searchShown, subtreeSearches } from './subtree-searches.mts';
 
+const MAX_SHOWN = 60;
+const KEPT_SHOWN = 57;
+
 type Loop = TSESTree.ForStatement | TSESTree.WhileStatement | TSESTree.DoWhileStatement;
 
 function readsName(node: TSESTree.Node, name: string, except?: TSESTree.Node): boolean {
@@ -91,14 +94,17 @@ export const rule: TSESLint.RuleModule<'searchPerLevel'> = {
         return;
       }
       const search = subtreeSearches(loop.body, name).find(
-        (node) => !isNarrowed(loop, node, name) && !inNestedFunction(node, loop),
+        (node) => !(isNarrowed(loop, node, name) || inNestedFunction(node, loop)),
       );
       if (search !== undefined) {
         const text = sourceCode.getText(searchShown(search)).split('\n')[0] ?? '';
         context.report({
           node: search,
           messageId: 'searchPerLevel',
-          data: { name, search: text.length > 60 ? `${text.slice(0, 57)}...` : text },
+          data: {
+            name,
+            search: text.length > MAX_SHOWN ? `${text.slice(0, KEPT_SHOWN)}...` : text,
+          },
         });
       }
     }

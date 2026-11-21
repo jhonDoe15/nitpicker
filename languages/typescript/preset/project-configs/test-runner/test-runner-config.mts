@@ -64,10 +64,7 @@ function runnerAndTokens(
 
 export function readRunnerRetry(
   projectRoot: string,
-  {
-    configuredRunner,
-    liveRoot = projectRoot,
-  }: { configuredRunner: string | undefined; liveRoot?: string },
+  { configuredRunner }: { configuredRunner: string | undefined },
 ): { runner: string } & RetryRead {
   const { runner, tokens } = runnerAndTokens(projectRoot, configuredRunner);
   const read = RUNNER_READERS.get(runner);
@@ -77,7 +74,7 @@ export function readRunnerRetry(
         'config option it changes: remove "project" from tools.tests.precedence',
     );
   }
-  return { runner, ...read(projectRoot, { liveRoot, tokens }) };
+  return { runner, ...read(projectRoot, { liveRoot: projectRoot, tokens }) };
 }
 
 export function readTestRunnerProjectConfig(

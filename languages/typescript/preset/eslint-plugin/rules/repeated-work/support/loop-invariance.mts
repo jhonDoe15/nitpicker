@@ -23,17 +23,16 @@ const VARYING = new Set<string>([
   AST_NODE_TYPES.YieldExpression,
 ]);
 
+const LOOPS = new Set<string>([
+  AST_NODE_TYPES.ForOfStatement,
+  AST_NODE_TYPES.ForInStatement,
+  AST_NODE_TYPES.ForStatement,
+  AST_NODE_TYPES.WhileStatement,
+  AST_NODE_TYPES.DoWhileStatement,
+]);
+
 function repeatsChild(loop: TSESTree.Node, child: TSESTree.Node): boolean {
-  switch (loop.type) {
-    case AST_NODE_TYPES.ForOfStatement:
-    case AST_NODE_TYPES.ForInStatement:
-    case AST_NODE_TYPES.ForStatement:
-    case AST_NODE_TYPES.WhileStatement:
-    case AST_NODE_TYPES.DoWhileStatement:
-      return child === loop.body;
-    default:
-      return false;
-  }
+  return LOOPS.has(loop.type) && 'body' in loop && child === loop.body;
 }
 
 export function innermostRepeat(node: TSESTree.Node): Repeat | undefined {
@@ -90,10 +89,10 @@ function invariantName(
   if (variable === undefined || variable.defs.length === 0) {
     return identifier.name !== 'arguments';
   }
-  return (
-    !declaredInside(variable, boundary) &&
-    !writtenInside(variable, boundary) &&
-    !memberWrittenInside(identifier.name, boundary)
+  return !(
+    declaredInside(variable, boundary) ||
+    writtenInside(variable, boundary) ||
+    memberWrittenInside(identifier.name, boundary)
   );
 }
 

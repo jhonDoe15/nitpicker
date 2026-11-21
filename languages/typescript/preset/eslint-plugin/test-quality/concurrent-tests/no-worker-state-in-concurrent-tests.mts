@@ -4,7 +4,14 @@ import { ancestorsOf, contains } from '../../rules/typed/node-views.mts';
 import { callbackOf, chainHasProperty, isSuiteCall, testCallback } from '../test-calls.mts';
 import { envWrite, workerStateCall } from './worker-state.mts';
 
-type Options = readonly [{ readonly concurrent?: boolean }?];
+type Options = readonly [{ readonly concurrent: boolean }?];
+type Mode = 'concurrent' | 'sequential' | 'inherit';
+type State = {
+  readonly owners: Owner[];
+  readonly changes: Change[];
+  readonly apis: ReturnType<typeof createRunnerApis>;
+  readonly byDefault: boolean;
+};
 type Owner = {
   readonly call: TSESTree.CallExpression;
   readonly body: TSESTree.Node;
@@ -13,6 +20,9 @@ type Owner = {
 };
 type Change = { readonly node: TSESTree.Node; readonly owner: Owner; readonly what: string };
 
+const CONCURRENT = 'concurrent';
+const SEQUENTIAL = 'sequential';
+const INHERIT = 'inherit';
 const EACH_HOOKS = new Set(['beforeEach', 'afterEach']);
 const REPEATED_CASES = ['each', 'for'];
 const REPEATED_WEIGHT = 2;
@@ -34,17 +44,17 @@ function optionIs(call: TSESTree.CallExpression, name: string, value: boolean): 
   );
 }
 
-function modeOf(call: TSESTree.CallExpression): boolean | undefined {
+function modeOf(call: TSESTree.CallExpression): Mode {
   if (
-    chainHasProperty(call.callee, 'sequential') ||
-    optionIs(call, 'sequential', true) ||
-    optionIs(call, 'concurrent', false)
+    chainHasProperty(call.callee, SEQUENTIAL) ||
+    optionIs(call, SEQUENTIAL, true) ||
+    optionIs(call, CONCURRENT, false)
   ) {
-    return false;
+    return SEQUENTIAL;
   }
-  return chainHasProperty(call.callee, 'concurrent') || optionIs(call, 'concurrent', true)
-    ? true
-    : undefined;
+  return chainHasProperty(call.callee, CONCURRENT) || optionIs(call, CONCURRENT, true)
+    ? CONCURRENT
+    : INHERIT;
 }
 
 function isSwitchedOff(call: TSESTree.CallExpression): boolean {
@@ -57,14 +67,14 @@ function suiteOf(call: TSESTree.Node): TSESTree.Node | undefined {
 
 function runsConcurrently(call: TSESTree.CallExpression, byDefault: boolean): boolean {
   const own = modeOf(call);
-  if (own !== undefined) {
-    return own;
+  if (own !== INHERIT) {
+    return own === CONCURRENT;
   }
   const suite = ancestorsOf(call)
     .filter((ancestor) => isSuiteCall(ancestor))
-    .map((ancestor) => (isSuiteCall(ancestor) ? modeOf(ancestor) : undefined))
-    .find((mode) => mode !== undefined);
-  return suite ?? byDefault;
+    .map((ancestor) => (isSuiteCall(ancestor) ? modeOf(ancestor) : INHERIT))
+    .find((mode) => mode !== INHERIT);
+  return suite === undefined ? byDefault : suite === CONCURRENT;
 }
 
 function eachHookBody(call: TSESTree.CallExpression): TSESTree.Node | undefined {
@@ -83,6 +93,60 @@ function weightOf(owner: Owner): number {
     : 1;
 }
 
+function ownerOf(owners: readonly Owner[], node: TSESTree.Node): Owner | undefined {
+  return owners.findLast((owner) => contains(owner.body, node));
+}
+
+function remember(state: State, node: TSESTree.Node, what: string | undefined): void {
+  const owner = what === undefined ? undefined : ownerOf(state.owners, node);
+  if (owner !== undefined && what !== undefined) {
+    state.changes.push({ node, owner, what });
+  }
+}
+
+function concurrentTestsBeside(owners: readonly Owner[], suite: TSESTree.Node | undefined): number {
+  return owners
+    .filter((test) => !test.hook && test.concurrent && suiteOf(test.call) === suite)
+    .reduce((total, test) => total + weightOf(test), 0);
+}
+
+function runsBesideOthers(owners: readonly Owner[], owner: Owner): boolean {
+  if (!owner.hook) {
+    return owner.concurrent && concurrentTestsBeside(owners, suiteOf(owner.call)) >= 2;
+  }
+  const container = hookContainer(owner.call);
+  return owners.some(
+    (test) =>
+      !test.hook &&
+      test.concurrent &&
+      contains(container, test.call) &&
+      concurrentTestsBeside(owners, suiteOf(test.call)) >= 2,
+  );
+}
+
+function visitCall(
+  context: Readonly<TSESLint.RuleContext<'workerState', Options>>,
+  state: State,
+  node: TSESTree.CallExpression,
+): void {
+  const test = testCallback(context, node);
+  const hook = test === undefined ? eachHookBody(node) : undefined;
+  const body = test ?? hook;
+  if (body !== undefined) {
+    const concurrent =
+      test !== undefined && !isSwitchedOff(node) && runsConcurrently(node, state.byDefault);
+    state.owners.push({ call: node, body, hook: hook !== undefined, concurrent });
+  }
+  const owner = ownerOf(state.owners, node);
+  remember(
+    state,
+    node,
+    owner === undefined
+      ? undefined
+      : workerStateCall(state.apis, context.sourceCode, { call: node, owner: owner.body }),
+  );
+}
+
 export const rule: TSESLint.RuleModule<'workerState', Options> = {
   meta: {
     type: 'problem',
@@ -94,6 +158,7 @@ export const rule: TSESLint.RuleModule<'workerState', Options> = {
       {
         type: 'object',
         properties: { concurrent: { type: 'boolean' } },
+        required: [CONCURRENT],
         additionalProperties: false,
       },
     ],
@@ -103,76 +168,30 @@ export const rule: TSESLint.RuleModule<'workerState', Options> = {
     },
   },
   create(context) {
-    const byDefault = context.options[0]?.concurrent === true;
     const apis = createRunnerApis();
     const visitors = runnerApiVisitors(apis);
-    const owners: Owner[] = [];
-    const changes: Change[] = [];
-    const { sourceCode } = context;
-
-    function ownerOf(node: TSESTree.Node): Owner | undefined {
-      return owners.findLast((owner) => contains(owner.body, node));
-    }
-
-    function remember(node: TSESTree.Node, what: string | undefined): void {
-      const owner = what === undefined ? undefined : ownerOf(node);
-      if (owner !== undefined && what !== undefined) {
-        changes.push({ node, owner, what });
-      }
-    }
-
-    function concurrentTestsBeside(suite: TSESTree.Node | undefined): number {
-      return owners
-        .filter((test) => !test.hook && test.concurrent && suiteOf(test.call) === suite)
-        .reduce((total, test) => total + weightOf(test), 0);
-    }
-
-    function runsBesideOthers(owner: Owner): boolean {
-      if (!owner.hook) {
-        return owner.concurrent && concurrentTestsBeside(suiteOf(owner.call)) >= 2;
-      }
-      const container = hookContainer(owner.call);
-      return owners.some(
-        (test) =>
-          !test.hook &&
-          test.concurrent &&
-          contains(container, test.call) &&
-          concurrentTestsBeside(suiteOf(test.call)) >= 2,
-      );
-    }
-
+    const state: State = {
+      owners: [],
+      changes: [],
+      apis,
+      byDefault: context.options[0]?.concurrent === true,
+    };
     return {
       ...visitors,
       CallExpression(node) {
-        const test = testCallback(context, node);
-        const hook = test === undefined ? eachHookBody(node) : undefined;
-        const body = test ?? hook;
-        if (body !== undefined) {
-          const concurrent =
-            test !== undefined && !isSwitchedOff(node) && runsConcurrently(node, byDefault);
-          owners.push({ call: node, body, hook: hook !== undefined, concurrent });
-        }
-        const owner = ownerOf(node);
-        remember(
-          node,
-          owner === undefined
-            ? undefined
-            : workerStateCall(apis, sourceCode, { call: node, owner: owner.body }),
-        );
+        visitCall(context, state, node);
       },
       AssignmentExpression(node) {
         visitors.AssignmentExpression(node);
-        remember(node, envWrite(sourceCode, node.left) ? ENV_WRITE : undefined);
+        remember(state, node, envWrite(context.sourceCode, node.left) ? ENV_WRITE : undefined);
       },
       UnaryExpression(node) {
-        remember(
-          node,
-          node.operator === 'delete' && envWrite(sourceCode, node.argument) ? ENV_WRITE : undefined,
-        );
+        const writes = node.operator === 'delete' && envWrite(context.sourceCode, node.argument);
+        remember(state, node, writes ? ENV_WRITE : undefined);
       },
       'Program:exit'() {
-        for (const { node, owner, what } of changes) {
-          if (runsBesideOthers(owner)) {
+        for (const { node, owner, what } of state.changes) {
+          if (runsBesideOthers(state.owners, owner)) {
             context.report({ node, messageId: 'workerState', data: { what } });
           }
         }

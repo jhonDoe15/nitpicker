@@ -1,14 +1,10 @@
-import { SKIPPED_FILE_MARKER } from '../shared-graph/cruiser-process.mts';
+import { SKIPPED_FILE_MARKER, STDERR_OUTPUT } from '../shared-graph/cruiser-process.mts';
 
 type Extract = (fileName: string, ...options: unknown[]) => unknown[];
 type TextOutput = { write(text: string): unknown };
 
 const AFOUL_HEADER = /^Extracting dependencies ran afoul of\.\.\./u;
 const AFOUL_FOOTER = /^\.\.\. in /u;
-
-const originalUrl = new URL(import.meta.url).searchParams.get('original');
-const original =
-  originalUrl === null ? undefined : ((await import(originalUrl)) as { default: Extract }).default;
 
 export function failureReason(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
@@ -19,7 +15,7 @@ export function failureReason(error: unknown): string {
   return lines.join(' ') || message.trim();
 }
 
-export function isolatedExtract(extract: Extract, output: TextOutput = process.stderr): Extract {
+export function isolatedExtract(extract: Extract, output: TextOutput = STDERR_OUTPUT): Extract {
   return (fileName, ...options) => {
     try {
       return extract(fileName, ...options);
@@ -30,11 +26,4 @@ export function isolatedExtract(extract: Extract, output: TextOutput = process.s
       return [];
     }
   };
-}
-
-export default function getDependencies(fileName: string, ...options: unknown[]): unknown[] {
-  if (original === undefined) {
-    throw new Error('extract-dependencies replacement loaded without the original module');
-  }
-  return isolatedExtract(original)(fileName, ...options);
 }

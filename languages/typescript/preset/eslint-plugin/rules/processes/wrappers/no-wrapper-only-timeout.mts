@@ -4,13 +4,9 @@ import {
   resolveConstant,
   type SourceContext,
 } from '../../analysis/constant-resolution.mts';
-import {
-  describeSubprocess,
-  subprocessBindings,
-  type ModuleBindings,
-} from '../../analysis/subprocess-calls.mts';
+import { describeSubprocess, type ModuleBindings } from '../../analysis/subprocess-calls.mts';
 import { enclosingFunction } from '../../typed/syntax-views.mts';
-import { calleeMethod } from '../process-callees.mts';
+import { calleeMethod, trackedBindings } from '../process-callees.mts';
 import { optionsArgument } from '../process-timeout-options.mts';
 import { baseName } from '../output/growing-commands.mts';
 import { literalOption, optionValue } from '../output/process-options.mts';
@@ -226,13 +222,9 @@ export const rule: TSESLint.RuleModule<'wrapperOnlyTimeout'> = {
     },
   },
   create(context) {
-    let bindings: ModuleBindings = { named: new Map(), namespaces: new Set() };
-    return {
-      Program(node) {
-        bindings = subprocessBindings(node);
-      },
+    return trackedBindings('plain', (current) => ({
       CallExpression(node) {
-        const method = calleeMethod(node.callee, bindings);
+        const method = calleeMethod(node.callee, current());
         if (
           method === undefined ||
           node.arguments.some((argument) => argument.type === AST_NODE_TYPES.SpreadElement)
@@ -243,7 +235,7 @@ export const rule: TSESLint.RuleModule<'wrapperOnlyTimeout'> = {
         if (!hasDeadline(context, options)) {
           return;
         }
-        const wrapper = wrapperOf(context, node, { method, bindings, options });
+        const wrapper = wrapperOf(context, node, { method, bindings: current(), options });
         if (wrapper !== undefined && !killsGroup(context, node, options)) {
           context.report({
             node,
@@ -252,6 +244,6 @@ export const rule: TSESLint.RuleModule<'wrapperOnlyTimeout'> = {
           });
         }
       },
-    };
+    }));
   },
 };

@@ -1,120 +1,52 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import {
+  AST_NODE_TYPES,
+  AST_TOKEN_TYPES,
+  type TSESLint,
+  type TSESTree,
+} from '@typescript-eslint/utils';
 import {
   type RunnerApis,
   createRunnerApis,
-  kindOfObject,
   runnerApiVisitors,
 } from '../../rules/runner-apis/runner-apis.mts';
-import { ancestorsOf, chainOf, contains } from '../../rules/typed/node-views.mts';
-import { callbackOwner, chainHasProperty, isSuiteCall, testCallback } from '../test-calls.mts';
+import { ancestorsOf, contains } from '../../rules/typed/node-views.mts';
+import { callbackOwner, chainHasProperty, testCallback } from '../test-calls.mts';
 import {
+  FUNCTION_TYPES,
+  declaredMocks,
+  isSharedLevel,
+  type Context,
+  type Shared,
+} from './declared-mocks.mts';
+import {
+  type ClearedMock,
   type CountRead,
-  clearedMockName,
+  clearedMock,
   clearsEveryMock,
   countRead,
-  isMockCreation,
   mockedModule,
   resetCallFor,
 } from './mock-sites.mts';
 
-type Context = Readonly<TSESLint.RuleContext<'sharedMock', []>>;
-type Variable = TSESLint.Scope.Variable;
 type TestCall = { readonly call: TSESTree.CallExpression; readonly body: TSESTree.Node };
-type Shared = {
-  readonly variable: Variable;
-  readonly node: TSESTree.Node;
-  readonly kind?: string | undefined;
-};
+type Clear = ClearedMock & { readonly node: TSESTree.Node };
 type Container = TSESTree.Program | TSESTree.BlockStatement;
+type State = {
+  readonly context: Context;
+  readonly apis: RunnerApis;
+  readonly shared: Shared[];
+  readonly tests: TestCall[];
+  readonly reads: CountRead[];
+  readonly cleared: Set<string>;
+  readonly clears: Clear[];
+  readonly mockedSources: Map<string, string | undefined>;
+  readonly imports: TSESTree.ImportDeclaration[];
+  clearsAll: boolean;
+};
 
 const SHARED_SETUP_HOOKS = new Set(['beforeEach', 'beforeAll']);
-const FUNCTION_TYPES = new Set<string>([
-  AST_NODE_TYPES.FunctionDeclaration,
-  AST_NODE_TYPES.FunctionExpression,
-  AST_NODE_TYPES.ArrowFunctionExpression,
-]);
 const REPEATED_CASES = ['each', 'for'];
 const REPEATED_WEIGHT = 2;
-
-function suiteBody(parent: TSESTree.Node): parent is TSESTree.BlockStatement {
-  const owner = parent.parent;
-  const call =
-    owner !== undefined && FUNCTION_TYPES.has(owner.type) ? callbackOwner(owner) : undefined;
-  return parent.type === AST_NODE_TYPES.BlockStatement && call !== undefined && isSuiteCall(call);
-}
-
-function isSharedLevel(declaration: TSESTree.Node): boolean {
-  const parent =
-    declaration.parent?.type === AST_NODE_TYPES.ExportNamedDeclaration
-      ? declaration.parent.parent
-      : declaration.parent;
-  return parent?.type === AST_NODE_TYPES.Program || (parent !== undefined && suiteBody(parent));
-}
-
-function hoistedValue(
-  apis: RunnerApis,
-  init: TSESTree.Expression | null,
-): TSESTree.Node | undefined {
-  const callback =
-    init?.type === AST_NODE_TYPES.CallExpression &&
-    init.callee.type === AST_NODE_TYPES.MemberExpression &&
-    kindOfObject(apis, init.callee.object) !== undefined
-      ? init.arguments[0]
-      : undefined;
-  if (callback?.type !== AST_NODE_TYPES.ArrowFunctionExpression) {
-    return undefined;
-  }
-  return callback.body.type === AST_NODE_TYPES.ObjectExpression ? callback.body : undefined;
-}
-
-function hoistedMocks(apis: RunnerApis, declarator: TSESTree.VariableDeclarator): string[] {
-  const value = hoistedValue(apis, declarator.init);
-  if (value?.type !== AST_NODE_TYPES.ObjectExpression) {
-    return [];
-  }
-  return value.properties.flatMap((property) =>
-    property.type === AST_NODE_TYPES.Property &&
-    property.key.type === AST_NODE_TYPES.Identifier &&
-    isMockCreation(apis, property.value)
-      ? [property.key.name]
-      : [],
-  );
-}
-
-function declaredMocks(
-  context: Context,
-  apis: RunnerApis,
-  node: TSESTree.VariableDeclarator,
-): Shared[] {
-  const variables = context.sourceCode.getDeclaredVariables(node);
-  if (node.id.type === AST_NODE_TYPES.Identifier) {
-    const kind = isMockCreation(apis, node.init) ? mockKind(apis, node.init) : undefined;
-    return kind === undefined
-      ? []
-      : variables.map((variable) => ({ variable, node: node.id, kind }));
-  }
-  const names = new Set(hoistedMocks(apis, node));
-  return variables
-    .filter((variable) => names.has(variable.name))
-    .map((variable) => ({ variable, node: variable.defs[0]?.name ?? node, kind: 'vitest' }));
-}
-
-function mockKind(apis: RunnerApis, init: TSESTree.Node | null): string | undefined {
-  const callees = chainOf<TSESTree.Node>(init ?? undefined, (current) =>
-    current.type === AST_NODE_TYPES.CallExpression &&
-    current.callee.type === AST_NODE_TYPES.MemberExpression
-      ? current.callee.object
-      : undefined,
-  );
-  return callees
-    .map((call) =>
-      call.type === AST_NODE_TYPES.CallExpression &&
-      call.callee.type === AST_NODE_TYPES.MemberExpression
-        ? kindOfObject(apis, call.callee.object)
-        : undefined,
-    )
-    .find((kind) => kind !== undefined);
-}
 
 function hookCall(node: TSESTree.Node): TSESTree.CallExpression | undefined {
   const owner = FUNCTION_TYPES.has(node.type) ? callbackOwner(node) : undefined;
@@ -163,10 +95,104 @@ function topLevelFunctionName(node: TSESTree.Node): string | undefined {
 function callsNamed(test: TestCall, sourceCode: Context['sourceCode'], name: string): boolean {
   return sourceCode
     .getTokens(test.body)
-    .some((token) => token.type === 'Identifier' && token.value === name);
+    .some((token) => token.type === AST_TOKEN_TYPES.Identifier && token.value === name);
 }
 
-export const rule: TSESLint.RuleModule<'sharedMock', []> = {
+function enclosingTests({ context, tests }: State, node: TSESTree.Node): TestCall[] {
+  const direct = tests.filter((test) => contains(test.body, node));
+  if (direct.length > 0) {
+    return direct.slice(-1);
+  }
+  const hook = ancestorsOf(node)
+    .map(hookCall)
+    .find((call) => call !== undefined);
+  const container = hook === undefined ? undefined : containerOf(hook);
+  if (container !== undefined) {
+    return tests.filter((test) => contains(container, test.call));
+  }
+  const helper = topLevelFunctionName(node);
+  return helper === undefined
+    ? []
+    : tests.filter((test) => callsNamed(test, context.sourceCode, helper));
+}
+
+function report(state: State, { variable, node, kind }: Shared): void {
+  const { context, reads, tests } = state;
+  const references = variable.references.filter((reference) => !reference.init);
+  if (references.some((reference) => reference.isWrite()) || state.cleared.has(variable.name)) {
+    return;
+  }
+  const using = new Set(
+    references.flatMap((reference) => enclosingTests(state, reference.identifier)),
+  );
+  const weight = [...using].reduce((total, test) => total + weightOf(test), 0);
+  const read = reads.find(
+    (each) =>
+      references.some((reference) => contains(each.node, reference.identifier)) &&
+      tests.some((test) => contains(test.body, each.node)),
+  );
+  if (weight < 2 || read === undefined) {
+    return;
+  }
+  context.report({
+    node,
+    messageId: 'sharedMock',
+    data: {
+      name: variable.name,
+      tests: String(weight),
+      form: read.form,
+      reset: resetCallFor(kind, variable.name),
+    },
+  });
+}
+
+function visitCall(state: State, node: TSESTree.CallExpression): void {
+  const body = testCallback(state.context, node);
+  if (body !== undefined) {
+    state.tests.push({ call: node, body });
+  }
+  const mocked = mockedModule(state.apis, node);
+  if (mocked !== undefined) {
+    state.mockedSources.set(mocked.source, mocked.kind);
+  }
+  state.clearsAll ||= clearsEveryMock(state.apis, node);
+  const cleared = clearedMock(state.apis, node);
+  if (cleared !== undefined) {
+    state.clears.push({ ...cleared, node });
+  }
+}
+
+function importedMocks({ context, imports, mockedSources }: State): Shared[] {
+  return imports
+    .filter((declaration) => mockedSources.has(declaration.source.value))
+    .flatMap((declaration) =>
+      context.sourceCode.getDeclaredVariables(declaration).map((variable) => ({
+        variable,
+        node: variable.defs[0]?.name ?? declaration,
+        kind: mockedSources.get(declaration.source.value),
+      })),
+    );
+}
+
+function reportUncleared(state: State): void {
+  const candidates = [...state.shared, ...importedMocks(state)];
+  const names = new Set(candidates.map(({ variable }) => variable.name));
+  for (const { name, node } of state.clears) {
+    const inTest = state.tests.some((test) => contains(test.body, node));
+    state.clearsAll ||= !inTest && (name === undefined || !names.has(name));
+    if (name !== undefined) {
+      state.cleared.add(name);
+    }
+  }
+  if (state.clearsAll) {
+    return;
+  }
+  for (const each of candidates) {
+    report(state, each);
+  }
+}
+
+export const rule: TSESLint.RuleModule<'sharedMock'> = {
   meta: {
     type: 'problem',
     docs: {
@@ -182,123 +208,45 @@ export const rule: TSESLint.RuleModule<'sharedMock', []> = {
   create(context) {
     const apis = createRunnerApis();
     const visitors = runnerApiVisitors(apis);
-    const shared: Shared[] = [];
-    const tests: TestCall[] = [];
-    const reads: CountRead[] = [];
-    const cleared = new Set<string>();
-    const clears: { readonly name: string | null; readonly node: TSESTree.Node }[] = [];
-    const mockedSources = new Map<string, string | undefined>();
-    const imports: TSESTree.ImportDeclaration[] = [];
-    const state = { clearsAll: false };
-    const { sourceCode } = context;
-
-    function enclosingTests(node: TSESTree.Node): TestCall[] {
-      const direct = tests.filter((test) => contains(test.body, node));
-      if (direct.length > 0) {
-        return direct.slice(-1);
-      }
-      const hook = ancestorsOf(node)
-        .map(hookCall)
-        .find((call) => call !== undefined);
-      const container = hook === undefined ? undefined : containerOf(hook);
-      if (container !== undefined) {
-        return tests.filter((test) => contains(container, test.call));
-      }
-      const helper = topLevelFunctionName(node);
-      return helper === undefined
-        ? []
-        : tests.filter((test) => callsNamed(test, sourceCode, helper));
-    }
-
-    function report({ variable, node, kind }: Shared): void {
-      const references = variable.references.filter((reference) => !reference.init);
-      if (references.some((reference) => reference.isWrite()) || cleared.has(variable.name)) {
-        return;
-      }
-      const using = new Set(
-        references.flatMap((reference) => enclosingTests(reference.identifier)),
-      );
-      const weight = [...using].reduce((total, test) => total + weightOf(test), 0);
-      const read = reads.find(
-        (each) =>
-          references.some((reference) => contains(each.node, reference.identifier)) &&
-          tests.some((test) => contains(test.body, each.node)),
-      );
-      if (weight < 2 || read === undefined) {
-        return;
-      }
-      context.report({
-        node,
-        messageId: 'sharedMock',
-        data: {
-          name: variable.name,
-          tests: String(weight),
-          form: read.form,
-          reset: resetCallFor(kind, variable.name),
-        },
-      });
-    }
-
+    const state: State = {
+      context,
+      apis,
+      shared: [],
+      tests: [],
+      reads: [],
+      cleared: new Set(),
+      clears: [],
+      mockedSources: new Map(),
+      imports: [],
+      clearsAll: false,
+    };
     return {
       ...visitors,
       ImportDeclaration(node) {
         visitors.ImportDeclaration(node);
         if (node.importKind !== 'type') {
-          imports.push(node);
+          state.imports.push(node);
         }
       },
       VariableDeclarator(node) {
         visitors.VariableDeclarator(node);
         if (isSharedLevel(node.parent)) {
-          shared.push(...declaredMocks(context, apis, node));
+          for (const mock of declaredMocks(context, apis, node)) {
+            state.shared.push(mock);
+          }
         }
       },
       CallExpression(node) {
-        const body = testCallback(context, node);
-        if (body !== undefined) {
-          tests.push({ call: node, body });
-        }
-        const mocked = mockedModule(apis, node);
-        if (mocked !== undefined) {
-          mockedSources.set(mocked.source, mocked.kind);
-        }
-        state.clearsAll ||= clearsEveryMock(apis, node);
-        const name = clearedMockName(apis, node);
-        if (name !== undefined) {
-          clears.push({ name, node });
-        }
+        visitCall(state, node);
       },
       MemberExpression(node) {
         const read = countRead(apis, node);
         if (read !== undefined) {
-          reads.push(read);
+          state.reads.push(read);
         }
       },
       'Program:exit'() {
-        const imported = imports
-          .filter((declaration) => mockedSources.has(declaration.source.value))
-          .flatMap((declaration) =>
-            sourceCode.getDeclaredVariables(declaration).map((variable) => ({
-              variable,
-              node: variable.defs[0]?.name ?? declaration,
-              kind: mockedSources.get(declaration.source.value),
-            })),
-          );
-        const candidates = [...shared, ...imported];
-        const names = new Set(candidates.map(({ variable }) => variable.name));
-        for (const { name, node } of clears) {
-          const inTest = tests.some((test) => contains(test.body, node));
-          state.clearsAll ||= !inTest && (name === null || !names.has(name));
-          if (name !== null) {
-            cleared.add(name);
-          }
-        }
-        if (state.clearsAll) {
-          return;
-        }
-        for (const each of candidates) {
-          report(each);
-        }
+        reportUncleared(state);
       },
     };
   },

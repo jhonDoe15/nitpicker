@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { contains, nodeChildren, type SourceCode } from '../../typed/node-views.mts';
+import { chainOf, contains, nodeChildren, type SourceCode } from '../../typed/node-views.mts';
 import { unwrapped } from '../../typed/syntax-views.mts';
 import { isCostlyPureLooking, isFsCall, isSettled, sameCall } from './call-shapes.mts';
 
@@ -11,69 +11,79 @@ export type Pair = {
 const SPINE_UNARY = new Set(['!', 'typeof', '-', '+', 'void']);
 
 function spineStep(node: TSESTree.Node): TSESTree.Node | undefined {
-  switch (node.type) {
-    case AST_NODE_TYPES.MemberExpression:
-      return node.object;
-    case AST_NODE_TYPES.CallExpression:
-      return node.callee;
-    case AST_NODE_TYPES.BinaryExpression:
-    case AST_NODE_TYPES.LogicalExpression:
-      return node.left;
-    case AST_NODE_TYPES.UnaryExpression:
-      return SPINE_UNARY.has(node.operator) ? node.argument : undefined;
-    case AST_NODE_TYPES.AwaitExpression:
-    case AST_NODE_TYPES.ChainExpression:
-    case AST_NODE_TYPES.TSNonNullExpression:
-    case AST_NODE_TYPES.TSAsExpression:
-    case AST_NODE_TYPES.TSSatisfiesExpression:
-      return 'argument' in node ? node.argument : node.expression;
-    default:
-      return undefined;
+  if (node.type === AST_NODE_TYPES.MemberExpression) {
+    return node.object;
   }
+  if (node.type === AST_NODE_TYPES.CallExpression) {
+    return node.callee;
+  }
+  if (
+    node.type === AST_NODE_TYPES.BinaryExpression ||
+    node.type === AST_NODE_TYPES.LogicalExpression
+  ) {
+    return node.left;
+  }
+  if (node.type === AST_NODE_TYPES.UnaryExpression) {
+    return SPINE_UNARY.has(node.operator) ? node.argument : undefined;
+  }
+  if (node.type === AST_NODE_TYPES.AwaitExpression) {
+    return node.argument;
+  }
+  return node.type === AST_NODE_TYPES.ChainExpression ||
+    node.type === AST_NODE_TYPES.TSNonNullExpression ||
+    node.type === AST_NODE_TYPES.TSAsExpression ||
+    node.type === AST_NODE_TYPES.TSSatisfiesExpression
+    ? node.expression
+    : undefined;
 }
 
-function spineCalls(expression: TSESTree.Node | null | undefined): TSESTree.CallExpression[] {
-  const calls: TSESTree.CallExpression[] = [];
-  for (let node = expression ?? undefined; node !== undefined; node = spineStep(node)) {
-    if (node.type === AST_NODE_TYPES.CallExpression) {
-      calls.push(node);
-    }
-  }
-  return calls;
-}
-
-function lastTested(test: TSESTree.Node): TSESTree.Node {
-  const value = unwrapped(test);
-  return value.type === AST_NODE_TYPES.LogicalExpression ? lastTested(value.right) : value;
-}
-
-function settledAround(node: TSESTree.Node, inner: TSESTree.Node): boolean {
-  if (node === inner) {
-    return true;
-  }
-  const toward = spineStep(node);
-  if (toward === undefined || !contains(toward, inner)) {
-    return false;
-  }
-  return (
-    nodeChildren(node).every((child) => child === toward || isSettled(child)) &&
-    settledAround(toward, inner)
+function spineCalls(expression: TSESTree.Node | undefined): TSESTree.CallExpression[] {
+  return chainOf<TSESTree.Node>(expression, spineStep).filter(
+    (node): node is TSESTree.CallExpression => node.type === AST_NODE_TYPES.CallExpression,
   );
 }
 
-function firstUse(statement: TSESTree.Statement): TSESTree.Node | undefined {
-  const value = statement.type === AST_NODE_TYPES.BlockStatement ? statement.body[0] : statement;
-  switch (value?.type) {
-    case AST_NODE_TYPES.ExpressionStatement:
-      return value.expression;
-    case AST_NODE_TYPES.ReturnStatement:
-    case AST_NODE_TYPES.ThrowStatement:
-      return value.argument ?? undefined;
-    case AST_NODE_TYPES.VariableDeclaration:
-      return value.declarations[0]?.init ?? undefined;
-    default:
-      return undefined;
+function lastTested(test: TSESTree.Node): TSESTree.Node {
+  const steps = chainOf<TSESTree.Node>(test, (node) => {
+    const value = unwrapped(node);
+    return value.type === AST_NODE_TYPES.LogicalExpression ? value.right : undefined;
+  });
+  return unwrapped(steps.at(-1) ?? test);
+}
+
+function settledAround(node: TSESTree.Node, inner: TSESTree.Node): boolean {
+  const pending = [node];
+  for (const item of pending) {
+    if (item === inner) {
+      return true;
+    }
+    const toward = spineStep(item);
+    if (
+      toward === undefined ||
+      !contains(toward, inner) ||
+      !nodeChildren(item).every((child) => child === toward || isSettled(child))
+    ) {
+      return false;
+    }
+    pending.push(toward);
   }
+  return false;
+}
+
+function firstUse(statement: TSESTree.Statement): TSESTree.Node | undefined {
+  const value = statement.type === AST_NODE_TYPES.BlockStatement ? statement.body.at(0) : statement;
+  if (value?.type === AST_NODE_TYPES.ExpressionStatement) {
+    return value.expression;
+  }
+  if (
+    value?.type === AST_NODE_TYPES.ReturnStatement ||
+    value?.type === AST_NODE_TYPES.ThrowStatement
+  ) {
+    return value.argument ?? undefined;
+  }
+  return value?.type === AST_NODE_TYPES.VariableDeclaration
+    ? (value.declarations.at(0)?.init ?? undefined)
+    : undefined;
 }
 
 function usesOf(node: TSESTree.Node): [TSESTree.Node, (TSESTree.Node | undefined)[]] | undefined {
@@ -112,16 +122,15 @@ const WRAPPERS = new Set<string>([
 ]);
 
 function wrapped(call: TSESTree.Node): TSESTree.Node {
-  let outer = call;
-  while (outer.parent !== undefined && WRAPPERS.has(outer.parent.type)) {
-    outer = outer.parent;
-  }
-  return outer;
+  const steps = chainOf<TSESTree.Node>(call, (node) =>
+    node.parent !== undefined && WRAPPERS.has(node.parent.type) ? node.parent : undefined,
+  );
+  return steps.at(-1) ?? call;
 }
 
 function comparesItself(node: TSESTree.Node, call: TSESTree.Node): boolean {
   if (node.type === AST_NODE_TYPES.BinaryExpression) {
-    return node.left === wrapped(call) && (!EQUALITY.has(node.operator) || !isNullish(node.right));
+    return node.left === wrapped(call) && !(EQUALITY.has(node.operator) && isNullish(node.right));
   }
   return (
     node.type === AST_NODE_TYPES.UnaryExpression &&
@@ -131,16 +140,9 @@ function comparesItself(node: TSESTree.Node, call: TSESTree.Node): boolean {
 }
 
 function testsPresence(test: TSESTree.Node, call: TSESTree.Node): boolean {
-  for (
-    let node: TSESTree.Node | undefined = test;
-    node !== undefined && node !== call;
-    node = spineStep(node)
-  ) {
-    if (comparesItself(node, call)) {
-      return false;
-    }
-  }
-  return true;
+  const spine = chainOf<TSESTree.Node>(test, spineStep);
+  const end = spine.indexOf(call);
+  return !(end === -1 ? spine : spine.slice(0, end)).some((node) => comparesItself(node, call));
 }
 
 function usedAsValue(use: TSESTree.Node, call: TSESTree.Node): boolean {

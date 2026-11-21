@@ -14,9 +14,13 @@ export const PLACEHOLDER_MESSAGE =
 const EMPTY_VALUES = String.raw`Collections\.empty\w*\(\)|(?:List|Set|Map)\.of\(\)|Optional\.empty\(\)|new (?:Array|Linked|Hash|Tree)\w+(?:<[^()]*>)?\(\)`;
 const FIXED_VALUES = String.raw`null|true|false|-?[\d._]+[LlFfDd]?|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)'`;
 const FIXED_RETURN = new RegExp(String.raw`^return (?:${FIXED_VALUES}|${EMPTY_VALUES}) ?;$`, 'u');
+const DECLARED_TYPE = String.raw`(?:final )?(?:int|long|double|float|boolean|[A-Z][\w.]*(?:<[^=;()]*>)?)(?:\[\])*`;
 const SHAPES = [
   /^(?:Thread|TimeUnit\.[A-Z_]+)\.sleep\(.*\);$/u,
-  /^(?:(?:final )?(?:int|long|double|float|boolean|[A-Z][\w.]*(?:<[^=;()]*>)?)(?:\[\])* )?[a-z_]\w* ?= ?(?!(?:null|true|false|this) ?;)[a-z_]\w* ?;$/u,
+  new RegExp(
+    String.raw`^(?:${DECLARED_TYPE} )?[a-z_]\w* ?= ?(?!(?:null|true|false|this) ?;)[a-z_]\w* ?;$`,
+    'u',
+  ),
 ];
 const COMMENT_ONLY = /^(?:\/\/|\/\*|\*)/u;
 const METHOD_HEADER =

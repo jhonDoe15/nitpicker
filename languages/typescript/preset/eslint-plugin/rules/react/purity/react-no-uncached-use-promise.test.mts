@@ -128,7 +128,11 @@ export function Profile({ id }) { const user = use(loadLocal(id)); return <h1>{u
       filename: site,
       code: `import { use as read, useRef } from 'react';
 async function loadLocal(id) { return { name: id }; }
-export function Profile({ id }) { const seen = useRef(0); const user = read(loadLocal(id)); return <h1>{user.name}</h1>; }`,
+export function Profile({ id }) {
+  const seen = useRef(0);
+  const user = read(loadLocal(id));
+  return <h1>{user.name}</h1>;
+}`,
       errors: [{ messageId: 'uncached', data: { source: asyncSource('loadLocal') } }],
     },
     {

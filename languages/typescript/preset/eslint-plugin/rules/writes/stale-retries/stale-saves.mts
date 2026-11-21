@@ -1,4 +1,4 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import type { ModuleScope } from '../../database/orm-modules.mts';
 import { callsWithin } from '../../effects/held-scopes.mts';
 import { isRepositoryLike, receiverNames } from '../../queries/query-calls.mts';

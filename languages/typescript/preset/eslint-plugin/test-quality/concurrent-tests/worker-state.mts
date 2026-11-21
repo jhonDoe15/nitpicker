@@ -4,7 +4,12 @@ import {
   kindOfObject,
   propertyName,
 } from '../../rules/runner-apis/runner-apis.mts';
-import { contains, variableNamed, type SourceCode } from '../../rules/typed/node-views.mts';
+import {
+  chainOf,
+  contains,
+  variableNamed,
+  type SourceCode,
+} from '../../rules/typed/node-views.mts';
 
 const WORKER_CALLS: Readonly<Record<string, string>> = {
   useFakeTimers: 'fake timers',
@@ -67,7 +72,10 @@ function sharedMockSetter(
 }
 
 function rootOf(node: TSESTree.Node): TSESTree.Node {
-  return node.type === AST_NODE_TYPES.MemberExpression ? rootOf(node.object) : node;
+  const chain = chainOf(node, (link) =>
+    link.type === AST_NODE_TYPES.MemberExpression ? link.object : undefined,
+  );
+  return chain.at(-1) ?? node;
 }
 
 function spiesOnLocalObject(

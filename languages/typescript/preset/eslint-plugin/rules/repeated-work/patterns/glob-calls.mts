@@ -8,11 +8,16 @@ type Library = 'path' | 'minimatch' | 'picomatch' | 'micromatch';
 type Namespace = Exclude<Library, 'path'>;
 type Binding = { readonly library: Library; readonly name: string | undefined };
 
+const MINIMATCH = 'minimatch';
+const PICOMATCH = 'picomatch';
+const MICROMATCH = 'micromatch';
+const MAKE_RE = 'makeRe';
+const LIBRARIES: readonly Library[] = ['path', MINIMATCH, PICOMATCH, MICROMATCH];
 const PACKAGES: Readonly<Record<Library, readonly string[]>> = {
   path: ['path', 'node:path'],
-  minimatch: ['minimatch'],
-  picomatch: ['picomatch'],
-  micromatch: ['micromatch'],
+  minimatch: [MINIMATCH],
+  picomatch: [PICOMATCH],
+  micromatch: [MICROMATCH],
 };
 const PATH_FLAVOURS = new Set(['posix', 'win32']);
 const LIST_METHODS = new Set([
@@ -27,25 +32,25 @@ const LIST_METHODS = new Set([
 ]);
 const COMPILING_METHODS: ReadonlyMap<Namespace, ReadonlyMap<string, number>> = new Map([
   [
-    'minimatch',
+    MINIMATCH,
     new Map([
       ['match', 1],
-      ['makeRe', 0],
+      [MAKE_RE, 0],
       ['filter', 0],
     ]),
   ],
   [
-    'picomatch',
+    PICOMATCH,
     new Map([
       ['isMatch', 1],
-      ['makeRe', 0],
+      [MAKE_RE, 0],
     ]),
   ],
   [
-    'micromatch',
+    MICROMATCH,
     new Map([
       ['matcher', 0],
-      ['makeRe', 0],
+      [MAKE_RE, 0],
     ]),
   ],
 ]);
@@ -56,13 +61,17 @@ function bindingOf(sourceCode: SourceCode, node: TSESTree.Node): Binding | undef
     return undefined;
   }
   const variable = variableOf(sourceCode, identifier);
-  for (const library of Object.keys(PACKAGES) as Library[]) {
+  for (const library of LIBRARIES) {
     const binding = libraryBinding(variable, PACKAGES[library]);
     if (binding !== undefined) {
       return { library, name: binding.name };
     }
   }
   return undefined;
+}
+
+function isBarePath(binding: Binding | undefined): boolean {
+  return binding?.library === 'path' && binding.name === undefined;
 }
 
 function isPathModule(sourceCode: SourceCode, node: TSESTree.Node): boolean {
@@ -76,8 +85,7 @@ function isPathModule(sourceCode: SourceCode, node: TSESTree.Node): boolean {
     !object.computed &&
     object.property.type === AST_NODE_TYPES.Identifier &&
     PATH_FLAVOURS.has(object.property.name) &&
-    bindingOf(sourceCode, object.object)?.library === 'path' &&
-    bindingOf(sourceCode, object.object)?.name === undefined
+    isBarePath(bindingOf(sourceCode, object.object))
   );
 }
 
@@ -116,7 +124,7 @@ function directCall(
     return undefined;
   }
   if (call.type === AST_NODE_TYPES.NewExpression) {
-    return binding.library === 'minimatch' && binding.name === 'Minimatch'
+    return binding.library === MINIMATCH && binding.name === 'Minimatch'
       ? found(call, `new ${callee.name}`, 0)
       : undefined;
   }
@@ -139,8 +147,7 @@ function memberCall(
   const method = callee.property.name;
   const text = `${sourceCode.getText(callee.object)}.${method}`;
   if (call.type === AST_NODE_TYPES.NewExpression) {
-    return method === 'Minimatch' &&
-      namespaceOf(bindingOf(sourceCode, callee.object)) === 'minimatch'
+    return method === 'Minimatch' && namespaceOf(bindingOf(sourceCode, callee.object)) === MINIMATCH
       ? found(call, `new ${text}`, 0)
       : undefined;
   }
@@ -152,7 +159,7 @@ function memberCall(
     return undefined;
   }
   const index =
-    library === 'micromatch' && LIST_METHODS.has(method)
+    library === MICROMATCH && LIST_METHODS.has(method)
       ? 1
       : COMPILING_METHODS.get(library)?.get(method);
   return found(call, text, index);

@@ -229,6 +229,10 @@ describe('copies proved equal after inlining same-file helpers', () => {
 
     expect(failed).toEqual([]);
     expect(proofs).not.toContain('logic');
-    expect(found(MODES).findings.map(({ proof }) => proof)).toContain('logic');
+    expect(found(MODES).findings.map(({ proof }) => proof)).toEqual([
+      'logic',
+      undefined,
+      undefined,
+    ]);
   });
 });

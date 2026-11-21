@@ -1,5 +1,4 @@
-import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { TSESLint } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import {
   ancestorsOf,
   contains,
@@ -21,8 +20,8 @@ const LOOPS = new Set<string>([
 ]);
 const BOUNDS = new Set(['<', '<=']);
 
-function isLiteralList(node: TSESTree.Node | null | undefined): boolean {
-  const value = node === null || node === undefined ? undefined : unwrapped(node);
+function isLiteralList(node: TSESTree.Node | undefined): boolean {
+  const value = node === undefined ? undefined : unwrapped(node);
   return (
     value?.type === AST_NODE_TYPES.ArrayExpression &&
     value.elements.every(
@@ -75,7 +74,7 @@ function perPass(sourceCode: SourceCode, identifier: TSESTree.Identifier, owner:
   return (
     definition.type !== DefinitionType.Parameter ||
     !('params' in definition.node) ||
-    definition.node.params.indexOf(definition.name as TSESTree.Parameter) < 2
+    definition.node.params.indexOf(definition.name) < 2
   );
 }
 
