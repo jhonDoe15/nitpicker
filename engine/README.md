@@ -240,7 +240,7 @@ these five patterns from source:
 
 | Code base | Files, lines | SpotBugs wall, CPU, peak | Engine | Exposed representation | Constructor throw |
 | --- | --- | --- | --- | --- | --- |
-| Elasticsearch `server` | 5,106, 1,035k | 249 s, 417 s, 3.2 GB | 8.0 s, 28.9 s, 0.5 GB | 4,330 / 5 / 1 | 1,532 / 7 / 1 |
+| Elasticsearch `server` | 5,106, 1,035k | 249 s, 417 s, 3.2 GB | 8.0 s, 28.9 s, 0.5 GB | 4,330 / 5 / 1 | 1,539 / 0 / 0 |
 | Nacos | 3,118, 548k | 108 s, 242 s, 2.9 GB | 5.6 s, 18.0 s, 0.3 GB | 2,440 / 0 / 6 | 85 / 0 / 0 |
 | javaparser-core | 594, 121k | 48.3 s, 97.2 s, 2.3 GB | 0.9 s, 3.0 s, 0.1 GB | 500 / 0 / 0 | 17 / 0 / 0 |
 | Guava | 610, 183k | 43.6 s, 99.8 s, 1.8 GB | 1.3 s, 4.3 s, 0.1 GB | 14 / 0 / 0 | 0 / 0 / 0 |
@@ -258,11 +258,7 @@ Exposed representation, 12 differences (7,696 same):
   SpotBugs reports: 3 getters over a field that takes nothing but `Map.of` or `Map.copyOf` results, two of
   them in a subclass of the class with the field. Small classes of the same shape do not reproduce them.
 
-Constructor throw, 8 differences (1,700 same):
-
-- Anonymous classes, 6 missed: a field initializer or initializer block of an anonymous class that can throw is
-  not looked at yet.
-- A local class, 2 (1 finding): the engine names it differently in the message.
+Constructor throw: no differences (1,707 same).
 
 What SpotBugs counts as "an exception can leave the constructor", as measured (`tests/fixtures/spotbugs/ctor_*`):
 a `throw` or `assert` the handler around it does not take; a call to a method that declares exceptions; a call
@@ -270,6 +266,9 @@ to a method of the same class from which one of those can leave, however deep; `
 one of those, one level deep. Not counted: calls to constructors, to undeclared methods of other classes, anything
 before the first constructor call of the body (which a `new` among the arguments of `super(...)` already ends),
 and a rethrown `Throwable`. Final classes, enums, records and classes with a final `finalize()` are exempt.
+An anonymous class is reported for what its field initializers and initializer blocks can throw, under the
+constructor the compiler writes for it (`new p.Outer$1(Outer, int)`); what the constructor of its superclass
+throws does not count (`tests/fixtures/spotbugs/ctor_anonymous`).
 
 Only the innermost handler around a place is asked, as the compiled exception table lists it
 (`ctor_finally`, `ctor_nested`, `ctor_order`, `ctor_helpers*`): the `catch` clauses of the nearest `try`, and an
@@ -324,3 +323,64 @@ classes the compiler adds for a `switch` over an enum, the bodies of enum consta
 is a call on a lambda parameter without a declared type inside nested call arguments, which costs seconds per file to
 resolve. `NP_SB_CALLS=<file>` writes the calls the order is built from; `parity/spotbugs/calls.py` reads the same from
 class files and compares (Nacos: 10,350 same, 76 only in class files, 2 only in the engine).
+
+
+## Names the compiler makes up
+
+SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in
+the source: `p.A.lambda$run$3(String, int)`, `new p.A$2(A, List)`. `src/java/javac/` works these names out from
+source, as `javac` 21 makes them (#2138; the open differences are in #2140). The rules were learned from the
+class files `javac` writes for `tests/fixtures/javac`; `tests/expected/javac.json` holds what `javap` shows for
+them, and `parity/javac/run.sh` writes it again. `--rules _JavacNames` lists the names of a source list, and
+`parity/javac/compare.py report.json <classes dir> [-v]` compares them with compiled classes.
+
+- Anonymous and local classes (`Outer$1`, `Outer$1Local`) are numbered per enclosing class and simple name, in
+  the order the compiler works through the code: members in source order, and inside a call the receiver, then
+  the plain arguments, then the arguments whose meaning depends on the chosen method (a lambda, a parenthesized
+  or conditional expression, a `switch` expression, a call without written type arguments, a `new` with `<>`).
+  An anonymous class gets its own number between the two groups of its arguments, or after both with `<>`.
+- A lambda becomes `lambda$<place>$<n>`: `n` counts per class in source order, an inner lambda before the one
+  around it; the place is the method, `new` for constructors, initializer blocks and instance fields, `static`
+  for static initializers and fields, and the class name for a field of a local class (empty for an anonymous
+  one: `lambda$$0`). A serializable lambda carries a hash of its signature instead and takes no number; only
+  its class is listed.
+- A method reference takes a number like a lambda when the compiler turns it into one: `super::m`,
+  `Outer.super::m`, `int[]::new`, `array::clone`, the constructor of a local or inner class, a varargs method
+  that is not handed one array, a protected method of a class in another package, and a target that is an
+  intersection of types.
+- A lambda's hidden method takes the local variables it uses from around it, in order of first use, then its
+  own parameters. Variables with a constant value are not taken. A pattern variable counts where it is in
+  scope: inside the statement or `case` of its pattern, or after an `if` or `while` that tests the negated
+  pattern; flow rules beyond that are not rebuilt.
+- An anonymous class constructor takes the enclosing instance (unless the code is static), the instance written
+  before `.new` if there is one, the parameters of the superclass constructor it calls, and the local variables
+  the class uses. A local class constructor takes the enclosing instance, its written parameters and the
+  variables it uses. A class that extends a local class takes that class's variables first, last one first.
+
+Measured against the class files of the seven code bases (same / missed / extra, by kind, line, name and
+parameter types). Listing the names takes 11.1 s wall, 35.7 s CPU and 0.6 GB for Elasticsearch `server`:
+
+| Code base | Anonymous classes | Local classes | Lambdas | Method references | Serializable lambdas |
+| --- | --- | --- | --- | --- | --- |
+| Elasticsearch `server` | 1,867 / 0 / 0 | 18 / 0 / 0 | 7,501 / 94 / 89 | 248 / 0 / 1 | 0 |
+| Nacos | 475 / 0 / 0 | 0 | 704 / 3 / 3 | 2 / 0 / 0 | 0 |
+| javaparser-core | 34 / 0 / 0 | 1 / 0 / 0 | 920 / 0 / 0 | 1 / 0 / 0 | 0 |
+| Guava | 383 / 0 / 0 | 25 / 0 / 0 | 242 / 0 / 0 | 1 / 0 / 0 | 0 |
+| jackson-databind | 27 / 0 / 0 | 0 | 3 / 0 / 0 | 0 | 0 |
+| commons-lang | 17 / 0 / 0 | 0 | 286 / 0 / 0 | 11 / 0 / 0 | 36 / 0 / 0 |
+| MyBatis | 10 / 0 / 0 | 0 | 72 / 0 / 0 | 1 / 0 / 0 | 0 |
+
+12,885 names are the same. The 97 that differ:
+
+- A parameter type the engine cannot work out, 83 lambdas: the name and number are right and a type is listed
+  as `?`, as `Object` or as a wider type. Most are implicitly typed lambda parameters whose type comes from a
+  generic method.
+- A method reference on a value whose type is two types at once (`Stream.concat` of streams of two classes
+  that share a superclass and an interface), 14 in one file: the compiler turns such a reference into a
+  lambda, the engine does not see the second type, and the lambdas after it get a number that is too low.
+
+All 29 SpotBugs findings inside lambdas on the seven code bases name a method the engine produces.
+
+Not rebuilt, found on test code only: two implicitly typed lambdas handed to a generic method can be numbered
+in the opposite order when the type of the first depends on the second; an anonymous class written with `<>`
+whose argument holds another anonymous class skips a number; a lambda parameter typed with an anonymous class.

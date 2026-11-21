@@ -31,9 +31,15 @@ pub struct Context<'a> {
     line_starts: Vec<usize>,
     selected: Option<Vec<String>>,
     out: RefCell<Vec<Finding>>,
+    /// The names the compiler makes up for lambdas and anonymous classes, worked out once.
+    compiled: std::cell::OnceCell<crate::java::javac::Names<'a>>,
 }
 
-impl Context<'_> {
+impl<'a> Context<'a> {
+    pub fn compiled(&self) -> &crate::java::javac::Names<'a> {
+        self.compiled.get_or_init(|| crate::java::javac::Names::of(self.resolver, self.file.tree.root_node()))
+    }
+
     /// Reports a pattern on a line unless an enclosing declaration suppresses it.
     pub fn report(&self, pattern: &'static str, at: Node, line: usize, message: String) {
         self.out.borrow_mut().extend(self.finding(pattern, at, line, message));
@@ -101,7 +107,8 @@ impl Context<'_> {
     }
 }
 
-/// A detector looks at one class, enum, record or interface declaration at a time.
+/// A detector looks at one class, enum, record or interface declaration at a time, or at the `new` expression or
+/// enum constant that carries the body of an anonymous class.
 type Detector = fn(&Context, Node);
 
 const DETECTORS: &[Detector] = &[expose::exposed_representation, constructors::constructor_throw];
@@ -129,12 +136,13 @@ impl FileRule for SpotBugs {
         let selected = std::env::var("NP_SB_ONLY").ok().map(|names| names.split(',').map(String::from).collect());
         let mut declared = Vec::new();
         walk(file.tree.root_node(), |node| {
-            if TYPE_DECLARATIONS.contains(&node.kind()) {
+            let unnamed = matches!(node.kind(), "object_creation_expression" | "enum_constant") && children(node).iter().any(|part| part.kind() == "class_body");
+            if TYPE_DECLARATIONS.contains(&node.kind()) || unnamed {
                 declared.push(node);
             }
         });
         let classes = declared.iter().filter_map(|node| Some((scope.names.get(&node.id())?.clone(), *node))).collect();
-        let context = Context { resolver, file, classes, waiting: RefCell::new(Vec::new()), line_starts, selected, out: RefCell::new(Vec::new()) };
+        let context = Context { resolver, file, classes, waiting: RefCell::new(Vec::new()), line_starts, selected, out: RefCell::new(Vec::new()), compiled: std::cell::OnceCell::new() };
         for node in declared {
             for detector in DETECTORS {
                 detector(&context, node);
