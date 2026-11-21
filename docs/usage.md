@@ -4264,7 +4264,7 @@ oxlint also has rules of its own that no ESLint plugin provides. nitpicker runs 
 owns an ESLint rule that reports the same code: oxlint then runs its native rule, ESLint runs
 nitpicker's, and both report under the nitpicker rule id with the same message, location and
 finding identity, so an `exceptions` entry or a switch of engine changes nothing. With the pinned
-oxlint 1.87.0 that is `nitpicker/no-accumulating-spread` (oxlint's `oxc/no-accumulating-spread`);
+oxlint 1.88.0 that is `nitpicker/no-accumulating-spread` (oxlint's `oxc/no-accumulating-spread`);
 nitpicker checks each native report against the rule's own scope, so the accumulators it leaves
 out (fixed keys, a literal `.slice` bound) stay out on both engines. When the native rule is not
 available, oxlint runs nitpicker's rule through the bridge and reports the same findings.

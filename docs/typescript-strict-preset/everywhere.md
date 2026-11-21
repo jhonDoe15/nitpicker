@@ -832,7 +832,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `exceptions` entry (`rule: "nitpicker/require-atomic-updates"`, `paths`, `reason`) is the route.
 - The rule is a strict rule, so a violation on a line you touch is new even when the base has it.
   It is enabled explicitly in `eslint-lint` (`eslint.configs.recommended` and `strictTypeChecked`
-  do not include ESLint's rule); Oxlint 1.87.0 has no native equivalent, so the existing JavaScript
+  do not include ESLint's rule); Oxlint 1.88.0 has no native equivalent, so the existing JavaScript
   plugin bridge runs it, and the finding keeps the standard ESLint semantic identity. The message
   adds the failure mechanism and the allowed forms to ESLint's evidence. Other immutability rules
   can independently reject mutation; this rule specifically identifies stale reads across
