@@ -104,6 +104,15 @@ whole project. Class files are listed at start and read on first use.
 - The 77 rules PMD implements in Java (#2031), Error Prone and SpotBugs are untouched.
 - A type question that needs more than 20,000 resolution steps is answered "unknown" (29 on Elasticsearch).
 
+## TypeScript structure and reuse facts
+
+The TypeScript structure analyzer asks the engine for the function and class metrics (`typescript-structure`) and
+for the definitions, imports, exports and near-duplicate units the reuse rules read (`typescript-reuse`). Imported
+names in the units keep their module specifier; nitpicker resolves them to modules afterwards. A file the engine
+cannot read the way the TypeScript compiler does is marked `unparsed`, and nitpicker reads that file, and any file
+whose path holds a tab or a line break, with the JavaScript analyzer. `NITPICKER_STRUCTURE_ENGINE=off` reads every
+file that way; `NITPICKER_STRUCTURE_ENGINE=required` fails instead when the engine is missing or stops.
+
 ## TypeScript checks that need types
 
 The engine has no TypeScript type system. A check that needs types reads the tree the TypeScript compiler's

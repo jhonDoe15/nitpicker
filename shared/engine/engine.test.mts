@@ -3,9 +3,15 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { engineCandidates, findEngine } from './engine-binary.mts';
-import { engineFindings, parsedFiles, readEngineLines } from './engine-rows.mts';
+import {
+  engineFindings,
+  parsedFiles,
+  readEngineLines,
+  readEngineLinesSync,
+} from './engine-rows.mts';
 import { runEngine, runEngineSync } from './engine-run.mts';
 
+const parsedLine: (text: string) => unknown = JSON.parse;
 const host = { platform: 'linux', arch: 'x64', root: '/package' };
 const PACKAGED = '/package/engine/bin/linux-x64/nitpicker-engine';
 const BUILT = '/package/engine/target/release/nitpicker-engine';
@@ -82,5 +88,15 @@ describe('reading what the engine wrote', () => {
     }
     rmSync(directory, { recursive: true });
     expect(values).toEqual([{ file: 'a.ts' }, { file: 'b.ts' }]);
+  });
+
+  it('reads JSON lines without waiting, also lines longer than one read', () => {
+    const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-engine-lines-'));
+    const file = path.join(directory, 'facts.jsonl');
+    const long = 'é'.repeat(1_500_000);
+    writeFileSync(file, `{"file":"a.ts"}\n\n{"text":"${long}"}\n{"file":"b.ts"}`);
+    const values = [...readEngineLinesSync(file, parsedLine)];
+    rmSync(directory, { recursive: true });
+    expect(values).toEqual([{ file: 'a.ts' }, { text: long }, { file: 'b.ts' }]);
   });
 });

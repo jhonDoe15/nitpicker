@@ -36,6 +36,7 @@ pub struct Definition {
     pub name: String,
     pub kind: &'static str,
     pub text: String,
+    pub tokens: Vec<String>,
     pub untyped_tokens: Vec<String>,
     pub free: Vec<Free>,
     pub size: usize,
@@ -459,6 +460,7 @@ impl<'t, 'a> Reader<'t, 'a> {
                 let line = self.file.lines.line(start);
                 Definition {
                     text: format!("{}|{}", spec.tag, tokens.join(" ")),
+                    tokens,
                     untyped_tokens: normalized(self.untyped_texts(&spec.parts.untyped)),
                     free,
                     size,
