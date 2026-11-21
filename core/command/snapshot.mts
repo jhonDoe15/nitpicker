@@ -67,7 +67,7 @@ type SnapshotCli = {
   readonly sharedHeadWorktree?: SharedWorktree | undefined;
 };
 
-type SnapshotReport = QualitySnapshot & { text?: unknown };
+type SnapshotReport = QualitySnapshot;
 
 type Capture = (repositoryRoot: string, headSha: string) => unknown;
 

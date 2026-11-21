@@ -21,13 +21,18 @@ type ChildOutput = {
 type FileOutput = {
   readonly status: unknown;
   readonly signal: unknown;
-  readonly stdoutFile: { readonly descriptor: number; readonly read: (encoding: 'utf8') => string };
+  readonly stdoutFile: {
+    readonly descriptor: number;
+    readonly read: (encoding: 'utf8', limit?: number) => string;
+  };
   readonly stderrText: string;
 };
 
 type ReportedTask = Pick<AnalyzerTask, 'name' | 'acceptedExitCodes' | 'reportedTools'>;
 
 const parseJson: (text: string) => unknown = JSON.parse;
+
+const CRASH_STDOUT_BYTES = 1024 * 1024;
 
 const parseKeepingValid: (value: unknown, analyzerName: string) => AnalyzerReport =
   parseAnalyzerReportKeepingValid;
@@ -53,7 +58,7 @@ export function reportFromAnalyzerFile(
     return reportFromAnalyzerOutput(task, {
       status,
       signal,
-      stdoutText: stdoutFile.read('utf8'),
+      stdoutText: stdoutFile.read('utf8', CRASH_STDOUT_BYTES),
       stderrText,
     });
   }

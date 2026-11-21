@@ -20,7 +20,7 @@ import { type AnalyzerReport, reportFromAnalyzerFile } from './report/analyzer-r
 type OutputFile = {
   readonly descriptor: number;
   readonly size: () => number;
-  readonly read: (encoding: 'utf8') => unknown;
+  readonly read: (encoding: 'utf8', limit?: number) => unknown;
   readonly remove: () => void;
 };
 
@@ -103,7 +103,7 @@ function settleClose(
         signal,
         stdoutFile: {
           descriptor: stdoutFile.descriptor,
-          read: (encoding) => textOf(stdoutFile.read(encoding)),
+          read: (encoding, limit) => textOf(stdoutFile.read(encoding, limit)),
         },
         stderrText: Buffer.concat(output.stderr).toString('utf8'),
       }),

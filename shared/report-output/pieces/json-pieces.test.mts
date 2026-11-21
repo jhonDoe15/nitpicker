@@ -27,10 +27,19 @@ const findings = Array.from({ length: 600 }, (_, index) => finding(index));
 
 const VALUES: readonly (readonly [string, unknown])[] = [
   ['a report with many findings', { findings, moduleImports: { a: ['b'] }, empty: [], none: {} }],
-  ['nested reports', { reports: [['eslint-lint', { findings }], ['structure', { findings: [] }]] }],
+  [
+    'nested reports',
+    {
+      reports: [
+        ['eslint-lint', { findings }],
+        ['structure', { findings: [] }],
+      ],
+    },
+  ],
   ['an array of reports', [{ findings }, undefined, null, 3, 'text']],
   ['a small value', { findings: [finding(1)], note: 'kept on one line' }],
   ['a scalar', 'plain'],
+  ['members that convert to nothing', { gone: { toJSON: () => undefined }, findings }],
   ['an object with odd keys', { ['__proto__']: { findings }, 'a:': findings, 'b"': 1 }],
 ];
 
@@ -71,11 +80,7 @@ describe('JSON written in pieces', () => {
 
   it('puts each element of a large list on its own line', () => {
     const lines = joined(compactJsonLines({ findings })).split('\n');
-    expect(lines.slice(0, 3)).toEqual([
-      '{',
-      '"findings":',
-      '[',
-    ]);
+    expect(lines.slice(0, 3)).toEqual(['{', '"findings":', '[']);
     expect(lines).toHaveLength(findings.length + 5);
   });
 });
@@ -99,9 +104,33 @@ describe('JSON read line by line', () => {
   });
 
   it('keeps a member named __proto__ as data', () => {
-    const parsed = parsedFromFile('proto.json', `${joined(compactJsonLines(VALUES[5]?.[1]))}\n`);
+    const parsed = parsedFromFile(
+      'proto.json',
+      `${joined(compactJsonLines(VALUES.find(([name]) => name.includes('odd keys'))?.[1]))}\n`,
+    );
     expect(Object.getPrototypeOf(parsed)).toBe(Object.prototype);
     expect(Object.keys(parsed ?? {})).toEqual(['__proto__', 'a:', 'b"']);
+  });
+
+  it.each([
+    '[\n1,\n]',
+    '[\n1\n2\n]',
+    '{\n"a":1,\n}',
+    '[\n,\n1\n]',
+    '{\n"a":\n"b":\n[\n]\n}',
+    '{\n"a":1\n"b":2\n}',
+    '[,\n1\n]',
+    '{\n"a":1,\n,\n"b":2\n}',
+  ])('rejects the invalid layout %j like JSON.parse does', (text) => {
+    expect(() => parsedFromFile('invalid.json', text)).toThrow(SyntaxError);
+  });
+
+  it('accepts several members on one line', () => {
+    expect(parsedFromFile('members.json', '{\n"a":1,"b":2,\n"c":3\n}', false)).toEqual({
+      a: 1,
+      b: 2,
+      c: 3,
+    });
   });
 
   it('rejects cut output like JSON.parse does', () => {

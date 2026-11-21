@@ -18,6 +18,17 @@ function isOmitted(value: unknown): boolean {
   return value === undefined || typeof value === 'function' || typeof value === 'symbol';
 }
 
+function isOmittedMember(value: unknown): boolean {
+  if (isOmitted(value)) {
+    return true;
+  }
+  const converts =
+    typeof value === 'object' &&
+    value !== null &&
+    typeof Reflect.get(value, 'toJSON') === 'function';
+  return converts && JSON.stringify(value) === undefined;
+}
+
 function splits(value: unknown, depth: number): boolean {
   if (depth > MAX_SPLIT_DEPTH) {
     return false;
@@ -30,7 +41,7 @@ function splits(value: unknown, depth: number): boolean {
 }
 
 function membersOf(value: Readonly<Record<string, unknown>>): Members {
-  return Object.entries(value).filter(([, item]) => !isOmitted(item));
+  return Object.entries(value).filter(([, item]) => !isOmittedMember(item));
 }
 
 function leafText(value: unknown, space: string): string {

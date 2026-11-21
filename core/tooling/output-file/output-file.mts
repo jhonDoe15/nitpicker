@@ -130,7 +130,10 @@ export function spawnSyncParsingOutput(
   const file = openOutputFile();
   try {
     const { maxBuffer = DEFAULT_MAX_BUFFER, encoding, stdio } = options;
-    const result = spawnSync(command, args, { ...options, stdio: stdioWith(stdio, file.descriptor) });
+    const result = spawnSync(command, args, {
+      ...options,
+      stdio: stdioWith(stdio, file.descriptor),
+    });
     const captured = capturedStdout(
       { command, args, result },
       { file, encoding, maxBuffer, parse: true },

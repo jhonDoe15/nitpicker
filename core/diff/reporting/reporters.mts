@@ -1,4 +1,12 @@
-import { closeSync, existsSync, mkdirSync, openSync, readdirSync, rmSync, writeSync } from 'node:fs';
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readdirSync,
+  rmSync,
+  writeSync,
+} from 'node:fs';
 import path from 'node:path';
 import { textReportLines } from './text.mts';
 import { renderJunitReport } from './junit.mts';
@@ -10,7 +18,10 @@ import {
   CODE_QUALITY_REPORT_FILE_NAME as CODE_QUALITY_FILE,
   codeQualityIssues,
 } from './format/codequality.mts';
-import { prettyJsonPieces, writePieces } from '../../../shared/report-output/pieces/json-pieces.mts';
+import {
+  prettyJsonPieces,
+  writePieces,
+} from '../../../shared/report-output/pieces/json-pieces.mts';
 import type { ReportData } from '../../../shared/values/findings.mts';
 import type { ReferenceLinks } from '../../../shared/reference/typed/entry-types.mts';
 
