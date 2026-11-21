@@ -22,7 +22,7 @@ import {
 } from '../__tests__/kotlin-e2e-project.mts';
 import type { KotlinProject } from '../__tests__/kotlin-e2e-project.mts';
 import { assigned } from '../test-support/views/assigned.mts';
-import { helpUriProblems as untypedHelpUriProblems } from '../../../../../shared/reference/test-support/help-uris.mjs';
+import { helpUriProblems as untypedHelpUriProblems } from '../../../../../shared/reference/test-support/help-uris.mts';
 
 const helpUriProblems: (findings: readonly Finding[]) => string[] = untypedHelpUriProblems;
 

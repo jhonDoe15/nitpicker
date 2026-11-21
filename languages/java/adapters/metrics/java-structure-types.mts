@@ -20,8 +20,6 @@ export type MethodEntry = {
   readonly [field: string]: unknown;
 };
 
-export type SourceCache = Map<string, string[]>;
-
 type FilePolicy = {
   readonly exclude?: unknown;
   readonly baselineRoot?: string | undefined;

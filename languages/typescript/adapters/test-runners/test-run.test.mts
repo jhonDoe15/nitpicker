@@ -1,22 +1,24 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { testTimeoutMs, uncoveredRun, workerCount } from './test-run.mts';
 import { testOptions } from './typed/test-options.mts';
 
 let directory: string | undefined;
 
+function policyEnvironment(root: string): Record<string, string> {
+  return { NITPICKER_POLICY: path.join(root, 'policy.json') };
+}
+
 function stubThresholds(thresholds: object): string {
   const created = mkdtempSync(path.join(tmpdir(), 'nitpicker-test-run-'));
   directory = created;
   writeFileSync(path.join(created, 'policy.json'), JSON.stringify({ thresholds }));
-  vi.stubEnv('NITPICKER_POLICY', path.join(created, 'policy.json'));
   return created;
 }
 
 afterEach(() => {
-  vi.unstubAllEnvs();
   if (directory !== undefined) {
     rmSync(directory, { recursive: true, force: true });
     directory = undefined;
@@ -25,9 +27,9 @@ afterEach(() => {
 
 describe('the limits of a test run', () => {
   it('lets a test run ten seconds past the largest slow test budget, so the gate can report it', () => {
-    expect(testTimeoutMs(undefined)).toBe(40_000);
-    stubThresholds({ unitTestSeconds: 2, integrationTestSeconds: 90.5 });
-    expect(testTimeoutMs(undefined)).toBe(100_500);
+    expect(testTimeoutMs(testOptions({}))).toBe(40_000);
+    const root = stubThresholds({ unitTestSeconds: 2, integrationTestSeconds: 90.5 });
+    expect(testTimeoutMs(testOptions({ environment: policyEnvironment(root) }))).toBe(100_500);
   });
 
   it('rejects heterogeneous deadlines on runners with one shared timer', () => {
@@ -46,7 +48,10 @@ describe('the limits of a test run', () => {
         },
       }),
     );
-    const options = testOptions({ projectRoot: policyDirectory });
+    const options = testOptions({
+      projectRoot: policyDirectory,
+      environment: policyEnvironment(policyDirectory),
+    });
     expect(() =>
       testTimeoutMs(options, ['tests/unit/a.test.mjs', 'tests/build/a.test.mjs']),
     ).toThrow('one test and hook deadline');
@@ -68,12 +73,25 @@ describe('the limits of a test run', () => {
       }),
     );
     expect(() =>
-      testTimeoutMs(testOptions({ projectRoot: policyDirectory }), ['tests/a.test.mjs']),
+      testTimeoutMs(
+        testOptions({
+          projectRoot: policyDirectory,
+          environment: policyEnvironment(policyDirectory),
+        }),
+        ['tests/a.test.mjs'],
+      ),
     ).toThrow('one test and hook deadline');
     expect(() =>
-      testTimeoutMs(testOptions({ projectRoot: policyDirectory }), ['tests/a.test.mjs'], {
-        hooks: false,
-      }),
+      testTimeoutMs(
+        testOptions({
+          projectRoot: policyDirectory,
+          environment: policyEnvironment(policyDirectory),
+        }),
+        ['tests/a.test.mjs'],
+        {
+          hooks: false,
+        },
+      ),
     ).toThrow('cannot set hook deadlines');
   });
 
@@ -89,8 +107,19 @@ describe('the limits of a test run', () => {
     'gives a runner with one shared timer the larger deadline for %s',
     (_name, files, expected) => {
       const projectRoot = stubThresholds({});
-      expect(testTimeoutMs(testOptions({ projectRoot }), files)).toBe(expected);
-      expect(testTimeoutMs(testOptions({ projectRoot }), files, { hooks: false })).toBe(expected);
+      expect(
+        testTimeoutMs(
+          testOptions({ projectRoot, environment: policyEnvironment(projectRoot) }),
+          files,
+        ),
+      ).toBe(expected);
+      expect(
+        testTimeoutMs(
+          testOptions({ projectRoot, environment: policyEnvironment(projectRoot) }),
+          files,
+          { hooks: false },
+        ),
+      ).toBe(expected);
     },
   );
 

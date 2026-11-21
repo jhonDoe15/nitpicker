@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { RULE_IDS } from '../../../../shared/policy.mjs';
+import { RULE_IDS } from '../../../../shared/policy.mts';
 import {
   type TestRunTime,
   type TestTimeLimits,

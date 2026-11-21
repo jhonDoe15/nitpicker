@@ -1,5 +1,5 @@
-import { ingestCrapRows } from '../../../shared/ingest/lizard-crap.mjs';
-import { normalizeReportPath } from '../../../shared/ingest/common.mjs';
+import { ingestCrapRows } from '../../../shared/ingest/lizard-crap.mts';
+import { normalizeReportPath } from '../../../shared/ingest/report-records.mts';
 import { fieldOf, parseJson } from '../../../shared/values/readers.mts';
 import { isFileTable } from './typed/coverage-types.mts';
 import type { IngestedFinding } from './typed/ingest-types.mts';

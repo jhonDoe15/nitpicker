@@ -1,12 +1,18 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { isSideEffectFree as untypedIsSideEffectFree } from '../../../../../../shared/logic/purity.mjs';
+import { isSideEffectFree as untypedIsSideEffectFree } from '../../../../../../shared/logic/purity.mts';
+import {
+  NO_EFFECTS,
+  afterEffectsWith,
+  mergedEffects,
+} from '../../../../../../shared/rules/decided/effect-merge.mts';
+import type { AfterEffects } from '../../../../../../shared/rules/decided/effect-merge.mts';
+import type { Effects } from '../../../../../../shared/rules/decided/typed/decided-types.mts';
 import { foldTree, type SourceCode } from '../typed/node-views.mts';
 import { toTerm, type Term } from '../analysis/logic/estree-terms.mts';
 import { patternNames, typedServices, type Fact } from './facts.mts';
 import { unsteadyReads } from './models/property-kinds.mts';
 import { inside, isFunction, syntaxChildren } from './syntax.mts';
 
-export type Effects = { readonly writes: Set<string>; memberWrite: boolean; call: boolean };
 export type MaybeNode = TSESTree.Node | TSESTree.IfStatement['alternate'] | undefined;
 export type FlowContext = {
   readonly sourceCode: SourceCode;
@@ -79,20 +85,6 @@ function addEffect(effects: Effects, node: TSESTree.Node, sourceCode: SourceCode
     isUnsteadyRead(node, sourceCode.parserServices);
 }
 
-const NO_EFFECTS: Effects = Object.freeze({
-  writes: new Set<string>(),
-  memberWrite: false,
-  call: false,
-});
-
-function merged(parts: readonly Effects[]): Effects {
-  return {
-    writes: new Set(parts.flatMap(({ writes }) => [...writes])),
-    memberWrite: parts.some(({ memberWrite }) => memberWrite),
-    call: parts.some(({ call }) => call),
-  };
-}
-
 function effectTree(root: TSESTree.Node, { sourceCode, effects }: FlowContext): Effects {
   return foldTree<TSESTree.Node, boolean, Effects>(root, true, {
     expand(node, isRoot) {
@@ -109,7 +101,7 @@ function effectTree(root: TSESTree.Node, { sourceCode, effects }: FlowContext): 
       if (isFunction(node) && !isRoot) {
         return NO_EFFECTS;
       }
-      const own = merged(below);
+      const own = mergedEffects(below);
       addEffect(own, node, sourceCode);
       effects.set(node, own);
       return own;
@@ -123,26 +115,10 @@ function effectTree(root: TSESTree.Node, { sourceCode, effects }: FlowContext): 
  */
 export function effectsOf(nodes: readonly MaybeNode[], flow: FlowContext): Effects {
   const present = nodes.filter((node) => node !== null && node !== undefined);
-  return merged(present.map((root) => effectTree(root, flow)));
+  return mergedEffects(present.map((root) => effectTree(root, flow)));
 }
 
-function survives(known: Fact, effects: Effects, mutable: ReadonlySet<string>): boolean {
-  if ([...known.names].some((name) => effects.writes.has(name))) {
-    return false;
-  }
-  if ((effects.call || effects.memberWrite) && known.readsMembers) {
-    return false;
-  }
-  return !(effects.call && [...known.names].some((name) => mutable.has(name)));
-}
-
-export function afterEffects(
-  facts: readonly Fact[],
-  effects: Effects,
-  mutable: ReadonlySet<string>,
-): Fact[] {
-  return facts.filter((known) => survives(known, effects, mutable));
-}
+export const afterEffects: AfterEffects = afterEffectsWith(false);
 
 /**
  * Names a call could change: variables written after their declaration, imported live bindings

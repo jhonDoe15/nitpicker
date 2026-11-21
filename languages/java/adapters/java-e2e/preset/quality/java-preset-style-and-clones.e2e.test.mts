@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { summarize } from '../../../test-support/gradle-e2e.mts';
 import { useJavaPresetProject, enabled } from '../../__tests__/java-preset-project.mts';
-import { helpUriProblems as helpUriProblemsUntyped } from '../../../../../../shared/reference/test-support/help-uris.mjs';
+import { helpUriProblems as helpUriProblemsUntyped } from '../../../../../../shared/reference/test-support/help-uris.mts';
 import type { JavaFinding } from '../../../typed/java-values.mts';
 
 const helpUriProblems: (findings: readonly JavaFinding[]) => string[] = helpUriProblemsUntyped;

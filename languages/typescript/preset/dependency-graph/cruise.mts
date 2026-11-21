@@ -3,11 +3,11 @@ import { spawnSyncWithOutputFile as untypedSpawnSyncWithOutputFile } from '../..
 import path from 'node:path';
 import { isInsideRoot } from '../layout/source-root/root-paths.mts';
 import { linkPolicyFile as untypedLinkPolicyFile } from '../../../../core/tooling/policy-links.mts';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mts';
 import { readLayout as untypedReadLayout } from '../head-policy.mts';
 import { EXCLUDED_PATH_PATTERN } from '../layout.mts';
 import { layoutTransformFor as untypedLayoutTransformFor } from '../tool-configs.mts';
-import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
+import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mts';
 import { fieldsOf, parseJson } from '../../../../shared/values/readers.mts';
 import type { Layout } from '../../adapters/typed/head-policy.mts';
 import {

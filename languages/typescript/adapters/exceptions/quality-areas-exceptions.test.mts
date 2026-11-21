@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mts';
-import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mjs';
-import { applyFindingExceptions } from '../../../../shared/exceptions/finding-exceptions.mjs';
+import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mts';
+import { applyFindingExceptions } from '../../../../shared/exceptions/finding-exceptions.mts';
 import type { Finding } from '../static-checks/shared.mts';
 import { parseArguments } from '../quality-areas/arguments.mts';
 import { normalizeCoverage, normalizeCrap } from '../quality-areas/reporting/tests.mts';
@@ -50,20 +50,23 @@ function areaFindings(
   writeFileSync(policyFile, JSON.stringify({ exceptions }));
   process.env[HEAD_POLICY_ENV] = policyFile;
   return runQualityArea(
-    parseArguments([
-      '--analyzer-name',
-      kind,
-      '--kind',
-      kind,
-      '--project-root',
-      root,
-      '--policy-root',
-      PACKAGE_ROOT,
-      '--tool-root',
-      PACKAGE_ROOT,
-      '--snapshot',
-      'head',
-    ]),
+    parseArguments(
+      [
+        '--analyzer-name',
+        kind,
+        '--kind',
+        kind,
+        '--project-root',
+        root,
+        '--policy-root',
+        PACKAGE_ROOT,
+        '--tool-root',
+        PACKAGE_ROOT,
+        '--snapshot',
+        'head',
+      ],
+      process.env,
+    ),
   );
 }
 

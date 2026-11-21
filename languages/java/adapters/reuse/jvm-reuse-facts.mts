@@ -12,8 +12,8 @@ import {
   type JavaFinding,
   type JavaPolicy,
 } from '../typed/java-values.mts';
-import { baselinePathsOf as untypedBaselinePathsOf } from '../../../../shared/rules/facts/baseline.mjs';
-import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
+import { baselinePathsOf as untypedBaselinePathsOf } from '../../../../shared/rules/facts/baseline.mts';
+import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mts';
 import {
   pathInside as untypedPathInside,
   projectSourceFiles as untypedProjectSourceFiles,

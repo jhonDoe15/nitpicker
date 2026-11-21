@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   compactMetricFindings as untypedCompact,
   expandMetricFindings as untypedExpand,
-} from './metric-groups.mjs';
-import { evaluateStructure as untypedEvaluateStructure } from '../rules/structure.mjs';
+} from './metric-groups.mts';
+import { fieldOf, listOf, parseJson } from '../values/readers.mts';
+import { evaluateStructure as untypedEvaluateStructure } from '../rules/structure.mts';
 
 type Entry = Readonly<Record<string, unknown>>;
 
-const compact: (findings: readonly unknown[]) => Entry[] = untypedCompact;
-const expand: (entries: unknown) => Entry[] = untypedExpand;
+const compact: (findings: readonly unknown[]) => unknown[] = untypedCompact;
+const expand: (entries: readonly unknown[]) => unknown[] = untypedExpand;
 const evaluateStructure: (report: object, analyzerName: string) => Entry[] =
   untypedEvaluateStructure;
 
@@ -34,7 +35,7 @@ const fn = (overrides: Entry) => ({
 });
 
 const roundTrip = (findings: readonly unknown[]) =>
-  expand(JSON.parse(JSON.stringify(compact(findings))));
+  expand(listOf(parseJson(JSON.stringify(compact(findings)))));
 
 describe('metric groups', () => {
   it('writes the metrics of one function as one entry and reads them back in order', () => {
@@ -70,9 +71,9 @@ describe('metric groups', () => {
     );
 
     expect(roundTrip(findings)).toEqual(findings);
-    expect(compact(findings).filter((entry) => entry['classification'] === 'enforceable')).toEqual(
-      findings.filter((finding) => finding['classification'] === 'enforceable'),
-    );
+    expect(
+      compact(findings).filter((entry) => fieldOf(entry, 'classification') === 'enforceable'),
+    ).toEqual(findings.filter((finding) => finding['classification'] === 'enforceable'));
     const metrics = findings.filter((finding) => finding['rule'] === 'function-structure');
     expect(JSON.stringify(compact(metrics)).length).toBeLessThan(
       JSON.stringify(metrics).length * 0.4,
@@ -96,7 +97,9 @@ describe('metric groups', () => {
       metric('statements', 3, { identity: 'function:run:occurrence:2:statements' }),
     ];
 
-    expect(compact(findings).map((entry) => entry['metrics'] ?? entry['rule'])).toEqual([
+    expect(
+      compact(findings).map((entry) => fieldOf(entry, 'metrics') ?? fieldOf(entry, 'rule')),
+    ).toEqual([
       { lines: 1 },
       { lines: 2 },
       { statements: 1 },

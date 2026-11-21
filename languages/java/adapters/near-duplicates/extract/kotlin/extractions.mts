@@ -20,7 +20,7 @@ import {
   wholeCandidates,
 } from '../../jvm-views.mts';
 import { kotlinUnits } from '../../kotlin/units.mts';
-import { descendants, pairOf, present, required } from '../syntax.mts';
+import { descendants, holesOf, pairOf, present, required, runsOf } from '../syntax.mts';
 import { partialExtraction } from './partial/partial.mts';
 import { FUNCTION } from './syntax.mts';
 import { wholeExtraction } from './whole.mts';
@@ -61,9 +61,9 @@ function attemptFor(
   }
   const result = strategy.extract({
     methods: pairOf(methods),
-    runs: candidate.runs ?? [],
+    runs: runsOf(candidate),
     label: candidate.first.name,
-    engineHoles: candidate.finding.parameters.length,
+    engineHoles: holesOf(candidate),
     root: source.rootNode,
     text: source.text,
     claimed,

@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { runCli } from '../../../../../core/cli.mts';
-import { pathInside } from '../../../../../shared/filesystem.mjs';
+import { pathInside } from '../../../../../shared/filesystem.mts';
 import {
   fieldOf,
   listOf,

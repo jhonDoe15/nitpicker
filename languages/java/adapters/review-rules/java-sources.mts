@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { globMatcher } from '../../../../shared/paths/glob.mjs';
-import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
+import { globMatcher } from '../../../../shared/paths/glob.mts';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mts';
 import type {
   DepthChanges,
   SourceListing,

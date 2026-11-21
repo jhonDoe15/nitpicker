@@ -1,5 +1,5 @@
 import { integrationTestFiles } from '../../../../messages/isolation/unit-tests.mts';
-import { compareText as untypedCompareText } from '../../../../../../shared/paths/path-order.mjs';
+import { compareText as untypedCompareText } from '../../../../../../shared/paths/path-order.mts';
 import { lineOf } from '../../scan/kotlin-source.mts';
 import { kotlinFiles } from '../../rules/kotlin-suppressions.mts';
 import type { FindingFactory, ReviewFinding } from '../typed/review-finding-types.mts';

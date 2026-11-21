@@ -5,7 +5,7 @@ import {
   firstFileIn as untypedFirstFileIn,
   isDirectory as untypedIsDirectory,
   isFile as untypedIsFile,
-} from '../../../../../shared/filesystem.mjs';
+} from '../../../../../shared/filesystem.mts';
 import { manifestScripts, testScriptCommands } from '../../test-runner/detection/test-scripts.mts';
 import {
   optionEntries as untypedOptionEntries,

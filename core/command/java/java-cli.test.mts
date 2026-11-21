@@ -24,7 +24,7 @@ import {
   toolNames,
   whereField,
 } from '../test-support/report-readers.mts';
-import { docsUrl as renderDocsUrl } from '../../../shared/messages/docs-url.mjs';
+import { docsUrl as renderDocsUrl } from '../../../shared/messages/docs-url.mts';
 import { fieldOf, listOf, parseJson } from '../../../shared/values/readers.mts';
 
 const docsUrl: (page: string, anchor?: string) => string | undefined = renderDocsUrl;

@@ -1,6 +1,6 @@
 import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { ancestorDirectories, pathInside } from '../../../shared/filesystem.mjs';
+import { ancestorDirectories, pathInside } from '../../../shared/filesystem.mts';
 
 const ancestorsOf: (directory: string) => string[] = ancestorDirectories;
 const within: (root: string, relative: string) => string | undefined = pathInside;

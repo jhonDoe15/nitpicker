@@ -1,5 +1,5 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
-import { crossedCollections as untypedCrossedCollections } from '../../../../../../shared/joins/crossed-collections.mjs';
+import { crossedCollections as untypedCrossedCollections } from '../../../../../../shared/joins/crossed-collections.mts';
 import { findJoins } from './find-options.mts';
 import { builderJoins, isQueryBuilder } from './query-builders.mts';
 import { relationTypes, type JoinSite, type Types } from './relation-types.mts';

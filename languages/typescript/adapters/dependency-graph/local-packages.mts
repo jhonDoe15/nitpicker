@@ -5,8 +5,8 @@ import { TEMPORARY_WORKTREE_PREFIX } from '../../../../core/diff/git/repository/
 import { containedPath } from './package-managers/contained-path.mts';
 import { manifestDirectories } from './package-managers/members.mts';
 import { fieldOf, fieldsOf } from '../../../../shared/values/readers.mts';
-import { GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
-import { isStrictlyInside } from '../../../../shared/filesystem.mjs';
+import { GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mts';
+import { isStrictlyInside } from '../../../../shared/filesystem.mts';
 
 const LOCAL_SPEC = /^(?:file|link|portal):(?<target>.+)$/u;
 const DEPENDENCY_FIELDS = [

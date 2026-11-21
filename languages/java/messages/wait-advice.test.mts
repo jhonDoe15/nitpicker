@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FIXED_SLEEP_RULE, withWaitAdvice } from './wait-advice.mts';
 import { applyRuleMessages } from './rule-messages.mts';
-import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
+import { exceptionHint } from '../../../shared/rules/exceptions.mts';
 import { defined } from '../builds/test-support/defined.mts';
 import { temporaryProjectMaker } from '../__tests__/temporary-roots.mts';
 

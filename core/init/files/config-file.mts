@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
-import { CONFIG_FILE_NAME, isPlainObject } from '../../../shared/config.mjs';
+import { CONFIG_FILE_NAME, isPlainObject } from '../../../shared/config.mts';
 import { projectFileText } from '../support/inside-project.mts';
 import { type Placed, type Revision, placeFile } from './place-file.mts';
 import { fieldsOf } from '../../../shared/values/readers.mts';

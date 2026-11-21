@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { moduleFileText } from '../execution/go-module.mts';
-import { formatAgnosticText, hash, nextOccurrence } from '../typed/shared-readers.mts';
+import { formatAgnosticText, hash, occurrenceCounter } from '../typed/shared-readers.mts';
 import type { Diagnostic, FindingRow, SourcePosition } from '../go-types.mts';
 
 const POSITION = /^(.+\.go):(\d+)(?::(\d+))?$/u;
@@ -44,7 +44,7 @@ export function diagnosticFindings(
   projectRoot: string,
   diagnostics: readonly Diagnostic[],
 ): FindingRow[] {
-  const occurrences = new Map<string, number>();
+  const nextOccurrence = occurrenceCounter();
   const sourceLine = sourceLineReader(projectRoot);
   const seen = new Set();
   return diagnostics.flatMap(
@@ -55,7 +55,7 @@ export function diagnosticFindings(
       }
       seen.add(exact);
       const subject = hash(`${message.replace(LINE_REFERENCE, '')}\0${sourceLine(file, line)}`);
-      const occurrence = nextOccurrence(occurrences, `${tool}\0${rule}\0${file}\0${subject}`);
+      const occurrence = nextOccurrence(`${tool}\0${rule}\0${file}\0${subject}`);
       return [
         {
           tool,

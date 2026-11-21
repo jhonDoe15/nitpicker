@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { runTreeProcess } from '../../../java/adapters/near-duplicates/tree-process.mts';
 import type { GoUnit } from './types/go-types.mts';
 

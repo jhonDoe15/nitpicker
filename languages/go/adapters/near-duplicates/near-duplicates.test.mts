@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { findNearDuplicates as untypedFindNearDuplicates } from '../../../../shared/near-duplicates/engine.mjs';
-import { nearDuplicateFindings as untypedNearDuplicateFindings } from '../../../../shared/rules/near-duplicates/near-duplicates.mjs';
+import { findNearDuplicates as untypedFindNearDuplicates } from '../../../../shared/near-duplicates/engine.mts';
+import { nearDuplicateFindings as untypedNearDuplicateFindings } from '../../../../shared/rules/near-duplicates/near-duplicates.mts';
 import { type GoParse, goParser, inPackage } from './test-support/parse-go.mts';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import type { GoUnit } from './types/go-types.mts';

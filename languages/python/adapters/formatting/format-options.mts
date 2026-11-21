@@ -1,7 +1,7 @@
 import {
   missingProjectConfig as untypedMissing,
   precedenceLayers as untypedLayers,
-} from '../../../../shared/conventions/tool-precedence.mjs';
+} from '../../../../shared/conventions/tool-precedence.mts';
 import { PYTHON_SETTING_IDS } from '../../conventions/python-conventions.mts';
 import { fieldsOf, textOf } from '../../../../shared/values/readers.mts';
 import { readBlackConfig, readRuffConfig } from './project-format-config.mts';

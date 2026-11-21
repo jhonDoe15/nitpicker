@@ -4,7 +4,7 @@ import path from 'node:path';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
-} from '../../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../../shared/messages/troubleshooting.mts';
 import { fieldOf, fieldsOf, listOf, textsOf } from '../../../../../shared/values/readers.mts';
 import { mochaSources } from '../mocha-config-files.mts';
 

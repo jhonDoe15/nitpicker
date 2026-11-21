@@ -1,4 +1,4 @@
-import { pathInside as insideProject } from '../../../../../shared/filesystem.mjs';
+import { pathInside as insideProject } from '../../../../../shared/filesystem.mts';
 import type { JavaFinding } from '../../typed/java-values.mts';
 import type { JpaFilterOptions, SourceIndex } from '../jpa-types.mts';
 import { blankLiterals } from '../../review-rules/java-sources.mts';

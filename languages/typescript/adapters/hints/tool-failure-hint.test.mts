@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   explainedError as untypedExplainedError,
   troubleshootingUrl as untypedTroubleshootingUrl,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 import { withTroubleshooting } from '../lint-engine/typed/tools.mts';
 import { fieldOf, fieldsOf, parseJson, textOf } from '../../../../shared/values/readers.mts';
 import { PEER_TOOLS, withTypeScriptHint } from './tool-failure-hint.mts';

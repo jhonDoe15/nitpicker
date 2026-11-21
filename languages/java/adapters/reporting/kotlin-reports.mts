@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { resolveInside as untypedResolveInside } from '../../../../shared/conventions/read-inside.mjs';
+import { resolveInside as untypedResolveInside } from '../../../../shared/conventions/read-inside.mts';
 import { createGeneratedFilter } from '../../ingest/kotlin-mutants/generated-filter.mts';
 import { KOTLIN_REPORTS } from '../kotlin/report-names/kotlin-report-names.mts';
 import { readKotlinClassLimitFindings } from '../kotlin/kotlin-class-limits.mts';

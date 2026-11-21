@@ -1,4 +1,4 @@
-import type { XmlElement } from '../../../../shared/values/xml.mts';
+import type { XmlElement } from '../../../../shared/ingest/report-records.mts';
 
 export type RuleReference = { readonly file: string; readonly rule: string | undefined };
 

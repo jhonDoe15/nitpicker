@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   describeConventions,
   validateConventions,
-} from '../../../../shared/conventions/settings.mjs';
+} from '../../../../shared/conventions/settings.mts';
 import {
   DETACHED_WORK_RUNNERS_CONVENTION,
   detachedWorkRunnerNames,

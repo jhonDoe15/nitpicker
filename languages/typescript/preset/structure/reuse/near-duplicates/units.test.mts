@@ -1,43 +1,38 @@
 import { describe, expect, it } from 'vitest';
-import type TypeScript from 'typescript';
 import { typescriptApi } from '../../../../adapters/typed/typescript-program.mts';
-import { findNearDuplicates as untypedFindNearDuplicates } from '../../../../../../shared/near-duplicates/engine.mjs';
-import { COPIES } from '../../../../../../shared/near-duplicates/test-support/copies.mjs';
-import { javascriptUnits as untypedJavascriptUnits } from '../../../../../../shared/near-duplicates/test-support/javascript.mjs';
-import {
-  nearDuplicateUnitNodes,
-  nearDuplicateUnits as untypedNearDuplicateUnits,
-} from './units.mts';
+import { findNearDuplicates } from '../../../../../../shared/near-duplicates/engine.mts';
+import type { TreeNode } from '../../../../../../shared/near-duplicates/tree/tree-types.mts';
+import { fieldOf } from '../../../../../../shared/values/readers.mts';
+import { COPIES } from '../../../../../../shared/near-duplicates/test-support/copies.mts';
+import { javascriptUnits } from '../../../../../../shared/near-duplicates/test-support/javascript.mts';
+import { nearDuplicateUnitNodes, nearDuplicateUnits } from './units.mts';
 import { FORMAT_COPY, JSX_COPIES, TYPESCRIPT_COPIES, UNIT_FORMS } from './test-support/sources.mts';
 
 const ts = typescriptApi();
 
-type Hole = { readonly kind: string; readonly a: Side; readonly b: Side };
-
-type Side = { readonly text?: string; readonly value?: string };
-
-type Unit = {
-  readonly id: string;
-  readonly name: string;
-  readonly final: boolean;
-  readonly tree: { readonly children: readonly unknown[] };
-};
-
-type NearFinding = {
-  readonly verdict: string;
-  readonly units: readonly string[];
-  readonly parameters: readonly Hole[];
-  readonly run?: readonly unknown[];
-};
-
-const findNearDuplicates: (units: readonly Unit[]) => NearFinding[] = untypedFindNearDuplicates;
-const javascriptUnits: (text: string, options: { readonly file: string }) => Unit[] =
-  untypedJavascriptUnits;
-const nearDuplicateUnits: (sourceFile: TypeScript.SourceFile, file: string) => Unit[] =
-  untypedNearDuplicateUnits;
+type Unit = ReturnType<typeof nearDuplicateUnits>[number];
+type NearFinding = ReturnType<typeof findNearDuplicates>[number];
 
 function unitsOf(text: string, file: string): Unit[] {
   return nearDuplicateUnits(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true), file);
+}
+
+function isTree(value: unknown): value is TreeNode {
+  const children = fieldOf(value, 'children');
+  return (
+    typeof fieldOf(value, 'kind') === 'string' && Array.isArray(children) && children.every(isTree)
+  );
+}
+
+function nearFindings(units: readonly Unit[]): NearFinding[] {
+  return findNearDuplicates(
+    units.map((unit) => {
+      if (!isTree(unit.tree)) {
+        throw new TypeError(`The tree of ${unit.id} holds a list in place of a node`);
+      }
+      return { ...unit, tree: unit.tree };
+    }),
+  );
 }
 
 function verdicts(findings: readonly NearFinding[]) {
@@ -69,21 +64,18 @@ describe('TypeScript and JavaScript trees for near-duplicate detection', () => {
   it('gives the verdicts of the reference JavaScript trees on plain JavaScript', () => {
     const expected = verdicts(findNearDuplicates(javascriptUnits(COPIES, { file: 'copies.js' })));
 
-    expect(verdicts(findNearDuplicates(unitsOf(COPIES, 'copies.js')))).toEqual(expected);
+    expect(verdicts(nearFindings(unitsOf(COPIES, 'copies.js')))).toEqual(expected);
   });
 
   it('reports a copied function with one changed literal as parameterizable', () => {
-    const finding = findingFor(
-      findNearDuplicates(unitsOf(TYPESCRIPT_COPIES, 'copies.ts')),
-      'parseUrl',
-    );
+    const finding = findingFor(nearFindings(unitsOf(TYPESCRIPT_COPIES, 'copies.ts')), 'parseUrl');
 
     expect(finding.verdict).toBe('parameterizable');
     expect(holes(finding)).toEqual([['value', '"empty uri"', '"empty url"']]);
   });
 
   it('reports a copied JSX element with different props as parameterizable', () => {
-    const findings = findNearDuplicates(unitsOf(JSX_COPIES, 'copies.tsx'));
+    const findings = nearFindings(unitsOf(JSX_COPIES, 'copies.tsx'));
     const finding = findingFor(findings, 'AlignTopButton');
 
     expect(finding.verdict).toBe('parameterizable');
@@ -96,7 +88,7 @@ describe('TypeScript and JavaScript trees for near-duplicate detection', () => {
   });
 
   it('reports a copy with one extra statement and a run shared by two functions as partial runs', () => {
-    const findings = findNearDuplicates(unitsOf(TYPESCRIPT_COPIES, 'copies.ts'));
+    const findings = nearFindings(unitsOf(TYPESCRIPT_COPIES, 'copies.ts'));
 
     expect(findingFor(findings, 'saveDraft').verdict).toBe('partial-run');
     expect(findingFor(findings, 'importUsers').verdict).toBe('partial-run');
@@ -104,8 +96,8 @@ describe('TypeScript and JavaScript trees for near-duplicate detection', () => {
   });
 
   it('treats renamed locals as the same code and differently imported helpers as a hole', () => {
-    const findings = findNearDuplicates(unitsOf(TYPESCRIPT_COPIES, 'copies.ts'));
-    const imported = findNearDuplicates([
+    const findings = nearFindings(unitsOf(TYPESCRIPT_COPIES, 'copies.ts'));
+    const imported = nearFindings([
       ...unitsOf(`import { formatDate } from './dates';\n${FORMAT_COPY}`, 'a.ts'),
       ...unitsOf(`import { formatDate } from './calendar';\n${FORMAT_COPY}`, 'b.ts'),
     ]);
@@ -183,7 +175,7 @@ export function hasOverdueSome(loans: Loan[], today: Date): boolean {
 }
 `;
 
-    expect(verdicts(findNearDuplicates(unitsOf(text, 'loans.ts')))).toEqual([
+    expect(verdicts(nearFindings(unitsOf(text, 'loans.ts')))).toEqual([
       { verdict: 'same', units: ['loans.ts#hasOverdueLoop', 'loans.ts#hasOverdueSome'] },
     ]);
   });

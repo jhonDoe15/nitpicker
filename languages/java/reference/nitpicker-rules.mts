@@ -27,7 +27,7 @@ import {
   COPY_PASTED_TEST_RULE,
   copyPastedTestMessage,
 } from '../adapters/review-rules/copy-pasted-tests/copy-pasted-tests.mts';
-import { copiedConstantMessage } from '../../../shared/rules/copied-constants/copied-constants.mjs';
+import { copiedConstantMessage } from '../../../shared/rules/copied-constants/copied-constants.mts';
 import { maxValueEntry } from './review-entries/max-value.mts';
 import { stringCallEntries } from './review-entries/mined/string-calls.mts';
 import { valueCheckEntries } from './review-entries/mined/value-checks.mts';
@@ -45,7 +45,7 @@ import {
   ROUND_TRIP_EXCEPTION_RULE,
   ROUND_TRIP_RULE,
 } from '../adapters/review-rules/round-trips/round-trips.mts';
-import { roundTripMessage } from '../../../shared/rules/round-trips/round-trips.mjs';
+import { roundTripMessage } from '../../../shared/rules/round-trips/round-trips.mts';
 
 const GUIDE = 'docs/java-preset.md';
 const GUIDE_LABEL = 'Java preset guide';

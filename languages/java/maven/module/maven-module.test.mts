@@ -7,7 +7,7 @@ import { moduleManifest } from '../manifest/maven-manifest.mts';
 import { buildAndTest } from '../quick/maven-test-phase.mts';
 import { type ModuleDescription, reactorModules } from '../typed/module-description.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mts';
 
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 const trees = temporaryTrees('nitpicker-maven-manifest-');

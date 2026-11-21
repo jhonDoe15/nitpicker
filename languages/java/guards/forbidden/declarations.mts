@@ -1,5 +1,5 @@
-import { escapeRegExp as untypedEscape } from '../../../../shared/paths/glob.mjs';
-import { lineAt } from '../../../../shared/conventions/lines.mjs';
+import { escapeRegExp as untypedEscape } from '../../../../shared/paths/glob.mts';
+import { lineAt } from '../../../../shared/conventions/lines.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 import type { DeclaredUse, ForbiddenUse, TextOf } from './forbidden-types.mts';
 import {

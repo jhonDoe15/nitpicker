@@ -1,14 +1,17 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { testCaseProblem } from '../../../shared/ingest/common.mjs';
-import { childrenNamed, parseXml } from '../../../shared/values/xml.mts';
-import type { XmlElement } from '../../../shared/values/xml.mts';
-import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
-import { testsFailHeadline } from '../../../shared/rules/finding-helpers.mjs';
+import {
+  testCaseProblem,
+  childrenNamed,
+  parseXml,
+  type XmlElement,
+} from '../../../shared/ingest/report-records.mts';
+import { explainedError } from '../../../shared/messages/troubleshooting.mts';
+import { testsFailHeadline } from '../../../shared/rules/finding-parts.mts';
 import {
   failingTestEntries,
   valuesInMessage,
-} from '../../../shared/rules/failing-tests/failing-tests.mjs';
+} from '../../../shared/rules/failing-tests/failing-tests.mts';
 
 export type CaseDetail = {
   readonly name: string;

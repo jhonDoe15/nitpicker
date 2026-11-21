@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
+import { resolveHeadPolicy } from '../../../shared/head-policy.mts';
 import { validateConfig } from '../validate.mts';
 
 describe('layout keys', () => {

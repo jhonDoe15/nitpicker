@@ -1,4 +1,4 @@
-import { configError } from '../../../../shared/config.mjs';
+import { configError } from '../../../../shared/config.mts';
 import { isPlainObject } from '../../views/config-views.mts';
 import { isNonEmptyString } from '../../views/validation-views.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';

@@ -1,13 +1,13 @@
-import { routeFields } from '../../../../shared/messages/exception-sentence.mjs';
+import { routeFields } from '../../../../shared/messages/exception-sentence.mts';
 import {
   adviceProblems,
   withGrowthAdvice,
   withWorseMessage,
-} from '../../../../shared/messages/advice/finding-advice.mjs';
+} from '../../../../shared/messages/advice/finding-advice.mts';
 import {
   withoutCauses,
   withUntouchedCause,
-} from '../../../../shared/rules/stability/untouched-cause.mjs';
+} from '../../../../shared/rules/stability/untouched-cause.mts';
 import { fieldOf, fieldsOf, listOf } from '../../../../shared/values/readers.mts';
 import type { ChangedMetric, Compared } from './compare-types.mts';
 import type { Advice, TouchedCode, TrackedFinding } from './finding-types.mts';
@@ -21,26 +21,28 @@ export const problemsOf: (advice: {
   readonly exceptionList: unknown;
 }) => string[] = adviceProblems;
 
-export const worseMessageOf: (finding: TrackedFinding, baseValue: number) => TrackedFinding =
-  withWorseMessage;
-
-const growthAdvised: (
-  finding: TrackedFinding,
-  baseValue: number,
-) => Readonly<Record<string, unknown>> = withGrowthAdvice;
-
 const REQUIRED_TEXT = ['tool', 'rule', 'path', 'identity', 'message', 'classification'];
 
 function isTracked(value: Readonly<Record<string, unknown>>): value is TrackedFinding {
   return REQUIRED_TEXT.every((field) => typeof value[field] === 'string');
 }
 
-export function growthAdviceOf(finding: TrackedFinding, baseValue: number): TrackedFinding {
-  const advised = growthAdvised(finding, baseValue);
+function trackedFinding(
+  advised: Readonly<Record<string, unknown>>,
+  source: string,
+): TrackedFinding {
   if (!isTracked(advised)) {
-    throw new TypeError('growth advice did not return a finding');
+    throw new TypeError(`${source} did not return a finding`);
   }
   return advised;
+}
+
+export function worseMessageOf(finding: TrackedFinding, baseValue: number): TrackedFinding {
+  return trackedFinding(withWorseMessage(finding, baseValue), 'worse message');
+}
+
+export function growthAdviceOf(finding: TrackedFinding, baseValue: number): TrackedFinding {
+  return trackedFinding(withGrowthAdvice(finding, baseValue), 'growth advice');
 }
 
 export const withCauseExplained: (

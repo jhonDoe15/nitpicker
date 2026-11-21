@@ -2,7 +2,7 @@ import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../adapters/typed/typescript-program.mts';
-import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
+import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../shared/project-files/project-files.mts';
 import { codeExtensionNames } from '../layout.mts';
 import { workspacePaths } from './workspace/entries.mts';
 import { relevantSiblingFiles } from './workspace/sibling-imports.mts';
@@ -10,7 +10,7 @@ import type { PackageEntry, PackagesInfo, ProgramLayout } from './workspace/work
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 
 const ts = typescriptApi();
 

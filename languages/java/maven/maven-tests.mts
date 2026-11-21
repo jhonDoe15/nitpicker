@@ -1,7 +1,7 @@
 import { copyFileSync, existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
-import { globMatcher } from '../../../shared/paths/glob.mjs';
+import { globMatcher } from '../../../shared/paths/glob.mts';
 import { runJava } from './maven-command.mts';
 import { classEntries } from '../builds/classes/class-file.mts';
 import { failedCaseEntries, freshReports } from '../builds/test-failures.mts';

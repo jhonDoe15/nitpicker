@@ -11,7 +11,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 import { typescriptApi } from '../../typed/typescript-program.mts';
 import { fieldsOf, listOf } from '../../../../../shared/values/readers.mts';
 import type { Override, Partition, Translation } from '../plan/oxlint-shapes.mts';

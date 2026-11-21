@@ -42,6 +42,7 @@
   "repository-hygiene/large-file": ["maintainability"],
   "repository-hygiene/migration-hardcoded-name": ["maintainability", "persistence"],
   "repository-hygiene/migration-order": ["bug", "persistence"],
+  "repository-hygiene/musl-default-allocator": ["performance"],
   "repository-hygiene/start-schema-push": ["reliability", "persistence"],
   "structure/caller-protocol": ["maintainability"],
   "structure/class-fields-limit": ["maintainability"],

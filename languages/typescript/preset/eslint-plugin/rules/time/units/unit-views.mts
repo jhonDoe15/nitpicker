@@ -1,4 +1,5 @@
-import { eslintUnitMessage as untypedEslintUnitMessage } from '../../../../../../../shared/naming/time-units/unit-messages.mjs';
+import { eslintUnitMessage as untypedEslintUnitMessage } from '../../../../../../../shared/naming/time-units/unit-messages.mts';
+import type { Unit } from '../../../../../../../shared/naming/time-units/unit-names.mts';
 import {
   argumentUnitOfCallName as untypedArgumentUnitOfCallName,
   convertedUnit as untypedConvertedUnit,
@@ -8,9 +9,9 @@ import {
   unitLabel as untypedUnitLabel,
   unitOfCallName as untypedUnitOfCallName,
   unitOfName as untypedUnitOfName,
-} from '../../../../../../../shared/naming/time-units/unit-names.mjs';
+} from '../../../../../../../shared/naming/time-units/unit-names.mts';
 
-export type Unit = 'ns' | 'us' | 'ms' | 's' | 'min';
+export type { Unit };
 type MessageKind = 'mixed' | 'assigned' | 'argument' | 'narrowed';
 
 export const unitOfName: (name: string) => Unit | undefined = untypedUnitOfName;

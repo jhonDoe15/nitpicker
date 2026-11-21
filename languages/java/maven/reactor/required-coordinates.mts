@@ -1,5 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { type XmlElement, childAt, childrenAt, parseXml } from '../../../../shared/values/xml.mts';
+import {
+  type XmlElement,
+  childAt,
+  childrenAt,
+  parseXml,
+} from '../../../../shared/ingest/report-records.mts';
 import { textAt } from '../configuration/pom-elements.mts';
 
 const GROUP_ID = 'groupId';

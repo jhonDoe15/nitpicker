@@ -1,6 +1,6 @@
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { projectFilePaths } from '../../../../shared/project-files/project-files.mjs';
+import { projectFilePaths } from '../../../../shared/project-files/project-files.mts';
 import { DJANGO_TEST_FILES } from '../configuration/pytest/collection-options.mts';
 import {
   ROOT_TEST_DIRECTORIES,

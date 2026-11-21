@@ -1,41 +1,15 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { findShorter as untypedFindShorter } from '../../../../../../shared/logic/shorter/find-shorter.mjs';
-import { renderSkeleton as untypedRenderSkeleton } from '../../../../../../shared/logic/shorter/render.mjs';
-import { skeletonOf as untypedSkeletonOf } from '../../../../../../shared/logic/shorter/skeleton.mjs';
-import { isNot as untypedIsNot } from '../../../../../../shared/logic/terms.mjs';
-import type { Term } from '../analysis/logic/term-views.mts';
+import { findShorter } from '../../../../../../shared/logic/shorter/find-shorter.mts';
+import { renderSkeleton } from '../../../../../../shared/logic/shorter/render.mts';
+import { skeletonOf } from '../../../../../../shared/logic/shorter/skeleton.mts';
+import { isNot } from '../../../../../../shared/logic/terms.mts';
 import { conditionTerm } from '../decided/facts.mts';
 import { chainOf, depthFirst, nodeChildren } from '../typed/node-views.mts';
 import { booleanParts } from './boolean-leaves.mts';
 import { isNarrowingLeaf } from './narrowing-leaf.mts';
 import { isTestOf } from './test-positions.mts';
 
-type Leaf = { readonly op: 'leaf'; readonly term: Term; readonly text: string };
-type Skeleton = object;
-type Found = {
-  readonly form: string;
-  readonly reasons: readonly string[];
-  readonly skeleton: Skeleton;
-};
-type Options = {
-  readonly booleanContext: boolean;
-  readonly isPinned: (leaf: Leaf, leaves: readonly Leaf[]) => boolean;
-  readonly isBoolean: (leaf: Leaf) => boolean;
-};
-type Source = {
-  readonly rootContext: undefined;
-  readonly children: () => undefined;
-  readonly text: (term: Term) => string;
-};
-
-const findShorter: (skeleton: Skeleton, options: Options) => Found | undefined = untypedFindShorter;
-const skeletonOf: (root: Term, source: Source) => Skeleton = untypedSkeletonOf;
-const isNot: (node: Term) => boolean = untypedIsNot;
-const renderSkeleton: (
-  skeleton: Skeleton,
-  style: undefined,
-  textOf: (leaf: Leaf) => string,
-) => string = untypedRenderSkeleton;
+type Source = Parameters<typeof skeletonOf<undefined>>[1];
 
 const CONNECTIVES = new Set<string>(['&&', '||']);
 const TYPE_SYNTAX = new Set<string>([

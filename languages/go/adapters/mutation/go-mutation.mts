@@ -1,7 +1,8 @@
+import { appendAll } from '../../../../shared/lists/lists.mts';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { addMetric, hash } from '../../../../shared/rules/finding-helpers.mjs';
-import { mutantFindings } from '../../../../shared/rules/mutation.mjs';
+import { hash, metricFindings } from '../../../../shared/rules/finding-parts.mts';
+import { mutantFindings } from '../../../../shared/rules/mutation.mts';
 import { readGoModule } from '../execution/go-module.mts';
 import { GO_MUTATION_ANALYZER_NAME } from '../go-analyzer.mts';
 import {
@@ -199,17 +200,20 @@ function addSummaries(findings: FindingRow[], results: readonly ChangedResult[])
     counts.set(status, (counts.get(status) ?? 0) + 1);
   }
   for (const [status, value] of counts) {
-    addMetric(findings, {
-      analyzerName: GO_MUTATION_ANALYZER_NAME,
-      rule: 'mutation-summary',
-      path: '.',
-      identity: `status:${status}`,
-      message: `${status} mutants`,
-      metricName: status,
-      value,
-      symbol: undefined,
-      line: undefined,
-    });
+    appendAll(
+      findings,
+      metricFindings({
+        analyzerName: GO_MUTATION_ANALYZER_NAME,
+        rule: 'mutation-summary',
+        path: '.',
+        identity: `status:${status}`,
+        message: `${status} mutants`,
+        metricName: status,
+        value,
+        symbol: undefined,
+        line: undefined,
+      }),
+    );
   }
 }
 

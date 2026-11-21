@@ -1,4 +1,4 @@
-import { GIT_OUTPUT_LIMIT_BYTES, GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
+import { GIT_OUTPUT_LIMIT_BYTES, GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mts';
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 
 type GitFailure = {

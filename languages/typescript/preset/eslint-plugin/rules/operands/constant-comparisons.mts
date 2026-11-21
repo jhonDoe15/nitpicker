@@ -5,7 +5,7 @@ import {
   disjunctionVerdict as untypedDisjunctionVerdict,
   numberSamples as untypedNumberSamples,
   isRelation as untypedIsRelation,
-} from '../../../../../../shared/logic/comparisons/constant-verdicts.mjs';
+} from '../../../../../../shared/logic/comparisons/constant-verdicts.mts';
 import { isStable } from './operand-terms.mts';
 
 type Constant =

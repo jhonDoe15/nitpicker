@@ -1,6 +1,6 @@
 import { readdirSync, type Dirent } from 'node:fs';
 import path from 'node:path';
-import { isMigrationFile as untypedIsMigrationFile } from '../../../../../../shared/hygiene/migrations/migration-files.mjs';
+import { isMigrationFile as untypedIsMigrationFile } from '../../../../../../shared/hygiene/migrations/migration-files.mts';
 import { nearestManifest, type Manifest } from '../dependencies/package-manifest.mts';
 import { MIKRO_ORM } from '../persistence/orm-bindings.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';

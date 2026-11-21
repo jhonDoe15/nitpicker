@@ -1,25 +1,11 @@
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
-import {
-  chainOf as untypedChainOf,
-  depthFirst as untypedDepthFirst,
-} from '../../../../../shared/traversal.mjs';
+import { chainOf, depthFirst } from '../../../../../shared/traversal.mts';
 import { syntaxChildren as untypedSyntaxChildren } from '../../syntax/children.mts';
 
 const api = typescriptApi();
 
-type NonEmptyChain<T> = { at(index: number): T } & T[];
-
-export const chainOf: <T>(start: T | undefined, next: (current: T) => T | undefined) => T[] =
-  untypedChainOf;
-
-export const nonEmptyChainOf: <T extends object>(
-  start: T,
-  next: (current: T) => T | undefined,
-) => NonEmptyChain<T> = untypedChainOf;
-
-export const depthFirst: <T>(root: T, children: (node: T) => readonly T[]) => Iterable<T> =
-  untypedDepthFirst;
+export { chainOf, depthFirst };
 
 export const syntaxChildren: (node: TypeScript.Node) => TypeScript.Node[] = untypedSyntaxChildren;
 

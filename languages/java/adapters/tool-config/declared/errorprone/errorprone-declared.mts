@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { missingProjectConfig as untypedMissingProjectConfig } from '../../../../../../shared/conventions/tool-precedence.mjs';
+import { missingProjectConfig as untypedMissingProjectConfig } from '../../../../../../shared/conventions/tool-precedence.mts';
 import { mavenTextsOf } from '../../../../builds/narrowing/maven-sources.mts';
 import {
   declarationText,

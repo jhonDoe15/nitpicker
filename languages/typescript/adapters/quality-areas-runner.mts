@@ -64,7 +64,7 @@ if (isInvokedModule(import.meta.url)) {
     'Quality area adapter failed',
     () =>
       runQualityAreaReport({
-        ...parseArguments(process.argv.slice(2)),
+        ...parseArguments(process.argv.slice(2), process.env),
         keepCoverageReport: process.env['NITPICKER_KEEP_COVERAGE_REPORT'],
       }),
     process,

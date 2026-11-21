@@ -173,6 +173,7 @@ function deadCode({
       baselineRoot: undefined,
       baselineMovesFile: undefined,
       mutationScope: undefined,
+      environment: {},
     };
     return runDeadCode(options).filter(({ rule }) => rule === 'test-only-export');
   } finally {

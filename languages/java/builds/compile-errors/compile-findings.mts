@@ -1,11 +1,11 @@
-import { createIdentityCounter } from '../../../../shared/ingest/common.mjs';
+import { createIdentityCounter } from '../../../../shared/ingest/report-records.mts';
 import {
   COMPILE_ERROR_RULE,
   COMPILE_ERROR_TOOL,
   COMPILE_FAILED_SKIPPED_RULE,
   compileErrorMessage,
   hash,
-} from '../../../../shared/rules/finding-helpers.mjs';
+} from '../../../../shared/rules/finding-parts.mts';
 import { compileErrorsIn } from './compiler-output.mts';
 import type { CompileError } from './compiler-output.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';

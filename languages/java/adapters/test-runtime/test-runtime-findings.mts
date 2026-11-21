@@ -1,15 +1,15 @@
 import { readFileSync } from 'node:fs';
-import { hash as untypedHash } from '../../../../shared/rules/finding-helpers.mjs';
+import { hash as untypedHash } from '../../../../shared/rules/finding-parts.mts';
 import {
   FRAMEWORK_BRIDGE,
   classifyTestRuntime,
   testRuntimeReport,
-} from '../../../../shared/rules/test-runtime/classify.mjs';
-import { evaluateTestRuntime } from '../../../../shared/rules/test-runtime/evaluate.mjs';
+} from '../../../../shared/rules/test-runtime/classify.mts';
+import { evaluateTestRuntime } from '../../../../shared/rules/test-runtime/evaluate.mts';
 import {
   TEST_RUNTIME_ANALYZER,
   isEndToEndPath,
-} from '../../../../shared/rules/test-runtime/scope.mjs';
+} from '../../../../shared/rules/test-runtime/scope.mts';
 import { pathInside as untypedPathInside } from '../review-rules/java-sources.mts';
 import { readDeclarations } from '../review-rules/source-declarations.mts';
 import { readTestGraph, type TestProject } from './test-graph.mts';

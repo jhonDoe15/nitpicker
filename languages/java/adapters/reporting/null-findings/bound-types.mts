@@ -2,7 +2,7 @@ import { lastSegment } from '../../kotlin/review-rules/blocking/type-names.mts';
 import {
   PARENTHESES as PARENTHESES_UNTYPED,
   balancedEnd as balancedEndUntyped,
-} from '../../../../../shared/source-text/brackets/balanced.mjs';
+} from '../../../../../shared/source-text/brackets/balanced.mts';
 import { classAt, type JavaClass } from '../source-facts/java-model.mts';
 import type { SourceIndex } from '../source-facts/source-index.mts';
 

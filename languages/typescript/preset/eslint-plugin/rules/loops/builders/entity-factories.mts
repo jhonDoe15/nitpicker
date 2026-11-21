@@ -4,7 +4,7 @@ import { TYPEORM } from '../../database/orm-modules.mts';
 import { calleeDeclaration, calleeFamily } from '../../queries/receivers/orm-callee.mts';
 import { typeServices, type Context } from '../../security/security-values.mts';
 import { estreeCallView, ownerName } from '../../support/io/call-views.mts';
-import { wordsOf as untypedWordsOf } from '../../../../../../../shared/naming/secret-words.mjs';
+import { wordsOf as untypedWordsOf } from '../../../../../../../shared/naming/secret-words.mts';
 import type { Call } from './chain-execution.mts';
 import { staysEntity } from './entity-flow.mts';
 

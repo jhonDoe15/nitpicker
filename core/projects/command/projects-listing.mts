@@ -1,4 +1,4 @@
-import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
 import { count } from '../report/console.mts';
 
 type ListedProject = {

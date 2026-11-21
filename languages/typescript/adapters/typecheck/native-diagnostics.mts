@@ -4,7 +4,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveTool } from '../typed/tooling.mts';
 import { troubleshootingError } from '../lint-engine/typed/tools.mts';
-import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
+import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import {
   type Collected,

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mts';
-import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mjs';
+import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mts';
 import { parseArguments } from '../../adapters/quality-areas/arguments.mts';
 import { runQualityAreaReport } from '../../adapters/quality-areas-runner.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
@@ -40,11 +40,14 @@ function projectWith(files: Readonly<Record<string, string>>): string {
 
 function coupling(projectRoot: string) {
   return runQualityAreaReport(
-    parseArguments([
-      ...['--analyzer-name', 'coupling', '--kind', 'coupling'],
-      ...['--project-root', projectRoot, '--policy-root', PACKAGE_ROOT],
-      ...['--tool-root', PACKAGE_ROOT, '--snapshot', 'head'],
-    ]),
+    parseArguments(
+      [
+        ...['--analyzer-name', 'coupling', '--kind', 'coupling'],
+        ...['--project-root', projectRoot, '--policy-root', PACKAGE_ROOT],
+        ...['--tool-root', PACKAGE_ROOT, '--snapshot', 'head'],
+      ],
+      process.env,
+    ),
   );
 }
 

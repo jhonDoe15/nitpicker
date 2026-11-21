@@ -144,6 +144,20 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`, reading the output on
   another thread first; never `waitFor()` or `getInputStream().readAllBytes()` alone
   (`pmd/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).
+- Check a filtered or listed list before passing it as an option value to a child process
+  (`if (sources.isEmpty()) return`); an empty `--dir ""` makes most tools scan everything
+  (`pmd/UnguardedOptionList`).
+- Pass a class path to a child JVM through an argument file (`@args.txt`) or the `CLASSPATH` environment variable,
+  not joined with `File.pathSeparator` into one argument, which stops the process from starting on a large build
+  (`pmd/GrowingProcessArguments`).
+- When a child process runs over its deadline and was started through a shell or launcher (`sh`, `cmd`, `npm`,
+  `gradlew.bat`), destroy its descendants first: `process.descendants().forEach(ProcessHandle::destroyForcibly)`,
+  then the process (`pmd/DestroyLeavesDescendants`).
+- When an exception message has to shorten a tool's output or a stack trace, keep the end
+  (`output.substring(Math.max(0, output.length() - 4000))`), not the start: the cause is printed last
+  (`pmd/HeadCutErrorOutput`).
+- Decide whether a child process failed by its exit value, not by text on its standard error, which also carries
+  warnings and notices such as the JVM's `Picked up JAVA_TOOL_OPTIONS` (`pmd/StderrAsFailure`).
 - Waits for other work have a deadline: `future.get(30, TimeUnit.SECONDS)`, `latch.await(30, TimeUnit.SECONDS)`,
   `thread.join(30_000)`, `future.orTimeout(30, TimeUnit.SECONDS).join()`, and `mono.block(Duration.ofSeconds(30))`
   (also `blockOptional`, `blockFirst`, `blockLast`); never the no-argument form

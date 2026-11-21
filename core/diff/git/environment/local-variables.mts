@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
+import { GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mts';
 
 const CONFIGURATION_VARIABLES = new Set(['GIT_CONFIG_PARAMETERS', 'GIT_CONFIG_COUNT']);
 

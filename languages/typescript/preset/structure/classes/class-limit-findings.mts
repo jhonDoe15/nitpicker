@@ -5,7 +5,8 @@ import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 import { readHeadPolicy, readLayout } from '../typed/rule-views.mts';
 import { measureClasses, type ClassMeasure } from './class-measures.mts';
 import { fileFacts, resolveBase, type FileFacts } from './class-links.mts';
-import { classLimitFindings, containedPath } from './class-views.mts';
+import { containedPath } from '../../../../../core/fix/tool-steps/paths/contained-path.mts';
+import { classLimitFindings } from '../../../../../shared/rules/size/class-limits.mts';
 
 const ts = typescriptApi();
 

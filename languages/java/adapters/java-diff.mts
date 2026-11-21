@@ -10,7 +10,7 @@ import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.m
 import { readRemovesTests } from '../../../core/diff/git/patches/test-removal.mts';
 import { readRenameMap } from '../../../core/diff/git/patches/project-moves.mts';
 import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktree.mts';
-import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
+import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mts';
 import { javaRouteRule } from './java-policy.mts';
 import { withoutFollowedImports } from './imports/followed-imports.mts';
 import { withoutGeneratedSources } from './generated/generated-sources.mts';

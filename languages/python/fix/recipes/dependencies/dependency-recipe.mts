@@ -6,11 +6,11 @@ import type {
   DependencyFinding,
   DependencyInputs,
   PlanContext,
-  ReplaceEdit,
   Planned,
   RecipeFix,
   TextEdit,
 } from '../../typed/fix-types.mts';
+import type { ReplaceEdit } from '../../../../../shared/fix/recipes/hygiene/typed/hygiene-types.mts';
 
 type Step = { edits?: ReplaceEdit[]; notes?: string[] };
 type Fixer = (text: string, finding: DependencyFinding, state: DependencyInputs) => Step;

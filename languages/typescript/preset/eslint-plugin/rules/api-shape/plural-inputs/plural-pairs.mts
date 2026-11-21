@@ -1,5 +1,5 @@
 import type { TSESTree } from '@typescript-eslint/utils';
-import { pluralsOf as untypedPluralsOf } from '../../../../../../../shared/naming/plural-names.mjs';
+import { pluralsOf as untypedPluralsOf } from '../../../../../../../shared/naming/plural-names.mts';
 import type { InputSet } from './type-members.mts';
 
 export type PluralPair = {

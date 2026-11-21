@@ -2,7 +2,7 @@ import {
   ROUTE_SENTENCE,
   escapeGlob,
   exceptionSentence,
-} from '../../../../../shared/messages/exception-sentence.mjs';
+} from '../../../../../shared/messages/exception-sentence.mts';
 import { inPriorityOrder } from './finding-order.mts';
 import { singleLine } from '../text.mts';
 import type { ReportEntry } from '../../../../../shared/values/findings.mts';

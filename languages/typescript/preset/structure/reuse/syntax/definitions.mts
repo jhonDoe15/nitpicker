@@ -2,7 +2,7 @@ import { ts } from '../../../../typescript-api/typescript-api.mts';
 import { declarationParts, fileBindings, freeBindings } from './bindings.mts';
 import { leafTexts, normalizedTexts } from './tokens.mts';
 import { untypedParts } from './type-syntax.mts';
-import { expandsFully as untypedExpandsFully } from '../../../../../../shared/traversal.mjs';
+import { expandsFully as untypedExpandsFully } from '../../../../../../shared/traversal.mts';
 import type TypeScript from 'typescript';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
 import type { Definition, Lookup, NamedStatement, Spec } from '../typed/syntax-types.mts';

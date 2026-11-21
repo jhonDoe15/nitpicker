@@ -5,7 +5,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 import { runnerCommand } from '../../test-runner/script-command.mts';
 import { jestConfigFile, readJestConfig } from './read-jest-config.mts';
-import { linkSentence as untypedLinkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence as untypedLinkSentence } from '../../../../../shared/messages/test-support/link-sentence.mts';
 
 const repositoryJest = path.join(import.meta.dirname, '../../../../../node_modules/jest');
 const FAKE_REACT_SCRIPTS = [

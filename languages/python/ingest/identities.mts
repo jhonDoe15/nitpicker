@@ -1,4 +1,4 @@
-import { createIdentityCounter } from '../../../shared/ingest/common.mjs';
+import { createIdentityCounter } from '../../../shared/ingest/report-records.mts';
 
 const newCounter: () => (identity: string) => string = createIdentityCounter;
 const LINE_REFERENCE = /\s+(?:on|from) line \d+/g;

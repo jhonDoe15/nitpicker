@@ -4,14 +4,14 @@ import type { TouchedCode } from './model/finding-types.mts';
 import { attachFixes } from './fixes/attach-fixes.mts';
 import {
   type AnalyzerOutcome,
-  type AnalyzerRun,
+  type ComparisonRun,
   type FindingComparison,
   type Moves,
   compareAnalyzers,
 } from './base-red/compare-analyzers.mts';
-import { withoutSharedCrossToolOverlaps } from '../../../shared/findings/overlaps/cross-tool.mjs';
+import { withoutSharedCrossToolOverlaps } from '../../../shared/findings/overlaps/cross-tool.mts';
 import { type MetadataMap, mergeMetadata } from '../execution/report/analyzer-metadata.mts';
-import { withCoChangeDependencies } from '../../../shared/history/co-change/dependencies/join.mjs';
+import { withCoChangeDependencies } from '../../../shared/history/co-change/dependencies/join.mts';
 import { withSharedUnusedDirectives } from '../../../languages/typescript/adapters/eslint/merge/unused-directives.mts';
 import { runProfileSummary } from '../../quick/summary.mts';
 import { skippedSummary } from '../skipping/lines.mts';
@@ -50,10 +50,10 @@ export type ReportContext = {
 };
 
 export type CombineRequest = ReportContext & {
-  readonly baseRun: unknown;
+  readonly baseRun: ComparisonRun;
   readonly headRoot?: string;
   readonly fixRecipes?: unknown[] | undefined;
-  readonly headRun: unknown;
+  readonly headRun: ComparisonRun;
   readonly baseToHeadDirectories?: Moves | undefined;
   readonly baseToHeadPackages?: Moves | undefined;
   readonly baseToHeadDeclared?: DeclaredMoves | undefined;
@@ -85,28 +85,23 @@ const withFixes: (
   root: string | undefined,
   recipes: unknown[] | undefined,
 ) => Finding[] = attachFixes;
-const withDependencies: (run: unknown, policy?: object) => AnalyzerRun = withCoChangeDependencies;
-const withoutSharedOverlaps: (runs: { readonly baseRun: unknown; readonly headRun: unknown }) => {
-  readonly baseRun: unknown;
-  readonly headRun: unknown;
-} = withoutSharedCrossToolOverlaps;
 const skippedFields: (context: {
   readonly skippedAnalyzers?: readonly string[] | undefined;
 }) => object = skippedSummary;
-const withSharedDirectives: (run: AnalyzerRun, analyzers: readonly unknown[]) => AnalyzerRun =
+const withSharedDirectives: (run: ComparisonRun, analyzers: readonly unknown[]) => ComparisonRun =
   withSharedUnusedDirectives;
 const profileSummary: (context: { readonly quick: unknown; readonly staged: unknown }) => object =
   runProfileSummary;
 
 export function combineAnalyzerReports(context: CombineRequest): DiffReport {
   const { additionalToolErrors, policies = {} } = context;
-  const deduplicated = withoutSharedOverlaps(context);
+  const deduplicated = withoutSharedCrossToolOverlaps(context);
   const baseRun = withSharedDirectives(
-    withDependencies(deduplicated.baseRun, objectOf(policies.base)),
+    withCoChangeDependencies(deduplicated.baseRun, objectOf(policies.base)),
     context.analyzers,
   );
   const headRun = withSharedDirectives(
-    withDependencies(deduplicated.headRun, objectOf(policies.head)),
+    withCoChangeDependencies(deduplicated.headRun, objectOf(policies.head)),
     context.analyzers,
   );
   const toolErrors = [...additionalToolErrors, ...baseRun.toolErrors, ...headRun.toolErrors];

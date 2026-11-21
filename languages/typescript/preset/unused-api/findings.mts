@@ -12,7 +12,7 @@ import {
   UNUSED_OPTION_SCOPES,
   exceptionText,
   messageFields,
-  nextOccurrence,
+  occurrenceCounter,
 } from './typed/finding-views.mts';
 
 type IsExcepted = (rule: string, ...candidates: readonly unknown[]) => boolean;
@@ -23,7 +23,7 @@ type FindingContext = {
 };
 type State = FindingContext & {
   readonly cloned: readonly Reference[];
-  readonly occurrences: Map<string, number>;
+  readonly nextOccurrence: (key: string) => number;
 };
 
 const RULES = {
@@ -70,7 +70,7 @@ function memberFinding({
     throw new TypeError(`Unowned declaration of ${target.name}.${member.name}`);
   }
   const symbol = `${target.name}.${member.name}`;
-  const occurrence = nextOccurrence(context.occurrences, `${rule}\0${file.path}\0${symbol}`);
+  const occurrence = context.nextOccurrence(`${rule}\0${file.path}\0${symbol}`);
   const scopes = UNUSED_OPTION_SCOPES.typescript;
   const scope = target.package?.published ? scopes.published : scopes.private;
   return {
@@ -101,7 +101,7 @@ function targetFindings(target: TargetData, context: State): Finding[] {
 }
 
 export function registryDataFindings(registry: RegistryData, context: FindingContext): Finding[] {
-  const state = { ...context, cloned: registry.cloned, occurrences: new Map() };
+  const state = { ...context, cloned: registry.cloned, nextOccurrence: occurrenceCounter() };
   return registry.targets
     .flatMap((target) => targetFindings(target, state))
     .toSorted(

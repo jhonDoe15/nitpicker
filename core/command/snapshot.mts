@@ -15,7 +15,7 @@ import { type QualitySnapshot, runQualitySnapshot } from '../snapshot/run-snapsh
 import {
   colorEnabled as untypedColorEnabled,
   displayPath as untypedDisplayPath,
-} from '../../shared/messages/terminal/terminal-text.mjs';
+} from '../../shared/messages/terminal/terminal-text.mts';
 import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mts';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mts';

@@ -1,12 +1,12 @@
 import { spawnSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
-import { importClosure as untypedImportClosure } from '../../../shared/import-closure.mjs';
+import { importClosure as untypedImportClosure } from '../../../shared/import-closure.mts';
 import { hashConfigurationFiles } from '../../../shared/input-sets/configuration-hash.mts';
 import { toolVersions } from './execution/go-tools.mts';
 import { GO_LINTER_TOOLS } from './configuration/go-config.mts';
-import { PROBE_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../../shared/paths/checkout-module.mjs';
+import { PROBE_TIMEOUT_MS } from '../../../shared/processes/deadlines.mts';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../shared/paths/checkout-module.mts';
 import type { GoSettings } from './go-types.mts';
 
 type GoAnalyzer = {
@@ -32,7 +32,7 @@ type Invocation = {
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 const importClosure: (entries: readonly string[], root: string) => ReadonlyMap<string, unknown> =
   untypedImportClosure;
-import { EXECUTION_INPUTS } from '../../../shared/input-sets/inputs.mjs';
+import { EXECUTION_INPUTS } from '../../../shared/input-sets/inputs.mts';
 
 export const GO_ANALYZER_NAME = 'go';
 export const GO_MUTATION_ANALYZER_NAME = 'mutation';

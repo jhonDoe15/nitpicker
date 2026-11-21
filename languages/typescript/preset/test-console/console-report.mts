@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mjs';
-import { stripAnsi as untypedStripAnsi } from '../../../../shared/rules/console/ansi.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mts';
+import { stripAnsi as untypedStripAnsi } from '../../../../shared/rules/console/ansi.mts';
 import { MAX_CONTENT_LENGTH } from '../../adapters/test-runners/v8-coverage/loaded-sources.cjs';
 
 const escapeRegExp: (text: string) => string = untypedEscapeRegExp;

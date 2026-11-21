@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { configuredAnalyzers } from '../../../../../languages/typescript/preset/diff/configured-analyzers.mts';
 import { PACKAGE_ROOT, resolveTool } from '../../../../tooling/tool-resolution.mts';
 import { runQualitySnapshot } from '../../../../snapshot/run-snapshot.mts';
-import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../../shared/policy.mjs';
+import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../../shared/policy.mts';
 import { runAnalyzers, selectAnalyzers } from '../../../execution/run-analyzers.mts';
 import { planAnalyzerShards } from '../../../sharding/sharding.mts';
 import { analyzerRequest } from './test-support/analyzer-request.mts';
 import { fieldAt } from '../../../../../scripts/json/fields.mts';
 import { fileURLToPath } from 'node:url';
-import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mts';
 
 const packageAnalyzers = configuredAnalyzers();
 const EXPECTED_ANALYZER_NAMES = [

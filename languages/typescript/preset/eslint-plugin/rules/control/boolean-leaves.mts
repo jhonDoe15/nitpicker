@@ -4,7 +4,7 @@ import {
   type ParserServicesWithTypeInformation,
   type TSESTree,
 } from '@typescript-eslint/utils';
-import { rangeKey as untypedRangeKey } from '../../../../../../shared/logic/terms.mjs';
+import { rangeKey as untypedRangeKey } from '../../../../../../shared/logic/terms.mts';
 import { partsOf } from '../analysis/narrowing/type-parts.mts';
 import { inside } from '../decided/syntax.mts';
 import type { Term } from '../analysis/logic/term-views.mts';

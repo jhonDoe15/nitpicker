@@ -18,7 +18,7 @@ import {
   INIT_USAGE_TEXT,
 } from './usage-text.mts';
 import { fieldOf, textOf } from '../../shared/values/readers.mts';
-import { docsUrl as untypedDocsUrl } from '../../shared/messages/docs-url.mjs';
+import { docsUrl as untypedDocsUrl } from '../../shared/messages/docs-url.mts';
 
 const docsUrl: (page: string, anchor: undefined) => string | undefined = untypedDocsUrl;
 const { temporaryRoot, createGitRepository } = useGitFixtures();

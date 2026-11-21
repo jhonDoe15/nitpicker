@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport as parseUntyped } from '../../../../core/diff/comparison/finding-schema.mts';
 import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mts';
 import { configurationFiles, createJavaAnalyzer } from '../java-analyzer.mts';
-import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
+import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mts';
 import {
   nestedCheckout,
   useGitCheckouts,

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { pathInside } from '../../../../shared/filesystem.mjs';
+import { pathInside } from '../../../../shared/filesystem.mts';
 import { appendAll } from '../../../../shared/lists/lists.mts';
 
 export const GO_MOD = 'go.mod';
@@ -73,7 +73,7 @@ export function readGoModule(projectRoot: string): GoMod | undefined {
 }
 
 export function moduleFileText(root: string | undefined, file: string): string | undefined {
-  const absolute = pathInside(root, file);
+  const absolute = root === undefined ? undefined : pathInside(root, file);
   return absolute !== undefined && existsSync(absolute) && statSync(absolute).isFile()
     ? readFileSync(absolute, 'utf8')
     : undefined;

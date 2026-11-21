@@ -1,5 +1,5 @@
 import type { ProgramLayout } from './workspace/workspace-types.mts';
-import { exceptionMatcher as untypedExceptionMatcher } from '../../../../shared/rules/exceptions.mjs';
+import { exceptionMatcher as untypedExceptionMatcher } from '../../../../shared/rules/exceptions.mts';
 import { readLayout as untypedReadLayout } from '../head-policy.mts';
 
 export type AnalysisLayout = ProgramLayout & {

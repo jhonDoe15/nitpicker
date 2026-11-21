@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { shellCommands as untypedShellCommands } from '../../../../../shared/started-files/shell-commands.mjs';
+import { shellCommands as untypedShellCommands } from '../../../../../shared/started-files/shell-commands.mts';
 import { appendAll } from '../../../../../shared/lists/lists.mts';
 
 type Found = { entryPoints: string[]; defaultExports: string[] };

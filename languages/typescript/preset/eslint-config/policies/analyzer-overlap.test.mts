@@ -5,7 +5,7 @@ import { eslintChecks } from '../../quality-checks.mts';
 import { fileURLToPath } from 'node:url';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 import { CARRIED_VARIABLE, productionPolicy } from '../production/carried-policies.mts';
-import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mts';
 
 const packageRoot = path.resolve(fileURLToPath(new URL('../', import.meta.url)), '../../../..');
 const ANALYZER_CONFIGS = new Map(

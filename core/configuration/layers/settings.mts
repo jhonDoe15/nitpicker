@@ -2,7 +2,7 @@ import {
   configError as untypedConfigError,
   isNonEmptyString,
   validateProjectRelativePath,
-} from '../../../shared/config.mjs';
+} from '../../../shared/config.mts';
 import { isPlainObject, isText, textOf } from '../../../shared/values/readers.mts';
 
 const configError: (message: string) => Error = untypedConfigError;

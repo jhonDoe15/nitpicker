@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { exceptionHint } from '../../../../../../shared/hygiene/rules.mjs';
+import { exceptionHint } from '../../../../../../shared/hygiene/rules.mts';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-dev-dependency-in-production.mts';
 import { packageNameOf } from './package-manifest.mts';

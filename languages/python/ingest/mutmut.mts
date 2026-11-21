@@ -1,6 +1,6 @@
-import { sharedPrefixLength } from '../../../shared/lists/lists.mts';
-import { addMetric, hash } from '../../../shared/rules/finding-helpers.mjs';
-import { mutantFindings } from '../../../shared/rules/mutation.mjs';
+import { appendAll, sharedPrefixLength } from '../../../shared/lists/lists.mts';
+import { hash, metricFindings } from '../../../shared/rules/finding-parts.mts';
+import { mutantFindings } from '../../../shared/rules/mutation.mts';
 import { assertNeverArmLines } from './coverage-reports/exhaustive-match.mts';
 import type { FindingsResult, IngestedFinding } from './typed/ingest-types.mts';
 import { isMutmutRun } from './typed/mutmut-types.mts';
@@ -91,17 +91,20 @@ function addStatusSummaries(findings: IngestedFinding[], parsed: ParsedFile[], t
     }
   }
   for (const [status, value] of counts) {
-    addMetric(findings, {
-      analyzerName: tool,
-      rule: 'mutation-summary',
-      path: '.',
-      identity: `status:${status}`,
-      message: `${status} mutants`,
-      metricName: status,
-      value,
-      symbol: undefined,
-      line: undefined,
-    });
+    appendAll(
+      findings,
+      metricFindings({
+        analyzerName: tool,
+        rule: 'mutation-summary',
+        path: '.',
+        identity: `status:${status}`,
+        message: `${status} mutants`,
+        metricName: status,
+        value,
+        symbol: undefined,
+        line: undefined,
+      }),
+    );
   }
 }
 

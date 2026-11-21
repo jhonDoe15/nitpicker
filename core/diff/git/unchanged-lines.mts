@@ -15,10 +15,12 @@ import {
   describedLinesOf,
   languageOfPath,
   movedLinesOf,
-  type DescribedLine,
   type LineToken,
-  type MovedContext,
 } from './source-views.mts';
+import type {
+  DescribedLine,
+  MovedContext,
+} from '../../../shared/source-text/typed/source-types.mts';
 
 type Sides = MovedContext['sides'];
 type Side = 'base' | 'head';

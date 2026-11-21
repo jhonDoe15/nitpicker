@@ -177,6 +177,7 @@ function gradleFindings(
     reportRoot: reportBase,
     manifest: fieldOf(report, 'manifest'),
     skippedFolders: options.policy?.duplicateSkippedFolders,
+    environment: options.environment,
   };
   callUntyped(runJavaDuplicates, projectRoot, duplicates);
   if (preset === 'kotlin') {
@@ -234,6 +235,7 @@ function mavenFindings(projectRoot: string, options: JavaRunOptions): JavaReport
     reportRoot: path.join(projectRoot, MAVEN_REPORT_DIRECTORY),
     manifest,
     skippedFolders: options.policy?.duplicateSkippedFolders,
+    environment: options.environment,
   };
   callUntyped(runJavaDuplicates, projectRoot, duplicates);
   if (options.policy?.preset === 'kotlin') {

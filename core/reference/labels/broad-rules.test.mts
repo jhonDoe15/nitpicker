@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { referenceLinks } from '../../../shared/reference/store.mjs';
+import { referenceLinks } from '../../../shared/reference/store.mts';
 import { broadRuleIds } from './entry-labels.mts';
 import { fieldOf, listOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 

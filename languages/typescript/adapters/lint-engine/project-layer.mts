@@ -2,7 +2,7 @@ import path from 'node:path';
 import {
   missingProjectConfig,
   precedenceLayers,
-} from '../../../../shared/conventions/tool-precedence.mjs';
+} from '../../../../shared/conventions/tool-precedence.mts';
 import {
   checkExceptionRules,
   RULE_EXCEPTION_ENTRY,

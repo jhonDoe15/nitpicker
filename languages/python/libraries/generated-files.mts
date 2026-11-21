@@ -1,7 +1,7 @@
 import {
   hasGeneratorHeader,
   hasGeneratorMarker,
-} from '../../../shared/conventions/generator-marker.mjs';
+} from '../../../shared/conventions/generated/generator-marker.mts';
 import { readProjectFile } from './project-files.mts';
 
 const GENERATED_NAME = /(?:^|\/)[^/]+_pb2(?:_grpc)?\.pyi?$/u;

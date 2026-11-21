@@ -1,5 +1,5 @@
-import { hashIdentity as untypedHash } from '../../../../shared/ingest/common.mjs';
-import { escapeRegExp as untypedEscape } from '../../../../shared/paths/glob.mjs';
+import { hashIdentity as untypedHash } from '../../../../shared/ingest/report-records.mts';
+import { escapeRegExp as untypedEscape } from '../../../../shared/paths/glob.mts';
 import { readProjectFile } from '../../libraries/project-files.mts';
 import { listProductionModules } from '../analysis/python-sources.mts';
 import { readMutmutConfig } from '../project-tools/mutmut/mutmut-config.mts';

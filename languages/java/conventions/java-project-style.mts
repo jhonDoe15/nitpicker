@@ -1,5 +1,5 @@
-import { configError as untypedConfigError } from '../../../shared/config.mjs';
-import { precedenceLayers } from '../../../shared/conventions/tool-precedence.mjs';
+import { configError as untypedConfigError } from '../../../shared/config.mts';
+import { precedenceLayers } from '../../../shared/conventions/tool-precedence.mts';
 import type { ConventionSource } from '../../../core/conventions/typed/convention-types.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import {
