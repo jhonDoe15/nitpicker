@@ -193,7 +193,9 @@ impl<'t> Scan<'_, '_, 't> {
                 // A value typed `Throwable` is one a `catch (Throwable t)` passes on: SpotBugs does not count it.
                 let value = node.named_child(0).and_then(|value| self.context.resolver.type_of(value));
                 let thrown = value.map_or_else(|| UNKNOWN.to_string(), |kind| kind.erased().name());
-                if thrown == "java.lang.Throwable" { Vec::new() } else { vec![thrown] }
+                // An exception class missing from the class path is one SpotBugs cannot follow: it does not count.
+                let missing = thrown != UNKNOWN && self.context.resolver.index.get(&thrown).is_none();
+                if thrown == "java.lang.Throwable" || missing { Vec::new() } else { vec![thrown] }
             }
             "switch_expression" if self.may_not_match(node) => vec!["java.lang.MatchException".to_string()],
             "assert_statement" => vec!["java.lang.AssertionError".to_string()],
@@ -290,6 +292,8 @@ fn site_line(context: &Context, site: Node) -> usize {
         "throw_statement" | "assert_statement" => {
             children(site).into_iter().filter_map(last_call).last().map_or(context.line(site), |call| call_line(context, call))
         }
+        // The closing of the resources of a `try`, which the compiler puts at the end of its body.
+        "block" => site.end_position().row + 1,
         _ => context.line(site),
     }
 }

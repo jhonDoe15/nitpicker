@@ -336,7 +336,10 @@ outer `try` never. A `try` with a `finally` block and no `catch`, a `catch` bloc
 a `synchronized` block let everything through. The body of a `try` with resources lets nothing through, and
 the `close()` the compiler adds after it counts as a call under the `catch` clauses of that `try`. In a
 constructor one matching `catch` clause is enough; for a call in a method every `catch` clause of the `try`
-has to take the exception.
+has to take the exception. That `close()` is reported on the last line of the body of the `try`.
+
+A class missing from the class path is one SpotBugs cannot follow (`ctor_missing`): a `throw` of an exception
+class it cannot find, and the closing of a resource whose class it cannot find, do not count.
 
 How a field counts as holding only unchangeable values (`loads*`, `visits`, `values`, `across`, `calls`):
 
