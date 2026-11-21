@@ -7,6 +7,7 @@ import type { BaseMoves } from '../moved-names/declared/move-types.mts';
 import type { RatchetedFinding, MatchedCode, TrackedFinding } from '../model/finding-types.mts';
 import { keepsBaseSpans } from './line-spans.mts';
 import { isHeldOnTouchedLine } from './touched-code.mts';
+import { addToGroup } from '../../../../shared/lists/lists.mts';
 
 const NO_MOVES = baseMoves(new Map());
 
@@ -216,7 +217,7 @@ function groupBaseByRatchetKey(
   for (const baseFinding of unmatchedBase.filter(isRatcheted)) {
     const key = keyOf(baseFinding);
     if (key !== undefined) {
-      baseByRatchet.set(key, [...(baseByRatchet.get(key) ?? []), baseFinding]);
+      addToGroup(baseByRatchet, key, baseFinding);
     }
   }
   return baseByRatchet;

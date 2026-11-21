@@ -7,6 +7,7 @@ import { inPriorityOrder } from './finding-order.mts';
 import { singleLine } from '../text.mts';
 import type { ReportEntry } from '../../../../../shared/values/findings.mts';
 import { fieldOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
+import { addToGroup } from '../../../../../shared/lists/lists.mts';
 
 type Entry = Readonly<Record<string, unknown>>;
 
@@ -59,7 +60,7 @@ function groupByRule(
   const groups = new Map<string, ReportEntry[]>();
   for (const finding of inPriorityOrder(findings)) {
     const label = `${textOf(finding.tool)}/${textOf(finding.rule)}`;
-    groups.set(label, [...(groups.get(label) ?? []), finding]);
+    addToGroup(groups, label, finding);
   }
   return [...groups.entries()].map(([label, members]) => ({ label, members }));
 }

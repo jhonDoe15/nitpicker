@@ -11,6 +11,10 @@ import {
 } from '../static-checks/dependencies.mts';
 import { sharedReachPath as untypedSharedReachPath } from '../../preset/architecture/strict-boundary-rules.mts';
 import { existingRoots as untypedExistingRoots } from '../../preset/layout.mts';
+import {
+  compactJsonLines,
+  writePieces,
+} from '../../../../shared/report-output/pieces/json-pieces.mts';
 import { compactMetricFindings as untypedCompactMetricFindings } from '../../../../shared/report-output/metric-groups.mts';
 
 export type SnapshotDependencyRequest = {
@@ -105,9 +109,11 @@ export async function writeAdapterReport(
 ): Promise<number> {
   try {
     const report = await reportOf();
-    output.stdout.write(
-      `${JSON.stringify({ ...report, findings: compactMetricFindings(report.findings) })}\n`,
+    writePieces(
+      compactJsonLines({ ...report, findings: compactMetricFindings(report.findings) }),
+      (text) => output.stdout.write(text),
     );
+    output.stdout.write('\n');
     return 0;
   } catch (failure) {
     const error = withTypeScriptHint(failure);

@@ -26,7 +26,7 @@ import {
 export { errorHeadline, pluralize, withoutSkipNotices } from './console/tool-errors.mts';
 import type { ReportData, ReportEntry } from '../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
-import { appendAll } from '../../../shared/lists/lists.mts';
+import { addToGroup, appendAll } from '../../../shared/lists/lists.mts';
 
 type ConsoleOptions = {
   readonly color: boolean;
@@ -257,7 +257,7 @@ function groupRepeatedFindings(findings: readonly ReportEntry[]): ReportEntry[][
   const groups = new Map<string, ReportEntry[]>();
   for (const finding of findings) {
     const key = [finding.tool, finding.rule, finding.path, finding.message].join('\0');
-    groups.set(key, [...(groups.get(key) ?? []), finding]);
+    addToGroup(groups, key, finding);
   }
   return [...groups.values()];
 }

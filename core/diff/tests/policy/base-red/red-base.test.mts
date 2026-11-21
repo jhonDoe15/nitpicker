@@ -182,7 +182,7 @@ describe('a base whose tests fail', () => {
       skipped: listOf(fieldOf(report.summary, 'tools')).map((tool) =>
         fieldOf(tool, 'skippedBecause'),
       ),
-      text: textOf(report.text).includes(
+      text: readFileSync(path.join(outputRoot, 'report.txt'), 'utf8').includes(
         'Notes:\ncoverage (base): tests/test_a.py::test_a fails\n',
       ),
     }).toEqual({ notes, notesFile: notes, skipped: [undefined, undefined], text: true });
