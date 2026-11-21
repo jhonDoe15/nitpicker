@@ -42,6 +42,6 @@ impl Language for Java {
     fn facts(&self, file: &SourceFile) -> FileFacts { facts::facts(file) }
     fn outline(&self, file: &SourceFile) -> Option<String> { Some(types::project::outline(file)) }
     fn project(&self, files: &[SourceFile], options: &Options, needed: bool) -> Box<Project> {
-        if needed { Box::new(types::project::build(files, &options.classpath)) } else { Box::new(()) }
+        if needed { Box::new(types::project::build(files, &options.classpath, options.release)) } else { Box::new(()) }
     }
 }

@@ -52,6 +52,25 @@ fn archive_classes(path: &Path) -> Vec<(String, Origin)> {
     named.into_iter().map(|(name, position)| (name, Origin::Archive(shared.clone(), position))).collect()
 }
 
+/// The classes `ct.sym` keeps for one release: `<releases>/<module>/<package path>/<Class>.sig`, where the
+/// first folder is named by one character per release it holds for (`8`, `9`, `A` for 10, `B` for 11 and on).
+fn release_classes(path: &Path, release: u32) -> Vec<(String, Origin)> {
+    let Some(letter) = char::from_digit(release, 36).map(|letter| letter.to_ascii_uppercase()) else { return Vec::new() };
+    let Ok(file) = std::fs::File::open(path) else { return Vec::new() };
+    let Ok(archive) = zip::ZipArchive::new(std::io::BufReader::new(file)) else { return Vec::new() };
+    let named: Vec<(String, usize)> = (0..archive.len())
+        .filter_map(|position| {
+            let name = archive.name_for_index(position)?.ok()?;
+            let (releases, rest) = name.split_once('/')?;
+            let (_, inner) = rest.split_once('/')?;
+            let inner = inner.strip_suffix(".sig")?;
+            (releases.contains(letter) && !inner.ends_with("module-info")).then(|| (classfile::dotted(inner), position))
+        })
+        .collect();
+    let shared = Arc::new(Mutex::new(archive));
+    named.into_iter().map(|(name, position)| (name, Origin::Archive(shared.clone(), position))).collect()
+}
+
 fn folder_classes(path: &Path) -> Vec<(String, Origin)> {
     walkdir::WalkDir::new(path)
         .into_iter()
@@ -97,6 +116,19 @@ impl TypeIndex {
                 self.binary_classes += 1;
             }
         }
+    }
+
+    /// Loads the JDK library as one older release had it. False when the file does not hold that release.
+    pub fn load_release(&mut self, signatures: &Path, release: u32) -> bool {
+        let loaded = release_classes(signatures, release);
+        let found = !loaded.is_empty();
+        for (name, origin) in loaded {
+            if !anonymous(&name) && !self.classes.contains_key(&name) {
+                self.classes.insert(name, Slot::Later(origin, OnceLock::new()));
+                self.binary_classes += 1;
+            }
+        }
+        found
     }
 
     pub fn put(&mut self, class: ClassInfo) {
