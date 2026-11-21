@@ -2,8 +2,6 @@
 //! out a mutable object it keeps in a field, or keeps a mutable object a caller handed in.
 use super::flow::{FieldRef, Item, Trace, trace};
 use super::mutable::mutable;
-use super::fields::widened;
-use super::stores::fixed_of;
 use super::{Context, names};
 use crate::engine::source::{children, named_children, parent};
 use crate::java::helpers::has_modifier;
@@ -50,25 +48,18 @@ struct Site<'c, 'a, 't> {
 }
 
 impl Site<'_, '_, '_> {
-    fn exposes(&self, field: &FieldRef) -> bool {
-        let index = self.context.resolver.index;
-        !field.is_public()
-            && !field.name.contains("EMPTY")
-            && (mutable(index, &field.kind) || widened(self.context).contains(&(field.declaring.clone(), field.name.clone())))
-            && self.nest.iter().any(|class| *class == field.via)
-            && !fixed_of(self.context, &field.declaring).contains(&field.name)
-    }
-
     fn returned(&self, at: Node, line: usize, field: &FieldRef) {
-        if !self.exposes(field) {
+        if field.is_public() || field.name.contains("EMPTY") || !self.nest.iter().any(|class| *class == field.via) {
             return;
         }
+        let changeable = mutable(self.context.resolver.index, &field.kind);
         let shown = names::field(self.context, self.class, &field.declaring, &field.name);
-        if self.is_static {
-            self.context.report("MS_EXPOSE_REP", at, line, format!("Public static {} {RETURNING} {shown}", self.label));
+        let (pattern, message) = if self.is_static {
+            ("MS_EXPOSE_REP", format!("Public static {} {RETURNING} {shown}", self.label))
         } else {
-            self.context.report("EI_EXPOSE_REP", at, line, format!("{} {RETURNING} {shown}", self.label));
-        }
+            ("EI_EXPOSE_REP", format!("{} {RETURNING} {shown}", self.label))
+        };
+        self.context.report_exposed(pattern, at, line, message, (field.declaring.clone(), field.name.clone()), self.class, changeable);
     }
 
     fn stored(&self, at: Node, line: usize, field: &FieldRef) {

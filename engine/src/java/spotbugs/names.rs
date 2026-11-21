@@ -1,12 +1,17 @@
 //! Names as SpotBugs prints them: binary class names, methods with the simple names of their erased parameters.
 use super::Context;
+use crate::java::types::index::TypeIndex;
 use crate::java::types::model::Type;
 use crate::java::types::scope::TYPE_DECLARATIONS;
 use tree_sitter::Node;
 
 /// `pkg.Outer$Inner` for the index's `pkg.Outer.Inner`.
 pub fn binary(context: &Context, class: &str) -> String {
-    let package = match context.resolver.index.get(class) {
+    binary_in(context.resolver.index, class)
+}
+
+pub fn binary_in(index: &TypeIndex, class: &str) -> String {
+    let package = match index.get(class) {
         Some(info) => info.package.clone(),
         None => {
             let parts: Vec<&str> = class.split('.').collect();
