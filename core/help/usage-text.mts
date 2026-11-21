@@ -65,7 +65,6 @@ export const FLAGS: readonly Row[] = [
   ['--shard-index <i>', 'Run shard i of the split (0 to n-1).'],
   ['--defer-exit', 'Exit 0 after writing the reports; for shard jobs before aggregate.'],
   ['--no-cache', 'Do not read or write the findings cache.'],
-  ['--accept-policy-change=<digest>', 'Accept a reviewed loosening of the config (people only).'],
   HELP_ROW,
   ['--version', 'Print the installed nitpicker version.'],
 ];
@@ -107,7 +106,7 @@ const USAGE_LINES: readonly [string, ...string[]] = [
   'nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all [--fix --rule <tool/rule>] | --fix [--dry-run] [--verify narrow|full]] [--analyzer <name>]...',
   '          [--rule <substring>]... [--label <label>]... [--project <path>]... [--jobs <n>] [--details]',
   '          [--json] [--quick] [--staged] [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
-  '          [--accept-policy-change=<digest>] [--help] [--version]',
+  '          [--help] [--version]',
   INIT_USAGE,
   AGGREGATE_USAGE,
   CACHE_PUBLISH_USAGE,

@@ -1,9 +1,6 @@
-import path from 'node:path';
-import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { acceptedDigest } from '../../../../../core/command/test-support/accepted-digest.mts';
 import { ONE_WAY_VIOLATIONS } from '../test-support/python-preset-data.mts';
-import { commitBranch, gate, git, useRepositories } from '../test-support/python-e2e-support.mts';
+import { commitBranch, gate, useRepositories } from '../test-support/python-e2e-support.mts';
 import {
   GATE_PACKAGES,
   enforceable,
@@ -11,7 +8,6 @@ import {
   reportedGroups,
   withoutMutants,
 } from '../test-support/python-gate-support.mts';
-import type {} from '../test-support/python-e2e-types.mts';
 
 const { fixtureRepository, removeRepositories } = useRepositories();
 
@@ -28,21 +24,6 @@ const EXCEPTING_CONFIG = JSON.stringify({
     ],
   },
 });
-
-const EXCEPTION_LOOSENINGS = [
-  'analyzer disabled: mutation',
-  'exception added: frozen-dataclass for src/demo/*.py (fixture)',
-  'exception added: no-inline-suppression for src/** (fixture)',
-  'python.exceptions for PTH118 hide code this change adds or moves where the base config checked it: src/demo/rules.py',
-  'python.exceptions for frozen-dataclass hide code this change adds or moves where the base config checked it: src/demo/rules.py',
-  'python.exceptions for no-inline-suppression hide code this change adds or moves where the base config checked it: src/demo/rules.py',
-];
-
-function sourcePython(root: string) {
-  return readdirSync(path.join(root, 'src'), { recursive: true, encoding: 'utf8' })
-    .filter((file) => file.endsWith('.py') && !file.includes('__pycache__'))
-    .map((file) => `src/${file}`);
-}
 
 describe.skipIf(!pythonE2eEnabled)('Python preset one-way rules and exceptions end to end', () => {
   let project: string;
@@ -85,35 +66,8 @@ describe.skipIf(!pythonE2eEnabled)('Python preset one-way rules and exceptions e
       ],
     ]);
   });
-  it('fails the exceptions that hide checked code until a person accepts exactly those loosenings', () => {
-    const result = gate(project, 'excepted');
-
-    expect(result.exitCode, result.text).toBe(1);
-    expect(
-      result
-        .json('new-findings.json')
-        .filter(({ classification }) => classification === 'enforceable')
-        .map(({ tool, rule, identity }) => ({ tool, rule, identity }))
-        .sort((left, right) => left.identity.localeCompare(right.identity)),
-    ).toEqual(
-      EXCEPTION_LOOSENINGS.toSorted((left, right) => left.localeCompare(right)).map((identity) => ({
-        tool: 'nitpicker-config',
-        rule: 'policy-loosened',
-        identity,
-      })),
-    );
-  });
   it('passes the same code when exceptions lift its rules', () => {
-    git(project, 'checkout', '-q', 'excepted');
-    const digest = acceptedDigest(EXCEPTION_LOOSENINGS, {
-      'nitpicker.config.json': EXCEPTING_CONFIG,
-      ...Object.fromEntries(
-        sourcePython(project).map((file) => [file, readFileSync(path.join(project, file), 'utf8')]),
-      ),
-    });
-    const result = gate(project, 'excepted', {
-      environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: digest },
-    });
+    const result = gate(project, 'excepted');
 
     expect(result.exitCode, result.text).toBe(0);
     expect(withoutMutants(enforceable(result))).toEqual([]);

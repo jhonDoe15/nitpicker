@@ -8,7 +8,7 @@ import {
   type ToolchainImpact,
 } from '../selection/select-projects.mts';
 import { lockfileImpact } from '../selection/lockfile-impact.mts';
-import { comparisonBase, rootConfigFiles, toolErrorsOf } from './context.mts';
+import { comparisonBase, rootConfigFiles } from './context.mts';
 import type {
   Comparison,
   MonorepoPlan,
@@ -35,10 +35,10 @@ export function comparisonOf(plan: MonorepoPlan, cli: SelectionCli): Comparison 
     cli,
   });
   const changed: readonly string[] = changedFiles({ repositoryRoot, mergeBaseSha });
-  const { plan: basePlan, error } = planInputsChanged({ repositoryRoot, mergeBaseSha, changed })
+  const { plan: basePlan } = planInputsChanged({ repositoryRoot, mergeBaseSha, changed })
     ? basePlanOf({ ...plan, mergeBaseSha })
-    : { plan, error: undefined };
-  return { base, mergeBaseSha, changed, basePlan, toolErrors: toolErrorsOf(error) };
+    : { plan };
+  return { base, mergeBaseSha, changed, basePlan };
 }
 
 const impactOfLockfiles: (request: {

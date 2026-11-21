@@ -1,9 +1,9 @@
 import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { fieldOf, listOf, numberOr, optionalText } from '../../../shared/values/readers.mts';
+import { fieldOf, listOf, numberOr } from '../../../shared/values/readers.mts';
 import type { ProjectOutcome } from '../project-types.mts';
 
-type Counts = Pick<ProjectOutcome, 'newEnforceableFindings' | 'toolErrors' | 'policyDigest'>;
+type Counts = Pick<ProjectOutcome, 'newEnforceableFindings' | 'toolErrors'>;
 
 type Facts = {
   readonly exitCode: number;
@@ -26,14 +26,12 @@ function readJson(file: string): unknown {
 function readCounts(reportRoot: string): Counts {
   const summary = readJson(path.join(reportRoot, 'summary.json')) ?? {};
   const toolErrors = readJson(path.join(reportRoot, 'tool-errors.json')) ?? [];
-  const policyDigest = optionalText(fieldOf(summary, 'policyDigest'));
   return {
     newEnforceableFindings: numberOr(
       fieldOf(summary, 'newEnforceableFindings') ?? fieldOf(summary, 'enforceableFindings'),
       0,
     ),
     toolErrors: listOf(toolErrors).length,
-    ...(policyDigest === undefined ? {} : { policyDigest }),
   };
 }
 

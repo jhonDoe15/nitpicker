@@ -14,7 +14,6 @@ type ValueOption = 'baseRef' | 'outputRoot' | 'verify';
 
 type CommandOptions = Record<BooleanOption, boolean> &
   Partial<Record<ValueOption, string>> & {
-    acceptPolicyChange?: string;
     readonly paths: string[];
   };
 
@@ -38,7 +37,6 @@ const FLAGS = new Map<string, { readonly property: BooleanOption; readonly value
   ['--quick', { property: 'quick', value: true }],
   ['--staged', { property: 'staged', value: true }],
 ]);
-const ACCEPT_FLAG = '--accept-policy-change';
 const VALUES = new Map<string, ValueOption>([
   ['--base', 'baseRef'],
   ['--output', 'outputRoot'],
@@ -46,12 +44,7 @@ const VALUES = new Map<string, ValueOption>([
 ]);
 const SUBCOMMANDS = ['aggregate', 'base', 'cache', 'init', 'projects', 'show'];
 
-export const COMPARISON_OPTIONS = [
-  ...FLAGS.keys(),
-  ...VALUES.keys(),
-  ACCEPT_FLAG,
-  ...DRILL_DOWN_OPTIONS,
-];
+export const COMPARISON_OPTIONS = [...FLAGS.keys(), ...VALUES.keys(), ...DRILL_DOWN_OPTIONS];
 
 const EXACT_RULE = /^[^/\s]+\/\S+$/u;
 const VERIFY_MODES = ['narrow', 'full'];
@@ -69,25 +62,7 @@ function unknownArgument(argument: string): Error {
   return unknownArgumentError(argument, candidates, HELP_POINTER);
 }
 
-function acceptedDigest(argument: string): string {
-  const digest = argument.slice(ACCEPT_FLAG.length + 1);
-  if (digest === '') {
-    throw new Error(
-      `${ACCEPT_FLAG} takes the digest that the policy-loosened finding names: ${ACCEPT_FLAG}=<digest>`,
-    );
-  }
-  return digest;
-}
-
-function isAcceptFlag(argument: string): boolean {
-  return argument === ACCEPT_FLAG || argument.startsWith(`${ACCEPT_FLAG}=`);
-}
-
 function readFlag(options: CommandOptions, argument: string): boolean {
-  if (isAcceptFlag(argument)) {
-    options.acceptPolicyChange = acceptedDigest(argument);
-    return true;
-  }
   const flag = FLAGS.get(argument);
   if (flag !== undefined) {
     options[flag.property] = flag.value;

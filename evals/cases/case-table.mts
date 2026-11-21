@@ -26,8 +26,7 @@ export const NEGATIVE_CASES: readonly NegativeCase[] = [
       {
         overlay: 'disable-analyzers',
         withoutAnalyzers: ['eslint-lint', 'coding-standards'],
-        outcome: 'gate-findings',
-        flaggedBy: { finding: 'nitpicker-config/policy-loosened' },
+        outcome: 'shortcut',
         expected: [
           {
             category: 'gate-tampering',

@@ -1,5 +1,4 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { acceptedDigest } from '../../../../../core/command/test-support/accepted-digest.mts';
 import { commitBranch, gate, useRepositories } from '../test-support/python-e2e-support.mts';
 
 const { fixtureRepository, removeRepositories } = useRepositories();
@@ -13,10 +12,9 @@ const MYPY_CONFIG = {
   'nitpicker.config.json':
     '{ "preset": "python", "disable": ["mutation"], "python": { "typeChecker": "mypy" } }\n',
 };
-const MUTATION_DISABLED = {
+const IN_CI = {
   environment: {
     CI: 'true',
-    NITPICKER_ACCEPT_POLICY_CHANGE: acceptedDigest(['analyzer disabled: mutation'], MYPY_CONFIG),
   },
 };
 
@@ -34,7 +32,7 @@ describe.skipIf(!pythonE2eEnabled)('Python finding columns end to end', () => {
   afterAll(removeRepositories);
 
   it('reports columns in UTF-16 code units, and none for mypy after non-ASCII text', () => {
-    const result = gate(project, 'non-ascii', MUTATION_DISABLED);
+    const result = gate(project, 'non-ascii', IN_CI);
     const columns = result
       .json('new-findings.json')
       .filter(({ tool, rule }) => RULES.has(`${tool}/${rule}`))

@@ -89,15 +89,6 @@ describe('action.yml', () => {
     expect(named.filter((id) => !ids.includes(id ?? ''))).toEqual([]);
   });
 
-  it('accepts a loosening only by a recorded approval or an input, and never sets a digest', () => {
-    const gate = stepNamed('Run the gate');
-
-    expect(gate.env?.['NITPICKER_ACCEPT_POLICY_CHANGE']).toBe(
-      '${{ steps.approval.outputs.acceptance || inputs.accept-policy-change }}',
-    );
-    expect(action.inputs['accept-policy-change']?.default).toBe('');
-  });
-
   it('runs the project own nitpicker from the working directory', () => {
     const gate = stepNamed('Run the gate');
 

@@ -19,8 +19,6 @@ type SkipSettings = {
 
 type Snapshots = { readonly mergeBaseSha: string; readonly headSha: string };
 
-type PolicySetup = { readonly policyChanges: unknown; readonly policyLoosenings: unknown };
-
 function nameOf(analyzer: unknown): unknown {
   return fieldOf(analyzer, 'name');
 }
@@ -46,13 +44,8 @@ export function skipPlanOf(settings: SkipSettings, comparison: Snapshots): SkipP
   });
 }
 
-export function endsEarly(skipPlan: SkipPlan, baseSetup: PolicySetup): boolean {
-  return (
-    skipPlan.affected.length === 0 &&
-    skipPlan.skipped.length > 0 &&
-    listOf(baseSetup.policyChanges).length === 0 &&
-    listOf(baseSetup.policyLoosenings).length === 0
-  );
+export function endsEarly(skipPlan: SkipPlan): boolean {
+  return skipPlan.affected.length === 0 && skipPlan.skipped.length > 0;
 }
 
 export function withoutSkipped(

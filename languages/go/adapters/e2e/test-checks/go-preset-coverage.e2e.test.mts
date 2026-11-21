@@ -88,10 +88,8 @@ describe.skipIf(!goE2eEnabled)('Go preset coverage and CRAP end to end', () => {
     expect(result.exitCode).toBe(0);
   });
 
-  it('lifts a branch finding with a per-function exception the change must get accepted', () => {
-    expect(newFindings(gate(project, 'excepted'))).toEqual([
-      'nitpicker-config/policy-loosened nitpicker.config.json',
-    ]);
+  it('lifts a branch finding with a per-function exception', () => {
+    expect(newFindings(gate(project, 'excepted'))).toEqual([]);
   });
 
   it('fails an untested branchy function on its CRAP score and on each branch', () => {

@@ -38,9 +38,6 @@ export type DiffOptions = Omit<
   readonly resolveBaseSetup?: ((snapshot: BaseSnapshot) => unknown) | undefined;
   readonly describeNotices?:
     ((changedFiles: readonly string[], context: NoticeContext) => unknown) | undefined;
-  readonly acceptPolicyChange?: unknown;
-  readonly policyAcceptanceSource?: unknown;
-  readonly reportsPolicy?: unknown;
   readonly warn?: ((message: string) => void) | undefined;
 };
 
@@ -56,10 +53,6 @@ export type BaseSetup = {
   readonly analyzers: unknown;
   readonly headPolicy: unknown;
   readonly configOverrides: unknown;
-  readonly policyChanges: unknown;
-  readonly policyLoosenings: unknown;
-  readonly policyKinds?: unknown;
-  readonly policyDigest?: unknown;
 };
 
 export type SnapshotContext = {

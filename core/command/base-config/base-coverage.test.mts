@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { builtInExcludedGlobs } from '../../languages/typescript/preset/layout.mts';
+import { builtInExcludedGlobs } from '../../../languages/typescript/preset/layout.mts';
 import { baseConfigCoveringHead } from './base-coverage.mts';
 
 describe('baseConfigCoveringHead', () => {

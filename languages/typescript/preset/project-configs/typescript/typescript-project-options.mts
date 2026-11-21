@@ -14,7 +14,6 @@ import {
   PROJECT_TSCONFIG,
   tsconfigProblems,
   parsedTsconfig,
-  tsconfigChain,
   typescriptVersion,
 } from '../../modules/tsconfig-files.mts';
 
@@ -178,34 +177,6 @@ export function relaxedStrictOptions(
     relaxed: Object.keys(strict)
       .filter((key) => hasField(tsconfig.options, key) && tsconfig.options[key] !== strict[key])
       .map((key) => `${key}: ${String(tsconfig.options[key])}`),
-  };
-}
-
-export function projectTsconfigFiles(projectRoot: string, layout: SolutionLayout): string[] {
-  const selected = extendedProjectTsconfig(projectRoot, layout);
-  if (selected === undefined) {
-    return [];
-  }
-  const root = `./${String(projectConfigName(projectRoot, layout))}`;
-  const merged = (solutionResolution(projectRoot, layout)?.typesFrom ?? []).map(
-    (file) => `./${file}`,
-  );
-  return [
-    ...new Set(
-      [selected, root, ...merged].flatMap((config) => tsconfigChain(projectRoot, config.slice(2))),
-    ),
-  ];
-}
-
-export function appliedTypescriptOptions(
-  projectRoot: string,
-  layout: SolutionLayout,
-): { config: Record<string, unknown>; file: string; files: string[] } {
-  const { compilerOptions } = readTypescriptProjectConfig(projectRoot, layout);
-  return {
-    config: { ...strictCompilerOptions(layout), ...compilerOptions },
-    file: (extendedProjectTsconfig(projectRoot, layout) ?? '').slice(2),
-    files: projectTsconfigFiles(projectRoot, layout),
   };
 }
 

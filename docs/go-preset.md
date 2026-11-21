@@ -144,8 +144,7 @@ message names the formatter, where the choice came from, and the command that fi
 The choice is read from the head checkout for both snapshots, so a change that adopts gofumpt is
 checked against a merge base formatted with gofumpt too, and only the files the change touches
 can fail. `go.mod` and the golangci-lint files are inputs of the format check, so editing them
-re-runs it. Dropping a formatter from `go.formatters` (other than gofmt, which every other
-formatter covers) or a tag from `go.buildTags` is a policy loosening a person accepts.
+re-runs it.
 Generated files (`// Code generated ... DO NOT EDIT.`) are not checked.
 
 `nitpicker --fix` formats the changed `.go` files with the same formatters and options, through
@@ -706,8 +705,7 @@ again, and `defer` a deferred call chain.
 **Project config.** `staticcheck.conf` files are read only when the project opts in with
 `"tools": { "staticcheck": { "precedence": ["project"] } }`. Then each package's merged
 configuration decides which checks report there (its `checks` list, as staticcheck reads it) and
-its initialisms, dot-import and status-code lists apply, and every `staticcheck.conf` in the
-repository counts as policy, so editing one is a policy change a person accepts. A file that does
+its initialisms, dot-import and status-code lists apply. A file that does
 not parse is a `go/go-lint-failed` tool error that names it. revive has no project file it finds
 on its own (its command line reads a `-config` path or the user's home config), so nitpicker reads
 none and the settings above are fixed.

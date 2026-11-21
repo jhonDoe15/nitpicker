@@ -1,13 +1,11 @@
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import { textOf } from '../../../shared/values/readers.mts';
 import { DECLARED_ORIGIN } from '../discovery/declared-projects.mts';
-import type { MonorepoPlan, PlanProject, RepositoryPolicy } from '../project-types.mts';
+import type { MonorepoPlan, PlanProject } from '../project-types.mts';
 import type { CombinedSummary } from './combined-summary.mts';
 
 type SummaryEntry = CombinedSummary['projects'][number];
 type SummaryCounts = CombinedSummary['counts'];
-
-type PolicyView = Omit<RepositoryPolicy, 'findings'>;
 
 export type PlanView = {
   readonly source: MonorepoPlan['source'];
@@ -20,7 +18,6 @@ export type RowView = {
 export type SummaryView = {
   readonly counts: Pick<SummaryCounts, 'projects' | 'failed' | 'errored' | 'passed' | 'skipped'>;
   readonly projects: readonly SummaryEntry[];
-  readonly repositoryPolicy?: PolicyView;
 };
 
 const PROJECT = 'project';
@@ -163,47 +160,6 @@ function headline({ counts }: SummaryView): string {
   return `Monorepo summary: ${parts.join(', ')} (${count(counts.projects, PROJECT)})`;
 }
 
-function repositoryLines(repository: PolicyView | undefined): string[] {
-  if (repository === undefined) {
-    return [];
-  }
-  const mark = repository.accepted ? '✓' : '✖';
-  const state = repository.accepted ? 'accepted' : 'not accepted';
-  return [
-    ...repository.policyLoosenings.map(
-      (text) =>
-        `  ${mark} repository policy (${state}, digest ${textOf(repository.policyDigest)}): ${text}`,
-    ),
-    ...(repository.toolErrors ?? []).map(
-      ({ message }) => `  ! repository policy, the run is incomplete: ${textOf(message)}`,
-    ),
-  ];
-}
-
-function acceptanceLine(
-  projects: readonly SummaryEntry[],
-  repository: PolicyView | undefined,
-): string[] {
-  const own = projects.flatMap(({ policyDigest }) =>
-    policyDigest === undefined ? [] : [policyDigest],
-  );
-  const pending = repository === undefined || repository.accepted ? [] : [repository.policyDigest];
-  const digests = [...own, ...pending];
-  if (digests.length < 2 && pending.length === 0) {
-    return [];
-  }
-  const places =
-    pending.length === 0
-      ? `${String(own.length)} projects`
-      : ['the repository policy', ...(own.length === 0 ? [] : [count(own.length, PROJECT)])].join(
-          ' and ',
-        );
-  return [
-    `Policy loosenings in ${places}. ` +
-      `A person who accepts them all sets NITPICKER_ACCEPT_POLICY_CHANGE=${digests.join(',')} in CI.`,
-  ];
-}
-
 function summaryLine(entry: SummaryEntry): string {
   return `  ${textOf(MARKS[entry.status])} ${entry.path} (${entry.preset}): ${resultText(entry)}`;
 }
@@ -233,14 +189,7 @@ export function renderSummary({
 }): string {
   const lines = summaryLines(summary.projects, details);
   const closing = `Combined report: ${summaryPath}`;
-  const repository = summary.repositoryPolicy;
-  const all = [
-    headline(summary),
-    ...lines,
-    ...repositoryLines(repository),
-    ...acceptanceLine(summary.projects, repository),
-    closing,
-  ];
+  const all = [headline(summary), ...lines, closing];
   return `\n${all.join('\n')}\n`;
 }
 

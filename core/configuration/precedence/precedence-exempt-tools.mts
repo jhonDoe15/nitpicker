@@ -50,7 +50,7 @@ const PRECEDENCE_EXEMPT_TOOLS = new Map<string, Exemption>([
     {
       presets: [PYTHON],
       reason:
-        "its contracts are the project's own and nitpicker has none to merge them with; they run as written and a weakening edit is a policy change",
+        "its contracts are the project's own and nitpicker has none to merge them with; they run as written",
     },
   ],
   [

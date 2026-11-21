@@ -12,7 +12,6 @@ checkout of the repository links to `main`. Findings about your code are explain
 - [Arguments, configuration and project](#arguments-configuration-and-project)
 - [Git and the base](#git-and-the-base)
 - [Runs, analyzers and caches](#runs-analyzers-and-caches)
-- [Policy changes](#policy-changes)
 - [Tests](#tests)
 - [TypeScript and JavaScript](#typescript-and-javascript)
 - [Python](#python)
@@ -68,7 +67,6 @@ Nothing was analyzed.
 - `--shard-count` cannot exceed the number of independent analyzer groups, and `--shard-index` must be
   a whole number from 0 to `--shard-count` minus 1.
 - `NITPICKER_MAX_PARALLEL` is a positive whole number.
-- `--accept-policy-change` takes a digest as `--accept-policy-change=<digest>`.
 
 ### Invalid configuration
 
@@ -376,38 +374,6 @@ your change is fine.
 **Fix.** Create the file where the message says it searched, fix its syntax, or remove `"project"` from
 that tool's `precedence`. See [your project's tool configs](usage.md#your-projects-tool-configs) for the
 file names each tool reads.
-
-## Policy changes
-
-### A policy-loosened finding
-
-**Symptom.** An enforceable `nitpicker-config/policy-loosened` finding on `nitpicker.config.json`. The
-run exits 1. The console groups the loosenings by kind, says once what each kind does to the checks,
-and prints the digest with `--accept-policy-change=<digest>` and
-`NITPICKER_ACCEPT_POLICY_CHANGE=<digest>`; `report.txt` and `new-findings.json` keep one finding per
-loosening.
-
-**Cause.** The head controls its own `nitpicker.config.json`, so a change that checks less than the base
-(an added `exclude` or exception that hides existing code, a removed source root, a raised threshold,
-a disabled analyzer, a `precedence` that puts the project's own config first, and the other forms listed
-under [Configuration](usage.md#configuration)) fails the run once per loosening instead of passing
-quietly. It is a finding, not a tool error, so the exit code is 1.
-
-**Fix.**
-
-1. The allowed form is to keep the base's policy and change the code until it passes: put new code
-   under the source roots, fix findings rather than excluding them, and remove the config edit.
-2. If the loosening is intended, a person who reviews the change accepts it. At an interactive terminal,
-   run `npx nitpicker --accept-policy-change=<digest>` with the digest from the finding. In CI, set
-   `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>` (the variable is read only when `CI` is set). A coding agent
-   stops and asks that person.
-3. The digest covers every loosening and the content of each file the findings name. Editing a named
-   file, or adding another loosening, changes it and the finding returns with a new digest, so accept
-   the final state of the change. A local run and CI can print different digests, because CI may
-   check the pull request merged into its target branch: accept the digest of the run that fails.
-4. `--accept-policy-change` is ignored when stdin and stdout are not both terminals, and
-   `NITPICKER_ACCEPT_POLICY_CHANGE` is ignored when `CI` is unset. Stderr names the ignored acceptance
-   and the run still fails.
 
 ## Tests
 

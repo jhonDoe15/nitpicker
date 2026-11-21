@@ -149,21 +149,13 @@ CI (the `typescript` workflow) runs:
 GitHub does not start a pull request run while the pull request has a merge conflict, so resolve it
 before adding the label.
 
-When a pull request loosens `nitpicker.config.json` (for example an exception, exclude or entry
-point that covers a new code file; see the policy changes in [docs/usage.md](docs/usage.md)), the
-self-gate fails with a `nitpicker-config/policy-loosened` finding. A maintainer who agrees with the
-loosening adds the `accept-policy-change` label. The
-[policy approval workflow](.github/workflows/nitpicker-policy-approval.yml) records the approval
-on the head commit as the `nitpicker/policy-accepted` status, removes the label and re-runs the
-failed jobs, so the self-gate passes for that commit. A later push is a new commit and needs the
-label again. Coding agents never add the label. The
-self-gate runs the pull request's own code and workflow, so changes to `.github/workflows/`,
+The self-gate runs the pull request's own code and workflow, so changes to `.github/workflows/`,
 `core/`, `package.json` and `nitpicker.config.json` need a careful review whatever the gate says.
 
 The self-gate runs as three parallel `self-gate shard` jobs, each with its share of the analyzers
 ([Sharding in CI](docs/usage.md#sharding-in-ci)); the required `self-gate` check combines their
 reports with `nitpicker aggregate` and lists the findings of all shards. A shard fails on its own
-findings too, so that the policy approval workflow, which re-runs the failed jobs, runs it again.
+findings too.
 
 CI splits the test files into shards that run as parallel jobs, and the required `test` check passes
 only when every shard passed. `scripts/test-shards/sequencer.mts` gives each shard about the same

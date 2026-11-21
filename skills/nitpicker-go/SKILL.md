@@ -63,9 +63,7 @@ report it and lists only those findings. A focused run is never a pass either: t
 
 4. Never suppress: no `//nolint`, `//lint:ignore`, build tags that hide a file from the checks,
    config `exclude`/`exceptions`, legacy entries, or weakened tests (`t.Skip` added to get past a
-   failure). If a finding seems wrong, stop and ask. Never pass `--accept-policy-change`, set
-   `NITPICKER_ACCEPT_POLICY_CHANGE` or add the `accept-policy-change` label: a
-   `nitpicker-config/policy-loosened` finding is for a person to accept.
+   failure). If a finding seems wrong, stop and ask.
 5. Code that is right despite a rule: a finding message may end with the `exceptions` entry that
    would accept it (`If this is intended, add {...} to "exceptions" in nitpicker.config.json.`).
    That entry is for a human reviewer. Never add one, and never fill in its `reason`, to get past
@@ -236,7 +234,7 @@ Stop and ask. The maintainer adds the entry the finding's message ends with to `
 `nitpicker.config.json`, for example
 `{ "rule": "vet/printf", "paths": ["shop/label.go"], "reason": "..." }`, or
 `{ "rule": "function-lines-limit", "paths": [...], "function": "Name", "reason": "..." }` for a
-structure limit. That change is a policy change a person accepts.
+structure limit.
 
 The `$schema` line of `nitpicker.config.json`
 (`"$schema": "https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json"`)
