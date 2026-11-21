@@ -16,12 +16,6 @@ import { CONTRACT_RULE, contractEntry } from '../adapters/spring-arch/contract-t
 import { JAVA_FORMATTER_TOOLS } from '../adapters/style/java-style.mts';
 import { javaFormatMessage } from '../adapters/reporting/format-findings.mts';
 import { INLINE_SUPPRESSION_MESSAGES } from '../adapters/suppressions/java-suppressions.mts';
-import {
-  COMMENTED_OUT_CODE_MESSAGE,
-  COMMENTED_OUT_CODE_RULE,
-  TASK_MARKER_RULE,
-} from '../adapters/comments/comment-findings.mts';
-import { TASK_MARKER_MESSAGE } from '../adapters/comments/task-markers.mts';
 import { JVM_ANALYZERS, JVM_BUILDS } from './catalog-rules.mts';
 import {
   COPIED_CONSTANT_EXCEPTION_RULE,
@@ -38,6 +32,7 @@ import { maxValueEntry } from './review-entries/max-value.mts';
 import { stringCallEntries } from './review-entries/mined/string-calls.mts';
 import { valueCheckEntries } from './review-entries/mined/value-checks.mts';
 import { minedEntries } from './review-entries/mined/mined-rules.mts';
+import { commentEntries } from './review-entries/comments/comment-entries.mts';
 import { fixedDelayEntry } from './review-entries/fixed-delay.mts';
 import { mutatingMethodEntry } from './review-entries/mutating-method.mts';
 import { delegateSkipsDefaultEntry } from './review-entries/wrappers/delegate-skips-default.mts';
@@ -166,32 +161,6 @@ function suppressionEntries(): RuleEntry[] {
       why: 'A suppression annotation hides a finding from the report, so a source scan reports every one.',
       allowed,
       exception: { key: EXCEPTIONS_KEY, rule: `${tool}/InlineSuppression` },
-    }),
-  );
-}
-
-function commentEntries(): RuleEntry[] {
-  return [
-    {
-      rule: TASK_MARKER_RULE,
-      summary:
-        'A `TODO`, `FIXME`, `XXX`, `HACK` or `STOPSHIP` comment in a Java source with no issue reference.',
-      why: 'A task marker without an issue is never picked up, so it stays in the code for good.',
-      allowed: TASK_MARKER_MESSAGE,
-    },
-    {
-      rule: COMMENTED_OUT_CODE_RULE,
-      summary: 'A comment in a Java source whose lines read as Java statements or declarations.',
-      why: 'Commented-out code goes stale and hides what is live; version control keeps the old version.',
-      allowed: COMMENTED_OUT_CODE_MESSAGE,
-    },
-  ].map(({ rule, ...entry }) =>
-    ruleEntry({
-      ...JVM,
-      tool: 'pmd',
-      rule,
-      ...entry,
-      exception: { key: EXCEPTIONS_KEY, rule: `pmd/${rule}` },
     }),
   );
 }

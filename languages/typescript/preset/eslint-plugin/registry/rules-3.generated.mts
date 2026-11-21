@@ -1,4 +1,7 @@
+import { rule as ruleNoUnvalidatedSchemaField } from '../rules/boundaries/no-unvalidated-schema-field.mts';
+import { rule as ruleNoUnversionedOrmEntity } from '../rules/database/versions/no-unversioned-orm-entity.mts';
 import { rule as ruleNoUseAfterAwaitWhenDisposed } from '../rules/cancellation/disposal/no-use-after-await-when-disposed.mts';
+import { rule as ruleNoUtcDateAsLocalDate } from '../rules/time/utc-dates/no-utc-date-as-local-date.mts';
 import { rule as ruleNoWaitForWithFakeTimers } from '../rules/test-runtime/assertions/no-wait-for-with-fake-timers.mts';
 import { rule as ruleNoWallClockElapsed } from '../rules/wall-clock/no-wall-clock-elapsed.mts';
 import { rule as ruleNoWastedCollectionStep } from '../rules/collections/pipelines/no-wasted-collection-step.mts';
@@ -51,7 +54,10 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-unvalidated-schema-field': ruleNoUnvalidatedSchemaField,
+  'no-unversioned-orm-entity': ruleNoUnversionedOrmEntity,
   'no-use-after-await-when-disposed': ruleNoUseAfterAwaitWhenDisposed,
+  'no-utc-date-as-local-date': ruleNoUtcDateAsLocalDate,
   'no-wait-for-with-fake-timers': ruleNoWaitForWithFakeTimers,
   'no-wall-clock-elapsed': ruleNoWallClockElapsed,
   'no-wasted-collection-step': ruleNoWastedCollectionStep,
