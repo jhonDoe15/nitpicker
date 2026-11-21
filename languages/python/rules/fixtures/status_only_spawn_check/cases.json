@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "status-only-spawn-check",
+    "mention": "returncode != 0"
+  }
+]
