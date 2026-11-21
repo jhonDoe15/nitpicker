@@ -145,6 +145,11 @@ export const STRUCTURE_NOTES = {
     'A schema push changes the database on every start without a migration, so a deploy can drop columns and their data.',
     'Apply migrations in the deploy step (`prisma migrate deploy`, `drizzle-kit migrate`, `typeorm migration:run`) and keep schema pushes for local development scripts.',
   ],
+  'musl-default-allocator': [
+    "A Rust binary crate that runs work on several threads (`rayon`, `threadpool`, `tokio` with the multi-thread runtime, or `std::thread` in its own or its path dependencies' sources) and is built for a `*-musl` target, with no `#[global_allocator]` for that target.",
+    "musl's allocator takes one lock for every allocation, so threads that allocate queue behind each other: a lint run took 13.4 s on the musl build against 1.3 s on the glibc build of the same code.",
+    'Declare a global allocator that scales across threads for the musl target (`#[cfg(target_env = "musl")] #[global_allocator] static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;`). An exception fits when the binary is single-threaded in practice or does not allocate on its hot path.',
+  ],
   'unused-dependency': [
     'A dependency in `package.json` that nothing imports or runs.',
     'Unused dependencies add install time and attack surface.',

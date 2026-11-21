@@ -743,6 +743,35 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `logger.info('loaded order', { orderId })`. Loggers are found as in `nitpicker/no-dropped-log-arguments`;
   `console.*` stays with `nitpicker/no-production-console`. The same form runs as `pmd/LogStringConcatenation`
   (Java), `kotlin-source/LogStringConcatenation` (Kotlin) and ruff `G001` to `G004` (Python).
+- `nitpicker/no-type-lookup-per-node`: in code that walks a syntax tree, a type-checker lookup
+  (`getSymbolAtLocation`, `getTypeAtLocation`, `getTypeOfSymbolAtLocation`, or the typescript-eslint parser
+  services of the same names) that runs for every visited node before a test that needs no types. Type lookups
+  are lazy, so asking about every node type-checks most of the program. A walk is a lint listener on a broad
+  selector (`Identifier`, `MemberExpression`, `CallExpression`, `Property` and the like), a function passed to or
+  calling `forEachChild`/`visitEachChild` on itself, or a `for...of` loop. Two forms are reported: the lookup is
+  followed by `if (test) return;` or `continue` whose test reads only the node, constants and collections from
+  outside the walk (`const type = services.getTypeAtLocation(node.object); if (node.property.name !== 'then')
+  return;`), and a symbol lookup of the node's name whose answer is only checked with `has` or `get` on a
+  collection built before the walk, with only node-kind tests before it (`if (symbol && wanted.has(symbol))`).
+  A collection that the function holding the walk also writes to (`add`, `set`, `delete`, `clear`, `push`,
+  or a new value) is not built before the walk, and a `continue` or `return` inside a loop or `switch` nested
+  in the walk is not an early exit from it.
+  The allowed form tests the kind and name first (`wantedNames.has(node.name.text)`) and looks up the symbol
+  only for nodes that pass.
+- `nitpicker/no-union-order-dependence` (needs the type checker): a result read from a TypeScript union or
+  intersection in the order the checker lists its members: `type.types[0]`, `.at(0)`, `.at(-1)`, `.find(...)`,
+  `.findLast(...)`, `const [first] = type.types` (also after `filter`, `map`, `flatMap` or `slice`),
+  `new Map(...)` or `Object.fromEntries(...)` over `type.types.flatMap(...)`, and `===` between a
+  `checker.typeToString(...)` result and text with ` | `. TypeScript 6 lists union members in the order
+  their types were created and TypeScript 7 sorts them, so the same source gives different results. Not
+  reported: a pick used only as a presence test (`if`, `!`, `?:`, `Boolean(...)`, a comparison with
+  `undefined`); a `find` whose test can match one member only: identity (`member === stringType`), `.value`
+  equal to a literal, or a positive test of one flag a union holds once (`(member.flags & TypeFlags.Null) !== 0`
+  for `Null`, `Undefined`, `Any`, `Unknown`, `Void`, `Never`, `String`, `Number`, `BigInt`, `ESSymbol`,
+  `NonPrimitive`; a negated test is reported); and a function that compares the same union's `.types.length`
+  with 1 using `===` or `!==`. Two `typeToString` results of one run are compared safely, since a union type
+  prints the same way each time. The allowed form chooses by something the source decides
+  (declaration file and position, a name) or compares types with `checker.isTypeAssignableTo` or by symbol.
 - `nitpicker/no-secret-in-log`: a secret-named value passed to a `console` method, a logger call (`log`,
   `logger`, `winston`, `pino`, `req.log`, `this.logger` and the like), `process.stdout.write`,
   `process.stderr.write` or an `Error` constructor: as an argument, a member (not of a `tokenizer`), in a

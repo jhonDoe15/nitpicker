@@ -12,6 +12,7 @@ export const HYGIENE_RULE_IDS = {
   startSchemaPush: 'start-schema-push',
   foreignKeyIndex: 'foreign-key-index',
   fieldLimitMismatch: 'field-limit-mismatch',
+  muslDefaultAllocator: 'musl-default-allocator',
 };
 
 export const PACKAGE_RULE_IDS = {
@@ -100,6 +101,13 @@ export const HYGIENE_RULES = [
     check: REPOSITORY_HYGIENE,
     limit:
       'a `start`, `prestart`, `serve` or `start:*` script (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`) in `package.json`, or a script it runs, that pushes the ORM schema (`prisma db push`, `prisma migrate dev`, `drizzle-kit push`, `typeorm schema:sync`, `mikro-orm schema:update`)',
+    enforcedBy: EVERY_LANGUAGE,
+  },
+  {
+    id: HYGIENE_RULE_IDS.muslDefaultAllocator,
+    check: REPOSITORY_HYGIENE,
+    limit:
+      "a Rust binary crate that runs work on several threads (`rayon`, `threadpool`, `tokio` with the multi-thread runtime, or `std::thread` in its own or its path dependencies' sources) and is built for a `*-musl` target (named in a workflow, `.cargo/config.toml`, a Dockerfile or a build script next to a `cargo build`, or an Alpine Rust image) with no `#[global_allocator]` for that target",
     enforcedBy: EVERY_LANGUAGE,
   },
   {

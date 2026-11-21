@@ -68,6 +68,7 @@ import { rule as ruleNoTimeOnlyUniqueName } from '../rules/unique-names/no-time-
 import { rule as ruleNoTriStateBoolean } from '../rules/signatures/no-tri-state-boolean.mts';
 import { rule as ruleNoTruncatingPairSplit } from '../rules/pair-splits/no-truncating-pair-split.mts';
 import { rule as ruleNoTruncatingSplitLimit } from '../rules/split-limits/no-truncating-split-limit.mts';
+import { rule as ruleNoTypeLookupPerNode } from '../rules/type-lookups/no-type-lookup-per-node.mts';
 import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framework-in-domain.mts';
 import { rule as ruleNoUnanchoredAffixReplace } from '../rules/affixes/no-unanchored-affix-replace.mts';
 import { rule as ruleNoUnatomicWrites } from '../rules/transactions/no-unatomic-writes.mts';
@@ -95,9 +96,8 @@ import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-u
 import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
 import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mts';
 import { rule as ruleNoUninjectableDelay } from '../rules/test-runtime/lifecycle/no-uninjectable-delay.mts';
+import { rule as ruleNoUnionOrderDependence } from '../rules/union-order/no-union-order-dependence.mts';
 import { rule as ruleNoUnisolatedJobLoop } from '../rules/jobs/no-unisolated-job-loop.mts';
-import { rule as ruleNoUnknownInDomain } from '../rules/boundaries/no-unknown-in-domain.mts';
-import { rule as ruleNoUnknownMainFolder } from '../rules/guards/no-unknown-main-folder.mts';
 
 export const partRules = {
   'no-nan-only-check': ruleNoNanOnlyCheck,
@@ -170,6 +170,7 @@ export const partRules = {
   'no-tri-state-boolean': ruleNoTriStateBoolean,
   'no-truncating-pair-split': ruleNoTruncatingPairSplit,
   'no-truncating-split-limit': ruleNoTruncatingSplitLimit,
+  'no-type-lookup-per-node': ruleNoTypeLookupPerNode,
   'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
   'no-unanchored-affix-replace': ruleNoUnanchoredAffixReplace,
   'no-unatomic-writes': ruleNoUnatomicWrites,
@@ -197,7 +198,6 @@ export const partRules = {
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
   'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
   'no-uninjectable-delay': ruleNoUninjectableDelay,
+  'no-union-order-dependence': ruleNoUnionOrderDependence,
   'no-unisolated-job-loop': ruleNoUnisolatedJobLoop,
-  'no-unknown-in-domain': ruleNoUnknownInDomain,
-  'no-unknown-main-folder': ruleNoUnknownMainFolder,
 };

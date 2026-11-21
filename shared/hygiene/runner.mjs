@@ -7,6 +7,7 @@ import { foreignKeyIndexFindings } from './schema/foreign-key-index.mjs';
 import { migrationOrderFindings } from './migrations/migration-order.mjs';
 import { withoutExcepted, withoutExcluded } from './rules.mjs';
 import { trackedFiles } from './tracked-files.mjs';
+import { muslAllocatorFindings } from './rust/musl-allocators.mjs';
 
 function collectRepositoryHygiene(context) {
   return [
@@ -15,6 +16,7 @@ function collectRepositoryHygiene(context) {
     ...hardcodedNameFindings(REPOSITORY_HYGIENE_TOOL, context),
     ...foreignKeyIndexFindings(REPOSITORY_HYGIENE_TOOL, context),
     ...fieldLimitFindings(REPOSITORY_HYGIENE_TOOL, context),
+    ...muslAllocatorFindings(REPOSITORY_HYGIENE_TOOL, context),
   ];
 }
 

@@ -107,6 +107,8 @@ export const strictEslintRuleIds = [
   'nitpicker/no-dropped-log-arguments',
   'nitpicker/no-dropped-delegate-result',
   'nitpicker/no-swapped-arguments',
+  'nitpicker/no-type-lookup-per-node',
+  'nitpicker/no-union-order-dependence',
   'nitpicker/no-interpolated-log-message',
   'nitpicker/no-branch-in-composition-root',
   'nitpicker/no-comments',

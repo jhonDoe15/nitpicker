@@ -1,3 +1,5 @@
+import { rule as ruleNoUnknownInDomain } from '../rules/boundaries/no-unknown-in-domain.mts';
+import { rule as ruleNoUnknownMainFolder } from '../rules/guards/no-unknown-main-folder.mts';
 import { rule as ruleNoUnmappedException } from '../rules/errors/unmapped/no-unmapped-exception.mts';
 import { rule as ruleNoUnorderedQuery } from '../rules/queries/order/no-unordered-query.mts';
 import { rule as ruleNoUnownedAsyncAssertion } from '../test-assertions/unowned-async/no-unowned-async-assertion.mts';
@@ -73,6 +75,8 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-unknown-in-domain': ruleNoUnknownInDomain,
+  'no-unknown-main-folder': ruleNoUnknownMainFolder,
   'no-unmapped-exception': ruleNoUnmappedException,
   'no-unordered-query': ruleNoUnorderedQuery,
   'no-unowned-async-assertion': ruleNoUnownedAsyncAssertion,
