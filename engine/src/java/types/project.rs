@@ -12,9 +12,13 @@ pub struct JavaProject {
     pub index: TypeIndex,
 }
 
+fn jdk_home() -> PathBuf {
+    PathBuf::from(std::env::var("NITPICKER_JDK").or_else(|_| std::env::var("JAVA_HOME")).unwrap_or_default())
+}
+
 fn jdk_modules() -> Vec<PathBuf> {
-    let home = std::env::var("NITPICKER_JDK").or_else(|_| std::env::var("JAVA_HOME")).unwrap_or_default();
-    let mut modules: Vec<PathBuf> = std::fs::read_dir(PathBuf::from(home).join("jmods"))
+    let home = jdk_home();
+    let mut modules: Vec<PathBuf> = std::fs::read_dir(home.join("jmods"))
         .map(|entries| entries.filter_map(Result::ok).map(|entry| entry.path()).collect())
         .unwrap_or_default();
     modules.sort();
@@ -28,12 +32,17 @@ fn stub(name: String) -> ClassInfo {
     ClassInfo { name, ..ClassInfo::default() }
 }
 
-pub fn build(files: &[SourceFile], classpath: &[PathBuf]) -> JavaProject {
+pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>) -> JavaProject {
     let started = std::time::Instant::now();
     let mut index = TypeIndex::default();
     let mut entries = classpath.to_vec();
-    entries.extend(jdk_modules());
     index.load_binaries(&entries);
+    // An older release sees the library as it was then: the JDK keeps those signatures in `lib/ct.sym`.
+    if !release.is_some_and(|release| index.load_release(&jdk_home().join("lib").join("ct.sym"), release)) {
+        let modules = jdk_modules();
+        index.load_binaries(&modules);
+        entries.extend(modules);
+    }
     let binaries_ms = started.elapsed().as_secs_f64() * 1e3;
     let scopes: Vec<FileScope> = files.par_iter().map(FileScope::of).collect();
     let declared: Vec<Vec<(Node, String)>> = files
@@ -76,6 +85,18 @@ pub fn build(files: &[SourceFile], classpath: &[PathBuf]) -> JavaProject {
             index.put(info);
         }
     }
+    for (file, scope) in files.iter().zip(&scopes) {
+        let declaration = crate::engine::source::children(file.tree.root_node()).into_iter().find(|part| part.kind() == "package_declaration");
+        if let Some(declaration) = declaration.filter(|_| file.path.ends_with("package-info.java")) {
+            let flags = Resolver::new(&index, file, scope).marks(declaration);
+            index.put(ClassInfo { flags, package: scope.package.clone(), ..stub(format!("{}.package-info", scope.package)) });
+        }
+    }
+    let mut packages: Vec<&String> = scopes.iter().map(|scope| &scope.package).filter(|package| !package.is_empty()).collect();
+    packages.sort();
+    packages.dedup();
+    index.checked_packages =
+        packages.iter().filter(|name| !packages.iter().any(|other| name.starts_with(&format!("{other}.")))).map(|name| (*name).clone()).collect();
     eprintln!(
         "type index: {} binary classes from {} entries in {binaries_ms:.0} ms, {} source classes in {:.0} ms",
         index.binary_classes,

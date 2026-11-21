@@ -173,3 +173,47 @@ gives the same answer as the JavaScript compiler for 132,720 (98.4%); 2,058 diff
 members or properties in the type text, or in the escaping of names that start with two underscores; 107
 (0.08%) differ in substance (index-signature symbols, the declaration node of a property assigned onto a
 function, standard library versions).
+
+## Error Prone checks
+
+`--rules _ErrorProne` runs checks written after Error Prone 2.50.0 (`src/java/errorprone/`): `OperatorPrecedence`,
+`UngroupedOverloads`, `MissingBraces`, `EmptyCatch`, `NonFinalStaticField`, `ThrowSpecificExceptions`, `SystemOut`,
+`JavaUtilDate`, `StringCaseLocaleUsage`, `MissingOverride`, `ReferenceEquality`, `PrivateConstructorForUtilityClass`
+and `InconsistentOverloads`, and the ones added since: `parity/errorprone/ported.json` lists every check. A finding carries the check, the line and column javac reports for it, and the
+message; `@SuppressWarnings` with the check name or `all` hides it. `NP_EP_ONLY=<check>` runs one check.
+
+`tests/expected/errorprone.json` holds what Error Prone reported for `tests/fixtures/errorprone`. For a real
+project, `parity/errorprone/ErrorProneRun.java` compiles a source list with Error Prone and writes its findings
+and the time of each check, and `parity/errorprone/compare.py report.json ep.json [check] [-v]` compares.
+
+`ImmutableEnumChecker` runs only when `com.google.errorprone.annotations.Immutable` is among the classes of the
+project, since nitpicker turns the check off in Error Prone when the annotation is out of reach. The fixtures
+carry their own copy of the three annotations the check reads; to run Error Prone on them, put an entry whose
+path contains `error_prone_annotations` on the class path so `ErrorProneRun` leaves the check on.
+
+The checks are ports of Error Prone's (Apache-2.0, see `NOTICE` at the root of the repository). The doc comment
+parser under them (`doc.rs`, `docparse.rs`, `doctags.rs`, `docref.rs`) is written from the Documentation Comment
+Specification for the Standard Doclet. `tests/expected/doctrees.txt` holds the trees javac 21 builds for
+`tests/fixtures/doctrees`, printed through the public `com.sun.source.doctree` API by
+`parity/errorprone/DocTreeDump.java <source list> <out>` (run from the fixture folder), and a unit test compares
+them part by part. `NP_DOC_TREES=<dump of any code base, absolute paths> cargo test --release doc_comments`
+compares a whole code base the same way.
+
+Measured on 4 cores against Error Prone running only these checks (findings: same / missed / extra):
+
+| Code base | Files, lines | Error Prone wall, CPU, peak | Engine | Findings |
+| --- | --- | --- | --- | --- |
+| Elasticsearch `server` | 5,106, 1,035k | 26.5 s, 75.6 s, 3.4 GB | 7.8 s, 28.6 s, 0.5 GB | 5,476 / 4 / 0 |
+| Nacos | 3,118, 548k | 13.4 s, 42.3 s, 1.5 GB | 5.5 s, 13.1 s, 0.3 GB | 4,837 / 7 / 7 |
+| javaparser-core | 594, 121k | 7.8 s, 24.2 s, 0.9 GB | 1.0 s, 3.5 s, 0.1 GB | 5,399 / 0 / 6 |
+| Guava | 610, 183k | 7.2 s, 22.8 s, 0.8 GB | 1.1 s, 3.8 s, 0.1 GB | 198 / 0 / 0 |
+| jackson-databind | 478, 134k | 5.0 s, 16.0 s, 0.5 GB | 0.8 s, 2.7 s, 0.1 GB | 1,130 / 0 / 0 |
+| commons-lang | 264, 106k | 3.3 s, 10.6 s, 0.4 GB | 0.5 s, 1.5 s, 0.1 GB | 302 / 0 / 0 |
+| MyBatis | 393, 40k | 3.3 s, 10.6 s, 0.4 GB | 0.3 s, 0.9 s, 0.1 GB | 155 / 0 / 0 |
+
+`--release <n>` gives the Java release the sources are compiled for. When it is older than the JDK, the type
+index reads the library of that release from the JDK's `lib/ct.sym`, as javac does, so a `List` method added in
+Java 21 is not there for code compiled with `--release 17`. With it (javaparser-core is built for 17) the seven
+code bases give the same findings as Error Prone; the differences in the table were type questions closed since
+it was measured.
+

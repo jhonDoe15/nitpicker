@@ -1,6 +1,6 @@
 //! Runs the engine on small Java fixtures and compares its findings with what PMD reported for the same rules.
 //! The expected files come from `parity/pmd-expected.py`.
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::process::Command;
 
@@ -18,12 +18,16 @@ fn counted(rows: impl IntoIterator<Item = Row>) -> Rows {
 }
 
 fn rows(case: &str, rules: &str) -> (Rows, Rows) {
+    rows_of(case, "_XPath", rules)
+}
+
+fn rows_of(case: &str, rule: &str, rules: &str) -> (Rows, Rows) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
     let source = root.join("fixtures").join(case);
     let out = std::env::temp_dir().join(format!("nitpicker-engine-{case}-{}.json", std::process::id()));
     let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
         .arg(&source)
-        .args(["--rules", "_XPath", "--out"])
+        .args(["--rules", rule, "--out"])
         .arg(&out)
         .env("NP_XPATH_RULES", root.join("rules").join(format!("{rules}.json")))
         .status()
@@ -89,6 +93,15 @@ fn rare_built_in_rules_and_switch_facts_match_pmd() {
 }
 
 #[test]
+fn error_prone_checks_report_what_error_prone_reports() {
+    let (found, expected) = rows_of("errorprone", "_ErrorProne", "all");
+    let missed: Vec<&Row> = expected.iter().filter(|(row, count)| found.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
+    let extra: Vec<&Row> = found.iter().filter(|(row, count)| expected.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
+    assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
+    assert_eq!(expected.keys().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 63);
+}
+
+#[test]
 fn types_and_signatures_match_what_pmd_resolves() {
     same_as_pmd("types", "types");
 }
@@ -129,4 +142,28 @@ fn one_deeply_nested_file_is_analysed() {
 #[test]
 fn patterns_type_their_variables_like_pmd() {
     same_as_pmd("patterns", "all");
+}
+
+fn override_lines(release: &str) -> Vec<u64> {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures").join("release");
+    let out = std::env::temp_dir().join(format!("nitpicker-engine-release-{release}-{}.json", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
+        .arg(&source)
+        .args(["--rules", "_ErrorProne", "--release", release, "--out"])
+        .arg(&out)
+        .status()
+        .expect("engine runs");
+    assert!(status.success());
+    let report: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&out).expect("report")).expect("json");
+    let _ = std::fs::remove_file(&out);
+    let findings = report["findings"].as_array().expect("findings").iter();
+    let mut lines: Vec<u64> = findings.filter(|finding| finding["rule"] == "MissingOverride").map(|finding| finding["line"].as_u64().expect("line")).collect();
+    lines.sort();
+    lines
+}
+
+#[test]
+fn an_older_release_sees_the_library_of_that_release() {
+    assert_eq!(override_lines("17"), [6, 10]);
+    assert_eq!(override_lines("21"), [6, 10, 14, 18]);
 }

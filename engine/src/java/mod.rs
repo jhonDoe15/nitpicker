@@ -1,3 +1,4 @@
+mod errorprone;
 mod facts;
 mod grammar;
 pub(crate) mod fields;
@@ -31,6 +32,7 @@ impl Language for Java {
         rules.extend(statements::rules());
         rules.extend(pmd_sample::rules());
         rules.extend(typed_rules::rules());
+        rules.push(Box::new(errorprone::ErrorProne));
         rules.push(Box::new(pmd::dump::TreeDump));
         if let Some(rules_from_file) = pmd::rules::XPathRules::from_env() {
             rules.push(Box::new(rules_from_file));
@@ -40,6 +42,6 @@ impl Language for Java {
     fn facts(&self, file: &SourceFile) -> FileFacts { facts::facts(file) }
     fn outline(&self, file: &SourceFile) -> Option<String> { Some(types::project::outline(file)) }
     fn project(&self, files: &[SourceFile], options: &Options, needed: bool) -> Box<Project> {
-        if needed { Box::new(types::project::build(files, &options.classpath)) } else { Box::new(()) }
+        if needed { Box::new(types::project::build(files, &options.classpath, options.release)) } else { Box::new(()) }
     }
 }

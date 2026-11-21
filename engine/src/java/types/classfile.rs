@@ -1,5 +1,5 @@
 //! A minimal class-file reader: name, supertypes, fields and method descriptors. Nothing else is read.
-use super::model::{ClassInfo, Field, Method, OBJECT, Type};
+use super::model::{ClassInfo, Detail, Field, Method, OBJECT, Type, flag};
 
 struct Reader<'a> {
     data: &'a [u8],
@@ -163,65 +163,237 @@ impl<'a> Signature<'a> {
         self.at += 1;
         Some((type_parameters, parameters, self.kind()?))
     }
+    /// The `throws` part, after `method` has read the rest.
+    fn throws(&mut self) -> Vec<Type> {
+        let mut listed = Vec::new();
+        while self.peek() == Some(b'^') {
+            self.at += 1;
+            match self.kind() {
+                Some(kind) => listed.push(kind),
+                None => break,
+            }
+        }
+        listed
+    }
 }
 
-fn attributes<'a>(
-    reader: &mut Reader<'a>,
-    utf8: &impl Fn(u16) -> Option<&'a [u8]>,
-) -> Option<(Option<&'a [u8]>, Option<u16>)> {
-    let mut signature = None;
-    let mut constant = None;
+#[derive(Default)]
+struct Attributes<'a> {
+    signature: Option<&'a [u8]>,
+    constant: Option<u16>,
+    deprecated: bool,
+    record: bool,
+    permitted: Option<Vec<u16>>,
+    /// For a record: the generic type of each component, in order.
+    components: Option<Vec<Type>>,
+    inner: Vec<(u16, u16)>,
+    exceptions: Vec<u16>,
+    names: Vec<u16>,
+    marks: u32,
+    /// Constant pool entries of the strings in `containerOf` of `@Immutable`.
+    held: Vec<u16>,
+    /// Positions of the type parameters with `@ImmutableTypeParameter`.
+    strict: Vec<u8>,
+    annotations: Vec<&'a [u8]>,
+    parameter_annotations: Vec<Vec<&'a [u8]>>,
+    targets: Option<u16>,
+}
+
+fn skip_element(reader: &mut Reader) -> Option<()> {
+    match reader.u1()? {
+        b'e' => reader.skip(4),
+        b'@' => skip_annotation(reader).map(|_| ()),
+        b'[' => {
+            for _ in 0..reader.u2()? {
+                skip_element(reader)?;
+            }
+            Some(())
+        }
+        _ => reader.skip(2),
+    }
+}
+
+/// Reads one element value and adds the constant names of the enum values in it.
+fn enum_names<'a>(reader: &mut Reader, utf8: &impl Fn(u16) -> Option<&'a [u8]>, out: &mut Vec<&'a [u8]>) -> Option<()> {
+    match reader.u1()? {
+        b'e' => {
+            reader.skip(2)?;
+            out.extend(utf8(reader.u2()?));
+            Some(())
+        }
+        b'[' => {
+            for _ in 0..reader.u2()? {
+                enum_names(reader, utf8, out)?;
+            }
+            Some(())
+        }
+        b'@' => skip_annotation(reader).map(|_| ()),
+        _ => reader.skip(2),
+    }
+}
+
+/// Reads one annotation: its type descriptor, and for `@Target` the element types it lists.
+fn annotation<'a>(reader: &mut Reader, utf8: &impl Fn(u16) -> Option<&'a [u8]>, targets: &mut Option<u16>) -> Option<&'a [u8]> {
+    let kind = utf8(reader.u2()?)?;
+    let target = kind == b"Ljava/lang/annotation/Target;";
     for _ in 0..reader.u2()? {
-        let name = utf8(reader.u2()?)?;
-        let length = reader.u4()? as usize;
-        if name == b"Signature" && length == 2 {
-            signature = utf8(reader.u2()?);
-        } else if name == b"ConstantValue" && length == 2 {
-            constant = Some(reader.u2()?);
+        reader.skip(2)?;
+        if target {
+            let mut names = Vec::new();
+            enum_names(reader, utf8, &mut names)?;
+            let bits = names.iter().filter_map(|name| std::str::from_utf8(name).ok()).fold(0, |bits, name| bits | super::model::target::bit(name));
+            *targets = Some(targets.unwrap_or(0) | bits);
         } else {
-            reader.skip(length)?;
+            skip_element(reader)?;
         }
     }
-    Some((signature, constant))
+    if target && targets.is_none() {
+        *targets = Some(0);
+    }
+    Some(kind)
 }
 
-const ACC_ENUM: u16 = 0x4000;
-
-struct ClassAttributes<'a> {
-    signature: Option<&'a [u8]>,
-    permitted: Option<Vec<u16>>,
-    components: Option<Vec<Type>>,
+fn annotation_name(descriptor: &[u8]) -> Option<String> {
+    let text = std::str::from_utf8(descriptor).ok()?.strip_prefix('L')?.strip_suffix(';')?;
+    Some(text.replace(['/', '$'], "."))
 }
 
-/// The attributes of the class itself: its generic signature, for a sealed class the classes it permits, and for
-/// a record its components.
-fn class_attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Option<ClassAttributes<'a>> {
-    let mut signature = None;
-    let mut permitted = None;
-    let mut components = None;
+/// Skips one annotation and gives the index of its type descriptor.
+fn skip_annotation(reader: &mut Reader) -> Option<u16> {
+    let kind = reader.u2()?;
+    for _ in 0..reader.u2()? {
+        reader.skip(2)?;
+        skip_element(reader)?;
+    }
+    Some(kind)
+}
+
+/// The constant pool entries of the strings an element holds, alone or in an array.
+fn element_strings(reader: &mut Reader, into: &mut Vec<u16>) -> Option<()> {
+    let start = reader.at;
+    match reader.u1()? {
+        b's' => into.push(reader.u2()?),
+        b'[' => {
+            for _ in 0..reader.u2()? {
+                element_strings(reader, into)?;
+            }
+        }
+        _ => {
+            reader.at = start;
+            skip_element(reader)?;
+        }
+    }
+    Some(())
+}
+
+/// One entry of a type annotations attribute on a class: the type parameter it sits on, if it sits on one, and
+/// the index of its type descriptor. Gives nothing for a target this reader does not know.
+fn type_annotation(reader: &mut Reader) -> Option<(Option<u8>, u16)> {
+    let parameter = match reader.u1()? {
+        0x00 => Some(reader.u1()?),
+        0x10 => reader.skip(2).map(|_| None)?,
+        0x11 => reader.skip(2).map(|_| None)?,
+        _ => return None,
+    };
+    let steps = reader.u1()? as usize;
+    reader.skip(steps * 2)?;
+    Some((parameter, skip_annotation(reader)?))
+}
+
+fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Option<Attributes<'a>> {
+    let mut found = Attributes::default();
     for _ in 0..reader.u2()? {
         let name = utf8(reader.u2()?)?;
         let length = reader.u4()? as usize;
+        let end = reader.at + length;
         if name == b"Signature" && length == 2 {
-            signature = utf8(reader.u2()?);
+            found.signature = utf8(reader.u2()?);
+        } else if name == b"ConstantValue" && length == 2 {
+            found.constant = Some(reader.u2()?);
+        } else if name == b"RuntimeVisibleAnnotations" || name == b"RuntimeInvisibleAnnotations" {
+            for _ in 0..reader.u2()? {
+                let begin = reader.at;
+                let kind = annotation(reader, utf8, &mut found.targets)?;
+                if kind == b"Lcom/google/errorprone/annotations/Immutable;" {
+                    reader.at = begin + 2;
+                    for _ in 0..reader.u2()? {
+                        if utf8(reader.u2()?) == Some(b"containerOf") {
+                            element_strings(reader, &mut found.held)?;
+                        } else {
+                            skip_element(reader)?;
+                        }
+                    }
+                }
+                found.deprecated |= kind == b"Ljava/lang/Deprecated;";
+                found.marks |= annotation_name(kind).map_or(0, |name| flag::of_annotation(&name));
+                found.annotations.push(kind);
+            }
+        } else if name == b"RuntimeVisibleParameterAnnotations" || name == b"RuntimeInvisibleParameterAnnotations" {
+            let count = reader.u1()? as usize;
+            if found.parameter_annotations.len() < count {
+                found.parameter_annotations.resize(count, Vec::new());
+            }
+            for at in 0..count {
+                for _ in 0..reader.u2()? {
+                    let kind = utf8(skip_annotation(reader)?)?;
+                    found.parameter_annotations[at].push(kind);
+                }
+            }
+        } else if name == b"RuntimeVisibleTypeAnnotations" {
+            for _ in 0..reader.u2()? {
+                let Some((parameter, kind)) = type_annotation(reader) else { break };
+                if utf8(kind) == Some(b"Lcom/google/errorprone/annotations/ImmutableTypeParameter;") {
+                    found.strict.extend(parameter);
+                }
+            }
         } else if name == b"PermittedSubclasses" {
-            permitted = Some((0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?);
+            found.permitted = Some((0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?);
+        } else if name == b"InnerClasses" {
+            for _ in 0..reader.u2()? {
+                let class = reader.u2()?;
+                reader.skip(4)?;
+                found.inner.push((class, reader.u2()?));
+            }
+        } else if name == b"MethodParameters" {
+            for _ in 0..reader.u1()? {
+                found.names.push(reader.u2()?);
+                reader.skip(2)?;
+            }
+        } else if name == b"Exceptions" {
+            found.exceptions = (0..reader.u2()?).map(|_| reader.u2()).collect::<Option<Vec<u16>>>()?;
         } else if name == b"Record" {
+            found.record = true;
             let mut listed = Vec::new();
             for _ in 0..reader.u2()? {
                 reader.skip(2)?;
                 let descriptor = utf8(reader.u2()?)?;
-                let (generic, _) = attributes(reader, utf8)?;
-                let text = generic.unwrap_or(descriptor);
+                let text = attributes(reader, utf8)?.signature.unwrap_or(descriptor);
                 listed.push(Signature { text, at: 0 }.kind()?);
             }
-            components = Some(listed);
-        } else {
-            reader.skip(length)?;
+            found.components = Some(listed);
+        }
+        reader.at = end;
+        if reader.at > reader.data.len() {
+            return None;
         }
     }
-    Some(ClassAttributes { signature, permitted, components })
+    Some(found)
 }
+
+fn member_flags(access: u16, deprecated: bool, marks: u32) -> u32 {
+    let mut bits = marks;
+    for (mask, bit) in [(0x0010, flag::FINAL), (0x0001, flag::PUBLIC), (0x0004, flag::PROTECTED), (0x0008, flag::STATIC), (0x0400, flag::ABSTRACT)] {
+        if access & mask != 0 {
+            bits |= bit;
+        }
+    }
+    if deprecated {
+        bits |= flag::DEPRECATED;
+    }
+    bits
+}
+
+const ACC_ENUM: u16 = 0x4000;
 
 pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     let mut reader = Reader { data, at: 0 };
@@ -286,7 +458,8 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         enum_constants += u32::from(flags & ACC_ENUM != 0);
         let field_name = utf8(reader.u2()?)?;
         let descriptor = utf8(reader.u2()?)?;
-        let (signature, constant) = attributes(&mut reader, &utf8)?;
+        let found = attributes(&mut reader, &utf8)?;
+        let (signature, constant) = (found.signature, found.constant);
         if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == 0 {
             let fixed = constant.filter(|_| flags & ACC_STATIC != 0).map(|_| Vec::new());
             let constant = constant.and_then(|index| match pool.get(index as usize)? {
@@ -295,7 +468,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
             });
             let kind = Signature { text: descriptor, at: 0 }.kind()?;
             let generic = signature.and_then(|text| Signature { text, at: 0 }.kind()).unwrap_or_else(|| kind.clone());
-            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0 });
+            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, flags: member_flags(flags, found.deprecated, found.marks) });
         }
     }
     let mut methods = Vec::new();
@@ -303,11 +476,21 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         let flags = reader.u2()?;
         let method_name = utf8(reader.u2()?)?;
         let descriptor = utf8(reader.u2()?)?;
-        let (signature, _) = attributes(&mut reader, &utf8)?;
+        let found = attributes(&mut reader, &utf8)?;
+        let signature = found.signature;
         if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == 0 && method_name != b"<clinit>" {
             let (_, parameters, returns) = Signature { text: descriptor, at: 0 }.method()?;
+            let mut throws: Vec<Type> = found.exceptions.iter().filter_map(|class| class_name(*class)).map(|name| Type::class(&name)).collect();
             let generic = signature
-                .and_then(|text| Signature { text, at: 0 }.method())
+                .and_then(|text| {
+                    let mut reader = Signature { text, at: 0 };
+                    let read = reader.method()?;
+                    let listed = reader.throws();
+                    if listed.len() == throws.len() {
+                        throws = listed;
+                    }
+                    Some(read)
+                })
                 .filter(|(_, generic, _)| generic.len() == parameters.len());
             let (type_parameters, generic_parameters, generic_returns) =
                 generic.unwrap_or_else(|| (Vec::new(), parameters.clone(), returns.clone()));
@@ -324,11 +507,41 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 is_static: flags & ACC_STATIC != 0,
                 is_private: false,
                 varargs: flags & ACC_VARARGS != 0,
+                flags: member_flags(flags, found.deprecated, found.marks),
+                throws,
+                names: found.names.iter().filter_map(|name| utf8(*name)).map(|name| String::from_utf8_lossy(name).into_owned()).collect(),
+                detail: Detail {
+                    access: flags & 0x0d3f,
+                    annotations: found.annotations.iter().filter_map(|kind| annotation_name(kind)).collect(),
+                    parameter_annotations: found
+                        .parameter_annotations
+                        .iter()
+                        .map(|listed| listed.iter().filter_map(|kind| annotation_name(kind)).collect())
+                        .collect(),
+                },
             });
         }
     }
-    let ClassAttributes { signature, permitted, components } = class_attributes(&mut reader, &utf8)?;
-    let permitted = permitted.map(|listed| listed.into_iter().filter_map(&class_name).collect());
+    let found = attributes(&mut reader, &utf8)?;
+    let signature = found.signature;
+    let mut class_flags = member_flags(access, found.deprecated, found.marks);
+    for (mask, bit) in [(0x4000, flag::ENUM), (0x2000, flag::ANNOTATION)] {
+        if access & mask != 0 {
+            class_flags |= bit;
+        }
+    }
+    if found.record {
+        class_flags |= flag::RECORD;
+    }
+    let own_private = found.inner.iter().any(|(class, access)| access & ACC_PRIVATE != 0 && class_name(*class).as_deref() == Some(name.as_str()));
+    if own_private {
+        class_flags |= flag::PRIVATE;
+    }
+    let permitted: Option<Vec<String>> = found.permitted.map(|listed| listed.into_iter().filter_map(&class_name).collect());
+    if permitted.is_some() {
+        class_flags |= flag::SEALED;
+    }
+    let components = found.components;
     let mut type_parameters = Vec::new();
     let mut generic_supers = Vec::new();
     if let Some(text) = signature {
@@ -340,6 +553,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     } else {
         generic_supers.extend(superclass.iter().chain(&interfaces).map(|name| Type::class(name)));
     }
+    let immutable_parameters = found.strict.iter().filter_map(|at| type_parameters.get(*at as usize)).map(|(name, _)| name.clone()).collect();
     Some(ClassInfo {
         name,
         package: package_name,
@@ -351,7 +565,11 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         methods,
         is_interface: access & ACC_INTERFACE != 0,
         enum_constants: (access & ACC_ENUM != 0).then_some(enum_constants),
+        flags: class_flags,
         permitted,
         record_components: components,
+        container_of: found.held.iter().filter_map(|entry| utf8(*entry)).map(|text| String::from_utf8_lossy(text).into_owned()).collect(),
+        immutable_parameters,
+        targets: found.targets,
     })
 }
