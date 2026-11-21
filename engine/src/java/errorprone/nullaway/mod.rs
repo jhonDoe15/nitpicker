@@ -101,9 +101,23 @@ fn traced(context: &Context, node: Node, switch: &'static str) -> bool {
     }
 }
 
-fn annotated(class: &str) -> bool {
+static UNREAD: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Whether a class file that counts as checked carries type annotations: `@Nullable` written on a type is in
+/// them, and it is not read, so the findings of the run may differ from NullAway's.
+pub fn unread_marks() -> bool {
+    UNREAD.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+fn annotated(context: &Context, class: &str) -> bool {
     let packages = annotated_packages();
-    packages.is_empty() || packages.iter().any(|package| class.starts_with(package.as_str()) && class[package.len()..].starts_with('.'))
+    let listed = packages.is_empty() || packages.iter().any(|package| class.starts_with(package.as_str()) && class[package.len()..].starts_with('.'));
+    let index = context.resolver.index;
+    let checked = index.null_checked(class, listed);
+    if checked && index.get(class).is_some_and(|info| info.flags & flag::TYPE_MARKS != 0) {
+        UNREAD.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+    checked
 }
 
 fn strip(mut node: Node) -> Node {
@@ -203,8 +217,8 @@ impl<'a, 't> Flow<'a, 't> {
         }
     }
 
-    fn nullable_field(class: &ClassInfo, field: &Field) -> bool {
-        field.flags & flag::NULLABLE != 0 && annotated(&class.name)
+    fn nullable_field(&self, class: &ClassInfo, field: &Field) -> bool {
+        field.flags & flag::NULLABLE != 0 && annotated(self.context, &class.name)
     }
 
     /// A value that a path can pass through: `this` and the like, besides real paths.
@@ -345,7 +359,7 @@ impl<'a, 't> Flow<'a, 't> {
                     Some(true) => self.known_or(store, node, NULLABLE),
                     _ => self.known_or(store, node, NONNULL),
                 },
-                Some(Binding::Field(_, class, field)) if Self::nullable_field(class, field) => self.known_or(store, node, NULLABLE),
+                Some(Binding::Field(_, class, field)) if self.nullable_field(class, field) => self.known_or(store, node, NULLABLE),
                 _ => NONNULL,
             },
             "field_access" => {
@@ -355,7 +369,7 @@ impl<'a, 't> Flow<'a, 't> {
                     self.settle(store, object, NONNULL);
                 }
                 match found {
-                    Some((class, field, _)) if Self::nullable_field(class, field) => self.known_or(store, node, NULLABLE),
+                    Some((class, field, _)) if self.nullable_field(class, field) => self.known_or(store, node, NULLABLE),
                     _ => NONNULL,
                 }
             }
@@ -541,7 +555,7 @@ impl<'a, 't> Flow<'a, 't> {
             let any = depends.iter().any(|position| arguments.get(*position).is_some_and(|argument| self.value(*argument) != NONNULL));
             return if any { self.known_or(store, node, NULLABLE) } else { NONNULL };
         }
-        let loose = !annotated(&call.declaring);
+        let loose = !annotated(self.context, &call.declaring);
         if has_model(resolver, models::NONNULL_RETURNS, &call, loose) {
             return NONNULL;
         }
@@ -761,13 +775,13 @@ impl<'a, 't> Flow<'a, 't> {
             "null_literal" => return true,
             "identifier" => match resolver.binding(expression, self.text(expression)) {
                 Some(Binding::Local(_)) => self.component(expression).is_none_or(|nullable| nullable),
-                Some(Binding::Field(_, class, field)) => field.constant.is_none() && Self::nullable_field(class, field),
+                Some(Binding::Field(_, class, field)) => field.constant.is_none() && self.nullable_field(class, field),
                 None => false,
             },
-            "field_access" => self.field(expression).is_some_and(|(class, field, _)| field.constant.is_none() && Self::nullable_field(class, field)),
+            "field_access" => self.field(expression).is_some_and(|(class, field, _)| field.constant.is_none() && self.nullable_field(class, field)),
             "method_invocation" => match resolver.resolve_call(expression) {
                 Some(call) => {
-                    let loose = !annotated(&call.declaring);
+                    let loose = !annotated(self.context, &call.declaring);
                     if !loose && call.method.flags & flag::NULLABLE != 0 {
                         !has_model(resolver, models::NONNULL_RETURNS, &call, loose)
                     } else {
@@ -866,7 +880,8 @@ fn surroundings(node: Node) -> Option<usize> {
     None
 }
 
-/// Whether the nearest `@NullMarked` or `@NullUnmarked` around a node is the second: such code is not checked.
+/// Whether the nearest `@NullMarked` or `@NullUnmarked` around a node is the second, on the code or else on
+/// its package: such code is not checked.
 fn unmarked(context: &Context, node: Node) -> bool {
     let mut current = Some(node);
     while let Some(at) = current {
@@ -880,7 +895,8 @@ fn unmarked(context: &Context, node: Node) -> bool {
         }
         current = parent(at);
     }
-    false
+    let package = &context.resolver.scope.package;
+    context.resolver.index.get(&format!("{package}.package-info")).is_some_and(|info| info.flags & flag::NULL_UNMARKED != 0)
 }
 
 pub fn null_away(context: &Context, root: Node) {
@@ -924,7 +940,7 @@ pub fn null_away(context: &Context, root: Node) {
         let inherited: u64 = if node.kind() == "lambda_expression" {
             let target = context.resolver.lambda_target(node);
             let found = target.as_ref().and_then(|target| context.resolver.index.functional_method(&target.name()));
-            found.map_or(0, |(declaring, method)| sites::accepted(&declaring.name, method))
+            found.map_or(0, |(declaring, method)| sites::accepted(context, &declaring.name, method))
         } else {
             0
         };

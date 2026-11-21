@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { parseJson } from '../../../../shared/values/readers.mts';
+import { fieldOf, listOf, parseJson } from '../../../../shared/values/readers.mts';
 import { ENGINE_REPORT, positionIn, withEngineDiagnostics } from './engine-diagnostics.mts';
 import {
   errorPronePlanOf,
@@ -111,6 +111,23 @@ describe('errorProneOnEngine', () => {
     const text = readFileSync(argumentFile, 'utf8');
     expect(text).toContain('--errorprone-flag=-Xep:NullAway:OFF\n--sources\n');
     expect(text).toContain('--errorprone-flag=-Xep:SystemOut:OFF\n');
+  });
+
+  it('leaves NullAway to Error Prone when the engine says a library holds marks it did not read', () => {
+    const { plan, environment, source, argumentFile } = setup();
+    const findings = [rowIn(source, 'SystemOut'), rowIn(source, 'NullAway')];
+
+    errorProneOnEngine(plan, environment, {
+      run: engineWriting({ findings, nullAwayUnsure: true }),
+    });
+
+    const report = readFileSync(path.join(plan.reportDir, ENGINE_REPORT), 'utf8');
+    expect(listOf(parseJson(report)).map((row) => fieldOf(row, 'message'))).toStrictEqual([
+      '[SystemOut] found',
+    ]);
+    const text = readFileSync(argumentFile, 'utf8');
+    expect(text).toContain('-Xep:SystemOut:OFF');
+    expect(text).not.toContain('-Xep:NullAway:OFF');
   });
 
   it.each([

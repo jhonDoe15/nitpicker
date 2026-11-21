@@ -24,7 +24,7 @@ impl<'t> Flow<'_, 't> {
     /// Which parameter positions of the called method must not be given null.
     fn required(&self, call: &Call) -> Vec<bool> {
         let resolver = self.context.resolver;
-        let checked = annotated(&call.declaring);
+        let checked = annotated(self.context, &call.declaring);
         let mut required: Vec<bool> = (0..call.method.parameters.len())
             .map(|position| {
                 let plain = call.method.parameters[position].name() != "java.lang.Void";
@@ -78,7 +78,7 @@ impl<'t> Flow<'_, 't> {
                 let kind = resolver.type_of(*actual);
                 strip(*actual).kind() == "null_literal" || matches!(kind, Some(Type::Array(_)))
             };
-            let needed = if whole { annotated(&call.declaring) } else { required[slot] };
+            let needed = if whole { annotated(self.context, &call.declaring) } else { required[slot] };
             if !needed || !self.may_be_null(*actual) || !reported.insert((actual.id(), PASSED)) {
                 continue;
             }
@@ -104,7 +104,7 @@ impl<'t> Flow<'_, 't> {
                 let plain = !matches!(method.returns, Type::Primitive(_)) && method.returns.name() != "java.lang.Void";
                 let open = method.flags & flag::NULLABLE != 0 || !rows(models::ALWAYS_NULLABLE_RETURNS, &declaring.name, method).is_empty();
                 let modelled = !rows(models::NONNULL_RETURNS, &declaring.name, method).is_empty();
-                plain && (annotated(&declaring.name) || !whole) && (modelled || annotated(&declaring.name) && !open)
+                plain && (annotated(self.context, &declaring.name) || !whole) && (modelled || annotated(self.context, &declaring.name) && !open)
             }
             _ => false,
         }
@@ -141,7 +141,7 @@ impl<'t> Flow<'_, 't> {
             _ => None,
         };
         let Some((class, field)) = target else { return };
-        if !annotated(&class.name) || field.flags & flag::NULLABLE != 0 {
+        if !annotated(self.context, &class.name) || field.flags & flag::NULLABLE != 0 {
             return;
         }
         if self.may_be_null(right) && reported.insert((node.id(), STORED)) {
@@ -279,11 +279,11 @@ pub(super) fn overriding(context: &Context, method: Node) {
         return;
     }
     let Some((origin, own)) = hierarchy::declared_method(context, method) else { return };
-    if own.is_static || !annotated(&origin.name) {
+    if own.is_static || !annotated(context, &origin.name) {
         return;
     }
     let Some((declaring, above)) = hierarchy::super_method(context, origin, own) else { return };
-    if !annotated(&declaring.name) {
+    if !annotated(context, &declaring.name) {
         return;
     }
     let generic = if above.type_parameters.is_empty() { String::new() } else { format!("<{}>", above.type_parameters.join(",")) };
@@ -292,7 +292,7 @@ pub(super) fn overriding(context: &Context, method: Node) {
     let models = super::models::NONNULL_RETURNS;
     let nullable_above = (above.flags & flag::NULLABLE != 0 || !rows(super::models::ALWAYS_NULLABLE_RETURNS, &declaring.name, above).is_empty()) && rows(models, &declaring.name, above).is_empty();
     let nullable_own = (own.flags & flag::NULLABLE != 0 || !rows(super::models::ALWAYS_NULLABLE_RETURNS, &origin.name, own).is_empty()) && rows(models, &origin.name, own).is_empty();
-    let accepted = accepted(&declaring.name, above);
+    let accepted = accepted(context, &declaring.name, above);
     if !void && !nullable_above && nullable_own {
         if let Some(name) = method.child_by_field_name("name") {
             context.report("NullAway", method, name.start_byte(), &format!("method returns @Nullable, but superclass method {shown} returns @NonNull"));
@@ -319,8 +319,8 @@ pub(super) fn rows(table: &'static [super::models::Model], class: &str, method: 
 }
 
 /// The parameters of a method that accept null: its own marks where its class is checked, then the library models.
-pub(super) fn accepted(class: &str, method: &crate::java::types::model::Method) -> u64 {
-    let mut accepted = if annotated(class) { method.nullable_parameters } else { 0 };
+pub(super) fn accepted(context: &Context, class: &str, method: &crate::java::types::model::Method) -> u64 {
+    let mut accepted = if annotated(context, class) { method.nullable_parameters } else { 0 };
     for at in rows(super::models::EXPLICITLY_NULLABLE_PARAMETERS, class, method) {
         accepted |= 1 << at.min(63);
     }

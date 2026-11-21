@@ -12,6 +12,7 @@ mod hierarchy;
 mod javadoc;
 mod members;
 mod nullaway;
+pub use nullaway::unread_marks;
 mod operators;
 mod returns;
 mod names;

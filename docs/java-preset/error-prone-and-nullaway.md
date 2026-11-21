@@ -359,7 +359,9 @@ The findings are the same: file, line, column and message. The engine writes the
 in the report folder, in the shape of `errorprone.json`, and they are read together. A source set whose
 compile runs an annotation processor, or for which the project passes Error Prone options other than check
 levels, stays with Error Prone as a whole, and so does every source set with `NITPICKER_ENGINE=off`. NullAway
-alone stays with Error Prone for test sources (where it is off) and for a source set compiled with a module path.
+alone stays with Error Prone for test sources (where it is off), for a source set compiled with a module path,
+and for a source set that uses a null-marked library whose `@Nullable` is written on types, as Spring Framework
+7 does with JSpecify.
 
 ## Checks that are off
 

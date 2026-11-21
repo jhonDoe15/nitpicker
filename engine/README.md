@@ -58,7 +58,13 @@ engine gives: `ArrayRecordComponent`, `EmptyCatch`, `EnumOrdinal`, `EscapedEntit
 `JavaUtilDate`, `SuppressWarningsWithoutExplanation`, `SystemOut` and `TypeParameterUnusedInFormals`. Those
 checks get `-Xep:<Check>:OFF` in the arguments file of the Error Prone run, and the engine's findings are
 written as `errorprone-engine.json` next to `errorprone.json`, in the same shape, and join it when the reports
-are read. The engine skips the checks a run did not select.
+are read. The engine skips the checks a run did not select. A library class counts as checked by NullAway the way
+NullAway decides it: `@NullMarked` on the class, a class around it or its `package-info`, `@NullUnmarked` to
+switch it off again. A source set compiled with a module path keeps NullAway on Error Prone, because a module
+can carry `@NullMarked` too and the engine does not read that. The engine reads a class file's
+nullness from declaration annotations only; when NullAway relied on a checked class file that carries type
+annotations (JSpecify's `@Nullable` is written that way), the report says `nullAwayUnsure` and the run leaves
+NullAway to Error Prone for that source set.
 
 - The other ported checks stay with Error Prone: it ends their messages with a `Did you mean ...?` sentence
   made from its suggested fix, which the engine does not write yet.
