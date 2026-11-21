@@ -213,8 +213,8 @@ export function runSpotbugs({
   writeFileSync(auxClasspathFile, [...new Set(aux)].join('\n'));
   const declared = fieldOf(fieldOf(configs, 'spotbugs'), 'arguments');
   const added =
-    targets === undefined && declared === undefined
-      ? spotbugsEngineArguments({ module, reportDir, auxiliary: [...new Set(aux)] }, engine)
+    declared === undefined
+      ? spotbugsEngineArguments({ module, reportDir, auxiliary: [...new Set(auxiliary)] }, engine)
       : [];
   runJava({
     tool: 'SpotBugs',

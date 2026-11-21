@@ -7,13 +7,19 @@ import {
   withoutSpotbugsEngineReport,
 } from '../../builds/spotbugs/spotbugs-engine.mts';
 import { jdkHome } from '../programs/jdk-home.mts';
+import {
+  type GeneratedLocation,
+  PROCESSOR_OUTPUT,
+  buildDirectoryOf,
+  generatedRoots,
+} from '../generated/generated-roots.mts';
 
 export type SpotbugsEngineInput = {
   readonly compileClasspath: readonly string[];
   readonly environment: Readonly<Record<string, string | undefined>>;
 };
 
-type EngineModule = {
+type EngineModule = GeneratedLocation & {
   readonly sourceRoots: readonly string[];
   readonly outputDirectory: string;
   readonly compiler: unknown;
@@ -68,6 +74,13 @@ export function spotbugsEnginePlan({
 }: PlanOptions): SpotbugsEnginePlan | undefined {
   const roots = module.sourceRoots.filter((root) => existsSync(root));
   const sources = roots.flatMap((root) => javaSources(root).map((file) => ({ root, file })));
+  const generated = [
+    ...generatedRoots(module, module.sourceRoots),
+    path.join(buildDirectoryOf(module), PROCESSOR_OUTPUT),
+  ].filter((root) => existsSync(root));
+  if (generated.some((root) => javaSources(root).length > 0)) {
+    return undefined;
+  }
   const compiled = sources.every(({ root, file }) =>
     compiledFrom(root, file, module.outputDirectory),
   );

@@ -856,13 +856,12 @@ allprojects {
                         })
                     .findAll { it.exists() && !classDirs.contains(it) }
                 def targets = classDirs.collect { it.absolutePath }
-                def generatedJava = false
+                def processorOutput = tasks.named('compileJava').get().options
+                    .generatedSourceOutputDirectory.asFile.orNull
+                def generatedRoots = (mainSources.files.findAll { isGeneratedRoot(project, it) } +
+                    [processorOutput]).findAll { it != null && it.exists() }
+                def generatedJava = generatedRoots.any { root -> !fileTree(root) { include '**/*.java' }.isEmpty() }
                 if (!analyzeGenerated) {
-                    def processorOutput = tasks.named('compileJava').get().options
-                        .generatedSourceOutputDirectory.asFile.orNull
-                    def generatedRoots = (mainSources.files.findAll { isGeneratedRoot(project, it) } +
-                        [processorOutput]).findAll { it != null && it.exists() }
-                    generatedJava = generatedRoots.any { root -> !fileTree(root) { include '**/*.java' }.isEmpty() }
                     if (!generatedRoots.isEmpty()) {
                         def list = reportDir.get().file('spotbugs-targets.txt').asFile
                         def helper = new File(initScriptDir, 'generated/GeneratedClasses.java')

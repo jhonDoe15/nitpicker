@@ -29,6 +29,7 @@ function moduleIn(...compiled: readonly string[]) {
   return {
     root,
     module: {
+      basedir: root,
       sourceRoots: [source, path.join(root, 'missing')],
       outputDirectory: classes,
       compiler: {},
@@ -90,6 +91,17 @@ describe('spotbugsEnginePlan', () => {
         compiler: compilerOf({ proc: 'none', processorPaths: ['org.example:processor:1'] }),
       })?.processorPath,
     ).toStrictEqual([]);
+  });
+
+  it('runs the engine past an empty processor folder but not past generated sources', () => {
+    const options = { reportDir: '/r', compileClasspath: [], auxiliary: [], javaHome: '/jdk' };
+    const { root, module } = moduleIn('p/A', 'p/B');
+    const output = path.join(root, 'target/generated-sources/annotations');
+    mkdirSync(path.join(output, 'p'), { recursive: true });
+
+    expect(spotbugsEnginePlan({ ...options, module, compiler: compilerOf({}) })).toBeDefined();
+    writeFileSync(path.join(output, 'p/G.java'), '');
+    expect(spotbugsEnginePlan({ ...options, module, compiler: compilerOf({}) })).toBeUndefined();
   });
 
   it('does not start the engine without an environment', () => {
