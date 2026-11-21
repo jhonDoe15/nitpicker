@@ -11,7 +11,6 @@ import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mts';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
 import type { Analyzer } from '../../shared/values/analyzers.mts';
 import { fieldOf, listOf, parseJson, textOf } from '../../shared/values/readers.mts';
-import { acceptedDigest } from './test-support/accepted-digest.mts';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
@@ -268,30 +267,16 @@ describe('nitpicker config file', () => {
 
 Quality gate summary
 ✓ No new enforceable violations
-Policy changed in this change (nitpicker.config.json, head against base):
-  base: not set -> "does-not-exist"
 Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     );
   });
   it('skips disabled analyzers, reports the override, and changes the policy hash', () => {
-    const acceptedPolicyHeading =
-      'Policy changed in this change (nitpicker.config.json, head against base; ' +
-      'loosening accepted):';
     const analyzers = [fakeAnalyzer(), fakeAnalyzer('second-analyzer')];
     const plain = runWithConfig({}, { analyzers });
     const disabled = runWithConfig(
       { disable: ['second-analyzer'] },
-      {
-        analyzers,
-        extraArguments: [
-          '--base',
-          'HEAD',
-          `--accept-policy-change=${acceptedDigest(['analyzer disabled: second-analyzer'], {
-            'nitpicker.config.json': JSON.stringify({ disable: ['second-analyzer'] }),
-          })}`,
-        ],
-      },
+      { analyzers, extraArguments: ['--base', 'HEAD'] },
     );
 
     expect(toolNames(plain.summary)).toEqual(['fake-quality-analyzer', 'second-analyzer']);
@@ -314,9 +299,6 @@ Tool errors: 0
 Config overrides:
   disable: ["second-analyzer"]
 
-${acceptedPolicyHeading}
-  analyzer disabled: second-analyzer
-
 Per-tool counts:
 1 analyzer ran clean
 `),
@@ -330,12 +312,9 @@ Per-tool counts:
     const analyzers = [fakeAnalyzer(), dependent, fakeAnalyzer('other-analyzer')];
 
     const config = { disable: ['fake-quality-analyzer'] };
-    const digest = acceptedDigest(['analyzer disabled: fake-quality-analyzer'], {
-      'nitpicker.config.json': JSON.stringify(config),
-    });
     const { exitCode, output, summary } = runWithConfig(config, {
       analyzers,
-      extraArguments: ['--base', 'HEAD', `--accept-policy-change=${digest}`],
+      extraArguments: ['--base', 'HEAD'],
     });
 
     expect(exitCode).toBe(0);
@@ -430,8 +409,6 @@ Quality gate summary
 ✖ 1 new enforceable violation
   custom/text-file: Text file new.txt
     src/main/new.txt
-Policy changed in this change (nitpicker.config.json, head against base):
-  analyzer added: custom
 Full diagnostics: ${outputRoot}/report.txt
 `);
     });

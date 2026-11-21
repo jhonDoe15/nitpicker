@@ -5,7 +5,7 @@ import {
   credentialLiterals as untypedCredentialLiterals,
   hardcodedSecrets as untypedHardcodedSecrets,
 } from './hardcoded-secrets.mts';
-import { SECRET_VALUE_CASES } from '../../../../../../../shared/naming/test-support/secret-value-cases.mjs';
+import { SECRET_VALUE_CASES } from '../../../../../../../shared/naming/test-support/secret-value-cases.mts';
 
 const credentialLiterals: Check<Ruled> = untypedCredentialLiterals;
 const hardcodedSecrets: Check<Ruled> = untypedHardcodedSecrets;

@@ -5,10 +5,10 @@ import {
 import {
   projectFilePaths as untypedProjectFilePaths,
   projectFilesUnder as untypedProjectFilesUnder,
-} from '../../../../../shared/project-files/project-files.mjs';
-import { editDistance as untypedEditDistance } from '../../../../../shared/messages/closest-match.mjs';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mjs';
-import { prefixesOf as untypedPrefixesOf } from '../../../../../shared/paths/prefixes.mjs';
+} from '../../../../../shared/project-files/project-files.mts';
+import { editDistance as untypedEditDistance } from '../../../../../shared/messages/closest-match.mts';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mts';
+import { prefixesOf as untypedPrefixesOf } from '../../../../../shared/paths/prefixes.mts';
 
 export const escapeRegExp: (text: string) => string = untypedEscapeRegExp;
 export const largest: (values: readonly number[]) => number = untypedLargest;

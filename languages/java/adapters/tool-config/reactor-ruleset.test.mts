@@ -12,10 +12,10 @@ import {
 import {
   guidePages as untypedGuidePages,
   guideText as untypedGuideText,
-} from '../../../../shared/reference/build/guide-pages.mjs';
+} from '../../../../shared/reference/build/guide-pages.mts';
 import { textsOf } from '../../../../shared/values/readers.mts';
 import { ALLOWED_FORM_FIRST } from '../spring/test-support/allowed-form.mts';
-import { byText as untypedByText } from '../../../../shared/text-order/by-text.mjs';
+import { byText as untypedByText } from '../../../../shared/text-order/by-text.mts';
 
 const BLOCKING_REPOSITORIES: ReadonlySet<string> = untypedBlockingRepositories;
 const EVERY: '*' = untypedEvery;

@@ -1,6 +1,6 @@
 import path from 'node:path';
-import { editDistance } from '../../../shared/messages/closest-match.mjs';
-import { globMatcher } from '../../../shared/paths/glob.mjs';
+import { editDistance } from '../../../shared/messages/closest-match.mts';
+import { globMatcher } from '../../../shared/paths/glob.mts';
 import { normalizeProjectPath } from '../../configuration/layers/settings.mts';
 import { projectNames } from './project-names.mts';
 import type { PlanProject } from '../project-types.mts';

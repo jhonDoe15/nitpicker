@@ -1,5 +1,5 @@
 import { appendAll } from '../../../../shared/lists/lists.mts';
-import { globMatcher as untypedGlobMatcher } from '../../../../shared/paths/glob.mjs';
+import { globMatcher as untypedGlobMatcher } from '../../../../shared/paths/glob.mts';
 import { fieldOf, fieldsOf, isPlainObject, textsOf } from '../../../../shared/values/readers.mts';
 
 const globMatcher: (glob: string) => { test: (file: string) => boolean } = untypedGlobMatcher;

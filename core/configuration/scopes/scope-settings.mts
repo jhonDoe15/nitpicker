@@ -1,9 +1,9 @@
-import { configError, validateFileGlobs, validateStringArray } from '../../../shared/config.mjs';
+import { configError, validateFileGlobs, validateStringArray } from '../../../shared/config.mts';
 import { isPlainObject } from '../views/config-views.mts';
 import { isNonEmptyString } from '../views/validation-views.mts';
 import { fieldOf, textsOf } from '../../../shared/values/readers.mts';
-import { hasSpecificText } from '../../../shared/rules/console/console-messages.mjs';
-import { suggestionOrAllowed } from '../../../shared/messages/closest-match.mjs';
+import { hasSpecificText } from '../../../shared/rules/console/console-messages.mts';
+import { suggestionOrAllowed } from '../../../shared/messages/closest-match.mts';
 
 export const TEST_CONSOLE_KEYS = ['allow'];
 

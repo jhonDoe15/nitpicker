@@ -4,8 +4,8 @@ import {
   SAMPLE_LIMIT,
   testAndSupportGlobs,
 } from './measures/assertion-helpers.mts';
-import { followedHelpers } from '../../../shared/conventions/detect.mjs';
-import { COLUMNS } from '../../../shared/conventions/settings.mjs';
+import { followedHelpers } from '../../../shared/conventions/detect.mts';
+import { COLUMNS } from '../../../shared/conventions/settings.mts';
 import { indentationStep } from './measures/java-layout.mts';
 import { lineLength } from './measures/kotlin-line-length.mts';
 import { trailingCommas, wildcardImports } from './measures/kotlin-measures.mts';

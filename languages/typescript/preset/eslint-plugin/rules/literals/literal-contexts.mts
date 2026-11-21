@@ -3,7 +3,7 @@ import {
   DISCRIMINANT_KEYS as untypedDiscriminantKeys,
   ESLINT_SEVERITIES as untypedSeverities,
   RULE_KEY_PATTERN as untypedRuleKeyPattern,
-} from '../../../../../../shared/literals/repeated-literal-exemptions.mjs';
+} from '../../../../../../shared/literals/repeated-literal-exemptions.mts';
 import { nameOf } from '../typed/node-views.mts';
 
 const DISCRIMINANT_KEYS: readonly string[] = untypedDiscriminantKeys;

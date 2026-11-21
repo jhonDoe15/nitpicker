@@ -4,7 +4,7 @@ import type { ParsedReport, TrackedFinding } from '../model/finding-types.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting as untypedWithTroubleshooting,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 
 const withTroubleshooting: (message: string, anchor: string) => string = untypedWithTroubleshooting;
 

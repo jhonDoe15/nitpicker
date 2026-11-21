@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
 import type { Inspection, MonorepoPlan, ProjectEntry, WorkspaceMember } from '../project-types.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import { fieldOf } from '../../../shared/values/readers.mts';

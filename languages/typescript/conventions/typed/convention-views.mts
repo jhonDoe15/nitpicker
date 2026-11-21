@@ -6,44 +6,16 @@ import {
   prettierConventionOptions as untypedPrettierConventionOptions,
   PRETTIER_CONVENTIONS as UNTYPED_PRETTIER_CONVENTIONS,
 } from '../prettier-conventions.mts';
-import {
-  conventionChoices as untypedConventionChoices,
-  detectConventions as untypedDetectConventions,
-} from '../../../../shared/conventions/detect.mjs';
+import { detectConventions } from '../../../../shared/conventions/detect.mts';
+import type {
+  Convention,
+  DetectedEntry,
+} from '../../../../shared/conventions/convention-types.mts';
 
-export type ConventionDefinition = {
-  readonly id: string;
-  measure?(text: string | undefined, file?: string): unknown;
-};
-
-export type Detected = {
-  readonly choice: unknown;
-  readonly source: string;
-  readonly counts: Readonly<Record<string, number>>;
-  readonly files: number | undefined;
-};
-
-type ConventionSource = {
-  readonly paths: (options: { readonly unreadable?: true }) => readonly string[];
-  readonly readMany: (paths: readonly string[]) => ReadonlyMap<string, string | undefined>;
-};
-
-export type DetectRequest = {
-  readonly definitions: readonly ConventionDefinition[];
-  readonly source: ConventionSource;
-  readonly pinned?: Readonly<Record<string, unknown>>;
-  readonly accepts?: (...args: never[]) => boolean;
-};
-
-const detectConventions: (request: DetectRequest) => Readonly<Record<string, Detected>> =
-  untypedDetectConventions;
-
-export const conventionChoices: (
-  detected: Readonly<Record<string, Detected>>,
-  definitions: readonly (ConventionDefinition & { readonly fallback?: unknown })[],
-) => Readonly<Record<string, unknown>> = untypedConventionChoices;
-
-export function detectedFor(request: DetectRequest, id: string): Detected {
+export function detectedFor(
+  request: Parameters<typeof detectConventions>[0],
+  id: string,
+): DetectedEntry {
   const detected = detectConventions(request)[id];
   if (detected === undefined) {
     throw new Error(`No detection for ${id}`);
@@ -52,14 +24,14 @@ export function detectedFor(request: DetectRequest, id: string): Detected {
 }
 
 export function measureOf(
-  definitions: readonly ConventionDefinition[],
+  definitions: readonly Convention[],
   id: string,
 ): (text: string | undefined, file?: string) => unknown {
   const definition = definitions.find((found) => found.id === id);
   if (definition?.measure === undefined) {
     throw new Error(`No convention ${id}`);
   }
-  return (text, file) => definition.measure?.(text, file);
+  return (text, file = '') => definition.measure?.(text, file);
 }
 
 export const layeredPrettierOptions: (
@@ -79,5 +51,5 @@ export const prettierConventionOptions: (
   conventions: Readonly<Record<string, string>>,
 ) => Prettier.Options = untypedPrettierConventionOptions;
 
-export const PRETTIER_CONVENTIONS: readonly (ConventionDefinition & ChoiceConvention)[] =
+export const PRETTIER_CONVENTIONS: readonly (Convention & ChoiceConvention)[] =
   UNTYPED_PRETTIER_CONVENTIONS;

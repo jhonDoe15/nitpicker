@@ -1,9 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  normalizeUri as untypedNormalizeUri,
-  prepareSarif as untypedPrepareSarif,
-} from '../../../../../../shared/ingest/sarif.mjs';
+import { normalizeUri, prepareSarif } from '../../../../../../shared/ingest/sarif.mts';
+import { escapeRegExp } from '../../../../../../shared/paths/glob.mts';
 import {
   fieldOf,
   isPlainObject,
@@ -18,13 +16,6 @@ type SarifRoots = {
   readonly projectRoot: string;
 };
 type ProcessingOptions = SarifRoots & { readonly loggedCrashFiles?: ReadonlySet<string> };
-type Prepared = { readonly runs: readonly { readonly results: readonly unknown[] }[] };
-
-const normalizeUri: (uri: string) => string | undefined = untypedNormalizeUri;
-const prepareSarif: (
-  log: { readonly runs: readonly { readonly results: readonly Fields[] }[] },
-  options: SarifRoots & { readonly identityKey: () => string },
-) => Prepared = untypedPrepareSarif;
 
 type PmdProcessingError = {
   readonly tool: string;
@@ -43,8 +34,27 @@ function firstLine(text: string): string {
     .split(/\r?\n/u)
     .map((candidate) => candidate.trim())
     .find((candidate) => candidate !== '');
-  const cause = line ?? 'no message';
+  return line ?? 'no message';
+}
+
+function shortened(cause: string): string {
   return cause.length > MAX_CAUSE_LENGTH ? `${cause.slice(0, MAX_CAUSE_LENGTH)}...` : cause;
+}
+
+function rootPrefix(root: string): RegExp {
+  const folders = root
+    .split(/[/\\]/u)
+    .map(escapeRegExp)
+    .join(String.raw`[/\\]`);
+  return new RegExp(String.raw`(?<![\w./\\-])${folders}[/\\]`, 'gu');
+}
+
+function withoutRoots(cause: string, roots: readonly string[]): string {
+  return [...new Set(roots)]
+    .filter((root) => root.length > 1)
+    .toSorted((left, right) => right.length - left.length)
+    .map(rootPrefix)
+    .reduce((text, prefix) => text.replaceAll(prefix, ''), cause);
 }
 
 function notificationsOf(log: unknown): readonly unknown[] {
@@ -106,15 +116,17 @@ export function pmdProcessingErrors(
   if (notifications.length === 0) {
     return [];
   }
-  const results =
-    prepareSarif(
-      { runs: [{ results: notifications.map(asResult) }] },
-      { roots, sourceRoots, projectRoot, identityKey: () => '' },
-    ).runs[0]?.results ?? [];
+  const prepared = prepareSarif(
+    { runs: [{ results: notifications.map(asResult) }] },
+    { roots, sourceRoots, projectRoot, identityKey: () => '' },
+  );
+  const results = listOf(fieldOf(listOf(prepared['runs'])[0], 'results'));
   const identities = new Set<string>();
   return notifications.flatMap((notification, index) => {
     const filePath = relativePath(results[index]);
-    const cause = firstLine(messageText(notification));
+    const cause = shortened(
+      withoutRoots(firstLine(messageText(notification)), [...roots, projectRoot]),
+    );
     const identity = `${RULE}:${filePath}:${cause.replaceAll(/\d+/gu, '#')}`;
     if (identities.has(identity)) {
       return [];

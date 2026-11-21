@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { exceptionHint as untypedExceptionHint } from '../../../../shared/rules/exceptions.mjs';
+import { exceptionHint as untypedExceptionHint } from '../../../../shared/rules/exceptions.mts';
 import { readKotlinClassLimitFindings } from './kotlin-class-limits.mts';
 
 type TypeEntry = {

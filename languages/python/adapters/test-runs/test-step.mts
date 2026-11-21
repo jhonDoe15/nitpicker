@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { TESTS_NOT_RUN_RULE } from '../../../../shared/rules/finding-helpers.mjs';
+import { TESTS_NOT_RUN_RULE } from '../../../../shared/rules/finding-parts.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { failure, run } from '../execution/python-process.mts';
 import {

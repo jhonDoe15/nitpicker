@@ -139,6 +139,7 @@ enum Shape {
     Unknown,
 }
 
+#[derive(Clone)]
 pub struct Call {
     /// Called on a value of a raw type: member types are erased.
     pub raw: bool,
@@ -493,7 +494,7 @@ impl<'a> Resolver<'a> {
             if listed.iter().any(|(start, known, _)| known == name && *start < usage.start_byte() && !self.pattern_visible(*start, usage)) {
                 return None;
             }
-            return declared.find_map(|(_, _, kind)| kind.clone());
+            return declared.last().and_then(|(_, _, kind)| kind.clone());
         }
         None
     }
@@ -685,12 +686,23 @@ impl<'a> Resolver<'a> {
                     "ternary_expression" if ["consequence", "alternative"].iter().any(|branch| {
                         argument.field(*branch).is_some_and(|part| FUNCTIONS.contains(&unwrap(part).kind()))
                     }) => Shape::Function(Vec::new(), true, true, false),
-                    _ if self.is_busy(argument) => Shape::Unknown,
+                    _ if self.is_busy(argument) => self.erased_result(argument).map_or(Shape::Unknown, Shape::Typed),
                     _ if nested => self.settled(argument).map_or(Shape::Unknown, Shape::Typed),
                     _ => self.type_of(argument).map_or(Shape::Unknown, Shape::Typed),
                 }
             })
             .collect()
+    }
+
+    /// The class a call gives whatever its type variables stand for: enough to pick among overloads while the
+    /// type arguments still wait for the context.
+    fn erased_result(&self, argument: Node) -> Option<Type> {
+        if argument.kind() != "method_invocation" {
+            return None;
+        }
+        let resolved = self.resolve_call(argument)?;
+        let named = matches!(&resolved.method.generic_returns, Type::Class(name, _) if name != "?");
+        named.then(|| resolved.method.returns.clone())
     }
 
     /// Counts one step of work and tells whether the question in progress has used up its share.
@@ -701,6 +713,22 @@ impl<'a> Resolver<'a> {
 
     /// The method a call resolves to, when name, receiver and argument types leave one candidate.
     pub fn resolve_call(&self, call: Node) -> Option<Call> {
+        if let Some(known) = self.calls.borrow().get(&call.id()) {
+            return known.as_deref().cloned();
+        }
+        let outside = self.depth.get() == 0 && self.resolving.borrow().is_empty() && self.busy.borrow().is_empty();
+        if outside {
+            self.work.set(0);
+        }
+        let skipped = self.skipped.get();
+        let found = self.resolve_call_now(call);
+        if outside && self.skipped.get() == skipped && self.work.get() <= WORK_LIMIT {
+            self.calls.borrow_mut().insert(call.id(), found.clone().map(std::rc::Rc::new));
+        }
+        found
+    }
+
+    fn resolve_call_now(&self, call: Node) -> Option<Call> {
         if self.spent() {
             return None;
         }
@@ -818,6 +846,28 @@ impl<'a> Resolver<'a> {
         Some((resolved, formals))
     }
 
+    /// What a call can throw by the `throws` clause of its method or constructor, erased; a type variable of the
+    /// method stands for what this call makes of it, or for itself when the call does not say.
+    pub fn call_throws(&self, call: Node) -> Option<Vec<Type>> {
+        let (resolved, _) = self.call_formals(call)?;
+        if resolved.method.throws.iter().all(|thrown| matches!(thrown, Type::Class(..))) {
+            return Some(resolved.method.throws.iter().map(Type::erased).collect());
+        }
+        let map = if resolved.raw { HashMap::new() } else { self.call_map(&resolved, call, true) };
+        let method = &resolved.method;
+        let listed = method.throws.iter().map(|thrown| {
+            let fitted = thrown.substitute(&map);
+            // A type variable that stayed at its bound was not decided by the arguments we can read: a lambda body decides it.
+            let own = matches!(thrown, Type::Variable(name) if method.type_parameters.contains(name));
+            let bound = method.type_parameters.iter().position(|name| *name == thrown.name()).and_then(|at| method.type_bounds.get(at));
+            if own && (call.child_by_field_name("type_arguments").is_none() && Some(&fitted.erased()) == bound) {
+                return None;
+            }
+            Some(if matches!(fitted, Type::Class(..)) { fitted.erased() } else { fitted })
+        });
+        listed.collect()
+    }
+
     fn select(&self, owner: Type, candidates: &[(&ClassInfo, &Method)], shapes: &[Shape]) -> Option<Call> {
         let visible: Vec<(&ClassInfo, &Method)> = candidates
             .iter()
@@ -874,7 +924,19 @@ impl<'a> Resolver<'a> {
                 }
                 several => {
                     let exact = typed.as_ref().and_then(|actual| several.iter().find(|(_, method)| method.parameters == *actual));
-                    exact.or_else(|| several.iter().find(|(_, method)| several.iter().all(|(_, other)| narrower(method, other)))).copied()
+                    let spread = |method: &Method, other: &Method| {
+                        let width = method.parameters.len().max(other.parameters.len());
+                        let at = |method: &Method, place: usize| match method.parameters.get(place.min(method.parameters.len() - 1)) {
+                            Some(Type::Array(element)) if place + 1 >= method.parameters.len() => Some((**element).clone()),
+                            other => other.cloned(),
+                        };
+                        (0..width).all(|place| matches!((at(method, place), at(other, place)), (Some(a), Some(b)) if self.assignable(&a, &b, true)))
+                    };
+                    let all_spread = phase == 2 && several.iter().all(|(_, method)| method.varargs && !method.parameters.is_empty());
+                    exact
+                        .or_else(|| several.iter().find(|(_, method)| several.iter().all(|(_, other)| narrower(method, other))))
+                        .or_else(|| several.iter().filter(|_| all_spread).find(|(_, method)| several.iter().all(|(_, other)| spread(method, other))))
+                        .copied()
                 }
             };
             return chosen.map(|(class, method)| Call { raw: false, receiver: owner, declaring: class.name.clone(), method: (*method).clone() });
@@ -884,6 +946,22 @@ impl<'a> Resolver<'a> {
 
     /// The constructor a `new` expression calls. With a diamond, the class's type parameters are inferred like a method's.
     fn resolve_constructor(&self, creation: Node) -> Option<Call> {
+        if let Some(known) = self.calls.borrow().get(&creation.id()) {
+            return known.as_deref().cloned();
+        }
+        let outside = self.depth.get() == 0 && self.resolving.borrow().is_empty() && self.busy.borrow().is_empty();
+        if outside {
+            self.work.set(0);
+        }
+        let skipped = self.skipped.get();
+        let found = self.resolve_constructor_now(creation);
+        if outside && self.skipped.get() == skipped && self.work.get() <= WORK_LIMIT {
+            self.calls.borrow_mut().insert(creation.id(), found.clone().map(std::rc::Rc::new));
+        }
+        found
+    }
+
+    fn resolve_constructor_now(&self, creation: Node) -> Option<Call> {
         if self.spent() {
             return None;
         }
@@ -906,6 +984,8 @@ impl<'a> Resolver<'a> {
                 varargs: false,
                 flags: 0,
                 throws: Vec::new(),
+                names: Vec::new(),
+                detail: Default::default(),
             };
             return Some(Call { raw: false, receiver: owner, declaring: info.name.clone(), method });
         }
@@ -1050,14 +1130,20 @@ impl<'a> Resolver<'a> {
         }
         let parts = children(reference);
         let (Some(qualifier), Some(name)) = (parts.first(), parts.last().map(|name| self.file.text_of(*name))) else { return Vec::new() };
-        if name == "new" || matches!(qualifier.kind(), "super" | "this") {
+        if name == "new" {
             return Vec::new();
         }
-        let (owner, value) = match self.receiver(*qualifier) {
+        let own = || enclosing_type(self.file, self.scope, reference);
+        let around = match qualifier.kind() {
+            "this" => own().map(|own| Receiver::Value(self.own_type(&own))),
+            "super" => own().and_then(|own| self.type_of_super(&own)).map(Receiver::Value),
+            _ => self.receiver(*qualifier),
+        };
+        let (owner, value) = match around {
             Some(Receiver::Value(kind)) => (kind, true),
             Some(Receiver::Static(owner)) => (Type::class(&owner), false),
             None => match self.type_node(*qualifier) {
-                Some(kind) => (kind, false),
+                Some(kind) => (kind.erased(), false),
                 None => return Vec::new(),
             },
         };
@@ -1066,10 +1152,7 @@ impl<'a> Resolver<'a> {
             if method.varargs {
                 return Vec::new();
             }
-            counts.push(method.parameters.len());
-            if !value {
-                counts.push(method.parameters.len() + 1);
-            }
+            counts.push(method.parameters.len() + usize::from(!value && !method.is_static));
         }
         counts
     }
@@ -1097,7 +1180,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// What the type variables of the called method and of its class stand for at this call.
-    fn call_map(&self, resolved: &Call, call: Node, functions: bool) -> HashMap<String, Type> {
+    pub fn call_map(&self, resolved: &Call, call: Node, functions: bool) -> HashMap<String, Type> {
         let turns = *self.mapping.borrow().get(&call.id()).unwrap_or(&0u8);
         self.mapping.borrow_mut().insert(call.id(), turns + 1);
         let map = self.fill_map(resolved, call, functions, turns > 0);
@@ -1123,6 +1206,11 @@ impl<'a> Resolver<'a> {
     fn fill_map(&self, resolved: &Call, call: Node, functions: bool, nested: bool) -> HashMap<String, Type> {
         let mut map = self.index.member_map(&resolved.receiver, &resolved.declaring);
         let method = &resolved.method;
+        for (name, kind) in self.outer_map(call, &resolved.declaring) {
+            if !method.type_parameters.contains(&name) {
+                map.insert(name, kind);
+            }
+        }
         if method.type_parameters.is_empty() {
             return map;
         }
@@ -1215,7 +1303,9 @@ impl<'a> Resolver<'a> {
                 None => wait(&returned, &mut pending),
             }
         }
-        if inferred.len() < method.type_parameters.len() && self.busy.borrow_mut().insert(call.id()) {
+        // An argument whose own type waits for its context can leave a variable at `Object`: the context then knows better.
+        let loose = |kind: &Type| matches!(kind, Type::Class(name, _) if name == OBJECT);
+        if (inferred.len() < method.type_parameters.len() || inferred.values().any(loose)) && self.busy.borrow_mut().insert(call.id()) {
             if let Some(wanted) = self.target(call, true) {
                 let mut wider = HashMap::new();
                 let made = match self.index.get(&resolved.declaring) {
@@ -1234,7 +1324,9 @@ impl<'a> Resolver<'a> {
                 for (name, kind) in wider {
                     let bound = method.type_parameters.iter().position(|known| *known == name).and_then(|at| method.type_bounds.get(at));
                     if bound.is_none_or(|bound| self.assignable(&kind, bound, true)) {
-                        inferred.entry(name).or_insert(kind);
+                        if inferred.get(&name).is_none_or(|known| loose(known) && matches!(kind, Type::Class(..))) {
+                            inferred.insert(name, kind);
+                        }
                     }
                 }
             }
@@ -1246,6 +1338,34 @@ impl<'a> Resolver<'a> {
             }
         }
         map.extend(inferred);
+        map
+    }
+
+    /// What the type parameters of the classes around an inner class stand for at a place in the file: a class
+    /// there that extends the outer class sees the inner class with the type arguments it gives to the outer one,
+    /// `Base<String>.Inner` for `Inner` written in a class that extends `Base<String>`.
+    fn outer_map(&self, at: Node, declaring: &str) -> HashMap<String, Type> {
+        let mut map = HashMap::new();
+        let mut hidden: Vec<String> = Vec::new();
+        let mut inner = declaring;
+        while let Some((outer, _)) = inner.rsplit_once('.') {
+            let Some(info) = self.index.get(inner) else { break };
+            if info.is_interface || info.flags & (super::model::flag::STATIC | super::model::flag::ENUM | super::model::flag::RECORD) != 0 {
+                break;
+            }
+            hidden.extend(info.type_parameters.iter().map(|(name, _)| name.clone()));
+            if self.index.generic(outer) {
+                let around = enclosing_types(self.scope, at).into_iter().find(|own| own != outer && self.index.is_subtype(own, outer));
+                if let Some(own) = around {
+                    for (name, kind) in self.index.member_map(&self.own_type(&own), outer) {
+                        if !hidden.contains(&name) && !kind.mentions_variable() {
+                            map.entry(name).or_insert(kind);
+                        }
+                    }
+                }
+            }
+            inner = outer;
+        }
         map
     }
 
@@ -1304,6 +1424,14 @@ impl<'a> Resolver<'a> {
             }
             _ => None,
         }
+    }
+
+    /// The type the place of an expression asks for, when a declaration, a call, a return or a lambda gives one.
+    pub fn expected(&self, expression: Node) -> Option<Type> {
+        if self.depth.get() == 0 {
+            self.work.set(0);
+        }
+        self.target(expression, true)
     }
 
     /// The type the context expects from an expression: a declared type, a parameter, a return type.

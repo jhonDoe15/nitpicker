@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ROUND_TRIP_RULE, roundTripFindings } from './round-trips.mts';
-import { roundTripMessage as untypedRoundTripMessage } from '../../../../../shared/rules/round-trips/round-trips.mjs';
+import { roundTripMessage as untypedRoundTripMessage } from '../../../../../shared/rules/round-trips/round-trips.mts';
 import type { TripSource } from './trip-types.mts';
 import { callUntyped } from '../../typed/java-values.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';

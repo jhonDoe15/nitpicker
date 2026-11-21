@@ -3,7 +3,7 @@ import {
   blankLiterals as blankLiteralsUntyped,
   pathInside as pathInsideUntyped,
 } from '../review-rules/java-sources.mts';
-import { escapeRegExp as escapeRegExpUntyped } from '../../../../shared/paths/glob.mjs';
+import { escapeRegExp as escapeRegExpUntyped } from '../../../../shared/paths/glob.mts';
 import type { ClassGraph } from '../domain/domain-types.mts';
 
 const ENTITY = 'entity';

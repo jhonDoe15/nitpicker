@@ -1,4 +1,4 @@
-import { type XmlElement, childAt, childrenAt } from '../../../../shared/values/xml.mts';
+import { type XmlElement, childAt, childrenAt } from '../../../../shared/ingest/report-records.mts';
 
 export function textAt(
   element: XmlElement | undefined,

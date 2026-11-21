@@ -1,5 +1,5 @@
-import { formatAdvice as untypedFormatAdvice } from '../../../../../shared/messages/format/format-advice.mjs';
-import { ignoredConfigNotice as untypedIgnoredConfigNotice } from '../../../../../shared/conventions/tool-precedence.mjs';
+import { formatAdvice as untypedFormatAdvice } from '../../../../../shared/messages/format/format-advice.mts';
+import { ignoredConfigNotice as untypedIgnoredConfigNotice } from '../../../../../shared/conventions/tool-precedence.mts';
 import {
   KOTLIN_INDENTATION,
   KOTLIN_LINE_LENGTH,

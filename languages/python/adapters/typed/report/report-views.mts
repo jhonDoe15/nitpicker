@@ -10,10 +10,10 @@ import { readDuplicateFindings as untypedDuplicates } from '../../analysis/pytho
 import {
   ingestSarif as untypedIngestSarif,
   prepareSarif as untypedPrepareSarif,
-} from '../../../../../shared/ingest/sarif.mjs';
-import { readStructureFunctions as untypedStructureFunctions } from '../../../../../shared/ingest/structure-report.mjs';
-import { withUtf16Columns as untypedUtf16Columns } from '../../../../../shared/ingest/columns/utf16-columns.mjs';
-import { moduleImportsSection as untypedModuleImports } from '../../../../../shared/history/co-change/dependencies/module-imports.mjs';
+} from '../../../../../shared/ingest/sarif.mts';
+import { readStructureFunctions as untypedStructureFunctions } from '../../../../../shared/ingest/structure-report.mts';
+import { withUtf16Columns as untypedUtf16Columns } from '../../../../../shared/ingest/columns/utf16-columns.mts';
+import { moduleImportsSection as untypedModuleImports } from '../../../../../shared/history/co-change/dependencies/module-imports.mts';
 import { applyRuleHints as untypedRuleHints } from '../../../rules/rule-hints.mts';
 import { detectLibraries as untypedLibraries } from '../../../rules/libraries/project-libraries.mts';
 import { pytestStyle as untypedPytestStyle } from '../../../rules/libraries/pytest-style.mts';

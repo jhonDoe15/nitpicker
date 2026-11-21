@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
+import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mts';
 import { readDuplicateFindings, runJavaDuplicates } from '../metrics/java-duplicates.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../typed/java-values.mts';
 import { readKotlinDuplicateFindings, runKotlinDuplicates } from '../kotlin/kotlin-duplicates.mts';

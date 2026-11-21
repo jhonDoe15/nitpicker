@@ -1,5 +1,5 @@
 import { MessagePort, parentPort, workerData } from 'node:worker_threads';
-import { counterexample, decide } from '../decide.mjs';
+import { counterexample, decide } from '../decide.mts';
 
 type DecideArguments = Parameters<typeof decide>;
 

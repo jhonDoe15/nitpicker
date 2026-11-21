@@ -1,6 +1,6 @@
 import type TypeScript from 'typescript';
 import { lazyTypeScriptApi } from '../typed/lazy-typescript-api.mts';
-import { appendAll } from '../../../../shared/lists/lists.mts';
+import { expandsFully } from '../../../../shared/traversal.mts';
 
 type Edit = { readonly start: number; readonly end: number };
 type Check = (source: string, edit: Edit) => boolean;
@@ -69,15 +69,7 @@ function pureParts(
 }
 
 function isPureValue(ts: Api, node: TypeScript.Expression): boolean {
-  const pending = [node];
-  for (const current of pending) {
-    const parts = pureParts(ts, current);
-    if (parts === undefined) {
-      return false;
-    }
-    appendAll(pending, parts);
-  }
-  return true;
+  return expandsFully(node, (current) => pureParts(ts, current));
 }
 
 function isPureMember(ts: Api, member: TypeScript.ClassElement): boolean {
@@ -85,9 +77,11 @@ function isPureMember(ts: Api, member: TypeScript.ClassElement): boolean {
   if (decorated) {
     return false;
   }
-  return !ts.isPropertyDeclaration(member) || member.initializer === undefined
-    ? true
-    : isPureValue(ts, member.initializer);
+  return (
+    !ts.isPropertyDeclaration(member) ||
+    member.initializer === undefined ||
+    isPureValue(ts, member.initializer)
+  );
 }
 
 function removesPureMembers(source: string, edit: Edit): boolean {

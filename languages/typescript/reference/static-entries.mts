@@ -1,5 +1,9 @@
 import dependencyCruiser from '../preset/defaults/dependency-cruiser.config.mts';
-import { ruleEntry, wordsOfKebab, type RuleEntry } from './typed/entry-types.mts';
+import { wordsOfKebab } from '../../../shared/reference/build/words.mts';
+import { ruleEntry } from '../../../shared/reference/entry.mts';
+import type { EntryFields, RuleEntry } from '../../../shared/reference/typed/entry-types.mts';
+
+type OtherRow = Omit<EntryFields, 'page' | 'analyzers'>;
 
 const GUIDE = 'docs/typescript-strict-preset.md';
 const TYPESCRIPT_AND_JAVASCRIPT = ['typescript', 'javascript'];
@@ -27,7 +31,10 @@ function cruiserEntry({
   readonly name: string;
   readonly comment?: string | undefined;
 }): RuleEntry {
-  const [summary, why, allowed] = CRUISER_NOTES[name] ?? [wordsOfKebab(name), CRUISER_WHY, comment];
+  const notes = CRUISER_NOTES[name];
+  const summary = notes?.[0] ?? wordsOfKebab(name);
+  const why = notes?.[1] ?? CRUISER_WHY;
+  const allowed = notes === undefined ? comment : notes[2];
   const outsideRoots = name === 'no-import-outside-roots';
   return ruleEntry({
     tool: 'dependency-architecture',
@@ -58,9 +65,7 @@ const IMPLICIT_ANY_CODES: readonly (readonly [string, string])[] = [
   ['TS7053', 'An element access that is implicitly `any`, since the key cannot index the type.'],
 ];
 
-function implicitAnyRow([rule, summary]: readonly [string, string]): Readonly<
-  Record<string, unknown>
-> & { readonly tool: string; readonly rule: string } {
+function implicitAnyRow([rule, summary]: readonly [string, string]): OtherRow {
   return {
     tool: TYPECHECK_TOOL,
     rule,
@@ -71,7 +76,7 @@ function implicitAnyRow([rule, summary]: readonly [string, string]): Readonly<
   };
 }
 
-const OTHER_ROWS = [
+const OTHER_ROWS: readonly OtherRow[] = [
   {
     tool: 'prettier-format',
     rule: 'prettier/prettier',
@@ -101,14 +106,7 @@ const OTHER_ROWS = [
   },
 ];
 
-function otherEntry({
-  tool,
-  rule,
-  ...fields
-}: {
-  readonly tool: string;
-  readonly rule: string;
-} & Readonly<Record<string, unknown>>): RuleEntry {
+function otherEntry({ tool, rule, ...fields }: OtherRow): RuleEntry {
   return ruleEntry({
     tool,
     rule,

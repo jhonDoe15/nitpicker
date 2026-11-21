@@ -5,6 +5,21 @@ import { isFunction, unwrapped, type FunctionNode } from '../../typed/syntax-vie
 const componentWrappers = new Set(['memo', 'forwardRef', 'observer']);
 const capitalized = /^[A-Z]/u;
 
+const hookLabel = /^use[A-Z0-9]/u;
+const serverFile = /(?:^|[/.-])server(?:[/.-]|$)/u;
+
+export function isComponentName(label: string | undefined): boolean {
+  return label !== undefined && capitalized.test(label);
+}
+
+export function isHookName(label: string | undefined): boolean {
+  return label !== undefined && hookLabel.test(label);
+}
+
+export function isServerFile(filename: string): boolean {
+  return serverFile.test(filename);
+}
+
 export function functionLabel(fn: TSESTree.Node): string | undefined {
   const named = 'id' in fn ? nameOf(fn.id) : undefined;
   if (named !== undefined) {

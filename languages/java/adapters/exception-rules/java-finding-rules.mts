@@ -1,5 +1,5 @@
 import { listOf } from '../../../../shared/values/readers.mts';
-import { configError } from '../../../../shared/config.mjs';
+import { configError } from '../../../../shared/config.mts';
 import { checkstyleRuleName } from '../../messages/rule-messages.mts';
 import { JAVA_TOOLS } from '../gradle-presets.mts';
 

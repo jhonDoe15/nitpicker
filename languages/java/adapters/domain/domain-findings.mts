@@ -1,11 +1,11 @@
-import { RULE_IDS } from '../../../../shared/policy.mjs';
-import { listed as listedUntyped } from '../../../../shared/rules/features/feature-boundaries.mjs';
+import { RULE_IDS } from '../../../../shared/policy.mts';
+import { listed as listedUntyped } from '../../../../shared/rules/features/feature-boundaries.mts';
 import {
   adapterMessage as adapterMessageUntyped,
   domainFinding as domainFindingUntyped,
   libraryMessage as libraryMessageUntyped,
   reachMessage as reachMessageUntyped,
-} from '../../../../shared/rules/domain/domain-messages.mjs';
+} from '../../../../shared/rules/domain/domain-messages.mts';
 import { reachableIo, reachPath } from './domain-reach.mts';
 import type {
   ClassEdge,
@@ -18,7 +18,7 @@ import { simpleName as simpleNameUntyped } from '../../ingest/class-names.mts';
 import { grouped, isAdapter, isDomain, libraryPackage } from './domain-roles.mts';
 import { concernOf } from './infrastructure-classes.mts';
 import { randomSourceCalls } from './random-sources.mts';
-import { byText as byTextUntyped } from '../../../../shared/text-order/by-text.mjs';
+import { byText as byTextUntyped } from '../../../../shared/text-order/by-text.mts';
 
 const simpleName: (className: string) => string = simpleNameUntyped;
 const byText: (left: string, right: string) => number = byTextUntyped;

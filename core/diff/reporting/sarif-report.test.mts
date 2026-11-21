@@ -8,10 +8,11 @@ import {
 import { expectValidSarif } from './test-support/format-checks/report-assertions.mts';
 import { sarifSchemaErrors } from './test-support/format-checks/sarif-schema.mts';
 import { finding, report } from './test-support/report-builders.mts';
-import { docsUrl as untypedDocsUrl } from '../../../shared/messages/docs-url.mjs';
-import { referenceLinks as untypedReferenceLinks } from '../../../shared/reference/store.mjs';
+import { docsUrl as untypedDocsUrl } from '../../../shared/messages/docs-url.mts';
+import { referenceLinks as untypedReferenceLinks } from '../../../shared/reference/store.mts';
 import { fieldAt, listOf } from '../../../scripts/json/fields.mts';
-import type { Finding, ReferenceLinks } from '../../../shared/values/findings.mts';
+import type { Finding } from '../../../shared/values/findings.mts';
+import type { ReferenceLinks } from '../../../shared/reference/typed/entry-types.mts';
 import { parseJson } from '../../../shared/values/readers.mts';
 
 const docsUrl: (relativePath: string, anchor: string) => string | undefined = untypedDocsUrl;

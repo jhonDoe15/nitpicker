@@ -98,9 +98,7 @@ describe('conventions in a run', () => {
 
     const setup = resolve({
       baseProjectRoot: root,
-      headSnapshotRoot: root,
       liveProjectRoot: root,
-      moves: undefined,
       analyzers: [],
     });
 
@@ -127,9 +125,7 @@ describe('conventions in a run', () => {
 
     const setup = resolve({
       baseProjectRoot: root,
-      headSnapshotRoot: root,
       liveProjectRoot: root,
-      moves: undefined,
       analyzers: [analyzer('first')],
     });
 

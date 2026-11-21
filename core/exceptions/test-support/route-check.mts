@@ -1,8 +1,8 @@
 import {
   applyFindingExceptions,
   applyPythonExceptions,
+  canonicalExceptions,
   routeFields,
-  withCanonicalRules,
 } from '../route-views.mts';
 import type { Finding, Route } from '../route-views.mts';
 import { fieldOf, fieldsOf, textOf } from '../../../shared/values/readers.mts';
@@ -18,10 +18,10 @@ function configFor(preset: string, { entry, key }: Route) {
 }
 
 function remaining(finding: Finding, config: object, key: string | undefined) {
-  const canonical = withCanonicalRules(config);
+  const exceptions = canonicalExceptions(config, key);
   return key === 'python.exceptions'
-    ? applyPythonExceptions([finding], canonical.python.exceptions)
-    : applyFindingExceptions([finding], canonical.exceptions);
+    ? applyPythonExceptions([finding], exceptions)
+    : applyFindingExceptions([finding], exceptions);
 }
 
 function validationProblem(config: object) {

@@ -16,7 +16,7 @@ import {
 } from '../../../../../languages/typescript/adapters/static-checks/dependencies.mts';
 import { installFakeManagers } from '../../../../../languages/typescript/adapters/dependency-graph/package-managers/test-support/fake-managers.mts';
 import { toolRoot, useStaticCheckFixtures } from './test-support/static-check-fixtures.mts';
-import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mts';
 
 const { temporaryDirectory, createRepository } = useStaticCheckFixtures();
 

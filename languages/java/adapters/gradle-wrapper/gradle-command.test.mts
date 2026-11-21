@@ -6,7 +6,7 @@ import { gradleTarget, isolatedProjectsOff, pinnedGradleVersion } from './gradle
 import { mavenTarget } from '../../maven/maven-command.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 import { analyzeJavaSnapshot } from '../java-runner.mts';
-import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mts';
 
 type ProjectFiles = Readonly<Record<string, { readonly text?: string; readonly mode?: number }>>;
 

@@ -1,5 +1,4 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mts';
 import { FEATURE_FILES, LAYERED_FILES, ORDER_TOTAL } from './test-support/python-preset-data.mts';
 import {
   commitBranch,
@@ -182,17 +181,9 @@ describe.skipIf(!pythonE2eEnabled)(
         ['package-cycle', 'src/shop/features/billing/__init__.py'],
         ['package-cycle', 'src/shop/features/shipping/__init__.py'],
       ]);
-      expect(newRules(result).filter((rule) => rule.startsWith('nitpicker-config'))).toEqual(
-        Array.from({ length: 6 }, () => 'nitpicker-config policy-loosened'),
-      );
     });
     it('does not run the contracts when the config turns import-linter off', () => {
-      const digest = acceptedDigest(['python.importLinter: not set -> false'], {
-        'nitpicker.config.json': IMPORT_LINTER_OFF_CONFIG,
-      });
-      const result = gate(project, 'contracts-off', {
-        environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: digest },
-      });
+      const result = gate(project, 'contracts-off', { environment: { CI: 'true' } });
 
       expect(newRules(result)).toEqual([
         'coupling package-cycle',

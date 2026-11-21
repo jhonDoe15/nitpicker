@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { ancestorDirectories } from '../../../shared/filesystem.mjs';
+import { ancestorDirectories } from '../../../shared/filesystem.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 
 const ancestorsOf: (directory: string) => string[] = ancestorDirectories;

@@ -1,4 +1,11 @@
 import type { Node, Parser } from 'web-tree-sitter';
+import type {
+  Candidate as SharedCandidate,
+  Candidates as SharedCandidates,
+  Collected as SharedCollected,
+  Outcome as SharedOutcome,
+} from '../../../../shared/fix/recipes/extract/typed/extract-types.mts';
+import type { WriteEdit } from '../../../../shared/fix/recipes/hygiene/typed/hygiene-types.mts';
 import type { Unit } from './jvm-types.mts';
 
 export type ParseText = (text: string) => ReturnType<Parser['parse']>;
@@ -9,11 +16,6 @@ export type Attempt<Value extends object> =
 
 export type Edit = { readonly start: number; readonly end: number; readonly text: string };
 export type ReplaceEdit = Edit & { readonly type: 'replace'; readonly path: string };
-export type WriteEdit = {
-  readonly type: 'write';
-  readonly path: string;
-  readonly text: string;
-};
 export type PathEdit = ReplaceEdit | WriteEdit;
 
 type Reported = {
@@ -27,20 +29,14 @@ type Fix = {
   readonly edits: readonly PathEdit[];
   readonly alsoFixes?: readonly Reported[];
 };
-export type Outcome = { readonly fix?: Fix; readonly note?: string };
-export type Collected = { readonly fixes: Fix[]; readonly notes: string[] };
+export type Outcome = SharedOutcome<Fix>;
+export type Collected = SharedCollected<Fix>;
 
 export type Span = { readonly start: number; readonly end: number };
 export type CandidateUnit = Pick<Unit, 'file' | 'name' | 'start' | 'end'>;
-export type Candidate = {
-  readonly first: CandidateUnit;
-  readonly second: CandidateUnit;
-  readonly reported: Reported;
-  readonly finding: { readonly parameters: readonly unknown[] };
-  readonly runs?: readonly Span[];
-};
+export type Candidate = SharedCandidate;
 export type Matches = readonly unknown[];
-export type Candidates = { readonly candidates: Candidate[]; readonly notes: string[] };
+export type Candidates = SharedCandidates<SharedCandidate>;
 
 export type SourceFile = { readonly rootNode: Node; readonly file: string; readonly text: string };
 

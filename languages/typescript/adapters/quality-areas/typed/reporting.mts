@@ -2,25 +2,25 @@ import type { Finding, NodeToolResult } from '../../static-checks/shared.mts';
 import type { Mutant } from './mutation.mts';
 import type { TestReport } from '../../test-runners/typed/runner-types.mts';
 import {
-  addMetric as untypedAddMetric,
+  metricFindings as untypedMetricFindings,
   declarationLine as untypedDeclarationLine,
   nameFreeHash as untypedNameFreeHash,
-  nextOccurrence as untypedNextOccurrence,
+  occurrenceCounter as untypedOccurrenceCounter,
   positiveInteger as untypedPositiveInteger,
   summaryMetrics as untypedSummaryMetrics,
   testsFailHeadline as untypedTestsFailHeadline,
   testsFailOnBase as untypedTestsFailOnBase,
-} from '../../../../../shared/rules/finding-helpers.mjs';
-import { branchCoverageFindings as untypedBranchCoverageFindings } from '../../../../../shared/rules/branch-coverage.mjs';
-import { crapFindings as untypedCrapFindings } from '../../../../../shared/rules/crap.mjs';
-import { mutantFindings as untypedMutantFindings } from '../../../../../shared/rules/mutation.mjs';
+} from '../../../../../shared/rules/finding-parts.mts';
+import { branchCoverageFindings as untypedBranchCoverageFindings } from '../../../../../shared/rules/branch-coverage.mts';
+import { crapFindings as untypedCrapFindings } from '../../../../../shared/rules/crap.mts';
+import { mutantFindings as untypedMutantFindings } from '../../../../../shared/rules/mutation.mts';
 import {
   failingTestEntries as untypedFailingTestEntries,
   formattedValue as untypedFormattedValue,
   valuesInMessage as untypedValuesInMessage,
-} from '../../../../../shared/rules/failing-tests/failing-tests.mjs';
-import { stripAnsi as untypedStripAnsi } from '../../../../../shared/rules/console/ansi.mjs';
-import { testsFailAnchor as untypedTestsFailAnchor } from '../../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../../shared/rules/failing-tests/failing-tests.mts';
+import { stripAnsi as untypedStripAnsi } from '../../../../../shared/rules/console/ansi.mts';
+import { testsFailAnchor as untypedTestsFailAnchor } from '../../../../../shared/messages/troubleshooting.mts';
 
 export type Metric = {
   readonly analyzerName: string;
@@ -138,7 +138,7 @@ export type MutantTally = {
   readonly filePath: string;
   readonly mutants: NeutralMutant[];
   readonly statusCounts: Map<string, number>;
-  readonly occurrences: Map<string, number>;
+  readonly nextOccurrence: (key: string) => number;
 };
 
 export type ReportedFile = { readonly mutants?: readonly Partial<Mutant>[] };
@@ -146,7 +146,7 @@ export type ReportedFile = { readonly mutants?: readonly Partial<Mutant>[] };
 export type MutantSite = {
   readonly filePath: string;
   readonly status: string;
-  readonly occurrences: Map<string, number>;
+  readonly nextOccurrence: (key: string) => number;
 };
 
 export type ToolErrorDetails = {
@@ -187,8 +187,8 @@ export type KnipReport = {
   readonly issues?: readonly Readonly<Record<string, unknown>>[];
 };
 
-export function addMetric(findings: Finding[], metric: Metric): void {
-  Reflect.apply(untypedAddMetric, undefined, [findings, metric]);
+export function metricFindings(metric: Metric): Finding[] {
+  return untypedMetricFindings(metric);
 }
 
 export const summaryMetrics: (
@@ -197,8 +197,7 @@ export const summaryMetrics: (
   rule: string,
 ) => Finding[] = untypedSummaryMetrics;
 
-export const nextOccurrence: (occurrences: Map<string, number>, key: string) => number =
-  untypedNextOccurrence;
+export const occurrenceCounter: () => (key: string) => number = untypedOccurrenceCounter;
 
 export const positiveInteger: (value: unknown) => number | undefined = untypedPositiveInteger;
 

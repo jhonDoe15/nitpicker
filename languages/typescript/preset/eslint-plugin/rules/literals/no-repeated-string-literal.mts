@@ -11,7 +11,7 @@ import {
   MINIMUM_LENGTH as untypedMinimumLength,
   TRANSLATION_CALLS as untypedTranslationCalls,
   isIdiomaticText as untypedIsIdiomaticText,
-} from '../../../../../../shared/literals/repeated-literal-exemptions.mjs';
+} from '../../../../../../shared/literals/repeated-literal-exemptions.mts';
 
 const DISCRIMINANT_KEYS: readonly string[] = untypedDiscriminantKeys;
 const MAXIMUM_USES: number = untypedMaximumUses;

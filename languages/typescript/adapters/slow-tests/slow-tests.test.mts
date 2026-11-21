@@ -73,6 +73,7 @@ function options(extra: Partial<TestOptions> = {}): TestOptions {
     baselineRoot: undefined,
     baselineMovesFile: undefined,
     mutationScope: undefined,
+    environment: {},
     ...extra,
   };
 }

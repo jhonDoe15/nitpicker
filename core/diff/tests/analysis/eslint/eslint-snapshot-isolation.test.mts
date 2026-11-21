@@ -18,7 +18,7 @@ import {
 import { fieldAt } from '../../../../../scripts/json/fields.mts';
 import { writeFiles } from '../../../git/test-support/fixture-files.mts';
 import { commit } from '../../../git/test-support/git-repository.mts';
-import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mts';
 
 const { createRepository, temporaryRoot } = useEslintFixtures();
 

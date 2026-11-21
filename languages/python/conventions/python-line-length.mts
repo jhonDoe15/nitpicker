@@ -1,4 +1,4 @@
-import { groupJoinLengths, indentOf } from '../../../shared/conventions/lines.mjs';
+import { groupJoinLengths, indentOf } from '../../../shared/conventions/lines.mts';
 
 const WIDTHS = [79, 88, 100, 120];
 const BEYOND_WIDTH = 100;

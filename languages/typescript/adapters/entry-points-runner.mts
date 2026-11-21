@@ -14,7 +14,7 @@ import { PACKAGE_ROOT, SNAPSHOT_DIRECTORY_NAMES } from '../../../core/tooling/to
 import { type Layout, readLayout } from './typed/head-policy.mts';
 import { loadProjectModules } from './dependency-graph/shared-graph/project-modules.mts';
 import { realTemporaryDirectory } from '../../../core/tooling/temporary-files.mts';
-import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath } from '../../../shared/paths/checkout-module.mts';
 
 type EntryPointOptions = {
   readonly projectRoot: string;

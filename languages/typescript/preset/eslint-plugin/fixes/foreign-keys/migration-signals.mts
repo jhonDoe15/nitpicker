@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { readFileText, parseJsonText } from '../support/project/read-file.mts';
-import { ancestorDirectories as untypedAncestorDirectories } from '../../../../../../shared/filesystem.mjs';
+import { ancestorDirectories as untypedAncestorDirectories } from '../../../../../../shared/filesystem.mts';
 
 const ancestorDirectories: (directory: string) => string[] = untypedAncestorDirectories;
 

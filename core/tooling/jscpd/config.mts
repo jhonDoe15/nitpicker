@@ -1,12 +1,12 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { isRealPathInside } from '../../../shared/conventions/read-inside.mjs';
+import { isRealPathInside } from '../../../shared/conventions/read-inside.mts';
 import {
   JSCPD_PROJECT_FILE,
   missingProjectConfig as untypedMissingProjectConfig,
-} from '../../../shared/conventions/tool-precedence.mjs';
-import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
+} from '../../../shared/conventions/tool-precedence.mts';
+import { readHeadPolicyFile } from '../../../shared/head-policy.mts';
 import {
   fieldOf,
   fieldsOf,
@@ -38,13 +38,12 @@ export type JscpdSettings = {
   readonly ignore?: readonly string[];
 } & Record<string, unknown>;
 
-const readHeadPolicy: () => unknown = readHeadPolicyFile;
 function isStringList(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(isText);
 }
 
-export const JSCPD_MODES: readonly string[] = ['strict', 'mild', 'weak'];
-export const JSCPD_SIZE = /^(\d+(?:\.\d+)?)\s*(b|kb?|mb?|gb?)?$/iu;
+const JSCPD_MODES: readonly string[] = ['strict', 'mild', 'weak'];
+const JSCPD_SIZE = /^(\d+(?:\.\d+)?)\s*(b|kb?|mb?|gb?)?$/iu;
 const AT_LEAST_ONE = 'a whole number of 1 or more';
 function isPositive(value: unknown): boolean {
   return typeof value === 'number' && Number.isInteger(value) && value >= 1;
@@ -131,16 +130,6 @@ function parsedProjectConfig(text: string): ProjectConfig {
   );
 }
 
-export function appliedJscpdConfig(
-  text: string,
-): { kind: 'applied'; config: ProjectConfig } | { kind: 'rejected' } {
-  try {
-    return { kind: 'applied', config: parsedProjectConfig(text) };
-  } catch {
-    return { kind: 'rejected' };
-  }
-}
-
 export function resolveJscpdPolicy(settings: unknown, projectRoot: string): unknown {
   if (!listOf(fieldOf(settings, 'precedence')).includes('project')) {
     return settings;
@@ -159,10 +148,13 @@ function detectionKeys(config: unknown, keep: boolean): ProjectConfig {
   );
 }
 
-export function layeredJscpdConfig(
-  base: object,
-  settings: unknown = fieldOf(fieldOf(readHeadPolicy(), 'tools'), 'jscpd'),
-): JscpdSettings {
+export function headJscpdSettings(
+  environment: Readonly<Record<string, string | undefined>>,
+): unknown {
+  return fieldOf(fieldOf(readHeadPolicyFile(environment), 'tools'), 'jscpd');
+}
+
+export function layeredJscpdConfig(base: object, settings: unknown): JscpdSettings {
   const precedence = fieldOf(settings, 'precedence');
   const layers: readonly unknown[] = Array.isArray(precedence) ? precedence : ['nitpicker'];
   const projectConfig = fieldOf(settings, 'projectConfig');

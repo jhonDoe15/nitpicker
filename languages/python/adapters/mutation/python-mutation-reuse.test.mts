@@ -3,7 +3,7 @@ import { cpSync, existsSync, mkdtempSync, readdirSync, realpathSync, rmSync } fr
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { byText } from '../../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mts';
 import { seedMutantsFromBase } from './python-mutation-reuse.mts';
 import { createToolContext } from '../test-support/typed/tool-context.mts';
 import type { Launcher } from '../typed/environment/launcher-types.mts';

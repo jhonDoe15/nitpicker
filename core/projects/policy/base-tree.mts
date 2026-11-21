@@ -2,8 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { containedPath as untypedContainedPath } from '../../../shared/paths/contained-path.mjs';
-import { GIT_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
+import { containedPath as untypedContainedPath } from '../../../shared/paths/contained-path.mts';
+import { GIT_TIMEOUT_MS } from '../../../shared/processes/deadlines.mts';
 
 type TreeEntry = {
   readonly mode: string;

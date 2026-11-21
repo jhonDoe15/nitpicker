@@ -18,7 +18,7 @@ import {
   readReportModules,
   readMainCheckstyle,
 } from '../adapters/gradle-reports/report-modules.mts';
-import { ingestSarif, prepareSarif } from '../../../shared/ingest/sarif.mjs';
+import { ingestSarif, prepareSarif } from '../../../shared/ingest/sarif.mts';
 import { checkstyleFindings } from '../adapters/reporting/format-findings.mts';
 import { sourceLocator } from '../adapters/reporting/kotlin-reports.mts';
 import { applyRuleMessages } from '../messages/rule-messages.mts';
@@ -29,7 +29,7 @@ import { readCouplingFindings } from '../adapters/metrics/java-coupling.mts';
 import { readErrorProneFindings } from '../adapters/errorprone/java-errorprone.mts';
 import { readCpdFindings } from './cpd-duplicates.mts';
 import { readLintFindings } from './javac-lint.mts';
-import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
+import { exceptionHint } from '../../../shared/rules/exceptions.mts';
 import { fieldOf, listOf, parseJson, textOf, textsOf } from '../../../shared/values/readers.mts';
 import { callUntyped } from '../adapters/typed/java-values.mts';
 

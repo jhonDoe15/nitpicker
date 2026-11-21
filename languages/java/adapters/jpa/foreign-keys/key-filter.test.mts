@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { pathInside as pathInsideUntyped } from '../../../../../shared/filesystem.mjs';
+import { pathInside as pathInsideUntyped } from '../../../../../shared/filesystem.mts';
 import { withUnindexedForeignKeys as filterUntyped } from './key-filter.mts';
 import { FOREIGN_KEY_RULE, foreignKeyGate } from './key-gate.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../../typed/java-values.mts';

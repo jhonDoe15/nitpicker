@@ -78,12 +78,7 @@ export function isProjectToolNeeded(tool: string, disabled: readonly string[] = 
   return (TOOLS.get(tool)?.analyzers ?? []).some((analyzer) => !disabled.includes(analyzer));
 }
 
-export function projectConfigCandidates(tool: string): string[] {
-  const key = packageJsonKey(tool);
-  return [...(TOOLS.get(tool)?.files ?? []), ...(key === undefined ? [] : [PACKAGE_JSON])];
-}
-
-export function manifestSection(text: string, key: string): JsoncResult {
+function manifestSection(text: string, key: string): JsoncResult {
   const parsed = parsedJsonc(text);
   if (parsed.kind !== 'json') {
     return { kind: 'malformed', reason: parsed.reason };

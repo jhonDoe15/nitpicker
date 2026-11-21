@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { firstFileIn as untypedFirstFileIn } from '../../../../../../shared/filesystem.mjs';
+import { firstFileIn as untypedFirstFileIn } from '../../../../../../shared/filesystem.mts';
 import { stringValue } from '../analysis/constant-resolution.mts';
 import { nearestManifest } from '../dependencies/package-manifest.mts';
 import {

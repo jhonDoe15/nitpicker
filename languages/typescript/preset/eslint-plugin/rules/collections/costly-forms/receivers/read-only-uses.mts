@@ -35,8 +35,25 @@ export function isAssignmentTarget(node: TSESTree.Node): boolean {
     (parent?.type === AST_NODE_TYPES.UpdateExpression && parent.argument === outer) ||
     (parent?.type === AST_NODE_TYPES.UnaryExpression &&
       parent.operator === 'delete' &&
-      parent.argument === outer)
+      parent.argument === outer) ||
+    isPatternTarget(parent, outer)
   );
+}
+
+function isPatternTarget(parent: TSESTree.Node | undefined, outer: TSESTree.Node): boolean {
+  switch (parent?.type) {
+    case AST_NODE_TYPES.ArrayPattern:
+    case AST_NODE_TYPES.RestElement:
+      return true;
+    case AST_NODE_TYPES.AssignmentPattern:
+    case AST_NODE_TYPES.ForOfStatement:
+    case AST_NODE_TYPES.ForInStatement:
+      return parent.left === outer;
+    case AST_NODE_TYPES.Property:
+      return parent.value === outer && parent.parent.type === AST_NODE_TYPES.ObjectPattern;
+    default:
+      return false;
+  }
 }
 
 function isCopyingUse(parent: TSESTree.Node, outer: TSESTree.Node): boolean {

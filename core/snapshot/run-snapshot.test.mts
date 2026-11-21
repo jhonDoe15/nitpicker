@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'node:url';
-import { checkoutModuleUrl } from '../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../shared/paths/checkout-module.mts';
 import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mts';
 import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mts';
 import { runQualitySnapshot as runQualitySnapshotWithSubprocesses } from './run-snapshot.mts';

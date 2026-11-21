@@ -1,11 +1,11 @@
 import { ChildProcess, spawn } from 'node:child_process';
 import { openOutputFile } from '../../tooling/output-file/output-file.mts';
-import { ANALYZER_TIMEOUT_KEY } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
-import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { ANALYZER_TIMEOUT_KEY } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mts';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
-} from '../../../shared/messages/troubleshooting.mjs';
+} from '../../../shared/messages/troubleshooting.mts';
 import { withoutHostCiOutputs } from '../../tooling/host-environment.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 import { withCompileCache } from '../../../shared/processes/environment.mts';

@@ -13,7 +13,7 @@ pub struct FieldRef {
     /// The class the access goes through: the type of the object, or the class whose scope gave the name.
     pub via: String,
     pub kind: Type,
-    pub flags: u16,
+    pub flags: u32,
 }
 
 impl FieldRef {

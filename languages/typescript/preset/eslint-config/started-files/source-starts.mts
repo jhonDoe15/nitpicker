@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { scrubSource as untypedScrubSource } from '../../../../../shared/started-files/scrub-source.mjs';
+import { scrubSource as untypedScrubSource } from '../../../../../shared/started-files/scrub-source.mts';
 
 type Launch = { moduleRelative: string[]; projectRelative: string[] };
 

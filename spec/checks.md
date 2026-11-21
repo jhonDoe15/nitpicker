@@ -17,7 +17,7 @@ How classification works:
 
 Thresholds are the defaults in the preset. Where a value is not a hard-coded limit it says so.
 The limits of the custom rules and the languages that enforce them come from
-`shared/policy.mjs`; the [Custom rules](#custom-rules) table is generated from it
+`shared/policy.mts`; the [Custom rules](#custom-rules) table is generated from it
 (`npm run gen:checks`) and a test fails when it is stale.
 
 ## ESLint checks
@@ -136,6 +136,35 @@ generate, load, read or init, `JSON.parse`, `localStorage.getItem`), and `create
 `configureStore` and `new QueryClient()` called directly in a component or hook body, except in an async component or a server file. Getters, translations,
 type conversions, hook calls, `Date.now()` and built-in constructors are allowed, as are a function argument and a guarded lazy fill.
 
+React stale state: `nitpicker/react-no-stale-state-update` (production source in a React project, in `eslint-lint`)
+reports a `useState` setter called with an array, an object or arithmetic that reads the setter's own state when the
+call follows an `await` that certainly ran (outside branches, loops and optional calls; in a `try`, only its first
+statement), or follows another call of the same setter in the same block. An updater function, a literal, a value
+that does not read the state, a call in a `catch` or a nested function and a call in an effect whose dependencies list
+the state are left alone.
+
+React state updaters: `nitpicker/react-pure-state-updater` (production source in a React project, in `eslint-lint`)
+reports, inside the function passed to a `useState` setter or the reducer of `useReducer`, a call of a state setter or
+dispatch, a prop callback called as a statement, an assignment, `delete` or update on a property of the previous-state parameter,
+and a mutating array, `Set` or `Map` method on it when the `useState` type argument or initial value (or the reducer's
+parameter type) shows that kind of value. A parameter reassigned to a copy, calls in nested functions, Immer and
+setters not from `useState` are left alone.
+
+React `use`: `nitpicker/react-no-uncached-use-promise` (production source in a React project, in `eslint-lint`)
+reports `use(...)` from `react` whose argument, directly or through a `const` of the same component, is a call of an
+`async` function (declared in the file or exported by an imported project module), an inline async function call,
+`new Promise`, a `Promise` combinator or a `.then`/`.catch`/`.finally` chain. Promises from props, context, `useMemo`
+or `useState`, functions not declared `async`, async components, and, where Server Components are possible, files
+without `'use client'` whose component calls no client hook are left alone.
+
+React render side effects: `nitpicker/react-no-render-side-effect` (production source in a React project, in
+`eslint-lint`) reports, as a statement of a component or custom hook body outside nested functions, a call of the
+`useNavigate()` result, `push`, `replace`, `back` or `navigate` on a `useRouter()` or `useHistory()` result (hooks
+imported from a router package),
+`addEventListener` on `document` or a member of it, and an assignment to `document.title`. Async components and server
+files are left alone; timers, `fetch`, `window` listeners, sockets and observers in render are reported by
+`react-x/purity`.
+
 React i18next: `nitpicker/react-i18next-escape-value` (production source in a React project that depends on
 `react-i18next`, in `eslint-lint`) reports a `t(...)` or `<Trans values>` call that interpolates values into text React
 renders while no source file of the package sets `interpolation.escapeValue: false` and the call does not. The init
@@ -151,6 +180,33 @@ reports a React Query `mutate(...)` or `mutateAsync(...)` call, or a `useMutatio
 `onSuccess` while `onError` is passed nowhere and `error`, `isError`, `status` or `failureReason` is never read from
 the result. A `mutateAsync` call with `try`/`catch` or `.catch`, and a project whose source sets `MutationCache`
 `onError`, are left alone.
+
+React memo props: `nitpicker/react-no-unstable-memo-props` (production source in a React project, in `eslint-lint`)
+reports a JSX element of a component made with `memo(...)` and no comparison function (same file, or a project file it
+is imported from) that is rendered in a component body with a prop that is new on every render: an object or array
+literal, a function, a `.bind(...)` call, a JSX element, or a `const` or function declared in that body to one of
+those. `key`, `ref`, `children`, elements with JSX or expression children, elements built outside render, `async`
+components, components with no parameters and no hook call, components from packages and projects with the React
+Compiler are left alone.
+
+React store selectors: `nitpicker/react-no-unstable-selector-result` (production source in a React project, in
+`eslint-lint`) reports an inline selector that returns an object or array literal, `Object.keys`, `values`, `entries`
+or `fromEntries`, or the result of `filter`, `map`, `flatMap`, `toSorted` or `toReversed`, passed without an equality
+argument to react-redux `useSelector` (also typed hooks made from it), to a hook made with Zustand `create`, or to
+Zustand `useStore(store, selector)`. Hooks are resolved to the project file that creates them; `createWithEqualityFn`
+stores, wrapped hooks and hooks from packages are left alone.
+
+React external stores: `nitpicker/react-no-unstable-store-subscribe` (production source in a React project, in
+`eslint-lint`) reports a `useSyncExternalStore` call whose `subscribe` argument is written inline or declared in the
+same component or hook body outside `useCallback` (not a function without parameters, and not in a project with the
+React Compiler), and a `getSnapshot` or `getServerSnapshot` function that returns a new object or array on every call.
+
+React effect resources: `nitpicker/react-no-leaked-effect-resource` (production source in a React project, in
+`eslint-lint`) reports, in the own statements of a `useEffect` or `useLayoutEffect` callback, a `WebSocket`,
+`EventSource`, `BroadcastChannel`, `Worker`, `SharedWorker`, `MutationObserver`, `PerformanceObserver` or
+`ReportingObserver` that is created and never closed, a `navigator.geolocation.watchPosition` call whose id is never
+used, and a `requestAnimationFrame` loop that always schedules itself again and is never cancelled. A handle that is
+stored in a ref, passed on, returned or closed anywhere in the effect is left alone.
 
 Rows changed in memory: `in-memory-update` in the Python preset reports rows loaded from a Django queryset or a
 SQLAlchemy query only to set the same values on each and write them back (`bulk_update`, `commit`), where one `update`
@@ -311,6 +367,41 @@ without `else` whose last statement sends a response (`res.json`, `res.status(..
 calls `next`, `callback`, `cb` or `done` (the last parameter of the function) when more statements follow the branch in
 the same block. `return res.status(400).json(...)`, `return next()`, a `return;` after the call and an `else` are allowed.
 
+Error answers without a status: `nitpicker/no-error-response-without-status` (production source, in `eslint-lint`)
+reports, inside a `catch` block, `NextResponse.json(body)` or `Response.json(body)` without a `status`,
+`res.json(body)`, `res.send(body)` or `reply.send(body)` on a response parameter, and `c.json(body)` with one argument
+in a file that imports `hono`, where `body` is an object literal with an `error`, `errors` or `err` property and no
+outcome field (`status`, `statusCode`, `code`, `success`, `ok`, `data`, `result`, `jsonrpc`, `id`), spread or computed
+key. The parameter forms are skipped when the `catch` sets a status, passes the response to another call, or the
+function sets a status as a statement of its own, and a file that mentions GraphQL is skipped. A status given in the
+call (`{ status: 500 }`, `res.status(500).json(...)`, an explicit `{ status: 200 }`) is allowed.
+
+UTC dates used as local dates: `nitpicker/no-utc-date-as-local-date` (production source, in `eslint-lint`) reports
+`<now>.toISOString()` cut to its date with `.split('T')[0]`, `.slice(0, 10)`, `.substring(0, 10)` or `.substr(0, 10)`
+(`<now>` is `new Date()`, `new Date(Date.now())` or a `const` initialized with one and never changed with `setTime` or a
+`setUTC...` method) when the value, or a `const` it initializes, is used inside the argument of `useState`,
+`useReducer`, `useForm` or `useFormik`, as `value`, `defaultValue`, `min` or `max` of a JSX element with `type="date"`,
+or as the right side of `||` or `??` whose left side is named `date` or ends in `Date`. Other uses of the expression
+(file names, keys, comparisons, plain properties, parameter defaults) are not reported.
+
+Placeholder implementations: `nitpicker/no-placeholder-implementation` (TypeScript and JavaScript presets, production
+source, in `eslint-lint`) and `pmd/PlaceholderImplementation` (Java preset, main sources, found by the scan of the
+source comments, on `.java` files of Kotlin projects too) report code that a comment calls a stand-in for the real work
+and that is one by its shape. The comment phrases are one list for both
+(`shared/rules/placeholders/placeholder-comments.mts`): "in a real app / application / implementation / scenario /
+world", "simulate (an / the) API / network / backend / server / HTTP / database / db", "simulate (a / the) request /
+delay / latency", "mock data / implementation / response for now", "placeholder implementation", "replace (this / it)
+with (a / the / your) real / actual", "for now (we) (just) return a dummy / mock / fake / hardcoded / placeholder /
+stub". The statement on the comment's line or right under it is a `return` of a literal outside an `if` or a loop
+(TypeScript: also an array or object literal of literals; Java: also an empty collection), fixed data (TypeScript: a
+variable initialized with a non-empty array or object literal of literals), a bare delay (`await sleep(...)`, `await new
+Promise((resolve) => setTimeout(resolve, ...))`, `Thread.sleep(...)`, `TimeUnit.X.sleep(...)`), a copy of one plain name
+(`converted = amount;`), or a function or method body that holds only the comment. Neither the comment alone nor the
+code alone is reported, and files whose path has a `test`, `tests`, `__tests__`, `spec`, `stories`, `story`,
+`storybook`, `example`, `fixture`, `mock`, `__mocks__`, `seed`, `doc`, `documentation`, `template`, `demo`, `sample`,
+`e2e`, `playground`, `cypress` or `playwright` part (also in the plural) are skipped. The Kotlin, Python and Go presets
+do not have this check yet.
+
 Child process deadlines: `nitpicker/require-process-timeout` (production source, in `eslint-lint`)
 reports production code that waits for a child process to exit without a deadline: a synchronous
 `child_process` or `execa` call without a positive `timeout`, and `exec`, `execFile`, an awaited
@@ -318,6 +409,51 @@ reports production code that waits for a child process to exit without a deadlin
 same rule runs as `subprocess-without-timeout` in the Python preset, `pmd/ProcessWaitWithoutTimeout`
 in the Java preset and `kotlin-source/ProcessWaitWithoutTimeout` in the Kotlin preset; tests keep
 `nitpicker/require-test-process-timeout` (TypeScript) or their runner's own limits.
+
+Unguarded option lists: `nitpicker/no-unguarded-option-list` (production source, in `eslint-lint`) and
+`pmd/UnguardedOptionList` (Java, main sources) report a process option (a flag followed by a joined list) or an ESLint
+configuration block's `files`, built from a list that a filter or a listing in the same function can leave empty, when
+the join (or the `files` entry) is the only read of the list. Tools read an empty value as "everything" or reject it;
+the allowed form skips the option or the run for an empty list.
+
+Project-sized process arguments: `nitpicker/no-growing-process-arguments` (production source, in
+`eslint-lint`) reports a file listing or glob result spread into the arguments of a child process, or joined into
+one argument, and any list joined with `path.delimiter` into one argument unless it is an array literal that
+spreads no listing. `pmd/GrowingProcessArguments`
+(Java, main sources) reports a class path or path list joined with `File.pathSeparator` into an argument of a
+process the method starts. Past the operating system's argument limits the process does not start; the allowed
+forms are an argument file, standard input, the `CLASSPATH` variable or chunks.
+
+Deadlines that stop only a wrapper: `nitpicker/no-wrapper-only-timeout` (production source, in `eslint-lint`)
+reports a subprocess call with a `timeout` or abort signal whose command is a shell, a launcher (`npm`, `npx`,
+`gradlew.bat`, `mvnw.cmd`, a `.sh` or `.cmd` file) or a compound shell command, unless it is started `detached` and the
+function kills the group. `pmd/DestroyLeavesDescendants` (Java, main sources) reports `destroy()` or
+`destroyForcibly()` after a timed `waitFor` on a process the method started through such a command, when the method
+never reads `descendants()`. The timed-out wrapper dies and its child keeps running.
+
+Error output cut to its start: `nitpicker/no-head-cut-error-output` (production source, in `eslint-lint`) and
+`pmd/HeadCutErrorOutput` (Java, main sources) report a cut from the start (`slice(0, n)`, `substring(0, n)`,
+`StringUtils.left` or `abbreviate`) of a tool's output (in Java also a printed stack trace) that goes into an
+exception, a rejection or an error-level log. The cause is usually at the end of such text; the allowed forms keep the
+end, or both ends.
+
+Standard error as failure: `nitpicker/no-stderr-as-failure` (production source, in `eslint-lint`) and
+`pmd/StderrAsFailure` (Java, main sources) report a condition that fails a finished subprocess because its standard
+error is not empty, when the condition stands alone or is one side of `||` and its branch throws (or rejects, or
+exits non-zero). Standard error also carries warnings and notices, so the check fails in an environment that prints
+one; the allowed form decides by the exit status.
+
+Status-only subprocess checks: `nitpicker/no-status-only-spawn-check` (production source, in `eslint-lint`)
+reports a `spawnSync` result (or an execa result with `reject: false`) whose exit status is passed to `process.exit`
+or `process.exitCode`, put into a message, or tested so that `null` counts as success, while the code reads neither
+`error` nor `signal` of that result. A child that could not start, timed out, overflowed `maxBuffer` or was killed has
+a `null` status, and `process.exit(null)` exits with 0.
+
+Buffered output that grows: `nitpicker/no-buffered-growing-output` (production source, in `eslint-lint`) reports
+a buffered `child_process` or `execa` call whose output is read when the command's output grows with the project
+(`git ls-files`, `git diff`, `git log`, `find`, `rg`, `npm ls` and the like) and `maxBuffer` is left out or a
+constant, or when `maxBuffer` is a constant and the output is parsed whole (`JSON.parse`, `split`). Past the limit
+the child is killed and the call fails with `ENOBUFS`; the allowed forms read the output as a stream or from a file.
 
 Unbounded waits: `pmd/UnboundedWait` (Java, main sources) reports `get()` or `join()` without a timeout on a
 `Future` or `CompletableFuture`, `Thread.join()` and `CountDownLatch.await()`, and
@@ -369,8 +505,9 @@ Maven; the overlap keeps `pmd/MixedTimeUnits` over Error Prone's `TimeUnitMismat
 Costly collection forms: `nitpicker/no-costly-collection-form` (production source, in `eslint-lint`)
 reports three forms with a cheaper equivalent: an array that is appended to and searched with
 `includes`, `indexOf` or an identity `some` inside a loop, callback or recursive function (a `Set`); a
-`find`, `findIndex` or `some` by one property of the item, in a loop, iteration callback or listener,
-over a binding that does not change (a `Map` built once); and a sort that keeps only its first or last
+`find`, `findIndex`, `some` or `filter` by one property of the item, in a loop, iteration callback or
+listener, over a binding that does not change (a `Map` built once, or `Map.groupBy` for `filter`); an
+`includes` or `indexOf` of a loop value on an array that does not change (a `Set`); and a sort that keeps only its first or last
 element (one pass). The same forms run as `list-used-as-set`, `linear-lookup-in-loop` and ruff
 `FURB192` in the Python preset, `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop` and `pmd/SortForExtreme`
 in the Java preset (main sources, Gradle and Maven) and `kotlin-source/` rules of the same names in the
@@ -388,6 +525,36 @@ preset (a `Stream` from a Spring Data repository, `getResultStream()`, `queryFor
 `return`, and a Kotlin `Stream` collected inside `use { }` are left alone. A Kotlin `Flow` is not read:
 it is the default return type of a coroutine repository, so `toList()` on it is the usual read of a
 small result. The Go preset has no own rule engine yet.
+
+Repeated work: `nitpicker/no-pattern-compiled-in-loop` (production source, in `eslint-lint`) reports
+a glob compiled on every pass of a loop or iteration callback with a pattern that does not change
+there (`path.matchesGlob`, `minimatch`, `picomatch`, `micromatch`). The Python preset has no
+counterpart, since `re` and `fnmatch` cache compiled patterns; Java and Kotlin are tracked in #2018
+and Go in #2133.
+
+`nitpicker/no-constant-lookup-in-loop` (production source, in `eslint-lint`) reports a DOM lookup on
+`document` by constant arguments in a loop or iteration callback that leaves the page alone, and a
+`new URL(constant)` there of which only parts are read. Java reflective and registry lookups by a
+constant name and the other presets follow in #2133.
+
+`nitpicker/no-subtree-search-per-ancestor` (production source, in `eslint-lint`) reports a loop that
+climbs a parent chain and searches the children or the whole subtree of every level without testing
+the level's kind first. Java, Kotlin, Python and Go follow in #2133.
+
+`nitpicker/no-repeated-call` (production source, in `eslint-lint`) reports a call made once to test
+its result and again to use it, and a recursive call repeated with the same arguments on one path.
+Java (`resolve(x).isPresent() && resolve(x).get()`), Kotlin, Python and Go follow in #2133.
+
+`nitpicker/no-work-before-early-exit` (production source, in `eslint-lint`) reports effect-free
+in-memory work (a collection pass, a `Map` or `Set` built; file reads and parses are left alone, since
+moving them would change which error the exit path raises) declared right before an early exit
+that does not read it. Java (where PMD `PrematureDeclaration` treats calls as impure and so skips this
+case), Kotlin, Python and Go follow in #2133.
+
+`nitpicker/no-read-all-before-pass` (production source, in `eslint-lint`) reports every file read
+into one array that is then only walked once. `nitpicker/no-collected-stream-rows` is the same idea
+for streamed rows. Java (`Files.readString`, `readAllBytes`, `readAllLines`, `ObjectMapper.readValue`),
+Kotlin, Python and Go follow in #2133.
 
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
@@ -899,6 +1066,23 @@ a different parameter whose own slot gets a different name. Callees outside the 
 arguments, single-letter, numbered or `left`/`right` parameter names are not reported. The same form runs as
 `swapped-arguments` in the Python preset and Error Prone `ArgumentSelectionDefectChecker` in the Java preset.
 
+Type lookups per node: `nitpicker/no-type-lookup-per-node` (production source, in `eslint-lint`) reports a
+`getSymbolAtLocation`, `getTypeAtLocation` or `getTypeOfSymbolAtLocation` call that runs once per node of a tree walk
+(a lint listener on a broad selector such as `Identifier`, `MemberExpression` or `CallExpression`, a `forEachChild`
+visitor, or a `for...of` loop) when either the next statement is an early `return` or `continue` whose test is
+syntax-only and does not use the answer, or the answer for the node's name is only looked up (`has`, `get`) in a
+collection declared outside the walk and only node-kind tests come before the lookup. A collection that the walk's
+enclosing function also writes to (`add`, `set`, `delete`) does not count as built before the walk.
+
+Union member order: `nitpicker/no-union-order-dependence` (production source, in `eslint-lint`, with the type checker)
+reports `[0]`, `at(0)`, `at(-1)`, `find`, `findLast` and a destructured first item on the `types` of a TypeScript
+`UnionType`, `IntersectionType` or `UnionOrIntersectionType` (also after `filter`, `map`, `flatMap` or `slice`),
+`new Map(...)` and `Object.fromEntries(...)` built from a `flatMap` over it, and `===` between a `typeToString` result
+and text that holds ` | `. Not reported: a pick used only as a presence test (`if`, `!`, `?:`, `Boolean(...)`, a
+comparison with `undefined`), a `find` whose test can match one member only (identity with a value, `.value` equal to a
+literal, or a positive test of one flag a union holds once such as `Null` or `Undefined`), and a function that compares
+the same union's `.types.length` with 1 (`===` or `!==`).
+
 Interpolated log messages: `nitpicker/no-interpolated-log-message` (production source, in `eslint-lint`, when the project
 depends on pino, bunyan or winston) reports a `trace` to `fatal` call whose message is a template literal with
 expressions or a `+` concatenation with a non-literal. pino and bunyan take the values as fields first
@@ -912,7 +1096,7 @@ anywhere, and a secret-named value passed to a log call or an error message. The
 `pmd/HardcodedSecret`, `pmd/CredentialLiteral` and `pmd/SecretInLog` in the Java preset (main sources,
 Gradle and Maven) and as the `HardcodedSecret`, `CredentialLiteral` and `SecretInLog` source checks in the
 Kotlin preset. All presets share one definition of the names and the values
-(`shared/naming/secret-words.mjs`). Spring configuration files have their own `literal-secret` check.
+(`shared/naming/secret-words.mts`). Spring configuration files have their own `literal-secret` check.
 
 Task markers and commented-out code: `todo-without-issue` and `commented-out-code` report a `TODO` or
 `FIXME` comment with no issue reference, and a comment that reads as code. The Python preset runs them as
@@ -1061,7 +1245,7 @@ Knex, TypeORM and Drizzle builder chains, Prisma, TypeORM and Sequelize option o
 rule runs as `unordered-query` in the Python preset (SQLAlchemy, Django querysets, SQL text),
 `pmd/UnorderedQuery` in the Java preset (JPQL and SQL text, `setMaxResults`/`setFirstResult`, criteria queries,
 unsorted `PageRequest`) and `kotlin-source/UnorderedQuery` in the Kotlin preset. The text analysis is shared:
-[`shared/rules/queries/sql-order.mjs`](../shared/rules/queries/sql-order.mjs).
+[`shared/rules/queries/sql-order.mts`](../shared/rules/queries/sql-order.mts).
 
 Pattern translation: `nitpicker/no-unescaped-pattern-translation` (production source, in `eslint-lint`) reports a chain of
 two or more `replace` or `replaceAll` calls that turns a glob or pattern into a regex (reaching `new RegExp`) or into a
@@ -1152,7 +1336,7 @@ before the entry is stored and takes no key). The Java and Kotlin presets report
 
 ## Custom rules
 
-Generated from `shared/policy.mjs`. "enforced" means the language's adapter produces the
+Generated from `shared/policy.mts`. "enforced" means the language's adapter produces the
 rule and it fails the gate; "not enforced" means the check does not exist for that language yet;
 "report-only" means the adapter produces the rule when the project opts in and it never fails the gate.
 
@@ -1232,6 +1416,7 @@ over limit" and does not fail.
 | `foreign-key-index`                | `repository-hygiene` | a foreign key that a migration adds, or a Prisma relation, with no index that starts with its columns, unless the project uses MySQL or MariaDB (which index foreign keys themselves)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | enforced       | enforced             | enforced       | enforced       | enforced       | enforced       |
 | `field-limit-mismatch`             | `repository-hygiene` | a bounded string column (`VARCHAR(n)`, `@Column(length = n)`, Prisma `@db.VarChar(n)`, TypeORM, Drizzle, SQLAlchemy, GORM) written from a request with no validation bound at or below `n`, a validation bound or pattern that admits more than the column holds, or an OpenAPI or JSON Schema bound that disagrees with the validation of the same field                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | enforced       | enforced             | enforced       | enforced       | enforced       | enforced       |
 | `start-schema-push`                | `repository-hygiene` | a `start`, `prestart`, `serve` or `start:*` script (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`) in `package.json`, or a script it runs, that pushes the ORM schema (`prisma db push`, `prisma migrate dev`, `drizzle-kit push`, `typeorm schema:sync`, `mikro-orm schema:update`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | enforced       | enforced             | enforced       | enforced       | enforced       | enforced       |
+| `musl-default-allocator`           | `repository-hygiene` | a Rust binary crate that runs work on several threads (`rayon`, `threadpool`, `tokio` with the multi-thread runtime, or `std::thread` in its own or its path dependencies' sources) and is built for a `*-musl` target (named in a workflow, `.cargo/config.toml`, a Dockerfile or a build script next to a `cargo build`, or an Alpine Rust image) with no `#[global_allocator]` for that target                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | enforced       | enforced             | enforced       | enforced       | enforced       | enforced       |
 | `unused-dependency`                | `dead-code`          | a dependency in package.json (Python: in the project's dependency files; Go: a `require` that `go mod tidy` removes; Java and Kotlin: a dependency declared for the main sources that no main class uses, reported as `dependencies/unused-declared-dependency`) that nothing imports or runs                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | enforced       | enforced             | enforced       | enforced       | enforced       | enforced       |
 | `unlisted-dependency`              | `dead-code`          | an import of a package that package.json (Python: the project's dependency files; Go: a direct `require` that `go mod tidy` adds) does not list                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | enforced       | enforced             | not enforced   | enforced       | not enforced   | enforced       |
 | `unresolved-import`                | `dead-code`          | an import that resolves to no file and no package                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | enforced       | enforced             | does not apply | enforced       | does not apply | does not apply |

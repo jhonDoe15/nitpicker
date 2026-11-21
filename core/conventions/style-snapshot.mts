@@ -9,8 +9,8 @@ import type {
   ConventionSource,
   LazyConfigRoot,
 } from './typed/convention-types.mts';
-import { explainedError } from '../../shared/messages/troubleshooting.mjs';
-import { containedPath } from '../../shared/paths/contained-path.mjs';
+import { explainedError } from '../../shared/messages/troubleshooting.mts';
+import { containedPath } from '../../shared/paths/contained-path.mts';
 import { appendAll } from '../../shared/lists/lists.mts';
 
 const MAX_STYLE_FILES = 1000;

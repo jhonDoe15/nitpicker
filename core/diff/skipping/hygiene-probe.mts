@@ -1,8 +1,8 @@
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import type { ChangedFile } from './changed-files.mts';
-import { LARGE_FILE_BYTES } from '../../../shared/project-rules/hygiene-rules.mjs';
-import { PRIVATE_KEY_HEADER } from '../../../shared/hygiene/files/repository-files.mjs';
-import { GIT_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
+import { LARGE_FILE_BYTES } from '../../../shared/project-rules/hygiene-rules.mts';
+import { PRIVATE_KEY_HEADER } from '../../../shared/hygiene/files/repository-files.mts';
+import { GIT_TIMEOUT_MS } from '../../../shared/processes/deadlines.mts';
 
 function git(repositoryRoot: string, args: readonly string[]): SpawnSyncReturns<string> {
   return spawnSync('git', [...args], {

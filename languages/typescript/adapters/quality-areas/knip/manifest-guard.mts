@@ -2,9 +2,9 @@ import fs from 'node:fs';
 import { syncBuiltinESMExports } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { isPlainObject } from '../../../../../shared/config.mjs';
+import { isPlainObject } from '../../../../../shared/config.mts';
 import { fieldsOf } from '../../../../../shared/values/readers.mts';
-import { parsedJsonc as untypedParsedJsonc } from '../../../../../shared/jsonc/jsonc.mjs';
+import { parsedJsonc as untypedParsedJsonc } from '../../../../../shared/jsonc/jsonc.mts';
 
 type ParsedJsonc = { readonly kind: string; readonly value?: unknown; readonly reason?: string };
 

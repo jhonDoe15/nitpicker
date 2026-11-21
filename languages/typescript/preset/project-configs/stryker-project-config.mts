@@ -1,6 +1,5 @@
 import {
   fieldOf,
-  fieldsOf,
   isPlainObject,
   listOf,
   messageOf,
@@ -13,7 +12,6 @@ import {
   missingProjectConfig,
   picked,
   precedenceLayers,
-  readHeadPolicyFile,
 } from '../project-tools/typed/shared-views.mts';
 import type { ToolSettings } from '../project-tools/typed/tool-types.mts';
 import { readConfigObject } from './config-module.mts';
@@ -21,7 +19,7 @@ import type { StrykerConfig, StrykerMutant } from './project-config-types.mts';
 
 export const STRYKER_TOOL = 'stryker';
 
-export const STRYKER_PROJECT_FILES = ['', '.'].flatMap((prefix) =>
+const STRYKER_PROJECT_FILES = ['', '.'].flatMap((prefix) =>
   ['.conf', '.config'].flatMap((suffix) =>
     ['json', 'js', 'mjs', 'cjs'].map((extension) => `${prefix}stryker${suffix}.${extension}`),
   ),
@@ -98,26 +96,6 @@ export function readStrykerProjectConfig(projectRoot: string): StrykerConfig {
   );
 }
 
-export function appliedStrykerConfig(projectRoot: string): {
-  file?: string;
-  values: Record<string, unknown>;
-} {
-  const file = strykerProjectFile(projectRoot);
-  if (file === undefined) {
-    return { values: {} };
-  }
-  const { mutator, ...values } = readStrykerProjectConfig(projectRoot);
-  return {
-    file,
-    values: {
-      ...values,
-      ...Object.fromEntries(
-        Object.entries(fieldsOf(mutator)).map(([key, value]) => [`mutator.${key}`, value]),
-      ),
-    },
-  };
-}
-
 function projectStrykerConfig(settings: ToolSettings | undefined): StrykerConfig | undefined {
   if (settings === undefined || !precedenceLayers(settings.precedence).usesProject) {
     return undefined;
@@ -146,7 +124,7 @@ function flooredTimeouts(config: StrykerConfig, ranked: StrykerConfig): Record<s
 
 export function layeredStrykerConfig(
   config: StrykerConfig,
-  settings: ToolSettings | undefined = readHeadPolicyFile().tools?.['stryker'],
+  settings: ToolSettings | undefined,
 ): StrykerConfig {
   const project = projectStrykerConfig(settings);
   if (project === undefined) {

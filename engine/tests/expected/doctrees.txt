@@ -1,0 +1,3534 @@
+#C 36 Blank.java
+0 DOC_COMMENT 32 32 
+#C 58 Blank.java
+0 DOC_COMMENT 52 52 
+#C 83 Blank.java
+0 DOC_COMMENT 74 74 
+#C 111 Blank.java
+0 DOC_COMMENT 99 99 
+#C 142 Blank.java
+0 DOC_COMMENT 127 127 
+#C 176 Blank.java
+0 DOC_COMMENT 158 158 
+#C 213 Blank.java
+0 DOC_COMMENT 192 192 
+#C 236 Blank.java
+0 DOC_COMMENT 232 232 
+#C 264 Blank.java
+0 DOC_COMMENT 256 256 
+#C 297 Blank.java
+0 DOC_COMMENT 284 284 
+#C 335 Blank.java
+0 DOC_COMMENT 317 317 
+#C 379 Blank.java
+0 DOC_COMMENT 356 356 
+#C 397 Blank.java
+0 DOC_COMMENT 393 393 
+#C 416 Blank.java
+0 DOC_COMMENT 410 410 
+#C 436 Blank.java
+0 DOC_COMMENT 429 429 
+#C 457 Blank.java
+0 DOC_COMMENT 449 449 
+#C 479 Blank.java
+0 DOC_COMMENT 470 470 
+#C 499 Blank.java
+0 DOC_COMMENT 495 495 
+#C 522 Blank.java
+0 DOC_COMMENT 516 516 
+#C 548 Blank.java
+0 DOC_COMMENT 539 539 
+#C 577 Blank.java
+0 DOC_COMMENT 565 565 
+#C 609 Blank.java
+0 DOC_COMMENT 594 594 
+#C 630 Blank.java
+0 DOC_COMMENT 624 624 
+#C 655 Blank.java
+0 DOC_COMMENT 645 645 
+#C 684 Blank.java
+0 DOC_COMMENT 670 670 
+#C 717 Blank.java
+0 DOC_COMMENT 699 699 
+#C 739 Blank.java
+0 DOC_COMMENT 732 732 
+#C 766 Blank.java
+0 DOC_COMMENT 754 754 
+#C 798 Blank.java
+0 DOC_COMMENT 781 781 
+#C 835 Blank.java
+0 DOC_COMMENT 813 813 
+#C 862 Blank.java
+0 DOC_COMMENT 852 852 
+#C 889 Blank.java
+0 DOC_COMMENT 877 877 
+#C 916 Blank.java
+0 DOC_COMMENT 906 906 
+#C 941 Blank.java
+0 DOC_COMMENT 933 933 
+#C 971 Blank.java
+0 DOC_COMMENT 958 958 
+#C 995 Blank.java
+0 DOC_COMMENT 989 989 
+#C 1017 Blank.java
+0 DOC_COMMENT 1013 1013 
+#C 1041 Blank.java
+0 DOC_COMMENT 1034 1034 
+#C 1066 Blank.java
+0 DOC_COMMENT 1058 1058 
+#C 1092 Blank.java
+0 DOC_COMMENT 1083 1083 
+#C 1120 Blank.java
+0 DOC_COMMENT 1108 1109 
+1 TEXT 1108 1109 "x"
+#C 1151 Blank.java
+0 DOC_COMMENT 1139 1140 
+1 TEXT 1139 1140 "x"
+#C 1191 Blank.java
+0 DOC_COMMENT 1173 1180 
+1 RETURN 1173 1180 return
+#C 1234 Blank.java
+0 DOC_COMMENT 1213 1231 
+1 LINK 1213 1231 link
+2 REFERENCE 1220 1223 "Foo"
+2 ERRONEOUS 1231 1231 "" compiler.err.dc.unterminated.inline.tag
+#C 1283 Blank.java
+0 DOC_COMMENT 1256 1280 
+1 LINK 1256 1280 link
+2 REFERENCE 1263 1266 "Foo"
+2 ERRONEOUS 1280 1280 "" compiler.err.dc.unterminated.inline.tag
+#C 1321 Blank.java
+0 DOC_COMMENT 1299 1307 
+1 ERRONEOUS 1299 1307 "{@code x" compiler.err.dc.unterminated.inline.tag
+#C 1369 Blank.java
+0 DOC_COMMENT 1337 1366 
+1 RETURN 1337 1366 return
+2 LINK 1345 1366 link
+3 REFERENCE 1352 1355 "Foo"
+3 ERRONEOUS 1366 1366 "" compiler.err.dc.unterminated.inline.tag
+#C 125 Crlf.java
+0 DOC_COMMENT 42 110 
+1 TEXT 42 44 "a "
+1 START_ELEMENT 44 47 b
+1 TEXT 47 57 "\n b"
+1 RETURN 74 93 return
+2 TEXT 82 84 "x "
+2 CODE 84 93 code
+3 TEXT 91 92 "y"
+1 PARAM 102 110 param
+2 IDENTIFIER 109 110 z
+#C 163 Crlf.java
+0 DOC_COMMENT 154 154 
+#C 225 Crlf.java
+0 DOC_COMMENT 179 210 
+1 CODE 179 198 code
+2 TEXT 186 197 "a\n b"
+1 TEXT 198 210 " c\n d"
+#C 50 Layout.java
+0 DOC_COMMENT 34 42 
+1 TEXT 34 42 "one line"
+#C 85 Layout.java
+0 DOC_COMMENT 64 78 
+1 TEXT 64 78 "one line tight"
+#C 120 Layout.java
+0 DOC_COMMENT 101 112 
+1 TEXT 101 112 "three stars"
+#C 159 Layout.java
+0 DOC_COMMENT 135 150 
+1 TEXT 135 150 "ends with stars"
+#C 196 Layout.java
+0 DOC_COMMENT 181 186 
+1 TEXT 181 186 "stars"
+#C 267 Layout.java
+0 DOC_COMMENT 218 254 
+1 TEXT 218 254 "no stars here\n         indented more"
+#C 337 Layout.java
+0 DOC_COMMENT 290 324 
+1 TEXT 290 324 "double stars\n triple stars"
+#C 414 Layout.java
+0 DOC_COMMENT 358 401 
+1 TEXT 358 377 "no space after star"
+1 RETURN 384 401 return
+2 TEXT 392 401 "tight tag"
+#C 451 Layout.java
+0 DOC_COMMENT -1 -1 
+#C 472 Layout.java
+0 DOC_COMMENT -1 -1 
+#C 499 Layout.java
+0 DOC_COMMENT -1 -1 
+#C 533 Layout.java
+0 DOC_COMMENT 525 525 
+#C 565 Layout.java
+0 DOC_COMMENT 548 557 
+1 RETURN 548 557 return
+2 TEXT 556 557 "x"
+#C 647 Layout.java
+0 DOC_COMMENT 599 634 
+1 TEXT 599 634 "tabs before star\n\ttab after star"
+#C 751 Layout.java
+0 DOC_COMMENT 664 738 
+1 TEXT 664 678 "leading spaces"
+1 PARAM 689 738 param
+2 IDENTIFIER 696 697 x
+2 TEXT 698 738 "indented tag\n  text * star in text"
+#C 843 Layout.java
+0 DOC_COMMENT 766 831 
+1 TEXT 766 802 "first\n    second without star @notag"
+1 RETURN 807 831 return
+2 TEXT 815 831 "tag without star"
+#C 908 Layout.java
+0 DOC_COMMENT 880 901 
+1 TEXT 880 884 "text"
+1 RETURN 892 901 return
+2 TEXT 900 901 "x"
+#C 972 Layout.java
+0 DOC_COMMENT 945 964 
+1 TEXT 945 949 "text"
+1 RETURN 957 964 return
+#C 1041 Layout.java
+0 DOC_COMMENT 1002 1028 
+1 TEXT 1002 1007 "text."
+1 TEXT 1008 1028 "*\n * list item"
+#C 1112 Layout.java
+0 DOC_COMMENT 1063 1099 
+1 TEXT 1063 1064 "A"
+1 START_ELEMENT 1064 1067 B
+1 TEXT 1067 1070 " c "
+1 ENTITY 1070 1075 amp
+1 TEXT 1075 1077 " d"
+1 PARAM 1083 1099 param
+2 IDENTIFIER 1090 1091 x
+2 TEXT 1092 1099 "no star"
+#C 1144 Layout.java
+0 DOC_COMMENT 1127 1136 
+1 CODE 1127 1136 code
+2 TEXT 1134 1135 "x"
+#C 1246 Layout.java
+0 DOC_COMMENT 1166 1233 
+1 PARAM 1166 1199 param <>
+2 IDENTIFIER 1174 1175 T
+2 TEXT 1179 1199 "spaced   description"
+1 THROWS 1210 1233 throws
+2 REFERENCE 1220 1223 "Foo"
+2 TEXT 1227 1233 "spaced"
+#C 1280 Layout.java
+0 DOC_COMMENT 1261 1272 
+1 DEPRECATED 1261 1272 deprecated
+#C 1326 Layout.java
+0 DOC_COMMENT 1302 1313 
+1 DEPRECATED 1302 1313 deprecated
+#C 46 Layout2.java
+0 DOC_COMMENT 38 38 
+#C 75 Layout2.java
+0 DOC_COMMENT 65 65 
+#C 104 Layout2.java
+0 DOC_COMMENT 96 96 
+#C 139 Layout2.java
+0 DOC_COMMENT 125 125 
+#C 167 Layout2.java
+0 DOC_COMMENT 159 159 
+#C 202 Layout2.java
+0 DOC_COMMENT 194 194 
+#C 232 Layout2.java
+0 DOC_COMMENT -1 -1 
+#C 254 Layout2.java
+0 DOC_COMMENT -1 -1 
+#C 277 Layout2.java
+0 DOC_COMMENT -1 -1 
+#C 301 Layout2.java
+0 DOC_COMMENT -1 -1 
+#C 350 Layout2.java
+0 DOC_COMMENT 328 328 
+#C 372 Layout2.java
+0 DOC_COMMENT -1 -1 
+#C 415 Layout2.java
+0 DOC_COMMENT 394 395 
+1 TEXT 394 395 "x"
+#C 468 Layout2.java
+0 DOC_COMMENT 448 455 
+1 RETURN 448 455 return
+#C 534 Layout2.java
+0 DOC_COMMENT 505 521 
+1 RETURN 505 521 return
+2 ERRONEOUS 513 521 "{@code x" compiler.err.dc.unterminated.inline.tag
+#C 588 Layout2.java
+0 DOC_COMMENT 564 580 
+1 RETURN 564 580 return
+2 ERRONEOUS 572 580 "{@code x" compiler.err.dc.unterminated.inline.tag
+#C 645 Layout2.java
+0 DOC_COMMENT 618 634 
+1 RETURN 618 634 return
+2 ERRONEOUS 626 634 "{@code x" compiler.err.dc.unterminated.inline.tag
+#C 705 Layout2.java
+0 DOC_COMMENT 675 698 
+1 LINK 675 698 link
+2 REFERENCE 682 685 "Foo"
+2 ERRONEOUS 698 698 "" compiler.err.dc.unterminated.inline.tag
+#C 754 Layout2.java
+0 DOC_COMMENT 727 746 
+1 LINK 727 746 link
+2 REFERENCE 734 737 "Foo"
+2 ERRONEOUS 746 746 "" compiler.err.dc.unterminated.inline.tag
+#C 780 Layout2.java
+0 DOC_COMMENT 772 772 
+#C 813 Layout2.java
+0 DOC_COMMENT 804 805 
+1 TEXT 804 805 "y"
+#C 861 Layout2.java
+0 DOC_COMMENT 828 829 
+1 TEXT 828 829 "x"
+#C 885 Layout2.java
+0 DOC_COMMENT 876 877 
+1 TEXT 876 877 "x"
+#C 49 Layout3.java
+0 DOC_COMMENT 37 41 
+1 TEXT 37 41 "item"
+#C 79 Layout3.java
+0 DOC_COMMENT 67 71 
+1 TEXT 67 71 "item"
+#C 110 Layout3.java
+0 DOC_COMMENT 101 102 
+1 TEXT 101 102 "x"
+#C 148 Layout3.java
+0 DOC_COMMENT 132 133 
+1 TEXT 132 133 "x"
+#C 189 Layout3.java
+0 DOC_COMMENT 170 180 
+1 TEXT 170 180 "x\n y"
+#C 256 Layout3.java
+0 DOC_COMMENT 204 243 
+1 TEXT 204 243 "a\n  b\nc\nd\n * e"
+#C 278 Layout3.java
+0 DOC_COMMENT 270 271 
+1 TEXT 270 271 "a"
+#C 301 Layout3.java
+0 DOC_COMMENT 292 293 
+1 TEXT 292 293 "a"
+#C 327 Layout3.java
+0 DOC_COMMENT 316 319 
+1 TEXT 316 319 "a *"
+#C 359 Layout3.java
+0 DOC_COMMENT 342 351 
+1 TEXT 342 351 "a\n      b"
+#C 396 Layout3.java
+0 DOC_COMMENT 374 386 
+1 TEXT 374 386 "tab\n\ttab2"
+#C 462 Layout3.java
+0 DOC_COMMENT 418 444 
+1 TEXT 418 423 "café "
+1 START_ELEMENT 423 426 b
+1 TEXT 426 444 " A \\\\u0041"
+#C 503 Layout3.java
+0 DOC_COMMENT 486 495 
+1 RETURN 486 495 return
+2 TEXT 494 495 "x"
+#C 542 Layout3.java
+0 DOC_COMMENT 533 534 
+1 TEXT 533 534 "x"
+#C 596 Layout3.java
+0 DOC_COMMENT 572 583 
+1 TEXT 572 583 "after blank"
+#C 646 Layout3.java
+0 DOC_COMMENT 618 636 
+1 PARAM 618 636 param
+2 IDENTIFIER 625 626 x
+2 CODE 627 636 code
+3 TEXT 634 635 "y"
+#C 691 Layout3.java
+0 DOC_COMMENT 668 681 
+1 CODE 668 677 code
+2 TEXT 675 676 "x"
+1 TEXT 677 678 " "
+1 START_ELEMENT 678 681 b
+#C 731 Layout3.java
+0 DOC_COMMENT 713 724 
+1 LINK 713 724 link
+2 REFERENCE 720 723 "Foo"
+2 ERRONEOUS 724 724 "" compiler.err.dc.unterminated.inline.tag
+#C 776 Layout3.java
+0 DOC_COMMENT 753 768 
+1 LINK 753 768 link
+2 REFERENCE 760 763 "Foo"
+2 ERRONEOUS 764 765 "x" compiler.err.dc.unterminated.inline.tag
+#C 89 Layout4.java
+0 DOC_COMMENT 42 76 
+1 TEXT 42 76 "#***\n    /* Unit tests\n    /******"
+#C 117 Layout4.java
+0 DOC_COMMENT 108 109 
+1 TEXT 108 109 "x"
+#C 165 Layout4.java
+0 DOC_COMMENT 141 150 
+1 RETURN 141 150 return
+2 TEXT 149 150 "x"
+#C 64 Probe.java
+0 DOC_COMMENT 40 51 
+1 TEXT 40 51 "Plain text."
+#C 131 Probe.java
+0 DOC_COMMENT 87 118 
+1 TEXT 87 101 "Two sentences."
+1 TEXT 102 118 "Second one here."
+#C 201 Probe.java
+0 DOC_COMMENT 156 185 
+1 TEXT 156 185 "leading spaces   and trailing"
+#C 269 Probe.java
+0 DOC_COMMENT 224 256 
+1 TEXT 224 256 "text then @notatag in the middle"
+#C 306 Probe.java
+0 DOC_COMMENT 292 293 
+1 ERRONEOUS 292 293 "@" compiler.err.dc.no.tag.name
+#C 359 Probe.java
+0 DOC_COMMENT 329 346 
+1 ERRONEOUS 329 346 "@ alone then text" compiler.err.dc.no.tag.name
+#C 413 Probe.java
+0 DOC_COMMENT 382 400 
+1 ERRONEOUS 382 400 "@1abc digits first" compiler.err.dc.no.tag.name
+#C 466 Probe.java
+0 DOC_COMMENT 436 453 
+1 UNKNOWN_BLOCK_TAG 436 453 a-b.c:d_e
+2 TEXT 447 453 "dashes"
+#C 508 Probe.java
+0 DOC_COMMENT 489 495 
+1 ERRONEOUS 489 495 "@param" compiler.err.dc.identifier.expected
+#C 552 Probe.java
+0 DOC_COMMENT 531 539 
+1 PARAM 531 539 param
+2 IDENTIFIER 538 539 x
+#C 602 Probe.java
+0 DOC_COMMENT 575 589 
+1 PARAM 575 589 param
+2 IDENTIFIER 582 583 x
+2 TEXT 584 589 "the x"
+#C 658 Probe.java
+0 DOC_COMMENT 626 645 
+1 PARAM 626 645 param <>
+2 IDENTIFIER 634 635 T
+2 TEXT 637 645 "the type"
+#C 713 Probe.java
+0 DOC_COMMENT 682 700 
+1 ERRONEOUS 682 700 "@param <T the type" compiler.err.dc.gt.expected
+#C 767 Probe.java
+0 DOC_COMMENT 737 754 
+1 ERRONEOUS 737 754 "@param <> nothing" compiler.err.dc.identifier.expected
+#C 822 Probe.java
+0 DOC_COMMENT 791 809 
+1 ERRONEOUS 791 809 "@param 1x bad name" compiler.err.dc.identifier.expected
+#C 876 Probe.java
+0 DOC_COMMENT 846 863 
+1 PARAM 846 863 param
+2 IDENTIFIER 853 854 x
+2 TEXT 854 863 ".y dotted"
+#C 920 Probe.java
+0 DOC_COMMENT 900 907 
+1 RETURN 900 907 return
+#C 974 Probe.java
+0 DOC_COMMENT 944 961 
+1 RETURN 944 961 return
+2 TEXT 952 961 "the thing"
+#C 1018 Probe.java
+0 DOC_COMMENT 998 1005 
+1 ERRONEOUS 998 1005 "@throws" compiler.err.dc.ref.syntax.error
+#C 1066 Probe.java
+0 DOC_COMMENT 1042 1053 
+1 THROWS 1042 1053 throws
+2 REFERENCE 1050 1053 "Foo"
+#C 1123 Probe.java
+0 DOC_COMMENT 1090 1110 
+1 THROWS 1090 1110 throws
+2 REFERENCE 1098 1101 "Foo"
+2 TEXT 1102 1110 "when bad"
+#C 1196 Probe.java
+0 DOC_COMMENT 1147 1183 
+1 THROWS 1147 1183 throws
+2 REFERENCE 1155 1174 "java.io.IOException"
+2 TEXT 1175 1183 "when bad"
+#C 1257 Probe.java
+0 DOC_COMMENT 1220 1244 
+1 THROWS 1220 1244 throws
+2 REFERENCE 1228 1236 "Foo<Bar>"
+2 TEXT 1237 1244 "generic"
+#C 1317 Probe.java
+0 DOC_COMMENT 1281 1304 
+1 EXCEPTION 1281 1304 exception
+2 REFERENCE 1292 1295 "Foo"
+2 TEXT 1296 1304 "when bad"
+#C 1362 Probe.java
+0 DOC_COMMENT 1341 1349 
+1 SEE 1341 1349 see
+2 REFERENCE 1346 1349 "Foo"
+#C 1418 Probe.java
+0 DOC_COMMENT 1386 1405 
+1 SEE 1386 1405 see
+2 REFERENCE 1391 1394 "Foo"
+2 TEXT 1395 1405 "label here"
+#C 1486 Probe.java
+0 DOC_COMMENT 1442 1473 
+1 SEE 1442 1473 see
+2 REFERENCE 1447 1467 "Foo#bar(int, String)"
+2 TEXT 1468 1473 "label"
+#C 1532 Probe.java
+0 DOC_COMMENT 1510 1519 
+1 SEE 1510 1519 see
+2 REFERENCE 1515 1519 "#bar"
+#C 1584 Probe.java
+0 DOC_COMMENT 1556 1571 
+1 SEE 1556 1571 see
+2 TEXT 1561 1571 "\"a string\""
+#C 1646 Probe.java
+0 DOC_COMMENT 1608 1633 
+1 ERRONEOUS 1608 1633 "@see \"unterminated string" compiler.err.dc.unexpected.content
+#C 1708 Probe.java
+0 DOC_COMMENT 1670 1695 
+1 SEE 1670 1695 see
+2 START_ELEMENT 1675 1687 a
+3 ATTRIBUTE 1678 1686 href DOUBLE
+4 TEXT 1684 1685 "x"
+2 TEXT 1687 1691 "link"
+2 END_ELEMENT 1691 1695 a
+#C 1779 Probe.java
+0 DOC_COMMENT 1732 1766 
+1 SEE 1732 1766 see
+2 START_ELEMENT 1737 1749 a
+3 ATTRIBUTE 1740 1748 href DOUBLE
+4 TEXT 1746 1747 "x"
+2 TEXT 1749 1753 "link"
+2 END_ELEMENT 1753 1757 a
+2 TEXT 1757 1766 " trailing"
+#C 1820 Probe.java
+0 DOC_COMMENT 1803 1807 
+1 ERRONEOUS 1803 1807 "@see" compiler.err.dc.no.content
+#C 1873 Probe.java
+0 DOC_COMMENT 1844 1860 
+1 ERRONEOUS 1844 1860 "@see Foo#bar(int" compiler.err.dc.unterminated.signature
+#C 1918 Probe.java
+0 DOC_COMMENT 1897 1905 
+1 ERRONEOUS 1897 1905 "@see 123" compiler.err.dc.unexpected.content
+#C 1971 Probe.java
+0 DOC_COMMENT 1942 1958 
+1 ERRONEOUS 1942 1958 "@see {@link Foo}" compiler.err.dc.unexpected.content
+#C 2021 Probe.java
+0 DOC_COMMENT 1995 2008 
+1 SEE 1995 2008 see
+2 REFERENCE 2000 2008 "Foo<Bar>"
+#C 2091 Probe.java
+0 DOC_COMMENT 2045 2078 
+1 SEE 2045 2078 see
+2 REFERENCE 2050 2078 "java.util.Map.Entry#getKey()"
+#C 2152 Probe.java
+0 DOC_COMMENT 2115 2139 
+1 SEE 2115 2139 see
+2 REFERENCE 2120 2139 "mod/pkg.Type#member"
+#C 2212 Probe.java
+0 DOC_COMMENT 2176 2199 
+1 SEE 2176 2199 see
+2 REFERENCE 2181 2199 "pkg.Type##fragment"
+#C 2272 Probe.java
+0 DOC_COMMENT 2236 2259 
+1 AUTHOR 2236 2259 author
+2 TEXT 2244 2252 "A. Name "
+2 ERRONEOUS 2252 2253 "<" compiler.err.dc.malformed.html
+2 TEXT 2253 2259 "a@b.c>"
+#C 2319 Probe.java
+0 DOC_COMMENT 2296 2306 
+1 SINCE 2296 2306 since
+2 TEXT 2303 2306 "1.0"
+#C 2366 Probe.java
+0 DOC_COMMENT 2343 2353 
+1 VERSION 2343 2353 version
+2 TEXT 2352 2353 "2"
+#C 2414 Probe.java
+0 DOC_COMMENT 2390 2401 
+1 DEPRECATED 2390 2401 deprecated
+#C 2488 Probe.java
+0 DOC_COMMENT 2438 2475 
+1 DEPRECATED 2438 2475 deprecated
+2 TEXT 2450 2454 "use "
+2 LINK 2454 2467 link
+3 REFERENCE 2461 2466 "Other"
+2 TEXT 2467 2475 " instead"
+#C 2532 Probe.java
+0 DOC_COMMENT 2512 2519 
+1 HIDDEN 2512 2519 hidden
+#C 2586 Probe.java
+0 DOC_COMMENT 2556 2573 
+1 HIDDEN 2556 2573 hidden
+2 TEXT 2564 2573 "some text"
+#C 2630 Probe.java
+0 DOC_COMMENT 2610 2617 
+1 SERIAL 2610 2617 serial
+#C 2682 Probe.java
+0 DOC_COMMENT 2654 2669 
+1 SERIAL 2654 2669 serial
+2 TEXT 2662 2669 "include"
+#C 2743 Probe.java
+0 DOC_COMMENT 2706 2730 
+1 SERIAL 2706 2730 serial
+2 TEXT 2714 2730 "some description"
+#C 2801 Probe.java
+0 DOC_COMMENT 2767 2788 
+1 SERIAL_DATA 2767 2788 serialData
+2 TEXT 2779 2788 "data desc"
+#C 2872 Probe.java
+0 DOC_COMMENT 2825 2859 
+1 SERIAL_FIELD 2825 2859 serialField
+2 IDENTIFIER 2838 2842 name
+2 REFERENCE 2843 2847 "Type"
+2 TEXT 2848 2859 "description"
+#C 2926 Probe.java
+0 DOC_COMMENT 2896 2913 
+1 ERRONEOUS 2896 2913 "@serialField name" compiler.err.dc.ref.syntax.error
+#C 2975 Probe.java
+0 DOC_COMMENT 2950 2962 
+1 ERRONEOUS 2950 2962 "@serialField" compiler.err.dc.identifier.expected
+#C 3030 Probe.java
+0 DOC_COMMENT 2999 3017 
+1 PROVIDES 2999 3017 provides
+2 REFERENCE 3009 3012 "Foo"
+2 TEXT 3013 3017 "desc"
+#C 3081 Probe.java
+0 DOC_COMMENT 3054 3068 
+1 USES 3054 3068 uses
+2 REFERENCE 3060 3063 "Foo"
+2 TEXT 3064 3068 "desc"
+#C 3143 Probe.java
+0 DOC_COMMENT 3105 3130 
+1 SPEC 3105 3130 spec
+2 TEXT 3111 3119 "http://x"
+2 TEXT 3120 3130 "title here"
+#C 3197 Probe.java
+0 DOC_COMMENT 3167 3184 
+1 UNKNOWN_BLOCK_TAG 3167 3184 custom
+2 TEXT 3175 3184 "some text"
+#C 3241 Probe.java
+0 DOC_COMMENT 3221 3228 
+1 UNKNOWN_BLOCK_TAG 3221 3228 custom
+#C 3303 Probe.java
+0 DOC_COMMENT 3265 3290 
+1 UNKNOWN_BLOCK_TAG 3265 3290 apiNote
+2 TEXT 3274 3281 "a note "
+2 CODE 3281 3290 code
+3 TEXT 3288 3289 "x"
+#C 3354 Probe.java
+0 DOC_COMMENT 3327 3332 
+1 ERRONEOUS 3327 3332 "@code" compiler.err.dc.bad.inline.tag
+#C 3409 Probe.java
+0 DOC_COMMENT 3378 3383 
+1 ERRONEOUS 3378 3383 "@link" compiler.err.dc.bad.inline.tag
+#C 3463 Probe.java
+0 DOC_COMMENT 3433 3441 
+1 ERRONEOUS 3433 3441 "@literal" compiler.err.dc.bad.inline.tag
+#C 3515 Probe.java
+0 DOC_COMMENT 3487 3493 
+1 ERRONEOUS 3487 3493 "@value" compiler.err.dc.bad.inline.tag
+#C 3563 Probe.java
+0 DOC_COMMENT 3539 3550 
+1 ERRONEOUS 3539 3550 "@inheritDoc" compiler.err.dc.bad.inline.tag
+#C 3620 Probe.java
+0 DOC_COMMENT 3587 3598 
+1 ERRONEOUS 3587 3598 "@inheritDoc" compiler.err.dc.bad.inline.tag
+#C 3665 Probe.java
+0 DOC_COMMENT 3644 3652 
+1 ERRONEOUS 3644 3652 "@docRoot" compiler.err.dc.bad.inline.tag
+#C 3717 Probe.java
+0 DOC_COMMENT 3689 3695 
+1 ERRONEOUS 3689 3695 "@index" compiler.err.dc.bad.inline.tag
+#C 3771 Probe.java
+0 DOC_COMMENT 3741 3749 
+1 ERRONEOUS 3741 3749 "@summary" compiler.err.dc.bad.inline.tag
+#C 3832 Probe.java
+0 DOC_COMMENT 3795 3810 
+1 ERRONEOUS 3795 3810 "@systemProperty" compiler.err.dc.bad.inline.tag
+#C 3886 Probe.java
+0 DOC_COMMENT 3856 3864 
+1 ERRONEOUS 3856 3864 "@snippet" compiler.err.dc.bad.inline.tag
+#C 3942 Probe.java
+0 DOC_COMMENT 3910 3920 
+1 ERRONEOUS 3910 3920 "@linkplain" compiler.err.dc.bad.inline.tag
+#C 4045 Probe.java
+0 DOC_COMMENT 3966 3990 
+1 TEXT 3966 3977 "Text first."
+1 ERRONEOUS 3985 3990 "@code" compiler.err.dc.bad.inline.tag
+#C 4149 Probe.java
+0 DOC_COMMENT 4069 4110 
+1 TEXT 4069 4080 "Text first."
+1 RETURN 4088 4097 return
+2 TEXT 4096 4097 "a"
+1 ERRONEOUS 4105 4110 "@code" compiler.err.dc.bad.inline.tag
+#C 4203 Probe.java
+0 DOC_COMMENT 4173 4190 
+1 UNKNOWN_INLINE_TAG 4173 4190 param
+2 TEXT 4181 4189 "x inline"
+#C 4252 Probe.java
+0 DOC_COMMENT 4227 4239 
+1 UNKNOWN_INLINE_TAG 4227 4239 author
+2 TEXT 4236 4238 "me"
+#C 4299 Probe.java
+0 DOC_COMMENT 4276 4286 
+1 UNKNOWN_INLINE_TAG 4276 4286 see
+2 TEXT 4282 4285 "Foo"
+#C 4346 Probe.java
+0 DOC_COMMENT 4323 4333 
+1 UNKNOWN_INLINE_TAG 4323 4333 since
+2 TEXT 4331 4332 "1"
+#C 4396 Probe.java
+0 DOC_COMMENT 4370 4383 
+1 UNKNOWN_INLINE_TAG 4370 4383 throws
+2 TEXT 4379 4382 "Foo"
+#C 4446 Probe.java
+0 DOC_COMMENT 4420 4433 
+1 UNKNOWN_INLINE_TAG 4420 4433 deprecated
+2 TEXT 4432 4432 ""
+#C 4502 Probe.java
+0 DOC_COMMENT 4470 4489 
+1 RETURN 4470 4489 return
+2 TEXT 4479 4488 "the value"
+#C 4548 Probe.java
+0 DOC_COMMENT 4526 4535 
+1 RETURN 4526 4535 return
+#C 4617 Probe.java
+0 DOC_COMMENT 4572 4604 
+1 TEXT 4572 4580 "Summary "
+1 RETURN 4580 4599 return
+2 TEXT 4589 4598 "the value"
+1 TEXT 4599 4604 " more"
+#C 4665 Probe.java
+0 DOC_COMMENT 4641 4652 
+1 LINK 4641 4652 link
+2 REFERENCE 4648 4651 "Foo"
+#C 4719 Probe.java
+0 DOC_COMMENT 4689 4706 
+1 LINK 4689 4706 link
+2 REFERENCE 4696 4699 "Foo"
+2 TEXT 4700 4705 "label"
+#C 4794 Probe.java
+0 DOC_COMMENT 4743 4781 
+1 LINK 4743 4781 link
+2 REFERENCE 4750 4753 "Foo"
+2 TEXT 4754 4780 "label with {braces} inside"
+#C 4838 Probe.java
+0 DOC_COMMENT 4818 4825 
+1 LINK 4818 4825 link
+#C 4883 Probe.java
+0 DOC_COMMENT 4862 4870 
+1 LINK 4862 4870 link
+#C 4943 Probe.java
+0 DOC_COMMENT 4907 4930 
+1 LINK 4907 4930 link
+2 REFERENCE 4916 4919 "Foo"
+2 TEXT 4922 4929 "label  "
+#C 5014 Probe.java
+0 DOC_COMMENT 4967 5001 
+1 LINK 4967 5001 link
+2 REFERENCE 4974 4994 "Foo#bar(int, String)"
+2 TEXT 4995 5000 "label"
+#C 5083 Probe.java
+0 DOC_COMMENT 5038 5070 
+1 LINK 5038 5070 link
+2 REFERENCE 5045 5069 "Foo#bar(int a, String b)"
+#C 5138 Probe.java
+0 DOC_COMMENT 5107 5125 
+1 LINK 5107 5125 link
+2 REFERENCE 5114 5122 "Foo<Bar>"
+2 TEXT 5123 5124 "x"
+#C 5211 Probe.java
+0 DOC_COMMENT 5162 5198 
+1 LINK 5162 5198 link
+2 REFERENCE 5169 5195 "Foo<Bar>#baz(List<String>)"
+2 TEXT 5196 5197 "x"
+#C 5270 Probe.java
+0 DOC_COMMENT 5235 5257 
+1 ERRONEOUS 5235 5256 "{@link Foo#bar( label" compiler.err.dc.unterminated.signature
+1 TEXT 5256 5257 "}"
+#C 5324 Probe.java
+0 DOC_COMMENT 5294 5311 
+1 LINK 5294 5311 link
+2 REFERENCE 5301 5304 "foo"
+2 TEXT 5305 5310 "bar( "
+#C 5373 Probe.java
+0 DOC_COMMENT 5348 5360 
+1 LINK 5348 5360 link
+2 REFERENCE 5355 5359 "#bar"
+#C 5419 Probe.java
+0 DOC_COMMENT 5397 5406 
+1 ERRONEOUS 5397 5405 "{@link #" compiler.err.dc.ref.syntax.error
+1 TEXT 5405 5406 "}"
+#C 5468 Probe.java
+0 DOC_COMMENT 5443 5455 
+1 ERRONEOUS 5443 5454 "{@link Foo#" compiler.err.dc.ref.syntax.error
+1 TEXT 5454 5455 "}"
+#C 5521 Probe.java
+0 DOC_COMMENT 5492 5508 
+1 ERRONEOUS 5492 5507 "{@link Foo..bar" compiler.err.dc.ref.unexpected.input
+1 TEXT 5507 5508 "}"
+#C 5568 Probe.java
+0 DOC_COMMENT 5545 5561 
+1 LINK 5545 5561 link
+2 REFERENCE 5552 5555 "Foo"
+2 ERRONEOUS 5561 5561 "" compiler.err.dc.unterminated.inline.tag
+#C 5634 Probe.java
+0 DOC_COMMENT 5592 5627 
+1 LINK 5592 5627 link
+2 REFERENCE 5599 5602 "Foo"
+2 ERRONEOUS 5603 5621 "label never closed" compiler.err.dc.unterminated.inline.tag
+#C 5710 Probe.java
+0 DOC_COMMENT 5659 5697 
+1 LINK 5659 5697 link
+2 REFERENCE 5666 5669 "Foo"
+2 TEXT 5678 5696 "label on next line"
+#C 5792 Probe.java
+0 DOC_COMMENT 5735 5779 
+1 LINK 5735 5779 link
+2 REFERENCE 5742 5770 "Foo#bar(int,\n  String)"
+2 TEXT 5771 5778 "wrapped"
+#C 5846 Probe.java
+0 DOC_COMMENT 5817 5833 
+1 LINK 5817 5833 link
+2 REFERENCE 5824 5827 "Foo"
+2 TEXT 5828 5832 "@bar"
+#C 5900 Probe.java
+0 DOC_COMMENT 5871 5887 
+1 ERRONEOUS 5871 5886 "{@link \"string\"" compiler.err.dc.ref.unexpected.input
+1 TEXT 5886 5887 "}"
+#C 5954 Probe.java
+0 DOC_COMMENT 5925 5941 
+1 ERRONEOUS 5925 5940 "{@link <a>x</a>" compiler.err.dc.ref.unexpected.input
+1 TEXT 5940 5941 "}"
+#C 6021 Probe.java
+0 DOC_COMMENT 5979 6008 
+1 LINK 5979 6008 link
+2 REFERENCE 5986 5989 "Foo"
+2 START_ELEMENT 5990 5993 b
+2 TEXT 5993 5997 "bold"
+2 END_ELEMENT 5997 6001 b
+2 TEXT 6001 6007 " label"
+#C 6089 Probe.java
+0 DOC_COMMENT 6046 6076 
+1 LINK 6046 6076 link
+2 REFERENCE 6053 6056 "Foo"
+2 TEXT 6057 6063 "label "
+2 ENTITY 6063 6068 amp
+2 TEXT 6068 6075 " entity"
+#C 6159 Probe.java
+0 DOC_COMMENT 6114 6146 
+1 LINK 6114 6146 link
+2 REFERENCE 6121 6124 "Foo"
+2 TEXT 6125 6131 "label "
+2 CODE 6131 6145 code
+3 TEXT 6138 6144 "nested"
+#C 6219 Probe.java
+0 DOC_COMMENT 6184 6206 
+1 LINK_PLAIN 6184 6206 linkplain
+2 REFERENCE 6196 6199 "Foo"
+2 TEXT 6200 6205 "label"
+#C 6272 Probe.java
+0 DOC_COMMENT 6244 6265 
+1 LINK_PLAIN 6244 6265 linkplain
+2 REFERENCE 6256 6259 "Foo"
+2 ERRONEOUS 6265 6265 "" compiler.err.dc.unterminated.inline.tag
+#C 6319 Probe.java
+0 DOC_COMMENT 6297 6306 
+1 CODE 6297 6306 code
+2 TEXT 6304 6305 "x"
+#C 6364 Probe.java
+0 DOC_COMMENT 6344 6351 
+1 CODE 6344 6351 code
+2 TEXT 6350 6350 ""
+#C 6410 Probe.java
+0 DOC_COMMENT 6389 6397 
+1 CODE 6389 6397 code
+2 TEXT 6396 6396 ""
+#C 6461 Probe.java
+0 DOC_COMMENT 6435 6448 
+1 CODE 6435 6448 code
+2 TEXT 6442 6447 "a{b}c"
+#C 6512 Probe.java
+0 DOC_COMMENT 6486 6499 
+1 ERRONEOUS 6486 6499 "{@code a{b c}" compiler.err.dc.unterminated.inline.tag
+#C 6561 Probe.java
+0 DOC_COMMENT 6537 6548 
+1 CODE 6537 6546 code
+2 TEXT 6544 6545 "a"
+1 TEXT 6546 6548 "b}"
+#C 6618 Probe.java
+0 DOC_COMMENT 6586 6605 
+1 ERRONEOUS 6586 6605 "{@code unterminated" compiler.err.dc.unterminated.inline.tag
+#C 6704 Probe.java
+0 DOC_COMMENT 6643 6691 
+1 CODE 6643 6691 code
+2 TEXT 6650 6690 "multi\n  line\n  @notatag here"
+#C 6760 Probe.java
+0 DOC_COMMENT 6729 6747 
+1 CODE 6729 6747 code
+2 TEXT 6736 6746 "  spaced  "
+#C 6817 Probe.java
+0 DOC_COMMENT 6785 6804 
+1 CODE 6785 6804 code
+2 TEXT 6792 6803 "<b> & stuff"
+#C 6871 Probe.java
+0 DOC_COMMENT 6842 6858 
+1 LITERAL 6842 6858 literal
+2 TEXT 6852 6857 "a < b"
+#C 6919 Probe.java
+0 DOC_COMMENT 6896 6906 
+1 LITERAL 6896 6906 literal
+2 TEXT 6905 6905 ""
+#C 6979 Probe.java
+0 DOC_COMMENT 6944 6966 
+1 ERRONEOUS 6944 6966 "{@literal unterminated" compiler.err.dc.unterminated.inline.tag
+#C 7025 Probe.java
+0 DOC_COMMENT 7004 7012 
+1 VALUE 7004 7012 value
+#C 7074 Probe.java
+0 DOC_COMMENT 7050 7061 
+1 VALUE 7050 7061 value
+2 REFERENCE 7058 7060 "#X"
+#C 7126 Probe.java
+0 DOC_COMMENT 7099 7113 
+1 VALUE 7099 7113 value
+2 REFERENCE 7107 7112 "Foo#X"
+#C 7178 Probe.java
+0 DOC_COMMENT 7151 7165 
+1 VALUE 7151 7165 value
+2 TEXT 7159 7161 "%d"
+2 REFERENCE 7162 7164 "#X"
+#C 7227 Probe.java
+0 DOC_COMMENT 7203 7214 
+1 VALUE 7203 7214 value
+2 TEXT 7211 7213 "%d"
+#C 7283 Probe.java
+0 DOC_COMMENT 7252 7270 
+1 ERRONEOUS 7252 7266 "{@value junk h" compiler.err.dc.unexpected.content
+1 TEXT 7266 7270 "ere}"
+#C 7337 Probe.java
+0 DOC_COMMENT 7308 7324 
+1 ERRONEOUS 7308 7320 "{@value #X j" compiler.err.dc.unexpected.content
+1 TEXT 7320 7324 "unk}"
+#C 7388 Probe.java
+0 DOC_COMMENT 7362 7375 
+1 INHERIT_DOC 7362 7375 inheritDoc
+#C 7444 Probe.java
+0 DOC_COMMENT 7413 7431 
+1 ERRONEOUS 7413 7431 "{@inheritDoc junk}" compiler.err.dc.unexpected.content
+#C 7494 Probe.java
+0 DOC_COMMENT 7469 7481 
+1 ERRONEOUS 7469 7481 "{@inheritDoc" compiler.err.dc.unterminated.inline.tag
+#C 7542 Probe.java
+0 DOC_COMMENT 7519 7529 
+1 DOC_ROOT 7519 7529 docRoot
+#C 7595 Probe.java
+0 DOC_COMMENT 7567 7582 
+1 ERRONEOUS 7567 7582 "{@docRoot junk}" compiler.err.dc.unexpected.content
+#C 7648 Probe.java
+0 DOC_COMMENT 7620 7635 
+1 DOC_ROOT 7620 7630 docRoot
+1 TEXT 7630 7635 "/path"
+#C 7699 Probe.java
+0 DOC_COMMENT 7673 7686 
+1 INDEX 7673 7686 index
+2 TEXT 7681 7685 "term"
+#C 7767 Probe.java
+0 DOC_COMMENT 7724 7754 
+1 INDEX 7724 7754 index
+2 TEXT 7732 7736 "term"
+2 TEXT 7737 7753 "description here"
+#C 7839 Probe.java
+0 DOC_COMMENT 7792 7826 
+1 INDEX 7792 7826 index
+2 TEXT 7800 7813 "\"quoted term\""
+2 TEXT 7814 7825 "description"
+#C 7917 Probe.java
+0 DOC_COMMENT 7864 7904 
+1 ERRONEOUS 7864 7904 "{@index \"unterminated quote description}" compiler.err.dc.no.content
+#C 7963 Probe.java
+0 DOC_COMMENT 7942 7950 
+1 ERRONEOUS 7942 7949 "{@index" compiler.err.dc.no.content
+1 TEXT 7949 7950 "}"
+#C 8024 Probe.java
+0 DOC_COMMENT 7988 8011 
+1 INDEX 7988 8011 index
+2 TEXT 7996 8000 "term"
+2 CODE 8001 8010 code
+3 TEXT 8008 8009 "x"
+#C 8084 Probe.java
+0 DOC_COMMENT 8049 8071 
+1 SUMMARY 8049 8071 summary
+2 TEXT 8059 8070 "the summary"
+#C 8132 Probe.java
+0 DOC_COMMENT 8109 8119 
+1 SUMMARY 8109 8119 summary
+#C 8204 Probe.java
+0 DOC_COMMENT 8157 8191 
+1 SUMMARY 8157 8191 summary
+2 TEXT 8167 8172 "with "
+2 CODE 8172 8186 code
+3 TEXT 8179 8185 "nested"
+2 TEXT 8186 8190 " tag"
+#C 8264 Probe.java
+0 DOC_COMMENT 8229 8257 
+1 SUMMARY 8229 8257 summary
+2 ERRONEOUS 8239 8251 "unterminated" compiler.err.dc.unterminated.inline.tag
+#C 8323 Probe.java
+0 DOC_COMMENT 8289 8310 
+1 SYSTEM_PROPERTY 8289 8310 systemProperty
+#C 8378 Probe.java
+0 DOC_COMMENT 8348 8365 
+1 ERRONEOUS 8348 8364 "{@systemProperty" compiler.err.dc.no.content
+1 TEXT 8364 8365 "}"
+#C 8442 Probe.java
+0 DOC_COMMENT 8403 8429 
+1 ERRONEOUS 8403 8425 "{@systemProperty a.b j" compiler.err.dc.unexpected.content
+1 TEXT 8425 8429 "unk}"
+#C 8501 Probe.java
+0 DOC_COMMENT 8467 8488 
+1 ERRONEOUS 8467 8487 "{@systemProperty a b" compiler.err.dc.unexpected.content
+1 TEXT 8487 8488 "}"
+#C 8562 Probe.java
+0 DOC_COMMENT 8526 8549 
+1 ERRONEOUS 8526 8537 "{@snippet :" compiler.err.dc.unexpected.content
+1 TEXT 8538 8549 "code here }"
+#C 8642 Probe.java
+0 DOC_COMMENT 8587 8629 
+1 SNIPPET 8587 8629 snippet
+2 TEXT 8605 8628 "    int x = 1;\n  "
+#C 8708 Probe.java
+0 DOC_COMMENT 8667 8695 
+1 SNIPPET 8667 8695 snippet
+2 ATTRIBUTE 8677 8685 file DOUBLE
+3 TEXT 8683 8684 "x"
+2 ATTRIBUTE 8686 8694 region UNQUOTED
+3 TEXT 8693 8694 "y"
+#C 8800 Probe.java
+0 DOC_COMMENT 8733 8787 
+1 SNIPPET 8733 8787 snippet
+2 ATTRIBUTE 8743 8752 lang UNQUOTED
+3 TEXT 8748 8752 "java"
+2 TEXT 8761 8786 "   code {nested} \n "
+#C 8848 Probe.java
+0 DOC_COMMENT 8825 8835 
+1 SNIPPET 8825 8835 snippet
+#C 8899 Probe.java
+0 DOC_COMMENT 8873 8886 
+1 ERRONEOUS 8873 8886 "{@snippet bad" compiler.err.dc.no.content
+#C 8953 Probe.java
+0 DOC_COMMENT 8924 8940 
+1 UNKNOWN_INLINE_TAG 8924 8940 unknown
+2 TEXT 8934 8939 "stuff"
+#C 9001 Probe.java
+0 DOC_COMMENT 8978 8988 
+1 UNKNOWN_INLINE_TAG 8978 8988 unknown
+2 TEXT 8987 8987 ""
+#C 9069 Probe.java
+0 DOC_COMMENT 9026 9056 
+1 UNKNOWN_INLINE_TAG 9026 9056 unknown
+2 TEXT 9036 9055 "stuff {nested} more"
+#C 9129 Probe.java
+0 DOC_COMMENT 9094 9116 
+1 ERRONEOUS 9094 9116 "{@unknown unterminated" compiler.err.dc.unterminated.inline.tag
+#C 9174 Probe.java
+0 DOC_COMMENT 9154 9161 
+1 ERRONEOUS 9154 9156 "{@" compiler.err.dc.no.tag.name
+1 TEXT 9156 9161 " foo}"
+#C 9215 Probe.java
+0 DOC_COMMENT 9199 9202 
+1 ERRONEOUS 9199 9201 "{@" compiler.err.dc.no.tag.name
+1 TEXT 9201 9202 "}"
+#C 9258 Probe.java
+0 DOC_COMMENT 9240 9245 
+1 ERRONEOUS 9240 9242 "{@" compiler.err.dc.no.tag.name
+1 TEXT 9242 9245 "1x}"
+#C 9306 Probe.java
+0 DOC_COMMENT 9283 9293 
+1 TEXT 9283 9293 "{ @code x}"
+#C 9353 Probe.java
+0 DOC_COMMENT 9331 9340 
+1 UNKNOWN_INLINE_TAG 9331 9340 Code
+2 TEXT 9338 9339 "x"
+#C 9414 Probe.java
+0 DOC_COMMENT 9378 9401 
+1 TEXT 9378 9401 "text { not a tag } text"
+#C 9484 Probe.java
+0 DOC_COMMENT 9439 9471 
+1 TEXT 9439 9444 "text "
+1 CODE 9444 9453 code
+2 TEXT 9451 9452 "a"
+1 TEXT 9453 9458 " and "
+1 CODE 9458 9467 code
+2 TEXT 9465 9466 "b"
+1 TEXT 9467 9471 " end"
+#C 9533 Probe.java
+0 DOC_COMMENT 9509 9520 
+1 START_ELEMENT 9509 9512 p
+1 TEXT 9512 9516 "para"
+1 END_ELEMENT 9516 9520 p
+#C 9574 Probe.java
+0 DOC_COMMENT 9558 9561 
+1 START_ELEMENT 9558 9561 p
+#C 9616 Probe.java
+0 DOC_COMMENT 9599 9603 
+1 END_ELEMENT 9599 9603 p
+#C 9659 Probe.java
+0 DOC_COMMENT 9641 9646 
+1 START_ELEMENT 9641 9646 br /
+#C 9703 Probe.java
+0 DOC_COMMENT 9684 9690 
+1 START_ELEMENT 9684 9690 br /
+#C 9773 Probe.java
+0 DOC_COMMENT 9728 9760 
+1 START_ELEMENT 9728 9752 a
+2 ATTRIBUTE 9731 9739 href DOUBLE
+3 TEXT 9737 9738 "x"
+2 ATTRIBUTE 9740 9745 b SINGLE
+3 TEXT 9743 9744 "y"
+2 ATTRIBUTE 9746 9749 c UNQUOTED
+3 TEXT 9748 9749 "z"
+2 ATTRIBUTE 9750 9751 d EMPTY
+1 TEXT 9752 9756 "link"
+1 END_ELEMENT 9756 9760 a
+#C 9835 Probe.java
+0 DOC_COMMENT 9798 9822 
+1 START_ELEMENT 9798 9812 a
+2 ATTRIBUTE 9801 9811 href DOUBLE
+3 TEXT 9809 9810 "x"
+1 TEXT 9812 9818 "spaced"
+1 END_ELEMENT 9818 9822 a
+#C 9903 Probe.java
+0 DOC_COMMENT 9860 9890 
+1 ERRONEOUS 9860 9861 "<" compiler.err.dc.malformed.html
+1 TEXT 9861 9886 "a href=\"unterminated>link"
+1 END_ELEMENT 9886 9890 a
+#C 9959 Probe.java
+0 DOC_COMMENT 9928 9946 
+1 START_ELEMENT 9928 9937 a
+2 ATTRIBUTE 9931 -1 href UNQUOTED
+1 TEXT 9937 9942 "empty"
+1 END_ELEMENT 9942 9946 a
+#C 10032 Probe.java
+0 DOC_COMMENT 9984 10019 
+1 START_ELEMENT 9984 10007 a
+2 ATTRIBUTE 9987 10006 href DOUBLE
+3 TEXT 9993 9994 "a"
+3 DOC_ROOT 9994 10004 docRoot
+3 TEXT 10004 10005 "b"
+1 TEXT 10007 10015 "doc root"
+1 END_ELEMENT 10015 10019 a
+#C 10098 Probe.java
+0 DOC_COMMENT 10057 10085 
+1 START_ELEMENT 10057 10075 a
+2 ATTRIBUTE 10060 10074 href DOUBLE
+3 TEXT 10066 10067 "a"
+3 ENTITY 10067 10072 amp
+3 TEXT 10072 10073 "b"
+1 TEXT 10075 10081 "entity"
+1 END_ELEMENT 10081 10085 a
+#C 10174 Probe.java
+0 DOC_COMMENT 10123 10161 
+1 START_ELEMENT 10123 10143 a
+2 ATTRIBUTE 10134 10142 href DOUBLE
+3 TEXT 10140 10141 "x"
+1 TEXT 10143 10157 "newline in tag"
+1 END_ELEMENT 10157 10161 a
+#C 10256 Probe.java
+0 DOC_COMMENT 10199 10243 
+1 START_ELEMENT 10199 10219 a
+2 ATTRIBUTE 10202 10210 href DOUBLE
+3 TEXT 10208 10209 "x"
+1 TEXT 10219 10239 "newline before close"
+1 END_ELEMENT 10239 10243 a
+#C 10318 Probe.java
+0 DOC_COMMENT 10281 10305 
+1 ERRONEOUS 10281 10282 "<" compiler.err.dc.malformed.html
+1 TEXT 10282 10301 "a href=\"x\" / >weird"
+1 END_ELEMENT 10301 10305 a
+#C 10375 Probe.java
+0 DOC_COMMENT 10343 10362 
+1 ERRONEOUS 10343 10344 "<" compiler.err.dc.malformed.html
+1 TEXT 10344 10358 "a \"x\">bad attr"
+1 END_ELEMENT 10358 10362 a
+#C 10445 Probe.java
+0 DOC_COMMENT 10400 10432 
+1 ERRONEOUS 10400 10401 "<" compiler.err.dc.malformed.html
+1 TEXT 10401 10428 "a href=\"x\" 1b>bad attr name"
+1 END_ELEMENT 10428 10432 a
+#C 10488 Probe.java
+0 DOC_COMMENT 10470 10475 
+1 ERRONEOUS 10470 10471 "<" compiler.err.dc.malformed.html
+1 TEXT 10471 10475 "a=b>"
+#C 10544 Probe.java
+0 DOC_COMMENT 10513 10531 
+1 COMMENT 10513 10531 "<!-- a comment -->"
+#C 10607 Probe.java
+0 DOC_COMMENT 10569 10594 
+1 ERRONEOUS 10569 10570 "<" compiler.err.dc.malformed.html
+1 TEXT 10570 10594 "!-- unterminated comment"
+#C 10660 Probe.java
+0 DOC_COMMENT 10632 10647 
+1 COMMENT 10632 10647 "<!-- a -- b -->"
+#C 10713 Probe.java
+0 DOC_COMMENT 10695 -1 
+1 DOC_TYPE 10695 -1 
+#C 10757 Probe.java
+0 DOC_COMMENT 10738 10744 
+1 ERRONEOUS 10738 10740 "<!" compiler.err.dc.invalid.html
+1 TEXT 10740 10744 "foo>"
+#C 10796 Probe.java
+0 DOC_COMMENT 10782 10783 
+1 ERRONEOUS 10782 10783 "<" compiler.err.dc.malformed.html
+#C 10837 Probe.java
+0 DOC_COMMENT 10821 10824 
+1 ERRONEOUS 10821 10822 "<" compiler.err.dc.malformed.html
+1 TEXT 10822 10824 " b"
+#C 10877 Probe.java
+0 DOC_COMMENT 10862 10864 
+1 ERRONEOUS 10862 10863 "<" compiler.err.dc.malformed.html
+1 TEXT 10863 10864 "3"
+#C 10920 Probe.java
+0 DOC_COMMENT 10902 10907 
+1 TEXT 10902 10903 "a"
+1 START_ELEMENT 10903 10906 b
+1 TEXT 10906 10907 "c"
+#C 10967 Probe.java
+0 DOC_COMMENT 10945 10954 
+1 TEXT 10945 10947 "a "
+1 ERRONEOUS 10947 10948 "<" compiler.err.dc.malformed.html
+1 TEXT 10948 10954 " b > c"
+#C 11015 Probe.java
+0 DOC_COMMENT 10992 11002 
+1 ERRONEOUS 10992 10993 "<" compiler.err.dc.malformed.html
+1 TEXT 10993 11002 "Foo, Bar>"
+#C 11069 Probe.java
+0 DOC_COMMENT 11040 11056 
+1 ERRONEOUS 11040 11041 "<" compiler.err.dc.malformed.html
+1 TEXT 11041 11056 "String,Integer>"
+#C 11125 Probe.java
+0 DOC_COMMENT 11094 11112 
+1 TEXT 11094 11098 "List"
+1 START_ELEMENT 11098 11106 String
+1 TEXT 11106 11112 " names"
+#C 11195 Probe.java
+0 DOC_COMMENT 11150 11182 
+1 TEXT 11150 11153 "Map"
+1 ERRONEOUS 11153 11154 "<" compiler.err.dc.malformed.html
+1 TEXT 11154 11166 "String, List"
+1 START_ELEMENT 11166 11175 Integer
+1 TEXT 11175 11182 "> names"
+#C 11241 Probe.java
+0 DOC_COMMENT 11220 11228 
+1 START_ELEMENT 11220 11223 T
+1 TEXT 11223 11228 " type"
+#C 11283 Probe.java
+0 DOC_COMMENT 11266 11270 
+1 ERRONEOUS 11266 11267 "<" compiler.err.dc.malformed.html
+1 TEXT 11267 11270 "1a>"
+#C 11325 Probe.java
+0 DOC_COMMENT 11308 11312 
+1 START_ELEMENT 11308 11312 a1
+#C 11368 Probe.java
+0 DOC_COMMENT 11350 11355 
+1 ERRONEOUS 11350 11351 "<" compiler.err.dc.malformed.html
+1 TEXT 11351 11355 "a-b>"
+#C 11411 Probe.java
+0 DOC_COMMENT 11393 11398 
+1 ERRONEOUS 11393 11394 "<" compiler.err.dc.malformed.html
+1 TEXT 11394 11398 "a.b>"
+#C 11454 Probe.java
+0 DOC_COMMENT 11436 11441 
+1 ERRONEOUS 11436 11437 "<" compiler.err.dc.malformed.html
+1 TEXT 11437 11441 "a:b>"
+#C 11494 Probe.java
+0 DOC_COMMENT 11479 11481 
+1 ERRONEOUS 11479 11480 "<" compiler.err.dc.malformed.html
+1 TEXT 11480 11481 "p"
+#C 11539 Probe.java
+0 DOC_COMMENT 11519 11526 
+1 ERRONEOUS 11519 11520 "<" compiler.err.dc.malformed.html
+1 TEXT 11520 11526 "p attr"
+#C 11585 Probe.java
+0 DOC_COMMENT 11564 11572 
+1 ERRONEOUS 11564 11565 "<" compiler.err.dc.malformed.html
+1 TEXT 11565 11572 "p attr="
+#C 11627 Probe.java
+0 DOC_COMMENT 11610 11614 
+1 END_ELEMENT 11610 11614 p
+#C 11670 Probe.java
+0 DOC_COMMENT 11652 11657 
+1 ERRONEOUS 11652 11653 "<" compiler.err.dc.malformed.html
+1 TEXT 11653 11657 "/ p>"
+#C 11717 Probe.java
+0 DOC_COMMENT 11695 11704 
+1 ERRONEOUS 11695 11696 "<" compiler.err.dc.malformed.html
+1 TEXT 11696 11704 "/p junk>"
+#C 11758 Probe.java
+0 DOC_COMMENT 11742 11745 
+1 ERRONEOUS 11742 11743 "<" compiler.err.dc.malformed.html
+1 TEXT 11743 11745 "/p"
+#C 11799 Probe.java
+0 DOC_COMMENT 11783 11786 
+1 ERRONEOUS 11783 11784 "<" compiler.err.dc.malformed.html
+1 TEXT 11784 11786 "/>"
+#C 11841 Probe.java
+0 DOC_COMMENT 11824 11828 
+1 ERRONEOUS 11824 11825 "<" compiler.err.dc.malformed.html
+1 TEXT 11825 11828 "/1>"
+#C 11881 Probe.java
+0 DOC_COMMENT 11866 11868 
+1 ERRONEOUS 11866 11867 "<" compiler.err.dc.malformed.html
+1 TEXT 11867 11868 ">"
+#C 11920 Probe.java
+0 DOC_COMMENT 11906 11907 
+1 TEXT 11906 11907 ">"
+#C 11963 Probe.java
+0 DOC_COMMENT 11945 11950 
+1 TEXT 11945 11950 "a > b"
+#C 12007 Probe.java
+0 DOC_COMMENT 11988 11994 
+1 TEXT 11988 11994 "a >> b"
+#C 12047 Probe.java
+0 DOC_COMMENT 12032 12034 
+1 TEXT 12032 12034 "->"
+#C 12090 Probe.java
+0 DOC_COMMENT 12072 12077 
+1 ENTITY 12072 12077 amp
+#C 12134 Probe.java
+0 DOC_COMMENT 12115 12121 
+1 ENTITY 12115 12121 #123
+#C 12178 Probe.java
+0 DOC_COMMENT 12159 12165 
+1 ENTITY 12159 12165 #x1F
+#C 12222 Probe.java
+0 DOC_COMMENT 12203 12209 
+1 ENTITY 12203 12209 #X1F
+#C 12261 Probe.java
+0 DOC_COMMENT 12247 12248 
+1 ERRONEOUS 12247 12248 "&" compiler.err.dc.bad.entity
+#C 12306 Probe.java
+0 DOC_COMMENT 12286 12293 
+1 ERRONEOUS 12286 12287 "&" compiler.err.dc.bad.entity
+1 TEXT 12287 12293 " alone"
+#C 12349 Probe.java
+0 DOC_COMMENT 12331 12336 
+1 TEXT 12331 12333 "a "
+1 ERRONEOUS 12333 12334 "&" compiler.err.dc.bad.entity
+1 TEXT 12334 12336 " b"
+#C 12391 Probe.java
+0 DOC_COMMENT 12374 12378 
+1 ERRONEOUS 12374 12378 "&foo" compiler.err.dc.missing.semicolon
+#C 12437 Probe.java
+0 DOC_COMMENT 12416 12424 
+1 ERRONEOUS 12416 12420 "&foo" compiler.err.dc.missing.semicolon
+1 TEXT 12420 12424 " bar"
+#C 12477 Probe.java
+0 DOC_COMMENT 12462 12464 
+1 ERRONEOUS 12462 12463 "&" compiler.err.dc.bad.entity
+1 TEXT 12463 12464 ";"
+#C 12518 Probe.java
+0 DOC_COMMENT 12502 12505 
+1 ERRONEOUS 12502 12504 "&#" compiler.err.dc.bad.entity
+1 TEXT 12504 12505 ";"
+#C 12560 Probe.java
+0 DOC_COMMENT 12543 12547 
+1 ERRONEOUS 12543 12546 "&#x" compiler.err.dc.bad.entity
+1 TEXT 12546 12547 ";"
+#C 12604 Probe.java
+0 DOC_COMMENT 12585 12591 
+1 ERRONEOUS 12585 12588 "&#x" compiler.err.dc.bad.entity
+1 TEXT 12588 12591 "ZZ;"
+#C 12646 Probe.java
+0 DOC_COMMENT 12629 12633 
+1 ERRONEOUS 12629 12630 "&" compiler.err.dc.bad.entity
+1 TEXT 12630 12633 "1a;"
+#C 12688 Probe.java
+0 DOC_COMMENT 12671 12675 
+1 ENTITY 12671 12675 a1
+#C 12732 Probe.java
+0 DOC_COMMENT 12713 12719 
+1 ERRONEOUS 12713 12717 "&amp" compiler.err.dc.missing.semicolon
+1 TEXT 12717 12719 " ;"
+#C 12775 Probe.java
+0 DOC_COMMENT 12757 12762 
+1 TEXT 12757 12758 "a"
+1 ENTITY 12758 12761 b
+1 TEXT 12761 12762 "c"
+#C 12817 Probe.java
+0 DOC_COMMENT 12800 12804 
+1 TEXT 12800 12802 "AT"
+1 ERRONEOUS 12802 12804 "&T" compiler.err.dc.missing.semicolon
+#C 12873 Probe.java
+0 DOC_COMMENT 12842 12860 
+1 ESCAPE 12842 12844 "@@"
+1 TEXT 12844 12860 " escape at start"
+#C 12929 Probe.java
+0 DOC_COMMENT 12898 12916 
+1 TEXT 12898 12916 "text @@ escape mid"
+#C 12982 Probe.java
+0 DOC_COMMENT 12954 12969 
+1 TEXT 12954 12960 "text *"
+1 ESCAPE 12960 12962 "@/"
+1 TEXT 12962 12969 " escape"
+#C 13032 Probe.java
+0 DOC_COMMENT 13007 13019 
+1 TEXT 13007 13019 "text @* star"
+#C 13072 Probe.java
+0 DOC_COMMENT 13057 13059 
+1 ESCAPE 13057 13059 "@*"
+#C 13117 Probe.java
+0 DOC_COMMENT 13097 13104 
+1 TEXT 13097 13104 "text @@"
+#C 13175 Probe.java
+0 DOC_COMMENT 13142 13162 
+1 CODE 13142 13162 code
+2 TEXT 13149 13161 "@@ no escape"
+#C 13232 Probe.java
+0 DOC_COMMENT 13200 13219 
+1 ESCAPE 13200 13202 "@@"
+1 TEXT 13202 13219 "param x not a tag"
+#C 13291 Probe.java
+0 DOC_COMMENT 13257 13278 
+1 TEXT 13257 13269 "text\n "
+1 ESCAPE 13269 13271 "@@"
+1 TEXT 13271 13278 "notatag"
+#C 13380 Probe.java
+0 DOC_COMMENT 13316 13367 
+1 START_ELEMENT 13316 13321 pre
+1 TEXT 13321 13353 "\n    code\n      more"
+1 END_ELEMENT 13361 13367 pre
+#C 13460 Probe.java
+0 DOC_COMMENT 13405 13447 
+1 START_ELEMENT 13405 13410 pre
+1 CODE 13410 13441 code
+2 TEXT 13416 13440 "\n    x < y\n "
+1 END_ELEMENT 13441 13447 pre
+#C 13564 Probe.java
+0 DOC_COMMENT 13485 13551 
+1 START_ELEMENT 13485 13490 pre
+1 UNKNOWN_BLOCK_TAG 13499 13551 Override
+2 TEXT 13517 13545 "public void foo() {}\n "
+2 END_ELEMENT 13545 13551 pre
+#C 13627 Probe.java
+0 DOC_COMMENT 13589 13614 
+1 START_ELEMENT 13589 13595 code
+1 TEXT 13595 13599 "List"
+1 START_ELEMENT 13599 13607 String
+1 END_ELEMENT 13607 13614 code
+#C 13683 Probe.java
+0 DOC_COMMENT 13652 13670 
+1 START_ELEMENT 13652 13658 code
+1 TEXT 13658 13660 "a "
+1 ERRONEOUS 13660 13661 "&" compiler.err.dc.bad.entity
+1 TEXT 13661 13663 " b"
+1 END_ELEMENT 13663 13670 code
+#C 13823 Probe.java
+0 DOC_COMMENT 13708 13801 
+1 TEXT 13708 13713 "Text."
+1 TEXT 13735 13747 "Blank lines."
+1 RETURN 13762 13771 return
+2 TEXT 13770 13771 "x"
+1 PARAM 13793 13801 param
+2 IDENTIFIER 13800 13801 y
+#C 13907 Probe.java
+0 DOC_COMMENT 13848 13894 
+1 RETURN 13848 13894 return
+2 TEXT 13856 13858 "x "
+2 CODE 13858 13894 code
+3 TEXT 13865 13893 "a\n @param y still code"
+#C 13992 Probe.java
+0 DOC_COMMENT 13932 13979 
+1 RETURN 13932 13979 return
+2 TEXT 13940 13942 "x "
+2 ERRONEOUS 13942 13979 "{@code a\n @param y unterminated" compiler.err.dc.unterminated.inline.tag
+#C 14066 Probe.java
+0 DOC_COMMENT 14017 14053 
+1 RETURN 14017 14037 return
+2 TEXT 14025 14027 "x "
+2 ERRONEOUS 14027 14028 "<" compiler.err.dc.malformed.html
+2 TEXT 14028 14037 "a href=\"y"
+1 PARAM 14045 14053 param
+2 IDENTIFIER 14052 14053 z
+#C 14146 Probe.java
+0 DOC_COMMENT 14091 14133 
+1 RETURN 14091 14133 return
+2 TEXT 14099 14101 "x "
+2 COMMENT 14101 14133 "<!-- comment\n @param z -->"
+#C 14222 Probe.java
+0 DOC_COMMENT 14171 14209 
+1 RETURN 14171 14193 return
+2 TEXT 14179 14181 "x "
+2 ERRONEOUS 14181 14182 "<" compiler.err.dc.malformed.html
+2 TEXT 14182 14193 "!-- comment"
+1 PARAM 14201 14209 param
+2 IDENTIFIER 14208 14209 z
+#C 14302 Probe.java
+0 DOC_COMMENT 14247 14289 
+1 TEXT 14247 14252 "Text "
+1 COMMENT 14252 14284 "<!-- comment\n @param z -->"
+1 TEXT 14284 14289 " more"
+#C 14363 Probe.java
+0 DOC_COMMENT 14327 14350 
+1 TEXT 14327 14332 "Text "
+1 ERRONEOUS 14332 14333 "<" compiler.err.dc.malformed.html
+1 TEXT 14333 14334 "a"
+1 PARAM 14342 14350 param
+2 IDENTIFIER 14349 14350 z
+#C 14429 Probe.java
+0 DOC_COMMENT 14388 14416 
+1 TEXT 14388 14393 "Text "
+1 ERRONEOUS 14393 14394 "<" compiler.err.dc.malformed.html
+1 TEXT 14394 14400 "a href"
+1 PARAM 14408 14416 param
+2 IDENTIFIER 14415 14416 z
+#C 14492 Probe.java
+0 DOC_COMMENT 14454 14479 
+1 TEXT 14454 14459 "Text "
+1 ERRONEOUS 14459 14463 "&amp" compiler.err.dc.missing.semicolon
+1 PARAM 14471 14479 param
+2 IDENTIFIER 14478 14479 z
+#C 14561 Probe.java
+0 DOC_COMMENT 14517 14554 
+1 TEXT 14517 14522 "Text "
+1 LINK 14522 14554 link
+2 REFERENCE 14529 14532 "Foo"
+2 ERRONEOUS 14540 14548 "@param z" compiler.err.dc.unterminated.inline.tag
+#C 14633 Probe.java
+0 DOC_COMMENT 14586 14620 
+1 TEXT 14586 14591 "Text "
+1 ERRONEOUS 14591 14620 "{@unknown Foo\n @param z" compiler.err.dc.unterminated.inline.tag
+#C 14701 Probe.java
+0 DOC_COMMENT 14658 14694 
+1 TEXT 14658 14663 "Text "
+1 INDEX 14663 14694 index
+2 TEXT 14671 14672 "a"
+2 ERRONEOUS 14680 14688 "@param z" compiler.err.dc.unterminated.inline.tag
+#C 14767 Probe.java
+0 DOC_COMMENT 14726 14754 
+1 TEXT 14726 14731 "Text "
+1 ERRONEOUS 14731 14738 "{@value" compiler.err.dc.ref.syntax.error
+1 PARAM 14746 14754 param
+2 IDENTIFIER 14753 14754 z
+#C 14838 Probe.java
+0 DOC_COMMENT 14792 14825 
+1 TEXT 14792 14797 "Text "
+1 ERRONEOUS 14797 14825 "{@inheritDoc\n @param z" compiler.err.dc.unterminated.inline.tag
+#C 14908 Probe.java
+0 DOC_COMMENT 14863 14901 
+1 TEXT 14863 14868 "Text "
+1 SUMMARY 14868 14901 summary
+2 ERRONEOUS 14878 14895 "a\n @param z" compiler.err.dc.unterminated.inline.tag
+#C 14987 Probe.java
+0 DOC_COMMENT 14933 14974 
+1 TEXT 14933 14938 "Text "
+1 SNIPPET 14938 14974 snippet
+2 TEXT 14956 14973 " @param z\n "
+#C 15057 Probe.java
+0 DOC_COMMENT 15012 15044 
+1 TEXT 15012 15017 "Text "
+1 ERRONEOUS 15017 15044 "{@snippet :\n @param z" compiler.err.dc.unterminated.inline.tag
+#C 15110 Probe.java
+0 DOC_COMMENT 15082 15097 
+1 TEXT 15082 15097 "tab\tinside\ttext"
+#C 15193 Probe.java
+0 DOC_COMMENT 15135 15180 
+1 TEXT 15135 15143 "unicode "
+1 START_ELEMENT 15143 15156 b
+1 TEXT 15156 15165 " escaped "
+1 ENTITY 15165 15175 amp
+1 TEXT 15175 15180 " done"
+#C 15260 Probe.java
+0 DOC_COMMENT 15218 15247 
+1 TEXT 15218 15247 "unicode @param x in text"
+#C 15320 Probe.java
+0 DOC_COMMENT 15285 15307 
+1 PARAM 15285 15307 param
+2 IDENTIFIER 15297 15298 x
+2 TEXT 15299 15307 "at start"
+#C 15383 Probe.java
+0 DOC_COMMENT 15345 15370 
+1 TEXT 15345 15370 "bad unicode ZZZZ escape"
+#C 15445 Probe.java
+0 DOC_COMMENT 15408 15432 
+1 TEXT 15408 15421 "emoji 😀 and "
+1 START_ELEMENT 15421 15424 b
+1 TEXT 15424 15428 "bold"
+1 END_ELEMENT 15428 15432 b
+#C 15505 Probe.java
+0 DOC_COMMENT 15470 15492 
+1 TEXT 15470 15475 "café "
+1 ENTITY 15475 15483 eacute
+1 TEXT 15483 15484 " "
+1 START_ELEMENT 15484 15487 i
+1 TEXT 15487 15488 "x"
+1 END_ELEMENT 15488 15492 i
+#C 87 Probe2.java
+0 DOC_COMMENT 41 52 
+1 ERRONEOUS 41 52 "@inheritDoc" compiler.err.dc.bad.inline.tag
+#C 191 Probe2.java
+0 DOC_COMMENT 110 145 
+1 TEXT 110 115 "Text."
+1 RETURN 123 132 return
+2 TEXT 131 132 "a"
+1 ERRONEOUS 140 145 "@link" compiler.err.dc.bad.inline.tag
+#C 236 Probe2.java
+0 DOC_COMMENT 214 223 
+1 CODE 214 223 code
+2 TEXT 220 222 "\tx"
+#C 286 Probe2.java
+0 DOC_COMMENT 259 273 
+1 UNKNOWN_INLINE_TAG 259 273 unknown
+2 TEXT 271 272 "x"
+#C 342 Probe2.java
+0 DOC_COMMENT 309 329 
+1 UNKNOWN_INLINE_TAG 309 329 unknown
+2 TEXT 327 328 "x"
+#C 398 Probe2.java
+0 DOC_COMMENT 365 385 
+1 LITERAL 365 385 literal
+2 TEXT 374 384 "\n  x"
+#C 461 Probe2.java
+0 DOC_COMMENT 421 448 
+1 TEXT 421 426 "Text "
+1 ERRONEOUS 426 432 "{@link" compiler.err.dc.ref.syntax.error
+1 PARAM 440 448 param
+2 IDENTIFIER 447 448 z
+#C 509 Probe2.java
+0 DOC_COMMENT 484 496 
+1 ERRONEOUS 484 495 "{@link @foo" compiler.err.dc.ref.syntax.error
+1 TEXT 495 496 "}"
+#C 558 Probe2.java
+0 DOC_COMMENT 532 545 
+1 ERRONEOUS 532 541 "{@link \"a" compiler.err.dc.ref.unexpected.input
+1 TEXT 541 545 " b\"}"
+#C 609 Probe2.java
+0 DOC_COMMENT 581 602 
+1 LINK 581 602 link
+2 REFERENCE 588 591 "Foo"
+2 ERRONEOUS 592 596 "<b>x" compiler.err.dc.unterminated.inline.tag
+#C 678 Probe2.java
+0 DOC_COMMENT 632 671 
+1 LINK 632 671 link
+2 REFERENCE 639 642 "Foo"
+2 ERRONEOUS 643 665 "<b>x</b> y {@code z} w" compiler.err.dc.unterminated.inline.tag
+#C 732 Probe2.java
+0 DOC_COMMENT 702 719 
+1 LINK 702 719 link
+2 REFERENCE 709 712 "Foo"
+2 TEXT 713 718 "a{b}c"
+#C 786 Probe2.java
+0 DOC_COMMENT 756 779 
+1 LINK 756 779 link
+2 REFERENCE 763 766 "Foo"
+2 ERRONEOUS 767 773 "a{b c}" compiler.err.dc.unterminated.inline.tag
+#C 838 Probe2.java
+0 DOC_COMMENT 810 825 
+1 LINK 810 823 link
+2 REFERENCE 817 820 "Foo"
+2 TEXT 821 822 "a"
+1 TEXT 823 825 "b}"
+#C 880 Probe2.java
+0 DOC_COMMENT 862 867 
+1 START_ELEMENT 862 867 a_b
+#C 946 Probe2.java
+0 DOC_COMMENT 904 933 
+1 START_ELEMENT 904 933 a
+2 ATTRIBUTE 907 917 data-x DOUBLE
+3 TEXT 915 916 "1"
+2 ATTRIBUTE 918 932 aria_label SINGLE
+3 TEXT 930 931 "2"
+#C 1014 Probe2.java
+0 DOC_COMMENT 970 1001 
+1 ERRONEOUS 970 971 "<" compiler.err.dc.malformed.html
+1 TEXT 971 980 "a href=\"x"
+1 ERRONEOUS 988 1001 "@see y\">z</a>" compiler.err.dc.ref.unexpected.input
+#C 1077 Probe2.java
+0 DOC_COMMENT 1038 1064 
+1 START_ELEMENT 1038 1059 a
+2 ATTRIBUTE 1041 1058 href DOUBLE
+3 TEXT 1047 1057 "x\n y"
+1 TEXT 1059 1060 "z"
+1 END_ELEMENT 1060 1064 a
+#C 1133 Probe2.java
+0 DOC_COMMENT 1101 1120 
+1 START_ELEMENT 1101 1115 a
+2 ATTRIBUTE 1104 1114 href SINGLE
+3 TEXT 1110 1113 "x\"y"
+1 TEXT 1115 1116 "z"
+1 END_ELEMENT 1116 1120 a
+#C 1192 Probe2.java
+0 DOC_COMMENT 1157 1179 
+1 START_ELEMENT 1157 1174 a
+2 ATTRIBUTE 1160 1173 href UNQUOTED
+3 TEXT 1165 1173 "x/y.html"
+1 TEXT 1174 1175 "z"
+1 END_ELEMENT 1175 1179 a
+#C 1245 Probe2.java
+0 DOC_COMMENT 1216 1232 
+1 START_ELEMENT 1216 1227 a
+2 ATTRIBUTE 1219 1225 href UNQUOTED
+3 TEXT 1224 1225 "x"
+1 TEXT 1227 1228 "z"
+1 END_ELEMENT 1228 1232 a
+#C 1299 Probe2.java
+0 DOC_COMMENT 1269 1286 
+1 ERRONEOUS 1269 1270 "<" compiler.err.dc.malformed.html
+1 TEXT 1270 1282 "a href=x'y>z"
+1 END_ELEMENT 1282 1286 a
+#C 1359 Probe2.java
+0 DOC_COMMENT 1323 1346 
+1 START_ELEMENT 1323 1341 a
+2 ATTRIBUTE 1326 1334 href DOUBLE
+3 TEXT 1332 1333 "x"
+2 ATTRIBUTE 1335 1340 title EMPTY
+1 TEXT 1341 1342 "z"
+1 END_ELEMENT 1342 1346 a
+#C 1415 Probe2.java
+0 DOC_COMMENT 1383 1402 
+1 START_ELEMENT 1383 1397 a
+2 ATTRIBUTE 1386 1396 href DOUBLE
+3 TEXT 1392 1395 "a<b"
+1 TEXT 1397 1398 "z"
+1 END_ELEMENT 1398 1402 a
+#C 1471 Probe2.java
+0 DOC_COMMENT 1439 1458 
+1 START_ELEMENT 1439 1453 a
+2 ATTRIBUTE 1442 1452 href DOUBLE
+3 TEXT 1448 1451 "a>b"
+1 TEXT 1453 1454 "z"
+1 END_ELEMENT 1454 1458 a
+#C 1535 Probe2.java
+0 DOC_COMMENT 1495 1522 
+1 START_ELEMENT 1495 1517 a
+2 ATTRIBUTE 1498 1516 href DOUBLE
+3 TEXT 1504 1505 "a"
+3 CODE 1505 1514 code
+4 TEXT 1512 1513 "x"
+3 TEXT 1514 1515 "b"
+1 TEXT 1517 1518 "z"
+1 END_ELEMENT 1518 1522 a
+#C 1591 Probe2.java
+0 DOC_COMMENT 1559 1578 
+1 START_ELEMENT 1559 1573 a
+2 ATTRIBUTE 1562 1572 href DOUBLE
+3 TEXT 1568 1571 "a{b"
+1 TEXT 1573 1574 "z"
+1 END_ELEMENT 1574 1578 a
+#C 1647 Probe2.java
+0 DOC_COMMENT 1615 1634 
+1 START_ELEMENT 1615 1629 a
+2 ATTRIBUTE 1618 1628 href DOUBLE
+3 TEXT 1624 1625 "a"
+3 ERRONEOUS 1625 1627 "&b" compiler.err.dc.missing.semicolon
+1 TEXT 1629 1630 "z"
+1 END_ELEMENT 1630 1634 a
+#C 1709 Probe2.java
+0 DOC_COMMENT 1671 1696 
+1 ERRONEOUS 1671 1672 "<" compiler.err.dc.malformed.html
+1 TEXT 1672 1680 "a href=\""
+1 ERRONEOUS 1680 1696 "{@docRoot\">z</a>" compiler.err.dc.unterminated.inline.tag
+#C 1763 Probe2.java
+0 DOC_COMMENT 1733 1750 
+1 START_ELEMENT 1733 1745 A
+2 ATTRIBUTE 1736 1744 HREF DOUBLE
+3 TEXT 1742 1743 "x"
+1 TEXT 1745 1746 "z"
+1 END_ELEMENT 1746 1750 A
+#C 1812 Probe2.java
+0 DOC_COMMENT 1787 1799 
+1 START_ELEMENT 1787 1792 h1
+1 TEXT 1792 1793 "x"
+1 END_ELEMENT 1793 1799 h1
+#C 1854 Probe2.java
+0 DOC_COMMENT 1836 1841 
+1 END_ELEMENT 1836 1841 p
+#C 1903 Probe2.java
+0 DOC_COMMENT 1878 1890 
+1 END_ELEMENT 1878 1890 p
+#C 1945 Probe2.java
+0 DOC_COMMENT 1927 1932 
+1 ERRONEOUS 1927 1928 "<" compiler.err.dc.malformed.html
+1 TEXT 1928 1932 "p/ >"
+#C 1988 Probe2.java
+0 DOC_COMMENT 1969 1975 
+1 ERRONEOUS 1969 1970 "<" compiler.err.dc.malformed.html
+1 TEXT 1970 1975 "p / >"
+#C 2030 Probe2.java
+0 DOC_COMMENT 2012 2017 
+1 ERRONEOUS 2012 2013 "<" compiler.err.dc.malformed.html
+1 TEXT 2013 2017 "p//>"
+#C 2099 Probe2.java
+0 DOC_COMMENT 2054 2086 
+1 START_ELEMENT 2054 2086 table
+2 ATTRIBUTE 2061 2069 border UNQUOTED
+3 TEXT 2068 2069 "1"
+2 ATTRIBUTE 2070 2085 cellpadding DOUBLE
+3 TEXT 2083 2084 "2"
+#C 2160 Probe2.java
+0 DOC_COMMENT 2123 2147 
+1 START_ELEMENT 2123 2147 img
+2 ATTRIBUTE 2128 2139 src DOUBLE
+3 TEXT 2133 2138 "a.png"
+2 ATTRIBUTE 2140 -1 alt DOUBLE
+#C 2211 Probe2.java
+0 DOC_COMMENT 2184 2198 
+1 START_ELEMENT 2184 2198 img /
+2 ATTRIBUTE 2189 -1 src DOUBLE
+#C 2262 Probe2.java
+0 DOC_COMMENT 2235 2249 
+1 ERRONEOUS 2235 2249 "@param < T > x" compiler.err.dc.gt.expected
+#C 2310 Probe2.java
+0 DOC_COMMENT 2286 2297 
+1 PARAM 2286 2297 param <>
+2 IDENTIFIER 2294 2295 T
+2 TEXT 2296 2297 "x"
+#C 2358 Probe2.java
+0 DOC_COMMENT 2334 2345 
+1 PARAM 2334 2345 param
+2 IDENTIFIER 2341 2342 T
+2 TEXT 2342 2345 "> x"
+#C 2414 Probe2.java
+0 DOC_COMMENT 2382 2401 
+1 ERRONEOUS 2382 2401 "@see \"str\" trailing" compiler.err.dc.unexpected.content
+#C 2479 Probe2.java
+0 DOC_COMMENT 2438 2466 
+1 ERRONEOUS 2438 2466 "@see \"str\"\n  next line" compiler.err.dc.unexpected.content
+#C 2548 Probe2.java
+0 DOC_COMMENT 2503 2535 
+1 SEE 2503 2535 see
+2 REFERENCE 2508 2511 "Foo"
+2 TEXT 2520 2535 "label next line"
+#C 2611 Probe2.java
+0 DOC_COMMENT 2572 2598 
+1 SEE 2572 2598 see
+2 REFERENCE 2585 2588 "Foo"
+2 TEXT 2589 2598 "next line"
+#C 2677 Probe2.java
+0 DOC_COMMENT 2635 2664 
+1 THROWS 2635 2664 throws
+2 REFERENCE 2651 2654 "Foo"
+2 TEXT 2655 2664 "next line"
+#C 2739 Probe2.java
+0 DOC_COMMENT 2701 2726 
+1 RETURN 2701 2726 return
+2 TEXT 2717 2726 "text next"
+#C 2802 Probe2.java
+0 DOC_COMMENT 2763 2789 
+1 PARAM 2763 2789 param
+2 IDENTIFIER 2778 2779 x
+2 TEXT 2780 2789 "next line"
+#C 2879 Probe2.java
+0 DOC_COMMENT 2826 2866 
+1 PARAM 2826 2866 param
+2 IDENTIFIER 2833 2834 x
+2 TEXT 2850 2866 "text after blank"
+#C 2922 Probe2.java
+0 DOC_COMMENT 2903 2909 
+1 ERRONEOUS 2903 2907 "&#12" compiler.err.dc.missing.semicolon
+1 TEXT 2907 2909 " x"
+#C 2966 Probe2.java
+0 DOC_COMMENT 2946 2953 
+1 ERRONEOUS 2946 2951 "&#x1f" compiler.err.dc.missing.semicolon
+1 TEXT 2951 2953 " x"
+#C 3007 Probe2.java
+0 DOC_COMMENT 2990 2994 
+1 ERRONEOUS 2990 2994 "&#12" compiler.err.dc.missing.semicolon
+#C 3055 Probe2.java
+0 DOC_COMMENT 3031 3042 
+1 ENTITY 3031 3036 #12
+1 ENTITY 3036 3042 #x1F
+#C 3101 Probe2.java
+0 DOC_COMMENT 3079 3088 
+1 ENTITY 3079 3084 amp
+1 ENTITY 3084 3088 lt
+#C 3157 Probe2.java
+0 DOC_COMMENT 3125 3144 
+1 START_ELEMENT 3125 3130 pre
+1 TEXT 3130 3130 ""
+1 END_ELEMENT 3138 3144 pre
+#C 3231 Probe2.java
+0 DOC_COMMENT 3181 3210 
+1 TEXT 3181 3192 "a\n b"
+1 RETURN 3201 3210 return
+2 TEXT 3209 3210 "x"
+#C 3301 Probe2.java
+0 DOC_COMMENT 3255 3288 
+1 TEXT 3255 3260 "Text "
+1 ERRONEOUS 3260 3288 "{@inheritDoc\n @param z" compiler.err.dc.unterminated.inline.tag
+#C 3356 Probe2.java
+0 DOC_COMMENT 3325 3343 
+1 DOC_ROOT 3325 3343 docRoot
+#C 3404 Probe2.java
+0 DOC_COMMENT 3380 3391 
+1 DOC_ROOT 3380 3391 docRoot
+#C 3455 Probe2.java
+0 DOC_COMMENT 3428 3442 
+1 INHERIT_DOC 3428 3442 inheritDoc
+#C 3510 Probe2.java
+0 DOC_COMMENT 3479 3497 
+1 VALUE 3479 3497 value
+2 REFERENCE 3494 3496 "#X"
+#C 3565 Probe2.java
+0 DOC_COMMENT 3534 3552 
+1 VALUE 3534 3552 value
+2 TEXT 3543 3545 "%d"
+2 REFERENCE 3547 3549 "#X"
+#C 3614 Probe2.java
+0 DOC_COMMENT 3589 3601 
+1 VALUE 3589 3601 value
+2 REFERENCE 3597 3599 "#X"
+#C 3664 Probe2.java
+0 DOC_COMMENT 3638 3651 
+1 VALUE 3638 3651 value
+2 TEXT 3646 3647 "%"
+2 REFERENCE 3648 3650 "#X"
+#C 3711 Probe2.java
+0 DOC_COMMENT 3688 3698 
+1 VALUE 3688 3698 value
+2 TEXT 3696 3697 "%"
+#C 3794 Probe2.java
+0 DOC_COMMENT 3735 3781 
+1 ERRONEOUS 3735 3781 "{@snippet :\n  code {unbalanced \n }" compiler.err.dc.unterminated.inline.tag
+#C 3858 Probe2.java
+0 DOC_COMMENT 3818 3845 
+1 SNIPPET 3818 3845 snippet
+2 ATTRIBUTE 3828 3834 file UNQUOTED
+3 TEXT 3833 3834 "x"
+2 TEXT 3843 3844 " "
+#C 3941 Probe2.java
+0 DOC_COMMENT 3882 3928 
+1 SNIPPET 3882 3928 snippet
+2 ATTRIBUTE 3900 3908 file DOUBLE
+3 TEXT 3906 3907 "a"
+2 ATTRIBUTE 3917 3927 region DOUBLE
+3 TEXT 3925 3926 "b"
+#C 3996 Probe2.java
+0 DOC_COMMENT 3965 3983 
+1 SNIPPET 3965 3983 snippet
+2 ATTRIBUTE 3975 3980 a DOUBLE
+3 TEXT 3978 3979 "b"
+2 ATTRIBUTE 3981 3982 c EMPTY
+#C 4064 Probe2.java
+0 DOC_COMMENT 4020 4051 
+1 SNIPPET 4020 4051 snippet
+2 TEXT 4039 4050 "  x\n "
+#C 4121 Probe2.java
+0 DOC_COMMENT 4088 4108 
+1 SNIPPET 4088 4108 snippet
+2 TEXT 4106 4107 " "
+#C 4205 Probe2.java
+0 DOC_COMMENT 4145 4192 
+1 SNIPPET 4145 4192 snippet
+2 TEXT 4163 4191 "  x {@code y} <b> & \n "
+#C 4275 Probe2.java
+0 DOC_COMMENT 4229 4262 
+1 SNIPPET 4229 4262 snippet
+2 ATTRIBUTE 4239 4242 a UNQUOTED
+3 TEXT 4241 4242 "b"
+2 TEXT 4250 4261 "  x\n "
+#C 4350 Probe2.java
+0 DOC_COMMENT 4299 4337 
+1 SNIPPET 4299 4337 snippet
+2 ATTRIBUTE 4309 4316 a DOUBLE
+3 TEXT 4314 4315 "b"
+2 TEXT 4325 4336 "  x\n "
+#C 4402 Probe2.java
+0 DOC_COMMENT 4374 4389 
+1 ERRONEOUS 4374 4383 "{@snippet" compiler.err.dc.unexpected.content
+1 TEXT 4384 4389 "1a=b}"
+#C 4454 Probe2.java
+0 DOC_COMMENT 4426 4441 
+1 ERRONEOUS 4426 4441 "{@snippet a=\"b}" compiler.err.dc.no.content
+#C 4518 Probe2.java
+0 DOC_COMMENT 4478 4505 
+1 ERRONEOUS 4478 4505 "{@snippet a=\"b\" :\n  x" compiler.err.dc.unterminated.inline.tag
+#C 4576 Probe2.java
+0 DOC_COMMENT 4542 4569 
+1 INDEX 4542 4569 index
+2 TEXT 4550 4551 "a"
+2 ERRONEOUS 4552 4563 "b {@code c}" compiler.err.dc.unterminated.inline.tag
+#C 4628 Probe2.java
+0 DOC_COMMENT 4600 4615 
+1 INDEX 4600 4615 index
+2 TEXT 4609 4610 "a"
+2 TEXT 4612 4614 "b "
+#C 4676 Probe2.java
+0 DOC_COMMENT 4652 4663 
+1 INDEX 4652 4662 index
+2 TEXT 4660 4661 "a"
+1 TEXT 4662 4663 "b"
+#C 4727 Probe2.java
+0 DOC_COMMENT 4700 4714 
+1 INDEX 4700 4714 index
+2 TEXT 4708 4713 "\"a b\""
+#C 4782 Probe2.java
+0 DOC_COMMENT 4751 4769 
+1 INDEX 4751 4769 index
+2 TEXT 4759 4764 "\"a b\""
+2 TEXT 4765 4768 "c d"
+#C 4839 Probe2.java
+0 DOC_COMMENT 4806 4826 
+1 INDEX 4806 4826 index
+2 TEXT 4814 4815 "a"
+2 TEXT 4824 4825 "b"
+#C 4892 Probe2.java
+0 DOC_COMMENT 4863 4885 
+1 SUMMARY 4863 4885 summary
+2 ERRONEOUS 4873 4879 "a <b>x" compiler.err.dc.unterminated.inline.tag
+#C 4946 Probe2.java
+0 DOC_COMMENT 4916 4939 
+1 RETURN 4916 4939 return
+2 ERRONEOUS 4925 4933 "a {@code" compiler.err.dc.unterminated.inline.tag
+#C 5009 Probe2.java
+0 DOC_COMMENT 4970 5002 
+1 LINK 4970 5002 link
+2 REFERENCE 4977 4980 "Foo"
+2 ERRONEOUS 4981 4996 "label {@code x}" compiler.err.dc.unterminated.inline.tag
+#C 5070 Probe2.java
+0 DOC_COMMENT 5033 5057 
+1 SYSTEM_PROPERTY 5033 5057 systemProperty
+#C 5132 Probe2.java
+0 DOC_COMMENT 5094 5119 
+1 ERRONEOUS 5094 5113 "{@systemProperty a-" compiler.err.dc.unexpected.content
+1 TEXT 5113 5119 "b_c.d}"
+#C 5189 Probe2.java
+0 DOC_COMMENT 5156 5176 
+1 ERRONEOUS 5156 5176 "{@systemProperty a.b" compiler.err.dc.unexpected.content
+#C 5254 Probe2.java
+0 DOC_COMMENT 5213 5241 
+1 SYSTEM_PROPERTY 5213 5241 systemProperty
+#C 5342 Probe2.java
+0 DOC_COMMENT 5278 5320 
+1 TEXT 5278 5283 "Text "
+1 CODE 5283 5292 code
+2 TEXT 5290 5291 "a"
+1 TEXT 5292 5293 "."
+1 RETURN 5301 5320 return
+2 TEXT 5309 5311 "x "
+2 CODE 5311 5320 code
+3 TEXT 5318 5319 "b"
+#C 5439 Probe2.java
+0 DOC_COMMENT 5366 5417 
+1 TEXT 5366 5371 "Text "
+1 START_ELEMENT 5371 5374 b
+1 TEXT 5374 5378 "bold"
+1 END_ELEMENT 5378 5382 b
+1 RETURN 5399 5417 return
+2 TEXT 5407 5409 "x "
+2 START_ELEMENT 5409 5412 i
+2 TEXT 5412 5413 "y"
+2 END_ELEMENT 5413 5417 i
+#C 5519 Probe2.java
+0 DOC_COMMENT 5463 5497 
+1 TEXT 5463 5468 "Text "
+1 ENTITY 5468 5473 amp
+1 RETURN 5483 5497 return
+2 TEXT 5491 5493 "x "
+2 ENTITY 5493 5497 lt
+#C 5598 Probe2.java
+0 DOC_COMMENT 5543 5576 
+1 TEXT 5543 5548 "Text "
+1 CODE 5548 5557 code
+2 TEXT 5555 5556 "a"
+1 TEXT 5557 5576 "\n   more text"
+#C 5642 Probe2.java
+0 DOC_COMMENT 5622 5629 
+1 RETURN 5622 5629 return
+#C 5696 Probe2.java
+0 DOC_COMMENT 5666 5673 
+1 RETURN 5666 5673 return
+#C 5775 Probe2.java
+0 DOC_COMMENT 5720 5762 
+1 DEPRECATED 5720 5731 deprecated
+1 RETURN 5753 5762 return
+2 TEXT 5761 5762 "x"
+#C 5825 Probe2.java
+0 DOC_COMMENT 5799 5812 
+1 UNKNOWN_BLOCK_TAG 5799 5812 custom:tag
+2 TEXT 5811 5812 "x"
+#C 5875 Probe2.java
+0 DOC_COMMENT 5849 5862 
+1 UNKNOWN_BLOCK_TAG 5849 5862 custom.tag
+2 TEXT 5861 5862 "x"
+#C 5925 Probe2.java
+0 DOC_COMMENT 5899 5912 
+1 UNKNOWN_BLOCK_TAG 5899 5912 custom-tag
+2 TEXT 5911 5912 "x"
+#C 5976 Probe2.java
+0 DOC_COMMENT 5950 5963 
+1 UNKNOWN_BLOCK_TAG 5950 5963 custom_tag
+2 TEXT 5962 5963 "x"
+#C 6019 Probe2.java
+0 DOC_COMMENT 6001 6006 
+1 UNKNOWN_BLOCK_TAG 6001 6006 c
+2 TEXT 6003 6006 "$ x"
+#C 6066 Probe2.java
+0 DOC_COMMENT 6044 6053 
+1 UNKNOWN_BLOCK_TAG 6044 6053 Override
+#C 6120 Probe2.java
+0 DOC_COMMENT 6091 6107 
+1 UNKNOWN_BLOCK_TAG 6091 6107 Override
+2 TEXT 6101 6107 "public"
+#C 6198 Probe2.java
+0 DOC_COMMENT 6145 6185 
+1 TEXT 6145 6169 "a @param x mid-line then"
+1 PARAM 6177 6185 param
+2 IDENTIFIER 6184 6185 y
+#C 6252 Probe2.java
+0 DOC_COMMENT 6223 6239 
+1 TEXT 6223 6239 "* @param starred"
+#C 6303 Probe2.java
+0 DOC_COMMENT 6278 6290 
+1 PARAM 6278 6290 param
+2 IDENTIFIER 6285 6288 tab
+2 TEXT 6289 6290 "x"
+#C 6370 Probe2.java
+0 DOC_COMMENT 6328 6357 
+1 CODE 6328 6337 code
+2 TEXT 6335 6336 "x"
+1 TEXT 6337 6357 " @param after inline"
+#C 6429 Probe2.java
+0 DOC_COMMENT 6395 6416 
+1 START_ELEMENT 6395 6398 p
+1 TEXT 6398 6416 " @param after html"
+#C 6492 Probe2.java
+0 DOC_COMMENT 6454 6479 
+1 ENTITY 6454 6459 amp
+1 TEXT 6459 6479 " @param after entity"
+#C 6563 Probe2.java
+0 DOC_COMMENT 6517 6550 
+1 CODE 6517 6534 code
+2 TEXT 6524 6533 "a\n "
+1 PARAM 6542 6550 param
+2 IDENTIFIER 6549 6550 x
+#C 6623 Probe2.java
+0 DOC_COMMENT 6588 6610 
+1 TEXT 6588 6601 "text {\n"
+1 PARAM 6602 6610 param
+2 IDENTIFIER 6609 6610 x
+#C 6684 Probe2.java
+0 DOC_COMMENT 6648 6671 
+1 TEXT 6648 6653 "text "
+1 ERRONEOUS 6653 6655 "{@" compiler.err.dc.no.tag.name
+1 PARAM 6663 6671 param
+2 IDENTIFIER 6670 6671 x
+#C 6749 Probe2.java
+0 DOC_COMMENT 6709 6736 
+1 TEXT 6709 6714 "text "
+1 ERRONEOUS 6714 6736 "{@code\n @param x" compiler.err.dc.unterminated.inline.tag
+#C 77 Probe3.java
+0 DOC_COMMENT 41 64 
+1 TEXT 41 48 "text { "
+1 PARAM 56 64 param
+2 IDENTIFIER 63 64 x
+#C 123 Probe3.java
+0 DOC_COMMENT 100 110 
+1 TEXT 100 101 "{"
+1 START_ELEMENT 101 104 b
+1 TEXT 104 105 "x"
+1 END_ELEMENT 105 109 b
+1 TEXT 109 110 "}"
+#C 173 Probe3.java
+0 DOC_COMMENT 146 160 
+1 TEXT 146 149 "a {"
+1 START_ELEMENT 157 160 p
+#C 220 Probe3.java
+0 DOC_COMMENT 196 207 
+1 TEXT 196 197 "{"
+1 CODE 197 206 code
+2 TEXT 204 205 "x"
+1 TEXT 206 207 "}"
+#C 263 Probe3.java
+0 DOC_COMMENT 243 250 
+1 TEXT 243 244 "{"
+1 ENTITY 244 249 amp
+1 TEXT 249 250 "}"
+#C 305 Probe3.java
+0 DOC_COMMENT 286 298 
+1 TEXT 286 298 "text {\n"
+#C 371 Probe3.java
+0 DOC_COMMENT 328 364 
+1 TEXT 328 335 "a {b} c"
+1 RETURN 343 364 return
+2 TEXT 351 364 "{x} y {\n"
+#C 416 Probe3.java
+0 DOC_COMMENT 394 403 
+1 PARAM 394 403 param
+2 IDENTIFIER 401 402 T
+2 TEXT 402 403 ">"
+#C 463 Probe3.java
+0 DOC_COMMENT 439 450 
+1 PARAM 439 450 param
+2 IDENTIFIER 446 447 T
+2 TEXT 447 450 "> x"
+#C 509 Probe3.java
+0 DOC_COMMENT 486 496 
+1 PARAM 486 496 param <>
+2 IDENTIFIER 494 495 T
+#C 558 Probe3.java
+0 DOC_COMMENT 532 545 
+1 PARAM 532 545 param <>
+2 IDENTIFIER 541 542 T
+2 TEXT 544 545 "x"
+#C 608 Probe3.java
+0 DOC_COMMENT 582 595 
+1 ERRONEOUS 582 595 "@param <T > x" compiler.err.dc.gt.expected
+#C 678 Probe3.java
+0 DOC_COMMENT 632 665 
+1 ERRONEOUS 632 649 "@see Foo#bar(int," compiler.err.dc.unterminated.signature
+1 PARAM 657 665 param
+2 IDENTIFIER 664 665 x
+#C 733 Probe3.java
+0 DOC_COMMENT 702 720 
+1 SEE 702 720 see
+2 TEXT 707 720 "\"a\n  b\""
+#C 794 Probe3.java
+0 DOC_COMMENT 757 781 
+1 SEE 757 765 see
+2 TEXT 762 765 "\"a\""
+1 PARAM 773 781 param
+2 IDENTIFIER 780 781 x
+#C 869 Probe3.java
+0 DOC_COMMENT 818 856 
+1 SEE 818 840 see
+2 START_ELEMENT 823 835 a
+3 ATTRIBUTE 826 834 href DOUBLE
+4 TEXT 832 833 "x"
+2 TEXT 835 836 "y"
+2 END_ELEMENT 836 840 a
+1 PARAM 848 856 param
+2 IDENTIFIER 855 856 x
+#C 926 Probe3.java
+0 DOC_COMMENT 893 913 
+1 ERRONEOUS 893 897 "@see" compiler.err.dc.no.content
+1 PARAM 905 913 param
+2 IDENTIFIER 912 913 x
+#C 994 Probe3.java
+0 DOC_COMMENT 950 981 
+1 THROWS 950 981 throws
+2 REFERENCE 958 979 "Foo<Bar,\n  Baz>"
+2 TEXT 980 981 "x"
+#C 1085 Probe3.java
+0 DOC_COMMENT 1018 1072 
+1 RETURN 1018 1072 return
+2 LINK 1026 1067 link
+3 REFERENCE 1033 1060 "Foo#bar(int,\n    int)"
+3 TEXT 1061 1066 "label"
+2 TEXT 1067 1072 " more"
+#C 1155 Probe3.java
+0 DOC_COMMENT 1109 1142 
+1 ERRONEOUS 1109 1128 "{@link Foo#bar(int," compiler.err.dc.unterminated.signature
+1 SEE 1136 1142 see
+2 REFERENCE 1141 1142 "x"
+#C 1223 Probe3.java
+0 DOC_COMMENT 1179 1210 
+1 ERRONEOUS 1179 1180 "<" compiler.err.dc.malformed.html
+1 TEXT 1180 1189 "a href='x"
+1 ERRONEOUS 1197 1210 "@see y'>z</a>" compiler.err.dc.ref.unexpected.input
+#C 1289 Probe3.java
+0 DOC_COMMENT 1247 1276 
+1 ERRONEOUS 1247 1248 "<" compiler.err.dc.malformed.html
+1 TEXT 1248 1256 "a href=x"
+1 ERRONEOUS 1264 1276 "@see y>z</a>" compiler.err.dc.ref.unexpected.input
+#C 1342 Probe3.java
+0 DOC_COMMENT 1313 1329 
+1 ERRONEOUS 1313 1314 "<" compiler.err.dc.malformed.html
+1 TEXT 1314 1315 "a"
+1 SEE 1323 1329 see
+2 REFERENCE 1328 1329 "y"
+#C 1396 Probe3.java
+0 DOC_COMMENT 1366 1383 
+1 ERRONEOUS 1366 1367 "<" compiler.err.dc.malformed.html
+1 TEXT 1367 1369 "/a"
+1 SEE 1377 1383 see
+2 REFERENCE 1382 1383 "y"
+#C 1459 Probe3.java
+0 DOC_COMMENT 1420 1446 
+1 COMMENT 1420 1444 "<!-- x\n @see y -->"
+1 TEXT 1444 1446 " z"
+#C 1521 Probe3.java
+0 DOC_COMMENT 1483 1508 
+1 CODE 1483 1506 code
+2 TEXT 1490 1505 "x\n @see y"
+1 TEXT 1506 1508 " z"
+#C 1594 Probe3.java
+0 DOC_COMMENT 1545 1581 
+1 SNIPPET 1545 1579 snippet
+2 TEXT 1563 1578 " @see y\n "
+1 TEXT 1579 1581 " z"
+#C 1657 Probe3.java
+0 DOC_COMMENT 1618 1644 
+1 INDEX 1618 1642 index
+2 TEXT 1626 1627 "a"
+2 TEXT 1635 1641 "@see y"
+1 TEXT 1642 1644 " z"
+#C 1724 Probe3.java
+0 DOC_COMMENT 1681 1711 
+1 ERRONEOUS 1681 1691 "{@index \"a" compiler.err.dc.no.content
+1 ERRONEOUS 1699 1711 "@see y\" b} z" compiler.err.dc.ref.unexpected.input
+#C 1785 Probe3.java
+0 DOC_COMMENT 1748 1772 
+1 ERRONEOUS 1748 1755 "@see \"a" compiler.err.dc.unexpected.content
+1 ERRONEOUS 1763 1772 "@see y\" b" compiler.err.dc.ref.unexpected.input
+#C 1824 Probe3.java
+0 DOC_COMMENT 1809 1811 
+1 ESCAPE 1809 1811 "@@"
+#C 1871 Probe3.java
+0 DOC_COMMENT 1848 1858 
+1 ESCAPE 1848 1850 "@@"
+1 TEXT 1850 1858 "@param x"
+#C 1899 Probe3.java
+0 DOC_COMMENT 1895 1896 
+1 ERRONEOUS 1895 1896 "@" compiler.err.dc.no.tag.name
+#C 1955 Probe3.java
+0 DOC_COMMENT 1937 1942 
+1 TEXT 1937 1939 "a*"
+1 ESCAPE 1939 1941 "@/"
+1 TEXT 1941 1942 "b"
+#C 2006 Probe3.java
+0 DOC_COMMENT 1979 1993 
+1 LINK 1979 1993 link
+2 REFERENCE 1986 1989 "Foo"
+2 TEXT 1990 1992 "@@"
+#C 2056 Probe3.java
+0 DOC_COMMENT 2030 2043 
+1 AUTHOR 2030 2043 author
+2 TEXT 2038 2043 "a@b.c"
+#C 2130 Probe3.java
+0 DOC_COMMENT 2080 2117 
+1 SINCE 2080 2117 since
+2 TEXT 2087 2091 "1.0 "
+2 CODE 2091 2100 code
+3 TEXT 2098 2099 "x"
+2 TEXT 2100 2101 " "
+2 START_ELEMENT 2101 2104 b
+2 TEXT 2104 2105 "y"
+2 END_ELEMENT 2105 2109 b
+2 TEXT 2109 2110 " "
+2 ENTITY 2110 2115 amp
+2 TEXT 2115 2117 " z"
+#C 2188 Probe3.java
+0 DOC_COMMENT 2154 2175 
+1 SERIAL 2154 2175 serial
+2 TEXT 2162 2175 "include extra"
+#C 2240 Probe3.java
+0 DOC_COMMENT 2212 2227 
+1 SERIAL 2212 2227 serial
+2 TEXT 2220 2227 "exclude"
+#C 2300 Probe3.java
+0 DOC_COMMENT 2264 2287 
+1 HIDDEN 2264 2271 hidden
+1 SEE 2279 2287 see
+2 REFERENCE 2284 2287 "Foo"
+#C 2367 Probe3.java
+0 DOC_COMMENT 2324 2354 
+1 PROVIDES 2324 2337 provides
+2 REFERENCE 2334 2337 "Foo"
+1 USES 2345 2354 uses
+2 REFERENCE 2351 2354 "Bar"
+#C 2425 Probe3.java
+0 DOC_COMMENT 2391 2412 
+1 ERRONEOUS 2391 2396 "@spec" compiler.err.dc.no.url
+1 SEE 2404 2412 see
+2 REFERENCE 2409 2412 "Foo"
+#C 2476 Probe3.java
+0 DOC_COMMENT 2449 2463 
+1 ERRONEOUS 2449 2463 "@spec http://x" compiler.err.dc.no.title
+#C 2537 Probe3.java
+0 DOC_COMMENT 2500 2524 
+1 UNKNOWN_BLOCK_TAG 2500 2524 unknown-tag
+2 CODE 2513 2522 code
+3 TEXT 2520 2521 "a"
+2 TEXT 2522 2524 " b"
+#C 2587 Probe3.java
+0 DOC_COMMENT 2561 2574 
+1 VERSION 2561 2574 version
+2 TEXT 2570 2574 "$Id$"
+#C 2633 Probe3.java
+0 DOC_COMMENT 2611 2620 
+1 ENTITY 2611 2620 #x1F600
+#C 2686 Probe3.java
+0 DOC_COMMENT 2657 2673 
+1 ENTITY 2657 2673 #1234567890123
+#C 2732 Probe3.java
+0 DOC_COMMENT 2710 2719 
+1 ENTITY 2710 2715 amp
+1 TEXT 2715 2719 "amp;"
+#C 2773 Probe3.java
+0 DOC_COMMENT 2756 2760 
+1 ERRONEOUS 2756 2760 "&amp" compiler.err.dc.missing.semicolon
+#C 2836 Probe3.java
+0 DOC_COMMENT 2797 2823 
+1 ENTITY 2797 2802 amp
+1 TEXT 2802 2803 " "
+1 ENTITY 2803 2807 lt
+1 TEXT 2807 2808 "b"
+1 ENTITY 2808 2812 gt
+1 TEXT 2812 2813 " "
+1 ENTITY 2813 2818 #64
+1 TEXT 2818 2823 "param"
+#C 2904 Probe3.java
+0 DOC_COMMENT 2860 2891 
+1 START_ELEMENT 2860 2863 b
+1 START_ELEMENT 2863 2866 i
+1 TEXT 2866 2872 "nested"
+1 END_ELEMENT 2872 2876 i
+1 END_ELEMENT 2876 2880 b
+1 TEXT 2880 2881 " "
+1 START_ELEMENT 2881 2885 br
+1 TEXT 2885 2886 " "
+1 START_ELEMENT 2886 2891 hr /
+#C 3003 Probe3.java
+0 DOC_COMMENT 2928 2990 
+1 START_ELEMENT 2928 2931 p
+1 TEXT 2931 2943 "para\n "
+1 START_ELEMENT 2943 2947 ul
+1 TEXT 2947 2955 "\n "
+1 START_ELEMENT 2955 2959 li
+1 TEXT 2959 2970 "one\n "
+1 START_ELEMENT 2970 2974 li
+1 TEXT 2974 2985 "two\n "
+1 END_ELEMENT 2985 2990 ul
+#C 3077 Probe3.java
+0 DOC_COMMENT 3027 3064 
+1 START_ELEMENT 3027 3059 a
+2 ATTRIBUTE 3030 3038 href DOUBLE
+3 TEXT 3036 3037 "x"
+2 ATTRIBUTE 3049 3058 title DOUBLE
+3 TEXT 3056 3057 "y"
+1 TEXT 3059 3060 "z"
+1 END_ELEMENT 3060 3064 a
+#C 3149 Probe3.java
+0 DOC_COMMENT 3101 3136 
+1 START_ELEMENT 3101 3131 a
+2 ATTRIBUTE 3104 3130 href DOUBLE
+3 DOC_ROOT 3110 3120 docRoot
+3 TEXT 3120 3129 "/x.html#y"
+1 TEXT 3131 3132 "z"
+1 END_ELEMENT 3132 3136 a
+#C 3202 Probe3.java
+0 DOC_COMMENT 3173 3189 
+1 ERRONEOUS 3173 3174 "<" compiler.err.dc.malformed.html
+1 TEXT 3174 3185 "a href=\"x>y"
+1 END_ELEMENT 3185 3189 a
+#C 3265 Probe3.java
+0 DOC_COMMENT 3226 3252 
+1 ERRONEOUS 3226 3227 "<" compiler.err.dc.malformed.html
+1 TEXT 3227 3248 "a href=\"x\" title='y>z"
+1 END_ELEMENT 3248 3252 a
+#C 3324 Probe3.java
+0 DOC_COMMENT 3289 3311 
+1 START_ELEMENT 3289 3311 img
+2 ATTRIBUTE 3294 3303 src UNQUOTED
+3 TEXT 3298 3303 "x.png"
+2 ATTRIBUTE 3304 3310 alt UNQUOTED
+3 TEXT 3308 3310 "y/"
+#C 3383 Probe3.java
+0 DOC_COMMENT 3348 3370 
+1 START_ELEMENT 3348 3354 code
+1 CODE 3354 3363 code
+2 TEXT 3361 3362 "x"
+1 END_ELEMENT 3363 3370 code
+#C 3504 Probe3.java
+0 DOC_COMMENT 3407 3491 
+1 START_ELEMENT 3407 3412 pre
+1 CODE 3412 3485 code
+2 TEXT 3418 3484 "\n   if (a < b && c > d) {\n     x();\n   }\n "
+1 END_ELEMENT 3485 3491 pre
+#C 3618 Probe3.java
+0 DOC_COMMENT 3528 3605 
+1 START_ELEMENT 3528 3533 pre
+1 TEXT 3533 3549 "\n   if (a "
+1 ERRONEOUS 3549 3550 "<" compiler.err.dc.malformed.html
+1 TEXT 3550 3553 " b "
+1 ERRONEOUS 3553 3554 "&" compiler.err.dc.bad.entity
+1 ERRONEOUS 3554 3555 "&" compiler.err.dc.bad.entity
+1 TEXT 3555 3591 " c > d) {\n     x();\n   }"
+1 END_ELEMENT 3599 3605 pre
+#C 3719 Probe3.java
+0 DOC_COMMENT 3642 3706 
+1 START_ELEMENT 3642 3647 pre
+1 TEXT 3647 3661 "\n   List"
+1 START_ELEMENT 3661 3669 String
+1 TEXT 3669 3687 " x = new ArrayList"
+1 ERRONEOUS 3687 3688 "<" compiler.err.dc.malformed.html
+1 TEXT 3688 3692 ">();"
+1 END_ELEMENT 3700 3706 pre
+#C 3839 Probe3.java
+0 DOC_COMMENT 3743 3826 
+1 START_ELEMENT 3743 3748 pre
+1 UNKNOWN_BLOCK_TAG 3758 3809 Override
+2 TEXT 3777 3803 "public void x() {}\n "
+2 END_ELEMENT 3803 3809 pre
+1 RETURN 3817 3826 return
+2 TEXT 3825 3826 "y"
+#C 3912 Probe3.java
+0 DOC_COMMENT 3863 3899 
+1 TEXT 3863 3870 "a -> b "
+1 ERRONEOUS 3870 3871 "<" compiler.err.dc.malformed.html
+1 TEXT 3871 3875 "- c "
+1 ERRONEOUS 3875 3876 "<" compiler.err.dc.malformed.html
+1 TEXT 3876 3885 "= d >= e "
+1 ERRONEOUS 3885 3886 "<" compiler.err.dc.malformed.html
+1 TEXT 3886 3890 "> f "
+1 ERRONEOUS 3890 3891 "<" compiler.err.dc.malformed.html
+1 ERRONEOUS 3891 3892 "<" compiler.err.dc.malformed.html
+1 TEXT 3892 3899 " g >> h"
+#C 3968 Probe3.java
+0 DOC_COMMENT 3936 3955 
+1 TEXT 3936 3938 "1 "
+1 ERRONEOUS 3938 3939 "<" compiler.err.dc.malformed.html
+1 TEXT 3939 3952 " 2 and 2 > 1 "
+1 ERRONEOUS 3952 3953 "&" compiler.err.dc.bad.entity
+1 TEXT 3953 3955 " 3"
+#C 4008 Probe3.java
+0 DOC_COMMENT 3992 3995 
+1 TEXT 3992 3993 "a"
+1 ERRONEOUS 3993 3994 "<" compiler.err.dc.malformed.html
+1 TEXT 3994 3995 "b"
+#C 4050 Probe3.java
+0 DOC_COMMENT 4032 4037 
+1 TEXT 4032 4033 "a"
+1 ERRONEOUS 4033 4034 "<" compiler.err.dc.malformed.html
+1 TEXT 4034 4037 "b c"
+#C 4094 Probe3.java
+0 DOC_COMMENT 4074 4081 
+1 TEXT 4074 4076 "a "
+1 START_ELEMENT 4076 4081 b
+2 ATTRIBUTE 4079 4080 c EMPTY
+#C 4140 Probe3.java
+0 DOC_COMMENT 4118 4127 
+1 START_ELEMENT 4118 4127 b
+2 ATTRIBUTE 4121 4124 c UNQUOTED
+3 TEXT 4123 4124 "d"
+2 ATTRIBUTE 4125 4126 e EMPTY
+#C 4236 Probe3.java
+0 DOC_COMMENT 4164 4223 
+1 TEXT 4164 4168 "Use "
+1 CODE 4168 4202 code
+2 TEXT 4175 4201 "Map<String, List<Integer>>"
+1 TEXT 4202 4206 " or "
+1 LITERAL 4206 4222 literal
+2 TEXT 4216 4221 "a & b"
+1 TEXT 4222 4223 "."
+#C 4362 Probe3.java
+0 DOC_COMMENT 4260 4349 
+1 TEXT 4260 4264 "Use "
+1 LINK 4264 4308 link
+2 REFERENCE 4271 4299 "java.util.Map.Entry#getKey()"
+2 TEXT 4300 4307 "the key"
+1 TEXT 4308 4313 " and "
+1 LINK_PLAIN 4313 4348 linkplain
+2 REFERENCE 4325 4342 "#foo(int, String)"
+2 TEXT 4343 4347 "that"
+1 TEXT 4348 4349 "."
+#C 4428 Probe3.java
+0 DOC_COMMENT 4386 4415 
+1 LINK 4386 4414 link
+2 REFERENCE 4393 4413 "Foo#bar(int, String)"
+1 TEXT 4414 4415 "."
+#C 4508 Probe3.java
+0 DOC_COMMENT 4452 4495 
+1 LINK 4452 4475 link
+2 REFERENCE 4459 4474 "#equals(Object)"
+1 TEXT 4475 4476 " "
+1 LINK 4476 4495 link
+2 REFERENCE 4483 4494 "#hashCode()"
+#C 4584 Probe3.java
+0 DOC_COMMENT 4532 4571 
+1 VALUE 4532 4545 value
+2 REFERENCE 4540 4544 "#FOO"
+1 TEXT 4545 4546 " "
+1 VALUE 4546 4562 value
+2 REFERENCE 4554 4561 "Bar#BAZ"
+1 TEXT 4562 4563 " "
+1 VALUE 4563 4571 value
+#C 4643 Probe3.java
+0 DOC_COMMENT 4608 4630 
+1 INHERIT_DOC 4608 4621 inheritDoc
+1 TEXT 4621 4630 " and more"
+#C 4752 Probe3.java
+0 DOC_COMMENT 4667 4739 
+1 INHERIT_DOC 4667 4680 inheritDoc
+1 PARAM 4688 4710 param
+2 IDENTIFIER 4695 4696 x
+2 INHERIT_DOC 4697 4710 inheritDoc
+1 RETURN 4718 4739 return
+2 INHERIT_DOC 4726 4739 inheritDoc
+#C 4795 Probe3.java
+0 DOC_COMMENT 4778 4782 
+1 TEXT 4778 4782 "tabs"
+#C 4899 Probe3.java
+0 DOC_COMMENT 4819 4872 
+1 TEXT 4819 4834 "trailing spaces"
+1 RETURN 4856 4872 return
+2 TEXT 4866 4872 "spaced"
+#C 4968 Probe3.java
+0 DOC_COMMENT 4923 4955 
+1 SUMMARY 4923 4949 summary
+2 TEXT 4933 4948 "First sentence."
+1 TEXT 4949 4955 " Rest."
+#C 5049 Probe3.java
+0 DOC_COMMENT 4992 5036 
+1 TEXT 4992 4998 "First."
+1 TEXT 4999 5028 "Second. Third.\n\n "
+1 START_ELEMENT 5028 5031 p
+1 TEXT 5031 5036 "More."
+#C 5116 Probe3.java
+0 DOC_COMMENT 5073 5103 
+1 TEXT 5073 5078 "First"
+1 START_ELEMENT 5086 5089 p
+1 TEXT 5089 5103 "\n Second"
+#C 5167 Probe3.java
+0 DOC_COMMENT 5140 5154 
+1 TEXT 5140 5145 "First"
+1 START_ELEMENT 5145 5148 p
+1 TEXT 5148 5154 "Second"
+#C 5220 Probe3.java
+0 DOC_COMMENT 5191 5207 
+1 TEXT 5191 5197 "First."
+1 START_ELEMENT 5197 5201 br
+1 TEXT 5201 5207 "Second"
+#C 5274 Probe3.java
+0 DOC_COMMENT 5244 5261 
+1 CODE 5244 5253 code
+2 TEXT 5251 5252 "a"
+1 TEXT 5253 5254 "."
+1 TEXT 5255 5261 "Second"
+#C 5331 Probe3.java
+0 DOC_COMMENT 5298 5318 
+1 START_ELEMENT 5298 5301 p
+1 TEXT 5301 5307 "First."
+1 END_ELEMENT 5307 5311 p
+1 TEXT 5311 5318 " Second"
+#C 77 Probe4.java
+0 DOC_COMMENT 41 64 
+1 TEXT 41 52 "Tests for {"
+1 ESCAPE 52 54 "@@"
+1 TEXT 54 64 "link Foo}."
+#C 120 Probe4.java
+0 DOC_COMMENT 100 107 
+1 TEXT 100 103 "a {"
+1 ESCAPE 103 105 "@@"
+1 TEXT 106 107 "b"
+#C 160 Probe4.java
+0 DOC_COMMENT 143 147 
+1 TEXT 143 144 "{"
+1 ESCAPE 144 146 "@@"
+1 TEXT 146 147 "}"
+#C 202 Probe4.java
+0 DOC_COMMENT 183 189 
+1 ERRONEOUS 183 185 "{@" compiler.err.dc.no.tag.name
+1 TEXT 185 189 "* x}"
+#C 244 Probe4.java
+0 DOC_COMMENT 225 231 
+1 ERRONEOUS 225 227 "{@" compiler.err.dc.no.tag.name
+1 TEXT 227 231 "/ x}"
+#C 289 Probe4.java
+0 DOC_COMMENT 267 276 
+1 TEXT 267 269 "x "
+1 ERRONEOUS 269 271 "{@" compiler.err.dc.no.tag.name
+1 TEXT 271 276 " y} z"
+#C 334 Probe4.java
+0 DOC_COMMENT 312 321 
+1 TEXT 312 321 "x { @y} z"
+#C 381 Probe4.java
+0 DOC_COMMENT 357 368 
+1 ERRONEOUS 357 368 "@ @author x" compiler.err.dc.no.tag.name
+#C 435 Probe4.java
+0 DOC_COMMENT 404 422 
+1 ERRONEOUS 404 405 "@" compiler.err.dc.no.tag.name
+1 AUTHOR 413 422 author
+2 TEXT 421 422 "x"
+#C 488 Probe4.java
+0 DOC_COMMENT 458 475 
+1 THROWS 458 475 throws
+2 REFERENCE 466 469 "Foo"
+2 TEXT 469 475 "}bar x"
+#C 538 Probe4.java
+0 DOC_COMMENT 511 525 
+1 SEE 511 525 see
+2 REFERENCE 516 519 "Foo"
+2 TEXT 519 525 "}bar x"
+#C 589 Probe4.java
+0 DOC_COMMENT 562 576 
+1 ERRONEOUS 562 576 "@see Foo{bar x" compiler.err.dc.ref.unexpected.input
+#C 643 Probe4.java
+0 DOC_COMMENT 613 630 
+1 ERRONEOUS 613 630 "@throws Foo@Bar x" compiler.err.dc.ref.syntax.error
+#C 698 Probe4.java
+0 DOC_COMMENT 667 685 
+1 ERRONEOUS 667 684 "{@link Foo@return" compiler.err.dc.ref.unexpected.input
+1 TEXT 684 685 "}"
+#C 750 Probe4.java
+0 DOC_COMMENT 722 737 
+1 ERRONEOUS 722 736 "{@link Foo@see" compiler.err.dc.ref.syntax.error
+1 TEXT 736 737 "}"
+#C 799 Probe4.java
+0 DOC_COMMENT 774 786 
+1 ERRONEOUS 774 785 "{@link Foo@" compiler.err.dc.ref.syntax.error
+1 TEXT 785 786 "}"
+#C 849 Probe4.java
+0 DOC_COMMENT 823 836 
+1 ERRONEOUS 823 835 "{@link Foo@1" compiler.err.dc.ref.unexpected.input
+1 TEXT 835 836 "}"
+#C 905 Probe4.java
+0 DOC_COMMENT 873 892 
+1 ERRONEOUS 873 891 "{@link Foo@Bar.Baz" compiler.err.dc.ref.syntax.error
+1 TEXT 891 892 "}"
+#C 945 Probe4.java
+0 DOC_COMMENT 929 938 
+1 TEXT 929 938 "x {\n"
+#C 992 Probe4.java
+0 DOC_COMMENT 969 979 
+1 TEXT 969 979 "x {\n"
+#C 1047 Probe4.java
+0 DOC_COMMENT 1016 1040 
+1 AUTHOR 1016 1040 author
+2 TEXT 1024 1040 "x\n {\n"
+#C 1095 Probe4.java
+0 DOC_COMMENT 1071 1088 
+1 AUTHOR 1071 1088 author
+2 TEXT 1079 1088 "x {\n"
+#C 74 Refs.java
+0 DOC_COMMENT 39 61 
+1 ERRONEOUS 39 61 "@see Foo#bar(int)label" compiler.err.dc.ref.bad.parens
+#C 123 Refs.java
+0 DOC_COMMENT 97 110 
+1 SEE 97 110 see
+2 REFERENCE 102 110 "Foo(int)"
+#C 187 Refs.java
+0 DOC_COMMENT 146 174 
+1 SEE 146 174 see
+2 REFERENCE 151 174 "#bar(int[] , String...)"
+#C 277 Refs.java
+0 DOC_COMMENT 210 264 
+1 LINK 210 264 link
+2 REFERENCE 217 263 "Foo#bar(java.util.List<? extends T>, int[]...)"
+#C 330 Refs.java
+0 DOC_COMMENT 300 317 
+1 LINK 300 317 link
+2 REFERENCE 307 316 "Foo.Bar[]"
+#C 387 Refs.java
+0 DOC_COMMENT 353 374 
+1 ERRONEOUS 353 373 "{@link Foo#bar()#baz" compiler.err.dc.ref.bad.parens
+1 TEXT 373 374 "}"
+#C 439 Refs.java
+0 DOC_COMMENT 410 426 
+1 ERRONEOUS 410 425 "{@link Foo#bar(" compiler.err.dc.unterminated.signature
+1 TEXT 425 426 "}"
+#C 499 Refs.java
+0 DOC_COMMENT 462 486 
+1 ERRONEOUS 462 485 "{@link  Foo#bar(int)) x" compiler.err.dc.ref.bad.parens
+1 TEXT 485 486 "}"
+#C 558 Refs.java
+0 DOC_COMMENT 522 545 
+1 ERRONEOUS 522 542 "{@link Foo#bar(int)x" compiler.err.dc.ref.bad.parens
+1 TEXT 542 545 " y}"
+#C 614 Refs.java
+0 DOC_COMMENT 581 601 
+1 ERRONEOUS 581 600 "{@link Foo#<T>bar()" compiler.err.dc.ref.unexpected.input
+1 TEXT 600 601 "}"
+#C 662 Refs.java
+0 DOC_COMMENT 637 649 
+1 ERRONEOUS 637 648 "{@link Foo<" compiler.err.dc.unterminated.signature
+1 TEXT 648 649 "}"
+#C 716 Refs.java
+0 DOC_COMMENT 686 703 
+1 ERRONEOUS 686 702 "{@link Foo<Bar x" compiler.err.dc.unterminated.signature
+1 TEXT 702 703 "}"
+#C 783 Refs.java
+0 DOC_COMMENT 740 770 
+1 LINK 740 770 link
+2 REFERENCE 747 767 "Map<String, Integer>"
+2 TEXT 768 769 "x"
+#C 849 Refs.java
+0 DOC_COMMENT 807 836 
+1 LINK 807 836 link
+2 REFERENCE 814 833 "Map<String,Integer>"
+2 TEXT 834 835 "x"
+#C 905 Refs.java
+0 DOC_COMMENT 873 892 
+1 LINK 873 892 link
+2 REFERENCE 880 891 "a.b.c/d.e.F"
+#C 954 Refs.java
+0 DOC_COMMENT 929 941 
+1 LINK 929 941 link
+2 REFERENCE 936 940 "mod/"
+#C 1013 Refs.java
+0 DOC_COMMENT 978 1000 
+1 LINK 978 1000 link
+2 REFERENCE 985 994 "Foo##frag"
+2 TEXT 995 999 "ment"
+#C 1064 Refs.java
+0 DOC_COMMENT 1037 1051 
+1 LINK 1037 1051 link
+2 REFERENCE 1044 1050 "##frag"
+#C 1123 Refs.java
+0 DOC_COMMENT 1088 1110 
+1 ERRONEOUS 1088 1109 "{@link Foo#bar(int)[]" compiler.err.dc.ref.bad.parens
+1 TEXT 1109 1110 "}"
+#C 1180 Refs.java
+0 DOC_COMMENT 1147 1167 
+1 LINK 1147 1167 link
+2 REFERENCE 1154 1166 "Foo[]#length"
+#C 1228 Refs.java
+0 DOC_COMMENT 1204 1215 
+1 LINK 1204 1215 link
+2 REFERENCE 1211 1214 "int"
+#C 1278 Refs.java
+0 DOC_COMMENT 1252 1265 
+1 LINK 1252 1265 link
+2 REFERENCE 1259 1264 "int[]"
+#C 1330 Refs.java
+0 DOC_COMMENT 1302 1317 
+1 LINK 1302 1317 link
+2 REFERENCE 1309 1316 "Foo#Foo"
+#C 1382 Refs.java
+0 DOC_COMMENT 1354 1369 
+1 ERRONEOUS 1354 1368 "{@link Foo#new" compiler.err.dc.ref.unexpected.input
+1 TEXT 1368 1369 "}"
+#C 1436 Refs.java
+0 DOC_COMMENT 1406 1423 
+1 ERRONEOUS 1406 1422 "{@link Foo#class" compiler.err.dc.ref.unexpected.input
+1 TEXT 1422 1423 "}"
+#C 1485 Refs.java
+0 DOC_COMMENT 1460 1472 
+1 ERRONEOUS 1460 1471 "{@link Foo." compiler.err.dc.ref.syntax.error
+1 TEXT 1471 1472 "}"
+#C 1534 Refs.java
+0 DOC_COMMENT 1509 1521 
+1 ERRONEOUS 1509 1520 "{@link .Foo" compiler.err.dc.ref.unexpected.input
+1 TEXT 1520 1521 "}"
+#C 1592 Refs.java
+0 DOC_COMMENT 1558 1579 
+1 ERRONEOUS 1558 1578 "{@link Foo#bar(int,)" compiler.err.dc.ref.syntax.error
+1 TEXT 1578 1579 "}"
+#C 1647 Refs.java
+0 DOC_COMMENT 1616 1634 
+1 ERRONEOUS 1616 1633 "{@link Foo#bar(,)" compiler.err.dc.ref.syntax.error
+1 TEXT 1633 1634 "}"
+#C 1717 Refs.java
+0 DOC_COMMENT 1671 1704 
+1 ERRONEOUS 1671 1703 "{@link Foo#bar(@Nullable String)" compiler.err.dc.ref.annotations.not.allowed
+1 TEXT 1703 1704 "}"
+#C 1780 Refs.java
+0 DOC_COMMENT 1741 1767 
+1 ERRONEOUS 1741 1766 "{@link Foo#bar(final int)" compiler.err.dc.ref.unexpected.input
+1 TEXT 1766 1767 "}"
+#C 1840 Refs.java
+0 DOC_COMMENT 1804 1827 
+1 LINK 1804 1827 link
+2 REFERENCE 1811 1826 "Foo#bar(int...)"
+#C 1916 Refs.java
+0 DOC_COMMENT 1864 1903 
+1 LINK 1864 1903 link
+2 REFERENCE 1871 1902 "Foo#bar(String name, int count)"
+#C 1968 Refs.java
+0 DOC_COMMENT 1940 1955 
+1 LINK 1940 1955 link
+2 REFERENCE 1947 1954 "Foo$Bar"
+#C 2020 Refs.java
+0 DOC_COMMENT 1992 2007 
+1 ERRONEOUS 1992 2006 "{@link Foo-bar" compiler.err.dc.ref.unexpected.input
+1 TEXT 2006 2007 "}"
+#C 2072 Refs.java
+0 DOC_COMMENT 2044 2059 
+1 ERRONEOUS 2044 2058 "{@link Foo+bar" compiler.err.dc.ref.unexpected.input
+1 TEXT 2058 2059 "}"
+#C 2121 Refs.java
+0 DOC_COMMENT 2096 2108 
+1 ERRONEOUS 2096 2107 "{@link 1Foo" compiler.err.dc.ref.unexpected.input
+1 TEXT 2107 2108 "}"
+#C 2174 Refs.java
+0 DOC_COMMENT 2145 2161 
+1 ERRONEOUS 2145 2160 "{@link Foo#1bar" compiler.err.dc.ref.unexpected.input
+1 TEXT 2160 2161 "}"
+#C 2227 Refs.java
+0 DOC_COMMENT 2198 2214 
+1 ERRONEOUS 2198 2213 "{@link Foo::bar" compiler.err.dc.ref.unexpected.input
+1 TEXT 2213 2214 "}"
+#C 2281 Refs.java
+0 DOC_COMMENT 2251 2268 
+1 ERRONEOUS 2251 2267 "{@link Foo#bar[]" compiler.err.dc.ref.unexpected.input
+1 TEXT 2267 2268 "}"
+#C 2330 Refs.java
+0 DOC_COMMENT 2305 2317 
+1 ERRONEOUS 2305 2316 "{@link Foo?" compiler.err.dc.ref.unexpected.input
+1 TEXT 2316 2317 "}"
+#C 2376 Refs.java
+0 DOC_COMMENT 2354 2363 
+1 ERRONEOUS 2354 2362 "{@link ?" compiler.err.dc.ref.unexpected.input
+1 TEXT 2362 2363 "}"
+#C 2427 Refs.java
+0 DOC_COMMENT 2400 2414 
+1 LINK 2400 2414 link
+2 REFERENCE 2407 2413 "Foo<?>"
+#C 2492 Refs.java
+0 DOC_COMMENT 2451 2479 
+1 LINK 2451 2479 link
+2 REFERENCE 2458 2478 "Foo<? extends Bar>#x"
+#C 2552 Refs.java
+0 DOC_COMMENT 2516 2539 
+1 LINK 2516 2539 link
+2 REFERENCE 2523 2538 "Foo<A,B>.Bar<C>"
+#C 2615 Refs.java
+0 DOC_COMMENT 2576 2602 
+1 ERRONEOUS 2576 2601 "{@link http://example.com" compiler.err.dc.ref.unexpected.input
+1 TEXT 2601 2602 "}"
+#C 2691 Refs.java
+0 DOC_COMMENT 2639 2678 
+1 ERRONEOUS 2639 2671 "{@link https://example.com/a?b=c" compiler.err.dc.ref.unexpected.input
+1 TEXT 2671 2678 " label}"
+#C 2743 Refs.java
+0 DOC_COMMENT 2715 2730 
+1 ERRONEOUS 2715 2729 "{@link Foo,Bar" compiler.err.dc.ref.unexpected.input
+1 TEXT 2729 2730 "}"
+#C 2792 Refs.java
+0 DOC_COMMENT 2767 2779 
+1 ERRONEOUS 2767 2778 "{@link Foo;" compiler.err.dc.ref.unexpected.input
+1 TEXT 2778 2779 "}"
+#C 2850 Refs.java
+0 DOC_COMMENT 2816 2837 
+1 LINK 2816 2837 link
+2 REFERENCE 2823 2835 "Foo#bar(int)"
+#C 2899 Refs.java
+0 DOC_COMMENT 2874 2886 
+1 ERRONEOUS 2874 2885 "{@link this" compiler.err.dc.ref.unexpected.input
+1 TEXT 2885 2886 "}"
+#C 2952 Refs.java
+0 DOC_COMMENT 2923 2939 
+1 ERRONEOUS 2923 2938 "{@link Foo.this" compiler.err.dc.ref.syntax.error
+1 TEXT 2938 2939 "}"
+#C 3013 Refs.java
+0 DOC_COMMENT 2976 3000 
+1 LINK 2976 3000 link
+2 REFERENCE 2983 2999 "Foo#bar(Foo.Bar)"
+#C 3074 Refs.java
+0 DOC_COMMENT 3037 3061 
+1 LINK 3037 3061 link
+2 REFERENCE 3044 3060 "Foo#bar(int[][])"
+#C 3135 Refs.java
+0 DOC_COMMENT 3098 3122 
+1 LINK 3098 3122 link
+2 REFERENCE 3105 3120 "Foo#bar(int [])"
+#C 3200 Refs.java
+0 DOC_COMMENT 3159 3187 
+1 LINK 3159 3187 link
+2 REFERENCE 3166 3186 "#bar( int , String )"
+#C 3253 Refs.java
+0 DOC_COMMENT 3224 3240 
+1 LINK 3224 3240 link
+2 REFERENCE 3231 3234 "Foo"
+2 TEXT 3235 3239 "#bar"
+#C 3315 Refs.java
+0 DOC_COMMENT 3277 3302 
+1 LINK 3277 3302 link
+2 REFERENCE 3284 3301 "Foo#bar(int a, b)"
+#C 3369 Refs.java
+0 DOC_COMMENT 3339 3356 
+1 LINK 3339 3356 link
+2 REFERENCE 3346 3355 "Foo#bar()"
+#C 3425 Refs.java
+0 DOC_COMMENT 3393 3412 
+1 LINK 3393 3412 link
+2 REFERENCE 3400 3411 "Foo#bar(  )"
+#C 3486 Refs.java
+0 DOC_COMMENT 3449 3473 
+1 LINK 3449 3473 link
+2 REFERENCE 3456 3471 "#bar(String...)"
+#C 3535 Refs.java
+0 DOC_COMMENT 3510 3522 
+1 ERRONEOUS 3510 3521 "{@link Foo," compiler.err.dc.ref.unexpected.input
+1 TEXT 3521 3522 "}"
+#C 3585 Refs.java
+0 DOC_COMMENT 3559 3572 
+1 ERRONEOUS 3559 3571 "{@link Foo)." compiler.err.dc.ref.unexpected.input
+1 TEXT 3571 3572 "}"
+#C 3634 Refs.java
+0 DOC_COMMENT 3609 3621 
+1 ERRONEOUS 3609 3620 "{@link Foo(" compiler.err.dc.unterminated.signature
+1 TEXT 3620 3621 "}"
+#C 3683 Refs.java
+0 DOC_COMMENT 3658 3670 
+1 ERRONEOUS 3658 3669 "{@link Foo)" compiler.err.dc.ref.unexpected.input
+1 TEXT 3669 3670 "}"
+#C 3733 Refs.java
+0 DOC_COMMENT 3707 3720 
+1 ERRONEOUS 3707 3719 "{@link (Foo)" compiler.err.dc.ref.syntax.error
+1 TEXT 3719 3720 "}"
+#C 3795 Refs.java
+0 DOC_COMMENT 3757 3782 
+1 ERRONEOUS 3757 3781 "{@link Foo#bar(int)(int)" compiler.err.dc.ref.bad.parens
+1 TEXT 3781 3782 "}"
+#C 3867 Refs.java
+0 DOC_COMMENT 3819 3854 
+1 LINK 3819 3854 link
+2 REFERENCE 3826 3853 "Foo#bar(List<String> names)"
+#C 3960 Refs.java
+0 DOC_COMMENT 3891 3947 
+1 LINK 3891 3947 link
+2 REFERENCE 3898 3946 "Foo#bar(Map<String, List<Integer>> m, T... rest)"
+#C 4032 Refs.java
+0 DOC_COMMENT 3984 4019 
+1 LINK 3984 4019 link
+2 REFERENCE 3991 4018 "Foo#bar(Map.Entry<K,V>[] e)"
+#C 4091 Refs.java
+0 DOC_COMMENT 4056 4078 
+1 LINK 4056 4078 link
+2 REFERENCE 4063 4077 "Foo#bar(a.b.C)"
+#C 4146 Refs.java
+0 DOC_COMMENT 4115 4133 
+1 ERRONEOUS 4115 4132 "{@link Foo#bar(1)" compiler.err.dc.ref.unexpected.input
+1 TEXT 4132 4133 "}"
+#C 4203 Refs.java
+0 DOC_COMMENT 4170 4190 
+1 ERRONEOUS 4170 4189 "{@link Foo#bar(\"x\")" compiler.err.dc.ref.unexpected.input
+1 TEXT 4189 4190 "}"
+#C 4264 Refs.java
+0 DOC_COMMENT 4227 4251 
+1 ERRONEOUS 4227 4250 "{@link Foo#bar(int int)" compiler.err.dc.ref.unexpected.input
+1 TEXT 4250 4251 "}"
+#C 4325 Refs.java
+0 DOC_COMMENT 4288 4312 
+1 ERRONEOUS 4288 4311 "{@link Foo#bar(int a b)" compiler.err.dc.ref.unexpected.input
+1 TEXT 4311 4312 "}"
+#C 4387 Refs.java
+0 DOC_COMMENT 4349 4374 
+1 LINK 4349 4374 link
+2 REFERENCE 4356 4373 "Foo#bar(int... a)"
+#C 4444 Refs.java
+0 DOC_COMMENT 4411 4431 
+1 ERRONEOUS 4411 4430 "{@link Foo#bar(...)" compiler.err.dc.ref.unexpected.input
+1 TEXT 4430 4431 "}"
+#C 4502 Refs.java
+0 DOC_COMMENT 4468 4489 
+1 ERRONEOUS 4468 4488 "{@link Foo#bar(int.)" compiler.err.dc.ref.syntax.error
+1 TEXT 4488 4489 "}"
+#C 4560 Refs.java
+0 DOC_COMMENT 4526 4547 
+1 ERRONEOUS 4526 4546 "{@link Foo#bar(.int)" compiler.err.dc.ref.unexpected.input
+1 TEXT 4546 4547 "}"
+#C 4618 Refs.java
+0 DOC_COMMENT 4584 4605 
+1 ERRONEOUS 4584 4604 "{@link Foo#bar(int[)" compiler.err.dc.ref.syntax.error
+1 TEXT 4604 4605 "}"
+#C 4676 Refs.java
+0 DOC_COMMENT 4642 4663 
+1 ERRONEOUS 4642 4662 "{@link Foo#bar(int])" compiler.err.dc.ref.unexpected.input
+1 TEXT 4662 4663 "}"
+#C 4733 Refs.java
+0 DOC_COMMENT 4700 4720 
+1 ERRONEOUS 4700 4719 "{@link Foo#bar(? x)" compiler.err.dc.ref.unexpected.input
+1 TEXT 4719 4720 "}"
+#C 4794 Refs.java
+0 DOC_COMMENT 4757 4781 
+1 LINK 4757 4781 link
+2 REFERENCE 4764 4780 "Foo#bar(List<?>)"
+#C 4854 Refs.java
+0 DOC_COMMENT 4818 4841 
+1 ERRONEOUS 4818 4840 "{@link Foo#bar(List<>)" compiler.err.dc.ref.syntax.error
+1 TEXT 4840 4841 "}"
+#C 4919 Refs.java
+0 DOC_COMMENT 4878 4906 
+1 ERRONEOUS 4878 4905 "{@link Foo#bar(List<String)" compiler.err.dc.unterminated.signature
+1 TEXT 4905 4906 "}"
+#C 4977 Refs.java
+0 DOC_COMMENT 4943 4964 
+1 LINK 4943 4964 link
+2 REFERENCE 4950 4963 "Foo#bar(void)"
+#C 5036 Refs.java
+0 DOC_COMMENT 5001 5023 
+1 ERRONEOUS 5001 5022 "{@link Foo#bar(var x)" compiler.err.dc.ref.syntax.error
+1 TEXT 5022 5023 "}"
+#C 5103 Refs.java
+0 DOC_COMMENT 5060 5090 
+1 LINK 5060 5090 link
+2 REFERENCE 5067 5089 "Foo#bar(Foo.Bar.Baz x)"
+#C 5176 Refs.java
+0 DOC_COMMENT 5127 5163 
+1 LINK 5127 5163 link
+2 REFERENCE 5134 5162 "Foo#bar(Outer<A>.Inner<B> x)"
+#C 5229 Refs.java
+0 DOC_COMMENT 5200 5216 
+1 ERRONEOUS 5200 5211 "{@link Foo#" compiler.err.dc.ref.syntax.error
+1 TEXT 5211 5216 " bar}"
+#C 5285 Refs.java
+0 DOC_COMMENT 5253 5272 
+1 LINK 5253 5272 link
+2 REFERENCE 5260 5267 "Foo#bar"
+2 TEXT 5268 5271 "baz"
+#C 5339 Refs.java
+0 DOC_COMMENT 5309 5326 
+1 ERRONEOUS 5309 5325 "{@link Foo.bar()" compiler.err.dc.ref.unexpected.input
+1 TEXT 5325 5326 "}"
+#C 5404 Refs.java
+0 DOC_COMMENT 5363 5391 
+1 LINK 5363 5391 link
+2 REFERENCE 5370 5390 "foo.bar.Baz#qux(int)"
+#C 5455 Refs.java
+0 DOC_COMMENT 5428 5442 
+1 LINK 5428 5442 link
+2 REFERENCE 5435 5441 "Foo<T>"
+#C 5510 Refs.java
+0 DOC_COMMENT 5479 5497 
+1 LINK 5479 5497 link
+2 REFERENCE 5486 5496 "Foo<T>.Bar"
+#C 5565 Refs.java
+0 DOC_COMMENT 5534 5552 
+1 LINK 5534 5552 link
+2 REFERENCE 5541 5551 "Foo<T>#bar"
+#C 5618 Refs.java
+0 DOC_COMMENT 5589 5605 
+1 LINK 5589 5605 link
+2 REFERENCE 5596 5604 "Foo<T[]>"
+#C 5671 Refs.java
+0 DOC_COMMENT 5642 5658 
+1 LINK 5642 5658 link
+2 REFERENCE 5649 5657 "Foo<int>"
+#C 5727 Refs.java
+0 DOC_COMMENT 5695 5714 
+1 LINK 5695 5714 link
+2 REFERENCE 5702 5708 "Foo<T>"
+2 TEXT 5709 5713 ".Bar"
+#C 5780 Refs.java
+0 DOC_COMMENT 5751 5767 
+1 LINK 5751 5767 link
+2 REFERENCE 5758 5766 "Foo< T >"
+#C 5832 Refs.java
+0 DOC_COMMENT 5804 5819 
+1 ERRONEOUS 5804 5818 "{@link Foo<T,>" compiler.err.dc.ref.syntax.error
+1 TEXT 5818 5819 "}"
+#C 5886 Refs.java
+0 DOC_COMMENT 5857 5873 
+1 ERRONEOUS 5857 5872 "{@link Foo<<T>>" compiler.err.dc.ref.unexpected.input
+1 TEXT 5872 5873 "}"
+#C 5936 Refs.java
+0 DOC_COMMENT 5911 5923 
+1 ERRONEOUS 5911 5922 "{@link Foo>" compiler.err.dc.ref.unexpected.input
+1 TEXT 5922 5923 "}"
+#C 5989 Refs.java
+0 DOC_COMMENT 5961 5976 
+1 ERRONEOUS 5961 5975 "{@link Foo<T>>" compiler.err.dc.ref.unexpected.input
+1 TEXT 5975 5976 "}"
+#C 6039 Refs.java
+0 DOC_COMMENT 6014 6026 
+1 ERRONEOUS 6014 6025 "{@link Foo[" compiler.err.dc.ref.syntax.error
+1 TEXT 6025 6026 "}"
+#C 6089 Refs.java
+0 DOC_COMMENT 6064 6076 
+1 ERRONEOUS 6064 6075 "{@link Foo]" compiler.err.dc.ref.unexpected.input
+1 TEXT 6075 6076 "}"
+#C 6143 Refs.java
+0 DOC_COMMENT 6114 6130 
+1 LINK 6114 6130 link
+2 REFERENCE 6121 6126 "Foo[]"
+2 TEXT 6127 6129 "[]"
+#C 6195 Refs.java
+0 DOC_COMMENT 6168 6182 
+1 ERRONEOUS 6168 6181 "{@link Foo[]x" compiler.err.dc.ref.unexpected.input
+1 TEXT 6181 6182 "}"
+#C 6247 Refs.java
+0 DOC_COMMENT 6220 6234 
+1 ERRONEOUS 6220 6233 "{@link Foo[1]" compiler.err.dc.ref.unexpected.input
+1 TEXT 6233 6234 "}"
+#C 6296 Refs.java
+0 DOC_COMMENT 6272 6283 
+1 LINK 6272 6283 link
+2 REFERENCE 6279 6282 "äöü"
+#C 6354 Refs.java
+0 DOC_COMMENT 6321 6341 
+1 LINK 6321 6341 link
+2 REFERENCE 6328 6340 "Foo#äöü(Ünï)"
+#C 6404 Refs.java
+0 DOC_COMMENT 6379 6391 
+1 LINK 6379 6391 link
+2 REFERENCE 6386 6390 "_foo"
+#C 6454 Refs.java
+0 DOC_COMMENT 6429 6441 
+1 LINK 6429 6441 link
+2 REFERENCE 6436 6440 "$foo"
+#C 6505 Refs.java
+0 DOC_COMMENT 6479 6492 
+1 ERRONEOUS 6479 6491 "{@link Foo#_" compiler.err.dc.ref.syntax.error
+1 TEXT 6491 6492 "}"
+#C 6557 Refs.java
+0 DOC_COMMENT 6530 6544 
+1 ERRONEOUS 6530 6543 "{@link assert" compiler.err.dc.ref.syntax.error
+1 TEXT 6543 6544 "}"
+#C 6609 Refs.java
+0 DOC_COMMENT 6582 6596 
+1 ERRONEOUS 6582 6595 "{@link Foo#if" compiler.err.dc.ref.unexpected.input
+1 TEXT 6595 6596 "}"
+#C 6657 Refs.java
+0 DOC_COMMENT 6634 6644 
+1 ERRONEOUS 6634 6643 "{@link if" compiler.err.dc.ref.unexpected.input
+1 TEXT 6643 6644 "}"
+#C 6709 Refs.java
+0 DOC_COMMENT 6682 6696 
+1 ERRONEOUS 6682 6695 "{@link Foo.if" compiler.err.dc.ref.unexpected.input
+1 TEXT 6695 6696 "}"
+#C 6759 Refs.java
+0 DOC_COMMENT 6734 6746 
+1 ERRONEOUS 6734 6745 "{@link true" compiler.err.dc.ref.unexpected.input
+1 TEXT 6745 6746 "}"
+#C 6809 Refs.java
+0 DOC_COMMENT 6784 6796 
+1 ERRONEOUS 6784 6795 "{@link null" compiler.err.dc.ref.unexpected.input
+1 TEXT 6795 6796 "}"
+#C 6863 Refs.java
+0 DOC_COMMENT 6834 6850 
+1 ERRONEOUS 6834 6849 "{@link Foo#null" compiler.err.dc.ref.unexpected.input
+1 TEXT 6849 6850 "}"
+#C 6913 Refs.java
+0 DOC_COMMENT 6888 6900 
+1 ERRONEOUS 6888 6899 "{@link enum" compiler.err.dc.ref.syntax.error
+1 TEXT 6899 6900 "}"
+#C 6965 Refs.java
+0 DOC_COMMENT 6938 6952 
+1 ERRONEOUS 6938 6951 "{@link record" compiler.err.dc.ref.syntax.error
+1 TEXT 6951 6952 "}"
+#C 7024 Refs.java
+0 DOC_COMMENT 6990 7011 
+1 ERRONEOUS 6990 7010 "{@link Foo#bar(enum)" compiler.err.dc.ref.syntax.error
+1 TEXT 7010 7011 "}"
+#C 7087 Refs.java
+0 DOC_COMMENT 7049 7074 
+1 ERRONEOUS 7049 7073 "{@link Foo#bar(int enum)" compiler.err.dc.ref.unexpected.input
+1 TEXT 7073 7074 "}"
+#C 7148 Refs.java
+0 DOC_COMMENT 7112 7135 
+1 ERRONEOUS 7112 7134 "{@link Foo#bar(int if)" compiler.err.dc.ref.unexpected.input
+1 TEXT 7134 7135 "}"
+#C 7207 Refs.java
+0 DOC_COMMENT 7173 7194 
+1 ERRONEOUS 7173 7193 "{@link Foo#bar(if x)" compiler.err.dc.ref.unexpected.input
+1 TEXT 7193 7194 "}"
+#C 7260 Refs.java
+0 DOC_COMMENT 7232 7247 
+1 ERRONEOUS 7232 7246 "{@link Foo@Bar" compiler.err.dc.ref.syntax.error
+1 TEXT 7246 7247 "}"
+#C 7317 Refs.java
+0 DOC_COMMENT 7285 7304 
+1 ERRONEOUS 7285 7303 "{@link Foo#bar@baz" compiler.err.dc.ref.unexpected.input
+1 TEXT 7303 7304 "}"
+#C 7367 Refs.java
+0 DOC_COMMENT 7342 7354 
+1 ERRONEOUS 7342 7353 "{@link Foo%" compiler.err.dc.ref.unexpected.input
+1 TEXT 7353 7354 "}"
+#C 7417 Refs.java
+0 DOC_COMMENT 7392 7404 
+1 ERRONEOUS 7392 7403 "{@link Foo=" compiler.err.dc.ref.unexpected.input
+1 TEXT 7403 7404 "}"
+#C 7467 Refs.java
+0 DOC_COMMENT 7442 7454 
+1 ERRONEOUS 7442 7453 "{@link Foo*" compiler.err.dc.ref.unexpected.input
+1 TEXT 7453 7454 "}"
+#C 7517 Refs.java
+0 DOC_COMMENT 7492 7504 
+1 LINK 7492 7504 link
+2 REFERENCE 7499 7503 "Foo/"
+#C 7570 Refs.java
+0 DOC_COMMENT 7542 7557 
+1 LINK 7542 7557 link
+2 REFERENCE 7549 7556 "Foo/Bar"
+#C 7631 Refs.java
+0 DOC_COMMENT 7595 7618 
+1 LINK 7595 7618 link
+2 REFERENCE 7602 7617 "Foo/bar.Baz#qux"
+#C 7681 Refs.java
+0 DOC_COMMENT 7656 7668 
+1 LINK 7656 7668 link
+2 REFERENCE 7663 7667 "a.b/"
+#C 7733 Refs.java
+0 DOC_COMMENT 7706 7720 
+1 LINK 7706 7720 link
+2 REFERENCE 7713 7719 "a.b/#x"
+#C 7783 Refs.java
+0 DOC_COMMENT 7758 7770 
+1 ERRONEOUS 7758 7769 "{@link /Foo" compiler.err.dc.ref.syntax.error
+1 TEXT 7769 7770 "}"
+#C 7834 Refs.java
+0 DOC_COMMENT 7808 7821 
+1 ERRONEOUS 7808 7820 "{@link a/b/C" compiler.err.dc.ref.unexpected.input
+1 TEXT 7820 7821 "}"
+#C 7888 Refs.java
+0 DOC_COMMENT 7859 7875 
+1 ERRONEOUS 7859 7874 "{@link Foo\\\\Bar" compiler.err.dc.ref.unexpected.input
+1 TEXT 7874 7875 "}"
+#C 7938 Refs.java
+0 DOC_COMMENT 7913 7925 
+1 ERRONEOUS 7913 7924 "{@link Foo'" compiler.err.dc.ref.unexpected.input
+1 TEXT 7924 7925 "}"
+#C 7991 Refs.java
+0 DOC_COMMENT 7963 7978 
+1 ERRONEOUS 7963 7977 "{@link Foo|Bar" compiler.err.dc.ref.unexpected.input
+1 TEXT 7977 7978 "}"
+#C 8044 Refs.java
+0 DOC_COMMENT 8016 8031 
+1 ERRONEOUS 8016 8030 "{@link Foo&Bar" compiler.err.dc.ref.unexpected.input
+1 TEXT 8030 8031 "}"
+#C 8101 Refs.java
+0 DOC_COMMENT 8069 8088 
+1 ERRONEOUS 8069 8087 "{@link Foo&amp;Bar" compiler.err.dc.ref.unexpected.input
+1 TEXT 8087 8088 "}"
+#C 8155 Refs.java
+0 DOC_COMMENT 8126 8142 
+1 ERRONEOUS 8126 8141 "{@link Foo<A&B>" compiler.err.dc.ref.unexpected.input
+1 TEXT 8141 8142 "}"
+#C 8211 Refs.java
+0 DOC_COMMENT 8180 8198 
+1 ERRONEOUS 8180 8197 "{@link Foo<A & B>" compiler.err.dc.ref.unexpected.input
+1 TEXT 8197 8198 "}"
+#C 8271 Refs.java
+0 DOC_COMMENT 8236 8258 
+1 LINK 8236 8258 link
+2 REFERENCE 8243 8257 "Foo<? super A>"
+#C 8331 Refs.java
+0 DOC_COMMENT 8296 8318 
+1 LINK 8296 8318 link
+2 REFERENCE 8303 8317 "Foo<? super A>"
+#C 8391 Refs.java
+0 DOC_COMMENT 8356 8378 
+1 ERRONEOUS 8356 8377 "{@link Foo#bar(A & B)" compiler.err.dc.ref.unexpected.input
+1 TEXT 8377 8378 "}"
+#C 8449 Refs.java
+0 DOC_COMMENT 8416 8436 
+1 ERRONEOUS 8416 8435 "{@link Foo#bar(A|B)" compiler.err.dc.ref.unexpected.input
+1 TEXT 8435 8436 "}"
+#C 8505 Refs.java
+0 DOC_COMMENT 8474 8492 
+1 LINK 8474 8492 link
+2 REFERENCE 8481 8484 "Foo"
+2 TEXT 8485 8491 "##frag"
+#C 8556 Refs.java
+0 DOC_COMMENT 8530 8543 
+1 LINK 8530 8543 link
+2 REFERENCE 8537 8542 "Foo##"
+#C 8610 Refs.java
+0 DOC_COMMENT 8581 8597 
+1 LINK 8581 8597 link
+2 REFERENCE 8588 8596 "Foo##a#b"
+#C 8664 Refs.java
+0 DOC_COMMENT 8635 8651 
+1 LINK 8635 8651 link
+2 REFERENCE 8642 8648 "Foo##a"
+2 TEXT 8649 8650 "b"
+#C 8712 Refs.java
+0 DOC_COMMENT 8689 8699 
+1 LINK 8689 8699 link
+2 REFERENCE 8696 8698 "##"
+#C 8765 Refs.java
+0 DOC_COMMENT 8737 8752 
+1 LINK 8737 8752 link
+2 REFERENCE 8744 8751 "Foo###x"
+#C 8821 Refs.java
+0 DOC_COMMENT 8790 8808 
+1 ERRONEOUS 8790 8807 "{@link Foo#bar##x" compiler.err.dc.ref.unexpected.input
+1 TEXT 8807 8808 "}"
+#C 8873 Refs.java
+0 DOC_COMMENT 8846 8860 
+1 ERRONEOUS 8846 8860 "@throws 1Foo x" compiler.err.dc.ref.unexpected.input
+#C 8931 Refs.java
+0 DOC_COMMENT 8898 8918 
+1 THROWS 8898 8918 throws
+2 REFERENCE 8906 8916 "Foo.Bar<T>"
+2 TEXT 8917 8918 "x"
+#C 8980 Refs.java
+0 DOC_COMMENT 8956 8967 
+1 THROWS 8956 8967 throws
+2 REFERENCE 8964 8965 "T"
+2 TEXT 8966 8967 "x"
+#C 9035 Refs.java
+0 DOC_COMMENT 9005 9022 
+1 ERRONEOUS 9005 9022 "@throws Foo#bar x" compiler.err.dc.ref.unexpected.input
+#C 9086 Refs.java
+0 DOC_COMMENT 9060 9073 
+1 ERRONEOUS 9060 9073 "@throws \"x\" y" compiler.err.dc.ref.unexpected.input
+#C 9137 Refs.java
+0 DOC_COMMENT 9111 9124 
+1 ERRONEOUS 9111 9124 "@throws <T> y" compiler.err.dc.ref.syntax.error
+#C 9196 Refs.java
+0 DOC_COMMENT 9162 9183 
+1 ERRONEOUS 9162 9183 "@throws {@link Foo} y" compiler.err.dc.ref.unexpected.input
+#C 9252 Refs.java
+0 DOC_COMMENT 9221 9239 
+1 ERRONEOUS 9221 9239 "@throws Foo, Bar y" compiler.err.dc.ref.unexpected.input
+#C 9304 Refs.java
+0 DOC_COMMENT 9277 9291 
+1 ERRONEOUS 9277 9291 "@throws Foo. y" compiler.err.dc.ref.syntax.error
+#C 9357 Refs.java
+0 DOC_COMMENT 9329 9344 
+1 ERRONEOUS 9329 9344 "@throws Foo() y" compiler.err.dc.ref.unexpected.input
+#C 9407 Refs.java
+0 DOC_COMMENT 9382 9394 
+1 ERRONEOUS 9382 9394 "@throws #x y" compiler.err.dc.ref.unexpected.input
+#C 9458 Refs.java
+0 DOC_COMMENT 9432 9445 
+1 THROWS 9432 9445 throws
+2 REFERENCE 9440 9443 "int"
+2 TEXT 9444 9445 "y"
+#C 9511 Refs.java
+0 DOC_COMMENT 9483 9498 
+1 THROWS 9483 9498 throws
+2 REFERENCE 9491 9496 "Foo[]"
+2 TEXT 9497 9498 "y"
+#C 9577 Refs.java
+0 DOC_COMMENT 9536 9564 
+1 SERIAL_FIELD 9536 9564 serialField
+2 IDENTIFIER 9549 9553 name
+2 REFERENCE 9554 9559 "int[]"
+2 TEXT 9560 9564 "desc"
+#C 9643 Refs.java
+0 DOC_COMMENT 9602 9630 
+1 ERRONEOUS 9602 9630 "@serialField name Foo#x desc" compiler.err.dc.ref.unexpected.input
+#C 9708 Refs.java
+0 DOC_COMMENT 9668 9695 
+1 ERRONEOUS 9668 9695 "@serialField 1name Foo desc" compiler.err.dc.identifier.expected
+#C 9773 Refs.java
+0 DOC_COMMENT 9733 9760 
+1 ERRONEOUS 9733 9760 "@serialField name 1Foo desc" compiler.err.dc.ref.unexpected.input
+#C 9827 Refs.java
+0 DOC_COMMENT 9798 9814 
+1 ERRONEOUS 9798 9814 "@provides 1Foo x" compiler.err.dc.ref.unexpected.input
+#C 9884 Refs.java
+0 DOC_COMMENT 9852 9871 
+1 ERRONEOUS 9852 9871 "@provides Foo#bar x" compiler.err.dc.ref.unexpected.input
+#C 9935 Refs.java
+0 DOC_COMMENT 9909 9922 
+1 USES 9909 9922 uses
+2 REFERENCE 9915 9920 "a.b.C"
+2 TEXT 9921 9922 "x"
+#C 9982 Refs.java
+0 DOC_COMMENT 9960 9969 
+1 ERRONEOUS 9960 9969 "@see Foo." compiler.err.dc.ref.syntax.error
+#C 10033 Refs.java
+0 DOC_COMMENT 10007 10020 
+1 ERRONEOUS 10007 10020 "@see Foo, Bar" compiler.err.dc.ref.unexpected.input
+#C 10080 Refs.java
+0 DOC_COMMENT 10058 10067 
+1 ERRONEOUS 10058 10067 "@see Foo;" compiler.err.dc.ref.unexpected.input
+#C 10142 Refs.java
+0 DOC_COMMENT 10105 10129 
+1 SEE 10105 10129 see
+2 REFERENCE 10110 10127 "Foo#bar(int a, b)"
+2 TEXT 10128 10129 "x"
+#C 10193 Refs.java
+0 DOC_COMMENT 10167 10180 
+1 SEE 10167 10180 see
+2 REFERENCE 10172 10178 "#bar()"
+2 TEXT 10179 10180 "."
+#C 10254 Refs.java
+0 DOC_COMMENT 10218 10241 
+1 ERRONEOUS 10218 10241 "@see http://example.com" compiler.err.dc.ref.unexpected.input
+#C 10312 Refs.java
+0 DOC_COMMENT 10279 10299 
+1 SEE 10279 10299 see
+2 REFERENCE 10284 10299 "www.example.com"
+#C 10359 Refs.java
+0 DOC_COMMENT 10337 10346 
+1 ERRONEOUS 10337 10346 "@see Foo(" compiler.err.dc.unterminated.signature
+#C 10406 Refs.java
+0 DOC_COMMENT 10384 10393 
+1 SEE 10384 10393 see
+2 REFERENCE 10389 10393 "_foo"
+#C 10453 Refs.java
+0 DOC_COMMENT 10431 10440 
+1 SEE 10431 10440 see
+2 REFERENCE 10436 10440 "$foo"
+#C 10499 Refs.java
+0 DOC_COMMENT 10478 10486 
+1 SEE 10478 10486 see
+2 REFERENCE 10483 10486 "äöü"
+#C 10549 Refs.java
+0 DOC_COMMENT 10524 10536 
+1 ERRONEOUS 10524 10536 "@see Foo<Bar" compiler.err.dc.unterminated.signature
+#C 10613 Refs.java
+0 DOC_COMMENT 10574 10600 
+1 SEE 10574 10600 see
+2 REFERENCE 10579 10582 "Foo"
+2 START_ELEMENT 10583 10595 a
+3 ATTRIBUTE 10586 10594 href DOUBLE
+4 TEXT 10592 10593 "x"
+2 TEXT 10595 10596 "y"
+2 END_ELEMENT 10596 10600 a
+#C 10669 Refs.java
+0 DOC_COMMENT 10638 10656 
+1 SEE 10638 10656 see
+2 REFERENCE 10643 10646 "Foo"
+2 CODE 10647 10656 code
+3 TEXT 10654 10655 "x"
+#C 10723 Refs.java
+0 DOC_COMMENT 10694 10710 
+1 SEE 10694 10710 see
+2 REFERENCE 10699 10702 "Foo"
+2 ENTITY 10703 10708 amp
+2 TEXT 10708 10710 " x"
+#C 10767 Refs.java
+0 DOC_COMMENT 10748 10754 
+1 ERRONEOUS 10748 10754 "@see #" compiler.err.dc.ref.syntax.error
+#C 10812 Refs.java
+0 DOC_COMMENT 10792 10799 
+1 SEE 10792 10799 see
+2 REFERENCE 10797 10799 "##"
+#C 10861 Refs.java
+0 DOC_COMMENT 10837 10848 
+1 SEE 10837 10848 see
+2 REFERENCE 10842 10848 "##frag"
+#C 10940 Refs.java
+0 DOC_COMMENT 10886 10927 
+1 SEE 10886 10927 see
+2 REFERENCE 10891 10921 "Foo#bar(int,\n    String)"
+2 TEXT 10922 10927 "label"
+#C 11002 Refs.java
+0 DOC_COMMENT 10965 10989 
+1 SEE 10965 10973 see
+2 REFERENCE 10970 10973 "Foo"
+1 SEE 10981 10989 see
+2 REFERENCE 10986 10989 "Bar"
+#C 38 Tail.java
+0 DOC_COMMENT 31 34 
+1 TEXT 31 34 "a *"
+#C 65 Tail.java
+0 DOC_COMMENT -1 -1 
+#C 94 Tail.java
+0 DOC_COMMENT 80 85 
+1 TEXT 80 85 "a   *"
+#C 116 Tail.java
+0 DOC_COMMENT -1 -1 
+#C 136 Tail.java
+0 DOC_COMMENT -1 -1 
+#C 161 Tail.java
+0 DOC_COMMENT 151 152 
+1 TEXT 151 152 "a"
+#C 188 Tail.java
+0 DOC_COMMENT 176 177 
+1 TEXT 176 177 "a"
+#C 213 Tail.java
+0 DOC_COMMENT 203 204 
+1 TEXT 203 204 "a"
+#C 242 Tail.java
+0 DOC_COMMENT 238 238 
+#C 268 Tail.java
+0 DOC_COMMENT 257 258 
+1 TEXT 257 258 "a"
+#C 295 Tail.java
+0 DOC_COMMENT 283 291 
+1 TEXT 283 291 "a\n * b"
+#C 321 Tail.java
+0 DOC_COMMENT 311 318 
+1 TEXT 311 318 "a\n *b"
+#C 347 Tail.java
+0 DOC_COMMENT 337 338 
+1 TEXT 337 338 "a"
+#C 368 Tail.java
+0 DOC_COMMENT 360 361 
+1 TEXT 360 361 "a"
+#C 391 Tail.java
+0 DOC_COMMENT 381 382 
+1 TEXT 381 382 "a"
+#C 418 Tail.java
+0 DOC_COMMENT 407 413 
+1 TEXT 407 413 "a\n *"
+#C 446 Tail.java
+0 DOC_COMMENT 434 440 
+1 TEXT 434 440 "a\n *"
+#C 477 Tail.java
+0 DOC_COMMENT 462 471 
+1 TEXT 462 471 "a\n  * *"
+#C 506 Tail.java
+0 DOC_COMMENT 493 494 
+1 TEXT 493 494 "a"

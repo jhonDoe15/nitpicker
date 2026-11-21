@@ -2,8 +2,8 @@ import { type SpawnSyncReturns, spawn } from 'node:child_process';
 import { spawnSyncWithOutputFile, toolBinaryPath } from '../typed/tooling.mts';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { CONFIG_FILE_NAME } from '../../../../shared/config.mjs';
-import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
+import { CONFIG_FILE_NAME } from '../../../../shared/config.mts';
+import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mts';
 import { troubleshootingError, withTroubleshooting } from '../lint-engine/typed/tools.mts';
 import { INCOMPATIBLE_MARKER } from '../lint-engine/compatibility/incompatible-package.mts';
 import { parseJson } from '../../../../shared/values/readers.mts';
@@ -11,7 +11,7 @@ import { type Environment, withCompileCache } from '../../../../shared/processes
 import {
   describeProcessEnd,
   failureDetail,
-} from '../../../../shared/processes/process-failure.mjs';
+} from '../../../../shared/processes/process-failure.mts';
 
 type Status = SpawnSyncReturns<string>['status'];
 
@@ -178,7 +178,7 @@ function outputCollector(maxBuffer: number, onOverflow: () => void): CollectedOu
 
 function parsedReport(
   result: Pick<CollectedRun, 'status' | 'stdout' | 'stderr'> & {
-    readonly signal?: unknown;
+    readonly signal?: SpawnSyncReturns<string>['signal'] | undefined;
     readonly error?: Error | undefined;
   },
   {

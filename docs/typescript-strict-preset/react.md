@@ -82,6 +82,66 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   ternary or `&&` guard, since each render builds a new one (not in an async component or a
   `*.server.*` file, where each request builds one); `react-x/no-create-ref` reports
   `createRef()` in a function component.
+- **No state update built from a stale value** (`nitpicker/react-no-stale-state-update`). A
+  `useState` setter given an array, an object or arithmetic that reads its own state
+  (`setItems([...items, tag])`, `setForm({ ...form, dirty: true })`, `setPage(page + 1)`) uses the
+  value of the render that created the function. After an `await` in the same function that value
+  can be old, so an update made while the function waited is overwritten; and a second call of the
+  same setter in the same block overwrites the first, because the state does not change until the
+  next render. Pass an updater, which receives the current value:
+  `setItems((current) => [...current, tag])`. Only an `await` that certainly ran counts: one
+  outside any `if`, ternary, `&&`, `switch`, loop, `catch`, labelled statement or optional call
+  (their conditions included), and inside a `try` only one in its first statement. A call inside a
+  `catch` or a nested function is left alone, and so is a call inside an effect whose dependency
+  array lists the state (the effect runs again when it changes). A setter given a literal, a
+  fetched value, a method call or an updater function is not
+  reported. The rule needs no type information.
+- **Pure state updaters and reducers** (`nitpicker/react-pure-state-updater`). The function passed
+  to a `useState` setter and the reducer of `useReducer` (inline, or a function declared in the
+  same file) may run more than once, twice under StrictMode, and must return a new value. Inside
+  them the rule reports a call of a state setter or a `dispatch` (the inner update repeats), a prop
+  callback called as a statement (`onChange(next)`, `props.onChange(next)`: the parent is told
+  twice, during render), and a change to the previous state in place: an assignment, `delete`,
+  `++` or `--` on a property of the parameter (`state.open = true`), and a mutating method when the `useState`
+  call or the reducer's parameter type shows the kind of value (`push`, `pop`, `shift`, `unshift`,
+  `splice`, `sort`, `reverse`, `fill`, `copyWithin` for `useState<string[]>(...)` or
+  `useState([])`; `add`, `delete`, `clear` for a `Set`; `set`, `delete`, `clear` for a `Map`).
+  Compute the next value first, then call each setter and callback in the handler:
+  `const next = [...items, item]; setItems(next); onChange(next);`. A parameter that is first
+  reassigned to a copy, calls inside a nested function, Immer (`useImmer`, `useImmerReducer`,
+  `produce(...)`), setters that do not come from `useState` (`setSearchParams`) and a method call on
+  a value whose kind the `useState` call does not show (`current.add(1, 'month')` on a date) are
+  left alone. The rule needs no type information.
+- **No `use` of a promise created in the same render** (`nitpicker/react-no-uncached-use-promise`).
+  `use(promise)` suspends, and React renders the component again when the promise settles; a
+  promise created in that render is a new one each time, so the component never finishes or sends
+  the request again on every render. Reported as the argument of `use` from `react` (directly, or
+  through a `const` of the component body): a call of an `async` function declared in the same file
+  or exported by a project module the file imports, an inline async function called in place,
+  `new Promise(...)`, `Promise.all`, `allSettled`, `race` or `any`, and a `.then`, `.catch` or
+  `.finally` chain. Create the promise outside render: pass it in as a prop (from a parent, a route
+  loader or a Server Component) or wrap the function in `cache`. A promise from props, context,
+  `useMemo` or `useState`, a function whose declaration is not `async` or is not found, and an
+  async component are left alone; `use(fetch(url))` is reported by `react-x/purity`. A Server
+  Component may create the promise it reads, so in a package that depends on a framework with
+  Server Components (`next`, `waku`, `@vitejs/plugin-rsc`, `react-server-dom-*` and others) or has a
+  `'use client'` file, only a file with `'use client'` or a component that calls a client hook
+  (`useState`, `useEffect`, `useRef`, `useContext`, ...) is checked.
+- **No navigation, document listener or title write during render**
+  (`nitpicker/react-no-render-side-effect`). In the body of a component (a capitalised function that
+  renders JSX) or a custom hook (a `use*` function that calls a hook), outside nested functions and
+  also under an `if`, `&&` or a ternary: a call of the function returned by `useNavigate()`, `push`,
+  `replace`, `back` or `navigate` on the result of `useRouter()` or `useHistory()` (hooks imported
+  from React Router, Next.js, TanStack Router or Expo Router), `addEventListener` on `document`
+  or something reached from it (`document.body`), and an assignment to `document.title`. Render runs
+  more than once and for renders React throws away, so the router ignores or repeats the call and a
+  listener is added per render and never removed. Navigate in the handler or effect that causes it
+  or render a redirect (`<Navigate to="/login" />`, `redirect()`); add the listener in `useEffect`
+  with a cleanup; set the title in `useEffect` or render `<title>`. Async components,
+  `*.server.*` files and methods destructured from the router (`const { push } = useRouter()`) are
+  left alone. `react-x/purity` reports the other work started in render:
+  `setTimeout`, `setInterval`, `requestAnimationFrame`, `fetch`, `window.addEventListener`,
+  `new WebSocket(...)`, observers and storage.
 - **No double-escaped i18next values** (`nitpicker/react-i18next-escape-value`, needs
   `react-i18next` in `package.json`). A `t(...)` call (from `useTranslation()`, `i18next` or
   `i18n.t`) or a `<Trans values={{ ... }}>` that passes interpolation values and whose text React
@@ -122,6 +182,63 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   dependency array runs after every render and is reported too. A call inside a nested function (a
   subscription, a timer) and an effect with `[]` are left alone; an effect that synchronizes with
   an external system needs an exception.
+- **No fresh props on a `memo` component** (`nitpicker/react-no-unstable-memo-props`). `memo` skips a
+  render only when every prop is the same value as last time. A component made with `memo(...)` or
+  `React.memo(...)` and no comparison function (declared in the same file, or exported by a project
+  file the file imports, also through `export { Row } from './row'`) that is rendered, in a
+  component body or in a `.map`, `.flatMap` or `Array.from` callback there, with a prop written as
+  an object or array literal, a function, a `.bind(...)` call or a JSX element, or with a `const`
+  or function declared in that body to one of those, never skips. One finding per element names
+  each such prop and its stable form: a constant at module level or `useMemo` for objects, arrays
+  and elements, `useCallback` for functions. Inside a list callback, where hooks cannot be called,
+  the message says to pass the item and a stable handler or to move the row into its own
+  component. `key`, `ref` and `children`, an element with JSX or `{expression}` children, a prop
+  followed by a spread, an element built in an event handler, effect, `useMemo` or helper
+  function, an `async` (server) component, a component with no parameters and no hook call (it
+  never renders again by itself), a `memo` with a comparison function, components from packages
+  and a project that lists `babel-plugin-react-compiler` or `react-compiler-runtime` in an
+  enclosing `package.json` (the compiler memoizes the values) are not reported.
+- **No store selector that returns a new value** (`nitpicker/react-no-unstable-selector-result`).
+  An inline selector whose returned expression is an object or array literal,
+  `Object.keys`/`values`/`entries`/`fromEntries(...)`, or ends in `.filter`, `.map`, `.flatMap`,
+  `.toSorted` or `.toReversed`, passed alone to react-redux `useSelector` (also a typed hook made
+  with `useSelector.withTypes()` or `TypedUseSelectorHook`), to a hook made with Zustand `create`,
+  or as the second argument of Zustand `useStore(store, selector)`. With react-redux the component
+  renders again after every dispatched action; Zustand 5 throws "Maximum update depth exceeded" and
+  Zustand 4 renders on every store change. Select each value with its own call; with react-redux
+  use `createSelector` or pass `shallowEqual`, with Zustand wrap the selector in `useShallow(...)`.
+  The hook must be named `use*` and is resolved through its import to the project file that
+  creates it (re-exports are followed), so a `createWithEqualityFn` store, a hook wrapped by a
+  helper, a hook from a package, a call with an equality argument, a selector defined elsewhere
+  and one that returns a stored value or a primitive (`find`, `length`) are not reported. `slice`
+  and `concat` (a string result is a primitive), `sort` (the same array) and a fallback such as
+  `state.items ?? []` (new only while the value is missing) are not treated as new values.
+- **A stable `subscribe` and a cached snapshot for `useSyncExternalStore`**
+  (`nitpicker/react-no-unstable-store-subscribe`). A `subscribe` argument written inline, or bound
+  to a function declared in the same component or hook body outside `useCallback`, is a new
+  function on every render, so React unsubscribes and subscribes again each time: declare it at
+  module level or wrap it in `useCallback`. A function that takes no parameter (the no-op
+  `() => () => {}` used to detect hydration), one made once by an enclosing factory function and
+  a project with the React Compiler are not reported for this. A `getSnapshot` or
+  `getServerSnapshot` argument (inline, or a function of the same file) that returns an object or
+  array literal, `new Map`, `Set`, `Date`, `Array`, `Object`, `URL` or `URLSearchParams`,
+  `Object.keys`/`values`/`entries`/
+  `fromEntries(...)` or the result of `.filter`, `.map`, `.flatMap`, `.toSorted` or `.toReversed` is
+  never the same value twice, so React renders in a loop: return a value the store keeps. The hook
+  from `react`, `use-sync-external-store` and `use-sync-external-store/shim` counts.
+- **Effects close what they open** (`nitpicker/react-no-leaked-effect-resource`). The
+  `react-web-api/no-leaked-*` rules cover listeners, timers, `ResizeObserver` and
+  `IntersectionObserver`; this rule covers the rest. Reported in the effect's own statements:
+  `new WebSocket`, `EventSource`, `BroadcastChannel`, `Worker`, `SharedWorker`, `MutationObserver`,
+  `PerformanceObserver` or `ReportingObserver` (also through `window.`) whose handle is dropped or
+  kept in a local variable that is only read through named members, none of them `close`,
+  `terminate` or `disconnect`;
+  `navigator.geolocation.watchPosition(...)` whose id is dropped or never used; and a
+  `requestAnimationFrame` loop whose callback always schedules itself again while the effect never
+  mentions `cancelAnimationFrame`. A handle stored in a ref, passed to a function, returned or
+  closed anywhere in the effect, a resource opened in a nested function, a loop that stops on a
+  condition, and an effect with `[]` in a file that mounts the app (it calls `createRoot`,
+  `hydrateRoot`, `ReactDOM.render` or `registerComponent`) are not reported.
 - **No array index as `key`** (`react-x/no-array-index-key`): use a stable id from the item. Every
   element rendered from a list has a `key` (`react-x/no-missing-key`) and siblings do not repeat
   one (`react-x/no-duplicate-key`). A `key` built from `Math.random()`, `Date.now()`,
@@ -137,7 +254,11 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `no-restricted-properties` is dropped where this rule reports the same call, so it is reported
   once.
 - **Pure render, no mutation.** State, props and hook results are not mutated
-  (`react-x/immutability`: `setList([...list, item])`, `items.toSorted()`); render does not call
+  (`react-x/immutability`: `setList([...list, item])`, `items.toSorted()`). That includes `sort`,
+  `reverse` and `splice` called on a prop or a state value in the component body, in JSX or inside
+  `useMemo` (`players.sort(byScore)`, `items={items.reverse()}`): they change the array in place, so
+  the parent's list is reordered and `reverse` flips back on the second StrictMode render; write
+  `players.toSorted(byScore)` or `[...players].sort(byScore)`. Render does not call
   `Date.now()`, `Math.random()` or storage, read or write refs, or set state
   (`react-x/purity`, `react-x/refs`, `react-x/set-state-in-render`). A lazy `useState(() => ...)`
   initialiser is the place for a one-time read; a ref may be lazily initialised in render
@@ -328,7 +449,12 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `await-async-events`. Create the user with `const user = userEvent.setup()`
   (`testing-library/prefer-user-event-setup`, for the default and the named `userEvent`
   import alike). Check presence with `getBy*` and absence with
-  `queryBy*` (`testing-library/prefer-presence-queries`). Do not wrap `render` or `user` calls
+  `queryBy*` (`testing-library/prefer-presence-queries`). Keep side effects such as `fireEvent`,
+  `userEvent` calls and `render` out of a `waitFor` callback, which may run them many times
+  (`testing-library/no-wait-for-side-effects`); do not wait for a snapshot, which is then
+  compared at an unknown moment (`testing-library/no-wait-for-snapshot`); and do not pass a regular expression with the
+  `g` flag to a query, since its `lastIndex` makes every other query miss
+  (`testing-library/no-global-regexp-flag-in-query`). Do not wrap `render` or `user` calls
   in `act` (`testing-library/no-unnecessary-act`), leave `screen.debug()` and other debug
   output in (`testing-library/no-debugging-utils`) or call `cleanup` yourself
   (`testing-library/no-manual-cleanup`, on where Testing Library cleans up by itself: under Jest

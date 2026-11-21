@@ -5,7 +5,7 @@ import { type Preset, quickAnalyzersOf } from '../lib/presets.mts';
 import { linkedTree, linkedWorkdir } from '../lib/workdirs.mts';
 import { loadTree } from '../detectors/tree.mts';
 import { runCase } from '../runner/run-case.mts';
-import { checkoutModulePath } from '../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath } from '../../shared/paths/checkout-module.mts';
 import {
   type CaseDefinition,
   loadCase,

@@ -1,5 +1,10 @@
-import { createIdentityCounter, testCaseProblem } from '../../../shared/ingest/common.mjs';
-import { childrenNamed, parseXml, type XmlElement } from '../../../shared/values/xml.mts';
+import {
+  createIdentityCounter,
+  testCaseProblem,
+  childrenNamed,
+  parseXml,
+  type XmlElement,
+} from '../../../shared/ingest/report-records.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 
 const problemOf: (testCase: XmlElement) => { problem: XmlElement } | undefined = testCaseProblem;

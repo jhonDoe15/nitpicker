@@ -1,5 +1,5 @@
-import { listOf as untypedListOf, picked as untypedPicked } from '../../../../../shared/config.mjs';
-import { precedenceLayers as untypedPrecedenceLayers } from '../../../../../shared/conventions/tool-precedence.mjs';
+import { listOf as untypedListOf, picked as untypedPicked } from '../../../../../shared/config.mts';
+import { precedenceLayers as untypedPrecedenceLayers } from '../../../../../shared/conventions/tool-precedence.mts';
 import { fieldOf, fieldsOf } from '../../../../../shared/values/readers.mts';
 import type { KnipConfig } from '../typed/policy.mts';
 

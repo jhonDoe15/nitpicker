@@ -1,12 +1,12 @@
-import { exceptionRoute } from '../../../../../../shared/exceptions/rule-names.mjs';
-import { exceptionMatcher } from '../../../../../../shared/rules/exceptions.mjs';
+import { exceptionRoute } from '../../../../../../shared/exceptions/rule-names.mts';
+import { exceptionMatcher } from '../../../../../../shared/rules/exceptions.mts';
 import { inModule } from '../../../../builds/paths/module-path.mts';
-import { definedField } from '../../../../../../shared/messages/messages.mjs';
-import { createIdentityCounter } from '../../../../../../shared/ingest/common.mjs';
+import { definedField } from '../../../../../../shared/messages/messages.mts';
+import { createIdentityCounter } from '../../../../../../shared/ingest/report-records.mts';
 import {
   appendSentence,
   hasExceptionRoute,
-} from '../../../../../../shared/messages/exception-sentence.mjs';
+} from '../../../../../../shared/messages/exception-sentence.mts';
 
 import type { FindingFactory, ReviewFinding } from '../typed/review-finding-types.mts';
 

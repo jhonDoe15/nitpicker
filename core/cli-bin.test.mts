@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { projectUsageText } from './command/information/printed-information.mts';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../shared/paths/checkout-module.mts';
 import { fieldAt } from '../scripts/json/fields.mts';
 import { parseJson, textOf } from '../shared/values/readers.mts';
 

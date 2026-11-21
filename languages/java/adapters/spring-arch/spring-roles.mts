@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { configError } from '../../../../shared/config.mjs';
-import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
+import { configError } from '../../../../shared/config.mts';
+import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mts';
 import { validateJvmSection } from '../settings/jvm-section.mts';
 import {
   fieldOf,

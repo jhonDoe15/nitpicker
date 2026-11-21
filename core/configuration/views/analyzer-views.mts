@@ -5,7 +5,7 @@ import {
 } from '../../../shared/values/analyzers.mts';
 import { callUntyped } from '../../../languages/java/adapters/typed/java-values.mts';
 import { textsOf } from '../../../shared/values/readers.mts';
-import { applyAnalyzerTimeouts as untypedApplyAnalyzerTimeouts } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+import { applyAnalyzerTimeouts as untypedApplyAnalyzerTimeouts } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mts';
 import { configureJavaAnalyzer as untypedConfigureJavaAnalyzer } from '../../../languages/java/adapters/java-policy.mts';
 import { kotlinStyleFiles as untypedKotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mts';
 import {

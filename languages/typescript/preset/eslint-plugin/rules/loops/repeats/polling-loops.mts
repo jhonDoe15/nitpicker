@@ -3,7 +3,7 @@ import type { Context } from '../../security/security-values.mts';
 import { estreeCallView } from '../../support/io/call-views.mts';
 import { ancestorsOf, chainOf, contains, nameOf } from '../../typed/node-views.mts';
 import { calleeName } from '../../typed/syntax-views.mts';
-import { wordsOf as untypedWordsOf } from '../../../../../../../shared/naming/secret-words.mjs';
+import { wordsOf as untypedWordsOf } from '../../../../../../../shared/naming/secret-words.mts';
 import type { Call } from '../builders/chain-execution.mts';
 import {
   descendants,

@@ -6,7 +6,7 @@ import { diffFromBase } from '../../../../core/tooling/git/base-diff.mts';
 import { run } from '../execution/go-process.mts';
 import { inspectCommand } from '../execution/go-tools.mts';
 import { moduleFileText } from '../execution/go-module.mts';
-import { globMatcher as untypedGlobMatcher } from '../../../../shared/paths/glob.mjs';
+import { globsMatcher } from '../../../../shared/paths/glob.mts';
 import { fieldOf, listOf, parseJson } from '../../../../shared/values/readers.mts';
 import type { GoContext } from '../go-types.mts';
 import type { ChangedRange, LineScope, Mutant, Scope, Tested } from './mutation-types.mts';
@@ -16,7 +16,6 @@ type Targets = { all: boolean; files: Readonly<Record<string, readonly ChangedRa
 
 const parseChangedLines: (diff: string) => ReadonlyMap<string, ChangedFile> =
   untypedParseChangedLines;
-const globMatcher: (glob: string) => { test: (file: string) => boolean } = untypedGlobMatcher;
 
 const GO_SOURCE = /(?<!_test)\.go$/u;
 const GO_TEST = /_test\.go$/u;
@@ -101,11 +100,6 @@ function targetsOf(scope: Scope, whole: readonly string[]): Targets {
   };
 }
 
-function excludedBy(context: GoContext) {
-  const matchers = context.exclude.map((glob) => globMatcher(glob));
-  return (file: string) => matchers.some((matcher) => matcher.test(file));
-}
-
 export function generateMutants(
   context: GoContext,
   {
@@ -127,7 +121,7 @@ export function generateMutants(
   run(context, [inspectCommand(context), 'mutants', root, targetsFile, mutantsFile], {
     rule: 'mutation-failed',
   });
-  const excluded = excludedBy(context);
+  const excluded = globsMatcher(context.exclude);
   return listOf(parseJson(readFileSync(mutantsFile, 'utf8')))
     .filter(isMutant)
     .filter(({ file }) => compiledFiles.has(file) && !excluded(file));

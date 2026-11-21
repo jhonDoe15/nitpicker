@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { containedPath } from '../../../../../shared/paths/contained-path.mjs';
+import { containedPath } from '../../../../../shared/paths/contained-path.mts';
 import { HOST_MAIN_CLASS } from './host-config.mts';
 import { attempt, valueOr } from '../../../../../shared/values/attempt/attempt.mts';
 

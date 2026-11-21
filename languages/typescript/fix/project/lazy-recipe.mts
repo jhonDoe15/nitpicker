@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import type { RuleRef } from '../../../../core/fix/typed/fix-types.mts';
 import type { FixContext, ProjectPlan, ProjectRecipe } from './typed/project-types.mts';

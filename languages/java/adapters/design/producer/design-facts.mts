@@ -12,8 +12,8 @@ import path from 'node:path';
 import { isGeneratedJvm } from '../../generated/generated-sources.mts';
 import { compileDesignProgram, runDesignProgram } from './design-program.mts';
 import type { JavaEnvironment } from '../../typed/java-values.mts';
-import { resolveInside } from '../../../../../shared/conventions/read-inside.mjs';
-import { byText } from '../../../../../shared/text-order/by-text.mjs';
+import { resolveInside } from '../../../../../shared/conventions/read-inside.mts';
+import { byText } from '../../../../../shared/text-order/by-text.mts';
 import { fieldOf, fieldsOf, listOf, numberOr } from '../../../../../shared/values/readers.mts';
 
 export type DesignModule = {

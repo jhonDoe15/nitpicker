@@ -1,5 +1,5 @@
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { describeError } from '../error-chain.mjs';
+import { describeError } from '../error-chain.mts';
 
 const errorText: (error: unknown) => string = describeError;
 

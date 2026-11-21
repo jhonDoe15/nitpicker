@@ -4,7 +4,7 @@ import { validateConfig, withHeadCheckoutFacts } from '../test-support/policy-vi
 import { vitestRetryArguments } from './test-retry.mts';
 import { runArea } from './test-support/runner-views.mts';
 import { projectTestRetry } from './test-runner-config.mts';
-import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mts';
 import { OPT_IN, TESTS_FAILED, createRetryProjects } from './test-support/retry-projects.mts';
 
 const projects = createRetryProjects();

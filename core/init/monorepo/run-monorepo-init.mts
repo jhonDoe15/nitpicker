@@ -1,6 +1,6 @@
 import { packageVersion } from '../../help/package-version.mts';
 import { appendSnippet, hasSnippet } from '../files/agents-md.mts';
-import { placeApprovalWorkflow, workflowPath } from '../files/ci-workflow.mts';
+import { workflowPath } from '../files/ci-workflow.mts';
 import { skillSource } from '../skill/skill-source.mts';
 import { hasProjectFile } from '../support/inside-project.mts';
 import { placeRootConfig, setUpMember } from './monorepo-files.mts';
@@ -18,12 +18,7 @@ type Request = {
 export type MonorepoInit = { readonly text: string; readonly exitCode: number };
 
 function placedFiles(placed: MonorepoPlaced): readonly (object | undefined)[] {
-  return [
-    placed.rootConfig,
-    placed.workflow,
-    placed.ci.approval,
-    ...placed.setups.map(({ config }) => config),
-  ];
+  return [placed.rootConfig, placed.workflow, ...placed.setups.map(({ config }) => config)];
 }
 
 export function runMonorepoInit(layout: MonorepoLayout, request: Request): MonorepoInit {
@@ -46,7 +41,6 @@ export function runMonorepoInit(layout: MonorepoLayout, request: Request): Monor
     workflow: ci ? placeMonorepoWorkflow(setups, { root, repository, version }) : undefined,
     agents: options.agentsMd ? appendSnippet(root) : undefined,
     ci: {
-      approval: ci ? placeApprovalWorkflow(repository) : undefined,
       workflowFile,
       offered: !(ci || hasProjectFile(repository, workflowFile)),
     },

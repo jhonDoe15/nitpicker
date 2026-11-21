@@ -4,8 +4,8 @@ import {
   slowTestBudget as untypedSlowTestBudget,
   slowTestFindings as untypedSlowTestFindings,
   slowTestLimits as untypedSlowTestLimits,
-} from '../../../../shared/rules/slow-tests/slow-test-finding.mjs';
-import { exceptionMatcher as untypedExceptionMatcher } from '../../../../shared/rules/exceptions.mjs';
+} from '../../../../shared/rules/slow-tests/slow-test-finding.mts';
+import { exceptionMatcher as untypedExceptionMatcher } from '../../../../shared/rules/exceptions.mts';
 
 export type TestRunTime = {
   readonly file: string;

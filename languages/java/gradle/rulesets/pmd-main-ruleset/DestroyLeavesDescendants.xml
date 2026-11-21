@@ -1,0 +1,46 @@
+  <rule name="DestroyLeavesDescendants" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This destroys a process that the method started through a shell, a launcher or a script (sh, cmd, npm, npx, yarn, pnpm, gradlew.bat, mvnw.cmd, a .sh, .bat or .cmd file), after a wait with a deadline. destroy() and destroyForcibly() stop only that process; the real work runs in a child of it and keeps running, holding CPU, memory, files and ports, and may still write into a folder the caller is deleting. Destroy the descendants first: process.descendants().forEach(ProcessHandle::destroyForcibly), then the process itself, or start the executable directly without the wrapper.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $bare := function($text) { lower-case(replace(replace(string($text), '^"|"$', ''), '^.*[/\\]', '')) },
+    $runsScript := function($literals) {
+      let $name := lower-case(replace(replace(string($literals[1]/@Image), '^"|"$', ''), '^.*[/\\]', '')),
+          $sub := $literals[position() > 1][not(starts-with(@Image, '"-'))][1]
+      return $name = ('npm', 'npm.cmd', 'yarn', 'yarn.cmd', 'pnpm', 'pnpm.cmd')
+         and replace(string($sub/@Image), '"', '') = ('run', 'run-script', 'exec', 'x', 'dlx', 'test', 't', 'start', 'stop', 'restart')
+    },
+    $launcher := function($text) {
+      let $name := lower-case(replace(replace(string($text), '^"|"$', ''), '^.*[/\\]', ''))
+      return $name = ('sh', 'bash', 'zsh', 'dash', 'ksh', 'cmd', 'cmd.exe', 'powershell', 'powershell.exe', 'pwsh',
+                      'npx', 'npx.cmd')
+          or matches($name, '\.(sh|bat|cmd|ps1)$')
+    }
+return
+//MethodCall[@MethodName = ('destroy', 'destroyForcibly')][ArgumentList/@Size = 0]
+  [*[1][pmd-java:typeIs('java.lang.Process')]]
+  [let $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1],
+       $process := *[1]/self::VariableAccess/@Name,
+       $inits := ($method//VariableDeclarator[VariableId/@Name = $process]/*[2],
+                  $method//AssignmentExpression[*[1][self::VariableAccess[@Name = $process]]]/*[2]),
+       $builders := $inits/descendant-or-self::MethodCall[@MethodName = 'start']/*[1]/self::VariableAccess/@Name,
+       $sources := ($inits, $method//VariableDeclarator[VariableId/@Name = $builders]/*[2],
+                    $method//MethodCall[@MethodName = 'command'][*[1][self::VariableAccess[@Name = $builders]]])
+   return exists($process)
+     and exists($method//MethodCall[@MethodName = 'waitFor'][ArgumentList/@Size = 2])
+     and empty($method//MethodCall[@MethodName = 'descendants'])
+     and exists($sources/descendant-or-self::*[self::ConstructorCall[pmd-java:typeIs('java.lang.ProcessBuilder')]
+                          or self::MethodCall[@MethodName = 'command'][*[1][pmd-java:typeIs('java.lang.ProcessBuilder')]]
+                          or self::MethodCall[@MethodName = 'exec'][*[1][pmd-java:typeIs('java.lang.Runtime')]]]
+                         /ArgumentList[*[1]/descendant-or-self::StringLiteral[1][$launcher(@Image)]
+                                       or $runsScript(.//StringLiteral)]
+                         [let $first := *[1]/descendant-or-self::StringLiteral[1],
+                              $rest := .//StringLiteral[. >> $first]
+                          return not(replace(replace(string($first/@Image), '^"|"$', ''), '^.*/', '') = ('sh', 'bash', 'zsh', 'dash', 'ksh'))
+                              or empty($rest[matches(@Image, '^"-[a-z]*c[a-z]*"$')])
+                              or exists($rest[matches(@Image, '&&|\|\||[;|&`]|\\n|\$\(')])])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

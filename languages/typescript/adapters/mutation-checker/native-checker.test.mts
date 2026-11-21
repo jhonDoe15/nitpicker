@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mts';
-import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mts';
 import {
   mutationCheckerConfig,
   mutationCheckerEngine,

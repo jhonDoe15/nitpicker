@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   exceptionEntryText,
   exceptionSentence,
-} from '../../../shared/messages/exception-sentence.mjs';
+} from '../../../shared/messages/exception-sentence.mts';
 import { fieldAt } from '../../../scripts/json/fields.mts';
 import { fieldOf } from '../../../shared/values/readers.mts';
 import { schemaAccepts } from './test-support/findings-schema-check.mts';

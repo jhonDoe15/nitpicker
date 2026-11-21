@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { lstatSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { runGit } from '../../git/repository/command.mts';
-import { isStrictlyInside } from '../../../../shared/filesystem.mjs';
+import { isStrictlyInside } from '../../../../shared/filesystem.mts';
 
 const MAX_HASHED_BYTES = 1024 * 1024;
 const DEFAULT_OUTPUT_PARENT = 'reports/quality';

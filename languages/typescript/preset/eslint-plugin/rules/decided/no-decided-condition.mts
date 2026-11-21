@@ -4,10 +4,10 @@ import {
   type TSESLint,
   type TSESTree,
 } from '@typescript-eslint/utils';
-import { decidingFact as untypedDecidingFact } from '../../../../../../shared/logic/sync/solve-facts.mjs';
-import { helperNote as untypedHelperNote } from '../../../../../../shared/logic/models/helper-note.mjs';
-import { hasModels as untypedHasModels } from '../../../../../../shared/logic/models/models.mjs';
-import { key as untypedKey } from '../../../../../../shared/logic/terms.mjs';
+import { decidingFact as untypedDecidingFact } from '../../../../../../shared/logic/sync/solve-facts.mts';
+import { helperNote as untypedHelperNote } from '../../../../../../shared/logic/models/helper-note.mts';
+import { hasModels as untypedHasModels } from '../../../../../../shared/logic/models/models.mts';
+import { key as untypedKey } from '../../../../../../shared/logic/terms.mts';
 import { depthFirst, type SourceCode } from '../typed/node-views.mts';
 import type { Term } from '../analysis/logic/estree-terms.mts';
 import { afterEffects, effectsOf, mutableNames, type FlowContext } from './effects.mts';

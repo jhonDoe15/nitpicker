@@ -2,8 +2,6 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { describePolicyChanges } from '../../policy-changes/describe-policy-changes.mts';
-import { createPolicyScope, rootSets } from '../../policy-changes/policy-scope.mts';
 import { describeConfigOverrides, readConfigFile } from '../config.mts';
 import { validateConfig } from '../validate.mts';
 
@@ -43,19 +41,5 @@ describe('the $schema line of nitpicker.config.json', () => {
 
     expect(config).toEqual({ preset: 'python' });
     expect(describeConfigOverrides(config)).toEqual(['preset: "python"']);
-  });
-
-  it('is not a policy change when a change adds it', () => {
-    const base = readConfigFile(projectWith({ preset: 'typescript' }));
-    const head = readConfigFile(projectWith({ $schema: SCHEMA_LINE, preset: 'typescript' }));
-    const scope = createPolicyScope({
-      files: ['src/a.ts'],
-      baseFiles: ['src/a.ts'],
-      baseRoots: rootSets(base, '.'),
-      headRoots: rootSets(head, '.'),
-      headConfig: head,
-    });
-
-    expect(describePolicyChanges(base, head, scope)).toEqual({ loosened: [], changed: [] });
   });
 });

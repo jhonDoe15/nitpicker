@@ -7,11 +7,11 @@ import {
   copyFixtureRepository as untypedCopyFixtureRepository,
   runInitThenAll as untypedRunInitThenAll,
 } from '../../../../../../core/init/test-support/init-then-all.mts';
-import { exceptionHint as untypedExceptionHint } from '../../../../../../shared/rules/exceptions.mjs';
-import { validateFacts as untypedValidateFacts } from '../../../../../../shared/rules/facts/schema.mjs';
+import { exceptionHint as untypedExceptionHint } from '../../../../../../shared/rules/exceptions.mts';
+import { validateFacts as untypedValidateFacts } from '../../../../../../shared/rules/facts/schema.mts';
 import { kotlinDesignBundle as untypedKotlinDesignBundle } from '../../../kotlin/review-rules/design/kotlin-design.mts';
 import { analyzeWithIncludedBuild as untypedAnalyzeWithIncludedBuild } from '../../../test-support/gradle-e2e.mts';
-import { exceptionRoute as untypedExceptionRoute } from '../../../../../../shared/exceptions/rule-names.mjs';
+import { exceptionRoute as untypedExceptionRoute } from '../../../../../../shared/exceptions/rule-names.mts';
 import { collectJavaFindings as untypedCollectJavaFindings } from '../../../java-diff.mts';
 import {
   analyzeJavaSnapshot as untypedAnalyzeJavaSnapshot,

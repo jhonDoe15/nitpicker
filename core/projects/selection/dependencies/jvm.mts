@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { containedPath as untypedContainedPath } from '../../../../shared/paths/contained-path.mjs';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mjs';
+import { containedPath as untypedContainedPath } from '../../../../shared/paths/contained-path.mts';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mts';
 import { readTextInside } from '../../discovery/repository-files.mts';
 import { includedBuilds } from '../../../../languages/java/builds/gradle-scripts/included-builds.mts';
 import type { DependencyUnit } from '../../project-types.mts';

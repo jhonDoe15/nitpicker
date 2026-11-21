@@ -17,16 +17,11 @@ import {
 import { ALL_RECIPES as UNTYPED_RECIPES } from '../fix/engine/all-recipes.mts';
 import { defineRecipes as untypedDefineRecipes } from '../fix/engine/recipes.mts';
 import { DEFAULT_FIX_SOURCES } from '../fix/status/fix-status.mts';
-import { PAGES as UNTYPED_PAGES } from '../../shared/reference/pages.mjs';
-import { ruleEntry as untypedRuleEntry } from '../../shared/reference/entry.mjs';
+import { PAGES as UNTYPED_PAGES } from '../../shared/reference/pages.mts';
+import { anchorOf } from '../../shared/reference/entry.mts';
 
 const ALL_RECIPES: readonly unknown[] = UNTYPED_RECIPES;
 const PAGES: readonly { id: string }[] = UNTYPED_PAGES;
-const ruleEntry: (fields: {
-  tool: string;
-  rule: string;
-  [field: string]: unknown;
-}) => ReferenceEntry = untypedRuleEntry;
 const defineRecipes: (recipes: readonly unknown[]) => (typeof DEFAULT_FIX_SOURCES)['recipes'] =
   untypedDefineRecipes;
 
@@ -42,8 +37,15 @@ function project(files: Record<string, string>) {
   return root;
 }
 
-function entry(rule: string, fields: Record<string, unknown> = {}) {
-  return ruleEntry({ tool: 'demo', rule, page: PAGES[0]?.id, ...fields });
+function entry(rule: string, fields: Record<string, unknown> = {}): ReferenceEntry {
+  return {
+    id: `demo/${rule}`,
+    tool: 'demo',
+    rule,
+    anchor: anchorOf('demo', rule),
+    page: PAGES[0]?.id,
+    ...fields,
+  };
 }
 
 describe('the generated rule reference', () => {

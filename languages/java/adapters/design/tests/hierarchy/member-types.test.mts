@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateFacts } from '../../../../../../shared/rules/facts/schema.mjs';
+import { validateFacts } from '../../../../../../shared/rules/facts/schema.mts';
 import { fixtureFacts } from '../../test-support/design-facts-support.mts';
 
 const facts = fixtureFacts('member-types');

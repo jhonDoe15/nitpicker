@@ -44,9 +44,9 @@ import { presetAnalyzers, withRepositoryChecks } from '../../configuration/prese
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mts';
 import { renderConsoleSummary } from '../reporting/summary.mts';
 import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mts';
-import { TROUBLESHOOTING_ANCHORS } from '../../../shared/messages/troubleshooting.mjs';
+import { TROUBLESHOOTING_ANCHORS } from '../../../shared/messages/troubleshooting.mts';
 import { writeGithubOutput } from '../reporting/github/emit.mts';
-import { colorEnabled } from '../../../shared/messages/terminal/terminal-text.mjs';
+import { colorEnabled } from '../../../shared/messages/terminal/terminal-text.mts';
 import { comparisonExitCode } from '../reporting/failing-tests/failing-tests.mts';
 import { analyzersOf } from '../../../shared/values/analyzers.mts';
 import { textOf } from '../../../shared/values/readers.mts';

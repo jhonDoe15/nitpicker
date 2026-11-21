@@ -3,7 +3,7 @@ import type { CallerGap } from './unused-option-types.mts';
 import type { CallerNote, OptionUnit } from './unused-option-sites.mts';
 import { limitedUnits, publicFunctionUnits } from './unused-option-units.mts';
 import { declaredNames } from '../../spring/spring-names.mts';
-import { compareText as untypedCompareText } from '../../../../../../../shared/paths/path-order.mjs';
+import { compareText as untypedCompareText } from '../../../../../../../shared/paths/path-order.mts';
 
 const compareText: (left: string, right: string) => number = untypedCompareText;
 const declaredOf: (files: FactsView['files']) => Set<string> = declaredNames;

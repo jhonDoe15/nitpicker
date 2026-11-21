@@ -9,13 +9,7 @@ Part of the [Java preset guide](../java-preset.md).
   (bundled assets such as `src/main/resources/static/*.js` do not count): then it
   stops with a config error that names `"preset": "java"` (`rejectUndeclaredPreset`, best-effort, see
   [Using nitpicker](../usage.md#configuration)). The head is measured with the head's config and the
-  base with its own (widened to the head's roots), and a change to `preset` is listed under "Policy
-  changed in this change"; declaring `java` on a project that had no preset is not a loosening.
-  The same list reads the build files for what shrinks the measured code (Gradle `sourceSets`
-  `srcDirs` and `exclude`, test excludes and filters; Maven `sourceDirectory` and surefire,
-  failsafe and compiler excludes), the project tool configs the project opted into
-  (`config/pmd/`, `config/checkstyle/`) and hidden code that production imports; see
-  [Using nitpicker](../usage.md#configuration). Changed `.java` and `.kt` files outside the build's
+  base with its own (widened to the head's roots). Changed `.java` and `.kt` files outside the build's
   source sets are named in a notice.
 - **Editor support.** A Java project has no `node_modules`, so a `$schema` line in
   `nitpicker.config.json` points at the published schema:
@@ -78,10 +72,10 @@ Part of the [Java preset guide](../java-preset.md).
   their own variable get the same budget. See [Analyzer timeouts](usage.md#analyzer-timeouts).
 - **Config keys.** `base`, `disable` and `analyzers` work as before. `history` turns on the
   opt-in [change history](../usage.md#change-history) check, which reads git and not the Java runner.
-  `thresholds`, `exclude` and `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
+  `thresholds`, `exclude` and `legacyInventory` are shared with the TypeScript preset (`shared/config.mts`,
   `head-policy.mjs`, `legacy-inventory.mjs`) and reach the Java runner as arguments, so they are
   part of the analyzer's configuration hash:
-  - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`), and
+  - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mts`), and
     `fileLines`, `testFileLines` and `folderFiles` the file limits, which count the `.java` files of
     the main and test source sets (branch coverage and duplicates have fixed limits). `classMethods`
     (20), `classFields` (10), `inheritanceDepth` (3) and `folderDepth` (4) replace the limits
@@ -123,7 +117,7 @@ Part of the [Java preset guide](../java-preset.md).
   - `layout` is a config error with `"preset": "java"` instead of being ignored: its source-folder
     keys are TypeScript only, and `layout.featureRoots` and `layout.sharedRoots` are accepted
     because the Java and Kotlin presets run a rule that reads them (`contract-infrastructure-type`,
-    listed in `OWN_RULE_SETTINGS` of `shared/project-rules/fact-rules.mjs`) and
+    listed in `OWN_RULE_SETTINGS` of `shared/project-rules/fact-rules.mts`) and
     `shared-used-by-one-feature`, which the registry lists Java and Kotlin for; once `history.coChange`
     is on, `featureRoots` also names the feature folders `co-change` reads. `testConsole` is accepted because the registry lists Java and
     Kotlin for `test-console-output`. `tools` takes `pmd`, `checkstyle`, `spotbugs`, `errorprone` and `pit`.

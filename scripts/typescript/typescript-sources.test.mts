@@ -1,12 +1,11 @@
 import { execFileSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { writeFiles } from '../../core/diff/git/test-support/fixture-files.mts';
-import { printConversion } from './convert.mts';
 import { clean, emit, isShippedPath, transpiled } from './emit.mjs';
 import {
   convertedNodeBuildModules,
@@ -17,7 +16,6 @@ import {
   unresolvedTypeScriptImports,
   unwrappedModuleUrls,
 } from './module-graph.mts';
-import { printReadiness, readiness } from './ready.mts';
 
 const REPOSITORY_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const roots: string[] = [];
@@ -48,17 +46,7 @@ function read(root: string, file: string): string {
   return readFileSync(path.join(root, file), 'utf8');
 }
 
-const SAMPLE = {
-  'nitpicker.config.json': '{ "layout": { "entryPoints": ["core/cli.mjs"] } }\n',
-  'core/cli.mjs': "import { run } from './run.mjs';\nrun();\n",
-  'core/run.mjs': "import { text } from '../shared/text.mjs';\nexport const run = () => text;\n",
-  'core/run.test.mjs': "import { run } from './run.mjs';\n",
-  'shared/text.mjs': "export const text = 'text';\n",
-  'shared/worker.mjs': "const worker = new URL('./text.mjs', import.meta.url);\n",
-  'docs/notes.md': 'See core/run.mjs.\n',
-};
-
-describe('the repository during the TypeScript conversion', () => {
+describe('the TypeScript sources of the repository', () => {
   const modules = trackedModules(REPOSITORY_ROOT);
   const imports = moduleImports(REPOSITORY_ROOT, modules);
 
@@ -79,7 +67,7 @@ describe('the repository during the TypeScript conversion', () => {
   });
 });
 
-describe('module URLs during the conversion', () => {
+describe('module URLs of converted modules', () => {
   it('reports a converted module that code still opens by its packaged URL without the helper', () => {
     const root = project({
       'core/start.mjs': [
@@ -100,8 +88,6 @@ describe('module URLs during the conversion', () => {
   });
 });
 
-let template: string;
-
 function track(root: string): void {
   for (const command of [
     ['init', '--quiet'],
@@ -110,50 +96,6 @@ function track(root: string): void {
     execFileSync('git', command, { cwd: root, env: HERMETIC_GIT, timeout: 10_000 });
   }
 }
-
-beforeAll(() => {
-  template = mkdtempSync(path.join(tmpdir(), 'nitpicker-typescript-template-'));
-  writeFiles(template, SAMPLE);
-  track(template);
-});
-
-afterAll(() => {
-  rmSync(template, { recursive: true, force: true });
-});
-
-function sampleRepository(): string {
-  const root = directory();
-  cpSync(template, root, { recursive: true });
-  return root;
-}
-
-describe('conversion readiness', () => {
-  it('lists the modules of a folder whose shipped importers are converted or converting with them', () => {
-    const root = sampleRepository();
-    expect(readiness(root, 'core')).toEqual({
-      ready: ['core/cli.mjs', 'core/run.mjs', 'core/run.test.mjs'],
-      waiting: [],
-    });
-    expect(readiness(root, 'shared')).toEqual({
-      ready: ['shared/worker.mjs'],
-      waiting: ['shared/text.mjs (imported by core/run.mjs)'],
-    });
-  });
-  it('prints the ready and the waiting modules', () => {
-    const root = sampleRepository();
-    const written: string[] = [];
-    printReadiness(root, 'shared/', { write: (text) => written.push(text) });
-    expect(written.join('')).toBe(
-      [
-        'Ready to convert together (1):',
-        '  shared/worker.mjs',
-        'Waiting on shipped JavaScript importers (1):',
-        '  shared/text.mjs (imported by core/run.mjs)',
-        '',
-      ].join('\n'),
-    );
-  });
-});
 
 const NODE_BUILD = {
   'scripts/typescript/emit.mjs': "import { files } from '../../shared/files.mjs';\n",
@@ -173,30 +115,6 @@ const NODE_BUILD = {
 };
 
 describe('the package build on Node.js 22.14', () => {
-  it('holds the build scripts and the modules they import outside the shipped import chain', () => {
-    const root = project(NODE_BUILD);
-    track(root);
-    expect(readiness(root, '.')).toEqual({
-      ready: ['core/reference/render.mjs'],
-      waiting: [
-        'core/reference/generate.mjs (imported by scripts/reference/gen-rules.mjs on Node.js 22.14)',
-        'core/reference/page.mjs (imported by core/reference/generate.mjs)',
-        'languages/go/reference/entries.mjs (imported by scripts/reference/gen-rules.mjs on Node.js 22.14)',
-        'scripts/reference/gen-rules.mjs (imported by the package build on Node.js 22.14)',
-        'scripts/reference/registry.mjs (imported by scripts/reference/gen-rules.mjs on Node.js 22.14)',
-        'scripts/typescript/emit.mjs (imported by the package build on Node.js 22.14)',
-        'shared/files.mjs (imported by languages/go/reference/entries.mjs, scripts/typescript/emit.mjs on Node.js 22.14)',
-        'shared/text.mjs (imported by scripts/reference/registry.mjs on Node.js 22.14)',
-      ],
-    });
-  });
-  it('refuses to convert a module that the build imports, naming the build script', () => {
-    const root = project(NODE_BUILD);
-    track(root);
-    expect(() => {
-      printConversion(root, ['shared/text.mjs'], { write: () => undefined });
-    }).toThrow('shared/text.mjs <- scripts/reference/registry.mjs on Node.js 22.14');
-  });
   it('reports a converted or renamed module that the build runs', () => {
     const root = project({
       ...NODE_BUILD,
@@ -215,31 +133,6 @@ describe('the package build on Node.js 22.14', () => {
     expect(
       convertedNodeBuildModules(renamedModules, moduleImports(renamed, renamedModules)),
     ).toEqual(['scripts/typescript/emit.mts']);
-  });
-});
-
-describe('converting modules', () => {
-  it('renames the modules, rewrites their imports and config entries, and lists path references', () => {
-    const root = sampleRepository();
-    const written: string[] = [];
-    printConversion(root, ['core/cli.mjs', 'core/run.mjs'], {
-      write: (text) => written.push(text),
-    });
-    expect(existsSync(path.join(root, 'core/cli.mts'))).toBe(true);
-    expect(read(root, 'core/cli.mts')).toBe("import { run } from './run.mts';\nrun();\n");
-    expect(read(root, 'core/run.test.mjs')).toBe("import { run } from './run.mts';\n");
-    expect(read(root, 'nitpicker.config.json')).toBe(
-      '{ "layout": { "entryPoints": ["core/cli.mts"] } }\n',
-    );
-    expect(written.join('')).toBe(
-      'Renamed and rewrote imports. Check these references by path:\n  docs/notes.md:1:See core/run.mjs.\n',
-    );
-  });
-  it('refuses a module that shipped JavaScript still imports', () => {
-    const root = sampleRepository();
-    expect(() => {
-      printConversion(root, ['shared/text.mjs'], { write: () => undefined });
-    }).toThrow('shared/text.mjs <- core/run.mjs');
   });
 });
 

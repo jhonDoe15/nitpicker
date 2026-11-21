@@ -5,12 +5,9 @@ import {
   fittingCasings,
   folderCasing,
 } from './file-name-casing.mts';
-import {
-  conventionChoices,
-  detectedFor,
-  fileNameComplies,
-  type ConventionDefinition,
-} from './typed/convention-views.mts';
+import { conventionChoices } from '../../../shared/conventions/detect.mts';
+import type { Convention } from '../../../shared/conventions/convention-types.mts';
+import { detectedFor, fileNameComplies } from './typed/convention-views.mts';
 
 function vote(file: string): string | undefined {
   return FILE_NAME_CONVENTION.measure(undefined, file);
@@ -232,12 +229,14 @@ describe('folder casing', () => {
 describe('file name casing detection', () => {
   function detect(
     names: readonly string[],
-    accepts?: (definition: ConventionDefinition, file: string) => boolean,
+    accepts?: (definition: Convention, file: string) => boolean,
     texts: Readonly<Record<string, string | undefined>> = {},
   ) {
     const source = {
-      paths: ({ unreadable = false }: { readonly unreadable?: boolean }) =>
-        unreadable ? names : names.filter((name) => !name.includes('huge')),
+      paths: (options?: { readonly unreadable?: true }) =>
+        options?.unreadable === true
+          ? names.slice()
+          : names.filter((name) => !name.includes('huge')),
       readMany: (paths: readonly string[]) => {
         expect(paths).toEqual(Object.keys(texts));
         return new Map(paths.map((file) => [file, texts[file]]));
@@ -283,7 +282,7 @@ describe('file name casing detection', () => {
   it('measures only the files the caller accepts', () => {
     const detected = detect(
       ['src/a-b.ts', 'scripts/c_d.ts', 'scripts/e_f.ts'],
-      (_definition: ConventionDefinition, file: string) => file.startsWith('src/'),
+      (_definition: Convention, file: string) => file.startsWith('src/'),
     );
 
     expect(detected.choice).toBe('kebab-case');

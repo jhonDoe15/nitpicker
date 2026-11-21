@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mts';
 import { fieldOf, isPlainObject, textOf } from '../../../../shared/values/readers.mts';
 import {
   missingProjectConfig,
@@ -141,7 +141,7 @@ function loadedConfig(
   };
 }
 
-export function evaluatedProjectConfig(
+function evaluatedProjectConfig(
   tool: string,
   projectRoot: string,
   timeout?: number,

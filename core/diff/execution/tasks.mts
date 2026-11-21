@@ -1,9 +1,9 @@
-import { depthFirst } from '../../../shared/traversal.mjs';
+import { depthFirst } from '../../../shared/traversal.mts';
 import { fieldOf } from '../../../shared/values/readers.mts';
 import {
   ANALYZER_TIMEOUT_VARIABLE,
   SIZE_ALLOWANCE_VARIABLE,
-} from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+} from '../../../shared/analyzer-timeouts/analyzer-timeouts.mts';
 import { OUTPUT_LIMIT_VARIABLE } from '../../../shared/report-output/fit-findings.mts';
 
 type Invocation = {

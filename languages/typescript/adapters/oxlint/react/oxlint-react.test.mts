@@ -2,7 +2,7 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mts';
 import { lintWithOxlint } from '../oxlint-runner.mts';
 import type { LintResult } from '../plan/oxlint-shapes.mts';
 import { oxlintOptions, residualRecorder, type ResidualRun } from '../test-support/oxlint-runs.mts';
@@ -14,6 +14,7 @@ const adapters = 'src/main/features/profile/adapters';
 const domain = 'src/main/features/profile/domain';
 const ui = 'src/main/features/profile/ui';
 const typedRules = new Set([
+  'nitpicker/no-union-order-dependence',
   'nitpicker/no-unknown-in-domain',
   'react-x/no-leaked-conditional-rendering',
 ]);

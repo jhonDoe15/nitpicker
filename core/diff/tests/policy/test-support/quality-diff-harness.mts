@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
 import type { ProfiledAnalyzer } from '../../../../../shared/values/analyzers.mts';
 import type { DiffOptions } from '../../../comparison/run-diff.mts';

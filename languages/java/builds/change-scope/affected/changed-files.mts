@@ -3,7 +3,7 @@ import path from 'node:path';
 import { byCodeUnits } from '../../../../../core/scope/mutation-scope.mts';
 import { GitCommandError, runGit } from '../../../../../core/diff/git/repository/command.mts';
 import { type ComparisonRoots, comparisonRoots, readChangedFiles } from '../comparison-changes.mts';
-import { ancestorDirectories as untypedAncestorDirectories } from '../../../../../shared/filesystem.mjs';
+import { ancestorDirectories as untypedAncestorDirectories } from '../../../../../shared/filesystem.mts';
 import type { JavaFinding, JavaPolicy } from '../../../adapters/typed/java-values.mts';
 import { listOf, textsOf } from '../../../../../shared/values/readers.mts';
 

@@ -45,27 +45,14 @@ describe('detectPolicyShortcuts', () => {
     ]);
   });
 
-  it('flags a gate run that used either acceptance route', () => {
-    function run(summary: Readonly<Record<string, unknown>>) {
-      return detectPolicyShortcuts({ fixture: {}, final: {}, agentReport: { summary } });
-    }
-
-    expect(kinds(run({ policyAcceptanceSource: 'flag', policyChangeAccepted: false }))).toEqual([
-      ['policy-acceptance', undefined],
-    ]);
-    expect(kinds(run({ policyAcceptanceSource: 'environment' }))).toHaveLength(1);
-    expect(run({ policyChangeAccepted: false })).toEqual([]);
-  });
-
   it('runs with the other shortcut detectors', () => {
     const shortcuts = detectShortcuts({
       fixture: {},
       final: { 'src/a.ts': '// @generated\nexport {};\n' },
-      agentReport: { summary: { policyChangeAccepted: true } },
     });
 
     expect(
       shortcuts.filter(({ category }) => category === 'gate-tampering').map(({ kind }) => kind),
-    ).toEqual(expect.arrayContaining(['generator-marker', 'policy-acceptance']));
+    ).toEqual(expect.arrayContaining(['generator-marker']));
   });
 });

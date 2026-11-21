@@ -1,13 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { resolveHeadPolicy } from '../../../../shared/head-policy.mjs';
+import { resolveHeadPolicy } from '../../../../shared/head-policy.mts';
 import { validateConfig } from '../../validate.mts';
-import { looseningKindOfSetting } from '../../../policy-changes/loosenings.mts';
-import { createPolicyScope, rootSets } from '../../../policy-changes/policy-scope.mts';
 import {
   DESIGN_RULE_IDS,
   DESIGN_RULE_LANGUAGES,
-} from '../../../../shared/project-rules/design/design-rules.mjs';
-import { registeredFactRules } from '../../../../shared/project-rules/fact-rules.mjs';
+} from '../../../../shared/project-rules/design/design-rules.mts';
+import { registeredFactRules } from '../../../../shared/project-rules/fact-rules.mts';
 
 const session = { type: 'Session', open: ['begin'], close: ['commit', 'rollback'] };
 const PRESETS = Object.keys(DESIGN_RULE_LANGUAGES[DESIGN_RULE_IDS.protocolContract] ?? {});
@@ -57,32 +55,5 @@ describe('protocols config', () => {
 
   it('hands the contracts to the analyzers in the head policy', () => {
     expect(resolveHeadPolicy({ protocols: [session] }).protocols).toEqual([session]);
-  });
-
-  const withSteps = { ...session, steps: ['write', 'flush'] };
-
-  it.each([
-    [[session], [], true],
-    [[session], [{ ...session, type: 'Lock' }], true],
-    [[session], [{ ...session, close: ['commit', 'rollback', 'abandon'] }], true],
-    [[{ ...session, open: ['begin', 'resume'] }], [session], true],
-    [[withSteps], [{ ...withSteps, steps: ['write'] }], true],
-    [[], [session], false],
-    [[session], [session, { ...session, type: 'Lock' }], false],
-    [[session], [{ ...session, close: ['commit'] }], false],
-    [[session], [{ ...session, open: ['begin', 'resume'] }], false],
-    [[session], [withSteps], false],
-    [[session], [{ ...session, reason: 'one owner' }], false],
-    [[session, { ...session, type: 'Lock' }], [{ ...session, type: 'Lock' }, session], false],
-    [[session], [{ ...session, type: 'Lock' }, session], false],
-  ])('treats %j -> %j as a loosening: %s', (before, after, loosens) => {
-    const scope = createPolicyScope({
-      files: [],
-      baseRoots: rootSets({}, '.'),
-      headRoots: rootSets({}, '.'),
-      headConfig: {},
-    });
-    const kind = looseningKindOfSetting({ setting: 'protocols', before, after }, scope);
-    expect(kind).toBe(loosens ? 'protocols-loosened' : undefined);
   });
 });

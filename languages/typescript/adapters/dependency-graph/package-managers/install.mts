@@ -5,7 +5,7 @@ import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
 import { containedPath } from './contained-path.mts';
 import { installInvocation, isBerry } from './commands.mts';
 import type { ManagerAtRoot } from './commands.mts';
-import { TROUBLESHOOTING_ANCHORS } from '../../../../../shared/messages/troubleshooting.mjs';
+import { TROUBLESHOOTING_ANCHORS } from '../../../../../shared/messages/troubleshooting.mts';
 import {
   explainedError,
   troubleshootingError,

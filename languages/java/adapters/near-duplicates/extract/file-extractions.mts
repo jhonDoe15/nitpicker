@@ -7,6 +7,7 @@ import type {
   Collected,
   Edit,
   Matches,
+  Outcome,
   ParseText,
   PairRequest,
   ReplaceEdit,
@@ -28,7 +29,7 @@ import { crossOutcomes } from './cross/group.mts';
 import { packageScanner } from './cross/shared-class.mts';
 import { wholeExtraction } from './java-extract.mts';
 import { partialExtraction } from './partial/partial-extract.mts';
-import { METHOD, descendants, pairOf, present, required } from './syntax.mts';
+import { METHOD, descendants, holesOf, pairOf, present, required, runsOf } from './syntax.mts';
 
 type FileSource = SourceFile & { readonly methods: Node[] };
 type StrategyRequest = PairRequest & PartialRequest;
@@ -83,9 +84,9 @@ function inFile(
   }
   const result = context.strategy.extract({
     methods: pairOf(methods),
-    runs: candidate.runs ?? [],
+    runs: runsOf(candidate),
     label: candidate.first.name,
-    engineHoles: candidate.finding.parameters.length,
+    engineHoles: holesOf(candidate),
     root: source.rootNode,
     roots: [source.rootNode],
     text: source.text,
@@ -104,6 +105,15 @@ function isCrossFile({ first, second }: Candidate): boolean {
   return first.file !== second.file;
 }
 
+function sourcesByFile(sources: readonly SourceFile[]): Map<string, FileSource> {
+  return new Map(
+    sources.map((source): [string, FileSource] => [
+      source.file,
+      { ...source, methods: descendants(source.rootNode).filter(({ type }) => type === METHOD) },
+    ]),
+  );
+}
+
 export function javaExtractions(
   sources: readonly SourceFile[],
   { mode, root, parse }: { mode: string; root: string; parse: ParseText },
@@ -112,12 +122,7 @@ export function javaExtractions(
   const units = sources.flatMap(({ rootNode, file }) => javaUnits(rootNode, file));
   const matches = nearDuplicateMatches(units, { isExcepted: () => false });
   const { candidates, notes } = strategy.candidatesOf(matches);
-  const byFile = new Map(
-    sources.map((source): [string, FileSource] => [
-      source.file,
-      { ...source, methods: descendants(source.rootNode).filter(({ type }) => type === METHOD) },
-    ]),
-  );
+  const byFile = sourcesByFile(sources);
   const context = {
     strategy,
     sources: byFile,
@@ -142,13 +147,15 @@ export function javaExtractions(
           },
         ],
   );
-  const outcomes = [
+  const outcomes: Outcome[] = [
     ...here.map((candidate) =>
       outcomeOf(candidate, inFile(candidate, present(byFile.get(candidate.first.file)), context)),
     ),
     ...across
       .filter(({ methods }) => methods.includes(undefined))
-      .map(({ candidate }) => outcomeOf(candidate, { declined: 'a copy is not a plain method' })),
+      .map(({ candidate }): Outcome =>
+        outcomeOf(candidate, { declined: 'a copy is not a plain method' }),
+      ),
     ...crossOutcomes(plain, { scan: packageScanner(root), typeSources: context.typeSources }),
   ];
   return collected(outcomes, notes);

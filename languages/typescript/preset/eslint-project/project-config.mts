@@ -58,7 +58,7 @@ export function projectEslintConfig(root: string): string | undefined {
   return ESLINT_PROJECT_FILES.find((name) => located(context, name).kind !== 'absent');
 }
 
-export function readEslintConfigFile(root: string, relative: string): Buffer | undefined {
+function readEslintConfigFile(root: string, relative: string): Buffer | undefined {
   const found = located(contextOf(root), relative);
   return found.kind === 'file' ? readFileSync(found.full) : undefined;
 }

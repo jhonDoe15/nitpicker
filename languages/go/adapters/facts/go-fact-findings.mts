@@ -1,6 +1,6 @@
-import { RULE_IDS } from '../../../../shared/policy.mjs';
-import { sharedFactFindings as untypedSharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
-import { PUBLIC_FACES } from '../../../../shared/rules/features/feature-roles.mjs';
+import { RULE_IDS } from '../../../../shared/policy.mts';
+import { sharedFactFindings as untypedSharedFactFindings } from '../../../../shared/rules/facts/evaluate.mts';
+import { PUBLIC_FACES } from '../../../../shared/rules/features/feature-roles.mts';
 import { inspectBaseline, readInspect, readTestRun } from '../typed/go-readers.mts';
 import { goUnitFacts } from '../typed/go-unit-readers.mts';
 import { goFacts } from './go-facts.mts';

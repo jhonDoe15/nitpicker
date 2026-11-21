@@ -2,7 +2,7 @@ name: github-release
 
 # Manual only: builds, smoke-tests and pushes the container images of a commit on main to the
 # registry set in container.yml, then publishes a GitHub release for that commit with the packed
-# tarball and its checksum attached. The tag points at a commit on top of it that adds the rule
+# tarball, which carries the engine binary of each platform, and its checksum attached. The tag points at a commit on top of it that adds the rule
 # pages. It never publishes to npm.
 on:
   workflow_dispatch:
@@ -62,8 +62,17 @@ jobs:
       publish: true
       latest: ${{ !inputs.prerelease }}
 
+  # One engine binary per platform; the release packs them into the tarball under engine/bin.
+  engine-binaries:
+    needs: version
+    permissions:
+      contents: read
+    uses: ./.github/workflows/engine-binaries.yml
+    with:
+      commit: ${{ inputs.commit }}
+
   release:
-    needs: [version, images]
+    needs: [version, images, engine-binaries]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -85,6 +94,21 @@ jobs:
           echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
       # `npm pack` runs `prepack`, which builds the rule reference data with the dependencies.
       - run: npm ci
+      # Each artifact engine-<platform>-<arch> becomes engine/bin/<platform>-<arch>. Artifacts do not
+      # keep file modes, so the binaries are made executable again before they are packed.
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          pattern: engine-*
+          path: engine/bin
+      - name: Lay out the engine binaries
+        run: |
+          set -euo pipefail
+          for directory in engine/bin/engine-*; do
+            mv "$directory" "engine/bin/${directory#engine/bin/engine-}"
+          done
+          chmod +x engine/bin/*/nitpicker-engine
+          ls -l engine/bin/*
+          test "$(ls engine/bin | wc -l)" -eq 5
       - name: Check the changelog entry
         env:
           TAG: ${{ steps.version.outputs.tag }}

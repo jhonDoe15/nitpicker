@@ -11,7 +11,7 @@ tool adds on top of rule and path.
 | -------------------------------------------------------------------------------- | -------------------------- | ----------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | PMD (`pmd`)                                                                      | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                     | enforceable: every reported violation                   | The rule's message text (PMD names the offending field, method or variable in it). Repeats get `#2`, `#3` in order. |
 | SpotBugs (`spotbugs`)                                                            | SARIF 2.1.0                | `ingestSarif` (X5), after URI rewriting                     | enforceable: every reported bug                         | SpotBugs' message arguments (class, method or field, called method). Repeats get `#2`, `#3` in order.               |
-| google-java-format (`google-java-format`; `palantir-java-format` for that style) | file list from `--dry-run` | `ingestFormatCheck` (new, `shared/ingest/format-check.mjs`) | enforceable                                             | The constant `format`; the file path is the key. One finding per unformatted file.                                  |
+| google-java-format (`google-java-format`; `palantir-java-format` for that style) | file list from `--dry-run` | `ingestFormatCheck` (new, `shared/ingest/format-check.mts`) | enforceable                                             | The constant `format`; the file path is the key. One finding per unformatted file.                                  |
 | JaCoCo (`jacoco`)                                                                | XML                        | `ingestJacoco` (X6)                                         | descriptive: `line-coverage` metric, `uncovered-method` | As in X6: class and method name plus descriptor.                                                                    |
 
 Notes on the glue in `java-reports.mts`:
@@ -160,7 +160,7 @@ runs its own pinned SpotBugs with them, on Gradle and Maven alike and on the Kot
 classes: every exclude filter is passed as `-exclude`, and a higher effort or a lower threshold
 replaces `-effort:default` and `-medium` unless `"nitpicker"` comes first. The exclude filter is
 the project's list of reviewed suppressions, so it applies as the project's Checkstyle
-`SuppressionFilter` files do, and an edit of it is a policy change. Settings that would drop findings
+`SuppressionFilter` files do. Settings that would drop findings
 of the detectors nitpicker runs are never applied: a lower effort, a higher threshold, an include
 filter, `onlyAnalyze`, `visitors`, `omitVisitors` and a baseline file; the run names the ones it left
 out. Everything SpotBugs reports stays enforceable, the lower-confidence findings a `low` threshold

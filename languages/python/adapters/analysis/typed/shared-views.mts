@@ -1,32 +1,13 @@
-import type { Dirent } from 'node:fs';
 import { duplicateFindings as untypedDuplicateFindings } from '../../../../java/adapters/metrics/java-duplicates.mts';
 import {
   readStructureFindings as untypedStructureFindings,
   sourceLines as untypedSourceLines,
-} from '../../../../../shared/ingest/structure-report.mjs';
-import { projectFilesUnder as untypedFilesUnder } from '../../../../../shared/project-files/project-files.mjs';
-import { featureRoleContract as untypedRoleContract } from '../../../../../shared/rules/features/feature-roles.mjs';
-import { collectFileLimitFindings as untypedFileLimits } from '../../../../../shared/rules/file-limits.mjs';
+} from '../../../../../shared/ingest/structure-report.mts';
+import { collectFileLimitFindings as untypedFileLimits } from '../../../../../shared/rules/file-limits.mts';
 import type { ExceptionEntry } from '../../configuration/python-exceptions.mts';
 import type { IngestedFinding } from '../../../ingest/typed/ingest-types.mts';
 
-export type FeatureRole = {
-  readonly kind: string;
-  readonly isPublic?: true;
-  readonly directory?: string;
-};
-
 type Clone = Readonly<Record<string, unknown>>;
-
-export const projectFilesUnder: (
-  root: string,
-  options: { skipDirectory: (absolute: string, entry: Dirent) => boolean },
-) => string[] = untypedFilesUnder;
-
-export const featureRoleContract: (
-  layout: unknown,
-  face: unknown,
-) => (file: string) => FeatureRole = untypedRoleContract;
 
 export const sourceLines: (
   sources: Map<string, string[]>,

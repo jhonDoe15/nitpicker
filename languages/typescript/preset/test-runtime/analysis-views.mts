@@ -7,13 +7,13 @@ import type {
   TestClassification,
 } from './analysis-types.mts';
 import { containedPath as untypedContainedPath } from '../../../../core/fix/tool-steps/paths/contained-path.mts';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mjs';
-import { depthFirst as untypedDepthFirst } from '../../../../shared/traversal.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mts';
+import { depthFirst as untypedDepthFirst } from '../../../../shared/traversal.mts';
 import { syntaxChildren as untypedSyntaxChildren } from '../syntax/children.mts';
 import {
   classifyTestRuntime as untypedClassifyTestRuntime,
   testRuntimeReport as untypedTestRuntimeReport,
-} from '../../../../shared/rules/test-runtime/classify.mjs';
+} from '../../../../shared/rules/test-runtime/classify.mts';
 import {
   isExcludedPath as untypedIsExcludedPath,
   isTypeOnlyDependency as untypedIsTypeOnlyDependency,

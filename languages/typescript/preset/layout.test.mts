@@ -9,7 +9,7 @@ import { readLayout as untypedReadLayout } from './head-policy.mts';
 import {
   builtInExcludedGlobs as untypedBuiltInExcludedGlobs,
   defaultResolvedLayout as untypedDefaultResolvedLayout,
-  globMatcher as untypedGlobMatcher,
+  globMatcher,
   sourceGlobs as untypedSourceGlobs,
   testGlobs as untypedTestGlobs,
   isSourceFile as untypedIsSourceFile,
@@ -24,7 +24,6 @@ const defaultResolvedLayout = {
   excludedGlobs: textsOf(untypedDefaultResolvedLayout.excludedGlobs),
   runtimeExcludedGlobs: textsOf(untypedDefaultResolvedLayout.runtimeExcludedGlobs),
 };
-const globMatcher: (glob: string) => RegExp = untypedGlobMatcher;
 const sourceGlobs = textsOf(untypedSourceGlobs);
 const testGlobs = textsOf(untypedTestGlobs);
 const isSourceFile: (file: string) => boolean = untypedIsSourceFile;

@@ -1,5 +1,5 @@
-import { hashIdentity as untypedHash } from '../../../../shared/ingest/common.mjs';
-import { escapeRegExp as untypedEscape } from '../../../../shared/paths/glob.mjs';
+import { hashIdentity as untypedHash } from '../../../../shared/ingest/report-records.mts';
+import { escapeRegExp as untypedEscape } from '../../../../shared/paths/glob.mts';
 import { readProjectFile } from '../../libraries/project-files.mts';
 import { listProductionModules } from '../analysis/python-sources.mts';
 import { readMutmutConfig } from '../project-tools/mutmut/mutmut-config.mts';
@@ -92,21 +92,6 @@ function readOptions(projectRoot: string): Options | undefined {
         file: config.file,
         section: config.file === PYPROJECT ? '[tool.mutmut]' : '[mutmut]',
         options: config.table,
-      };
-}
-
-export function mutmutDoNotMutate(
-  projectRoot: string,
-):
-  | { file: string; patterns: string[]; matches: (file: string, pattern: string) => boolean }
-  | undefined {
-  const config = readOptions(projectRoot);
-  return config === undefined
-    ? undefined
-    : {
-        file: config.file,
-        patterns: listOf(config.options['do_not_mutate']),
-        matches: (file: string, pattern: string) => fnmatch(pattern).test(file),
       };
 }
 

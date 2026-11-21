@@ -2,7 +2,7 @@ import { topLevelParts as splitTopLevel } from '../../source/frames/bracket-dept
 import {
   descriptionLines as untypedDescriptionLines,
   tagsHaveContent as untypedTagsHaveContent,
-} from '../../../../shared/rules/doc-comments/doc-comments.mjs';
+} from '../../../../shared/rules/doc-comments/doc-comments.mts';
 import type {
   DocComment,
   DocCommentInput,

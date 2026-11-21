@@ -4,7 +4,7 @@ import {
   childrenAt,
   childrenNamed,
   parseXml,
-} from '../../../../../shared/values/xml.mts';
+} from '../../../../../shared/ingest/report-records.mts';
 import { messageOf } from '../../../../../shared/values/readers.mts';
 
 export type Formatter = { formatter: string; style?: string | undefined; via: string };

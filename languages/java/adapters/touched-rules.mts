@@ -1,4 +1,4 @@
-import { TOUCHED_CODE_RULES } from '../../../shared/policy.mjs';
+import { TOUCHED_CODE_RULES } from '../../../shared/policy.mts';
 export function isJavaTouchedRule(
   rule: string,
   finding?: { readonly tool?: string | undefined },

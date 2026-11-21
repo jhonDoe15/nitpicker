@@ -1,10 +1,12 @@
-import { readdirSync, writeFileSync, type Dirent } from 'node:fs';
+import { readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   PYTHON_SKIPPED_FOLDERS,
   skippedFolderGlobs as untypedSkippedFolderGlobs,
 } from '../../../../core/tooling/jscpd/skipped-folders.mts';
-import { projectFilesUnder, sourceLines } from './typed/shared-views.mts';
+import { sourceLines } from './typed/shared-views.mts';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mts';
+import type { DirectoryEntry } from '../../../../shared/project-files/project-files-types.mts';
 import {
   DOCUMENTATION_DIRECTORIES,
   importRoots,
@@ -14,7 +16,7 @@ import {
   TOP_LEVEL_TEST_DIRECTORIES,
 } from '../execution/python-project.mts';
 import { isGeneratedPython } from '../../libraries/generated-files.mts';
-import { isBuildManifest } from '../../../../shared/hygiene/files/build-output.mjs';
+import { isBuildManifest } from '../../../../shared/hygiene/files/build-output.mts';
 import { bddFeatureMatcher, isDirectory } from '../configuration/pytest/bdd-features.mts';
 import {
   DJANGO_TEST_FILES,
@@ -42,7 +44,7 @@ function isPythonFile(file: string, { wholeProject }: { wholeProject: boolean })
 }
 
 function isSkippedDirectory(
-  entry: Dirent,
+  entry: DirectoryEntry,
   { wholeProject, topLevel }: { wholeProject: boolean; topLevel: boolean },
 ): boolean {
   const skipped = wholeProject ? NON_SOURCE_DIRECTORIES : INSTALLED;
@@ -186,7 +188,7 @@ function productionFiles(
     outputs.set(directory, held);
     return held;
   }
-  function isSkipped(absolute: string, entry: Dirent): boolean {
+  function isSkipped(absolute: string, entry: DirectoryEntry): boolean {
     const parent = path.dirname(absolute);
     return (
       entry.name.startsWith(HIDDEN_PREFIX) ||
@@ -233,7 +235,7 @@ export function isUnder(file: string, root: string): boolean {
   return root === '.' || file === root || file.startsWith(`${root}/`);
 }
 
-function isOutsideSkipped(entry: Dirent): boolean {
+function isOutsideSkipped(entry: DirectoryEntry): boolean {
   return entry.name.startsWith(HIDDEN_PREFIX) || OUTSIDE_SKIPPED.has(entry.name);
 }
 

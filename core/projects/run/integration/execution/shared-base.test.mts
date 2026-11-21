@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../../shared/paths/checkout-module.mts';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { writeFiles } from '../../../../diff/git/test-support/fixture-files.mts';
 import { serviceMonorepoFiles } from '../../test-support/service-monorepo.mts';

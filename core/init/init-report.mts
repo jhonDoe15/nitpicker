@@ -1,4 +1,4 @@
-import { listNames } from '../../shared/messages/messages.mjs';
+import { listNames } from '../../shared/messages/messages.mts';
 import { fieldOf, textOf } from '../../shared/values/readers.mts';
 import type { InitProject as Project, Peers } from './init-types.mts';
 
@@ -19,7 +19,6 @@ export type Placed = {
   readonly peers: Peers;
   readonly config: PlacedFile;
   readonly workflow: PlacedFile | undefined;
-  readonly approval: PlacedFile | undefined;
   readonly workflowFile: string;
   readonly agents: AgentsResult | undefined;
   readonly offers: { readonly agents: boolean; readonly workflow: boolean };
@@ -27,7 +26,6 @@ export type Placed = {
 };
 
 export type CiContext = {
-  readonly approval: PlacedFile | undefined;
   readonly workflowFile: string;
   readonly command: string;
   readonly offered: boolean;
@@ -146,32 +144,18 @@ export function agentsLines(
   return [outcomes[agents.status] ?? ''];
 }
 
-function approvalNote(approval: PlacedFile): string[] {
-  return approval.status === 'created'
-    ? [
-        'A person accepts a policy loosening with the accept-policy-change label; create it once: gh label create accept-policy-change',
-        'Public repo: allow pull_request_target in Settings > Actions > Policies',
-      ]
-    : [];
-}
-
 export function ciLines(
   workflow: PlacedFile | undefined,
-  { approval, workflowFile, command, offered }: CiContext,
+  { workflowFile, command, offered }: CiContext,
 ): string[] {
   if (workflow === undefined) {
     return offered ? [`To write ${workflowFile}, run: ${command} init --ci github`] : [];
   }
-  return [
-    ...fileLines(workflow),
-    ...(workflow.notes ?? []),
-    ...(approval === undefined ? [] : [...fileLines(approval), ...approvalNote(approval)]),
-  ];
+  return [...fileLines(workflow), ...(workflow.notes ?? [])];
 }
 
 export function renderReport(placed: Placed): string {
-  const { project, peers, config, workflow, approval, workflowFile, agents, offers, skillSource } =
-    placed;
+  const { project, peers, config, workflow, workflowFile, agents, offers, skillSource } = placed;
   const command = runCommandOf(project);
   const sections = [
     [headline(project), ...project.notes],
@@ -180,7 +164,7 @@ export function renderReport(placed: Placed): string {
     skillLines(project, skillSource),
     [
       ...agentsLines(agents, { command, offered: offers.agents }),
-      ...ciLines(workflow, { approval, workflowFile, command, offered: offers.workflow }),
+      ...ciLines(workflow, { workflowFile, command, offered: offers.workflow }),
     ],
     [
       `Then run \`${command}\` to check a change, or \`${command} --all\` to survey the whole project.`,

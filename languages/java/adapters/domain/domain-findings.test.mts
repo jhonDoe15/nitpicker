@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { exceptionHint as exceptionHintUntyped } from '../../../../shared/rules/exceptions.mjs';
+import { exceptionHint as exceptionHintUntyped } from '../../../../shared/rules/exceptions.mts';
 import { readClassGraph } from '../features/class-graph.mts';
 import { featureProjects, javaSources, rows } from '../features/test-support/feature-project.mts';
 import { domainFindings } from './domain-findings.mts';

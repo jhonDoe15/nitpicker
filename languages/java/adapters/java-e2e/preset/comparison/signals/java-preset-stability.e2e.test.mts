@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { libraryProject as libraryProjectUntyped } from '../../../../../../../shared/rules/stability/test-support/library-project.mjs';
+import { libraryProject as libraryProjectUntyped } from '../../../../../../../shared/rules/stability/test-support/library-project.mts';
 import { collectJavaFindings } from '../../../../java-diff.mts';
 import {
   enabled,

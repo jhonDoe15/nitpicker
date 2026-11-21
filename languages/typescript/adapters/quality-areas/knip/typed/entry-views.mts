@@ -1,7 +1,7 @@
 import { parsedTsconfig as untypedParsedTsconfig } from '../../../../preset/modules/tsconfig-files.mts';
 import { hasProjectFile as untypedHasProjectFile } from '../../../../preset/test-runner/detection/project-files.mts';
-import { compareText as untypedCompareText } from '../../../../../../shared/paths/path-order.mjs';
-import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../../shared/project-files/project-files.mjs';
+import { compareText as untypedCompareText } from '../../../../../../shared/paths/path-order.mts';
+import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../../shared/project-files/project-files.mts';
 
 export const parsedTsconfig: (file: string) => {
   readonly options: {

@@ -1,4 +1,4 @@
-import { MODULE_BUILD_FAILED_RULE as SHARED_MODULE_BUILD_FAILED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
+import { MODULE_BUILD_FAILED_RULE as SHARED_MODULE_BUILD_FAILED_RULE } from '../../../../../shared/rules/finding-parts.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import type { JavaFinding } from '../../typed/java-values.mts';
 

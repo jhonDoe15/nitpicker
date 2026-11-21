@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { spawnCollected, withEngineHint } from './oxlint-process.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
-import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mts';
 
 describe('the engine hint on an oxlint failure', () => {
   it('suggests the ESLint engine when the failure may be the engine', () => {

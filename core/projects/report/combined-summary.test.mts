@@ -10,18 +10,14 @@ import {
 } from './combined-summary.mts';
 import { reportFolder } from '../plan/project-entry.mts';
 import { outcomeOf } from './outcome.mts';
-import type { ProjectOutcome, RepositoryPolicy } from '../project-types.mts';
+import type { ProjectOutcome } from '../project-types.mts';
 
-function summaryOf(
-  names: readonly string[],
-  repositoryPolicy?: Pick<RepositoryPolicy, 'accepted' | 'toolErrors'>,
-) {
+function summaryOf(names: readonly string[]) {
   return {
     projects: names.map((status) => ({
       status,
       overallStatus: status === 'error' ? 'tool-error' : 'completed',
     })),
-    ...(repositoryPolicy === undefined ? {} : { repositoryPolicy }),
   };
 }
 
@@ -36,20 +32,8 @@ describe('exitCodeOf', () => {
     expect(exitCodeOf(summaryOf(names))).toBe(expected);
   });
 
-  it('fails on a repository policy loosening that is not accepted', () => {
-    expect(exitCodeOf(summaryOf(['passed'], { accepted: false }))).toBe(1);
-    expect(exitCodeOf(summaryOf(['passed'], { accepted: true }))).toBe(0);
-  });
-
-  it('reports a repository policy that could not be checked as incomplete', () => {
-    const incomplete = { accepted: true, toolErrors: [{ tool: 'nitpicker-projects' }] };
-    expect(exitCodeOf(summaryOf(['passed'], incomplete))).toBe(2);
-    expect(exitCodeOf(summaryOf(['passed'], incomplete), { deferExit: true })).toBe(2);
-    expect(exitCodeOf(summaryOf(['failed'], incomplete))).toBe(1);
-  });
-
   it('defers findings but still reports a run that did not complete', () => {
-    expect(exitCodeOf(summaryOf(['failed'], { accepted: false }), { deferExit: true })).toBe(0);
+    expect(exitCodeOf(summaryOf(['failed']), { deferExit: true })).toBe(0);
     expect(exitCodeOf(summaryOf(['failed', 'error']), { deferExit: true })).toBe(2);
   });
 });
@@ -65,7 +49,7 @@ describe('outcomeOf', () => {
 
   it('reads a comparison report', () => {
     const root = reportRoot({
-      'summary.json': { newEnforceableFindings: 2, policyDigest: 'abc123abc123' },
+      'summary.json': { newEnforceableFindings: 2 },
       'tool-errors.json': [],
     });
 
@@ -73,7 +57,6 @@ describe('outcomeOf', () => {
       exitCode: 1,
       newEnforceableFindings: 2,
       toolErrors: 0,
-      policyDigest: 'abc123abc123',
       status: 'failed',
       complete: true,
     });
@@ -164,7 +147,6 @@ describe('combinedSummary', () => {
     const summary = combinedSummary({
       plan,
       outside: ['README.md'],
-      repository: undefined,
       elapsedMs: 12,
       results: [
         row('web', true, {
@@ -172,7 +154,6 @@ describe('combinedSummary', () => {
           status: 'failed',
           newEnforceableFindings: 2,
           toolErrors: 0,
-          policyDigest: 'abc',
           complete: true,
         }),
         row('api', true, {
@@ -212,7 +193,6 @@ describe('combinedSummary', () => {
           toolErrors: 0,
           report: 'web',
           summary: 'web/summary.json',
-          policyDigest: 'abc',
         },
         {
           path: 'api',
@@ -251,7 +231,6 @@ describe('combinedSummary', () => {
     const summary = combinedSummary({
       plan,
       outside: [],
-      repository: undefined,
       notices: [],
       elapsedMs: 0,
       results: [row('web', false)],
