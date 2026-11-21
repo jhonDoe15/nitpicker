@@ -33,7 +33,7 @@ const lines = readFileSync(list, 'utf8')
       true,
     );
     const references = referencePositions(sourceFile);
-    const definitions = fileDefinitions(sourceFile).map(({ span, tokens, ...definition }) => ({
+    const definitions = fileDefinitions(sourceFile).map(({ span, ...definition }) => ({
       ...definition,
       usedLocally: (references.get(definition.name) ?? []).some(
         (at) => at < span[0] || at >= span[1],

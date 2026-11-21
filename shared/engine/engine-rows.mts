@@ -1,5 +1,6 @@
-import { createReadStream, readFileSync } from 'node:fs';
+import { closeSync, createReadStream, openSync, readFileSync, readSync } from 'node:fs';
 import { createInterface } from 'node:readline';
+import { StringDecoder } from 'node:string_decoder';
 
 function parsed(text: string): unknown {
   const value: unknown = JSON.parse(text);
@@ -71,5 +72,46 @@ export async function* readEngineLines(file: string): AsyncGenerator<unknown, vo
     if (line !== '') {
       yield parsed(line);
     }
+  }
+}
+
+const CHUNK_BYTES = 1024 * 1024;
+
+function* textChunks(descriptor: number): Generator<string, void> {
+  const buffer = Buffer.alloc(CHUNK_BYTES);
+  const decoder = new StringDecoder('utf8');
+  for (;;) {
+    const read = readSync(descriptor, buffer, 0, CHUNK_BYTES, null);
+    if (read === 0) {
+      yield decoder.end();
+      return;
+    }
+    yield decoder.write(buffer.subarray(0, read));
+  }
+}
+
+export function* readEngineLinesSync<Line>(
+  file: string,
+  parse: (text: string) => Line,
+): Generator<Line, void> {
+  const descriptor = openSync(file, 'r');
+  try {
+    let pending: string[] = [];
+    for (const chunk of textChunks(descriptor)) {
+      const parts = chunk.split('\n');
+      const last = parts.pop() ?? '';
+      if (parts.length > 0) {
+        parts[0] = [...pending, parts[0]].join('');
+        pending = [];
+      }
+      pending.push(last);
+      yield* parts.filter((line) => line !== '').map((line) => parse(line));
+    }
+    const rest = pending.join('');
+    if (rest !== '') {
+      yield parse(rest);
+    }
+  } finally {
+    closeSync(descriptor);
   }
 }

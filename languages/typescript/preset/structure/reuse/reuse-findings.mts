@@ -135,8 +135,11 @@ export function reuseFindings(
   const { exceptions, react, layout: configured } = readHeadPolicy(environment);
   const layout = readLayout(environment);
   const resolve = projectResolver(projectRoot);
-  const facts = productionFacts(projectRoot, layout, (specifier, file) =>
-    importSourceText(resolve(specifier, file), specifier, file),
+  const facts = productionFacts(
+    projectRoot,
+    layout,
+    (specifier, file) => importSourceText(resolve(specifier, file), specifier, file),
+    environment,
   );
   const context = { analyzerName, isExcepted: exceptionMatcher(exceptions), resolve };
   const baseline =

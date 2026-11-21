@@ -73,7 +73,13 @@ pub fn write_facts(files: &[(String, String)], out: &mut dyn std::io::Write) -> 
             batch
                 .par_iter()
                 .map(|(path, display)| {
-                    let bytes = std::fs::read(path).unwrap_or_default();
+                    let bytes = match std::fs::read(path) {
+                        Ok(bytes) => bytes,
+                        Err(error) => {
+                            let unread = FileFacts { path: display.clone(), unparsed: Some(error.to_string()), ..FileFacts::default() };
+                            return serde_json::to_string(&unread).expect("json");
+                        }
+                    };
                     let text = String::from_utf8_lossy(&bytes);
                     let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
                     with_tokens(path, text, |file| file.halves.json(serde_json::to_string(&file_facts(file, display)).expect("json")))

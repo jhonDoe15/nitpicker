@@ -1,4 +1,5 @@
 //! The structure checks of the TypeScript preset: the same facts the Node analyzer hands to the shared rules.
+pub mod literals;
 pub mod metrics;
 pub mod names;
 pub mod reuse;
@@ -66,6 +67,9 @@ pub fn analyze_source(file: &ParsedFile, display: &str) -> Result<SourceAnalysis
         return Err(file.errors.join("; "));
     }
     let tree = Tree::of(file.program);
+    if literals::has_sloppy_literal(file.text, &tree, display) {
+        return Err("a literal the TypeScript compiler refuses outside a script".to_string());
+    }
     let shape = shape::Shape { file, tree: &tree };
     let names = names::function_names(&shape);
     let (functions, classes) = metrics::entries(&shape, &names, display);
@@ -74,7 +78,8 @@ pub fn analyze_source(file: &ParsedFile, display: &str) -> Result<SourceAnalysis
 
 /// `files` pairs the path to read with the path to report, in the order the report lists them.
 pub fn analyze_files(files: &[(String, String)]) -> Analysis {
-    let per_file: Vec<Result<SourceAnalysis, Unparsed>> = files
+    let pool = rayon::ThreadPoolBuilder::new().stack_size(64 << 20).build().expect("threads");
+    let per_file: Vec<Result<SourceAnalysis, Unparsed>> = pool.install(|| files
         .par_iter()
         .map(|(path, display)| {
             let bytes = std::fs::read(path).map_err(|error| Unparsed { file: display.clone(), reason: error.to_string() })?;
@@ -82,7 +87,7 @@ pub fn analyze_files(files: &[(String, String)]) -> Analysis {
             let text = text.strip_prefix('\u{feff}').unwrap_or(&text);
             with_parsed(path, text, |file| analyze_source(file, display)).map_err(|reason| Unparsed { file: display.clone(), reason })
         })
-        .collect();
+        .collect());
     let mut analysis = Analysis { summary: Summary { files: files.len(), ..Summary::default() }, ..Analysis::default() };
     for result in per_file {
         match result {
