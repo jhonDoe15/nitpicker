@@ -40,7 +40,7 @@ tester.run('no-pattern-compiled-in-loop', rule, {
     compiled(
       `${PATH}export function tests(directories: string[], files: string[]) { for (const directory of directories) { files.filter((file) => path.matchesGlob(file, \`\${directory}/**/*.test.ts\`)); } }`,
       'path.matchesGlob',
-      '`${directory}/**/*.test.ts`',
+      `\`\${directory}/**/*.test.ts\``,
     ),
     compiled(
       `${PATH}export function each(files: string[], pattern: string) { for (const file of files) { if (path.posix.matchesGlob(file, pattern)) return file; } return undefined; }`,

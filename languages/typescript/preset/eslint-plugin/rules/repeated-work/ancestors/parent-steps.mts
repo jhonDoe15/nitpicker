@@ -2,8 +2,6 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { memberName } from '../../collections/costly-forms/repeated-runs.mts';
 import { unwrapped } from '../../typed/syntax-views.mts';
 
-type Loop = TSESTree.ForStatement | TSESTree.WhileStatement | TSESTree.DoWhileStatement;
-
 const PARENT_LINKS = new Set(['parent', 'parentElement', 'parentNode', 'parentPath']);
 const PARENT_CALLS = new Set(['getParent', 'getParentNode']);
 
@@ -22,9 +20,8 @@ function isParentOf(value: TSESTree.Node, name: string): boolean {
   return object.type === AST_NODE_TYPES.Identifier && object.name === name && names.has(property);
 }
 
-function parentStep(node: TSESTree.Node | null | undefined): string | undefined {
-  const step =
-    node?.type === AST_NODE_TYPES.ExpressionStatement ? node.expression : (node ?? undefined);
+function parentStep(node: TSESTree.Node | undefined): string | undefined {
+  const step = node?.type === AST_NODE_TYPES.ExpressionStatement ? node.expression : node;
   if (
     step?.type !== AST_NODE_TYPES.AssignmentExpression ||
     step.operator !== '=' ||
@@ -37,7 +34,7 @@ function parentStep(node: TSESTree.Node | null | undefined): string | undefined 
 
 export function climbingName(loop: TSESTree.Node): string | undefined {
   if (loop.type === AST_NODE_TYPES.ForStatement) {
-    return parentStep(loop.update);
+    return parentStep(loop.update ?? undefined);
   }
   if (
     loop.type !== AST_NODE_TYPES.WhileStatement &&

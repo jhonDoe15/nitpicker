@@ -4,8 +4,6 @@ import type { SourceCode } from '../../typed/node-views.mts';
 import { unwrapped } from '../../typed/syntax-views.mts';
 import { isInputRead, isLiteralList, readsPerElement } from './input-reads.mts';
 
-type Filled = { readonly name: TSESTree.Identifier; readonly filler?: TSESTree.Node };
-
 function mappedReads(sourceCode: SourceCode, node: TSESTree.Node): boolean {
   const call = unwrapped(node);
   if (call.type !== AST_NODE_TYPES.CallExpression) {
@@ -28,9 +26,10 @@ function promiseAll(node: TSESTree.Node): TSESTree.Node | undefined {
     return undefined;
   }
   const callee = unwrapped(call.callee);
-  return callee.type === AST_NODE_TYPES.MemberExpression &&
-    unwrapped(callee.object).type === AST_NODE_TYPES.Identifier &&
-    (unwrapped(callee.object) as TSESTree.Identifier).name === 'Promise' &&
+  const owner =
+    callee.type === AST_NODE_TYPES.MemberExpression ? unwrapped(callee.object) : undefined;
+  return owner?.type === AST_NODE_TYPES.Identifier &&
+    owner.name === 'Promise' &&
     memberName(callee) === 'all'
     ? call.arguments[0]
     : undefined;
@@ -62,7 +61,7 @@ export function pushLoopFiller(
     callee.type === AST_NODE_TYPES.MemberExpression ? unwrapped(callee.object) : undefined;
   return target?.type === AST_NODE_TYPES.Identifier &&
     target.name === name &&
-    memberName(callee as TSESTree.MemberExpression) === 'push' &&
+    memberName(callee) === 'push' &&
     isInputRead(sourceCode, call.arguments[0])
     ? statement
     : undefined;

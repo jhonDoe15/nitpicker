@@ -7,7 +7,7 @@ import { isFsRead } from '../early-exits/pure-work.mts';
 import { isFsCall } from '../repeated-calls/call-shapes.mts';
 import { pushLoopFiller, readAllInit } from './filled-lists.mts';
 
-function singlePass(use: TSESTree.Identifier): TSESTree.Node | undefined {
+function singlePass(use: TSESTree.Node): TSESTree.Node | undefined {
   const outer = outerOf(use);
   const { parent } = outer;
   if (parent?.type === AST_NODE_TYPES.ForOfStatement && parent.right === outer) {
@@ -82,9 +82,9 @@ export const rule: TSESLint.RuleModule<'readAll'> = {
         }
         const statements: readonly TSESTree.Node[] =
           'body' in parent.parent && Array.isArray(parent.parent.body) ? parent.parent.body : [];
+        const initial = unwrapped(init);
         const filler =
-          unwrapped(init).type === AST_NODE_TYPES.ArrayExpression &&
-          (unwrapped(init) as TSESTree.ArrayExpression).elements.length === 0
+          initial.type === AST_NODE_TYPES.ArrayExpression && initial.elements.length === 0
             ? pushLoopFiller(sourceCode, statements[statements.indexOf(parent) + 1], id.name)
             : undefined;
         if (filler === undefined && !readAllInit(sourceCode, init)) {
@@ -96,9 +96,7 @@ export const rule: TSESLint.RuleModule<'readAll'> = {
         );
         const [only] = uses;
         const pass =
-          uses.length === 1 && only !== undefined
-            ? singlePass(only.identifier as TSESTree.Identifier)
-            : undefined;
+          uses.length === 1 && only !== undefined ? singlePass(only.identifier) : undefined;
         if (
           pass !== undefined &&
           only !== undefined &&

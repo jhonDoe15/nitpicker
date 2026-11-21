@@ -48,18 +48,21 @@ function cached(call: TSESTree.Node, boundary: TSESTree.Node): boolean {
   });
 }
 
-type Loop =
-  | TSESTree.DoWhileStatement
-  | TSESTree.ForInStatement
-  | TSESTree.ForOfStatement
-  | TSESTree.ForStatement
-  | TSESTree.WhileStatement;
-
 function leavesOnFirstPass(repeat: Repeat): boolean {
-  if (repeat.kind !== 'loop') {
+  const { node } = repeat;
+  if (
+    repeat.kind !== 'loop' ||
+    !(
+      node.type === AST_NODE_TYPES.DoWhileStatement ||
+      node.type === AST_NODE_TYPES.ForInStatement ||
+      node.type === AST_NODE_TYPES.ForOfStatement ||
+      node.type === AST_NODE_TYPES.ForStatement ||
+      node.type === AST_NODE_TYPES.WhileStatement
+    )
+  ) {
     return false;
   }
-  const { body } = repeat.node as Loop;
+  const { body } = node;
   const last = body.type === AST_NODE_TYPES.BlockStatement ? body.body.at(-1) : body;
   return last !== undefined && LEAVES.has(last.type);
 }

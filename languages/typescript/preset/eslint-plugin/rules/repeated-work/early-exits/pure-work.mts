@@ -102,58 +102,82 @@ function globalCallName(sourceCode: SourceCode, callee: TSESTree.Node): string |
     : undefined;
 }
 
-function isPureCallback(sourceCode: SourceCode, fn: TSESTree.Node): boolean {
-  if (!isFunction(fn) || fn.async || fn.generator) {
-    return false;
+function callbackBody(fn: TSESTree.Node): TSESTree.Node | undefined {
+  if (
+    !isFunction(fn) ||
+    fn.async ||
+    fn.generator ||
+    fn.body.type === AST_NODE_TYPES.BlockStatement
+  ) {
+    return undefined;
   }
-  const body = fn.body.type === AST_NODE_TYPES.BlockStatement ? undefined : fn.body;
-  return body !== undefined && isPureWork(sourceCode, body);
+  return fn.body;
 }
 
-function isPureCall(sourceCode: SourceCode, call: TSESTree.CallExpression): boolean {
+function argumentParts(call: TSESTree.CallExpression): TSESTree.Node[] | undefined {
+  const parts: TSESTree.Node[] = [];
+  for (const argument of call.arguments) {
+    const part = isFunction(argument) ? callbackBody(argument) : argument;
+    if (part === undefined) {
+      return undefined;
+    }
+    parts.push(part);
+  }
+  return parts;
+}
+
+function callParts(
+  sourceCode: SourceCode,
+  call: TSESTree.CallExpression,
+): TSESTree.Node[] | undefined {
   const callee = unwrapped(call.callee);
   const takesCallback = CALLBACK_STEPS.has(memberName(callee) ?? '');
   const [first] = call.arguments;
-  if (takesCallback && (first === undefined || !isPureCallback(sourceCode, first))) {
-    return false;
+  if (takesCallback && (first === undefined || callbackBody(first) === undefined)) {
+    return undefined;
   }
-  const pureArguments = call.arguments.every(
-    (argument) =>
-      isPureCallback(sourceCode, argument) ||
-      (!isFunction(argument) && isPureWork(sourceCode, argument)),
-  );
-  if (!pureArguments) {
-    return false;
+  const parts = argumentParts(call);
+  if (parts === undefined) {
+    return undefined;
   }
   if (PURE_GLOBAL_CALLS.has(globalCallName(sourceCode, callee) ?? '')) {
-    return true;
+    return parts;
   }
-  return (
-    callee.type === AST_NODE_TYPES.MemberExpression &&
-    PURE_STEPS.has(memberName(callee) ?? '') &&
-    isPureWork(sourceCode, callee.object)
-  );
+  return callee.type === AST_NODE_TYPES.MemberExpression && PURE_STEPS.has(memberName(callee) ?? '')
+    ? [callee.object, ...parts]
+    : undefined;
+}
+
+function pureParts(sourceCode: SourceCode, node: TSESTree.Node): TSESTree.Node[] | undefined {
+  const value = unwrapped(node);
+  if (value.type === AST_NODE_TYPES.AwaitExpression) {
+    return [value.argument];
+  }
+  if (value.type === AST_NODE_TYPES.CallExpression) {
+    return callParts(sourceCode, value);
+  }
+  if (value.type === AST_NODE_TYPES.NewExpression) {
+    return value.callee.type === AST_NODE_TYPES.Identifier &&
+      PURE_CONSTRUCTORS.has(value.callee.name) &&
+      isGlobal(sourceCode, value.callee)
+      ? value.arguments
+      : undefined;
+  }
+  return PLAIN.has(value.type) ? nodeChildren(value) : undefined;
 }
 
 export function isPureWork(sourceCode: SourceCode, node: TSESTree.Node): boolean {
-  const value = unwrapped(node);
-  if (value.type === AST_NODE_TYPES.AwaitExpression) {
-    return isPureWork(sourceCode, value.argument);
+  const pending = [node];
+  for (const item of pending) {
+    const parts = pureParts(sourceCode, item);
+    if (parts === undefined) {
+      return false;
+    }
+    for (const part of parts) {
+      pending.push(part);
+    }
   }
-  if (value.type === AST_NODE_TYPES.CallExpression) {
-    return isPureCall(sourceCode, value);
-  }
-  if (value.type === AST_NODE_TYPES.NewExpression) {
-    return (
-      value.callee.type === AST_NODE_TYPES.Identifier &&
-      PURE_CONSTRUCTORS.has(value.callee.name) &&
-      isGlobal(sourceCode, value.callee) &&
-      value.arguments.every((argument) => isPureWork(sourceCode, argument))
-    );
-  }
-  return (
-    PLAIN.has(value.type) && nodeChildren(value).every((child) => isPureWork(sourceCode, child))
-  );
+  return true;
 }
 
 function isCostlyStep(sourceCode: SourceCode, node: TSESTree.Node): boolean {

@@ -12,7 +12,7 @@ const DISCARDED = new Set<string>([
 ]);
 
 function functionName(fn: FunctionNode): TSESTree.Identifier | undefined {
-  if (fn.id !== null && fn.id !== undefined) {
+  if (fn.id !== null) {
     return fn.id;
   }
   const declarator = outerOf(fn).parent;
@@ -103,10 +103,11 @@ function argumentNames(call: TSESTree.CallExpression): Set<string> {
 function selfCalls(fn: FunctionNode, name: string): TSESTree.CallExpression[] {
   const calls: TSESTree.CallExpression[] = [];
   someNode(fn.body, (node) => {
+    const callee = node.type === AST_NODE_TYPES.CallExpression ? unwrapped(node.callee) : undefined;
     if (
       node.type === AST_NODE_TYPES.CallExpression &&
-      unwrapped(node.callee).type === AST_NODE_TYPES.Identifier &&
-      (unwrapped(node.callee) as TSESTree.Identifier).name === name &&
+      callee?.type === AST_NODE_TYPES.Identifier &&
+      callee.name === name &&
       ancestorsOf(node).find(isFunction) === fn &&
       !DISCARDED.has(outerOf(node).parent?.type ?? '')
     ) {
