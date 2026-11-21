@@ -1,5 +1,4 @@
 import type { NitpickerConfig } from '../../../../../shared/values/config-types.mts';
-import type { AppliedValues } from '../../../../../core/policy-changes/types/policy-types.mts';
 import type { Fields } from '../../../../../shared/values/readers.mts';
 
 export type ToolValues = Fields;
@@ -15,8 +14,6 @@ export type ToolPolicy = {
   readonly disable?: readonly string[] | undefined;
   readonly [field: string]: unknown;
 };
-
-export type AppliedChange = AppliedValues;
 
 export type ToolEntry = {
   readonly files: readonly string[];

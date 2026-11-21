@@ -75,19 +75,6 @@ function comparisonLine(report: ReportData): string[] {
   return [`${base}, head ${code(shortSha(summary['headSha']))}.`, `${counts.join(', ')}.`];
 }
 
-function policySection(summary: Summary): string[] {
-  const changes = listOf(summary['policyChanges']);
-  if (changes.length === 0) {
-    return [];
-  }
-  const accepted = summary['policyChangeAccepted'] === true;
-  return [
-    `### Policy changed in this change${accepted ? ' (loosening accepted)' : ''}`,
-    '',
-    ...cappedList(changes, inlineText, LISTED_NOTES),
-  ];
-}
-
 function noticeSection(summary: Summary): string[] {
   const notices = listOf(summary['notices']);
   if (notices.length === 0) {
@@ -109,11 +96,6 @@ function heldLine(report: ReportData): string[] {
   ];
 }
 
-function pendingLoosening(summary: Summary): unknown {
-  const loosened = listOf(summary['policyLoosenings']).length > 0;
-  return loosened && summary['policyChangeAccepted'] !== true ? summary['policyDigest'] : undefined;
-}
-
 export function renderDiffSummary(report: ReportData, context: LinkContext): string {
   const enforceable = report.newFindings.filter(
     ({ classification }) => classification === 'enforceable',
@@ -130,7 +112,6 @@ export function renderDiffSummary(report: ReportData, context: LinkContext): str
     ]),
     ...comparisonLine(report),
     '',
-    ...policySection(report.summary),
     ...(report.newFindings.length === 0
       ? []
       : ['### New findings by tool and rule', '', ...ruleTable(report.newFindings)]),
@@ -141,7 +122,6 @@ export function renderDiffSummary(report: ReportData, context: LinkContext): str
     ...exceptionRoute({
       hasFindings: enforceable.length > 0,
       example: exceptionExample(enforceable),
-      loosening: pendingLoosening(report.summary),
     }),
   ].join('\n');
 }

@@ -194,10 +194,7 @@ Full diagnostics: ${outputRoot}/report.txt
       workingTree: sha64,
       overallStatus: 'tool-error',
       newEnforceableFindings: 0,
-      policyChanges: [],
-      policyLoosenings: [],
       projectPath: '.',
-      policyChangeAccepted: false,
       notices: [],
       mode: 'full',
     });

@@ -12,6 +12,7 @@ tree-sitter = "0.27.2"
 tree-sitter-java = "0.23.5"
 regex = "1"
 sha2 = "0.10"
+fancy-regex = "0.14"
 walkdir = "2"
 zip = { version = "9.8.1", default-features = false, features = ["deflate"] }
 oxc_allocator = "0.159.0"

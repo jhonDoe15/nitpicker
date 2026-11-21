@@ -49,10 +49,12 @@ const OXLINT_CONSUMERS = /^(?:eslint-|coding-standards$)/u;
 export const ESLINT_PLUGIN_PACKAGES = [
   '@eslint/js',
   '@vitest/eslint-plugin',
+  'eslint-plugin-cypress',
   'eslint-plugin-formatjs',
   'eslint-plugin-functional',
   'eslint-plugin-jest',
   'eslint-plugin-jsx-a11y-x',
+  'eslint-plugin-playwright',
   'eslint-plugin-react-dom',
   'eslint-plugin-react-hooks',
   'eslint-plugin-react-web-api',

@@ -47,7 +47,7 @@ function inheritedConfig(config: unknown, memberSegments: readonly string[]): un
   return rebasedSettings(own, memberSegments) ?? {};
 }
 
-export function inheritedLayerFiles(
+function inheritedLayerFiles(
   projectRoot: string,
   inherits: string | undefined,
   { repositoryRoot }: { readonly repositoryRoot?: string | undefined } = {},

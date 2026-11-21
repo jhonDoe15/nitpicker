@@ -1,8 +1,6 @@
 import type { ConfiguredCli } from '../command/comparison/run-context.mts';
 import type { CliOptions, ExitCode } from '../cli-context.mts';
-import type { Loosening as PolicyLoosening } from '../policy-changes/types/policy-types.mts';
 import type { NitpickerConfig, ProjectOverlay } from '../../shared/values/config-types.mts';
-import type { ReportEntry } from '../../shared/values/findings.mts';
 
 export type ProjectEntry = {
   readonly path: string;
@@ -87,7 +85,6 @@ export type ProjectOutcome = {
   readonly complete: boolean;
   readonly newEnforceableFindings: number;
   readonly toolErrors: number;
-  readonly policyDigest?: string;
   readonly error?: string;
 };
 
@@ -95,14 +92,6 @@ export type ProjectRow = {
   readonly project: PlanProject;
   readonly selection: ProjectSelection;
   readonly outcome?: ProjectOutcome;
-};
-
-export type RepositoryPolicy = {
-  readonly accepted: boolean;
-  readonly policyLoosenings: readonly string[];
-  readonly policyDigest?: string;
-  readonly findings?: readonly ReportEntry[];
-  readonly toolErrors?: readonly ReportEntry[];
 };
 
 export type MonorepoCli = ConfiguredCli & { readonly singleProject?: true };
@@ -123,8 +112,6 @@ export type ProjectCli = {
   readonly projectKey?: string | undefined;
   readonly sharedBaseWorktree?: ConfiguredCli['sharedBaseWorktree'];
   readonly sharedHeadWorktree?: ConfiguredCli['sharedHeadWorktree'];
-  readonly repositoryLoosenings?: readonly PolicyLoosening[];
-  readonly repositoryToolErrors?: readonly ReportEntry[];
 };
 
 export type RunProject = (options: CliOptions, extraCli: ProjectCli) => ExitCode;
@@ -134,5 +121,4 @@ export type Comparison = {
   readonly base?: ConfiguredCli['sharedBase'];
   readonly mergeBaseSha?: string;
   readonly basePlan?: MonorepoPlan | undefined;
-  readonly toolErrors?: readonly ReportEntry[];
 };

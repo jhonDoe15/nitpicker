@@ -139,9 +139,9 @@ describe('outsideRootsRule', () => {
 });
 
 describe('the outside-roots message', () => {
-  it('names moving the code under a source root first and the loosening route second', () => {
+  it('names moving the code under a source root first and adding a source root second', () => {
     expect(outsideRootsRule({ path: '^src/' }, ['src']).comment).toBe(
-      'Production code imports only from layout.sourceRoots: move the imported code under a source root, or add its folder to layout.sourceRoots so the gate checks it. Excluding the imported file instead is a policy loosening that fails until a person accepts it.',
+      'Production code imports only from layout.sourceRoots: move the imported code under a source root, or add its folder to layout.sourceRoots so the gate checks it.',
     );
   });
 });

@@ -2,7 +2,6 @@ import { sumToolCount, formatSeconds } from './format/text.mts';
 import { heldFindings as heldGroups, heldLine as heldEntryLine } from './format/held-findings.mts';
 import { noteSectionLines as noteLines } from './format/notes.mts';
 import { noticeSection } from './review/notices.mts';
-import { policyChangeSection } from './review/policy-changes.mts';
 import { quickLines, stagedLines } from '../../quick/summary.mts';
 import { partialRunLines } from './partial-run/partial-run.mts';
 import { skippedLines } from '../skipping/lines.mts';
@@ -50,7 +49,6 @@ export function renderTextReport(
   const lines: unknown[] = [
     ...summaryLines(report),
     ...configOverrideLines(listOf(report.summary['configOverrides'])),
-    ...policyChangeSection(report.summary),
     ...noticeSection(listOf(report.summary['notices'])),
     ...toolCountLines(report.summary),
   ];

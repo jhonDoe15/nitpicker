@@ -98,10 +98,6 @@
           "enum": ["exceptions", "python.exceptions"]
         },
         "symbol": { "$ref": "#/$defs/nonEmptyString" },
-        "policyKind": {
-          "description": "On a policy-loosened finding of a report: which kind of policy change it is, which picks the guidance its message gives.",
-          "$ref": "#/$defs/nonEmptyString"
-        },
         "location": { "$ref": "#/$defs/location" },
         "metric": { "$ref": "#/$defs/metric" },
         "ratchet": { "$ref": "#/$defs/ratchet" },

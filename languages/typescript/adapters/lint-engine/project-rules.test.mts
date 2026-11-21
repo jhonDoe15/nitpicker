@@ -4,10 +4,8 @@ import { afterAll, describe, expect, it } from 'vitest';
 import {
   applyRuleExceptions,
   layeredPolicy,
-  layerEntries,
   PROJECT_LAYER_VARIABLE,
   projectLayerValue,
-  replacedOptionRules,
   type FlatEntry,
 } from './test-support/engine-views.mts';
 import { temporaryProjects } from './test-support/layered-project.mts';
@@ -135,7 +133,7 @@ describe('the options a project sets for a nitpicker rule', () => {
 `;
 
   it('add to list rules, take the lower limit, and otherwise replace nitpicker options', async () => {
-    const { root, rules } = await layered(policy, project);
+    const { rules } = await layered(policy, project);
 
     expect(
       await rules(
@@ -153,9 +151,6 @@ describe('the options a project sets for a nitpicker rule', () => {
       'no-empty': [2, { allowEmptyCatch: true }],
       curly: [1, 'multi-line'],
     });
-    expect(replacedOptionRules(policy, await layerEntries(`${root}/eslint.config.mjs`))).toEqual([
-      'no-empty',
-    ]);
   });
 });
 

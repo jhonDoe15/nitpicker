@@ -13,4 +13,4 @@ finding. The ones this preset meets:
 - [A project tool config is missing or broken](../troubleshooting.md#a-project-tool-config-is-missing-or-broken)
   for mypy, pyright, ruff and black.
 - [Windows and WSL](../troubleshooting.md#windows-and-wsl): mutmut needs `fork`.
-- Every preset: [Exit code 2 and tool errors](../troubleshooting.md#exit-code-2-and-tool-errors), [no merge base](../troubleshooting.md#no-merge-base) (a shallow clone), [tests fail](../troubleshooting.md#tests-fail) and [on the base](../troubleshooting.md#tests-fail-on-the-base), [another run is in progress](../troubleshooting.md#another-run-is-in-progress) and [a policy-loosened finding](../troubleshooting.md#a-policy-loosened-finding).
+- Every preset: [Exit code 2 and tool errors](../troubleshooting.md#exit-code-2-and-tool-errors), [no merge base](../troubleshooting.md#no-merge-base) (a shallow clone), [tests fail](../troubleshooting.md#tests-fail), [on the base](../troubleshooting.md#tests-fail-on-the-base) and [another run is in progress](../troubleshooting.md#another-run-is-in-progress).

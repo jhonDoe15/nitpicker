@@ -30,7 +30,6 @@ const SAMPLES = [
   'detekt/detekt.style.MagicNumber',
   'eslint/@typescript-eslint/no-explicit-any',
   'eslint/no-undef',
-  'nitpicker-config/policy-loosened',
   'pmd/UnusedLocalVariable',
   'ruff/F401',
   'structure/function-lines-limit',
@@ -258,7 +257,6 @@ describe('nitpicker rules', () => {
     expect(samplesIn(listedIds(stdout))).toEqual([
       'crap/crap-score-limit',
       'eslint/@typescript-eslint/no-explicit-any',
-      'nitpicker-config/policy-loosened',
       'structure/function-lines-limit',
     ]);
     expect(
@@ -271,39 +269,24 @@ describe('nitpicker rules', () => {
   it.each([
     [
       'java',
-      [
-        'crap/crap-score-limit',
-        'nitpicker-config/policy-loosened',
-        'pmd/UnusedLocalVariable',
-        'structure/function-lines-limit',
-      ],
+      ['crap/crap-score-limit', 'pmd/UnusedLocalVariable', 'structure/function-lines-limit'],
     ],
     [
       'kotlin',
       [
         'crap/crap-score-limit',
         'detekt/detekt.style.MagicNumber',
-        'nitpicker-config/policy-loosened',
         'pmd/UnusedLocalVariable',
         'structure/function-lines-limit',
       ],
     ],
-    [
-      'python',
-      [
-        'crap/crap-score-limit',
-        'nitpicker-config/policy-loosened',
-        'ruff/F401',
-        'structure/function-lines-limit',
-      ],
-    ],
+    ['python', ['crap/crap-score-limit', 'ruff/F401', 'structure/function-lines-limit']],
     [
       'javascript',
       [
         'crap/crap-score-limit',
         'eslint/@typescript-eslint/no-explicit-any',
         'eslint/no-undef',
-        'nitpicker-config/policy-loosened',
         'structure/function-lines-limit',
       ],
     ],
@@ -367,10 +350,7 @@ describe('nitpicker rules', () => {
     const ids = listedIds(run(['rules'], config({ preset: 'typescript', disable })).stdout);
 
     expect(ids).toEqual(idsReportedBy('typescript', disable));
-    expect(samplesIn(ids)).toEqual([
-      'nitpicker-config/policy-loosened',
-      'structure/function-lines-limit',
-    ]);
+    expect(samplesIn(ids)).toEqual(['structure/function-lines-limit']);
   });
 
   it('does not apply the config disable list to another preset', () => {

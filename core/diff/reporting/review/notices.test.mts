@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { noticeSection, reviewSummaryLines } from './notices.mts';
 
 describe('notice rendering', () => {
-  it('renders nothing without notices or policy changes', () => {
+  it('renders nothing without notices', () => {
     const lines = [
       'kept',
       ...reviewSummaryLines(undefined, (text) => text),
-      ...reviewSummaryLines({ policyChanges: [], notices: [] }, (text) => text),
+      ...reviewSummaryLines({ notices: [] }, (text) => text),
     ];
 
     expect(noticeSection()).toEqual([]);
@@ -17,18 +17,9 @@ describe('notice rendering', () => {
     expect(noticeSection(['one'])).toEqual(['', 'Notices (not failing):', '  one']);
   });
 
-  it('puts the policy changes before the notices, with emphasized headings', () => {
-    const lines = reviewSummaryLines(
-      { policyChanges: ['change'], notices: ['one', 'two'] },
-      (text) => `<${text}>`,
-    );
+  it('emphasizes the heading of the notices in a review summary', () => {
+    const lines = reviewSummaryLines({ notices: ['one', 'two'] }, (text) => `<${text}>`);
 
-    expect(lines).toEqual([
-      '<Policy changed in this change (nitpicker.config.json, head against base):>',
-      '  change',
-      '<Notices (not failing):>',
-      '  one',
-      '  two',
-    ]);
+    expect(lines).toEqual(['<Notices (not failing):>', '  one', '  two']);
   });
 });

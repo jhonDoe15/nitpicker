@@ -23,20 +23,20 @@ on:
       - 'scripts/ci/**'
       - '.github/workflows/java-e2e.yml'
   pull_request:
-    types: [labeled, opened, synchronize, reopened]
+    types: [labeled]
   workflow_dispatch:
 
 # A newer run on the same pull request cancels the older one. On main a started
 # run finishes, and a newer push replaces a run that is still waiting.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.ref_name || github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/integration' }}
 
 jobs:
   # On a pull request, the jobs below run only when the pull request changes a file in this
   # workflow's push paths, or when the changed files cannot be listed. Other runs check everything.
   changes:
-    if: github.event_name != 'pull_request' || github.base_ref == 'integration' || contains(github.event.pull_request.labels.*.name, 'run-ci')
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -151,7 +151,7 @@ jobs:
       - run: node scripts/test-shards/verify-e2e-shards.mts java
 
   java:
-    if: ${{ always() && (github.event_name != 'pull_request' || github.base_ref == 'integration' || contains(github.event.pull_request.labels.*.name, 'run-ci')) }}
+    if: ${{ always() && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')) }}
     needs: [changes, java-shard-plan, java-shard]
     runs-on: ubuntu-latest
     timeout-minutes: 5

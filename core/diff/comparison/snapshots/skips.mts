@@ -6,12 +6,12 @@ import {
   withoutSkipped,
 } from '../../skipping/apply.mts';
 import type { AnalyzerRun } from '../../execution/run-analyzers.mts';
-import type { BaseSetup, Settings } from './diff-types.mts';
+import type { Settings } from './diff-types.mts';
 import type { SkipPlan } from './run-types.mts';
 import type { Comparison } from './layout.mts';
 
 export const planOf: (settings: Settings, comparison: Comparison) => SkipPlan = skipPlanOf;
-export const stopsEarly: (plan: SkipPlan, setup: BaseSetup) => boolean = endsEarly;
+export const stopsEarly: (plan: SkipPlan) => boolean = endsEarly;
 export const runnableOf: (analyzers: readonly unknown[], plan: SkipPlan) => readonly unknown[] =
   withoutSkipped;
 export const carried: (request: {

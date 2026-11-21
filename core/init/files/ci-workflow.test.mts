@@ -1,4 +1,4 @@
-import { symlinkSync, writeFileSync } from 'node:fs';
+import { symlinkSync } from 'node:fs';
 import { parse } from 'yaml';
 import { fieldAt, listOf } from '../../../scripts/json/fields.mts';
 import { describe, expect, it } from 'vitest';
@@ -8,13 +8,7 @@ import type { FileMap } from '../../diff/git/test-support/fixture-files.mts';
 import { describePackageManager } from '../detection/package-manager.mts';
 import { readText, useProjects } from '../test-support/projects.mts';
 import { unifiedDiff } from './line-diff.mts';
-import {
-  APPROVAL_WORKFLOW,
-  placeApprovalWorkflow,
-  placeWorkflow,
-  renderWorkflow,
-  workflowPath,
-} from './ci-workflow.mts';
+import { placeWorkflow, renderWorkflow, workflowPath } from './ci-workflow.mts';
 
 const project = useProjects();
 const VERSION = '1.2.3';
@@ -92,7 +86,7 @@ describe('workflow for Node projects', () => {
 
     expect(fieldAt(workflow, 'name')).toBe('nitpicker');
     expect(fieldAt(workflow, 'on')).toEqual({ pull_request: null });
-    expect(fieldAt(workflow, 'permissions')).toEqual({ contents: 'read', statuses: 'read' });
+    expect(fieldAt(workflow, 'permissions')).toEqual({ contents: 'read' });
     expect(fieldAt(workflow, 'jobs', 'nitpicker', 'runs-on')).toBe('ubuntu-latest');
     expect(listOf(fieldAt(workflow, 'jobs', 'nitpicker', 'steps')).slice(0, 2)).toEqual([
       { uses: 'actions/checkout@v7.0.1', with: { 'fetch-depth': 0 } },
@@ -460,16 +454,6 @@ describe('workflow location', () => {
       }),
     });
     expect(readText(root, ROOT_WORKFLOW)).toBe(existing);
-  });
-
-  it('writes the policy approval workflow once per repository and keeps a changed one', () => {
-    const root = project({}, { repository: true });
-
-    expect(placeApprovalWorkflow(root)).toEqual({ relative: APPROVAL_WORKFLOW, status: 'created' });
-    expect(placeApprovalWorkflow(root).status).toBe('unchanged');
-    writeFileSync(`${root}/${APPROVAL_WORKFLOW}`, 'name: mine\n');
-    expect(placeApprovalWorkflow(root).status).toBe('differs');
-    expect(readText(root, APPROVAL_WORKFLOW)).toBe('name: mine\n');
   });
 
   it('refuses to write through a .github folder that links outside the repository', () => {

@@ -1,3 +1,4 @@
+import { rule as ruleNoUnusedDomEnvironment } from '../rules/test-runtime/environment/no-unused-dom-environment.mts';
 import { rule as ruleNoUnvalidatedSchemaField } from '../rules/boundaries/no-unvalidated-schema-field.mts';
 import { rule as ruleNoUnversionedOrmEntity } from '../rules/database/versions/no-unversioned-orm-entity.mts';
 import { rule as ruleNoUseAfterAwaitWhenDisposed } from '../rules/cancellation/disposal/no-use-after-await-when-disposed.mts';
@@ -8,6 +9,7 @@ import { rule as ruleNoWastedCollectionStep } from '../rules/collections/pipelin
 import { rule as ruleNoWeakAssertion } from '../test-assertions/weak-assertion/no-weak-assertion.mts';
 import { rule as ruleNoWeakHash } from '../rules/security/hash/no-weak-hash.mts';
 import { rule as ruleNoWholeRowsForOneValue } from '../rules/queries/columns/no-whole-rows-for-one-value.mts';
+import { rule as ruleNoWorkerStateInConcurrentTests } from '../test-quality/concurrent-tests/no-worker-state-in-concurrent-tests.mts';
 import { rule as rulePreserveErrorCause } from '../rules/errors/preserve-error-cause.mts';
 import { rule as rulePromiseWaitDeadline } from '../rules/promises/executors/promise-wait-deadline.mts';
 import { rule as ruleReactControlledInput } from '../rules/react/forms/react-controlled-input.mts';
@@ -21,11 +23,15 @@ import { rule as ruleReactNoEffectDataFetching } from '../rules/react/react-no-e
 import { rule as ruleReactNoEffectDerivedState } from '../rules/react/react-no-effect-derived-state.mts';
 import { rule as ruleReactNoEffectEventHandling } from '../rules/react/render/react-no-effect-event-handling.mts';
 import { rule as ruleReactNoHardcodedColors } from '../rules/react/theme/react-no-hardcoded-colors.mts';
+import { rule as ruleReactNoLeakedEffectResource } from '../rules/react/effects/react-no-leaked-effect-resource.mts';
 import { rule as ruleReactNoLiteralIdInListComponent } from '../rules/react/ids/react-no-literal-id-in-list-component.mts';
 import { rule as ruleReactNoRandomKey } from '../rules/react/render/react-no-random-key.mts';
 import { rule as ruleReactNoRenderSideEffect } from '../rules/react/purity/react-no-render-side-effect.mts';
 import { rule as ruleReactNoStaleStateUpdate } from '../rules/react/state/react-no-stale-state-update.mts';
 import { rule as ruleReactNoUncachedUsePromise } from '../rules/react/purity/react-no-uncached-use-promise.mts';
+import { rule as ruleReactNoUnstableMemoProps } from '../rules/react/memo-props/react-no-unstable-memo-props.mts';
+import { rule as ruleReactNoUnstableSelectorResult } from '../rules/react/stores/react-no-unstable-selector-result.mts';
+import { rule as ruleReactNoUnstableStoreSubscribe } from '../rules/react/stores/react-no-unstable-store-subscribe.mts';
 import { rule as ruleReactPureStateUpdater } from '../rules/react/state/react-pure-state-updater.mts';
 import { rule as ruleReactSingleStylingApproach } from '../rules/react/react-single-styling-approach.mts';
 import { rule as ruleReactTestNoImplementationDetails } from '../rules/react-tests/react-test-no-implementation-details.mts';
@@ -54,6 +60,7 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-unused-dom-environment': ruleNoUnusedDomEnvironment,
   'no-unvalidated-schema-field': ruleNoUnvalidatedSchemaField,
   'no-unversioned-orm-entity': ruleNoUnversionedOrmEntity,
   'no-use-after-await-when-disposed': ruleNoUseAfterAwaitWhenDisposed,
@@ -64,6 +71,7 @@ export const partRules = {
   'no-weak-assertion': ruleNoWeakAssertion,
   'no-weak-hash': ruleNoWeakHash,
   'no-whole-rows-for-one-value': ruleNoWholeRowsForOneValue,
+  'no-worker-state-in-concurrent-tests': ruleNoWorkerStateInConcurrentTests,
   'preserve-error-cause': rulePreserveErrorCause,
   'promise-wait-deadline': rulePromiseWaitDeadline,
   'react-controlled-input': ruleReactControlledInput,
@@ -77,11 +85,15 @@ export const partRules = {
   'react-no-effect-derived-state': ruleReactNoEffectDerivedState,
   'react-no-effect-event-handling': ruleReactNoEffectEventHandling,
   'react-no-hardcoded-colors': ruleReactNoHardcodedColors,
+  'react-no-leaked-effect-resource': ruleReactNoLeakedEffectResource,
   'react-no-literal-id-in-list-component': ruleReactNoLiteralIdInListComponent,
   'react-no-random-key': ruleReactNoRandomKey,
   'react-no-render-side-effect': ruleReactNoRenderSideEffect,
   'react-no-stale-state-update': ruleReactNoStaleStateUpdate,
   'react-no-uncached-use-promise': ruleReactNoUncachedUsePromise,
+  'react-no-unstable-memo-props': ruleReactNoUnstableMemoProps,
+  'react-no-unstable-selector-result': ruleReactNoUnstableSelectorResult,
+  'react-no-unstable-store-subscribe': ruleReactNoUnstableStoreSubscribe,
   'react-pure-state-updater': ruleReactPureStateUpdater,
   'react-single-styling-approach': ruleReactSingleStylingApproach,
   'react-test-no-implementation-details': ruleReactTestNoImplementationDetails,

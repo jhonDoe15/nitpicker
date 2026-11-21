@@ -17,7 +17,6 @@ import {
   useMavenFixtures,
 } from './test-support/java-cli-harness.mts';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
-import { acceptedDigest } from '../test-support/accepted-digest.mts';
 import {
   labelsOf,
   linkSentence,
@@ -201,11 +200,7 @@ describe.each([
     });
     commit(root, 'add violation in an excluded path');
 
-    const digest = acceptedDigest(['exclude added: src/main/java/demo/**'], {
-      'nitpicker.config.json': '{ "preset": "java", "exclude": ["src/main/java/demo/**"] }\n',
-      'src/main/java/demo/A.java': 'package demo;\n\npublic final class A {}\n',
-    });
-    const result = run(root, [`--accept-policy-change=${digest}`], { interactive: true });
+    const result = run(root);
 
     expect(result.exitCode, result.text).toBe(0);
     expect(result.json('new-findings.json')).toEqual([]);
@@ -417,14 +412,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
     });
     commit(root, 'add a violation with an exception');
 
-    const digest = acceptedDigest(
-      ['exception added: pmd/UnusedPrivateField for src/main/java/demo/A.java (generated holder)'],
-      {
-        'nitpicker.config.json': config,
-        'src/main/java/demo/A.java': 'package demo;\n\npublic final class A {}\n',
-      },
-    );
-    const result = run(root, [`--accept-policy-change=${digest}`], { interactive: true });
+    const result = run(root);
 
     expect(result.exitCode, result.text).toBe(0);
     expect(result.json('new-findings.json')).toEqual([]);

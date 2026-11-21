@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mts';
 import {
   LEGACY_WEAKER,
   PRICING,
@@ -33,14 +32,8 @@ const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const MUTMUT_LISTED_CONFIG =
   '{ "preset": "python", "tools": { "mutmut": { "precedence": ["project", "nitpicker"] } } }\n';
-const MUTMUT_LISTED = 'tools.mutmut.precedence: not set -> ["project","nitpicker"]';
 
-const ACCEPTED = {
-  CI: 'true',
-  NITPICKER_ACCEPT_POLICY_CHANGE: acceptedDigest([MUTMUT_LISTED], {
-    'nitpicker.config.json': MUTMUT_LISTED_CONFIG,
-  }),
-};
+const IN_CI = { CI: 'true' };
 const SHRUNK = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.mutmut]\ndo_not_mutate = ["src/*"]\n`;
 const OWN_KEY = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.mutmut]\nmax_stack_depth = 8\n`;
 const PRODUCTION_FILES = ['__init__', 'greeter', 'legacy', 'pricing', 'wide'].map(
@@ -137,7 +130,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
     expect(new Set(ignored.map(({ path: file }) => file))).toEqual(new Set(PRODUCTION_FILES));
   });
   it('still reports the do_not_mutate of the project config as ignored code once a person accepts listing the project', () => {
-    const result = gate(project, 'shrunk-listed', { environment: ACCEPTED });
+    const result = gate(project, 'shrunk-listed', { environment: IN_CI });
     const findings = mutantFindings(result);
 
     expect(result.exitCode, result.text).toBe(1);
@@ -145,7 +138,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
     expect(new Set(findings.map(({ path: file }) => file))).toEqual(new Set(PRODUCTION_FILES));
   });
   it('takes the other keys of the project config once a person accepts listing the project', () => {
-    const result = gate(project, 'listed-key', { environment: ACCEPTED });
+    const result = gate(project, 'listed-key', { environment: IN_CI });
     const findings = mutantFindings(result);
 
     expect(result.exitCode, result.text).toBe(1);

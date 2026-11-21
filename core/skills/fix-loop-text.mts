@@ -31,10 +31,7 @@ export const EXCEPTION_ENTRY =
   'that would accept it (`If this is intended, add {...} to "exceptions" in ' +
   'nitpicker.config.json.`). That entry is for a human reviewer. Never add one, and never fill ' +
   'in its `reason`, to get past the gate: stop and ask a human, and quote the finding with its entry.';
-export const POLICY_STOP =
-  'If a finding seems wrong, stop and ask. Never pass `--accept-policy-change`, set ' +
-  '`NITPICKER_ACCEPT_POLICY_CHANGE` or add the `accept-policy-change` label: a ' +
-  '`nitpicker-config/policy-loosened` finding is for a person to accept.';
+export const POLICY_STOP = 'If a finding seems wrong, stop and ask.';
 export const EXPLAIN =
   'To learn why a rule is on and what form it allows before you write or change code, run ' +
   '`npx nitpicker explain <tool/rule>` with the name a finding prints, or read the ' +

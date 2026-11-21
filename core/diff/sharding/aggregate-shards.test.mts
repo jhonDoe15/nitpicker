@@ -46,9 +46,6 @@ describe('quality shard aggregation', () => {
       renamedPaths: 0,
       policyHash: anyString,
       configOverrides: [],
-      policyChanges: [],
-      policyLoosenings: [],
-      policyChangeAccepted: false,
       notices: [],
       tools: [],
       exclusions: ['generated/**'],
@@ -137,23 +134,10 @@ small/example src/main/example.ts example finding
 `),
     );
   });
-  it('carries the policy changes and notices of the shards into the report', () => {
+  it('carries the notices of the shards into the report', () => {
     const fixture = createFixture();
-    const carried = {
-      policyChanges: ['exclude added: src/vendor/**'],
-      notices: ['1 changed TypeScript file is outside layout.sourceRoots'],
-      policyLoosenings: ['exclude added: src/vendor/**'],
-      policyChangeAccepted: false,
-    };
-    const loosening = {
-      tool: 'nitpicker-config',
-      rule: 'policy-loosened',
-      path: 'nitpicker.config.json',
-      identity: 'exclude added: src/vendor/**',
-      message: 'exclude added: src/vendor/**. Stop and ask a person to review this change.',
-      classification: 'enforceable',
-    };
-    writeShard(fixture.inputRoot, 0, { tools: ['first'], findings: [loosening], carried });
+    const carried = { notices: ['1 changed TypeScript file is outside layout.sourceRoots'] };
+    writeShard(fixture.inputRoot, 0, { tools: ['first'], carried });
     writeShard(fixture.inputRoot, 1, { tools: ['second'], carried });
 
     const report = aggregate({
@@ -163,22 +147,13 @@ small/example src/main/example.ts example finding
     });
     const summary = readJson(fixture.outputRoot, 'summary.json');
     const text = readFileSync(path.join(fixture.outputRoot, 'report.txt'), 'utf8').split('\n');
-    const heading = 'Policy changed in this change (nitpicker.config.json, head against base):';
+    const heading = 'Notices (not failing):';
     const start = text.indexOf(heading);
 
-    const fields = (entry: unknown) => Object.keys(carried).map((key) => fieldOf(entry, key));
-
-    expect(fields(report.summary)).toEqual(Object.values(carried));
-    expect(fields(summary)).toEqual(Object.values(carried));
-    expect([report.newFindings, fieldOf(report.summary, 'newEnforceableFindings')]).toEqual([
-      [loosening],
-      1,
-    ]);
-    expect(text.slice(start, start + 5)).toEqual([
+    expect(fieldOf(report.summary, 'notices')).toEqual(carried.notices);
+    expect(fieldOf(summary, 'notices')).toEqual(carried.notices);
+    expect(text.slice(start, start + 2)).toEqual([
       heading,
-      '  exclude added: src/vendor/**',
-      '',
-      'Notices (not failing):',
       '  1 changed TypeScript file is outside layout.sourceRoots',
     ]);
   });

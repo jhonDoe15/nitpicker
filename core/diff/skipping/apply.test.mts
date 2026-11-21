@@ -19,7 +19,6 @@ const idle: AnalyzerRun = {
   skipped: new Map(),
   metadata: new Map(),
 };
-const settled = { policyChanges: [], policyLoosenings: [] };
 
 describe('carryBaseReports', () => {
   it('shows the cached base findings of a skipped analyzer as its head findings too', () => {
@@ -43,21 +42,16 @@ describe('carryBaseReports', () => {
 describe('endsEarly', () => {
   const none = { skipped: ['a'], affected: [] };
 
-  it('ends the run when no analyzer is affected and the policy did not change', () => {
-    expect(endsEarly(none, settled)).toBe(true);
-  });
-
-  it('keeps running when a policy change or loosening was found', () => {
-    expect(endsEarly(none, { ...settled, policyChanges: [{}] })).toBe(false);
-    expect(endsEarly(none, { ...settled, policyLoosenings: [{}] })).toBe(false);
+  it('ends the run when no analyzer is affected', () => {
+    expect(endsEarly(none)).toBe(true);
   });
 
   it('keeps running when there is no analyzer to name', () => {
-    expect(endsEarly({ skipped: [], affected: [] }, settled)).toBe(false);
+    expect(endsEarly({ skipped: [], affected: [] })).toBe(false);
   });
 
   it('keeps running when an analyzer is affected', () => {
-    expect(endsEarly({ skipped: [], affected: ['a'] }, settled)).toBe(false);
+    expect(endsEarly({ skipped: [], affected: ['a'] })).toBe(false);
   });
 });
 
