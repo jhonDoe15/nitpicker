@@ -106,11 +106,8 @@ describe.skipIf(!goE2eEnabled)('Go preset gates end to end', () => {
     ]);
   });
 
-  it('lifts findings with top-level exceptions, which the change must get accepted', () => {
-    expect(newFindings(gate(project, 'excepted'))).toEqual([
-      'nitpicker-config/policy-loosened nitpicker.config.json',
-      'nitpicker-config/policy-loosened nitpicker.config.json',
-    ]);
+  it('lifts findings with top-level exceptions', () => {
+    expect(newFindings(gate(project, 'excepted'))).toEqual([]);
   });
 
   it('reports failing tests as a tool error that quotes the failure', () => {

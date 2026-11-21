@@ -18,7 +18,6 @@ export type CliOptions = {
   readonly details: boolean;
   readonly quick: boolean;
   readonly deferExit: boolean;
-  readonly acceptPolicyChange?: string;
   readonly shardCount?: number | undefined;
   readonly shardIndex?: number | undefined;
   readonly jobs?: number | undefined;

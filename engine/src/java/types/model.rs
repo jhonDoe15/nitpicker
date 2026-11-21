@@ -128,4 +128,10 @@ pub struct ClassInfo {
     pub fields: Vec<Field>,
     pub methods: Vec<Method>,
     pub is_interface: bool,
+    /// For an enum: how many constants it declares.
+    pub enum_constants: Option<u32>,
+    /// For a sealed class or interface: the classes it permits.
+    pub permitted: Option<Vec<String>>,
+    /// For a record: the generic type of each component, in order.
+    pub record_components: Option<Vec<Type>>,
 }

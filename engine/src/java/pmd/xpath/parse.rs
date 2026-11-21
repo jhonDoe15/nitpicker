@@ -140,7 +140,7 @@ fn yes_or_no(predicate: &Expr) -> bool {
         Expr::Call(name, _) => matches!(
             name.as_ref(),
             "not" | "exists" | "empty" | "starts-with" | "ends-with" | "contains" | "matches" | "boolean" | "true" | "false"
-                | "pmd-java:typeIs" | "pmd-java:typeIsExactly" | "pmd-java:matchesSig"
+                | "pmd-java:typeIs" | "pmd-java:typeIsExactly" | "pmd-java:matchesSig" | "pmd-java:hasAnnotation" | "pmd-java:nodeIs"
         ),
         _ => false,
     }

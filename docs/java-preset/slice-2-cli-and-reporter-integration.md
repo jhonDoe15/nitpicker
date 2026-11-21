@@ -9,13 +9,7 @@ Part of the [Java preset guide](../java-preset.md).
   (bundled assets such as `src/main/resources/static/*.js` do not count): then it
   stops with a config error that names `"preset": "java"` (`rejectUndeclaredPreset`, best-effort, see
   [Using nitpicker](../usage.md#configuration)). The head is measured with the head's config and the
-  base with its own (widened to the head's roots), and a change to `preset` is listed under "Policy
-  changed in this change"; declaring `java` on a project that had no preset is not a loosening.
-  The same list reads the build files for what shrinks the measured code (Gradle `sourceSets`
-  `srcDirs` and `exclude`, test excludes and filters; Maven `sourceDirectory` and surefire,
-  failsafe and compiler excludes), the project tool configs the project opted into
-  (`config/pmd/`, `config/checkstyle/`) and hidden code that production imports; see
-  [Using nitpicker](../usage.md#configuration). Changed `.java` and `.kt` files outside the build's
+  base with its own (widened to the head's roots). Changed `.java` and `.kt` files outside the build's
   source sets are named in a notice.
 - **Editor support.** A Java project has no `node_modules`, so a `$schema` line in
   `nitpicker.config.json` points at the published schema:

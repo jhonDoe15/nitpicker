@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { readConfigFile } from '../../configuration/config.mts';
 import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
 import { readLayeredConfig } from './read-layered.mts';
-import { configLayersOf, sharedConfigFiles } from './shared-files.mts';
+import { sharedConfigFiles } from './shared-files.mts';
 import type { FileMap } from '../../diff/git/test-support/fixture-files.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import type { LayeredOptions } from './read-layered.mts';
@@ -202,34 +202,6 @@ describe('the shared files of a project', () => {
     ]);
     expect(sharedConfigFiles(path.join(root, 'api'))).toEqual([]);
     expect(sharedConfigFiles(path.join(root, 'missing'))).toEqual([]);
-  });
-
-  it('hashes their content for the policy digest and names the layers that changed', () => {
-    const root = sharedRepository();
-    const blobId = (content: Buffer) => `blob:${String(content.length)}`;
-    const web = path.join(root, 'web');
-
-    expect(configLayersOf(path.join(root, 'api'), web, { blobId })).toEqual({
-      shared: [
-        ['base.json', 'blob:2'],
-        ['team/shared.json', 'blob:26'],
-      ],
-      changed: ['base.json', 'team/shared.json', 'nitpicker.config.json'],
-    });
-    expect(configLayersOf(web, web, { blobId }).changed).toEqual([]);
-  });
-
-  it('reads no layers from a base config that is not valid JSON', () => {
-    const root = repository({
-      'old/nitpicker.config.json': '{nope',
-      'web/nitpicker.config.json': '{}',
-    });
-    const blobId = (content: Buffer) => `blob:${String(content.length)}`;
-
-    expect(configLayersOf(path.join(root, 'old'), path.join(root, 'web'), { blobId })).toEqual({
-      shared: [],
-      changed: ['nitpicker.config.json'],
-    });
   });
 });
 

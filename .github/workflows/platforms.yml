@@ -22,14 +22,14 @@ on:
       - 'scripts/ci/**'
       - '.github/workflows/platforms.yml'
   pull_request:
-    types: [labeled, opened, synchronize, reopened]
+    types: [labeled]
   workflow_dispatch:
 
 # A newer run on the same pull request cancels the older one; runs on main
 # always finish.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref == 'refs/heads/integration' && 'integration' || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/integration' }}
 
 # Plain logs, and no Deno update check on every CLI start.
 env:
@@ -40,7 +40,7 @@ jobs:
   # On a pull request, the jobs below run only when the pull request changes a file in this
   # workflow's push paths, or when the changed files cannot be listed. Other runs check everything.
   changes:
-    if: github.event_name != 'pull_request' || github.base_ref == 'integration' || contains(github.event.pull_request.labels.*.name, 'run-ci')
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -211,7 +211,7 @@ jobs:
       - run: npx vitest run --config vitest.config.mts shared/logic/decide.test.mjs
 
   platforms:
-    if: ${{ always() && (github.event_name != 'pull_request' || github.base_ref == 'integration' || contains(github.event.pull_request.labels.*.name, 'run-ci')) }}
+    if: ${{ always() && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')) }}
     needs: [changes, samples, runtimes, logic-solver]
     runs-on: ubuntu-latest
     timeout-minutes: 10

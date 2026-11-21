@@ -52,8 +52,7 @@ through the real tools.
   resolved against the checkout that is being checked, so the base run checks base files; `venv`,
   `venvPath` and `typeshedPath` stay where the environment is. With the opt-in pyright also looks
   for `pyrightconfig.json` or a `pyproject.toml` with the table in the parent directories up to
-  the repository root. The config files, the `extends` chain included, are part of the cache key,
-  and an edit of the checker's own settings in them is a policy change a person reviews (see
+  the repository root. The config files, the `extends` chain included, are part of the cache key (see
   [Type checker and mutation configs](../usage.md#type-checker-and-mutation-configs-python-preset)).
   Naming `"project"` without a config is a tool error, and so is a config that cannot be parsed (the
   message says so and names the file). `["nitpicker", "project"]` reads only what the unlisted

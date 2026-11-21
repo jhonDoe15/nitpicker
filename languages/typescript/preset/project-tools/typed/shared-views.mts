@@ -1,7 +1,6 @@
 import {
   isCount as untypedIsCount,
   isStringList as untypedIsStringList,
-  listOf as untypedListOf,
   picked as untypedPicked,
 } from '../../../../../shared/config.mjs';
 import {
@@ -23,8 +22,6 @@ import type { JsoncResult, PrecedenceLayers, ToolSettings, ToolValues } from './
 export const isCount: (value: unknown) => boolean = untypedIsCount;
 
 export const isStringList: (value: unknown) => boolean = untypedIsStringList;
-
-export const configList: (value: unknown) => unknown[] = untypedListOf;
 
 export const picked: (source: ToolValues, keys: readonly string[]) => ToolValues = untypedPicked;
 

@@ -404,6 +404,27 @@ impl<'a> Resolver<'a> {
 
     pub fn is_variable(&self, usage: Node, name: &str) -> bool {
         self.binding(usage, name).is_some()
+            || self.pattern_scopes(usage).iter().any(|listed| listed.iter().any(|(start, known, _)| self.pattern_visible(*start, usage) && known == name))
+    }
+
+    /// Whether a pattern variable declared at `start` is seen at a usage. PMD does not see the variables of a case
+    /// label's patterns inside that label's own `when` guard: there the name stays ambiguous and untyped.
+    fn pattern_visible(&self, start: usize, usage: Node) -> bool {
+        if start >= usage.start_byte() {
+            return false;
+        }
+        let mut at = crate::engine::source::parent(usage);
+        while let Some(node) = at {
+            if node.kind() == "guard" {
+                let label = crate::engine::source::parent(node);
+                return !label.is_some_and(|label| label.start_byte() <= start && start < node.start_byte());
+            }
+            if matches!(node.kind(), "switch_rule" | "switch_block_statement_group" | "lambda_expression" | "class_body") {
+                return true;
+            }
+            at = crate::engine::source::parent(node);
+        }
+        true
     }
 
     fn variable(&self, usage: Node, name: &str) -> Option<Type> {
@@ -464,29 +485,91 @@ impl<'a> Resolver<'a> {
     }
 
     fn pattern_variable(&self, usage: Node, name: &str) -> Option<Type> {
+        for listed in self.pattern_scopes(usage) {
+            let mut declared = listed.iter().filter(|(start, known, _)| *start < usage.start_byte() && known == name).peekable();
+            if declared.peek().is_none() {
+                continue;
+            }
+            if listed.iter().any(|(start, known, _)| known == name && *start < usage.start_byte() && !self.pattern_visible(*start, usage)) {
+                return None;
+            }
+            return declared.find_map(|(_, _, kind)| kind.clone());
+        }
+        None
+    }
+
+    /// The pattern variables of each method, constructor or class body around a usage, nearest first.
+    fn pattern_scopes(&self, usage: Node) -> Vec<std::rc::Rc<Vec<(usize, String, Option<Type>)>>> {
+        let mut scopes = Vec::new();
+        let mut at = usage;
+        while let Some((scope, listed)) = self.patterns_around(at) {
+            scopes.push(listed);
+            at = scope;
+        }
+        scopes
+    }
+
+    /// The nearest method, constructor or class body around a node, with its pattern variables: where each starts,
+    /// its name, its type.
+    fn patterns_around<'n>(&self, usage: Node<'n>) -> Option<(Node<'n>, std::rc::Rc<Vec<(usize, String, Option<Type>)>>)> {
         let mut scope = crate::engine::source::parent(usage);
         while let Some(node) = scope {
-            if matches!(node.kind(), "method_declaration" | "constructor_declaration" | "lambda_expression" | "class_body") {
-                let known = self.patterns.borrow().get(&node.id()).cloned();
-                let listed = known.unwrap_or_else(|| {
-                    let mut listed = Vec::new();
-                    crate::engine::source::walk(node, |candidate| {
-                        if matches!(candidate.kind(), "instanceof_expression" | "type_pattern") {
-                            if let Some(named) = candidate.field("name") {
-                                let written = candidate.field("right").or_else(|| candidate.named_child(0).filter(|_| candidate.kind() == "type_pattern"));
-                                listed.push((candidate.start_byte(), self.file.text_of(named).to_string(), written.and_then(|kind| self.type_node(kind))));
-                            }
+            if matches!(node.kind(), "method_declaration" | "constructor_declaration" | "class_body") {
+                if let Some(known) = self.patterns.borrow().get(&node.id()).cloned() {
+                    return Some((node, known));
+                }
+                let mut listed = Vec::new();
+                let own = |candidate: Node| {
+                    let mut at = crate::engine::source::parent(candidate);
+                    while let Some(above) = at.filter(|above| !matches!(above.kind(), "method_declaration" | "constructor_declaration" | "class_body")) {
+                        at = crate::engine::source::parent(above);
+                    }
+                    at == Some(node)
+                };
+                crate::engine::source::walk(node, |candidate| match candidate.kind() {
+                    _ if !matches!(candidate.kind(), "instanceof_expression" | "type_pattern" | "record_pattern_component") || !own(candidate) => {}
+                    "instanceof_expression" => {
+                        if let Some(named) = candidate.field("name") {
+                            let written = candidate.field("right").and_then(|kind| self.type_node(kind));
+                            listed.push((candidate.start_byte(), self.file.text_of(named).to_string(), written));
                         }
-                    });
-                    let listed = std::rc::Rc::new(listed);
-                    self.patterns.borrow_mut().insert(node.id(), listed.clone());
-                    listed
+                    }
+                    "type_pattern" => {
+                        let mut cursor = candidate.walk();
+                        let parts: Vec<Node> = candidate.named_children(&mut cursor).filter(|part| !part.kind().ends_with("comment")).collect();
+                        if let [.., written, named] = parts.as_slice() {
+                            listed.push((candidate.start_byte(), self.file.text_of(*named).to_string(), self.type_node(*written)));
+                        }
+                    }
+                    "record_pattern_component" => {
+                        let mut cursor = candidate.walk();
+                        let parts: Vec<Node> = candidate.named_children(&mut cursor).filter(|part| !part.kind().ends_with("comment")).collect();
+                        if let [written, named] = parts.as_slice() {
+                            let kind = if self.file.text_of(*written) == "var" { self.record_component(candidate) } else { self.type_node(*written) };
+                            listed.push((candidate.start_byte(), self.file.text_of(*named).to_string(), kind));
+                        }
+                    }
+                    _ => {}
                 });
-                return listed.iter().filter(|(start, known, _)| *start < usage.start_byte() && known == name).find_map(|(_, _, kind)| kind.clone());
+                let listed = std::rc::Rc::new(listed);
+                self.patterns.borrow_mut().insert(node.id(), listed.clone());
+                return Some((node, listed));
             }
             scope = crate::engine::source::parent(node);
         }
         None
+    }
+
+    /// The declared type of the record component a `var` pattern binds, read from the record's accessor.
+    fn record_component(&self, component: Node) -> Option<Type> {
+        let body = crate::engine::source::parent(component)?;
+        let record = crate::engine::source::parent(body)?;
+        let mut cursor = body.walk();
+        let position = body.named_children(&mut cursor).filter(|part| !part.kind().ends_with("comment")).position(|part| part == component)?;
+        let written = record.named_child(0)?;
+        let owner = self.type_node(written)?;
+        let fields = self.index.record_components(&owner.erased().name())?;
+        fields.get(position).cloned()
     }
 
     pub fn receiver(&self, object: Node) -> Option<Receiver> {

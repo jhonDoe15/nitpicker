@@ -19,6 +19,8 @@ for rule in rules:
     for name, written in (rule.get("properties") or {}).items():
         parts.append(f'<property name={quoteattr(name)} type={quoteattr(written.get("type") or "String")} '
                      f'value={quoteattr(written["value"])} description={quoteattr(name)}/>')
+    if rule.get("suppress"):
+        parts.append(f'<property name="violationSuppressXPath"><value>{escape(rule["suppress"])}</value></property>')
     parts.append(f'<property name="xpath"><value>{escape(rule["xpath"])}</value></property></properties></rule>')
 parts.append('</ruleset>')
 with tempfile.TemporaryDirectory() as work:

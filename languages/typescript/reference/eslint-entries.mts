@@ -11,7 +11,7 @@ const FIX_TOOL = 'eslint-lint';
 const NITPICKER_PREFIX = 'nitpicker/';
 const REACT_IDS = new Set([...reactRuleIds, ...reactTestRuleIds]);
 const I18N_IDS = new Set(i18nRuleIds);
-const TEST_PREFIXES = ['vitest/', 'testing-library/'];
+const TEST_PREFIXES = ['vitest/', 'testing-library/', 'playwright/', 'cypress/'];
 const WHY = {
   nitpicker:
     "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
@@ -40,6 +40,10 @@ const PLUGIN_WHY: Readonly<Record<string, string>> = {
   regexp: 'The preset turns on this rule to keep regular expressions safe and readable.',
   functional: 'The preset turns on this rule to keep data immutable.',
   vitest: 'The preset turns on this rule of the Vitest plugin for tests.',
+  playwright:
+    'The preset turns on this rule of the Playwright plugin in test files that import Playwright, so browser tests use the steps that wait for the page.',
+  cypress:
+    'The preset turns on this rule of the Cypress plugin in test files that use `cy`, so tests follow the command queue and leave no debugging stops.',
 };
 const RESTRICTED = /^(?:[\w-]+\/)?no-restricted-/u;
 const REACT_SCOPE =

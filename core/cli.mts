@@ -45,7 +45,6 @@ import { fieldOf, listOf, numberOr, textOf } from '../shared/values/readers.mts'
 import {
   type ComparisonCli,
   type ConfiguredCli,
-  acceptanceOf,
   comparisonBaseOf,
   resolveRunCacheStore,
   writeNotes,
@@ -269,16 +268,11 @@ function runComparisonCli(cli: ComparisonCli): unknown {
     captureHead: cli.captureHead,
     quick: cli.quick,
     staged: options.staged,
-    additionalToolErrors: [
-      ...listOf(fieldOf(fixResult, 'toolErrors')),
-      ...cli.setupErrors,
-      ...(cli.repositoryToolErrors ?? []),
-    ],
+    additionalToolErrors: [...listOf(fieldOf(fixResult, 'toolErrors')), ...cli.setupErrors],
     configOverrides: describeConfigOverrides(config),
     headPolicy,
     resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
     describeNotices: noticeDescriber(config, headPolicy, currentProjectRoot),
-    ...acceptanceOf(cli),
     ...runnerOptions(cli),
   });
   return writeComparisonOutcome({ cli, report, base, outputRoot });

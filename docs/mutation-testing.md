@@ -18,8 +18,7 @@ Code that must stay out of mutation testing gets a reviewed `exceptions` entry f
 with its paths in `nitpicker.config.json` instead; for a single path or comment, that entry is the only
 way to lift the finding. A project that opts into its own Stryker config with
 `tools.stryker.precedence` can also leave whole mutators out with `mutator.excludedMutations`, which
-removes those mutants from the findings (a mutant a `Stryker disable` comment hides stays a finding); an
-edit of that config is a policy change too (see
+removes those mutants from the findings (a mutant a `Stryker disable` comment hides stays a finding; see
 [Mutation testing config](usage.md#mutation-testing-config-typescript-and-javascript-presets)).
 `nitpicker --all` mutates that whole area, and `nitpicker --all <paths>` only its files under the paths
 (see [One file or folder](usage.md#one-file-or-folder)). When no test loads any mutated file, Stryker collects no
@@ -184,5 +183,5 @@ Keep it cheap and outside the gate:
   the differential gate, and never as a preset default.
 - Write its report to `reports/quality/mutation-wide/`, so it cannot be mistaken for the gated
   report, and do not turn its findings into enforceable ones.
-- Changing the scope of the default profile instead is a policy change: it alters the policy hash
-  and must be a deliberate, reviewed exception.
+- Changing the scope of the default profile instead alters the policy hash and must be a
+  deliberate, reviewed exception.

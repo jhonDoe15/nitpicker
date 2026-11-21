@@ -65,9 +65,7 @@ describe.each([
       const headRoot = baseWith({});
       return resolve({
         baseProjectRoot: baseWith(config),
-        headSnapshotRoot: headRoot,
         liveProjectRoot: headRoot,
-        moves: undefined,
         analyzers: headAnalyzers,
       });
     });

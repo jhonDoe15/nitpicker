@@ -17,7 +17,7 @@ import type {
   FixtureRepository,
 } from '../command/test-support/fixture-types.mts';
 import { fieldAt, listOf } from '../../scripts/json/fields.mts';
-import { parseJson, textOf } from '../../shared/values/readers.mts';
+import { parseJson } from '../../shared/values/readers.mts';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
@@ -336,27 +336,6 @@ describe('nitpicker with paths', () => {
 
     expect(exitCode).toBe(2);
     expect(fieldAt(readSummary(outputRoot), 'overallStatus')).toBe('tool-error');
-  });
-
-  it('still fails on a config loosening outside the paths', () => {
-    const repository = repositoryWithTwoFolders({
-      'nitpicker.config.json': '{"exclude":["src/legacy/**"]}\n',
-    });
-    writeFiles(repository.root, {
-      'nitpicker.config.json': '{"exclude":["src/legacy/**","src/billing/**"]}\n',
-    });
-
-    const { exitCode, outputRoot } = runScoped({
-      repository,
-      arguments_: ['src/orders/clean.ts', '--base', repository.baseRef],
-    });
-
-    expect(exitCode).toBe(1);
-    expect(
-      listOf(parseJson(readReport(outputRoot, 'new-findings.json'))).map(
-        (entry) => `${textOf(fieldAt(entry, 'tool'))}/${textOf(fieldAt(entry, 'rule'))}`,
-      ),
-    ).toEqual(['nitpicker-config/policy-loosened']);
   });
 
   it('fixes only the changed files under the paths', () => {

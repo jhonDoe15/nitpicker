@@ -19,7 +19,7 @@ const chainOf: (start: string, next: (current: string) => string | undefined) =>
   untypedChainOf;
 const declaresUvWorkspace: (text: string) => boolean = untypedDeclaresUvWorkspace;
 
-export const DECLARATION_FILES = [
+const DECLARATION_FILES = [
   CONFIG_FILE_NAME,
   'package.json',
   'pnpm-workspace.yaml',
@@ -75,7 +75,7 @@ const DECLARES: Readonly<Record<string, (text: string) => boolean>> = {
   'settings.gradle.kts': includesBuilds,
 };
 
-export function declaresProjects(readText: TextReader): boolean {
+function declaresProjects(readText: TextReader): boolean {
   return DECLARATION_FILES.some((file) => {
     const text = readText(file);
     return text !== undefined && DECLARES[file]?.(text) === true;

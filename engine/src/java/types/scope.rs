@@ -448,6 +448,7 @@ impl<'a> Resolver<'a> {
         };
         let kind = declaration.kind();
         let own = Type::class(&name);
+        let own_name = name.clone();
         if matches!(kind, "object_creation_expression" | "enum_constant") {
             let base = match kind {
                 "enum_constant" => crate::engine::source::parent(declaration).and_then(|body| crate::engine::source::parent(body)).and_then(|owner| self.scope.names.get(&owner.id())).map(|owner| Type::class(owner)),
@@ -495,7 +496,47 @@ impl<'a> Resolver<'a> {
             fields: Vec::new(),
             methods: Vec::new(),
             is_interface: matches!(kind, "interface_declaration" | "annotation_type_declaration"),
+            enum_constants: (kind == "enum_declaration").then(|| {
+                let body = children(declaration).into_iter().find(|child| child.kind() == "enum_body");
+                body.map_or(0, |body| children(body).into_iter().filter(|member| member.kind() == "enum_constant").count() as u32)
+            }),
+            permitted: self.permitted(declaration, &own_name, &listed("permits")),
+            record_components: (kind == "record_declaration").then(Vec::new),
         }
+    }
+
+    /// The classes a sealed declaration permits: the ones it lists, else the ones in its file that extend it directly.
+    fn permitted(&self, declaration: Node, name: &str, listed: &[Type]) -> Option<Vec<String>> {
+        let modifiers = children(declaration).into_iter().find(|child| child.kind() == "modifiers")?;
+        if !self.file.text_of(modifiers).split_whitespace().any(|word| word == "sealed") {
+            return None;
+        }
+        if !listed.is_empty() {
+            return Some(listed.iter().map(Type::name).collect());
+        }
+        let mut found = Vec::new();
+        let mut root = declaration;
+        while let Some(parent) = root.parent() {
+            root = parent;
+        }
+        let mut stack = vec![root];
+        while let Some(node) = stack.pop() {
+            if TYPE_DECLARATIONS.contains(&node.kind()) && node.id() != declaration.id() {
+                let above = ["superclass", "interfaces", "extends_interfaces"].into_iter().filter_map(|field| {
+                    node.child_by_field_name(field).or_else(|| children(node).into_iter().find(|child| child.kind() == field))
+                });
+                let mut names = above.flat_map(|holder| {
+                    let list = children(holder).into_iter().find(|child| child.kind() == "type_list").unwrap_or(holder);
+                    let mut cursor = list.walk();
+                    list.named_children(&mut cursor).filter_map(|written| self.written(written, true)).map(|kind| kind.name()).collect::<Vec<_>>()
+                });
+                if names.any(|above| above == name) {
+                    found.extend(self.scope.names.get(&node.id()).cloned());
+                }
+            }
+            stack.extend(children(node));
+        }
+        Some(found)
     }
 
     /// Whether an expression has the shape of a constant expression; the fields it reads are collected.
@@ -660,6 +701,7 @@ impl<'a> Resolver<'a> {
                 let name = self.file.text_of(name).to_string();
                 let generic = self.declared(component, None, true).unwrap_or(kind.clone());
                 info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, fixed: None, strict: false, is_private: true });
+                info.record_components.get_or_insert_with(Vec::new).push(generic.clone());
                 info.methods.push(Method { generic_returns: generic, ..plain(&name, Vec::new(), kind.erased()) });
             }
         }

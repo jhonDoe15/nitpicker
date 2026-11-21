@@ -105,8 +105,7 @@ everything and merge or rebase on the latest `main` before the final run. A chan
 end-to-end behaviour also needs that language's suite (`npm run test:java`, `test:kotlin` or
 `test:python` or `test:go`), which needs the language's toolchain. CI runs all four, in the `java-e2e`,
 `kotlin-e2e`, `python-e2e` and `go-e2e` workflows, which follow the same triggers as the `typescript` workflow
-below (pushes to `main` and `integration` that touch the paths they list, a manual run, pull requests into
-`integration`, and the `run-ci` label). The
+below (pushes to `main` and `integration` that touch the paths they list, a manual run, and the `run-ci` label). The
 `github-action` workflow, which runs the composite action in `action.yml` on the sample project in
 `.github/sample-project`, and the `platforms` workflow described below follow them too; neither is a
 required check. On a pull request, each of these six workflows first runs a small `changes` job
@@ -135,35 +134,28 @@ matches; a test fails until it does.
 
 CI (the `typescript` workflow) runs:
 
-- on every push to `main` or `integration` that touches a path in the workflow's `paths` list (a run
-  that has started finishes; a run still waiting is replaced by the next push's run, which tests
-  everything merged so far);
-- on every pull request into `integration`, the branch that collects unfinished work before it lands
-  on `main`: opening it, each push and each label start a run, no label needed;
-- on any other pull request while it carries the `run-ci` label: adding `run-ci` starts it, and each
-  later push or label runs it again. GitHub keeps only the newest run of a workflow for a commit and
-  counts a skipped required check as passed, so a run never skips the checks: on a pull request
-  without `run-ci` the self-gate still runs and `test` fails until someone adds `run-ci`;
+- on every push to `main` that touches a path in the workflow's `paths` list (a run that has started
+  finishes; a run still waiting is replaced by the next push's run, which tests everything merged so far);
+- on every such push to `integration`, the branch that collects finished work before it lands on
+  `main`: pull requests merge into it without a run of their own, and a newer push cancels the older
+  push's run;
+- on a pull request when someone adds a label while it carries the `run-ci` label: adding `run-ci`
+  starts it, and any later label runs it again (remove and add `run-ci` for another run). GitHub
+  keeps only the newest run of a workflow for a commit and counts a skipped required check as
+  passed, so a label never skips the checks: on a pull request without `run-ci` the self-gate
+  still runs and `test` fails until someone adds `run-ci`;
 - by hand from the Actions tab (Run workflow) on any branch that already has this workflow.
 
 GitHub does not start a pull request run while the pull request has a merge conflict, so resolve it
 before adding the label.
 
-When a pull request loosens `nitpicker.config.json` (for example an exception, exclude or entry
-point that covers a new code file; see the policy changes in [docs/usage.md](docs/usage.md)), the
-self-gate fails with a `nitpicker-config/policy-loosened` finding. A maintainer who agrees with the
-loosening adds the `accept-policy-change` label. The
-[policy approval workflow](.github/workflows/nitpicker-policy-approval.yml) records the approval
-on the head commit as the `nitpicker/policy-accepted` status, removes the label and re-runs the
-failed jobs, so the self-gate passes for that commit. A later push is a new commit and needs the
-label again. Coding agents never add the label. The
-self-gate runs the pull request's own code and workflow, so changes to `.github/workflows/`,
+The self-gate runs the pull request's own code and workflow, so changes to `.github/workflows/`,
 `core/`, `package.json` and `nitpicker.config.json` need a careful review whatever the gate says.
 
 The self-gate runs as three parallel `self-gate shard` jobs, each with its share of the analyzers
 ([Sharding in CI](docs/usage.md#sharding-in-ci)); the required `self-gate` check combines their
 reports with `nitpicker aggregate` and lists the findings of all shards. A shard fails on its own
-findings too, so that the policy approval workflow, which re-runs the failed jobs, runs it again.
+findings too.
 
 CI splits the test files into shards that run as parallel jobs, and the required `test` check passes
 only when every shard passed. `scripts/test-shards/sequencer.mts` gives each shard about the same

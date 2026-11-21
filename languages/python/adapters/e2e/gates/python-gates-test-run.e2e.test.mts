@@ -1,18 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { messageOf } from '../../analysis/test-runtime/test-support/runtime-data.mts';
-import { acceptedDigest } from '../../../../../core/command/test-support/accepted-digest.mts';
 import {
   NOISY_TEST,
   RUNTIME_TEST,
   TYPE_ONLY_TEST,
   UNLINKED_TEST,
 } from '../test-support/python-preset-data.mts';
-import {
-  commitBranch,
-  gate,
-  policyChangesOf,
-  useRepositories,
-} from '../test-support/python-e2e-support.mts';
+import { commitBranch, gate, useRepositories } from '../test-support/python-e2e-support.mts';
 import { GATE_PACKAGES, enforceable } from '../test-support/python-gate-support.mts';
 
 const { fixtureRepository, removeRepositories } = useRepositories();
@@ -34,15 +28,6 @@ const LIFTED_CONFIG = JSON.stringify({
   ],
   python: { exceptions: [{ rule: 'sleep-in-test', paths: ['tests/**'], reason: 'fixture' }] },
 });
-
-const LIFTED_LOOSENINGS = [
-  'analyzer disabled: mutation',
-  'exception added: sleep-in-test for tests/** (fixture)',
-  'exception added: slow-test for tests/** (fixture)',
-  'exceptions for slow-test hide code this change adds or moves where the base config checked it: tests/test_noisy.py, tests/test_runtime.py',
-  'exceptions for test-console-output hide code this change adds or moves where the base config checked it: tests/test_noisy.py',
-  'python.exceptions for sleep-in-test hide code this change adds or moves where the base config checked it: tests/test_noisy.py, tests/test_runtime.py',
-];
 
 describe.skipIf(!pythonE2eEnabled)('Python preset test-run gates end to end', () => {
   let project: string;
@@ -90,12 +75,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset test-run gates end to end', ()
     ]);
   });
   it('fails a new slow test and new test output', () => {
-    const mutationOff = acceptedDigest(['analyzer disabled: mutation'], {
-      'nitpicker.config.json': JSON.stringify(TEST_RUN_CONFIG),
-    });
-    const result = gate(project, 'test-run', {
-      environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: mutationOff },
-    });
+    const result = gate(project, 'test-run', { environment: { CI: 'true' } });
 
     expect(result.exitCode, result.text).toBe(1);
     expect(enforceable(result)).toEqual([
@@ -118,11 +98,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset test-run gates end to end', ()
     );
   });
   it('passes a new slow test and new test output once they are lifted', () => {
-    const { policyLoosenings, policyDigest } = policyChangesOf(project, 'test-run-lifted');
-    expect(policyLoosenings.toSorted()).toEqual(LIFTED_LOOSENINGS);
-    const lifted = gate(project, 'test-run-lifted', {
-      environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: policyDigest },
-    });
+    const lifted = gate(project, 'test-run-lifted', { environment: { CI: 'true' } });
     expect(lifted.exitCode, lifted.text).toBe(0);
     expect(enforceable(lifted)).toEqual([]);
   });

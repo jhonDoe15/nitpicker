@@ -1,9 +1,4 @@
 import { policyHash as hashOf, sortByToolAndPath as sorted } from '../reporting/report-model.mts';
-import {
-  isPolicyChangeAccepted,
-  policyDigest,
-  policyFindings,
-} from '../reporting/review/policy-findings.mts';
 import type { DeclaredMoves } from './moved-names/declared/move-types.mts';
 import type { TouchedCode } from './model/finding-types.mts';
 import { attachFixes } from './fixes/attach-fixes.mts';
@@ -30,7 +25,7 @@ import type { Finding, ReportEntry } from '../../../shared/values/findings.mts';
 import { type LabelsOf, findingLabeler, labelCounts } from '../../labels/finding-labels.mts';
 import { labeledFindings, labeledOutcomes, labelRun } from '../../labels/label-filter.mts';
 import type { LabelFilter } from '../../labels/taxonomy.mts';
-import { fieldOf, fieldsOf, objectOf, textOf, textsOf } from '../../../shared/values/readers.mts';
+import { fieldOf, objectOf } from '../../../shared/values/readers.mts';
 import { areaOf } from '../reporting/format/rule-groups/finding-areas.mts';
 
 type ScopedOutcome = AnalyzerOutcome & { readonly outside?: number };
@@ -43,15 +38,8 @@ export type ReportContext = {
   readonly comparison: ComparisonShas;
   readonly startedAt: number;
   readonly configOverrides: readonly unknown[];
-  readonly policyChanges: unknown;
-  readonly policyLoosenings: readonly unknown[];
   readonly notices: readonly unknown[];
   readonly baseToHeadRenames: Moves;
-  readonly policyDigest?: unknown;
-  readonly policyKinds?: unknown;
-  readonly acceptPolicyChange?: unknown;
-  readonly policyAcceptanceSource?: unknown;
-  readonly reportsPolicy: boolean;
   readonly scope?: Scope | undefined;
   readonly quick?: unknown;
   readonly staged?: unknown;
@@ -150,21 +138,15 @@ export function combineAnalyzerReports(context: CombineRequest): DiffReport {
 }
 
 export function noChangesReport(
-  context: Omit<
-    ReportContext,
-    'policyChanges' | 'policyLoosenings' | 'notices' | 'baseToHeadRenames' | 'reportsPolicy'
-  >,
+  context: Omit<ReportContext, 'notices' | 'baseToHeadRenames'>,
 ): DiffReport {
   const report = buildReport({
     ...context,
     outcomes: [],
     notes: [],
     toolErrors: [...context.additionalToolErrors],
-    policyChanges: [],
-    policyLoosenings: [],
     notices: [],
     baseToHeadRenames: new Map(),
-    reportsPolicy: false,
   });
   return { ...report, summary: { ...report.summary, noChanges: true } };
 }
@@ -209,31 +191,6 @@ function declaredExclusions(analyzers: readonly unknown[]): string[] {
   return [...new Set(analyzers.flatMap((analyzer) => exclusionsOf(analyzer)))].sort();
 }
 
-function optionalText(value: unknown): string | undefined {
-  return value === undefined ? undefined : textOf(value);
-}
-
-function policyReview(
-  context: BuildContext,
-  digest: string,
-): { readonly findings: Finding[]; readonly accepted: boolean } {
-  const { acceptPolicyChange, comparison } = context;
-  const loosenings = textsOf(context.policyLoosenings);
-  const acceptance = {
-    acceptedDigest: optionalText(acceptPolicyChange),
-    headSha: optionalText(comparison['headSha']),
-  };
-  const kinds = Object.fromEntries(
-    Object.entries(fieldsOf(context.policyKinds)).map(([name, kind]) => [name, textOf(kind)]),
-  );
-  return {
-    findings: context.reportsPolicy
-      ? policyFindings(loosenings, digest, { ...acceptance, kinds })
-      : [],
-    accepted: isPolicyChangeAccepted(loosenings, digest, acceptance),
-  };
-}
-
 function labelCountsOf(findings: readonly Finding[], labelsOf: LabelsOf | undefined): object {
   if (findings.length === 0) {
     return {};
@@ -253,12 +210,8 @@ function runAndScopeSummary(context: BuildContext, outcomes: readonly ScopedOutc
 
 function buildReport(context: BuildContext): DiffReport {
   const { analyzers, outcomes, toolErrors, comparison, startedAt } = context;
-  const { configOverrides, policyChanges, policyLoosenings, notices } = context;
-  const digest = textOf(
-    context.policyDigest ?? policyDigest({ loosenings: textsOf(policyLoosenings) }),
-  );
-  const review = policyReview(context, digest);
-  const newFindings = [...collect(outcomes, 'newFindings'), ...review.findings];
+  const { configOverrides, notices } = context;
+  const newFindings = collect(outcomes, 'newFindings');
   return {
     summary: {
       requestedBaseRef: comparison['requestedBaseRef'],
@@ -267,13 +220,6 @@ function buildReport(context: BuildContext): DiffReport {
       headSha: comparison['headSha'],
       policyHash: hashOf(context.policyAnalyzers ?? analyzers, configOverrides, context.metadata),
       configOverrides,
-      policyChanges,
-      policyLoosenings,
-      ...(policyLoosenings.length === 0 ? {} : { policyDigest: digest }),
-      policyChangeAccepted: review.accepted,
-      ...(context.policyAcceptanceSource === undefined
-        ? {}
-        : { policyAcceptanceSource: context.policyAcceptanceSource }),
       notices: [...notices, ...skippedCheckNotices(outcomes)],
       ...runAndScopeSummary(context, outcomes),
       ...skippedFields(context),

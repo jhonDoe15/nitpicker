@@ -89,18 +89,6 @@ export function stepWhere(
   return step;
 }
 
-export function stepWithId(steps: readonly WorkflowStep[], id: string): WorkflowStep {
-  return stepWhere(steps, (step) => step.id === id);
-}
-
-export function scriptOf(step: WorkflowStep | undefined): string {
-  const script = step?.with?.['script'];
-  if (script === undefined) {
-    throw new Error('The step has no script input');
-  }
-  return script;
-}
-
 export function runnable(step: WorkflowStep): { readonly run: string } {
   if (step.run === undefined) {
     throw new Error('The step has no script');
