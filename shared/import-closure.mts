@@ -35,7 +35,9 @@ function walk(relativePaths: Iterable<string>, visit: Visit): Map<string, string
     }
     const { contents, imports } = visit(relativePath);
     files.set(relativePath, contents);
-    pending.push(...imports);
+    for (const imported of imports) {
+      pending.push(imported);
+    }
   }
   return files;
 }
