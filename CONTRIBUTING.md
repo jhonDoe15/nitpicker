@@ -25,6 +25,8 @@ One npm package (`nitpicker`) serves every language; the package root is the rep
   (`metrics/`); it reuses the generic ingesters in `shared/ingest/`.
 - `languages/go/`: the Go analyzer (`adapters/`) and the `go/ast` metrics program (`inspect/`, a Go
   module on the standard library only).
+- `engine/`: a prototype of nitpicker's own analysis engine, a Rust program with its own
+  [README](engine/README.md) and its own conventions. Nothing calls it yet. Not shipped.
 - `spec/`, `docs/`, `evals/` and `scripts/`: the language-neutral contract, documentation,
   agent evaluations and maintenance scripts. Not shipped.
 
