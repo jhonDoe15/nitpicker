@@ -1,4 +1,4 @@
-import type { JavaFinding } from '../typed/java-values.mts';
+import type { JavaFinding, JavaPolicy } from '../typed/java-values.mts';
 
 export type Token = {
   readonly text: string;
@@ -101,4 +101,36 @@ export type ReusePart = {
     readonly packages: readonly unknown[];
     readonly imports: readonly unknown[];
   };
+};
+
+export type ReuseProject = {
+  readonly qualifier?: string | undefined;
+  readonly reportRoot?: string | undefined;
+};
+
+export type ReuseOptions = {
+  readonly projects: readonly ReuseProject[];
+  readonly kotlin?: true | false;
+  readonly policy?: JavaPolicy;
+  readonly decisionWorkers?: number;
+};
+
+export type ReuseFactsOptions = {
+  readonly projects: readonly ReuseProject[];
+  readonly kotlin?: true | false;
+  readonly exclude?: readonly string[];
+  readonly analyzeGeneratedSources?: boolean;
+};
+
+export type BaselineEntry = {
+  readonly unchanged: boolean;
+  readonly definitions: readonly Pick<
+    Definition,
+    'kind' | 'name' | 'qualifier' | 'tokens' | 'text'
+  >[];
+};
+
+export type BaselinePolicy = {
+  readonly baselineRoot: string;
+  readonly baselineMovesFile?: unknown;
 };
