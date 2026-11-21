@@ -190,6 +190,53 @@ describe('lintWithOxlint with type-aware rules', () => {
   });
 });
 
+describe('lintWithOxlint in a workspace with packages hoisted to its root', () => {
+  let workspace: string;
+  let hoistedResults: readonly LintResult[];
+
+  beforeAll(async () => {
+    workspace = createProject('nitpicker-oxlint-hoisted-', {
+      'node_modules/hoisted-lib/package.json': JSON.stringify({
+        name: 'hoisted-lib',
+        types: 'index.d.ts',
+      }),
+      'node_modules/hoisted-lib/index.d.ts': 'export declare const sure: string;\n',
+      'packages/app/policy.mjs': TYPED_POLICY,
+      'packages/app/node_modules/.keep': '',
+      'packages/app/tsconfig.json': JSON.stringify({
+        compilerOptions: { strict: true, skipLibCheck: true, types: [], lib: ['ES2022'] },
+        include: ['src/**/*.ts'],
+      }),
+      'shared/other.ts': "export const other: string = 'x';\n",
+      'packages/app/src/uses.ts': [
+        "import { sure } from 'hoisted-lib';",
+        "import { other } from '../../../shared/other';",
+        'export const redundant = sure as string;',
+        'export const alsoRedundant = other as string;',
+        '',
+      ].join('\n'),
+    });
+    hoistedResults = await lintProject({
+      root: path.join(workspace, 'packages/app'),
+      patterns: ['src/**/*.ts'],
+      projectConfigName: 'tsconfig.json',
+    });
+  });
+
+  afterAll(() => {
+    rmSync(workspace, { recursive: true, force: true });
+  });
+
+  it('resolves workspace root packages and files outside the project as in the project', () => {
+    const messages = hoistedResults.flatMap((result) => result.messages);
+
+    expect(messages.map(({ ruleId, line }) => ({ ruleId, line }))).toEqual([
+      { ruleId: '@typescript-eslint/no-unnecessary-type-assertion', line: 3 },
+      { ruleId: '@typescript-eslint/no-unnecessary-type-assertion', line: 4 },
+    ]);
+  });
+});
+
 describe('lintWithOxlint with rule options oxlint rejects', () => {
   let rejectedRoot: string;
   let rejectedResults: readonly LintResult[];

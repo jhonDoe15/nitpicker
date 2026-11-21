@@ -5,6 +5,7 @@ import {
   readdirSync,
   readFileSync,
   realpathSync,
+  rmSync,
   symlinkSync,
   unlinkSync,
   writeFileSync,
@@ -67,20 +68,59 @@ function ancestorDirectories(directory: string): string[] {
   return segments.map((_segment, index) => segments.slice(0, index + 1).join('/'));
 }
 
-export function createStage(projectRoot: string, projectConfigPath: string | undefined): string {
-  const stage = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-')));
-  for (const entry of readdirSync(projectRoot)) {
-    if (projectConfigPath !== undefined && entry === 'tsconfig.json') continue;
-    symlinkSync(path.join(projectRoot, entry), path.join(stage, entry));
+export type Stage = {
+  readonly root: string;
+  readonly stage: string;
+};
+
+export function createStage(projectRoot: string, projectConfigPath: string | undefined): Stage {
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-')));
+  try {
+    const stage =
+      projectConfigPath === undefined ? root : mirroredAncestors(root, path.resolve(projectRoot));
+    for (const entry of readdirSync(projectRoot)) {
+      if (projectConfigPath !== undefined && entry === 'tsconfig.json') continue;
+      symlinkSync(path.join(projectRoot, entry), path.join(stage, entry));
+    }
+    if (projectConfigPath !== undefined) {
+      writeFileSync(
+        path.join(stage, 'tsconfig.json'),
+        lintTypeScriptConfig(projectConfigPath, stage),
+      );
+    }
+    mkdirSync(path.join(stage, STAGE_DIRECTORY));
+    return { root, stage };
+  } catch (error) {
+    rmSync(root, { recursive: true, force: true });
+    throw error;
   }
-  if (projectConfigPath !== undefined) {
-    writeFileSync(
-      path.join(stage, 'tsconfig.json'),
-      lintTypeScriptConfig(projectConfigPath, stage),
-    );
-  }
-  mkdirSync(path.join(stage, STAGE_DIRECTORY));
-  return stage;
+}
+
+function mirroredAncestors(root: string, projectRoot: string): string {
+  const ancestors = ancestorsOf(projectRoot);
+  const depth = Math.max(
+    0,
+    ...ancestors.map((ancestor, index) => (isWorkspaceLevel(ancestor) ? index + 1 : 0)),
+  );
+  const chain = [projectRoot, ...ancestors].slice(0, depth + 1).reverse();
+  return chain.slice(1).reduce((mirror, directory, index) => {
+    const parent = chain[index] ?? directory;
+    const name = path.basename(directory);
+    for (const entry of readdirSync(parent)) {
+      if (entry !== name) symlinkSync(path.join(parent, entry), path.join(mirror, entry));
+    }
+    mkdirSync(path.join(mirror, name));
+    return path.join(mirror, name);
+  }, root);
+}
+
+function isWorkspaceLevel(directory: string): boolean {
+  return ['node_modules', '.git'].some((entry) => existsSync(path.join(directory, entry)));
+}
+
+function ancestorsOf(directory: string): string[] {
+  const parent = path.dirname(directory);
+  return parent === directory ? [] : [parent, ...ancestorsOf(parent)];
 }
 
 function lintTypeScriptConfig(projectConfigPath: string, stage: string): string {

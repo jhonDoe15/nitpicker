@@ -22,6 +22,7 @@ import { policyTestRunner } from './test-runner/policy-runner.mts';
 import { withRunnerTypes } from './test-runner/vocabulary/runner-types.mts';
 import { libsWithTestDom, withTestDom } from './test-environment/dom-code/test-dom-tsconfig.mts';
 import { filesOutsideRootDir } from './project-configs/typescript/solution-resolution.mts';
+import { coveringAncestorTsconfig } from './project-configs/typescript/ancestor-tsconfig.mts';
 import { selectedProjectTsconfig } from './modules/selected-project-tsconfig.mts';
 import { fieldsOf, parseJson } from '../../../shared/values/readers.mts';
 import { withoutMutantStrictness } from './typed/mutant-strictness.mts';
@@ -84,6 +85,20 @@ export function layoutTransformFor(
             });
       return `${JSON.stringify(layered, null, 2)}\n`;
     }
+    const ancestor =
+      name === QUALITY_TSCONFIG ? coveringAncestorTsconfig(projectDirectory) : undefined;
+    if (ancestor !== undefined) {
+      const layered = projectLayeredTsconfig(ancestor.extended, tsconfigOf(parseJson(text)), {
+        layout,
+        projectDirectory,
+        withRootFiles: false,
+      });
+      const unset = {
+        ...layered,
+        compilerOptions: { ...fieldsOf(layered['compilerOptions']), ...ANCESTOR_UNSET },
+      };
+      return `${JSON.stringify(ancestor.hasFiles ? { files: [], ...unset } : unset, null, 2)}\n`;
+    }
     const rewritten = withProjectStrictness(
       withTestDom(layoutTransform?.(text) ?? text, name, { projectDirectory, layout }),
       layout,
@@ -126,6 +141,8 @@ function javascriptProjectOptions(
     ? { ...options, jsx }
     : options;
 }
+
+const ANCESTOR_UNSET = { composite: false, rootDir: null, declarationDir: null };
 
 const ANALYSIS_OPTIONS = {
   allowJs: true,
