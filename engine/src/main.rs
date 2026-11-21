@@ -202,6 +202,64 @@ fn typescript_structure(args: &[String]) {
     );
 }
 
+/// `typescript-lint --files <list> [--rules <a,b>] [--out <file>] [--testing-library-utils-module <suffix>]`: each line of
+/// the list is the path to read, the path to report and `key=value` settings for that file, tabs between them. The
+/// module suffix is `test-utils` unless given, and empty for none; `testing-library/utils-module=<suffix>` sets it for
+/// one file and `testing-library/scope=off` leaves the file to no testing-library rule.
+/// A row of the output is file, rule, line, column and message, then the end line and column of a reported range.
+/// `--testing-library-scope` has the engine decide both for every file without such settings, by following the file's
+/// imports as the preset does; `--end-to-end-root <folder>` names the folder of browser tests for that decision.
+fn typescript_lint(args: &[String]) {
+    let (mut list, mut out, mut only) = (None, None, None::<Vec<String>>);
+    let mut index = 0;
+    while index < args.len() {
+        match args[index].as_str() {
+            "--files" => { index += 1; list = Some(&args[index]); }
+            "--out" => { index += 1; out = Some(&args[index]); }
+            "--rules" => { index += 1; only = Some(args[index].split(',').map(String::from).collect()); }
+            "--testing-library-utils-module" => {
+                index += 1;
+                typescript::rules::testing_library::set_utils_module(Some(args[index].clone()).filter(|module| !module.is_empty()));
+            }
+            "--testing-library-scope" => typescript::rules::testing_library::set_scope_from_imports(),
+            "--end-to-end-root" => { index += 1; typescript::rules::testing_library::scope::set_end_to_end_root(args[index].clone()); }
+            "--testing-library-upstream" => typescript::rules::testing_library::set_upstream_only(),
+            other => panic!("unknown argument {other}"),
+        }
+        index += 1;
+    }
+    let started = Instant::now();
+    let files: Vec<typescript::rules::Listed> = std::fs::read_to_string(list.expect("--files"))
+        .expect("list")
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(|line| {
+            let mut columns = line.split('\t').map(String::from);
+            let path = columns.next().unwrap_or_default();
+            let display = columns.next().unwrap_or_else(|| path.clone());
+            typescript::rules::Listed { path, display, settings: columns.collect() }
+        })
+        .collect();
+    let rules = typescript::rules::selected(only.as_deref());
+    let findings = typescript::rules::lint_files(&files, &rules);
+    let rows: Vec<_> = findings
+        .iter()
+        .map(|reported| {
+            let found = &reported.finding;
+            match reported.end {
+                Some((line, column)) => serde_json::json!([found.file, found.rule, found.line, found.column, found.message, line, column]),
+                None => serde_json::json!([found.file, found.rule, found.line, found.column, found.message]),
+            }
+        })
+        .collect();
+    let text = serde_json::to_string(&rows).expect("json");
+    match out {
+        Some(path) => std::fs::write(path, text).expect("write"),
+        None => println!("{text}"),
+    }
+    eprintln!("{} files, {} rules, {} findings; {:.0} ms", files.len(), rules.len(), findings.len(), started.elapsed().as_secs_f64() * 1e3);
+}
+
 /// Exit status of `typescript-typed` when the compiler's types are not available: the binary is missing, its
 /// version is not supported, or the server failed. The caller runs its own check instead.
 const TYPES_UNAVAILABLE: i32 = 3;

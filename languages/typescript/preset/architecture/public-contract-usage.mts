@@ -34,8 +34,8 @@ type ClassCursor = {
   readonly containingClass: TypeScript.Node | undefined;
 };
 
-function isProductionSource(source: TypeScript.SourceFile, sourceRoot: string): boolean {
-  const relative = path.relative(sourceRoot, source.fileName);
+function isProductionFile(fileName: string, root: string): boolean {
+  const relative = path.relative(root, fileName).split(path.sep).join('/');
   return (
     relative !== '..' &&
     !relative.startsWith('../') &&
@@ -235,23 +235,31 @@ export function findUnusedPublicContractMethods(
   );
 }
 
-function nodeUnusedMethods(absoluteConfig: string): {
-  readonly sourceRoot: string;
-  readonly findings: UnusedMethod[];
-} {
+function parsedConfig(absoluteConfig: string): TypeScript.ParsedCommandLine {
   const config = ts.readConfigFile(absoluteConfig, (fileName) => ts.sys.readFile(fileName));
-  if (config.error)
+  if (config.error) {
     throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, '\n'));
+  }
   const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, path.dirname(absoluteConfig));
-  if (parsed.errors.length > 0)
+  if (parsed.errors.length > 0) {
     throw new Error(
       parsed.errors
         .map((error) => ts.flattenDiagnosticMessageText(error.messageText, '\n'))
         .join('\n'),
     );
+  }
+  return parsed;
+}
+
+function nodeUnusedMethods(
+  parsed: TypeScript.ParsedCommandLine,
+  roots: Roots,
+): { readonly sourceRoot: string; readonly findings: UnusedMethod[] } {
   const program = ts.createProgram(parsed.fileNames, parsed.options);
-  const sourceRoot = parsed.options.rootDir ?? path.dirname(absoluteConfig);
-  return { sourceRoot, findings: findUnusedPublicContractMethods(program, { sourceRoot }) };
+  return {
+    sourceRoot: roots.sourceRoot,
+    findings: findUnusedPublicContractMethods(program, roots),
+  };
 }
 
 export function analyzePublicContractUsage(
@@ -262,8 +270,16 @@ export function analyzePublicContractUsage(
   }: { readonly displayRoot?: string; readonly environment?: NodeJS.ProcessEnv } = {},
 ): UnusedMethod[] {
   const absoluteConfig = path.resolve(configPath);
+  const parsed = parsedConfig(absoluteConfig);
+  const configRoot = parsed.options.rootDir ?? path.dirname(absoluteConfig);
+  const ownRoot = displayRoot === undefined ? configRoot : path.resolve(displayRoot);
+  if (!hasImplementingClass(parsed.fileNames, ownRoot)) {
+    return [];
+  }
+  const wholeProject = ownRoot === configRoot;
   const { sourceRoot, findings } =
-    engineUnusedMethods(absoluteConfig, environment) ?? nodeUnusedMethods(absoluteConfig);
+    (wholeProject ? engineUnusedMethods(absoluteConfig, environment) : undefined) ??
+    nodeUnusedMethods(parsed, { sourceRoot: configRoot, ownRoot });
   if (displayRoot === undefined) {
     return findings;
   }

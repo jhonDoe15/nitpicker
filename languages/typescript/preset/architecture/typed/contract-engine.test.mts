@@ -11,7 +11,7 @@ const PROJECT = path.resolve(
 );
 const NODE_ONLY = { ...process.env, NITPICKER_TYPED_ENGINE: 'off' };
 const ENGINE = { ...process.env, NITPICKER_TYPED_ENGINE: 'required' };
-const hasEngine = findEngine() !== undefined && nativeCompilerPath() !== undefined;
+const hasEngine = findEngine(process.env) !== undefined && nativeCompilerPath() !== undefined;
 
 it('leaves the check to the compiler in this process when the engine is switched off', () => {
   expect(engineUnusedMethods(PROJECT, NODE_ONLY)).toBeUndefined();

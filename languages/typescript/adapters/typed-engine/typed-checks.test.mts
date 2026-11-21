@@ -31,7 +31,7 @@ const FIXTURE = path.resolve(
   import.meta.dirname,
   '../../../../engine/tests/fixtures/typescript-typed/contracts/tsconfig.json',
 );
-const hasEngine = findEngine() !== undefined && nativeCompilerPath() !== undefined;
+const hasEngine = findEngine(process.env) !== undefined && nativeCompilerPath() !== undefined;
 
 it.runIf(hasEngine)('gets every named check answered by one engine call', () => {
   const outcome = runTypedChecks({
