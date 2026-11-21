@@ -5,6 +5,7 @@ import {
   type SourceContext,
 } from '../../analysis/constant-resolution.mts';
 import { chainOf, nameOf } from '../../typed/node-views.mts';
+import { wrappedExpression } from '../../typed/syntax-views.mts';
 
 type MaybeNode = TSESTree.Node | undefined;
 
@@ -35,24 +36,19 @@ const PASS_STEPS = new Set([
   'concat',
 ]);
 const MAX_SOURCES = 32;
-
-function inner(node: TSESTree.Node): TSESTree.Node | undefined {
-  if (node.type === AST_NODE_TYPES.AwaitExpression) {
-    return node.argument;
-  }
-  return node.type === AST_NODE_TYPES.TSAsExpression ||
-    node.type === AST_NODE_TYPES.TSNonNullExpression ||
-    node.type === AST_NODE_TYPES.ChainExpression
-    ? node.expression
-    : undefined;
-}
+const WRAPPER_KINDS = [
+  AST_NODE_TYPES.AwaitExpression,
+  AST_NODE_TYPES.TSAsExpression,
+  AST_NODE_TYPES.TSNonNullExpression,
+  AST_NODE_TYPES.ChainExpression,
+];
 
 export function resolvedValue(context: SourceContext, node: MaybeNode): TSESTree.Node | undefined {
   const seen = new Set<TSESTree.Node>();
   const steps = chainOf(node, (current) => {
     seen.add(current);
     const resolved = resolveConstant(context, current) ?? current;
-    const next = resolved === current ? inner(current) : resolved;
+    const next = resolved === current ? wrappedExpression(current, WRAPPER_KINDS) : resolved;
     return next !== undefined && seen.has(next) ? undefined : next;
   });
   return steps.at(-1);

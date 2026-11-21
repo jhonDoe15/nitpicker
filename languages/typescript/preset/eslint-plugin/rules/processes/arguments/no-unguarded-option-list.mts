@@ -1,9 +1,8 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type { SourceContext } from '../../analysis/constant-resolution.mts';
 import { propertyKeyName } from '../../analysis/test-code-analysis.mts';
-import { subprocessBindings, type ModuleBindings } from '../../analysis/subprocess-calls.mts';
 import { nameOf } from '../../typed/node-views.mts';
-import { calleeMethod } from '../process-callees.mts';
+import { calleeMethod, trackedBindings } from '../process-callees.mts';
 import { joinedList, resolvedValue } from './list-sources.mts';
 import { possiblyEmptyList } from './possibly-empty.mts';
 
@@ -105,13 +104,9 @@ export const rule: TSESLint.RuleModule<MessageIds> = {
     },
   },
   create(context) {
-    let bindings: ModuleBindings = { named: new Map(), namespaces: new Set() };
-    return {
-      Program(node) {
-        bindings = subprocessBindings(node);
-      },
+    return trackedBindings('plain', (current) => ({
       CallExpression(node) {
-        const method = calleeMethod(node.callee, bindings);
+        const method = calleeMethod(node.callee, current());
         if (method === undefined || !FILE_FORMS.has(method)) {
           return;
         }
@@ -125,6 +120,6 @@ export const rule: TSESLint.RuleModule<MessageIds> = {
           context.report({ node: files, messageId: 'emptyFiles' });
         }
       },
-    };
+    }));
   },
 };

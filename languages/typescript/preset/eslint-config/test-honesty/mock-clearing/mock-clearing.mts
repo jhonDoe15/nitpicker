@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { projectFilePaths } from '../../typed/files/file-views.mts';
 
@@ -10,25 +10,46 @@ const CLEARING_CALL =
   /\b(?:clearAllMocks|resetAllMocks|restoreAllMocks|mockClear|mockReset|mockRestore|resetCalls)\b(?!['"]\s*:)/u;
 const SELF_CLEARING_RUNNERS = /"(?:react-scripts|@craco\/craco|react-app-rewired)"\s*:/u;
 const SPECIFIERS = /(?:\bfrom\s+|\brequire\(\s*|\bimport\(\s*)['"]([^'"]+)['"]/gu;
-const PATH_LITERALS =
-  /['"`](?:<rootDir>\/)?((?:\.{1,2}\/)?[^'"`\s]+\.[cm]?[jt]sx?|\.{1,2}\/[^'"`\s.]+(?:\/[^'"`\s.]+)*)['"`]/gu;
+const PATH_LITERALS = /['"`](?:<rootDir>\/)?([^'"`\s]+\.[cm]?[jt]sx?|\.{1,2}\/[^'"`\s.]+)['"`]/gu;
 const PROJECT_ALIAS = /^(?:#|@\/|~\/)/u;
 const FOLLOWED_LEVELS = 3;
 const PRESETS = /\bpreset\s*:\s*['"]([^'"]+)['"]/gu;
 const KNOWN_PRESETS = /^ts-jest(?:\/|$)/u;
 const SHARED_CONFIG =
   /(?:^|[/@.-])(?:configs?|presets?|jest|vitest|test|testing|shared)(?:[/.-]|$)/u;
-const TOOLING =
-  /^(?:node:|(?:path|url|fs|os|module|process)$|vite(?:st)?(?:\/|$)|@vitejs\/|@vitest\/|vite-|unplugin-|@rollup\/|rollup-plugin-|ts-jest|jest-|babel-jest|@swc\/|@testing-library\/|happy-dom|jsdom|dotenv|@storybook\/|@sveltejs\/|@analogjs\/|@nx\/)/u;
+const TOOLING = new RegExp(
+  [
+    '^(?:node:',
+    '(?:path|url|fs|os|module|process)$',
+    'vite(?:st)?(?:\\/|$)',
+    '@vitejs\\/',
+    '@vitest\\/',
+    'vite-',
+    'unplugin-',
+    '@rollup\\/',
+    'rollup-plugin-',
+    'ts-jest',
+    'jest-',
+    'babel-jest',
+    '@swc\\/',
+    '@testing-library\\/',
+    'happy-dom',
+    'jsdom',
+    'dotenv',
+    '@storybook\\/',
+    '@sveltejs\\/',
+    '@analogjs\\/',
+    '@nx\\/)',
+  ].join('|'),
+  'u',
+);
 const CODE_EXTENSIONS = ['', '.ts', '.mts', '.cts', '.js', '.mjs', '.cjs', '.tsx', '.jsx'];
 const INDEX_FILES = CODE_EXTENSIONS.slice(1).map((extension) => `/index${extension}`);
 
 function readText(file: string): string | undefined {
-  try {
-    return readFileSync(file, 'utf8');
-  } catch {
-    return undefined;
-  }
+  return statSync(file, { throwIfNoEntry: false })?.isFile() === true
+    ? readFileSync(file, 'utf8')
+    : undefined;
 }
 
 function matchesOf(text: string, pattern: RegExp): string[] {
@@ -58,13 +79,15 @@ function directlyRelated(file: string, text: string, projectRoot: string): Relat
 
 function relatedTexts(configFile: string, text: string, projectRoot: string): string[] {
   const seen = new Map<string, string>();
-  let level: Related[] = [{ file: configFile, text }];
-  for (let depth = 0; depth < FOLLOWED_LEVELS && level.length > 0; depth += 1) {
-    level = level
-      .flatMap((each) => directlyRelated(each.file, each.text, projectRoot))
-      .filter((each) => !seen.has(each.file) && each.file !== configFile);
-    for (const each of level) {
-      seen.set(each.file, each.text);
+  const queue = [{ file: configFile, text, depth: 0 }];
+  for (const current of queue) {
+    if (current.depth < FOLLOWED_LEVELS) {
+      for (const next of directlyRelated(current.file, current.text, projectRoot)) {
+        if (!seen.has(next.file) && next.file !== configFile) {
+          seen.set(next.file, next.text);
+          queue.push({ ...next, depth: current.depth + 1 });
+        }
+      }
     }
   }
   return [...seen.values()];
@@ -72,7 +95,7 @@ function relatedTexts(configFile: string, text: string, projectRoot: string): st
 
 function hasUnknownBase(text: string): boolean {
   const packages = matchesOf(text, SPECIFIERS).filter(
-    (specifier) => !specifier.startsWith('.') && !specifier.startsWith('/'),
+    (specifier) => !(specifier.startsWith('.') || specifier.startsWith('/')),
   );
   return (
     packages.some(

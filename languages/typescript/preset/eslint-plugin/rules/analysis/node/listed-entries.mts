@@ -1,5 +1,6 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { nameOf, variableNamed } from '../../typed/node-views.mts';
+import { unwrapOf } from '../../typed/syntax-views.mts';
 import { importedCalleeName, type ModuleBindings } from '../subprocess-calls.mts';
 import {
   hasUnsafeObjectReferences,
@@ -35,29 +36,17 @@ const ITERATING_METHODS = new Set([
   'findLast',
 ]);
 const MAX_STEPS = 20;
+const WRAPPER_KINDS = [
+  AST_NODE_TYPES.AwaitExpression,
+  AST_NODE_TYPES.TSAsExpression,
+  AST_NODE_TYPES.TSNonNullExpression,
+  AST_NODE_TYPES.TSSatisfiesExpression,
+  AST_NODE_TYPES.ChainExpression,
+];
 const ENTRY_DIRECTORIES = new Set(['parentPath', 'path']);
 
-function unwrapped(node: TSESTree.Node): TSESTree.Node | undefined {
-  if (node.type === AST_NODE_TYPES.AwaitExpression) {
-    return node.argument;
-  }
-  return node.type === AST_NODE_TYPES.TSAsExpression ||
-    node.type === AST_NODE_TYPES.TSNonNullExpression ||
-    node.type === AST_NODE_TYPES.TSSatisfiesExpression ||
-    node.type === AST_NODE_TYPES.ChainExpression
-    ? node.expression
-    : undefined;
-}
-
 function inner(expression: TSESTree.Node): TSESTree.Node {
-  const chain = [expression];
-  for (const current of chain) {
-    const next = unwrapped(current);
-    if (next !== undefined) {
-      chain.push(next);
-    }
-  }
-  return chain.at(-1) ?? expression;
+  return unwrapOf(expression, WRAPPER_KINDS);
 }
 
 function singleBinding(

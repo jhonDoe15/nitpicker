@@ -10,7 +10,7 @@ type RestoreScope = {
   readonly scope: string;
   readonly restores: 'globals' | 'envs' | 'concurrent';
 };
-type Restores = { scope: string; globals: boolean; envs: boolean; concurrent?: boolean };
+type Restores = { scope: string; globals: boolean; envs: boolean; concurrent: boolean };
 
 const ts = typescriptApi();
 
@@ -178,6 +178,7 @@ export function stubRestoresIn(projectRoot: string): Restores[] {
       scope,
       globals: false,
       envs: false,
+      concurrent: false,
       ...scopes.get(scope),
       [restores]: true,
     });

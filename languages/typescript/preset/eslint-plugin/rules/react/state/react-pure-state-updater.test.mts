@@ -145,8 +145,15 @@ tester.run('react-pure-state-updater props object', rule, {
       filename,
       code: `import { useState } from 'react';
 import { Map, Set } from 'immutable';
-export function Panel({ item }) { const [byId, setById] = useState<Map<string, number>>(Map()); const [tags, setTags] = useState(new Set());
-  return <button type="button" onClick={() => { setById((current) => current.set(item, 1)); setTags((current) => current.add(item)); }}>{byId.size + tags.size}</button>; }`,
+export function Panel({ item }) {
+  const [byId, setById] = useState<Map<string, number>>(Map());
+  const [tags, setTags] = useState(new Set());
+  const add = () => {
+    setById((current) => current.set(item, 1));
+    setTags((current) => current.add(item));
+  };
+  return <button type="button" onClick={add}>{byId.size + tags.size}</button>;
+}`,
     },
     {
       filename,
@@ -166,7 +173,8 @@ export function usePanel(notify) { const [n, setN] = useState(0);
       filename,
       code: `import { useState } from 'react';
 export const Panel = (props) => { const [n, setN] = useState(0);
-  return <button type="button" onClick={() => { setN((current) => { props.onStep(current); return current + 1; }); }}>{n}</button>; };`,
+  const step = () => { setN((current) => { props.onStep(current); return current + 1; }); };
+  return <button type="button" onClick={step}>{n}</button>; };`,
       errors: [{ messageId: 'propCallback', data: { name: 'props.onStep', where: updater } }],
     },
   ],

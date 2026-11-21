@@ -1,21 +1,12 @@
 import { readFileSync } from 'node:fs';
 import type TypeScript from 'typescript';
-import {
-  isExported as untypedIsExported,
-  scriptKindOf as untypedScriptKindOf,
-} from '../../../../modules/module-sources.mts';
-import { readStamped as untypedReadStamped } from '../../../../modules/stamped-file-cache.mts';
 import { ts } from '../../typed/typescript-views.mts';
-
-type Cache<Value> = Map<string, { readonly stamp: string; readonly value: Value }>;
-
-const isExported: (statement: TypeScript.Node) => boolean = untypedIsExported;
-const scriptKindOf: (file: string) => TypeScript.ScriptKind = untypedScriptKindOf;
-const readStamped: <Value>(
-  cache: Cache<Value>,
-  file: string,
-  read: (file: string) => Value,
-) => Value | undefined = untypedReadStamped;
+import {
+  isExported,
+  readStamped,
+  scriptKindOf,
+  type StampedCache,
+} from '../support/typed-sources.mts';
 
 function hasModifier(node: TypeScript.Node, modifier: TypeScript.SyntaxKind): boolean {
   return (
@@ -59,7 +50,7 @@ function asyncExports(file: string): Set<string> {
   return new Set(sourceFile.statements.filter(isExported).flatMap(asyncNamesOf));
 }
 
-const exportCache: Cache<Set<string>> = new Map();
+const exportCache: StampedCache<Set<string>> = new Map();
 
 export function exportIsAsyncFunction(file: string, name: string): boolean {
   return readStamped(exportCache, file, asyncExports)?.has(name) ?? false;

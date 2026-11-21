@@ -340,7 +340,12 @@ describe('setup files behind indirection, comments and other spellings', () => {
 });
 
 describe('stub restores the project vitest config switches on', () => {
-  const restores = (scope: string, globals: boolean, envs: boolean) => ({ scope, globals, envs });
+  const restores = (scope: string, globals: boolean, envs: boolean) => ({
+    scope,
+    globals,
+    envs,
+    concurrent: false,
+  });
 
   it.each([
     [

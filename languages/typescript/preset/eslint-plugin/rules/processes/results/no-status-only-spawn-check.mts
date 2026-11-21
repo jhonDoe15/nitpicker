@@ -1,12 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import {
-  subprocessBindings,
-  withPromisified,
-  type ModuleBindings,
-} from '../../analysis/subprocess-calls.mts';
 import type { SourceContext } from '../../analysis/constant-resolution.mts';
 import { chainOf, nameOf } from '../../typed/node-views.mts';
-import { calleeMethod } from '../process-callees.mts';
+import { calleeMethod, trackedBindings } from '../process-callees.mts';
 import { literalOption } from '../output/process-options.mts';
 import { resultFieldUses, type FieldUse } from './result-fields.mts';
 
@@ -192,13 +187,9 @@ export const rule: TSESLint.RuleModule<MessageIds> = {
     },
   },
   create(context) {
-    let bindings: ModuleBindings = { named: new Map(), namespaces: new Set() };
-    return {
-      Program(node) {
-        bindings = withPromisified(node, subprocessBindings(node));
-      },
+    return trackedBindings('promisified-imports', (current) => ({
       CallExpression(node) {
-        const method = calleeMethod(node.callee, bindings);
+        const method = calleeMethod(node.callee, current());
         const shape = method === undefined ? undefined : shapeOf(context, node, method);
         const uses = shape === undefined ? undefined : resultFieldUses(context, node);
         const found =
@@ -207,6 +198,6 @@ export const rule: TSESLint.RuleModule<MessageIds> = {
           context.report({ node: found.node, messageId: found.id, data: { status: shape.status } });
         }
       },
-    };
+    }));
   },
 };

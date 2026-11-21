@@ -5,7 +5,7 @@ import {
 } from '@typescript-eslint/utils';
 import type TypeScript from 'typescript';
 import type { SourceContext } from '../analysis/constant-resolution.mts';
-import type { SourceCode } from '../typed/node-views.mts';
+import { isIdentifierNamed, type SourceCode } from '../typed/node-views.mts';
 import { ts } from '../typed/typescript-views.mts';
 import { propertyName } from './units/unit-nodes.mts';
 import { hasTypeInformation, initializer, variableOf, type Problem } from './time-views.mts';
@@ -47,8 +47,7 @@ function keyText(key: TSESTree.Node): string {
 
 function isGlobal(sourceCode: SourceCode, identifier: TSESTree.Node, name: string): boolean {
   return (
-    identifier.type === AST_NODE_TYPES.Identifier &&
-    identifier.name === name &&
+    isIdentifierNamed(identifier, name) &&
     (variableOf(sourceCode, identifier)?.defs.length ?? 0) === 0
   );
 }

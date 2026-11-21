@@ -26,7 +26,6 @@ const BRANCH_TYPES = new Set<string>([
   AST_NODE_TYPES.ChainExpression,
 ]);
 const SHORT_CIRCUITS = new Set(['||=', '&&=', '??=']);
-const awaitVerdicts = new WeakMap<TSESTree.Statement, boolean>();
 const ARITHMETIC = new Set(['+', '-', '*', '/', '%', '**']);
 
 function buildsNextValue(argument: TSESTree.Node): boolean {
@@ -59,15 +58,9 @@ function isCertain(node: TSESTree.Node, statement: TSESTree.Statement): boolean 
 }
 
 function alwaysAwaits(statement: TSESTree.Statement): boolean {
-  const known = awaitVerdicts.get(statement);
-  if (known !== undefined) {
-    return known;
-  }
-  const verdict = nodesOutsideNestedFunctions(statement).some(
+  return nodesOutsideNestedFunctions(statement).some(
     (node) => node.type === AST_NODE_TYPES.AwaitExpression && isCertain(node, statement),
   );
-  awaitVerdicts.set(statement, verdict);
-  return verdict;
 }
 
 function earlierSiblings(node: TSESTree.Node): readonly TSESTree.Statement[] {

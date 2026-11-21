@@ -3,7 +3,7 @@ import { variableNamed, type SourceCode } from '../../../typed/node-views.mts';
 import { isFunction } from '../../../typed/syntax-views.mts';
 import { receiverBoundary } from '../keyed-lookup.mts';
 import { isDedupeComparison } from '../receivers/read-only-uses.mts';
-import { memberName, repeatedRole, someNode, unwrapped } from '../repeated-runs.mts';
+import { memberName, repeatedRole, unwrapped } from '../repeated-runs.mts';
 import { onlyFixedRepeats, readsElement } from './fixed-repeats.mts';
 
 type Finding = TSESLint.ReportDescriptor<'scanInLoop'>;

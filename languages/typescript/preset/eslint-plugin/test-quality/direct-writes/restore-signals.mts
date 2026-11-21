@@ -83,7 +83,11 @@ export function isNamedPageFunction(
 
 const EACH_HOOKS = new Set(['beforeEach', 'afterEach']);
 
-export const CLEARING_HOOKS = new Set([...EACH_HOOKS, 'afterAll', 'onTestFinished']);
+export const CLEARING_HOOKS: ReadonlySet<string> = new Set([
+  ...EACH_HOOKS,
+  'afterAll',
+  'onTestFinished',
+]);
 
 export function enclosingFunctionName(node: TSESTree.Node): string | undefined {
   const owner = ancestorsOf(node).find((ancestor) => FUNCTIONS.has(ancestor.type));
