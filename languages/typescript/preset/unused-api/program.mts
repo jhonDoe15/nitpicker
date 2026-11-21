@@ -160,7 +160,7 @@ function compilerOptions({
   };
 }
 
-type ProgramRequest = {
+export type ProgramRequest = {
   projectRoot: string;
   configPath: string;
   packagesInfo: PackagesInfo;
@@ -177,7 +177,18 @@ function programKey({ projectRoot, configPath, packagesInfo }: ProgramRequest): 
   ]);
 }
 
-function builtProgram({ projectRoot, configPath, packagesInfo, layout }: ProgramRequest) {
+export type ProgramInputs = {
+  readonly parsed: TypeScript.ParsedCommandLine;
+  readonly options: TypeScript.CompilerOptions;
+  readonly rootNames: readonly string[];
+};
+
+export function projectProgramInputs({
+  projectRoot,
+  configPath,
+  packagesInfo,
+  layout,
+}: ProgramRequest): ProgramInputs {
   const parsed = parseConfig(configPath, projectRoot);
   const options = compilerOptions({ parsed, packages: packagesInfo.packages, projectRoot, layout });
   const siblings = packagesInfo.packages.filter(
@@ -198,6 +209,11 @@ function builtProgram({ projectRoot, configPath, packagesInfo, layout }: Program
       options,
     }),
   ]);
+  return { parsed, options, rootNames: [...rootNames] };
+}
+
+function builtProgram(request: ProgramRequest): TypeScript.Program {
+  const { options, rootNames } = projectProgramInputs(request);
   return ts.createProgram({ rootNames: [...rootNames], options });
 }
 

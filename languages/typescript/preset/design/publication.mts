@@ -49,17 +49,32 @@ function publishedEntryFiles({ projectRoot, packagesInfo, layout }: SurfaceOptio
   );
 }
 
+export type PublishedNames = {
+  isCoveredName(file: string, name: string): boolean;
+  isWholeFile(file: string): boolean;
+};
+
+export function publishedNames(options: SurfaceOptions): PublishedNames | undefined {
+  const entries = publishedEntryFiles(options);
+  if (entries.length === 0) {
+    return undefined;
+  }
+  const surface = reexportGraph(projectModules(options)).surfaceOf(entries);
+  return {
+    isCoveredName: (file, name) => isCovered(surface, { file: toPosix(file), name }),
+    isWholeFile: (file) =>
+      [EVERYTHING, NAMED_EXPORTS].some((name) => surface.has(`${toPosix(file)}\0${name}`)),
+  };
+}
+
 export function publicSurface({
   checker,
-  projectRoot,
-  packagesInfo,
-  layout,
+  ...options
 }: SurfaceOptions & { checker: TypeScript.TypeChecker }): PublicSurface {
-  const entries = publishedEntryFiles({ projectRoot, packagesInfo, layout });
-  if (entries.length === 0) {
+  const published = publishedNames(options);
+  if (published === undefined) {
     return NOTHING_PUBLISHED;
   }
-  const surface = reexportGraph(projectModules({ packagesInfo, layout })).surfaceOf(entries);
   const namesByFile = new Map<TypeScript.SourceFile, Map<TypeScript.Node, string[]>>();
   function namesOf(sourceFile: TypeScript.SourceFile): Map<TypeScript.Node, string[]> {
     const names = namesByFile.get(sourceFile) ?? exportNames(checker, sourceFile);
@@ -69,13 +84,10 @@ export function publicSurface({
   return {
     isPublished(declaration: TypeScript.Node) {
       const sourceFile = declaration.getSourceFile();
-      const file = toPosix(sourceFile.fileName);
       const names = namesOf(sourceFile).get(declaration) ?? [];
-      return names.some((name) => isCovered(surface, { file, name }));
+      return names.some((name) => published.isCoveredName(sourceFile.fileName, name));
     },
-    isWholeModule(sourceFile: TypeScript.SourceFile) {
-      const file = toPosix(sourceFile.fileName);
-      return [EVERYTHING, NAMED_EXPORTS].some((name) => surface.has(`${file}\0${name}`));
-    },
+    isWholeModule: (sourceFile: TypeScript.SourceFile) =>
+      published.isWholeFile(sourceFile.fileName),
   };
 }

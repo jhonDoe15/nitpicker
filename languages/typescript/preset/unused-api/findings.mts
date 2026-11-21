@@ -1,6 +1,11 @@
-import type TypeScript from 'typescript';
 import type { Finding } from '../../../../shared/values/findings.mts';
-import type { FileInfo, Reference, Registry, Target } from './typed/context-types.mts';
+import {
+  type MemberSite,
+  type RegistryData,
+  type TargetData,
+  registryData,
+} from './engine/registry-data.mts';
+import type { FileInfo, Reference, Registry } from './typed/context-types.mts';
 import {
   MESSAGES,
   UNUSED_API_RULE_IDS,
@@ -26,14 +31,14 @@ const RULES = {
   function: { rule: UNUSED_API_RULE_IDS.unusedOption, message: MESSAGES.unusedOption },
 };
 
-function countsFor(target: Target): (reference: Reference) => boolean {
+function countsFor(target: TargetData): (reference: Reference) => boolean {
   const published = target.package?.published === true;
   const packageDir = target.package?.dir;
   return (reference) =>
     reference.role === 'production' || (published && reference.packageDir === packageDir);
 }
 
-function passedNames(target: Target, cloned: readonly Reference[]): Set<string> | undefined {
+function passedNames(target: TargetData, cloned: readonly Reference[]): Set<string> | undefined {
   const counts = countsFor(target);
   const references = target.refs.filter(counts);
   const calls = references.filter(({ kind }) => kind === 'call');
@@ -50,28 +55,21 @@ function passedNames(target: Target, cloned: readonly Reference[]): Set<string> 
     : undefined;
 }
 
-function declarationLine(declaration: TypeScript.Declaration): number {
-  const sourceFile = declaration.getSourceFile();
-  return sourceFile.getLineAndCharacterOfPosition(declaration.getStart(sourceFile)).line + 1;
-}
-
 function memberFinding({
   target,
   member,
-  declaration,
   context,
 }: {
-  readonly target: Target;
-  readonly member: string;
-  readonly declaration: TypeScript.Declaration;
+  readonly target: TargetData;
+  readonly member: MemberSite;
   readonly context: State;
 }): Finding {
   const { rule, message } = RULES[target.kind];
-  const file = context.owned.get(declaration.getSourceFile().fileName);
+  const file = context.owned.get(member.fileName);
   if (file === undefined) {
-    throw new TypeError(`Unowned declaration of ${target.name}.${member}`);
+    throw new TypeError(`Unowned declaration of ${target.name}.${member.name}`);
   }
-  const symbol = `${target.name}.${member}`;
+  const symbol = `${target.name}.${member.name}`;
   const occurrence = context.nextOccurrence(`${rule}\0${file.path}\0${symbol}`);
   const scopes = UNUSED_OPTION_SCOPES.typescript;
   const scope = target.package?.published ? scopes.published : scopes.private;
@@ -87,22 +85,22 @@ function memberFinding({
     }),
     classification: 'enforceable',
     symbol,
-    location: { line: declarationLine(declaration) },
+    location: { line: member.line },
   };
 }
 
-function targetFindings(target: Target, context: State): Finding[] {
+function targetFindings(target: TargetData, context: State): Finding[] {
   const passed = passedNames(target, context.cloned);
   if (passed === undefined) {
     return [];
   }
-  return [...target.members]
-    .filter(([member]) => !passed.has(member))
-    .map(([member, declaration]) => memberFinding({ target, member, declaration, context }))
+  return target.members
+    .filter(({ name }) => !passed.has(name))
+    .map((member) => memberFinding({ target, member, context }))
     .filter((finding) => !context.isExcepted(finding.rule, finding.path));
 }
 
-export function unusedApiFindings(registry: Registry, context: FindingContext): Finding[] {
+export function registryDataFindings(registry: RegistryData, context: FindingContext): Finding[] {
   const state = { ...context, cloned: registry.cloned, nextOccurrence: occurrenceCounter() };
   return registry.targets
     .flatMap((target) => targetFindings(target, state))
@@ -110,4 +108,8 @@ export function unusedApiFindings(registry: Registry, context: FindingContext): 
       (left, right) =>
         left.path.localeCompare(right.path) || left.identity.localeCompare(right.identity),
     );
+}
+
+export function unusedApiFindings(registry: Registry, context: FindingContext): Finding[] {
+  return registryDataFindings(registryData(registry), context);
 }
