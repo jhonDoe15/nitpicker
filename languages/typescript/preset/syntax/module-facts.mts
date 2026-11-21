@@ -1,7 +1,7 @@
 import type TypeScript from 'typescript';
 import { ts } from './typed/typescript-compiler.mts';
 import { fileNodes } from './references.mts';
-import { byText } from '../../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mts';
 import { appendAll } from '../../../../shared/lists/lists.mts';
 
 const DEFAULT_NAME = 'default';

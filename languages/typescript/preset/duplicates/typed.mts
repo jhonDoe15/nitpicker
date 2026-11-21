@@ -7,17 +7,17 @@ import {
   renamedJscpdSettings as untypedRenamedJscpdSettings,
   type JscpdSettings,
 } from '../../../../core/tooling/jscpd/config.mts';
-import { evaluateDuplicates as untypedEvaluateDuplicates } from '../../../../shared/rules/duplicates.mjs';
+import { evaluateDuplicates as untypedEvaluateDuplicates } from '../../../../shared/rules/duplicates.mts';
 import {
   renamedClones as untypedRenamedClones,
   renamedFindings as untypedRenamedFindings,
   withoutRenamedCopies as untypedWithoutRenamedCopies,
-} from '../../../../shared/renamed-clones/findings.mjs';
-import { sourceFilesUnder as untypedSourceFilesUnder } from '../../../../shared/renamed-clones/files.mjs';
+} from '../../../../shared/renamed-clones/findings.mts';
+import { sourceFilesUnder as untypedSourceFilesUnder } from '../../../../shared/renamed-clones/files.mts';
 import {
   RENAMED_SETTINGS as untypedRenamedSettings,
   withNormalizedTree as untypedWithNormalizedTree,
-} from '../../../../shared/renamed-clones/tree.mjs';
+} from '../../../../shared/renamed-clones/tree.mts';
 import {
   codeExtensionNames as untypedCodeExtensionNames,
   existingRoots as untypedExistingRoots,

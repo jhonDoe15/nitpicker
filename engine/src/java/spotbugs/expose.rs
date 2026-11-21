@@ -132,7 +132,7 @@ fn keeps_outer(context: &Context, class: Node, own: &str, outer: &str) -> bool {
         "object_creation_expression" => {
             let made = node.child_by_field_name("type").and_then(|written| context.resolver.type_node(written));
             let info = made.as_ref().and_then(|made| index.get(&made.name()));
-            let inner = |flags: u16| flags & (flag::STATIC | flag::ENUM | flag::RECORD) == 0;
+            let inner = |flags: u32| flags & (flag::STATIC | flag::ENUM | flag::RECORD) == 0;
             let unqualified = children(node).first().is_some_and(|first| first.kind() == "new");
             unqualified && info.is_some_and(|info| !info.is_interface && inner(info.flags) && info.name.rsplit_once('.').is_some_and(|(holder, _)| holder == outer))
         }

@@ -1,8 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import { isStableRule } from '../adapters/configuration/python-ruff-config.mts';
 import { RUFF_IGNORE, RUFF_SELECT } from '../adapters/configuration/python-rule-ids.mts';
-import { paragraphsOf as untypedParagraphsOf } from '../../../shared/reference/build/text.mjs';
-import { PROBE_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
+import { paragraphsOf as untypedParagraphsOf } from '../../../shared/reference/build/text.mts';
+import { PROBE_TIMEOUT_MS } from '../../../shared/processes/deadlines.mts';
 import { parseRuffRules } from './typed/ruff-rule-views.mts';
 import type { RuffRule, RuffSnapshot } from './typed/ruff-rule-views.mts';
 

@@ -4,13 +4,13 @@ import {
   queryProblemMessage as untypedMessage,
   queryTextProblem as untypedProblem,
   runTogether as untypedTogether,
-} from './query-text.mjs';
+} from './query-text.mts';
 
 type Problem = { readonly kind: string; readonly snippet?: string } | undefined;
 
 const problem: (text: string, options: { complete: boolean }) => Problem = untypedProblem;
 const together: (left: string, right: string) => Problem = untypedTogether;
-const message: (found: unknown) => string = untypedMessage;
+const message: (found: { kind: string; snippet?: string }) => string = untypedMessage;
 
 describe('queryTextProblem', () => {
   it('finds an operator with no operand', () => {

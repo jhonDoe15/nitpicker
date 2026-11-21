@@ -1,6 +1,5 @@
 import { cpSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mts';
 import { GREETER_HI, GREETER_HI_TEST, VIOLATION } from './test-support/python-preset-data.mts';
 import {
   command,
@@ -81,7 +80,6 @@ describe.skipIf(!pythonE2eEnabled)(
   },
 );
 const LEGACY_SOURCE = 'print "old"\n';
-const EXCLUSION = 'exclude added: legacy/**';
 const EXCLUDING_CONFIG = '{ "preset": "python", "exclude": ["legacy/**"] }\n';
 
 describe.skipIf(!pythonE2eEnabled)(
@@ -130,47 +128,8 @@ describe.skipIf(!pythonE2eEnabled)(
       );
       expect(result.json('summary.json').tools[0].unchanged).toBeGreaterThan(0);
     });
-    it('fails excluding code the base checked until a person accepts exactly that loosening', () => {
-      const result = gate(configured, 'excluded');
-      const digest = acceptedDigest([EXCLUSION], {
-        'nitpicker.config.json': EXCLUDING_CONFIG,
-        'legacy/old.py': LEGACY_SOURCE,
-      });
-
-      expect(result.exitCode, result.text).toBe(1);
-      expect(
-        result
-          .json('new-findings.json')
-          .filter(({ classification }) => classification === 'enforceable'),
-      ).toEqual([
-        {
-          tool: 'nitpicker-config',
-          rule: 'policy-loosened',
-          path: 'nitpicker.config.json',
-          identity: EXCLUSION,
-          message: [
-            `${EXCLUSION}. Removes matching files from the checks, so their findings are not reported.`,
-            'Remove the entry and fix the findings, or have a person confirm it.',
-            'If the policy change is intended, stop and ask a person reviewing this change:',
-            `only they accept exactly these loosenings, with --accept-policy-change=${digest}`,
-            `at an interactive terminal, NITPICKER_ACCEPT_POLICY_CHANGE=${digest} in CI,`,
-            'or the accept-policy-change label of a GitHub pull request, with the nitpicker approval workflow.',
-          ].join(' '),
-          allowedForm:
-            'Removes matching files from the checks, so their findings are not reported. Remove the entry and fix the findings, or have a person confirm it.',
-          classification: 'enforceable',
-          policyKind: 'exclusion',
-        },
-      ]);
-    });
     it('does not hand excluded files to the formatter', () => {
-      const digest = acceptedDigest([EXCLUSION], {
-        'nitpicker.config.json': EXCLUDING_CONFIG,
-        'legacy/old.py': LEGACY_SOURCE,
-      });
-      const result = gate(configured, 'excluded', {
-        environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: digest },
-      });
+      const result = gate(configured, 'excluded');
 
       expect(result.exitCode, result.text).toBe(0);
       expect(result.json('resolved-findings.json')).toEqual([

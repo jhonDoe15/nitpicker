@@ -8,7 +8,7 @@ import {
 import { layoutTransformFor } from '../../preset/tool-configs.mts';
 import type { HeadPolicy as RealHeadPolicy } from '../../preset/typed/head-policy-types.mts';
 import type { ResolvedLayout } from '../../preset/typed/layout-types.mts';
-import { globMatcher as untypedGlobMatcher } from '../../../../shared/paths/glob.mjs';
+import { globMatcher as untypedGlobMatcher } from '../../../../shared/paths/glob.mts';
 
 export const globMatcher: (pattern: string) => { test(value: string): boolean } =
   untypedGlobMatcher;

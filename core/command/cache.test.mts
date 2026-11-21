@@ -10,7 +10,7 @@ import { captureOutput } from '../diff/reporting/test-support/output-capture.mts
 import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mts';
 import type { FixtureAnalyzer, FixtureInvocationContext } from './test-support/fixture-types.mts';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
-import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence } from '../../shared/messages/test-support/link-sentence.mts';
 import { fixtureGit } from '../diff/git/test-support/git-repository.mts';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =

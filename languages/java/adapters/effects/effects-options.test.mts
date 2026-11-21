@@ -1,7 +1,5 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   batchFetchSize,
   batchFetchSizes,
@@ -9,22 +7,9 @@ import {
   effectsProperties,
   moduleEffectsOptions,
 } from './effects-options.mts';
+import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
 
-const roots: string[] = [];
-
-afterAll(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
-
-function projectWith(files: Record<string, string>): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-effects-options-'));
-  roots.push(root);
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
-  return root;
-}
+const projectWith = useTempProjects('nitpicker-effects-options-');
 
 describe('batchFetchSize', () => {
   it('reads the Spring property from any module, in properties or YAML, with a placeholder default', () => {

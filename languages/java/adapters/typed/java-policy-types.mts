@@ -1,10 +1,9 @@
 import { parseRunnerArguments } from '../../../../core/tooling/runner-arguments.mts';
-import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
-import { sharedRouteRule } from '../../../../shared/exceptions/routes.mjs';
-import { withLegacyInventory } from '../../../../shared/legacy-inventory.mjs';
+import { canonicalRule } from '../../../../shared/exceptions/rule-names.mts';
+import { withLegacyInventory } from '../../../../shared/legacy-inventory.mts';
 import { fieldOf, fieldsOf } from '../../../../shared/values/readers.mts';
 import { declaredToolDigest } from '../tool-config/declared/declared-choices.mts';
-import { callUntyped, javaPolicyOf, type JavaFinding, type JavaPolicy } from './java-values.mts';
+import { callUntyped, javaPolicyOf, type JavaPolicy } from './java-values.mts';
 
 export type ToolSettings = Readonly<
   Record<string, { readonly precedence: readonly string[] } | undefined>
@@ -87,7 +86,6 @@ export const toolDigest: (
   declared: Record<string, readonly string[] | undefined>,
   policyRoot: string,
 ) => string = declaredToolDigest;
-export const routeRuleOf: (finding: JavaFinding) => string = sharedRouteRule;
 
 export const FILE_LIMIT_THRESHOLDS: readonly string[] = [
   'fileLines',

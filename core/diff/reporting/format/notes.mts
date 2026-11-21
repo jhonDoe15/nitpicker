@@ -1,4 +1,4 @@
-import { TESTS_TIMED_OUT_RULE } from '../../../../shared/rules/finding-helpers.mjs';
+import { TESTS_TIMED_OUT_RULE } from '../../../../shared/rules/finding-parts.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 

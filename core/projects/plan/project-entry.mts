@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
 import { presetToDeclare as untypedPresetToDeclare } from '../../configuration/project-checks/preset-detection.mts';
 import { parseConfigFile } from '../../configuration/layers/layers.mts';
 import { fieldOf, messageOf } from '../../../shared/values/readers.mts';
@@ -9,7 +9,7 @@ import type { NitpickerConfig, ProjectOverlay } from '../../../shared/values/con
 import { readLayeredConfig } from '../../configuration/layers/read-layered.mts';
 import { sharedConfigFiles } from '../../configuration/layers/shared-files.mts';
 import { isInside as untypedIsInside } from '../discovery/repository-files.mts';
-import { containedPath as untypedContainedPath } from '../../../shared/paths/contained-path.mjs';
+import { containedPath as untypedContainedPath } from '../../../shared/paths/contained-path.mts';
 
 const presetToDeclare: (
   config: NitpickerConfig,

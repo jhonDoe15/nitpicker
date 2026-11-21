@@ -1,6 +1,6 @@
 import path from 'node:path';
-import { hash } from '../../../../../shared/rules/finding-helpers.mjs';
-import { scriptStem as untypedScriptStem } from '../../../../../shared/paths/script-stem.mjs';
+import { hash } from '../../../../../shared/rules/finding-parts.mts';
+import { scriptStem as untypedScriptStem } from '../../../../../shared/paths/script-stem.mts';
 
 const scriptStem: (file: string) => string = untypedScriptStem;
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { exceptionEntryText } from '../../shared/messages/exception-sentence.mjs';
-import { exceptionMatcher } from '../../shared/rules/exceptions.mjs';
+import { exceptionEntryText } from '../../shared/messages/exception-sentence.mts';
+import { exceptionMatcher } from '../../shared/rules/exceptions.mts';
 import { parseJson, textOf } from '../../shared/values/readers.mts';
 import { validateConfig } from './validate.mts';
 

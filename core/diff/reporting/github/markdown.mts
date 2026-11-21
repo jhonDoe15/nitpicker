@@ -1,6 +1,6 @@
 import { singleLine } from '../format/text.mts';
 import { pluralize as nounFor } from '../summary.mts';
-import { ROUTE_SENTENCE } from '../../../../shared/messages/exception-sentence.mjs';
+import { ROUTE_SENTENCE } from '../../../../shared/messages/exception-sentence.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 
@@ -13,7 +13,6 @@ type RuleCount = { tool: string; rule: string; enforceable: number; descriptive:
 
 type ExceptionRoute = {
   readonly hasFindings: boolean;
-  readonly loosening?: unknown;
   readonly example: string | undefined;
 };
 
@@ -183,32 +182,18 @@ export function toolErrorList(toolErrors: readonly ReportEntry[]): string[] {
   ];
 }
 
-export function exceptionRoute({ hasFindings, loosening, example }: ExceptionRoute): string[] {
-  const lines: string[] = [];
-  if (hasFindings) {
-    const entry =
-      example === undefined
-        ? 'add an entry to `exceptions` in `nitpicker.config.json`'
-        : 'add an entry like the example below to `exceptions` in `nitpicker.config.json`';
-    lines.push(
-      `- A finding that flags code that is right: ${entry}, with the rule, the paths and a reason. ` +
-        'The message of each finding in `report.txt` ends with its own entry. ' +
-        'Reviewers see the entry and every report lists it.',
-    );
-  }
-  if (loosening !== undefined) {
-    lines.push(
-      '- A loosening of `nitpicker.config.json` fails until a person with write access has ' +
-        'reviewed it and added the `accept-policy-change` label to the pull request, which ' +
-        'accepts the loosenings of this commit and runs the job again (a later push needs the ' +
-        'label again). Without the approval workflow, set the repository variable ' +
-        `\`NITPICKER_ACCEPT_POLICY_CHANGE\` to ${code(loosening)}, which covers exactly the ` +
-        'loosenings listed above, and re-run the job.',
-    );
-  }
-  if (lines.length === 0) {
+export function exceptionRoute({ hasFindings, example }: ExceptionRoute): string[] {
+  if (!hasFindings) {
     return [];
   }
-  const sample = hasFindings && example !== undefined ? ['', '```json', example, '```'] : [];
-  return ['### Disagree with a finding?', '', ...lines, ...sample, ''];
+  const entry =
+    example === undefined
+      ? 'add an entry to `exceptions` in `nitpicker.config.json`'
+      : 'add an entry like the example below to `exceptions` in `nitpicker.config.json`';
+  const line =
+    `- A finding that flags code that is right: ${entry}, with the rule, the paths and a reason. ` +
+    'The message of each finding in `report.txt` ends with its own entry. ' +
+    'Reviewers see the entry and every report lists it.';
+  const sample = example === undefined ? [] : ['', '```json', example, '```'];
+  return ['### Disagree with a finding?', '', line, ...sample, ''];
 }

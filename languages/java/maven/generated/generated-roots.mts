@@ -2,7 +2,7 @@ import path from 'node:path';
 import { isGeneratedJvm } from '../../adapters/generated/generated-sources.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import ROOT_RULES from '../../gradle/generated/generated-roots.json' with { type: 'json' };
-import { isInsideDirectory } from '../../../../shared/paths/contained-path.mjs';
+import { isInsideDirectory } from '../../../../shared/paths/contained-path.mts';
 
 export type GeneratedLocation = {
   readonly basedir: string;

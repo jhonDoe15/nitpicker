@@ -1,5 +1,5 @@
 import { escapeRegExp } from '../typed/typed-scan.mts';
-import { sqlOrderGaps } from '../../../../../../shared/rules/queries/sql-order.mjs';
+import { sqlOrderGaps } from '../../../../../../shared/rules/queries/sql-order.mts';
 import { lineAt, splitArguments } from '../kotlin-source.mts';
 import {
   argumentName,

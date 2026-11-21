@@ -1,5 +1,5 @@
 import { projectLines } from '../../project/project-lines.mts';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mts';
 
 const SEARCHED = [
   '*.java',

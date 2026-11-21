@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { compareText } from '../../../../../shared/paths/path-order.mjs';
+import { compareText } from '../../../../../shared/paths/path-order.mts';
 import { writeFileTree } from '../../test-support/file-tree.mts';
 import { runDeadCode } from '../runners/repository.mts';
 import { nestedPackageFolders, publishedSourceEntries } from './package-entries.mts';
@@ -60,6 +60,7 @@ function unusedFiles(root: string, layout: { sourceRoots: string[] } = { sourceR
     baselineRoot: undefined,
     baselineMovesFile: undefined,
     mutationScope: undefined,
+    environment: {},
   })
     .filter(({ rule }) => rule === 'files')
     .map(({ path: file }) => file)

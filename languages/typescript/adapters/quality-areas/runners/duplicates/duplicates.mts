@@ -31,7 +31,7 @@ function duplicatesJscpdConfig(options: QualityAreaOptions): JscpdConfig {
     ),
     readLayout(),
   );
-  const layered = layeredJscpdConfig(config);
+  const layered = layeredJscpdConfig(config, options.environment);
   return { ...layered, path: existingRoots(options.projectRoot, config.path) };
 }
 

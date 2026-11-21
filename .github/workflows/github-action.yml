@@ -2,7 +2,7 @@ name: github-action
 
 on:
   push:
-    branches: [main]
+    branches: [main, integration]
     paths:
       - 'action.yml'
       - 'core/**'
@@ -23,8 +23,8 @@ on:
 # when a label is added while the pull request carries `run-ci`; a newer run cancels the older one.
 # On main a started run finishes, and a newer push replaces a run that is still waiting.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'push' && 'main' || github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.ref_name || github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/integration' }}
 
 permissions:
   contents: read

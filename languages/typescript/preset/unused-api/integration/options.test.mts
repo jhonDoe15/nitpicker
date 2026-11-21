@@ -1,5 +1,12 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { analyzeFiles, findingsIn } from '../test-support/project.mts';
+import {
+  analyzeFiles,
+  analyzeProject,
+  createProject,
+  findingsIn,
+  removeProject,
+  summarize,
+} from '../test-support/project.mts';
 
 const UNSET = {
   'src/unset/run.ts': `export type RunOptions = { retries?: number; verbose?: boolean; label?: string };
@@ -133,5 +140,90 @@ describe('unused function options', () => {
 
   it('does not judge a domain type that several functions share', () => {
     expect(findingsIn(findings, 'src/shared')).toEqual([]);
+  });
+});
+
+describe('an option declared by several members of a union', () => {
+  const UNION = {
+    'src/api.ts': `type Named = { kind: 'named'; name: string;
+  label?: string };
+type Plain = { kind: 'plain';
+  label?: string };
+export function show(options: Plain | Named) { return options.kind; }
+type Wide = { kind: 'wide'; width: number;
+  label?: string };
+type Bare = { kind: 'bare';
+  label?: string };
+export function showSwapped(options: Wide | Bare) { return options.kind; }
+`,
+    'src/app.ts': `import { show, showSwapped } from './api';
+export const shown = [show({ kind: 'plain' }), showSwapped({ kind: 'bare' })];
+`,
+  };
+
+  it('reports the first declaration in the file, whatever order the union names its members in', () => {
+    const lines = analyzeFiles(UNION).map(({ symbol, location }) => [symbol, location?.line]);
+
+    expect(lines).toEqual([
+      ['show.label', 2],
+      ['show.name', 1],
+      ['showSwapped.label', 7],
+      ['showSwapped.width', 6],
+    ]);
+  });
+});
+
+describe('a project whose config sets baseUrl', () => {
+  const CONFIG = JSON.stringify({
+    compilerOptions: { baseUrl: '.', module: 'ESNext', moduleResolution: 'Bundler', noEmit: true },
+    include: ['src'],
+  });
+  const FILES = {
+    'src/api.ts': 'export function show(options: { a?: string; b?: string }) { return options; }\n',
+    'src/app.ts': "import { show } from 'src/api';\nexport const shown = show({ a: '1' });\n",
+  };
+
+  it('resolves imports through baseUrl, which only the compiler in this process still does', () => {
+    const root = createProject(FILES);
+    try {
+      expect(summarize(analyzeProject(root, {}, { configSource: CONFIG }))).toEqual([
+        'unused-option src/api.ts show.b',
+      ]);
+    } finally {
+      removeProject(root);
+    }
+  });
+});
+
+describe('sources the two compilers read differently', () => {
+  const lines = (files: Readonly<Record<string, string>>) =>
+    analyzeFiles(files).map(
+      ({ symbol, location }) => `${String(symbol)}:${String(location?.line)}`,
+    );
+
+  it('names a #private field as the source writes it', () => {
+    const files = {
+      'src/api.ts':
+        'export class Cls { #p = 1; pub?: number; other?: number }\n' +
+        'export function f(options: Cls) { return options; }\n',
+      'src/app.ts':
+        "import { Cls, f } from './api';\nexport const direct = f({ pub: 1 } as Cls);\n",
+    };
+
+    expect(lines(files)).toEqual(['f.#p:1', 'f.other:1']);
+  });
+
+  it('does not count a type named in a documentation comment of a JavaScript file as a use', () => {
+    const files = {
+      'src/a.ts':
+        'export interface FooOptions { a?: number; b?: number }\n' +
+        'export function f(options: FooOptions) { return options; }\n',
+      'src/b.js':
+        "/** @import {FooOptions} from './a' */\n/** @param {FooOptions} x */\n" +
+        'export function g(x) { return x; }\n',
+      'src/app.ts': "import { f } from './a';\nexport const used = f({ a: 1 });\n",
+    };
+
+    expect(lines(files)).toEqual(['f.b:1']);
   });
 });

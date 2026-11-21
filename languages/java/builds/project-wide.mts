@@ -4,6 +4,7 @@ import type { JavaFinding } from '../adapters/typed/java-values.mts';
 import {
   copiedConstantFindings,
   copyPastedTestFindings,
+  springContextFindings,
   couplingFindingsOf,
   delegateSkipsDefaultFindings,
   featureGraphOf,
@@ -241,6 +242,7 @@ function reviewRuleFindings(
     ...roundTripFindings(projectRoot, options),
     ...copiedConstantFindings(projectRoot, options),
     ...copyPastedTestFindings(projectRoot, options),
+    ...springContextFindings(projectRoot, options),
     ...maxValueFindings(projectRoot, options),
     ...stringCallFindings(projectRoot, options),
     ...valueCheckFindings(projectRoot, options),
@@ -263,12 +265,7 @@ export function projectWideReport(
     kotlin,
     policy: { layout: policy.layout, exceptions: policy.exceptions },
   });
-  const reuse = jvmReuseAhead(projectRoot, {
-    projects,
-    kotlin,
-    policy: { ...policy, layout: features.layout },
-  });
-  const findings = [
+  const beforeReuse = [
     ...fileLimitFindings(projectRoot, {
       manifest,
       kotlin,
@@ -290,9 +287,13 @@ export function projectWideReport(
     }),
     ...testOnlyFindings(projectRoot, { projects }),
     ...testRuntimeFindings(projectRoot, { projects }),
-    ...reuse.findings,
-    ...reviewRuleFindings(projectRoot, { projects, kotlin, policy }),
-    ...features.findings,
   ];
+  const afterReuse = reviewRuleFindings(projectRoot, { projects, kotlin, policy });
+  const reuse = jvmReuseAhead(projectRoot, {
+    projects,
+    kotlin,
+    policy: { ...policy, layout: features.layout },
+  });
+  const findings = [...beforeReuse, ...reuse.findings, ...afterReuse, ...features.findings];
   return { findings, imports: reuse.imports };
 }

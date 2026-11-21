@@ -2,7 +2,7 @@ import path from 'node:path';
 import {
   ignoredConfigNotice,
   precedenceLayers,
-} from '../../../shared/conventions/tool-precedence.mjs';
+} from '../../../shared/conventions/tool-precedence.mts';
 import {
   detectFormatter,
   detectFormatterFromSource,

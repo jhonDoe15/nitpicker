@@ -1,4 +1,4 @@
-import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 import { messageOf } from '../../../../../shared/values/readers.mts';
 import { readConfigInChild } from '../read-environment.mts';
 import { loadInChild, loaderScript } from '../typed/child-views.mts';

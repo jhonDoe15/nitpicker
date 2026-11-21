@@ -66,7 +66,9 @@ const KEYWORD_TYPES = new Set([
 
 export function declaredReturnType(scope: Scope, node: SiteNode): string | undefined {
   const { checker } = scope;
-  const annotation = node.type ?? ts.getJSDocReturnType(node);
+  const documented =
+    node.flags & ts.NodeFlags.JavaScriptFile ? ts.getJSDocReturnType(node) : undefined;
+  const annotation = node.type ?? documented;
   if (annotation === undefined) {
     return undefined;
   }

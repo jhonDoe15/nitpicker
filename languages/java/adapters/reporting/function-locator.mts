@@ -1,13 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { readKotlinMetrics, type Metrics } from '../kotlin/kotlin-metrics.mts';
-import { readStructureFunctions } from '../../../../shared/ingest/structure-report.mjs';
+import { readStructureFunctions } from '../../../../shared/ingest/structure-report.mts';
 import {
   declarationLine,
   enclosingFunction,
   hash,
   nameFreeHash,
-} from '../../../../shared/rules/finding-helpers.mjs';
+} from '../../../../shared/rules/finding-parts.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import { javaDeclarationUnits } from '../../ingest/declarations/java-declaration-units.mts';
 

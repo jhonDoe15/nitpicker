@@ -2,14 +2,14 @@ import {
   configError,
   TYPESCRIPT_ONLY_KEYS,
   validateStringArray,
-} from '../../../../shared/config.mjs';
-import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
-import { COMMON_EXCEPTION_RULES, RULE_IDS } from '../../../../shared/policy.mjs';
-import { PACKAGE_RULE_IDS } from '../../../../shared/project-rules/hygiene-rules.mjs';
-import { UNUSED_API_RULE_IDS } from '../../../../shared/unused-api/unused-api-policy.mjs';
-import { GO_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
+} from '../../../../shared/config.mts';
+import { canonicalRule } from '../../../../shared/exceptions/rule-names.mts';
+import { COMMON_EXCEPTION_RULES, RULE_IDS } from '../../../../shared/policy.mts';
+import { PACKAGE_RULE_IDS } from '../../../../shared/project-rules/hygiene-rules.mts';
+import { UNUSED_API_RULE_IDS } from '../../../../shared/unused-api/unused-api-policy.mts';
+import { GO_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mts';
 import { FORMATTERS } from '../formatting/go-formatters.mts';
-import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
+import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mts';
 import { fieldOf, isPlainObject, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import type { NitpickerConfig } from '../../../../shared/values/config-types.mts';
 

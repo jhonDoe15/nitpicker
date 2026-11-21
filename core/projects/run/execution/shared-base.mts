@@ -5,7 +5,7 @@ import {
   includedBuilds,
 } from '../../../../languages/java/builds/gradle-scripts/included-builds.mts';
 import { DEPENDENCY_MANIFESTS } from '../../../../languages/typescript/adapters/dependency-graph/package-managers/detect.mts';
-import { containedPath } from '../../../../shared/paths/contained-path.mjs';
+import { containedPath } from '../../../../shared/paths/contained-path.mts';
 import { isInside } from '../../discovery/repository-files.mts';
 import { runRows } from './parallel-rows.mts';
 import { sharedCheckout, sharedWorktreeOf, withSharedHead } from './shared-head.mts';

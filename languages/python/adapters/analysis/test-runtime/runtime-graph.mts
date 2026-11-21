@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { importedModules, importEdges, longestKnownPrefix } from '../python-coupling.mts';
-import { EDGE_KINDS } from '../../../../../shared/rules/test-runtime/classify.mjs';
+import { EDGE_KINDS } from '../../../../../shared/rules/test-runtime/classify.mts';
 import { INIT } from './pytest/constants.mts';
 import { ancestorDirectories, createFixtureScope } from './pytest/fixture-reach.mts';
 import type {

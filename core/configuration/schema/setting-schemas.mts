@@ -1,4 +1,4 @@
-import { FUNCTION_NAME } from '../../../shared/conventions/settings.mjs';
+import { FUNCTION_NAME } from '../../../shared/conventions/settings.mts';
 import { CO_CHANGE_DEFAULTS } from '../views/schema-views.mts';
 import {
   BINARY_NAME,
@@ -57,7 +57,7 @@ export function conventionProperties(definitions: readonly ConventionDefinition[
 const springProperties: SchemaTable = {
   roles: {
     description:
-      'Annotation or type names, by role, whose classes count in that role for the Spring architecture rules, on top of Spring stereotypes. Removing a name loosens the policy.',
+      'Annotation or type names, by role, whose classes count in that role for the Spring architecture rules, on top of Spring stereotypes.',
     type: 'object',
     additionalProperties: false,
     properties: Object.fromEntries(

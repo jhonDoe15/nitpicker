@@ -5,6 +5,7 @@ import type {
   ProjectIndex,
   Work,
 } from '../fan-out/typed/fan-out-types.mts';
+import { occurrenceCounter } from '../../../../../../../shared/rules/finding-parts.mts';
 import { fanOutReport } from '../fan-out/typed/fan-out-views.mts';
 import { referenceWork, remoteWork } from '../fan-out/reach.mts';
 import { target, workText } from '../fan-out/work-text.mts';
@@ -79,7 +80,7 @@ function workOf(
 }
 
 export function reactiveFindingsOf(project: ProjectIndex, view: SpringView): FanOutReport[] {
-  const occurrences = new Map<string, number>();
+  const nextOccurrence = occurrenceCounter();
   return reactiveSites(view)
     .flatMap((site) => {
       const work = workOf(project, view, workerOf(view, site.invocation));
@@ -93,7 +94,7 @@ export function reactiveFindingsOf(project: ProjectIndex, view: SpringView): Fan
       return fanOutReport(view, {
         rule: RULE,
         subject,
-        occurrences,
+        nextOccurrence,
         message: reactiveFanOutMessage({ ...site, collection, work }),
         line: site.line,
         lines: work.lines,

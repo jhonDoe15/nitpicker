@@ -1,6 +1,6 @@
 import { realpathSync } from 'node:fs';
 import path from 'node:path';
-import { configError } from '../../../../shared/config.mjs';
+import { configError } from '../../../../shared/config.mts';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import type { SelectedProjectLayout } from './typed/module-types.mts';
 import { parsedTsconfig, readJsonc } from './tsconfig-files.mts';

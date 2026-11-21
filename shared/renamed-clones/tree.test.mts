@@ -1,0 +1,171 @@
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import {
+  removeTrackedTemporaryPaths,
+  trackTemporaryPath,
+  untrackTemporaryPath,
+} from '../../core/tooling/temporary-files.mts';
+import { nestedCheckout, useGitCheckouts } from '../../core/diff/git/test-support/git-checkout.mts';
+import { useTempProjects } from '../test-support/temp-projects.mts';
+import { present } from '../near-duplicates/tree/nodes.mts';
+import { sourceFilesUnder } from './files.mts';
+import { withNormalizedTree } from './tree.mts';
+
+const { gitCheckout } = useGitCheckouts();
+
+const temporaryPaths = { track: trackTemporaryPath, untrack: untrackTemporaryPath };
+
+const project = useTempProjects('nitpicker-renamed-tree-');
+
+describe('the normalized copy of a project', () => {
+  const files = {
+    'src/a.py': 'total = price * 2  # note\n',
+    'src/generated.py': '# @generated\ntotal = price * 2\n',
+    'src/missing-later.py': 'x = 1\n',
+  };
+
+  it('holds the normalized files at their project paths, without generated ones', () => {
+    const root = project(files);
+    let seen;
+
+    withNormalizedTree(
+      {
+        projectRoot: root,
+        files: Object.keys(files),
+        syntaxOf: () => 'python',
+        scratchRoot: path.join(root, 'reports'),
+        temporaryPaths,
+      },
+      ({ tree }) => {
+        seen = {
+          a: readFileSync(path.join(tree, 'src/a.py'), 'utf8').replace(/\s+/gu, ''),
+          generated: existsSync(path.join(tree, 'src/generated.py')),
+        };
+      },
+    );
+
+    expect(seen).toEqual({ a: '_=_*0', generated: false });
+  });
+
+  it('skips a listed file that is gone and removes the copy afterwards', () => {
+    const root = project(files);
+    let scratch: string | undefined;
+
+    withNormalizedTree(
+      {
+        projectRoot: root,
+        files: ['src/gone.py', 'src/a.py', '../outside.py'],
+        syntaxOf: () => 'python',
+        scratchRoot: path.join(root, 'reports'),
+        temporaryPaths,
+      },
+      (directories) => {
+        scratch = directories.scratch;
+        expect(existsSync(path.join(directories.tree, 'src/a.py'))).toBe(true);
+      },
+    );
+
+    expect(existsSync(present(scratch))).toBe(false);
+  });
+
+  it('removes the copy when the run fails', () => {
+    const root = project(files);
+    let scratch: string | undefined;
+
+    expect(() =>
+      withNormalizedTree(
+        {
+          projectRoot: root,
+          files: [],
+          syntaxOf: () => 'python',
+          scratchRoot: root,
+          temporaryPaths,
+        },
+        (directories) => {
+          scratch = directories.scratch;
+          throw new Error('jscpd failed');
+        },
+      ),
+    ).toThrow('jscpd failed');
+    expect(existsSync(present(scratch))).toBe(false);
+  });
+
+  it('keeps the copy under the report folder, where an interrupted run still removes it', () => {
+    const root = project(files);
+    const scratchRoot = path.join(root, 'reports/quality/duplicates');
+    let seen;
+
+    withNormalizedTree(
+      {
+        projectRoot: root,
+        files: ['src/a.py'],
+        syntaxOf: () => 'python',
+        scratchRoot,
+        temporaryPaths,
+      },
+      ({ scratch }) => {
+        const inside = path.dirname(scratch) === scratchRoot;
+        removeTrackedTemporaryPaths();
+        seen = { inside, removedOnInterrupt: !existsSync(scratch) };
+      },
+    );
+
+    expect(seen).toEqual({ inside: true, removedOnInterrupt: true });
+  });
+});
+
+describe('listing the sources of a project', () => {
+  it('lists the files with the extensions under the roots, sorted, without installed packages', () => {
+    const root = project({
+      'src/b.kt': '',
+      'src/a.kt': '',
+      'src/readme.md': '',
+      'src/node_modules/dep/index.kt': '',
+      'other/c.kt': '',
+    });
+
+    expect(sourceFilesUnder(root, ['src', 'missing'], ['.kt', '.kts'])).toEqual([
+      'src/a.kt',
+      'src/b.kt',
+    ]);
+  });
+
+  it('lists the files of a Git checkout without ignored folders and nested checkouts', () => {
+    const root = gitCheckout(
+      {
+        'src/a.kt': '',
+        'src/generated/b.kt': '',
+        ...nestedCheckout('src/agent', { 'c.kt': '' }),
+      },
+      ['src/generated/'],
+    );
+
+    expect(sourceFilesUnder(root, ['src'], ['.kt'])).toEqual(['src/a.kt']);
+  });
+
+  it('takes a root that is a file, in a Git checkout or outside of one', () => {
+    const files = { 'bin/cli.ts': '', 'bin/other.ts': '', 'src/a.ts': '' };
+    const checkout = gitCheckout(files);
+    const plain = project(files);
+
+    expect(sourceFilesUnder(checkout, ['bin/cli.ts'], ['.ts'])).toEqual(['bin/cli.ts']);
+    expect(sourceFilesUnder(plain, ['bin/cli.ts', 'src'], ['.ts'])).toEqual([
+      'bin/cli.ts',
+      'src/a.ts',
+    ]);
+  });
+
+  it('takes a root that is a glob, in a Git checkout or outside of one', () => {
+    const files = { 'src/a.ts': '', 'src/b.md': '', 'lib/c.ts': '', 'src/ignored/d.ts': '' };
+    const checkout = gitCheckout(files, ['src/ignored/']);
+    const plain = project(files);
+
+    expect(sourceFilesUnder(checkout, ['src/*.ts'], ['.ts'])).toEqual(['src/a.ts']);
+    expect(sourceFilesUnder(plain, ['*/*.ts'], ['.ts'])).toEqual([
+      'lib/c.ts',
+      'src/a.ts',
+      'src/ignored/d.ts',
+    ]);
+  });
+});

@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
-import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
-import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mts';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import { toolSlots } from './slots/tool-slots.mts';
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { libraryProject as untypedLibraryProject } from '../../../../shared/rules/stability/test-support/library-project.mjs';
+import { libraryProject as untypedLibraryProject } from '../../../../shared/rules/stability/test-support/library-project.mts';
 import { analyzeJavaCoupling, parseJdeps } from './java-coupling.mts';
-import { evaluateCoupling as untypedEvaluateCoupling } from '../../../../shared/rules/coupling.mjs';
+import { evaluateCoupling as untypedEvaluateCoupling } from '../../../../shared/rules/coupling.mts';
 import { libraryClasses, libraryJdeps } from './test-support/library-classes.mts';
 
 type LibraryProject = { readonly uses: string[][] };

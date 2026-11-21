@@ -55,7 +55,7 @@ than the others, and this skill teaches its rules before an agent writes Go.
 ## Rules and their reasoning
 
 - **Finish with the gate, never suppress.** Same contract as every other preset: the gate is the
-  backstop and a person accepts every loosening. `//nolint` and `//lint:ignore` are named because
+  backstop and a person decides every exception. `//nolint` and `//lint:ignore` are named because
   they are the Go spellings of a suppression that agents reach for.
 - **Format with the project's formatter.** gofmt, gofumpt and goimports are all common and none is
   wrong, so the preset follows the project's choice (from `go.mod` tool directives or the
@@ -107,7 +107,7 @@ than the others, and this skill teaches its rules before an agent writes Go.
   preset runs (`swallowed-exception`, `repeated-string-literal`, `generic-name`,
   `todo-without-issue`, `forwarding-method-alias`, `hardcoded-secret`, `credential-shape` and
   `secret-in-log` in Python), with one definition: the secret words and shapes are shared
-  (`shared/naming/secret-words.mjs`, mirrored in Go and checked by a test). The Go forms follow the
+  (`shared/naming/secret-words.mts`, mirrored in Go and checked by a test). The Go forms follow the
   language: an `errors.Is` check is the Go way to expect one error, so only `err != nil` is judged;
   printf templates are Go's interpolated strings, so they are not counted as repeats; and a method
   an interface asks for may forward, since Go has no other way to satisfy it. Unused parameters,
@@ -340,15 +340,12 @@ Two adversarial reviews of the first version changed these rules:
 - **The formatter comes from the head checkout for both snapshots.** Read per snapshot, a change
   that adopted gofumpt failed every untouched file the merge base had formatted with gofmt. The
   Python preset had the same gap and reads its formatter the same way now.
-- **Dropping a formatter or a build tag is a loosening**, and an opted-in golangci-lint file is
-  policy, so neither can quietly check less.
 - **Function literals in package variables are measured.** A handler assigned to a `var` escaped
   every function limit.
 - **A test that times out next to a failing subtest is still reported**, and a timed-out package
   quotes the output of the test that was running.
-- **Marking a kept file generated is a policy change**, as in the other presets, because the
-  gate skips generated files. The header follows Go's `ast.IsGenerated` rule: it must come before
-  the package clause.
+- **A generated-file header follows Go's `ast.IsGenerated` rule**: it must come before the package
+  clause, because the gate skips generated files.
 - **`layout` and `duplicates` are config errors with their reason**, not silently ignored.
 - **The project's `GOFLAGS` is read with `go env`**, so `go env -w` settings apply, and the tools
   build from a neutral environment so the project's `GOOS` or `GOFLAGS` cannot break them.

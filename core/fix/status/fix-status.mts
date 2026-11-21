@@ -1,8 +1,9 @@
 import { ALL_RECIPES } from '../engine/all-recipes.mts';
 import { FORMATTER_RULES } from './tool-fixers.mts';
 import { SELECTED_FIXER_RULES } from './selected-fixers.mts';
-import { presetsOf } from '../../../shared/reference/facts.mjs';
-import { FIX_RANK, FIX_STATUS } from '../../../shared/reference/fix-status.mjs';
+import { PRESETS } from '../../../shared/reference/entry.mts';
+import { fieldOf } from '../../../shared/values/readers.mts';
+import { FIX_RANK, FIX_STATUS } from '../../../shared/reference/fix-status.mts';
 import { matcherOf, recipeListings, type Fields } from './status-types.mts';
 import type {
   FixStatusSources,
@@ -85,7 +86,9 @@ export function withFixStatus(
   return {
     ...entry,
     fix: Object.fromEntries(
-      presetsOf(entry).map((preset) => [preset, fixStatusFor(withHint, preset, sources)]),
+      PRESETS.filter((preset) => fieldOf(fieldOf(entry, 'analyzers'), preset) !== undefined).map(
+        (preset) => [preset, fixStatusFor(withHint, preset, sources)],
+      ),
     ),
   };
 }

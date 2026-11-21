@@ -1,5 +1,5 @@
-import { outsideRootsNotice } from '../../../../shared/notices/outside-roots-message.mjs';
-import { globMatcher as untypedGlobMatcher } from '../../../../shared/paths/glob.mjs';
+import { outsideRootsNotice } from '../../../../shared/notices/outside-roots-message.mts';
+import { globMatcher as untypedGlobMatcher } from '../../../../shared/paths/glob.mts';
 import { isUnder } from '../analysis/python-sources.mts';
 import { isGeneratedPython } from '../../libraries/generated-files.mts';
 import {

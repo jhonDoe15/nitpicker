@@ -1,5 +1,5 @@
 import { runGit } from '../../diff/git/repository/command.mts';
-import { byText } from '../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../shared/text-order/by-text.mts';
 
 function lines(output: string): string[] {
   return output.split('\0').filter(Boolean);

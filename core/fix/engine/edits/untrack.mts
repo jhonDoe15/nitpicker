@@ -1,4 +1,4 @@
-import { git } from '../../../../shared/hygiene/tracked-files.mjs';
+import { git } from '../../../../shared/hygiene/tracked-files.mts';
 
 function literal(args: readonly string[]): string[] {
   return ['--literal-pathspecs', ...args];

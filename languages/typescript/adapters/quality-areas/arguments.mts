@@ -5,7 +5,7 @@ import { TRUSTED_TOOL_ROOT } from './runners/tooling.mts';
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mts';
 import { DEFAULT_LEGACY_INVENTORY } from '../../preset/coding-standards/inventory-path.mts';
-import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
+import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mts';
 import { parsePositiveNumber } from '../../preset/checks/numbers.mts';
 import { validatedSnapshotRoot } from '../static-checks/arguments.mts';
 import {
@@ -33,8 +33,11 @@ const VALUE_ARGUMENTS = new Set([
   MUTATION_SCOPE_OPTION,
 ]);
 
-export function parseArguments(arguments_: readonly string[]): QualityAreaOptions {
-  const values = collectArguments(arguments_);
+export function parseArguments(
+  argumentList: readonly string[],
+  environment: QualityAreaOptions['environment'],
+): QualityAreaOptions {
+  const values = collectArguments(argumentList);
   const kind = supportedKind(values);
   const snapshot = snapshotOf(values);
   const toolRoot = trustedToolRoot(values);
@@ -44,6 +47,7 @@ export function parseArguments(arguments_: readonly string[]): QualityAreaOption
   );
   const projectPolicyRoot = projectPolicyRootOf(values, projectRoot);
   return {
+    environment,
     analyzerName: requiredValue(values, '--analyzer-name'),
     kind,
     projectRoot,
@@ -77,9 +81,9 @@ export function parseArguments(arguments_: readonly string[]): QualityAreaOption
   };
 }
 
-function collectArguments(arguments_: readonly string[]): Map<string, string> {
+function collectArguments(argumentList: readonly string[]): Map<string, string> {
   const values = new Map<string, string>();
-  const remaining = arguments_.values();
+  const remaining = argumentList.values();
   for (const name of remaining) {
     const { value } = remaining.next();
     if (value === undefined) {

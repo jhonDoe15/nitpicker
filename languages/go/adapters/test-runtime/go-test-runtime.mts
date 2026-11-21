@@ -1,8 +1,8 @@
-import { EDGE_KINDS } from '../../../../shared/rules/test-runtime/classify.mjs';
+import { EDGE_KINDS } from '../../../../shared/rules/test-runtime/classify.mts';
 import {
   TEST_RUNTIME_ANALYZER,
   isEndToEndPath,
-} from '../../../../shared/rules/test-runtime/scope.mjs';
+} from '../../../../shared/rules/test-runtime/scope.mts';
 import { moduleFileText } from '../typed/go-readers.mts';
 import {
   classifyTestRuntime,

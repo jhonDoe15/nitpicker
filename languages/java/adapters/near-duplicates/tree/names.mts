@@ -1,7 +1,15 @@
 import type { Node } from 'web-tree-sitter';
 import { depthFirst } from '../jvm-views.mts';
 import type { ClassScope, Names, ShapeNode, Unstable } from '../jvm-types.mts';
-import { codeChildren, declaredClasses, field, present, required, fileScopeOf } from './nodes.mts';
+import {
+  annotatedRest,
+  codeChildren,
+  declaredClasses,
+  field,
+  present,
+  required,
+  fileScopeOf,
+} from './nodes.mts';
 
 const DECLARING = new Set([
   'formal_parameter',
@@ -18,6 +26,10 @@ function declaredNames(node: Node): string[] {
   if (node.type === 'spread_parameter') {
     const declarator = codeChildren(node).find((child) => child.type === 'variable_declarator');
     return declarator === undefined ? [] : [required(declarator, 'name').text];
+  }
+  if (node.type === 'ERROR') {
+    const rest = annotatedRest(node);
+    return rest === undefined ? [] : [rest.name];
   }
   if (node.type === 'lambda_expression') {
     const parameters = required(node, 'parameters');

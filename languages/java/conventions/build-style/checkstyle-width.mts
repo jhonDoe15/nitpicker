@@ -1,5 +1,4 @@
-import { childrenNamed } from '../../../../shared/values/xml.mts';
-import type { XmlElement } from '../../../../shared/values/xml.mts';
+import { childrenNamed, type XmlElement } from '../../../../shared/ingest/report-records.mts';
 import { parsedXml } from './declarations/parsed-xml.mts';
 import { appendAll } from '../../../../shared/lists/items.mjs';
 

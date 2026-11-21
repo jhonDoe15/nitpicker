@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { sortedKeys } from '../../../../../../shared/messages/advice/finding-advice.mts';
 
 const VOLATILE = /(?:^|\/)(?:test-results|nitpicker-lint|work)(?:\/|$)/u;
 const JVM_NOTICE = /^(?:NOTE: )?Picked up /u;
@@ -7,14 +8,6 @@ const WORK_DIRECTORY = /\/tmp\/nitpicker-maven-\w+/gu;
 const SECONDS = /in \d+(?:\.\d+)?s/gu;
 const TIMESTAMP = /timestamp="[^"]*"/gu;
 const FRAME_LOADER = /(?<=\bat )\w+\/\/(?=[\w.$<>]+\()/gu;
-
-function sortedKeys(_key: string, value: unknown): unknown {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? Object.fromEntries(
-        Object.entries(value).toSorted(([left], [right]) => left.localeCompare(right)),
-      )
-    : value;
-}
 
 function normalized(text: string, root: string, name: string): string {
   const canonical = name.endsWith('.json') ? JSON.stringify(JSON.parse(text), sortedKeys) : text;

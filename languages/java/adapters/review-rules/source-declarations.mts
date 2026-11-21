@@ -1,4 +1,4 @@
-import { lineAt as untypedLineAt } from '../../../../shared/conventions/lines.mjs';
+import { lineAt as untypedLineAt } from '../../../../shared/conventions/lines.mts';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import {

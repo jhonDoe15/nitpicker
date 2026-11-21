@@ -1,5 +1,5 @@
-import { partsOf } from '../../../../../shared/rules/stability/test-support/library-project.mjs';
-import { byText } from '../../../../../shared/text-order/by-text.mjs';
+import { partsOf } from '../../../../../shared/rules/stability/test-support/library-project.mts';
+import { byText } from '../../../../../shared/text-order/by-text.mts';
 import type { ImportStatement, PythonModule } from '../typed/python-graph-types.mts';
 
 const partsFor: (reference: string) => { feature?: string; part: string } = partsOf;

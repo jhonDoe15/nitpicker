@@ -4,15 +4,16 @@ import { KOTLIN_REPORTS } from './report-names/kotlin-report-names.mts';
 import { ingestCrapFunctions } from '../../ingest/crap.mts';
 import { ownRange } from '../../ingest/units/unit-coverage.mts';
 import type { CoverageUnit, FunctionUnit } from '../../ingest/units/unit-types.mts';
-import { MESSAGES, RULE_IDS } from '../../../../shared/policy.mjs';
-import { definedField as untypedDefinedField } from '../../../../shared/messages/messages.mjs';
-import { repeatsInSource as untypedRepeatsInSource } from '../../../../shared/rules/finding-helpers.mjs';
+import { MESSAGES, RULE_IDS } from '../../../../shared/policy.mts';
+import { definedField as untypedDefinedField } from '../../../../shared/messages/messages.mts';
+import { repeatsInSource as untypedRepeatsInSource } from '../../../../shared/rules/finding-parts.mts';
 import {
   methodText as untypedMethodText,
-  structureFindings as untypedStructureFindings,
-} from '../../../../shared/ingest/structure-report.mjs';
+  structureFindings,
+} from '../../../../shared/ingest/structure-report.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { existingInside } from './typed/kotlin-tool-views.mts';
+import type { Finding } from '../../../../shared/values/findings.mts';
 import type { JavaFinding } from '../typed/java-values.mts';
 
 export type MetricsFunction = {
@@ -48,23 +49,14 @@ export type Metrics = {
   readonly files: readonly MetricsFile[];
   readonly types?: readonly MetricsType[] | undefined;
 };
-export type KotlinFinding = {
-  readonly tool: string;
-  readonly rule: string;
-  readonly symbol: string;
-  readonly path: string;
-  readonly message: string;
-  readonly classification: string;
-  readonly identity: string;
+export type KotlinFinding = Finding & {
   readonly allowedForm?: string | undefined;
-  readonly location: { readonly line: number; readonly endLine?: number };
   readonly ratchet?: {
     readonly key: string;
     readonly value: number;
     readonly worseMessage?: string | undefined;
     readonly worseAllowedForm?: string | undefined;
   };
-  readonly [field: string]: unknown;
 };
 type Roots = { projectRoot: string; jacoco: string; crapLimit?: number | undefined };
 
@@ -76,10 +68,6 @@ const methodText: (
   projectRoot: string,
   entry: { file: string; start: number; end: number },
 ) => string = untypedMethodText;
-const structureFindings: (
-  entries: readonly MetricsFunction[],
-  projectRoot: string,
-) => KotlinFinding[] = untypedStructureFindings;
 const unknownMessage: string = MESSAGES.crapCoverageUnknownPlain;
 
 function isMetrics(value: unknown): value is Metrics {
@@ -127,7 +115,9 @@ function adviseInitializers(
     functions.filter(({ initializer }) => initializer).map(({ name }) => name),
   );
   return findings.map((finding) =>
-    finding.rule === RULE_IDS.functionControlNesting && initializers.has(finding.symbol)
+    finding.rule === RULE_IDS.functionControlNesting &&
+    finding.symbol !== undefined &&
+    initializers.has(finding.symbol)
       ? withExtractAdvice(finding)
       : finding,
   );

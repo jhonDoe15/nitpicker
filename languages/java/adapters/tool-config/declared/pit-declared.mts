@@ -1,7 +1,6 @@
 import { readPitMutators } from '../../../builds/java-build.mts';
-import { childAt } from '../../../../../shared/values/xml.mts';
-import type { XmlElement } from '../../../../../shared/values/xml.mts';
-import { missingProjectConfig as untypedMissingProjectConfig } from '../../../../../shared/conventions/tool-precedence.mjs';
+import { childAt, type XmlElement } from '../../../../../shared/ingest/report-records.mts';
+import { missingProjectConfig as untypedMissingProjectConfig } from '../../../../../shared/conventions/tool-precedence.mts';
 import { mavenTextsOf } from '../../../builds/narrowing/maven-sources.mts';
 import {
   declarationText,

@@ -1,5 +1,5 @@
-import { LOOSE_STATEMENT as untypedLooseStatement } from '../../../../../../../shared/rules/security/sql-text.mjs';
-import { wordsOf as untypedWordsOf } from '../../../../../../../shared/naming/secret-words.mjs';
+import { LOOSE_STATEMENT as untypedLooseStatement } from '../../../../../../../shared/rules/security/sql-text.mts';
+import { wordsOf as untypedWordsOf } from '../../../../../../../shared/naming/secret-words.mts';
 import type { CallArgument, CallView } from './call-views.mts';
 import { isPlainCall } from './names/plain-calls.mts';
 import { isCachePackage, type IoKind } from './packages.mts';

@@ -1,9 +1,9 @@
 import path from 'node:path';
-import { FOLDER_DEPTH_DEFAULTS } from '../../../../shared/project-rules/size-rules.mjs';
+import { folderDepthFindings } from '../../../../shared/rules/size/folder-depth.mts';
+import { FOLDER_DEPTH_DEFAULTS } from '../../../../shared/project-rules/size-rules.mts';
 import {
   classLimitFindings,
   collectFileLimitFindings,
-  folderDepthFindings,
   structureFindings,
 } from '../typed/shared-readers.mts';
 import type { FindingRow, GoFile, GoPolicy, GoType } from '../go-types.mts';
@@ -75,7 +75,7 @@ export function goStructureFindings(
         limit: limits.thresholds.folderDepth ?? FOLDER_DEPTH_DEFAULTS.go,
         exceptions: limits.exceptions,
         wording: DEPTH_WORDING,
-        depthOf: ({ parts }: { parts: readonly string[] }) => parts.length,
+        depthOf: ({ parts }) => parts.length,
       },
     ),
   ];

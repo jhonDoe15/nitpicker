@@ -27,7 +27,7 @@ export type SpringFinding = {
   readonly location?: { readonly line: number };
 };
 
-export type Occurrences = Map<string, number>;
+export type Occurrences = (key: string) => number;
 
 export type FindingSpec = {
   readonly rule: string;

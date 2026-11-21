@@ -5,7 +5,7 @@ import {
 import {
   chainOf as untypedChainOf,
   parentDirectory as untypedParentDirectory,
-} from '../../../../../shared/traversal.mjs';
+} from '../../../../../shared/traversal.mts';
 import type { ChildLoad } from '../../project-configs/project-config-types.mts';
 
 export const loadInChild: (load: ChildLoad) => unknown = untypedLoadInChild;

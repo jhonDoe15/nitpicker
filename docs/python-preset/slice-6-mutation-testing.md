@@ -3,7 +3,7 @@
 Part of the [Python preset guide](../python-preset.md).
 
 Mutation testing follows [mutation-testing.md](../mutation-testing.md) and the shared mutation rule
-(`shared/rules/mutation.mjs`, the one the Java preset's PIT ingester feeds too): no score gate, a
+(`shared/rules/mutation.mts`, the one the Java preset's PIT ingester feeds too): no score gate, a
 new `Survived` mutant fails as `mutant-survived`, a new `NoCoverage` mutant fails as
 `mutant-nocoverage`, and every other status (`Timeout`, `RuntimeError`, `CompileError`, `Ignored`)
 is a descriptive finding that never fails. A mutant is identified by its function (`Class.method`),

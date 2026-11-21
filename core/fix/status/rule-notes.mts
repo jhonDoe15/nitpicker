@@ -1,4 +1,4 @@
-import { didYouMean } from '../../../shared/messages/closest-match.mjs';
+import { didYouMean } from '../../../shared/messages/closest-match.mts';
 import { ruleName } from '../engine/recipes.mts';
 import { SELECTED_FIXER_RULES } from './selected-fixers.mts';
 import { FORMATTER_RULES } from './tool-fixers.mts';

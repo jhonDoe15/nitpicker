@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type { Context } from '../security/security-values.mts';
 import { hasArrayType } from '../support/checked-types.mts';
-import { wordsOf as untypedWordsOf } from '../../../../../../shared/naming/secret-words.mjs';
+import { wordsOf as untypedWordsOf } from '../../../../../../shared/naming/secret-words.mts';
 import { contains } from '../typed/node-views.mts';
 import { calleeName } from '../typed/syntax-views.mts';
 import { childrenOf, type EnclosingLoop, type LoopNode } from './loop-shapes.mts';

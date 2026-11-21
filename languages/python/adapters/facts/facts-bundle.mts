@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { hash } from '../../../../shared/rules/finding-helpers.mjs';
+import { hash } from '../../../../shared/rules/finding-parts.mts';
 import { named, referenceTargets } from './facts-references.mts';
 import { createResolver } from './facts-resolver.mts';
 import { textOf } from '../../../../shared/values/readers.mts';

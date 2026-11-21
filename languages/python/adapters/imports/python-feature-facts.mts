@@ -1,6 +1,6 @@
-import { featureFactAnalysis } from '../../../../shared/rules/facts/evaluate.mjs';
-import { PUBLIC_FACES } from '../../../../shared/rules/features/feature-roles.mjs';
-import { RULE_IDS } from '../../../../shared/policy.mjs';
+import { featureFactAnalysis } from '../../../../shared/rules/facts/evaluate.mts';
+import { PUBLIC_FACES } from '../../../../shared/rules/features/feature-roles.mts';
+import { RULE_IDS } from '../../../../shared/policy.mts';
 import { statementTargets as untypedTargets, WHOLE_MODULE } from '../analysis/python-coupling.mts';
 import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
 import type { FeatureView } from './typed/import-rule-types.mts';

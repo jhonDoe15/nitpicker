@@ -4,7 +4,7 @@ import {
   descriptionLines as untypedDescriptionLines,
   docCommentProblem as untypedDocCommentProblem,
   tagsHaveContent as untypedTagsHaveContent,
-} from '../../../../../../shared/rules/doc-comments/doc-comments.mjs';
+} from '../../../../../../shared/rules/doc-comments/doc-comments.mts';
 
 type MessageId = 'restatingDocComment' | 'longDocComment';
 type DocCommentReport = {

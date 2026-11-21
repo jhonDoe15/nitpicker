@@ -4,7 +4,7 @@ import path from 'node:path';
 import * as prettier from 'prettier';
 import { describe, expect, it, vi } from 'vitest';
 import { usesLayeredPrettier } from '../preset/head-policy.mts';
-import { validateConventions } from '../../../shared/conventions/settings.mjs';
+import { validateConventions } from '../../../shared/conventions/settings.mts';
 import {
   layeredPrettierOptions,
   measureOf,

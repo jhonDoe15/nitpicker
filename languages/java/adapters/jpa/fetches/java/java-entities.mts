@@ -4,7 +4,7 @@ import {
   pathInside,
   sourceFilesUnder,
 } from '../../../review-rules/java-sources.mts';
-import { escapeRegExp } from '../../../../../../shared/paths/glob.mjs';
+import { escapeRegExp } from '../../../../../../shared/paths/glob.mts';
 import type { Declaration, Relation, RelationOf, Steps } from '../fetch-types.mts';
 import { fieldRelation } from '../fetch-paths.mts';
 

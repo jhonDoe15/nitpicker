@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { JAVA_FORMATTERS, KOTLIN_FORMATTERS, formatterOptionFlags } from './jvm-formatters.mts';
 import { callUntyped } from '../typed/java-values.mts';
-import { byText } from '../../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mts';
 
 function flags(name: string, options: Readonly<Record<string, unknown>>): unknown {
   return callUntyped(formatterOptionFlags, name, options);

@@ -1,7 +1,7 @@
 import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mts';
 
 import type {

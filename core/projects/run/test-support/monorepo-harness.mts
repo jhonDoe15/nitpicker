@@ -14,18 +14,8 @@ import type { FixtureAnalyzer } from '../../../command/test-support/fixture-type
 import type { CombinedSummary } from '../../report/combined-summary.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 
-export type ReportSummary = Omit<CombinedSummary, 'repositoryPolicy'> & {
-  readonly repositoryPolicy: {
-    readonly accepted: boolean;
-    readonly policyDigest: string;
-    readonly policyLoosenings: string[];
-    readonly toolErrors: readonly ReportEntry[];
-    readonly newEnforceableFindings: number;
-  };
-  readonly policyLoosenings: string[];
-  readonly policyDigest: string;
+export type ReportSummary = CombinedSummary & {
   readonly configOverrides: string[];
-  readonly policyChanges: readonly unknown[];
   readonly tools: readonly { readonly name: string }[];
 };
 

@@ -5,7 +5,7 @@ import {
   fixturePath,
   kotlinRuleCases,
 } from '../../kotlin/rules/test-support/kotlin-rule-cases.mts';
-import { exceptionHint as untypedExceptionHint } from '../../../../../shared/rules/exceptions.mjs';
+import { exceptionHint as untypedExceptionHint } from '../../../../../shared/rules/exceptions.mts';
 import { withKotlinRuleMessage } from '../../kotlin/rules/kotlin-messages.mts';
 import { SUPPRESSION_RULE } from '../../kotlin/rules/kotlin-rules.mts';
 import { assigned } from '../test-support/views/assigned.mts';

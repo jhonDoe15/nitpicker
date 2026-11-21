@@ -1,4 +1,4 @@
-import { chainOf } from '../../../../../shared/traversal.mjs';
+import { chainOf } from '../../../../../shared/traversal.mts';
 
 const chainFrom: <T>(start: T, next: (position: T) => T | undefined) => T[] = chainOf;
 const BRACKETS: Readonly<Record<string, RegExp>> = { '(': /[()]/g, '{': /[{}]/g, '[': /[[\]]/g };

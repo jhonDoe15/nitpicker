@@ -11,7 +11,7 @@ import {
   RULE_HINTS as UNTYPED_RULE_HINTS,
   withHint as untypedWithHint,
 } from '../../languages/python/rules/rule-hints.mts';
-import { hasExceptionRoute as untypedHasRoute } from '../../shared/messages/exception-sentence.mjs';
+import { hasExceptionRoute as untypedHasRoute } from '../../shared/messages/exception-sentence.mts';
 import { routeProblems } from './test-support/route-check.mts';
 
 type Finding = {

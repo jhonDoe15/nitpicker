@@ -8,17 +8,24 @@ import { escapeHatchLinterOptions } from '../strict/strict-escape-hatches.mts';
 import { type ScopeLayout, linterConfigs } from '../typed/config-types.mts';
 import { testAreaGlobsFor } from '../typed/glob-views.mts';
 import { restrictedMatchers } from './restricted-matchers.mts';
+import { browserTestPlugins, browserTestRuleIds } from './browser-tests/browser-test-rules.mts';
 
 type TestLayout = ScopeLayout & {
   readonly unitTestGlobs: string[];
   readonly colocatedTests: boolean;
   readonly runnerSourceTestGlobs?: readonly string[];
 };
-type Restores = { readonly scope: string; readonly globals: boolean; readonly envs: boolean };
+type Restores = {
+  readonly scope: string;
+  readonly globals: boolean;
+  readonly envs: boolean;
+  readonly concurrent?: boolean;
+};
 type StubOptions = {
   readonly runner?: string;
   readonly setupFiles?: string[];
   readonly stubRestores?: readonly Restores[];
+  readonly mockClearingScopes?: readonly string[];
   readonly testRootsOnDisk?: string[];
   readonly assertionFunctionNames?: string[];
 };
@@ -66,6 +73,10 @@ function stubRestoreBlock(
         ERROR,
         { globals: !restores.globals, envs: !restores.envs },
       ],
+      'nitpicker/no-worker-state-in-concurrent-tests': [
+        ERROR,
+        { concurrent: restores.concurrent === true },
+      ],
     },
   };
 }
@@ -111,10 +122,12 @@ function honestyRulesBlock(
     files,
     ignores: layout.excludedGlobs,
     linterOptions: escapeHatchLinterOptions,
-    plugins: { nitpicker: nitpickerRules, ...MATCHER_PLUGINS[runner] },
+    plugins: { nitpicker: nitpickerRules, ...browserTestPlugins, ...MATCHER_PLUGINS[runner] },
     rules: {
+      ...Object.fromEntries(browserTestRuleIds.map((id) => [id, ERROR])),
       'nitpicker/no-comments': [ERROR, { suppressionsOnly: true }],
       'nitpicker/no-shared-test-state': ERROR,
+      'nitpicker/no-uncleared-shared-mock': ERROR,
       'nitpicker/no-copy-pasted-tests': [ERROR, runnerOption],
       'nitpicker/fake-timers-require-restore': ERROR,
       'nitpicker/no-real-time-random-or-network': [ERROR, runnerOption],
@@ -127,6 +140,21 @@ function honestyRulesBlock(
       ...matcherRules(runner),
     },
   };
+}
+
+function mockClearingBlocks(scopes: readonly string[]) {
+  if (scopes.length === 0) {
+    return [];
+  }
+  return [
+    {
+      files: scopes.map((scope) =>
+        scope === '.' ? `**/*.${codeExtensions}` : path.posix.join(scope, `**/*.${codeExtensions}`),
+      ),
+      plugins: { nitpicker: nitpickerRules },
+      rules: { 'nitpicker/no-uncleared-shared-mock': 'off' },
+    },
+  ];
 }
 
 function setupFileBlocks(setupFiles: string[]) {
@@ -148,6 +176,7 @@ export function testHonestyConfigFor(
     runner = 'vitest',
     setupFiles = [],
     stubRestores = [],
+    mockClearingScopes = [],
     testRootsOnDisk = layout.testRoots,
     assertionFunctionNames = [],
   }: StubOptions = {},
@@ -173,5 +202,6 @@ export function testHonestyConfigFor(
       rules: { 'nitpicker/no-uncollected-tests': [ERROR, runnerOption] },
     },
     ...setupFileBlocks(setupFiles),
+    ...mockClearingBlocks(mockClearingScopes),
   ]);
 }

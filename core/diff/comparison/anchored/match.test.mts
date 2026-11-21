@@ -2,15 +2,15 @@ import { describe, expect, it } from 'vitest';
 import { fieldAt } from '../../../../scripts/json/fields.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import { compareFindings, type ComparedFinding } from '../test-support/typed-compare.mts';
-import { branchCoverageFindings as branchCoverageFindingsJs } from '../../../../shared/rules/branch-coverage.mjs';
+import { branchCoverageFindings as branchCoverageFindingsJs } from '../../../../shared/rules/branch-coverage.mts';
 import {
   declarationLine as declarationLineJs,
   hash as hashJs,
   nameFreeHash as nameFreeHashJs,
-} from '../../../../shared/rules/finding-helpers.mjs';
-import { crapFindings as crapFindingsJs } from '../../../../shared/rules/crap.mjs';
-import { mutantFindings as mutantFindingsJs } from '../../../../shared/rules/mutation.mjs';
-import { evaluateStructure as evaluateStructureJs } from '../../../../shared/rules/structure.mjs';
+} from '../../../../shared/rules/finding-parts.mts';
+import { crapFindings as crapFindingsJs } from '../../../../shared/rules/crap.mts';
+import { mutantFindings as mutantFindingsJs } from '../../../../shared/rules/mutation.mts';
+import { evaluateStructure as evaluateStructureJs } from '../../../../shared/rules/structure.mts';
 
 type Fields = Readonly<Record<string, unknown>>;
 type Span = readonly [number, number];

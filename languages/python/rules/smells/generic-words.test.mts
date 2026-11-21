@@ -1,17 +1,17 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { byText } from '../../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mts';
 import {
   ACCEPTED_MANAGER_ROLES,
   CONTAINER_NAME_WORDS,
   GENERIC_NAME_WORDS,
-} from '../../../../shared/naming/smell-words.mjs';
+} from '../../../../shared/naming/smell-words.mts';
 
-function pythonWords(setName: string): (string | undefined)[] {
+function pythonWords(setName: string): string[] {
   const source = readFileSync(path.resolve(import.meta.dirname, 'names.py'), 'utf8');
   const block = new RegExp(`${setName} = \\{([^}]*)\\}`).exec(source)?.[1] ?? '';
-  return [...block.matchAll(/"([a-z]+)"/g)].map((match) => match[1]);
+  return [...block.matchAll(/"([a-z]+)"/g)].map((match) => match[1] ?? '');
 }
 
 describe('the word lists of the Python name rule', () => {

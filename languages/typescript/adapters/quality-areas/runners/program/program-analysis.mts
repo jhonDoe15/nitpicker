@@ -4,6 +4,7 @@ import type { QualityAreaOptions } from '../../typed/area-types.mts';
 import { linkPolicyFile } from '../../../typed/tooling.mts';
 import { layoutTransformFor, readLayout } from '../../../typed/head-policy.mts';
 import { toolErrorFinding } from '../../reporting/test-report.mts';
+import { collectGarbage } from './collect-garbage.mts';
 import { type PolicyFunction, findingsOf, policyExport, policyFile } from '../../typed/tooling.mts';
 
 const TYPESCRIPT_CONFIG = 'languages/typescript/preset/defaults/tsconfig.quality.json';
@@ -43,6 +44,7 @@ function analyze(
     });
   } finally {
     installed.remove();
+    collectGarbage();
   }
 }
 

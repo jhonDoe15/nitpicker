@@ -1,26 +1,16 @@
-import { normalize as untypedNormalize } from '../../../../../../../shared/logic/normalize.mjs';
-import { print as untypedPrint } from '../../../../../../../shared/logic/print.mjs';
-import { isSideEffectFree as untypedIsSideEffectFree } from '../../../../../../../shared/logic/purity.mjs';
+import type { Range, Term } from '../../../../../../../shared/logic/typed/term-types.mts';
+import { normalize as untypedNormalize } from '../../../../../../../shared/logic/normalize.mts';
+import { print as untypedPrint } from '../../../../../../../shared/logic/print.mts';
+import { isSideEffectFree as untypedIsSideEffectFree } from '../../../../../../../shared/logic/purity.mts';
 import {
   foldTerm as untypedFoldTerm,
   isLogical as untypedIsLogical,
   key as untypedKey,
   term as untypedTerm,
   withRange as untypedWithRange,
-} from '../../../../../../../shared/logic/terms.mjs';
+} from '../../../../../../../shared/logic/terms.mts';
 
-export type Range = readonly [number, number];
-
-export type Term = {
-  readonly kind: string;
-  readonly value: string | undefined;
-  readonly children: Term[];
-  readonly range: Range | undefined;
-  readonly loose?: true;
-  readonly assignment?: true;
-  readonly boolean?: true;
-  readonly integer?: true;
-};
+export type { Range, Term };
 
 export const key: (root: Term) => string = untypedKey;
 

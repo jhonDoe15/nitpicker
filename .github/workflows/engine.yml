@@ -2,9 +2,17 @@ name: engine
 
 on:
   push:
-    branches: [main]
+    branches: [main, integration]
     paths:
       - 'engine/**'
+      - 'languages/typescript/adapters/typed-engine/**'
+      - 'languages/typescript/preset/architecture/**'
+      - 'languages/typescript/preset/coding-standards/**'
+      - 'languages/typescript/preset/design/**'
+      - 'languages/typescript/preset/unused-api/**'
+      - 'shared/engine/**'
+      - 'core/tooling/**'
+      - 'package-lock.json'
       - 'scripts/ci/**'
       - '.github/workflows/engine.yml'
   pull_request:
@@ -14,8 +22,8 @@ on:
 # A newer run on the same pull request cancels the older one. On main a started
 # run finishes, and a newer push replaces a run that is still waiting.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'push' && 'main' || github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.ref_name || github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/integration' }}
 
 jobs:
   # On a pull request, the jobs below run only when the pull request changes a file in this
@@ -55,5 +63,23 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+      # The checks that need types ask the TypeScript 7 compiler of the installed packages.
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --ignore-scripts
       - run: cargo test --release --locked
         working-directory: engine
+      # The same tests the Node checks pass, with the checks answered by the engine built above.
+      - name: Typed checks through the engine
+        run: >-
+          npx vitest run --config vitest.config.mts
+          languages/typescript/adapters/typed-engine
+          languages/typescript/preset/unused-api
+          languages/typescript/preset/design
+          languages/typescript/preset/architecture/typed
+          languages/typescript/preset/coding-standards
+        env:
+          NITPICKER_TYPED_ENGINE: required

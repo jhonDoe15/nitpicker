@@ -9,7 +9,7 @@ import { workingTreeDigest as untypedDigest } from '../../diff/reporting/run-sta
 import {
   colorEnabled as untypedColorEnabled,
   displayPath as untypedDisplayPath,
-} from '../../../shared/messages/terminal/terminal-text.mjs';
+} from '../../../shared/messages/terminal/terminal-text.mts';
 import type { TextOutput } from '../../cli-context.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 import { type ShowOptions, SHOW_USAGE, parseShowArguments } from './show-arguments.mts';

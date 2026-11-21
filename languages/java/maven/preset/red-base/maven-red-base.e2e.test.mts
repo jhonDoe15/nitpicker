@@ -6,8 +6,8 @@ import { runJavaDiff } from '../../../adapters/java-diff.mts';
 import { commitBranch, runGitIn, summarize } from '../../../adapters/test-support/gradle-e2e.mts';
 import { gateRedBase } from '../../../adapters/red-base/test-support/red-base-cases.mts';
 import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
-import { testsFailOnBase } from '../../../../../shared/rules/finding-helpers.mjs';
-import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
+import { testsFailOnBase } from '../../../../../shared/rules/finding-parts.mts';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mts';
 
 const maven = process.env['NITPICKER_MAVEN'];
 const gradleFixture = path.join(import.meta.dirname, '../../../adapters/fixtures/gradle-project');

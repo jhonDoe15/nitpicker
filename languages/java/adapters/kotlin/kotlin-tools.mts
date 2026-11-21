@@ -38,7 +38,7 @@ import type {
   ToolPrecedence,
 } from './typed/kotlin-tool-types.mts';
 import { writeDetektLists } from './detekt/detekt-lists.mts';
-import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
+import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mts';
 import {
   existingInside,
   missingProjectConfig,

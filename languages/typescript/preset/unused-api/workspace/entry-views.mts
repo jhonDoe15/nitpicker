@@ -1,4 +1,4 @@
-import { depthFirst as untypedDepthFirst } from '../../../../../shared/traversal.mjs';
+import { depthFirst as untypedDepthFirst } from '../../../../../shared/traversal.mts';
 
 export const depthFirst: (
   root: unknown,

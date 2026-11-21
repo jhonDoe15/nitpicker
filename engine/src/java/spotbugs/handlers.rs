@@ -5,6 +5,12 @@ use tree_sitter::Node;
 
 pub const UNKNOWN: &str = "?";
 
+/// The exception types a method declares, by name. One that cannot be read counts as `Throwable`.
+pub fn declares(method: &crate::java::types::model::Method) -> Vec<String> {
+    let named = |kind: &crate::java::types::model::Type| Some(kind.erased().name()).filter(|name| name != UNKNOWN);
+    method.throws.iter().map(|kind| named(kind).unwrap_or_else(|| "java.lang.Throwable".to_string())).collect()
+}
+
 /// What stands between a place in a body and the caller, as the compiled exception table has it: only the
 /// innermost handler around the place is asked.
 #[derive(Clone)]
@@ -47,7 +53,7 @@ pub fn closing(context: &Context, statement: Node) -> Vec<String> {
         };
         let close = kind.as_ref().and_then(|kind| index.methods(&kind.erased().name(), "close").into_iter().find(|(_, method)| method.parameters.is_empty()));
         match close {
-            Some((_, method)) => thrown.extend(method.throws.iter().cloned()),
+            Some((_, method)) => thrown.extend(declares(method)),
             None => thrown.push("java.lang.Exception".to_string()),
         }
     }

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { escapeRegExp } from '../typed/regex-escape.mts';
-import { resolveInside as untypedResolveInside } from '../../../../shared/conventions/read-inside.mjs';
+import { resolveInside as untypedResolveInside } from '../../../../shared/conventions/read-inside.mts';
 import type { Locate } from './typed/locate-type.mts';
 
 const resolveInside: (root: string, relative: string) => string | undefined = untypedResolveInside;

@@ -92,7 +92,7 @@ function crap(functions: MetricsFunction[], report: string, crapLimit = 3) {
   return readKotlinCrapFindings(
     { functions, files: FILES },
     { projectRoot: root, jacoco: report, crapLimit },
-  ).map(({ rule, symbol, message }) => `${rule} ${symbol}: ${message}`);
+  ).map(({ rule, symbol, message }) => `${rule} ${String(symbol)}: ${message}`);
 }
 
 const COVERED = [

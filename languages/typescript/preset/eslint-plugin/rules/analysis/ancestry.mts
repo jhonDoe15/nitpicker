@@ -1,6 +1,6 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import { isVariableDefinition } from '../../../syntax/kinds/node-kinds.mts';
-import { chainOf as untypedChainOf } from '../../../../../../shared/traversal.mjs';
+import { chainOf as untypedChainOf } from '../../../../../../shared/traversal.mts';
 
 const chainOf: <Item>(
   start: Item | undefined,

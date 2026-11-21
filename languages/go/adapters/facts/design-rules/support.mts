@@ -2,7 +2,7 @@ import {
   designFacts as untypedDesignFacts,
   fn as untypedFn,
   owner as untypedOwner,
-} from '../../../../../shared/rules/design/test-support/design-facts.mjs';
+} from '../../../../../shared/rules/design/test-support/design-facts.mts';
 import { goFactFindings } from '../go-fact-findings.mts';
 import { goFacts } from '../go-facts.mts';
 import { fieldOf, listOf, textOf } from '../../../../../shared/values/readers.mts';

@@ -2,7 +2,7 @@ import type { Linter } from 'eslint';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import type TypeScript from 'typescript';
-import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../shared/project-files/project-files.mjs';
+import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../shared/project-files/project-files.mts';
 import { selectTypeScriptApi as untypedSelectTypeScriptApi } from '../../../typescript-api/api-selection.mts';
 import {
   checksJavascript as untypedChecksJavascript,
@@ -133,14 +133,6 @@ type JavascriptOptions = {
   readonly layout: JavascriptLayout;
   readonly projectRoot: string;
 };
-
-export function checkedJavascriptFiles(projectRoot: string, layout: JavascriptLayout): string[] {
-  if (layout.javascript || typeof layout.projectCodeFiles !== 'function') {
-    return [];
-  }
-  const tsconfigFile = path.join(projectRoot, layout.typescriptProject ?? 'tsconfig.json');
-  return checkedFiles({ projectRoot, tsconfigFile, layout }, layout.projectCodeFiles);
-}
 
 export function untypedJavascriptConfig({
   tsconfigFile,

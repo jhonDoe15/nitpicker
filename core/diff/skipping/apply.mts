@@ -1,6 +1,6 @@
 import { planSnapshotSkips, type PlannedAnalyzer } from './plan.mts';
 import { layoutRoots } from './layout-roots.mts';
-import { fieldOf, listOf, objectOf } from '../../../shared/values/readers.mts';
+import { fieldOf, listOf } from '../../../shared/values/readers.mts';
 import type { AnalyzerRun } from '../execution/run-analyzers.mts';
 
 type SkipPlan = {
@@ -17,9 +17,9 @@ type SkipSettings = {
   readonly headProjectRoot: string;
 };
 
-type Snapshots = { readonly mergeBaseSha: string; readonly headSha: string };
+type RunReports = { readonly reports: ReadonlyMap<string, unknown> };
 
-type PolicySetup = { readonly policyChanges: unknown; readonly policyLoosenings: unknown };
+type Snapshots = { readonly mergeBaseSha: string; readonly headSha: string };
 
 function nameOf(analyzer: unknown): unknown {
   return fieldOf(analyzer, 'name');
@@ -46,13 +46,8 @@ export function skipPlanOf(settings: SkipSettings, comparison: Snapshots): SkipP
   });
 }
 
-export function endsEarly(skipPlan: SkipPlan, baseSetup: PolicySetup): boolean {
-  return (
-    skipPlan.affected.length === 0 &&
-    skipPlan.skipped.length > 0 &&
-    listOf(baseSetup.policyChanges).length === 0 &&
-    listOf(baseSetup.policyLoosenings).length === 0
-  );
+export function endsEarly(skipPlan: SkipPlan): boolean {
+  return skipPlan.affected.length === 0 && skipPlan.skipped.length > 0;
 }
 
 export function withoutSkipped(
@@ -75,33 +70,33 @@ function emptyRun(): AnalyzerRun {
   };
 }
 
-function reportsOf(run: unknown): ReadonlyMap<unknown, unknown> {
-  const reports = fieldOf(run, 'reports');
+function reportsOf({ reports }: RunReports): ReadonlyMap<string, unknown> {
   return reports instanceof Map ? reports : new Map();
 }
 
-export function carryBaseReports({
+export function carryBaseReports<Run extends RunReports>({
   baseRun,
   headRun,
   skipPlan,
   analyzers,
 }: {
-  readonly baseRun: unknown;
-  readonly headRun: unknown;
+  readonly baseRun: RunReports;
+  readonly headRun: Run;
   readonly skipPlan: SkipPlan;
   readonly analyzers: readonly unknown[];
-}): { readonly analyzers: readonly unknown[]; readonly headRun: unknown } {
+}): { readonly analyzers: readonly unknown[]; readonly headRun: Run } {
   if (skipPlan.skipped.length === 0) {
     return { analyzers, headRun };
   }
   const skipped = new Set<unknown>(skipPlan.skipped);
   const carried = new Map([...reportsOf(baseRun)].filter(([name]) => skipped.has(name)));
+  const carriedNames = new Set<unknown>(carried.keys());
   const compared = analyzers.filter(
-    (analyzer) => !skipped.has(nameOf(analyzer)) || carried.has(nameOf(analyzer)),
+    (analyzer) => !skipped.has(nameOf(analyzer)) || carriedNames.has(nameOf(analyzer)),
   );
   return {
     analyzers: compared,
-    headRun: { ...objectOf(headRun), reports: new Map([...reportsOf(headRun), ...carried]) },
+    headRun: { ...headRun, reports: new Map([...reportsOf(headRun), ...carried]) },
   };
 }
 

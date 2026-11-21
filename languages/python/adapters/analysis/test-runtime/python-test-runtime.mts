@@ -1,12 +1,12 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { FRAMEWORK_BRIDGE } from '../../../../../shared/rules/test-runtime/classify.mjs';
-import { hash } from '../../../../../shared/rules/finding-helpers.mjs';
+import { FRAMEWORK_BRIDGE } from '../../../../../shared/rules/test-runtime/classify.mts';
+import { hash } from '../../../../../shared/rules/finding-parts.mts';
 import {
   TEST_RUNTIME_ANALYZER,
   isEndToEndPath,
-} from '../../../../../shared/rules/test-runtime/scope.mjs';
+} from '../../../../../shared/rules/test-runtime/scope.mts';
 import {
   isCollectedTestFile,
   matchesGlob,

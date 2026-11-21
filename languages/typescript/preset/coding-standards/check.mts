@@ -11,7 +11,7 @@ import {
   DEFAULT_LEGACY_INVENTORY,
   compareSignals as untypedCompareSignals,
   readOptionalInventory as untypedReadOptionalInventory,
-} from '../../../../shared/legacy-inventory.mjs';
+} from '../../../../shared/legacy-inventory.mts';
 
 type Signal = {
   readonly file: string;

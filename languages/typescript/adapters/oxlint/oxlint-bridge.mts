@@ -1,6 +1,6 @@
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ESLint } from 'eslint';
-import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
 import { nativeConfigFlags } from '../lint-engine/compatibility/native-config.mts';
 

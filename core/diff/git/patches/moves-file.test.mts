@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { readMovesFile } from '../../../../shared/rules/facts/baseline.mjs';
+import { readMovesFile } from '../../../../shared/rules/facts/baseline.mts';
 import { withMovesFile } from './moves-file.mts';
 
 describe('moves file', () => {

@@ -122,7 +122,7 @@ export function ownPmdEntry({ rule, scope, spring, message }: OwnPmdRule): RuleE
   return ruleEntry({
     tool: 'pmd',
     rule,
-    page: 'java-pmd',
+    page: 'java-pmd-nitpicker',
     analyzers: JVM_ANALYZERS,
     builds: JVM_BUILDS,
     summary: flags === undefined ? message : asSentence(flags),

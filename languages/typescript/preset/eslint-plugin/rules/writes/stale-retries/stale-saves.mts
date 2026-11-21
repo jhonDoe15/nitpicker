@@ -6,6 +6,7 @@ import { unwrapped, type Context } from '../../security/security-values.mts';
 import { calleeOrigin, callEffects } from '../../support/io-effects.mts';
 import { ancestorsOf, contains, nameOf, variableNamed } from '../../typed/node-views.mts';
 import { isFunction } from '../../typed/syntax-views.mts';
+import { writtenInside } from '../../repeated-work/support/loop-invariance.mts';
 
 export const CONFLICT = 'OptimisticLockVersionMismatchError';
 
@@ -88,12 +89,6 @@ function entityOf(call: TSESTree.CallExpression): TSESTree.Identifier | undefine
     }
   }
   return undefined;
-}
-
-function writtenInside(variable: TSESLint.Scope.Variable, region: TSESTree.Node): boolean {
-  return variable.references.some(
-    (reference) => reference.isWrite() && !reference.init && contains(region, reference.identifier),
-  );
 }
 
 function isRefresh(call: TSESTree.CallExpression | TSESTree.TaggedTemplateExpression): boolean {

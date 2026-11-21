@@ -2,7 +2,7 @@ import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fieldOf } from '../../../../shared/values/readers.mts';
-import { importClosure as untypedImportClosure } from '../../../../shared/import-closure.mjs';
+import { importClosure as untypedImportClosure } from '../../../../shared/import-closure.mts';
 import { configuredAnalyzers, javascriptAnalyzers } from './configured-analyzers.mts';
 import type { PackageAnalyzer as Analyzer } from './typed/analyzer-types.mts';
 
@@ -71,11 +71,11 @@ describe('analyzer cache keys', () => {
         ),
       ]),
     ).toEqual([]);
-    expect(missing('dependency-architecture', ['shared/paths/glob.mjs'])).toEqual([]);
+    expect(missing('dependency-architecture', ['shared/paths/glob.mts'])).toEqual([]);
     expect(
       missing('dead-code', [
         'languages/typescript/adapters/quality-areas/reporting/dead-code.mts',
-        'shared/hygiene/rules.mjs',
+        'shared/hygiene/rules.mts',
       ]),
     ).toEqual([]);
   });

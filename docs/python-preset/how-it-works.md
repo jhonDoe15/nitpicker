@@ -39,5 +39,5 @@ directory is the contract between the tool runs and the readers; later slices ad
   `lizard-crap.mjs`.
   The one new ingester is `languages/python/ingest/coverage-reports/coverage-json.mts` for the coverage.py JSON
   report. The legacy-inventory and `exclude` handling is `applyFindingPolicy` in
-  `shared/findings/finding-policy.mjs` and Java's `configureJavaAnalyzer`, which are language-neutral and
+  `shared/findings/finding-policy.mts` and Java's `configureJavaAnalyzer`, which are language-neutral and
   take the tool name for a `baseline-expansion` finding as an option.

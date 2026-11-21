@@ -11,7 +11,7 @@ Part of the [Java preset guide](../java-preset.md).
 - **What makes it "changed": the head-vs-base line mapping.** The differential comparison already
   maps head lines to the merge base through `git diff --unified=0` (`readChangedLines`, used for
   the strict-preset rules). `touchedCode.isStrictRule(rule, finding)` now also answers true for
-  this rule when the finding comes from `jacoco` (`isTouchedCodeRule` in `shared/policy.mjs`), so an
+  this rule when the finding comes from `jacoco` (`isTouchedCodeRule` in `shared/policy.mts`), so an
   uncovered branch whose head line lies in a changed range, or in an added file, is new even if
   the base had it. An uncovered branch on an unchanged line stays baselined. The library entry
   `runJavaDiff` passes the same `touchedCode` as the CLI path. The TypeScript check of the same

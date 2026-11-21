@@ -1,11 +1,11 @@
 import type { ShapeNode, Unit } from '../jvm-types.mts';
-import { findNearDuplicates as untypedFindNearDuplicates } from '../../../../../shared/near-duplicates/engine.mjs';
-import { nearDuplicateFindings as untypedNearDuplicateFindings } from '../../../../../shared/rules/near-duplicates/near-duplicates.mjs';
-import { decidedConditionFindings as untypedDecidedConditionFindings } from '../../../../../shared/rules/decided/decided-conditions.mjs';
-import { duplicateBranchFindings as untypedDuplicateBranchFindings } from '../../../../../shared/rules/branches/duplicate-branches.mjs';
-import { shorterConditionFindings as untypedShorterConditionFindings } from '../../../../../shared/rules/shorter/shorter-conditions.mjs';
-import { integerSlipFindings as untypedIntegerSlipFindings } from '../../../../../shared/rules/decided/slips/integer-slips.mjs';
-import { resultSlipFindings as untypedResultSlipFindings } from '../../../../../shared/rules/slips/slip-findings.mjs';
+import { findNearDuplicates as untypedFindNearDuplicates } from '../../../../../shared/near-duplicates/engine.mts';
+import { nearDuplicateFindings as untypedNearDuplicateFindings } from '../../../../../shared/rules/near-duplicates/near-duplicates.mts';
+import { decidedConditionFindings as untypedDecidedConditionFindings } from '../../../../../shared/rules/decided/decided-conditions.mts';
+import { duplicateBranchFindings as untypedDuplicateBranchFindings } from '../../../../../shared/rules/branches/duplicate-branches.mts';
+import { shorterConditionFindings as untypedShorterConditionFindings } from '../../../../../shared/rules/shorter/shorter-conditions.mts';
+import { integerSlipFindings as untypedIntegerSlipFindings } from '../../../../../shared/rules/decided/slips/integer-slips.mts';
+import { resultSlipFindings as untypedResultSlipFindings } from '../../../../../shared/rules/slips/slip-findings.mts';
 import { readJvmUnits as untypedReadJvmUnits } from '../jvm-trees.mts';
 
 export type Refusal = {

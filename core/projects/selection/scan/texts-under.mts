@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { filesUnder as untypedFilesUnder } from '../../../../shared/filesystem.mjs';
+import { filesUnder as untypedFilesUnder } from '../../../../shared/filesystem.mts';
 
 const filesUnder: (
   root: string,

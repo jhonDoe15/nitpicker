@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { PACKAGE_RULE_IDS } from '../../../../shared/project-rules/hygiene-rules.mjs';
+import { PACKAGE_RULE_IDS } from '../../../../shared/project-rules/hygiene-rules.mts';
 import { ANY_STATUS, failure, run } from '../execution/go-process.mts';
 import { GO_MOD, moduleFileText } from '../execution/go-module.mts';
 import type { FindingRow, GoContext } from '../go-types.mts';

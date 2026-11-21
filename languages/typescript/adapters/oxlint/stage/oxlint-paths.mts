@@ -1,8 +1,8 @@
 import path from 'node:path';
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../typed/typescript-program.mts';
-import { isRecord as untypedIsRecord } from '../../../../../shared/rules/facts/checks.mjs';
-import { isInsideDirectory } from '../../../../../shared/paths/contained-path.mjs';
+import { isRecord as untypedIsRecord } from '../../../../../shared/rules/facts/checks.mts';
+import { isInsideDirectory } from '../../../../../shared/paths/contained-path.mts';
 import { fieldOf, fieldsOf, listOf } from '../../../../../shared/values/readers.mts';
 
 type CompilerOptions = TypeScript.CompilerOptions;

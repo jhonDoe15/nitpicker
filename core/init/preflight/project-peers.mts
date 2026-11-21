@@ -3,7 +3,7 @@ import {
   runsProjectTests,
 } from '../../../languages/typescript/preset/diff/configured-analyzers.mts';
 import { testRunnerFor } from '../../../languages/typescript/preset/test-runner/detect-runner.mts';
-import { listNames } from '../../../shared/messages/messages.mjs';
+import { listNames } from '../../../shared/messages/messages.mts';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mts';
 import { describePackageManager } from '../detection/package-manager.mts';
 import { type PeerNeeds, nodePeerNeeds, runnerPeers } from '../peers/node-peers.mts';

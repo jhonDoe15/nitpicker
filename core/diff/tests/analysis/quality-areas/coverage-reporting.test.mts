@@ -28,6 +28,7 @@ const failureOptions: QualityAreaOptions = {
   baselineRoot: undefined,
   baselineMovesFile: undefined,
   mutationScope: undefined,
+  environment: {},
 };
 
 describe('coverage reporting in the quality-area analyzers', () => {

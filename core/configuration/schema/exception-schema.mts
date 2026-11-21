@@ -3,15 +3,15 @@ import {
   EXCEPTION_KEYS,
   EXCEPTION_PARENT_SEGMENT,
   WINDOWS_SEPARATOR,
-} from '../../../shared/exceptions/validation.mjs';
-import { GLOB_PROBLEMS } from '../../../shared/config.mjs';
-import { WORD_CHARACTER } from '../../../shared/messages/exception-sentence.mjs';
+} from '../../../shared/exceptions/validation.mts';
+import { GLOB_PROBLEMS } from '../../../shared/globs/glob-problems.mts';
+import { WORD_CHARACTER } from '../../../shared/messages/exception-sentence.mts';
 import {
   FUNCTION_EXCEPTION_RULES,
   FUNCTION_REQUIRED_RULES,
   NAME_EXCEPTION_RULES,
-} from '../../../shared/policy.mjs';
-import { PACKAGE_EXCEPTION_RULES } from '../../../shared/project-rules/hygiene-rules.mjs';
+} from '../../../shared/policy.mts';
+import { PACKAGE_EXCEPTION_RULES } from '../../../shared/project-rules/hygiene-rules.mts';
 import { PYTHON_TOP_LEVEL_EXCEPTION_RULES } from '../../../languages/python/adapters/configuration/python-config.mts';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mts';
 import { JAVA_EXCEPTION_RULES } from '../../../languages/java/adapters/java-policy.mts';

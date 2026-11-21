@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { escapeRegExp as untypedEscape } from '../../../../../../../shared/paths/glob.mjs';
+import { escapeRegExp as untypedEscape } from '../../../../../../../shared/paths/glob.mts';
 import { resolveModuleSpecifier as untypedResolve } from '../../../../modules/module-resolution.mts';
 
 type Resolution = { readonly kind: string; readonly path?: string };

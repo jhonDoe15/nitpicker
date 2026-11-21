@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { SECRET_VALUE_CASES } from '../../../../../shared/naming/test-support/secret-value-cases.mjs';
+import { SECRET_VALUE_CASES } from '../../../../../shared/naming/test-support/secret-value-cases.mts';
 import { useScripts, inFile } from '../../test-support/python-rule-scripts.mts';
 
 const { outcomes, itOutcomes, describeRules } = useScripts({

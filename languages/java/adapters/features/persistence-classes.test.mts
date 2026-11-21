@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { exceptionHint as exceptionHintUntyped } from '../../../../shared/rules/exceptions.mjs';
+import { exceptionHint as exceptionHintUntyped } from '../../../../shared/rules/exceptions.mts';
 import {
   featureProjects,
   javaSources,

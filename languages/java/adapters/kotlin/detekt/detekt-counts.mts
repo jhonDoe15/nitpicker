@@ -4,7 +4,7 @@ import {
   countPattern as untypedCountPattern,
   REMEDIES,
   withCountRatchets as untypedWithCountRatchets,
-} from '../../../../../shared/rules/counts/count-ratchet.mjs';
+} from '../../../../../shared/rules/counts/count-ratchet.mts';
 import { noUnit } from '../../reporting/counts/java-counts.mts';
 import type { JavaFinding } from '../../typed/java-values.mts';
 
