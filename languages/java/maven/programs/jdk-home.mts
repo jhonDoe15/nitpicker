@@ -6,7 +6,8 @@ type Environment = Readonly<Record<string, string | undefined>>;
 const JAVA_NAMES = ['java', 'java.exe'];
 
 function javaOnPath(environment: Environment): string | undefined {
-  return (environment['PATH'] ?? '')
+  const listed = Object.entries(environment).find(([name]) => name.toUpperCase() === 'PATH')?.[1];
+  return (listed ?? '')
     .split(path.delimiter)
     .filter((folder) => folder !== '')
     .flatMap((folder) => JAVA_NAMES.map((name) => path.join(folder, name)))

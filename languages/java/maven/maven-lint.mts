@@ -19,7 +19,10 @@ import { PMD_LOG } from '../adapters/reporting/sarif/processing/pmd-rule-crashes
 import { analyzesGenerated, handWrittenRoots } from './generated/generated-roots.mts';
 import { handWrittenClasses } from './generated/spotbugs-targets.mts';
 import { spotbugsLaunch } from './security/spotbugs-launch.mts';
-import { pmdRulesetsWithEngine } from '../builds/rulesets/engine/pmd-engine.mts';
+import {
+  pmdRulesetsWithEngine,
+  withoutEngineReports,
+} from '../builds/rulesets/engine/pmd-engine.mts';
 import { jdkHome } from './programs/jdk-home.mts';
 
 export { javaFiles } from './lint/java-files.mts';
@@ -150,6 +153,7 @@ export function runPmd(options: PmdOptions): void {
     configs,
   ).filter((root) => existsSync(root));
   if (javaFiles(linted).length === 0) {
+    withoutEngineReports(reportDir);
     writeFileSync(report, EMPTY_SARIF);
     return;
   }

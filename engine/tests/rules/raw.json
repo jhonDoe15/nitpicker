@@ -29,5 +29,6 @@
  {"name": "ExactlySerde", "message": "m", "xpath": "//(ClassType|ArrayType|VariableId|CastExpression)[pmd-java:typeIsExactly('r.Serde')]"},
  {"name": "ExactlyObjectArray", "message": "m", "xpath": "//(ClassType|ArrayType|VariableId|CastExpression)[pmd-java:typeIsExactly('java.lang.Object[]')]"},
  {"name": "ThreadSleep", "message": "m", "xpath": "//MethodCall[pmd-java:matchesSig('java.lang.Thread#sleep(long)') or pmd-java:matchesSig('java.lang.Thread#join(long)')]"},
- {"name": "CloseableClose", "message": "m", "xpath": "//MethodCall[pmd-java:matchesSig('java.io.Closeable#_()') or pmd-java:matchesSig('java.util.Collection#_(_*)')]"}
+ {"name": "CloseableClose", "message": "m", "xpath": "//MethodCall[pmd-java:matchesSig('java.io.Closeable#_()') or pmd-java:matchesSig('java.util.Collection#_(_*)')]"},
+ {"name": "IsHolder", "message": "m", "xpath": "//(MethodCall|ConstructorCall|ClassDeclaration)[pmd-java:typeIs('r.Holder')] | //ArgumentList/*[pmd-java:typeIs('r.Holder')]"}
 ]

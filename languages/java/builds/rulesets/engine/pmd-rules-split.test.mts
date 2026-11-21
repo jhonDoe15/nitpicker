@@ -123,7 +123,11 @@ describe('engine rules', () => {
 describe('renderedRuleset', () => {
   it('refers to each rule where it is defined and repeats what the rulesets changed', () => {
     const main = resolved('/rules/main.xml');
-    const text = renderedRuleset(main.name, main, main.rules.filter((rule) => !runsOnEngine(rule)));
+    const text = renderedRuleset(
+      main.name,
+      main,
+      main.rules.filter((rule) => !runsOnEngine(rule)),
+    );
 
     expect(text).toBe(
       [
@@ -141,7 +145,11 @@ describe('renderedRuleset', () => {
 
   it('repeats a message, a priority and properties a reference set', () => {
     const main = resolved('/rules/main.xml');
-    const text = renderedRuleset('again', onlyFiles(['/project/A.java']), main.rules.filter(runsOnEngine));
+    const text = renderedRuleset(
+      'again',
+      onlyFiles(['/project/A.java']),
+      main.rules.filter(runsOnEngine),
+    );
 
     expect(text).toContain('  <exclude-pattern>.*</exclude-pattern>');
     expect(text).toContain(String.raw`  <include-pattern>\Q/project/A.java\E</include-pattern>`);

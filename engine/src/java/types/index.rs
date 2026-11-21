@@ -253,7 +253,7 @@ impl TypeIndex {
         if name == target.0 {
             return Some(!erased);
         }
-        let info = self.get(name).filter(|_| !dead.contains(name))?;
+        let info = self.get(name).filter(|_| dead.insert(name.to_string()))?;
         let parents = info.superclass.iter().chain(info.interfaces.iter().filter(|_| target.1));
         for parent in parents {
             let bare = info.generic_supers.iter().find(|above| above.name() == *parent).is_none_or(|above| matches!(above, Type::Class(_, given) if given.is_empty()));
@@ -262,7 +262,6 @@ impl TypeIndex {
                 return found;
             }
         }
-        dead.insert(name.to_string());
         None
     }
 
@@ -322,6 +321,8 @@ impl TypeIndex {
                     (None, Some(Type::Class(owner, bounds))) if !written.is_empty() && !bounds.is_empty() => {
                         Type::Class(owner.clone(), bounds.clone()).substitute(&written).substitute(&unwritten)
                     }
+                    // A bound written with type arguments is not a raw type, whatever the arguments are.
+                    (None, Some(Type::Class(owner, bounds))) if !bounds.is_empty() => Type::Class(owner.clone(), vec![Type::Wildcard; bounds.len()]),
                     _ => bound.clone(),
                 };
                 (name.clone(), filled)

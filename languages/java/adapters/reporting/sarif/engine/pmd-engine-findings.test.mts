@@ -1,9 +1,9 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { parseJson } from '../../../../../../shared/values/readers.mts';
 import type { SarifLog } from '../../../jpa/jpa-types.mts';
+import { readSarifReport } from '../sarif-reports.mts';
 import { readPmdReport, withEngineResults } from './pmd-engine-findings.mts';
 
 const roots: string[] = [];
@@ -14,7 +14,11 @@ afterEach(() => {
   }
 });
 
-function result(rule: string, file: string, place: readonly [number, number]): Record<string, unknown> {
+function result(
+  rule: string,
+  file: string,
+  place: readonly [number, number],
+): Record<string, unknown> {
   return {
     ruleId: rule,
     message: { text: `${rule} found` },
@@ -86,37 +90,39 @@ describe('withEngineResults', () => {
       ],
     };
     const engine = {
-      runs: [{ results: [result('A', '/p/Broken.java', [1, 1]), result('B', '/p/Fine.java', [1, 1])] }],
+      runs: [
+        { results: [result('A', '/p/Broken.java', [1, 1]), result('B', '/p/Fine.java', [1, 1])] },
+      ],
     };
 
     expect(rulesOf(withEngineResults(pmd, engine))).toEqual(['B']);
   });
 
   it('keeps the findings of the engine when PMD wrote no run', () => {
-    const engine = { runs: [{ tool: { driver: { name: 'PMD' } }, results: [result('A', '/p/A.java', [1, 1])] }] };
+    const engine = {
+      runs: [{ tool: { driver: { name: 'PMD' } }, results: [result('A', '/p/A.java', [1, 1])] }],
+    };
 
     expect(rulesOf(withEngineResults({ version: '2.1.0', runs: [] }, engine))).toEqual(['A']);
   });
 });
 
 describe('readPmdReport', () => {
-  function read(file: string): SarifLog {
-    const log: unknown = parseJson(readFileSync(file, 'utf8'));
-    return typeof log === 'object' && log !== null ? log : {};
-  }
-
   it('reads the report of PMD alone when the engine did not run', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pmd-report-'));
     roots.push(root);
-    writeFileSync(path.join(root, 'pmd.sarif'), JSON.stringify({ runs: [{ results: [result('A', '/p/A.java', [1, 1])] }] }));
+    writeFileSync(
+      path.join(root, 'pmd.sarif'),
+      JSON.stringify({ runs: [{ results: [result('A', '/p/A.java', [1, 1])] }] }),
+    );
 
-    expect(rulesOf(readPmdReport(root, read))).toEqual(['A']);
+    expect(rulesOf(readPmdReport(root, readSarifReport))).toEqual(['A']);
 
     writeFileSync(
       path.join(root, 'pmd-engine.sarif'),
       JSON.stringify({ runs: [{ results: [result('B', '/p/A.java', [1, 2])] }] }),
     );
 
-    expect(rulesOf(readPmdReport(root, read))).toEqual(['A', 'B']);
+    expect(rulesOf(readPmdReport(root, readSarifReport))).toEqual(['A', 'B']);
   });
 });

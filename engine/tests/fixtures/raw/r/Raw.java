@@ -27,6 +27,20 @@ class Circular<B extends Circular<B>> implements Runnable { public void run() {}
 class Bounded<B extends Runnable> implements Runnable { public void run() {} }
 class Worker<T> extends Thread { void work() throws InterruptedException { Thread.sleep(1); join(1); Raw.same(this); } }
 
+class Holder<T> implements Closeable {
+    public void close() {}
+    class In { void use() { Raw.same(Holder.this); Holder.this.close(); } }
+}
+class Left<T> extends Holder<T> {}
+class Right<T> extends Holder<T> {}
+class Choice {
+    void pick(boolean first, Left raw) {
+        Raw.same(first ? new Left<String>() : new Right<String>());
+        Raw.same(new Holder<>() { });
+        Raw.same(new Holder<String>() { });
+        Raw.same(new Holder() { });
+    }
+}
 public class Raw<V extends Serde, W extends Serde<String>, N extends Number> {
     V field;
     static <T> T load(String name, Class<T> base) { return null; }

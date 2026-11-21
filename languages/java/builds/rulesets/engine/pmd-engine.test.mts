@@ -107,7 +107,9 @@ describe('pmdRulesetsWithEngine', () => {
       NP_SUPPRESS_MARKER: 'NO-MARKER',
       NITPICKER_JDK: plan.javaHome,
     });
-    expect(parseJson(readFileSync(path.join(plan.reportDir, 'pmd-engine-rules.json'), 'utf8'))).toEqual([
+    expect(
+      parseJson(readFileSync(path.join(plan.reportDir, 'pmd-engine-rules.json'), 'utf8')),
+    ).toEqual([
       expect.objectContaining({ name: 'Fast', exclude: [`${root}/src/test/.*`] }),
       expect.objectContaining({ name: 'FastTest', exclude: [`${root}/src/main/.*`] }),
     ]);
@@ -175,12 +177,28 @@ describe('pmdRulesetsWithEngine', () => {
     };
     writeFileSync(path.join(plan.reportDir, ENGINE_SARIF), 'stale');
 
-    expect(pmdRulesetsWithEngine(plan, { NITPICKER_ENGINE: 'off' }, unexpected)).toEqual(plan.rulesets);
+    expect(pmdRulesetsWithEngine(plan, { NITPICKER_ENGINE: 'off' }, unexpected)).toEqual(
+      plan.rulesets,
+    );
     expect(existsSync(path.join(plan.reportDir, ENGINE_SARIF))).toBe(false);
     expect(pmdRulesetsWithEngine(plan, environment, failing)).toEqual(plan.rulesets);
     expect(
       pmdRulesetsWithEngine({ ...plan, javaHome: plan.reportDir }, environment, unexpected),
     ).toEqual(plan.rulesets);
+    expect(existsSync(path.join(plan.reportDir, ENGINE_SARIF))).toBe(false);
+  });
+
+  it('leaves every rule to PMD when the engine ends well without a report it can read', () => {
+    const { plan, environment } = setup();
+    const silent = () => ({ status: 0, stdout: '', stderr: '' });
+    const garbled = () => {
+      writeFileSync(path.join(plan.reportDir, 'pmd-engine-report.json'), '{"findings": [');
+      return silent();
+    };
+    writeFileSync(path.join(plan.reportDir, 'pmd-engine-report.json'), '{"findings": []}');
+
+    expect(pmdRulesetsWithEngine(plan, environment, silent)).toEqual(plan.rulesets);
+    expect(pmdRulesetsWithEngine(plan, environment, garbled)).toEqual(plan.rulesets);
     expect(existsSync(path.join(plan.reportDir, ENGINE_SARIF))).toBe(false);
   });
 });

@@ -3,7 +3,13 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { findEngine } from '../../../../../shared/engine/engine-binary.mts';
 import { runEngineSync, type EngineRun } from '../../../../../shared/engine/engine-run.mts';
-import { fieldOf, listOf, parseJson, textOf, textsOf } from '../../../../../shared/values/readers.mts';
+import {
+  fieldOf,
+  listOf,
+  parseJson,
+  textOf,
+  textsOf,
+} from '../../../../../shared/values/readers.mts';
 import { resolvedRulesets, rulesetReader, type ResolvedRule } from './pmd-catalog.mts';
 import { onlyFiles, renderedRuleset, type RulesetScope } from './pmd-render.mts';
 import { engineRule, portablePattern, ruleLevel, runsOnEngine } from './pmd-rule-parts.mts';
@@ -29,7 +35,13 @@ type Split = RulesetScope & {
   readonly onEngine: readonly ResolvedRule[];
   readonly onPmd: readonly ResolvedRule[];
 };
-type Row = { readonly file: string; readonly rule: string; readonly line: number; readonly column: number; readonly message: string };
+type Row = {
+  readonly file: string;
+  readonly rule: string;
+  readonly line: number;
+  readonly column: number;
+  readonly message: string;
+};
 
 export const ENGINE_SARIF = 'pmd-engine.sarif';
 export const ENGINE_LOG = 'pmd-engine-log.txt';
@@ -140,7 +152,13 @@ function pmdRulesets(
     return [
       ...(split.onPmd.length === 0
         ? []
-        : [written(reportDir, `${base}-coded.xml`, renderedRuleset(split.name, split, split.onPmd))]),
+        : [
+            written(
+              reportDir,
+              `${base}-coded.xml`,
+              renderedRuleset(split.name, split, split.onPmd),
+            ),
+          ]),
       ...(again.length === 0 || split.onEngine.length === 0
         ? []
         : [
@@ -162,20 +180,26 @@ function engineRun(plan: PmdEnginePlan, splits: readonly Split[], start: () => E
   writeFileSync(path.join(plan.reportDir, ENGINE_RULES), JSON.stringify(rules));
   const { status, stderr } = start();
   if (status !== 0) {
-    process.stderr.write(`nitpicker: the engine did not run the PMD rules, PMD runs them: ${stderr}\n`);
+    process.stderr.write(
+      `nitpicker: the engine did not run the PMD rules, PMD runs them: ${stderr}\n`,
+    );
     return undefined;
   }
   return parseJson(readFileSync(path.join(plan.reportDir, ENGINE_REPORT), 'utf8'));
 }
 
-export function pmdRulesetsWithEngine(
+export function withoutEngineReports(reportDir: string): void {
+  for (const name of [ENGINE_SARIF, ENGINE_LOG, ENGINE_REPORT]) {
+    rmSync(path.join(reportDir, name), { force: true });
+  }
+}
+
+function rulesetsAfterEngine(
   plan: PmdEnginePlan,
   environment: Environment,
-  run: EngineStart = (argumentList, options) => runEngineSync(argumentList, options),
+  run: EngineStart,
 ): string[] {
   const { reportDir, rulesets, untouched, sources } = plan;
-  rmSync(path.join(reportDir, ENGINE_SARIF), { force: true });
-  rmSync(path.join(reportDir, ENGINE_LOG), { force: true });
   const binary = findEngine(environment);
   if (binary === undefined) {
     return [...rulesets];
@@ -237,4 +261,22 @@ export function pmdRulesetsWithEngine(
   );
   writeFileSync(path.join(reportDir, ENGINE_LOG), crashLog(rows.filter(crashed)));
   return forPmd;
+}
+
+export function pmdRulesetsWithEngine(
+  plan: PmdEnginePlan,
+  environment: Environment,
+  run: EngineStart = (argumentList, options) => runEngineSync(argumentList, options),
+): string[] {
+  withoutEngineReports(plan.reportDir);
+  try {
+    return rulesetsAfterEngine(plan, environment, run);
+  } catch (error) {
+    withoutEngineReports(plan.reportDir);
+    const reason = error instanceof Error ? error.message : String(error);
+    process.stderr.write(
+      `nitpicker: the engine did not run the PMD rules, PMD runs them: ${reason}\n`,
+    );
+    return [...plan.rulesets];
+  }
 }

@@ -54,7 +54,9 @@ function unreadFiles(pmd: SarifLog): Set<string> {
   );
   return new Set(
     notes
-      .filter((note) => !isRuleCrashText(optionalText(fieldOf(fieldOf(note, 'message'), 'text')) ?? ''))
+      .filter(
+        (note) => !isRuleCrashText(optionalText(fieldOf(fieldOf(note, 'message'), 'text')) ?? ''),
+      )
       .map((note) => decodeURI(fileOf(note))),
   );
 }
@@ -68,7 +70,10 @@ export function withEngineResults(pmd: SarifLog, engine: SarifLog): SarifLog {
   const base: SarifRun = first ?? engine.runs?.[0] ?? {};
   return {
     ...pmd,
-    runs: [{ ...base, results: [...(first?.results ?? []), ...added].toSorted(inReportOrder) }, ...rest],
+    runs: [
+      { ...base, results: [...(first?.results ?? []), ...added].toSorted(inReportOrder) },
+      ...rest,
+    ],
   };
 }
 

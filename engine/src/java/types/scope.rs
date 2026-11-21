@@ -629,7 +629,12 @@ impl<'a> Resolver<'a> {
         if matches!(kind, "object_creation_expression" | "enum_constant") {
             let base = match kind {
                 "enum_constant" => crate::engine::source::parent(declaration).and_then(|body| crate::engine::source::parent(body)).and_then(|owner| self.scope.names.get(&owner.id())).map(|owner| Type::class(owner)),
-                _ => declaration.field("type").and_then(|written| self.written(written, true)),
+                // `new Foo<>() {}`: the diamond stands for type arguments, so the parent is not a raw type.
+                _ => declaration.field("type").and_then(|written| {
+                    let kind = self.written(written, true)?;
+                    let diamond = written.kind() == "generic_type" && matches!(&kind, Type::Class(_, given) if given.is_empty());
+                    Some(if diamond { self.index.declared(&kind.name()) } else { kind })
+                }),
             };
             let interface = base.as_ref().is_some_and(|base| self.index.get(&base.name()).is_some_and(|info| info.is_interface));
             let named = base.as_ref().map(Type::name);

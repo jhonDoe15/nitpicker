@@ -83,7 +83,10 @@ export function resolvedRulesets(read: RulesetReader): (reference: string) => Re
         rules = withRule(rules, { name, source: reference, definition: element, overrides: [] });
       } else if (WHOLE_RULESET.test(ref)) {
         const present = new Set(rules.map((rule) => rule.name));
-        rules = [...rules, ...wholeRuleset(element, depth).filter((rule) => !present.has(rule.name))];
+        rules = [
+          ...rules,
+          ...wholeRuleset(element, depth).filter((rule) => !present.has(rule.name)),
+        ];
       } else if (element.attrs['deprecated'] !== 'true') {
         rules = withRule(rules, oneRule(element, depth));
       }

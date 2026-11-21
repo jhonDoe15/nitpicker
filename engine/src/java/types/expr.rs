@@ -1598,7 +1598,12 @@ impl<'a> Resolver<'a> {
         let found = class.or_else(|| {
             self.index.lineage(&left).iter().find(|ancestor| *ancestor != OBJECT && self.index.is_subtype(&right, ancestor)).cloned()
         });
-        Type::class(found.as_deref().unwrap_or(OBJECT))
+        // What two types with type arguments share has type arguments too: it is not a raw type.
+        let written = |kind: &Type| matches!(kind, Type::Class(_, given) if !given.is_empty());
+        match found.as_deref() {
+            Some(found) if written(a) && written(b) => self.index.declared(found),
+            found => Type::class(found.unwrap_or(OBJECT)),
+        }
     }
 
     fn conditional(&self, expression: Node) -> Option<Type> {

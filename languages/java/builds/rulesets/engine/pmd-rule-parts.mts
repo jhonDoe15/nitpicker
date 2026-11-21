@@ -92,7 +92,8 @@ export function runsOnEngine(rule: ResolvedRule): boolean {
 export function portablePattern(javaPattern: string): string {
   return javaPattern.replaceAll(QUOTED_SECTION, (...match) => {
     const groups: unknown = match.at(-1);
-    const literal = typeof groups === 'object' && groups !== null && 'literal' in groups ? groups.literal : '';
+    const literal =
+      typeof groups === 'object' && groups !== null && 'literal' in groups ? groups.literal : '';
     return String(literal).replaceAll(REGEX_SPECIAL, String.raw`\$&`);
   });
 }
