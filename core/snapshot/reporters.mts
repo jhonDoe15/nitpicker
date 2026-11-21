@@ -6,6 +6,7 @@ import {
   clearLogs,
   clearReports,
   json,
+  jsonItems,
   linePieces,
   writeReports,
 } from '../diff/reporting/reporters.mts';
@@ -14,10 +15,10 @@ import { junitRunProfile } from '../quick/report-formats.mts';
 import { toolErrorHelpLine } from '../../shared/messages/troubleshooting.mts';
 import { partialRunLines as partialLinesOf } from '../diff/reporting/partial-run/partial-run.mts';
 import { ruleReferenceLines as referenceLinesOf } from '../diff/reporting/text.mts';
-import { withHelpLinks } from '../diff/reporting/report-model.mts';
+import { helpLinkedEntries } from '../diff/reporting/report-model.mts';
 import {
   CODE_QUALITY_REPORT_FILE_NAME as codeQualityFile,
-  codeQualityIssues,
+  eachCodeQualityIssue,
 } from '../diff/reporting/format/codequality.mts';
 
 import {
@@ -102,7 +103,7 @@ const SNAPSHOT_REPORTS: readonly SnapshotFile[] = [
   { name: 'summary.json', render: (report) => json(report.summary) },
   {
     name: 'findings.json',
-    render: (report, { reference }) => json(withHelpLinks(report.findings, reference)),
+    render: (report, { reference }) => jsonItems(helpLinkedEntries(report.findings, reference)),
   },
   { name: 'tool-errors.json', render: (report) => json(report.toolErrors) },
   {
@@ -113,7 +114,7 @@ const SNAPSHOT_REPORTS: readonly SnapshotFile[] = [
   { name: 'report.sarif', render: sarifOf },
   {
     name: codeQualityFile,
-    render: (report, options) => json(codeQualityIssues(report.findings, options)),
+    render: (report, options) => jsonItems(eachCodeQualityIssue(report.findings, options)),
   },
 ];
 

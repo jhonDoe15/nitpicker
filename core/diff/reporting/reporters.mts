@@ -11,14 +11,15 @@ import path from 'node:path';
 import { textReportLines } from './text.mts';
 import { renderJunitReport } from './junit.mts';
 import { renderBaselineSarifReport, renderSarifReport } from './sarif.mts';
-import { heldFindingsOf as heldFindings, withHelpLinks } from './report-model.mts';
+import { heldFindingsOf as heldFindings, helpLinkedEntries } from './report-model.mts';
 import { referenceLinks } from '../../../shared/reference/store.mts';
 import { pathInside } from '../../../shared/filesystem.mts';
 import {
   CODE_QUALITY_REPORT_FILE_NAME as CODE_QUALITY_FILE,
-  codeQualityIssues,
+  eachCodeQualityIssue,
 } from './format/codequality.mts';
 import {
+  prettyJsonItems,
   prettyJsonPieces,
   writePieces,
 } from '../../../shared/report-output/pieces/json-pieces.mts';
@@ -50,6 +51,11 @@ export function* json(value: unknown): Generator<string> {
   yield '\n';
 }
 
+export function* jsonItems(items: Iterable<unknown>): Generator<string> {
+  yield* prettyJsonItems(items);
+  yield '\n';
+}
+
 export function* linePieces(lines: readonly unknown[]): Generator<string> {
   for (const line of lines) {
     yield line === null || line === undefined ? '\n' : `${String(line)}\n`;
@@ -60,16 +66,18 @@ const DIFF_REPORTS: readonly ReportFile<ReportData>[] = [
   { name: 'summary.json', render: (report) => json(report.summary) },
   {
     name: 'new-findings.json',
-    render: (report, { reference }) => json(withHelpLinks(report.newFindings, reference)),
+    render: (report, { reference }) => jsonItems(helpLinkedEntries(report.newFindings, reference)),
   },
   {
     name: 'resolved-findings.json',
-    render: (report, { reference }) => json(withHelpLinks(report.resolvedFindings, reference)),
+    render: (report, { reference }) =>
+      jsonItems(helpLinkedEntries(report.resolvedFindings, reference)),
   },
   { name: 'changed-metrics.json', render: (report) => json(report.changedMetrics) },
   {
     name: 'held-findings.json',
-    render: (report, { reference }) => json(withHelpLinks(heldFindings(report), reference)),
+    render: (report, { reference }) =>
+      jsonItems(helpLinkedEntries(heldFindings(report), reference)),
   },
   { name: 'tool-errors.json', render: (report) => json(report.toolErrors) },
   { name: 'notes.json', render: (report) => json(report.notes ?? []) },
@@ -82,7 +90,7 @@ const DIFF_REPORTS: readonly ReportFile<ReportData>[] = [
   { name: 'report-baseline.sarif', render: renderBaselineSarifReport },
   {
     name: CODE_QUALITY_FILE,
-    render: (report, options) => json(codeQualityIssues(report.newFindings, options)),
+    render: (report, options) => jsonItems(eachCodeQualityIssue(report.newFindings, options)),
   },
 ];
 

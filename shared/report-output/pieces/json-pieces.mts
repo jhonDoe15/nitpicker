@@ -119,6 +119,17 @@ export function prettyJsonPieces(value: unknown): Iterable<string> {
   return prettyValue(value, '');
 }
 
+export function* prettyJsonItems(items: Iterable<unknown>): Generator<string> {
+  let count = 0;
+  yield '[';
+  for (const item of items) {
+    yield `${count === 0 ? '' : ','}\n${INDENT}`;
+    yield* prettyValue(item, INDENT);
+    count += 1;
+  }
+  yield count === 0 ? ']' : '\n]';
+}
+
 export function writePieces(pieces: Iterable<string>, write: (text: string) => void): void {
   let batch: string[] = [];
   let characters = 0;
