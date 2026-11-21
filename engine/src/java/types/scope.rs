@@ -664,6 +664,7 @@ impl<'a> Resolver<'a> {
             generic_supers: parent.into_iter().chain(above).collect(),
             package: self.scope.package.clone(),
             type_parameters,
+            written_bounds: Vec::new(),
             fields: Vec::new(),
             methods: Vec::new(),
             is_interface: matches!(kind, "interface_declaration" | "annotation_type_declaration"),

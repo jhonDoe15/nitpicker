@@ -240,12 +240,29 @@ impl TypeIndex {
 
     fn bindings(&self, info: &ClassInfo, arguments: &[Type]) -> HashMap<String, Type> {
         let raw = arguments.len() != info.type_parameters.len();
+        let given = |position: usize| arguments.get(position).filter(|given| !raw && **given != Type::Wildcard);
+        let written: HashMap<String, Type> = info
+            .type_parameters
+            .iter()
+            .enumerate()
+            .filter_map(|(position, (name, _))| given(position).map(|given| (name.clone(), given.clone())))
+            .collect();
+        let unwritten: HashMap<String, Type> =
+            info.type_parameters.iter().filter(|(name, _)| !written.contains_key(name)).map(|(name, _)| (name.clone(), Type::Wildcard)).collect();
         info.type_parameters
             .iter()
             .enumerate()
             .map(|(position, (name, bound))| {
-                let given = arguments.get(position).filter(|given| !raw && **given != Type::Wildcard);
-                (name.clone(), given.unwrap_or(bound).clone())
+                // A wildcard stands for the bound of its parameter, which may name the other parameters:
+                // `Assert<?, E>` with `SELF extends Assert<SELF, E>` is an `Assert<?, E>` of the written `E`.
+                let filled = match (given(position), info.written_bounds.get(position)) {
+                    (Some(given), _) => given.clone(),
+                    (None, Some(Type::Class(owner, bounds))) if !written.is_empty() && !bounds.is_empty() => {
+                        Type::Class(owner.clone(), bounds.clone()).substitute(&written).substitute(&unwritten)
+                    }
+                    _ => bound.clone(),
+                };
+                (name.clone(), filled)
             })
             .collect()
     }

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { JavaFinding } from '../../../typed/java-values.mts';
+import { ENGINE_LOG } from '../../../../builds/rulesets/engine/pmd-engine.mts';
 
 export const PMD_LOG = 'pmd-log.txt';
 const RULE_CRASHED = 'rule-crashed';
@@ -55,8 +56,11 @@ export function pmdRuleCrashNotes(log: string, projectRoot: string): JavaFinding
 }
 
 function pmdLog(reportRoot: string): string {
-  const file = path.join(reportRoot, PMD_LOG);
-  return existsSync(file) ? readFileSync(file, 'utf8') : '';
+  return [PMD_LOG, ENGINE_LOG]
+    .map((name) => path.join(reportRoot, name))
+    .filter((file) => existsSync(file))
+    .map((file) => readFileSync(file, 'utf8'))
+    .join('\n');
 }
 
 export function pmdLogRuleCrashes(reportRoot: string, projectRoot: string): JavaFinding[] {

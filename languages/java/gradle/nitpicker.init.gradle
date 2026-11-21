@@ -775,7 +775,6 @@ allprojects {
             def testRules = new File(nitpickerArgument('nitpicker.pmd.testRules') ?: new File(initScriptDir, 'pmd-test-ruleset.xml').absolutePath)
             def mainRules = new File(nitpickerArgument('nitpicker.pmd.mainRules')
                 ?: new File(initScriptDir, 'pmd-main-ruleset.xml').absolutePath)
-            def ruleset = ([nitpickerRuleset] + (projectRuleset ? [projectRuleset] : [])).join(',')
             doFirst {
                 reportDir.get().asFile.mkdirs()
                 // Type resolution: the main and test compile classpaths (compileOnly libraries are on the
@@ -798,10 +797,21 @@ allprojects {
                     mainDirectories: lintedMainDirs()*.absolutePath,
                     testDirectories: lintedTestDirs()*.absolutePath,
                     compiler: compilerOf(tasks.named('compileJava').get()),
+                    // The XPath rules run on nitpicker's engine when it is there; PMD then gets the rules it
+                    // implements in Java, and the list of rulesets to run comes back in pmd-run-rulesets.txt.
+                    engine: [
+                        rulesets: [nitpickerRuleset] + (projectRuleset ? [projectRuleset] : []) + nitpickerExtras*.absolutePath,
+                        untouched: projectRuleset ? [projectRuleset] : [],
+                        sources: lintedSources().collect { it.toString() },
+                        auxClasspath: auxClasspath.absolutePath,
+                        pmdJar: configurations.nitpickerPmd.files.find { it.name.startsWith('pmd-java-') }?.absolutePath,
+                        javaHome: (javaLauncher.orNull?.metadata?.installationPath?.asFile
+                            ?: new File(System.getProperty('java.home'))).absolutePath,
+                        suppressMarker: 'NITPICKER-NO-INLINE-SUPPRESSION',
+                    ],
                 ])
                 writeRules('pmd-guards', guardsPlan)
-                nitpickerExtras += reportDir.get().file('pmd-rulesets.txt').asFile.text.split(',').findAll { it }.collect { new File(it) }
-                def rulesets = ([ruleset] + nitpickerExtras.collect { it.absolutePath }).join(',')
+                def rulesets = reportDir.get().file('pmd-run-rulesets.txt').asFile.text
                 args 'check', '--no-cache', '--no-progress', '--format', 'sarif',
                     '--report-file', reportDir.get().file('pmd.sarif').asFile.absolutePath,
                     '--rulesets', rulesets,

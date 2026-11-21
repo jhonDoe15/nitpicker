@@ -50,6 +50,8 @@ pub fn dotted(internal: &str) -> String {
 struct Signature<'a> {
     text: &'a [u8],
     at: usize,
+    /// The first bound of each type parameter read last, type arguments kept.
+    written_bounds: Vec<Type>,
 }
 
 impl<'a> Signature<'a> {
@@ -119,6 +121,7 @@ impl<'a> Signature<'a> {
     }
     fn type_parameters(&mut self) -> Option<Vec<(String, Type)>> {
         let mut parameters = Vec::new();
+        self.written_bounds.clear();
         if self.peek() != Some(b'<') {
             return Some(parameters);
         }
@@ -135,6 +138,7 @@ impl<'a> Signature<'a> {
             if bounds.len() > 1 {
                 bounds.retain(|kind| *kind != Type::class(OBJECT));
             }
+            self.written_bounds.push(bounds.first().cloned().unwrap_or(Type::class(OBJECT)));
             let several = bounds.len() > 1 && bounds.iter().all(|kind| matches!(kind, Type::Class(..)));
             let joined = several.then(|| Type::class(&bounds.iter().map(Type::name).collect::<Vec<_>>().join("&")));
             let bound = match joined.or_else(|| bounds.into_iter().next()) {
@@ -407,7 +411,7 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                 reader.skip(2)?;
                 let descriptor = utf8(reader.u2()?)?;
                 let text = attributes(reader, utf8)?.signature.unwrap_or(descriptor);
-                listed.push(Signature { text, at: 0 }.kind()?);
+                listed.push(Signature { text, at: 0, written_bounds: Vec::new() }.kind()?);
             }
             found.components = Some(listed);
         }
@@ -603,8 +607,8 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 Constant::Text(text) => Some(String::from_utf8_lossy(utf8(*text)?).into_owned()),
                 _ => None,
             });
-            let kind = Signature { text: descriptor, at: 0 }.kind()?;
-            let generic = signature.and_then(|text| Signature { text, at: 0 }.kind()).unwrap_or_else(|| kind.clone());
+            let kind = Signature { text: descriptor, at: 0, written_bounds: Vec::new() }.kind()?;
+            let generic = signature.and_then(|text| Signature { text, at: 0, written_bounds: Vec::new() }.kind()).unwrap_or_else(|| kind.clone());
             fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, flags: member_flags(flags, &found) | if flags & 0x0040 != 0 { flag::VOLATILE } else { 0 } });
         }
     }
@@ -622,11 +626,11 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         nickname(&found);
         let signature = found.signature;
         if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == 0 && method_name != b"<clinit>" {
-            let (_, parameters, returns) = Signature { text: descriptor, at: 0 }.method()?;
+            let (_, parameters, returns) = Signature { text: descriptor, at: 0, written_bounds: Vec::new() }.method()?;
             let mut throws: Vec<Type> = found.exceptions.iter().filter_map(|class| class_name(*class)).map(|name| Type::class(&name)).collect();
             let generic = signature
                 .and_then(|text| {
-                    let mut reader = Signature { text, at: 0 };
+                    let mut reader = Signature { text, at: 0, written_bounds: Vec::new() };
                     let read = reader.method()?;
                     let listed = reader.throws();
                     if listed.len() == throws.len() {
@@ -697,10 +701,12 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     }
     let components = found.components;
     let mut type_parameters = Vec::new();
+    let mut written_bounds = Vec::new();
     let mut generic_supers = Vec::new();
     if let Some(text) = signature {
-        let mut signature = Signature { text, at: 0 };
+        let mut signature = Signature { text, at: 0, written_bounds: Vec::new() };
         type_parameters = signature.type_parameters().unwrap_or_default();
+        written_bounds = std::mem::take(&mut signature.written_bounds);
         while let Some(kind) = signature.kind() {
             generic_supers.push(kind);
         }
@@ -715,6 +721,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         interfaces,
         generic_supers,
         type_parameters,
+        written_bounds,
         fields,
         methods,
         is_interface: access & ACC_INTERFACE != 0,

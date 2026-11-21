@@ -6,7 +6,11 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-const MARKER: &str = "NOPMD";
+/// PMD's `--suppress-marker`: `NP_SUPPRESS_MARKER` when set, else PMD's own default.
+fn marker() -> &'static str {
+    static MARKER: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    MARKER.get_or_init(|| std::env::var("NP_SUPPRESS_MARKER").ok().filter(|marker| !marker.is_empty()).unwrap_or_else(|| "NOPMD".to_string()))
+}
 
 /// The javac warning names PMD also takes as silencing some of its own rules.
 fn javac_name_covers(name: &str, rule: &str) -> bool {
@@ -34,11 +38,12 @@ impl Suppressions {
         let root = file.tree.root_node();
         let mut lines = Vec::new();
         let mut from = 0;
-        while let Some(found) = file.text[from..].find(MARKER) {
+        let marker = marker();
+        while let Some(found) = file.text[from..].find(marker) {
             let at = from + found;
-            let comment = root.descendant_for_byte_range(at, at + MARKER.len()).filter(|node| node.kind() == "line_comment");
+            let comment = root.descendant_for_byte_range(at, at + marker.len()).filter(|node| node.kind() == "line_comment");
             lines.extend(comment.map(|node| node.start_position().row + 1));
-            from = at + MARKER.len();
+            from = at + marker.len();
         }
         Suppressions { lines, annotated: file.text.contains("SuppressWarnings"), named: RefCell::new(HashMap::new()) }
     }

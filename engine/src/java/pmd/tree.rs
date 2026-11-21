@@ -197,6 +197,21 @@ impl<'t> PmdTree<'t> {
         }
     }
 
+    /// The image PMD keeps for a node, which a rule message shows in place of `{0}`; PMD keeps none for most nodes.
+    pub fn image(&self, id: u32) -> Option<std::rc::Rc<str>> {
+        let node = &self.nodes[id as usize];
+        let named = match node.name {
+            "VariableId" | "VariableAccess" | "FieldAccess" | "AmbiguousName" | "TypeParameter" | "MethodDeclaration" | "ConstructorDeclaration" => "Name",
+            "MethodCall" => "MethodName",
+            "ClassDeclaration" | "EnumDeclaration" | "RecordDeclaration" | "AnnotationTypeDeclaration" | "ClassType" => "SimpleName",
+            _ => "Image",
+        };
+        [named, "Image"].iter().find_map(|key| match node.attributes.iter().find(|(name, _)| name == key) {
+            Some((_, Value::Text(text))) => Some(text.clone()),
+            _ => None,
+        })
+    }
+
     /// The name of an attribute as the tree keeps it, when the node has it.
     pub fn attribute_key(&self, id: u32, name: &str) -> Option<&'static str> {
         let node = &self.nodes[id as usize];
@@ -371,6 +386,24 @@ impl<'a, 't> Builder<'a, 't> {
             self.sized(list);
         }
         id
+    }
+
+    /// Whether the one parameter of a method is a `String[]`, written as an array or as varargs, as `main` takes it.
+    fn takes_string_array(&self, parameters: Node<'t>) -> bool {
+        let Some(parameter) = kids(parameters).into_iter().find(|kid| matches!(kid.kind(), "formal_parameter" | "spread_parameter")) else {
+            return false;
+        };
+        let written = |node: Node<'t>| self.text(node).split_whitespace().collect::<String>();
+        let string = |name: &str| name == "String" || name == "java.lang.String";
+        if parameter.kind() == "spread_parameter" {
+            return kids(parameter).into_iter().any(|kid| kid.kind().ends_with("type_identifier") && string(&written(kid)));
+        }
+        let kind = parameter.field("type").map(written).unwrap_or_default();
+        let dimensions = parameter.field("dimensions").map(written).unwrap_or_default();
+        match kind.strip_suffix("[]") {
+            Some(element) => string(element) && dimensions.is_empty(),
+            None => string(&kind) && dimensions == "[]",
+        }
     }
 
     fn member_value(&mut self, parent: u32, node: Node<'t>) {
@@ -986,7 +1019,12 @@ impl<'a, 't> Builder<'a, 't> {
                 let annotated = find(node, "modifiers").is_some_and(|list| {
                     kids(list).iter().any(|part| part.kind() == "marker_annotation" && self.text(*part).trim_start_matches('@').trim() == "Override")
                 });
-                let entry = named == "main" && void && effective.contains(&"public") && effective.contains(&"static") && arity == 1;
+                let entry = named == "main"
+                    && void
+                    && effective.contains(&"public")
+                    && effective.contains(&"static")
+                    && arity == 1
+                    && node.field("parameters").is_some_and(|parameters| self.takes_string_array(parameters));
                 self.set(id, "Name", text(named));
                 self.set(id, "Arity", Value::Whole(arity as i64));
                 self.set(id, "Varargs", flag(varargs));

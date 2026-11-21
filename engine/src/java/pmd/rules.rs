@@ -24,6 +24,28 @@ pub struct Written {
     /// Rule properties other than the query; the query reads them as variables.
     #[serde(default)]
     pub properties: BTreeMap<String, Property>,
+    /// PMD's `include-pattern` and `exclude-pattern` of the ruleset the rule runs in: each must match a whole
+    /// path. A file a pattern of `exclude` matches is skipped unless a pattern of `include` matches it too.
+    #[serde(default)]
+    pub include: Vec<String>,
+    #[serde(default)]
+    pub exclude: Vec<String>,
+}
+
+struct Scope {
+    include: Vec<regex::Regex>,
+    exclude: Vec<regex::Regex>,
+}
+
+impl Scope {
+    fn of(rule: &Written) -> Result<Scope, regex::Error> {
+        let whole = |patterns: &[String]| patterns.iter().map(|pattern| regex::Regex::new(&format!("^(?:{pattern})$"))).collect::<Result<Vec<_>, _>>();
+        Ok(Scope { include: whole(&rule.include)?, exclude: whole(&rule.exclude)? })
+    }
+
+    fn covers(&self, path: &str) -> bool {
+        !self.exclude.iter().any(|pattern| pattern.is_match(path)) || self.include.iter().any(|pattern| pattern.is_match(path))
+    }
 }
 
 #[derive(serde::Deserialize, Clone)]
@@ -43,6 +65,7 @@ struct Compiled {
 
 pub struct XPathRules {
     written: Vec<Written>,
+    scopes: Vec<Scope>,
     /// Per rule: files it ran on, nanoseconds, findings, and the first trouble it met.
     totals: Mutex<BTreeMap<String, (usize, u128, usize, Option<String>)>>,
 }
@@ -69,7 +92,11 @@ impl XPathRules {
                 refuse(&format!("rule {} has a query that cannot be read: {problem}", rule.name));
             }
         }
-        Some(XPathRules { written, totals: Mutex::new(BTreeMap::new()) })
+        let scopes = written
+            .iter()
+            .map(|rule| Scope::of(rule).unwrap_or_else(|problem| refuse(&format!("rule {} has a path pattern that cannot be read: {problem}", rule.name))))
+            .collect();
+        Some(XPathRules { written, scopes, totals: Mutex::new(BTreeMap::new()) })
     }
 
     fn compiled(&self) -> Rc<Vec<Compiled>> {
@@ -149,7 +176,11 @@ impl FileRule for XPathRules {
         let root = Item::Node(0);
         let mut local: Vec<(usize, u128, usize, Option<String>)> = Vec::new();
         let rules = self.compiled();
-        for rule in rules.iter() {
+        for (rule, scope) in rules.iter().zip(&self.scopes) {
+            if !scope.covers(&file.path) {
+                local.push((0, 0, 0, None));
+                continue;
+            }
             let started = std::time::Instant::now();
             let mut found = 0;
             let mut trouble = None;
@@ -184,7 +215,7 @@ impl FileRule for XPathRules {
                             line: place("BeginLine"),
                             column: place("BeginColumn"),
                             rule: rule.name.clone(),
-                            message: rule.message.clone(),
+                            message: formatted(&rule.message, tree.image(*id).as_deref()),
                         });
                         found += 1;
                     }
@@ -211,6 +242,30 @@ impl FileRule for XPathRules {
             }
         }
     }
+}
+
+/// A rule message as PMD prints it: `java.text.MessageFormat` reads it with the image of the node as its one
+/// argument, so `{0}` is the image, a lone `'` starts or ends literal text and `''` is one `'`.
+fn formatted(pattern: &str, image: Option<&str>) -> String {
+    let mut out = String::with_capacity(pattern.len());
+    let mut literal = false;
+    let mut rest = pattern;
+    while let Some(next) = rest.chars().next() {
+        if let Some(after) = rest.strip_prefix("''") {
+            out.push('\'');
+            rest = after;
+        } else if next == '\'' {
+            literal = !literal;
+            rest = &rest[1..];
+        } else if let Some(after) = rest.strip_prefix("{0}").filter(|_| !literal) {
+            out.push_str(image.unwrap_or("null"));
+            rest = after;
+        } else {
+            out.push(next);
+            rest = &rest[next.len_utf8()..];
+        }
+    }
+    out
 }
 
 fn refuse(problem: &str) -> ! {
