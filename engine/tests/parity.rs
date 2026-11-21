@@ -95,6 +95,7 @@ fn rare_built_in_rules_and_switch_facts_match_pmd() {
 #[test]
 fn error_prone_checks_report_what_error_prone_reports() {
     let (found, expected) = rows_of("errorprone", "_ErrorProne", "all");
+    let found: BTreeMap<Row, _> = found.into_iter().filter(|(row, _)| row.1 != "NullAway").collect();
     let missed: Vec<&Row> = expected.iter().filter(|(row, count)| found.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     let extra: Vec<&Row> = found.iter().filter(|(row, count)| expected.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
@@ -166,4 +167,41 @@ fn override_lines(release: &str) -> Vec<u64> {
 fn an_older_release_sees_the_library_of_that_release() {
     assert_eq!(override_lines("17"), [6, 10]);
     assert_eq!(override_lines("21"), [6, 10, 14, 18]);
+}
+
+#[test]
+fn null_away_reports_what_null_away_reports() {
+    type Told = (String, u64, u64, String);
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
+    let source = root.join("fixtures").join("nullaway");
+    let out = std::env::temp_dir().join(format!("nitpicker-engine-nullaway-{}.json", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
+        .arg(&source)
+        .args(["--rules", "_ErrorProne", "--out"])
+        .arg(&out)
+        .env("NP_EP_ONLY", "NullAway")
+        .env("NP_NULLAWAY_PACKAGES", "n")
+        .status()
+        .expect("engine runs");
+    assert!(status.success());
+    let report: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&out).expect("report")).expect("json");
+    let _ = std::fs::remove_file(&out);
+    let prefix = format!("{}/", source.display());
+    let text = |finding: &serde_json::Value, key: &str| finding[key].as_str().expect("text").to_string();
+    let number = |finding: &serde_json::Value, key: &str| finding[key].as_u64().expect("number");
+    let found: BTreeSet<Told> = report["findings"]
+        .as_array()
+        .expect("findings")
+        .iter()
+        .map(|finding| {
+            let file = text(finding, "file");
+            (file.strip_prefix(&prefix).unwrap_or(&file).to_string(), number(finding, "line"), number(finding, "column"), text(finding, "message"))
+        })
+        .collect();
+    let expected: Vec<Told> = serde_json::from_str(&std::fs::read_to_string(root.join("expected").join("nullaway.json")).expect("expected")).expect("rows");
+    let expected: BTreeSet<Told> = expected.into_iter().collect();
+    let missed: Vec<&Told> = expected.difference(&found).collect();
+    let extra: Vec<&Told> = found.difference(&expected).collect();
+    assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
+    assert_eq!(expected.len(), 102);
 }
