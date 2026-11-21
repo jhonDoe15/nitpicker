@@ -9,7 +9,7 @@ import {
 } from './carried/carried-analyzers.mts';
 import { namedReports, namedToolErrors } from '../snapshot-root/snapshot-root.mts';
 import path from 'node:path';
-import { describeError } from '../../../shared/messages/error-chain.mjs';
+import { describeError } from '../../../shared/messages/error-chain.mts';
 import { LOG_DIRECTORY as logDirectory } from '../reporting/reporters.mts';
 import type { RunTasks } from './progress.mts';
 import type { Checkpoints } from './tasks.mts';

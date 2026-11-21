@@ -6,9 +6,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
-import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mts';
 import type { Environment } from '../../../shared/processes/environment.mts';
-import { TOOL_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
+import { TOOL_TIMEOUT_MS } from '../../../shared/processes/deadlines.mts';
 import { fieldOf } from '../../../shared/values/readers.mts';
 import {
   inventoryOf,

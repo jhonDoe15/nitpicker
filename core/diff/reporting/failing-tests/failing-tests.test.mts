@@ -11,7 +11,7 @@ import { failingTestsError as untypedFailingTestsError } from '../../../../langu
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingUrl,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 import { testFailureFindings } from '../../../../languages/python/adapters/test-runs/test-failures.mts';
 
 const failingTestsError: (

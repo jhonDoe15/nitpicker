@@ -1,3 +1,5 @@
+import type { ReplaceEdit } from '../../../../shared/fix/recipes/hygiene/typed/hygiene-types.mts';
+
 export type NamedFile = { readonly path: string };
 
 export type PlanFile = { readonly path: string; readonly text: string };
@@ -9,14 +11,6 @@ export type PlanEdit = {
   readonly end?: number;
   readonly text?: string;
   readonly to?: string;
-};
-
-export type ReplaceEdit = {
-  readonly type: 'replace';
-  readonly path: string;
-  readonly start: number;
-  readonly end: number;
-  readonly text: string;
 };
 
 type RecipeFinding = {
@@ -36,6 +30,9 @@ export type ScriptPlanned = {
 };
 
 export type DocComment = {
+  readonly name: string | undefined;
+  readonly lines: readonly string[];
+  readonly detailed: boolean;
   readonly span: readonly [number, number];
   readonly only: boolean;
   readonly line: number;

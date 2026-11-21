@@ -10,7 +10,7 @@ import {
 import type { TestFileResult, TestOptions, TestRun } from '../typed/runner-types.mts';
 import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
 import { readRun, removeTemporary, temporaryProjectPath, testTimeouts } from '../test-run.mts';
-import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mts';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mts';
 import { consoleProducerPath, startTestConsole } from '../test-console-run.mts';
 import { FAILURE_DETAILS_VARIABLE } from '../../../preset/test-failures/vitest-failure-details.config.mts';
@@ -84,10 +84,13 @@ function reportArguments(options: TestOptions, reportPath: string): string[] {
   ];
 }
 
-function timeoutEnvironment(setupPath: string): Readonly<Record<string, string>> {
+function timeoutEnvironment(
+  setupPath: string,
+  policy: Parameters<typeof testTimeouts>[1],
+): Readonly<Record<string, string>> {
   return {
     [TIMEOUT_SETUP_VARIABLE]: setupPath,
-    [TIMEOUT_LIMITS_VARIABLE]: JSON.stringify(testTimeouts()),
+    [TIMEOUT_LIMITS_VARIABLE]: JSON.stringify(testTimeouts(undefined, policy)),
   };
 }
 
@@ -103,7 +106,8 @@ function modeArguments(options: TestOptions): string[] {
 }
 
 export function runVitest(options: TestOptions): TestRun {
-  const configured = readHeadPolicyFile().tools?.tests?.timeouts !== undefined;
+  const policy = readHeadPolicyFile(options.environment);
+  const configured = policy.tools?.tests?.timeouts !== undefined;
   const configPath = temporaryProjectPath(options, 'vitest.config.ts');
   const setupPath = temporaryProjectPath(options, 'test-timeouts.mjs');
   const reportPath = temporaryProjectPath(options, 'vitest-report.json');
@@ -120,8 +124,10 @@ export function runVitest(options: TestOptions): TestRun {
         '--config',
         configPath,
         ...modeArguments(options),
-        ...(configured ? [] : ['--testTimeout', String(testTimeouts().testTimeoutMs)]),
-        ...vitestRetryArguments(projectTestRetry('vitest')),
+        ...(configured
+          ? []
+          : ['--testTimeout', String(testTimeouts(undefined, policy).testTimeoutMs)]),
+        ...vitestRetryArguments(projectTestRetry('vitest', options.environment)),
         ...reportArguments(options, reportPath),
         ...(options.rerun?.files ?? []),
         ...(testConsole.enabled ? ['--reporter', consoleProducerPath(options, 'vitest')] : []),
@@ -130,7 +136,7 @@ export function runVitest(options: TestOptions): TestRun {
         ...testConsole.environment,
         [FAILURE_DETAILS_VARIABLE]: detailsPath,
         [MOCK_PIN_ENVIRONMENT_VARIABLE]: options.rerun?.withoutMockPin === true ? '1' : '0',
-        ...(configured ? timeoutEnvironment(setupPath) : {}),
+        ...(configured ? timeoutEnvironment(setupPath, policy) : {}),
       },
       acceptedStatuses: [0, 1],
     });

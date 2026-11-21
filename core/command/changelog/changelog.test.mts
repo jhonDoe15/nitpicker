@@ -6,7 +6,7 @@ import { runCli } from '../../cli.mts';
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
 import { changelogSection, changelogVersions, runChangelogCommand } from './changelog.mts';
 import { fieldOf, parseJson, textOf } from '../../../shared/values/readers.mts';
-import { checkoutModulePath as moduleSourcePath } from '../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as moduleSourcePath } from '../../../shared/paths/checkout-module.mts';
 
 const checkoutModulePath: (file: string) => string = moduleSourcePath;
 

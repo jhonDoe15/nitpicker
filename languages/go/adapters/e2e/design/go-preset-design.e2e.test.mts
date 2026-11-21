@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { DESIGN_RULES } from '../../../../../shared/project-rules/design/design-rules.mjs';
+import { DESIGN_RULES } from '../../../../../shared/project-rules/design/design-rules.mts';
 import {
   commitBranch,
   createWorkspace,

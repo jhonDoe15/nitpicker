@@ -1,13 +1,13 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../shared/paths/checkout-module.mts';
 import { layeredPolicy as untypedLayeredPolicy } from './lint-engine/project-layer.mts';
-import { shareSolverAnswers as untypedShareSolverAnswers } from '../../../shared/logic/sync/decide-sync.mjs';
+import { shareSolverAnswers as untypedShareSolverAnswers } from '../../../shared/logic/sync/decide-sync.mts';
 import {
-  type AnswerStore,
   SOLVER_ANSWERS_ENVIRONMENT,
   answerStore,
 } from '../../../shared/solver-answers/answer-store.mts';
+import type { AnswerStore } from '../../../shared/logic/typed/solver-types.mts';
 import { fieldOf, fieldsOf, listOf, parseJson, textsOf } from '../../../shared/values/readers.mts';
 import type { Environment } from '../../../shared/processes/environment.mts';
 import { guardedEntries } from '../preset/eslint-config/fix-guards/guarded-plugins.mts';

@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { validateConfig } from '../configuration/validate.mts';
 import { fieldOf, textOf } from '../../shared/values/readers.mts';
-import { exceptionFor, presetsOf, readReferenceEntries } from './reference-views.mts';
-import type { RuleEntry, RuleException } from './reference-views.mts';
+import { exceptionFor } from '../../shared/reference/entry.mts';
+import { presetsOf } from '../../shared/reference/facts.mts';
+import { readReferenceEntries } from '../../shared/reference/store.mts';
+import type { ExceptionRoute, RuleEntry } from '../../shared/reference/typed/entry-types.mts';
 
 const PLACEHOLDER = /<[^>]+>/u;
 
-function concreteRule(entry: RuleEntry, rule: string) {
+function concreteRule(entry: RuleEntry, rule: string | undefined) {
+  if (rule === undefined) {
+    return undefined;
+  }
   if (!PLACEHOLDER.test(rule)) {
     return rule;
   }
@@ -17,7 +22,7 @@ function concreteRule(entry: RuleEntry, rule: string) {
   return rule.startsWith(`${entry.tool}/`) ? sample : sample.slice(entry.tool.length + 1);
 }
 
-function exceptionEntry(entry: RuleEntry, exception: RuleException) {
+function exceptionEntry(entry: RuleEntry, exception: ExceptionRoute) {
   return {
     rule: concreteRule(entry, exception.rule),
     paths: ['src/main/module.file'],

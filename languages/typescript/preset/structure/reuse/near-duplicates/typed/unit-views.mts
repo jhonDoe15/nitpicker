@@ -4,7 +4,7 @@ import {
   statementsOf as untypedStatementsOf,
   uniqueNames as untypedUniqueNames,
   withSnippet as untypedWithSnippet,
-} from '../../../../../../../shared/near-duplicates/unit-parts.mjs';
+} from '../../../../../../../shared/near-duplicates/unit-parts.mts';
 import type { Converted } from './tree-types.mts';
 
 type Getter = { readonly get: (source: TypeScript.Node) => Converted };

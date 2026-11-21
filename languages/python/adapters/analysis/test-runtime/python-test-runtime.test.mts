@@ -1,8 +1,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { hash } from '../../../../../shared/rules/finding-helpers.mjs';
-import { withCanonicalRules } from '../../../../../shared/exceptions/validation.mjs';
+import { hash } from '../../../../../shared/rules/finding-parts.mts';
+import { withCanonicalRules } from '../../../../../shared/exceptions/validation.mts';
 import { validateConfig } from '../../../../../core/configuration/validate.mts';
 import { applyPythonExceptions } from '../../configuration/python-exceptions.mts';
 import { applyRuleHints } from '../../../rules/rule-hints.mts';

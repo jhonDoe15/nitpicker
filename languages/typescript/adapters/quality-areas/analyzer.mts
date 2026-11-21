@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { mutationScopeArguments } from '../../../../core/tooling/runner-arguments.mts';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mts';
 
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 

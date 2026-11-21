@@ -2,13 +2,13 @@ import {
   builtInExcludedGlobs as untypedBuiltInExcludedGlobs,
   defaultResolvedLayout as untypedDefaultResolvedLayout,
 } from '../../../languages/typescript/preset/layout.mts';
-import { canonicalRule as untypedCanonicalRule } from '../../../shared/exceptions/rule-names.mjs';
-import { sameJson as untypedSameJson } from '../../../shared/config.mjs';
+import { canonicalRule as untypedCanonicalRule } from '../../../shared/exceptions/rule-names.mts';
+import { sameJson as untypedSameJson } from '../../../shared/config.mts';
 import {
   DEFAULT_CRAP_SCORE_LIMIT as UNTYPED_DEFAULT_CRAP_SCORE_LIMIT,
   FILE_LIMIT_DEFAULTS as UNTYPED_FILE_LIMIT_DEFAULTS,
   TEST_TIME_DEFAULTS as UNTYPED_TEST_TIME_DEFAULTS,
-} from '../../../shared/policy.mjs';
+} from '../../../shared/policy.mts';
 import { fieldOf } from '../../../shared/values/readers.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 

@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import path from 'node:path';
-import { firstFileIn as untypedFirstFileIn } from '../../../../shared/filesystem.mjs';
+import { firstFileIn as untypedFirstFileIn } from '../../../../shared/filesystem.mts';
 import { GO_TOOLS } from '../execution/go-tools.mts';
 import { GO_MOD, readGoModule } from '../execution/go-module.mts';
 import {
@@ -11,6 +10,7 @@ import {
   messageOf,
   parseJson,
 } from '../../../../shared/values/readers.mts';
+import { parseWithModule } from '../../../../shared/values/parse-module.mts';
 import type { Fields } from '../../../../shared/values/readers.mts';
 import type { GoFormatting } from '../go-types.mts';
 
@@ -23,25 +23,10 @@ const GOFMT = 'gofmt';
 
 export const FORMATTERS = [GOFMT, 'gofumpt', 'goimports'];
 const GOLANGCI_FILES = ['.golangci.yml', '.golangci.yaml', '.golangci.toml', '.golangci.json'];
-const load = createRequire(import.meta.url);
-
-function parseWith(moduleName: string, text: string): unknown {
-  const parser: unknown = load(moduleName);
-  const parse = fieldOf(parser, 'parse');
-  if (typeof parse !== 'function') {
-    throw new TypeError(`${moduleName} has no parse`);
-  }
-  return Reflect.apply(parse, parser, [text]);
-}
-
 const PARSERS: Readonly<Record<string, (text: string) => unknown>> = {
-  '.toml': (text) => parseWith('smol-toml', text),
+  '.toml': (text) => parseWithModule('smol-toml', text),
   '.json': (text) => parseJson(text),
 };
-
-function parseYaml(text: string): unknown {
-  return parseWith('yaml', text);
-}
 
 function readGolangci(projectRoot: string): Golangci | undefined {
   const file = firstFileIn(projectRoot, GOLANGCI_FILES);
@@ -49,7 +34,7 @@ function readGolangci(projectRoot: string): Golangci | undefined {
     return undefined;
   }
   const name = path.basename(file);
-  const parse = PARSERS[path.extname(name)] ?? parseYaml;
+  const parse = PARSERS[path.extname(name)] ?? ((text: string) => parseWithModule('yaml', text));
   try {
     return { name, config: fieldsOf(parse(readFileSync(file, 'utf8'))) };
   } catch (error) {

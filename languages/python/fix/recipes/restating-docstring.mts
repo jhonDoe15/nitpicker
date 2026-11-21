@@ -1,18 +1,17 @@
 import {
   isCovered as untypedIsCovered,
-  restatesItsName as untypedRestatesItsName,
-} from '../../../../shared/fix/recipes/doc-comments/restating-comment.mjs';
+  restatesItsName,
+} from '../../../../shared/fix/recipes/doc-comments/restating-comment.mts';
 import type {
   DocComment,
   FileRecipe,
   PlanContext,
   Planned,
   RecipeInputs,
-  ReplaceEdit,
 } from '../typed/fix-types.mts';
+import type { ReplaceEdit } from '../../../../shared/fix/recipes/hygiene/typed/hygiene-types.mts';
 
 const isCovered: (inputs: RecipeInputs, name: string) => boolean = untypedIsCovered;
-const restatesItsName: (comment: DocComment) => boolean = untypedRestatesItsName;
 
 const STRING_STATEMENT = new RegExp(
   '^[rRuUbB]{0,2}(?:' +

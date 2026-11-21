@@ -1,6 +1,7 @@
 import { CONVENTION_POLICY_FILES } from '../conventions/convention-policy-files.mts';
 import { VALUE_WEB_RULE_FILES } from './value-web-rule-files.mts';
 import { TEXT_PATH_NUMBER_RULE_FILES } from './text-path-number-rule-files.mts';
+import { REPEATED_WORK_RULE_FILES } from './repeated-work-rule-files.mts';
 
 export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/checks/plugin-rules/plugin-rule-files.mjs',
@@ -89,6 +90,14 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/signatures/no-tri-state-boolean.mjs',
   'languages/typescript/preset/eslint-plugin/rules/arguments/no-swapped-arguments.mjs',
   'languages/typescript/preset/eslint-plugin/rules/arguments/swapped-names.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/type-lookups/no-type-lookup-per-node.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/type-lookups/syntax-tests.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/type-lookups/walk-contexts.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/type-lookups/lookup-sites.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/type-lookups/name-filters.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/union-order/no-union-order-dependence.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/union-order/member-picks.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/union-order/unique-members.mjs',
   'languages/typescript/preset/eslint-plugin/rules/parsing/no-unhandled-url-parse.mjs',
   'languages/typescript/preset/eslint-plugin/rules/reuse/reusable-object-per-call.mjs',
   'languages/typescript/preset/eslint-plugin/rules/config/env-reads.mjs',
@@ -206,6 +215,21 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/placeholders/stand-in-shapes.mjs',
   'shared/rules/placeholders/placeholder-comments.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/require-process-timeout.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/processes/arguments/no-unguarded-option-list.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/processes/arguments/possibly-empty.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/processes/arguments/no-growing-process-arguments.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/processes/arguments/list-sources.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/processes/wrappers/no-wrapper-only-timeout.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/processes/messages/no-head-cut-error-output.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/processes/results/no-stderr-as-failure.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/processes/results/stderr-sources.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/processes/results/no-status-only-spawn-check.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/processes/results/result-fields.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/processes/output/no-buffered-growing-output.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/processes/output/growing-commands.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/processes/output/output-uses.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/processes/output/process-options.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/processes/messages/text-base.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/process-options-mutations.mjs',
   'languages/typescript/preset/eslint-plugin/rules/processes/process-timeout-options.mjs',
   'languages/typescript/preset/eslint-plugin/rules/guards/no-unknown-main-folder.mjs',
@@ -288,4 +312,5 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/wrapped/strict-boolean-expressions.mjs',
   ...VALUE_WEB_RULE_FILES,
   ...TEXT_PATH_NUMBER_RULE_FILES,
+  ...REPEATED_WORK_RULE_FILES,
 ];

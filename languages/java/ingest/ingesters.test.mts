@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mts';
 import { ingestArchunit } from './archunit.mts';
 import { ingestCheckstyle } from './formatting/checkstyle.mts';
-import { decodeEntities as untypedDecodeEntities } from '../../../shared/ingest/common.mjs';
-import { parseXml } from '../../../shared/values/xml.mts';
+import {
+  decodeEntities as untypedDecodeEntities,
+  parseXml,
+} from '../../../shared/ingest/report-records.mts';
 import { ingestGoCoverprofile } from './coverage-reports/gocover.mts';
 import { ingestJacoco } from './coverage-reports/jacoco.mts';
 import { ingestLcov } from './coverage-reports/lcov.mts';

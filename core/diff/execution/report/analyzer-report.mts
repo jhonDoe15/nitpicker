@@ -3,7 +3,7 @@ import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
   withTroubleshooting,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 import type { AnalyzerTask } from '../tasks.mts';
 import { MEMORY_ADVICE, isOutOfMemory } from '../../../../shared/processes/memory/node-heap.mts';

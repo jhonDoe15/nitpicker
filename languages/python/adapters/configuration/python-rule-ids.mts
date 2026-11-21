@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
+import { escapeRegExp } from '../../../../shared/paths/glob.mts';
+import { distance } from '../../../../shared/reference/store.mts';
 import { PYTHON_RULES_IDS } from '../../rules/rule-hints.mts';
 import { RUFF_CONFIG } from './python-ruff-config.mts';
 
@@ -25,30 +26,12 @@ export const RUFF_IGNORE = codesOf('ignore');
 export const RUFF_PROMOTED_FIXES = codesOf('extend-safe-fixes');
 
 function codesOf(key: string): string[] {
-  const list = new RegExp(`^${String(escapeRegExp(key))}\\s*=\\s*\\[([^\\]]*)\\]`, 'm').exec(
+  const list = new RegExp(`^${escapeRegExp(key)}\\s*=\\s*\\[([^\\]]*)\\]`, 'm').exec(
     RUFF_CONFIG_TEXT,
   );
   return list === null
     ? []
     : [...(list[1] ?? '').matchAll(RUFF_CODE)].map((match) => match[1] ?? '');
-}
-
-function distance(left: string, right: string): number {
-  let previous = Array.from({ length: right.length + 1 }, (_, index) => index);
-  for (const [row, leftCharacter] of left.split('').entries()) {
-    const current = [row + 1];
-    for (const [column, rightCharacter] of right.split('').entries()) {
-      current.push(
-        Math.min(
-          (previous[column + 1] ?? 0) + 1,
-          (current[column] ?? 0) + 1,
-          (previous[column] ?? 0) + (leftCharacter === rightCharacter ? 0 : 1),
-        ),
-      );
-    }
-    previous = current;
-  }
-  return previous[right.length] ?? 0;
 }
 
 function selects(code: string, rule: string): boolean {

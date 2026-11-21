@@ -1,9 +1,9 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { configError as untypedConfigError } from '../../../shared/config.mjs';
-import { pathInside as untypedPathInside } from '../../../shared/filesystem.mjs';
-import { globMatcher as untypedGlobMatcher } from '../../../shared/paths/glob.mjs';
-import { projectFilesUnder as untypedProjectFilesUnder } from '../../../shared/project-files/project-files.mjs';
+import { configError as untypedConfigError } from '../../../shared/config.mts';
+import { pathInside as untypedPathInside } from '../../../shared/filesystem.mts';
+import { globMatcher as untypedGlobMatcher } from '../../../shared/paths/glob.mts';
+import { projectFilesUnder as untypedProjectFilesUnder } from '../../../shared/project-files/project-files.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import { textsOf } from '../../../shared/values/readers.mts';
 import {

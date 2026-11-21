@@ -1,10 +1,10 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { type XmlElement, childAt, childrenAt } from '../../../../shared/values/xml.mts';
+import { type XmlElement, childAt, childrenAt } from '../../../../shared/ingest/report-records.mts';
 import type { KotlinRoots } from '../typed/kotlin-types.mts';
 import { jdkRequirements } from '../configuration/toolchain/toolchain-jdk.mts';
 import { executionsOf, goalsOf, pluginsOf, textAt } from '../configuration/pom-elements.mts';
-import { isInsideDirectory, isOutsideDirectory } from '../../../../shared/paths/contained-path.mjs';
+import { isInsideDirectory, isOutsideDirectory } from '../../../../shared/paths/contained-path.mts';
 
 const KOTLIN_PLUGIN = 'org.jetbrains.kotlin:kotlin-maven-plugin';
 const MAIN_GOALS = ['compile', 'kapt'];

@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mts';
-import { SCHEMA_KEY } from '../../../../shared/config.mjs';
+import { SCHEMA_KEY } from '../../../../shared/config.mts';
 import { KEYS } from '../../validate.mts';
 import { isPlainObject } from '../../views/config-views.mts';
 import { parseJson } from '../../../../shared/values/readers.mts';

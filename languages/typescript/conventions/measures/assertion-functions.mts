@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { followedHelpers as untypedFollowedHelpers } from '../../../../shared/conventions/detect.mjs';
+import { followedHelpers } from '../../../../shared/conventions/detect.mts';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
 import { descendants, parsedSource } from '../typed/measure-views.mts';
 
@@ -20,10 +20,6 @@ const TEST_MODIFIERS = new Set([
   'runIf',
   'skipIf',
 ]);
-const followedHelpers: (
-  counts: Readonly<Record<string, number>>,
-  definition: { readonly minFiles: number },
-) => string[] = untypedFollowedHelpers;
 const DEFAULT_ASSERTION_FUNCTIONS = ['expect', 'assert', 'expectTypeOf', 'assertType'];
 
 export const ASSERTION_HELPERS_CONVENTION = {

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { buildFlags } from '../build/go-vet.mts';
 import { ANY_STATUS, execute, failure, run } from '../execution/go-process.mts';
 import { blockAt, parseCoverProfile } from '../branch-coverage/coverage-profile.mts';
-import { pathInside } from '../../../../shared/filesystem.mjs';
+import { pathInside } from '../../../../shared/filesystem.mts';
 import { parseEventLines, parseTestEvents } from '../tests/test-events.mts';
 import type { CoverProfile, GoContext, ProcessResult, RunContext } from '../go-types.mts';
 import type { Baseline, Mutant, Packages, Testers } from './mutation-types.mts';

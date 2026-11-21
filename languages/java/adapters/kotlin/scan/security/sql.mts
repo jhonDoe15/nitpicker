@@ -4,7 +4,7 @@ import {
   FRAGMENT_BEFORE_VALUE,
   LOOSE_STATEMENT,
   STRONG_STATEMENT,
-} from '../../../../../../shared/rules/security/sql-text.mjs';
+} from '../../../../../../shared/rules/security/sql-text.mts';
 import { closingIndex, enclosingOpen, literalAt, splitArguments } from '../kotlin-source.mts';
 import { classifiedPieces, templatePieces } from './sql-values.mts';
 import type { Literal, Scanned } from '../typed/scan-shapes.mts';

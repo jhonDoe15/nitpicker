@@ -5,11 +5,8 @@ import { globMatcher } from '../typed/runner/exception-views.mts';
 import type { ExceptionEntry } from '../configuration/python-exceptions.mts';
 import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
 import type { ToolContext } from '../typed/context/tool-context-types.mts';
-import {
-  collectFileLimitFindings,
-  projectFilesUnder,
-  readStructureFindings,
-} from './typed/shared-views.mts';
+import { collectFileLimitFindings, readStructureFindings } from './typed/shared-views.mts';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mts';
 import { run } from '../execution/python-process.mts';
 import { functionText, testFileMatcher, writeSourceListing } from './python-sources.mts';
 import { isGeneratedPython } from '../../libraries/generated-files.mts';

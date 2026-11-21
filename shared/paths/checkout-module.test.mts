@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { checkoutModulePath, checkoutModuleUrl } from './checkout-module.mjs';
+import { checkoutModulePath, checkoutModuleUrl } from './checkout-module.mts';
 
 describe('checkout modules', () => {
   let directory: string;

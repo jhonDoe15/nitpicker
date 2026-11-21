@@ -1,4 +1,4 @@
-import { TROUBLESHOOTING_FILE } from '../../shared/messages/troubleshooting.mjs';
+import { TROUBLESHOOTING_FILE } from '../../shared/messages/troubleshooting.mts';
 
 const WIDTH = 100;
 

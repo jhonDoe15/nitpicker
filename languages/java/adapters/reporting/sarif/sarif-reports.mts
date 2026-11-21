@@ -5,7 +5,7 @@ import { dropEntityAssociations, dropInheritedVersions } from '../../jpa/jpa-sou
 import {
   ingestSarif as untypedIngestSarif,
   prepareSarif as untypedPrepareSarif,
-} from '../../../../../shared/ingest/sarif.mjs';
+} from '../../../../../shared/ingest/sarif.mts';
 import { FIXED_SLEEP_RULE, withWaitAdvice } from '../../../messages/wait-advice.mts';
 import { dropSleepsInFakes } from '../../../messages/latency-fakes.mts';
 import { withFanOutDetails } from '../../../messages/fan-out/fan-out-details.mts';

@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { escapeRegExp as escapeRegExpUntyped } from '../../../../../shared/paths/glob.mjs';
+import { escapeRegExp as escapeRegExpUntyped } from '../../../../../shared/paths/glob.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 
 const escapeRegExp: (value: string) => string = escapeRegExpUntyped;

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
-import { ancestorDirectories as untypedAncestorDirectories } from '../../../../shared/filesystem.mjs';
+import { ancestorDirectories as untypedAncestorDirectories } from '../../../../shared/filesystem.mts';
 
 const ancestorDirectories: (directory: string) => string[] = untypedAncestorDirectories;
 

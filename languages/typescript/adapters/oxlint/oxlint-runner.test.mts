@@ -1,4 +1,4 @@
-import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';

@@ -7,7 +7,7 @@ import {
   childrenAt,
   childrenNamed,
   parseXml,
-} from '../../../shared/values/xml.mts';
+} from '../../../shared/ingest/report-records.mts';
 import { messageOf } from '../../../shared/values/readers.mts';
 import {
   type JacocoSettings,
@@ -23,7 +23,7 @@ import { executionsWithGoal, pluginsOf, textAt } from './configuration/pom-eleme
 import { compilerSettings } from './errorprone/maven-compiler.mts';
 import { kotlinRoots } from './kotlin/kotlin-roots.mts';
 import { testJvmArguments } from './configuration/surefire-jvm.mts';
-import { isStrictlyInside } from '../../../shared/filesystem.mjs';
+import { isStrictlyInside } from '../../../shared/filesystem.mts';
 import { coordinates, requiredCoordinates } from './reactor/required-coordinates.mts';
 import { appendAll } from '../../../shared/lists/lists.mts';
 

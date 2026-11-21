@@ -14,6 +14,7 @@ import { scopeToTouchedFiles } from './scope.mts';
 import { unlessSkipped } from '../snapshots/skips.mts';
 import type { RunSettings, SkipPlan, SnapshotRoots } from '../snapshots/run-types.mts';
 import type { Checkpoints } from '../../execution/tasks.mts';
+import type { ComparisonRun } from '../base-red/compare-analyzers.mts';
 
 export type CachedRunRequest = {
   readonly settings: RunSettings;
@@ -58,7 +59,7 @@ export function runCached({
   policyRoot,
   run,
   ...key
-}: CachedRunRequest): unknown {
+}: CachedRunRequest): ComparisonRun {
   return runBaseWithCache({
     cache: createFindingsCache({ store: settings.cacheStore, directory: undefined, ...key }),
     analyzers,
@@ -99,7 +100,7 @@ export function headResumePlace(
 function runQuickHead(
   { settings, comparison, roots, layout }: HeadContext,
   run: (analyzers: readonly unknown[], checkpoints?: Checkpoints) => AnalyzerRun,
-): unknown {
+): ComparisonRun {
   const analyzers = quickScoped(settings, layout, settings.analyzers);
   const place = headResumePlace(settings, comparison);
   if (place !== undefined) {
@@ -133,7 +134,7 @@ function runResumable(
     readonly policyRoot: string;
   },
   run: (analyzers: readonly unknown[], checkpoints?: Checkpoints) => AnalyzerRun,
-): unknown {
+): ComparisonRun {
   const resume = createResumeCache({
     ...place,
     configOverrides: [
@@ -155,7 +156,7 @@ function runResumable(
   });
 }
 
-export function runHeadAnalyzers(context: HeadContext, baselineMovesFile: unknown): unknown {
+export function runHeadAnalyzers(context: HeadContext, baselineMovesFile: unknown): ComparisonRun {
   const { settings, roots, headPolicyFile } = context;
   return runQuickHead(context, (scoped, checkpoints) =>
     unlessSkipped(scoped, context.skipPlan, (analyzers) =>

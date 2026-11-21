@@ -1,12 +1,12 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { evaluateDuplicates as untypedEvaluateDuplicates } from '../../../../shared/rules/duplicates.mjs';
+import { evaluateDuplicates as untypedEvaluateDuplicates } from '../../../../shared/rules/duplicates.mts';
 import {
   renamedClones as untypedRenamedClones,
   renamedFindings as untypedRenamedFindings,
   withoutRenamedCopies as untypedWithoutRenamedCopies,
-} from '../../../../shared/renamed-clones/findings.mjs';
-import { sourceFilesUnder as untypedSourceFilesUnder } from '../../../../shared/renamed-clones/files.mjs';
+} from '../../../../shared/renamed-clones/findings.mts';
+import { sourceFilesUnder as untypedSourceFilesUnder } from '../../../../shared/renamed-clones/files.mts';
 import { withoutImportOnlyClones as untypedWithoutImportOnlyClones } from '../../../../core/tooling/jscpd/import-only.mts';
 import { jscpdClones as untypedJscpdClones } from '../../../../core/tooling/jscpd/jscpd-clones.mts';
 import {

@@ -1,4 +1,4 @@
-import { pluralsOf } from '../../../../../../shared/naming/plural-names.mjs';
+import { pluralsOf } from '../../../../../../shared/naming/plural-names.mts';
 import type { ClassFact, FunctionFact, KotlinFile } from '../typed/kotlin-fact-types.mts';
 import type { ReviewFinding, RuleOptions } from '../typed/review-finding-types.mts';
 import { annotationNamed, bareType } from '../kotlin-facts.mts';

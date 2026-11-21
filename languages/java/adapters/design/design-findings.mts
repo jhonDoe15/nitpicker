@@ -1,6 +1,6 @@
-import { readHeadPolicyFile } from '../../../../shared/head-policy.mjs';
-import { DESIGN_RULES } from '../../../../shared/project-rules/design/design-rules.mjs';
-import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
+import { readHeadPolicyFile } from '../../../../shared/head-policy.mts';
+import { DESIGN_RULES } from '../../../../shared/project-rules/design/design-rules.mts';
+import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mts';
 import { type DesignModule, produceDesignFacts } from './producer/design-facts.mts';
 import { fieldsOf } from '../../../../shared/values/readers.mts';
 import {
@@ -38,7 +38,7 @@ function toolError(analyzerName: string, error: unknown): JavaFinding {
 
 export function designPolicy(
   policy: JavaPolicy = {},
-  headPolicy: unknown = readHeadPolicyFile(),
+  headPolicy: unknown,
 ): Readonly<Record<string, unknown>> {
   const head = fieldsOf(headPolicy);
   const protocols = policy['protocols'] ?? head['protocols'];
@@ -72,7 +72,7 @@ export function designFindings({
       evaluate(facts, {
         language: 'java',
         analyzerName,
-        policy: designPolicy(policy),
+        policy: designPolicy(policy, readHeadPolicyFile(environment ?? {})),
         rules: DESIGN_RULES,
       }),
     );

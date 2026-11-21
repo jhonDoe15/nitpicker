@@ -125,7 +125,7 @@ describe('the sample workflow', () => {
       fieldAt(workflow.on, 'pull_request', 'types'),
       fieldAt(workflow.on, 'workflow_dispatch'),
       workflow.permissions,
-    ]).toEqual([['main'], ['labeled'], null, { contents: 'read' }]);
+    ]).toEqual([['main', 'integration'], ['labeled'], null, { contents: 'read' }]);
     expect(jobNamed(workflow, 'changes').if).toBe(
       "github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')",
     );

@@ -27,7 +27,7 @@ import {
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingUrl as untypedTroubleshootingUrl,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 
 const troubleshootingUrl: (anchor: string) => string | undefined = untypedTroubleshootingUrl;
 const goE2eEnabled = process.env['NITPICKER_GO_E2E'] === '1';

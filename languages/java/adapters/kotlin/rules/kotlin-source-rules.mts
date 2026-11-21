@@ -1,6 +1,6 @@
-import { readInside as untypedReadInside } from '../../../../../shared/conventions/read-inside.mjs';
-import { exceptionHint as untypedExceptionHint } from '../../../../../shared/rules/exceptions.mjs';
-import { createIdentityCounter as untypedCreateIdentityCounter } from '../../../../../shared/ingest/common.mjs';
+import { readInside as untypedReadInside } from '../../../../../shared/conventions/read-inside.mts';
+import { exceptionHint as untypedExceptionHint } from '../../../../../shared/rules/exceptions.mts';
+import { createIdentityCounter as untypedCreateIdentityCounter } from '../../../../../shared/ingest/report-records.mts';
 import { callUntyped } from '../../../../../shared/values/boundaries/untyped-call.mts';
 import { optionalText } from '../../../../../shared/values/readers.mts';
 import type { Finding } from '../../../../../shared/values/findings.mts';

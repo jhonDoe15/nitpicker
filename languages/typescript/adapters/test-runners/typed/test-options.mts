@@ -15,6 +15,7 @@ export function testOptions(fields: Partial<TestOptions>): TestOptions {
     baselineRoot: undefined,
     baselineMovesFile: undefined,
     mutationScope: undefined,
+    environment: {},
     ...fields,
   };
 }

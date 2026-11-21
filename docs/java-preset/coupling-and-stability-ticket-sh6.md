@@ -18,11 +18,11 @@ Part of the [Java preset guide](../java-preset.md).
   `nitpickerJdeps` task lives in `languages/java/gradle/nitpicker.init.gradle`.
 - **Conversion.** `languages/java/adapters/metrics/java-coupling.mts` parses the class graph, folds nested classes
   into their top-level class, keeps only edges between two main classes, computes the metrics and
-  hands the neutral report to `evaluateCoupling` in `shared/rules/coupling.mjs`. The findings are
+  hands the neutral report to `evaluateCoupling` in `shared/rules/coupling.mts`. The findings are
   the TypeScript ones: report-only `coupling`, `module-coupling`, `package-coupling` and
   `stability-direction-metric` metrics, and the enforceable `stability-direction` finding
   (`<package> depends on less stable package <package>`), under the tool name `coupling`. The
-  policy (`shared/policy.mjs`) marks `stability-direction` as enforced for Java.
+  policy (`shared/policy.mts`) marks `stability-direction` as enforced for Java.
 - **Same semantics as TypeScript, at Java granularity.** The TypeScript preset's module is a source
   file and its package the top-level directory under the source root; here a module is a source
   file (a top-level class with its nested classes) and a package a Java package. Fan-in and fan-out

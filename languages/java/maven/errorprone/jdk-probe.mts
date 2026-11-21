@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { fieldOf } from '../../../../shared/values/readers.mts';
-import { explainedError } from '../../../../shared/messages/troubleshooting.mjs';
+import { explainedError } from '../../../../shared/messages/troubleshooting.mts';
 import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
 import { javaCommand } from '../programs/java-command.mts';
 import { probeJava } from '../programs/probe/java-probe-cache.mts';

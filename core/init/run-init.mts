@@ -14,7 +14,7 @@ import { assertSupportedNode, requireRepository } from './support/preconditions.
 import { runMonorepoInit } from './monorepo/run-monorepo-init.mts';
 import type { MonorepoLayoutOf } from './monorepo/monorepo-types.mts';
 import type { TextOutput } from '../cli-context.mts';
-import { CONFIG_FILE_NAME } from '../../shared/config.mjs';
+import { CONFIG_FILE_NAME } from '../../shared/config.mts';
 
 type InitCli = {
   readonly arguments_: readonly string[];

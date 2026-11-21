@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { readSource } from '../source-keys.mts';
 import { propertyClassKeys } from './property-classes.mts';
-import { byText } from '../../../../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../../../../shared/text-order/by-text.mts';
 import { useGitFixtures } from '../../../../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot } = useGitFixtures();

@@ -6,7 +6,7 @@ import {
 } from '../../test-support/quality-diff-harness.mts';
 import { runQualityDiff } from '../../../../comparison/run-diff.mts';
 import { policy } from '../../../../execution/test-support/analyzer-findings.mts';
-import { readMovesFile } from '../../../../../../shared/rules/facts/baseline.mjs';
+import { readMovesFile } from '../../../../../../shared/rules/facts/baseline.mts';
 import { fieldOf } from '../../../../../../shared/values/readers.mts';
 import { commit } from '../../../../git/test-support/git-repository.mts';
 import { renameFile, writeFiles } from '../../../../git/test-support/fixture-files.mts';

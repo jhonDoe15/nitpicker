@@ -1,4 +1,4 @@
-import { UNUSED_API_RULE_IDS } from '../../../shared/unused-api/unused-api-policy.mjs';
+import { UNUSED_API_RULE_IDS } from '../../../shared/unused-api/unused-api-policy.mts';
 import { goCouplingFindings } from './coupling/go-coupling.mts';
 import { goDomainFindings } from './domain/go-domain.mts';
 import { goFactFindings, readGoBaseline, readGoFacts } from './facts/go-fact-findings.mts';

@@ -1,4 +1,4 @@
-import { normalizeReportPath } from '../../../shared/ingest/common.mjs';
+import { normalizeReportPath } from '../../../shared/ingest/report-records.mts';
 import { createIdentities } from './identities.mts';
 import type { IngestedFinding } from './typed/ingest-types.mts';
 import type { FindingParts, PyrightDiagnostic, PyrightReport } from './typed/pyright-types.mts';

@@ -1,4 +1,4 @@
-import { JAVA_LINE_LENGTH } from '../../../../shared/project-rules/size-rules.mjs';
+import { JAVA_LINE_LENGTH } from '../../../../shared/project-rules/size-rules.mts';
 import {
   JAVA_FORMATTER,
   JAVA_FORMATTER_OPTIONS,

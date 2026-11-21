@@ -5,7 +5,7 @@ import {
   unknownArgumentError,
 } from '../diff/comparison/cli.mts';
 import { validateRunProfile } from '../quick/validate.mts';
-import { didYouMean } from '../../shared/messages/closest-match.mjs';
+import { didYouMean } from '../../shared/messages/closest-match.mts';
 import { labelFilter } from '../labels/taxonomy.mts';
 
 type BooleanOption =

@@ -3,7 +3,7 @@ import {
   BRACES as BRACES_UNTYPED,
   balancedEnd as balancedEndUntyped,
   depthChange as depthChangeUntyped,
-} from '../../../../../shared/source-text/brackets/balanced.mjs';
+} from '../../../../../shared/source-text/brackets/balanced.mts';
 
 export type Member = {
   readonly kind: 'field' | 'method';

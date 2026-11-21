@@ -1,4 +1,4 @@
-import { escapeRegExp as untypedEscape } from '../../../../../../shared/paths/glob.mjs';
+import { escapeRegExp as untypedEscape } from '../../../../../../shared/paths/glob.mts';
 import { forward } from '../../max-value-sums/source/source-file.mts';
 import { blockBranch, eachFrame, statementEnd } from '../scan.mts';
 import type { Branch, ValueCheck, ValueFound } from '../scan.mts';

@@ -1,5 +1,6 @@
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { isInsideDirectory } from '../../../../../shared/paths/contained-path.mts';
 import { PROJECT_TSCONFIG, parsedTsconfig } from '../tsconfig-files.mts';
 
 const DEPENDENCY_FOLDER = 'node_modules';
@@ -19,15 +20,11 @@ function pathsBaseOf(options: Readonly<Record<string, unknown>>): string | undef
   return typeof base === 'string' ? base : undefined;
 }
 
-function isInside(directory: string, root: string): boolean {
-  const relative = path.relative(root, directory);
-  return relative === '' || !(relative.startsWith('..') || path.isAbsolute(relative));
-}
-
 function outermost(directories: readonly string[]): string[] {
   const unique = [...new Set(directories)];
   return unique.filter(
-    (directory) => !unique.some((other) => other !== directory && isInside(directory, other)),
+    (directory) =>
+      !unique.some((other) => other !== directory && isInsideDirectory(other, directory)),
   );
 }
 

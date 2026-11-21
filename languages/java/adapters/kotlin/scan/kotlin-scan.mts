@@ -1,14 +1,15 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { pathInside as untypedPathInside } from '../../../../../shared/filesystem.mjs';
+import { pathInside as untypedPathInside } from '../../../../../shared/filesystem.mts';
 import {
   hash as untypedHash,
-  nextOccurrence as untypedNextOccurrence,
-} from '../../../../../shared/rules/finding-helpers.mjs';
+  type OccurrenceCounter,
+  occurrenceCounter,
+} from '../../../../../shared/rules/finding-parts.mts';
 import { lineOf, lineText, scanKotlinSource } from './kotlin-source.mts';
 import { kotlinDeclarations } from './security/sql-values.mts';
 import { generatedFile } from './rules/markers.mts';
-import { projectFilePaths as untypedProjectFilePaths } from '../../../../../shared/project-files/project-files.mjs';
+import { projectFilePaths as untypedProjectFilePaths } from '../../../../../shared/project-files/project-files.mts';
 import { directoryRules as generatedRules } from './rules/source-rules.generated.mts';
 import type { Reported, RuleSet, SourceRule } from './typed/rule-shapes.mts';
 import type { Scanned } from './typed/scan-shapes.mts';
@@ -16,7 +17,7 @@ import type { Scanned } from './typed/scan-shapes.mts';
 type ScannedFile = { file: string; scanned: Scanned };
 type SourceFile = { file: string; absolute: string };
 type Manifest = { kotlinSourceRoots?: string[]; kotlinTestSourceRoots?: string[] };
-type FindingState = ScannedFile & { occurrences: Map<string, number> };
+type FindingState = ScannedFile & { nextOccurrence: OccurrenceCounter };
 
 export type SourceFinding = {
   tool: string;
@@ -30,8 +31,6 @@ export type SourceFinding = {
 
 const pathInside: (root: string, relative: string) => string | undefined = untypedPathInside;
 const hash: (value: string) => string = untypedHash;
-const nextOccurrence: (occurrences: Map<string, number>, key: string) => number =
-  untypedNextOccurrence;
 const projectFilePaths: (root: string) => string[] = untypedProjectFilePaths;
 const directoryRules: readonly RuleSet[] = generatedRules;
 
@@ -65,11 +64,14 @@ function kotlinFiles(projectRoot: string, sourceRoots: string[]): SourceFile[] {
   return [...byFile.values()].toSorted((left, right) => (left.file < right.file ? -1 : 1));
 }
 
-function finding({ file, scanned, occurrences }: FindingState, reported: Reported): SourceFinding {
+function finding(
+  { file, scanned, nextOccurrence }: FindingState,
+  reported: Reported,
+): SourceFinding {
   const line = lineOf(scanned, reported.offset);
   const subject = reported.subject ?? lineText(scanned, line).trim().replaceAll(/\s+/g, ' ');
   const key = `${reported.rule}\0${subject}`;
-  const occurrence = nextOccurrence(occurrences, key);
+  const occurrence = nextOccurrence(key);
   return {
     tool: KOTLIN_SOURCE_TOOL,
     rule: reported.rule,
@@ -96,11 +98,11 @@ function scanFiles(files: ScannedFile[], rules: SourceRule[], runners: string[])
     runners,
   };
   return files.flatMap(({ file, scanned }) => {
-    const occurrences = new Map<string, number>();
+    const nextOccurrence = occurrenceCounter();
     return rules
       .flatMap((rule) => rule(scanned, { ...context, file }))
       .toSorted((left, right) => left.offset - right.offset)
-      .map((reported) => finding({ file, scanned, occurrences }, reported));
+      .map((reported) => finding({ file, scanned, nextOccurrence }, reported));
   });
 }
 

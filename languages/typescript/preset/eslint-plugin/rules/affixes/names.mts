@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 
-import { wordsOf as untypedWords } from '../../../../../../shared/naming/name-words.mjs';
+import { wordsOf as untypedWords } from '../../../../../../shared/naming/name-words.mts';
 
 export const wordsOf: (name: string) => string[] = untypedWords;
 const PENULTIMATE = -2;

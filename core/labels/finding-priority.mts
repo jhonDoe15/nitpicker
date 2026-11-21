@@ -1,7 +1,6 @@
 import { perRule, referenceEntryOf } from './finding-labels.mts';
 import { isBroadGoRule } from './go-labels.mts';
 import { isKind } from './taxonomy.mts';
-import { fieldOf } from '../../shared/values/readers.mts';
 
 type Located = { readonly tool?: unknown; readonly rule?: unknown };
 
@@ -31,8 +30,7 @@ export type BroadRuleCheck = (finding: Located) => boolean;
 export function broadRuleCheck(): BroadRuleCheck {
   return perRule(
     (toolName, ruleName) =>
-      isBroadGoRule(toolName, ruleName) ||
-      fieldOf(referenceEntryOf(toolName, ruleName), 'tier') === 'broad',
+      isBroadGoRule(toolName, ruleName) || referenceEntryOf(toolName, ruleName)?.tier === 'broad',
   );
 }
 

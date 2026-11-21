@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { GIT_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
+import { GIT_TIMEOUT_MS } from '../../../shared/processes/deadlines.mts';
 import { containedPath } from '../tool-steps/paths/contained-path.mts';
 import type { Change, FileState } from './journal-types.mts';
 

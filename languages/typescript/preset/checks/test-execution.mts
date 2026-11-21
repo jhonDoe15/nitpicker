@@ -2,7 +2,7 @@ import type { CheckExclusions, QualityCheck } from './typed/check-types.mts';
 import { MINUTE_MS, vitestVersion, crapVersion, strykerVersion } from './constants.mts';
 import { JAVASCRIPT_PRESET_FILE, TEST_RUNNER_CONFIGURATION_FILES } from './policy-files.mts';
 import { CRAP_CHECK_FILES } from '../crap/check-files.mts';
-import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
+import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mts';
 import { testConsoleCheckFor } from './test-console.mts';
 
 const COVERAGE_TIMEOUT_MS = 5 * MINUTE_MS;

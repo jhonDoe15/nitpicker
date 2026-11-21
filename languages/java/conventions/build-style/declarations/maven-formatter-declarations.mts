@@ -1,5 +1,4 @@
-import { childAt } from '../../../../../shared/values/xml.mts';
-import type { XmlElement } from '../../../../../shared/values/xml.mts';
+import { childAt, type XmlElement } from '../../../../../shared/ingest/report-records.mts';
 import { parsedXml } from './parsed-xml.mts';
 import { stepFormatterDetails } from '../java-formatter-options.mts';
 import type { FormatterDetails, FormatterEntry } from '../java-formatter-options.mts';

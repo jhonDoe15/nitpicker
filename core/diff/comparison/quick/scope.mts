@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { globMatcher } from '../../../../shared/paths/glob.mjs';
-import { byText } from '../../../../shared/text-order/by-text.mjs';
+import { globMatcher } from '../../../../shared/paths/glob.mts';
+import { byText } from '../../../../shared/text-order/by-text.mts';
 import type { ProfiledAnalyzer } from '../../../../shared/values/analyzers.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 

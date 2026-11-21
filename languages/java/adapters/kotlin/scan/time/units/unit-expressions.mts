@@ -1,7 +1,7 @@
 import {
   convertedUnit as untypedConvertedUnit,
   unitOfName as untypedUnitOfName,
-} from '../../../../../../../shared/naming/time-units/unit-names.mjs';
+} from '../../../../../../../shared/naming/time-units/unit-names.mts';
 import {
   at,
   closingIndex,
@@ -14,6 +14,7 @@ import {
 import { checkCall, reportMixed } from './unit-reports.mts';
 import { callValue, namedValue, selectorValue } from './unit-selectors.mts';
 import type { Parser, UnitArgument, UnitToken, UnitValue } from './unit-shapes.mts';
+import { drawnItems } from '../../../../../../../shared/traversal.mts';
 
 const convertedUnit: (unit: string, factor: number, operator: string) => string | undefined =
   untypedConvertedUnit;
@@ -154,16 +155,8 @@ function skippedTokens(parser: Parser, step: Step): number {
   return at(parser, '?', 1) ? CAST_TOKENS + 1 : CAST_TOKENS;
 }
 
-function upcomingSteps(parser: Parser): IterableIterator<Step> {
-  return {
-    [Symbol.iterator]() {
-      return this;
-    },
-    next(): IteratorResult<Step, undefined> {
-      const step = postfixStep(parser);
-      return step === undefined ? { done: true, value: undefined } : { done: false, value: step };
-    },
-  };
+function upcomingSteps(parser: Parser): IterableIterator<Step, undefined> {
+  return drawnItems(() => postfixStep(parser));
 }
 
 function postfix(parser: Parser): UnitValue {

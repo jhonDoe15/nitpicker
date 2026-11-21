@@ -1,4 +1,4 @@
-import { precedenceLayers } from '../../../shared/conventions/tool-precedence.mjs';
+import { precedenceLayers } from '../../../shared/conventions/tool-precedence.mts';
 import type { ConventionSource } from '../../../core/conventions/typed/convention-types.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import { fieldOf, messageOf, optionalText } from '../../../shared/values/readers.mts';

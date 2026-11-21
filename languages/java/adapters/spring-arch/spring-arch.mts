@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { createIdentityCounter } from '../../../../shared/ingest/common.mjs';
-import { exceptionHint as hintFor } from '../../../../shared/rules/exceptions.mjs';
+import { createIdentityCounter } from '../../../../shared/ingest/report-records.mts';
+import { exceptionHint as hintFor } from '../../../../shared/rules/exceptions.mts';
 import { isIntegrationTest } from '../test-times/integration-tests.mts';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import { CONTRACT_RULE, contractEntry, keepsContract, simpleName } from './contract-types.mts';

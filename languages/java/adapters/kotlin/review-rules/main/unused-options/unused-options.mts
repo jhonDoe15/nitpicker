@@ -6,12 +6,12 @@ import type { CallerNote, OptionUnit, SiteCall } from './unused-option-sites.mts
 import {
   MESSAGES,
   messageFields as untypedMessageFields,
-} from '../../../../../../../shared/policy.mjs';
-import { exceptionText as untypedExceptionText } from '../../../../../../../shared/rules/exceptions.mjs';
+} from '../../../../../../../shared/policy.mts';
+import { exceptionText as untypedExceptionText } from '../../../../../../../shared/rules/exceptions.mts';
 import {
   UNUSED_API_RULE_IDS,
   UNUSED_OPTION_SCOPES,
-} from '../../../../../../../shared/unused-api/unused-api-policy.mjs';
+} from '../../../../../../../shared/unused-api/unused-api-policy.mts';
 import { grouping } from '../../kotlin-facts.mts';
 import { declaredNames } from '../../spring/spring-names.mts';
 import { callReaches, typeAliasNames } from './call-reach.mts';

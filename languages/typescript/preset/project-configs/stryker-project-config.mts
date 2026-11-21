@@ -12,7 +12,6 @@ import {
   missingProjectConfig,
   picked,
   precedenceLayers,
-  readHeadPolicyFile,
 } from '../project-tools/typed/shared-views.mts';
 import type { ToolSettings } from '../project-tools/typed/tool-types.mts';
 import { readConfigObject } from './config-module.mts';
@@ -125,7 +124,7 @@ function flooredTimeouts(config: StrykerConfig, ranked: StrykerConfig): Record<s
 
 export function layeredStrykerConfig(
   config: StrykerConfig,
-  settings: ToolSettings | undefined = readHeadPolicyFile().tools?.['stryker'],
+  settings: ToolSettings | undefined,
 ): StrykerConfig {
   const project = projectStrykerConfig(settings);
   if (project === undefined) {

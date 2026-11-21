@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { ancestorDirectories } from '../../../shared/filesystem.mjs';
+import { ancestorDirectories } from '../../../shared/filesystem.mts';
 import { readManifest } from '../../../languages/typescript/preset/eslint-config/scope-support.mts';
 import {
   MINIMUM_NODE,

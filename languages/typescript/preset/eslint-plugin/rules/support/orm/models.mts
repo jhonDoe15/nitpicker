@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES } from '@typescript-eslint/utils';
 import type { TSESTree } from '@typescript-eslint/utils';
-import { wordsOf as untypedWordsOf } from '../../../../../../../shared/naming/secret-words.mjs';
+import { wordsOf as untypedWordsOf } from '../../../../../../../shared/naming/secret-words.mts';
 import { isClientName, stepIn } from './builders.mts';
 import type { CallChain, ChainStep, OrmKind, OrmSite } from './chains.mts';
 import { tableKey } from './table-names.mts';

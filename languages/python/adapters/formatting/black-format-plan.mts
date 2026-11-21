@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { globToRegExpSource as untypedGlobSource } from '../../../../shared/paths/glob.mjs';
+import { globToRegExpSource as untypedGlobSource } from '../../../../shared/paths/glob.mts';
 import { EMPTY_FILE, followed, shellCommand } from './format-options.mts';
 import type { BlackConfig, BlackPlanInput, FormatPlan, Wins } from './format-types.mts';
 

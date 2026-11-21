@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { globMatcher } from '../../../../../shared/paths/glob.mjs';
+import { globMatcher } from '../../../../../shared/paths/glob.mts';
 import { findingFactory } from '../../kotlin/review-rules/finding/review-finding.mts';
 import { pathInside, sourceFilesUnder, sourceRootsOf } from '../java-sources.mts';
 import type { ReviewFinding } from '../../kotlin/review-rules/typed/review-finding-types.mts';

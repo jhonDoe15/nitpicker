@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { moduleProject } from '../../builds/java-modules.mts';
 import { MAVEN_REPORT_DIRECTORY } from '../../maven/module/maven-module.mts';
-import { resolveInside } from '../../../../shared/conventions/read-inside.mjs';
+import { resolveInside } from '../../../../shared/conventions/read-inside.mts';
 import { DESIGN_FACTS_FILE, designFindings } from './design-findings.mts';
 import type { DesignModule } from './producer/design-facts.mts';
 import type { JavaFinding } from '../typed/java-values.mts';

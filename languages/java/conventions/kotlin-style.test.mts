@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { kotlinProjects } from '../adapters/kotlin/test-support/kotlin-project.mts';
 import { kotlinStyle } from './kotlin-style.mts';
-import { linkSentence as untypedLinkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence as untypedLinkSentence } from '../../../shared/messages/test-support/link-sentence.mts';
 
 const linkSentence: (key: string) => string | undefined = untypedLinkSentence;
 

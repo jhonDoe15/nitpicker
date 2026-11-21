@@ -2,7 +2,11 @@ import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { classFiles } from '../../builds/classes/class-file.mts';
 import { referencedNames, usesArchive } from '../../builds/classes/class-references.mts';
-import { type XmlElement, childrenNamed, parseXml } from '../../../../shared/values/xml.mts';
+import {
+  type XmlElement,
+  childrenNamed,
+  parseXml,
+} from '../../../../shared/ingest/report-records.mts';
 import { fieldOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { mavenModuleOf } from '../typed/maven-values.mts';
 

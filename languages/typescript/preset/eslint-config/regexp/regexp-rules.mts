@@ -1,7 +1,7 @@
 import {
   patternRuleHints as untypedPatternRuleHints,
   patternRuleIds as untypedPatternRuleIds,
-} from '../../../../../shared/rules/regex/pattern-rules.mjs';
+} from '../../../../../shared/rules/regex/pattern-rules.mts';
 
 const patternRuleHints: () => [string, string][] = untypedPatternRuleHints;
 const patternRuleIds: readonly string[] = untypedPatternRuleIds;

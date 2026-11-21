@@ -1,14 +1,11 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { outerClass as untypedOuterClass } from '../../ingest/class-names.mts';
+import { buildCouplingReport, evaluateCoupling } from '../../../../shared/rules/coupling.mts';
 import {
-  buildCouplingReport as untypedBuildCouplingReport,
-  evaluateCoupling as untypedEvaluateCoupling,
-} from '../../../../shared/rules/coupling.mjs';
-import {
-  featureRoleContract as untypedFeatureRoleContract,
+  featureRoleContract,
   PUBLIC_FACES,
-} from '../../../../shared/rules/features/feature-roles.mjs';
+} from '../../../../shared/rules/features/feature-roles.mts';
 import { cycleFindings as untypedCycleFindings } from '../../guards/cycles.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../typed/java-values.mts';
 import type {
@@ -25,16 +22,6 @@ function cycleFindings(untyped: unknown, ...args: readonly unknown[]): JavaFindi
 }
 
 const outerClass: (className: string) => string = untypedOuterClass;
-const buildCouplingReport: (input: {
-  readonly modules: readonly string[];
-  readonly edges: readonly CouplingEdge[];
-  readonly packageOf: (className: string) => string;
-  readonly fileOf: (className: string) => string;
-  readonly roleOf: (module: string) => FeatureRole;
-}) => CouplingReport = untypedBuildCouplingReport;
-const evaluateCoupling: (report: unknown, tool: string) => JavaFinding[] = untypedEvaluateCoupling;
-const featureRoleContract: (layout: unknown, face: unknown) => (file: string) => FeatureRole =
-  untypedFeatureRoleContract;
 
 const COUPLING_TOOL = 'coupling';
 const JDEPS_REPORT = 'jdeps.txt';

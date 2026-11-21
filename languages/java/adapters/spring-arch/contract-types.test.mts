@@ -9,7 +9,7 @@ import {
   featureFaceMatcher,
   readSpringArchFindings,
 } from '../spring/__tests__/spring-arch-project.mts';
-import { byText } from '../../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 
 const { temporaryRoot } = useGitFixtures();

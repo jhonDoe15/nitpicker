@@ -2,7 +2,7 @@ import nodeModule, { type ResolveFnOutput, type ResolveHookContext } from 'node:
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isMainThread } from 'node:worker_threads';
-import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 
 type NextResolve = (specifier: string, context?: Partial<ResolveHookContext>) => ResolveFnOutput;
 

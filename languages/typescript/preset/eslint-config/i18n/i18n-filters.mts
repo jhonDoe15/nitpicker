@@ -1,7 +1,7 @@
 import type { Rule } from 'eslint';
 import type { TSESTree } from '@typescript-eslint/utils';
 import { hasKind } from '../../syntax/kinds/node-kinds.mts';
-import { chainOf as untypedChainOf } from '../../../../../shared/traversal.mjs';
+import { chainOf as untypedChainOf } from '../../../../../shared/traversal.mts';
 import { fieldOf, optionalText } from '../../../../../shared/values/readers.mts';
 
 type Descriptor = Rule.ReportDescriptor & { readonly messageId?: string };

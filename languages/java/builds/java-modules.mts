@@ -2,10 +2,10 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { readJavaFindings } from '../adapters/reporting/java-reports.mts';
 import { readProjectDuplicateFindings } from '../adapters/kotlin/kotlin-duplicates.mts';
-import { retargetSentence } from '../../../shared/messages/exception-sentence.mjs';
+import { retargetSentence } from '../../../shared/messages/exception-sentence.mts';
 import { inModule } from './paths/module-path.mts';
 import { projectWideReport } from './project-wide.mts';
-import { resolveInside } from '../../../shared/conventions/read-inside.mjs';
+import { resolveInside } from '../../../shared/conventions/read-inside.mts';
 import {
   fieldOf,
   fieldsOf,

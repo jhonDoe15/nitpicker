@@ -2,8 +2,8 @@ import { fixerError } from '../tool-steps/commands/fix-command.mts';
 import {
   hygieneInputs,
   UNTRACK_RULES,
-} from '../../../shared/fix/recipes/hygiene/hygiene-inputs.mjs';
-import { exceptionMatcher } from '../../../shared/rules/exceptions.mjs';
+} from '../../../shared/fix/recipes/hygiene/hygiene-inputs.mts';
+import { exceptionMatcher } from '../../../shared/rules/exceptions.mts';
 import { fieldOf, listOf } from '../../../shared/values/readers.mts';
 
 const HYGIENE_TOOL = 'repository-hygiene';

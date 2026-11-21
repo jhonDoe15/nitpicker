@@ -22,7 +22,7 @@ import type { FindingRow, GoContext, GoPolicy, Spawn, ToolFailure } from './go-t
 import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting as untypedWithTroubleshooting,
-} from '../../../shared/messages/troubleshooting.mjs';
+} from '../../../shared/messages/troubleshooting.mts';
 import { withInternalFrames } from '../../../shared/messages/crashes/internal-error.mts';
 
 type GoOptions = {

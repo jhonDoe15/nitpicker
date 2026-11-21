@@ -1,5 +1,5 @@
-import { FOLDER_DEPTH_DEFAULTS } from '../../../../shared/project-rules/size-rules.mjs';
-import { folderDepthFindings } from '../../../../shared/rules/size/folder-depth.mjs';
+import { FOLDER_DEPTH_DEFAULTS } from '../../../../shared/project-rules/size-rules.mts';
+import { folderDepthFindings } from '../../../../shared/rules/size/folder-depth.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../typed/java-values.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 

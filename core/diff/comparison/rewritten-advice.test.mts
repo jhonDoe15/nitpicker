@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fieldAt } from '../../../scripts/json/fields.mts';
 import { fieldOf } from '../../../shared/values/readers.mts';
-import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
+import { exceptionRoute } from '../../../shared/exceptions/rule-names.mts';
 import { namedReports } from '../snapshot-root/snapshot-root.mts';
 import { compareFindings } from './test-support/typed-compare.mts';
 import { type ParsedFinding, parseFinding } from './test-support/parsed-findings.mts';

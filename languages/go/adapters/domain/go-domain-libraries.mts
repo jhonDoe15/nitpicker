@@ -1,5 +1,5 @@
-import { RULE_IDS } from '../../../../shared/policy.mjs';
-import { byText } from '../../../../shared/text-order/by-text.mjs';
+import { RULE_IDS } from '../../../../shared/policy.mts';
+import { byText } from '../../../../shared/text-order/by-text.mts';
 
 const IO_PACKAGES = new Set([
   'os',

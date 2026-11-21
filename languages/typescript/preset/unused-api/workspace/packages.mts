@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { projectFilePaths as untypedProjectFilePaths } from '../../../../../shared/project-files/project-files.mjs';
+import { projectFilePaths as untypedProjectFilePaths } from '../../../../../shared/project-files/project-files.mts';
 import {
   fieldsOf,
   fieldOf,

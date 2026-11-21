@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { analyzeGoSnapshot } from './go-runner.mts';
-import { linkSentence as untypedLinkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence as untypedLinkSentence } from '../../../shared/messages/test-support/link-sentence.mts';
 import type { Spawn } from './go-types.mts';
 
 const linkSentence: (anchor: string) => string | undefined = untypedLinkSentence;

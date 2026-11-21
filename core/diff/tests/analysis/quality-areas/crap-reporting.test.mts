@@ -3,7 +3,7 @@ import {
   applyThresholds,
   configuredAnalyzers,
 } from '../../../../../languages/typescript/preset/diff/configured-analyzers.mts';
-import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../../shared/policy.mjs';
+import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../../shared/policy.mts';
 import { hashFiles } from '../../../../../languages/typescript/preset/checks/hash.mts';
 import { compareFindings } from '../../../comparison/test-support/typed-compare.mts';
 import { fieldOf, parseJson } from '../../../../../shared/values/readers.mts';

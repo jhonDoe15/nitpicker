@@ -6,7 +6,7 @@ import {
   INTEGRATION_HOOK_TIMEOUT_MS,
   INTEGRATION_TEST_TIMEOUT_MS,
   resolveTestTimeouts,
-} from '../../shared/test-timeouts/resolve.mjs';
+} from '../../shared/test-timeouts/resolve.mts';
 import { fieldsOf, listOf } from '../json/fields.mts';
 import { readDurations } from './sequencer.mts';
 

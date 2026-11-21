@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import type { MonorepoPlan, PlanProject } from '../project-types.mts';
-import { GIT_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
+import { GIT_TIMEOUT_MS } from '../../../shared/processes/deadlines.mts';
 
 function isInsideFolder(folder: string, candidate: string): boolean {
   return candidate === folder || candidate.startsWith(folder + path.sep);

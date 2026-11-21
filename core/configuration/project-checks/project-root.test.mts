@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { copyGitTemplate, createGitTemplate } from '../../diff/git/test-support/git-repository.mts';
-import { linkSentence as untypedLinkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence as untypedLinkSentence } from '../../../shared/messages/test-support/link-sentence.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 import { resolveProjectRoot } from './project-root.mts';
 

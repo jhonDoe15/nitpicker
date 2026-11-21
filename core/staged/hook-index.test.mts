@@ -8,7 +8,7 @@ import { fixtureGit } from '../diff/git/test-support/git-repository.mts';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
 import { useCliFixtures } from '../command/test-support/cli-harness.mts';
 import type { FixtureRepository } from '../command/test-support/fixture-types.mts';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../shared/paths/checkout-module.mts';
 
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 

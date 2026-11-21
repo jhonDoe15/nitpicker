@@ -10,10 +10,11 @@ import {
   expectWellFormedXml,
 } from './test-support/format-checks/report-assertions.mts';
 import { finding, report } from './test-support/report-builders.mts';
-import { docsUrl as untypedDocsUrl } from '../../../shared/messages/docs-url.mjs';
-import { referenceLinks as untypedReferenceLinks } from '../../../shared/reference/store.mjs';
+import { docsUrl as untypedDocsUrl } from '../../../shared/messages/docs-url.mts';
+import { referenceLinks as untypedReferenceLinks } from '../../../shared/reference/store.mts';
 import { fieldAt, listOf } from '../../../scripts/json/fields.mts';
-import type { ReferenceLinks, ReportEntry } from '../../../shared/values/findings.mts';
+import type { ReportEntry } from '../../../shared/values/findings.mts';
+import type { ReferenceLinks } from '../../../shared/reference/typed/entry-types.mts';
 import { parseJson } from '../../../shared/values/readers.mts';
 
 const referenceLinks: () => ReferenceLinks = untypedReferenceLinks;

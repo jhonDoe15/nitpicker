@@ -1,12 +1,12 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
 import { kotlinRuleAliasNotices } from '../../../languages/java/adapters/kotlin/kotlin-options.mts';
 import {
   availabilityNotices,
   coChangeNotices,
-} from '../../../shared/history/co-change/notices.mjs';
-import { CHANGE_HISTORY_TOOL } from '../../../shared/project-rules/hygiene-rules.mjs';
+} from '../../../shared/history/co-change/notices.mts';
+import { CHANGE_HISTORY_TOOL } from '../../../shared/project-rules/hygiene-rules.mts';
 import { jvmOutsideRootsNotices } from '../../../languages/java/adapters/notices/outside-roots-notice.mts';
 import { declaredSourceRoots } from '../../../languages/java/adapters/notices/declared-roots.mts';
 import {
@@ -16,11 +16,11 @@ import {
 import { testFileMatcher } from '../../../languages/python/adapters/analysis/python-sources.mts';
 import { detectSourceRoots } from '../../../languages/python/adapters/execution/python-project.mts';
 import { outsideRootsNotices } from '../../../languages/typescript/preset/notices/outside-roots-notice.mts';
-import { projectFilePaths } from '../../../shared/project-files/project-files.mjs';
+import { projectFilePaths } from '../../../shared/project-files/project-files.mts';
 import {
   LAYOUT_ROOT_KEYS,
   unmatchedLayoutRootNotices,
-} from '../../../shared/notices/layout-roots-notice.mjs';
+} from '../../../shared/notices/layout-roots-notice.mts';
 
 import { uncheckedLanguageNotices } from './unchecked-languages.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
@@ -28,7 +28,7 @@ import { fieldOf, objectOf, textOf, textsOf } from '../../../shared/values/reade
 
 const EXCLUDE_KEY = 'exclude';
 
-type NoticeContext = { readonly mergeBaseSha?: unknown; readonly touchedPaths?: readonly string[] };
+type NoticeContext = { readonly mergeBaseSha?: string; readonly touchedPaths?: readonly string[] };
 type Describer = (changedFiles: readonly string[], context?: NoticeContext) => readonly string[];
 type Notices<Options> = (changedFiles: readonly string[], options: Options) => readonly string[];
 
@@ -38,12 +38,6 @@ const pythonNotices: Notices<OutsideProject> = pythonOutsideRootsNotices;
 const typescriptNotices: Notices<unknown> = outsideRootsNotices;
 const layoutNotices: (layout: unknown, files: unknown) => readonly string[] =
   unmatchedLayoutRootNotices;
-const coChangeNoticesOf: (request: {
-  readonly projectRoot: string;
-  readonly policy: object | undefined;
-  readonly ref: unknown;
-  readonly changedPaths: readonly string[];
-}) => readonly string[] = coChangeNotices;
 function sourceRootsOf(projectRoot: string, declared: unknown): readonly string[] {
   return detectSourceRoots(projectRoot, Array.isArray(declared) ? declared.map(textOf) : undefined);
 }
@@ -126,7 +120,7 @@ function coChangeDescriber(
 ): Describer | undefined {
   return runsCoChange(config)
     ? (changedFiles, { mergeBaseSha, touchedPaths } = {}) =>
-        coChangeNoticesOf({
+        coChangeNotices({
           projectRoot,
           policy: objectOf(headPolicy),
           ref: mergeBaseSha,

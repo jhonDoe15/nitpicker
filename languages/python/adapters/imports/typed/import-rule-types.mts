@@ -1,3 +1,4 @@
+import type { ExplainedCycle } from '../../../../../shared/graph/explained-cycles.mts';
 import type {
   ImportEdge,
   ImportStatement,
@@ -13,7 +14,7 @@ export type PackageEdge = {
 };
 
 export type FeatureView = {
-  readonly explainedCycles: readonly unknown[];
+  readonly explainedCycles: readonly ExplainedCycle[];
   readonly featureOf: (file: string) => string | undefined;
 };
 

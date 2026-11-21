@@ -3,11 +3,11 @@ import {
   TESTS_TIMED_OUT_RULE,
   TESTS_FAILED_SCOPE_SEPARATOR,
   testsFailOnBase,
-} from '../../../../shared/rules/finding-helpers.mjs';
+} from '../../../../shared/rules/finding-parts.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 import { failingTestsText } from '../../builds/test-failures.mts';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import type { TrackedFinding } from '../../../../core/diff/comparison/model/finding-types.mts';

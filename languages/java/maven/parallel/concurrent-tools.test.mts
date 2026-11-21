@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { temporaryTrees } from '../../test-support/temporary-trees.mts';
-import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { runToolsConcurrently } from './concurrent-tools.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';

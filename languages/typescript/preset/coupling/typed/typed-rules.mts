@@ -1,7 +1,7 @@
 import type { Finding } from '../../../adapters/static-checks/shared.mts';
-import { evaluateCoupling as untypedEvaluateCoupling } from '../../../../../shared/rules/coupling.mjs';
-import { exceptionMatcher as untypedExceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
-import { sharedUsageFindings as untypedSharedUsageFindings } from '../../../../../shared/rules/features/shared-usage.mjs';
+import { evaluateCoupling as untypedEvaluateCoupling } from '../../../../../shared/rules/coupling.mts';
+import { exceptionMatcher as untypedExceptionMatcher } from '../../../../../shared/rules/exceptions.mts';
+import { sharedUsageFindings as untypedSharedUsageFindings } from '../../../../../shared/rules/features/shared-usage.mts';
 import type { resolveLayout } from '../../layout.mts';
 import { readLayout as untypedReadLayout } from '../../head-policy.mts';
 type IsExcepted = (rule: string, ...candidates: string[]) => boolean;

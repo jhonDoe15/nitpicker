@@ -1,10 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { pathInside } from '../../../../shared/filesystem.mjs';
-import { projectFilePaths as untypedProjectFilePaths } from '../../../../shared/project-files/project-files.mjs';
+import { pathInside } from '../../../../shared/filesystem.mts';
+import { projectFilePaths as untypedProjectFilePaths } from '../../../../shared/project-files/project-files.mts';
 import {
   fileHasGeneratorHeader,
   hasGeneratorMarker,
-} from '../../../../shared/conventions/generator-marker.mjs';
+} from '../../../../shared/conventions/generated/generator-marker.mts';
 import { codeExtensionNames, mayBeGenerated } from '../layout.mts';
 
 const projectFilePaths: (root: string) => string[] = untypedProjectFilePaths;

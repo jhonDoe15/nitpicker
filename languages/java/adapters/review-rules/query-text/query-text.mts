@@ -4,7 +4,7 @@ import {
   queryProblemMessage as untypedMessage,
   queryTextProblem as untypedProblem,
   runTogether as untypedRunTogether,
-} from '../../../../../shared/rules/query-text/query-text.mjs';
+} from '../../../../../shared/rules/query-text/query-text.mts';
 import { chainFrom, chainText, stringText } from './chains.mts';
 import type { ChainOperand } from './chains.mts';
 import type { BareSource, SourceFile, Span } from '../max-value-sums/sum-types.mts';

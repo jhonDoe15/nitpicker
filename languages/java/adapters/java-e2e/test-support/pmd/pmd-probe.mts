@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, expect } from 'vitest';
 import { callUntyped, findingsOf, type JavaFinding } from '../../../typed/java-values.mts';
-import { ingestSarif as ingestSarifUntyped } from '../../../../../../shared/ingest/sarif.mjs';
+import { ingestSarif as ingestSarifUntyped } from '../../../../../../shared/ingest/sarif.mts';
 import { withPmdLevels } from '../../../reporting/sarif/pmd-levels.mts';
 import { applyRuleMessages } from '../../../../messages/rule-messages.mts';
 import { INIT_SCRIPT as INIT_SCRIPT_UNTYPED } from '../../../../builds/java-build.mts';

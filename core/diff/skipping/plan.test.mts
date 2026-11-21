@@ -7,8 +7,8 @@ import {
   PYTHON_ANALYZER_NAME,
 } from '../../../languages/python/adapters/python-analyzer.mts';
 import { configuredAnalyzers } from '../../../languages/typescript/preset/diff/configured-analyzers.mts';
-import { createHistoryAnalyzers as untypedHistory } from '../../../shared/history/analyzers.mjs';
-import { createHygieneAnalyzers as untypedHygiene } from '../../../shared/hygiene/analyzers.mjs';
+import { createHistoryAnalyzers as untypedHistory } from '../../../shared/history/analyzers.mts';
+import { createHygieneAnalyzers as untypedHygiene } from '../../../shared/hygiene/analyzers.mts';
 import { type PlannedAnalyzer, planAnalyzerRuns } from './plan.mts';
 import type { ChangedFile } from './changed-files.mts';
 

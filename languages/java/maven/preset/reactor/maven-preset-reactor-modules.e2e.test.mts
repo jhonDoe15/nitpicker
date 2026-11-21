@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fieldOf, listOf, parseJson, textOf } from '../../../../../shared/values/readers.mts';
-import { DESIGN_RULES } from '../../../../../shared/project-rules/design/design-rules.mjs';
+import { DESIGN_RULES } from '../../../../../shared/project-rules/design/design-rules.mts';
 import {
   POOL_PROTOCOL,
   writeEscape,

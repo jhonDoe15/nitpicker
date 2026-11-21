@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { childrenNamed, parseXml } from '../../../../shared/values/xml.mts';
+import { childrenNamed, parseXml } from '../../../../shared/ingest/report-records.mts';
 import { fieldOf, listOf, parseJson, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { type InheritedMethod, inheritedMethod, superclassOf } from './inherited-tests.mts';
 import type { Locate } from './typed/locate-type.mts';

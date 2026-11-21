@@ -1,4 +1,4 @@
-import { indentOf as untypedIndentOf } from '../../../shared/conventions/lines.mjs';
+import { indentOf as untypedIndentOf } from '../../../shared/conventions/lines.mts';
 import {
   largest as untypedLargest,
   smallest as untypedSmallest,

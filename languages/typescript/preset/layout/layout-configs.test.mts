@@ -7,7 +7,7 @@ import {
   useGitCheckouts,
 } from '../../../../core/diff/git/test-support/git-checkout.mts';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
-import { globMatcher as untypedGlobMatcher } from '../layout.mts';
+import { globMatcher } from '../layout.mts';
 import {
   readDefaultJscpd,
   readDefaultKnip,
@@ -26,8 +26,6 @@ import {
   resolveLayout,
   sortedUnique,
 } from './test-support/layout-views.mts';
-
-const globMatcher: (glob: string) => RegExp = untypedGlobMatcher;
 
 const { gitCheckout } = useGitCheckouts();
 

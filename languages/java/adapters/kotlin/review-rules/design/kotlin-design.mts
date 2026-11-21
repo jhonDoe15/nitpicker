@@ -1,6 +1,6 @@
-import { readHeadPolicyFile } from '../../../../../../shared/head-policy.mjs';
-import { DESIGN_RULES } from '../../../../../../shared/project-rules/design/design-rules.mjs';
-import { sharedFactFindings } from '../../../../../../shared/rules/facts/evaluate.mjs';
+import { readHeadPolicyFile } from '../../../../../../shared/head-policy.mts';
+import { DESIGN_RULES } from '../../../../../../shared/project-rules/design/design-rules.mts';
+import { sharedFactFindings } from '../../../../../../shared/rules/facts/evaluate.mts';
 import type { Finding } from '../../../../../../shared/values/findings.mts';
 import { fieldOf, messageOf } from '../../../../../../shared/values/readers.mts';
 import { readKotlinDesign } from '../report/kotlin-report.mts';
@@ -9,7 +9,7 @@ type Evaluator = (facts: unknown, options: unknown) => Finding[];
 type Environment = Record<string, string | undefined>;
 
 const evaluateShared: Evaluator = sharedFactFindings;
-const readPolicy: (environment: Environment | undefined) => unknown = readHeadPolicyFile;
+const readPolicy: (environment: Environment) => unknown = readHeadPolicyFile;
 
 export const DESIGN_TOOL = 'structure';
 export const DESIGN_FAILURE_RULE = 'design-facts';
@@ -61,7 +61,7 @@ function evaluate(
         language: 'kotlin',
         analyzerName: DESIGN_TOOL,
         rules: DESIGN_RULES,
-        policy: readPolicy(environment),
+        policy: readPolicy(environment ?? {}),
       },
     );
   } catch (error) {

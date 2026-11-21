@@ -1,4 +1,7 @@
-import { coverageMetricFinding, normalizeReportPath } from '../../../../shared/ingest/common.mjs';
+import {
+  coverageMetricFinding,
+  normalizeReportPath,
+} from '../../../../shared/ingest/report-records.mts';
 
 const BLOCK = /^(.+):\d+\.\d+,\d+\.\d+ (\d+) (\d+)$/;
 

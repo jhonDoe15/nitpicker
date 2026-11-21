@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { createFindingsCache } from '../../../../../core/diff/cache/findings-cache.mts';
 import { compareFindings, firstOf } from '../../eslint/test-support/finding-comparison.mts';
 import type { EslintFinding } from '../../eslint/typed/engine.mts';
-import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mts';
 import {
   accumulatingSpreadMessages,

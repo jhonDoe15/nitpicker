@@ -1,5 +1,5 @@
-import { folderOf as untypedFolderOf } from '../../../../shared/rules/entry-points/public-alternatives.mjs';
-import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
+import { folderOf as untypedFolderOf } from '../../../../shared/rules/entry-points/public-alternatives.mts';
+import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../typed/java-values.mts';
 import type { BoundEntry, Definition, ProjectIndex, Reexport, Token } from './jvm-reuse-types.mts';
 

@@ -1,4 +1,4 @@
-import { readInside } from '../../../../shared/conventions/read-inside.mjs';
+import { readInside } from '../../../../shared/conventions/read-inside.mts';
 import { optionalText } from '../../../../shared/values/readers.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import type { SourceEntry } from '../typed/narrowing-types.mts';

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { configError, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mjs';
+import { configError, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mts';
 import {
   BUILD_DECLARED_TOOLS,
   GRADLE_PRESETS,
@@ -15,15 +15,15 @@ import {
 } from './exception-rules/java-finding-rules.mts';
 import { JAVA_BUILD_TOOLS } from '../builds/java-build.mts';
 import { KOTLIN_FORMATTERS } from './kotlin/kotlin-options.mts';
-import { JAVA_LINE_LENGTH, JAVA_SIZE_RULES } from '../../../shared/project-rules/size-rules.mjs';
-import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
+import { JAVA_LINE_LENGTH, JAVA_SIZE_RULES } from '../../../shared/project-rules/size-rules.mts';
+import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mts';
+import { sharedRouteRule } from '../../../shared/exceptions/routes.mts';
 import { INLINE_SUPPRESSION_RULE } from './suppressions/java-suppressions.mts';
 import {
   canonical,
   FILE_LIMIT_THRESHOLDS,
   TEST_TIME_THRESHOLDS,
   parseArguments,
-  routeRuleOf,
   toolDigest,
   withInventory,
   type ConfigureOptions,
@@ -287,8 +287,8 @@ function hashWithArguments(configurationHash: string, adapterArguments: string[]
 
 const LINT_TOOLS: readonly string[] = ['archunit'];
 
-export function javaRouteRule(finding: JavaFinding): string {
+export function javaRouteRule(finding: JavaFinding): string | undefined {
   return LINT_TOOLS.includes(finding.tool) && finding.rule !== INLINE_SUPPRESSION_RULE
     ? `${finding.tool}/${finding.rule}`
-    : routeRuleOf(finding);
+    : sharedRouteRule(finding);
 }

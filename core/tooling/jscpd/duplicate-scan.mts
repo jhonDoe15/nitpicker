@@ -14,6 +14,7 @@ export type DuplicateScan = {
   readonly ignore: readonly string[];
   readonly reportRoot: string;
   readonly together: boolean;
+  readonly environment: Readonly<Record<string, string | undefined>>;
   readonly renamed: { readonly syntax: string; readonly files: readonly string[] };
 };
 
