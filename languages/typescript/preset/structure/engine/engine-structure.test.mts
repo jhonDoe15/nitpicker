@@ -8,7 +8,7 @@ import { analyzeProductionFiles } from '../analyze.mts';
 import { productionFacts } from '../reuse/project-files.mts';
 import type { ReuseFact } from '../reuse/typed/reuse-types.mts';
 import { engineMetrics } from './engine-metrics.mts';
-import { engineReuseFacts } from './engine-reuse.mts';
+import { engineReuseFacts, resolvedUnits } from './engine-reuse.mts';
 
 const ENGINE = { ...process.env, NITPICKER_STRUCTURE_ENGINE: 'required' };
 const NODE = { ...process.env, NITPICKER_STRUCTURE_ENGINE: 'off' };
@@ -42,6 +42,9 @@ const SOURCES: Readonly<Record<string, string>> = {
   ].join('\n'),
   'src/legacy.js': '<!-- an old comment\nfunction kept(a, b) {\n  return a + b;\n}\n',
   'src/broken.ts': 'export function open( {\n',
+  'src/octal.ts': 'var a = 010;\nexport function f(b: number) {\n  return a + b;\n}\n',
+  'src/escape.mts': 'export const s = "\\07";\nexport function g() {\n  return s;\n}\n',
+  'src/sloppy.js': 'var a = 08;\nfunction h() {\n  return "\\8" + a;\n}\n',
   'src/types.d.ts': 'export declare function declared(a: number): void;\n',
   'src/tab\tname.ts': 'export const named = (a: number) => a;\n',
 };
@@ -95,7 +98,12 @@ describe.runIf(hasEngine)('structure facts from the engine', () => {
     const fromNode = analyzeProductionFiles(path.join(root, 'src'), 'src', { environment: NODE });
 
     expect(fromEngine).toEqual(fromNode);
-    expect(fromEngine.unparsed.map(({ file }) => file)).toEqual(['src/broken.ts', 'src/legacy.js']);
+    expect(fromEngine.unparsed.map(({ file }) => file)).toEqual([
+      'src/broken.ts',
+      'src/escape.mts',
+      'src/legacy.js',
+      'src/octal.ts',
+    ]);
   });
 
   it('gives the reuse facts the Node analyzer gives, with imported names resolved by the caller', () => {
@@ -105,14 +113,29 @@ describe.runIf(hasEngine)('structure facts from the engine', () => {
     expect(JSON.stringify(fromEngine)).toContain('src/a.ts->./b#helper');
   });
 
+  it('resolves the names of a unit with very many children', () => {
+    const wide = path.join(root, 'wide.ts');
+    const elements = Array.from({ length: 150_000 }, () => 'h').join(', ');
+    writeFileSync(
+      wide,
+      `import { h } from './b';\nexport function wide() {\n  return [${elements}];\n}\n`,
+    );
+    const fact = engineReuseFacts([{ path: wide, display: 'wide.ts' }], ENGINE)?.get('wide.ts');
+
+    expect(
+      fact === undefined ? 0 : resolvedUnits(fact, (specifier) => `x${specifier}`).length,
+    ).toBe(1);
+  });
+
   it('leaves files it cannot list or read to the Node analyzer', () => {
-    const listed = ['src/legacy.js', 'src/tab\tname.ts', 'src/a.ts'].map((file) => ({
+    const listed = ['src/legacy.js', 'src/tab\tname.ts', 'src/gone.ts', 'src/a.ts'].map((file) => ({
       path: path.join(root, file),
       display: file,
     }));
 
     expect([...(engineReuseFacts(listed, ENGINE)?.keys() ?? [])]).toEqual(['src/a.ts']);
     expect(engineMetrics(listed, ENGINE)?.analysisOf('src/legacy.js')).toBeUndefined();
+    expect(engineMetrics(listed, ENGINE)?.analysisOf('src/gone.ts')).toBeUndefined();
   });
 });
 

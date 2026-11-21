@@ -1,3 +1,4 @@
+import { appendAll } from '../../../../../shared/lists/lists.mts';
 import { readEngineLinesSync } from '../../../../../shared/engine/engine-rows.mts';
 import type { Converted, TreeNode, UnitFact } from '../reuse/near-duplicates/typed/tree-types.mts';
 import type { DefinitionFact, ExportFacts, ImportFact } from '../reuse/typed/syntax-types.mts';
@@ -50,7 +51,9 @@ function resolveNames(
     if (name !== undefined) {
       Object.assign(node, { value: `${moduleOf(name.specifier)}#${name.name}` });
     }
-    pending.push(...node.children.flatMap((child) => nodesOf(child)));
+    for (const child of node.children) {
+      appendAll(pending, nodesOf(child));
+    }
   }
   return root;
 }
@@ -74,6 +77,9 @@ export function engineReuseFacts(
   return engineOutput('typescript-reuse', listed, environment, (out) => {
     const facts = new Map<string, EngineFileFacts>();
     for (const fact of readEngineLinesSync(out, parseFacts)) {
+      if (fact.definitions.some(({ tokens }) => !Array.isArray(tokens))) {
+        throw new TypeError('the engine is older than this nitpicker: definitions have no tokens');
+      }
       if (fact.unparsed === undefined) {
         facts.set(fact.path, fact);
       }

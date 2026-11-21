@@ -23,6 +23,18 @@ function required(environment: Environment, reason: string): undefined {
   return undefined;
 }
 
+function readOutput<Result>(
+  out: string,
+  read: (out: string) => Result,
+  environment: Environment,
+): Result | undefined {
+  try {
+    return read(out);
+  } catch (error) {
+    return required(environment, `its output could not be read: ${String(error)}`);
+  }
+}
+
 export function engineOutput<Result>(
   command: string,
   files: readonly ListedFile[],
@@ -46,7 +58,7 @@ export function engineOutput<Result>(
       timeoutMs: TIME_LIMIT_MS,
     });
     return status === 0
-      ? read(out)
+      ? readOutput(out, read, environment)
       : required(environment, `${command} ended with status ${String(status)}: ${stderr.trim()}`);
   } finally {
     rmSync(folder, { recursive: true, force: true });
