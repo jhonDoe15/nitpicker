@@ -17,6 +17,15 @@ tasks.register('nitpickerCpd') {
     inputs.file(project.ext.nitpickerToolLauncher('cpd')).withPropertyName('launcher')
     inputs.files(project.ext.nitpickerToolCommandInputs).withPropertyName('toolCommands')
     outputs.file(report).withPropertyName('report')
+    onlyIf {
+        if (sourceDirectories().any { !project.fileTree(it) { include '**/*.java' }.isEmpty() }) {
+            return true
+        }
+        report.get().asFile.delete()
+        failure.get().asFile.delete()
+        skipped.get().asFile.delete()
+        false
+    }
     doLast {
         reportDir.get().asFile.mkdirs()
         report.get().asFile.delete()

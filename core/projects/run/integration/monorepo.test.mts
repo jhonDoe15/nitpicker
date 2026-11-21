@@ -302,4 +302,51 @@ describe('a run at the top of a monorepo', () => {
     expect(result.out).not.toContain('Monorepo');
     expect(result.out).not.toContain('==');
   });
+
+  it('shortens the undeclared-projects notice and writes the full list to reports', () => {
+    const undeclared = Object.fromEntries(
+      Array.from({ length: 5 }, (_, index) => [
+        `services/s${String(index + 1)}/pyproject.toml`,
+        `[project]\nname = "s${String(index + 1)}"\n`,
+      ]),
+    );
+    const monoRoot = repository({
+      'package.json': JSON.stringify({ name: 'top', workspaces: ['packages/*'] }),
+      ...projectFiles('packages/a', {
+        'package.json': '{"name":"a","version":"1.0.0"}',
+        'src/a.ts': 'export const a = 1;\n',
+      }),
+      ...undeclared,
+    });
+    const singleRoot = repository({
+      ...projectFiles('.', {
+        'package.json': '{"name":"solo","version":"1.0.0"}',
+        'src/a.ts': 'export const a = 1;\n',
+      }),
+      ...undeclared,
+    });
+
+    const monoResult = run(monoRoot);
+    const singleResult = run(singleRoot);
+    const expectedList = Array.from(
+      { length: 5 },
+      (_, index) => `services/s${String(index + 1)} (Python project)`,
+    ).join('\n');
+
+    expect(monoResult.err).toContain('5 folders look like projects of their own:');
+    expect(monoResult.err).toContain('and 2 more.');
+    expect(monoResult.err).toContain(`Full list: ${monoResult.reports}/undeclared-projects.txt.`);
+    expect(readFileSync(`${monoResult.reports}/undeclared-projects.txt`, 'utf8')).toBe(
+      `${expectedList}\n`,
+    );
+
+    expect(singleResult.err).toContain('5 folders look like projects of their own:');
+    expect(singleResult.err).toContain('and 2 more.');
+    expect(singleResult.err).toContain(
+      `Full list: ${singleResult.reports}/undeclared-projects.txt.`,
+    );
+    expect(readFileSync(`${singleResult.reports}/undeclared-projects.txt`, 'utf8')).toBe(
+      `${expectedList}\n`,
+    );
+  });
 });

@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
-import { listRepositoryFiles } from './repository-files.mts';
+import { isSkippedLocation, listRepositoryFiles } from './repository-files.mts';
 
 const git = useGitFixtures();
 const FOLDERS = 60;
@@ -33,5 +33,37 @@ describe('listRepositoryFiles', () => {
 
     expect(files).toHaveLength(FOLDERS * FILES_PER_FOLDER + 1);
     expect(files.join('\0').length).toBeGreaterThan(10 * 1024 * 1024);
+  });
+});
+
+describe('isSkippedLocation', () => {
+  it.each([
+    'testdata/sample',
+    '__fixtures__/sample',
+    '__tests__/sample',
+    'testFixtures/sample',
+    'src/test',
+    'src/tests/sample',
+    'src/testFixtures/sample',
+    'src/dockerTest/projects/a',
+    'mod/src/intTest/projects/b',
+    'mod/src/functionalTest/projects/c',
+    'mod/src/integrationTests/projects/d',
+    'src/main/resources/template',
+    'mod/src/custom/resources/project',
+  ])('skips %s', (directory) => {
+    expect(isSkippedLocation(directory)).toBe(true);
+  });
+
+  it.each([
+    '.',
+    'src',
+    'src/main',
+    'src/main/java',
+    'services/contest',
+    'services/testRunner',
+    'build-logic/src/main/kotlin',
+  ])('keeps %s', (directory) => {
+    expect(isSkippedLocation(directory)).toBe(false);
   });
 });

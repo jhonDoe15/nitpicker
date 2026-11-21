@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "wrapper-only-timeout",
+    "mention": "start_new_session=True"
+  }
+]

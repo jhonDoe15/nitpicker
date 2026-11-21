@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "unchecked-request-conversion",
+    "mention": "ValueError"
+  }
+]

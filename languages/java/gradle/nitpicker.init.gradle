@@ -580,6 +580,32 @@ allprojects {
             nitpickerSpringArch "org.ow2.asm:asm-analysis:${pinned.asm}"
         }
         jacoco { toolVersion = pinned.jacoco }
+        def mainSources = sourceSets.main.allJava.sourceDirectories
+        def testSourceSets = {
+            def testClassDirs = tasks.withType(Test).collectMany { it.testClassesDirs.files }
+            sourceSets.findAll { sourceSet ->
+                def namedTest = isTestName(sourceSet.name) && !generatedSourceSet(project, sourceSet)
+                def ranByTests = sourceSet.output.classesDirs.files.any { testClassDirs.contains(it) }
+                sourceSet.name != 'main' && (namedTest || ranByTests)
+            }
+        }
+        project.ext.nitpickerTestSourceSets = testSourceSets
+        def testSourceDirectories = {
+            testSourceSets().collectMany { it.allJava.sourceDirectories.files }.unique()
+        }
+        def lintedMainDirs = { handWrittenDirs(project, mainSources.files) }
+        def lintedTestDirs = { handWrittenDirs(project, testSourceDirectories()) }
+        def lintedSources = { (lintedMainDirs() + lintedTestDirs()).findAll { it.exists() } }
+        def javaFiles = {
+            (lintedMainDirs() + lintedTestDirs()).findAll { it.exists() }
+                .collectMany { directory -> fileTree(directory) { include '**/*.java' }.files }.unique().sort()
+        }
+        def hasJavaFilesIn = { Collection<File> dirs ->
+            dirs.any { it.exists() && !project.fileTree(it) { include '**/*.java' }.isEmpty() }
+        }
+        def hasClassFiles = { Collection<File> dirs ->
+            dirs.any { it.exists() && !project.fileTree(it) { include '**/*.class' }.isEmpty() }
+        }
         def nitpickerCheckstyleConfig = layout.buildDirectory.file('nitpicker-checkstyle/checkstyle.xml')
         def projectCheckstyleConfig = nitpickerArgument('nitpicker.checkstyle.projectConfig')
         def mergedCheckstyleConfig = nitpickerArgument('nitpicker.checkstyle.mergedConfig')
@@ -596,6 +622,7 @@ allprojects {
             if (exportedCheckstyleConfig) {
                 outputs.upToDateWhen { false }
             }
+            onlyIf { exportedCheckstyleConfig != null || (!mergedCheckstyleConfig && !javaFiles().isEmpty()) }
             doLast {
                 def target = nitpickerCheckstyleConfig.get().asFile
                 target.parentFile.mkdirs()
@@ -668,22 +695,6 @@ allprojects {
             }
         }
 
-        def mainSources = sourceSets.main.allJava.sourceDirectories
-        def testSourceSets = {
-            def testClassDirs = tasks.withType(Test).collectMany { it.testClassesDirs.files }
-            sourceSets.findAll { sourceSet ->
-                def namedTest = isTestName(sourceSet.name) && !generatedSourceSet(project, sourceSet)
-                def ranByTests = sourceSet.output.classesDirs.files.any { testClassDirs.contains(it) }
-                sourceSet.name != 'main' && (namedTest || ranByTests)
-            }
-        }
-        project.ext.nitpickerTestSourceSets = testSourceSets
-        def testSourceDirectories = {
-            testSourceSets().collectMany { it.allJava.sourceDirectories.files }.unique()
-        }
-        def lintedMainDirs = { handWrittenDirs(project, mainSources.files) }
-        def lintedTestDirs = { handWrittenDirs(project, testSourceDirectories()) }
-        def lintedSources = { (lintedMainDirs() + lintedTestDirs()).findAll { it.exists() } }
         def capitalized = { String text -> text[0].toUpperCase() + text.substring(1) }
         def skippedByBuild = project.ext.nitpickerSkippedByBuild
         def checkedTestTasks = {
@@ -747,7 +758,7 @@ allprojects {
             mainClass = 'net.sourceforge.pmd.cli.PmdCli'
             ignoreExitValue = true // PMD exits 4 when it finds violations
             onlyIf {
-                if (!lintedSources().isEmpty()) {
+                if (!javaFiles().isEmpty()) {
                     return true
                 }
                 reportDir.get().asFile.mkdirs()
@@ -881,10 +892,6 @@ allprojects {
             onlyIf { analyzedClassDirs().any { it.exists() && it.list()?.length } }
         }
 
-        def javaFiles = {
-            (lintedMainDirs() + lintedTestDirs()).findAll { it.exists() }
-                .collectMany { directory -> fileTree(directory) { include '**/*.java' }.files }.unique().sort()
-        }
         tasks.register('nitpickerFormat', JavaExec) {
             group = 'nitpicker'
             classpath = configurations.nitpickerFormat
@@ -1007,6 +1014,16 @@ allprojects {
             group = 'nitpicker'
             dependsOn { lintedClassesTasks() }
             onlyIf { runsArchRules() }
+            onlyIf {
+                def classDirs = sourceSets.main.output.classesDirs.files +
+                    testSourceSets().collectMany { it.output.classesDirs.files }
+                if (hasClassFiles(classDirs)) {
+                    return true
+                }
+                reportDir.get().asFile.mkdirs()
+                reportDir.get().file('spring-arch.json').asFile.text = '{"root":"","violations":[]}\n'
+                false
+            }
             def ruleSources = []
             new File(initScriptDir, 'archunit').eachFileRecurse(groovy.io.FileType.FILES) {
                 if (it.name.endsWith('.java')) {
@@ -1157,7 +1174,7 @@ allprojects {
                 dependsOn tasks.named('jacocoTestReport')
                 dependsOn { checkedTestTasks() }
             }
-            onlyIf { !testsFailed }
+            onlyIf { !testsFailed && hasClassFiles(sourceSets.main.output.classesDirs.files) }
             doLast {
                 copy {
                     from tasks.named('jacocoTestReport').get().reports.xml.outputLocation
@@ -1265,6 +1282,15 @@ allprojects {
         tasks.register('nitpickerStructure') {
             group = 'nitpicker'
             def metricsSource = new File(initScriptDir, 'StructureMetrics.java')
+            onlyIf {
+                if (hasJavaFilesIn(lintedMainDirs())) {
+                    return true
+                }
+                reportDir.get().asFile.mkdirs()
+                reportDir.get().file('structure.json').asFile.text = '[]'
+                reportDir.get().file('classes.json').asFile.text = '{"files":{},"classes":[]}'
+                false
+            }
             doLast {
                 reportDir.get().asFile.mkdirs()
                 def roots = lintedMainDirs().findAll { it.exists() }.collect { relativeToRoot(it) }
@@ -1437,6 +1463,18 @@ allprojects {
         tasks.register('nitpickerJdeps') {
             group = 'nitpicker'
             dependsOn { [tasks.named('classes')] + testSourceSets().collect { tasks.named(it.classesTaskName) } }
+            onlyIf {
+                def classDirs = sourceSets.main.output.classesDirs.files +
+                    testSourceSets().collectMany { it.output.classesDirs.files }
+                if (hasClassFiles(classDirs)) {
+                    return true
+                }
+                reportDir.get().asFile.mkdirs()
+                ['jdeps.txt', 'jdeps-test.txt', 'jdeps-classes.txt'].each { name ->
+                    reportDir.get().file(name).asFile.text = ''
+                }
+                false
+            }
             doLast {
                 reportDir.get().asFile.mkdirs()
                 def mainDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() }

@@ -28,10 +28,18 @@ const SKIPPED_DIRECTORIES = new Set([
   'build',
   'target',
   'out',
+  'fixture',
   'fixtures',
+  '__fixtures__',
   'testdata',
+  'test',
+  'tests',
+  '__tests__',
+  'testFixtures',
 ]);
 const LOGIC_ROOT = /^(?:buildSrc|build-logic)(?:\/|$)/u;
+const TEST_SOURCE_SET = /^(?:test|tests|testFixtures|.*Tests?)$/u;
+const SOURCE_SET_ROOT = /(?:^|\/)src\/[^/]+$/u;
 const MAX_FILE_BYTES = 512 * 1024;
 const QUOTED = /"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'/gu;
 const ROOT_PREFIX =
@@ -53,7 +61,13 @@ function skipped(name: string, relative: string): boolean {
   if (name.startsWith('.') || SKIPPED_DIRECTORIES.has(name)) {
     return true;
   }
-  return name === 'src' && !LOGIC_ROOT.test(relative);
+  if (name === 'src' && !LOGIC_ROOT.test(relative)) {
+    return true;
+  }
+  if ((relative === 'src' || relative.endsWith('/src')) && TEST_SOURCE_SET.test(name)) {
+    return true;
+  }
+  return name === 'resources' && SOURCE_SET_ROOT.test(relative);
 }
 
 function relativeOf(directory: string, name: string): string {

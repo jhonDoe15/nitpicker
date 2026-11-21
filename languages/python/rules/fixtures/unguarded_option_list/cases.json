@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "unguarded-option-list",
+    "mention": "if not"
+  }
+]

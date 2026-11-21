@@ -1,10 +1,11 @@
-import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
   trackTemporaryPath,
   untrackTemporaryPath,
 } from '../../../../../core/tooling/temporary-files.mts';
+import { removeQuietly } from '../../../builds/cleanup/remove-quietly.mts';
 import { relativeTo } from '../../module/module-paths.mts';
 import type {
   EditorConfigFile,
@@ -84,7 +85,7 @@ export function withStyleWorkspace<Result>(
   try {
     return use(buildWorkspace(root, request));
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    removeQuietly(root);
     untrackTemporaryPath(root);
   }
 }

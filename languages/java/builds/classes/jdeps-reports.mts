@@ -8,12 +8,12 @@ import {
   openSync,
   readdirSync,
   readSync,
-  rmSync,
   writeFileSync,
   writeSync,
 } from 'node:fs';
 import path from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
+import { removeQuietly } from '../cleanup/remove-quietly.mts';
 import { hostedToolSpawn } from '../host/client/host-tools.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
@@ -120,7 +120,7 @@ function runJdeps(context: JdepsCommand): void {
     });
     runJdepsCommand({ ...context, directories });
   } finally {
-    rmSync(staged, { recursive: true, force: true });
+    removeQuietly(staged);
   }
 }
 
@@ -170,7 +170,7 @@ function writeEdges(
   } finally {
     closeSync(targets.main);
     closeSync(targets.test);
-    rmSync(outputFile, { force: true });
+    removeQuietly(outputFile);
   }
 }
 

@@ -183,12 +183,24 @@ describe('repository file helpers', () => {
     expect(isInside('a', '.')).toBe(true);
   });
 
-  it('skips hidden, dependency, build and test locations', () => {
+  it('skips hidden, dependency, build, fixture, test source-set and resource locations', () => {
     expect(isSkippedLocation('services/api')).toBe(false);
     expect(isSkippedLocation('.')).toBe(false);
+    expect(isSkippedLocation('app/src/main/java')).toBe(false);
     expect(isSkippedLocation('a/.cache')).toBe(true);
     expect(isSkippedLocation('a/node_modules/b')).toBe(true);
     expect(isSkippedLocation('a/tests')).toBe(true);
+    expect(isSkippedLocation('a/testdata/demo')).toBe(true);
+    expect(isSkippedLocation('a/__fixtures__/demo')).toBe(true);
+    expect(isSkippedLocation('a/__tests__/demo')).toBe(true);
+    expect(isSkippedLocation('a/testFixtures/demo')).toBe(true);
+    expect(isSkippedLocation('a/src/dockerTest/projects/demo')).toBe(true);
+    expect(isSkippedLocation('a/src/intTest/projects/demo')).toBe(true);
+    expect(isSkippedLocation('a/src/functionalTest/demo')).toBe(true);
+    expect(isSkippedLocation('a/src/integrationTests/demo')).toBe(true);
+    expect(isSkippedLocation('a/src/testFixtures/demo')).toBe(true);
+    expect(isSkippedLocation('a/src/main/resources/templates')).toBe(true);
+    expect(isSkippedLocation('a/src/test/resources/templates')).toBe(true);
   });
 
   it('keeps the outermost folders, and the root only when it holds the rest', () => {

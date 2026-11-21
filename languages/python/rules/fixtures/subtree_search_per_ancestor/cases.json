@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "subtree-search-per-ancestor",
+    "mention": "kind of the level"
+  }
+]

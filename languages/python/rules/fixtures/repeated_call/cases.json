@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "repeated-call",
+    "mention": "local"
+  }
+]

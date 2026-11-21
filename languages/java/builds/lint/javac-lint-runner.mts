@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { removeQuietly } from '../cleanup/remove-quietly.mts';
 import { hostedToolSpawn } from '../host/client/host-tools.mts';
 import { argumentFileToken } from './javac-options.mts';
 import { TEST_CATEGORIES, lintArguments } from './lint-arguments.mts';
@@ -117,7 +118,7 @@ function lintSources(plan: LintPlan, request: LintSources): Compiled {
       result.code === 0 ? lintedWarnings(result.log, context) : relocated(result.log, context);
     return { code: result.code, log: textOf(log) };
   } finally {
-    rmSync(work, { recursive: true, force: true });
+    removeQuietly(work);
   }
 }
 

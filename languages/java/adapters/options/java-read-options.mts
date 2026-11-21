@@ -17,6 +17,7 @@ export function readOptions(policy: JavaPolicy = {}): Readonly<Record<string, un
     featureLayout: policy.layout,
     baselineRoot: policy.baselineRoot,
     baselineMovesFile: policy.baselineMovesFile,
+    analyzeGeneratedSources: policy.analyzeGeneratedSources === true,
     baseline: { snapshot: policy.snapshot, baselineRoot: policy.baselineRoot },
   };
 }

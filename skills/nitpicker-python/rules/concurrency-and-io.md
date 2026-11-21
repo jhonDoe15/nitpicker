@@ -93,6 +93,20 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Child processes: give every wait a deadline: `subprocess.run(args, timeout=30, check=True)`,
   `process.communicate(timeout=30)`, and asyncio process waits inside `async with asyncio.timeout(30):`
   (`subprocess-without-timeout`; a build wrapper that only runs a child to completion takes an exception).
+  Never pass a project-sized file listing or classpath on the command line (pass `@args.txt`, stdin,
+  `--files-from`, `CLASSPATH` or chunks: `growing-process-arguments`); guard filtered/discovered lists with
+  `if not items:` before passing them as an option value (`unguarded-option-list`); handle `None` from
+  `Popen.poll()` or an unwaited `proc.returncode` instead of treating `None` as exit 0 (`status-only-spawn-check`);
+  decide failure from `returncode != 0`, not non-empty `stderr` (`stderr-as-failure`); keep the tail (`stderr[-4000:]`)
+  or head and tail instead of slicing error output from the front (`head-cut-error-output`); and when setting a
+  timeout on a shell or launcher, invoke the tool directly or run `Popen(..., start_new_session=True)` and kill the
+  process group with `os.killpg` on `TimeoutExpired` (`wrapper-only-timeout`).
+- Repeated work: hoist constant URL, registry, module, timezone or selector lookups out of loops
+  (`constant-lookup-in-loop`); in an ancestor-climbing loop, narrow the level kind or cache per node before searching
+  its subtree (`subtree-search-per-ancestor`); bind a tested call (`if (result := resolve(x)):`) and memoize repeated
+  recursive calls (`repeated-call`); move pure collection/sorting work below an early exit that does not use it
+  (`work-before-early-exit`); and stream or process files one input at a time instead of reading every file into a
+  list before a single pass (`read-all-before-pass`).
 - Blocking helpers stay out of `async def`: `await asyncio.to_thread(fetch_profile, url)` or
   `loop.run_in_executor(None, fetch_profile, url)` for a plain function that calls `requests`, `httpx.get`,
   `time.sleep` or `subprocess.run`, or an async client (`blocking-helper-in-async`; startup work takes an exception).

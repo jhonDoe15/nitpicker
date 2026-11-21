@@ -57,6 +57,7 @@ function reusePolicy(policy: JavaPolicy): JavaPolicy {
     baseline: { snapshot: fieldOf(policy['baseline'], 'snapshot') },
     baselineRoot: policy.baselineRoot,
     baselineMovesFile: policy.baselineMovesFile,
+    analyzeGeneratedSources: policy.analyzeGeneratedSources === true,
   };
 }
 
