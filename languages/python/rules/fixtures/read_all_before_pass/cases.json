@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "read-all-before-pass",
+    "mention": "one input at a time"
+  }
+]

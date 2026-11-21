@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "constant-lookup-in-loop",
+    "mention": "before the loop"
+  }
+]
