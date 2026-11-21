@@ -322,7 +322,7 @@ describe('workflows that select their jobs from the changed files', () => {
         fieldAt(changes, 'permissions'),
         fieldAt(changes, 'steps', 0, 'with'),
       ]).toEqual([
-        "github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')",
+        "github.event_name != 'pull_request' || github.base_ref == 'integration' || contains(github.event.pull_request.labels.*.name, 'run-ci')",
         { contents: 'read', 'pull-requests': 'read' },
         { 'sparse-checkout': '.github/workflows\nscripts/ci\n' },
       ]);
@@ -343,7 +343,7 @@ describe('the required checks of the typescript workflow', () => {
       'always()',
       "always() && github.ref != 'refs/heads/main'",
       "github.ref != 'refs/heads/main'",
-      "github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')",
+      "github.event_name != 'pull_request' || github.base_ref == 'integration' || contains(github.event.pull_request.labels.*.name, 'run-ci')",
     ]);
     expect(fieldAt(jobs, 'test', 'steps', 0, 'run')).toBe(
       [

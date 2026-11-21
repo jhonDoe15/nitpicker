@@ -10,6 +10,7 @@ const kotlinExceptionRules: readonly string[] = KOTLIN_EXCEPTION_RULES;
 
 const JAVA_PAGES = [
   'java-pmd',
+  'java-pmd-nitpicker',
   'java-checkstyle',
   'java-spotbugs',
   'java-errorprone',

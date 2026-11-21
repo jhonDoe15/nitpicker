@@ -51,6 +51,7 @@ import { rule as ruleNoDualWrite } from '../rules/writes/no-dual-write.mts';
 import { rule as ruleNoDynamicImportOfPath } from '../rules/urls/paths/no-dynamic-import-of-path.mts';
 import { rule as ruleNoEagerRelation } from '../rules/persistence/no-eager-relation.mts';
 import { rule as ruleNoEmptyEverySignal } from '../rules/empty-lists/no-empty-every-signal.mts';
+import { rule as ruleNoErrorResponseWithoutStatus } from '../rules/handlers/error-status/no-error-response-without-status.mts';
 import { rule as ruleNoExpandingReplacementString } from '../rules/patterns/replacements/no-expanding-replacement-string.mts';
 import { rule as ruleNoExternalExecutablesInUnitTests } from '../rules/test-runtime/processes/no-external-executables-in-unit-tests.mts';
 import { rule as ruleNoFalsyDefault } from '../rules/signatures/no-falsy-default.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutatin
 import { rule as ruleNoNanOnlyCheck } from '../rules/numbers/no-nan-only-check.mts';
 import { rule as ruleNoNegativeCount } from '../rules/counts/no-negative-count.mts';
 import { rule as ruleNoNewlineOnlyLineSplit } from '../rules/line-splits/no-newline-only-line-split.mts';
-import { rule as ruleNoNodeProcessPerTest } from '../rules/test-runtime/processes/no-node-process-per-test.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -153,6 +153,7 @@ export const partRules = {
   'no-dynamic-import-of-path': ruleNoDynamicImportOfPath,
   'no-eager-relation': ruleNoEagerRelation,
   'no-empty-every-signal': ruleNoEmptyEverySignal,
+  'no-error-response-without-status': ruleNoErrorResponseWithoutStatus,
   'no-expanding-replacement-string': ruleNoExpandingReplacementString,
   'no-external-executables-in-unit-tests': ruleNoExternalExecutablesInUnitTests,
   'no-falsy-default': ruleNoFalsyDefault,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-nan-only-check': ruleNoNanOnlyCheck,
   'no-negative-count': ruleNoNegativeCount,
   'no-newline-only-line-split': ruleNoNewlineOnlyLineSplit,
-  'no-node-process-per-test': ruleNoNodeProcessPerTest,
 };
