@@ -494,7 +494,7 @@ impl<'a> Resolver<'a> {
             if listed.iter().any(|(start, known, _)| known == name && *start < usage.start_byte() && !self.pattern_visible(*start, usage)) {
                 return None;
             }
-            return declared.find_map(|(_, _, kind)| kind.clone());
+            return declared.last().and_then(|(_, _, kind)| kind.clone());
         }
         None
     }
