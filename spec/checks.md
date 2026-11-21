@@ -136,6 +136,35 @@ generate, load, read or init, `JSON.parse`, `localStorage.getItem`), and `create
 `configureStore` and `new QueryClient()` called directly in a component or hook body, except in an async component or a server file. Getters, translations,
 type conversions, hook calls, `Date.now()` and built-in constructors are allowed, as are a function argument and a guarded lazy fill.
 
+React stale state: `nitpicker/react-no-stale-state-update` (production source in a React project, in `eslint-lint`)
+reports a `useState` setter called with an array, an object or arithmetic that reads the setter's own state when the
+call follows an `await` that certainly ran (outside branches, loops and optional calls; in a `try`, only its first
+statement), or follows another call of the same setter in the same block. An updater function, a literal, a value
+that does not read the state, a call in a `catch` or a nested function and a call in an effect whose dependencies list
+the state are left alone.
+
+React state updaters: `nitpicker/react-pure-state-updater` (production source in a React project, in `eslint-lint`)
+reports, inside the function passed to a `useState` setter or the reducer of `useReducer`, a call of a state setter or
+dispatch, a prop callback called as a statement, an assignment, `delete` or update on a property of the previous-state parameter,
+and a mutating array, `Set` or `Map` method on it when the `useState` type argument or initial value (or the reducer's
+parameter type) shows that kind of value. A parameter reassigned to a copy, calls in nested functions, Immer and
+setters not from `useState` are left alone.
+
+React `use`: `nitpicker/react-no-uncached-use-promise` (production source in a React project, in `eslint-lint`)
+reports `use(...)` from `react` whose argument, directly or through a `const` of the same component, is a call of an
+`async` function (declared in the file or exported by an imported project module), an inline async function call,
+`new Promise`, a `Promise` combinator or a `.then`/`.catch`/`.finally` chain. Promises from props, context, `useMemo`
+or `useState`, functions not declared `async`, async components, and, where Server Components are possible, files
+without `'use client'` whose component calls no client hook are left alone.
+
+React render side effects: `nitpicker/react-no-render-side-effect` (production source in a React project, in
+`eslint-lint`) reports, as a statement of a component or custom hook body outside nested functions, a call of the
+`useNavigate()` result, `push`, `replace`, `back` or `navigate` on a `useRouter()` or `useHistory()` result (hooks
+imported from a router package),
+`addEventListener` on `document` or a member of it, and an assignment to `document.title`. Async components and server
+files are left alone; timers, `fetch`, `window` listeners, sockets and observers in render are reported by
+`react-x/purity`.
+
 React i18next: `nitpicker/react-i18next-escape-value` (production source in a React project that depends on
 `react-i18next`, in `eslint-lint`) reports a `t(...)` or `<Trans values>` call that interpolates values into text React
 renders while no source file of the package sets `interpolation.escapeValue: false` and the call does not. The init
