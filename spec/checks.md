@@ -907,6 +907,15 @@ syntax-only and does not use the answer, or the answer for the node's name is on
 collection declared outside the walk and only node-kind tests come before the lookup. A collection that the walk's
 enclosing function also writes to (`add`, `set`, `delete`) does not count as built before the walk.
 
+Union member order: `nitpicker/no-union-order-dependence` (production source, in `eslint-lint`, with the type checker)
+reports `[0]`, `at(0)`, `at(-1)`, `find`, `findLast` and a destructured first item on the `types` of a TypeScript
+`UnionType`, `IntersectionType` or `UnionOrIntersectionType` (also after `filter`, `map`, `flatMap` or `slice`),
+`new Map(...)` and `Object.fromEntries(...)` built from a `flatMap` over it, and `===` between a `typeToString` result
+and text that holds ` | `. Not reported: a pick used only as a presence test (`if`, `!`, `?:`, `Boolean(...)`, a
+comparison with `undefined`), a `find` whose test can match one member only (identity with a value, `.value` equal to a
+literal, or a positive test of one flag a union holds once such as `Null` or `Undefined`), and a function that compares
+the same union's `.types.length` with 1 (`===` or `!==`).
+
 Interpolated log messages: `nitpicker/no-interpolated-log-message` (production source, in `eslint-lint`, when the project
 depends on pino, bunyan or winston) reports a `trace` to `fatal` call whose message is a template literal with
 expressions or a `+` concatenation with a non-literal. pino and bunyan take the values as fields first

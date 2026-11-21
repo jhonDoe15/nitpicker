@@ -667,6 +667,20 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   in the walk is not an early exit from it.
   The allowed form tests the kind and name first (`wantedNames.has(node.name.text)`) and looks up the symbol
   only for nodes that pass.
+- `nitpicker/no-union-order-dependence` (needs the type checker): a result read from a TypeScript union or
+  intersection in the order the checker lists its members: `type.types[0]`, `.at(0)`, `.at(-1)`, `.find(...)`,
+  `.findLast(...)`, `const [first] = type.types` (also after `filter`, `map`, `flatMap` or `slice`),
+  `new Map(...)` or `Object.fromEntries(...)` over `type.types.flatMap(...)`, and `===` between a
+  `checker.typeToString(...)` result and text with ` | `. TypeScript 6 lists union members in the order
+  their types were created and TypeScript 7 sorts them, so the same source gives different results. Not
+  reported: a pick used only as a presence test (`if`, `!`, `?:`, `Boolean(...)`, a comparison with
+  `undefined`); a `find` whose test can match one member only: identity (`member === stringType`), `.value`
+  equal to a literal, or a positive test of one flag a union holds once (`(member.flags & TypeFlags.Null) !== 0`
+  for `Null`, `Undefined`, `Any`, `Unknown`, `Void`, `Never`, `String`, `Number`, `BigInt`, `ESSymbol`,
+  `NonPrimitive`; a negated test is reported); and a function that compares the same union's `.types.length`
+  with 1 using `===` or `!==`. Two `typeToString` results of one run are compared safely, since a union type
+  prints the same way each time. The allowed form chooses by something the source decides
+  (declaration file and position, a name) or compares types with `checker.isTypeAssignableTo` or by symbol.
 - `nitpicker/no-secret-in-log`: a secret-named value passed to a `console` method, a logger call (`log`,
   `logger`, `winston`, `pino`, `req.log`, `this.logger` and the like), `process.stdout.write`,
   `process.stderr.write` or an `Error` constructor: as an argument, a member (not of a `tokenizer`), in a

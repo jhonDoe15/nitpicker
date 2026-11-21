@@ -9,7 +9,8 @@ const HEADER =
   'declare namespace JSX { interface IntrinsicElements { [name: string]: unknown } }\n' +
   'declare function Button(props: { disabled?: boolean; label: string; id: string }): unknown;\n' +
   'type Data = { id?: string; name?: string; kind: string };\n' +
-  'type RunOptions = { mode?: string; retries?: number; name: string };\n';
+  'type RunOptions = { mode?: string; retries?: number; name: string };\n' +
+  'interface SaveOptions { mode?: string }\ninterface SaveConfig { mode?: string }\ninterface Job { mode?: string }\n';
 
 function found(key: string, messageId = 'explicitFirst') {
   return [{ messageId, data: { key } }];
@@ -46,6 +47,8 @@ tester.run('no-shadowed-spread-key', rule, {
     'export function f(id: string, requestDefaults: Data) { return { id, ...requestDefaults }; }',
     'export function f(id: string, reqOverrides: Data) { return { id, ...reqOverrides }; }',
     'export function f(signal: string) { return { signal, ...({ duplex: "half" } as { id?: string }) }; }',
+    'export function f(options: Job | SaveOptions) { return { ...options, mode: "fast" }; }',
+    'export function f(options: SaveOptions | Job) { return { ...options, mode: "fast" }; }',
   ].map((body) => typed(`${HEADER}${body}`)),
   invalid: [
     typed(
@@ -64,6 +67,10 @@ tester.run('no-shadowed-spread-key', rule, {
     typed(
       `${HEADER}export function f(options: RunOptions) { return { ...options, retries: 3 }; }`,
       found('retries', 'defaultAfter'),
+    ),
+    typed(
+      `${HEADER}export function f(options: SaveConfig | SaveOptions) { return { ...options, mode: "fast" }; }`,
+      found('mode', 'defaultAfter'),
     ),
     typed(
       `${HEADER}export function f(p: { label: string; id: string; disabled?: boolean }, loading: boolean) { ` +

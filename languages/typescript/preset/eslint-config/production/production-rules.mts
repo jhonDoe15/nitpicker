@@ -20,6 +20,7 @@ export const productionSourceRules: Record<string, Linter.RuleEntry> = {
   'nitpicker/no-compatibility-shim': 'error',
   'nitpicker/untested-round-trip': 'error',
   'nitpicker/no-type-lookup-per-node': 'error',
+  'nitpicker/no-union-order-dependence': 'error',
 };
 
 export const productionGuardEntries: Record<string, Linter.RuleEntry> = {
