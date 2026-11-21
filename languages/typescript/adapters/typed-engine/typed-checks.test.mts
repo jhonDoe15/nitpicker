@@ -59,12 +59,13 @@ it.runIf(hasEngine)(
 it.runIf(hasEngine)(
   'reports a project the compiler cannot load as unavailable, also when required',
   () => {
+    const project = path.join(path.dirname(FIXTURE), 'missing', 'tsconfig.json');
     const outcome = runTypedChecks({
-      project: path.join(path.dirname(FIXTURE), 'missing', 'tsconfig.json'),
+      project,
       checks: ['public-contracts'],
       environment: { ...process.env, NITPICKER_TYPED_ENGINE: 'required' },
     });
 
-    expect(outcome.unavailable).toMatch(/does not exist$/u);
+    expect(outcome).toEqual({ unavailable: `types unavailable: ${project} does not exist` });
   },
 );

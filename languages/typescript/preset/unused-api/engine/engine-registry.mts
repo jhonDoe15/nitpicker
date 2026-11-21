@@ -1,6 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { runTypedChecks } from '../../../adapters/typed-engine/typed-checks.mts';
+import type { Environment } from '../../../../../shared/processes/environment.mts';
 import { fieldOf, listOf, textsOf } from '../../../../../shared/values/readers.mts';
 import { type ProgramRequest, projectProgramInputs } from '../program.mts';
 import type { ContextLayout, FileInfo, Reference } from '../typed/context-types.mts';
@@ -15,20 +16,16 @@ export type EngineRegistry = {
 type Request = ProgramRequest & {
   readonly layout: ProgramRequest['layout'] & ContextLayout;
   readonly react: boolean;
-  readonly environment: NodeJS.ProcessEnv;
+  readonly environment: Environment;
 };
 
 const CHECK = 'unused-api';
+const WRITTEN_KINDS: readonly Reference['kind'][] = ['call', 'escape'];
 
 function referenceOf(value: unknown): Reference {
   const passes = fieldOf(value, 'passes');
   return {
-    kind:
-      fieldOf(value, 'kind') === 'call'
-        ? 'call'
-        : fieldOf(value, 'kind') === 'escape'
-          ? 'escape'
-          : 'defaults',
+    kind: WRITTEN_KINDS.find((kind) => kind === fieldOf(value, 'kind')) ?? 'defaults',
     passes:
       passes === null || passes === undefined
         ? undefined
@@ -76,7 +73,7 @@ export function engineRegistry(request: Request): EngineRegistry | undefined {
     },
     checks: [CHECK],
     inputs: { [CHECK]: { react: request.react, files: files.input } },
-    environment: { ...process.env, ...request.environment },
+    environment: request.environment,
   });
   const result = outcome.checks?.[CHECK];
   if (result === undefined) {

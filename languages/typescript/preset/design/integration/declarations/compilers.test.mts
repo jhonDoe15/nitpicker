@@ -87,16 +87,30 @@ describe('facts that do not depend on the order a compiler lists things in', () 
       const edge = factsOf(writeInto(root));
 
       expect(byId(edge.callables, 'src/brand.ts#brand').params).toEqual([
-        { name: 'id', type: '`id-${string&{k:"a"|"z";}}`' },
-        { name: 'accent', type: '`\u00E9${string}`' },
+        { name: 'id', type: `\`id-\${string&{k:"a"|"z";}}\`` },
+        { name: 'accent', type: `\`\u00E9\${string}\`` },
       ]);
-      expect(edge.types.map(({ id }) => id)).not.toContain('src/global.ts#global.Win');
-      expect(byId(edge.callables, 'src/use.ts#caller').calls).toMatchObject([
-        { target: 'src/lib.ts#helper' },
+      expect(edge.types.map(({ id }) => id)).toEqual([
+        'src/brand.ts',
+        'src/global.ts',
+        'src/hold.ts',
+        'src/hold.ts#Base',
+        'src/hold.ts#Derived',
+        'src/hold.ts#Marked',
+        'src/lib.ts',
+        'src/use.ts',
       ]);
-      expect(byId(edge.callables, 'src/hold.ts#hold').calls).toMatchObject([
-        { target: 'src/hold.ts#Derived.constructor' },
-        { target: 'src/hold.ts#Derived.[Symbol.dispose]', cleanup: true },
+      expect(byId(edge.callables, 'src/use.ts#caller').calls).toEqual([
+        { target: 'src/lib.ts#helper', line: 2 },
+      ]);
+      expect(byId(edge.callables, 'src/hold.ts#hold').calls).toEqual([
+        { target: 'src/hold.ts#Derived.constructor', line: 4 },
+        {
+          target: 'src/hold.ts#Derived.[Symbol.dispose]',
+          line: 4,
+          cleanup: true,
+          receiver: 'kept',
+        },
       ]);
       expect(byId(edge.callables, 'src/hold.ts#Marked.constructor').entry).toBeUndefined();
     } finally {
@@ -108,7 +122,7 @@ describe('facts that do not depend on the order a compiler lists things in', () 
 function writeInto(root: string): string {
   const files: Record<string, string> = {
     'src/brand.ts': [
-      "export function brand(id: `id-${string & { k: 'z' | 'a' }}`, accent: `\u00E9${string}`): void {",
+      `export function brand(id: \`id-\${string & { k: 'z' | 'a' }}\`, accent: \`\u00E9\${string}\`): void {`,
       '  void id; void accent;',
       '}',
     ].join('\n'),

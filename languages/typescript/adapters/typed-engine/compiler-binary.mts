@@ -1,18 +1,22 @@
-import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { resolveTool } from '../../../../core/tooling/tool-resolution.mts';
+import { isToolInstalled, resolveTool } from '../../../../core/tooling/tool-resolution.mts';
+import { isFile } from '../../../../shared/filesystem.mts';
 
+const API_PACKAGE = '@typescript/native';
 const COMPILER = process.platform === 'win32' ? 'tsc.exe' : 'tsc';
+const PLATFORM_PACKAGE = `@typescript/typescript-${process.platform}-${process.arch}`;
 
-export function nativeCompilerPath(apiRoot?: string): string | undefined {
-  const platformPackage = `@typescript/typescript-${process.platform}-${process.arch}/package.json`;
-  try {
-    const root = apiRoot ?? resolveTool('@typescript/native').root;
-    const manifest = createRequire(path.join(root, 'package.json')).resolve(platformPackage);
-    const compiler = path.join(path.dirname(manifest), 'lib', COMPILER);
-    return existsSync(compiler) ? compiler : undefined;
-  } catch {
+function installedApiRoot(): string | undefined {
+  return isToolInstalled(API_PACKAGE) ? resolveTool(API_PACKAGE).root : undefined;
+}
+
+export function nativeCompilerPath(apiRoot = installedApiRoot()): string | undefined {
+  if (apiRoot === undefined) {
     return undefined;
   }
+  const folders = createRequire(path.join(apiRoot, 'package.json')).resolve.paths(PLATFORM_PACKAGE);
+  return (folders ?? [])
+    .map((folder) => path.join(folder, PLATFORM_PACKAGE, 'lib', COMPILER))
+    .find(isFile);
 }

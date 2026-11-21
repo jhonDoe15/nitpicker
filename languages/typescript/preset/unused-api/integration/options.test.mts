@@ -175,7 +175,14 @@ export const shown = [show({ kind: 'plain' }), showSwapped({ kind: 'bare' })];
 
 describe('a project whose config sets baseUrl', () => {
   const CONFIG = JSON.stringify({
-    compilerOptions: { baseUrl: '.', module: 'ESNext', moduleResolution: 'Bundler', noEmit: true },
+    compilerOptions: {
+      baseUrl: '.',
+      lib: ['ES2022'],
+      module: 'ESNext',
+      moduleResolution: 'Bundler',
+      noEmit: true,
+      types: [],
+    },
     include: ['src'],
   });
   const FILES = {
