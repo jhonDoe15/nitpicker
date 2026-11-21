@@ -793,8 +793,8 @@ impl<'a> Resolver<'a> {
                 return Some(Call { receiver: Type::class(&chosen.declaring), ..chosen });
             }
             let strict = self.select(owner.clone(), &candidates, &shapes);
-            let found = strict.or_else(|| self.loosened(call, &shapes).and_then(|loose| self.select(owner, &candidates, &loose)));
-            return found.map(|call| Call { raw, ..call });
+            let found = strict.or_else(|| self.loosened(call, &shapes).and_then(|loose| self.select(owner.clone(), &candidates, &loose)));
+            return found.map(|call| Call { raw: raw || (!call.method.is_static && self.index.seen_raw(&owner, &call.declaring)), ..call });
         }
         None
     }
@@ -1025,10 +1025,16 @@ impl<'a> Resolver<'a> {
         if !matches!(&written, Type::Class(_, given) if given.is_empty()) {
             return Some(written);
         }
+        // `new ArrayList()` without a diamond stays raw.
+        if creation.field("type").is_none_or(|kind| kind.kind() != "generic_type") {
+            return Some(written);
+        }
         let Some(call) = self.resolve_constructor(creation) else { return Some(written) };
         let map = self.call_map(&call, creation, true);
         let inferred: Vec<Type> = info.type_parameters.iter().map(|(name, _)| Type::Variable(name.clone()).substitute(&map)).collect();
-        if inferred.iter().any(Type::open) { Some(written) } else { Some(Type::Class(written.name(), inferred)) }
+        // PMD leaves the type raw when a type parameter bounded by the class itself, `B extends X<B>`, stays undecided.
+        let circular = info.type_parameters.iter().zip(&inferred).any(|((_, bound), found)| bound.name() == written.name() && found == bound);
+        if circular || inferred.iter().any(Type::open) { Some(written) } else { Some(Type::Class(written.name(), inferred)) }
     }
 
     fn unify(&self, pattern: &Type, actual: &Type, variables: &[String], map: &mut HashMap<String, Type>) {

@@ -107,6 +107,12 @@ fn types_and_signatures_match_what_pmd_resolves() {
     same_as_pmd("types", "types");
 }
 
+/// PMD erases the supertypes of a raw type, so a raw `Serde` is no `Closeable` there, and a type variable is exactly no class.
+#[test]
+fn raw_types_and_type_variables_match_pmd() {
+    same_as_pmd("raw", "raw");
+}
+
 #[test]
 fn line_breaks_encodings_and_functions_match_pmd() {
     same_as_pmd("edges", "edges");

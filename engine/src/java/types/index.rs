@@ -28,6 +28,8 @@ pub struct TypeIndex {
     /// Ancestors per class, kept once the index no longer changes.
     lineages: std::sync::RwLock<HashMap<String, std::sync::Arc<Vec<String>>>>,
     settled: bool,
+    /// The classes of the source files that the class path holds too.
+    compiled: HashSet<String>,
     pub binary_classes: usize,
     pub source_classes: usize,
     /// Packages whose methods must have their result used, each with its subpackages: the outermost source packages.
@@ -111,7 +113,12 @@ impl TypeIndex {
             .map(|entry| if entry.is_dir() { folder_classes(entry) } else { archive_classes(entry) })
             .collect();
         for (name, origin) in loaded.into_iter().flatten() {
-            if !anonymous(&name) && !self.classes.contains_key(&name) {
+            if anonymous(&name) {
+                continue;
+            }
+            if self.classes.contains_key(&name) {
+                self.compiled.insert(name);
+            } else {
                 self.classes.insert(name, Slot::Later(origin, OnceLock::new()));
                 self.binary_classes += 1;
             }
@@ -132,6 +139,9 @@ impl TypeIndex {
     }
 
     pub fn put(&mut self, class: ClassInfo) {
+        if matches!(self.classes.get(&class.name), Some(Slot::Later(..))) {
+            self.compiled.insert(class.name.clone());
+        }
         self.classes.insert(class.name.clone(), Slot::Ready(class));
     }
 
@@ -202,6 +212,58 @@ impl TypeIndex {
             return of.split('&').all(|part| self.is_subtype(name, part));
         }
         name == of || of == "java.lang.Object" || self.lineage(name).iter().any(|ancestor| ancestor == of)
+    }
+
+    /// PMD's typeIs for a class type. PMD erases the supertypes of a raw type, and an erased type that takes no type
+    /// arguments is no subtype of its plain self there: a raw `Serde` is no `Closeable`, while `Serde<String>` is one.
+    /// PMD loads the named class from the class path. One it finds only in the sources it takes for a class without
+    /// type parameters, so a generic class of the sources is treated the same way.
+    pub fn is_subtype_as_pmd(&self, name: &str, raw: bool, of: &str) -> bool {
+        if !self.is_subtype(name, of) {
+            return false;
+        }
+        if name == of || name.contains('&') || of.contains('&') || matches!(of, OBJECT | "java.lang.Cloneable" | "java.io.Serializable") {
+            return true;
+        }
+        let Some(target) = self.get(of) else { return true };
+        let loaded = matches!(self.classes.get(of), Some(Slot::Later(..))) || self.compiled.contains(of);
+        if loaded && !target.type_parameters.is_empty() {
+            return true;
+        }
+        let raw = raw && self.generic(name);
+        self.plain_path(name, raw, (of, target.is_interface), &mut HashSet::new()).unwrap_or(true)
+    }
+
+    /// The type a declaration stands for: a generic class with a wildcard for each parameter, so it does not read as raw.
+    pub fn declared(&self, name: &str) -> Type {
+        Type::Class(name.to_string(), vec![Type::Wildcard; self.get(name).map_or(0, |info| info.type_parameters.len())])
+    }
+
+    /// Whether a member of the declaring class is reached through a raw type from the owner: the owner is raw, or a
+    /// class on the way up names its parent without type arguments. PMD erases the types of such members.
+    pub fn seen_raw(&self, owner: &Type, declaring: &str) -> bool {
+        let Type::Class(name, given) = owner else { return false };
+        let Some(target) = self.get(declaring).filter(|target| !target.type_parameters.is_empty()) else { return false };
+        let raw = given.is_empty() && self.generic(name);
+        self.plain_path(name, raw, (declaring, target.is_interface), &mut HashSet::new()) == Some(false)
+    }
+
+    /// Whether the first way up to the class, superclass first, keeps its type arguments at every step.
+    fn plain_path(&self, name: &str, erased: bool, target: (&str, bool), dead: &mut HashSet<String>) -> Option<bool> {
+        if name == target.0 {
+            return Some(!erased);
+        }
+        let info = self.get(name).filter(|_| !dead.contains(name))?;
+        let parents = info.superclass.iter().chain(info.interfaces.iter().filter(|_| target.1));
+        for parent in parents {
+            let bare = info.generic_supers.iter().find(|above| above.name() == *parent).is_none_or(|above| matches!(above, Type::Class(_, given) if given.is_empty()));
+            let found = self.plain_path(parent, erased || (bare && self.generic(parent)), target, dead);
+            if found.is_some() {
+                return found;
+            }
+        }
+        dead.insert(name.to_string());
+        None
     }
 
     /// The generic type of each component of a record, in order.
