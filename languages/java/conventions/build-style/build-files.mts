@@ -8,7 +8,11 @@ const MAX_BUILD_FILES = 200;
 const BUILD_FILE =
   /(?:^|\/)(?:(?:build|settings)\.gradle(?:\.kts)?|pom\.xml|[^/]*\.versions\.toml)$/u;
 const LOGIC_FILE = /(?:^|\/)(?:buildSrc|build-logic)\/.*\.(?:gradle|gradle\.kts|kt|groovy)$/u;
-const SKIPPED_DIRECTORY = /(?:^|\/)(?:node_modules|build|target|out|\.gradle|fixtures|testdata)\//u;
+const SKIPPED_BUILD_DIRECTORY = /(?:^|\/)(?:node_modules|build|target|out|\.gradle)\//u;
+const SKIPPED_TEST_DIRECTORY =
+  /(?:^|\/)(?:fixture|fixtures|__fixtures__|testdata|test|tests|__tests__|testFixtures)\//u;
+const SKIPPED_SOURCE_SET = /(?:^|\/)src\/(?:test|tests|testFixtures|[^/]*Tests?)\//u;
+const RESOURCE_DIRECTORY = /(?:^|\/)src\/[^/]+\/resources\//u;
 const SOURCE_DIRECTORY = /(?:^|\/)src\//u;
 
 function buildFileKind(file: string): 'xml' | 'toml' | 'code' {
@@ -18,8 +22,17 @@ function buildFileKind(file: string): 'xml' | 'toml' | 'code' {
   return file.endsWith('.toml') ? 'toml' : 'code';
 }
 
+function isSkippedPath(file: string): boolean {
+  return (
+    SKIPPED_BUILD_DIRECTORY.test(file) ||
+    SKIPPED_TEST_DIRECTORY.test(file) ||
+    SKIPPED_SOURCE_SET.test(file) ||
+    RESOURCE_DIRECTORY.test(file)
+  );
+}
+
 function isBuildFile(file: string): boolean {
-  if (SKIPPED_DIRECTORY.test(file)) {
+  if (isSkippedPath(file)) {
     return false;
   }
   return LOGIC_FILE.test(file) || (BUILD_FILE.test(file) && !SOURCE_DIRECTORY.test(file));

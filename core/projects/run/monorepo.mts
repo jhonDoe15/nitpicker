@@ -15,6 +15,7 @@ import {
   submoduleHint,
   undeclaredHint,
   unlistedHint,
+  writeUndeclaredProjects,
 } from './messages.mts';
 import {
   comparisonOf,
@@ -44,14 +45,17 @@ type MonorepoResult = { readonly exitCode?: ExitCode; readonly extraCli?: object
 const memberOf: (plan: MonorepoPlan, directory: string | undefined) => PlanProject | undefined =
   memberProjectOf;
 
-function noticesOf(plan: MonorepoPlan, changed: readonly string[], cli: MonorepoCli): string[] {
+function noticesOf(plan: MonorepoPlan, prepared: Prepared, cli: MonorepoCli): string[] {
+  const { outputRoot, comparison } = prepared;
+  const listFile = writeUndeclaredProjects(outputRoot, plan.undeclared, plan.root);
   const notices: string[] = [
     ...undeclaredHint(
       plan.undeclared,
       plan.projects.map(({ path: folder }) => folder),
+      { listFile },
     ),
-    ...unlistedHint(unlistedFolders(plan, changed)),
-    ...submoduleHint(submodulePaths(plan).filter((folder) => changed.includes(folder))),
+    ...unlistedHint(unlistedFolders(plan, comparison.changed)),
+    ...submoduleHint(submodulePaths(plan).filter((folder) => comparison.changed.includes(folder))),
   ];
   for (const notice of notices) {
     cli.stderr.write(`nitpicker: ${notice}\n`);
@@ -107,7 +111,7 @@ function execute(planned: Planned, cli: MonorepoCli, runProject: RunProject): Ex
   const startedAt = Date.now();
   const prepared = prepare(plan, cli);
   const { outputRoot, analyzers, comparison, outside, rows } = prepared;
-  const notices = noticesOf(plan, comparison.changed, cli);
+  const notices = noticesOf(plan, prepared, cli);
   cli.stdout.write(renderPlan({ plan, rows, outside, details: cli.options.details }));
   const finish = finisher(planned, prepared, { cli, notices, startedAt });
   const context = { cli, runProject, outputRoot, comparison, analyzers };
@@ -160,7 +164,7 @@ function aroundMember(
   const { cli, currentProjectRoot } = entry;
   const enclosing = enclosingPlan(currentProjectRoot);
   if (enclosing === undefined) {
-    return singleMode(inspection, cli);
+    return singleMode(inspection, cli, currentProjectRoot);
   }
   return requestsProjects(cli)
     ? { exitCode: atTop(enclosing, entry, runProject) }

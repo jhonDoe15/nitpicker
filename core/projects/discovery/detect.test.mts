@@ -234,10 +234,18 @@ describe('JVM builds', () => {
     ]);
   });
 
-  it('skips builds inside fixtures, test folders and dependency folders', () => {
+  it('skips builds inside fixtures, test folders, test source-sets, resources and dependency folders', () => {
     const result = detect({
       'app/build.gradle': '',
       'app/src/test/fixtures/x/pom.xml': '<project/>',
+      'app/src/dockerTest/projects/sample/build.gradle': '',
+      'app/src/intTest/projects/sample/build.gradle.kts': '',
+      'app/src/functionalTest/projects/sample/settings.gradle': '',
+      'app/src/testFixtures/projects/sample/pom.xml': '<project/>',
+      'app/src/main/resources/archetype/pom.xml': '<project/>',
+      'testdata/sample/build.gradle': '',
+      '__fixtures__/sample/pom.xml': '<project/>',
+      '__tests__/sample/pyproject.toml': '[project]\nname = "sample"\n',
       'node_modules/dep/pom.xml': '<project/>',
       'tests/pom.xml': '<project/>',
       '.hidden/pom.xml': '<project/>',

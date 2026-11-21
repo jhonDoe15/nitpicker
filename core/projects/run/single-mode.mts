@@ -1,5 +1,6 @@
+import { outputRootFor } from '../../diff/reporting/reporters.mts';
 import { enclosingMember } from '../plan/enclosing.mts';
-import { undeclaredHint } from './messages.mts';
+import { undeclaredHint, writeUndeclaredProjects } from './messages.mts';
 import type { Inspection, MonorepoCli, MonorepoPlan, PlanProject } from '../project-types.mts';
 
 type Enclosing = {
@@ -15,6 +16,7 @@ export function requestsProjects(cli: MonorepoCli): boolean {
 export function singleMode(
   inspection: Inspection,
   cli: MonorepoCli,
+  currentProjectRoot: string,
 ): { readonly extraCli: object } {
   if (requestsProjects(cli)) {
     throw new Error(
@@ -22,7 +24,14 @@ export function singleMode(
         'List them in "projects" of nitpicker.config.json, or drop --project to check this one project.',
     );
   }
-  for (const notice of undeclaredHint(inspection.undeclared ?? [])) {
+  const undeclared = inspection.undeclared ?? [];
+  const outputRoot = outputRootFor(
+    currentProjectRoot,
+    cli.options.outputRoot,
+    cli.options.all ? 'snapshot' : 'diff',
+  );
+  const listFile = writeUndeclaredProjects(outputRoot, undeclared, currentProjectRoot);
+  for (const notice of undeclaredHint(undeclared, ['.'], { listFile })) {
     cli.stderr.write(`nitpicker: ${notice}\n`);
   }
   return { extraCli: {} };
