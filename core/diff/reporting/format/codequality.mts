@@ -39,7 +39,7 @@ export function* eachCodeQualityIssue(
   }
 }
 
-export function codeQualityIssues(
+function codeQualityIssues(
   findings: readonly ReportEntry[],
   options: { readonly projectPath?: string | undefined } = {},
 ): unknown[] {

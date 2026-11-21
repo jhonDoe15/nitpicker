@@ -40,24 +40,34 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-function shared(strings: Map<string, string>, value: unknown): unknown {
-  if (typeof value === 'string') {
-    const known = strings.get(value);
-    if (known !== undefined) {
-      return known;
-    }
-    strings.set(value, value);
+function sharedString(strings: Map<string, string>, value: unknown): unknown {
+  if (typeof value !== 'string') {
     return value;
   }
-  if (Array.isArray(value)) {
-    return value.map((item) => shared(strings, item));
+  const known = strings.get(value);
+  if (known !== undefined) {
+    return known;
   }
-  if (isRecord(value)) {
-    for (const [key, item] of Object.entries(value)) {
-      setMember(value, key, shared(strings, item));
+  strings.set(value, value);
+  return value;
+}
+
+function shared(strings: Map<string, string>, root: unknown): unknown {
+  const pending: unknown[] = [root];
+  for (const value of pending) {
+    if (Array.isArray(value)) {
+      for (const [index, item] of value.entries()) {
+        value[index] = sharedString(strings, item);
+        pending.push(item);
+      }
+    } else if (isRecord(value)) {
+      for (const [key, item] of Object.entries(value)) {
+        setMember(value, key, sharedString(strings, item));
+        pending.push(item);
+      }
     }
   }
-  return value;
+  return sharedString(strings, root);
 }
 
 function attach(state: LineState, value: unknown, key: string | undefined): void {

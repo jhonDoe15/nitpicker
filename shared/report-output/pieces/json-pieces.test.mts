@@ -92,7 +92,7 @@ describe('JSON written in pieces', () => {
   ])(
     'prints the items of %s one at a time exactly as JSON.stringify prints the list',
     (_, items) => {
-      function* oneAtATime(): Generator<unknown> {
+      function* oneAtATime(): Generator {
         yield* items;
       }
 
