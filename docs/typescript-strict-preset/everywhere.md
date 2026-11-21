@@ -1958,6 +1958,89 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   hangs the program. A program whose purpose is to run a child to completion, such as a build
   wrapper, takes an exception. The rule reads no types, so it behaves the same in the JavaScript
   preset.
+- An option built from a list that can be empty is guarded (`nitpicker/no-unguarded-option-list`, production files).
+  With an empty list a tool gets `--dir ''` or takes the next flag as the value, and most tools then fall back to
+  their default (the working directory, every file) or reject the run. Reported: in the argument list of `spawn`,
+  `spawnSync`, `execFile`, `execFileSync`, `fork` or execa, a flag (`-x`, `--name`) followed by `list.join(...)`,
+  and an object with `files` and a configuration key (`rules`, `languageOptions`, `plugins`, `settings`,
+  `linterOptions`, `processor`) that is pushed or put into an array with `files` taken from such a list (ESLint
+  rejects an empty `files`). Only lists that the same function builds with `filter` or `flatMap` or from a file
+  listing or glob are reported, and only when the join is the only read of the list, so a size check or any other
+  use of it (a loop, a destructuring, a second join) keeps it from being reported. Not reported: lists from a
+  parameter, literal lists, a `map` of a list, `--flag=${...}` in one argument, and a flag followed by a spread
+  (`'--fix', ...files`), since the rule cannot tell a flag that takes a value from one that does not. The Java
+  preset has the same rule as `pmd/UnguardedOptionList`.
+- A list that grows with the project is not passed as process arguments (`nitpicker/no-growing-process-arguments`,
+  production files). Linux limits one argument to 128 KiB and the command line to a few MiB, Windows the command
+  line to 32,767 characters; past that the process does not start (`E2BIG`). Reported in the argument list of
+  `spawn`, `spawnSync`, `execFile`, `execFileSync`, `fork` and execa (and in the `${...}` parts of an `exec` or
+  `execSync` command): a spread of a file listing or glob result (`readdirSync`, `readdir`, `glob`, `globSync`,
+  `fast-glob`, `globby`, `glob.sync`, a `readdir` on `fs` or `fs/promises`, also through `filter`, `map`, `flatMap`,
+  `sort`, `concat`, `Array.from` or a `const`), and one argument that joins such a list or joins any list that is
+  not a literal with `path.delimiter` (a class path or a path list). An array literal joined with `path.delimiter`
+  is reported only when it spreads a listing. Not reported: lists the rule cannot trace to a listing
+  (`...changedFiles` from a parameter), a `slice` of a listing, chunks, literal lists, the list in `env`
+  (`CLASSPATH`) and an `@args` file. The Java preset reports the class-path form as `pmd/GrowingProcessArguments`.
+- A subprocess deadline stops the work, not only a wrapper around it (`nitpicker/no-wrapper-only-timeout`,
+  production files). A `timeout`, `signal` or `cancelSignal` kills only the process that was started; when that is a
+  shell, a launcher or a script, the real work runs in its child and keeps running after the call returns. Reported:
+  a `child_process` or execa call with such a deadline whose command is a launcher (`npx`, `npm`, `yarn` or `pnpm`
+  running a script (`run`, `exec`, `dlx`, `test`, `start` and the like), `gradlew.bat`, `mvnw.cmd`, `cmd`,
+  `powershell`, `pwsh`, a `.sh`, `.bat`, `.cmd` or `.ps1` file, or `sh`, `bash`, `zsh`,
+  `dash` or `ksh` running a script file or a `-c` script that is itself compound or a launcher), an `exec`/`execSync`
+  command string that starts with one or holds a list, a pipe or a background job (`cd app && make`), or a
+  `shell: true` command with one. Not reported: plain executables (`git`, `node`, `java`), a single command in
+  `sh -c` or `exec` (POSIX shells run it in place), execa's `execaCommand` (no shell), options from a parameter or a
+  spread, and a call with `detached: true` in a function that kills the group (`process.kill(-child.pid)`,
+  `taskkill`, `tree-kill`). The Java preset has the same rule as `pmd/DestroyLeavesDescendants`.
+- Tool output is not cut to its start in an error (`nitpicker/no-head-cut-error-output`,
+  production files). Reported: `text.slice(0, n)`, `substring(0, n)` or `substr(0, n)` of a value named for output
+  (`stderr`, `stdout`, `stack`, `stackTrace`, `errorOutput`, or a name ending in one of them, such
+  as `buildStderr` or `error.stack`; also through `toString()`, `trim()` or `String(...)`) when the cut text goes,
+  directly or through a template, a `+`, a ternary, an object property or a `const`, into `new XError(...)` or
+  `XError(...)`, a `throw`, `reject(...)`, `fail(...)`, or a `.error(...)` or `.fatal(...)` log call. Build tools,
+  compilers and test runners print the cause at the end, so the kept part is the banner. Not
+  reported: cuts that keep the end (`slice(-4000)`, `substring(start)`), an error that also holds such a cut (start
+  and end with a marker between them), cuts of other text (titles, previews, hashes), cuts to a literal length under
+  40 and cuts that go elsewhere. Cuts that
+  can split a character are `nitpicker/no-surrogate-splitting-cut`. The Java preset has the same rule as
+  `pmd/HeadCutErrorOutput`.
+- A finished child process is not judged by text on its standard error (`nitpicker/no-stderr-as-failure`,
+  production files). Reported: an `if` or a ternary whose test (alone, or as one side of `||`) checks that the
+  standard error is not empty (`stderr`, `stderr.length`, `stderr.length > 0`, `stderr !== ''`, also through
+  `toString()`, `trim()` or `String(...)`) and whose branch throws, calls `reject` (`Promise.reject` included) or
+  calls `process.exit` with a non-zero code. The text must come from a subprocess: the `stderr` of a `spawnSync` or
+  execa result (held in a `const` or read inline), a `stderr` destructured from one or from an awaited `promisify`-ed
+  `exec`/`execFile`, or the third parameter of an `exec`/`execFile` callback. Not reported: a test joined with `&&`
+  (`status !== 0 && stderr`), a search for a specific text (`stderr.includes('fatal')`), a branch that only logs, a
+  child's `stderr` stream (`child.stderr`) and `process.stderr`. Standard error carries warnings and notices too
+  (the JVM's `Picked up JAVA_TOOL_OPTIONS`, Node.js deprecation warnings), so decide by the exit status and keep
+  standard error for the message. The Java preset has the same rule as `pmd/StderrAsFailure`.
+- A `spawnSync` result is not judged by its `status` alone (`nitpicker/no-status-only-spawn-check`, production
+  files). `spawnSync` (also cross-spawn's `spawn.sync`) does not throw when the child could not start, ran past its
+  timeout, wrote more than `maxBuffer` or was killed by a signal: it returns `status: null` with `error` or `signal`
+  set. Reported when the code reads neither `error` nor `signal` of the result and passes `status` to `process.exit`
+  or `process.exitCode` (`null` exits with 0), puts it in a message (a template or a `+` with text: "exited with
+  null"), or tests it so that `null` lands with exit code 0 (`status > 0`, `if (status)`, `!status`). The same holds
+  for execa with `reject: false` and its `exitCode`, unless the code reads `failed`, `signal`, `timedOut`,
+  `isTerminated`, `isCanceled`, `killed` or `cause`. Not reported: `status !== 0` and `status === 0` (null counts as a
+  failure), a check of `status` against `null` or `undefined`, `status ?? 1`, and a result passed whole to a helper.
+  The allowed form handles `result.error` and `result.signal` first.
+- Output that grows with the project is not read through a fixed-size buffer
+  (`nitpicker/no-buffered-growing-output`, production files). `execSync`, `execFileSync`, `spawnSync`, `exec` and
+  `execFile` (with a callback or through `promisify`) and the buffered `execa` calls keep the whole output in memory, up
+  to `maxBuffer` (1 MiB in Node.js, 100,000,000 bytes in execa); past it the child is killed and the call fails with
+  `ENOBUFS`. Reported when the output is read (the returned text, `.stdout`, `.output` or `.all` of the result, a
+  destructured `stdout`, or the callback's second parameter) and either the command's output grows with the project
+  (`git ls-files`, `ls-tree -r`, `diff`, `log`, `rev-list`, `status` and `grep`; `find`, `rg`, `du`, `tree`, `npm ls`,
+  `ls -R` and `grep -r`) while `maxBuffer` is left out or a constant, or `maxBuffer` is a constant and the output is
+  parsed whole (`JSON.parse`, `split`). Not reported: output that is ignored or not piped (`stdio: 'inherit'` or
+  `'ignore'`, `stdio` from a variable), execa's `buffer: false`, `maxBuffer: Infinity` or a computed size, options
+  from a parameter or a spread, bounded forms (`git log -1`, `-n`, `--max-count`, `--max-parents`, `git diff --quiet`,
+  `--shortstat`, `rev-list --count`, `-q`, `--version`, `--help`, `du -s`, `find -maxdepth 0`, single files after
+  `--`), argument lists with a spread, and shell commands with a pipe, a
+  redirection or a list (`git log | head -5`). Allowed forms: `spawn` with the output read as a stream, `stdio` set
+  to a file descriptor, or a tool that writes its report to a file.
 - Waits without a timeout (`pmd/UnboundedWait`, `unbounded-wait`, `pmd/ReactorBlockWithoutTimeout` in the JVM and
   Python presets) have no TypeScript or JavaScript counterpart: nothing blocks a thread on a promise, and a promise
   that never settles is a missing deadline for `await`, which `nitpicker/require-client-timeout` and

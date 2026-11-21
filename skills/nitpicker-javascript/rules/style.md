@@ -325,6 +325,25 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
+- Check a filtered or listed list before turning it into an option (`if (dirs.length === 0) return`), so a tool never
+  gets `--dir ''` or ESLint a block with `files: []` (`nitpicker/no-unguarded-option-list`).
+- Pass a list that grows with the project (files from a listing or glob, a class path) through an argument file
+  (`@args.txt`), standard input, `CLASSPATH` or in chunks, not spread or joined into the arguments of a child process,
+  which fails with `E2BIG` on a large project (`nitpicker/no-growing-process-arguments`).
+- A deadline on a shell or launcher (`npm run`, `npx`, `gradlew.bat`, `sh -c 'a && b'`, `exec` with `&&`) kills only
+  the wrapper: start the executable directly, or start it `detached: true` and kill the group
+  (`process.kill(-child.pid)`) on timeout (`nitpicker/no-wrapper-only-timeout`).
+- Keep the end of a tool's output when an error message has to shorten it
+  (`stderr.slice(-4000)`, or the start and the end with a marker between them): the cause is printed last
+  (`nitpicker/no-head-cut-error-output`).
+- Decide whether a child process failed by its exit status (`status !== 0`, `exitCode`, the callback's `error`), not
+  by text on its standard error, which also carries warnings and notices (`nitpicker/no-stderr-as-failure`).
+- Read `error` and `signal` of a `spawnSync` result before its `status`: a child that could not start, timed out or
+  was killed has `status: null`, `process.exit(null)` exits with 0, and a message says "exited with null"
+  (`nitpicker/no-status-only-spawn-check`).
+- Output that grows with the project (`git ls-files`, `git diff`, `find`, a tool's JSON report) is read as a stream
+  (`spawn` and its `stdout` line by line) or from a file the tool writes, not through `execFileSync`/`spawnSync`
+  and a `maxBuffer`, which fails with `ENOBUFS` on a large project (`nitpicker/no-buffered-growing-output`).
 - Time values carry their unit in the name (`timeoutMs`, `ttlSeconds`) and meet only the same unit: convert
   once where a value enters (`ttlSeconds * 1000`, `Math.floor(Date.now() / 1000)`), compare JWT `exp` with
   `Date.now() / 1000`, pass milliseconds to `setTimeout` and `new Date(...)`, and never cut an epoch time

@@ -20,6 +20,7 @@ import { rule as ruleNoBlankNumberCoercion } from '../rules/number-input/no-blan
 import { rule as ruleNoBooleanFlagParameter } from '../rules/flags/no-boolean-flag-parameter.mts';
 import { rule as ruleNoBranchInCompositionRoot } from '../rules/boundaries/no-branch-in-composition-root.mts';
 import { rule as ruleNoBtoaOnRuntimeText } from '../rules/encoding/no-btoa-on-runtime-text.mts';
+import { rule as ruleNoBufferedGrowingOutput } from '../rules/processes/output/no-buffered-growing-output.mts';
 import { rule as ruleNoCacheWriteInTransaction } from '../rules/transactions/cache-writes/no-cache-write-in-transaction.mts';
 import { rule as ruleNoCachedRejection } from '../rules/lifecycles/memo/no-cached-rejection.mts';
 import { rule as ruleNoCaseMismatchedLookup } from '../rules/lookups/no-case-mismatched-lookup.mts';
@@ -63,9 +64,11 @@ import { rule as ruleNoForwardingMethodAlias } from '../rules/api-shape/no-forwa
 import { rule as ruleNoForwardingWrapper } from '../rules/api-shape/no-forwarding-wrapper.mts';
 import { rule as ruleNoGenericName } from '../rules/naming/no-generic-name.mts';
 import { rule as ruleNoGitRepositoryPerTest } from '../rules/test-runtime/processes/no-git-repository-per-test.mts';
+import { rule as ruleNoGrowingProcessArguments } from '../rules/processes/arguments/no-growing-process-arguments.mts';
 import { rule as ruleNoHandQuotedGeneratedCode } from '../rules/generated-code/no-hand-quoted-generated-code.mts';
 import { rule as ruleNoHandwrittenBoundaryGuard } from '../rules/boundaries/no-handwritten-boundary-guard.mts';
 import { rule as ruleNoHardcodedSecret } from '../rules/secrets/no-hardcoded-secret.mts';
+import { rule as ruleNoHeadCutErrorOutput } from '../rules/processes/messages/no-head-cut-error-output.mts';
 import { rule as ruleNoHostPortColonSplit } from '../rules/host-splits/no-host-port-colon-split.mts';
 import { rule as ruleNoInMemoryQuery } from '../rules/queries/no-in-memory-query.mts';
 import { rule as ruleNoInPresenceCheck } from '../rules/presence/no-in-presence-check.mts';
@@ -95,9 +98,6 @@ import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-l
 import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
 import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multiple-collection-joins.mts';
 import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutating-method-in-domain.mts';
-import { rule as ruleNoNanOnlyCheck } from '../rules/numbers/no-nan-only-check.mts';
-import { rule as ruleNoNegativeCount } from '../rules/counts/no-negative-count.mts';
-import { rule as ruleNoNewlineOnlyLineSplit } from '../rules/line-splits/no-newline-only-line-split.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -122,6 +122,7 @@ export const partRules = {
   'no-boolean-flag-parameter': ruleNoBooleanFlagParameter,
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
   'no-btoa-on-runtime-text': ruleNoBtoaOnRuntimeText,
+  'no-buffered-growing-output': ruleNoBufferedGrowingOutput,
   'no-cache-write-in-transaction': ruleNoCacheWriteInTransaction,
   'no-cached-rejection': ruleNoCachedRejection,
   'no-case-mismatched-lookup': ruleNoCaseMismatchedLookup,
@@ -165,9 +166,11 @@ export const partRules = {
   'no-forwarding-wrapper': ruleNoForwardingWrapper,
   'no-generic-name': ruleNoGenericName,
   'no-git-repository-per-test': ruleNoGitRepositoryPerTest,
+  'no-growing-process-arguments': ruleNoGrowingProcessArguments,
   'no-hand-quoted-generated-code': ruleNoHandQuotedGeneratedCode,
   'no-handwritten-boundary-guard': ruleNoHandwrittenBoundaryGuard,
   'no-hardcoded-secret': ruleNoHardcodedSecret,
+  'no-head-cut-error-output': ruleNoHeadCutErrorOutput,
   'no-host-port-colon-split': ruleNoHostPortColonSplit,
   'no-in-memory-query': ruleNoInMemoryQuery,
   'no-in-presence-check': ruleNoInPresenceCheck,
@@ -198,7 +201,4 @@ export const partRules = {
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
   'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
   'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
-  'no-nan-only-check': ruleNoNanOnlyCheck,
-  'no-negative-count': ruleNoNegativeCount,
-  'no-newline-only-line-split': ruleNoNewlineOnlyLineSplit,
 };

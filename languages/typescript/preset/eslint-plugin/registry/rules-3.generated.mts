@@ -1,3 +1,9 @@
+import { rule as ruleNoUnmappedException } from '../rules/errors/unmapped/no-unmapped-exception.mts';
+import { rule as ruleNoUnorderedQuery } from '../rules/queries/order/no-unordered-query.mts';
+import { rule as ruleNoUnownedAsyncAssertion } from '../test-assertions/unowned-async/no-unowned-async-assertion.mts';
+import { rule as ruleNoUnpagedListing } from '../rules/listings/no-unpaged-listing.mts';
+import { rule as ruleNoUnpinnedAssertion } from '../test-assertions/no-unpinned-assertion.mts';
+import { rule as ruleNoUnresolvedRelativeUrl } from '../rules/urls/construction/no-unresolved-relative-url.mts';
 import { rule as ruleNoUnsafeDeserialization } from '../rules/security/deserialization/no-unsafe-deserialization.mts';
 import { rule as ruleNoUnsafePathJoin } from '../rules/guards/no-unsafe-path-join.mts';
 import { rule as ruleNoUnscopedRecordAccess } from '../rules/record-scope/no-unscoped-record-access.mts';
@@ -16,6 +22,7 @@ import { rule as ruleNoWeakHash } from '../rules/security/hash/no-weak-hash.mts'
 import { rule as ruleNoWholeRowsForOneValue } from '../rules/queries/columns/no-whole-rows-for-one-value.mts';
 import { rule as ruleNoWorkBeforeEarlyExit } from '../rules/repeated-work/early-exits/no-work-before-early-exit.mts';
 import { rule as ruleNoWorkerStateInConcurrentTests } from '../test-quality/concurrent-tests/no-worker-state-in-concurrent-tests.mts';
+import { rule as ruleNoWrapperOnlyTimeout } from '../rules/processes/wrappers/no-wrapper-only-timeout.mts';
 import { rule as rulePreserveErrorCause } from '../rules/errors/preserve-error-cause.mts';
 import { rule as rulePromiseWaitDeadline } from '../rules/promises/executors/promise-wait-deadline.mts';
 import { rule as ruleReactControlledInput } from '../rules/react/forms/react-controlled-input.mts';
@@ -66,6 +73,12 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-unmapped-exception': ruleNoUnmappedException,
+  'no-unordered-query': ruleNoUnorderedQuery,
+  'no-unowned-async-assertion': ruleNoUnownedAsyncAssertion,
+  'no-unpaged-listing': ruleNoUnpagedListing,
+  'no-unpinned-assertion': ruleNoUnpinnedAssertion,
+  'no-unresolved-relative-url': ruleNoUnresolvedRelativeUrl,
   'no-unsafe-deserialization': ruleNoUnsafeDeserialization,
   'no-unsafe-path-join': ruleNoUnsafePathJoin,
   'no-unscoped-record-access': ruleNoUnscopedRecordAccess,
@@ -84,6 +97,7 @@ export const partRules = {
   'no-whole-rows-for-one-value': ruleNoWholeRowsForOneValue,
   'no-work-before-early-exit': ruleNoWorkBeforeEarlyExit,
   'no-worker-state-in-concurrent-tests': ruleNoWorkerStateInConcurrentTests,
+  'no-wrapper-only-timeout': ruleNoWrapperOnlyTimeout,
   'preserve-error-cause': rulePreserveErrorCause,
   'promise-wait-deadline': rulePromiseWaitDeadline,
   'react-controlled-input': ruleReactControlledInput,

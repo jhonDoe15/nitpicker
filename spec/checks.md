@@ -410,6 +410,51 @@ same rule runs as `subprocess-without-timeout` in the Python preset, `pmd/Proces
 in the Java preset and `kotlin-source/ProcessWaitWithoutTimeout` in the Kotlin preset; tests keep
 `nitpicker/require-test-process-timeout` (TypeScript) or their runner's own limits.
 
+Unguarded option lists: `nitpicker/no-unguarded-option-list` (production source, in `eslint-lint`) and
+`pmd/UnguardedOptionList` (Java, main sources) report a process option (a flag followed by a joined list) or an ESLint
+configuration block's `files`, built from a list that a filter or a listing in the same function can leave empty, when
+the join (or the `files` entry) is the only read of the list. Tools read an empty value as "everything" or reject it;
+the allowed form skips the option or the run for an empty list.
+
+Project-sized process arguments: `nitpicker/no-growing-process-arguments` (production source, in
+`eslint-lint`) reports a file listing or glob result spread into the arguments of a child process, or joined into
+one argument, and any list joined with `path.delimiter` into one argument unless it is an array literal that
+spreads no listing. `pmd/GrowingProcessArguments`
+(Java, main sources) reports a class path or path list joined with `File.pathSeparator` into an argument of a
+process the method starts. Past the operating system's argument limits the process does not start; the allowed
+forms are an argument file, standard input, the `CLASSPATH` variable or chunks.
+
+Deadlines that stop only a wrapper: `nitpicker/no-wrapper-only-timeout` (production source, in `eslint-lint`)
+reports a subprocess call with a `timeout` or abort signal whose command is a shell, a launcher (`npm`, `npx`,
+`gradlew.bat`, `mvnw.cmd`, a `.sh` or `.cmd` file) or a compound shell command, unless it is started `detached` and the
+function kills the group. `pmd/DestroyLeavesDescendants` (Java, main sources) reports `destroy()` or
+`destroyForcibly()` after a timed `waitFor` on a process the method started through such a command, when the method
+never reads `descendants()`. The timed-out wrapper dies and its child keeps running.
+
+Error output cut to its start: `nitpicker/no-head-cut-error-output` (production source, in `eslint-lint`) and
+`pmd/HeadCutErrorOutput` (Java, main sources) report a cut from the start (`slice(0, n)`, `substring(0, n)`,
+`StringUtils.left` or `abbreviate`) of a tool's output (in Java also a printed stack trace) that goes into an
+exception, a rejection or an error-level log. The cause is usually at the end of such text; the allowed forms keep the
+end, or both ends.
+
+Standard error as failure: `nitpicker/no-stderr-as-failure` (production source, in `eslint-lint`) and
+`pmd/StderrAsFailure` (Java, main sources) report a condition that fails a finished subprocess because its standard
+error is not empty, when the condition stands alone or is one side of `||` and its branch throws (or rejects, or
+exits non-zero). Standard error also carries warnings and notices, so the check fails in an environment that prints
+one; the allowed form decides by the exit status.
+
+Status-only subprocess checks: `nitpicker/no-status-only-spawn-check` (production source, in `eslint-lint`)
+reports a `spawnSync` result (or an execa result with `reject: false`) whose exit status is passed to `process.exit`
+or `process.exitCode`, put into a message, or tested so that `null` counts as success, while the code reads neither
+`error` nor `signal` of that result. A child that could not start, timed out, overflowed `maxBuffer` or was killed has
+a `null` status, and `process.exit(null)` exits with 0.
+
+Buffered output that grows: `nitpicker/no-buffered-growing-output` (production source, in `eslint-lint`) reports
+a buffered `child_process` or `execa` call whose output is read when the command's output grows with the project
+(`git ls-files`, `git diff`, `git log`, `find`, `rg`, `npm ls` and the like) and `maxBuffer` is left out or a
+constant, or when `maxBuffer` is a constant and the output is parsed whole (`JSON.parse`, `split`). Past the limit
+the child is killed and the call fails with `ENOBUFS`; the allowed forms read the output as a stream or from a file.
+
 Unbounded waits: `pmd/UnboundedWait` (Java, main sources) reports `get()` or `join()` without a timeout on a
 `Future` or `CompletableFuture`, `Thread.join()` and `CountDownLatch.await()`, and
 `pmd/ReactorBlockWithoutTimeout` (with `reactor-core` on the compile classpath) reports `block()`,
