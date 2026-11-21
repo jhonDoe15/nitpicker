@@ -156,7 +156,7 @@ these five patterns from source:
 | Code base | Files, lines | SpotBugs wall, CPU, peak | Engine | Exposed representation | Constructor throw |
 | --- | --- | --- | --- | --- | --- |
 | Elasticsearch `server` | 5,106, 1,035k | 249 s, 417 s, 3.2 GB | 8.0 s, 28.9 s, 0.5 GB | 4,330 / 5 / 1 | 1,532 / 7 / 1 |
-| Nacos | 3,118, 548k | 108 s, 242 s, 2.9 GB | 5.2 s, 13.0 s, 0.3 GB | 2,440 / 0 / 6 | 85 / 0 / 0 |
+| Nacos | 3,118, 548k | 108 s, 242 s, 2.9 GB | 5.6 s, 18.0 s, 0.3 GB | 2,440 / 0 / 6 | 85 / 0 / 0 |
 | javaparser-core | 594, 121k | 48.3 s, 97.2 s, 2.3 GB | 0.9 s, 3.0 s, 0.1 GB | 500 / 0 / 0 | 17 / 0 / 0 |
 | Guava | 610, 183k | 43.6 s, 99.8 s, 1.8 GB | 1.3 s, 4.3 s, 0.1 GB | 14 / 0 / 0 | 0 / 0 / 0 |
 | jackson-databind | 478, 134k | 35.7 s, 78.2 s, 1.7 GB | 0.9 s, 3.3 s, 0.1 GB | 224 / 0 / 0 | 17 / 0 / 0 |
@@ -202,17 +202,25 @@ How a field counts as holding only unchangeable values (`loads*`, `visits`, `val
   changeable value among them and the getter is reported, otherwise one unchangeable value (`null` too) and it
   is not. When they say nothing, all stores of the run are asked: no changeable value and at least one
   unchangeable value other than `null` and the getter is not reported.
-- A call result that is stored counts as changeable, whichever class the method is in.
-- A field of an unchangeable declared type that every store of the run gives one changeable type is reported.
+- A call result that is stored counts as changeable, whichever class the method is in, unless the call is one
+  of the library calls known to make an unchangeable value (`List.of`, `Map.copyOf`,
+  `Collections.unmodifiableList` and their like).
+- A field of an unchangeable declared type that every store of the run gives one changeable type is reported;
+  `null` stores are passed over and a store whose type is not known ends it.
 - Classes are visited in the order of a Java `HashMap` keyed by the class name with slashes, sized for the
   number of classes in the run. A class is put off until all others are done when it calls a method or
   constructor that takes or returns an object, of a class of the run that is not an interface and was not
   visited yet; methods `Object` declares and calls between classes that call each other in a circle put
   nothing off. Classes put off are visited last one first (`order.rs`, `calls.rs`).
-- A value read from another field is fine when that field was given an unchangeable value at least once,
-  anywhere in the run. The
-  field read back into itself (`this.f = other.f`) says nothing, and counts against the field when it went
-  through a local variable first.
+- What counts as such a call, as the compiled form has it: the constructor of an inner class (it takes the
+  outer object) and of an anonymous class outside a static place or with arguments; `super(...)` and
+  `super.m()` go to the superclass, a bare `m()` to the nearest class around that has an `m`; a call belongs
+  to the innermost class around it. The engine asks the overloads of that name and argument count and
+  resolves the call only when they disagree. A call into a class in the same `HashMap` slot puts the caller
+  off.
+- A value read from another field is fine when that field was given an unchangeable value at least once, anywhere in
+  the run. The field read back into itself (`this.f = other.f`) says nothing, and counts against the field when it
+  went through a local variable first.
 - A local variable with two values is judged the way `c ? first : second` is.
 
 Also measured: the accessor of a record's varargs component is reported and its constructor is not; a pattern

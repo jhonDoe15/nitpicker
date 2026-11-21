@@ -81,6 +81,8 @@ fn callees<'c>(calls: &'c HashMap<String, HashSet<String>>, class: &str) -> Vec<
 }
 
 /// Where each class of the run comes in SpotBugs' order: whether it is put off, and its place in the hash table.
+pub type Rank = (bool, u32);
+
 pub struct Visits {
     places: HashMap<String, (bool, u32)>,
 }
@@ -100,14 +102,57 @@ impl Visits {
         Visits { places }
     }
 
-    /// Whether SpotBugs has been through `first` when it looks at `second`. Two classes in the same slot come in
-    /// the order the classes were handed over, which the sources do not tell: taken as not before.
-    pub fn before(&self, first: &str, second: &str) -> bool {
-        match (self.places.get(first), self.places.get(second)) {
-            (Some((false, first)), Some((false, second))) => first < second,
-            (Some((true, first)), Some((true, second))) => first > second,
-            (Some((late, _)), Some(_)) => !late,
-            _ => false,
+    /// Where the class comes in the visit: a class with a smaller rank is done before. Classes put off come
+    /// after all others, the highest slot first. Two classes in the same slot come in the order the classes
+    /// were handed over, which the sources do not tell: they share a rank and neither is before the other.
+    pub fn rank(&self, class: &str) -> Option<Rank> {
+        self.places.get(class).map(|(late, place)| (*late, if *late { u32::MAX - place } else { *place }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn graph(edges: &[(&str, &str)]) -> HashMap<String, HashSet<String>> {
+        let mut calls: HashMap<String, HashSet<String>> = HashMap::new();
+        for (from, to) in edges {
+            calls.entry(from.to_string()).or_default().insert(to.to_string());
+            calls.entry(to.to_string()).or_default();
         }
+        calls
+    }
+
+    #[test]
+    fn hashes_like_java_strings() {
+        assert_eq!(java_hash(""), 0);
+        assert_eq!(java_hash("ab"), 3105);
+        assert_eq!(java_hash("p/Outer$Inner"), "p/Outer$Inner".bytes().fold(0u32, |hash, byte| hash.wrapping_mul(31).wrapping_add(byte as u32)));
+    }
+
+    #[test]
+    fn grows_like_a_java_hash_map() {
+        assert_eq!([0, 12, 13, 24, 25, 48, 49].map(capacity), [16, 16, 32, 32, 64, 64, 128]);
+    }
+
+    #[test]
+    fn groups_classes_that_call_each_other() {
+        let calls = graph(&[("a", "b"), ("b", "c"), ("c", "a"), ("c", "d"), ("d", "e"), ("e", "d"), ("e", "f")]);
+        let groups = circles(&calls);
+        assert_eq!(groups["a"], groups["b"]);
+        assert_eq!(groups["b"], groups["c"]);
+        assert_eq!(groups["d"], groups["e"]);
+        assert_ne!(groups["a"], groups["d"]);
+        assert_ne!(groups["d"], groups["f"]);
+        assert_ne!(groups["a"], groups["f"]);
+    }
+
+    #[test]
+    fn walks_a_long_chain_without_recursion() {
+        let names: Vec<String> = (0..200_000).map(|number| format!("c{number}")).collect();
+        let edges: Vec<(&str, &str)> = names.windows(2).map(|pair| (pair[0].as_str(), pair[1].as_str())).collect();
+        let calls = graph(&edges);
+        let groups = circles(&calls);
+        assert_eq!(groups.values().collect::<HashSet<_>>().len(), names.len());
     }
 }

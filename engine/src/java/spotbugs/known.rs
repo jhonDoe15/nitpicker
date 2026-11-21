@@ -6,7 +6,7 @@ use super::flow::{Item, trace};
 use super::mutable::mutable;
 use super::stores::{Held, immutable_value, stored_fixed};
 use super::Context;
-use super::order::Visits;
+use super::order::{Rank, Visits};
 use crate::engine::finding::Finding;
 use crate::engine::source::{children, named_children};
 use crate::java::types::index::TypeIndex;
@@ -115,19 +115,49 @@ fn fine(facts: &Facts, fact: &Fact) -> bool {
     matches!(fact.verdict, Verdict::Fixed) || (matches!(fact.verdict, Verdict::Loads(_)) && !against(facts, fact))
 }
 
-/// Whether the field only holds values nobody can change, as SpotBugs sees it when it reads the class `from`:
-/// by the stores of that class and of the classes it read before. When those have no store at all, by the stores
-/// of the whole run, where a stored `null` no longer speaks for the field.
-fn fixed(visits: &Visits, facts: &Facts, key: &Key, from: &str) -> bool {
-    let Some(stores) = facts.get(key) else { return false };
-    let seen: Vec<&Fact> = stores.iter().filter(|fact| fact.by == from || visits.before(&fact.by, from)).collect();
-    if seen.iter().any(|fact| against(facts, fact)) {
-        return false;
+/// The stores of one field, summed up so that each getter over it is answered without going through them again.
+struct Stores {
+    /// By visiting rank of the storing class: whether a store up to there speaks against the field, or for it.
+    ranked: Vec<(Rank, bool, bool)>,
+    own: HashMap<String, (bool, bool)>,
+    against: bool,
+    fine: bool,
+    widened: bool,
+}
+
+impl Stores {
+    fn of(index: &TypeIndex, visits: &Visits, facts: &Facts, key: &Key) -> Stores {
+        let mut stores = Stores { ranked: Vec::new(), own: HashMap::new(), against: false, fine: false, widened: widened(index, facts, key) };
+        for fact in facts.get(key).into_iter().flatten() {
+            let (against, fine) = (against(facts, fact), fine(facts, fact));
+            stores.against |= against;
+            stores.fine |= fine && !fact.null;
+            let own = stores.own.entry(fact.by.clone()).or_default();
+            *own = (own.0 || against, own.1 || fine);
+            if let Some(rank) = visits.rank(&fact.by) {
+                stores.ranked.push((rank, against, fine));
+            }
+        }
+        stores.ranked.sort();
+        let mut so_far = (false, false);
+        for entry in &mut stores.ranked {
+            so_far = (so_far.0 || entry.1, so_far.1 || entry.2);
+            (entry.1, entry.2) = so_far;
+        }
+        stores
     }
-    if seen.iter().any(|fact| fine(facts, fact)) {
-        return true;
+
+    /// Whether the field only holds values nobody can change, as SpotBugs sees it when it reads the class `from`:
+    /// by the stores of that class and of the classes it read before. When those have no store at all, by the
+    /// stores of the whole run, where a stored `null` no longer speaks for the field.
+    fn fixed(&self, visits: &Visits, from: &str) -> bool {
+        let (mut against, mut fine) = self.own.get(from).copied().unwrap_or_default();
+        let earlier = visits.rank(from).map_or(0, |rank| self.ranked.partition_point(|entry| entry.0 < rank));
+        if let Some((_, before_against, before_fine)) = earlier.checked_sub(1).map(|last| self.ranked[last]) {
+            (against, fine) = (against || before_against, fine || before_fine);
+        }
+        !against && (fine || (!self.against && self.fine))
     }
-    !stores.iter().any(|fact| against(facts, fact)) && stores.iter().any(|fact| fine(facts, fact) && !fact.null)
 }
 
 /// Whether every value the run stores in the field has one type that can be changed, whatever the field is declared as.
@@ -140,7 +170,11 @@ fn widened(index: &TypeIndex, facts: &Facts, key: &Key) -> bool {
 
 impl Known {
     pub fn note(&self, calls: HashMap<String, HashSet<String>>, facts: Vec<(Key, Fact)>, waiting: Vec<Waiting>) {
-        self.calls.lock().expect("calls").extend(calls);
+        let mut all = self.calls.lock().expect("calls");
+        for (class, callees) in calls {
+            all.entry(class).or_default().extend(callees);
+        }
+        drop(all);
         if !facts.is_empty() {
             let mut all = self.facts.lock().expect("facts");
             for (key, fact) in facts {
@@ -159,11 +193,15 @@ impl Known {
         if let Ok(path) = std::env::var("NP_SB_CALLS") {
             let mut lines: Vec<String> = calls.iter().flat_map(|(class, callees)| callees.iter().map(move |callee| format!("{class}\t{callee}"))).collect();
             lines.sort();
-            let _ = std::fs::write(path, lines.join("\n"));
+            if let Err(error) = std::fs::write(&path, lines.join("\n")) {
+                eprintln!("NP_SB_CALLS: cannot write {path}: {error}");
+            }
         }
         let visits = Visits::of(index, &calls);
+        let mut summed: HashMap<Key, Stores> = HashMap::new();
         for waiting in self.waiting.lock().expect("waiting").drain(..) {
-            if (waiting.changeable || widened(index, &facts, &waiting.key)) && !fixed(&visits, &facts, &waiting.key, &waiting.from) {
+            let stores = summed.entry(waiting.key).or_insert_with_key(|key| Stores::of(index, &visits, &facts, key));
+            if (waiting.changeable || stores.widened) && !stores.fixed(&visits, &waiting.from) {
                 out.push(waiting.finding);
             }
         }
