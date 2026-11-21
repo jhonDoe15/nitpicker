@@ -30,6 +30,8 @@ pub struct TypeIndex {
     settled: bool,
     pub binary_classes: usize,
     pub source_classes: usize,
+    /// Packages whose methods must have their result used, each with its subpackages: the outermost source packages.
+    pub checked_packages: Vec<String>,
 }
 
 /// The class names of an archive, with where each one is.

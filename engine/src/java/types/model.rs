@@ -62,6 +62,24 @@ impl Type {
             _ => false,
         }
     }
+    /// The primitive a wrapper class stands for; any other type as it is.
+    pub fn unboxed_or_same(self) -> Type {
+        let primitive = match &self {
+            Type::Class(name, _) => match name.as_str() {
+                "java.lang.Integer" => "int",
+                "java.lang.Long" => "long",
+                "java.lang.Short" => "short",
+                "java.lang.Byte" => "byte",
+                "java.lang.Character" => "char",
+                "java.lang.Double" => "double",
+                "java.lang.Float" => "float",
+                "java.lang.Boolean" => "boolean",
+                _ => return self,
+            },
+            _ => return self,
+        };
+        Type::Primitive(primitive)
+    }
     pub fn boxed(self) -> Type {
         match self {
             Type::Primitive(name) => Type::class(match name {
@@ -93,6 +111,36 @@ pub mod flag {
     /// Carries `@java.lang.Deprecated`.
     pub const DEPRECATED: u16 = 256;
     pub const ANNOTATION: u16 = 512;
+    /// A member class only its outer class sees.
+    pub const PRIVATE: u16 = 1024;
+    /// Carries an annotation named `CheckReturnValue` or `MustUseReturnValues`; set for packages too.
+    pub const CHECK_RESULT: u16 = 2048;
+    /// Carries an annotation named `CanIgnoreReturnValue` or `IgnorableReturnValue`.
+    pub const IGNORE_RESULT: u16 = 4096;
+    /// A class with `@AutoValue`.
+    pub const AUTO_VALUE: u16 = 8192;
+    /// A class with `@AutoValue.Builder` or `@AutoBuilder`.
+    pub const AUTO_BUILDER: u16 = 16384;
+    /// A class with one of Dagger's component builder annotations.
+    pub const DAGGER_BUILDER: u16 = 32768;
+
+    /// The bits an annotation gives, by its full name with `.` between a class and its member class.
+    pub fn of_annotation(name: &str) -> u16 {
+        match name {
+            "com.google.auto.value.AutoValue" => return AUTO_VALUE,
+            "com.google.auto.value.AutoValue.Builder" | "com.google.auto.value.AutoBuilder" => return AUTO_BUILDER,
+            "dagger.Component.Builder"
+            | "dagger.Subcomponent.Builder"
+            | "dagger.producers.ProductionComponent.Builder"
+            | "dagger.producers.ProductionSubcomponent.Builder" => return DAGGER_BUILDER,
+            _ => {}
+        }
+        match name.rsplit('.').next().unwrap_or(name) {
+            "CheckReturnValue" | "MustUseReturnValues" => CHECK_RESULT,
+            "CanIgnoreReturnValue" | "IgnorableReturnValue" => IGNORE_RESULT,
+            _ => 0,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -131,6 +179,10 @@ pub struct Method {
     pub is_private: bool,
     pub varargs: bool,
     pub flags: u16,
+    /// What the `throws` clause lists, type variables kept.
+    pub throws: Vec<Type>,
+    /// Parameter names, when the source or the class file gives them; empty otherwise.
+    pub names: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default)]

@@ -117,25 +117,33 @@ pub fn sub_signature(index: &TypeIndex, origin: &ClassInfo, method: &Method, dec
     seen == method.generic_parameters || seen.iter().map(Type::erased).eq(method.parameters.iter().cloned())
 }
 
-/// The first method in the supertypes that the method overrides, as `ASTHelpers.streamSuperMethods` finds it.
-pub fn super_method<'c>(context: &'c Context, origin: &ClassInfo, method: &Method) -> Option<(&'c ClassInfo, &'c Method)> {
+/// Every method in the supertypes that the method overrides, in the order of `ASTHelpers.streamSuperMethods`.
+pub fn super_methods<'c>(index: &'c TypeIndex, origin: &ClassInfo, method: &Method) -> Vec<(&'c ClassInfo, &'c Method)> {
     if method.is_static || method.name == "<init>" {
-        return None;
+        return Vec::new();
     }
-    let index = context.resolver.index;
+    let mut found = Vec::new();
     for parent in closure(index, &origin.name) {
         let Some(declaring) = index.get(&parent) else { continue };
-        let found = declaring.methods.iter().find(|other| {
-            other.name == method.name
-                && !other.is_static
-                && overridable_in(other, declaring, origin)
-                && sub_signature(index, origin, method, declaring, other)
-        });
-        if let Some(other) = found {
-            return Some((declaring, other));
-        }
+        found.extend(
+            declaring
+                .methods
+                .iter()
+                .find(|other| {
+                    other.name == method.name
+                        && !other.is_static
+                        && overridable_in(other, declaring, origin)
+                        && sub_signature(index, origin, method, declaring, other)
+                })
+                .map(|other| (declaring, other)),
+        );
     }
-    None
+    found
+}
+
+/// The first method in the supertypes that the method overrides.
+pub fn super_method<'c>(context: &'c Context, origin: &ClassInfo, method: &Method) -> Option<(&'c ClassInfo, &'c Method)> {
+    super_methods(context.resolver.index, origin, method).into_iter().next()
 }
 
 pub fn simple_name(class: &str) -> &str {

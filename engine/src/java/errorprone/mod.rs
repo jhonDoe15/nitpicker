@@ -1,8 +1,23 @@
 //! Error Prone checks written for the engine: same check name, line and column as Error Prone reports.
+mod doc;
+mod docparse;
+mod docref;
+mod doctags;
+#[cfg(test)]
+mod doctest;
 mod hierarchy;
+mod javadoc;
 mod members;
 mod operators;
+mod returns;
+mod names;
+mod naming;
+mod obsolete;
 mod simple;
+mod targets;
+mod throws;
+mod unused;
+mod values;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -17,6 +32,8 @@ pub struct Context<'a> {
     line_starts: Vec<usize>,
     selected: Option<Vec<String>>,
     out: std::cell::RefCell<Vec<Finding>>,
+    /// The class each name in the file stands for, as written and in full: two checks read every name.
+    pub named: std::cell::RefCell<std::collections::HashMap<usize, Option<(String, String)>>>,
 }
 
 impl Context<'_> {
@@ -26,6 +43,13 @@ impl Context<'_> {
             return;
         }
         if self.suppressed(check, matched) {
+            return;
+        }
+        self.report_always(check, offset, message);
+    }
+    /// Reports without looking for a suppression: some checks report from the file as a whole.
+    pub fn report_always(&self, check: &'static str, offset: usize, message: &str) {
+        if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == check)) {
             return;
         }
         let line = self.line_starts.partition_point(|start| *start <= offset) - 1;
@@ -74,6 +98,10 @@ impl Context<'_> {
         }
         names
     }
+    /// The line of a byte offset, from zero.
+    pub fn line_of(&self, offset: usize) -> usize {
+        self.line_starts.partition_point(|start| *start <= offset) - 1
+    }
     pub fn text(&self, node: Node) -> &str {
         self.file.text_of(node)
     }
@@ -95,6 +123,8 @@ const CHECKS: &[Check] = &[
     members::missing_override,
     members::private_constructor_for_utility_class,
     members::inconsistent_overloads,
+    members::builder_return_this,
+    members::effectively_private,
     simple::missing_braces,
     simple::empty_catch,
     simple::non_final_static_field,
@@ -102,6 +132,26 @@ const CHECKS: &[Check] = &[
     simple::system_out,
     simple::java_util_date,
     simple::string_case_locale_usage,
+    values::assert_false,
+    values::enum_ordinal,
+    values::void_used,
+    values::object_equals_for_primitives,
+    values::unnecessary_parentheses,
+    values::unused_exception,
+    values::string_splitter,
+    obsolete::jdk_obsolete,
+    targets::boolean_literal,
+    naming::identifier_name,
+    javadoc::javadoc,
+    throws::checked_exception_not_thrown,
+    returns::check_return_value,
+    names::type_parameter_naming,
+    names::wildcard_import,
+    names::same_name_but_different,
+    names::different_name_but_same,
+    names::unnecessarily_fully_qualified,
+    names::suppress_warnings_without_explanation,
+    names::type_parameter_unused_in_formals,
 ];
 
 pub struct ErrorProne;
@@ -122,7 +172,7 @@ impl FileRule for ErrorProne {
         let mut line_starts = vec![0];
         line_starts.extend(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1));
         let selected = std::env::var("NP_EP_ONLY").ok().map(|names| names.split(',').map(String::from).collect());
-        let context = Context { resolver, file, line_starts, selected, out: std::cell::RefCell::new(Vec::new()) };
+        let context = Context { resolver, file, line_starts, selected, out: std::cell::RefCell::new(Vec::new()), named: std::cell::RefCell::new(std::collections::HashMap::new()) };
         walk(file.tree.root_node(), |node| {
             if node.is_named() {
                 for check in CHECKS {

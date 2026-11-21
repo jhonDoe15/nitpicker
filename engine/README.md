@@ -116,6 +116,14 @@ message; `@SuppressWarnings` with the check name or `all` hides it. `NP_EP_ONLY=
 project, `parity/errorprone/ErrorProneRun.java` compiles a source list with Error Prone and writes its findings
 and the time of each check, and `parity/errorprone/compare.py report.json ep.json [check] [-v]` compares.
 
+The checks are ports of Error Prone's (Apache-2.0, see `NOTICE` at the root of the repository). The doc comment
+parser under them (`doc.rs`, `docparse.rs`, `doctags.rs`, `docref.rs`) is written from the Documentation Comment
+Specification for the Standard Doclet. `tests/expected/doctrees.txt` holds the trees javac 21 builds for
+`tests/fixtures/doctrees`, printed through the public `com.sun.source.doctree` API by
+`parity/errorprone/DocTreeDump.java <source list> <out>` (run from the fixture folder), and a unit test compares
+them part by part. `NP_DOC_TREES=<dump of any code base, absolute paths> cargo test --release doc_comments`
+compares a whole code base the same way.
+
 Measured on 4 cores against Error Prone running only these checks (findings: same / missed / extra):
 
 | Code base | Files, lines | Error Prone wall, CPU, peak | Engine | Findings |

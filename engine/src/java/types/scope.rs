@@ -19,7 +19,7 @@ pub const TYPE_DECLARATIONS: &[&str] = &[
 pub struct FileScope {
     pub package: String,
     pub single: HashMap<String, String>,
-    on_demand: Vec<String>,
+    pub on_demand: Vec<String>,
     pub static_single: HashMap<String, Vec<String>>,
     pub static_on_demand: Vec<String>,
     /// Every class in the file by node id: members, local classes (`Outer.1Local`) and anonymous ones (`Outer.1`).
@@ -185,6 +185,8 @@ pub struct Resolver<'a> {
     pub(super) locals: RefCell<HashMap<usize, std::rc::Rc<Vec<(String, usize, u32, u32)>>>>,
     /// The pattern variables declared in a method, lambda or class body: where each starts, its name and its type.
     pub(super) patterns: RefCell<HashMap<usize, std::rc::Rc<Vec<(usize, String, Option<Type>)>>>>,
+    /// The method each call resolved to when asked from the outside: several rules ask about the same call.
+    pub(super) calls: RefCell<HashMap<usize, Option<std::rc::Rc<super::expr::Call>>>>,
 }
 
 fn written_names<'f>(file: &'f SourceFile, list: Option<Node>) -> Vec<&'f str> {
@@ -199,30 +201,42 @@ fn written_names<'f>(file: &'f SourceFile, list: Option<Node>) -> Vec<&'f str> {
 
 impl<'a> Resolver<'a> {
     pub fn new(index: &'a TypeIndex, file: &'a SourceFile, scope: &'a FileScope) -> Resolver<'a> {
-        Resolver { index, file, scope, cache: RefCell::new(HashMap::new()), depth: Cell::new(0), busy: RefCell::new(std::collections::HashSet::new()), skipped: Cell::new(0), work: Cell::new(0), resolving: RefCell::new(HashMap::new()), loose: RefCell::new(HashMap::new()), written: RefCell::new(HashMap::new()), simples: RefCell::new(HashMap::new()), locals: RefCell::new(HashMap::new()), patterns: RefCell::new(HashMap::new()), mapping: RefCell::new(HashMap::new()) }
+        Resolver { index, file, scope, cache: RefCell::new(HashMap::new()), depth: Cell::new(0), busy: RefCell::new(std::collections::HashSet::new()), skipped: Cell::new(0), work: Cell::new(0), resolving: RefCell::new(HashMap::new()), loose: RefCell::new(HashMap::new()), written: RefCell::new(HashMap::new()), locals: RefCell::new(HashMap::new()), mapping: RefCell::new(HashMap::new()), patterns: RefCell::new(HashMap::new()), calls: RefCell::new(HashMap::new()), simples: RefCell::new(HashMap::new()) }
+    }
+
+    /// Where the lookup of a simple name starts to matter: every node below the same place sees the same classes.
+    fn lookup_place(at: Node) -> usize {
+        let mut inner = at;
+        let mut current = Some(at);
+        while let Some(node) = current {
+            let holds = matches!(node.kind(), "block" | "constructor_body" | "switch_block_statement_group" | "program");
+            let around = crate::engine::source::parent(node);
+            let member = around.is_some_and(|owner| {
+                TYPE_DECLARATIONS.contains(&owner.kind())
+                    && (owner.field("body") == Some(node) || (owner.kind() == "record_declaration" && owner.field("parameters") == Some(node)))
+            });
+            if (holds || member || node.kind() == "class_body") && node.id() != at.id() {
+                return node.id();
+            }
+            inner = node;
+            current = around;
+        }
+        inner.id()
     }
 
     /// The class a simple name stands for at a place. Every place directly inside the same block or class body
     /// gets the same answer, so it is kept per block or body.
     fn simple(&self, at: Node, name: &str) -> Option<String> {
-        const SCOPES: [&str; 8] = [
-            "block", "constructor_body", "switch_block_statement_group", "class_body", "enum_body", "interface_body", "annotation_type_body", "program",
-        ];
-        let mut holder = Some(at);
-        while let Some(node) = holder.filter(|node| !SCOPES.contains(&node.kind())) {
-            holder = crate::engine::source::parent(node);
-        }
-        let Some(holder) = holder else { return self.find_simple(at, name) };
-        let key = (holder.id(), name.to_string());
+        let key = (Self::lookup_place(at), name.to_string());
         if let Some(known) = self.simples.borrow().get(&key) {
             return known.clone();
         }
-        let found = self.find_simple(at, name);
+        let found = self.read_simple(at, name);
         self.simples.borrow_mut().insert(key, found.clone());
         found
     }
 
-    fn find_simple(&self, at: Node, name: &str) -> Option<String> {
+    fn read_simple(&self, at: Node, name: &str) -> Option<String> {
         let mut inner = at;
         let mut current = Some(at);
         while let Some(node) = current {
@@ -236,11 +250,14 @@ impl<'a> Resolver<'a> {
                 }
             }
             // Names in the header of a class are looked up around it: its members and what it inherits are not in scope there.
-            let header = TYPE_DECLARATIONS.contains(&node.kind()) && node.field("body") != Some(inner);
+            // The components of a record are the exception: they see the members.
+            let inside = |field: &'static str| node.field(field) == Some(inner);
+            let header = TYPE_DECLARATIONS.contains(&node.kind()) && !inside("body") && !(node.kind() == "record_declaration" && inside("parameters"));
             if let Some(owner) = class_at(self.scope, node, inner).filter(|_| !header) {
                 for ancestor in self.index.lineage(&owner).iter() {
                     let nested = format!("{ancestor}.{name}");
-                    if self.index.has(&nested) {
+                    let hidden = *ancestor != owner && self.index.get(&nested).is_some_and(|info| info.flags & super::model::flag::PRIVATE != 0);
+                    if self.index.has(&nested) && !hidden {
                         return Some(nested);
                     }
                 }
@@ -409,6 +426,29 @@ impl<'a> Resolver<'a> {
     }
 
     /// Erased and generic parameter types, and whether the last one is variable arity.
+    fn parameter_names(&self, member: Node) -> Vec<String> {
+        let mut names = Vec::new();
+        for parameter in member.child_by_field_name("parameters").map(children).unwrap_or_default() {
+            let holder = match parameter.kind() {
+                "formal_parameter" => parameter,
+                "spread_parameter" => match children(parameter).into_iter().find(|part| part.kind() == "variable_declarator") {
+                    Some(declarator) => declarator,
+                    None => continue,
+                },
+                _ => continue,
+            };
+            names.push(holder.child_by_field_name("name").map(|name| self.file.text_of(name).to_string()).unwrap_or_default());
+        }
+        names
+    }
+
+    /// The types a `throws` clause lists; one that cannot be read is kept as `?`.
+    fn thrown(&self, member: Node) -> Vec<Type> {
+        let Some(clause) = children(member).into_iter().find(|part| part.kind() == "throws") else { return Vec::new() };
+        let mut cursor = clause.walk();
+        clause.named_children(&mut cursor).map(|kind| self.written(kind, true).unwrap_or(Type::class("?"))).collect()
+    }
+
     fn parameters(&self, list: Option<Node>) -> (Vec<Type>, Vec<Type>, bool) {
         let mut erased = Vec::new();
         let mut generic = Vec::new();
@@ -432,11 +472,22 @@ impl<'a> Resolver<'a> {
         (erased, generic, varargs)
     }
 
+    /// The bits the annotations of a declaration give.
+    pub fn marks(&self, declaration: Node) -> u16 {
+        let holder = super::super::helpers::modifiers(declaration).unwrap_or(declaration);
+        let annotations = children(holder).into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation"));
+        let names = annotations.filter_map(|annotation| annotation.child_by_field_name("name")).map(|name| self.file.text_of(name));
+        names.fold(0, |bits, written| {
+            let full = self.class_name(declaration, written).unwrap_or_else(|| written.to_string());
+            bits | super::model::flag::of_annotation(&full)
+        })
+    }
+
     fn class_flags(&self, declaration: Node) -> u16 {
         use super::model::flag;
         let has = super::super::helpers::has_modifier;
-        let mut bits = 0;
-        for (word, bit) in [("final", flag::FINAL), ("public", flag::PUBLIC), ("protected", flag::PROTECTED), ("static", flag::STATIC), ("abstract", flag::ABSTRACT), ("sealed", flag::SEALED)] {
+        let mut bits = self.marks(declaration);
+        for (word, bit) in [("final", flag::FINAL), ("public", flag::PUBLIC), ("protected", flag::PROTECTED), ("static", flag::STATIC), ("abstract", flag::ABSTRACT), ("sealed", flag::SEALED), ("private", flag::PRIVATE)] {
             if has(declaration, word) {
                 bits |= bit;
             }
@@ -612,6 +663,8 @@ impl<'a> Resolver<'a> {
             is_private: false,
             varargs: false,
             flags: super::model::flag::PUBLIC,
+            throws: Vec::new(),
+            names: Vec::new(),
         };
         let bits = |member: Node| -> u16 {
             use super::model::flag;
@@ -628,7 +681,7 @@ impl<'a> Resolver<'a> {
             if info.is_interface {
                 bits |= flag::PUBLIC;
             }
-            bits
+            bits | self.marks(member)
         };
         let mut members = children(body);
         members.extend(children(body).into_iter().filter(|child| child.kind() == "enum_body_declarations").flat_map(children));
@@ -707,6 +760,8 @@ impl<'a> Resolver<'a> {
                             && (info.is_interface || has(member, "abstract")),
                         varargs,
                         flags: bits(member) | if member.field("body").is_none() && info.is_interface { super::model::flag::ABSTRACT } else { 0 },
+                        throws: self.thrown(member),
+                        names: self.parameter_names(member),
                     });
                 }
                 "constructor_declaration" => {
@@ -714,6 +769,9 @@ impl<'a> Resolver<'a> {
                     info.methods.push(Method {
                         generic_parameters,
                         varargs,
+                        throws: self.thrown(member),
+                        names: self.parameter_names(member),
+                        flags: bits(member),
                         ..plain("<init>", parameters, Type::Primitive("void"))
                     });
                 }
