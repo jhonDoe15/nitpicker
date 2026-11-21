@@ -904,6 +904,7 @@ impl<'a> Resolver<'a> {
                 is_static: false,
                 is_private: false,
                 varargs: false,
+                flags: 0,
             };
             return Some(Call { raw: false, receiver: owner, declaring: info.name.clone(), method });
         }
