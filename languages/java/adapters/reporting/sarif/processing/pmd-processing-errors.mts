@@ -38,7 +38,10 @@ function firstLine(text: string): string {
 }
 
 function shortened(cause: string): string {
-  return cause.length > MAX_CAUSE_LENGTH ? `${cause.slice(0, MAX_CAUSE_LENGTH)}...` : cause;
+  const points = Array.from(cause);
+  return points.length > MAX_CAUSE_LENGTH
+    ? `${points.slice(0, MAX_CAUSE_LENGTH).join('')}...`
+    : cause;
 }
 
 function rootPrefix(root: string): RegExp {

@@ -10,7 +10,11 @@ import {
   thresholdsOf,
 } from './base-config-views.mts';
 import { textsOf } from '../../../shared/values/readers.mts';
-import type { BaseConfig as PolicyConfig, ExceptionEntry, LayoutConfig } from './base-config-views.mts';
+import type {
+  BaseConfig as PolicyConfig,
+  ExceptionEntry,
+  LayoutConfig,
+} from './base-config-views.mts';
 
 type MutableConfig = { -readonly [K in keyof PolicyConfig]: PolicyConfig[K] };
 
