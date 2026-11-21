@@ -10,13 +10,13 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chainOf as untypedChainOf } from '../../../shared/traversal.mjs';
+import { chainOf as untypedChainOf } from '../../../shared/traversal.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
-} from '../../../shared/messages/troubleshooting.mjs';
+} from '../../../shared/messages/troubleshooting.mts';
 import { runGit } from '../git/repository/command.mts';
-import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 
 export type CacheStore = {

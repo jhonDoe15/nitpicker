@@ -2,8 +2,10 @@ import {
   coverageMetricFinding,
   normalizeReportPath,
   uncoveredFinding,
-} from '../../../../shared/ingest/common.mjs';
-import { type XmlElement, childrenNamed, parseXml } from '../../../../shared/values/xml.mts';
+  type XmlElement,
+  childrenNamed,
+  parseXml,
+} from '../../../../shared/ingest/report-records.mts';
 
 type JacocoOptions = { readonly tool?: string | undefined; readonly sourceRoot?: unknown };
 type PathFor = (fileName: string) => string | undefined;

@@ -35,7 +35,7 @@ type PolicyLayoutOptions = LayoutOptions & {
   readonly entryPoints?: readonly string[] | undefined;
 };
 
-export type HeadConfig = Readonly<Record<string, unknown>>;
+export type HeadConfig = NitpickerConfig;
 
 export type HeadPolicyFile = {
   readonly exclude?: readonly string[] | undefined;

@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { nameOf } from '../../typed/node-views.mts';
-import { limitedList as untypedLimitedList } from '../../../../../../../shared/messages/format/limited-list.mjs';
+import { limitedList as untypedLimitedList } from '../../../../../../../shared/messages/format/limited-list.mts';
 import {
   firstRelease,
   isCleanupFunction,

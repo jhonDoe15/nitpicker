@@ -1,9 +1,8 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { parseXml } from '../../../../../shared/values/xml.mts';
-import type { XmlElement } from '../../../../../shared/values/xml.mts';
-import { resolveInside as untypedResolveInside } from '../../../../../shared/conventions/read-inside.mjs';
-import { missingProjectConfig as untypedMissingProjectConfig } from '../../../../../shared/conventions/tool-precedence.mjs';
+import { parseXml, type XmlElement } from '../../../../../shared/ingest/report-records.mts';
+import { resolveInside as untypedResolveInside } from '../../../../../shared/conventions/read-inside.mts';
+import { missingProjectConfig as untypedMissingProjectConfig } from '../../../../../shared/conventions/tool-precedence.mts';
 import { fieldOf, messageOf, textOf } from '../../../../../shared/values/readers.mts';
 import { mavenTextsOf } from '../../../builds/narrowing/maven-sources.mts';
 import {

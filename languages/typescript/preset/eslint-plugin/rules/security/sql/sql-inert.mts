@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { DYNAMIC } from '../../../../../../../shared/rules/security/sql-text.mjs';
+import { DYNAMIC } from '../../../../../../../shared/rules/security/sql-text.mts';
 import { findVariable, stringValue } from '../../analysis/constant-resolution.mts';
 import { ancestorsOf, chainOf } from '../../typed/node-views.mts';
 import { ts } from '../../typed/typescript-views.mts';

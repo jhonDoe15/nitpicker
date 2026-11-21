@@ -1,10 +1,6 @@
 import path from 'node:path';
 import { fieldOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
-import {
-  missingProjectConfig,
-  precedenceLayers,
-  readHeadPolicyFile,
-} from '../../project-tools/typed/shared-views.mts';
+import { missingProjectConfig, precedenceLayers } from '../../project-tools/typed/shared-views.mts';
 import type { ToolPolicy, ToolSettings } from '../../project-tools/typed/tool-types.mts';
 import type { RetryContext, RetryRead } from '../project-config-types.mts';
 import { projectConfigFile } from '../../test-environment/config-files.mts';
@@ -94,10 +90,7 @@ export function readTestRunnerProjectConfig(
   return { runner, ...(retry === undefined ? {} : { retry }) };
 }
 
-export function projectTestRetry(
-  runner: string,
-  settings: ToolSettings | undefined = readHeadPolicyFile().tools?.['tests'],
-): unknown {
+export function projectTestRetry(runner: string, settings: ToolSettings | undefined): unknown {
   const layers = precedenceLayers(settings?.precedence);
   if (settings === undefined || !layers.usesProject || layers.nitpickerFirst) {
     return undefined;

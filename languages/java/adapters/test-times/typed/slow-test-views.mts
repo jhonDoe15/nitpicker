@@ -7,13 +7,13 @@ import {
   RULE_IDS as RULE_IDS_UNTYPED,
   messageFields as messageFieldsUntyped,
   renderMessage as renderMessageUntyped,
-} from '../../../../../shared/policy.mjs';
+} from '../../../../../shared/policy.mts';
 import {
   shownSeconds as shownSecondsUntyped,
   slowestRuns as slowestRunsUntyped,
   slowTestBudget as slowTestBudgetUntyped,
-} from '../../../../../shared/rules/slow-tests/slow-test-finding.mjs';
-import { SLOW_TEST_FIXES as SLOW_TEST_FIXES_UNTYPED } from '../../../../../shared/rules/slow-tests/slow-test-fixes.mjs';
+} from '../../../../../shared/rules/slow-tests/slow-test-finding.mts';
+import { SLOW_TEST_FIXES as SLOW_TEST_FIXES_UNTYPED } from '../../../../../shared/rules/slow-tests/slow-test-fixes.mts';
 import {
   isIntegrationTest as isIntegrationTestUntyped,
   isSpringBootTest as isSpringBootTestUntyped,

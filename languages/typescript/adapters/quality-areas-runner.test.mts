@@ -11,7 +11,7 @@ import { normalizeStructure } from './quality-areas/reporting/repository.mts';
 import { normalizeCrap } from './quality-areas/reporting/tests.mts';
 import { parseArguments } from './quality-areas/arguments.mts';
 import { runQualityArea } from './quality-areas-runner.mts';
-import { TROUBLESHOOTING_ANCHORS } from '../../../shared/messages/troubleshooting.mjs';
+import { TROUBLESHOOTING_ANCHORS } from '../../../shared/messages/troubleshooting.mts';
 import type { QualityAreaOptions } from './quality-areas/typed/area-types.mts';
 import type { CrapEntry } from './quality-areas/typed/reporting.mts';
 import type { Finding } from './static-checks/shared.mts';
@@ -32,21 +32,24 @@ function optionsFor(
   projectRoot: string,
   extra: readonly string[] = [],
 ): QualityAreaOptions {
-  return parseArguments([
-    '--analyzer-name',
-    kind,
-    '--kind',
-    kind,
-    '--project-root',
-    projectRoot,
-    '--policy-root',
-    PACKAGE_ROOT,
-    '--tool-root',
-    PACKAGE_ROOT,
-    '--snapshot',
-    'head',
-    ...extra,
-  ]);
+  return parseArguments(
+    [
+      '--analyzer-name',
+      kind,
+      '--kind',
+      kind,
+      '--project-root',
+      projectRoot,
+      '--policy-root',
+      PACKAGE_ROOT,
+      '--tool-root',
+      PACKAGE_ROOT,
+      '--snapshot',
+      'head',
+      ...extra,
+    ],
+    process.env,
+  );
 }
 
 function runKind(

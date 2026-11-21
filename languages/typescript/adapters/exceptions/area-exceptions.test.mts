@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mjs';
+import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mts';
 import type { Finding } from '../static-checks/shared.mts';
 import type { CruiseReport } from '../typed/static-checks.mts';
 import { normalizeArchitectureViolations } from '../static-checks-runner.mts';

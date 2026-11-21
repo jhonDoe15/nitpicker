@@ -1,7 +1,7 @@
 import { QUERY_TYPES } from '../data-types.mts';
 import { lastSelector, parseSelector, unwrapped } from '../../view/expressions.mts';
 import { chainOf, isCollection, loopFrames } from './loop-scopes.mts';
-import { escapeRegExp } from '../../../../../../../../shared/paths/glob.mjs';
+import { escapeRegExp } from '../../../../../../../../shared/paths/glob.mts';
 import type { Argument, InvocationFact, SpringView } from '../../typed/spring-shapes.mts';
 
 const QUALIFIER = /^[\w.]+$/u;

@@ -1,5 +1,5 @@
-import { SCHEMA_KEY, THRESHOLD_KEYS, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mjs';
-import { factRuleSettings } from '../../../shared/project-rules/fact-rules.mjs';
+import { SCHEMA_KEY, THRESHOLD_KEYS, TYPESCRIPT_ONLY_KEYS } from '../../../shared/config.mts';
+import { factRuleSettings } from '../../../shared/project-rules/fact-rules.mts';
 import { GRADLE_PRESETS } from '../../../languages/java/adapters/gradle-presets.mts';
 import { NATIVE_LINE_LENGTH } from '../../../languages/java/adapters/java-policy.mts';
 import { conventionDefinitions } from '../../conventions/definitions.mts';
@@ -31,7 +31,7 @@ import {
 } from './schema-parts.mts';
 import { THRESHOLD_PRESETS, type SchemaTable } from '../views/schema-views.mts';
 import { toolKeysByPreset, tools, toolsByPreset } from './tools-schema.mts';
-import { MAX_TIMER_MS, MINUTE_MS } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+import { MAX_TIMER_MS, MINUTE_MS } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mts';
 
 export const SCHEMA_URL =
   'https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json';

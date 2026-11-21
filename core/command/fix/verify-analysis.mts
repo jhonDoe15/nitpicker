@@ -8,7 +8,7 @@ import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mts';
 import { realTemporaryDirectory } from '../../tooling/temporary-files.mts';
 import { TEMPORARY_WORKTREE_PREFIX } from '../../diff/git/repository/worktree.mts';
 import { copyProject } from '../../../languages/typescript/fix/dead-code/project-copy.mts';
-import { COMPILE_FAILED_SKIPPED_RULE } from '../../../shared/rules/finding-helpers.mjs';
+import { COMPILE_FAILED_SKIPPED_RULE } from '../../../shared/rules/finding-parts.mts';
 import { objectOf, textOf } from '../../../shared/values/readers.mts';
 import type { ProfiledAnalyzer } from '../../../shared/values/analyzers.mts';
 

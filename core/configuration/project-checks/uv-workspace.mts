@@ -1,17 +1,12 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import path from 'node:path';
+import { parseWithModule } from '../../../shared/values/parse-module.mts';
 import { fieldOf, isPlainObject } from '../../../shared/values/readers.mts';
 
 type Pyproject = { readonly value: unknown; readonly unreadable?: true };
 
 export function parseToml(text: string): unknown {
-  const smol: unknown = createRequire(import.meta.url)('smol-toml');
-  const parse = fieldOf(smol, 'parse');
-  if (typeof parse !== 'function') {
-    throw new TypeError('smol-toml has no parse function');
-  }
-  return Reflect.apply(parse, smol, [text]);
+  return parseWithModule('smol-toml', text);
 }
 
 function workspaceIn(pyproject: unknown): Record<string, unknown> | undefined {

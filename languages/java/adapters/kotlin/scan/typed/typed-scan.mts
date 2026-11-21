@@ -7,11 +7,11 @@ import type {
   Scanned,
   Subjected,
 } from './scan-shapes.mts';
-import { escapeRegExp as untypedEscape } from '../../../../../../shared/paths/glob.mjs';
+import { escapeRegExp as untypedEscape } from '../../../../../../shared/paths/glob.mts';
 import {
   chainOf as untypedChainOf,
   depthFirst as untypedDepthFirst,
-} from '../../../../../../shared/traversal.mjs';
+} from '../../../../../../shared/traversal.mts';
 import { lineOf as untypedLineOf, scanKotlinSource as untypedScan } from '../kotlin-source.mts';
 
 export const scanKotlinSource: (source: string) => Scanned = untypedScan;

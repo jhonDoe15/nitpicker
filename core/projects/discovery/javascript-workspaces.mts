@@ -1,10 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parseYaml } from '../../tooling/yaml/yaml-documents.mts';
-import { isNonEmptyString } from '../../../shared/config.mjs';
+import { isNonEmptyString } from '../../../shared/config.mts';
 import { fieldOf, fieldsOf } from '../../../shared/values/readers.mts';
 import type { WorkspaceDeclaration } from '../project-types.mts';
-import { globMatcher as untypedGlobMatcher } from '../../../shared/paths/glob.mjs';
+import { globMatcher as untypedGlobMatcher } from '../../../shared/paths/glob.mts';
 
 type Matcher = { test(path: string): boolean };
 const globMatcher: (glob: string) => Matcher = untypedGlobMatcher;

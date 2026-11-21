@@ -1,4 +1,7 @@
-import { coverageMetricFinding, uncoveredFinding } from '../../../../shared/ingest/common.mjs';
+import {
+  coverageMetricFinding,
+  uncoveredFinding,
+} from '../../../../shared/ingest/report-records.mts';
 import { reportedPath } from './coverage-paths.mts';
 import type { FindingsResult, IngestedFinding, IngestOptions } from '../typed/ingest-types.mts';
 import { fieldOf, parseJson } from '../../../../shared/values/readers.mts';
@@ -36,7 +39,7 @@ function fileFindings({
             tool,
             path,
             name: 'line-coverage',
-            covered: data.summary?.covered_lines,
+            covered: data.summary?.covered_lines ?? 0,
             total: statements,
           }),
         ]

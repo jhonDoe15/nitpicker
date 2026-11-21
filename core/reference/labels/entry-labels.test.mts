@@ -2,13 +2,12 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readReferenceEntries as untypedReadEntries } from '../../../shared/reference/store.mjs';
+import { readReferenceEntries } from '../../../shared/reference/store.mts';
 import { LABELS, isKind } from '../../labels/taxonomy.mts';
 import { entryLabeler, labelProblems, labelTable } from './entry-labels.mts';
 import { upstreamLabelResolver } from './upstream-labels.mts';
 
-const readReferenceEntries: () => { id: string; labels: string[] }[] = untypedReadEntries;
-const entries = readReferenceEntries();
+const entries = readReferenceEntries().map(({ id, labels = [] }) => ({ id, labels }));
 const ids = new Set(entries.map(({ id }) => id));
 const temporaryRoots: string[] = [];
 

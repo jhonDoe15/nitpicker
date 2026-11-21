@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { JavaFinding } from '../../adapters/typed/java-values.mts';
 import { collectJavaFindings } from '../../adapters/java-diff.mts';
-import { byText } from '../../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mts';
 import {
   isFormatting,
   LOOSE,

@@ -1,4 +1,4 @@
-import { readInside } from '../../../../../../../shared/conventions/read-inside.mjs';
+import { readInside } from '../../../../../../../shared/conventions/read-inside.mts';
 
 export function readText(root: string, relative: string): string | undefined {
   const text: unknown = readInside(root, relative, 'utf8');

@@ -1,4 +1,4 @@
-import { roundTripPairs as untypedRoundTripPairs } from '../../../../../shared/rules/round-trips/round-trips.mjs';
+import { roundTripPairs as untypedRoundTripPairs } from '../../../../../shared/rules/round-trips/round-trips.mts';
 import { bodyOf, LANGUAGE_RULES, parseStructure } from '../../reuse/source/jvm-declarations.mts';
 import type { Language, Range, Structure } from '../../reuse/source/jvm-source-types.mts';
 import { appendAll } from '../../../../../shared/lists/items.mjs';

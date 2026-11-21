@@ -1,4 +1,4 @@
-import { TESTS_FAILED_SKIPPED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
+import { TESTS_FAILED_SKIPPED_RULE } from '../../../../../shared/rules/finding-parts.mts';
 import type { Finding } from '../../static-checks/shared.mts';
 import type { Layout } from '../../typed/head-policy.mts';
 import type { QualityAreaOptions } from '../typed/area-types.mts';

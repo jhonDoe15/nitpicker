@@ -2,7 +2,7 @@ import type { Finding } from '../../../../../../shared/values/findings.mts';
 import {
   TYPESCRIPT_TEST_ONLY_MESSAGES as untypedMessages,
   testOnlyFindings as untypedTestOnlyFindings,
-} from '../../../../../../shared/rules/test-only/test-only-judgement.mjs';
+} from '../../../../../../shared/rules/test-only/test-only-judgement.mts';
 import type { KnipItem } from './knip-types.mts';
 
 export const TYPESCRIPT_TEST_ONLY_MESSAGES: unknown = untypedMessages;

@@ -4,7 +4,7 @@ import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSyncWithOutputFile } from '../../../../../core/tooling/output-file/output-file.mts';
-import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 import { fieldOf, numberOr, textOf } from '../../../../../shared/values/readers.mts';
 import type { JavaSpawn } from '../../../adapters/typed/java-values.mts';
 import { toolHeapFlags } from '../../../maven/parallel/slots/tool-slots.mts';

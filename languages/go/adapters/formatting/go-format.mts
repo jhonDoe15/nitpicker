@@ -2,7 +2,7 @@ import path from 'node:path';
 import { run } from '../execution/go-process.mts';
 import { toolCommand } from '../execution/go-tools.mts';
 import { formatterOptions } from './go-formatters.mts';
-import { formatAdvice } from '../../../../shared/messages/format/format-advice.mjs';
+import { formatAdvice } from '../../../../shared/messages/format/format-advice.mts';
 import type { FindingRow, GoContext } from '../go-types.mts';
 
 const FORMAT_RULE = 'format';

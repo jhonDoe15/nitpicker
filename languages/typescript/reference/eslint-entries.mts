@@ -3,7 +3,9 @@ import { i18nRuleIds } from '../preset/eslint-config/i18n/i18n-rules.mts';
 import { readEslintInventory } from './eslint-inventory.mts';
 import { fixerRuns, suggestionApplies } from './fixer-options.mts';
 import { ruleSets, type RuleSet } from './rule-sets.mts';
-import { counterpartsOf, ruleEntry, type RuleEntry } from './typed/entry-types.mts';
+import { counterpartsOf } from '../../../shared/reference/counterparts.mts';
+import { ruleEntry } from '../../../shared/reference/entry.mts';
+import type { DocsLink, RuleEntry } from '../../../shared/reference/typed/entry-types.mts';
 import type { RuleFacts, RuleForm } from './typed/inventory-types.mts';
 
 const GUIDE = 'docs/typescript-strict-preset.md';
@@ -101,7 +103,7 @@ function guideAnchorOf(id: string): string | undefined {
   return TEST_PREFIXES.some((prefix) => id.startsWith(prefix)) ? 'inside-tests' : undefined;
 }
 
-function docsOf(id: string): readonly object[] {
+function docsOf(id: string): readonly DocsLink[] {
   const anchor = guideAnchorOf(id);
   return [
     { label: 'Strict preset guide', path: GUIDE, ...(anchor === undefined ? {} : { anchor }) },

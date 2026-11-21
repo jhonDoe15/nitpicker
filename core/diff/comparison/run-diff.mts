@@ -23,6 +23,7 @@ import {
 import { type Comparison, readSnapshotLayout, withSnapshotRoots } from './snapshots/layout.mts';
 import { withPreparedDependencies } from './snapshots/dependencies.mts';
 import { type AnalyzerRun, analyzerRunOptions, runAnalyzers } from '../execution/run-analyzers.mts';
+import type { ComparisonRun } from './base-red/compare-analyzers.mts';
 import { carried, planOf, runnableOf, stopsEarly, unlessSkipped } from './snapshots/skips.mts';
 import type { CaptureHead } from './snapshots/run-types.mts';
 import type { Checkpoints } from '../execution/tasks.mts';
@@ -240,7 +241,7 @@ function runBaseAnalyzers(
   );
 }
 
-function runBaseSide(context: RunContext): unknown {
+function runBaseSide(context: RunContext): ComparisonRun {
   const { settings, comparison, layout, roots, baseSetup } = context;
   const analyzers = quickScoped(settings, layout, listOf(baseSetup.analyzers));
   if (settings.cacheStore === undefined) {

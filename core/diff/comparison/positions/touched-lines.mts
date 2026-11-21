@@ -1,5 +1,5 @@
 import type { ChangedLines, TrackedFinding } from '../model/finding-types.mts';
-import { insertBeforeRoute } from '../../../../shared/messages/exception-sentence.mjs';
+import { insertBeforeRoute } from '../../../../shared/messages/exception-sentence.mts';
 
 export const EDITED_LINE_SENTENCE = [
   'New because this change edits the line:',

@@ -1,6 +1,6 @@
 import type TypeScript from 'typescript';
 import type { StructureLayout } from './structure-types.mts';
-import { depthFirst as untypedDepthFirst } from '../../../../../shared/traversal.mjs';
+import { depthFirst as untypedDepthFirst } from '../../../../../shared/traversal.mts';
 import { syntaxChildren as untypedSyntaxChildren } from '../../syntax/children.mts';
 import {
   isExcludedPath as untypedIsExcludedPath,

@@ -1,5 +1,5 @@
-import { mutantRuleId } from '../../../../shared/policy.mjs';
-import { hash } from '../../../../shared/rules/finding-helpers.mjs';
+import { mutantRuleId } from '../../../../shared/policy.mts';
+import { hash } from '../../../../shared/rules/finding-parts.mts';
 import { baselineRun, packagesOf, runMutant, runnersOf, testersOf } from './mutation-run.mts';
 import { generateMutants, lineReader, onChangedLine } from './mutation-scope.mts';
 import type { FindingRow, GoContext } from '../go-types.mts';

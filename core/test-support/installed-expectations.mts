@@ -1,15 +1,9 @@
 import { runCli } from '../cli.mts';
 import { PACKAGE_ROOT } from '../tooling/tool-resolution.mts';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mts';
-import {
-  docsRef as untypedDocsRef,
-  LATEST_RELEASE_TAG as untypedLatestReleaseTag,
-} from '../../shared/messages/docs-url.mjs';
-import {
-  indexEntries as untypedIndexEntries,
-  readReferenceEntries as untypedReadReferenceEntries,
-  referenceUrl as untypedReferenceUrl,
-} from '../../shared/reference/store.mjs';
+import { docsRef, LATEST_RELEASE_TAG } from '../../shared/messages/docs-url.mts';
+import { indexEntries, readReferenceEntries, referenceUrl } from '../../shared/reference/store.mts';
+import type { EntryIndex } from '../../shared/reference/typed/entry-types.mts';
 import { fieldAt } from '../../scripts/json/fields.mts';
 import { textOf } from '../../shared/values/readers.mts';
 import { usageText } from '../help/usage-text.mts';
@@ -27,23 +21,14 @@ export function installedLinks(manifest: unknown): InstalledLinks {
 }
 
 export function installedHelpUri(links: InstalledLinks, id: string): string | undefined {
-  return referenceUrl(links.reference.exact.get(id)?.[0], links.tagRoot);
+  const entry = links.reference.exact.get(id)?.[0];
+  return entry === undefined ? undefined : referenceUrl(entry, links.tagRoot);
 }
-
-const docsRef: (options: { version: string; checkout: boolean }) => string = untypedDocsRef;
-const LATEST_RELEASE_TAG: string = untypedLatestReleaseTag;
-const referenceUrl: (entry: unknown, root: string) => string | undefined = untypedReferenceUrl;
-const indexEntries: (entries: unknown) => ReferenceIndex = untypedIndexEntries;
-const readReferenceEntries: () => unknown = untypedReadReferenceEntries;
-
-type ReferenceIndex = {
-  readonly exact: ReadonlyMap<string, readonly unknown[]>;
-};
 
 export type InstalledLinks = {
   readonly repositoryUrl: string;
   readonly tagRoot: string;
-  readonly reference: ReferenceIndex;
+  readonly reference: EntryIndex;
 };
 
 const EXAMPLE_PATH = 'src/main/example.ts';

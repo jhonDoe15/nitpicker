@@ -1,10 +1,10 @@
-import { exceptionHint as untypedExceptionHint } from '../../../../../shared/rules/exceptions.mjs';
+import { exceptionHint as untypedExceptionHint } from '../../../../../shared/rules/exceptions.mts';
 import { KOTLIN_SOURCE_RULES } from '../scan/kotlin-scan.mts';
 import { EFFECTS_RULES } from '../../effects/effects-messages.mts';
 import {
   appendSentence as untypedAppendSentence,
   hasExceptionRoute as untypedHasExceptionRoute,
-} from '../../../../../shared/messages/exception-sentence.mjs';
+} from '../../../../../shared/messages/exception-sentence.mts';
 import { type RuleFinding, withAllowedForm } from './kotlin-rules.mts';
 
 const exceptionHint: (rule: string, path: string) => string = untypedExceptionHint;

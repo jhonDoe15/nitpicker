@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mts';
-import { TESTS_FAILED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
+import { TESTS_FAILED_RULE } from '../../../../../shared/rules/finding-parts.mts';
 import { runQualityArea } from '../../quality-areas-runner.mts';
 import type { Finding } from '../../static-checks/shared.mts';
 import { areaOptions, compareFindings } from '../area-options.mts';
@@ -70,8 +70,12 @@ export function createRunnerProjects(): {
   };
 }
 
-export function runArea(kind: string, projectRoot: string): Promise<readonly Finding[]> {
-  return runQualityArea(areaOptions(kind, projectRoot));
+export function runArea(
+  kind: string,
+  projectRoot: string,
+  environment: Readonly<Record<string, string | undefined>> = {},
+): Promise<readonly Finding[]> {
+  return runQualityArea(areaOptions(kind, projectRoot, environment));
 }
 
 export function rulesOf(findings: readonly Finding[]): string[] {

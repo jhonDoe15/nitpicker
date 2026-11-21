@@ -3,7 +3,7 @@ import { GOCRITIC_HINTS, GOCRITIC_MESSAGE_HINTS } from './gocritic-hints.mts';
 import { reviveHint, reviveVaryingPart } from './revive-hints.mts';
 import type { MessageHint } from './hint-types.mts';
 import { fieldOf, parseJson, textOf, textsOf } from '../../../../shared/values/readers.mts';
-import { copiedConstantMessage } from '../../../../shared/rules/copied-constants/copied-constants.mjs';
+import { copiedConstantMessage } from '../../../../shared/rules/copied-constants/copied-constants.mts';
 
 function deferredClose(value: string) {
   return `\`defer func() { err = errors.Join(err, ${value}.Close()) }()\``;
@@ -209,13 +209,23 @@ function hintOf(tool: string, rule: string, message: string) {
 const COPIED_CONSTANT_PIN =
   '`if {name} != {value} { t.Fatalf(...) }`, or `assert.Equal(t, {value}, {name})`';
 
+function constantLiteral(
+  kind: unknown,
+  value: unknown,
+): { readonly kind: 'number' | 'string'; readonly value: string | number } {
+  return {
+    kind: kind === 'number' ? 'number' : 'string',
+    value: typeof value === 'number' ? value : textOf(value),
+  };
+}
+
 function copiedConstant(message: string): string {
   const parsed = parseJson(message);
   return textOf(
     copiedConstantMessage({
       names: textsOf(fieldOf(parsed, 'names')),
       owner: `package ${textOf(fieldOf(parsed, 'owner'))}`,
-      literal: { kind: fieldOf(parsed, 'kind'), value: fieldOf(parsed, 'value') },
+      literal: constantLiteral(fieldOf(parsed, 'kind'), fieldOf(parsed, 'value')),
       pin: COPIED_CONSTANT_PIN,
     }),
   );

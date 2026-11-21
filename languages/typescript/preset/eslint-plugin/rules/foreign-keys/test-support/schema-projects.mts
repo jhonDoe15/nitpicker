@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { pathInside } from '../../../../../../../shared/filesystem.mjs';
+import { pathInside } from '../../../../../../../shared/filesystem.mts';
 
 export function schemaProject(files: Record<string, string>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-foreign-keys-'));

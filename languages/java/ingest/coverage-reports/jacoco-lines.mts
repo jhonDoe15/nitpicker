@@ -1,5 +1,4 @@
-import { childrenNamed } from '../../../../shared/values/xml.mts';
-import type { XmlElement } from '../../../../shared/values/xml.mts';
+import { childrenNamed, type XmlElement } from '../../../../shared/ingest/report-records.mts';
 import type { CoverageUnit } from '../units/unit-types.mts';
 
 export function joinedPath(...parts: readonly (string | undefined)[]): string {

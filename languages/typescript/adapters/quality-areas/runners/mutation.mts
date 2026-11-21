@@ -197,6 +197,7 @@ async function writeStrykerConfig({
   const config = strykerRunConfig(
     layeredStrykerConfig(
       await runnerConfig({ options, sourceConfig, targets, createdFiles, testRunner }),
+      options.environment,
     ),
     { snapshot: options.snapshot, targets },
   );

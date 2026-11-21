@@ -1,22 +1,16 @@
 import { createHash } from 'node:crypto';
 import { entryKey } from '../../comparison/fingerprint.mts';
-import { plainText } from '../../../../shared/reference/facts.mjs';
-import { entryForFinding, referenceUrl } from '../../../../shared/reference/store.mjs';
+import { plainText } from '../../../../shared/reference/facts.mts';
+import { entryForFinding, referenceUrl } from '../../../../shared/reference/store.mts';
 import { repositoryFindingPath } from '../../git/paths.mts';
-import type { ReferenceLinks, ReportEntry } from '../../../../shared/values/findings.mts';
+import type { ReportEntry } from '../../../../shared/values/findings.mts';
+import type { ReferenceLinks } from '../../../../shared/reference/typed/entry-types.mts';
 import { sarifFixes } from './sarif-fixes.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import { type LabelsOf, findingLabeler } from '../../../labels/finding-labels.mts';
 import { areaOf } from '../format/rule-groups/finding-areas.mts';
 
 export type SarifEntry = { readonly finding: ReportEntry; readonly baselineState?: string };
-
-const plain: (text: unknown, root: unknown) => string = plainText;
-const ruleEntry: (
-  index: unknown,
-  rule: { readonly tool: unknown; readonly rule: unknown },
-) => unknown = entryForFinding;
-const ruleUrl: (entry: unknown, root: unknown) => string | undefined = referenceUrl;
 
 const SARIF_FINGERPRINT_KEY = 'nitpickerIdentity/v1';
 
@@ -75,14 +69,17 @@ export function toSarifResult(
 }
 
 function sarifRule(finding: ReportEntry, reference: ReferenceLinks, labelsOf: LabelsOf): object {
-  const entry = ruleEntry(reference.index(), { tool: finding.tool, rule: finding.rule });
-  const helpUri = entry === undefined ? undefined : ruleUrl(entry, reference.root());
+  const entry = entryForFinding(reference.index(), {
+    tool: textOf(finding.tool),
+    rule: textOf(finding.rule),
+  });
+  const helpUri = entry === undefined ? undefined : referenceUrl(entry, reference.root());
   return {
     id: ruleIdOf(finding),
     name: finding.rule,
     ...(entry === undefined
       ? {}
-      : { shortDescription: { text: plain(fieldOf(entry, 'summary'), reference.root()) } }),
+      : { shortDescription: { text: plainText(entry.summary, reference.root()) } }),
     ...(helpUri === undefined ? {} : { helpUri }),
     properties: { tags: [...labelsOf(finding)] },
   };

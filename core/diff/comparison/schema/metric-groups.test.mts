@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeStructure } from '../../../../languages/typescript/adapters/quality-areas/reporting/repository.mts';
-import { compactMetricFindings as untypedCompact } from '../../../../shared/report-output/metric-groups.mjs';
+import { compactMetricFindings as untypedCompact } from '../../../../shared/report-output/metric-groups.mts';
 import { compareFindings } from '../test-support/typed-compare.mts';
 import { parseAnalyzerReport } from '../test-support/parsed-findings.mts';
 import { parseAnalyzerReportKeepingValid as untypedKeepingValid } from './invalid-findings.mts';

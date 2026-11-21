@@ -4,16 +4,10 @@ import { describe, expect, it } from 'vitest';
 import { configurationFiles } from '../../java-analyzer.mts';
 import { ALLOWED_FORM_FIRST } from '../test-support/allowed-form.mts';
 import { withRuleMessage } from '../../../messages/rule-messages.mts';
-import {
-  guidePages as guidePagesUntyped,
-  guideText as guideTextUntyped,
-} from '../../../../../shared/reference/build/guide-pages.mjs';
+import { guidePages, guideText } from '../../../../../shared/reference/build/guide-pages.mts';
 import { textOf } from '../../../../../shared/values/readers.mts';
 
 type RuleEntry = { readonly name: string; readonly message: string };
-
-const guidePages: (file: string) => unknown[] = guidePagesUntyped;
-const guideText: (page: unknown) => string = guideTextUntyped;
 
 const root = path.resolve(import.meta.dirname, '../../../../..');
 const ruleset = readFileSync(path.join(root, 'languages/java/gradle/spring-ruleset.xml'), 'utf8');

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { ESLint } from 'eslint';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../../../adapters/eslint/normalize.mts';
-import { checkoutModuleUrl as untypedCheckoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl as untypedCheckoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
 import {
   createProject,

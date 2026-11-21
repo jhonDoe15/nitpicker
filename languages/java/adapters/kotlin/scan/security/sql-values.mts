@@ -1,5 +1,5 @@
 import { escapeRegExp } from '../typed/typed-scan.mts';
-import { DYNAMIC } from '../../../../../../shared/rules/security/sql-text.mjs';
+import { DYNAMIC } from '../../../../../../shared/rules/security/sql-text.mts';
 import { literalAt, splitArguments } from '../kotlin-source.mts';
 import type { Literal, Scanned } from '../typed/scan-shapes.mts';
 import type { KotlinDeclarations, Span } from '../typed/rule-shapes.mts';

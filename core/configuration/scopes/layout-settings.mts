@@ -7,10 +7,10 @@ import {
   PARENT_SEGMENT,
   validateFolderGlobs,
   validateStringArray,
-} from '../../../shared/config.mjs';
+} from '../../../shared/config.mts';
 import { factRuleSettings, isPlainObject } from '../views/config-views.mts';
 import { fieldOf, textsOf } from '../../../shared/values/readers.mts';
-import { didYouMean } from '../../../shared/messages/closest-match.mjs';
+import { didYouMean } from '../../../shared/messages/closest-match.mts';
 
 export const TYPESCRIPT_PRESETS: readonly (string | undefined)[] = [
   undefined,

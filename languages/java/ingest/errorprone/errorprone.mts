@@ -1,9 +1,9 @@
-import { createIdentityCounter, hashIdentity } from '../../../../shared/ingest/common.mjs';
+import { createIdentityCounter, hashIdentity } from '../../../../shared/ingest/report-records.mts';
 import { withoutClassLiteralRepeats } from './class-literals.mts';
 import { diagnosticOf, type Diagnostic } from './diagnostic.mts';
-import { compareText } from '../../../../shared/paths/path-order.mjs';
+import { compareText } from '../../../../shared/paths/path-order.mts';
 import { withoutLineReferences } from '../../../../shared/ingest/line-references.mts';
-import { definedField } from '../../../../shared/messages/messages.mjs';
+import { definedField } from '../../../../shared/messages/messages.mts';
 import { errorProneAllowedForm, errorProneMessage } from './messages.mts';
 import { listOf, numberOr, parseJson } from '../../../../shared/values/readers.mts';
 

@@ -5,7 +5,7 @@ import { COLLECTION_POLICY_FILES } from '../eslint-plugin/rules/collections/coll
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from '../dependency-graph/cruise.mts';
 import { HTTP_VALUE_POLICY_FILES } from '../eslint-plugin/rules/http-values/origins/http-policy-files.mts';
 import { PROJECT_TOOL_FILES } from '../project-tools/project-config-files.mts';
-import { QUERY_RULE_FILES } from '../../../../shared/rules/queries/query-rule-files.mjs';
+import { QUERY_RULE_FILES } from '../../../../shared/rules/queries/query-rule-files.mts';
 import { LIFECYCLE_POLICY_FILES } from './lifecycles/lifecycle-policy-files.mts';
 import { RULE_BACKED_MEASURE_FILES } from '../../conventions/measures/parsing/rule-backed-measures.mts';
 import { PLUGIN_RULE_FILES } from './plugin-rules/plugin-rule-files.mts';

@@ -1,6 +1,6 @@
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import type { JSONSchema } from '@typescript-eslint/utils';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mts';
 import { isTriStateTag } from './tri-state-tags.mts';
 import type {
   Grammar,

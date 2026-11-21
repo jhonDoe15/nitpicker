@@ -1,7 +1,7 @@
 import {
   TROUBLESHOOTING_ANCHORS,
   failureText as untypedFailureText,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 
 const failureText: (error: unknown, anchor: string) => string = untypedFailureText;
 

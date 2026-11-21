@@ -9,7 +9,7 @@ import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 import { useCliFixtures } from '../test-support/cli-harness.mts';
 import type { FixtureRepository } from '../test-support/fixture-types.mts';
 import { fieldOf, parseJson, textOf } from '../../../shared/values/readers.mts';
-import { checkoutModulePath as moduleSourcePath } from '../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as moduleSourcePath } from '../../../shared/paths/checkout-module.mts';
 
 const checkoutModulePath: (file: string) => string = moduleSourcePath;
 

@@ -3,7 +3,7 @@ import {
   memberCall as untypedMemberCall,
   roundTripMessage as untypedRoundTripMessage,
   shownMember as untypedShownMember,
-} from '../../../../../../shared/rules/round-trips/round-trips.mjs';
+} from '../../../../../../shared/rules/round-trips/round-trips.mts';
 import { exportedPairs, type Member, type OwnedPair } from './exported-pairs.mts';
 import { untestedPairs } from './tested-names.mts';
 

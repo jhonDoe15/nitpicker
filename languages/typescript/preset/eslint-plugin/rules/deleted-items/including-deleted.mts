@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { wordsOf as untypedWordsOf } from '../../../../../../shared/naming/secret-words.mjs';
+import { wordsOf as untypedWordsOf } from '../../../../../../shared/naming/secret-words.mts';
 import { descendantsOf, parentOf, ts, withoutParentheses } from '../typed/typescript-views.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
 import { chainOf } from '../typed/node-views.mts';

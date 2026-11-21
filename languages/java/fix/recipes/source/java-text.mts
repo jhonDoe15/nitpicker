@@ -1,4 +1,4 @@
-import { lineAt } from '../../../../../shared/conventions/lines.mjs';
+import { lineAt } from '../../../../../shared/conventions/lines.mts';
 
 export type Masked = { readonly code: string; readonly literals: string };
 export type TypeBlock = {

@@ -102,9 +102,9 @@ describe('Python analyzer', () => {
       'languages/python/ruff/nitpicker-ruff.toml',
       'languages/python/adapters/execution/python-test-runner.mts',
       'languages/python/ingest/coverage-reports/coverage-json.mts',
-      'shared/ingest/sarif.mjs',
-      'shared/policy.mjs',
-      'shared/rules/baseline-expansion.mjs',
+      'shared/ingest/sarif.mts',
+      'shared/policy.mts',
+      'shared/rules/baseline-expansion.mts',
       'languages/python/metrics/structure_metrics.py',
     ];
     expect(required.filter((file) => !files.includes(file))).toEqual([]);

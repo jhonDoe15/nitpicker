@@ -3,14 +3,15 @@ import path from 'node:path';
 import { renderTextReport as textReport } from './text.mts';
 import { renderJunitReport } from './junit.mts';
 import { renderBaselineSarifReport, renderSarifReport } from './sarif.mts';
-import { heldFindingsOf as heldFindings } from './report-model.mts';
-import { referenceLinks, withHelpUris } from '../../../shared/reference/store.mjs';
-import { pathInside } from '../../../shared/filesystem.mjs';
+import { heldFindingsOf as heldFindings, withHelpLinks } from './report-model.mts';
+import { referenceLinks } from '../../../shared/reference/store.mts';
+import { pathInside } from '../../../shared/filesystem.mts';
 import {
   CODE_QUALITY_REPORT_FILE_NAME as CODE_QUALITY_FILE,
   renderCodeQualityReport as codeQualityReport,
 } from './format/codequality.mts';
-import type { ReferenceLinks, ReportData } from '../../../shared/values/findings.mts';
+import type { ReportData } from '../../../shared/values/findings.mts';
+import type { ReferenceLinks } from '../../../shared/reference/typed/entry-types.mts';
 
 export type { ReferenceLinks };
 
@@ -30,9 +31,6 @@ type ReportLocation = {
   readonly repositoryRoot?: string | undefined;
 };
 
-const helpUris: (findings: readonly unknown[], reference: ReferenceLinks) => unknown = withHelpUris;
-const links: () => ReferenceLinks = referenceLinks;
-
 const TEXT_REPORT_FILE_NAME = 'report.txt';
 
 export function json(value: unknown): string {
@@ -43,16 +41,16 @@ const DIFF_REPORTS: readonly ReportFile<ReportData>[] = [
   { name: 'summary.json', render: (report) => json(report.summary) },
   {
     name: 'new-findings.json',
-    render: (report, { reference }) => json(helpUris(report.newFindings, reference)),
+    render: (report, { reference }) => json(withHelpLinks(report.newFindings, reference)),
   },
   {
     name: 'resolved-findings.json',
-    render: (report, { reference }) => json(helpUris(report.resolvedFindings, reference)),
+    render: (report, { reference }) => json(withHelpLinks(report.resolvedFindings, reference)),
   },
   { name: 'changed-metrics.json', render: (report) => json(report.changedMetrics) },
   {
     name: 'held-findings.json',
-    render: (report, { reference }) => json(helpUris(heldFindings(report), reference)),
+    render: (report, { reference }) => json(withHelpLinks(heldFindings(report), reference)),
   },
   { name: 'tool-errors.json', render: (report) => json(report.toolErrors) },
   { name: 'notes.json', render: (report) => json(report.notes ?? []) },
@@ -90,7 +88,7 @@ export function writeReports<R>(
   { report, options }: { readonly report: R; readonly options: ReportLocation },
 ): Map<string, string> {
   mkdirSync(outputRoot, { recursive: true });
-  const rendering = { ...options, reference: links() };
+  const rendering = { ...options, reference: referenceLinks() };
   const written = new Map(reports.map(({ name, render }) => [name, render(report, rendering)]));
   for (const [name, contents] of written) {
     writeFileSync(reportPath(outputRoot, name), contents);

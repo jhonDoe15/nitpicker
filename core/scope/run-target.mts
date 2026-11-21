@@ -2,7 +2,7 @@ import { existsSync, realpathSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { resolveProjectRoot } from '../configuration/project-checks/project-root.mts';
-import { GIT_OUTPUT_LIMIT_BYTES } from '../../shared/processes/deadlines.mjs';
+import { GIT_OUTPUT_LIMIT_BYTES } from '../../shared/processes/deadlines.mts';
 
 type TargetRequest = {
   readonly options: { readonly paths?: readonly string[] | undefined };

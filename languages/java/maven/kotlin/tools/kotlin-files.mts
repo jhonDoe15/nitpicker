@@ -1,4 +1,4 @@
-import { filesEndingWith } from '../../../../../shared/filesystem.mjs';
+import { filesEndingWith } from '../../../../../shared/filesystem.mts';
 
 const endingWith: (directories: readonly string[], extension: string) => string[] = filesEndingWith;
 

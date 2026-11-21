@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { exceptionHint as untypedExceptionHint } from '../../../../../shared/rules/exceptions.mjs';
-import { createIdentityCounter as untypedCreateIdentityCounter } from '../../../../../shared/ingest/common.mjs';
+import { exceptionHint as untypedExceptionHint } from '../../../../../shared/rules/exceptions.mts';
+import { createIdentityCounter as untypedCreateIdentityCounter } from '../../../../../shared/ingest/report-records.mts';
 import type { Finding } from '../../../../../shared/values/findings.mts';
 import { closingIndex } from '../scan/kotlin-source.mts';
 import { LITERAL_MARK, maskKotlinSource } from './kotlin-literals.mts';
@@ -11,7 +11,7 @@ import {
   isUnusedCodeSuppression,
   SUPPRESSION_RULE,
 } from './kotlin-rules.mts';
-import { projectFilePaths as untypedProjectFilePaths } from '../../../../../shared/project-files/project-files.mjs';
+import { projectFilePaths as untypedProjectFilePaths } from '../../../../../shared/project-files/project-files.mts';
 
 type Annotation = { code: string; start: number; end: number };
 type Use = { token: string; annotation: Annotation };

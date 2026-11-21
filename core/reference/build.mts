@@ -3,12 +3,12 @@ import path from 'node:path';
 import { jvmRuleEntries } from '../../languages/java/reference/index.mts';
 import { pythonRuleEntries } from '../../languages/python/reference/index.mts';
 import { typescriptRuleEntries } from '../../languages/typescript/reference/index.mts';
-import { sharedCheckEntries } from '../../shared/reference/checks/check-entries.mjs';
-import { typescriptCheckEntries } from '../../shared/reference/checks/other-entries.mjs';
-import { PAGE_IDS } from '../../shared/reference/pages.mjs';
+import { sharedCheckEntries } from '../../shared/reference/checks/check-entries.mts';
+import { typescriptCheckEntries } from '../../shared/reference/checks/other-entries.mts';
+import { PAGE_IDS } from '../../shared/reference/pages.mts';
 import { entryLabeler } from './labels/entry-labels.mts';
 import { withFixStatus, DEFAULT_FIX_SOURCES } from '../fix/status/fix-status.mts';
-import { guideLink, headingAnchors } from '../../shared/reference/build/guide-pages.mjs';
+import { guideLink, headingAnchors } from '../../shared/reference/build/guide-pages.mts';
 import { fieldOf, listOf, textOf } from '../../shared/values/readers.mts';
 
 export type ReferenceEntry = Readonly<Record<string, unknown>>;
@@ -24,7 +24,6 @@ const jvmRules: Entries = jvmRuleEntries;
 const pythonRules: Entries = pythonRuleEntries;
 const pageIds: readonly unknown[] = PAGE_IDS;
 const anchorsOf: (text: string) => readonly unknown[] = headingAnchors;
-const linkToGuide: (guide: string, anchor: unknown) => object = guideLink;
 
 function withStatus(entry: ReferenceEntry, sources: FixSources): ReferenceEntry {
   return withFixStatus({ fixableIn: undefined, suggestedIn: undefined, ...entry }, sources);
@@ -103,7 +102,7 @@ function withGuidePage(doc: unknown): unknown {
   }
   return textOf(guide).startsWith(RULE_PAGES)
     ? doc
-    : { ...link, ...linkToGuide(textOf(guide), anchor) };
+    : { ...link, ...guideLink(textOf(guide), anchor === undefined ? undefined : textOf(anchor)) };
 }
 
 function fieldsOfDoc(doc: unknown): Readonly<Record<string, unknown>> {

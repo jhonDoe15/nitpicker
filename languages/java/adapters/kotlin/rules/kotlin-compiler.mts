@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { exceptionHint as untypedExceptionHint } from '../../../../../shared/rules/exceptions.mjs';
-import { hash as untypedHash } from '../../../../../shared/rules/finding-helpers.mjs';
-import { createIdentityCounter as untypedCreateIdentityCounter } from '../../../../../shared/ingest/common.mjs';
+import { exceptionHint as untypedExceptionHint } from '../../../../../shared/rules/exceptions.mts';
+import { hash as untypedHash } from '../../../../../shared/rules/finding-parts.mts';
+import { createIdentityCounter as untypedCreateIdentityCounter } from '../../../../../shared/ingest/report-records.mts';
 import { fieldOf, parseJson, textOf } from '../../../../../shared/values/readers.mts';
 import type { Finding } from '../../../../../shared/values/findings.mts';
 import { compilerWarningRule } from './kotlin-rules.mts';

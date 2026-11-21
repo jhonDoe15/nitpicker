@@ -1,7 +1,7 @@
-import { configError } from '../../../shared/config.mjs';
+import { configError } from '../../../shared/config.mts';
 import { isPlainObject } from '../views/config-views.mts';
-import { CO_CHANGE_LIMITS } from '../../../shared/project-rules/hygiene-rules.mjs';
-import { suggestionOrAllowed } from '../../../shared/messages/closest-match.mjs';
+import { CO_CHANGE_LIMITS } from '../../../shared/project-rules/hygiene-rules.mts';
+import { suggestionOrAllowed } from '../../../shared/messages/closest-match.mts';
 
 export const HISTORY_THRESHOLD_KEYS = ['commits', 'minSupport', 'minConfidence', 'maxCommitFiles'];
 export const HISTORY_KEYS = ['coChange', ...HISTORY_THRESHOLD_KEYS];

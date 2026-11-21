@@ -1,5 +1,5 @@
-import { exceptionRoute as untypedRoute } from '../../../../shared/exceptions/rule-names.mjs';
-import { definedField as untypedDefinedField } from '../../../../shared/messages/messages.mjs';
+import { exceptionRoute as untypedRoute } from '../../../../shared/exceptions/rule-names.mts';
+import { definedField as untypedDefinedField } from '../../../../shared/messages/messages.mts';
 
 type RouteInput = {
   readonly rule: string;

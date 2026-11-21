@@ -1,8 +1,7 @@
-import { analyzerDeadlineMs as untypedDeadline } from '../../../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
-import { applyFindingPolicy as untypedApplyPolicy } from '../../../../../shared/findings/finding-policy.mjs';
-import { readHeadPolicyFile as untypedHeadPolicy } from '../../../../../shared/head-policy.mjs';
+import { analyzerDeadlineMs as untypedDeadline } from '../../../../../shared/analyzer-timeouts/analyzer-timeouts.mts';
+import { applyFindingPolicy as untypedApplyPolicy } from '../../../../../shared/findings/finding-policy.mts';
 import { trackTemporaryPath as untypedTrack } from '../../../../../core/tooling/temporary-files.mts';
-import { withTroubleshooting as untypedTroubleshooting } from '../../../../../shared/messages/troubleshooting.mjs';
+import { withTroubleshooting as untypedTroubleshooting } from '../../../../../shared/messages/troubleshooting.mts';
 import { applyRuleHints as untypedHints } from '../../../rules/rule-hints.mts';
 import { parseRunnerArguments as untypedParse } from '../../../../../core/tooling/runner-arguments.mts';
 import { precedenceToolNames as untypedPrecedence } from '../../../../java/adapters/gradle-presets.mts';
@@ -32,10 +31,6 @@ export function applyFindingPolicy(
   options: Readonly<Record<string, unknown>>,
 ): IngestedFinding[] {
   return listOf(call(untypedApplyPolicy, findings, options)).filter(isFinding);
-}
-
-export function readHeadPolicyFile(): Readonly<Record<string, unknown>> {
-  return fieldsOf(call(untypedHeadPolicy));
 }
 
 export function parseSharedArguments(shared: readonly string[]): {

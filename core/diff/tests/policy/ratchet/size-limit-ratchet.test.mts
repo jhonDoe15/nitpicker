@@ -3,8 +3,8 @@ import {
   FUNCTION_STRUCTURE_LIMITS,
   GREW_MESSAGES,
   HELD_MESSAGES,
-} from '../../../../../shared/policy.mjs';
-import { evaluateStructure } from '../../../../../shared/rules/structure.mjs';
+} from '../../../../../shared/policy.mts';
+import { evaluateStructure } from '../../../../../shared/rules/structure.mts';
 import {
   type Comparison,
   compareFindings,

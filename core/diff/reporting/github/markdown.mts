@@ -1,6 +1,6 @@
 import { singleLine } from '../format/text.mts';
 import { pluralize as nounFor } from '../summary.mts';
-import { ROUTE_SENTENCE } from '../../../../shared/messages/exception-sentence.mjs';
+import { ROUTE_SENTENCE } from '../../../../shared/messages/exception-sentence.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { javaFilesUnder, pathInside } from '../../../../review-rules/java-sources.mts';
 import { typeName } from '../spring-names.mts';
-import { escapeRegExp } from '../../../../../../../shared/paths/glob.mjs';
+import { escapeRegExp } from '../../../../../../../shared/paths/glob.mts';
 import type { ProjectContext, Super } from './spring-shapes.mts';
 
 const AUTO_APPLY = String.raw`@Converter\s*\(\s*(?:autoApply\s*=\s*)?true\s*\)`;
@@ -82,7 +82,7 @@ function enclosingFiles(candidate: string): string[] {
 
 export function isJavaEnum(context: ProjectContext, candidates: string[]): boolean {
   return candidates.some((candidate) => {
-    const simple = candidate.split('.').at(-1);
+    const simple = candidate.split('.').at(-1) ?? candidate;
     const declaration = new RegExp(String.raw`\benum\s+${escapeRegExp(simple)}\b`, 'u');
     return enclosingFiles(candidate).some((file) =>
       declaration.test(javaSource(context, file) ?? ''),

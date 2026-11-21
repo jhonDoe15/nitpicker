@@ -5,12 +5,12 @@ import { lintCommand } from '../execution/go-tools.mts';
 import { diagnosticFindings, parsePosition } from '../build/diagnostics.mts';
 import { withoutGatedForeignKeys } from './foreign-keys/key-gate.mts';
 import { lintMessage, lintRule } from './lint-rules.mts';
-import { MESSAGES, messageFields } from '../../../../shared/policy.mjs';
-import { exceptionText } from '../../../../shared/rules/exceptions.mjs';
+import { MESSAGES, messageFields } from '../../../../shared/policy.mts';
+import { exceptionText } from '../../../../shared/rules/exceptions.mts';
 import {
   UNUSED_API_RULE_IDS,
   UNUSED_OPTION_SCOPES,
-} from '../../../../shared/unused-api/unused-api-policy.mjs';
+} from '../../../../shared/unused-api/unused-api-policy.mts';
 import { fieldOf, listOf, parseJson, textOf } from '../../../../shared/values/readers.mts';
 import type { Diagnostic, FindingRow, GoContext, SourcePosition } from '../go-types.mts';
 

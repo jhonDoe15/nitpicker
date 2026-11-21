@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readReferenceEntries as untypedReadReferenceEntries } from '../../../../shared/reference/store.mjs';
+import { readReferenceEntries as untypedReadReferenceEntries } from '../../../../shared/reference/store.mts';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import { useGitFixtures } from '../test-support/fix-test-support.mts';
 import { AUTOMATIC_SAMPLES } from './test-support/automatic-samples.mts';

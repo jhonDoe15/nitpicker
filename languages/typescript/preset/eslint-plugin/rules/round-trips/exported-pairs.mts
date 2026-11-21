@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { ASSERTION_FORMS, unwrapOf } from '../typed/syntax-views.mts';
-import { roundTripPairs as untypedRoundTripPairs } from '../../../../../../shared/rules/round-trips/round-trips.mjs';
+import { roundTripPairs as untypedRoundTripPairs } from '../../../../../../shared/rules/round-trips/round-trips.mts';
 
 export type Member = {
   readonly name: string;

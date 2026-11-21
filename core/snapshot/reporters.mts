@@ -10,10 +10,10 @@ import {
 } from '../diff/reporting/reporters.mts';
 import { quickLines, stagedLines } from '../quick/summary.mts';
 import { junitRunProfile } from '../quick/report-formats.mts';
-import { toolErrorHelpLine } from '../../shared/messages/troubleshooting.mjs';
+import { toolErrorHelpLine } from '../../shared/messages/troubleshooting.mts';
 import { partialRunLines as partialLinesOf } from '../diff/reporting/partial-run/partial-run.mts';
 import { ruleReferenceLines as referenceLinesOf } from '../diff/reporting/text.mts';
-import { withHelpUris } from '../../shared/reference/store.mjs';
+import { withHelpLinks } from '../diff/reporting/report-model.mts';
 import {
   CODE_QUALITY_REPORT_FILE_NAME as codeQualityFile,
   renderCodeQualityReport as codeQualityOf,
@@ -96,13 +96,12 @@ const profileOf: (
   suite: string,
   escape: (value: unknown) => string,
 ) => JunitProfile = junitRunProfile;
-const helpUrisOf: (findings: unknown, reference: ReferenceLinks) => unknown = withHelpUris;
 
 const SNAPSHOT_REPORTS: readonly SnapshotFile[] = [
   { name: 'summary.json', render: (report) => json(report.summary) },
   {
     name: 'findings.json',
-    render: (report, { reference }) => json(helpUrisOf(report.findings, reference)),
+    render: (report, { reference }) => json(withHelpLinks(report.findings, reference)),
   },
   { name: 'tool-errors.json', render: (report) => json(report.toolErrors) },
   { name: 'report.txt', render: (report, { reference }) => renderTextReport(report, reference) },

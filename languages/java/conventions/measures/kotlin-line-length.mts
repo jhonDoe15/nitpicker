@@ -1,7 +1,7 @@
 import {
   bracketGroups as untypedBracketGroups,
   indentOf as untypedIndentOf,
-} from '../../../../shared/conventions/lines.mjs';
+} from '../../../../shared/conventions/lines.mts';
 import type { Optional } from '../typed/optional.mts';
 import { smallest as untypedSmallest } from '../../../../shared/lists/items.mjs';
 

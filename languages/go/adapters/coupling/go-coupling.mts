@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { RULE_IDS } from '../../../../shared/policy.mjs';
+import { RULE_IDS } from '../../../../shared/policy.mts';
 import { directoryOf, goPackages } from '../typed/go-readers.mts';
 import { buildCouplingReport, evaluateCoupling } from '../typed/shared-readers.mts';
 import type { FindingRow, GoFile, InspectReport } from '../go-types.mts';

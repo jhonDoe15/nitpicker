@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { JAVA_TOOLS as UNTYPED_JAVA_TOOLS } from '../../languages/java/adapters/gradle-presets.mts';
-import { SHARED_EXCEPTION_RULES } from '../../shared/policy.mjs';
-import { JAVA_SIZE_RULES } from '../../shared/project-rules/size-rules.mjs';
+import { SHARED_EXCEPTION_RULES } from '../../shared/policy.mts';
+import { JAVA_SIZE_RULES } from '../../shared/project-rules/size-rules.mts';
 import { validateConfig } from '../configuration/validate.mts';
 
 const JAVA_TOOLS: readonly string[] = UNTYPED_JAVA_TOOLS;

@@ -8,24 +8,24 @@ import { isJavascriptPolicy as untypedIsJavascriptPolicy } from '../../../../jav
 import {
   projectFilePaths as untypedProjectFilePaths,
   projectFilesUnder as untypedProjectFilesUnder,
-} from '../../../../../shared/project-files/project-files.mjs';
+} from '../../../../../shared/project-files/project-files.mts';
 import { rootPattern as untypedRootPattern } from '../../layout/source-root/root-paths.mts';
-import { collectFileLimitFindings as untypedCollectFileLimitFindings } from '../../../../../shared/rules/file-limits.mjs';
-import { folderDepthFindings as untypedFolderDepthFindings } from '../../../../../shared/rules/size/folder-depth.mjs';
-import { FOLDER_DEPTH_DEFAULTS as untypedFolderDepthDefaults } from '../../../../../shared/project-rules/size-rules.mjs';
+import { collectFileLimitFindings as untypedCollectFileLimitFindings } from '../../../../../shared/rules/file-limits.mts';
+import { folderDepthFindings as untypedFolderDepthFindings } from '../../../../../shared/rules/size/folder-depth.mts';
+import { FOLDER_DEPTH_DEFAULTS as untypedFolderDepthDefaults } from '../../../../../shared/project-rules/size-rules.mts';
 import {
   exceptionMatcher as untypedExceptionMatcher,
   exceptionText as untypedExceptionText,
-} from '../../../../../shared/rules/exceptions.mjs';
+} from '../../../../../shared/rules/exceptions.mts';
 import {
   MESSAGES as untypedMessages,
   RULE_IDS as untypedRuleIds,
   messageFields as untypedMessageFields,
-} from '../../../../../shared/policy.mjs';
+} from '../../../../../shared/policy.mts';
 import { projectTsconfigs as untypedProjectTsconfigs } from '../../modules/tsconfig-files.mts';
 import { reuseFindings as untypedReuseFindings } from '../reuse/reuse-findings.mts';
-import { firstFileIn as untypedFirstFileIn } from '../../../../../shared/filesystem.mjs';
-import { exceptionRoute as untypedExceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
+import { firstFileIn as untypedFirstFileIn } from '../../../../../shared/filesystem.mts';
+import { exceptionRoute as untypedExceptionRoute } from '../../../../../shared/exceptions/rule-names.mts';
 import { codeExtensionNames as untypedCodeExtensionNames } from '../../layout.mts';
 
 type Wording = {

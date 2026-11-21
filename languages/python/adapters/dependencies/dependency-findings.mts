@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseJson } from '../../../../shared/values/readers.mts';
-import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
+import { escapeRegExp } from '../../../../shared/paths/glob.mts';
 import { readProjectFile } from '../../libraries/project-files.mts';
 import { readImportsReport } from '../analysis/python-coupling.mts';
 import { snapshotScope } from '../test-runs/test-failures.mts';

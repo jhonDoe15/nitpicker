@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { readReusePart, withSharedUsage } from '../../adapters/reuse/jvm-reuse-facts.mts';
 import type { ReusePart } from '../../adapters/reuse/jvm-reuse-types.mts';
 import type { JavaFinding, JavaPolicy } from '../../adapters/typed/java-values.mts';
-import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import {
   REQUEST_FILE,

@@ -1,5 +1,5 @@
 import { readProjectFile } from '../project-files.mts';
-import { escapeRegExp as untypedEscape } from '../../../../shared/paths/glob.mjs';
+import { escapeRegExp as untypedEscape } from '../../../../shared/paths/glob.mts';
 import type { DependencyEntry, DependencySource } from '../typed/dependency-types.mts';
 import { groupOf, requirementEntries } from './requirement-names.mts';
 

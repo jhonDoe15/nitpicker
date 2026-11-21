@@ -1,4 +1,4 @@
-import { SCHEMA_KEY } from '../../../shared/config.mjs';
+import { SCHEMA_KEY } from '../../../shared/config.mts';
 import type { ConfigSettings } from '../../../shared/values/config-types.mts';
 import { fieldsOf, isPlainObject } from '../../../shared/values/readers.mts';
 

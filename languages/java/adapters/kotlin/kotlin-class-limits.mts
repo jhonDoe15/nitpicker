@@ -1,4 +1,4 @@
-import { classLimitFindings as untypedClassLimitFindings } from '../../../../shared/rules/size/class-limits.mjs';
+import { classLimitFindings } from '../../../../shared/rules/size/class-limits.mts';
 import { inheritanceDepths } from '../size/inheritance.mts';
 import { inModule } from '../../builds/paths/module-path.mts';
 import type { KotlinFinding, Metrics } from './kotlin-metrics.mts';
@@ -9,16 +9,6 @@ type Limits = {
   exceptions?: readonly { rule: string; paths: readonly string[] }[] | undefined;
   modulePath?: string | undefined;
 };
-
-const classLimitFindings: (
-  classes: readonly object[],
-  options: {
-    analyzerName: string;
-    thresholds: Limits['thresholds'];
-    exceptions: Limits['exceptions'];
-    projectPath: (file: string) => string;
-  },
-) => KotlinFinding[] = untypedClassLimitFindings;
 
 export function readKotlinClassLimitFindings(
   metrics: Metrics,

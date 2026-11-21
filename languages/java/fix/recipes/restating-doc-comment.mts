@@ -2,47 +2,34 @@ import { javaDocCommentEntries } from '../../adapters/doc-comments/java-doc-comm
 import { kotlinDocCommentEntries } from '../../adapters/doc-comments/kotlin-doc-comments.mts';
 import {
   DOC_COMMENT_RULE,
-  deletionFix as untypedDeletionFix,
+  deletionFix,
   isCovered as untypedIsCovered,
-  restatesItsName as untypedRestatesItsName,
-} from '../../../../shared/fix/recipes/doc-comments/restating-comment.mjs';
-import type { FixRecipe, RecipeFix, RuleRef } from '../../../../core/fix/typed/fix-types.mts';
-import { recipeFixesOf } from '../../../../core/fix/typed/recipe-fixes.mts';
-import { callUntyped } from '../../adapters/typed/java-values.mts';
-import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
+  restatesItsName,
+} from '../../../../shared/fix/recipes/doc-comments/restating-comment.mts';
+import type { FixRecipe, RuleRef } from '../../../../core/fix/typed/fix-types.mts';
+import type { DocEntry } from '../../adapters/doc-comments/doc-comment-types.mts';
 
 type Restating = {
   readonly id: string;
   readonly preset: string;
   readonly extensions: readonly string[];
 };
-type Deletion = {
-  readonly finding: RecipeFix['finding'];
-  readonly path: string;
-  readonly text: string;
-  readonly span: unknown;
-};
 
 const JAVA_EXTENSION = '.java';
 const RULE: RuleRef = { tool: 'facts', rule: DOC_COMMENT_RULE };
-const ENTRIES: ReadonlyMap<string, unknown> = new Map<string, unknown>([
+const ENTRIES: ReadonlyMap<string, (source: string) => DocEntry[]> = new Map([
   [JAVA_EXTENSION, javaDocCommentEntries],
   ['.kt', kotlinDocCommentEntries],
 ]);
 const isCovered: (inputs: unknown, name: string) => boolean = untypedIsCovered;
-const restatesItsName: (comment: unknown) => boolean = untypedRestatesItsName;
 const NON_MAIN_SET = /(?:^|\/)src\/(?!main\/)[^/]+\/(?:java|kotlin)\/|(?:^|\/)tests?\//u;
 
 function extensionOf(name: string): string {
   return name.slice(name.lastIndexOf('.'));
 }
 
-function deletionFixOf(deletion: Deletion): RecipeFix[] {
-  return recipeFixesOf(callUntyped(untypedDeletionFix, deletion));
-}
-
-function entriesOf(name: string, text: string): readonly unknown[] {
-  return listOf(callUntyped(ENTRIES.get(extensionOf(name)), text));
+function entriesOf(name: string, text: string): readonly DocEntry[] {
+  return ENTRIES.get(extensionOf(name))?.(text) ?? [];
 }
 
 function restatingRecipe({ id, preset, extensions }: Restating): FixRecipe {
@@ -63,17 +50,13 @@ function restatingRecipe({ id, preset, extensions }: Restating): FixRecipe {
           )
           .flatMap(({ path: name, text }) =>
             entriesOf(name, text)
-              .filter((entry) => restatesItsName(fieldOf(entry, 'comment')))
-              .flatMap((entry) =>
-                deletionFixOf({
-                  finding: {
-                    ...RULE,
-                    path: name,
-                    line: Number(fieldOf(fieldOf(entry, 'comment'), 'line')),
-                  },
+              .filter(({ comment }) => restatesItsName(comment))
+              .flatMap(({ comment, span }) =>
+                deletionFix({
+                  finding: { ...RULE, path: name, line: comment.line },
                   path: name,
                   text,
-                  span: fieldOf(entry, 'span'),
+                  span,
                 }),
               ),
           ),

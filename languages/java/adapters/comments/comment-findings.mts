@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { hash, nextOccurrence, projectFilesUnder } from '../typed/finding-views.mts';
+import { hash, occurrenceCounter, projectFilesUnder } from '../typed/finding-views.mts';
 import { lineOf } from '../suppressions/java-suppressions.mts';
 import { commentLines, commentedOutCode } from './commented-out-code.mts';
 import {
@@ -53,11 +53,11 @@ function placeholders(source: string, filePath: string): Marker[] {
 }
 
 export function commentFindings(source: string, filePath: string): InlineFinding[] {
-  const occurrences = new Map<string, number>();
+  const nextOccurrence = occurrenceCounter();
   return [...markers(source), ...codeFindings(source), ...placeholders(source, filePath)]
     .sort((left, right) => left.offset - right.offset)
     .map(({ rule, message, offset, subject }) => {
-      const occurrence = nextOccurrence(occurrences, `${rule}\0${subject}`);
+      const occurrence = nextOccurrence(`${rule}\0${subject}`);
       return {
         tool: 'pmd',
         rule,

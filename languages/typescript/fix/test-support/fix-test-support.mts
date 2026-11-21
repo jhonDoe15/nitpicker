@@ -6,7 +6,7 @@ import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files
 import { directWriter as untypedDirectWriter } from '../../../../core/fix/engine/writer.mts';
 import { resolveHeadPolicy } from '../../preset/head-policy.mts';
 import { resolveLayoutFor } from '../../preset/layout.mts';
-import { linkSentence as untypedLinkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence as untypedLinkSentence } from '../../../../shared/messages/test-support/link-sentence.mts';
 import type { FixOptions } from '../../../../core/fix/run-fix.mts';
 import type { FixInvocation, FixWriter } from '../../../../core/fix/typed/fix-types.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';

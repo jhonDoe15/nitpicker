@@ -1,6 +1,7 @@
-import { touchesInputs } from '../../../shared/input-sets/inputs.mjs';
+import { type Inputs, touchesInputs } from '../../../shared/input-sets/inputs.mts';
 import { changedFiles, type ChangedFile } from './changed-files.mts';
 import { hygieneReadsContent } from './hygiene-probe.mts';
+import { fieldOf } from '../../../shared/values/readers.mts';
 import { appendAll } from '../../../shared/lists/items.mjs';
 
 export type PlannedAnalyzer = {
@@ -13,8 +14,13 @@ export type PlannedAnalyzer = {
 
 type SkipSets = { readonly skipped: string[]; readonly affected: string[] };
 
-const touchesChange: (inputs: unknown, change: ChangedFile, options: object) => boolean =
-  touchesInputs;
+function isInputs(value: unknown): value is Inputs {
+  return typeof fieldOf(value, 'scope') === 'string';
+}
+
+function inputsOf({ inputs }: PlannedAnalyzer): Inputs | undefined {
+  return isInputs(inputs) ? inputs : undefined;
+}
 
 function linked(analyzer: Partial<PlannedAnalyzer>): string[] {
   return [...(analyzer.dependencies ?? []), ...(analyzer.colocatedWith ?? [])];
@@ -56,7 +62,9 @@ export function planAnalyzerRuns({
       .filter(
         (analyzer) =>
           analyzer.custom === true ||
-          changes.some((change) => touchesChange(analyzer.inputs, change, { readsContent, roots })),
+          changes.some((change) =>
+            touchesInputs(inputsOf(analyzer), change, { readsContent, roots }),
+          ),
       )
       .map(({ name }) => name),
   );

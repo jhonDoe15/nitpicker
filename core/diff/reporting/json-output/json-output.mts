@@ -3,10 +3,9 @@ import { areaCounts, areaOf } from '../format/rule-groups/finding-areas.mts';
 import { foldMutants as folded } from '../format/mutants.mts';
 import { inPriorityOrder } from '../format/rule-groups/finding-order.mts';
 import { printable } from '../format/text.mts';
-import { heldFindingsOf as heldFindings } from '../report-model.mts';
+import { heldFindingsOf as heldFindings, withHelpLinks } from '../report-model.mts';
 import { errorHeadline as headlineOf, withoutSkipNotices as withoutSkips } from '../summary.mts';
-import { withHelpUris } from '../../../../shared/reference/store.mjs';
-import { withoutExceptionRoute } from '../../../../shared/messages/exception-sentence.mjs';
+import { withoutExceptionRoute } from '../../../../shared/messages/exception-sentence.mts';
 import type { ReportData, ReportEntry } from '../../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import { findingLabeler, labelCounts } from '../../../labels/finding-labels.mts';
@@ -41,7 +40,6 @@ type JsonRequest = {
 const countsByArea: (findings: readonly ReportEntry[]) => ReadonlyMap<unknown, unknown> =
   areaCounts;
 const printed: (value: unknown) => string = printable;
-const helpUris: (findings: readonly ReportEntry[]) => ReportEntry[] = withHelpUris;
 const withoutRoute: (message: string) => string = withoutExceptionRoute;
 
 const STATUS_OF_EXIT_CODE = ['passed', 'failed', 'error'];
@@ -113,7 +111,7 @@ function renderJson({
       reportOnly: findings.length - failing.length,
       ...(held === undefined ? {} : { held }),
     },
-    findings: helpUris(folded(inPriorityOrder(failing))).map(findingEntry),
+    findings: withHelpLinks(folded(inPriorityOrder(failing))).map(findingEntry),
     toolErrors: withoutSkips(report.toolErrors).map(toolErrorEntry),
     ...(partialRun === undefined
       ? {}

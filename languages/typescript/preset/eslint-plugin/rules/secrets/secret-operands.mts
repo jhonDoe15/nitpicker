@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { isSecretName } from '../../../../../../shared/naming/secret-words.mjs';
+import { isSecretName } from '../../../../../../shared/naming/secret-words.mts';
 import { foldTree } from '../typed/node-views.mts';
 import { envKey, memberName, unwrapped } from './secret-nodes.mts';
 

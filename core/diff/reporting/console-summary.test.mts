@@ -6,7 +6,7 @@ import { bareReport } from './test-support/bare-report.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingUrl,
-} from '../../../shared/messages/troubleshooting.mjs';
+} from '../../../shared/messages/troubleshooting.mts';
 
 function summaryOf(
   parts: {

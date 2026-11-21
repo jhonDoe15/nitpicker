@@ -1,5 +1,5 @@
 import { escapeRegExp } from '../scan/typed/typed-scan.mts';
-import { readInside } from '../../../../../shared/conventions/read-inside.mjs';
+import { readInside } from '../../../../../shared/conventions/read-inside.mts';
 import { callUntyped } from '../../../../../shared/values/boundaries/untyped-call.mts';
 import { fieldOf, optionalText } from '../../../../../shared/values/readers.mts';
 import type { ConventionSource } from '../../../../../core/conventions/typed/convention-types.mts';

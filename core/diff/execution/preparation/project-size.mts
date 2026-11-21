@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
-import { GIT_OUTPUT_LIMIT_BYTES, GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
+import { GIT_OUTPUT_LIMIT_BYTES, GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mts';
 
 type CountedRoots = (liveProjectRoot: string) => readonly string[];
 

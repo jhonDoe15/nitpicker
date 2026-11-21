@@ -28,7 +28,7 @@ export function testConsoleCheckFor(exclusions: CheckExclusions): QualityCheck {
       'languages/typescript/preset/test-console/vitest-reporter.config.mjs',
       'shared/paths/glob.mjs',
       'shared/policy.mjs',
-      'shared/rules/finding-helpers.mjs',
+      'shared/rules/finding-parts.mjs',
       'shared/rules/exceptions.mjs',
       'shared/rules/console/ansi.mjs',
       'shared/rules/console/console-findings.mjs',

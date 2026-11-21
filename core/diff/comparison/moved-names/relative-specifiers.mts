@@ -2,7 +2,7 @@ import path from 'node:path';
 import {
   isScriptPath as untypedIsScript,
   scriptStem as untypedStem,
-} from '../../../../shared/paths/script-stem.mjs';
+} from '../../../../shared/paths/script-stem.mts';
 
 const isScriptPath: (file: string) => boolean = untypedIsScript;
 const scriptStem: (file: string) => string = untypedStem;

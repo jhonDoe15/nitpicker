@@ -121,5 +121,5 @@ the source root detection already does.
   Comments, layout and the other sections do not count. With `"python": { "importLinter": false }`
   the contracts neither run nor count, and a change that turns them back on lists them as added.
 - **Policy.** `duplicate-clone` and `stability-direction` are enforced for Python in
-  `shared/policy.mjs` (`spec/checks.md`). `contract-broken` is a Python-only tool rule and has no
+  `shared/policy.mts` (`spec/checks.md`). `contract-broken` is a Python-only tool rule and has no
   shared policy entry.

@@ -1,13 +1,13 @@
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
-import { importClosure as untypedClosure } from '../../../shared/import-closure.mjs';
+import { importClosure as untypedClosure } from '../../../shared/import-closure.mts';
 import { hashConfigurationFiles } from '../../../shared/input-sets/configuration-hash.mts';
 import { RULES_TOOL } from '../rules/rule-hints.mts';
 import { createToolContext, mutationVersions, toolVersions } from './python-tools.mts';
 import { TEST_CONSOLE_TOOL } from './test-results/console-output.mts';
 import { FACTS_TOOL } from './facts/python-facts.mts';
 import { mutationScopeArguments } from '../../../core/tooling/runner-arguments.mts';
-import { checkoutModulePath as untypedModulePath } from '../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as untypedModulePath } from '../../../shared/paths/checkout-module.mts';
 import type {
   AnalyzerProbes,
   AnalyzerSettings,
@@ -16,7 +16,7 @@ import type {
   PythonInvocation,
   VersionReader,
 } from './typed/context/analyzer-types.mts';
-import { EXECUTION_INPUTS } from '../../../shared/input-sets/inputs.mjs';
+import { EXECUTION_INPUTS } from '../../../shared/input-sets/inputs.mts';
 import { textsOf } from '../../../shared/values/readers.mts';
 
 const importClosure: (relativePaths: string[], root: string) => Map<string, string> =

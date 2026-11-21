@@ -17,7 +17,7 @@ How classification works:
 
 Thresholds are the defaults in the preset. Where a value is not a hard-coded limit it says so.
 The limits of the custom rules and the languages that enforce them come from
-`shared/policy.mjs`; the [Custom rules](#custom-rules) table is generated from it
+`shared/policy.mts`; the [Custom rules](#custom-rules) table is generated from it
 (`npm run gen:checks`) and a test fails when it is stale.
 
 ## ESLint checks
@@ -1096,7 +1096,7 @@ anywhere, and a secret-named value passed to a log call or an error message. The
 `pmd/HardcodedSecret`, `pmd/CredentialLiteral` and `pmd/SecretInLog` in the Java preset (main sources,
 Gradle and Maven) and as the `HardcodedSecret`, `CredentialLiteral` and `SecretInLog` source checks in the
 Kotlin preset. All presets share one definition of the names and the values
-(`shared/naming/secret-words.mjs`). Spring configuration files have their own `literal-secret` check.
+(`shared/naming/secret-words.mts`). Spring configuration files have their own `literal-secret` check.
 
 Task markers and commented-out code: `todo-without-issue` and `commented-out-code` report a `TODO` or
 `FIXME` comment with no issue reference, and a comment that reads as code. The Python preset runs them as
@@ -1245,7 +1245,7 @@ Knex, TypeORM and Drizzle builder chains, Prisma, TypeORM and Sequelize option o
 rule runs as `unordered-query` in the Python preset (SQLAlchemy, Django querysets, SQL text),
 `pmd/UnorderedQuery` in the Java preset (JPQL and SQL text, `setMaxResults`/`setFirstResult`, criteria queries,
 unsorted `PageRequest`) and `kotlin-source/UnorderedQuery` in the Kotlin preset. The text analysis is shared:
-[`shared/rules/queries/sql-order.mjs`](../shared/rules/queries/sql-order.mjs).
+[`shared/rules/queries/sql-order.mts`](../shared/rules/queries/sql-order.mts).
 
 Pattern translation: `nitpicker/no-unescaped-pattern-translation` (production source, in `eslint-lint`) reports a chain of
 two or more `replace` or `replaceAll` calls that turns a glob or pattern into a regex (reaching `new RegExp`) or into a
@@ -1336,7 +1336,7 @@ before the entry is stored and takes no key). The Java and Kotlin presets report
 
 ## Custom rules
 
-Generated from `shared/policy.mjs`. "enforced" means the language's adapter produces the
+Generated from `shared/policy.mts`. "enforced" means the language's adapter produces the
 rule and it fails the gate; "not enforced" means the check does not exist for that language yet;
 "report-only" means the adapter produces the rule when the project opts in and it never fails the gate.
 

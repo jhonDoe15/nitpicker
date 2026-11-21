@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mts';
-import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
-import { JAVA_SIZE_RULES } from '../../../shared/project-rules/size-rules.mjs';
+import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mts';
+import { JAVA_SIZE_RULES } from '../../../shared/project-rules/size-rules.mts';
 import { runCli as nitpickerCli } from '../../cli.mts';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 import { commit } from '../../diff/git/test-support/git-repository.mts';

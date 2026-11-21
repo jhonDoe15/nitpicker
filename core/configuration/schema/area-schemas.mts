@@ -3,16 +3,16 @@ import {
   SKIPPED_FOLDER_NAME,
   THRESHOLD_KEYS,
   WHOLE_NUMBER_THRESHOLD_KEYS,
-} from '../../../shared/config.mjs';
+} from '../../../shared/config.mts';
 import {
   DEFAULT_CRAP_SCORE_LIMIT,
   FILE_LIMIT_DEFAULTS,
   TEST_TIME_DEFAULTS,
-} from '../../../shared/policy.mjs';
+} from '../../../shared/policy.mts';
 import {
   CLASS_LIMIT_DEFAULTS,
   FOLDER_DEPTH_DEFAULTS,
-} from '../../../shared/project-rules/size-rules.mjs';
+} from '../../../shared/project-rules/size-rules.mts';
 import { sourceRoots, testRoots } from '../../../languages/typescript/preset/layout.mts';
 import { stylingApproaches } from '../../../languages/typescript/preset/eslint-config/react/react-rules.mts';
 import { ALLOW_KEYS, TEST_CONSOLE_KEYS } from '../scopes/scope-settings.mts';

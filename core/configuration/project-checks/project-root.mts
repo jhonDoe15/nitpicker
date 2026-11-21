@@ -1,13 +1,13 @@
 import { execFileSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import path from 'node:path';
-import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
-import { GIT_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
+import { GIT_TIMEOUT_MS } from '../../../shared/processes/deadlines.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
-} from '../../../shared/messages/troubleshooting.mjs';
-import { chainOf as untypedChainOf } from '../../../shared/traversal.mjs';
+} from '../../../shared/messages/troubleshooting.mts';
+import { chainOf as untypedChainOf } from '../../../shared/traversal.mts';
 import { detectedPreset, markerFilesIn } from './project-check-views.mts';
 import { uvWorkspaceOf } from './uv-workspace.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
