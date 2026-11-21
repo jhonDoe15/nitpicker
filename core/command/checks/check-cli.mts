@@ -1,8 +1,15 @@
 import { detachLocalGitVariables } from '../../diff/git/environment/local-variables.mts';
 import { CHECK_COMMAND_NAMES } from './check-names.mts';
-import type { CheckCli, CliInput } from '../../cli-context.mts';
+import type { CheckCli, TextOutput } from '../../cli-context.mts';
 
 type CheckCommand = (cli: CheckCli) => Promise<number>;
+
+type Host = {
+  readonly argv: readonly string[];
+  readonly env: NodeJS.ProcessEnv;
+  readonly stdout: TextOutput;
+  readonly stderr: TextOutput;
+};
 
 const CHECK_COMMANDS: Readonly<Record<string, CheckCommand>> = {
   hygiene: async (cli) => {
@@ -28,19 +35,17 @@ function helpFlag(argument: string): string {
   return argument === '-h' ? '--help' : argument;
 }
 
-export async function runCli(options: CliInput = {}): Promise<number> {
-  detachLocalGitVariables(process.env);
-  const [name = '', ...commandArguments] = (options.arguments_ ?? process.argv.slice(2)).map(
-    helpFlag,
-  );
+export async function runCheckCli(host: Host): Promise<number> {
+  detachLocalGitVariables(host.env);
+  const [name = '', ...commandArguments] = host.argv.slice(2).map(helpFlag);
   const command = checkCommandOf(name);
   if (command === undefined) {
     throw new Error(`Unknown check command: ${name}`);
   }
   return command({
     commandArguments,
-    stdout: options.stdout ?? process.stdout,
-    stderr: options.stderr ?? process.stderr,
-    environment: options.environment ?? process.env,
+    stdout: host.stdout,
+    stderr: host.stderr,
+    environment: host.env,
   });
 }
