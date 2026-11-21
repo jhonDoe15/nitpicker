@@ -6,15 +6,21 @@ type Wrapper = {
 
 const INPUT_NAME = 'nitpicker-transpile-input';
 
-const originalUrl = new URL(import.meta.url).searchParams.get('original');
-const original =
-  originalUrl === null
-    ? undefined
-    : ((await import(originalUrl)) as { default: (flavor?: string) => Wrapper }).default;
-
 function usesJsx(flavor: string | undefined, tsConfig: TypeScriptConfig | undefined): boolean {
   const options = { ...(flavor === 'tsx' ? { jsx: 'react' } : {}), ...tsConfig?.options };
   return Boolean(options.jsx);
+}
+
+const INPUT_NAME_USES = new RegExp(`${INPUT_NAME}(_*)`, 'gu');
+
+function freeName(source: string): string {
+  const runs = Array.from(
+    source.matchAll(INPUT_NAME_USES),
+    ([, underscores]) => underscores?.length ?? 0,
+  );
+  return runs.length === 0
+    ? INPUT_NAME
+    : `${INPUT_NAME}${'_'.repeat(runs.reduce((longest, run) => Math.max(longest, run), 0) + 1)}`;
 }
 
 export function inputFileName(
@@ -22,9 +28,7 @@ export function inputFileName(
   flavor: string | undefined,
   tsConfig: TypeScriptConfig | undefined,
 ): string {
-  let name = INPUT_NAME;
-  while (source.includes(name)) name = `${name}_`;
-  return `${name}${usesJsx(flavor, tsConfig) ? '.tsx' : '.ts'}`;
+  return `${freeName(source)}${usesJsx(flavor, tsConfig) ? '.tsx' : '.ts'}`;
 }
 
 export function withInputFileName(wrapper: Wrapper, flavor: string | undefined): Wrapper {
@@ -39,11 +43,4 @@ export function withInputFileName(wrapper: Wrapper, flavor: string | undefined):
         },
       }),
   };
-}
-
-export default function typescriptWrap(flavor?: string): Wrapper {
-  if (original === undefined) {
-    throw new Error('typescript-wrap replacement loaded without the original module');
-  }
-  return withInputFileName(original(flavor), flavor);
 }
