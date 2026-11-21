@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { moduleValueOf, type FileContext } from '../support/bound-values.mts';
-import { calleeBinding } from '../support/module-facts.mts';
+import { moduleValueOf, type FileContext } from '../module-values/bound-values.mts';
+import { calleeBinding } from '../module-values/module-facts.mts';
 import { usesReactCompiler } from '../support/package-facts.mts';
 import type { FunctionNode } from '../../typed/syntax-views.mts';
 import { renderFunctionsOf, unstableKindOf, type UnstableKind } from './render-values.mts';

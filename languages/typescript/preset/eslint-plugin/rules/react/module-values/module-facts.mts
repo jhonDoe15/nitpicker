@@ -5,7 +5,7 @@ import { readStamped as untypedReadStamped } from '../../../../modules/stamped-f
 import { ts } from '../../typed/typescript-views.mts';
 import { DEFAULT_EXPORT } from '../../../../syntax/exported-components.mts';
 import { fileExports } from '../../../../syntax/module-facts.mts';
-import { readTextFile } from './file-reads.mts';
+import { readTextFile } from '../support/file-reads.mts';
 
 export type ImportedName = { readonly source: string; readonly name: string };
 export type CalleeShape =

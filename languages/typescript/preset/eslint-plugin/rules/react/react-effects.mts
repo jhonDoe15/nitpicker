@@ -1,7 +1,14 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { memberName } from '../analysis/test-code-analysis.mts';
 import { isFunction as isFunctionNode, type FunctionNode } from '../typed/syntax-views.mts';
-import { ancestorsOf, nameOf, variableNamed, type SourceCode } from '../typed/node-views.mts';
+import {
+  ancestorsOf,
+  nameOf,
+  nodeChildren,
+  nodesWithoutNested,
+  variableNamed,
+  type SourceCode,
+} from '../typed/node-views.mts';
 
 export { isFunctionNode, type FunctionNode };
 export type EffectCallback = (TSESTree.FunctionExpression | TSESTree.ArrowFunctionExpression) & {
@@ -9,9 +16,18 @@ export type EffectCallback = (TSESTree.FunctionExpression | TSESTree.ArrowFuncti
 };
 type ImportBindingDefinition = TSESLint.Scope.Definitions.ImportBindingDefinition;
 
+const FUNCTION_TYPES = new Set<string>([
+  AST_NODE_TYPES.FunctionDeclaration,
+  AST_NODE_TYPES.FunctionExpression,
+  AST_NODE_TYPES.ArrowFunctionExpression,
+]);
 const effectHooks = new Set(['useEffect', 'useLayoutEffect']);
 const REACT_PACKAGE = 'react';
 const REACT_NAMESPACE = 'React';
+
+export function nodesOutsideNestedFunctions(root: TSESTree.Node): TSESTree.Node[] {
+  return nodesWithoutNested(root, FUNCTION_TYPES, nodeChildren);
+}
 
 export function enclosingFunction(node: TSESTree.Node): FunctionNode | undefined {
   return ancestorsOf(node).find(isFunctionNode);

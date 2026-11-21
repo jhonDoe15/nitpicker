@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { nameOf, variableNamed } from '../../typed/node-views.mts';
-import { moduleValueOf, type FileContext } from '../support/bound-values.mts';
+import { moduleValueOf, type FileContext } from '../module-values/bound-values.mts';
 import {
   calleeBinding,
   type CalleeShape,
@@ -8,7 +8,7 @@ import {
   type ImportedName,
   type ModuleFacts,
   type ResolvedValue,
-} from '../support/module-facts.mts';
+} from '../module-values/module-facts.mts';
 
 export type StoreHook = 'redux' | 'zustand' | 'zustand-store';
 type ImportBindingDefinition = TSESLint.Scope.Definitions.ImportBindingDefinition;

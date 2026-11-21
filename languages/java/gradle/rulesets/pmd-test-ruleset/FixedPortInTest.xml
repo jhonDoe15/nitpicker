@@ -1,0 +1,47 @@
+  <rule name="FixedPortInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This test binds a fixed port, so it fails when the port is taken: by a second run of the suite, a parallel test worker, an application running on the machine or a socket of the previous test that is still closing. Ask for a free port and read the one the server got: port 0 for a socket or HttpServer, RANDOM_PORT with @LocalServerPort for Spring Boot (DEFINED_PORT with a server.port number is reported), dynamicPort() for WireMock (@WireMockTest without httpPort), start() without a port for MockWebServer, @EmbeddedKafka without ports, and getMappedPort() for a container.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $fixed := function($e) {
+      exists($e/self::NumericLiteral[@IntLiteral = true()][@ValueAsInt > 0])
+      or exists($e/self::VariableAccess[let $n := @Name return
+           empty(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression]
+                   //VariableId[@Name = $n])
+           and (let $fields := ancestor::ClassDeclaration/ClassBody/FieldDeclaration[VariableDeclarator/VariableId[@Name = $n]]
+                return count($fields) = 1
+                  and $fields[pmd-java:modifiers() = 'final']/VariableDeclarator[VariableId[@Name = $n]]
+                        /NumericLiteral[@IntLiteral = true()][@ValueAsInt > 0])])
+    }
+return (
+  //ConstructorCall[ClassType[pmd-java:typeIs('java.net.ServerSocket')
+                              or pmd-java:typeIs('com.github.tomakehurst.wiremock.WireMockServer')]]
+    [ArgumentList[@Size = 1][$fixed(*[1])]]
+| //MethodCall[@MethodName = ('create', 'bind')]/ArgumentList
+    /ConstructorCall[ClassType[pmd-java:typeIs('java.net.InetSocketAddress')]]
+       [ArgumentList[$fixed(*[last()])]]
+| //MethodCall[pmd-java:matchesSig('com.github.tomakehurst.wiremock.core.WireMockConfiguration#port(int)')
+               or pmd-java:matchesSig('okhttp3.mockwebserver.MockWebServer#start(int)')
+               or pmd-java:matchesSig('mockwebserver3.MockWebServer#start(int)')]
+    [ArgumentList[$fixed(*[1])]]
+    [not(ancestor::MethodCall[@MethodName = ('dynamicPort', 'dynamicHttpsPort')])]
+| //Annotation[pmd-java:typeIs('com.github.tomakehurst.wiremock.junit5.WireMockTest')]
+    //MemberValuePair[@Name = ('httpPort', 'httpsPort')][$fixed(*[1])]
+| //Annotation[pmd-java:typeIs('org.springframework.kafka.test.context.EmbeddedKafka')]
+    //MemberValuePair[@Name = 'ports'][some $port in .//(NumericLiteral | VariableAccess) satisfies $fixed($port)]
+| //Annotation[pmd-java:typeIs('org.springframework.boot.test.context.SpringBootTest')]
+    [.//MemberValuePair[@Name = 'webEnvironment']//(FieldAccess | VariableAccess)[@Name = 'DEFINED_PORT']]
+    [let $port := '^server\.port\s*[=:]\s*[1-9][0-9]*\s*$' return
+       .//StringLiteral[matches(string(@ConstValue), $port)]
+       or parent::ModifierList/Annotation[pmd-java:typeIs('org.springframework.test.context.TestPropertySource')]
+            //StringLiteral[matches(string(@ConstValue), $port)]]
+| //MethodCall[pmd-java:matchesSig('org.testcontainers.containers.FixedHostPortGenericContainer#withFixedExposedPort(_*)')]
+    [ArgumentList[$fixed(*[1])]]
+| //MethodCall[pmd-java:matchesSig('org.testcontainers.containers.GenericContainer#setPortBindings(_)')]
+    [ArgumentList//StringLiteral[matches(string(@ConstValue), '^[1-9][0-9]*:[0-9]')]]
+)[not(ancestor::ClassDeclaration[ClassBody/MethodDeclaration[@Name = 'main'][pmd-java:modifiers() = 'static']])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

@@ -4,6 +4,7 @@ import {
   normalizeUri as untypedNormalizeUri,
   prepareSarif as untypedPrepareSarif,
 } from '../../../../../../shared/ingest/sarif.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../../../shared/paths/glob.mjs';
 import {
   fieldOf,
   isPlainObject,
@@ -20,6 +21,7 @@ type SarifRoots = {
 type ProcessingOptions = SarifRoots & { readonly loggedCrashFiles?: ReadonlySet<string> };
 type Prepared = { readonly runs: readonly { readonly results: readonly unknown[] }[] };
 
+const escapeRegExp: (value: string) => string = untypedEscapeRegExp;
 const normalizeUri: (uri: string) => string | undefined = untypedNormalizeUri;
 const prepareSarif: (
   log: { readonly runs: readonly { readonly results: readonly Fields[] }[] },
@@ -43,8 +45,27 @@ function firstLine(text: string): string {
     .split(/\r?\n/u)
     .map((candidate) => candidate.trim())
     .find((candidate) => candidate !== '');
-  const cause = line ?? 'no message';
+  return line ?? 'no message';
+}
+
+function shortened(cause: string): string {
   return cause.length > MAX_CAUSE_LENGTH ? `${cause.slice(0, MAX_CAUSE_LENGTH)}...` : cause;
+}
+
+function rootPrefix(root: string): RegExp {
+  const folders = root
+    .split(/[/\\]/u)
+    .map(escapeRegExp)
+    .join(String.raw`[/\\]`);
+  return new RegExp(String.raw`(?<![\w./\\-])${folders}[/\\]`, 'gu');
+}
+
+function withoutRoots(cause: string, roots: readonly string[]): string {
+  return [...new Set(roots)]
+    .filter((root) => root.length > 1)
+    .toSorted((left, right) => right.length - left.length)
+    .map(rootPrefix)
+    .reduce((text, prefix) => text.replaceAll(prefix, ''), cause);
 }
 
 function notificationsOf(log: unknown): readonly unknown[] {
@@ -114,7 +135,9 @@ export function pmdProcessingErrors(
   const identities = new Set<string>();
   return notifications.flatMap((notification, index) => {
     const filePath = relativePath(results[index]);
-    const cause = firstLine(messageText(notification));
+    const cause = shortened(
+      withoutRoots(firstLine(messageText(notification)), [...roots, projectRoot]),
+    );
     const identity = `${RULE}:${filePath}:${cause.replaceAll(/\d+/gu, '#')}`;
     if (identities.has(identity)) {
       return [];

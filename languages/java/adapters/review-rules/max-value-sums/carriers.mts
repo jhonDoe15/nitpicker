@@ -223,8 +223,9 @@ function applyMarks(state: CarrierState, sources: readonly SourceFile[]): void {
   const declared = sources.flatMap(({ kotlin, frames }) =>
     frames.map((frame) => ({ frame, kotlin })),
   );
+  const marksByCallee = Map.groupBy(state.marks, ({ callee }) => callee);
   for (const each of declared) {
-    for (const mark of state.marks.filter(({ callee }) => callee === each.frame.name)) {
+    for (const mark of marksByCallee.get(each.frame.name) ?? []) {
       applyMark(state, each, mark);
     }
   }

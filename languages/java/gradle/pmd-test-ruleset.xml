@@ -25,6 +25,53 @@
       </property>
     </properties>
   </rule>
+  <rule name="FixedPortInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This test binds a fixed port, so it fails when the port is taken: by a second run of the suite, a parallel test worker, an application running on the machine or a socket of the previous test that is still closing. Ask for a free port and read the one the server got: port 0 for a socket or HttpServer, RANDOM_PORT with @LocalServerPort for Spring Boot (DEFINED_PORT with a server.port number is reported), dynamicPort() for WireMock (@WireMockTest without httpPort), start() without a port for MockWebServer, @EmbeddedKafka without ports, and getMappedPort() for a container.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $fixed := function($e) {
+      exists($e/self::NumericLiteral[@IntLiteral = true()][@ValueAsInt > 0])
+      or exists($e/self::VariableAccess[let $n := @Name return
+           empty(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression]
+                   //VariableId[@Name = $n])
+           and (let $fields := ancestor::ClassDeclaration/ClassBody/FieldDeclaration[VariableDeclarator/VariableId[@Name = $n]]
+                return count($fields) = 1
+                  and $fields[pmd-java:modifiers() = 'final']/VariableDeclarator[VariableId[@Name = $n]]
+                        /NumericLiteral[@IntLiteral = true()][@ValueAsInt > 0])])
+    }
+return (
+  //ConstructorCall[ClassType[pmd-java:typeIs('java.net.ServerSocket')
+                              or pmd-java:typeIs('com.github.tomakehurst.wiremock.WireMockServer')]]
+    [ArgumentList[@Size = 1][$fixed(*[1])]]
+| //MethodCall[@MethodName = ('create', 'bind')]/ArgumentList
+    /ConstructorCall[ClassType[pmd-java:typeIs('java.net.InetSocketAddress')]]
+       [ArgumentList[$fixed(*[last()])]]
+| //MethodCall[pmd-java:matchesSig('com.github.tomakehurst.wiremock.core.WireMockConfiguration#port(int)')
+               or pmd-java:matchesSig('okhttp3.mockwebserver.MockWebServer#start(int)')
+               or pmd-java:matchesSig('mockwebserver3.MockWebServer#start(int)')]
+    [ArgumentList[$fixed(*[1])]]
+    [not(ancestor::MethodCall[@MethodName = ('dynamicPort', 'dynamicHttpsPort')])]
+| //Annotation[pmd-java:typeIs('com.github.tomakehurst.wiremock.junit5.WireMockTest')]
+    //MemberValuePair[@Name = ('httpPort', 'httpsPort')][$fixed(*[1])]
+| //Annotation[pmd-java:typeIs('org.springframework.kafka.test.context.EmbeddedKafka')]
+    //MemberValuePair[@Name = 'ports'][some $port in .//(NumericLiteral | VariableAccess) satisfies $fixed($port)]
+| //Annotation[pmd-java:typeIs('org.springframework.boot.test.context.SpringBootTest')]
+    [.//MemberValuePair[@Name = 'webEnvironment']//(FieldAccess | VariableAccess)[@Name = 'DEFINED_PORT']]
+    [let $port := '^server\.port\s*[=:]\s*[1-9][0-9]*\s*$' return
+       .//StringLiteral[matches(string(@ConstValue), $port)]
+       or parent::ModifierList/Annotation[pmd-java:typeIs('org.springframework.test.context.TestPropertySource')]
+            //StringLiteral[matches(string(@ConstValue), $port)]]
+| //MethodCall[pmd-java:matchesSig('org.testcontainers.containers.FixedHostPortGenericContainer#withFixedExposedPort(_*)')]
+    [ArgumentList[$fixed(*[1])]]
+| //MethodCall[pmd-java:matchesSig('org.testcontainers.containers.GenericContainer#setPortBindings(_)')]
+    [ArgumentList//StringLiteral[matches(string(@ConstValue), '^[1-9][0-9]*:[0-9]')]]
+)[not(ancestor::ClassDeclaration[ClassBody/MethodDeclaration[@Name = 'main'][pmd-java:modifiers() = 'static']])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="FixedSleepInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="A fixed wait makes the test slow and flaky: a sleep or parkNanos outside a polling loop, after(ms) with a check that could pass sooner, or pollDelay(...).until(() -> true). Wait on the condition: a loop that checks it against a deadline (a sleep inside that loop is allowed), or verify(mock, timeout(1000)) for a mock. A timed wait, wait(ms) or join(ms), returns early but lets the test go on unchecked when the time runs out: assert the result of join(Duration) or of a latch await. A sleep in a mock answer, a thread body or a test fake that implements or extends a main class is allowed.">
     <priority>2</priority>
@@ -275,6 +322,85 @@ return
          satisfies ($familyOf($restore) = $family
                     or (not($jdk($change)) and $typeOf($restore) = $type
                         and matches(string($restore/@MethodName), '^(reset|clear|restore)')))))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="HashOrderAssertedInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This assertion expects a fixed order from a value whose order nothing promises: a HashSet, a HashMap view, Set.of or Map.of, Collectors.toSet(), a directory listing or the members reflection returns. It passes on one JDK, file system or machine and fails on another. Use containsExactlyInAnyOrder, compare with a Set, or sort the value before the assertion (Arrays.sort for an array).">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $hashMap := function($e) {
+      exists($e/self::ConstructorCall[pmd-java:typeIsExactly('java.util.HashMap')])
+      or exists($e/self::MethodCall[pmd-java:matchesSig('java.util.Map#of(_*)')][ArgumentList/@Size >= 4]) },
+    $direct := function($e) {
+      exists($e/self::ConstructorCall[pmd-java:typeIsExactly('java.util.HashSet')])
+      or exists($e/self::MethodCall[pmd-java:matchesSig('java.util.Set#of(_*)')][ArgumentList/@Size >= 2])
+      or exists($e/self::MethodCall[@MethodName = 'collect']
+                  [ArgumentList[@Size = 1]/MethodCall[pmd-java:matchesSig('java.util.stream.Collectors#toSet()')]])
+      or exists($e/self::MethodCall[pmd-java:matchesSig('java.io.File#list()')
+                                    or pmd-java:matchesSig('java.io.File#listFiles()')
+                                    or pmd-java:matchesSig('java.lang.Class#getDeclaredMethods()')
+                                    or pmd-java:matchesSig('java.lang.Class#getMethods()')
+                                    or pmd-java:matchesSig('java.lang.Class#getDeclaredFields()')
+                                    or pmd-java:matchesSig('java.lang.Class#getDeclaredConstructors()')]) },
+    $local := function($e) {
+      $e/self::VariableAccess/(let $n := @Name, $method := ancestor::MethodDeclaration[1] return
+        $method//LocalVariableDeclaration/VariableDeclarator[VariableId[@Name = $n]]
+          [count($method//VariableId[@Name = $n]) = 1]
+          [empty($method//AssignmentExpression[*[1][self::VariableAccess[@Name = $n]]])]
+          [empty($method//ArgumentList/VariableAccess[@Name = $n]
+                   [not(parent::ArgumentList/parent::MethodCall[matches(@MethodName, '^assert')])])]/*[2]) },
+    $unordered := function($e) {
+      $direct($e) or $direct($local($e))
+      or exists($e/self::MethodCall[@MethodName = ('keySet', 'values', 'entrySet')][ArgumentList/@Size = 0]
+                  [$hashMap(*[1]) or $hashMap($local(*[1]))]) }
+return (
+  //MethodCall[@MethodName = 'containsExactly'][ArgumentList/@Size >= 2]
+    [*[1]/self::MethodCall[pmd-java:matchesSig('org.assertj.core.api.Assertions#assertThat(_)')
+                           or pmd-java:matchesSig('org.assertj.core.api.AssertionsForInterfaceTypes#assertThat(_)')
+                           or pmd-java:matchesSig('org.assertj.core.api.AssertionsForClassTypes#assertThat(_)')]
+       [$unordered(ArgumentList/*[1])]]
+| //MethodCall[pmd-java:matchesSig('org.junit.jupiter.api.Assertions#assertArrayEquals(_*)')
+               or pmd-java:matchesSig('org.junit.Assert#assertArrayEquals(_*)')]
+    [ArgumentList[ArrayAllocation/ArrayInitializer[count(*) >= 2]][some $actual in * satisfies $unordered($actual)]]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="IgnoredTimedWaitInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This timed wait returns false when the time runs out, and the result is dropped, so the assertions after it run whether or not the work finished: the test fails later with a misleading message, or passes without having checked anything. Assert the result, as in assertTrue(latch.await(5, TimeUnit.SECONDS)), or test it and fail with a message that says what did not happen in time.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//ExpressionStatement/MethodCall[
+     pmd-java:matchesSig('java.util.concurrent.CountDownLatch#await(long,java.util.concurrent.TimeUnit)')
+  or pmd-java:matchesSig('java.util.concurrent.locks.Lock#tryLock(long,java.util.concurrent.TimeUnit)')
+  or pmd-java:matchesSig('java.util.concurrent.Semaphore#tryAcquire(long,java.util.concurrent.TimeUnit)')
+  or pmd-java:matchesSig('java.util.concurrent.Semaphore#tryAcquire(int,long,java.util.concurrent.TimeUnit)')
+  or pmd-java:matchesSig('java.util.concurrent.BlockingQueue#offer(_,long,java.util.concurrent.TimeUnit)')
+  or pmd-java:matchesSig('java.lang.Process#waitFor(long,java.util.concurrent.TimeUnit)')
+  or (pmd-java:matchesSig('java.util.concurrent.ExecutorService#awaitTermination(long,java.util.concurrent.TimeUnit)')
+      and not(ArgumentList/*[1]/descendant-or-self::*[@Name = 'MAX_VALUE'])
+      and not(ancestor::MethodDeclaration[1]
+                [matches(@Name, '^(close|stop|shutdown|destroy|tearDown|cleanup|dispose|after)', 'i')
+                 or ModifierList/Annotation[@SimpleName = ('PreDestroy', 'AfterEach', 'AfterAll', 'After', 'AfterClass',
+                                                           'AfterMethod', 'AfterTest', 'AfterSuite')]]))]
+  [not(*[1][self::MethodCall[@MethodName = ('verify', 'when', 'should', 'given', 'expect')]])]
+  [not(ancestor::MethodDeclaration[1]//MethodCall[@MethodName = ('expectLastCall', 'replay', 'replayAll')])]
+  [(parent::ExpressionStatement
+    | parent::ExpressionStatement/parent::Block/parent::TryStatement[not(FinallyClause)])
+     /following-sibling::*//MethodCall[matches(@MethodName, '^assert')
+       or @MethodName = ('fail', 'verify', 'verifyNoInteractions', 'verifyNoMoreInteractions')]]
+  [let $waited := *[1]/descendant-or-self::*[self::VariableAccess or self::FieldAccess]/@Name return
+     empty((parent::ExpressionStatement
+            | parent::ExpressionStatement/parent::Block/parent::TryStatement[not(FinallyClause)])
+             /following-sibling::*//MethodCall[matches(@MethodName, '^assert')]
+             //*[self::VariableAccess or self::FieldAccess][@Name = $waited])]
 ]]></value>
       </property>
     </properties>
@@ -779,6 +905,55 @@ $writes
              or pmd-java:matchesSig('org.mockito.Mockito#mockConstruction(_*)')
              or pmd-java:matchesSig('org.mockito.Mockito#mockConstructionWithAnswer(_*)')]
   /ArgumentList/*[1][self::ClassLiteral]/ClassType
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="WallClockBoundInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This test fails when the machine is slow: it puts a limit of under one second on measured wall-clock time, and a busy CI runner, a garbage collection pause or a cold cache can take longer than that. Assert the behaviour instead (the calls made, a counter of the work done) and keep speed checks in a benchmark. A limit of a second or more that only guards against a hang is allowed.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $read := function($e, $nanos) {
+      exists($e/self::MethodCall[if ($nanos) then pmd-java:matchesSig('java.lang.System#nanoTime()')
+                                 else pmd-java:matchesSig('java.lang.System#currentTimeMillis()')]) },
+    $moment := function($e, $nanos) {
+      $read($e, $nanos)
+      or exists($e/self::VariableAccess[let $n := @Name, $method := ancestor::MethodDeclaration[last()],
+                                            $scope := if (exists($method//VariableId[@Name = $n])) then $method
+                                                      else ancestor::ClassDeclaration[1] return
+           $scope//VariableDeclarator[VariableId[@Name = $n]][$read(*[2], $nanos)]
+           or $scope//AssignmentExpression[*[1][@Name = $n]][$read(*[2], $nanos)]]) },
+    $elapsed := function($e, $nanos) {
+      exists(($e/self::InfixExpression
+              | $e/self::VariableAccess/(let $n := @Name return
+                  ancestor::*[self::MethodDeclaration or self::LambdaExpression][1]
+                    //LocalVariableDeclaration[count(.//VariableId[@Name = $n]) = 1]
+                    /VariableDeclarator[VariableId[@Name = $n]]/InfixExpression))
+               [@Operator = '-'][$moment(*[1], $nanos)][$moment(*[2], $nanos)][not($read(*[2], $nanos))]) },
+    $number := function($l) { number(replace($l/@Image, '[_lL]', '')) },
+    $short := function($e, $l) {
+      exists($l/self::NumericLiteral[@IntLiteral = true() or @LongLiteral = true()][$number(.) > 0])
+      and (($elapsed($e, false()) and $number($l) < 1000) or ($elapsed($e, true()) and $number($l) < 1000000000)) }
+return (
+  //MethodCall[@MethodName = 'assertTrue']
+    [ArgumentList/InfixExpression[@Operator = ('<', '<=')][$short(*[1], *[2])]
+     or ArgumentList/InfixExpression[@Operator = ('>', '>=')][$short(*[2], *[1])]]
+| //MethodCall[@MethodName = ('isLessThan', 'isLessThanOrEqualTo')][ArgumentList/@Size = 1]
+    [*[1]/self::MethodCall[@MethodName = 'assertThat'][ArgumentList/@Size = 1]
+       [$short(ArgumentList/*[1], ../ArgumentList/*[1])]]
+| //MethodCall[@MethodName = ('assertTimeout', 'assertTimeoutPreemptively')]
+    [ArgumentList/*[1]/self::MethodCall[pmd-java:matchesSig('java.time.Duration#ofMillis(long)')]
+       [ArgumentList/NumericLiteral[$number(.) < 1000]]]
+    [not(ancestor::MethodCall[@MethodName = ('assertThrows', 'assertThrowsExactly', 'assertThatThrownBy')])]
+| //Annotation[pmd-java:typeIs('org.junit.jupiter.api.Timeout')]
+    [.//MemberValuePair[@Name = 'unit']//(FieldAccess | VariableAccess)[@Name = 'MILLISECONDS']]
+    [.//MemberValuePair[@Name = 'value']/NumericLiteral[$number(.) < 1000]]
+| //Annotation[pmd-java:typeIs('org.junit.Test')]
+    [.//MemberValuePair[@Name = 'timeout']/NumericLiteral[$number(.) < 1000]]
+)[not(ancestor-or-self::*[self::MethodDeclaration or self::ClassDeclaration]
+        /ModifierList/Annotation[@SimpleName = ('Disabled', 'Ignore')])]
 ]]></value>
       </property>
     </properties>

@@ -13,4 +13,8 @@ export const nitpickerReactRuleIds = [
   'nitpicker/react-no-unstable-memo-props',
   'nitpicker/react-no-unstable-selector-result',
   'nitpicker/react-no-unstable-store-subscribe',
+  'nitpicker/react-no-stale-state-update',
+  'nitpicker/react-pure-state-updater',
+  'nitpicker/react-no-uncached-use-promise',
+  'nitpicker/react-no-render-side-effect',
 ];
