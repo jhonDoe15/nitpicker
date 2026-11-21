@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { ESLint } from 'eslint';
 import { listNativeRules } from './plan/rule-listing.mts';
+import { listedFiles } from './plan/listed-files.mts';
 import { readLayout } from '../../preset/head-policy.mts';
 import { END_TO_END_ROOT } from '../../preset/layout/end-to-end.mts';
 import { parsedTsconfig } from '../../preset/modules/tsconfig-files.mts';

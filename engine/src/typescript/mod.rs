@@ -2,6 +2,8 @@
 pub mod lines;
 pub mod resolve;
 pub mod rules;
+pub mod strings;
+pub mod tokens;
 pub mod structure;
 pub mod tree;
 
