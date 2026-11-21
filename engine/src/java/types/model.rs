@@ -248,4 +248,14 @@ pub struct ClassInfo {
     pub container_of: Vec<String>,
     /// The type parameters marked `@ImmutableTypeParameter`.
     pub immutable_parameters: Vec<String>,
+    /// Declares an instance method, of any visibility, whose name starts like a setter and that does not
+    /// return the class itself.
+    pub setter_like: bool,
+}
+
+const SETTER_STARTS: &[&str] =
+    &["set", "put", "add", "insert", "delete", "remove", "erase", "clear", "push", "pop", "enqueue", "dequeue", "write", "append", "replace"];
+
+pub fn setter_name(name: &str) -> bool {
+    SETTER_STARTS.iter().any(|start| name.starts_with(start))
 }

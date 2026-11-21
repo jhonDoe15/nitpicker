@@ -1,4 +1,5 @@
-mod errorprone;
+pub mod errorprone;
+mod spotbugs;
 mod facts;
 mod grammar;
 pub(crate) mod fields;
@@ -33,6 +34,7 @@ impl Language for Java {
         rules.extend(pmd_sample::rules());
         rules.extend(typed_rules::rules());
         rules.push(Box::new(errorprone::ErrorProne));
+        rules.push(Box::new(spotbugs::SpotBugs));
         rules.push(Box::new(pmd::dump::TreeDump));
         if let Some(rules_from_file) = pmd::rules::XPathRules::from_env() {
             rules.push(Box::new(rules_from_file));
