@@ -1,5 +1,5 @@
-import { partsOf as untypedPartsOf } from '../../../../../shared/rules/stability/test-support/library-project.mjs';
-import { byText as untypedByText } from '../../../../../shared/text-order/by-text.mjs';
+import { partsOf as untypedPartsOf } from '../../../../../shared/rules/stability/test-support/library-project.mts';
+import { byText as untypedByText } from '../../../../../shared/text-order/by-text.mts';
 
 type LibraryUse = readonly string[];
 

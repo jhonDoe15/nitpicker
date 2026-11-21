@@ -1,4 +1,4 @@
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mts';
 import { closingIndex } from '../../source/brackets.mts';
 import type { Member, OutlineType } from '../java-members.mts';
 

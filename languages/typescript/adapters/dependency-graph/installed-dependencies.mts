@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { ancestorDirectories as untypedAncestorDirectories } from '../../../../shared/filesystem.mjs';
+import { ancestorDirectories as untypedAncestorDirectories } from '../../../../shared/filesystem.mts';
 import { containedPath } from './package-managers/contained-path.mts';
 import { managerRoot } from './package-managers/detect.mts';
 

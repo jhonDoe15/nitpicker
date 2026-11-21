@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { shorterConditionFindings as untypedShorterConditionFindings } from '../../../../../shared/rules/shorter/shorter-conditions.mjs';
-import type { RuleFindings } from '../test-support/parse-go.mts';
+import { shorterConditionFindings } from '../../../../../shared/rules/shorter/shorter-conditions.mts';
 import { ruleLines } from '../test-support/rule-lines.mts';
 
-const shorterConditionFindings: RuleFindings = untypedShorterConditionFindings;
 const shorter = ruleLines(shorterConditionFindings, 'structure');
 
 describe('shorter-condition on Go', () => {

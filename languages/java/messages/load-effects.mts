@@ -1,4 +1,4 @@
-import { escapeRegExp as untypedEscapeRegExp } from '../../../shared/paths/glob.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../shared/paths/glob.mts';
 import { blankLiterals, expressionAt, offsetOf } from '../adapters/review-rules/java-sources.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 import type { Fields } from '../../../shared/values/readers.mts';

@@ -1,9 +1,9 @@
 import type TypeScript from 'typescript';
 import type { Finding } from '../static-checks/shared.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
-import { exceptionRoute as untypedExceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
-import { appendSentence as untypedAppendSentence } from '../../../../shared/messages/exception-sentence.mjs';
-import { definedField as untypedDefinedField } from '../../../../shared/messages/messages.mjs';
+import { exceptionRoute as untypedExceptionRoute } from '../../../../shared/exceptions/rule-names.mts';
+import { appendSentence as untypedAppendSentence } from '../../../../shared/messages/exception-sentence.mts';
+import { definedField as untypedDefinedField } from '../../../../shared/messages/messages.mts';
 import { regexpRuleHints as untypedRegexpRuleHints } from '../../preset/eslint-config/regexp/regexp-rules.mts';
 import { restrictedMatchers as untypedRestrictedMatchers } from '../../preset/eslint-config/test-honesty/restricted-matchers.mts';
 

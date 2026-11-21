@@ -107,7 +107,7 @@ than the others, and this skill teaches its rules before an agent writes Go.
   preset runs (`swallowed-exception`, `repeated-string-literal`, `generic-name`,
   `todo-without-issue`, `forwarding-method-alias`, `hardcoded-secret`, `credential-shape` and
   `secret-in-log` in Python), with one definition: the secret words and shapes are shared
-  (`shared/naming/secret-words.mjs`, mirrored in Go and checked by a test). The Go forms follow the
+  (`shared/naming/secret-words.mts`, mirrored in Go and checked by a test). The Go forms follow the
   language: an `errors.Is` check is the Go way to expect one error, so only `err != nil` is judged;
   printf templates are Go's interpolated strings, so they are not counted as repeats; and a method
   an interface asks for may forward, since Go has no other way to satisfy it. Unused parameters,

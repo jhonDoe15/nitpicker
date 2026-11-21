@@ -1,7 +1,7 @@
 import {
   deletionFix as untypedDeletionFix,
   isCovered as untypedIsCovered,
-} from '../../../../../shared/fix/recipes/doc-comments/restating-comment.mjs';
+} from '../../../../../shared/fix/recipes/doc-comments/restating-comment.mts';
 import type { DeletionFix, Finding, PlanInputs } from './doc-comment-types.mts';
 
 export {

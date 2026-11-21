@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { CONFIG_FILE_NAME, SCHEMA_KEY, configError } from '../../../shared/config.mjs';
-import { withCanonicalRules as untypedCanonicalRules } from '../../../shared/exceptions/validation.mjs';
+import { CONFIG_FILE_NAME, SCHEMA_KEY, configError } from '../../../shared/config.mts';
+import { withCanonicalRules as untypedCanonicalRules } from '../../../shared/exceptions/validation.mts';
 import { withKotlinRuleAliases as untypedKotlinAliases } from '../../../languages/java/adapters/kotlin/kotlin-options.mts';
 import type {
   ConfigLayer,

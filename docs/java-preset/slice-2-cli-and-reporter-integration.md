@@ -72,10 +72,10 @@ Part of the [Java preset guide](../java-preset.md).
   their own variable get the same budget. See [Analyzer timeouts](usage.md#analyzer-timeouts).
 - **Config keys.** `base`, `disable` and `analyzers` work as before. `history` turns on the
   opt-in [change history](../usage.md#change-history) check, which reads git and not the Java runner.
-  `thresholds`, `exclude` and `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
+  `thresholds`, `exclude` and `legacyInventory` are shared with the TypeScript preset (`shared/config.mts`,
   `head-policy.mjs`, `legacy-inventory.mjs`) and reach the Java runner as arguments, so they are
   part of the analyzer's configuration hash:
-  - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`), and
+  - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mts`), and
     `fileLines`, `testFileLines` and `folderFiles` the file limits, which count the `.java` files of
     the main and test source sets (branch coverage and duplicates have fixed limits). `classMethods`
     (20), `classFields` (10), `inheritanceDepth` (3) and `folderDepth` (4) replace the limits
@@ -117,7 +117,7 @@ Part of the [Java preset guide](../java-preset.md).
   - `layout` is a config error with `"preset": "java"` instead of being ignored: its source-folder
     keys are TypeScript only, and `layout.featureRoots` and `layout.sharedRoots` are accepted
     because the Java and Kotlin presets run a rule that reads them (`contract-infrastructure-type`,
-    listed in `OWN_RULE_SETTINGS` of `shared/project-rules/fact-rules.mjs`) and
+    listed in `OWN_RULE_SETTINGS` of `shared/project-rules/fact-rules.mts`) and
     `shared-used-by-one-feature`, which the registry lists Java and Kotlin for; once `history.coChange`
     is on, `featureRoots` also names the feature folders `co-change` reads. `testConsole` is accepted because the registry lists Java and
     Kotlin for `test-console-output`. `tools` takes `pmd`, `checkstyle`, `spotbugs`, `errorprone` and `pit`.

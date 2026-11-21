@@ -1,5 +1,5 @@
 import { lineEndingOf } from '../../../../../core/fix/typed/line-endings.mts';
-import { lineStartOf as untypedLineStartOf } from '../../../../../shared/fix/recipes/doc-comments/restating-comment.mjs';
+import { lineStartOf as untypedLineStartOf } from '../../../../../shared/fix/recipes/doc-comments/restating-comment.mts';
 import type {
   TextEdit,
   TomlArray,

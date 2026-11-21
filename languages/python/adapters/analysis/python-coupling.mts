@@ -1,11 +1,11 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { RULE_IDS } from '../../../../shared/policy.mjs';
+import { RULE_IDS } from '../../../../shared/policy.mts';
+import { buildCouplingReport, evaluateCoupling } from '../../../../shared/rules/coupling.mts';
 import {
-  buildCouplingReport as untypedBuildReport,
-  evaluateCoupling,
-} from '../../../../shared/rules/coupling.mjs';
-import { PUBLIC_FACES } from '../../../../shared/rules/features/feature-roles.mjs';
+  featureRoleContract,
+  PUBLIC_FACES,
+} from '../../../../shared/rules/features/feature-roles.mts';
 import { listOtherModules, listProductionModules } from './python-sources.mts';
 import { fileURLToPath } from 'node:url';
 import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
@@ -27,16 +27,7 @@ import type {
   OtherModule,
   PythonModule,
 } from './typed/python-graph-types.mts';
-import { featureRoleContract } from './typed/shared-views.mts';
 
-const buildReport: (input: {
-  modules: string[];
-  edges: ImportEdge[];
-  packageOf: (name: string) => string;
-  fileOf: (name: string) => string;
-  roleOf: (name: string) => unknown;
-}) => CouplingReport = untypedBuildReport;
-const evaluate: (report: CouplingReport, tool: string) => IngestedFinding[] = evaluateCoupling;
 const IMPORTS_REPORT = 'imports.json';
 const COUPLING_FAILED_RULE = 'coupling-failed';
 const COUPLING_TOOL = 'coupling';
@@ -170,7 +161,7 @@ export function analyzePythonCoupling(
 ): CouplingReport {
   const byName = new Map(modules.map((entry) => [entry.module, entry]));
   const roleOfFile = featureRoleContract(layout, PUBLIC_FACES.python);
-  return buildReport({
+  return buildCouplingReport({
     modules: [...byName.keys()].sort(),
     edges: importEdges(modules, imports),
     packageOf: (name: string) => packageOwner(entryOf(byName, name)),
@@ -228,7 +219,7 @@ export function readCouplingFindings(
 ): IngestedFinding[] {
   const imports = readImportsReport(reportRoot);
   const report = analyzePythonCoupling(imports, { layout });
-  return withStabilityAnchor(evaluate(report, COUPLING_TOOL), {
+  return withStabilityAnchor(evaluateCoupling(report, COUPLING_TOOL), {
     report,
     modules: imports.modules,
   });

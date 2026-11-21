@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { isStrictlyInside } from '../../../../shared/filesystem.mjs';
-import { type XmlElement, childrenAt } from '../../../../shared/values/xml.mts';
+import { isStrictlyInside } from '../../../../shared/filesystem.mts';
+import { type XmlElement, childrenAt } from '../../../../shared/ingest/report-records.mts';
 import { executionsWithGoal, textAt } from './pom-elements.mts';
 
 type LayoutRequest = {

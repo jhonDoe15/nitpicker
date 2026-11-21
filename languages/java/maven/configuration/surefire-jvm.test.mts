@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { childAt, parseXml } from '../../../../shared/values/xml.mts';
+import { childAt, parseXml } from '../../../../shared/ingest/report-records.mts';
 import { argLineTokens, testJvmArguments } from './surefire-jvm.mts';
 
 function argumentsOf({

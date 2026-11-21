@@ -4,7 +4,7 @@ import {
   childAt,
   childrenAt,
   parseXml,
-} from '../../../../../shared/values/xml.mts';
+} from '../../../../../shared/ingest/report-records.mts';
 import type { JdkRequirements, ToolchainContext } from '../../typed/toolchain-types.mts';
 import { executionsOf, pluginsOf } from '../pom-elements.mts';
 import { existingFile, globalToolchainsFile, userToolchainsFile } from './toolchain-files.mts';

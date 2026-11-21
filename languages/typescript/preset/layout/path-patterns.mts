@@ -1,4 +1,4 @@
-import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
+import { escapeRegExp } from '../../../../shared/paths/glob.mts';
 import { PROJECT_ROOT, rootPrefixPattern, underRoot } from './source-root/root-paths.mts';
 import { rootScopedGlobs, sourceRootGlobs } from '../test-runner/test-files/test-file-patterns.mts';
 import type {

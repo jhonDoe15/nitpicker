@@ -1,4 +1,4 @@
-import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
 import { detectProject, detectProjectAs } from '../detection/detect-project.mts';
 import { type ExistingConfig, existingConfig, placeConfig } from '../files/config-file.mts';
 import { type Revision, placeFile } from '../files/place-file.mts';

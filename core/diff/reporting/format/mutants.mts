@@ -1,4 +1,4 @@
-import { RULE_IDS } from '../../../../shared/policy.mjs';
+import { RULE_IDS } from '../../../../shared/policy.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import { largest, smallest } from '../../../../shared/lists/lists.mts';

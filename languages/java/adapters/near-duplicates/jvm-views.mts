@@ -2,13 +2,13 @@ import type { Node } from 'web-tree-sitter';
 import {
   depthFirst as untypedDepthFirst,
   chainOf as untypedChainOf,
-} from '../../../../shared/traversal.mjs';
+} from '../../../../shared/traversal.mts';
 import {
   statementsOf as untypedStatementsOf,
   listOf as untypedListOf,
   uniqueNames as untypedUniqueNames,
   withSnippet as untypedWithSnippet,
-} from '../../../../shared/near-duplicates/unit-parts.mjs';
+} from '../../../../shared/near-duplicates/unit-parts.mts';
 import type { BaseContext, Converted, PlacedNode, ShapeNode, Unit } from './jvm-types.mts';
 import {
   indentOf as untypedIndentOf,
@@ -16,43 +16,31 @@ import {
   indentedBy as untypedIndentedBy,
   withLineEndingOf as untypedWithLineEndingOf,
   withReplacements as untypedWithReplacements,
-} from '../../../../shared/fix/recipes/extract/text.mjs';
+} from '../../../../shared/fix/recipes/extract/text.mts';
 import {
   lastSegment as untypedLastSegment,
   helperNameFor as untypedHelperNameFor,
   nameHoles as untypedNameHoles,
-} from '../../../../shared/fix/recipes/extract/names.mjs';
-import {
-  outcomeOf as untypedOutcomeOf,
-  collected as untypedCollected,
-} from '../../../../shared/fix/recipes/extract/outcomes.mjs';
-import {
-  wholeCandidates as untypedWholeCandidates,
-  partialCandidates as untypedPartialCandidates,
-} from '../../../../shared/fix/recipes/extract/candidates.mjs';
-import { nearDuplicateMatches as untypedNearDuplicateMatches } from '../../../../shared/rules/near-duplicates/near-duplicates.mjs';
+} from '../../../../shared/fix/recipes/extract/names.mts';
+export { outcomeOf, collected } from '../../../../shared/fix/recipes/extract/outcomes.mts';
+export {
+  wholeCandidates,
+  partialCandidates,
+} from '../../../../shared/fix/recipes/extract/candidates.mts';
+import { nearDuplicateMatches as untypedNearDuplicateMatches } from '../../../../shared/rules/near-duplicates/near-duplicates.mts';
 import {
   bindPair as untypedBindPair,
   recordTypeHole as untypedRecordTypeHole,
   typePairProblem as untypedTypePairProblem,
-} from '../../../../shared/fix/recipes/extract/bijection.mjs';
-import { statementWindows as untypedStatementWindows } from '../../../../shared/fix/recipes/extract/windows.mjs';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mjs';
+} from '../../../../shared/fix/recipes/extract/bijection.mts';
+import { statementWindows as untypedStatementWindows } from '../../../../shared/fix/recipes/extract/windows.mts';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mts';
 import {
   isRealPathInside as untypedIsRealPathInside,
   readRealInside as untypedReadRealInside,
   resolveInside as untypedResolveInside,
-} from '../../../../shared/conventions/read-inside.mjs';
-import type {
-  AlignHole,
-  BindingState,
-  Candidate,
-  Candidates,
-  Collected,
-  Matches,
-  Outcome,
-  PathEdit,
-} from './extract-types.mts';
+} from '../../../../shared/conventions/read-inside.mts';
+import type { AlignHole, BindingState, Matches } from './extract-types.mts';
 
 export const depthFirst: <Item>(
   root: Item,
@@ -106,22 +94,6 @@ export const nameHoles: <Hole extends object>(
   taken: ReadonlySet<string>,
   stemOf: (hole: Hole) => string | undefined,
 ) => (Hole & { name: string })[] | undefined = untypedNameHoles;
-
-export const outcomeOf: (
-  candidate: Candidate,
-  result: {
-    readonly declined?: string | undefined;
-    readonly edits?: readonly PathEdit[] | undefined;
-  },
-) => Outcome = untypedOutcomeOf;
-export const collected: (outcomes: readonly Outcome[], notes: readonly string[]) => Collected =
-  untypedCollected;
-
-export const wholeCandidates: (
-  matches: Matches,
-  options: { readonly crossFile: boolean; readonly textProof: boolean },
-) => Candidates = untypedWholeCandidates;
-export const partialCandidates: (matches: Matches) => Candidates = untypedPartialCandidates;
 
 export const nearDuplicateMatches: (
   units: readonly Unit[],

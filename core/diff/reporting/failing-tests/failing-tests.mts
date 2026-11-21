@@ -1,5 +1,5 @@
-import { TESTS_FAILED_RULE } from '../../../../shared/rules/finding-helpers.mjs';
-import { MAX_SHOWN_FAILING_TESTS } from '../../../../shared/rules/failing-tests/failing-tests.mjs';
+import { TESTS_FAILED_RULE } from '../../../../shared/rules/finding-parts.mts';
+import { MAX_SHOWN_FAILING_TESTS } from '../../../../shared/rules/failing-tests/failing-tests.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 
 type ExitReport = {

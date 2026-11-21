@@ -1,7 +1,7 @@
-import { UNUSED_OPTION_FIX, UNUSED_OPTION_TEXT } from '../../../../../shared/messages/messages.mjs';
+import { UNUSED_OPTION_FIX, UNUSED_OPTION_TEXT } from '../../../../../shared/messages/messages.mts';
 import { hintText, renderMessage } from '../typed/message-views.mts';
 import { RULES_TOOL } from '../tool.mts';
-import { UNUSED_OPTION_SCOPES } from '../../../../../shared/unused-api/unused-api-policy.mjs';
+import { UNUSED_OPTION_SCOPES } from '../../../../../shared/unused-api/unused-api-policy.mts';
 import type { HintData, RuleHint } from '../hint-types.mts';
 import type { Libraries } from '../../libraries/typed/library-types.mts';
 

@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import type { RecipePlan } from '../../../../core/fix/typed/fix-types.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { readTreeUnits } from './batches/tree-batches.mts';

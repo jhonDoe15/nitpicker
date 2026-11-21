@@ -8,7 +8,7 @@ import type {
 } from '../../extract-types.mts';
 import { recordTypeHole, typePairProblem } from '../../jvm-views.mts';
 import { namedChildren, pairOf, present, squashed } from '../syntax.mts';
-import { TYPE_PARAMETER_NAMES } from '../../../../../../shared/fix/recipes/extract/names.mjs';
+import { TYPE_PARAMETER_NAMES } from '../../../../../../shared/fix/recipes/extract/names.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
 const NAMED = new Set(['type_identifier', 'scoped_type_identifier']);

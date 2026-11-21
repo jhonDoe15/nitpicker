@@ -11,8 +11,8 @@ import {
   PARENTHESES as PARENTHESES_UNTYPED,
   balancedEnd as balancedEndUntyped,
   depthChange as depthChangeUntyped,
-} from '../../../../../shared/source-text/brackets/balanced.mjs';
-import { escapeRegExp as escapeRegExpUntyped } from '../../../../../shared/paths/glob.mjs';
+} from '../../../../../shared/source-text/brackets/balanced.mts';
+import { escapeRegExp as escapeRegExpUntyped } from '../../../../../shared/paths/glob.mts';
 import { sourceIndex, type IndexRoots, type SourceIndex } from '../source-facts/source-index.mts';
 import { viewOf, type Finding } from '../source-facts/finding-view.mts';
 

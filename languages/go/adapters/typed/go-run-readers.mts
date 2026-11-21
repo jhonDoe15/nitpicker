@@ -1,9 +1,9 @@
-import { applyFindingPolicy as untypedApplyPolicy } from '../../../../shared/findings/finding-policy.mjs';
-import { readHeadPolicyFile as untypedHeadPolicy } from '../../../../shared/head-policy.mjs';
+import { applyFindingPolicy as untypedApplyPolicy } from '../../../../shared/findings/finding-policy.mts';
+import { readHeadPolicyFile as untypedHeadPolicy } from '../../../../shared/head-policy.mts';
 import { parseRunnerArguments as untypedParse } from '../../../../core/tooling/runner-arguments.mts';
 import { precedenceToolNames as untypedPrecedence } from '../../../java/adapters/gradle-presets.mts';
-import { describeError as untypedDescribeError } from '../../../../shared/messages/error-chain.mjs';
-import { sharedRouteRule as untypedSharedRouteRule } from '../../../../shared/exceptions/routes.mjs';
+import { describeError as untypedDescribeError } from '../../../../shared/messages/error-chain.mts';
+import { sharedRouteRule as untypedSharedRouteRule } from '../../../../shared/exceptions/routes.mts';
 import {
   createGoContext as untypedCreateContext,
   readFormatReport as untypedReadFormat,

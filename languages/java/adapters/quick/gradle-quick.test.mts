@@ -7,7 +7,7 @@ import { fakeGradleRun } from '../test-support/in-process-gradle.mts';
 import type { JavaFinding, JavaPolicy } from '../typed/java-values.mts';
 import { parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
-import { byText } from '../../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mts';
 
 const roots: string[] = [];
 

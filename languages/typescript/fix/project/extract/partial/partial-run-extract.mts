@@ -1,8 +1,8 @@
 import type { ProjectRecipe } from '../../typed/project-types.mts';
 import { planProject, unitNodeOf } from '../driver/plan-project.mts';
 import type { PartialCandidate, PartialInput, Strategy } from '../typed/extract-types.mts';
-import { eachSide } from '../typed/extract-types.mts';
-import { partialCandidates } from '../typed/typed-views.mts';
+import { partialCandidates } from '../../../../../../shared/fix/recipes/extract/candidates.mts';
+import { eachSide, lineSpanOf } from '../typed/extract-types.mts';
 import { partialExtraction } from './extraction.mts';
 
 const STRATEGY: Strategy<PartialCandidate, PartialInput> = {
@@ -10,9 +10,9 @@ const STRATEGY: Strategy<PartialCandidate, PartialInput> = {
   inputOf(candidate, found) {
     return {
       units: eachSide([candidate.first, candidate.second], (unit) => unitNodeOf(found, unit)),
-      runs: candidate.runs,
+      runs: eachSide([candidate.runs[0], candidate.runs[1]], lineSpanOf),
       label: candidate.first.name,
-      engineHoles: candidate.finding.parameters.length,
+      engineHoles: candidate.finding.parameters?.length ?? 0,
     };
   },
   extract: partialExtraction,

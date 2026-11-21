@@ -1,4 +1,4 @@
-import { COLUMNS } from '../../../shared/conventions/settings.mjs';
+import { COLUMNS } from '../../../shared/conventions/settings.mts';
 import { lineLength } from './python-line-length.mts';
 import { indentationWidth, stringQuotes } from './python-measures.mts';
 

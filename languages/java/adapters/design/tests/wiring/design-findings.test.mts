@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { DESIGN_RULES } from '../../../../../../shared/project-rules/design/design-rules.mjs';
+import { DESIGN_RULES } from '../../../../../../shared/project-rules/design/design-rules.mts';
 import { DESIGN_FACTS_FAILURE_RULE, designFindings, designPolicy } from '../../design-findings.mts';
 import {
   designPackages,
@@ -77,7 +77,7 @@ describe('design findings for Java', () => {
     expect(options).toEqual({
       language: 'java',
       analyzerName: 'java',
-      policy: designPolicy({ exceptions }),
+      policy: designPolicy({ exceptions }, {}),
       rules: DESIGN_RULES,
     });
   });

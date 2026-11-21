@@ -10,8 +10,8 @@ import {
   TESTS_FAILED_RULES,
   TESTS_UNMEASURED_RULES,
   TOOL_SKIPPED_RULE,
-} from '../../../../shared/rules/finding-helpers.mjs';
-import { withoutAnsi } from '../../../../shared/messages/terminal/terminal-text.mjs';
+} from '../../../../shared/rules/finding-parts.mts';
+import { withoutAnsi } from '../../../../shared/messages/terminal/terminal-text.mts';
 import { baseFailuresOf, baseNoteOf, redBaseAnalyzers } from './unknown-base.mts';
 import {
   unknownOnBaseOf,
@@ -22,9 +22,9 @@ import { type MetadataMap, mergeMetadata } from '../../execution/report/analyzer
 import type { AnalyzerReport, Finding, ReportEntry } from '../../../../shared/values/findings.mts';
 import { appendAll } from '../../../../shared/lists/lists.mts';
 
-export type AnalyzerRun = {
+export type ComparisonRun = {
   readonly reports: ReadonlyMap<string, AnalyzerReport>;
-  readonly timings: ReadonlyMap<string, number>;
+  readonly timings: ReadonlyMap<string, number | undefined>;
   readonly skipped?: ReadonlyMap<string, unknown> | undefined;
   readonly toolErrors: readonly ReportEntry[];
   readonly metadata?: MetadataMap | undefined;
@@ -34,8 +34,8 @@ export type { Moves };
 
 export type ComparisonRequest = MoveFields & {
   readonly analyzers: readonly unknown[];
-  readonly baseRun: AnalyzerRun;
-  readonly headRun: AnalyzerRun;
+  readonly baseRun: ComparisonRun;
+  readonly headRun: ComparisonRun;
   readonly toolErrors: ReportEntry[];
   readonly touchedCode?: TouchedCode | undefined;
 };
@@ -72,13 +72,13 @@ type ComparedContext = NamedContext & {
 const plainText: (text: string) => string = withoutAnsi;
 const redBaseOf: (request: {
   readonly names: readonly string[];
-  readonly baseRun: AnalyzerRun;
-  readonly headRun: AnalyzerRun;
+  readonly baseRun: ComparisonRun;
+  readonly headRun: ComparisonRun;
 }) => RedBase = redBaseAnalyzers;
 const failuresOf: (request: {
   readonly name: string;
-  readonly baseRun: AnalyzerRun;
-  readonly headRun: AnalyzerRun;
+  readonly baseRun: ComparisonRun;
+  readonly headRun: ComparisonRun;
   readonly redBase: RedBase;
 }) => readonly Finding[] | undefined = baseFailuresOf;
 const noteOf: (name: string, finding: Finding) => ReportEntry = baseNoteOf;

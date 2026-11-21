@@ -10,7 +10,7 @@ import { spawnNodeTool, withoutOptions } from '../typed/runner-tools.mts';
 import type { RunnerCommand, TestOptions, TestRun } from '../typed/runner-types.mts';
 import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mts';
 import { startTestConsole } from '../test-console-run.mts';
-import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import {
   readRun,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MESSAGES, messageFields } from '../../../../shared/policy.mjs';
-import { exceptionText } from '../../../../shared/rules/exceptions.mjs';
+import { MESSAGES, messageFields } from '../../../../shared/policy.mts';
+import { exceptionText } from '../../../../shared/rules/exceptions.mts';
 import { readJvmReuseFindings } from './jvm-reuse-facts.mts';
 import {
   createReuseProjects,

@@ -1,7 +1,6 @@
-import { childAt } from '../../../../../shared/values/xml.mts';
-import type { XmlElement } from '../../../../../shared/values/xml.mts';
+import { childAt, type XmlElement } from '../../../../../shared/ingest/report-records.mts';
 import { numberOr } from '../../../../../shared/values/readers.mts';
-import { missingProjectConfig as untypedMissingProjectConfig } from '../../../../../shared/conventions/tool-precedence.mjs';
+import { missingProjectConfig as untypedMissingProjectConfig } from '../../../../../shared/conventions/tool-precedence.mts';
 import {
   configurations,
   pluginsNamed,

@@ -3,7 +3,7 @@ import { compileErrorsOf } from '../../builds/compile-errors/compile-findings.mt
 import { dependencyFile } from '../quick/maven-build-arguments.mts';
 import { relativeTo } from '../module/module-paths.mts';
 import { listOf } from '../../../../shared/values/readers.mts';
-import { MODULE_BUILD_FAILED_RULE as SHARED_MODULE_BUILD_FAILED_RULE } from '../../../../shared/rules/finding-helpers.mjs';
+import { MODULE_BUILD_FAILED_RULE as SHARED_MODULE_BUILD_FAILED_RULE } from '../../../../shared/rules/finding-parts.mts';
 import type { MavenModule } from '../typed/maven-values.mts';
 import type { JavaFinding } from '../../adapters/typed/java-values.mts';
 

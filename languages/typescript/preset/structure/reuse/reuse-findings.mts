@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { readHeadPolicy, readLayout } from '../../head-policy.mts';
 import { resolveModuleSpecifier } from '../../modules/module-resolution.mts';
-import { sharedFactFindings as untypedSharedFactFindings } from '../../../../../shared/rules/facts/evaluate.mjs';
+import { sharedFactFindings as untypedSharedFactFindings } from '../../../../../shared/rules/facts/evaluate.mts';
 import { importSourceText, neutralReuseFacts } from './definition-facts.mts';
 import { baselineFileReader, productionFacts, svgFiles } from './project-files.mts';
 import { projectPathOf } from './reuse-paths.mts';

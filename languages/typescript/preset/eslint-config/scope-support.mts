@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { findPackageJSON } from 'node:module';
 import path from 'node:path';
-import { readTextIfExists as untypedReadTextIfExists } from '../../../../shared/filesystem.mjs';
+import { readTextIfExists as untypedReadTextIfExists } from '../../../../shared/filesystem.mts';
 import { fieldOf, fieldsOf, textOf } from '../../../../shared/values/readers.mts';
 import type { ResolvedLayout } from '../typed/layout-types.mts';
 import { pathToFileURL } from 'node:url';

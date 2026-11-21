@@ -1,10 +1,4 @@
-import {
-  carryBaseReports,
-  endsEarly,
-  runUnlessSkipped,
-  skipPlanOf,
-  withoutSkipped,
-} from '../../skipping/apply.mts';
+import { endsEarly, runUnlessSkipped, skipPlanOf, withoutSkipped } from '../../skipping/apply.mts';
 import type { AnalyzerRun } from '../../execution/run-analyzers.mts';
 import type { Settings } from './diff-types.mts';
 import type { SkipPlan } from './run-types.mts';
@@ -14,12 +8,7 @@ export const planOf: (settings: Settings, comparison: Comparison) => SkipPlan = 
 export const stopsEarly: (plan: SkipPlan) => boolean = endsEarly;
 export const runnableOf: (analyzers: readonly unknown[], plan: SkipPlan) => readonly unknown[] =
   withoutSkipped;
-export const carried: (request: {
-  readonly analyzers: readonly unknown[];
-  readonly baseRun: unknown;
-  readonly headRun: unknown;
-  readonly skipPlan: SkipPlan;
-}) => { readonly analyzers: readonly unknown[]; readonly headRun: unknown } = carryBaseReports;
+export { carryBaseReports as carried } from '../../skipping/apply.mts';
 export const unlessSkipped: (
   analyzers: readonly unknown[],
   plan: SkipPlan,

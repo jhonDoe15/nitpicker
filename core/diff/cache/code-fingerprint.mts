@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { filesUnder } from '../../../shared/filesystem.mjs';
+import { filesUnder } from '../../../shared/filesystem.mts';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mts';
 import { appendAll } from '../../../shared/lists/lists.mts';
 

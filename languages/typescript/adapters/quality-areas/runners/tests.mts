@@ -19,8 +19,8 @@ import { hasProjectTests, projectTestFiles } from '../../test-runners/test-run.m
 import {
   TESTS_FAILED_SKIPPED_RULE,
   TESTS_NOT_RUN_RULE,
-} from '../../../../../shared/rules/finding-helpers.mjs';
-import { testsFailAnchor } from '../../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../../shared/rules/finding-parts.mts';
+import { testsFailAnchor } from '../../../../../shared/messages/troubleshooting.mts';
 
 export function runPolicyTests(options: QualityAreaOptions): Finding[] {
   if (options.snapshot === 'base') {

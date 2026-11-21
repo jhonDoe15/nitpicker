@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { writeFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { HEAD_POLICY_ENV } from '../../../../../shared/head-policy.mjs';
+import { HEAD_POLICY_ENV } from '../../../../../shared/head-policy.mts';
 import { runQualityDiff } from '../../../comparison/run-diff.mts';
 import { parseArguments } from '../../../../../languages/typescript/adapters/static-checks/arguments.mts';
 import { runPrettier } from '../../../../../languages/typescript/adapters/static-checks/prettier.mts';

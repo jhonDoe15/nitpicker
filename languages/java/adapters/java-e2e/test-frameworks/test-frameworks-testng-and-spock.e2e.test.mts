@@ -5,9 +5,9 @@ import { analyzeJavaSnapshot, MAVEN_FAILURE_RULE } from '../../java-runner.mts';
 import { runMaven as runMavenUntyped } from '../../../maven/maven-command.mts';
 import { archunitMatcher } from '../../../maven/maven-tests.mts';
 import { requireTestngRun } from '../../../maven/results/maven-test-results.mts';
-import { childrenNamed, parseXml } from '../../../../../shared/values/xml.mts';
+import { childrenNamed, parseXml } from '../../../../../shared/ingest/report-records.mts';
 import { textOf } from '../../../../../shared/values/readers.mts';
-import { linkSentence as linkSentenceUntyped } from '../../../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence as linkSentenceUntyped } from '../../../../../shared/messages/test-support/link-sentence.mts';
 import { mavenFrameworkFindings } from '../../test-support/maven-framework.mts';
 import {
   ARCHUNIT_FINDING,

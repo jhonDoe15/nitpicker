@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
 import { useCliFixtures } from '../test-support/cli-harness.mts';
-import { docsUrl as renderDocsUrl } from '../../../shared/messages/docs-url.mjs';
-import { readReferenceEntries as readEntries } from '../../../shared/reference/store.mjs';
+import { docsUrl } from '../../../shared/messages/docs-url.mts';
+import { readReferenceEntries } from '../../../shared/reference/store.mts';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
 
 const { makeTemporaryRoot, runCli } = useCliFixtures(nitpickerCli);
@@ -13,17 +13,6 @@ const { makeTemporaryRoot, runCli } = useCliFixtures(nitpickerCli);
 const EXPLAIN_USAGE = 'Usage: nitpicker explain <tool/rule>...\n';
 const RULES_USAGE =
   'Usage: nitpicker rules [--preset <typescript|javascript|java|kotlin|python>] [--tool <name>] [--label <label>]... [--fixable]\n';
-type ReferenceEntry = {
-  readonly id: string;
-  readonly page: string;
-  readonly tool: string;
-  readonly fix: Readonly<Record<string, string>>;
-  readonly analyzers: Readonly<Record<string, readonly string[] | undefined>>;
-  readonly labels: readonly string[];
-};
-
-const readReferenceEntries: () => readonly ReferenceEntry[] = readEntries;
-const docsUrl: (page: string, anchor?: string) => string | undefined = renderDocsUrl;
 const ENTRIES = readReferenceEntries();
 const SAMPLES = [
   'crap/crap-score-limit',
@@ -372,7 +361,7 @@ describe('nitpicker rules', () => {
     const reported = new Set(idsReportedBy('java'));
     expect(ids).toEqual(
       ENTRIES.filter(
-        ({ id, fix }) => reported.has(id) && ['automatic', 'review'].includes(fix['java'] ?? ''),
+        ({ id, fix }) => reported.has(id) && ['automatic', 'review'].includes(fix?.['java'] ?? ''),
       ).map(({ id }) => id),
     );
     expect(

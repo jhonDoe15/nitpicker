@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { createIdentityCounter as untypedCreateIdentityCounter } from '../../../../shared/ingest/common.mjs';
-import { exceptionHint as untypedExceptionHint } from '../../../../shared/rules/exceptions.mjs';
+import { createIdentityCounter as untypedCreateIdentityCounter } from '../../../../shared/ingest/report-records.mts';
+import { exceptionHint as untypedExceptionHint } from '../../../../shared/rules/exceptions.mts';
 import {
   sourceFileOf as untypedSourceFileOf,
   sourceLocator as untypedSourceLocator,

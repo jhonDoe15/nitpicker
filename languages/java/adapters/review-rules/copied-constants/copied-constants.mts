@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { globMatcher } from '../../../../../shared/paths/glob.mjs';
+import { globMatcher } from '../../../../../shared/paths/glob.mts';
 import {
   copiedConstantMessage as untypedCopiedConstantMessage,
   valueKey as untypedValueKey,
-} from '../../../../../shared/rules/copied-constants/copied-constants.mjs';
+} from '../../../../../shared/rules/copied-constants/copied-constants.mts';
 import { findingFactory } from '../../kotlin/review-rules/finding/review-finding.mts';
 import { readJvmDefinitions } from '../../reuse/source/jvm-definitions.mts';
 import { pathInside, sourceFilesUnder, sourceRootsOf } from '../java-sources.mts';

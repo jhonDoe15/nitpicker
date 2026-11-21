@@ -1,4 +1,4 @@
-import { configError } from '../../shared/config.mjs';
+import { configError } from '../../shared/config.mts';
 import { KEYS } from './validate.mts';
 import { readLayeredConfig } from './layers/read-layered.mts';
 import {

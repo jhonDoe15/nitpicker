@@ -1,4 +1,4 @@
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mts';
 import {
   FEATURES_FOLDER,
   SHARED_FOLDER,

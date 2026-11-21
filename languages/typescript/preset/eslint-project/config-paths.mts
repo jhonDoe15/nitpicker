@@ -1,8 +1,8 @@
 import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { builtinModules, createRequire } from 'node:module';
 import path from 'node:path';
-import { resolveInside as untypedResolveInside } from '../../../../shared/conventions/read-inside.mjs';
-import { ancestorDirectories as untypedAncestorDirectories } from '../../../../shared/filesystem.mjs';
+import { resolveInside as untypedResolveInside } from '../../../../shared/conventions/read-inside.mts';
+import { ancestorDirectories as untypedAncestorDirectories } from '../../../../shared/filesystem.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import { packageName } from '../modules/specifiers/package-name.mts';
 

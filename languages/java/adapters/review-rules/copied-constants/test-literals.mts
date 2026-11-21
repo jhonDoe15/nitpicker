@@ -1,4 +1,4 @@
-import { isTrivialValue as untypedIsTrivialValue } from '../../../../../shared/rules/copied-constants/copied-constants.mjs';
+import { isTrivialValue as untypedIsTrivialValue } from '../../../../../shared/rules/copied-constants/copied-constants.mts';
 import type { Parsed, Token } from '../../reuse/jvm-reuse-types.mts';
 import type { Literal, TestLiteral } from './constant-types.mts';
 import { tokenValue } from './jvm-values.mts';

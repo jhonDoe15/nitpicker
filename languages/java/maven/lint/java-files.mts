@@ -1,4 +1,4 @@
-import { projectFilesUnder as untypedFilesUnder } from '../../../../shared/project-files/project-files.mjs';
+import { projectFilesUnder as untypedFilesUnder } from '../../../../shared/project-files/project-files.mts';
 
 const projectFilesUnder: (root: string) => string[] = untypedFilesUnder;
 

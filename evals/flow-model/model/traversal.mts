@@ -1,7 +1,7 @@
 import {
   chainOf as untypedChainOf,
   depthFirst as untypedDepthFirst,
-} from '../../../shared/traversal.mjs';
+} from '../../../shared/traversal.mts';
 
 export function depthFirst<T>(root: T, children: (node: T) => readonly T[]): T[] {
   const nodes: T[] = [...untypedDepthFirst(root, children)];

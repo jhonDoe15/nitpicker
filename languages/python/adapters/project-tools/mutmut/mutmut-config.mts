@@ -13,7 +13,7 @@ import {
   type Fields,
 } from '../../../../../shared/values/readers.mts';
 import type { FailWith, MutmutConfig, MutmutContext } from '../typed/tool-types.mts';
-import { missingProjectConfig } from '../../../../../shared/conventions/tool-precedence.mjs';
+import { missingProjectConfig } from '../../../../../shared/conventions/tool-precedence.mts';
 import { attempt, parseToml, stringifyToml, toolLayers, unique } from '../project-tool-layers.mts';
 import {
   listedProjectFiles,

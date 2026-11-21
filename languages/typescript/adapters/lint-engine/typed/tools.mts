@@ -3,7 +3,7 @@ export { projectLayerValue } from '../project-layer.mts';
 import {
   troubleshootingError as untypedTroubleshootingError,
   withTroubleshooting as untypedWithTroubleshooting,
-} from '../../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../../shared/messages/troubleshooting.mts';
 
 export type LintEngineOptions = Pick<
   EslintOptions,

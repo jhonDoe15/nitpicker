@@ -14,7 +14,7 @@ import {
   planOf,
 } from './plan/oxlint-shapes.mts';
 import { type LintTiming, type StageRun, lintConfigs, settledBeside } from './run/stage-lint.mts';
-import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { oxlintBinary, spawnJson } from './oxlint-process.mts';
 import type { Environment } from '../../../../shared/processes/environment.mts';
 import {

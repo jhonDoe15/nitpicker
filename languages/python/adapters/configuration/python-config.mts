@@ -3,16 +3,16 @@ import {
   configError,
   validateProjectRelativePath,
   validateStringArray,
-} from '../../../../shared/config.mjs';
-import { canonicalRule as untypedCanonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
-import { validateExceptions } from '../../../../shared/exceptions/validation.mjs';
-import { COMMON_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
-import { PYTHON_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
-import { UNUSED_API_RULE_IDS } from '../../../../shared/unused-api/unused-api-policy.mjs';
+} from '../../../../shared/config.mts';
+import { canonicalRule as untypedCanonicalRule } from '../../../../shared/exceptions/rule-names.mts';
+import { validateExceptions } from '../../../../shared/exceptions/validation.mts';
+import { COMMON_EXCEPTION_RULES } from '../../../../shared/policy.mts';
+import { PYTHON_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mts';
+import { UNUSED_API_RULE_IDS } from '../../../../shared/unused-api/unused-api-policy.mts';
 import { callUntyped } from '../../../../shared/values/boundaries/untyped-call.mts';
 import { fieldOf, isPlainObject, listOf } from '../../../../shared/values/readers.mts';
 import { ruleIdProblem } from './python-rule-ids.mts';
-import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
+import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mts';
 
 type RuleOptions = { readonly projectRuff: boolean };
 

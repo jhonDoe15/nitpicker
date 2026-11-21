@@ -1,5 +1,14 @@
 import type TypeScript from 'typescript';
+import type { FactUnit } from '../../../../../../shared/rules/facts/typed/fact-types.mts';
+import type {
+  Candidate,
+  Candidates,
+  PartialCandidate,
+} from '../../../../../../shared/fix/recipes/extract/typed/extract-types.mts';
+import { fieldOf } from '../../../../../../shared/values/readers.mts';
 import type { FixContext, Planned, Project, ReplaceEdit } from '../../typed/project-types.mts';
+
+export type { Candidate, PartialCandidate };
 
 export type Side = 0 | 1;
 
@@ -81,27 +90,20 @@ export function eachSide<T, R>(pair: Both<T>, visit: (item: T, side: Side) => R)
 
 export type LineSpan = { readonly start: number; readonly end: number };
 
-export type Candidate = {
-  readonly reported: {
-    readonly tool: string;
-    readonly rule: string;
-    readonly path: string;
-    readonly line: number;
-  };
-  readonly first: { readonly name: string };
-  readonly second: { readonly name: string };
-  readonly finding: { readonly parameters: readonly unknown[] };
-};
-
-export type PartialCandidate = Candidate & { readonly runs: Both<LineSpan> };
+export function lineSpanOf(run: unknown): LineSpan {
+  const start = fieldOf(run, 'start');
+  const end = fieldOf(run, 'end');
+  if (typeof start !== 'number' || typeof end !== 'number') {
+    throw new TypeError('A partial run of a near-duplicate finding has no line range');
+  }
+  return { start, end };
+}
 
 export type Found = {
   readonly matches: unknown;
-  readonly units: readonly { readonly name: string }[];
+  readonly units: readonly FactUnit[];
   readonly nodes: readonly UnitNode[];
 };
-
-export type Candidates<C> = { readonly candidates: C[]; readonly notes: string[] };
 
 export type Strategy<C extends Candidate, Input> = {
   readonly candidatesOf: (matches: unknown) => Candidates<C>;

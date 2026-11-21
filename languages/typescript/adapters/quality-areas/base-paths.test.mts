@@ -6,7 +6,7 @@ import { withMovesFile } from '../../../../core/diff/git/patches/moves-file.mts'
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mts';
 import { runQualityArea } from '../quality-areas-runner.mts';
 import { parseArguments } from './arguments.mts';
-import { baselinePathsOf as untypedBaselinePathsOf } from '../../../../shared/rules/facts/baseline.mjs';
+import { baselinePathsOf as untypedBaselinePathsOf } from '../../../../shared/rules/facts/baseline.mts';
 
 const baselinePathsOf: (options: {
   readonly snapshot: string;
@@ -53,7 +53,7 @@ function snapshots(
 }
 
 async function siblingRows(options: readonly string[]): Promise<(string | undefined)[][]> {
-  const findings = await runQualityArea(parseArguments(options));
+  const findings = await runQualityArea(parseArguments(options, process.env));
   return findings
     .filter(({ rule }) => rule === 'sibling-copy-edit')
     .map(({ path: file, message }) => [file, message.split(',')[0]]);

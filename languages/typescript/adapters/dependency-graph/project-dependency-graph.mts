@@ -18,7 +18,7 @@ import {
 } from '../../preset/dependency-graph/cruise.mts';
 import { readLayout } from '../../preset/head-policy.mts';
 import { revivedExpression as untypedRevivedExpression } from '../../preset/project-tools/config-values.mts';
-import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import { policyPath } from '../static-checks/shared.mts';
 import {
@@ -26,9 +26,9 @@ import {
   projectExcludePaths,
 } from './project-config/dependency-cruiser-layers.mts';
 import { projectGraphLayer } from './project-config/graph-layer.mts';
-import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
+import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mts';
 import type { SpawnSyncReturns } from 'node:child_process';
-import { describeProcessEnd } from '../../../../shared/processes/process-failure.mjs';
+import { describeProcessEnd } from '../../../../shared/processes/process-failure.mts';
 import { MAX_GRAPH_OUTPUT_BYTES, compactGraphText } from './shared-graph/compact-graph.mts';
 import { cruiserNodeArguments, reportSkippedFiles } from './shared-graph/cruiser-process.mts';
 

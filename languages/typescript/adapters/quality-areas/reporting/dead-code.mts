@@ -7,14 +7,15 @@ import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/
 import {
   exceptionHint as untypedExceptionHint,
   isExcepted as untypedIsExcepted,
-} from '../../../../../shared/hygiene/rules.mjs';
-import { allowedFormField as untypedAllowedFormField } from '../../../../../shared/messages/messages.mjs';
-import { PACKAGE_RULE_IDS } from '../../../../../shared/project-rules/hygiene-rules.mjs';
+} from '../../../../../shared/hygiene/rules.mts';
+import { allowedFormField as untypedAllowedFormField } from '../../../../../shared/messages/messages.mts';
+import { PACKAGE_RULE_IDS } from '../../../../../shared/project-rules/hygiene-rules.mts';
 import {
   hash as untypedHash,
-  nextOccurrence as untypedNextOccurrence,
+  type OccurrenceCounter,
+  occurrenceCounter,
   positiveInteger as untypedPositiveInteger,
-} from '../../../../../shared/rules/finding-helpers.mjs';
+} from '../../../../../shared/rules/finding-parts.mts';
 
 type DeadCodeFinding = Finding & { readonly allowedForm?: string };
 
@@ -27,7 +28,7 @@ type IssueEntry = {
   readonly category: string;
   readonly entry: unknown;
   readonly analyzerName: string;
-  readonly occurrences: Map<string, number>;
+  readonly nextOccurrence: OccurrenceCounter;
 };
 
 const exceptionHint: (rule: string, path: string, packageName: string) => string =
@@ -44,8 +45,6 @@ const isExcepted: (
 const allowedFormField: (...parts: readonly string[]) => { readonly allowedForm?: string } =
   untypedAllowedFormField;
 const hash: (value: unknown) => string = untypedHash;
-const nextOccurrence: (occurrences: Map<string, number>, key: string) => number =
-  untypedNextOccurrence;
 const positiveInteger: (value: unknown) => number | undefined = untypedPositiveInteger;
 
 const DEAD_CODE_DECLARATIONS = new Map([
@@ -65,11 +64,11 @@ export function normalizeDeadCode(
   analyzerName: string,
   { exceptions = [] }: { readonly exceptions?: readonly unknown[] } = {},
 ): DeadCodeFinding[] {
-  const occurrences = new Map<string, number>();
+  const nextOccurrence = occurrenceCounter();
   return [
     ...listOf(fieldOf(report, 'files')).flatMap((file) => unusedFileFindings(file, analyzerName)),
     ...listOf(fieldOf(report, 'issues')).flatMap((issue) =>
-      issueFindings({ issue: fieldsOf(issue), analyzerName, occurrences }),
+      issueFindings({ issue: fieldsOf(issue), analyzerName, nextOccurrence }),
     ),
   ]
     .filter(
@@ -115,13 +114,13 @@ function unusedFileMessage(filePath: string): string {
 function issueFindings({
   issue,
   analyzerName,
-  occurrences,
+  nextOccurrence,
 }: Omit<IssueEntry, 'category' | 'entry'>): NamedFinding[] {
   return Object.entries(issue)
     .filter(([category, entries]) => category !== 'file' && Array.isArray(entries))
     .flatMap(([category, entries]) =>
       listOf(entries).flatMap((entry) =>
-        entryFindings({ issue, category, entry, analyzerName, occurrences }),
+        entryFindings({ issue, category, entry, analyzerName, nextOccurrence }),
       ),
     );
 }
@@ -131,7 +130,7 @@ function entryFindings({
   category,
   entry,
   analyzerName,
-  occurrences,
+  nextOccurrence,
 }: IssueEntry): NamedFinding[] {
   const name = typeof entry === 'string' ? entry : fieldOf(entry, 'name');
   if (typeof name !== 'string' || name.length === 0) {
@@ -140,7 +139,7 @@ function entryFindings({
   const file = textOf(fieldOf(issue, 'file'));
   const rule = PACKAGE_RULES.get(category) ?? category;
   const declaration = DECLARATION_CATEGORIES.has(category);
-  const occurrence = nextOccurrence(occurrences, `${file}\0${rule}\0${name}`);
+  const occurrence = nextOccurrence(`${file}\0${rule}\0${name}`);
   const sourceSuffix = declaration ? `|source:${sourceHashOf(entry) ?? hash(file)}` : '';
   const finding = {
     tool: analyzerName,

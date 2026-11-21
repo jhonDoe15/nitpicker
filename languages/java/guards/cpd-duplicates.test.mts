@@ -3,14 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mts';
-import {
-  coveredByCpd,
-  cpdClones,
-  isAccessorOnly,
-  isDataTable,
-  readCpdFindings,
-  tokenShape,
-} from './cpd-duplicates.mts';
+import { coveredByCpd, cpdClones, readCpdFindings, tokenShape } from './cpd-duplicates.mts';
+import { isAccessorOnly, isDataTable } from './cpd/boilerplate.mts';
 
 const roots: string[] = [];
 afterEach(() => {

@@ -1,13 +1,13 @@
-import { RULE_IDS } from '../../../../shared/policy.mjs';
-import { featureFactAnalysis as featureFactAnalysisUntyped } from '../../../../shared/rules/facts/evaluate.mjs';
-import { PUBLIC_FACES } from '../../../../shared/rules/features/feature-roles.mjs';
+import { RULE_IDS } from '../../../../shared/policy.mts';
+import { featureFactAnalysis as featureFactAnalysisUntyped } from '../../../../shared/rules/facts/evaluate.mts';
+import { PUBLIC_FACES } from '../../../../shared/rules/features/feature-roles.mts';
 import { domainFindings } from '../domain/domain-findings.mts';
 import { isGeneratedJvm as isGeneratedJvmUntyped } from '../generated/generated-sources.mts';
 import { simpleName as simpleNameUntyped } from '../../ingest/class-names.mts';
 import { readClassGraph } from './class-graph.mts';
 import { featurePlan, readSpringReports } from './feature-layout.mts';
 import { persistenceOf } from './persistence-classes.mts';
-import { byText as byTextUntyped } from '../../../../shared/text-order/by-text.mjs';
+import { byText as byTextUntyped } from '../../../../shared/text-order/by-text.mts';
 import { fieldsOf, textsOf } from '../../../../shared/values/readers.mts';
 import type { ClassGraph, ResolvedGraph } from '../domain/domain-types.mts';
 import type { JavaFinding } from '../typed/java-values.mts';

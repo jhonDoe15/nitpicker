@@ -1,4 +1,4 @@
-import { RULE_IDS } from '../../../../shared/policy.mjs';
+import { RULE_IDS } from '../../../../shared/policy.mts';
 import type { Concern } from './domain-types.mts';
 
 const JPA = ['jakarta.persistence', 'javax.persistence'].flatMap((root) =>

@@ -3,7 +3,7 @@ import path from 'node:path';
 import {
   slowTestBudget as untypedBudget,
   slowTestFindings as untypedFindings,
-} from '../../../../shared/rules/slow-tests/slow-test-finding.mjs';
+} from '../../../../shared/rules/slow-tests/slow-test-finding.mts';
 import { insideProject, readProjectFile } from '../../libraries/project-files.mts';
 import { listOtherModules } from '../analysis/python-sources.mts';
 import { JUNIT_REPORT, RERUN_REPORT, readJunit } from './junit-results.mts';

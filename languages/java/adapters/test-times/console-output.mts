@@ -1,6 +1,10 @@
 import { sourceOf as sourceOfUntyped } from './integration-tests.mts';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { childrenNamed, parseXml, type XmlElement } from '../../../../shared/values/xml.mts';
+import {
+  childrenNamed,
+  parseXml,
+  type XmlElement,
+} from '../../../../shared/ingest/report-records.mts';
 import { sourceLocator as sourceLocatorUntyped } from '../reporting/kotlin-reports.mts';
 import { pathInside as pathInsideUntyped } from '../review-rules/java-sources.mts';
 import { TEST_RESULTS_DIRECTORY } from './slow-tests.mts';

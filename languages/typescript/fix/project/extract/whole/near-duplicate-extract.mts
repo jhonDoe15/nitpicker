@@ -2,7 +2,7 @@ import type { ProjectRecipe } from '../../typed/project-types.mts';
 import { planProject, unitNodeOf } from '../driver/plan-project.mts';
 import type { Candidate, Strategy, WholeInput } from '../typed/extract-types.mts';
 import { eachSide } from '../typed/extract-types.mts';
-import { wholeCandidates } from '../typed/typed-views.mts';
+import { wholeCandidates } from '../../../../../../shared/fix/recipes/extract/candidates.mts';
 import { wholeExtraction } from './extraction.mts';
 
 const STRATEGY: Strategy<Candidate, WholeInput> = {
@@ -11,7 +11,7 @@ const STRATEGY: Strategy<Candidate, WholeInput> = {
     return {
       units: eachSide([candidate.first, candidate.second], (unit) => unitNodeOf(found, unit)),
       label: candidate.first.name,
-      engineHoles: candidate.finding.parameters.length,
+      engineHoles: candidate.finding.parameters?.length ?? 0,
     };
   },
   extract: wholeExtraction,

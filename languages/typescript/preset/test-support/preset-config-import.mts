@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, vi } from 'vitest';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mts';
 import { fieldOf, listOf, objectOf } from '../../../../shared/values/readers.mts';
 import { linterConfigs } from '../eslint-config/typed/config-types.mts';
 

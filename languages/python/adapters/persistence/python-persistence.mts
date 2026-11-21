@@ -7,7 +7,7 @@ import type {
   ImportStatement,
   PythonModule,
 } from '../analysis/typed/python-graph-types.mts';
-import { escapeRegExp as untypedEscape } from '../../../../shared/paths/glob.mjs';
+import { escapeRegExp as untypedEscape } from '../../../../shared/paths/glob.mts';
 import { aliases } from '../imports/import-aliases.mts';
 import { entryOf } from '../imports/typed/import-rule-types.mts';
 import { appendAll } from '../../../../shared/lists/lists.mts';

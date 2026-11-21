@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { HEAD_POLICY_ENV } from '../../../../../shared/head-policy.mjs';
+import { HEAD_POLICY_ENV } from '../../../../../shared/head-policy.mts';
 import { LINT_CONFIG } from '../../../preset/test-environment/resolve-environment.mts';
 import { runLintEngine } from '../lint-engine.mts';
 import { headPolicyFor, temporaryProjects } from '../test-support/layered-project.mts';

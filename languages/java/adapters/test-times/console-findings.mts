@@ -1,13 +1,13 @@
 import {
   consoleAllowMatcher as consoleAllowMatcherUntyped,
   consoleTokens as consoleTokensUntyped,
-} from '../../../../shared/rules/console/console-findings.mjs';
-import { normalizeConsoleMessage as normalizeConsoleMessageUntyped } from '../../../../shared/rules/console/console-messages.mjs';
+} from '../../../../shared/rules/console/console-findings.mts';
+import { normalizeConsoleMessage as normalizeConsoleMessageUntyped } from '../../../../shared/rules/console/console-messages.mts';
 import {
   exceptionHint as exceptionHintUntyped,
   exceptionMatcher as exceptionMatcherUntyped,
-} from '../../../../shared/rules/exceptions.mjs';
-import { hash as hashUntyped } from '../../../../shared/rules/finding-helpers.mjs';
+} from '../../../../shared/rules/exceptions.mts';
+import { hash as hashUntyped } from '../../../../shared/rules/finding-parts.mts';
 import { inModule as inModuleUntyped } from '../../builds/paths/module-path.mts';
 import { readConsoleEntries } from './console-output.mts';
 import type { JavaFinding } from '../typed/java-values.mts';

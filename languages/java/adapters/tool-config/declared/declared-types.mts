@@ -1,4 +1,4 @@
-import type { XmlElement } from '../../../../../shared/values/xml.mts';
+import type { XmlElement } from '../../../../../shared/ingest/report-records.mts';
 import type { GradleStatement } from '../../../builds/typed/narrowing-types.mts';
 
 export type Script = {

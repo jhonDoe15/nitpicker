@@ -1,7 +1,7 @@
 import { mkdirSync, readdirSync, utimesSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, vi } from 'vitest';
-import { pathInside } from '../../../../../shared/filesystem.mjs';
+import { pathInside } from '../../../../../shared/filesystem.mts';
 import { type FileMap, writeFiles } from '../fixture-files.mts';
 import { fixtureGit, useGitFixtures } from '../git-repository.mts';
 
@@ -12,7 +12,7 @@ export function relativeTo(root: string, files: readonly string[]): string[] {
 }
 
 export function ageTree(root: string): void {
-  for (const entry of readdirSync(root, { recursive: true })) {
+  for (const entry of readdirSync(root, { recursive: true, encoding: 'utf8' })) {
     const full = pathInside(root, entry);
     if (full !== undefined) {
       utimesSync(full, LONG_AGO, LONG_AGO);

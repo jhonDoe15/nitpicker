@@ -1,6 +1,11 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { childAt, childrenAt, parseXml, type XmlElement } from '../../../shared/values/xml.mts';
+import {
+  childAt,
+  childrenAt,
+  parseXml,
+  type XmlElement,
+} from '../../../shared/ingest/report-records.mts';
 import { classifyExpression, REJECTED } from './license-rule.mts';
 
 const LICENSE_NAMES: readonly (readonly [RegExp, string])[] = [

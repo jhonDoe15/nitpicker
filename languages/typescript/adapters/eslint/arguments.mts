@@ -4,7 +4,7 @@ import { normalizedRelativePath, assertContainedPath } from './paths.mts';
 import { validatedWorktreeRoot as validatedSnapshotRoot } from '../static-checks/arguments.mts';
 import { positiveInteger as untypedPositiveInteger } from '../../../../core/diff/comparison/schema/values.mts';
 import path from 'node:path';
-import { analyzerDeadlineMs } from '../../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+import { analyzerDeadlineMs } from '../../../../shared/analyzer-timeouts/analyzer-timeouts.mts';
 
 export type EslintOptions = {
   readonly analyzerName: string;

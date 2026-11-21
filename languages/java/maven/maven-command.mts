@@ -3,13 +3,13 @@ import { spawnSyncWithOutputFile } from '../../../core/tooling/output-file/outpu
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mjs';
+import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mts';
 import { wrapperTarget } from '../adapters/gradle-wrapper/gradle-command.mts';
 import { argumentFileToken } from '../builds/lint/javac-options.mts';
 import { withCompileErrors } from '../builds/compile-errors/compile-findings.mts';
-import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
+import { explainedError } from '../../../shared/messages/troubleshooting.mts';
 import { mavenBudget } from '../adapters/gradle-wrapper/gradle-budget.mts';
-import { describeProcessEnd } from '../../../shared/processes/process-failure.mjs';
+import { describeProcessEnd } from '../../../shared/processes/process-failure.mts';
 import { fieldOf, numberOr, textOf } from '../../../shared/values/readers.mts';
 import type { JavaSpawn } from '../adapters/typed/java-values.mts';
 

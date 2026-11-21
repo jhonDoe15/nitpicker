@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { exceptionHint as exceptionHintUntyped } from '../../../../../shared/rules/exceptions.mjs';
+import { exceptionHint as exceptionHintUntyped } from '../../../../../shared/rules/exceptions.mts';
 import { textOf } from '../../../../../shared/values/readers.mts';
 import { collectJavaFindings } from '../../java-diff.mts';
 import type { JavaFinding } from '../../typed/java-values.mts';

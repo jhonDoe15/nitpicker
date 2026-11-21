@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mts';
 import { runnerInstallation } from './runner-installation.mts';
 import { tempProjects } from '../../../preset/eslint-config/test-support/temp-projects.mts';
-import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mts';
 
 const projectWith = tempProjects('nitpicker-runner-tools-');
 

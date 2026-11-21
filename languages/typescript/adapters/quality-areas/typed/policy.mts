@@ -1,6 +1,6 @@
 import type { Finding } from '../../static-checks/shared.mts';
 import type { Layout } from '../../typed/head-policy.mts';
-import { exceptionMatcher as untypedExceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
+import { exceptionMatcher as untypedExceptionMatcher } from '../../../../../shared/rules/exceptions.mts';
 import {
   layoutKnipProductionConfig as untypedLayoutKnipProductionConfig,
   withEntryExports as untypedWithEntryExports,
@@ -15,7 +15,7 @@ import type {
   KnipReport,
 } from '../../../preset/unused-api/test-only/typed/knip-types.mts';
 import { loadPackages as untypedLoadPackages } from '../../../preset/unused-api/workspace/packages.mts';
-import { testConsoleFindings as untypedTestConsoleFindings } from '../../../../../shared/rules/console/console-findings.mjs';
+import { testConsoleFindings as untypedTestConsoleFindings } from '../../../../../shared/rules/console/console-findings.mts';
 
 export const testConsoleFindings: (
   report: { readonly entries: readonly unknown[] },

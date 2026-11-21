@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { Parser, type Node } from 'web-tree-sitter';
-import { pathInside } from '../../../../shared/filesystem.mjs';
-import { fileRequest as untypedFileRequest } from '../../../../shared/near-duplicates/trees-request.mjs';
+import { pathInside } from '../../../../shared/filesystem.mts';
+import { fileRequest as untypedFileRequest } from '../../../../shared/near-duplicates/trees-request.mts';
 import { isText } from '../../../../shared/values/readers.mts';
 import { loadGrammar } from './grammar/load-grammar.mts';
 import { kotlinUnits } from './kotlin/units.mts';

@@ -6,7 +6,7 @@ import {
 import {
   relevantFacts as untypedRelevantFacts,
   solveFacts as untypedSolveFacts,
-} from '../../../../../../shared/logic/sync/solve-facts.mjs';
+} from '../../../../../../shared/logic/sync/solve-facts.mts';
 import {
   foldTerm as untypedFoldTerm,
   isComparison as untypedIsComparison,
@@ -14,7 +14,7 @@ import {
   not as untypedNot,
   term as untypedTerm,
   withRange as untypedWithRange,
-} from '../../../../../../shared/logic/terms.mjs';
+} from '../../../../../../shared/logic/terms.mts';
 import type { SourceCode } from '../typed/node-views.mts';
 import { ts } from '../typed/typescript-views.mts';
 import { partsOf } from '../analysis/narrowing/type-parts.mts';

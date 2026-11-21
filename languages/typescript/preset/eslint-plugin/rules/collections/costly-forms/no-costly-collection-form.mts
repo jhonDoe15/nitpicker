@@ -3,6 +3,7 @@ import { suggestible } from '../../../fixes/support/descriptors.mts';
 import { optionalReporter } from '../../support/optional-report.mts';
 import { arrayMembership } from './array-membership.mts';
 import { keyedLookup } from './keyed-lookup.mts';
+import { membershipScan } from './scans/membership-scan.mts';
 import { sortedExtreme } from './sorted-extreme.mts';
 import { extremeFix } from './fixes/extreme/extreme-fix.mts';
 import { mapFix } from './fixes/map/map-fix.mts';
@@ -14,6 +15,8 @@ type MessageId = keyof typeof costlyCollectionMessages;
 
 const costlyCollectionMessages = {
   arrayAsSet: `\`{{name}}\` is appended to and searched with \`{{method}}\`, so every search scans the whole array. Keep it in a \`Set\`: \`add\` to append and \`has\` to test (\`[...set]\` gives the items back in insertion order). ${EXCEPTION}`,
+  groupInLoop: `\`{{name}}.filter\` compares \`{{key}}\` against every item, once per iteration, item or event. Group the items by \`{{key}}\` once, outside the loop (\`Map.groupBy({{name}}, (item) => item.{{key}})\`), and use \`get\` with \`?? []\`. ${EXCEPTION}`,
+  scanInLoop: `\`{{name}}.{{method}}({{value}})\` scans the whole array once per iteration or item, and the array does not change in between. Build a \`Set\` of its items once, before the loop, and use \`has\` (for \`indexOf\`, a \`Map\` from item to position). The cost matters when both lists can be large. ${EXCEPTION}`,
   lookupInLoop: `\`{{name}}.{{method}}\` compares \`{{key}}\` against every item, once per iteration, item or event. Build a \`Map\` keyed by \`{{key}}\` once, outside the loop or handler, and use \`get\` (for \`some\`, a \`Set\` of keys and \`has\`). ${EXCEPTION}`,
   useMap:
     'Build a `Map` by the key once before the loop and use `get` (a `Set` of keys and `has` for `some`).',
@@ -29,7 +32,7 @@ export const rule: TSESLint.RuleModule<MessageId> = {
     hasSuggestions: true,
     docs: {
       description:
-        'Disallow collection forms that have a cheaper equivalent: an array used as a set, a keyed find in a loop, and a sort to take one end',
+        'Disallow collection forms that have a cheaper equivalent: an array used as a set, a keyed find, filter or membership scan in a loop, and a sort to take one end',
     },
     schema: [],
     messages: costlyCollectionMessages,
@@ -47,6 +50,15 @@ export const rule: TSESLint.RuleModule<MessageId> = {
       },
       CallExpression(call) {
         const lookup = keyedLookup(sourceCode, call);
+        if (lookup?.messageId === 'groupInLoop') {
+          report(lookup);
+          return;
+        }
+        const scan = lookup === undefined ? membershipScan(sourceCode, call) : undefined;
+        if (scan !== undefined) {
+          report(scan);
+          return;
+        }
         if (lookup === undefined) {
           const extreme = sortedExtreme(sourceCode, call);
           const plan = extreme === undefined ? undefined : extremeFix(context, call);

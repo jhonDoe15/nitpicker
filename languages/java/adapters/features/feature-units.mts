@@ -1,17 +1,12 @@
 import {
-  featureRoleContract as featureRoleContractUntyped,
+  featureRoleContract,
   PUBLIC_FACES,
-} from '../../../../shared/rules/features/feature-roles.mjs';
-import { byText as byTextUntyped } from '../../../../shared/text-order/by-text.mjs';
+} from '../../../../shared/rules/features/feature-roles.mts';
+import { byText } from '../../../../shared/text-order/by-text.mts';
 import type { ClassEntry } from '../domain/domain-types.mts';
-import type { FeatureRole } from '../metrics/java-coupling-types.mts';
 import type { FeatureLayout } from './feature-types.mts';
 
 type Folders = Map<string, [ClassEntry, ...ClassEntry[]]>;
-
-const byText: (left: string, right: string) => number = byTextUntyped;
-const featureRoleContract: (layout: unknown, face: unknown) => (file: string) => FeatureRole =
-  featureRoleContractUntyped;
 
 function featurePackage(packageName: string, folder: string): string | undefined {
   const parts = packageName.split('.');
@@ -29,10 +24,10 @@ function featureFolders(layout: FeatureLayout, classes: readonly ClassEntry[]): 
   const roleOf = featureRoleContract(layout, PUBLIC_FACES.jvm);
   const folders: Folders = new Map();
   for (const entry of classes) {
-    const { kind, directory } = roleOf(entry.file);
-    if (kind === 'feature') {
-      const members = folders.get(directory);
-      folders.set(directory, members === undefined ? [entry] : [...members, entry]);
+    const role = roleOf(entry.file);
+    if (role.kind === 'feature') {
+      const members = folders.get(role.directory);
+      folders.set(role.directory, members === undefined ? [entry] : [...members, entry]);
     }
   }
   return folders;

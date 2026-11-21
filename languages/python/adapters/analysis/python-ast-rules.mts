@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { normalizeReportPath } from '../../../../shared/ingest/common.mjs';
+import { normalizeReportPath } from '../../../../shared/ingest/report-records.mts';
 import { run } from '../execution/python-process.mts';
 import { detectTargetVersion } from '../execution/python-project.mts';
 import { readPackageFacts } from '../../rules/libraries/package-facts.mts';
@@ -9,8 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { fieldOf, listOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import { isFinding } from '../typed/report/finding-guards.mts';
 import type { ToolContext } from '../typed/context/tool-context-types.mts';
-import { featureRoleContract } from './typed/shared-views.mts';
-import { byText } from '../../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mts';
 import { collectionOptions } from '../configuration/pytest/collection-options.mts';
 import { readPytestConfig } from '../configuration/pytest/pytest-config.mts';
 import { listProductionModules, testFileMatcher } from './python-sources.mts';
@@ -20,7 +19,10 @@ import { designFiles } from './design/design-files.mts';
 import { designDistributions } from './design/design-distributions.mts';
 import { boundaryRoots, detectLibraries } from '../../rules/libraries/project-libraries.mts';
 import { dropGeneratedFindings } from '../../libraries/generated-files.mts';
-import { PUBLIC_FACES } from '../../../../shared/rules/features/feature-roles.mjs';
+import {
+  featureRoleContract,
+  PUBLIC_FACES,
+} from '../../../../shared/rules/features/feature-roles.mts';
 
 export const RULES_REPORT = 'rules.json';
 export const ALLOWANCES_REPORT = 'rules-allowances.json';
@@ -84,7 +86,9 @@ export function contractFaces(
   return Object.fromEntries(
     sources.flatMap((file) => {
       const role = roleOf(file);
-      return role.kind === 'feature' && role.isPublic ? [[file, role.directory] as const] : [];
+      return role.kind === 'feature' && role.isPublic === true
+        ? [[file, role.directory] as const]
+        : [];
     }),
   );
 }

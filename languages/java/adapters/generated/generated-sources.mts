@@ -1,11 +1,11 @@
 import { existsSync } from 'node:fs';
-import { resolveInside as untypedResolveInside } from '../../../../shared/conventions/read-inside.mjs';
+import { resolveInside as untypedResolveInside } from '../../../../shared/conventions/read-inside.mts';
 import {
   hasGeneratorAnnotation as untypedHasGeneratorAnnotation,
   hasGeneratorHeader as untypedHasGeneratorHeader,
   hasGeneratorMarker as untypedHasGeneratorMarker,
   readFileHead as untypedReadFileHead,
-} from '../../../../shared/conventions/generator-marker.mjs';
+} from '../../../../shared/conventions/generated/generator-marker.mts';
 import ROOT_RULES from '../../gradle/generated/generated-roots.json' with { type: 'json' };
 
 const resolveInside: (root: string, file: string) => string | undefined = untypedResolveInside;

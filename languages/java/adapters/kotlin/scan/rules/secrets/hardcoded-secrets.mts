@@ -2,7 +2,7 @@ import {
   hasCredentialShape,
   isHardcodedSecret,
   isSecretName,
-} from '../../../../../../../shared/naming/secret-words.mjs';
+} from '../../../../../../../shared/naming/secret-words.mts';
 import { withLiteralIndex } from './literal-index.mts';
 import { valueLiterals } from './secret-values.mts';
 import type { IndexedScan, Literal, Scanned } from '../../typed/scan-shapes.mts';

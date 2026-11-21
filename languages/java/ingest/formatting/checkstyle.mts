@@ -2,9 +2,10 @@ import {
   createIdentityCounter,
   hashIdentity as untypedHashIdentity,
   normalizeReportPath as untypedNormalizeReportPath,
-} from '../../../../shared/ingest/common.mjs';
-import { childrenNamed, parseXml } from '../../../../shared/values/xml.mts';
-import type { XmlElement } from '../../../../shared/values/xml.mts';
+  childrenNamed,
+  parseXml,
+  type XmlElement,
+} from '../../../../shared/ingest/report-records.mts';
 import type { JavaFinding } from '../../adapters/typed/java-values.mts';
 
 type CheckstyleOptions = { readonly root?: string; readonly tool?: string };

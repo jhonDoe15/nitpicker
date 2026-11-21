@@ -20,8 +20,8 @@ import {
   textsOf,
   type Fields,
 } from '../../../../../shared/values/readers.mts';
-import { missingProjectConfig } from '../../../../../shared/conventions/tool-precedence.mjs';
-import { globToRegExpSource } from '../../../../../shared/paths/glob.mjs';
+import { missingProjectConfig } from '../../../../../shared/conventions/tool-precedence.mts';
+import { globToRegExpSource } from '../../../../../shared/paths/glob.mts';
 import {
   isOwnModulePattern,
   MYPY_LOOKED,
@@ -33,7 +33,7 @@ import { attempt, parseToml, stringifyToml } from '../../project-tools/project-t
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
-} from '../../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../../shared/messages/troubleshooting.mts';
 
 const MYPY_CONFIG = 'mypy.ini';
 const GLOBAL_OPTIONS = [

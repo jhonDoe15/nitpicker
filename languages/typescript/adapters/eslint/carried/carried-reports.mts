@@ -1,4 +1,4 @@
-import { globMatcher as untypedGlobMatcher } from '../../../../../shared/paths/glob.mjs';
+import { globMatcher as untypedGlobMatcher } from '../../../../../shared/paths/glob.mts';
 import type { Finding } from '../../../../../shared/values/findings.mts';
 import {
   INLINE_CONFIG_DISABLED,

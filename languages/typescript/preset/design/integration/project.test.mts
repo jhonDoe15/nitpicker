@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import type { Finding } from '../../../../../shared/values/findings.mts';
-import { validateFacts } from '../../../../../shared/rules/facts/schema.mjs';
+import { validateFacts } from '../../../../../shared/rules/facts/schema.mts';
 import {
   type ProjectFacts,
   createProject,

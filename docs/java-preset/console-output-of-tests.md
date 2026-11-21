@@ -23,7 +23,7 @@ Part of the [Java preset guide](../java-preset.md).
   with `redirectTestOutputToFile`) are copied too and read with the stdout rule. The init script
   sets `outputPerTestCase` on every test task, so Gradle names the test that printed a line as
   Surefire does; a test name loses its parameter list (`totals()` is `totals`).
-- **Normalization.** The TypeScript preset's normalizer (`shared/rules/console/console-messages.mjs`), so
+- **Normalization.** The TypeScript preset's normalizer (`shared/rules/console/console-messages.mts`), so
   `testConsole.allow` matches the same way in every preset: ANSI colors, absolute paths (kept as the last segment),
   timestamps and clock times, hex values, UUIDs, random-looking words and numbers (with their
   units) are replaced, so `cache miss for order 42` and `... 43` are the same message. The thread

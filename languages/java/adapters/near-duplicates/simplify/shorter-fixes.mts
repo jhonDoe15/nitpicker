@@ -1,18 +1,9 @@
 import type { Node, Parser } from 'web-tree-sitter';
-import { shorterConditions as untypedShorterConditions } from '../../../../../shared/rules/shorter/condition-sites.mjs';
+import { shorterConditions } from '../../../../../shared/rules/shorter/condition-sites.mts';
 import { depthFirst } from '../jvm-views.mts';
 import type { Unit } from '../jvm-types.mts';
 
-type Site = {
-  readonly node: { readonly start: number };
-  readonly condition: string;
-  readonly form: string;
-};
-type Options = {
-  readonly isPython: boolean;
-  readonly kotlin: boolean;
-  readonly references: boolean;
-};
+type Site = ReturnType<typeof shorterConditions>[number];
 type Source = { readonly file: string; readonly text: string };
 type UnitsOf = (program: Node, file: string) => Unit[];
 type ReplaceEdit = {
@@ -33,8 +24,6 @@ export type ShorterFix = {
 };
 export type Grammar = { readonly parser: Parser; readonly unitsOf: UnitsOf };
 
-const shorterConditions: (tree: unknown, options: Options) => readonly Site[] =
-  untypedShorterConditions;
 const COMMENT = /\/[/*]/u;
 const SPACE = /\s+/gu;
 const OPERATOR_PARENTS = new Set([
@@ -87,12 +76,18 @@ function replacement(node: Node, form: string): string {
 
 function fixOf(root: Node, site: Site, file: string): ShorterFix[] {
   const node = nodeFor(root, site);
-  if (node === undefined || COMMENT.test(node.text) || compact(site.form) === compact(node.text)) {
+  const line = site.node.start;
+  if (
+    node === undefined ||
+    line === undefined ||
+    COMMENT.test(node.text) ||
+    compact(site.form) === compact(node.text)
+  ) {
     return [];
   }
   return [
     {
-      finding: { tool: 'structure', rule: 'shorter-condition', path: file, line: site.node.start },
+      finding: { tool: 'structure', rule: 'shorter-condition', path: file, line },
       edits: [
         {
           type: 'replace',

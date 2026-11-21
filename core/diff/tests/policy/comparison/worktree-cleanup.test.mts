@@ -22,7 +22,7 @@ import {
 import { fieldAt } from '../../../../../scripts/json/fields.mts';
 import { fieldOf, listOf, parseJson, textOf } from '../../../../../shared/values/readers.mts';
 import { readJson, writeFiles } from '../../../git/test-support/fixture-files.mts';
-import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mts';
 
 const TIMEOUT_MESSAGE =
   'fake-quality-analyzer timed out after 100 ms. To give it more time, set ' +

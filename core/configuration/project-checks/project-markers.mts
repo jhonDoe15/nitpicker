@@ -1,9 +1,9 @@
 import { existsSync } from 'node:fs';
-import { configError as untypedConfigError } from '../../../shared/config.mjs';
+import { configError as untypedConfigError } from '../../../shared/config.mts';
 import {
   filesUnder as untypedFilesUnder,
   pathInside as untypedPathInside,
-} from '../../../shared/filesystem.mjs';
+} from '../../../shared/filesystem.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 
 const configError: (message: string) => Error = untypedConfigError;

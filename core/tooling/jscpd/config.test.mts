@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { validateConfig } from '../../configuration/validate.mts';
 import { conventionStyle } from '../../conventions/definitions.mts';
 import {
@@ -12,7 +12,7 @@ import { fieldAt, fieldsOf, listOf } from '../../../scripts/json/fields.mts';
 import {
   HEAD_POLICY_ENV,
   withHeadPolicyFile as untypedWithHeadPolicyFile,
-} from '../../../shared/head-policy.mjs';
+} from '../../../shared/head-policy.mts';
 import { callUntyped } from '../../../shared/values/boundaries/untyped-call.mts';
 import { objectOf } from '../../../shared/values/readers.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
@@ -30,6 +30,7 @@ type JscpdRun = {
   reportRoot: string;
   together: boolean;
   renamed: undefined;
+  environment: Readonly<Record<string, string | undefined>>;
 };
 
 const resolveJscpdPolicy: (settings: unknown, projectRoot: string) => unknown =
@@ -56,7 +57,6 @@ function projectConfig(root: string, config: unknown) {
   writeFileSync(path.join(root, '.jscpd.json'), JSON.stringify(config));
 }
 afterEach(() => {
-  vi.unstubAllEnvs();
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
@@ -256,7 +256,6 @@ describe('jscpd project config', () => {
       root,
     );
     withHeadPolicyFile(policy, (policyFile) => {
-      vi.stubEnv(HEAD_POLICY_ENV, policyFile);
       runJscpd({
         cwd: root,
         roots: ['src'],
@@ -265,6 +264,7 @@ describe('jscpd project config', () => {
         reportRoot,
         together: false,
         renamed: undefined,
+        environment: { [HEAD_POLICY_ENV]: policyFile },
       });
     });
     const report: unknown = JSON.parse(
@@ -289,7 +289,6 @@ describe('jscpd project config', () => {
     });
     const policy = resolveHeadPolicy({ preset: 'python', tools: { jscpd: { precedence } } }, root);
     withHeadPolicyFile(policy, (policyFile) => {
-      vi.stubEnv(HEAD_POLICY_ENV, policyFile);
       runJscpd({
         cwd: root,
         roots: ['src'],
@@ -298,6 +297,7 @@ describe('jscpd project config', () => {
         reportRoot,
         together: false,
         renamed: undefined,
+        environment: { [HEAD_POLICY_ENV]: policyFile },
       });
     });
     const report: unknown = JSON.parse(

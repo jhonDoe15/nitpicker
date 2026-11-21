@@ -1,4 +1,4 @@
-import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 import type { CliOptions } from '../../cli-context.mts';
 import type { MonorepoPlan, WorkspaceMember } from '../project-types.mts';

@@ -4,8 +4,8 @@ import {
   SAMPLE_LIMIT,
   testAndSupportGlobs,
 } from './measures/assertion-helpers.mts';
-import { followedHelpers } from '../../../shared/conventions/detect.mjs';
-import { COLUMNS } from '../../../shared/conventions/settings.mjs';
+import { followedHelpers } from '../../../shared/conventions/detect.mts';
+import { COLUMNS } from '../../../shared/conventions/settings.mts';
 import { FORMATTER_VERSION } from './build-style/java-formatter-options.mts';
 import { formatterProfile, javaIndentation, javaLineLength } from './measures/java-layout.mts';
 import { TEST_SOURCE_GLOB, testStaticImports, wildcardImports } from './measures/java-imports.mts';

@@ -6,7 +6,7 @@ import {
   COMPILE_ERROR_RULE,
   COMPILE_ERROR_TOOL,
   compileErrorMessage,
-} from '../../../../shared/rules/finding-helpers.mjs';
+} from '../../../../shared/rules/finding-parts.mts';
 import {
   fieldOf,
   fieldsOf,

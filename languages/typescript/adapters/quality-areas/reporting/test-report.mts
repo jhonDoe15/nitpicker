@@ -1,7 +1,7 @@
 import {
   TESTS_FAILED_RULE,
   TESTS_NOT_RUN_RULE,
-} from '../../../../../shared/rules/finding-helpers.mjs';
+} from '../../../../../shared/rules/finding-parts.mts';
 import { troubleshootingError, withTroubleshooting } from '../../lint-engine/typed/tools.mts';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
