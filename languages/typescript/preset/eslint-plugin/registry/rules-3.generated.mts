@@ -1,5 +1,8 @@
+import { rule as ruleNoUnusedDomEnvironment } from '../rules/test-runtime/environment/no-unused-dom-environment.mts';
+import { rule as ruleNoUnvalidatedSchemaField } from '../rules/boundaries/no-unvalidated-schema-field.mts';
 import { rule as ruleNoUnversionedOrmEntity } from '../rules/database/versions/no-unversioned-orm-entity.mts';
 import { rule as ruleNoUseAfterAwaitWhenDisposed } from '../rules/cancellation/disposal/no-use-after-await-when-disposed.mts';
+import { rule as ruleNoUtcDateAsLocalDate } from '../rules/time/utc-dates/no-utc-date-as-local-date.mts';
 import { rule as ruleNoWaitForWithFakeTimers } from '../rules/test-runtime/assertions/no-wait-for-with-fake-timers.mts';
 import { rule as ruleNoWallClockElapsed } from '../rules/wall-clock/no-wall-clock-elapsed.mts';
 import { rule as ruleNoWastedCollectionStep } from '../rules/collections/pipelines/no-wasted-collection-step.mts';
@@ -22,6 +25,10 @@ import { rule as ruleReactNoEffectEventHandling } from '../rules/react/render/re
 import { rule as ruleReactNoHardcodedColors } from '../rules/react/theme/react-no-hardcoded-colors.mts';
 import { rule as ruleReactNoLiteralIdInListComponent } from '../rules/react/ids/react-no-literal-id-in-list-component.mts';
 import { rule as ruleReactNoRandomKey } from '../rules/react/render/react-no-random-key.mts';
+import { rule as ruleReactNoRenderSideEffect } from '../rules/react/purity/react-no-render-side-effect.mts';
+import { rule as ruleReactNoStaleStateUpdate } from '../rules/react/state/react-no-stale-state-update.mts';
+import { rule as ruleReactNoUncachedUsePromise } from '../rules/react/purity/react-no-uncached-use-promise.mts';
+import { rule as ruleReactPureStateUpdater } from '../rules/react/state/react-pure-state-updater.mts';
 import { rule as ruleReactSingleStylingApproach } from '../rules/react/react-single-styling-approach.mts';
 import { rule as ruleReactTestNoImplementationDetails } from '../rules/react-tests/react-test-no-implementation-details.mts';
 import { rule as ruleReleaseListenersOnClose } from '../rules/lifecycles/handles/release-listeners-on-close.mts';
@@ -49,8 +56,11 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-unused-dom-environment': ruleNoUnusedDomEnvironment,
+  'no-unvalidated-schema-field': ruleNoUnvalidatedSchemaField,
   'no-unversioned-orm-entity': ruleNoUnversionedOrmEntity,
   'no-use-after-await-when-disposed': ruleNoUseAfterAwaitWhenDisposed,
+  'no-utc-date-as-local-date': ruleNoUtcDateAsLocalDate,
   'no-wait-for-with-fake-timers': ruleNoWaitForWithFakeTimers,
   'no-wall-clock-elapsed': ruleNoWallClockElapsed,
   'no-wasted-collection-step': ruleNoWastedCollectionStep,
@@ -73,6 +83,10 @@ export const partRules = {
   'react-no-hardcoded-colors': ruleReactNoHardcodedColors,
   'react-no-literal-id-in-list-component': ruleReactNoLiteralIdInListComponent,
   'react-no-random-key': ruleReactNoRandomKey,
+  'react-no-render-side-effect': ruleReactNoRenderSideEffect,
+  'react-no-stale-state-update': ruleReactNoStaleStateUpdate,
+  'react-no-uncached-use-promise': ruleReactNoUncachedUsePromise,
+  'react-pure-state-updater': ruleReactPureStateUpdater,
   'react-single-styling-approach': ruleReactSingleStylingApproach,
   'react-test-no-implementation-details': ruleReactTestNoImplementationDetails,
   'release-listeners-on-close': ruleReleaseListenersOnClose,

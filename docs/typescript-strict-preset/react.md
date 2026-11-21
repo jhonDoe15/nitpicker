@@ -82,6 +82,66 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   ternary or `&&` guard, since each render builds a new one (not in an async component or a
   `*.server.*` file, where each request builds one); `react-x/no-create-ref` reports
   `createRef()` in a function component.
+- **No state update built from a stale value** (`nitpicker/react-no-stale-state-update`). A
+  `useState` setter given an array, an object or arithmetic that reads its own state
+  (`setItems([...items, tag])`, `setForm({ ...form, dirty: true })`, `setPage(page + 1)`) uses the
+  value of the render that created the function. After an `await` in the same function that value
+  can be old, so an update made while the function waited is overwritten; and a second call of the
+  same setter in the same block overwrites the first, because the state does not change until the
+  next render. Pass an updater, which receives the current value:
+  `setItems((current) => [...current, tag])`. Only an `await` that certainly ran counts: one
+  outside any `if`, ternary, `&&`, `switch`, loop, `catch`, labelled statement or optional call
+  (their conditions included), and inside a `try` only one in its first statement. A call inside a
+  `catch` or a nested function is left alone, and so is a call inside an effect whose dependency
+  array lists the state (the effect runs again when it changes). A setter given a literal, a
+  fetched value, a method call or an updater function is not
+  reported. The rule needs no type information.
+- **Pure state updaters and reducers** (`nitpicker/react-pure-state-updater`). The function passed
+  to a `useState` setter and the reducer of `useReducer` (inline, or a function declared in the
+  same file) may run more than once, twice under StrictMode, and must return a new value. Inside
+  them the rule reports a call of a state setter or a `dispatch` (the inner update repeats), a prop
+  callback called as a statement (`onChange(next)`, `props.onChange(next)`: the parent is told
+  twice, during render), and a change to the previous state in place: an assignment, `delete`,
+  `++` or `--` on a property of the parameter (`state.open = true`), and a mutating method when the `useState`
+  call or the reducer's parameter type shows the kind of value (`push`, `pop`, `shift`, `unshift`,
+  `splice`, `sort`, `reverse`, `fill`, `copyWithin` for `useState<string[]>(...)` or
+  `useState([])`; `add`, `delete`, `clear` for a `Set`; `set`, `delete`, `clear` for a `Map`).
+  Compute the next value first, then call each setter and callback in the handler:
+  `const next = [...items, item]; setItems(next); onChange(next);`. A parameter that is first
+  reassigned to a copy, calls inside a nested function, Immer (`useImmer`, `useImmerReducer`,
+  `produce(...)`), setters that do not come from `useState` (`setSearchParams`) and a method call on
+  a value whose kind the `useState` call does not show (`current.add(1, 'month')` on a date) are
+  left alone. The rule needs no type information.
+- **No `use` of a promise created in the same render** (`nitpicker/react-no-uncached-use-promise`).
+  `use(promise)` suspends, and React renders the component again when the promise settles; a
+  promise created in that render is a new one each time, so the component never finishes or sends
+  the request again on every render. Reported as the argument of `use` from `react` (directly, or
+  through a `const` of the component body): a call of an `async` function declared in the same file
+  or exported by a project module the file imports, an inline async function called in place,
+  `new Promise(...)`, `Promise.all`, `allSettled`, `race` or `any`, and a `.then`, `.catch` or
+  `.finally` chain. Create the promise outside render: pass it in as a prop (from a parent, a route
+  loader or a Server Component) or wrap the function in `cache`. A promise from props, context,
+  `useMemo` or `useState`, a function whose declaration is not `async` or is not found, and an
+  async component are left alone; `use(fetch(url))` is reported by `react-x/purity`. A Server
+  Component may create the promise it reads, so in a package that depends on a framework with
+  Server Components (`next`, `waku`, `@vitejs/plugin-rsc`, `react-server-dom-*` and others) or has a
+  `'use client'` file, only a file with `'use client'` or a component that calls a client hook
+  (`useState`, `useEffect`, `useRef`, `useContext`, ...) is checked.
+- **No navigation, document listener or title write during render**
+  (`nitpicker/react-no-render-side-effect`). In the body of a component (a capitalised function that
+  renders JSX) or a custom hook (a `use*` function that calls a hook), outside nested functions and
+  also under an `if`, `&&` or a ternary: a call of the function returned by `useNavigate()`, `push`,
+  `replace`, `back` or `navigate` on the result of `useRouter()` or `useHistory()` (hooks imported
+  from React Router, Next.js, TanStack Router or Expo Router), `addEventListener` on `document`
+  or something reached from it (`document.body`), and an assignment to `document.title`. Render runs
+  more than once and for renders React throws away, so the router ignores or repeats the call and a
+  listener is added per render and never removed. Navigate in the handler or effect that causes it
+  or render a redirect (`<Navigate to="/login" />`, `redirect()`); add the listener in `useEffect`
+  with a cleanup; set the title in `useEffect` or render `<title>`. Async components,
+  `*.server.*` files and methods destructured from the router (`const { push } = useRouter()`) are
+  left alone. `react-x/purity` reports the other work started in render:
+  `setTimeout`, `setInterval`, `requestAnimationFrame`, `fetch`, `window.addEventListener`,
+  `new WebSocket(...)`, observers and storage.
 - **No double-escaped i18next values** (`nitpicker/react-i18next-escape-value`, needs
   `react-i18next` in `package.json`). A `t(...)` call (from `useTranslation()`, `i18next` or
   `i18n.t`) or a `<Trans values={{ ... }}>` that passes interpolation values and whose text React
@@ -137,7 +197,11 @@ off (a PR that adds or removes React keeps linting on both sides); a misspelled 
   `no-restricted-properties` is dropped where this rule reports the same call, so it is reported
   once.
 - **Pure render, no mutation.** State, props and hook results are not mutated
-  (`react-x/immutability`: `setList([...list, item])`, `items.toSorted()`); render does not call
+  (`react-x/immutability`: `setList([...list, item])`, `items.toSorted()`). That includes `sort`,
+  `reverse` and `splice` called on a prop or a state value in the component body, in JSX or inside
+  `useMemo` (`players.sort(byScore)`, `items={items.reverse()}`): they change the array in place, so
+  the parent's list is reordered and `reverse` flips back on the second StrictMode render; write
+  `players.toSorted(byScore)` or `[...players].sort(byScore)`. Render does not call
   `Date.now()`, `Math.random()` or storage, read or write refs, or set state
   (`react-x/purity`, `react-x/refs`, `react-x/set-state-in-render`). A lazy `useState(() => ...)`
   initialiser is the place for a one-time read; a ref may be lazily initialised in render

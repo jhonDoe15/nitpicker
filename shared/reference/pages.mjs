@@ -38,7 +38,14 @@ export const PAGES = [
     id: 'java-pmd',
     title: 'Java and Kotlin: PMD rules',
     summary:
-      "PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets.",
+      "PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, for Java sources in the Java and Kotlin presets.",
+    guide: 'docs/java-preset.md',
+  },
+  {
+    id: 'java-pmd-nitpicker',
+    title: 'Java and Kotlin: PMD rules nitpicker adds',
+    summary:
+      'The rules nitpicker writes for PMD and runs next to its own: the review rules for main and test sources and the Spring and JPA rules, for Java sources in the Java and Kotlin presets.',
     guide: 'docs/java-preset.md',
   },
   {

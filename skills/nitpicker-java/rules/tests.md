@@ -82,6 +82,24 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `localhost` (MockWebServer, WireMock, `MockRestServiceServer`) or a mock. Measuring time is fine (`System.nanoTime()`,
   `now()` compared with a deadline in a polling loop). Calls to a real service belong in an integration test (`*IT`,
   an integration source set, or `@SpringBootTest`).
+- Use the result of a timed wait (`IgnoredTimedWaitInTest`): `assertTrue(latch.await(5, TimeUnit.SECONDS))`,
+  not `latch.await(5, TimeUnit.SECONDS);` followed by assertions. `await`, `tryLock`, `tryAcquire`, `offer`,
+  `waitFor` and `awaitTermination` with a timeout return `false` when the time runs out, and the test then
+  asserts against work that has not finished.
+- Let the system choose the port (`FixedPortInTest`): `new ServerSocket(0)` and `getLocalPort()`,
+  `HttpServer.create(new InetSocketAddress(0), 0)`, WireMock `options().dynamicPort()`, `MockWebServer.start()`,
+  `webEnvironment = RANDOM_PORT` with `@LocalServerPort`, and `getMappedPort(...)` of a container, never a
+  number such as `8089`, `DEFINED_PORT` with `server.port=8081`, `withFixedExposedPort` or `setPortBindings`.
+  A fixed port fails when a second run, a parallel worker or a local application holds it.
+- Do not expect an order from a hash collection, a directory listing or reflection (`HashOrderAssertedInTest`):
+  for a `HashSet`, `Set.of`, `Collectors.toSet()`, a `HashMap` view, `File.list()` or `getDeclaredMethods()`, use
+  `containsExactlyInAnyOrder(...)`, compare with a `Set`, or sort first; `containsExactly("a", "b")` and
+  `assertArrayEquals` pass on one JDK or file system and fail on another.
+- Do not assert that something was fast (`WallClockBoundInTest`): no `assertTrue(elapsed < 500)`,
+  `assertThat(elapsed).isLessThan(500L)`, `assertTimeout(Duration.ofMillis(50), ...)`,
+  `@Timeout(value = 200, unit = MILLISECONDS)` or `@Test(timeout = 200)` with a limit under one second; a busy
+  CI runner or a GC pause breaks it. Assert the behaviour (calls made, a counter of the work) and keep speed
+  checks in a benchmark. A limit of a second or more as a hang guard is fine.
 - Start a container, server or process once, not for each test (`ServerOrContainerPerTest`): a
   Testcontainers `@Container` field is `static`, a WireMock `@RegisterExtension` is `static`, a JUnit 4
   server or container is a `@ClassRule`, and `@BeforeEach`/`@Before` does not create and start one

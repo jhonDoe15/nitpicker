@@ -8,7 +8,7 @@ name: container
 # passed on both. Not a required check.
 on:
   push:
-    branches: [main]
+    branches: [main, integration]
     paths:
       - 'Dockerfile'
       - '.dockerignore'
@@ -22,7 +22,7 @@ on:
       - 'scripts/ci/**'
       - '.github/workflows/container.yml'
   pull_request:
-    types: [labeled]
+    types: [labeled, opened, synchronize, reopened]
   workflow_dispatch:
   workflow_call:
     inputs:
@@ -56,14 +56,14 @@ env:
 # when a label is added while the pull request carries `run-ci`; a newer run cancels the older one.
 # On main a started run finishes, and a newer push replaces a run that is still waiting.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'push' && 'main' || github.event.pull_request.number || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.ref_name || github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   # On a pull request, the jobs below run only when the pull request changes a file in this
   # workflow's push paths, or when the changed files cannot be listed. Other runs check everything.
   changes:
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')
+    if: github.event_name != 'pull_request' || github.base_ref == 'integration' || contains(github.event.pull_request.labels.*.name, 'run-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
