@@ -36,7 +36,10 @@ export function ownedFiles(context: DesignContext, layout: DesignLayout): OwnedF
   });
 }
 
-export function moduleFacts(files: readonly OwnedFile[], layout: DesignLayout): ModuleFact[] {
+export function moduleFacts(
+  files: readonly Pick<OwnedFile, 'path'>[],
+  layout: DesignLayout,
+): ModuleFact[] {
   const entries = (layout.entryPoints ?? []).map((glob) => globMatcher(glob));
   return files.map((file) => ({
     file: file.path,

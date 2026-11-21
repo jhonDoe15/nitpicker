@@ -5,6 +5,7 @@ mod grammar;
 pub(crate) mod fields;
 mod flow;
 mod helpers;
+pub mod javac;
 mod magic_number;
 mod naming;
 mod pmd_sample;
@@ -35,7 +36,8 @@ impl Language for Java {
         rules.extend(pmd_sample::rules());
         rules.extend(typed_rules::rules());
         rules.push(Box::new(errorprone::ErrorProne));
-        rules.push(Box::new(spotbugs::SpotBugs));
+        rules.push(Box::new(spotbugs::SpotBugs::default()));
+        rules.push(Box::new(javac::rule::JavacNames));
         rules.push(Box::new(pmd::dump::TreeDump));
         if let Some(rules_from_file) = pmd::rules::XPathRules::from_env() {
             rules.push(Box::new(rules_from_file));

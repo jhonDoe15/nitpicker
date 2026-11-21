@@ -1,6 +1,14 @@
-import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readdirSync,
+  rmSync,
+  writeSync,
+} from 'node:fs';
 import path from 'node:path';
-import { renderTextReport as textReport } from './text.mts';
+import { textReportLines } from './text.mts';
 import { renderJunitReport } from './junit.mts';
 import { renderBaselineSarifReport, renderSarifReport } from './sarif.mts';
 import { heldFindingsOf as heldFindings, withHelpLinks } from './report-model.mts';
@@ -8,8 +16,12 @@ import { referenceLinks } from '../../../shared/reference/store.mts';
 import { pathInside } from '../../../shared/filesystem.mts';
 import {
   CODE_QUALITY_REPORT_FILE_NAME as CODE_QUALITY_FILE,
-  renderCodeQualityReport as codeQualityReport,
+  codeQualityIssues,
 } from './format/codequality.mts';
+import {
+  prettyJsonPieces,
+  writePieces,
+} from '../../../shared/report-output/pieces/json-pieces.mts';
 import type { ReportData } from '../../../shared/values/findings.mts';
 import type { ReferenceLinks } from '../../../shared/reference/typed/entry-types.mts';
 
@@ -23,7 +35,7 @@ type RenderOptions = {
 
 export type ReportFile<R> = {
   readonly name: string;
-  readonly render: (report: R, options: RenderOptions) => string;
+  readonly render: (report: R, options: RenderOptions) => string | Iterable<string>;
 };
 
 type ReportLocation = {
@@ -33,8 +45,15 @@ type ReportLocation = {
 
 const TEXT_REPORT_FILE_NAME = 'report.txt';
 
-export function json(value: unknown): string {
-  return `${JSON.stringify(value, null, 2)}\n`;
+export function* json(value: unknown): Generator<string> {
+  yield* prettyJsonPieces(value);
+  yield '\n';
+}
+
+export function* linePieces(lines: readonly unknown[]): Generator<string> {
+  for (const line of lines) {
+    yield line === null || line === undefined ? '\n' : `${String(line)}\n`;
+  }
 }
 
 const DIFF_REPORTS: readonly ReportFile<ReportData>[] = [
@@ -54,13 +73,16 @@ const DIFF_REPORTS: readonly ReportFile<ReportData>[] = [
   },
   { name: 'tool-errors.json', render: (report) => json(report.toolErrors) },
   { name: 'notes.json', render: (report) => json(report.notes ?? []) },
-  { name: TEXT_REPORT_FILE_NAME, render: textReport },
+  {
+    name: TEXT_REPORT_FILE_NAME,
+    render: (report, { reference }) => linePieces(textReportLines(report, { reference })),
+  },
   { name: 'report.junit.xml', render: renderJunitReport },
   { name: 'report.sarif', render: renderSarifReport },
   { name: 'report-baseline.sarif', render: renderBaselineSarifReport },
   {
     name: CODE_QUALITY_FILE,
-    render: (report, options) => codeQualityReport(report.newFindings, options),
+    render: (report, options) => json(codeQualityIssues(report.newFindings, options)),
   },
 ];
 
@@ -86,14 +108,23 @@ export function writeReports<R>(
   outputRoot: string,
   reports: readonly ReportFile<R>[],
   { report, options }: { readonly report: R; readonly options: ReportLocation },
-): Map<string, string> {
+): void {
   mkdirSync(outputRoot, { recursive: true });
   const rendering = { ...options, reference: referenceLinks() };
-  const written = new Map(reports.map(({ name, render }) => [name, render(report, rendering)]));
-  for (const [name, contents] of written) {
-    writeFileSync(reportPath(outputRoot, name), contents);
+  for (const { name, render } of reports) {
+    writeReportFile(reportPath(outputRoot, name), render(report, rendering));
   }
-  return written;
+}
+
+function writeReportFile(file: string, contents: string | Iterable<string>): void {
+  const descriptor = openSync(file, 'w');
+  try {
+    writePieces(typeof contents === 'string' ? [contents] : contents, (text) => {
+      writeSync(descriptor, text);
+    });
+  } finally {
+    closeSync(descriptor);
+  }
 }
 
 export const LOG_DIRECTORY = 'logs';
@@ -132,11 +163,8 @@ export function writeDiffReports(
   outputRoot: string,
   report: ReportData,
   { projectPath, repositoryRoot }: ReportLocation = {},
-): string | undefined {
-  return writeReports(outputRoot, DIFF_REPORTS, {
-    report,
-    options: { projectPath, repositoryRoot },
-  }).get(TEXT_REPORT_FILE_NAME);
+): void {
+  writeReports(outputRoot, DIFF_REPORTS, { report, options: { projectPath, repositoryRoot } });
 }
 
 export function absoluteTextReportPath(outputRoot: string): string {

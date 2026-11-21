@@ -226,9 +226,8 @@ purpose, and its source is not read. A finding carries the SpotBugs pattern name
 `@SuppressFBWarnings` with the pattern name, or without a value, hides it. `NP_SB_ONLY=<pattern,...>` runs some.
 
 Done: `EI_EXPOSE_REP`, `MS_EXPOSE_REP`, `EI_EXPOSE_REP2` and `EI_EXPOSE_STATIC_REP2` (#2098) and
-`CT_CONSTRUCTOR_THROW` (#2112), those five together 76% of what SpotBugs with FindSecBugs reports on the seven
-code bases below, and the null patterns `NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE`, `NP_NULL_ON_SOME_PATH` and
-`NP_ALWAYS_NULL` (#2146, see "Null patterns" below). The rest is planned in #2097.
+`CT_CONSTRUCTOR_THROW` (#2112), together 76% of what SpotBugs with FindSecBugs reports on the seven code bases
+below. The rest is planned in #2097.
 
 `tests/expected/spotbugs.json` holds what SpotBugs reported for the compiled `tests/fixtures/spotbugs`; each
 fixture folder is one experiment on SpotBugs' behaviour. `parity/spotbugs/run.sh` runs SpotBugs the way a Java
@@ -241,29 +240,25 @@ these five patterns from source:
 
 | Code base | Files, lines | SpotBugs wall, CPU, peak | Engine | Exposed representation | Constructor throw |
 | --- | --- | --- | --- | --- | --- |
-| Elasticsearch `server` | 5,106, 1,035k | 249 s, 417 s, 3.2 GB | 8.0 s, 28.9 s, 0.5 GB | 4,330 / 5 / 1 | 1,532 / 7 / 1 |
-| Nacos | 3,118, 548k | 108 s, 242 s, 2.9 GB | 5.2 s, 13.0 s, 0.3 GB | 2,438 / 2 / 4 | 85 / 0 / 0 |
+| Elasticsearch `server` | 5,106, 1,035k | 249 s, 417 s, 3.2 GB | 8.0 s, 28.9 s, 0.5 GB | 4,330 / 5 / 1 | 1,539 / 0 / 0 |
+| Nacos | 3,118, 548k | 108 s, 242 s, 2.9 GB | 5.6 s, 18.0 s, 0.3 GB | 2,440 / 0 / 6 | 85 / 0 / 0 |
 | javaparser-core | 594, 121k | 48.3 s, 97.2 s, 2.3 GB | 0.9 s, 3.0 s, 0.1 GB | 500 / 0 / 0 | 17 / 0 / 0 |
 | Guava | 610, 183k | 43.6 s, 99.8 s, 1.8 GB | 1.3 s, 4.3 s, 0.1 GB | 14 / 0 / 0 | 0 / 0 / 0 |
 | jackson-databind | 478, 134k | 35.7 s, 78.2 s, 1.7 GB | 0.9 s, 3.3 s, 0.1 GB | 224 / 0 / 0 | 17 / 0 / 0 |
 | commons-lang | 264, 106k | 19.9 s, 50.5 s, 1.2 GB | 0.7 s, 2.2 s, 0.1 GB | 15 / 0 / 0 | 17 / 0 / 0 |
 | MyBatis | 393, 40k | 15.5 s, 50.3 s, 0.9 GB | 0.4 s, 1.2 s, 0.1 GB | 173 / 0 / 0 | 32 / 0 / 0 |
 
-Exposed representation, 12 differences (7,694 same):
+Exposed representation, 12 differences (7,696 same):
 
-- A value stored from a class in another file, 1: the engine judges a field by the stores in its own file;
-  SpotBugs also counts stores from classes it visited earlier, wherever they are.
 - A field that only ever takes a parameter, read back from another object and stored, 1 constructor missed.
 - A field of the superclass returned through a field typed with that superclass, 1 missed.
-- 9 not explained yet (tracked in #2098): 4 getters of one protobuf-generated builder and 1 other getter the
-  engine reports alone; 2 getters of a protobuf-generated message and 2 other getters only SpotBugs reports.
-  Small classes of the same shape do not reproduce them, so the cause is in their surroundings.
+- 10 not explained yet (tracked in #2098). The engine reports alone: 4 getters of one protobuf-generated builder
+  whose field is typed `Object` and only ever takes one message type, 2 getters of a protobuf-generated message
+  whose place in the visiting order among classes that call each other is not known, and 1 other getter. Only
+  SpotBugs reports: 3 getters over a field that takes nothing but `Map.of` or `Map.copyOf` results, two of
+  them in a subclass of the class with the field. Small classes of the same shape do not reproduce them.
 
-Constructor throw, 8 differences (1,700 same):
-
-- Anonymous classes, 6 missed: a field initializer or initializer block of an anonymous class that can throw is
-  not looked at yet.
-- A local class, 2 (1 finding): the engine names it differently in the message.
+Constructor throw: no differences (1,707 same).
 
 What SpotBugs counts as "an exception can leave the constructor", as measured (`tests/fixtures/spotbugs/ctor_*`):
 a `throw` or `assert` the handler around it does not take; a call to a method that declares exceptions; a call
@@ -271,6 +266,9 @@ to a method of the same class from which one of those can leave, however deep; `
 one of those, one level deep. Not counted: calls to constructors, to undeclared methods of other classes, anything
 before the first constructor call of the body (which a `new` among the arguments of `super(...)` already ends),
 and a rethrown `Throwable`. Final classes, enums, records and classes with a final `finalize()` are exempt.
+An anonymous class is reported for what its field initializers and initializer blocks can throw, under the
+constructor the compiler writes for it (`new p.Outer$1(Outer, int)`); what the constructor of its superclass
+throws does not count (`tests/fixtures/spotbugs/ctor_anonymous`).
 
 Only the innermost handler around a place is asked, as the compiled exception table lists it
 (`ctor_finally`, `ctor_nested`, `ctor_order`, `ctor_helpers*`): the `catch` clauses of the nearest `try`, and an
@@ -280,16 +278,33 @@ the `close()` the compiler adds after it counts as a call under the `catch` clau
 constructor one matching `catch` clause is enough; for a call in a method every `catch` clause of the `try`
 has to take the exception.
 
-How a field counts as holding only unchangeable values (`loads*`, `visits`, `values`):
+How a field counts as holding only unchangeable values (`loads*`, `visits`, `values`, `across`, `calls`):
 
-- Every store in the field's own class counts. A store from another class counts only when SpotBugs visits that
-  class first, and it visits classes in the order of a Java `HashMap` keyed by the class name with slashes,
-  sized for the number of classes in the run. The engine takes the classes of the run as that number.
-- A call result stored from another class counts against the field only when the called method's class is part
-  of the run and was visited before the storing class.
-- A value read from another field is fine when that field was given an unchangeable value at least once. The
-  field read back into itself (`this.f = other.f`) says nothing, and counts against the field when it went
-  through a local variable first.
+- Stores are gathered over the whole run, from every file, while the files are checked; a getter that hangs on
+  them is decided after the last file (`known.rs`).
+- For a getter in class G, the stores G makes and the stores of classes visited before G are asked first: one
+  changeable value among them and the getter is reported, otherwise one unchangeable value (`null` too) and it
+  is not. When they say nothing, all stores of the run are asked: no changeable value and at least one
+  unchangeable value other than `null` and the getter is not reported.
+- A call result that is stored counts as changeable, whichever class the method is in, unless the call is one
+  of the library calls known to make an unchangeable value (`List.of`, `Map.copyOf`,
+  `Collections.unmodifiableList` and their like).
+- A field of an unchangeable declared type that every store of the run gives one changeable type is reported;
+  `null` stores are passed over and a store whose type is not known ends it.
+- Classes are visited in the order of a Java `HashMap` keyed by the class name with slashes, sized for the
+  number of classes in the run. A class is put off until all others are done when it calls a method or
+  constructor that takes or returns an object, of a class of the run that is not an interface and was not
+  visited yet; methods `Object` declares and calls between classes that call each other in a circle put
+  nothing off. Classes put off are visited last one first (`order.rs`, `calls.rs`).
+- What counts as such a call, as the compiled form has it: the constructor of an inner class (it takes the
+  outer object) and of an anonymous class outside a static place or with arguments; `super(...)` and
+  `super.m()` go to the superclass, a bare `m()` to the nearest class around that has an `m`; a call belongs
+  to the innermost class around it. The engine asks the overloads of that name and argument count and
+  resolves the call only when they disagree. A call into a class in the same `HashMap` slot puts the caller
+  off.
+- A value read from another field is fine when that field was given an unchangeable value at least once, anywhere in
+  the run. The field read back into itself (`this.f = other.f`) says nothing, and counts against the field when it
+  went through a local variable first.
 - A local variable with two values is judged the way `c ? first : second` is.
 
 Also measured: the accessor of a record's varargs component is reported and its constructor is not; a pattern
@@ -297,11 +312,18 @@ variable of `instanceof` holds the tested value; one parameter stored twice in a
 finding; the outer-instance field of an inner class is `this$N`, N counting the inner classes around the outer
 one; the line of an inner-class constructor is the line of its opening brace.
 
-Known gaps in what is rebuilt: `c ? a : b` stored in a field follows a table measured on SpotBugs, which decides
-by the compiled form (`tests/fixtures/spotbugs/choices*`); a local variable with more than two values is taken
-as changeable, and so is a value more than 8 local variables or 256 nested values deep; stores from other files are not seen; a branch SpotBugs finds dead because it compares a field
-nothing writes with a constant is still looked at; a call that is the very first instruction of a `finally`
-block is still covered by the handler before it in the compiled form, which the engine does not rebuild.
+Known gaps in what is rebuilt: `c ? a : b` stored in a field follows a table measured on SpotBugs, which decides by
+the compiled form (`tests/fixtures/spotbugs/choices*`); a local variable with more than two values is taken as
+changeable, and so is a value more than 8 local variables or 256 nested values deep; a branch SpotBugs finds dead
+because it compares a field nothing writes with a constant is still looked at; a call that is the very first
+instruction of a `finally` block is still covered by the handler before it in the compiled form, which the engine does
+not rebuild. Of the visiting order: two classes in the same `HashMap` slot are taken as neither before the other; the
+classes the compiler adds for a `switch` over an enum, the bodies of enum constants, and the calls the compiler adds
+(the iterator of a `for` over a collection, the constructor call of an inner superclass) are not counted, and neither
+is a call on a lambda parameter without a declared type inside nested call arguments, which costs seconds per file to
+resolve. `NP_SB_CALLS=<file>` writes the calls the order is built from; `parity/spotbugs/calls.py` reads the same from
+class files and compares (Nacos: 10,350 same, 76 only in class files, 2 only in the engine).
+
 ### Null patterns
 
 `src/java/spotbugs/nulls/` follows values through a method on the flow graph of `src/java/flow/`: a backward
@@ -359,3 +381,64 @@ Not rebuilt yet: `NP_NULL_PARAM_DEREF` and its variants, `NP_GUARANTEED_DEREF`,
 `NP_NULL_ON_SOME_PATH_EXCEPTION`, `NP_NULL_ON_SOME_PATH_MIGHT_BE_INFEASIBLE`, `NP_LOAD_OF_KNOWN_NULL_VALUE`, the
 `RCN_` family, `NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE`, `NP_BOOLEAN_RETURN_NULL` and
 `NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT`. Other code bases are not compared yet.
+
+
+## Names the compiler makes up
+
+SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in
+the source: `p.A.lambda$run$3(String, int)`, `new p.A$2(A, List)`. `src/java/javac/` works these names out from
+source, as `javac` 21 makes them (#2138; the open differences are in #2140). The rules were learned from the
+class files `javac` writes for `tests/fixtures/javac`; `tests/expected/javac.json` holds what `javap` shows for
+them, and `parity/javac/run.sh` writes it again. `--rules _JavacNames` lists the names of a source list, and
+`parity/javac/compare.py report.json <classes dir> [-v]` compares them with compiled classes.
+
+- Anonymous and local classes (`Outer$1`, `Outer$1Local`) are numbered per enclosing class and simple name, in
+  the order the compiler works through the code: members in source order, and inside a call the receiver, then
+  the plain arguments, then the arguments whose meaning depends on the chosen method (a lambda, a parenthesized
+  or conditional expression, a `switch` expression, a call without written type arguments, a `new` with `<>`).
+  An anonymous class gets its own number between the two groups of its arguments, or after both with `<>`.
+- A lambda becomes `lambda$<place>$<n>`: `n` counts per class in source order, an inner lambda before the one
+  around it; the place is the method, `new` for constructors, initializer blocks and instance fields, `static`
+  for static initializers and fields, and the class name for a field of a local class (empty for an anonymous
+  one: `lambda$$0`). A serializable lambda carries a hash of its signature instead and takes no number; only
+  its class is listed.
+- A method reference takes a number like a lambda when the compiler turns it into one: `super::m`,
+  `Outer.super::m`, `int[]::new`, `array::clone`, the constructor of a local or inner class, a varargs method
+  that is not handed one array, a protected method of a class in another package, and a target that is an
+  intersection of types.
+- A lambda's hidden method takes the local variables it uses from around it, in order of first use, then its
+  own parameters. Variables with a constant value are not taken. A pattern variable counts where it is in
+  scope: inside the statement or `case` of its pattern, or after an `if` or `while` that tests the negated
+  pattern; flow rules beyond that are not rebuilt.
+- An anonymous class constructor takes the enclosing instance (unless the code is static), the instance written
+  before `.new` if there is one, the parameters of the superclass constructor it calls, and the local variables
+  the class uses. A local class constructor takes the enclosing instance, its written parameters and the
+  variables it uses. A class that extends a local class takes that class's variables first, last one first.
+
+Measured against the class files of the seven code bases (same / missed / extra, by kind, line, name and
+parameter types). Listing the names takes 11.1 s wall, 35.7 s CPU and 0.6 GB for Elasticsearch `server`:
+
+| Code base | Anonymous classes | Local classes | Lambdas | Method references | Serializable lambdas |
+| --- | --- | --- | --- | --- | --- |
+| Elasticsearch `server` | 1,867 / 0 / 0 | 18 / 0 / 0 | 7,501 / 94 / 89 | 248 / 0 / 1 | 0 |
+| Nacos | 475 / 0 / 0 | 0 | 704 / 3 / 3 | 2 / 0 / 0 | 0 |
+| javaparser-core | 34 / 0 / 0 | 1 / 0 / 0 | 920 / 0 / 0 | 1 / 0 / 0 | 0 |
+| Guava | 383 / 0 / 0 | 25 / 0 / 0 | 242 / 0 / 0 | 1 / 0 / 0 | 0 |
+| jackson-databind | 27 / 0 / 0 | 0 | 3 / 0 / 0 | 0 | 0 |
+| commons-lang | 17 / 0 / 0 | 0 | 286 / 0 / 0 | 11 / 0 / 0 | 36 / 0 / 0 |
+| MyBatis | 10 / 0 / 0 | 0 | 72 / 0 / 0 | 1 / 0 / 0 | 0 |
+
+12,885 names are the same. The 97 that differ:
+
+- A parameter type the engine cannot work out, 83 lambdas: the name and number are right and a type is listed
+  as `?`, as `Object` or as a wider type. Most are implicitly typed lambda parameters whose type comes from a
+  generic method.
+- A method reference on a value whose type is two types at once (`Stream.concat` of streams of two classes
+  that share a superclass and an interface), 14 in one file: the compiler turns such a reference into a
+  lambda, the engine does not see the second type, and the lambdas after it get a number that is too low.
+
+All 29 SpotBugs findings inside lambdas on the seven code bases name a method the engine produces.
+
+Not rebuilt, found on test code only: two implicitly typed lambdas handed to a generic method can be numbered
+in the opposite order when the type of the first depends on the second; an anonymous class written with `<>`
+whose argument holds another anonymous class skips a number; a lambda parameter typed with an anonymous class.

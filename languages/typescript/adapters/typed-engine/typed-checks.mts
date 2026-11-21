@@ -1,16 +1,18 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { findEngine } from '../../../../shared/engine/engine-binary.mts';
 import { runEngineSync } from '../../../../shared/engine/engine-run.mts';
-import { fieldOf } from '../../../../shared/values/readers.mts';
+import { pathInside, readTextIfExists } from '../../../../shared/filesystem.mts';
+import type { Environment } from '../../../../shared/processes/environment.mts';
+import { fieldOf, parseJson } from '../../../../shared/values/readers.mts';
 import { nativeCompilerPath } from './compiler-binary.mts';
 
 export type TypedChecksRequest = {
   readonly project: string | ((folder: string) => string);
   readonly checks: readonly string[];
   readonly inputs?: Readonly<Record<string, unknown>>;
-  readonly environment?: NodeJS.ProcessEnv;
+  readonly environment: Environment;
 };
 
 export type TypedChecksOutcome =
@@ -31,24 +33,33 @@ const TYPES_UNAVAILABLE = 3;
 const SWITCH = 'NITPICKER_TYPED_ENGINE';
 const TIME_LIMIT_MS = 20 * 60 * 1000;
 
+type Tools = { readonly engine: string; readonly compiler: string };
+
 function writtenReport(out: string): unknown {
+  const text = readTextIfExists(out);
   try {
-    return JSON.parse(readFileSync(out, 'utf8'));
-  } catch {
-    return undefined;
+    return text === '' ? undefined : parseJson(text);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return undefined;
+    }
+    throw error;
   }
 }
 
 function inputArguments(folder: string, inputs: Readonly<Record<string, unknown>>): string[] {
   return Object.entries(inputs).flatMap(([check, input]) => {
-    const file = path.join(folder, `${check}.input.json`);
+    const file = pathInside(folder, `${check}.input.json`);
+    if (file === undefined) {
+      throw new Error(`The check name ${check} is not a file name`);
+    }
     writeFileSync(file, JSON.stringify(input));
     return ['--input', `${check}=${file}`];
   });
 }
 
 function engineOutcome(
-  { engine, compiler }: { readonly engine: string; readonly compiler: string },
+  { engine, compiler }: Tools,
   { project, checks, inputs = {} }: TypedChecksRequest,
   folder: string,
 ): TypedChecksOutcome {
@@ -86,23 +97,31 @@ function engineOutcome(
   };
 }
 
+function toolsIn(environment: Environment): Tools | { readonly unavailable: string } {
+  const engine = findEngine(environment);
+  const compiler = engine === undefined ? undefined : nativeCompilerPath();
+  if (engine !== undefined && compiler !== undefined) {
+    return { engine, compiler };
+  }
+  const unavailable = engine === undefined ? 'no engine binary' : 'no TypeScript 7 compiler';
+  if (environment[SWITCH] === 'required') {
+    throw new Error(`${SWITCH}=required, but there is ${unavailable}`);
+  }
+  return { unavailable };
+}
+
 export function runTypedChecks(request: TypedChecksRequest): TypedChecksOutcome {
-  const environment = request.environment ?? process.env;
+  const { environment } = request;
   if (environment[SWITCH] === 'off') {
     return { unavailable: `${SWITCH}=off` };
   }
-  const engine = findEngine(environment);
-  const compiler = engine === undefined ? undefined : nativeCompilerPath();
-  if (engine === undefined || compiler === undefined) {
-    const unavailable = engine === undefined ? 'no engine binary' : 'no TypeScript 7 compiler';
-    if (environment[SWITCH] === 'required') {
-      throw new Error(`${SWITCH}=required, but there is ${unavailable}`);
-    }
-    return { unavailable };
+  const tools = toolsIn(environment);
+  if ('unavailable' in tools) {
+    return tools;
   }
   const folder = mkdtempSync(path.join(tmpdir(), 'nitpicker-typed-'));
   try {
-    const outcome = engineOutcome({ engine, compiler }, request, folder);
+    const outcome = engineOutcome(tools, request, folder);
     if (outcome.failed === true && environment[SWITCH] === 'required') {
       throw new Error(`${SWITCH}=required, but ${outcome.unavailable}`);
     }

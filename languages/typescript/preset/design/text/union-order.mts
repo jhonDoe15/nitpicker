@@ -1,21 +1,31 @@
 const OPENERS = '([{';
 const CLOSERS = ')]}';
-const QUOTES = '"\'';
+const QUOTED: Readonly<Record<string, RegExp>> = {
+  '"': /^"(?:\\[\s\S]?|[^"\\])*"?/u,
+  "'": /^'(?:\\[\s\S]?|[^'\\])*'?/u,
+};
 const ESCAPED_UNIT = /^\\u[0-9A-Fa-f]{4}/u;
 const FIRST_NOT_ASCII = 0x80;
 const HEX = 16;
+const UNIT_DIGITS = 4;
 const UNIT_LENGTH = 6;
 const CUTS = [' is ', ' extends ', ' in ', ' as ', '=>', ';', ',', '?', ':'];
+const TEMPLATE_QUOTE = '`';
+const SUBSTITUTION = `\${`;
 
-type Level = { readonly text: string; readonly end: number };
-
-function quotedEnd(text: string, start: number): number {
-  let index = start + 1;
-  while (index < text.length && text[index] !== text[start]) {
-    index += text[index] === '\\' ? 2 : 1;
-  }
-  return Math.min(index + 1, text.length);
-}
+type LevelFrame = {
+  readonly kind: 'level';
+  readonly open: string;
+  readonly sorted: boolean;
+  readonly entries: string[];
+  done: string;
+  members: string[];
+  member: string;
+};
+type TemplateFrame = { readonly kind: 'template'; text: string; units: string };
+type Frame = LevelFrame | TemplateFrame;
+type Reading = { readonly frames: Frame[]; output: string; next: number };
+type Place = { readonly text: string; readonly index: number };
 
 function withoutOuterSpaces(member: string): string {
   return member.replaceAll(/^ +| +$/gu, '');
@@ -33,97 +43,146 @@ function sortedEntries(entries: readonly string[], sorted: boolean): string {
 function withLoneSurrogatesEscaped(text: string): string {
   return text.replaceAll(
     /\p{Surrogate}/gu,
-    (unit) => `\\u${unit.charCodeAt(0).toString(HEX).toUpperCase().padStart(4, '0')}`,
+    (unit) => `\\u${unit.charCodeAt(0).toString(HEX).toUpperCase().padStart(UNIT_DIGITS, '0')}`,
   );
 }
 
-function escapedUnit(text: string, index: number): string | undefined {
+function escapedUnit({ text, index }: Place): string | undefined {
   const [written] = ESCAPED_UNIT.exec(text.slice(index, index + UNIT_LENGTH)) ?? [];
   const unit = written === undefined ? 0 : Number.parseInt(written.slice(2), HEX);
   return unit >= FIRST_NOT_ASCII ? String.fromCharCode(unit) : undefined;
 }
 
-function templateFrom(text: string, start: number): Level {
-  let result = '`';
-  let units = '';
-  let index = start + 1;
-  while (index < text.length) {
-    const unit = escapedUnit(text, index);
-    const char = text.charAt(index);
-    if (unit !== undefined) {
-      units += unit;
-      index += UNIT_LENGTH;
-    } else {
-      result += withLoneSurrogatesEscaped(units);
-      units = '';
-      if (char === '`') {
-        return { text: result + char, end: index + 1 };
-      }
-      if (char === '\\') {
-        result += text.slice(index, index + 2);
-        index += 2;
-      } else if (text.startsWith('${', index)) {
-        const inner = levelFrom(text, index + 2);
-        result += `\${${inner.text}${text.charAt(inner.end)}`;
-        index = inner.end + 1;
-      } else {
-        result += char;
-        index += 1;
-      }
-    }
-  }
-  return { text: result + withLoneSurrogatesEscaped(units), end: text.length };
+function levelFrame(open: string): LevelFrame {
+  return {
+    kind: 'level',
+    open,
+    sorted: open === '{',
+    entries: [],
+    done: '',
+    members: [],
+    member: '',
+  };
 }
 
-function levelFrom(text: string, start: number, sorted = false): Level {
-  const entries: string[] = [];
-  let done = '';
-  let members: string[] = [];
-  let member = '';
-  let index = start;
-  while (index < text.length && !CLOSERS.includes(text.charAt(index))) {
-    const char = text.charAt(index);
-    const cut = CUTS.find((candidate) => text.startsWith(candidate, index));
-    if (char === '`') {
-      const written = templateFrom(text, index);
-      member += written.text;
-      index = written.end;
-    } else if (QUOTES.includes(char)) {
-      const end = quotedEnd(text, index);
-      member += withLoneSurrogatesEscaped(text.slice(index, end));
-      index = end;
-    } else if (OPENERS.includes(char)) {
-      const inner = levelFrom(text, index + 1, char === '{');
-      member += char + inner.text + text.charAt(inner.end);
-      index = inner.end + 1;
-    } else if (cut !== undefined) {
-      done += sortedMembers([...members, member]) + (cut === ';' ? '' : cut);
-      if (cut === ';') {
-        entries.push(done);
-        done = '';
-      }
-      members = [];
-      member = '';
-      index += cut.length;
-    } else {
-      if (char === '|') {
-        members.push(member);
-      }
-      member = char === '|' ? '' : member + char;
-      index += 1;
-    }
+function pieceOf(frame: Frame, closer: string): string {
+  if (frame.kind === 'template') {
+    return frame.text + withLoneSurrogatesEscaped(frame.units) + closer;
   }
-  const rest = done + sortedMembers([...members, member]);
-  return { text: sortedEntries(entries, sorted) + rest, end: index };
+  const rest = frame.done + sortedMembers([...frame.members, frame.member]);
+  return frame.open + sortedEntries(frame.entries, frame.sorted) + rest + closer;
+}
+
+function appendTo(frame: Frame, piece: string): void {
+  if (frame.kind === 'level') {
+    frame.member += piece;
+  } else {
+    frame.text += piece;
+  }
+}
+
+function close(reading: Reading, closer: string): void {
+  const frame = reading.frames.pop();
+  const parent = reading.frames.at(-1);
+  if (frame === undefined) {
+    return;
+  }
+  if (parent === undefined) {
+    reading.output += pieceOf(frame, closer);
+  } else {
+    appendTo(parent, pieceOf(frame, closer));
+  }
+}
+
+function endMember(frame: LevelFrame, cut: string): void {
+  const written = frame.done + sortedMembers([...frame.members, frame.member]);
+  if (cut === ';') {
+    frame.entries.push(written);
+  }
+  frame.done = cut === ';' ? '' : written + cut;
+  frame.members = [];
+  frame.member = '';
+}
+
+function plainStep(frame: LevelFrame, { text, index }: Place): number {
+  const cut = CUTS.find((candidate) => text.startsWith(candidate, index));
+  const char = text.charAt(index);
+  if (cut !== undefined) {
+    endMember(frame, cut);
+    return index + cut.length;
+  }
+  if (char === '|') {
+    frame.members.push(frame.member);
+  }
+  frame.member = char === '|' ? '' : frame.member + char;
+  return index + 1;
+}
+
+function levelStep(reading: Reading, frame: LevelFrame, place: Place): number {
+  const { text, index } = place;
+  const char = text.charAt(index);
+  const [quoted] = QUOTED[char]?.exec(text.slice(index)) ?? [];
+  if (CLOSERS.includes(char)) {
+    close(reading, char);
+    return index + 1;
+  }
+  if (char === TEMPLATE_QUOTE || OPENERS.includes(char)) {
+    reading.frames.push(
+      char === TEMPLATE_QUOTE ? { kind: 'template', text: char, units: '' } : levelFrame(char),
+    );
+    return index + 1;
+  }
+  if (quoted !== undefined) {
+    frame.member += withLoneSurrogatesEscaped(quoted);
+    return index + quoted.length;
+  }
+  return plainStep(frame, place);
+}
+
+function writtenStep(reading: Reading, frame: TemplateFrame, { text, index }: Place): number {
+  const char = text.charAt(index);
+  if (char === TEMPLATE_QUOTE) {
+    close(reading, char);
+    return index + 1;
+  }
+  if (text.startsWith(SUBSTITUTION, index)) {
+    reading.frames.push(levelFrame(SUBSTITUTION));
+    return index + SUBSTITUTION.length;
+  }
+  frame.text += char === '\\' ? text.slice(index, index + 2) : char;
+  return index + (char === '\\' ? 2 : 1);
+}
+
+function templateStep(reading: Reading, frame: TemplateFrame, place: Place): number {
+  const unit = escapedUnit(place);
+  if (unit !== undefined) {
+    frame.units += unit;
+    return place.index + UNIT_LENGTH;
+  }
+  frame.text += withLoneSurrogatesEscaped(frame.units);
+  frame.units = '';
+  return writtenStep(reading, frame, place);
+}
+
+function step(reading: Reading, place: Place): number {
+  const top = reading.frames.at(-1) ?? levelFrame('');
+  if (reading.frames.length === 0) {
+    reading.frames.push(top);
+  }
+  return top.kind === 'level' ? levelStep(reading, top, place) : templateStep(reading, top, place);
 }
 
 export function withSortedUnions(text: string): string {
-  let result = '';
-  let index = 0;
-  while (index <= text.length) {
-    const level = levelFrom(text, index);
-    result += level.text + text.charAt(level.end);
-    index = level.end + 1;
+  const reading: Reading = { frames: [], output: '', next: 0 };
+  for (const index of Array.from({ length: text.length }).keys()) {
+    if (index >= reading.next) {
+      reading.next = step(reading, { text, index });
+    }
   }
-  return result;
+  let piece = '';
+  for (const frame of reading.frames.toReversed()) {
+    appendTo(frame, piece);
+    piece = pieceOf(frame, '');
+  }
+  return reading.output + piece;
 }

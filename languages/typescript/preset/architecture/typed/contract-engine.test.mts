@@ -20,7 +20,7 @@ it('leaves the check to the compiler in this process when the engine is switched
 it('leaves the check to the compiler in this process when the project cannot be read', () => {
   const missing = path.join(path.dirname(PROJECT), 'missing', 'tsconfig.json');
 
-  expect(engineUnusedMethods(missing)).toBeUndefined();
+  expect(engineUnusedMethods(missing, process.env)).toBeUndefined();
 });
 
 it.runIf(hasEngine)('reports through the engine what the compiler in this process reports', () => {
@@ -29,7 +29,13 @@ it.runIf(hasEngine)('reports through the engine what the compiler in this proces
   expect(viaEngine?.findings).toEqual(
     analyzePublicContractUsage(PROJECT, { environment: NODE_ONLY }),
   );
-  expect(viaEngine?.findings).not.toHaveLength(0);
+  expect(viaEngine?.findings.map(({ contract, method }) => `${contract}.${method}`)).toEqual([
+    'Clock.sleep',
+    'Store.__reset',
+    'Store.onChange',
+    'Store.remove',
+    'Ticker.stop',
+  ]);
   expect(
     analyzePublicContractUsage(PROJECT, {
       displayRoot: path.dirname(PROJECT),

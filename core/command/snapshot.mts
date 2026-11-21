@@ -67,7 +67,7 @@ type SnapshotCli = {
   readonly sharedHeadWorktree?: SharedWorktree | undefined;
 };
 
-type SnapshotReport = QualitySnapshot & { text?: unknown };
+type SnapshotReport = QualitySnapshot;
 
 type Capture = (repositoryRoot: string, headSha: string) => unknown;
 
@@ -176,7 +176,7 @@ function writeAndFinish(
     readonly resume: unknown;
   },
 ): void {
-  report.text = writeSnapshotReports(place.outputRoot, report, {
+  writeSnapshotReports(place.outputRoot, report, {
     projectPath: place.relativeProjectPath,
     repositoryRoot: place.repositoryRoot,
   });

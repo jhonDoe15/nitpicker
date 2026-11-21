@@ -72,7 +72,8 @@ export async function lintWithOxlint({
 }): Promise<LintResult[]> {
   const plan = planFor(options, environment);
   const files = plan.groups.flatMap((group) => group.files);
-  const stage = trackTemporaryPath(createStage(options.projectRoot, projectConfigPath));
+  const { root, stage } = createStage(options.projectRoot, projectConfigPath);
+  trackTemporaryPath(root);
   try {
     if (projectConfigPath !== undefined) {
       hideNestedTypeScriptConfigs(stage, options.projectRoot, files);
@@ -102,8 +103,8 @@ export async function lintWithOxlint({
       filePath: path.join(options.projectRoot, result.filePath),
     }));
   } finally {
-    rmSync(stage, { recursive: true, force: true });
-    untrackTemporaryPath(stage);
+    rmSync(root, { recursive: true, force: true });
+    untrackTemporaryPath(root);
   }
 }
 

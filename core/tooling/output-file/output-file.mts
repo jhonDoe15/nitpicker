@@ -9,6 +9,7 @@ import { closeSync, fstatSync, mkdtempSync, openSync, readSync, rmSync } from 'n
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { getSystemErrorMap } from 'node:util';
+import { parseJsonDescriptor } from '../../../shared/report-output/pieces/json-lines.mts';
 import { trackTemporaryPath, untrackTemporaryPath } from '../temporary-files.mts';
 
 const REMOVE_OPTIONS = { recursive: true, force: true, maxRetries: 3, retryDelay: 100 };
@@ -16,6 +17,13 @@ const DEFAULT_MAX_BUFFER = 1024 * 1024;
 const ENOBUFS_ERRNO = [...getSystemErrorMap()].find(([, [name]]) => name === 'ENOBUFS')?.[0];
 
 type ReadEncoding = SpawnSyncOptions['encoding'];
+type Parsed = { readonly value: unknown } | { readonly error: unknown };
+type CaptureOptions = {
+  readonly file: OutputFile;
+  readonly encoding: ReadEncoding;
+  readonly maxBuffer: number;
+  readonly parse?: boolean;
+};
 type OutputFile = {
   readonly directory: string;
   readonly descriptor: number;
@@ -94,13 +102,46 @@ function capturedStdout(
     args,
     result,
   }: { command: string; args: readonly string[]; result: SpawnSyncReturns<string | Buffer> },
-  { file, encoding, maxBuffer }: { file: OutputFile; encoding: ReadEncoding; maxBuffer: number },
-): { stdout: string | Buffer; error?: Error } {
+  { file, encoding, maxBuffer, parse }: CaptureOptions,
+): { stdout: string | Buffer; error?: Error; parsed?: Parsed } {
   if (file.size() > maxBuffer) {
     const stdout = file.read(encoding, maxBuffer);
     return { stdout, error: result.error ?? new OutputLimitError(command, args) };
   }
+  if (parse && result.status === 0 && result.error === undefined) {
+    return { stdout: '', parsed: parsedOutput(file) };
+  }
   return { stdout: file.read(encoding) };
+}
+
+function parsedOutput(file: OutputFile): Parsed {
+  try {
+    return { value: parseJsonDescriptor(file.descriptor, () => String(file.read('utf8'))) };
+  } catch (error) {
+    return { error };
+  }
+}
+
+export function spawnSyncParsingOutput(
+  command: string,
+  args: readonly string[],
+  options: SpawnSyncOptionsWithStringEncoding,
+): SpawnSyncReturns<string> & { readonly parsed?: Parsed } {
+  const file = openOutputFile();
+  try {
+    const { maxBuffer = DEFAULT_MAX_BUFFER, encoding, stdio } = options;
+    const result = spawnSync(command, args, {
+      ...options,
+      stdio: stdioWith(stdio, file.descriptor),
+    });
+    const captured = capturedStdout(
+      { command, args, result },
+      { file, encoding, maxBuffer, parse: true },
+    );
+    return { ...result, ...captured, stdout: String(captured.stdout) };
+  } finally {
+    file.remove();
+  }
 }
 
 export function spawnSyncWithOutputFile(

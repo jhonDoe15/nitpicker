@@ -99,7 +99,8 @@ function callFact(scope: Scope, node: CallNode | TypeScript.PropertyAccessExpres
 
 function disposeSite(scope: Scope, declaration: TypeScript.VariableDeclaration): Site | undefined {
   const type = scope.checker.getTypeAtLocation(declaration.name);
-  const awaited = (declaration.parent.flags & ts.NodeFlags.AwaitUsing) === ts.NodeFlags.AwaitUsing;
+  const awaitUsing: number = ts.NodeFlags.AwaitUsing;
+  const awaited = (declaration.parent.flags & awaitUsing) === awaitUsing;
   const hooks = awaited ? ['__@asyncDispose@', '__@dispose@'] : ['__@dispose@', '__@asyncDispose@'];
   const properties = scope.checker.getPropertiesOfType(type);
   const property = hooks

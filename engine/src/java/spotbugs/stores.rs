@@ -1,10 +1,7 @@
-//! What a class stores in its fields: whether every stored value is one nobody can change, and whether the values
-//! are all of one type that says more than the declared type of the field.
+//! Whether a value stored in a field is one nobody can change.
 use super::Context;
 use crate::engine::source::{ancestor, children, named_children, walk};
 use crate::java::types::expr::Binding;
-use std::collections::{HashMap, HashSet};
-use std::rc::Rc;
 use tree_sitter::Node;
 
 const BODIES: &[&str] = &["method_declaration", "constructor_declaration", "compact_constructor_declaration", "lambda_expression"];
@@ -175,76 +172,29 @@ fn settled(context: &Context, value: Node) -> bool {
     }
 }
 
-/// Whether a value stored in the field `target` is one nobody can change, `None` when the store says nothing.
-/// A value read from another field is judged by that field. The field read back into itself says nothing when
-/// stored directly and counts against the field when it went through a local variable first.
-fn stored_fixed(context: &Context, value: Node, target: &(String, String)) -> Option<bool> {
+/// What a value stored in a field says about the field.
+pub enum Held {
+    Nothing,
+    /// One nobody can change, or not.
+    Fixed(bool),
+    /// Read from another field: judged by what that field was given.
+    Loads((String, String)),
+}
+
+/// What a value stored in the field `target` says. A value read from another field is judged by that field. The
+/// field read back into itself says nothing when stored directly and counts against the field when it went
+/// through a local variable first.
+pub fn stored_fixed(context: &Context, value: Node, target: &(String, String)) -> Held {
     let value = crate::java::types::expr::unwrap(value);
     let held = (value.kind() == "identifier").then(|| local_values(context, value)).flatten();
     let (source, direct) = match held.as_deref() {
         Some([only]) => (crate::java::types::expr::unwrap(*only), false),
-        Some(_) => return Some(immutable_value(context, value)),
+        Some(_) => return Held::Fixed(immutable_value(context, value)),
         None => (value, true),
     };
     match super::fields::field_key(context, source) {
-        Some(key) if key == *target => (!direct).then_some(false),
-        Some(_) => Some(super::fields::loaded_fixed(context, source)),
-        None => Some(immutable_value(context, value)),
+        Some(key) if key == *target => if direct { Held::Nothing } else { Held::Fixed(false) },
+        Some(key) => Held::Loads(key),
+        None => Held::Fixed(immutable_value(context, value)),
     }
-}
-
-/// The fixed fields of a class of this file, worked out once.
-pub fn fixed_of(context: &Context, own: &str) -> Rc<HashSet<String>> {
-    if let Some(known) = context.fixed.borrow().get(own) {
-        return known.clone();
-    }
-    let found = Rc::new(context.classes.get(own).map(|class| fixed_fields(context, *class, own)).unwrap_or_default());
-    context.fixed.borrow_mut().insert(own.to_string(), found.clone());
-    found
-}
-
-/// A value another class stores in the field. A call counts against the field only when SpotBugs has already
-/// been through the class of the called method by the time it reads the store.
-fn spoils(context: &Context, value: Node, by: &str, target: &(String, String)) -> bool {
-    if stored_fixed(context, value, target) != Some(false) {
-        return false;
-    }
-    let value = crate::java::types::expr::unwrap(value);
-    if value.kind() != "method_invocation" {
-        return true;
-    }
-    let index = context.resolver.index;
-    context.resolver.resolve_call(value).is_some_and(|called| index.from_source(&called.declaring) && super::order::before(context, &called.declaring, by))
-}
-
-/// Fields of the class that are written at least once and only ever with values nobody can change. Stores of
-/// another class count when SpotBugs comes to that class first.
-fn fixed_fields(context: &Context, class: Node, own: &str) -> HashSet<String> {
-    let mut verdicts: HashMap<String, bool> = HashMap::new();
-    let mut settle = |name: &str, fine: bool| {
-        verdicts.entry(name.to_string()).and_modify(|all| *all &= fine).or_insert(fine);
-    };
-    let Some(body) = class.child_by_field_name("body") else { return HashSet::new() };
-    let compact = children(body).into_iter().find(|member| member.kind() == "compact_constructor_declaration");
-    if let Some(end) = compact.and_then(|compact| compact.child_by_field_name("body")).and_then(|block| {
-        let components = class.child_by_field_name("parameters").map(named_children).unwrap_or_default();
-        super::flow::trace(context, &components, block).end
-    }) {
-        for (name, item) in &end {
-            settle(name, matches!(item, super::flow::Item::Fixed));
-        }
-    }
-    let stores = super::fields::stored(context);
-    for (key, values) in stores.iter().filter(|((declaring, _), _)| declaring == own) {
-        for store in values {
-            if store.by == key.0 {
-                if let Some(fine) = stored_fixed(context, store.value, key) {
-                    settle(&key.1, fine);
-                }
-            } else if super::order::before(context, &store.by, own) {
-                settle(&key.1, !spoils(context, store.value, &store.by, key));
-            }
-        }
-    }
-    verdicts.into_iter().filter(|(_, fine)| *fine).map(|(name, _)| name).collect()
 }

@@ -155,7 +155,6 @@ fn report(context: &Context, unit: &Unit, flow: &Flow, label: &str) {
 fn class<'a>(shared: &Shared<'_, 'a>, class: Node<'a>, own: &str) {
     let context = shared.context;
     let labels = Labels { context, own, class };
-    let Some(inside) = body_of(class) else { return };
     for member in members(class) {
         for (body, parameters, label) in labels.units(member) {
             let unit = Unit::build(shared, own, body, parameters);
@@ -163,23 +162,6 @@ fn class<'a>(shared: &Shared<'_, 'a>, class: Node<'a>, own: &str) {
             let mut flow = Flow::new(&unit, &starts, &ends);
             flow.run();
             report(context, &unit, &flow, &label);
-        }
-        // Classes without a name written inside this one's members.
-        let mut unnamed = Vec::new();
-        walk(member, |node| {
-            if matches!(node.kind(), "object_creation_expression" | "enum_constant") && children(node).iter().any(|part| part.kind() == "class_body") {
-                unnamed.push(node);
-            }
-        });
-        for node in unnamed {
-            let mut holder = parent(node);
-            while let Some(at) = holder.filter(|at| !at.kind().ends_with("_body")) {
-                holder = parent(at);
-            }
-            let name = context.resolver.scope.names.get(&node.id());
-            if let Some(name) = name.filter(|_| holder == Some(inside)) {
-                self::class(shared, node, name);
-            }
         }
     }
 }

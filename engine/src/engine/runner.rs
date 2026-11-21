@@ -130,6 +130,9 @@ pub fn run(files: &[PathBuf], language: &dyn Language, only: Option<&[String]>, 
         result.parse_errors += usize::from(broken);
         token_files.push((path, facts.tokens));
     }
+    for rule in &rules {
+        rule.finish(project.as_ref(), &mut result.findings);
+    }
     result.findings.sort();
     if min_tokens > 0 {
         result.duplicates = duplicates(&token_files, min_tokens);

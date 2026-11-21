@@ -69,7 +69,6 @@ export type DiffReport = {
   readonly changedMetrics: ReportEntry[];
   readonly toolErrors: ReportEntry[];
   readonly notes: ReportEntry[];
-  text?: unknown;
 };
 
 type BuildContext = Omit<ReportContext, 'additionalToolErrors'> & {

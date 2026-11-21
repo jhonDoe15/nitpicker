@@ -117,7 +117,7 @@ function writeAggregate(
   { outputRoot, liveProjectRoot }: ReportTarget,
 ): AggregateReport {
   const location = repositoryLocationOf(liveProjectRoot);
-  report.text = writeDiffReports(outputRoot, report, location);
+  writeDiffReports(outputRoot, report, location);
   return report;
 }
 

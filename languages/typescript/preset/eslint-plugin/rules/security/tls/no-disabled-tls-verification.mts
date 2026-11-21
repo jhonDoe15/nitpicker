@@ -64,6 +64,9 @@ function returnsNothing(
 }
 
 function disablesNamed(context: Context, name: string, value: TSESTree.Node): boolean {
+  if (name !== ENV_NAME && !TRUE_DISABLES.has(name) && !FALSE_DISABLES.has(name)) {
+    return false;
+  }
   const leaves = leafValues(context, value);
   if (name === 'checkServerIdentity') {
     return leaves.some((leaf) => isFunctionNode(leaf) && returnsNothing(leaf));

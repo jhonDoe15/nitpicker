@@ -305,3 +305,88 @@ describe('layout-aware tsconfig', () => {
     }
   });
 });
+
+describe('layout-aware tsconfig in a workspace package without its own tsconfig', () => {
+  const shipped = readFileSync(path.join(defaults, 'tsconfig.quality.json'), 'utf8');
+  const generatedFile = (root: Readonly<Record<string, unknown>>, repository = true) => {
+    const workspace = temporaryProject({
+      'tsconfig.json': JSON.stringify(root),
+      'packages/app/package.json': '{}',
+      ...(repository ? { '.git/HEAD': 'ref: refs/heads/main\n' } : {}),
+    });
+    const target = path.join(workspace, 'packages/app/.nitpicker-diff-tsconfig.json');
+    writeFileSync(
+      target,
+      layoutTransformFor('tsconfig.quality.json', resolveLayout())(shipped, target),
+    );
+    return target;
+  };
+  const generated = (root: Readonly<Record<string, unknown>>, repository = true) =>
+    readFileSync(generatedFile(root, repository), 'utf8');
+
+  it('extends the workspace tsconfig that includes the package', () => {
+    const layered = parseTsconfig(
+      generated({ include: ['packages/*/src'], compilerOptions: { jsx: 'react-jsx' } }),
+    );
+
+    expect(layered.extends).toBe('../../tsconfig.json');
+    expect(layered.include).toEqual(parseTsconfig(shipped).include);
+    expect(layered.compilerOptions?.['strict']).toBe(true);
+  });
+
+  it('checks the package with the options of the workspace tsconfig', () => {
+    const target = generatedFile({
+      include: ['packages'],
+      compilerOptions: { jsx: 'react-jsx', lib: ['DOM', 'ES2024'] },
+    });
+    const parsed = ts.getParsedCommandLineOfConfigFile(
+      target,
+      {},
+      { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => undefined },
+    );
+
+    expect(parsed?.options.jsx).toBe(ts.JsxEmit.ReactJSX);
+    expect(parsed?.options.lib).toEqual(['lib.dom.d.ts', 'lib.es2024.d.ts']);
+  });
+
+  it('keeps the shipped tsconfig when the workspace tsconfig does not include the package', () => {
+    const layered = parseTsconfig(
+      generated({ include: ['scripts/**/*'], compilerOptions: { jsx: 'react-jsx' } }),
+    );
+
+    expect(layered.extends).toBeUndefined();
+  });
+
+  it.each([['packages/app'], ['**/app/**'], ['packages/**']])(
+    'keeps the shipped tsconfig when the workspace tsconfig excludes the package with %s',
+    (exclude) => {
+      const layered = parseTsconfig(generated({ include: ['packages/*'], exclude: [exclude] }));
+
+      expect(layered.extends).toBeUndefined();
+    },
+  );
+
+  it('looks for a workspace tsconfig only inside a repository', () => {
+    const layered = parseTsconfig(generated({ include: ['packages/*/src'] }, false));
+
+    expect(layered.extends).toBeUndefined();
+  });
+
+  it('unsets the emit layout options the workspace tsconfig sets for the whole workspace', () => {
+    const layered = parseTsconfig(
+      generated({ include: ['packages'], compilerOptions: { composite: true, rootDir: '.' } }),
+    );
+
+    expect(layered.compilerOptions).toMatchObject({
+      composite: false,
+      rootDir: null,
+      declarationDir: null,
+    });
+  });
+
+  it('drops the file list of the workspace tsconfig', () => {
+    const layered = parseJson(generated({ files: ['setup.ts'], include: ['packages'] }));
+
+    expect(layered).toMatchObject({ extends: '../../tsconfig.json', files: [] });
+  });
+});

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { writeDiffReports } from '../reporters.mts';
 import { renderConsoleSummary } from '../summary.mts';
@@ -7,7 +9,6 @@ import { isStrictRule } from '../../../../languages/typescript/preset/strict-rul
 import { writeSnapshotReports } from '../../../snapshot/reporters.mts';
 import { runQualitySnapshot } from '../../../snapshot/run-snapshot.mts';
 import type { Finding } from '../../../../shared/values/findings.mts';
-import { textOf } from '../../../../shared/values/readers.mts';
 import { useGitFixtures } from '../../git/test-support/git-repository.mts';
 
 const MORE_THAN_A_CALL_TAKES = 200_000;
@@ -38,7 +39,9 @@ describe('runs with more findings than one function call can take as arguments',
     });
     const large = report({ newFindings: manyFindings('new'), unchangedFindings: findings });
 
-    const text = textOf(writeDiffReports(outputRoot(), large));
+    const root = outputRoot();
+    writeDiffReports(root, large);
+    const text = readFileSync(path.join(root, 'report.txt'), 'utf8');
     const summary = renderConsoleSummary(large, { color: false, details: true });
 
     expect(compared.unchangedFindings).toHaveLength(MORE_THAN_A_CALL_TAKES);
@@ -62,7 +65,9 @@ describe('runs with more findings than one function call can take as arguments',
       runTasks: () => ({ reports: [['house-rules', { findings }]], errors: [], timings: [] }),
     });
 
-    const text = textOf(writeSnapshotReports(outputRoot(), snapshot));
+    const root = outputRoot();
+    writeSnapshotReports(root, snapshot);
+    const text = readFileSync(path.join(root, 'report.txt'), 'utf8');
 
     expect(snapshot.toolErrors).toEqual([]);
     expect(snapshot.findings).toHaveLength(MORE_THAN_A_CALL_TAKES);

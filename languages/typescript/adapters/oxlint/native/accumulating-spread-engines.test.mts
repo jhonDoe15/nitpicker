@@ -356,7 +356,7 @@ describe('nitpicker/no-accumulating-spread on both lint engines', () => {
       return hashOf();
     });
 
-    expect(version.split(';').at(-1)).toBe('oxlint@1.87.0,oxlint-tsgolint@7.0.2004');
+    expect(version.split(';').at(-1)).toBe('oxlint@1.88.0,oxlint-tsgolint@7.0.2004');
     expect(ruleFindings(cache.read(before, undefined)?.findings ?? [])).toEqual(
       ruleFindings(parseAnalyzerReport({ findings: oxlintFindings }, 'eslint-lint').findings),
     );

@@ -209,11 +209,17 @@ impl TypeIndex {
         self.get(class)?.record_components.clone()
     }
 
+    /// A field the class declares or inherits. A field without a visibility modifier is only inherited inside its package.
     pub fn field(&self, class: &str, name: &str) -> Option<(&ClassInfo, &Field)> {
+        let package = self.get(class).map(|own| own.package.as_str());
+        let inherited = |info: &ClassInfo, field: &Field| {
+            let open = info.is_interface || field.flags & (super::model::flag::PUBLIC | super::model::flag::PROTECTED) != 0;
+            !field.is_private && (open || package.is_none_or(|package| package == info.package))
+        };
         self.lineage(class)
             .iter()
             .filter_map(|ancestor| self.get(ancestor))
-            .find_map(|info| info.fields.iter().find(|field| field.name == name && (!field.is_private || info.name == class)).map(|field| (info, field)))
+            .find_map(|info| info.fields.iter().find(|field| field.name == name && (info.name == class || inherited(info, field))).map(|field| (info, field)))
     }
 
     /// Whether a field read through that class is a compile-time constant. PMD takes more for a constant when the
