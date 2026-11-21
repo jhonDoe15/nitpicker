@@ -54,7 +54,6 @@ const dependencyCruiser = path.join(
   'node_modules/dependency-cruiser/bin/dependency-cruise.mjs',
 );
 const config = checkoutModulePath(path.join(import.meta.dirname, 'dependency-cruiser.config.mjs'));
-export { EXCLUDED_PATH_PATTERN };
 const excludedPath = new RegExp(EXCLUDED_PATH_PATTERN);
 export const ARCHITECTURE_CONFIG =
   'languages/typescript/preset/defaults/dependency-cruiser.config.mjs';

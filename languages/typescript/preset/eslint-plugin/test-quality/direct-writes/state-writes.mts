@@ -4,7 +4,7 @@ import { memberKeyOf } from '../../rules/typed/syntax-views.mts';
 
 export type StateCall = { readonly key: string; readonly writes: boolean };
 
-export const STORAGE_KEYS = new Set(['localStorage', 'sessionStorage']);
+export const STORAGE_KEYS: ReadonlySet<string> = new Set(['localStorage', 'sessionStorage']);
 export const COOKIE_KEY = 'document.cookie';
 export const DIRECTORY_KEY = 'process.cwd';
 
@@ -12,7 +12,7 @@ const GLOBAL_HOLDERS = new Set(['globalThis', 'global', 'window', 'self']);
 const STORAGE_WRITES = new Set(['setItem']);
 const STORAGE_RESTORES = new Set(['clear', 'removeItem']);
 
-function isUnshadowed(sourceCode: SourceCode, identifier: TSESTree.Identifier): boolean {
+export function isUnshadowed(sourceCode: SourceCode, identifier: TSESTree.Identifier): boolean {
   return (variableNamed(sourceCode, identifier)?.defs.length ?? 0) === 0;
 }
 
@@ -75,11 +75,13 @@ export function savedValueKey(
   }
   const definition = variableNamed(sourceCode, value)?.defs[0];
   const init =
-    definition?.node.type === AST_NODE_TYPES.VariableDeclarator ? definition.node.init : undefined;
-  return init === undefined || init === null ? undefined : keyOf(init);
+    definition?.node.type === AST_NODE_TYPES.VariableDeclarator
+      ? (definition.node.init ?? undefined)
+      : undefined;
+  return init === undefined ? undefined : keyOf(init);
 }
 
-export const PAGE_CALLBACKS = new Set([
+export const PAGE_CALLBACKS: ReadonlySet<string> = new Set([
   'evaluate',
   'execute',
   'executeAsync',
@@ -92,7 +94,6 @@ export const PAGE_CALLBACKS = new Set([
   'exposeFunction',
 ]);
 const EMPTY_MATCHERS = new Set(['toBeNull', 'toBeUndefined', 'toBeFalsy']);
-const EMPTY_VALUES = new Set<unknown>([0, null]);
 const VALUE_MATCHERS = new Set(['toBe', 'toEqual', 'toStrictEqual', 'toHaveLength']);
 
 export function runsInPage(ancestors: readonly TSESTree.Node[]): boolean {
@@ -104,14 +105,15 @@ export function runsInPage(ancestors: readonly TSESTree.Node[]): boolean {
   );
 }
 
+function readTarget(node: TSESTree.Node | undefined): TSESTree.Node | undefined {
+  if (node?.type === AST_NODE_TYPES.CallExpression) {
+    return node.callee.type === AST_NODE_TYPES.MemberExpression ? node.callee.object : undefined;
+  }
+  return node?.type === AST_NODE_TYPES.MemberExpression ? node.object : undefined;
+}
+
 function storageRead(sourceCode: SourceCode, node: TSESTree.Node | undefined): string | undefined {
-  const target =
-    node?.type === AST_NODE_TYPES.CallExpression &&
-    node.callee.type === AST_NODE_TYPES.MemberExpression
-      ? node.callee.object
-      : node?.type === AST_NODE_TYPES.MemberExpression
-        ? node.object
-        : undefined;
+  const target = readTarget(node);
   const owner = target === undefined ? undefined : globalName(sourceCode, target);
   return owner !== undefined && STORAGE_KEYS.has(owner) ? owner : undefined;
 }
@@ -124,7 +126,7 @@ function isEmptyMatch(call: TSESTree.CallExpression, matcher: string): boolean {
   return (
     VALUE_MATCHERS.has(matcher) &&
     value?.type === AST_NODE_TYPES.Literal &&
-    EMPTY_VALUES.has(value.value)
+    (value.value === 0 || value.value === null)
   );
 }
 

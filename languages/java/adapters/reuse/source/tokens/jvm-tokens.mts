@@ -26,6 +26,8 @@ const NON_SPACE = /\S/gu;
 const TEMPLATE_NAME = /\$\{([^}]*)\}|\$([\p{L}_][\p{L}\p{N}_]*)/gu;
 const NAME = /[\p{L}_$][\p{L}\p{N}_$]*/gu;
 const QUOTED = /"(?:\\.|[^"\\])*"/gu;
+const OPENERS = new Set(['(', '{', '[']);
+const CLOSERS = new Set([')', '}', ']']);
 
 function matchAt(pattern: RegExp, source: string, index: number): string | undefined {
   pattern.lastIndex = index;
@@ -117,4 +119,24 @@ export function tokenizeJvm(
     positions.push(end);
   }
   return tokens;
+}
+
+export function bracketLayout(tokens: readonly Token[]): {
+  readonly close: ReadonlyMap<number, number>;
+  readonly depth: readonly number[];
+} {
+  const stack: number[] = [];
+  const close = new Map<number, number>();
+  const depth: number[] = [];
+  for (const [at, token] of tokens.entries()) {
+    const open = CLOSERS.has(token.text) ? stack.pop() : undefined;
+    if (open !== undefined) {
+      close.set(open, at);
+    }
+    depth.push(stack.length);
+    if (OPENERS.has(token.text)) {
+      stack.push(at);
+    }
+  }
+  return { close, depth };
 }

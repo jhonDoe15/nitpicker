@@ -19,7 +19,7 @@ type Restores = {
   readonly scope: string;
   readonly globals: boolean;
   readonly envs: boolean;
-  readonly concurrent?: boolean;
+  readonly concurrent: boolean;
 };
 type StubOptions = {
   readonly runner?: string;
@@ -73,10 +73,7 @@ function stubRestoreBlock(
         ERROR,
         { globals: !restores.globals, envs: !restores.envs },
       ],
-      'nitpicker/no-worker-state-in-concurrent-tests': [
-        ERROR,
-        { concurrent: restores.concurrent === true },
-      ],
+      'nitpicker/no-worker-state-in-concurrent-tests': [ERROR, { concurrent: restores.concurrent }],
     },
   };
 }
@@ -89,8 +86,8 @@ function stubRestoreConfigFor(
     ignores: [...layout.excludedGlobs, ...setupFiles],
     projectGlobs: runnableTestGlobs([...layout.testRoots, ...layout.sourceRoots]),
   };
-  return [{ scope: '.', globals: false, envs: false }, ...stubRestores].map((restores) =>
-    stubRestoreBlock(restores, context),
+  return [{ scope: '.', globals: false, envs: false, concurrent: false }, ...stubRestores].map(
+    (restores) => stubRestoreBlock(restores, context),
   );
 }
 

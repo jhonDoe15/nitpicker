@@ -1,8 +1,6 @@
 import nodeModule, { type ResolveFnOutput, type ResolveHookContext } from 'node:module';
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { isMainThread } from 'node:worker_threads';
-import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
+import { shimUrl } from './hook-shims.mts';
 
 type NextResolve = (specifier: string, context?: Partial<ResolveHookContext>) => ResolveFnOutput;
 
@@ -15,17 +13,14 @@ const REPLACEMENTS: ReadonlyMap<string, string> = new Map([
   ['extract/resolve/get-manifest.mjs ./merge-manifests.mjs', 'merge-manifests'],
 ]);
 
-function replacementModule(name: string): string {
-  return checkoutModuleUrl(pathToFileURL(path.join(import.meta.dirname, `${name}.mjs`))).href;
-}
-
 function replacementFor(specifier: string, parentUrl: string | undefined): string | undefined {
   const at = parentUrl?.lastIndexOf(PACKAGE_SOURCE) ?? -1;
-  if (parentUrl === undefined || at < 0) return undefined;
+  if (parentUrl === undefined || at < 0) {
+    return undefined;
+  }
   const name = REPLACEMENTS.get(`${parentUrl.slice(at + PACKAGE_SOURCE.length)} ${specifier}`);
-  if (name === undefined) return undefined;
-  const original = new URL(specifier, parentUrl).href;
-  return `${replacementModule(name)}?original=${encodeURIComponent(original)}`;
+  const original = URL.parse(specifier, parentUrl);
+  return name === undefined || original === null ? undefined : shimUrl(name, original.href);
 }
 
 export function resolve(

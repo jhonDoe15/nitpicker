@@ -24,6 +24,7 @@ import type {
   GateResult,
   Summary,
 } from './python-e2e-types.mts';
+import { summarize } from '../../../../../shared/test-support/findings-by-rule.mts';
 
 function isReport(value: unknown): value is Summary | Finding[] {
   return typeof value === 'object' && value !== null;
@@ -147,12 +148,6 @@ export async function settledGate(
   return { ...result, exitCode };
 }
 
-export function summarize(findings: readonly Finding[]): string[] {
-  return findings
-    .map(({ tool, rule, path: file }) => `${tool} ${rule} ${path.basename(file)}`)
-    .sort();
-}
-
 export function initializeRepository(root: string, message: string): void {
   git(root, 'init', '-q', '-b', 'main');
   git(root, 'add', '-A');
@@ -196,3 +191,5 @@ export function useRepositories(): Repositories {
 
   return { repository, removeRepositories, fixtureRepository };
 }
+
+export { summarize };

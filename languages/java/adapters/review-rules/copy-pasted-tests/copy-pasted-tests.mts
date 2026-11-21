@@ -1,14 +1,10 @@
 import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import { globMatcher } from '../../../../../shared/paths/glob.mts';
 import { findingFactory } from '../../kotlin/review-rules/finding/review-finding.mts';
 import { tokenizeJvm } from '../../reuse/source/tokens/jvm-tokens.mts';
-import { pathInside, sourceFilesUnder, sourceRootsOf } from '../java-sources.mts';
+import { pathInside, sourceRootsOf, testFilesUnder } from '../java-sources.mts';
 import type { ReviewFinding } from '../../kotlin/review-rules/typed/review-finding-types.mts';
 import type { SourceProject } from '../review-types.mts';
 import { testBodies, type TestBody } from './test-bodies.mts';
-
-const matcherOf: (glob: string) => { test: (file: string) => boolean } = globMatcher;
 
 export const COPY_PASTED_TEST_RULE = 'CopyPastedTest';
 export const COPY_PASTED_TEST_EXCEPTION_RULE = `pmd/${COPY_PASTED_TEST_RULE}`;
@@ -71,16 +67,9 @@ export function readCopyPastedTestFindings(
     policy?: { readonly exclude?: readonly string[] };
   },
 ): ReviewFinding[] {
-  const excluded = (policy.exclude ?? []).map((glob) => matcherOf(glob));
   const extensions = kotlin ? ['.java', '.kt'] : ['.java'];
   const roots = projects.flatMap((project) => sourceRootsOf(project, { kotlin, test: true }));
-  const files = [
-    ...new Set(
-      [...new Set(roots)]
-        .flatMap((root) => sourceFilesUnder(pathInside(projectRoot, root), extensions))
-        .map((full) => path.relative(projectRoot, full).replaceAll('\\', '/')),
-    ),
-  ].filter((file) => !excluded.some((matcher) => matcher.test(file)));
+  const files = testFilesUnder(projectRoot, roots, { extensions, exclude: policy.exclude ?? [] });
   const finding = findingFactory();
   return files.flatMap((file) =>
     sourceFindings(file, readFileSync(pathInside(projectRoot, file), 'utf8'), finding),

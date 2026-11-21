@@ -10,7 +10,8 @@ import {
 import { calleeTimerChange, fakeTimerChange } from '../rules/runner-apis/runner-doubles.mts';
 import { fixable } from '../fixes/support/descriptors.mts';
 import { restoreHookFix } from '../fixes/tests/restore-hook-fix.mts';
-import { type WriteMessageId, createWriteTracker } from './direct-writes/direct-writes.mts';
+import { createWriteTracker } from './direct-writes/direct-writes.mts';
+import type { WriteMessageId } from './direct-writes/write-keys.mts';
 
 type MessageId =
   'unrestored' | 'unrestoredWithUserEvent' | 'unrestoredGlobal' | 'unrestoredEnv' | WriteMessageId;

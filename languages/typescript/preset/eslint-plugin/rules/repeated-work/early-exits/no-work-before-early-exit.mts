@@ -36,7 +36,7 @@ export const rule: TSESLint.RuleModule<'workBeforeExit'> = {
         if (
           declaration.kind !== 'const' ||
           declaration.declarations.length !== 1 ||
-          declarator?.id.type !== AST_NODE_TYPES.Identifier ||
+          declarator.id.type !== AST_NODE_TYPES.Identifier ||
           declarator.init === null ||
           BRANCHING.has(unwrapped(declarator.init).type) ||
           (parent.type !== AST_NODE_TYPES.BlockStatement && parent.type !== AST_NODE_TYPES.Program)

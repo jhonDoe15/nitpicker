@@ -19,23 +19,27 @@ function isJsonParse(sourceCode: SourceCode, callee: TSESTree.Node): boolean {
   );
 }
 
-export function isInputRead(
-  sourceCode: SourceCode,
-  node: TSESTree.Node | null | undefined,
-): boolean {
-  const value = node === null || node === undefined ? undefined : unwrapped(node);
-  if (value?.type === AST_NODE_TYPES.AwaitExpression) {
-    return isInputRead(sourceCode, value.argument);
+export function isInputRead(sourceCode: SourceCode, node: TSESTree.Node | undefined): boolean {
+  const pending = [node];
+  for (const item of pending) {
+    const value = item === undefined ? undefined : unwrapped(item);
+    if (value?.type === AST_NODE_TYPES.AwaitExpression) {
+      pending.push(value.argument);
+      continue;
+    }
+    if (value?.type !== AST_NODE_TYPES.CallExpression) {
+      return false;
+    }
+    const callee = unwrapped(value.callee);
+    if (isJsonParse(sourceCode, callee)) {
+      pending.push(value.arguments[0]);
+      continue;
+    }
+    const name =
+      callee.type === AST_NODE_TYPES.Identifier ? callee.name : (memberName(callee) ?? '');
+    return READS.has(name) && isFsRead(sourceCode, callee);
   }
-  if (value?.type !== AST_NODE_TYPES.CallExpression) {
-    return false;
-  }
-  const callee = unwrapped(value.callee);
-  if (isJsonParse(sourceCode, callee)) {
-    return isInputRead(sourceCode, value.arguments[0]);
-  }
-  const name = callee.type === AST_NODE_TYPES.Identifier ? callee.name : (memberName(callee) ?? '');
-  return READS.has(name) && isFsRead(sourceCode, callee);
+  return false;
 }
 
 export function readsPerElement(sourceCode: SourceCode, fn: TSESTree.Node | undefined): boolean {

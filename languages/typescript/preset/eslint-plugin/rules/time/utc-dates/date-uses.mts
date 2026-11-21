@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { calleeName } from '../../analysis/node/call-text.mts';
 import { chainOf } from '../../typed/node-views.mts';
 import { calleeNameOf, unwrapOf } from '../../typed/syntax-views.mts';
 
@@ -16,20 +17,8 @@ const PASS_THROUGH = new Set<string>([
 ]);
 const DATE_NAME = /(?:^d|D)ate$/u;
 
-function nameOfReference(reference: TSESTree.Node): string | undefined {
-  const node = unwrapOf(reference, [AST_NODE_TYPES.ChainExpression]);
-  if (node.type === AST_NODE_TYPES.Identifier) {
-    return node.name;
-  }
-  return node.type === AST_NODE_TYPES.MemberExpression &&
-    !node.computed &&
-    node.property.type === AST_NODE_TYPES.Identifier
-    ? node.property.name
-    : undefined;
-}
-
 function isDateNamed(node: TSESTree.Node): boolean {
-  const name = nameOfReference(node);
+  const name = calleeName(unwrapOf(node, [AST_NODE_TYPES.ChainExpression]));
   return name !== undefined && DATE_NAME.test(name);
 }
 

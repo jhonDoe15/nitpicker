@@ -41,19 +41,24 @@ export function isAssignmentTarget(node: TSESTree.Node): boolean {
 }
 
 function isPatternTarget(parent: TSESTree.Node | undefined, outer: TSESTree.Node): boolean {
-  switch (parent?.type) {
-    case AST_NODE_TYPES.ArrayPattern:
-    case AST_NODE_TYPES.RestElement:
-      return true;
-    case AST_NODE_TYPES.AssignmentPattern:
-    case AST_NODE_TYPES.ForOfStatement:
-    case AST_NODE_TYPES.ForInStatement:
-      return parent.left === outer;
-    case AST_NODE_TYPES.Property:
-      return parent.value === outer && parent.parent.type === AST_NODE_TYPES.ObjectPattern;
-    default:
-      return false;
+  if (parent === undefined) {
+    return false;
   }
+  if (parent.type === AST_NODE_TYPES.ArrayPattern || parent.type === AST_NODE_TYPES.RestElement) {
+    return true;
+  }
+  if (
+    parent.type === AST_NODE_TYPES.AssignmentPattern ||
+    parent.type === AST_NODE_TYPES.ForOfStatement ||
+    parent.type === AST_NODE_TYPES.ForInStatement
+  ) {
+    return parent.left === outer;
+  }
+  return (
+    parent.type === AST_NODE_TYPES.Property &&
+    parent.value === outer &&
+    parent.parent.type === AST_NODE_TYPES.ObjectPattern
+  );
 }
 
 function isCopyingUse(parent: TSESTree.Node, outer: TSESTree.Node): boolean {

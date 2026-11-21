@@ -1,4 +1,4 @@
-import { EXCLUDED_PATH_PATTERN } from '../../../preset/dependency-graph/cruise.mts';
+import { EXCLUDED_PATH_PATTERN } from '../../../preset/layout.mts';
 import { fieldOf, fieldsOf, listOf } from '../../../../../shared/values/readers.mts';
 import { type CruiseReport, loadDependencyGraph } from '../project-dependency-graph.mts';
 

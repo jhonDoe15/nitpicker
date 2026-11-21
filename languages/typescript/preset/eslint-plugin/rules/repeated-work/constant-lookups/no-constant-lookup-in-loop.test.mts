@@ -36,7 +36,7 @@ tester.run('no-constant-lookup-in-loop', rule, {
       errors: [DOM('document.getElementById("total")')],
     },
     {
-      code: 'const SELECTOR = "[data-total]";\nexport function f(rows: string[]) { return rows.map((row) => `${row}:${String(window.document.querySelector(SELECTOR)?.id)}`); }',
+      code: 'const SELECTOR = "[data-total]";\nexport function f(rows: string[]) { return rows.map((row) => row + ":" + String(window.document.querySelector(SELECTOR)?.id)); }',
       errors: [DOM('window.document.querySelector(SELECTOR)')],
     },
     {
@@ -44,7 +44,7 @@ tester.run('no-constant-lookup-in-loop', rule, {
       errors: [DOM('document.querySelectorAll(".cell")')],
     },
     {
-      code: 'const BASE = "https://example.com/api";\nexport function f(paths: string[]) { return paths.map((path) => `${new URL(BASE).origin}/${path}`); }',
+      code: 'const BASE = "https://example.com/api";\nexport function f(paths: string[]) { return paths.map((path) => new URL(BASE).origin + "/" + path); }',
       errors: [URL_PARSE('BASE')],
     },
     {

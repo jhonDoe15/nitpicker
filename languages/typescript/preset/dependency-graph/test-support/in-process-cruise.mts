@@ -3,8 +3,8 @@ import { cruise as runDependencyCruiser, type ICruiseResult } from 'dependency-c
 import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 import { readLayout as untypedReadLayout } from '../../head-policy.mts';
 import { linkPolicyFile as untypedLinkPolicyFile } from '../../../../../core/tooling/policy-links.mts';
+import { EXCLUDED_PATH_PATTERN } from '../../layout.mts';
 import {
-  EXCLUDED_PATH_PATTERN,
   POLICY_TYPESCRIPT_CONFIG,
   TYPESCRIPT_CONFIG_ENVIRONMENT,
   dependencyGraphTsconfig as untypedDependencyGraphTsconfig,

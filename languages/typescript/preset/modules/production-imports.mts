@@ -1,5 +1,4 @@
 import { existsSync, readFileSync } from 'node:fs';
-import path from 'node:path';
 import { lazyTypeScriptApi } from '../../typescript-api/lazy-typescript-api.mts';
 import { depthFirst as untypedDepthFirst } from '../../../../shared/traversal.mts';
 import { fieldsOf } from '../../../../shared/values/readers.mts';

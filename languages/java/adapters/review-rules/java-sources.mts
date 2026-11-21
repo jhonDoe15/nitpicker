@@ -179,6 +179,18 @@ export function sourceRootsOf(
   );
 }
 
+export function testFilesUnder(
+  projectRoot: string,
+  roots: readonly string[],
+  { extensions, exclude }: { extensions: readonly string[]; exclude: readonly string[] },
+): string[] {
+  const excluded = exclude.map((glob) => matcherOf(glob));
+  const files = [...new Set(roots)]
+    .flatMap((root) => sourceFilesUnder(pathInside(projectRoot, root), extensions))
+    .map((full) => path.relative(projectRoot, full).replaceAll('\\', '/'));
+  return [...new Set(files)].filter((file) => !excluded.some((matcher) => matcher.test(file)));
+}
+
 function projectSources<Project extends SourceProject>(
   projectRoot: string,
   { project, kotlin, test }: { project: Project; kotlin: boolean; test: boolean },

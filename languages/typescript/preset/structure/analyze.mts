@@ -34,6 +34,8 @@ import type {
 } from './typed/analysis-types.mts';
 import { appendAll, largest } from '../../../../shared/lists/lists.mts';
 import { blockingParseDiagnostics } from '../syntax/diagnostics/legacy-scripts.mts';
+import { engineMetrics } from './engine/engine-metrics.mts';
+import type { Environment } from './engine/engine-files.mts';
 
 const ts = typescriptApi();
 
@@ -203,17 +205,25 @@ function analyzeParsableSource(source: string, filename: string): SourceAnalysis
 export function analyzeProductionFiles(
   root: string,
   displayRoot: string = root,
-  { layout = defaultResolvedLayout }: { readonly layout?: StructureLayout } = {},
+  {
+    layout = defaultResolvedLayout,
+    environment = process.env,
+  }: { readonly layout?: StructureLayout; readonly environment?: Environment } = {},
 ): ProductionAnalysis {
-  const files = productionFiles(root, displayRoot, layout);
+  const files = productionFiles(root, displayRoot, layout).map((file) => ({
+    path: file,
+    display: normalizePath(path.join(displayRoot, path.relative(root, file))),
+  }));
+  const engine = engineMetrics(files, environment);
   const functions: AnalysisFunction[] = [];
   const classes: AnalysisClass[] = [];
   const unparsed: UnparsedSource[] = [];
-  let lines = 0;
+  let lines = engine?.lines ?? 0;
 
-  for (const file of files) {
-    const displayPath = normalizePath(path.join(displayRoot, path.relative(root, file)));
-    const analysis = analyzeParsableSource(readFileSync(file, 'utf8'), displayPath);
+  for (const { path: file, display: displayPath } of files) {
+    const analysis =
+      engine?.analysisOf(displayPath) ??
+      analyzeParsableSource(readFileSync(file, 'utf8'), displayPath);
     if ('reason' in analysis) {
       unparsed.push(analysis);
       continue;

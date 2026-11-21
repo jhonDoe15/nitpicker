@@ -133,6 +133,14 @@ pub mod flag {
     pub const NULLABLE: u32 = 1 << 19;
     /// The class comes from a source file of the run, not from the class path.
     pub const SOURCE: u32 = 1 << 20;
+    /// A field or a method's result carries `@CheckForNull`, or an annotation that is a nickname for it. On an
+    /// annotation class: the class itself carries `@CheckForNull`, which makes it such a nickname.
+    pub const CHECK_FOR_NULL: u32 = 1 << 21;
+    /// A member read from a class file carries an annotation that may be such a nickname: one of the
+    /// class's `null_nicknames`.
+    pub const MAYBE_CHECK_FOR_NULL: u32 = 1 << 22;
+    /// A `volatile` field.
+    pub const VOLATILE: u32 = 1 << 23;
 
     pub const IMMUTABLE_NAME: &str = "com.google.errorprone.annotations.Immutable";
     pub const IMMUTABLE_PARAMETER_NAME: &str = "com.google.errorprone.annotations.ImmutableTypeParameter";
@@ -274,6 +282,9 @@ pub struct ClassInfo {
     /// Declares an instance method, of any visibility, whose name starts like a setter and that does not
     /// return the class itself.
     pub setter_like: bool,
+    /// For a class read from a class file: the annotation classes on its members that may be nicknames for
+    /// `@CheckForNull`.
+    pub null_nicknames: Vec<String>,
 }
 
 const SETTER_STARTS: &[&str] =

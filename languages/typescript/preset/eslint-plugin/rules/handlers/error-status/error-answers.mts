@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, ASTUtils, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { keyName } from '../../../fixes/support/objects.mts';
 import { inside } from '../../decided/syntax.mts';
 import { ancestorsOf, chainOf, type SourceCode } from '../../typed/node-views.mts';
 import { isFunction, unwrapOf, TYPE_WRAPPERS } from '../../typed/syntax-views.mts';
@@ -123,16 +124,6 @@ export function answerOf(code: SourceCode, call: TSESTree.CallExpression): Answe
     : { body: call.arguments[0], settings: call.arguments[1], root, kind };
 }
 
-function keyOf(property: TSESTree.ObjectLiteralElement): string | undefined {
-  if (property.type !== AST_NODE_TYPES.Property || property.computed) {
-    return undefined;
-  }
-  if (property.key.type === AST_NODE_TYPES.Identifier) {
-    return property.key.name;
-  }
-  return String(property.key.value);
-}
-
 function isAbsent(value: TSESTree.Node): boolean {
   return (
     (value.type === AST_NODE_TYPES.Literal && (value.value === null || value.value === false)) ||
@@ -147,7 +138,7 @@ export function isErrorBody(body: TSESTree.Node | undefined): boolean {
   if (literal?.type !== AST_NODE_TYPES.ObjectExpression) {
     return false;
   }
-  const keys = literal.properties.map(keyOf);
+  const keys = literal.properties.map(keyName);
   return (
     keys.every((key) => key !== undefined && !OUTCOME_KEYS.has(key)) &&
     literal.properties.some(
@@ -167,7 +158,7 @@ export function leavesStatus(settings: TSESTree.Node | undefined): boolean {
   return (
     settings.type === AST_NODE_TYPES.ObjectExpression &&
     settings.properties.every((property) => {
-      const key = keyOf(property);
+      const key = keyName(property);
       return key !== undefined && !STATUS_FIELDS.has(key);
     })
   );

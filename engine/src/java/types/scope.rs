@@ -564,6 +564,14 @@ impl<'a> Resolver<'a> {
     }
 
     /// The bits the annotations of a declaration give.
+    /// Whether a declaration carries `@CheckForNull` or an annotation that is itself annotated with it.
+    pub fn check_for_null(&self, member: Node) -> bool {
+        super::super::helpers::annotation_names(self.file, member).iter().filter(|name| name.contains("Null")).any(|name| {
+            name.rsplit('.').next() == Some("CheckForNull")
+                || self.class_name(member, name).and_then(|class| self.index.get(&class)).is_some_and(|class| class.flags & super::model::flag::CHECK_FOR_NULL != 0)
+        })
+    }
+
     pub fn marks(&self, declaration: Node) -> u32 {
         let holder = super::super::helpers::modifiers(declaration).unwrap_or(declaration);
         let annotations = children(holder).into_iter().filter(|part| matches!(part.kind(), "marker_annotation" | "annotation"));
@@ -578,6 +586,9 @@ impl<'a> Resolver<'a> {
         use super::model::flag;
         let has = super::super::helpers::has_modifier;
         let mut bits = self.marks(declaration);
+        if super::super::helpers::annotation_names(self.file, declaration).iter().any(|name| name.rsplit('.').next() == Some("CheckForNull")) {
+            bits |= flag::CHECK_FOR_NULL;
+        }
         for (word, bit) in [("final", flag::FINAL), ("public", flag::PUBLIC), ("protected", flag::PROTECTED), ("static", flag::STATIC), ("abstract", flag::ABSTRACT), ("sealed", flag::SEALED), ("private", flag::PRIVATE)] {
             if has(declaration, word) {
                 bits |= bit;
@@ -667,6 +678,7 @@ impl<'a> Resolver<'a> {
             container_of,
             immutable_parameters,
             setter_like: false,
+            null_nicknames: Vec::new(),
         }
     }
 
@@ -838,6 +850,12 @@ impl<'a> Resolver<'a> {
             if super::super::helpers::marked_nullable(self.file, member) {
                 bits |= flag::NULLABLE;
             }
+            if self.check_for_null(member) {
+                bits |= flag::CHECK_FOR_NULL;
+            }
+            if has(member, "volatile") {
+                bits |= flag::VOLATILE;
+            }
             if info.is_interface {
                 bits |= flag::PUBLIC;
             }
@@ -976,10 +994,10 @@ impl<'a> Resolver<'a> {
                 };
                 let name = self.file.text_of(name).to_string();
                 let generic = element(true).unwrap_or(kind.clone());
-                info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, fixed: None, strict: false, is_private: true, flags: super::model::flag::FINAL | bits(component) & super::model::flag::NULLABLE });
+                info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, fixed: None, strict: false, is_private: true, flags: super::model::flag::FINAL | bits(component) & (super::model::flag::NULLABLE | super::model::flag::CHECK_FOR_NULL) });
                 info.record_components.get_or_insert_with(Vec::new).push(generic.clone());
                 let accessor = plain(&name, Vec::new(), kind.erased());
-                info.methods.push(Method { generic_returns: generic, flags: accessor.flags | bits(component) & super::model::flag::NULLABLE, ..accessor });
+                info.methods.push(Method { generic_returns: generic, flags: accessor.flags | bits(component) & (super::model::flag::NULLABLE | super::model::flag::CHECK_FOR_NULL), ..accessor });
             }
         }
     }

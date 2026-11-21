@@ -1,4 +1,4 @@
-import { tokenizeJvm } from '../../reuse/source/tokens/jvm-tokens.mts';
+import { bracketLayout, tokenizeJvm } from '../../reuse/source/tokens/jvm-tokens.mts';
 import type { Token } from '../../reuse/jvm-reuse-types.mts';
 
 export type TestClass = {
@@ -16,8 +16,6 @@ export type TestClass = {
 type Layout = { readonly close: ReadonlyMap<number, number>; readonly depth: readonly number[] };
 type Annotation = { readonly name: string; readonly text: string; readonly end: number };
 
-const OPENERS = new Set(['(', '{', '[']);
-const CLOSERS = new Set([')', '}', ']']);
 const MOCKS = new Set(['MockBean', 'MockitoBean', 'SpyBean', 'MockitoSpyBean']);
 const TESTS = new Set(['Test', 'ParameterizedTest', 'RepeatedTest', 'TestFactory', 'TestTemplate']);
 const OWN_CONTEXT = new Set([
@@ -35,29 +33,14 @@ const MODIFIERS = new Set(['private', 'protected', 'public', 'static', 'final', 
 const TYPE_KEYWORDS = new Set(['class', 'interface', 'enum', 'record']);
 const DECLARATION_ENDS = new Set([';', '=', '{', '(']);
 
-function layoutOf(tokens: readonly Token[]): Layout {
-  const stack: number[] = [];
-  const close = new Map<number, number>();
-  const depth: number[] = [];
-  for (const [at, token] of tokens.entries()) {
-    const open = CLOSERS.has(token.text) ? stack.pop() : undefined;
-    if (open !== undefined) {
-      close.set(open, at);
-    }
-    depth.push(stack.length);
-    if (OPENERS.has(token.text)) {
-      stack.push(at);
-    }
-  }
-  return { close, depth };
-}
-
 function dottedEnd(tokens: readonly Token[], from: number): number {
-  let end = from + 1;
-  while (tokens[end]?.text === '.' && tokens[end + 1]?.kind === 'identifier') {
-    end += 2;
+  const positions = [from + 1];
+  for (const end of positions) {
+    if (tokens[end]?.text === '.' && tokens[end + 1]?.kind === 'identifier') {
+      positions.push(end + 2);
+    }
   }
-  return end;
+  return positions.at(-1) ?? from + 1;
 }
 
 function annotationAt(tokens: readonly Token[], layout: Layout, at: number): Annotation {
@@ -89,11 +72,13 @@ function annotationsIn(
 }
 
 function afterAnnotations(tokens: readonly Token[], layout: Layout, from: number): number {
-  let at = from;
-  while (tokens[at]?.text === '@') {
-    at = annotationAt(tokens, layout, at).end;
+  const positions = [from];
+  for (const at of positions) {
+    if (tokens[at]?.text === '@') {
+      positions.push(annotationAt(tokens, layout, at).end);
+    }
   }
-  return at;
+  return positions.at(-1) ?? from;
 }
 
 function mockedType(tokens: readonly Token[], layout: Layout, annotation: Annotation): string {
@@ -136,7 +121,7 @@ function packageOf(tokens: readonly Token[]): string {
 
 export function testClassOf(text: string): TestClass | undefined {
   const tokens = tokenizeJvm(text);
-  const layout = layoutOf(tokens);
+  const layout = bracketLayout(tokens);
   const declaration = tokens.findIndex(
     (token, at) =>
       layout.depth[at] === 0 && TYPE_KEYWORDS.has(token.text) && tokens[at - 1]?.text !== '@',

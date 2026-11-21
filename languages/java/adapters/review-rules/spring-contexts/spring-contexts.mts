@@ -1,17 +1,16 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { globMatcher } from '../../../../../shared/paths/glob.mts';
 import { findingFactory } from '../../kotlin/review-rules/finding/review-finding.mts';
-import { pathInside, sourceFilesUnder, sourceRootsOf } from '../java-sources.mts';
+import { pathInside, sourceFilesUnder, sourceRootsOf, testFilesUnder } from '../java-sources.mts';
 import type { ReviewFinding } from '../../kotlin/review-rules/typed/review-finding-types.mts';
 import type { SourceProject } from '../review-types.mts';
 import { testClassOf, type TestClass } from './test-class.mts';
 
-const matcherOf: (glob: string) => { test: (file: string) => boolean } = globMatcher;
-
 export const SPRING_CONTEXT_RULE = 'SpringContextPerMockSet';
 export const SPRING_CONTEXT_EXCEPTION_RULE = `pmd/${SPRING_CONTEXT_RULE}`;
 const MIN_CONTEXTS = 3;
+const JAVA_EXTENSION = '.java';
+const JAVA_EXTENSIONS = [JAVA_EXTENSION];
 const BOOT_TEST = /^@SpringBootTest\b/u;
 const BOOT_TEST_USE = /@SpringBootTest\b/u;
 const EXPLICIT_CLASSES = /^@(?:SpringBootTest\(.*\bclasses=|ContextConfiguration\b)/u;
@@ -25,7 +24,7 @@ const OUTSIDE_CONTEXT = new RegExp(
     '|TestInstance|FixMethodOrder|Order|Timeout|Execution|SuppressWarnings|Deprecated|Transactional|Rollback',
     '|Commit|Sql|SqlGroup|SqlConfig)\\b',
     '|^@RunWith\\(Spring(?:JUnit4Class)?Runner\\.class\\)$',
-    '|^@ExtendWith\\((?:\\{?)(?:SpringExtension|MockitoExtension)\\.class(?:\\}?)\\)$',
+    '|^@ExtendWith\\(\\{?(?:SpringExtension|MockitoExtension)\\.class\\}?\\)$',
   ].join(''),
   'u',
 );
@@ -34,7 +33,7 @@ const REBUILT = /^@(?:DirtiesContext|Disabled|Ignore)\b/u;
 type Located = TestClass & { readonly file: string };
 type Context = { readonly mocks: string; readonly classes: readonly Located[] };
 
-export function springContextMessage({
+function springContextMessage({
   contexts,
   sharing,
   alike = 0,
@@ -68,15 +67,16 @@ function chainOf(
 ): readonly Located[] | undefined {
   const chain = [first];
   const seen = new Set([first.name]);
-  let current = first;
-  while (current.parent !== undefined) {
+  for (const current of chain) {
+    if (current.parent === undefined) {
+      return chain;
+    }
     const parent = byName.get(current.parent);
     if (parent === undefined || seen.has(parent.name)) {
       return undefined;
     }
     seen.add(parent.name);
     chain.push(parent);
-    current = parent;
   }
   return chain;
 }
@@ -174,7 +174,7 @@ function moduleFindings(
 
 function severalApplications(projectRoot: string, project: SourceProject): boolean {
   const applications = sourceRootsOf(project, { kotlin: false, test: false })
-    .flatMap((root) => sourceFilesUnder(pathInside(projectRoot, root), ['.java']))
+    .flatMap((root) => sourceFilesUnder(pathInside(projectRoot, root), JAVA_EXTENSIONS))
     .filter((file) => APPLICATION.test(readFileSync(file, 'utf8')));
   return applications.length > 1;
 }
@@ -196,7 +196,8 @@ function projectFindings(
   );
   const classes = texts
     .filter(
-      ({ file, text }) => WORTH_READING.test(text) || parents.has(path.basename(file, '.java')),
+      ({ file, text }) =>
+        WORTH_READING.test(text) || parents.has(path.basename(file, JAVA_EXTENSION)),
     )
     .flatMap(({ file, text }): Located[] => {
       const found = testClassOf(text);
@@ -216,19 +217,17 @@ export function readSpringContextFindings(
     policy = {},
   }: {
     projects: readonly SourceProject[];
-    kotlin?: boolean;
     policy?: { readonly exclude?: readonly string[] };
   },
 ): ReviewFinding[] {
-  const excluded = (policy.exclude ?? []).map((glob) => matcherOf(glob));
   const finding = findingFactory();
   const seen = new Set<string>();
   return projects.flatMap((project) => {
-    const roots = [...new Set(sourceRootsOf(project, { kotlin: false, test: true }))];
-    const files = roots
-      .flatMap((root) => sourceFilesUnder(pathInside(projectRoot, root), ['.java']))
-      .map((full) => path.relative(projectRoot, full).replaceAll('\\', '/'))
-      .filter((file) => !seen.has(file) && !excluded.some((matcher) => matcher.test(file)));
+    const roots = sourceRootsOf(project, { kotlin: false, test: true });
+    const files = testFilesUnder(projectRoot, roots, {
+      extensions: JAVA_EXTENSIONS,
+      exclude: policy.exclude ?? [],
+    }).filter((file) => !seen.has(file));
     for (const file of files) {
       seen.add(file);
     }

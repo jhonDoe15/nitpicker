@@ -1,18 +1,17 @@
 import type TypeScript from 'typescript';
 import { resolveModuleSpecifier as untypedResolve } from '../../../../modules/module-resolution.mts';
-import { scriptKindOf as untypedScriptKindOf } from '../../../../modules/module-sources.mts';
-import { readStamped as untypedReadStamped } from '../../../../modules/stamped-file-cache.mts';
 import { ts } from '../../typed/typescript-views.mts';
 import { DEFAULT_EXPORT } from '../../../../syntax/exported-components.mts';
 import { fileExports } from '../../../../syntax/module-facts.mts';
 import { readTextFile } from '../support/file-reads.mts';
+import { readStamped, scriptKindOf, type StampedCache } from '../support/typed-sources.mts';
 
 export type ImportedName = { readonly source: string; readonly name: string };
 export type CalleeShape =
   | { readonly kind: 'name'; readonly name: string }
   | { readonly kind: 'member'; readonly owner: string; readonly name: string }
   | { readonly kind: 'call'; readonly callee: CalleeShape; readonly argumentCount: number };
-export type ValueShape =
+type ValueShape =
   | { readonly kind: 'name'; readonly name: string }
   | { readonly kind: 'call'; readonly callee: CalleeShape; readonly argumentCount: number }
   | { readonly kind: 'other' };
@@ -30,7 +29,6 @@ export type ResolvedValue =
   | { readonly kind: 'package'; readonly binding: ImportedName }
   | { readonly kind: 'value'; readonly facts: ModuleFacts; readonly shape: ValueShape };
 type Resolution = { readonly kind: string; readonly path?: string };
-type Cache<Value> = Map<string, { readonly stamp: string; readonly value: Value }>;
 type Lookup = {
   readonly facts: ModuleFacts;
   readonly name: string;
@@ -40,19 +38,13 @@ type Step = { readonly next?: Lookup; readonly found?: ResolvedValue };
 
 const resolveModuleSpecifier: (written: string, containingFile: string) => Resolution =
   untypedResolve;
-const scriptKindOf: (file: string) => TypeScript.ScriptKind = untypedScriptKindOf;
-const readStamped: <Value>(
-  cache: Cache<Value>,
-  file: string,
-  read: (file: string) => Value,
-) => Value | undefined = untypedReadStamped;
 
-export const NAMESPACE_IMPORT = '*';
+const NAMESPACE_IMPORT = '*';
 const MAX_LOOKUPS = 8;
 const MAX_CHARACTERS = 1_000_000;
 const LOCAL = 'local';
 const EXPORT = 'export';
-const factsCache: Cache<ModuleFacts | undefined> = new Map();
+const factsCache: StampedCache<ModuleFacts | undefined> = new Map();
 
 function unwrappedValue(expression: TypeScript.Expression): TypeScript.Expression {
   const chain = [expression];

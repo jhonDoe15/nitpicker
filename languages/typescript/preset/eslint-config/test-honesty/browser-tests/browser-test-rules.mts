@@ -10,7 +10,7 @@ const PLAYWRIGHT_MODULE = /^(?:@playwright\/|playwright(?:\/|$))/u;
 const CYPRESS_GLOBAL = 'cy';
 const RETRYING_ASSERTION = '`await expect(page.getByRole(...)).toBeVisible()`';
 
-export const playwrightHints: Hints = {
+const playwrightHints: Hints = {
   'prefer-web-first-assertions': ` It reads the page once, so the assertion fails when the page is still updating. Use the assertion that retries until it passes: ${RETRYING_ASSERTION}, \`await expect(locator).toHaveText('42')\`.`,
   'no-networkidle': ` The page counts as idle after 500 ms without requests, which polling never reaches and a slow render passes too early. Wait for what the test needs instead: ${RETRYING_ASSERTION}.`,
   'no-element-handle': ` An element handle points at one DOM node and goes stale when the page renders again. Use a locator, which finds the element again on every action: \`page.getByRole(...)\`.`,
@@ -18,7 +18,7 @@ export const playwrightHints: Hints = {
   'no-page-pause': ` \`page.pause()\` stops the test for a debugger. Delete the call, and debug with \`npx playwright test --debug\` instead.`,
 };
 
-export const cypressHints: Hints = {
+const cypressHints: Hints = {
   'no-assigning-return-values': `: a command only queues work, so the variable holds a chain and not the element or value. Use the value in \`.then((value) => ...)\` or an alias (\`.as('row')\` and \`cy.get('@row')\`).`,
   'no-async-tests': `: Cypress runs commands from its own queue, so an \`async\` test or hook mixes two orders of execution and can finish before its commands run. Chain the commands without \`async\`.`,
   'no-pause': `: \`cy.pause()\` stops the run for a debugger. Delete the call, and step through the run in the Cypress app instead.`,

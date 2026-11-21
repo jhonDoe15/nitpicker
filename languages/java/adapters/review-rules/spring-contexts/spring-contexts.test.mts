@@ -35,9 +35,22 @@ function mocking(...types: string[]): Written {
   };
 }
 
+function expectedMessage(starts: string, sharing: number, file: string): string {
+  return [
+    `${starts} Its configuration is the same as that of ${String(sharing)} other test classes of the module`,
+    ' (InvoiceTest is one) except for its mock beans (the mock beans @MockBean MailClient), and every distinct',
+    " set of @MockBean, @MockitoBean, @SpyBean and @MockitoSpyBean fields is a separate entry in Spring's context",
+    ' cache, so these classes start 3 contexts between them. Declare the mocks in a base class or',
+    ' @TestConfiguration that all of them share, or test this class without the whole context: a slice such as',
+    ' @WebMvcTest or a unit test that creates the class with new. If this is intended, add',
+    ` {"rule":"pmd/SpringContextPerMockSet","paths":["src/test/java/shop/${file}"],"reason":"..."}`,
+    ' to "exceptions" in nitpicker.config.json.',
+  ].join('');
+}
+
 function found(...classes: Record<string, string>[]) {
   const root = temporaryRoot('nitpicker-spring-contexts-');
-  writeFiles(root, Object.assign({}, ...classes));
+  writeFiles(root, Object.fromEntries(classes.flatMap((files) => Object.entries(files))));
   return readSpringContextFindings(root, { projects: [PROJECT] });
 }
 
@@ -72,11 +85,9 @@ describe('Spring test contexts that differ only in their mock beans', () => {
     );
     expect(first?.classification).toBe('descriptive');
     expect(first?.symbol).toBe('MailTest');
-    expect(first?.message).toContain(
-      'the same as that of 3 other test classes of the module (InvoiceTest is one) except for its mock beans (the mock beans @MockBean MailClient)',
+    expect(first?.message).toBe(
+      expectedMessage('This test class starts its own application context.', 3, 'MailTest.java'),
     );
-    expect(first?.message).toContain('these classes start 3 contexts between them');
-    expect(first?.message).toContain('{"rule":"pmd/SpringContextPerMockSet"');
   });
 
   it('reads mock beans and the configuration from the base classes', () => {
@@ -131,7 +142,13 @@ describe('Spring test contexts that differ only in their mock beans', () => {
       testClass('LetterTest', mocking('MailClient')),
       testClass('PaymentTest', mocking('PaymentClient')),
     );
-    expect(first?.message).toContain('This test class and 1 more with the same mock beans start');
+    expect(first?.message).toBe(
+      expectedMessage(
+        'This test class and 1 more with the same mock beans start an application context of their own.',
+        5,
+        'LetterTest.java',
+      ),
+    );
   });
 
   it('compares inside one package when the main sources hold several applications', () => {
@@ -263,7 +280,7 @@ describe('Spring test contexts that differ only in their mock beans', () => {
       testClass('MailTest', mocking('MailClient')),
     ];
     const root = temporaryRoot('nitpicker-spring-contexts-');
-    writeFiles(root, Object.assign({}, ...classes));
+    writeFiles(root, Object.fromEntries(classes.flatMap((files) => Object.entries(files))));
     expect(
       readSpringContextFindings(root, {
         projects: [PROJECT],

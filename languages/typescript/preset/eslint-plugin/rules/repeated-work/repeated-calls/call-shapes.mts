@@ -159,12 +159,17 @@ export function isCostlyPureLooking(
   );
 }
 
-export function sameCall(sourceCode: SourceCode, first: TSESTree.Node, second: TSESTree.Node) {
-  const text = (node: TSESTree.Node) =>
-    sourceCode
+export function sameCall(
+  sourceCode: SourceCode,
+  first: TSESTree.Node,
+  second: TSESTree.Node,
+): boolean {
+  function text(node: TSESTree.Node): string {
+    return sourceCode
       .getTokens(node)
       .map((token) => token.value)
       .join(' ');
+  }
   return text(first) === text(second);
 }
 
