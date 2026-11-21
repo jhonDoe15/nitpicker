@@ -176,6 +176,7 @@ tasks.register('nitpickerErrorProne') {
         report.delete()
         def skipped = new File(report.parentFile, 'errorprone-skipped.txt')
         skipped.delete()
+        new File(report.parentFile, 'errorprone-engine.json').delete()
         def compiles = [main: tasks.named('compileJava').get()] + project.ext.nitpickerTestSourceSets()
             .collectEntries { [(it.name): tasks.named(it.compileJavaTaskName).get()] }
         if (compiles.values().every { it.source.isEmpty() }) {
@@ -200,6 +201,15 @@ tasks.register('nitpickerErrorProne') {
                 writeArguments(name, compile, errorProne, name != 'main', name == 'main' ? mode : 'plain')
             }
                 .findAll { it != null }
+            // nitpicker's engine runs the checks it has when it is there; their -Xep:<Check>:OFF lines are added
+            // to the arguments files and their findings go to errorprone-engine.json.
+            def enginePlan = workDir.get().file('engine-plan.json').asFile
+            enginePlan.text = groovy.json.JsonOutput.toJson([
+                reportDir: report.parentFile.absolutePath,
+                argumentFiles: argumentFiles*.absolutePath,
+                javaHome: new File(java).parentFile.parentFile.absolutePath,
+            ])
+            project.ext.nitpickerWriteRules('errorprone-engine', enginePlan)
             def command = [java] + jvmFlags + runnerFlags +
                 [runner.absolutePath, report.absolutePath, checks.absolutePath] + argumentFiles*.absolutePath
             def process = new ProcessBuilder(command)

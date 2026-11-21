@@ -42,6 +42,17 @@ function findingOf(row: unknown): EngineFinding {
   return { file, rule, line, column, message, ...endOf(endLine, endColumn) };
 }
 
+export function engineFindingOf(finding: unknown): EngineFinding {
+  const fields = Object(finding) as Readonly<Record<string, unknown>>;
+  return {
+    file: String(fields['file']),
+    rule: String(fields['rule']),
+    line: Number(fields['line']),
+    column: Number(fields['column']),
+    message: String(fields['message']),
+  };
+}
+
 export function engineFindings(report: unknown): EngineFinding[] {
   if (!Array.isArray(report)) {
     throw new TypeError('nitpicker-engine did not write a list of findings');

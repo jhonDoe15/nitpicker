@@ -11,6 +11,8 @@ import {
   type PmdEnginePlan,
 } from './pmd-engine.mts';
 
+import { engineWriting, type Started } from '../../test-support/engine-writing.mts';
+
 const XPATH = 'net.sourceforge.pmd.lang.rule.xpath.XPathRule';
 const HEAD = '<ruleset name="demo" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">';
 const roots: string[] = [];
@@ -22,7 +24,6 @@ afterEach(() => {
 });
 
 type Setup = { readonly plan: PmdEnginePlan; readonly environment: Record<string, string> };
-type Started = { readonly argumentList: readonly string[]; readonly environment: unknown };
 
 function setup(): Setup {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pmd-engine-'));
@@ -59,14 +60,6 @@ function setup(): Setup {
       suppressMarker: 'NO-MARKER',
     },
     environment: { NITPICKER_ENGINE: process.execPath },
-  };
-}
-
-function engineWriting(report: unknown, started: Started[] = []) {
-  return (argumentList: readonly string[], options: { readonly environment: unknown }) => {
-    started.push({ argumentList, environment: options.environment });
-    writeFileSync(argumentList.at(-1) ?? '', JSON.stringify(report));
-    return { status: 0, stdout: '', stderr: '' };
   };
 }
 

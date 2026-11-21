@@ -22,10 +22,18 @@ fn rows(case: &str, rules: &str) -> (Rows, Rows) {
 }
 
 fn rows_of(case: &str, rule: &str, rules: &str) -> (Rows, Rows) {
+    rows_selected(case, rule, rules, None)
+}
+
+fn rows_selected(case: &str, rule: &str, rules: &str, only: Option<&str>) -> (Rows, Rows) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
     let source = root.join("fixtures").join(case);
-    let out = std::env::temp_dir().join(format!("nitpicker-engine-{case}-{}.json", std::process::id()));
-    let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
+    let out = std::env::temp_dir().join(format!("nitpicker-engine-{case}-{}-{}.json", only.unwrap_or("all"), std::process::id()));
+    let mut command = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"));
+    if let Some(names) = only {
+        command.env("NP_EP_ONLY", names);
+    }
+    let status = command
         .arg(&source)
         .args(["--rules", rule, "--out"])
         .arg(&out)
@@ -100,6 +108,21 @@ fn error_prone_checks_report_what_error_prone_reports() {
     let extra: Vec<&Row> = found.iter().filter(|(row, count)| expected.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
     assert_eq!(expected.keys().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 63);
+}
+
+/// A Java run selects some checks (`NP_EP_ONLY`); the others are skipped, and each selected check reports what it
+/// reports in a run of all of them.
+#[test]
+fn a_selected_error_prone_check_reports_the_same_alone() {
+    let (all, expected) = rows_of("errorprone", "_ErrorProne", "all");
+    let mut names: BTreeSet<String> = expected.keys().map(|row| row.1.clone()).collect();
+    names.insert("NullAway".to_string());
+    for name in &names {
+        let (alone, _) = rows_selected("errorprone", "_ErrorProne", "all", Some(name));
+        let wanted: Rows = all.iter().filter(|(row, _)| &row.1 == name).map(|(row, count)| (row.clone(), *count)).collect();
+        assert!(!wanted.is_empty(), "{name}: nothing reported");
+        assert_eq!(alone, wanted, "{name}");
+    }
 }
 
 #[test]

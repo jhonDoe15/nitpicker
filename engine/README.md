@@ -50,6 +50,33 @@ as `pmd-engine.sarif` next to `pmd.sarif` and join PMD's findings when the repor
 - PMD runs every rule, as before, when `NITPICKER_ENGINE=off`, when there is no engine binary for the
   platform, when the engine fails, or when the JDK has no `jmods` folder.
 
+The Error Prone step of a module (Gradle or Maven) asks the engine first
+(`languages/java/builds/errorprone/`). For each source set it runs `--rules _ErrorProne` with the checks of
+`ENGINE_CHECKS` in `NP_EP_ONLY`: NullAway (main sources only, `NP_NULLAWAY_PACKAGES` set to the packages of the
+module's own classes, as the Error Prone run sets `AnnotatedPackages`) and the checks whose whole message the
+engine gives: `ArrayRecordComponent`, `EmptyCatch`, `EnumOrdinal`, `EscapedEntity`, `InconsistentOverloads`,
+`JavaUtilDate`, `SuppressWarningsWithoutExplanation`, `SystemOut` and `TypeParameterUnusedInFormals`. Those
+checks get `-Xep:<Check>:OFF` in the arguments file of the Error Prone run, and the engine's findings are
+written as `errorprone-engine.json` next to `errorprone.json`, in the same shape, and join it when the reports
+are read. The engine skips the checks a run did not select.
+
+- The other ported checks stay with Error Prone: it ends their messages with a `Did you mean ...?` sentence
+  made from its suggested fix, which the engine does not write yet.
+- A source set stays with Error Prone as a whole when an annotation processor runs in its compile (Lombok and
+  generated sources change what the compiler sees), when the project passes Error Prone options other than
+  check levels, when the engine cannot read one of its files, or when the engine fails.
+- A check the project switched off is not run. Findings in generated source folders are dropped, as the Error
+  Prone run excludes those paths.
+- Error Prone runs every check, as before, when `NITPICKER_ENGINE=off`, when there is no engine binary for
+  the platform or when the JDK has no `jmods` folder. When Error Prone is skipped for a module, the engine's
+  findings for it are not reported either.
+
+On 16 Gradle modules of Apache Kafka (clients, metadata, raft, server-common and smaller ones) the reports hold
+the same 17,557 findings either way, 3,025 of them from the engine. The step takes as long as before: Error
+Prone alone 185 s, the engine 19 s plus Error Prone without those checks 167 s, with the same peak memory
+(1.8 GB in the largest module), since the compile stays. The time goes down when a module needs no Error Prone
+run at all.
+
 ## Same findings as PMD
 
 `cargo test --release` runs the fixtures in `tests/fixtures` and compares file, rule, line and column with
