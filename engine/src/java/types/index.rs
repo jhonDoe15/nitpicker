@@ -135,6 +135,11 @@ impl TypeIndex {
         self.classes.insert(class.name.clone(), Slot::Ready(class));
     }
 
+    /// Whether the class comes from a source file of this run, not from the class path.
+    pub fn from_source(&self, name: &str) -> bool {
+        matches!(self.classes.get(name), Some(Slot::Ready(_)))
+    }
+
     pub fn get(&self, name: &str) -> Option<&ClassInfo> {
         match self.classes.get(name)? {
             Slot::Ready(class) => Some(class),
