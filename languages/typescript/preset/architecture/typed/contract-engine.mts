@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { runTypedChecks } from '../../../adapters/typed-engine/typed-checks.mts';
+import type { Environment } from '../../../../../shared/processes/environment.mts';
 import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
 
 export type UnusedMethod = {
@@ -20,7 +21,7 @@ function unusedMethodOf(value: unknown): UnusedMethod {
 
 export function engineUnusedMethods(
   absoluteConfig: string,
-  environment: NodeJS.ProcessEnv = process.env,
+  environment: Environment,
 ): { readonly sourceRoot: string; readonly findings: UnusedMethod[] } | undefined {
   const outcome = runTypedChecks({ project: absoluteConfig, checks: [CHECK], environment });
   const sourceRoot = fieldOf(outcome.report, 'sourceRoot');

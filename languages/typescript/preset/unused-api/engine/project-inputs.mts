@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { fieldOf, optionalText } from '../../../../../shared/values/readers.mts';
 import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 import type { ProgramInputs } from '../program.mts';
 import type { ContextLayout, FileInfo } from '../typed/context-types.mts';
@@ -40,7 +41,10 @@ export function engineProjectConfig(
   { parsed, options, rootNames }: ProgramInputs,
   { configPath, projectRoot }: { readonly configPath: string; readonly projectRoot: string },
 ): unknown {
-  const pathsBase = String(options.baseUrl ?? options['pathsBasePath'] ?? projectRoot);
+  const pathsBase =
+    optionalText(fieldOf(options, 'baseUrl')) ??
+    optionalText(fieldOf(options, 'pathsBasePath')) ??
+    projectRoot;
   return {
     extends: path.resolve(configPath),
     compilerOptions: {

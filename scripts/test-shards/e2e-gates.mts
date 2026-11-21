@@ -1,6 +1,7 @@
-import { existsSync, globSync, readFileSync } from 'node:fs';
+import { globSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { type Fields, fieldsOf, listOf } from '../json/fields.mts';
+import { isFile } from '../../shared/filesystem.mts';
 import type { Environment } from '../../shared/processes/environment.mts';
 
 export type GateCandidate = { readonly file: string; readonly flags: readonly string[] };
@@ -33,7 +34,7 @@ function relativeImports(file: string): string[] {
     .flatMap((match) =>
       match[1] === undefined ? [] : [path.resolve(path.dirname(file), match[1])],
     )
-    .filter((imported) => existsSync(imported));
+    .filter(isFile);
 }
 
 function reExports(file: string): string[] {
@@ -41,7 +42,7 @@ function reExports(file: string): string[] {
     .flatMap((match) =>
       match[1] === undefined ? [] : [path.resolve(path.dirname(file), match[1])],
     )
-    .filter((exported) => existsSync(exported));
+    .filter(isFile);
 }
 
 function withReExports(modules: readonly string[]): string[] {

@@ -159,9 +159,25 @@
       "paths": ["package.json"],
       "packages": ["@typescript/native"],
       "reason": "TypeScript 7 is loaded by path, not imported: the type check opens its unstable/sync API through resolveTool, and Stryker's TypeScript checker imports @typescript/native from inside node_modules, which knip does not scan."
+    },
+    {
+      "rule": "nitpicker/no-module-level-mutable-state",
+      "paths": ["languages/typescript/preset/eslint-config/react/engine-replay.mts"],
+      "reason": "Deliberate per-process singleton: the ESLint config entry point names the engine's findings file once for the lint process, and the rule objects, which ESLint creates per file with no way to hand them a value, read it from here."
+    },
+    {
+      "rule": "nitpicker/no-process-access-outside-composition-root",
+      "paths": [
+        "languages/typescript/preset/design/test-support/project.mts",
+        "languages/typescript/preset/unused-api/test-support/project.mts"
+      ],
+      "reason": "Test support: CI runs these suites a second time with NITPICKER_TYPED_ENGINE=required, so the analyzers under test get the environment the test process was started with, plus the policy file of the case."
     }
   ],
-  "analyzerTimeoutMinutes": { "coding-standards": 5, "structure": 5 },
+  "analyzerTimeoutMinutes": {
+    "coding-standards": 5,
+    "structure": 5
+  },
   "tools": {
     "tests": {
       "timeouts": {

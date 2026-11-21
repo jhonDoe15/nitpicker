@@ -75,7 +75,8 @@ function withProject<T>(root: string, policy: Policy, run: (options: ProjectOpti
     const transform = layoutTransformFor(TYPESCRIPT_CONFIG, resolveLayoutFor(fullPolicy));
     const source = readFileSync(path.join(packageRoot, TYPESCRIPT_CONFIG), 'utf8');
     writeFileSync(configPath, transform?.(source, configPath) ?? source);
-    return run({ projectRoot: root, configPath, environment: headPolicyEnvironment(policyFile) });
+    const environment = { ...process.env, ...headPolicyEnvironment(policyFile) };
+    return run({ projectRoot: root, configPath, environment });
   });
 }
 
