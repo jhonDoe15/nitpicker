@@ -295,7 +295,8 @@ impl<'u, 'c, 'a> Flow<'u, 'c, 'a> {
         while let Some(block) = pending.pop_front() {
             let Some(mut store) = inputs[block].clone() else { continue };
             if budget == 0 {
-                break;
+                // Not settled: better nothing than findings from a half-worked state.
+                return;
             }
             budget -= 1;
             let thrown = self.steps(block, &mut store);

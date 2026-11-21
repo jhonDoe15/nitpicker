@@ -46,12 +46,22 @@ pub struct Test {
 pub struct Shared<'c, 'a> {
     pub context: &'c Context<'a>,
     summaries: RefCell<HashMap<usize, u64>>,
-    marked: RefCell<HashMap<(String, String, usize), bool>>,
+    /// Summaries that may say too little, kept while the outermost method is worked out so that each body is
+    /// built once for it; kept for good once `MOST` bodies were built.
+    passing: RefCell<HashMap<usize, u64>>,
+    /// The methods being worked out, outermost first.
+    running: RefCell<Vec<usize>>,
+    /// Set when a summary met a method still being worked out or the limits below, so it may say too little.
+    cut: Cell<bool>,
+    built: Cell<u32>,
+    marked: RefCell<HashMap<(String, String, String), bool>>,
     overridden: RefCell<HashMap<(String, String, usize), bool>>,
-    depth: Cell<u32>,
 }
 
-const DEEPEST: u32 = 12;
+/// How deep calls are followed, and after how many bodies worked out for one class summaries that may say too
+/// little are no longer worked out again.
+const DEEPEST: usize = 48;
+const MOST: u32 = 4000;
 const BOXES: &[&str] = &[
     "java.lang.Integer", "java.lang.Long", "java.lang.Short", "java.lang.Byte", "java.lang.Character", "java.lang.Double", "java.lang.Float",
     "java.lang.Boolean",
@@ -65,7 +75,16 @@ pub fn arguments<'a>(call: Node<'a>) -> Vec<Node<'a>> {
 
 impl<'c, 'a> Shared<'c, 'a> {
     pub fn new(context: &'c Context<'a>) -> Self {
-        Shared { context, summaries: RefCell::default(), marked: RefCell::default(), overridden: RefCell::default(), depth: Cell::new(0) }
+        Shared {
+            context,
+            summaries: RefCell::default(),
+            passing: RefCell::default(),
+            running: RefCell::default(),
+            cut: Cell::new(false),
+            built: Cell::new(0),
+            marked: RefCell::default(),
+            overridden: RefCell::default(),
+        }
     }
 
     fn key(call: &Call) -> (String, String, usize) {
@@ -74,7 +93,7 @@ impl<'c, 'a> Shared<'c, 'a> {
 
     /// Whether the call's result is taken as possibly null.
     fn marked(&self, call: &Call) -> bool {
-        let key = Self::key(call);
+        let key = (call.declaring.clone(), call.method.name.clone(), format!("{:?}", call.method.parameters));
         if let Some(known) = self.marked.borrow().get(&key) {
             return *known;
         }
@@ -110,7 +129,7 @@ impl<'c, 'a> Shared<'c, 'a> {
     /// A bit per parameter the called method dereferences on every path that leaves it normally. Only for
     /// methods of this file that no class of the run overrides.
     pub fn summary(&self, call: &Call) -> u64 {
-        if call.method.varargs || self.depth.get() >= DEEPEST {
+        if call.method.varargs {
             return 0;
         }
         let Some(class) = self.context.classes.get(&call.declaring) else { return 0 };
@@ -120,11 +139,22 @@ impl<'c, 'a> Shared<'c, 'a> {
         }
         let final_class = self.context.resolver.index.get(&call.declaring).is_some_and(|info| info.flags & flag::FINAL != 0);
         let fixed = call.method.is_static || call.method.is_private || call.method.name == "<init>" || call.method.flags & flag::FINAL != 0 || final_class;
-        // While a method is being worked out, a call back into it counts as dereferencing nothing.
-        self.summaries.borrow_mut().insert(declaration.id(), 0);
+        // While a method is being worked out, a call back into it counts as dereferencing nothing. What was worked
+        // out with such an answer inside is kept only for the outermost method: the others are asked again later.
+        let (deep, again) = (self.running.borrow().len(), self.running.borrow().contains(&declaration.id()));
+        if let Some(known) = self.passing.borrow().get(&declaration.id()) {
+            self.cut.set(true);
+            return *known;
+        }
+        if again || deep >= DEEPEST {
+            self.cut.set(true);
+            return 0;
+        }
+        self.running.borrow_mut().push(declaration.id());
+        self.built.set(self.built.get() + 1);
+        let before = self.cut.replace(false);
         let mut bits = 0;
         if let Some(body) = declaration.child_by_field_name("body").filter(|_| fixed || !self.overridden(call)) {
-            self.depth.set(self.depth.get() + 1);
             let unit = Unit::build(self, &call.declaring, body, declaration.child_by_field_name("parameters"));
             let (entry, _) = super::must::run(&unit);
             for (position, path) in unit.parameters.iter().enumerate().take(64) {
@@ -132,9 +162,18 @@ impl<'c, 'a> Shared<'c, 'a> {
                     bits |= 1 << position;
                 }
             }
-            self.depth.set(self.depth.get() - 1);
         }
-        self.summaries.borrow_mut().insert(declaration.id(), bits);
+        self.running.borrow_mut().pop();
+        let cut = self.cut.get();
+        if !cut || deep == 0 {
+            self.summaries.borrow_mut().insert(declaration.id(), bits);
+        } else {
+            self.passing.borrow_mut().insert(declaration.id(), bits);
+        }
+        if deep == 0 && self.built.get() < MOST {
+            self.passing.borrow_mut().clear();
+        }
+        self.cut.set(before || (cut && deep > 0));
         bits
     }
 }

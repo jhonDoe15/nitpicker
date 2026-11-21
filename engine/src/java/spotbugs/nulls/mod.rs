@@ -167,7 +167,7 @@ fn class<'a>(shared: &Shared<'_, 'a>, class: Node<'a>, own: &str) {
         // Classes without a name written inside this one's members.
         let mut unnamed = Vec::new();
         walk(member, |node| {
-            if node.kind() == "object_creation_expression" && children(node).iter().any(|part| part.kind() == "class_body") {
+            if matches!(node.kind(), "object_creation_expression" | "enum_constant") && children(node).iter().any(|part| part.kind() == "class_body") {
                 unnamed.push(node);
             }
         });

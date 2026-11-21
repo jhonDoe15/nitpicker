@@ -15,7 +15,7 @@ pub fn field(index: &TypeIndex, class: &ClassInfo, field: &Field) -> bool {
 
 /// A method's result is marked on the method itself or on a method it overrides.
 pub fn method(index: &TypeIndex, declaring: &str, method: &Method) -> bool {
-    let same = |other: &Method| other.name == method.name && other.parameters.len() == method.parameters.len() && other.is_static == method.is_static;
+    let same = |other: &Method| other.name == method.name && other.parameters == method.parameters && other.is_static == method.is_static;
     let marked = |class: &str| index.get(class).is_some_and(|info| info.methods.iter().any(|other| same(other) && flagged(index, info, other.flags)));
     if method.is_static || method.name == "<init>" {
         return marked(declaring);

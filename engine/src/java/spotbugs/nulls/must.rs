@@ -29,10 +29,32 @@ pub fn run(unit: &Unit) -> (Vec<Bits>, Vec<Bits>) {
     let blocks = &unit.cfg.blocks;
     let mut starts: Vec<Bits> = vec![vec![u64::MAX; words]; blocks.len()];
     let mut ends: Vec<Bits> = vec![vec![0; words]; blocks.len()];
+    // A block from which the body is never left says nothing: without this, a loop without an end would count
+    // as dereferencing everything.
+    let mut leaves: Vec<bool> = blocks.iter().map(|block| matches!(block.exit, Exit::End)).collect();
+    let mut grown = true;
+    while grown {
+        grown = false;
+        for block in 0..blocks.len() {
+            let onward = match &blocks[block].exit {
+                Exit::End => true,
+                Exit::Jump(to) => leaves[*to],
+                Exit::Branch(_, holds, fails) => leaves[*holds] || leaves[*fails],
+                Exit::Any(all) => all.iter().any(|to| leaves[*to]),
+            };
+            if onward && !leaves[block] {
+                leaves[block] = true;
+                grown = true;
+            }
+        }
+    }
+    for block in (0..blocks.len()).filter(|block| !leaves[*block]) {
+        starts[block] = vec![0; words];
+    }
     let mut changed = true;
     while changed {
         changed = false;
-        for block in (0..blocks.len()).rev() {
+        for block in (0..blocks.len()).rev().filter(|block| leaves[*block]) {
             let mut now = match &blocks[block].exit {
                 Exit::End => vec![0; words],
                 Exit::Jump(to) => starts[*to].clone(),
