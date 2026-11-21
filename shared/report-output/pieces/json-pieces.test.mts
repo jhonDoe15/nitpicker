@@ -2,7 +2,12 @@ import { closeSync, mkdtempSync, openSync, rmSync, writeFileSync } from 'node:fs
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { compactJsonLines, prettyJsonPieces, writePieces } from './json-pieces.mts';
+import {
+  compactJsonLines,
+  prettyJsonItems,
+  prettyJsonPieces,
+  writePieces,
+} from './json-pieces.mts';
 import { parseJsonDescriptor } from './json-lines.mts';
 
 const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-json-pieces-'));
@@ -77,6 +82,23 @@ describe('JSON written in pieces', () => {
     expect(JSON.parse(text)).toEqual(JSON.parse(JSON.stringify(value)));
     expect(parsedFromFile(`${name}.json`, text, false)).toEqual(JSON.parse(JSON.stringify(value)));
   });
+
+  it.each([
+    ['many findings', findings],
+    ['no items', []],
+    ['one small item', [finding(1)]],
+    ['items JSON prints as null', [undefined, () => 1, { toJSON: () => 'converted' }, null]],
+    ['nested lists', [findings.slice(0, 300), { findings }]],
+  ])(
+    'prints the items of %s one at a time exactly as JSON.stringify prints the list',
+    (_, items) => {
+      function* oneAtATime(): Generator {
+        yield* items;
+      }
+
+      expect(joined(prettyJsonItems(oneAtATime()))).toBe(JSON.stringify(items, null, 2));
+    },
+  );
 
   it('puts each element of a large list on its own line', () => {
     const lines = joined(compactJsonLines({ findings })).split('\n');

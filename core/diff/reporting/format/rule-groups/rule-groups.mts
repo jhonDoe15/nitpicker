@@ -65,15 +65,48 @@ function groupByRule(
   return [...groups.entries()].map(([label, members]) => ({ label, members }));
 }
 
+type ParsedMessage = { readonly part: RoutePart; readonly sentences: readonly string[] };
+
+function parsedMessages(members: readonly ReportEntry[]): ParsedMessage[] {
+  const known = new Map<unknown, ParsedMessage>();
+  return members.map(({ message }) => {
+    const found = known.get(message);
+    if (found !== undefined) {
+      return found;
+    }
+    const part = splitRoute(oneLine(message));
+    const parsed = { part, sentences: sentences(part.body) };
+    known.set(message, parsed);
+    return parsed;
+  });
+}
+
+function withoutShared(
+  split: readonly (readonly string[])[],
+  sharedSet: ReadonlySet<string>,
+): string[] {
+  const known = new Map<readonly string[], string>();
+  return split.map((list) => {
+    const found = known.get(list);
+    if (found !== undefined) {
+      return found;
+    }
+    const detail = list.filter((sentence) => !sharedSet.has(sentence)).join(' ');
+    known.set(list, detail);
+    return detail;
+  });
+}
+
 function groupLines(label: string, members: readonly ReportEntry[]): string[] {
-  const parts = members.map((finding) => splitRoute(oneLine(finding.message)));
-  const split = parts.map(({ body }) => sentences(body));
+  const parsed = parsedMessages(members);
+  const parts = parsed.map(({ part }) => part);
+  const split = parsed.map(({ sentences: list }) => list);
   const unfolded = split.filter((_, index) => members[index]?.['folded'] !== true);
   const base = unfolded.length > 1 || unfolded.length === split.length ? unfolded : split;
   const [firstBase = []] = base;
   const shared = firstBase.filter((sentence) => base.every((list) => list.includes(sentence)));
   const sharedSet = new Set(shared);
-  const details = split.map((list) => list.filter((sentence) => !sharedSet.has(sentence)));
+  const details = withoutShared(split, sharedSet);
   const advice = shared.join(' ');
   const differing = differingKeys(parts);
   const route = groupRoute(members, parts, differing);
@@ -90,12 +123,12 @@ function groupLines(label: string, members: readonly ReportEntry[]): string[] {
 
 function locationLines(
   members: readonly ReportEntry[],
-  details: readonly (readonly string[])[],
+  details: readonly string[],
   tags: readonly string[],
 ): string[] {
   const rows = new Map<string, Row>();
   for (const [index, finding] of members.entries()) {
-    const detail = (details[index] ?? []).join(' ');
+    const detail = details[index] ?? '';
     const tag = tags[index] ?? '';
     const key = `${textOf(finding.path)}\0${detail}\0${tag}`;
     const row = rows.get(key) ?? {
