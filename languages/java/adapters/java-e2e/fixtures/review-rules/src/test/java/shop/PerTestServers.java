@@ -41,21 +41,21 @@ abstract class ServerPerTestCases {
 
   @Test
   void stubsTheFirstCall() {
-    WireMockServer server = new WireMockServer(8089);
+    WireMockServer server = new WireMockServer(8089); // violation: FixedPortInTest
     server.start(); // violation: ServerOrContainerPerTest
     assertThat(server.port()).isEqualTo(8089);
   }
 
   @Test
   void stubsTheSecondCall() {
-    WireMockServer server = new WireMockServer(8089);
+    WireMockServer server = new WireMockServer(8089); // violation: FixedPortInTest
     server.start(); // violation: ServerOrContainerPerTest
     assertThat(server.port()).isEqualTo(8089);
   }
 
   @Test
   void injectsAFault() {
-    WireMockServer faulty = new WireMockServer(8090);
+    WireMockServer faulty = new WireMockServer(8090); // violation: FixedPortInTest
     faulty.start();
     assertThat(faulty.port()).isEqualTo(8090);
     assertThat(startedOnce.isRunning()).isTrue();

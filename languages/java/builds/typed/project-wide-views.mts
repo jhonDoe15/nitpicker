@@ -6,6 +6,7 @@ import { kotlinModules, readKotlinMetrics } from '../../adapters/kotlin/kotlin-m
 import { readJavaFileLimitFindings } from '../../adapters/metrics/java-structure.mts';
 import { readCopiedConstantFindings } from '../../adapters/review-rules/copied-constants/copied-constants.mts';
 import { readCopyPastedTestFindings } from '../../adapters/review-rules/copy-pasted-tests/copy-pasted-tests.mts';
+import { readSpringContextFindings } from '../../adapters/review-rules/spring-contexts/spring-contexts.mts';
 import { readFixedDelayFindings } from '../../adapters/review-rules/fixed-delays/fixed-delays.mts';
 import { readMaxValueFindings } from '../../adapters/review-rules/max-value-sums/max-value-sums.mts';
 import { readStringCallFindings } from '../../adapters/review-rules/string-calls/string-calls.mts';
@@ -148,6 +149,9 @@ export function copiedConstantFindings(projectRoot: string, options: WideOptions
 }
 export function copyPastedTestFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
   return findingsOf(callUntyped(readCopyPastedTestFindings, projectRoot, options));
+}
+export function springContextFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
+  return findingsOf(callUntyped(readSpringContextFindings, projectRoot, options));
 }
 export function maxValueFindings(projectRoot: string, options: WideOptions): JavaFinding[] {
   return findingsOf(callUntyped(readMaxValueFindings, projectRoot, options));

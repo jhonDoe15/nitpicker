@@ -14,7 +14,7 @@ project with a Gradle build runs through Gradle, one with only a `pom.xml` throu
 [Maven](kotlin-preset/maven.md)). The JDK and Gradle a CI job needs, and recipes for GitHub Actions, GitLab CI and
 Jenkins, are in [nitpicker in CI](ci.md#toolchains-by-preset).
 
-Every rule the preset can report has an entry in the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md): [detekt](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/kotlin-detekt.md), [the Kotlin source checks, compiler warnings and format checks](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/kotlin-nitpicker.md), and the [Java rules](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-pmd.md) that run on Java sources. `nitpicker explain <tool/rule>` prints an entry.
+Every rule the preset can report has an entry in the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md): [detekt](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/kotlin-detekt.md), [the Kotlin source checks, compiler warnings and format checks](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/kotlin-nitpicker.md), and the Java rules ([PMD's own](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-pmd.md) and [the ones nitpicker adds](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-pmd-nitpicker.md)) that run on Java sources. `nitpicker explain <tool/rule>` prints an entry.
 
 ## Contents
 

@@ -1,0 +1,72 @@
+[
+ {
+  "name": "Field",
+  "message": "m",
+  "xpath": "//FieldDeclaration"
+ },
+ {
+  "name": "FirstVar",
+  "message": "m",
+  "xpath": "//VariableId[fn:position() = 1]"
+ },
+ {
+  "name": "LastVar",
+  "message": "m",
+  "xpath": "//VariableId[fn:last() = 1]"
+ },
+ {
+  "name": "PlainFirstVar",
+  "message": "m",
+  "xpath": "//VariableId[position() = 1]"
+ },
+ {
+  "name": "UnitEnd",
+  "message": "m",
+  "xpath": "/CompilationUnit[@EndColumn > 0 and @EndLine > 0]"
+ },
+ {
+  "name": "DotCr",
+  "message": "m",
+  "xpath": "//ClassDeclaration[matches(concat('a', codepoints-to-string(13), 'b'), 'a.b')]"
+ },
+ {
+  "name": "Inf",
+  "message": "m",
+  "xpath": "//ClassDeclaration[number('inf') > 0]"
+ },
+ {
+  "name": "Nbsp",
+  "message": "m",
+  "xpath": "//ClassDeclaration[normalize-space(codepoints-to-string((160, 97))) = 'a']"
+ },
+ {
+  "name": "Round",
+  "message": "m",
+  "xpath": "//ClassDeclaration[substring('abcde', -0.5, 3) = 'ab']"
+ },
+ {
+  "name": "DivZero",
+  "message": "m",
+  "xpath": "//ClassDeclaration[1 div 0 > 0]"
+ },
+ {
+  "name": "BadDouble",
+  "message": "m",
+  "xpath": "//ClassDeclaration[xs:double('abc') != 1]"
+ },
+ {
+  "name": "VarSig",
+  "message": "m",
+  "xpath": "//MethodCall[pmd-java:matchesSig('e.Var#v(int[])')]"
+ },
+ {
+  "name": "TextBlock",
+  "message": "m",
+  "xpath": "//StringLiteral[@TextBlock = true()][string-length(@ConstValue) = 5][contains(@Image, codepoints-to-string(10))][not(contains(@Image, codepoints-to-string(13)))]"
+ },
+ {
+  "name": "Replace",
+  "message": "m",
+  "xpath": "//ClassDeclaration[replace('abc', 'b', '\\$') = 'a$c']"
+ }
+]

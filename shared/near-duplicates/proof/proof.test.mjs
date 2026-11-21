@@ -204,4 +204,28 @@ describe('copies proved equal after inlining same-file helpers', () => {
 
     expect([...inlinedTrees([...units, twin]).keys()]).toEqual(['sample.js#viaHelper']);
   });
+
+  it('leaves a pair unproved when a parameter has no readable type', () => {
+    const failed = [];
+    const units = javascriptUnits(MODES).map((unit) => {
+      const [returned, parameters, body] = unit.tree.children;
+      const unreadable = {
+        kind: 'expression',
+        value: 'ERROR:Loan @Checked ... loans',
+        children: [],
+      };
+      const children = [
+        returned,
+        { ...parameters, children: [...parameters.children.slice(0, -1), unreadable] },
+        body,
+      ];
+      return { ...unit, tree: { ...unit.tree, children } };
+    });
+
+    const proofs = findNearDuplicates(units, { failed }).map(({ proof }) => proof);
+
+    expect(failed).toEqual([]);
+    expect(proofs).not.toContain('logic');
+    expect(found(MODES).findings.map(({ proof }) => proof)).toContain('logic');
+  });
 });

@@ -2,7 +2,7 @@ name: typescript
 
 on:
   push:
-    branches: [main]
+    branches: [main, integration]
     paths:
       - 'core/**'
       - 'shared/**'
@@ -29,22 +29,22 @@ on:
       - '.github/python-e2e-constraints.txt'
       - 'docs/compatibility.md'
   pull_request:
-    types: [labeled]
+    types: [labeled, opened, synchronize, reopened]
   workflow_dispatch:
 
-# Pull requests are checked locally with `npm run check` (CONTRIBUTING.md). On a pull request CI runs
-# when a label is added while the pull request carries the `run-ci` label, and a newer run cancels the
-# older one. GitHub keeps only the newest run of a workflow for a commit and counts a skipped required
-# check as passed, so every label runs CI again instead of skipping: otherwise any label would hide a
-# failed run behind skipped checks. Without `run-ci` the self-gate still runs and `test` fails.
+# Pull requests are checked locally with `npm run check` (CONTRIBUTING.md). On a pull request into
+# `integration` CI always runs; on any other pull request it runs while the pull request carries the
+# `run-ci` label, and a newer run cancels the older one. GitHub keeps only the newest run of a workflow
+# for a commit and counts a skipped required check as passed, so every label runs CI again instead of
+# skipping: otherwise any label would hide a failed run behind skipped checks. Without `run-ci` the self-gate still runs and `test` fails.
 # On main a started run finishes, and a newer push replaces a run that is still waiting.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'push' && 'main' || github.event.pull_request.number || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.ref_name || github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   container-smoke:
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')
+    if: github.event_name != 'pull_request' || github.base_ref == 'integration' || contains(github.event.pull_request.labels.*.name, 'run-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -79,7 +79,7 @@ jobs:
   # slowest shard sets the time instead of the whole suite. The required `test` check is the job
   # below that passes only when every shard passed. scripts/test-shards/sequencer.mts balances them.
   test-shard:
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')
+    if: github.event_name != 'pull_request' || github.base_ref == 'integration' || contains(github.event.pull_request.labels.*.name, 'run-ci')
     name: test shard ${{ matrix.shard }}/${{ strategy.job-total }}
     runs-on: ubuntu-latest
     # With two shards a shard took 20 to 30 minutes and ran into this limit; a third brings a
@@ -241,7 +241,7 @@ jobs:
   # git-ignored folders, and the peers a consumer brings. Not a required check. Node.js 22.14 is the
   # oldest supported version; its bundled npm 10 installs the repository from the lockfile.
   installed:
-    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')
+    if: github.event_name != 'pull_request' || github.base_ref == 'integration' || contains(github.event.pull_request.labels.*.name, 'run-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:

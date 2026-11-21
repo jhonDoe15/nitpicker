@@ -25,6 +25,8 @@ One npm package (`nitpicker`) serves every language; the package root is the rep
   (`metrics/`); it reuses the generic ingesters in `shared/ingest/`.
 - `languages/go/`: the Go analyzer (`adapters/`) and the `go/ast` metrics program (`inspect/`, a Go
   module on the standard library only).
+- `engine/`: a prototype of nitpicker's own analysis engine, a Rust program with its own
+  [README](engine/README.md) and its own conventions. Nothing calls it yet. Not shipped.
 - `spec/`, `docs/`, `evals/` and `scripts/`: the language-neutral contract, documentation,
   agent evaluations and maintenance scripts. Not shipped.
 
@@ -103,7 +105,8 @@ everything and merge or rebase on the latest `main` before the final run. A chan
 end-to-end behaviour also needs that language's suite (`npm run test:java`, `test:kotlin` or
 `test:python` or `test:go`), which needs the language's toolchain. CI runs all four, in the `java-e2e`,
 `kotlin-e2e`, `python-e2e` and `go-e2e` workflows, which follow the same triggers as the `typescript` workflow
-below (pushes to `main` that touch the paths they list, a manual run, and the `run-ci` label). The
+below (pushes to `main` and `integration` that touch the paths they list, a manual run, pull requests into
+`integration`, and the `run-ci` label). The
 `github-action` workflow, which runs the composite action in `action.yml` on the sample project in
 `.github/sample-project`, and the `platforms` workflow described below follow them too; neither is a
 required check. On a pull request, each of these six workflows first runs a small `changes` job
@@ -132,13 +135,15 @@ matches; a test fails until it does.
 
 CI (the `typescript` workflow) runs:
 
-- on every push to `main` that touches a path in the workflow's `paths` list (a run that has started
-  finishes; a run still waiting is replaced by the next push's run, which tests everything merged so far);
-- on a pull request when someone adds a label while it carries the `run-ci` label: adding `run-ci`
-  starts it, and any later label runs it again (remove and add `run-ci` for another run). GitHub
-  keeps only the newest run of a workflow for a commit and counts a skipped required check as
-  passed, so a label never skips the checks: on a pull request without `run-ci` the self-gate
-  still runs and `test` fails until someone adds `run-ci`;
+- on every push to `main` or `integration` that touches a path in the workflow's `paths` list (a run
+  that has started finishes; a run still waiting is replaced by the next push's run, which tests
+  everything merged so far);
+- on every pull request into `integration`, the branch that collects unfinished work before it lands
+  on `main`: opening it, each push and each label start a run, no label needed;
+- on any other pull request while it carries the `run-ci` label: adding `run-ci` starts it, and each
+  later push or label runs it again. GitHub keeps only the newest run of a workflow for a commit and
+  counts a skipped required check as passed, so a run never skips the checks: on a pull request
+  without `run-ci` the self-gate still runs and `test` fails until someone adds `run-ci`;
 - by hand from the Actions tab (Run workflow) on any branch that already has this workflow.
 
 GitHub does not start a pull request run while the pull request has a merge conflict, so resolve it
@@ -222,8 +227,15 @@ memory.
 
 ## Licenses
 
-Code nitpicker writes or copies stays permissive (MIT, Apache-2.0, BSD, ISC). A tool nitpicker runs
-unmodified, either downloaded at run time or installed as an unmodified npm package, may be
+nitpicker itself is under the [PolyForm Noncommercial License 1.0.0](LICENSE), and the maintainers
+also offer commercial licenses. By contributing, you confirm that you have the right to submit your
+contribution, and you grant the maintainers a perpetual, worldwide, irrevocable, royalty-free license
+to use, modify, sublicense and relicense it under the PolyForm Noncommercial License 1.0.0, under
+commercial licenses and under any other terms they choose. You keep your copyright.
+
+Code nitpicker copies or ports from other projects must be permissive (MIT, Apache-2.0, BSD, ISC) so
+it can ship under these terms, with its notices kept. A tool nitpicker runs unmodified, either
+downloaded at run time or installed as an unmodified npm package, may be
 weak-copyleft (LGPL, EPL, MPL) or GPL-2.0 with the Classpath exception. Any other GPL, AGPL and
 source-available licenses (SSPL, SSALv1, BSL, Elastic and the like) are never allowed, in either
 form.
