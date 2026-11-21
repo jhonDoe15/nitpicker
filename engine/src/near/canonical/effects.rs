@@ -60,22 +60,22 @@ pub fn is_pure(node: &Node) -> bool {
     every_part(node, &|_| true)
 }
 
-pub fn is_stable(node: &Node, escaping: &HashSet<Text>) -> bool {
+pub fn is_stable(node: &Node, escaping: &HashSet<Option<Text>>) -> bool {
     node.is("none")
         || every_part(node, &|node| {
             !node.is("this")
-                && (!node.is("name") || (node.is_bound() && !node.value.as_ref().is_some_and(|v| escaping.contains(v))))
+                && (!node.is("name") || (node.is_bound() && !escaping.contains(&node.value)))
         })
 }
 
-pub fn escaping_names(tree: &Tree) -> HashSet<Text> {
+pub fn escaping_names(tree: &Tree) -> HashSet<Option<Text>> {
     let mut nodes = Vec::new();
     pre_order(tree, &mut nodes);
     let mut names = HashSet::new();
     for lambda in nodes.into_iter().filter(|node| node.is("lambda")) {
         let mut inner = Vec::new();
         pre_order(lambda, &mut inner);
-        names.extend(inner.into_iter().filter(|node| node.is_bound()).filter_map(|node| node.value.clone()));
+        names.extend(inner.into_iter().filter(|node| node.is_bound()).map(|node| node.value.clone()));
     }
     names
 }

@@ -79,7 +79,13 @@ pub fn text(value: Option<String>) -> Option<Text> {
     value.map(Text::from)
 }
 
+const PROTOTYPE_NAMES: [&str; 12] = [
+    "constructor", "__defineGetter__", "__defineSetter__", "hasOwnProperty", "__lookupGetter__", "__lookupSetter__",
+    "isPrototypeOf", "propertyIsEnumerable", "toString", "valueOf", "__proto__", "toLocaleString",
+];
+
 pub fn normalized(raw: RawNode) -> Tree {
+    assert!(!PROTOTYPE_NAMES.contains(&raw.kind.as_str()), "near-duplicate tree: {} is not a node kind", raw.kind);
     let children: Vec<Tree> = raw.children.into_iter().map(normalized).collect();
     if let Some(count) = arity(&raw.kind) {
         assert!(children.len() == count, "near-duplicate tree: {} needs {count} children", raw.kind);

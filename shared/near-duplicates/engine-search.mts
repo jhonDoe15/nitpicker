@@ -100,7 +100,11 @@ function runSearch(
   try {
     const input = path.join(folder, 'units.jsonl');
     const out = path.join(folder, 'out.jsonl');
-    writeLines(input, [header, ...units.map(({ tree }) => tree)]);
+    try {
+      writeLines(input, [header, ...units.map(({ tree }) => tree)]);
+    } catch (error) {
+      return unavailable(environment, `its input could not be written: ${String(error)}`);
+    }
     const { status, stderr } = runEngineSync(
       ['near-duplicate-search', '--in', input, '--out', out],
       {

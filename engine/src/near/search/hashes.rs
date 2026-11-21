@@ -1,3 +1,4 @@
+use crate::near::text::lone_unit;
 use crate::near::tree::Node;
 use std::collections::HashSet;
 use std::fmt::Write;
@@ -37,7 +38,8 @@ fn combine(start: [u32; 2], parts: &[([u32; 2], usize)]) -> [u32; 2] {
 fn hashed(node: &Node, keys: &mut HashSet<HashKey>) -> ([u32; 2], usize) {
     let children: Vec<([u32; 2], usize)> = node.children.iter().map(|child| hashed(child, keys)).collect();
     let label = token_label(node);
-    let start = SEEDS.map(|seed| label.chars().fold(seed, |hash, character| mix(hash, character as u32)));
+    let points: Vec<u32> = label.chars().map(|character| lone_unit(character).unwrap_or(character as u32)).collect();
+    let start = SEEDS.map(|seed| points.iter().fold(seed, |hash, point| mix(hash, *point)));
     let hashes = combine(start, &children);
     let size = children.iter().map(|(_, size)| size).sum::<usize>() + usize::from(!node.is("none"));
     if node.category() == "statement" && size >= MIN_NODES {

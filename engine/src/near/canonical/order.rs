@@ -4,16 +4,16 @@ use crate::near::tree::{Text, Tree, compare_text};
 use std::collections::{HashMap, HashSet};
 
 pub struct OrderContext<'a> {
-    pub escaping: HashSet<Text>,
+    pub escaping: HashSet<Option<Text>>,
     pub mode: KeyMode<'a>,
 }
 
-fn movable(statement: &Tree, escaping: &HashSet<Text>) -> bool {
+fn movable(statement: &Tree, escaping: &HashSet<Option<Text>>) -> bool {
     if !statement.is("declare") {
         return false;
     }
     let (name, value) = (statement.children.get(1), statement.children.get(2));
-    name.is_some_and(|name| name.is_bound() && !name.value.as_ref().is_some_and(|value| escaping.contains(value)))
+    name.is_some_and(|name| name.is_bound() && !escaping.contains(&name.value))
         && is_stable(value.expect("near-duplicate tree: declared value"), escaping)
 }
 
