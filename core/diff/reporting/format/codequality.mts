@@ -25,22 +25,25 @@ function toIssue(finding: ReportEntry, projectPath: string): Issue {
   };
 }
 
-function firstOfEachFingerprint(issues: readonly Issue[]): Issue[] {
+export function* eachCodeQualityIssue(
+  findings: Iterable<ReportEntry>,
+  { projectPath = '.' }: { readonly projectPath?: string | undefined } = {},
+): Generator<Issue> {
   const seen = new Set<string>();
-  return issues.filter(({ fingerprint }) => {
-    if (seen.has(fingerprint)) {
-      return false;
+  for (const finding of findings) {
+    const issue = toIssue(finding, projectPath);
+    if (!seen.has(issue.fingerprint)) {
+      seen.add(issue.fingerprint);
+      yield issue;
     }
-    seen.add(fingerprint);
-    return true;
-  });
+  }
 }
 
-export function codeQualityIssues(
+function codeQualityIssues(
   findings: readonly ReportEntry[],
-  { projectPath = '.' }: { readonly projectPath?: string | undefined } = {},
+  options: { readonly projectPath?: string | undefined } = {},
 ): unknown[] {
-  return firstOfEachFingerprint(findings.map((finding) => toIssue(finding, projectPath)));
+  return [...eachCodeQualityIssue(findings, options)];
 }
 
 export function renderCodeQualityReport(

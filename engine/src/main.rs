@@ -1,5 +1,6 @@
 mod engine;
 mod java;
+mod near;
 mod typescript;
 
 use engine::Language;
@@ -37,6 +38,10 @@ fn main() {
     }
     if args.first().map(String::as_str) == Some("typescript-type-replay") {
         typescript_type_replay(&args[1..]);
+        return;
+    }
+    if args.first().map(String::as_str) == Some("near-duplicate-search") {
+        near::near_duplicate_search(&args[1..]);
         return;
     }
     if args.first().map(String::as_str) == Some("typescript-structure") {
@@ -108,6 +113,8 @@ fn main() {
         "files": result.files,
         "lines": result.lines,
         "filesWithSyntaxErrors": result.parse_errors,
+        "syntaxErrorFiles": result.broken_files,
+        "nullAwayUnsure": java::errorprone::unread_marks(),
         "findings": result.findings,
         "functions": result.functions,
         "duplicates": result.duplicates,

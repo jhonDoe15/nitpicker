@@ -1,6 +1,7 @@
 import { alignTrees } from './align/align.mts';
 import type { Alignment } from './align/align.mts';
 import { canonicalTree } from './canonical/canonical.mts';
+import { searchedSets, sortedUnits } from './engine-search.mts';
 import { inlinedTrees } from './proof/inline.mts';
 import { proveSameLogic } from './proof/prove.mts';
 import type { Proof, ProofSide } from './proof/prove.mts';
@@ -193,7 +194,7 @@ function preparedSets(
   variants: Map<string, PreparedUnit>;
 } {
   const trees = inlinedTrees(units);
-  const sorted = units.toSorted((left, right) => compareText(left.id, right.id));
+  const sorted = sortedUnits(units);
   const originals = sorted.map((unit) => largeEnough(prepareUnit(unit, tokensOf)));
   const variants = new Map(
     sorted.flatMap((unit): [string, PreparedUnit][] => {
@@ -226,12 +227,8 @@ function pairsIn(
   list: readonly PreparedUnit[],
   changed: ReadonlySet<string> | undefined,
 ): [PreparedUnit, PreparedUnit][] {
-  return candidatePairs(list, scopeTest(list, changed)).map(
-    ([first, second]): [PreparedUnit, PreparedUnit] => [
-      present(list[first]),
-      present(list[second]),
-    ],
-  );
+  const pairs = candidatePairs(list, scopeTest(list, changed));
+  return pairs.map(([first, second]) => [present(list[first]), present(list[second])]);
 }
 
 function inlinedPair(
@@ -273,8 +270,10 @@ export function findNearDuplicates(
     proveLogic: options.proveLogic ?? proveSameLogic,
   };
   const changed = options.changed === undefined ? undefined : new Set(options.changed);
-  const { originals, mixed, variants } = preparedSets(units, tokensOf);
-  const pairs = pairsIn(originals, changed);
+  const searched =
+    changed === undefined ? searchedSets(sortedUnits(units), inlinedTrees(units)) : undefined;
+  const { originals, mixed, variants } = searched ?? preparedSets(units, tokensOf);
+  const pairs = searched?.originalPairs ?? pairsIn(originals, changed);
   const seen = new Set(pairs.map(idsOf));
   const failed = options.failed ?? [];
   const found = pairs.map((pair) =>
@@ -289,7 +288,7 @@ export function findNearDuplicates(
   const extra =
     variants.size === 0
       ? []
-      : pairsIn(mixed, changed)
+      : (searched?.mixedPairs ?? pairsIn(mixed, changed))
           .filter(
             (pair) => !seen.has(idsOf(pair)) && pair.some(({ unit }) => variants.has(unit.id)),
           )

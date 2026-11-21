@@ -1,6 +1,6 @@
 import type { Finding } from '../../../../shared/values/findings.mts';
 import type { DesignFacts } from './design-types.mts';
-import { createProjectProgram } from '../unused-api/program.mts';
+import { takeProjectProgram } from '../unused-api/program.mts';
 import {
   DESIGN_RULES,
   createContext,
@@ -23,7 +23,7 @@ export function projectDesignFacts({ projectRoot, configPath, environment }: Req
   if (fromEngine !== undefined) {
     return fromEngine;
   }
-  const program = createProjectProgram(request);
+  const program = takeProjectProgram(request);
   const context = createContext({ program, projectRoot, layout, packagesInfo });
   return designFacts({ context, layout, packagesInfo, frameworks, projectRoot });
 }

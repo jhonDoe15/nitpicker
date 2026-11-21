@@ -99,14 +99,12 @@ afterEach(() => {
 describe('buildFindings report cleanup', () => {
   it('keeps the Gradle memory failure when removing the temporary report folder fails', () => {
     const projectRoot = gradleProject();
-    const warnings: string[] = [];
     failReportRemoval('ENOTEMPTY', 'ENOTEMPTY: directory not empty, rmdir');
 
     let caught: unknown;
     try {
       buildFindings(projectRoot, {
         gradle: 'gradle',
-        warn: { write: (text) => warnings.push(text) },
         spawn: () => spawnReturn({ status: 1, stderr: DAEMON_DISAPPEARED }),
       });
     } catch (error) {
@@ -117,17 +115,14 @@ describe('buildFindings report cleanup', () => {
     expect(message).toContain(DAEMON_DISAPPEARED);
     expect(message).toContain('The Gradle daemon or one of its JVMs ran out of memory');
     expect(message).not.toContain('ENOTEMPTY');
-    expect(warnings.some((entry) => entry.includes('ENOTEMPTY'))).toBe(true);
   });
 
   it('returns findings when Gradle succeeds even if removing the temporary report folder fails', () => {
     const projectRoot = gradleProject();
-    const warnings: string[] = [];
     failReportRemoval('EACCES', 'EACCES: permission denied, rmdir');
 
     const report = buildFindings(projectRoot, {
       gradle: 'gradle',
-      warn: { write: (text) => warnings.push(text) },
       spawn: (_command, _args, options) => {
         writeEmptyModuleReport(reportDirFrom(options));
         return spawnReturn({ status: 0 });
@@ -135,6 +130,5 @@ describe('buildFindings report cleanup', () => {
     });
 
     expect(report.findings).toEqual([]);
-    expect(warnings.some((entry) => entry.includes('EACCES'))).toBe(true);
   });
 });

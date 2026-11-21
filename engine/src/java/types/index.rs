@@ -27,7 +27,11 @@ pub struct TypeIndex {
     classes: HashMap<String, Slot>,
     /// Ancestors per class, kept once the index no longer changes.
     lineages: std::sync::RwLock<HashMap<String, std::sync::Arc<Vec<String>>>>,
+    /// Per class, whether NullAway takes its code as checked.
+    checked: std::sync::RwLock<HashMap<String, bool>>,
     settled: bool,
+    /// The classes of the source files that the class path holds too.
+    compiled: HashSet<String>,
     pub binary_classes: usize,
     pub source_classes: usize,
     /// Packages whose methods must have their result used, each with its subpackages: the outermost source packages.
@@ -111,7 +115,12 @@ impl TypeIndex {
             .map(|entry| if entry.is_dir() { folder_classes(entry) } else { archive_classes(entry) })
             .collect();
         for (name, origin) in loaded.into_iter().flatten() {
-            if !anonymous(&name) && !self.classes.contains_key(&name) {
+            if anonymous(&name) {
+                continue;
+            }
+            if self.classes.contains_key(&name) {
+                self.compiled.insert(name);
+            } else {
                 self.classes.insert(name, Slot::Later(origin, OnceLock::new()));
                 self.binary_classes += 1;
             }
@@ -132,6 +141,9 @@ impl TypeIndex {
     }
 
     pub fn put(&mut self, class: ClassInfo) {
+        if matches!(self.classes.get(&class.name), Some(Slot::Later(..))) {
+            self.compiled.insert(class.name.clone());
+        }
         self.classes.insert(class.name.clone(), Slot::Ready(class));
     }
 
@@ -145,6 +157,43 @@ impl TypeIndex {
             Slot::Ready(class) => Some(class),
             Slot::Later(origin, cell) => cell.get_or_init(|| read(origin)).as_ref(),
         }
+    }
+
+    /// Whether NullAway takes the code of a class as checked. `listed` says that the configured packages hold
+    /// the class. A top-level class counts when its package is listed or carries `@NullMarked`, unless the
+    /// package carries `@NullUnmarked`, or when the class itself carries `@NullMarked`; `@NullUnmarked` on the
+    /// class switches it off. A member class follows the class around it unless it carries one of the two.
+    pub fn null_checked(&self, name: &str, listed: bool) -> bool {
+        if let Some(known) = self.checked.read().ok().and_then(|known| known.get(name).copied()) {
+            return known;
+        }
+        let found = self.read_null_checked(name, listed);
+        if self.settled && let Ok(mut known) = self.checked.write() {
+            known.insert(name.to_string(), found);
+        }
+        found
+    }
+
+    fn read_null_checked(&self, name: &str, listed: bool) -> bool {
+        use super::model::flag;
+        let Some(package) = self.get(name).map(|class| class.package.as_str()) else { return listed };
+        let flags_of = |class: &str| self.get(class).map_or(0, |info| info.flags);
+        let start = if package.is_empty() { 0 } else { package.len() + 1 };
+        let mut end = name[start..].find('.').map_or(name.len(), |dot| start + dot);
+        let on_package = flags_of(&format!("{package}.package-info"));
+        let on_top = flags_of(&name[..end]);
+        let by_package = (listed || on_package & flag::NULL_MARKED != 0) && on_package & flag::NULL_UNMARKED == 0;
+        let mut checked = on_top & flag::NULL_UNMARKED == 0 && (by_package || on_top & flag::NULL_MARKED != 0);
+        while end < name.len() {
+            end = name[end + 1..].find('.').map_or(name.len(), |dot| end + 1 + dot);
+            let flags = flags_of(&name[..end]);
+            if flags & flag::NULL_UNMARKED != 0 {
+                checked = false;
+            } else if flags & flag::NULL_MARKED != 0 {
+                checked = true;
+            }
+        }
+        checked
     }
 
     pub fn has(&self, name: &str) -> bool {
@@ -204,6 +253,57 @@ impl TypeIndex {
         name == of || of == "java.lang.Object" || self.lineage(name).iter().any(|ancestor| ancestor == of)
     }
 
+    /// PMD's typeIs for a class type. PMD erases the supertypes of a raw type, and an erased type that takes no type
+    /// arguments is no subtype of its plain self there: a raw `Serde` is no `Closeable`, while `Serde<String>` is one.
+    /// PMD loads the named class from the class path. One it finds only in the sources it takes for a class without
+    /// type parameters, so a generic class of the sources is treated the same way.
+    pub fn is_subtype_as_pmd(&self, name: &str, raw: bool, of: &str) -> bool {
+        if !self.is_subtype(name, of) {
+            return false;
+        }
+        if name == of || name.contains('&') || of.contains('&') || matches!(of, OBJECT | "java.lang.Cloneable" | "java.io.Serializable") {
+            return true;
+        }
+        let Some(target) = self.get(of) else { return true };
+        let loaded = matches!(self.classes.get(of), Some(Slot::Later(..))) || self.compiled.contains(of);
+        if loaded && !target.type_parameters.is_empty() {
+            return true;
+        }
+        let raw = raw && self.generic(name);
+        self.plain_path(name, raw, (of, target.is_interface), &mut HashSet::new()).unwrap_or(true)
+    }
+
+    /// The type a declaration stands for: a generic class with a wildcard for each parameter, so it does not read as raw.
+    pub fn declared(&self, name: &str) -> Type {
+        Type::Class(name.to_string(), vec![Type::Wildcard; self.get(name).map_or(0, |info| info.type_parameters.len())])
+    }
+
+    /// Whether a member of the declaring class is reached through a raw type from the owner: the owner is raw, or a
+    /// class on the way up names its parent without type arguments. PMD erases the types of such members.
+    pub fn seen_raw(&self, owner: &Type, declaring: &str) -> bool {
+        let Type::Class(name, given) = owner else { return false };
+        let Some(target) = self.get(declaring).filter(|target| !target.type_parameters.is_empty()) else { return false };
+        let raw = given.is_empty() && self.generic(name);
+        self.plain_path(name, raw, (declaring, target.is_interface), &mut HashSet::new()) == Some(false)
+    }
+
+    /// Whether the first way up to the class, superclass first, keeps its type arguments at every step.
+    fn plain_path(&self, name: &str, erased: bool, target: (&str, bool), dead: &mut HashSet<String>) -> Option<bool> {
+        if name == target.0 {
+            return Some(!erased);
+        }
+        let info = self.get(name).filter(|_| dead.insert(name.to_string()))?;
+        let parents = info.superclass.iter().chain(info.interfaces.iter().filter(|_| target.1));
+        for parent in parents {
+            let bare = info.generic_supers.iter().find(|above| above.name() == *parent).is_none_or(|above| matches!(above, Type::Class(_, given) if given.is_empty()));
+            let found = self.plain_path(parent, erased || (bare && self.generic(parent)), target, dead);
+            if found.is_some() {
+                return found;
+            }
+        }
+        None
+    }
+
     /// The generic type of each component of a record, in order.
     pub fn record_components(&self, class: &str) -> Option<Vec<Type>> {
         self.get(class)?.record_components.clone()
@@ -240,12 +340,31 @@ impl TypeIndex {
 
     fn bindings(&self, info: &ClassInfo, arguments: &[Type]) -> HashMap<String, Type> {
         let raw = arguments.len() != info.type_parameters.len();
+        let given = |position: usize| arguments.get(position).filter(|given| !raw && **given != Type::Wildcard);
+        let written: HashMap<String, Type> = info
+            .type_parameters
+            .iter()
+            .enumerate()
+            .filter_map(|(position, (name, _))| given(position).map(|given| (name.clone(), given.clone())))
+            .collect();
+        let unwritten: HashMap<String, Type> =
+            info.type_parameters.iter().filter(|(name, _)| !written.contains_key(name)).map(|(name, _)| (name.clone(), Type::Wildcard)).collect();
         info.type_parameters
             .iter()
             .enumerate()
             .map(|(position, (name, bound))| {
-                let given = arguments.get(position).filter(|given| !raw && **given != Type::Wildcard);
-                (name.clone(), given.unwrap_or(bound).clone())
+                // A wildcard stands for the bound of its parameter, which may name the other parameters:
+                // `Assert<?, E>` with `SELF extends Assert<SELF, E>` is an `Assert<?, E>` of the written `E`.
+                let filled = match (given(position), info.written_bounds.get(position)) {
+                    (Some(given), _) => given.clone(),
+                    (None, Some(Type::Class(owner, bounds))) if !written.is_empty() && !bounds.is_empty() => {
+                        Type::Class(owner.clone(), bounds.clone()).substitute(&written).substitute(&unwritten)
+                    }
+                    // A bound written with type arguments is not a raw type, whatever the arguments are.
+                    (None, Some(Type::Class(owner, bounds))) if !bounds.is_empty() => Type::Class(owner.clone(), vec![Type::Wildcard; bounds.len()]),
+                    _ => bound.clone(),
+                };
+                (name.clone(), filled)
             })
             .collect()
     }

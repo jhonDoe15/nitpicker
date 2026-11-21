@@ -4,6 +4,7 @@ import { machineMemory } from '../../../../../shared/processes/machine-capacity.
 const GIB = 1024 ** 3;
 const MEMORY_PER_SLOT = 1.5 * GIB;
 const TOOL_MEMORY_PERCENT = 75;
+const HEAP_GOAL = '-XX:GCTimeRatio=4';
 
 export function toolSlots(cpus = availableParallelism(), memory = machineMemory()): number {
   const byMemory = Math.floor((memory * TOOL_MEMORY_PERCENT) / 100 / MEMORY_PER_SLOT);
@@ -11,7 +12,7 @@ export function toolSlots(cpus = availableParallelism(), memory = machineMemory(
 }
 
 export function toolHeapFlags(slots = toolSlots()): string[] {
-  return [`-XX:MaxRAMPercentage=${(TOOL_MEMORY_PERCENT / slots).toFixed(1)}`];
+  return [`-XX:MaxRAMPercentage=${(TOOL_MEMORY_PERCENT / slots).toFixed(1)}`, HEAP_GOAL];
 }
 
 export function withToolHeap(jvmArgs: readonly string[], slots = toolSlots()): string[] {

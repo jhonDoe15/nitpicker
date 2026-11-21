@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import type { CodeFileLayout } from '../layout-types.mts';
 import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../shared/project-files/project-files.mts';
-export const DEPENDENCY_PATH_PATTERN = '(?:^|/)node_modules(?:/|$)';
+export const DEPENDENCY_PATH_PATTERN = '(?:^|/)(?:node_modules|\\.yarn)(?:/|$)';
 const DEPENDENCY_PATH = new RegExp(DEPENDENCY_PATH_PATTERN);
 const projectFilesUnder: (
   root: string,

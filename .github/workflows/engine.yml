@@ -10,7 +10,10 @@ on:
       - 'languages/typescript/preset/coding-standards/**'
       - 'languages/typescript/preset/design/**'
       - 'languages/typescript/preset/unused-api/**'
+      - 'languages/typescript/preset/structure/**'
       - 'shared/engine/**'
+      - 'shared/near-duplicates/**'
+      - 'shared/rules/near-duplicates/**'
       - 'core/tooling/**'
       - 'package-lock.json'
       - 'scripts/ci/**'
@@ -83,3 +86,12 @@ jobs:
           languages/typescript/preset/coding-standards
         env:
           NITPICKER_TYPED_ENGINE: required
+      - name: Structure facts through the engine
+        run: npx vitest run --config vitest.config.mts languages/typescript/preset/structure
+        env:
+          NITPICKER_STRUCTURE_ENGINE: required
+          NITPICKER_NEAR_DUPLICATE_ENGINE: required
+      - name: Near-duplicate search through the engine
+        run: npx vitest run --config vitest.config.mts shared/near-duplicates shared/rules/near-duplicates
+        env:
+          NITPICKER_NEAR_DUPLICATE_ENGINE: required

@@ -26,7 +26,7 @@ fn as_call(class: &ClassInfo, method: &Method) -> Call {
 /// Whether a method may return null: its own mark where its class is checked, else `unchecked`; then the models.
 fn returns_null(context: &Context, class: &ClassInfo, method: &Method, unchecked: bool) -> bool {
     let resolver = context.resolver;
-    let loose = !annotated(&class.name);
+    let loose = !annotated(context, &class.name);
     let call = as_call(class, method);
     let modelled = |table: &[models::Model]| table.iter().any(|row| fits(resolver, row, &call, false) || loose && resolver.index.is_subtype(&call.declaring, row.0) && fits(resolver, row, &call, true));
     if modelled(models::NONNULL_RETURNS) {
@@ -39,14 +39,14 @@ fn returns_null(context: &Context, class: &ClassInfo, method: &Method, unchecked
 }
 
 /// Whether the referenced method refuses null in a parameter: a library model decides first, then its own marks.
-fn refuses(class: &ClassInfo, method: &Method, at: usize) -> bool {
+fn refuses(context: &Context, class: &ClassInfo, method: &Method, at: usize) -> bool {
     if rows(models::EXPLICITLY_NULLABLE_PARAMETERS, &class.name, method).contains(&at) {
         return false;
     }
     if rows(models::NON_NULL_PARAMETERS, &class.name, method).contains(&at) {
         return true;
     }
-    annotated(&class.name) && (at >= 64 || method.nullable_parameters & (1 << at) == 0)
+    annotated(context, &class.name) && (at >= 64 || method.nullable_parameters & (1 << at) == 0)
 }
 
 /// Whether the referenced method's `@Contract` promises a result that is not null for everything the interface
@@ -89,7 +89,7 @@ fn reference(context: &Context, node: Node, shown: &dyn Fn() -> String, above: (
         context.report("NullAway", node, node.start_byte(), &format!("referenced method returns @Nullable, but functional interface method {} returns @NonNull", shown()));
         return;
     }
-    let accepts = accepted(&declaring.name, method);
+    let accepts = accepted(context, &declaring.name, method);
     if unbound && accepts & 1 != 0 {
         let message = format!("unbound instance method reference cannot be used, as first parameter of functional interface method {} is @Nullable", shown());
         context.report("NullAway", node, node.start_byte(), &message);
@@ -99,7 +99,7 @@ fn reference(context: &Context, node: Node, shown: &dyn Fn() -> String, above: (
     let Some(last) = own.parameters.len().checked_sub(1) else { return };
     for at in (start..method.parameters.len().min(64)).filter(|at| accepts & (1 << at) != 0) {
         let position = (at - start).min(last);
-        if refuses(origin, own, position) {
+        if refuses(context, origin, own, position) {
             let name = own.names.get(position).cloned().unwrap_or_else(|| format!("arg{position}"));
             let message = format!("parameter {name} of referenced method is @NonNull, but parameter in functional interface method {} is @Nullable", shown());
             context.report("NullAway", node, node.start_byte(), &message);
@@ -127,7 +127,7 @@ pub(super) fn standing_in(context: &Context, node: Node) {
         let map = resolver.index.member_map(&target, &declaring.name);
         let taken: Vec<Type> = method.generic_parameters.iter().map(|kind| kind.substitute(&map)).collect();
         reference(context, node, &shown, (declaring, method), &taken);
-    } else if annotated(&declaring.name) {
-        lambda(context, node, &shown, accepted(&declaring.name, method));
+    } else if annotated(context, &declaring.name) {
+        lambda(context, node, &shown, accepted(context, &declaring.name, method));
     }
 }

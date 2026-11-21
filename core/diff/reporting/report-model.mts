@@ -19,13 +19,20 @@ function isHelped(entry: ReportEntry): entry is ReportEntry & HelpedFinding {
   return typeof entry.tool === 'string' && typeof entry.rule === 'string';
 }
 
+export function* helpLinkedEntries(
+  entries: Iterable<ReportEntry>,
+  reference: ReferenceLinks = referenceLinks(),
+): Generator<ReportEntry> {
+  for (const entry of entries) {
+    yield isHelped(entry) ? (withHelpUris([entry], reference)[0] ?? entry) : entry;
+  }
+}
+
 export function withHelpLinks(
   entries: readonly ReportEntry[],
   reference: ReferenceLinks = referenceLinks(),
 ): ReportEntry[] {
-  return entries.map((entry) =>
-    isHelped(entry) ? (withHelpUris([entry], reference)[0] ?? entry) : entry,
-  );
+  return [...helpLinkedEntries(entries, reference)];
 }
 
 function sortText(value: unknown): string {

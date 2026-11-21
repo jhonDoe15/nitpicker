@@ -36,6 +36,7 @@ import { withoutRuntimeCryptoKeys } from './crypto-keys/crypto-key-filter.mts';
 import { cutOffSarifReport } from './processing/cut-off-report.mts';
 import { pmdProcessingErrors } from './processing/pmd-processing-errors.mts';
 import { pmdLogRuleCrashes, pmdLoggedCrashFiles } from './processing/pmd-rule-crashes.mts';
+import { readPmdReport } from './engine/pmd-engine-findings.mts';
 import { withoutLineReferences } from '../../../../../shared/ingest/line-references.mts';
 import { withoutClassesWithoutSource } from './spotbugs-sources.mts';
 import type { SarifLog, SarifResult } from '../../jpa/jpa-types.mts';
@@ -216,7 +217,7 @@ function withProjectFilters(findings: unknown, context: SarifContext): unknown {
 
 export function sarifFindings(context: SarifContext): unknown[] {
   const { projectRoot } = context;
-  const pmd = readSarifReport(path.join(context.reportRoot, 'pmd.sarif'));
+  const pmd = readPmdReport(context.reportRoot, readSarifReport);
   const spotbugs = preparedReport(
     readSarifReport(path.join(context.reportRoot, 'spotbugs.sarif')),
     context,

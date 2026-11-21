@@ -179,7 +179,7 @@ pub struct CallFacts {
 impl<'a, 't> Machine<'a, 't> {
     fn kind_is(&self, kind: &Type, name: &str) -> bool {
         match kind {
-            Type::Class(actual, _) => self.resolver.index.is_subtype(actual, name),
+            Type::Class(actual, given) => self.resolver.index.is_subtype_as_pmd(actual, given.is_empty(), name),
             Type::Array(element) => match name.strip_suffix("[]") {
                 Some(inner) => match element.as_ref() {
                     Type::Primitive(primitive) => *primitive == inner,
@@ -188,6 +188,8 @@ impl<'a, 't> Machine<'a, 't> {
                 None => matches!(name, "java.lang.Object" | "java.lang.Cloneable" | "java.io.Serializable"),
             },
             Type::Null => name.contains('.') || name.ends_with("[]"),
+            // A call of a void method is an Object for PMD.
+            Type::Primitive("void") => name == "java.lang.Object",
             other => other.erased().name() == name,
         }
     }
@@ -242,7 +244,7 @@ impl<'a, 't> Machine<'a, 't> {
             "ClassDeclaration" | "EnumDeclaration" | "RecordDeclaration" | "AnnotationTypeDeclaration" | "AnonymousClassDeclaration" => {
                 let source = node.source?;
                 let names = &self.resolver.scope.names;
-                names.get(&source.id()).or_else(|| names.get(&crate::engine::source::parent(source)?.id())).map(|name| Type::class(name))
+                names.get(&source.id()).or_else(|| names.get(&crate::engine::source::parent(source)?.id())).map(|name| self.resolver.index.declared(name))
             }
             "EnumConstant" => {
                 let mut holder = node.parent;
@@ -331,9 +333,46 @@ impl<'a, 't> Machine<'a, 't> {
         let name = dotted.as_str();
         if exactly {
             // A type variable is exactly no class, not even the class it erases to.
-            return !matches!(kind, Type::Null | Type::Variable(_) | Type::Wildcard) && kind.erased().name() == name;
+            return !matches!(kind, Type::Null | Type::Variable(_) | Type::Wildcard) && kind.erased().name() == name && !self.names_variable(*id);
         }
         self.kind_is(&kind, name)
+    }
+
+    /// Whether the node has the type of a type variable, alone or as the element of an array. The engine types such a
+    /// node with the bound of the variable, and PMD with the variable, which is exactly no class.
+    fn names_variable(&self, id: u32) -> bool {
+        let tree = self.tree;
+        let node = &tree.nodes[id as usize];
+        let kid = |names: &[&str]| node.children.iter().copied().find(|kid| names.contains(&tree.nodes[*kid as usize].name));
+        let variable = |kind: Option<Type>| {
+            let mut kind = kind;
+            while let Some(Type::Array(element)) = kind {
+                kind = Some(*element);
+            }
+            matches!(kind, Some(Type::Variable(_)))
+        };
+        let symbolic = || self.symbolic.get_or_init(|| self.resolver.symbolic());
+        match node.name {
+            "ArrayType" | "CastExpression" => node.children.first().is_some_and(|first| self.names_variable(*first)),
+            "ClassType" => variable(node.source.and_then(|source| self.resolver.written(source, true))),
+            "FormalParameter" | "LambdaParameter" | "RecordComponent" => kid(&["VariableId"]).is_some_and(|named| self.names_variable(named)),
+            "VariableId" => {
+                let mut holder = node.parent;
+                if holder != crate::java::pmd::tree::ROOT && tree.nodes[holder as usize].name == "VariableDeclarator" {
+                    holder = tree.nodes[holder as usize].parent;
+                }
+                let written = (holder != crate::java::pmd::tree::ROOT)
+                    .then(|| tree.nodes[holder as usize].children.iter().copied().find(|kid| TYPE_NODES.contains(&tree.nodes[*kid as usize].name)))
+                    .flatten();
+                written.is_some_and(|written| self.names_variable(written))
+            }
+            "VariableAccess" | "FieldAccess" => match node.source.and_then(|source| symbolic().receiver(source)) {
+                Some(Receiver::Value(kind)) => variable(Some(kind)),
+                _ => false,
+            },
+            name if TYPED.contains(&name) => variable(node.source.and_then(|source| symbolic().type_of(source))),
+            _ => false,
+        }
     }
 
     /// The method a call node resolves to, as matchesSig looks at it.
@@ -368,7 +407,7 @@ impl<'a, 't> Machine<'a, 't> {
         } else {
             match source.field("object") {
                 Some(_) => node.children.first().and_then(|first| self.node_type(*first)).unwrap_or(call.receiver.clone()),
-                None => Type::class(&call.declaring),
+                None => self.resolver.index.declared(&call.declaring),
             }
         };
         Some(CallFacts { qualifier, exact: created || call.method.is_static, name: name.to_string(), formals })

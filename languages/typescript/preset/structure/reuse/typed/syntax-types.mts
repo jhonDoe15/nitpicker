@@ -47,7 +47,7 @@ export type Definition = {
   readonly span: readonly [number, number];
 };
 
-export type DefinitionFact = Definition & { readonly usedLocally: boolean };
+export type DefinitionFact = Omit<Definition, 'span'> & { readonly usedLocally: boolean };
 
 export type Spec = {
   readonly name: string;

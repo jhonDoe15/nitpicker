@@ -1,5 +1,3 @@
-import { mkdtempSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { runJavaDuplicates } from '../metrics/java-duplicates.mts';
 import { runKotlinDuplicates } from '../kotlin/kotlin-duplicates.mts';
@@ -24,7 +22,6 @@ import { type JavaReport, type JavaRunOptions, budgetOf } from '../typed/java-ru
 import { fieldOf, optionalText } from '../../../../shared/values/readers.mts';
 import { stopReuseAhead } from '../../builds/reuse-ahead/reuse-ahead.mts';
 import { startGradleReuse, startMavenReuse } from '../../builds/reuse-ahead/reuse-start.mts';
-import { removeQuietly } from '../../builds/cleanup/remove-quietly.mts';
 import { openGradleHosts } from '../../builds/host/gradle/gradle-hosts.mts';
 import {
   type FailedToolRecord,
@@ -32,6 +29,7 @@ import {
   skippedModuleFindings,
 } from '../gradle-wrapper/partial/failed-tool-tasks.mts';
 import { checkedModules } from './checked-modules.mts';
+import { withReportBase } from './report-base/report-base.mts';
 
 type KotlinArgumentsRun = (kotlinArguments: readonly string[]) => void;
 type PresetRun = JavaRunOptions & {
@@ -130,12 +128,6 @@ function runJavaPreset(
   });
 }
 
-function withoutReportBase(error: unknown, reportBase: string): unknown {
-  return error instanceof Error && error.message.includes(reportBase)
-    ? new Error(error.message.replaceAll(reportBase, '<report directory>'), { cause: error })
-    : error;
-}
-
 function testsFailuresOrStopped(
   projectRoot: string,
   options: Omit<PresetRun, 'testsFailedModules' | 'testsSkipped'> & {
@@ -205,17 +197,9 @@ function gradleFindings(
 }
 
 function withGradleReports(projectRoot: string, options: JavaRunOptions): JavaReport {
-  const reportBase =
-    options.reportDirectory ?? mkdtempSync(path.join(tmpdir(), 'nitpicker-java-reports-'));
-  try {
-    return gradleFindings(projectRoot, options, reportBase);
-  } catch (error) {
-    throw withoutReportBase(error, reportBase);
-  } finally {
-    if (options.reportDirectory === undefined) {
-      removeQuietly(reportBase, options.warn);
-    }
-  }
+  return withReportBase(options.reportDirectory, (reportBase) =>
+    gradleFindings(projectRoot, options, reportBase),
+  );
 }
 
 function mavenFindings(projectRoot: string, options: JavaRunOptions): JavaReport {

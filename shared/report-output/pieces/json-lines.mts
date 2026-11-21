@@ -11,7 +11,11 @@ type Frame = {
   comma: boolean;
 };
 
-type LineState = { stack: Frame[]; root: { readonly value: unknown } | undefined };
+type LineState = {
+  stack: Frame[];
+  root: { readonly value: unknown } | undefined;
+  readonly strings: Map<string, string>;
+};
 
 const parseJson: (text: string) => unknown = JSON.parse;
 
@@ -30,6 +34,40 @@ function setMember(target: Record<string, unknown>, key: string, value: unknown)
     enumerable: true,
     configurable: true,
   });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function sharedString(strings: Map<string, string>, value: unknown): unknown {
+  if (typeof value !== 'string') {
+    return value;
+  }
+  const known = strings.get(value);
+  if (known !== undefined) {
+    return known;
+  }
+  strings.set(value, value);
+  return value;
+}
+
+function shared(strings: Map<string, string>, root: unknown): unknown {
+  const pending: unknown[] = [root];
+  for (const value of pending) {
+    if (Array.isArray(value)) {
+      for (const [index, item] of value.entries()) {
+        value[index] = sharedString(strings, item);
+        pending.push(item);
+      }
+    } else if (isRecord(value)) {
+      for (const [key, item] of Object.entries(value)) {
+        setMember(value, key, sharedString(strings, item));
+        pending.push(item);
+      }
+    }
+  }
+  return sharedString(strings, root);
 }
 
 function attach(state: LineState, value: unknown, key: string | undefined): void {
@@ -92,7 +130,7 @@ function member(state: LineState, frame: Frame, line: string): void {
   }
   const parsed = parseJson(`{${line}}`);
   for (const [key, value] of Object.entries(parsed ?? {})) {
-    attach(state, value, key);
+    attach(state, shared(state.strings, value), key);
     frame.comma = true;
   }
   frame.comma = false;
@@ -108,7 +146,7 @@ function acceptValueLine(state: LineState, line: string): void {
   } else if (frame !== undefined && !Array.isArray(frame.value)) {
     member(state, frame, line);
   } else {
-    attach(state, parseJson(line), takeKey(state));
+    attach(state, shared(state.strings, parseJson(line)), takeKey(state));
   }
 }
 
@@ -161,7 +199,7 @@ function eachLine(descriptor: number, accept: (line: string) => void): void {
 }
 
 function parsedLines(descriptor: number): unknown {
-  const state: LineState = { stack: [], root: undefined };
+  const state: LineState = { stack: [], root: undefined, strings: new Map() };
   eachLine(descriptor, (line) => {
     acceptLine(state, line);
   });

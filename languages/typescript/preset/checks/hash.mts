@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-import { importClosure } from '../../../../shared/import-closure.mts';
+import { importClosure, unchangingImportClosure } from '../../../../shared/import-closure.mts';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 
@@ -21,15 +21,21 @@ function onceByKey<Value>(): (key: string, create: () => Value) => Value {
 }
 
 const packageClosure = onceByKey<Map<string, string>>();
+const packageFiles = unchangingImportClosure(packageRoot);
+function packageFilesOf(relativePaths: readonly string[]): Map<string, string> {
+  return packageFiles(relativePaths);
+}
 
 function closureContents(
   relativePaths: readonly string[],
   root: string,
   closureOf: ClosureOf,
 ): Map<string, string> {
-  return root === packageRoot
-    ? packageClosure(relativePaths.join('\0'), () => closureOf(relativePaths, root))
-    : closureOf(relativePaths, root);
+  if (root !== packageRoot) {
+    return closureOf(relativePaths, root);
+  }
+  const read = closureOf === importClosureOf ? packageFilesOf : closureOf;
+  return packageClosure(relativePaths.join('\0'), () => read(relativePaths, root));
 }
 
 export function hashFiles(

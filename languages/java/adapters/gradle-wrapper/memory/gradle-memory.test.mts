@@ -51,7 +51,7 @@ describe('gradleToolEnvironment', () => {
       gradleToolEnvironment({ PATH: '/bin', JDK_JAVA_OPTIONS: '-Dfile.encoding=UTF-8' }, 4),
     ).toEqual({
       PATH: '/bin',
-      JDK_JAVA_OPTIONS: '-XX:MaxRAMPercentage=18.8 -Dfile.encoding=UTF-8',
+      JDK_JAVA_OPTIONS: '-XX:MaxRAMPercentage=18.8 -XX:GCTimeRatio=4 -Dfile.encoding=UTF-8',
     });
   });
 

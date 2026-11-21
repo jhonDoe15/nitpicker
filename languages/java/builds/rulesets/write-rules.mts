@@ -10,15 +10,32 @@ import {
   withGuardChecks,
   writeGuardRulesets,
 } from './rules-plan.mts';
+import { enginePlanOf, pmdRulesetsWithEngine } from './engine/pmd-engine.mts';
+import { errorProneOnEngine, errorPronePlanOf } from '../errorprone/errorprone-engine.mts';
 
 export const PMD_RULESETS_LIST = 'pmd-rulesets.txt';
+export const PMD_RUN_RULESETS_LIST = 'pmd-run-rulesets.txt';
+
+function writePmdRulesets(plan: RulesPlan): void {
+  const reportDir = planText(plan, 'reportDir');
+  const guards = writeGuardRulesets(plan);
+  writeFileSync(path.join(reportDir, PMD_RULESETS_LIST), guards.join(','));
+  const engine = enginePlanOf(plan['engine'], reportDir, guards);
+  if (engine !== undefined) {
+    writeFileSync(
+      path.join(reportDir, PMD_RUN_RULESETS_LIST),
+      pmdRulesetsWithEngine(engine, process.env).join(','),
+    );
+  }
+}
 
 export function writeRules(kind: string | undefined, plan: RulesPlan): void {
   if (kind === 'pmd-guards') {
-    writeFileSync(
-      path.join(planText(plan, 'reportDir'), PMD_RULESETS_LIST),
-      writeGuardRulesets(plan).join(','),
-    );
+    writePmdRulesets(plan);
+    return;
+  }
+  if (kind === 'errorprone-engine') {
+    errorProneOnEngine(errorPronePlanOf(plan), process.env, { log: process.stderr });
     return;
   }
   if (kind === 'checkstyle-config') {

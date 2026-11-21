@@ -8,6 +8,7 @@ describe('runnerFlags', () => {
     expect(runnerFlags(600_000, { slots: 4, now: NOW })).toEqual([
       '-Dnitpicker.errorprone.workers=4',
       '-XX:MaxRAMPercentage=37.5',
+      '-XX:GCTimeRatio=4',
       '-Dnitpicker.errorprone.deadline=1570000',
     ]);
   });
@@ -18,6 +19,7 @@ describe('runnerFlags', () => {
       expect(runnerFlags(timeoutMs, { slots: 1, now: NOW })).toEqual([
         '-Dnitpicker.errorprone.workers=1',
         '-XX:MaxRAMPercentage=75.0',
+        '-XX:GCTimeRatio=4',
       ]);
     },
   );
