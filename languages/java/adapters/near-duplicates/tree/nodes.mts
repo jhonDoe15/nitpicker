@@ -71,6 +71,42 @@ export function fields(node: Node, name: string): Node[] {
   return node.childrenForFieldName(name).filter(isNode);
 }
 
+const TYPE_NODE = /type(?:_identifier)?$/u;
+const ANNOTATED_ELLIPSIS = /^(?:@[\w$]+(?:\.[\w$]+)*\s*(?:\([^()]*\)\s*)?)+\.{3}$/u;
+const ANNOTATED_ELLIPSIS_AND_NAME =
+  /^\s*(?:@[\w$]+(?:\.[\w$]+)*\s*(?:\([^()]*\)\s*)?)+\.{3}\s*(?<name>[\p{L}_$][\p{L}\p{N}_$]*)$/u;
+
+type AnnotatedRest = { readonly type: Node; readonly name: string };
+
+function restInParameter(source: Node): AnnotatedRest | undefined {
+  const isMarked = codeChildren(source).some(
+    (child) => child.type === 'ERROR' && ANNOTATED_ELLIPSIS.test(child.text),
+  );
+  return isMarked
+    ? { type: required(source, 'type'), name: required(source, 'name').text }
+    : undefined;
+}
+
+function restInError(source: Node): AnnotatedRest | undefined {
+  const type = codeChildren(source).find((child) => child.type !== 'modifiers');
+  if (type === undefined || !TYPE_NODE.test(type.type)) {
+    return undefined;
+  }
+  const rest = source.text.slice(type.endIndex - source.startIndex);
+  const name = ANNOTATED_ELLIPSIS_AND_NAME.exec(rest)?.groups?.['name'];
+  return name === undefined ? undefined : { type, name };
+}
+
+export function annotatedRest(source: Node): AnnotatedRest | undefined {
+  if (source.parent?.type !== 'formal_parameters') {
+    return undefined;
+  }
+  if (source.type === 'formal_parameter') {
+    return restInParameter(source);
+  }
+  return source.type === 'ERROR' ? restInError(source) : undefined;
+}
+
 export function operatorOf(source: Node): string | undefined {
   return field(source, 'operator')?.type;
 }

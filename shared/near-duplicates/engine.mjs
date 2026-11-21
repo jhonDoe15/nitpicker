@@ -58,8 +58,8 @@ function describe([first, second], { verdict, alignment, cachedKey }) {
   };
 }
 
-function provedLogic([first, second], { alignment, cachedKey, refuted }) {
-  const proof = proveSameLogic([first, second].map(({ unit, tree }) => ({ unit, tree })));
+function provedLogic([first, second], { alignment, cachedKey, refuted, proveLogic }) {
+  const proof = proveLogic([first, second].map(({ unit, tree }) => ({ unit, tree })));
   if (proof === undefined) {
     return undefined;
   }
@@ -72,7 +72,7 @@ function provedLogic([first, second], { alignment, cachedKey, refuted }) {
   return { ...finding, parameters: [], renames: [], rewritten: true, proof: 'logic' };
 }
 
-function provedInlined(sides, { cachedKey, refuted }) {
+function provedInlined(sides, { cachedKey, refuted, proveLogic }) {
   const pair = oriented(sides, cachedKey);
   const trees = pair.map((side) => side.tree);
   const alignment = alignTrees(...trees, cachedKey);
@@ -80,10 +80,13 @@ function provedInlined(sides, { cachedKey, refuted }) {
     const finding = describe(pair, { verdict: 'same', alignment, cachedKey });
     return { ...finding, rewritten: true, proof: 'inlined' };
   }
-  return provedLogic(pair, { alignment, cachedKey, refuted });
+  return provedLogic(pair, { alignment, cachedKey, refuted, proveLogic });
 }
 
-export function proveUnits(sides, { cachedKey = createKeyCache(), refuted = [] } = {}) {
+export function proveUnits(
+  sides,
+  { cachedKey = createKeyCache(), refuted = [], proveLogic = proveSameLogic } = {},
+) {
   const pair = oriented(sides, cachedKey);
   const trees = pair.map((side) => side.tree);
   const alignment = alignTrees(...trees, cachedKey);
@@ -91,7 +94,7 @@ export function proveUnits(sides, { cachedKey = createKeyCache(), refuted = [] }
   if (whole.verdict === 'same') {
     return describe(pair, { verdict: whole.verdict, alignment, cachedKey });
   }
-  const logic = provedLogic(pair, { alignment, cachedKey, refuted });
+  const logic = provedLogic(pair, { alignment, cachedKey, refuted, proveLogic });
   if (logic !== undefined || whole.verdict !== undefined) {
     return logic ?? describe(pair, { verdict: whole.verdict, alignment, cachedKey });
   }
@@ -145,19 +148,39 @@ function inlinedPair(pair, variants) {
   return sides.some((side, index) => side !== pair[index]) ? sides : undefined;
 }
 
+function attempted(pair, failed, compare) {
+  try {
+    return compare();
+  } catch (error) {
+    failed.push({
+      units: pair.map(({ unit }) => unit.id),
+      reason: error instanceof Error ? error.message : String(error),
+    });
+    return undefined;
+  }
+}
+
 export function findNearDuplicates(units, options = {}) {
   const tokensOf = createVocabulary();
-  const proof = { cachedKey: createKeyCache(), refuted: options.refuted ?? [] };
+  const proof = {
+    cachedKey: createKeyCache(),
+    refuted: options.refuted ?? [],
+    proveLogic: options.proveLogic ?? proveSameLogic,
+  };
   const changed = options.changed === undefined ? undefined : new Set(options.changed);
   const { originals, mixed, variants } = preparedSets(units, tokensOf);
   const pairs = pairsIn(originals, changed);
   const seen = new Set(pairs.map(idsOf));
-  const found = pairs.map((pair) => {
-    const inlined = inlinedPair(pair, variants);
-    return (
-      proveUnits(pair, proof) ?? (inlined === undefined ? undefined : provedInlined(inlined, proof))
-    );
-  });
+  const failed = options.failed ?? [];
+  const found = pairs.map((pair) =>
+    attempted(pair, failed, () => {
+      const inlined = inlinedPair(pair, variants);
+      return (
+        proveUnits(pair, proof) ??
+        (inlined === undefined ? undefined : provedInlined(inlined, proof))
+      );
+    }),
+  );
   const extra =
     variants.size === 0
       ? []
@@ -165,7 +188,7 @@ export function findNearDuplicates(units, options = {}) {
           .filter(
             (pair) => !seen.has(idsOf(pair)) && pair.some(({ unit }) => variants.has(unit.id)),
           )
-          .map((pair) => provedInlined(pair, proof));
+          .map((pair) => attempted(pair, failed, () => provedInlined(pair, proof)));
   return [...found, ...extra]
     .filter((finding) => finding !== undefined)
     .sort((left, right) => compareText(left.identity, right.identity));

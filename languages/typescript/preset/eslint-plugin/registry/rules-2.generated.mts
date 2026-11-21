@@ -1,3 +1,4 @@
+import { rule as ruleNoNegativeCount } from '../rules/counts/no-negative-count.mts';
 import { rule as ruleNoNewlineOnlyLineSplit } from '../rules/line-splits/no-newline-only-line-split.mts';
 import { rule as ruleNoNodeProcessPerTest } from '../rules/test-runtime/processes/no-node-process-per-test.mts';
 import { rule as ruleNoNonLatin1HeaderValue } from '../rules/encoding/no-non-latin1-header-value.mts';
@@ -12,6 +13,7 @@ import { rule as ruleNoPartialOutputAssertion } from '../rules/test-runtime/asse
 import { rule as ruleNoPerCallDebounce } from '../rules/lifecycles/debounce/no-per-call-debounce.mts';
 import { rule as ruleNoPerCallRegistration } from '../rules/lifecycles/registrations/no-per-call-registration.mts';
 import { rule as ruleNoPipeDroppingErrors } from '../rules/streams/no-pipe-dropping-errors.mts';
+import { rule as ruleNoPlaceholderImplementation } from '../rules/placeholders/no-placeholder-implementation.mts';
 import { rule as ruleNoPrefixWithoutBoundary } from '../rules/affixes/no-prefix-without-boundary.mts';
 import { rule as ruleNoPresenceTruthiness } from '../rules/truthiness/no-presence-truthiness.mts';
 import { rule as ruleNoProcessAccessOutsideCompositionRoot } from '../rules/guards/no-process-access-outside-composition-root.mts';
@@ -96,10 +98,9 @@ import { rule as ruleNoUnownedAsyncAssertion } from '../test-assertions/unowned-
 import { rule as ruleNoUnpagedListing } from '../rules/listings/no-unpaged-listing.mts';
 import { rule as ruleNoUnpinnedAssertion } from '../test-assertions/no-unpinned-assertion.mts';
 import { rule as ruleNoUnresolvedRelativeUrl } from '../rules/urls/construction/no-unresolved-relative-url.mts';
-import { rule as ruleNoUnsafeDeserialization } from '../rules/security/deserialization/no-unsafe-deserialization.mts';
-import { rule as ruleNoUnsafePathJoin } from '../rules/guards/no-unsafe-path-join.mts';
 
 export const partRules = {
+  'no-negative-count': ruleNoNegativeCount,
   'no-newline-only-line-split': ruleNoNewlineOnlyLineSplit,
   'no-node-process-per-test': ruleNoNodeProcessPerTest,
   'no-non-latin1-header-value': ruleNoNonLatin1HeaderValue,
@@ -114,6 +115,7 @@ export const partRules = {
   'no-per-call-debounce': ruleNoPerCallDebounce,
   'no-per-call-registration': ruleNoPerCallRegistration,
   'no-pipe-dropping-errors': ruleNoPipeDroppingErrors,
+  'no-placeholder-implementation': ruleNoPlaceholderImplementation,
   'no-prefix-without-boundary': ruleNoPrefixWithoutBoundary,
   'no-presence-truthiness': ruleNoPresenceTruthiness,
   'no-process-access-outside-composition-root': ruleNoProcessAccessOutsideCompositionRoot,
@@ -198,6 +200,4 @@ export const partRules = {
   'no-unpaged-listing': ruleNoUnpagedListing,
   'no-unpinned-assertion': ruleNoUnpinnedAssertion,
   'no-unresolved-relative-url': ruleNoUnresolvedRelativeUrl,
-  'no-unsafe-deserialization': ruleNoUnsafeDeserialization,
-  'no-unsafe-path-join': ruleNoUnsafePathJoin,
 };

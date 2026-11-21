@@ -41,6 +41,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   (`doc-comment-content`).
 - A `TODO` or `FIXME` names its issue (`TODO(#123): ...`), and commented-out code is deleted
   (`pmd/TodoWithoutIssue`, `pmd/CommentedOutCode`).
+- Code that a comment calls a stand-in ("in a real application ...", "simulate the API call", "placeholder
+  implementation") does the real work or throws `UnsupportedOperationException`: no fixed return value, bare
+  `Thread.sleep`, unchanged copy or empty method under such a comment (`pmd/PlaceholderImplementation`).
 - nitpicker runs its own PMD rules (errorprone, bestpractices, performance, multithreading,
   security, a broad-catch rule, the boolean simplification rules and its own guard rules),
   forbiddenapis, javac lint and Google checks. A project's `config/pmd/ruleset.xml` or

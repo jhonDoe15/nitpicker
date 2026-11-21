@@ -297,6 +297,16 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A pino, bunyan or winston message stays constant: the values go in the fields (`log.info({ orderId }, 'loaded order')`,
   winston `logger.info('loaded order', { orderId })`), never in a template or a `+` concatenation
   (`nitpicker/no-interpolated-log-message`).
+- A `catch` in a request handler that answers with `{ error }` gives the status too (`NextResponse.json({ error }, {
+  status: 500 })`, `res.status(500).json({ error })`): without one the failure is sent as `200 OK`. When 200 is meant,
+  write `{ status: 200 }` (`nitpicker/no-error-response-without-status`).
+- Today's date for a person (the first value of a date field or filter, the value for a date that was not given) is
+  formatted in their time zone, `new Intl.DateTimeFormat('en-CA').format(new Date())` or the date library's `format(new
+  Date(), 'yyyy-MM-dd')`, not cut out of `new Date().toISOString()`, which is the date in UTC and a day off for part of
+  every day (`nitpicker/no-utc-date-as-local-date`).
+- Code that a comment calls a stand-in ("in a real app ...", "simulate the API call", "mock data for now", "placeholder
+  implementation") does the real work or throws a not-implemented error: no fixed return value, fixed data, bare delay,
+  unchanged copy or empty function under such a comment (`nitpicker/no-placeholder-implementation`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).

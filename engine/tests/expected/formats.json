@@ -1,0 +1,19 @@
+[
+["Formats.java", "ParameterMutation", 63, 5],
+["Formats.java", "ReusableObjectPerCall", 35, 12],
+["Formats.java", "ReusableObjectPerCall", 39, 24],
+["Formats.java", "ReusableObjectPerCall", 43, 24],
+["Formats.java", "ReusableObjectPerCall", 51, 12],
+["Formats.java", "ReusableObjectPerCall", 59, 24],
+["Formats.java", "ReusableObjectPerCall", 79, 12],
+["Formats.java", "ReusableObjectPerCall", 105, 13],
+["Formats.java", "ReusableObjectPerCall", 110, 12],
+["Formats.java", "ReusableObjectPerCall", 129, 12],
+["Formats.java", "ReusableObjectPerCall", 133, 12],
+["Formats.java", "ReusableObjectPerCall", 144, 9],
+["Formats.java", "ReusableObjectPerCall", 168, 14],
+["Formats.java", "ReusableObjectPerCall", 174, 14],
+["Marked.java", "CompatibilityShim", 17, 3],
+["Marked.java", "MutationIgnoreMarker", 8, 3],
+["Marked.java", "MutationIgnoreMarker", 13, 3]
+]

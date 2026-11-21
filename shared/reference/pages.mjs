@@ -45,7 +45,7 @@ export const PAGES = [
     id: 'java-pmd-nitpicker',
     title: 'Java and Kotlin: PMD rules nitpicker adds',
     summary:
-      'The PMD rules nitpicker defines itself, including the Spring rules, for Java sources in the Java and Kotlin presets.',
+      'The rules nitpicker writes for PMD and runs next to its own: the review rules for main and test sources and the Spring and JPA rules, for Java sources in the Java and Kotlin presets.',
     guide: 'docs/java-preset.md',
   },
   {

@@ -19,7 +19,7 @@ import {
 import { readLayout } from '../../preset/head-policy.mts';
 import { revivedExpression as untypedRevivedExpression } from '../../preset/project-tools/config-values.mts';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
-import { textOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import { policyPath } from '../static-checks/shared.mts';
 import {
   type GraphLayer,
@@ -30,6 +30,7 @@ import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs'
 import type { SpawnSyncReturns } from 'node:child_process';
 import { describeProcessEnd } from '../../../../shared/processes/process-failure.mjs';
 import { MAX_GRAPH_OUTPUT_BYTES, compactGraphText } from './shared-graph/compact-graph.mts';
+import { cruiserNodeArguments, reportSkippedFiles } from './shared-graph/cruiser-process.mts';
 
 export type CruiseViolation = {
   readonly rule?: unknown;
@@ -158,7 +159,9 @@ function runCruise(cruise: Cruise): string {
       },
     );
     assertCruised(result);
-    return compactGraphText(result.stdout);
+    const text = compactGraphText(result.stdout);
+    reportSkippedFiles(result.stderr, () => listOf(fieldOf(JSON.parse(text), 'modules')).length);
+    return text;
   } finally {
     wrapper.remove();
   }
@@ -189,7 +192,13 @@ function parseJson(text: string): { readonly value: unknown } | { readonly error
 }
 
 function cruiseArguments(cruise: Cruise, wrapperConfig: string): string[] {
-  const arguments_ = [cruise.tool, ...cruise.patterns, '--config', wrapperConfig];
+  const arguments_ = [
+    ...cruiserNodeArguments(),
+    cruise.tool,
+    ...cruise.patterns,
+    '--config',
+    wrapperConfig,
+  ];
   arguments_.push('--output-type', 'json');
   if (cruise.includeOnly !== undefined) {
     arguments_.push('--include-only', cruise.includeOnly);

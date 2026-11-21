@@ -9,4 +9,8 @@ export const nitpickerReactRuleIds = [
   'nitpicker/react-no-eager-initial-value',
   'nitpicker/react-no-effect-event-handling',
   'nitpicker/react-no-random-key',
+  'nitpicker/react-no-stale-state-update',
+  'nitpicker/react-pure-state-updater',
+  'nitpicker/react-no-uncached-use-promise',
+  'nitpicker/react-no-render-side-effect',
 ];
