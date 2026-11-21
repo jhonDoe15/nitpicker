@@ -11,7 +11,7 @@ function removeTree(directory: string): void {
   rmSync(directory, REMOVE_OPTIONS);
 }
 
-export function withoutReportBase(error: unknown, reportBase: string): unknown {
+function withoutReportBase(error: unknown, reportBase: string): unknown {
   return error instanceof Error && error.message.includes(reportBase)
     ? new Error(error.message.replaceAll(reportBase, '<report directory>'), { cause: error })
     : error;

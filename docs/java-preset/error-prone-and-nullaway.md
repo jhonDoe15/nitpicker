@@ -327,7 +327,7 @@ Part of the [Java preset guide](../java-preset.md).
   them on that many threads of its one JVM. A slice sees the other slices through the project's
   own compiled classes on its class path, as the Lombok split already does, and keeps its own
   patch directory. Maven passes the size of the tool pool and gives the runner's JVM the heap of two
-  pool slots (`-XX:MaxRAMPercentage`, ahead of the slot share in `JDK_JAVA_OPTIONS`); Gradle passes
+  pool slots (`-XX:MaxRAMPercentage` and `-XX:GCTimeRatio=4`, ahead of the slot share in `JDK_JAVA_OPTIONS`); Gradle passes
   the number of cores and its JVM gets the slot share in `JDK_JAVA_OPTIONS`.
 - **The build's own compiler arguments.** On Gradle the runner gets `options.allCompilerArgs`, so
   arguments a `CommandLineArgumentProvider` adds count too, and a `--module-path` (or `-p`) the build
