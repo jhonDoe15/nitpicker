@@ -25,3 +25,12 @@ export function reachableFrom<T>(start: Iterable<T>, next: (item: T) => Iterable
   }
   return seen;
 }
+
+export function addToGroup<K, V>(groups: Map<K, V[]>, key: K, value: V): void {
+  const members = groups.get(key);
+  if (members === undefined) {
+    groups.set(key, [value]);
+  } else {
+    members.push(value);
+  }
+}

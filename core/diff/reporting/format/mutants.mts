@@ -1,7 +1,7 @@
 import { RULE_IDS } from '../../../../shared/policy.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
-import { largest, smallest } from '../../../../shared/lists/lists.mts';
+import { addToGroup, largest, smallest } from '../../../../shared/lists/lists.mts';
 
 const SURVIVED: unknown = RULE_IDS.mutantSurvived;
 const NO_COVERAGE: unknown = RULE_IDS.mutantNoCoverage;
@@ -16,7 +16,7 @@ export function foldMutants(findings: readonly ReportEntry[]): ReportEntry[] {
   const groups = new Map<string, ReportEntry[]>();
   for (const finding of findings.filter(isMutant)) {
     const key = functionKey(finding);
-    groups.set(key, [...(groups.get(key) ?? []), finding]);
+    addToGroup(groups, key, finding);
   }
   return findings.flatMap((finding) => {
     if (!isMutant(finding)) {

@@ -2,6 +2,7 @@ import { normalizeGitPath } from '../../git/normalize.mts';
 import { remapQualifiedNames } from './qualified-names.mts';
 import type { FindingPair, TrackedFinding } from '../model/finding-types.mts';
 import type { BaseMoves } from './declared/move-types.mts';
+import { addToGroup } from '../../../../shared/lists/lists.mts';
 
 const LINE_REFERENCE = /\bline '?\d+'?/gu;
 
@@ -32,7 +33,7 @@ function candidatesOf(
     if (message !== base.message) {
       const path = normalizeGitPath(base.path);
       const key = keyOf(base, { path: moves.files.get(path) ?? path, message });
-      candidates.set(key, [...(candidates.get(key) ?? []), base]);
+      addToGroup(candidates, key, base);
     }
   }
   return candidates;

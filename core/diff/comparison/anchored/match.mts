@@ -12,6 +12,7 @@ import {
   isOnLoneInsertedLine,
   isOnUnchangedLine,
 } from '../ratchet/touched-code.mts';
+import { addToGroup } from '../../../../shared/lists/lists.mts';
 
 type Renames = ReadonlyMap<string, string>;
 
@@ -98,7 +99,7 @@ export function matchAnchoredFindings({
   const baseByAnchor = new Map<string, AnchoredFinding[]>();
   for (const base of baseFindings.filter(isAnchored).toSorted(byLine)) {
     const key = anchorKey(base, renames);
-    baseByAnchor.set(key, [...(baseByAnchor.get(key) ?? []), base]);
+    addToGroup(baseByAnchor, key, base);
   }
   const pairs: FindingPair[] = [];
   for (const head of headFindings
