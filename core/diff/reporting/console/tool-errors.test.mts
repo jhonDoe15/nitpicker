@@ -1,10 +1,13 @@
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { renderConsoleSummary } from '../summary.mts';
+import { renderConsoleSummary, renderSnapshotConsole } from '../summary.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingUrl,
 } from '../../../../shared/messages/troubleshooting.mts';
+import { failedModuleFindings } from '../../../../languages/java/maven/reactor/failed-modules.mts';
+import { skippedModuleFindings } from '../../../../languages/java/adapters/gradle-wrapper/partial/failed-tool-tasks.mts';
 
 const ROOT = '/home/me/app';
 const ANALYZERS = Array.from({ length: 12 }, (_, index) => `analyzer-${String(index)}`);
@@ -123,6 +126,57 @@ describe('console tool errors', () => {
 
     expect(errorLines(summary)).toEqual([
       '  crap (head): crap skipped: coverage failed (see above)',
+    ]);
+  });
+
+  it('shows the failed module name directly for maven and gradle module-build-failed errors', () => {
+    const mavenErrors = failedModuleFindings(
+      [
+        {
+          module: {
+            coordinates: 'demo:checks:1.0',
+            packaging: 'jar',
+            basedir: path.join(ROOT, 'checks'),
+            buildDirectory: path.join(ROOT, 'checks', 'target'),
+          },
+          reason:
+            'Failed to execute goal org.apache.maven.plugins:maven-enforcer-plugin:3.5.0:enforce on project checks: Rule failed: Error: file not found',
+        },
+      ],
+      ROOT,
+    );
+    const gradleErrors = skippedModuleFindings(
+      [{ path: ':docs:processor', dir: 'docs/processor' }],
+      {
+        tasks: [
+          {
+            project: ':docs:processor',
+            task: 'nitpickerPmd',
+            reason: 'Error: PMD config not found',
+          },
+        ],
+        error: new Error('failed'),
+      },
+    );
+    const diffSummary = summaryOf(
+      [...mavenErrors, ...gradleErrors].map((error) => ({ ...error, snapshot: 'head' })),
+    );
+    const snapshotSummary = renderSnapshotConsole(
+      { summary: {}, findings: [], toolErrors: [...mavenErrors, ...gradleErrors] },
+      { color: false, details: false, projectRoot: ROOT },
+    );
+
+    expect(errorLines(diffSummary)).toEqual([
+      expect.stringContaining('maven (head): Maven could not build module checks,'),
+      expect.stringContaining(
+        'gradle (head): A nitpicker tool task failed in Gradle project :docs:processor,',
+      ),
+    ]);
+    expect(errorLines(snapshotSummary)).toEqual([
+      expect.stringContaining('maven: Maven could not build module checks,'),
+      expect.stringContaining(
+        'gradle: A nitpicker tool task failed in Gradle project :docs:processor,',
+      ),
     ]);
   });
 });

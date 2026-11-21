@@ -2,6 +2,10 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../../../adapters/java-diff.mts';
+import { createJavaAnalyzer } from '../../../adapters/java-analyzer.mts';
+import { reportFromAnalyzerOutput } from '../../../../../core/diff/execution/report/analyzer-report.mts';
+import { renderSnapshotConsole } from '../../../../../core/diff/reporting/summary.mts';
+import { entriesOf } from '../../../../../shared/values/findings.mts';
 import {
   useMavenPresetProject,
   enabled,
@@ -58,5 +62,21 @@ describe.skipIf(!enabled)('Java preset on a Maven reactor with a module that fai
       'errorprone PrivateConstructorForUtilityClass app/src/main/java/demo/app/Main.java',
     ]);
     expect(findings.some((finding) => finding.path.startsWith('checks/'))).toBe(false);
+
+    const report = reportFromAnalyzerOutput(
+      { ...createJavaAnalyzer(), acceptedExitCodes: [0] },
+      { status: 0, signal: null, stdoutText: JSON.stringify({ findings }), stderrText: '' },
+    );
+    const parsedFindings = entriesOf(report.findings);
+    const summary = renderSnapshotConsole(
+      {
+        summary: {},
+        findings: parsedFindings.filter(({ classification }) => classification !== 'tool-error'),
+        toolErrors: parsedFindings.filter(({ classification }) => classification === 'tool-error'),
+      },
+      { color: false, details: false, projectRoot: project },
+    );
+
+    expect(summary).toContain('maven: Maven could not build module checks,');
   }, 180_000);
 });

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mts';
 import { JAVA_TOOLS } from './gradle-presets.mts';
 import { DOC_COMMENT_TOOL } from './doc-comments/doc-comment-findings.mts';
-import { INIT_SCRIPT, readPinnedTools } from '../builds/java-build.mts';
+import { INIT_SCRIPT, JAVA_BUILD_TOOLS, readPinnedTools } from '../builds/java-build.mts';
 import { importClosure } from '../../../shared/import-closure.mts';
 import { javaExecutionBudget } from './java-runner.mts';
 import { BUILD_TIMEOUT_SCALE } from './gradle-wrapper/gradle-budget.mts';
@@ -33,7 +33,7 @@ type JavaAnalyzer = {
   readonly resolveVersion: () => string;
   readonly configurationHash: string;
   readonly exclusions: readonly string[];
-  readonly reportedTools: readonly unknown[];
+  readonly reportedTools: readonly string[];
   readonly timeoutMs: number;
   readonly timeoutScale: typeof BUILD_TIMEOUT_SCALE;
   readonly comparisonKey: unknown;
@@ -193,7 +193,13 @@ function hashConfiguration(): string {
 }
 
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt', 'kotlin-source', 'kotlinc'];
-const JVM_ANALYZER_TOOLS = [...JAVA_TOOLS, DOC_COMMENT_TOOL, COMPILE_ERROR_TOOL, HEAD_TESTS_TOOL];
+const JVM_ANALYZER_TOOLS = [
+  ...JAVA_TOOLS,
+  DOC_COMMENT_TOOL,
+  COMPILE_ERROR_TOOL,
+  HEAD_TESTS_TOOL,
+  ...JAVA_BUILD_TOOLS,
+];
 
 export function createJavaAnalyzer({ kotlin = false } = {}): JavaAnalyzer {
   const budget = javaExecutionBudget();

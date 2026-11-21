@@ -2,6 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { reportFromAnalyzerOutput } from '../../../../core/diff/execution/report/analyzer-report.mts';
+import { createJavaAnalyzer } from '../../adapters/java-analyzer.mts';
 import { dependencyFile } from '../quick/maven-build-arguments.mts';
 import {
   MODULE_BUILD_FAILED_RULE,
@@ -100,5 +102,34 @@ describe('a Maven reactor where one module fails', () => {
         classification: 'tool-error',
       },
     ]);
+  });
+
+  it('passes the Java analyzer report parser alongside findings from built modules', () => {
+    const failed = failedModuleFindings(
+      [
+        {
+          module: UI,
+          reason:
+            'Failed to execute goal com.github.eirslett:frontend-maven-plugin:1.15.0:npm (npm install) on project ui: npm failed',
+        },
+      ],
+      ROOT,
+    );
+    const builtModuleFinding = {
+      tool: 'pmd',
+      rule: 'UnusedLocalVariable',
+      path: 'core/src/main/java/demo/Core.java',
+      identity: 'pmd:core/src/main/java/demo/Core.java:UnusedLocalVariable',
+      message: 'Unused local variable',
+      classification: 'enforceable',
+    };
+    const findings = [builtModuleFinding, ...failed];
+
+    const report = reportFromAnalyzerOutput(
+      { ...createJavaAnalyzer(), acceptedExitCodes: [0] },
+      { status: 0, signal: null, stdoutText: JSON.stringify({ findings }), stderrText: '' },
+    );
+
+    expect(report.findings).toEqual(findings);
   });
 });

@@ -16,6 +16,9 @@ import { labelsOf, linkSentence } from '../test-support/report-readers.mts';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 import { callUntyped } from '../../../languages/java/adapters/typed/java-values.mts';
+import { reportFromAnalyzerOutput } from '../../diff/execution/report/analyzer-report.mts';
+import { failedModuleFindings } from '../../../languages/java/maven/reactor/failed-modules.mts';
+import { skippedModuleFindings } from '../../../languages/java/adapters/gradle-wrapper/partial/failed-tool-tasks.mts';
 
 type SnapshotOptions = {
   readonly gradle?: string;
@@ -82,6 +85,8 @@ describe('Kotlin analyzer', () => {
       'facts',
       'build',
       'tests',
+      'maven',
+      'gradle',
       'detekt',
       'ktlint',
       'ktfmt',
@@ -188,6 +193,43 @@ describe('Java analyzer', () => {
         classification: 'tool-error',
       },
     ]);
+  });
+  it.each([
+    ['java', false],
+    ['kotlin', true],
+  ])('accepts maven and gradle module-build-failed tool errors in the %s report', (_, kotlin) => {
+    const analyzer = createJavaAnalyzer({ kotlin });
+    const repoRoot = path.resolve('/repo');
+    const mavenFindings = failedModuleFindings(
+      [
+        {
+          module: {
+            coordinates: 'demo:ui:1.0',
+            packaging: 'jar',
+            basedir: path.join(repoRoot, 'ui'),
+            buildDirectory: path.join(repoRoot, 'ui', 'target'),
+          },
+          reason:
+            'Failed to execute goal org.apache.maven.plugins:maven-enforcer-plugin:3.5.0:enforce on project ui: failed',
+        },
+      ],
+      repoRoot,
+    );
+    const gradleFindings = skippedModuleFindings(
+      [{ path: ':docs:processor', dir: 'docs/processor' }],
+      {
+        tasks: [{ project: ':docs:processor', task: 'nitpickerPmd', reason: 'PMD crashed' }],
+        error: new Error('failed'),
+      },
+    );
+    const findings = [...mavenFindings, ...gradleFindings];
+
+    const report = reportFromAnalyzerOutput(
+      { ...analyzer, acceptedExitCodes: [0] },
+      { status: 0, signal: null, stdoutText: JSON.stringify({ findings }), stderrText: '' },
+    );
+
+    expect(report.findings).toEqual(findings);
   });
 });
 
