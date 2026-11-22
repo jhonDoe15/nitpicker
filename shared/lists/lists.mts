@@ -27,4 +27,3 @@ export function reachableFrom<T>(start: Iterable<T>, next: (item: T) => Iterable
   }
   return seen;
 }
-

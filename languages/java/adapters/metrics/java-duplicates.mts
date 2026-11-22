@@ -59,7 +59,7 @@ export function runJavaDuplicates(
     reportFile = DUPLICATES_REPORT,
     skippedFolders = JVM_SKIPPED_FOLDERS,
     renamedExtensions = ['.java'],
-    analyzeGeneratedSources = false,
+    analyzeGeneratedSources,
     environment = {},
   }: DuplicatesRun,
 ): void {

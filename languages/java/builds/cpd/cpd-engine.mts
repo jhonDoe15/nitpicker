@@ -46,10 +46,7 @@ function leftToCpd(plan: CpdEnginePlan, reason: string, log: EngineLog | undefin
 export function cpdOnEngine(
   plan: CpdEnginePlan,
   environment: EngineEnvironment,
-  {
-    run = (argumentList, options) => runEngineSync(argumentList, options),
-    log,
-  }: EngineHooks = {},
+  { run = (argumentList, options) => runEngineSync(argumentList, options), log }: EngineHooks = {},
 ): boolean {
   const logFile = path.join(path.dirname(plan.report), CPD_ENGINE_LOG);
   rmSync(plan.report, { force: true });
