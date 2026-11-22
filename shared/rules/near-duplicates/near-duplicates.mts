@@ -173,7 +173,11 @@ export function nearDuplicateMatches(
   const byId = new Map(units.map((unit) => [unitIdOf(unit), unit]));
   const rule = RULE_IDS.nearDuplicate;
   const failed: SkippedPair[] = [];
-  const identified = units.map((unit) => ({ ...unit, id: unitIdOf(unit), final: false }));
+  const identified = units.map((unit) => ({
+    ...unit,
+    id: unitIdOf(unit),
+    final: unit.final === true,
+  }));
   const findings = findNearDuplicates(identified, { failed, proveLogic: options.proveLogic });
   warnOfSkipped(failed);
   return findings
