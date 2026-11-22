@@ -1,8 +1,9 @@
-import { existsSync, lstatSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync, readFileSync, readSync, statSync } from 'node:fs';
 import type { Dirent } from 'node:fs';
 import path from 'node:path';
 import { depthFirst } from './traversal.mts';
 
+const CHUNK_BYTES = 1024 * 1024;
 const ABSENT_CODES: ReadonlySet<unknown> = new Set(['ENOENT', 'ENOTDIR']);
 
 export function pathInside(root: string, relative: string): string | undefined {
@@ -103,4 +104,20 @@ export function* filesUnder(
       yield frame.absolute;
     }
   }
+}
+
+export function byteChunks(descriptor: number): Iterable<Buffer> {
+  const buffer = Buffer.alloc(CHUNK_BYTES);
+  const reached = { position: 0 };
+  return {
+    [Symbol.iterator]: () => ({
+      next: (): IteratorResult<Buffer> => {
+        const read = readSync(descriptor, buffer, 0, buffer.length, reached.position);
+        reached.position += read;
+        return read > 0
+          ? { done: false, value: buffer.subarray(0, read) }
+          : { done: true, value: undefined };
+      },
+    }),
+  };
 }

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { findEngine } from '../engine/engine-binary.mts';
 import { readEngineLinesSync } from '../engine/engine-rows.mts';
 import { runEngineSync } from '../engine/engine-run.mts';
+import type { Environment } from '../processes/environment.mts';
 import { canonicalTree } from './canonical/canonical.mts';
 import { logicPairs } from './proof/candidates.mts';
 import { matchMasks } from './search/tokens.mts';
@@ -11,11 +12,10 @@ import { compareText } from './tree/keys.mts';
 import { present } from './tree/nodes.mts';
 import type { NearUnit, PreparedUnit, TreeNode } from './tree/tree-types.mts';
 
-type Environment = Readonly<Record<string, string | undefined>>;
 type Pair = [PreparedUnit, PreparedUnit];
 type Searched = {
   readonly size: number;
-  readonly rewritten?: boolean;
+  readonly rewritten?: unknown;
   readonly plainKey?: string;
   readonly tree?: TreeNode;
 };
@@ -37,20 +37,23 @@ const SWITCH = 'NITPICKER_NEAR_DUPLICATE_ENGINE';
 const TIME_LIMIT_MS = 30 * 60 * 1000;
 const NO_MASKS = matchMasks([]);
 
-function unavailable(environment: Environment, reason: string): undefined {
+function checkOptional(environment: Environment, reason: string): void {
   if (environment[SWITCH] === 'required') {
     throw new Error(`${SWITCH}=required, but ${reason}`);
   }
-  return undefined;
 }
 
-function rejected(environment: Environment, reason: string, trees: readonly TreeNode[]) {
+function checkTreesOptional(
+  environment: Environment,
+  reason: string,
+  trees: readonly TreeNode[],
+): void {
   if (environment[SWITCH] === 'required') {
     for (const tree of trees) {
       canonicalTree(tree);
     }
   }
-  return unavailable(environment, reason);
+  checkOptional(environment, reason);
 }
 
 function preparedOf(unit: NearUnit, searched: Searched | undefined): PreparedUnit | undefined {
@@ -95,7 +98,7 @@ function runSearch(
   units: readonly NearUnit[],
   header: unknown,
   { binary, environment }: { readonly binary: string; readonly environment: Environment },
-) {
+): OutputLine[] | undefined {
   const folder = mkdtempSync(path.join(tmpdir(), 'nitpicker-near-'));
   try {
     const input = path.join(folder, 'units.jsonl');
@@ -103,7 +106,8 @@ function runSearch(
     try {
       writeLines(input, [header, ...units.map(({ tree }) => tree)]);
     } catch (error) {
-      return unavailable(environment, `its input could not be written: ${String(error)}`);
+      checkOptional(environment, `its input could not be written: ${String(error)}`);
+      return undefined;
     }
     const { status, stderr } = runEngineSync(
       ['near-duplicate-search', '--in', input, '--out', out],
@@ -114,11 +118,12 @@ function runSearch(
     );
     if (status !== 0) {
       const reason = `near-duplicate-search ended with ${String(status)}: ${stderr}`;
-      return rejected(
+      checkTreesOptional(
         environment,
         reason,
         units.map(({ tree }) => tree),
       );
+      return undefined;
     }
     return [...readEngineLinesSync(out, parseLine)];
   } finally {
@@ -126,34 +131,42 @@ function runSearch(
   }
 }
 
-export function searchedSets(
-  sorted: readonly NearUnit[],
-  trees: ReadonlyMap<string, TreeNode>,
-  environment: Environment = process.env,
-): SearchedSets | undefined {
-  const binary = environment[SWITCH] === 'off' ? undefined : findEngine(environment);
-  if (binary === undefined || new Set(sorted.map(({ id }) => id)).size !== sorted.length) {
-    return environment[SWITCH] === 'off' ? undefined : unavailable(environment, 'it cannot run');
-  }
-  const varied = sorted.flatMap((unit) => {
-    const tree = trees.get(unit.id);
-    return tree === undefined ? [] : [{ ...unit, tree }];
-  });
-  const variantAt = new Map(varied.map((unit, index) => [unit.id, sorted.length + index]));
-  const choices = sorted.map((unit, index) => [variantAt.get(unit.id) ?? index, index]);
-  const header = { lists: [sorted.map((_, index) => [index]), choices] };
-  const all = [...sorted, ...varied];
-  const lines = runSearch(all, header, { binary, environment });
-  if (lines === undefined) {
+function engineFor(sorted: readonly NearUnit[], environment: Environment): string | undefined {
+  if (environment[SWITCH] === 'off') {
     return undefined;
   }
+  const binary = findEngine(environment);
+  if (binary === undefined || new Set(sorted.map(({ id }) => id)).size !== sorted.length) {
+    checkOptional(environment, 'it cannot run');
+    return undefined;
+  }
+  return binary;
+}
+
+function searchHeader(sorted: readonly NearUnit[], varied: readonly NearUnit[]): unknown {
+  const variantAt = new Map(varied.map((unit, index) => [unit.id, sorted.length + index]));
+  const choices = sorted.map((unit, index) => [variantAt.get(unit.id) ?? index, index]);
+  return { lists: [sorted.map((_, index) => [index]), choices] };
+}
+
+function listed(
+  prepared: readonly (PreparedUnit | undefined)[],
+  line: OutputLine | undefined,
+): { readonly list: PreparedUnit[]; readonly pairs: [number, number][] } {
+  const { members = [], pairs = [] } = present(line);
+  return { list: members.map((index) => present(prepared[index])), pairs };
+}
+
+function setsOf(
+  sorted: readonly NearUnit[],
+  varied: readonly NearUnit[],
+  lines: readonly OutputLine[],
+): SearchedSets {
+  const all = [...sorted, ...varied];
   const prepared = all.map((unit, index) => preparedOf(unit, lines[index]));
-  const [originalList, mixedList] = lines
-    .slice(all.length)
-    .map(({ members = [], pairs = [] }) => ({ members, pairs }));
-  const listOf = (found: SearchedList) => found.members.map((index) => present(prepared[index]));
-  const originals = listOf(present(originalList));
-  const mixed = listOf(present(mixedList));
+  const [originalLine, mixedLine] = lines.slice(all.length);
+  const originals = listed(prepared, originalLine);
+  const mixed = listed(prepared, mixedLine);
   const variants = new Map(
     varied.flatMap((unit, index) => {
       const variant = prepared[sorted.length + index];
@@ -161,12 +174,32 @@ export function searchedSets(
     }),
   );
   return {
-    originals,
-    mixed,
+    originals: originals.list,
+    mixed: mixed.list,
     variants,
-    originalPairs: pairsOf(originals, present(originalList).pairs),
-    mixedPairs: variants.size === 0 ? [] : pairsOf(mixed, present(mixedList).pairs),
+    originalPairs: pairsOf(originals.list, originals.pairs),
+    mixedPairs: variants.size === 0 ? [] : pairsOf(mixed.list, mixed.pairs),
   };
+}
+
+export function searchedSets(
+  sorted: readonly NearUnit[],
+  trees: ReadonlyMap<string, TreeNode>,
+  environment: Environment,
+): SearchedSets | undefined {
+  const binary = engineFor(sorted, environment);
+  if (binary === undefined) {
+    return undefined;
+  }
+  const varied = sorted.flatMap((unit) => {
+    const tree = trees.get(unit.id);
+    return tree === undefined ? [] : [{ ...unit, tree }];
+  });
+  const lines = runSearch([...sorted, ...varied], searchHeader(sorted, varied), {
+    binary,
+    environment,
+  });
+  return lines === undefined ? undefined : setsOf(sorted, varied, lines);
 }
 
 export function sortedUnits(units: readonly NearUnit[]): NearUnit[] {

@@ -1,6 +1,8 @@
 import { alignTrees } from './align/align.mts';
 import type { Alignment } from './align/align.mts';
 import { canonicalTree } from './canonical/canonical.mts';
+import { engineEnvironment } from '../engine/engine-environment.config.mts';
+import type { Environment } from '../processes/environment.mts';
 import { searchedSets, sortedUnits } from './engine-search.mts';
 import { inlinedTrees } from './proof/inline.mts';
 import { proveSameLogic } from './proof/prove.mts';
@@ -54,6 +56,7 @@ export type SearchOptions = {
   readonly changed?: Iterable<string>;
   readonly failed?: SkippedPair[];
   readonly proveLogic?: ProveLogic | undefined;
+  readonly environment?: Environment;
 };
 
 type Pair = readonly [PreparedUnit, PreparedUnit];
@@ -271,7 +274,13 @@ export function findNearDuplicates(
   };
   const changed = options.changed === undefined ? undefined : new Set(options.changed);
   const searched =
-    changed === undefined ? searchedSets(sortedUnits(units), inlinedTrees(units)) : undefined;
+    changed === undefined
+      ? searchedSets(
+          sortedUnits(units),
+          inlinedTrees(units),
+          options.environment ?? engineEnvironment(),
+        )
+      : undefined;
   const { originals, mixed, variants } = searched ?? preparedSets(units, tokensOf);
   const pairs = searched?.originalPairs ?? pairsIn(originals, changed);
   const seen = new Set(pairs.map(idsOf));

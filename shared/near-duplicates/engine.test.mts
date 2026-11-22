@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { findNearDuplicates } from './engine.mts';
 import type { NearFinding } from './engine.mts';
 import { COPIES as FIXTURE } from './test-support/copies.mts';
@@ -101,14 +101,17 @@ describe('finding near-duplicate functions', () => {
     const source = `${FIXTURE}\n\n${MARKED}\n\n${MARKED.replace('markLeft', 'markRight')}`;
     const units = javascriptUnits(source, { file: 'copies.js' });
     const found = findNearDuplicates(units);
-    vi.stubEnv('NITPICKER_NEAR_DUPLICATE_ENGINE', 'off');
-    const inNode = findNearDuplicates(units);
-    vi.unstubAllEnvs();
+    const inNode = findNearDuplicates(units, {
+      environment: { ...process.env, NITPICKER_NEAR_DUPLICATE_ENGINE: 'off' },
+    });
 
     expect(found).toEqual(inNode);
-    expect(found.map(({ units: pair }) => pair)).toContainEqual([
-      'copies.js#markLeft',
-      'copies.js#markRight',
+    expect(found.map(({ units: pair }) => pair)).toEqual([
+      ['copies.js#addWeights', 'copies.js#sumWeights'],
+      ['copies.js#alignBottom', 'copies.js#alignTop'],
+      ['copies.js#jwkMiddleware', 'copies.js#jwtMiddleware'],
+      ['copies.js#markLeft', 'copies.js#markRight'],
+      ['copies.js#readUri', 'copies.js#readUrl'],
     ]);
   });
 });

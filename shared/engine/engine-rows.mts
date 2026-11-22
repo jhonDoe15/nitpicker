@@ -1,6 +1,8 @@
-import { closeSync, createReadStream, openSync, readFileSync, readSync } from 'node:fs';
+import { closeSync, createReadStream, openSync, readFileSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { StringDecoder } from 'node:string_decoder';
+import { byteChunks } from '../filesystem.mts';
+import { fieldOf } from '../values/readers.mts';
 
 function parsed(text: string): unknown {
   const value: unknown = JSON.parse(text);
@@ -43,13 +45,12 @@ function findingOf(row: unknown): EngineFinding {
 }
 
 export function engineFindingOf(finding: unknown): EngineFinding {
-  const fields = Object(finding) as Readonly<Record<string, unknown>>;
   return {
-    file: String(fields['file']),
-    rule: String(fields['rule']),
-    line: Number(fields['line']),
-    column: Number(fields['column']),
-    message: String(fields['message']),
+    file: String(fieldOf(finding, 'file')),
+    rule: String(fieldOf(finding, 'rule')),
+    line: Number(fieldOf(finding, 'line')),
+    column: Number(fieldOf(finding, 'column')),
+    message: String(fieldOf(finding, 'message')),
   };
 }
 
@@ -86,19 +87,12 @@ export async function* readEngineLines(file: string): AsyncGenerator<unknown, vo
   }
 }
 
-const CHUNK_BYTES = 1024 * 1024;
-
 function* textChunks(descriptor: number): Generator<string, void> {
-  const buffer = Buffer.alloc(CHUNK_BYTES);
   const decoder = new StringDecoder('utf8');
-  for (;;) {
-    const read = readSync(descriptor, buffer, 0, CHUNK_BYTES, null);
-    if (read === 0) {
-      yield decoder.end();
-      return;
-    }
-    yield decoder.write(buffer.subarray(0, read));
+  for (const chunk of byteChunks(descriptor)) {
+    yield decoder.write(chunk);
   }
+  yield decoder.end();
 }
 
 export function* readEngineLinesSync<Line>(

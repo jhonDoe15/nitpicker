@@ -1,8 +1,7 @@
-import { readSync } from 'node:fs';
 import { StringDecoder } from 'node:string_decoder';
+import { byteChunks } from '../../filesystem.mts';
 import { messageOf, objectOf } from '../../values/readers.mts';
 
-const CHUNK_BYTES = 1024 * 1024;
 const EXCERPT_CHARACTERS = 80;
 
 type Frame = {
@@ -167,26 +166,10 @@ function markComma(state: LineState, comma: boolean): void {
   frame.comma = true;
 }
 
-function chunksOf(descriptor: number): Iterable<Buffer> {
-  const buffer = Buffer.alloc(CHUNK_BYTES);
-  const reached = { position: 0 };
-  return {
-    [Symbol.iterator]: () => ({
-      next: (): IteratorResult<Buffer> => {
-        const read = readSync(descriptor, buffer, 0, buffer.length, reached.position);
-        reached.position += read;
-        return read > 0
-          ? { done: false, value: buffer.subarray(0, read) }
-          : { done: true, value: undefined };
-      },
-    }),
-  };
-}
-
 function eachLine(descriptor: number, accept: (line: string) => void): void {
   const decoder = new StringDecoder('utf8');
   let partial: string[] = [];
-  for (const chunk of chunksOf(descriptor)) {
+  for (const chunk of byteChunks(descriptor)) {
     const lines = decoder.write(chunk).split('\n');
     const rest = lines.pop() ?? '';
     for (const [index, line] of lines.entries()) {
