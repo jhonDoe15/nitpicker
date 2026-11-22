@@ -330,17 +330,48 @@ pub(super) fn accepted(context: &Context, class: &str, method: &crate::java::typ
     accepted
 }
 
-/// A printed parameter list without type arguments, as the library model tables write signatures.
+/// A printed parameter list without type arguments or type annotations, as the library model tables write signatures.
 fn erase(shown: &str) -> String {
     let mut depth = 0;
     let mut out = String::new();
-    for character in shown.chars() {
+    let mut chars = shown.chars();
+    while let Some(character) = chars.next() {
         match character {
             '<' => depth += 1,
             '>' => depth -= 1,
+            '@' if depth == 0 => {
+                if out.ends_with(' ') {
+                    out.pop();
+                }
+                for next in chars.by_ref() {
+                    if next == ' ' {
+                        break;
+                    }
+                }
+            }
             _ if depth == 0 => out.push(character),
             _ => {}
         }
     }
     out
 }
+
+#[cfg(test)]
+mod tests {
+    use super::erase;
+
+    #[test]
+    fn erase_strips_type_arguments_and_type_annotations() {
+        assert_eq!(erase("java.lang.@org.jspecify.annotations.Nullable ClassLoader"), "java.lang.ClassLoader");
+        assert_eq!(
+            erase("@org.jspecify.annotations.Nullable T,java.lang.@org.jspecify.annotations.Nullable Object"),
+            "T,java.lang.Object"
+        );
+        assert_eq!(
+            erase("java.util.@org.jspecify.annotations.Nullable List<java.lang.@org.jspecify.annotations.Nullable String>"),
+            "java.util.List"
+        );
+        assert_eq!(erase("java.lang.String @org.jspecify.annotations.Nullable ..."), "java.lang.String...");
+    }
+}
+

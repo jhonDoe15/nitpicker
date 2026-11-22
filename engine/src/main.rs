@@ -114,7 +114,6 @@ fn main() {
         "lines": result.lines,
         "filesWithSyntaxErrors": result.parse_errors,
         "syntaxErrorFiles": result.broken_files,
-        "nullAwayUnsure": java::errorprone::unread_marks(),
         "findings": result.findings,
         "functions": result.functions,
         "duplicates": result.duplicates,
