@@ -47,6 +47,19 @@ tester.run('no-accumulating-spread', rule, {
     'let out = [];\nconst reset = () => { out = []; };\nfor (const x of xs) {\n  out = [...out, x];\n}',
     'let out = [];\nfor (const x of xs) {\n  out = [...out, x];\n  out += 1;\n}',
     'let out = [];\nfor (const x of xs) {\n  out = [...out, x];\n}\n[out] = [[]];',
+    'for (const x of xs) { m.set(x.k, [...defaults, x.v]); }',
+    'for (const x of xs) { m.set(x.k, [...(other.get(x.k) ?? []), x.v]); }',
+    'for (const x of xs) { m.set(x.k, [...(m.get(otherKey) ?? []), x.v]); }',
+    'for (const x of xs) { o[x.k] = [...defaults, x.v]; }',
+    'for (const x of xs) { o[x.k] = [...(other[x.k] ?? []), x.v]; }',
+    'm.set(k, [...(m.get(k) ?? []), v]);',
+    'o[k] = [...(o[k] ?? []), v];',
+    "for (const k of ['a', 'b', 'c']) { m.set(k, [...(m.get(k) ?? []), 1]); }",
+    "['a', 'b'].forEach((k) => { o[k] = [...(o[k] ?? []), 1]; });",
+    "const KEYS = ['a', 'b'];\nfor (const k of KEYS) { m.set(k, [...(m.get(k) ?? []), 1]); }",
+    'for (const row of rows) { const m = new Map<string, number[]>(); m.set(row.k, [...(m.get(row.k) ?? []), row.v]); }',
+    'for (const x of xs) { m.set(x.k, [...(m.get(x.k) ?? []), x.v].slice(-3)); }',
+    'for (const x of xs) { const group = m.get(x.k); if (group) { group.push(x.v); } else { m.set(x.k, [x.v]); } }',
   ].map((code) => ({ filename, code })),
   invalid: [
     {
@@ -125,6 +138,58 @@ tester.run('no-accumulating-spread', rule, {
       code: 'let out = [];\nconst keep = () => out;\nfor (const x of xs) {\n  out = [...out, x];\n}',
       errors: [at('loopArray', 4, 10, 16)],
     },
+    {
+      code: 'for (const x of xs) {\n  m.set(x.k, [...(m.get(x.k) ?? []), x.v]);\n}',
+      errors: [{ messageId: 'keyedArray' }],
+    },
+    {
+      code: 'for (const x of xs) {\n  m.set(x.k, [...(m.get(x.k) || []), ...x.vs]);\n}',
+      errors: [{ messageId: 'keyedArray' }],
+    },
+    {
+      code: 'for (const x of xs) {\n  m.set(x.k, [x.v, ...(m.get(x.k) ?? [])]);\n}',
+      errors: [{ messageId: 'keyedArray' }],
+    },
+    {
+      code: 'for (const x of xs) {\n  const prev = m.get(x.k) ?? [];\n  m.set(x.k, [...prev, x.v]);\n}',
+      errors: [{ messageId: 'keyedArray' }],
+    },
+    {
+      code: 'for (const x of xs) {\n  const prev = m.get(x.k);\n  m.set(x.k, [...(prev ?? []), x.v]);\n}',
+      errors: [{ messageId: 'keyedArray' }],
+    },
+    {
+      code: 'while (more()) {\n  const x = next();\n  m.set(x.k, [...(m.get(x.k) ?? []), x.v]);\n}',
+      errors: [{ messageId: 'keyedArray' }],
+    },
+    {
+      code: 'do {\n  m.set(k, [...(m.get(k) ?? []), next()]);\n} while (more());',
+      errors: [{ messageId: 'keyedArray' }],
+    },
+    {
+      code: 'for (let i = 0; i < xs.length; i += 1) {\n  o[xs[i].k] = [...(o[xs[i].k] ?? []), xs[i].v];\n}',
+      errors: [{ messageId: 'keyedArray' }],
+    },
+    {
+      code: 'for (const k in src) {\n  o[k] = [...(o[k] || []), ...src[k]];\n}',
+      errors: [{ messageId: 'keyedArray' }],
+    },
+    {
+      code: 'xs.forEach((x) => {\n  m.set(x.k, [...(m.get(x.k) ?? []), x.v]);\n});',
+      errors: [{ messageId: 'keyedArray' }],
+    },
+    {
+      code: 'xs.map((x) => {\n  o[x.k] = [x.v, ...(o[x.k] ?? [])];\n  return x;\n});',
+      errors: [{ messageId: 'keyedArray' }],
+    },
+    {
+      code: 'xs.reduce((acc, x) => {\n  acc.set(x.k, [...(acc.get(x.k) ?? []), x.v]);\n  return acc;\n}, new Map());',
+      errors: [{ messageId: 'keyedArray' }],
+    },
+    {
+      code: "for (const row of rows) {\n  for (const k of ['a', 'b']) {\n    m.set(k, [...(m.get(k) ?? []), row[k]]);\n  }\n}",
+      errors: [{ messageId: 'keyedArray' }],
+    },
   ].map((testCase) => ({ filename, ...testCase })),
 });
 
@@ -152,6 +217,10 @@ tester.run('no-accumulating-spread in domain/', rule, {
     {
       code: 'let out = [];\nfor (const x of xs) {\n  out = [...out, x];\n}',
       errors: [at('domainLoopArray', 3, 10, 16)],
+    },
+    {
+      code: 'xs.forEach((x) => {\n  m.set(x.k, [...(m.get(x.k) ?? []), x.v]);\n});',
+      errors: [{ messageId: 'domainKeyedArray' }],
     },
   ].map((testCase) => ({ filename: domain, ...testCase })),
 });

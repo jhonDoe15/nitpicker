@@ -9,6 +9,7 @@ import {
   type SpreadKind,
   type SpreadMessageId,
 } from './accumulating-spread-messages.mts';
+import { isKeyedAccumulatingSpread } from './loop-accumulators/keyed-spread-sites.mts';
 import { loopSites } from './loop-accumulators/loop-spread-sites.mts';
 import { isFixedShape } from './spread-shapes.mts';
 import { reduceArrayFix } from '../../fixes/collections/reduce/reduce-array-fix.mts';
@@ -151,7 +152,10 @@ function resolvedVariable(
   );
 }
 
-function spreadReport(spread: TSESTree.SpreadElement, sourceCode: SourceCode): Report | undefined {
+function identifierSpreadReport(
+  spread: TSESTree.SpreadElement,
+  sourceCode: SourceCode,
+): Report | undefined {
   const { argument } = spread;
   if (
     argument.type !== AST_NODE_TYPES.Identifier ||
@@ -166,6 +170,16 @@ function spreadReport(spread: TSESTree.SpreadElement, sourceCode: SourceCode): R
   }
   return variable !== undefined && definition?.type === DefinitionType.Variable
     ? loopReport({ definition, variable, spread, sourceCode })
+    : undefined;
+}
+
+function spreadReport(spread: TSESTree.SpreadElement, sourceCode: SourceCode): Report | undefined {
+  const direct = identifierSpreadReport(spread, sourceCode);
+  if (direct !== undefined) {
+    return direct;
+  }
+  return isKeyedAccumulatingSpread(spread, sourceCode)
+    ? { kind: 'keyedArray', descriptor: { node: spread }, primary: false }
     : undefined;
 }
 
