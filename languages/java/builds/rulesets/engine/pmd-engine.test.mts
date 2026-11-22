@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useTempProjects } from '../../../../../shared/test-support/temp-projects.mts';
@@ -11,7 +11,7 @@ import {
   type PmdEnginePlan,
 } from './pmd-engine.mts';
 
-import { engineWriting, type Started } from '../../test-support/engine-writing.mts';
+import { engineFolders, engineWriting, type Started } from '../../test-support/engine-writing.mts';
 
 const XPATH = 'net.sourceforge.pmd.lang.rule.xpath.XPathRule';
 const HEAD = '<ruleset name="demo" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">';
@@ -21,10 +21,7 @@ type Setup = { readonly plan: PmdEnginePlan; readonly environment: Record<string
 
 function setup(): Setup {
   const root = projectWith({});
-  const reportDir = path.join(root, 'report');
-  const javaHome = path.join(root, 'jdk');
-  mkdirSync(reportDir);
-  mkdirSync(path.join(javaHome, 'jmods'), { recursive: true });
+  const { reportDir, javaHome } = engineFolders(root);
   const main = path.join(root, 'main.xml');
   const tests = path.join(root, 'tests.xml');
   const project = path.join(root, 'project.xml');

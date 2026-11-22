@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
 import { fieldOf, listOf, parseJson } from '../../../../shared/values/readers.mts';
-import { engineWriting, type Started } from '../test-support/engine-writing.mts';
+import { engineFolders, engineWriting, type Started } from '../test-support/engine-writing.mts';
 import {
   SPOTBUGS_ENGINE_SARIF,
   spotbugsArgumentsFor,
@@ -21,10 +21,7 @@ const THROWN =
 
 function planIn(processorPath: readonly string[] = []): SpotbugsEnginePlan {
   const root = projectWith({});
-  const reportDir = path.join(root, 'report');
-  const javaHome = path.join(root, 'jdk');
-  mkdirSync(reportDir);
-  mkdirSync(path.join(javaHome, 'jmods'), { recursive: true });
+  const { reportDir, javaHome } = engineFolders(root);
   return {
     reportDir,
     sources: [path.join(root, 'src/p/A.java')],
