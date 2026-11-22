@@ -5,7 +5,7 @@ import {
   parseXml,
   type XmlElement,
 } from '../../../../../shared/ingest/report-records.mts';
-import { readZip, type Zip } from '../../zip-entries.mts';
+import { readZip, type Zip } from '../../../../../shared/archives/zip-entries.mts';
 
 export type ResolvedRule = {
   readonly name: string;

@@ -1,6 +1,6 @@
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { readZipOrFailure } from '../zip-entries.mts';
+import { readZipOrFailure } from '../../../../shared/archives/zip-entries.mts';
 import type { LintPlan } from '../typed/lint-plan.mts';
 import { optionalText } from '../../../../shared/values/readers.mts';
 import { languageLevel, lintCompatible, lintCompiler } from './javac-options.mts';

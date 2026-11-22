@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { readZipOrFailure } from '../zip-entries.mts';
+import { readZipOrFailure } from '../../../../shared/archives/zip-entries.mts';
 
 export type ArgumentSet = {
   readonly head: readonly string[];

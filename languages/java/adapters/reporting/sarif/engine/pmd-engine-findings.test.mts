@@ -1,18 +1,12 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { useTempProjects } from '../../../../../../shared/test-support/temp-projects.mts';
 import type { SarifLog } from '../../../jpa/jpa-types.mts';
 import { readSarifReport } from '../sarif-reports.mts';
 import { readPmdReport, withEngineResults } from './pmd-engine-findings.mts';
 
-const roots: string[] = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const projectWith = useTempProjects('nitpicker-pmd-report-');
 
 function result(
   rule: string,
@@ -109,12 +103,9 @@ describe('withEngineResults', () => {
 
 describe('readPmdReport', () => {
   it('reads the report of PMD alone when the engine did not run', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pmd-report-'));
-    roots.push(root);
-    writeFileSync(
-      path.join(root, 'pmd.sarif'),
-      JSON.stringify({ runs: [{ results: [result('A', '/p/A.java', [1, 1])] }] }),
-    );
+    const root = projectWith({
+      'pmd.sarif': JSON.stringify({ runs: [{ results: [result('A', '/p/A.java', [1, 1])] }] }),
+    });
 
     expect(rulesOf(readPmdReport(root, readSarifReport))).toEqual(['A']);
 

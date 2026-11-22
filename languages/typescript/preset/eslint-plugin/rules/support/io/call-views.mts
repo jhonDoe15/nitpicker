@@ -32,7 +32,7 @@ const ESTREE_FUNCTIONS = new Set<string>([
   AST_NODE_TYPES.FunctionExpression,
 ]);
 
-function wrapped(node: TSESTree.Node): TSESTree.Node | undefined {
+export function wrapped(node: TSESTree.Node): TSESTree.Node | undefined {
   if (node.type === AST_NODE_TYPES.AwaitExpression) {
     return node.argument;
   }

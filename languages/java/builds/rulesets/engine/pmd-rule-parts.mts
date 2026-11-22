@@ -10,7 +10,7 @@ export type EngineRule = {
   readonly include: readonly string[];
   readonly exclude: readonly string[];
 };
-export type RuleProperty = { readonly type: string; readonly value: string };
+type RuleProperty = { readonly type: string; readonly value: string };
 
 const XPATH_RULE = 'net.sourceforge.pmd.lang.rule.xpath.XPathRule';
 const QUERY = 'xpath';
@@ -30,7 +30,7 @@ function valueOf(property: XmlElement): string {
   return property.attrs['value'] ?? childrenNamed(property, 'value')[0]?.text ?? '';
 }
 
-export function ruleProperties({ definition, overrides }: ResolvedRule): Map<string, RuleProperty> {
+function ruleProperties({ definition, overrides }: ResolvedRule): Map<string, RuleProperty> {
   const properties = new Map<string, RuleProperty>();
   for (const element of [definition, ...overrides]) {
     for (const property of propertyElements(element)) {
@@ -62,7 +62,7 @@ export function overriddenPriority({ overrides }: ResolvedRule): string | undefi
   return lastOf(overrides.map((element) => childrenNamed(element, 'priority')[0]?.text?.trim()));
 }
 
-export function ruleMessage(rule: ResolvedRule): string {
+function ruleMessage(rule: ResolvedRule): string {
   return overriddenMessage(rule) ?? rule.definition.attrs['message'] ?? '';
 }
 

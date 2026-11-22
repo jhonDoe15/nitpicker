@@ -1,5 +1,5 @@
 import type { XmlElement } from '../../../../../shared/ingest/report-records.mts';
-import { element, renderXml } from '../../../adapters/tool-config/xml-write.mts';
+import { element, renderXml } from '../../../../../shared/xml/xml-write.mts';
 import type { ResolvedRule } from './pmd-catalog.mts';
 import { overriddenMessage, overriddenPriority, overriddenProperties } from './pmd-rule-parts.mts';
 

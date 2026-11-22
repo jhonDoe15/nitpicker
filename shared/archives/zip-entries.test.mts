@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { readZip, type Zip } from './zip-entries.mts';
-import { zipOf } from './test-support/zip-writer.mts';
+import { zipOf } from '../test-support/zip-writer.mts';
 
 const roots: string[] = [];
 const LAUNCHER = Buffer.from('#!/bin/sh\nexec java -jar "$0"\n');

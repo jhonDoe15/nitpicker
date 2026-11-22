@@ -414,25 +414,28 @@ describe.skipIf(process.platform === 'win32')('runCpd', () => {
     expect(run.outputs).toEqual([undefined, `${exit}\n${CPD_CRASH}\n`, undefined]);
   });
 
-  it.skipIf(!existsSync(ENGINE))('lets the engine write cpd.xml when it is given the environment', () => {
-    const basedir = mkdtempSync(path.join(tmpdir(), 'nitpicker-cpd-engine-'));
-    roots.push(basedir);
-    const source = path.join(basedir, 'src/main/java');
-    mkdirSync(source, { recursive: true });
-    writeFileSync(path.join(source, 'A.java'), 'class A { void a() { } }\n');
+  it.skipIf(!existsSync(ENGINE))(
+    'lets the engine write cpd.xml when it is given the environment',
+    () => {
+      const basedir = mkdtempSync(path.join(tmpdir(), 'nitpicker-cpd-engine-'));
+      roots.push(basedir);
+      const source = path.join(basedir, 'src/main/java');
+      mkdirSync(source, { recursive: true });
+      writeFileSync(path.join(source, 'A.java'), 'class A { void a() { } }\n');
 
-    runCpd({
-      module: { basedir, sourceRoots: [source], testSourceRoots: [] },
-      reportDir: basedir,
-      tools: { pmd: ['/tools/pmd.jar'] },
-      environment: { NITPICKER_ENGINE: ENGINE },
-    });
+      runCpd({
+        module: { basedir, sourceRoots: [source], testSourceRoots: [] },
+        reportDir: basedir,
+        tools: { pmd: ['/tools/pmd.jar'] },
+        environment: { NITPICKER_ENGINE: ENGINE },
+      });
 
-    expect(reportFiles(basedir)[0]).toContain('totalNumberOfTokens="10"');
-    expect(readFileSync(path.join(basedir, 'cpd-engine-log.txt'), 'utf8')).toBe(
-      'the engine wrote this report\n',
-    );
-  });
+      expect(reportFiles(basedir)[0]).toContain('totalNumberOfTokens="10"');
+      expect(readFileSync(path.join(basedir, 'cpd-engine-log.txt'), 'utf8')).toBe(
+        'the engine wrote this report\n',
+      );
+    },
+  );
 
   it('records a java that cannot start instead of failing the run', () => {
     const basedir = mkdtempSync(path.join(tmpdir(), 'nitpicker-cpd-'));
