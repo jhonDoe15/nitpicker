@@ -185,16 +185,16 @@ const SOURCE_INPUTS = sourceInputs([
   'astro',
 ]);
 
-function withPackagePolicy(analyzer: PackageAnalyzer): PackageAnalyzer {
+function withPackagePolicy(analyzer: PackageAnalyzer, layout: ResolvedLayout): PackageAnalyzer {
   analyzer.inputs = EXECUTION_ANALYZERS.has(analyzer.name) ? EXECUTION_INPUTS : SOURCE_INPUTS;
   analyzer.resolveVersion = (projectRoot) => resolveAnalyzerVersion(analyzer.name, projectRoot);
   analyzer.policyFromPackage = true;
-  return withSizeScales(analyzer);
+  return withSizeScales(analyzer, layout);
 }
 
 function buildPackageAnalyzers(layout: ResolvedLayout): PackageAnalyzer[] {
   return buildAnalyzers(createQualityChecks(layout))
-    .map(withPackagePolicy)
+    .map((analyzer) => withPackagePolicy(analyzer, layout))
     .map((analyzer) =>
       analyzer.name === 'coding-standards'
         ? withLegacyInventory(analyzer, DEFAULT_LEGACY_INVENTORY)
@@ -265,7 +265,8 @@ export function applyThresholds(
   thresholds: { readonly crapLimit?: number | undefined } = {},
   headPolicy: HeadPolicyFile = {},
 ): readonly PackageAnalyzer[] {
-  const crapCheck = createQualityChecks(resolveLayoutFor(headPolicy)).qualityAreaChecks.find(
+  const layout = resolveLayoutFor(headPolicy);
+  const crapCheck = createQualityChecks(layout).qualityAreaChecks.find(
     ({ name }) => name === 'crap',
   );
   if (thresholds.crapLimit === undefined || crapCheck === undefined) {
@@ -278,6 +279,7 @@ export function applyThresholds(
             '--crap-score-limit',
             String(thresholds.crapLimit),
           ]),
+          layout,
         )
       : analyzer,
   );
