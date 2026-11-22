@@ -68,6 +68,7 @@
   "structure/integer-slip": ["bug"],
   "structure/javascript-in-typescript-project": ["maintainability"],
   "structure/line-length-limit": ["style"],
+  "structure/minified-source-file": ["performance", "maintainability"],
   "structure/mutable-state-escape": ["maintainability"],
   "structure/near-duplicate": ["maintainability"],
   "structure/new-icon-asset": ["maintainability"],

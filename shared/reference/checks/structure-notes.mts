@@ -97,6 +97,11 @@ export const STRUCTURE_NOTES: Readonly<Record<string, RuleNote>> = {
     'When most components have a story, a component without one is an oversight.',
     'Add a story for the component. The rule is enforced only when more than half of the component files have one.',
   ],
+  'minified-source-file': [
+    'A JavaScript or TypeScript file under a source root that looks like a minified bundle.',
+    'Minified build outputs inside source roots slow down every analyzer and produce unactionable findings.',
+    'Move the bundle out of the source root, load it as a dependency, or exclude it in the layout.',
+  ],
   'javascript-in-typescript-project': [
     'A `.js`, `.mjs`, `.cjs` or `.jsx` file in a project that has a `tsconfig.json`.',
     'JavaScript in a TypeScript project has no type checking.',

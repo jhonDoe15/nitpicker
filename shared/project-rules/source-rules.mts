@@ -11,6 +11,7 @@ const UNBOUNDED_INTEGERS =
 export const SOURCE_RULE_IDS = {
   componentStoryMissing: 'component-story-missing',
   javascriptInTypescriptProject: 'javascript-in-typescript-project',
+  minifiedSourceFile: 'minified-source-file',
   decidedCondition: 'decided-condition',
   duplicateBranch: 'duplicate-branch',
   resultSlip: 'result-slip',
@@ -31,6 +32,7 @@ export function sourceRuleMessages(
     integerSlip: `{subject}. ${allowed(FIX_TEXT)} ${exceptionHint}`,
     shorterCondition: `\`{condition}\` can be written as \`{form}\`: {reason}. ${allowed('Write {form}.')} ${exceptionHint}`,
     javascriptInTypescriptProject: `{path} is JavaScript in a TypeScript project, so its values are not type-checked. ${allowed('Write it as a .ts or .tsx file: {typescript}.')} ${exceptionHint}`,
+    minifiedSourceFile: `{path} looks like a minified bundle committed inside a source root. ${allowed('Move it out of the source root, load it as a dependency, or exclude it in the layout.')} ${exceptionHint}`,
   };
 }
 
@@ -52,6 +54,13 @@ function conditionRules(
       limit:
         'a `.js`, `.mjs`, `.cjs` or `.jsx` file under the source or test roots of a project with a `tsconfig.json` (at the root, in a package or referenced from one), except files under a `fixtures/` or `__fixtures__/` folder in a test location',
       enforcedBy: { ...enforcedBy, javascript: false },
+    },
+    {
+      id: ids.minifiedSourceFile,
+      check: STRUCTURE_TOOL,
+      limit:
+        'a JavaScript or TypeScript file under a source root that looks minified (at least 10,000 characters with very long code lines or one line holding most of the file), unless excluded in the layout',
+      enforcedBy,
     },
     {
       id: ids.decidedCondition,

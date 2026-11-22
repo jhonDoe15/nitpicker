@@ -95,6 +95,7 @@ const RULE_TOOLS = new Map<string, string[]>([
   [RULE_IDS.newIconAsset, [STRUCTURE_TOOL]],
   [RULE_IDS.componentStoryMissing, [STRUCTURE_TOOL]],
   [RULE_IDS.javascriptInTypescriptProject, [STRUCTURE_TOOL]],
+  [RULE_IDS.minifiedSourceFile, [STRUCTURE_TOOL]],
   [RULE_IDS.docCommentContent, [FACTS_TOOL]],
   ...CODING_STANDARDS_RULES.map((rule): [string, string[]] => [rule, [CODING_STANDARDS_TOOL]]),
   ...DEPENDENCY_RULES.map((rule): [string, string[]] => [rule, ['dependency-architecture']]),
