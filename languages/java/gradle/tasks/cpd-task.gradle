@@ -12,7 +12,9 @@ tasks.register('nitpickerCpd') {
         def declared = writtenSourceSets().collectMany { it.allJava.sourceDirectories.files }.unique()
         project.ext.nitpickerHandWrittenDirs(declared).findAll { it.exists() }
     }
-    inputs.files({ writtenSourceSets()*.allJava }).withPropertyName('sources')
+    dependsOn { project.ext.nitpickerAnalyzeGenerated ? writtenSourceSets()*.compileJavaTaskName : [] }
+    inputs.files({ sourceDirectories().collect { project.fileTree(it) { include '**/*.java' } } })
+        .withPropertyName('sources')
     inputs.files(configurations.nitpickerPmd).withPropertyName('pmd')
     inputs.file(project.ext.nitpickerToolLauncher('cpd')).withPropertyName('launcher')
     inputs.files(project.ext.nitpickerToolCommandInputs).withPropertyName('toolCommands')
