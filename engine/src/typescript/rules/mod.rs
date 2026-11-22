@@ -75,7 +75,7 @@ impl<'a> Context<'a, '_> {
     pub fn report_range(&mut self, rule: &str, start: u32, end: Option<u32>, message: String) {
         let (line, column) = self.place(start);
         let rule = if rule.contains('/') { rule.to_string() } else { format!("nitpicker/{rule}") };
-        let finding = Finding { file: self.display.to_string(), line, column, rule, message };
+        let finding = Finding { file: self.display.to_string(), line, column, rule, message, symbol: None };
         self.findings.push(Reported { finding, end: end.map(|end| self.place(end)) });
     }
 }
@@ -128,7 +128,7 @@ fn lint_file(path: &str, display: &str, settings: &[String], selection: &Selecti
     let Ok(text) = std::fs::read_to_string(path) else { return Vec::new() };
     super::with_parsed(path, &text, |file| {
         if file.panicked {
-            return vec![Finding { file: display.to_string(), line: 1, column: 1, rule: "!parse".into(), message: String::new() }.into()];
+            return vec![Finding { file: display.to_string(), line: 1, column: 1, rule: "!parse".into(), message: String::new(), symbol: None }.into()];
         }
         let semantic = SemanticBuilder::new().with_build_nodes(true).build(file.program).semantic;
         let view = selection.view.then(|| support::view::View::of(file.program.to_estree_json(true, true)));

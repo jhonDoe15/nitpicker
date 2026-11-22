@@ -16,6 +16,7 @@ import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts'
 import { fieldOf, fieldsOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import type { Classpaths, MavenModule } from '../typed/maven-values.mts';
+import type { SpotbugsEngineInput } from '../security/spotbugs-engine-plan.mts';
 
 type ModuleOptions = Readonly<Record<string, unknown>>;
 type ModuleRequest = ModuleOptions & {
@@ -75,6 +76,29 @@ function insideBuild(entries: readonly string[], root: string): string[] {
   return entries.filter((entry) => path.resolve(entry).startsWith(`${base}${path.sep}`));
 }
 
+function spotbugsEngineInput(
+  options: ModuleOptions,
+  kotlin: unknown,
+): SpotbugsEngineInput | undefined {
+  const environment = options['environment'];
+  if (
+    fieldOf(kotlin, 'auxClasspath') !== undefined ||
+    typeof environment !== 'object' ||
+    environment === null
+  ) {
+    return undefined;
+  }
+  return {
+    compileClasspath: textsOf(fieldOf(options['classpaths'], 'mainCompile')),
+    environment: Object.fromEntries(
+      Object.entries(environment).map(([name, value]) => [
+        name,
+        typeof value === 'string' ? value : undefined,
+      ]),
+    ),
+  };
+}
+
 function runSourceTools(options: ModuleOptions): void {
   const { module, reportDir, tools, classpaths, configs, pinned, kotlin, style } = options;
   const base = {
@@ -103,6 +127,7 @@ function runSourceTools(options: ModuleOptions): void {
       auxClasspath:
         fieldOf(kotlin, 'auxClasspath') ??
         insideBuild(textsOf(fieldOf(classpaths, 'mainCompile')), textOf(options['projectRoot'])),
+      engine: spotbugsEngineInput(options, kotlin),
     }),
     sourceTask(runModuleChecks, TASKS_URL, withoutFunctions({ ...options, coverageModule })),
     sourceTask(runFormat, FORMAT_URL, {

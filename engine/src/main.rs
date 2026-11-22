@@ -44,6 +44,10 @@ fn main() {
         near::near_duplicate_search(&args[1..]);
         return;
     }
+    if args.first().map(String::as_str) == Some("cpd") {
+        java::cpd::run(&args[1..]);
+        return;
+    }
     if args.first().map(String::as_str) == Some("typescript-structure") {
         typescript_structure(&args[1..]);
         return;

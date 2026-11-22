@@ -1,6 +1,8 @@
 //! What an expression leaves behind: a parameter, a value read from a field, a value nobody can change, or anything else.
 use super::{Item, State, Store, Walker};
-use crate::engine::source::named_children;
+use super::super::Context;
+use crate::engine::source::{named_children, walk};
+use std::collections::HashMap;
 use tree_sitter::Node;
 
 /// The variable `p instanceof Type name` declares: it holds what was tested.
@@ -9,6 +11,33 @@ pub(super) fn pattern_variable(test: Node) -> Option<Node> {
         let pattern = named_children(test).into_iter().find(|part| part.kind() == "type_pattern")?;
         named_children(pattern).into_iter().rfind(|part| part.kind() == "identifier")
     })
+}
+
+/// Each variable of a method by the slot javac gives it: the parameters in order, then the locals in the order
+/// they are declared.
+pub(super) fn slots(context: &Context, parameters: &[Node], body: Node) -> HashMap<String, usize> {
+    let mut slots: HashMap<String, usize> = HashMap::new();
+    for parameter in parameters {
+        if let Some(name) = super::super::expose::parameter_name(*parameter) {
+            let next = slots.len();
+            slots.entry(context.text(name).to_string()).or_insert(next);
+        }
+    }
+    let mut declared = Vec::new();
+    walk(body, |node| {
+        let name = match node.kind() {
+            "variable_declarator" | "catch_formal_parameter" | "resource" | "enhanced_for_statement" => node.child_by_field_name("name"),
+            "instanceof_expression" => pattern_variable(node),
+            _ => None,
+        };
+        declared.extend(name.map(|name| (name.start_byte(), context.text(name).to_string())));
+    });
+    declared.sort();
+    for (_, name) in declared {
+        let next = slots.len();
+        slots.entry(name).or_insert(next);
+    }
+    slots
 }
 
 const SKIPPED: &[&str] = &["lambda_expression", "class_body", "class_declaration", "interface_declaration", "enum_declaration", "record_declaration"];
@@ -65,7 +94,8 @@ impl<'t> Walker<'_, '_, 't> {
                 let items: Vec<Item> = arguments.into_iter().map(|argument| self.eval(argument, state)).collect();
                 if items.len() == 1 && self.passes_argument(node) {
                     return match items.into_iter().next() {
-                        Some(Item::Spread) => Item::Param(usize::MAX),
+                        Some(Item::Spread) => Item::Param(usize::MAX, false),
+                        Some(Item::Param(place, _)) => Item::Param(place, false),
                         Some(item) => item,
                         None => Item::Other,
                     };
@@ -136,8 +166,38 @@ impl<'t> Walker<'_, '_, 't> {
             }
         }
         if let Some((field, own)) = target.filter(|_| plain) {
-            self.stores.insert(node.id(), Store { node, field, own, item: value.clone() });
+            let variable = self.variable(right, state);
+            self.stores.insert(node.id(), Store { node, field, own, item: value.clone(), variable });
         }
         value
+    }
+
+    /// The variable SpotBugs names for a stored value: the value of a variable is named after the first slot that
+    /// holds that same value, so a copy of a parameter is named after the parameter; a value that only a call or
+    /// a choice made is held by no variable and is `?`.
+    fn variable(&self, value: Node, state: &State) -> String {
+        match value.kind() {
+            "parenthesized_expression" => named_children(value).into_iter().next().map_or_else(|| "?".to_string(), |inner| self.variable(inner, state)),
+            "cast_expression" => value.child_by_field_name("value").map_or_else(|| "?".to_string(), |inner| self.variable(inner, state)),
+            "assignment_expression" => value.child_by_field_name("right").map_or_else(|| "?".to_string(), |inner| self.variable(inner, state)),
+            "identifier" => {
+                let name = self.text(value);
+                let holders = |wanted: usize| {
+                    let mut holding: Vec<(usize, &String)> = state
+                        .iter()
+                        .filter(|(_, item)| matches!(item, Item::Param(place, true) if *place == wanted))
+                        .filter_map(|(held, _)| self.slots.get(held).map(|slot| (*slot, held)))
+                        .collect();
+                    holding.sort();
+                    holding.first().map(|(_, held)| (*held).clone())
+                };
+                match state.get(name) {
+                    Some(Item::Param(place, true)) => holders(*place).unwrap_or_else(|| name.to_string()),
+                    Some(_) => name.to_string(),
+                    None => "?".to_string(),
+                }
+            }
+            _ => "?".to_string(),
+        }
     }
 }

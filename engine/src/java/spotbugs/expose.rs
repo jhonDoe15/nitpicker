@@ -62,17 +62,19 @@ impl Site<'_, '_, '_> {
         self.context.report_exposed(pattern, at, line, message, (field.declaring.clone(), field.name.clone()), self.class, changeable);
     }
 
-    fn stored(&self, at: Node, line: usize, field: &FieldRef) {
+    fn stored(&self, at: Node, line: usize, field: &FieldRef, variable: &str) {
         let index = self.context.resolver.index;
         if field.is_public() || !mutable(index, &field.kind) || field.is_static() != self.is_static {
             return;
         }
         if self.is_static {
             let shown = format!("{}.{}", names::binary(self.context, &field.via), field.name);
-            self.context.report("EI_EXPOSE_STATIC_REP2", at, line, format!("{} {STORING_STATIC} {shown}", self.label));
+            let message = format!("{} {STORING_STATIC} {shown}", self.label);
+            self.context.report_named("EI_EXPOSE_STATIC_REP2", at, line, message, format!("{}#{variable}", self.label));
         } else {
             let shown = names::field(self.context, self.class, &field.via, &field.name);
-            self.context.report("EI_EXPOSE_REP2", at, line, format!("{} {STORING} {shown}", self.label));
+            let message = format!("{} {STORING} {shown}", self.label);
+            self.context.report_named("EI_EXPOSE_REP2", at, line, message, format!("{}#{variable}", self.label));
         }
     }
 
@@ -87,9 +89,9 @@ impl Site<'_, '_, '_> {
         }
         let mut kept = HashSet::new();
         for store in &found.stores {
-            let Item::Param(place) = store.item else { continue };
+            let Item::Param(place, _) = store.item else { continue };
             if (store.own || self.is_static) && kept.insert((store.field.declaring.clone(), store.field.name.clone(), place)) {
-                self.stored(self.method, self.context.line(store.node), &store.field);
+                self.stored(self.method, self.context.line(store.node), &store.field, &store.variable);
             }
         }
     }
@@ -166,11 +168,13 @@ fn inner_constructors(context: &Context, class: Node, own: &str, nest: &[String]
     if !mutable(index, &Type::class(outer)) || !keeps_outer(context, class, own, outer) {
         return;
     }
-    let shown = format!("{}.{}", names::short(&names::binary(context, own)), names::outer_field(context, nest));
+    let kept = names::outer_field(context, nest);
+    let shown = format!("{}.{kept}", names::short(&names::binary(context, own)));
     let explicit: Vec<Node> = members(class).into_iter().filter(|member| member.kind() == "constructor_declaration").collect();
     if explicit.is_empty() && has_modifier(class, "public") {
         let line = class.child_by_field_name("name").map_or(context.line(class), |name| context.line(name));
-        context.report("EI_EXPOSE_REP2", class, line, format!("{} {STORING} {shown}", names::method(context, own, class, Some(outer))));
+        let label = names::method(context, own, class, Some(outer));
+        context.report_named("EI_EXPOSE_REP2", class, line, format!("{label} {STORING} {shown}"), format!("{label}#{kept}"));
     }
     for constructor in explicit {
         let delegates = constructor.child_by_field_name("body").and_then(|body| named_children(body).into_iter().find(|part| !part.kind().ends_with("comment"))).is_some_and(|first| {
@@ -178,7 +182,8 @@ fn inner_constructors(context: &Context, class: Node, own: &str, nest: &[String]
         });
         if has_modifier(constructor, "public") && !delegates {
             let line = constructor.child_by_field_name("body").map_or(context.line(constructor), |body| context.line(body));
-            context.report("EI_EXPOSE_REP2", constructor, line, format!("{} {STORING} {shown}", names::method(context, own, constructor, Some(outer))));
+            let label = names::method(context, own, constructor, Some(outer));
+            context.report_named("EI_EXPOSE_REP2", constructor, line, format!("{label} {STORING} {shown}"), format!("{label}#{kept}"));
         }
     }
 }
@@ -213,7 +218,7 @@ fn record_members(context: &Context, class: Node, own: &str, nest: &[String]) {
         let open = has_modifier(class, "public") || parent(class).is_some_and(|holder| holder.kind() == "interface_body");
         if !canonical && open && component.kind() != "spread_parameter" {
             let site = Site { label: names::method(context, own, class, None), ..site };
-            site.stored(class, name_line, &field);
+            site.stored(class, name_line, &field, &field.name);
         }
     }
 }
@@ -241,9 +246,9 @@ pub fn exposed_representation(context: &Context, class: Node) {
             for component in parameters(class) {
                 let Some(name) = component.child_by_field_name("name").map(|name| context.text(name)) else { continue };
                 let Some((declaring, field)) = context.resolver.index.field(&own, name) else { continue };
-                if matches!(end.get(name), Some(Item::Param(_))) {
+                if matches!(end.get(name), Some(Item::Param(..))) {
                     let field = FieldRef { declaring: declaring.name.clone(), name: name.to_string(), via: own.clone(), kind: field.kind.clone(), flags: field.flags };
-                    site.stored(member, context.line(member), &field);
+                    site.stored(member, context.line(member), &field, name);
                 }
             }
         }

@@ -13,8 +13,8 @@ use tree_sitter::Node;
 
 #[derive(Clone, Debug)]
 pub enum Item {
-    /// A parameter, by its place in the parameter list.
-    Param(usize),
+    /// A parameter, by its place in the parameter list; false once paths that held different parameters met.
+    Param(usize, bool),
     /// A variable arity parameter: an array the caller may not even have.
     Spread,
     Field(FieldRef),
@@ -26,13 +26,18 @@ pub enum Item {
 impl Item {
     fn same(&self, other: &Item) -> bool {
         match (self, other) {
-            (Item::Param(_), Item::Param(_)) | (Item::Other, Item::Other) | (Item::Spread, Item::Spread) | (Item::Fixed, Item::Fixed) => true,
+            (Item::Param(_, a), Item::Param(_, b)) => a == b,
+            (Item::Other, Item::Other) | (Item::Spread, Item::Spread) | (Item::Fixed, Item::Fixed) => true,
             (Item::Field(a), Item::Field(b)) => a.declaring == b.declaring && a.name == b.name,
             _ => false,
         }
     }
     fn meet(self, other: &Item) -> Item {
-        if self.same(other) { self } else { Item::Other }
+        match (self, other) {
+            (Item::Param(place, exact), Item::Param(second, also)) => Item::Param(place, exact && *also && place == *second),
+            (item, other) if item.same(other) => item,
+            _ => Item::Other,
+        }
     }
 }
 
@@ -42,6 +47,8 @@ pub struct Store<'t> {
     /// Written through `this`, an outer `this` or a bare name.
     pub own: bool,
     pub item: Item,
+    /// The variable SpotBugs names for the stored value: the first one holding it, or `?`.
+    pub variable: String,
 }
 
 #[derive(Default)]
@@ -68,16 +75,19 @@ pub(super) struct Walker<'c, 'a, 't> {
     pub(super) stores: HashMap<usize, Store<'t>>,
     pub(super) breaks: Vec<Vec<State>>,
     continues: Vec<Vec<State>>,
+    /// The order of the local variable slots javac gives: parameters first, then locals as declared.
+    pub(super) slots: HashMap<String, usize>,
 }
 
 pub fn trace<'t>(context: &Context, parameters: &[Node<'t>], body: Node<'t>) -> Trace<'t> {
     let mut state = State::new();
     for (place, parameter) in parameters.iter().enumerate() {
         let name = super::expose::parameter_name(*parameter);
-        let item = if parameter.kind() == "spread_parameter" { Item::Spread } else { Item::Param(place) };
+        let item = if parameter.kind() == "spread_parameter" { Item::Spread } else { Item::Param(place, true) };
         state.extend(name.map(|name| (context.text(name).to_string(), item)));
     }
-    let mut walker = Walker { context, returns: HashMap::new(), stores: HashMap::new(), breaks: Vec::new(), continues: Vec::new() };
+    let slots = eval::slots(context, parameters, body);
+    let mut walker = Walker { context, returns: HashMap::new(), stores: HashMap::new(), breaks: Vec::new(), continues: Vec::new(), slots };
     let completes = walker.exec(body, &mut state);
     let mut trace = Trace { end: completes.then_some(state), ..Trace::default() };
     trace.returns = walker.returns.into_values().collect();

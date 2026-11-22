@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { chainOf, contains, nodeChildren, type SourceCode } from '../../typed/node-views.mts';
 import { unwrapped } from '../../typed/syntax-views.mts';
+import { wrapped as wrappedExpression } from '../../support/io/call-views.mts';
 import { isCostlyPureLooking, isFsCall, isSettled, sameCall } from './call-shapes.mts';
 
 export type Pair = {
@@ -26,15 +27,7 @@ function spineStep(node: TSESTree.Node): TSESTree.Node | undefined {
   if (node.type === AST_NODE_TYPES.UnaryExpression) {
     return SPINE_UNARY.has(node.operator) ? node.argument : undefined;
   }
-  if (node.type === AST_NODE_TYPES.AwaitExpression) {
-    return node.argument;
-  }
-  return node.type === AST_NODE_TYPES.ChainExpression ||
-    node.type === AST_NODE_TYPES.TSNonNullExpression ||
-    node.type === AST_NODE_TYPES.TSAsExpression ||
-    node.type === AST_NODE_TYPES.TSSatisfiesExpression
-    ? node.expression
-    : undefined;
+  return wrappedExpression(node);
 }
 
 function spineCalls(expression: TSESTree.Node | undefined): TSESTree.CallExpression[] {

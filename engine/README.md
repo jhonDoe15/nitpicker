@@ -9,6 +9,7 @@ module to the engine and leaves PMD the rules it implements in Java (see "In a J
 
 - `src/engine/`: language-neutral part (file walk, parallel run, findings, token duplicates).
 - `src/java/`: Java checks on the syntax tree (a set of Checkstyle checks, facts, metrics).
+- `src/java/cpd/`: PMD CPD's Java tokens and match search, for the duplicates step (see "In a Java run").
 - `src/java/types/`: type index over class files (jars, folders, the JDK's `jmods`) and the sources, and
   expression and call resolution.
 - `src/java/pmd/`: the tree as PMD shapes it (`tree.rs`), the XPath evaluator (`xpath/`), the PMD functions
@@ -81,6 +82,27 @@ the same 17,557 findings either way, 3,025 of them from the engine. The step tak
 Prone alone 185 s, the engine 19 s plus Error Prone without those checks 167 s, with the same peak memory
 (1.8 GB in the largest module), since the compile stays. The time goes down when a module needs no Error Prone
 run at all.
+
+The duplicates step of a module (Gradle `nitpickerCpd`, Maven) runs `cpd --report <cpd.xml> <source dir>...`
+in place of PMD CPD (`src/java/cpd/`). It is CPD as nitpicker's `CpdReport.java` runs it, step for step: the
+same text (byte order mark dropped, line endings turned into `\n`, `.class` overwritten with `const`, Unicode
+escapes translated and mapped back to columns the way PMD maps them), the same tokens from a port of the lexer
+part of PMD's Java grammar, the same filter (package and import statements, semicolons, `CPD-OFF`/`CPD-ON`
+comments, `@SuppressWarnings("CPD-START")` ... `"CPD-END"`, identifiers and literals anonymized, a
+constructor's name kept, with one constructor detector for all files in order, as PMD keeps one, so a file
+that leaves a class open changes the next), the same image ids, rolling hash and match collection, and the same report order.
+The report is PMD's `cpd.xml` without the code fragments and the time stamp, which nitpicker does not read.
+The hash groups are searched in parallel: a token belongs to one group, and every mark and pair of a match
+stays inside the group its first window falls in, so the order PMD visits them in does not change the result.
+
+- The engine leaves the module to CPD (exit status 3, the reason in `cpd-engine-log.txt`) when PMD would skip
+  a file or report a lexical error in it, when a file is not UTF-8, when a source folder holds a symbolic
+  link, and when two source folders reach the same file. `cpd-engine-log.txt` says which of the two wrote the report.
+- CPD runs as before when `NITPICKER_ENGINE=off` or there is no engine binary for the platform.
+
+Every token of every Java file of Apache Kafka (6,321 files), Keycloak (8,730) and mall (524) is the same as
+PMD's, and CPD over each whole repository gives the same report (15,089, 8,805 and 5,240 duplications): 2.0 s
+instead of 13.4 s on Kafka, 2.8 s instead of 10.3 s on Keycloak, 1.3 s instead of 22.6 s on mall.
 
 ## Same findings as PMD
 
@@ -334,7 +356,10 @@ outer `try` never. A `try` with a `finally` block and no `catch`, a `catch` bloc
 a `synchronized` block let everything through. The body of a `try` with resources lets nothing through, and
 the `close()` the compiler adds after it counts as a call under the `catch` clauses of that `try`. In a
 constructor one matching `catch` clause is enough; for a call in a method every `catch` clause of the `try`
-has to take the exception.
+has to take the exception. That `close()` is reported on the last line of the body of the `try`.
+
+A class missing from the class path is one SpotBugs cannot follow (`ctor_missing`): a `throw` of an exception
+class it cannot find, and the closing of a resource whose class it cannot find, do not count.
 
 How a field counts as holding only unchangeable values (`loads*`, `visits`, `values`, `across`, `calls`):
 
@@ -381,6 +406,13 @@ classes the compiler adds for a `switch` over an enum, the bodies of enum consta
 is a call on a lambda parameter without a declared type inside nested call arguments, which costs seconds per file to
 resolve. `NP_SB_CALLS=<file>` writes the calls the order is built from; `parity/spotbugs/calls.py` reads the same from
 class files and compares (Nacos: 10,350 same, 76 only in class files, 2 only in the engine).
+
+A stored value also carries the variable SpotBugs names as the place of the finding (`symbol` in the report,
+`<method>#<variable>`, `tests/expected/spotbugs-variables.json`): the first variable, parameters first and then
+locals in the order they are declared, that holds the very value stored, so a copy of a parameter or a cast or
+pattern variable of it is named after the parameter; a variable given different values on two paths is named
+itself; a value only a call made (`Objects.requireNonNull(p)`) or a `?:` choice right in the store is `?`; the
+outer instance of an inner class is `this$N` and a record component its own name.
 
 ### Null patterns
 

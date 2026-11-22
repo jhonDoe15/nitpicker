@@ -7,4 +7,7 @@ pub struct Finding {
     pub column: usize,
     pub rule: String,
     pub message: String,
+    /// What SpotBugs names as the place of a finding, where its message does not tell.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub symbol: Option<String>,
 }

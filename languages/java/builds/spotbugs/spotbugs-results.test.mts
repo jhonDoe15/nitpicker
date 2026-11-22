@@ -1,0 +1,124 @@
+import { describe, expect, it } from 'vitest';
+import { engineSpotbugsFindingOf, spotbugsResultOf } from './spotbugs-results.mts';
+
+function resultOf(rule: string, message: string, symbol?: string) {
+  return spotbugsResultOf({ file: '/src/p/q/A.java', rule, line: 7, message, symbol });
+}
+
+describe('spotbugsResultOf', () => {
+  it('writes a returned field the way SpotBugs reports it', () => {
+    const result = resultOf(
+      'EI_EXPOSE_REP',
+      'p.q.A$In.get() may expose internal representation by returning A.date',
+    );
+
+    expect(result).toStrictEqual({
+      ruleId: 'EI_EXPOSE_REP',
+      message: {
+        id: 'default',
+        text: 'May expose internal representation by returning reference to mutable object',
+        arguments: ['p.q.A$In.get()', 'A.date'],
+      },
+      level: 'note',
+      locations: [
+        {
+          physicalLocation: {
+            artifactLocation: { uri: 'p/q/A.java' },
+            region: { startLine: 7 },
+          },
+          logicalLocations: [
+            { name: 'A.date', kind: 'member', fullyQualifiedName: 'p.q.A$In.date' },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('names the class of the method for a field of a class in another package', () => {
+    const result = resultOf(
+      'MS_EXPOSE_REP',
+      'Public static p.q.A.get() may expose internal representation by returning r.B.list',
+    );
+
+    expect(result.message.arguments).toStrictEqual(['p.q.A.get()', 'r.B.list']);
+    expect(result.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'r.B.list',
+      kind: 'member',
+      fullyQualifiedName: 'p.q.A.list',
+    });
+  });
+
+  it('names the stored variable the engine gives and a ? without one', () => {
+    const message =
+      'new p.q.A(Date) may expose internal representation by storing an externally mutable object into A.d';
+    const named = resultOf('EI_EXPOSE_REP2', message, 'new p.q.A(Date)#when');
+    const unnamed = resultOf('EI_EXPOSE_REP2', message);
+
+    expect(named.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'when',
+      kind: 'variable',
+      fullyQualifiedName: 'new p.q.A(Date)#when',
+    });
+    expect(unnamed.locations[0].logicalLocations[0].fullyQualifiedName).toBe('new p.q.A(Date)#?');
+    expect(named.locations[0].physicalLocation.artifactLocation.uri).toBe('p/q/A.java');
+  });
+
+  it('writes a static store and a constructor that throws', () => {
+    const stored = resultOf(
+      'EI_EXPOSE_STATIC_REP2',
+      'p.q.A.set(Date) may expose internal static state by storing a mutable object into a static field p.q.A.d',
+      'p.q.A.set(Date)#d',
+    );
+    const thrown = resultOf(
+      'CT_CONSTRUCTOR_THROW',
+      'Exception thrown in class p.q.A$1 at new p.q.A$1(A, int) will leave the constructor. The object under ' +
+        'construction remains partially initialized and may be vulnerable to Finalizer attacks.',
+    );
+
+    expect(stored.message.arguments).toStrictEqual(['p.q.A.set(Date)', 'p.q.A.d']);
+    expect(thrown.message).toStrictEqual({
+      id: 'default',
+      text: 'Be wary of letting constructors throw exceptions.',
+      arguments: ['p.q.A$1', 'new p.q.A$1(A, int)'],
+    });
+    expect(thrown.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'new A$1(A, int)',
+      kind: 'function',
+      fullyQualifiedName: 'new p.q.A$1(A, int)',
+    });
+  });
+
+  it('places a class of the default package at the source file name', () => {
+    const result = spotbugsResultOf({
+      file: '/src/A.java',
+      rule: 'EI_EXPOSE_REP',
+      line: 3,
+      message: 'A.get() may expose internal representation by returning A.date',
+      symbol: undefined,
+    });
+
+    expect(result.locations[0].physicalLocation.artifactLocation.uri).toBe('A.java');
+    expect(result.locations[0].logicalLocations[0].fullyQualifiedName).toBe('A.date');
+  });
+
+  it('refuses a message it cannot read', () => {
+    expect(() => resultOf('EI_EXPOSE_REP', 'something else')).toThrow(/cannot read/u);
+    expect(() => resultOf('OTHER_PATTERN', 'x')).toThrow(/OTHER_PATTERN/u);
+  });
+
+  it('reads a finding row of the engine report', () => {
+    expect(
+      engineSpotbugsFindingOf({
+        file: 'f',
+        rule: 'r',
+        line: 2,
+        column: 1,
+        message: 'm',
+        symbol: 's',
+      }),
+    ).toStrictEqual({ file: 'f', rule: 'r', line: 2, message: 'm', symbol: 's' });
+    expect(engineSpotbugsFindingOf({ file: 'f', rule: 'r', line: 2, message: 'm' }).symbol).toBe(
+      undefined,
+    );
+  });
+});

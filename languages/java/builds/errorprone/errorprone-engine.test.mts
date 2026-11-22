@@ -1,7 +1,7 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
 import { parseJson } from '../../../../shared/values/readers.mts';
 import { ENGINE_REPORT, positionIn, withEngineDiagnostics } from './engine-diagnostics.mts';
 import {
@@ -13,13 +13,7 @@ import {
 
 import { engineWriting, type Started } from '../test-support/engine-writing.mts';
 
-const roots: string[] = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const projectWith = useTempProjects('nitpicker-errorprone-engine-');
 
 type Setup = {
   readonly plan: ErrorProneEnginePlan;
@@ -30,8 +24,7 @@ type Setup = {
 };
 
 function setup(...lines: readonly string[]): Setup {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-errorprone-engine-'));
-  roots.push(root);
+  const root = projectWith({});
   const reportDir = path.join(root, 'report');
   const javaHome = path.join(root, 'jdk');
   const own = path.join(root, 'classes');

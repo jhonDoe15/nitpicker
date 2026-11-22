@@ -77,6 +77,6 @@ describe.skipIf(!enabled)('Java preset on a Maven reactor with a module that fai
       { color: false, details: false, projectRoot: project },
     );
 
-    expect(summary).toContain('maven: Maven could not build module checks,');
+    expect(summary).toContain('maven: Maven could not build module parent-checks,');
   }, 180_000);
 });

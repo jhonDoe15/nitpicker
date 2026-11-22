@@ -24,6 +24,11 @@ import {
   withoutEngineReports,
 } from '../builds/rulesets/engine/pmd-engine.mts';
 import { jdkHome } from './programs/jdk-home.mts';
+import { withoutSpotbugsEngineReport } from '../builds/spotbugs/spotbugs-engine.mts';
+import {
+  spotbugsEngineArguments,
+  type SpotbugsEngineInput,
+} from './security/spotbugs-engine-plan.mts';
 
 export { javaFiles } from './lint/java-files.mts';
 export { runCheckstyle, writeCheckstyleSetup } from './lint/maven-checkstyle.mts';
@@ -47,6 +52,7 @@ type SpotbugsOptions = Execution & {
   readonly module: SourceModule & { readonly buildDirectory?: string };
   readonly configs: unknown;
   readonly auxClasspath?: readonly string[];
+  readonly engine?: SpotbugsEngineInput | undefined;
 };
 
 const EMPTY_SARIF = '{"version":"2.1.0","runs":[]}';
@@ -179,10 +185,12 @@ export function runSpotbugs({
   tools,
   configs,
   auxClasspath = [],
+  engine,
   spawn,
   timeoutMs,
 }: SpotbugsOptions): void {
   const report = path.join(reportDir, 'spotbugs.sarif');
+  withoutSpotbugsEngineReport(reportDir);
   const analyzed = path.resolve(module.outputDirectory);
   const auxiliary = auxClasspath.filter(
     (entry) => path.resolve(entry) !== analyzed && existsSync(entry),
@@ -203,6 +211,11 @@ export function runSpotbugs({
   }
   const aux = targets === undefined ? auxiliary : [...auxiliary, module.outputDirectory];
   writeFileSync(auxClasspathFile, [...new Set(aux)].join('\n'));
+  const declared = fieldOf(fieldOf(configs, 'spotbugs'), 'arguments');
+  const added =
+    declared === undefined
+      ? spotbugsEngineArguments({ module, reportDir, auxiliary: [...new Set(auxiliary)] }, engine)
+      : [];
   runJava({
     tool: 'SpotBugs',
     classpath: tools['spotbugs'],
@@ -211,9 +224,7 @@ export function runSpotbugs({
       module,
       report,
       tools,
-      settings: textsOf(
-        fieldOf(fieldOf(configs, 'spotbugs'), 'arguments') ?? spotbugsArguments(NITPICKER_SPOTBUGS),
-      ),
+      settings: [...textsOf(declared ?? spotbugsArguments(NITPICKER_SPOTBUGS)), ...added],
       auxClasspathFile: aux.length === 0 ? undefined : auxClasspathFile,
       ...(targets === undefined ? {} : { targets: ['-analyzeFromFile', targets.list] }),
     }),
