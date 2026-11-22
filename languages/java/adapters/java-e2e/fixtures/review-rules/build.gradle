@@ -48,6 +48,7 @@ dependencies {
     testCompileOnly 'junit:junit:4.13.2'
     testCompileOnly 'org.testng:testng:7.10.2'
     testCompileOnly 'org.projectlombok:lombok'
+    testCompileOnly 'jakarta.transaction:jakarta.transaction-api'
     testAnnotationProcessor platform('org.springframework.boot:spring-boot-dependencies:3.5.5')
     testAnnotationProcessor 'org.projectlombok:lombok'
     testImplementation 'org.junit-pioneer:junit-pioneer:2.3.0'
