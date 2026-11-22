@@ -84,6 +84,7 @@ impl Context<'_> {
             column: column + 1,
             rule: check.to_string(),
             message: format!("[{check}] {message}"),
+            symbol: None,
         });
     }
     /// Whether the node or a declaration around it carries `@SuppressWarnings` with the check's name or "all".

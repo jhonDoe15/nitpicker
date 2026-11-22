@@ -7,7 +7,11 @@ use std::process::Command;
 type Row = (String, String, u64, String);
 
 fn found_in(case: &Path, name: &str) -> BTreeSet<Row> {
-    let out = std::env::temp_dir().join(format!("nitpicker-engine-spotbugs-{name}-{}.json", std::process::id()));
+    found_with(case, name, "message")
+}
+
+fn found_with(case: &Path, name: &str, key: &str) -> BTreeSet<Row> {
+    let out = std::env::temp_dir().join(format!("nitpicker-engine-spotbugs-{name}-{key}-{}.json", std::process::id()));
     let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
         .arg(case)
         .args(["--rules", "_SpotBugs", "--out"])
@@ -26,7 +30,7 @@ fn found_in(case: &Path, name: &str) -> BTreeSet<Row> {
         .map(|finding| {
             let file = text(finding, "file");
             let file = format!("{name}/{}", file.strip_prefix(&prefix).unwrap_or(&file));
-            (file, text(finding, "rule"), finding["line"].as_u64().expect("line"), text(finding, "message"))
+            (file, text(finding, "rule"), finding["line"].as_u64().expect("line"), finding[key].as_str().unwrap_or_default().to_string())
         })
         .collect()
 }
@@ -46,4 +50,22 @@ fn patterns_report_what_spotbugs_reports() {
     let extra: Vec<&Row> = found.difference(&expected).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
     assert_eq!(expected.iter().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 8);
+}
+
+/// SpotBugs names the variable a stored value came from; `tests/expected/spotbugs-variables.json` holds the names
+/// SpotBugs gave for the compiled fixtures (the fully qualified name of the finding's place in its SARIF report).
+#[test]
+fn stores_name_the_variable_spotbugs_names() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
+    let expected: Vec<Row> = serde_json::from_str(&std::fs::read_to_string(root.join("expected").join("spotbugs-variables.json")).expect("expected")).expect("rows");
+    let expected: BTreeSet<Row> = expected.into_iter().collect();
+    let mut found = BTreeSet::new();
+    for case in std::fs::read_dir(root.join("fixtures").join("spotbugs")).expect("fixtures") {
+        let case = case.expect("entry").path();
+        let name = case.file_name().and_then(|name| name.to_str()).expect("name").to_string();
+        found.extend(found_with(&case, &name, "symbol").into_iter().filter(|row| row.1.starts_with("EI_EXPOSE") && row.1.ends_with("REP2")));
+    }
+    let missed: Vec<&Row> = expected.difference(&found).collect();
+    let extra: Vec<&Row> = found.difference(&expected).collect();
+    assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
 }

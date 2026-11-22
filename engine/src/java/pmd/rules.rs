@@ -192,7 +192,7 @@ impl FileRule for XPathRules {
                     trouble = machine.trouble.borrow_mut().take();
                     if let Some(trouble) = &trouble {
                         // PMD reports no findings of a rule for a file on which the query fails.
-                        out.push(Finding { file: file.path.clone(), line: 0, column: 0, rule: format!("!{}", rule.name), message: trouble.clone() });
+                        out.push(Finding { file: file.path.clone(), line: 0, column: 0, rule: format!("!{}", rule.name), message: trouble.clone(), symbol: None });
                     }
                     for item in result.items().iter().filter(|_| trouble.is_none()) {
                         let Item::Node(id) = item else { continue };
@@ -216,6 +216,7 @@ impl FileRule for XPathRules {
                             column: place("BeginColumn"),
                             rule: rule.name.clone(),
                             message: formatted(&rule.message, tree.image(*id).as_deref()),
+                            symbol: None,
                         });
                         found += 1;
                     }
