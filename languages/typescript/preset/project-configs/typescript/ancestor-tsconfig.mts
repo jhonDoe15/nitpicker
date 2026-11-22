@@ -1,5 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { ancestorDirectories } from '../../../../../shared/filesystem.mts';
+import { escapeRegExp } from '../../../../../shared/paths/glob.mts';
 import { fieldOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 import { PROJECT_TSCONFIG, isSolutionTsconfig, readJsonc } from '../../modules/tsconfig-files.mts';
 
@@ -27,25 +29,23 @@ export function coveringAncestorTsconfig(projectDirectory: string): AncestorTsco
 }
 
 function ancestorsUpToRepository(directory: string): string[] {
-  const parent = path.dirname(directory);
-  if (parent === directory) {
-    return [];
+  const parents = ancestorDirectories(directory).slice(1);
+  const repository = parents.findIndex((parent) => existsSync(path.join(parent, '.git')));
+  return repository === -1 ? [] : parents.slice(0, repository + 1);
+}
+
+function includedSpecs(include: unknown, files: readonly unknown[]): string[] {
+  if (include !== undefined) {
+    return listOf(include).map(textOf);
   }
-  if (existsSync(path.join(parent, '.git'))) {
-    return [parent];
-  }
-  const above = ancestorsUpToRepository(parent);
-  return above.length === 0 ? [] : [parent, ...above];
+  return files.length === 0 ? ['**/*'] : [];
 }
 
 function coversDirectory(config: unknown, relativeDirectory: string): boolean {
   if (isSolutionTsconfig(config)) {
     return false;
   }
-  const include = fieldOf(config, 'include');
-  const files = listOf(fieldOf(config, 'files'));
-  const specs =
-    include === undefined ? (files.length === 0 ? ['**/*'] : []) : listOf(include).map(textOf);
+  const specs = includedSpecs(fieldOf(config, 'include'), listOf(fieldOf(config, 'files')));
   const target = relativeDirectory.split(path.sep);
   const excluded = listOf(fieldOf(config, 'exclude')).map(textOf);
   return (
@@ -59,31 +59,54 @@ function specSegments(spec: string): string[] {
 }
 
 function specReaches(spec: readonly string[], target: readonly string[]): boolean {
-  const [head, ...rest] = spec;
-  const [name, ...below] = target;
-  if (head === undefined || name === undefined || head === '**') {
-    return true;
+  for (const [index, head] of spec.entries()) {
+    const name = target[index];
+    if (name === undefined || head === '**') {
+      return true;
+    }
+    if (!segmentPattern(head).test(name)) {
+      return false;
+    }
   }
-  return segmentPattern(head).test(name) && specReaches(rest, below);
+  return true;
 }
 
 function specContains(spec: readonly string[], target: readonly string[]): boolean {
-  const [head, ...rest] = spec;
-  const [name, ...below] = target;
-  if (head === undefined) {
-    return true;
+  const pending: (readonly [number, number])[] = [[0, 0]];
+  const seen = new Set<string>();
+  for (const [at, from] of pending) {
+    const head = spec[at];
+    const name = target[from];
+    if (head === undefined || (head === '**' && at === spec.length - 1)) {
+      return true;
+    }
+    const next: (readonly [number, number])[] =
+      head === '**'
+        ? [[at + 1, from], ...(name === undefined ? [] : [[at, from + 1] as const])]
+        : [];
+    if (head !== '**' && name !== undefined && segmentPattern(head).test(name)) {
+      next.push([at + 1, from + 1]);
+    }
+    for (const state of next.filter((candidate) => !seen.has(candidate.join(':')))) {
+      seen.add(state.join(':'));
+      pending.push(state);
+    }
   }
-  if (head === '**') {
-    return (
-      rest.length === 0 ||
-      specContains(rest, target) ||
-      (name !== undefined && specContains(spec, below))
-    );
-  }
-  return name !== undefined && segmentPattern(head).test(name) && specContains(rest, below);
+  return false;
 }
 
+const WILDCARDS: ReadonlyMap<string, string> = new Map([
+  ['*', '.*'],
+  ['?', '.'],
+]);
+
 function segmentPattern(segment: string): RegExp {
-  const escaped = segment.replaceAll(/[.+^${}()|[\]\\]/gu, String.raw`\$&`);
-  return new RegExp(`^${escaped.replaceAll('*', '.*').replaceAll('?', '.')}$`, 'u');
+  const pattern = new RegExp(
+    segment
+      .split(/([*?])/u)
+      .map((part) => WILDCARDS.get(part) ?? escapeRegExp(part))
+      .join(''),
+    'u',
+  );
+  return new RegExp(`^(?:${pattern.source})$`, 'u');
 }

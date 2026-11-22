@@ -12,6 +12,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { ancestorDirectories, pathInside } from '../../../../../shared/filesystem.mts';
 import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 import { typescriptApi } from '../../typed/typescript-program.mts';
 import { fieldsOf, listOf } from '../../../../../shared/values/readers.mts';
@@ -55,15 +56,13 @@ export function hideNestedTypeScriptConfigs(
 }
 
 function nestedConfigDirectories(projectRoot: string, files: readonly string[]): string[] {
-  const directories = new Set(
-    files.flatMap((file) => ancestorDirectories(path.posix.dirname(file))),
-  );
+  const directories = new Set(files.flatMap((file) => relativeAncestors(path.posix.dirname(file))));
   return [...directories]
     .sort()
     .filter((directory) => existsSync(path.join(projectRoot, directory, 'tsconfig.json')));
 }
 
-function ancestorDirectories(directory: string): string[] {
+function relativeAncestors(directory: string): string[] {
   const segments = directory === '.' ? [] : directory.split('/');
   return segments.map((_segment, index) => segments.slice(0, index + 1).join('/'));
 }
@@ -97,30 +96,29 @@ export function createStage(projectRoot: string, projectConfigPath: string | und
 }
 
 function mirroredAncestors(root: string, projectRoot: string): string {
-  const ancestors = ancestorsOf(projectRoot);
-  const depth = Math.max(
+  const ancestors = ancestorDirectories(projectRoot).slice(1);
+  const depth = ancestors.reduce(
+    (deepest, ancestor, index) => (isWorkspaceLevel(ancestor) ? index + 1 : deepest),
     0,
-    ...ancestors.map((ancestor, index) => (isWorkspaceLevel(ancestor) ? index + 1 : 0)),
   );
   const chain = [projectRoot, ...ancestors].slice(0, depth + 1).reverse();
-  return chain.slice(1).reduce((mirror, directory, index) => {
-    const parent = chain[index] ?? directory;
+  let mirror = root;
+  for (const directory of chain.slice(1)) {
     const name = path.basename(directory);
-    for (const entry of readdirSync(parent)) {
-      if (entry !== name) symlinkSync(path.join(parent, entry), path.join(mirror, entry));
+    for (const entry of readdirSync(path.dirname(directory), { withFileTypes: true })) {
+      const link = pathInside(mirror, entry.name);
+      if (link !== undefined && entry.name !== name) {
+        symlinkSync(path.join(entry.parentPath, entry.name), link);
+      }
     }
-    mkdirSync(path.join(mirror, name));
-    return path.join(mirror, name);
-  }, root);
+    mirror = path.join(mirror, name);
+    mkdirSync(mirror);
+  }
+  return mirror;
 }
 
 function isWorkspaceLevel(directory: string): boolean {
   return ['node_modules', '.git'].some((entry) => existsSync(path.join(directory, entry)));
-}
-
-function ancestorsOf(directory: string): string[] {
-  const parent = path.dirname(directory);
-  return parent === directory ? [] : [parent, ...ancestorsOf(parent)];
 }
 
 function lintTypeScriptConfig(projectConfigPath: string, stage: string): string {

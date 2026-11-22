@@ -52,14 +52,20 @@ export async function settledBeside(
   return [linted, rest];
 }
 
+function stageLinter(
+  run: StageRun,
+  { configPath, typeAware }: StageConfig,
+): (files: readonly string[]) => Promise<LintResult[]> {
+  return (files) => lintStage({ ...run, configPath, files, typeAware });
+}
+
 export async function lintConfigs({
   configs,
   ...run
 }: StageRun & { readonly configs: readonly StageConfig[] }): Promise<LintResult[]> {
   const passes: { typeAware: boolean; results: LintResult[] }[] = [];
   for (const config of configs) {
-    const lintFiles = (files: readonly string[]): Promise<LintResult[]> =>
-      lintStage({ ...run, configPath: config.configPath, files, typeAware: config.typeAware });
+    const lintFiles = stageLinter(run, config);
     const reports = await Promise.allSettled(
       config.typeAware
         ? [lintInPrograms({ ...run, files: config.files }, lintFiles)]
