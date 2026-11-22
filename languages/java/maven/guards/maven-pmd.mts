@@ -77,7 +77,10 @@ export function runCpd(options: CpdOptions): void {
     return;
   }
   const environment = options['environment'];
-  if (environment !== undefined && cpdOnEngine({ report, directories }, environmentOf(environment))) {
+  if (
+    environment !== undefined &&
+    cpdOnEngine({ report, directories }, environmentOf(environment))
+  ) {
     return;
   }
   const command = callUntyped(toolCommand, 'cpd', { report, directories });

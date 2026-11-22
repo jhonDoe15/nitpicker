@@ -50,7 +50,10 @@ describe('cpdOnEngine', () => {
     const { plan, environment, log } = setup();
     const written: string[] = [];
     const run: EngineStart = () => ({ status: 3, stdout: '', stderr: 'symbolic link a\n' });
-    const accepted = cpdOnEngine(plan, environment, { run, log: { write: (text) => written.push(text) } });
+    const accepted = cpdOnEngine(plan, environment, {
+      run,
+      log: { write: (text) => written.push(text) },
+    });
     expect(accepted).toBe(false);
     expect(existsSync(plan.report)).toBe(false);
     expect(readFileSync(log, 'utf8')).toBe('CPD runs: symbolic link a\n');

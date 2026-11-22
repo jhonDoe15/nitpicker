@@ -122,6 +122,10 @@ function parsedOutput(file: OutputFile): Parsed {
   }
 }
 
+function writingTo<T extends SpawnSyncOptions>(file: OutputFile, options: T): T {
+  return { ...options, stdio: stdioWith(options.stdio, file.descriptor) };
+}
+
 export function spawnSyncParsingOutput(
   command: string,
   args: readonly string[],
@@ -129,11 +133,8 @@ export function spawnSyncParsingOutput(
 ): SpawnSyncReturns<string> & { readonly parsed?: Parsed } {
   const file = openOutputFile();
   try {
-    const { maxBuffer = DEFAULT_MAX_BUFFER, encoding, stdio } = options;
-    const result = spawnSync(command, args, {
-      ...options,
-      stdio: stdioWith(stdio, file.descriptor),
-    });
+    const { maxBuffer = DEFAULT_MAX_BUFFER, encoding } = options;
+    const result = spawnSync(command, args, writingTo(file, options));
     const captured = capturedStdout(
       { command, args, result },
       { file, encoding, maxBuffer, parse: true },
@@ -161,11 +162,8 @@ export function spawnSyncWithOutputFile(
 ): SpawnSyncReturns<string | Buffer> {
   const file = openOutputFile();
   try {
-    const { maxBuffer = DEFAULT_MAX_BUFFER, encoding, stdio } = options;
-    const result = spawnSync(command, args, {
-      ...options,
-      stdio: stdioWith(stdio, file.descriptor),
-    });
+    const { maxBuffer = DEFAULT_MAX_BUFFER, encoding } = options;
+    const result = spawnSync(command, args, writingTo(file, options));
     if (!Array.isArray(result.output)) {
       return result;
     }

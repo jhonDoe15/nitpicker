@@ -12,7 +12,7 @@ export type CpdEnginePlan = {
   readonly report: string;
   readonly directories: readonly string[];
 };
-export type Log = { write(text: string): unknown };
+type Log = { write(text: string): unknown };
 export type CpdEngineOptions = { readonly run?: EngineStart; readonly log?: Log };
 
 export const CPD_ENGINE_LOG = 'cpd-engine-log.txt';

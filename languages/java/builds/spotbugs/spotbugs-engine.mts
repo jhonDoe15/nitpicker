@@ -17,7 +17,7 @@ export type SpotbugsEnginePlan = {
   readonly processorPath: readonly string[];
   readonly javaHome: string;
 };
-export type Log = { write(text: string): unknown };
+type Log = { write(text: string): unknown };
 export type EngineOptions = { readonly run?: EngineStart; readonly log?: Log };
 
 export const SPOTBUGS_ENGINE_SARIF = 'spotbugs-engine.sarif';
@@ -27,7 +27,7 @@ const SOURCES_FILE = 'spotbugs-engine-sources.txt';
 const CLASSPATH_FILE = 'spotbugs-engine-classpath.txt';
 const REPORT_FILE = 'spotbugs-engine-report.json';
 const SPOTBUGS_RULES = '_SpotBugs';
-export const ON_ENGINE: readonly string[] = ['CT_CONSTRUCTOR_THROW'];
+const ON_ENGINE: readonly string[] = ['CT_CONSTRUCTOR_THROW'];
 const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   ConstructorThrow: ['CT_CONSTRUCTOR_THROW'],
   FindReturnRef: [

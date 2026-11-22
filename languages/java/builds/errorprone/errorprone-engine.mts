@@ -31,7 +31,7 @@ type Setting = {
   readonly run: EngineStart;
 };
 type Selected = EngineChecks & ArgumentSet & { readonly file: string };
-export type Log = { write(text: string): unknown };
+type Log = { write(text: string): unknown };
 export type EngineOptions = { readonly run?: EngineStart; readonly log?: Log };
 
 const ERROR_PRONE_RULES = '_ErrorProne';
