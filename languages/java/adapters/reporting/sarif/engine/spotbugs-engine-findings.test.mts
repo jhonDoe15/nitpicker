@@ -1,18 +1,12 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { useTempProjects } from '../../../../../../shared/test-support/temp-projects.mts';
 import type { SarifLog } from '../../../jpa/jpa-types.mts';
 import { readSarifReport } from '../sarif-reports.mts';
 import { readSpotbugsReport, withSpotbugsEngineResults } from './spotbugs-engine-findings.mts';
 
-const roots: string[] = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const projectWith = useTempProjects('nitpicker-spotbugs-merge-');
 
 function result(rule: string, args: readonly string[], line = 1): Record<string, unknown> {
   return {
@@ -70,8 +64,7 @@ describe('withSpotbugsEngineResults', () => {
   });
 
   it('reads the report of SpotBugs with or without the one of the engine', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-spotbugs-merge-'));
-    roots.push(root);
+    const root = projectWith({});
     writeFileSync(
       path.join(root, 'spotbugs.sarif'),
       JSON.stringify(log(result('URF_UNREAD_FIELD', ['p.A.f']))),

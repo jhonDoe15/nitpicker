@@ -1,21 +1,14 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
 import { compilerOf } from '../errorprone/compiler-types.mts';
 import { spotbugsEngineArguments, spotbugsEnginePlan } from './spotbugs-engine-plan.mts';
 
-const roots: string[] = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const projectWith = useTempProjects('nitpicker-spotbugs-maven-');
 
 function moduleIn(...compiled: readonly string[]) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-spotbugs-maven-'));
-  roots.push(root);
+  const root = projectWith({});
   const source = path.join(root, 'src/main/java');
   const classes = path.join(root, 'target/classes');
   for (const name of ['p/A', 'p/B', 'p/package-info']) {

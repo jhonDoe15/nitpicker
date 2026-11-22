@@ -1,21 +1,14 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
 import type { EngineStart } from '../../../../shared/engine/engine-run.mts';
 import { CPD_ENGINE_LOG, cpdOnEngine, cpdPlanOf, environmentOf } from './cpd-engine.mts';
 
-const roots: string[] = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const projectWith = useTempProjects('nitpicker-cpd-engine-');
 
 function setup() {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-cpd-engine-'));
-  roots.push(root);
+  const root = projectWith({});
   const binary = path.join(root, 'nitpicker-engine');
   writeFileSync(binary, '');
   const report = path.join(root, 'cpd.xml');
