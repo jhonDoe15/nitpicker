@@ -4,8 +4,9 @@ import { findEngine } from '../../../../shared/engine/engine-binary.mts';
 import { engineFindingOf } from '../../../../shared/engine/engine-rows.mts';
 import {
   runEngineSync,
+  type EngineCall,
   type EngineEnvironment as Environment,
-  type EngineStart,
+  type EngineHooks,
 } from '../../../../shared/engine/engine-run.mts';
 import { fieldOf, listOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import {
@@ -17,22 +18,19 @@ import {
   type ArgumentSet,
 } from './engine-arguments.mts';
 import { engineChecksFor, NULL_AWAY, type EngineChecks } from './engine-checks.mts';
-import { diagnosticOf, ENGINE_REPORT, type EngineDiagnostic } from './engine-diagnostics.mts';
+import {
+  diagnosticsOf as engineDiagnostics,
+  ENGINE_REPORT,
+  type EngineDiagnostic,
+} from './engine-diagnostics.mts';
 
 export type ErrorProneEnginePlan = {
   readonly reportDir: string;
   readonly argumentFiles: readonly string[];
   readonly javaHome: string;
 };
-type Setting = {
-  readonly binary: string;
-  readonly javaHome: string;
-  readonly environment: Environment;
-  readonly run: EngineStart;
-};
+type Setting = EngineCall & { readonly javaHome: string };
 type Selected = EngineChecks & ArgumentSet & { readonly file: string };
-type Log = { write(text: string): unknown };
-export type EngineOptions = { readonly run?: EngineStart; readonly log?: Log };
 
 const ERROR_PRONE_RULES = '_ErrorProne';
 
@@ -83,8 +81,20 @@ function engineReport(
   return parseJson(readFileSync(report, 'utf8'));
 }
 
+function reportedRows(report: unknown, checks: readonly string[], head: readonly string[]) {
+  const wanted = new Set(checks);
+  const skipped = generatedRoots(head).map((root) => `${root.split(path.sep).join('/')}/`);
+  return listOf(fieldOf(report, 'findings'))
+    .map(engineFindingOf)
+    .filter(({ rule }) => wanted.has(rule))
+    .filter(({ file: source }) => {
+      const slashed = source.split(path.sep).join('/');
+      return !skipped.some((root) => slashed.includes(root));
+    });
+}
+
 function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
-  const text = readFileSync(file, 'utf8');
+  const text = new TextDecoder('utf-8', { fatal: true }).decode(readFileSync(file));
   const set = argumentSetOf(text);
   const selected = engineChecksFor(set.head);
   if (selected.checks.length === 0 || set.sources.length === 0) {
@@ -97,15 +107,7 @@ function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
   }
   const unsure = fieldOf(report, 'nullAwayUnsure') === true;
   const checks = selected.checks.filter((check) => check !== NULL_AWAY || !unsure);
-  const skipped = generatedRoots(set.head).map((root) => `${root.split(path.sep).join('/')}/`);
-  const rows = listOf(fieldOf(report, 'findings'))
-    .map(engineFindingOf)
-    .filter(({ rule }) => checks.includes(rule))
-    .filter(({ file: source }) => {
-      const slashed = source.split(path.sep).join('/');
-      return !skipped.some((root) => slashed.includes(root));
-    });
-  const diagnostics = rows.map(diagnosticOf);
+  const diagnostics = engineDiagnostics(reportedRows(report, checks, set.head));
   writeFileSync(
     file,
     withProjectFlags(
@@ -119,10 +121,7 @@ function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
 export function errorProneOnEngine(
   plan: ErrorProneEnginePlan,
   environment: Environment,
-  {
-    run = (argumentList, options) => runEngineSync(argumentList, options),
-    log,
-  }: EngineOptions = {},
+  { run = (argumentList, options) => runEngineSync(argumentList, options), log }: EngineHooks = {},
 ): void {
   const reportFile = path.join(plan.reportDir, ENGINE_REPORT);
   rmSync(reportFile, { force: true });

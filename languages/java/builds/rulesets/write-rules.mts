@@ -30,50 +30,61 @@ function writePmdRulesets(plan: RulesPlan): void {
   if (engine !== undefined) {
     writeFileSync(
       path.join(reportDir, PMD_RUN_RULESETS_LIST),
-      pmdRulesetsWithEngine(engine, process.env).join(','),
+      pmdRulesetsWithEngine(engine, process.env, { log: process.stderr }).join(','),
     );
   }
 }
 
+function writeSpotbugsEngine(plan: RulesPlan): void {
+  const engine = spotbugsPlanOf(plan);
+  const added = spotbugsOnEngine(engine, process.env, { log: process.stderr });
+  writeFileSync(path.join(engine.reportDir, SPOTBUGS_ENGINE_ARGUMENTS), added.join('\n'));
+}
+
+function writeCheckstyleConfig(plan: RulesPlan): void {
+  const config = nitpickerCheckstyleConfig(readFileSync(planText(plan, 'source'), 'utf8'));
+  const unformatted = plan['javaStyle'] === 'none';
+  writeFileSync(
+    planText(plan, 'output'),
+    reportingCheckstyleConfig(
+      unformatted ? unformattedCheckstyle(config, plan['indentation']) : config,
+      unformatted ? 'unformatted' : 'formatted',
+    ),
+  );
+}
+
+function writeCheckstyleGuards(plan: RulesPlan): void {
+  writeFileSync(
+    planText(plan, 'output'),
+    withGuardChecks(readFileSync(planText(plan, 'source'), 'utf8'), plan['files']),
+  );
+}
+
+const WRITERS = new Map<string, (plan: RulesPlan) => void>([
+  ['pmd-guards', writePmdRulesets],
+  [
+    'errorprone-engine',
+    (plan) => {
+      errorProneOnEngine(errorPronePlanOf(plan), process.env, { log: process.stderr });
+    },
+  ],
+  [
+    'cpd-engine',
+    (plan) => {
+      cpdOnEngine(cpdPlanOf(plan), process.env, { log: process.stderr });
+    },
+  ],
+  ['spotbugs-engine', writeSpotbugsEngine],
+  ['checkstyle-config', writeCheckstyleConfig],
+  ['checkstyle-guards', writeCheckstyleGuards],
+]);
+
 export function writeRules(kind: string | undefined, plan: RulesPlan): void {
-  if (kind === 'pmd-guards') {
-    writePmdRulesets(plan);
-    return;
+  const write = kind === undefined ? undefined : WRITERS.get(kind);
+  if (write === undefined) {
+    throw new Error(`unknown rule configuration kind: ${String(kind)}`);
   }
-  if (kind === 'errorprone-engine') {
-    errorProneOnEngine(errorPronePlanOf(plan), process.env, { log: process.stderr });
-    return;
-  }
-  if (kind === 'cpd-engine') {
-    cpdOnEngine(cpdPlanOf(plan), process.env, { log: process.stderr });
-    return;
-  }
-  if (kind === 'spotbugs-engine') {
-    const engine = spotbugsPlanOf(plan);
-    const added = spotbugsOnEngine(engine, process.env, { log: process.stderr });
-    writeFileSync(path.join(engine.reportDir, SPOTBUGS_ENGINE_ARGUMENTS), added.join('\n'));
-    return;
-  }
-  if (kind === 'checkstyle-config') {
-    const config = nitpickerCheckstyleConfig(readFileSync(planText(plan, 'source'), 'utf8'));
-    const unformatted = plan['javaStyle'] === 'none';
-    writeFileSync(
-      planText(plan, 'output'),
-      reportingCheckstyleConfig(
-        unformatted ? unformattedCheckstyle(config, plan['indentation']) : config,
-        unformatted ? 'unformatted' : 'formatted',
-      ),
-    );
-    return;
-  }
-  if (kind === 'checkstyle-guards') {
-    writeFileSync(
-      planText(plan, 'output'),
-      withGuardChecks(readFileSync(planText(plan, 'source'), 'utf8'), plan['files']),
-    );
-    return;
-  }
-  throw new Error(`unknown rule configuration kind: ${String(kind)}`);
+  write(plan);
 }
 
 export function main([kind, planFile]: readonly string[]): void {

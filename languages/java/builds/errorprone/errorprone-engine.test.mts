@@ -10,6 +10,7 @@ import {
   javaHomeOf,
   type ErrorProneEnginePlan,
 } from './errorprone-engine.mts';
+import { ENGINE_CHECKS, NULL_AWAY } from './engine-checks.mts';
 
 import { engineWriting, type Started } from '../test-support/engine-writing.mts';
 
@@ -66,7 +67,7 @@ describe('errorProneOnEngine', () => {
     const started: Started[] = [];
     const findings = [
       rowIn(source, 'SystemOut'),
-      rowIn(generated, 'NullAway'),
+      rowIn(generated, NULL_AWAY),
       rowIn(source, 'Other'),
     ];
 
@@ -87,28 +88,30 @@ describe('errorProneOnEngine', () => {
       ],
     );
     const [{ argumentList, environment: passed } = { argumentList: [], environment: {} }] = started;
-    expect(argumentList.slice(0, 4)).toStrictEqual([
-      '--files',
-      `${argumentFile}.engine-sources.txt`,
-      '--rules',
-      '_ErrorProne',
+    expect(argumentList).toStrictEqual([
+      ...['--files', `${argumentFile}.engine-sources.txt`, '--rules', '_ErrorProne'],
+      ...['--classpath', `${argumentFile}.engine-classpath.txt`, '--release', '17'],
+      ...['--out', `${argumentFile}.engine-report.json`],
     ]);
-    expect(argumentList).toContain('--release');
     expect(readFileSync(`${argumentFile}.engine-classpath.txt`, 'utf8').split('\n')[0]).toBe(
       '/lib.jar',
     );
-    expect(passed).toMatchObject({
+    expect(passed).toStrictEqual({
+      ...environment,
+      NP_EP_ONLY: ENGINE_CHECKS.join(','),
       NP_NULLAWAY_PACKAGES: 'demo',
       NITPICKER_JDK: plan.javaHome,
     });
-    const text = readFileSync(argumentFile, 'utf8');
-    expect(text).toContain('--errorprone-flag=-Xep:NullAway:OFF\n--sources\n');
-    expect(text).toContain('--errorprone-flag=-Xep:SystemOut:OFF\n');
+    const lines = readFileSync(argumentFile, 'utf8').split('\n');
+    expect(lines.slice(lines.indexOf('--sources') - ENGINE_CHECKS.length)).toStrictEqual([
+      ...ENGINE_CHECKS.map((check) => `--errorprone-flag=-Xep:${check}:OFF`),
+      ...['--sources', source, generated, ''],
+    ]);
   });
 
   it('leaves NullAway to Error Prone when the engine says a library holds marks it did not read', () => {
     const { plan, environment, source, argumentFile } = setup();
-    const findings = [rowIn(source, 'SystemOut'), rowIn(source, 'NullAway')];
+    const findings = [rowIn(source, 'SystemOut'), rowIn(source, NULL_AWAY)];
 
     errorProneOnEngine(plan, environment, {
       run: engineWriting({ findings, nullAwayUnsure: true }),
@@ -118,18 +121,24 @@ describe('errorProneOnEngine', () => {
     expect(listOf(parseJson(report)).map((row) => fieldOf(row, 'message'))).toStrictEqual([
       '[SystemOut] found',
     ]);
-    const text = readFileSync(argumentFile, 'utf8');
-    expect(text).toContain('-Xep:SystemOut:OFF');
-    expect(text).not.toContain('-Xep:NullAway:OFF');
+    const flags = readFileSync(argumentFile, 'utf8')
+      .split('\n')
+      .filter((line) => line.startsWith('--errorprone-flag='));
+    expect(flags).toStrictEqual(
+      ENGINE_CHECKS.filter((check) => check !== NULL_AWAY).map(
+        (check) => `--errorprone-flag=-Xep:${check}:OFF`,
+      ),
+    );
   });
 
   it.each([
-    ['the engine fails', () => ({ status: 1, stdout: '', stderr: 'no types' })],
+    ['the engine fails', () => ({ status: 1, stdout: '', stderr: 'no types' }), 'no types'],
     [
       'the engine cannot read a file',
       engineWriting({ findings: [], syntaxErrorFiles: ['/A.java'] }),
+      'it could not read /A.java',
     ],
-  ])('leaves every check to Error Prone when %s', (_, run) => {
+  ])('leaves every check to Error Prone when %s', (_, run, reason) => {
     const { plan, environment, argumentFile } = setup();
     const before = readFileSync(argumentFile, 'utf8');
     const notes: string[] = [];
@@ -137,7 +146,9 @@ describe('errorProneOnEngine', () => {
 
     errorProneOnEngine(plan, environment, { run, log });
 
-    expect(notes.join('')).toContain('Error Prone runs them');
+    expect(notes).toStrictEqual([
+      `nitpicker: the engine did not run its Error Prone checks, Error Prone runs them: ${reason}\n`,
+    ]);
 
     expect(readFileSync(argumentFile, 'utf8')).toBe(before);
     expect(readFileSync(path.join(plan.reportDir, ENGINE_REPORT), 'utf8')).toBe('[]');

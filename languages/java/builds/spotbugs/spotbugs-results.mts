@@ -40,7 +40,7 @@ type Shape = {
 const CONSTRUCTOR = 'new ';
 const LEVEL = 'note';
 
-function classOf(method: string): string {
+export function classOf(method: string): string {
   const signature = method.slice(0, method.indexOf('('));
   return signature.startsWith(CONSTRUCTOR)
     ? signature.slice(CONSTRUCTOR.length)

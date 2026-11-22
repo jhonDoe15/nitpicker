@@ -430,7 +430,17 @@ describe.skipIf(process.platform === 'win32')('runCpd', () => {
         environment: { NITPICKER_ENGINE: ENGINE },
       });
 
-      expect(reportFiles(basedir)[0]).toContain('totalNumberOfTokens="10"');
+      expect(reportFiles(basedir)).toEqual([
+        [
+          '<?xml version="1.0" encoding="UTF-8" standalone="no"?>',
+          '<pmd-cpd xmlns="https://pmd-code.org/schema/cpd-report" pmdVersion="7.16.0" version="1.0.0">',
+          `   <file path="${path.join(source, 'A.java')}" totalNumberOfTokens="10"/>`,
+          '</pmd-cpd>',
+          '',
+        ].join('\n'),
+        undefined,
+        undefined,
+      ]);
       expect(readFileSync(path.join(basedir, 'cpd-engine-log.txt'), 'utf8')).toBe(
         'the engine wrote this report\n',
       );

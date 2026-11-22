@@ -14,6 +14,7 @@ type Runner = (
     reportRoot: string;
     manifest: unknown;
     skippedFolders: undefined;
+    analyzeGeneratedSources: boolean;
     environment: Record<string, string>;
   },
 ) => void;
@@ -107,7 +108,13 @@ function clonesWith(preset: Preset, root: string, precedence: Precedence): strin
     const manifest: unknown = parseJson(
       readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'),
     );
-    run(root, { reportRoot, manifest, skippedFolders: undefined, environment });
+    run(root, {
+      reportRoot,
+      manifest,
+      skippedFolders: undefined,
+      analyzeGeneratedSources: false,
+      environment,
+    });
     return read(reportRoot)
       .filter(({ rule }) => rule === 'duplicate-clone')
       .map(({ path: file }) => file);

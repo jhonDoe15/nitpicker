@@ -84,24 +84,18 @@ export function runsProcessors(head: readonly string[]): boolean {
   return entriesOf(optionOf(head, '-processorpath')).some(declaresProcessor);
 }
 
-function packagesIn(root: string, directory: string, found: Set<string>): void {
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    if (entry.isDirectory()) {
-      packagesIn(root, path.join(directory, entry.name), found);
-    } else if (entry.name.endsWith('.class') && directory !== root) {
-      found.add(path.relative(root, directory).split(path.sep).join('.'));
-    }
-  }
+function packagesIn(root: string): string[] {
+  return readdirSync(root, { recursive: true, withFileTypes: true })
+    .filter((entry) => !entry.isDirectory() && entry.name.endsWith('.class'))
+    .filter((entry) => entry.parentPath !== root)
+    .map((entry) => path.relative(root, entry.parentPath).split(path.sep).join('.'));
 }
 
 export function ownPackages(classDirectories: readonly string[]): string[] {
-  const found = new Set<string>();
-  for (const root of classDirectories) {
-    if (existsSync(root) && statSync(root).isDirectory()) {
-      packagesIn(root, root, found);
-    }
-  }
-  const sorted = [...found].toSorted();
+  const found = classDirectories
+    .filter((root) => existsSync(root) && statSync(root).isDirectory())
+    .flatMap(packagesIn);
+  const sorted = [...new Set(found)].toSorted();
   return sorted.filter((name) => !sorted.some((other) => name.startsWith(`${other}.`)));
 }
 

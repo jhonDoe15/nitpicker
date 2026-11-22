@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { ENGINE_LOG } from '../../../../builds/rulesets/engine/pmd-engine.mts';
 
@@ -66,7 +66,7 @@ export function pmdRuleCrashNotes(log: string, projectRoot: string): CrashNote[]
 function pmdLog(reportRoot: string): string {
   return [PMD_LOG, ENGINE_LOG]
     .map((name) => path.join(reportRoot, name))
-    .filter((file) => existsSync(file))
+    .filter((file) => statSync(file, { throwIfNoEntry: false })?.isFile() === true)
     .map((file) => readFileSync(file, 'utf8'))
     .join('\n');
 }

@@ -24,7 +24,7 @@ describe('toolHeapFlags', () => {
   });
 
   it('asks the collector to keep the heap near the live data instead of growing it to the ceiling', () => {
-    expect(toolHeapFlags(4)).toContain('-XX:GCTimeRatio=4');
+    expect(toolHeapFlags(4)).toEqual(['-XX:MaxRAMPercentage=18.8', '-XX:GCTimeRatio=4']);
   });
 });
 

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { EngineFinding } from '../../../../shared/engine/engine-rows.mts';
+import { readJson } from '../../../../shared/hygiene/files/known-files.mts';
 import { listOf } from '../../../../shared/values/readers.mts';
 
 export type EngineDiagnostic = {
@@ -17,54 +18,56 @@ export type EngineDiagnostic = {
 export const ENGINE_REPORT = 'errorprone-engine.json';
 const SKIPPED = 'errorprone-skipped.txt';
 const TAB_STOP = 8;
-const texts = new Map<string, string>();
-
-function textOf(file: string): string {
-  const known = texts.get(file);
-  if (known !== undefined) {
-    return known;
-  }
-  const text = readFileSync(file, 'utf8');
-  texts.set(file, text);
-  return text;
+function lineStart(text: string, line: number): number {
+  const lines = text.split('\n');
+  return lines
+    .slice(0, Math.max(Math.min(line, lines.length) - 1, 0))
+    .reduce((start, before) => start + before.length + 1, 0);
 }
 
-function lineStart(text: string, line: number): number {
-  let start = 0;
-  for (let current = 1; current < line; current += 1) {
-    const next = text.indexOf('\n', start);
-    if (next === -1) {
-      return start;
-    }
-    start = next + 1;
-  }
-  return start;
+function nextColumn(reached: number, character: string): number {
+  return character === '\t'
+    ? Math.floor((reached - 1) / TAB_STOP) * TAB_STOP + TAB_STOP + 1
+    : reached + 1;
 }
 
 export function positionIn(text: string, line: number, column: number): number {
-  let position = lineStart(text, line);
+  const start = lineStart(text, line);
+  const end = text.indexOf('\n', start);
+  const characters = text.slice(start, end === -1 ? text.length : end).split('');
   let reached = 1;
-  while (reached < column && position < text.length && text[position] !== '\n') {
-    reached =
-      text[position] === '\t'
-        ? Math.floor((reached - 1) / TAB_STOP) * TAB_STOP + TAB_STOP + 1
-        : reached + 1;
-    position += 1;
+  let offset = 0;
+  for (const character of characters) {
+    if (reached >= column) {
+      break;
+    }
+    reached = nextColumn(reached, character);
+    offset += 1;
   }
-  return position;
+  return start + offset;
 }
 
-export function diagnosticOf({ file, line, column, message }: EngineFinding): EngineDiagnostic {
+function diagnosticIn(
+  { file, line, column, message }: EngineFinding,
+  texts: Map<string, string>,
+): EngineDiagnostic {
+  const text = texts.get(file) ?? readFileSync(file, 'utf8');
+  texts.set(file, text);
   return {
     file,
     line,
     endLine: line,
     column,
-    position: positionIn(textOf(file), line, column),
+    position: positionIn(text, line, column),
     kind: 'WARNING',
     message,
     classAnnotations: [],
   };
+}
+
+export function diagnosticsOf(findings: readonly EngineFinding[]): EngineDiagnostic[] {
+  const texts = new Map<string, string>();
+  return findings.map((finding) => diagnosticIn(finding, texts));
 }
 
 export function withEngineDiagnostics(report: unknown, reportRoot: string): unknown {
@@ -76,6 +79,6 @@ export function withEngineDiagnostics(report: unknown, reportRoot: string): unkn
   ) {
     return report;
   }
-  const added: unknown = JSON.parse(readFileSync(engineReport, 'utf8'));
+  const added = readJson(engineReport).value;
   return Array.isArray(added) ? [...listOf(report), ...listOf(added)] : report;
 }

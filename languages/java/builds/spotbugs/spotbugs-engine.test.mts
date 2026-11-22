@@ -93,7 +93,9 @@ describe('spotbugsOnEngine', () => {
 
     expect(added).toStrictEqual([]);
     expect(existsSync(path.join(plan.reportDir, SPOTBUGS_ENGINE_SARIF))).toBe(false);
-    expect(lines.join('')).toMatch(/SpotBugs runs them/u);
+    expect(lines.join('')).toMatch(
+      /^nitpicker: the engine did not run its SpotBugs patterns, SpotBugs runs them: .+\n$/u,
+    );
   });
 
   it('does not start the engine when it is off, the JDK has no jmods or processors run', () => {
@@ -128,7 +130,17 @@ describe('spotbugsOnEngine', () => {
     expect(
       spotbugsArgumentsFor(plan.reportDir, ['CT_CONSTRUCTOR_THROW', ...exposed]),
     ).toStrictEqual(['-omitVisitors', 'ConstructorThrow', '-exclude', exclude]);
-    expect(readFileSync(exclude, 'utf8')).toContain('<Bug pattern="EI_EXPOSE_REP,MS_EXPOSE_REP"/>');
+    expect(readFileSync(exclude, 'utf8')).toBe(
+      [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<FindBugsFilter>',
+        '  <Match>',
+        '    <Bug pattern="EI_EXPOSE_REP,MS_EXPOSE_REP"/>',
+        '  </Match>',
+        '</FindBugsFilter>',
+        '',
+      ].join('\n'),
+    );
     expect(spotbugsArgumentsFor(plan.reportDir, [])).toStrictEqual([]);
   });
 

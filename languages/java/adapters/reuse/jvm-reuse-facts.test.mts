@@ -456,7 +456,11 @@ describe('jvmReuseFacts', () => {
       },
     ];
 
-    const facts = jvmReuseFacts(root, { projects, exclude: ['**/Skipped.java'] });
+    const facts = jvmReuseFacts(root, {
+      projects,
+      exclude: ['**/Skipped.java'],
+      analyzeGeneratedSources: false,
+    });
 
     expect([facts.modules, facts.packages, facts.imports]).toEqual([
       [{ file: `app/${JAVA_ROOT}/shop/App.java`, role: 'production', entry: true }],

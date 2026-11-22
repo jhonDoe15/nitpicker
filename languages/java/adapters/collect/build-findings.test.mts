@@ -2,11 +2,24 @@ import type { SpawnSyncReturns } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, type Mock, vi } from 'vitest';
 
-const fsMock = vi.hoisted(() => ({
-  rmSync: vi.fn<typeof import('node:fs').rmSync>(),
-  actualRmSync: undefined as typeof import('node:fs').rmSync | undefined,
+type RemoveSync = typeof import('node:fs').rmSync;
+type FsMock = { rmSync: Mock<RemoveSync>; actualRmSync: RemoveSync | undefined };
+
+const OUT_OF_MEMORY = new RegExp(
+  [
+    String.raw`^The Gradle daemon or one of its JVMs ran out of memory on a machine with [\d.]+ GB, `,
+    String.raw`where nitpicker runs \d+ tool JVMs? at once next to the daemon: `,
+    String.raw`lower the daemon heap \(-Xmx in org\.gradle\.jvmargs\) or org\.gradle\.workers\.max `,
+    String.raw`in gradle\.properties, or run on a larger machine\.$`,
+  ].join(''),
+  'u',
+);
+
+const fsMock = vi.hoisted((): FsMock => ({
+  rmSync: vi.fn<RemoveSync>(),
+  actualRmSync: undefined,
 }));
 
 vi.mock('node:fs', async (importOriginal) => {
@@ -112,8 +125,10 @@ describe('buildFindings report cleanup', () => {
     }
 
     const message = messageOf(caught);
-    expect(message).toContain(DAEMON_DISAPPEARED);
-    expect(message).toContain('The Gradle daemon or one of its JVMs ran out of memory');
+    expect(message.split('\n')).toEqual([
+      `Java preset failed on your change: ${DAEMON_DISAPPEARED}`,
+      expect.stringMatching(OUT_OF_MEMORY),
+    ]);
     expect(message).not.toContain('ENOTEMPTY');
   });
 

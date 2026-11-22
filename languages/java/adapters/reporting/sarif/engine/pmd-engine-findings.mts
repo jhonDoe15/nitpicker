@@ -1,9 +1,11 @@
-import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { ENGINE_SARIF } from '../../../../builds/rulesets/engine/pmd-engine.mts';
 import { isRuleCrashText } from '../processing/pmd-rule-crashes.mts';
 import type { SarifLog, SarifResult, SarifRun } from '../../../jpa/jpa-types.mts';
 import { fieldOf, listOf, optionalText } from '../../../../../../shared/values/readers.mts';
+import { decodeOrKeepRawUri } from '../../../../../../shared/ingest/sarif/uri.mts';
+import { byText } from '../../../../../../shared/text-order/by-text.mts';
+import { firstDifference, withEngineReport } from './engine-report.mts';
 
 type Place = {
   readonly file: string;
@@ -22,28 +24,21 @@ function placeOf(result: SarifResult): Place {
   const location = listOf(fieldOf(result, 'locations'))[0];
   const region = fieldOf(fieldOf(location, 'physicalLocation'), 'region');
   return {
-    file: decodeURI(fileOf(result)),
+    file: decodeOrKeepRawUri(fileOf(result)),
     line: Number(fieldOf(region, 'startLine') ?? 0),
     column: Number(fieldOf(region, 'startColumn') ?? 0),
     text: optionalText(fieldOf(result.message, 'text')) ?? '',
   };
 }
 
-function ordered(left: string, right: string): number {
-  if (left === right) {
-    return 0;
-  }
-  return left < right ? -1 : 1;
-}
-
 function inReportOrder(left: SarifResult, right: SarifResult): number {
   const [first, second] = [placeOf(left), placeOf(right)];
-  return (
-    ordered(first.file, second.file) ||
-    first.line - second.line ||
-    first.column - second.column ||
-    ordered(first.text, second.text)
-  );
+  return firstDifference([
+    byText(first.file, second.file),
+    first.line - second.line,
+    first.column - second.column,
+    byText(first.text, second.text),
+  ]);
 }
 
 function unreadFiles(pmd: SarifLog): Set<string> {
@@ -57,7 +52,7 @@ function unreadFiles(pmd: SarifLog): Set<string> {
       .filter(
         (note) => !isRuleCrashText(optionalText(fieldOf(fieldOf(note, 'message'), 'text')) ?? ''),
       )
-      .map((note) => decodeURI(fileOf(note))),
+      .map((note) => decodeOrKeepRawUri(fileOf(note))),
   );
 }
 
@@ -65,7 +60,7 @@ export function withEngineResults(pmd: SarifLog, engine: SarifLog): SarifLog {
   const unread = unreadFiles(pmd);
   const added = (engine.runs ?? [])
     .flatMap((run) => run.results ?? [])
-    .filter((result) => !unread.has(decodeURI(fileOf(result))));
+    .filter((result) => !unread.has(decodeOrKeepRawUri(fileOf(result))));
   const [first, ...rest] = pmd.runs ?? [];
   const base: SarifRun = first ?? engine.runs?.[0] ?? {};
   return {
@@ -78,7 +73,12 @@ export function withEngineResults(pmd: SarifLog, engine: SarifLog): SarifLog {
 }
 
 export function readPmdReport(reportRoot: string, read: (file: string) => SarifLog): SarifLog {
-  const pmd = read(path.join(reportRoot, 'pmd.sarif'));
-  const engine = path.join(reportRoot, ENGINE_SARIF);
-  return existsSync(engine) ? withEngineResults(pmd, read(engine)) : pmd;
+  return withEngineReport(
+    {
+      own: path.join(reportRoot, 'pmd.sarif'),
+      engine: path.join(reportRoot, ENGINE_SARIF),
+      merge: withEngineResults,
+    },
+    read,
+  );
 }

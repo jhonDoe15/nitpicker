@@ -17,6 +17,21 @@ const XPATH = 'net.sourceforge.pmd.lang.rule.xpath.XPathRule';
 const HEAD = '<ruleset name="demo" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">';
 const projectWith = useTempProjects('nitpicker-pmd-engine-');
 
+function xpathRule(name: string) {
+  return { name, xpath: '//A', message: name, suppress: '', properties: {}, include: [] };
+}
+
+function renderedXml(name: string, lines: readonly string[]): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    `<ruleset name="${name}" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">`,
+    `  <description>${name}</description>`,
+    ...lines.map((line) => `  ${line}`),
+    '</ruleset>',
+    '',
+  ].join('\n');
+}
+
 type Setup = { readonly plan: PmdEnginePlan; readonly environment: Record<string, string> };
 
 function setup(): Setup {
@@ -60,10 +75,8 @@ describe('pmdRulesetsWithEngine', () => {
     const file = path.join(root, 'src/main/A.java');
     const started: Started[] = [];
 
-    const rulesets = pmdRulesetsWithEngine(
-      plan,
-      environment,
-      engineWriting(
+    const rulesets = pmdRulesetsWithEngine(plan, environment, {
+      run: engineWriting(
         {
           findings: [
             { file, rule: 'Fast', line: 3, column: 5, message: 'Fast' },
@@ -73,6 +86,14 @@ describe('pmdRulesetsWithEngine', () => {
         },
         started,
       ),
+    });
+    console.log(
+      'PROBE-RULES',
+      readFileSync(path.join(plan.reportDir, 'pmd-engine-rules.json'), 'utf8'),
+    );
+    console.log(
+      'PROBE-CODED',
+      JSON.stringify(readFileSync(path.join(plan.reportDir, 'pmd-0-coded.xml'), 'utf8')),
     );
 
     expect(rulesets).toEqual([path.join(plan.reportDir, 'pmd-0-coded.xml'), plan.rulesets[1]]);
@@ -85,7 +106,8 @@ describe('pmdRulesetsWithEngine', () => {
       '--out',
       path.join(plan.reportDir, 'pmd-engine-report.json'),
     ]);
-    expect(started[0]?.environment).toMatchObject({
+    expect(started[0]?.environment).toStrictEqual({
+      ...environment,
       NP_XPATH_RULES: path.join(plan.reportDir, 'pmd-engine-rules.json'),
       NP_SUPPRESS_MARKER: 'NO-MARKER',
       NITPICKER_JDK: plan.javaHome,
@@ -93,8 +115,8 @@ describe('pmdRulesetsWithEngine', () => {
     expect(
       parseJson(readFileSync(path.join(plan.reportDir, 'pmd-engine-rules.json'), 'utf8')),
     ).toEqual([
-      expect.objectContaining({ name: 'Fast', exclude: [`${root}/src/test/.*`] }),
-      expect.objectContaining({ name: 'FastTest', exclude: [`${root}/src/main/.*`] }),
+      { ...xpathRule('Fast'), exclude: [`${root}/src/test/.*`] },
+      { ...xpathRule('FastTest'), exclude: [`${root}/src/main/.*`] },
     ]);
     expect(parseJson(readFileSync(path.join(plan.reportDir, ENGINE_SARIF), 'utf8'))).toEqual({
       version: '2.1.0',
@@ -122,8 +144,11 @@ describe('pmdRulesetsWithEngine', () => {
     expect(readFileSync(path.join(plan.reportDir, ENGINE_LOG), 'utf8')).toBe(
       `Exception applying rule Fast on file ${file}, continuing with next rule\n`,
     );
-    expect(readFileSync(path.join(plan.reportDir, 'pmd-0-coded.xml'), 'utf8')).toContain(
-      `<rule ref="${plan.rulesets[0] ?? ''}/Coded"/>`,
+    expect(readFileSync(path.join(plan.reportDir, 'pmd-0-coded.xml'), 'utf8')).toBe(
+      renderedXml('demo', [
+        `<exclude-pattern>\\Q${root}/src/test/\\E.*</exclude-pattern>`,
+        `<rule ref="${plan.rulesets[0] ?? ''}/Coded"/>`,
+      ]),
     );
   });
 
@@ -132,14 +157,12 @@ describe('pmdRulesetsWithEngine', () => {
     const root = path.dirname(plan.reportDir);
     const broken = path.join(root, 'src/test/Broken.java');
 
-    const rulesets = pmdRulesetsWithEngine(
-      plan,
-      environment,
-      engineWriting({
+    const rulesets = pmdRulesetsWithEngine(plan, environment, {
+      run: engineWriting({
         findings: [{ file: broken, rule: 'FastTest', line: 1, column: 1, message: 'FastTest' }],
         syntaxErrorFiles: [broken],
       }),
-    );
+    });
 
     expect(rulesets).toEqual([
       path.join(plan.reportDir, 'pmd-0-coded.xml'),
@@ -147,9 +170,17 @@ describe('pmdRulesetsWithEngine', () => {
       path.join(plan.reportDir, 'pmd-2-unparsed.xml'),
     ]);
     const again = readFileSync(path.join(plan.reportDir, 'pmd-2-unparsed.xml'), 'utf8');
-    expect(again).toContain(`<include-pattern>\\Q${broken}\\E</include-pattern>`);
-    expect(again).toContain(`<rule ref="${plan.rulesets[2] ?? ''}/FastTest"/>`);
-    expect(readFileSync(path.join(plan.reportDir, ENGINE_SARIF), 'utf8')).toContain('"results":[]');
+    expect(again).toBe(
+      renderedXml('demo-unparsed', [
+        '<exclude-pattern>.*</exclude-pattern>',
+        `<include-pattern>\\Q${broken}\\E</include-pattern>`,
+        `<rule ref="${plan.rulesets[2] ?? ''}/FastTest"/>`,
+      ]),
+    );
+    expect(parseJson(readFileSync(path.join(plan.reportDir, ENGINE_SARIF), 'utf8'))).toEqual({
+      version: '2.1.0',
+      runs: [{ tool: { driver: { name: 'PMD', rules: [] } }, results: [] }],
+    });
   });
 
   it('leaves every rule to PMD when the engine is off, fails or has no JDK classes to read', () => {
@@ -160,13 +191,15 @@ describe('pmdRulesetsWithEngine', () => {
     };
     writeFileSync(path.join(plan.reportDir, ENGINE_SARIF), 'stale');
 
-    expect(pmdRulesetsWithEngine(plan, { NITPICKER_ENGINE: 'off' }, unexpected)).toEqual(
+    expect(pmdRulesetsWithEngine(plan, { NITPICKER_ENGINE: 'off' }, { run: unexpected })).toEqual(
       plan.rulesets,
     );
     expect(existsSync(path.join(plan.reportDir, ENGINE_SARIF))).toBe(false);
-    expect(pmdRulesetsWithEngine(plan, environment, failing)).toEqual(plan.rulesets);
+    expect(pmdRulesetsWithEngine(plan, environment, { run: failing })).toEqual(plan.rulesets);
     expect(
-      pmdRulesetsWithEngine({ ...plan, javaHome: plan.reportDir }, environment, unexpected),
+      pmdRulesetsWithEngine({ ...plan, javaHome: plan.reportDir }, environment, {
+        run: unexpected,
+      }),
     ).toEqual(plan.rulesets);
     expect(existsSync(path.join(plan.reportDir, ENGINE_SARIF))).toBe(false);
   });
@@ -180,8 +213,8 @@ describe('pmdRulesetsWithEngine', () => {
     };
     writeFileSync(path.join(plan.reportDir, 'pmd-engine-report.json'), '{"findings": []}');
 
-    expect(pmdRulesetsWithEngine(plan, environment, silent)).toEqual(plan.rulesets);
-    expect(pmdRulesetsWithEngine(plan, environment, garbled)).toEqual(plan.rulesets);
+    expect(pmdRulesetsWithEngine(plan, environment, { run: silent })).toEqual(plan.rulesets);
+    expect(pmdRulesetsWithEngine(plan, environment, { run: garbled })).toEqual(plan.rulesets);
     expect(existsSync(path.join(plan.reportDir, ENGINE_SARIF))).toBe(false);
   });
 });

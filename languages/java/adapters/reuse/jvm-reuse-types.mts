@@ -119,7 +119,7 @@ export type ReuseFactsOptions = {
   readonly projects: readonly ReuseProject[];
   readonly kotlin?: true | false;
   readonly exclude?: readonly string[];
-  readonly analyzeGeneratedSources?: boolean;
+  readonly analyzeGeneratedSources: boolean;
 };
 
 export type BaselineEntry = {

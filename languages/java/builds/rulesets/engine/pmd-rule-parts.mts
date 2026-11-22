@@ -94,7 +94,7 @@ export function portablePattern(javaPattern: string): string {
     const groups: unknown = match.at(-1);
     const literal =
       typeof groups === 'object' && groups !== null && 'literal' in groups ? groups.literal : '';
-    return String(literal).replaceAll(REGEX_SPECIAL, String.raw`\$&`);
+    return String(literal).replaceAll(REGEX_SPECIAL, (special) => `\\${special}`);
   });
 }
 

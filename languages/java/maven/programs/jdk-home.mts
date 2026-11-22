@@ -3,20 +3,22 @@ import path from 'node:path';
 
 type Environment = Readonly<Record<string, string | undefined>>;
 
-const JAVA_NAMES = ['java', 'java.exe'];
+function javaCommands(folder: string): string[] {
+  return [path.join(folder, 'java'), path.join(folder, 'java.exe')];
+}
 
 function javaOnPath(environment: Environment): string | undefined {
   const listed = Object.entries(environment).find(([name]) => name.toUpperCase() === 'PATH')?.[1];
   return (listed ?? '')
     .split(path.delimiter)
     .filter((folder) => folder !== '')
-    .flatMap((folder) => JAVA_NAMES.map((name) => path.join(folder, name)))
+    .flatMap(javaCommands)
     .find((candidate) => existsSync(candidate));
 }
 
 export function jdkHome(environment: Environment): string {
   const home = environment['JAVA_HOME'];
-  if (home !== undefined && JAVA_NAMES.some((name) => existsSync(path.join(home, 'bin', name)))) {
+  if (home !== undefined && javaCommands(path.join(home, 'bin')).some((java) => existsSync(java))) {
     return home;
   }
   const java = javaOnPath(environment);
