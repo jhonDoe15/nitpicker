@@ -30,7 +30,7 @@ impl FileRule for JavacNames {
         crate::engine::source::walk(file.tree.root_node(), |node| {
             let mut add = |rule: &str, message: String| {
                 let (line, last) = (node.start_position().row + 1, node.end_position().row + 1);
-                out.push(Finding { file: file.path.clone(), line, column: last, rule: rule.to_string(), message });
+                out.push(Finding { file: file.path.clone(), line, column: last, rule: rule.to_string(), message, symbol: None });
             };
             if let Some(synthetic) = names.lambda(node) {
                 let owner = binary(index, &synthetic.owner);

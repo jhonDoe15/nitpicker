@@ -49,6 +49,11 @@ impl<'a> Context<'a> {
     pub fn report(&self, pattern: &'static str, at: Node, line: usize, message: String) {
         self.out.borrow_mut().extend(self.finding(pattern, at, line, message));
     }
+    /// Reports a pattern with the name SpotBugs gives its place, such as the variable a method stores.
+    pub fn report_named(&self, pattern: &'static str, at: Node, line: usize, message: String, symbol: String) {
+        let found = self.finding(pattern, at, line, message).map(|finding| Finding { symbol: Some(symbol), ..finding });
+        self.out.borrow_mut().extend(found);
+    }
     /// Reports a pattern for a field a method of the class `from` hands out, once the run tells that the field is
     /// exposed. `changeable` says whether the declared type of the field can be changed.
     pub fn report_exposed(&self, pattern: &'static str, at: Node, line: usize, message: String, key: known::Key, from: &str, changeable: bool) {
@@ -59,7 +64,7 @@ impl<'a> Context<'a> {
         if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == pattern)) || self.suppressed(pattern, at) {
             return None;
         }
-        Some(Finding { file: self.file.path.clone(), line, column: 1, rule: pattern.to_string(), message })
+        Some(Finding { file: self.file.path.clone(), line, column: 1, rule: pattern.to_string(), message, symbol: None })
     }
     /// Whether a declaration around the node carries `@SuppressFBWarnings` naming the pattern, its prefix, or nothing.
     fn suppressed(&self, pattern: &str, node: Node) -> bool {

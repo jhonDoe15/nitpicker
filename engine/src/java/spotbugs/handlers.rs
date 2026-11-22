@@ -48,10 +48,16 @@ pub fn closing(context: &Context, statement: Node) -> Vec<String> {
     for resource in children(statement).into_iter().filter(|part| part.kind() == "resource_specification").flat_map(named_children) {
         let declared = resource.child_by_field_name("type").and_then(|kind| resolver.type_node(kind));
         let kind = match resource.kind() {
-            "resource" => declared.or_else(|| resource.child_by_field_name("value").and_then(|value| resolver.type_of(value))),
+            "resource" => declared
+                .or_else(|| resource.child_by_field_name("value").and_then(|value| resolver.type_of(value)))
+                .or_else(|| resource.named_child(0).filter(|_| resource.named_child_count() == 1).and_then(|used| resolver.type_of(used))),
             _ => resolver.type_of(resource),
         };
-        let close = kind.as_ref().and_then(|kind| index.methods(&kind.erased().name(), "close").into_iter().find(|(_, method)| method.parameters.is_empty()));
+        // A resource class missing from the class path is one SpotBugs cannot follow: its closing does not count.
+        let Some(kind) = kind.filter(|kind| !matches!(kind, crate::java::types::model::Type::Class(..)) || index.get(&kind.erased().name()).is_some()) else {
+            continue;
+        };
+        let close = Some(&kind).and_then(|kind| index.methods(&kind.erased().name(), "close").into_iter().find(|(_, method)| method.parameters.is_empty()));
         match close {
             Some((_, method)) => thrown.extend(declares(method)),
             None => thrown.push("java.lang.Exception".to_string()),

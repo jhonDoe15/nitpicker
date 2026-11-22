@@ -69,7 +69,7 @@ export function releaseOf(head: readonly string[]): string | undefined {
   return patchesJdk ? undefined : release;
 }
 
-function declaresProcessor(entry: string): boolean {
+export function declaresProcessor(entry: string): boolean {
   if (!existsSync(entry)) {
     return false;
   }
