@@ -10,7 +10,7 @@ import type {
   ProjectSplit,
   RuleCatalog,
 } from './pmd-types.mts';
-import { element, renderXml } from './xml-write.mts';
+import { element, renderXml } from '../../../../shared/xml/xml-write.mts';
 import {
   excludedNames,
   referenceOf,

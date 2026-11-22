@@ -1,9 +1,17 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import type { JavaFinding } from '../../../typed/java-values.mts';
 import { ENGINE_LOG } from '../../../../builds/rulesets/engine/pmd-engine.mts';
 
 export const PMD_LOG = 'pmd-log.txt';
+
+type CrashNote = {
+  readonly tool: string;
+  readonly rule: string;
+  readonly path: string;
+  readonly identity: string;
+  readonly message: string;
+  readonly classification: string;
+};
 const RULE_CRASHED = 'rule-crashed';
 const MAX_NAMED_FILES = 5;
 const CRASH_WARNING =
@@ -38,7 +46,7 @@ function fileList(files: readonly string[]): string {
   return `${named.join(', ')}${rest > 0 ? ` and ${String(rest)} more` : ''}`;
 }
 
-export function pmdRuleCrashNotes(log: string, projectRoot: string): JavaFinding[] {
+export function pmdRuleCrashNotes(log: string, projectRoot: string): CrashNote[] {
   return [...crashedFiles(log, projectRoot)].map(([rule, unsorted]) => {
     const files = unsorted.toSorted();
     return {
@@ -63,7 +71,7 @@ function pmdLog(reportRoot: string): string {
     .join('\n');
 }
 
-export function pmdLogRuleCrashes(reportRoot: string, projectRoot: string): JavaFinding[] {
+export function pmdLogRuleCrashes(reportRoot: string, projectRoot: string): CrashNote[] {
   return pmdRuleCrashNotes(pmdLog(reportRoot), projectRoot);
 }
 
