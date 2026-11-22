@@ -2,8 +2,9 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { isStrictlyInside } from '../../../../../../shared/filesystem.mts';
 import { readStamped as untypedReadStamped } from '../../../modules/stamped-file-cache.mts';
+import type { StampedCache } from '../../../modules/stamped-file-cache.mts';
 
-export type StampedCache<Value> = Map<string, { readonly stamp: string; readonly value: Value }>;
+export type { StampedCache } from '../../../modules/stamped-file-cache.mts';
 
 export const readStamped: <Value>(
   cache: StampedCache<Value>,

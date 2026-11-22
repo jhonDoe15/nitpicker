@@ -130,3 +130,10 @@ export function concatOperands(plain: TSESTree.Node): readonly TSESTree.Node[] |
   }
   return undefined;
 }
+
+export function memberRoot(start: TSESTree.Node): TSESTree.Node {
+  const chain = chainOf<TSESTree.Node>(start, (link) =>
+    link.type === AST_NODE_TYPES.MemberExpression ? link.object : undefined,
+  );
+  return chain.at(-1) ?? start;
+}

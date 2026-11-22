@@ -1,5 +1,11 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { chainOf, contains, nodeChildren, type SourceCode } from '../../typed/node-views.mts';
+import {
+  chainOf,
+  contains,
+  nodeChildren,
+  outermostWrapper,
+  type SourceCode,
+} from '../../typed/node-views.mts';
 import { unwrapped } from '../../typed/syntax-views.mts';
 import { wrapped as wrappedExpression } from '../../support/io/call-views.mts';
 import { isCostlyPureLooking, isFsCall, isSettled, sameCall } from './call-shapes.mts';
@@ -115,10 +121,7 @@ const WRAPPERS = new Set<string>([
 ]);
 
 function wrapped(call: TSESTree.Node): TSESTree.Node {
-  const steps = chainOf<TSESTree.Node>(call, (node) =>
-    node.parent !== undefined && WRAPPERS.has(node.parent.type) ? node.parent : undefined,
-  );
-  return steps.at(-1) ?? call;
+  return outermostWrapper(call, WRAPPERS);
 }
 
 function comparesItself(node: TSESTree.Node, call: TSESTree.Node): boolean {

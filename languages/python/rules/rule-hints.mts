@@ -53,8 +53,8 @@ import { TWIN_HINTS } from './hints/twins/twins.mts';
 import { MESSAGE_HINTS } from './hints/messages/messages.mts';
 import { TRANSLATION_HINTS } from './hints/translations/translations.mts';
 import { REQUEST_CONVERSION_HINTS } from './hints/request_text/conversion.mts';
-import { SUBPROCESS_RULE_HINTS } from './hints/processes/subprocess_rules.mts';
-import { REPEATED_WORK_HINTS } from './hints/repeated_work/repeated_work.mts';
+import { SUBPROCESS_RULE_HINTS } from './hints/processes/subprocess-rules.mts';
+import { REPEATED_WORK_HINTS } from './hints/repeated_work/repeated-work.mts';
 
 export { RULES_TOOL };
 const PYRIGHT_TOOLS = ['pyright', 'basedpyright'];

@@ -168,3 +168,18 @@ export function expandsFully<Node>(
   }
   return true;
 }
+
+export function breaksDownFully<Item>(
+  root: Item,
+  partsOf: (item: Item) => readonly Item[] | undefined,
+): boolean {
+  const pending = [root];
+  for (const item of pending) {
+    const parts = partsOf(item);
+    if (parts === undefined) {
+      return false;
+    }
+    appendAll(pending, parts);
+  }
+  return true;
+}

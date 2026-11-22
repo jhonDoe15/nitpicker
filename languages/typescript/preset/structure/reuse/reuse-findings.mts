@@ -118,6 +118,12 @@ function reactFindings({
   ];
 }
 
+function isReactInScope(projectRoot: string, enabled: unknown): boolean {
+  return enabled === undefined || enabled === null
+    ? hasScopePackage(projectRoot, 'react')
+    : Boolean(enabled);
+}
+
 export function reuseFindings(
   {
     projectRoot,
@@ -145,11 +151,6 @@ export function reuseFindings(
     baselineRoot === undefined
       ? undefined
       : { readFile: baselineFileReader({ projectRoot, baselineRoot, baselinePaths }) };
-  const enabled = react.enabled;
-  const inReactScope =
-    enabled === undefined || enabled === null
-      ? hasScopePackage(projectRoot, 'react')
-      : Boolean(enabled);
   const neutral = neutralReuseFacts(facts, resolve);
   const featureLayout = typescriptFeatureLayout(configured, layout.sourceRoots);
   return uniqueFindings([
@@ -166,6 +167,8 @@ export function reuseFindings(
       rules: FEATURE_RULES,
       policy: { exceptions, layout: featureLayout },
     }),
-    ...(inReactScope ? reactFindings({ facts, context, projectRoot, layout, react }) : []),
+    ...(isReactInScope(projectRoot, react.enabled)
+      ? reactFindings({ facts, context, projectRoot, layout, react })
+      : []),
   ]);
 }

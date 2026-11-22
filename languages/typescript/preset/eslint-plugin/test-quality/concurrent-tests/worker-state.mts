@@ -5,7 +5,7 @@ import {
   propertyName,
 } from '../../rules/runner-apis/runner-apis.mts';
 import {
-  chainOf,
+  memberRoot,
   contains,
   variableNamed,
   type SourceCode,
@@ -71,20 +71,13 @@ function sharedMockSetter(
   );
 }
 
-function rootOf(node: TSESTree.Node): TSESTree.Node {
-  const chain = chainOf(node, (link) =>
-    link.type === AST_NODE_TYPES.MemberExpression ? link.object : undefined,
-  );
-  return chain.at(-1) ?? node;
-}
-
 function spiesOnLocalObject(
   sourceCode: SourceCode,
   call: TSESTree.CallExpression,
   owner: TSESTree.Node,
 ): boolean {
   const target = call.arguments[0];
-  const root = target === undefined ? undefined : rootOf(target);
+  const root = target === undefined ? undefined : memberRoot(target);
   if (root?.type !== AST_NODE_TYPES.Identifier) {
     return true;
   }
