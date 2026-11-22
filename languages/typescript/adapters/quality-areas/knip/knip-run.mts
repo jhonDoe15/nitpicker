@@ -2,6 +2,7 @@ import { unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 import { parseJson } from '../../../../../shared/values/readers.mts';
+import { valueOr } from '../../../../../shared/values/attempt/attempt.mts';
 import { trackTemporaryPath } from '../../typed/tooling.mts';
 import {
   hasEncodedRegExp as untypedHasEncodedRegExp,
@@ -34,10 +35,40 @@ function manifestGuard(manifestPath: string): string {
   return `data:text/javascript,${encodeURIComponent(source)}`;
 }
 function isKnipReport(value: unknown): value is KnipReport {
-  return typeof value === 'object' && value !== null;
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function readKnipReport(text: string): KnipReport {
+function tryParseReport(candidate: string): KnipReport | undefined {
+  const parsed = valueOr(() => parseJson(candidate), undefined);
+  return isKnipReport(parsed) ? parsed : undefined;
+}
+
+function trailingJsonObject(text: string): KnipReport | undefined {
+  const trimmed = text.trimEnd();
+  let searchFrom = trimmed.length;
+  while (searchFrom > 0) {
+    const start = trimmed.lastIndexOf('\n{', searchFrom - 1);
+    if (start === -1) {
+      return undefined;
+    }
+    const parsed = tryParseReport(trimmed.slice(start + 1));
+    if (parsed !== undefined) {
+      return parsed;
+    }
+    searchFrom = start;
+  }
+  return undefined;
+}
+
+export function readKnipReport(text: string): KnipReport {
+  const direct = tryParseReport(text);
+  if (direct !== undefined) {
+    return direct;
+  }
+  const trailing = trailingJsonObject(text);
+  if (trailing !== undefined) {
+    return trailing;
+  }
   const report = parseJson(text);
   if (!isKnipReport(report)) {
     throw new TypeError('knip did not print a JSON object');
