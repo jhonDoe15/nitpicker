@@ -57,6 +57,16 @@ export function useGeneratedGradleProject(gradle: string): GeneratedGradleProjec
       `plugins { id 'java' }
 repositories { mavenCentral() }
 sourceSets.main.java.srcDir 'build/generated/sources/spaced dir (1)'
+sourceSets.main.java.srcDir 'build/generated/main/java'
+def processMessages = tasks.register('processMessages') {
+    def target = file('build/generated/main/java')
+    outputs.dir(target)
+    doLast {
+        new File(target, 'demo').mkdirs()
+        new File(target, 'demo/Produced.java').text = 'package demo;\\npublic class Produced {}\\n'
+    }
+}
+tasks.named('compileJava') { dependsOn processMessages }
 `,
     );
     write(root, 'src/main/java/demo/Written.java', flawed('Written'));
