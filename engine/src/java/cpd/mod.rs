@@ -35,7 +35,45 @@ fn java_files(roots: &[PathBuf]) -> Vec<String> {
     }
     files.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
     files.dedup();
+    let mut real = std::collections::HashSet::new();
+    for file in &files {
+        let path = std::fs::canonicalize(file).unwrap_or_else(|problem| leave(&format!("cannot resolve {file}: {problem}")));
+        if !real.insert(path) {
+            leave(&format!("{file} is reached through two source directories"));
+        }
+    }
     files
+}
+
+fn file_tokens(file: &str, source: &str, detector: tokens::Detector) -> (tokens::FileTokens, tokens::Detector) {
+    tokens::file_tokens(source, detector).unwrap_or_else(|| leave(&format!("PMD would not tokenize {file}")))
+}
+
+/// Every file from a fresh constructor detector in parallel, then in order: a file after one that left a type
+/// open is tokenized again from that state, as PMD's one detector for the whole run sees it.
+fn tokenize(files: &[String]) -> Vec<tokens::FileTokens> {
+    let fresh: Vec<(String, tokens::FileTokens, tokens::Detector)> = files
+        .par_iter()
+        .map(|file| {
+            let bytes = std::fs::read(Path::new(file)).unwrap_or_else(|problem| leave(&format!("cannot read {file}: {problem}")));
+            let source = String::from_utf8(bytes).unwrap_or_else(|_| leave(&format!("{file} is not UTF-8")));
+            let (tokens, end) = file_tokens(file, &source, tokens::Detector::default());
+            (source, tokens, end)
+        })
+        .collect();
+    let mut state = tokens::Detector::default();
+    let mut out = Vec::with_capacity(files.len());
+    for (file, (source, tokens, end)) in files.iter().zip(fresh) {
+        if state.is_fresh() {
+            state = state.then(&end);
+            out.push(tokens);
+        } else {
+            let (tokens, end) = file_tokens(file, &source, state);
+            state = end;
+            out.push(tokens);
+        }
+    }
+    out
 }
 
 fn escaped(value: &str) -> String {
@@ -58,14 +96,7 @@ pub fn run(args: &[String]) {
     let report = report.unwrap_or_else(|| leave("--report is missing"));
     let started = std::time::Instant::now();
     let files = java_files(&roots);
-    let tokenized: Vec<tokens::FileTokens> = files
-        .par_iter()
-        .map(|file| {
-            let bytes = std::fs::read(Path::new(file)).unwrap_or_else(|problem| leave(&format!("cannot read {file}: {problem}")));
-            let source = String::from_utf8(bytes).unwrap_or_else(|_| leave(&format!("{file} is not UTF-8")));
-            tokens::file_tokens(&source).unwrap_or_else(|| leave(&format!("PMD would not tokenize {file}")))
-        })
-        .collect();
+    let tokenized = tokenize(&files);
     if let Ok(dump) = std::env::var("NP_CPD_TOKENS") {
         dump_tokens(&dump, &files, &tokenized);
     }

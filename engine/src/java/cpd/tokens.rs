@@ -83,12 +83,12 @@ fn next_java_char(text: &[u16], index: usize) -> usize {
 
 /// `None` when PMD would not tokenize the file as a whole (bad escape, lexical error, a failure in its
 /// constructor detector): the caller then leaves the module to CPD.
-pub fn file_tokens(source: &str) -> Option<FileTokens> {
+pub fn file_tokens(source: &str, detector: Detector) -> Option<(FileTokens, Detector)> {
     let text = without_class_literals(normalized(source))?;
     let lines = Lines::new(&text);
     let mut translation = translated(&text)?;
     let lexed = lex(&translation.text)?;
-    Filter::default().run(&lexed, &mut translation, &lines)
+    Filter { detector, ..Filter::default() }.run(&lexed, &mut translation, &lines)
 }
 
 #[derive(Default)]
@@ -100,15 +100,40 @@ struct Filter {
     package_or_import: bool,
     cpd_start: bool,
     cpd_off: bool,
+    detector: Detector,
+    failed: bool,
+}
+
+/// `ConstructorDetector`'s state. PMD keeps one detector for all files of a run, so a file that leaves a type open
+/// hands it to the next file.
+#[derive(Clone, Default, PartialEq)]
+pub struct Detector {
     types: Vec<(i32, Option<String>)>,
     depth: i32,
     store_name: bool,
     last_identifier: Option<String>,
-    failed: bool,
+}
+
+impl Detector {
+    /// Whether a file starting from this state tokenizes as from a fresh one: with no type open, only the brace
+    /// depth differs, and the detector compares depths with each other only.
+    pub fn is_fresh(&self) -> bool {
+        self.types.is_empty() && !self.store_name
+    }
+
+    /// The state after a file that started fresh, when it starts from `self` instead (`self` fresh).
+    pub fn then(&self, end: &Detector) -> Detector {
+        Detector {
+            types: end.types.iter().map(|(depth, name)| (depth + self.depth, name.clone())).collect(),
+            depth: end.depth + self.depth,
+            store_name: end.store_name,
+            last_identifier: end.last_identifier.clone().or_else(|| self.last_identifier.clone()),
+        }
+    }
 }
 
 impl Filter {
-    fn run(mut self, lexed: &Lexed, translation: &mut Translated, lines: &Lines) -> Option<FileTokens> {
+    fn run(mut self, lexed: &Lexed, translation: &mut Translated, lines: &Lines) -> Option<(FileTokens, Detector)> {
         let text = translation.text.clone();
         let mut out = FileTokens { entries: Vec::new(), requests: Vec::new(), names: Vec::new(), known: Default::default() };
         for token in &lexed.tokens {
@@ -138,7 +163,7 @@ impl Filter {
                 return None;
             }
         }
-        Some(out)
+        Some((out, self.detector))
     }
 
     fn analyze(&mut self, text: &[u16], token: &Token) {
@@ -180,12 +205,12 @@ impl Filter {
 
     fn record(&mut self, text: &[u16], token: &Token, translation: &mut Translated, lines: &Lines, out: &mut FileTokens) {
         if is_operator(text, token, "(") {
-            if let Some((_, name)) = self.types.last() {
+            if let Some((_, name)) = self.detector.types.last() {
                 let Some(name) = name else {
                     self.failed = true;
                     return;
                 };
-                if self.last_identifier.as_ref() == Some(name) {
+                if self.detector.last_identifier.as_ref() == Some(name) {
                     if out.entries.is_empty() {
                         self.failed = true;
                         return;
@@ -218,31 +243,31 @@ impl Filter {
         if token.kind == Kind::Identifier {
             if raw == "enum" {
                 self.open_type();
-            } else if self.store_name {
-                if let Some(top) = self.types.last_mut() {
+            } else if self.detector.store_name {
+                if let Some(top) = self.detector.types.last_mut() {
                     top.1 = Some(raw.clone());
                 }
-                self.store_name = false;
+                self.detector.store_name = false;
             }
-            self.last_identifier = Some(raw);
+            self.detector.last_identifier = Some(raw);
         } else if is_keyword(text, token, "class") {
             self.open_type();
         } else if is_operator(text, token, "{") {
-            self.depth += 1;
+            self.detector.depth += 1;
         } else if is_operator(text, token, "}") {
-            if self.types.last().is_some_and(|top| top.0 == self.depth) {
-                self.types.pop();
+            if self.detector.types.last().is_some_and(|top| top.0 == self.detector.depth) {
+                self.detector.types.pop();
             }
-            self.depth -= 1;
-        } else if self.store_name {
-            self.types.pop();
-            self.store_name = false;
+            self.detector.depth -= 1;
+        } else if self.detector.store_name {
+            self.detector.types.pop();
+            self.detector.store_name = false;
         }
     }
 
     fn open_type(&mut self) {
-        self.types.push((self.depth + 1, None));
-        self.store_name = true;
+        self.detector.types.push((self.detector.depth + 1, None));
+        self.detector.store_name = true;
     }
 }
 

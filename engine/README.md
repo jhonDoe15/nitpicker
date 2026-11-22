@@ -90,14 +90,15 @@ same text (byte order mark dropped, line endings turned into `\n`, `.class` over
 escapes translated and mapped back to columns the way PMD maps them), the same tokens from a port of the lexer
 part of PMD's Java grammar, the same filter (package and import statements, semicolons, `CPD-OFF`/`CPD-ON`
 comments, `@SuppressWarnings("CPD-START")` ... `"CPD-END"`, identifiers and literals anonymized, a
-constructor's name kept), the same image ids, rolling hash and match collection, and the same report order.
+constructor's name kept, with one constructor detector for all files in order, as PMD keeps one, so a file
+that leaves a class open changes the next), the same image ids, rolling hash and match collection, and the same report order.
 The report is PMD's `cpd.xml` without the code fragments and the time stamp, which nitpicker does not read.
 The hash groups are searched in parallel: a token belongs to one group, and every mark and pair of a match
 stays inside the group its first window falls in, so the order PMD visits them in does not change the result.
 
 - The engine leaves the module to CPD (exit status 3, the reason in `cpd-engine-log.txt`) when PMD would skip
-  a file or report a lexical error in it, when a file is not UTF-8, and when a source folder holds a symbolic
-  link. `cpd-engine-log.txt` says which of the two wrote the report.
+  a file or report a lexical error in it, when a file is not UTF-8, when a source folder holds a symbolic
+  link, and when two source folders reach the same file. `cpd-engine-log.txt` says which of the two wrote the report.
 - CPD runs as before when `NITPICKER_ENGINE=off` or there is no engine binary for the platform.
 
 Every token of every Java file of Apache Kafka (6,321 files), Keycloak (8,730) and mall (524) is the same as

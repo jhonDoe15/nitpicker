@@ -1,6 +1,6 @@
-//! Runs `cpd` on the fixtures in `tests/fixtures/cpd` and compares every token (image, start, end) and every
+//! Runs `cpd` on each fixture folder in `tests/fixtures/` and compares every token (image, start, end) and every
 //! duplication with what PMD 7.16.0 gave through nitpicker's `CpdReport` (100 tokens, identifiers and literals
-//! anonymized). `parity/cpd/` holds the scripts that wrote `tests/expected/cpd.txt` and `cpd-tokens.txt`.
+//! anonymized). `parity/cpd/` holds the scripts that wrote `tests/expected/<fixture>.txt` and `<fixture>-tokens.txt`.
 use std::path::Path;
 use std::process::Command;
 
@@ -34,12 +34,11 @@ fn summary(xml: &str, prefix: &str) -> String {
     out
 }
 
-#[test]
-fn cpd_finds_what_pmd_cpd_finds() {
+fn compare(fixture: &str) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
-    let fixtures = root.join("fixtures").join("cpd");
-    let report = std::env::temp_dir().join(format!("nitpicker-engine-cpd-{}.xml", std::process::id()));
-    let tokens = std::env::temp_dir().join(format!("nitpicker-engine-cpd-{}.txt", std::process::id()));
+    let fixtures = root.join("fixtures").join(fixture);
+    let report = std::env::temp_dir().join(format!("nitpicker-engine-{fixture}-{}.xml", std::process::id()));
+    let tokens = std::env::temp_dir().join(format!("nitpicker-engine-{fixture}-{}.txt", std::process::id()));
     let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
         .env("NP_CPD_TOKENS", &tokens)
         .args(["cpd", "--report"])
@@ -53,7 +52,19 @@ fn cpd_finds_what_pmd_cpd_finds() {
     let found_tokens = std::fs::read_to_string(&tokens).expect("tokens").replace(&prefix, "");
     let _ = std::fs::remove_file(&report);
     let _ = std::fs::remove_file(&tokens);
-    let expected_tokens = std::fs::read_to_string(root.join("expected").join("cpd-tokens.txt")).expect("expected");
+    let expected_tokens = std::fs::read_to_string(root.join("expected").join(format!("{fixture}-tokens.txt"))).expect("expected");
     assert_eq!(found_tokens, expected_tokens);
-    assert_eq!(found, std::fs::read_to_string(root.join("expected").join("cpd.txt")).expect("expected"));
+    assert_eq!(found, std::fs::read_to_string(root.join("expected").join(format!("{fixture}.txt"))).expect("expected"));
+}
+
+#[test]
+fn cpd_finds_what_pmd_cpd_finds() {
+    compare("cpd");
+}
+
+/// PMD keeps one constructor detector for the whole run: `Open.java` leaves `class A {` open, so `A(` in
+/// `Then.java` keeps its name as a constructor call and the two copies of the method differ.
+#[test]
+fn a_type_left_open_reaches_the_next_file() {
+    compare("cpd-open");
 }
