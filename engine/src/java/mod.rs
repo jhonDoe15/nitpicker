@@ -1,4 +1,5 @@
 pub mod errorprone;
+pub mod cpd;
 mod spotbugs;
 mod facts;
 mod grammar;

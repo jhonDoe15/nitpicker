@@ -1,0 +1,9 @@
+file First.java 216
+file Open.java 5
+file Then.java 216
+duplication lines=15 tokens=105
+  First.java 2:1-16:15 tokens 5-109
+  First.java 17:1-31:15 tokens 110-214
+duplication lines=15 tokens=105
+  Then.java 2:1-16:15 tokens 228-332
+  Then.java 17:1-31:15 tokens 333-437

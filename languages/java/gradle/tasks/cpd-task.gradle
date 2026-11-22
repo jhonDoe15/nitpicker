@@ -35,6 +35,15 @@ tasks.register('nitpickerCpd') {
         if (directories.isEmpty()) {
             return
         }
+        def enginePlan = new File(temporaryDir, 'cpd-engine-plan.json')
+        enginePlan.text = groovy.json.JsonOutput.toJson([
+            report     : report.get().asFile.absolutePath,
+            directories: directories*.absolutePath,
+        ])
+        project.ext.nitpickerWriteRules('cpd-engine', enginePlan)
+        if (report.get().asFile.exists()) {
+            return
+        }
         def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
         def command = toolCommand('cpd', [
             report     : report.get().asFile.absolutePath,
