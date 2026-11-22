@@ -1,0 +1,33 @@
+file Escapes.java 54
+file First.java 386
+file Second.java 416
+file Short.java 8
+file Third.java 326
+file Tokens.java 120
+duplication lines=12 tokens=198
+  Second.java 20:5-31:6 tokens 570-767
+  Third.java 5:5-16:6 tokens 877-1074
+duplication lines=9 tokens=133
+  Second.java 19:5-27:6 tokens 569-701
+  Third.java 8:5-16:6 tokens 942-1074
+duplication lines=8 tokens=132
+  Second.java 28:5-35:6 tokens 702-833
+  Third.java 5:5-12:6 tokens 877-1008
+duplication lines=16 tokens=119
+  First.java 7:24-22:6 tokens 76-194
+  First.java 39:19-54:10 tokens 320-438
+  Third.java 16:5-31:6 tokens 1074-1192
+duplication lines=16 tokens=119
+  First.java 22:5-37:6 tokens 194-312
+  First.java 39:19-54:10 tokens 320-438
+  Third.java 16:5-31:6 tokens 1074-1192
+duplication lines=15 tokens=118
+  First.java 8:5-22:6 tokens 77-194
+  Second.java 5:5-19:6 tokens 452-569
+  Third.java 17:5-31:6 tokens 1075-1192
+duplication lines=15 tokens=118
+  First.java 23:5-37:6 tokens 195-312
+  Second.java 5:5-19:6 tokens 452-569
+duplication lines=15 tokens=118
+  First.java 40:9-54:10 tokens 321-438
+  Second.java 5:5-19:6 tokens 452-569

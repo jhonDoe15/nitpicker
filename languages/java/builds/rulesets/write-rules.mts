@@ -12,6 +12,7 @@ import {
 } from './rules-plan.mts';
 import { enginePlanOf, pmdRulesetsWithEngine } from './engine/pmd-engine.mts';
 import { errorProneOnEngine, errorPronePlanOf } from '../errorprone/errorprone-engine.mts';
+import { cpdOnEngine, cpdPlanOf } from '../cpd/cpd-engine.mts';
 
 export const PMD_RULESETS_LIST = 'pmd-rulesets.txt';
 export const PMD_RUN_RULESETS_LIST = 'pmd-run-rulesets.txt';
@@ -36,6 +37,10 @@ export function writeRules(kind: string | undefined, plan: RulesPlan): void {
   }
   if (kind === 'errorprone-engine') {
     errorProneOnEngine(errorPronePlanOf(plan), process.env, { log: process.stderr });
+    return;
+  }
+  if (kind === 'cpd-engine') {
+    cpdOnEngine(cpdPlanOf(plan), process.env, { log: process.stderr });
     return;
   }
   if (kind === 'checkstyle-config') {

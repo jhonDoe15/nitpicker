@@ -7,6 +7,7 @@ import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, fieldsOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { handWrittenRoots } from '../generated/generated-roots.mts';
 import { mavenModuleOf } from '../typed/maven-values.mts';
+import { cpdOnEngine, environmentOf } from '../../builds/cpd/cpd-engine.mts';
 
 type CpdOptions = Readonly<Record<string, unknown>> & { readonly reportDir: string };
 
@@ -73,6 +74,10 @@ export function runCpd(options: CpdOptions): void {
     options['configs'],
   ).filter((root) => existsSync(root));
   if (directories.length === 0) {
+    return;
+  }
+  const environment = options['environment'];
+  if (environment !== undefined && cpdOnEngine({ report, directories }, environmentOf(environment))) {
     return;
   }
   const command = callUntyped(toolCommand, 'cpd', { report, directories });
