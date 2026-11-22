@@ -1,23 +1,10 @@
 import { statSync } from 'node:fs';
 import path from 'node:path';
-import { ancestorDirectories } from '../filesystem.mts';
 import type { ListingOptions, Repository, SkipDirectory } from './project-files-types.mts';
-import { cachedTree } from './listing-cache.mts';
-import { listFolder, loadTree } from './repository-listing.mts';
-import { hasRepositoryMarker, inheritedRule, posixRelative, walkedPaths } from './tree-walk.mts';
+import { repositoryOf } from './snapshot/listing-snapshot.mts';
+import { inheritedRule, posixRelative, walkedPaths } from './tree-walk.mts';
 
 const ROOT_DIRECTORY = '';
-
-function repositoryTop(directory: string): string | undefined {
-  return ancestorDirectories(directory).find(hasRepositoryMarker);
-}
-
-function repositoryOf(directory: string): Repository | undefined {
-  const top = repositoryTop(directory);
-  const tree =
-    top === undefined ? undefined : cachedTree(top, { load: loadTree, relist: listFolder });
-  return tree === undefined || top === undefined ? undefined : { top, tree };
-}
 
 function listedPaths(
   { top, tree }: Repository,

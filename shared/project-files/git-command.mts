@@ -18,8 +18,20 @@ const NOT_A_REPOSITORY =
   /not a git repository|gitfile does not point to a valid repository|invalid gitfile format/iu;
 const SUCCESS = 0;
 const GIT_TIMEOUT_MS = 10 * 60 * 1000;
+const TRANSIENT_SPAWN_CODES = new Set(['ENOMEM', 'EAGAIN']);
+const RETRY_DELAYS_MS = [50, 150];
+const SLEEP_BUFFER = new Int32Array(new SharedArrayBuffer(4));
 
-function spawnGit(directory: string, args: readonly string[]) {
+function pauseSync(delayMs: number): void {
+  Atomics.wait(SLEEP_BUFFER, 0, 0, delayMs);
+}
+
+function isTransientSpawnError(error: Error | undefined): boolean {
+  const code = fieldOf(error, 'code');
+  return typeof code === 'string' && TRANSIENT_SPAWN_CODES.has(code);
+}
+
+function spawnGitOnce(directory: string, args: readonly string[]) {
   const options = {
     cwd: directory,
     encoding: 'utf8' as const,
@@ -36,6 +48,18 @@ function spawnGit(directory: string, args: readonly string[]) {
     return scrubbed;
   }
   return spawnSync(GIT_PROGRAM, gitArgs, options);
+}
+
+function spawnGit(directory: string, args: readonly string[]) {
+  let result = spawnGitOnce(directory, args);
+  for (const delayMs of RETRY_DELAYS_MS) {
+    if (!isTransientSpawnError(result.error)) {
+      return result;
+    }
+    pauseSync(delayMs);
+    result = spawnGitOnce(directory, args);
+  }
+  return result;
 }
 
 export function neutralGit(

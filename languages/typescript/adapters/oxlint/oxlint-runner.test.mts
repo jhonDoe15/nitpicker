@@ -12,6 +12,9 @@ import { createProject, lintProject, TYPED_POLICY } from './test-support/oxlint-
 const PLUGIN = checkoutModuleUrl(
   new URL('../../preset/eslint-plugin/index.mjs', import.meta.url),
 ).href;
+const PROJECT_FILES_MODULE = checkoutModuleUrl(
+  new URL('../../../../shared/project-files/project-files.mts', import.meta.url),
+).href;
 
 vi.mock('node:os', async (importOriginal) => ({
   ...(await importOriginal()),
@@ -367,5 +370,93 @@ describe('lintWithOxlint over many files', () => {
         ['no-debugger:2'],
       ]),
     );
+  });
+});
+
+describe('lintWithOxlint with bridged JS plugin project listing and errors', () => {
+  it('runs a bridged JS plugin calling projectFilePaths without spawning git', async () => {
+    const listingRoot = createProject('nitpicker-oxlint-listing-', {
+      'src/a.ts': 'export const value = 1;\n',
+      'policy.mjs': `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
+import { projectFilePaths } from ${JSON.stringify(PROJECT_FILES_MODULE)};
+
+const local = {
+  rules: {
+    'report-files': {
+      meta: { type: 'problem', schema: [], messages: { listed: '{{files}}' } },
+      create(context) {
+        return {
+          Program(node) {
+            const previousPath = process.env.PATH;
+            process.env.PATH = '';
+            try {
+              const files = projectFilePaths(process.env.NITPICKER_DIFF_ESLINT_PROJECT_ROOT);
+              context.report({ node, messageId: 'listed', data: { files: files.join(',') } });
+            } finally {
+              process.env.PATH = previousPath;
+            }
+          },
+        };
+      },
+    },
+  },
+};
+
+export default [
+  {
+    files: ['src/**/*.ts'],
+    languageOptions: { parser: tseslint.parser },
+    plugins: { local },
+    rules: { 'local/report-files': 'error' },
+  },
+];
+`,
+    });
+    try {
+      spawnSync('git', ['init', '-q'], { cwd: listingRoot });
+      const listedResults = await lintProject({ root: listingRoot, patterns: ['src/**/*.ts'] });
+      expect(firstOf(firstOf(listedResults).messages).message).toBe('policy.mjs,src/a.ts');
+    } finally {
+      rmSync(listingRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects lintWithOxlint when a bridged JS plugin throws an Error', async () => {
+    const crashRoot = createProject('nitpicker-oxlint-plugin-crash-', {
+      'src/a.ts': 'export const value = 1;\n',
+      'policy.mjs': `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
+
+const local = {
+  rules: {
+    'always-throw': {
+      meta: { type: 'problem', schema: [] },
+      create() {
+        return {
+          Program() {
+            throw new Error('plugin exploded');
+          },
+        };
+      },
+    },
+  },
+};
+
+export default [
+  {
+    files: ['src/**/*.ts'],
+    languageOptions: { parser: tseslint.parser },
+    plugins: { local },
+    rules: { 'local/always-throw': 'error' },
+  },
+];
+`,
+    });
+    try {
+      await expect(lintProject({ root: crashRoot, patterns: ['src/**/*.ts'] })).rejects.toThrow(
+        /oxlint JS plugin failed:.*plugin exploded/su,
+      );
+    } finally {
+      rmSync(crashRoot, { recursive: true, force: true });
+    }
   });
 });

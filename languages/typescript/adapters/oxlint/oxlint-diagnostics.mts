@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ownedNativeChecker, ownedNativeMessage } from './native/owned-native-rules.mts';
+import { withEngineHint } from './oxlint-process.mts';
 import { reportedRuleKey } from './oxlint-translation.mts';
 import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mts';
 import { troubleshootingError } from '../lint-engine/typed/tools.mts';
@@ -27,6 +28,8 @@ const MESSAGE_IN_HELP_RULES = new Set(['no-restricted-imports', 'no-restricted-p
 export class UnmappedDiagnosticError extends Error {}
 
 const TSCONFIG_ERROR_CODE = 'typescript(tsconfig-error)';
+const JS_PLUGIN_ERROR =
+  /^(?:Error running JS plugin|JS plugin runtime:|Failed to load JS plugin:)/u;
 
 export function eslintShapedResults(
   stage: string,
@@ -37,6 +40,7 @@ export function eslintShapedResults(
     (diagnostic) => !isIgnoredDiagnostic(diagnostic),
   );
   rejectTsconfigErrors(stage, reported);
+  rejectPluginErrors(stage, reported);
   const byFile = Map.groupBy(reported, (diagnostic) => diagnostic.filename);
   return [...byFile].map(([filename, fileDiagnostics]) => {
     const filePath = filename.replaceAll('\\', '/');
@@ -65,11 +69,15 @@ export function eslintShapedResults(
 const TSCONFIG_REJECTED =
   'oxlint rejected the tsconfig nitpicker derives from the project tsconfig, so it ran no type-aware lint rule';
 
+function diagnosticDetail(diagnostic: OxlintDiagnostic, stage: string): string {
+  const text = `${diagnostic.message} ${diagnostic.help ?? ''}`.trim();
+  return withoutStage(text, stage).replace(/\.$/u, '');
+}
+
 function rejectTsconfigErrors(stage: string, diagnostics: readonly OxlintDiagnostic[]): void {
   const rejections = diagnostics
     .filter((diagnostic) => diagnostic.code === TSCONFIG_ERROR_CODE)
-    .map((diagnostic) => `${diagnostic.message} ${diagnostic.help ?? ''}`.trim())
-    .map((text) => withoutStage(text, stage).replace(/\.$/u, ''));
+    .map((diagnostic) => diagnosticDetail(diagnostic, stage));
   if (rejections.length === 0) {
     return;
   }
@@ -80,6 +88,21 @@ function rejectTsconfigErrors(stage: string, diagnostics: readonly OxlintDiagnos
       'or lint with ESLint: "tools": { "eslint": { "engine": "eslint" } }.',
     ].join(' '),
     TROUBLESHOOTING_ANCHORS.typescriptConfigUnreadable,
+  );
+}
+
+function rejectPluginErrors(stage: string, diagnostics: readonly OxlintDiagnostic[]): void {
+  const failures = diagnostics
+    .filter(
+      (diagnostic) => diagnostic.code === undefined && JS_PLUGIN_ERROR.test(diagnostic.message),
+    )
+    .map((diagnostic) => diagnosticDetail(diagnostic, stage));
+  if (failures.length === 0) {
+    return;
+  }
+  throw troubleshootingError(
+    withEngineHint(`oxlint JS plugin failed: ${[...new Set(failures)].join('; ')}.`),
+    TROUBLESHOOTING_ANCHORS.engineUnavailable,
   );
 }
 
