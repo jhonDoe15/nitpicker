@@ -63,7 +63,9 @@ function hasInvocation(analyzer: Analyzer): analyzer is PresetAnalyzer {
   return typeof analyzer['createInvocation'] === 'function';
 }
 
-const cliPath = fileURLToPath(checkoutModuleUrl(new URL('../../../core/cli.mjs', import.meta.url)));
+const entryPath = fileURLToPath(
+  checkoutModuleUrl(new URL('../../../core/bin.mjs', import.meta.url)),
+);
 
 const packageRoot = fileURLToPath(new URL('../../..', import.meta.url));
 const javascriptPolicy = resolveHeadPolicy({ preset: 'javascript' });
@@ -92,7 +94,7 @@ describe('preset selection', () => {
   it('runs the TypeScript analyzers for the typescript preset and for no preset', () => {
     const expected = fingerprint([
       ...packageAnalyzers,
-      ...analyzersOf(createHygieneAnalyzers(cliPath)),
+      ...analyzersOf(createHygieneAnalyzers(entryPath)),
     ]);
 
     expect(fingerprint(presetAnalyzers({ preset: 'typescript' }))).toEqual(expected);
@@ -103,7 +105,10 @@ describe('preset selection', () => {
     const selected = fingerprint(presetAnalyzers({ preset: 'javascript' }));
 
     expect(selected).toEqual(
-      fingerprint([...javascriptPackageAnalyzers, ...analyzersOf(createHygieneAnalyzers(cliPath))]),
+      fingerprint([
+        ...javascriptPackageAnalyzers,
+        ...analyzersOf(createHygieneAnalyzers(entryPath)),
+      ]),
     );
     expect(selected).not.toEqual(fingerprint(packageAnalyzers));
   });

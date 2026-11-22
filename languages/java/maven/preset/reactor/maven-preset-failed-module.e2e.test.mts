@@ -16,7 +16,7 @@ import {
 
 const FAILED_MODULE_LINE = new RegExp(
   [
-    String.raw`^  maven: Maven could not build module checks, so its checks did not run; `,
+    String.raw`^  maven: Maven could not build module parent-checks, so its checks did not run; `,
     String.raw`the other modules were checked\. Maven: .+$`,
   ].join(''),
   'u',
