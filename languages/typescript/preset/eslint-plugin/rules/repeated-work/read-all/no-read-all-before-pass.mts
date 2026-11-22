@@ -1,10 +1,11 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { memberName, outerOf, someNode } from '../../collections/costly-forms/repeated-runs.mts';
-import { ancestorsOf, contains, variableNamed, type SourceCode } from '../../typed/node-views.mts';
+import { contains, variableNamed, type SourceCode } from '../../typed/node-views.mts';
 import { unwrapped } from '../../typed/syntax-views.mts';
 import { readsName } from '../early-exits/early-guards.mts';
 import { isFsRead } from '../early-exits/pure-work.mts';
 import { isFsCall } from '../repeated-calls/call-shapes.mts';
+import { isRepeatedRelativeTo } from '../support/ast-walk.mts';
 import { pushLoopFiller, readAllInit } from './filled-lists.mts';
 
 function singlePass(use: TSESTree.Node): TSESTree.Node | undefined {
@@ -38,26 +39,6 @@ function writesFiles(sourceCode: SourceCode, pass: TSESTree.Node): boolean {
       WRITES.test(name ?? '') || (isFsCall(sourceCode, callee) && !isFsRead(sourceCode, callee))
     );
   });
-}
-
-const REPEATS = new Set<string>([
-  AST_NODE_TYPES.ForOfStatement,
-  AST_NODE_TYPES.ForInStatement,
-  AST_NODE_TYPES.ForStatement,
-  AST_NODE_TYPES.WhileStatement,
-  AST_NODE_TYPES.DoWhileStatement,
-  AST_NODE_TYPES.FunctionDeclaration,
-  AST_NODE_TYPES.FunctionExpression,
-  AST_NODE_TYPES.ArrowFunctionExpression,
-]);
-
-function repeatedAgain(use: TSESTree.Node, declarator: TSESTree.Node): boolean {
-  return ancestorsOf(use).some(
-    (ancestor) =>
-      REPEATS.has(ancestor.type) &&
-      !contains(ancestor, declarator) &&
-      !(ancestor.type === AST_NODE_TYPES.ForOfStatement && contains(ancestor.right, use)),
-  );
 }
 
 export const rule: TSESLint.RuleModule<'readAll'> = {
@@ -102,7 +83,7 @@ export const rule: TSESLint.RuleModule<'readAll'> = {
           only !== undefined &&
           !readsName(pass, id.name) &&
           !writesFiles(sourceCode, pass) &&
-          !repeatedAgain(only.identifier, declarator)
+          !isRepeatedRelativeTo(only.identifier, declarator)
         ) {
           context.report({ node: declarator, messageId: 'readAll', data: { name: id.name } });
         }
