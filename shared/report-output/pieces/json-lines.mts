@@ -1,7 +1,9 @@
 import { readSync } from 'node:fs';
 import { StringDecoder } from 'node:string_decoder';
+import { messageOf, objectOf } from '../../values/readers.mts';
 
 const CHUNK_BYTES = 1024 * 1024;
+const EXCERPT_CHARACTERS = 80;
 
 type Frame = {
   readonly value: unknown[] | Record<string, unknown>;
@@ -22,22 +24,18 @@ const parseJson: (text: string) => unknown = JSON.parse;
 function keyOf(text: string): string {
   const key = parseJson(text);
   if (typeof key !== 'string') {
-    throw new SyntaxError(`Expected a property name in ${text.slice(0, 80)}`);
+    throw new SyntaxError(`Expected a property name in ${text.slice(0, EXCERPT_CHARACTERS)}`);
   }
   return key;
 }
 
-function setMember(target: Record<string, unknown>, key: string, value: unknown): void {
+function setMember(target: object, key: string, value: unknown): void {
   Object.defineProperty(target, key, {
     value,
     writable: true,
     enumerable: true,
     configurable: true,
   });
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function sharedString(strings: Map<string, string>, value: unknown): unknown {
@@ -55,16 +53,10 @@ function sharedString(strings: Map<string, string>, value: unknown): unknown {
 function shared(strings: Map<string, string>, root: unknown): unknown {
   const pending: unknown[] = [root];
   for (const value of pending) {
-    if (Array.isArray(value)) {
-      for (const [index, item] of value.entries()) {
-        value[index] = sharedString(strings, item);
-        pending.push(item);
-      }
-    } else if (isRecord(value)) {
-      for (const [key, item] of Object.entries(value)) {
-        setMember(value, key, sharedString(strings, item));
-        pending.push(item);
-      }
+    const container = objectOf(value) ?? {};
+    for (const [key, item] of Object.entries(container)) {
+      setMember(container, key, sharedString(strings, item));
+      pending.push(item);
     }
   }
   return sharedString(strings, root);
@@ -175,25 +167,32 @@ function markComma(state: LineState, comma: boolean): void {
   frame.comma = true;
 }
 
+function chunksOf(descriptor: number): Iterable<Buffer> {
+  const buffer = Buffer.alloc(CHUNK_BYTES);
+  const reached = { position: 0 };
+  return {
+    [Symbol.iterator]: () => ({
+      next: (): IteratorResult<Buffer> => {
+        const read = readSync(descriptor, buffer, 0, buffer.length, reached.position);
+        reached.position += read;
+        return read > 0
+          ? { done: false, value: buffer.subarray(0, read) }
+          : { done: true, value: undefined };
+      },
+    }),
+  };
+}
+
 function eachLine(descriptor: number, accept: (line: string) => void): void {
   const decoder = new StringDecoder('utf8');
-  const buffer = Buffer.alloc(CHUNK_BYTES);
   let partial: string[] = [];
-  let position = 0;
-  let read = readSync(descriptor, buffer, 0, buffer.length, position);
-  while (read > 0) {
-    position += read;
-    const text = decoder.write(buffer.subarray(0, read));
-    let start = 0;
-    let end = text.indexOf('\n', start);
-    while (end !== -1) {
-      accept(partial.join('') + text.slice(start, end));
-      partial = [];
-      start = end + 1;
-      end = text.indexOf('\n', start);
+  for (const chunk of chunksOf(descriptor)) {
+    const lines = decoder.write(chunk).split('\n');
+    const rest = lines.pop() ?? '';
+    for (const [index, line] of lines.entries()) {
+      accept(index === 0 ? partial.join('') + line : line);
     }
-    partial.push(text.slice(start));
-    read = readSync(descriptor, buffer, 0, buffer.length, position);
+    partial = lines.length === 0 ? [...partial, rest] : [rest];
   }
   accept(partial.join('') + decoder.end());
 }
@@ -209,10 +208,19 @@ function parsedLines(descriptor: number): unknown {
   return state.root.value;
 }
 
+function parsedWhole(wholeText: () => string, lineFailure: unknown): unknown {
+  try {
+    return parseJson(wholeText());
+  } catch (error) {
+    const failure = new SyntaxError(messageOf(error), { cause: error });
+    throw Object.assign(failure, { lineFailure });
+  }
+}
+
 export function parseJsonDescriptor(descriptor: number, wholeText: () => string): unknown {
   try {
     return parsedLines(descriptor);
-  } catch {
-    return parseJson(wholeText());
+  } catch (lineFailure) {
+    return parsedWhole(wholeText, lineFailure);
   }
 }

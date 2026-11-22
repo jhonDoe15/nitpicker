@@ -36,7 +36,16 @@ function importedNames(imports: readonly ImportFact[]): Map<string, ImportedName
 }
 
 function nodesOf(converted: Converted): readonly TreeNode[] {
-  return 'kind' in converted ? [converted] : converted.flatMap((child) => nodesOf(child));
+  const pending: Converted[] = [converted];
+  const nodes: TreeNode[] = [];
+  for (const item of pending) {
+    if ('kind' in item) {
+      nodes.push(item);
+    } else {
+      appendAll(pending, item);
+    }
+  }
+  return nodes;
 }
 
 function resolveNames(
@@ -45,7 +54,7 @@ function resolveNames(
   moduleOf: (specifier: string) => string,
 ): TreeNode {
   const pending: TreeNode[] = [root];
-  for (let node = pending.pop(); node !== undefined; node = pending.pop()) {
+  for (const node of pending) {
     const name =
       node.binding === 'free' && node.text !== undefined ? imported.get(node.text) : undefined;
     if (name !== undefined) {
@@ -74,7 +83,7 @@ export function engineReuseFacts(
   environment: Environment,
 ): Map<string, EngineFileFacts> | undefined {
   const listed = files.filter((file) => isListable(file));
-  return engineOutput('typescript-reuse', listed, environment, (out) => {
+  return engineOutput('typescript-reuse', { files: listed, environment }, (out) => {
     const facts = new Map<string, EngineFileFacts>();
     for (const fact of readEngineLinesSync(out, parseFacts)) {
       if (fact.definitions.some(({ tokens }) => !Array.isArray(tokens))) {

@@ -56,9 +56,16 @@ export function* jsonItems(items: Iterable<unknown>): Generator<string> {
   yield '\n';
 }
 
+function lineText(line: unknown): string {
+  if (line === null || line === undefined) {
+    return '';
+  }
+  return typeof line === 'string' ? line : JSON.stringify(line);
+}
+
 export function* linePieces(lines: readonly unknown[]): Generator<string> {
   for (const line of lines) {
-    yield line === null || line === undefined ? '\n' : `${String(line)}\n`;
+    yield `${lineText(line)}\n`;
   }
 }
 

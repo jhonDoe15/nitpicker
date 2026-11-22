@@ -49,7 +49,7 @@ const SOURCES: Readonly<Record<string, string>> = {
   'src/tab\tname.ts': 'export const named = (a: number) => a;\n',
 };
 
-let root = '';
+let root: string;
 
 beforeAll(() => {
   root = mkdtempSync(path.join(tmpdir(), 'nitpicker-structure-engine-'));
@@ -81,13 +81,17 @@ function comparable(facts: readonly ReuseFact[]): unknown {
   );
 }
 
+function resolvedNames(facts: readonly ReuseFact[]): string[] {
+  const names = JSON.stringify(facts).match(/"[^"]*->[^"]*"/gu) ?? [];
+  return [...new Set(names.map((quoted) => quoted.slice(1, -1)))].toSorted();
+}
+
 function facts(environment: NodeJS.ProcessEnv): ReuseFact[] {
-  return productionFacts(
-    root,
-    readLayout({}),
-    (specifier, file) => `${file}->${specifier}`,
+  return productionFacts(root, {
+    layout: readLayout({}),
+    moduleOf: (specifier, file) => `${file}->${specifier}`,
     environment,
-  );
+  });
 }
 
 describe.runIf(hasEngine)('structure facts from the engine', () => {
@@ -110,7 +114,11 @@ describe.runIf(hasEngine)('structure facts from the engine', () => {
     const fromEngine = facts(ENGINE);
 
     expect(comparable(fromEngine)).toEqual(comparable(facts(NODE)));
-    expect(JSON.stringify(fromEngine)).toContain('src/a.ts->./b#helper');
+    expect(resolvedNames(fromEngine)).toEqual([
+      'src/a.ts->./b#default',
+      'src/a.ts->./b#helper',
+      'src/a.ts->some-package#*',
+    ]);
   });
 
   it('resolves the names of a unit with very many children', () => {

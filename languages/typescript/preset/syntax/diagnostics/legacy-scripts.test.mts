@@ -50,7 +50,9 @@ describe('legacy script syntax', () => {
       mkdirSync(path.join(root, 'src'));
       writeFileSync(path.join(root, 'src/ok.ts'), 'export function ok() {\n  return 1;\n}\n');
       writeFileSync(path.join(root, 'src/broken.ts'), 'export function (\n');
-      const analysis = analyzeProductionFiles(path.join(root, 'src'), 'src');
+      const analysis = analyzeProductionFiles(path.join(root, 'src'), 'src', {
+        environment: process.env,
+      });
       expect(analysis.functions.map(({ source }) => source)).toEqual(['src/ok.ts']);
       expect(analysis.unparsed).toEqual([
         { file: 'src/broken.ts', reason: "Identifier expected.; ')' expected." },

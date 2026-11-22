@@ -15,7 +15,10 @@ const report = {
   analyzer: 'TypeScript syntax-tree structural metrics',
   policy: 'report-only; no size, nesting, or parameter thresholds',
   sourceRoot,
-  ...analyzeProductionFiles(path.join(projectRoot, sourceRoot), sourceRoot, { layout }),
+  ...analyzeProductionFiles(path.join(projectRoot, sourceRoot), sourceRoot, {
+    layout,
+    environment: process.env,
+  }),
 };
 
 await writeReport({ projectRoot, outputPath, report, output });

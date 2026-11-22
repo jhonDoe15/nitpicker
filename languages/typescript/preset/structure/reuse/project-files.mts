@@ -143,9 +143,15 @@ function engineFact(
 
 export function productionFacts(
   projectRoot: string,
-  layout: ReuseLayout,
-  moduleOf: ModuleOf,
-  environment: Environment = process.env,
+  {
+    layout,
+    moduleOf,
+    environment,
+  }: {
+    readonly layout: ReuseLayout;
+    readonly moduleOf: ModuleOf;
+    readonly environment: Environment;
+  },
 ): ReuseFact[] {
   const packageRootOf = packageRootFinder(projectRoot, layout);
   const files = layout

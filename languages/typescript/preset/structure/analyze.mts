@@ -207,8 +207,8 @@ export function analyzeProductionFiles(
   displayRoot: string = root,
   {
     layout = defaultResolvedLayout,
-    environment = process.env,
-  }: { readonly layout?: StructureLayout; readonly environment?: Environment } = {},
+    environment,
+  }: { readonly layout?: StructureLayout; readonly environment: Environment },
 ): ProductionAnalysis {
   const files = productionFiles(root, displayRoot, layout).map((file) => ({
     path: file,

@@ -21,7 +21,7 @@ function finding(index: number): Record<string, unknown> {
     tool: 'eslint-lint',
     rule: 'no-unsafe-call',
     path: `src/ä/${String(index)}.ts`,
-    message: `Unsafe call ${String(index)}: "quoted", line\nbreak, emoji 😀 and  `,
+    message: `Unsafe call ${String(index)}: "quoted", line\nbreak, emoji 😀 and \u2028`,
     location: { line: index, column: 1 },
     exception: { paths: [`src/${String(index)}.ts`] },
     skipped: undefined,
