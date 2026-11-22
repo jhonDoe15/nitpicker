@@ -1,7 +1,7 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
 import { fieldOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import {
   argumentSetOf,
@@ -15,17 +15,10 @@ import { ENGINE_CHECKS, engineChecksFor, NULL_AWAY } from './engine-checks.mts';
 
 const REPOSITORY = path.resolve(import.meta.dirname, '../../../..');
 const WITHOUT_NULL_AWAY = ENGINE_CHECKS.filter((check) => check !== NULL_AWAY);
-const roots: string[] = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const projectWith = useTempProjects('nitpicker-errorprone-checks-');
 
 function classesIn(...packages: readonly string[]): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-errorprone-checks-'));
-  roots.push(root);
+  const root = projectWith({});
   for (const name of packages) {
     const directory = path.join(root, 'classes', ...name.split('.'));
     mkdirSync(directory, { recursive: true });

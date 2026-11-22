@@ -1,7 +1,7 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { useTempProjects } from '../../../../../shared/test-support/temp-projects.mts';
 import { parseJson } from '../../../../../shared/values/readers.mts';
 import {
   ENGINE_LOG,
@@ -15,19 +15,12 @@ import { engineWriting, type Started } from '../../test-support/engine-writing.m
 
 const XPATH = 'net.sourceforge.pmd.lang.rule.xpath.XPathRule';
 const HEAD = '<ruleset name="demo" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">';
-const roots: string[] = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const projectWith = useTempProjects('nitpicker-pmd-engine-');
 
 type Setup = { readonly plan: PmdEnginePlan; readonly environment: Record<string, string> };
 
 function setup(): Setup {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pmd-engine-'));
-  roots.push(root);
+  const root = projectWith({});
   const reportDir = path.join(root, 'report');
   const javaHome = path.join(root, 'jdk');
   mkdirSync(reportDir);

@@ -1,7 +1,7 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
 import { fieldOf, listOf, parseJson } from '../../../../shared/values/readers.mts';
 import { engineWriting, type Started } from '../test-support/engine-writing.mts';
 import {
@@ -12,22 +12,15 @@ import {
   type SpotbugsEnginePlan,
 } from './spotbugs-engine.mts';
 
-const roots: string[] = [];
+const projectWith = useTempProjects('nitpicker-spotbugs-engine-');
 const environment = { NITPICKER_ENGINE: process.execPath };
 const RETURNED = 'p.A.get() may expose internal representation by returning A.date';
 const THROWN =
   'Exception thrown in class p.A at new p.A() will leave the constructor. The object under construction ' +
   'remains partially initialized and may be vulnerable to Finalizer attacks.';
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
 function planIn(processorPath: readonly string[] = []): SpotbugsEnginePlan {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-spotbugs-engine-'));
-  roots.push(root);
+  const root = projectWith({});
   const reportDir = path.join(root, 'report');
   const javaHome = path.join(root, 'jdk');
   mkdirSync(reportDir);
