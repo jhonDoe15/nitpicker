@@ -1,3 +1,4 @@
+import { breaksDownFully } from '../../../../../../../shared/traversal.mts';
 import { bindingsOf } from '../repositories/declared-names.mts';
 
 const LITERAL = /^\d[\d_]*[Ll]?$/u;
@@ -98,15 +99,5 @@ function partsOf(code: string, part: string): readonly string[] | undefined {
 }
 
 export function isLongExpression(code: string, expression: string): boolean {
-  const pending = [expression];
-  for (const next of pending) {
-    const parts = partsOf(code, next.trim());
-    if (parts === undefined) {
-      return false;
-    }
-    for (const part of parts) {
-      pending.push(part);
-    }
-  }
-  return true;
+  return breaksDownFully(expression, (next) => partsOf(code, next.trim()));
 }

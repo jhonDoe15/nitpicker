@@ -14,6 +14,14 @@ import {
   copyOf,
 } from '../../__tests__/maven-preset-project.mts';
 
+const FAILED_MODULE_LINE = new RegExp(
+  [
+    String.raw`^  maven: Maven could not build module parent-checks, so its checks did not run; `,
+    String.raw`the other modules were checked\. Maven: .+$`,
+  ].join(''),
+  'u',
+);
+
 const FAILING_STEP = `<build>
     <plugins>
       <plugin>
@@ -77,6 +85,8 @@ describe.skipIf(!enabled)('Java preset on a Maven reactor with a module that fai
       { color: false, details: false, projectRoot: project },
     );
 
-    expect(summary).toContain('maven: Maven could not build module parent-checks,');
+    expect(summary.split('\n').filter((line) => line.startsWith('  maven: '))).toEqual([
+      expect.stringMatching(FAILED_MODULE_LINE),
+    ]);
   }, 180_000);
 });

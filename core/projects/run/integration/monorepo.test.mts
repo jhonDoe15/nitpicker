@@ -10,6 +10,16 @@ import {
   type MonorepoRun,
 } from '../test-support/monorepo-harness.mts';
 
+function undeclaredNotice(declared: string, reports: string): string {
+  return (
+    'nitpicker: 5 folders look like projects of their own: services/s1 (Python project), ' +
+    'services/s2 (Python project), services/s3 (Python project), and 2 more. This run does not gate ' +
+    'them with their own preset. To gate each in one run, list them in "projects" of ' +
+    `nitpicker.config.json, for example "projects": ["${declared}", "services/s1", "services/s2", ` +
+    `"services/s3", ...]. Full list: ${reports}/undeclared-projects.txt.\n`
+  );
+}
+
 const { repository, run } = useMonorepoFixtures();
 const git = useGitFixtures();
 const COMMIT = ['-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-q'];
@@ -333,18 +343,12 @@ describe('a run at the top of a monorepo', () => {
       (_, index) => `services/s${String(index + 1)} (Python project)`,
     ).join('\n');
 
-    expect(monoResult.err).toContain('5 folders look like projects of their own:');
-    expect(monoResult.err).toContain('and 2 more.');
-    expect(monoResult.err).toContain(`Full list: ${monoResult.reports}/undeclared-projects.txt.`);
+    expect(monoResult.err).toBe(undeclaredNotice('packages/a', monoResult.reports));
     expect(readFileSync(`${monoResult.reports}/undeclared-projects.txt`, 'utf8')).toBe(
       `${expectedList}\n`,
     );
 
-    expect(singleResult.err).toContain('5 folders look like projects of their own:');
-    expect(singleResult.err).toContain('and 2 more.');
-    expect(singleResult.err).toContain(
-      `Full list: ${singleResult.reports}/undeclared-projects.txt.`,
-    );
+    expect(singleResult.err).toBe(undeclaredNotice('.', singleResult.reports));
     expect(readFileSync(`${singleResult.reports}/undeclared-projects.txt`, 'utf8')).toBe(
       `${expectedList}\n`,
     );

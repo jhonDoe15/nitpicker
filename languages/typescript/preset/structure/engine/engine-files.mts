@@ -3,24 +3,25 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { findEngine } from '../../../../../shared/engine/engine-binary.mts';
 import { runEngineSync } from '../../../../../shared/engine/engine-run.mts';
+import type { Environment } from '../../../../../shared/processes/environment.mts';
 
 export type ListedFile = { readonly path: string; readonly display: string };
 
-export type Environment = Readonly<Record<string, string | undefined>>;
+export type { Environment } from '../../../../../shared/processes/environment.mts';
+type Run = { readonly files: readonly ListedFile[]; readonly environment: Environment };
 
 const TIME_LIMIT_MS = 30 * 60 * 1000;
 const SWITCH = 'NITPICKER_STRUCTURE_ENGINE';
 const LIST_BREAKS = /[\t\n\r]/u;
 
 export function isListable({ path: file, display }: ListedFile): boolean {
-  return !LIST_BREAKS.test(file) && !LIST_BREAKS.test(display);
+  return !(LIST_BREAKS.test(file) || LIST_BREAKS.test(display));
 }
 
-function required(environment: Environment, reason: string): undefined {
+function checkNotRequired(environment: Environment, reason: string): void {
   if (environment[SWITCH] === 'required') {
     throw new Error(`${SWITCH}=required, but ${reason}`);
   }
-  return undefined;
 }
 
 function readOutput<Result>(
@@ -31,14 +32,14 @@ function readOutput<Result>(
   try {
     return read(out);
   } catch (error) {
-    return required(environment, `its output could not be read: ${String(error)}`);
+    checkNotRequired(environment, `its output could not be read: ${String(error)}`);
+    return undefined;
   }
 }
 
 export function engineOutput<Result>(
   command: string,
-  files: readonly ListedFile[],
-  environment: Environment,
+  { files, environment }: Run,
   read: (out: string) => Result,
 ): Result | undefined {
   if (environment[SWITCH] === 'off' || files.length === 0) {
@@ -46,7 +47,8 @@ export function engineOutput<Result>(
   }
   const binary = findEngine(environment);
   if (binary === undefined) {
-    return required(environment, 'there is no engine binary');
+    checkNotRequired(environment, 'there is no engine binary');
+    return undefined;
   }
   const folder = mkdtempSync(path.join(tmpdir(), 'nitpicker-structure-'));
   try {
@@ -57,9 +59,14 @@ export function engineOutput<Result>(
       binary,
       timeoutMs: TIME_LIMIT_MS,
     });
-    return status === 0
-      ? readOutput(out, read, environment)
-      : required(environment, `${command} ended with status ${String(status)}: ${stderr.trim()}`);
+    if (status !== 0) {
+      checkNotRequired(
+        environment,
+        `${command} ended with status ${String(status)}: ${stderr.trim()}`,
+      );
+      return undefined;
+    }
+    return readOutput(out, read, environment);
   } finally {
     rmSync(folder, { recursive: true, force: true });
   }

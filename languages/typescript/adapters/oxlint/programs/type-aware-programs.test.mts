@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { rmSync } from 'node:fs';
 import path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { LintResult } from '../plan/oxlint-shapes.mts';
 import { TYPED_POLICY, createProject, lintProject } from '../test-support/oxlint-project.mts';
 import { FILES_PER_PROGRAM_VARIABLE, programSlices } from './type-aware-programs.mts';
@@ -35,7 +35,6 @@ async function lintWith(filesPerProgram: string): Promise<{ findings: string[]; 
     patterns: ['src/**/*.ts'],
     projectConfigName: 'tsconfig.nitpicker.json',
   });
-  vi.unstubAllEnvs();
   const runs = vi.mocked(spawn).mock.calls.filter(([, args]) => args.includes('--type-aware'));
   return { findings: findingsOf(results), runs: runs.length };
 }
@@ -44,7 +43,9 @@ beforeAll(() => {
   root = createProject('nitpicker-oxlint-programs-', {
     'policy.mjs': TYPED_POLICY,
     'base.json': JSON.stringify({ include: ['**/*.ts'] }),
-    'no-resolve-base.json': JSON.stringify({ compilerOptions: { noResolve: true } }),
+    'no-resolve-base.json': JSON.stringify({
+      compilerOptions: { noResolve: true, types: [], lib: ['ES2022'] },
+    }),
     'no-resolve.json': JSON.stringify({ extends: './no-resolve-base.json', include: ['src'] }),
     'stray/outside.ts': 'declare const outside: string;\n',
     'src/outside.ts': 'export const seen = outside as string;\n',
@@ -63,6 +64,10 @@ beforeAll(() => {
     'src/shape.ts':
       "import type { Shape } from './model';\nexport const extra = (shape: Shape) => shape.extra as string;\n",
   });
+});
+
+afterEach(() => {
+  vi.unstubAllEnvs();
 });
 
 afterAll(() => {
@@ -86,7 +91,7 @@ describe('the type-aware pass of a large project', () => {
 
     expect(whole.runs).toBe(1);
     expect(whole.findings).toEqual(
-      USERS.map((file) => `${file}:${file === 'src/shape.ts' ? 2 : 1} ${RULE}`),
+      USERS.map((file) => `${file}:${file === 'src/shape.ts' ? '2' : '1'} ${RULE}`),
     );
     expect(split.runs).toBe(8);
     expect(split.findings).toEqual(whole.findings);

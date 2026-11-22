@@ -80,7 +80,7 @@ function projectOf(value: unknown): ReuseProject {
 
 function projectSourceFiles(
   projectRoot: string,
-  { projects, kotlin = false, exclude, analyzeGeneratedSources = false }: ReuseFactsOptions,
+  { projects, kotlin = false, exclude, analyzeGeneratedSources }: ReuseFactsOptions,
 ): Map<string, ReuseProject> {
   const found: unknown = callUntyped(untypedProjectSourceFiles, projectRoot, {
     projects,

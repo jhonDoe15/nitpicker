@@ -220,6 +220,7 @@ function builtProgram(request: ProgramRequest): TypeScript.Program {
 function takenOrBuilt(
   reusable: Map<string, TypeScript.Program>,
   request: ProgramRequest,
+  keep: boolean,
 ): TypeScript.Program {
   const key = programKey(request);
   const kept = reusable.get(key);
@@ -228,16 +229,16 @@ function takenOrBuilt(
     return kept;
   }
   const program = builtProgram(request);
-  reusable.set(key, program);
+  if (keep) {
+    reusable.set(key, program);
+  }
   return program;
 }
 
 export function createProjectProgram(request: ProgramRequest): TypeScript.Program {
-  return takenOrBuilt(reusablePrograms, request);
+  return takenOrBuilt(reusablePrograms, request, true);
 }
 
 export function takeProjectProgram(request: ProgramRequest): TypeScript.Program {
-  const program = takenOrBuilt(reusablePrograms, request);
-  reusablePrograms.clear();
-  return program;
+  return takenOrBuilt(reusablePrograms, request, false);
 }

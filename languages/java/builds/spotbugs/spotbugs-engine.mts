@@ -3,8 +3,10 @@ import path from 'node:path';
 import { findEngine } from '../../../../shared/engine/engine-binary.mts';
 import {
   runEngineSync,
+  writtenFile,
+  type EngineCall,
   type EngineEnvironment as Environment,
-  type EngineStart,
+  type EngineHooks,
 } from '../../../../shared/engine/engine-run.mts';
 import { fieldOf, listOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import { declaresProcessor } from '../errorprone/engine-arguments.mts';
@@ -17,8 +19,6 @@ export type SpotbugsEnginePlan = {
   readonly processorPath: readonly string[];
   readonly javaHome: string;
 };
-type Log = { write(text: string): unknown };
-export type EngineOptions = { readonly run?: EngineStart; readonly log?: Log };
 
 export const SPOTBUGS_ENGINE_SARIF = 'spotbugs-engine.sarif';
 export const SPOTBUGS_ENGINE_ARGUMENTS = 'spotbugs-engine-arguments.txt';
@@ -84,28 +84,16 @@ export function spotbugsArgumentsFor(reportDir: string, patterns: readonly strin
     ...(omitted.length === 0 ? [] : ['-omitVisitors', omitted.join(',')]),
     ...(excluded.length === 0
       ? []
-      : ['-exclude', written(reportDir, EXCLUDE_FILE, excludeFilter(excluded))]),
+      : ['-exclude', writtenFile(path.join(reportDir, EXCLUDE_FILE), excludeFilter(excluded))]),
   ];
 }
 
-function written(directory: string, name: string, text: string): string {
-  const file = path.join(directory, name);
-  writeFileSync(file, text);
-  return file;
-}
-
-function engineReport(
-  plan: SpotbugsEnginePlan,
-  binary: string,
-  environment: Environment,
-  run: EngineStart,
-): unknown {
-  const sources = written(
-    plan.reportDir,
-    SOURCES_FILE,
+function engineReport(plan: SpotbugsEnginePlan, { binary, environment, run }: EngineCall): unknown {
+  const sources = writtenFile(
+    path.join(plan.reportDir, SOURCES_FILE),
     plan.sources.map((file) => `${file}\n`).join(''),
   );
-  const lookup = written(plan.reportDir, CLASSPATH_FILE, plan.classpath.join('\n'));
+  const lookup = writtenFile(path.join(plan.reportDir, CLASSPATH_FILE), plan.classpath.join('\n'));
   const report = path.join(plan.reportDir, REPORT_FILE);
   rmSync(report, { force: true });
   const { status, stderr } = run(
@@ -159,10 +147,7 @@ export function withoutSpotbugsEngineReport(reportDir: string): void {
 export function spotbugsOnEngine(
   plan: SpotbugsEnginePlan,
   environment: Environment,
-  {
-    run = (argumentList, options) => runEngineSync(argumentList, options),
-    log,
-  }: EngineOptions = {},
+  { run = (argumentList, options) => runEngineSync(argumentList, options), log }: EngineHooks = {},
 ): string[] {
   withoutSpotbugsEngineReport(plan.reportDir);
   const binary = findEngine(environment);
@@ -170,7 +155,7 @@ export function spotbugsOnEngine(
     return [];
   }
   try {
-    const sarif = engineSarif(engineReport(plan, binary, environment, run));
+    const sarif = engineSarif(engineReport(plan, { binary, environment, run }));
     writeFileSync(path.join(plan.reportDir, SPOTBUGS_ENGINE_SARIF), sarif);
     return spotbugsArgumentsFor(plan.reportDir, ON_ENGINE);
   } catch (error) {

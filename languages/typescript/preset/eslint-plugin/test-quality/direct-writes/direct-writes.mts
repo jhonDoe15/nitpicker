@@ -125,11 +125,10 @@ function recordCall(state: TrackerState, node: TSESTree.CallExpression): void {
     state.hookCalls.add(callee.name);
   }
   const hook = callee.type === AST_NODE_TYPES.Identifier && CLEARING_HOOKS.has(callee.name);
-  if (hook || inEachHook(node) || state.isRestored(node)) {
-    for (const each of [callee, ...node.arguments]) {
-      if (each.type === AST_NODE_TYPES.Identifier) {
-        state.clearingCalls.add(each.name);
-      }
+  const clearing = hook || inEachHook(node) || state.isRestored(node);
+  for (const each of clearing ? [callee, ...node.arguments] : []) {
+    if (each.type === AST_NODE_TYPES.Identifier) {
+      state.clearingCalls.add(each.name);
     }
   }
   const stub = stubbedName(node);

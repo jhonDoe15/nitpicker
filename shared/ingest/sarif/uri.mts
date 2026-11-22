@@ -1,6 +1,6 @@
 import { normalizeReportPath } from '../paths/report-path.mts';
 
-function decodeOrKeepRawUri(uri: string): string {
+export function decodeOrKeepRawUri(uri: string): string {
   try {
     return decodeURIComponent(uri);
   } catch (error) {

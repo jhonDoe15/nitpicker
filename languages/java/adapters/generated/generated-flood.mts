@@ -27,6 +27,7 @@ type FloodBucket<Finding extends FloodFinding> = {
 const MIN_FLOOD_FILES = 5;
 const MIN_FLOOD_PER_FILE = 100;
 const TOOL_ERROR = 'tool-error';
+const ENFORCEABLE = 'enforceable';
 
 function modulePrefixOf(findingPath: string): string | undefined {
   const normalized = findingPath.replaceAll('\\', '/').replace(/^\.\//u, '');
@@ -62,11 +63,11 @@ function isFloodBucket<Finding extends FloodFinding>(bucket: FloodBucket<Finding
   return fileCount >= MIN_FLOOD_FILES && bucket.findings.length >= fileCount * MIN_FLOOD_PER_FILE;
 }
 
-function classificationOf<Finding extends FloodFinding>(findings: readonly Finding[]): string {
-  if (findings.some((finding) => finding.classification === 'enforceable')) {
-    return 'enforceable';
+function classificationOf(findings: readonly FloodFinding[]): string {
+  if (findings.some((finding) => finding.classification === ENFORCEABLE)) {
+    return ENFORCEABLE;
   }
-  return findings[0]?.classification ?? 'enforceable';
+  return findings[0]?.classification ?? ENFORCEABLE;
 }
 
 function summaryFindingOf<Finding extends FloodFinding>(
@@ -85,10 +86,8 @@ function summaryFindingOf<Finding extends FloodFinding>(
   };
 }
 
-function floodedSummaries<Finding extends FloodFinding>(
-  findings: readonly Finding[],
-): Map<string, FloodSummary> {
-  const buckets = new Map<string, FloodBucket<Finding>>();
+function floodedSummaries(findings: readonly FloodFinding[]): Map<string, FloodSummary> {
+  const buckets = new Map<string, FloodBucket<FloodFinding>>();
   for (const finding of findings) {
     const tagged = bucketKeyOf(finding);
     if (tagged === undefined) {

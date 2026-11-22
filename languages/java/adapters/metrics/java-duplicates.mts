@@ -31,7 +31,7 @@ type DuplicatesRun = {
   reportFile?: string;
   skippedFolders?: readonly string[];
   renamedExtensions?: string[];
-  analyzeGeneratedSources?: boolean;
+  analyzeGeneratedSources: boolean;
   environment?: Readonly<Record<string, string | undefined>> | undefined;
 };
 
@@ -59,7 +59,7 @@ export function runJavaDuplicates(
     reportFile = DUPLICATES_REPORT,
     skippedFolders = JVM_SKIPPED_FOLDERS,
     renamedExtensions = ['.java'],
-    analyzeGeneratedSources = false,
+    analyzeGeneratedSources,
     environment = {},
   }: DuplicatesRun,
 ): void {

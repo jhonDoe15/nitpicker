@@ -14,6 +14,7 @@ import {
 const { project } = createReuseProjects();
 
 const SINGLE = SINGLE_PROJECT;
+const SKIPPED = { exclude: ['**/Skipped.java'], analyzeGeneratedSources: false };
 
 function javaClass(packageName: string, name: string, body: string, imports = ''): string {
   return `package ${packageName};\n\n${imports}public class ${name} {\n${body}}\n`;
@@ -456,7 +457,7 @@ describe('jvmReuseFacts', () => {
       },
     ];
 
-    const facts = jvmReuseFacts(root, { projects, exclude: ['**/Skipped.java'] });
+    const facts = jvmReuseFacts(root, { projects, ...SKIPPED });
 
     expect([facts.modules, facts.packages, facts.imports]).toEqual([
       [{ file: `app/${JAVA_ROOT}/shop/App.java`, role: 'production', entry: true }],

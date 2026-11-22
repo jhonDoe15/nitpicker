@@ -9,6 +9,16 @@ import {
 import { failedModuleFindings } from '../../../../languages/java/maven/reactor/failed-modules.mts';
 import { skippedModuleFindings } from '../../../../languages/java/adapters/gradle-wrapper/partial/failed-tool-tasks.mts';
 
+const MAVEN_MODULE_ERROR =
+  'Maven could not build module checks, so its checks did not run; the other modules were checked. ' +
+  'Maven: Failed to execute goal org.apache.maven.plugins:maven-enforcer-plugin:3.5.0:enforce on project checks: ' +
+  'Rule failed: Error: file not found. The failing step (maven-enforcer-plugin) does not build Java classes: ' +
+  'add the module to "exclude" in nitpicker.config.json, or run nitpicker on the other modules, ' +
+  'to check the rest without it.';
+const GRADLE_PROJECT_ERROR =
+  'A nitpicker tool task failed in Gradle project :docs:processor, so its checks did not run; ' +
+  'the other projects were checked. Gradle: nitpickerPmd failed: Error: PMD config not found';
+
 const ROOT = '/home/me/app';
 const ANALYZERS = Array.from({ length: 12 }, (_, index) => `analyzer-${String(index)}`);
 const MISSING = `Cannot find package 'typescript' imported from ${ROOT}/node_modules/nitpicker/package.json`;
@@ -167,16 +177,12 @@ describe('console tool errors', () => {
     );
 
     expect(errorLines(diffSummary)).toEqual([
-      expect.stringContaining('maven (head): Maven could not build module checks,'),
-      expect.stringContaining(
-        'gradle (head): A nitpicker tool task failed in Gradle project :docs:processor,',
-      ),
+      `  maven (head): ${MAVEN_MODULE_ERROR}`,
+      `  gradle (head): ${GRADLE_PROJECT_ERROR}`,
     ]);
     expect(errorLines(snapshotSummary)).toEqual([
-      expect.stringContaining('maven: Maven could not build module checks,'),
-      expect.stringContaining(
-        'gradle: A nitpicker tool task failed in Gradle project :docs:processor,',
-      ),
+      `  maven: ${MAVEN_MODULE_ERROR}`,
+      `  gradle: ${GRADLE_PROJECT_ERROR}`,
     ]);
   });
 });

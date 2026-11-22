@@ -52,7 +52,7 @@ export function engineMetrics(
   environment: Environment,
 ): EngineMetrics | undefined {
   const listed = files.filter((file) => isListable(file));
-  return engineOutput('typescript-structure', listed, environment, (out) =>
+  return engineOutput('typescript-structure', { files: listed, environment }, (out) =>
     metricsOf(parseAnalysis(readFileSync(out, 'utf8')), listed),
   );
 }

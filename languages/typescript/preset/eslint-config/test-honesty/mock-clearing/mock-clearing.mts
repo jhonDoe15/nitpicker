@@ -81,13 +81,15 @@ function relatedTexts(configFile: string, text: string, projectRoot: string): st
   const seen = new Map<string, string>();
   const queue = [{ file: configFile, text, depth: 0 }];
   for (const current of queue) {
-    if (current.depth < FOLLOWED_LEVELS) {
-      for (const next of directlyRelated(current.file, current.text, projectRoot)) {
-        if (!seen.has(next.file) && next.file !== configFile) {
-          seen.set(next.file, next.text);
-          queue.push({ ...next, depth: current.depth + 1 });
-        }
-      }
+    const unseen =
+      current.depth < FOLLOWED_LEVELS
+        ? directlyRelated(current.file, current.text, projectRoot).filter(
+            (next) => next.file !== configFile,
+          )
+        : [];
+    for (const next of unseen.filter(({ file }) => !seen.has(file))) {
+      seen.set(next.file, next.text);
+      queue.push({ ...next, depth: current.depth + 1 });
     }
   }
   return [...seen.values()];

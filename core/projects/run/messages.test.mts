@@ -62,7 +62,13 @@ describe('undeclaredHint', () => {
   it('keeps the projects example short even when current has many projects', () => {
     const [notice] = undeclaredHint(entries(5), ['a', 'b', 'c', 'd', 'e']);
 
-    expect(notice).toContain('"projects": ["a", "b", "c", ..., "svc/p1", "svc/p2", "svc/p3", ...]');
+    expect(notice).toBe(
+      '5 folders look like projects of their own: svc/p1 (Gradle build), ' +
+        'svc/p2 (Python project), svc/p3 (Gradle build), and 2 more. This run does not gate ' +
+        'them with their own preset. To gate each in one run, list them in "projects" of ' +
+        'nitpicker.config.json, for example ' +
+        '"projects": ["a", "b", "c", ..., "svc/p1", "svc/p2", "svc/p3", ...].',
+    );
   });
 });
 

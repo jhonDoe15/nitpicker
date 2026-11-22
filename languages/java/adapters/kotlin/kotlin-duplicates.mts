@@ -9,7 +9,7 @@ type DuplicateRun = {
   readonly manifest: unknown;
   readonly skippedFolders: unknown;
   readonly environment?: Readonly<Record<string, string | undefined>> | undefined;
-  readonly analyzeGeneratedSources?: boolean | undefined;
+  readonly analyzeGeneratedSources: boolean;
 };
 
 const KOTLIN_DUPLICATES = {

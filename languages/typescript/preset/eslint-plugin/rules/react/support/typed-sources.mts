@@ -4,8 +4,9 @@ import {
   scriptKindOf as untypedScriptKindOf,
 } from '../../../../modules/module-sources.mts';
 import { readStamped as untypedReadStamped } from '../../../../modules/stamped-file-cache.mts';
+import type { StampedCache } from '../../../../modules/stamped-file-cache.mts';
 
-export type StampedCache<Value> = Map<string, { readonly stamp: string; readonly value: Value }>;
+export type { StampedCache } from '../../../../modules/stamped-file-cache.mts';
 
 export const isExported: (statement: TypeScript.Node) => boolean = untypedIsExported;
 export const scriptKindOf: (file: string) => TypeScript.ScriptKind = untypedScriptKindOf;

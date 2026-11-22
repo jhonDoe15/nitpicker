@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { ancestorsOf } from '../analysis/ancestry.mts';
 import { isFunctionNode } from '../analysis/constant-resolution.mts';
-import { chainOf } from '../typed/node-views.mts';
+import { outermostWrapper } from '../typed/node-views.mts';
 
 const WRAPPERS = new Set<string>([
   AST_NODE_TYPES.ChainExpression,
@@ -23,10 +23,7 @@ export function isWrapper(node: TSESTree.Node): boolean {
 }
 
 export function outermost(node: TSESTree.Node): TSESTree.Node {
-  const chain = chainOf<TSESTree.Node>(node, (current) =>
-    current.parent !== undefined && WRAPPERS.has(current.parent.type) ? current.parent : undefined,
-  );
-  return chain.at(-1) ?? node;
+  return outermostWrapper(node, WRAPPERS);
 }
 
 export function declaredName(lookup: TSESTree.Node): TSESTree.VariableDeclarator | undefined {

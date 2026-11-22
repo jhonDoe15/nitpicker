@@ -22,7 +22,7 @@ type CaptureOptions = {
   readonly file: OutputFile;
   readonly encoding: ReadEncoding;
   readonly maxBuffer: number;
-  readonly parse?: boolean;
+  readonly parse: boolean;
 };
 type OutputFile = {
   readonly directory: string;
@@ -167,7 +167,10 @@ export function spawnSyncWithOutputFile(
     if (!Array.isArray(result.output)) {
       return result;
     }
-    const captured = capturedStdout({ command, args, result }, { file, encoding, maxBuffer });
+    const captured = capturedStdout(
+      { command, args, result },
+      { file, encoding, maxBuffer, parse: false },
+    );
     return {
       ...result,
       ...captured,

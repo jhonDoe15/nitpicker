@@ -1,4 +1,5 @@
 import { execFile, spawnSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 
 export type EngineRun = {
   readonly status: number | undefined;
@@ -18,6 +19,13 @@ export type EngineStart = (
   argumentList: readonly string[],
   options: { readonly binary: string; readonly environment: EngineEnvironment },
 ) => EngineRun;
+export type EngineLog = { write(text: string): unknown };
+export type EngineHooks = { readonly run?: EngineStart; readonly log?: EngineLog };
+export type EngineCall = {
+  readonly binary: string;
+  readonly environment: EngineEnvironment;
+  readonly run: EngineStart;
+};
 
 const MAX_OUTPUT_BYTES = 200 * 1024 * 1024;
 const NOT_FOUND: EngineRun = {
@@ -73,4 +81,9 @@ export function runEngine(
       },
     );
   });
+}
+
+export function writtenFile(file: string, text: string): string {
+  writeFileSync(file, text);
+  return file;
 }

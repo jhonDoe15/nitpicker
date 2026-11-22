@@ -31,7 +31,7 @@ type DuplicateOptions = {
   readonly reportRoot: string;
   readonly manifest: unknown;
   readonly skippedFolders: readonly string[] | undefined;
-  readonly analyzeGeneratedSources?: boolean | undefined;
+  readonly analyzeGeneratedSources: boolean;
 };
 
 const roots: string[] = [];
@@ -147,7 +147,7 @@ function duplicateOptions(
     reportRoot,
     manifest,
     skippedFolders: options.skippedFolders,
-    analyzeGeneratedSources: options.analyzeGeneratedSources,
+    analyzeGeneratedSources: options.analyzeGeneratedSources === true,
   };
 }
 
@@ -376,8 +376,14 @@ describe('duplicates across the modules of a Maven project', () => {
       [path.join(projectRoot, 'app'), path.join(projectRoot, 'core')],
       'target/nitpicker',
     );
-    runJava(projectRoot, { reportRoot, manifest, skippedFolders: undefined });
-    runKotlinDuplicates(projectRoot, { reportRoot, manifest, skippedFolders: undefined });
+    const options = {
+      reportRoot,
+      manifest,
+      skippedFolders: undefined,
+      analyzeGeneratedSources: false,
+    };
+    runJava(projectRoot, options);
+    runKotlinDuplicates(projectRoot, options);
 
     expect(
       [...readJava(reportRoot), ...readKotlin(reportRoot)]

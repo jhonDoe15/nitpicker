@@ -202,13 +202,54 @@ function analyzeParsableSource(source: string, filename: string): SourceAnalysis
   }
 }
 
+const LINES = 'lines';
+
+type Collected = {
+  readonly files: number;
+  readonly lines: number;
+  readonly functions: AnalysisFunction[];
+  readonly classes: AnalysisClass[];
+  readonly unparsed: UnparsedSource[];
+};
+
+function productionAnalysis({
+  files,
+  lines,
+  functions,
+  classes,
+  unparsed,
+}: Collected): ProductionAnalysis {
+  return {
+    summary: { files, lines, functions: functions.length, classes: classes.length },
+    distributions: {
+      functionLines: distribution(functions, LINES),
+      functionStatements: distribution(functions, 'statements'),
+      functionControlNesting: distribution(functions, 'maxControlNesting'),
+      functionParameters: distribution(functions, 'parameters'),
+      classLines: distribution(classes, LINES),
+      classMembers: distribution(classes, 'members'),
+    },
+    rankings: {
+      functionLines: rank(functions, LINES),
+      functionStatements: rank(functions, 'statements'),
+      functionControlNesting: rank(functions, 'maxControlNesting'),
+      functionParameters: rank(functions, 'parameters'),
+      classLines: rank(classes, LINES),
+      classMembers: rank(classes, 'members'),
+    },
+    functions,
+    classes,
+    unparsed,
+  };
+}
+
 export function analyzeProductionFiles(
   root: string,
   displayRoot: string = root,
   {
     layout = defaultResolvedLayout,
-    environment = process.env,
-  }: { readonly layout?: StructureLayout; readonly environment?: Environment } = {},
+    environment,
+  }: { readonly layout?: StructureLayout; readonly environment: Environment },
 ): ProductionAnalysis {
   const files = productionFiles(root, displayRoot, layout).map((file) => ({
     path: file,
@@ -233,26 +274,5 @@ export function analyzeProductionFiles(
     appendAll(classes, analysis.classes);
   }
 
-  return {
-    summary: { files: files.length, lines, functions: functions.length, classes: classes.length },
-    distributions: {
-      functionLines: distribution(functions, 'lines'),
-      functionStatements: distribution(functions, 'statements'),
-      functionControlNesting: distribution(functions, 'maxControlNesting'),
-      functionParameters: distribution(functions, 'parameters'),
-      classLines: distribution(classes, 'lines'),
-      classMembers: distribution(classes, 'members'),
-    },
-    rankings: {
-      functionLines: rank(functions, 'lines'),
-      functionStatements: rank(functions, 'statements'),
-      functionControlNesting: rank(functions, 'maxControlNesting'),
-      functionParameters: rank(functions, 'parameters'),
-      classLines: rank(classes, 'lines'),
-      classMembers: rank(classes, 'members'),
-    },
-    functions,
-    classes,
-    unparsed,
-  };
+  return productionAnalysis({ files: files.length, lines, functions, classes, unparsed });
 }

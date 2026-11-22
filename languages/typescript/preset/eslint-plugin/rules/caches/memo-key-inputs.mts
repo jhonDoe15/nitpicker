@@ -2,7 +2,7 @@ import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/util
 import { unwrapped } from '../security/security-values.mts';
 import {
   ancestorsOf,
-  chainOf,
+  memberRoot,
   depthFirst,
   nodeChildren,
   type SourceCode,
@@ -50,13 +50,6 @@ function isKeyBuilder(node: TSESTree.Node): boolean {
     callee.object.type === AST_NODE_TYPES.Identifier &&
     callee.object.name === 'JSON';
   return joined || stringified;
-}
-
-function memberRoot(start: TSESTree.Node): TSESTree.Node {
-  const chain = chainOf<TSESTree.Node>(start, (link) =>
-    link.type === AST_NODE_TYPES.MemberExpression ? link.object : undefined,
-  );
-  return chain.at(-1) ?? start;
 }
 
 function callRootName(call: TSESTree.CallExpression): string | undefined {

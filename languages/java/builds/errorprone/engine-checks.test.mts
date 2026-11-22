@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
-import { fieldOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, fieldsOf, parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import {
   argumentSetOf,
   generatedRoots,
@@ -109,7 +109,7 @@ describe('engineChecksFor', () => {
     const ported = textsOf(read('engine/parity/errorprone/ported.json'));
     const special = [
       ...textsOf(fieldOf(checks, 'lombokUnsuppressedOff')),
-      ...Object.keys(Object(fieldOf(checks, 'classExemptions'))),
+      ...Object.keys(fieldsOf(fieldOf(checks, 'classExemptions'))),
       ...textsOf(fieldOf(checks, 'disable')),
     ];
 

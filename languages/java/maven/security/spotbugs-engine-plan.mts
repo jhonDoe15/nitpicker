@@ -36,21 +36,22 @@ type PlanOptions = {
 const UNCOMPILED = new Set(['package-info.java', 'module-info.java']);
 
 function javaSources(directory: string): string[] {
-  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const full = path.join(directory, entry.name);
-    if (entry.isDirectory()) {
-      return javaSources(full);
-    }
-    return entry.isFile() && entry.name.endsWith('.java') ? [full] : [];
-  });
+  return readdirSync(directory, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.java'))
+    .map((entry) => path.join(entry.parentPath, entry.name));
 }
 
 function compiledFrom(root: string, file: string, classes: string): boolean {
   const relative = path.relative(root, file);
-  return (
-    UNCOMPILED.has(path.basename(relative)) ||
-    existsSync(path.join(classes, relative.replace(/\.java$/u, '.class')))
-  );
+  if (UNCOMPILED.has(path.basename(relative))) {
+    return true;
+  }
+  const base = path.resolve(classes);
+  const classFile = path.resolve(base, relative.replace(/\.java$/u, '.class'));
+  if (!classFile.startsWith(`${base}${path.sep}`)) {
+    return false;
+  }
+  return existsSync(classFile);
 }
 
 const PROCESSOR_OPTIONS = new Set([
@@ -124,7 +125,5 @@ export function spotbugsEngineArguments(
     auxiliary,
     javaHome: jdkHome(engine.environment),
   });
-  return plan === undefined
-    ? []
-    : spotbugsOnEngine(plan, engine.environment, { log: process.stderr });
+  return plan === undefined ? [] : spotbugsOnEngine(plan, engine.environment);
 }

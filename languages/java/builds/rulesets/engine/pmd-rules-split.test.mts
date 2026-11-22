@@ -151,20 +151,19 @@ describe('renderedRuleset', () => {
       main.rules.filter(runsOnEngine),
     );
 
-    expect(text).toContain('  <exclude-pattern>.*</exclude-pattern>');
-    expect(text).toContain(String.raw`  <include-pattern>\Q/project/A.java\E</include-pattern>`);
-    expect(text).toContain(
+    expect(text).toBe(
       [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<ruleset name="again" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">',
+        '  <description>again</description>',
+        '  <exclude-pattern>.*</exclude-pattern>',
+        String.raw`  <include-pattern>\Q/project/A.java\E</include-pattern>`,
         '  <rule ref="category/java/demo.xml/Shipped" message="shipped, reworded">',
         '    <priority>2</priority>',
         '    <properties>',
         '      <property name="limit" value="7"/>',
         '    </properties>',
         '  </rule>',
-      ].join('\n'),
-    );
-    expect(text).toContain(
-      [
         '  <rule ref="/rules/own.xml/Own">',
         '    <properties>',
         '      <property name="limit">',
@@ -172,6 +171,8 @@ describe('renderedRuleset', () => {
         '      </property>',
         '    </properties>',
         '  </rule>',
+        '</ruleset>',
+        '',
       ].join('\n'),
     );
   });

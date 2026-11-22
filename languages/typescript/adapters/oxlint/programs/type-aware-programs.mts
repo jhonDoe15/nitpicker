@@ -1,4 +1,5 @@
-import { lstatSync, readFileSync, writeFileSync } from 'node:fs';
+import { lstatSync } from 'node:fs';
+import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Environment } from '../../../../../shared/processes/environment.mts';
 import { appendAll } from '../../../../../shared/lists/lists.mts';
@@ -75,16 +76,16 @@ async function lintSlices(
   lint: Lint,
 ): Promise<LintResult[]> {
   const configPath = path.join(stage, STAGE_CONFIG);
-  const original = readFileSync(configPath, 'utf8');
+  const original = await readFile(configPath, 'utf8');
   const results: LintResult[] = [];
   try {
     for (const slice of slices) {
       const roots = [...shared, ...slice.map((file) => path.join(stage, file))];
-      writeFileSync(configPath, slicedConfig(original, roots));
+      await writeFile(configPath, slicedConfig(original, roots));
       appendAll(results, await lint(slice));
     }
   } finally {
-    writeFileSync(configPath, original);
+    await writeFile(configPath, original);
   }
   return results;
 }

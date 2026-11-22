@@ -1,11 +1,14 @@
 import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, type Mock, vi } from 'vitest';
 
-const fsMock = vi.hoisted(() => ({
-  rmSync: vi.fn<typeof import('node:fs').rmSync>(),
-  actualRmSync: undefined as typeof import('node:fs').rmSync | undefined,
+type RemoveSync = typeof import('node:fs').rmSync;
+type FsMock = { rmSync: Mock<RemoveSync>; actualRmSync: RemoveSync | undefined };
+
+const fsMock = vi.hoisted((): FsMock => ({
+  rmSync: vi.fn<RemoveSync>(),
+  actualRmSync: undefined,
 }));
 
 vi.mock('node:fs', async (importOriginal) => {

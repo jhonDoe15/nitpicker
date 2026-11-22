@@ -20,20 +20,16 @@ function makeFindings(
   const tool = options.tool ?? 'pmd';
   const rule = options.rule ?? 'ExcessivePublicCount';
   const classification = options.classification ?? 'enforceable';
-  const list: TestFinding[] = [];
-  for (const file of files) {
-    for (let index = 0; index < countPerFile; index += 1) {
-      list.push({
-        tool,
-        rule,
-        path: file,
-        identity: `${file}:${String(index)}`,
-        message: `Finding ${String(index)}`,
-        classification,
-      });
-    }
-  }
-  return list;
+  return files.flatMap((file) =>
+    Array.from({ length: countPerFile }, (_, index) => ({
+      tool,
+      rule,
+      path: file,
+      identity: `${file}:${String(index)}`,
+      message: `Finding ${String(index)}`,
+      classification,
+    })),
+  );
 }
 
 describe('collapseGeneratedFloods', () => {
@@ -66,11 +62,7 @@ describe('collapseGeneratedFloods', () => {
         'mall-mbg has 600 JavadocMethod findings across 5 files (120/file) and looks like generated code. Add it to "exclude" or "generatedFiles" in nitpicker.config.json, or narrow the rule.',
       classification: 'enforceable',
     });
-    expect(parseFinding(summary)).toMatchObject({
-      tool: 'checkstyle',
-      rule: 'JavadocMethod',
-      path: 'mall-mbg',
-    });
+    expect(parseFinding(summary)).toEqual(summary);
     expect(kept).toBe(other);
   });
 

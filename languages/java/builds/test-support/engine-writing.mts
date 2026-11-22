@@ -1,9 +1,13 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import type { EngineRun } from '../../../../shared/engine/engine-run.mts';
 
 export type Started = { readonly argumentList: readonly string[]; readonly environment: unknown };
 
-export function engineWriting(report: unknown, started: Started[] = []) {
+export function engineWriting(
+  report: unknown,
+  started: Started[] = [],
+): (argumentList: readonly string[], options: { readonly environment: unknown }) => EngineRun {
   return (argumentList: readonly string[], options: { readonly environment: unknown }) => {
     started.push({ argumentList, environment: options.environment });
     writeFileSync(argumentList.at(-1) ?? '', JSON.stringify(report));

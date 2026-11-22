@@ -92,7 +92,9 @@ describe('structural metrics report', () => {
   });
 
   it('reports independent size, nesting, statement, and parameter signals', () => {
-    const report = analyzeProductionFiles(fixtureRoot, 'fixture/src/main');
+    const report = analyzeProductionFiles(fixtureRoot, 'fixture/src/main', {
+      environment: process.env,
+    });
     const complex = report.functions.find((entry) => entry.function === 'coordinate');
 
     expect(report.summary.files).toBe(5);
@@ -114,7 +116,9 @@ describe('structural metrics report', () => {
   });
 
   it('analyzes folders named like build output below the project root', () => {
-    const sources = analyzeProductionFiles(fixtureRoot, 'fixture/src/main')
+    const sources = analyzeProductionFiles(fixtureRoot, 'fixture/src/main', {
+      environment: process.env,
+    })
       .functions.map((entry) => entry.source)
       .filter((source) => source.endsWith('/folder-named-like-output.ts'))
       .sort();
@@ -127,7 +131,9 @@ describe('structural metrics report', () => {
   });
 
   it('skips a source root that is build output at the project root', () => {
-    expect(analyzeProductionFiles(fixtureRoot, 'dist').summary.files).toBe(0);
+    expect(
+      analyzeProductionFiles(fixtureRoot, 'dist', { environment: process.env }).summary.files,
+    ).toBe(0);
   });
 
   it('keeps anonymous function names stable when preceding lines move', () => {
@@ -165,7 +171,7 @@ describe('structural metrics report', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-structure-empty-'));
     try {
       writeFileSync(path.join(root, 'plain.ts'), 'export const one = 1;\n');
-      const report = analyzeProductionFiles(root, 'src');
+      const report = analyzeProductionFiles(root, 'src', { environment: process.env });
 
       expect(report.distributions.classLines).toStrictEqual({
         p50: undefined,

@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { resolveInside } from '../../../../shared/conventions/read-inside.mts';
+import { appendAll } from '../../../../shared/lists/lists.mts';
 
 type ConfigSource = { readonly file: string; readonly moduleDir: string };
 type GeneratorTarget = { readonly targetProject: string; readonly packagePath: string };
@@ -12,12 +13,11 @@ type ResolvedCandidate = {
 };
 
 const SKIPPED_DIRS = new Set(['.git', 'build', 'target', 'node_modules']);
-const MODULE_MARKERS = ['pom.xml', 'build.gradle', 'build.gradle.kts'];
 const GENERATOR_CONFIG_NAME = /^generatorConfig[^/]*\.xml$/u;
 const XML_COMMENT = /<!--[\s\S]*?-->/gu;
 const PLUGIN_BLOCK = /<plugin\b[^>]*>([\s\S]*?)<\/plugin>/gu;
 const MYBATIS_PLUGIN = /\bmybatis-generator-maven-plugin\b/u;
-const CONFIGURATION_FILE_TAG = /<configurationFile>\s*([^<]+?)\s*<\/configurationFile>/gu;
+const CONFIGURATION_FILE_TAG = /<configurationFile>([^<]*)<\/configurationFile>/gu;
 const GENERATOR_TAG = /<java(?:Model|Client)Generator\b([^>]*)>/gu;
 const TARGET_PACKAGE_ATTR = /\btargetPackage\s*=\s*(?:"([^"]*)"|'([^']*)')/u;
 const TARGET_PROJECT_ATTR = /\btargetProject\s*=\s*(?:"([^"]*)"|'([^']*)')/u;
@@ -94,19 +94,31 @@ function parseGeneratorTargets(strippedXml: string): GeneratorTarget[] {
   return targets;
 }
 
-function ancestorModuleDir(startDir: string, resolvedRoot: string): string {
-  let current = startDir;
-  while (isWithinOrEqual(resolvedRoot, current)) {
-    if (MODULE_MARKERS.some((marker) => existsSync(path.join(current, marker)))) {
-      return current;
-    }
+function moduleMarkers(directory: string): string[] {
+  return [
+    path.join(directory, 'pom.xml'),
+    path.join(directory, 'build.gradle'),
+    path.join(directory, 'build.gradle.kts'),
+  ];
+}
+
+function ancestorsWithin(startDir: string, resolvedRoot: string): string[] {
+  const ancestors = isWithinOrEqual(resolvedRoot, startDir) ? [startDir] : [];
+  for (const current of ancestors) {
     const parent = path.dirname(current);
-    if (current === resolvedRoot || parent === current) {
-      break;
+    if (current !== resolvedRoot && parent !== current && isWithinOrEqual(resolvedRoot, parent)) {
+      ancestors.push(parent);
     }
-    current = parent;
   }
-  return startDir;
+  return ancestors;
+}
+
+function ancestorModuleDir(startDir: string, resolvedRoot: string): string {
+  return (
+    ancestorsWithin(startDir, resolvedRoot).find((directory) =>
+      moduleMarkers(directory).some((marker) => existsSync(marker)),
+    ) ?? startDir
+  );
 }
 
 function pluginConfigSources(block: string, pomDir: string, resolvedRoot: string): ConfigSource[] {
@@ -156,7 +168,7 @@ function scanDirectory(current: string, resolvedRoot: string, pending: string[])
     if (entry.isDirectory() && !SKIPPED_DIRS.has(entry.name)) {
       pending.push(path.join(current, entry.name));
     } else if (entry.isFile()) {
-      found.push(...fileConfigSources(current, entry.name, resolvedRoot));
+      appendAll(found, fileConfigSources(current, entry.name, resolvedRoot));
     }
   }
   return found;
@@ -169,7 +181,7 @@ function scanConfigSources(resolvedRoot: string): ConfigSource[] {
   const sources: ConfigSource[] = [];
   const pending = [resolvedRoot];
   for (const current of pending) {
-    sources.push(...scanDirectory(current, resolvedRoot, pending));
+    appendAll(sources, scanDirectory(current, resolvedRoot, pending));
   }
   return sources;
 }

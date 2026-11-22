@@ -92,7 +92,15 @@ describe('spotbugsEnginePlan', () => {
     const output = path.join(root, 'target/generated-sources/annotations');
     mkdirSync(path.join(output, 'p'), { recursive: true });
 
-    expect(spotbugsEnginePlan({ ...options, module, compiler: compilerOf({}) })).toBeDefined();
+    expect(spotbugsEnginePlan({ ...options, module, compiler: compilerOf({}) })).toStrictEqual({
+      reportDir: '/r',
+      sources: ['A', 'B', 'package-info'].map((name) =>
+        path.join(root, `src/main/java/p/${name}.java`),
+      ),
+      classpath: [],
+      processorPath: [],
+      javaHome: '/jdk',
+    });
     writeFileSync(path.join(output, 'p/G.java'), '');
     expect(spotbugsEnginePlan({ ...options, module, compiler: compilerOf({}) })).toBeUndefined();
   });

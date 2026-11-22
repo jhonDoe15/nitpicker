@@ -62,17 +62,21 @@ function removeStale(files: readonly string[]): void {
   }
 }
 
-export function runCpd(options: CpdOptions): void {
-  const { reportDir } = options;
+function cpdDirectories(options: CpdOptions): string[] {
   const module = mavenModuleOf(options['module']);
-  const report = path.join(reportDir, CPD_REPORT);
-  const failure = path.join(reportDir, CPD_FAILURE);
-  removeStale([report, failure, path.join(reportDir, CPD_SKIPPED)]);
-  const directories = handWrittenRoots(
+  return handWrittenRoots(
     module,
     [...textsOf(module['sourceRoots']), ...textsOf(module['testSourceRoots'])],
     options['configs'],
   ).filter((root) => existsSync(root));
+}
+
+export function runCpd(options: CpdOptions): void {
+  const { reportDir } = options;
+  const report = path.join(reportDir, CPD_REPORT);
+  const failure = path.join(reportDir, CPD_FAILURE);
+  removeStale([report, failure, path.join(reportDir, CPD_SKIPPED)]);
+  const directories = cpdDirectories(options);
   if (directories.length === 0) {
     return;
   }

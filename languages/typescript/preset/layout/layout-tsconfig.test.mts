@@ -2,7 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { parseJson } from '../../../../shared/values/readers.mts';
+import { fieldsOf, parseJson } from '../../../../shared/values/readers.mts';
 import { linkPolicyFile as untypedLinkPolicyFile } from '../../../../core/tooling/policy-links.mts';
 import { readDefaultTsconfig } from './test-support/layout-readers.mts';
 import { customLayout, defaults, temporaryProject } from './test-support/layout-config-loading.mts';
@@ -331,7 +331,7 @@ describe('layout-aware tsconfig in a workspace package without its own tsconfig'
 
     expect(layered.extends).toBe('../../tsconfig.json');
     expect(layered.include).toEqual(parseTsconfig(shipped).include);
-    expect(layered.compilerOptions?.['strict']).toBe(true);
+    expect(layered.compilerOptions['strict']).toBe(true);
   });
 
   it('checks the package with the options of the workspace tsconfig', () => {
@@ -377,7 +377,9 @@ describe('layout-aware tsconfig in a workspace package without its own tsconfig'
       generated({ include: ['packages'], compilerOptions: { composite: true, rootDir: '.' } }),
     );
 
-    expect(layered.compilerOptions).toMatchObject({
+    const { composite, rootDir, declarationDir } = layered.compilerOptions;
+
+    expect({ composite, rootDir, declarationDir }).toEqual({
       composite: false,
       rootDir: null,
       declarationDir: null,
@@ -387,6 +389,8 @@ describe('layout-aware tsconfig in a workspace package without its own tsconfig'
   it('drops the file list of the workspace tsconfig', () => {
     const layered = parseJson(generated({ files: ['setup.ts'], include: ['packages'] }));
 
-    expect(layered).toMatchObject({ extends: '../../tsconfig.json', files: [] });
+    const { extends: extended, files } = fieldsOf(layered);
+
+    expect({ extended, files }).toEqual({ extended: '../../tsconfig.json', files: [] });
   });
 });

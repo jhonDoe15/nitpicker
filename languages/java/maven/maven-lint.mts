@@ -17,7 +17,7 @@ import type { ToolClasspaths } from './typed/kotlin-types.mts';
 import { javaFiles } from './lint/java-files.mts';
 import { PMD_LOG } from '../adapters/reporting/sarif/processing/pmd-rule-crashes.mts';
 import { analyzesGenerated, handWrittenRoots } from './generated/generated-roots.mts';
-import { handWrittenClasses } from './generated/spotbugs-targets.mts';
+import { handWrittenClasses, type SpotbugsTargets } from './generated/spotbugs-targets.mts';
 import { spotbugsLaunch } from './security/spotbugs-launch.mts';
 import {
   pmdRulesetsWithEngine,
@@ -179,43 +179,44 @@ export function runPmd(options: PmdOptions): void {
   writeFileSync(path.join(reportDir, PMD_LOG), typeof stderr === 'string' ? stderr : '');
 }
 
-export function runSpotbugs({
-  module,
-  reportDir,
-  tools,
-  configs,
-  auxClasspath = [],
-  engine,
-  spawn,
-  timeoutMs,
-}: SpotbugsOptions): void {
-  const report = path.join(reportDir, 'spotbugs.sarif');
-  withoutSpotbugsEngineReport(reportDir);
-  const analyzed = path.resolve(module.outputDirectory);
-  const auxiliary = auxClasspath.filter(
-    (entry) => path.resolve(entry) !== analyzed && existsSync(entry),
-  );
-  const auxClasspathFile = path.join(reportDir, 'spotbugs-aux-classpath.txt');
-  const hasClasses =
-    existsSync(module.outputDirectory) && readdirSync(module.outputDirectory).length > 0;
-  if (!hasClasses) {
-    writeFileSync(report, EMPTY_SARIF);
-    return;
+function auxiliaryEntries(outputDirectory: string, auxClasspath: readonly string[]): string[] {
+  const analyzed = path.resolve(outputDirectory);
+  return auxClasspath.filter((entry) => path.resolve(entry) !== analyzed && existsSync(entry));
+}
+
+function analyzedTargets(options: SpotbugsOptions): SpotbugsTargets | undefined {
+  const { module, reportDir, configs, spawn, timeoutMs } = options;
+  if (!existsSync(module.outputDirectory) || readdirSync(module.outputDirectory).length === 0) {
+    return { list: '', empty: true };
   }
-  const targets = analyzesGenerated(configs)
+  return analyzesGenerated(configs)
     ? undefined
     : handWrittenClasses({ module, reportDir, spawn, timeoutMs });
-  if (targets?.empty === true) {
-    writeFileSync(report, EMPTY_SARIF);
-    return;
-  }
-  const aux = targets === undefined ? auxiliary : [...auxiliary, module.outputDirectory];
-  writeFileSync(auxClasspathFile, [...new Set(aux)].join('\n'));
+}
+
+function spotbugsSettings(options: SpotbugsOptions, auxiliary: readonly string[]): string[] {
+  const { module, reportDir, configs, engine } = options;
   const declared = fieldOf(fieldOf(configs, 'spotbugs'), 'arguments');
   const added =
     declared === undefined
       ? spotbugsEngineArguments({ module, reportDir, auxiliary: [...new Set(auxiliary)] }, engine)
       : [];
+  return [...textsOf(declared ?? spotbugsArguments(NITPICKER_SPOTBUGS)), ...added];
+}
+
+export function runSpotbugs(options: SpotbugsOptions): void {
+  const { module, reportDir, tools, auxClasspath = [], spawn, timeoutMs } = options;
+  const report = path.join(reportDir, 'spotbugs.sarif');
+  withoutSpotbugsEngineReport(reportDir);
+  const auxiliary = auxiliaryEntries(module.outputDirectory, auxClasspath);
+  const targets = analyzedTargets(options);
+  if (targets?.empty === true) {
+    writeFileSync(report, EMPTY_SARIF);
+    return;
+  }
+  const aux = targets === undefined ? auxiliary : [...auxiliary, module.outputDirectory];
+  const auxClasspathFile = path.join(reportDir, 'spotbugs-aux-classpath.txt');
+  writeFileSync(auxClasspathFile, [...new Set(aux)].join('\n'));
   runJava({
     tool: 'SpotBugs',
     classpath: tools['spotbugs'],
@@ -224,7 +225,7 @@ export function runSpotbugs({
       module,
       report,
       tools,
-      settings: [...textsOf(declared ?? spotbugsArguments(NITPICKER_SPOTBUGS)), ...added],
+      settings: spotbugsSettings(options, auxiliary),
       auxClasspathFile: aux.length === 0 ? undefined : auxClasspathFile,
       ...(targets === undefined ? {} : { targets: ['-analyzeFromFile', targets.list] }),
     }),
