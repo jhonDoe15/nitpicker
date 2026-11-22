@@ -56,7 +56,16 @@ public final class ErrorProneReport {
 
   record ClassSpan(long start, long end, List<String> annotations) {}
 
-  private record Job(Path argumentsFile, List<String> options, List<String> sources, long size) {}
+  record Job(Path argumentsFile, List<String> options, List<String> sources, long size, boolean sliced) {}
+
+  record SliceOutput(List<String> options, List<Path> temporaryDirectories) implements AutoCloseable {
+    @Override
+    public void close() {
+      for (Path directory : temporaryDirectories) {
+        deleteTree(directory);
+      }
+    }
+  }
 
   private record Outcome(List<String> entries, List<String> errors, Map<String, String> crashes) {}
 
@@ -75,9 +84,7 @@ public final class ErrorProneReport {
       outcomes = run(jobs);
     } finally {
       for (Path built : FIX_CHECK_CLASSES.values()) {
-        try (Stream<Path> files = Files.walk(built)) {
-          files.sorted(Comparator.reverseOrder()).forEach(file -> file.toFile().delete());
-        }
+        deleteTree(built);
       }
     }
     if (outcomes == null) {
@@ -332,7 +339,7 @@ public final class ErrorProneReport {
     return false;
   }
 
-  private static List<Job> jobs(JavaCompiler compiler, Path argumentsFile, String checks) throws IOException {
+  static List<Job> jobs(JavaCompiler compiler, Path argumentsFile, String checks) throws IOException {
     List<String> lines = Files.readAllLines(argumentsFile, StandardCharsets.UTF_8);
     int separator = lines.indexOf(SOURCES);
     List<String> head = lines.subList(0, separator);
@@ -348,25 +355,66 @@ public final class ErrorProneReport {
       List<List<String>> slices = slices(group);
       for (int slice = 0; slice < slices.size(); slice++) {
         List<String> files = slices.get(slice);
+        boolean sliced = files.size() < sources.size();
         List<String> options = javacOptions(head, sources);
         if (fixChecks != null) {
           int processors = options.indexOf(PROCESSOR_PATH) + 1;
           options.set(processors, options.get(processors) + java.io.File.pathSeparator + fixChecks);
         }
-        int classpath = options.indexOf("-classpath") + 1;
-        if (files.size() < sources.size() && classpath == 0) {
+        int classpath = classpathValueIndex(options);
+        if (sliced && classpath == 0) {
           options.addAll(List.of("-classpath", ownClasses));
-        } else if (files.size() < sources.size()) {
+        } else if (sliced) {
           options.set(classpath, options.get(classpath) + java.io.File.pathSeparator + ownClasses);
         }
         String patchDirectory = Integer.toHexString(argumentsFile.toAbsolutePath().normalize().toString().hashCode())
             + (group == unsuppressed ? "-lombok" : "") + (slices.size() > 1 ? "-" + slice : "");
         options.add(pluginArgument(checks, ownPackages(ownClasses), head.contains(TEST_ONLY),
             group == unsuppressed, withoutGenerated(head, projectLines(head, patchDirectory)), immutable));
-        jobs.add(new Job(argumentsFile, options, files, bytes(files)));
+        jobs.add(new Job(argumentsFile, options, files, bytes(files), sliced));
       }
     }
     return jobs;
+  }
+
+  private static int classpathValueIndex(List<String> options) {
+    int index = options.indexOf("-classpath");
+    if (index < 0) {
+      index = options.indexOf("-cp");
+    }
+    return index >= 0 && index + 1 < options.size() ? index + 1 : 0;
+  }
+
+  static SliceOutput isolateSliceOutputs(List<String> options) throws IOException {
+    List<String> isolated = new ArrayList<>(options);
+    List<Path> created = new ArrayList<>();
+    try {
+      for (int index = 0; index + 1 < isolated.size(); index++) {
+        String flag = isolated.get(index);
+        if (flag.equals("-d") || flag.equals("-s")) {
+          Path temp = Files.createTempDirectory("nitpicker-errorprone-slice-");
+          created.add(temp);
+          isolated.set(index + 1, temp.toString());
+          index++;
+        }
+      }
+      return new SliceOutput(isolated, created);
+    } catch (IOException | RuntimeException failure) {
+      for (Path directory : created) {
+        deleteTree(directory);
+      }
+      throw failure;
+    }
+  }
+
+  static void deleteTree(Path root) {
+    if (!Files.exists(root)) {
+      return;
+    }
+    try (Stream<Path> files = Files.walk(root)) {
+      files.sorted(Comparator.reverseOrder()).forEach(file -> file.toFile().delete());
+    } catch (IOException ignored) {
+    }
   }
 
   /**
@@ -485,9 +533,12 @@ public final class ErrorProneReport {
 
   private static Outcome outcome(Job job) throws IOException {
     Outcome outcome = new Outcome(new ArrayList<>(), new ArrayList<>(), new LinkedHashMap<>());
-    if (failedSilently(ToolProvider.getSystemJavaCompiler(), job.options(), job.sources(), outcome.entries(),
-        outcome.errors(), outcome.crashes())) {
-      outcome.errors().add("javac failed on " + job.argumentsFile() + " without reporting an error");
+    try (SliceOutput output = job.sliced() ? isolateSliceOutputs(job.options())
+        : new SliceOutput(job.options(), List.of())) {
+      if (failedSilently(ToolProvider.getSystemJavaCompiler(), output.options(), job.sources(), outcome.entries(),
+          outcome.errors(), outcome.crashes())) {
+        outcome.errors().add("javac failed on " + job.argumentsFile() + " without reporting an error");
+      }
     }
     return outcome;
   }
@@ -495,12 +546,12 @@ public final class ErrorProneReport {
   private static boolean failedSilently(JavaCompiler compiler, List<String> options, List<String> sources,
       List<String> entries, List<String> errors, Map<String, String> crashes) throws IOException {
     List<String> run = new ArrayList<>(options);
-    run.set(run.size() - 1, run.getLast() + crashes.keySet().stream().map(check -> " -Xep:" + check + ":OFF")
+    run.set(run.size() - 1, run.get(run.size() - 1) + crashes.keySet().stream().map(check -> " -Xep:" + check + ":OFF")
         .collect(Collectors.joining()));
     DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
     boolean compiled;
     Map<String, List<ClassSpan>> classes = new HashMap<>();
-    Map<String, Map<Long, Long>> ends = run.getLast().contains("-XepPatchChecks:") ? new HashMap<>() : null;
+    Map<String, Map<Long, Long>> ends = run.get(run.size() - 1).contains("-XepPatchChecks:") ? new HashMap<>() : null;
     try (StandardJavaFileManager files =
         compiler.getStandardFileManager(diagnostics, Locale.ROOT, StandardCharsets.UTF_8)) {
       JavacTask task = (JavacTask) compiler.getTask(

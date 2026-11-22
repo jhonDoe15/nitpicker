@@ -1,5 +1,5 @@
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -42,8 +42,79 @@ public final class Probe {
       case "options" -> System.out.print(ErrorProneReport.javacOptions(rest));
       case "modular" -> System.out.print(ErrorProneReport.javacOptions(rest, List.of("src/module-info.java")));
       case "record" -> record(rest);
+      case "isolate" -> isolate(rest);
+      case "jobs" -> jobs(rest);
+      case "parallel-ap" -> parallelAp(rest);
       default -> System.out.print(
           ErrorProneReport.immutableInReach(List.of("-classpath", rest.get(0)), rest.subList(1, rest.size())));
+    }
+  }
+
+  static void isolate(List<String> rest) throws Exception {
+    List<Path> created;
+    List<String> isolated;
+    try (ErrorProneReport.SliceOutput output = ErrorProneReport.isolateSliceOutputs(rest)) {
+      isolated = output.options();
+      created = output.temporaryDirectories();
+      for (Path dir : created) {
+        Files.writeString(dir.resolve("marker.txt"), "x");
+      }
+      System.out.println(String.join("|", isolated));
+      System.out.println(created.stream().allMatch(Files::isDirectory));
+    }
+    System.out.print(created.stream().noneMatch(Files::exists));
+  }
+
+  static void jobs(List<String> rest) throws Exception {
+    JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+    String checks = Files.readString(Path.of(rest.get(0)));
+    List<ErrorProneReport.Job> list = ErrorProneReport.jobs(compiler, Path.of(rest.get(1)), checks);
+    for (ErrorProneReport.Job job : list) {
+      int cp = job.options().indexOf("-classpath");
+      if (cp < 0) {
+        cp = job.options().indexOf("-cp");
+      }
+      String classpath = cp >= 0 ? job.options().get(cp + 1) : "";
+      System.out.println(job.sliced() + "|" + job.sources().size() + "|" + classpath);
+    }
+  }
+
+  static void parallelAp(List<String> rest) throws Exception {
+    Path procClasses = Path.of(rest.get(0));
+    Path ownClasses = Path.of(rest.get(1));
+    Path sharedD = Path.of(rest.get(2));
+    Path sharedS = Path.of(rest.get(3));
+    List<String> slice1 = List.of(rest.get(4));
+    List<String> slice2 = List.of(rest.get(5));
+    List<String> baseOptions = List.of(
+        "-d", sharedD.toString(), "-s", sharedS.toString(),
+        "-classpath", ownClasses.toString(),
+        "-processorpath", procClasses.toString(),
+        "-processor", "IndexProcessor");
+    java.util.concurrent.ExecutorService pool = java.util.concurrent.Executors.newFixedThreadPool(2);
+    java.util.concurrent.CyclicBarrier barrier = new java.util.concurrent.CyclicBarrier(2);
+    List<Path> allTemps = java.util.Collections.synchronizedList(new ArrayList<>());
+    try {
+      java.util.concurrent.Callable<Boolean> run1 = () -> compileSlice(baseOptions, slice1, barrier, allTemps);
+      java.util.concurrent.Callable<Boolean> run2 = () -> compileSlice(baseOptions, slice2, barrier, allTemps);
+      java.util.concurrent.Future<Boolean> f1 = pool.submit(run1);
+      java.util.concurrent.Future<Boolean> f2 = pool.submit(run2);
+      System.out.print(f1.get() + " " + f2.get() + " " + allTemps.stream().noneMatch(Files::exists));
+    } finally {
+      pool.shutdownNow();
+    }
+  }
+
+  static boolean compileSlice(
+      List<String> baseOptions, List<String> files,
+      java.util.concurrent.CyclicBarrier barrier, List<Path> allTemps) throws Exception {
+    barrier.await();
+    JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+    try (ErrorProneReport.SliceOutput output = ErrorProneReport.isolateSliceOutputs(baseOptions);
+        StandardJavaFileManager manager = compiler.getStandardFileManager(null, null, null)) {
+      allTemps.addAll(output.temporaryDirectories());
+      return Boolean.TRUE.equals(compiler.getTask(
+          null, manager, null, output.options(), null, manager.getJavaFileObjectsFromStrings(files)).call());
     }
   }
 
@@ -245,6 +316,168 @@ describe.runIf(enabled)(
         'it was stopped after 1 minute, at the time limit of the run; ' +
           'NITPICKER_MAVEN_TIMEOUT_MINUTES or NITPICKER_GRADLE_TIMEOUT_MINUTES give it more time\n',
       );
+    });
+
+    it('isolates -d and -s per slice, keeps -classpath intact, and cleans up temporary folders', () => {
+      const classes = path.join(work, 'orig-classes');
+      const generated = path.join(work, 'orig-generated');
+      const [optionsLine = '', existed = '', cleaned = ''] = probe([
+        'isolate',
+        '-d',
+        classes,
+        '-s',
+        generated,
+        '-classpath',
+        work,
+      ]).split('\n');
+      const isolated = optionsLine.split('|');
+
+      expect(isolated[0]).toBe('-d');
+      expect(isolated[1]).not.toBe(classes);
+      expect(isolated[2]).toBe('-s');
+      expect(isolated[3]).not.toBe(generated);
+      expect(isolated[1]).not.toBe(isolated[3]);
+      expect(isolated.slice(4)).toEqual(['-classpath', work]);
+      expect(existed).toBe('true');
+      expect(cleaned).toBe('true');
+
+      const [noOutputOptions = '', noOutputExisted = '', noOutputCleaned = ''] = probe([
+        'isolate',
+        '-cp',
+        work,
+      ]).split('\n');
+      expect(noOutputOptions).toBe(`-cp|${work}`);
+      expect(noOutputExisted).toBe('true');
+      expect(noOutputCleaned).toBe('true');
+    });
+
+    it('marks sliced jobs and keeps ownClasses on the classpath when splitting a source set', () => {
+      const files = sources(90);
+      const ownClasses = mkdtempSync(path.join(work, 'own-classes-'));
+      const argumentsFile = path.join(mkdtempSync(path.join(work, 'job-args-')), 'arguments');
+      writeFileSync(
+        argumentsFile,
+        [
+          '-d',
+          path.join(work, 'shared-d'),
+          '-s',
+          path.join(work, 'shared-s'),
+          '-cp',
+          work,
+          `--own-classes=${ownClasses}`,
+          '--sources',
+          ...files,
+        ].join('\n'),
+      );
+
+      const single = probe(
+        ['jobs', CHECKS_FILE, argumentsFile],
+        ['-Dnitpicker.errorprone.workers=1'],
+      )
+        .trim()
+        .split('\n');
+      expect(single).toHaveLength(1);
+      expect(single[0]?.startsWith('false|90|')).toBe(true);
+
+      const parallel = probe(
+        ['jobs', CHECKS_FILE, argumentsFile],
+        ['-Dnitpicker.errorprone.workers=2'],
+      )
+        .trim()
+        .split('\n');
+      expect(parallel).toHaveLength(2);
+      for (const line of parallel) {
+        const [sliced, , cp] = line.split('|');
+        expect(sliced).toBe('true');
+        expect(cp).toContain(ownClasses);
+      }
+    });
+
+    it('prevents concurrent index-writing annotation processors from corrupting each other across slices', () => {
+      const procDir = mkdtempSync(path.join(work, 'ap-'));
+      const procClasses = mkdtempSync(path.join(work, 'ap-classes-'));
+      const ownClasses = mkdtempSync(path.join(work, 'ap-own-'));
+      const sharedD = mkdtempSync(path.join(work, 'ap-shared-d-'));
+      const sharedS = mkdtempSync(path.join(work, 'ap-shared-s-'));
+      const srcDir = mkdtempSync(path.join(work, 'ap-src-'));
+
+      const processorSource = path.join(procDir, 'IndexProcessor.java');
+      writeFileSync(
+        processorSource,
+        `import java.io.*;
+import java.util.*;
+import javax.annotation.processing.*;
+import javax.lang.model.SourceVersion;
+import javax.lang.model.element.*;
+import javax.tools.*;
+
+@SupportedAnnotationTypes("*")
+@SupportedSourceVersion(SourceVersion.RELEASE_17)
+public final class IndexProcessor extends AbstractProcessor {
+  private boolean written;
+
+  @Override
+  public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment round) {
+    if (written || round.processingOver()) {
+      return false;
+    }
+    written = true;
+    try {
+      List<String> names = round.getRootElements().stream().map(Element::getSimpleName).map(Object::toString).toList();
+      FileObject index = processingEnv.getFiler().createResource(
+          StandardLocation.CLASS_OUTPUT, "", "META-INF/annotations/test.Index");
+      try (ObjectOutputStream out = new ObjectOutputStream(index.openOutputStream())) {
+        for (int i = 0; i < 64; i++) {
+          out.writeObject(names);
+        }
+      }
+      java.nio.file.Path indexPath = java.nio.file.Path.of(index.toUri());
+      try (ObjectInputStream in = new ObjectInputStream(java.nio.file.Files.newInputStream(indexPath))) {
+        in.readObject();
+      }
+      String genName = "Generated_" + String.join("_", names);
+      JavaFileObject gen = processingEnv.getFiler().createSourceFile(genName);
+      try (Writer writer = gen.openWriter()) {
+        writer.write("public final class " + genName + " {}");
+      }
+    } catch (Exception failure) {
+      throw new RuntimeException(failure);
+    }
+    return false;
+  }
+}
+`,
+      );
+
+      const procCompile = spawnSync('javac', ['-d', procClasses, processorSource], {
+        encoding: 'utf8',
+        timeout: JAVA_TIMEOUT_MS,
+      });
+      expect(procCompile.status, procCompile.stderr).toBe(0);
+
+      const first = path.join(srcDir, 'First.java');
+      const second = path.join(srcDir, 'Second.java');
+      writeFileSync(first, 'public class First { public static int value() { return 42; } }');
+      writeFileSync(second, 'public class Second { int v = First.value(); }');
+
+      const precompile = spawnSync('javac', ['-d', ownClasses, first, second], {
+        encoding: 'utf8',
+        timeout: JAVA_TIMEOUT_MS,
+      });
+      expect(precompile.status, precompile.stderr).toBe(0);
+
+      const result = probe([
+        'parallel-ap',
+        procClasses,
+        ownClasses,
+        sharedD,
+        sharedS,
+        first,
+        second,
+      ]);
+      expect(result).toBe('true true true');
+      expect(readdirSync(sharedD)).toEqual([]);
+      expect(readdirSync(sharedS)).toEqual([]);
     });
   },
 );
