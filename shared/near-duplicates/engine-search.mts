@@ -2,11 +2,13 @@ import { closeSync, mkdtempSync, openSync, rmSync, writeSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { findEngine } from '../engine/engine-binary.mts';
+import { engineEnvironment } from '../engine/engine-environment.config.mts';
 import { readEngineLinesSync } from '../engine/engine-rows.mts';
 import { runEngineSync } from '../engine/engine-run.mts';
 import type { Environment } from '../processes/environment.mts';
 import { canonicalTree } from './canonical/canonical.mts';
 import { logicPairs } from './proof/candidates.mts';
+import { inlinedTrees } from './proof/inline.mts';
 import { matchMasks } from './search/tokens.mts';
 import { compareText } from './tree/keys.mts';
 import { present } from './tree/nodes.mts';
@@ -183,10 +185,11 @@ function setsOf(
 }
 
 export function searchedSets(
-  sorted: readonly NearUnit[],
-  trees: ReadonlyMap<string, TreeNode>,
-  environment: Environment,
+  units: readonly NearUnit[],
+  environment: Environment = engineEnvironment(),
 ): SearchedSets | undefined {
+  const sorted = sortedUnits(units);
+  const trees = inlinedTrees(units);
   const binary = engineFor(sorted, environment);
   if (binary === undefined) {
     return undefined;
