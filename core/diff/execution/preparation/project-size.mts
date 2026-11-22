@@ -1,4 +1,6 @@
 import { spawnSync } from 'node:child_process';
+import { readdirSync } from 'node:fs';
+import path from 'node:path';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
 import { GIT_OUTPUT_LIMIT_BYTES, GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mts';
 
@@ -97,7 +99,16 @@ export function memoizedFileCounter(): FileCounter {
   };
 }
 
-function listedFileCount(root: string, patterns: readonly string[]): number {
+const SKIPPED_WALK_FOLDERS = new Set([
+  '.git',
+  'node_modules',
+  'dist',
+  'build',
+  'coverage',
+  'target',
+]);
+
+function listedFileCount(root: string, patterns: readonly string[]): number | undefined {
   const listed = spawnSync(
     'git',
     ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', ...patterns],
@@ -105,19 +116,58 @@ function listedFileCount(root: string, patterns: readonly string[]): number {
   );
   return listed.status === 0
     ? listed.stdout.split('\0').filter((file) => file.length > 0).length
-    : 0;
+    : undefined;
+}
+
+function readEntries(directory: string) {
+  try {
+    return readdirSync(directory, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+}
+
+function stepDirectory(directory: string, suffixes: readonly string[], pending: string[]): number {
+  let count = 0;
+  for (const entry of readEntries(directory)) {
+    if (entry.isDirectory() && !SKIPPED_WALK_FOLDERS.has(entry.name)) {
+      pending.push(path.join(directory, entry.name));
+    } else if (entry.isFile() && suffixes.some((suffix) => entry.name.endsWith(suffix))) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+function walkedFileCount(root: string, extensions: readonly string[]): number {
+  const suffixes = extensions.map((extension) => `.${extension}`);
+  const pending = [root];
+  const visited = new Set<string>();
+  let count = 0;
+  for (const directory of pending) {
+    if (visited.has(directory)) {
+      continue;
+    }
+    visited.add(directory);
+    count += stepDirectory(directory, suffixes, pending);
+  }
+  return count;
 }
 
 export function projectFileCount(root: string, extensions: readonly string[]): number {
-  return listedFileCount(
-    root,
-    extensions.map((extension) => `*.${extension}`),
+  return (
+    listedFileCount(
+      root,
+      extensions.map((extension) => `*.${extension}`),
+    ) ?? walkedFileCount(root, extensions)
   );
 }
 
 export function projectModuleCount(root: string, moduleFiles: readonly string[]): number {
-  return listedFileCount(
-    root,
-    moduleFiles.map((name) => `:(glob)**/${name}`),
+  return (
+    listedFileCount(
+      root,
+      moduleFiles.map((name) => `:(glob)**/${name}`),
+    ) ?? 0
   );
 }

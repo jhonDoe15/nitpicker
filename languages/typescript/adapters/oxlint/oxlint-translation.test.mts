@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { firstOf } from '../eslint/test-support/finding-comparison.mts';
-import { eslintShapedResults } from './oxlint-diagnostics.mts';
+import { eslintShapedResults, UnmappedDiagnosticError } from './oxlint-diagnostics.mts';
 import type { OxlintPlan } from './plan/oxlint-shapes.mts';
 import {
   escapeGlob,
@@ -279,5 +279,65 @@ describe('eslintShapedResults', () => {
         help: 'Use a local variable or function parameter instead of the restricted global.',
       }),
     ).toBe("Unexpected use of 'name'. Write window.name.");
+  });
+
+  it('throws a tool-level error for JS plugin failures instead of marking files unparsed', () => {
+    const naming = {
+      ruleNames: new Map<string, string>(),
+      messageIdOf: () => undefined,
+      ruleMessages: {},
+      neutralized: new Map(),
+    };
+    const diagnostics = [
+      {
+        filename: 'a.ts',
+        message: 'Error running JS plugin.',
+        help: `Cannot run git in ${stage}/src: spawn env ENOMEM`,
+      },
+      {
+        filename: 'a.ts',
+        message: 'Error running JS plugin.',
+        help: `Cannot run git in ${stage}/src: spawn env ENOMEM`,
+      },
+    ];
+
+    let thrown: unknown;
+    try {
+      eslintShapedResults(stage, diagnostics, naming);
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(Error);
+    expect(thrown).not.toBeInstanceOf(UnmappedDiagnosticError);
+    expect((thrown as Error).message).toContain(
+      'oxlint JS plugin failed: Error running JS plugin. Cannot run git in src: spawn env ENOMEM.',
+    );
+    expect((thrown as Error).message).toContain('nitpicker.config.json');
+  });
+
+  it('keeps real syntax errors as fatal file messages', () => {
+    const naming = {
+      ruleNames: new Map<string, string>(),
+      messageIdOf: () => undefined,
+      ruleMessages: {},
+      neutralized: new Map(),
+    };
+    const results = eslintShapedResults(
+      stage,
+      [
+        {
+          filename: 'a.ts',
+          message: 'Unexpected token',
+          labels: [{ span: { offset: 0, length: 1 } }],
+        },
+      ],
+      naming,
+    );
+
+    expect(firstOf(firstOf(results).messages)).toMatchObject({
+      fatal: true,
+      message: 'Unexpected token',
+      severity: 2,
+    });
   });
 });

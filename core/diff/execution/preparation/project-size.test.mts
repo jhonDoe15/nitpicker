@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../git/test-support/git-repository.mts';
 import { writeFiles } from '../../git/test-support/fixture-files.mts';
@@ -155,5 +158,21 @@ describe('analyzer budgets scaled with project size', () => {
     expect(memoryEstimateMegabytes({ memoryScale }, root)).toBe(900);
     expect(memoryEstimateMegabytes({}, root)).toBe(0);
     expect(preparedMemory(analyzer({ memoryScale }), root)).toBe(900);
+  });
+
+  it('counts matching files outside a git repository while skipping build and dependency folders', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-nongit-size-'));
+    try {
+      writeFiles(root, {
+        'index.tsx': '',
+        'views/home.ts': '',
+        'node_modules/pkg/index.ts': '',
+        'dist/out.ts': '',
+        'README.md': '',
+      });
+      expect(projectFileCount(root, ['ts', 'tsx'])).toBe(2);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

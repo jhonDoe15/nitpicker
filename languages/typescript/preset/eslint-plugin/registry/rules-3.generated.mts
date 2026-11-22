@@ -1,3 +1,10 @@
+import { rule as ruleNoUnguardedRegistryDelete } from '../rules/lifecycles/registry/no-unguarded-registry-delete.mts';
+import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
+import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
+import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mts';
+import { rule as ruleNoUninjectableDelay } from '../rules/test-runtime/lifecycle/no-uninjectable-delay.mts';
+import { rule as ruleNoUnionOrderDependence } from '../rules/union-order/no-union-order-dependence.mts';
+import { rule as ruleNoUnisolatedJobLoop } from '../rules/jobs/no-unisolated-job-loop.mts';
 import { rule as ruleNoUnknownInDomain } from '../rules/boundaries/no-unknown-in-domain.mts';
 import { rule as ruleNoUnknownMainFolder } from '../rules/guards/no-unknown-main-folder.mts';
 import { rule as ruleNoUnmappedException } from '../rules/errors/unmapped/no-unmapped-exception.mts';
@@ -25,6 +32,7 @@ import { rule as ruleNoWholeRowsForOneValue } from '../rules/queries/columns/no-
 import { rule as ruleNoWorkBeforeEarlyExit } from '../rules/repeated-work/early-exits/no-work-before-early-exit.mts';
 import { rule as ruleNoWorkerStateInConcurrentTests } from '../test-quality/concurrent-tests/no-worker-state-in-concurrent-tests.mts';
 import { rule as ruleNoWrapperOnlyTimeout } from '../rules/processes/wrappers/no-wrapper-only-timeout.mts';
+import { rule as ruleOverwriteCollectionMapMerge } from '../rules/collections/map-merge/overwrite-collection-map-merge.mts';
 import { rule as rulePreserveErrorCause } from '../rules/errors/preserve-error-cause.mts';
 import { rule as rulePromiseWaitDeadline } from '../rules/promises/executors/promise-wait-deadline.mts';
 import { rule as ruleReactControlledInput } from '../rules/react/forms/react-controlled-input.mts';
@@ -51,6 +59,8 @@ import { rule as ruleReactPureStateUpdater } from '../rules/react/state/react-pu
 import { rule as ruleReactSingleStylingApproach } from '../rules/react/react-single-styling-approach.mts';
 import { rule as ruleReactTestNoImplementationDetails } from '../rules/react-tests/react-test-no-implementation-details.mts';
 import { rule as ruleReleaseListenersOnClose } from '../rules/lifecycles/handles/release-listeners-on-close.mts';
+import { rule as ruleRepeatedParsePerItem } from '../rules/repeated-work/repeated-parse/repeated-parse-per-item.mts';
+import { rule as ruleRepeatedScanPerKey } from '../rules/repeated-work/repeated-scan/repeated-scan-per-key.mts';
 import { rule as ruleReportModuleLoadEffects } from '../rules/modules/report-module-load-effects.mts';
 import { rule as ruleRequireAbortSignalForwarding } from '../rules/cancellation/abort-signal/require-abort-signal-forwarding.mts';
 import { rule as ruleRequireAtomicUpdates } from '../rules/wrapped/require-atomic-updates.mts';
@@ -64,17 +74,29 @@ import { rule as ruleReusableObjectPerCall } from '../rules/reuse/reusable-objec
 import { rule as ruleSettlePendingOnClose } from '../rules/lifecycles/pending/settle-pending-on-close.mts';
 import { rule as ruleShorterBooleanLogic } from '../rules/control/shorter-boolean-logic.mts';
 import { rule as ruleSimplerBooleanLogic } from '../rules/control/simpler-boolean-logic.mts';
+import { rule as ruleStagedProjectWithoutParentNodeModules } from '../rules/paths/staged-project/staged-project-without-parent-node-modules.mts';
 import { rule as ruleStrictBooleanExpressions } from '../rules/wrapped/strict-boolean-expressions.mts';
 import { rule as ruleStructuredCatchLogging } from '../rules/errors/structured-catch-logging.mts';
 import { rule as ruleTestMustUseProductionRuntime } from '../rules/test-runtime/assertions/test-must-use-production-runtime.mts';
 import { rule as ruleTestTsconfigPinsLibAndTypes } from '../rules/test-runtime/types/test-tsconfig-pins-lib-and-types.mts';
 import { rule as ruleTimeUnitMismatch } from '../rules/time/units/time-unit-mismatch.mts';
 import { rule as ruleTimeoutAbandonsOperation } from '../rules/async/timeout-abandons-operation.mts';
+import { rule as ruleUnboundedBatchToProcess } from '../rules/processes/unbounded-batch/unbounded-batch-to-process.mts';
 import { rule as ruleUnboundedFanOut } from '../rules/concurrency/unbounded-fan-out.mts';
+import { rule as ruleUnboundedLoopCache } from '../rules/repeated-work/unbounded-cache/unbounded-loop-cache.mts';
 import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reactive/unbounded-reactive-fan-out.mts';
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
+import { rule as ruleWholeToolPackageLoad } from '../rules/modules/package-load/whole-tool-package-load.mts';
+import { rule as ruleWorklistWithoutVisitedSet } from '../rules/repeated-work/worklist/worklist-without-visited-set.mts';
 
 export const partRules = {
+  'no-unguarded-registry-delete': ruleNoUnguardedRegistryDelete,
+  'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
+  'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
+  'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
+  'no-uninjectable-delay': ruleNoUninjectableDelay,
+  'no-union-order-dependence': ruleNoUnionOrderDependence,
+  'no-unisolated-job-loop': ruleNoUnisolatedJobLoop,
   'no-unknown-in-domain': ruleNoUnknownInDomain,
   'no-unknown-main-folder': ruleNoUnknownMainFolder,
   'no-unmapped-exception': ruleNoUnmappedException,
@@ -102,6 +124,7 @@ export const partRules = {
   'no-work-before-early-exit': ruleNoWorkBeforeEarlyExit,
   'no-worker-state-in-concurrent-tests': ruleNoWorkerStateInConcurrentTests,
   'no-wrapper-only-timeout': ruleNoWrapperOnlyTimeout,
+  'overwrite-collection-map-merge': ruleOverwriteCollectionMapMerge,
   'preserve-error-cause': rulePreserveErrorCause,
   'promise-wait-deadline': rulePromiseWaitDeadline,
   'react-controlled-input': ruleReactControlledInput,
@@ -128,6 +151,8 @@ export const partRules = {
   'react-single-styling-approach': ruleReactSingleStylingApproach,
   'react-test-no-implementation-details': ruleReactTestNoImplementationDetails,
   'release-listeners-on-close': ruleReleaseListenersOnClose,
+  'repeated-parse-per-item': ruleRepeatedParsePerItem,
+  'repeated-scan-per-key': ruleRepeatedScanPerKey,
   'report-module-load-effects': ruleReportModuleLoadEffects,
   'require-abort-signal-forwarding': ruleRequireAbortSignalForwarding,
   'require-atomic-updates': ruleRequireAtomicUpdates,
@@ -141,13 +166,18 @@ export const partRules = {
   'settle-pending-on-close': ruleSettlePendingOnClose,
   'shorter-boolean-logic': ruleShorterBooleanLogic,
   'simpler-boolean-logic': ruleSimplerBooleanLogic,
+  'staged-project-without-parent-node-modules': ruleStagedProjectWithoutParentNodeModules,
   'strict-boolean-expressions': ruleStrictBooleanExpressions,
   'structured-catch-logging': ruleStructuredCatchLogging,
   'test-must-use-production-runtime': ruleTestMustUseProductionRuntime,
   'test-tsconfig-pins-lib-and-types': ruleTestTsconfigPinsLibAndTypes,
   'time-unit-mismatch': ruleTimeUnitMismatch,
   'timeout-abandons-operation': ruleTimeoutAbandonsOperation,
+  'unbounded-batch-to-process': ruleUnboundedBatchToProcess,
   'unbounded-fan-out': ruleUnboundedFanOut,
+  'unbounded-loop-cache': ruleUnboundedLoopCache,
   'unbounded-reactive-fan-out': ruleUnboundedReactiveFanOut,
   'untested-round-trip': ruleUntestedRoundTrip,
+  'whole-tool-package-load': ruleWholeToolPackageLoad,
+  'worklist-without-visited-set': ruleWorklistWithoutVisitedSet,
 };

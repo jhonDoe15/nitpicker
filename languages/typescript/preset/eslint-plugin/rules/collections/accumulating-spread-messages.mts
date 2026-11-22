@@ -1,4 +1,5 @@
-export type SpreadKind = 'reduce' | 'reduceObject' | 'reduceArray' | 'loopObject' | 'loopArray';
+export type SpreadKind =
+  'reduce' | 'reduceObject' | 'reduceArray' | 'loopObject' | 'loopArray' | 'keyedArray';
 export type SpreadMessageId = keyof typeof accumulatingSpreadMessages;
 export type RuleMessageId = SpreadMessageId | keyof typeof spreadSuggestionMessages;
 
@@ -34,11 +35,19 @@ export const accumulatingSpreadMessages = {
     LEAD,
     `use ${ARRAYS}, or declare the array const before the loop and push onto it`,
   ),
+  keyedArray: message(
+    LEAD,
+    'get the group once and push onto it, or create it with [value] when missing',
+  ),
   domainReduceObject: message(LEAD, `use ${DOMAIN_OBJECT}`),
   domainReduceArray: message(LEAD, `use ${ARRAYS}`),
   domainReduce: message(LEAD, `build it with ${WRAPPED}`),
   domainLoopObject: message(NO_LOOPS, `use ${DOMAIN_OBJECT}`),
   domainLoopArray: message(NO_LOOPS, `use ${ARRAYS}`),
+  domainKeyedArray: message(
+    LEAD,
+    'get the group once and push onto it, or create it with [value] when missing',
+  ),
 };
 
 const DOMAIN_IDS: Readonly<Record<SpreadKind, SpreadMessageId>> = {
@@ -47,6 +56,7 @@ const DOMAIN_IDS: Readonly<Record<SpreadKind, SpreadMessageId>> = {
   reduceArray: 'domainReduceArray',
   loopObject: 'domainLoopObject',
   loopArray: 'domainLoopArray',
+  keyedArray: 'domainKeyedArray',
 };
 
 export function accumulatingSpreadMessageId(kind: SpreadKind, filePath: string): SpreadMessageId {

@@ -206,10 +206,10 @@ struct Attributes<'a> {
     targets: Option<u16>,
     annotated_parameters: usize,
     nullable_parameters: u64,
+    type_nullable_parameters: u64,
+    parameter_type_annotations: Vec<Vec<&'a [u8]>>,
     contract: Option<u16>,
     starts: bool,
-    /// Carries type annotations, which this reader takes no nullness from.
-    typed: bool,
 }
 
 fn starter(descriptor: &[u8]) -> bool {
@@ -316,18 +316,67 @@ fn element_strings(reader: &mut Reader, into: &mut Vec<u16>) -> Option<()> {
     Some(())
 }
 
-/// One entry of a type annotations attribute on a class: the type parameter it sits on, if it sits on one, and
-/// the index of its type descriptor. Gives nothing for a target this reader does not know.
-fn type_annotation(reader: &mut Reader) -> Option<(Option<u8>, u16)> {
-    let parameter = match reader.u1()? {
-        0x00 => Some(reader.u1()?),
-        0x10 => reader.skip(2).map(|_| None)?,
-        0x11 => reader.skip(2).map(|_| None)?,
+fn is_nullable_descriptor(kind: &[u8]) -> bool {
+    let Some(inner) = kind.strip_prefix(b"L").and_then(|rest| rest.strip_suffix(b";")) else {
+        return false;
+    };
+    let simple = inner.rsplit(|byte| *byte == b'/' || *byte == b'$').next().unwrap_or(inner);
+    matches!(simple, b"Nullable" | b"CheckForNull" | b"ParametricNullness")
+}
+
+fn mark_nullable<'a>(found: &mut Attributes<'a>, kind: &'a [u8]) {
+    found.nullable |= is_nullable_descriptor(kind);
+    found.check_for_null |= kind.ends_with(b"/CheckForNull;") || kind == b"LCheckForNull;";
+    if kind.windows(4).any(|part| part == b"Null") && kind != b"Ljavax/annotation/Nullable;" {
+        found.nickname = Some(kind);
+    }
+}
+
+enum TypeTarget {
+    ClassTypeParameter(u8),
+    Field,
+    Return,
+    FormalParameter(u8),
+    Other,
+}
+
+/// One entry of a `RuntimeVisibleTypeAnnotations` or `RuntimeInvisibleTypeAnnotations` attribute (JVMS 4.7.20).
+fn type_annotation(reader: &mut Reader) -> Option<(TypeTarget, bool, u16)> {
+    let target = match reader.u1()? {
+        0x00 => TypeTarget::ClassTypeParameter(reader.u1()?),
+        0x01 => {
+            reader.skip(1)?;
+            TypeTarget::Other
+        }
+        0x10 | 0x11 | 0x12 | 0x17 | 0x42 | 0x43..=0x46 => {
+            reader.skip(2)?;
+            TypeTarget::Other
+        }
+        0x13 => TypeTarget::Field,
+        0x14 => TypeTarget::Return,
+        0x15 => TypeTarget::Other,
+        0x16 => TypeTarget::FormalParameter(reader.u1()?),
+        0x40 | 0x41 => {
+            let count = reader.u2()? as usize;
+            reader.skip(count.checked_mul(6)?)?;
+            TypeTarget::Other
+        }
+        0x47..=0x4B => {
+            reader.skip(3)?;
+            TypeTarget::Other
+        }
         _ => return None,
     };
     let steps = reader.u1()? as usize;
-    reader.skip(steps * 2)?;
-    Some((parameter, skip_annotation(reader)?))
+    let mut top_level = true;
+    for _ in 0..steps {
+        let kind = reader.u1()?;
+        reader.skip(1)?;
+        if kind != 1 {
+            top_level = false;
+        }
+    }
+    Some((target, top_level, skip_annotation(reader)?))
 }
 
 fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8]>) -> Option<Attributes<'a>> {
@@ -336,7 +385,6 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
         let name = utf8(reader.u2()?)?;
         let length = reader.u4()? as usize;
         let end = reader.at + length;
-        found.typed |= name == b"RuntimeVisibleTypeAnnotations" || name == b"RuntimeInvisibleTypeAnnotations";
         if name == b"Signature" && length == 2 {
             found.signature = utf8(reader.u2()?);
         } else if name == b"ConstantValue" && length == 2 {
@@ -363,11 +411,7 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                     found.contract = text;
                 }
                 found.starts |= kind.ends_with(b"/Initializer;") || starter(kind);
-                found.nullable |= kind.ends_with(b"/Nullable;") || kind.ends_with(b"/CheckForNull;") || kind.ends_with(b"/ParametricNullness;");
-                found.check_for_null |= kind.ends_with(b"/CheckForNull;");
-                if kind.windows(4).any(|part| part == b"Null") && kind != b"Ljavax/annotation/Nullable;" {
-                    found.nickname = Some(kind);
-                }
+                mark_nullable(&mut found, kind);
                 found.annotations.push(kind);
             }
         } else if name == b"RuntimeVisibleParameterAnnotations" || name == b"RuntimeInvisibleParameterAnnotations" {
@@ -379,17 +423,45 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
             for at in 0..count {
                 for _ in 0..reader.u2()? {
                     let kind = utf8(skip_annotation(reader)?)?;
-                    if (kind.ends_with(b"/Nullable;") || kind.ends_with(b"/CheckForNull;") || kind.ends_with(b"/ParametricNullness;")) && at < 64 {
+                    if is_nullable_descriptor(kind) && at < 64 {
                         found.nullable_parameters |= 1 << at;
                     }
                     found.parameter_annotations[at].push(kind);
                 }
             }
-        } else if name == b"RuntimeVisibleTypeAnnotations" {
+        } else if name == b"RuntimeVisibleTypeAnnotations" || name == b"RuntimeInvisibleTypeAnnotations" {
             for _ in 0..reader.u2()? {
-                let Some((parameter, kind)) = type_annotation(reader) else { break };
-                if utf8(kind) == Some(b"Lcom/google/errorprone/annotations/ImmutableTypeParameter;") {
-                    found.strict.extend(parameter);
+                let Some((target, top_level, kind)) = type_annotation(reader) else { break };
+                let Some(kind) = utf8(kind) else { continue };
+                if !top_level {
+                    continue;
+                }
+                match target {
+                    TypeTarget::ClassTypeParameter(at) => {
+                        if name == b"RuntimeVisibleTypeAnnotations"
+                            && kind == b"Lcom/google/errorprone/annotations/ImmutableTypeParameter;"
+                        {
+                            found.strict.push(at);
+                        }
+                    }
+                    TypeTarget::Field | TypeTarget::Return => {
+                        mark_nullable(&mut found, kind);
+                    }
+                    TypeTarget::FormalParameter(at) => {
+                        let at = at as usize;
+                        if is_nullable_descriptor(kind) {
+                            if at < 64 {
+                                found.type_nullable_parameters |= 1 << at;
+                            }
+                            if found.parameter_type_annotations.len() <= at {
+                                found.parameter_type_annotations.resize(at + 1, Vec::new());
+                            }
+                            if !found.parameter_type_annotations[at].contains(&kind) {
+                                found.parameter_type_annotations[at].push(kind);
+                            }
+                        }
+                    }
+                    TypeTarget::Other => {}
                 }
             }
         } else if name == b"PermittedSubclasses" {
@@ -494,12 +566,41 @@ fn show_type(text: &[u8], at: &mut usize) -> Option<String> {
     }
 }
 
+fn annotate_shown_type(shown: &str, annotations: &[&[u8]]) -> String {
+    let marks: Vec<String> = annotations.iter().filter_map(|kind| annotation_name(kind)).map(|name| format!("@{name}")).collect();
+    if marks.is_empty() {
+        return shown.to_string();
+    }
+    let prefix = marks.join(" ");
+    let base = shown.trim_end_matches("[]");
+    if base.len() < shown.len() {
+        return format!("{base} {prefix} {}", &shown[base.len()..]);
+    }
+    let mut depth = 0usize;
+    let mut last_dot = None;
+    for (index, byte) in shown.bytes().enumerate() {
+        match byte {
+            b'<' => depth += 1,
+            b'>' => depth = depth.saturating_sub(1),
+            b'.' if depth == 0 => last_dot = Some(index),
+            _ => {}
+        }
+    }
+    match last_dot {
+        Some(dot) => format!("{}{prefix} {}", &shown[..=dot], &shown[dot + 1..]),
+        None => format!("{prefix} {shown}"),
+    }
+}
+
 /// The parameter types of a method descriptor or signature, as javac prints them.
-fn show_parameters(text: &[u8], varargs: bool) -> Option<String> {
+fn show_parameters(text: &[u8], varargs: bool, annotations: &[Vec<&[u8]>], shift: usize) -> Option<String> {
     let mut at = text.iter().position(|byte| *byte == b'(')? + 1;
     let mut all = Vec::new();
     while *text.get(at)? != b')' {
-        all.push(show_type(text, &mut at)?);
+        let index = all.len();
+        let shown = show_type(text, &mut at)?;
+        let marks = index.checked_sub(shift).and_then(|pos| annotations.get(pos)).map(Vec::as_slice).unwrap_or(&[]);
+        all.push(annotate_shown_type(&shown, marks));
     }
     if let Some(last) = all.last_mut().filter(|last| varargs && last.ends_with("[]")) {
         last.truncate(last.len() - 2);
@@ -590,9 +691,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     let superclass = class_name(reader.u2()?);
     let interfaces = (0..reader.u2()?).map(|_| reader.u2().and_then(&class_name)).collect::<Option<Vec<_>>>()?;
     let mut null_nicknames: Vec<String> = Vec::new();
-    let mut typed = false;
     let mut nickname = |found: &Attributes| {
-        typed |= found.typed;
         let name = found.nickname.and_then(|text| std::str::from_utf8(text).ok()).map(|text| dotted(text.trim_start_matches('L').trim_end_matches(';')));
         null_nicknames.extend(name.filter(|name| !null_nicknames.contains(name)));
     };
@@ -673,12 +772,25 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                         .collect(),
                 },
                 shown: {
-                    let written = signature.filter(|text| show_parameters(text, false).is_some_and(|all| all.matches(',').count() + 1 == parameters_count.max(1)));
-                    show_parameters(written.unwrap_or(descriptor), flags & ACC_VARARGS != 0).unwrap_or_default()
+                    let shift = if found.annotated_parameters == 0 {
+                        0
+                    } else {
+                        parameters_count.saturating_sub(found.annotated_parameters).min(63)
+                    };
+                    let written = signature.filter(|text| {
+                        show_parameters(text, false, &[], 0).is_some_and(|all| all.matches(',').count() + 1 == parameters_count.max(1))
+                    });
+                    show_parameters(written.unwrap_or(descriptor), flags & ACC_VARARGS != 0, &found.parameter_type_annotations, shift)
+                        .unwrap_or_default()
                 },
                 nullable_parameters: {
-                    let shift = parameters_count.saturating_sub(found.annotated_parameters.max(1)).min(63);
-                    if found.annotated_parameters == 0 { 0 } else { found.nullable_parameters << shift }
+                    let shift = if found.annotated_parameters == 0 {
+                        0
+                    } else {
+                        parameters_count.saturating_sub(found.annotated_parameters).min(63)
+                    };
+                    let from_decl = if found.annotated_parameters == 0 { 0 } else { found.nullable_parameters << shift };
+                    from_decl | (found.type_nullable_parameters << shift)
                 },
                 contract: found.contract.and_then(&utf8).map(|text| String::from_utf8_lossy(text).into_owned()).unwrap_or_default(),
                 starts: found.starts,
@@ -688,9 +800,6 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     let found = attributes(&mut reader, &utf8)?;
     let signature = found.signature;
     let mut class_flags = member_flags(access, &found);
-    if typed || found.typed {
-        class_flags |= flag::TYPE_MARKS;
-    }
     for (mask, bit) in [(0x4000, flag::ENUM), (0x2000, flag::ANNOTATION)] {
         if access & mask != 0 {
             class_flags |= bit;
@@ -744,3 +853,245 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         null_nicknames,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    struct ClassBuilder {
+        pool: Vec<Vec<u8>>,
+        fields: Vec<Vec<u8>>,
+        methods: Vec<Vec<u8>>,
+    }
+
+    impl ClassBuilder {
+        fn new() -> Self {
+            Self { pool: Vec::new(), fields: Vec::new(), methods: Vec::new() }
+        }
+
+        fn utf8(&mut self, text: &str) -> u16 {
+            let mut entry = vec![1];
+            entry.extend_from_slice(&(text.len() as u16).to_be_bytes());
+            entry.extend_from_slice(text.as_bytes());
+            self.pool.push(entry);
+            self.pool.len() as u16
+        }
+
+        fn class(&mut self, name: &str) -> u16 {
+            let name_index = self.utf8(name);
+            let mut entry = vec![7];
+            entry.extend_from_slice(&name_index.to_be_bytes());
+            self.pool.push(entry);
+            self.pool.len() as u16
+        }
+
+        fn type_annotation_entry(&mut self, target: &[u8], path: &[(u8, u8)], descriptor: &str) -> Vec<u8> {
+            let type_index = self.utf8(descriptor);
+            let mut out = Vec::new();
+            out.extend_from_slice(target);
+            out.push(path.len() as u8);
+            for &(kind, arg) in path {
+                out.push(kind);
+                out.push(arg);
+            }
+            out.extend_from_slice(&type_index.to_be_bytes());
+            out.extend_from_slice(&0u16.to_be_bytes());
+            out
+        }
+
+        fn type_annotations_attr(&mut self, attr_name: &str, entries: &[Vec<u8>]) -> Vec<u8> {
+            let name_index = self.utf8(attr_name);
+            let mut body = Vec::new();
+            body.extend_from_slice(&(entries.len() as u16).to_be_bytes());
+            for entry in entries {
+                body.extend_from_slice(entry);
+            }
+            let mut out = Vec::new();
+            out.extend_from_slice(&name_index.to_be_bytes());
+            out.extend_from_slice(&(body.len() as u32).to_be_bytes());
+            out.extend_from_slice(&body);
+            out
+        }
+
+        fn signature_attr(&mut self, signature: &str) -> Vec<u8> {
+            let name_index = self.utf8("Signature");
+            let sig_index = self.utf8(signature);
+            let mut out = Vec::new();
+            out.extend_from_slice(&name_index.to_be_bytes());
+            out.extend_from_slice(&2u32.to_be_bytes());
+            out.extend_from_slice(&sig_index.to_be_bytes());
+            out
+        }
+
+        fn add_field(&mut self, access: u16, name: &str, descriptor: &str, attrs: &[Vec<u8>]) {
+            let name_index = self.utf8(name);
+            let desc_index = self.utf8(descriptor);
+            let mut out = Vec::new();
+            out.extend_from_slice(&access.to_be_bytes());
+            out.extend_from_slice(&name_index.to_be_bytes());
+            out.extend_from_slice(&desc_index.to_be_bytes());
+            out.extend_from_slice(&(attrs.len() as u16).to_be_bytes());
+            for attr in attrs {
+                out.extend_from_slice(attr);
+            }
+            self.fields.push(out);
+        }
+
+        fn add_method(&mut self, access: u16, name: &str, descriptor: &str, attrs: &[Vec<u8>]) {
+            let name_index = self.utf8(name);
+            let desc_index = self.utf8(descriptor);
+            let mut out = Vec::new();
+            out.extend_from_slice(&access.to_be_bytes());
+            out.extend_from_slice(&name_index.to_be_bytes());
+            out.extend_from_slice(&desc_index.to_be_bytes());
+            out.extend_from_slice(&(attrs.len() as u16).to_be_bytes());
+            for attr in attrs {
+                out.extend_from_slice(attr);
+            }
+            self.methods.push(out);
+        }
+
+        fn build(mut self, name: &str) -> Vec<u8> {
+            let own = self.class(name);
+            let super_class = self.class("java/lang/Object");
+            let mut bytes = Vec::new();
+            bytes.extend_from_slice(&0xCAFE_BABEu32.to_be_bytes());
+            bytes.extend_from_slice(&0u16.to_be_bytes());
+            bytes.extend_from_slice(&65u16.to_be_bytes());
+            bytes.extend_from_slice(&((self.pool.len() + 1) as u16).to_be_bytes());
+            for entry in &self.pool {
+                bytes.extend_from_slice(entry);
+            }
+            bytes.extend_from_slice(&0x0021u16.to_be_bytes());
+            bytes.extend_from_slice(&own.to_be_bytes());
+            bytes.extend_from_slice(&super_class.to_be_bytes());
+            bytes.extend_from_slice(&0u16.to_be_bytes());
+            bytes.extend_from_slice(&(self.fields.len() as u16).to_be_bytes());
+            for field in &self.fields {
+                bytes.extend_from_slice(field);
+            }
+            bytes.extend_from_slice(&(self.methods.len() as u16).to_be_bytes());
+            for method in &self.methods {
+                bytes.extend_from_slice(method);
+            }
+            bytes.extend_from_slice(&0u16.to_be_bytes());
+            bytes
+        }
+    }
+
+    #[test]
+    fn field_type_annotations_respect_type_path() {
+        let mut builder = ClassBuilder::new();
+        let vis_top = builder.type_annotation_entry(&[0x13], &[], "Lorg/jspecify/annotations/Nullable;");
+        let attr_vis = builder.type_annotations_attr("RuntimeVisibleTypeAnnotations", &[vis_top]);
+        builder.add_field(0x0001, "visible", "Ljava/lang/String;", &[attr_vis]);
+
+        let invis_inner = builder.type_annotation_entry(&[0x13], &[(1, 0)], "Lorg/example/Nullable;");
+        let attr_invis = builder.type_annotations_attr("RuntimeInvisibleTypeAnnotations", &[invis_inner]);
+        builder.add_field(0x0001, "inner", "Lcom/example/Outer$Inner;", &[attr_invis]);
+
+        let type_arg = builder.type_annotation_entry(&[0x13], &[(3, 0)], "Lorg/jspecify/annotations/Nullable;");
+        let attr_arg = builder.type_annotations_attr("RuntimeVisibleTypeAnnotations", &[type_arg]);
+        builder.add_field(0x0001, "listOfNullable", "Ljava/util/List;", &[attr_arg]);
+
+        let array_elem = builder.type_annotation_entry(&[0x13], &[(0, 0)], "Lorg/jspecify/annotations/Nullable;");
+        let attr_elem = builder.type_annotations_attr("RuntimeVisibleTypeAnnotations", &[array_elem]);
+        builder.add_field(0x0001, "arrayOfNullable", "[Ljava/lang/String;", &[attr_elem]);
+
+        let array_ref = builder.type_annotation_entry(&[0x13], &[], "Lorg/jspecify/annotations/Nullable;");
+        let attr_ref = builder.type_annotations_attr("RuntimeVisibleTypeAnnotations", &[array_ref]);
+        builder.add_field(0x0001, "nullableArray", "[Ljava/lang/String;", &[attr_ref]);
+
+        let info = parse(&builder.build("demo/Fields")).expect("parsed");
+        let is_nullable = |name: &str| {
+            info.fields.iter().find(|f| f.name == name).expect("field").flags & flag::NULLABLE != 0
+        };
+        assert!(is_nullable("visible"));
+        assert!(is_nullable("inner"));
+        assert!(!is_nullable("listOfNullable"));
+        assert!(!is_nullable("arrayOfNullable"));
+        assert!(is_nullable("nullableArray"));
+    }
+
+    #[test]
+    fn method_return_and_parameter_type_annotations() {
+        let mut builder = ClassBuilder::new();
+
+        let ret_nullable = builder.type_annotation_entry(&[0x14], &[], "Lorg/jspecify/annotations/Nullable;");
+        let param_nullable = builder.type_annotation_entry(&[0x16, 1], &[], "Lorg/jspecify/annotations/Nullable;");
+        let attr_vis = builder.type_annotations_attr("RuntimeVisibleTypeAnnotations", &[ret_nullable, param_nullable]);
+        builder.add_method(0x0001, "load", "(Ljava/lang/String;Ljava/lang/ClassLoader;)Ljava/lang/Object;", &[attr_vis]);
+
+        let ret_invis_inner = builder.type_annotation_entry(&[0x14], &[(1, 0)], "Ljavax/annotation/CheckForNull;");
+        let param_invis_inner = builder.type_annotation_entry(&[0x16, 0], &[(1, 0)], "Lorg/example/Nullable;");
+        let attr_invis = builder.type_annotations_attr("RuntimeInvisibleTypeAnnotations", &[ret_invis_inner, param_invis_inner]);
+        builder.add_method(0x0001, "nested", "(Lcom/example/Outer$Inner;)Lcom/example/Outer$Inner;", &[attr_invis]);
+
+        let ret_type_arg = builder.type_annotation_entry(&[0x14], &[(3, 0)], "Lorg/jspecify/annotations/Nullable;");
+        let param_type_arg = builder.type_annotation_entry(&[0x16, 0], &[(3, 0)], "Lorg/jspecify/annotations/Nullable;");
+        let attr_arg = builder.type_annotations_attr("RuntimeVisibleTypeAnnotations", &[ret_type_arg, param_type_arg]);
+        let sig_list = builder.signature_attr("(Ljava/util/List<Ljava/lang/String;>;)Ljava/util/List<Ljava/lang/String;>;");
+        builder.add_method(0x0001, "listArg", "(Ljava/util/List;)Ljava/util/List;", &[attr_arg, sig_list]);
+
+        let param_generic_top = builder.type_annotation_entry(&[0x16, 0], &[], "Lorg/jspecify/annotations/Nullable;");
+        let attr_generic = builder.type_annotations_attr("RuntimeVisibleTypeAnnotations", &[param_generic_top]);
+        let sig_generic = builder.signature_attr("(Ljava/util/List<Ljava/lang/String;>;)V");
+        builder.add_method(0x0001, "nullableList", "(Ljava/util/List;)V", &[attr_generic, sig_generic]);
+
+        let param_varargs = builder.type_annotation_entry(&[0x16, 0], &[], "Lorg/jspecify/annotations/Nullable;");
+        let attr_varargs = builder.type_annotations_attr("RuntimeVisibleTypeAnnotations", &[param_varargs]);
+        builder.add_method(0x0001 | ACC_VARARGS, "varargs", "([Ljava/lang/String;)V", &[attr_varargs]);
+
+        let info = parse(&builder.build("demo/Methods")).expect("parsed");
+        let method = |name: &str| info.methods.iter().find(|m| m.name == name).expect("method");
+
+        let load = method("load");
+        assert_ne!(load.flags & flag::NULLABLE, 0);
+        assert_eq!(load.nullable_parameters, 1 << 1);
+        assert_eq!(load.shown, "java.lang.String,java.lang.@org.jspecify.annotations.Nullable ClassLoader");
+
+        let nested = method("nested");
+        assert_ne!(nested.flags & flag::NULLABLE, 0);
+        assert_ne!(nested.flags & flag::CHECK_FOR_NULL, 0);
+        assert_eq!(nested.nullable_parameters, 1);
+        assert_eq!(nested.shown, "com.example.Outer.@org.example.Nullable Inner");
+
+        let list_arg = method("listArg");
+        assert_eq!(list_arg.flags & flag::NULLABLE, 0);
+        assert_eq!(list_arg.nullable_parameters, 0);
+        assert_eq!(list_arg.shown, "java.util.List<java.lang.String>");
+
+        let nullable_list = method("nullableList");
+        assert_eq!(nullable_list.nullable_parameters, 1);
+        assert_eq!(nullable_list.shown, "java.util.@org.jspecify.annotations.Nullable List<java.lang.String>");
+
+        let varargs = method("varargs");
+        assert_eq!(varargs.nullable_parameters, 1);
+        assert_eq!(varargs.shown, "java.lang.String @org.jspecify.annotations.Nullable ...");
+    }
+
+    #[test]
+    fn skips_other_jvms_target_types_without_desync() {
+        let mut builder = ClassBuilder::new();
+        let entries = vec![
+            builder.type_annotation_entry(&[0x01, 0], &[], "Lorg/example/Other;"),
+            builder.type_annotation_entry(&[0x12, 0, 0], &[], "Lorg/example/Other;"),
+            builder.type_annotation_entry(&[0x15], &[], "Lorg/example/Other;"),
+            builder.type_annotation_entry(&[0x17, 0, 0], &[], "Lorg/example/Other;"),
+            builder.type_annotation_entry(&[0x40, 0, 1, 0, 0, 0, 10, 0, 1], &[], "Lorg/example/Other;"),
+            builder.type_annotation_entry(&[0x43, 0, 4], &[], "Lorg/example/Other;"),
+            builder.type_annotation_entry(&[0x47, 0, 8, 0], &[], "Lorg/example/Other;"),
+            builder.type_annotation_entry(&[0x14], &[], "Lorg/jspecify/annotations/Nullable;"),
+            builder.type_annotation_entry(&[0x16, 0], &[], "Lorg/jspecify/annotations/Nullable;"),
+        ];
+        let attr = builder.type_annotations_attr("RuntimeVisibleTypeAnnotations", &entries);
+        builder.add_method(0x0001, "mixed", "(Ljava/lang/Object;)Ljava/lang/Object;", &[attr]);
+
+        let info = parse(&builder.build("demo/Mixed")).expect("parsed");
+        let mixed = info.methods.iter().find(|m| m.name == "mixed").expect("method");
+        assert_ne!(mixed.flags & flag::NULLABLE, 0);
+        assert_eq!(mixed.nullable_parameters, 1);
+        assert_eq!(mixed.shown, "java.lang.@org.jspecify.annotations.Nullable Object");
+    }
+}
+

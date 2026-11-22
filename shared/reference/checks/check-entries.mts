@@ -110,6 +110,7 @@ const MESSAGE_KEYS: Readonly<Record<string, readonly string[]>> = {
   [RULE_IDS.inheritanceDepth]: ['inheritanceDepth'],
   [RULE_IDS.componentStoryMissing]: ['componentStoryMissing', 'componentStoryMissingUnenforced'],
   [RULE_IDS.javascriptInTypescriptProject]: ['javascriptInTypescriptProject'],
+  [RULE_IDS.minifiedSourceFile]: ['minifiedSourceFile'],
 };
 
 function templateAdvice(key: string): string {

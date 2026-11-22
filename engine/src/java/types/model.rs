@@ -145,8 +145,6 @@ pub mod flag {
     pub const NULL_MARKED: u32 = 1 << 24;
     /// A class or a package carries an annotation named `NullUnmarked`.
     pub const NULL_UNMARKED: u32 = 1 << 25;
-    /// A class file with type annotations on the class or a member: nullness written that way is not read.
-    pub const TYPE_MARKS: u32 = 1 << 26;
 
     pub const IMMUTABLE_NAME: &str = "com.google.errorprone.annotations.Immutable";
     pub const IMMUTABLE_PARAMETER_NAME: &str = "com.google.errorprone.annotations.ImmutableTypeParameter";

@@ -85,11 +85,13 @@ export const exceptionText: (rule: string, path: string) => string = untypedExce
 
 export const RULE_IDS: {
   readonly javascriptInTypescriptProject: string;
+  readonly minifiedSourceFile: string;
   readonly componentStoryMissing: string;
 } = untypedRuleIds;
 
 export const MESSAGES: {
   readonly javascriptInTypescriptProject: unknown;
+  readonly minifiedSourceFile: unknown;
   readonly componentStoryMissing: unknown;
   readonly componentStoryMissingUnenforced: unknown;
 } = untypedMessages;

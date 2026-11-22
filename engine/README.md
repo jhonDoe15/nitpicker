@@ -63,9 +63,8 @@ are read. The engine skips the checks a run did not select. A library class coun
 NullAway decides it: `@NullMarked` on the class, a class around it or its `package-info`, `@NullUnmarked` to
 switch it off again. A source set compiled with a module path keeps NullAway on Error Prone, because a module
 can carry `@NullMarked` too and the engine does not read that. The engine reads a class file's
-nullness from declaration annotations only; when NullAway relied on a checked class file that carries type
-annotations (JSpecify's `@Nullable` is written that way), the report says `nullAwayUnsure` and the run leaves
-NullAway to Error Prone for that source set.
+nullness from both declaration annotations and type annotations (`RuntimeVisibleTypeAnnotations` and
+`RuntimeInvisibleTypeAnnotations`, as JSpecify's `@Nullable` is written).
 
 - The other ported checks stay with Error Prone: it ends their messages with a `Did you mean ...?` sentence
   made from its suggested fix, which the engine does not write yet.
@@ -124,12 +123,12 @@ python3 parity/compare.py report.json pmd-rows.json <source dir> [rule]
 
 Measured with all 342 rules on 4 cores (findings: same / missed / extra):
 
-| Code base | Files, lines | PMD 7.16.0 wall, CPU, peak | Engine | Findings |
-| --- | --- | --- | --- | --- |
-| Nacos, all modules | 5,407, 844k | 158 s, 611 s, 2.4 GB | 44 s, 171 s, 0.5 GB | 20,506 / 1 / 4 |
-| commons-lang, main and tests | 217k lines | 52 s, 196 s, 2.7 GB | 14 s, 52 s, 0.2 GB | 4,343 / 9 / 0 |
-| jhipster-sample-app | | 10.5 s | 1.1 s | 718 / 0 / 0 |
-| Elasticsearch `server` | 5,106, 1.04M | 146 s, 565 s, 2.6 GB | 31 s, 119 s, 0.6 GB | 14,458 / 2 / 0 |
+| Code base                    | Files, lines | PMD 7.16.0 wall, CPU, peak | Engine              | Findings       |
+| ---------------------------- | ------------ | -------------------------- | ------------------- | -------------- |
+| Nacos, all modules           | 5,407, 844k  | 158 s, 611 s, 2.4 GB       | 44 s, 171 s, 0.5 GB | 20,506 / 1 / 4 |
+| commons-lang, main and tests | 217k lines   | 52 s, 196 s, 2.7 GB        | 14 s, 52 s, 0.2 GB  | 4,343 / 9 / 0  |
+| jhipster-sample-app          |              | 10.5 s                     | 1.1 s               | 718 / 0 / 0    |
+| Elasticsearch `server`       | 5,106, 1.04M | 146 s, 565 s, 2.6 GB       | 31 s, 119 s, 0.6 GB | 14,458 / 2 / 0 |
 
 The first three rows were measured before the lookup caches of #2064; the Elasticsearch row after them and after
 #2121 and #2122. The two Elasticsearch rows the engine leaves out are wrong PMD findings: PMD leaves the type of
@@ -199,11 +198,11 @@ nitpicker-engine typescript-typed --compiler <tsc of TypeScript 7> --project <ts
 nitpicker-engine typescript-type-replay --compiler <tsc> --project <tsconfig.json> --questions <jsonl> --kinds <json>
 ```
 
-| Check | What it is |
-| --- | --- |
-| `public-contracts` | The public contract usage check of `coding-standards`. It asks the compiler only about member reads named like a contract method; `--all-reads` asks about every read. |
-| `unused-api` | The unused option and unused prop check. nitpicker decides which files the program has and what role each plays and passes that with `--input`; the engine returns the targets, their members and the references it found, and nitpicker turns them into findings. |
-| `design` | The facts of the design signals check: the project's types with their fields, and its callables with their parameters, calls, reads and decisions (`src/typescript/typed/design/`). nitpicker names the files that count with `--input`, marks what is published and evaluates the rules. |
+| Check              | What it is                                                                                                                                                                                                                                                                                |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `public-contracts` | The public contract usage check of `coding-standards`. It asks the compiler only about member reads named like a contract method; `--all-reads` asks about every read.                                                                                                                    |
+| `unused-api`       | The unused option and unused prop check. nitpicker decides which files the program has and what role each plays and passes that with `--input`; the engine returns the targets, their members and the references it found, and nitpicker turns them into findings.                        |
+| `design`           | The facts of the design signals check: the project's types with their fields, and its callables with their parameters, calls, reads and decisions (`src/typescript/typed/design/`). nitpicker names the files that count with `--input`, marks what is published and evaluates the rules. |
 
 Exit status 3 with `types unavailable: <reason>` on standard error means the compiler cannot answer here (no
 binary, a version the engine's tables were not generated from, a project that does not load, a compiler option
@@ -231,18 +230,18 @@ find the same packages.
 
 Measured on Grafana, 4 cores (wall, CPU, peak memory of the process tree; findings identical in every row):
 
-| Project | Node check | Node, only named reads | Engine | Engine, `--only-named` |
-| --- | --- | --- | --- | --- |
-| Root application, 6,364 production files, 61 findings | 65.0 s, 86 s, 4.4 GB | 43.2 s, 61 s, 3.7 GB | 26.9 s, 44 s, 4.3 GB | 14.5 s, 29 s, 3.4 GB |
-| `grafana-ui`, 1,185 production files, 58 findings | 10.2 s, 19 s, 1.0 GB | 6.9 s, 13 s, 0.9 GB | 4.0 s, 8 s, 0.9 GB | 1.8 s, 4 s, 0.7 GB |
-| The 15 packages with a tsconfig, 216 findings | 53.3 s, 101 s | | | 10.8 s, 30 s |
+| Project                                               | Node check           | Node, only named reads | Engine               | Engine, `--only-named` |
+| ----------------------------------------------------- | -------------------- | ---------------------- | -------------------- | ---------------------- |
+| Root application, 6,364 production files, 61 findings | 65.0 s, 86 s, 4.4 GB | 43.2 s, 61 s, 3.7 GB   | 26.9 s, 44 s, 4.3 GB | 14.5 s, 29 s, 3.4 GB   |
+| `grafana-ui`, 1,185 production files, 58 findings     | 10.2 s, 19 s, 1.0 GB | 6.9 s, 13 s, 0.9 GB    | 4.0 s, 8 s, 0.9 GB   | 1.8 s, 4 s, 0.7 GB     |
+| The 15 packages with a tsconfig, 216 findings         | 53.3 s, 101 s        |                        |                      | 10.8 s, 30 s           |
 
 Unused option and unused prop check on the same machine, whole nitpicker call (findings identical):
 
-| Project | Node check | Through the engine |
-| --- | --- | --- |
+| Project                                      | Node check           | Through the engine   |
+| -------------------------------------------- | -------------------- | -------------------- |
 | Root application, 2,378 targets, 17 findings | 49.8 s, 68 s, 3.8 GB | 32.2 s, 48 s, 4.5 GB |
-| `grafana-ui`, 331 targets, 9 findings | 10.0 s, 17 s, 1.0 GB | 6.1 s, 10 s, 1.1 GB |
+| `grafana-ui`, 331 targets, 9 findings        | 10.0 s, 17 s, 1.0 GB | 6.1 s, 10 s, 1.1 GB  |
 
 Of the 32.2 s, 24.6 s is the engine waiting for the compiler's answers to 275,680 questions.
 
@@ -283,22 +282,21 @@ compares a whole code base the same way.
 
 Measured on 4 cores against Error Prone running only these checks (findings: same / missed / extra):
 
-| Code base | Files, lines | Error Prone wall, CPU, peak | Engine | Findings |
-| --- | --- | --- | --- | --- |
-| Elasticsearch `server` | 5,106, 1,035k | 26.5 s, 75.6 s, 3.4 GB | 7.8 s, 28.6 s, 0.5 GB | 5,476 / 4 / 0 |
-| Nacos | 3,118, 548k | 13.4 s, 42.3 s, 1.5 GB | 5.5 s, 13.1 s, 0.3 GB | 4,837 / 7 / 7 |
-| javaparser-core | 594, 121k | 7.8 s, 24.2 s, 0.9 GB | 1.0 s, 3.5 s, 0.1 GB | 5,399 / 0 / 6 |
-| Guava | 610, 183k | 7.2 s, 22.8 s, 0.8 GB | 1.1 s, 3.8 s, 0.1 GB | 198 / 0 / 0 |
-| jackson-databind | 478, 134k | 5.0 s, 16.0 s, 0.5 GB | 0.8 s, 2.7 s, 0.1 GB | 1,130 / 0 / 0 |
-| commons-lang | 264, 106k | 3.3 s, 10.6 s, 0.4 GB | 0.5 s, 1.5 s, 0.1 GB | 302 / 0 / 0 |
-| MyBatis | 393, 40k | 3.3 s, 10.6 s, 0.4 GB | 0.3 s, 0.9 s, 0.1 GB | 155 / 0 / 0 |
+| Code base              | Files, lines  | Error Prone wall, CPU, peak | Engine                | Findings      |
+| ---------------------- | ------------- | --------------------------- | --------------------- | ------------- |
+| Elasticsearch `server` | 5,106, 1,035k | 26.5 s, 75.6 s, 3.4 GB      | 7.8 s, 28.6 s, 0.5 GB | 5,476 / 4 / 0 |
+| Nacos                  | 3,118, 548k   | 13.4 s, 42.3 s, 1.5 GB      | 5.5 s, 13.1 s, 0.3 GB | 4,837 / 7 / 7 |
+| javaparser-core        | 594, 121k     | 7.8 s, 24.2 s, 0.9 GB       | 1.0 s, 3.5 s, 0.1 GB  | 5,399 / 0 / 6 |
+| Guava                  | 610, 183k     | 7.2 s, 22.8 s, 0.8 GB       | 1.1 s, 3.8 s, 0.1 GB  | 198 / 0 / 0   |
+| jackson-databind       | 478, 134k     | 5.0 s, 16.0 s, 0.5 GB       | 0.8 s, 2.7 s, 0.1 GB  | 1,130 / 0 / 0 |
+| commons-lang           | 264, 106k     | 3.3 s, 10.6 s, 0.4 GB       | 0.5 s, 1.5 s, 0.1 GB  | 302 / 0 / 0   |
+| MyBatis                | 393, 40k      | 3.3 s, 10.6 s, 0.4 GB       | 0.3 s, 0.9 s, 0.1 GB  | 155 / 0 / 0   |
 
 `--release <n>` gives the Java release the sources are compiled for. When it is older than the JDK, the type
 index reads the library of that release from the JDK's `lib/ct.sym`, as javac does, so a `List` method added in
 Java 21 is not there for code compiled with `--release 17`. With it (javaparser-core is built for 17) the seven
 code bases give the same findings as Error Prone; the differences in the table were type questions closed since
 it was measured.
-
 
 ## SpotBugs patterns
 
@@ -320,15 +318,15 @@ Measured on 4 cores (findings: same / missed / extra, exposed representation the
 runs all its patterns and needs compiled classes first (31 s for Elasticsearch `server`); the engine column is
 these five patterns from source:
 
-| Code base | Files, lines | SpotBugs wall, CPU, peak | Engine | Exposed representation | Constructor throw |
-| --- | --- | --- | --- | --- | --- |
-| Elasticsearch `server` | 5,106, 1,035k | 249 s, 417 s, 3.2 GB | 8.0 s, 28.9 s, 0.5 GB | 4,330 / 5 / 1 | 1,539 / 0 / 0 |
-| Nacos | 3,118, 548k | 108 s, 242 s, 2.9 GB | 5.6 s, 18.0 s, 0.3 GB | 2,440 / 0 / 6 | 85 / 0 / 0 |
-| javaparser-core | 594, 121k | 48.3 s, 97.2 s, 2.3 GB | 0.9 s, 3.0 s, 0.1 GB | 500 / 0 / 0 | 17 / 0 / 0 |
-| Guava | 610, 183k | 43.6 s, 99.8 s, 1.8 GB | 1.3 s, 4.3 s, 0.1 GB | 14 / 0 / 0 | 0 / 0 / 0 |
-| jackson-databind | 478, 134k | 35.7 s, 78.2 s, 1.7 GB | 0.9 s, 3.3 s, 0.1 GB | 224 / 0 / 0 | 17 / 0 / 0 |
-| commons-lang | 264, 106k | 19.9 s, 50.5 s, 1.2 GB | 0.7 s, 2.2 s, 0.1 GB | 15 / 0 / 0 | 17 / 0 / 0 |
-| MyBatis | 393, 40k | 15.5 s, 50.3 s, 0.9 GB | 0.4 s, 1.2 s, 0.1 GB | 173 / 0 / 0 | 32 / 0 / 0 |
+| Code base              | Files, lines  | SpotBugs wall, CPU, peak | Engine                | Exposed representation | Constructor throw |
+| ---------------------- | ------------- | ------------------------ | --------------------- | ---------------------- | ----------------- |
+| Elasticsearch `server` | 5,106, 1,035k | 249 s, 417 s, 3.2 GB     | 8.0 s, 28.9 s, 0.5 GB | 4,330 / 5 / 1          | 1,539 / 0 / 0     |
+| Nacos                  | 3,118, 548k   | 108 s, 242 s, 2.9 GB     | 5.6 s, 18.0 s, 0.3 GB | 2,440 / 0 / 6          | 85 / 0 / 0        |
+| javaparser-core        | 594, 121k     | 48.3 s, 97.2 s, 2.3 GB   | 0.9 s, 3.0 s, 0.1 GB  | 500 / 0 / 0            | 17 / 0 / 0        |
+| Guava                  | 610, 183k     | 43.6 s, 99.8 s, 1.8 GB   | 1.3 s, 4.3 s, 0.1 GB  | 14 / 0 / 0             | 0 / 0 / 0         |
+| jackson-databind       | 478, 134k     | 35.7 s, 78.2 s, 1.7 GB   | 0.9 s, 3.3 s, 0.1 GB  | 224 / 0 / 0            | 17 / 0 / 0        |
+| commons-lang           | 264, 106k     | 19.9 s, 50.5 s, 1.2 GB   | 0.7 s, 2.2 s, 0.1 GB  | 15 / 0 / 0             | 17 / 0 / 0        |
+| MyBatis                | 393, 40k      | 15.5 s, 50.3 s, 0.9 GB   | 0.4 s, 1.2 s, 0.1 GB  | 173 / 0 / 0            | 32 / 0 / 0        |
 
 Exposed representation, 12 differences (7,696 same):
 
@@ -423,11 +421,11 @@ pass finds where a value is dereferenced whichever way the flow goes, a forward 
 each local variable and field. Measured on Elasticsearch `server` (4 cores), where SpotBugs reports 647 findings
 of the three patterns (87% of its 746 null findings):
 
-| Pattern | Same | Missed | Extra |
-| --- | --- | --- | --- |
-| `NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE` | 485 | 61 | 11 |
-| `NP_NULL_ON_SOME_PATH` | 92 | 9 | 11 |
-| `NP_ALWAYS_NULL` | 0 | 0 | 0 |
+| Pattern                                  | Same | Missed | Extra |
+| ---------------------------------------- | ---- | ------ | ----- |
+| `NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE` | 485  | 61     | 11    |
+| `NP_NULL_ON_SOME_PATH`                   | 92   | 9      | 11    |
+| `NP_ALWAYS_NULL`                         | 0    | 0      | 0     |
 
 With the three patterns the run takes 18.0 s, 67 CPU s and 0.58 GB at its peak on that code base, 8.0 s and
 30 CPU s more than the other five patterns alone; SpotBugs with all its patterns takes 249 s, 417 CPU s and
@@ -474,7 +472,6 @@ Not rebuilt yet: `NP_NULL_PARAM_DEREF` and its variants, `NP_GUARANTEED_DEREF`,
 `RCN_` family, `NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE`, `NP_BOOLEAN_RETURN_NULL` and
 `NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT`. Other code bases are not compared yet.
 
-
 ## Names the compiler makes up
 
 SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in
@@ -510,15 +507,15 @@ them, and `parity/javac/run.sh` writes it again. `--rules _JavacNames` lists the
 Measured against the class files of the seven code bases (same / missed / extra, by kind, line, name and
 parameter types). Listing the names takes 11.1 s wall, 35.7 s CPU and 0.6 GB for Elasticsearch `server`:
 
-| Code base | Anonymous classes | Local classes | Lambdas | Method references | Serializable lambdas |
-| --- | --- | --- | --- | --- | --- |
-| Elasticsearch `server` | 1,867 / 0 / 0 | 18 / 0 / 0 | 7,501 / 94 / 89 | 248 / 0 / 1 | 0 |
-| Nacos | 475 / 0 / 0 | 0 | 704 / 3 / 3 | 2 / 0 / 0 | 0 |
-| javaparser-core | 34 / 0 / 0 | 1 / 0 / 0 | 920 / 0 / 0 | 1 / 0 / 0 | 0 |
-| Guava | 383 / 0 / 0 | 25 / 0 / 0 | 242 / 0 / 0 | 1 / 0 / 0 | 0 |
-| jackson-databind | 27 / 0 / 0 | 0 | 3 / 0 / 0 | 0 | 0 |
-| commons-lang | 17 / 0 / 0 | 0 | 286 / 0 / 0 | 11 / 0 / 0 | 36 / 0 / 0 |
-| MyBatis | 10 / 0 / 0 | 0 | 72 / 0 / 0 | 1 / 0 / 0 | 0 |
+| Code base              | Anonymous classes | Local classes | Lambdas         | Method references | Serializable lambdas |
+| ---------------------- | ----------------- | ------------- | --------------- | ----------------- | -------------------- |
+| Elasticsearch `server` | 1,867 / 0 / 0     | 18 / 0 / 0    | 7,501 / 94 / 89 | 248 / 0 / 1       | 0                    |
+| Nacos                  | 475 / 0 / 0       | 0             | 704 / 3 / 3     | 2 / 0 / 0         | 0                    |
+| javaparser-core        | 34 / 0 / 0        | 1 / 0 / 0     | 920 / 0 / 0     | 1 / 0 / 0         | 0                    |
+| Guava                  | 383 / 0 / 0       | 25 / 0 / 0    | 242 / 0 / 0     | 1 / 0 / 0         | 0                    |
+| jackson-databind       | 27 / 0 / 0        | 0             | 3 / 0 / 0       | 0                 | 0                    |
+| commons-lang           | 17 / 0 / 0        | 0             | 286 / 0 / 0     | 11 / 0 / 0        | 36 / 0 / 0           |
+| MyBatis                | 10 / 0 / 0        | 0             | 72 / 0 / 0      | 1 / 0 / 0         | 0                    |
 
 12,885 names are the same. The 97 that differ:
 

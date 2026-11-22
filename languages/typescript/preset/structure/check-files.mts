@@ -18,6 +18,7 @@ export const STRUCTURE_CHECK_FILES = [
   'languages/typescript/preset/structure/component-stories.mjs',
   'languages/typescript/preset/structure/project-findings.mjs',
   'languages/typescript/preset/structure/sources/javascript-files.mjs',
+  'languages/typescript/preset/structure/sources/minified-files.mjs',
   'languages/typescript/preset/modules/tsconfig-files.mjs',
   'shared/project-rules/source-rules.mjs',
   'languages/typescript/preset/syntax/children.mjs',

@@ -17,6 +17,7 @@ import { withEngineLint } from './run/engine-pass.mts';
 import { mergeResults } from './run/merged-results.mts';
 import { type LintTiming, type StageRun, lintConfigs, settledBeside } from './run/stage-lint.mts';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
+import { withProjectFilesSnapshot } from '../../../../shared/project-files/snapshot/listing-snapshot.mts';
 import { oxlintBinary, spawnJson } from './oxlint-process.mts';
 import type { Environment } from '../../../../shared/processes/environment.mts';
 import {
@@ -59,17 +60,25 @@ type Outcome = Accepted | { readonly results: undefined };
 const PLAN_PATH = fileURLToPath(checkoutModuleUrl(new URL('oxlint-plan.mjs', import.meta.url)));
 const MAX_CONFIGURATION_ATTEMPTS = 20;
 
-export async function lintWithOxlint({
-  options,
-  environment,
-  projectConfigPath,
-  runEslintCli,
-}: {
+type OxlintRunRequest = {
   readonly options: LintEngineOptions;
   readonly environment: Environment;
   readonly projectConfigPath: string | undefined;
   readonly runEslintCli: RunEslintCli;
-}): Promise<LintResult[]> {
+};
+
+export async function lintWithOxlint(request: OxlintRunRequest): Promise<LintResult[]> {
+  return withProjectFilesSnapshot(request.options.projectRoot, (snapshotEnvironment) =>
+    runOxlint({ ...request, environment: { ...request.environment, ...snapshotEnvironment } }),
+  );
+}
+
+async function runOxlint({
+  options,
+  environment,
+  projectConfigPath,
+  runEslintCli,
+}: OxlintRunRequest): Promise<LintResult[]> {
   const plan = planFor(options, environment);
   const files = plan.groups.flatMap((group) => group.files);
   const { root, stage } = createStage(options.projectRoot, projectConfigPath);

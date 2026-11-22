@@ -101,23 +101,10 @@ fn traced(context: &Context, node: Node, switch: &'static str) -> bool {
     }
 }
 
-static UNREAD: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-
-/// Whether a class file that counts as checked carries type annotations: `@Nullable` written on a type is in
-/// them, and it is not read, so the findings of the run may differ from NullAway's.
-pub fn unread_marks() -> bool {
-    UNREAD.load(std::sync::atomic::Ordering::Relaxed)
-}
-
 fn annotated(context: &Context, class: &str) -> bool {
     let packages = annotated_packages();
     let listed = packages.is_empty() || packages.iter().any(|package| class.starts_with(package.as_str()) && class[package.len()..].starts_with('.'));
-    let index = context.resolver.index;
-    let checked = index.null_checked(class, listed);
-    if checked && index.get(class).is_some_and(|info| info.flags & flag::TYPE_MARKS != 0) {
-        UNREAD.store(true, std::sync::atomic::Ordering::Relaxed);
-    }
-    checked
+    context.resolver.index.null_checked(class, listed)
 }
 
 fn strip(mut node: Node) -> Node {

@@ -15,6 +15,7 @@ import {
   ENGINE_FINDINGS_FILE,
   replayEngineFindingsFrom,
 } from '../preset/eslint-config/react/engine-replay.mts';
+import { withTokenReleasingParsers } from './eslint/token-release/token-releasing-parser.mts';
 
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 
@@ -55,13 +56,15 @@ shareSolverAnswers(answerStore(optionalEnvironmentPath(SOLVER_ANSWERS_ENVIRONMEN
 
 replayEngineFindingsFrom(optionalEnvironmentPath(ENGINE_FINDINGS_FILE));
 
-export default guardedEntries(
-  (
-    await layeredPolicy(
-      [...entriesOf(policyModule), ...scopedEntries(extraPolicyModule)],
-      process.env,
-    )
-  ).map((entry) => rebaseTypeScriptProject(entry, projectRoot, projectConfigPath)),
+export default withTokenReleasingParsers(
+  guardedEntries(
+    (
+      await layeredPolicy(
+        [...entriesOf(policyModule), ...scopedEntries(extraPolicyModule)],
+        process.env,
+      )
+    ).map((entry) => rebaseTypeScriptProject(entry, projectRoot, projectConfigPath)),
+  ),
 );
 
 function entriesOf(module: unknown): PolicyEntry[] {

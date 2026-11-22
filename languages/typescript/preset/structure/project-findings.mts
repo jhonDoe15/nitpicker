@@ -4,6 +4,7 @@ import { typescriptClassLimitFindings } from './classes/class-limit-findings.mts
 import { componentStoryFindings } from './component-stories.mts';
 import { typescriptFileLimitFindings } from './limits/file-limits.mts';
 import { javascriptFileFindings } from './sources/javascript-files.mts';
+import { minifiedSourceFindings } from './sources/minified-files.mts';
 import { uncollectedWorkspaceTestFindings } from './workspace-tests.mts';
 
 export function typescriptStructureProjectFindings(
@@ -30,6 +31,7 @@ export function typescriptStructureProjectFindings(
     ...typescriptFileLimitFindings(projectRoot, analyzerName, environment),
     ...typescriptClassLimitFindings(projectRoot, analyzerName, environment),
     ...javascriptFileFindings({ projectRoot, liveProjectRoot, analyzerName, layout, policy }),
+    ...minifiedSourceFindings({ projectRoot, analyzerName, layout, policy }),
     ...componentStoryFindings({
       projectRoot,
       liveProjectRoot,

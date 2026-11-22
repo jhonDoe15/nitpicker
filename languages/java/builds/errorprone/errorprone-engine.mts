@@ -95,12 +95,10 @@ function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
   if (unparsed.length > 0) {
     throw new Error(`it could not read ${unparsed[0] ?? ''}`);
   }
-  const unsure = fieldOf(report, 'nullAwayUnsure') === true;
-  const checks = selected.checks.filter((check) => check !== NULL_AWAY || !unsure);
   const skipped = generatedRoots(set.head).map((root) => `${root.split(path.sep).join('/')}/`);
   const rows = listOf(fieldOf(report, 'findings'))
     .map(engineFindingOf)
-    .filter(({ rule }) => checks.includes(rule))
+    .filter(({ rule }) => selected.checks.includes(rule))
     .filter(({ file: source }) => {
       const slashed = source.split(path.sep).join('/');
       return !skipped.some((root) => slashed.includes(root));
@@ -110,7 +108,7 @@ function diagnosticsOf(file: string, setting: Setting): EngineDiagnostic[] {
     file,
     withProjectFlags(
       text,
-      checks.map((check) => `-Xep:${check}:OFF`),
+      selected.checks.map((check) => `-Xep:${check}:OFF`),
     ),
   );
   return diagnostics;

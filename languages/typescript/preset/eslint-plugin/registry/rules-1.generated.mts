@@ -1,14 +1,21 @@
 import { rule as ruleBoundedContainerTeardown } from '../rules/test-runtime/lifecycle/bounded-container-teardown.mts';
+import { rule as ruleChildProcessAfterLocalWork } from '../rules/processes/child-process-order/child-process-after-local-work.mts';
 import { rule as ruleCognitiveComplexity } from '../rules/analysis/cognitive-complexity.mts';
+import { rule as ruleConfigLookupWithoutParentWalk } from '../rules/paths/config-lookup/config-lookup-without-parent-walk.mts';
 import { rule as ruleContainerPauseRequiresFinallyUnpause } from '../rules/test-runtime/lifecycle/container-pause-requires-finally-unpause.mts';
 import { rule as ruleContractInfrastructureType } from '../rules/contracts/contract-infrastructure-type.mts';
 import { rule as ruleExhaustiveUnionPredicate } from '../rules/api-shape/exhaustive-union-predicate.mts';
 import { rule as ruleFakeTimersRequireRestore } from '../test-quality/fake-timers-require-restore.mts';
 import { rule as ruleFileNameCasing } from '../rules/naming/file-name-casing.mts';
+import { rule as ruleGoServerWithoutGcTarget } from '../rules/processes/go-gc/go-server-without-gc-target.mts';
 import { rule as ruleHandlerEntityType } from '../rules/handlers/handler-entity-type.mts';
 import { rule as ruleHermeticGitInTests } from '../rules/test-runtime/processes/hermetic-git-in-tests.mts';
 import { rule as ruleHoverTestNeedsKeyboard } from '../rules/react-tests/hover-test-needs-keyboard.mts';
 import { rule as ruleIntegrationTestUsesApprovedHarness } from '../rules/test-runtime/processes/integration-test-uses-approved-harness.mts';
+import { rule as ruleJsonStringifyUnboundedList } from '../rules/repeated-work/unbounded-json/json-stringify-unbounded-list.mts';
+import { rule as ruleJvmHeapCeilingWithoutGoal } from '../rules/processes/jvm-heap/jvm-heap-ceiling-without-goal.mts';
+import { rule as ruleLoopInvariantCollectionCopy } from '../rules/repeated-work/invariant-copy/loop-invariant-collection-copy.mts';
+import { rule as ruleMaterializeBeforeSinglePass } from '../rules/repeated-work/materialize/materialize-before-single-pass.mts';
 import { rule as ruleNamingConvention } from '../rules/wrapped/naming-convention.mts';
 import { rule as ruleNoAccumulatingSpread } from '../rules/collections/no-accumulating-spread.mts';
 import { rule as ruleNoAccumulatorConcat } from '../rules/collections/no-accumulator-concat.mts';
@@ -91,26 +98,26 @@ import { rule as ruleNoLossyUtf8Decode } from '../rules/decoding/no-lossy-utf8-d
 import { rule as ruleNoMagicNumbers } from '../rules/wrapped/no-magic-numbers.mts';
 import { rule as ruleNoMalformedQueryText } from '../rules/query-text/no-malformed-query-text.mts';
 import { rule as ruleNoManagedResourceConstructionOutsideCompositionRoots } from '../rules/boundaries/no-managed-resource-construction-outside-composition-roots.mts';
-import { rule as ruleNoManyToManyCascadeRemove } from '../rules/persistence/no-many-to-many-cascade-remove.mts';
-import { rule as ruleNoMismatchedPreconditionMessage } from '../rules/preconditions/no-mismatched-precondition-message.mts';
-import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
-import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
-import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
-import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multiple-collection-joins.mts';
-import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutating-method-in-domain.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
+  'child-process-after-local-work': ruleChildProcessAfterLocalWork,
   'cognitive-complexity': ruleCognitiveComplexity,
+  'config-lookup-without-parent-walk': ruleConfigLookupWithoutParentWalk,
   'container-pause-requires-finally-unpause': ruleContainerPauseRequiresFinallyUnpause,
   'contract-infrastructure-type': ruleContractInfrastructureType,
   'exhaustive-union-predicate': ruleExhaustiveUnionPredicate,
   'fake-timers-require-restore': ruleFakeTimersRequireRestore,
   'file-name-casing': ruleFileNameCasing,
+  'go-server-without-gc-target': ruleGoServerWithoutGcTarget,
   'handler-entity-type': ruleHandlerEntityType,
   'hermetic-git-in-tests': ruleHermeticGitInTests,
   'hover-test-needs-keyboard': ruleHoverTestNeedsKeyboard,
   'integration-test-uses-approved-harness': ruleIntegrationTestUsesApprovedHarness,
+  'json-stringify-unbounded-list': ruleJsonStringifyUnboundedList,
+  'jvm-heap-ceiling-without-goal': ruleJvmHeapCeilingWithoutGoal,
+  'loop-invariant-collection-copy': ruleLoopInvariantCollectionCopy,
+  'materialize-before-single-pass': ruleMaterializeBeforeSinglePass,
   'naming-convention': ruleNamingConvention,
   'no-accumulating-spread': ruleNoAccumulatingSpread,
   'no-accumulator-concat': ruleNoAccumulatorConcat,
@@ -194,11 +201,4 @@ export const partRules = {
   'no-malformed-query-text': ruleNoMalformedQueryText,
   'no-managed-resource-construction-outside-composition-roots':
     ruleNoManagedResourceConstructionOutsideCompositionRoots,
-  'no-many-to-many-cascade-remove': ruleNoManyToManyCascadeRemove,
-  'no-mismatched-precondition-message': ruleNoMismatchedPreconditionMessage,
-  'no-mocking-subject-under-test': ruleNoMockingSubjectUnderTest,
-  'no-module-level-let': ruleNoModuleLevelLet,
-  'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
-  'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
-  'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
 };
