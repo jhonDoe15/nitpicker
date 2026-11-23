@@ -93,6 +93,8 @@ function createEslintCheckAnalyzer(check: QualityChecks['eslintChecks'][number])
       patterns: check.patterns,
       exclusions: check.exclusions,
       policyFiles: check.policyFiles,
+      timeoutMs: check.timeoutMs,
+      timeoutScale: check.timeoutScale,
       shardWeight: check.shardWeight,
       colocatedWith: check.colocatedWith,
       carriedBy: check.carriedBy,

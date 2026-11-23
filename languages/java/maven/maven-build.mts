@@ -16,8 +16,7 @@ import { buildRunsArchRules } from './spring/arch-rules-gate.mts';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mts';
 import { writeSpringRuleset } from '../adapters/spring/proxies/proxy-ruleset.mts';
 import { MAVEN_PRESETS } from '../adapters/gradle-presets.mts';
-import { processorTool } from './errorprone/maven-errorprone.mts';
-import { compilerOf } from './errorprone/compiler-types.mts';
+import { withProcessorTools } from './processors/processor-tools.mts';
 import { removeQuietly } from '../builds/cleanup/remove-quietly.mts';
 import { readPinnedTools } from '../builds/java-build.mts';
 import { kotlinSetup } from './kotlin/kotlin-setup.mts';
@@ -149,16 +148,10 @@ function analyzeAll({
     .filter((failure) => failure !== undefined);
 }
 
-function formatterVersion(policy: JavaPolicy): unknown {
-  return fieldOf(javaFormatterSettings(policy.conventions), 'version');
-}
-
-function extraTools({ modules, analyzed, policy, pinned, kotlin }: ToolsRequest): unknown[] {
+function extraTools({ analyzed, policy, pinned, kotlin }: ToolsRequest): unknown[] {
+  const version = fieldOf(javaFormatterSettings(policy.conventions), 'version');
   return [
-    ...modules
-      .map((module): unknown => processorTool(compilerOf(module['compiler'])))
-      .filter((tool) => tool !== undefined),
-    ...listOf(callUntyped(formatTool, policy.javaStyle, pinned, formatterVersion(policy))),
+    ...listOf(callUntyped(formatTool, policy.javaStyle, pinned, version)),
     ...listOf(fieldOf(kotlin, 'extraTools')),
     ...listOf(
       callUntyped(archunitTool, pinned, { runsRules: buildRunsArchRules(policy, analyzed) }),
@@ -178,13 +171,17 @@ function requireMavenPreset(preset: string | undefined): void {
 function presetTools(
   run: MavenRun & { readonly environment: JavaEnvironment | undefined },
   request: ToolsRequest,
-): unknown {
-  return callUntyped(resolveTools, {
+): { readonly tools: unknown; readonly processorFailures: unknown } {
+  const projectRoot = run.mavenRoot;
+  const base = callUntyped(resolveTools, {
     ...run,
-    projectRoot: run.mavenRoot,
+    projectRoot,
     launcherVersions: run.quick || run.mutationOff ? [] : missingLauncherVersions(request.analyzed),
     extraTools: extraTools(request),
   });
+  const raw = callUntyped(withProcessorTools, base, { ...run, ...request, projectRoot });
+  const tools = fieldOf(raw, 'tools');
+  return { tools, processorFailures: fieldOf(raw, 'processorFailures') };
 }
 
 function buildReactor(
@@ -222,11 +219,11 @@ function prepare(
   const failedModules = new Set(failed.map((entry) => entry.module));
   const checked = modules.filter((module) => !failedModules.has(module));
   const analyzed = checked.map((module) => ({ module, classpaths: readClasspaths(work, module) }));
-  const tools = presetTools(
+  const resolved = presetTools(
     { ...run, environment },
-    { modules: checked, analyzed, policy, pinned: run.pinned, kotlin },
+    { modules: checked, analyzed, policy, pinned: run.pinned, kotlin, effectivePom },
   );
-  return { modules: checked, built, scope, kotlin, since, analyzed, tools, timedOut, failed };
+  return { modules: checked, built, scope, kotlin, since, analyzed, ...resolved, timedOut, failed };
 }
 
 function mavenRunOf(

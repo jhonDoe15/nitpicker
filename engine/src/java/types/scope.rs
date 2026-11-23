@@ -348,7 +348,17 @@ impl<'a> Resolver<'a> {
             }
             "wildcard" => {
                 let bound = crate::engine::source::named_children(node).into_iter().rev().find_map(|part| self.written(part, keep));
-                Some(bound.unwrap_or(Type::Wildcard))
+                Some(match bound {
+                    Some(bound) => {
+                        let kind = if children(node).iter().any(|part| part.kind() == "super") {
+                            super::model::WildcardKind::Super
+                        } else {
+                            super::model::WildcardKind::Extends
+                        };
+                        Type::Bounded(kind, Box::new(bound))
+                    }
+                    None => Type::Wildcard,
+                })
             }
             "annotated_type" => self.written(crate::engine::source::named_children(node).pop()?, keep),
             "type_identifier" | "scoped_type_identifier" | "identifier" | "scoped_identifier" => {

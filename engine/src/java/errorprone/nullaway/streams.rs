@@ -151,7 +151,7 @@ impl<'t> Flow<'_, 't> {
         let (declaring, function) = resolver.index.functional_method(interface)?;
         let Type::Variable(own) = function.generic_parameters.get(position)? else { return None };
         let slot = declaring.type_parameters.iter().position(|(name, _)| name == own).filter(|_| declaring.name == *interface)?;
-        let Type::Variable(variable) = parts.get(slot)? else { return None };
+        let Type::Variable(variable) = parts.get(slot)?.unwrap_bound() else { return None };
         if !method.type_parameters.contains(variable) {
             return None;
         }

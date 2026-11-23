@@ -20,6 +20,7 @@ type EslintAnalyzerSettings = {
   readonly policyFiles?: readonly string[] | undefined;
   readonly environment?: Readonly<Record<string, string | undefined>> | undefined;
   readonly timeoutMs?: number | undefined;
+  readonly timeoutScale?: unknown;
   readonly shardWeight?: number | undefined;
   readonly policyFromPackage?: true | undefined;
   readonly colocatedWith?: string | undefined;
@@ -95,6 +96,7 @@ export function createEslintAnalyzer(settings: EslintAnalyzerSettings): {
     exclusions,
     lintedGlobs: { include: patterns, exclude: exclusions },
     timeoutMs: settings.timeoutMs,
+    ...(settings.timeoutScale === undefined ? {} : { timeoutScale: settings.timeoutScale }),
     shardWeight,
     ...(colocatedWith === undefined ? {} : { colocatedWith }),
     ...(carriedBy === undefined ? {} : { carriedBy }),

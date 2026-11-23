@@ -1,5 +1,5 @@
 //! A minimal class-file reader: name, supertypes, fields and method descriptors. Nothing else is read.
-use super::model::{ClassInfo, Detail, Field, Method, OBJECT, Type, flag};
+use super::model::{ClassInfo, Detail, Field, Method, OBJECT, Type, WildcardKind, flag};
 
 struct Reader<'a> {
     data: &'a [u8],
@@ -76,9 +76,13 @@ impl<'a> Signature<'a> {
                     self.at += 1;
                     arguments.push(Type::Wildcard);
                 }
-                b'+' | b'-' => {
+                b'+' => {
                     self.at += 1;
-                    arguments.push(self.kind()?);
+                    arguments.push(Type::Bounded(WildcardKind::Extends, Box::new(self.kind()?)));
+                }
+                b'-' => {
+                    self.at += 1;
+                    arguments.push(Type::Bounded(WildcardKind::Super, Box::new(self.kind()?)));
                 }
                 _ => arguments.push(self.kind()?),
             }

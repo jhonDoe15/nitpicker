@@ -27,16 +27,18 @@ function pom(artifactId: string, body: string): string {
 export function writeToolsProject(
   directory: string,
   tools: Readonly<Record<string, readonly string[]>>,
+  repositoriesXml = '',
 ): void {
+  const extra = repositoriesXml === '' ? '' : `${repositoriesXml}\n`;
   for (const [name, dependencies] of Object.entries(tools)) {
     mkdirSync(toolPath(directory, name), { recursive: true });
     writeFileSync(
       toolPath(directory, name, POM),
-      pom(name, `<dependencies>${dependencies.join('')}</dependencies>`),
+      pom(name, `${extra}<dependencies>${dependencies.join('')}</dependencies>`),
     );
   }
   const modules = Object.keys(tools)
     .map((name) => `<module>${name}</module>`)
     .join('');
-  writeFileSync(path.join(directory, POM), pom('tools', `<modules>${modules}</modules>`));
+  writeFileSync(path.join(directory, POM), pom('tools', `${extra}<modules>${modules}</modules>`));
 }

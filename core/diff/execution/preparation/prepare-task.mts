@@ -51,18 +51,33 @@ export type PreparedTask = {
 };
 
 const DEFAULT_ANALYZER_TIMEOUT_MS = 5 * 60 * 1000;
+const DEFAULT_PER_THOUSAND_FILES_MS = 2 * 60 * 1000;
+const DEFAULT_FILES_PER_STEP = 1000;
+
+function defaultSizeAllowanceMs(liveProjectRoot: string, countFiles: FileCounter): number {
+  const extraThousands = Math.max(
+    0,
+    Math.ceil(countFiles(liveProjectRoot, []) / DEFAULT_FILES_PER_STEP) - 1,
+  );
+  return extraThousands * DEFAULT_PER_THOUSAND_FILES_MS;
+}
 
 function sizeAllowanceMs(
   analyzer: Record<string, unknown>,
   liveProjectRoot: string,
   countFiles: FileCounter,
 ): number {
-  const scale = deadlineScaleOf(analyzer);
-  if (analyzer['configuredTimeout'] === true || scale === undefined) {
+  if (analyzer['configuredTimeout'] === true) {
     return 0;
   }
-  const modulesMs = moduleAllowanceMs(analyzer, liveProjectRoot);
-  return scaledDeadlineMs(modulesMs, scale, scaledFileCount(scale, liveProjectRoot, countFiles));
+  const scale = deadlineScaleOf(analyzer);
+  if (scale !== undefined) {
+    const modulesMs = moduleAllowanceMs(analyzer, liveProjectRoot);
+    return scaledDeadlineMs(modulesMs, scale, scaledFileCount(scale, liveProjectRoot, countFiles));
+  }
+  return typeof analyzer['timeoutMs'] === 'number'
+    ? 0
+    : defaultSizeAllowanceMs(liveProjectRoot, countFiles);
 }
 
 function baseTimeoutMs(analyzer: Record<string, unknown>): number {

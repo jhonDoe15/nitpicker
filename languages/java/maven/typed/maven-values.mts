@@ -8,6 +8,7 @@ export type ToolSetRequest = {
   readonly projectRoot: string;
   readonly maven?: string | undefined;
   readonly tools: Readonly<Record<string, readonly string[]>>;
+  readonly repositoriesXml?: string | undefined;
   readonly spawn?: JavaSpawn | undefined;
   readonly timeoutMs?: number | undefined;
   readonly environment?: JavaEnvironment | undefined;

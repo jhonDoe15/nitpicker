@@ -25,19 +25,23 @@ function writeReport(reportDir: string, name: string, content: string): void {
   writeFileSync(full, content);
 }
 
-export function skipWithoutJdk(
+export function writeSkipReport(
   { reportDir, file, placeholders = {} }: SkipRequest,
-  action: () => void,
+  reason: string,
 ): void {
+  writeReport(reportDir, file, `${reason}\n`);
+  for (const [name, content] of Object.entries(placeholders)) {
+    writeReport(reportDir, name, content);
+  }
+}
+
+export function skipWithoutJdk(request: SkipRequest, action: () => void): void {
   try {
     action();
   } catch (error) {
     if (!isNoFittingJdk(error)) {
       throw error;
     }
-    writeReport(reportDir, file, `${messageOf(error)}\n`);
-    for (const [name, content] of Object.entries(placeholders)) {
-      writeReport(reportDir, name, content);
-    }
+    writeSkipReport(request, messageOf(error));
   }
 }

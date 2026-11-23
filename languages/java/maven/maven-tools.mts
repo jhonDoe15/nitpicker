@@ -212,9 +212,9 @@ export function publishDirectory(staging: string, target: string): void {
 
 function resolveInto(
   staging: string,
-  { projectRoot, maven, tools, spawn, timeoutMs }: ToolSetRequest,
+  { projectRoot, maven, tools, repositoriesXml, spawn, timeoutMs }: ToolSetRequest,
 ): ToolClasspathLists {
-  writeToolsProject(staging, tools);
+  writeToolsProject(staging, tools, repositoriesXml);
   runMaven({
     projectRoot,
     maven,
@@ -232,10 +232,11 @@ function resolveInto(
 }
 
 export function resolveToolSet(request: ToolSetRequest): ToolClasspathLists {
-  const directory = cacheDirectory(
-    `maven-tools-${toolsKey(request.tools)}`,
-    request.environment ?? {},
-  );
+  const keyInput =
+    request.repositoriesXml === undefined || request.repositoriesXml === ''
+      ? request.tools
+      : { tools: request.tools, repositoriesXml: request.repositoriesXml };
+  const directory = cacheDirectory(`maven-tools-${toolsKey(keyInput)}`, request.environment ?? {});
   const cached = readClasspaths(directory, Object.keys(request.tools));
   if (missing(cached).length === 0) {
     return cached;

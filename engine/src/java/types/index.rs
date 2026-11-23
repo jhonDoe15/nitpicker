@@ -281,7 +281,7 @@ impl TypeIndex {
     /// Whether a member of the declaring class is reached through a raw type from the owner: the owner is raw, or a
     /// class on the way up names its parent without type arguments. PMD erases the types of such members.
     pub fn seen_raw(&self, owner: &Type, declaring: &str) -> bool {
-        let Type::Class(name, given) = owner else { return false };
+        let Type::Class(name, given) = owner.unwrap_bound() else { return false };
         let Some(target) = self.get(declaring).filter(|target| !target.type_parameters.is_empty()) else { return false };
         let raw = given.is_empty() && self.generic(name);
         self.plain_path(name, raw, (declaring, target.is_interface), &mut HashSet::new()) == Some(false)
@@ -340,7 +340,7 @@ impl TypeIndex {
 
     fn bindings(&self, info: &ClassInfo, arguments: &[Type]) -> HashMap<String, Type> {
         let raw = arguments.len() != info.type_parameters.len();
-        let given = |position: usize| arguments.get(position).filter(|given| !raw && **given != Type::Wildcard);
+        let given = |position: usize| arguments.get(position).filter(|given| !raw && **given != Type::Wildcard).map(Type::unwrap_bound);
         let written: HashMap<String, Type> = info
             .type_parameters
             .iter()
@@ -392,7 +392,7 @@ impl TypeIndex {
 
     /// The type arguments a type has when seen as one of its supertypes: ArrayList<String> as Iterable gives [String].
     pub fn arguments_as(&self, kind: &Type, target: &str) -> Option<Vec<Type>> {
-        match kind {
+        match kind.unwrap_bound() {
             Type::Class(name, arguments) => self.arguments_at(name, arguments, target, 0),
             _ => None,
         }

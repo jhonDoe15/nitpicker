@@ -101,6 +101,8 @@
 ["n/Functional.java", 133, 20, "[NullAway] parameter key of referenced method is @NonNull, but parameter in functional interface method n.Functional.Taker.take(K) is @Nullable"],
 ["n/Functional.java", 134, 26, "[NullAway] parameter values of referenced method is @NonNull, but parameter in functional interface method n.Functional.Taker.take(List<K>) is @Nullable"],
 ["n/Functional.java", 135, 28, "[NullAway] parameter second of referenced method is @NonNull, but parameter in functional interface method n.Functional.Pair.pair(K,List<K>) is @Nullable"],
+["n/Functional.java", 136, 38, "[NullAway] parameter second of referenced method is @NonNull, but parameter in functional interface method n.Functional.Pair.pair(K,List<? extends K>) is @Nullable"],
+["n/Functional.java", 137, 36, "[NullAway] parameter second of referenced method is @NonNull, but parameter in functional interface method n.Functional.Pair.pair(K,List<? super K>) is @Nullable"],
 ["n/Marked.java", 6, 33, "[NullAway] parameter value is @NonNull, but parameter in superclass method marked.Library.take(java.lang.Object) is @Nullable"],
 ["n/Marked.java", 15, 20, "[NullAway] passing @Nullable parameter 'null' where @NonNull is required"],
 ["n/Marked.java", 16, 21, "[NullAway] dereferenced expression 'given.find()' is @Nullable"],

@@ -36,7 +36,10 @@ function analyzer(extra: object) {
   };
 }
 
-function contextFor(liveProjectRoot: string) {
+function contextFor(
+  liveProjectRoot: string,
+  countFiles?: (root: string, extensions: readonly string[]) => number,
+) {
   return {
     projectRoot: liveProjectRoot,
     policyRoot: liveProjectRoot,
@@ -47,22 +50,37 @@ function contextFor(liveProjectRoot: string) {
     liveProjectRoot,
     mutationScope: undefined,
     logRoot: undefined,
+    ...(countFiles === undefined ? {} : { countFiles }),
   };
 }
 
-function preparedTimeout(source: object, liveProjectRoot: string): number | undefined {
-  const preparation = prepareTask(source, contextFor(liveProjectRoot), undefined);
-  return preparation.kind === 'ready' ? preparation.task.timeoutMs : undefined;
+function preparedTask(
+  source: object,
+  liveProjectRoot: string,
+  countFiles?: (root: string, extensions: readonly string[]) => number,
+) {
+  const preparation = prepareTask(source, contextFor(liveProjectRoot, countFiles), undefined);
+  return preparation.kind === 'ready' ? preparation.task : undefined;
 }
 
-function preparedAllowance(source: object, liveProjectRoot: string): number | undefined {
-  const preparation = prepareTask(source, contextFor(liveProjectRoot), undefined);
-  return preparation.kind === 'ready' ? preparation.task.sizeAllowanceMs : undefined;
+function preparedTimeout(
+  source: object,
+  liveProjectRoot: string,
+  countFiles?: (root: string, extensions: readonly string[]) => number,
+): number | undefined {
+  return preparedTask(source, liveProjectRoot, countFiles)?.timeoutMs;
+}
+
+function preparedAllowance(
+  source: object,
+  liveProjectRoot: string,
+  countFiles?: (root: string, extensions: readonly string[]) => number,
+): number | undefined {
+  return preparedTask(source, liveProjectRoot, countFiles)?.sizeAllowanceMs;
 }
 
 function preparedMemory(source: object, liveProjectRoot: string): number | undefined {
-  const preparation = prepareTask(source, contextFor(liveProjectRoot), undefined);
-  return preparation.kind === 'ready' ? preparation.task.memoryMegabytes : undefined;
+  return preparedTask(source, liveProjectRoot)?.memoryMegabytes;
 }
 
 describe('analyzer budgets scaled with project size', () => {
@@ -146,6 +164,33 @@ describe('analyzer budgets scaled with project size', () => {
         `${root}/src`,
       ),
     ).toBe(preparedTimeout(analyzer({ timeoutScale: { ...SCALE, extensions: ['ts'] } }), root));
+  });
+
+  it('scales the default deadline on large projects while keeping 300,000 ms on small projects', () => {
+    const { root } = git.createGitRepository(sources(2), { prefix: 'nitpicker-deadline-' });
+    const unscaledDefault = analyzer({ timeoutMs: undefined, timeoutScale: undefined });
+    const largeProject = () => 4_400;
+    const smallProject = () => 1_000;
+
+    expect(preparedTimeout(unscaledDefault, root)).toBe(5 * MINUTE_MS);
+    expect(preparedAllowance(unscaledDefault, root)).toBe(0);
+    expect(preparedTimeout(unscaledDefault, root, smallProject)).toBe(5 * MINUTE_MS);
+    expect(preparedTimeout(unscaledDefault, root, largeProject)).toBe(13 * MINUTE_MS);
+    expect(preparedAllowance(unscaledDefault, root, largeProject)).toBe(8 * MINUTE_MS);
+    expect(
+      preparedTimeout(
+        analyzer({ timeoutMs: 10 * MINUTE_MS, timeoutScale: undefined, configuredTimeout: true }),
+        root,
+        largeProject,
+      ),
+    ).toBe(10 * MINUTE_MS);
+    expect(
+      preparedTimeout(
+        analyzer({ timeoutMs: 6 * MINUTE_MS, timeoutScale: undefined }),
+        root,
+        largeProject,
+      ),
+    ).toBe(6 * MINUTE_MS);
   });
 
   it('estimates an analyzer peak memory from the number of source files', () => {

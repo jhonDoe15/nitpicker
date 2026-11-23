@@ -2,7 +2,7 @@
 //! rules as for an overriding method. Follows NullAway's `checkOverriding` and `checkParamOverriding`.
 use super::sites::{accepted, rows};
 use super::*;
-use crate::java::types::model::Method;
+use crate::java::types::model::{Method, WildcardKind};
 
 /// A type the way NullAway prints it in these messages: simple names, type arguments kept.
 fn pretty(kind: &Type) -> String {
@@ -15,6 +15,8 @@ fn pretty(kind: &Type) -> String {
         Type::Array(element) => format!("{} []", pretty(element)),
         Type::Variable(name) => name.clone(),
         Type::Wildcard => "?".to_string(),
+        Type::Bounded(WildcardKind::Extends, bound) => format!("? extends {}", pretty(bound)),
+        Type::Bounded(WildcardKind::Super, bound) => format!("? super {}", pretty(bound)),
         Type::Null => "null".to_string(),
     }
 }

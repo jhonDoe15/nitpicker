@@ -174,6 +174,68 @@ fn patterns_type_their_variables_like_pmd() {
     same_as_pmd("patterns", "all");
 }
 
+#[test]
+fn retry_in_test_flags_retry_lambdas_but_not_generic_wildcard_lambdas() {
+    let folder = std::env::temp_dir().join(format!("nitpicker-engine-retry-lambda-{}", std::process::id()));
+    let testng = folder.join("org").join("testng");
+    std::fs::create_dir_all(&testng).expect("folder");
+    std::fs::write(testng.join("ITestResult.java"), "package org.testng;\npublic interface ITestResult {}\n").expect("source");
+    std::fs::write(
+        testng.join("IRetryAnalyzer.java"),
+        "package org.testng;\npublic interface IRetryAnalyzer {\n    boolean retry(ITestResult result);\n}\n",
+    )
+    .expect("source");
+    std::fs::write(
+        folder.join("RetryLambdas.java"),
+        concat!(
+            "import java.util.Iterator;\n",
+            "import java.util.function.Function;\n",
+            "import org.testng.IRetryAnalyzer;\n",
+            "import org.testng.ITestResult;\n",
+            "class RetryLambdas {\n",
+            "    interface CustomRetry extends IRetryAnalyzer {}\n",
+            "    interface Writer {\n",
+            "        String write(String out, int depth);\n",
+            "    }\n",
+            "    static class Iterators {\n",
+            "        static <T> Iterator<T> single(T element) { return null; }\n",
+            "        @SafeVarargs\n",
+            "        static <T> Iterator<T> concat(Iterator<? extends T>... parts) { return null; }\n",
+            "        static <U> Iterator<U> lazy(Function<String, Iterator<? extends U>> fn) { return null; }\n",
+            "    }\n",
+            "    static void sink(Iterator<? extends Writer> writers) {}\n",
+            "    static boolean never(ITestResult result) { return false; }\n",
+            "    final IRetryAnalyzer direct = result -> false;\n",
+            "    final CustomRetry sub = result -> false;\n",
+            "    final IRetryAnalyzer ref = RetryLambdas::never;\n",
+            "    void genericWildcardReturn() {\n",
+            "        sink(Iterators.lazy(key -> Iterators.concat(Iterators.single((b, p) -> b), Iterators.single((b, p) -> b))));\n",
+            "    }\n",
+            "}\n",
+        ),
+    )
+    .expect("source");
+    let rules = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("rules").join("all.json");
+    let output = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
+        .arg(&folder)
+        .args(["--rules", "_XPath"])
+        .env("NP_XPATH_RULES", rules)
+        .env("NP_XPATH_ONLY", "RetryInTest")
+        .output()
+        .expect("engine runs");
+    let _ = std::fs::remove_dir_all(&folder);
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).expect("json");
+    let mut lines: Vec<u64> = report["findings"]
+        .as_array()
+        .expect("findings")
+        .iter()
+        .map(|finding| finding["line"].as_u64().expect("line"))
+        .collect();
+    lines.sort();
+    assert_eq!(lines, [6, 18, 19, 20]);
+}
+
 fn override_lines(release: &str) -> Vec<u64> {
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures").join("release");
     let out = std::env::temp_dir().join(format!("nitpicker-engine-release-{release}-{}.json", std::process::id()));
@@ -232,5 +294,5 @@ fn null_away_reports_what_null_away_reports() {
     let missed: Vec<&Told> = expected.difference(&found).collect();
     let extra: Vec<&Told> = found.difference(&expected).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(expected.len(), 119);
+    assert_eq!(expected.len(), 121);
 }

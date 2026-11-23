@@ -2,6 +2,12 @@ use std::collections::HashMap;
 
 pub const OBJECT: &str = "java.lang.Object";
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WildcardKind {
+    Extends,
+    Super,
+}
+
 /// A type as written: class types keep their type arguments, members keep their type variables.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Type {
@@ -11,12 +17,19 @@ pub enum Type {
     Variable(String),
     /// An unbounded wildcard argument: stands for the bound of the parameter it fills.
     Wildcard,
+    Bounded(WildcardKind, Box<Type>),
     Null,
 }
 
 impl Type {
     pub fn class(name: &str) -> Type {
         Type::Class(name.to_string(), Vec::new())
+    }
+    pub fn unwrap_bound(&self) -> &Type {
+        match self {
+            Type::Bounded(_, bound) => bound.unwrap_bound(),
+            other => other,
+        }
     }
     pub fn name(&self) -> String {
         match self {
@@ -25,6 +38,7 @@ impl Type {
             Type::Array(element) => format!("{}[]", element.name()),
             Type::Null => "null".to_string(),
             Type::Wildcard => OBJECT.to_string(),
+            Type::Bounded(_, bound) => bound.name(),
         }
     }
     /// The same type without type arguments. Variables are expected to be replaced before this.
@@ -33,6 +47,7 @@ impl Type {
             Type::Class(name, _) => Type::class(name.split('&').next().unwrap_or(name)),
             Type::Array(element) => Type::Array(Box::new(element.erased())),
             Type::Variable(_) | Type::Wildcard => Type::class(OBJECT),
+            Type::Bounded(_, bound) => bound.erased(),
             other => other.clone(),
         }
     }
@@ -43,6 +58,7 @@ impl Type {
                 Type::Class(name.clone(), arguments.iter().map(|argument| argument.substitute(map)).collect())
             }
             Type::Array(element) => Type::Array(Box::new(element.substitute(map))),
+            Type::Bounded(kind, bound) => Type::Bounded(*kind, Box::new(bound.substitute(map))),
             other => other.clone(),
         }
     }
@@ -50,7 +66,7 @@ impl Type {
     pub fn open(&self) -> bool {
         match self {
             Type::Variable(_) => true,
-            Type::Array(element) => element.open(),
+            Type::Array(element) | Type::Bounded(_, element) => element.open(),
             _ => false,
         }
     }
@@ -58,13 +74,13 @@ impl Type {
         match self {
             Type::Variable(_) => true,
             Type::Class(_, arguments) => arguments.iter().any(Type::mentions_variable),
-            Type::Array(element) => element.mentions_variable(),
+            Type::Array(element) | Type::Bounded(_, element) => element.mentions_variable(),
             _ => false,
         }
     }
     /// The primitive a wrapper class stands for; any other type as it is.
     pub fn unboxed_or_same(self) -> Type {
-        let primitive = match &self {
+        let primitive = match self.unwrap_bound() {
             Type::Class(name, _) => match name.as_str() {
                 "java.lang.Integer" => "int",
                 "java.lang.Long" => "long",
