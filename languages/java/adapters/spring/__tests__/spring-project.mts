@@ -210,6 +210,7 @@ const REVIEW_RULES = new Set([
   'ListUsedAsSet',
   'LinearLookupInLoop',
   'SortForExtreme',
+  'SortedCollectionRangeScan',
   'RedundantStreamStep',
   'NullMapValue',
   'HttpValueCase',

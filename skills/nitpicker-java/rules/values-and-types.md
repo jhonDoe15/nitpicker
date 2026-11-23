@@ -158,8 +158,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Pick the cheaper collection form: a `HashSet` (or `LinkedHashSet`) for items you test with
   `contains` while you collect them (`pmd/ListUsedAsSet`), a `Map` built once with
   `Collectors.toMap` before a loop instead of `stream().filter(x -> x.getKey().equals(key)).findFirst()`
-  in it (`pmd/LinearLookupInLoop`), and `min(comparator)`/`max(comparator)` instead of
-  `sorted(...).findFirst()` (`pmd/SortForExtreme`).
+  in it (`pmd/LinearLookupInLoop`), `min(comparator)`/`max(comparator)` instead of
+  `sorted(...).findFirst()` (`pmd/SortForExtreme`), and range views (`subSet`, `headSet`, `tailSet`,
+  `subMap`, `headMap`, `tailMap`) instead of scanning a `TreeSet`/`TreeMap`/`NavigableSet`/`NavigableMap`
+  with a bound check and `break`/`continue`/`return` (`pmd/SortedCollectionRangeScan`).
 - Skip a collection step whose result is thrown away: `anyMatch(...)` instead of
   `filter(...).findFirst().isPresent()` or `filter(...).count() > 0`, and `size()` or `isEmpty()` on
   the source instead of on a `toList()` or `new ArrayList<>(source)` copy

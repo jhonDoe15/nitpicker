@@ -191,6 +191,7 @@
   "pmd/SimplifyConditional": ["simplification"],
   "pmd/SingularAndPluralMember": ["style"],
   "pmd/SortForExtreme": ["performance"],
+  "pmd/SortedCollectionRangeScan": ["performance"],
   "pmd/SpringAsyncExecutor": ["reliability", "spring", "async"],
   "pmd/SpringBeanCollectionState": ["bug", "spring"],
   "pmd/SpringCacheWriteInTransaction": ["bug", "spring", "persistence"],
