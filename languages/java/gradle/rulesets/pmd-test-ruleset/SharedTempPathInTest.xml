@@ -1,5 +1,5 @@
   <rule name="SharedTempPathInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This test writes, deletes or hands to a process a temp path that every run builds the same way: a fixed name under java.io.tmpdir or /tmp, or one whose only varying part is the process id. Tests that run at the same time (JUnit parallel execution, forked test JVMs, a second build) then share the file, and one overwrites or deletes the other's. Write inside a @TempDir directory, or create the file with Files.createTempFile or Files.createTempDirectory.">
+        message="This test writes, deletes or hands to a process a temp path that every run builds the same way: a fixed name under java.io.tmpdir or /tmp, or one whose only varying part is the process id. Tests that run at the same time (JUnit parallel execution, forked test JVMs, a second build) then share the file, and one overwrites or deletes the file the other uses. Write inside a @TempDir directory, or create the file with Files.createTempFile or Files.createTempDirectory.">
     <priority>2</priority>
     <properties>
       <property name="xpath">

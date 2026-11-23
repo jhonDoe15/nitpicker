@@ -2,6 +2,7 @@ import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint
 import { findVariable } from '../../analysis/constant-resolution.mts';
 import { calleeName } from '../../typed/syntax-views.mts';
 import { isJoin } from '../../unique-names/time-values.mts';
+import { isPlainString } from '../../typed/node-views.mts';
 import { isSharedTempPath, pathParts } from './temp-path-parts.mts';
 import { isPathPiece, reachesFileChange } from './temp-path-uses.mts';
 
@@ -37,18 +38,11 @@ function isOnlyBuiltOn(context: Context, node: TSESTree.Node): boolean {
   );
 }
 
-function isPlainText(node: TSESTree.Node): boolean {
-  return (
-    (node.type === AST_NODE_TYPES.Literal && typeof node.value === 'string') ||
-    (node.type === AST_NODE_TYPES.TemplateLiteral && node.expressions.length === 0)
-  );
-}
-
 function isCandidate(node: TSESTree.Node): boolean {
   return (
     !isPathPiece(node.parent) &&
     node.parent?.type !== AST_NODE_TYPES.TSLiteralType &&
-    (isPathPiece(node) || isPlainText(node))
+    (isPathPiece(node) || isPlainString(node))
   );
 }
 

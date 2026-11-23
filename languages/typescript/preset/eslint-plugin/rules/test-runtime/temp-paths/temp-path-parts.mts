@@ -45,30 +45,22 @@ function literalParts(value: unknown): PathParts | undefined {
   return typeof value === 'number' ? NO_PARTS : UNKNOWN;
 }
 
-function templateParts(
-  context: SourceContext,
-  node: TSESTree.TemplateLiteral,
-  depth: number,
-): PathParts | undefined {
-  const head = node.quasis[0]?.value.cooked ?? '';
-  const expressions = node.expressions.map((part) => pathParts(context, part, depth + 1));
-  return merged([literalParts(head), ...expressions]);
+type Expansion = PathParts | readonly TSESTree.Node[] | undefined;
+
+function isChildren(expansion: Expansion): expansion is readonly TSESTree.Node[] {
+  return Array.isArray(expansion);
 }
 
-function callParts(
-  context: SourceContext,
-  node: TSESTree.CallExpression,
-  depth: number,
-): PathParts | undefined {
+function callParts(context: SourceContext, node: TSESTree.CallExpression): Expansion {
   if (isTmpdirCall(node)) {
     return { ...NO_PARTS, underTemp: true };
   }
   if (isJoin(node)) {
-    return merged(node.arguments.map((part) => pathParts(context, part, depth + 1)));
+    return node.arguments;
   }
   const [only] = node.arguments;
   if (TEXT_WRAPPERS.has(nameOf(node.callee) ?? '') && node.arguments.length === 1 && only) {
-    return pathParts(context, only, depth + 1);
+    return [only];
   }
   const { callee } = node;
   return callee.type === AST_NODE_TYPES.MemberExpression &&
@@ -79,11 +71,7 @@ function callParts(
     : UNKNOWN;
 }
 
-function identifierParts(
-  context: SourceContext,
-  node: TSESTree.Identifier,
-  depth: number,
-): PathParts | undefined {
+function identifierParts(context: SourceContext, node: TSESTree.Identifier): Expansion {
   const variable = findVariable(context, node, node.name);
   const definition = variable?.defs.length === 1 ? variable.defs[0] : UNKNOWN;
   if (definition?.type === DefinitionType.Parameter) {
@@ -96,46 +84,44 @@ function identifierParts(
     definition.parent.kind === 'const' &&
     definition.node.id.type === AST_NODE_TYPES.Identifier;
   const init = isConstant ? definition.node.init : UNKNOWN;
-  return init ? pathParts(context, init, depth + 1) : UNKNOWN;
+  return init ? [init] : UNKNOWN;
 }
 
-export function pathParts(
-  context: SourceContext,
-  start: TSESTree.Node,
-  depth = 0,
-): PathParts | undefined {
-  const node = unwrapOf(start, ASSERTION_FORMS);
-  if (depth > MAX_DEPTH) {
-    return UNKNOWN;
-  }
+function expansionOf(context: SourceContext, node: TSESTree.Node): Expansion {
   if (isProcessId(node)) {
     return { ...NO_PARTS, processId: true };
   }
-  switch (node.type) {
-    case AST_NODE_TYPES.Literal: {
-      return literalParts(node.value);
-    }
-    case AST_NODE_TYPES.TemplateLiteral: {
-      return templateParts(context, node, depth);
-    }
-    case AST_NODE_TYPES.BinaryExpression: {
-      return node.operator === '+'
-        ? merged([
-            pathParts(context, node.left, depth + 1),
-            pathParts(context, node.right, depth + 1),
-          ])
-        : UNKNOWN;
-    }
-    case AST_NODE_TYPES.CallExpression: {
-      return callParts(context, node, depth);
-    }
-    case AST_NODE_TYPES.Identifier: {
-      return identifierParts(context, node, depth);
-    }
-    default: {
-      return UNKNOWN;
+  if (node.type === AST_NODE_TYPES.Literal) {
+    return literalParts(node.value);
+  }
+  if (node.type === AST_NODE_TYPES.TemplateElement) {
+    return literalParts(node.value.cooked ?? '');
+  }
+  if (node.type === AST_NODE_TYPES.TemplateLiteral) {
+    return [...node.quasis.slice(0, 1), ...node.expressions];
+  }
+  if (node.type === AST_NODE_TYPES.BinaryExpression) {
+    return node.operator === '+' ? [node.left, node.right] : UNKNOWN;
+  }
+  if (node.type === AST_NODE_TYPES.CallExpression) {
+    return callParts(context, node);
+  }
+  return node.type === AST_NODE_TYPES.Identifier ? identifierParts(context, node) : UNKNOWN;
+}
+
+export function pathParts(context: SourceContext, start: TSESTree.Node): PathParts | undefined {
+  const pending = [{ node: start, depth: 0 }];
+  const leaves: (PathParts | undefined)[] = [];
+  for (const { node, depth } of pending) {
+    const expansion =
+      depth > MAX_DEPTH ? UNKNOWN : expansionOf(context, unwrapOf(node, ASSERTION_FORMS));
+    if (isChildren(expansion)) {
+      pending.push(...expansion.map((child) => ({ node: child, depth: depth + 1 })));
+    } else {
+      leaves.push(expansion);
     }
   }
+  return merged(leaves);
 }
 
 export function isSharedTempPath(parts: PathParts | undefined): parts is PathParts {

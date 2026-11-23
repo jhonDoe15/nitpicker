@@ -8,7 +8,7 @@ import {
   withPromisified,
   type ModuleBindings,
 } from '../analysis/subprocess-calls.mts';
-import { variableNamed, type SourceCode } from '../typed/node-views.mts';
+import { isPlainString, variableNamed, type SourceCode } from '../typed/node-views.mts';
 import { ASSERTION_FORMS, resolvedThrough } from '../typed/syntax-views.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
 
@@ -29,13 +29,6 @@ const SHELL_PROGRAMS = new Set<string>([
   'cmd',
   'cmd.exe',
 ]);
-
-function isPlainString(node: Node): boolean {
-  return (
-    (node.type === AST_NODE_TYPES.Literal && typeof node.value === 'string') ||
-    (node.type === AST_NODE_TYPES.TemplateLiteral && node.expressions.length === 0)
-  );
-}
 
 function keyText(key: Node): unknown {
   if (key.type === AST_NODE_TYPES.Identifier) {
