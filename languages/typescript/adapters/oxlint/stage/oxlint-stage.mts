@@ -104,21 +104,27 @@ function mirroredAncestors(root: string, projectRoot: string): string {
   const chain = [projectRoot, ...ancestors].slice(0, depth + 1).reverse();
   let mirror = root;
   for (const directory of chain.slice(1)) {
-    const name = path.basename(directory);
-    for (const entry of readdirSync(path.dirname(directory), { withFileTypes: true })) {
-      const link = pathInside(mirror, entry.name);
-      if (link !== undefined && entry.name !== name) {
-        symlinkSync(path.join(entry.parentPath, entry.name), link);
-      }
-    }
-    mirror = path.join(mirror, name);
+    linkSiblings(directory, mirror);
+    mirror = path.join(mirror, path.basename(directory));
     mkdirSync(mirror);
   }
   return mirror;
 }
 
+function linkSiblings(directory: string, mirror: string): void {
+  const name = path.basename(directory);
+  for (const entry of readdirSync(path.dirname(directory), { withFileTypes: true })) {
+    const link = pathInside(mirror, entry.name);
+    if (link !== undefined && entry.name !== name) {
+      symlinkSync(path.join(entry.parentPath, entry.name), link);
+    }
+  }
+}
+
 function isWorkspaceLevel(directory: string): boolean {
-  return ['node_modules', '.git'].some((entry) => existsSync(path.join(directory, entry)));
+  return (
+    existsSync(path.join(directory, 'node_modules')) || existsSync(path.join(directory, '.git'))
+  );
 }
 
 function lintTypeScriptConfig(projectConfigPath: string, stage: string): string {

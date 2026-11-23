@@ -70,7 +70,7 @@ export type FactUnit = {
   readonly start: number;
   readonly end: number;
   readonly tokens: number;
-  readonly final?: boolean;
+  readonly final: boolean;
   readonly tree: TreeNode;
 };
 

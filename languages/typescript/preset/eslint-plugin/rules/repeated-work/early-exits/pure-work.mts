@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { breaksDownFully } from '../../../../../../../shared/traversal.mts';
+import { expandsFully } from '../../../../../../../shared/traversal.mts';
 import { memberName, someNode } from '../../collections/costly-forms/repeated-runs.mts';
 import { nodeChildren, variableNamed, type SourceCode } from '../../typed/node-views.mts';
 import { isFsCall } from '../repeated-calls/call-shapes.mts';
@@ -168,7 +168,7 @@ function pureParts(sourceCode: SourceCode, node: TSESTree.Node): TSESTree.Node[]
 }
 
 export function isPureWork(sourceCode: SourceCode, node: TSESTree.Node): boolean {
-  return breaksDownFully<TSESTree.Node>(node, (item) => pureParts(sourceCode, item));
+  return expandsFully<TSESTree.Node>(node, (item) => pureParts(sourceCode, item));
 }
 
 function isCostlyStep(sourceCode: SourceCode, node: TSESTree.Node): boolean {

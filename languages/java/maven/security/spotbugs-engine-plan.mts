@@ -1,5 +1,6 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { filesEndingWith } from '../../../../shared/filesystem.mts';
 import { type CompilerSettings, compilerOf } from '../errorprone/compiler-types.mts';
 import {
   type SpotbugsEnginePlan,
@@ -35,12 +36,6 @@ type PlanOptions = {
 
 const UNCOMPILED = new Set(['package-info.java', 'module-info.java']);
 
-function javaSources(directory: string): string[] {
-  return readdirSync(directory, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.java'))
-    .map((entry) => path.join(entry.parentPath, entry.name));
-}
-
 function compiledFrom(root: string, file: string, classes: string): boolean {
   const relative = path.relative(root, file);
   if (UNCOMPILED.has(path.basename(relative))) {
@@ -74,12 +69,14 @@ export function spotbugsEnginePlan({
   javaHome,
 }: PlanOptions): SpotbugsEnginePlan | undefined {
   const roots = module.sourceRoots.filter((root) => existsSync(root));
-  const sources = roots.flatMap((root) => javaSources(root).map((file) => ({ root, file })));
+  const sources = roots.flatMap((root) =>
+    filesEndingWith([root], '.java').map((file) => ({ root, file })),
+  );
   const generated = [
     ...generatedRoots(module, module.sourceRoots),
     path.join(buildDirectoryOf(module), PROCESSOR_OUTPUT),
   ].filter((root) => existsSync(root));
-  if (generated.some((root) => javaSources(root).length > 0)) {
+  if (generated.some((root) => filesEndingWith([root], '.java').length > 0)) {
     return undefined;
   }
   const compiled = sources.every(({ root, file }) =>

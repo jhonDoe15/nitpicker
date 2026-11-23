@@ -103,16 +103,6 @@ function literalTerm(node: TreeNode): Term | undefined {
   return term(LITERAL_KIND, JSON.stringify(`${node.literal ?? ''}:${String(node.value)}`));
 }
 
-function nameTerm(node: TreeNode, context: TermContext): Term | undefined {
-  if (node.binding === 'free') {
-    return term('name', `free:${String(node.value)}`);
-  }
-  if (node.value === undefined) {
-    return undefined;
-  }
-  return context.locals.get(node.value) ?? context.parameters.get(node.value);
-}
-
 function extremeName(callee: TreeNode): string | undefined {
   if (callee.kind === 'name' && callee.binding === 'free') {
     return callee.text ?? callee.value;
@@ -225,7 +215,15 @@ function binaryTerm(node: TreeNode, operands: Term[], context: TermContext): Ter
 
 const TERMS: Readonly<Record<string, Converter>> = {
   literal: (node) => literalTerm(node),
-  name: (node, _children, context) => nameTerm(node, context),
+  name: (node, _children, context) => {
+    if (node.binding === 'free') {
+      return term('name', `free:${String(node.value)}`);
+    }
+    if (node.value === undefined) {
+      return undefined;
+    }
+    return context.locals.get(node.value) ?? context.parameters.get(node.value);
+  },
   this: () => term('this'),
   member: (node, children) => term('member', node.value, children),
   index: (_node, children) => term('index', undefined, children),

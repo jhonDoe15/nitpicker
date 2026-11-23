@@ -1,7 +1,8 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { writeProjectFiles } from '../test-support/temporary-projects.mts';
 import { resolveInside, selectSourceFiles } from './source-files.mts';
 
 const ONE_FUNCTION = 'export const value = () => 1;\n';
@@ -34,10 +35,7 @@ let root: string;
 
 beforeAll(() => {
   root = mkdtempSync(path.join(tmpdir(), 'nitpicker-crap-files-'));
-  for (const [name, text] of Object.entries(PROJECT)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
+  writeProjectFiles(root, PROJECT);
 });
 
 afterAll(() => {

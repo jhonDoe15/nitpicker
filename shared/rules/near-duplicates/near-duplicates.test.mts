@@ -34,6 +34,7 @@ function unitsOf(
     start,
     end,
     tokens,
+    final: false,
     tree,
   }));
 }
