@@ -1,8 +1,8 @@
-import { closeSync, createReadStream, openSync, readFileSync } from 'node:fs';
+import { closeSync, createReadStream, openSync, readFileSync, readSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { StringDecoder } from 'node:string_decoder';
-import { byteChunks } from '../filesystem.mts';
-import { fieldOf } from '../values/readers.mts';
+
+const CHUNK_BYTES = 1024 * 1024;
 
 function parsed(text: string): unknown {
   const value: unknown = JSON.parse(text);
@@ -45,12 +45,15 @@ function findingOf(row: unknown): EngineFinding {
 }
 
 export function engineFindingOf(finding: unknown): EngineFinding {
+  const fields = new Map<string, unknown>(
+    typeof finding === 'object' && finding !== null ? Object.entries(finding) : [],
+  );
   return {
-    file: String(fieldOf(finding, 'file')),
-    rule: String(fieldOf(finding, 'rule')),
-    line: Number(fieldOf(finding, 'line')),
-    column: Number(fieldOf(finding, 'column')),
-    message: String(fieldOf(finding, 'message')),
+    file: String(fields.get('file')),
+    rule: String(fields.get('rule')),
+    line: Number(fields.get('line')),
+    column: Number(fields.get('column')),
+    message: String(fields.get('message')),
   };
 }
 
@@ -85,6 +88,22 @@ export async function* readEngineLines(file: string): AsyncGenerator<unknown, vo
       yield parsed(line);
     }
   }
+}
+
+export function byteChunks(descriptor: number): Iterable<Buffer> {
+  const buffer = Buffer.alloc(CHUNK_BYTES);
+  const reached = { position: 0 };
+  return {
+    [Symbol.iterator]: () => ({
+      next: (): IteratorResult<Buffer> => {
+        const read = readSync(descriptor, buffer, 0, buffer.length, reached.position);
+        reached.position += read;
+        return read > 0
+          ? { done: false, value: buffer.subarray(0, read) }
+          : { done: true, value: undefined };
+      },
+    }),
+  };
 }
 
 function* textChunks(descriptor: number): Generator<string, void> {

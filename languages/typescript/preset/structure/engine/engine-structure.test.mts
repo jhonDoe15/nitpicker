@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -8,6 +8,7 @@ import { analyzeProductionFiles } from '../analyze.mts';
 import { productionFacts } from '../reuse/project-files.mts';
 import type { ReuseFact } from '../reuse/typed/reuse-types.mts';
 import { engineMetrics } from './engine-metrics.mts';
+import { writeProjectFiles } from '../../test-support/temporary-projects.mts';
 import { engineReuseFacts, resolvedUnits } from './engine-reuse.mts';
 
 const ENGINE = { ...process.env, NITPICKER_STRUCTURE_ENGINE: 'required' };
@@ -53,10 +54,7 @@ let root: string;
 
 beforeAll(() => {
   root = mkdtempSync(path.join(tmpdir(), 'nitpicker-structure-engine-'));
-  for (const [file, text] of Object.entries(SOURCES)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
+  writeProjectFiles(root, SOURCES);
 });
 
 afterAll(() => {

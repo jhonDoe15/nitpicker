@@ -13,6 +13,7 @@ import { GRADLE_DIRECTORY, readPinnedTools } from '../../../builds/java-build.mt
 import { javaCommand, runJava } from '../../../maven/maven-command.mts';
 import { compiledProgram, programSources } from '../../../maven/programs/helper-programs.mts';
 import { callUntyped } from '../../typed/java-values.mts';
+import { filesEndingWith } from '../../../../../shared/filesystem.mts';
 import { parseJson } from '../../../../../shared/values/readers.mts';
 
 type CompileOptions = {
@@ -37,6 +38,7 @@ const ARTIFACTS = ['asm', 'asm-tree', 'asm-analysis'];
 const NAME = 'effects';
 const TOOL = 'The effects engine';
 const PROCESS_TIMEOUT_MS = 120_000;
+const JAVA_SOURCE = '.java';
 const MAVEN_ASM = path.join(homedir(), '.m2/repository/org/ow2/asm');
 const GRADLE_ASM = path.join(homedir(), '.gradle/caches/modules-2/files-2.1/org.ow2.asm');
 
@@ -46,12 +48,6 @@ function inside(base: string, ...parts: string[]): string {
     throw new Error(`${full} is outside ${base}`);
   }
   return full;
-}
-
-function javaFiles(directory: string): string[] {
-  return readdirSync(directory, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.java'))
-    .map((entry) => path.join(entry.parentPath, entry.name));
 }
 
 function mavenJar(artifact: string, version: string): string {
@@ -121,16 +117,20 @@ export function runEngineOnSamples({ maven = 'mvn' }: { maven?: string } = {}): 
     timeoutMs: undefined,
   });
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-effects-samples-'));
-  const stubs = javac('', path.join(work, 'stubs'), javaFiles(path.join(SAMPLES, 'stubs')));
+  const stubs = javac(
+    '',
+    path.join(work, 'stubs'),
+    filesEndingWith([path.join(SAMPLES, 'stubs')], JAVA_SOURCE),
+  );
   const library = javac(
     stubs,
     path.join(work, 'library'),
-    javaFiles(path.join(SAMPLES, 'library')),
+    filesEndingWith([path.join(SAMPLES, 'library')], JAVA_SOURCE),
   );
   const classes = javac(
     [stubs, library].join(path.delimiter),
     path.join(work, 'classes'),
-    javaFiles(path.join(SAMPLES, 'samples')),
+    filesEndingWith([path.join(SAMPLES, 'samples')], JAVA_SOURCE),
   );
   const input = path.join(work, 'input.txt');
   const output = path.join(work, `${NAME}.json`);

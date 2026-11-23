@@ -1,5 +1,5 @@
 import { StringDecoder } from 'node:string_decoder';
-import { byteChunks } from '../../filesystem.mts';
+import { byteChunks } from '../../engine/engine-rows.mts';
 import { messageOf, objectOf } from '../../values/readers.mts';
 
 const EXCERPT_CHARACTERS = 80;
