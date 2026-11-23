@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseXml } from '../../../../shared/ingest/report-records.mts';
 import { defined } from '../../builds/test-support/defined.mts';
+import { compilerOf } from './compiler-types.mts';
 import { compilerSettings } from './maven-compiler.mts';
 import { processorTool } from './maven-errorprone.mts';
 
@@ -172,6 +173,114 @@ describe('compilerSettings', () => {
         withPath(lombok, `<dependency>${lombok}<version>\${lombok.version}</version></dependency>`),
       ),
     ).toThrow(message('${lombok.version}'));
+  });
+
+  it('reads excludes on default compile and extra multi-release executions with combine.self="override"', () => {
+    const settings = compilerSettings(
+      project(`<build><plugins><plugin><artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <release>8</release>
+          <excludes><exclude>org/keycloak/jose/jwk/EdECUtilsImpl.java</exclude></excludes>
+        </configuration>
+        <executions>
+          <execution>
+            <id>default-compile</id><phase>compile</phase><goals><goal>compile</goal></goals>
+          </execution>
+          <execution>
+            <id>compile-java15</id><phase>compile</phase><goals><goal>compile</goal></goals>
+            <configuration>
+              <release>15</release>
+              <includes><include>org/keycloak/jose/jwk/EdECUtilsImpl.java</include></includes>
+              <excludes combine.self="override" />
+            </configuration>
+          </execution>
+          <execution>
+            <id>disabled-compile</id><phase>none</phase><goals><goal>compile</goal></goals>
+            <configuration><release>21</release></configuration>
+          </execution>
+        </executions></plugin></plugins></build>`),
+    );
+
+    expect(settings.release).toBe('8');
+    expect(settings.excludes).toStrictEqual(['org/keycloak/jose/jwk/EdECUtilsImpl.java']);
+    expect(settings.executions).toStrictEqual([
+      {
+        id: 'compile-java15',
+        test: false,
+        release: '15',
+        source: undefined,
+        target: undefined,
+        compilerArgs: [],
+        includes: ['org/keycloak/jose/jwk/EdECUtilsImpl.java'],
+      },
+    ]);
+    expect(compilerOf(settings)).toStrictEqual(settings);
+  });
+
+  it('reads testIncludes, testExcludes, combine.children="append", and extra testCompile executions', () => {
+    const settings = compilerSettings(
+      project(`<build><plugins><plugin><artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <release>17</release>
+          <excludes><exclude>legacy/**</exclude></excludes>
+          <testIncludes><testInclude>**/*Test.java</testInclude></testIncludes>
+          <testExcludes><testExclude>**/SlowTest.java</testExclude></testExcludes>
+        </configuration>
+        <executions>
+          <execution>
+            <id>compile-extra</id><goals><goal>compile</goal></goals>
+            <configuration>
+              <excludes combine.children="append"><exclude>extra/**</exclude></excludes>
+            </configuration>
+          </execution>
+          <execution>
+            <id>compile-inherit</id><goals><goal>compile</goal></goals>
+            <configuration><excludes /></configuration>
+          </execution>
+          <execution>
+            <id>test-compile-java21</id><goals><goal>testCompile</goal></goals>
+            <configuration>
+              <release>21</release>
+              <testIncludes><testInclude>**/SlowTest.java</testInclude></testIncludes>
+              <testExcludes combine.self="override" />
+            </configuration>
+          </execution>
+        </executions></plugin></plugins></build>`),
+    );
+
+    expect(settings.test?.includes).toStrictEqual(['**/*Test.java']);
+    expect(settings.test?.excludes).toStrictEqual(['**/SlowTest.java']);
+    expect(
+      (settings.executions ?? []).map(({ id, test, release, includes, excludes }) => ({
+        id,
+        test,
+        release,
+        includes,
+        excludes,
+      })),
+    ).toStrictEqual([
+      {
+        id: 'compile-extra',
+        test: false,
+        release: '17',
+        includes: undefined,
+        excludes: ['legacy/**', 'extra/**'],
+      },
+      {
+        id: 'compile-inherit',
+        test: false,
+        release: '17',
+        includes: undefined,
+        excludes: ['legacy/**'],
+      },
+      {
+        id: 'test-compile-java21',
+        test: true,
+        release: '21',
+        includes: ['**/SlowTest.java'],
+        excludes: undefined,
+      },
+    ]);
   });
 });
 
