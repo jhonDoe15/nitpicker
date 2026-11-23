@@ -71,7 +71,6 @@ function namedUnits({ nearDuplicateUnits }: Facts): DecidedUnit[] {
   return (nearDuplicateUnits ?? []).map((unit) => ({
     ...unit,
     id: `${unit.file}#${unit.name}`,
-    final: unit.final === true,
   }));
 }
 
