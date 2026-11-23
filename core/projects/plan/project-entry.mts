@@ -3,13 +3,14 @@ import path from 'node:path';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
 import { presetToDeclare as untypedPresetToDeclare } from '../../configuration/project-checks/preset-detection.mts';
 import { parseConfigFile } from '../../configuration/layers/layers.mts';
-import { fieldOf, messageOf } from '../../../shared/values/readers.mts';
+import { fieldOf, fieldsOf, messageOf } from '../../../shared/values/readers.mts';
 import type { PlanContext, PlanProject, ProjectEntry } from '../project-types.mts';
 import type { NitpickerConfig, ProjectOverlay } from '../../../shared/values/config-types.mts';
 import { readLayeredConfig } from '../../configuration/layers/read-layered.mts';
 import { sharedConfigFiles } from '../../configuration/layers/shared-files.mts';
 import { isInside as untypedIsInside } from '../discovery/repository-files.mts';
 import { containedPath as untypedContainedPath } from '../../../shared/paths/contained-path.mts';
+import { deriveSourceRoots } from './layout/derive-source-roots.mts';
 
 const presetToDeclare: (
   config: NitpickerConfig,
@@ -163,20 +164,41 @@ function rejectOtherBase(
   );
 }
 
+function withDerivedSourceRoots(
+  overlay: ProjectOverlay | undefined,
+  sourceRoots: readonly string[] | undefined,
+): ProjectOverlay | undefined {
+  if (sourceRoots === undefined) {
+    return overlay;
+  }
+  const existingSettings = fieldsOf(overlay?.settings);
+  const existingLayout = fieldsOf(existingSettings['layout']);
+  return {
+    ...overlay,
+    settings: { ...existingSettings, layout: { ...existingLayout, sourceRoots } },
+  };
+}
+
 export function describeProject(entry: ProjectEntry, context: PlanContext): PlanProject {
   const { root, repositoryRoot, prefix, rootConfig, allPaths } = context;
   const folder = entry.folder ?? entry.path;
   const located = { ...entry, path: folder };
   rejectNestedProjects(located, root);
   const absolute = folder === '.' ? root : path.join(root, folder);
-  const overlay = overlayOf(located, {
+  const baseOverlay = overlayOf(located, {
     absolute,
     root,
     excludes: nestedExcludes(located, allPaths),
     companion: entry.folder !== undefined,
   });
-  const loaded = loadSettings(absolute, overlay, repositoryRoot);
+  const loaded = loadSettings(absolute, baseOverlay, repositoryRoot);
   rejectOtherBase(located, loaded.config, rootConfig);
+  const preset = loaded.config?.preset ?? baseOverlay?.preset ?? 'typescript';
+  const derivedSourceRoots =
+    loaded.configError !== undefined || loaded.config?.layout?.sourceRoots !== undefined
+      ? undefined
+      : deriveSourceRoots({ projectRoot: absolute, preset, exclude: loaded.config?.exclude });
+  const overlay = withDerivedSourceRoots(baseOverlay, derivedSourceRoots);
   return {
     path: entry.path,
     folder,
@@ -184,7 +206,8 @@ export function describeProject(entry: ProjectEntry, context: PlanContext): Plan
     repoPath: path.posix.normalize(path.posix.join(prefix, folder)),
     origin: entry.origin,
     overlay,
-    preset: loaded.config?.preset ?? overlay?.preset ?? 'typescript',
+    preset,
+    ...(derivedSourceRoots === undefined ? {} : { derivedSourceRoots }),
     ...(entry.workspace === undefined
       ? {}
       : { toolchainRoot: path.posix.normalize(path.posix.join(prefix, entry.workspace)) }),
