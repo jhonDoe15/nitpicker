@@ -67,6 +67,7 @@ function eslintChecksFor(layout: ResolvedLayout, exclusions: CheckExclusions): E
       patterns: [...layout.sourceGlobs, ...layout.testGlobs],
       exclusions: exclusions.general,
       policyFiles: [TSCONFIG_QUALITY_FILE],
+      ...SIZE_SCALED_DEADLINE,
       shardWeight: 25,
       carries: true,
       configurationFiles: [

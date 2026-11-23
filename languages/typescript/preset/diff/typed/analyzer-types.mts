@@ -59,6 +59,8 @@ export type EslintSettings = {
   readonly patterns: readonly string[];
   readonly exclusions: readonly string[];
   readonly policyFiles: readonly string[];
+  readonly timeoutMs: number | undefined;
+  readonly timeoutScale: unknown;
   readonly shardWeight: number;
   readonly colocatedWith: readonly string[] | undefined;
   readonly carriedBy: string | undefined;
