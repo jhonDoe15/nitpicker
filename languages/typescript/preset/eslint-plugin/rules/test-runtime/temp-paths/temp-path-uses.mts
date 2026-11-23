@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 import { findVariable, type SourceContext } from '../../analysis/constant-resolution.mts';
 import { ancestorsOf } from '../../analysis/ancestry.mts';
 import { functionBinding, type FunctionNode } from '../../typed/node-views.mts';
@@ -165,7 +166,10 @@ export function reachesFileChange(context: SourceContext, start: TSESTree.Node):
       return true;
     }
     const next = carried.filter(({ top }) => top !== node);
-    pending.push(...next.map(({ top }) => ({ node: top, depth: depth + 1 })));
+    appendAll(
+      pending,
+      next.map(({ top }) => ({ node: top, depth: depth + 1 })),
+    );
   }
   return false;
 }

@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 import { findVariable, type SourceContext } from '../../analysis/constant-resolution.mts';
 import { ASSERTION_FORMS, unwrapOf } from '../../typed/syntax-views.mts';
 import { isJoin, isTmpdirCall } from '../../unique-names/time-values.mts';
@@ -51,7 +52,7 @@ function isChildren(expansion: Expansion): expansion is readonly TSESTree.Node[]
   return Array.isArray(expansion);
 }
 
-function callParts(context: SourceContext, node: TSESTree.CallExpression): Expansion {
+function callParts(node: TSESTree.CallExpression): Expansion {
   if (isTmpdirCall(node)) {
     return { ...NO_PARTS, underTemp: true };
   }
@@ -104,7 +105,7 @@ function expansionOf(context: SourceContext, node: TSESTree.Node): Expansion {
     return node.operator === '+' ? [node.left, node.right] : UNKNOWN;
   }
   if (node.type === AST_NODE_TYPES.CallExpression) {
-    return callParts(context, node);
+    return callParts(node);
   }
   return node.type === AST_NODE_TYPES.Identifier ? identifierParts(context, node) : UNKNOWN;
 }
@@ -116,7 +117,10 @@ export function pathParts(context: SourceContext, start: TSESTree.Node): PathPar
     const expansion =
       depth > MAX_DEPTH ? UNKNOWN : expansionOf(context, unwrapOf(node, ASSERTION_FORMS));
     if (isChildren(expansion)) {
-      pending.push(...expansion.map((child) => ({ node: child, depth: depth + 1 })));
+      appendAll(
+        pending,
+        expansion.map((child) => ({ node: child, depth: depth + 1 })),
+      );
     } else {
       leaves.push(expansion);
     }
