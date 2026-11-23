@@ -7,6 +7,7 @@ const TIME_NOW = String.raw`(?:Instant|Local\w+|Zoned\w+|Offset\w+|Year\w*|Month
 const CLOCK_FORMS = [
   TIME_NOW,
   String.raw`System\s*\.\s*currentTimeMillis\s*\(\s*\)`,
+  String.raw`System\s*\.\s*nanoTime\s*\(\s*\)`,
   String.raw`Clock\s*\.\s*System\s*\.\s*now\s*\(\s*\)`,
 ].join('|');
 const CLOCK_HEAD = new RegExp(String.raw`^(?:[a-z]\w*\s*\.\s*)*(?:${CLOCK_FORMS})`, 'u');
@@ -20,11 +21,15 @@ const METHOD_TAIL = /(?<![\w.)])[a-z_]\w*(?:\s*\.\s*\w+)+\s*\(\s*\)$/u;
 const NAME_TAIL = /(?<![\w.])([A-Za-z_]\w*)(?:\s*\.\s*\w+)*$/u;
 const NAME_HEAD = /^([A-Za-z_]\w*)(\s*\()?/u;
 const UPPER = /^[A-Z]/u;
+const TIME_UNIT_ARG = String.raw`(?:[a-z_]\w*|System\s*\.\s*(?:nanoTime|currentTimeMillis)\s*\(\s*\))`;
+const TIME_UNIT_CALL = String.raw`(?:(?:java\s*\.\s*util\s*\.\s*concurrent\s*\.\s*)?TimeUnit\s*\.\s*\w+|NANOSECONDS|MICROSECONDS|MILLISECONDS|SECONDS|MINUTES|HOURS|DAYS)\s*\.\s*(?:to(?:Nanos|Micros|Millis|Seconds|Minutes|Hours|Days)|convert)\s*\(\s*${TIME_UNIT_ARG}`;
+const TIME_UNIT_HEAD = new RegExp(`^${TIME_UNIT_CALL}`, 'u');
+const TIME_UNIT_TAIL = new RegExp(String.raw`${TIME_UNIT_CALL}\s*(?:,[^()]+)?\)$`, 'u');
 
 function measuresRight(code: string, at: number): boolean {
   const text = code.slice(at, at + WINDOW);
   const head = NAME_HEAD.exec(text);
-  if (CLOCK_HEAD.test(text)) {
+  if (CLOCK_HEAD.test(text) || TIME_UNIT_HEAD.test(text)) {
     return true;
   }
   return head !== null && !UPPER.test(groupOf(head, 1)) && head[2] === undefined;
@@ -36,7 +41,7 @@ function measuresLeft(code: string, stop: number): boolean {
     return false;
   }
   if (text.endsWith(')')) {
-    return CLOCK_TAIL.test(text) || METHOD_TAIL.test(text);
+    return CLOCK_TAIL.test(text) || METHOD_TAIL.test(text) || TIME_UNIT_TAIL.test(text);
   }
   const root = NAME_TAIL.exec(text)?.[1];
   return root !== undefined && !UPPER.test(root);

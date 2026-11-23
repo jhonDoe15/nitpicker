@@ -7,13 +7,18 @@
 let $timeTypes := ('Instant', 'LocalDate', 'LocalDateTime', 'LocalTime', 'ZonedDateTime', 'OffsetDateTime',
                    'OffsetTime', 'Year', 'YearMonth', 'MonthDay', 'Clock', 'InstantSource', 'System', 'Date'),
     $measures := ('isBefore', 'isAfter', 'compareTo', 'until', 'between'),
+    $timeUnits := ('toNanos', 'toMicros', 'toMillis', 'toSeconds', 'toMinutes', 'toHours', 'toDays', 'convert'),
     $measuring := function($call) {
       $call[@MethodName = ('isBefore', 'isAfter', 'compareTo')
             or *[1][pmd-java:typeIs('java.time.Duration') or pmd-java:typeIs('java.time.temporal.TemporalUnit')
                     or pmd-java:typeIs('java.time.temporal.Temporal')]] },
+    $converting := function($call) {
+      $call[@MethodName = $timeUnits][*[1][pmd-java:typeIs('java.util.concurrent.TimeUnit')]] },
     $top := function($n) {
       $n/ancestor-or-self::*[not((parent::MethodCall[not(@MethodName = $measures)] and not(preceding-sibling::*))
-                                 or parent::InfixExpression[@Operator = '+'])][1] },
+                                 or parent::InfixExpression[@Operator = '+']
+                                 or (parent::ArgumentList[parent::MethodCall[$converting(.)]] and not(preceding-sibling::*))
+                                 or self::ArgumentList[parent::MethodCall[$converting(.)]])][1] },
     $inCondition := function($n) {
       some $a in $n/ancestor-or-self::* satisfies
         ($a/parent::WhileStatement and $a is $a/../*[1])
@@ -23,7 +28,8 @@ let $timeTypes := ('Instant', 'LocalDate', 'LocalDateTime', 'LocalTime', 'ZonedD
       let $t := $top($n)
       return exists($t/parent::InfixExpression[@Operator = ('<', '>', '<=', '>=')])
         or exists($t/parent::InfixExpression[@Operator = '-'][not(*[not(. is $t)][self::NumericLiteral or self::FieldAccess
-                                                                     or self::MethodCall[not(@MethodName = ('now', 'currentTimeMillis', 'nanoTime', 'millis', 'toEpochMilli'))]])])
+                                                                     or self::MethodCall[not(@MethodName = ('now', 'currentTimeMillis', 'nanoTime', 'millis', 'toEpochMilli')
+                                                                                             or ($converting(.) and not(ArgumentList/*[1][self::NumericLiteral or self::FieldAccess])))]])])
         or exists($t/parent::MethodCall[@MethodName = $measures][$measuring(.)])
         or exists($t/parent::ArgumentList/parent::MethodCall[@MethodName = $measures][$measuring(.)])
         or $inCondition($t) },

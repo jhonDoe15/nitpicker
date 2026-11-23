@@ -10,6 +10,7 @@ import java.time.ZoneOffset;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
 
 class ClockReads {
   void readsTheClock() {
@@ -32,6 +33,9 @@ class ClockReads {
     }
     assertThat(System.currentTimeMillis() - start).isLessThan(5_000);
     assertThat(Duration.between(deadline, Instant.now())).isLessThan(Duration.ofSeconds(5));
+    long converted = System.currentTimeMillis();
+    assertThat(System.nanoTime() - TimeUnit.MILLISECONDS.toNanos(converted)).isLessThan(5_000_000_000L);
+    assertThat(TimeUnit.NANOSECONDS.convert(converted, TimeUnit.MILLISECONDS) <= System.nanoTime()).isTrue();
   }
 
   void marksPresence(Metadata metadata) {
@@ -50,6 +54,9 @@ class ClockReads {
     assertThat(metadata.created()).isEqualTo(now);
     assertThat(checker.valid(LocalDate.now().plusDays(1))).isFalse(); // violation: RealClockInTest
     metadata.setSeen(Instant.now()); // violation: RealClockInTest
+    long nonElapsed = System.currentTimeMillis(); // violation: RealClockInTest
+    assertThat(TimeUnit.MILLISECONDS.toNanos(nonElapsed)).isPositive();
+    assertThat(System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(5)).isPositive(); // violation: RealClockInTest
   }
 
   void drawsRandomValues() {

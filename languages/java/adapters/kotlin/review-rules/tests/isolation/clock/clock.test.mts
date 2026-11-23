@@ -234,4 +234,31 @@ class FakedTest {
       'AgeTest.users@22',
     ]);
   });
+
+  it('allows a start time converted through TimeUnit before subtraction or comparison', () => {
+    const text = `${HEAD}import java.util.concurrent.TimeUnit
+
+class ConvertedTest {
+    @Test
+    fun elapsed() {
+        val startedAt = System.currentTimeMillis()
+        work()
+        val elapsed = System.nanoTime() - TimeUnit.MILLISECONDS.toNanos(startedAt)
+        assertTrue(elapsed < 1_000_000L)
+        assertTrue(System.nanoTime() - TimeUnit.MILLISECONDS.toNanos(startedAt) < 1_000_000L)
+        assertTrue(TimeUnit.NANOSECONDS.convert(startedAt, TimeUnit.MILLISECONDS) <= System.nanoTime())
+    }
+
+    @Test
+    fun nonElapsed() {
+        val stamp = System.currentTimeMillis()
+        service.record(TimeUnit.MILLISECONDS.toNanos(stamp))
+        val cutoff = System.currentTimeMillis() - TimeUnit.SECONDS.toMillis(5)
+        println(cutoff)
+    }
+}
+`;
+
+    expect(reads(text)).toEqual(['ConvertedTest.nonElapsed@25', 'ConvertedTest.nonElapsed@27']);
+  });
 });
