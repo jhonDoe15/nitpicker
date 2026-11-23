@@ -23,6 +23,7 @@ export type AnalyzeRequest = MavenRun & {
   readonly work: string;
   readonly pitDeadline: number | undefined;
   readonly tools: unknown;
+  readonly processorFailures: unknown;
   readonly configs: unknown;
   readonly since: number;
   readonly project: unknown;
@@ -36,6 +37,7 @@ export type ToolsRequest = {
   readonly policy: JavaPolicy;
   readonly pinned: unknown;
   readonly kotlin: unknown;
+  readonly effectivePom: unknown;
 };
 export type MavenPresetOptions = {
   readonly maven?: string | undefined;
@@ -64,6 +66,7 @@ export type Prepared = {
   readonly since: number;
   readonly analyzed: AnalyzedModule[];
   readonly tools: unknown;
+  readonly processorFailures: unknown;
   readonly timedOut: unknown[];
   readonly failed: readonly FailedModule[];
 };

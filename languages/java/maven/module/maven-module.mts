@@ -112,7 +112,11 @@ function runSourceTools(options: ModuleOptions): void {
   const coverageModule = fieldOf(kotlin, 'coverageModule');
   const tasks = [
     ...coverageTasks(options, coverageModule),
-    sourceTask(runErrorProne, ERRORPRONE_URL, { ...base, classpaths }),
+    sourceTask(runErrorProne, ERRORPRONE_URL, {
+      ...base,
+      classpaths,
+      processorFailures: options['processorFailures'],
+    }),
     sourceTask(runPmd, LINT_URL, {
       ...base,
       classpaths,
