@@ -89,14 +89,22 @@ function fileFacade(entry: Entry): { name: string; kind: string }[] {
   return entry.file.endsWith('.kt') && topLevel ? [{ name: facadeName(entry), kind: 'class' }] : [];
 }
 
+export function emptyProjectIndex(): ProjectIndex {
+  return { types: new Map(), packages: new Map(), members: new Set() };
+}
+
+export function indexEntry(index: ProjectIndex, entry: Entry): void {
+  const { packageName } = entry.parsed;
+  index.packages.set(packageName, index.packages.get(packageName) ?? new Map<string, Target[]>());
+  for (const definition of [...entry.parsed.definitions, ...fileFacade(entry)]) {
+    addDefinition(index, entry, definition);
+  }
+}
+
 export function projectIndex(files: readonly Entry[]): ProjectIndex {
-  const index: ProjectIndex = { types: new Map(), packages: new Map(), members: new Set() };
+  const index = emptyProjectIndex();
   for (const entry of files) {
-    const { packageName } = entry.parsed;
-    index.packages.set(packageName, index.packages.get(packageName) ?? new Map<string, Target[]>());
-    for (const definition of [...entry.parsed.definitions, ...fileFacade(entry)]) {
-      addDefinition(index, entry, definition);
-    }
+    indexEntry(index, entry);
   }
   return index;
 }

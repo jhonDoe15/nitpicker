@@ -21,28 +21,17 @@ import {
 import { readJvmUnits as untypedReadJvmUnits } from '../near-duplicates/jvm-trees.mts';
 import { isGeneratedJvm } from '../generated/generated-sources.mts';
 import { toolSlots } from '../../maven/parallel/slots/tool-slots.mts';
-import { definitionKey } from './jvm-definition-keys.mts';
-import { importFacts } from './jvm-reference-uses.mts';
-import { fileBindings, projectIndex, referenceScope } from './jvm-references.mts';
-import { readJvmDefinitions } from './source/jvm-definitions.mts';
+import { collectSourceFacts, parseJvmSource } from './source/jvm-source-facts.mts';
 import {
   type BaselineEntry,
   type BaselinePolicy,
-  type BoundEntry,
-  type Definition,
-  type Entry,
-  type Parsed,
   type ReuseFacts,
   type ReuseFactsOptions,
   type ReuseOptions,
   type ReusePart,
   type ReuseProject,
 } from './jvm-reuse-types.mts';
-import {
-  aliasEntryFields,
-  kotlinEntryPointFindings,
-  typeAliasReexports,
-} from './kotlin-type-aliases.mts';
+import { kotlinEntryPointFindings } from './kotlin-type-aliases.mts';
 
 const baselinePathsOf: (options: {
   snapshot: string;
@@ -101,10 +90,6 @@ function projectSourceFiles(
   );
 }
 
-function parse(text: string, file: string): Parsed {
-  return readJvmDefinitions(text, { kotlin: file.endsWith('.kt') });
-}
-
 export function publishedOf(reportRoot: string | undefined): boolean {
   if (reportRoot === undefined) {
     return false;
@@ -120,54 +105,21 @@ function isPublished(project: ReuseProject): boolean {
   return typeof published === 'boolean' ? published : publishedOf(project.reportRoot);
 }
 
-function neutralDefinition(
-  file: string,
-  definition: Definition,
-  context: BoundEntry,
-): { file: string; key: string; [field: string]: unknown } {
-  const { start, end, owner, supertypes, ...rest } = definition;
-  return { file, ...rest, key: definitionKey(definition, context) };
-}
-
 export function jvmReuseFacts(projectRoot: string, options: ReuseFactsOptions): ReuseFacts {
   const owners = projectSourceFiles(projectRoot, options);
-  const files = [...owners].map(([file, project]) => ({
-    file,
-    module: project.qualifier ?? '',
-    parsed: parse(readFileSync(pathInside(projectRoot, file), 'utf8'), file),
-  }));
-  const index = projectIndex(files);
-  const bound = files.map((entry) => ({
-    ...entry,
-    bindings: fileBindings(index, entry),
-    scope: referenceScope(index, entry),
-  }));
-  const aliases = bound.flatMap((entry) => typeAliasReexports(index, entry));
+  const sourceFacts = collectSourceFacts(projectRoot, owners);
   return {
-    modules: bound.map((entry) => ({
-      file: entry.file,
-      role: 'production',
-      ...(entry.parsed.definitions.some(({ entry: isEntry }) => isEntry === true)
-        ? { entry: true }
-        : {}),
-      ...aliasEntryFields(entry, aliases),
-    })),
+    ...sourceFacts,
     packages: options.projects.map((project) => ({
       root: project.qualifier ?? '',
       published: isPublished(project),
     })),
-    definitions: bound.flatMap((entry) =>
-      entry.parsed.definitions.map((definition) =>
-        neutralDefinition(entry.file, definition, entry),
-      ),
-    ),
-    imports: [...bound.flatMap((entry) => importFacts(index, entry)), ...aliases],
-    nearDuplicateUnits: unitFacts(projectRoot, files),
+    nearDuplicateUnits: unitFacts(projectRoot, [...owners.keys()]),
   };
 }
 
-function unitFacts(projectRoot: string, files: readonly Entry[]) {
-  const sources = files.map(({ file }) => file).filter((file) => /\.(?:java|kt)$/u.test(file));
+function unitFacts(projectRoot: string, files: readonly string[]) {
+  const sources = files.filter((file) => /\.(?:java|kt)$/u.test(file));
   return readJvmUnits(projectRoot, sources).map(
     ({ file, name, start, end, tokens, final, tree }) => ({
       file,
@@ -197,7 +149,7 @@ function baselineReader(
     }
     return {
       unchanged: false,
-      definitions: parse(before, file).definitions.map(
+      definitions: parseJvmSource(before, file).definitions.map(
         ({ kind, name, qualifier, tokens, text }) => ({
           kind,
           name,

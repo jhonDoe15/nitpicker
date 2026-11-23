@@ -14,6 +14,7 @@ import {
   STATUS_FILE,
   HEARTBEAT_FILE,
   SILENCE_LIMIT_MS,
+  readJsonFile,
   reusePartOf,
 } from './reuse-files.mts';
 import { removeQuietly } from '../cleanup/remove-quietly.mts';
@@ -121,10 +122,20 @@ function awaitStatus(run: Started): boolean {
   return existsSync(status) && fieldOf(JSON.parse(readFileSync(status, 'utf8')), 'passed') === true;
 }
 
+function sameStamps(left: unknown, right: Record<string, string>): boolean {
+  if (typeof left !== 'object' || left === null || Array.isArray(left)) {
+    return false;
+  }
+  const expected = Object.entries(right);
+  return (
+    Object.keys(left).length === expected.length &&
+    expected.every(([file, hash]) => fieldOf(left, file) === hash)
+  );
+}
+
 function readResult(folder: string, request: string): ReusePart | undefined {
-  const result: unknown = JSON.parse(readFileSync(path.join(folder, RESULT_FILE), 'utf8'));
-  const stamps = JSON.stringify(fieldOf(result, 'stamps'));
-  if (stamps !== JSON.stringify(sourceStamps(request))) {
+  const result = readJsonFile(path.join(folder, RESULT_FILE));
+  if (!sameStamps(fieldOf(result, 'stamps'), sourceStamps(request))) {
     return undefined;
   }
   return reusePartOf(fieldOf(result, 'part'));
@@ -156,15 +167,11 @@ export function computeReusePart(request: string): ReusePart {
   return readReusePart(projectRoot, options);
 }
 
-function storedPart(part: ReusePart): ReusePart | undefined {
-  return reusePartOf(JSON.parse(JSON.stringify(part)));
-}
-
 export function jvmReuseAhead(
   projectRoot: string,
   options: WideOptions,
 ): { findings: JavaFinding[]; imports: unknown } {
   const request = reuseRequest(projectRoot, options);
   const part = takeReuseAhead(request) ?? computeReusePart(request);
-  return withSharedUsage(storedPart(part) ?? part, options);
+  return withSharedUsage(part, options);
 }
