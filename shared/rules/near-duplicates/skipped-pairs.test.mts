@@ -26,7 +26,15 @@ describe('near-duplicate when one pair cannot be compared', () => {
       warnings.push(String(text));
     });
     const units: FactUnit[] = javascriptUnits(COPIES, { file: FILE }).map(
-      ({ file, name, start, end, tree }) => ({ file, name, start, end, tokens: 10, tree }),
+      ({ file, name, start, end, tree }) => ({
+        file,
+        name,
+        start,
+        end,
+        tokens: 10,
+        final: false,
+        tree,
+      }),
     );
     const options = { isExcepted: () => false, proveLogic: failingOnAlignTop };
 

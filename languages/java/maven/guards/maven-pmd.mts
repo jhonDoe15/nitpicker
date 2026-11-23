@@ -87,6 +87,13 @@ export function runCpd(options: CpdOptions): void {
   ) {
     return;
   }
+  runCpdTool(options, { report, failure, directories });
+}
+
+function runCpdTool(
+  options: CpdOptions,
+  { report, failure, directories }: { report: string; failure: string; directories: string[] },
+): void {
   const command = callUntyped(toolCommand, 'cpd', { report, directories });
   const result = launchCpd(options, command);
   const status = fieldOf(result, 'status');

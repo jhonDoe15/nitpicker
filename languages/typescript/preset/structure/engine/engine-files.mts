@@ -52,22 +52,35 @@ export function engineOutput<Result>(
   }
   const folder = mkdtempSync(path.join(tmpdir(), 'nitpicker-structure-'));
   try {
-    const list = path.join(folder, 'files.tsv');
-    const out = path.join(folder, 'out');
-    writeFileSync(list, files.map((file) => `${file.path}\t${file.display}\n`).join(''));
-    const { status, stderr } = runEngineSync([command, '--files', list, '--out', out], {
-      binary,
-      timeoutMs: TIME_LIMIT_MS,
-    });
-    if (status !== 0) {
-      checkNotRequired(
-        environment,
-        `${command} ended with status ${String(status)}: ${stderr.trim()}`,
-      );
-      return undefined;
-    }
-    return readOutput(out, read, environment);
+    return outputIn(folder, { command, files, environment, binary }, read);
   } finally {
     rmSync(folder, { recursive: true, force: true });
   }
+}
+
+function outputIn<Result>(
+  folder: string,
+  {
+    command,
+    files,
+    environment,
+    binary,
+  }: Run & { readonly command: string; readonly binary: string },
+  read: (out: string) => Result,
+): Result | undefined {
+  const list = path.join(folder, 'files.tsv');
+  const out = path.join(folder, 'out');
+  writeFileSync(list, files.map((file) => `${file.path}\t${file.display}\n`).join(''));
+  const { status, stderr } = runEngineSync([command, '--files', list, '--out', out], {
+    binary,
+    timeoutMs: TIME_LIMIT_MS,
+  });
+  if (status !== 0) {
+    checkNotRequired(
+      environment,
+      `${command} ended with status ${String(status)}: ${stderr.trim()}`,
+    );
+    return undefined;
+  }
+  return readOutput(out, read, environment);
 }
