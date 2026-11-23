@@ -27,7 +27,7 @@ project.ext.nitpickerSkippedByBuild = { Task task ->
 }
 
 project.ext.nitpickerPitTestClasses = { Test source, Object excluded ->
-    source.testClassesDirs.files.findAll { it.exists() }.collectMany { dir ->
+    source.testClassesDirs.files.findAll { it != null && it.exists() }.collectMany { dir ->
         def classes = fileTree(dir).matching { include '**/*.class' }
         if (excluded != null) {
             classes = classes.matching { exclude excluded }
@@ -85,17 +85,17 @@ project.ext.nitpickerRegisterPit = { Map spec ->
         }
         doFirst {
             def pitDir = spec.reportDir()
-            def classDirs = spec.classDirs().findAll { it.exists() }
+            def classDirs = spec.classDirs().findAll { it != null && it.exists() }
             // A target is the first package holding classes on each path. PIT refuses any filter
             // that matches its own org.pitest classes, as `org.*` does, so such a package lists its
             // classes by name and its subpackages separately.
             def classNames = { File dir, String prefix ->
-                (dir.listFiles() ?: []).findAll { it.isFile() && it.name.endsWith('.class') }
+                (dir.listFiles() ?: []).findAll { it != null && it.isFile() && it.name.endsWith('.class') }
                     .collect { "${prefix}${it.name.replaceAll(/\.class$/, '')}".toString() }
             }
             def packageTargets
             packageTargets = { File dir, String prefix ->
-                def subpackages = { (dir.listFiles() ?: []).findAll { it.isDirectory() }
+                def subpackages = { (dir.listFiles() ?: []).findAll { it != null && it.isDirectory() }
                     .collectMany { packageTargets(it, "${prefix}${it.name}.".toString()) } }
                 def classes = classNames(dir, prefix)
                 classes.isEmpty() ? subpackages()
@@ -104,6 +104,11 @@ project.ext.nitpickerRegisterPit = { Map spec ->
             }
             def targets = spec.scopedTargets() ?:
                 classDirs.collectMany { dir -> packageTargets(dir, '') }.unique().sort()
+            if (targets.isEmpty()) {
+                project.delete(pitDir)
+                pitDir.asFile.mkdirs()
+                throw new StopExecutionException()
+            }
             // Tests are named class by class: a package glob would also hand the main classes
             // that share a package with the tests to the test engine.
             def testRuntimeFiles = source.classpath.files
@@ -128,11 +133,11 @@ project.ext.nitpickerRegisterPit = { Map spec ->
             project.delete(pitDir)
             pitDir.asFile.mkdirs()
             def pitClasspath = (testRuntimeFiles + classDirs)
-                .findAll { it.exists() }.collect { it.absolutePath }.unique()
+                .findAll { it != null && it.exists() }.collect { it.absolutePath }.unique()
             args(['--reportDir', pitDir.asFile.absolutePath,
                   '--targetClasses', targets.join(','),
                   '--targetTests', tests.join(','),
-                  '--sourceDirs', spec.sourceDirs().findAll { it.exists() }.join(','),
+                  '--sourceDirs', spec.sourceDirs().findAll { it != null && it.exists() }.join(','),
                   '--classPath', pitClasspath.join(','),
                   '--mutableCodePaths', classDirs.collect { it.absolutePath }.join(','),
                   '--outputFormats', 'XML',
@@ -149,7 +154,7 @@ project.ext.nitpickerRegisterPit = { Map spec ->
             def sameDrive = historyFile.toPath().root == context.analysisRoot.toPath().root
             def recorded = baseRoot == null || !sameDrive ? null
                 : new File(baseRoot, context.relativeToRoot(historyFile)).canonicalFile
-            if (recorded?.isFile() && recorded.path.startsWith(baseRoot.path + File.separator)) {
+            if (recorded != null && recorded.isFile() && recorded.path.startsWith(baseRoot.path + File.separator)) {
                 args '--historyInputLocation', recorded.absolutePath
             }
             def testJvmArgs = (source.jvmArgs ?: []) +
