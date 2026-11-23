@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { WorkspaceMember } from '../project-types.mts';
-import { undeclaredHint, writeUndeclaredProjects } from './messages.mts';
+import { derivedLayoutHint, undeclaredHint, writeUndeclaredProjects } from './messages.mts';
 
 const scratch = mkdtempSync(path.join(tmpdir(), 'nitpicker-messages-'));
 
@@ -106,5 +106,44 @@ describe('writeUndeclaredProjects', () => {
 
     expect(writeUndeclaredProjects(outputRoot, entries(4))).toBe(expected);
     expect(writeUndeclaredProjects(outputRoot, entries(4), repoRoot)).toBe(expected);
+  });
+});
+
+describe('derivedLayoutHint', () => {
+  it('returns empty when no packages derived their layout', () => {
+    expect(derivedLayoutHint([{ path: 'packages/std' }])).toEqual([]);
+  });
+
+  it('describes a single derived package with its derived sourceRoots', () => {
+    expect(derivedLayoutHint([{ path: 'static/app', derivedSourceRoots: ['.'] }])).toEqual([
+      'static/app has no src/ folder, so this run derived "layout.sourceRoots": ["."]. ' +
+        'Pin "layout.sourceRoots" in its nitpicker.config.json to keep it explicit.',
+    ]);
+  });
+
+  it('lists multiple derived packages and truncates after three', () => {
+    expect(
+      derivedLayoutHint([
+        { path: 'static/app', derivedSourceRoots: ['.'] },
+        { path: 'api-docs', derivedSourceRoots: ['lib'] },
+      ]),
+    ).toEqual([
+      '2 packages have no src/ folder, so this run derived "layout.sourceRoots": ' +
+        'static/app (["."]), api-docs (["lib"]). Pin "layout.sourceRoots" in nitpicker.config.json ' +
+        'to keep it explicit.',
+    ]);
+    expect(
+      derivedLayoutHint([
+        { path: 'p1', derivedSourceRoots: ['.'] },
+        { path: 'p2', derivedSourceRoots: ['.'] },
+        { path: 'p3', derivedSourceRoots: ['lib'] },
+        { path: 'p4', derivedSourceRoots: ['.'] },
+        { path: 'p5', derivedSourceRoots: ['.'] },
+      ]),
+    ).toEqual([
+      '5 packages have no src/ folder, so this run derived "layout.sourceRoots": ' +
+        'p1 (["."]), p2 (["."]), p3 (["lib"]), and 2 more. Pin "layout.sourceRoots" in ' +
+        'nitpicker.config.json to keep it explicit.',
+    ]);
   });
 });

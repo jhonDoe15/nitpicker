@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { computeReusePart } from './reuse-ahead.mts';
@@ -9,21 +9,16 @@ import {
   REQUEST_FILE,
   RESULT_FILE,
   STATUS_FILE,
+  writeJsonFile,
 } from './reuse-files.mts';
 import { sourceStamps } from './reuse-request.mts';
 
 const COMPUTE = 'compute';
 
-function writeWhole(file: string, value: unknown): void {
-  const partial = `${file}.partial`;
-  writeFileSync(partial, JSON.stringify(value));
-  renameSync(partial, file);
-}
-
 function compute(folder: string): void {
   const request = readFileSync(path.join(folder, REQUEST_FILE), 'utf8');
   const stamps = sourceStamps(request);
-  writeWhole(path.join(folder, RESULT_FILE), { stamps, part: computeReusePart(request) });
+  writeJsonFile(path.join(folder, RESULT_FILE), { stamps, part: computeReusePart(request) });
 }
 
 function isAlive(pid: number): boolean {
@@ -63,7 +58,7 @@ function supervise(parent: number, folder: string): void {
   }, HEARTBEAT_MS);
   function finish(passed: boolean): void {
     clearInterval(watch);
-    writeWhole(path.join(folder, STATUS_FILE), { passed });
+    writeJsonFile(path.join(folder, STATUS_FILE), { passed });
   }
   child.on('error', () => {
     finish(false);

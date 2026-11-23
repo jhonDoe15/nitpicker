@@ -30,7 +30,7 @@ project.ext.nitpickerPitRetry = { File pitDir, String firstOutput, Closure rerun
     }
     new File(pitDir, 'unmutated-failures.txt').text = lines.join('\n') + '\n'
     def baseStopped = baseDir == null ? null : new File(baseDir, 'retry-stopped.txt')
-    if (baseStopped?.isFile() && failingClasses(baseStopped.readLines()) == failingClasses(lines)) {
+    if (baseStopped != null && baseStopped.isFile() && failingClasses(baseStopped.readLines()) == failingClasses(lines)) {
         return [baseRetryStopped: true, exitValue: 1, output: firstOutput]
     }
     def result = rerun()

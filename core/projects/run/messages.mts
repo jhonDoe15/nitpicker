@@ -205,3 +205,38 @@ export function submoduleHint(folders: readonly string[]): string[] {
       `not check: run nitpicker inside ${one ? 'it' : 'each'} to gate ${one ? 'its' : 'their'} own changes.`,
   ];
 }
+
+type DerivedProject = {
+  readonly path: string;
+  readonly derivedSourceRoots?: readonly string[] | undefined;
+};
+
+function describedDerived(entries: readonly DerivedProject[]): string {
+  return entries
+    .map(
+      ({ path: folder, derivedSourceRoots }) => `${folder} (${JSON.stringify(derivedSourceRoots)})`,
+    )
+    .join(', ');
+}
+
+export function derivedLayoutHint(projects: readonly DerivedProject[]): string[] {
+  const derived = projects.filter(({ derivedSourceRoots }) => derivedSourceRoots !== undefined);
+  if (derived.length === 0) {
+    return [];
+  }
+  if (derived.length === 1) {
+    const [only] = derived;
+    return [
+      `${only?.path ?? ''} has no src/ folder, so this run derived "layout.sourceRoots": ` +
+        `${JSON.stringify(only?.derivedSourceRoots)}. Pin "layout.sourceRoots" in its ` +
+        `${CONFIG_FILE_NAME} to keep it explicit.`,
+    ];
+  }
+  const shown = derived.slice(0, UNDECLARED_SHOWN);
+  const rest = derived.length - UNDECLARED_SHOWN;
+  const more = rest > 0 ? `, and ${String(rest)} more` : '';
+  return [
+    `${String(derived.length)} packages have no src/ folder, so this run derived "layout.sourceRoots": ` +
+      `${describedDerived(shown)}${more}. Pin "layout.sourceRoots" in ${CONFIG_FILE_NAME} to keep it explicit.`,
+  ];
+}

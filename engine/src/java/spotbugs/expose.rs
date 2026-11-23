@@ -78,7 +78,7 @@ impl Site<'_, '_, '_> {
         }
     }
 
-    fn check(&self, found: &Trace) {
+    fn check(&self, found: &Trace, param_fields: &HashSet<(String, String)>) {
         let mut seen = HashSet::new();
         for (node, item) in &found.returns {
             if let Item::Field(field) = item {
@@ -89,7 +89,16 @@ impl Site<'_, '_, '_> {
         }
         let mut kept = HashSet::new();
         for store in &found.stores {
-            let Item::Param(place, _) = store.item else { continue };
+            let place = match &store.item {
+                Item::Param(place, _) => Some(*place),
+                Item::Field(source)
+                    if (source.declaring != store.field.declaring || source.name != store.field.name)
+                        && param_fields.contains(&(source.declaring.clone(), source.name.clone())) =>
+                {
+                    None
+                }
+                _ => continue,
+            };
             if (store.own || self.is_static) && kept.insert((store.field.declaring.clone(), store.field.name.clone(), place)) {
                 self.stored(self.method, self.context.line(store.node), &store.field, &store.variable);
             }
@@ -223,32 +232,76 @@ fn record_members(context: &Context, class: Node, own: &str, nest: &[String]) {
     }
 }
 
+fn param_sourced_fields(context: &Context, traced: &[(Node, bool, Trace)]) -> HashSet<(String, String)> {
+    let index = context.resolver.index;
+    let mut fields = HashSet::new();
+    let mut copies = Vec::new();
+    for (_, is_static, found) in traced {
+        for store in &found.stores {
+            if !(store.own || *is_static) || store.field.is_public() || !mutable(index, &store.field.kind) || store.field.is_static() != *is_static {
+                continue;
+            }
+            let target = (store.field.declaring.clone(), store.field.name.clone());
+            match &store.item {
+                Item::Param(..) => {
+                    fields.insert(target);
+                }
+                Item::Field(source) => {
+                    copies.push(((source.declaring.clone(), source.name.clone()), target));
+                }
+                _ => {}
+            }
+        }
+    }
+    loop {
+        let mut changed = false;
+        for (source, target) in &copies {
+            if fields.contains(source) && fields.insert(target.clone()) {
+                changed = true;
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+    fields
+}
+
 pub fn exposed_representation(context: &Context, class: Node) {
     if !matches!(class.kind(), "class_declaration" | "enum_declaration" | "record_declaration") || !class_public(class) {
         return;
     }
     let Some(own) = context.resolver.scope.names.get(&class.id()).cloned() else { return };
     let nest = enclosing_types(context.resolver.scope, class);
+    let mut traced = Vec::new();
     for member in members(class) {
         let kind = member.kind();
-        if !matches!(kind, "method_declaration" | "constructor_declaration" | "compact_constructor_declaration") || !has_modifier(member, "public") {
+        if !matches!(kind, "method_declaration" | "constructor_declaration" | "compact_constructor_declaration") {
             continue;
         }
         let Some(body) = member.child_by_field_name("body") else { continue };
         let formals = if kind == "compact_constructor_declaration" { parameters(class) } else { parameters(member) };
         let found = trace(context, &formals, body);
-        let label = if kind == "compact_constructor_declaration" { names::method(context, &own, class, None) } else { names::method(context, &own, member, None) };
+        traced.push((member, has_modifier(member, "static"), found));
+    }
+    let param_fields = param_sourced_fields(context, &traced);
+    for (member, is_static, found) in &traced {
+        if !has_modifier(*member, "public") {
+            continue;
+        }
+        let kind = member.kind();
+        let label = if kind == "compact_constructor_declaration" { names::method(context, &own, class, None) } else { names::method(context, &own, *member, None) };
         let outer = nest.get(1).filter(|_| kind == "constructor_declaration" && inner(class)).map(String::as_str);
-        let label = if outer.is_some() { names::method(context, &own, member, outer) } else { label };
-        let site = Site { context, class: &own, nest: nest.clone(), method: member, label, is_static: has_modifier(member, "static") };
-        site.check(&found);
+        let label = if outer.is_some() { names::method(context, &own, *member, outer) } else { label };
+        let site = Site { context, class: &own, nest: nest.clone(), method: *member, label, is_static: *is_static };
+        site.check(found, &param_fields);
         if let (true, Some(end)) = (kind == "compact_constructor_declaration", &found.end) {
             for component in parameters(class) {
                 let Some(name) = component.child_by_field_name("name").map(|name| context.text(name)) else { continue };
                 let Some((declaring, field)) = context.resolver.index.field(&own, name) else { continue };
                 if matches!(end.get(name), Some(Item::Param(..))) {
                     let field = FieldRef { declaring: declaring.name.clone(), name: name.to_string(), via: own.clone(), kind: field.kind.clone(), flags: field.flags };
-                    site.stored(member, context.line(member), &field, name);
+                    site.stored(*member, context.line(*member), &field, name);
                 }
             }
         }

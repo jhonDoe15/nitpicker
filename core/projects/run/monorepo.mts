@@ -10,6 +10,7 @@ import { combinedSummary, exitCodeOf, writeCombinedReports } from '../report/com
 import { renderPlan, renderSummary } from '../report/console.mts';
 import { analyzersByProject, unlistedFolders } from './context.mts';
 import {
+  derivedLayoutHint,
   rejectPathScope,
   rejectWholeRunOptions,
   submoduleHint,
@@ -46,8 +47,11 @@ const memberOf: (plan: MonorepoPlan, directory: string | undefined) => PlanProje
   memberProjectOf;
 
 function noticesOf(plan: MonorepoPlan, prepared: Prepared, cli: MonorepoCli): string[] {
-  const { outputRoot, comparison } = prepared;
+  const { outputRoot, comparison, rows } = prepared;
   const listFile = writeUndeclaredProjects(outputRoot, plan.undeclared, plan.root);
+  const selectedProjects = rows
+    .filter(({ selection }) => selection.selected)
+    .map(({ project }) => project);
   const notices: string[] = [
     ...undeclaredHint(
       plan.undeclared,
@@ -56,6 +60,7 @@ function noticesOf(plan: MonorepoPlan, prepared: Prepared, cli: MonorepoCli): st
     ),
     ...unlistedHint(unlistedFolders(plan, comparison.changed)),
     ...submoduleHint(submodulePaths(plan).filter((folder) => comparison.changed.includes(folder))),
+    ...derivedLayoutHint(selectedProjects),
   ];
   for (const notice of notices) {
     cli.stderr.write(`nitpicker: ${notice}\n`);

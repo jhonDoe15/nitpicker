@@ -4074,6 +4074,92 @@ return //MethodCall[@MethodName = 'findFirst'][ArgumentList/@Size = 0][exists($s
       </property>
     </properties>
   </rule>
+  <rule name="SortedCollectionRangeScan" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This loop scans a sorted collection from the start and tests each element against a bound. Use a range query (subSet, headSet, tailSet or subMap, headMap, tailMap) for logarithmic lookup instead of scanning every element. An exception fits only for a collection that always stays a handful of items.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $rangeViews := ('subSet', 'headSet', 'tailSet', 'subMap', 'headMap', 'tailMap'),
+    $mutators := ('add', 'addAll', 'remove', 'removeAll', 'removeIf', 'retainAll', 'clear',
+                  'put', 'putAll', 'putIfAbsent', 'replace', 'replaceAll', 'compute',
+                  'computeIfAbsent', 'computeIfPresent', 'merge',
+                  'pollFirst', 'pollLast', 'pollFirstEntry', 'pollLastEntry'),
+    $nested := ('ForeachStatement', 'ForStatement', 'WhileStatement', 'DoStatement',
+                'LambdaExpression', 'AnonymousClassDeclaration', 'ClassDeclaration'),
+    $mapView := function($iter) {
+      $iter[self::MethodCall[@MethodName = ('entrySet', 'keySet', 'navigableKeySet', 'descendingKeySet')]
+              [ArgumentList/@Size = 0]
+              [*[1][pmd-java:typeIs('java.util.SortedMap')]]]
+    },
+    $collection := function($iter) {
+      if (exists($mapView($iter))) then $iter/*[1] else $iter
+    },
+    $isSorted := function($iter) {
+      let $col := $collection($iter)
+      return (exists($mapView($iter)) or $iter[pmd-java:typeIs('java.util.SortedSet')])
+        and not($col[self::MethodCall[@MethodName = $rangeViews]])
+        and not($col[self::MethodCall[@MethodName = ('descendingSet', 'descendingMap')]
+                       [*[1][self::MethodCall[@MethodName = $rangeViews]]]])
+    },
+    $colName := function($col) {
+      $col[self::VariableAccess or self::FieldAccess[*[1][self::ThisExpression[not(*)]]]]/@Name
+    },
+    $isKey := function($expr, $var, $isEntry, $keyAliases) {
+      if ($isEntry)
+      then exists($expr[self::MethodCall[@MethodName = 'getKey'][ArgumentList/@Size = 0]
+                          [*[1][self::VariableAccess[@Name = $var]]]
+                        or self::VariableAccess[@Name = $keyAliases]])
+      else exists($expr[self::VariableAccess[@Name = $var]])
+    },
+    $readsVar := function($expr, $var, $keyAliases) {
+      exists($expr/descendant-or-self::VariableAccess[@Name = ($var, $keyAliases)])
+    },
+    $isBoundTest := function($node, $var, $isEntry, $keyAliases) {
+      ($node/self::InfixExpression[@Operator = ('<', '<=', '>', '>=')]
+        [(($isKey(*[1], $var, $isEntry, $keyAliases) and not($readsVar(*[2], $var, $keyAliases)))
+          or ($isKey(*[2], $var, $isEntry, $keyAliases) and not($readsVar(*[1], $var, $keyAliases))))
+         or exists(*[self::MethodCall[@MethodName = 'compareTo'][ArgumentList/@Size = 1]
+                     [($isKey(*[1], $var, $isEntry, $keyAliases) and not($readsVar(ArgumentList/*[1], $var, $keyAliases)))
+                      or ($isKey(ArgumentList/*[1], $var, $isEntry, $keyAliases) and not($readsVar(*[1], $var, $keyAliases)))]])])
+      or
+      ($node/self::MethodCall[@MethodName = ('isBefore', 'isAfter')][ArgumentList/@Size = 1]
+        [($isKey(*[1], $var, $isEntry, $keyAliases) and not($readsVar(ArgumentList/*[1], $var, $keyAliases)))
+         or ($isKey(ArgumentList/*[1], $var, $isEntry, $keyAliases) and not($readsVar(*[1], $var, $keyAliases)))])
+    }
+return //ForeachStatement[
+  let $loop := .,
+      $var := *[1]/VariableDeclarator/VariableId/@Name,
+      $iter := *[2],
+      $body := *[3],
+      $isEntry := exists($iter[self::MethodCall[@MethodName = 'entrySet'][ArgumentList/@Size = 0]]),
+      $col := $collection($iter),
+      $name := $colName($col),
+      $keyAliases := if ($isEntry)
+                     then $body//LocalVariableDeclaration[not(ancestor::*[. >> $loop][local-name() = $nested])]
+                            /VariableDeclarator[*[2][self::MethodCall[@MethodName = 'getKey'][ArgumentList/@Size = 0]
+                                                       [*[1][self::VariableAccess[@Name = $var]]]]]/VariableId/@Name
+                     else (),
+      $mutated := (exists($name)
+                   and exists($body//MethodCall[@MethodName = $mutators]
+                                [*[1][self::VariableAccess[@Name = $name]
+                                      or self::FieldAccess[@Name = $name][*[1][self::ThisExpression[not(*)]]]]]))
+                  or ($isEntry and exists($body//MethodCall[@MethodName = 'setValue']
+                                            [*[1][self::VariableAccess[@Name = $var]]])),
+      $boundExit := $body/descendant-or-self::IfStatement
+                      [not(ancestor::*[. >> $loop][local-name() = $nested])]
+                      [exists(*[1]/descendant-or-self::*[$isBoundTest(., $var, $isEntry, $keyAliases)])]
+                      [exists((*[2], *[3])/descendant-or-self::*[self::BreakStatement or self::ContinueStatement or self::ReturnStatement]
+                                [not(ancestor::*[. >> $loop][local-name() = $nested])])]
+  return exists($var)
+    and $isSorted($iter)
+    and not($mutated)
+    and exists($boundExit)
+]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="StaticForwardingWrapper" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This static method only passes its parameters, in order, to another method. Call that method directly where this one is used and delete the wrapper. Factories named of or from and copies such as List.copyOf are allowed.">
     <priority>3</priority>

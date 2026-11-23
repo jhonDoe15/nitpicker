@@ -1,5 +1,6 @@
 import type { ChildProcess } from 'node:child_process';
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -9,8 +10,16 @@ import {
   startReuseAhead,
   takeReuseAhead,
 } from './reuse-ahead.mts';
-import { REQUEST_FILE, RESULT_FILE } from './reuse-files.mts';
+import {
+  REQUEST_FILE,
+  RESULT_FILE,
+  readJsonFile,
+  reusePartOf,
+  writeJsonFile,
+} from './reuse-files.mts';
 import { reuseRequest } from './reuse-request.mts';
+import type { ReusePart } from '../../adapters/reuse/jvm-reuse-types.mts';
+import { fieldOf } from '../../../../shared/values/readers.mts';
 import {
   createReuseProjects,
   JAVA_ROOT,
@@ -117,5 +126,62 @@ describe('reuse facts computed ahead in a child process', () => {
     expect(
       takeReuseAhead(reuseRequest(root, { projects: SINGLE_PROJECT, kotlin: true, policy: {} })),
     ).toBeUndefined();
+  });
+
+  it('streams empty and populated reuse parts in pieces and reads them back intact', () => {
+    const folder = mkdtempSync(path.join(tmpdir(), 'nitpicker-reuse-pieces-'));
+    try {
+      const emptyPart: ReusePart = {
+        findings: [],
+        entryFindings: [],
+        usage: { modules: [], packages: [], imports: [] },
+      };
+      const emptyFile = path.join(folder, 'empty.json');
+      writeJsonFile(emptyFile, { stamps: {}, part: emptyPart });
+      expect(reusePartOf(fieldOf(readJsonFile(emptyFile), 'part'))).toEqual(emptyPart);
+
+      const populatedPart: ReusePart = {
+        findings: Array.from({ length: 300 }, (_, index) => ({
+          tool: 'structure',
+          rule: 'duplicate-definition',
+          path: `src/main/java/shop/Item${String(index)}.java`,
+          line: index + 1,
+          message: `Duplicate helper ${String(index)}`,
+        })),
+        entryFindings: [
+          {
+            tool: 'entry-points',
+            rule: 'public-alternative-bypass',
+            path: 'src/main/kotlin/shop/Use.kt',
+            line: 3,
+            message: 'Use the public alias',
+          },
+        ],
+        usage: {
+          modules: Array.from({ length: 300 }, (_, index) => ({
+            file: `src/main/java/shop/Item${String(index)}.java`,
+            role: 'production',
+          })),
+          packages: [{ root: '', published: false }],
+          imports: Array.from({ length: 300 }, (_, index) => ({
+            from: `src/main/java/shop/Item${String(index)}.java`,
+            to: 'src/main/java/shop/Shared.java',
+            names: [{ name: 'Shared' }],
+          })),
+        },
+      };
+      const populatedFile = path.join(folder, 'populated.json');
+      writeJsonFile(populatedFile, {
+        stamps: { 'src/main/java/shop/Item0.java': 'abc123' },
+        part: populatedPart,
+      });
+      const lineCount = readFileSync(populatedFile, 'utf8').split('\n').length;
+      expect(lineCount).toBeGreaterThan(300);
+      const parsed = readJsonFile(populatedFile);
+      expect(fieldOf(parsed, 'stamps')).toEqual({ 'src/main/java/shop/Item0.java': 'abc123' });
+      expect(reusePartOf(fieldOf(parsed, 'part'))).toEqual(populatedPart);
+    } finally {
+      rmSync(folder, { recursive: true, force: true });
+    }
   });
 });

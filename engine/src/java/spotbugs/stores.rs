@@ -66,6 +66,7 @@ fn producer<'s>(context: &'s Context, call: Node) -> Option<(String, &'s str)> {
                 | "unmodifiableSortedMap" | "unmodifiableSortedSet" | "unmodifiableNavigableMap" | "unmodifiableNavigableSet"
         ),
         "List" | "Set" | "Map" => matches!(name, "of" | "copyOf"),
+        "CompletableFuture" => matches!(name, "completedFuture" | "failedFuture" | "completedStage" | "failedStage"),
         _ => false,
     };
     known.then_some((owner, name))

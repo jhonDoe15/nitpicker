@@ -22,8 +22,19 @@ export type SkippedModule = { readonly path: string; readonly dir: string };
 
 const MODULE_BUILD_FAILED_RULE: string = SHARED_MODULE_BUILD_FAILED_RULE;
 const WENT_WRONG = /\* What went wrong:\n(?<first>[^\n]*)(?<rest>(?:\n(?:> | {2})[^\n]*)*)/gu;
-const FAILED_TOOL_TASK =
-  /^Execution failed for task '(?<project>(?::[\w.-]+)*):(?<task>nitpicker\w+)'/u;
+const FAILED_TOOL_TASK = new RegExp(
+  [
+    '^(?:Execution failed for',
+    '|Some problems were found with the configuration of',
+    '|A problem was found with the configuration of',
+    '|Could not determine the dependencies of',
+    '|Could not create',
+    '|A problem occurred configuring',
+    '|(?:Failed to (?:calculate|query)|Cannot query) the value of)',
+    String.raw` task '(?<project>(?::[\w.-]+)*):(?<task>nitpicker\w+)'`,
+  ].join(''),
+  'u',
+);
 const ROOT_PROJECT = ':';
 const MAX_REASON_LENGTH = 600;
 const MAX_NAMED_PROJECTS = 10;
@@ -32,7 +43,7 @@ const DEADLINE_IDENTITY = 'deadline';
 function reasonOf(first: string, rest: string): string {
   const detail = rest
     .split('\n')
-    .map((line) => line.replace(/^>\s*/u, '').trim())
+    .map((line) => line.trim().replace(/^(?:>|-)\s*/u, ''))
     .filter((line) => line !== '')
     .join(' ');
   const reason = detail === '' ? first : detail;
@@ -114,6 +125,39 @@ function stoppedBuildFinding(skipped: readonly SkippedModule[], minutes: number)
   };
 }
 
+function skippedProjectFinding(
+  { path: project, dir }: SkippedModule,
+  tasks: readonly FailedToolTask[],
+  failedNames: string,
+): JavaFinding {
+  const own = tasks.filter((task) => task.project === project);
+  const cause =
+    own.length === 0
+      ? `it was not checked because a project it depends on failed (${failedNames})`
+      : own.map(({ task, reason }) => `${task} failed: ${reason}`).join('; ');
+  return {
+    tool: 'gradle',
+    rule: MODULE_BUILD_FAILED_RULE,
+    path: dir === '' ? '.' : dir,
+    identity: `${MODULE_BUILD_FAILED_RULE}:${project}`,
+    message:
+      `A nitpicker tool task failed in Gradle project ${project}, so its checks did not run; ` +
+      `the other projects were checked. Gradle: ${cause}`,
+    classification: 'tool-error',
+  };
+}
+
+function unlistedFailedModules(
+  skipped: readonly SkippedModule[],
+  tasks: readonly FailedToolTask[],
+): SkippedModule[] {
+  const listed = new Set(skipped.map(({ path: project }) => project));
+  const unseen = [...new Set(tasks.map(({ project }) => project))].filter(
+    (project) => !listed.has(project),
+  );
+  return unseen.map((project) => ({ path: project, dir: '' }));
+}
+
 export function skippedModuleFindings(
   skipped: readonly SkippedModule[],
   { tasks, stoppedAfterMinutes }: FailedToolTasks,
@@ -122,21 +166,6 @@ export function skippedModuleFindings(
     return [stoppedBuildFinding(skipped, stoppedAfterMinutes)];
   }
   const failedNames = [...new Set(tasks.map(({ project }) => project))].join(', ');
-  return skipped.map(({ path: project, dir }) => {
-    const own = tasks.filter((task) => task.project === project);
-    const cause =
-      own.length === 0
-        ? `it was not checked because a project it depends on failed (${failedNames})`
-        : own.map(({ task, reason }) => `${task} failed: ${reason}`).join('; ');
-    return {
-      tool: 'gradle',
-      rule: MODULE_BUILD_FAILED_RULE,
-      path: dir === '' ? '.' : dir,
-      identity: `${MODULE_BUILD_FAILED_RULE}:${project}`,
-      message:
-        `A nitpicker tool task failed in Gradle project ${project}, so its checks did not run; ` +
-        `the other projects were checked. Gradle: ${cause}`,
-      classification: 'tool-error',
-    };
-  });
+  const targets = [...skipped, ...unlistedFailedModules(skipped, tasks)];
+  return targets.map((module) => skippedProjectFinding(module, tasks, failedNames));
 }

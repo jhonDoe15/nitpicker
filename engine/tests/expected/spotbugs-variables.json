@@ -107,5 +107,7 @@
 ["names/p/Rv.java", "EI_EXPOSE_REP2", 24, "p.Rv.loopMerge(Date, Date, boolean)#x"],
 ["names/p/Rv.java", "EI_EXPOSE_REP2", 30, "p.Rv.storeInLoop(Date, Date, boolean)#x"],
 ["names/p/Rv.java", "EI_EXPOSE_REP2", 42, "p.Rv.sibling(Date, List)#t"],
-["names/p/Rv.java", "EI_EXPOSE_REP2", 51, "p.Rv.pattern(Object, Date, String)#u"]
+["names/p/Rv.java", "EI_EXPOSE_REP2", 51, "p.Rv.pattern(Object, Date, String)#u"],
+["expose_kafka/p/K.java", "EI_EXPOSE_REP2", 9, "new p.K$AppliedConfig(Map)#rawConfig"],
+["expose_kafka/p/K.java", "EI_EXPOSE_REP2", 16, "p.K$AppliedConfig.transformedConfig(boolean)#?"]
 ]

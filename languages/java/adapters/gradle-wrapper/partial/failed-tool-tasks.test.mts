@@ -153,4 +153,79 @@ describe('failed nitpicker tool tasks in a Gradle failure', () => {
     ]);
     expect(skippedModuleFindings([], noted)).toEqual([]);
   });
+
+  it('recognizes Gradle task-configuration validation errors and script failures on nitpicker tasks', () => {
+    const cpdValidation = failure(
+      1,
+      "Some problems were found with the configuration of task ':clients:nitpickerCpd' (type 'DefaultTask').",
+      "  - Gradle detected a problem with the following location: '/repo/clients/build/nitpicker'.",
+    );
+    const singleValidation = failure(
+      2,
+      "A problem was found with the configuration of task ':core:nitpickerLint' (type 'DefaultTask').",
+      "  - Type 'DefaultTask' property 'reports' doesn't have a configured value.",
+    );
+    const pitScript = failure(
+      3,
+      "Could not determine the dependencies of task ':nitpickerPitTest'.",
+      '> Cannot invoke method getFiles() on null object',
+    );
+    const output = [
+      'FAILURE: Build completed with 3 failures.',
+      cpdValidation,
+      singleValidation,
+      pitScript,
+    ].join('\n\n');
+
+    expect(failedToolTasks(output)).toEqual([
+      {
+        project: ':clients',
+        task: 'nitpickerCpd',
+        reason:
+          "Gradle detected a problem with the following location: '/repo/clients/build/nitpicker'.",
+      },
+      {
+        project: ':core',
+        task: 'nitpickerLint',
+        reason: "Type 'DefaultTask' property 'reports' doesn't have a configured value.",
+      },
+      {
+        project: ':',
+        task: 'nitpickerPitTest',
+        reason: 'Cannot invoke method getFiles() on null object',
+      },
+    ]);
+  });
+
+  it('still rejects task-configuration validation failures on non-nitpicker tasks', () => {
+    const compileValidation = failure(
+      1,
+      "Some problems were found with the configuration of task ':app:compileJava' (type 'JavaCompile').",
+      "  - Type 'JavaCompile' property 'destinationDirectory' doesn't have a configured value.",
+    );
+
+    expect(failedToolTasks(compileValidation)).toBe(undefined);
+  });
+
+  it('reports a failed nitpicker task even when its project was not listed among skipped modules', () => {
+    const pitFailure = failure(
+      1,
+      "Execution failed for task ':nitpickerPitTest' (registered in script '/n/pit-task.gradle').",
+      '> Script error in pit configuration',
+    );
+    const noted: FailedToolTasks = { tasks: failedToolTasks(pitFailure) ?? [], error: undefined };
+
+    expect(skippedModuleFindings([], noted)).toEqual([
+      {
+        tool: 'gradle',
+        rule: 'module-build-failed',
+        path: '.',
+        identity: 'module-build-failed::',
+        message:
+          'A nitpicker tool task failed in Gradle project :, so its checks did not run; the other ' +
+          'projects were checked. Gradle: nitpickerPitTest failed: Script error in pit configuration',
+        classification: 'tool-error',
+      },
+    ]);
+  });
 });
