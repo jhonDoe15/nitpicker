@@ -100,6 +100,52 @@ describe('assertGradleSucceeded', () => {
     ]);
   });
 
+  it('notes Gradle 9 task validation and script exceptions on nitpicker tasks, while failing on compileJava', () => {
+    const cpdValidation = {
+      status: 1,
+      stdout: '',
+      stderr:
+        'FAILURE: Build failed with an exception.\n* What went wrong:\n' +
+        "Some problems were found with the configuration of task ':clients:nitpickerCpd' (type 'DefaultTask').\n" +
+        "  - Type 'DefaultTask' property 'outputDir' doesn't have a configured value.",
+    };
+    const pitScript = {
+      status: 1,
+      stdout: '',
+      stderr:
+        "FAILURE: Build failed with an exception.\n* Where:\nScript '/n/pit-task.gradle' line: 12\n" +
+        "* What went wrong:\nExecution failed for task ':nitpickerPitTest' " +
+        "(registered in script '/n/pit-task.gradle').\n" +
+        '> Cannot invoke method on null object',
+    };
+    const compileFailure = {
+      status: 1,
+      stdout: '',
+      stderr:
+        'FAILURE: Build failed with an exception.\n* What went wrong:\n' +
+        "Execution failed for task ':app:compileJava'.\n> Compilation failed",
+    };
+    const failedTools = failedToolRecord();
+
+    expect(thrownBy(cpdValidation, '/none', { failedTools })).toBeUndefined();
+    expect(thrownBy(pitScript, '/none', { failedTools })).toBeUndefined();
+    expect(failedTools.current().tasks).toEqual([
+      {
+        project: ':clients',
+        task: 'nitpickerCpd',
+        reason: "Type 'DefaultTask' property 'outputDir' doesn't have a configured value.",
+      },
+      {
+        project: ':',
+        task: 'nitpickerPitTest',
+        reason: 'Cannot invoke method on null object',
+      },
+    ]);
+    expect(messageOf(thrownBy(compileFailure, '/none', { failedTools }))).toBe(
+      "Java preset failed on your change: Execution failed for task ':app:compileJava'.\n> Compilation failed",
+    );
+  });
+
   it('keeps the failing tests of each module on a failure whose test reports name them', () => {
     const reportBase = reportsWith(
       '<testsuite name="shop.CartTest"><testcase classname="shop.CartTest" name="adds"><failure message="no"/></testcase></testsuite>',

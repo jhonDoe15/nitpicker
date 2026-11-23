@@ -17,10 +17,7 @@ function finishedModules(
 ): ReportModules | undefined {
   try {
     return readFinishedModules(reportBase, preset, failedProjects(failedTools));
-  } catch (error) {
-    if (failedTools.stoppedAfterMinutes === undefined) {
-      throw error;
-    }
+  } catch {
     return undefined;
   }
 }

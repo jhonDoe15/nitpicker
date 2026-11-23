@@ -45,4 +45,14 @@ describe('the Gradle projects whose checks finished', () => {
     );
     expect(() => checkedModules(noted, place(reports({})))).toThrow(stopped);
   });
+
+  it('rethrows the original Gradle tool error when a tool task failed before modules.json was written', () => {
+    const toolFailure = new Error('Some problems were found with the configuration of task');
+    const noted = {
+      tasks: [{ project: ':clients', task: 'nitpickerCpd', reason: 'bad config' }],
+      error: toolFailure,
+    };
+
+    expect(() => checkedModules(noted, place(reports({})))).toThrow(toolFailure);
+  });
 });
