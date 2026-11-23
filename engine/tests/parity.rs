@@ -3,6 +3,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 use std::process::Command;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+static RUNS: AtomicUsize = AtomicUsize::new(0);
 
 type Row = (String, String, u64, u64);
 
@@ -28,7 +31,8 @@ fn rows_of(case: &str, rule: &str, rules: &str) -> (Rows, Rows) {
 fn rows_selected(case: &str, rule: &str, rules: &str, only: Option<&str>) -> (Rows, Rows) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
     let source = root.join("fixtures").join(case);
-    let out = std::env::temp_dir().join(format!("nitpicker-engine-{case}-{}-{}.json", only.unwrap_or("all"), std::process::id()));
+    let run = RUNS.fetch_add(1, Ordering::Relaxed);
+    let out = std::env::temp_dir().join(format!("nitpicker-engine-{case}-{}-{}-{run}.json", only.unwrap_or("all"), std::process::id()));
     let mut command = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"));
     if let Some(names) = only {
         command.env("NP_EP_ONLY", names);

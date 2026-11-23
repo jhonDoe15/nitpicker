@@ -176,7 +176,6 @@ export function nearDuplicateMatches(
   const identified = units.map((unit) => ({
     ...unit,
     id: unitIdOf(unit),
-    final: unit.final === true,
   }));
   const findings = findNearDuplicates(identified, { failed, proveLogic: options.proveLogic });
   warnOfSkipped(failed);
