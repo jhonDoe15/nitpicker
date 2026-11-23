@@ -816,6 +816,136 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="SharedTempPathInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This test writes, deletes or hands to a process a temp path that every run builds the same way: a fixed name under java.io.tmpdir or /tmp, or one whose only varying part is the process id. Tests that run at the same time (JUnit parallel execution, forked test JVMs, a second build) then share the file, and one overwrites or deletes the other's. Write inside a @TempDir directory, or create the file with Files.createTempFile or Files.createTempDirectory.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $conversions := ('toFile', 'toPath', 'toString', 'getPath', 'getAbsolutePath', 'getAbsoluteFile',
+                     'toAbsolutePath', 'normalize', 'getCanonicalPath', 'getCanonicalFile'),
+    $pathCalls := ('of', 'get', 'resolve', 'resolveSibling', 'getProperty', 'current', 'pid', 'valueOf',
+                   'getTempDirectory', 'getTempDirectoryPath', 'toFile', 'toPath', 'toString', 'getPath',
+                   'getAbsolutePath', 'getAbsoluteFile', 'toAbsolutePath'),
+    $isRoot := function($e) {
+      exists($e/self::MethodCall[@MethodName = 'getProperty'][*[1][pmd-java:typeIs('java.lang.System')]]
+               [ArgumentList[@Size = 1]/StringLiteral[@ConstValue = 'java.io.tmpdir']])
+      or exists($e/self::MethodCall[@MethodName = ('getTempDirectory', 'getTempDirectoryPath')]
+                  [*[1][pmd-java:typeIs('org.apache.commons.io.FileUtils')]])
+      or exists($e/self::StringLiteral[matches(@ConstValue, '^/tmp(/|$)')])
+    },
+    $declarations := function($v) {
+      let $n := $v/@Name,
+          $locals := $v/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration
+                                    or self::LambdaExpression or self::Initializer][1]
+                       //VariableDeclarator[VariableId[@Name = $n]][parent::LocalVariableDeclaration]
+      return if (exists($locals)) then $locals
+             else $v/ancestor::ClassBody/FieldDeclaration[pmd-java:modifiers() = 'final']
+                    /VariableDeclarator[VariableId[@Name = $n]]
+    },
+    $isParameter := function($v) {
+      exists($v/ancestor::MethodDeclaration[1]/FormalParameters/FormalParameter/VariableId[@Name = $v/@Name])
+      and empty($v/ancestor::*[self::MethodDeclaration or self::LambdaExpression][1]
+                  //VariableDeclarator[VariableId[@Name = $v/@Name]])
+    },
+    $isPlain := function($x) {
+      exists($x/self::*[self::ArgumentList or self::StringLiteral or self::NumericLiteral or self::CharLiteral
+                        or self::TypeExpression or self::ClassType or self::TypeArguments])
+      or exists($x/self::InfixExpression[@Operator = '+'])
+      or exists($x/self::MethodCall[@MethodName = $pathCalls][*[1][not(self::ArgumentList)]])
+      or exists($x/self::ConstructorCall[pmd-java:typeIs('java.io.File')])
+      or exists($x/self::FieldAccess[@Name = ('separator', 'separatorChar')])
+    },
+    $initOf := function($d) { $d/*[not(self::VariableId)][1] },
+    $isFixedVariable := function($v) {
+      let $d := $declarations($v)
+      return count($d) = 1
+        and (every $x in $initOf($d)/descendant-or-self::* satisfies $isPlain($x))
+    },
+    $isRootVariable := function($v) {
+      $isFixedVariable($v)
+      and (some $x in $initOf($declarations($v))/descendant-or-self::* satisfies $isRoot($x))
+    },
+    $isKnown := function($x) {
+      $isPlain($x)
+      or exists($x/self::VariableAccess[$isParameter(.) or $isFixedVariable(.)])
+    },
+    $isCandidate := function($e) {
+      exists($e/self::ConstructorCall[pmd-java:typeIs('java.io.File')])
+      or exists($e/self::MethodCall[@MethodName = 'of'][*[1][pmd-java:typeIs('java.nio.file.Path')]])
+      or exists($e/self::MethodCall[@MethodName = 'get'][*[1][pmd-java:typeIs('java.nio.file.Paths')]])
+      or exists($e/self::MethodCall[@MethodName = ('resolve', 'resolveSibling')][pmd-java:typeIs('java.nio.file.Path')])
+      or exists($e/self::InfixExpression[@Operator = '+'][pmd-java:typeIs('java.lang.String')])
+      or exists($e/self::StringLiteral[matches(@ConstValue, '^/tmp/.')])
+    },
+    $isPart := function($e) {
+      exists($e/parent::ArgumentList/parent::*[$isCandidate(.)])
+      or exists($e/parent::InfixExpression[@Operator = '+'])
+      or exists($e/parent::MethodCall[@MethodName = ('resolve', 'resolveSibling')][*[1] is $e])
+    },
+    $isWrite := function($x) {
+      let $at := count($x/preceding-sibling::*) + 1,
+          $call := $x/parent::ArgumentList/parent::MethodCall
+      return exists($call[*[1][pmd-java:typeIs('java.nio.file.Files')]]
+               [(@MethodName = ('write', 'writeString', 'createDirectories', 'createDirectory', 'createFile',
+                                'newOutputStream', 'newBufferedWriter', 'delete', 'deleteIfExists',
+                                'createSymbolicLink', 'createLink') and $at = 1)
+                or (@MethodName = 'copy' and $at = 2) or (@MethodName = 'move' and $at le 2)])
+      or exists($call[*[1][pmd-java:typeIs('org.apache.commons.io.FileUtils')]]
+               [(matches(@MethodName, '^(write|forceMkdir|forceDelete|delete|touch|cleanDirectory)') and $at = 1)
+                or (matches(@MethodName, '^copy') and $at = 2) or (matches(@MethodName, '^move') and $at le 2)])
+      or exists($x[pmd-java:typeIs('java.io.File')]/parent::MethodCall[*[1] is $x]
+                  [@MethodName = ('mkdir', 'mkdirs', 'createNewFile', 'delete', 'deleteOnExit', 'renameTo')])
+      or exists($x/parent::ArgumentList[$at = 1]/parent::ConstructorCall[pmd-java:typeIs('java.io.FileOutputStream')
+                  or pmd-java:typeIs('java.io.FileWriter') or pmd-java:typeIs('java.io.PrintWriter')
+                  or pmd-java:typeIs('java.io.PrintStream') or pmd-java:typeIs('java.io.RandomAccessFile')])
+      or exists($x/parent::ArgumentList/parent::ConstructorCall[pmd-java:typeIs('java.lang.ProcessBuilder')])
+      or exists($call[*[1][pmd-java:typeIs('java.lang.ProcessBuilder')]]
+                  [@MethodName = ('command', 'directory', 'redirectOutput', 'redirectError')])
+      or exists($call[@MethodName = 'exec'][*[1][pmd-java:typeIs('java.lang.Runtime')]])
+    },
+    $wrapperOf := function($u) {
+      $u/parent::MethodCall[@MethodName = $conversions][*[1] is $u]
+      | $u/parent::ArgumentList[@Size = 1]/parent::*[$isCandidate(.)]
+    },
+    $reachesWrite := function($u) {
+      let $once := $wrapperOf($u),
+          $twice := for $w in $once return $wrapperOf($w)
+      return some $x in ($u, $once, $twice) satisfies $isWrite($x)
+    },
+    $usesOf := function($e) {
+      if (exists($e/parent::VariableDeclarator))
+      then let $n := $e/parent::VariableDeclarator/VariableId/@Name
+           return if (exists($e/parent::VariableDeclarator/parent::FieldDeclaration))
+                  then $e/ancestor::ClassBody[1]//VariableAccess[@Name = $n]
+                  else $e/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration
+                                      or self::LambdaExpression or self::Initializer][1]//VariableAccess[@Name = $n]
+      else if (exists($e/parent::ReturnStatement))
+      then let $m := $e/ancestor::MethodDeclaration[1]/@Name
+           return $e/ancestor::ClassBody[last()]//MethodCall[@MethodName = $m]
+                    [not(*[1][not(self::ArgumentList or self::ThisExpression)])]
+      else $e
+    }
+return //*[$isCandidate(.)]
+  [not($isPart(.))]
+  [empty(ancestor::ArgumentList/parent::MethodCall[@MethodName = ('createTempFile', 'createTempDirectory')])]
+  [every $x in descendant-or-self::* satisfies $isKnown($x)]
+  [(some $x in descendant-or-self::* satisfies $isRoot($x))
+    or (some $v in descendant-or-self::VariableAccess satisfies $isRootVariable($v))]
+  [exists(descendant-or-self::StringLiteral[not(@ConstValue = ('java.io.tmpdir', '/tmp', '/tmp/', '', '/', '.'))])
+    or exists(descendant-or-self::NumericLiteral)
+    or exists(.//MethodCall[@MethodName = 'pid'])
+    or (some $v in descendant-or-self::VariableAccess satisfies
+          not($isRootVariable($v))
+          or exists($initOf($declarations($v))/descendant-or-self::StringLiteral
+                      [not(@ConstValue = ('java.io.tmpdir', '/tmp', '/tmp/', '', '/', '.'))]))]
+  [let $pid := exists(.//MethodCall[@MethodName = 'pid'])
+   return $pid or empty(descendant-or-self::VariableAccess[$isParameter(.)])]
+  [some $u in $usesOf(.) satisfies $reachesWrite($u)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="SharedTestState" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="All tests of this class share this field, and this test changes it, so a test passes or fails depending on the tests that ran before it. Shared fields are static ones, and every field of a class with @TestInstance(PER_CLASS) or of a TestNG class (one instance runs all its tests). Create the state in the test, or assign it (or clear() it) in @BeforeEach, @Before or @BeforeMethod so every test starts from the same value. State built once in @BeforeAll that the tests only read is fine.">
     <priority>2</priority>

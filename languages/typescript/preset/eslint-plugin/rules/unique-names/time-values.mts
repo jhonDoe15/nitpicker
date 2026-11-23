@@ -20,7 +20,7 @@ function isNamedCall(node: TSESTree.Node, owner: string, method: string): boolea
   );
 }
 
-function isTmpdirCall(node: TSESTree.Node): boolean {
+export function isTmpdirCall(node: TSESTree.Node): boolean {
   return (
     node.type === AST_NODE_TYPES.CallExpression &&
     (nameOf(node.callee) === 'tmpdir' ||

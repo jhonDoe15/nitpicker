@@ -76,6 +76,15 @@ the spec for Mocha.
   `child_process`/`execa` calls and same-file wrappers such as `git(root, ['init'])` or
   `run('git', ['init'])`. Build a template repository once in `beforeAll` (`before` on `node:test`
   and Mocha) and `cpSync` it per test.
+- `nitpicker/no-shared-temp-path-in-tests`: a test-area file does not write, delete or hand to a
+  child process a temp path that every test builds the same way: a fixed name under `os.tmpdir()` or
+  `/tmp`, or one whose only varying part is `process.pid` (with literals and constants around it, and
+  helper parameters only next to `process.pid`). Concurrent tests and test files on other workers, and worker threads that
+  share one process id, then write the same file, and one test deletes or overwrites the other's.
+  The rule follows the path through `const` variables, array and object arguments and same-file
+  helpers that return it, to the `fs` writes and removals and the `child_process`/`execa` calls. A
+  `mkdtemp` prefix is fine, and so is a name with a random part or a counter. Create a directory per
+  test with `fs.mkdtemp(path.join(os.tmpdir(), "prefix-"))` and write inside it.
 - `nitpicker/hermetic-git-in-tests`: every git process a test-area file starts passes an `env`
   object, written in that file, that sets `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_NOSYSTEM`. Same-file
   `const` objects and spreads count. An imported env object does not, because the rule cannot see

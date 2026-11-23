@@ -118,6 +118,7 @@ const REVIEW_RULES = new Set([
   'RandomInTest',
   'NetworkInTest',
   'FixedPortInTest',
+  'SharedTempPathInTest',
   'ServerOrContainerPerTest',
   'SharedTestState',
   'HashOrderAssertedInTest',

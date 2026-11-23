@@ -44,6 +44,7 @@ import { rule as ruleNoServerOrWorkerPerTest } from '../rules/test-runtime/proce
 import { rule as ruleNoServiceLocator } from '../rules/service-locator/no-service-locator.mts';
 import { rule as ruleNoShadowedSpreadKey } from '../rules/spreads/no-shadowed-spread-key.mts';
 import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stateful-regex.mts';
+import { rule as ruleNoSharedTempPathInTests } from '../rules/test-runtime/temp-paths/no-shared-temp-path-in-tests.mts';
 import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-state.mts';
 import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-string-command.mts';
 import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandl
 import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mts';
 import { rule as ruleNoUninjectableDelay } from '../rules/test-runtime/lifecycle/no-uninjectable-delay.mts';
 import { rule as ruleNoUnionOrderDependence } from '../rules/union-order/no-union-order-dependence.mts';
-import { rule as ruleNoUnisolatedJobLoop } from '../rules/jobs/no-unisolated-job-loop.mts';
 
 export const partRules = {
   'no-nan-only-check': ruleNoNanOnlyCheck,
@@ -146,6 +146,7 @@ export const partRules = {
   'no-service-locator': ruleNoServiceLocator,
   'no-shadowed-spread-key': ruleNoShadowedSpreadKey,
   'no-shared-stateful-regex': ruleNoSharedStatefulRegex,
+  'no-shared-temp-path-in-tests': ruleNoSharedTempPathInTests,
   'no-shared-test-state': ruleNoSharedTestState,
   'no-shell-string-command': ruleNoShellStringCommand,
   'no-silent-catch': ruleNoSilentCatch,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
   'no-uninjectable-delay': ruleNoUninjectableDelay,
   'no-union-order-dependence': ruleNoUnionOrderDependence,
-  'no-unisolated-job-loop': ruleNoUnisolatedJobLoop,
 };
