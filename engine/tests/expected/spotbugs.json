@@ -872,5 +872,9 @@
 ["ctor_missing/p/U.java", "CT_CONSTRUCTOR_THROW", 20, "Exception thrown in class p.U at new p.U(int) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
 ["ctor_missing/p/U.java", "CT_CONSTRUCTOR_THROW", 25, "Exception thrown in class p.U at new p.U(long) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
 ["ctor_missing/p/T.java", "CT_CONSTRUCTOR_THROW", 12, "Exception thrown in class p.T at new p.T(Closeable) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
-["ctor_missing/p/T.java", "CT_CONSTRUCTOR_THROW", 21, "Exception thrown in class p.T at new p.T(Closeable, int) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."]
+["ctor_missing/p/T.java", "CT_CONSTRUCTOR_THROW", 21, "Exception thrown in class p.T at new p.T(Closeable, int) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
+["expose_kafka/p/K.java", "EI_EXPOSE_REP", 19, "p.K$AppliedConfig.transformedConfig(boolean) may expose internal representation by returning K$AppliedConfig.transformedConfig"],
+["expose_kafka/p/K.java", "EI_EXPOSE_REP", 38, "p.K$MutableFutureField.open() may expose internal representation by returning K$MutableFutureField.OPEN"],
+["expose_kafka/p/K.java", "EI_EXPOSE_REP2", 9, "new p.K$AppliedConfig(Map) may expose internal representation by storing an externally mutable object into K$AppliedConfig.rawConfig"],
+["expose_kafka/p/K.java", "EI_EXPOSE_REP2", 16, "p.K$AppliedConfig.transformedConfig(boolean) may expose internal representation by storing an externally mutable object into K$AppliedConfig.transformedConfig"]
 ]
