@@ -190,7 +190,7 @@ fn mentions(kind: &Type, variable: &str) -> bool {
     match kind {
         Type::Variable(name) => name == variable,
         Type::Class(_, arguments) => arguments.iter().any(|argument| mentions(argument, variable)),
-        Type::Array(element) => mentions(element, variable),
+        Type::Array(element) | Type::Bounded(_, element) => mentions(element, variable),
         _ => false,
     }
 }
@@ -617,7 +617,7 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn assignable(&self, from: &Type, to: &Type, strict: bool) -> bool {
-        match (from, to) {
+        match (from.unwrap_bound(), to.unwrap_bound()) {
             (_, Type::Class(name, _)) if name == "?" => true,
             (Type::Class(name, _), _) if name == "?" => true,
             (Type::Variable(_) | Type::Wildcard, _) | (_, Type::Variable(_) | Type::Wildcard) => true,
@@ -1038,6 +1038,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn unify(&self, pattern: &Type, actual: &Type, variables: &[String], map: &mut HashMap<String, Type>) {
+        let (pattern, actual) = (pattern.unwrap_bound(), actual.unwrap_bound());
         match (pattern, actual) {
             (_, Type::Null | Type::Wildcard) => {}
             (Type::Variable(name), _) if variables.contains(name) => {
@@ -1587,6 +1588,7 @@ impl<'a> Resolver<'a> {
 
     /// The least upper bound of two class types, as far as single inheritance and shared interfaces give it.
     pub fn shared(&self, a: &Type, b: &Type) -> Type {
+        let (a, b) = (a.unwrap_bound(), b.unwrap_bound());
         let (left, right) = (a.name(), b.name());
         if self.index.is_subtype(&left, &right) {
             return b.clone();

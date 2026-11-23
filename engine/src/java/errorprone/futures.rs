@@ -5,7 +5,7 @@ use super::returns::referenced;
 use super::unused::{dropped, exception_testing, function_returns_void, mocking, throwing_type};
 use crate::engine::source::{children, named_children, parent};
 use crate::java::types::index::TypeIndex;
-use crate::java::types::model::{ClassInfo, Method, OBJECT, Type, flag};
+use crate::java::types::model::{ClassInfo, Method, OBJECT, Type, WildcardKind, flag};
 use crate::java::types::scope::enclosing_type;
 use tree_sitter::Node;
 
@@ -32,6 +32,8 @@ pub fn printed(kind: &Type) -> String {
         }
         Type::Array(element) => format!("{}[]", printed(element)),
         Type::Wildcard => "?".to_string(),
+        Type::Bounded(WildcardKind::Extends, bound) => format!("? extends {}", printed(bound)),
+        Type::Bounded(WildcardKind::Super, bound) => format!("? super {}", printed(bound)),
         other => other.name(),
     }
 }
@@ -104,7 +106,7 @@ fn nested(context: &Context, node: Node, at: usize, resolved: &crate::java::type
     let Type::Class(_, direct) = &method.generic_returns else { return false };
     let map = context.resolver.call_map(resolved, node, true);
     for variable in &method.type_parameters {
-        if !direct.iter().any(|argument| matches!(argument, Type::Variable(name) if name == variable)) {
+        if !direct.iter().any(|argument| matches!(argument.unwrap_bound(), Type::Variable(name) if name == variable)) {
             continue;
         }
         if let Some(made) = map.get(variable).filter(|made| is_future(index, made)) {
