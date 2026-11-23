@@ -182,6 +182,7 @@
   "pmd/ServerOrContainerPerTest": ["tests", "performance"],
   "pmd/ServiceLocatorLookup": ["maintainability"],
   "pmd/SharedStatefulHelperField": ["bug", "async"],
+  "pmd/SharedTempPathInTest": ["tests", "reliability"],
   "pmd/SharedTestState": ["tests"],
   "pmd/SiblingValuePassed": ["bug"],
   "pmd/SimplifiableTestAssertion": ["tests", "simplification"],

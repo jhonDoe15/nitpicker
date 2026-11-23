@@ -91,6 +91,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `webEnvironment = RANDOM_PORT` with `@LocalServerPort`, and `getMappedPort(...)` of a container, never a
   number such as `8089`, `DEFINED_PORT` with `server.port=8081`, `withFixedExposedPort` or `setPortBindings`.
   A fixed port fails when a second run, a parallel worker or a local application holds it.
+- Give each test its own temp files (`SharedTempPathInTest`): write inside a `@TempDir` directory or a file from
+  `Files.createTempFile`, never a fixed name under `java.io.tmpdir` or `/tmp`, or a name that only adds the
+  process id. Parallel tests and a second build write the same file, and one deletes the other's.
 - Do not expect an order from a hash collection, a directory listing or reflection (`HashOrderAssertedInTest`):
   for a `HashSet`, `Set.of`, `Collectors.toSet()`, a `HashMap` view, `File.list()` or `getDeclaredMethods()`, use
   `containsExactlyInAnyOrder(...)`, compare with a `Set`, or sort first; `containsExactly("a", "b")` and

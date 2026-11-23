@@ -32,6 +32,7 @@
   "eslint/nitpicker/no-collected-stream-rows": ["performance"],
   "eslint/nitpicker/no-pattern-compiled-in-loop": ["performance"],
   "eslint/nitpicker/no-constant-lookup-in-loop": ["performance"],
+  "eslint/nitpicker/no-shared-temp-path-in-tests": ["tests", "reliability"],
   "eslint/nitpicker/no-subtree-search-per-ancestor": ["performance"],
   "eslint/nitpicker/no-repeated-call": ["performance"],
   "eslint/nitpicker/no-work-before-early-exit": ["performance"],
