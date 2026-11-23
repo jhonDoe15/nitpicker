@@ -50,24 +50,33 @@ function returnsVoidWithoutArguments(
   );
 }
 
+const EFFECT_RELEASERS = ['dispose', 'unsubscribe', 'close', 'disconnect'];
+
 function hasReleaser(
   checker: TypeScript.TypeChecker,
   type: TypeScript.Type,
-  node: TypeScript.Node,
+  options: { readonly node: TypeScript.Node; readonly releasers: readonly string[] },
 ): boolean {
-  return RELEASERS.some((name) => {
+  return options.releasers.some((name) => {
     const property = type.getProperty(name);
     return (
       property !== undefined &&
-      returnsVoidWithoutArguments(checker, checker.getTypeOfSymbolAtLocation(property, node))
+      returnsVoidWithoutArguments(
+        checker,
+        checker.getTypeOfSymbolAtLocation(property, options.node),
+      )
     );
   });
 }
 
-export function isReleaseHandle(
+function matchesReleaseType(
   checker: TypeScript.TypeChecker,
   type: TypeScript.Type,
-  node: TypeScript.Node,
+  options: {
+    readonly node: TypeScript.Node;
+    readonly allowFunction: boolean;
+    readonly releasers: readonly string[];
+  },
 ): boolean {
   const plain = checker.getNonNullableType(type);
   if ((plain.flags & (ts.TypeFlags.Any | ts.TypeFlags.Unknown | ts.TypeFlags.Never)) !== 0) {
@@ -75,8 +84,30 @@ export function isReleaseHandle(
   }
   const parts = plain.isUnion() ? plain.types : [plain];
   return parts.every(
-    (part) => hasReleaser(checker, part, node) || returnsVoidWithoutArguments(checker, part),
+    (part) =>
+      hasReleaser(checker, part, options) ||
+      (options.allowFunction && returnsVoidWithoutArguments(checker, part)),
   );
+}
+
+export function isReleaseHandle(
+  checker: TypeScript.TypeChecker,
+  type: TypeScript.Type,
+  node: TypeScript.Node,
+): boolean {
+  return matchesReleaseType(checker, type, { node, allowFunction: true, releasers: RELEASERS });
+}
+
+export function isReleaseHandleAt(
+  checker: TypeScript.TypeChecker,
+  node: TypeScript.Node,
+  allowFunction: boolean,
+): boolean {
+  return matchesReleaseType(checker, checker.getTypeAtLocation(node), {
+    node,
+    allowFunction,
+    releasers: EFFECT_RELEASERS,
+  });
 }
 
 export function boundedReceiver(sourceCode: SourceCode, call: TSESTree.CallExpression): boolean {

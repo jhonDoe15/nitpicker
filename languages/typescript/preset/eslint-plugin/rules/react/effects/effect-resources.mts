@@ -84,7 +84,7 @@ function staysOpen(variable: TSESLint.Scope.Variable): boolean {
     });
 }
 
-function declaredHandle(
+export function declaredHandle(
   sourceCode: SourceCode,
   node: TSESTree.Node,
 ): TSESLint.Scope.Variable | undefined {

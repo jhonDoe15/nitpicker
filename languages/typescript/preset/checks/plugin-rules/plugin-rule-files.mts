@@ -115,6 +115,8 @@ export const PLUGIN_RULE_FILES = [
   'shared/naming/time-units/unit-messages.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-tests/hover-test-needs-keyboard.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react/react-effects.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/react/effect-handle/effect-handles.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/react/effect-handle/react-no-dropped-effect-handle.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react/react-no-effect-data-fetching.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react/react-no-effect-derived-state.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react/theme/react-no-hardcoded-colors.mjs',

@@ -3,6 +3,7 @@ export const nitpickerReactRuleIds = [
   'nitpicker/react-effect-needs-dependencies',
   'nitpicker/react-field-has-label',
   'nitpicker/react-no-direct-dom',
+  'nitpicker/react-no-dropped-effect-handle',
   'nitpicker/react-no-literal-id-in-list-component',
   'nitpicker/react-i18next-escape-value',
   'nitpicker/react-mutation-drops-failure',
