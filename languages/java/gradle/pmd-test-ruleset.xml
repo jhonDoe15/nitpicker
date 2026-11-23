@@ -693,6 +693,7 @@ return
     [pmd-java:typeIs('org.testng.IRetryAnalyzer')]
 | //ConstructorCall[AnonymousClassDeclaration][pmd-java:typeIs('org.testng.IRetryAnalyzer')]
 | //(LambdaExpression | MethodReference)[pmd-java:typeIs('org.testng.IRetryAnalyzer')]
+    [not(pmd-java:typeIs('java.lang.Runnable') and pmd-java:typeIs('java.lang.Comparable'))]
 | //MethodCall[pmd-java:matchesSig('org.testng.annotations.ITestAnnotation#setRetryAnalyzer(_)')]
 ]]></value>
       </property>
