@@ -376,7 +376,7 @@ suite('packed nitpicker in a separate consumer', () => {
           readFileSync(path.join(packageRoot, 'LICENSE'), 'utf8'),
         );
         const installedManifest = readJson(path.join(packageLocation, 'package.json'));
-        expect(fieldAt(installedManifest, 'license')).toBe('PolyForm-Noncommercial-1.0.0');
+        expect(fieldAt(installedManifest, 'license')).toBe('MIT');
         expect(fieldAt(installedManifest, 'private')).toBeUndefined();
         expect(
           existsSync(path.join(packageLocation, 'languages/java/gradle/nitpicker.init.gradle')),

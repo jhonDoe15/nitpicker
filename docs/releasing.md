@@ -1,7 +1,7 @@
 # Releasing
 
 One npm package serves every language and its root is the repository root. It is published to npm as
-`nitpicker` (PolyForm Noncommercial 1.0.0, unscoped). Nothing here runs automatically: a release is a
+`nitpicker` (MIT, unscoped). Nothing here runs automatically: a release is a
 manual sequence done by a maintainer.
 
 ## Versioning and tags
