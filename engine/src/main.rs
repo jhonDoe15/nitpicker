@@ -215,7 +215,7 @@ fn typescript_structure(args: &[String]) {
     );
 }
 
-/// `typescript-lint --files <list> [--rules <a,b>] [--out <file>] [--testing-library-utils-module <suffix>]`: each line of
+/// `typescript-lint --files <list> [--config <file>] [--rules <a,b>] [--out <file>] [--dump-config] [--testing-library-utils-module <suffix>]`: each line of
 /// the list is the path to read, the path to report and `key=value` settings for that file, tabs between them. The
 /// module suffix is `test-utils` unless given, and empty for none; `testing-library/utils-module=<suffix>` sets it for
 /// one file and `testing-library/scope=off` leaves the file to no testing-library rule.
@@ -223,13 +223,16 @@ fn typescript_structure(args: &[String]) {
 /// `--testing-library-scope` has the engine decide both for every file without such settings, by following the file's
 /// imports as the preset does; `--end-to-end-root <folder>` names the folder of browser tests for that decision.
 fn typescript_lint(args: &[String]) {
-    let (mut list, mut out, mut only) = (None, None, None::<Vec<String>>);
+    let (mut list, mut out, mut only, mut config_path) = (None, None, None::<Vec<String>>, None::<String>);
+    let mut dump_config = false;
     let mut index = 0;
     while index < args.len() {
         match args[index].as_str() {
             "--files" => { index += 1; list = Some(&args[index]); }
             "--out" => { index += 1; out = Some(&args[index]); }
             "--rules" => { index += 1; only = Some(args[index].split(',').map(String::from).collect()); }
+            "--config" => { index += 1; config_path = Some(args[index].clone()); }
+            "--dump-config" => dump_config = true,
             "--testing-library-utils-module" => {
                 index += 1;
                 typescript::rules::testing_library::set_utils_module(Some(args[index].clone()).filter(|module| !module.is_empty()));
@@ -241,20 +244,36 @@ fn typescript_lint(args: &[String]) {
         }
         index += 1;
     }
+    let config = match config_path.as_deref() {
+        Some(path) => typescript::rules::config::LintConfig::from_file(path).unwrap_or_else(|problem| fail(&problem)),
+        None => typescript::rules::config::LintConfig::default(),
+    };
+    let read_files = |path: &str| -> Vec<typescript::rules::Listed> {
+        std::fs::read_to_string(path)
+            .expect("list")
+            .lines()
+            .filter(|line| !line.is_empty())
+            .map(|line| {
+                let mut columns = line.split('\t').map(String::from);
+                let path = columns.next().unwrap_or_default();
+                let display = columns.next().unwrap_or_else(|| path.clone());
+                typescript::rules::Listed { path, display, settings: columns.collect() }
+            })
+            .collect()
+    };
+    if dump_config {
+        let files = list.map(|path| read_files(path)).unwrap_or_default();
+        let text = serde_json::to_string(&config.dump(&files)).expect("json");
+        match out {
+            Some(path) => std::fs::write(path, text).expect("write"),
+            None => println!("{text}"),
+        }
+        return;
+    }
     let started = Instant::now();
-    let files: Vec<typescript::rules::Listed> = std::fs::read_to_string(list.expect("--files"))
-        .expect("list")
-        .lines()
-        .filter(|line| !line.is_empty())
-        .map(|line| {
-            let mut columns = line.split('\t').map(String::from);
-            let path = columns.next().unwrap_or_default();
-            let display = columns.next().unwrap_or_else(|| path.clone());
-            typescript::rules::Listed { path, display, settings: columns.collect() }
-        })
-        .collect();
+    let files = read_files(list.expect("--files"));
     let rules = typescript::rules::selected(only.as_deref());
-    let findings = typescript::rules::lint_files(&files, &rules);
+    let findings = typescript::rules::lint_files_with_config(&files, &rules, &config);
     let rows: Vec<_> = findings
         .iter()
         .map(|reported| {

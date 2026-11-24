@@ -1,4 +1,5 @@
 //! Lint rules on the shared parse. Ids, messages and positions are those of the ESLint-plugin rule of the same name.
+pub mod config;
 mod errors;
 mod lifecycles;
 mod listeners;
@@ -22,6 +23,8 @@ pub struct Context<'a, 's> {
     pub selected: &'s [&'static str],
     /// Settings given for this file alone, as `key=value`.
     pub settings: &'s [String],
+    /// Project layout and per-rule options for this run.
+    pub config: &'s config::LintConfig,
     display: &'s str,
     scope: std::cell::OnceCell<testing_library::scope::Scope>,
     findings: Vec<Reported>,
@@ -47,6 +50,22 @@ impl<'a> Context<'a, '_> {
 
     pub fn display(&self) -> &str {
         self.display
+    }
+
+    pub fn layout(&self) -> &config::ProjectLayout {
+        &self.config.layout
+    }
+
+    pub fn rule_options(&self, rule: &str) -> Option<&serde_json::Value> {
+        self.config.rule_options(rule)
+    }
+
+    pub fn is_source_file(&self) -> bool {
+        self.config.is_source_file(self.display)
+    }
+
+    pub fn is_test_file(&self) -> bool {
+        self.config.is_test_file(self.display)
     }
 
     /// Whether the preset counts this file as a React test, and the module it takes its testing utilities from.
@@ -124,7 +143,7 @@ impl Selection {
     }
 }
 
-fn lint_file(path: &str, display: &str, settings: &[String], selection: &Selection) -> Vec<Reported> {
+fn lint_file(path: &str, display: &str, settings: &[String], selection: &Selection, config: &config::LintConfig) -> Vec<Reported> {
     let Ok(text) = std::fs::read_to_string(path) else { return Vec::new() };
     super::with_parsed(path, &text, |file| {
         if file.panicked {
@@ -134,7 +153,7 @@ fn lint_file(path: &str, display: &str, settings: &[String], selection: &Selecti
         let view = selection.view.then(|| support::view::View::of(file.program.to_estree_json(true, true)));
         let scopes = view.as_ref().map(|view| support::scope::Scopes::of(&semantic, view));
         let estree = view.as_ref().zip(scopes.as_ref());
-        let mut context = Context { file, semantic: &semantic, estree, selected: &selection.names, settings, display, scope: Default::default(), findings: Vec::new() };
+        let mut context = Context { file, semantic: &semantic, estree, selected: &selection.names, settings, config, display, scope: Default::default(), findings: Vec::new() };
         for rule in &selection.rules {
             rule(&mut context);
         }
@@ -150,7 +169,11 @@ pub struct Listed {
 }
 
 pub fn lint_files(files: &[Listed], rules: &Selection) -> Vec<Reported> {
-    let mut findings: Vec<Reported> = files.par_iter().flat_map_iter(|file| lint_file(&file.path, &file.display, &file.settings, rules)).collect();
+    lint_files_with_config(files, rules, &config::LintConfig::default())
+}
+
+pub fn lint_files_with_config(files: &[Listed], rules: &Selection, config: &config::LintConfig) -> Vec<Reported> {
+    let mut findings: Vec<Reported> = files.par_iter().flat_map_iter(|file| lint_file(&file.path, &file.display, &file.settings, rules, config)).collect();
     findings.sort();
     findings
 }
