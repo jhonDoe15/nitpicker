@@ -13,6 +13,14 @@ pub fn is_declaration_file(path: &str) -> bool {
     path.ends_with(".d.ts") || path.ends_with(".d.mts") || path.ends_with(".d.cts")
 }
 
+pub fn relative_to<'p>(root: &str, path: &'p str) -> Option<&'p str> {
+    if root == "/" {
+        path.strip_prefix('/')
+    } else {
+        path.strip_prefix(root)?.strip_prefix('/')
+    }
+}
+
 impl Sources {
     pub fn of(session: &Session) -> Sources {
         let tests = Regex::new(r"(?:^|/)(?:__tests__|tests|fixtures)/|\.(?:test|spec)\.[cm]?tsx?$").expect("pattern");
@@ -22,7 +30,11 @@ impl Sources {
     }
 
     pub fn is_production(&self, session: &Session, path: &str) -> bool {
-        !is_declaration_file(path) && session.relative(path).is_some_and(|relative| !self.tests.is_match(relative))
+        self.is_production_under(&session.root, path)
+    }
+
+    pub fn is_production_under(&self, root: &str, path: &str) -> bool {
+        !is_declaration_file(path) && relative_to(root, path).is_some_and(|relative| !self.tests.is_match(relative))
     }
 }
 
