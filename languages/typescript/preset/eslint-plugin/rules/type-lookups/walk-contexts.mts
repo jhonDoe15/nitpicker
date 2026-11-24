@@ -2,11 +2,8 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { ancestorsOf, contains } from '../analysis/ancestry.mts';
 import { isFunctionNode } from '../analysis/constant-resolution.mts';
 import { calleeName } from '../null-branches/branch-calls/leaving-calls.mts';
-import { nodeChildren } from '../typed/node-views.mts';
+import { functionBinding, nodeChildren, type FunctionNode } from '../typed/node-views.mts';
 import { preOrder } from '../../../../../../shared/traversal.mts';
-
-type FunctionNode =
-  TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression | TSESTree.FunctionDeclaration;
 
 type WalkKind = 'listener' | 'visitor' | 'loop';
 
@@ -80,17 +77,6 @@ function isChildWalk(call: TSESTree.Node): call is TSESTree.CallExpression {
   return call.type === AST_NODE_TYPES.CallExpression && CHILD_WALKERS.has(calleeName(call) ?? '');
 }
 
-function functionName(fn: FunctionNode): string | undefined {
-  if (fn.type === AST_NODE_TYPES.FunctionDeclaration) {
-    return fn.id?.name;
-  }
-  const { parent } = fn;
-  return parent.type === AST_NODE_TYPES.VariableDeclarator &&
-    parent.id.type === AST_NODE_TYPES.Identifier
-    ? parent.id.name
-    : undefined;
-}
-
 function walksItself(fn: FunctionNode, name: string): boolean {
   return preOrder(fn.body, nodeChildren).some(
     (node) =>
@@ -104,7 +90,7 @@ function isVisitor(fn: FunctionNode): boolean {
   if (isChildWalk(parent) && parent.arguments.some((arg) => arg === fn)) {
     return true;
   }
-  const name = functionName(fn);
+  const name = functionBinding(fn)?.name;
   return name !== undefined && walksItself(fn, name);
 }
 

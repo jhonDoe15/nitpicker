@@ -1,5 +1,8 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { appendAll } from '../../../../../../../shared/lists/lists.mts';
 import { findVariable, type SourceContext } from '../../analysis/constant-resolution.mts';
+import { ancestorsOf } from '../../analysis/ancestry.mts';
+import { functionBinding, type FunctionNode } from '../../typed/node-views.mts';
 import { calleeName } from '../../typed/syntax-views.mts';
 import { isJoin } from '../../unique-names/time-values.mts';
 
@@ -22,7 +25,10 @@ const ONE_PATH_NAMES = [
   'remove',
   'truncate',
 ];
-const withSync = (names: readonly string[]) => names.flatMap((name) => [name, `${name}Sync`]);
+function withSync(names: readonly string[]): string[] {
+  return names.flatMap((name) => [name, `${name}Sync`]);
+}
+
 const MOVES = new Set(withSync(MOVE_NAMES));
 const TARGETS = new Set(withSync(TARGET_NAMES));
 const FILE_CHANGES = new Set(withSync([...ONE_PATH_NAMES, ...MOVE_NAMES, ...TARGET_NAMES]));
@@ -47,9 +53,6 @@ const CARRIERS = new Set<string>([
   AST_NODE_TYPES.TSNonNullExpression,
   AST_NODE_TYPES.TSSatisfiesExpression,
 ]);
-
-type FunctionNode =
-  TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression | TSESTree.FunctionDeclaration;
 
 export function isPathPiece(node: TSESTree.Node | undefined): boolean {
   return (
@@ -80,13 +83,14 @@ function isCarried(node: TSESTree.Node): boolean {
 }
 
 function carrierOf(node: TSESTree.Node): Carried {
-  let top = node;
-  let asData = false;
-  while (isCarried(top) && top.parent) {
-    asData ||= DATA_CARRIERS.has(top.parent.type);
-    top = top.parent;
+  const chain = [node];
+  for (const current of chain) {
+    if (current.parent && isCarried(current)) {
+      chain.push(current.parent);
+    }
   }
-  return { top, asData };
+  const asData = chain.slice(1).some((carrier) => DATA_CARRIERS.has(carrier.type));
+  return { top: chain.at(-1) ?? node, asData };
 }
 
 function enclosingFunction(node: TSESTree.Node): FunctionNode | undefined {
@@ -97,11 +101,7 @@ function enclosingFunction(node: TSESTree.Node): FunctionNode | undefined {
   if (parent?.type !== AST_NODE_TYPES.ReturnStatement) {
     return undefined;
   }
-  let current: TSESTree.Node | undefined = parent.parent;
-  while (current && !isFunction(current)) {
-    current = current.parent;
-  }
-  return current;
+  return ancestorsOf(parent).find((ancestor) => isFunction(ancestor));
 }
 
 function isFunction(node: TSESTree.Node): node is FunctionNode {
@@ -110,17 +110,6 @@ function isFunction(node: TSESTree.Node): node is FunctionNode {
     node.type === AST_NODE_TYPES.FunctionExpression ||
     node.type === AST_NODE_TYPES.FunctionDeclaration
   );
-}
-
-function bindingOf(fn: FunctionNode): TSESTree.Identifier | undefined {
-  if (fn.type === AST_NODE_TYPES.FunctionDeclaration) {
-    return fn.id ?? undefined;
-  }
-  const { parent } = fn;
-  return parent.type === AST_NODE_TYPES.VariableDeclarator &&
-    parent.id.type === AST_NODE_TYPES.Identifier
-    ? parent.id
-    : undefined;
 }
 
 function readsOf(context: SourceContext, binding: TSESTree.Identifier): TSESTree.Node[] {
@@ -138,7 +127,7 @@ function usesOf(context: SourceContext, node: TSESTree.Node): TSESTree.Node[] {
     return readsOf(context, parent.id);
   }
   const fn = enclosingFunction(node);
-  const binding = fn ? bindingOf(fn) : undefined;
+  const binding = fn ? functionBinding(fn) : undefined;
   if (binding) {
     return readsOf(context, binding).flatMap((use) =>
       use.parent?.type === AST_NODE_TYPES.CallExpression && use.parent.callee === use
@@ -169,16 +158,18 @@ function isChangeCall({ top, asData }: Carried): boolean {
   return PROCESS_STARTS.has(name) || (FILE_CHANGES.has(name) && !asData && isPathArgument);
 }
 
-export function reachesFileChange(context: SourceContext, node: TSESTree.Node, depth = 0): boolean {
-  if (depth > MAX_DEPTH) {
-    return false;
-  }
-  return usesOf(context, node).some((use) => {
-    const carried = carrierOf(use);
-    if (isChangeCall(carried)) {
+export function reachesFileChange(context: SourceContext, start: TSESTree.Node): boolean {
+  const pending = [{ node: start, depth: 0 }];
+  for (const { node, depth } of pending) {
+    const carried = depth > MAX_DEPTH ? [] : usesOf(context, node).map((use) => carrierOf(use));
+    if (carried.some((carrier) => isChangeCall(carrier))) {
       return true;
     }
-    const { top } = carried;
-    return top !== node && reachesFileChange(context, top, depth + 1);
-  });
+    const next = carried.filter(({ top }) => top !== node);
+    appendAll(
+      pending,
+      next.map(({ top }) => ({ node: top, depth: depth + 1 })),
+    );
+  }
+  return false;
 }
