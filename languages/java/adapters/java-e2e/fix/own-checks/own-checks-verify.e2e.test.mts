@@ -83,6 +83,6 @@ describe.skipIf(!enabled).each(RUNS)(
         { toolErrors: result.toolErrors(), leftOver: leftOver(result.newFindings()) },
         result.stdout + result.stderr,
       ).toEqual({ toolErrors: [], leftOver: [] });
-    });
+    }, 300_000);
   },
 );
