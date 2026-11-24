@@ -80,6 +80,7 @@ import { rule as ruleNoInternalModuleMocks } from '../rules/test-runtime/asserti
 import { rule as ruleNoInterpolatedLogMessage } from '../rules/logging/interpolation/no-interpolated-log-message.mts';
 import { rule as ruleNoIntervalPollingInTests } from '../rules/test-runtime/lifecycle/no-interval-polling-in-tests.mts';
 import { rule as ruleNoIoInLoop } from '../rules/loops/no-io-in-loop.mts';
+import { rule as ruleNoKeywordRegexOnSource } from '../rules/source-regex/no-keyword-regex-on-source.mts';
 import { rule as ruleNoLazyRelationInLoop } from '../rules/effects/no-lazy-relation-in-loop.mts';
 import { rule as ruleNoListenOnAllInterfaces } from '../rules/listeners/no-listen-on-all-interfaces.mts';
 import { rule as ruleNoLoadedRowsSavedBack } from '../rules/queries/rows/no-loaded-rows-saved-back.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/ass
 import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
 import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
 import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multiple-collection-joins.mts';
-import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutating-method-in-domain.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -182,6 +182,7 @@ export const partRules = {
   'no-interpolated-log-message': ruleNoInterpolatedLogMessage,
   'no-interval-polling-in-tests': ruleNoIntervalPollingInTests,
   'no-io-in-loop': ruleNoIoInLoop,
+  'no-keyword-regex-on-source': ruleNoKeywordRegexOnSource,
   'no-lazy-relation-in-loop': ruleNoLazyRelationInLoop,
   'no-listen-on-all-interfaces': ruleNoListenOnAllInterfaces,
   'no-loaded-rows-saved-back': ruleNoLoadedRowsSavedBack,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-module-level-let': ruleNoModuleLevelLet,
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
   'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
-  'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
 };

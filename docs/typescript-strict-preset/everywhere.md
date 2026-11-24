@@ -2852,3 +2852,18 @@ Button`). `@param`, `@returns` and other tag lines are not part of the descripti
   sent or compared with a stored timestamp, and a variable that is reassigned. Allowed form: `performance.now()` for both
   ends. The same form runs as `WallClockElapsed` (Java and Kotlin), `wall-clock-elapsed` (Python) and
   `go-rules/wall-clock-elapsed` (Go).
+- `nitpicker/no-overlapping-ts-program`: a second TypeScript program (`createProgram`, `createWatchProgram`,
+  `createLanguageService` or `createSemanticDiagnosticsBuilderProgram` imported from `typescript`) built in the same
+  function while a binding holding the first program, or its `getTypeChecker()` handle, is still read after the second
+  call. Keeping the first program live prevents it from being collected while the second program is built, doubling peak
+  memory. Allowed form: read everything needed from the first program before building the second, or split the two builds
+  into separate functions that return plain data.
+- `nitpicker/require-compiler-file-name`: a call to `ts.transpileModule`, `ts.transpile`, `ts.createSourceFile` or
+  `ts.createLanguageServiceSourceFile` whose file-name argument or `fileName` option is omitted or hardcoded to a string
+  literal, inside a function that already has a file-name or path parameter or local in scope. Omitting the real name
+  makes the compiler default to `module.ts`, breaking relative import resolution and extension-based TSX/module detection.
+  Allowed form: pass the real file name variable to the compiler API.
+- `nitpicker/no-keyword-regex-on-source`: a regular expression matching a programming-language keyword between word
+  boundaries (such as `\bcase\b`, `\bimport\b`, `\bclass\s+\w+`, `\brequire\(`) applied to text holding source code,
+  when nothing in the same function strips or skips comments and string literals first. Allowed form: parse or tokenize
+  the source text, or strip comments and string literals before applying the keyword pattern.

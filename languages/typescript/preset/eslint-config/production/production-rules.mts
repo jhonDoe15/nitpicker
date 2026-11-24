@@ -21,6 +21,9 @@ export const productionSourceRules: Record<string, Linter.RuleEntry> = {
   'nitpicker/untested-round-trip': 'error',
   'nitpicker/no-type-lookup-per-node': 'error',
   'nitpicker/no-union-order-dependence': 'error',
+  'nitpicker/no-overlapping-ts-program': 'error',
+  'nitpicker/require-compiler-file-name': 'error',
+  'nitpicker/no-keyword-regex-on-source': 'error',
 };
 
 export const productionGuardEntries: Record<string, Linter.RuleEntry> = {
