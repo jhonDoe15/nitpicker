@@ -14,6 +14,16 @@ const config: unknown = JSON.parse(
   readFileSync(new URL('../../nitpicker.config.json', import.meta.url), 'utf8'),
 );
 
+const FIX_SUITE = 'languages/java/adapters/java-e2e/fix/';
+const FIX_SUITE_LIMITS = {
+  language: 'java',
+  project: 'java-fix-e2e',
+  testTimeoutMs: INTEGRATION_HOOK_TIMEOUT_MS,
+  testDeclarationCeilingMs: INTEGRATION_HOOK_TIMEOUT_MS,
+  hookTimeoutMs: INTEGRATION_HOOK_TIMEOUT_MS,
+  hookDeclarationCeilingMs: INTEGRATION_HOOK_TIMEOUT_MS,
+};
+
 describe('repository JVM suite deadlines', () => {
   it.each(['java', 'kotlin'])(
     'keeps every %s E2E file under its finite named-suite budget',
@@ -29,13 +39,17 @@ describe('repository JVM suite deadlines', () => {
           return resolveTestTimeouts(policy, { file, integration });
         }),
       ).toEqual(
-        files.map(() => ({
-          language: 'typescript',
-          testTimeoutMs: INTEGRATION_TEST_TIMEOUT_MS,
-          testDeclarationCeilingMs: INTEGRATION_TEST_TIMEOUT_MS,
-          hookTimeoutMs: INTEGRATION_HOOK_TIMEOUT_MS,
-          hookDeclarationCeilingMs: INTEGRATION_HOOK_TIMEOUT_MS,
-        })),
+        files.map((file) =>
+          file.startsWith(FIX_SUITE)
+            ? FIX_SUITE_LIMITS
+            : {
+                language: 'typescript',
+                testTimeoutMs: INTEGRATION_TEST_TIMEOUT_MS,
+                testDeclarationCeilingMs: INTEGRATION_TEST_TIMEOUT_MS,
+                hookTimeoutMs: INTEGRATION_HOOK_TIMEOUT_MS,
+                hookDeclarationCeilingMs: INTEGRATION_HOOK_TIMEOUT_MS,
+              },
+        ),
       );
     },
   );

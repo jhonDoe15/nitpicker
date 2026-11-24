@@ -198,6 +198,14 @@
             "testDeclarationCeilingMs": 180000,
             "hookDeclarationCeilingMs": 300000
           },
+          "java-fix-e2e": {
+            "language": "java",
+            "include": ["languages/java/adapters/java-e2e/fix/**"],
+            "testTimeoutMs": 300000,
+            "hookTimeoutMs": 300000,
+            "testDeclarationCeilingMs": 300000,
+            "hookDeclarationCeilingMs": 300000
+          },
           "runner-js-acceptance": {
             "language": "javascript",
             "include": [
