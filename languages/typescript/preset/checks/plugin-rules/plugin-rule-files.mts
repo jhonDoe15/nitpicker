@@ -3,6 +3,7 @@ import { SECURITY_TIME_RULE_FILES } from './security-time-rule-files.mts';
 import { VALUE_WEB_RULE_FILES } from './value-web-rule-files.mts';
 import { TEXT_PATH_NUMBER_RULE_FILES } from './text-path-number-rule-files.mts';
 import { REPEATED_WORK_RULE_FILES } from './repeated-work-rule-files.mts';
+import { TOOLING_RULE_FILES } from './tooling-rule-files.mts';
 
 export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/checks/plugin-rules/plugin-rule-files.mjs',
@@ -271,17 +272,9 @@ export const PLUGIN_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/events/helper-bodies.mjs',
   'languages/typescript/preset/eslint-plugin/rules/events/require-error-listener.mjs',
   'languages/typescript/preset/eslint-plugin/rules/security/http/http-clients.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/performance/overlapping-ts-program/no-overlapping-ts-program.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/performance/overlapping-ts-program/ts-program-calls.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/performance/overlapping-ts-program/branch-reachability.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/compiler-file-name/require-compiler-file-name.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/compiler-file-name/compiler-file-name-scope.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/source-regex/no-keyword-regex-on-source.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/source-regex/keyword-patterns.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/source-regex/source-text.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/source-regex/prior-stripping.mjs',
   ...SECURITY_TIME_RULE_FILES,
   ...VALUE_WEB_RULE_FILES,
   ...TEXT_PATH_NUMBER_RULE_FILES,
   ...REPEATED_WORK_RULE_FILES,
+  ...TOOLING_RULE_FILES,
 ];

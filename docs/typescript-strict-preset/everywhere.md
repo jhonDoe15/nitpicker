@@ -2867,3 +2867,22 @@ Button`). `@param`, `@returns` and other tag lines are not part of the descripti
   boundaries (such as `\bcase\b`, `\bimport\b`, `\bclass\s+\w+`, `\brequire\(`) applied to text holding source code,
   when nothing in the same function strips or skips comments and string literals first. Allowed form: parse or tokenize
   the source text, or strip comments and string literals before applying the keyword pattern.
+- `nitpicker/no-stat-after-readdir`: a loop or array callback over the result of `readdir`/`readdirSync` called without
+  `{ withFileTypes: true }` that calls `stat`/`lstat`/`statSync`/`lstatSync` per entry only to read `isDirectory()`,
+  `isFile()`, or `isSymbolicLink()`. Allowed form: pass `{ withFileTypes: true }` to `readdir`/`readdirSync` and read
+  the type from each `Dirent` directly.
+- `nitpicker/require-tsconfig-type-roots`: a generated tsconfig object literal with an `extends` key written to a
+  temporary directory (`os.tmpdir()`, `mkdtemp`, `mkdtempSync`, or `/tmp`) without specifying `compilerOptions.typeRoots`
+  (or `compilerOptions.types: []`). TypeScript derives default `typeRoots` from the written file's location rather than
+  the extended config. Allowed form: carry `compilerOptions.typeRoots` explicitly in the generated config.
+- `nitpicker/no-filtered-positional-pair`: a list filtered with `.filter(...)` paired by numeric index with an unfiltered
+  list (via `.map((x, i) => ... b[i])`, `.forEach`, `.flatMap`, `.reduce`, or an indexed `for` loop). After filtering,
+  indices no longer align. Allowed form: pair the lists first and filter the pairs, or keep a placeholder for dropped
+  entries.
+- `nitpicker/no-unguarded-recursion-sibling`: a function or method participating in an intra-module or intra-class
+  mutual recursion cycle without the re-entry guard (`Set`, `Map`, or depth/turn counter) used by a sibling entry point
+  into the same cycle. Allowed form: share the same re-entry guard across every entry point into the cycle.
+- `nitpicker/no-cached-partial-recursion`: a function or method that writes a computed result unconditionally into a
+  cache/memo while a separate recursion guard (`Set` or depth/turn counter) in the same function or a local callee can
+  return an early fallback, making the cached entry depend on call order. Allowed form: track whether the guard was hit
+  and skip caching partial results.

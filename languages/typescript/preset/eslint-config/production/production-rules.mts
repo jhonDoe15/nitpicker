@@ -24,6 +24,11 @@ export const productionSourceRules: Record<string, Linter.RuleEntry> = {
   'nitpicker/no-overlapping-ts-program': 'error',
   'nitpicker/require-compiler-file-name': 'error',
   'nitpicker/no-keyword-regex-on-source': 'error',
+  'nitpicker/no-stat-after-readdir': 'error',
+  'nitpicker/require-tsconfig-type-roots': 'error',
+  'nitpicker/no-filtered-positional-pair': 'error',
+  'nitpicker/no-unguarded-recursion-sibling': 'error',
+  'nitpicker/no-cached-partial-recursion': 'error',
 };
 
 export const productionGuardEntries: Record<string, Linter.RuleEntry> = {
