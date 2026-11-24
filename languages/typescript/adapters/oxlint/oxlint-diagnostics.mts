@@ -27,6 +27,7 @@ const MESSAGE_IN_HELP_RULES = new Set(['no-restricted-imports', 'no-restricted-p
 export class UnmappedDiagnosticError extends Error {}
 
 const TSCONFIG_ERROR_CODE = 'typescript(tsconfig-error)';
+const TYPESCRIPT_DIAGNOSTIC_CODE = /^TS\(\d+\)$/u;
 
 export function eslintShapedResults(
   stage: string,
@@ -127,6 +128,10 @@ function isUnusedEslintDirective(diagnostic: OxlintDiagnostic): boolean {
   return diagnostic.code === undefined && diagnostic.message.startsWith('Unused eslint-');
 }
 
+function isTypeScriptDiagnostic(code: string | undefined): boolean {
+  return code !== undefined && TYPESCRIPT_DIAGNOSTIC_CODE.test(code);
+}
+
 function reportedPosition(diagnostic: OxlintDiagnostic, locate: Locate): ReportedPosition {
   const span = diagnostic.labels?.[0]?.span ?? { offset: 0, length: 0 };
   const start = locate(span.offset);
@@ -146,7 +151,7 @@ function eslintMessage(
       message: { ruleId: undefined, message: diagnostic.message, severity: 1, ...position },
     };
   }
-  if (key === undefined) {
+  if (key === undefined || isTypeScriptDiagnostic(diagnostic.code)) {
     return { message: { fatal: true, message: diagnostic.message, severity: 2, ...position } };
   }
   const ruleId = naming.ruleNames.get(key);

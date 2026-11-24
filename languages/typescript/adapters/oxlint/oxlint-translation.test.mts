@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { firstOf } from '../eslint/test-support/finding-comparison.mts';
-import { eslintShapedResults } from './oxlint-diagnostics.mts';
+import { eslintShapedResults, UnmappedDiagnosticError } from './oxlint-diagnostics.mts';
 import type { OxlintPlan } from './plan/oxlint-shapes.mts';
 import {
   escapeGlob,
@@ -280,4 +280,80 @@ describe('eslintShapedResults', () => {
       }),
     ).toBe("Unexpected use of 'name'. Write window.name.");
   });
+
+  it.each([
+    [
+      'TS(1245)',
+      "Method 'm' cannot have an implementation because it is marked abstract.",
+      undefined,
+    ],
+    ['TS(1028)', 'Accessibility modifier already seen.', 'Remove the duplicate modifier.'],
+    ['TS(1016)', 'A required parameter cannot follow an optional parameter.', undefined],
+  ])('treats %s as a fatal parse failure alongside normal rule findings', (code, message, help) => {
+    writeFileSync(path.join(stage, 'valid.ts'), 'debugger;\n');
+    const naming = {
+      ruleNames: new Map([['eslint/no-debugger', 'no-debugger']]),
+      messageIdOf: () => undefined,
+      ruleMessages: {},
+      neutralized: new Map(),
+    };
+    const results = eslintShapedResults(
+      stage,
+      [
+        {
+          filename: 'a.ts',
+          code,
+          message,
+          ...(help === undefined ? {} : { help }),
+          labels: [{ span: { offset: 0, length: 6 } }],
+        },
+        {
+          filename: 'valid.ts',
+          code: 'eslint(no-debugger)',
+          message: '`debugger` statement is not allowed',
+          labels: [{ span: { offset: 0, length: 9 } }],
+        },
+      ],
+      naming,
+    );
+
+    expect(results).toEqual([
+      {
+        filePath: 'a.ts',
+        messages: [
+          { fatal: true, message, severity: 2, line: 1, column: 1, endLine: 1, endColumn: 7 },
+        ],
+      },
+      {
+        filePath: 'valid.ts',
+        messages: [
+          {
+            ruleId: 'no-debugger',
+            messageId: undefined,
+            message: '`debugger` statement is not allowed',
+            severity: 2,
+            line: 1,
+            column: 1,
+            endLine: 1,
+            endColumn: 10,
+          },
+        ],
+      },
+    ]);
+  });
+
+  it.each(['eslint(unknown-rule)', 'oxc(unexpected)', 'TS(not-a-number)'])(
+    'still throws UnmappedDiagnosticError for non-TS-code diagnostic %s',
+    (code) => {
+      const naming = {
+        ruleNames: new Map<string, string>(),
+        messageIdOf: () => undefined,
+        ruleMessages: {},
+        neutralized: new Map(),
+      };
+      expect(() =>
+        eslintShapedResults(stage, [{ filename: 'a.ts', code, message: 'boom' }], naming),
+      ).toThrow(UnmappedDiagnosticError);
+    },
+  );
 });
