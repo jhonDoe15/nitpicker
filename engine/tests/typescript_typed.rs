@@ -113,3 +113,19 @@ fn an_unknown_check_is_a_usage_error() {
     let output = engine(Path::new("/nonexistent/tsc"), &fixtures().join("contracts/tsconfig.json"), "no-such-check", &[]);
     assert_eq!(output.status.code(), Some(2));
 }
+
+#[test]
+fn public_contracts_scopes_collection_to_own_root() {
+    let Some(compiler) = compiler() else { return };
+    let folder = std::env::temp_dir().join(format!("nitpicker-engine-own-root-{}", std::process::id()));
+    std::fs::create_dir_all(&folder).expect("folder");
+    let input_file = folder.join("public-contracts.json");
+    let nested = fixtures().join("contracts/src/nested");
+    std::fs::write(&input_file, serde_json::json!({ "ownRoot": nested }).to_string()).expect("input");
+    let arg = format!("public-contracts={}", input_file.display());
+    let output = engine(&compiler, &fixtures().join("contracts/tsconfig.json"), "public-contracts", &["--input", &arg]);
+    let _ = std::fs::remove_dir_all(&folder);
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).expect("report");
+    assert_eq!(report["checks"]["public-contracts"]["findings"], serde_json::json!([]));
+}

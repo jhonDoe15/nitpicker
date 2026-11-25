@@ -115,28 +115,32 @@ pub fn closest_call_named<'v>(node: Node<'v>, wanted: &str) -> Option<Node<'v>> 
     }
 }
 
-pub fn property_identifier(node: Option<Node>) -> Option<Node> {
-    let node = node?;
-    match node.kind() {
-        "Identifier" => Some(node),
-        "MemberExpression" => property_identifier(node.node("object")),
-        "CallExpression" => property_identifier(node.node("callee")),
-        "ExpressionStatement" | "ChainExpression" => property_identifier(node.node("expression")),
-        "AwaitExpression" => property_identifier(node.node("argument")),
-        _ => None,
+pub fn property_identifier(mut node: Option<Node>) -> Option<Node> {
+    while let Some(current) = node {
+        match current.kind() {
+            "Identifier" => return Some(current),
+            "MemberExpression" => node = current.node("object"),
+            "CallExpression" => node = current.node("callee"),
+            "ExpressionStatement" | "ChainExpression" => node = current.node("expression"),
+            "AwaitExpression" => node = current.node("argument"),
+            _ => return None,
+        }
     }
+    None
 }
 
-pub fn deepest_identifier(node: Option<Node>) -> Option<Node> {
-    let node = node?;
-    match node.kind() {
-        "Identifier" => Some(node),
-        "ChainExpression" => deepest_identifier(node.node("expression")),
-        "MemberExpression" => identifier(node.node("property")),
-        "CallExpression" => deepest_identifier(node.node("callee")),
-        "AwaitExpression" => deepest_identifier(node.node("argument")),
-        _ => None,
+pub fn deepest_identifier(mut node: Option<Node>) -> Option<Node> {
+    while let Some(current) = node {
+        match current.kind() {
+            "Identifier" => return Some(current),
+            "ChainExpression" => node = current.node("expression"),
+            "MemberExpression" => return identifier(current.node("property")),
+            "CallExpression" => node = current.node("callee"),
+            "AwaitExpression" => node = current.node("argument"),
+            _ => return None,
+        }
     }
+    None
 }
 
 pub fn reference_node(node: Node) -> Node {
@@ -155,15 +159,17 @@ pub fn import_module_name(node: Node) -> Option<String> {
     }
 }
 
-fn call_from(node: Option<Node>) -> Option<Node> {
-    let node = node?;
-    match node.kind() {
-        "CallExpression" => Some(node),
-        "ChainExpression" => call_from(node.node("expression")),
-        "AwaitExpression" => call_from(node.node("argument")),
-        "AssignmentExpression" => call_from(node.node("right")),
-        _ => None,
+fn call_from(mut node: Option<Node>) -> Option<Node> {
+    while let Some(current) = node {
+        match current.kind() {
+            "CallExpression" => return Some(current),
+            "ChainExpression" => node = current.node("expression"),
+            "AwaitExpression" => node = current.node("argument"),
+            "AssignmentExpression" => node = current.node("right"),
+            _ => return None,
+        }
     }
+    None
 }
 
 pub fn statement_call(statement: Node) -> Option<Node> {
@@ -180,15 +186,17 @@ pub fn is_empty_function(node: Node) -> bool {
 }
 
 fn collect_bindings<'v>(pattern: Option<Node<'v>>, found: &mut Vec<Node<'v>>) {
-    let Some(pattern) = pattern else { return };
-    match pattern.kind() {
-        "Identifier" => found.push(pattern),
-        "ObjectPattern" => pattern.nodes("properties").into_iter().for_each(|property| collect_bindings(Some(property), found)),
-        "Property" => collect_bindings(pattern.node("value"), found),
-        "ArrayPattern" => pattern.nodes("elements").into_iter().for_each(|element| collect_bindings(Some(element), found)),
-        "RestElement" => collect_bindings(pattern.node("argument"), found),
-        "AssignmentPattern" => collect_bindings(pattern.node("left"), found),
-        _ => {}
+    let mut stack: Vec<Node<'v>> = pattern.into_iter().collect();
+    while let Some(current) = stack.pop() {
+        match current.kind() {
+            "Identifier" => found.push(current),
+            "ObjectPattern" => stack.extend(current.nodes("properties").into_iter().rev()),
+            "Property" => stack.extend(current.node("value")),
+            "ArrayPattern" => stack.extend(current.nodes("elements").into_iter().rev()),
+            "RestElement" => stack.extend(current.node("argument")),
+            "AssignmentPattern" => stack.extend(current.node("left")),
+            _ => {}
+        }
     }
 }
 

@@ -27,6 +27,7 @@ const MESSAGE_IN_HELP_RULES = new Set(['no-restricted-imports', 'no-restricted-p
 export class UnmappedDiagnosticError extends Error {}
 
 const TSCONFIG_ERROR_CODE = 'typescript(tsconfig-error)';
+const TYPESCRIPT_DIAGNOSTIC_CODE = /^TS\(\d+\)$/u;
 
 export function eslintShapedResults(
   stage: string,
@@ -38,18 +39,31 @@ export function eslintShapedResults(
   );
   rejectTsconfigErrors(stage, reported);
   const byFile = Map.groupBy(reported, (diagnostic) => diagnostic.filename);
-  return [...byFile].map(([filename, fileDiagnostics]) => {
-    const filePath = filename.replaceAll('\\', '/');
-    const bytes = readFileSync(stagedFile(stage, filename));
-    const locate = byteLocator(bytes);
-    const neutralized = naming.neutralized.get(filePath) ?? new Set<string>();
-    const converted = fileDiagnostics.map((diagnostic) =>
-      eslintMessage(diagnostic, naming, { filePath, locate }),
-    );
-    const keeps = converted.some(({ check }) => check !== undefined)
-      ? ownedNativeChecker(filePath, bytes.toString('utf8'))
-      : undefined;
-    return {
+  return [...byFile].flatMap((entry) => fileLintResults(stage, entry, naming));
+}
+
+function fileLintResults(
+  stage: string,
+  entry: readonly [string, readonly OxlintDiagnostic[]],
+  naming: Naming,
+): LintResult[] {
+  const [filename, fileDiagnostics] = entry;
+  const full = stagedFile(stage, filename);
+  if (full === undefined) {
+    return [];
+  }
+  const filePath = path.relative(path.resolve(stage), full).replaceAll('\\', '/');
+  const bytes = readFileSync(full);
+  const locate = byteLocator(bytes);
+  const neutralized = naming.neutralized.get(filePath) ?? new Set<string>();
+  const converted = fileDiagnostics.map((diagnostic) =>
+    eslintMessage(diagnostic, naming, { filePath, locate }),
+  );
+  const keeps = converted.some(({ check }) => check !== undefined)
+    ? ownedNativeChecker(filePath, bytes.toString('utf8'))
+    : undefined;
+  return [
+    {
       filePath,
       messages: converted
         .flatMap(({ message, check }) =>
@@ -58,8 +72,8 @@ export function eslintShapedResults(
             : (keeps?.(check) ?? []).map((span) => ({ ...message, ...span })),
         )
         .filter((message) => !isNeutralizerWhitespace(message, neutralized)),
-    };
-  });
+    },
+  ];
 }
 
 const TSCONFIG_REJECTED =
@@ -90,12 +104,16 @@ function withoutStage(text: string, stage: string): string {
   );
 }
 
-function stagedFile(stage: string, filename: string): string {
-  const full = path.resolve(stage, filename);
-  if (!full.startsWith(`${stage}${path.sep}`)) {
-    throw new Error(`oxlint reported a file outside its stage: ${filename}`);
-  }
-  return full;
+function stagedFile(stage: string, filename: string): string | undefined {
+  const root = path.resolve(stage);
+  const full = path.resolve(root, filename);
+  const relative = path.relative(root, full);
+  const outside =
+    relative === '' ||
+    relative === '..' ||
+    relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative);
+  return outside ? undefined : full;
 }
 
 function distinctDiagnostics(diagnostics: readonly OxlintDiagnostic[]): OxlintDiagnostic[] {
@@ -127,6 +145,10 @@ function isUnusedEslintDirective(diagnostic: OxlintDiagnostic): boolean {
   return diagnostic.code === undefined && diagnostic.message.startsWith('Unused eslint-');
 }
 
+function isTypeScriptDiagnostic(code: string | undefined): boolean {
+  return code !== undefined && TYPESCRIPT_DIAGNOSTIC_CODE.test(code);
+}
+
 function reportedPosition(diagnostic: OxlintDiagnostic, locate: Locate): ReportedPosition {
   const span = diagnostic.labels?.[0]?.span ?? { offset: 0, length: 0 };
   const start = locate(span.offset);
@@ -146,7 +168,7 @@ function eslintMessage(
       message: { ruleId: undefined, message: diagnostic.message, severity: 1, ...position },
     };
   }
-  if (key === undefined) {
+  if (key === undefined || isTypeScriptDiagnostic(diagnostic.code)) {
     return { message: { fatal: true, message: diagnostic.message, severity: 2, ...position } };
   }
   const ruleId = naming.ruleNames.get(key);

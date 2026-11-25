@@ -276,9 +276,8 @@ export function analyzePublicContractUsage(
   if (!hasImplementingClass(parsed.fileNames, ownRoot)) {
     return [];
   }
-  const wholeProject = ownRoot === configRoot;
   const { sourceRoot, findings } =
-    (wholeProject ? engineUnusedMethods(absoluteConfig, environment) : undefined) ??
+    engineUnusedMethods(absoluteConfig, environment, ownRoot) ??
     nodeUnusedMethods(parsed, { sourceRoot: configRoot, ownRoot });
   if (displayRoot === undefined) {
     return findings;

@@ -61,6 +61,11 @@ export function moduleAllowanceMs(
     : countModules(liveProjectRoot, scale.moduleFiles) * scale.perModuleMs;
 }
 
+function baseMegabytesOf(scale: unknown): number {
+  const base = fieldOf(scale, 'baseMegabytes');
+  return typeof base === 'number' && base > 0 ? base : 0;
+}
+
 export function memoryEstimateMegabytes(
   analyzer: unknown,
   liveProjectRoot: string,
@@ -70,8 +75,9 @@ export function memoryEstimateMegabytes(
   if (scale === undefined) {
     return 0;
   }
+  const base = baseMegabytesOf(fieldOf(analyzer, 'memoryScale'));
   const files = scaledFileCount(scale, liveProjectRoot, countFiles);
-  return Math.round((files / FILES_PER_STEP) * scale.perThousandFiles);
+  return base + Math.round((files / FILES_PER_STEP) * scale.perThousandFiles);
 }
 
 export function scaledFileCount(

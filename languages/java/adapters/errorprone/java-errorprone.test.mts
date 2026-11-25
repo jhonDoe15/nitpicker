@@ -193,6 +193,92 @@ describe('readErrorProneFindings', () => {
     );
   });
 
+  it('drops findings in nitpicker errorprone/generated output under an external report folder', () => {
+    const projectRoot = temporaryRoot('nitpicker-errorprone-project-');
+    const reportRoot = path.join(temporaryRoot('nitpicker-java-reports-'), 'module-jmh-benchmarks');
+    mkdirSync(reportRoot, { recursive: true });
+    writeFileSync(
+      path.join(reportRoot, 'errorprone.json'),
+      JSON.stringify([
+        diagnostic(path.join(projectRoot, 'src/main/java/demo/A.java')),
+        diagnostic(
+          path.join(
+            reportRoot,
+            'errorprone/generated/main/org/apache/kafka/jmh/acl/jmh_generated/Authorizer.java',
+          ),
+        ),
+        diagnostic(path.join(reportRoot, 'errorprone/generated/test/demo/ATest_jmhType.java')),
+      ]),
+    );
+
+    const findings = readErrorProneFindings({
+      reportRoot,
+      roots: [projectRoot],
+      lintedRoots: ['src/main/java'],
+    });
+
+    expect(
+      findings.map(({ rule, path: file, classification }) => [rule, file, classification]),
+    ).toEqual([['DeadException', 'src/main/java/demo/A.java', 'enforceable']]);
+  });
+
+  it('still reports unrelated outside-project files alongside dropped errorprone/generated files', () => {
+    const projectRoot = temporaryRoot('nitpicker-errorprone-project-');
+    const reportRoot = path.join(temporaryRoot('nitpicker-java-reports-'), 'module-jmh');
+    mkdirSync(reportRoot, { recursive: true });
+    writeFileSync(
+      path.join(reportRoot, 'errorprone.json'),
+      JSON.stringify([
+        diagnostic(path.join(projectRoot, 'src/main/java/demo/A.java')),
+        diagnostic(path.join(reportRoot, 'errorprone/generated/main/demo/Gen.java')),
+        diagnostic(path.join(reportRoot, 'other/Outside.java')),
+        diagnostic('/elsewhere/src/main/java/demo/B.java'),
+      ]),
+    );
+
+    const findings = readErrorProneFindings({
+      reportRoot,
+      roots: [projectRoot],
+      lintedRoots: ['src/main/java'],
+    });
+
+    expect(
+      findings.map(({ rule, path: file, classification }) => [rule, file, classification]),
+    ).toEqual([
+      ['DeadException', 'src/main/java/demo/A.java', 'enforceable'],
+      ['unmapped-path', '.', 'tool-error'],
+    ]);
+    expect(fieldOf(findings[1], 'message')).toBe(
+      `Error Prone reported 2 file(s) outside the project (${projectRoot}), so their findings ` +
+        `cannot be placed: /elsewhere/src/main/java/demo/B.java, ${path.join(reportRoot, 'other/Outside.java')}`,
+    );
+  });
+
+  it('drops errorprone/generated findings when the report root was canonicalized through a symlink', () => {
+    const projectRoot = temporaryRoot('nitpicker-errorprone-project-');
+    const realReportRoot = path.join(temporaryRoot('nitpicker-java-reports-'), 'module-jmh');
+    mkdirSync(realReportRoot, { recursive: true });
+    const linkedReportRoot = path.join(temporaryRoot('nitpicker-report-link-'), 'linked');
+    symlinkSync(realReportRoot, linkedReportRoot, 'dir');
+    writeFileSync(
+      path.join(linkedReportRoot, 'errorprone.json'),
+      JSON.stringify([
+        diagnostic(path.join(projectRoot, 'src/main/java/demo/A.java')),
+        diagnostic(path.join(realReportRoot, 'errorprone/generated/main/demo/Gen.java')),
+      ]),
+    );
+
+    const findings = readErrorProneFindings({
+      reportRoot: linkedReportRoot,
+      roots: [projectRoot],
+      lintedRoots: ['src/main/java'],
+    });
+
+    expect(
+      findings.map(({ rule, path: file, classification }) => [rule, file, classification]),
+    ).toEqual([['DeadException', 'src/main/java/demo/A.java', 'enforceable']]);
+  });
+
   it('maps the long form of a project root that the build canonicalized', () => {
     const { projectRoot, reportRoot } = reportRootWith((root: string) => [
       diagnostic(path.join(root, 'src/main/java/demo/A.java')),

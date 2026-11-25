@@ -1,3 +1,6 @@
+import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
+import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multiple-collection-joins.mts';
+import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutating-method-in-domain.mts';
 import { rule as ruleNoNanOnlyCheck } from '../rules/numbers/no-nan-only-check.mts';
 import { rule as ruleNoNegativeCount } from '../rules/counts/no-negative-count.mts';
 import { rule as ruleNoNewlineOnlyLineSplit } from '../rules/line-splits/no-newline-only-line-split.mts';
@@ -9,6 +12,7 @@ import { rule as ruleNoOperandSlip } from '../rules/operands/no-operand-slip.mts
 import { rule as ruleNoOrmQueryLogging } from '../rules/database/no-orm-query-logging.mts';
 import { rule as ruleNoOrmSchemaSync } from '../rules/database/no-orm-schema-sync.mts';
 import { rule as ruleNoOverflowingBackoff } from '../rules/backoff/no-overflowing-backoff.mts';
+import { rule as ruleNoOverlappingTsProgram } from '../rules/performance/overlapping-ts-program/no-overlapping-ts-program.mts';
 import { rule as ruleNoParameterMutation } from '../rules/signatures/no-parameter-mutation.mts';
 import { rule as ruleNoPartialOutputAssertion } from '../rules/test-runtime/assertions/no-partial-output-assertion.mts';
 import { rule as ruleNoPatternCompiledInLoop } from '../rules/repeated-work/patterns/no-pattern-compiled-in-loop.mts';
@@ -17,6 +21,7 @@ import { rule as ruleNoPerCallRegistration } from '../rules/lifecycles/registrat
 import { rule as ruleNoPipeDroppingErrors } from '../rules/streams/no-pipe-dropping-errors.mts';
 import { rule as ruleNoPlaceholderImplementation } from '../rules/placeholders/no-placeholder-implementation.mts';
 import { rule as ruleNoPrefixWithoutBoundary } from '../rules/affixes/no-prefix-without-boundary.mts';
+import { rule as ruleNoPrematureAwait } from '../rules/async/premature-await/no-premature-await.mts';
 import { rule as ruleNoPresenceTruthiness } from '../rules/truthiness/no-presence-truthiness.mts';
 import { rule as ruleNoProcessAccessOutsideCompositionRoot } from '../rules/guards/no-process-access-outside-composition-root.mts';
 import { rule as ruleNoProcessGlobalsOutsideMainGuard } from '../rules/modules/no-process-globals-outside-main-guard.mts';
@@ -47,11 +52,13 @@ import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stat
 import { rule as ruleNoSharedTempPathInTests } from '../rules/test-runtime/temp-paths/no-shared-temp-path-in-tests.mts';
 import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-state.mts';
 import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-string-command.mts';
+import { rule as ruleNoShrinkingWorklistJoin } from '../rules/recursion/worklist-join/no-shrinking-worklist-join.mts';
 import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
 import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singular-and-plural-prop.mts';
 import { rule as ruleNoSlashOnlyRedirectGuard } from '../rules/urls/requests/no-slash-only-redirect-guard.mts';
 import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-string-building.mts';
 import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mts';
+import { rule as ruleNoStatAfterReaddir } from '../rules/performance/stat-after-readdir/no-stat-after-readdir.mts';
 import { rule as ruleNoStatusOnlySpawnCheck } from '../rules/processes/results/no-status-only-spawn-check.mts';
 import { rule as ruleNoStderrAsFailure } from '../rules/processes/results/no-stderr-as-failure.mts';
 import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mts';
@@ -75,6 +82,7 @@ import { rule as ruleNoUnanchoredAffixReplace } from '../rules/affixes/no-unanch
 import { rule as ruleNoUnatomicWrites } from '../rules/transactions/no-unatomic-writes.mts';
 import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mts';
 import { rule as ruleNoUncheckedResponseJson } from '../rules/response-json/no-unchecked-response-json.mts';
+import { rule as ruleNoUncheckedTreeSitterError } from '../rules/tree-sitter/error-nodes/no-unchecked-tree-sitter-error.mts';
 import { rule as ruleNoUncheckedUrlSink } from '../rules/urls/links/no-unchecked-url-sink.mts';
 import { rule as ruleNoUnclearedSharedMock } from '../test-quality/shared-mocks/no-uncleared-shared-mock.mts';
 import { rule as ruleNoUnclearedTimeout } from '../rules/lifecycles/timers/no-uncleared-timeout.mts';
@@ -90,16 +98,11 @@ import { rule as ruleNoUnescapedPatternTranslation } from '../rules/patterns/no-
 import { rule as ruleNoUnfilteredSoftDeleteRead } from '../rules/queries/soft-delete/no-unfiltered-soft-delete-read.mts';
 import { rule as ruleNoUnguardedCyclicRecursion } from '../rules/recursion/no-unguarded-cyclic-recursion.mts';
 import { rule as ruleNoUnguardedDeletedItems } from '../rules/deleted-items/no-unguarded-deleted-items.mts';
-import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-json-parse.mts';
-import { rule as ruleNoUnguardedOptionList } from '../rules/processes/arguments/no-unguarded-option-list.mts';
-import { rule as ruleNoUnguardedRegistryDelete } from '../rules/lifecycles/registry/no-unguarded-registry-delete.mts';
-import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
-import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
-import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mts';
-import { rule as ruleNoUninjectableDelay } from '../rules/test-runtime/lifecycle/no-uninjectable-delay.mts';
-import { rule as ruleNoUnionOrderDependence } from '../rules/union-order/no-union-order-dependence.mts';
 
 export const partRules = {
+  'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
+  'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
+  'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
   'no-nan-only-check': ruleNoNanOnlyCheck,
   'no-negative-count': ruleNoNegativeCount,
   'no-newline-only-line-split': ruleNoNewlineOnlyLineSplit,
@@ -111,6 +114,7 @@ export const partRules = {
   'no-orm-query-logging': ruleNoOrmQueryLogging,
   'no-orm-schema-sync': ruleNoOrmSchemaSync,
   'no-overflowing-backoff': ruleNoOverflowingBackoff,
+  'no-overlapping-ts-program': ruleNoOverlappingTsProgram,
   'no-parameter-mutation': ruleNoParameterMutation,
   'no-partial-output-assertion': ruleNoPartialOutputAssertion,
   'no-pattern-compiled-in-loop': ruleNoPatternCompiledInLoop,
@@ -119,6 +123,7 @@ export const partRules = {
   'no-pipe-dropping-errors': ruleNoPipeDroppingErrors,
   'no-placeholder-implementation': ruleNoPlaceholderImplementation,
   'no-prefix-without-boundary': ruleNoPrefixWithoutBoundary,
+  'no-premature-await': ruleNoPrematureAwait,
   'no-presence-truthiness': ruleNoPresenceTruthiness,
   'no-process-access-outside-composition-root': ruleNoProcessAccessOutsideCompositionRoot,
   'no-process-globals-outside-main-guard': ruleNoProcessGlobalsOutsideMainGuard,
@@ -149,11 +154,13 @@ export const partRules = {
   'no-shared-temp-path-in-tests': ruleNoSharedTempPathInTests,
   'no-shared-test-state': ruleNoSharedTestState,
   'no-shell-string-command': ruleNoShellStringCommand,
+  'no-shrinking-worklist-join': ruleNoShrinkingWorklistJoin,
   'no-silent-catch': ruleNoSilentCatch,
   'no-singular-and-plural-prop': ruleNoSingularAndPluralProp,
   'no-slash-only-redirect-guard': ruleNoSlashOnlyRedirectGuard,
   'no-sql-string-building': ruleNoSqlStringBuilding,
   'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
+  'no-stat-after-readdir': ruleNoStatAfterReaddir,
   'no-status-only-spawn-check': ruleNoStatusOnlySpawnCheck,
   'no-stderr-as-failure': ruleNoStderrAsFailure,
   'no-string-as-regex': ruleNoStringAsRegex,
@@ -177,6 +184,7 @@ export const partRules = {
   'no-unatomic-writes': ruleNoUnatomicWrites,
   'no-unbounded-query-array': ruleNoUnboundedQueryArray,
   'no-unchecked-response-json': ruleNoUncheckedResponseJson,
+  'no-unchecked-tree-sitter-error': ruleNoUncheckedTreeSitterError,
   'no-unchecked-url-sink': ruleNoUncheckedUrlSink,
   'no-uncleared-shared-mock': ruleNoUnclearedSharedMock,
   'no-uncleared-timeout': ruleNoUnclearedTimeout,
@@ -192,12 +200,4 @@ export const partRules = {
   'no-unfiltered-soft-delete-read': ruleNoUnfilteredSoftDeleteRead,
   'no-unguarded-cyclic-recursion': ruleNoUnguardedCyclicRecursion,
   'no-unguarded-deleted-items': ruleNoUnguardedDeletedItems,
-  'no-unguarded-json-parse': ruleNoUnguardedJsonParse,
-  'no-unguarded-option-list': ruleNoUnguardedOptionList,
-  'no-unguarded-registry-delete': ruleNoUnguardedRegistryDelete,
-  'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
-  'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
-  'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
-  'no-uninjectable-delay': ruleNoUninjectableDelay,
-  'no-union-order-dependence': ruleNoUnionOrderDependence,
 };

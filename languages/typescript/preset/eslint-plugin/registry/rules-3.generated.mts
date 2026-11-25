@@ -1,6 +1,16 @@
+import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-json-parse.mts';
+import { rule as ruleNoUnguardedOptionList } from '../rules/processes/arguments/no-unguarded-option-list.mts';
+import { rule as ruleNoUnguardedRecursionSibling } from '../rules/recursion/unguarded-sibling/no-unguarded-recursion-sibling.mts';
+import { rule as ruleNoUnguardedRegistryDelete } from '../rules/lifecycles/registry/no-unguarded-registry-delete.mts';
+import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
+import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
+import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mts';
+import { rule as ruleNoUninjectableDelay } from '../rules/test-runtime/lifecycle/no-uninjectable-delay.mts';
+import { rule as ruleNoUnionOrderDependence } from '../rules/union-order/no-union-order-dependence.mts';
 import { rule as ruleNoUnisolatedJobLoop } from '../rules/jobs/no-unisolated-job-loop.mts';
 import { rule as ruleNoUnknownInDomain } from '../rules/boundaries/no-unknown-in-domain.mts';
 import { rule as ruleNoUnknownMainFolder } from '../rules/guards/no-unknown-main-folder.mts';
+import { rule as ruleNoUnknownTreeSitterField } from '../rules/tree-sitter/field-names/no-unknown-tree-sitter-field.mts';
 import { rule as ruleNoUnmappedException } from '../rules/errors/unmapped/no-unmapped-exception.mts';
 import { rule as ruleNoUnorderedQuery } from '../rules/queries/order/no-unordered-query.mts';
 import { rule as ruleNoUnownedAsyncAssertion } from '../test-assertions/unowned-async/no-unowned-async-assertion.mts';
@@ -56,11 +66,13 @@ import { rule as ruleReportModuleLoadEffects } from '../rules/modules/report-mod
 import { rule as ruleRequireAbortSignalForwarding } from '../rules/cancellation/abort-signal/require-abort-signal-forwarding.mts';
 import { rule as ruleRequireAtomicUpdates } from '../rules/wrapped/require-atomic-updates.mts';
 import { rule as ruleRequireClientTimeout } from '../rules/clients/require-client-timeout.mts';
+import { rule as ruleRequireCompilerFileName } from '../rules/compiler-file-name/require-compiler-file-name.mts';
 import { rule as ruleRequireErrorListener } from '../rules/events/require-error-listener.mts';
 import { rule as ruleRequireHttpTimeout } from '../rules/security/http/require-http-timeout.mts';
 import { rule as ruleRequireProcessTimeout } from '../rules/processes/require-process-timeout.mts';
 import { rule as ruleRequirePromiseReject } from '../rules/promises/executors/require-promise-reject.mts';
 import { rule as ruleRequireTestProcessTimeout } from '../rules/test-runtime/processes/timeouts/require-test-process-timeout.mts';
+import { rule as ruleRequireTsconfigTypeRoots } from '../rules/tsconfig-temp/require-tsconfig-type-roots.mts';
 import { rule as ruleReusableObjectPerCall } from '../rules/reuse/reusable-object-per-call.mts';
 import { rule as ruleSettlePendingOnClose } from '../rules/lifecycles/pending/settle-pending-on-close.mts';
 import { rule as ruleShorterBooleanLogic } from '../rules/control/shorter-boolean-logic.mts';
@@ -76,9 +88,19 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-unguarded-json-parse': ruleNoUnguardedJsonParse,
+  'no-unguarded-option-list': ruleNoUnguardedOptionList,
+  'no-unguarded-recursion-sibling': ruleNoUnguardedRecursionSibling,
+  'no-unguarded-registry-delete': ruleNoUnguardedRegistryDelete,
+  'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
+  'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
+  'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
+  'no-uninjectable-delay': ruleNoUninjectableDelay,
+  'no-union-order-dependence': ruleNoUnionOrderDependence,
   'no-unisolated-job-loop': ruleNoUnisolatedJobLoop,
   'no-unknown-in-domain': ruleNoUnknownInDomain,
   'no-unknown-main-folder': ruleNoUnknownMainFolder,
+  'no-unknown-tree-sitter-field': ruleNoUnknownTreeSitterField,
   'no-unmapped-exception': ruleNoUnmappedException,
   'no-unordered-query': ruleNoUnorderedQuery,
   'no-unowned-async-assertion': ruleNoUnownedAsyncAssertion,
@@ -134,11 +156,13 @@ export const partRules = {
   'require-abort-signal-forwarding': ruleRequireAbortSignalForwarding,
   'require-atomic-updates': ruleRequireAtomicUpdates,
   'require-client-timeout': ruleRequireClientTimeout,
+  'require-compiler-file-name': ruleRequireCompilerFileName,
   'require-error-listener': ruleRequireErrorListener,
   'require-http-timeout': ruleRequireHttpTimeout,
   'require-process-timeout': ruleRequireProcessTimeout,
   'require-promise-reject': ruleRequirePromiseReject,
   'require-test-process-timeout': ruleRequireTestProcessTimeout,
+  'require-tsconfig-type-roots': ruleRequireTsconfigTypeRoots,
   'reusable-object-per-call': ruleReusableObjectPerCall,
   'settle-pending-on-close': ruleSettlePendingOnClose,
   'shorter-boolean-logic': ruleShorterBooleanLogic,

@@ -156,4 +156,16 @@ describe('analyzer budgets scaled with project size', () => {
     expect(memoryEstimateMegabytes({}, root)).toBe(0);
     expect(preparedMemory(analyzer({ memoryScale }), root)).toBe(900);
   });
+
+  it('adds baseMegabytes on top of the file-scaled estimate for native server processes', () => {
+    const { root } = git.createGitRepository(sources(500), { prefix: 'nitpicker-memory-' });
+    const memoryScale = {
+      baseMegabytes: 1600,
+      perThousandFilesMegabytes: 1280,
+      extensions: ['ts'],
+    };
+
+    expect(memoryEstimateMegabytes({ memoryScale }, root)).toBe(2240);
+    expect(preparedMemory(analyzer({ memoryScale }), root)).toBe(2240);
+  });
 });

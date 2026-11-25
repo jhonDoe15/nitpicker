@@ -22,8 +22,14 @@ function unusedMethodOf(value: unknown): UnusedMethod {
 export function engineUnusedMethods(
   absoluteConfig: string,
   environment: Environment,
+  ownRoot?: string,
 ): { readonly sourceRoot: string; readonly findings: UnusedMethod[] } | undefined {
-  const outcome = runTypedChecks({ project: absoluteConfig, checks: [CHECK], environment });
+  const outcome = runTypedChecks({
+    project: absoluteConfig,
+    checks: [CHECK],
+    ...(ownRoot === undefined ? {} : { inputs: { [CHECK]: { ownRoot } } }),
+    environment,
+  });
   const sourceRoot = fieldOf(outcome.report, 'sourceRoot');
   const result = outcome.checks?.[CHECK];
   if (result === undefined || typeof sourceRoot !== 'string') {

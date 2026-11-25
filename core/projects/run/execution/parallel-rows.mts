@@ -3,6 +3,11 @@ import { availableParallelism, tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
+import {
+  MEMORY_LIMIT_VARIABLE,
+  machineMemory,
+} from '../../../../shared/processes/machine-capacity.mts';
+import { usableMemoryMegabytes } from '../../../../shared/processes/memory/node-heap.mts';
 import { createWeightedSemaphore } from '../../../diff/execution/capacity.mts';
 import { projectFilePaths } from '../../../../shared/project-files/project-files.mts';
 import { projectHeading } from '../../report/console.mts';
@@ -21,6 +26,7 @@ import type { MonorepoCli, ProjectOutcome, ProjectRow } from '../../project-type
 const CPUS_PER_PROJECT = 4;
 const SMALL_PROJECT_FILES = 100;
 const MEDIUM_PROJECT_FILES = 500;
+const MIN_PROJECT_MEMORY_MIB = 4096;
 const projectFiles: (root: string) => readonly string[] = projectFilePaths;
 const WORKER_SCRIPT = fileURLToPath(
   checkoutModuleUrl(new URL('../../../project-worker.mjs', import.meta.url)),
@@ -29,6 +35,32 @@ const WORKER_SCRIPT = fileURLToPath(
 type InOrder = (index: number, write: () => void) => void;
 
 type Capacity = { readonly slots: number; readonly weightOf: (row: ProjectRow) => number };
+
+export function projectSlots(
+  availableCpus: number = availableParallelism(),
+  usableMegabytes: number = usableMemoryMegabytes(),
+): number {
+  const byMemory = Math.max(1, Math.floor(usableMegabytes / MIN_PROJECT_MEMORY_MIB));
+  return Math.max(1, Math.min(availableCpus, byMemory));
+}
+
+export function workerEnvironment(
+  base: NodeJS.ProcessEnv,
+  {
+    weight,
+    slots,
+    memoryBytes = machineMemory(),
+  }: { readonly weight: number; readonly slots: number; readonly memoryBytes?: number },
+): NodeJS.ProcessEnv {
+  const shareBytes = Math.max(1, Math.floor((memoryBytes * weight) / slots));
+  return {
+    ...base,
+    ...(base['NITPICKER_MAX_PARALLEL'] === undefined
+      ? { NITPICKER_MAX_PARALLEL: String(Math.max(1, weight)) }
+      : {}),
+    [MEMORY_LIMIT_VARIABLE]: String(shareBytes),
+  };
+}
 
 function sizedWeight(row: ProjectRow, slots: number): number {
   const files = projectFiles(row.project.absolute).length;
@@ -47,7 +79,7 @@ function capacityOf(rows: readonly ProjectRow[], cli: MonorepoCli): Capacity {
   if (cli.options.jobs !== undefined) {
     return { slots: Math.max(1, Math.min(selected.length, cli.options.jobs)), weightOf: () => 1 };
   }
-  const slots = Math.max(1, availableParallelism());
+  const slots = projectSlots();
   const weights = new Map(selected.map((row) => [row, sizedWeight(row, slots)]));
   const [lightest = slots, next = slots] = [...weights.values()].toSorted((a, b) => a - b);
   return lightest + next > slots
@@ -87,12 +119,19 @@ function colorEnvironment(cli: MonorepoCli): NodeJS.ProcessEnv {
   return terminal && !decided ? { ...environment, FORCE_COLOR: '1' } : environment;
 }
 
-function jobOf(context: RunContext, run: SelectedRun, resultFile: string): ProjectJob {
+function jobOf(
+  context: RunContext,
+  run: SelectedRun,
+  {
+    resultFile,
+    environment,
+  }: { readonly resultFile: string; readonly environment: NodeJS.ProcessEnv },
+): ProjectJob {
   const { cli } = context;
   return {
     input: {
       arguments_: cli.arguments_,
-      environment: cli.environment,
+      environment,
       interactive: cli.interactive,
       workingDirectory: cli.workingDirectory,
     },
@@ -121,6 +160,7 @@ function outcomeOfFinished(row: ProjectRow, run: SelectedRun, finished: Finished
 
 type Pool = {
   readonly context: RunContext;
+  readonly capacity: Capacity;
   readonly acquire: (row: ProjectRow) => Promise<() => void>;
   readonly ordered: InOrder;
   readonly resultsRoot: string;
@@ -141,18 +181,23 @@ function rejection(reason: unknown): Error {
 }
 
 async function runInPool(row: ProjectRow, index: number, pool: Pool): Promise<ProjectRow> {
-  const { context, ordered } = pool;
+  const { context, capacity, ordered } = pool;
   const run = selectedRunOf(row, context);
   clearReports(run.reportRoot);
   if (!row.selection.selected) {
     ordered(index, () => undefined);
     return row;
   }
+  const share = { weight: capacity.weightOf(row), slots: capacity.slots };
+  const environment = workerEnvironment(colorEnvironment(context.cli), share);
   const finished = await launchPooled(pool, row, {
     label: row.project.path,
-    job: jobOf(context, run, path.join(pool.resultsRoot, `${String(index)}.json`)),
+    job: jobOf(context, run, {
+      resultFile: path.join(pool.resultsRoot, `${String(index)}.json`),
+      environment: workerEnvironment(context.cli.environment, share),
+    }),
     workerScript: context.cli.projectWorker ?? WORKER_SCRIPT,
-    environment: colorEnvironment(context.cli),
+    environment,
     progress: context.cli.progress,
   });
   const outcome = outcomeOfFinished(row, run, finished);
@@ -171,6 +216,7 @@ async function runRowsInParallel(
   const resultsRoot = await mkdtemp(path.join(tmpdir(), 'nitpicker-projects-'));
   const pool: Pool = {
     context,
+    capacity,
     acquire: (row) => semaphore.acquire(capacity.weightOf(row)),
     ordered: inOrder(),
     resultsRoot,

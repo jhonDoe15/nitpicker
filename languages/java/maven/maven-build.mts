@@ -194,7 +194,7 @@ function buildReactor(
   try {
     return { timedOut: buildOrSkipTests(build, policy), failed: [] };
   } catch (error) {
-    const failed = failedModules(error, { work: build.work, modules: reported });
+    const failed = failedModules(error, { ...build, modules: reported, reactor: build.modules });
     if (failed === undefined) {
       throw error;
     }

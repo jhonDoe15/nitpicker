@@ -1,5 +1,10 @@
 import path from 'node:path';
 import { fieldOf, optionalText } from '../../../../../shared/values/readers.mts';
+import {
+  baseUrlOf,
+  baseUrlPaths,
+  removedOptions,
+} from '../../../typescript-api/typescript7-options.mts';
 import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 import type { ProgramInputs } from '../program.mts';
 import type { ContextLayout, FileInfo } from '../typed/context-types.mts';
@@ -24,6 +29,7 @@ type FilesRequest = {
 
 const ts = typescriptApi();
 const DECLARATION_FILE = /\.d\.(?:[cm]?ts|[^./]+\.ts)$/u;
+const LOWEST_TARGET = 'ES2015';
 
 function absolutePaths(
   paths: Readonly<Record<string, readonly string[]>>,
@@ -37,14 +43,22 @@ function absolutePaths(
   );
 }
 
+function typescript7Overrides(
+  options: ProgramInputs['options'],
+): Readonly<Record<string, unknown>> {
+  const removed = removedOptions(options);
+  return {
+    ...baseUrlPaths(options),
+    ...(baseUrlOf(options) === undefined ? {} : { baseUrl: null }),
+    ...Object.fromEntries(removed.map((name) => [name, name === 'target' ? LOWEST_TARGET : null])),
+  };
+}
+
 export function engineProjectConfig(
   { parsed, options, rootNames }: ProgramInputs,
   { configPath, projectRoot }: { readonly configPath: string; readonly projectRoot: string },
 ): unknown {
-  const pathsBase =
-    optionalText(fieldOf(options, 'baseUrl')) ??
-    optionalText(fieldOf(options, 'pathsBasePath')) ??
-    projectRoot;
+  const pathsBase = optionalText(fieldOf(options, 'pathsBasePath')) ?? projectRoot;
   return {
     extends: path.resolve(configPath),
     compilerOptions: {
@@ -56,6 +70,7 @@ export function engineProjectConfig(
       typeRoots: ts.getEffectiveTypeRoots(options, ts.sys) ?? [],
       ...(parsed.options.jsx === undefined ? { jsx: 'react-jsx' } : {}),
       paths: absolutePaths(options.paths ?? {}, pathsBase),
+      ...typescript7Overrides(options),
     },
     files: rootNames,
     include: [],

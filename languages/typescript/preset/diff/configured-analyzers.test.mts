@@ -98,9 +98,19 @@ describe('the type check on a large project', () => {
       typeof fieldOf(deadline, 'roots'),
     ]).toEqual([300_000, 120_000, extensions, 'function']);
     expect([
+      fieldOf(memory, 'baseMegabytes'),
       fieldOf(memory, 'perThousandFilesMegabytes'),
       fieldOf(memory, 'extensions'),
       typeof fieldOf(memory, 'roots'),
-    ]).toEqual([640, extensions, 'function']);
+    ]).toEqual([1600, 1280, extensions, 'function']);
+
+    const structure: unknown = configuredAnalyzers().find(({ name }) => name === 'structure');
+    const structureMemory = fieldOf(structure, 'memoryScale');
+    expect([
+      fieldOf(structureMemory, 'baseMegabytes'),
+      fieldOf(structureMemory, 'perThousandFilesMegabytes'),
+      fieldOf(structureMemory, 'extensions'),
+      typeof fieldOf(structureMemory, 'roots'),
+    ]).toEqual([1600, 1000, extensions, 'function']);
   });
 });

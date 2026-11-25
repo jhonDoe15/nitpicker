@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mts';
 import { normalizeReportPath } from '../../../../shared/ingest/report-records.mts';
@@ -21,6 +21,7 @@ type ReportContext = Readonly<Record<string, unknown>> & { readonly reportRoot: 
 type Placement = {
   readonly roots: readonly string[];
   readonly lintedRoots: readonly string[];
+  readonly generatedRoots: readonly string[];
   readonly outside: Set<string>;
 };
 type Finding = Readonly<Record<string, unknown>>;
@@ -39,9 +40,11 @@ export function readErrorProneFindings(context: ReportContext): Finding[] {
     return [toolError('missing-report', `Error Prone wrote no report at ${reportPath}.`)];
   }
   const roots = textsOf(context['roots']);
-  const placement = {
+  const reportRoots = projectReportRoots(context.reportRoot, context['modules']);
+  const placement: Placement = {
     roots,
     lintedRoots: textsOf(context['lintedRoots']),
+    generatedRoots: generatedOutputRoots(reportRoots),
     outside: new Set<string>(),
   };
   const manifest = context['manifest'];
@@ -54,7 +57,6 @@ export function readErrorProneFindings(context: ReportContext): Finding[] {
   const readSource: unknown = sourceReader(context.reportRoot);
   const checks = errorProneChecks();
   const exempted = withoutExemptCode(diagnostics, readSource, checks);
-  const reportRoots = projectReportRoots(context.reportRoot, context['modules']);
   const ingested = callUntyped(
     ingestErrorProne,
     withoutFluentReturns(exempted, reportRoots, readSource),
@@ -237,7 +239,30 @@ function caseInsensitiveRelative(file: string, root: string): string | undefined
   return typeof normalized === 'string' ? normalized : undefined;
 }
 
-function lintedPath(file: string, { roots, lintedRoots, outside }: Placement): string | undefined {
+function generatedOutputRoots(reportRoots: readonly string[]): string[] {
+  const expanded = reportRoots.flatMap((root) =>
+    existsSync(root) ? [root, realpathSync(root)] : [root],
+  );
+  return [...new Set(expanded)].map((root) => path.join(root, 'errorprone', 'generated'));
+}
+
+function isUnderRoot(file: string, root: string): boolean {
+  const prefix = `${slashed(root).replace(/\/+$/u, '')}/`;
+  const candidate = slashed(file);
+  const matched =
+    process.platform === 'win32'
+      ? candidate.toLowerCase().startsWith(prefix.toLowerCase())
+      : candidate.startsWith(prefix);
+  return matched && normalizeReportPath(candidate.slice(prefix.length)) !== undefined;
+}
+
+function lintedPath(
+  file: string,
+  { roots, lintedRoots, generatedRoots, outside }: Placement,
+): string | undefined {
+  if (generatedRoots.some((root) => isUnderRoot(file, root))) {
+    return undefined;
+  }
   const relatives = projectRelative(file, roots);
   if (relatives.length === 0) {
     outside.add(file);

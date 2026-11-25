@@ -159,10 +159,12 @@ impl<'v> Walk<'_, '_, 'v> {
         }
     }
 
-    fn visit(&mut self, node: Node<'v>) {
-        self.enter(node);
-        for child in node.children() {
-            self.visit(child);
+    fn visit(&mut self, root: Node<'v>) {
+        let mut stack = vec![root];
+        while let Some(node) = stack.pop() {
+            self.enter(node);
+            let children = node.children();
+            stack.extend(children.into_iter().rev());
         }
     }
 }

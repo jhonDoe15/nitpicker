@@ -51,17 +51,19 @@ fn expect_handles_promise(node: Node) -> bool {
     }
 }
 
-fn root_expression(expression: Node) -> Node {
-    let Some(parent) = expression.parent() else { return expression };
-    match parent.kind() {
-        "ConditionalExpression" | "ChainExpression" => root_expression(parent),
-        "LogicalExpression" => match parent.text("operator").as_deref() {
-            Some("??" | "||") => root_expression(parent),
-            Some("&&") if parent.node("right") == Some(expression) => root_expression(parent),
-            _ => expression,
-        },
-        "SequenceExpression" if parent.nodes("expressions").last() == Some(&expression) => root_expression(parent),
-        _ => expression,
+fn root_expression(mut expression: Node) -> Node {
+    loop {
+        let Some(parent) = expression.parent() else { return expression };
+        match parent.kind() {
+            "ConditionalExpression" | "ChainExpression" => expression = parent,
+            "LogicalExpression" => match parent.text("operator").as_deref() {
+                Some("??" | "||") => expression = parent,
+                Some("&&") if parent.node("right") == Some(expression) => expression = parent,
+                _ => return expression,
+            },
+            "SequenceExpression" if parent.nodes("expressions").last() == Some(&expression) => expression = parent,
+            _ => return expression,
+        }
     }
 }
 

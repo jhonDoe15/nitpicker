@@ -21,6 +21,18 @@ export const productionSourceRules: Record<string, Linter.RuleEntry> = {
   'nitpicker/untested-round-trip': 'error',
   'nitpicker/no-type-lookup-per-node': 'error',
   'nitpicker/no-union-order-dependence': 'error',
+  'nitpicker/no-overlapping-ts-program': 'error',
+  'nitpicker/require-compiler-file-name': 'error',
+  'nitpicker/no-keyword-regex-on-source': 'error',
+  'nitpicker/no-stat-after-readdir': 'error',
+  'nitpicker/require-tsconfig-type-roots': 'error',
+  'nitpicker/no-filtered-positional-pair': 'error',
+  'nitpicker/no-unguarded-recursion-sibling': 'error',
+  'nitpicker/no-cached-partial-recursion': 'error',
+  'nitpicker/no-shrinking-worklist-join': 'error',
+  'nitpicker/no-unchecked-tree-sitter-error': 'error',
+  'nitpicker/no-unknown-tree-sitter-field': 'error',
+  'nitpicker/no-premature-await': 'error',
 };
 
 export const productionGuardEntries: Record<string, Linter.RuleEntry> = {

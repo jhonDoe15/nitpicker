@@ -2852,3 +2852,50 @@ Button`). `@param`, `@returns` and other tag lines are not part of the descripti
   sent or compared with a stored timestamp, and a variable that is reassigned. Allowed form: `performance.now()` for both
   ends. The same form runs as `WallClockElapsed` (Java and Kotlin), `wall-clock-elapsed` (Python) and
   `go-rules/wall-clock-elapsed` (Go).
+- `nitpicker/no-overlapping-ts-program`: a second TypeScript program (`createProgram`, `createWatchProgram`,
+  `createLanguageService` or `createSemanticDiagnosticsBuilderProgram` imported from `typescript`) built in the same
+  function while a binding holding the first program, or its `getTypeChecker()` handle, is still read after the second
+  call. Keeping the first program live prevents it from being collected while the second program is built, doubling peak
+  memory. Allowed form: read everything needed from the first program before building the second, or split the two builds
+  into separate functions that return plain data.
+- `nitpicker/require-compiler-file-name`: a call to `ts.transpileModule`, `ts.transpile`, `ts.createSourceFile` or
+  `ts.createLanguageServiceSourceFile` whose file-name argument or `fileName` option is omitted or hardcoded to a string
+  literal, inside a function that already has a file-name or path parameter or local in scope. Omitting the real name
+  makes the compiler default to `module.ts`, breaking relative import resolution and extension-based TSX/module detection.
+  Allowed form: pass the real file name variable to the compiler API.
+- `nitpicker/no-keyword-regex-on-source`: a regular expression matching a programming-language keyword between word
+  boundaries (such as `\bcase\b`, `\bimport\b`, `\bclass\s+\w+`, `\brequire\(`) applied to text holding source code,
+  when nothing in the same function strips or skips comments and string literals first. Allowed form: parse or tokenize
+  the source text, or strip comments and string literals before applying the keyword pattern.
+- `nitpicker/no-stat-after-readdir`: a loop or array callback over the result of `readdir`/`readdirSync` called without
+  `{ withFileTypes: true }` that calls `stat`/`lstat`/`statSync`/`lstatSync` per entry only to read `isDirectory()`,
+  `isFile()`, or `isSymbolicLink()`. Allowed form: pass `{ withFileTypes: true }` to `readdir`/`readdirSync` and read
+  the type from each `Dirent` directly.
+- `nitpicker/require-tsconfig-type-roots`: a generated tsconfig object literal with an `extends` key written to a
+  temporary directory (`os.tmpdir()`, `mkdtemp`, `mkdtempSync`, or `/tmp`) without specifying `compilerOptions.typeRoots`
+  (or `compilerOptions.types: []`). TypeScript derives default `typeRoots` from the written file's location rather than
+  the extended config. Allowed form: carry `compilerOptions.typeRoots` explicitly in the generated config.
+- `nitpicker/no-filtered-positional-pair`: a list filtered with `.filter(...)` paired by numeric index with an unfiltered
+  list (via `.map((x, i) => ... b[i])`, `.forEach`, `.flatMap`, `.reduce`, or an indexed `for` loop). After filtering,
+  indices no longer align. Allowed form: pair the lists first and filter the pairs, or keep a placeholder for dropped
+  entries.
+- `nitpicker/no-unguarded-recursion-sibling`: a function or method participating in an intra-module or intra-class
+  mutual recursion cycle without the re-entry guard (`Set`, `Map`, or depth/turn counter) used by a sibling entry point
+  into the same cycle. Allowed form: share the same re-entry guard across every entry point into the cycle.
+- `nitpicker/no-cached-partial-recursion`: a function or method that writes a computed result unconditionally into a
+  cache/memo while a separate recursion guard (`Set` or depth/turn counter) in the same function or a local callee can
+  return an early fallback, making the cached entry depend on call order. Allowed form: track whether the guard was hit
+  and skip caching partial results.
+- `nitpicker/no-shrinking-worklist-join`: a work-list loop that joins each node's output directly into its successor's
+  stored state while the transfer can shrink, delete, clear, or overwrite entries that an earlier pass contributed.
+  Allowed form: store the last output per edge and recompute each successor's input from all incoming edges.
+- `nitpicker/no-unchecked-tree-sitter-error`: a function in a module importing a tree-sitter binding that walks or
+  indexes `.children`/`.namedChildren` or chains directly on `childForFieldName(...)` without checking `hasError`,
+  `isError`, `isMissing`, or `type === 'ERROR'`. Allowed form: check for error nodes and decide whether to skip or
+  handle them.
+- `nitpicker/no-unknown-tree-sitter-field`: a constant field name passed to `childForFieldName`, `childrenForFieldName`,
+  or compared with `currentFieldName`/`fieldName` that is not defined by the active tree-sitter grammar (or by the
+  narrowed `node.type`). Allowed form: use a field name defined in the grammar's `node-types.json` for that node type.
+- `nitpicker/no-premature-await`: an `await` on a task handle started earlier (`const r = await task`) followed by three
+  or more independent statements containing at least one non-trivial call before `r` is first read. Allowed form: move
+  the `await` to where the result is first needed so the independent work overlaps with the task.

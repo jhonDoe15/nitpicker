@@ -3,6 +3,7 @@ import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { normalizeEslintResults } from '../eslint/normalize.mts';
 import { firstOf } from '../eslint/test-support/finding-comparison.mts';
 import { oxlintBinary } from './oxlint-process.mts';
 import type { LintResult } from './plan/oxlint-shapes.mts';
@@ -69,6 +70,9 @@ const SOURCES = {
   'src/separators.ts': "export const s = 'a\u2028b';\r\ndebugger;\rdebugger;\n",
   'src/oxlint-directive.ts': '// oxlint-disable-next-line no-debugger\ndebugger;\n',
   'src/bom.ts': '\uFEFFconst x = 1; debugger;\nexport { x };\n',
+  'src/abstract-body.ts': 'abstract class A { abstract m() {} }\n',
+  'src/duplicate-modifier.ts': 'class A { public public x }\n',
+  'src/optional-before-required.ts': 'function f(a?: number, b: number) {}\n',
 };
 
 let root: string;
@@ -144,6 +148,26 @@ describe('lintWithOxlint', () => {
       { ruleId: 'no-debugger', line: 4, column: 1 },
     ]);
     expect(messagesOf('src/bom.ts')).toEqual([{ ruleId: 'no-debugger', line: 1, column: 14 }]);
+  });
+
+  it('turns TS(...) diagnostics into unparsed-file notes without failing the run', () => {
+    const tsFiles = new Set([
+      'src/abstract-body.ts',
+      'src/duplicate-modifier.ts',
+      'src/optional-before-required.ts',
+    ]);
+    const findings = normalizeEslintResults({
+      value: results,
+      projectRoot: root,
+      analyzerName: 'eslint-lint',
+    }).filter(({ path: filePath }) => tsFiles.has(filePath));
+    expect(
+      findings.map(({ path: filePath, rule, classification }) => [filePath, rule, classification]),
+    ).toEqual([
+      ['src/abstract-body.ts', 'unparsed-file', 'descriptive'],
+      ['src/duplicate-modifier.ts', 'unparsed-file', 'descriptive'],
+      ['src/optional-before-required.ts', 'unparsed-file', 'descriptive'],
+    ]);
   });
 });
 

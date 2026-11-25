@@ -22,6 +22,7 @@ import { rule as ruleNoBranchInCompositionRoot } from '../rules/boundaries/no-br
 import { rule as ruleNoBtoaOnRuntimeText } from '../rules/encoding/no-btoa-on-runtime-text.mts';
 import { rule as ruleNoBufferedGrowingOutput } from '../rules/processes/output/no-buffered-growing-output.mts';
 import { rule as ruleNoCacheWriteInTransaction } from '../rules/transactions/cache-writes/no-cache-write-in-transaction.mts';
+import { rule as ruleNoCachedPartialRecursion } from '../rules/caches/partial-recursion/no-cached-partial-recursion.mts';
 import { rule as ruleNoCachedRejection } from '../rules/lifecycles/memo/no-cached-rejection.mts';
 import { rule as ruleNoCaseMismatchedLookup } from '../rules/lookups/no-case-mismatched-lookup.mts';
 import { rule as ruleNoCaseMixedHeaderMerge } from '../rules/urls/requests/no-case-mixed-header-merge.mts';
@@ -57,6 +58,7 @@ import { rule as ruleNoExpandingReplacementString } from '../rules/patterns/repl
 import { rule as ruleNoExternalExecutablesInUnitTests } from '../rules/test-runtime/processes/no-external-executables-in-unit-tests.mts';
 import { rule as ruleNoFalsyDefault } from '../rules/signatures/no-falsy-default.mts';
 import { rule as ruleNoFalsyErrorCheck } from '../rules/errors/falsy-errors/no-falsy-error-check.mts';
+import { rule as ruleNoFilteredPositionalPair } from '../rules/collections/filtered-pair/no-filtered-positional-pair.mts';
 import { rule as ruleNoFirstTestChargedSetup } from '../rules/test-runtime/lifecycle/no-first-test-charged-setup.mts';
 import { rule as ruleNoFixedSleepSynchronization } from '../rules/test-runtime/lifecycle/no-fixed-sleep-synchronization.mts';
 import { rule as ruleNoFloatEqualityInTests } from '../test-assertions/no-float-equality-in-tests.mts';
@@ -80,6 +82,7 @@ import { rule as ruleNoInternalModuleMocks } from '../rules/test-runtime/asserti
 import { rule as ruleNoInterpolatedLogMessage } from '../rules/logging/interpolation/no-interpolated-log-message.mts';
 import { rule as ruleNoIntervalPollingInTests } from '../rules/test-runtime/lifecycle/no-interval-polling-in-tests.mts';
 import { rule as ruleNoIoInLoop } from '../rules/loops/no-io-in-loop.mts';
+import { rule as ruleNoKeywordRegexOnSource } from '../rules/source-regex/no-keyword-regex-on-source.mts';
 import { rule as ruleNoLazyRelationInLoop } from '../rules/effects/no-lazy-relation-in-loop.mts';
 import { rule as ruleNoListenOnAllInterfaces } from '../rules/listeners/no-listen-on-all-interfaces.mts';
 import { rule as ruleNoLoadedRowsSavedBack } from '../rules/queries/rows/no-loaded-rows-saved-back.mts';
@@ -95,9 +98,6 @@ import { rule as ruleNoManyToManyCascadeRemove } from '../rules/persistence/no-m
 import { rule as ruleNoMismatchedPreconditionMessage } from '../rules/preconditions/no-mismatched-precondition-message.mts';
 import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
 import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
-import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
-import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multiple-collection-joins.mts';
-import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutating-method-in-domain.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -124,6 +124,7 @@ export const partRules = {
   'no-btoa-on-runtime-text': ruleNoBtoaOnRuntimeText,
   'no-buffered-growing-output': ruleNoBufferedGrowingOutput,
   'no-cache-write-in-transaction': ruleNoCacheWriteInTransaction,
+  'no-cached-partial-recursion': ruleNoCachedPartialRecursion,
   'no-cached-rejection': ruleNoCachedRejection,
   'no-case-mismatched-lookup': ruleNoCaseMismatchedLookup,
   'no-case-mixed-header-merge': ruleNoCaseMixedHeaderMerge,
@@ -159,6 +160,7 @@ export const partRules = {
   'no-external-executables-in-unit-tests': ruleNoExternalExecutablesInUnitTests,
   'no-falsy-default': ruleNoFalsyDefault,
   'no-falsy-error-check': ruleNoFalsyErrorCheck,
+  'no-filtered-positional-pair': ruleNoFilteredPositionalPair,
   'no-first-test-charged-setup': ruleNoFirstTestChargedSetup,
   'no-fixed-sleep-synchronization': ruleNoFixedSleepSynchronization,
   'no-float-equality-in-tests': ruleNoFloatEqualityInTests,
@@ -182,6 +184,7 @@ export const partRules = {
   'no-interpolated-log-message': ruleNoInterpolatedLogMessage,
   'no-interval-polling-in-tests': ruleNoIntervalPollingInTests,
   'no-io-in-loop': ruleNoIoInLoop,
+  'no-keyword-regex-on-source': ruleNoKeywordRegexOnSource,
   'no-lazy-relation-in-loop': ruleNoLazyRelationInLoop,
   'no-listen-on-all-interfaces': ruleNoListenOnAllInterfaces,
   'no-loaded-rows-saved-back': ruleNoLoadedRowsSavedBack,
@@ -198,7 +201,4 @@ export const partRules = {
   'no-mismatched-precondition-message': ruleNoMismatchedPreconditionMessage,
   'no-mocking-subject-under-test': ruleNoMockingSubjectUnderTest,
   'no-module-level-let': ruleNoModuleLevelLet,
-  'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
-  'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
-  'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
 };

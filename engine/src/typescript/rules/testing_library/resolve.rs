@@ -45,18 +45,26 @@ fn variable_details(definition: &Def) -> Option<Details> {
     Some(Details { source, imported: Some(accessor(property.node("key"))?), local: name(definition.name) })
 }
 
-fn chain_head(node: Node) -> Option<Node> {
-    if accessor(Some(node)).is_some() {
-        return Some(node);
-    }
-    match node.kind() {
-        "MemberExpression" => {
-            let head = chain_head(node.node("object")?)?;
-            chain_head(node.node("property")?).map(|_| head)
+fn chain_head(root: Node) -> Option<Node> {
+    let mut head: Option<Node> = None;
+    let mut stack = vec![(root, true)];
+    while let Some((node, want_head)) = stack.pop() {
+        if accessor(Some(node)).is_some() {
+            if want_head {
+                head = Some(node);
+            }
+            continue;
         }
-        "CallExpression" => chain_head(node.node("callee")?),
-        _ => None,
+        match node.kind() {
+            "MemberExpression" => {
+                stack.push((node.node("property")?, false));
+                stack.push((node.node("object")?, want_head));
+            }
+            "CallExpression" => stack.push((node.node("callee")?, want_head)),
+            _ => return None,
+        }
     }
+    head
 }
 
 pub fn resolve(node: Node, scopes: &Scopes, setting: Option<&str>) -> Option<Imported> {
