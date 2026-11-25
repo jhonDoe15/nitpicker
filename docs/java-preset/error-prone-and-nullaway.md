@@ -327,7 +327,7 @@ Part of the [Java preset guide](../java-preset.md).
   them on that many threads of its one JVM. A slice sees the other slices through the project's
   own compiled classes on its class path, as the Lombok split already does, and keeps its own
   patch directory. Maven passes the size of the tool pool and gives the runner's JVM the heap of two
-  pool slots (`-XX:MaxRAMPercentage`, ahead of the slot share in `JDK_JAVA_OPTIONS`); Gradle passes
+  pool slots (`-XX:MaxRAMPercentage` and `-XX:GCTimeRatio=4`, ahead of the slot share in `JDK_JAVA_OPTIONS`); Gradle passes
   the number of cores and its JVM gets the slot share in `JDK_JAVA_OPTIONS`.
 - **The build's own compiler arguments.** On Gradle the runner gets `options.allCompilerArgs`, so
   arguments a `CommandLineArgumentProvider` adds count too, and a `--module-path` (or `-p`) the build
@@ -348,6 +348,20 @@ Part of the [Java preset guide](../java-preset.md).
   then writes an empty report and `errorprone-skipped.txt` with the reason, so only Error Prone's
   findings are lost, as an `Error Prone did not run` tool error, and the other tools of the Java
   analyzer still report.
+
+## Checks that run on nitpicker's engine
+
+When nitpicker's engine binary is there (`engine/README.md`, "In a Java run"), NullAway and the Error Prone
+checks `ArrayRecordComponent`, `EmptyCatch`, `EnumOrdinal`, `EscapedEntity`, `InconsistentOverloads`, `JavaUtilDate`,
+`SuppressWarningsWithoutExplanation`, `SystemOut` and
+`TypeParameterUnusedInFormals` run on the engine, and the Error Prone run gets `-Xep:<Check>:OFF` for them.
+The findings are the same: file, line, column and message. The engine writes them to `errorprone-engine.json`
+in the report folder, in the shape of `errorprone.json`, and they are read together. A source set whose
+compile runs an annotation processor, or for which the project passes Error Prone options other than check
+levels, stays with Error Prone as a whole, and so does every source set with `NITPICKER_ENGINE=off`. NullAway
+alone stays with Error Prone for test sources (where it is off), for a source set compiled with a module path,
+and for a source set that uses a null-marked library whose `@Nullable` is written on types, as Spring Framework
+7 does with JSpecify.
 
 ## Checks that are off
 

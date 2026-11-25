@@ -99,9 +99,13 @@ function callFact(scope: Scope, node: CallNode | TypeScript.PropertyAccessExpres
 
 function disposeSite(scope: Scope, declaration: TypeScript.VariableDeclaration): Site | undefined {
   const type = scope.checker.getTypeAtLocation(declaration.name);
-  const property = scope.checker
-    .getPropertiesOfType(type)
-    .find(({ name }) => name.startsWith('__@dispose@') || name.startsWith('__@asyncDispose@'));
+  const awaitUsing: number = ts.NodeFlags.AwaitUsing;
+  const awaited = (declaration.parent.flags & awaitUsing) === awaitUsing;
+  const hooks = awaited ? ['__@asyncDispose@', '__@dispose@'] : ['__@dispose@', '__@asyncDispose@'];
+  const properties = scope.checker.getPropertiesOfType(type);
+  const property = hooks
+    .map((hook) => properties.find(({ name }) => name.startsWith(hook)))
+    .find((found) => found !== undefined);
   const method = property?.valueDeclaration;
   return method === undefined ? undefined : scope.registry.siteByNode.get(method);
 }

@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import { environmentError } from './environment-error.mts';
 import type { InstallKind } from './typed/environment-types.mts';
-import { PROBE_TIMEOUT_MS } from '../../../../../shared/processes/deadlines.mjs';
+import { PROBE_TIMEOUT_MS } from '../../../../../shared/processes/deadlines.mts';
 
 export const INSTALL_HINTS: Readonly<Record<InstallKind, string>> = {
   uv: 'install uv with `curl -LsSf https://astral.sh/uv/install.sh | sh` or `pip install uv`',

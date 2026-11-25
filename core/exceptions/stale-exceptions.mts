@@ -1,12 +1,17 @@
 import { fieldOf, textOf, textsOf } from '../../shared/values/readers.mts';
-import { projectFilePaths } from '../../shared/project-files/project-files.mjs';
+import { projectFilePaths } from '../../shared/project-files/project-files.mts';
 import { renderRuleFilterSection as ruleFilterSection } from '../diff/reporting/text.mts';
-import { exceptionsMatchingNoPath } from '../../shared/exceptions/finding-exceptions.mjs';
-import { canonicalRule } from '../../shared/exceptions/rule-names.mjs';
-import { RULE_IDS } from '../../shared/policy.mjs';
+import { exceptionsMatchingNoPath } from '../../shared/exceptions/finding-exceptions.mts';
+import { canonicalRule } from '../../shared/exceptions/rule-names.mts';
+import { RULE_IDS } from '../../shared/policy.mts';
 import type { ReportData } from '../../shared/values/findings.mts';
 
-type Listed = { readonly entry: unknown; readonly label: string };
+type Listed = {
+  readonly entry: unknown;
+  readonly label: string;
+  readonly rule: string;
+  readonly paths: readonly string[];
+};
 
 type ClosingRun = {
   readonly options: { readonly ruleFilters: readonly string[] };
@@ -14,20 +19,16 @@ type ClosingRun = {
   readonly currentProjectRoot: string;
 };
 
-const filePathsOf: (root: string, options: { readonly includeLinks: boolean }) => string[] =
-  projectFilePaths;
-const matchingNoPath: (
-  entries: readonly unknown[],
-  files: readonly string[],
-) => readonly unknown[] = exceptionsMatchingNoPath;
-const canonicalOf: (rule: unknown) => unknown = canonicalRule;
-const stabilityRule: unknown = RULE_IDS.stabilityDirection;
-
 const PACKAGE_PRESETS: ReadonlySet<unknown> = new Set(['java', 'kotlin']);
 
 function labeled(entries: unknown, name: string): Listed[] {
   const list: readonly unknown[] = Array.isArray(entries) ? entries : [];
-  return list.map((entry, index) => ({ entry, label: `${name}[${String(index)}]` }));
+  return list.map((entry, index) => ({
+    entry,
+    label: `${name}[${String(index)}]`,
+    rule: textOf(fieldOf(entry, 'rule')),
+    paths: textsOf(fieldOf(entry, 'paths')),
+  }));
 }
 
 function listedExceptions(config: unknown): Listed[] {
@@ -38,32 +39,24 @@ function listedExceptions(config: unknown): Listed[] {
 }
 
 function headFiles(projectRoot: string): string[] {
-  return filePathsOf(projectRoot, { includeLinks: true });
+  return projectFilePaths(projectRoot, { includeLinks: true });
 }
 
 export function staleExceptionLines(config: unknown, projectRoot: string): string[] {
   const listed = listedExceptions(config).filter(
-    ({ entry }) =>
+    ({ rule }) =>
       !(
         PACKAGE_PRESETS.has(fieldOf(config, 'preset')) &&
-        canonicalOf(fieldOf(entry, 'rule')) === stabilityRule
+        canonicalRule(rule) === RULE_IDS.stabilityDirection
       ),
   );
   if (listed.length === 0) {
     return [];
   }
-  const stale = new Set(
-    matchingNoPath(
-      listed.map(({ entry }) => entry),
-      headFiles(projectRoot),
-    ),
-  );
+  const stale = new Set(exceptionsMatchingNoPath(listed, headFiles(projectRoot)));
   return listed
-    .filter(({ entry }) => stale.has(entry))
-    .map(
-      ({ entry, label }) =>
-        `${label} (${textOf(fieldOf(entry, 'rule'))}) matches no file: ${textsOf(fieldOf(entry, 'paths')).join(', ')}`,
-    );
+    .filter((exception) => stale.has(exception))
+    .map(({ label, rule, paths }) => `${label} (${rule}) matches no file: ${paths.join(', ')}`);
 }
 
 function staleNote(lines: readonly string[]): string {

@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
-import { configError } from '../../../../shared/config.mjs';
-import { pathInside } from '../../../../shared/filesystem.mjs';
+import { configError } from '../../../../shared/config.mts';
+import { pathInside } from '../../../../shared/filesystem.mts';
 import { validateJvmSection } from '../../adapters/settings/jvm-section.mts';
 import { GRADLE_BUILD_FILES, JAVA_BUILD_TOOLS } from '../java-build.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';

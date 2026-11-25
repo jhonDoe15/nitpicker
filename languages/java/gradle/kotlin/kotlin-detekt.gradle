@@ -42,6 +42,7 @@ tasks.register('nitpickerDetektLayers') {
     group = 'nitpicker'
     def layersFile = new File(temporaryDir, 'layers.txt')
     ext.layersFile = layersFile
+    onlyIf { !kotlinLintedDirs().isEmpty() && detekt.enabled() }
     doLast {
         def conventions = new File(temporaryDir, 'followed-conventions.yml')
         conventions.text = nitpickerStyle().detektConventions ?: ''

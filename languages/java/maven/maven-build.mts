@@ -5,7 +5,7 @@ import { readEffectivePom } from './configuration/effective-pom.mts';
 import { readReactor } from './maven-project.mts';
 import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mts';
 import { missingLauncherVersions } from './maven-tests.mts';
-import { usesConfigRetries } from '../../../shared/conventions/tool-precedence.mjs';
+import { usesConfigRetries } from '../../../shared/conventions/tool-precedence.mts';
 import {
   checkstyleIndentation,
   javaFormatterFlags,
@@ -18,6 +18,7 @@ import { writeSpringRuleset } from '../adapters/spring/proxies/proxy-ruleset.mts
 import { MAVEN_PRESETS } from '../adapters/gradle-presets.mts';
 import { processorTool } from './errorprone/maven-errorprone.mts';
 import { compilerOf } from './errorprone/compiler-types.mts';
+import { removeQuietly } from '../builds/cleanup/remove-quietly.mts';
 import { readPinnedTools } from '../builds/java-build.mts';
 import { kotlinSetup } from './kotlin/kotlin-setup.mts';
 import { pitHistoryOf } from '../builds/pit-history/pit-history.mts';
@@ -294,6 +295,6 @@ export function runMavenPreset(projectRoot: string, options: MavenPresetOptions)
   try {
     return presetInWork(projectRoot, options, work);
   } finally {
-    rmSync(work, { recursive: true, force: true });
+    removeQuietly(work, options.warn);
   }
 }

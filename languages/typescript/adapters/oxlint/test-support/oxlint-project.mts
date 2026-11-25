@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mts';
 import { lintWithOxlint } from '../oxlint-runner.mts';
 import { type LintProjectRequest, oxlintOptions } from './oxlint-runs.mts';
 
@@ -18,6 +19,12 @@ export default [
   },
 ];
 `;
+
+const PRESET = path.resolve(import.meta.dirname, '../../../preset');
+
+export function presetModule(file: string): string {
+  return JSON.stringify(checkoutModulePath(`${PRESET}/${file}`));
+}
 
 export function createProject(prefix: string, files: Readonly<Record<string, string>>): string {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), prefix)));

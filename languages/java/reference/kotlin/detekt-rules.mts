@@ -63,7 +63,7 @@ function detektEntry(
     page: 'kotlin-detekt',
     analyzers: { kotlin: ['kotlin'] },
     builds: JVM_BUILDS,
-    summary: first,
+    summary: first ?? '',
     why: [rest, oneWay ? ONE_WAY_WHY : DEFAULT_WHY].filter((part) => part !== '').join(' '),
     ...(hint?.allowed === undefined ? {} : { allowed: hint.allowed }),
     links: [{ label: 'detekt rule', url: `${DETEKT_RULES_URL}/${ruleset}#${rule.toLowerCase()}` }],

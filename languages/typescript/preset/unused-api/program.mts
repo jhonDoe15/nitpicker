@@ -2,7 +2,7 @@ import { existsSync, lstatSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../adapters/typed/typescript-program.mts';
-import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
+import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../shared/project-files/project-files.mts';
 import { codeExtensionNames } from '../layout.mts';
 import { workspacePaths } from './workspace/entries.mts';
 import { relevantSiblingFiles } from './workspace/sibling-imports.mts';
@@ -10,7 +10,7 @@ import type { PackageEntry, PackagesInfo, ProgramLayout } from './workspace/work
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 
 const ts = typescriptApi();
 
@@ -160,7 +160,7 @@ function compilerOptions({
   };
 }
 
-type ProgramRequest = {
+export type ProgramRequest = {
   projectRoot: string;
   configPath: string;
   packagesInfo: PackagesInfo;
@@ -177,7 +177,18 @@ function programKey({ projectRoot, configPath, packagesInfo }: ProgramRequest): 
   ]);
 }
 
-function builtProgram({ projectRoot, configPath, packagesInfo, layout }: ProgramRequest) {
+export type ProgramInputs = {
+  readonly parsed: TypeScript.ParsedCommandLine;
+  readonly options: TypeScript.CompilerOptions;
+  readonly rootNames: readonly string[];
+};
+
+export function projectProgramInputs({
+  projectRoot,
+  configPath,
+  packagesInfo,
+  layout,
+}: ProgramRequest): ProgramInputs {
   const parsed = parseConfig(configPath, projectRoot);
   const options = compilerOptions({ parsed, packages: packagesInfo.packages, projectRoot, layout });
   const siblings = packagesInfo.packages.filter(
@@ -198,12 +209,18 @@ function builtProgram({ projectRoot, configPath, packagesInfo, layout }: Program
       options,
     }),
   ]);
+  return { parsed, options, rootNames: [...rootNames] };
+}
+
+function builtProgram(request: ProgramRequest): TypeScript.Program {
+  const { options, rootNames } = projectProgramInputs(request);
   return ts.createProgram({ rootNames: [...rootNames], options });
 }
 
 function takenOrBuilt(
   reusable: Map<string, TypeScript.Program>,
   request: ProgramRequest,
+  keep: boolean,
 ): TypeScript.Program {
   const key = programKey(request);
   const kept = reusable.get(key);
@@ -212,10 +229,16 @@ function takenOrBuilt(
     return kept;
   }
   const program = builtProgram(request);
-  reusable.set(key, program);
+  if (keep) {
+    reusable.set(key, program);
+  }
   return program;
 }
 
 export function createProjectProgram(request: ProgramRequest): TypeScript.Program {
-  return takenOrBuilt(reusablePrograms, request);
+  return takenOrBuilt(reusablePrograms, request, true);
+}
+
+export function takeProjectProgram(request: ProgramRequest): TypeScript.Program {
+  return takenOrBuilt(reusablePrograms, request, false);
 }

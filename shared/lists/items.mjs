@@ -5,6 +5,15 @@ export function appendAll(target, items) {
   return target;
 }
 
+export function addToGroup(groups, key, value) {
+  const members = groups.get(key);
+  if (members === undefined) {
+    groups.set(key, [value]);
+  } else {
+    members.push(value);
+  }
+}
+
 export function largest(values) {
   let found = -Infinity;
   for (const value of values) {

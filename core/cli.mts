@@ -33,11 +33,10 @@ import { labeledRun } from './labels/analyzer-labels.mts';
 import { stagedCapture, withIndexFile } from './staged/capture-index.mts';
 import { writeComparisonOutcome } from './command/comparison/outcome.mts';
 import { baseSetupResolver } from './command/policy-review/base-setup.mts';
-import { runHistoryCli } from '../shared/history/runner.mjs';
-import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { printedInformation } from './command/information/printed-information.mts';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mts';
 import { runMonorepo } from './projects/run/monorepo.mts';
+import { checkCommandOf } from './command/checks/check-cli.mts';
 import { runScoped } from './projects/run/refusal.mts';
 import { noProjectAdvice } from './projects/plan/suggested-projects.mts';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mts';
@@ -45,7 +44,6 @@ import { fieldOf, listOf, numberOr, textOf } from '../shared/values/readers.mts'
 import {
   type ComparisonCli,
   type ConfiguredCli,
-  acceptanceOf,
   comparisonBaseOf,
   resolveRunCacheStore,
   writeNotes,
@@ -65,11 +63,6 @@ import { emptySourcesErrors } from '../languages/typescript/preset/notices/empty
 import { describeFailure } from '../shared/messages/crashes/internal-error.mts';
 
 const CHECK_COMMANDS: Readonly<Record<string, (cli: CheckCli) => ExitCode>> = {
-  hygiene: async (cli) => {
-    const { yamlDocuments } = await import('./tooling/yaml/yaml-documents.mts');
-    return runHygieneCli({ ...cli, parseYaml: yamlDocuments });
-  },
-  history: runHistoryCli,
   [GO_ANALYZER_COMMAND]: runGoCli,
 };
 
@@ -77,7 +70,7 @@ export function runCli(options: CliInput = {}): ExitCode {
   const detached = detachLocalGitVariables(process.env);
   const cli = withIndexFile(withCliDefaults(options, process), detached);
   const [name = ''] = cli.arguments_;
-  const checkCommand = CHECK_COMMANDS[name];
+  const checkCommand = checkCommandOf(name) ?? CHECK_COMMANDS[name];
   if (checkCommand !== undefined) {
     return checkCommand({
       commandArguments: cli.arguments_.slice(1),
@@ -269,16 +262,11 @@ function runComparisonCli(cli: ComparisonCli): unknown {
     captureHead: cli.captureHead,
     quick: cli.quick,
     staged: options.staged,
-    additionalToolErrors: [
-      ...listOf(fieldOf(fixResult, 'toolErrors')),
-      ...cli.setupErrors,
-      ...(cli.repositoryToolErrors ?? []),
-    ],
+    additionalToolErrors: [...listOf(fieldOf(fixResult, 'toolErrors')), ...cli.setupErrors],
     configOverrides: describeConfigOverrides(config),
     headPolicy,
     resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
     describeNotices: noticeDescriber(config, headPolicy, currentProjectRoot),
-    ...acceptanceOf(cli),
     ...runnerOptions(cli),
   });
   return writeComparisonOutcome({ cli, report, base, outputRoot });

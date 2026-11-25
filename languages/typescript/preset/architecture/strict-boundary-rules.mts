@@ -1,8 +1,8 @@
 import { rootPattern } from '../layout/source-root/root-paths.mts';
 import { layoutFeatures, testFilePaths } from './strict-layout.mts';
 import { isTypeOnlyDependency } from '../dependency-graph/cruise.mts';
-import { canonicalRule as untypedCanonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
-import { globToRegExpSource as untypedGlobToRegExpSource } from '../../../../shared/paths/glob.mjs';
+import { canonicalRule as untypedCanonicalRule } from '../../../../shared/exceptions/rule-names.mts';
+import { globToRegExpSource as untypedGlobToRegExpSource } from '../../../../shared/paths/glob.mts';
 import { readHeadPolicy, readLayout as untypedReadLayout } from '../head-policy.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import {

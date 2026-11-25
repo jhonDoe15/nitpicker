@@ -1,13 +1,13 @@
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
-import { importClosure as untypedClosure } from '../../../shared/import-closure.mjs';
+import { importClosure as untypedClosure } from '../../../shared/import-closure.mts';
 import { hashConfigurationFiles } from '../../../shared/input-sets/configuration-hash.mts';
 import { RULES_TOOL } from '../rules/rule-hints.mts';
 import { createToolContext, mutationVersions, toolVersions } from './python-tools.mts';
 import { TEST_CONSOLE_TOOL } from './test-results/console-output.mts';
 import { FACTS_TOOL } from './facts/python-facts.mts';
 import { mutationScopeArguments } from '../../../core/tooling/runner-arguments.mts';
-import { checkoutModulePath as untypedModulePath } from '../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as untypedModulePath } from '../../../shared/paths/checkout-module.mts';
 import type {
   AnalyzerProbes,
   AnalyzerSettings,
@@ -16,7 +16,7 @@ import type {
   PythonInvocation,
   VersionReader,
 } from './typed/context/analyzer-types.mts';
-import { EXECUTION_INPUTS } from '../../../shared/input-sets/inputs.mjs';
+import { EXECUTION_INPUTS } from '../../../shared/input-sets/inputs.mts';
 import { textsOf } from '../../../shared/values/readers.mts';
 
 const importClosure: (relativePaths: string[], root: string) => Map<string, string> =
@@ -31,7 +31,7 @@ const MUTATION_SHARD_WEIGHT = 90;
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const pythonRoot = path.join(packageRoot, 'languages/python');
 const runnerPath = checkoutModulePath(path.join(import.meta.dirname, 'python-runner.mjs'));
-const TEST_ONLY_FOLDERS = new Set(['fixtures', 'test-support']);
+const SKIPPED_FOLDERS = new Set(['fixtures', 'test-support', '__pycache__']);
 
 function importedRunnerFiles(): string[] {
   const entry = path.relative(packageRoot, runnerPath);
@@ -43,7 +43,7 @@ function importedRunnerFiles(): string[] {
 function pythonResourceFiles(): string[] {
   return readdirSync(pythonRoot, { recursive: true, encoding: 'utf8' })
     .filter((file) => !/\.test\.m[jt]s$/u.test(file))
-    .filter((file) => !file.split(path.sep).some((folder) => TEST_ONLY_FOLDERS.has(folder)))
+    .filter((file) => !file.split(path.sep).some((folder) => SKIPPED_FOLDERS.has(folder)))
     .filter((file) => path.extname(file) !== '')
     .map((file) => path.join(pythonRoot, file));
 }

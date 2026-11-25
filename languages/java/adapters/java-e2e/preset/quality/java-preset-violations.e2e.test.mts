@@ -6,7 +6,7 @@ import {
   enabled,
   BASELINED_FINDINGS,
 } from '../../__tests__/java-preset-project.mts';
-import { helpUriProblems as helpUriProblemsUntyped } from '../../../../../../shared/reference/test-support/help-uris.mjs';
+import { helpUriProblems as helpUriProblemsUntyped } from '../../../../../../shared/reference/test-support/help-uris.mts';
 import type { JavaFinding } from '../../../typed/java-values.mts';
 import { textOf } from '../../../../../../shared/values/readers.mts';
 

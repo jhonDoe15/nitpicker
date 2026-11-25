@@ -12,7 +12,7 @@ import { fieldOf, listOf, objectOf, textOf } from '../../../../../shared/values/
 import { linterConfigs } from '../typed/config-types.mts';
 import { lintFixture } from '../typed/lint-fixture.mts';
 import { nestScopeConfigFor } from './nest-scope.mts';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../../shared/paths/checkout-module.mts';
 
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 

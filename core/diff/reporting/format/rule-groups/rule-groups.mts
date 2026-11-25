@@ -2,11 +2,12 @@ import {
   ROUTE_SENTENCE,
   escapeGlob,
   exceptionSentence,
-} from '../../../../../shared/messages/exception-sentence.mjs';
+} from '../../../../../shared/messages/exception-sentence.mts';
 import { inPriorityOrder } from './finding-order.mts';
 import { singleLine } from '../text.mts';
 import type { ReportEntry } from '../../../../../shared/values/findings.mts';
 import { fieldOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
+import { addToGroup } from '../../../../../shared/lists/lists.mts';
 
 type Entry = Readonly<Record<string, unknown>>;
 
@@ -59,20 +60,53 @@ function groupByRule(
   const groups = new Map<string, ReportEntry[]>();
   for (const finding of inPriorityOrder(findings)) {
     const label = `${textOf(finding.tool)}/${textOf(finding.rule)}`;
-    groups.set(label, [...(groups.get(label) ?? []), finding]);
+    addToGroup(groups, label, finding);
   }
   return [...groups.entries()].map(([label, members]) => ({ label, members }));
 }
 
+type ParsedMessage = { readonly part: RoutePart; readonly sentences: readonly string[] };
+
+function parsedMessages(members: readonly ReportEntry[]): ParsedMessage[] {
+  const known = new Map<unknown, ParsedMessage>();
+  return members.map(({ message }) => {
+    const found = known.get(message);
+    if (found !== undefined) {
+      return found;
+    }
+    const part = splitRoute(oneLine(message));
+    const parsed = { part, sentences: sentences(part.body) };
+    known.set(message, parsed);
+    return parsed;
+  });
+}
+
+function withoutShared(
+  split: readonly (readonly string[])[],
+  sharedSet: ReadonlySet<string>,
+): string[] {
+  const known = new Map<readonly string[], string>();
+  return split.map((list) => {
+    const found = known.get(list);
+    if (found !== undefined) {
+      return found;
+    }
+    const detail = list.filter((sentence) => !sharedSet.has(sentence)).join(' ');
+    known.set(list, detail);
+    return detail;
+  });
+}
+
 function groupLines(label: string, members: readonly ReportEntry[]): string[] {
-  const parts = members.map((finding) => splitRoute(oneLine(finding.message)));
-  const split = parts.map(({ body }) => sentences(body));
+  const parsed = parsedMessages(members);
+  const parts = parsed.map(({ part }) => part);
+  const split = parsed.map(({ sentences: list }) => list);
   const unfolded = split.filter((_, index) => members[index]?.['folded'] !== true);
   const base = unfolded.length > 1 || unfolded.length === split.length ? unfolded : split;
   const [firstBase = []] = base;
   const shared = firstBase.filter((sentence) => base.every((list) => list.includes(sentence)));
   const sharedSet = new Set(shared);
-  const details = split.map((list) => list.filter((sentence) => !sharedSet.has(sentence)));
+  const details = withoutShared(split, sharedSet);
   const advice = shared.join(' ');
   const differing = differingKeys(parts);
   const route = groupRoute(members, parts, differing);
@@ -89,12 +123,12 @@ function groupLines(label: string, members: readonly ReportEntry[]): string[] {
 
 function locationLines(
   members: readonly ReportEntry[],
-  details: readonly (readonly string[])[],
+  details: readonly string[],
   tags: readonly string[],
 ): string[] {
   const rows = new Map<string, Row>();
   for (const [index, finding] of members.entries()) {
-    const detail = (details[index] ?? []).join(' ');
+    const detail = details[index] ?? '';
     const tag = tags[index] ?? '';
     const key = `${textOf(finding.path)}\0${detail}\0${tag}`;
     const row = rows.get(key) ?? {

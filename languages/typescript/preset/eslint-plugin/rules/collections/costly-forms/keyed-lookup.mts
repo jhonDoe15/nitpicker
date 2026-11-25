@@ -19,12 +19,14 @@ import {
   isPrivateField,
   isReadOnlyUse,
 } from './receivers/read-only-uses.mts';
+import { onlyFixedRepeats, readsElement } from './scans/fixed-repeats.mts';
 
-type Finding = TSESLint.ReportDescriptor<'lookupInLoop'>;
+type Finding = TSESLint.ReportDescriptor<'lookupInLoop' | 'groupInLoop'>;
 
 const { DefinitionType } = TSESLint.Scope;
 
-const LOOKUPS = new Set(['find', 'findIndex', 'findLast', 'findLastIndex', 'some']);
+const FILTER = 'filter';
+const LOOKUPS = new Set([FILTER, 'find', 'findIndex', 'findLast', 'findLastIndex', 'some']);
 const MUTATORS = new Set([
   'copyWithin',
   'fill',
@@ -57,7 +59,7 @@ function isConstantValue(node: TSESTree.Node): boolean {
   );
 }
 
-function lookupKey(callback: TSESTree.Node): string | undefined {
+function lookupKey(callback: TSESTree.Node): [string, TSESTree.Node] | undefined {
   const parameter = singleParameter(callback);
   const sides = parameter === undefined ? undefined : equalitySides(returnedExpression(callback));
   if (parameter === undefined || sides === undefined) {
@@ -71,7 +73,7 @@ function lookupKey(callback: TSESTree.Node): string | undefined {
   const keyed = candidates.find(
     ([key, other]) => key !== undefined && !referencesName(other, parameter),
   );
-  return keyed === undefined || isConstantValue(keyed[1]) ? undefined : keyed[0];
+  return keyed?.[0] === undefined || isConstantValue(keyed[1]) ? undefined : [keyed[0], keyed[1]];
 }
 
 function isMutation(node: TSESTree.Node): boolean {
@@ -144,7 +146,7 @@ function fieldReceiver(member: TSESTree.MemberExpression): TSESTree.ClassBody | 
     : classBody;
 }
 
-function receiverBoundary(
+export function receiverBoundary(
   sourceCode: SourceCode,
   receiver: TSESTree.Node,
 ): TSESTree.Node | undefined {
@@ -181,19 +183,27 @@ export function keyedLookup(
   ) {
     return undefined;
   }
-  const key = lookupKey(argument);
+  const [key, compared] = lookupKey(argument) ?? [];
   const receiver = unwrapped(callee.object);
   const boundary = key === undefined ? undefined : receiverBoundary(sourceCode, receiver);
   if (key === undefined || boundary === undefined) {
     return undefined;
   }
   const role = repeatedRole(call, boundary);
-  if (role === undefined || role === 'handler' || isDedupe(sourceCode, call)) {
+  if (
+    role === undefined ||
+    role === 'handler' ||
+    isDedupe(sourceCode, call) ||
+    (method === FILTER &&
+      (onlyFixedRepeats(call, boundary) ||
+        compared === undefined ||
+        !readsElement(sourceCode, compared, call)))
+  ) {
     return undefined;
   }
   return {
     node: call,
-    messageId: 'lookupInLoop',
+    messageId: method === FILTER ? 'groupInLoop' : 'lookupInLoop',
     data: { name: sourceCode.getText(receiver), method, key },
   };
 }

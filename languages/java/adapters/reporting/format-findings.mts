@@ -1,10 +1,10 @@
 import { ingestCheckstyle as untypedIngestCheckstyle } from '../../ingest/formatting/checkstyle.mts';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { ingestFormatCheck as untypedIngestFormatCheck } from '../../../../shared/ingest/format-check.mjs';
-import { projectRelative as untypedProjectRelative } from '../../../../shared/ingest/sarif.mjs';
-import { containedPath as untypedContainedPath } from '../../../../shared/paths/contained-path.mjs';
-import { formatAdvice } from '../../../../shared/messages/format/format-advice.mjs';
+import { ingestFormatCheck as untypedIngestFormatCheck } from '../../../../shared/ingest/format-check.mts';
+import { projectRelative as untypedProjectRelative } from '../../../../shared/ingest/sarif.mts';
+import { containedPath as untypedContainedPath } from '../../../../shared/paths/contained-path.mts';
+import { formatAdvice } from '../../../../shared/messages/format/format-advice.mts';
 import { JAVA_FORMATTER_TOOLS, NOT_YOUR_JAVA_FORMATTER } from '../style/java-style.mts';
 
 const containedPath: (

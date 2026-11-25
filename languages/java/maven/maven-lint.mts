@@ -17,8 +17,18 @@ import type { ToolClasspaths } from './typed/kotlin-types.mts';
 import { javaFiles } from './lint/java-files.mts';
 import { PMD_LOG } from '../adapters/reporting/sarif/processing/pmd-rule-crashes.mts';
 import { analyzesGenerated, handWrittenRoots } from './generated/generated-roots.mts';
-import { handWrittenClasses } from './generated/spotbugs-targets.mts';
+import { handWrittenClasses, type SpotbugsTargets } from './generated/spotbugs-targets.mts';
 import { spotbugsLaunch } from './security/spotbugs-launch.mts';
+import {
+  pmdRulesetsWithEngine,
+  withoutEngineReports,
+} from '../builds/rulesets/engine/pmd-engine.mts';
+import { jdkHome } from './programs/jdk-home.mts';
+import { withoutSpotbugsEngineReport } from '../builds/spotbugs/spotbugs-engine.mts';
+import {
+  spotbugsEngineArguments,
+  type SpotbugsEngineInput,
+} from './security/spotbugs-engine-plan.mts';
 
 export { javaFiles } from './lint/java-files.mts';
 export { runCheckstyle, writeCheckstyleSetup } from './lint/maven-checkstyle.mts';
@@ -36,11 +46,13 @@ type PmdOptions = Execution & {
   readonly spring: unknown;
   readonly springRules?: unknown;
   readonly reactor?: unknown;
+  readonly environment?: Readonly<Record<string, string | undefined>> | undefined;
 };
 type SpotbugsOptions = Execution & {
   readonly module: SourceModule & { readonly buildDirectory?: string };
   readonly configs: unknown;
   readonly auxClasspath?: readonly string[];
+  readonly engine?: SpotbugsEngineInput | undefined;
 };
 
 const EMPTY_SARIF = '{"version":"2.1.0","runs":[]}';
@@ -64,6 +76,8 @@ function writeAuxClasspath({
   return file;
 }
 
+const SUPPRESS_MARKER = 'NITPICKER-NO-INLINE-SUPPRESSION';
+const PMD_JAVA_JAR = /(^|[\\/])pmd-java-[^\\/]*\.jar$/u;
 const SPRING_DATA_JAR = /(^|[\\/])spring-data-(commons|jpa)-[^\\/]*\.jar$/u;
 
 function pmdRulesets(
@@ -71,28 +85,52 @@ function pmdRulesets(
     PmdOptions,
     'module' | 'reportDir' | 'configs' | 'spring' | 'springRules' | 'reactor' | 'classpaths'
   >,
-): string {
+): { readonly rulesets: string[]; readonly untouched: string[] } {
   const { module, reportDir, classpaths, configs } = context;
   const springData =
     classpaths.mainCompile.length === 0 ||
     classpaths.mainCompile.some((entry) => SPRING_DATA_JAR.test(entry));
   const written = callUntyped(writeRulesets, { ...context, springData });
   const layers = fieldOf(written, 'layers');
-  const project = fieldOf(layers, 'project');
-  return [
-    fieldOf(layers, 'nitpicker') ?? NITPICKER_RULESET,
-    ...(project === undefined ? [] : [project]),
-    fieldOf(written, 'testsRuleset'),
-    fieldOf(written, 'mainRuleset'),
-    ...writeGuardRulesets({
-      reportDir,
-      testDirectories: handWrittenRoots(module, module.testSourceRoots, configs),
-      compiler: guardCompiler(compilerOf(module.compiler)),
-    }),
-  ].join(',');
+  const untouched = textsOf([fieldOf(layers, 'project')].filter((file) => file !== undefined));
+  return {
+    untouched,
+    rulesets: textsOf([
+      fieldOf(layers, 'nitpicker') ?? NITPICKER_RULESET,
+      ...untouched,
+      fieldOf(written, 'testsRuleset'),
+      fieldOf(written, 'mainRuleset'),
+      ...writeGuardRulesets({
+        reportDir,
+        testDirectories: handWrittenRoots(module, module.testSourceRoots, configs),
+        compiler: guardCompiler(compilerOf(module.compiler)),
+      }),
+    ]),
+  };
 }
 
-function pmdArguments(files: { report: string; rulesets: string; aux: string; dirs: string[] }) {
+function rulesetsToRun(options: PmdOptions, files: { aux: string; dirs: string[] }): string[] {
+  const { reportDir, tools, environment } = options;
+  const { rulesets, untouched } = pmdRulesets(options);
+  if (environment === undefined) {
+    return rulesets;
+  }
+  return pmdRulesetsWithEngine(
+    {
+      reportDir,
+      rulesets,
+      untouched,
+      sources: files.dirs,
+      auxClasspath: files.aux,
+      pmdJar: (tools['pmd'] ?? []).find((entry) => PMD_JAVA_JAR.test(entry)) ?? '',
+      javaHome: jdkHome(environment),
+      suppressMarker: SUPPRESS_MARKER,
+    },
+    environment,
+  );
+}
+
+function pmdArguments(files: { report: string; rulesets: string[]; aux: string; dirs: string[] }) {
   return [
     'check',
     '--no-cache',
@@ -102,11 +140,11 @@ function pmdArguments(files: { report: string; rulesets: string; aux: string; di
     '--report-file',
     files.report,
     '--rulesets',
-    files.rulesets,
+    files.rulesets.join(','),
     '--aux-classpath',
     `file:${files.aux}`,
     '--suppress-marker',
-    'NITPICKER-NO-INLINE-SUPPRESSION',
+    SUPPRESS_MARKER,
     '--dir',
     files.dirs.join(','),
   ];
@@ -121,11 +159,12 @@ export function runPmd(options: PmdOptions): void {
     configs,
   ).filter((root) => existsSync(root));
   if (javaFiles(linted).length === 0) {
+    withoutEngineReports(reportDir);
     writeFileSync(report, EMPTY_SARIF);
     return;
   }
   const aux = writeAuxClasspath({ module, reportDir, classpaths });
-  const rulesets = pmdRulesets(options);
+  const rulesets = rulesetsToRun(options, { aux, dirs: linted });
   const result = runJava({
     tool: 'PMD',
     classpath: tools['pmd'],
@@ -140,35 +179,43 @@ export function runPmd(options: PmdOptions): void {
   writeFileSync(path.join(reportDir, PMD_LOG), typeof stderr === 'string' ? stderr : '');
 }
 
-export function runSpotbugs({
-  module,
-  reportDir,
-  tools,
-  configs,
-  auxClasspath = [],
-  spawn,
-  timeoutMs,
-}: SpotbugsOptions): void {
-  const report = path.join(reportDir, 'spotbugs.sarif');
-  const analyzed = path.resolve(module.outputDirectory);
-  const auxiliary = auxClasspath.filter(
-    (entry) => path.resolve(entry) !== analyzed && existsSync(entry),
-  );
-  const auxClasspathFile = path.join(reportDir, 'spotbugs-aux-classpath.txt');
-  const hasClasses =
-    existsSync(module.outputDirectory) && readdirSync(module.outputDirectory).length > 0;
-  if (!hasClasses) {
-    writeFileSync(report, EMPTY_SARIF);
-    return;
+function auxiliaryEntries(outputDirectory: string, auxClasspath: readonly string[]): string[] {
+  const analyzed = path.resolve(outputDirectory);
+  return auxClasspath.filter((entry) => path.resolve(entry) !== analyzed && existsSync(entry));
+}
+
+function analyzedTargets(options: SpotbugsOptions): SpotbugsTargets | undefined {
+  const { module, reportDir, configs, spawn, timeoutMs } = options;
+  if (!existsSync(module.outputDirectory) || readdirSync(module.outputDirectory).length === 0) {
+    return { list: '', empty: true };
   }
-  const targets = analyzesGenerated(configs)
+  return analyzesGenerated(configs)
     ? undefined
     : handWrittenClasses({ module, reportDir, spawn, timeoutMs });
+}
+
+function spotbugsSettings(options: SpotbugsOptions, auxiliary: readonly string[]): string[] {
+  const { module, reportDir, configs, engine } = options;
+  const declared = fieldOf(fieldOf(configs, 'spotbugs'), 'arguments');
+  const added =
+    declared === undefined
+      ? spotbugsEngineArguments({ module, reportDir, auxiliary: [...new Set(auxiliary)] }, engine)
+      : [];
+  return [...textsOf(declared ?? spotbugsArguments(NITPICKER_SPOTBUGS)), ...added];
+}
+
+export function runSpotbugs(options: SpotbugsOptions): void {
+  const { module, reportDir, tools, auxClasspath = [], spawn, timeoutMs } = options;
+  const report = path.join(reportDir, 'spotbugs.sarif');
+  withoutSpotbugsEngineReport(reportDir);
+  const auxiliary = auxiliaryEntries(module.outputDirectory, auxClasspath);
+  const targets = analyzedTargets(options);
   if (targets?.empty === true) {
     writeFileSync(report, EMPTY_SARIF);
     return;
   }
   const aux = targets === undefined ? auxiliary : [...auxiliary, module.outputDirectory];
+  const auxClasspathFile = path.join(reportDir, 'spotbugs-aux-classpath.txt');
   writeFileSync(auxClasspathFile, [...new Set(aux)].join('\n'));
   runJava({
     tool: 'SpotBugs',
@@ -178,9 +225,7 @@ export function runSpotbugs({
       module,
       report,
       tools,
-      settings: textsOf(
-        fieldOf(fieldOf(configs, 'spotbugs'), 'arguments') ?? spotbugsArguments(NITPICKER_SPOTBUGS),
-      ),
+      settings: spotbugsSettings(options, auxiliary),
       auxClasspathFile: aux.length === 0 ? undefined : auxClasspathFile,
       ...(targets === undefined ? {} : { targets: ['-analyzeFromFile', targets.list] }),
     }),

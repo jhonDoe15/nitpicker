@@ -10,8 +10,8 @@ import {
   runMaven,
   testRerunArguments,
 } from './maven-command.mts';
-import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
-import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
+import { explainedError } from '../../../shared/messages/troubleshooting.mts';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mts';
 
 const roots: string[] = [];
 const FAKE_MAVEN = path.resolve(import.meta.dirname, '../adapters/fixtures/fake-maven.mjs');

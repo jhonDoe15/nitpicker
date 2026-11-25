@@ -1,4 +1,6 @@
-import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 import type { CliOptions } from '../../cli-context.mts';
 import type { MonorepoPlan, WorkspaceMember } from '../project-types.mts';
@@ -88,28 +90,86 @@ const UNDECLARED_WORDS: Readonly<
 };
 
 const LISTED_PROJECTS = 10;
+const UNDECLARED_SHOWN = 3;
+const UNDECLARED_PROJECTS_FILE = 'undeclared-projects.txt';
 
-function moreOf(entries: readonly WorkspaceMember[]): string {
-  const rest = entries.length - LISTED_PROJECTS;
+function moreOf(entries: readonly WorkspaceMember[], limit = LISTED_PROJECTS): string {
+  const rest = entries.length - limit;
   return rest > 0 ? `, and ${String(rest)} more` : '';
+}
+
+function displayListPath(file: string, baseRoot?: string): string {
+  if (baseRoot === undefined) {
+    return file;
+  }
+  const inside = relative(resolve(baseRoot), resolve(file));
+  if (inside === '' || inside.startsWith('..') || isAbsolute(inside)) {
+    return file;
+  }
+  return inside.split(sep).join('/');
+}
+
+export function writeUndeclaredProjects(
+  outputRoot: string,
+  entries: readonly WorkspaceMember[],
+  baseRoot?: string,
+): string | undefined {
+  const file = join(outputRoot, UNDECLARED_PROJECTS_FILE);
+  if (entries.length <= UNDECLARED_SHOWN) {
+    rmSync(file, { force: true });
+    return undefined;
+  }
+  mkdirSync(outputRoot, { recursive: true });
+  const lines = entries.map(({ path: folder, origin }) => `${folder} (${origin})`);
+  writeFileSync(file, `${lines.join('\n')}\n`, 'utf8');
+  return displayListPath(file, baseRoot);
+}
+
+function exampleProjects(
+  current: readonly string[],
+  shown: readonly WorkspaceMember[],
+  hasMore: boolean,
+): string {
+  const existing = current.slice(0, UNDECLARED_SHOWN).map((folder) => `"${folder}"`);
+  const existingMore = current.length > UNDECLARED_SHOWN ? ['...'] : [];
+  const added = shown.map(({ path: folder }) => `"${folder}"`);
+  const addedMore = hasMore ? ['...'] : [];
+  return [...existing, ...existingMore, ...added, ...addedMore].join(', ');
+}
+
+function undeclaredOpening(
+  entries: readonly WorkspaceMember[],
+  shown: readonly WorkspaceMember[],
+): string {
+  const [looks, them] = UNDECLARED_WORDS[entries.length === 1 ? 'one' : 'many'];
+  if (entries.length > UNDECLARED_SHOWN) {
+    return (
+      `${String(entries.length)} folders ${looks}: ` +
+      `${described(shown)}${moreOf(entries, UNDECLARED_SHOWN)}. ` +
+      `This run does not gate ${them} own preset.`
+    );
+  }
+  return `${described(shown)} ${looks}, and this run does not gate ${them} own preset.`;
 }
 
 export function undeclaredHint(
   entries: readonly WorkspaceMember[],
   current: readonly string[] = ['.'],
+  options?: { readonly listFile?: string | undefined },
 ): string[] {
   if (entries.length === 0) {
     return [];
   }
-  const shown = entries.slice(0, LISTED_PROJECTS);
-  const listed = [...current, ...shown.map(({ path }) => path)]
-    .map((path) => `"${path}"`)
-    .join(', ');
-  const [looks, them, gate, list] = UNDECLARED_WORDS[entries.length === 1 ? 'one' : 'many'];
+  const hasMore = entries.length > UNDECLARED_SHOWN;
+  const shown = entries.slice(0, UNDECLARED_SHOWN);
+  const listed = exampleProjects(current, shown, hasMore);
+  const [, , gate, list] = UNDECLARED_WORDS[entries.length === 1 ? 'one' : 'many'];
+  const fullList =
+    hasMore && options?.listFile !== undefined ? ` Full list: ${options.listFile}.` : '';
   return [
-    `${described(shown)}${moreOf(entries)} ${looks}, and this run does not gate ${them} own preset. ` +
+    `${undeclaredOpening(entries, shown)} ` +
       `To ${gate} in one run, ${list} in "projects" of ${CONFIG_FILE_NAME}, ` +
-      `for example "projects": [${listed}].`,
+      `for example "projects": [${listed}].${fullList}`,
   ];
 }
 

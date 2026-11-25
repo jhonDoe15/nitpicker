@@ -10,10 +10,17 @@ export type PickLanguage = {
 
 export { compareFindings } from '../../../../core/diff/comparison/compare.mts';
 
-export function areaOptions(kind: string, projectRoot: string): QualityAreaOptions {
-  return parseArguments([
-    ...['--analyzer-name', kind, '--kind', kind],
-    ...['--project-root', projectRoot, '--policy-root', PACKAGE_ROOT],
-    ...['--tool-root', PACKAGE_ROOT, '--snapshot', 'head'],
-  ]);
+export function areaOptions(
+  kind: string,
+  projectRoot: string,
+  environment: Readonly<Record<string, string | undefined>> = {},
+): QualityAreaOptions {
+  return parseArguments(
+    [
+      ...['--analyzer-name', kind, '--kind', kind],
+      ...['--project-root', projectRoot, '--policy-root', PACKAGE_ROOT],
+      ...['--tool-root', PACKAGE_ROOT, '--snapshot', 'head'],
+    ],
+    environment,
+  );
 }

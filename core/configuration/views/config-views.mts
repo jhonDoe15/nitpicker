@@ -1,6 +1,6 @@
-import { listNames as untypedListNames } from '../../../shared/messages/messages.mjs';
+import { listNames as untypedListNames } from '../../../shared/messages/messages.mts';
 import { rejectMissingConfiguredBuild as untypedRejectMissingConfiguredBuild } from '../../../languages/java/builds/build-tool/build-tool-setting.mts';
-import { factRuleSettings as untypedFactRuleSettings } from '../../../shared/project-rules/fact-rules.mjs';
+import { factRuleSettings as untypedFactRuleSettings } from '../../../shared/project-rules/fact-rules.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 
 export const listNames: (names: readonly string[]) => string = untypedListNames;

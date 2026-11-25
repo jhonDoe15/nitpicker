@@ -1,26 +1,18 @@
 import { readFileSync } from 'node:fs';
 import type TypeScript from 'typescript';
-import {
-  isExported as untypedIsExported,
-  scriptKindOf as untypedScriptKindOf,
-} from '../../../../modules/module-sources.mts';
-import { readStamped as untypedReadStamped } from '../../../../modules/stamped-file-cache.mts';
 import { ts } from '../../typed/typescript-views.mts';
+import {
+  isExported,
+  readStamped,
+  scriptKindOf,
+  type StampedCache,
+} from '../support/typed-sources.mts';
 
 export type Binding = { readonly bound: boolean; readonly source?: string };
 type NameChain = readonly [string, ...string[]];
 type Entry = readonly [string, Binding];
 type FunctionLike =
   TypeScript.FunctionDeclaration | TypeScript.ArrowFunction | TypeScript.FunctionExpression;
-type Cache<Value> = Map<string, { readonly stamp: string; readonly value: Value }>;
-
-const isExported: (statement: TypeScript.Node) => boolean = untypedIsExported;
-const scriptKindOf: (file: string) => TypeScript.ScriptKind = untypedScriptKindOf;
-const readStamped: <Value>(
-  cache: Cache<Value>,
-  file: string,
-  read: (file: string) => Value,
-) => Value | undefined = untypedReadStamped;
 
 const globalGenerators = new Set([
   'Math.random',
@@ -198,7 +190,7 @@ function generatingExports(file: string): Set<string> {
   );
 }
 
-const exportCache: Cache<Set<string>> = new Map();
+const exportCache: StampedCache<Set<string>> = new Map();
 
 export function exportGenerates(file: string, name: string): boolean {
   return readStamped(exportCache, file, generatingExports)?.has(name) ?? false;

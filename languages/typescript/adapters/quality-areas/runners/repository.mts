@@ -191,9 +191,13 @@ export async function runStructure(options: QualityAreaOptions): Promise<Finding
     'languages/typescript/preset/structure/analyze.mjs',
     'analyzeProductionFiles',
   );
+  const typed = [...(await runUnusedApi(options)), ...(await runDesignSignals(options))];
   const layout = readLayout();
   const functionFindings = await perSourceRoot(options, layout, (root) => {
-    const analysis = analyzeProductionFiles(path.join(options.projectRoot, root), root, { layout });
+    const analysis = analyzeProductionFiles(path.join(options.projectRoot, root), root, {
+      layout,
+      environment: options.environment,
+    });
     return [
       ...normalizeStructure(
         withFunctionSourceHashes(analysis, options.projectRoot),
@@ -205,8 +209,7 @@ export async function runStructure(options: QualityAreaOptions): Promise<Finding
   return [
     ...functionFindings,
     ...typescriptStructureProjectFindings({ ...options, baselinePaths: baselinePathsOf(options) }),
-    ...(await runUnusedApi(options)),
-    ...(await runDesignSignals(options)),
+    ...typed,
   ];
 }
 

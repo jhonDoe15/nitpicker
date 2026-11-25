@@ -25,7 +25,12 @@ function runProject(
   return {
     root,
     run: runVitest(
-      testOptions({ projectRoot: root, liveProjectRoot: PACKAGE_ROOT, policyRoot: PACKAGE_ROOT }),
+      testOptions({
+        projectRoot: root,
+        liveProjectRoot: PACKAGE_ROOT,
+        policyRoot: PACKAGE_ROOT,
+        environment: { NITPICKER_POLICY: policy },
+      }),
     ),
   };
 }

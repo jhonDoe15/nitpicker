@@ -6,6 +6,7 @@ import type { Environment } from '../../../../../shared/processes/environment.mt
 import type { StageConfig } from '../stage/oxlint-stage.mts';
 import { appendAll } from '../../../../../shared/lists/lists.mts';
 import { mergedPassResults } from './pass-directives.mts';
+import { lintInPrograms } from '../programs/type-aware-programs.mts';
 
 export type LintTiming = {
   readonly environment: Environment;
@@ -51,17 +52,24 @@ export async function settledBeside(
   return [linted, rest];
 }
 
+function stageLinter(
+  run: StageRun,
+  { configPath, typeAware }: StageConfig,
+): (files: readonly string[]) => Promise<LintResult[]> {
+  return (files) => lintStage({ ...run, configPath, files, typeAware });
+}
+
 export async function lintConfigs({
   configs,
   ...run
 }: StageRun & { readonly configs: readonly StageConfig[] }): Promise<LintResult[]> {
   const passes: { typeAware: boolean; results: LintResult[] }[] = [];
   for (const config of configs) {
-    const slices = config.typeAware ? [config.files] : fileSlices(config.files);
+    const lintFiles = stageLinter(run, config);
     const reports = await Promise.allSettled(
-      slices.map((files) =>
-        lintStage({ ...run, configPath: config.configPath, files, typeAware: config.typeAware }),
-      ),
+      config.typeAware
+        ? [lintInPrograms({ ...run, files: config.files }, lintFiles)]
+        : fileSlices(config.files).map(lintFiles),
     );
     const failed = reports.find(
       (report): report is PromiseRejectedResult => report.status === 'rejected',

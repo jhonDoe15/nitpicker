@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { createFindingsCache } from '../../../../../core/diff/cache/findings-cache.mts';
 import { compareFindings, firstOf } from '../../eslint/test-support/finding-comparison.mts';
 import type { EslintFinding } from '../../eslint/typed/engine.mts';
-import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mts';
 import {
   accumulatingSpreadMessages,
@@ -356,7 +356,7 @@ describe('nitpicker/no-accumulating-spread on both lint engines', () => {
       return hashOf();
     });
 
-    expect(version.split(';').at(-1)).toBe('oxlint@1.87.0,oxlint-tsgolint@7.0.2004');
+    expect(version.split(';').at(-1)).toBe('oxlint@1.88.0,oxlint-tsgolint@7.0.2004');
     expect(ruleFindings(cache.read(before, undefined)?.findings ?? [])).toEqual(
       ruleFindings(parseAnalyzerReport({ findings: oxlintFindings }, 'eslint-lint').findings),
     );

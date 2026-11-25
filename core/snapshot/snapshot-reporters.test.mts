@@ -2,8 +2,8 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { docsUrl as untypedDocsUrl } from '../../shared/messages/docs-url.mjs';
-import { parseJson, textOf } from '../../shared/values/readers.mts';
+import { docsUrl as untypedDocsUrl } from '../../shared/messages/docs-url.mts';
+import { parseJson } from '../../shared/values/readers.mts';
 import { writeSnapshotReports } from './reporters.mts';
 
 const docsUrl: (page: string, anchor?: string) => string | undefined = untypedDocsUrl;
@@ -28,15 +28,13 @@ afterEach(() => {
 function written(findings: object[]) {
   const outputRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-snapshot-reports-'));
   roots.push(outputRoot);
-  const text = textOf(
-    writeSnapshotReports(outputRoot, {
-      summary: { overallStatus: 'violations', tools: [], elapsedMs: 0 },
-      findings,
-      toolErrors: [],
-    }),
-  );
+  writeSnapshotReports(outputRoot, {
+    summary: { overallStatus: 'violations', tools: [], elapsedMs: 0 },
+    findings,
+    toolErrors: [],
+  });
   return {
-    text,
+    text: readFileSync(path.join(outputRoot, 'report.txt'), 'utf8'),
     findings: parseJson(readFileSync(path.join(outputRoot, 'findings.json'), 'utf8')),
   };
 }

@@ -1,8 +1,8 @@
-import { MINIMUM_BRANCH_COVERAGE } from '../../../../shared/policy.mjs';
-import { branchCoverageFindings } from '../../../../shared/rules/branch-coverage.mjs';
-import { enclosingFunctionName as untypedEnclosingName } from '../../../../shared/rules/finding-helpers.mjs';
-import { hashIdentity } from '../../../../shared/ingest/common.mjs';
-import { formatAgnosticText as untypedFormatText } from '../../../../shared/source-text/format-tokens.mjs';
+import { MINIMUM_BRANCH_COVERAGE } from '../../../../shared/policy.mts';
+import { branchCoverageFindings } from '../../../../shared/rules/branch-coverage.mts';
+import { enclosingFunctionName as untypedEnclosingName } from '../../../../shared/rules/finding-parts.mts';
+import { hashIdentity } from '../../../../shared/ingest/report-records.mts';
+import { formatAgnosticText as untypedFormatText } from '../../../../shared/source-text/format-tokens.mts';
 import { reportedPath } from './coverage-paths.mts';
 import type { FindingsResult, IngestOptions } from '../typed/ingest-types.mts';
 import { fieldOf, listOf, parseJson } from '../../../../shared/values/readers.mts';

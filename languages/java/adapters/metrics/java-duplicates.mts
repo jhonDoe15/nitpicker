@@ -21,6 +21,7 @@ import {
 import { JVM_SKIPPED_FOLDERS } from '../../../../core/tooling/jscpd/skipped-folders.mts';
 import type { Finding } from '../../../../shared/values/findings.mts';
 import { fieldOf, listOf, parseJson, textOf, textsOf } from '../../../../shared/values/readers.mts';
+import { generatedDirectoryGlobs, isGeneratedJvm } from '../generated/generated-sources.mts';
 
 type DuplicatesRun = {
   reportRoot: string;
@@ -30,6 +31,8 @@ type DuplicatesRun = {
   reportFile?: string;
   skippedFolders?: readonly string[];
   renamedExtensions?: string[];
+  analyzeGeneratedSources: boolean;
+  environment?: Readonly<Record<string, string | undefined>> | undefined;
 };
 
 type DuplicateRead = {
@@ -56,26 +59,36 @@ export function runJavaDuplicates(
     reportFile = DUPLICATES_REPORT,
     skippedFolders = JVM_SKIPPED_FOLDERS,
     renamedExtensions = ['.java'],
+    analyzeGeneratedSources,
+    environment = {},
   }: DuplicatesRun,
 ): void {
   const roots = textsOf(fieldOf(manifest, rootsKey)).filter((root) =>
     existingRoot(projectRoot, root),
   );
   const excluded = textsOf(fieldOf(manifest, 'kotlinExcludedFiles'));
+  const generatedIgnores = analyzeGeneratedSources ? [] : generatedDirectoryGlobs(projectRoot);
+  const renamedFiles = sourceFilesUnder(projectRoot, roots, renamedExtensions).filter(
+    (file) =>
+      !excluded.includes(file) && (analyzeGeneratedSources || !isGeneratedJvm(projectRoot, file)),
+  );
   mkdirSync(reportRoot, { recursive: true });
   runJscpd({
     cwd: projectRoot,
     roots,
     format,
-    ignore: [...skippedFolderGlobs(skippedFolders), ...excluded.map(literalGlob)],
+    ignore: [
+      ...skippedFolderGlobs(skippedFolders),
+      ...excluded.map(literalGlob),
+      ...generatedIgnores,
+    ],
     reportRoot,
     reportFile,
     together: false,
+    environment,
     renamed: {
       syntax: format,
-      files: sourceFilesUnder(projectRoot, roots, renamedExtensions).filter(
-        (file) => !excluded.includes(file),
-      ),
+      files: renamedFiles,
     },
   });
 }

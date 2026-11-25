@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { readHeadPolicy, readLayout } from '../../head-policy.mts';
 import { resolveModuleSpecifier } from '../../modules/module-resolution.mts';
-import { sharedFactFindings as untypedSharedFactFindings } from '../../../../../shared/rules/facts/evaluate.mjs';
+import { sharedFactFindings as untypedSharedFactFindings } from '../../../../../shared/rules/facts/evaluate.mts';
 import { importSourceText, neutralReuseFacts } from './definition-facts.mts';
 import { baselineFileReader, productionFacts, svgFiles } from './project-files.mts';
 import { projectPathOf } from './reuse-paths.mts';
@@ -118,6 +118,12 @@ function reactFindings({
   ];
 }
 
+function isReactInScope(projectRoot: string, enabled: unknown): boolean {
+  return enabled === undefined || enabled === null
+    ? hasScopePackage(projectRoot, 'react')
+    : Boolean(enabled);
+}
+
 export function reuseFindings(
   {
     projectRoot,
@@ -135,19 +141,16 @@ export function reuseFindings(
   const { exceptions, react, layout: configured } = readHeadPolicy(environment);
   const layout = readLayout(environment);
   const resolve = projectResolver(projectRoot);
-  const facts = productionFacts(projectRoot, layout, (specifier, file) =>
-    importSourceText(resolve(specifier, file), specifier, file),
-  );
+  const facts = productionFacts(projectRoot, {
+    layout,
+    moduleOf: (specifier, file) => importSourceText(resolve(specifier, file), specifier, file),
+    environment,
+  });
   const context = { analyzerName, isExcepted: exceptionMatcher(exceptions), resolve };
   const baseline =
     baselineRoot === undefined
       ? undefined
       : { readFile: baselineFileReader({ projectRoot, baselineRoot, baselinePaths }) };
-  const enabled = react.enabled;
-  const inReactScope =
-    enabled === undefined || enabled === null
-      ? hasScopePackage(projectRoot, 'react')
-      : Boolean(enabled);
   const neutral = neutralReuseFacts(facts, resolve);
   const featureLayout = typescriptFeatureLayout(configured, layout.sourceRoots);
   return uniqueFindings([
@@ -164,6 +167,8 @@ export function reuseFindings(
       rules: FEATURE_RULES,
       policy: { exceptions, layout: featureLayout },
     }),
-    ...(inReactScope ? reactFindings({ facts, context, projectRoot, layout, react }) : []),
+    ...(isReactInScope(projectRoot, react.enabled)
+      ? reactFindings({ facts, context, projectRoot, layout, react })
+      : []),
   ]);
 }

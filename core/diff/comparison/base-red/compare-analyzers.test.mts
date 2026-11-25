@@ -3,7 +3,7 @@ import type { Finding, ReportEntry } from '../../../../shared/values/findings.mt
 import { textOf } from '../../../../shared/values/readers.mts';
 import {
   type AnalyzerOutcome,
-  type AnalyzerRun,
+  type ComparisonRun,
   type FindingComparison,
   compareAnalyzers,
 } from './compare-analyzers.mts';
@@ -31,7 +31,7 @@ const LEGACY = { ...COMPILE_ERROR, tool: 'pmd', rule: 'UnusedPrivateField', iden
 function run(
   findings: readonly Finding[] | undefined,
   toolErrors: readonly ReportEntry[] = [],
-): AnalyzerRun {
+): ComparisonRun {
   return {
     reports: new Map(findings === undefined ? [] : [['java', { findings }]]),
     timings: new Map(),
@@ -64,7 +64,7 @@ function comparedRuns(
   return { result: resultOf(outcomes), notes, toolErrors };
 }
 
-function compared(baseRun: AnalyzerRun) {
+function compared(baseRun: ComparisonRun) {
   const toolErrors: ReportEntry[] = [...baseRun.toolErrors];
   const { outcomes } = compareAnalyzers({
     analyzers: [{ name: 'java' }],

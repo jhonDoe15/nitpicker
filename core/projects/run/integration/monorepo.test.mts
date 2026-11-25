@@ -10,6 +10,16 @@ import {
   type MonorepoRun,
 } from '../test-support/monorepo-harness.mts';
 
+function undeclaredNotice(declared: string, reports: string): string {
+  return (
+    'nitpicker: 5 folders look like projects of their own: services/s1 (Python project), ' +
+    'services/s2 (Python project), services/s3 (Python project), and 2 more. This run does not gate ' +
+    'them with their own preset. To gate each in one run, list them in "projects" of ' +
+    `nitpicker.config.json, for example "projects": ["${declared}", "services/s1", "services/s2", ` +
+    `"services/s3", ...]. Full list: ${reports}/undeclared-projects.txt.\n`
+  );
+}
+
 const { repository, run } = useMonorepoFixtures();
 const git = useGitFixtures();
 const COMMIT = ['-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-q'];
@@ -301,5 +311,46 @@ describe('a run at the top of a monorepo', () => {
     expect(result.exitCode).toBe(1);
     expect(result.out).not.toContain('Monorepo');
     expect(result.out).not.toContain('==');
+  });
+
+  it('shortens the undeclared-projects notice and writes the full list to reports', () => {
+    const undeclared = Object.fromEntries(
+      Array.from({ length: 5 }, (_, index) => [
+        `services/s${String(index + 1)}/pyproject.toml`,
+        `[project]\nname = "s${String(index + 1)}"\n`,
+      ]),
+    );
+    const monoRoot = repository({
+      'package.json': JSON.stringify({ name: 'top', workspaces: ['packages/*'] }),
+      ...projectFiles('packages/a', {
+        'package.json': '{"name":"a","version":"1.0.0"}',
+        'src/a.ts': 'export const a = 1;\n',
+      }),
+      ...undeclared,
+    });
+    const singleRoot = repository({
+      ...projectFiles('.', {
+        'package.json': '{"name":"solo","version":"1.0.0"}',
+        'src/a.ts': 'export const a = 1;\n',
+      }),
+      ...undeclared,
+    });
+
+    const monoResult = run(monoRoot);
+    const singleResult = run(singleRoot);
+    const expectedList = Array.from(
+      { length: 5 },
+      (_, index) => `services/s${String(index + 1)} (Python project)`,
+    ).join('\n');
+
+    expect(monoResult.err).toBe(undeclaredNotice('packages/a', monoResult.reports));
+    expect(readFileSync(`${monoResult.reports}/undeclared-projects.txt`, 'utf8')).toBe(
+      `${expectedList}\n`,
+    );
+
+    expect(singleResult.err).toBe(undeclaredNotice('.', singleResult.reports));
+    expect(readFileSync(`${singleResult.reports}/undeclared-projects.txt`, 'utf8')).toBe(
+      `${expectedList}\n`,
+    );
   });
 });

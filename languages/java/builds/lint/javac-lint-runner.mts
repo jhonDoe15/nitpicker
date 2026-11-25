@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { removeQuietly } from '../cleanup/remove-quietly.mts';
 import { hostedToolSpawn } from '../host/client/host-tools.mts';
 import { argumentFileToken } from './javac-options.mts';
 import { TEST_CATEGORIES, lintArguments } from './lint-arguments.mts';
@@ -11,7 +12,7 @@ import {
 } from './lint-baseline.mts';
 import { lintedWarnings, relocated, hasUnreadWarnings } from './lint-output.mts';
 import { posix, stageSources } from './lint-staging.mts';
-import { filesEndingWith } from '../../../../shared/filesystem.mjs';
+import { filesEndingWith } from '../../../../shared/filesystem.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { type LintPlan, lintPlanOf } from '../typed/lint-plan.mts';
 import { fieldOf, fieldsOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
@@ -117,7 +118,7 @@ function lintSources(plan: LintPlan, request: LintSources): Compiled {
       result.code === 0 ? lintedWarnings(result.log, context) : relocated(result.log, context);
     return { code: result.code, log: textOf(log) };
   } finally {
-    rmSync(work, { recursive: true, force: true });
+    removeQuietly(work);
   }
 }
 

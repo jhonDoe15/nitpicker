@@ -1,0 +1,14 @@
+nitpicker
+Copyright (c) 2026 Noam G.O.Y
+
+This product includes software derived from the following works.
+
+Error Prone (https://github.com/google/error-prone)
+Copyright 2011 The Error Prone Authors.
+Licensed under the Apache License, Version 2.0; a copy is in engine/licenses/Apache-2.0.txt.
+
+  The checks in engine/src/java/errorprone/ are ports of the Error Prone 2.50.0 bug patterns of the
+  same names. They were rewritten in Rust for a different syntax tree and type model, and their
+  messages are those of Error Prone. The doc comment parser in that folder (doc.rs, docparse.rs,
+  doctags.rs, docref.rs) is not derived from Error Prone or from the JDK: it was written from the
+  Documentation Comment Specification for the Standard Doclet.

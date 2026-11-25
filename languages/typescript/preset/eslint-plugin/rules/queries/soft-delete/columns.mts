@@ -1,4 +1,4 @@
-import { wordsOf as untypedWordsOf } from '../../../../../../../shared/naming/secret-words.mjs';
+import { wordsOf as untypedWordsOf } from '../../../../../../../shared/naming/secret-words.mts';
 
 const wordsOf: (name: string) => string[] = untypedWordsOf;
 

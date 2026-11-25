@@ -262,12 +262,14 @@ function expansionOf(context: Context, resolved: TSESTree.Node): Expansion {
 
 export function leafValues(context: Context, node: MaybeNode): TSESTree.Node[] {
   const leaves: TSESTree.Node[] = [];
+  const expanded = new Set<TSESTree.Node>();
   const pending = [{ node, depth: 0 }];
   for (const item of pending) {
     const resolved = unwrapped(resolveConstant(context, unwrapped(item.node)));
-    if (resolved === undefined || item.depth > MAX_DEPTH) {
+    if (resolved === undefined || item.depth > MAX_DEPTH || expanded.has(resolved)) {
       continue;
     }
+    expanded.add(resolved);
     const expansion = expansionOf(context, resolved);
     appendAll(leaves, expansion.leaves);
     appendAll(

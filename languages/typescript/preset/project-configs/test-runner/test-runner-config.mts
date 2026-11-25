@@ -1,25 +1,16 @@
 import path from 'node:path';
 import { fieldOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
-import {
-  missingProjectConfig,
-  precedenceLayers,
-  readHeadPolicyFile,
-} from '../../project-tools/typed/shared-views.mts';
+import { missingProjectConfig, precedenceLayers } from '../../project-tools/typed/shared-views.mts';
 import type { ToolPolicy, ToolSettings } from '../../project-tools/typed/tool-types.mts';
 import type { RetryContext, RetryRead } from '../project-config-types.mts';
-import { PROJECT_CONFIG_NAMES, projectConfigFile } from '../../test-environment/config-files.mts';
+import { projectConfigFile } from '../../test-environment/config-files.mts';
 import { readConfigInChild } from '../../test-environment/read-environment.mts';
 import { testRunnerFor } from '../../test-runner/detect-runner.mts';
-import {
-  MOCHA_RC_FILES,
-  PACKAGE_JSON,
-  mochaConfigFiles,
-  mochaSources,
-} from '../../test-runner/mocha-config-files.mts';
+import { mochaConfigFiles } from '../../test-runner/mocha-config-files.mts';
 import { runnerDisplayName } from '../../test-runner/runners.mts';
 import { runnerCommand } from '../../test-runner/script-command.mts';
 import { mochaConfigRetries } from './mocha-config.mts';
-import { checkedRetry, retryValues } from './test-retry.mts';
+import { checkedRetry } from './test-retry.mts';
 
 export const TESTS_TOOL = 'tests';
 
@@ -73,10 +64,7 @@ function runnerAndTokens(
 
 export function readRunnerRetry(
   projectRoot: string,
-  {
-    configuredRunner,
-    liveRoot = projectRoot,
-  }: { configuredRunner: string | undefined; liveRoot?: string },
+  { configuredRunner }: { configuredRunner: string | undefined },
 ): { runner: string } & RetryRead {
   const { runner, tokens } = runnerAndTokens(projectRoot, configuredRunner);
   const read = RUNNER_READERS.get(runner);
@@ -86,7 +74,7 @@ export function readRunnerRetry(
         'config option it changes: remove "project" from tools.tests.precedence',
     );
   }
-  return { runner, ...read(projectRoot, { liveRoot, tokens }) };
+  return { runner, ...read(projectRoot, { liveRoot: projectRoot, tokens }) };
 }
 
 export function readTestRunnerProjectConfig(
@@ -99,38 +87,7 @@ export function readTestRunnerProjectConfig(
   return { runner, ...(retry === undefined ? {} : { retry }) };
 }
 
-export function appliedRunnerRetry({
-  root,
-  config,
-  liveRoot,
-}: {
-  readonly root: string;
-  readonly config: ToolPolicy;
-  readonly liveRoot: string;
-}): { values: Record<string, unknown>; file: string; files: string[] } {
-  const { retry, file, files } = readRunnerRetry(root, {
-    configuredRunner: config.tools?.[TESTS_TOOL]?.runner,
-    liveRoot,
-  });
-  return { values: retryValues(retry), file, files };
-}
-
-export function testRunnerProjectFiles(projectRoot: string, config: ToolPolicy): string[] {
-  const { tokens } = runnerAndTokens(projectRoot, config.tools?.[TESTS_TOOL]?.runner);
-  const { config: rc, package: manifest } = mochaSources(projectRoot, tokens);
-  return [
-    ...new Set(
-      [...PROJECT_CONFIG_NAMES, ...MOCHA_RC_FILES, PACKAGE_JSON, rc, manifest].filter(
-        (file) => file !== undefined,
-      ),
-    ),
-  ];
-}
-
-export function projectTestRetry(
-  runner: string,
-  settings: ToolSettings | undefined = readHeadPolicyFile().tools?.['tests'],
-): unknown {
+export function projectTestRetry(runner: string, settings: ToolSettings | undefined): unknown {
   const layers = precedenceLayers(settings?.precedence);
   if (settings === undefined || !layers.usesProject || layers.nitpickerFirst) {
     return undefined;

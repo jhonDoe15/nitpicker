@@ -1,4 +1,4 @@
-import { type XmlElement, childAt } from '../../../../shared/values/xml.mts';
+import { type XmlElement, childAt } from '../../../../shared/ingest/report-records.mts';
 
 const DEPLOY = 'org.apache.maven.plugins:maven-deploy-plugin';
 

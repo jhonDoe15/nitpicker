@@ -1,8 +1,8 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
-import { GIT_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
+import { GIT_TIMEOUT_MS } from '../../../shared/processes/deadlines.mts';
 import type { ConfigLayer } from '../../../shared/values/config-types.mts';
 import { fieldOf, isPlainObject, messageOf, textOf } from '../../../shared/values/readers.mts';
 import { validateExtends } from './settings.mts';

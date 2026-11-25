@@ -5,15 +5,15 @@ import path from 'node:path';
 import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mts';
 import { JAVA_TOOLS } from './gradle-presets.mts';
 import { DOC_COMMENT_TOOL } from './doc-comments/doc-comment-findings.mts';
-import { INIT_SCRIPT, readPinnedTools } from '../builds/java-build.mts';
-import { importClosure } from '../../../shared/import-closure.mjs';
+import { INIT_SCRIPT, JAVA_BUILD_TOOLS, readPinnedTools } from '../builds/java-build.mts';
+import { importClosure } from '../../../shared/import-closure.mts';
 import { javaExecutionBudget } from './java-runner.mts';
 import { BUILD_TIMEOUT_SCALE } from './gradle-wrapper/gradle-budget.mts';
-import { COMPILE_ERROR_TOOL } from '../../../shared/rules/finding-helpers.mjs';
+import { COMPILE_ERROR_TOOL } from '../../../shared/rules/finding-parts.mts';
 import { javaCommand } from '../maven/maven-command.mts';
-import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mjs';
+import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mts';
 import { mutationScopeArguments } from '../../../core/tooling/runner-arguments.mts';
-import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath } from '../../../shared/paths/checkout-module.mts';
 import { changedTestsKey } from '../builds/change-scope/tested-sources.mts';
 import { fieldsOf, textOf } from '../../../shared/values/readers.mts';
 import type { JavaSpawn } from './typed/java-values.mts';
@@ -33,7 +33,7 @@ type JavaAnalyzer = {
   readonly resolveVersion: () => string;
   readonly configurationHash: string;
   readonly exclusions: readonly string[];
-  readonly reportedTools: readonly unknown[];
+  readonly reportedTools: readonly string[];
   readonly timeoutMs: number;
   readonly timeoutScale: typeof BUILD_TIMEOUT_SCALE;
   readonly comparisonKey: unknown;
@@ -45,7 +45,7 @@ const sourcePath: (file: string) => string = checkoutModulePath;
 const closureOf: (files: readonly string[], root: string) => Map<string, string> = importClosure;
 const javaBinary: (name: string) => string = javaCommand;
 import { HEAD_TESTS_TOOL } from './red-base/tests-failed.mts';
-import { EXECUTION_INPUTS } from '../../../shared/input-sets/inputs.mjs';
+import { EXECUTION_INPUTS } from '../../../shared/input-sets/inputs.mts';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const runnerPath = sourcePath(path.join(import.meta.dirname, 'java-runner.mjs'));
@@ -193,7 +193,13 @@ function hashConfiguration(): string {
 }
 
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt', 'kotlin-source', 'kotlinc'];
-const JVM_ANALYZER_TOOLS = [...JAVA_TOOLS, DOC_COMMENT_TOOL, COMPILE_ERROR_TOOL, HEAD_TESTS_TOOL];
+const JVM_ANALYZER_TOOLS = [
+  ...JAVA_TOOLS,
+  DOC_COMMENT_TOOL,
+  COMPILE_ERROR_TOOL,
+  HEAD_TESTS_TOOL,
+  ...JAVA_BUILD_TOOLS,
+];
 
 export function createJavaAnalyzer({ kotlin = false } = {}): JavaAnalyzer {
   const budget = javaExecutionBudget();

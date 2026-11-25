@@ -11,7 +11,7 @@ import {
   type PreviewRule,
 } from '../../../configuration/python-ruff-config.mts';
 import { run } from '../../../execution/python-process.mts';
-import { resolveInside as untypedResolveInside } from '../../../../../../shared/conventions/read-inside.mjs';
+import { resolveInside as untypedResolveInside } from '../../../../../../shared/conventions/read-inside.mts';
 import type { ToolContext } from '../../../typed/context/tool-context-types.mts';
 
 const PREVIEW_REPORT = 'ruff-preview.sarif';

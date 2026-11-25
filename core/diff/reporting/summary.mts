@@ -1,5 +1,3 @@
-import { isPolicyFinding } from './review/policy-findings.mts';
-import { consolePolicySummary } from './review/policy-changes.mts';
 import { heldSummaryLines } from './format/held-findings.mts';
 import { foldMutants } from './format/mutants.mts';
 import { noteSummaryLines } from './format/notes.mts';
@@ -28,7 +26,7 @@ import {
 export { errorHeadline, pluralize, withoutSkipNotices } from './console/tool-errors.mts';
 import type { ReportData, ReportEntry } from '../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
-import { appendAll } from '../../../shared/lists/lists.mts';
+import { addToGroup, appendAll } from '../../../shared/lists/lists.mts';
 
 type ConsoleOptions = {
   readonly color: boolean;
@@ -47,7 +45,6 @@ type ViolationSummary = {
   readonly violations: readonly ReportEntry[];
   readonly incomplete: boolean;
   readonly testsFail: boolean;
-  readonly policyCount: number;
   readonly snapshot: boolean;
 };
 
@@ -140,10 +137,9 @@ function renderGateSummary(
   appendViolationSummary(
     lines,
     {
-      violations: violations.filter((finding) => !isPolicyFinding(finding)),
+      violations,
       incomplete: otherErrors.length > 0,
       testsFail: failingTests.length > 0,
-      policyCount: violations.filter(isPolicyFinding).length,
       snapshot,
     },
     {
@@ -155,9 +151,7 @@ function renderGateSummary(
   );
   appendAll(
     lines,
-    reviewSummaryLines(consolePolicySummary(report), (text) =>
-      style(text, [ANSI.bold, ANSI.yellow], { color }),
-    ),
+    reviewSummaryLines(report.summary, (text) => style(text, [ANSI.bold, ANSI.yellow], { color })),
   );
   appendAll(lines, heldSummaryLines(report.unchangedFindings, { color, details, diagnosticsPath }));
   appendAll(lines, designNoteLines(report.newFindings, diagnosticsPath, { snapshot }));
@@ -194,18 +188,11 @@ function appendNoteSummary(
 }
 
 function violationHeadline(
-  { violations, incomplete, testsFail, policyCount, snapshot }: ViolationSummary,
+  { violations, incomplete, testsFail, snapshot }: ViolationSummary,
   color: boolean,
 ): string {
   const fresh = snapshot ? '' : 'new ';
   const noun = snapshot ? FINDING : 'violation';
-  const policy = `${String(policyCount)} unapproved policy ${pluralize('change', policyCount)}`;
-  const code = `${String(violations.length)} code ${pluralize('violation', violations.length)}`;
-  if (violations.length === 0 && policyCount > 0) {
-    const verb = policyCount === 1 ? 'fails' : 'fail';
-    const tail = incomplete ? ' and the run is incomplete:' : '';
-    return failing(`✖ No new code violations, but ${policy} ${verb} the gate${tail}`, color);
-  }
   if (violations.length === 0 && incomplete) {
     return `No ${fresh}enforceable ${noun}s, but the run is incomplete:`;
   }
@@ -214,13 +201,8 @@ function violationHeadline(
       ? `No ${fresh}enforceable ${noun}s in the checks that ran.`
       : style(`✓ No ${fresh}enforceable ${noun}s`, [ANSI.green], { color });
   }
-  const total = violations.length + policyCount;
-  return failing(
-    policyCount === 0
-      ? `✖ ${String(total)} ${fresh}enforceable ${pluralize(noun, total)}`
-      : `✖ ${String(total)} ${fresh}enforceable ${noun}s: ${code} and ${policy}`,
-    color,
-  );
+  const total = violations.length;
+  return failing(`✖ ${String(total)} ${fresh}enforceable ${pluralize(noun, total)}`, color);
 }
 
 function failing(text: string, color: boolean): string {
@@ -275,7 +257,7 @@ function groupRepeatedFindings(findings: readonly ReportEntry[]): ReportEntry[][
   const groups = new Map<string, ReportEntry[]>();
   for (const finding of findings) {
     const key = [finding.tool, finding.rule, finding.path, finding.message].join('\0');
-    groups.set(key, [...(groups.get(key) ?? []), finding]);
+    addToGroup(groups, key, finding);
   }
   return [...groups.values()];
 }

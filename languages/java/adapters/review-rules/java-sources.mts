@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { globMatcher } from '../../../../shared/paths/glob.mjs';
-import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
+import { globMatcher } from '../../../../shared/paths/glob.mts';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mts';
 import type {
   DepthChanges,
   SourceListing,
@@ -177,6 +177,18 @@ export function sourceRootsOf(
   return [...(java ?? []), ...(kotlin ? (kotlinRoots ?? []) : [])].filter(
     (root) => root !== '' && !OUTSIDE_SOURCES.test(root),
   );
+}
+
+export function testFilesUnder(
+  projectRoot: string,
+  roots: readonly string[],
+  { extensions, exclude }: { extensions: readonly string[]; exclude: readonly string[] },
+): string[] {
+  const excluded = exclude.map((glob) => matcherOf(glob));
+  const files = [...new Set(roots)]
+    .flatMap((root) => sourceFilesUnder(pathInside(projectRoot, root), extensions))
+    .map((full) => path.relative(projectRoot, full).replaceAll('\\', '/'));
+  return [...new Set(files)].filter((file) => !excluded.some((matcher) => matcher.test(file)));
 }
 
 function projectSources<Project extends SourceProject>(

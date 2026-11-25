@@ -145,7 +145,8 @@ describe('configureJavaAnalyzer', () => {
   });
 
   it('declares every tool the Java reports produce', () => {
-    expect(createJavaAnalyzer().reportedTools).toEqual([...JAVA_TOOLS, 'facts', 'build', 'tests']);
+    const expected = [...JAVA_TOOLS, 'facts', 'build', 'tests', 'maven', 'gradle'];
+    expect(createJavaAnalyzer().reportedTools).toEqual(expected);
     expect([...new Set(JAVA_TOOLS)].sort()).toEqual([
       'archunit',
       'checkstyle',

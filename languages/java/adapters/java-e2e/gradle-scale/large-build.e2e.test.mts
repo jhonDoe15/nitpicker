@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -11,7 +19,33 @@ import { LARGE_BUILD_FILES } from './test-support/large-build-files.mts';
 const enabled = process.env['NITPICKER_JAVA_E2E'] === '1';
 const gradle = process.env['NITPICKER_GRADLE'] ?? 'gradle';
 const temporary: string[] = [];
-type Run = { readonly findings: readonly JavaFinding[]; readonly reports: string };
+const EMPTY_MODULE_KEYS = ['root', 'module-platform'] as const;
+const EMPTY_PROJECT_DIRS = ['', 'platform'] as const;
+const SKIPPED_ARTIFACTS = [
+  'guards-plan.json',
+  'javac-lint.txt',
+  'permits.txt',
+  'dependencies.json',
+  'cpd.xml',
+  'jacoco.xml',
+  'pmd-aux-classpath.txt',
+  'errorprone',
+] as const;
+const EMPTY_PLACEHOLDERS = [
+  'pmd.sarif',
+  'structure.json',
+  'classes.json',
+  'effects.json',
+  'errorprone.json',
+  'jdeps.txt',
+  'jdeps-test.txt',
+  'jdeps-classes.txt',
+] as const;
+type Run = {
+  readonly findings: readonly JavaFinding[];
+  readonly reports: string;
+  readonly root: string;
+};
 
 function writeBuild(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-large-build-'));
@@ -24,10 +58,11 @@ function writeBuild(): string {
 }
 
 function analyze(policy: Readonly<Record<string, unknown>>): Run {
+  const root = writeBuild();
   const reports = mkdtempSync(path.join(tmpdir(), 'nitpicker-large-build-reports-'));
   temporary.push(reports);
-  const findings = collectJavaFindings(writeBuild(), { gradle, reportDirectory: reports, policy });
-  return { findings, reports };
+  const findings = collectJavaFindings(root, { gradle, reportDirectory: reports, policy });
+  return { findings, reports, root };
 }
 
 function pmdFilesByReport(reports: string): string[][] {
@@ -96,5 +131,32 @@ describe.skipIf(!enabled)(
     it('measures coverage in the full run, where check depends on jacocoTestReport', () => {
       expect(ranOf(runs, 'full').findings.some(({ tool }) => tool === 'jacoco')).toBe(true);
     });
+
+    it.each(['quick', 'full'] as const)(
+      'skips analysis tasks and writes empty placeholders for empty projects in a %s run',
+      (run) => {
+        const { reports, root } = ranOf(runs, run);
+        const presentSkipped = EMPTY_MODULE_KEYS.flatMap((key) =>
+          SKIPPED_ARTIFACTS.filter((file) => existsSync(path.join(reports, key, file))).map(
+            (file) => `${key}/${file}`,
+          ),
+        );
+        const missingPlaceholders = EMPTY_MODULE_KEYS.flatMap((key) =>
+          EMPTY_PLACEHOLDERS.filter((file) => !existsSync(path.join(reports, key, file))).map(
+            (file) => `${key}/${file}`,
+          ),
+        );
+        const emptyCheckstyleConfigs = EMPTY_PROJECT_DIRS.filter((dir) =>
+          existsSync(path.join(root, dir, 'build/nitpicker-checkstyle/checkstyle.xml')),
+        );
+
+        expect(presentSkipped).toEqual([]);
+        expect(missingPlaceholders).toEqual([]);
+        expect(emptyCheckstyleConfigs).toEqual([]);
+        expect(
+          existsSync(path.join(root, 'platform/base/build/nitpicker-checkstyle/checkstyle.xml')),
+        ).toBe(true);
+      },
+    );
   },
 );

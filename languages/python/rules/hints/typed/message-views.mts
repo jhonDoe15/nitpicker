@@ -1,8 +1,8 @@
-import { renderMessage as untypedRender } from '../../../../../shared/messages/messages.mjs';
+import { renderMessage as untypedRender } from '../../../../../shared/messages/messages.mts';
 import {
   unitAllowedForm as untypedUnitAllowed,
   unitDescription as untypedUnitDescription,
-} from '../../../../../shared/naming/time-units/unit-messages.mjs';
+} from '../../../../../shared/naming/time-units/unit-messages.mts';
 import type { HintData } from '../hint-types.mts';
 
 type Values = Readonly<Record<string, string | number | undefined>>;

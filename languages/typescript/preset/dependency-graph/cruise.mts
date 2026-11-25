@@ -3,13 +3,17 @@ import { spawnSyncWithOutputFile as untypedSpawnSyncWithOutputFile } from '../..
 import path from 'node:path';
 import { isInsideRoot } from '../layout/source-root/root-paths.mts';
 import { linkPolicyFile as untypedLinkPolicyFile } from '../../../../core/tooling/policy-links.mts';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mts';
 import { readLayout as untypedReadLayout } from '../head-policy.mts';
 import { EXCLUDED_PATH_PATTERN } from '../layout.mts';
 import { layoutTransformFor as untypedLayoutTransformFor } from '../tool-configs.mts';
-import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
+import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mts';
 import { fieldsOf, parseJson } from '../../../../shared/values/readers.mts';
 import type { Layout } from '../../adapters/typed/head-policy.mts';
+import {
+  cruiserNodeArguments,
+  reportSkippedFiles,
+} from '../../adapters/dependency-graph/shared-graph/cruiser-process.mts';
 import type {
   DependencyGraph,
   GraphDependency,
@@ -50,7 +54,6 @@ const dependencyCruiser = path.join(
   'node_modules/dependency-cruiser/bin/dependency-cruise.mjs',
 );
 const config = checkoutModulePath(path.join(import.meta.dirname, 'dependency-cruiser.config.mjs'));
-export { EXCLUDED_PATH_PATTERN };
 const excludedPath = new RegExp(EXCLUDED_PATH_PATTERN);
 export const ARCHITECTURE_CONFIG =
   'languages/typescript/preset/defaults/dependency-cruiser.config.mjs';
@@ -96,6 +99,7 @@ function spawnDependencyCruiser(
   return spawnSyncWithOutputFile(
     process.execPath,
     [
+      ...cruiserNodeArguments(),
       dependencyCruiser,
       ...paths,
       '--config',
@@ -165,7 +169,9 @@ export function cruise(
     (environment) => spawnDependencyCruiser(paths, environment),
   );
   assertSuccessful(result);
-  return parseGraph(result.stdout);
+  const graph = parseGraph(result.stdout);
+  reportSkippedFiles(result.stderr, () => graph.modules.length);
+  return graph;
 }
 
 export function normalizePath(value: string): string {

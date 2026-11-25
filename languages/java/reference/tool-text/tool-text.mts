@@ -4,7 +4,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { readPinnedTools } from '../../builds/java-build.mts';
-import { TOOL_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
+import { TOOL_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mts';
 import type { ToolText, ToolTextRules, ToolTextTool } from '../typed/tool-text-types.mts';
 
 const EXTRACTOR = fileURLToPath(new URL('./ToolText.java', import.meta.url));

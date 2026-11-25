@@ -12,7 +12,7 @@ import {
   depthFirst as untypedDepthFirst,
   foldTree as untypedFoldTree,
   objectChildren as untypedObjectChildren,
-} from '../../../../../../shared/traversal.mjs';
+} from '../../../../../../shared/traversal.mts';
 
 export type Ranged = { readonly range: readonly [number, number] };
 
@@ -129,4 +129,32 @@ export function concatOperands(plain: TSESTree.Node): readonly TSESTree.Node[] |
     return plain.operator === '+' ? [plain.left, plain.right] : [];
   }
   return undefined;
+}
+
+export function memberRoot(start: TSESTree.Node): TSESTree.Node {
+  const chain = chainOf<TSESTree.Node>(start, (link) =>
+    link.type === AST_NODE_TYPES.MemberExpression ? link.object : undefined,
+  );
+  return chain.at(-1) ?? start;
+}
+
+export type FunctionNode =
+  TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression | TSESTree.FunctionDeclaration;
+
+export function functionBinding(fn: FunctionNode): TSESTree.Identifier | undefined {
+  if (fn.type === AST_NODE_TYPES.FunctionDeclaration) {
+    return fn.id ?? undefined;
+  }
+  const { parent } = fn;
+  return parent.type === AST_NODE_TYPES.VariableDeclarator &&
+    parent.id.type === AST_NODE_TYPES.Identifier
+    ? parent.id
+    : undefined;
+}
+
+export function isPlainString(node: TSESTree.Node): boolean {
+  return (
+    (node.type === AST_NODE_TYPES.Literal && typeof node.value === 'string') ||
+    (node.type === AST_NODE_TYPES.TemplateLiteral && node.expressions.length === 0)
+  );
 }

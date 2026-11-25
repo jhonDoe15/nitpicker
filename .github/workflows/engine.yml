@@ -1,0 +1,97 @@
+name: engine
+
+on:
+  push:
+    branches: [main, integration]
+    paths:
+      - 'engine/**'
+      - 'languages/typescript/adapters/typed-engine/**'
+      - 'languages/typescript/preset/architecture/**'
+      - 'languages/typescript/preset/coding-standards/**'
+      - 'languages/typescript/preset/design/**'
+      - 'languages/typescript/preset/unused-api/**'
+      - 'languages/typescript/preset/structure/**'
+      - 'shared/engine/**'
+      - 'shared/near-duplicates/**'
+      - 'shared/rules/near-duplicates/**'
+      - 'core/tooling/**'
+      - 'package-lock.json'
+      - 'scripts/ci/**'
+      - '.github/workflows/engine.yml'
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+
+# A newer run on the same pull request cancels the older one. On main a started
+# run finishes, and a newer push replaces a run that is still waiting.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && github.ref_name || github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/integration' }}
+
+jobs:
+  # On a pull request, the jobs below run only when the pull request changes a file in this
+  # workflow's push paths, or when the changed files cannot be listed. Other runs check everything.
+  changes:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.select.outputs.run }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          sparse-checkout: |
+            .github/workflows
+            scripts/ci
+      - id: select
+        uses: actions/github-script@v8.0.0
+        with:
+          script: |
+            const { selectWorkflowJobs } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/ci/affected-jobs.mts`);
+            await selectWorkflowJobs({ github, context, core, workflow: '.github/workflows/engine.yml' });
+
+  # Builds the engine and compares its findings on the Java fixtures with the findings PMD gave for
+  # the same rules (engine/tests/expected). The JDK supplies the class files the type index reads.
+  engine:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-java@v6.1.0
+        with:
+          distribution: temurin
+          java-version: 21
+      # The checks that need types ask the TypeScript 7 compiler of the installed packages.
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: cargo test --release --locked
+        working-directory: engine
+      # The same tests the Node checks pass, with the checks answered by the engine built above.
+      - name: Typed checks through the engine
+        run: >-
+          npx vitest run --config vitest.config.mts
+          languages/typescript/adapters/typed-engine
+          languages/typescript/preset/unused-api
+          languages/typescript/preset/design
+          languages/typescript/preset/architecture/typed
+          languages/typescript/preset/coding-standards
+        env:
+          NITPICKER_TYPED_ENGINE: required
+      - name: Structure facts through the engine
+        run: npx vitest run --config vitest.config.mts languages/typescript/preset/structure
+        env:
+          NITPICKER_STRUCTURE_ENGINE: required
+          NITPICKER_NEAR_DUPLICATE_ENGINE: required
+      - name: Near-duplicate search through the engine
+        run: npx vitest run --config vitest.config.mts shared/near-duplicates shared/rules/near-duplicates
+        env:
+          NITPICKER_NEAR_DUPLICATE_ENGINE: required

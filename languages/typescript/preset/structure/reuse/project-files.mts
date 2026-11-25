@@ -2,8 +2,8 @@ import { isProjectRoot, rootOf } from '../../layout/source-root/root-paths.mts';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ts } from '../../../typescript-api/typescript-api.mts';
-import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../shared/project-files/project-files.mjs';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mjs';
+import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../shared/project-files/project-files.mts';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mts';
 import { existingRoots } from '../../layout.mts';
 import { isNonProductionFolder, isReuseProductionPath } from './reuse-paths.mts';
 import { fileDefinitions } from './syntax/definitions.mts';
@@ -11,6 +11,8 @@ import { fileDynamicImports, fileExports, fileImports } from '../../syntax/modul
 import { jsxTagNames, referencePositions } from '../../syntax/references.mts';
 import { nearDuplicateUnits } from './near-duplicates/units.mts';
 import type TypeScript from 'typescript';
+import { engineReuseFacts, resolvedUnits, type EngineFileFacts } from '../engine/engine-reuse.mts';
+import type { Environment } from '../engine/engine-files.mts';
 import type { Definition } from './typed/syntax-types.mts';
 import type {
   BaselineFile,
@@ -122,16 +124,47 @@ function fileFacts(
   };
 }
 
+function engineFact(
+  fact: EngineFileFacts,
+  packageRoot: string,
+  moduleOf: (specifier: string) => string,
+): ReuseFact {
+  return {
+    path: fact.path,
+    packageRoot,
+    definitions: fact.definitions,
+    imports: fact.imports,
+    dynamicImports: fact.dynamicImports,
+    exports: fact.exports,
+    jsxTags: new Set(fact.jsxTags),
+    nearDuplicateUnits: resolvedUnits(fact, moduleOf),
+  };
+}
+
 export function productionFacts(
   projectRoot: string,
-  layout: ReuseLayout,
-  moduleOf: ModuleOf,
+  {
+    layout,
+    moduleOf,
+    environment,
+  }: {
+    readonly layout: ReuseLayout;
+    readonly moduleOf: ModuleOf;
+    readonly environment: Environment;
+  },
 ): ReuseFact[] {
   const packageRootOf = packageRootFinder(projectRoot, layout);
-  return layout
+  const files = layout
     .projectCodeFiles(projectRoot, layout.sourceRoots)
-    .filter((file) => layout.isSourceFile(file) && isReuseProductionPath(file))
-    .map((file) => fileFacts({ projectRoot, moduleOf }, file, packageRootOf(file)));
+    .filter((file) => layout.isSourceFile(file) && isReuseProductionPath(file));
+  const listed = files.map((file) => ({ path: insideRoot(projectRoot, file), display: file }));
+  const engine = engineReuseFacts(listed, environment);
+  return files.map((file) => {
+    const fact = engine?.get(file);
+    return fact === undefined
+      ? fileFacts({ projectRoot, moduleOf }, file, packageRootOf(file))
+      : engineFact(fact, packageRootOf(file), (specifier) => moduleOf(specifier, file));
+  });
 }
 
 const escapeRegExp: (value: string) => string = untypedEscapeRegExp;

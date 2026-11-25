@@ -8,6 +8,7 @@ import { callUntyped } from '../../typed/java-values.mts';
 import { fieldOf, fieldsOf } from '../../../../../shared/values/readers.mts';
 import { findingsOf } from '../../kotlin/rules/test-support/findings-list.mts';
 import { schemaChecked as untypedSchemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mts';
+import { summarize } from '../../../../../shared/test-support/findings-by-rule.mts';
 
 export const kotlinE2eEnabled = process.env['NITPICKER_KOTLIN_E2E'] === '1';
 
@@ -156,12 +157,6 @@ export function diffOf(
   );
 }
 
-export function summarize(findings: readonly Finding[]): string[] {
-  return findings
-    .map(({ tool, rule, path: file }) => `${tool} ${rule} ${path.basename(file)}`)
-    .sort();
-}
-
 export function fromTool(findings: readonly Finding[], tool: string): string[] {
   return summarize(findings.filter((finding) => finding.tool === tool));
 }
@@ -237,3 +232,5 @@ tasks.matching { it.name == "nitpickerDetekt" }.configureEach {
     }
 }
 `;
+
+export { summarize };

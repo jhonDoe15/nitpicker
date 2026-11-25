@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
 import type { ConfigLayer, ConfigSettings } from '../../../shared/values/config-types.mts';
 import { isPlainObject, textOf } from '../../../shared/values/readers.mts';
 import { TYPESCRIPT_PRESETS } from '../scopes/layout-settings.mts';
@@ -47,7 +47,7 @@ function inheritedConfig(config: unknown, memberSegments: readonly string[]): un
   return rebasedSettings(own, memberSegments) ?? {};
 }
 
-export function inheritedLayerFiles(
+function inheritedLayerFiles(
   projectRoot: string,
   inherits: string | undefined,
   { repositoryRoot }: { readonly repositoryRoot?: string | undefined } = {},

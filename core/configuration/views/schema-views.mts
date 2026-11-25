@@ -1,6 +1,6 @@
-import { toolsOf as untypedToolsOf } from '../../../shared/exceptions/rule-tools.mjs';
-import { THRESHOLD_PRESETS as untypedThresholdPresets } from '../../../shared/config.mjs';
-import { CO_CHANGE_DEFAULTS as untypedCoChangeDefaults } from '../../../shared/project-rules/hygiene-rules.mjs';
+import { toolsOf as untypedToolsOf } from '../../../shared/exceptions/rule-tools.mts';
+import { THRESHOLD_PRESETS as untypedThresholdPresets } from '../../../shared/config.mts';
+import { CO_CHANGE_DEFAULTS as untypedCoChangeDefaults } from '../../../shared/project-rules/hygiene-rules.mts';
 
 export type SchemaTable = Readonly<Record<string, { readonly [keyword: string]: unknown }>>;
 

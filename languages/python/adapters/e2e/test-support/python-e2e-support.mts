@@ -13,9 +13,6 @@ import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { runCli } from '../../../../../core/cli.mts';
-import { readConfigFile } from '../../../../../core/configuration/config.mts';
-import { policyChangeFields } from '../../../../../core/policy-changes/describe-policy-changes.mts';
-import { readPolicyScope } from '../../../../../core/policy-changes/policy-scope.mts';
 import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mts';
 import { withoutHelpUris } from '../../../../../core/diff/reporting/test-support/report-reading.mts';
 import { fileURLToPath } from 'node:url';
@@ -25,9 +22,9 @@ import type {
   Finding,
   GateOptions,
   GateResult,
-  PolicyChanges,
   Summary,
 } from './python-e2e-types.mts';
+import { summarize } from '../../../../../shared/test-support/findings-by-rule.mts';
 
 function isReport(value: unknown): value is Summary | Finding[] {
   return typeof value === 'object' && value !== null;
@@ -151,33 +148,6 @@ export async function settledGate(
   return { ...result, exitCode };
 }
 
-export function policyChangesOf(root: string, branch: string): PolicyChanges {
-  git(root, 'checkout', '-q', branch);
-  const base = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-base-'));
-  git(root, 'worktree', 'add', '-q', '--detach', base, 'main');
-  try {
-    const headConfig = readConfigFile(root);
-    const scope = readPolicyScope({
-      baseConfig: {},
-      headConfig,
-      baseProjectRoot: base,
-      headProjectRoot: root,
-      moves: {},
-      replacedOptions: undefined,
-    });
-    const changes: PolicyChanges = policyChangeFields({}, headConfig, scope);
-    return changes;
-  } finally {
-    git(root, 'worktree', 'remove', '--force', base);
-  }
-}
-
-export function summarize(findings: readonly Finding[]): string[] {
-  return findings
-    .map(({ tool, rule, path: file }) => `${tool} ${rule} ${path.basename(file)}`)
-    .sort();
-}
-
 export function initializeRepository(root: string, message: string): void {
   git(root, 'init', '-q', '-b', 'main');
   git(root, 'add', '-A');
@@ -221,3 +191,5 @@ export function useRepositories(): Repositories {
 
   return { repository, removeRepositories, fixtureRepository };
 }
+
+export { summarize };

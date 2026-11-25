@@ -30,6 +30,12 @@ function ownedDeclaration(
   );
 }
 
+function comesFirst(left: TypeScript.Declaration, right: TypeScript.Declaration): boolean {
+  const leftFile = left.getSourceFile().fileName;
+  const rightFile = right.getSourceFile().fileName;
+  return leftFile === rightFile ? left.getStart() < right.getStart() : leftFile < rightFile;
+}
+
 export function ownedMembers({
   checker,
   type,
@@ -39,11 +45,13 @@ export function ownedMembers({
   readonly type: TypeScript.Type;
   readonly owned: ReadonlyMap<string, unknown>;
 }): Map<string, TypeScript.Declaration> {
-  const entries = typeParts({ checker, type })
-    .flatMap((part) => part.getProperties())
-    .flatMap((symbol): [string, TypeScript.Declaration][] => {
-      const declaration = ownedDeclaration(symbol, owned);
-      return declaration === undefined ? [] : [[symbol.name, declaration]];
-    });
-  return new Map(entries.toReversed());
+  const members = new Map<string, TypeScript.Declaration>();
+  for (const symbol of typeParts({ checker, type }).flatMap((part) => part.getProperties())) {
+    const declaration = ownedDeclaration(symbol, owned);
+    const known = members.get(symbol.name);
+    if (declaration !== undefined && (known === undefined || comesFirst(declaration, known))) {
+      members.set(symbol.name, declaration);
+    }
+  }
+  return members;
 }

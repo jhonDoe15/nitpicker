@@ -7,14 +7,15 @@ import {
   isInMutationScope as untypedIsInMutationScope,
   scopedProjectFiles as untypedScopedProjectFiles,
 } from '../../../../../core/scope/mutation-scope.mts';
-import { globMatcher as untypedGlobMatcher } from '../../../../../shared/paths/glob.mjs';
-import { pathInside as untypedPathInside } from '../../../../../shared/filesystem.mjs';
-import { exceptionRoute as untypedExceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
-import { mutantRuleId as untypedMutantRuleId } from '../../../../../shared/policy.mjs';
+import { globMatcher } from '../../../../../shared/paths/glob.mts';
+import { pathInside as untypedPathInside } from '../../../../../shared/filesystem.mts';
+import { exceptionRoute as untypedExceptionRoute } from '../../../../../shared/exceptions/rule-names.mts';
+import { mutantRuleId as untypedMutantRuleId } from '../../../../../shared/policy.mts';
 import {
   layeredStrykerConfig as untypedLayeredStrykerConfig,
   withoutProjectIgnoredMutants as untypedWithoutProjectIgnoredMutants,
 } from '../../../preset/project-configs/stryker-project-config.mts';
+import { readHeadPolicyFile as toolPolicy } from '../../../preset/project-tools/typed/shared-views.mts';
 import { layoutTransformFor } from '../../../preset/tool-configs.mts';
 
 type Position = { readonly line?: number; readonly column?: number };
@@ -67,7 +68,7 @@ export const scopedProjectFiles: (
   mutationScope: readonly string[],
 ) => string[] = untypedScopedProjectFiles;
 
-export const globMatcher: (pattern: string) => RegExp = untypedGlobMatcher;
+export { globMatcher };
 
 export const pathInside: (root: string, relative: string) => string | undefined = untypedPathInside;
 
@@ -85,8 +86,12 @@ export function exceptionRoute(rule: string, path: string): string {
 
 export const mutantRuleId: (status: string) => string = untypedMutantRuleId;
 
-export const layeredStrykerConfig: (config: StrykerConfig) => StrykerConfig =
-  untypedLayeredStrykerConfig;
+export function layeredStrykerConfig(
+  config: StrykerConfig,
+  environment: Readonly<Record<string, string | undefined>>,
+): StrykerConfig {
+  return untypedLayeredStrykerConfig(config, toolPolicy(environment).tools?.['stryker']);
+}
 
 export const withoutProjectIgnoredMutants: (
   report: MutationReport,

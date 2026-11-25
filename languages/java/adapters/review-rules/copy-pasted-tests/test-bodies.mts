@@ -1,3 +1,4 @@
+import { bracketLayout } from '../../reuse/source/tokens/jvm-tokens.mts';
 import type { Token } from '../../reuse/jvm-reuse-types.mts';
 
 export type TestBody = {
@@ -29,8 +30,6 @@ const BOUNDARIES = new Set(['{', '}', ';']);
 const BODY_STARTS = new Set(['{', '=', ';']);
 const MEMBER_STARTS = new Set(['@', 'fun', 'private', 'internal', 'public', 'protected']);
 const PARAMETERIZED_ARGUMENTS = new Set(['dataProvider', 'dataProviderClass']);
-const OPENERS = new Set(['(', '{', '[']);
-const CLOSERS = new Set([')', '}', ']']);
 const CALL_NAME_OFFSET = 2;
 const CALL_CLOSE_OFFSET = 3;
 const CALL_OPEN_OFFSET = 4;
@@ -45,19 +44,7 @@ function annotated(tokens: readonly Token[], close: ReadonlyMap<number, number>)
 }
 
 function layoutOf(tokens: readonly Token[]): Layout {
-  const stack: number[] = [];
-  const close = new Map<number, number>();
-  const depth: number[] = [];
-  for (const [at, token] of tokens.entries()) {
-    const open = CLOSERS.has(token.text) ? stack.pop() : undefined;
-    if (open !== undefined) {
-      close.set(open, at);
-    }
-    depth.push(stack.length);
-    if (OPENERS.has(token.text)) {
-      stack.push(at);
-    }
-  }
+  const { close, depth } = bracketLayout(tokens);
   return { close, depth, covered: annotated(tokens, close) };
 }
 

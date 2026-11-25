@@ -1,11 +1,11 @@
 import { ChildProcess, spawn } from 'node:child_process';
 import { openOutputFile } from '../../tooling/output-file/output-file.mts';
-import { ANALYZER_TIMEOUT_KEY } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
-import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { ANALYZER_TIMEOUT_KEY } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mts';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
-} from '../../../shared/messages/troubleshooting.mjs';
+} from '../../../shared/messages/troubleshooting.mts';
 import { withoutHostCiOutputs } from '../../tooling/host-environment.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 import { withCompileCache } from '../../../shared/processes/environment.mts';
@@ -15,12 +15,12 @@ import {
   MAX_ANALYZER_STDOUT_BYTES,
 } from '../../../shared/report-output/fit-findings.mts';
 import { type AnalyzerTask, taskLimitEnvironment } from './tasks.mts';
-import { type AnalyzerReport, reportFromAnalyzerOutput } from './report/analyzer-report.mts';
+import { type AnalyzerReport, reportFromAnalyzerFile } from './report/analyzer-report.mts';
 
 type OutputFile = {
   readonly descriptor: number;
   readonly size: () => number;
-  readonly read: (encoding: 'utf8') => unknown;
+  readonly read: (encoding: 'utf8', limit?: number) => unknown;
   readonly remove: () => void;
 };
 
@@ -98,10 +98,13 @@ function settleClose(
   }
   try {
     resolve(
-      reportFromAnalyzerOutput(task, {
+      reportFromAnalyzerFile(task, {
         status,
         signal,
-        stdoutText: textOf(stdoutFile.read('utf8')),
+        stdoutFile: {
+          descriptor: stdoutFile.descriptor,
+          read: (encoding, limit) => textOf(stdoutFile.read(encoding, limit)),
+        },
         stderrText: Buffer.concat(output.stderr).toString('utf8'),
       }),
     );

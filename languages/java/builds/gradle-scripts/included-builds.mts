@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { filesUnder as untypedFilesUnder } from '../../../../shared/filesystem.mjs';
-import { containedPath as untypedContainedPath } from '../../../../shared/paths/contained-path.mjs';
+import { filesUnder as untypedFilesUnder } from '../../../../shared/filesystem.mts';
+import { containedPath as untypedContainedPath } from '../../../../shared/paths/contained-path.mts';
 import { BUILD_LOGIC_FOLDERS } from './kotlin-plugin.mts';
 
 const filesUnder: (

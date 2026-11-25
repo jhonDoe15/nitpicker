@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { zipOf } from '../test-support/zip-writer.mts';
+import { zipOf } from '../../../../shared/test-support/archives/zip-writer.mts';
 import { isJavaModule } from './lint-arguments.mts';
 import { temporaryRootMaker, writeFiles } from '../../__tests__/temporary-roots.mts';
 

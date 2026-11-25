@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { checkoutModuleUrl as untypedCheckoutModuleUrl } from '../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl as untypedCheckoutModuleUrl } from '../../shared/paths/checkout-module.mts';
 
 const checkoutModuleUrl: (url: URL) => URL = untypedCheckoutModuleUrl;
 

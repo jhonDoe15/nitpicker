@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ownedNativeChecker, ownedNativeMessage } from './native/owned-native-rules.mts';
 import { reportedRuleKey } from './oxlint-translation.mts';
-import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
+import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mts';
 import { troubleshootingError } from '../lint-engine/typed/tools.mts';
 import type {
   LintMessage,

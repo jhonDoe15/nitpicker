@@ -9,9 +9,20 @@ const tester = typescriptRuleTester();
 const built = (kind: string) => [{ messageId: 'sqlBuilt', data: { kind, tagged: taggedForm() } }];
 const template = built('a template literal');
 const concatenation = built('concatenation');
+const DIAMONDS = 7;
+const sharedInertParts = [
+  `const part0 = \`\${Number(n)}\${Number(n)}\${Number(n)}\`;`,
+  ...Array.from(
+    { length: DIAMONDS },
+    (_, index) =>
+      `const part${String(index + 1)} = c ? part${String(index)} : part${String(index)};`,
+  ),
+  `export const find = () => pool.query(\`SELECT * FROM t WHERE x = \${part${String(DIAMONDS)}}\`);`,
+].join('\n');
 
 tester.run('no-sql-string-building', noSqlStringBuilding, {
   valid: [
+    sharedInertParts,
     'export const find = (id) => pool.query("SELECT * FROM users WHERE id = $1", [id]);',
     'export const find = (id) => pool.query("SELECT * FROM users WHERE id = ?", [id]);',
     'export const find = (id) => db.execute(`SELECT * FROM users WHERE id = :id`, { id });',

@@ -2,31 +2,18 @@ import {
   formatAgnosticText,
   sourceLanguage,
   sourceLines,
-} from '../../../shared/source-text/format-tokens.mjs';
-import { movedLines } from '../../../shared/source-text/scope-moves.mjs';
-import { alignSequences } from '../../../shared/source-text/token-alignment.mjs';
-import { chainOf } from '../../../shared/traversal.mjs';
+} from '../../../shared/source-text/format-tokens.mts';
+import { movedLines } from '../../../shared/source-text/scope-moves.mts';
+import { alignSequences } from '../../../shared/source-text/token-alignment.mts';
+import type {
+  DescribedLine,
+  MovedContext,
+} from '../../../shared/source-text/typed/source-types.mts';
+import { chainOf } from '../../../shared/traversal.mts';
 
 export type SourceLanguage = { readonly name: string };
 
-export type DescribedLine = {
-  readonly scope: string;
-  readonly level: number;
-  readonly tokens: readonly string[];
-  readonly key: string;
-};
-
 export type LineToken = { readonly text: string; readonly line: number };
-
-export type MovedContext = {
-  readonly sides: {
-    readonly base: readonly (DescribedLine | undefined)[];
-    readonly head: readonly (DescribedLine | undefined)[];
-  };
-  readonly inBase: ReadonlySet<number>;
-  readonly inHead: ReadonlySet<number>;
-  readonly anchorOf: (line: number) => number;
-};
 
 function isSourceLanguage(value: unknown): value is SourceLanguage {
   return typeof value === 'object' && value !== null && 'name' in value;

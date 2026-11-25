@@ -14,21 +14,18 @@ import {
   sortByToolAndPath as sortEntries,
   summaryFields,
 } from '../reporting/report-model.mts';
-import { resolveProjectRoot as untypedProjectRoot } from '../../configuration/project-checks/project-root.mts';
 import { configuredAnalyzers as untypedConfiguredAnalyzers } from '../../../languages/typescript/preset/diff/configured-analyzers.mts';
-import { withTroubleshooting as untypedWithTroubleshooting } from '../../../shared/messages/troubleshooting.mjs';
-import { describeError as untypedDescribeError } from '../../../shared/messages/error-chain.mjs';
-import {
-  displayPath as untypedDisplayPath,
-  withoutAnsi as untypedWithoutAnsi,
-} from '../../../shared/messages/terminal/terminal-text.mjs';
 import { type Analyzer, analyzersOf } from '../../../shared/values/analyzers.mts';
 import type { TextOutput } from '../../cli-context.mts';
 import type { ReportData } from '../../../shared/values/findings.mts';
-import { textOf, textsOf } from '../../../shared/values/readers.mts';
+import { textsOf } from '../../../shared/values/readers.mts';
 import { largest } from '../../../shared/lists/lists.mts';
 
 export type { Entry, ShardEntries, ShardReport, UnchangedShard } from './read-shards.mts';
+export { resolveProjectRoot } from '../../configuration/project-checks/project-root.mts';
+export { withTroubleshooting } from '../../../shared/messages/troubleshooting.mts';
+export { describeError } from '../../../shared/messages/error-chain.mts';
+export { displayPath, withoutAnsi } from '../../../shared/messages/terminal/terminal-text.mts';
 export { planAnalyzerShards } from './sharding.mts';
 export { noChangesReport } from '../comparison/results.mts';
 export { outputRootFor, writeDiffReports } from '../reporting/reporters.mts';
@@ -50,7 +47,6 @@ export type AggregateRequest = {
 
 export type AggregateReport = ReportData & {
   readonly summary: Entry;
-  text?: unknown;
 };
 
 export type AggregateOptions = {
@@ -136,14 +132,6 @@ export function parseArguments(
 }
 export function sortByToolAndPath(entries: readonly Entry[]): Entry[] {
   return sortEntries([...entries]);
-}
-export const resolveProjectRoot: () => string = untypedProjectRoot;
-export const describeError: (error: unknown) => string = untypedDescribeError;
-export const displayPath: (absolutePath: string) => unknown = untypedDisplayPath;
-export const withoutAnsi: (text: string) => string = untypedWithoutAnsi;
-
-export function withTroubleshooting(message: string, anchor: unknown): string {
-  return textOf(untypedWithTroubleshooting(message, anchor));
 }
 
 function analyzerExclusions(analyzers: readonly Analyzer[]): string[] {

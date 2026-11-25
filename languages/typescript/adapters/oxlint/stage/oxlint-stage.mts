@@ -5,13 +5,15 @@ import {
   readdirSync,
   readFileSync,
   realpathSync,
+  rmSync,
   symlinkSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { ancestorDirectories, pathInside } from '../../../../../shared/filesystem.mts';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 import { typescriptApi } from '../../typed/typescript-program.mts';
 import { fieldsOf, listOf } from '../../../../../shared/values/readers.mts';
 import type { Override, Partition, Translation } from '../plan/oxlint-shapes.mts';
@@ -54,33 +56,75 @@ export function hideNestedTypeScriptConfigs(
 }
 
 function nestedConfigDirectories(projectRoot: string, files: readonly string[]): string[] {
-  const directories = new Set(
-    files.flatMap((file) => ancestorDirectories(path.posix.dirname(file))),
-  );
+  const directories = new Set(files.flatMap((file) => relativeAncestors(path.posix.dirname(file))));
   return [...directories]
     .sort()
     .filter((directory) => existsSync(path.join(projectRoot, directory, 'tsconfig.json')));
 }
 
-function ancestorDirectories(directory: string): string[] {
+function relativeAncestors(directory: string): string[] {
   const segments = directory === '.' ? [] : directory.split('/');
   return segments.map((_segment, index) => segments.slice(0, index + 1).join('/'));
 }
 
-export function createStage(projectRoot: string, projectConfigPath: string | undefined): string {
-  const stage = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-')));
-  for (const entry of readdirSync(projectRoot)) {
-    if (projectConfigPath !== undefined && entry === 'tsconfig.json') continue;
-    symlinkSync(path.join(projectRoot, entry), path.join(stage, entry));
+export type Stage = {
+  readonly root: string;
+  readonly stage: string;
+};
+
+export function createStage(projectRoot: string, projectConfigPath: string | undefined): Stage {
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-')));
+  try {
+    const stage =
+      projectConfigPath === undefined ? root : mirroredAncestors(root, path.resolve(projectRoot));
+    for (const entry of readdirSync(projectRoot)) {
+      if (projectConfigPath !== undefined && entry === 'tsconfig.json') continue;
+      symlinkSync(path.join(projectRoot, entry), path.join(stage, entry));
+    }
+    if (projectConfigPath !== undefined) {
+      writeFileSync(
+        path.join(stage, 'tsconfig.json'),
+        lintTypeScriptConfig(projectConfigPath, stage),
+      );
+    }
+    mkdirSync(path.join(stage, STAGE_DIRECTORY));
+    return { root, stage };
+  } catch (error) {
+    rmSync(root, { recursive: true, force: true });
+    throw error;
   }
-  if (projectConfigPath !== undefined) {
-    writeFileSync(
-      path.join(stage, 'tsconfig.json'),
-      lintTypeScriptConfig(projectConfigPath, stage),
-    );
+}
+
+function mirroredAncestors(root: string, projectRoot: string): string {
+  const ancestors = ancestorDirectories(projectRoot).slice(1);
+  const depth = ancestors.reduce(
+    (deepest, ancestor, index) => (isWorkspaceLevel(ancestor) ? index + 1 : deepest),
+    0,
+  );
+  const chain = [projectRoot, ...ancestors].slice(0, depth + 1).reverse();
+  let mirror = root;
+  for (const directory of chain.slice(1)) {
+    linkSiblings(directory, mirror);
+    mirror = path.join(mirror, path.basename(directory));
+    mkdirSync(mirror);
   }
-  mkdirSync(path.join(stage, STAGE_DIRECTORY));
-  return stage;
+  return mirror;
+}
+
+function linkSiblings(directory: string, mirror: string): void {
+  const name = path.basename(directory);
+  for (const entry of readdirSync(path.dirname(directory), { withFileTypes: true })) {
+    const link = pathInside(mirror, entry.name);
+    if (link !== undefined && entry.name !== name) {
+      symlinkSync(path.join(entry.parentPath, entry.name), link);
+    }
+  }
+}
+
+function isWorkspaceLevel(directory: string): boolean {
+  return (
+    existsSync(path.join(directory, 'node_modules')) || existsSync(path.join(directory, '.git'))
+  );
 }
 
 function lintTypeScriptConfig(projectConfigPath: string, stage: string): string {

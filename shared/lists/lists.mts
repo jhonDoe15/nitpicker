@@ -1,4 +1,5 @@
 import {
+  addToGroup as addToGroupItems,
   appendAll as appendAllItems,
   largest as largestValue,
   sharedPrefixLength as sharedPrefixLengthOf,
@@ -6,8 +7,14 @@ import {
 } from './items.mjs';
 
 export const appendAll: <T>(target: T[], items: Iterable<T>) => T[] = appendAllItems;
+export const addToGroup: <K, V>(groups: Map<K, V[]>, key: K, value: V) => void = addToGroupItems;
 export const largest: (values: Iterable<number>) => number = largestValue;
-export const sharedPrefixLength: <T>(left: readonly T[], right: readonly T[]) => number =
+type Sequence<T> = {
+  readonly length: number;
+  findIndex(predicate: (item: T, index: number) => boolean): number;
+};
+
+export const sharedPrefixLength: <T>(left: Sequence<T>, right: ArrayLike<T>) => number =
   sharedPrefixLengthOf;
 export const smallest: (values: Iterable<number>) => number = smallestValue;
 

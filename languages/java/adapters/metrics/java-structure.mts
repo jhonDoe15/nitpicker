@@ -1,16 +1,16 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { globMatcher as untypedGlobMatcher } from '../../../../shared/paths/glob.mjs';
+import { globMatcher as untypedGlobMatcher } from '../../../../shared/paths/glob.mts';
 import {
   methodText,
   readStructureFindings,
   STRUCTURE_TOOL,
-} from '../../../../shared/ingest/structure-report.mjs';
-import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
+} from '../../../../shared/ingest/structure-report.mts';
+import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mts';
 import { javaFolderDepthFindings } from '../size/folder-depth.mts';
 import { javaLineLengthFindings } from '../size/line-length.mts';
 import { javaLineLength } from '../style/java-style.mts';
-import { projectFilePaths } from '../../../../shared/project-files/project-files.mjs';
+import { projectFilePaths } from '../../../../shared/project-files/project-files.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../typed/java-values.mts';
 import { textsOf } from '../../../../shared/values/readers.mts';
 import type {
@@ -19,8 +19,8 @@ import type {
   FileLimitOptions,
   MethodEntry,
   ProjectManifest,
-  SourceCache,
 } from './java-structure-types.mts';
+import type { SourceCache } from '../../../../shared/ingest/typed/report-types.mts';
 
 const globMatcher: (glob: string) => { test(file: string): boolean } = untypedGlobMatcher;
 

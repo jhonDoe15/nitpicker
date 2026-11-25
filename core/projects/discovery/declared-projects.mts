@@ -1,5 +1,5 @@
-import { CONFIG_FILE_NAME, configError as untypedConfigError } from '../../../shared/config.mjs';
-import { globMatcher as untypedGlobMatcher } from '../../../shared/paths/glob.mjs';
+import { CONFIG_FILE_NAME, configError as untypedConfigError } from '../../../shared/config.mts';
+import { globMatcher as untypedGlobMatcher } from '../../../shared/paths/glob.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 import type { DeclaredEntry } from '../../configuration/layers/settings.mts';
 import type { ProjectEntry } from '../project-types.mts';

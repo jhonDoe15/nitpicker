@@ -10,10 +10,11 @@ import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.m
 import { readRemovesTests } from '../../../core/diff/git/patches/test-removal.mts';
 import { readRenameMap } from '../../../core/diff/git/patches/project-moves.mts';
 import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktree.mts';
-import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
+import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mts';
 import { javaRouteRule } from './java-policy.mts';
 import { withoutFollowedImports } from './imports/followed-imports.mts';
 import { withoutGeneratedSources } from './generated/generated-sources.mts';
+import { collapseGeneratedFloods } from './generated/generated-flood.mts';
 import { withoutOverlaps } from './overlaps/static-overlaps.mts';
 import { withJavaColumns } from './reporting/columns/java-columns.mts';
 import { withoutSkippedTools } from './reporting/skips/skipped-tools.mts';
@@ -101,7 +102,10 @@ export function collectJavaReport(
   const policed = callUntyped(
     applyFindingPolicy,
     withoutFollowedImports(
-      withProjectSourceRules(findingsOf(withoutGeneratedSources(parsed, projectRoot)), projectRoot),
+      withProjectSourceRules(
+        collapseGeneratedFloods(findingsOf(withoutGeneratedSources(parsed, projectRoot))),
+        projectRoot,
+      ),
       options.policy?.conventions,
       readSource,
     ),

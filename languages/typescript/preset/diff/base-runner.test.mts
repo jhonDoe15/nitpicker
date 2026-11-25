@@ -189,9 +189,7 @@ describe('a base config without a test runner', () => {
 
     const setup = resolve({
       baseProjectRoot: root,
-      headSnapshotRoot: root,
       analyzers: [],
-      moves: {},
     });
 
     expect(fieldOf(fieldOf(setup, 'headPolicy'), 'tools')).toEqual(headPolicy.tools);

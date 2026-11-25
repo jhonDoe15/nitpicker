@@ -1,14 +1,7 @@
 import path from 'node:path';
-import { policyAcceptance } from '../policy/policy-acceptance.mts';
 import { outputRootFor } from '../../diff/reporting/reporters.mts';
 import { inspectRepository } from '../plan/inspect.mts';
 import { isGitWorkTree, memberProjectOf } from '../plan/member-root.mts';
-import {
-  asProjectLoosenings,
-  projectSetLoosenings,
-  repositoryPolicy,
-} from '../policy/project-set.mts';
-import { reappearedProjects } from '../policy/reappeared.mts';
 import {
   clearStaleProjectReports,
   writeCombinedMachineReports,
@@ -22,6 +15,7 @@ import {
   submoduleHint,
   undeclaredHint,
   unlistedHint,
+  writeUndeclaredProjects,
 } from './messages.mts';
 import {
   comparisonOf,
@@ -35,16 +29,13 @@ import { clearReports, extrasOf, type RunContext } from './execution/project-row
 import { runRowsWithSharedBase } from './execution/shared-base.mts';
 import type { ExitCode } from '../../cli-context.mts';
 import type {
-  Comparison,
   Inspection,
   MonorepoCli,
   MonorepoPlan,
   PlanProject,
   ProjectRow,
-  RepositoryPolicy,
   RunProject,
 } from '../project-types.mts';
-import type { Loosening } from '../policy/project-set.mts';
 import { withInternalFrames } from '../../../shared/messages/crashes/internal-error.mts';
 
 type Planned = { readonly plan: MonorepoPlan; readonly files: readonly string[] };
@@ -54,14 +45,17 @@ type MonorepoResult = { readonly exitCode?: ExitCode; readonly extraCli?: object
 const memberOf: (plan: MonorepoPlan, directory: string | undefined) => PlanProject | undefined =
   memberProjectOf;
 
-function noticesOf(plan: MonorepoPlan, changed: readonly string[], cli: MonorepoCli): string[] {
+function noticesOf(plan: MonorepoPlan, prepared: Prepared, cli: MonorepoCli): string[] {
+  const { outputRoot, comparison } = prepared;
+  const listFile = writeUndeclaredProjects(outputRoot, plan.undeclared, plan.root);
   const notices: string[] = [
     ...undeclaredHint(
       plan.undeclared,
       plan.projects.map(({ path: folder }) => folder),
+      { listFile },
     ),
-    ...unlistedHint(unlistedFolders(plan, changed)),
-    ...submoduleHint(submodulePaths(plan).filter((folder) => changed.includes(folder))),
+    ...unlistedHint(unlistedFolders(plan, comparison.changed)),
+    ...submoduleHint(submodulePaths(plan).filter((folder) => comparison.changed.includes(folder))),
   ];
   for (const notice of notices) {
     cli.stderr.write(`nitpicker: ${notice}\n`);
@@ -69,35 +63,9 @@ function noticesOf(plan: MonorepoPlan, changed: readonly string[], cli: Monorepo
   return notices;
 }
 
-function headProjectSet({ plan, files }: Planned, comparison: Comparison): Loosening[] {
-  return projectSetLoosenings({
-    basePlan: comparison.basePlan,
-    headPlan: plan,
-    root: plan.root,
-    headFiles: files,
-    reappeared: reappearedProjects({ plan, basePlan: comparison.basePlan, comparison }),
-  });
-}
-
-function repositoryOf(
-  planned: Planned,
-  comparison: Comparison,
-  cli: MonorepoCli,
-): RepositoryPolicy | undefined {
-  const loosenings = headProjectSet(planned, comparison);
-  const { acceptPolicyChange } = policyAcceptance(cli.options, cli.environment, cli.interactive);
-  return repositoryPolicy({
-    loosenings,
-    root: planned.plan.root,
-    acceptedDigest: acceptPolicyChange,
-    toolErrors: comparison.toolErrors ?? [],
-  });
-}
-
 type Finished = {
   readonly cli: MonorepoCli;
   readonly notices: readonly string[];
-  readonly repository: RepositoryPolicy | undefined;
   readonly startedAt: number;
 };
 
@@ -122,17 +90,17 @@ type Finish = (results: readonly ProjectRow[]) => number;
 function finisher(planned: Planned, prepared: Prepared, run: Finished): Finish {
   const { plan } = planned;
   const { outputRoot, outside } = prepared;
-  const { cli, notices, repository, startedAt } = run;
+  const { cli, notices, startedAt } = run;
   return (results) => {
     const elapsedMs = Date.now() - startedAt;
-    const summary = combinedSummary({ plan, results, outside, notices, repository, elapsedMs });
+    const summary = combinedSummary({ plan, results, outside, notices, elapsedMs });
     const text: string = renderSummary({
       summary,
       summaryPath: path.join(outputRoot, 'summary.json'),
       details: cli.options.details,
     });
     writeCombinedReports(outputRoot, summary, text);
-    writeCombinedMachineReports({ outputRoot, plan, repository });
+    writeCombinedMachineReports({ outputRoot, plan });
     cli.stdout.write(text);
     return exitCodeOf(summary, cli.options);
   };
@@ -143,10 +111,9 @@ function execute(planned: Planned, cli: MonorepoCli, runProject: RunProject): Ex
   const startedAt = Date.now();
   const prepared = prepare(plan, cli);
   const { outputRoot, analyzers, comparison, outside, rows } = prepared;
-  const notices = noticesOf(plan, comparison.changed, cli);
+  const notices = noticesOf(plan, prepared, cli);
   cli.stdout.write(renderPlan({ plan, rows, outside, details: cli.options.details }));
-  const repository = repositoryOf(planned, comparison, cli);
-  const finish = finisher(planned, prepared, { cli, notices, repository, startedAt });
+  const finish = finisher(planned, prepared, { cli, notices, startedAt });
   const context = { cli, runProject, outputRoot, comparison, analyzers };
   const results = runRowsWithSharedBase(rows, context, plan.repositoryRoot);
   if (results instanceof Promise) {
@@ -178,12 +145,7 @@ function runMember(
   const { member } = planned;
   const comparison = comparisonOf(planned.plan, cli);
   const extras = extrasOf(member, { comparison, analyzers: new Map() });
-  const loosenings = headProjectSet(planned, comparison);
-  return runProject(cli.options, {
-    ...extras.cli,
-    repositoryLoosenings: asProjectLoosenings(loosenings, planned.plan.root),
-    repositoryToolErrors: comparison.toolErrors ?? [],
-  });
+  return runProject(cli.options, extras.cli);
 }
 
 function atTop(planned: Planned, entry: Entry, runProject: RunProject): ExitCode {

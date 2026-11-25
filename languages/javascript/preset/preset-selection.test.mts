@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { presetAnalyzers } from '../../../core/configuration/preset-analyzers.mts';
-import { createHygieneAnalyzers } from '../../../shared/hygiene/analyzers.mjs';
+import { createHygieneAnalyzers } from '../../../shared/hygiene/analyzers.mts';
 import type { PackageAnalyzer } from '../../typescript/preset/diff/typed/analyzer-types.mts';
 import type { Layout as ProjectLayout } from '../../typescript/adapters/typed/head-policy.mts';
 import { type Analyzer, analyzersOf } from '../../../shared/values/analyzers.mts';
@@ -26,7 +26,7 @@ import {
 import { createQualityChecks as untypedCreateQualityChecks } from '../../typescript/preset/quality-checks.mts';
 import { isJavascriptPolicy } from './javascript-preset.mts';
 import { fileURLToPath } from 'node:url';
-import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mts';
 
 type Layout = ProjectLayout & {
   readonly unitTestGlobs: readonly string[];
@@ -63,7 +63,9 @@ function hasInvocation(analyzer: Analyzer): analyzer is PresetAnalyzer {
   return typeof analyzer['createInvocation'] === 'function';
 }
 
-const cliPath = fileURLToPath(checkoutModuleUrl(new URL('../../../core/cli.mjs', import.meta.url)));
+const entryPath = fileURLToPath(
+  checkoutModuleUrl(new URL('../../../core/bin.mjs', import.meta.url)),
+);
 
 const packageRoot = fileURLToPath(new URL('../../..', import.meta.url));
 const javascriptPolicy = resolveHeadPolicy({ preset: 'javascript' });
@@ -92,7 +94,7 @@ describe('preset selection', () => {
   it('runs the TypeScript analyzers for the typescript preset and for no preset', () => {
     const expected = fingerprint([
       ...packageAnalyzers,
-      ...analyzersOf(createHygieneAnalyzers(cliPath)),
+      ...analyzersOf(createHygieneAnalyzers(entryPath)),
     ]);
 
     expect(fingerprint(presetAnalyzers({ preset: 'typescript' }))).toEqual(expected);
@@ -103,7 +105,10 @@ describe('preset selection', () => {
     const selected = fingerprint(presetAnalyzers({ preset: 'javascript' }));
 
     expect(selected).toEqual(
-      fingerprint([...javascriptPackageAnalyzers, ...analyzersOf(createHygieneAnalyzers(cliPath))]),
+      fingerprint([
+        ...javascriptPackageAnalyzers,
+        ...analyzersOf(createHygieneAnalyzers(entryPath)),
+      ]),
     );
     expect(selected).not.toEqual(fingerprint(packageAnalyzers));
   });

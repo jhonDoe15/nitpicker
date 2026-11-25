@@ -15,7 +15,7 @@ import { type QualitySnapshot, runQualitySnapshot } from '../snapshot/run-snapsh
 import {
   colorEnabled as untypedColorEnabled,
   displayPath as untypedDisplayPath,
-} from '../../shared/messages/terminal/terminal-text.mjs';
+} from '../../shared/messages/terminal/terminal-text.mts';
 import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mts';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mts';
@@ -67,7 +67,7 @@ type SnapshotCli = {
   readonly sharedHeadWorktree?: SharedWorktree | undefined;
 };
 
-type SnapshotReport = QualitySnapshot & { text?: unknown };
+type SnapshotReport = QualitySnapshot;
 
 type Capture = (repositoryRoot: string, headSha: string) => unknown;
 
@@ -176,7 +176,7 @@ function writeAndFinish(
     readonly resume: unknown;
   },
 ): void {
-  report.text = writeSnapshotReports(place.outputRoot, report, {
+  writeSnapshotReports(place.outputRoot, report, {
     projectPath: place.relativeProjectPath,
     repositoryRoot: place.repositoryRoot,
   });

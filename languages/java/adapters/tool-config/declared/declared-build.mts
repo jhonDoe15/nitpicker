@@ -1,7 +1,10 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { childAt, parseXml } from '../../../../../shared/values/xml.mts';
-import type { XmlElement } from '../../../../../shared/values/xml.mts';
+import {
+  childAt,
+  parseXml,
+  type XmlElement,
+} from '../../../../../shared/ingest/report-records.mts';
 import { configurations, pluginsNamed } from '../../../builds/narrowing/maven-sources.mts';
 import type {
   BuildSource,
@@ -12,7 +15,7 @@ import type {
   Pom,
   Script,
 } from './declared-types.mts';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mts';
 import { messageOf, textOf } from '../../../../../shared/values/readers.mts';
 import { gradleStatements, quotedGroups } from '../../../builds/narrowing/gradle-script.mts';
 import { buildFiles } from '../../../conventions/build-style/build-files.mts';
@@ -25,10 +28,18 @@ const SKIPPED_DIRECTORIES = new Set([
   'build',
   'target',
   'out',
+  'fixture',
   'fixtures',
+  '__fixtures__',
   'testdata',
+  'test',
+  'tests',
+  '__tests__',
+  'testFixtures',
 ]);
 const LOGIC_ROOT = /^(?:buildSrc|build-logic)(?:\/|$)/u;
+const TEST_SOURCE_SET = /^(?:test|tests|testFixtures|.*Tests?)$/u;
+const SOURCE_SET_ROOT = /(?:^|\/)src\/[^/]+$/u;
 const MAX_FILE_BYTES = 512 * 1024;
 const QUOTED = /"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'/gu;
 const ROOT_PREFIX =
@@ -50,7 +61,13 @@ function skipped(name: string, relative: string): boolean {
   if (name.startsWith('.') || SKIPPED_DIRECTORIES.has(name)) {
     return true;
   }
-  return name === 'src' && !LOGIC_ROOT.test(relative);
+  if (name === 'src' && !LOGIC_ROOT.test(relative)) {
+    return true;
+  }
+  if ((relative === 'src' || relative.endsWith('/src')) && TEST_SOURCE_SET.test(name)) {
+    return true;
+  }
+  return name === 'resources' && SOURCE_SET_ROOT.test(relative);
 }
 
 function relativeOf(directory: string, name: string): string {

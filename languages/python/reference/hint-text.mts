@@ -3,9 +3,9 @@ import type { RuleHintView } from './typed/hint-views.mts';
 
 const SUBJECT = '<name>';
 
-export function allowedOf(hint: RuleHintView): unknown {
+export function allowedOf(hint: RuleHintView): string | undefined {
   return typeof hint.allowed === 'function'
-    ? Reflect.apply(hint.allowed, undefined, [SUBJECT, DEFAULT_LIBRARIES])
+    ? hint.allowed(SUBJECT, DEFAULT_LIBRARIES, '')
     : hint.allowed;
 }
 

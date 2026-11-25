@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SHARED_BUILD_DIRECTORY_ENVIRONMENT } from '../../../../core/tooling/build-once/build-once.mts';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mts';
 import { analyzeCoupling } from '../../preset/coupling/analyze.mts';
-import { EXCLUDED_PATH_PATTERN } from '../../preset/dependency-graph/cruise.mts';
+import { EXCLUDED_PATH_PATTERN } from '../../preset/layout.mts';
 import { analyzeEntryPoints as untypedAnalyzeEntryPoints } from '../../preset/entry-points/analyze.mts';
 import { defaultResolvedLayout } from '../../preset/layout.mts';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';

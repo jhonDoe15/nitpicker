@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { duplicateBranchFindings as untypedDuplicateBranchFindings } from '../../../../../shared/rules/branches/duplicate-branches.mjs';
-import type { RuleFindings } from '../test-support/parse-go.mts';
+import { duplicateBranchFindings } from '../../../../../shared/rules/branches/duplicate-branches.mts';
 import { ruleLines } from '../test-support/rule-lines.mts';
 
-const duplicateBranchFindings: RuleFindings = untypedDuplicateBranchFindings;
 const guards = ruleLines(
   duplicateBranchFindings,
   'facts',

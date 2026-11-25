@@ -80,9 +80,8 @@ Where each kind of finding is lifted for some paths:
 `python.entryPoints` lists the files that start the program, such as a job runner or a worker that
 reads its settings from the environment or connects at import (see the composition roots below).
 `process-env-access`, `process-stream-access`, `import-time-effect` and `service-locator-lookup`
-skip a file listed there. Like `layout.entryPoints`, an added or removed entry is listed among the
-policy changes and does not fail the gate, unless another production module imports a file it newly
-covers; the base snapshot is measured with the entry points both sides declare.
+skip a file listed there. Like `layout.entryPoints`, the base snapshot is measured with the entry
+points both sides declare.
 
 Nothing needs listing for a file that is started in a way the gate can read: a module with an
 `if __name__ == "__main__":` block, a module that a `pyproject.toml` task or a GitHub Actions step
@@ -92,13 +91,8 @@ module started as `python -m package.module`. These count as composition roots f
 still reports an effect outside the main guard, and the files that a CI step or task runs are
 exempt from it like the files above.
 
-The policy-change list also reads the project's own pytest and mutmut settings, because they shrink
-what the gate measures: `testpaths` that stop collecting a test file and an added `--ignore` or
-`--ignore-glob` in `addopts`, both counted only for files pytest collects (`python_files`), and a
-`do_not_mutate` pattern that covers production code are loosening. `-k`, `-m` and `--deselect` are
-not, because the run strips them and `uncollected-tests` reports the tests they hide (`languages/python/adapters/configuration/pytest/test-selection.mts`). A hidden
-module that production code imports (`from legacy import feature`, followed through other hidden
-modules and parent packages) fails even under an established `exclude`. Changed `.py` files outside
+The run strips `-k`, `-m` and `--deselect` from the project's pytest settings, and
+`uncollected-tests` reports the tests they hide (`languages/python/adapters/test-runs/pytest-pins.mts`). Changed `.py` files outside
 `python.sourceRoots` are named in a notice that never fails the run.
 
 The type checker is the one the project uses: `mypy` when it has a `[tool.mypy]` table (or
@@ -204,9 +198,7 @@ conventions win instead for ruff; it is a config error for black, whose flags ca
 normalization back on. Listing `"project"` with no config file is a tool error that says to create it
 or remove `"project"` from `tools.<tool>.precedence`. The file is read from the head checkout for
 both sides of the comparison and passed to the formatter as `--config <file>`; the whole `extend`
-chain and the located files are part of the cache key, and an edit of the opted-in settings (the
-`[tool.ruff]` or `[tool.black]` table, not the rest of `pyproject.toml`) is a policy change a person
-reviews; comments and layout do not count. The line length that the conventions take from the config is read from the merge base in a comparison (its parent-folder configs and `extend`ed files included; the branch's own config only when the base has no Python sources), so a pull request cannot raise its own limit by editing the config. The format command then passes the followed value (`--line-length`, the quote style of ruff, indentation) wherever the head config says another one, and the printed command shows it. Which formatter applies which convention:
+chain and the located files are part of the cache key. The line length that the conventions take from the config is read from the merge base in a comparison (its parent-folder configs and `extend`ed files included; the branch's own config only when the base has no Python sources), so a pull request cannot raise its own limit by editing the config. The format command then passes the followed value (`--line-length`, the quote style of ruff, indentation) wherever the head config says another one, and the printed command shows it. Which formatter applies which convention:
 ruff format applies all three; black applies `python.lineLength` and `python.quotes` (it keeps single
 quotes as written, so it accepts both styles) and has no indentation option, so `python.indentation`
 is neither measured nor printed with black, and pinning it is a config error. A file votes a line

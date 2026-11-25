@@ -2,16 +2,16 @@ import { sumToolCount, formatSeconds } from './format/text.mts';
 import { heldFindings as heldGroups, heldLine as heldEntryLine } from './format/held-findings.mts';
 import { noteSectionLines as noteLines } from './format/notes.mts';
 import { noticeSection } from './review/notices.mts';
-import { policyChangeSection } from './review/policy-changes.mts';
 import { quickLines, stagedLines } from '../../quick/summary.mts';
 import { partialRunLines } from './partial-run/partial-run.mts';
 import { skippedLines } from '../skipping/lines.mts';
 import { metricChange } from './console/metric-values.mts';
 import { cleanLine, isActiveDiffTool, splitTools } from './console/tool-table.mts';
-import { repositoryUrl } from '../../../shared/reference/facts.mjs';
-import { helpUriFor, referenceLinks } from '../../../shared/reference/store.mjs';
+import { repositoryUrl } from '../../../shared/reference/facts.mts';
+import { helpUriFor, referenceLinks } from '../../../shared/reference/store.mts';
 import { projectLine, scopeLine } from '../../scope/scope-findings.mts';
-import type { ReferenceLinks, ReportData, ReportEntry } from '../../../shared/values/findings.mts';
+import type { ReportData, ReportEntry } from '../../../shared/values/findings.mts';
+import type { ReferenceLinks } from '../../../shared/reference/typed/entry-types.mts';
 import { fieldOf, listOf, numberOr, textOf } from '../../../shared/values/readers.mts';
 import {
   failingFirstLines,
@@ -27,9 +27,6 @@ const stagedLinesOf: (summary: unknown) => readonly string[] = stagedLines;
 const quickLinesOf: (summary: unknown) => readonly unknown[] = quickLines;
 const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
 const projectLinesOf: (summary: unknown) => readonly string[] = projectLine;
-const docsUrl: (relativePath: string, anchor: undefined, root: unknown) => unknown = repositoryUrl;
-const helpUri: (links: ReferenceLinks, finding: ReportEntry) => unknown = helpUriFor;
-const links: () => ReferenceLinks = referenceLinks;
 const skippedLinesOf: (summary: unknown) => readonly string[] = skippedLines;
 const changeOf: (metric: ReportEntry) => string = metricChange;
 const activeAndClean: (
@@ -45,12 +42,18 @@ function field(value: unknown, key: string): string {
 
 export function renderTextReport(
   report: ReportData,
-  { reference = links() }: { readonly reference?: ReferenceLinks } = {},
+  options: { readonly reference?: ReferenceLinks } = {},
 ): string {
+  return `${textReportLines(report, options).join('\n')}\n`;
+}
+
+export function textReportLines(
+  report: ReportData,
+  { reference = referenceLinks() }: { readonly reference?: ReferenceLinks } = {},
+): unknown[] {
   const lines: unknown[] = [
     ...summaryLines(report),
     ...configOverrideLines(listOf(report.summary['configOverrides'])),
-    ...policyChangeSection(report.summary),
     ...noticeSection(listOf(report.summary['notices'])),
     ...toolCountLines(report.summary),
   ];
@@ -61,7 +64,7 @@ export function renderTextReport(
   appendMetricSection(lines, report.changedMetrics);
   appendAll(lines, toolErrorSectionLines(report.toolErrors));
   appendAll(lines, noteLines(report.notes));
-  return `${lines.join('\n')}\n`;
+  return lines;
 }
 
 function summaryLines(report: ReportData): unknown[] {
@@ -119,7 +122,12 @@ function toolCountLine(tool: unknown): string {
     fieldOf(tool, 'skippedBecause') === undefined
       ? ''
       : ` skipped (${field(tool, 'skippedBecause')} failed)`;
-  const counts = `base=${field(tool, 'base')} head=${field(tool, 'head')} new=${field(tool, 'new')} resolved=${field(tool, 'resolved')}`;
+  const counts = [
+    `base=${field(tool, 'base')}`,
+    `head=${field(tool, 'head')}`,
+    `new=${field(tool, 'new')}`,
+    `resolved=${field(tool, 'resolved')}`,
+  ].join(' ');
   const unchanged = `unchanged=${field(tool, 'unchanged')} changed-metrics=${field(tool, 'changedMetrics')}`;
   const elapsed = formatSeconds(numberOr(fieldOf(tool, 'elapsedMs'), 0));
   return `${field(tool, 'name')}: ${counts} ${unchanged} elapsed=${elapsed}${skipped}`;
@@ -140,8 +148,14 @@ export function ruleReferenceLines(
   findings: readonly ReportEntry[],
   reference: ReferenceLinks,
 ): string[] {
-  const known = findings.some((finding) => helpUri(reference, finding) !== undefined);
-  const url = known ? docsUrl('docs/rules/README.md', undefined, reference.root()) : undefined;
+  const known = findings.some(
+    (finding) =>
+      helpUriFor(reference, { tool: textOf(finding.tool), rule: textOf(finding.rule) }) !==
+      undefined,
+  );
+  const url = known
+    ? repositoryUrl('docs/rules/README.md', undefined, reference.root())
+    : undefined;
   return url === undefined
     ? []
     : ['', `Rule reference: ${textOf(url)} (nitpicker explain <tool/rule> prints one rule)`];
@@ -165,8 +179,7 @@ function appendMetricSection(lines: unknown[], metrics: readonly ReportEntry[]):
   }
   lines.push('', 'Changed metrics:');
   for (const metric of metrics) {
-    lines.push(
-      `${textOf(metric.tool)}/${textOf(metric.rule)} ${textOf(metric.path)} ${field(metric, 'metric')}: ${changeOf(metric)}`,
-    );
+    const where = `${textOf(metric.tool)}/${textOf(metric.rule)} ${textOf(metric.path)}`;
+    lines.push(`${where} ${field(metric, 'metric')}: ${changeOf(metric)}`);
   }
 }

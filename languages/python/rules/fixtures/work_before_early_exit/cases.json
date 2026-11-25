@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "work-before-early-exit",
+    "mention": "below the early exit"
+  }
+]

@@ -5,7 +5,7 @@ import {
   memberCall as untypedMemberCall,
   roundTripMessage as untypedRoundTripMessage,
   shownMember as untypedShownMember,
-} from '../../../../../shared/rules/round-trips/round-trips.mjs';
+} from '../../../../../shared/rules/round-trips/round-trips.mts';
 import type { ReviewFinding } from '../../kotlin/review-rules/typed/review-finding-types.mts';
 import type {
   TripFunction,

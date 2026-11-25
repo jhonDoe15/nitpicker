@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
-} from '../../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../../shared/messages/troubleshooting.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import { withoutOptions } from '../../test-runner/script-command.mts';
 import { JEST_OPTIONS_NITPICKER_SETS } from '../../test-runner/runners.mts';

@@ -7,7 +7,7 @@ import {
   projectToolLayer as untypedProjectToolLayer,
   withProjectToolConfigs as untypedWithProjectToolConfigs,
 } from './project-tool-policy.mts';
-import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mts';
 import { useTemporaryProjects } from '../test-support/temporary-projects.mts';
 
 type Settings = {

@@ -1,0 +1,6 @@
+[
+ {"name": "Word", "file": "test", "message": "word", "xpath": "//StringLiteral[matches(@ConstValue, '^\\w+$')]"},
+ {"name": "NotWord", "file": "test", "message": "not word", "xpath": "//StringLiteral[matches(@ConstValue, '\\W')]"},
+ {"name": "Space", "file": "test", "message": "space", "xpath": "//StringLiteral[matches(@ConstValue, '\\s')]"},
+ {"name": "NotSpace", "file": "test", "message": "not space", "xpath": "//StringLiteral[matches(@ConstValue, '^\\S+$')]"}
+]

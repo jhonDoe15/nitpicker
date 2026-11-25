@@ -1,4 +1,4 @@
-import { configError } from '../../../../shared/config.mjs';
+import { configError } from '../../../../shared/config.mts';
 import { GitCommandError, listRemotes, runGit } from './command.mts';
 
 type BaseChoice = { readonly baseRef: string; readonly source: string };

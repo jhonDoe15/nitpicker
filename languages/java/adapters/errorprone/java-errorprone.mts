@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
-import { normalizeReportPath } from '../../../../shared/ingest/common.mjs';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mts';
+import { normalizeReportPath } from '../../../../shared/ingest/report-records.mts';
 import { ingestErrorProne } from '../../ingest/errorprone/errorprone.mts';
 import { isClassExempt } from './exemptions/class-exemptions.mts';
 import { isFormatterOwned } from './layout/formatter-owned.mts';
@@ -15,6 +15,7 @@ import { errorProneChecks } from './checks/checks-docs.mts';
 import type { ErrorProneChecks } from './checks/checks-shape.mts';
 import { callUntyped } from '../typed/java-values.mts';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
+import { withEngineDiagnostics } from '../../builds/errorprone/engine-diagnostics.mts';
 
 type ReportContext = Readonly<Record<string, unknown>> & { readonly reportRoot: string };
 type Placement = {
@@ -45,7 +46,10 @@ export function readErrorProneFindings(context: ReportContext): Finding[] {
   };
   const manifest = context['manifest'];
   const testRoots = textsOf(fieldOf(manifest, 'testSourceRoots'));
-  const report: unknown = JSON.parse(readFileSync(reportPath, 'utf8'));
+  const report = withEngineDiagnostics(
+    JSON.parse(readFileSync(reportPath, 'utf8')),
+    context.reportRoot,
+  );
   const { diagnostics, crashes } = splitCrashes(report);
   const readSource: unknown = sourceReader(context.reportRoot);
   const checks = errorProneChecks();

@@ -170,7 +170,7 @@ describe('a Jest run that a Create React App script starts', () => {
         ...['--json', `--outputFile=${path.join(root, '.nitpicker-diff-jest-report.json')}`],
         ...[
           '--testLocationInResults',
-          `--testTimeout=${String(testTimeoutMs(undefined))}`,
+          `--testTimeout=${String(testTimeoutMs(options))}`,
           '--restoreMocks',
         ],
         ...['--reporters=default', '--silent=false', '--verbose=false'],

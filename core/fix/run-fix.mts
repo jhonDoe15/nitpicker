@@ -1,5 +1,5 @@
 import { spawnSyncWithOutputFile } from '../tooling/output-file/output-file.mts';
-import { TOOL_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
+import { TOOL_TIMEOUT_MS } from '../../shared/processes/deadlines.mts';
 import { fixTypeScript } from '../../languages/typescript/fix/typescript-fix.mts';
 import { dryRun as untypedDryRun } from './dry-run/dry-run.mts';
 import {

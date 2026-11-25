@@ -25,6 +25,8 @@ One npm package (`nitpicker`) serves every language; the package root is the rep
   (`metrics/`); it reuses the generic ingesters in `shared/ingest/`.
 - `languages/go/`: the Go analyzer (`adapters/`) and the `go/ast` metrics program (`inspect/`, a Go
   module on the standard library only).
+- `engine/`: a prototype of nitpicker's own analysis engine, a Rust program with its own
+  [README](engine/README.md) and its own conventions. Nothing calls it yet. Not shipped.
 - `spec/`, `docs/`, `evals/` and `scripts/`: the language-neutral contract, documentation,
   agent evaluations and maintenance scripts. Not shipped.
 
@@ -41,26 +43,21 @@ the npm package.
 
 ## TypeScript sources
 
-The code is moving from JavaScript (`.mjs`) to TypeScript (`.mts`) one area at a time; issue #147
-tracks the plan. Node.js strips the types itself, so a checkout runs `.mts` files with no build
-step, and `npm pack` emits a `.mjs` file beside each shipped `.mts` (`scripts/typescript/emit.mjs`)
-so the package stays plain JavaScript.
+Node.js strips the types itself, so a checkout runs `.mts` files with no build step, and `npm pack`
+emits a `.mjs` file beside each shipped `.mts` (`scripts/typescript/emit.mjs`) so the package stays
+plain JavaScript.
 
-- Import a converted module by its real name (`./a.mts`); `npm run typecheck` checks every `.mts`
-  file against `tsconfig.json`, the flags of the strict preset.
+- Import a module by its real name (`./a.mts`); `npm run typecheck` checks every `.mts` file against
+  `tsconfig.json`, the flags of the strict preset.
 - Use only syntax that Node.js can strip: no enums, namespaces or parameter properties.
-- A shipped `.mjs` file must not import a `.mts` file, so shipped code converts from the importers
-  down. `node scripts/typescript/ready.mts <folder>` lists the modules of a folder that can convert
-  now, and `node scripts/typescript/convert.mts <files>` renames them and rewrites their imports and
-  their `nitpicker.config.json` entries, then lists the places that name them by path.
 - Code that opens a module by path (a worker, a spawned runner, a config file handed to a tool, a
   file list that is hashed) keeps the packaged `.mjs` name and resolves it with
-  `checkoutModulePath` or `checkoutModuleUrl` from `shared/paths/checkout-module.mjs`, which pick
+  `checkoutModulePath` or `checkoutModuleUrl` from `shared/paths/checkout-module.mts`, which pick
   the `.mts` source in a checkout when Node.js strips types and the emitted `.mjs` otherwise.
 - `npm pack` and the container build run on Node.js 22.14, which cannot strip types: they emit the
   `.mjs` files first (`node scripts/typescript/emit.mjs`, cleaned with `--clean`). Their own
   scripts, `scripts/typescript/emit.mjs` and `scripts/reference/gen-rules.mjs` with the
-  `scripts/reference/` modules it imports, stay JavaScript; `ready.mts` holds them.
+  `scripts/reference/` modules it imports and `shared/lists/items.mjs`, stay JavaScript.
 
 ## Batching issues into pull requests
 
@@ -103,7 +100,7 @@ everything and merge or rebase on the latest `main` before the final run. A chan
 end-to-end behaviour also needs that language's suite (`npm run test:java`, `test:kotlin` or
 `test:python` or `test:go`), which needs the language's toolchain. CI runs all four, in the `java-e2e`,
 `kotlin-e2e`, `python-e2e` and `go-e2e` workflows, which follow the same triggers as the `typescript` workflow
-below (pushes to `main` that touch the paths they list, a manual run, and the `run-ci` label). The
+below (pushes to `main` and `integration` that touch the paths they list, a manual run, and the `run-ci` label). The
 `github-action` workflow, which runs the composite action in `action.yml` on the sample project in
 `.github/sample-project`, and the `platforms` workflow described below follow them too; neither is a
 required check. On a pull request, each of these six workflows first runs a small `changes` job
@@ -134,6 +131,9 @@ CI (the `typescript` workflow) runs:
 
 - on every push to `main` that touches a path in the workflow's `paths` list (a run that has started
   finishes; a run still waiting is replaced by the next push's run, which tests everything merged so far);
+- on every such push to `integration`, the branch that collects finished work before it lands on
+  `main`: pull requests merge into it without a run of their own, and a newer push cancels the older
+  push's run;
 - on a pull request when someone adds a label while it carries the `run-ci` label: adding `run-ci`
   starts it, and any later label runs it again (remove and add `run-ci` for another run). GitHub
   keeps only the newest run of a workflow for a commit and counts a skipped required check as
@@ -144,21 +144,13 @@ CI (the `typescript` workflow) runs:
 GitHub does not start a pull request run while the pull request has a merge conflict, so resolve it
 before adding the label.
 
-When a pull request loosens `nitpicker.config.json` (for example an exception, exclude or entry
-point that covers a new code file; see the policy changes in [docs/usage.md](docs/usage.md)), the
-self-gate fails with a `nitpicker-config/policy-loosened` finding. A maintainer who agrees with the
-loosening adds the `accept-policy-change` label. The
-[policy approval workflow](.github/workflows/nitpicker-policy-approval.yml) records the approval
-on the head commit as the `nitpicker/policy-accepted` status, removes the label and re-runs the
-failed jobs, so the self-gate passes for that commit. A later push is a new commit and needs the
-label again. Coding agents never add the label. The
-self-gate runs the pull request's own code and workflow, so changes to `.github/workflows/`,
+The self-gate runs the pull request's own code and workflow, so changes to `.github/workflows/`,
 `core/`, `package.json` and `nitpicker.config.json` need a careful review whatever the gate says.
 
 The self-gate runs as three parallel `self-gate shard` jobs, each with its share of the analyzers
 ([Sharding in CI](docs/usage.md#sharding-in-ci)); the required `self-gate` check combines their
 reports with `nitpicker aggregate` and lists the findings of all shards. A shard fails on its own
-findings too, so that the policy approval workflow, which re-runs the failed jobs, runs it again.
+findings too.
 
 CI splits the test files into shards that run as parallel jobs, and the required `test` check passes
 only when every shard passed. `scripts/test-shards/sequencer.mts` gives each shard about the same
@@ -230,8 +222,12 @@ memory.
 
 ## Licenses
 
-Code nitpicker writes or copies stays permissive (MIT, Apache-2.0, BSD, ISC). A tool nitpicker runs
-unmodified, either downloaded at run time or installed as an unmodified npm package, may be
+nitpicker itself is under the [MIT License](LICENSE). By contributing, you confirm that you have the
+right to submit your contribution, and you agree that it is licensed under the MIT License.
+
+Code nitpicker copies or ports from other projects must be permissive (MIT, Apache-2.0, BSD, ISC) so
+it can ship under these terms, with its notices kept. A tool nitpicker runs unmodified, either
+downloaded at run time or installed as an unmodified npm package, may be
 weak-copyleft (LGPL, EPL, MPL) or GPL-2.0 with the Classpath exception. Any other GPL, AGPL and
 source-available licenses (SSPL, SSALv1, BSL, Elastic and the like) are never allowed, in either
 form.

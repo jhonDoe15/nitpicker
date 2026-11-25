@@ -113,12 +113,27 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   `@MaxLength(30)` for `varchar(30)`), and keep the OpenAPI `maxLength`, `minLength` and `pattern` equal to the
   validation of the same property (`field-limit-mismatch`). A column wider than the validation is fine.
 - Pick the cheaper collection form: a `Set` (`add`, `has`) for items you search while you collect
-  them, a `Map` built once before a loop or handler instead of `find((x) => x.key === key)` in it,
+  them, a `Map` built once before a loop or handler instead of `find((x) => x.key === key)` in it
+  (`Map.groupBy` instead of `filter((x) => x.key === key)`, a `Set` instead of `ids.includes(x.id)`),
   and one `reduce` pass instead of `sort(...)[0]` or `toSorted(...).at(-1)`
   (`nitpicker/no-costly-collection-form`).
 - Rows read with `for await` (any source that is not an array) are handled as they arrive: flush
   a fixed-size batch inside the loop and the rest after it, never one array of every row
   (`nitpicker/no-collected-stream-rows`).
+- Compile a glob once before a loop or `filter`, not per element: `const isMatch = picomatch(pattern)`
+  or `new Minimatch(pattern)` outside, `isMatch(file)` inside; `path.matchesGlob`, `minimatch(file,
+  pattern)` and `picomatch.isMatch` compile the pattern on every call (`nitpicker/no-pattern-compiled-in-loop`).
+- Look an element up by a constant selector, or parse a constant URL, once before a loop, not on every
+  pass (`nitpicker/no-constant-lookup-in-loop`).
+- Climbing to the root, test each level's kind before searching its children or subtree, or use
+  `el.closest(selector)`; a `querySelector` or a scan of `children` at every level costs depth times width
+  (`nitpicker/no-subtree-search-per-ancestor`).
+- Keep a result you test in a local instead of calling again to use it (`const found = lookup(key);
+  if (found) use(found)`), and call a recursive function once per sub-result (`nitpicker/no-repeated-call`).
+- Put cheap early exits first: map, filter or index a collection only after the `if (...) return` that does not
+  need the value (`nitpicker/no-work-before-early-exit`).
+- Read and handle files one at a time (or through a bounded pool), not all into one array that a later
+  loop walks once (`nitpicker/no-read-all-before-pass`).
 - Never run a query or a request once per item of a loop: fetch or write the items in one query
   (`findByIds`, `createMany`, `WHERE id IN (...)`), also when a helper of yours does the I/O and inside
   `Promise.all(items.map(...))`. For a remote API without a batch endpoint use a limiter or fixed-size
@@ -259,6 +274,12 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Arguments go in the order of the parameters: passing `docs` into the slot of `proc` when `docs` is another
   parameter of the callee is a swap (`nitpicker/no-swapped-arguments`); pass an options object when the
   order is easy to mix up.
+- In a tree walk (a lint listener on a broad node type, a `forEachChild` visitor, a loop over nodes), test the
+  node's kind, name or text before asking the type checker about it; look up a symbol only for nodes whose
+  name can be one you want (`nitpicker/no-type-lookup-per-node`).
+- Do not pick a union member by its place in `type.types` (`[0]`, `find`, `at(-1)`, a map built from a
+  `flatMap` over it) or compare `typeToString` text: the compiler does not promise member order; choose by
+  declaration position or name (`nitpicker/no-union-order-dependence`).
 - A pooled connection, query runner, session, lock or bundle is released in `finally` (or declared with `await using`), not by
   a statement after the work that a throw or early return skips (`nitpicker/no-release-outside-finally`).
 - A descriptor from `fs.openSync` or a `FileHandle` from `open` is closed in `finally` (or declared with `await using`);
@@ -297,9 +318,38 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A pino, bunyan or winston message stays constant: the values go in the fields (`log.info({ orderId }, 'loaded order')`,
   winston `logger.info('loaded order', { orderId })`), never in a template or a `+` concatenation
   (`nitpicker/no-interpolated-log-message`).
+- A `catch` in a request handler that answers with `{ error }` gives the status too (`NextResponse.json({ error }, {
+  status: 500 })`, `res.status(500).json({ error })`): without one the failure is sent as `200 OK`. When 200 is meant,
+  write `{ status: 200 }` (`nitpicker/no-error-response-without-status`).
+- Today's date for a person (the first value of a date field or filter, the value for a date that was not given) is
+  formatted in their time zone, `new Intl.DateTimeFormat('en-CA').format(new Date())` or the date library's `format(new
+  Date(), 'yyyy-MM-dd')`, not cut out of `new Date().toISOString()`, which is the date in UTC and a day off for part of
+  every day (`nitpicker/no-utc-date-as-local-date`).
+- Code that a comment calls a stand-in ("in a real app ...", "simulate the API call", "mock data for now", "placeholder
+  implementation") does the real work or throws a not-implemented error: no fixed return value, fixed data, bare delay,
+  unchanged copy or empty function under such a comment (`nitpicker/no-placeholder-implementation`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
+- Check a filtered or listed list before turning it into an option (`if (dirs.length === 0) return`), so a tool never
+  gets `--dir ''` or ESLint a block with `files: []` (`nitpicker/no-unguarded-option-list`).
+- Pass a list that grows with the project (files from a listing or glob, a class path) through an argument file
+  (`@args.txt`), standard input, `CLASSPATH` or in chunks, not spread or joined into the arguments of a child process,
+  which fails with `E2BIG` on a large project (`nitpicker/no-growing-process-arguments`).
+- A deadline on a shell or launcher (`npm run`, `npx`, `gradlew.bat`, `sh -c 'a && b'`, `exec` with `&&`) kills only
+  the wrapper: start the executable directly, or start it `detached: true` and kill the group
+  (`process.kill(-child.pid)`) on timeout (`nitpicker/no-wrapper-only-timeout`).
+- Keep the end of a tool's output when an error message has to shorten it
+  (`stderr.slice(-4000)`, or the start and the end with a marker between them): the cause is printed last
+  (`nitpicker/no-head-cut-error-output`).
+- Decide whether a child process failed by its exit status (`status !== 0`, `exitCode`, the callback's `error`), not
+  by text on its standard error, which also carries warnings and notices (`nitpicker/no-stderr-as-failure`).
+- Read `error` and `signal` of a `spawnSync` result before its `status`: a child that could not start, timed out or
+  was killed has `status: null`, `process.exit(null)` exits with 0, and a message says "exited with null"
+  (`nitpicker/no-status-only-spawn-check`).
+- Output that grows with the project (`git ls-files`, `git diff`, `find`, a tool's JSON report) is read as a stream
+  (`spawn` and its `stdout` line by line) or from a file the tool writes, not through `execFileSync`/`spawnSync`
+  and a `maxBuffer`, which fails with `ENOBUFS` on a large project (`nitpicker/no-buffered-growing-output`).
 - Time values carry their unit in the name (`timeoutMs`, `ttlSeconds`) and meet only the same unit: convert
   once where a value enters (`ttlSeconds * 1000`, `Math.floor(Date.now() / 1000)`), compare JWT `exp` with
   `Date.now() / 1000`, pass milliseconds to `setTimeout` and `new Date(...)`, and never cut an epoch time

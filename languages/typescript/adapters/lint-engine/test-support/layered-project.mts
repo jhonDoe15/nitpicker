@@ -3,7 +3,7 @@ import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { vi } from 'vitest';
-import { HEAD_POLICY_ENV } from '../../../../../shared/head-policy.mjs';
+import { HEAD_POLICY_ENV } from '../../../../../shared/head-policy.mts';
 import { RULE_EXCEPTION_ENTRY } from '../../../preset/eslint-config/exceptions.mts';
 import { LINT_CONFIG } from '../../../preset/test-environment/resolve-environment.mts';
 import { createProject } from '../../oxlint/test-support/oxlint-project.mts';
@@ -121,7 +121,10 @@ export function headPolicyFor({
   readonly precedence?: readonly string[] | undefined;
   readonly liveProjectRoot: string;
 }): HeadPolicyFile {
-  const eslint = { engine, ...(precedence === undefined ? {} : { precedence }) };
+  const eslint = {
+    engine,
+    ...(precedence === undefined ? {} : { precedence: precedence.slice() }),
+  };
   return resolveHeadPolicy({ tools: { eslint } }, liveProjectRoot);
 }
 

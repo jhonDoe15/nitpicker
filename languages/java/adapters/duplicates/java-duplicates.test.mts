@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
+import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mts';
 import { readDuplicateFindings, runJavaDuplicates } from '../metrics/java-duplicates.mts';
 import { callUntyped, findingsOf, type JavaFinding } from '../typed/java-values.mts';
 import { readKotlinDuplicateFindings, runKotlinDuplicates } from '../kotlin/kotlin-duplicates.mts';
@@ -31,6 +31,7 @@ type DuplicateOptions = {
   readonly reportRoot: string;
   readonly manifest: unknown;
   readonly skippedFolders: readonly string[] | undefined;
+  readonly analyzeGeneratedSources: boolean;
 };
 
 const roots: string[] = [];
@@ -135,16 +136,27 @@ function project(
 
 function duplicateOptions(
   projectRoot: string,
-  options: { readonly skippedFolders?: readonly string[] | undefined } = {},
+  options: {
+    readonly skippedFolders?: readonly string[] | undefined;
+    readonly analyzeGeneratedSources?: boolean | undefined;
+  } = {},
 ): DuplicateOptions {
   const reportRoot = path.join(projectRoot, 'build/nitpicker');
   const manifest: unknown = parseJson(readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'));
-  return { reportRoot, manifest, skippedFolders: options.skippedFolders };
+  return {
+    reportRoot,
+    manifest,
+    skippedFolders: options.skippedFolders,
+    analyzeGeneratedSources: options.analyzeGeneratedSources === true,
+  };
 }
 
 function clones(
   projectRoot: string,
-  options?: { readonly skippedFolders?: readonly string[] | undefined },
+  options?: {
+    readonly skippedFolders?: readonly string[] | undefined;
+    readonly analyzeGeneratedSources?: boolean | undefined;
+  },
 ): JavaFinding[] {
   runJava(projectRoot, duplicateOptions(projectRoot, options));
   return readJava(path.join(projectRoot, 'build/nitpicker')).filter(
@@ -224,6 +236,48 @@ describe('duplicates in Java sources', () => {
     expect(
       clones(projectRoot, { skippedFolders: ['generated'] }).map(({ path: file }) => file),
     ).toEqual(['src/main/java/demo/build/One.java']);
+  });
+
+  it('skips MyBatis Generator target packages unless analyzeGeneratedSources is true', () => {
+    const generatedBody = [
+      'public String buildWhere(int limit, int offset) {',
+      '    StringBuilder sql = new StringBuilder();',
+      '    for (int i = 0; i < limit; i++) {',
+      '        if (i % 3 == 0 && offset >= 0) {',
+      '            sql.append(i + offset);',
+      '        } else {',
+      '            sql.append(offset);',
+      '        }',
+      '    }',
+      '    return sql.toString();',
+      '}',
+    ].join('\n');
+    const generatorConfig = [
+      '<generatorConfiguration>',
+      '  <context id="MySql">',
+      '    <javaModelGenerator targetPackage="com.macro.mall.model" targetProject="src\\main\\java"/>',
+      '  </context>',
+      '</generatorConfiguration>',
+    ].join('\n');
+    const projectRoot = project({
+      'src/main/resources/generatorConfig.xml': generatorConfig,
+      'src/main/java/com/macro/mall/model/FirstExample.java': `package com.macro.mall.model;\n\nclass FirstExample {\n${generatedBody}\n}\n`,
+      'src/main/java/com/macro/mall/model/SecondExample.java': `package com.macro.mall.model;\n\nclass SecondExample {\n${generatedBody}\n}\n`,
+      'src/main/java/com/macro/mall/service/AlphaService.java': `package com.macro.mall.service;\n\nclass AlphaService {\n${BODY}\n}\n`,
+      'src/main/java/com/macro/mall/service/BetaService.java': `package com.macro.mall.service;\n\nclass BetaService {\n${BODY}\n}\n`,
+    });
+
+    expect(clones(projectRoot).map(({ path: file }) => file)).toEqual([
+      'src/main/java/com/macro/mall/service/AlphaService.java',
+    ]);
+    expect(
+      clones(projectRoot, { analyzeGeneratedSources: true })
+        .map(({ path: file }) => file)
+        .toSorted(),
+    ).toEqual([
+      'src/main/java/com/macro/mall/model/FirstExample.java',
+      'src/main/java/com/macro/mall/service/AlphaService.java',
+    ]);
   });
 });
 
@@ -322,8 +376,14 @@ describe('duplicates across the modules of a Maven project', () => {
       [path.join(projectRoot, 'app'), path.join(projectRoot, 'core')],
       'target/nitpicker',
     );
-    runJava(projectRoot, { reportRoot, manifest, skippedFolders: undefined });
-    runKotlinDuplicates(projectRoot, { reportRoot, manifest, skippedFolders: undefined });
+    const options = {
+      reportRoot,
+      manifest,
+      skippedFolders: undefined,
+      analyzeGeneratedSources: false,
+    };
+    runJava(projectRoot, options);
+    runKotlinDuplicates(projectRoot, options);
 
     expect(
       [...readJava(reportRoot), ...readKotlin(reportRoot)]

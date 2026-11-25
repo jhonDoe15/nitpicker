@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { ingestSarif } from '../../../../shared/ingest/sarif.mjs';
+import { ingestSarif } from '../../../../shared/ingest/sarif.mts';
 import { temporaryRootMaker, writeFiles } from '../../__tests__/temporary-roots.mts';
 
 export type SarifResult = {

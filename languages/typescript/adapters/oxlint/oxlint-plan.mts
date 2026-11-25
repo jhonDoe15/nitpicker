@@ -1,10 +1,12 @@
 import { globSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { ESLint } from 'eslint';
 import { listNativeRules } from './plan/rule-listing.mts';
 import { listedFiles } from './plan/listed-files.mts';
+import { readLayout } from '../../preset/head-policy.mts';
+import { END_TO_END_ROOT } from '../../preset/layout/end-to-end.mts';
 import { parsedTsconfig } from '../../preset/modules/tsconfig-files.mts';
 import { isInvokedModule } from '../typed/static-checks.mts';
 import { incompatiblePackageMessage } from '../lint-engine/compatibility/incompatible-package.mts';
@@ -86,6 +88,9 @@ async function filePlan(root: string, globs: readonly string[]) {
     noInlineConfig: plan.noInlineConfig,
     typedPluginRules: [...plan.typedPluginRules],
     ruleMessages: plan.ruleMessages,
+    ...(readLayout().isEndToEndTest(`${END_TO_END_ROOT}/`)
+      ? { endToEndRoot: END_TO_END_ROOT }
+      : {}),
   };
 }
 

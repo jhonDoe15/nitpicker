@@ -16,6 +16,8 @@ import { errorProneJava, isNoFittingJdk, skipWithoutJdk } from './maven-jdk.mts'
 import { toolHeapFlags, toolSlots } from '../parallel/slots/tool-slots.mts';
 import { analyzesGenerated, generatedRoots } from '../generated/generated-roots.mts';
 import { mavenBudget } from '../../adapters/gradle-wrapper/gradle-budget.mts';
+import { errorProneOnEngine, javaHomeOf } from '../../builds/errorprone/errorprone-engine.mts';
+import { ENGINE_REPORT } from '../../builds/errorprone/engine-diagnostics.mts';
 
 type Modular = boolean | 'all';
 type ErrorProneContext = {
@@ -218,6 +220,7 @@ function analyze(
   const report = path.join(reportDir, 'errorprone.json');
   const work = path.join(reportDir, ERROR_PRONE);
   rmSync(work, { recursive: true, force: true });
+  rmSync(path.join(reportDir, ENGINE_REPORT), { force: true });
   const compiler = compilerOf(module.compiler);
   const declaredFlags = textsOf(fieldOf(fieldOf(configs, ERROR_PRONE), 'arguments'));
   const argumentFiles = compileSets({ module, classpaths }, modular).flatMap((set) =>
@@ -237,13 +240,12 @@ function analyze(
     return;
   }
   const java = errorProneJava({ preview: usesPreview(compiler), spawn, environment });
+  errorProneOnEngine({ reportDir, argumentFiles, javaHome: javaHomeOf(java) }, environment);
   runReport({ module, spawn, timeoutMs }, java, { report, argumentFiles });
 }
 
-type ReportContext = Pick<ErrorProneContext, 'module' | 'spawn' | 'timeoutMs'>;
-
 function runReport(
-  { module, spawn, timeoutMs }: ReportContext,
+  { module, spawn, timeoutMs }: Pick<ErrorProneContext, 'module' | 'spawn' | 'timeoutMs'>,
   java: string,
   { report, argumentFiles }: { readonly report: string; readonly argumentFiles: readonly string[] },
 ): void {

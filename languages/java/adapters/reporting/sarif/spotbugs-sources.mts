@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { pathInside as untypedPathInside } from '../../../../../shared/filesystem.mjs';
+import { pathInside as untypedPathInside } from '../../../../../shared/filesystem.mts';
 import { keepResults } from '../../jpa/jpa-source-filters.mts';
 import type { SarifLog, SarifResult } from '../../jpa/jpa-types.mts';
 

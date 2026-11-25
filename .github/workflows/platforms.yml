@@ -10,7 +10,7 @@ name: platforms
 # while it carries `run-ci` and it changes a file in the paths below, like the language end-to-end workflows.
 on:
   push:
-    branches: [main]
+    branches: [main, integration]
     paths:
       - 'core/**'
       - 'shared/**'
@@ -28,8 +28,8 @@ on:
 # A newer run on the same pull request cancels the older one; runs on main
 # always finish.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref == 'refs/heads/integration' && 'integration' || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/integration' }}
 
 # Plain logs, and no Deno update check on every CLI start.
 env:
@@ -188,7 +188,7 @@ jobs:
           overwrite: true
           if-no-files-found: warn
 
-  # The logic solver (shared/logic/decide.mjs) runs Z3 as WASM under a fixed resource limit, so it must give
+  # The logic solver (shared/logic/decide.mts) runs Z3 as WASM under a fixed resource limit, so it must give
   # the same answers on x64 and arm64; its tests run on both.
   logic-solver:
     name: logic solver ${{ matrix.os }}
@@ -208,7 +208,7 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: npx vitest run --config vitest.config.mts shared/logic/decide.test.mjs
+      - run: npx vitest run --config vitest.config.mts shared/logic/decide.test.mts
 
   platforms:
     if: ${{ always() && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')) }}

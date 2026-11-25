@@ -115,7 +115,7 @@ Part of the [Python preset guide](../python-preset.md).
   interpreter), `e2e/import-scan.e2e.test.mjs` (the real scan script over the `if TYPE_CHECKING:` forms, and files with a 1100-branch `elif` chain or a 2500-term expression, which the iterative scan still reads),
   `python-duplicates.test.mts` (real jscpd on small projects), `python-import-linter.test.mts`
   (config detection, the run, failures), `ingest/import-linter.test.mts` (real import-linter 2.15
-  output in `ingest/fixtures`), `shared/rules/coupling-report.test.mjs`, and CLI cases in
+  output in `ingest/fixtures`), `shared/rules/coupling-report.test.mts`, and CLI cases in
   `core/command/python/python-cli-*.test.mjs` using the fake `lint-imports` and an `import-scan.json` the fake
   interpreter prints. The e2e file has a layered `shop` project (a copy fails as a duplicate; a
   domain package importing the web package fails as `stability-direction` and as two broken

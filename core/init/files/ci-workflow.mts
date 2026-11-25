@@ -18,11 +18,7 @@ const placeFileOf: (request: {
 }) => PlacedFile = placeFile;
 
 const TEMPLATE = fileURLToPath(new URL('../templates/github-workflow.yml', import.meta.url));
-const APPROVAL_TEMPLATE = fileURLToPath(
-  new URL('../templates/github-policy-approval.yml', import.meta.url),
-);
 const WORKFLOWS = '.github/workflows';
-export const APPROVAL_WORKFLOW = `${WORKFLOWS}/nitpicker-policy-approval.yml`;
 const TOKEN = /'\{\{(\w+)\}\}'/u;
 const PLAIN_SEGMENT = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/u;
 const SEGMENT_SEPARATOR = '--';
@@ -114,12 +110,4 @@ export function placeWorkflow(projectRoot: string, context: WorkflowContext): Pl
     content,
   });
   return notes.length === 0 ? placed : { ...placed, notes };
-}
-
-export function placeApprovalWorkflow(repository: string): PlacedFile {
-  return placeFileOf({
-    root: repository,
-    relative: APPROVAL_WORKFLOW,
-    content: readFileSync(APPROVAL_TEMPLATE, 'utf8'),
-  });
 }

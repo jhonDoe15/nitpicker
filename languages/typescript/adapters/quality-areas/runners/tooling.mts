@@ -10,9 +10,9 @@ import type { QualityAreaOptions } from '../typed/area-types.mts';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { lstatSync } from 'node:fs';
-import { TOOL_RUN_CEILING_MS } from '../../../../../shared/processes/deadlines.mjs';
-import { describeProcessEnd } from '../../../../../shared/processes/process-failure.mjs';
-import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
+import { TOOL_RUN_CEILING_MS } from '../../../../../shared/processes/deadlines.mts';
+import { describeProcessEnd } from '../../../../../shared/processes/process-failure.mts';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mts';
 
 type NodeToolSpawn = {
   readonly options: QualityAreaOptions;

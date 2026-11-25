@@ -32,10 +32,11 @@ function isProgram(value: unknown): value is TSESTree.Program {
 
 export function parseProgram(text: string, file: string): ProgramResult {
   try {
-    const loaded: unknown = load('typescript-eslint');
-    const parser = fieldOf(loaded, 'parser');
+    const parser: unknown = createRequire(load.resolve('typescript-eslint'))(
+      '@typescript-eslint/parser',
+    );
     if (!isParser(parser)) {
-      throw new TypeError('typescript-eslint does not export a parser');
+      throw new TypeError('@typescript-eslint/parser does not export a parser');
     }
     const parsed = parser.parseForESLint(text, {
       sourceType: 'module',

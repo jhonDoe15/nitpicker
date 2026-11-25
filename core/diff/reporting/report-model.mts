@@ -1,5 +1,10 @@
 import { createHash } from 'node:crypto';
 import type { ReportEntry } from '../../../shared/values/findings.mts';
+import type {
+  HelpedFinding,
+  ReferenceLinks,
+} from '../../../shared/reference/typed/entry-types.mts';
+import { referenceLinks, withHelpUris } from '../../../shared/reference/store.mts';
 import { type MetadataMap, metadataValue } from '../execution/report/analyzer-metadata.mts';
 import { fieldOf, listOf } from '../../../shared/values/readers.mts';
 
@@ -9,6 +14,26 @@ type SortableEntry = {
   readonly rule?: unknown;
   readonly identity?: unknown;
 };
+
+function isHelped(entry: ReportEntry): entry is ReportEntry & HelpedFinding {
+  return typeof entry.tool === 'string' && typeof entry.rule === 'string';
+}
+
+export function* helpLinkedEntries(
+  entries: Iterable<ReportEntry>,
+  reference: ReferenceLinks = referenceLinks(),
+): Generator<ReportEntry> {
+  for (const entry of entries) {
+    yield isHelped(entry) ? (withHelpUris([entry], reference)[0] ?? entry) : entry;
+  }
+}
+
+export function withHelpLinks(
+  entries: readonly ReportEntry[],
+  reference: ReferenceLinks = referenceLinks(),
+): ReportEntry[] {
+  return [...helpLinkedEntries(entries, reference)];
+}
 
 function sortText(value: unknown): string {
   return typeof value === 'string' ? value : '';
@@ -38,14 +63,8 @@ export function summaryFields(
   configOverrides: unknown,
   shardSummary: Readonly<Record<string, unknown>>,
 ): Readonly<Record<string, unknown>> {
-  const { policyDigest, policyAcceptanceSource } = shardSummary;
   return {
     configOverrides,
-    policyChanges: shardSummary['policyChanges'] ?? [],
-    policyLoosenings: shardSummary['policyLoosenings'] ?? [],
-    ...(policyDigest === undefined ? {} : { policyDigest }),
-    policyChangeAccepted: shardSummary['policyChangeAccepted'] === true,
-    ...(policyAcceptanceSource === undefined ? {} : { policyAcceptanceSource }),
     notices: shardSummary['notices'] ?? [],
   };
 }

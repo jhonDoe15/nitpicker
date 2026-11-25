@@ -1,7 +1,10 @@
-import { childrenNamed, parseXml } from '../../../../../shared/values/xml.mts';
-import type { XmlElement } from '../../../../../shared/values/xml.mts';
+import {
+  childrenNamed,
+  parseXml,
+  type XmlElement,
+} from '../../../../../shared/ingest/report-records.mts';
 import type { LayerInput } from './checkstyle-types.mts';
-import { renderXml } from '../xml-write.mts';
+import { renderXml } from '../../../../../shared/xml/xml-write.mts';
 import { appendAll } from '../../../../../shared/lists/items.mjs';
 
 type Group = {

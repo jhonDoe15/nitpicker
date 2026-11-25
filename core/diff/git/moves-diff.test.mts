@@ -1,7 +1,8 @@
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fieldAt } from '../../../scripts/json/fields.mts';
-import { fieldOf, textOf } from '../../../shared/values/readers.mts';
+import { fieldOf } from '../../../shared/values/readers.mts';
 import { createBaseSetupResolver } from '../../command/policy-review/base-setup.mts';
 import {
   commitHead,
@@ -194,41 +195,23 @@ describe('a config that changed between base and head', () => {
       'nitpicker.config.json': '{not json',
       'src/vendor/a.ts': 'export {};\n',
     });
-    const digest: unknown = expect.stringMatching(/^[0-9a-f]{12}$/);
-    const comparedWithDefaults = {
-      policyChanges: ['exclude added: src/vendor/**'],
-      policyLoosenings: ['exclude added: src/vendor/**'],
-      policyKinds: { 'exclude added: src/vendor/**': 'exclusion' },
-      policyDigest: digest,
-    };
-
     expect(
       resolve({
         baseProjectRoot: root,
-        headSnapshotRoot: root,
         liveProjectRoot: root,
-        moves: undefined,
         analyzers: [probeAnalyzer()],
       }),
-    ).toEqual(comparedWithDefaults);
+    ).toEqual({});
     expect(warnings).toEqual([
-      "The base's nitpicker.config.json cannot be applied (nitpicker.config.json is not valid JSON: Expected property name or '}' in JSON at position 1 (line 1 column 2)); the base is analysed with the head config, and the head config is compared with the defaults.",
+      "The base's nitpicker.config.json cannot be applied (nitpicker.config.json is not valid JSON: Expected property name or '}' in JSON at position 1 (line 1 column 2)); the base is analysed with the head config.",
     ]);
     expect(
-      fieldOf(
-        resolve({
-          baseProjectRoot: path.join(root, 'missing'),
-          headSnapshotRoot: root,
-          liveProjectRoot: root,
-          moves: undefined,
-          analyzers: [],
-        }),
-        'policyLoosenings',
-      ),
-    ).toEqual([
-      'exclude and layout.excludedGlobs hide code this change adds or moves where the base config checked it: ' +
-        'src/vendor/a.ts',
-    ]);
+      resolve({
+        baseProjectRoot: path.join(root, 'missing'),
+        liveProjectRoot: root,
+        analyzers: [],
+      }),
+    ).toEqual({});
     expect(warnings).toHaveLength(1);
   });
 
@@ -244,9 +227,7 @@ describe('a config that changed between base and head', () => {
 
     const setup = resolve({
       baseProjectRoot: root,
-      headSnapshotRoot: root,
       liveProjectRoot: root,
-      moves: undefined,
       analyzers: [headOnly],
     });
 
@@ -277,7 +258,7 @@ describe('notices about the change', () => {
       'src/kept.mjs',
     ]);
     expect(report.summary['notices']).toEqual(['a notice']);
-    const lines = textOf(report.text).split('\n');
+    const lines = readFileSync(path.join(root, 'reports', 'report.txt'), 'utf8').split('\n');
     const start = lines.indexOf('Notices (not failing):');
     expect(lines.slice(start, start + 2)).toEqual(['Notices (not failing):', '  a notice']);
   });

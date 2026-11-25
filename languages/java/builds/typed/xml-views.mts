@@ -1,3 +1,3 @@
-import { escapeXml as untypedEscapeXml } from '../../adapters/tool-config/xml-write.mts';
+import { escapeXml as untypedEscapeXml } from '../../../../shared/xml/xml-write.mts';
 
 export const escapeXml: (text: string) => string = untypedEscapeXml;

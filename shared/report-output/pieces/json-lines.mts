@@ -1,0 +1,209 @@
+import { StringDecoder } from 'node:string_decoder';
+import { byteChunks } from '../../engine/engine-rows.mts';
+import { messageOf, objectOf } from '../../values/readers.mts';
+
+const EXCERPT_CHARACTERS = 80;
+
+type Frame = {
+  readonly value: unknown[] | Record<string, unknown>;
+  readonly key: string | undefined;
+  pendingKey: string | undefined;
+  members: number;
+  comma: boolean;
+};
+
+type LineState = {
+  stack: Frame[];
+  root: { readonly value: unknown } | undefined;
+  readonly strings: Map<string, string>;
+};
+
+const parseJson: (text: string) => unknown = JSON.parse;
+
+function keyOf(text: string): string {
+  const key = parseJson(text);
+  if (typeof key !== 'string') {
+    throw new SyntaxError(`Expected a property name in ${text.slice(0, EXCERPT_CHARACTERS)}`);
+  }
+  return key;
+}
+
+function setMember(target: object, key: string, value: unknown): void {
+  Object.defineProperty(target, key, {
+    value,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
+}
+
+function sharedString(strings: Map<string, string>, value: unknown): unknown {
+  if (typeof value !== 'string') {
+    return value;
+  }
+  const known = strings.get(value);
+  if (known !== undefined) {
+    return known;
+  }
+  strings.set(value, value);
+  return value;
+}
+
+function shared(strings: Map<string, string>, root: unknown): unknown {
+  const pending: unknown[] = [root];
+  for (const value of pending) {
+    const container = objectOf(value) ?? {};
+    for (const [key, item] of Object.entries(container)) {
+      setMember(container, key, sharedString(strings, item));
+      pending.push(item);
+    }
+  }
+  return sharedString(strings, root);
+}
+
+function attach(state: LineState, value: unknown, key: string | undefined): void {
+  const parent = state.stack.at(-1);
+  if (parent !== undefined && parent.members > 0 && !parent.comma) {
+    throw new SyntaxError('Expected a comma between JSON values');
+  }
+  if (parent !== undefined) {
+    parent.members += 1;
+    parent.comma = false;
+  }
+  if (parent === undefined) {
+    if (state.root !== undefined) {
+      throw new SyntaxError('Unexpected data after the end of the JSON value');
+    }
+    state.root = { value };
+  } else if (Array.isArray(parent.value)) {
+    parent.value.push(value);
+  } else if (key === undefined) {
+    throw new SyntaxError('Expected a property name before the value');
+  } else {
+    setMember(parent.value, key, value);
+  }
+}
+
+function takeKey(state: LineState): string | undefined {
+  const parent = state.stack.at(-1);
+  const key = parent?.pendingKey;
+  if (parent !== undefined) {
+    parent.pendingKey = undefined;
+  }
+  return key;
+}
+
+function open(state: LineState, value: unknown[] | Record<string, unknown>): void {
+  const key = takeKey(state);
+  state.stack.push({ value, key, pendingKey: undefined, members: 0, comma: false });
+}
+
+function close(state: LineState, array: boolean): void {
+  const frame = state.stack.pop();
+  if (
+    frame === undefined ||
+    Array.isArray(frame.value) !== array ||
+    frame.comma ||
+    frame.pendingKey !== undefined
+  ) {
+    throw new SyntaxError('Unexpected end of a JSON container');
+  }
+  attach(state, frame.value, frame.key);
+}
+
+function member(state: LineState, frame: Frame, line: string): void {
+  if (line.endsWith(':')) {
+    if (frame.pendingKey !== undefined) {
+      throw new SyntaxError('Expected a value after the property name');
+    }
+    frame.pendingKey = keyOf(line.slice(0, -1));
+    return;
+  }
+  const parsed = parseJson(`{${line}}`);
+  for (const [key, value] of Object.entries(parsed ?? {})) {
+    attach(state, shared(state.strings, value), key);
+    frame.comma = true;
+  }
+  frame.comma = false;
+}
+
+function acceptValueLine(state: LineState, line: string): void {
+  const frame = state.stack.at(-1);
+  if (line.length === 0) {
+    throw new SyntaxError('Unexpected comma');
+  }
+  if (line === ']' || line === '}') {
+    close(state, line === ']');
+  } else if (frame !== undefined && !Array.isArray(frame.value)) {
+    member(state, frame, line);
+  } else {
+    attach(state, shared(state.strings, parseJson(line)), takeKey(state));
+  }
+}
+
+function acceptLine(state: LineState, text: string): void {
+  const comma = text.endsWith(',');
+  const line = comma ? text.slice(0, -1) : text;
+  if (line === '[' || line === '{') {
+    if (comma) {
+      throw new SyntaxError('Unexpected comma after an opening bracket');
+    }
+    open(state, line === '[' ? [] : {});
+  } else if (line.length > 0 || comma) {
+    acceptValueLine(state, line);
+    markComma(state, comma);
+  }
+}
+
+function markComma(state: LineState, comma: boolean): void {
+  const frame = state.stack.at(-1);
+  if (!comma) {
+    return;
+  }
+  if (frame === undefined || frame.members === 0 || frame.pendingKey !== undefined) {
+    throw new SyntaxError('Unexpected comma');
+  }
+  frame.comma = true;
+}
+
+function eachLine(descriptor: number, accept: (line: string) => void): void {
+  const decoder = new StringDecoder('utf8');
+  let partial: string[] = [];
+  for (const chunk of byteChunks(descriptor)) {
+    const lines = decoder.write(chunk).split('\n');
+    const rest = lines.pop() ?? '';
+    for (const [index, line] of lines.entries()) {
+      accept(index === 0 ? partial.join('') + line : line);
+    }
+    partial = lines.length === 0 ? [...partial, rest] : [rest];
+  }
+  accept(partial.join('') + decoder.end());
+}
+
+function parsedLines(descriptor: number): unknown {
+  const state: LineState = { stack: [], root: undefined, strings: new Map() };
+  eachLine(descriptor, (line) => {
+    acceptLine(state, line);
+  });
+  if (state.root === undefined || state.stack.length > 0) {
+    throw new SyntaxError('Unexpected end of JSON input');
+  }
+  return state.root.value;
+}
+
+function parsedWhole(wholeText: () => string, lineFailure: unknown): unknown {
+  try {
+    return parseJson(wholeText());
+  } catch (error) {
+    const failure = new SyntaxError(messageOf(error), { cause: error });
+    throw Object.assign(failure, { lineFailure });
+  }
+}
+
+export function parseJsonDescriptor(descriptor: number, wholeText: () => string): unknown {
+  try {
+    return parsedLines(descriptor);
+  } catch (lineFailure) {
+    return parsedWhole(wholeText, lineFailure);
+  }
+}

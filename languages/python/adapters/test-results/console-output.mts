@@ -1,13 +1,11 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { readHeadPolicyFile as untypedHeadPolicy } from '../../../../shared/head-policy.mjs';
-import { testConsoleFindings as untypedFindings } from '../../../../shared/rules/console/console-findings.mjs';
-import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
+import { testConsoleFindings as untypedFindings } from '../../../../shared/rules/console/console-findings.mts';
+import { fieldOf, fieldsOf, listOf } from '../../../../shared/values/readers.mts';
 import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
 import type { ToolProject } from '../typed/context/tool-context-types.mts';
 import type { ConsoleManifest, ConsoleReport } from './typed/console-types.mts';
 
-const readHeadPolicyFile: () => Readonly<Record<string, unknown>> = untypedHeadPolicy;
 const testConsoleFindings: (
   report: ConsoleReport,
   options: { analyzerName: string; allow: readonly unknown[]; exceptions: undefined },
@@ -81,8 +79,8 @@ export function consoleOutputFindings(
   report: ConsoleReport,
   {
     projectRoot,
-    headPolicy = readHeadPolicyFile(),
-  }: { readonly projectRoot: string; readonly headPolicy?: Readonly<Record<string, unknown>> },
+    headPolicy,
+  }: { readonly projectRoot: string; readonly headPolicy: Readonly<Record<string, unknown>> },
 ): IngestedFinding[] {
   return testConsoleFindings(
     { entries: consoleFacts(report, projectRoot) },
@@ -96,8 +94,19 @@ export function consoleOutputFindings(
 
 export function readConsoleFindings(
   reportRoot: string,
-  { projectRoot, manifest }: { readonly projectRoot: string; readonly manifest: ConsoleManifest },
+  {
+    projectRoot,
+    manifest,
+    headPolicy,
+  }: {
+    readonly projectRoot: string;
+    readonly manifest: ConsoleManifest;
+    readonly headPolicy: object | undefined;
+  },
 ): IngestedFinding[] {
   const { report, findings } = readConsoleReport(reportRoot, manifest);
-  return [...findings, ...consoleOutputFindings(report, { projectRoot })];
+  return [
+    ...findings,
+    ...consoleOutputFindings(report, { projectRoot, headPolicy: fieldsOf(headPolicy) }),
+  ];
 }

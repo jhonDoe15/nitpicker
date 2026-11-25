@@ -2,7 +2,7 @@ import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { ESLint } from 'eslint';
 import { afterAll, describe, expect, it } from 'vitest';
-import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 import { normalizeEslintResults } from '../../../adapters/eslint/normalize.mts';
 import { lintWithOxlint } from '../../../adapters/oxlint/oxlint-runner.mts';
 import { createProject } from '../../../adapters/oxlint/test-support/oxlint-project.mts';

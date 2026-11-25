@@ -1,7 +1,20 @@
 import type { Node } from 'web-tree-sitter';
-import type { AlignState, Pair } from '../extract-types.mts';
+import type { AlignState, Candidate, Pair, Span } from '../extract-types.mts';
 import { field, parentOf, present, required } from '../tree/nodes.mts';
 import { appendAll } from '../../../../../shared/lists/lists.mts';
+import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
+
+function isSpan(value: unknown): value is Span {
+  return typeof fieldOf(value, 'start') === 'number' && typeof fieldOf(value, 'end') === 'number';
+}
+
+export function runsOf(candidate: object): readonly Span[] {
+  return listOf(fieldOf(candidate, 'runs')).filter(isSpan);
+}
+
+export function holesOf({ finding }: Candidate): number {
+  return finding.parameters?.length ?? 0;
+}
 
 export const METHOD = 'method_declaration';
 export const CLASS = 'class_declaration';

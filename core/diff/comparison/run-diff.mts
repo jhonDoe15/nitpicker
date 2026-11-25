@@ -23,6 +23,7 @@ import {
 import { type Comparison, readSnapshotLayout, withSnapshotRoots } from './snapshots/layout.mts';
 import { withPreparedDependencies } from './snapshots/dependencies.mts';
 import { type AnalyzerRun, analyzerRunOptions, runAnalyzers } from '../execution/run-analyzers.mts';
+import type { ComparisonRun } from './base-red/compare-analyzers.mts';
 import { carried, planOf, runnableOf, stopsEarly, unlessSkipped } from './snapshots/skips.mts';
 import type { CaptureHead } from './snapshots/run-types.mts';
 import type { Checkpoints } from '../execution/tasks.mts';
@@ -64,7 +65,7 @@ export function runQualityDiff(options: DiffOptions): DiffReport {
     projectPath: projectPath.replaceAll(path.sep, '/'),
   });
   const location = { projectPath, repositoryRoot: settings.repositoryRoot };
-  report.text = writeReports(settings.outputRoot, report, location);
+  writeReports(settings.outputRoot, report, location);
   const resumed = headResumePlace(settings, comparison);
   finishResume(resumed === undefined ? undefined : resumeDirectory(resumed), report.toolErrors);
   return report;
@@ -115,8 +116,6 @@ function resolvedBaseSetup({ settings, layout, roots }: SnapshotContext): BaseSe
     analyzers: settings.analyzers,
     headPolicy: settings.headPolicy,
     configOverrides: settings.configOverrides,
-    policyChanges: [],
-    policyLoosenings: [],
     ...fieldsOf(
       settings.resolveBaseSetup?.({
         ...roots,
@@ -132,7 +131,7 @@ function compareSnapshots(context: SnapshotContext): DiffReport {
   const { settings, roots, comparison, startedAt } = context;
   const skipPlan = planOf(settings, comparison);
   const baseSetup = resolvedBaseSetup(context);
-  if (stopsEarly(skipPlan, baseSetup)) {
+  if (stopsEarly(skipPlan)) {
     return allSkippedReport({
       ...settings,
       comparison,
@@ -204,16 +203,9 @@ function runAndCombine(context: RunContext): DiffReport {
     startedAt,
     additionalToolErrors: settings.additionalToolErrors,
     configOverrides: settings.configOverrides,
-    policyChanges: baseSetup.policyChanges,
-    policyLoosenings: listOf(baseSetup.policyLoosenings),
-    policyKinds: baseSetup.policyKinds,
-    policyDigest: baseSetup.policyDigest,
     policies: { base: baseSetup.headPolicy, head: settings.headPolicy },
-    acceptPolicyChange: settings.acceptPolicyChange,
     scope: settings.scope,
     labels: settings.labels,
-    policyAcceptanceSource: settings.policyAcceptanceSource,
-    reportsPolicy: settings.reportsPolicy !== false,
     quick: settings.quick,
     staged: settings.staged,
     notices: listOf(
@@ -249,7 +241,7 @@ function runBaseAnalyzers(
   );
 }
 
-function runBaseSide(context: RunContext): unknown {
+function runBaseSide(context: RunContext): ComparisonRun {
   const { settings, comparison, layout, roots, baseSetup } = context;
   const analyzers = quickScoped(settings, layout, listOf(baseSetup.analyzers));
   if (settings.cacheStore === undefined) {

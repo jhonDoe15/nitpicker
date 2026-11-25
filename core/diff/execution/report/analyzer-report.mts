@@ -3,9 +3,10 @@ import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
   withTroubleshooting,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 import type { AnalyzerTask } from '../tasks.mts';
+import { parseJsonDescriptor } from '../../../../shared/report-output/pieces/json-lines.mts';
 import { MEMORY_ADVICE, isOutOfMemory } from '../../../../shared/processes/memory/node-heap.mts';
 
 export type AnalyzerReport = { readonly findings: readonly { readonly tool?: unknown }[] };
@@ -17,7 +18,21 @@ type ChildOutput = {
   readonly stderrText: string;
 };
 
+type FileOutput = {
+  readonly status: unknown;
+  readonly signal: unknown;
+  readonly stdoutFile: {
+    readonly descriptor: number;
+    readonly read: (encoding: 'utf8', limit?: number) => string;
+  };
+  readonly stderrText: string;
+};
+
 type ReportedTask = Pick<AnalyzerTask, 'name' | 'acceptedExitCodes' | 'reportedTools'>;
+
+const parseJson: (text: string) => unknown = JSON.parse;
+
+const CRASH_STDOUT_BYTES = 1024 * 1024;
 
 const parseKeepingValid: (value: unknown, analyzerName: string) => AnalyzerReport =
   parseAnalyzerReportKeepingValid;
@@ -32,7 +47,26 @@ export function reportFromAnalyzerOutput(
       TROUBLESHOOTING_ANCHORS.analyzerCrashed,
     );
   }
-  return parseReport(stdoutText, task.name, task.reportedTools);
+  return parseReport(() => parseJson(stdoutText), task.name, task.reportedTools);
+}
+
+export function reportFromAnalyzerFile(
+  task: ReportedTask,
+  { status, signal, stdoutFile, stderrText }: FileOutput,
+): AnalyzerReport {
+  if (typeof status !== 'number' || !task.acceptedExitCodes.includes(status)) {
+    return reportFromAnalyzerOutput(task, {
+      status,
+      signal,
+      stdoutText: stdoutFile.read('utf8', CRASH_STDOUT_BYTES),
+      stderrText,
+    });
+  }
+  return parseReport(
+    () => parseJsonDescriptor(stdoutFile.descriptor, () => stdoutFile.read('utf8')),
+    task.name,
+    task.reportedTools,
+  );
 }
 
 function crashMessage(
@@ -65,13 +99,13 @@ function parsedReport(rawReport: unknown, analyzerName: string): AnalyzerReport 
 }
 
 function parseReport(
-  stdout: string,
+  parsedStdout: () => unknown,
   analyzerName: string,
   reportedTools: readonly unknown[] = [],
 ): AnalyzerReport {
   let rawReport: unknown;
   try {
-    rawReport = JSON.parse(stdout);
+    rawReport = parsedStdout();
   } catch (error) {
     throw troubleshootingError(
       `${analyzerName} did not produce valid JSON`,

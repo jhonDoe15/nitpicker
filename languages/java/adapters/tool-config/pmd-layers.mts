@@ -1,5 +1,8 @@
-import { childrenNamed, parseXml } from '../../../../shared/values/xml.mts';
-import type { XmlElement } from '../../../../shared/values/xml.mts';
+import {
+  childrenNamed,
+  parseXml,
+  type XmlElement,
+} from '../../../../shared/ingest/report-records.mts';
 import type {
   PmdLayerInput,
   PmdLayers,
@@ -7,7 +10,7 @@ import type {
   ProjectSplit,
   RuleCatalog,
 } from './pmd-types.mts';
-import { element, renderXml } from './xml-write.mts';
+import { element, renderXml } from '../../../../shared/xml/xml-write.mts';
 import {
   excludedNames,
   referenceOf,

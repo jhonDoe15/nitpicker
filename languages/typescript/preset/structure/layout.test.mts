@@ -21,7 +21,9 @@ it('scans src without src/main and excludes colocated tests', () => {
     path.join(root, 'src/service.test.ts'),
     'export function test() { return true; }\n',
   );
-  const report = analyzeProductionFiles(path.join(root, 'src'), 'src');
+  const report = analyzeProductionFiles(path.join(root, 'src'), 'src', {
+    environment: process.env,
+  });
   expect(report.summary.files).toBe(1);
   expect(report.functions.map((entry) => entry.source)).toEqual(['src/service.ts']);
 });
@@ -29,7 +31,10 @@ it('scans src without src/main and excludes colocated tests', () => {
 it('returns an empty report if src is absent', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-layout-'));
   roots.push(root);
-  expect(analyzeProductionFiles(path.join(root, 'src'), 'src').summary.files).toBe(0);
+  expect(
+    analyzeProductionFiles(path.join(root, 'src'), 'src', { environment: process.env }).summary
+      .files,
+  ).toBe(0);
 });
 
 it('analyzes root files and lib of a package whose code sits at the project root', () => {
@@ -48,6 +53,6 @@ it('analyzes root files and lib of a package whose code sits at the project root
     writeFileSync(path.join(root, file), 'exports.value = function value() { return 1; };\n');
   }
   const layout = resolveLayout({ sourceRoots: ['.'] }, [], { javascript: true });
-  const report = analyzeProductionFiles(root, '.', { layout });
+  const report = analyzeProductionFiles(root, '.', { layout, environment: process.env });
   expect(report.functions.map((entry) => entry.source).sort()).toEqual(['index.js', 'lib/x.js']);
 });

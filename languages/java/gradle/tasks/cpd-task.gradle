@@ -12,11 +12,22 @@ tasks.register('nitpickerCpd') {
         def declared = writtenSourceSets().collectMany { it.allJava.sourceDirectories.files }.unique()
         project.ext.nitpickerHandWrittenDirs(declared).findAll { it.exists() }
     }
-    inputs.files({ writtenSourceSets()*.allJava }).withPropertyName('sources')
+    dependsOn { project.ext.nitpickerAnalyzeGenerated ? writtenSourceSets()*.compileJavaTaskName : [] }
+    inputs.files({ sourceDirectories().collect { project.fileTree(it) { include '**/*.java' } } })
+        .withPropertyName('sources')
     inputs.files(configurations.nitpickerPmd).withPropertyName('pmd')
     inputs.file(project.ext.nitpickerToolLauncher('cpd')).withPropertyName('launcher')
     inputs.files(project.ext.nitpickerToolCommandInputs).withPropertyName('toolCommands')
     outputs.file(report).withPropertyName('report')
+    onlyIf {
+        if (sourceDirectories().any { !project.fileTree(it) { include '**/*.java' }.isEmpty() }) {
+            return true
+        }
+        report.get().asFile.delete()
+        failure.get().asFile.delete()
+        skipped.get().asFile.delete()
+        false
+    }
     doLast {
         reportDir.get().asFile.mkdirs()
         report.get().asFile.delete()
@@ -24,6 +35,15 @@ tasks.register('nitpickerCpd') {
         skipped.get().asFile.delete()
         def directories = sourceDirectories()
         if (directories.isEmpty()) {
+            return
+        }
+        def enginePlan = new File(temporaryDir, 'cpd-engine-plan.json')
+        enginePlan.text = groovy.json.JsonOutput.toJson([
+            report     : report.get().asFile.absolutePath,
+            directories: directories*.absolutePath,
+        ])
+        project.ext.nitpickerWriteRules('cpd-engine', enginePlan)
+        if (report.get().asFile.exists()) {
             return
         }
         def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath

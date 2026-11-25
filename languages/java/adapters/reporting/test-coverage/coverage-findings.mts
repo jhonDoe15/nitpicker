@@ -6,7 +6,7 @@ import { ingestPit } from '../../../ingest/pit.mts';
 import { ingestJacocoBranches } from '../../../ingest/coverage-reports/jacoco-branches.mts';
 import { pitFailureFindings } from '../../../builds/pit-failure/pit-failure.mts';
 import { pitSkippedFindings } from '../../../builds/pit-failure/pit-skipped.mts';
-import { firstProjectFile } from '../../../../../shared/conventions/read-inside.mjs';
+import { firstProjectFile } from '../../../../../shared/conventions/read-inside.mts';
 import { archunitFindings, springArchFindings } from '../archunit/archunit-findings.mts';
 import { javaMethodText } from '../../metrics/java-structure.mts';
 import {

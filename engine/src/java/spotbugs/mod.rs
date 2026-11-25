@@ -1,0 +1,169 @@
+//! SpotBugs bug patterns rebuilt for the engine from the documented meaning of each pattern and from what
+//! SpotBugs 4.9.8 reports on test code: same pattern name, line and message, read from source instead of class files.
+mod calls;
+mod constructors;
+mod expose;
+mod fields;
+mod handlers;
+mod flow;
+mod known;
+mod mutable;
+mod names;
+mod nulls;
+mod order;
+mod stores;
+
+use super::types::project::JavaProject;
+use super::types::scope::{FileScope, Resolver, TYPE_DECLARATIONS};
+use crate::engine::source::{ParentTable, SourceFile, children, parent, walk};
+use crate::engine::{FileRule, Project, finding::Finding};
+use std::cell::RefCell;
+use std::collections::HashMap;
+use tree_sitter::Node;
+
+/// What a detector gets: the file, its types and a place to report.
+pub struct Context<'a> {
+    pub resolver: &'a Resolver<'a>,
+    pub file: &'a SourceFile,
+    /// Every class declared in the file, by name.
+    pub classes: HashMap<String, Node<'a>>,
+    /// Findings that hang on what the whole run stores in a field.
+    waiting: RefCell<Vec<known::Waiting>>,
+    line_starts: Vec<usize>,
+    selected: Option<Vec<String>>,
+    out: RefCell<Vec<Finding>>,
+    /// The names the compiler makes up for lambdas and anonymous classes, worked out once.
+    compiled: std::cell::OnceCell<crate::java::javac::Names<'a>>,
+}
+
+impl<'a> Context<'a> {
+    /// Whether a run restricted to some patterns asks for one of these.
+    pub fn wants(&self, patterns: &[&str]) -> bool {
+        self.selected.as_ref().is_none_or(|names| names.iter().any(|name| patterns.contains(&name.as_str())))
+    }
+    pub fn compiled(&self) -> &crate::java::javac::Names<'a> {
+        self.compiled.get_or_init(|| crate::java::javac::Names::of(self.resolver, self.file.tree.root_node()))
+    }
+
+    /// Reports a pattern on a line unless an enclosing declaration suppresses it.
+    pub fn report(&self, pattern: &'static str, at: Node, line: usize, message: String) {
+        self.out.borrow_mut().extend(self.finding(pattern, at, line, message));
+    }
+    /// Reports a pattern with the name SpotBugs gives its place, such as the variable a method stores.
+    pub fn report_named(&self, pattern: &'static str, at: Node, line: usize, message: String, symbol: String) {
+        let found = self.finding(pattern, at, line, message).map(|finding| Finding { symbol: Some(symbol), ..finding });
+        self.out.borrow_mut().extend(found);
+    }
+    /// Reports a pattern for a field a method of the class `from` hands out, once the run tells that the field is
+    /// exposed. `changeable` says whether the declared type of the field can be changed.
+    pub fn report_exposed(&self, pattern: &'static str, at: Node, line: usize, message: String, key: known::Key, from: &str, changeable: bool) {
+        let Some(finding) = self.finding(pattern, at, line, message) else { return };
+        self.waiting.borrow_mut().push(known::Waiting { finding, key, from: from.to_string(), changeable });
+    }
+    fn finding(&self, pattern: &'static str, at: Node, line: usize, message: String) -> Option<Finding> {
+        if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == pattern)) || self.suppressed(pattern, at) {
+            return None;
+        }
+        Some(Finding { file: self.file.path.clone(), line, column: 1, rule: pattern.to_string(), message, symbol: None })
+    }
+    /// Whether a declaration around the node carries `@SuppressFBWarnings` naming the pattern, its prefix, or nothing.
+    fn suppressed(&self, pattern: &str, node: Node) -> bool {
+        let mut current = Some(node);
+        while let Some(at) = current {
+            if super::errorprone::DECLARATIONS.contains(&at.kind()) && self.suppresses(at, pattern) {
+                return true;
+            }
+            current = parent(at);
+        }
+        false
+    }
+    fn suppresses(&self, declaration: Node, pattern: &str) -> bool {
+        let Some(modifiers) = crate::java::helpers::modifiers(declaration) else { return false };
+        children(modifiers).into_iter().any(|annotation| {
+            if !matches!(annotation.kind(), "annotation" | "marker_annotation") {
+                return false;
+            }
+            let name = annotation.child_by_field_name("name").map(|name| self.text(name)).unwrap_or_default();
+            if name.rsplit('.').next() != Some("SuppressFBWarnings") {
+                return false;
+            }
+            let mut listed = Vec::new();
+            if let Some(arguments) = annotation.child_by_field_name("arguments") {
+                for pair in children(arguments) {
+                    let justification = pair.kind() == "element_value_pair"
+                        && pair.child_by_field_name("key").is_some_and(|key| self.text(key) != "value");
+                    if justification {
+                        continue;
+                    }
+                    walk(pair, |part| {
+                        if part.kind() == "string_literal" {
+                            listed.extend(crate::java::types::expr::literal_text(self.file, part));
+                        }
+                    });
+                }
+            }
+            listed.is_empty() || listed.iter().any(|value| pattern == value || pattern.starts_with(&format!("{value}_")))
+        })
+    }
+    /// The line of a byte offset, from one.
+    pub fn line_at(&self, offset: usize) -> usize {
+        self.line_starts.partition_point(|start| *start <= offset)
+    }
+    pub fn line(&self, node: Node) -> usize {
+        self.line_at(node.start_byte())
+    }
+    pub fn text(&self, node: Node) -> &str {
+        self.file.text_of(node)
+    }
+}
+
+/// A detector looks at one class, enum, record or interface declaration at a time, or at the `new` expression or
+/// enum constant that carries the body of an anonymous class.
+type Detector = for<'a> fn(&Context<'a>, Node<'a>);
+
+const DETECTORS: &[Detector] = &[expose::exposed_representation as Detector, constructors::constructor_throw as Detector, nulls::null_dereference as Detector];
+
+#[derive(Default)]
+pub struct SpotBugs {
+    known: known::Known,
+}
+
+impl FileRule for SpotBugs {
+    fn id(&self) -> &'static str {
+        "_SpotBugs"
+    }
+    fn needs_project(&self) -> bool {
+        true
+    }
+    fn check(&self, _file: &SourceFile, _out: &mut Vec<Finding>) {}
+    fn check_in(&self, file: &SourceFile, project: &Project, out: &mut Vec<Finding>) {
+        let Some(project) = project.downcast_ref::<JavaProject>() else { return };
+        let scope = &FileScope::of(file);
+        let resolver = &Resolver::new(&project.index, file, scope);
+        let _parents = ParentTable::of(file.tree.root_node());
+        let mut line_starts = vec![0];
+        line_starts.extend(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1));
+        let selected = std::env::var("NP_SB_ONLY").ok().map(|names| names.split(',').map(String::from).collect());
+        let mut declared = Vec::new();
+        walk(file.tree.root_node(), |node| {
+            let unnamed = matches!(node.kind(), "object_creation_expression" | "enum_constant") && children(node).iter().any(|part| part.kind() == "class_body");
+            if TYPE_DECLARATIONS.contains(&node.kind()) || unnamed {
+                declared.push(node);
+            }
+        });
+        let classes = declared.iter().filter_map(|node| Some((scope.names.get(&node.id())?.clone(), *node))).collect();
+        let context = Context { resolver, file, classes, waiting: RefCell::new(Vec::new()), line_starts, selected, out: RefCell::new(Vec::new()), compiled: std::cell::OnceCell::new() };
+        for node in declared {
+            for detector in DETECTORS {
+                detector(&context, node);
+            }
+        }
+        self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());
+        out.append(&mut context.out.into_inner());
+    }
+    fn finish(&self, project: &Project, out: &mut Vec<Finding>) {
+        if let Some(project) = project.downcast_ref::<JavaProject>() {
+            self.known.settle(&project.index, out);
+        }
+    }
+}

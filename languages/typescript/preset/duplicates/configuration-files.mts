@@ -8,7 +8,7 @@ export const DUPLICATES_CONFIGURATION_FILES = [
   'core/tooling/jscpd/import-only/script-imports.mjs',
   'core/tooling/jscpd/jscpd-clones.mjs',
   'core/tooling/jscpd/skipped-folders.mjs',
-  'shared/conventions/generator-marker.mjs',
+  'shared/conventions/generated/generator-marker.mjs',
   'shared/filesystem.mjs',
   'shared/traversal.mjs',
   'shared/policy.mjs',

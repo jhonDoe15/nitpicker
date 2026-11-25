@@ -1,5 +1,5 @@
 import type { TSESLint } from '@typescript-eslint/utils';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../../../shared/paths/glob.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../../../shared/paths/glob.mts';
 
 type MessageId = 'looseFile' | 'unknownFolder' | 'unknownFeatureFolder' | 'looseFeatureFile';
 type Options = readonly [Readonly<Record<string, unknown>>?];

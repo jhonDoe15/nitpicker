@@ -1,6 +1,6 @@
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../../../shared/paths/checkout-module.mts';
 import type TypeScript from 'typescript';
 import { fieldOf } from '../../../../../../shared/values/readers.mts';
 import type {
@@ -20,17 +20,16 @@ import {
   type Strategy,
   type UnitNode,
 } from '../typed/extract-types.mts';
-import { collected, nearDuplicateMatches, outcomeOf } from '../typed/typed-views.mts';
+import { collected, outcomeOf } from '../../../../../../shared/fix/recipes/extract/outcomes.mts';
+import { nearDuplicateMatches } from '../../../../../../shared/rules/near-duplicates/near-duplicates.mts';
+import type { FactUnit } from '../../../../../../shared/rules/facts/typed/fact-types.mts';
 
 const require = createRequire(import.meta.url);
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 
 type ReuseModules = {
   readonly units: {
-    readonly nearDuplicateUnits: (
-      sourceFile: TypeScript.SourceFile,
-      name: string,
-    ) => { readonly name: string }[];
+    readonly nearDuplicateUnits: (sourceFile: TypeScript.SourceFile, name: string) => FactUnit[];
     readonly nearDuplicateUnitNodes: (sourceFile: TypeScript.SourceFile) => UnitNode[];
   };
   readonly paths: { readonly isReuseProductionPath: (name: string) => boolean };

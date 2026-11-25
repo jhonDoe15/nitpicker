@@ -17,7 +17,7 @@
     "mutation-testing",
     "eslint"
   ],
-  "license": "PolyForm-Noncommercial-1.0.0",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jhonDoe15/nitpicker.git"
@@ -61,6 +61,7 @@
     "shared/**/*.mjs",
     "shared/reference/rules/*.json",
     "languages/**",
+    "engine/bin/**",
     "!**/*.test.mjs",
     "!**/*.mts",
     "!**/*_test.go",
@@ -135,10 +136,12 @@
     "ast-v8-to-istanbul": "1.0.7",
     "dependency-cruiser": "18.2.0",
     "eslint": "10.9.1",
+    "eslint-plugin-cypress": "7.1.0",
     "eslint-plugin-formatjs": "8.1.1",
     "eslint-plugin-functional": "10.0.1",
     "eslint-plugin-jest": "29.17.0",
     "eslint-plugin-jsx-a11y-x": "0.2.0",
+    "eslint-plugin-playwright": "2.12.2",
     "eslint-plugin-react-dom": "5.21.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-react-web-api": "5.21.0",
@@ -148,7 +151,7 @@
     "globals": "17.11.0",
     "jscpd": "5.0.16",
     "knip": "6.32.3",
-    "oxlint": "1.87.0",
+    "oxlint": "1.88.0",
     "oxlint-tsgolint": "7.0.2004",
     "picomatch": "4.0.5",
     "prettier": "3.9.6",

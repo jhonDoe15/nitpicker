@@ -14,13 +14,12 @@
       "languages/java/maven/parallel/tool-supervisor.mts",
       "languages/java/builds/host/client/host-connect.mts",
       "languages/java/builds/host/gradle/host-job.mts",
-      "scripts/typescript/convert.mts",
-      "scripts/typescript/ready.mts",
       "scripts/test-shards/repository-timeouts.mts",
       "core/fix/prettier-base-runner.mts",
       "languages/python/adapters/python-runner.mts",
       "languages/typescript/adapters/entry-points-runner.mts",
       "languages/typescript/adapters/eslint-wrapper.config.mts",
+      "languages/typescript/adapters/dependency-graph/cruiser-hooks/register.mts",
       "languages/typescript/adapters/oxlint/oxlint-bridge.mts",
       "languages/typescript/adapters/oxlint/oxlint-plan.mts",
       "languages/typescript/adapters/test-runners/mocha/mocha-files.config.mts",
@@ -73,7 +72,8 @@
     "languages/typescript/preset/duplicates/fixtures/**",
     "languages/typescript/preset/entry-points/fixtures/**",
     "languages/typescript/preset/structure/fixtures/**",
-    "languages/typescript/preset/test-runtime/fixtures/**"
+    "languages/typescript/preset/test-runtime/fixtures/**",
+    "engine/tests/fixtures/**"
   ],
   "disable": ["coverage", "crap", "mutation"],
   "exceptions": [
@@ -84,7 +84,7 @@
     },
     {
       "rule": "nitpicker/no-managed-resource-construction-outside-composition-roots",
-      "paths": ["shared/logic/sync/decide-sync.mjs"],
+      "paths": ["shared/logic/sync/decide-sync.mts"],
       "reason": "Lint rules have no composition root: the solver worker is started once, lazily, when a rule first asks a question that needs it, and unref'd so it never keeps the process alive."
     },
     {
@@ -139,10 +139,16 @@
     {
       "rule": "javascript-in-typescript-project",
       "paths": [
-        "**/*.mjs",
+        "scripts/typescript/emit.mjs",
+        "scripts/reference/eslint-registry.mjs",
+        "scripts/reference/gen-rules.mjs",
+        "scripts/reference/kotlin-scan-registry.mjs",
+        "scripts/reference/pmd-rulesets.mjs",
+        "scripts/reference/registry-files.mjs",
+        "shared/lists/items.mjs",
         "languages/typescript/adapters/test-runners/node-test/restore-mocks.cjs"
       ],
-      "reason": "Our own code is converting from .mjs to .mts one area at a time (#147). Until it is done, a module that shipped JavaScript imports must stay .mjs, because the package does not ship the .mts sources, and the package emit script runs on Node.js versions that cannot strip types. The node:test preload that restores mocks is loaded with --require into the project's own Node.js, so it stays CommonJS JavaScript."
+      "reason": "The npm pack and the Docker build run scripts/typescript/emit.mjs and the scripts/reference modules, with shared/lists/items.mjs that they import, on Node.js 22.14, which cannot strip types, so they stay JavaScript. restore-mocks.cjs is preloaded with --require into the project's own Node.js, so it stays CommonJS JavaScript."
     },
     {
       "rule": "nitpicker/no-default-export",
@@ -154,9 +160,25 @@
       "paths": ["package.json"],
       "packages": ["@typescript/native"],
       "reason": "TypeScript 7 is loaded by path, not imported: the type check opens its unstable/sync API through resolveTool, and Stryker's TypeScript checker imports @typescript/native from inside node_modules, which knip does not scan."
+    },
+    {
+      "rule": "nitpicker/no-module-level-mutable-state",
+      "paths": ["languages/typescript/preset/eslint-config/react/engine-replay.mts"],
+      "reason": "Deliberate per-process singleton: the ESLint config entry point names the engine's findings file once for the lint process, and the rule objects, which ESLint creates per file with no way to hand them a value, read it from here."
+    },
+    {
+      "rule": "nitpicker/no-process-access-outside-composition-root",
+      "paths": [
+        "languages/typescript/preset/design/test-support/project.mts",
+        "languages/typescript/preset/unused-api/test-support/project.mts"
+      ],
+      "reason": "Test support: CI runs these suites a second time with NITPICKER_TYPED_ENGINE=required, so the analyzers under test get the environment the test process was started with, plus the policy file of the case."
     }
   ],
-  "analyzerTimeoutMinutes": { "coding-standards": 5, "structure": 5 },
+  "analyzerTimeoutMinutes": {
+    "coding-standards": 5,
+    "structure": 5
+  },
   "tools": {
     "tests": {
       "timeouts": {
@@ -174,6 +196,14 @@
             "testTimeoutMs": 180000,
             "hookTimeoutMs": 300000,
             "testDeclarationCeilingMs": 180000,
+            "hookDeclarationCeilingMs": 300000
+          },
+          "java-fix-e2e": {
+            "language": "java",
+            "include": ["languages/java/adapters/java-e2e/fix/**"],
+            "testTimeoutMs": 300000,
+            "hookTimeoutMs": 300000,
+            "testDeclarationCeilingMs": 300000,
             "hookDeclarationCeilingMs": 300000
           },
           "runner-js-acceptance": {

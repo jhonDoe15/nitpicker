@@ -1,9 +1,9 @@
 import { readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { byText } from '../../../../../shared/text-order/by-text.mjs';
-import { projectFilePaths as untypedProjectFilePaths } from '../../../../../shared/project-files/project-files.mjs';
+import { byText } from '../../../../../shared/text-order/by-text.mts';
+import { projectFilePaths as untypedProjectFilePaths } from '../../../../../shared/project-files/project-files.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
-import { workflowCommands as untypedWorkflowCommands } from '../../../../../shared/started-files/workflow-commands.mjs';
+import { workflowCommands as untypedWorkflowCommands } from '../../../../../shared/started-files/workflow-commands.mts';
 import { filesStartedByBuildTool } from './build-tool-commands.mts';
 import { filesStartedByCommand } from './command-files.mts';
 import { filesStartedBySource } from './source-starts.mts';

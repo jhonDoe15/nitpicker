@@ -1,6 +1,6 @@
 import path from 'node:path';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mjs';
-import { depthFirst as untypedDepthFirst } from '../../../../../shared/traversal.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mts';
+import { depthFirst as untypedDepthFirst } from '../../../../../shared/traversal.mts';
 
 const escapeRegExp: (value: string) => string = untypedEscapeRegExp;
 const depthFirst: (

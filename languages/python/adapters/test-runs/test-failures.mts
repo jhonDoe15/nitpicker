@@ -3,11 +3,11 @@ import {
   TESTS_NOT_RUN_RULE,
   testsFailHeadline as untypedHeadline,
   testsFailOnBase as untypedOnBase,
-} from '../../../../shared/rules/finding-helpers.mjs';
+} from '../../../../shared/rules/finding-parts.mts';
 import {
   failingTestEntries as untypedEntries,
   valuesInMessage as untypedValues,
-} from '../../../../shared/rules/failing-tests/failing-tests.mjs';
+} from '../../../../shared/rules/failing-tests/failing-tests.mts';
 import path from 'node:path';
 import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
 import type { FailureManifest, TestFailure, TracebackFailure } from './typed/run-types.mts';

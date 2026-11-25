@@ -1,5 +1,5 @@
 import { writeSync } from 'node:fs';
-import { displayPath } from '../../../shared/messages/terminal/terminal-text.mjs';
+import { displayPath } from '../../../shared/messages/terminal/terminal-text.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 
 export type ProgressStream = {
@@ -26,8 +26,6 @@ type SettledTask = {
   readonly elapsedMs: number | undefined;
   readonly because?: string | undefined;
 };
-
-const shownPath: (absolutePath: unknown) => unknown = displayPath;
 
 const PROGRESS_FD = 3;
 
@@ -66,7 +64,7 @@ export function cachedLine({
   readonly count: unknown;
   readonly directory: unknown;
 }): string {
-  const location = directory === undefined ? 'remote cache' : textOf(shownPath(directory));
+  const location = directory === undefined ? 'remote cache' : displayPath(textOf(directory));
   return `nitpicker: ${label} ${countAnalyzers(count)} cached (${location}; use --no-cache to rerun)\n`;
 }
 
@@ -79,7 +77,7 @@ export function resumedLine({
   readonly count: unknown;
   readonly directory: string;
 }): string {
-  const location = textOf(shownPath(directory));
+  const location = displayPath(directory);
   return `nitpicker: ${label}: ${countAnalyzers(count)} resumed from an unfinished run (${location}; use --no-cache to rerun)\n`;
 }
 

@@ -1,4 +1,4 @@
-import { COMMON_EXCEPTION_RULES } from '../../../shared/policy.mjs';
+import { COMMON_EXCEPTION_RULES } from '../../../shared/policy.mts';
 import { definedField, exceptionRoute } from './typed/route-views.mts';
 import type { HintData, RuleHint } from './hints/hint-types.mts';
 import type { IngestedFinding } from '../ingest/typed/ingest-types.mts';
@@ -52,6 +52,9 @@ import { OVERRIDE_HINTS } from './hints/overrides/overrides.mts';
 import { TWIN_HINTS } from './hints/twins/twins.mts';
 import { MESSAGE_HINTS } from './hints/messages/messages.mts';
 import { TRANSLATION_HINTS } from './hints/translations/translations.mts';
+import { REQUEST_CONVERSION_HINTS } from './hints/request_text/conversion.mts';
+import { SUBPROCESS_RULE_HINTS } from './hints/processes/subprocess-rules.mts';
+import { REPEATED_WORK_HINTS } from './hints/repeated_work/repeated-work.mts';
 
 export { RULES_TOOL };
 const PYRIGHT_TOOLS = ['pyright', 'basedpyright'];
@@ -146,6 +149,9 @@ export const RULE_HINTS: readonly RuleHint[] = [
   ...TWIN_HINTS,
   ...MESSAGE_HINTS,
   ...TRANSLATION_HINTS,
+  ...REQUEST_CONVERSION_HINTS,
+  ...SUBPROCESS_RULE_HINTS,
+  ...REPEATED_WORK_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...PYRIGHT_TOOLS.map((tool) => ({
     tool,

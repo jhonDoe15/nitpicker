@@ -16,7 +16,7 @@ import {
 import { resolveHeadPolicy as untypedResolveHeadPolicy } from '../../head-policy.mts';
 import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
 import { resolveLayout as untypedResolveLayout } from '../../layout.mts';
-import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 
 const resolveLayout: () => JavascriptLayout = untypedResolveLayout;
 const resolveHeadPolicy: (

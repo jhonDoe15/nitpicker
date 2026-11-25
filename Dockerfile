@@ -14,7 +14,7 @@ ARG SOURCE_URL=https://github.com/jhonDoe15/nitpicker
 LABEL org.opencontainers.image.title="nitpicker" \
       org.opencontainers.image.description="The nitpicker quality gate with a preset's toolchain" \
       org.opencontainers.image.source="${SOURCE_URL}" \
-      org.opencontainers.image.licenses="PolyForm-Noncommercial-1.0.0"
+      org.opencontainers.image.licenses="MIT"
 
 # The gate diffs against the merge base, so git is required; mutation testing (Stryker, PIT) looks up
 # its child processes with ps.

@@ -51,32 +51,15 @@ describe('exceptions in the differential gate', () => {
     expect(enforceable(result)).toEqual([]);
   });
 
-  it('reports an exception moved to another function as a loosening of the base policy', () => {
-    const root = typescriptRepository({
-      'src/main/a.ts': WIDE,
-      'nitpicker.config.json': config(lifted),
-    });
-    writeFiles(root, {
-      'nitpicker.config.json': config({ ...lifted, function: 'other' }),
-      'src/main/b.ts': 'export const b = 1;\n',
-    });
-    commit(root, 'retarget the exception');
-
-    const result = runTypescript(root, ['structure']);
-
-    expect(result.exitCode, result.text).toBe(1);
-    expect(enforceable(result)).toEqual([['policy-loosened', undefined]]);
-  });
-
-  it('reports an exception added with the code it lifts as a loosening of the base policy', () => {
+  it('lifts new code with an exception added in the same change', () => {
     const root = typescriptRepository({ 'src/main/b.ts': 'export const b = 1;\n' });
     writeFiles(root, { 'src/main/a.ts': WIDE, 'nitpicker.config.json': config(lifted) });
     commit(root, 'add a wide function and its exception');
 
     const result = runTypescript(root, ['structure']);
 
-    expect(result.exitCode, result.text).toBe(1);
-    expect(enforceable(result)).toEqual([['policy-loosened', undefined]]);
+    expect(result.exitCode, result.text).toBe(0);
+    expect(enforceable(result)).toEqual([]);
   });
 
   it('fails the same new code without the exception', () => {

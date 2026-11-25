@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateDuplicates } from '../../../../shared/rules/duplicates.mjs';
+import { evaluateDuplicates } from '../../../../shared/rules/duplicates.mts';
 import { listOf } from '../../../../shared/values/readers.mts';
 import { applyPythonExceptions, type Routable } from './python-exceptions.mts';
 

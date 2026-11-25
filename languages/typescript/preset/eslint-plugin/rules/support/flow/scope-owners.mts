@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable } from '../../analysis/constant-resolution.mts';
-import { wordsOf as untypedWordsOf } from '../../../../../../../shared/naming/secret-words.mjs';
+import { wordsOf as untypedWordsOf } from '../../../../../../../shared/naming/secret-words.mts';
 import type { Context } from '../../security/security-values.mts';
 import { calleeOrigin } from '../io-effects.mts';
 import type { CallView } from '../io/call-views.mts';

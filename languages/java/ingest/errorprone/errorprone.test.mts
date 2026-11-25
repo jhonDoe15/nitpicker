@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mts';
-import { hashIdentity as untypedHashIdentity } from '../../../../shared/ingest/common.mjs';
+import { hashIdentity as untypedHashIdentity } from '../../../../shared/ingest/report-records.mts';
 import {
   fieldOf,
   fieldsOf,
@@ -26,6 +26,12 @@ const resolvePath = (file: string): string | undefined =>
   file.startsWith('/project/src/') ? file.slice('/project/'.length) : undefined;
 
 const MAIN = 'src/main/java/org/example';
+const CHECK_RETURN_LINE = numberOr(
+  diagnostics().find((entry) =>
+    textOf(fieldOf(entry, 'file')).endsWith('/simple/Calculator.java'),
+  )?.['line'],
+  Number.NaN,
+);
 const CHECK_RETURN_VALUE =
   "The result of `evaluate()` must be used. Did you mean 'var unused = expr.evaluate();' or to remove this line?";
 const FUTURE =
@@ -69,7 +75,7 @@ describe('ingestErrorProne', () => {
           'callers do not need it. Did you mean to remove this line?',
         allowedForm: 'Use the result, or make the method return void if callers do not need it.',
         classification: 'enforceable',
-        location: { line: 16, column: 26 },
+        location: { line: CHECK_RETURN_LINE, column: 26 },
       },
       {
         tool: 'errorprone',

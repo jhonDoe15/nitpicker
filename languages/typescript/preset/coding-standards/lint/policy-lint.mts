@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ESLint, type Linter } from 'eslint';
-import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mts';
 import type { Environment } from '../../../../../shared/processes/environment.mts';
 import { fieldOf, listOf, objectOf } from '../../../../../shared/values/readers.mts';
 import { UnmappedDiagnosticError } from '../../../adapters/oxlint/oxlint-diagnostics.mts';

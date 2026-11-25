@@ -35,7 +35,29 @@ export function isAssignmentTarget(node: TSESTree.Node): boolean {
     (parent?.type === AST_NODE_TYPES.UpdateExpression && parent.argument === outer) ||
     (parent?.type === AST_NODE_TYPES.UnaryExpression &&
       parent.operator === 'delete' &&
-      parent.argument === outer)
+      parent.argument === outer) ||
+    isPatternTarget(parent, outer)
+  );
+}
+
+function isPatternTarget(parent: TSESTree.Node | undefined, outer: TSESTree.Node): boolean {
+  if (parent === undefined) {
+    return false;
+  }
+  if (parent.type === AST_NODE_TYPES.ArrayPattern || parent.type === AST_NODE_TYPES.RestElement) {
+    return true;
+  }
+  if (
+    parent.type === AST_NODE_TYPES.AssignmentPattern ||
+    parent.type === AST_NODE_TYPES.ForOfStatement ||
+    parent.type === AST_NODE_TYPES.ForInStatement
+  ) {
+    return parent.left === outer;
+  }
+  return (
+    parent.type === AST_NODE_TYPES.Property &&
+    parent.value === outer &&
+    parent.parent.type === AST_NODE_TYPES.ObjectPattern
   );
 }
 

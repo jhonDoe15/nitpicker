@@ -8,6 +8,8 @@ type DuplicateRun = {
   readonly reportRoot: string;
   readonly manifest: unknown;
   readonly skippedFolders: unknown;
+  readonly environment?: Readonly<Record<string, string | undefined>> | undefined;
+  readonly analyzeGeneratedSources: boolean;
 };
 
 const KOTLIN_DUPLICATES = {
@@ -19,13 +21,15 @@ const KOTLIN_DUPLICATES = {
 
 export function runKotlinDuplicates(
   projectRoot: string,
-  { reportRoot, manifest, skippedFolders }: DuplicateRun,
+  { reportRoot, manifest, skippedFolders, environment, analyzeGeneratedSources }: DuplicateRun,
 ): void {
   callUntyped(runJavaDuplicates, projectRoot, {
     ...KOTLIN_DUPLICATES,
     reportRoot,
     manifest,
     skippedFolders,
+    environment,
+    analyzeGeneratedSources,
   });
 }
 

@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { pathInside as untypedPathInside } from '../../../../../shared/filesystem.mjs';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mjs';
+import { pathInside as untypedPathInside } from '../../../../../shared/filesystem.mts';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../../shared/paths/glob.mts';
 import { SQL_LIBRARIES } from '../../eslint-plugin/rules/security/sql/no-sql-string-building.mts';
 import { codeExtensions } from '../../layout.mts';
 import { nonProductionFolders } from '../../structure/reuse/reuse-paths.mts';
@@ -10,7 +10,7 @@ import {
   readDependencyNames as untypedReadDependencyNames,
   storyGlobs as untypedStoryGlobs,
 } from '../scope-support.mts';
-import { GIT_TIMEOUT_MS } from '../../../../../shared/processes/deadlines.mjs';
+import { GIT_TIMEOUT_MS } from '../../../../../shared/processes/deadlines.mts';
 
 export type SecurityFacts = {
   readonly browser: boolean;

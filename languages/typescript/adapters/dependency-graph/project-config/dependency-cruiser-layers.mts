@@ -2,8 +2,8 @@ import { isDeepStrictEqual } from 'node:util';
 import {
   isPlainObject as untypedIsPlainObject,
   listOf as untypedListOf,
-} from '../../../../../shared/config.mjs';
-import { precedenceLayers as untypedPrecedenceLayers } from '../../../../../shared/conventions/tool-precedence.mjs';
+} from '../../../../../shared/config.mts';
+import { precedenceLayers as untypedPrecedenceLayers } from '../../../../../shared/conventions/tool-precedence.mts';
 import {
   isDependencyCruiserOwnedOption as untypedIsOwnedOption,
   patternSource as untypedPatternSource,

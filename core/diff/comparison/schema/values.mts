@@ -1,5 +1,5 @@
 import { normalizeGitPath } from '../../git/normalize.mts';
-import { expandMetricFindings } from '../../../../shared/report-output/metric-groups.mjs';
+import { expandMetricFindings } from '../../../../shared/report-output/metric-groups.mts';
 import { isPlainObject } from '../../../../shared/values/readers.mts';
 
 export { isPlainObject as isRecord };

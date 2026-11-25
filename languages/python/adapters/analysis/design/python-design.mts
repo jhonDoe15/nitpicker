@@ -1,8 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { DESIGN_RULES } from '../../../../../shared/project-rules/design/design-rules.mjs';
+import { DESIGN_RULES } from '../../../../../shared/project-rules/design/design-rules.mts';
 import { fieldOf, parseJson, textOf } from '../../../../../shared/values/readers.mts';
-import { sharedFactFindings as untypedFactFindings } from '../../../../../shared/rules/facts/evaluate.mjs';
+import { sharedFactFindings as untypedFactFindings } from '../../../../../shared/rules/facts/evaluate.mts';
 import type { Finding } from '../typed/python-graph-types.mts';
 
 type DesignReport = { readonly error?: unknown; readonly facts?: unknown };

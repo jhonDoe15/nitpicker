@@ -76,6 +76,15 @@ the spec for Mocha.
   `child_process`/`execa` calls and same-file wrappers such as `git(root, ['init'])` or
   `run('git', ['init'])`. Build a template repository once in `beforeAll` (`before` on `node:test`
   and Mocha) and `cpSync` it per test.
+- `nitpicker/no-shared-temp-path-in-tests`: a test-area file does not write, delete or hand to a
+  child process a temp path that every test builds the same way: a fixed name under `os.tmpdir()` or
+  `/tmp`, or one whose only varying part is `process.pid` (with literals and constants around it, and
+  helper parameters only next to `process.pid`). Concurrent tests and test files on other workers, and worker threads that
+  share one process id, then write the same file, and one test deletes or overwrites the other's.
+  The rule follows the path through `const` variables, array and object arguments and same-file
+  helpers that return it, to the `fs` writes and removals and the `child_process`/`execa` calls. A
+  `mkdtemp` prefix is fine, and so is a name with a random part or a counter. Create a directory per
+  test with `fs.mkdtemp(path.join(os.tmpdir(), "prefix-"))` and write inside it.
 - `nitpicker/hermetic-git-in-tests`: every git process a test-area file starts passes an `env`
   object, written in that file, that sets `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_NOSYSTEM`. Same-file
   `const` objects and spreads count. An imported env object does not, because the rule cannot see
@@ -109,6 +118,16 @@ the spec for Mocha.
   `cy.wait('@request')`). The rule covers every test-area file: the test roots (e2e folders under
   them included), `*.test.*`/`*.spec.*` next to sources, and `__tests__` directories (their
   fixtures are skipped). A wait that cannot be avoided gets an exception for the rule.
+- Browser tests: in a file that imports `@playwright/test` (or another `playwright` module), a read
+  that checks the page once is reported (`playwright/prefer-web-first-assertions`:
+  `expect(await locator.textContent()).toBe('42')` fails when the page is still updating; use
+  `await expect(locator).toHaveText('42')`, which retries), and so are `waitForLoadState('networkidle')`
+  (`playwright/no-networkidle`), element handles from `page.$`/`page.$$` (`playwright/no-element-handle`,
+  use a locator), an action or retrying assertion without `await` (`playwright/missing-playwright-await`)
+  and `page.pause()` (`playwright/no-page-pause`). In a Cypress spec (one that uses `cy`), keeping a
+  command's result in a variable (`cypress/no-assigning-return-values`; use `.then` or an alias), an
+  `async` test or hook (`cypress/no-async-tests`) and `cy.pause()` (`cypress/no-pause`) are reported.
+  The messages name the allowed form.
 - `nitpicker/no-raised-test-timeout`: no test, suite or hook timeout above 10 000 ms. That is the
   test timeout nitpicker runs a project's tests with (`languages/typescript/preset/defaults/vitest.quality.config.ts`, which
   Stryker also uses, and the timeout it passes to Vitest, Jest, `node:test` and Mocha; a test keeps them in step; the
@@ -328,7 +347,52 @@ the spec for Mocha.
   one of those calls, restores it. Top-level code and the callbacks of a top-level `beforeAll`,
   `beforeEach`, `vi.hoisted`, `vi.mock` or `vi.doMock` are not checked: they set the same state for
   every test in the file.
+  The same holds for other state a test leaves behind for the next one: `localStorage` and
+  `sessionStorage` writes (`setItem`, `removeItem`, `clear`; cleared in `afterEach` or `beforeEach`,
+  or asserted empty with `expect(sessionStorage.length).toBe(0)` or a `getItem(...)` checked to be
+  `null` in the same test), `document.cookie = ...` and `process.chdir(...)`, and an override of a
+  member of `navigator`. A write that puts back a value saved in the same function
+  (`const old = process.env.MODE; ... process.env.MODE = old;`) restores it too, and so does a later
+  `clear`/`removeItem` in the same function, a second `process.chdir`, cookie write or `navigator`
+  override there, and a clear in a helper that a hook calls or is given (`afterEach(resetStorage)`).
+  Storage, `document`, `navigator` or `process.chdir` replaced with `vi.stubGlobal` or `vi.spyOn`
+  are not checked. Code that runs in
+  the browser page (the callbacks of Playwright's `page.evaluate`, `addInitScript` and the like, also when
+  passed by name, and WebdriverIO's `browser.execute`) is
+  not checked, and in a Cypress spec (one that uses `cy`) storage and cookies are not checked,
+  since Cypress clears them before each test.
   The allowed forms are `vi.stubEnv`, `vi.stubGlobal`, `vi.spyOn` and fake timers, restored as above.
+- `nitpicker/no-uncleared-shared-mock`: a mock created once for several tests (at module level, in a
+  `describe` callback, in `vi.hoisted`, or the exports of a module mocked with `vi.mock`/`jest.mock`)
+  keeps its calls from one test to the next. When a test then checks how often or in which order it
+  was called (`toHaveBeenCalledTimes`, `toHaveBeenCalledOnce`, `toHaveBeenNthCalledWith`,
+  `not.toHaveBeenCalled` and their aliases, or `mock.calls`, `mock.results` and `node:test`'s
+  `mock.callCount()`), the result depends on the tests that ran before it. The last call is the
+  test's own, so `toHaveBeenLastCalledWith` is not counted. The rule reports such a mock when two or
+  more tests use it (an `it.each` with two or more rows counts as two; a use in
+  `beforeEach`/`beforeAll` or in a top-level helper counts for the tests that run it). Clear it in
+  `beforeEach` (`send.mockClear()`, `mockReset`, `mockRestore`, `vi.clearAllMocks()` and the other
+  `*AllMocks` calls, also passed as `beforeEach(vi.clearAllMocks)`, `send.mock.resetCalls()` under
+  `node:test`), give it a new `vi.fn()` in `beforeEach`, or create it inside the test. A clear in a
+  hook or helper whose target the rule cannot name (a loop over mocks) counts as clearing every
+  mock. The rule is off for the folders whose runner clears mocks itself: a Vitest or Jest config
+  (or the `jest` key of `package.json`) that sets `clearMocks`, `resetMocks`, `mockReset` or
+  `restoreMocks` (to anything but `false`), a setup file or module the config names (followed
+  through its imports) that clears mocks, `react-scripts` (and CRACO or `react-app-rewired`), which
+  reset mocks by default, and a config that builds on a shared config, a preset or a project alias
+  (`@/`, `~/`, `#`) that cannot be read, since that one may clear them.
+- `nitpicker/no-worker-state-in-concurrent-tests`: concurrent tests (`it.concurrent`,
+  `describe.concurrent`, `{ concurrent: true }`, or every test when the root Vitest config, or a
+  project with its own `root`, sets `test.sequence.concurrent: true`) run interleaved in one worker,
+  so state that belongs to the worker is shared between them while they await. When two or more
+  concurrent tests of the same suite run side by side (skipped and `todo` tests do not count), the
+  rule reports fake timers (`useFakeTimers`, `setSystemTime`), `spyOn` on a global or on an object
+  declared outside the test, `stubGlobal`, `stubEnv`, `process.chdir`, writes to `process.env` and
+  setting the implementation of a mock declared outside the test, in such a test or in a
+  `beforeEach`/`afterEach` hook those tests run. `describe.sequential`, `{ sequential: true }` and
+  `{ concurrent: false }` opt a block or test out, and a project that sets
+  `sequence.concurrent: false` anywhere turns the config flag off. Run the tests that change such
+  state in sequence, or keep the state inside the test.
 - `nitpicker/no-switched-off-tests`: no `it.todo`/`test.todo`/`describe.todo` (`vitest/no-disabled-tests`
   already reports `skip`; neither is a way to switch a test off) and no `skipIf(true)`/`runIf(false)`.
   A condition that folds to a constant counts as a literal: `skipIf(1 === 1)`, `skipIf(!false)`,

@@ -1,5 +1,5 @@
 import { expect } from 'vitest';
-import { linkSentence as untypedLinkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence as untypedLinkSentence } from '../../../../../shared/messages/test-support/link-sentence.mts';
 import type { Finding, GateResult, Sarif } from './python-e2e-types.mts';
 import { summarize } from './python-e2e-support.mts';
 

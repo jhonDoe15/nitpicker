@@ -127,6 +127,20 @@ describe('copied constants in JVM tests', () => {
     ]);
   });
 
+  it('tells apart owners of the same name in different packages', () => {
+    const found = findings({
+      'src/main/java/other/Limits.java':
+        'package other;\npublic class Limits { public static final int MAX_ITEMS = 60; public static final int MIN_ITEMS = 3; }',
+      'src/test/java/other/LimitsTest.java':
+        'package other;\nclass T { void x() { Limits l; assertEquals(50, a()); assertEquals(60, b()); assertEquals(3, c()); } }',
+    });
+
+    expect(linesOf(found)).toEqual([
+      '2 This literal copies Limits.MAX_ITEMS',
+      '2 This literal copies Limits.MIN_ITEMS',
+    ]);
+  });
+
   it('reads constants of nested types and the names that reach them', () => {
     const api = [
       'package shop;',

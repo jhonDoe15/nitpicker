@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { eslintMessageWithHint } from '../../../typescript/adapters/hints/eslint-hints.mts';
-import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mjs';
+import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mts';
 import { typescriptApi } from '../../../typescript/adapters/typed/typescript-program.mts';
 import {
   resolveHeadPolicy,

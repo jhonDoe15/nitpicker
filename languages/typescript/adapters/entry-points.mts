@@ -1,6 +1,6 @@
 import path from 'node:path';
-import { RULE_IDS } from '../../../shared/policy.mjs';
-import { checkoutModulePath as untypedCheckoutModulePath } from '../../../shared/paths/checkout-module.mjs';
+import { RULE_IDS } from '../../../shared/policy.mts';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../../shared/paths/checkout-module.mts';
 
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 import { sourceRoots as defaultSourceRoots } from '../preset/layout.mts';

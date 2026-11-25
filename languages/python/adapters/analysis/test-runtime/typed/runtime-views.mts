@@ -1,8 +1,8 @@
 import {
   classifyTestRuntime as untypedClassify,
   testRuntimeReport as untypedReport,
-} from '../../../../../../shared/rules/test-runtime/classify.mjs';
-import { evaluateTestRuntime as untypedEvaluate } from '../../../../../../shared/rules/test-runtime/evaluate.mjs';
+} from '../../../../../../shared/rules/test-runtime/classify.mts';
+import { evaluateTestRuntime as untypedEvaluate } from '../../../../../../shared/rules/test-runtime/evaluate.mts';
 import { callUntyped as call } from '../../../../../../shared/values/boundaries/untyped-call.mts';
 import { fieldOf } from '../../../../../../shared/values/readers.mts';
 import type { IngestedFinding } from '../../../../ingest/typed/ingest-types.mts';

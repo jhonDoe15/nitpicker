@@ -1,4 +1,4 @@
-import { readInside } from '../../../../shared/conventions/read-inside.mjs';
+import { readInside } from '../../../../shared/conventions/read-inside.mts';
 import { fieldOf, optionalText, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
 import type { ConventionSource } from '../../../../core/conventions/typed/convention-types.mts';

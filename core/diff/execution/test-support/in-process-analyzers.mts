@@ -3,8 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runJava } from '../../../../languages/java/adapters/java-runner.mts';
 import { runPython } from '../../../../languages/python/adapters/python-runner.mts';
-import { headPolicyEnvironment } from '../../../../languages/typescript/preset/head-policy.mts';
-import { runHygieneCli } from '../../../../shared/hygiene/runner.mjs';
+import { headPolicyEnvironment } from '../../../../shared/head-policy.mts';
+import { runHygieneCli } from '../../../../shared/hygiene/runner.mts';
 import { progressEvent } from '../graph/outcomes.mts';
 import { reportFromAnalyzerOutput } from '../report/analyzer-report.mts';
 import { createProgressReporter } from '../progress.mts';
@@ -12,8 +12,8 @@ import { runFakeAnalyzer } from './fake-analyzer.mts';
 import {
   checkoutModulePath,
   checkoutModuleUrl,
-} from '../../../../shared/paths/checkout-module.mjs';
-import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
+} from '../../../../shared/paths/checkout-module.mts';
+import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import { callUntyped } from '../../../../languages/java/adapters/typed/java-values.mts';
 import type { GraphResult, Outcome } from '../graph/outcomes.mts';
 import { type AnalyzerTask, byDescendingExecutionPriority, indexTasks } from '../tasks.mts';
@@ -32,7 +32,6 @@ const pythonRunner: Runner = runPython;
 function javaRunner(argv: readonly string[], options: { readonly spawn?: unknown }): unknown {
   return callUntyped(runJava, argv, options);
 }
-const policyEnvironment: (headPolicyFile: unknown) => NodeJS.ProcessEnv = headPolicyEnvironment;
 const sourcePath: (file: string) => string = checkoutModulePath;
 const hygieneCli: (cli: HygieneCli) => number = runHygieneCli;
 
@@ -72,7 +71,8 @@ export function runTasksInProcess(
           total: tasks.length,
         });
   const outcomes = new Map<string, Outcome>();
-  const environment = headPolicyFile === undefined ? {} : policyEnvironment(headPolicyFile);
+  const environment =
+    headPolicyFile === undefined ? {} : headPolicyEnvironment(textOf(headPolicyFile));
   withPolicyFile(headPolicyFile, () => {
     for (const task of dependencyOrder(tasks, tasksByName)) {
       const outcome = settleTask(task, { tasksByName, outcomes, spawn, environment });
@@ -102,7 +102,7 @@ function withPolicyFile<T>(headPolicyFile: unknown, operation: () => T): T {
     return operation();
   }
   const previous = process.env['NITPICKER_POLICY'];
-  Object.assign(process.env, policyEnvironment(headPolicyFile));
+  Object.assign(process.env, headPolicyEnvironment(textOf(headPolicyFile)));
   try {
     return operation();
   } finally {

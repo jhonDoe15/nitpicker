@@ -10,7 +10,13 @@ import { readKotlinDuplicateFindings, runKotlinDuplicates } from '../kotlin/kotl
 
 type Runner = (
   root: string,
-  options: { reportRoot: string; manifest: unknown; skippedFolders: undefined },
+  options: {
+    reportRoot: string;
+    manifest: unknown;
+    skippedFolders: undefined;
+    analyzeGeneratedSources: boolean;
+    environment: Record<string, string>;
+  },
 ) => void;
 type Reader = (reportRoot: string) => JavaFinding[];
 type Precedence = readonly string[];
@@ -91,14 +97,24 @@ function project(
 
 function clonesWith(preset: Preset, root: string, precedence: Precedence): string[] {
   const [run, read] = RUNNERS[preset];
-  const policy: unknown = resolveHeadPolicy({ preset, tools: { jscpd: { precedence } } }, root);
+  const policy: unknown = resolveHeadPolicy(
+    { preset, tools: { jscpd: { precedence: [...precedence] } } },
+    root,
+  );
   const found: unknown = withHeadPolicyFile(policy, (policyFile: string) => {
     vi.stubEnv('NITPICKER_POLICY', policyFile);
+    const environment = { NITPICKER_POLICY: policyFile };
     const reportRoot = path.join(root, 'build/nitpicker');
     const manifest: unknown = parseJson(
       readFileSync(path.join(reportRoot, 'manifest.json'), 'utf8'),
     );
-    run(root, { reportRoot, manifest, skippedFolders: undefined });
+    run(root, {
+      reportRoot,
+      manifest,
+      skippedFolders: undefined,
+      analyzeGeneratedSources: false,
+      environment,
+    });
     return read(reportRoot)
       .filter(({ rule }) => rule === 'duplicate-clone')
       .map(({ path: file }) => file);

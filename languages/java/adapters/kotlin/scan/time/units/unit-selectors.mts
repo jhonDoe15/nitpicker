@@ -3,7 +3,7 @@ import {
   unitOfCallName as untypedUnitOfCallName,
   unitOfConstant as untypedUnitOfConstant,
   unitOfName as untypedUnitOfName,
-} from '../../../../../../../shared/naming/time-units/unit-names.mjs';
+} from '../../../../../../../shared/naming/time-units/unit-names.mts';
 import { checkCall, hasDurationProperty, reportArgument, reportNarrowed } from './unit-reports.mts';
 import type { Parser, Selector, UnitBase, UnitValue } from './unit-shapes.mts';
 

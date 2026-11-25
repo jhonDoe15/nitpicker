@@ -2,7 +2,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import type { JavaFinding } from '../typed/java-values.mts';
-import { exceptionHint as untypedExceptionHint } from '../../../../shared/rules/exceptions.mjs';
+import { exceptionHint as untypedExceptionHint } from '../../../../shared/rules/exceptions.mts';
 import { jvmReuseFacts, readJvmReuse, readJvmReuseFindings } from './jvm-reuse-facts.mts';
 import {
   createReuseProjects,
@@ -14,6 +14,7 @@ import {
 const { project } = createReuseProjects();
 
 const SINGLE = SINGLE_PROJECT;
+const SKIPPED = { exclude: ['**/Skipped.java'], analyzeGeneratedSources: false };
 
 function javaClass(packageName: string, name: string, body: string, imports = ''): string {
   return `package ${packageName};\n\n${imports}public class ${name} {\n${body}}\n`;
@@ -456,7 +457,7 @@ describe('jvmReuseFacts', () => {
       },
     ];
 
-    const facts = jvmReuseFacts(root, { projects, exclude: ['**/Skipped.java'] });
+    const facts = jvmReuseFacts(root, { projects, ...SKIPPED });
 
     expect([facts.modules, facts.packages, facts.imports]).toEqual([
       [{ file: `app/${JAVA_ROOT}/shop/App.java`, role: 'production', entry: true }],

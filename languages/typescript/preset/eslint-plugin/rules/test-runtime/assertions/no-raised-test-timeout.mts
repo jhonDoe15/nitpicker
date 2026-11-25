@@ -26,7 +26,7 @@ type TimeoutProperty = TSESTree.Property & { readonly key: TSESTree.Identifier }
 const isIntegrationTestFor: (file: string, policy: Readonly<Record<string, unknown>>) => boolean =
   untypedIsIntegrationTestFor;
 
-export { TEST_TIMEOUT_CEILING_MS } from '../../../../../../../shared/test-timeouts/resolve.mjs';
+export { TEST_TIMEOUT_CEILING_MS } from '../../../../../../../shared/test-timeouts/resolve.mts';
 
 const HOOK_TIMEOUT = 'hookTimeout';
 const TEARDOWN_TIMEOUT = 'teardownTimeout';

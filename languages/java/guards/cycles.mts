@@ -1,6 +1,6 @@
-import { isExplainedCycle as untypedIsExplainedCycle } from '../../../shared/graph/explained-cycles.mjs';
-import { listed as untypedListed } from '../../../shared/rules/features/feature-boundaries.mjs';
-import { RULE_IDS } from '../../../shared/policy.mjs';
+import { isExplainedCycle as untypedIsExplainedCycle } from '../../../shared/graph/explained-cycles.mts';
+import { listed as untypedListed } from '../../../shared/rules/features/feature-boundaries.mts';
+import { RULE_IDS } from '../../../shared/policy.mts';
 import type { Finding } from '../../../shared/values/findings.mts';
 import type {
   CycleEdge,

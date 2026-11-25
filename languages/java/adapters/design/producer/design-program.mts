@@ -5,7 +5,7 @@ import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../../builds/java-build.mts';
 import { javaCommand, runJava } from '../../../maven/maven-command.mts';
 import { cacheDirectory, publishDirectory } from '../../../maven/maven-tools.mts';
-import { resolveInside } from '../../../../../shared/conventions/read-inside.mjs';
+import { resolveInside } from '../../../../../shared/conventions/read-inside.mts';
 import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
 import { type JavaEnvironment, type JavaSpawn, callUntyped } from '../../typed/java-values.mts';
 

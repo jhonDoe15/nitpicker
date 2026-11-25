@@ -6,8 +6,11 @@ import { firstFileIn, projectFilePaths, propertyName } from '../typed/files/file
 import { VITEST_CONFIG_NAMES } from './setup-files.mts';
 import { appendAll } from '../../../../../shared/lists/lists.mts';
 
-type RestoreScope = { readonly scope: string; readonly restores: 'globals' | 'envs' };
-type Restores = { scope: string; globals: boolean; envs: boolean };
+type RestoreScope = {
+  readonly scope: string;
+  readonly restores: 'globals' | 'envs' | 'concurrent';
+};
+type Restores = { scope: string; globals: boolean; envs: boolean; concurrent: boolean };
 
 const ts = typescriptApi();
 
@@ -84,14 +87,41 @@ function configNodes(configPath: string): TypeScript.Node[] {
   return nodesOf(ts.createSourceFile(configPath, text, ts.ScriptTarget.Latest, true));
 }
 
+function sequenceFlag(node: TypeScript.Node): TypeScript.PropertyAssignment | undefined {
+  if (!ts.isPropertyAssignment(node) || propertyName(node) !== 'concurrent') {
+    return undefined;
+  }
+  const holder = node.parent.parent;
+  const inTest =
+    ts.isPropertyAssignment(holder) &&
+    propertyName(holder) === 'sequence' &&
+    ts.isPropertyAssignment(holder.parent.parent) &&
+    propertyName(holder.parent.parent) === 'test';
+  return inTest ? node : undefined;
+}
+
+function concurrentScope(flag: TypeScript.PropertyAssignment, base: string): string | undefined {
+  const testObject = ts.findAncestor(flag.parent.parent, ts.isObjectLiteralExpression);
+  const projectObject = ts.findAncestor(testObject?.parent, ts.isObjectLiteralExpression);
+  const root = literalProperty(testObject, 'root') ?? literalProperty(projectObject, 'root');
+  const inProjectList = ts.findAncestor(testObject, ts.isArrayLiteralExpression) !== undefined;
+  return inProjectList && root === undefined
+    ? undefined
+    : path.posix.normalize(path.posix.join(base, root ?? '.'));
+}
+
+function configBase(projectRoot: string, configPath: string): string {
+  return path.relative(projectRoot, path.dirname(configPath)).replaceAll('\\', '/') || '.';
+}
+
 function flagsIn(
   projectRoot: string,
   configPath: string,
   nodes: readonly TypeScript.Node[],
 ): RestoreScope[] {
-  const base = path.relative(projectRoot, path.dirname(configPath)).replaceAll('\\', '/') || '.';
+  const base = configBase(projectRoot, configPath);
   return nodes.flatMap((node) => {
-    const name = propertyName(node);
+    const name = ts.isPropertyAssignment(node) ? propertyName(node) : undefined;
     return ts.isPropertyAssignment(node) &&
       (name === 'unstubGlobals' || name === 'unstubEnvs') &&
       node.initializer.kind === ts.SyntaxKind.TrueKeyword
@@ -100,12 +130,40 @@ function flagsIn(
   });
 }
 
+function concurrentFlagsIn(
+  projectRoot: string,
+  configPath: string,
+  nodes: readonly TypeScript.Node[],
+): { readonly scopes: RestoreScope[]; readonly optedOut: boolean } {
+  const base = configBase(projectRoot, configPath);
+  const flags = nodes.flatMap((node) => {
+    const flag = sequenceFlag(node);
+    return flag === undefined ? [] : [flag];
+  });
+  const scopes = flags.flatMap((flag) => {
+    const scope =
+      flag.initializer.kind === ts.SyntaxKind.TrueKeyword ? concurrentScope(flag, base) : undefined;
+    return scope === undefined ? [] : [{ scope, restores: 'concurrent' as const }];
+  });
+  return {
+    scopes,
+    optedOut: flags.some((flag) => flag.initializer.kind !== ts.SyntaxKind.TrueKeyword),
+  };
+}
+
 function restoresInConfigs(projectRoot: string, rootConfig: string): RestoreScope[] {
   const rootNodes = configNodes(rootConfig);
   const children = projectConfigs(path.dirname(rootConfig), projectEntries(rootNodes));
+  const configs = [
+    { file: rootConfig, nodes: rootNodes },
+    ...children.map((child) => ({ file: child, nodes: configNodes(child) })),
+  ];
+  const concurrent = configs.map(({ file, nodes }) => concurrentFlagsIn(projectRoot, file, nodes));
   return [
-    ...flagsIn(projectRoot, rootConfig, rootNodes),
-    ...children.flatMap((child) => flagsIn(projectRoot, child, configNodes(child))),
+    ...configs.flatMap(({ file, nodes }) => flagsIn(projectRoot, file, nodes)),
+    ...(concurrent.some(({ optedOut }) => optedOut)
+      ? []
+      : concurrent.flatMap(({ scopes }) => scopes)),
   ];
 }
 
@@ -120,6 +178,7 @@ export function stubRestoresIn(projectRoot: string): Restores[] {
       scope,
       globals: false,
       envs: false,
+      concurrent: false,
       ...scopes.get(scope),
       [restores]: true,
     });

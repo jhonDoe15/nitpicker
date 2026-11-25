@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { pythonUsable } from '../../metrics/python-helpers.mts';
-import { DESIGN_RULES } from '../../../../shared/project-rules/design/design-rules.mjs';
-import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
+import { DESIGN_RULES } from '../../../../shared/project-rules/design/design-rules.mts';
+import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mts';
 import { designFacts } from './test-support/design-harness.mts';
 import type { DesignFacts } from './typed/design-fact-types.mts';
 

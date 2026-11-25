@@ -1,8 +1,8 @@
-import {
-  type ConventionDefinition,
-  type Detected,
-  detectedFor,
-} from '../../typed/convention-views.mts';
+import type {
+  Convention,
+  DetectedEntry,
+} from '../../../../../shared/conventions/convention-types.mts';
+import { detectedFor } from '../../typed/convention-views.mts';
 
 type Files = Readonly<Record<string, string>>;
 
@@ -14,7 +14,7 @@ function contentsOf(files: Files, paths: readonly string[]): Map<string, string 
   return new Map(paths.map((file) => [file, files[file]]));
 }
 
-export function detectorFor(convention: ConventionDefinition): (files: Files) => Detected {
+export function detectorFor(convention: Convention): (files: Files) => DetectedEntry {
   return (files) => {
     const source = {
       paths: () => Object.keys(files),

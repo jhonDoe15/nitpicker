@@ -1,5 +1,5 @@
 import { jscpdVersion as untypedJscpdVersion } from '../../../../../core/tooling/jscpd/run-jscpd.mts';
-import { linkSentence as untypedLinkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence as untypedLinkSentence } from '../../../../../shared/messages/test-support/link-sentence.mts';
 import { fieldOf, parseJson, textOf } from '../../../../../shared/values/readers.mts';
 
 const jscpdVersionText: () => unknown = untypedJscpdVersion;

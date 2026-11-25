@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { validateFacts } from '../../../../../shared/rules/facts/schema.mjs';
+import { validateFacts } from '../../../../../shared/rules/facts/schema.mts';
 import { testFileMatcher } from '../../../adapters/analysis/python-sources.mts';
 import { designDistributions } from '../../../adapters/analysis/design/design-distributions.mts';
 import type {
@@ -11,7 +11,7 @@ import type {
   DesignReport,
   DesignEntry,
 } from '../typed/design-fact-types.mts';
-import { byText } from '../../../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../../../shared/text-order/by-text.mts';
 
 const RUN_SCRIPT = path.resolve(import.meta.dirname, '../run.py');
 const FIXTURES = path.resolve(import.meta.dirname, '../fixtures');

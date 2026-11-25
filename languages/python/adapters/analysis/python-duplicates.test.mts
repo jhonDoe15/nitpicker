@@ -16,6 +16,7 @@ type DuplicatesContext = {
   readonly reportRoot: string;
   readonly project: { readonly sourceRoots: readonly string[] };
   readonly duplicateSkippedFolders?: readonly string[];
+  readonly env: Readonly<Record<string, string | undefined>>;
 };
 type Shape = {
   fn: string;
@@ -52,7 +53,7 @@ function project(
 ): DuplicatesContext {
   const projectRoot = path.join(temporaryRoot(), under);
   writeFiles(projectRoot, files);
-  return { projectRoot, reportRoot: temporaryRoot(), project: { sourceRoots } };
+  return { projectRoot, reportRoot: temporaryRoot(), project: { sourceRoots }, env: process.env };
 }
 
 function clonesOf(context: DuplicatesContext): IngestedFinding[] {

@@ -1,4 +1,4 @@
-import { globMatcher } from '../../../../shared/paths/glob.mjs';
+import { globMatcher } from '../../../../shared/paths/glob.mts';
 import { escapeRegExp } from '../typed/regex-views.mts';
 import type { PatternMatcher, SourceSet } from '../typed/narrowing-types.mts';
 

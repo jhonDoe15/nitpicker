@@ -1,19 +1,19 @@
 import {
   conventionChoices as untypedConventionChoices,
   detectConventions as untypedDetectConventions,
-} from '../../../shared/conventions/detect.mjs';
+} from '../../../shared/conventions/detect.mts';
 import {
   describeConventions as untypedDescribeConventions,
   ignoredChoiceNote as untypedIgnoredChoiceNote,
   isValidChoice as untypedIsValidChoice,
-} from '../../../shared/conventions/settings.mjs';
+} from '../../../shared/conventions/settings.mts';
 import { isJavascriptPolicy as untypedIsJavascriptPolicy } from '../../../languages/javascript/preset/javascript-preset.mts';
 import {
   builtInExcludedGlobs as untypedBuiltInExcludedGlobs,
   prettierPatterns as untypedPrettierPatterns,
   resolveLayout as untypedResolveLayout,
 } from '../../../languages/typescript/preset/layout.mts';
-import { globMatcher as untypedGlobMatcher } from '../../../shared/paths/glob.mjs';
+import { globMatcher as untypedGlobMatcher } from '../../../shared/paths/glob.mts';
 import { textsOf } from '../../../shared/values/readers.mts';
 import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 import type {

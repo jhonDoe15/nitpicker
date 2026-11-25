@@ -1,13 +1,13 @@
-import { configError, validateProjectRelativePath } from '../../../../shared/config.mjs';
-import { JAVA_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
-import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import { configError, validateProjectRelativePath } from '../../../../shared/config.mts';
+import { JAVA_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mts';
+import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mts';
 import { SPRING_CONFIG_RULE_IDS } from '../spring/java-spring.mts';
 import { JAVA_TOOLS } from '../gradle-presets.mts';
 import {
   isJavaFindingRule,
   validateJavaFindingRule,
 } from '../exception-rules/java-finding-rules.mts';
-import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
+import { canonicalRule } from '../../../../shared/exceptions/rule-names.mts';
 import { isKotlinFindingRule, KOTLIN_LISTED_RULES } from './rules/kotlin-messages.mts';
 import { SOURCE_RULE_IDS } from './rules/kotlin-rules.mts';
 import { TEST_ONLY_EXCEPTION_RULE } from '../review-rules/test-only/test-only-classes.mts';
@@ -30,7 +30,7 @@ import {
   listOf,
   textOf,
 } from '../../../../shared/values/readers.mts';
-import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
+import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mts';
 import { MINED_EXCEPTION_RULES } from '../review-rules/mined/mined-rules.mts';
 import { STRING_CALL_EXCEPTION_RULES } from '../review-rules/string-calls/string-calls.mts';
 import { VALUE_CHECK_EXCEPTION_RULES } from '../review-rules/value-checks/value-checks.mts';

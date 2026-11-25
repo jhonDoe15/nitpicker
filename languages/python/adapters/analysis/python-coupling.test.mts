@@ -14,7 +14,7 @@ import type {
   ImportStatement,
   PythonModule,
 } from './typed/python-graph-types.mts';
-import { libraryProject } from '../../../../shared/rules/stability/test-support/library-project.mjs';
+import { libraryProject } from '../../../../shared/rules/stability/test-support/library-project.mts';
 import { recordingRun } from '../test-support/runs/recording-run.mts';
 import { libraryModules } from './test-support/library-modules.mts';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';

@@ -4,6 +4,21 @@ import { withoutFixes } from '../../../../eslint-config/rule-hints.mts';
 
 const tester = typescriptRuleTester();
 const off = [{ messageId: 'tlsVerificationOff' }];
+const REWRITES = 60;
+
+function entangledWrites(last: string): string {
+  const rewrites = Array.from(
+    { length: REWRITES },
+    () =>
+      'first = second ? third : first; second = third ? first : second; third = first ? second : third;',
+  );
+  return [
+    'let first = true; let second = true; let third = true;',
+    ...rewrites,
+    last,
+    'export const options = { rejectUnauthorized: first };',
+  ].join('\n');
+}
 
 tester.run('no-disabled-tls-verification', withoutFixes(ruleModule(noDisabledTlsVerification)), {
   valid: [
@@ -33,8 +48,10 @@ tester.run('no-disabled-tls-verification', withoutFixes(ruleModule(noDisabledTls
     'export const insecure = process.env.NODE_TLS_REJECT_UNAUTHORIZED === "0";',
     'export const serverOptions = (key, cert, ca) => ({ key, cert, ca, requestCert: true, rejectUnauthorized: false });',
     'import { MongoClient } from "mongodb"; export const c = (uri, ca) => new MongoClient(uri, { tls: true, tlsCAFile: ca });',
+    entangledWrites('third = true;'),
   ],
   invalid: [
+    { code: entangledWrites('third = false;'), errors: off },
     { code: 'export const options = { rejectUnauthorized: false };', errors: off },
     {
       code: 'import https from "node:https"; export const agent = new https.Agent({ rejectUnauthorized: false });',

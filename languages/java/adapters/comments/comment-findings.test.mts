@@ -9,6 +9,7 @@ import {
   TASK_MARKER_RULE,
 } from './comment-findings.mts';
 
+import { PLACEHOLDER_RULE } from './placeholders/placeholder-code.mts';
 import type { JavaFinding } from '../typed/java-values.mts';
 
 const commentFindings: (source: string, file: string) => JavaFinding[] = untypedCommentFindings;
@@ -39,6 +40,22 @@ describe('commentFindings', () => {
     ]);
     const moved = commentFindings(`\n\n${source}`, 'A.java');
     expect(moved.map(({ identity }) => identity)).toEqual(findings.map(({ identity }) => identity));
+  });
+
+  it('reports a stand-in under a comment that calls it one, in main sources only', () => {
+    const source = [
+      'class Rates {',
+      '  double rate() {',
+      '    // In a real implementation this calls the rates API',
+      '    return 1.1;',
+      '  }',
+      '}',
+    ].join('\n');
+    const findings = commentFindings(source, 'src/main/java/Rates.java');
+    expect(findings.map(({ rule, tool, location }) => [tool, rule, location?.line])).toEqual([
+      ['pmd', PLACEHOLDER_RULE, 4],
+    ]);
+    expect(commentFindings(source, 'src/test/java/RatesTest.java')).toEqual([]);
   });
 
   it('numbers repeated identical findings', () => {

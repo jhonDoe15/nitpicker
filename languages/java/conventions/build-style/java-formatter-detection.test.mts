@@ -216,13 +216,27 @@ describe('declaredJavaFormatter', () => {
     });
   });
 
-  it('skips build files in sources, fixtures, dependencies and build output', () => {
+  it('skips build and convention files in test source-sets, resources, fixtures, dependencies and build output', () => {
     const palantir = 'spotless { java { palantirJavaFormat() } }';
 
     expect(
       declared({
         'src/test/resources/project/build.gradle': palantir,
+        'src/main/resources/project/build.gradle': palantir,
+        'buildSrc/src/test/kotlin/FormatTest.kt': palantir,
+        'buildSrc/src/testFixtures/kotlin/Helper.kt': palantir,
+        'build-logic/src/dockerTest/projects/demo/build.gradle.kts': palantir,
+        'build-logic/src/intTest/projects/demo/build.gradle': palantir,
+        'build-logic/src/functionalTest/kotlin/PluginTest.kt': palantir,
+        'build-logic/src/main/resources/template/build.gradle.kts': palantir,
+        'fixture/demo/build.gradle': palantir,
         'fixtures/demo/build.gradle': palantir,
+        '__fixtures__/demo/build.gradle': palantir,
+        'testdata/demo/build.gradle': palantir,
+        'test/demo/build.gradle': palantir,
+        'tests/demo/build.gradle': palantir,
+        '__tests__/demo/build.gradle': palantir,
+        'testFixtures/demo/build.gradle': palantir,
         'node_modules/pkg/build.gradle': palantir,
         'build/tmp/build.gradle': palantir,
         'target/pom.xml': spotlessPom('<palantirJavaFormat/>'),

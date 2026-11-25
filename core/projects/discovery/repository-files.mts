@@ -1,22 +1,27 @@
 import { existsSync, readFileSync, statSync, type Stats } from 'node:fs';
 import path from 'node:path';
 import { runGit } from '../../diff/git/repository/command.mts';
-import { byText } from '../../../shared/text-order/by-text.mjs';
+import { byText } from '../../../shared/text-order/by-text.mts';
 
 const SKIPPED_SEGMENTS = new Set([
   'node_modules',
   'fixture',
   'fixtures',
+  '__fixtures__',
+  'testdata',
   'vendor',
   'third_party',
   'test',
   'tests',
+  '__tests__',
+  'testFixtures',
   'docs',
   'build',
   'dist',
   'target',
   'out',
 ]);
+const TEST_SOURCE_SET = /^(?:test|tests|testFixtures|.*Tests?)$/u;
 
 export function statInside(root: string, ...segments: string[]): Stats | undefined {
   const full = path.resolve(root, ...segments);
@@ -71,12 +76,26 @@ export function directoriesWith(
   ].toSorted(byText);
 }
 
+function isSkippedSegment(segment: string): boolean {
+  return (segment.startsWith('.') && segment !== '.') || SKIPPED_SEGMENTS.has(segment);
+}
+
+function isSkippedSourceSet(segments: readonly string[], index: number): boolean {
+  if (segments[index] !== 'src') {
+    return false;
+  }
+  const next = segments[index + 1];
+  if (next === undefined || next === '') {
+    return false;
+  }
+  return TEST_SOURCE_SET.test(next) || segments[index + 2] === 'resources';
+}
+
 export function isSkippedLocation(directory: string): boolean {
-  return directory
-    .split('/')
-    .some(
-      (segment) => (segment.startsWith('.') && segment !== '.') || SKIPPED_SEGMENTS.has(segment),
-    );
+  const segments = directory.split('/');
+  return segments.some(
+    (segment, index) => isSkippedSegment(segment) || isSkippedSourceSet(segments, index),
+  );
 }
 
 export function outermost(

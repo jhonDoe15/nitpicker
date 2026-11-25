@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { captureOutput } from '../reporting/test-support/output-capture.mts';
 import { analyzer, useShardFixtures, writeShard } from './test-support/shard-fixtures.mts';
 import { fieldOf, parseJson } from '../../../shared/values/readers.mts';
-import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mts';
 
 const { createFixture } = useShardFixtures();
 

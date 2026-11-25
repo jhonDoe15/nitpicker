@@ -1,5 +1,5 @@
 import type { TimeoutLimits } from './runner-types.mts';
-import { resolveTestTimeouts as untypedResolveTestTimeouts } from '../../../../../shared/test-timeouts/resolve.mjs';
+import { resolveTestTimeouts as untypedResolveTestTimeouts } from '../../../../../shared/test-timeouts/resolve.mts';
 import { isIntegrationTestFor as untypedIsIntegrationTestFor } from '../../../preset/layout/end-to-end-tests.mts';
 
 export type TimeoutPolicy = {

@@ -22,6 +22,7 @@ import { policyTestRunner } from './test-runner/policy-runner.mts';
 import { withRunnerTypes } from './test-runner/vocabulary/runner-types.mts';
 import { libsWithTestDom, withTestDom } from './test-environment/dom-code/test-dom-tsconfig.mts';
 import { filesOutsideRootDir } from './project-configs/typescript/solution-resolution.mts';
+import { coveringAncestorTsconfig } from './project-configs/typescript/ancestor-tsconfig.mts';
 import { selectedProjectTsconfig } from './modules/selected-project-tsconfig.mts';
 import { fieldsOf, parseJson } from '../../../shared/values/readers.mts';
 import { withoutMutantStrictness } from './typed/mutant-strictness.mts';
@@ -51,6 +52,97 @@ const REWRITES = new Map<string, ConfigRewrite>([
 
 const TSCONFIG_POLICY_FILES = new Set([QUALITY_TSCONFIG, STRYKER_TSCONFIG]);
 
+type TsconfigTransform = {
+  readonly name: string;
+  readonly layout: ToolLayout;
+  readonly layoutTransform: ((text: string) => string) | undefined;
+  readonly strictMutants: boolean;
+  readonly withRootFiles: boolean;
+};
+
+function jsonText(value: unknown): string {
+  return `${JSON.stringify(value, null, 2)}\n`;
+}
+
+function extendedTsconfigText(
+  text: string,
+  projectDirectory: string,
+  { name, layout, strictMutants, withRootFiles }: TsconfigTransform,
+): string | undefined {
+  const extended = extendedProjectTsconfig(projectDirectory, layout);
+  if (extended === undefined) {
+    return undefined;
+  }
+  return jsonText(
+    name === STRYKER_TSCONFIG
+      ? projectLayeredMutationTsconfig(extended, { strictMutants, layout, projectDirectory })
+      : projectLayeredTsconfig(extended, tsconfigOf(parseJson(text)), {
+          layout,
+          projectDirectory,
+          withRootFiles,
+        }),
+  );
+}
+
+function ancestorTsconfigText(
+  text: string,
+  projectDirectory: string,
+  { name, layout }: TsconfigTransform,
+): string | undefined {
+  const ancestor =
+    name === QUALITY_TSCONFIG ? coveringAncestorTsconfig(projectDirectory) : undefined;
+  if (ancestor === undefined) {
+    return undefined;
+  }
+  const layered = projectLayeredTsconfig(ancestor.extended, tsconfigOf(parseJson(text)), {
+    layout,
+    projectDirectory,
+    withRootFiles: false,
+  });
+  const files = ancestor.hasFiles ? { files: [] } : {};
+  return `${JSON.stringify(
+    {
+      ...files,
+      ...layered,
+      compilerOptions: {
+        ...fieldsOf(layered['compilerOptions']),
+        composite: false,
+        rootDir: null,
+        declarationDir: null,
+      },
+    },
+    null,
+    2,
+  )}\n`;
+}
+
+function policyTsconfigText(
+  text: string,
+  projectDirectory: string,
+  { name, layout, layoutTransform, strictMutants }: TsconfigTransform,
+): string {
+  const rewritten = withProjectStrictness(
+    withTestDom(layoutTransform?.(text) ?? text, name, { projectDirectory, layout }),
+    layout,
+  );
+  const runner = policyTestRunner(readHeadPolicy(), projectDirectory);
+  const typed = withRunnerTypes(rewritten, { runner, projectDirectory });
+  return name === STRYKER_TSCONFIG && !strictMutants ? withoutMutantStrictness(typed) : typed;
+}
+
+function transformedTsconfig(text: string, targetPath: string, transform: TsconfigTransform) {
+  const projectDirectory = path.dirname(targetPath);
+  const { typescriptProject, exclude } = transform.layout;
+  if (typescriptProject !== undefined) {
+    return selectedProjectTsconfig(projectDirectory, { typescriptProject, exclude });
+  }
+  return (
+    extendedTsconfigText(text, projectDirectory, transform) ??
+    ancestorTsconfigText(text, projectDirectory, transform) ??
+    policyTsconfigText(text, projectDirectory, transform)
+  );
+}
+
 export function layoutTransformFor(
   policyFileName: string,
   layout: ToolLayout,
@@ -62,36 +154,8 @@ export function layoutTransformFor(
   if (!TSCONFIG_POLICY_FILES.has(name)) {
     return layoutTransform;
   }
-  const relaxesMutants = name === STRYKER_TSCONFIG && !strictMutants;
-  return (text, targetPath) => {
-    const projectDirectory = path.dirname(targetPath);
-    const { typescriptProject } = layout;
-    if (typescriptProject !== undefined) {
-      return selectedProjectTsconfig(projectDirectory, {
-        typescriptProject,
-        exclude: layout.exclude,
-      });
-    }
-    const extended = extendedProjectTsconfig(projectDirectory, layout);
-    if (extended !== undefined) {
-      const layered =
-        name === STRYKER_TSCONFIG
-          ? projectLayeredMutationTsconfig(extended, { strictMutants, layout, projectDirectory })
-          : projectLayeredTsconfig(extended, tsconfigOf(parseJson(text)), {
-              layout,
-              projectDirectory,
-              withRootFiles,
-            });
-      return `${JSON.stringify(layered, null, 2)}\n`;
-    }
-    const rewritten = withProjectStrictness(
-      withTestDom(layoutTransform?.(text) ?? text, name, { projectDirectory, layout }),
-      layout,
-    );
-    const runner = policyTestRunner(readHeadPolicy(), projectDirectory);
-    const typed = withRunnerTypes(rewritten, { runner, projectDirectory });
-    return relaxesMutants ? withoutMutantStrictness(typed) : typed;
-  };
+  const transform = { name, layout, layoutTransform, strictMutants, withRootFiles };
+  return (text, targetPath) => transformedTsconfig(text, targetPath, transform);
 }
 
 function strictOverrides(

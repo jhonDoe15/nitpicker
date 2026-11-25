@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { firstProjectFile, resolveInside } from '../../../../shared/conventions/read-inside.mjs';
+import { firstProjectFile, resolveInside } from '../../../../shared/conventions/read-inside.mts';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { includedSourceBuilds } from '../../builds/gradle-scripts/included-builds.mts';
 

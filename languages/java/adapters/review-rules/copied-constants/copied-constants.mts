@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { globMatcher } from '../../../../../shared/paths/glob.mjs';
+import { globMatcher } from '../../../../../shared/paths/glob.mts';
 import {
   copiedConstantMessage as untypedCopiedConstantMessage,
   valueKey as untypedValueKey,
-} from '../../../../../shared/rules/copied-constants/copied-constants.mjs';
+} from '../../../../../shared/rules/copied-constants/copied-constants.mts';
 import { findingFactory } from '../../kotlin/review-rules/finding/review-finding.mts';
 import { readJvmDefinitions } from '../../reuse/source/jvm-definitions.mts';
 import { pathInside, sourceFilesUnder, sourceRootsOf } from '../java-sources.mts';
@@ -98,7 +98,7 @@ function isName(name: string | undefined): name is string {
 function sees(
   test: JvmSource,
   constant: Constant,
-  identifiers: ReadonlySet<string>,
+  namesOwner: (constant: Constant) => boolean,
 ): string[] | undefined {
   if (constant.owner === undefined) {
     if (!test.kotlin) {
@@ -114,8 +114,24 @@ function sees(
   if (member !== undefined) {
     return [constant.name, member.alias].filter(isName);
   }
-  const owners = ownerNames(test, constant).filter((name) => identifiers.has(name));
-  return owners.length > 0 ? [constant.name] : undefined;
+  return namesOwner(constant) ? [constant.name] : undefined;
+}
+
+function ownerLookup(
+  test: JvmSource,
+  identifiers: ReadonlySet<string>,
+): (constant: Constant) => boolean {
+  const named = new Map<string, boolean>();
+  return (constant) => {
+    const key = `${constant.packageName}\n${constant.owner ?? ''}`;
+    const known = named.get(key);
+    if (known !== undefined) {
+      return known;
+    }
+    const found = ownerNames(test, constant).some((name) => identifiers.has(name));
+    named.set(key, found);
+    return found;
+  };
 }
 
 function visibleConstants(
@@ -128,9 +144,10 @@ function visibleConstants(
       .filter(({ kind }) => kind === 'identifier')
       .map(({ text }) => text),
   );
+  const namesOwner = ownerLookup(test, identifiers);
   const byValue = new Map<string, MentionedConstant[]>();
   for (const constant of constants) {
-    const mentions = sees(test, constant, identifiers);
+    const mentions = sees(test, constant, namesOwner);
     if (mentions !== undefined) {
       const key = valueKey(constant.value);
       byValue.set(key, [...(byValue.get(key) ?? []), { ...constant, mentions }]);

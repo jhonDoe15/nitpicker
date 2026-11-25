@@ -2,7 +2,7 @@ import {
   ACCEPTED_MANAGER_ROLES,
   CONTAINER_NAME_WORDS,
   GENERIC_NAME_WORDS,
-} from '../../../../../../shared/naming/smell-words.mjs';
+} from '../../../../../../shared/naming/smell-words.mts';
 
 function inSet(set: ReadonlySet<string>, word: string | undefined): boolean {
   return word !== undefined && set.has(word);

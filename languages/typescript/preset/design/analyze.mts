@@ -1,6 +1,6 @@
 import type { Finding } from '../../../../shared/values/findings.mts';
 import type { DesignFacts } from './design-types.mts';
-import { createProjectProgram } from '../unused-api/program.mts';
+import { takeProjectProgram } from '../unused-api/program.mts';
 import {
   DESIGN_RULES,
   createContext,
@@ -9,6 +9,7 @@ import {
   readLayout,
   sharedFactFindings,
 } from './typed/views.mts';
+import { engineDesignFacts } from './engine/engine-facts.mts';
 import { designFacts } from './facts.mts';
 
 type Request = { projectRoot: string; configPath: string; environment: NodeJS.ProcessEnv };
@@ -16,9 +17,14 @@ type Request = { projectRoot: string; configPath: string; environment: NodeJS.Pr
 export function projectDesignFacts({ projectRoot, configPath, environment }: Request): DesignFacts {
   const layout = readLayout(environment);
   const packagesInfo = loadPackages(projectRoot, layout);
-  const program = createProjectProgram({ projectRoot, configPath, packagesInfo, layout });
-  const context = createContext({ program, projectRoot, layout, packagesInfo });
   const frameworks = readHeadPolicy(environment).frameworks;
+  const request = { projectRoot, configPath, packagesInfo, layout };
+  const fromEngine = engineDesignFacts({ ...request, frameworks, environment });
+  if (fromEngine !== undefined) {
+    return fromEngine;
+  }
+  const program = takeProjectProgram(request);
+  const context = createContext({ program, projectRoot, layout, packagesInfo });
   return designFacts({ context, layout, packagesInfo, frameworks, projectRoot });
 }
 

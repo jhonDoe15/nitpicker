@@ -1,24 +1,28 @@
 import { realpathSync } from 'node:fs';
-import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
+import { readHeadPolicyFile } from '../../../shared/head-policy.mts';
 import { collectJavaReport } from './java-diff.mts';
-import { moduleImportsSection } from '../../../shared/history/co-change/dependencies/module-imports.mjs';
+import { moduleImportsSection } from '../../../shared/history/co-change/dependencies/module-imports.mts';
 import { detectJavaBuild } from '../builds/java-build.mts';
 import { parseJavaRunnerArguments } from './java-policy.mts';
-import { featureLayout } from '../../../shared/rules/features/feature-roles.mjs';
+import { featureLayout } from '../../../shared/rules/features/feature-roles.mts';
 import { javaStyle } from './style/java-style.mts';
 import { gradleBudget, mavenBudget } from './gradle-wrapper/gradle-budget.mts';
 import { withinOutputLimit } from './reporting/output-limit/output-limit.mts';
 import {
+  compactJsonLines,
+  writePieces,
+} from '../../../shared/report-output/pieces/json-pieces.mts';
+import {
   MINUTE_MS,
   analyzerDeadlineMs,
-} from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+} from '../../../shared/analyzer-timeouts/analyzer-timeouts.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   failureText,
   troubleshootingLinkOf,
   withTroubleshooting,
-} from '../../../shared/messages/troubleshooting.mjs';
-import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
+} from '../../../shared/messages/troubleshooting.mts';
+import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-parts.mts';
 import { GRADLE_LOG_LINE } from './gradle-wrapper/diagnostics/failure-log.mts';
 import {
   compileErrorFindings,
@@ -235,7 +239,8 @@ function main(runnerArguments: readonly string[]): void {
   const snapshot = runJava(runnerArguments, { warn: process.stderr });
   const { policy } = readRunnerPolicy(runnerArguments);
   const fitted = withinOutputLimit(snapshot, policy.preset ?? 'java', process.env);
-  process.stdout.write(`${JSON.stringify(fitted)}\n`);
+  writePieces(compactJsonLines(fitted), (text) => process.stdout.write(text));
+  process.stdout.write('\n');
 }
 
 const entry = { moduleFile: import.meta.filename, adapter: 'Java', main };

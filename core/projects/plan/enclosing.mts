@@ -1,8 +1,8 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { parseYaml as untypedParseYaml } from '../../tooling/yaml/yaml-documents.mts';
-import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
-import { chainOf as untypedChainOf } from '../../../shared/traversal.mjs';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mts';
+import { chainOf as untypedChainOf } from '../../../shared/traversal.mts';
 import { runGit } from '../../diff/git/repository/command.mts';
 import { declaresUvWorkspace as untypedDeclaresUvWorkspace } from '../../configuration/project-checks/uv-workspace.mts';
 import { inspectRepository } from './inspect.mts';
@@ -19,7 +19,7 @@ const chainOf: (start: string, next: (current: string) => string | undefined) =>
   untypedChainOf;
 const declaresUvWorkspace: (text: string) => boolean = untypedDeclaresUvWorkspace;
 
-export const DECLARATION_FILES = [
+const DECLARATION_FILES = [
   CONFIG_FILE_NAME,
   'package.json',
   'pnpm-workspace.yaml',
@@ -75,7 +75,7 @@ const DECLARES: Readonly<Record<string, (text: string) => boolean>> = {
   'settings.gradle.kts': includesBuilds,
 };
 
-export function declaresProjects(readText: TextReader): boolean {
+function declaresProjects(readText: TextReader): boolean {
   return DECLARATION_FILES.some((file) => {
     const text = readText(file);
     return text !== undefined && DECLARES[file]?.(text) === true;

@@ -5,8 +5,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { collectJavaFindings } from '../../java-diff.mts';
 import { FAN_OUT_LEAD, FAN_OUT_RULE } from '../../../messages/fan-out/fan-out-details.mts';
-import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
-import { appendSentence as appendUntyped } from '../../../../../shared/messages/exception-sentence.mjs';
+import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mts';
+import { appendSentence as appendUntyped } from '../../../../../shared/messages/exception-sentence.mts';
 import { textOf } from '../../../../../shared/values/readers.mts';
 import { callUntyped, type JavaFinding } from '../../typed/java-values.mts';
 import {

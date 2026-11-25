@@ -12,53 +12,37 @@ import {
   type JavaFinding,
   type JavaPolicy,
 } from '../typed/java-values.mts';
-import { baselinePathsOf as untypedBaselinePathsOf } from '../../../../shared/rules/facts/baseline.mjs';
-import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
+import { baselinePathsOf as untypedBaselinePathsOf } from '../../../../shared/rules/facts/baseline.mts';
+import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mts';
 import {
   pathInside as untypedPathInside,
   projectSourceFiles as untypedProjectSourceFiles,
 } from '../review-rules/java-sources.mts';
 import { readJvmUnits as untypedReadJvmUnits } from '../near-duplicates/jvm-trees.mts';
+import { isGeneratedJvm } from '../generated/generated-sources.mts';
 import { toolSlots } from '../../maven/parallel/slots/tool-slots.mts';
 import { definitionKey } from './jvm-definition-keys.mts';
 import { importFacts } from './jvm-reference-uses.mts';
 import { fileBindings, projectIndex, referenceScope } from './jvm-references.mts';
 import { readJvmDefinitions } from './source/jvm-definitions.mts';
 import {
+  type BaselineEntry,
+  type BaselinePolicy,
   type BoundEntry,
   type Definition,
   type Entry,
   type Parsed,
   type ReuseFacts,
+  type ReuseFactsOptions,
+  type ReuseOptions,
   type ReusePart,
+  type ReuseProject,
 } from './jvm-reuse-types.mts';
 import {
   aliasEntryFields,
   kotlinEntryPointFindings,
   typeAliasReexports,
 } from './kotlin-type-aliases.mts';
-
-type Project = {
-  readonly qualifier?: string | undefined;
-  readonly reportRoot?: string | undefined;
-};
-type ReuseOptions = {
-  readonly projects: readonly Project[];
-  readonly kotlin?: true | false;
-  readonly policy?: JavaPolicy;
-  readonly decisionWorkers?: number;
-};
-type BaselineEntry = {
-  readonly unchanged: boolean;
-  readonly definitions: readonly Pick<
-    Definition,
-    'kind' | 'name' | 'qualifier' | 'tokens' | 'text'
-  >[];
-};
-type BaselinePolicy = {
-  readonly baselineRoot: string;
-  readonly baselineMovesFile?: unknown;
-};
 
 const baselinePathsOf: (options: {
   snapshot: string;
@@ -87,7 +71,7 @@ const REUSE_RULES = [
 const JAVA_COLLISION_FIX = 'Rename one, or use both by their fully qualified names.';
 const UNKNOWN_BASE = { unchanged: false, definitions: [] };
 
-function projectOf(value: unknown): Project {
+function projectOf(value: unknown): ReuseProject {
   return {
     qualifier: optionalText(fieldOf(value, 'qualifier')),
     reportRoot: optionalText(fieldOf(value, 'reportRoot')),
@@ -96,20 +80,24 @@ function projectOf(value: unknown): Project {
 
 function projectSourceFiles(
   projectRoot: string,
-  options: {
-    projects: readonly Project[];
-    kotlin: boolean;
-    exclude: readonly string[] | undefined;
-  },
-): Map<string, Project> {
-  const found: unknown = callUntyped(untypedProjectSourceFiles, projectRoot, options);
-  return new Map(
+  { projects, kotlin = false, exclude, analyzeGeneratedSources }: ReuseFactsOptions,
+): Map<string, ReuseProject> {
+  const found: unknown = callUntyped(untypedProjectSourceFiles, projectRoot, {
+    projects,
+    kotlin,
+    exclude,
+  });
+  const entries =
     found instanceof Map
-      ? Array.from(found.entries(), (entry): [string, Project] => [
+      ? Array.from(found.entries(), (entry): [string, ReuseProject] => [
           textOf(entry[0]),
           projectOf(entry[1]),
         ])
-      : [],
+      : [];
+  return new Map(
+    analyzeGeneratedSources
+      ? entries
+      : entries.filter(([file]) => !isGeneratedJvm(projectRoot, file)),
   );
 }
 
@@ -127,7 +115,7 @@ export function publishedOf(reportRoot: string | undefined): boolean {
   );
 }
 
-function isPublished(project: Project): boolean {
+function isPublished(project: ReuseProject): boolean {
   const published = fieldOf(project, 'published');
   return typeof published === 'boolean' ? published : publishedOf(project.reportRoot);
 }
@@ -141,15 +129,8 @@ function neutralDefinition(
   return { file, ...rest, key: definitionKey(definition, context) };
 }
 
-export function jvmReuseFacts(
-  projectRoot: string,
-  {
-    projects,
-    kotlin = false,
-    exclude,
-  }: { projects: readonly Project[]; kotlin?: true | false; exclude?: readonly string[] },
-): ReuseFacts {
-  const owners = projectSourceFiles(projectRoot, { projects, kotlin, exclude });
+export function jvmReuseFacts(projectRoot: string, options: ReuseFactsOptions): ReuseFacts {
+  const owners = projectSourceFiles(projectRoot, options);
   const files = [...owners].map(([file, project]) => ({
     file,
     module: project.qualifier ?? '',
@@ -171,7 +152,7 @@ export function jvmReuseFacts(
         : {}),
       ...aliasEntryFields(entry, aliases),
     })),
-    packages: projects.map((project) => ({
+    packages: options.projects.map((project) => ({
       root: project.qualifier ?? '',
       published: isPublished(project),
     })),
@@ -253,7 +234,12 @@ export function readReusePart(
   projectRoot: string,
   { projects, kotlin = false, policy = {}, decisionWorkers = toolSlots() }: ReuseOptions,
 ): ReusePart {
-  const facts = jvmReuseFacts(projectRoot, { projects, kotlin, exclude: textsOf(policy.exclude) });
+  const facts = jvmReuseFacts(projectRoot, {
+    projects,
+    kotlin,
+    exclude: textsOf(policy.exclude),
+    analyzeGeneratedSources: policy.analyzeGeneratedSources === true,
+  });
   const exceptions = policy.exceptions ?? [];
   return {
     findings: findingsOf(

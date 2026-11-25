@@ -1,4 +1,4 @@
-import { isConstantName as untypedIsConstantName } from '../../../../../shared/rules/copied-constants/copied-constants.mjs';
+import { isConstantName as untypedIsConstantName } from '../../../../../shared/rules/copied-constants/copied-constants.mts';
 import type { Definition, Parsed } from '../../reuse/jvm-reuse-types.mts';
 import type { Constant, JvmSource } from './constant-types.mts';
 import { initializerValue } from './jvm-values.mts';

@@ -12,7 +12,7 @@ import {
   diagnostics,
   json,
 } from '../test-support/solution-fixtures.mts';
-import { extendedProjectTsconfig, projectTsconfigFiles } from './typescript-project-options.mts';
+import { extendedProjectTsconfig } from './typescript-project-options.mts';
 
 const { projectWith } = useTemporaryProjects('nitpicker-ts-solution-', { resolveSymlinks: true });
 
@@ -110,10 +110,9 @@ describe('a solution tsconfig', () => {
     expect(extendedProjectTsconfig(tied('tsconfig.b.json', 'tsconfig.a.json'), LAYOUT)).toBe(
       './tsconfig.b.json',
     );
-    expect(projectTsconfigFiles(tied('tsconfig.a.json', 'tsconfig.c.json'), LAYOUT)).toEqual([
-      'tsconfig.a.json',
-      'tsconfig.json',
-    ]);
+    expect(extendedProjectTsconfig(tied('tsconfig.a.json', 'tsconfig.c.json'), LAYOUT)).toBe(
+      './tsconfig.a.json',
+    );
   });
 
   it('ignores a reference that covers no file of the layout', () => {
@@ -160,11 +159,6 @@ describe('a solution tsconfig', () => {
     });
 
     expect(await diagnostics(root)).toEqual([]);
-    expect(projectTsconfigFiles(root, LAYOUT)).toEqual([
-      'tsconfig.spec.json',
-      'tsconfig.json',
-      'tsconfig.build.json',
-    ]);
   });
 
   it('does not inherit the root folder or build output of the chosen config', async () => {

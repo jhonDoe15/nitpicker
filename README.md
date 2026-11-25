@@ -162,7 +162,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-[PolyForm Noncommercial 1.0.0](LICENSE)
+nitpicker is under the [MIT License](LICENSE). You may use it for any purpose, commercial or not,
+including inside a company and in its CI.
 
 ## Acknowledgements
 

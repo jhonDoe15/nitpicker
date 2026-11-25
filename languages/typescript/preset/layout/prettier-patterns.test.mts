@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { globMatcher as untypedGlobMatcher, resolveLayout } from '../layout.mts';
+import { globMatcher, resolveLayout } from '../layout.mts';
 import { createQualityChecks } from '../quality-checks.mts';
 
-const globMatcher: (glob: string) => RegExp = untypedGlobMatcher;
+type Pattern = ReturnType<typeof globMatcher>;
 
-function prettierPatterns(layout: ReturnType<typeof resolveLayout>): RegExp[] {
+function prettierPatterns(layout: ReturnType<typeof resolveLayout>): Pattern[] {
   const check = createQualityChecks(layout).staticChecks.find(
     ({ name }) => name === 'prettier-format',
   );
@@ -14,7 +14,7 @@ function prettierPatterns(layout: ReturnType<typeof resolveLayout>): RegExp[] {
   return (check.patterns ?? []).map((pattern) => globMatcher(pattern));
 }
 
-function isChecked(patterns: readonly RegExp[], file: string): boolean {
+function isChecked(patterns: readonly Pattern[], file: string): boolean {
   return patterns.some((pattern) => pattern.test(file));
 }
 

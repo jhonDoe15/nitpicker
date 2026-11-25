@@ -1,4 +1,5 @@
 import type { FunctionBlock, Logical, ScanState, Source } from './typed/run-types.mts';
+import { leadingSpaces } from '../../../../shared/conventions/lines.mts';
 import { appendAll } from '../../../../shared/lists/lists.mts';
 
 const DEFINITION = /^\s*(?:async\s+)?def\s+(\w+)\s*\(/u;
@@ -29,10 +30,6 @@ function at<Item>(items: readonly Item[], index: number): Item {
     throw new RangeError(`No entry at ${String(index)}`);
   }
   return item;
-}
-
-function indentOf(line: string): number {
-  return (/^\s*/u.exec(line)?.[0] ?? '').length;
 }
 
 function isBlank(line: string): boolean {
@@ -78,7 +75,12 @@ function logicalLines(lines: readonly string[]): Logical[] {
     if (state.depth > 0 || state.quote !== NO_QUOTE || state.continued) {
       at(logical, logical.length - 1).last = index;
     } else {
-      logical.push({ first: index, last: index, indent: indentOf(line), blank: isBlank(line) });
+      logical.push({
+        first: index,
+        last: index,
+        indent: leadingSpaces(line),
+        blank: isBlank(line),
+      });
     }
     scanLine(line, state);
   }

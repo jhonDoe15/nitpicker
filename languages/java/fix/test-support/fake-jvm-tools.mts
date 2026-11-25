@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { containedPath as untypedContainedPath } from '../../../../core/fix/tool-steps/paths/contained-path.mts';
-import { byText as untypedByText } from '../../../../shared/text-order/by-text.mjs';
+import { byText as untypedByText } from '../../../../shared/text-order/by-text.mts';
 import { parseJson, textsOf } from '../../../../shared/values/readers.mts';
 import {
   cwdOf,

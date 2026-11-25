@@ -1,4 +1,4 @@
-import { majorityStep } from '../../../shared/conventions/lines.mjs';
+import { majorityStep } from '../../../shared/conventions/lines.mts';
 
 const MIN_STRINGS = 3;
 const SPACE_STEPS = [2, 4];

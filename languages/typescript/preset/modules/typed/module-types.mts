@@ -35,13 +35,6 @@ export type ModuleReference = {
 
 export type StampedEntry<Value> = { readonly stamp: string; readonly value: Value };
 
-export type EntryFile = { readonly file: string; readonly label: string };
-
-export type ProductionOptions = {
-  readonly importers: readonly string[];
-  readonly entries?: readonly EntryFile[];
-};
-
 export type SelectedProjectLayout = {
   readonly typescriptProject: string;
   readonly exclude: readonly string[];

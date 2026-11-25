@@ -2,6 +2,10 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../../../adapters/java-diff.mts';
+import { createJavaAnalyzer } from '../../../adapters/java-analyzer.mts';
+import { reportFromAnalyzerOutput } from '../../../../../core/diff/execution/report/analyzer-report.mts';
+import { renderSnapshotConsole } from '../../../../../core/diff/reporting/summary.mts';
+import { entriesOf } from '../../../../../shared/values/findings.mts';
 import {
   useMavenPresetProject,
   enabled,
@@ -9,6 +13,14 @@ import {
   fixtures,
   copyOf,
 } from '../../__tests__/maven-preset-project.mts';
+
+const FAILED_MODULE_LINE = new RegExp(
+  [
+    String.raw`^  maven: Maven could not build module parent-checks, so its checks did not run; `,
+    String.raw`the other modules were checked\. Maven: .+$`,
+  ].join(''),
+  'u',
+);
 
 const FAILING_STEP = `<build>
     <plugins>
@@ -58,5 +70,23 @@ describe.skipIf(!enabled)('Java preset on a Maven reactor with a module that fai
       'errorprone PrivateConstructorForUtilityClass app/src/main/java/demo/app/Main.java',
     ]);
     expect(findings.some((finding) => finding.path.startsWith('checks/'))).toBe(false);
+
+    const report = reportFromAnalyzerOutput(
+      { ...createJavaAnalyzer(), acceptedExitCodes: [0] },
+      { status: 0, signal: null, stdoutText: JSON.stringify({ findings }), stderrText: '' },
+    );
+    const parsedFindings = entriesOf(report.findings);
+    const summary = renderSnapshotConsole(
+      {
+        summary: {},
+        findings: parsedFindings.filter(({ classification }) => classification !== 'tool-error'),
+        toolErrors: parsedFindings.filter(({ classification }) => classification === 'tool-error'),
+      },
+      { color: false, details: false, projectRoot: project },
+    );
+
+    expect(summary.split('\n').filter((line) => line.startsWith('  maven: '))).toEqual([
+      expect.stringMatching(FAILED_MODULE_LINE),
+    ]);
   }, 180_000);
 });

@@ -7,6 +7,7 @@ import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, fieldsOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { handWrittenRoots } from '../generated/generated-roots.mts';
 import { mavenModuleOf } from '../typed/maven-values.mts';
+import { cpdOnEngine, environmentOf } from '../../builds/cpd/cpd-engine.mts';
 
 type CpdOptions = Readonly<Record<string, unknown>> & { readonly reportDir: string };
 
@@ -61,20 +62,38 @@ function removeStale(files: readonly string[]): void {
   }
 }
 
-export function runCpd(options: CpdOptions): void {
-  const { reportDir } = options;
+function cpdDirectories(options: CpdOptions): string[] {
   const module = mavenModuleOf(options['module']);
-  const report = path.join(reportDir, CPD_REPORT);
-  const failure = path.join(reportDir, CPD_FAILURE);
-  removeStale([report, failure, path.join(reportDir, CPD_SKIPPED)]);
-  const directories = handWrittenRoots(
+  return handWrittenRoots(
     module,
     [...textsOf(module['sourceRoots']), ...textsOf(module['testSourceRoots'])],
     options['configs'],
   ).filter((root) => existsSync(root));
+}
+
+export function runCpd(options: CpdOptions): void {
+  const { reportDir } = options;
+  const report = path.join(reportDir, CPD_REPORT);
+  const failure = path.join(reportDir, CPD_FAILURE);
+  removeStale([report, failure, path.join(reportDir, CPD_SKIPPED)]);
+  const directories = cpdDirectories(options);
   if (directories.length === 0) {
     return;
   }
+  const environment = options['environment'];
+  if (
+    environment !== undefined &&
+    cpdOnEngine({ report, directories }, environmentOf(environment))
+  ) {
+    return;
+  }
+  runCpdTool(options, { report, failure, directories });
+}
+
+function runCpdTool(
+  options: CpdOptions,
+  { report, failure, directories }: { report: string; failure: string; directories: string[] },
+): void {
   const command = callUntyped(toolCommand, 'cpd', { report, directories });
   const result = launchCpd(options, command);
   const status = fieldOf(result, 'status');

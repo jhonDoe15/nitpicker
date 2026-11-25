@@ -6,7 +6,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { incompatiblePackageMessage, rangeAcceptsMajor } from './incompatible-package.mts';
 import { withEngineHint } from '../../oxlint/oxlint-process.mts';
 import { textOf } from '../../../../../shared/values/readers.mts';
-import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mts';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-incompatible-'));
 

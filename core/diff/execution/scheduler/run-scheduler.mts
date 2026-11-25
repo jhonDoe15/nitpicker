@@ -1,13 +1,13 @@
 import type { StdioOptions } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { withSharedBuildDirectory } from '../../../tooling/build-once/build-once.mts';
-import { spawnSyncWithOutputFile } from '../../../tooling/output-file/output-file.mts';
-import { headPolicyEnvironment } from '../../../../languages/typescript/preset/head-policy.mts';
-import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { spawnSyncParsingOutput } from '../../../tooling/output-file/output-file.mts';
+import { headPolicyEnvironment } from '../../../../shared/head-policy.mts';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from '../../../../shared/messages/troubleshooting.mts';
 import { MAX_ANALYZER_STDOUT_BYTES } from '../../../../shared/report-output/fit-findings.mts';
 import type { RunTaskOptions } from '../progress.mts';
 import { solverAnswersOnce } from './solver-answers.mts';
@@ -15,8 +15,6 @@ import { textOf } from '../../../../shared/values/readers.mts';
 
 const inSharedBuild: <T>(operation: (environment: NodeJS.ProcessEnv) => T) => T =
   withSharedBuildDirectory;
-const policyEnvironment: (headPolicyFile: unknown) => NodeJS.ProcessEnv = headPolicyEnvironment;
-const parseJson: (text: string) => unknown = JSON.parse;
 const solverAnswers = solverAnswersOnce();
 
 const SCHEDULER_OUTPUT_OVERHEAD_BYTES = 1024 * 1024;
@@ -54,12 +52,12 @@ export function runScheduler(
     ...(liveProgress && typeof liveFd === 'number' ? [liveFd] : []),
   ];
   const result = inSharedBuild((sharedEnvironment) =>
-    spawnSyncWithOutputFile(process.execPath, [schedulerPath], {
+    spawnSyncParsingOutput(process.execPath, [schedulerPath], {
       input: JSON.stringify({
         tasks:
           liveProgress && progress !== undefined ? withProgressLabel(tasks, progress.label) : tasks,
         environment: {
-          ...(headPolicyFile === undefined ? {} : policyEnvironment(headPolicyFile)),
+          ...(headPolicyFile === undefined ? {} : headPolicyEnvironment(textOf(headPolicyFile))),
           ...sharedEnvironment,
           ...solverAnswers(),
         },
@@ -80,15 +78,15 @@ export function runScheduler(
       TROUBLESHOOTING_ANCHORS.runStopped,
     );
   }
-  try {
-    return parseJson(result.stdout);
-  } catch (error) {
-    throw troubleshootingError(
-      'Analyzer scheduler returned invalid JSON',
-      TROUBLESHOOTING_ANCHORS.analyzerCrashed,
-      { cause: error },
-    );
+  const parsed = result.parsed ?? { error: new SyntaxError('Unexpected end of JSON input') };
+  if ('value' in parsed) {
+    return parsed.value;
   }
+  throw troubleshootingError(
+    'Analyzer scheduler returned invalid JSON',
+    TROUBLESHOOTING_ANCHORS.analyzerCrashed,
+    { cause: parsed.error },
+  );
 }
 
 function withProgressLabel(tasks: readonly object[], label: string): object[] {

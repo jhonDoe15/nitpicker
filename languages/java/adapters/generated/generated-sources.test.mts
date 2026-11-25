@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  generatedDirectoryGlobs,
   isGeneratedJvm,
   withoutGeneratedSources as untypedWithoutGeneratedSources,
 } from './generated-sources.mts';
@@ -90,6 +91,48 @@ describe('isGeneratedJvm', () => {
         isGeneratedJvm(root, file),
       ),
     ).toEqual([false, false, false]);
+  });
+
+  it('recognizes committed MyBatis Generator output without comments while keeping hand-written sibling packages', () => {
+    const root = project({
+      'mall-mbg/pom.xml': '<project/>',
+      'mall-mbg/src/main/resources/generatorConfig.xml': [
+        '<generatorConfiguration>',
+        '  <context id="MySql">',
+        '    <javaModelGenerator targetPackage="com.macro.mall.model" targetProject="mall-mbg\\src\\main\\java"/>',
+        '  </context>',
+        '</generatorConfiguration>',
+      ].join('\n'),
+      'mall-mbg/src/main/java/com/macro/mall/model/PmsBrandExample.java':
+        'package com.macro.mall.model;\npublic class PmsBrandExample {}\n',
+      'mall-mbg/src/main/java/com/macro/mall/service/BrandService.java':
+        'package com.macro.mall.service;\npublic class BrandService {}\n',
+    });
+
+    expect(
+      isGeneratedJvm(root, 'mall-mbg/src/main/java/com/macro/mall/model/PmsBrandExample.java'),
+    ).toBe(true);
+    expect(
+      isGeneratedJvm(root, 'mall-mbg/src/main/java/com/macro/mall/service/BrandService.java'),
+    ).toBe(false);
+    expect(generatedDirectoryGlobs(root)).toEqual([
+      'mall-mbg/src/main/java/com/macro/mall/model/**',
+    ]);
+    expect(
+      withoutGeneratedSources(
+        [
+          {
+            path: 'mall-mbg/src/main/java/com/macro/mall/model/PmsBrandExample.java',
+            rule: 'generated-rule',
+          },
+          {
+            path: 'mall-mbg/src/main/java/com/macro/mall/service/BrandService.java',
+            rule: 'hand-rule',
+          },
+        ],
+        root,
+      ).map(({ rule }) => rule),
+    ).toEqual(['hand-rule']);
   });
 });
 

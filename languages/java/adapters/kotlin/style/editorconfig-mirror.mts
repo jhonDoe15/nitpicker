@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../shared/project-files/project-files.mjs';
+import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../../shared/project-files/project-files.mts';
 
 export type EditorconfigEntry = { path: string; text: string };
 export type Workspace = { offset: string; editorconfigs: EditorconfigEntry[] };

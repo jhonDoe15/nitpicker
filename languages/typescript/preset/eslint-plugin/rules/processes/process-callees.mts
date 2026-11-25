@@ -1,7 +1,9 @@
-import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import {
   importedCalleeName,
   isPromisify,
+  subprocessBindings,
+  withPromisified,
   type ModuleBindings,
 } from '../analysis/subprocess-calls.mts';
 import { nameOf } from '../typed/node-views.mts';
@@ -69,4 +71,30 @@ export function templateTag(
     return undefined;
   }
   return { method, call: tag.type === AST_NODE_TYPES.CallExpression ? tag : undefined };
+}
+
+export type BindingTracking = 'plain' | 'promisified-imports' | 'promisified-imports-and-aliases';
+
+export function trackedBindings(
+  tracking: BindingTracking,
+  visitors: (current: () => ModuleBindings) => TSESLint.RuleListener,
+): TSESLint.RuleListener {
+  let bindings: ModuleBindings = { named: new Map(), namespaces: new Set() };
+  const listener = visitors(() => bindings);
+  return {
+    ...listener,
+    Program(node) {
+      bindings =
+        tracking === 'plain'
+          ? subprocessBindings(node)
+          : withPromisified(node, subprocessBindings(node));
+    },
+    ...(tracking === 'promisified-imports-and-aliases'
+      ? {
+          VariableDeclarator(node: TSESTree.VariableDeclarator) {
+            bindings = promisifiedBinding(node, bindings);
+          },
+        }
+      : {}),
+  };
 }

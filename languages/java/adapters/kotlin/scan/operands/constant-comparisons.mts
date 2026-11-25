@@ -3,7 +3,7 @@ import {
   disjunctionVerdict as untypedDisjunctionVerdict,
   numberSamples as untypedNumberSamples,
   isRelation as untypedIsRelation,
-} from '../../../../../../shared/logic/comparisons/constant-verdicts.mjs';
+} from '../../../../../../shared/logic/comparisons/constant-verdicts.mts';
 import { isStable, nodeKey, nodeText, unwrapped } from './operand-terms.mts';
 import type { Forest, Tree } from '../typed/operand-shapes.mts';
 

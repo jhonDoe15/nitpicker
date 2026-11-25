@@ -1,5 +1,5 @@
-import { RULE_IDS } from '../../../../shared/policy.mjs';
-import { sharedFactFindings as untypedSharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
+import { RULE_IDS } from '../../../../shared/policy.mts';
+import { sharedFactFindings as untypedSharedFactFindings } from '../../../../shared/rules/facts/evaluate.mts';
 import { directoryOf, goPackages } from '../typed/go-readers.mts';
 import type {
   FindingRow,

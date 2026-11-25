@@ -1,10 +1,6 @@
 import { resolveJscpdPolicy } from '../../../../core/tooling/jscpd/config.mts';
-import {
-  readHeadPolicyFile,
-  readHeadPolicySource,
-  resolveHeadPolicy as resolveSharedHeadPolicy,
-} from '../../../../shared/head-policy.mjs';
-import { picked as untypedPicked } from '../../../../shared/config.mjs';
+import { readHeadPolicyFile, readHeadPolicySource } from '../../../../shared/head-policy.mts';
+import { picked as untypedPicked } from '../../../../shared/config.mts';
 import type { Environment } from '../../../../shared/processes/environment.mts';
 import { globMatcher } from '../layout.mts';
 import { withHeadToolConfigs } from '../project-configs/head-tool-configs.mts';
@@ -23,7 +19,6 @@ function isToolSettings(value: unknown): value is ToolSettings {
 }
 
 export const picked: (source: Fields, keys: readonly string[]) => Fields = untypedPicked;
-export const resolveSharedPolicy: (config: HeadConfig) => HeadPolicyFile = resolveSharedHeadPolicy;
 export const readPolicyFile: (environment: Environment) => HeadPolicyFile = readHeadPolicyFile;
 export const readPolicySource: (environment: Environment) => {
   policyFile: string | undefined;

@@ -225,11 +225,11 @@ function filesOf(
   }
 }
 
-export function ruffConfigFiles(start: string): string[] {
+function ruffConfigFiles(start: string): string[] {
   return filesOf(readRuffConfig, start, RUFF_FILES);
 }
 
-export function blackConfigFiles(start: string): string[] {
+function blackConfigFiles(start: string): string[] {
   return filesOf(readBlackConfig, start, [PYPROJECT]);
 }
 

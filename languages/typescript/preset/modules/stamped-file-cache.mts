@@ -6,6 +6,8 @@ function fileStamp(file: string): string | undefined {
   return stats === undefined ? undefined : `${String(stats.mtimeMs)}:${String(stats.size)}`;
 }
 
+export type StampedCache<Value> = Map<string, StampedEntry<Value>>;
+
 type StampedMemo<Value> = {
   get(file: string): StampedEntry<Value> | undefined;
   set(file: string, entry: StampedEntry<Value>): unknown;

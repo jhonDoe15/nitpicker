@@ -3,15 +3,19 @@ import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
 import path from 'node:path';
 import { trackTemporaryPath } from '../typed/tooling.mts';
 import { type Layout, readHeadPolicy, readLayout } from '../typed/head-policy.mts';
-import { TEST_TIMEOUT_CEILING_MS } from '../../../../shared/test-timeouts/resolve.mjs';
+import { TEST_TIMEOUT_CEILING_MS } from '../../../../shared/test-timeouts/resolve.mts';
 import { projectTestRunner, readHeadPolicyFile, readTestReport } from './typed/runner-tools.mts';
-import { isIntegrationTestFor, resolveTestTimeouts } from './typed/timeouts.mts';
+import {
+  isIntegrationTestFor,
+  resolveTestTimeouts,
+  type TimeoutPolicy,
+} from './typed/timeouts.mts';
 import {
   COVERAGE_REPORT_PATH,
   formatProcessOutput,
 } from '../quality-areas/reporting/test-report.mts';
 import { troubleshootingError } from '../lint-engine/typed/tools.mts';
-import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
+import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mts';
 import type { NodeToolResult } from '../static-checks/shared.mts';
 import type {
   CoverageRun,
@@ -27,8 +31,8 @@ export const TEST_TIMEOUT_MS: number = TEST_TIMEOUT_CEILING_MS;
 const MAX_WORKERS = 4;
 
 export function testTimeouts(
-  file?: string,
-  policy = readHeadPolicyFile(),
+  file: string | undefined,
+  policy: TimeoutPolicy,
   { floors }: { readonly floors: boolean } = { floors: true },
 ): TimeoutLimits {
   return resolveTestTimeouts(policy, {
@@ -39,18 +43,15 @@ export function testTimeouts(
 }
 
 export function testTimeoutMs(
-  options: TestOptions | undefined,
+  options: TestOptions,
   files?: readonly string[],
   { hooks }: { readonly hooks: boolean } = { hooks: true },
 ): number {
-  if (options === undefined) {
-    return testTimeouts().testTimeoutMs;
-  }
   const selected = files ?? options.rerun?.files ?? runnableTestFiles(options);
   const relative = selected.map((file) =>
     path.isAbsolute(file) ? path.relative(options.projectRoot, file) : file,
   );
-  const policy = readHeadPolicyFile();
+  const policy = readHeadPolicyFile(options.environment);
   const limits = relative.map((file) => testTimeouts(file, policy, { floors: false }));
   const [first = testTimeouts(undefined, policy)] = limits;
   if (limits.length === 0) {

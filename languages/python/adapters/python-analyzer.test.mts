@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fieldOf, parseJson, textOf, textsOf } from '../../../shared/values/readers.mts';
@@ -102,9 +104,9 @@ describe('Python analyzer', () => {
       'languages/python/ruff/nitpicker-ruff.toml',
       'languages/python/adapters/execution/python-test-runner.mts',
       'languages/python/ingest/coverage-reports/coverage-json.mts',
-      'shared/ingest/sarif.mjs',
-      'shared/policy.mjs',
-      'shared/rules/baseline-expansion.mjs',
+      'shared/ingest/sarif.mts',
+      'shared/policy.mts',
+      'shared/rules/baseline-expansion.mts',
       'languages/python/metrics/structure_metrics.py',
     ];
     expect(required.filter((file) => !files.includes(file))).toEqual([]);
@@ -185,6 +187,20 @@ describe('Python analyzer', () => {
     expect(createMutationAnalyzer().createInvocation(context).args).not.toContain(
       '--baseline-moves-file',
     );
+  });
+
+  it('keeps the configuration hash when Python writes bytecode next to the bundled scripts', () => {
+    const hash = createPythonAnalyzer().configurationHash;
+    const cache = path.join(import.meta.dirname, '../metrics/__pycache__');
+    const compiled = path.join(cache, `structure_metrics.${randomUUID()}.pyc`);
+    mkdirSync(cache, { recursive: true });
+    writeFileSync(compiled, 'bytecode');
+    try {
+      expect(configurationFiles().filter((file) => file.includes('__pycache__'))).toEqual([]);
+      expect(createPythonAnalyzer().configurationHash).toBe(hash);
+    } finally {
+      rmSync(compiled, { force: true });
+    }
   });
 
   it('has a stable configuration hash that follows the settings', () => {

@@ -1,6 +1,6 @@
 import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mts';
 import { fileURLToPath } from 'node:url';
-import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { fieldOf, fieldsOf, textOf, optionalText } from '../../../../shared/values/readers.mts';
 import { callUntyped } from '../typed/java-values.mts';
 

@@ -6,7 +6,7 @@ import { parseArgs } from 'node:util';
 import { type Fields, fieldsOf, listOf } from '../json/fields.mts';
 import { createSampleRepository, REPOSITORY_ROOT } from './samples.mts';
 import { containedPath } from '../../core/fix/tool-steps/paths/contained-path.mts';
-import { checkoutModulePath } from '../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath } from '../../shared/paths/checkout-module.mts';
 
 const sourcePath: (file: string) => string = checkoutModulePath;
 const CLI = sourcePath(path.join(REPOSITORY_ROOT, 'core/cli.mjs'));

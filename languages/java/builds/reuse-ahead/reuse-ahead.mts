@@ -1,12 +1,12 @@
 import { type ChildProcess, spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readReusePart, withSharedUsage } from '../../adapters/reuse/jvm-reuse-facts.mts';
 import type { ReusePart } from '../../adapters/reuse/jvm-reuse-types.mts';
 import type { JavaFinding, JavaPolicy } from '../../adapters/typed/java-values.mts';
-import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import {
   REQUEST_FILE,
@@ -16,6 +16,7 @@ import {
   SILENCE_LIMIT_MS,
   reusePartOf,
 } from './reuse-files.mts';
+import { removeQuietly } from '../cleanup/remove-quietly.mts';
 import { requestOf, reuseRequest, sourceStamps } from './reuse-request.mts';
 
 type Launch = (folder: string) => ChildProcess;
@@ -79,7 +80,7 @@ function stop({ folder, child }: Started): void {
   if (child.exitCode === null && child.signalCode === null) {
     child.kill();
   }
-  rmSync(folder, { recursive: true, force: true });
+  removeQuietly(folder);
 }
 
 export function stopReuseAhead(): void {

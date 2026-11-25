@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { projectFilesUnder as filesUnder } from '../../../../shared/project-files/project-files.mjs';
+import { projectFilesUnder as filesUnder } from '../../../../shared/project-files/project-files.mts';
 import type { JavaFinding } from '../typed/java-values.mts';
 import type { JpaFilterOptions, SarifLog, SarifResult, SourceIndex } from './jpa-types.mts';
 

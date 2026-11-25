@@ -5,7 +5,7 @@ import { parse } from 'yaml';
 import { fieldAt, listOf } from '../../../../../../scripts/json/fields.mts';
 import type { Environment } from '../../../../../../shared/processes/environment.mts';
 import { textOf } from '../../../../../../shared/values/readers.mts';
-import { checkoutModulePath } from '../../../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath } from '../../../../../../shared/paths/checkout-module.mts';
 
 const checkoutPath: (modulePath: string) => string = checkoutModulePath;
 

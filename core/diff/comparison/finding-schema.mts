@@ -12,19 +12,18 @@ import {
   requiredRecord,
   requiredString,
 } from './schema/values.mts';
-import { withoutAnsi as untypedWithoutAnsi } from '../../../shared/messages/terminal/terminal-text.mjs';
+import { withoutAnsi as untypedWithoutAnsi } from '../../../shared/messages/terminal/terminal-text.mts';
 
 import { problemsOf, routeFieldsOf } from './model/advice-views.mts';
 import type {
   Advice,
   Anchor,
-  Cause,
-  CauseUnit,
   Metric,
   ParsedReport,
   TrackedFinding,
 } from './model/finding-types.mts';
 import type { Finding } from '../../../shared/values/findings.mts';
+import type { Cause, CauseUnit } from '../../../shared/rules/stability/stability-types.mts';
 
 const withoutAnsi: (text: string) => string = untypedWithoutAnsi;
 

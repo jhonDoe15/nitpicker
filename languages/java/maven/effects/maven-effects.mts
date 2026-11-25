@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { removeQuietly } from '../../builds/cleanup/remove-quietly.mts';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mts';
 import { runJava } from '../programs/java-command.mts';
 import type { JavaEnvironment, JavaSpawn } from '../../adapters/typed/java-values.mts';
@@ -142,6 +143,6 @@ export function runEffects(context: EffectsContext): void {
       accept: (result) => result.status === 0,
     });
   } finally {
-    rmSync(work, { recursive: true, force: true });
+    removeQuietly(work);
   }
 }

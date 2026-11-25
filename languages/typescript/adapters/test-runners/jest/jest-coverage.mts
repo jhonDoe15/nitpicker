@@ -6,7 +6,7 @@ import { formatProcessOutput } from '../../quality-areas/reporting/test-report.m
 import type { TestOptions } from '../typed/runner-types.mts';
 import type { NodeToolResult } from '../../static-checks/shared.mts';
 import { troubleshootingError } from '../../lint-engine/typed/tools.mts';
-import { TROUBLESHOOTING_ANCHORS } from '../../../../../shared/messages/troubleshooting.mjs';
+import { TROUBLESHOOTING_ANCHORS } from '../../../../../shared/messages/troubleshooting.mts';
 import { fieldOf, fieldsOf, listOf } from '../../../../../shared/values/readers.mts';
 
 const SHOWN_CONFIG_START = '{\n  "configs"';

@@ -1,5 +1,5 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { AGGREGATE_GAP } from '../../../../../../../shared/rules/queries/sql-order.mjs';
+import { AGGREGATE_GAP } from '../../../../../../../shared/rules/queries/sql-order.mts';
 import { stringValue } from '../../analysis/constant-resolution.mts';
 import { memberName, unwrapped, type Context } from '../../security/security-values.mts';
 import { nameOf } from '../../typed/node-views.mts';

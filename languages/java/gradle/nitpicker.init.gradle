@@ -580,6 +580,32 @@ allprojects {
             nitpickerSpringArch "org.ow2.asm:asm-analysis:${pinned.asm}"
         }
         jacoco { toolVersion = pinned.jacoco }
+        def mainSources = sourceSets.main.allJava.sourceDirectories
+        def testSourceSets = {
+            def testClassDirs = tasks.withType(Test).collectMany { it.testClassesDirs.files }
+            sourceSets.findAll { sourceSet ->
+                def namedTest = isTestName(sourceSet.name) && !generatedSourceSet(project, sourceSet)
+                def ranByTests = sourceSet.output.classesDirs.files.any { testClassDirs.contains(it) }
+                sourceSet.name != 'main' && (namedTest || ranByTests)
+            }
+        }
+        project.ext.nitpickerTestSourceSets = testSourceSets
+        def testSourceDirectories = {
+            testSourceSets().collectMany { it.allJava.sourceDirectories.files }.unique()
+        }
+        def lintedMainDirs = { handWrittenDirs(project, mainSources.files) }
+        def lintedTestDirs = { handWrittenDirs(project, testSourceDirectories()) }
+        def lintedSources = { (lintedMainDirs() + lintedTestDirs()).findAll { it.exists() } }
+        def javaFiles = {
+            (lintedMainDirs() + lintedTestDirs()).findAll { it.exists() }
+                .collectMany { directory -> fileTree(directory) { include '**/*.java' }.files }.unique().sort()
+        }
+        def hasJavaFilesIn = { Collection<File> dirs ->
+            dirs.any { it.exists() && !project.fileTree(it) { include '**/*.java' }.isEmpty() }
+        }
+        def hasClassFiles = { Collection<File> dirs ->
+            dirs.any { it.exists() && !project.fileTree(it) { include '**/*.class' }.isEmpty() }
+        }
         def nitpickerCheckstyleConfig = layout.buildDirectory.file('nitpicker-checkstyle/checkstyle.xml')
         def projectCheckstyleConfig = nitpickerArgument('nitpicker.checkstyle.projectConfig')
         def mergedCheckstyleConfig = nitpickerArgument('nitpicker.checkstyle.mergedConfig')
@@ -596,6 +622,7 @@ allprojects {
             if (exportedCheckstyleConfig) {
                 outputs.upToDateWhen { false }
             }
+            onlyIf { exportedCheckstyleConfig != null || (!mergedCheckstyleConfig && !javaFiles().isEmpty()) }
             doLast {
                 def target = nitpickerCheckstyleConfig.get().asFile
                 target.parentFile.mkdirs()
@@ -668,22 +695,6 @@ allprojects {
             }
         }
 
-        def mainSources = sourceSets.main.allJava.sourceDirectories
-        def testSourceSets = {
-            def testClassDirs = tasks.withType(Test).collectMany { it.testClassesDirs.files }
-            sourceSets.findAll { sourceSet ->
-                def namedTest = isTestName(sourceSet.name) && !generatedSourceSet(project, sourceSet)
-                def ranByTests = sourceSet.output.classesDirs.files.any { testClassDirs.contains(it) }
-                sourceSet.name != 'main' && (namedTest || ranByTests)
-            }
-        }
-        project.ext.nitpickerTestSourceSets = testSourceSets
-        def testSourceDirectories = {
-            testSourceSets().collectMany { it.allJava.sourceDirectories.files }.unique()
-        }
-        def lintedMainDirs = { handWrittenDirs(project, mainSources.files) }
-        def lintedTestDirs = { handWrittenDirs(project, testSourceDirectories()) }
-        def lintedSources = { (lintedMainDirs() + lintedTestDirs()).findAll { it.exists() } }
         def capitalized = { String text -> text[0].toUpperCase() + text.substring(1) }
         def skippedByBuild = project.ext.nitpickerSkippedByBuild
         def checkedTestTasks = {
@@ -747,7 +758,7 @@ allprojects {
             mainClass = 'net.sourceforge.pmd.cli.PmdCli'
             ignoreExitValue = true // PMD exits 4 when it finds violations
             onlyIf {
-                if (!lintedSources().isEmpty()) {
+                if (!javaFiles().isEmpty()) {
                     return true
                 }
                 reportDir.get().asFile.mkdirs()
@@ -775,7 +786,6 @@ allprojects {
             def testRules = new File(nitpickerArgument('nitpicker.pmd.testRules') ?: new File(initScriptDir, 'pmd-test-ruleset.xml').absolutePath)
             def mainRules = new File(nitpickerArgument('nitpicker.pmd.mainRules')
                 ?: new File(initScriptDir, 'pmd-main-ruleset.xml').absolutePath)
-            def ruleset = ([nitpickerRuleset] + (projectRuleset ? [projectRuleset] : [])).join(',')
             doFirst {
                 reportDir.get().asFile.mkdirs()
                 // Type resolution: the main and test compile classpaths (compileOnly libraries are on the
@@ -798,10 +808,21 @@ allprojects {
                     mainDirectories: lintedMainDirs()*.absolutePath,
                     testDirectories: lintedTestDirs()*.absolutePath,
                     compiler: compilerOf(tasks.named('compileJava').get()),
+                    // The XPath rules run on nitpicker's engine when it is there; PMD then gets the rules it
+                    // implements in Java, and the list of rulesets to run comes back in pmd-run-rulesets.txt.
+                    engine: [
+                        rulesets: [nitpickerRuleset] + (projectRuleset ? [projectRuleset] : []) + nitpickerExtras*.absolutePath,
+                        untouched: projectRuleset ? [projectRuleset] : [],
+                        sources: lintedSources().collect { it.toString() },
+                        auxClasspath: auxClasspath.absolutePath,
+                        pmdJar: configurations.nitpickerPmd.files.find { it.name.startsWith('pmd-java-') }?.absolutePath,
+                        javaHome: (javaLauncher.orNull?.metadata?.installationPath?.asFile
+                            ?: new File(System.getProperty('java.home'))).absolutePath,
+                        suppressMarker: 'NITPICKER-NO-INLINE-SUPPRESSION',
+                    ],
                 ])
                 writeRules('pmd-guards', guardsPlan)
-                nitpickerExtras += reportDir.get().file('pmd-rulesets.txt').asFile.text.split(',').findAll { it }.collect { new File(it) }
-                def rulesets = ([ruleset] + nitpickerExtras.collect { it.absolutePath }).join(',')
+                def rulesets = reportDir.get().file('pmd-run-rulesets.txt').asFile.text
                 args 'check', '--no-cache', '--no-progress', '--format', 'sarif',
                     '--report-file', reportDir.get().file('pmd.sarif').asFile.absolutePath,
                     '--rulesets', rulesets,
@@ -826,6 +847,7 @@ allprojects {
             def buildRoot = project.rootDir.toPath().toAbsolutePath().normalize()
             doFirst {
                 reportDir.get().asFile.mkdirs()
+                reportDir.get().file('spotbugs-engine.sarif').asFile.delete()
                 def sourcePath = mainSources.files.findAll { it.exists() }.join(File.pathSeparator)
                 def classDirs = analyzedClassDirs().findAll { it.exists() }
                 def auxiliary = (kotlinPreset ? sourceSets.main.runtimeClasspath.files
@@ -834,11 +856,12 @@ allprojects {
                         })
                     .findAll { it.exists() && !classDirs.contains(it) }
                 def targets = classDirs.collect { it.absolutePath }
+                def processorOutput = tasks.named('compileJava').get().options
+                    .generatedSourceOutputDirectory.asFile.orNull
+                def generatedRoots = (mainSources.files.findAll { isGeneratedRoot(project, it) } +
+                    [processorOutput]).findAll { it != null && it.exists() }
+                def generatedJava = generatedRoots.any { root -> !fileTree(root) { include '**/*.java' }.isEmpty() }
                 if (!analyzeGenerated) {
-                    def processorOutput = tasks.named('compileJava').get().options
-                        .generatedSourceOutputDirectory.asFile.orNull
-                    def generatedRoots = (mainSources.files.findAll { isGeneratedRoot(project, it) } +
-                        [processorOutput]).findAll { it != null && it.exists() }
                     if (!generatedRoots.isEmpty()) {
                         def list = reportDir.get().file('spotbugs-targets.txt').asFile
                         def helper = new File(initScriptDir, 'generated/GeneratedClasses.java')
@@ -860,7 +883,30 @@ allprojects {
                 }
                 def auxiliaryFile = reportDir.get().file('spotbugs-aux-classpath.txt').asFile
                 auxiliaryFile.text = auxiliary*.absolutePath.join('\n')
-                args(nitpickerSettings('spotbugs', ['-effort:default', '-medium']) + ['-sarif',
+                // The patterns nitpicker's engine has rebuilt run on it, from the sources, when the classes
+                // SpotBugs reads all come from the Java sources javac compiled.
+                def engineArguments = []
+                def compileTask = tasks.named('compileJava').get()
+                def processorArguments = compileTask.options.compilerArgs.any {
+                    it in ['-processor', '-processorpath', '--processor-path', '--processor-module-path']
+                }
+                if (!kotlinPreset && classDirs.toList() == [compileTask.destinationDirectory.get().asFile] &&
+                        !generatedJava && !processorArguments &&
+                        nitpickerArgument('nitpicker.spotbugs.settings') == null) {
+                    def enginePlan = reportDir.get().file('spotbugs-engine-plan.json').asFile
+                    enginePlan.text = groovy.json.JsonOutput.toJson([
+                        reportDir    : reportDir.get().asFile.absolutePath,
+                        sources      : compileTask.source.files.findAll { it.name.endsWith('.java') }*.absolutePath.sort(),
+                        classpath    : auxiliary.findAll { !classDirs.contains(it) }*.absolutePath,
+                        processorPath: (compileTask.options.annotationProcessorPath?.files ?: [])*.absolutePath,
+                        javaHome     : (javaLauncher.orNull?.metadata?.installationPath?.asFile
+                            ?: new File(System.getProperty('java.home'))).absolutePath,
+                    ])
+                    writeRules('spotbugs-engine', enginePlan)
+                    engineArguments = reportDir.get().file('spotbugs-engine-arguments.txt').asFile.readLines()
+                        .findAll { !it.isEmpty() }
+                }
+                args(nitpickerSettings('spotbugs', ['-effort:default', '-medium']) + engineArguments + ['-sarif',
                       '-pluginList', configurations.nitpickerSpotbugsPlugins.files*.absolutePath.join(File.pathSeparator),
                       '-exclude', new File(initScriptDir, 'security/exclude.xml').absolutePath,
                       '-output', reportDir.get().file('spotbugs.sarif').asFile.absolutePath,
@@ -871,10 +917,6 @@ allprojects {
             onlyIf { analyzedClassDirs().any { it.exists() && it.list()?.length } }
         }
 
-        def javaFiles = {
-            (lintedMainDirs() + lintedTestDirs()).findAll { it.exists() }
-                .collectMany { directory -> fileTree(directory) { include '**/*.java' }.files }.unique().sort()
-        }
         tasks.register('nitpickerFormat', JavaExec) {
             group = 'nitpicker'
             classpath = configurations.nitpickerFormat
@@ -997,6 +1039,16 @@ allprojects {
             group = 'nitpicker'
             dependsOn { lintedClassesTasks() }
             onlyIf { runsArchRules() }
+            onlyIf {
+                def classDirs = sourceSets.main.output.classesDirs.files +
+                    testSourceSets().collectMany { it.output.classesDirs.files }
+                if (hasClassFiles(classDirs)) {
+                    return true
+                }
+                reportDir.get().asFile.mkdirs()
+                reportDir.get().file('spring-arch.json').asFile.text = '{"root":"","violations":[]}\n'
+                false
+            }
             def ruleSources = []
             new File(initScriptDir, 'archunit').eachFileRecurse(groovy.io.FileType.FILES) {
                 if (it.name.endsWith('.java')) {
@@ -1147,7 +1199,7 @@ allprojects {
                 dependsOn tasks.named('jacocoTestReport')
                 dependsOn { checkedTestTasks() }
             }
-            onlyIf { !testsFailed }
+            onlyIf { !testsFailed && hasClassFiles(sourceSets.main.output.classesDirs.files) }
             doLast {
                 copy {
                     from tasks.named('jacocoTestReport').get().reports.xml.outputLocation
@@ -1255,6 +1307,15 @@ allprojects {
         tasks.register('nitpickerStructure') {
             group = 'nitpicker'
             def metricsSource = new File(initScriptDir, 'StructureMetrics.java')
+            onlyIf {
+                if (hasJavaFilesIn(lintedMainDirs())) {
+                    return true
+                }
+                reportDir.get().asFile.mkdirs()
+                reportDir.get().file('structure.json').asFile.text = '[]'
+                reportDir.get().file('classes.json').asFile.text = '{"files":{},"classes":[]}'
+                false
+            }
             doLast {
                 reportDir.get().asFile.mkdirs()
                 def roots = lintedMainDirs().findAll { it.exists() }.collect { relativeToRoot(it) }
@@ -1427,6 +1488,18 @@ allprojects {
         tasks.register('nitpickerJdeps') {
             group = 'nitpicker'
             dependsOn { [tasks.named('classes')] + testSourceSets().collect { tasks.named(it.classesTaskName) } }
+            onlyIf {
+                def classDirs = sourceSets.main.output.classesDirs.files +
+                    testSourceSets().collectMany { it.output.classesDirs.files }
+                if (hasClassFiles(classDirs)) {
+                    return true
+                }
+                reportDir.get().asFile.mkdirs()
+                ['jdeps.txt', 'jdeps-test.txt', 'jdeps-classes.txt'].each { name ->
+                    reportDir.get().file(name).asFile.text = ''
+                }
+                false
+            }
             doLast {
                 reportDir.get().asFile.mkdirs()
                 def mainDirs = sourceSets.main.output.classesDirs.files.findAll { it.exists() }

@@ -14,6 +14,7 @@ const processTimeoutRules: Linter.RulesRecord = {
 export const strictTestRules: Linter.RulesRecord = {
   'nitpicker/no-cleanup-skipped-on-failure': 'error',
   'nitpicker/no-git-repository-per-test': 'error',
+  'nitpicker/no-shared-temp-path-in-tests': 'error',
   'nitpicker/hermetic-git-in-tests': 'error',
   'nitpicker/no-node-process-per-test': 'error',
   'nitpicker/no-server-or-worker-per-test': 'error',

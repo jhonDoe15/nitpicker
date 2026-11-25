@@ -1,10 +1,10 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { TESTS_FAILED_RULE, testsFailHeadline } from '../../../../shared/rules/finding-helpers.mjs';
+import { TESTS_FAILED_RULE, testsFailHeadline } from '../../../../shared/rules/finding-parts.mts';
 import {
   failingTestEntries as untypedFailingTestEntries,
   valuesInMessage,
-} from '../../../../shared/rules/failing-tests/failing-tests.mjs';
+} from '../../../../shared/rules/failing-tests/failing-tests.mts';
 import { execute, failure } from '../execution/go-process.mts';
 import { buildFlags } from '../build/go-vet.mts';
 import {

@@ -1,4 +1,4 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import type { ModuleScope } from '../../database/orm-modules.mts';
 import { callsWithin } from '../../effects/held-scopes.mts';
 import { isRepositoryLike, receiverNames } from '../../queries/query-calls.mts';
@@ -6,6 +6,7 @@ import { unwrapped, type Context } from '../../security/security-values.mts';
 import { calleeOrigin, callEffects } from '../../support/io-effects.mts';
 import { ancestorsOf, contains, nameOf, variableNamed } from '../../typed/node-views.mts';
 import { isFunction } from '../../typed/syntax-views.mts';
+import { writtenInside } from '../../repeated-work/support/loop-invariance.mts';
 
 export const CONFLICT = 'OptimisticLockVersionMismatchError';
 
@@ -88,12 +89,6 @@ function entityOf(call: TSESTree.CallExpression): TSESTree.Identifier | undefine
     }
   }
   return undefined;
-}
-
-function writtenInside(variable: TSESLint.Scope.Variable, region: TSESTree.Node): boolean {
-  return variable.references.some(
-    (reference) => reference.isWrite() && !reference.init && contains(region, reference.identifier),
-  );
 }
 
 function isRefresh(call: TSESTree.CallExpression | TSESTree.TaggedTemplateExpression): boolean {

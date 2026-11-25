@@ -1,0 +1,31 @@
+{
+  "contracts": {
+    "public-contracts": [
+      {
+        "file": "ports.ts",
+        "contract": "Clock",
+        "method": "sleep"
+      },
+      {
+        "file": "ports.ts",
+        "contract": "Store",
+        "method": "__reset"
+      },
+      {
+        "file": "ports.ts",
+        "contract": "Store",
+        "method": "onChange"
+      },
+      {
+        "file": "ports.ts",
+        "contract": "Store",
+        "method": "remove"
+      },
+      {
+        "file": "ports.ts",
+        "contract": "Ticker",
+        "method": "stop"
+      }
+    ]
+  }
+}

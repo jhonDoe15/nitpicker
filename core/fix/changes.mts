@@ -5,7 +5,7 @@ import { containedPath } from './tool-steps/paths/contained-path.mts';
 import { normalizeGitPath } from '../diff/git/normalize.mts';
 import { resolveComparison } from '../diff/git/repository/git.mts';
 import { runGit } from '../diff/git/repository/command.mts';
-import { GIT_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
+import { GIT_TIMEOUT_MS } from '../../shared/processes/deadlines.mts';
 import { parseBatchObjects } from './cat-file/batch-objects.mts';
 import type { Comparison } from '../diff/git/repository/git.mts';
 import type {

@@ -1,9 +1,5 @@
-import {
-  DRIVE_LETTER,
-  GLOB_CHARACTER,
-  GLOB_PROBLEMS,
-  PARENT_SEGMENT,
-} from '../../../shared/config.mjs';
+import { DRIVE_LETTER, GLOB_CHARACTER, PARENT_SEGMENT } from '../../../shared/config.mts';
+import { GLOB_PROBLEMS } from '../../../shared/globs/glob-problems.mts';
 import { toolsOf, type SchemaTable } from '../views/schema-views.mts';
 
 export type JsonSchema = { readonly [keyword: string]: unknown };

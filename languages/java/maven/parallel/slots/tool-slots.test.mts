@@ -19,8 +19,12 @@ describe('toolSlots', () => {
 
 describe('toolHeapFlags', () => {
   it('splits three quarters of the memory between the slots', () => {
-    expect(toolHeapFlags(4)).toEqual(['-XX:MaxRAMPercentage=18.8']);
-    expect(toolHeapFlags(1)).toEqual(['-XX:MaxRAMPercentage=75.0']);
+    expect(toolHeapFlags(4)[0]).toBe('-XX:MaxRAMPercentage=18.8');
+    expect(toolHeapFlags(1)[0]).toBe('-XX:MaxRAMPercentage=75.0');
+  });
+
+  it('asks the collector to keep the heap near the live data instead of growing it to the ceiling', () => {
+    expect(toolHeapFlags(4)).toEqual(['-XX:MaxRAMPercentage=18.8', '-XX:GCTimeRatio=4']);
   });
 });
 
@@ -28,6 +32,7 @@ describe('withToolHeap', () => {
   it('puts the slot heap before the flags already set', () => {
     expect(withToolHeap(['-Dfile.encoding=UTF-8'], 2)).toEqual([
       '-XX:MaxRAMPercentage=37.5',
+      '-XX:GCTimeRatio=4',
       '-Dfile.encoding=UTF-8',
     ]);
   });
