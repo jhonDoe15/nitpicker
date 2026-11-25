@@ -216,10 +216,12 @@ fn typescript_structure(args: &[String]) {
 }
 
 /// `typescript-lint --files <list> [--rules <a,b>] [--out <file>] [--testing-library-utils-module <suffix>]`: each line of
-/// the list is the path to read, the path to report and `key=value` settings for that file, tabs between them. The
+/// the list is the path to read, the path to report and `key=value` settings for that file, tabs between them; a
+/// setting `<rule>.<fact>=<answer>` is a fact the caller worked out for that rule and file from its options. The
 /// module suffix is `test-utils` unless given, and empty for none; `testing-library/utils-module=<suffix>` sets it for
 /// one file and `testing-library/scope=off` leaves the file to no testing-library rule.
-/// A row of the output is file, rule, line, column and message, then the end line and column of a reported range.
+/// A row of the output is file, rule, line, column and message, then the end line and column of a reported range (null
+/// for a point), then, when the finding holds only if the caller agrees, the `[kind, value]` questions to ask.
 /// `--testing-library-scope` has the engine decide both for every file without such settings, by following the file's
 /// imports as the preset does; `--end-to-end-root <folder>` names the folder of browser tests for that decision.
 fn typescript_lint(args: &[String]) {
@@ -264,10 +266,16 @@ fn typescript_lint(args: &[String]) {
         .iter()
         .map(|reported| {
             let found = &reported.finding;
+            let mut row = vec![found.file.clone().into(), found.rule.clone().into(), found.line.into(), found.column.into(), found.message.clone().into()];
             match reported.end {
-                Some((line, column)) => serde_json::json!([found.file, found.rule, found.line, found.column, found.message, line, column]),
-                None => serde_json::json!([found.file, found.rule, found.line, found.column, found.message]),
+                Some((line, column)) => row.extend([line.into(), column.into()]),
+                None if !reported.conditions.is_empty() => row.extend([serde_json::Value::Null, serde_json::Value::Null]),
+                None => {}
             }
+            if !reported.conditions.is_empty() {
+                row.push(serde_json::json!(reported.conditions.iter().map(|(kind, value)| [kind, value]).collect::<Vec<_>>()));
+            }
+            serde_json::Value::Array(row)
         })
         .collect();
     let text = serde_json::to_string(&rows).expect("json");

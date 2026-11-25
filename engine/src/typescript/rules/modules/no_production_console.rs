@@ -168,7 +168,10 @@ pub fn check(context: &mut Context) {
         check_pattern(context, node.id(), node.kind(), &mut found);
         check_module_edges(node.kind(), &mut found);
     }
-    let streams_allowed = COMPOSITION_ROOT.is_match(&context.file.path.replace('\\', "/"));
+    let streams_allowed = match context.setting(&format!("{RULE}.streams-allowed")) {
+        Some(answer) => answer == "true",
+        None => COMPOSITION_ROOT.is_match(&context.file.path.replace('\\', "/")),
+    };
     for entry in found {
         match entry {
             Found::Console(span, reference) => context.report_range(RULE, span.start, Some(span.end), format!("Use the application logger instead of {reference}. Program output goes through a `{{ write(text: string): void }}` parameter that the composition root fills with process.stdout or process.stderr. An exception fits only when this module is a script that prints the program output.")),

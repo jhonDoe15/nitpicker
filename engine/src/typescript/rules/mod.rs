@@ -27,16 +27,18 @@ pub struct Context<'a, 's> {
     findings: Vec<Reported>,
 }
 
-/// A finding, and where its range ends when the rule reports a range and not a point.
+/// A finding, where its range ends when the rule reports a range and not a point, and the policy questions the
+/// caller answers before it keeps the finding: each a kind of question and the value it is asked about.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Reported {
     pub finding: Finding,
     pub end: Option<(usize, usize)>,
+    pub conditions: Vec<(String, String)>,
 }
 
 impl From<Finding> for Reported {
     fn from(finding: Finding) -> Reported {
-        Reported { finding, end: None }
+        Reported { finding, end: None, conditions: Vec::new() }
     }
 }
 
@@ -77,10 +79,15 @@ impl<'a> Context<'a, '_> {
 
     /// Reports from `start`, up to `end` when the rule reports a range and not a point.
     pub fn report_range(&mut self, rule: &str, start: u32, end: Option<u32>, message: String) {
+        self.report_when(rule, start, end, message, Vec::new());
+    }
+
+    /// Reports only if the caller answers yes to every condition, a question of policy the engine leaves to it.
+    pub fn report_when(&mut self, rule: &str, start: u32, end: Option<u32>, message: String, conditions: Vec<(String, String)>) {
         let (line, column) = self.place(start);
         let rule = if rule.contains('/') { rule.to_string() } else { format!("nitpicker/{rule}") };
         let finding = Finding { file: self.display.to_string(), line, column, rule, message, symbol: None };
-        self.findings.push(Reported { finding, end: end.map(|end| self.place(end)) });
+        self.findings.push(Reported { finding, end: end.map(|end| self.place(end)), conditions });
     }
 }
 

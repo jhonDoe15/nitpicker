@@ -1,10 +1,9 @@
-import { chmodSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { findEngine } from '../../../../../shared/engine/engine-binary.mts';
-import { lintWithOxlint } from '../oxlint-runner.mts';
 import { createProject, presetModule } from '../test-support/oxlint-project.mts';
-import { oxlintOptions } from '../test-support/oxlint-runs.mts';
+import { removedAfterAll, reportedLines, writeStubEngine } from '../test-support/engine-stub.mts';
 
 const STUB_MESSAGE = 'reported by the stub engine';
 
@@ -34,6 +33,7 @@ const silent = [
   '}',
   '// eslint-disable-next-line nitpicker/no-silent-catch -- nothing to disable',
   "console.log('loaded');",
+  "process.stdout.write('done');",
 ].join('\n');
 
 const root = createProject('nitpicker-engine-pass-', {
@@ -44,58 +44,49 @@ const root = createProject('nitpicker-engine-pass-', {
   'src/second.ts': silent,
 });
 
-const stub = path.join(root, 'stub-engine.sh');
 const argumentsFile = path.join(root, 'stub-arguments.txt');
-writeFileSync(
-  stub,
+const listFile = path.join(root, 'stub-files.tsv');
+const stub = writeStubEngine(
+  root,
   [
-    '#!/bin/sh',
-    `echo "$@" > ${JSON.stringify(argumentsFile)}`,
-    'while [ $# -gt 0 ]; do if [ "$1" = "--out" ]; then out="$2"; fi; shift; done',
-    'cat > "$out" <<\'ROWS\'',
-    JSON.stringify([
-      ['src/first.ts', 'nitpicker/no-silent-catch', 2, 3, STUB_MESSAGE],
-      ['src/second.ts', '!parse', 1, 1, ''],
-    ]),
-    'ROWS',
-  ].join('\n'),
+    ['src/first.ts', 'nitpicker/no-silent-catch', 2, 3, STUB_MESSAGE],
+    ['src/second.ts', '!parse', 1, 1, ''],
+  ],
+  { argumentsFile, listFile },
 );
-chmodSync(stub, 0o755);
 
-afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
-});
+removedAfterAll(root);
 
 async function reported(engine: string): Promise<string[]> {
-  const results = await lintWithOxlint({
-    options: oxlintOptions(root, ['src/**/*.ts']),
-    projectConfigPath: undefined,
-    environment: {
-      ...process.env,
-      NITPICKER_ENGINE: engine,
-      NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(root, 'policy.mjs'),
-      NITPICKER_DIFF_ESLINT_PROJECT_ROOT: root,
-    },
-    runEslintCli: () => Promise.resolve([]),
-  });
-  return results
-    .flatMap(({ filePath, messages }) =>
-      messages.map(({ ruleId, line, column, message }) =>
-        [path.basename(filePath), line, column, ruleId, message.split('.')[0]].join(' | '),
-      ),
-    )
-    .sort();
+  const lines = await reportedLines(
+    { root, patterns: ['src/**/*.ts'], engine, environment: process.env },
+    (file, { ruleId, line, column, message }) =>
+      [file, line, column, ruleId, message.split('.')[0]].join(' | '),
+  );
+  return lines.sort();
 }
 
 describe('plugin rules handed to the engine', () => {
   it.skipIf(process.platform === 'win32')(
-    'replays what the engine found and keeps rules with options and unparsed files on the rules',
+    'replays what the engine found, hands option facts over, and keeps unparsed files on the rules',
     async () => {
       const lines = await reported(stub);
       const silentCatch = lines.filter((line) => line.includes('nitpicker/no-silent-catch'));
       const engineArguments = readFileSync(argumentsFile, 'utf8').split(' ');
 
-      expect(engineArguments[engineArguments.indexOf('--rules') + 1]).toBe('no-silent-catch');
+      const listed = readFileSync(listFile, 'utf8');
+
+      expect(engineArguments[engineArguments.indexOf('--rules') + 1]).toBe(
+        'no-production-console,no-silent-catch',
+      );
+      expect(listed).toBe(
+        ['src/first.ts', 'src/second.ts']
+          .map((file) =>
+            [path.join(root, file), file, 'no-production-console.streams-allowed=true'].join('\t'),
+          )
+          .map((line) => `${line}\n`)
+          .join(''),
+      );
       expect(engineArguments).not.toContain('--testing-library-scope');
       expect(silentCatch).toEqual([
         `first.ts | 2 | 3 | nitpicker/no-silent-catch | ${STUB_MESSAGE}`,

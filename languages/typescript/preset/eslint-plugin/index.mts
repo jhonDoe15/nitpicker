@@ -1,6 +1,7 @@
 import type { ESLint, Rule } from 'eslint';
 import { isRuleModule } from '../../../../shared/values/readers.mts';
-import { replayedByEngine } from './engine/engine-replay.mts';
+import { replayedByEngine } from './replay/engine-replay.mts';
+import { conditionsHold } from './engine/engine-requests.mts';
 import { ENGINE_PLUGIN_RULES, PLUGIN_RULE_PREFIX } from './engine/engine-rules.mts';
 import { directoryRules } from './rules.generated.mts';
 
@@ -12,9 +13,14 @@ function eslintRule([name, rule]: [string, unknown]): [string, Rule.RuleModule] 
   if (!isRuleModule(rule)) {
     throw new TypeError(`The nitpicker rule ${name} is not an ESLint rule module.`);
   }
+  const ruleId = `${PLUGIN_RULE_PREFIX}${name}`;
   return [
     name,
-    ENGINE_PLUGIN_RULES.has(name) ? replayedByEngine(`${PLUGIN_RULE_PREFIX}${name}`, rule) : rule,
+    ENGINE_PLUGIN_RULES.has(name)
+      ? replayedByEngine(ruleId, rule, (conditions, filename) =>
+          conditionsHold(ruleId, conditions, filename),
+        )
+      : rule,
   ];
 }
 

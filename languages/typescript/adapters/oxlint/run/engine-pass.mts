@@ -3,15 +3,16 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { findEngine } from '../../../../../shared/engine/engine-binary.mts';
-import { parsedFiles, readEngineFindings } from '../../../../../shared/engine/engine-rows.mts';
+import {
+  type EngineFinding,
+  parsedFiles,
+  readEngineFindings,
+} from '../../../../../shared/engine/engine-rows.mts';
 import { runEngineSync } from '../../../../../shared/engine/engine-run.mts';
 import type { Environment } from '../../../../../shared/processes/environment.mts';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
-import { ENGINE_FINDINGS_FILE } from '../../../preset/eslint-plugin/engine/engine-replay.mts';
-import {
-  ENGINE_PLUGIN_RULES,
-  PLUGIN_RULE_PREFIX,
-} from '../../../preset/eslint-plugin/engine/engine-rules.mts';
+import { ENGINE_FINDINGS_FILE } from '../../../../../shared/engine/engine-findings-file.mts';
 import { trackTemporaryPath, untrackTemporaryPath } from '../../typed/tooling.mts';
 import type { OxlintPlan, PlanGroup } from '../plan/oxlint-shapes.mts';
 
@@ -21,7 +22,37 @@ type EnginePass = {
   readonly environment: Environment;
   readonly timeoutMs: number | undefined;
   readonly directory: string;
+  readonly requests: EngineRequests;
 };
+
+type EngineRequests = {
+  readonly engineRuleName: (ruleId: string) => string;
+  readonly engineSettings: (request: {
+    readonly rules: Readonly<Record<string, unknown>>;
+    readonly filename: string;
+    readonly chosen: ReadonlySet<string>;
+    readonly project: { readonly root: string; readonly environment: Environment };
+  }) => string[];
+  readonly runsOnEngine: (entry: readonly [string, unknown]) => boolean;
+};
+
+const REQUESTS_MODULE = '../../../preset/eslint-plugin/engine/engine-requests.mjs';
+
+function isEngineRequests(value: unknown): value is EngineRequests {
+  return ['engineRuleName', 'engineSettings', 'runsOnEngine'].every(
+    (name) => typeof fieldOf(value, name) === 'function',
+  );
+}
+
+async function engineRequests(): Promise<EngineRequests> {
+  const loaded: unknown = await import(
+    checkoutModuleUrl(new URL(REQUESTS_MODULE, import.meta.url)).href
+  );
+  if (!isEngineRequests(loaded)) {
+    throw new Error(`${REQUESTS_MODULE} does not export the engine requests`);
+  }
+  return loaded;
+}
 
 const TESTING_LIBRARY_PREFIX = 'testing-library/';
 const UTILS_MODULE_SETTING = 'testing-library/utils-module';
@@ -36,15 +67,17 @@ function isTestingLibraryRule(ruleId: string): boolean {
   return ruleId.startsWith(TESTING_LIBRARY_PREFIX);
 }
 
-function pluginRuleName(ruleId: string): string | undefined {
-  const name = ruleId.startsWith(PLUGIN_RULE_PREFIX)
-    ? ruleId.slice(PLUGIN_RULE_PREFIX.length)
-    : undefined;
-  return name !== undefined && ENGINE_PLUGIN_RULES.has(name) ? name : undefined;
-}
-
-function hasOptions(setting: unknown): boolean {
-  return Array.isArray(setting) && setting.length > 1;
+function listedLine(
+  { projectRoot, environment, requests }: EnginePass,
+  { group, file, chosen }: { group: PlanGroup; file: string; chosen: ReadonlySet<string> },
+) {
+  const filename = path.join(projectRoot, file);
+  const project = { root: projectRoot, environment };
+  return [
+    filename,
+    file,
+    ...requests.engineSettings({ rules: group.rules, filename, chosen, project }),
+  ].join('\t');
 }
 
 function hasEngineSettings(group: PlanGroup): boolean {
@@ -56,37 +89,47 @@ function testingLibraryOnEngine(groups: readonly PlanGroup[]): boolean {
   return testGroups.length > 0 && testGroups.every(hasEngineSettings);
 }
 
-function pluginRulesOnEngine(groups: readonly PlanGroup[]): string[] {
+function pluginRulesOnEngine(
+  groups: readonly PlanGroup[],
+  { engineRuleName, runsOnEngine }: EngineRequests,
+): string[] {
   const settings = groups.flatMap((group) => Object.entries(group.rules));
-  const named = settings.filter(([ruleId]) => pluginRuleName(ruleId) !== undefined);
-  const withOptions = new Set(named.filter(([, setting]) => hasOptions(setting)).map(([id]) => id));
-  return [...new Set(named.map(([ruleId]) => ruleId))].filter((id) => !withOptions.has(id));
+  const named = settings.filter(([ruleId]) => engineRuleName(ruleId) !== ruleId);
+  const javascript = new Set(
+    named.filter((entry) => !runsOnEngine(entry)).map(([ruleId]) => ruleId),
+  );
+  return [...new Set(named.map(([ruleId]) => ruleId))].filter((id) => !javascript.has(id));
 }
 
-function engineRulesOf(groups: readonly PlanGroup[]): EngineRules {
+function engineRulesOf(groups: readonly PlanGroup[], requests: EngineRequests): EngineRules {
   const testingLibrary = testingLibraryOnEngine(groups);
   const ruleIds = groups.flatMap((group) => Object.keys(group.rules));
   const library = testingLibrary ? ruleIds.filter(isTestingLibraryRule) : [];
   return {
-    ids: [...new Set([...library, ...pluginRulesOnEngine(groups)])].sort(),
+    ids: [...new Set([...library, ...pluginRulesOnEngine(groups, requests)])].sort(),
     testingLibrary,
   };
 }
 
-function engineRuleName(ruleId: string): string {
-  return pluginRuleName(ruleId) ?? ruleId;
-}
-
 function engineArguments(
-  { plan, projectRoot, directory }: EnginePass,
+  pass: EnginePass,
   rules: EngineRules,
 ): { readonly argumentList: string[]; readonly files: string[]; readonly out: string } {
+  const { plan, directory } = pass;
   const chosen = new Set(rules.ids);
-  const groups = plan.groups.filter((group) => Object.keys(group.rules).some((id) => chosen.has(id)));
-  const files = [...new Set(groups.flatMap((group) => group.files))].sort();
+  const groups = plan.groups.filter((group) =>
+    Object.keys(group.rules).some((id) => chosen.has(id)),
+  );
+  const lines = new Map(
+    groups.flatMap((group) =>
+      group.files.map((file) => [file, listedLine(pass, { group, file, chosen })] as const),
+    ),
+  );
+  const listed = [...lines].sort(([left], [right]) => left.localeCompare(right));
+  const files = listed.map(([file]) => file);
   const list = path.join(directory, 'files.tsv');
   const out = path.join(directory, 'findings.json');
-  writeFileSync(list, files.map((file) => `${path.join(projectRoot, file)}\t${file}\n`).join(''));
+  writeFileSync(list, listed.map(([, line]) => `${line}\n`).join(''));
   const scope = rules.testingLibrary ? ['--testing-library-scope'] : [];
   const endToEnd = plan.endToEndRoot === undefined ? [] : ['--end-to-end-root', plan.endToEndRoot];
   return {
@@ -95,7 +138,7 @@ function engineArguments(
       '--files',
       list,
       '--rules',
-      rules.ids.map(engineRuleName).join(','),
+      rules.ids.map(pass.requests.engineRuleName).join(','),
       ...scope,
       ...endToEnd,
       '--out',
@@ -107,7 +150,7 @@ function engineArguments(
 }
 
 function engineLintEnvironment(pass: EnginePass): Environment {
-  const rules = engineRulesOf(pass.plan.groups);
+  const rules = engineRulesOf(pass.plan.groups, pass.requests);
   const binary = findEngine(pass.environment);
   if (binary === undefined || rules.ids.length === 0) {
     return pass.environment;
@@ -124,28 +167,35 @@ function engineLintEnvironment(pass: EnginePass): Environment {
     JSON.stringify({
       files: parsedFiles(files, findings),
       rules: rules.ids,
-      findings: findings.map(({ file, rule, line, column, message, end }) => [
-        file,
-        rule,
-        line,
-        column,
-        message,
-        ...(end === undefined ? [] : [end.line, end.column]),
-      ]),
+      findings: findings.map(replayRow),
     }),
   );
   return { ...pass.environment, [ENGINE_FINDINGS_FILE]: replay };
 }
 
+function replayRow({ file, rule, line, column, message, end, conditions }: EngineFinding) {
+  const ends = end === undefined ? [undefined, undefined] : [end.line, end.column];
+  return [
+    file,
+    rule,
+    line,
+    column,
+    message,
+    ...ends,
+    ...(conditions === undefined ? [] : [conditions]),
+  ];
+}
+
 export async function withEngineLint<Result>(
-  pass: Omit<EnginePass, 'directory'>,
+  pass: Omit<EnginePass, 'directory' | 'requests'>,
   lint: (environment: Environment) => Promise<Result>,
 ): Promise<Result> {
+  const requests = await engineRequests();
   const directory = trackTemporaryPath(
     await mkdtemp(path.join(tmpdir(), 'nitpicker-engine-lint-')),
   );
   try {
-    return await lint(engineLintEnvironment({ ...pass, directory }));
+    return await lint(engineLintEnvironment({ ...pass, directory, requests }));
   } finally {
     await rm(directory, { recursive: true, force: true });
     untrackTemporaryPath(directory);

@@ -14,7 +14,7 @@ import { guardedEntries } from '../preset/eslint-config/fix-guards/guarded-plugi
 import {
   ENGINE_FINDINGS_FILE,
   replayEngineFindingsFrom,
-} from '../preset/eslint-plugin/engine/engine-replay.mts';
+} from '../../../shared/engine/engine-findings-file.mts';
 
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 
