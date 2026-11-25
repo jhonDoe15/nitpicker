@@ -11,12 +11,17 @@ type Environment = Readonly<Record<string, string | undefined>>;
 
 const MIB = 1024 ** 2;
 const TOOL_MEMORY_PERCENT = 75;
+const ADMISSION_MEMORY_PERCENT = 90;
 const OTHER_ANALYZER_RESERVE = 1536 * MIB;
 const HEAP_FLAG = /--max[-_]old[-_]space[-_]size[=\s](?<megabytes>\d+)/u;
 const OUT_OF_MEMORY = /JavaScript heap out of memory|Reached heap limit/u;
 
 export function usableMemoryMegabytes(memory: number = machineMemory()): number {
   return Math.floor((memory * TOOL_MEMORY_PERCENT) / 100 / MIB);
+}
+
+export function admissionMemoryMegabytes(memory: number = machineMemory()): number {
+  return Math.floor((memory * ADMISSION_MEMORY_PERCENT) / 100 / MIB);
 }
 
 export function nodeHeapMegabytes({ memory, parallel, defaultLimit }: HeapBudget): number {
