@@ -10,6 +10,7 @@ import { resolveLayoutFor } from '../../layout.mts';
 import { layoutTransformFor } from '../../tool-configs.mts';
 import { analyzeDesignSignals, projectDesignFacts } from '../analyze.mts';
 import type { DesignFacts } from '../design-types.mts';
+import { analyzeTypedStructure } from '../typed-structure.mts';
 
 type Files = Readonly<Record<string, unknown>>;
 type Policy = Readonly<Record<string, unknown>>;
@@ -87,6 +88,20 @@ export function factsOf(root: string, policy: Policy = {}): ProjectFacts {
 export function findingsOf(root: string, policy: Policy = {}): Finding[] {
   return withProject(root, policy, (options) =>
     analyzeDesignSignals({ ...options, analyzerName: 'structure' }),
+  );
+}
+
+export function typedStructureOf(
+  root: string,
+  environment: NodeJS.ProcessEnv,
+  policy: Policy = {},
+): ReturnType<typeof analyzeTypedStructure> {
+  return withProject(root, policy, (options) =>
+    analyzeTypedStructure({
+      ...options,
+      environment: { ...options.environment, ...environment },
+      analyzerName: 'structure',
+    }),
   );
 }
 

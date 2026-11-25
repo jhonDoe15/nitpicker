@@ -205,6 +205,9 @@ nitpicker-engine typescript-type-replay --compiler <tsc> --project <tsconfig.jso
 | `unused-api` | The unused option and unused prop check. nitpicker decides which files the program has and what role each plays and passes that with `--input`; the engine returns the targets, their members and the references it found, and nitpicker turns them into findings. |
 | `design` | The facts of the design signals check: the project's types with their fields, and its callables with their parameters, calls, reads and decisions (`src/typescript/typed/design/`). nitpicker names the files that count with `--input`, marks what is published and evaluates the rules. |
 
+`structure` asks for `unused-api` and `design` in one call when both build the same project, so the program is
+loaded once and types both checks ask about are computed once.
+
 Exit status 3 with `types unavailable: <reason>` on standard error means the compiler cannot answer here (no
 binary, a version the engine's tables were not generated from, a project that does not load, a compiler option
 TypeScript 7 removed such as `baseUrl` or `moduleResolution: node10`): nitpicker then runs the check with the

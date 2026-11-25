@@ -27,7 +27,7 @@ export function failure(options: QualityAreaOptions, rule: string, error: unknow
   ];
 }
 
-function analyze(
+export function linkedAnalysis(
   options: QualityAreaOptions,
   { linkName, analyze: run }: { readonly linkName: string; readonly analyze: PolicyFunction },
 ): unknown {
@@ -55,7 +55,7 @@ export async function runProgramAnalysis(
 ): Promise<Finding[]> {
   try {
     const run = await policyExport(options, analyzer, exportName);
-    return findingsOf(analyze(options, { linkName, analyze: run }));
+    return findingsOf(linkedAnalysis(options, { linkName, analyze: run }));
   } catch (error) {
     return failure(options, rule, error);
   }

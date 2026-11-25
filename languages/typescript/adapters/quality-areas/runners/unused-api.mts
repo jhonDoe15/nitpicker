@@ -12,24 +12,13 @@ import {
   testOnlyExportFindings,
   withEntryExports,
 } from '../typed/policy.mts';
-import { failure, runProgramAnalysis } from './program/program-analysis.mts';
+import { failure } from './program/program-analysis.mts';
 
 type KnipRuns = {
   readonly config: KnipConfig;
   readonly normal: KnipReport;
   readonly knip: (config: KnipConfig) => KnipReport;
 };
-
-const ANALYZER = 'languages/typescript/preset/unused-api/analyze.mjs';
-
-export function runUnusedApi(options: QualityAreaOptions): Promise<Finding[]> {
-  return runProgramAnalysis(options, {
-    rule: 'unused-api',
-    analyzer: ANALYZER,
-    linkName: '.nitpicker-diff-unused-api-tsconfig.json',
-    exportName: 'analyzeUnusedApi',
-  });
-}
 
 function testOnlyFindings(
   options: QualityAreaOptions,

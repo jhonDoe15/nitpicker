@@ -26,8 +26,8 @@ import {
   wantsModuleImports,
 } from '../typed/repository.mts';
 import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mts';
-import { runDesignSignals } from './program/design-signals.mts';
-import { runTestOnlyExports, runUnusedApi } from './unused-api.mts';
+import { runTypedStructure } from './program/typed-structure.mts';
+import { runTestOnlyExports } from './unused-api.mts';
 import { withPackageEntries as untypedWithPackageEntries } from '../knip/package-entries.mts';
 import { knipConfigOf } from '../../../preset/typed/tool-config/tool-config-guards.mts';
 import { knipReport, withProjectKnipConfig } from '../knip/knip-run.mts';
@@ -191,7 +191,7 @@ export async function runStructure(options: QualityAreaOptions): Promise<Finding
     'languages/typescript/preset/structure/analyze.mjs',
     'analyzeProductionFiles',
   );
-  const typed = [...(await runUnusedApi(options)), ...(await runDesignSignals(options))];
+  const typed = await runTypedStructure(options);
   const layout = readLayout();
   const functionFindings = await perSourceRoot(options, layout, (root) => {
     const analysis = analyzeProductionFiles(path.join(options.projectRoot, root), root, {

@@ -1,8 +1,7 @@
-import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { runTypedChecks } from '../../../adapters/typed-engine/typed-checks.mts';
 import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
 import type { Environment } from '../../../../../shared/processes/environment.mts';
+import type { EnginePart } from '../../unused-api/engine/typed-plans.mts';
 import { fieldOf, fieldsOf, listOf, textsOf } from '../../../../../shared/values/readers.mts';
 import { fileEntry } from '../../unused-api/context.mts';
 import { engineProjectConfig } from '../../unused-api/engine/project-inputs.mts';
@@ -104,7 +103,7 @@ function factsOf<Kind extends string>(
   }));
 }
 
-export function engineDesignFacts(request: Request): DesignFacts | undefined {
+export function engineDesignPart(request: Request): EnginePart<DesignFacts> | undefined {
   const { projectRoot, configPath, layout, frameworks } = request;
   if (path.dirname(path.resolve(configPath)) !== path.resolve(projectRoot)) {
     return undefined;
@@ -113,15 +112,10 @@ export function engineDesignFacts(request: Request): DesignFacts | undefined {
   const files = ownedFiles(inputs.rootNames, request);
   const defaults = (frameworks?.defaultExports ?? []).map((glob) => globMatcher(glob));
   const published = publishedNames(request);
-  const outcome = runTypedChecks({
-    project(folder) {
-      const generated = path.join(folder, 'tsconfig.json');
-      writeFileSync(generated, JSON.stringify(engineProjectConfig(inputs, request)));
-      return generated;
-    },
-    checks: [CHECK],
-    inputs: {
-      [CHECK]: {
+  return {
+    part: {
+      check: CHECK,
+      input: {
         files: files.map((file) => [
           file.fileName,
           {
@@ -135,16 +129,12 @@ export function engineDesignFacts(request: Request): DesignFacts | undefined {
         ),
         published: published !== undefined,
       },
+      project: engineProjectConfig(inputs, request),
     },
-    environment: request.environment,
-  });
-  const result = outcome.checks?.[CHECK];
-  if (result === undefined) {
-    return undefined;
-  }
-  return {
-    modules: moduleFacts(files, layout),
-    types: factsOf(fieldOf(result, 'types'), published, TYPE_KINDS),
-    callables: factsOf(fieldOf(result, 'callables'), published, CALLABLE_KINDS),
+    read: (result) => ({
+      modules: moduleFacts(files, layout),
+      types: factsOf(fieldOf(result, 'types'), published, TYPE_KINDS),
+      callables: factsOf(fieldOf(result, 'callables'), published, CALLABLE_KINDS),
+    }),
   };
 }

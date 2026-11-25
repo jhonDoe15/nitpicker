@@ -13,17 +13,19 @@ export function createAnalyzerRunnerProject({
   analyzer,
   analyzerFunction,
   extraFiles = {},
+  body = "throw new Error('no program');",
 }: {
   readonly name: string;
   readonly analyzer: string;
   readonly analyzerFunction: string;
   readonly extraFiles?: Readonly<Record<string, string>>;
+  readonly body?: string;
 }): { readonly directory: string; readonly options: QualityAreaOptions } {
   const directory = mkdtempSync(path.join(tmpdir(), `nitpicker-${name}-runner-`));
   writeFileTree(directory, {
     'policy.json': JSON.stringify({ exclude: [], layout: {}, exceptions: [], thresholds: {} }),
     [`policy/${TYPESCRIPT_CONFIG}`]: '{}',
-    [`policy/${analyzer}`]: `export function ${analyzerFunction}() { throw new Error('no program'); }\n`,
+    [`policy/${analyzer}`]: `export function ${analyzerFunction}() { ${body} }\n`,
     'project/package.json': '{"name":"app","private":true}',
     ...extraFiles,
   });
