@@ -1,0 +1,317 @@
+[
+ [
+  "no-external-executables-in-unit-tests.ts",
+  "nitpicker/no-external-executables-in-unit-tests",
+  1,
+  1,
+  "Tests requiring external executables belong in the integration project.",
+  1,
+  47
+ ],
+ [
+  "no-external-executables-in-unit-tests.ts",
+  "nitpicker/no-external-executables-in-unit-tests",
+  12,
+  16,
+  "Tests requiring external executables belong in the integration project.",
+  12,
+  38
+ ],
+ [
+  "no-external-executables-in-unit-tests.ts",
+  "nitpicker/no-external-executables-in-unit-tests",
+  3,
+  1,
+  "Tests requiring external executables belong in the integration project.",
+  3,
+  39
+ ],
+ [
+  "no-external-executables-in-unit-tests.ts",
+  "nitpicker/no-external-executables-in-unit-tests",
+  4,
+  1,
+  "Tests requiring external executables belong in the integration project.",
+  4,
+  27
+ ],
+ [
+  "no-external-executables-in-unit-tests.ts",
+  "nitpicker/no-external-executables-in-unit-tests",
+  5,
+  1,
+  "Tests requiring external executables belong in the integration project.",
+  5,
+  38
+ ],
+ [
+  "no-external-executables-in-unit-tests.ts",
+  "nitpicker/no-external-executables-in-unit-tests",
+  9,
+  14,
+  "Tests requiring external executables belong in the integration project.",
+  9,
+  42
+ ],
+ [
+  "no-wait-for-with-fake-timers.ts",
+  "nitpicker/no-wait-for-with-fake-timers",
+  14,
+  9,
+  "Use an explicit completion signal or mock.timers.tick and a direct assertion; waitFor polls on timers that mock.timers has replaced, so it never settles.",
+  14,
+  23
+ ],
+ [
+  "no-wait-for-with-fake-timers.ts",
+  "nitpicker/no-wait-for-with-fake-timers",
+  20,
+  9,
+  "Use an explicit completion signal or `await clock.tickAsync(ms)` and a direct assertion; waitFor polls on timers that the sinon fake clock has replaced, so it never settles.",
+  20,
+  23
+ ],
+ [
+  "no-wait-for-with-fake-timers.ts",
+  "nitpicker/no-wait-for-with-fake-timers",
+  22,
+  9,
+  "Use an explicit completion signal or `await clock.tickAsync(ms)` and a direct assertion; waitFor polls on timers that the sinon fake clock has replaced, so it never settles.",
+  22,
+  23
+ ],
+ [
+  "no-wait-for-with-fake-timers.ts",
+  "nitpicker/no-wait-for-with-fake-timers",
+  29,
+  13,
+  "Use an explicit completion signal or advanceTimersByTimeAsync and a direct assertion; waitFor advances fake time.",
+  29,
+  27
+ ],
+ [
+  "no-wait-for-with-fake-timers.ts",
+  "nitpicker/no-wait-for-with-fake-timers",
+  35,
+  9,
+  "Use an explicit completion signal or `await clock.tickAsync(ms)` and a direct assertion; waitFor polls on timers that the sinon fake clock has replaced, so it never settles.",
+  35,
+  23
+ ],
+ [
+  "no-wait-for-with-fake-timers.ts",
+  "nitpicker/no-wait-for-with-fake-timers",
+  63,
+  9,
+  "Use an explicit completion signal or `await clock.tickAsync(ms)` and a direct assertion; waitFor polls on timers that the sinon fake clock has replaced, so it never settles.",
+  63,
+  23
+ ],
+ [
+  "no-wait-for-with-fake-timers.ts",
+  "nitpicker/no-wait-for-with-fake-timers",
+  8,
+  9,
+  "Use an explicit completion signal or advanceTimersByTimeAsync and a direct assertion; waitFor advances fake time.",
+  8,
+  26
+ ],
+ [
+  "preserve-error-cause.ts",
+  "nitpicker/preserve-error-cause",
+  17,
+  38,
+  "Preserve the original cause when wrapping a caught failure: `new AppError(message, { cause: error })`. An exception fits only when the original failure is deliberately dropped.",
+  17,
+  75
+ ],
+ [
+  "preserve-error-cause.ts",
+  "nitpicker/preserve-error-cause",
+  18,
+  67,
+  "Preserve the original cause when wrapping a caught failure: `new AppError(message, { cause: error })`. An exception fits only when the original failure is deliberately dropped.",
+  18,
+  104
+ ],
+ [
+  "preserve-error-cause.ts",
+  "nitpicker/preserve-error-cause",
+  19,
+  38,
+  "Preserve the original cause when wrapping a caught failure: `new AppError(message, { cause: error })`. An exception fits only when the original failure is deliberately dropped.",
+  19,
+  65
+ ],
+ [
+  "preserve-error-cause.ts",
+  "nitpicker/preserve-error-cause",
+  20,
+  38,
+  "Preserve the original cause when wrapping a caught failure: `new AppError(message, { cause: error })`. An exception fits only when the original failure is deliberately dropped.",
+  20,
+  105
+ ],
+ [
+  "preserve-error-cause.ts",
+  "nitpicker/preserve-error-cause",
+  21,
+  38,
+  "Preserve the original cause when wrapping a caught failure: `new AppError(message, { cause: error })`. An exception fits only when the original failure is deliberately dropped.",
+  21,
+  57
+ ],
+ [
+  "preserve-error-cause.ts",
+  "nitpicker/preserve-error-cause",
+  22,
+  38,
+  "Preserve the original cause when wrapping a caught failure: `new AppError(message, { cause: error })`. An exception fits only when the original failure is deliberately dropped.",
+  22,
+  62
+ ],
+ [
+  "preserve-error-cause.ts",
+  "nitpicker/preserve-error-cause",
+  23,
+  30,
+  "This catch has no binding, so the new failure loses the original cause. Bind it and pass it on: `catch (error) { throw new AppError(message, { cause: error }); }`. An exception fits only when the original failure is deliberately dropped.",
+  23,
+  52
+ ],
+ [
+  "preserve-error-cause.ts",
+  "nitpicker/preserve-error-cause",
+  24,
+  46,
+  "This catch has no binding, so the new failure loses the original cause. Bind it and pass it on: `catch (error) { throw new AppError(message, { cause: error }); }`. An exception fits only when the original failure is deliberately dropped.",
+  24,
+  68
+ ],
+ [
+  "preserve-error-cause.ts",
+  "nitpicker/preserve-error-cause",
+  25,
+  40,
+  "This catch has no binding, so the new failure loses the original cause. Bind it and pass it on: `catch (error) { throw new AppError(message, { cause: error }); }`. An exception fits only when the original failure is deliberately dropped.",
+  25,
+  62
+ ],
+ [
+  "preserve-error-cause.ts",
+  "nitpicker/preserve-error-cause",
+  26,
+  48,
+  "Preserve the original cause when wrapping a caught failure: `new AppError(message, { cause: error })`. An exception fits only when the original failure is deliberately dropped.",
+  26,
+  70
+ ],
+ [
+  "preserve-error-cause.ts",
+  "nitpicker/preserve-error-cause",
+  27,
+  38,
+  "Preserve the original cause when wrapping a caught failure: `new AppError(message, { cause: error })`. An exception fits only when the original failure is deliberately dropped.",
+  27,
+  78
+ ],
+ [
+  "structured-catch-logging.ts",
+  "nitpicker/structured-catch-logging",
+  16,
+  38,
+  "Log a caught value as logger.<level>({ err: error, ...context }, message).",
+  16,
+  67
+ ],
+ [
+  "structured-catch-logging.ts",
+  "nitpicker/structured-catch-logging",
+  17,
+  38,
+  "Log a caught value as logger.<level>({ err: error, ...context }, message).",
+  17,
+  71
+ ],
+ [
+  "structured-catch-logging.ts",
+  "nitpicker/structured-catch-logging",
+  18,
+  38,
+  "Log a caught value as logger.<level>({ err: error, ...context }, message).",
+  18,
+  102
+ ],
+ [
+  "structured-catch-logging.ts",
+  "nitpicker/structured-catch-logging",
+  19,
+  38,
+  "Log a caught value as logger.<level>({ err: error, ...context }, message).",
+  19,
+  67
+ ],
+ [
+  "structured-catch-logging.ts",
+  "nitpicker/structured-catch-logging",
+  20,
+  38,
+  "Log a caught value as logger.<level>({ err: error, ...context }, message).",
+  20,
+  94
+ ],
+ [
+  "structured-catch-logging.ts",
+  "nitpicker/structured-catch-logging",
+  21,
+  38,
+  "Log a caught value as logger.<level>({ err: error, ...context }, message).",
+  21,
+  83
+ ],
+ [
+  "structured-catch-logging.ts",
+  "nitpicker/structured-catch-logging",
+  22,
+  38,
+  "Log a caught value as logger.<level>({ err: error, ...context }, message).",
+  22,
+  66
+ ],
+ [
+  "structured-catch-logging.ts",
+  "nitpicker/structured-catch-logging",
+  23,
+  38,
+  "Log a caught value as logger.<level>({ err: error, ...context }, message).",
+  23,
+  85
+ ],
+ [
+  "structured-catch-logging.ts",
+  "nitpicker/structured-catch-logging",
+  24,
+  100,
+  "Log a caught value as logger.<level>({ err: error, ...context }, message).",
+  24,
+  141
+ ],
+ [
+  "structured-catch-logging.ts",
+  "nitpicker/structured-catch-logging",
+  25,
+  38,
+  "Log a caught value as logger.<level>({ err: error, ...context }, message).",
+  25,
+  77
+ ],
+ [
+  "structured-catch-logging.ts",
+  "nitpicker/structured-catch-logging",
+  27,
+  44,
+  "Log a caught value as logger.<level>({ err: error, ...context }, message).",
+  27,
+  79
+ ]
+]

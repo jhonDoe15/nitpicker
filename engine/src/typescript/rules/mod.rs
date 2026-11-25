@@ -5,6 +5,7 @@ mod listeners;
 mod modules;
 mod react_tests;
 pub mod support;
+mod test_runtime;
 pub mod testing_library;
 
 use super::ParsedFile;
@@ -94,16 +95,21 @@ impl<'a> Context<'a, '_> {
 pub type Rule = fn(&mut Context);
 
 /// Rules written against the ESTree-shaped view.
-const ON_VIEW: &[&str] = &["hover-test-needs-keyboard", "no-add-only-collection", "react-test-no-implementation-details", "settle-pending-on-close"];
+const ON_VIEW: &[&str] = &["hover-test-needs-keyboard", "no-add-only-collection", "no-external-executables-in-unit-tests", "no-internal-module-mocks", "no-wait-for-with-fake-timers", "preserve-error-cause", "react-test-no-implementation-details", "settle-pending-on-close", "structured-catch-logging"];
 
 pub const ALL: &[(&str, Rule)] = &[
     ("hover-test-needs-keyboard", react_tests::hover_test_needs_keyboard::check),
     ("no-add-only-collection", lifecycles::no_add_only_collection::check),
+    ("no-external-executables-in-unit-tests", test_runtime::no_external_executables_in_unit_tests::check),
+    ("no-internal-module-mocks", test_runtime::no_internal_module_mocks::check),
     ("no-listen-on-all-interfaces", listeners::no_listen_on_all_interfaces::check),
     ("no-production-console", modules::no_production_console::check),
     ("no-silent-catch", errors::no_silent_catch::check),
+    ("no-wait-for-with-fake-timers", test_runtime::no_wait_for_with_fake_timers::check),
+    ("preserve-error-cause", errors::preserve_error_cause::check),
     ("react-test-no-implementation-details", react_tests::no_implementation_details::check),
     ("settle-pending-on-close", lifecycles::settle_pending_on_close::check),
+    ("structured-catch-logging", errors::logging::structured_catch_logging::check),
 ];
 
 fn known() -> impl Iterator<Item = (&'static str, Rule)> {
