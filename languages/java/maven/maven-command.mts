@@ -169,11 +169,12 @@ export function runMaven({
   }
   if (result.status !== 0) {
     const output = `${result.stdout}\n${result.stderr}`;
-    throw withCompileErrors(
+    const failure = withCompileErrors(
       new Error(mavenFailureMessage(result, projectRoot, output)),
       output,
       projectRoot,
     );
+    throw Object.defineProperty(failure, 'output', { value: output });
   }
   return result.stdout;
 }

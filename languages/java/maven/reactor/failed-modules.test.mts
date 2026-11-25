@@ -64,7 +64,7 @@ describe('a Maven reactor where one module fails', () => {
     expect(failedModules(compile, { work: workWith([CORE]), modules })).toBe(undefined);
   });
 
-  it('reports each failed module as a tool error and points at exclude for a non-Java step', () => {
+  it('summarizes skipped dependents under the failed module tool error and points at exclude for a non-Java step', () => {
     const findings = failedModuleFindings(
       [
         {
@@ -88,17 +88,136 @@ describe('a Maven reactor where one module fails', () => {
           'Maven: Failed to execute goal com.github.eirslett:frontend-maven-plugin:1.15.0:npm (npm install) ' +
           'on project ui: npm failed. The failing step (frontend-maven-plugin) does not build Java classes: ' +
           'add the module to "exclude" in nitpicker.config.json, or run nitpicker on the other modules, ' +
-          'to check the rest without it.',
+          'to check the rest without it. 1 dependent module was skipped because ui failed: app.',
         classification: 'tool-error',
       },
+    ]);
+  });
+
+  it('emits one tool error with error lines and skipped summary when 1 root module fails and 35 dependents are skipped', () => {
+    const failedRoot = module('keycloak-server-spi');
+    const dependents = Array.from({ length: 35 }, (_, index) => module(`dep-${String(index + 1)}`));
+    const work = workWith([CORE]);
+    const reactorOutput = [
+      '[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project keycloak-server-spi: Compilation failure',
+      '[ERROR] /repo/keycloak-server-spi/src/main/java/Spi.java:[12,5] cannot find symbol',
+      '[ERROR]   symbol:   variable missing',
+      '[ERROR] -> [Help 1]',
+    ].join('\n');
+
+    const failed = failedModules(new Error(reactorOutput), {
+      work,
+      modules: [CORE, failedRoot, ...dependents],
+    });
+    const findings = failedModuleFindings(failed ?? [], ROOT);
+
+    expect(findings).toEqual([
       {
         tool: 'maven',
         rule: MODULE_BUILD_FAILED_RULE,
-        path: 'app',
-        identity: `${MODULE_BUILD_FAILED_RULE}:app`,
+        path: 'keycloak-server-spi',
+        identity: `${MODULE_BUILD_FAILED_RULE}:keycloak-server-spi`,
         message:
-          'Maven could not build module app, so its checks did not run; the other modules were checked. ' +
-          'Maven: it was not built because a module it depends on failed (ui)',
+          'Maven could not build module keycloak-server-spi, so its checks did not run; the other modules were checked. ' +
+          'Maven: Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) ' +
+          'on project keycloak-server-spi: Compilation failure | ' +
+          '/repo/keycloak-server-spi/src/main/java/Spi.java:[12,5] cannot find symbol | symbol:   variable missing. ' +
+          '35 dependent modules were skipped because keycloak-server-spi failed: ' +
+          'dep-1, dep-2, dep-3, dep-4, dep-5, dep-6, dep-7, dep-8, dep-9, dep-10 and 25 more.',
+        classification: 'tool-error',
+      },
+    ]);
+  });
+
+  it('finds a root-cause module from raw output past 40 error lines even when it is outside the reported modules', () => {
+    const upstream = module('upstream-spi');
+    const work = workWith([CORE]);
+    const noise = Array.from({ length: 50 }, (_, index) => `[ERROR] prior error ${String(index)}`);
+    const fullOutput = [
+      ...noise,
+      '[ERROR] Failed to execute goal on project upstream-spi: Could not resolve dependencies for project demo:upstream-spi:jar:1.0',
+      '[ERROR] -> [Help 1]',
+    ].join('\n');
+    const error = Object.defineProperty(
+      new Error('Maven failed in /repo:\n[ERROR] prior error 0'),
+      'output',
+      {
+        value: fullOutput,
+      },
+    );
+
+    const failed = failedModules(error, {
+      work,
+      modules: [CORE, UI, APP],
+      reactor: [CORE, upstream, UI, APP],
+    });
+    const findings = failedModuleFindings(failed ?? [], ROOT);
+
+    expect(findings).toEqual([
+      {
+        tool: 'maven',
+        rule: MODULE_BUILD_FAILED_RULE,
+        path: 'upstream-spi',
+        identity: `${MODULE_BUILD_FAILED_RULE}:upstream-spi`,
+        message:
+          'Maven could not build module upstream-spi, so its checks did not run; the other modules were checked. ' +
+          'Maven: Failed to execute goal on project upstream-spi: Could not resolve dependencies for project demo:upstream-spi:jar:1.0. ' +
+          '2 dependent modules were skipped because upstream-spi failed: ui, app.',
+        classification: 'tool-error',
+      },
+    ]);
+  });
+
+  it('keeps one tool error per root-cause module and attaches the skipped summary once', () => {
+    const other = module('api');
+    const findings = failedModuleFindings(
+      [
+        {
+          module: UI,
+          reason:
+            'Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile on project ui: compile failed',
+        },
+        {
+          module: other,
+          reason:
+            'Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile on project api: compile failed',
+        },
+        { module: APP, reason: undefined },
+      ],
+      ROOT,
+    );
+
+    expect(findings.map(({ identity }) => identity)).toEqual([
+      `${MODULE_BUILD_FAILED_RULE}:ui`,
+      `${MODULE_BUILD_FAILED_RULE}:api`,
+    ]);
+    expect(findings[0]?.message).toContain(
+      '1 dependent module was skipped because ui, api failed: app.',
+    );
+    expect(findings[1]?.message).not.toContain('skipped');
+  });
+
+  it('emits a single summary error instead of N vague errors when no failed module is identified', () => {
+    const work = workWith([CORE]);
+    const failed = failedModules(
+      new Error('[ERROR] Could not transfer artifact demo:bom:pom:1.0'),
+      {
+        work,
+        modules: [CORE, UI, APP],
+      },
+    );
+    const findings = failedModuleFindings(failed ?? [], ROOT);
+
+    expect(findings).toEqual([
+      {
+        tool: 'maven',
+        rule: MODULE_BUILD_FAILED_RULE,
+        path: '.',
+        identity: `${MODULE_BUILD_FAILED_RULE}:skipped`,
+        message:
+          'Maven skipped 2 dependent modules because an upstream module failed (ui, app); ' +
+          'their checks did not run while the other modules were checked. ' +
+          'Maven: Could not transfer artifact demo:bom:pom:1.0',
         classification: 'tool-error',
       },
     ]);
