@@ -15,7 +15,7 @@ export type NativeDiagnostic = {
 
 type DiagnosticRequest = () => Awaitable<readonly NativeDiagnostic[]>;
 
-type NativeProgram = {
+export type NativeProgram = {
   readonly getSyntacticDiagnostics: DiagnosticRequest;
   readonly getGlobalDiagnostics: DiagnosticRequest;
   readonly getBindDiagnostics: DiagnosticRequest;
@@ -23,9 +23,11 @@ type NativeProgram = {
   readonly getDeclarationDiagnostics: DiagnosticRequest;
   readonly getConfigFileParsingDiagnostics: DiagnosticRequest;
   readonly getProgramDiagnostics: DiagnosticRequest;
+  readonly getSourceFileNames: () => Awaitable<readonly string[]>;
 };
 
 type NativeProject = {
+  readonly configFileName: string;
   readonly program: NativeProgram;
   readonly compilerOptions: Readonly<Record<string, unknown>>;
   readonly rootFiles: readonly string[];
@@ -41,15 +43,30 @@ export type NativeApi = {
 
 type NativeApiConstructor = new (options: { readonly cwd: string }) => NativeApi;
 
+export type ProgramFiles = {
+  readonly complete: readonly string[];
+  readonly scoped: readonly string[];
+};
+
 export type Collected = {
   readonly hasRootFiles: boolean;
   readonly configErrors: readonly NativeDiagnostic[];
   readonly diagnostics: readonly NativeDiagnostic[];
+  readonly files?: ProgramFiles | undefined;
 };
 
 export type NativeOutcome =
-  | { readonly diagnostics: readonly TypeScript.Diagnostic[]; readonly unsupported?: undefined }
-  | { readonly unsupported: true; readonly cause?: unknown; readonly diagnostics?: undefined };
+  | {
+      readonly diagnostics: readonly TypeScript.Diagnostic[];
+      readonly files?: ProgramFiles | undefined;
+      readonly unsupported?: undefined;
+    }
+  | {
+      readonly unsupported: true;
+      readonly cause?: unknown;
+      readonly diagnostics?: undefined;
+      readonly files?: undefined;
+    };
 
 export type NativeRequest = {
   readonly ts: typeof TypeScript;
@@ -58,6 +75,7 @@ export type NativeRequest = {
   readonly apiRoot?: string | undefined;
   readonly engineHint: boolean;
   readonly entry?: string;
+  readonly scopedConfigPath?: string | undefined;
 };
 
 function isApiConstructor(value: unknown): value is NativeApiConstructor {

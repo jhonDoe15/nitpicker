@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import type TypeScript from 'typescript';
 import type { Layout } from '../../typed/head-policy.mts';
@@ -55,10 +55,53 @@ function layoutRoots(config: object, scope: FileScope): readonly string[] {
   });
 }
 
+function insideRelative(root: string, file: string): string | undefined {
+  const relative = path.relative(root, file).replaceAll('\\', '/');
+  const outside = relative === '..' || relative.startsWith('../') || path.isAbsolute(relative);
+  return outside ? undefined : relative;
+}
+
 function projectRelative(projectRoot: string, files: readonly string[]): readonly string[] {
+  const roots = [...new Set([projectRoot, realpathSync(projectRoot)])];
   return files
-    .map((file) => path.relative(projectRoot, file).replaceAll('\\', '/'))
-    .filter((file) => file !== '..' && !file.startsWith('../') && !path.isAbsolute(file));
+    .map((file) =>
+      roots.map((root) => insideRelative(root, file)).find((each) => each !== undefined),
+    )
+    .filter((file) => file !== undefined);
+}
+
+export type ProgramFileLists = {
+  readonly complete: readonly string[];
+  readonly scoped: readonly string[];
+};
+
+function readConfig(configPath: string): object | undefined {
+  const config: unknown = JSON.parse(readFileSync(configPath, 'utf8'));
+  return typeof config === 'object' && config !== null ? config : undefined;
+}
+
+export function contextRoots(
+  configPath: string,
+  projectRoot: string,
+  layout: Layout,
+): readonly string[] | undefined {
+  const config = readConfig(configPath);
+  if (config === undefined) {
+    return undefined;
+  }
+  const roots = layoutRoots(config, { configPath, projectRoot, layout });
+  return roots.length === listedFiles(config).length ? undefined : roots;
+}
+
+export function contextOnlyOf(
+  projectRoot: string,
+  { complete, scoped }: ProgramFileLists,
+): ReadonlySet<string> {
+  const reached = new Set(scoped.map((file) => path.resolve(file)));
+  const contextOnly = complete
+    .map((file) => path.resolve(file))
+    .filter((file) => !reached.has(file));
+  return new Set(projectRelative(projectRoot, contextOnly));
 }
 
 export function contextOnlyFiles(
@@ -66,16 +109,13 @@ export function contextOnlyFiles(
   projectRoot: string,
   { layout, ts }: CompilerScope,
 ): ReadonlySet<string> {
-  const config: unknown = JSON.parse(readFileSync(configPath, 'utf8'));
-  if (typeof config !== 'object' || config === null) {
+  const config = readConfig(configPath);
+  const roots = contextRoots(configPath, projectRoot, layout);
+  if (config === undefined || roots === undefined) {
     return new Set();
   }
-  const roots = layoutRoots(config, { configPath, projectRoot, layout });
-  if (roots.length === listedFiles(config).length) {
-    return new Set();
-  }
-  const scoped = programFiles({ ts, configPath, config: { ...config, files: roots } });
-  const complete = programFiles({ ts, configPath, config });
-  const contextOnly = [...complete].filter((file) => !scoped.has(file));
-  return new Set(projectRelative(projectRoot, contextOnly));
+  return contextOnlyOf(projectRoot, {
+    complete: [...programFiles({ ts, configPath, config })],
+    scoped: [...programFiles({ ts, configPath, config: { ...config, files: roots } })],
+  });
 }

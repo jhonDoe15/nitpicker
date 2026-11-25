@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import type TypeScript from 'typescript';
 import path from 'node:path';
 import {
@@ -18,17 +18,28 @@ import {
 } from '../../preset/test-runner/vocabulary/runner-types.mts';
 import type { StaticCheckOptions } from './arguments.mts';
 import { type Finding, isProjectFile, projectFile, hash, policyFile } from './shared.mts';
-import { type LinkedPolicyFile, linkPolicyFile } from '../typed/tooling.mts';
+import {
+  type LinkedPolicyFile,
+  linkPolicyFile,
+  trackTemporaryPath,
+  untrackTemporaryPath,
+} from '../typed/tooling.mts';
 import { diagnosticMessages } from '../typecheck/compiler-hints.mts';
 import {
   enclosingSymbol,
-  preEmitDiagnostics,
+  preEmitResult,
   projectTypeScript,
 } from '../typecheck/typescript-program.mts';
 import { withAssetImportHint } from '../typecheck/asset-import-hint.mts';
-import { contextOnlyFiles } from '../typecheck/context-only/context-only-files.mts';
+import {
+  contextOnlyFiles,
+  contextOnlyOf,
+  contextRoots,
+} from '../typecheck/context-only/context-only-files.mts';
 
 export { contextOnlyFiles } from '../typecheck/context-only/context-only-files.mts';
+
+const SCOPED_CONFIG = '.nitpicker-diff-typecheck-scoped.json';
 
 type TypeScriptDiagnostics = {
   readonly diagnostics: readonly TypeScript.Diagnostic[];
@@ -47,15 +58,36 @@ type DiagnosticFilter = {
 };
 
 function diagnosticFilter(
-  targetPath: string,
+  contextOnly: ReadonlySet<string>,
   projectRoot: string,
-  ts: typeof TypeScript,
+  layout: DiagnosticFilter['layout'],
 ): DiagnosticFilter {
-  const layout = readLayout();
-  const contextOnly = contextOnlyFiles(targetPath, projectRoot, { layout, ts });
   const runner = policyTestRunner(readHeadPolicy(), projectRoot);
   const untyped = missingRunnerTypes(runner, projectRoot) !== undefined;
   return { layout, contextOnly, projectRoot, runner, untyped };
+}
+
+function scopedConfig(
+  targetPath: string,
+  roots: readonly string[] | undefined,
+): { readonly path: string; readonly remove: () => void } | undefined {
+  if (roots === undefined) {
+    return undefined;
+  }
+  const scopedPath = path.join(path.dirname(targetPath), SCOPED_CONFIG);
+  writeFileSync(
+    scopedPath,
+    JSON.stringify({ extends: `./${path.basename(targetPath)}`, files: roots }),
+    { flag: 'wx' },
+  );
+  trackTemporaryPath(scopedPath);
+  return {
+    path: scopedPath,
+    remove: () => {
+      untrackTemporaryPath(scopedPath);
+      rmSync(scopedPath, { force: true });
+    },
+  };
 }
 
 export function isReportedDiagnostic(
@@ -80,20 +112,32 @@ export async function runTypecheck(options: StaticCheckOptions): Promise<Finding
   const { ts, native } = projectTypeScript(options.liveProjectRoot);
   const preparedDependencies = prepareSnapshotDependencies(options);
   let installedConfig: LinkedPolicyFile | undefined;
+  let scoped: ReturnType<typeof scopedConfig>;
   try {
     installedConfig = installTypeScriptConfig(options);
     const { targetPath } = installedConfig;
     const configRelativePath =
       extendedProjectConfig(targetPath, options.projectRoot) ?? options.configRelativePath;
-    const diagnostics = await preEmitDiagnostics({
+    const layout = readLayout();
+    const roots = contextRoots(targetPath, options.projectRoot, layout);
+    scoped = scopedConfig(targetPath, roots);
+    const { diagnostics, files } = await preEmitResult({
       ts,
       engine: typecheckEngine(),
       configPath: targetPath,
       configName: configRelativePath,
       projectRoot: options.projectRoot,
       projectNative: native,
+      scopedConfigPath: scoped?.path,
     });
-    const filter = diagnosticFilter(targetPath, options.projectRoot, ts);
+    scoped?.remove();
+    const contextOnly =
+      roots === undefined
+        ? new Set<string>()
+        : files === undefined
+          ? contextOnlyFiles(targetPath, options.projectRoot, { layout, ts })
+          : contextOnlyOf(options.projectRoot, files);
+    const filter = diagnosticFilter(contextOnly, options.projectRoot, layout);
     return normalizeTypeScriptDiagnostics({
       ts,
       diagnostics: diagnostics
@@ -105,6 +149,7 @@ export async function runTypecheck(options: StaticCheckOptions): Promise<Finding
     });
   } finally {
     try {
+      scoped?.remove();
       installedConfig?.remove();
     } finally {
       removeSnapshotDependencies(preparedDependencies);
