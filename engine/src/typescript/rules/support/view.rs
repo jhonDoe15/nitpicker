@@ -44,6 +44,11 @@ struct Reader<'j> {
     items: Vec<Value>,
 }
 
+enum Frame {
+    Object { index: u32, fields: Vec<Field>, key: Option<(u32, u32)> },
+    List { items: Vec<Value> },
+}
+
 impl Reader<'_> {
     fn string(&mut self) -> (u32, u32, bool) {
         self.at += 1;
@@ -68,57 +73,7 @@ impl Reader<'_> {
         std::str::from_utf8(&self.bytes[start..self.at]).ok().and_then(|text| text.parse().ok()).unwrap_or(f64::NAN)
     }
 
-    fn value(&mut self) -> Value {
-        match self.bytes[self.at] {
-            b'{' => self.object(),
-            b'[' => self.list(),
-            b'"' => {
-                let (start, end, escaped) = self.string();
-                Value::Text(start, end, escaped)
-            }
-            b't' => { self.at += 4; Value::Bool(true) }
-            b'f' => { self.at += 5; Value::Bool(false) }
-            b'n' => { self.at += 4; Value::Null }
-            _ => Value::Number(self.number()),
-        }
-    }
-
-    fn list(&mut self) -> Value {
-        self.at += 1;
-        let mut found = Vec::new();
-        while self.bytes[self.at] != b']' {
-            found.push(self.value());
-            if self.bytes[self.at] == b',' {
-                self.at += 1;
-            }
-        }
-        self.at += 1;
-        let start = self.items.len() as u32;
-        self.items.extend(found);
-        Value::List(start, self.items.len() as u32)
-    }
-
-    fn object(&mut self) -> Value {
-        self.at += 1;
-        let index = self.nodes.len() as u32;
-        self.nodes.push(NodeData { kind: (0, 0), start: 0, end: 0, parent: NONE, fields: (0, 0) });
-        let mut found = Vec::new();
-        while self.bytes[self.at] != b'}' {
-            let (key_start, key_end, _) = self.string();
-            self.at += 1;
-            let value = self.value();
-            match (&self.bytes[key_start as usize..key_end as usize], value) {
-                (b"type", Value::Text(start, end, _)) => self.nodes[index as usize].kind = (start, end),
-                (b"start", Value::Number(offset)) => self.nodes[index as usize].start = offset as u32,
-                (b"end", Value::Number(offset)) => self.nodes[index as usize].end = offset as u32,
-                (b"range", _) => {}
-                _ => found.push(Field { key: (key_start, key_end), value }),
-            }
-            if self.bytes[self.at] == b',' {
-                self.at += 1;
-            }
-        }
-        self.at += 1;
+    fn finish_object(&mut self, index: u32, found: Vec<Field>) -> Value {
         let (kind_start, kind_end) = self.nodes[index as usize].kind;
         if &self.bytes[kind_start as usize..kind_end as usize] == b"ParenthesizedExpression" {
             self.nodes[index as usize].kind = (0, 0);
@@ -142,13 +97,95 @@ impl Reader<'_> {
         self.nodes[index as usize].fields = (start, self.fields.len() as u32);
         Value::Node(index)
     }
+
+    fn parse(&mut self) {
+        let mut stack: Vec<Frame> = Vec::new();
+        loop {
+            let mut value = match self.bytes[self.at] {
+                b'{' => {
+                    self.at += 1;
+                    let index = self.nodes.len() as u32;
+                    self.nodes.push(NodeData { kind: (0, 0), start: 0, end: 0, parent: NONE, fields: (0, 0) });
+                    if self.bytes[self.at] == b'}' {
+                        self.at += 1;
+                        self.finish_object(index, Vec::new())
+                    } else {
+                        let (key_start, key_end, _) = self.string();
+                        self.at += 1;
+                        stack.push(Frame::Object { index, fields: Vec::new(), key: Some((key_start, key_end)) });
+                        continue;
+                    }
+                }
+                b'[' => {
+                    self.at += 1;
+                    if self.bytes[self.at] == b']' {
+                        self.at += 1;
+                        let start = self.items.len() as u32;
+                        Value::List(start, start)
+                    } else {
+                        stack.push(Frame::List { items: Vec::new() });
+                        continue;
+                    }
+                }
+                b'"' => {
+                    let (start, end, escaped) = self.string();
+                    Value::Text(start, end, escaped)
+                }
+                b't' => { self.at += 4; Value::Bool(true) }
+                b'f' => { self.at += 5; Value::Bool(false) }
+                b'n' => { self.at += 4; Value::Null }
+                _ => Value::Number(self.number()),
+            };
+
+            loop {
+                let Some(top) = stack.last_mut() else {
+                    return;
+                };
+                match top {
+                    Frame::Object { index, fields, key } => {
+                        let (key_start, key_end) = key.take().expect("object key");
+                        let idx = *index as usize;
+                        match (&self.bytes[key_start as usize..key_end as usize], value) {
+                            (b"type", Value::Text(start, end, _)) => self.nodes[idx].kind = (start, end),
+                            (b"start", Value::Number(offset)) => self.nodes[idx].start = offset as u32,
+                            (b"end", Value::Number(offset)) => self.nodes[idx].end = offset as u32,
+                            (b"range", _) => {}
+                            _ => fields.push(Field { key: (key_start, key_end), value }),
+                        }
+                        if self.bytes[self.at] == b',' {
+                            self.at += 1;
+                            let (ks, ke, _) = self.string();
+                            self.at += 1;
+                            *key = Some((ks, ke));
+                            break;
+                        }
+                        self.at += 1;
+                        let Some(Frame::Object { index, fields, .. }) = stack.pop() else { unreachable!() };
+                        value = self.finish_object(index, fields);
+                    }
+                    Frame::List { items } => {
+                        items.push(value);
+                        if self.bytes[self.at] == b',' {
+                            self.at += 1;
+                            break;
+                        }
+                        self.at += 1;
+                        let Some(Frame::List { items }) = stack.pop() else { unreachable!() };
+                        let start = self.items.len() as u32;
+                        self.items.extend(items);
+                        value = Value::List(start, self.items.len() as u32);
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl View {
     /// `json` is compact ESTree JSON as oxc writes it: no white space between tokens.
     pub fn of(json: String) -> View {
         let mut reader = Reader { bytes: json.as_bytes(), at: 0, nodes: Vec::new(), fields: Vec::new(), items: Vec::new() };
-        reader.value();
+        reader.parse();
         let Reader { nodes, fields, items, .. } = reader;
         View { json, nodes, fields, items }
     }
@@ -292,12 +329,11 @@ impl<'v> Node<'v> {
 
     /// The node and everything under it, parents before children.
     pub fn descendants(&self) -> Vec<Node<'v>> {
-        let mut found = vec![*self];
-        let mut index = 0;
-        while index < found.len() {
-            let children = found[index].children();
-            found.splice(index + 1..index + 1, children);
-            index += 1;
+        let mut found = Vec::new();
+        let mut stack = vec![*self];
+        while let Some(node) = stack.pop() {
+            found.push(node);
+            stack.extend(node.children().into_iter().rev());
         }
         found
     }

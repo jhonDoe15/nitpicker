@@ -86,10 +86,11 @@ fn container_of(function: Node) -> Option<Node> {
 }
 
 fn walk<'v>(root: Node<'v>, found: &mut Vec<Node<'v>>) {
-    found.push(root);
-    let children = if root.is("Program") { root.nodes("body") } else { root.children() };
-    for child in children {
-        walk(child, found);
+    let mut stack = vec![root];
+    while let Some(node) = stack.pop() {
+        found.push(node);
+        let children = if node.is("Program") { node.nodes("body") } else { node.children() };
+        stack.extend(children.into_iter().rev());
     }
 }
 

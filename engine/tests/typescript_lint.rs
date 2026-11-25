@@ -181,3 +181,61 @@ fn config_hands_multi_root_layout_and_rule_options_to_typescript_lint() {
     assert_eq!(files[8]["isEndToEndTest"], true);
 }
 
+fn run_deep_nesting_case(tag: &str, deep_source: &str, rules: Option<&str>) {
+    let pid = std::process::id();
+    let dir = std::env::temp_dir().join(format!("nitpicker-engine-deep-{tag}-{pid}"));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("temp dir");
+
+    let deep_file = dir.join("deep.ts");
+    let normal_file = dir.join("normal.ts");
+    let list_file = dir.join("files.tsv");
+
+    std::fs::write(&deep_file, deep_source).expect("deep file");
+    std::fs::write(&normal_file, "try { run(); } catch (err) {}\n").expect("normal file");
+    let list_content = format!(
+        "{}\tdeep.ts\n{}\tnormal.ts\n",
+        deep_file.display(),
+        normal_file.display(),
+    );
+    std::fs::write(&list_file, list_content).expect("list file");
+
+    let mut command = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"));
+    command.arg("typescript-lint").arg("--files").arg(&list_file);
+    if let Some(rules) = rules {
+        command.arg("--rules").arg(rules);
+    }
+    let output = command.output().expect("engine runs");
+    let _ = std::fs::remove_dir_all(&dir);
+
+    assert!(
+        output.status.success(),
+        "typescript-lint failed for {tag} (status={:?}): {}",
+        output.status,
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let found: Vec<Row> = serde_json::from_slice(&output.stdout).expect("json");
+    assert!(
+        found.iter().any(|row| row[0] == "normal.ts" && row[1] == "nitpicker/no-silent-catch"),
+        "expected normal.ts finding alongside {tag}, got: {found:?}"
+    );
+    assert!(
+        found.iter().any(|row| row[0] == "deep.ts" && row[1] == "!parse"),
+        "expected deep.ts to fall back with !parse for {tag}, got: {found:?}"
+    );
+}
+
+#[test]
+fn deeply_nested_if_blocks_do_not_overflow_the_stack() {
+    let deep = format!("{}{}", "if (a) {".repeat(20_000), "}".repeat(20_000));
+    run_deep_nesting_case("if-no-silent-catch", &deep, Some("no-silent-catch"));
+    run_deep_nesting_case("if-all-rules", &deep, None);
+}
+
+#[test]
+fn deeply_chained_calls_do_not_overflow_the_stack() {
+    let deep = format!("a{}", ".b()".repeat(50_000));
+    run_deep_nesting_case("chain-no-silent-catch", &deep, Some("no-silent-catch"));
+    run_deep_nesting_case("chain-all-rules", &deep, None);
+}
