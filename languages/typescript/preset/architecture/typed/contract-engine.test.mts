@@ -9,6 +9,8 @@ const PROJECT = path.resolve(
   import.meta.dirname,
   '../../../../../engine/tests/fixtures/typescript-typed/contracts/tsconfig.json',
 );
+const WORKSPACE = path.resolve(PROJECT, '../../workspace/tsconfig.json');
+const OWN_ROOT = path.resolve(WORKSPACE, '../src/app');
 const NODE_ONLY = { ...process.env, NITPICKER_TYPED_ENGINE: 'off' };
 const ENGINE = { ...process.env, NITPICKER_TYPED_ENGINE: 'required' };
 const hasEngine = findEngine(process.env) !== undefined && nativeCompilerPath() !== undefined;
@@ -48,3 +50,24 @@ it.runIf(hasEngine)('reports through the engine what the compiler in this proces
     }),
   );
 });
+
+it.runIf(hasEngine)(
+  'counts only the contracts of the own root through the engine, as the compiler in this process does',
+  () => {
+    const viaEngine = analyzePublicContractUsage(WORKSPACE, {
+      displayRoot: OWN_ROOT,
+      environment: ENGINE,
+    });
+
+    expect(viaEngine).toEqual(
+      analyzePublicContractUsage(WORKSPACE, { displayRoot: OWN_ROOT, environment: NODE_ONLY }),
+    );
+    expect(viaEngine).toEqual([{ file: 'ports.ts', contract: 'Repository', method: 'save' }]);
+    expect(engineUnusedMethods(WORKSPACE, ENGINE)?.findings.map(({ method }) => method)).toEqual([
+      'log',
+      'trace',
+      'save',
+      'flush',
+    ]);
+  },
+);
