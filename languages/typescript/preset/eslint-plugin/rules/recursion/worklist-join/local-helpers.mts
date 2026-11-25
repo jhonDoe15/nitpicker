@@ -56,9 +56,9 @@ function recordAncestorFunctions(ancestor: TSESTree.Node, map: Map<string, Funct
   }
 }
 
-export function localFunctionsFor(loop: TSESTree.WhileStatement): Map<string, FunctionNode> {
+export function localFunctionsFor(node: TSESTree.Node): Map<string, FunctionNode> {
   const map = new Map<string, FunctionNode>();
-  for (const ancestor of ancestorsOf(loop).toReversed()) {
+  for (const ancestor of ancestorsOf(node).toReversed()) {
     recordAncestorFunctions(ancestor, map);
   }
   return map;

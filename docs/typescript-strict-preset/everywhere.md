@@ -2889,3 +2889,13 @@ Button`). `@param`, `@returns` and other tag lines are not part of the descripti
 - `nitpicker/no-shrinking-worklist-join`: a work-list loop that joins each node's output directly into its successor's
   stored state while the transfer can shrink, delete, clear, or overwrite entries that an earlier pass contributed.
   Allowed form: store the last output per edge and recompute each successor's input from all incoming edges.
+- `nitpicker/no-unchecked-tree-sitter-error`: a function in a module importing a tree-sitter binding that walks or
+  indexes `.children`/`.namedChildren` or chains directly on `childForFieldName(...)` without checking `hasError`,
+  `isError`, `isMissing`, or `type === 'ERROR'`. Allowed form: check for error nodes and decide whether to skip or
+  handle them.
+- `nitpicker/no-unknown-tree-sitter-field`: a constant field name passed to `childForFieldName`, `childrenForFieldName`,
+  or compared with `currentFieldName`/`fieldName` that is not defined by the active tree-sitter grammar (or by the
+  narrowed `node.type`). Allowed form: use a field name defined in the grammar's `node-types.json` for that node type.
+- `nitpicker/no-premature-await`: an `await` on a task handle started earlier (`const r = await task`) followed by three
+  or more independent statements containing at least one non-trivial call before `r` is first read. Allowed form: move
+  the `await` to where the result is first needed so the independent work overlaps with the task.

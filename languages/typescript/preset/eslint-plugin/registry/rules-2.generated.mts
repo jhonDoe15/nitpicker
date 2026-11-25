@@ -21,6 +21,7 @@ import { rule as ruleNoPerCallRegistration } from '../rules/lifecycles/registrat
 import { rule as ruleNoPipeDroppingErrors } from '../rules/streams/no-pipe-dropping-errors.mts';
 import { rule as ruleNoPlaceholderImplementation } from '../rules/placeholders/no-placeholder-implementation.mts';
 import { rule as ruleNoPrefixWithoutBoundary } from '../rules/affixes/no-prefix-without-boundary.mts';
+import { rule as ruleNoPrematureAwait } from '../rules/async/premature-await/no-premature-await.mts';
 import { rule as ruleNoPresenceTruthiness } from '../rules/truthiness/no-presence-truthiness.mts';
 import { rule as ruleNoProcessAccessOutsideCompositionRoot } from '../rules/guards/no-process-access-outside-composition-root.mts';
 import { rule as ruleNoProcessGlobalsOutsideMainGuard } from '../rules/modules/no-process-globals-outside-main-guard.mts';
@@ -81,6 +82,7 @@ import { rule as ruleNoUnanchoredAffixReplace } from '../rules/affixes/no-unanch
 import { rule as ruleNoUnatomicWrites } from '../rules/transactions/no-unatomic-writes.mts';
 import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mts';
 import { rule as ruleNoUncheckedResponseJson } from '../rules/response-json/no-unchecked-response-json.mts';
+import { rule as ruleNoUncheckedTreeSitterError } from '../rules/tree-sitter/error-nodes/no-unchecked-tree-sitter-error.mts';
 import { rule as ruleNoUncheckedUrlSink } from '../rules/urls/links/no-unchecked-url-sink.mts';
 import { rule as ruleNoUnclearedSharedMock } from '../test-quality/shared-mocks/no-uncleared-shared-mock.mts';
 import { rule as ruleNoUnclearedTimeout } from '../rules/lifecycles/timers/no-uncleared-timeout.mts';
@@ -96,8 +98,6 @@ import { rule as ruleNoUnescapedPatternTranslation } from '../rules/patterns/no-
 import { rule as ruleNoUnfilteredSoftDeleteRead } from '../rules/queries/soft-delete/no-unfiltered-soft-delete-read.mts';
 import { rule as ruleNoUnguardedCyclicRecursion } from '../rules/recursion/no-unguarded-cyclic-recursion.mts';
 import { rule as ruleNoUnguardedDeletedItems } from '../rules/deleted-items/no-unguarded-deleted-items.mts';
-import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-json-parse.mts';
-import { rule as ruleNoUnguardedOptionList } from '../rules/processes/arguments/no-unguarded-option-list.mts';
 
 export const partRules = {
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
@@ -123,6 +123,7 @@ export const partRules = {
   'no-pipe-dropping-errors': ruleNoPipeDroppingErrors,
   'no-placeholder-implementation': ruleNoPlaceholderImplementation,
   'no-prefix-without-boundary': ruleNoPrefixWithoutBoundary,
+  'no-premature-await': ruleNoPrematureAwait,
   'no-presence-truthiness': ruleNoPresenceTruthiness,
   'no-process-access-outside-composition-root': ruleNoProcessAccessOutsideCompositionRoot,
   'no-process-globals-outside-main-guard': ruleNoProcessGlobalsOutsideMainGuard,
@@ -183,6 +184,7 @@ export const partRules = {
   'no-unatomic-writes': ruleNoUnatomicWrites,
   'no-unbounded-query-array': ruleNoUnboundedQueryArray,
   'no-unchecked-response-json': ruleNoUncheckedResponseJson,
+  'no-unchecked-tree-sitter-error': ruleNoUncheckedTreeSitterError,
   'no-unchecked-url-sink': ruleNoUncheckedUrlSink,
   'no-uncleared-shared-mock': ruleNoUnclearedSharedMock,
   'no-uncleared-timeout': ruleNoUnclearedTimeout,
@@ -198,6 +200,4 @@ export const partRules = {
   'no-unfiltered-soft-delete-read': ruleNoUnfilteredSoftDeleteRead,
   'no-unguarded-cyclic-recursion': ruleNoUnguardedCyclicRecursion,
   'no-unguarded-deleted-items': ruleNoUnguardedDeletedItems,
-  'no-unguarded-json-parse': ruleNoUnguardedJsonParse,
-  'no-unguarded-option-list': ruleNoUnguardedOptionList,
 };

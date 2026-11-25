@@ -1,3 +1,5 @@
+import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-json-parse.mts';
+import { rule as ruleNoUnguardedOptionList } from '../rules/processes/arguments/no-unguarded-option-list.mts';
 import { rule as ruleNoUnguardedRecursionSibling } from '../rules/recursion/unguarded-sibling/no-unguarded-recursion-sibling.mts';
 import { rule as ruleNoUnguardedRegistryDelete } from '../rules/lifecycles/registry/no-unguarded-registry-delete.mts';
 import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
@@ -8,6 +10,7 @@ import { rule as ruleNoUnionOrderDependence } from '../rules/union-order/no-unio
 import { rule as ruleNoUnisolatedJobLoop } from '../rules/jobs/no-unisolated-job-loop.mts';
 import { rule as ruleNoUnknownInDomain } from '../rules/boundaries/no-unknown-in-domain.mts';
 import { rule as ruleNoUnknownMainFolder } from '../rules/guards/no-unknown-main-folder.mts';
+import { rule as ruleNoUnknownTreeSitterField } from '../rules/tree-sitter/field-names/no-unknown-tree-sitter-field.mts';
 import { rule as ruleNoUnmappedException } from '../rules/errors/unmapped/no-unmapped-exception.mts';
 import { rule as ruleNoUnorderedQuery } from '../rules/queries/order/no-unordered-query.mts';
 import { rule as ruleNoUnownedAsyncAssertion } from '../test-assertions/unowned-async/no-unowned-async-assertion.mts';
@@ -85,6 +88,8 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-unguarded-json-parse': ruleNoUnguardedJsonParse,
+  'no-unguarded-option-list': ruleNoUnguardedOptionList,
   'no-unguarded-recursion-sibling': ruleNoUnguardedRecursionSibling,
   'no-unguarded-registry-delete': ruleNoUnguardedRegistryDelete,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
@@ -95,6 +100,7 @@ export const partRules = {
   'no-unisolated-job-loop': ruleNoUnisolatedJobLoop,
   'no-unknown-in-domain': ruleNoUnknownInDomain,
   'no-unknown-main-folder': ruleNoUnknownMainFolder,
+  'no-unknown-tree-sitter-field': ruleNoUnknownTreeSitterField,
   'no-unmapped-exception': ruleNoUnmappedException,
   'no-unordered-query': ruleNoUnorderedQuery,
   'no-unowned-async-assertion': ruleNoUnownedAsyncAssertion,
