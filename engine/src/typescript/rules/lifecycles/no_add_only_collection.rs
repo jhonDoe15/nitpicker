@@ -111,10 +111,10 @@ pub fn check(context: &mut Context) {
             let name = if container.is("ClassBody") { format!("this.{plain}") } else { plain };
             let adder = name_of_adder(*first).map_or_else(|| "a callback".to_string(), |name| format!("{name}()"));
             let bound = if binding.kind == "Array" { "length" } else { "size" };
-            found.push((binding.node.start(), format!("{name} only grows: {adder} adds to it, and nothing in this scope deletes, clears or bounds it, so memory grows for the life of the process. Remove the entry when its request, session or run ends (in `finally` or the close handler), bound it (check `{name}.{bound}` before the add, or use an LRU or TTL cache), or key a `WeakMap` by the object. A registry filled at startup (literal keys, or an init or register function) is skipped. An exception fits only when the keys are a fixed finite set.")));
+            found.push((binding.node.start(), binding.node.end(), format!("{name} only grows: {adder} adds to it, and nothing in this scope deletes, clears or bounds it, so memory grows for the life of the process. Remove the entry when its request, session or run ends (in `finally` or the close handler), bound it (check `{name}.{bound}` before the add, or use an LRU or TTL cache), or key a `WeakMap` by the object. A registry filled at startup (literal keys, or an init or register function) is skipped. An exception fits only when the keys are a fixed finite set.")));
         }
     }
-    for (start, message) in found {
-        context.report_at("no-add-only-collection", start, message);
+    for (start, end, message) in found {
+        context.report_range("no-add-only-collection", start, Some(end), message);
     }
 }

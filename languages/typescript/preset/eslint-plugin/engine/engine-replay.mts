@@ -8,12 +8,13 @@ type Place = { readonly line: number; readonly column: number };
 type Report = { readonly message: string; readonly start: Place; readonly end: Place | undefined };
 type Replay = {
   readonly covered: ReadonlySet<string>;
+  readonly rules: ReadonlySet<string>;
   readonly reports: ReadonlyMap<string, readonly Report[]>;
 };
 
 export const ENGINE_FINDINGS_FILE = 'NITPICKER_ENGINE_LINT_FINDINGS';
 
-const NONE: Replay = { covered: new Set(), reports: new Map() };
+const NONE: Replay = { covered: new Set(), rules: new Set(), reports: new Map() };
 const replays = new Map<string, Replay>();
 const source: { file: string | undefined } = { file: undefined };
 
@@ -43,7 +44,11 @@ function readReplay(file: string): Replay {
       reports.set(key, [...(reports.get(key) ?? []), report]);
     }
   }
-  return { covered: new Set(listOf(fieldOf(written, 'files')).map(String)), reports };
+  return {
+    covered: new Set(listOf(fieldOf(written, 'files')).map(String)),
+    rules: new Set(listOf(fieldOf(written, 'rules')).map(String)),
+    reports,
+  };
 }
 
 function replayOf(): Replay {
@@ -55,8 +60,12 @@ function projectFile(context: Pick<Rule.RuleContext, 'cwd' | 'filename'>): strin
   return path.relative(context.cwd, context.filename).replaceAll('\\', '/');
 }
 
-export function engineCovers(context: Pick<Rule.RuleContext, 'cwd' | 'filename'>): boolean {
-  return replayOf().covered.has(projectFile(context));
+export function engineCovers(
+  ruleId: string,
+  context: Pick<Rule.RuleContext, 'cwd' | 'filename'>,
+): boolean {
+  const replay = replayOf();
+  return replay.rules.has(ruleId) && replay.covered.has(projectFile(context));
 }
 
 function locationOf({
@@ -70,7 +79,7 @@ export function replayedByEngine(ruleId: string, rule: Rule.RuleModule): Rule.Ru
   return {
     ...rule,
     create(context) {
-      if (!engineCovers(context)) {
+      if (!engineCovers(ruleId, context)) {
         return rule.create(context);
       }
       const reports = replayOf().reports.get(reportKey(projectFile(context), ruleId)) ?? [];

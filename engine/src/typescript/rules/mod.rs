@@ -67,8 +67,12 @@ impl<'a> Context<'a, '_> {
         self.report_range(rule, start, None, message);
     }
 
+    /// Line and 1-based UTF-16 column, as ESLint counts them: it drops a byte order mark before it counts.
     fn place(&self, offset: u32) -> (usize, usize) {
-        (self.file.lines.line(offset) as usize, self.file.lines.column_utf16(self.file.text, offset) as usize + 1)
+        let line = self.file.lines.line(offset) as usize;
+        let column = self.file.lines.column_utf16(self.file.text, offset) as usize + 1;
+        let mark = usize::from(line == 1 && self.file.text.starts_with('\u{feff}') && offset > 0);
+        (line, column - mark)
     }
 
     /// Reports from `start`, up to `end` when the rule reports a range and not a point.
@@ -106,6 +110,11 @@ pub struct Selection {
     view: bool,
 }
 
+/// The names of `only` that are no rule of the engine.
+pub fn unknown(only: &[String]) -> Vec<&str> {
+    only.iter().map(String::as_str).filter(|wanted| !known().any(|(name, _)| name == *wanted)).collect()
+}
+
 pub fn selected(only: Option<&[String]>) -> Selection {
     let chosen: Vec<_> = known().filter(|(name, _)| only.is_none_or(|names| names.iter().any(|wanted| wanted == name))).collect();
     let mut rules: Vec<Rule> = Vec::new();
@@ -125,12 +134,17 @@ impl Selection {
 }
 
 fn lint_file(path: &str, display: &str, settings: &[String], selection: &Selection) -> Vec<Reported> {
-    let Ok(text) = std::fs::read_to_string(path) else { return Vec::new() };
+    let unparsed = || vec![Finding { file: display.to_string(), line: 1, column: 1, rule: "!parse".into(), message: String::new(), symbol: None }.into()];
+    let Ok(text) = std::fs::read_to_string(path) else { return unparsed() };
     super::with_parsed(path, &text, |file| {
-        if file.panicked {
-            return vec![Finding { file: display.to_string(), line: 1, column: 1, rule: "!parse".into(), message: String::new(), symbol: None }.into()];
+        if file.panicked || !file.errors.is_empty() {
+            return unparsed();
         }
-        let semantic = SemanticBuilder::new().with_build_nodes(true).build(file.program).semantic;
+        let built = SemanticBuilder::new().with_build_nodes(true).with_check_syntax_error(true).build(file.program);
+        if !built.diagnostics.is_empty() {
+            return unparsed();
+        }
+        let semantic = built.semantic;
         let view = selection.view.then(|| support::view::View::of(file.program.to_estree_json(true, true)));
         let scopes = view.as_ref().map(|view| support::scope::Scopes::of(&semantic, view));
         let estree = view.as_ref().zip(scopes.as_ref());
@@ -151,6 +165,9 @@ pub struct Listed {
 
 pub fn lint_files(files: &[Listed], rules: &Selection) -> Vec<Reported> {
     let mut findings: Vec<Reported> = files.par_iter().flat_map_iter(|file| lint_file(&file.path, &file.display, &file.settings, rules)).collect();
-    findings.sort();
+    findings.sort_by(|left, right| {
+        let (left, right) = (&left.finding, &right.finding);
+        left.file.cmp(&right.file).then(left.line.cmp(&right.line)).then(left.column.cmp(&right.column))
+    });
     findings
 }

@@ -149,6 +149,7 @@ impl<'a, 's> Scopes<'a, 's> {
                     AstKind::TSInterfaceDeclaration(_) => (DefKind::Type, &["TSInterfaceDeclaration"]),
                     AstKind::TSTypeParameter(_) => (DefKind::Type, &["TSTypeParameter"]),
                     AstKind::TSEnumDeclaration(_) => (DefKind::Other, &["TSEnumDeclaration"]),
+                    AstKind::TSNamespaceDeclaration(_) => (DefKind::Other, &["TSModuleDeclaration"]),
                     AstKind::TSImportEqualsDeclaration(_) => (DefKind::ImportBinding, &["TSImportEqualsDeclaration"]),
                     _ => return None,
                 };

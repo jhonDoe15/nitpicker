@@ -163,7 +163,7 @@
     },
     {
       "rule": "nitpicker/no-module-level-mutable-state",
-      "paths": ["languages/typescript/preset/eslint-config/react/engine-replay.mts"],
+      "paths": ["languages/typescript/preset/eslint-plugin/engine/engine-replay.mts"],
       "reason": "Deliberate per-process singleton: the ESLint config entry point names the engine's findings file once for the lint process, and the rule objects, which ESLint creates per file with no way to hand them a value, read it from here."
     },
     {

@@ -253,6 +253,11 @@ fn typescript_lint(args: &[String]) {
             typescript::rules::Listed { path, display, settings: columns.collect() }
         })
         .collect();
+    let unknown = only.as_deref().map(typescript::rules::unknown).unwrap_or_default();
+    if !unknown.is_empty() {
+        eprintln!("unknown rules: {}", unknown.join(", "));
+        std::process::exit(2);
+    }
     let rules = typescript::rules::selected(only.as_deref());
     let findings = typescript::rules::lint_files(&files, &rules);
     let rows: Vec<_> = findings

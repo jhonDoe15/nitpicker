@@ -171,8 +171,8 @@ pub fn check(context: &mut Context) {
     let streams_allowed = COMPOSITION_ROOT.is_match(&context.file.path.replace('\\', "/"));
     for entry in found {
         match entry {
-            Found::Console(span, reference) => context.report(RULE, span, format!("Use the application logger instead of {reference}. Program output goes through a `{{ write(text: string): void }}` parameter that the composition root fills with process.stdout or process.stderr. An exception fits only when this module is a script that prints the program output.")),
-            Found::Stream(span, stream) if !streams_allowed => context.report(RULE, span, format!("Reach process.{stream} only in the composition root or an entry point: take a `{{ write(text: string): void }}` parameter and write through it, and let the entry pass process.stdout or process.stderr (and any isTTY or columns value) as an argument. An exception fits only when this module is a script that prints the program output.")),
+            Found::Console(span, reference) => context.report_range(RULE, span.start, Some(span.end), format!("Use the application logger instead of {reference}. Program output goes through a `{{ write(text: string): void }}` parameter that the composition root fills with process.stdout or process.stderr. An exception fits only when this module is a script that prints the program output.")),
+            Found::Stream(span, stream) if !streams_allowed => context.report_range(RULE, span.start, Some(span.end), format!("Reach process.{stream} only in the composition root or an entry point: take a `{{ write(text: string): void }}` parameter and write through it, and let the entry pass process.stdout or process.stderr (and any isTTY or columns value) as an argument. An exception fits only when this module is a script that prints the program output.")),
             Found::Stream(..) => {}
         }
     }
