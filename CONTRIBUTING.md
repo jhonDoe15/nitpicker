@@ -222,11 +222,8 @@ memory.
 
 ## Licenses
 
-nitpicker itself is under the [PolyForm Noncommercial License 1.0.0](LICENSE), and the maintainers
-also offer commercial licenses. By contributing, you confirm that you have the right to submit your
-contribution, and you grant the maintainers a perpetual, worldwide, irrevocable, royalty-free license
-to use, modify, sublicense and relicense it under the PolyForm Noncommercial License 1.0.0, under
-commercial licenses and under any other terms they choose. You keep your copyright.
+nitpicker itself is under the [MIT License](LICENSE). By contributing, you confirm that you have the
+right to submit your contribution, and you agree that it is licensed under the MIT License.
 
 Code nitpicker copies or ports from other projects must be permissive (MIT, Apache-2.0, BSD, ISC) so
 it can ship under these terms, with its notices kept. A tool nitpicker runs unmodified, either
