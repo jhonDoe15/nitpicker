@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -223,10 +223,16 @@ describe('messageIdResolver', () => {
 
 describe('eslintShapedResults', () => {
   const stage = mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-diagnostics-'));
+  const outside = mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-outside-'));
+  const outsideTarget = path.join(outside, 'target.ts');
+  const outsideLink = path.join(stage, 'linked-outside.ts');
   writeFileSync(path.join(stage, 'a.ts'), 'export const roll = Math.random();\n');
+  writeFileSync(outsideTarget, 'debugger;\n');
+  symlinkSync(outsideTarget, outsideLink);
 
   afterAll(() => {
     rmSync(stage, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
   });
 
   function shaped(diagnostic: { code: string; message: string; help?: string }) {
@@ -258,7 +264,55 @@ describe('eslintShapedResults', () => {
     ).toBe("'Math.random' is restricted from being used. Use crypto.randomUUID().");
   });
 
-  it('rejects a reported file outside the stage', () => {
+  it('drops diagnostics for files outside the stage while preserving in-stage findings', () => {
+    const naming = {
+      ruleNames: new Map([['eslint/no-debugger', 'no-debugger']]),
+      messageIdOf: () => undefined,
+      ruleMessages: {},
+      neutralized: new Map(),
+    };
+    const results = eslintShapedResults(
+      stage,
+      [
+        { filename: '../outside.ts', code: 'eslint(no-debugger)', message: 'outside parent' },
+        { filename: '/other/root/file.ts', code: 'eslint(no-debugger)', message: 'outside root' },
+        {
+          filename: realpathSync(outsideLink),
+          code: 'eslint(no-debugger)',
+          message: 'outside symlink target',
+        },
+        { filename: '', code: 'eslint(no-debugger)', message: 'empty path' },
+        { filename: '.', code: 'eslint(no-debugger)', message: 'stage directory' },
+        {
+          filename: 'a.ts',
+          code: 'eslint(no-debugger)',
+          message: '`debugger` statement is not allowed',
+          labels: [{ span: { offset: 0, length: 6 } }],
+        },
+      ],
+      naming,
+    );
+
+    expect(results).toEqual([
+      {
+        filePath: 'a.ts',
+        messages: [
+          {
+            ruleId: 'no-debugger',
+            messageId: undefined,
+            message: '`debugger` statement is not allowed',
+            severity: 2,
+            line: 1,
+            column: 1,
+            endLine: 1,
+            endColumn: 7,
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('returns an empty list when every reported file is outside the stage', () => {
     const naming = {
       ruleNames: new Map<string, string>(),
       messageIdOf: () => undefined,
@@ -266,9 +320,7 @@ describe('eslintShapedResults', () => {
       neutralized: new Map(),
     };
     const diagnostic = { filename: '../a.ts', code: 'eslint(no-debugger)', message: 'x' };
-    expect(() => eslintShapedResults(stage, [diagnostic], naming)).toThrow(
-      'oxlint reported a file outside its stage: ../a.ts',
-    );
+    expect(eslintShapedResults(stage, [diagnostic], naming)).toEqual([]);
   });
 
   it('leaves the generic help of other rules out', () => {
