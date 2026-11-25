@@ -12,15 +12,27 @@ import {
   withNodeHeap,
 } from '../../../../shared/processes/memory/node-heap.mts';
 import { memoryScaleOf as untypedMemoryScaleOf } from '../../../../languages/typescript/preset/diff/memory-scales.mts';
+import { MEMORY_LIMIT_VARIABLE } from '../../../../shared/processes/machine-capacity.mts';
+import { projectSlots, workerEnvironment } from '../../../projects/run/execution/parallel-rows.mts';
 
-const memoryScaleOf: (name: string) => { readonly perThousandFilesMegabytes: number } | undefined =
-  untypedMemoryScaleOf;
+type Scale = {
+  readonly baseMegabytes?: number;
+  readonly perThousandFilesMegabytes: number;
+};
+
+const memoryScaleOf: (name: string) => Scale | undefined = untypedMemoryScaleOf;
 const GIB = 1024 ** 3;
 const LARGE_PROJECT_THOUSAND_FILES = 15.3;
 
+function estimatedFor(name: string, thousandFiles: number): AnalyzerTask {
+  const scale = memoryScaleOf(name);
+  const base = scale?.baseMegabytes ?? 0;
+  const perThousand = scale?.perThousandFilesMegabytes ?? 0;
+  return sized(name, base + Math.round(perThousand * thousandFiles));
+}
+
 function estimated(name: string): AnalyzerTask {
-  const perThousand = memoryScaleOf(name)?.perThousandFilesMegabytes ?? 0;
-  return sized(name, Math.round(perThousand * LARGE_PROJECT_THOUSAND_FILES));
+  return estimatedFor(name, LARGE_PROJECT_THOUSAND_FILES);
 }
 
 async function flushScheduling(): Promise<void> {
@@ -122,6 +134,53 @@ describe('a 15,300-file project on a 4-core, 10 GB budget', () => {
         11_750,
       ),
     ).toEqual({ NITPICKER_MAX_PARALLEL: '4', NODE_OPTIONS: '--max-old-space-size=11750' });
+  });
+});
+
+describe('tsgo-aware admission on a 15 GB (14.5 GB cgroup) machine', () => {
+  it('prevents program-holding analyzers from exceeding the 14.5 GB cgroup budget', async () => {
+    const budgetMegabytes = usableMemoryMegabytes(14.5 * GIB);
+    const active = new Map<string, number>();
+    let peakMegabytes = 0;
+    const tasks = ['typescript-typecheck', 'structure', 'eslint-lint'].map((name) =>
+      estimatedFor(name, 4.5),
+    );
+    const execution = runTaskGraph(tasks, {
+      maxParallel: 4,
+      memoryMegabytes: budgetMegabytes,
+      execute: async ({ name, memoryMegabytes = 0 }: AnalyzerTask) => {
+        active.set(name, memoryMegabytes);
+        peakMegabytes = Math.max(
+          peakMegabytes,
+          [...active.values()].reduce((sum, value) => sum + value, 0),
+        );
+        await flushScheduling();
+        active.delete(name);
+        return { findings: [] };
+      },
+    });
+
+    expect((await execution).errors).toEqual([]);
+    expect(peakMegabytes).toBeLessThanOrEqual(budgetMegabytes);
+  });
+
+  it('limits concurrent workspace projects and splits their memory budget on a 14.5 GB cgroup', () => {
+    expect(projectSlots(4, usableMemoryMegabytes(14.5 * GIB))).toBe(2);
+    expect(projectSlots(4, usableMemoryMegabytes(8 * GIB))).toBe(1);
+    expect(projectSlots(4, usableMemoryMegabytes(32 * GIB))).toBe(4);
+    expect(workerEnvironment({}, { weight: 1, slots: 2, memoryBytes: 14.5 * GIB })).toEqual({
+      NITPICKER_MAX_PARALLEL: '1',
+      [MEMORY_LIMIT_VARIABLE]: String(Math.floor(7.25 * GIB)),
+    });
+    expect(
+      workerEnvironment(
+        { NITPICKER_MAX_PARALLEL: '3' },
+        { weight: 1, slots: 2, memoryBytes: 14.5 * GIB },
+      ),
+    ).toEqual({
+      NITPICKER_MAX_PARALLEL: '3',
+      [MEMORY_LIMIT_VARIABLE]: String(Math.floor(7.25 * GIB)),
+    });
   });
 });
 

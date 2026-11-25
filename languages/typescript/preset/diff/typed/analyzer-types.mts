@@ -19,8 +19,10 @@ export type AnalyzerBody = {
   policyFromPackage?: true;
   timeoutScale?: unknown;
   memoryScale?: {
+    readonly baseMegabytes?: number;
     readonly perThousandFilesMegabytes: number;
     readonly extensions: readonly string[];
+    readonly roots?: (projectRoot: string) => readonly string[];
   };
   readonly createInvocation: (request: InvocationRequest) => {
     readonly args: readonly string[];
