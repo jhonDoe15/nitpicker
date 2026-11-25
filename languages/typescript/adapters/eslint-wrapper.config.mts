@@ -10,6 +10,7 @@ import {
 import type { AnswerStore } from '../../../shared/logic/typed/solver-types.mts';
 import { fieldOf, fieldsOf, listOf, parseJson, textsOf } from '../../../shared/values/readers.mts';
 import type { Environment } from '../../../shared/processes/environment.mts';
+import { isParser, releasingChildren } from './lint-engine/memory/released-children.mts';
 import { guardedEntries } from '../preset/eslint-config/fix-guards/guarded-plugins.mts';
 import {
   ENGINE_FINDINGS_FILE,
@@ -117,6 +118,7 @@ function rebaseTypeScriptProject(
     ...entry,
     languageOptions: {
       ...languageOptions,
+      ...(parserOptions['project'] ? releasedParser(languageOptions['parser']) : {}),
       parserOptions: {
         ...parserOptions,
         project: parserOptions['project']
@@ -126,6 +128,10 @@ function rebaseTypeScriptProject(
       },
     },
   };
+}
+
+function releasedParser(parser: unknown) {
+  return isParser(parser) ? { parser: releasingChildren(parser) } : {};
 }
 
 function requiredEnvironmentPath(name: string) {
