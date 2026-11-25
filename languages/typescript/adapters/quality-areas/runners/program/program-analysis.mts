@@ -5,16 +5,9 @@ import { linkPolicyFile } from '../../../typed/tooling.mts';
 import { layoutTransformFor, readLayout } from '../../../typed/head-policy.mts';
 import { toolErrorFinding } from '../../reporting/test-report.mts';
 import { collectGarbage } from './collect-garbage.mts';
-import { type PolicyFunction, findingsOf, policyExport, policyFile } from '../../typed/tooling.mts';
+import { type PolicyFunction, policyFile } from '../../typed/tooling.mts';
 
 const TYPESCRIPT_CONFIG = 'languages/typescript/preset/defaults/tsconfig.quality.json';
-
-type ProgramAnalysis = {
-  readonly rule: string;
-  readonly analyzer: string;
-  readonly linkName: string;
-  readonly exportName: string;
-};
 
 export function failure(options: QualityAreaOptions, rule: string, error: unknown): Finding[] {
   const message = error instanceof Error ? error.message : String(error);
@@ -46,17 +39,5 @@ export function linkedAnalysis(
   } finally {
     installed.remove();
     collectGarbage();
-  }
-}
-
-export async function runProgramAnalysis(
-  options: QualityAreaOptions,
-  { rule, analyzer, linkName, exportName }: ProgramAnalysis,
-): Promise<Finding[]> {
-  try {
-    const run = await policyExport(options, analyzer, exportName);
-    return findingsOf(linkedAnalysis(options, { linkName, analyze: run }));
-  } catch (error) {
-    return failure(options, rule, error);
   }
 }
