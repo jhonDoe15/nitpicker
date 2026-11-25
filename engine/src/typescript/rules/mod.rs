@@ -6,6 +6,8 @@ mod listeners;
 mod modules;
 mod react_tests;
 pub mod support;
+mod test_assertions;
+mod test_runtime;
 pub mod testing_library;
 
 use super::ParsedFile;
@@ -107,11 +109,14 @@ const ON_VIEW: &[&str] = &["hover-test-needs-keyboard", "no-add-only-collection"
 pub const ALL: &[(&str, Rule)] = &[
     ("hover-test-needs-keyboard", react_tests::hover_test_needs_keyboard::check),
     ("no-add-only-collection", lifecycles::no_add_only_collection::check),
+    ("no-copied-constant", test_assertions::no_copied_constant::check),
     ("no-listen-on-all-interfaces", listeners::no_listen_on_all_interfaces::check),
     ("no-production-console", modules::no_production_console::check),
     ("no-silent-catch", errors::no_silent_catch::check),
     ("react-test-no-implementation-details", react_tests::no_implementation_details::check),
+    ("report-module-load-effects", modules::report_module_load_effects::check),
     ("settle-pending-on-close", lifecycles::settle_pending_on_close::check),
+    ("test-must-use-production-runtime", test_runtime::test_must_use_production_runtime::check),
 ];
 
 fn known() -> impl Iterator<Item = (&'static str, Rule)> {
@@ -126,7 +131,13 @@ pub struct Selection {
 }
 
 pub fn selected(only: Option<&[String]>) -> Selection {
-    let chosen: Vec<_> = known().filter(|(name, _)| only.is_none_or(|names| names.iter().any(|wanted| wanted == name))).collect();
+    let chosen: Vec<_> = known()
+        .filter(|(name, _)| {
+            only.is_none_or(|names| {
+                names.iter().any(|wanted| wanted == name || wanted.strip_prefix("nitpicker/") == Some(*name))
+            })
+        })
+        .collect();
     let mut rules: Vec<Rule> = Vec::new();
     for (_, rule) in &chosen {
         if !rules.iter().any(|kept| std::ptr::fn_addr_eq(*kept, *rule)) {

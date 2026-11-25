@@ -388,6 +388,40 @@ impl ProjectLayout {
             self.spec.source_roots.iter().find(|root| root.as_str() == PROJECT_ROOT).map(String::as_str)
         })
     }
+
+    pub fn source_path_of(&self, file: &str, project_root: Option<&str>) -> Option<String> {
+        let normalized = to_posix(file);
+        let found = if let Some(named) = self
+            .spec
+            .source_roots
+            .iter()
+            .find(|root| root.as_str() != PROJECT_ROOT && normalized.contains(&format!("/{root}/")))
+        {
+            let marker = format!("/{named}/");
+            let index = normalized.find(&marker)?;
+            Some(normalized[index + 1..].to_string())
+        } else if self.spec.source_roots.iter().any(|root| root.as_str() == PROJECT_ROOT)
+            && std::path::Path::new(&normalized).is_absolute()
+        {
+            let root = project_root
+                .map(|r| to_posix(r).trim_end_matches('/').to_string())
+                .or_else(|| {
+                    std::env::current_dir()
+                        .ok()
+                        .map(|p| to_posix(&p.to_string_lossy()).trim_end_matches('/').to_string())
+                })?;
+            let stripped = normalized.strip_prefix(&format!("{root}/"))?;
+            (!stripped.is_empty() && !stripped.starts_with("..")).then(|| stripped.to_string())
+        } else {
+            None
+        }?;
+        let hidden = self.is_generated_path(&found) || self.is_excluded(&found);
+        if hidden && self.spec.source_roots.iter().any(|root| root.as_str() == PROJECT_ROOT) {
+            None
+        } else {
+            Some(found)
+        }
+    }
 }
 
 impl Default for ProjectLayout {
