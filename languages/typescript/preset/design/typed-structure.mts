@@ -48,6 +48,7 @@ export function analyzeTypedStructure(
       request.environment,
     ),
   );
+  const positions = new Map(asked.map((plan, index) => [plan, index]));
   return Object.fromEntries(
     plans.map(({ rule, plan }) => {
       if (isFailed(plan)) {
@@ -56,7 +57,7 @@ export function analyzeTypedStructure(
       if (isFailed(results)) {
         return [rule, plan.part === undefined ? attempt(() => plan.finish(undefined)) : results];
       }
-      return [rule, attempt(() => plan.finish(results[asked.indexOf(plan)]))];
+      return [rule, attempt(() => plan.finish(results[positions.get(plan) ?? -1]))];
     }),
   );
 }

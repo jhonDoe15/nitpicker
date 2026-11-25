@@ -60,11 +60,11 @@ describe('options TypeScript 7 removed', () => {
     const configPath = writeConfig('tsconfig.legacy.json', LEGACY);
 
     expect(typescript7Overrides(configPath)).toEqual({
-      baseUrl: null,
-      paths: { '@app/*': [`${root}/src/app/*`], '*': [`${root}/src/*`] },
-      target: 'ES2015',
-      moduleResolution: null,
-      esModuleInterop: null,
+      set: {
+        paths: { '@app/*': [`${root}/src/app/*`], '*': [`${root}/src/*`] },
+        target: 'ES2015',
+      },
+      unset: ['baseUrl', 'moduleResolution', 'esModuleInterop'],
     });
   });
 
@@ -85,10 +85,20 @@ describe('options TypeScript 7 removed', () => {
     const before = readFileSync(configPath, 'utf8');
 
     const seen = await withTypescript7Options(configPath, () =>
-      Promise.resolve(readFileSync(configPath, 'utf8')),
+      Promise.resolve<unknown>(JSON.parse(readFileSync(configPath, 'utf8'))),
     );
 
-    expect(JSON.parse(seen).compilerOptions).toMatchObject({ baseUrl: null, target: 'ES2015' });
+    expect(seen).toEqual({
+      compilerOptions: {
+        ...LEGACY,
+        baseUrl: null,
+        paths: { '@app/*': [`${root}/src/app/*`], '*': [`${root}/src/*`] },
+        target: 'ES2015',
+        moduleResolution: null,
+        esModuleInterop: null,
+      },
+      include: ['src'],
+    });
     expect(readFileSync(configPath, 'utf8')).toBe(before);
   });
 

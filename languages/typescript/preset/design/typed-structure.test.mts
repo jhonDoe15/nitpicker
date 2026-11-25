@@ -62,8 +62,9 @@ it('reports a failed plan for its own check and still runs the other one', () =>
   const root = createProject({ files: { 'tsconfig.json': '{' } });
   folders.push(root);
   const outcome = typedStructureOf(root, { NITPICKER_TYPED_ENGINE: 'off' });
-  expect(outcome).toEqual({
-    'unused-api': [],
-    'design-signals': { error: expect.stringMatching(/^The TypeScript config could not be read/u) },
-  });
+  const failure = outcome['design-signals'];
+  expect(outcome['unused-api']).toEqual([]);
+  expect(
+    typeof failure === 'object' && 'error' in failure ? failure.error.split(':')[0] : failure,
+  ).toBe('The TypeScript config could not be read');
 });

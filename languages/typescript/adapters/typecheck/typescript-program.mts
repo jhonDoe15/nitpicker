@@ -84,14 +84,15 @@ async function engineDiagnostics({
   scopedConfigPath,
 }: PreEmitRequest): Promise<PreEmitResult> {
   if (engine === 'native') {
-    const bundled = () =>
-      nativeDiagnostics({
+    function bundled(): ReturnType<typeof nativeDiagnostics> {
+      return nativeDiagnostics({
         ts,
         configPath,
         projectRoot,
         engineHint: projectNative === undefined,
         scopedConfigPath,
       });
+    }
     const native = await (projectNative === undefined
       ? withTypescript7Options(configPath, bundled)
       : bundled());

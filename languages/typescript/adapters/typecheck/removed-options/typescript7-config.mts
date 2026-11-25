@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../typed/typescript-program.mts';
@@ -12,6 +12,11 @@ import { fieldsOf, parseJson } from '../../../../../shared/values/readers.mts';
 const NO_INPUT_CODES = new Set([18002, 18003]);
 const UNMAPPED_OPTIONS = new Set(['module', 'outFile', 'out']);
 const LOWEST_TARGET = 'ES2015';
+
+export type Typescript7Overrides = {
+  readonly set: Readonly<Record<string, unknown>>;
+  readonly unset: readonly string[];
+};
 
 function parsedOptions(
   configPath: string,
@@ -34,7 +39,7 @@ function parsedOptions(
 export function typescript7Overrides(
   configPath: string,
   ts: typeof TypeScript = typescriptApi(),
-): Readonly<Record<string, unknown>> | undefined {
+): Typescript7Overrides | undefined {
   const options = parsedOptions(configPath, ts);
   if (options === undefined) {
     return undefined;
@@ -45,9 +50,11 @@ export function typescript7Overrides(
     return undefined;
   }
   return {
-    ...baseUrlPaths(options),
-    ...(hasBaseUrl ? { baseUrl: null } : {}),
-    ...Object.fromEntries(removed.map((name) => [name, name === 'target' ? LOWEST_TARGET : null])),
+    set: {
+      ...baseUrlPaths(options),
+      ...(removed.includes('target') ? { target: LOWEST_TARGET } : {}),
+    },
+    unset: [...(hasBaseUrl ? ['baseUrl'] : []), ...removed.filter((name) => name !== 'target')],
   };
 }
 
@@ -70,21 +77,25 @@ export async function withTypescript7Options<T>(
   if (overrides === undefined) {
     return run();
   }
-  const original = readFileSync(configPath, 'utf8');
+  const original = await readFile(configPath, 'utf8');
   const config = jsonObject(original);
   if (config === undefined) {
     return run();
   }
-  writeFileSync(
+  await writeFile(
     configPath,
     JSON.stringify({
       ...config,
-      compilerOptions: { ...fieldsOf(config['compilerOptions']), ...overrides },
+      compilerOptions: {
+        ...fieldsOf(config['compilerOptions']),
+        ...overrides.set,
+        ...Object.fromEntries(overrides.unset.map((option) => [option, null])),
+      },
     }),
   );
   try {
     return await run();
   } finally {
-    writeFileSync(configPath, original);
+    await writeFile(configPath, original);
   }
 }

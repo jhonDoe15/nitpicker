@@ -75,8 +75,19 @@ export type ProgramFileLists = {
   readonly scoped: readonly string[];
 };
 
+function parsedConfig(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
 function readConfig(configPath: string): object | undefined {
-  const config: unknown = JSON.parse(readFileSync(configPath, 'utf8'));
+  const config = parsedConfig(readFileSync(configPath, 'utf8'));
   return typeof config === 'object' && config !== null ? config : undefined;
 }
 

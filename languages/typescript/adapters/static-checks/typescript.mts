@@ -6,6 +6,7 @@ import {
   removeSnapshotDependencies,
 } from '../typed/static-checks.mts';
 import {
+  type Layout,
   layoutTransformFor,
   readHeadPolicy,
   readLayout,
@@ -32,6 +33,7 @@ import {
 } from '../typecheck/typescript-program.mts';
 import { withAssetImportHint } from '../typecheck/asset-import-hint.mts';
 import {
+  type ProgramFileLists,
   contextOnlyFiles,
   contextOnlyOf,
   contextRoots,
@@ -108,48 +110,84 @@ export function isReportedDiagnostic(
   return !(filter.layout.isExcluded(file) || filter.contextOnly.has(file) || untypedGlobal);
 }
 
-export async function runTypecheck(options: StaticCheckOptions): Promise<Finding[]> {
-  const { ts, native } = projectTypeScript(options.liveProjectRoot);
-  const preparedDependencies = prepareSnapshotDependencies(options);
-  let installedConfig: LinkedPolicyFile | undefined;
-  let scoped: ReturnType<typeof scopedConfig>;
+type TypecheckRun = {
+  readonly options: StaticCheckOptions;
+  readonly ts: typeof TypeScript;
+  readonly native: string | undefined;
+  readonly targetPath: string;
+  readonly configRelativePath: string | undefined;
+};
+
+type ContextOnlyRequest = {
+  readonly roots: readonly string[] | undefined;
+  readonly files: ProgramFileLists | undefined;
+  readonly targetPath: string;
+  readonly projectRoot: string;
+  readonly layout: Layout;
+  readonly ts: typeof TypeScript;
+};
+
+function contextOnlyFor(request: ContextOnlyRequest): ReadonlySet<string> {
+  const { roots, files, targetPath, projectRoot, layout, ts } = request;
+  if (roots === undefined) {
+    return new Set();
+  }
+  return files === undefined
+    ? contextOnlyFiles(targetPath, projectRoot, { layout, ts })
+    : contextOnlyOf(projectRoot, files);
+}
+
+async function reportedDiagnostics(run: TypecheckRun): Promise<TypeScript.Diagnostic[]> {
+  const { options, ts, native, targetPath, configRelativePath } = run;
+  const { projectRoot } = options;
+  const layout = readLayout();
+  const roots = contextRoots(targetPath, projectRoot, layout);
+  const scoped = scopedConfig(targetPath, roots);
   try {
-    installedConfig = installTypeScriptConfig(options);
-    const { targetPath } = installedConfig;
-    const configRelativePath =
-      extendedProjectConfig(targetPath, options.projectRoot) ?? options.configRelativePath;
-    const layout = readLayout();
-    const roots = contextRoots(targetPath, options.projectRoot, layout);
-    scoped = scopedConfig(targetPath, roots);
     const { diagnostics, files } = await preEmitResult({
       ts,
       engine: typecheckEngine(),
       configPath: targetPath,
       configName: configRelativePath,
-      projectRoot: options.projectRoot,
+      projectRoot,
       projectNative: native,
       scopedConfigPath: scoped?.path,
     });
+    const contextOnly = contextOnlyFor({ roots, files, targetPath, projectRoot, layout, ts });
+    const filter = diagnosticFilter(contextOnly, projectRoot, layout);
+    return diagnostics
+      .map((diagnostic) => withProjectConfigFile(diagnostic, targetPath, options))
+      .filter((diagnostic) => isReportedDiagnostic(diagnostic, filter));
+  } finally {
     scoped?.remove();
-    const contextOnly =
-      roots === undefined
-        ? new Set<string>()
-        : files === undefined
-          ? contextOnlyFiles(targetPath, options.projectRoot, { layout, ts })
-          : contextOnlyOf(options.projectRoot, files);
-    const filter = diagnosticFilter(contextOnly, options.projectRoot, layout);
+  }
+}
+
+export async function runTypecheck(options: StaticCheckOptions): Promise<Finding[]> {
+  const { ts, native } = projectTypeScript(options.liveProjectRoot);
+  const preparedDependencies = prepareSnapshotDependencies(options);
+  let installedConfig: LinkedPolicyFile | undefined;
+  try {
+    installedConfig = installTypeScriptConfig(options);
+    const { targetPath } = installedConfig;
+    const configRelativePath =
+      extendedProjectConfig(targetPath, options.projectRoot) ?? options.configRelativePath;
+    const diagnostics = await reportedDiagnostics({
+      options,
+      ts,
+      native,
+      targetPath,
+      configRelativePath,
+    });
     return normalizeTypeScriptDiagnostics({
       ts,
-      diagnostics: diagnostics
-        .map((diagnostic) => withProjectConfigFile(diagnostic, targetPath, options))
-        .filter((diagnostic) => isReportedDiagnostic(diagnostic, filter)),
+      diagnostics,
       projectRoot: options.projectRoot,
       analyzerName: options.analyzerName,
       configRelativePath,
     });
   } finally {
     try {
-      scoped?.remove();
       installedConfig?.remove();
     } finally {
       removeSnapshotDependencies(preparedDependencies);

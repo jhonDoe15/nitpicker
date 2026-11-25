@@ -110,20 +110,14 @@ async function programFiles(
   program: NativeProgram,
   scopedConfigPath: string,
 ): Promise<ProgramFiles | undefined> {
-  try {
-    const complete = await program.getSourceFileNames();
-    const snapshot = await api.updateSnapshot({ openProjects: [scopedConfigPath] });
-    const scoped = snapshot
-      .getProjects()
-      .find(
-        ({ configFileName }) => path.resolve(configFileName) === path.resolve(scopedConfigPath),
-      );
-    return scoped === undefined
-      ? undefined
-      : { complete, scoped: await scoped.program.getSourceFileNames() };
-  } catch {
-    return undefined;
-  }
+  const complete = await program.getSourceFileNames();
+  const snapshot = await api.updateSnapshot({ openProjects: [scopedConfigPath] });
+  const scoped = snapshot
+    .getProjects()
+    .find(({ configFileName }) => path.resolve(configFileName) === path.resolve(scopedConfigPath));
+  return scoped === undefined
+    ? undefined
+    : { complete, scoped: await scoped.program.getSourceFileNames() };
 }
 
 async function collectedDiagnostics(

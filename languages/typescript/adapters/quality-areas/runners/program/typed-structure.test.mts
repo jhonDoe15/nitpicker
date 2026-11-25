@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   createAnalyzerRunnerProject,
   removeAnalyzerRunnerProject,
@@ -7,11 +7,19 @@ import { runTypedStructure } from './typed-structure.mts';
 
 const ANALYZER = 'languages/typescript/preset/design/typed-structure.mjs';
 
-let directory = '';
-
-afterEach(() => {
-  removeAnalyzerRunnerProject(directory);
-});
+async function runWith(body?: string): Promise<unknown> {
+  const project = createAnalyzerRunnerProject({
+    name: 'typed-structure',
+    analyzer: ANALYZER,
+    analyzerFunction: 'analyzeTypedStructure',
+    ...(body === undefined ? {} : { body }),
+  });
+  try {
+    return await runTypedStructure(project.options);
+  } finally {
+    removeAnalyzerRunnerProject(project.directory);
+  }
+}
 
 function toolError(rule: string, message: string) {
   return {
@@ -26,30 +34,15 @@ function toolError(rule: string, message: string) {
 
 describe('the typed structure runner', () => {
   it('turns a failed analysis into a tool error for each typed check', async () => {
-    const project = createAnalyzerRunnerProject({
-      name: 'typed-structure',
-      analyzer: ANALYZER,
-      analyzerFunction: 'analyzeTypedStructure',
-    });
-    directory = project.directory;
-
-    expect(await runTypedStructure(project.options)).toEqual([
+    expect(await runWith()).toEqual([
       toolError('unused-api', 'no program'),
       toolError('design-signals', 'no program'),
     ]);
   });
 
   it('keeps the findings of one check when the other one failed', async () => {
-    const project = createAnalyzerRunnerProject({
-      name: 'typed-structure',
-      analyzer: ANALYZER,
-      analyzerFunction: 'analyzeTypedStructure',
-      body: "return { 'unused-api': [], 'design-signals': { error: 'no types' } };",
-    });
-    directory = project.directory;
-
-    expect(await runTypedStructure(project.options)).toEqual([
-      toolError('design-signals', 'no types'),
-    ]);
+    expect(
+      await runWith("return { 'unused-api': [], 'design-signals': { error: 'no types' } };"),
+    ).toEqual([toolError('design-signals', 'no types')]);
   });
 });

@@ -58,14 +58,14 @@ type Request = {
   projectRoot: string;
   configPath: string;
   analyzerName: string;
-  environment?: NodeJS.ProcessEnv;
+  environment: NodeJS.ProcessEnv;
 };
 
 export function unusedApiPlan({
   projectRoot,
   configPath,
   analyzerName,
-  environment = process.env,
+  environment,
 }: Request): TypedPlan<Finding[]> {
   const { exceptions, react: reactPolicy } = readHeadPolicy(environment);
   const layout = readLayout(environment);
@@ -76,7 +76,9 @@ export function unusedApiPlan({
       projectRoot,
       react: typeof reactEnabled === 'boolean' ? { enabled: reactEnabled } : {},
     });
-  if (!hasCheckableDeclarations({ projectRoot, layout, react })) return { finish: () => [] };
+  if (!hasCheckableDeclarations({ projectRoot, layout, react })) {
+    return { finish: () => [] };
+  }
   const packagesInfo = loadPackages(projectRoot, layout);
   const request = { projectRoot, configPath, packagesInfo, layout };
   const engine = engineRegistryPart({ ...request, react, environment });
@@ -94,5 +96,5 @@ export function unusedApiPlan({
 }
 
 export function analyzeUnusedApi(request: Request): Finding[] {
-  return runTypedPlan(unusedApiPlan(request), request.environment ?? process.env);
+  return runTypedPlan(unusedApiPlan(request), request.environment);
 }

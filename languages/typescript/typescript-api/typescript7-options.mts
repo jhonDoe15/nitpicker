@@ -36,7 +36,9 @@ export function baseUrlPaths(options: CompilerOptions): Readonly<Record<string, 
 }
 
 function absolutePaths(baseUrl: string, paths: unknown): Readonly<Record<string, unknown>> {
-  if (paths !== undefined && !isRecord(paths)) return {};
+  if (paths !== undefined && !isRecord(paths)) {
+    return {};
+  }
   const mapped = Object.fromEntries(
     Object.entries(fieldsOf(paths)).map(([pattern, targets]) => [
       pattern,
@@ -47,7 +49,9 @@ function absolutePaths(baseUrl: string, paths: unknown): Readonly<Record<string,
 }
 
 function withBareLookup(targets: unknown, bareTarget: unknown): unknown {
-  if (targets === undefined) return [bareTarget];
+  if (targets === undefined) {
+    return [bareTarget];
+  }
   return Array.isArray(targets) ? [...listOf(targets), bareTarget] : targets;
 }
 
