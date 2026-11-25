@@ -26,4 +26,10 @@ export const TOOLING_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/caches/partial-recursion/recursion-guards.mjs',
   'languages/typescript/preset/eslint-plugin/rules/caches/partial-recursion/write-guards.mjs',
   'languages/typescript/preset/eslint-plugin/rules/caches/partial-recursion/callee-lookup.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/recursion/worklist-join/no-shrinking-worklist-join.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/recursion/worklist-join/worklist-nodes.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/recursion/worklist-join/worklist-loop.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/recursion/worklist-join/monotone-join.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/recursion/worklist-join/local-helpers.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/recursion/worklist-join/shrinking-transfer.mjs',
 ];

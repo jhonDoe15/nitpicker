@@ -34,15 +34,13 @@ export function targetNameOf(node: TSESTree.Node): string | undefined {
   if (inner.type !== AST_NODE_TYPES.MemberExpression || inner.computed) {
     return undefined;
   }
-  const prop = nameOf(inner.property);
-  if (prop === undefined) {
-    return undefined;
-  }
-  if (inner.object.type === AST_NODE_TYPES.ThisExpression) {
-    return `this.${prop}`;
-  }
-  const owner = nameOf(inner.object);
-  return owner === undefined ? undefined : `${owner}.${prop}`;
+  const prop =
+    inner.property.type === AST_NODE_TYPES.PrivateIdentifier
+      ? `#${inner.property.name}`
+      : nameOf(inner.property);
+  const obj = unwrapped(inner.object);
+  const owner = obj.type === AST_NODE_TYPES.ThisExpression ? 'this' : nameOf(obj);
+  return prop !== undefined && owner !== undefined ? `${owner}.${prop}` : undefined;
 }
 
 export function methodCallTarget(

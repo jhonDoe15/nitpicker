@@ -51,6 +51,7 @@ import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stat
 import { rule as ruleNoSharedTempPathInTests } from '../rules/test-runtime/temp-paths/no-shared-temp-path-in-tests.mts';
 import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-state.mts';
 import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-string-command.mts';
+import { rule as ruleNoShrinkingWorklistJoin } from '../rules/recursion/worklist-join/no-shrinking-worklist-join.mts';
 import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
 import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singular-and-plural-prop.mts';
 import { rule as ruleNoSlashOnlyRedirectGuard } from '../rules/urls/requests/no-slash-only-redirect-guard.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnguardedCyclicRecursion } from '../rules/recursion/no-un
 import { rule as ruleNoUnguardedDeletedItems } from '../rules/deleted-items/no-unguarded-deleted-items.mts';
 import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-json-parse.mts';
 import { rule as ruleNoUnguardedOptionList } from '../rules/processes/arguments/no-unguarded-option-list.mts';
-import { rule as ruleNoUnguardedRecursionSibling } from '../rules/recursion/unguarded-sibling/no-unguarded-recursion-sibling.mts';
 
 export const partRules = {
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
@@ -153,6 +153,7 @@ export const partRules = {
   'no-shared-temp-path-in-tests': ruleNoSharedTempPathInTests,
   'no-shared-test-state': ruleNoSharedTestState,
   'no-shell-string-command': ruleNoShellStringCommand,
+  'no-shrinking-worklist-join': ruleNoShrinkingWorklistJoin,
   'no-silent-catch': ruleNoSilentCatch,
   'no-singular-and-plural-prop': ruleNoSingularAndPluralProp,
   'no-slash-only-redirect-guard': ruleNoSlashOnlyRedirectGuard,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unguarded-deleted-items': ruleNoUnguardedDeletedItems,
   'no-unguarded-json-parse': ruleNoUnguardedJsonParse,
   'no-unguarded-option-list': ruleNoUnguardedOptionList,
-  'no-unguarded-recursion-sibling': ruleNoUnguardedRecursionSibling,
 };

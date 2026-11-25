@@ -117,6 +117,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-filtered-positional-pair',
   'nitpicker/no-unguarded-recursion-sibling',
   'nitpicker/no-cached-partial-recursion',
+  'nitpicker/no-shrinking-worklist-join',
   'nitpicker/no-interpolated-log-message',
   'nitpicker/no-branch-in-composition-root',
   'nitpicker/no-comments',

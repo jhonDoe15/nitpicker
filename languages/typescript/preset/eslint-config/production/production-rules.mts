@@ -29,6 +29,7 @@ export const productionSourceRules: Record<string, Linter.RuleEntry> = {
   'nitpicker/no-filtered-positional-pair': 'error',
   'nitpicker/no-unguarded-recursion-sibling': 'error',
   'nitpicker/no-cached-partial-recursion': 'error',
+  'nitpicker/no-shrinking-worklist-join': 'error',
 };
 
 export const productionGuardEntries: Record<string, Linter.RuleEntry> = {

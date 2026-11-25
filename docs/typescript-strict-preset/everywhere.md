@@ -2886,3 +2886,6 @@ Button`). `@param`, `@returns` and other tag lines are not part of the descripti
   cache/memo while a separate recursion guard (`Set` or depth/turn counter) in the same function or a local callee can
   return an early fallback, making the cached entry depend on call order. Allowed form: track whether the guard was hit
   and skip caching partial results.
+- `nitpicker/no-shrinking-worklist-join`: a work-list loop that joins each node's output directly into its successor's
+  stored state while the transfer can shrink, delete, clear, or overwrite entries that an earlier pass contributed.
+  Allowed form: store the last output per edge and recompute each successor's input from all incoming edges.
