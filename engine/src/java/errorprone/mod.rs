@@ -198,6 +198,15 @@ mod auto_value;
 mod tz_data;
 mod zone_ids;
 mod time_constants;
+mod visitor_state;
+mod framework_methods;
+mod big_decimal;
+mod duration_calls;
+mod outline_none;
+mod flogger_format;
+mod jdk_calls;
+mod labels;
+mod constant_exprs;
 mod incompatible_calls;
 mod junit3;
 mod override_checks;
@@ -738,6 +747,25 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["ClosingStandardOutputStreams"], declaration_defects::closing_standard_output_streams),
     (&["AssistedInjectAndInjectOnConstructors"], declaration_defects::assisted_inject_and_inject_on_constructors),
     (&["AssistedInjectAndInjectOnSameConstructor"], declaration_defects::assisted_inject_and_inject_on_same_constructor),
+    (&["AttemptedNegativeZero"], constant_exprs::attempted_negative_zero),
+    (&["ErroneousBitwiseExpression"], constant_exprs::erroneous_bitwise_expression),
+    (&["ComplexBooleanConstant"], constant_exprs::complex_boolean_constant),
+    (&["NarrowingCompoundAssignment"], constant_exprs::narrowing_compound_assignment),
+    (&["UnnecessaryBreakInSwitch"], labels::unnecessary_break_in_switch),
+    (&["AddressSelection"], jdk_calls::address_selection),
+    (&["ScannerUseDelimiter"], jdk_calls::scanner_use_delimiter),
+    (&["ErroneousThreadPoolConstructorChecker"], jdk_calls::erroneous_thread_pool_constructor),
+    (&["DateChecker"], jdk_calls::date_checker),
+    (&["DuplicateDateFormatField"], date_format::duplicate_date_format_field),
+    (&["FloggerMessageFormat"], flogger_format::flogger_message_format),
+    (&["FloggerStringConcatenation"], flogger_format::flogger_string_concatenation),
+    (&["OutlineNone"], outline_none::outline_none),
+    (&["CanonicalDuration"], duration_calls::canonical_duration),
+    (&["JodaWithDurationAddedLong"], duration_calls::joda_with_duration_added_long),
+    (&["BigDecimalLiteralDouble"], big_decimal::big_decimal_literal_double),
+    (&["UnnecessarilyVisible"], framework_methods::unnecessarily_visible),
+    (&["DoNotClaimAnnotations"], framework_methods::do_not_claim_annotations),
+    (&["UnsafeFinalization"], framework_methods::unsafe_finalization),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
@@ -765,6 +793,9 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["DefaultPackage"], declaration_defects::default_package),
     (&["EmptyTopLevelDeclaration"], declaration_defects::empty_top_level_declaration),
     (&["DirectInvocationOnMock"], mock_invocations::direct_invocation_on_mock),
+    (&["UnusedLabel"], labels::unused_label),
+    (&["UnnecessaryTestMethodPrefix"], framework_methods::unnecessary_test_method_prefix),
+    (&["MemoizeConstantVisitorStateLookups"], visitor_state::memoize_constant_visitor_state_lookups),
 ];
 
 pub struct ErrorProne;

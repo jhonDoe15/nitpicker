@@ -77,6 +77,7 @@ impl<'c, 'a, 't> Constants<'c, 'a, 't> {
             "identifier" => self.identifier(node),
             "field_access" => self.field(node),
             "method_invocation" => self.invocation(node),
+            "unary_expression" => negative_literal(self.context, node),
             _ => literal(self.context, node),
         }
     }
@@ -255,6 +256,21 @@ impl<'c, 'a, 't> Constants<'c, 'a, 't> {
         method.detail.annotations.iter().any(|annotation| annotation == "org.checkerframework.dataflow.qual.Pure")
             || (method.is_abstract && index.get(declaring).is_some_and(|info| info.flags & flag::AUTO_VALUE != 0))
     }
+}
+
+/// javac's parser reads `-` before a nonzero decimal integer literal as one literal.
+fn negative_literal(context: &Context, node: Node) -> Option<Ce> {
+    let operand = node.child_by_field_name("operand").filter(|operand| operand.kind() == "decimal_integer_literal")?;
+    if node.child_by_field_name("operator")?.kind() != "-" {
+        return None;
+    }
+    let text = context.text(operand);
+    let digits = text.trim_end_matches(['l', 'L']).replace('_', "");
+    if digits.trim_start_matches('0').is_empty() {
+        return None;
+    }
+    let long = text.ends_with(['l', 'L']);
+    Some(Ce { key: format!("{}:-{digits}", if long { "J" } else { "I" }), shown: format!("-{digits}") })
 }
 
 fn literal(context: &Context, node: Node) -> Option<Ce> {

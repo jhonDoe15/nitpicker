@@ -56,4 +56,28 @@ public class Duration implements ReadableDuration {
     public Duration minus(ReadableDuration duration) {
         return this;
     }
+
+    public Duration withDurationAdded(long millis, int scalar) {
+        return this;
+    }
+
+    public Duration withDurationAdded(ReadableDuration duration, int scalar) {
+        return this;
+    }
+
+    public static Duration standardDays(long days) {
+        return ZERO;
+    }
+
+    public static Duration standardHours(long hours) {
+        return ZERO;
+    }
+
+    public static Duration standardMinutes(long minutes) {
+        return ZERO;
+    }
+
+    public static Duration standardSeconds(long seconds) {
+        return ZERO;
+    }
 }
