@@ -146,6 +146,10 @@ function isPorted(rule: ResolvedRule): boolean {
   return PORTED_RULES.has(rule.definition.attrs['class'] ?? '');
 }
 
+export function runsOnPmd(rule: ResolvedRule): boolean {
+  return !runsOnEngine(rule) && rule.definition.attrs['maximumLanguageVersion'] === undefined;
+}
+
 export function runsOnEngine(rule: ResolvedRule): boolean {
   const { attrs } = rule.definition;
   const properties = ruleProperties(rule);

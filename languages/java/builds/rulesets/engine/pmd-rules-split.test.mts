@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { resolvedRulesets } from './pmd-catalog.mts';
 import { onlyFiles, renderedRuleset } from './pmd-render.mts';
-import { engineRule, portablePattern, ruleLevel, runsOnEngine } from './pmd-rule-parts.mts';
+import {
+  engineRule,
+  portablePattern,
+  ruleLevel,
+  runsOnEngine,
+  runsOnPmd,
+} from './pmd-rule-parts.mts';
 
 const XPATH = 'net.sourceforge.pmd.lang.rule.xpath.XPathRule';
 const PORTED = 'net.sourceforge.pmd.lang.java.rule.bestpractices.MissingOverrideRule';
@@ -97,6 +103,10 @@ describe('engine rules', () => {
 
   it('sends XPath rules of the current language level to the engine', () => {
     expect(main.rules.filter(runsOnEngine).map(({ name }) => name)).toEqual(['Shipped', 'Own']);
+  });
+
+  it('leaves out of PMD a rule capped below the Java version PMD reads by default', () => {
+    expect(main.rules.filter(runsOnPmd).map(({ name }) => name)).toEqual(['Coded']);
   });
 
   it('sends a rule written in Java to its port on the engine by its PMD class', () => {
