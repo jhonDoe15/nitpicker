@@ -273,7 +273,7 @@ describe('eslintShapedResults', () => {
     ]);
   });
 
-  it('reports a file oxlint names by its real path under every listed link to it', () => {
+  it('reports a file oxlint names by its real path once under every listed link to it', () => {
     const target = mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-linked-'));
     writeFileSync(path.join(target, 'b.ts'), 'debugger;\n');
     symlinkSync(path.join(target, 'b.ts'), path.join(stage, 'b.ts'));
@@ -286,15 +286,16 @@ describe('eslintShapedResults', () => {
     const labels = [{ span: { offset: 0, length: 9 } }];
     const diagnostic = { code: 'eslint(no-debugger)', message: 'debugger', labels };
     const filename = path.join(realpathSync(target), 'b.ts');
-    const results = eslintShapedResults(stage, [{ filename, ...diagnostic }], {
-      naming,
-      listed: ['a.ts', 'b.ts'],
-    });
+    const both = [
+      { filename, ...diagnostic },
+      { filename: 'b.ts', ...diagnostic },
+    ];
+    const results = eslintShapedResults(stage, both, { naming, listed: ['a.ts', 'b.ts'] });
     rmSync(target, { recursive: true, force: true });
 
-    expect(results.map(({ filePath, messages }) => [filePath, messages[0]?.ruleId])).toEqual([
-      ['b.ts', 'no-debugger'],
-    ]);
+    expect(
+      results.map(({ filePath, messages }) => [filePath, messages.map(({ ruleId }) => ruleId)]),
+    ).toEqual([['b.ts', ['no-debugger']]]);
   });
 
   it('leaves the generic help of other rules out', () => {

@@ -44,11 +44,19 @@ export function eslintShapedResults(
   );
   rejectTsconfigErrors(stage, reported);
   const stagedFiles: ReportedFiles = reportedFiles(stage, listed);
-  const byFile = Map.groupBy(reported, (diagnostic) => diagnostic.filename);
-  return [...byFile].flatMap(([filename, fileDiagnostics]) =>
-    stagedFiles(filename).map(({ filePath, full }) =>
-      fileResult({ filePath, full, fileDiagnostics, naming }),
-    ),
+  const located = reported.flatMap((diagnostic) =>
+    stagedFiles(diagnostic.filename).map((file) => ({ ...file, diagnostic })),
+  );
+  const byFile = Map.groupBy(located, ({ filePath }) => filePath);
+  return [...byFile].map(([filePath, entries]) =>
+    fileResult({
+      filePath,
+      full: entries[0]?.full ?? filePath,
+      fileDiagnostics: distinctDiagnostics(
+        entries.map(({ diagnostic }) => ({ ...diagnostic, filename: filePath })),
+      ),
+      naming,
+    }),
   );
 }
 
