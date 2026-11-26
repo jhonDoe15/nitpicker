@@ -112,7 +112,9 @@ fn unresolved_receiver_may_be_this(ctx: &Ctx, usage: u32) -> bool {
         };
     }
     let Some(kind) = ctx.type_of(qualifier) else { return true };
-    Some(kind.erased().name()) == own
+    let name = kind.erased().name();
+    let unresolved = matches!(kind, Type::Class(..)) && ctx.machine.resolver.index.get(&name).is_none();
+    unresolved || Some(name) == own
 }
 
 pub fn unused_private_method(ctx: &Ctx, out: &mut Vec<Hit>) {

@@ -94,7 +94,11 @@ fn persistent_fields(ctx: &Ctx, declaration: u32) -> Option<HashSet<String>> {
     Some(names)
 }
 
-fn not_serializable(ctx: &Ctx, variable: u32, check_abstract: bool) -> bool {
+fn not_serializable(ctx: &Ctx, field: u32, variable: u32, check_abstract: bool) -> bool {
+    let written = ctx.kids(field).iter().copied().find(|kid| !matches!(ctx.name(*kid), "ModifierList" | "VariableDeclarator"));
+    if written.and_then(|written| ctx.symbolic_type(written)).is_some_and(|kind| matches!(kind, Type::Variable(_))) {
+        return check_abstract && !ctx.type_is(variable, "java.io.Serializable");
+    }
     let Some(kind) = ctx.type_of(variable) else { return false };
     match &kind {
         Type::Primitive(_) | Type::Null => false,
@@ -136,7 +140,7 @@ pub fn non_serializable_class(ctx: &Ctx, out: &mut Vec<Hit>) {
         if ctx.has_modifier(field, "static") || ctx.has_modifier(field, "transient") {
             continue;
         }
-        if not_serializable(ctx, variable, check_abstract) {
+        if not_serializable(ctx, field, variable, check_abstract) {
             let mut shown = String::new();
             let written = ctx.kids(field).iter().copied().find(|kid| !matches!(ctx.name(*kid), "ModifierList" | "VariableDeclarator"));
             if let Some(kind) = written.and_then(|written| ctx.symbolic_type(written)).or_else(|| ctx.type_of(variable)) {

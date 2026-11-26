@@ -173,10 +173,30 @@ fn then_branch_if(ctx: &Ctx, statement: u32) -> Option<u32> {
     fits.then_some(holder)
 }
 
+/// PMD's type of a returned expression: an unresolved name or a negation still takes the boolean the context asks.
+fn boolean_typed(ctx: &Ctx, expression: u32) -> bool {
+    match ctx.type_of(expression) {
+        Some(kind) => kind == Type::Primitive("boolean"),
+        None => match ctx.name(expression) {
+            "UnaryExpression" => ctx.text(expression, "Operator") == "!",
+            "InfixExpression" => {
+                matches!(ctx.text(expression, "Operator").as_str(), "==" | "!=" | "<" | ">" | "<=" | ">=" | "&&" | "||")
+            }
+            "VariableAccess" | "FieldAccess" | "AmbiguousName" | "ArrayAccess" => {
+                let owner = ctx.enclosing(expression, &["MethodDeclaration", "LambdaExpression"]);
+                owner.filter(|owner| ctx.is(*owner, "MethodDeclaration")).is_some_and(|method| {
+                    ctx.kid(method, "PrimitiveType").is_some_and(|kind| ctx.text(kind, "Kind") == "boolean")
+                })
+            }
+            _ => false,
+        },
+    }
+}
+
 pub fn simplify_boolean_returns(ctx: &Ctx, out: &mut Vec<Hit>) {
     for &statement in ctx.all("ReturnStatement") {
         let Some(then) = ctx.nth(statement, 0) else { continue };
-        if ctx.type_of(then) != Some(Type::Primitive("boolean")) {
+        if !boolean_typed(ctx, then) {
             continue;
         }
         let Some(found) = then_branch_if(ctx, statement) else { continue };

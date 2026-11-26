@@ -159,7 +159,8 @@ impl Walk<'_, '_, '_, '_> {
             .filter(|at| ctx.is(*at, "MethodCall"))
             .collect();
         calls.into_iter().any(|call| {
-            ctx.matches_sig(call, "java.lang.Throwable#initCause(_)") && self.any_argument(params, call)
+            let on_this = ctx.qualifier(call).is_some_and(|on| ctx.is(on, "ThisExpression"));
+            !on_this && ctx.matches_sig(call, "java.lang.Throwable#initCause(_)") && self.any_argument(params, call)
         })
     }
 
