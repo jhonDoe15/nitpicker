@@ -8,6 +8,7 @@ export type HeapBudget = {
 };
 
 type Environment = Readonly<Record<string, string | undefined>>;
+type RuntimeVersions = Readonly<Record<string, string | undefined>>;
 
 const MIB = 1024 ** 2;
 const TOOL_MEMORY_PERCENT = 75;
@@ -43,8 +44,9 @@ export function admittedHeapMegabytes(budget: HeapBudget, admittedMegabytes: num
   );
 }
 
-function withSemiSpace(nodeOptions: string): string {
-  return SEMI_SPACE_FLAG.test(nodeOptions)
+function withSemiSpace(nodeOptions: string, versions: RuntimeVersions): string {
+  const onNode = versions['deno'] === undefined && versions['bun'] === undefined;
+  return !onNode || SEMI_SPACE_FLAG.test(nodeOptions)
     ? nodeOptions
     : `${nodeOptions} --max-semi-space-size=${String(SEMI_SPACE_MEGABYTES)}`.trim();
 }
@@ -56,10 +58,11 @@ export function withNodeHeap(
     defaultLimit: getHeapStatistics().heap_size_limit,
   },
   admittedMegabytes = 0,
+  versions: RuntimeVersions = process.versions,
 ): Environment {
   const nodeOptions = environment['NODE_OPTIONS'] ?? '';
   if (heapMegabytesOf(nodeOptions) !== undefined) {
-    return { ...environment, NODE_OPTIONS: withSemiSpace(nodeOptions) };
+    return { ...environment, NODE_OPTIONS: withSemiSpace(nodeOptions, versions) };
   }
   const megabytes = admittedHeapMegabytes(
     { ...budget, parallel: resolveMaxParallel(environment) },
@@ -67,7 +70,10 @@ export function withNodeHeap(
   );
   return {
     ...environment,
-    NODE_OPTIONS: withSemiSpace(`${nodeOptions} --max-old-space-size=${String(megabytes)}`.trim()),
+    NODE_OPTIONS: withSemiSpace(
+      `${nodeOptions} --max-old-space-size=${String(megabytes)}`.trim(),
+      versions,
+    ),
   };
 }
 
