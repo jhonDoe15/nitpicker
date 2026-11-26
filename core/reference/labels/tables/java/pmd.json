@@ -22,6 +22,7 @@
   "pmd/AvoidSynchronizedStatement": ["performance"],
   "pmd/AvoidThreadGroup": ["bug", "async"],
   "pmd/BacktrackingRegex": ["performance", "security"],
+  "pmd/BigDecimalExactDivide": ["bug", "reliability"],
   "pmd/BigIntegerInstantiation": ["simplification"],
   "pmd/BlockingInCompletionStage": ["performance", "async"],
   "pmd/BooleanFlagParameter": ["maintainability"],

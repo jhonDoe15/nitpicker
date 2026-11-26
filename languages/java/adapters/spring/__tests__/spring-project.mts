@@ -237,6 +237,7 @@ const REVIEW_RULES = new Set([
   'UnsynchronizedSharedCollection',
   'ConcurrentMapCheckThenAct',
   'AtomicGetThenSet',
+  'BigDecimalExactDivide',
   'ScheduledTaskStopsOnFailure',
   'RequestThreadLocalNotCleared',
   'FutureJoinedWhereStarted',
