@@ -477,6 +477,7 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["InterruptedExceptionSwallowed"], interrupts::interrupted_exception_swallowed),
     (&["FutureReturnValueIgnored"], futures::future_return_value_ignored),
     (&["ImmutableEnumChecker"], immutable::immutable_enum_checker),
+    (&["ImmutableAnnotationChecker"], immutable::entry::immutable_annotation_checker),
     (&["TypeParameterNaming"], names::type_parameter_naming),
     (&["WildcardImport"], names::wildcard_import),
     (&["SameNameButDifferent"], names::same_name_but_different),

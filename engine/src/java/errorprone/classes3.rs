@@ -231,7 +231,7 @@ fn member_of_enclosing(context: &Context, own: &str, inner: &str) -> bool {
     false
 }
 
-fn references_outer(context: &Context, class: Node, own: &str) -> bool {
+pub(super) fn references_outer(context: &Context, class: Node, own: &str) -> bool {
     let index = context.resolver.index;
     let owned = |declaring: &str| declaring == own || index.is_subtype(own, declaring);
     let mut found = false;

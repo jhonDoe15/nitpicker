@@ -528,5 +528,6 @@
  "LambdaFunctionalInterface",
  "UnnecessaryQualifier",
  "TruthIncompatibleType",
- "FloggerRequiredModifiers"
+ "FloggerRequiredModifiers",
+ "ImmutableAnnotationChecker"
 ]
