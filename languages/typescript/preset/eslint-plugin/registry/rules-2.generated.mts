@@ -1,3 +1,7 @@
+import { rule as ruleNoMalformedQueryText } from '../rules/query-text/no-malformed-query-text.mts';
+import { rule as ruleNoManagedResourceConstructionOutsideCompositionRoots } from '../rules/boundaries/no-managed-resource-construction-outside-composition-roots.mts';
+import { rule as ruleNoManyToManyCascadeRemove } from '../rules/persistence/no-many-to-many-cascade-remove.mts';
+import { rule as ruleNoMismatchedPreconditionMessage } from '../rules/preconditions/no-mismatched-precondition-message.mts';
 import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
 import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
 import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
@@ -10,6 +14,7 @@ import { rule as ruleNoNodeProcessPerTest } from '../rules/test-runtime/processe
 import { rule as ruleNoNonLatin1HeaderValue } from '../rules/encoding/no-non-latin1-header-value.mts';
 import { rule as ruleNoNull } from '../rules/syntax/no-null.mts';
 import { rule as ruleNoNullBranchFallThrough } from '../rules/null-branches/no-null-branch-fall-through.mts';
+import { rule as ruleNoOperandDepthRecursion } from '../rules/recursion/operands/no-operand-depth-recursion.mts';
 import { rule as ruleNoOperandSlip } from '../rules/operands/no-operand-slip.mts';
 import { rule as ruleNoOrmQueryLogging } from '../rules/database/no-orm-query-logging.mts';
 import { rule as ruleNoOrmSchemaSync } from '../rules/database/no-orm-schema-sync.mts';
@@ -55,6 +60,7 @@ import { rule as ruleNoSharedStatefulRegex } from '../rules/regex/no-shared-stat
 import { rule as ruleNoSharedTempPathInTests } from '../rules/test-runtime/temp-paths/no-shared-temp-path-in-tests.mts';
 import { rule as ruleNoSharedTestState } from '../test-quality/no-shared-test-state.mts';
 import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-string-command.mts';
+import { rule as ruleNoShrinkingWorklistJoin } from '../rules/worklists/no-shrinking-worklist-join.mts';
 import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mts';
 import { rule as ruleNoSingleFolderConfigLookup } from '../rules/config/no-single-folder-config-lookup.mts';
 import { rule as ruleNoSingleShapeManifestField } from '../rules/manifests/no-single-shape-manifest-field.mts';
@@ -92,14 +98,13 @@ import { rule as ruleNoUnclearedSharedMock } from '../test-quality/shared-mocks/
 import { rule as ruleNoUnclearedTimeout } from '../rules/lifecycles/timers/no-uncleared-timeout.mts';
 import { rule as ruleNoUnclosedFileDescriptor } from '../rules/resources/descriptors/no-unclosed-file-descriptor.mts';
 import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mts';
-import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mts';
-import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mts';
-import { rule as ruleNoUnencodedUrlPart } from '../rules/urls/construction/no-unencoded-url-part.mts';
-import { rule as ruleNoUnescapedCssSelector } from '../rules/selectors/no-unescaped-css-selector.mts';
-import { rule as ruleNoUnescapedFilterValue } from '../rules/patterns/filters/no-unescaped-filter-value.mts';
-import { rule as ruleNoUnescapedHtmlInterpolation } from '../rules/patterns/html/no-unescaped-html-interpolation.mts';
 
 export const partRules = {
+  'no-malformed-query-text': ruleNoMalformedQueryText,
+  'no-managed-resource-construction-outside-composition-roots':
+    ruleNoManagedResourceConstructionOutsideCompositionRoots,
+  'no-many-to-many-cascade-remove': ruleNoManyToManyCascadeRemove,
+  'no-mismatched-precondition-message': ruleNoMismatchedPreconditionMessage,
   'no-mocking-subject-under-test': ruleNoMockingSubjectUnderTest,
   'no-module-level-let': ruleNoModuleLevelLet,
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
@@ -112,6 +117,7 @@ export const partRules = {
   'no-non-latin1-header-value': ruleNoNonLatin1HeaderValue,
   'no-null': ruleNoNull,
   'no-null-branch-fall-through': ruleNoNullBranchFallThrough,
+  'no-operand-depth-recursion': ruleNoOperandDepthRecursion,
   'no-operand-slip': ruleNoOperandSlip,
   'no-orm-query-logging': ruleNoOrmQueryLogging,
   'no-orm-schema-sync': ruleNoOrmSchemaSync,
@@ -157,6 +163,7 @@ export const partRules = {
   'no-shared-temp-path-in-tests': ruleNoSharedTempPathInTests,
   'no-shared-test-state': ruleNoSharedTestState,
   'no-shell-string-command': ruleNoShellStringCommand,
+  'no-shrinking-worklist-join': ruleNoShrinkingWorklistJoin,
   'no-silent-catch': ruleNoSilentCatch,
   'no-single-folder-config-lookup': ruleNoSingleFolderConfigLookup,
   'no-single-shape-manifest-field': ruleNoSingleShapeManifestField,
@@ -194,10 +201,4 @@ export const partRules = {
   'no-uncleared-timeout': ruleNoUnclearedTimeout,
   'no-unclosed-file-descriptor': ruleNoUnclosedFileDescriptor,
   'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
-  'no-uncollected-tests': ruleNoUncollectedTests,
-  'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
-  'no-unencoded-url-part': ruleNoUnencodedUrlPart,
-  'no-unescaped-css-selector': ruleNoUnescapedCssSelector,
-  'no-unescaped-filter-value': ruleNoUnescapedFilterValue,
-  'no-unescaped-html-interpolation': ruleNoUnescapedHtmlInterpolation,
 };

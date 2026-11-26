@@ -324,6 +324,18 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   connections (`nitpicker/no-listen-on-all-interfaces`).
 - A recursive walk over a graph that can contain cycles (an error `cause` chain, `parent` links, a recursive type)
   passes a visited `Set` or a depth limit down (`nitpicker/no-unguarded-cyclic-recursion`).
+- A walk over operands stays shallow on generated input: a function does not recurse into both `left` and
+  `right` of its parameter without a depth limit; loop over the left-leaning chain and recurse only into the right
+  operand, or use an explicit stack (`nitpicker/no-operand-depth-recursion`).
+- Every entry point into a guarded recursion checks the same guard: when one function refuses a turn through an
+  in-progress `Set` or `Map`, a sibling that reaches the same recursion checks it too, or calls the guarded one
+  (`nitpicker/no-unguarded-recursion-entry`).
+- A cache never stores an answer a recursion guard may have cut short: skip the `set` when a deeper turn was refused,
+  or mark the value as partial (`nitpicker/no-cache-after-guard-fallback`).
+- A worklist pass whose transfer can remove facts keeps the last output per edge and recomputes each input from them,
+  instead of joining into one stored input (`nitpicker/no-shrinking-worklist-join`).
+- A worklist that can add several items per turn keeps a `Set` of the items already expanded; a depth limit alone
+  does not bound how many paths reach an item (`nitpicker/no-depth-only-worklist`).
 - A stream is decoded and searched as a whole, not chunk by chunk: collect the chunks and decode once, pass
   `{ stream: true }` to a `TextDecoder`, or search an accumulated buffer (`nitpicker/no-chunkwise-stream-text`).
 - A pino, bunyan or winston call keeps every value it is given: the values go in the fields object first

@@ -1,9 +1,16 @@
+import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mts';
+import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mts';
+import { rule as ruleNoUnencodedUrlPart } from '../rules/urls/construction/no-unencoded-url-part.mts';
+import { rule as ruleNoUnescapedCssSelector } from '../rules/selectors/no-unescaped-css-selector.mts';
+import { rule as ruleNoUnescapedFilterValue } from '../rules/patterns/filters/no-unescaped-filter-value.mts';
+import { rule as ruleNoUnescapedHtmlInterpolation } from '../rules/patterns/html/no-unescaped-html-interpolation.mts';
 import { rule as ruleNoUnescapedPatternTranslation } from '../rules/patterns/no-unescaped-pattern-translation.mts';
 import { rule as ruleNoUnfilteredSoftDeleteRead } from '../rules/queries/soft-delete/no-unfiltered-soft-delete-read.mts';
 import { rule as ruleNoUnguardedCyclicRecursion } from '../rules/recursion/no-unguarded-cyclic-recursion.mts';
 import { rule as ruleNoUnguardedDeletedItems } from '../rules/deleted-items/no-unguarded-deleted-items.mts';
 import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-json-parse.mts';
 import { rule as ruleNoUnguardedOptionList } from '../rules/processes/arguments/no-unguarded-option-list.mts';
+import { rule as ruleNoUnguardedRecursionEntry } from '../rules/recursion/guards/no-unguarded-recursion-entry.mts';
 import { rule as ruleNoUnguardedRegistryDelete } from '../rules/lifecycles/registry/no-unguarded-registry-delete.mts';
 import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
 import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
@@ -31,6 +38,7 @@ import { rule as ruleNoUnversionedOrmEntity } from '../rules/database/versions/n
 import { rule as ruleNoUseAfterAwaitWhenDisposed } from '../rules/cancellation/disposal/no-use-after-await-when-disposed.mts';
 import { rule as ruleNoUtcDateAsLocalDate } from '../rules/time/utc-dates/no-utc-date-as-local-date.mts';
 import { rule as ruleNoWaitForWithFakeTimers } from '../rules/test-runtime/assertions/no-wait-for-with-fake-timers.mts';
+import { rule as ruleNoWallClockBoundInTests } from '../rules/test-runtime/time-bounds/no-wall-clock-bound-in-tests.mts';
 import { rule as ruleNoWallClockElapsed } from '../rules/wall-clock/no-wall-clock-elapsed.mts';
 import { rule as ruleNoWastedCollectionStep } from '../rules/collections/pipelines/no-wasted-collection-step.mts';
 import { rule as ruleNoWeakAssertion } from '../test-assertions/weak-assertion/no-weak-assertion.mts';
@@ -90,15 +98,21 @@ import { rule as ruleTimeUnitMismatch } from '../rules/time/units/time-unit-mism
 import { rule as ruleTimeoutAbandonsOperation } from '../rules/async/timeout-abandons-operation.mts';
 import { rule as ruleUnboundedFanOut } from '../rules/concurrency/unbounded-fan-out.mts';
 import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reactive/unbounded-reactive-fan-out.mts';
-import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-uncollected-tests': ruleNoUncollectedTests,
+  'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
+  'no-unencoded-url-part': ruleNoUnencodedUrlPart,
+  'no-unescaped-css-selector': ruleNoUnescapedCssSelector,
+  'no-unescaped-filter-value': ruleNoUnescapedFilterValue,
+  'no-unescaped-html-interpolation': ruleNoUnescapedHtmlInterpolation,
   'no-unescaped-pattern-translation': ruleNoUnescapedPatternTranslation,
   'no-unfiltered-soft-delete-read': ruleNoUnfilteredSoftDeleteRead,
   'no-unguarded-cyclic-recursion': ruleNoUnguardedCyclicRecursion,
   'no-unguarded-deleted-items': ruleNoUnguardedDeletedItems,
   'no-unguarded-json-parse': ruleNoUnguardedJsonParse,
   'no-unguarded-option-list': ruleNoUnguardedOptionList,
+  'no-unguarded-recursion-entry': ruleNoUnguardedRecursionEntry,
   'no-unguarded-registry-delete': ruleNoUnguardedRegistryDelete,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
@@ -126,6 +140,7 @@ export const partRules = {
   'no-use-after-await-when-disposed': ruleNoUseAfterAwaitWhenDisposed,
   'no-utc-date-as-local-date': ruleNoUtcDateAsLocalDate,
   'no-wait-for-with-fake-timers': ruleNoWaitForWithFakeTimers,
+  'no-wall-clock-bound-in-tests': ruleNoWallClockBoundInTests,
   'no-wall-clock-elapsed': ruleNoWallClockElapsed,
   'no-wasted-collection-step': ruleNoWastedCollectionStep,
   'no-weak-assertion': ruleNoWeakAssertion,
@@ -185,5 +200,4 @@ export const partRules = {
   'timeout-abandons-operation': ruleTimeoutAbandonsOperation,
   'unbounded-fan-out': ruleUnboundedFanOut,
   'unbounded-reactive-fan-out': ruleUnboundedReactiveFanOut,
-  'untested-round-trip': ruleUntestedRoundTrip,
 };

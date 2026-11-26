@@ -266,6 +266,19 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   result. Add `if (v == null) return ...;`, annotate the method `@Nullable` and handle it,
   or, when the caller knows the value is set, document it with `Objects.requireNonNull(v, "why")`.
 - A function does not call itself, directly or through another function of the file (`pmd/SelfRecursion`): a retry or poll is a loop over attempt numbers, a tree walk is a loop over a worklist (a `Deque` that each step adds the node's children to), flat data uses `map` or `flatMap`. An exception fits only when the recursion is bounded and deliberate.
+- A recursive walk over references that can lead back (`getDependencies()`, `getReferences()`, `getCause()`,
+  `getInterfaces()`) passes a visited `Set` or a depth limit down (`pmd/UnguardedCyclicRecursion`).
+- A walk over both operands of an expression (`getLeft()` and `getRight()`) loops over the left-leaning chain and
+  recurses only into the right operand, or takes a depth limit (`pmd/OperandDepthRecursion`).
+- Every entry point into a guarded recursion checks the same in-progress `Set` or `Map` as its sibling, or calls the
+  guarded sibling (`pmd/UnguardedRecursionEntry`).
+- A cache never stores an answer that a recursion guard may have cut short in a deeper turn: skip the `put` or mark
+  the value as partial (`pmd/CacheAfterGuardFallback`).
+- A worklist that can add several items per turn keeps a `Set` of the items already expanded
+  (`if (!expanded.add(item)) continue;`): a depth limit alone does not bound the number of paths
+  (`pmd/DepthOnlyWorklist`).
+- A worklist pass whose transfer can remove facts keeps the last output per edge and recomputes each input from them,
+  instead of `input.get(next).addAll(out)` (`pmd/ShrinkingWorklistJoin`).
 - A public method or constructor does not wait a constant it cannot override
   (`pmd/UninjectableDelay`): `Thread.sleep(RETRY_DELAY_MS)` or `TimeUnit.SECONDS.sleep(...)` on a
   `private static final` makes a test wait it out. Take the delay as a parameter, or a field the constructor
