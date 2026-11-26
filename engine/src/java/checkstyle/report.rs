@@ -56,6 +56,7 @@ impl<'f> Report<'f> {
             message,
             symbol: None,
             priority: None,
+            arguments: None,
         });
     }
 }
