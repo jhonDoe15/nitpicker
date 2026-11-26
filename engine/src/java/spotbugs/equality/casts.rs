@@ -16,6 +16,7 @@ pub const PATTERNS: &[&str] = &["BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS"];
 struct Walk<'c, 'a, 't> {
     context: &'c Context<'a>,
     aliases: HashSet<String>,
+    parameter: String,
     tested: bool,
     cast: Option<Node<'t>>,
 }
@@ -98,8 +99,13 @@ impl<'t> Walk<'_, '_, 't> {
             "assignment_expression" => node.child_by_field_name("left").zip(node.child_by_field_name("right")),
             _ => None,
         };
-        if let Some((name, _)) = copy.filter(|(name, value)| name.kind() == "identifier" && self.alias(*value)) {
-            self.aliases.insert(self.context.text(name).to_string());
+        if let Some((name, value)) = copy.filter(|(name, _)| name.kind() == "identifier") {
+            let name = self.context.text(name).to_string();
+            if self.alias(value) {
+                self.aliases.insert(name);
+            } else if name != self.parameter {
+                self.aliases.remove(&name);
+            }
         }
     }
 }
@@ -128,8 +134,9 @@ pub fn check(context: &Context, shape: &Shape) {
         let (Some(argument), Some(body)) = (argument.filter(|_| public), method.child_by_field_name("body")) else {
             continue;
         };
-        let aliases = HashSet::from([context.text(argument).to_string()]);
-        let mut found = Walk { context, aliases, tested: false, cast: None };
+        let parameter = context.text(argument).to_string();
+        let aliases = HashSet::from([parameter.clone()]);
+        let mut found = Walk { context, aliases, parameter, tested: false, cast: None };
         found.visit(body, false);
         let Some(cast) = found.cast else { continue };
         let short = names::short(&binary).to_string();

@@ -732,7 +732,8 @@ a class that is `Serializable`, not `Externalizable`, not abstract, not an inter
   field; member classes of the classes whose code is loaded count as known subtypes of interfaces and abstract
   classes only. A local variable's declared type is not among them.
   Priority: sure is 1 when the class commits, else 2; likely is 2 when the class commits or declares a
-  `serialVersionUID`, else 3. A `Throwable` adds one; an inner, local or anonymous class adds one unless it commits.
+  `serialVersionUID`, else 3. A `Throwable` adds one; a class with an outer instance (an inner class, or a local or anonymous class
+  declared in instance code) adds one unless it commits.
   Priority 3 and above are hidden.
 
 Open differences, each measured with a lab: SpotBugs also knows JDK classes that the code of loaded JDK classes
