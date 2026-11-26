@@ -1,18 +1,16 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import type { Variable } from '../caches/scope-names.mts';
 import { nameOf, scopeChain } from '../typed/node-views.mts';
+import { unwrapOf } from '../typed/syntax-views.mts';
 
 const { DefinitionType } = TSESLint.Scope;
 
+export type { Variable };
 export type Scope = TSESLint.Scope.Scope;
-export type Variable = TSESLint.Scope.Variable;
 export type Definition = Variable['defs'][number];
 
 const MODULES = new Set(['typescript']);
 const MAX_ALIAS_DEPTH = 3;
-
-function unwrapAwait(node: TSESTree.Node | undefined): TSESTree.Node | undefined {
-  return node?.type === AST_NODE_TYPES.AwaitExpression ? node.argument : node;
-}
 
 function isRequireOf(node: TSESTree.Node | undefined): node is TSESTree.CallExpression {
   return (
@@ -23,7 +21,7 @@ function isRequireOf(node: TSESTree.Node | undefined): node is TSESTree.CallExpr
 }
 
 export function isModuleLoad(node: TSESTree.Node | undefined): boolean {
-  const unwrapped = unwrapAwait(node);
+  const unwrapped = unwrapOf(node, [AST_NODE_TYPES.AwaitExpression]);
   return isRequireOf(unwrapped) || unwrapped?.type === AST_NODE_TYPES.ImportExpression;
 }
 

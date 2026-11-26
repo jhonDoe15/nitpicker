@@ -22,7 +22,7 @@ tester.run('require-jvm-heap-goal', rule, {
   ],
   invalid: [
     invalid(
-      "for (const m of modules) spawn('java', [`-XX:MaxRAMPercentage=${share}`, '-cp', cp, main, m]);",
+      `for (const m of modules) spawn('java', [\`-XX:MaxRAMPercentage=\${share}\`, '-cp', cp, main, m]);`,
     ),
     invalid(
       "export const f = (javaPath, modules) => Promise.all(modules.map((m) => spawn(javaPath, ['-Xmx2g', m])));",
