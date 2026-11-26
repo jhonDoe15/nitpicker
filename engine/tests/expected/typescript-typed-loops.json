@@ -1,0 +1,893 @@
+[
+ [
+  "l01/src/case-0026.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  14,
+  105,
+  "`toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  14,
+  117
+ ],
+ [
+  "l01/src/case-0027.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  14,
+  88,
+  "`toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  14,
+  104
+ ],
+ [
+  "l01/src/case-0028.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  14,
+  70,
+  "`mapper.toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  14,
+  93
+ ],
+ [
+  "l01/src/case-0029.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  14,
+  84,
+  "`mapper.toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  14,
+  103
+ ],
+ [
+  "l01/src/case-0030.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  99,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  119
+ ],
+ [
+  "l01/src/case-0031.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  122,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  142
+ ],
+ [
+  "l01/src/case-0032.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  99,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  133
+ ],
+ [
+  "l01/src/case-0033.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  127,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  141
+ ],
+ [
+  "l01/src/case-0034.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  123,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  143
+ ],
+ [
+  "l01/src/case-0035.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  134,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  145
+ ],
+ [
+  "l01/src/case-0036.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  113,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.findBy()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  133
+ ],
+ [
+  "l01/src/case-0037.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  147,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.createQueryBuilder().where().getMany()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  167
+ ],
+ [
+  "l01/src/case-0038.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  78,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  98
+ ],
+ [
+  "l01/src/case-0039.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  115,
+  "`Order.lines` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { lines: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  132
+ ],
+ [
+  "l01/src/case-0040.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  105,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `manager.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  125
+ ],
+ [
+  "l01/src/case-0041.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  10,
+  82,
+  "`Invoice.payer` is a lazy relation: awaiting it for each item loaded by `invoices.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { payer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  10,
+  101
+ ],
+ [
+  "l01/src/case-0042.js",
+  "nitpicker/no-lazy-relation-in-loop",
+  2,
+  80,
+  "`Shipment.carrier` is a lazy relation: awaiting it for each item loaded by `shipments.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { carrier: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  2,
+  102
+ ],
+ [
+  "l03/src/case-0001.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  99,
+  "`Order.quoted` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { quoted: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  117
+ ],
+ [
+  "l03/src/case-0003.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  99,
+  "`Order.tags` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { tags: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  115
+ ],
+ [
+  "l03/src/case-0008.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  99,
+  "`Order.plainPromise` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { plainPromise: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  123
+ ],
+ [
+  "l03/src/case-0009.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  125,
+  "`Order.second` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { second: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  143
+ ],
+ [
+  "l03/src/case-0009.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  99,
+  "`Order.stacked` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { stacked: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  118
+ ],
+ [
+  "l03/src/case-0012.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  109,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.findAndCount()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  129
+ ],
+ [
+  "l03/src/case-0015.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  127,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  147
+ ],
+ [
+  "l03/src/case-0020.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  134,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  154
+ ],
+ [
+  "l03/src/case-0022.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  121,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  141
+ ],
+ [
+  "l03/src/case-0026.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  127,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  147
+ ],
+ [
+  "l03/src/case-0027.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  126,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.createQueryBuilder().getMany()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  146
+ ],
+ [
+  "l03/src/case-0028.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  160,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.createQueryBuilder().leftJoinAndSelect().getMany()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  180
+ ],
+ [
+  "l03/src/case-0030.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  155,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.createQueryBuilder().innerJoin().getMany()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  175
+ ],
+ [
+  "l03/src/case-0033.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  151,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.createQueryBuilder().where().andWhere().getMany()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  171
+ ],
+ [
+  "l03/src/case-0034.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  109,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `manager.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  129
+ ],
+ [
+  "l03/src/case-0036.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  111,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `manager.findBy()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  131
+ ],
+ [
+  "l03/src/case-0037.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  121,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `manager.getRepository().find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  141
+ ],
+ [
+  "l03/src/case-0040.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  99,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  119
+ ],
+ [
+  "l03/src/case-0041.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  97,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  117
+ ],
+ [
+  "l03/src/case-0045.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  130,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  155
+ ],
+ [
+  "l03/src/case-0045.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  162,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  189
+ ],
+ [
+  "l03/src/case-0045.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  99,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  123
+ ],
+ [
+  "l03/src/case-0049.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  99,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  121
+ ],
+ [
+  "l03/src/case-0051.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  103,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  123
+ ],
+ [
+  "l03/src/case-0052.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  109,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  129
+ ],
+ [
+  "l03/src/case-0054.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  118,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  138
+ ],
+ [
+  "l03/src/case-0057.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  98,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  118
+ ],
+ [
+  "l03/src/case-0058.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  78,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  98
+ ],
+ [
+  "l03/src/case-0061.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  105,
+  "`toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  117
+ ],
+ [
+  "l03/src/case-0061.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  130,
+  "`second` receives each item loaded by `orders.find()` and awaits `order.lines`, the lazy relation `Order.lines`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { lines: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  146
+ ],
+ [
+  "l03/src/case-0061.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  159,
+  "`arrow` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  171
+ ],
+ [
+  "l03/src/case-0061.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  184,
+  "`exprBody` receives each item loaded by `orders.find()` and awaits `order.quoted`, the lazy relation `Order.quoted`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { quoted: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  199
+ ],
+ [
+  "l03/src/case-0062.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  105,
+  "`nested` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  118
+ ],
+ [
+  "l03/src/case-0062.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  163,
+  "`other` receives each item loaded by `orders.find()` and awaits `more.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  186
+ ],
+ [
+  "l03/src/case-0064.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  105,
+  "`obj.toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  121
+ ],
+ [
+  "l03/src/case-0064.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  161,
+  "`Svc.smap` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  176
+ ],
+ [
+  "l03/src/case-0064.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  189,
+  "`renamedDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  206
+ ],
+ [
+  "l03/src/case-0065.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  105,
+  "`dflt` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  116
+ ],
+ [
+  "l03/src/case-0065.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  129,
+  "`H.toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  143
+ ],
+ [
+  "l03/src/case-0065.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  156,
+  "`H.default` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  172
+ ],
+ [
+  "l03/src/case-0066.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  118,
+  "`obj.toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  138
+ ],
+ [
+  "l03/src/case-0066.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  145,
+  "`svc.map` receives each item loaded by `orders.find()` and awaits `order.lines`, the lazy relation `Order.lines`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { lines: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  163
+ ],
+ [
+  "l03/src/case-0066.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  70,
+  "`toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  86
+ ],
+ [
+  "l03/src/case-0066.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  93,
+  "`H.toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  111
+ ],
+ [
+  "l03/src/case-0067.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  119,
+  "`exprBody` receives each item loaded by `orders.find()` and awaits `order.quoted`, the lazy relation `Order.quoted`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { quoted: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  141
+ ],
+ [
+  "l03/src/case-0067.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  70,
+  "`dflt` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  85
+ ],
+ [
+  "l03/src/case-0067.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  92,
+  "`arrow` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  112
+ ],
+ [
+  "l03/src/case-0068.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  121,
+  "`toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  129
+ ],
+ [
+  "l03/src/case-0070.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  153,
+  "`f` receives each item loaded by `orders.find()` and awaits `o.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  161
+ ],
+ [
+  "l03/src/case-0072.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  105,
+  "`toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  119
+ ],
+ [
+  "l03/src/case-0073.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  105,
+  "`toDto` receives each item loaded by `orders.find()` and awaits `order.customer`, the lazy relation `Order.customer`: one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop passes a few items at most.",
+  19,
+  119
+ ],
+ [
+  "l03/src/case-0076.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  103,
+  "`Invoice.payer` is a lazy relation: awaiting it for each item loaded by `invoices.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { payer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  122
+ ],
+ [
+  "l03/src/case-0077.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  97,
+  "`Bill.payer` is a lazy relation: awaiting it for each item loaded by `bills.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { payer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  113
+ ],
+ [
+  "l03/src/case-0078.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  120,
+  "`Shipment.first` is a lazy relation: awaiting it for each item loaded by `shipments.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { first: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  133
+ ],
+ [
+  "l03/src/case-0078.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  140,
+  "`Invoice.payer` is a lazy relation: awaiting it for each item loaded by `shipments.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { payer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  153
+ ],
+ [
+  "l03/src/case-0078.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  98,
+  "`Shipment.carrier` is a lazy relation: awaiting it for each item loaded by `shipments.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { carrier: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  113
+ ],
+ [
+  "l03/src/case-0079.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  115,
+  "`Deep.deep` is a lazy relation: awaiting it for each item loaded by `anys.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { deep: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  127
+ ],
+ [
+  "l03/src/case-0079.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  134,
+  "`Invoice.payer` is a lazy relation: awaiting it for each item loaded by `anys.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { payer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  147
+ ],
+ [
+  "l03/src/case-0079.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  93,
+  "`Shipment.carrier` is a lazy relation: awaiting it for each item loaded by `anys.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { carrier: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  108
+ ],
+ [
+  "l03/src/case-0083.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  141,
+  "`Customer.parent` is a lazy relation: awaiting it for each item loaded by `customers.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { parent: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  153
+ ],
+ [
+  "l03/src/case-0083.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  98,
+  "`Customer.parent` is a lazy relation: awaiting it for each item loaded by `customers.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { parent: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  112
+ ],
+ [
+  "l03/src/case-0084.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  138,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  145
+ ],
+ [
+  "l03/src/case-0084.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  152,
+  "`Order.quoted` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { quoted: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  164
+ ],
+ [
+  "l03/src/case-0086.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  125,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  139
+ ],
+ [
+  "l03/src/case-0094.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  105,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  141
+ ],
+ [
+  "l03/src/case-0095.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  126,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  146
+ ],
+ [
+  "l03/src/case-0095.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  99,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  119
+ ],
+ [
+  "l03/src/case-0096.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  97,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  117
+ ],
+ [
+  "l03/src/case-0097.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  105,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  125
+ ],
+ [
+  "l03/src/case-0100.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  6,
+  34,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  6,
+  54
+ ],
+ [
+  "l03/src/case-0100.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  7,
+  32,
+  "`Order.lines` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { lines: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  7,
+  49
+ ],
+ [
+  "l03/src/case-0101.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  5,
+  98,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  5,
+  118
+ ],
+ [
+  "l03/src/case-0101.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  6,
+  102,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  6,
+  122
+ ],
+ [
+  "l03/src/case-0102.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  5,
+  73,
+  "`Named.rel` is a lazy relation: awaiting it for each item loaded by `exprs.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { rel: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  5,
+  84
+ ],
+ [
+  "l03/src/case-0103.js",
+  "nitpicker/no-lazy-relation-in-loop",
+  2,
+  66,
+  "`Shipment.carrier` is a lazy relation: awaiting it for each item loaded by `shipments.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { carrier: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  2,
+  81
+ ],
+ [
+  "l03/src/case-0103.js",
+  "nitpicker/no-lazy-relation-in-loop",
+  2,
+  83,
+  "`Shipment.first` is a lazy relation: awaiting it for each item loaded by `shipments.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { first: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  2,
+  104
+ ],
+ [
+  "l03/src/case-0104.js",
+  "nitpicker/no-lazy-relation-in-loop",
+  2,
+  117,
+  "`Shipment.carrier` is a lazy relation: awaiting it for each item loaded by `shipments.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { carrier: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  2,
+  130
+ ],
+ [
+  "l03/src/case-0105.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  11,
+  97,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  11,
+  114
+ ],
+ [
+  "l03/src/case-0105.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  8,
+  9,
+  "`Order.customer` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { customer: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  8,
+  29
+ ],
+ [
+  "l03/src/case-0106.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  126,
+  "`Order.__under` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { __under: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  139
+ ],
+ [
+  "l03/src/case-0106.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  176,
+  "`Order.__under` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { __under: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  183
+ ],
+ [
+  "l03/src/case-0106.ts",
+  "nitpicker/no-lazy-relation-in-loop",
+  19,
+  190,
+  "`Order.__under` is a lazy relation: awaiting it for each item loaded by `orders.find()` runs one more query per item. Fetch it in that query: name it in `relations` (`relations: { __under: true }`) or join it with `leftJoinAndSelect`. An exception fits only when the loop reads it for a few items at most.",
+  19,
+  209
+ ]
+]
