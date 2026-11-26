@@ -25,7 +25,13 @@ import {
 } from '../../../../../shared/values/readers.mts';
 import { resolvedRulesets, rulesetReader, type ResolvedRule } from './pmd-catalog.mts';
 import { onlyFiles, renderedRuleset, type RulesetScope } from './pmd-render.mts';
-import { engineRule, portablePattern, ruleLevel, runsOnEngine, runsOnPmd } from './pmd-rule-parts.mts';
+import {
+  engineRule,
+  portablePattern,
+  ruleLevel,
+  runsOnEngine,
+  runsOnPmd,
+} from './pmd-rule-parts.mts';
 
 export type PmdEnginePlan = {
   readonly reportDir: string;

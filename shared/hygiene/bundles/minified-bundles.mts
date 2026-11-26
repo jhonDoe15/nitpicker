@@ -8,9 +8,9 @@ import { exceptionHint } from '../rules.mts';
 import type { RepositoryContext } from '../check-types.mts';
 import type { Finding } from '../../values/findings.mts';
 
-export const MINIFIED_MIN_BYTES = 20 * 1024;
-export const MINIFIED_AVERAGE_LINE = 500;
-export const MINIFIED_LONGEST_SHARE = 0.9;
+const MINIFIED_MIN_BYTES = 20 * 1024;
+const MINIFIED_AVERAGE_LINE = 500;
+const MINIFIED_LONGEST_SHARE = 0.9;
 const MAX_READ_BYTES = 16 * 1024 * 1024;
 const MIN_CODE_TOKENS = 20;
 
@@ -27,7 +27,7 @@ function lineShape(text: string): { count: number; longest: number } {
   return { count: lines.length, longest };
 }
 
-export function looksMinified(text: string): boolean {
+function looksMinified(text: string): boolean {
   const bytes = Buffer.byteLength(text);
   if (bytes < MINIFIED_MIN_BYTES) {
     return false;
