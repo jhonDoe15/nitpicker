@@ -1,4 +1,4 @@
-import { realpathSync } from 'node:fs';
+import { realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 export type ReportedFile = { readonly filePath: string; readonly full: string };
@@ -8,11 +8,7 @@ export type ReportedFiles = (filename: string) => readonly ReportedFile[];
 type RealPaths = { index?: ReadonlyMap<string, readonly string[]> };
 
 function realPathOf(file: string): string | undefined {
-  try {
-    return realpathSync(file);
-  } catch {
-    return undefined;
-  }
+  return statSync(file, { throwIfNoEntry: false }) === undefined ? undefined : realpathSync(file);
 }
 
 function realPathIndex(stage: string, listed: readonly string[]): Map<string, string[]> {
@@ -40,12 +36,6 @@ export function reportedFiles(stage: string, listed: readonly string[]): Reporte
     if (full.startsWith(`${stage}${path.sep}`)) {
       return [{ filePath: filename.replaceAll('\\', '/'), full }];
     }
-    const linked = linkedFiles(full);
-    if (linked.length === 0) {
-      process.stderr.write(
-        `oxlint reported a file outside its stage, so its diagnostics were left out: ${filename}\n`,
-      );
-    }
-    return linked;
+    return linkedFiles(full);
   };
 }
