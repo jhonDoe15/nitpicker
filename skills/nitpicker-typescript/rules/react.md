@@ -40,6 +40,9 @@ exception route in the message: write that form, don't work around the rule.
   returns a value the store keeps, not a new object or array (`nitpicker/react-no-unstable-store-subscribe`).
 - An effect that opens a `WebSocket`, `EventSource`, `BroadcastChannel`, worker, observer, `watchPosition` or a
   `requestAnimationFrame` loop returns a cleanup that closes it (`nitpicker/react-no-leaked-effect-resource`).
+- An effect that subscribes returns the unsubscribe function as its cleanup:
+  `useEffect(() => store.subscribe(onChange), [store, onChange])`, never a bare `store.subscribe(onChange);`
+  (`nitpicker/react-no-dropped-effect-handle`).
 - Component tests query through `screen` and assert what the user sees (text, roles, focus), never
   component state, instances or hook internals. Keep `fireEvent`, `user` calls and `render` out of
   `waitFor` callbacks, do not wait for a snapshot, and do not use a regex with the `g` flag in a query.

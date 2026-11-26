@@ -207,6 +207,11 @@ React effect resources: `nitpicker/react-no-leaked-effect-resource` (production 
 `ReportingObserver` that is created and never closed, a `navigator.geolocation.watchPosition` call whose id is never
 used, and a `requestAnimationFrame` loop that always schedules itself again and is never cancelled. A handle that is
 stored in a ref, passed on, returned or closed anywhere in the effect is left alone.
+`nitpicker/react-no-dropped-effect-handle` (same scope, type-aware) reports, in an effect callback that returns no
+cleanup, a `subscribe*`, `listen*`, `watch*`, `observe*`, `autorun*`, `addListener*`, `addEventListener` or `on[A-Z_]*`
+call whose result type is a `() => void` function or has `unsubscribe()` or `dispose()` and that is dropped or kept in
+a local the effect never reads. `once*` and
+`register*` calls, receivers created in the same effect and bounded RxJS streams are left alone.
 
 Rows changed in memory: `in-memory-update` in the Python preset reports rows loaded from a Django queryset or a
 SQLAlchemy query only to set the same values on each and write them back (`bulk_update`, `commit`), where one `update`
