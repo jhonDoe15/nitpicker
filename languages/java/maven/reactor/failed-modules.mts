@@ -7,10 +7,16 @@ import { MODULE_BUILD_FAILED_RULE as SHARED_MODULE_BUILD_FAILED_RULE } from '../
 import type { MavenModule } from '../typed/maven-values.mts';
 import type { JavaFinding } from '../../adapters/typed/java-values.mts';
 
-export type FailedModule = { readonly module: MavenModule; readonly reason: string | undefined };
+export type FailedModule = {
+  readonly module: MavenModule;
+  readonly reason: string | undefined;
+  readonly cause?: string | undefined;
+};
 
 const FAILED_GOAL =
-  /Failed to execute goal [\w.-]+:[\w.-]+:\S+ (?:\([^)\n]*\) )?on project (?<project>[\w.-]+):[^\n]*/gu;
+  /Failed to execute goal (?:[\w.-]+:[\w.-]+:\S+ (?:\([^)\n]*\) )?)?on project (?<project>[\w.-]+):[^\n]*/gu;
+const CAUSE_LINES = 5;
+const LISTED_MODULES = 10;
 const JAVA_BUILD_PLUGINS = new Set([
   'maven-compiler-plugin',
   'maven-surefire-plugin',
@@ -49,10 +55,29 @@ export function failedModules(
     return undefined;
   }
   const goals = failedGoals(error.message);
-  return unbuilt.map((module) => ({
-    module,
-    reason: goals.get(artifactIdOf(module))?.[0].replace(/\s*->\s*\[Help \d+\]\s*$/u, ''),
-  }));
+  const names = new Set(unbuilt.map(artifactIdOf));
+  const elsewhere = [...goals].filter(([project]) => !names.has(project));
+  const placed = goals.size > elsewhere.length;
+  const cause = placed
+    ? ''
+    : withoutHelp(
+        (elsewhere.length > 0
+          ? elsewhere.map(([, match]) => match[0])
+          : error.message.split('\n').filter((line) => line.startsWith('[ERROR]'))
+        )
+          .slice(0, CAUSE_LINES)
+          .join('\n'),
+      );
+  return unbuilt.map((module) => {
+    const reason = goals.get(artifactIdOf(module))?.[0];
+    return reason === undefined
+      ? { module, reason, ...(cause === '' ? {} : { cause }) }
+      : { module, reason: withoutHelp(reason) };
+  });
+}
+
+function withoutHelp(text: string): string {
+  return text.replaceAll(/\s*->\s*\[Help \d+\]\s*$/gmu, '');
 }
 
 function hint(reason: string): string {
@@ -65,6 +90,50 @@ function hint(reason: string): string {
         'nitpicker.config.json, or run nitpicker on the other modules, to check the rest without it.';
 }
 
+function failedFinding(projectRoot: string, module: MavenModule, reason: string): JavaFinding {
+  const name = artifactIdOf(module);
+  return {
+    tool: 'maven',
+    rule: MODULE_BUILD_FAILED_RULE,
+    path: relativeTo(projectRoot, module.basedir) || '.',
+    identity: `${MODULE_BUILD_FAILED_RULE}:${name}`,
+    message:
+      `Maven could not build module ${name}, so its checks did not run; the other modules were checked. ` +
+      `Maven: ${reason.replace(/^\[ERROR\] /u, '')}.${hint(reason)}`,
+    classification: 'tool-error',
+  };
+}
+
+function listed(names: readonly string[]): string {
+  const more = names.length - LISTED_MODULES;
+  return names.slice(0, LISTED_MODULES).join(', ') + (more > 0 ? ` and ${String(more)} more` : '');
+}
+
+function skippedFinding(
+  skipped: readonly FailedModule[],
+  failedNames: readonly string[],
+): JavaFinding {
+  const names = skipped.map(({ module }) => artifactIdOf(module));
+  const causes = [
+    ...new Set(skipped.map(({ cause }) => cause).filter((cause) => cause !== undefined)),
+  ];
+  const why =
+    failedNames.length > 0
+      ? `a module they depend on failed (${failedNames.join(', ')})`
+      : `a module they depend on failed. Maven: ${causes.join('\n') || 'see the Maven output'}`;
+  const count = names.length === 1 ? '1 module' : `${String(names.length)} modules`;
+  return {
+    tool: 'maven',
+    rule: MODULE_BUILD_FAILED_RULE,
+    path: '.',
+    identity: `${MODULE_BUILD_FAILED_RULE}:dependents`,
+    message:
+      `Maven did not build ${count} (${listed(names)}), so their checks did not run; the other modules were ` +
+      `checked. They were skipped because ${why}`,
+    classification: 'tool-error',
+  };
+}
+
 export function failedModuleFindings(
   failed: readonly FailedModule[],
   projectRoot: string,
@@ -72,19 +141,11 @@ export function failedModuleFindings(
   const failedNames = failed
     .filter(({ reason }) => reason !== undefined)
     .map(({ module }) => artifactIdOf(module));
-  return failed.map(({ module, reason }) => {
-    const name = artifactIdOf(module);
-    const cause =
-      reason === undefined
-        ? `it was not built because a module it depends on failed (${failedNames.join(', ') || 'see the Maven output'})`
-        : `${reason.replace(/^\[ERROR\] /u, '')}.${hint(reason)}`;
-    return {
-      tool: 'maven',
-      rule: MODULE_BUILD_FAILED_RULE,
-      path: relativeTo(projectRoot, module.basedir) || '.',
-      identity: `${MODULE_BUILD_FAILED_RULE}:${name}`,
-      message: `Maven could not build module ${name}, so its checks did not run; the other modules were checked. Maven: ${cause}`,
-      classification: 'tool-error',
-    };
-  });
+  const skipped = failed.filter(({ reason }) => reason === undefined);
+  return [
+    ...failed.flatMap(({ module, reason }) =>
+      reason === undefined ? [] : [failedFinding(projectRoot, module, reason)],
+    ),
+    ...(skipped.length === 0 ? [] : [skippedFinding(skipped, failedNames)]),
+  ];
 }
