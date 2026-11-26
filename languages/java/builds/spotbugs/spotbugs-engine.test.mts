@@ -55,7 +55,7 @@ describe('spotbugsOnEngine', () => {
 
     expect(added.slice(0, 3)).toStrictEqual([
       '-omitVisitors',
-      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,DontCatchNullPointerException,WrongMapIterator',
+      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull',
       '-exclude',
     ]);
     expect(sarifResults(plan).map((result) => fieldOf(result, 'ruleId'))).toStrictEqual([
@@ -144,10 +144,10 @@ describe('spotbugsOnEngine', () => {
 
     expect(added.slice(0, 2)).toStrictEqual([
       '-omitVisitors',
-      'CloneIdiom,ConstructorThrow,DontCatchNullPointerException,WrongMapIterator',
+      'CloneIdiom,ConstructorThrow,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull',
     ]);
     expect(plain[1]).toBe(
-      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,DontCatchNullPointerException,WrongMapIterator',
+      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull',
     );
     expect(started.map(({ argumentList }) => argumentList.includes('--lombok'))).toStrictEqual([
       true,

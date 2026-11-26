@@ -59,6 +59,8 @@ export const ON_ENGINE: readonly string[] = [
   'BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS',
   'SE_BAD_FIELD',
   'SE_NO_SERIALVERSIONID',
+  'NP_BOOLEAN_RETURN_NULL',
+  'NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT',
 ];
 const LOMBOK_WRITES = 'SING_';
 const DETECTORS: Readonly<Record<string, readonly string[]>> = {
@@ -74,6 +76,7 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   ConstructorThrow: ['CT_CONSTRUCTOR_THROW'],
   DontCatchNullPointerException: ['DCN_NULLPOINTER_EXCEPTION'],
   WrongMapIterator: [WRONG_MAP_ITERATOR],
+  BooleanReturnNull: ['NP_BOOLEAN_RETURN_NULL'],
   FindJSR166LockMonitorenter: [
     LOCK_MONITORENTER,
     UTIL_MONITORENTER,

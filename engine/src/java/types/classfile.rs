@@ -434,7 +434,7 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                 }
                 found.starts |= kind.ends_with(b"/Initializer;") || starter(kind);
                 found.nullable |= kind.ends_with(b"/Nullable;") || kind.ends_with(b"/CheckForNull;") || kind.ends_with(b"/ParametricNullness;");
-                found.check_for_null |= kind.ends_with(b"/CheckForNull;");
+                found.check_for_null |= matches!(kind, b"Ljavax/annotation/CheckForNull;" | b"Ledu/umd/cs/findbugs/annotations/CheckForNull;");
                 if kind.windows(4).any(|part| part == b"Null") && kind != b"Ljavax/annotation/Nullable;" {
                     found.nickname = Some(kind);
                 }

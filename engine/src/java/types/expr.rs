@@ -1514,7 +1514,7 @@ impl<'a> Resolver<'a> {
         self.target(lambda, true)
     }
 
-    fn returned_type(&self, at: Node) -> Option<Type> {
+    pub fn returned_type(&self, at: Node) -> Option<Type> {
         let scope = crate::engine::source::ancestor(at, &["lambda_expression", "method_declaration", "class_body"])?;
         match scope.kind() {
             "method_declaration" => {

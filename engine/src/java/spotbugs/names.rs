@@ -65,7 +65,6 @@ pub fn anonymous(context: &Context, class: &str, creation: Node) -> String {
 
 /// `pkg.Outer.lambda$method$0(A, B)`: the hidden method that holds the body of a lambda. Not known for a
 /// serializable lambda.
-#[allow(dead_code)]
 pub fn lambda(context: &Context, lambda: Node) -> Option<String> {
     let compiled = context.compiled();
     let synthetic = compiled.lambda(lambda)?;
