@@ -1,4 +1,5 @@
-import { rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { trackTemporaryPath, untrackTemporaryPath } from '../typed/tooling.mts';
@@ -17,6 +18,7 @@ import { withEngineLint } from './run/engine-pass.mts';
 import { mergeResults } from './run/merged-results.mts';
 import { type LintTiming, type StageRun, lintConfigs, settledBeside } from './run/stage-lint.mts';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
+import { seedRepositoryTree } from '../../../../shared/project-files/seeded/seeded-trees.mts';
 import { oxlintBinary, spawnJson } from './oxlint-process.mts';
 import type { Environment } from '../../../../shared/processes/environment.mts';
 import {
@@ -50,6 +52,7 @@ type AttemptContext = LintTiming & {
   readonly native: { readonly nativeRules: NativeRules };
   readonly bridgedRules: Set<string>;
   readonly residualRuns: Map<string, Promise<LintResult[]>>;
+  readonly treeFile: string;
 };
 
 type Accepted = { readonly results: LintResult[]; readonly residual: LintResult[] };
@@ -74,6 +77,8 @@ export async function lintWithOxlint({
   const files = plan.groups.flatMap((group) => group.files);
   const { root, stage } = createStage(options.projectRoot, projectConfigPath);
   trackTemporaryPath(root);
+  const treeRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-tree-'));
+  trackTemporaryPath(treeRoot);
   try {
     if (projectConfigPath !== undefined) {
       hideNestedTypeScriptConfigs(stage, options.projectRoot, files);
@@ -96,6 +101,7 @@ export async function lintWithOxlint({
             ...oxlintDirectiveLocations(directiveFiles),
           ]),
           directiveFiles,
+          treeFile: path.join(treeRoot, 'tree.json'),
         }),
     );
     return mergeResults([...results, ...inlineConfig.results, ...residual]).map((result) => ({
@@ -103,8 +109,10 @@ export async function lintWithOxlint({
       filePath: path.join(options.projectRoot, result.filePath),
     }));
   } finally {
-    rmSync(root, { recursive: true, force: true });
-    untrackTemporaryPath(root);
+    for (const temporary of [root, treeRoot]) {
+      rmSync(temporary, { recursive: true, force: true });
+      untrackTemporaryPath(temporary);
+    }
   }
 }
 
@@ -150,6 +158,8 @@ async function lintAttempt({
   bridgedRules,
   neutralized,
   directiveFiles,
+  treeFile,
+  environment,
   ...run
 }: AttemptContext): Promise<Outcome> {
   const translation = translatePlan(plan, { ...native, bridgedRules });
@@ -161,8 +171,9 @@ async function lintAttempt({
     directiveFiles,
     ruleNames: translation.ruleNames,
   });
+  const listedEnvironment = { ...environment, ...seedRepositoryTree(stage, treeFile) };
   try {
-    checkNativeConfigs({ stage, configs, sampleFile, ...run });
+    checkNativeConfigs({ stage, configs, sampleFile, environment: listedEnvironment, ...run });
   } catch (error) {
     bridgeRejectedRules(error, translation.ruleNames, bridgedRules);
     return { results: undefined };
@@ -183,6 +194,7 @@ async function lintAttempt({
     stage,
     configs,
     naming,
+    environment: listedEnvironment,
     ...run,
   });
 }
