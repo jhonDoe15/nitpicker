@@ -222,3 +222,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   or create it on first use in a lazy holder
   (`private static final class Holder { static final Db INSTANCE = new Db(); }`). Constants,
   loggers, `Pattern.compile` and collections stay static.
+- Memory that grows with the input: keep a value worked out for one element of a loop in a local of
+  the loop body, not in a map field that is never emptied (`pmd/PerItemCacheGrowth`); give a `java`
+  command started per element or task a heap goal (`-XX:GCTimeRatio=4`) next to its `-Xmx`
+  (`pmd/JvmHeapWithoutGoal`); and write or read a list that grows with the input one element at a
+  time with `JsonGenerator`, `SequenceWriter` or `MappingIterator`, not as one string
+  (`pmd/WholeListJsonText`).
