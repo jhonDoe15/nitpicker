@@ -244,7 +244,7 @@ fn semicolons(context: &Context, body: Node, at: usize, places: &[usize]) {
 
 pub fn unnecessary_semicolon(context: &Context, node: Node) {
     let empty: Vec<Node> = match node.kind() {
-        "block" | "constructor_body" | "switch_block_statement_group" => children(node),
+        "block" | "constructor_body" | "switch_block_statement_group" | "program" => children(node),
         "if_statement" => ["consequence", "alternative"]
             .iter()
             .filter_map(|field| node.child_by_field_name(field))
@@ -264,7 +264,7 @@ pub fn unnecessary_semicolon(context: &Context, node: Node) {
         .filter(|statement| statement.kind() == ";")
     {
         let (start, end) = (statement.start_byte(), statement.end_byte());
-        let fix = if matches!(node.kind(), "block" | "constructor_body" | "switch_block_statement_group") {
+        let fix = if matches!(node.kind(), "block" | "constructor_body" | "switch_block_statement_group" | "program") {
             delete_with_leading_whitespace(&context.file.text, start, end)
         } else {
             Fix::replace(start, end, "{}")

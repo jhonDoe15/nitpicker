@@ -13,6 +13,12 @@ fn counted(rows: impl IntoIterator<Item = Row>) -> BTreeMap<Row, usize> {
     counts
 }
 
+/// The first line of the message and Error Prone's "Did you mean" sentence, the parts a Java run shows.
+fn shown(message: &str) -> String {
+    let first = message.lines().next().unwrap_or_default();
+    message.find("\n  Did you mean ").map_or(first.to_string(), |at| format!("{first}{}", &message[at..]))
+}
+
 #[test]
 fn error_prone_messages_and_suggestions_match_error_prone() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
@@ -35,7 +41,7 @@ fn error_prone_messages_and_suggestions_match_error_prone() {
             finding["rule"].as_str().expect("rule").to_string(),
             finding["line"].as_u64().expect("line"),
             finding["column"].as_u64().expect("column"),
-            finding["message"].as_str().expect("message").to_string(),
+            shown(finding["message"].as_str().expect("message")),
         )
     }));
     let listed = std::fs::read_to_string(root.join("expected").join("errorprone-messages.json")).expect("expected");

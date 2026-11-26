@@ -34,7 +34,9 @@ pub fn unnecessarily_used_value(context: &Context, node: Node) {
                 if !unused_name(context.text(name)) || !ignorable(context, value) {
                     continue;
                 }
-                let mut end = if at + 1 < declarators.len() { declarator.end_byte() } else { node.end_byte() };
+                let in_for = crate::engine::source::parent(node).is_some_and(|holder| holder.kind() == "for_statement");
+                let last = if in_for { declarator.end_byte() } else { node.end_byte() };
+                let mut end = if at + 1 < declarators.len() { declarator.end_byte() } else { last };
                 if context.file.text[end..].starts_with(',') {
                     end += 1;
                 }

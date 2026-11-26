@@ -15,6 +15,7 @@ mod reflection;
 mod buffers;
 mod ignorable;
 mod collections;
+mod built_collections;
 mod compare_zero;
 mod constants;
 mod depann;
@@ -57,6 +58,17 @@ mod unused_methods;
 mod immutable;
 mod immutable_known;
 mod keep;
+mod lexical;
+mod types;
+mod strings;
+mod clash;
+mod canonical;
+mod doc_throws;
+mod default_charset;
+mod builders;
+mod sync;
+mod charsets;
+mod shape;
 mod boxed;
 mod boxed_fixes;
 mod exposed_fixes;
@@ -107,6 +119,10 @@ impl Context<'_> {
         if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == check)) || self.suppressed(check, matched) {
             return;
         }
+        self.report_always(check, offset, &format!("{message}{}", fixes::sentence(&self.file.text, fixes)));
+    }
+    /// Reports at a raw position with the sentence for the fixes, without looking for a suppression.
+    pub fn report_always_fixed(&self, check: &'static str, offset: usize, message: &str, fixes: &[fixes::Fix]) {
         self.report_always(check, offset, &format!("{message}{}", fixes::sentence(&self.file.text, fixes)));
     }
     /// Reports without looking for a suppression: some checks report from the file as a whole.
@@ -206,7 +222,7 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["JdkObsolete"], obsolete::jdk_obsolete),
     (&["BooleanLiteral"], targets::boolean_literal),
     (&["IdentifierName"], naming::identifier_name),
-    (&["EmptyBlockTag", "MissingSummary", "InvalidBlockTag", "UnescapedEntity", "EscapedEntity", "InvalidInlineTag"], javadoc::javadoc),
+    (&["EmptyBlockTag", "MissingSummary", "InvalidBlockTag", "UnescapedEntity", "EscapedEntity", "InvalidInlineTag", "InvalidThrows"], javadoc::javadoc),
     (&["AnnotationPosition"], annotated::annotation_position),
     (&["RedundantOverride"], redundant::redundant_override),
     (&["CheckedExceptionNotThrown"], throws::checked_exception_not_thrown),
@@ -257,6 +273,25 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["StringConcatToTextBlock"], text_blocks::string_concat_to_text_block),
     (&["UnnecessaryMethodReference"], references::unnecessary_method_reference),
     (&["AmbiguousMethodReference"], references::ambiguous_method_reference),
+    (&["NegativeBoolean"], lexical::negative_boolean),
+    (&["NegativeBoolean"], lexical::negative_boolean_for_each),
+    (&["ShortCircuitBoolean"], lexical::short_circuit_boolean),
+    (&["RedundantControlFlow"], lexical::redundant_control_flow),
+    (&["LoopOverCharArray"], lexical::loop_over_char_array),
+    (&["HidingField"], types::hiding_field),
+    (&["AvoidCommonTypeNames"], types::avoid_common_type_names),
+    (&["UnnecessaryLongToIntConversion"], types::unnecessary_long_to_int),
+    (&["LiteByteStringUtf8"], types::lite_byte_string_utf8),
+    (&["URLEqualsHashCode"], types::url_equals_hash_code),
+    (&["UnusedTypeParameter"], types::unused_type_parameter),
+    (&["StringCharset"], strings::string_charset),
+    (&["FunctionalInterfaceClash"], clash::functional_interface_clash),
+    (&["NonCanonicalType"], canonical::non_canonical_type),
+    (&["DefaultCharset"], default_charset::default_charset),
+    (&["UnnecessaryStringBuilder"], builders::unnecessary_string_builder),
+    (&["UnsynchronizedOverridesSynchronized"], sync::unsynchronized_overrides_synchronized),
+    (&["UndefinedEquals"], strings::undefined_equals),
+    (&["DoubleBraceInitialization"], built_collections::double_brace_initialization),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
@@ -268,6 +303,8 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["AlmostJavadoc"], docplaced::almost_javadoc),
     (&["InlineTrivialConstant"], constants::inline_trivial_constant),
     (&["StronglyTypeTime"], strong_time::strongly_type_time),
+    (&["UnicodeEscape"], lexical::unicode_escape),
+    (&["MultipleTopLevelClasses"], lexical::multiple_top_level_classes),
 ];
 
 pub struct ErrorProne;

@@ -178,7 +178,8 @@ fn chain_class(context: &Context, node: Node) -> Option<String> {
         }
         at
     };
-    if context.resolver.is_variable(leftmost, first) || context.resolver.class_name(node, first).is_some() {
+    let typed = node.kind() == "scoped_type_identifier";
+    if (!typed && context.resolver.is_variable(leftmost, first)) || context.resolver.class_name(node, first).is_some() {
         return None;
     }
     let index = context.resolver.index;

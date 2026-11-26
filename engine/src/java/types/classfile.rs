@@ -703,6 +703,9 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
     if own_private {
         class_flags |= flag::PRIVATE;
     }
+    if found.inner.iter().any(|(class, access)| access & 0x0004 != 0 && class_name(*class).as_deref() == Some(name.as_str())) {
+        class_flags = (class_flags & !flag::PUBLIC) | flag::PROTECTED;
+    }
     let permitted: Option<Vec<String>> = found.permitted.map(|listed| listed.into_iter().filter_map(&class_name).collect());
     if permitted.is_some() {
         class_flags |= flag::SEALED;
