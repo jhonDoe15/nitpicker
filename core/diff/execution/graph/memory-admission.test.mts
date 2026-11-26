@@ -124,14 +124,28 @@ describe('a 15,300-file project on a 4-core, 10 GB budget', () => {
     expect(
       withNodeHeap(
         { NITPICKER_MAX_PARALLEL: '4' },
-        { memory: 16 * GIB, defaultLimit: 2 * GIB },
-        11_750,
+        { budget: { memory: 16 * GIB, defaultLimit: 2 * GIB }, admittedMegabytes: 11_750 },
       ),
     ).toEqual({
       NITPICKER_MAX_PARALLEL: '4',
       NODE_OPTIONS: '--max-old-space-size=11750 --max-semi-space-size=64',
     });
   });
+
+  it.each([{ deno: '2.9.6' }, { bun: '1.3.0' }])(
+    'leaves the young generation alone outside Node (%o), where workers fail to start with it',
+    (versions) => {
+      expect(
+        withNodeHeap(
+          { NODE_OPTIONS: '--max-old-space-size=4096' },
+          {
+            budget: { memory: 16 * GIB, defaultLimit: 2 * GIB },
+            versions: { node: '24.0.0', ...versions },
+          },
+        ),
+      ).toEqual({ NODE_OPTIONS: '--max-old-space-size=4096' });
+    },
+  );
 });
 
 describe('analyzer memory errors', () => {

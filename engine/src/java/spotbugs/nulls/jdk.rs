@@ -62,6 +62,12 @@ pub fn returns_null(index: &TypeIndex, call: &Call) -> bool {
     found(index, call, &TABLE.returns).is_some()
 }
 
+/// `toString()` and `getClass()`: SpotBugs takes their result as never null on any object, also where a class of
+/// the run overrides `toString`.
+pub fn object_never_null(call: &Call) -> bool {
+    !call.method.is_static && call.method.parameters.is_empty() && matches!(call.method.name.as_str(), "toString" | "getClass")
+}
+
 /// Whether SpotBugs takes the result of a JDK method as never null.
 pub fn never_null(index: &TypeIndex, call: &Call) -> bool {
     found(index, call, &TABLE.never_null).is_some()

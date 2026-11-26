@@ -51,10 +51,10 @@ const KNEX_WRITES = new Set([
   'increment',
   'decrement',
 ]);
-const KNEX_TABLE_STEPS = new Set(['table', 'from', 'into']);
+export const KNEX_TABLE_STEPS: ReadonlySet<string> = new Set(['table', 'from', 'into']);
 const DRIZZLE_WRITES = new Set([INSERT, UPDATE, DELETE]);
-const DRIZZLE_READS = new Set(['select', 'selectDistinct']);
-const DRIZZLE_FIND = new Set(['findFirst', 'findMany']);
+export const DRIZZLE_READS: ReadonlySet<string> = new Set(['select', 'selectDistinct']);
+export const DRIZZLE_FIND: ReadonlySet<string> = new Set(['findFirst', 'findMany']);
 const QUERY_BUILDER_WRITES = new Set([INSERT, UPDATE, DELETE, 'softDelete', 'restore']);
 const QUERY_BUILDER_TABLES = new Set(['into', 'from', UPDATE]);
 const QUERY_BUILDER_READS = new Set([

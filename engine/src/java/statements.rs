@@ -128,7 +128,8 @@ fn avoid_star_import(file: &SourceFile, node: Node, out: &mut Vec<Finding>) {
             .map(|child| file.text_of(child))
             .unwrap_or_default();
         let message = format!("Using the '.*' form of import should be avoided - {name}.*.");
-        report(out, file, node, "AvoidStarImport", message);
+        let dot = children(node).into_iter().rev().find(|child| child.kind() == ".").unwrap_or(node);
+        report(out, file, dot, "AvoidStarImport", message);
     }
 }
 

@@ -1,6 +1,6 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { closeSync, openSync, readFileSync, writeSync } from 'node:fs';
 import { ancestorDirectories } from '../../filesystem.mts';
-import { fieldOf, parseJson, textOf, textsOf } from '../../values/readers.mts';
+import { fieldOf, parseJson, textOf } from '../../values/readers.mts';
 import type { TreeListing } from '../project-files-types.mts';
 import { loadTree } from '../repository-listing.mts';
 import { hasRepositoryMarker } from '../tree-walk.mts';
@@ -14,15 +14,26 @@ const source: { file: string | undefined; seeded: Seeded | undefined } = {
   seeded: undefined,
 };
 
+function recordOf(line: string): { kind: string; value: string } {
+  const record = parseJson(line);
+  return { kind: textOf(fieldOf(record, 'kind')), value: textOf(fieldOf(record, 'value')) };
+}
+
 function readSeed(file: string): Seeded {
-  const value = parseJson(readFileSync(file, 'utf8'));
+  const records = readFileSync(file, 'utf8')
+    .split(/\r\n|\r|\n/u)
+    .filter((line) => line.length > 0)
+    .map(recordOf);
+  function valuesOf(kind: string): string[] {
+    return records.filter((record) => record.kind === kind).map((record) => record.value);
+  }
   return {
-    top: textOf(fieldOf(value, 'top')),
+    top: valuesOf('top')[0] ?? '',
     tree: {
-      files: textsOf(fieldOf(value, 'files')),
-      links: new Set(textsOf(fieldOf(value, 'links'))),
-      submodules: new Set(textsOf(fieldOf(value, 'submodules'))),
-      gitPaths: textsOf(fieldOf(value, 'gitPaths')),
+      files: valuesOf('file'),
+      links: new Set(valuesOf('link')),
+      submodules: new Set(valuesOf('submodule')),
+      gitPaths: valuesOf('gitPath'),
     },
   };
 }
@@ -40,19 +51,32 @@ export function seededTree(top: string): TreeListing | undefined {
   return source.seeded.top === top ? source.seeded.tree : undefined;
 }
 
+function writeRecords(handle: number, top: string, tree: TreeListing): void {
+  const lists: [string, Iterable<string>][] = [
+    ['top', [top]],
+    ['file', tree.files],
+    ['link', tree.links],
+    ['submodule', tree.submodules],
+    ['gitPath', tree.gitPaths],
+  ];
+  for (const [kind, values] of lists) {
+    for (const value of values) {
+      writeSync(handle, `${JSON.stringify({ kind, value })}\n`);
+    }
+  }
+}
+
 export function seedRepositoryTree(directory: string, file: string): Record<string, string> {
   const top = ancestorDirectories(directory).find(hasRepositoryMarker);
   const tree = top === undefined ? undefined : loadTree(top);
   if (top === undefined || tree === undefined) {
     return {};
   }
-  const seed = {
-    top,
-    files: tree.files,
-    links: [...tree.links],
-    submodules: [...tree.submodules],
-    gitPaths: tree.gitPaths,
-  };
-  writeFileSync(file, JSON.stringify(seed));
+  const handle = openSync(file, 'w');
+  try {
+    writeRecords(handle, top, tree);
+  } finally {
+    closeSync(handle);
+  }
   return { [SEEDED_TREE_VARIABLE]: file };
 }

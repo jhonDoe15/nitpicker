@@ -11,11 +11,18 @@ fn found_in(case: &Path, name: &str) -> BTreeSet<Row> {
 }
 
 fn found_with(case: &Path, name: &str, key: &str) -> BTreeSet<Row> {
-    let out = std::env::temp_dir().join(format!("nitpicker-engine-spotbugs-{name}-{key}-{}.json", std::process::id()));
+    found_listed(case, name, key).into_iter().collect()
+}
+
+fn found_listed(case: &Path, name: &str, key: &str) -> Vec<Row> {
+    static RUNS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let run = RUNS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let out = std::env::temp_dir().join(format!("nitpicker-engine-spotbugs-{name}-{key}-{}-{run}.json", std::process::id()));
     let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
         .arg(case)
         .args(["--rules", "_SpotBugs", "--out"])
         .arg(&out)
+        .args(name.starts_with("lombok").then_some("--lombok"))
         .status()
         .expect("engine runs");
     assert!(status.success());
@@ -49,7 +56,7 @@ fn patterns_report_what_spotbugs_reports() {
     let missed: Vec<&Row> = expected.difference(&found).collect();
     let extra: Vec<&Row> = found.difference(&expected).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(expected.iter().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 16);
+    assert_eq!(expected.iter().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 40);
 }
 
 /// SpotBugs names the variable a stored value came from; `tests/expected/spotbugs-variables.json` holds the names
@@ -68,4 +75,24 @@ fn stores_name_the_variable_spotbugs_names() {
     let missed: Vec<&Row> = expected.difference(&found).collect();
     let extra: Vec<&Row> = found.difference(&expected).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
+}
+
+/// SpotBugs' SARIF report names a place for each finding: `tests/expected/spotbugs-places.json` holds them as
+/// `kind:fully qualified name`, one row per SARIF result, for the fixtures it lists. The engine adds the package of
+/// the file after a `|` when it is not the package of the place.
+#[test]
+fn findings_name_the_place_spotbugs_sarif_names() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
+    let mut expected: Vec<Row> = serde_json::from_str(&std::fs::read_to_string(root.join("expected").join("spotbugs-places.json")).expect("expected")).expect("rows");
+    expected.sort();
+    let cases: BTreeSet<String> = expected.iter().filter_map(|row| row.0.split('/').next().map(String::from)).collect();
+    let rules: BTreeSet<String> = expected.iter().map(|row| row.1.clone()).collect();
+    let mut found: Vec<Row> = Vec::new();
+    for name in &cases {
+        let case = root.join("fixtures").join("spotbugs").join(name);
+        let listed = found_listed(&case, name, "symbol").into_iter().filter(|row| rules.contains(&row.1));
+        found.extend(listed.map(|(file, rule, line, place)| (file, rule, line, place.split('|').next().unwrap_or_default().to_string())));
+    }
+    found.sort();
+    assert_eq!(found, expected);
 }

@@ -2,7 +2,7 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
 import { resolveConstant, type SourceContext } from '../analysis/constant-resolution.mts';
 import { ASSERTION_FORMS, unwrapOf } from '../typed/syntax-views.mts';
-import { foldTree, nameOf } from '../typed/node-views.mts';
+import { compositeOperands, foldTree, nameOf } from '../typed/node-views.mts';
 
 const PATH_JOINS = new Set(['join', 'resolve']);
 const WRAPPERS = new Set(['String', 'Number', 'BigInt']);
@@ -84,11 +84,9 @@ function timeChildren(value: TSESTree.Node): TSESTree.Node[] {
   if (isClockCall(value) || isNewDate(value) || isFixedTime(value)) {
     return [];
   }
-  if (value.type === AST_NODE_TYPES.TemplateLiteral) {
-    return value.expressions;
-  }
-  if (value.type === AST_NODE_TYPES.BinaryExpression) {
-    return [value.left, value.right];
+  const composite = compositeOperands(value);
+  if (composite !== undefined) {
+    return composite;
   }
   if (value.type === AST_NODE_TYPES.UnaryExpression && ['+', '-'].includes(value.operator)) {
     return [value.argument];

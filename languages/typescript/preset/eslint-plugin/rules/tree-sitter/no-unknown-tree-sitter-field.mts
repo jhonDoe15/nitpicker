@@ -4,7 +4,8 @@ import { nameOf } from '../typed/node-views.mts';
 import { literalText, narrowedTypes } from './field-narrowing.mts';
 import { grammarFieldsOf, projectGrammarPackages, type GrammarFields } from './grammar-fields.mts';
 import {
-  grammarPackagesIn,
+  grammarPackagesInSource,
+  grammarPackagesInWasm,
   isTreeSitterBinding,
   sourceOf,
   stringText,
@@ -55,8 +56,8 @@ function candidatePackages(
   directory: string,
 ): string[] {
   const own = [
-    ...sources.flatMap((text) => grammarPackagesIn(text, true)),
-    ...literals.flatMap((text) => grammarPackagesIn(text, false)),
+    ...sources.flatMap((text) => grammarPackagesInSource(text)),
+    ...literals.flatMap((text) => grammarPackagesInWasm(text)),
   ];
   return own.length > 0 ? own : projectGrammarPackages(directory);
 }
@@ -84,6 +85,65 @@ function isUnknown(
   return grammars.every((grammar) => !grammar.all.has(lookup.field));
 }
 
+type Facts = {
+  readonly sources: string[];
+  readonly literals: string[];
+  readonly lookups: Lookup[];
+  usesTreeSitter: boolean;
+};
+
+type UnknownFieldContext = Readonly<TSESLint.RuleContext<'unknownField', []>>;
+
+function recordModule(facts: Facts, node: TSESTree.Node): void {
+  const source = sourceOf(node);
+  if (source !== undefined) {
+    facts.usesTreeSitter ||= isTreeSitterBinding(source);
+    facts.sources.push(source);
+  }
+}
+
+function recordText(facts: Facts, node: TSESTree.Node): void {
+  const text = stringText(node);
+  if (text !== undefined) {
+    facts.literals.push(text);
+  }
+}
+
+function recordLookup(facts: Facts, lookup: Lookup | undefined): void {
+  if (lookup !== undefined) {
+    facts.lookups.push(lookup);
+  }
+}
+
+function grammarsOf(facts: Facts, directory: string): GrammarFields[] {
+  return candidatePackages(facts.sources, facts.literals, directory).flatMap((name) => {
+    const fields = grammarFieldsOf(directory, name);
+    return fields === undefined ? [] : [fields];
+  });
+}
+
+function reportUnknownFields(context: UnknownFieldContext, facts: Facts): void {
+  if (!facts.usesTreeSitter || facts.lookups.length === 0) {
+    return;
+  }
+  const directory = path.dirname(path.resolve(context.filename));
+  const grammars = grammarsOf(facts, directory);
+  if (grammars.length === 0) {
+    return;
+  }
+  for (const lookup of facts.lookups) {
+    const types = narrowedTypes(lookup.node, lookup.receiver, context.sourceCode);
+    if (isUnknown(lookup, grammars, types)) {
+      const where = types.length === 0 ? '' : ` on "${types.join('", "')}"`;
+      context.report({
+        node: lookup.node,
+        messageId: 'unknownField',
+        data: { field: lookup.field, where },
+      });
+    }
+  }
+}
+
 export const rule: TSESLint.RuleModule<'unknownField'> = {
   meta: {
     type: 'problem',
@@ -97,71 +157,27 @@ export const rule: TSESLint.RuleModule<'unknownField'> = {
     },
   },
   create(context) {
-    const { sourceCode } = context;
-    const sources: string[] = [];
-    const literals: string[] = [];
-    const lookups: Lookup[] = [];
-    let usesTreeSitter = false;
-    const visitModule = (node: TSESTree.Node): void => {
-      const source = sourceOf(node);
-      if (source !== undefined) {
-        usesTreeSitter ||= isTreeSitterBinding(source);
-        sources.push(source);
-      }
-    };
+    const facts: Facts = { sources: [], literals: [], lookups: [], usesTreeSitter: false };
+    function visitModule(node: TSESTree.Node): void {
+      recordModule(facts, node);
+    }
+    function visitText(node: TSESTree.Node): void {
+      recordText(facts, node);
+    }
     return {
       ImportDeclaration: visitModule,
       ImportExpression: visitModule,
-      Literal(node) {
-        const text = stringText(node);
-        if (text !== undefined) {
-          literals.push(text);
-        }
-      },
-      TemplateElement(node) {
-        const text = stringText(node);
-        if (text !== undefined) {
-          literals.push(text);
-        }
-      },
+      Literal: visitText,
+      TemplateElement: visitText,
       CallExpression(node) {
-        visitModule(node);
-        const lookup = fieldLookup(node);
-        if (lookup !== undefined) {
-          lookups.push(lookup);
-        }
+        recordModule(facts, node);
+        recordLookup(facts, fieldLookup(node));
       },
       BinaryExpression(node) {
-        const lookup = cursorLookup(node);
-        if (lookup !== undefined) {
-          lookups.push(lookup);
-        }
+        recordLookup(facts, cursorLookup(node));
       },
       'Program:exit'() {
-        if (!usesTreeSitter || lookups.length === 0) {
-          return;
-        }
-        const directory = path.dirname(path.resolve(context.filename));
-        const grammars = candidatePackages(sources, literals, directory).flatMap((name) => {
-          const fields = grammarFieldsOf(directory, name);
-          return fields === undefined ? [] : [fields];
-        });
-        if (grammars.length === 0) {
-          return;
-        }
-        for (const lookup of lookups) {
-          const types = narrowedTypes(lookup.node, lookup.receiver, sourceCode);
-          if (isUnknown(lookup, grammars, types)) {
-            context.report({
-              node: lookup.node,
-              messageId: 'unknownField',
-              data: {
-                field: lookup.field,
-                where: types.length === 0 ? '' : ` on "${types.join('", "')}"`,
-              },
-            });
-          }
-        }
+        reportUnknownFields(context, facts);
       },
     };
   },

@@ -1,18 +1,25 @@
 //! SpotBugs bug patterns rebuilt for the engine from the documented meaning of each pattern and from what
 //! SpotBugs 4.9.8 reports on test code: same pattern name, line and message, read from source instead of class files.
+mod attributes;
 mod calls;
+mod classes;
 mod constructors;
+mod equality;
 mod expose;
 mod fields;
 mod handlers;
 mod held;
 mod flow;
+mod folds;
 mod known;
 mod lombok;
+mod methods;
 mod mutable;
 mod names;
 mod nulls;
 mod order;
+mod serial;
+pub mod place;
 mod observed;
 mod statements;
 mod stores;
@@ -49,6 +56,8 @@ pub struct Context<'a> {
     compiled: std::cell::OnceCell<crate::java::javac::Names<'a>>,
     /// How many stores the file makes into each field, worked out once.
     pub store_counts: std::cell::OnceCell<HashMap<(String, String), usize>>,
+    /// SE_BAD_FIELD findings that wait for the classes the whole run knows.
+    pub serial: RefCell<Vec<serial::Pending>>,
 }
 
 impl<'a> Context<'a> {
@@ -83,6 +92,7 @@ impl<'a> Context<'a> {
             out,
             compiled: std::cell::OnceCell::new(),
             store_counts: std::cell::OnceCell::new(),
+            serial: RefCell::new(Vec::new()),
         };
         (context, declared)
     }
@@ -110,17 +120,44 @@ impl<'a> Context<'a> {
         let Some(finding) = self.finding(pattern, at, line, message) else { return };
         self.waiting.borrow_mut().push(known::Waiting { finding, key, from: from.to_string(), changeable });
     }
+    /// Reports a pattern with SpotBugs' priority and the place its SARIF report names: `kind:name`, see `place`.
+    pub fn report_placed(&self, pattern: &'static str, at: Node, line: usize, message: String, place: String, priority: u8) {
+        let found = self.finding(pattern, at, line, message).map(|finding| Finding { symbol: Some(place), priority: Some(priority), ..finding });
+        self.out.borrow_mut().extend(found);
+    }
+    /// Reports a pattern as `report_placed` does, with the values SpotBugs lists with its message.
+    pub fn report_listed(&self, pattern: &'static str, at: Node, line: usize, message: String, place: String, priority: u8, arguments: Vec<String>) {
+        let found = self.finding(pattern, at, line, message).map(|finding| Finding { symbol: Some(place), priority: Some(priority), arguments: Some(arguments), ..finding });
+        self.out.borrow_mut().extend(found);
+    }
+    /// A finding as `report_listed` makes it, kept back for the caller to decide its priority later.
+    pub fn finding_listed(&self, pattern: &'static str, at: Node, line: usize, message: String, place: String, arguments: Vec<String>) -> Option<Finding> {
+        self.finding(pattern, at, line, message).map(|finding| Finding { symbol: Some(place), arguments: Some(arguments), ..finding })
+    }
     fn finding(&self, pattern: &'static str, at: Node, line: usize, message: String) -> Option<Finding> {
         if self.selected.as_ref().is_some_and(|names| !names.iter().any(|name| name == pattern)) || self.suppressed(pattern, at) {
             return None;
         }
-        Some(Finding { file: self.file.path.clone(), line, column: 1, rule: pattern.to_string(), message, symbol: None })
+        Some(Finding { file: self.file.path.clone(), line, column: 1, rule: pattern.to_string(), message, symbol: None, priority: None, arguments: None })
     }
     /// Whether a declaration around the node carries `@SuppressFBWarnings` naming the pattern, its prefix, or nothing.
     fn suppressed(&self, pattern: &str, node: Node) -> bool {
         let mut current = Some(node);
         while let Some(at) = current {
             if super::errorprone::DECLARATIONS.contains(&at.kind()) && self.suppresses(at, pattern) {
+                return true;
+            }
+            current = parent(at);
+        }
+        false
+    }
+    /// Whether a method of the class around a field declaration, or of a class around that one, carries
+    /// `@SuppressFBWarnings` naming the pattern: SpotBugs lets it cover the patterns it reports on fields there.
+    pub fn suppressed_by_methods(&self, pattern: &str, declaration: Node) -> bool {
+        let mut current = parent(declaration);
+        while let Some(at) = current {
+            let body = matches!(at.kind(), "class_body" | "enum_body" | "enum_body_declarations" | "interface_body");
+            if body && children(at).into_iter().any(|member| member.kind() == "method_declaration" && self.suppresses(member, pattern)) {
                 return true;
             }
             current = parent(at);
@@ -175,12 +212,17 @@ const DETECTORS: &[Detector] = &[
     expose::exposed_representation as Detector,
     constructors::constructor_throw as Detector,
     statements::statements as Detector,
+    classes::class_shape as Detector,
+    methods::method_patterns as Detector,
+    attributes::should_be_static as Detector,
 ];
 
 #[derive(Default)]
 pub struct SpotBugs {
     known: known::Known,
     elsewhere: nulls::Elsewhere,
+    serial: serial::Serial,
+    attributes: attributes::Attributes,
 }
 
 impl FileRule for SpotBugs {
@@ -205,11 +247,20 @@ impl FileRule for SpotBugs {
         }
         nulls::null_dereference(&context, &declared);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());
+        if context.wants(attributes::PATTERNS) {
+            let names = self.attributes.names(&project.index, &project.sources);
+            self.attributes.note(attributes::gather(&context, names));
+        }
+        if context.wants(&["SE_BAD_FIELD"]) {
+            self.serial.note(serial::referenced(&context), context.serial.take());
+        }
         out.append(&mut context.out.into_inner());
     }
     fn finish(&self, project: &Project, out: &mut Vec<Finding>) {
         if let Some(project) = project.downcast_ref::<JavaProject>() {
             self.known.settle(&project.index, out);
+            self.serial.settle(project, out);
+            self.attributes.settle(&project.index, || self.known.visits(&project.index), out);
         }
     }
 }

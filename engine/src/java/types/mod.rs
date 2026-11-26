@@ -4,4 +4,5 @@ pub mod index;
 pub mod model;
 pub mod project;
 pub mod scope;
+pub mod lombok;
 pub mod typemarks;

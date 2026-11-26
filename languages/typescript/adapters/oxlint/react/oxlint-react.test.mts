@@ -16,6 +16,7 @@ const ui = 'src/main/features/profile/ui';
 const typedRules = new Set([
   'nitpicker/no-union-order-dependence',
   'nitpicker/no-unknown-in-domain',
+  'nitpicker/react-no-dropped-effect-handle',
   'react-x/no-leaked-conditional-rendering',
 ]);
 

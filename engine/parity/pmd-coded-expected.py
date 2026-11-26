@@ -15,7 +15,7 @@ parts = ['<?xml version="1.0" encoding="UTF-8"?>',
 for rule in json.load(open(rules_path)):
     if not rule.get("port"):
         continue
-    category = rule["port"].split(".")[-2]
+    category = "bestpractices" if rule["port"].endswith(".UnnecessaryPmdSuppressionRule") else rule["port"].split(".")[-2]
     parts.append(f'<rule ref="category/java/{category}.xml/{rule["name"]}" message={quoteattr(rule["message"])}><properties>')
     for name, written in (rule.get("properties") or {}).items():
         parts.append(f'<property name={quoteattr(name)} value={quoteattr(written["value"])}/>')

@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, open, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import type { ESLint } from 'eslint';
@@ -99,10 +99,15 @@ async function writtenList(
 ): Promise<string> {
   const list = path.join(directory, 'files.tsv');
   const project = { root, environment };
-  const lines = plans.map(({ file, rules }) =>
-    [file, file, ...engineSettings({ rules, filename: file, chosen, project })].join('\t'),
-  );
-  await writeFile(list, `${lines.join('\n')}\n`);
+  const handle = await open(list, 'w');
+  try {
+    for (const { file, rules } of plans) {
+      const cells = [file, file, ...engineSettings({ rules, filename: file, chosen, project })];
+      await handle.write(`${cells.join('\t')}\n`);
+    }
+  } finally {
+    await handle.close();
+  }
   return list;
 }
 

@@ -1966,7 +1966,7 @@ return
 //MethodDeclaration
   [FormalParameters/FormalParameter/ClassType[pmd-java:typeIs('org.springframework.data.domain.Pageable')
      or pmd-java:typeIs('org.springframework.data.domain.Limit')]
-   or ResultType/ClassType[pmd-java:typeIs('org.springframework.data.domain.Slice')]]
+   or ClassType[pmd-java:typeIs('org.springframework.data.domain.Slice')]]
   /ModifierList/Annotation
     [(pmd-java:typeIs('org.springframework.data.jpa.repository.Query')
       and not(AnnotationMemberList/MemberValuePair[@Name = 'nativeQuery']/BooleanLiteral[@True = true()])

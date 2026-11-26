@@ -3,7 +3,8 @@ import { findVariable, stringValue } from '../analysis/constant-resolution.mts';
 import { wordsOf as untypedWordsOf } from '../../../../../../shared/naming/secret-words.mts';
 import { ormSite } from '../support/orm/sites.mts';
 import { callChain, rootNode } from '../support/orm/chains.mts';
-import { nameOf } from '../typed/node-views.mts';
+import { nameOf, type FileContext } from '../typed/node-views.mts';
+import { callsReadOnlyFunction } from './project-reads/read-only-functions.mts';
 
 export type ReadStatement = {
   readonly statement: TSESTree.VariableDeclaration;
@@ -88,9 +89,26 @@ function isReadCall(call: TSESTree.CallExpression, orms: readonly string[]): boo
   return isReadFetch(call) || ormSite(call, 'read', orms) !== undefined;
 }
 
+function isReadOrReadOnlyCall(
+  call: TSESTree.CallExpression,
+  orms: readonly string[],
+  context: FileContext,
+): boolean {
+  return (
+    isReadCall(call, orms) ||
+    callsReadOnlyFunction({
+      call,
+      context,
+      isRead: (inner) => isReadCall(inner, orms),
+      optionsKey: orms.join('\0'),
+    })
+  );
+}
+
 export function readStatement(
   statement: TSESTree.Statement,
   orms: readonly string[],
+  context: FileContext,
 ): ReadStatement | undefined {
   if (statement.type !== AST_NODE_TYPES.VariableDeclaration || statement.kind !== 'const') {
     return undefined;
@@ -102,7 +120,7 @@ export function readStatement(
     others.length > 0 ||
     awaited?.type !== AST_NODE_TYPES.AwaitExpression ||
     awaited.argument.type !== AST_NODE_TYPES.CallExpression ||
-    !isReadCall(awaited.argument, orms)
+    !isReadOrReadOnlyCall(awaited.argument, orms, context)
   ) {
     return undefined;
   }

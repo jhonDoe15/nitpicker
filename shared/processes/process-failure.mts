@@ -1,12 +1,10 @@
 import type { SpawnSyncReturns } from 'node:child_process';
+import { KILL_REMEDY } from './memory/memory-kills.mts';
 
 const NODE_NOTICE =
   /^\(node:\d+\) (?:\[DEP\d+\] )?(?!UnhandledPromiseRejection)[A-Za-z]*Warning: /u;
 const CARRIES_ERROR = /\b[A-Za-z]*Error\b/u;
 const TRACE_HINT = /^\(Use `node --trace-/u;
-const MEMORY_REMEDY =
-  'usually the out-of-memory killer; run fewer jobs at once with NITPICKER_MAX_PARALLEL ' +
-  'or give the job more memory';
 
 type OutputText = string | Buffer | undefined;
 
@@ -34,7 +32,7 @@ export function failureDetail({ stderr, stdout }: ProcessOutput): string {
 
 export function signalEnd(signal: string): string {
   return signal === 'SIGKILL'
-    ? `was killed by SIGKILL (${MEMORY_REMEDY})`
+    ? `was killed by SIGKILL (${KILL_REMEDY})`
     : `was terminated by ${signal}`;
 }
 

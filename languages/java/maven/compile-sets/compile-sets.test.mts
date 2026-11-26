@@ -9,19 +9,19 @@ import { javaFiles } from '../maven-lint.mts';
 const created: string[] = [];
 
 afterEach(() => {
-  created.splice(0).forEach((directory) => {
+  for (const directory of created.splice(0)) {
     rmSync(directory, { recursive: true, force: true });
-  });
+  }
 });
 
 function moduleWith(files: readonly string[]): { basedir: string; main: string } {
   const basedir = mkdtempSync(path.join(tmpdir(), 'nitpicker-compile-sets-'));
   created.push(basedir);
   const main = path.join(basedir, 'src', 'main', 'java');
-  files.forEach((file) => {
+  for (const file of files) {
     mkdirSync(path.dirname(path.join(main, file)), { recursive: true });
     writeFileSync(path.join(main, file), 'class A {}');
-  });
+  }
   return { basedir, main };
 }
 

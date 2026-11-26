@@ -1,4 +1,4 @@
-import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import {
   findVariable,
   isFunctionNode,
@@ -7,6 +7,9 @@ import {
 } from '../analysis/constant-resolution.mts';
 import { nameOf } from '../typed/node-views.mts';
 import { calleeNameOf, unwrapOf, ASSERTION_FORMS } from '../typed/syntax-views.mts';
+import type { BatchFunction } from '../dataloaders/batch-functions.mts';
+
+const { DefinitionType } = TSESLint.Scope;
 
 const INPUT_NAMES = new Set([
   'files',
@@ -26,14 +29,8 @@ const LISTING_CALLEES = new Set([
   'globby',
 ]);
 
-export type BatchFunction =
-  TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression | TSESTree.FunctionDeclaration;
-
 function isListing(node: TSESTree.Node): boolean {
   const inner = unwrapOf(node, [...ASSERTION_FORMS, AST_NODE_TYPES.AwaitExpression]);
-  if (inner.type === AST_NODE_TYPES.AwaitExpression) {
-    return isListing(inner.argument);
-  }
   return (
     inner.type === AST_NODE_TYPES.CallExpression &&
     LISTING_CALLEES.has(calleeNameOf(inner.callee) ?? '')
@@ -54,7 +51,7 @@ function isNamedInput(node: TSESTree.Node): boolean {
 function isListedVariable(context: SourceContext, node: TSESTree.Identifier): boolean {
   const definition = findVariable(context, node, node.name)?.defs[0];
   return (
-    definition?.type === 'Variable' &&
+    definition?.type === DefinitionType.Variable &&
     definition.parent.kind === 'const' &&
     definition.node.init !== null &&
     isListing(definition.node.init)

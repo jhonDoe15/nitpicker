@@ -1,0 +1,31 @@
+  <rule name="FilteredPositionalPairing" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This list is filtered before it is paired by index with another list that was not filtered the same way, so after the first dropped entry the positions no longer line up. Pair first and filter the pairs, or keep a placeholder for the dropped entries.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $filtered := function($name, $scope) {
+      exists($scope//VariableDeclarator[VariableId/@Name = $name]/*[2]/descendant-or-self::MethodCall[@MethodName = 'filter']
+          [*[1]/descendant-or-self::MethodCall[@MethodName = ('stream', 'parallelStream')]]
+        | $scope//MethodCall[@MethodName = 'removeIf'][*[1][self::VariableAccess][@Name = $name]])
+    }
+return
+//ForStatement[ForInit//VariableId]
+  [let $index := ForInit//VariableId/@Name
+   return count(distinct-values(*[last()]//MethodCall[@MethodName = 'get'][ArgumentList/@Size = 1]
+     [ArgumentList/*[1][self::VariableAccess][@Name = $index]]/*[1][self::VariableAccess]/@Name)) > 1]
+  /*[last()]//MethodCall[@MethodName = 'get'][ArgumentList/@Size = 1]
+    [ArgumentList/*[1][self::VariableAccess][@Name = ancestor::ForStatement[1]/ForInit//VariableId/@Name]]
+    [let $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression][1],
+         $index := ArgumentList/*[1]/@Name,
+         $loop := ancestor::ForStatement[ForInit//VariableId/@Name = $index][1],
+         $name := *[1][self::VariableAccess]/@Name,
+         $others := distinct-values($loop/*[last()]//MethodCall[@MethodName = 'get'][ArgumentList/@Size = 1]
+           [ArgumentList/*[1][self::VariableAccess][@Name = $index]]/*[1][self::VariableAccess]/@Name[. != $name])
+     return exists($name) and $filtered($name, $scope)
+       and (some $other in $others satisfies not($filtered($other, $scope)
+         or exists($scope//VariableDeclarator[VariableId/@Name = $other]/*[2]//VariableAccess[@Name = $name])))]
+]]></value>
+      </property>
+    </properties>
+  </rule>

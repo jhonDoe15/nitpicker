@@ -6,7 +6,7 @@
 mod captures;
 pub mod classes;
 mod lambdas;
-mod locals;
+pub mod locals;
 mod references;
 pub mod rule;
 

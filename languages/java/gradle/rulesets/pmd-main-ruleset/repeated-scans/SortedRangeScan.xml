@@ -1,0 +1,31 @@
+  <rule name="SortedRangeScan" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This loop walks a sorted set or map from the start only to find the first element between a lower and an upper bound, which costs one step per element below the range. Ask the sorted collection for the range instead: subSet(low, true, high, true), tailSet(low) or ceiling(low) on a NavigableSet, subMap or ceilingKey on a NavigableMap, all logarithmic.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $isElement := function($node, $element) {
+      exists($node/self::VariableAccess[@Name = $element]
+        | $node/self::MethodCall[@MethodName = 'getKey'][ArgumentList/@Size = 0][*[1][self::VariableAccess][@Name = $element]])
+    },
+    $side := function($test, $element) {
+      if ($test/self::InfixExpression[@Operator = ('<', '<=', '>', '>=')][$isElement(*[1], $element)])
+      then (if ($test/@Operator = ('>', '>=')) then 'low' else 'high')
+      else if ($test/self::InfixExpression[@Operator = ('<', '<=', '>', '>=')][$isElement(*[2], $element)])
+      then (if ($test/@Operator = ('<', '<=')) then 'low' else 'high')
+      else 'none'
+    }
+return
+//ForeachStatement
+  [*[2][pmd-java:typeIs('java.util.SortedSet')]
+   or *[2][self::MethodCall][@MethodName = ('keySet', 'navigableKeySet', 'entrySet')][ArgumentList/@Size = 0]
+     [*[1][pmd-java:typeIs('java.util.SortedMap')]]]
+  [let $element := LocalVariableDeclaration//VariableId/@Name,
+       $body := *[3]/(self::Block[count(*) = 1]/* | self::IfStatement)
+   return exists($body[self::IfStatement][count(*) = 2]
+     [*[1][self::InfixExpression][@Operator = '&&'][count(*) = 2][let $sides := (for $test in * return $side($test, $element)) return $sides = 'low' and $sides = 'high']]
+     [*[2]/descendant-or-self::*[self::ReturnStatement or self::BreakStatement]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

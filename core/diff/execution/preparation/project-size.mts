@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { readdirSync } from 'node:fs';
+import { readdirSync, type Dirent } from 'node:fs';
 import path from 'node:path';
 import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
 import { GIT_OUTPUT_LIMIT_BYTES, GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mts';
@@ -133,23 +133,31 @@ function listedFileCount(root: string, patterns: readonly string[]): number {
     : 0;
 }
 
+type FolderEntries = { readonly entries: Dirent[]; readonly error?: unknown };
+
+function entriesOf(folder: string): FolderEntries {
+  try {
+    return { entries: readdirSync(folder, { withFileTypes: true }) };
+  } catch (error) {
+    return { entries: [], error };
+  }
+}
+
+function isWalkable(entry: Dirent): boolean {
+  return entry.isDirectory() && entry.name !== 'node_modules' && !entry.name.startsWith('.');
+}
+
 function walkedFileCount(root: string, matches: (name: string) => boolean): number {
   let count = 0;
   const folders = [root];
-  for (let folder = folders.pop(); folder !== undefined; folder = folders.pop()) {
-    let entries;
-    try {
-      entries = readdirSync(folder, { withFileTypes: true });
-    } catch {
-      continue;
+  for (const folder of folders) {
+    const { entries } = entriesOf(folder);
+    for (const entry of entries.filter(isWalkable)) {
+      folders.push(path.join(folder, entry.name));
     }
-    for (const entry of entries) {
-      if (entry.isDirectory() && entry.name !== 'node_modules' && !entry.name.startsWith('.')) {
-        folders.push(path.join(folder, entry.name));
-      } else if (entry.isFile() && matches(entry.name)) {
-        count += 1;
-      }
-    }
+    count += entries.filter(
+      (entry) => !isWalkable(entry) && entry.isFile() && matches(entry.name),
+    ).length;
   }
   return count;
 }

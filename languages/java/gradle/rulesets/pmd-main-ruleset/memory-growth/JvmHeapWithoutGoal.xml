@@ -1,0 +1,57 @@
+  <rule name="JvmHeapWithoutGoal" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This java command sets a heap ceiling (-Xmx or -XX:MaxRAMPercentage) and no heap goal, and it is started once per element, task or call of a loop. Each JVM grows to its ceiling and keeps that memory, so the JVMs together hold far more than their live data. Add -XX:GCTimeRatio=4 (or -XX:SoftMaxHeapSize, -XX:MaxHeapFreeRatio) next to the ceiling.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $steps := ('forEach', 'map', 'mapToInt', 'mapToLong', 'mapToDouble', 'mapToObj', 'flatMap', 'filter', 'peek',
+               'anyMatch', 'allMatch', 'noneMatch', 'submit', 'execute', 'supplyAsync', 'runAsync', 'schedule',
+               'invokeAll', 'invokeAny'),
+    $repeated := function($node) {
+      exists($node/ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement
+        or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $steps]]])
+    },
+    $texts := function($arguments) {
+      let $method := $arguments/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1],
+          $names := $arguments/*/descendant-or-self::VariableAccess/@Name
+      return ($arguments//StringLiteral
+        | $method//LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $names]//StringLiteral
+        | $method//MethodCall[@MethodName = ('add', 'addAll')][*[1][self::VariableAccess[@Name = $names]]]
+            /ArgumentList//StringLiteral)/string(@ConstValue)
+    },
+    $ceiling := function($text) {
+      starts-with($text, '-Xmx') or starts-with($text, '-XX:MaxRAMPercentage')
+        or contains($text, ' -Xmx') or contains($text, ' -XX:MaxRAMPercentage')
+    },
+    $goal := function($text) {
+      contains($text, '-XX:GCTimeRatio') or contains($text, '-XX:SoftMaxHeapSize')
+        or contains($text, '-XX:MaxHeapFreeRatio')
+    },
+    $java := function($text) {
+      some $word in tokenize($text, '\s+') satisfies $word = 'java' or ends-with($word, '/bin/java')
+    },
+    $method := function($node) { $node/ancestor::*[self::MethodDeclaration][1] },
+    $started := function($node) {
+      $repeated($node)
+        or (let $name := $method($node)/@Name, $class := $node/ancestor::ClassBody[last()]
+            return exists($class//MethodCall[@MethodName = $name]
+                [empty(*[1][not(self::ArgumentList or self::ThisExpression)])][$repeated(.)]
+              | $class//MethodReference[@MethodName = $name][*[1][self::ThisExpression]][$repeated(.)
+                  or parent::ArgumentList/parent::MethodCall[@MethodName = $steps]]))
+    },
+    $launches := //ConstructorCall[pmd-java:typeIs('java.lang.ProcessBuilder')][ArgumentList/@Size > 0]
+      | //MethodCall[pmd-java:matchesSig('java.lang.ProcessBuilder#command(_*)')]
+      | //MethodCall[pmd-java:matchesSig('java.lang.Runtime#exec(_*)')]
+return
+($launches[let $texts := $texts(ArgumentList)
+           return exists($texts[$java(.)]) and exists($texts[$ceiling(.)]) and empty($texts[$goal(.)])]
+          [$started(.)]
+ | //MethodCall[@MethodName = 'put'][ArgumentList/@Size = 2]
+     [*[1][self::MethodCall[pmd-java:matchesSig('java.lang.ProcessBuilder#environment()')]]]
+     [ArgumentList/*[1][@ConstValue = ('JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS')]]
+     [let $texts := $texts(ArgumentList) return exists($texts[$ceiling(.)]) and empty($texts[$goal(.)])]
+     [$started(.)])
+]]></value>
+      </property>
+    </properties>
+  </rule>

@@ -1,5 +1,6 @@
 import type { Environment } from '../../../../../shared/processes/environment.mts';
 import { loggerShapesFact } from './logger-shapes-fact.mts';
+import { validationPhraseFact } from './validation-phrase-fact.mts';
 import { isCompositionRootFile } from '../rules/boundaries/composition-root-files.mts';
 import { productionModulePath } from '../test-isolation/production-source.mts';
 import { stylesheetSpecifier as untypedStylesheetSpecifier } from '../../layout.mts';
@@ -10,8 +11,13 @@ import {
 } from '../rules/test-runtime/assertions/test-must-use-production-runtime.mts';
 import { vocabularyOf } from '../rules/runner-apis/runner-option.mts';
 import { readLayout } from '../rules/typed/policy-views.mts';
+import { featureOf } from '../rules/contracts/contract-infrastructure-type.mts';
+import { testSourcesFact } from './test-sources-fact.mts';
 
 const stylesheetSpecifier: RegExp = untypedStylesheetSpecifier;
+
+const TYPED = { needs: 'types' } as const;
+const EFFECTS: EngineRule = { ...TYPED, facts: (_filename, _options, { root }) => testSourcesFact(root) };
 
 const layout = readLayout();
 
@@ -43,8 +49,18 @@ export type EngineRule = {
 };
 
 export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<string, EngineRule>([
+  [
+    'contract-infrastructure-type',
+    { ...TYPED, facts: (filename) => ({ feature: featureOf(filename) }) },
+  ],
+  ['exhaustive-union-predicate', TYPED],
+  ['handler-entity-type', TYPED],
   ['hover-test-needs-keyboard', {}],
+  ['no-accumulator-concat', TYPED],
   ['no-add-only-collection', {}],
+  ['no-array-spread-arguments', TYPED],
+  ['no-blank-number-coercion', TYPED],
+  ['no-chunkwise-stream-text', TYPED],
   [
     'no-copied-constant',
     {
@@ -55,6 +71,9 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
       },
     },
   ],
+  ['no-dropped-delegate-result', TYPED],
+  ['no-empty-every-signal', TYPED],
+  ['no-expanding-replacement-string', TYPED],
   ['no-external-executables-in-unit-tests', {}],
   [
     'no-internal-module-mocks',
@@ -65,9 +84,17 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
       },
     },
   ],
+  ['no-falsy-default', TYPED],
+  ['no-forwarding-method-alias', TYPED],
+  ['no-forwarding-wrapper', TYPED],
+  ['no-in-presence-check', TYPED],
   ['no-listen-on-all-interfaces', {}],
-  ['no-mutating-method-in-domain', { needs: 'types' }],
-  ['no-parameter-mutation', { needs: 'types' }],
+  ['no-local-time-zone', TYPED],
+  ['no-lookup-as-presence', TYPED],
+  ['no-mutating-method-in-domain', TYPED],
+  ['no-parameter-mutation', TYPED],
+  ['no-remote-call-in-transaction', EFFECTS],
+  ['no-remote-call-under-lock', EFFECTS],
   [
     'no-production-console',
     {
@@ -79,7 +106,31 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
       }),
     },
   ],
+  ['no-shadowed-spread-key', TYPED],
   ['no-silent-catch', {}],
+  ['no-string-as-regex', TYPED],
+  ['no-swapped-arguments', TYPED],
+  [
+    'no-unhandled-void-promise',
+    {
+      needs: 'types',
+      facts: (_filename, options) => ({
+        runners: JSON.stringify(Reflect.get(Object(options[0]), 'runners') ?? []),
+      }),
+    },
+  ],
+  ['no-union-order-dependence', TYPED],
+  [
+    'no-unknown-in-domain',
+    {
+      ...TYPED,
+      facts: (filename, options, project) => ({
+        jsdoc: String(Reflect.get(Object(options[0]), 'jsdoc') === true),
+        phrase: validationPhraseFact(filename, project),
+      }),
+    },
+  ],
+  ['no-unversioned-orm-entity', TYPED],
   ['no-wait-for-with-fake-timers', {}],
   [
     'preserve-error-cause',

@@ -26,7 +26,7 @@ pub fn statements<'t>(block: Node<'t>) -> Vec<Node<'t>> {
     named_children(block).into_iter().filter(|part| !is_comment(part)).collect()
 }
 
-fn switch_is_statement(switch: Node) -> bool {
+pub(super) fn switch_is_statement(switch: Node) -> bool {
     parent(switch).is_some_and(|holder| {
         matches!(
             holder.kind(),

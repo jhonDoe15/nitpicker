@@ -14,6 +14,7 @@ import { LOG_DIRECTORY as logDirectory } from '../reporting/reporters.mts';
 import type { RunTasks } from './progress.mts';
 import type { Checkpoints } from './tasks.mts';
 import { runScheduler } from './scheduler/run-scheduler.mts';
+import { withMemoryKillReport } from './report/memory-kills.mts';
 import type { AnalyzerMetadata, MetadataMap } from './report/analyzer-metadata.mts';
 import type { AnalyzerReport, Finding, ReportEntry } from '../../../shared/values/findings.mts';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
@@ -99,7 +100,10 @@ export function runAnalyzers({
     snapshot,
   });
   const outcome = withCarriedOutcomes(
-    { ...scheduled, metadata, toolErrors: [...toolErrors, ...scheduled.toolErrors] },
+    withMemoryKillReport(
+      { ...scheduled, metadata, toolErrors: [...toolErrors, ...scheduled.toolErrors] },
+      snapshot,
+    ),
     plan,
   );
   return namedRun(outcome, { projectRoot, liveProjectRoot, snapshot });

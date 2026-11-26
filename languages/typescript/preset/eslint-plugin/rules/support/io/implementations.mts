@@ -148,9 +148,13 @@ function implementedTypes(node: TypeScript.Node): ImplementedType[] {
   return ts.isFunctionLike(node) ? returnedObjects(node) : [];
 }
 
-function isTestSource(program: TypeScript.Program, fileName: string): boolean {
-  const relative = path.relative(program.getCurrentDirectory(), fileName).replaceAll('\\', '/');
+export function isTestSourceIn(directory: string, fileName: string): boolean {
+  const relative = path.relative(directory, fileName).replaceAll('\\', '/');
   return TEST_PATH.test(relative) || layout.isTestFile(relative);
+}
+
+function isTestSource(program: TypeScript.Program, fileName: string): boolean {
+  return isTestSourceIn(program.getCurrentDirectory(), fileName);
 }
 
 function projectFiles(program: TypeScript.Program): TypeScript.SourceFile[] {

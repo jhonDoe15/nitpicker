@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useTempProjects } from '../../../../shared/test-support/temp-projects.mts';
-import { fieldOf, listOf, parseJson } from '../../../../shared/values/readers.mts';
+import { parseJson } from '../../../../shared/values/readers.mts';
 import { ENGINE_REPORT, positionIn, withEngineDiagnostics } from './engine-diagnostics.mts';
 import {
   errorPronePlanOf,

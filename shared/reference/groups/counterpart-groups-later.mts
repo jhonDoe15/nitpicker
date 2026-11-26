@@ -1,0 +1,178 @@
+import type { Group } from '../typed/entry-types.mts';
+
+export const LATER_GROUPS: readonly Group[] = [
+  {
+    java: 'HandSplitHttpHeader',
+    typescript: 'nitpicker/no-raw-http-value',
+    python: 'hand-split-http-header',
+    go: 'go-rules/hand-split-http-header',
+  },
+  {
+    jvm: 'CopiedConstantInTest',
+    typescript: 'nitpicker/no-copied-constant',
+    python: 'copied-constant-in-test',
+    go: 'go-rules/copied-constant-in-test',
+  },
+  {
+    jvm: 'CopyPastedTest',
+    typescript: 'nitpicker/no-copy-pasted-tests',
+    python: 'copy-pasted-tests',
+    go: 'go-rules/copy-pasted-tests',
+  },
+  {
+    spring: 'untrimmed-request-text',
+    typescript: 'nitpicker/no-untrimmed-request-text',
+    python: 'untrimmed-request-text',
+    go: 'go-rules/untrimmed-request-text',
+  },
+  {
+    java: 'StaticMockOfProjectType',
+    typescript: 'nitpicker/no-internal-module-mocks',
+    python: 'internal-module-patch',
+  },
+  {
+    java: 'JpaVersion',
+    typescript: 'nitpicker/no-unversioned-orm-entity',
+    python: 'unversioned-orm-entity',
+  },
+  {
+    typescript: 'nitpicker/no-branch-in-composition-root',
+    python: 'branch-in-composition-root',
+  },
+  {
+    typescript: 'nitpicker/no-managed-resource-construction-outside-composition-roots',
+    python: 'managed-resource-outside-composition-root',
+  },
+  {
+    typescript: 'nitpicker/no-presence-truthiness',
+    python: 'presence-truthiness',
+  },
+  {
+    jvm: 'MaxValueOverflow',
+    go: 'go-rules/max-value-overflow',
+  },
+  {
+    jvm: 'PatternTranslation',
+    typescript: 'nitpicker/no-unescaped-pattern-translation',
+    python: 'pattern-translation',
+    go: 'go-rules/pattern-translation',
+  },
+  {
+    jvm: 'ExpandingReplacement',
+    typescript: 'nitpicker/no-expanding-replacement-string',
+    python: 'expanding-replacement',
+    go: 'go-rules/expanding-replacement',
+  },
+  {
+    jvm: 'UnescapedHtmlValue',
+    typescript: 'nitpicker/no-unescaped-html-interpolation',
+    python: 'unescaped-html-value',
+    go: 'go-rules/unescaped-html-value',
+  },
+  {
+    jvm: 'UncheckedResponseBody',
+    typescript: 'nitpicker/no-unchecked-response-json',
+    python: 'unchecked-response-json',
+    go: 'go-rules/unchecked-response-json',
+  },
+  {
+    jvm: 'NanOnlyGuard',
+    typescript: 'nitpicker/no-nan-only-check',
+    python: 'nan-only-guard',
+    go: 'go-rules/nan-only-guard',
+  },
+  {
+    jvm: 'NegativeCountArgument',
+    typescript: 'nitpicker/no-negative-count',
+    go: 'go-rules/negative-count',
+  },
+  {
+    jvm: 'IndexBoundOffByOne',
+    typescript: 'nitpicker/no-index-bound-off-by-one',
+    python: 'index-bound-off-by-one',
+    go: 'go-rules/index-bound-off-by-one',
+  },
+  {
+    jvm: 'BackoffShiftOverflow',
+    typescript: 'nitpicker/no-overflowing-backoff',
+    go: 'go-rules/backoff-shift-overflow',
+  },
+  {
+    jvm: 'WallClockElapsed',
+    typescript: 'nitpicker/no-wall-clock-elapsed',
+    python: 'wall-clock-elapsed',
+    go: 'go-rules/wall-clock-elapsed',
+  },
+  {
+    jvm: 'AffixWithoutBoundary',
+    typescript: 'nitpicker/no-prefix-without-boundary',
+    python: 'prefix-without-boundary',
+    go: 'go-rules/prefix-without-boundary',
+  },
+  {
+    jvm: 'AffixRemovedByReplace',
+    typescript: 'nitpicker/no-unanchored-affix-replace',
+    python: 'unanchored-affix-replace',
+    go: 'go-rules/unanchored-affix-replace',
+  },
+  {
+    jvm: 'CaseMismatchedLookup',
+    typescript: 'nitpicker/no-case-mismatched-lookup',
+    python: 'case-mismatched-lookup',
+    go: 'go-rules/case-mismatched-lookup',
+  },
+  {
+    jvm: 'PreconditionMessageNamesOtherValue',
+    typescript: 'nitpicker/no-mismatched-precondition-message',
+    python: 'precondition-message-names-other-value',
+    go: 'go-rules/precondition-message-names-other-value',
+  },
+  {
+    jvm: 'MalformedQueryText',
+    typescript: 'nitpicker/no-malformed-query-text',
+    python: 'malformed-query-text',
+    go: 'go-rules/malformed-query-text',
+  },
+  {
+    jvm: 'UnpagedListing',
+    typescript: 'nitpicker/no-unpaged-listing',
+    python: 'unpaged-listing',
+    go: 'go-rules/unpaged-listing',
+  },
+  {
+    jvm: 'NullBranchFallThrough',
+    typescript: 'nitpicker/no-null-branch-fall-through',
+    python: 'null-branch-fall-through',
+    go: 'go-rules/nil-branch-fall-through',
+  },
+  { java: 'LogStringConcatenation', typescript: 'nitpicker/no-interpolated-log-message' },
+  {
+    java: 'CatchLogWithoutException',
+    typescript: 'nitpicker/structured-catch-logging',
+    python: 'catch-log-without-exception',
+  },
+  {
+    jvm: 'SelfRecursion',
+    typescript: 'nitpicker/no-self-recursion',
+    python: 'self-recursion',
+    go: 'go-rules/self-recursion',
+  },
+  {
+    jvm: 'UninjectableDelay',
+    typescript: 'nitpicker/no-uninjectable-delay',
+    python: 'uninjectable-delay',
+    go: 'go-rules/uninjectable-delay',
+  },
+  {
+    jvm: 'MutatingMethodInDomain',
+    typescript: 'nitpicker/no-mutating-method-in-domain',
+    python: 'mutating-method-in-domain',
+    go: 'go-rules/mutating-method-in-domain',
+  },
+  { java: 'OperandDepthRecursion', typescript: 'nitpicker/no-operand-depth-recursion' },
+  { java: 'UnguardedCyclicRecursion', typescript: 'nitpicker/no-unguarded-cyclic-recursion' },
+  { java: 'UnguardedRecursionEntry', typescript: 'nitpicker/no-unguarded-recursion-entry' },
+  { java: 'ShrinkingWorklistJoin', typescript: 'nitpicker/no-shrinking-worklist-join' },
+  { java: 'CacheAfterGuardFallback', typescript: 'nitpicker/no-cache-after-guard-fallback' },
+  { java: 'DepthOnlyWorklist', typescript: 'nitpicker/no-depth-only-worklist' },
+];

@@ -1,5 +1,6 @@
 import path from 'node:path';
 import type { RunEslintCli } from '../../lint-engine/typed/tools.mts';
+import { cachedValue } from '../../../../../shared/values/caching/cached-value.mts';
 import { ENGINE_FINDINGS_FILE } from '../../../../../shared/engine/engine-findings-file.mts';
 import {
   type LintResult,
@@ -13,10 +14,7 @@ export function residualRun(
   residual: readonly ResidualGroup[],
   start: () => Promise<LintResult[]>,
 ): Promise<LintResult[]> {
-  const key = JSON.stringify(residual);
-  const running = residualRuns.get(key) ?? start();
-  residualRuns.set(key, running);
-  return running;
+  return cachedValue(residualRuns, JSON.stringify(residual), start);
 }
 
 export async function residualResults(
@@ -27,7 +25,9 @@ export async function residualResults(
     replay,
   }: { readonly runEslintCli: RunEslintCli; readonly replay: string | undefined },
 ): Promise<LintResult[]> {
-  if (residual.length === 0) return [];
+  if (residual.length === 0) {
+    return [];
+  }
   const files = [...new Set(residual.flatMap((group) => group.files))].sort();
   const rules = [...new Set(residual.flatMap((group) => group.rules))].sort();
   const pairs = residualPairs(residual);

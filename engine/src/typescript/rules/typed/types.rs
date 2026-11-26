@@ -2,9 +2,9 @@
 //! a property, the owner of a declaration. Answers are kept for the run; the first error of the server ends it.
 use super::offsets::Utf16;
 use crate::typescript::types::nodes::parse_handle;
-use crate::typescript::types::server::{Symbol, Type, escaped};
+use crate::typescript::types::server::{Signature, Symbol, Type, escaped};
 use crate::typescript::types::session::Session;
-use crate::typescript::types::tables::type_flags;
+use crate::typescript::types::tables::{kind, type_flags};
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use serde_json::json;
@@ -12,7 +12,7 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 pub struct Types {
-    session: Session,
+    pub(crate) session: Session,
     program: HashSet<String>,
     file: String,
     offsets: Utf16,
@@ -24,6 +24,8 @@ pub struct Types {
     located: HashMap<(u32, u32), Option<Type>>,
     /// Verdicts a rule keeps for the run, by a key of its own; type ids stay valid for the whole session.
     pub kept: HashMap<String, bool>,
+    /// State a rule keeps for the whole run, one value per type (see `effects::store`).
+    pub(crate) stores: HashMap<std::any::TypeId, Box<dyn std::any::Any>>,
     /// The first question of this file the server could not answer: the file goes back to the plugin rules.
     pub refused: Option<String>,
 }
@@ -49,7 +51,7 @@ impl Types {
     pub fn open(compiler: &std::path::Path, tsconfig: &str) -> Result<Types, String> {
         let session = Session::open(compiler, tsconfig)?;
         let program = session.files.iter().cloned().collect();
-        Ok(Types { session, program, file: String::new(), offsets: Utf16::of(""), apparent: HashMap::new(), parts: HashMap::new(), owners: HashMap::new(), answers: HashMap::new(), files: HashMap::new(), located: HashMap::new(), kept: HashMap::new(), refused: None })
+        Ok(Types { session, program, file: String::new(), offsets: Utf16::of(""), apparent: HashMap::new(), parts: HashMap::new(), owners: HashMap::new(), answers: HashMap::new(), files: HashMap::new(), located: HashMap::new(), kept: HashMap::new(), stores: HashMap::new(), refused: None })
     }
 
     /// Whether the program has this file, and if so, makes it the file that later questions are about.
@@ -68,7 +70,7 @@ impl Types {
         true
     }
 
-    fn answered<T: Default>(&mut self, answer: Result<T, String>) -> T {
+    pub(crate) fn answered<T: Default>(&mut self, answer: Result<T, String>) -> T {
         answer.unwrap_or_else(|error| {
             if std::env::var_os("NITPICKER_ENGINE_TRACE").is_some() {
                 eprintln!("{}: {}", self.file, error.lines().next().unwrap_or_default());
@@ -133,7 +135,7 @@ impl Types {
     }
 
     /// A question about one type, asked once for the run.
-    fn about<T: DeserializeOwned + Default>(&mut self, method: &'static str, kind: u64, parameters: serde_json::Value) -> T {
+    pub(crate) fn about<T: DeserializeOwned + Default>(&mut self, method: &'static str, kind: u64, parameters: serde_json::Value) -> T {
         if let Some(known) = self.answers.get(&(method, kind)) {
             return serde_json::from_value(known.clone()).unwrap_or_default();
         }
@@ -205,6 +207,55 @@ impl Types {
         found
     }
 
+    /// The file questions are about, as the compiler names it.
+    pub fn file(&self) -> &str {
+        &self.file
+    }
+
+    /// Leaves the file to the ESLint-plugin rule when a question has no trustworthy answer.
+    pub fn refuse(&mut self, reason: &str) {
+        self.refused.get_or_insert_with(|| reason.to_string());
+    }
+
+    /// The compiler's name for the node of this kind and extent (byte offsets of the engine's tree).
+    pub fn handle_at(&mut self, kind: Option<u32>, start: u32, end: u32) -> Option<String> {
+        let file = self.file.clone();
+        let (start, end) = (self.offsets.at(start), self.offsets.at(end));
+        let handle = self.session.handle(&file, kind, start, end);
+        self.answered(handle)
+    }
+
+    /// The declaration of the signature `getResolvedSignature` picks for a call or `new` expression.
+    pub fn resolved_declaration(&mut self, call: u32, start: u32, end: u32) -> Option<String> {
+        let handle = self.handle_at(Some(call), start, end)?;
+        let found: Result<Option<Signature>, String> = self.session.ask("getResolvedSignature", json!({ "location": handle }));
+        self.answered(found)?.declaration
+    }
+
+    /// The names of a signature declaration's leading plain parameters, `this` left out, up to the first rest
+    /// or destructured one; `None` for a documentation comment's signature or one outside the project's sources.
+    pub fn leading_parameters(&mut self, declaration: &str) -> Option<Vec<String>> {
+        let (index, _, path) = parse_handle(declaration)?;
+        if is_declaration_file(path) || path.contains("/node_modules/") || self.file_kind(declaration).default_library {
+            return None;
+        }
+        let table = self.session.table(path);
+        let table = self.answered(table.map(Some))?;
+        if table.kind(index) == kind::JS_DOC_SIGNATURE || table.is_reparsed(index) {
+            return None;
+        }
+        let mut names = Vec::new();
+        for parameter in table.listed(index, "parameters") {
+            let name = table.child(parameter, "name").filter(|name| table.kind(*name) == kind::IDENTIFIER);
+            let Some(name) = name.filter(|_| table.child(parameter, "dotDotDotToken").is_none()) else { break };
+            let text = table.text(name).unwrap_or_default();
+            if text != "this" {
+                names.push(text.into_owned());
+            }
+        }
+        Some(names)
+    }
+
     /// `declaration.parent.name.text`: the name of what declares the declaration, when it has a plain one.
     pub fn owner_name(&mut self, declaration: &str) -> Option<String> {
         if let Some(known) = self.owners.get(declaration) {
@@ -217,6 +268,12 @@ impl Types {
         self.owners.insert(declaration.to_string(), found.clone());
         found
     }
+}
+
+/// `isDeclarationFileName`: `.d.mts`, `.d.cts`, or a `.ts` name with `.d.` in it.
+pub fn is_declaration_file(path: &str) -> bool {
+    let name = path.rsplit('/').next().unwrap_or(path);
+    name.ends_with(".d.mts") || name.ends_with(".d.cts") || (name.ends_with(".ts") && name.contains(".d."))
 }
 
 pub fn is_string_literal(kind: &Type) -> bool {

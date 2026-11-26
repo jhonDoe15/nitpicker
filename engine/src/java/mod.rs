@@ -1,4 +1,5 @@
 pub mod errorprone;
+pub mod checkstyle;
 pub mod cpd;
 mod spotbugs;
 mod facts;
@@ -32,6 +33,7 @@ impl Language for Java {
             Box::new(magic_number::MagicNumber),
             Box::new(visibility::VisibilityModifier),
         ];
+        rules.push(Box::new(checkstyle::Checkstyle));
         rules.extend(naming::rules());
         rules.extend(statements::rules());
         rules.extend(pmd_sample::rules());
@@ -48,6 +50,6 @@ impl Language for Java {
     fn facts(&self, file: &SourceFile) -> FileFacts { facts::facts(file) }
     fn outline(&self, file: &SourceFile) -> Option<String> { Some(types::project::outline(file)) }
     fn project(&self, files: &[SourceFile], options: &Options, needed: bool) -> Box<Project> {
-        if needed { Box::new(types::project::build(files, &options.classpath, options.release)) } else { Box::new(()) }
+        if needed { Box::new(types::project::build(files, &options.classpath, options.release, options.lombok)) } else { Box::new(()) }
     }
 }

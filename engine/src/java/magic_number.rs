@@ -60,6 +60,9 @@ fn unary_sign<'t>(file: &SourceFile, literal: Node<'t>) -> Option<(Node<'t>, &'s
 fn ignored(file: &SourceFile, literal: Node) -> bool {
     let Some(mut number) = value(file.text_of(literal)) else { return false };
     if matches!(unary_sign(file, literal), Some((_, "-"))) {
+        if number == 0.0 {
+            return false;
+        }
         number = -number;
     }
     [-1.0, 0.0, 1.0, 2.0].contains(&number)
@@ -95,6 +98,7 @@ fn waived_step(file: &SourceFile, child: Node, parent: Node) -> bool {
         "parenthesized_expression" | "argument_list" | "array_initializer" | "cast_expression"
         | "ternary_expression" | "variable_declarator" | "enum_constant" => true,
         "object_creation_expression" => child.kind() != "class_body",
+        "array_creation_expression" => parent.field("value") == Some(child),
         "method_invocation" => parent.field("object") != Some(child),
         "assignment_expression" => parent.field("operator").is_some_and(|op| file.text_of(op) == "="),
         "binary_expression" => {

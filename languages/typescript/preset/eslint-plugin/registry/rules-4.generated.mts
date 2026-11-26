@@ -1,3 +1,5 @@
+import { rule as ruleRequireStagedParentNodeModules } from '../rules/temp-staging/require-staged-parent-node-modules.mts';
+import { rule as ruleRequireTestProcessTimeout } from '../rules/test-runtime/processes/timeouts/require-test-process-timeout.mts';
 import { rule as ruleRequireTreeSitterErrorCheck } from '../rules/tree-sitter/require-tree-sitter-error-check.mts';
 import { rule as ruleReusableObjectPerCall } from '../rules/reuse/reusable-object-per-call.mts';
 import { rule as ruleSettlePendingOnClose } from '../rules/lifecycles/pending/settle-pending-on-close.mts';
@@ -14,6 +16,8 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'require-staged-parent-node-modules': ruleRequireStagedParentNodeModules,
+  'require-test-process-timeout': ruleRequireTestProcessTimeout,
   'require-tree-sitter-error-check': ruleRequireTreeSitterErrorCheck,
   'reusable-object-per-call': ruleReusableObjectPerCall,
   'settle-pending-on-close': ruleSettlePendingOnClose,

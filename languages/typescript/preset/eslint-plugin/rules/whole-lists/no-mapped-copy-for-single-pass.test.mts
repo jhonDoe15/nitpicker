@@ -2,8 +2,7 @@ import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-mapped-copy-for-single-pass.mts';
 
 const tester = typescriptRuleTester();
-const WRITER =
-  'function writeLines(out, items) { for (const item of items) out.write(`${JSON.stringify(item)}\\n`); }';
+const WRITER = `function writeLines(out, items) { for (const item of items) out.write(\`\${JSON.stringify(item)}\\n\`); }`;
 const PIECES = 'function* pieces(items) { yield "["; yield* items; yield "]"; }';
 
 function invalid(code: string) {

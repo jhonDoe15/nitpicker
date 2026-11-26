@@ -166,11 +166,16 @@ files are left alone; timers, `fetch`, `window` listeners, sockets and observers
 `react-x/purity`.
 
 React hydration: `nitpicker/react-no-hydration-mismatch` (production source in a package that depends on a
-server-rendering React framework, in `eslint-lint`, report-only) reports a ternary or `&&` rendered by a component (a
-JSX child or the returned value, in the component's own body) whose test checks `typeof window`, `document`,
-`navigator`, `localStorage`, `sessionStorage` or `matchMedia`, directly or through a module-level `const` made only of
-such tests. Portals, attributes, `suppressHydrationWarning`, shadowed globals, branches that render nothing, nested
-functions and branches inside another conditional branch are left alone.
+server-rendering React framework, or on `react-dom` with a non-test source that imports `hydrateRoot` from
+`react-dom/client`, in
+`eslint-lint`, report-only) reports a ternary or `&&` rendered by a component (a JSX child or the returned value, in the
+component's own body) whose test checks `typeof window`, `document`, `navigator`, `localStorage`, `sessionStorage` or
+`matchMedia` (or `globalThis.window`), directly, through a module-level `const` made only of such tests or through a
+project hook that returns only such tests. It also reports a `useState` initial value or `useMemo` factory whose value
+such a test decides (a returned value, or the test of an `if` that returns) when the value is a JSX child or an attribute
+of an HTML element. Portals, attributes, `suppressHydrationWarning`, shadowed globals, branches that render nothing,
+nested functions, branches inside another conditional branch and a file named directly in
+`dynamic(() => import('./file'), { ssr: false })` are left alone.
 
 React i18next: `nitpicker/react-i18next-escape-value` (production source in a React project that depends on
 `react-i18next`, in `eslint-lint`) reports a `t(...)` or `<Trans values>` call that interpolates values into text React
@@ -528,7 +533,10 @@ Whole-list JSON text: `nitpicker/no-whole-list-json-text` (production source, in
 filled in a loop) whose result is written with `writeFileSync`, `appendFileSync`, `writeSync` or a stream's `write`,
 and `JSON.parse(readFileSync(...))` read for such a list. Past about 512 million characters the string cannot be built
 and the output is lost; below it the text doubles the memory of the data. The allowed form writes and reads one
-element per line.
+element per line. Java has `WholeListJsonText` (main PMD ruleset): `Files.writeString` or `Files.write` of
+`ObjectMapper.writeValueAsString`, `String.join` or `Collectors.joining` over such a list, and
+`ObjectMapper.readValue(Files.readString(...))` into a collection; the allowed forms are `JsonGenerator`,
+`SequenceWriter` and `MappingIterator`.
 
 Copies walked once: `nitpicker/no-mapped-copy-for-single-pass` (production source, in `eslint-lint`) reports `map`,
 `filter`, `flatMap` or a spread copy of a list that grows with the input passed to a function of the same file that
@@ -544,7 +552,9 @@ JVM heap goals: `nitpicker/require-jvm-heap-goal` (production source, in `eslint
 started in a loop, a parallel map or a pool, or from a function called there, whose arguments or `JAVA_TOOL_OPTIONS`
 set a heap ceiling (`-Xmx`, `-XX:MaxRAMPercentage`) and no goal (`-XX:GCTimeRatio`, `-XX:SoftMaxHeapSize`,
 `-XX:MaxHeapFreeRatio`). Each such JVM grows to its ceiling and keeps it, so concurrent JVMs hold far more than their
-live data; the allowed form adds `-XX:GCTimeRatio=4` next to the ceiling.
+live data; the allowed form adds `-XX:GCTimeRatio=4` next to the ceiling. Java has `JvmHeapWithoutGoal` (main PMD
+ruleset) for a `ProcessBuilder`, `ProcessBuilder.command` or `Runtime.exec` command on `java`, and for
+`JAVA_TOOL_OPTIONS` or `JDK_JAVA_OPTIONS` put into `environment()`, in the same places.
 
 Unbatched heavy runs: `nitpicker/no-unbatched-heavy-run` (production source, in `eslint-lint`) reports a parameter or
 file listing spread whole into the arguments of a type-aware run (`tsc`, `tsgo`, `tsgolint`, `vue-tsc`,
@@ -565,7 +575,8 @@ second.
 Per-item caches: `nitpicker/no-per-item-cache-growth` (production source, in `eslint-lint`, a broad rule) reports a
 module-level or field `Map` or `WeakMap` that a loop fills with one entry per item and reads back only for the same
 item, when nothing removes the entries. The map grows with the number of items; the allowed form keeps the value in a
-local of the loop body or deletes the entry when the item is done.
+local of the loop body or deletes the entry when the item is done. Java has `PerItemCacheGrowth` (main PMD ruleset,
+also broad) for a private `HashMap`, `ConcurrentHashMap` or `WeakHashMap` field used only that way.
 
 Aggregate packages for one member: `nitpicker/no-aggregate-package-for-one-member` (production source, in
 `eslint-lint`) reports a `require`, dynamic `import` or static `import` of `typescript-eslint` used only through
@@ -651,41 +662,92 @@ and Go in #2133.
 
 `nitpicker/no-constant-lookup-in-loop` (production source, in `eslint-lint`) reports a DOM lookup on
 `document` by constant arguments in a loop or iteration callback that leaves the page alone, and a
-`new URL(constant)` there of which only parts are read. Java reflective and registry lookups by a
-constant name and the other presets follow in #2133.
+`new URL(constant)` there of which only parts are read. Java has `ConstantLookupInLoop` (main PMD
+ruleset): `getMethod`, `getDeclaredMethod`, `getField`, `getDeclaredField`, `getConstructor` on a class
+literal with literal arguments, and `Class.forName("literal")`, in a loop or iteration callback.
+Kotlin, Python and Go follow in #2133.
 
 `nitpicker/no-subtree-search-per-ancestor` (production source, in `eslint-lint`) reports a loop that
 climbs a parent chain and searches the children or the whole subtree of every level without testing
-the level's kind first. Java, Kotlin, Python and Go follow in #2133.
+the level's kind first. Java has `SubtreeSearchPerAncestor` (main PMD ruleset) for a loop that
+assigns `x = x.getParentNode()` (or `getParent`, `parent`, `getParentElement`, `getEnclosingElement`)
+and searches the subtree of `x`, or of a cast or pattern variable taken from it. Kotlin, Python and
+Go follow in #2133.
 
 `nitpicker/no-repeated-call` (production source, in `eslint-lint`) reports a call made once to test
 its result and again to use it, and a recursive call repeated with the same arguments on one path.
-Java (`resolve(x).isPresent() && resolve(x).get()`), Kotlin, Python and Go follow in #2133.
+Java has `RepeatedCall` (main PMD ruleset): `resolve(x).isPresent() && resolve(x).get()`, a
+`find(x) != null` test followed by `find(x)` in the guarded branch or arm, and a recursive call
+repeated with the same arguments in one statement and branch. The tested call must be named as a
+lookup or computation (`resolve`, `find`, `lookup`, `compute` and similar); a first run over large
+Java projects showed that other names in this position are mostly cheap accessors (`group(n)`,
+`getenv`, getters). Kotlin, Python and Go follow in #2133.
 
 `nitpicker/no-work-before-early-exit` (production source, in `eslint-lint`) reports effect-free
 in-memory work (a collection pass, a `Map` or `Set` built; file reads and parses are left alone, since
 moving them would change which error the exit path raises) declared right before an early exit
 that does not read it, and in a loop or iteration callback a type checker query made before an exit
-whose test makes no call other than `is...` or `has...` guards. Java (where PMD `PrematureDeclaration` treats calls as
-impure and so skips this case), Kotlin, Python and Go follow in #2133.
+whose test makes no call other than `is...` or `has...` guards. Java has `WorkBeforeEarlyExit` (main PMD ruleset), where PMD
+`PrematureDeclaration` treats calls as impure and so skips this case: a stream pass or a collection
+copy right before an `if` without `else` that ends in an exit, makes no calls and does not read the
+local. Inside a loop body, an iteration callback or a `visit*` method (#2184) a local set from a
+lookup or computation (`resolve`, `find`, `compute` and similar) is reported too, and the condition
+may call methods that do not change state: the expensive call is paid for every element the cheap
+test throws away. Kotlin, Python and Go follow in #2133.
 
 `nitpicker/no-read-all-before-pass` (production source, in `eslint-lint`) reports every file read
 into one array that is then only walked once. `nitpicker/no-collected-stream-rows` is the same idea
-for streamed rows. Java (`Files.readString`, `readAllBytes`, `readAllLines`, `ObjectMapper.readValue`),
-Kotlin, Python and Go follow in #2133.
+for streamed rows. Java has `ReadAllBeforePass` (main PMD ruleset): a list filled in a loop, or
+collected from a stream `map`, with `Files.readString`, `readAllBytes`, `readAllLines` or Jackson
+`ObjectMapper.readValue`/`readTree`, then walked once by an enhanced `for`. Kotlin, Python and Go
+follow in #2133.
+
+Java `StatPerListedEntry` (main PMD ruleset, #2070) reports a loop or stream over `Files.list`,
+`Files.walk`, `Files.newDirectoryStream` or `File.listFiles()` that calls `Files.isDirectory`,
+`isRegularFile`, `isSymbolicLink`, `size` or `getLastModifiedTime` (or `File.isDirectory`, `isFile`,
+`length`, `lastModified`) on the entry, and points to `Files.find` or `Files.walkFileTree`, which
+pass the attributes along.
+
+Java `FilteredPositionalPairing` (main PMD ruleset, #2129, label bug) reports two lists read with
+one index of a counting `for` loop where one came from `stream().filter(...)` or had `removeIf` and
+the other was not filtered.
+
+Java `ReplacingCollectionMerge` (main PMD ruleset, #2209, label bug) reports `putAll` of the loop
+element (or of anything in a parallel stream callback), or an unguarded `put` of an entry value
+from a nested `entrySet()` loop or `Map.forEach`, into a map declared with a collection or map value
+type (`Map<K, Set<V>>`) outside the loop or iteration callback that runs it.
+The value type is read from the declaration, so a `var` target is not reported.
+
+Java `RepeatedKeyedScan` (main PMD ruleset, #2210) reports `map.get(key).stream().anyMatch(test)`
+(also `allMatch`, `noneMatch`, `filter`, directly or through a local holding the lookup) in an
+enhanced `for` or iteration callback, where the key reads the loop element and the test reads
+nothing of it. The weaker ordered-comparison form is not reported, as in TypeScript.
+
+Java `LoopInvariantCopy` (main PMD ruleset, #2214, broad) reports a full copy of a collection, map
+or array declared outside a loop or iteration callback and not changed in it (`new ArrayList<>(x)`,
+`List.copyOf(x)`, `x.clone()`, `Arrays.copyOf(x, x.length)`), stored straight away (added, put,
+passed to a constructor, assigned to a field, returned from a `map` callback).
+
+Java `SortedRangeScan` (main PMD ruleset, #2312, Java only) reports an enhanced `for` over a
+`SortedSet` or the key set or entry set of a `SortedMap` whose body is only an `if` testing the
+element against a lower and an upper bound that returns or breaks on the first hit, and suggests
+`subSet`, `tailSet`, `ceiling` or `subMap`.
 
 Sequential reads: `nitpicker/no-sequential-independent-reads` (production source, in `eslint-lint`, report-only) reports
 two or more adjacent `const x = await <read>` statements in one block where no later read uses an earlier result. Reads
-are `fetch` without a body (method `GET` or `HEAD`) and ORM reads of the project's ORM. A write, a guard or any other
+are `fetch` without a body (method `GET` or `HEAD`), ORM reads of the project's ORM and calls to project functions (same
+file or imported) that only make such reads. A write, a guard or any other
 statement ends the run; loops, transaction callbacks, transaction-named clients, locking reads and reads named after an
 authorization or session check are left alone. The JavaScript preset runs the same rule.
 
 Early waits: `nitpicker/no-early-wait-on-started-work` (production source, in `eslint-lint`, report-only, broad) reports
-`const r = await task` where `task` is a same-block `const` holding a `Promise` started earlier (type-aware) and `r` is
+`const r = await task` where `task` is a same-block `const` or a member (`this.task`) assigned in the same block, holding a
+`Promise` started earlier (type-aware), and `r` is
 first read three or more statements later after statements that do work (calls other than accessors, logging, `Math` and
 `JSON`), do not mention `task` and do not leave the block. Java runs the same check as `pmd/EarlyWaitOnStartedWork` on
 `Future.get()`, `get(timeout, unit)` and `join()` of a future started by `supplyAsync`, `runAsync`, `submit`, `schedule`
-or `sendAsync`.
+or `sendAsync`, and on `Thread.join()` of a thread started in the same block whose lambda only calls methods of locals
+created in the block before it (its result is first used where a later statement reads one of those locals).
 
 `nitpicker/no-accumulating-group-spread` (production source, in `eslint-lint`) reports a group of a
 `Map` or object spread into a new array that replaces it on every step of a loop or iteration
@@ -713,6 +775,20 @@ a key seen twice.
 `nitpicker/no-repeated-keyed-scan` (production source, in `eslint-lint`) reports a scan of a
 collection looked up by the current element's key whose test reads nothing of the element, so
 elements sharing the key repeat the same scan.
+
+`nitpicker/no-scan-per-call-over-fixed-collection` (production source, in `eslint-lint`) reports a
+scan (`find`, `some`, `filter`, a `for...of` that returns on a match) of a class field set only in the
+constructor, or of a module-level `const`, for an element equal to a parameter of the enclosing
+function, when that function is called from a loop or iteration callback or from three or more places
+in the file. Java has `ScanPerCallOverFixedCollection` (main PMD ruleset) for the same scan of a field
+(or its `values()`, `keySet()`, `entrySet()`) changed only in constructors, as a stream
+`filter(...).findFirst()`, `anyMatch`, `noneMatch` or an enhanced `for` that returns on a match.
+
+`nitpicker/no-cache-per-inner-unit` (production source, in `eslint-lint`) reports a cache
+(`new ...Cache(...)`, `...Memo`, `...Memoizer`, `...Shared`) created with arguments inside a loop body
+or iteration callback when no argument depends on the pass and the cache is not stored. Java has
+`CachePerInnerUnit` (main PMD ruleset) for the same shape. The second form of the pattern, a component
+rebuilt from the same input without its caches, is left to review.
 
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a

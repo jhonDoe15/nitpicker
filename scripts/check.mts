@@ -17,13 +17,14 @@ const RECORDED_RESULTS = [
   `--outputFile.json=${TEST_RESULTS}/test-report.json`,
 ];
 
-function stepStatus(args: readonly string[], environment: NodeJS.ProcessEnv): number | null {
-  return spawnSync(process.execPath, args, {
+function stepStatus(args: readonly string[], environment: NodeJS.ProcessEnv): number | undefined {
+  const { status } = spawnSync(process.execPath, args, {
     cwd: repositoryRoot,
     stdio: 'inherit',
     timeout: TOOL_RUN_CEILING_MS,
     env: environment,
-  }).status;
+  });
+  return status ?? undefined;
 }
 
 function failedSteps(testArguments: readonly string[], environment: NodeJS.ProcessEnv): string[] {

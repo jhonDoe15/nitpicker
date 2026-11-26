@@ -1,0 +1,1451 @@
+[
+ [
+  "src/main/features/f15/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from findUsers: PrismaClient from @prisma/client is a persistence handle, so every importer of feature f15 depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  2,
+  105
+ ],
+ [
+  "src/main/features/f16/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  3,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from orders.inTransaction: Transaction from knex is a persistence handle, so every importer of feature f16 depends on its database session. Keep Transaction in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  3,
+  151
+ ],
+ [
+  "src/main/features/f17/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  1,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from OrderService.transaction: TransactionClient from @prisma/client is a persistence handle, so every importer of feature f17 depends on its database session. Keep TransactionClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  1,
+  42
+ ],
+ [
+  "src/main/features/f17/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  1,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from OrderService.list: QueryBuilder from knex is a persistence handle, so every importer of feature f17 depends on its database session. Keep QueryBuilder in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  1,
+  42
+ ],
+ [
+  "src/main/features/f18/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take plain values and return a domain type or a plain record from sendOrder: Response from express is a request or response object, so every importer of feature f18 needs a live HTTP exchange. Read it in the route handler and pass the values in. An exception fits only when the export is a route handler or middleware the framework calls with a different first parameter.",
+  2,
+  77
+ ],
+ [
+  "src/main/features/f19/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  1,
+  1,
+  "Take plain values and return a domain type or a plain record from current: Request from express is a request or response object, so every importer of feature f19 needs a live HTTP exchange. Read it in the route handler and pass the values in. An exception fits only when the export is a route handler or middleware the framework calls with a different first parameter.",
+  1,
+  23
+ ],
+ [
+  "src/main/features/f20/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from createOrders().tx: TransactionClient from @prisma/client is a persistence handle, so every importer of feature f20 depends on its database session. Keep TransactionClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  2,
+  142
+ ],
+ [
+  "src/main/features/f21/index.js",
+  "nitpicker/contract-infrastructure-type",
+  3,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from commit: Transaction from knex is a persistence handle, so every importer of feature f21 depends on its database session. Keep Transaction in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  3,
+  51
+ ],
+ [
+  "src/main/features/f22/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from OrderStore.session: Transaction from knex is a persistence handle, so every importer of feature f22 depends on its database session. Keep Transaction in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  2,
+  77
+ ],
+ [
+  "src/main/features/f23/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  3,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from db: PrismaClient from @prisma/client is a persistence handle, so every importer of feature f23 depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  3,
+  26
+ ],
+ [
+  "src/main/features/f24/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from Users.find: PrismaClient from @prisma/client is a persistence handle, so every importer of feature f24 depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  2,
+  114
+ ],
+ [
+  "src/main/features/f25/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from findUsers: PrismaClient from @prisma/client is a persistence handle, so every importer of feature f25 depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  2,
+  105
+ ],
+ [
+  "src/main/features/h10/handler.ts",
+  "nitpicker/handler-entity-type",
+  4,
+  68,
+  "Take and return a plain record (DTO) in res.json(...) and map AdminEntity to it in the service: AdminEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  4,
+  85
+ ],
+ [
+  "src/main/features/h11/route.ts",
+  "nitpicker/handler-entity-type",
+  4,
+  23,
+  "Take and return a plain record (DTO) in GET and map Invoice to it in the service: Invoice is a Sequelize entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  4,
+  26
+ ],
+ [
+  "src/main/features/h11/route.ts",
+  "nitpicker/handler-entity-type",
+  4,
+  90,
+  "Take and return a plain record (DTO) in NextResponse.json(...) and map Invoice to it in the service: Invoice is a Sequelize entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  4,
+  105
+ ],
+ [
+  "src/main/features/h12/handler.ts",
+  "nitpicker/handler-entity-type",
+  4,
+  81,
+  "Take and return a plain record (DTO) in ctx.body = and map Document to it in the service: Document is a Mongoose entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  4,
+  88
+ ],
+ [
+  "src/main/features/h13/route.ts",
+  "nitpicker/handler-entity-type",
+  4,
+  66,
+  "Take and return a plain record (DTO) in Response.json(...) and map User to it in the service: User is a Prisma entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  4,
+  78
+ ],
+ [
+  "src/main/features/h15/route.ts",
+  "nitpicker/handler-entity-type",
+  4,
+  23,
+  "Take and return a plain record (DTO) in GET and map Post to it in the service: Post is a Prisma entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  4,
+  26
+ ],
+ [
+  "src/main/features/h15/route.ts",
+  "nitpicker/handler-entity-type",
+  4,
+  87,
+  "Take and return a plain record (DTO) in NextResponse.json(...) and map Post to it in the service: Post is a Prisma entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  4,
+  111
+ ],
+ [
+  "src/main/features/h15/route.ts",
+  "nitpicker/handler-entity-type",
+  5,
+  66,
+  "Take and return a plain record (DTO) in Response.json(...) and map Post to it in the service: Post is a Prisma entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  5,
+  91
+ ],
+ [
+  "src/main/features/h16/handler.ts",
+  "nitpicker/handler-entity-type",
+  4,
+  73,
+  "Take and return a plain record (DTO) in ctx.body = and map Cat to it in the service: Cat is a Mongoose entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  4,
+  76
+ ],
+ [
+  "src/main/features/h17/handler.ts",
+  "nitpicker/handler-entity-type",
+  4,
+  42,
+  "Take and return a plain record (DTO) in AccountsController.list and map Account to it in the service: Account is a Prisma entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  4,
+  46
+ ],
+ [
+  "src/main/features/h9/handler.ts",
+  "nitpicker/handler-entity-type",
+  6,
+  10,
+  "Take and return a plain record (DTO) in UsersController.list and map UserEntity to it in the service: UserEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  6,
+  14
+ ],
+ [
+  "src/main/features/h9/handler.ts",
+  "nitpicker/handler-entity-type",
+  7,
+  11,
+  "Take and return a plain record (DTO) in UsersController.create and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  7,
+  17
+ ],
+ [
+  "src/main/features/x-braces/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from o.{{type}}: Pool from pg is a persistence handle, so every importer of feature x-braces depends on its database session. Keep Pool in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  2,
+  92
+ ],
+ [
+  "src/main/features/x-braces/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from o.{{ member }}{{package}}: Pool from pg is a persistence handle, so every importer of feature x-braces depends on its database session. Keep Pool in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  2,
+  92
+ ],
+ [
+  "src/main/features/x-classexpr/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  3,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from Ab.m: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-classexpr depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  3,
+  65
+ ],
+ [
+  "src/main/features/x-default/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from default: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-default depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  2,
+  74
+ ],
+ [
+  "src/main/features/x-defclass/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from default.find: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-defclass depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  2,
+  86
+ ],
+ [
+  "src/main/features/x-deleg/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from users: UserDelegate from @prisma/client is a persistence handle, so every importer of feature x-deleg depends on its database session. Keep UserDelegate in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  2,
+  49
+ ],
+ [
+  "src/main/features/x-deleg/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  3,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from lookup: PostDelegate from @prisma/client is a persistence handle, so every importer of feature x-deleg depends on its database session. Keep PostDelegate in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  3,
+  71
+ ],
+ [
+  "src/main/features/x-directive/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  1,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from T.a: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-directive depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  4,
+  1
+ ],
+ [
+  "src/main/features/x-dupes/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from a: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-dupes depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  2,
+  95
+ ],
+ [
+  "src/main/features/x-dupes/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  3,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from b: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-dupes depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  3,
+  55
+ ],
+ [
+  "src/main/features/x-enum/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  3,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from f: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-enum depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  3,
+  51
+ ],
+ [
+  "src/main/features/x-exportassign/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  3,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from default: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-exportassign depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  3,
+  25
+ ],
+ [
+  "src/main/features/x-exportassign/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  4,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from str-name: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-exportassign depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  4,
+  28
+ ],
+ [
+  "src/main/features/x-factories/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from f1: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-factories depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  2,
+  93
+ ],
+ [
+  "src/main/features/x-factories/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  3,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from f2().a: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-factories depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  3,
+  95
+ ],
+ [
+  "src/main/features/x-factories/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  5,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from f4: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-factories depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  5,
+  107
+ ],
+ [
+  "src/main/features/x-factories/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  6,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from f5: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-factories depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  6,
+  50
+ ],
+ [
+  "src/main/features/x-generics/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  3,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from a: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-generics depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  3,
+  52
+ ],
+ [
+  "src/main/features/x-generics/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  4,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from b: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-generics depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  4,
+  45
+ ],
+ [
+  "src/main/features/x-generics/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  5,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from c: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-generics depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  5,
+  53
+ ],
+ [
+  "src/main/features/x-generics/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  6,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from d: Transaction from knex is a persistence handle, so every importer of feature x-generics depends on its database session. Keep Transaction in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  6,
+  60
+ ],
+ [
+  "src/main/features/x-generics/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  8,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from f: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-generics depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  8,
+  60
+ ],
+ [
+  "src/main/features/x-generics/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  9,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from g: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-generics depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  9,
+  49
+ ],
+ [
+  "src/main/features/x-handlertype/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  4,
+  1,
+  "Take plain values and return a domain type or a plain record from other: Response from express is a request or response object, so every importer of feature x-handlertype needs a live HTTP exchange. Read it in the route handler and pass the values in. An exception fits only when the export is a route handler or middleware the framework calls with a different first parameter.",
+  4,
+  63
+ ],
+ [
+  "src/main/features/x-hidden-dir/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  1,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from z: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-hidden-dir depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  1,
+  24
+ ],
+ [
+  "src/main/features/x-ifaces/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from Fn: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-ifaces depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  2,
+  135
+ ],
+ [
+  "src/main/features/x-ifaces/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from Fn.method: TransactionClient from @prisma/client is a persistence handle, so every importer of feature x-ifaces depends on its database session. Keep TransactionClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  2,
+  135
+ ],
+ [
+  "src/main/features/x-ifaces/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from Fn.prop: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-ifaces depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  2,
+  135
+ ],
+ [
+  "src/main/features/x-ifaces/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  3,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from Alias: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-ifaces depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  3,
+  48
+ ],
+ [
+  "src/main/features/x-ifaces/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  4,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from Obj.run: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-ifaces depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  4,
+  94
+ ],
+ [
+  "src/main/features/x-jsdoc2/index.js",
+  "nitpicker/contract-infrastructure-type",
+  1,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from P.open: Transaction from knex is a persistence handle, so every importer of feature x-jsdoc2 depends on its database session. Keep Transaction in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  3,
+  2
+ ],
+ [
+  "src/main/features/x-ns/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from Tools.find: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-ns depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  8,
+  1
+ ],
+ [
+  "src/main/features/x-overloads/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  4,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from ov: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-overloads depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  4,
+  49
+ ],
+ [
+  "src/main/features/x-overloads/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  5,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from merged: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-overloads depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  5,
+  60
+ ],
+ [
+  "src/main/features/x-overloads/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  5,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from merged.inner: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-overloads depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  5,
+  60
+ ],
+ [
+  "src/main/features/x-overloads/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  7,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from Mc.m: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-overloads depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  7,
+  59
+ ],
+ [
+  "src/main/features/x-overloads/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  7,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from Mc.st: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-overloads depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  7,
+  59
+ ],
+ [
+  "src/main/features/x-pgs/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from p: Pool from pg is a persistence handle, so every importer of feature x-pgs depends on its database session. Keep Pool in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  2,
+  35
+ ],
+ [
+  "src/main/features/x-pgs/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  3,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from q: Client from pg is a persistence handle, so every importer of feature x-pgs depends on its database session. Keep Client in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  3,
+  44
+ ],
+ [
+  "src/main/features/x-privates/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from Q.e: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-privates depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  12,
+  2
+ ],
+ [
+  "src/main/features/x-privates/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from Q.f: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-privates depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  12,
+  2
+ ],
+ [
+  "src/main/features/x-privates/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from Q.s: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-privates depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  12,
+  2
+ ],
+ [
+  "src/main/features/x-reexp/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  1,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from b: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-reexp depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  1,
+  42
+ ],
+ [
+  "src/main/features/x-reexp/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  1,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from d-e: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-reexp depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  1,
+  42
+ ],
+ [
+  "src/main/features/x-reexp/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from T.m: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-reexp depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  2,
+  30
+ ],
+ [
+  "src/main/features/x-starns/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  1,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from inner.g: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-starns depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  1,
+  34
+ ],
+ [
+  "src/main/features/x-twostars/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  1,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from dup: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-twostars depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  1,
+  21
+ ],
+ [
+  "src/main/features/x-twostars/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  2,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from only: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-twostars depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  2,
+  21
+ ],
+ [
+  "src/main/features/x-union/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  3,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from db: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-union depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  3,
+  21
+ ],
+ [
+  "src/main/features/x-union/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  4,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from both: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-union depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  4,
+  68
+ ],
+ [
+  "src/main/features/x-union/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  4,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from both: TransactionClient from @prisma/client is a persistence handle, so every importer of feature x-union depends on its database session. Keep TransactionClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  4,
+  68
+ ],
+ [
+  "src/main/features/x-unionorder/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  4,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from m: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-unionorder depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  4,
+  73
+ ],
+ [
+  "src/main/features/x-unionorder/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  4,
+  1,
+  "Take plain values and return a domain type or a plain record from m: Response from express is a request or response object, so every importer of feature x-unionorder needs a live HTTP exchange. Read it in the route handler and pass the values in. An exception fits only when the export is a route handler or middleware the framework calls with a different first parameter.",
+  4,
+  73
+ ],
+ [
+  "src/main/features/x-unionorder/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  4,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from m: Transaction from knex is a persistence handle, so every importer of feature x-unionorder depends on its database session. Keep Transaction in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  4,
+  73
+ ],
+ [
+  "src/main/features/x-unionorder/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  5,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from n: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-unionorder depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  5,
+  91
+ ],
+ [
+  "src/main/features/x-unionorder/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  5,
+  1,
+  "Take plain values and return a domain type or a plain record from n: Response from express is a request or response object, so every importer of feature x-unionorder needs a live HTTP exchange. Read it in the route handler and pass the values in. An exception fits only when the export is a route handler or middleware the framework calls with a different first parameter.",
+  5,
+  91
+ ],
+ [
+  "src/main/features/x-unionorder/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  5,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from n: QueryBuilder from knex is a persistence handle, so every importer of feature x-unionorder depends on its database session. Keep QueryBuilder in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  5,
+  91
+ ],
+ [
+  "src/main/features/x-unionorder/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  6,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from o: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-unionorder depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  6,
+  69
+ ],
+ [
+  "src/main/features/x-unionorder/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  6,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from o: Transaction from knex is a persistence handle, so every importer of feature x-unionorder depends on its database session. Keep Transaction in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  6,
+  69
+ ],
+ [
+  "src/main/features/x-varstmts/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  1,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from a: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-varstmts depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  5,
+  1
+ ],
+ [
+  "src/main/features/x-varstmts/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  1,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from x: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-varstmts depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  5,
+  1
+ ],
+ [
+  "src/main/features/x-varstmts/index.ts",
+  "nitpicker/contract-infrastructure-type",
+  4,
+  1,
+  "Take a repository or a port interface and return a domain type or a plain record from v: PrismaClient from @prisma/client is a persistence handle, so every importer of feature x-varstmts depends on its database session. Keep PrismaClient in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.",
+  4,
+  28
+ ],
+ [
+  "src/main/features/y-accessors/handler.ts",
+  "nitpicker/handler-entity-type",
+  6,
+  14,
+  "Take and return a plain record (DTO) in C.a and map UserEntity to it in the service: UserEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  6,
+  15
+ ],
+ [
+  "src/main/features/y-accessors/handler.ts",
+  "nitpicker/handler-entity-type",
+  8,
+  11,
+  "Take and return a plain record (DTO) in C.['computed'] and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  8,
+  21
+ ],
+ [
+  "src/main/features/y-accessors/handler.ts",
+  "nitpicker/handler-entity-type",
+  9,
+  10,
+  "Take and return a plain record (DTO) in C.'quoted' and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  9,
+  18
+ ],
+ [
+  "src/main/features/y-accessors/handler.ts",
+  "nitpicker/handler-entity-type",
+  10,
+  10,
+  "Take and return a plain record (DTO) in C.123 and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  10,
+  13
+ ],
+ [
+  "src/main/features/y-accessors/handler.ts",
+  "nitpicker/handler-entity-type",
+  12,
+  17,
+  "Take and return a plain record (DTO) in C.st and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  12,
+  19
+ ],
+ [
+  "src/main/features/y-accessors/handler.ts",
+  "nitpicker/handler-entity-type",
+  14,
+  10,
+  "Take and return a plain record (DTO) in C.ov and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  14,
+  12
+ ],
+ [
+  "src/main/features/y-accessors/handler.ts",
+  "nitpicker/handler-entity-type",
+  15,
+  17,
+  "Take and return a plain record (DTO) in C.gen and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  15,
+  20
+ ],
+ [
+  "src/main/features/y-accessors/handler.ts",
+  "nitpicker/handler-entity-type",
+  18,
+  47,
+  "Take and return a plain record (DTO) in controller.m and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  18,
+  48
+ ],
+ [
+  "src/main/features/y-annotated/route.ts",
+  "nitpicker/handler-entity-type",
+  4,
+  14,
+  "Take and return a plain record (DTO) in POST and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  4,
+  18
+ ],
+ [
+  "src/main/features/y-annotated/route.ts",
+  "nitpicker/handler-entity-type",
+  5,
+  14,
+  "Take and return a plain record (DTO) in PUT and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  5,
+  17
+ ],
+ [
+  "src/main/features/y-bodies/handler.ts",
+  "nitpicker/handler-entity-type",
+  4,
+  46,
+  "Take and return a plain record (DTO) in ctx.body = and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  4,
+  57
+ ],
+ [
+  "src/main/features/y-bodies/handler.ts",
+  "nitpicker/handler-entity-type",
+  4,
+  152,
+  "Take and return a plain record (DTO) in (ctx).body = and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  4,
+  163
+ ],
+ [
+  "src/main/features/y-bodies/handler.ts",
+  "nitpicker/handler-entity-type",
+  4,
+  177,
+  "Take and return a plain record (DTO) in ctx.body = and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  4,
+  208
+ ],
+ [
+  "src/main/features/y-bodies/handler.ts",
+  "nitpicker/handler-entity-type",
+  4,
+  177,
+  "Take and return a plain record (DTO) in ctx.body = and map UserEntity to it in the service: UserEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  4,
+  208
+ ],
+ [
+  "src/main/features/y-bodies/handler.ts",
+  "nitpicker/handler-entity-type",
+  5,
+  100,
+  "Take and return a plain record (DTO) in ctx.body = and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  5,
+  111
+ ],
+ [
+  "src/main/features/y-braces/handler.ts",
+  "nitpicker/handler-entity-type",
+  5,
+  25,
+  "Take and return a plain record (DTO) in C.'{{entity}} {{orm}}' and map E to it in the service: E is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  5,
+  45
+ ],
+ [
+  "src/main/features/y-frameworks/handler.ts",
+  "nitpicker/handler-entity-type",
+  5,
+  53,
+  "Take and return a plain record (DTO) in reply.send(...) and map UserEntity to it in the service: UserEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  5,
+  69
+ ],
+ [
+  "src/main/features/y-frameworks/handler.ts",
+  "nitpicker/handler-entity-type",
+  6,
+  40,
+  "Take and return a plain record (DTO) in c.json(...) and map UserEntity to it in the service: UserEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  6,
+  56
+ ],
+ [
+  "src/main/features/y-frameworks/handler.ts",
+  "nitpicker/handler-entity-type",
+  7,
+  37,
+  "Take and return a plain record (DTO) in r.body = and map UserEntity to it in the service: UserEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  7,
+  53
+ ],
+ [
+  "src/main/features/y-noncontroller/handler.ts",
+  "nitpicker/handler-entity-type",
+  5,
+  32,
+  "Take and return a plain record (DTO) in D.m and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  5,
+  33
+ ],
+ [
+  "src/main/features/y-orms/handler.ts",
+  "nitpicker/handler-entity-type",
+  20,
+  10,
+  "Take and return a plain record (DTO) in C.a and map A to it in the service: A is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  20,
+  11
+ ],
+ [
+  "src/main/features/y-orms/handler.ts",
+  "nitpicker/handler-entity-type",
+  21,
+  10,
+  "Take and return a plain record (DTO) in C.b and map B to it in the service: B is a MikroORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  21,
+  11
+ ],
+ [
+  "src/main/features/y-orms/handler.ts",
+  "nitpicker/handler-entity-type",
+  22,
+  10,
+  "Take and return a plain record (DTO) in C.c and map M2 to it in the service: M2 is a Sequelize entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  22,
+  11
+ ],
+ [
+  "src/main/features/y-orms/handler.ts",
+  "nitpicker/handler-entity-type",
+  23,
+  10,
+  "Take and return a plain record (DTO) in C.d and map D1 to it in the service: D1 is a Mongoose entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  23,
+  11
+ ],
+ [
+  "src/main/features/y-orms/handler.ts",
+  "nitpicker/handler-entity-type",
+  24,
+  10,
+  "Take and return a plain record (DTO) in C.e and map Plain to it in the service: Plain is a Mongoose entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  24,
+  11
+ ],
+ [
+  "src/main/features/y-orms/handler.ts",
+  "nitpicker/handler-entity-type",
+  25,
+  10,
+  "Take and return a plain record (DTO) in C.f and map Document to it in the service: Document is a Mongoose entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  25,
+  11
+ ],
+ [
+  "src/main/features/y-orms/handler.ts",
+  "nitpicker/handler-entity-type",
+  26,
+  10,
+  "Take and return a plain record (DTO) in C.g and map D1 to it in the service: D1 is a Mongoose entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  26,
+  11
+ ],
+ [
+  "src/main/features/y-orms/handler.ts",
+  "nitpicker/handler-entity-type",
+  27,
+  10,
+  "Take and return a plain record (DTO) in C.h and map D1 to it in the service: D1 is a Mongoose entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  27,
+  11
+ ],
+ [
+  "src/main/features/y-prismacontroller/handler.ts",
+  "nitpicker/handler-entity-type",
+  6,
+  10,
+  "Take and return a plain record (DTO) in PostsController.list and map Post to it in the service: Post is a Prisma entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  6,
+  14
+ ],
+ [
+  "src/main/features/y-prismacontroller/handler.ts",
+  "nitpicker/handler-entity-type",
+  7,
+  15,
+  "Take and return a plain record (DTO) in PostsController.one and map Post to it in the service: Post is a Prisma entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  7,
+  18
+ ],
+ [
+  "src/main/features/y-prismacontroller/handler.ts",
+  "nitpicker/handler-entity-type",
+  8,
+  20,
+  "Take and return a plain record (DTO) in PostsController.inferred and map Post to it in the service: Post is a Prisma entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  8,
+  28
+ ],
+ [
+  "src/main/features/y-prismacontroller/handler.ts",
+  "nitpicker/handler-entity-type",
+  9,
+  19,
+  "Take and return a plain record (DTO) in PostsController.payload and map Post to it in the service: Post is a Prisma entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  9,
+  26
+ ],
+ [
+  "src/main/features/y-prismas/handler.ts",
+  "nitpicker/handler-entity-type",
+  6,
+  10,
+  "Take and return a plain record (DTO) in C.a and map User to it in the service: User is a Prisma entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  6,
+  11
+ ],
+ [
+  "src/main/features/y-prismas/handler.ts",
+  "nitpicker/handler-entity-type",
+  7,
+  10,
+  "Take and return a plain record (DTO) in C.b and map Post to it in the service: Post is a Prisma entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  7,
+  11
+ ],
+ [
+  "src/main/features/y-prismas/handler.ts",
+  "nitpicker/handler-entity-type",
+  9,
+  10,
+  "Take and return a plain record (DTO) in C.d and map User to it in the service: User is a Prisma entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  9,
+  11
+ ],
+ [
+  "src/main/features/y-prismas/handler.ts",
+  "nitpicker/handler-entity-type",
+  10,
+  10,
+  "Take and return a plain record (DTO) in C.e and map Post to it in the service: Post is a Prisma entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  10,
+  11
+ ],
+ [
+  "src/main/features/y-prismas/handler.ts",
+  "nitpicker/handler-entity-type",
+  11,
+  10,
+  "Take and return a plain record (DTO) in C.f and map Account to it in the service: Account is a Prisma entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  11,
+  11
+ ],
+ [
+  "src/main/features/y-prismas/handler.ts",
+  "nitpicker/handler-entity-type",
+  12,
+  10,
+  "Take and return a plain record (DTO) in C.g and map Post to it in the service: Post is a Prisma entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  12,
+  11
+ ],
+ [
+  "src/main/features/y-prismas/handler.ts",
+  "nitpicker/handler-entity-type",
+  13,
+  10,
+  "Take and return a plain record (DTO) in C.h and map Account to it in the service: Account is a Prisma entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  13,
+  11
+ ],
+ [
+  "src/main/features/y-prismas/handler.ts",
+  "nitpicker/handler-entity-type",
+  13,
+  10,
+  "Take and return a plain record (DTO) in C.h and map Post to it in the service: Post is a Prisma entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  13,
+  11
+ ],
+ [
+  "src/main/features/y-routejs/route.js",
+  "nitpicker/handler-entity-type",
+  2,
+  17,
+  "Take and return a plain record (DTO) in GET and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  2,
+  20
+ ],
+ [
+  "src/main/features/y-routejs/route.js",
+  "nitpicker/handler-entity-type",
+  3,
+  14,
+  "Take and return a plain record (DTO) in POST and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  3,
+  18
+ ],
+ [
+  "src/main/features/y-sendersx/route.ts",
+  "nitpicker/handler-entity-type",
+  6,
+  23,
+  "Take and return a plain record (DTO) in GET and map Post to it in the service: Post is a Prisma entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  6,
+  26
+ ],
+ [
+  "src/main/features/y-sendersx/route.ts",
+  "nitpicker/handler-entity-type",
+  6,
+  56,
+  "Take and return a plain record (DTO) in NextResponse.json(...) and map Post to it in the service: Post is a Prisma entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  6,
+  80
+ ],
+ [
+  "src/main/features/y-sendersx/route.ts",
+  "nitpicker/handler-entity-type",
+  7,
+  23,
+  "Take and return a plain record (DTO) in POST and map UserEntity to it in the service: UserEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  7,
+  27
+ ],
+ [
+  "src/main/features/y-sendersx/route.ts",
+  "nitpicker/handler-entity-type",
+  7,
+  59,
+  "Take and return a plain record (DTO) in S.NextResponse.json(...) and map UserEntity to it in the service: UserEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  7,
+  75
+ ],
+ [
+  "src/main/features/y-sendersx/route.ts",
+  "nitpicker/handler-entity-type",
+  8,
+  52,
+  "Take and return a plain record (DTO) in Response.json(...) and map UserEntity to it in the service: UserEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  8,
+  68
+ ],
+ [
+  "src/main/features/y-sends/handler.ts",
+  "nitpicker/handler-entity-type",
+  4,
+  46,
+  "Take and return a plain record (DTO) in res?.json(...) and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  4,
+  57
+ ],
+ [
+  "src/main/features/y-sends/handler.ts",
+  "nitpicker/handler-entity-type",
+  4,
+  120,
+  "Take and return a plain record (DTO) in res.send(...) and map AdminEntity to it in the service: AdminEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  4,
+  137
+ ],
+ [
+  "src/main/features/y-sends/handler.ts",
+  "nitpicker/handler-entity-type",
+  4,
+  161,
+  "Take and return a plain record (DTO) in res.json(...) and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  4,
+  177
+ ],
+ [
+  "src/main/features/y-sends/handler.ts",
+  "nitpicker/handler-entity-type",
+  4,
+  190,
+  "Take and return a plain record (DTO) in res.json(...) and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  4,
+  201
+ ],
+ [
+  "src/main/features/y-sends/handler.ts",
+  "nitpicker/handler-entity-type",
+  5,
+  68,
+  "Take and return a plain record (DTO) in res.json(...) and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  5,
+  69
+ ],
+ [
+  "src/main/features/y-sends/handler.ts",
+  "nitpicker/handler-entity-type",
+  5,
+  68,
+  "Take and return a plain record (DTO) in res.json(...) and map UserEntity to it in the service: UserEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  5,
+  69
+ ],
+ [
+  "src/main/features/y-sends/handler.ts",
+  "nitpicker/handler-entity-type",
+  5,
+  81,
+  "Take and return a plain record (DTO) in res.send(...) and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  5,
+  89
+ ],
+ [
+  "src/main/features/y-sends/handler.ts",
+  "nitpicker/handler-entity-type",
+  5,
+  81,
+  "Take and return a plain record (DTO) in res.send(...) and map UserEntity to it in the service: UserEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  5,
+  89
+ ],
+ [
+  "src/main/features/y-sends/handler.ts",
+  "nitpicker/handler-entity-type",
+  5,
+  101,
+  "Take and return a plain record (DTO) in res.json(...) and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  5,
+  104
+ ],
+ [
+  "src/main/features/y-sends/handler.ts",
+  "nitpicker/handler-entity-type",
+  5,
+  101,
+  "Take and return a plain record (DTO) in res.json(...) and map UserEntity to it in the service: UserEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  5,
+  104
+ ],
+ [
+  "src/main/features/y-sends/handler.ts",
+  "nitpicker/handler-entity-type",
+  5,
+  116,
+  "Take and return a plain record (DTO) in res.json(...) and map UserEntity to it in the service: UserEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  5,
+  145
+ ],
+ [
+  "src/main/features/y-sends/handler.ts",
+  "nitpicker/handler-entity-type",
+  5,
+  157,
+  "Take and return a plain record (DTO) in res.json(...) and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  5,
+  175
+ ],
+ [
+  "src/main/features/y-sends/handler.ts",
+  "nitpicker/handler-entity-type",
+  5,
+  157,
+  "Take and return a plain record (DTO) in res.json(...) and map UserEntity to it in the service: UserEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  5,
+  175
+ ],
+ [
+  "src/main/features/y-sends/handler.ts",
+  "nitpicker/handler-entity-type",
+  7,
+  64,
+  "Take and return a plain record (DTO) in res.json(...) and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  7,
+  75
+ ],
+ [
+  "src/main/features/y-sends/handler.ts",
+  "nitpicker/handler-entity-type",
+  7,
+  87,
+  "Take and return a plain record (DTO) in res.json(...) and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  7,
+  98
+ ],
+ [
+  "src/main/features/y-unicode/handler.ts",
+  "nitpicker/handler-entity-type",
+  6,
+  25,
+  "Take and return a plain record (DTO) in C.all and map \ud842\udfb7 to it in the service: \ud842\udfb7 is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  6,
+  28
+ ],
+ [
+  "src/main/features/y-unicode/handler.ts",
+  "nitpicker/handler-entity-type",
+  6,
+  25,
+  "Take and return a plain record (DTO) in C.all and map \uff21 to it in the service: \uff21 is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  6,
+  28
+ ],
+ [
+  "src/main/features/y-wrapped/handler.ts",
+  "nitpicker/handler-entity-type",
+  6,
+  10,
+  "Take and return a plain record (DTO) in C.a and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  6,
+  11
+ ],
+ [
+  "src/main/features/y-wrapped/handler.ts",
+  "nitpicker/handler-entity-type",
+  6,
+  10,
+  "Take and return a plain record (DTO) in C.a and map UserEntity to it in the service: UserEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  6,
+  11
+ ],
+ [
+  "src/main/features/y-wrapped/handler.ts",
+  "nitpicker/handler-entity-type",
+  7,
+  10,
+  "Take and return a plain record (DTO) in C.b and map UserEntity to it in the service: UserEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  7,
+  11
+ ],
+ [
+  "src/main/features/y-wrapped/handler.ts",
+  "nitpicker/handler-entity-type",
+  8,
+  10,
+  "Take and return a plain record (DTO) in C.c and map AdminEntity to it in the service: AdminEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  8,
+  11
+ ],
+ [
+  "src/main/features/y-wrapped/handler.ts",
+  "nitpicker/handler-entity-type",
+  8,
+  10,
+  "Take and return a plain record (DTO) in C.c and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  8,
+  11
+ ],
+ [
+  "src/main/features/y-wrapped/handler.ts",
+  "nitpicker/handler-entity-type",
+  9,
+  10,
+  "Take and return a plain record (DTO) in C.d and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  9,
+  11
+ ],
+ [
+  "src/main/features/y-wrapped/handler.ts",
+  "nitpicker/handler-entity-type",
+  10,
+  10,
+  "Take and return a plain record (DTO) in C.e and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  10,
+  11
+ ],
+ [
+  "src/main/features/y-wrapped/handler.ts",
+  "nitpicker/handler-entity-type",
+  11,
+  10,
+  "Take and return a plain record (DTO) in C.f and map UserEntity to it in the service: UserEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  11,
+  11
+ ],
+ [
+  "src/main/features/y-wrapped/handler.ts",
+  "nitpicker/handler-entity-type",
+  12,
+  10,
+  "Take and return a plain record (DTO) in C.g and map Audit to it in the service: Audit is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  12,
+  11
+ ],
+ [
+  "src/main/features/y-wrapped/handler.ts",
+  "nitpicker/handler-entity-type",
+  12,
+  10,
+  "Take and return a plain record (DTO) in C.g and map UserEntity to it in the service: UserEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  12,
+  11
+ ],
+ [
+  "src/main/features/y-wrapped/handler.ts",
+  "nitpicker/handler-entity-type",
+  14,
+  10,
+  "Take and return a plain record (DTO) in C.i and map UserEntity to it in the service: UserEntity is a TypeORM entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.",
+  14,
+  11
+ ]
+]

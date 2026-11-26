@@ -5,6 +5,7 @@ import { useTempProjects } from '../../../../shared/test-support/temp-projects.m
 import { fieldOf, listOf, parseJson } from '../../../../shared/values/readers.mts';
 import { engineFolders, engineWriting, type Started } from '../test-support/engine-writing.mts';
 import {
+  ON_ENGINE,
   SPOTBUGS_ENGINE_SARIF,
   spotbugsArgumentsFor,
   spotbugsOnEngine,
@@ -54,7 +55,7 @@ describe('spotbugsOnEngine', () => {
 
     expect(added.slice(0, 3)).toStrictEqual([
       '-omitVisitors',
-      'ConstructorThrow,DontCatchNullPointerException,WrongMapIterator',
+      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull',
       '-exclude',
     ]);
     expect(sarifResults(plan).map((result) => fieldOf(result, 'ruleId'))).toStrictEqual([
@@ -70,9 +71,7 @@ describe('spotbugsOnEngine', () => {
       '--classpath',
       path.join(plan.reportDir, 'spotbugs-engine-classpath.txt'),
     ]);
-    expect(String(fieldOf(start?.environment, 'NP_SB_ONLY')).split(',')).toContain(
-      'WMI_WRONG_MAP_ITERATOR',
-    );
+    expect(fieldOf(start?.environment, 'NP_SB_ONLY')).toBe(ON_ENGINE.join(','));
     expect(fieldOf(start?.environment, 'NITPICKER_JDK')).toBe(plan.javaHome);
     expect(readFileSync(path.join(plan.reportDir, 'spotbugs-engine-sources.txt'), 'utf8')).toBe(
       `${plan.sources[0] ?? ''}\n`,
@@ -129,7 +128,7 @@ describe('spotbugsOnEngine', () => {
     expect(started).toStrictEqual([]);
   });
 
-  it('leaves the patterns that need the members Lombok writes to SpotBugs', () => {
+  it('tells the engine that Lombok ran, so it knows the members Lombok writes', () => {
     const plan = planIn();
     const lombok = path.join(plan.reportDir, 'lombok');
     mkdirSync(path.join(lombok, 'META-INF/services'), { recursive: true });
@@ -141,14 +140,20 @@ describe('spotbugsOnEngine', () => {
     const run = engineWriting({ findings: [finding('CT_CONSTRUCTOR_THROW', THROWN)] }, started);
 
     const added = spotbugsOnEngine({ ...plan, processorPath: [lombok] }, environment, { run });
+    const plain = spotbugsOnEngine(plan, environment, { run });
 
     expect(added.slice(0, 2)).toStrictEqual([
       '-omitVisitors',
-      'ConstructorThrow,DontCatchNullPointerException',
+      'CloneIdiom,ConstructorThrow,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull',
     ]);
-    const only = String(fieldOf(started[0]?.environment, 'NP_SB_ONLY')).split(',');
-    expect(only).toContain('CT_CONSTRUCTOR_THROW');
-    expect(only).not.toContain('WMI_WRONG_MAP_ITERATOR');
+    expect(plain[1]).toBe(
+      'MultipleInstantiationsOfSingletons,CloneIdiom,ConstructorThrow,DontCatchNullPointerException,WrongMapIterator,BooleanReturnNull',
+    );
+    expect(started.map(({ argumentList }) => argumentList.includes('--lombok'))).toStrictEqual([
+      true,
+      false,
+    ]);
+    expect(fieldOf(started[0]?.environment, 'NP_SB_ONLY')).toBe(ON_ENGINE.join(','));
   });
 
   it('skips a detector whose patterns all run on the engine and filters out the others', () => {

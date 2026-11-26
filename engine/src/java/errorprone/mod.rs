@@ -105,7 +105,7 @@ mod locale;
 mod locale_fix;
 mod futures;
 mod redundant;
-mod tokens;
+pub(crate) mod tokens;
 mod positions;
 mod testcode;
 mod arrays;
@@ -148,6 +148,73 @@ mod already_checked;
 mod already_pure;
 mod ignored_matchers;
 mod returns_ignored;
+mod odd_calls;
+mod flogger;
+mod odd_types;
+mod time_from;
+mod guice;
+mod junit_init;
+mod junit_tests;
+mod recursion;
+mod equals_wrong;
+mod inject_checks;
+mod date_format;
+mod call_defects;
+mod collection_self;
+mod source_defects;
+mod nullable_outer;
+mod cirv_classes;
+mod array_calls;
+mod do_not_mock;
+mod binary_misc;
+mod null_branch;
+mod async_nulls;
+mod duration_units;
+mod class_names;
+mod constructor_chain;
+mod auto_value_order;
+mod annotation_args;
+mod annotation_defects;
+mod java_quote;
+mod junit_runners;
+mod misc12;
+mod optional_checks;
+mod period_checks;
+mod proto_checks;
+mod random_checks;
+mod self_checks;
+mod symbol_key;
+mod stmt_defects;
+mod junit_asserts;
+mod const_checks;
+mod java_text;
+mod call_consts;
+mod auto_value;
+mod tz_data;
+mod zone_ids;
+mod time_constants;
+mod incompatible_calls;
+mod junit3;
+mod override_checks;
+mod annotation_impl;
+mod split_logging;
+mod conditional_promotion;
+mod compile_constant;
+mod descriptor_mixup;
+mod builder_defaults;
+mod android_injection;
+mod terminating_call;
+mod owners;
+mod size_join;
+mod null_varargs;
+mod boxed_lock;
+mod self_assertion;
+mod proto_builders;
+mod proto_build_ignored;
+mod inject_codegen;
+mod source_text;
+mod annotation_misuse;
+mod tree_to_string;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -205,6 +272,7 @@ impl Context<'_> {
             rule: check.to_string(),
             message: format!("[{check}] {message}"),
             symbol: None,
+            priority: None, arguments: None,
         });
     }
     /// Whether the node or a declaration around it carries `@SuppressWarnings` with the check's name or "all".
@@ -260,6 +328,24 @@ type Check = fn(&Context, Node);
 
 /// Each check with the names it reports under: a run that selects checks skips the others.
 const CHECKS: &[(&[&str], Check)] = &[
+    (&["PeriodTimeMath"], incompatible_calls::period_time_math),
+    (&["ArrayFillIncompatibleType"], incompatible_calls::array_fill_incompatible_type),
+    (&["IsInstanceOfClass"], incompatible_calls::is_instance_of_class),
+    (&["FuturesGetCheckedIllegalExceptionType"], incompatible_calls::futures_get_checked_illegal_exception_type),
+    (&["JUnit3TestNotRun"], junit3::junit3_test_not_run),
+    (&["DeadException"], junit3::dead_exception),
+    (&["ForOverride"], override_checks::for_override_invocation),
+    (&["ForOverride"], override_checks::for_override_method),
+    (&["MissingSuperCall"], override_checks::missing_super_call_annotation),
+    (&["MissingSuperCall"], override_checks::missing_super_call_method),
+    (&["FunctionalInterfaceMethodChanged"], override_checks::functional_interface_method_changed),
+    (&["BadAnnotationImplementation"], annotation_impl::bad_annotation_implementation),
+    (&["FloggerSplitLogStatement"], split_logging::flogger_split_log_statement),
+    (&["ConditionalExpressionNumericPromotion"], conditional_promotion::conditional_expression_numeric_promotion),
+    (&["MixedDescriptors"], descriptor_mixup::mixed_descriptors),
+    (&["AutoValueBuilderDefaultsInConstructor"], builder_defaults::auto_value_builder_defaults_in_constructor),
+    (&["AndroidInjectionBeforeSuper"], android_injection::android_injection_before_super),
+    (&["MissingTestCall"], terminating_call::missing_test_call),
     (&["OperatorPrecedence"], operators::operator_precedence),
     (&["ReferenceEquality"], operators::reference_equality),
     (&["UngroupedOverloads"], members::ungrouped_overloads),
@@ -432,8 +518,138 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["JavaDurationGetSecondsGetNano"], time_checks::duration_get_seconds_get_nano),
     (&["JavaDurationGetSecondsToToSeconds"], time_checks::duration_get_seconds_to_seconds),
     (&["ObjectToString"], object_to_string::object_to_string),
+    (&["StreamToString"], object_to_string::stream_to_string),
+    (&["CompileTimeConstant"], compile_constant::compile_time_constant_check),
     (&["ConstantPatternCompile"], constant_pattern::constant_pattern_compile),
     (&["ReturnValueIgnored"], returns_ignored::return_value_ignored),
+    (&["FuzzyEqualsShouldNotBeUsedInEqualsMethod"], odd_calls::fuzzy_equals_in_equals),
+    (&["GetClassOnAnnotation"], odd_calls::get_class_on_annotation),
+    (&["IndexOfChar"], odd_calls::index_of_char),
+    (&["InexactVarargsConditional"], odd_calls::inexact_varargs_conditional),
+    (&["IdentityHashMapBoxing"], odd_calls::identity_hash_map_boxing),
+    (&["FloggerLogString"], flogger::flogger_log_string),
+    (&["IsInstanceIncompatibleType"], odd_types::is_instance_incompatible_type),
+    (&["Incomparable"], odd_types::incomparable),
+    (&["IterablePathParameter"], odd_types::iterable_path_parameter),
+    (&["FromTemporalAccessor"], time_from::from_temporal_accessor),
+    (&["InstantTemporalUnit"], time_from::instant_temporal_unit),
+    (&["GuiceAssistedInjectScoping"], guice::assisted_inject_scoping),
+    (&["GuiceAssistedParameters"], guice::assisted_parameters),
+    (&["GuiceInjectOnFinalField"], guice::inject_on_final_field),
+    (&["InjectMoreThanOneScopeAnnotationOnClass"], guice::more_than_one_scope_annotation),
+    (&["InjectOnMemberAndConstructor"], guice::inject_on_member_and_constructor),
+    (&["IncompatibleModifiers"], guice::incompatible_modifiers),
+    (&["JUnit4SetUpNotRun"], junit_init::set_up_not_run),
+    (&["JUnit4TearDownNotRun"], junit_init::tear_down_not_run),
+    (&["JUnit4ClassAnnotationNonStatic"], junit_init::class_annotation_non_static),
+    (&["JUnit4TestNotRun"], junit_tests::junit4_test_not_run),
+    (&["InfiniteRecursion"], recursion::infinite_recursion),
+    (&["EqualsWrongThing"], equals_wrong::equals_wrong_thing),
+    (&["JavaxInjectOnAbstractMethod"], inject_checks::javax_inject_on_abstract_method),
+    (&["MisplacedScopeAnnotations"], inject_checks::misplaced_scope_annotations),
+    (&["MissingRuntimeRetention"], inject_checks::missing_runtime_retention),
+    (&["MoreThanOneInjectableConstructor"], inject_checks::more_than_one_injectable_constructor),
+    (&["MoreThanOneQualifier"], inject_checks::more_than_one_qualifier),
+    (&["MisusedDayOfYear"], date_format::misused_day_of_year),
+    (&["MisusedWeekYear"], date_format::misused_week_year),
+    (&["JodaToSelf"], date_format::joda_to_self),
+    (&["LocalDateTemporalAmount"], date_format::local_date_temporal_amount),
+    (&["JUnitAssertSameCheck"], call_defects::junit_assert_same),
+    (&["LossyPrimitiveCompare"], call_defects::lossy_primitive_compare),
+    (&["MathRoundIntLong"], call_defects::math_round_int_long),
+    (&["MisleadingEmptyVarargs"], call_defects::misleading_empty_varargs),
+    (&["MockitoUsage"], call_defects::mockito_usage),
+    (&["NCopiesOfChar"], call_defects::n_copies_of_char),
+    (&["NonRuntimeAnnotation"], call_defects::non_runtime_annotation),
+    (&["ModifyingCollectionWithItself"], collection_self::modifying_collection_with_itself),
+    (&["LongLiteralLowerCaseSuffix"], source_defects::long_literal_lower_case_suffix),
+    (&["LoopConditionChecker"], source_defects::loop_condition_checker),
+    (&["NullTernary"], source_defects::null_ternary),
+    (&["NonFinalCompileTimeConstant"], source_defects::non_final_compile_time_constant),
+    (&["NonCanonicalStaticImport"], source_defects::non_canonical_static_import),
+    (&["NullableOnContainingClass"], nullable_outer::nullable_on_containing_class),
+    (&["NoCanIgnoreReturnValueOnClasses"], cirv_classes::no_can_ignore_return_value_on_classes),
+    (&["ArrayEquals"], array_calls::array_equals),
+    (&["ArraysAsListPrimitiveArray"], array_calls::arrays_as_list_primitive_array),
+    (&["CollectionToArraySafeParameter"], array_calls::collection_to_array_safe_parameter),
+    (&["BadShiftAmount"], binary_misc::bad_shift_amount),
+    (&["ComparingThisWithNull"], binary_misc::comparing_this_with_null),
+    (&["EqualsNaN"], binary_misc::equals_nan),
+    (&["DiscardedPostfixExpression"], binary_misc::discarded_postfix_expression),
+    (&["DeadThread"], binary_misc::dead_thread),
+    (&["EqualsReference"], binary_misc::equals_reference),
+    (&["DereferenceWithNullBranch"], null_branch::dereference_with_null_branch),
+    (&["AsyncFunctionReturnsNull"], async_nulls::async_function_returns_null),
+    (&["AsyncCallableReturnsNull"], async_nulls::async_callable_returns_null),
+    (&["DaggerProvidesNull"], async_nulls::dagger_provides_null),
+    (&["DangerousLiteralNull"], async_nulls::dangerous_literal_null),
+    (&["DurationFrom"], duration_units::duration_from),
+    (&["DurationGetTemporalUnit"], duration_units::duration_get_temporal_unit),
+    (&["DurationTemporalUnit"], duration_units::duration_temporal_unit),
+    (&["DurationToLongTimeUnit"], duration_units::duration_to_long_time_unit),
+    (&["ComparableType"], class_names::comparable_type),
+    (&["AutoFactoryAtInject"], class_names::auto_factory_at_inject),
+    (&["ChainingConstructorIgnoresParameter"], constructor_chain::chaining_constructor_ignores_parameter),
+    (&["DoNotMock"], do_not_mock::do_not_mock),
+    (&["CheckNotNullMultipleTimes"], constructor_chain::check_not_null_multiple_times),
+    (&["AutoValueConstructorOrderChecker"], auto_value_order::auto_value_constructor_order),
+    (&["OptionalMapUnusedValue"], optional_checks::optional_map_unused_value),
+    (&["OptionalOfRedundantMethod"], optional_checks::optional_of_redundant_method),
+    (&["OverlappingQualifierAndScopeAnnotation"], annotation_defects::overlapping_qualifier_and_scope_annotation),
+    (&["ParametersButNotParameterized"], junit_runners::parameters_but_not_parameterized),
+    (&["PeriodFrom"], period_checks::period_from),
+    (&["PeriodGetTemporalUnit"], period_checks::period_get_temporal_unit),
+    (&["PrivateSecurityContractProtoAccess"], proto_checks::private_security_contract_proto_access),
+    (&["ProtoStringFieldReferenceEquality"], proto_checks::proto_string_field_reference_equality),
+    (&["ProtocolBufferOrdinal"], proto_checks::protocol_buffer_ordinal),
+    (&["ProvidesMethodOutsideOfModule"], annotation_defects::provides_method_outside_of_module),
+    (&["RandomCast"], random_checks::random_cast),
+    (&["RandomModInteger"], random_checks::random_mod_integer),
+    (&["RecordAccessorInCompactConstructor"], misc12::record_accessor_in_compact_constructor),
+    (&["SelfAssertion"], self_assertion::self_assertion),
+    (&["SelfComparison"], self_checks::self_comparison),
+    (&["SelfEquals"], self_checks::self_equals),
+    (&["ShouldHaveEvenArgs"], misc12::should_have_even_args),
+    (&["StringBuilderInitWithChar"], random_checks::string_builder_init_with_char),
+    (&["SuppressWarningsDeprecated"], annotation_defects::suppress_warnings_deprecated),
+    (&["TestExceptionChecker"], junit_runners::test_exception_checker),
+    (&["TestParametersNotInitialized"], junit_runners::test_parameters_not_initialized),
+    (&["ThrowNull"], stmt_defects::throw_null),
+    (&["VarTypeName"], stmt_defects::var_type_name),
+    (&["UnusedAnonymousClass"], stmt_defects::unused_anonymous_class),
+    (&["UnusedCollectionModifiedInPlace"], stmt_defects::unused_collection_modified_in_place),
+    (&["TheoryButNoTheories"], junit_asserts::theory_but_no_theories),
+    (&["JUnitParameterMethodNotFound"], junit_asserts::junit_parameter_method_not_found),
+    (&["TryFailThrowable"], junit_asserts::try_fail_throwable),
+    (&["UseCorrectAssertInTests"], junit_asserts::use_correct_assert_in_tests),
+    (&["ComparisonOutOfRange"], const_checks::comparison_out_of_range),
+    (&["ConstantOverflow"], const_checks::constant_overflow),
+    (&["XorPower"], const_checks::xor_power),
+    (&["DuplicateMapKeys"], call_consts::duplicate_map_keys),
+    (&["InsecureCryptoUsage"], call_consts::insecure_crypto_usage),
+    (&["SubstringOfZero"], call_consts::substring_of_zero),
+    (&["ThreadBuilderNameWithPlaceholder"], call_consts::thread_builder_name_with_placeholder),
+    (&["FloggerLogVarargs"], call_consts::flogger_log_varargs),
+    (&["ZoneIdOfZ"], call_consts::zone_id_of_z),
+    (&["LenientFormatStringValidation"], call_consts::lenient_format_string_validation),
+    (&["ExtendsAutoValue"], auto_value::extends_auto_value),
+    (&["InvalidTimeZoneID"], time_constants::invalid_time_zone_id),
+    (&["InvalidZoneId"], time_constants::invalid_zone_id),
+    (&["InvalidJavaTimeConstant"], time_constants::invalid_java_time_constant),
+    (&["StringJoin"], size_join::string_join),
+    (&["SizeGreaterThanOrEqualsZero"], size_join::size_greater_than_or_equals_zero),
+    (&["ThrowIfUncheckedKnownChecked"], size_join::throw_if_unchecked_known_checked),
+    (&["PreconditionsInvalidPlaceholder"], size_join::preconditions_invalid_placeholder),
+    (&["NullNeedsCastForVarargs"], null_varargs::null_needs_cast_for_varargs),
+    (&["LockOnBoxedPrimitive"], boxed_lock::lock_on_boxed_primitive),
+    (&["ProtoTruthMixedDescriptors"], proto_builders::proto_truth_mixed_descriptors),
+    (&["SetUnrecognized"], proto_builders::set_unrecognized),
+    (&["RedundantSetterCall"], proto_builders::redundant_setter_call),
+    (&["ProtoBuilderReturnValueIgnored"], proto_build_ignored::proto_builder_return_value_ignored),
+    (&["OverridesJavaxInjectableMethod"], inject_codegen::overrides_javax_injectable_method),
+    (&["RefersToDaggerCodegen"], inject_codegen::refers_to_dagger_codegen),
+    (&["MisleadingEscapedSpace"], source_text::misleading_escaped_space),
+    (&["CompatibleWithAnnotationMisuse"], annotation_misuse::compatible_with_misuse),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
@@ -451,6 +667,12 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["FieldCanBeLocal"], fieldlocal::field_can_be_local),
     (&["UnusedNestedClass"], unused_nested::unused_nested_class),
     (&["AlreadyChecked"], already_checked::already_checked),
+    (&["JUnit4TestsNotRunWithinEnclosed"], junit_tests::junit4_tests_not_run_within_enclosed),
+    (&["ClassName"], class_names::class_name),
+    (&["PackageInfo"], misc12::package_info),
+    (&["UnicodeDirectionalityCharacters"], stmt_defects::unicode_directionality_characters),
+    (&["UnicodeInCode"], source_text::unicode_in_code),
+    (&["TreeToString"], tree_to_string::tree_to_string),
 ];
 
 pub struct ErrorProne;

@@ -219,6 +219,59 @@ describe('pmdRulesetsWithEngine', () => {
   });
 });
 
+const UNUSED_SUPPRESSION = 'net.sourceforge.pmd.lang.rule.impl.UnnecessaryPmdSuppressionRule';
+const UNUSED_SUPPRESSION_RULE =
+  `<rule name="UnnecessaryWarningSuppression" language="java" class="${UNUSED_SUPPRESSION}"` +
+  ' message="Unused suppression {0}."/>';
+
+function wholeEngineSetup(extra: string): Setup {
+  const { plan, environment } = setup();
+  const root = path.dirname(plan.reportDir);
+  const main = path.join(root, 'all.xml');
+  writeFileSync(
+    main,
+    `${HEAD}<rule name="Fast" language="java" class="${XPATH}" message="Fast">` +
+      `<properties><property name="xpath"><value>//A</value></property></properties></rule>` +
+      `${extra}</ruleset>`,
+  );
+  return { plan: { ...plan, rulesets: [main], untouched: [] }, environment };
+}
+
+describe('pmdRulesetsWithEngine when no rule is left on PMD', () => {
+  it('runs no PMD and keeps the engine findings', () => {
+    const { plan, environment } = wholeEngineSetup(UNUSED_SUPPRESSION_RULE);
+    const file = path.join(path.dirname(plan.reportDir), 'src/main/A.java');
+    const started: Started[] = [];
+
+    const rulesets = pmdRulesetsWithEngine(plan, environment, {
+      run: engineWriting(
+        {
+          findings: [{ file, rule: 'Fast', line: 2, column: 1, message: 'Fast' }],
+          syntaxErrorFiles: [],
+        },
+        started,
+      ),
+    });
+
+    expect(rulesets).toEqual([]);
+    expect(started).toHaveLength(1);
+    const sarif = readFileSync(path.join(plan.reportDir, ENGINE_SARIF), 'utf8');
+    expect(sarif).toContain('"ruleId":"Fast"');
+  });
+
+  it('leaves every rule to PMD when unused suppressions need rules that PMD runs', () => {
+    const { plan, environment } = wholeEngineSetup(
+      `${UNUSED_SUPPRESSION_RULE}<rule name="Coded" language="java" class="demo.Coded" message="coded"/>`,
+    );
+    const unexpected = () => {
+      throw new Error('the engine must not start');
+    };
+
+    expect(pmdRulesetsWithEngine(plan, environment, { run: unexpected })).toEqual(plan.rulesets);
+    expect(existsSync(path.join(plan.reportDir, ENGINE_SARIF))).toBe(false);
+  });
+});
+
 describe('enginePlanOf', () => {
   it('reads the plan the build wrote and appends the guard rulesets', () => {
     expect(enginePlanOf(undefined, '/report', [])).toBeUndefined();

@@ -20,5 +20,9 @@ public interface Shapes {
     public class Part {
       public Part(@Nullable String first, String second) {}
     }
+
+    public class Pair<T> {
+      public Pair(T first, @Nullable String second, String third) {}
+    }
   }
 }

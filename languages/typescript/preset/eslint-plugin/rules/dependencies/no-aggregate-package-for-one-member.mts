@@ -90,11 +90,15 @@ function importMembers(context: SourceContext, node: TSESTree.ImportDeclaration)
     : undefined;
 }
 
+type Found = {
+  readonly node: TSESTree.Node;
+  readonly name: string | undefined;
+  readonly members: Members;
+};
+
 function report(
   context: Readonly<TSESLint.RuleContext<'wholePackage', []>>,
-  node: TSESTree.Node,
-  name: string | undefined,
-  members: Members,
+  { node, name, members }: Found,
 ): void {
   const table = MEMBER_PACKAGES.get(name ?? '');
   const [only] = members ?? [];
@@ -122,31 +126,28 @@ export const rule: TSESLint.RuleModule<'wholePackage'> = {
       CallExpression(node) {
         if (isRequire(context, node.callee) && node.arguments.length === 1) {
           const name = stringValue(node.arguments[0]);
-          report(
-            context,
+          report(context, {
             node,
             name,
-            MEMBER_PACKAGES.has(name ?? '') ? loadedMembers(context, node) : undefined,
-          );
+            members: MEMBER_PACKAGES.has(name ?? '') ? loadedMembers(context, node) : undefined,
+          });
         }
       },
       ImportExpression(node) {
         const name = stringValue(node.source);
-        report(
-          context,
+        report(context, {
           node,
           name,
-          MEMBER_PACKAGES.has(name ?? '') ? loadedMembers(context, node) : undefined,
-        );
+          members: MEMBER_PACKAGES.has(name ?? '') ? loadedMembers(context, node) : undefined,
+        });
       },
       ImportDeclaration(node) {
         const name = node.importKind === 'type' ? undefined : node.source.value;
-        report(
-          context,
+        report(context, {
           node,
           name,
-          MEMBER_PACKAGES.has(name ?? '') ? importMembers(context, node) : undefined,
-        );
+          members: MEMBER_PACKAGES.has(name ?? '') ? importMembers(context, node) : undefined,
+        });
       },
     };
   },

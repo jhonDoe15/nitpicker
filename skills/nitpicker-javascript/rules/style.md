@@ -146,6 +146,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   per item (`nitpicker/no-repeated-parse-per-item`).
 - Share one read-only value across the items of a loop instead of storing a full copy of it with
   every item (`nitpicker/no-loop-invariant-copy`).
+- Index an unchanging collection once instead of scanning it in a function called from a loop or many
+  places (`nitpicker/no-scan-per-call-over-fixed-collection`), and create a cache once for the unit its
+  answers hold for, not on every pass of an inner loop (`nitpicker/no-cache-per-inner-unit`).
 - Grow a group of a `Map` by pushing onto it, not by spreading it into a new array on every item
   (`nitpicker/no-accumulating-group-spread`).
 - Never run a query or a request once per item of a loop: fetch or write the items in one query

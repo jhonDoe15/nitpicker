@@ -1,0 +1,2 @@
+import type { Prisma, PrismaClient } from '@prisma/client';
+export class Orders { static create(db: PrismaClient): Orders { return new Orders(String(db)); } constructor(private readonly name: string) {} list(): string[] { return [this.name]; } }

@@ -10,14 +10,18 @@ function invalid(code: string) {
 tester.run('require-moved-tsconfig-type-roots', rule, {
   valid: [
     `const folder = mkdtempSync(path.join(tmpdir(), 'x-'));
-     writeFileSync(path.join(folder, 'tsconfig.json'), JSON.stringify({ extends: configPath, compilerOptions: { typeRoots: roots } }));`,
+     writeFileSync(path.join(folder, 'tsconfig.json'), JSON.stringify({
+       extends: configPath, compilerOptions: { typeRoots: roots } }));`,
     `const folder = mkdtempSync(path.join(tmpdir(), 'x-'));
      const config = { extends: configPath, compilerOptions: { noEmit: true, typeRoots: [] } };
      writeFileSync(path.join(folder, 'tsconfig.json'), JSON.stringify(config));`,
     `const folder = mkdtempSync(path.join(tmpdir(), 'x-'));
      writeFileSync(path.join(folder, 'tsconfig.json'), JSON.stringify({ extends: configPath, ...rest }));`,
     `const folder = mkdtempSync(path.join(tmpdir(), 'x-'));
-     writeFileSync(path.join(folder, 'tsconfig.json'), JSON.stringify({ extends: configPath, compilerOptions: options }));`,
+     writeFileSync(
+       path.join(folder, 'tsconfig.json'),
+       JSON.stringify({ extends: configPath, compilerOptions: options }),
+     );`,
     `const folder = mkdtempSync(path.join(tmpdir(), 'x-'));
      writeFileSync(path.join(folder, 'tsconfig.json'), JSON.stringify({ files: [] }));`,
     `writeFileSync(path.join(projectRoot, 'tsconfig.json'), JSON.stringify({ extends: './base.json' }));`,
@@ -30,7 +34,8 @@ tester.run('require-moved-tsconfig-type-roots', rule, {
     `const folder = mkdtempSync(path.join(tmpdir(), 'x-'));
      writeFileSync(path.join(folder, 'tsconfig.json'), JSON.stringify({ extends: './tsconfig.base.json', files }));`,
     `const folder = mkdtempSync(path.join(tmpdir(), 'x-'));
-     writeFileSync(path.join(folder, 'tsconfig.json'), JSON.stringify({ extends: configPath, compilerOptions: { types: [] } }));`,
+     writeFileSync(path.join(folder, 'tsconfig.json'), JSON.stringify({
+       extends: configPath, compilerOptions: { types: [] } }));`,
     `const folder = mkdtempSync(path.join(tmpdir(), 'x-'));
      const config = { extends: configPath };
      config.compilerOptions = { typeRoots: roots };
@@ -55,7 +60,8 @@ tester.run('require-moved-tsconfig-type-roots', rule, {
       await fs.promises.writeFile(file, JSON.stringify({ extends: configPath }, null, 2));
     }`),
     invalid(
-      `writeFileSync(path.join(tmpdir(), 'tsconfig.json'), JSON.stringify({ 'extends': a, compilerOptions: { skipLibCheck: true } }));`,
+      `writeFileSync(path.join(tmpdir(), 'tsconfig.json'), JSON.stringify({ 'extends': a, compilerOptions: {
+        skipLibCheck: true } }));`,
     ),
   ],
 });

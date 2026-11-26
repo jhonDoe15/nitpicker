@@ -1,89 +1,275 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { readZipOrFailure } from '../../../../shared/archives/zip-entries.mts';
+import { ancestorDirectories } from '../../../../shared/filesystem.mts';
+import { zipEntryOf } from '../../../../shared/archives/zip-entry.mts';
 
 export type ProcessorKind = 'none' | 'lombok' | 'other';
 
 const PROCESSOR_SERVICE = 'META-INF/services/javax.annotation.processing.Processor';
 const CONFIG = 'lombok.config';
-const NOT_MARKED = /^\s*lombok\.addLombokGeneratedAnnotation\s*=\s*false\s*$/imu;
-const IMPORTS = /^\s*import\s/imu;
+const LOMBOK_PROCESSOR = 'lombok.';
+const FILE_WRITERS: readonly string[] = [
+  'com.google.auto.service.processor.',
+  'com.google.auto.value.',
+  'com.google.auto.factory.',
+  'dagger.internal.codegen.',
+  'dagger.hilt.',
+  'org.immutables.',
+  'org.mapstruct.ap.',
+  'org.hibernate.jpamodelgen.',
+  'org.hibernate.processor.',
+  'org.springframework.boot.configurationprocessor.',
+  'org.springframework.boot.autoconfigureprocessor.',
+  'org.springframework.context.index.processor.',
+  'picocli.codegen.',
+  'org.apache.logging.log4j.core.config.plugins.processor.',
+  'org.openjdk.jmh.generators.',
+  'com.querydsl.apt.',
+];
+const LOMBOK_ARTIFACTS = new Set(['org.projectlombok:lombok']);
+const FILE_WRITER_ARTIFACTS = new Set([
+  'org.projectlombok:lombok-mapstruct-binding',
+  'com.google.auto.service:auto-service',
+  'com.google.auto.value:auto-value',
+  'com.google.auto.factory:auto-factory',
+  'com.google.dagger:dagger-compiler',
+  'com.google.dagger:hilt-compiler',
+  'org.immutables:value',
+  'org.immutables:value-processor',
+  'org.mapstruct:mapstruct-processor',
+  'org.hibernate:hibernate-jpamodelgen',
+  'org.hibernate.orm:hibernate-jpamodelgen',
+  'org.hibernate.orm:hibernate-processor',
+  'org.springframework.boot:spring-boot-configuration-processor',
+  'org.springframework.boot:spring-boot-autoconfigure-processor',
+  'org.springframework:spring-context-indexer',
+  'info.picocli:picocli-codegen',
+  'org.openjdk.jmh:jmh-generator-annprocess',
+  'com.querydsl:querydsl-apt',
+]);
+const GENERATED_KEY = 'lombok.addlombokgeneratedannotation';
+const STOP_KEY = 'config.stopbubbling';
+const SETTING = /^([\w.]+)\s*=(.*)$/u;
+const CLEAR = /^clear\s+([\w.]+)$/iu;
+const IMPORT = /^import\s(.+)$/iu;
+const UNFOLLOWED_IMPORT = /[<>~!$]/u;
+const RENAMING =
+  /^(?:clear\s+)?(?:lombok\.accessors\.(?:fluent|prefix|capitalization)|lombok\.getter\.noisprefix)\b/iu;
 
-function namesIn(service: string): string[] {
-  return service
-    .split('\n')
+type Marked = boolean | undefined;
+type Unreadable = { readonly unreadable: Error };
+type Entry = { readonly line: string; readonly config: string; readonly seen: ReadonlySet<string> };
+
+const OTHER: ProcessorKind = 'other';
+const LOMBOK: ProcessorKind = 'lombok';
+const LINE_END = /\r\n|\r|\n/u;
+
+function isUnreadable(value: readonly unknown[] | Unreadable): value is Unreadable {
+  return 'unreadable' in value;
+}
+
+function meaningfulLines(text: string): string[] {
+  return text
+    .split(LINE_END)
     .map((line) => line.replace(/#.*/u, '').trim())
     .filter((line) => line.length > 0);
 }
 
-function processorsOf(entry: string): string[] | undefined {
-  try {
-    return readProcessors(entry);
-  } catch {
-    return undefined;
-  }
-}
-
-function readProcessors(entry: string): string[] | undefined {
+function readProcessors(entry: string): string[] {
   if (!existsSync(entry)) {
     return [];
   }
   if (statSync(entry).isDirectory()) {
     const service = path.join(entry, PROCESSOR_SERVICE);
-    return existsSync(service) ? namesIn(readFileSync(service, 'utf8')) : [];
+    return existsSync(service) ? meaningfulLines(readFileSync(service, 'utf8')) : [];
   }
-  const read = readZipOrFailure(entry);
-  if (read.kind !== 'zip') {
-    return undefined;
+  const service = zipEntryOf(entry, PROCESSOR_SERVICE);
+  return service === undefined ? [] : meaningfulLines(service);
+}
+
+function readable(read: () => string[]): string[] | Unreadable {
+  try {
+    return read();
+  } catch (error) {
+    return {
+      unreadable: error instanceof Error ? error : new Error(String(error), { cause: error }),
+    };
   }
-  if (!read.zip.names.has(PROCESSOR_SERVICE)) {
-    return [];
+}
+
+function processorsOf(entry: string): string[] | Unreadable {
+  return readable(() => readProcessors(entry));
+}
+
+function writesFilesOnly(name: string): boolean {
+  return FILE_WRITERS.some((prefix) => name.startsWith(prefix));
+}
+
+function kindOf(names: readonly string[]): ProcessorKind {
+  const changing = names.filter((name) => !writesFilesOnly(name));
+  if (changing.length === 0) {
+    return 'none';
   }
-  const service = read.zip.text(PROCESSOR_SERVICE);
-  return service === undefined ? undefined : namesIn(service);
+  return changing.every((name) => name.startsWith(LOMBOK_PROCESSOR)) ? LOMBOK : OTHER;
 }
 
 export function processorKind(entries: readonly string[]): ProcessorKind {
   const found = entries.map(processorsOf);
-  if (found.some((names) => names === undefined)) {
-    return 'other';
+  const names: string[] = [];
+  for (const each of found) {
+    if (isUnreadable(each)) {
+      return OTHER;
+    }
+    for (const name of each) {
+      names.push(name);
+    }
   }
-  const names = found.flatMap((each) => each ?? []);
-  if (names.length === 0) {
-    return 'none';
-  }
-  return names.every((name) => name.startsWith('lombok.')) ? 'lombok' : 'other';
+  return kindOf(names);
 }
 
-function configsAbove(directory: string, seen: Set<string>): string[] {
+export function declaredProcessorKind(coordinates: readonly string[]): ProcessorKind {
+  const artifacts = coordinates.map((coordinate) => coordinate.split(':').slice(0, 2).join(':'));
+  if (
+    artifacts.some(
+      (artifact) => !(LOMBOK_ARTIFACTS.has(artifact) || FILE_WRITER_ARTIFACTS.has(artifact)),
+    )
+  ) {
+    return OTHER;
+  }
+  return artifacts.some((artifact) => LOMBOK_ARTIFACTS.has(artifact)) ? LOMBOK : 'none';
+}
+
+function linesOf(config: string): string[] | Unreadable {
+  return readable(() => meaningfulLines(readFileSync(config, 'utf8')));
+}
+
+function flag(value: string): Marked {
+  const lowered = value.trim().toLowerCase();
+  if (lowered === 'true' || lowered === 'false') {
+    return lowered === 'true';
+  }
+  return undefined;
+}
+
+function imported(config: string, target: string): string | undefined {
+  const trimmed = target.trim();
+  if (UNFOLLOWED_IMPORT.test(trimmed)) {
+    return undefined;
+  }
+  const file = path.resolve(path.dirname(config), trimmed);
+  return statSync(file, { throwIfNoEntry: false })?.isDirectory() === true
+    ? path.resolve(file, CONFIG)
+    : file;
+}
+
+function entriesOf(config: string, seen: ReadonlySet<string>): Entry[] | Unreadable {
+  const lines = linesOf(config);
+  if (isUnreadable(lines)) {
+    return lines;
+  }
+  if (seen.has(config)) {
+    return { unreadable: new Error(`${config} imports itself`) };
+  }
+  const inside = new Set([...seen, config]);
+  return lines.map((line) => ({ line, config, seen: inside }));
+}
+
+type Position = { readonly queue: Entry[]; readonly index: number };
+
+function applyEntry(entry: Entry, value: Marked, { queue, index }: Position): Marked {
+  const cleared = CLEAR.exec(entry.line);
+  if (cleared !== null) {
+    return cleared[1]?.toLowerCase() === GENERATED_KEY ? true : value;
+  }
+  const importing = IMPORT.exec(entry.line);
+  if (importing !== null) {
+    const file = imported(entry.config, importing[1] ?? '');
+    const nested = file === undefined ? undefined : entriesOf(file, entry.seen);
+    if (nested === undefined || isUnreadable(nested)) {
+      return undefined;
+    }
+    const rest = queue.splice(index + 1);
+    for (const item of [...nested, ...rest]) {
+      queue.push(item);
+    }
+    return value;
+  }
+  const setting = SETTING.exec(entry.line);
+  return setting?.[1]?.toLowerCase() === GENERATED_KEY ? flag(setting[2] ?? '') : value;
+}
+
+function applied(config: string, marked: Marked): Marked {
+  const first = entriesOf(config, new Set());
+  if (isUnreadable(first)) {
+    return undefined;
+  }
+  const queue = first;
+  let value = marked;
+  for (const [index, entry] of queue.entries()) {
+    value = applyEntry(entry, value, { queue, index });
+  }
+  return value;
+}
+
+function stopsBubbling(config: string): boolean {
+  const lines = linesOf(config);
+  return (isUnreadable(lines) ? [] : lines).some((line) => {
+    const setting = SETTING.exec(line);
+    return setting?.[1]?.toLowerCase() === STOP_KEY && flag(setting[2] ?? '') === true;
+  });
+}
+
+function configsAbove(directory: string): string[] {
   const found: string[] = [];
-  let current = directory;
-  while (!seen.has(current)) {
-    seen.add(current);
+  for (const current of ancestorDirectories(directory)) {
     const config = path.join(current, CONFIG);
-    if (existsSync(config)) {
-      found.push(config);
+    if (!existsSync(config)) {
+      continue;
     }
-    const parent = path.dirname(current);
-    if (parent === current) {
-      break;
+    found.unshift(config);
+    if (stopsBubbling(config)) {
+      return found;
     }
-    current = parent;
   }
   return found;
 }
 
-export function lombokMarksGenerated(sources: readonly string[]): boolean {
-  const seen = new Set<string>();
-  const configs = sources.flatMap((source) =>
-    configsAbove(path.dirname(path.resolve(source)), seen),
-  );
-  return configs.every((config) => {
-    try {
-      const text = readFileSync(config, 'utf8');
-      return !NOT_MARKED.test(text) && !IMPORTS.test(text);
-    } catch {
-      return false;
-    }
+function importsIn(config: string, lines: readonly string[]): string[] {
+  return lines.flatMap((line) => {
+    const importing = IMPORT.exec(line);
+    const file = importing === null ? undefined : imported(config, importing[1] ?? '');
+    return file === undefined ? [] : [file];
   });
+}
+
+function renames(start: string): boolean {
+  const visited = new Set<string>();
+  const pending = [start];
+  for (const config of pending) {
+    const lines = linesOf(config);
+    if (visited.has(config) || isUnreadable(lines)) {
+      continue;
+    }
+    visited.add(config);
+    if (lines.some((line) => RENAMING.test(line))) {
+      return true;
+    }
+    for (const file of importsIn(config, lines)) {
+      pending.push(file);
+    }
+  }
+  return false;
+}
+
+function markedIn(directory: string): Marked {
+  const configs = configsAbove(directory);
+  if (configs.some((config) => renames(config))) {
+    return undefined;
+  }
+  return configs.reduce((value: Marked, config) => applied(config, value), true);
+}
+
+export function lombokMarksGenerated(sources: readonly string[]): boolean {
+  const directories = new Set(sources.map((source) => path.dirname(path.resolve(source))));
+  return [...directories].every((directory) => markedIn(directory) === true);
 }

@@ -13,7 +13,7 @@ use tree_sitter::Node;
 
 const NAME: &str = "ArgumentSelectionDefectChecker";
 const NULL: &str = "*NULL*";
-const NOT_PRESENT: &str = "*NOT_PRESENT*";
+pub(super) const NOT_PRESENT: &str = "*NOT_PRESENT*";
 const ASSERT_CLASSES: [&str; 3] = ["org.junit.Assert", "junit.framework.TestCase", "junit.framework.Assert"];
 
 pub struct Invocation<'t> {
@@ -74,7 +74,7 @@ fn created_name(context: &Context, creation: Node) -> String {
 }
 
 /// Error Prone's `Parameter.getArgumentName` for an argument.
-fn argument_name(context: &Context, tree: Node) -> String {
+pub(super) fn argument_name(context: &Context, tree: Node) -> String {
     match tree.kind() {
         "field_access" => tree.child_by_field_name("field").map(|field| context.text(field).to_string()).unwrap_or_else(|| NOT_PRESENT.to_string()),
         "class_literal" => "class".to_string(),
@@ -147,7 +147,7 @@ fn auto_value_constructor(context: &Context, node: Node, call: &Call) -> bool {
         && context.resolver.index.get(&call.declaring).and_then(|info| info.superclass.as_ref()).and_then(|name| context.resolver.index.get(name)).is_some_and(|info| info.flags & flag::AUTO_VALUE != 0)
 }
 
-fn invocation<'t>(context: &Context, node: Node<'t>) -> Option<Invocation<'t>> {
+pub(super) fn invocation<'t>(context: &Context, node: Node<'t>, auto_value: bool) -> Option<Invocation<'t>> {
     if node.kind() == "record_pattern" {
         return pattern_invocation(context, node).filter(|found| found.formal_names.len() > 1);
     }
@@ -163,7 +163,7 @@ fn invocation<'t>(context: &Context, node: Node<'t>) -> Option<Invocation<'t>> {
         "method_invocation" => context.resolver.resolve_call(node)?,
         _ => context.resolver.call_formals(node)?.0,
     };
-    if assert_method(context, node, &call) || auto_value_constructor(context, node, &call) {
+    if assert_method(context, node, &call) || auto_value_constructor(context, node, &call) != auto_value {
         return None;
     }
     let count = call.method.parameters.len() - usize::from(call.method.varargs);
@@ -239,7 +239,7 @@ fn own_variable(context: &Context, inv: &Invocation, name: &str) -> bool {
     !in_method && enclosing_types(context.resolver.scope, inv.node).iter().any(|owner| *owner == inv.call.declaring)
 }
 
-fn fits(context: &Context, symbolic_resolver: &Resolver, inv: &Invocation, formal: usize, actual: usize) -> bool {
+pub(super) fn fits(context: &Context, symbolic_resolver: &Resolver, inv: &Invocation, formal: usize, actual: usize) -> bool {
     let argument = inv.actuals[actual];
     if let Some(bound) = &inv.bound {
         let Some(kind) = &bound[actual].1 else { return false };
@@ -312,7 +312,7 @@ pub fn argument_selection_defect(context: &Context, node: Node) {
     if !matches!(node.kind(), "method_invocation" | "object_creation_expression" | "explicit_constructor_invocation" | "enum_constant" | "record_pattern") {
         return;
     }
-    let Some(inv) = invocation(context, node) else { return };
+    let Some(inv) = invocation(context, node, false) else { return };
     let Some(changes) = find_changes(context, &inv) else { return };
     let accepted = names_say_enough(&inv, &changes)
         && improves_enough(&changes)

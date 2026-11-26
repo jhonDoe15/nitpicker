@@ -198,10 +198,10 @@ pub fn class_named_like_type_parameter(context: &Context, node: Node) {
     }
 }
 
-const CLASS_LIKE: &[&str] = &["class_declaration", "interface_declaration", "enum_declaration", "record_declaration", "annotation_type_declaration"];
-const METHOD_LIKE: &[&str] = &["method_declaration", "constructor_declaration"];
+pub(super) const CLASS_LIKE: &[&str] = &["class_declaration", "interface_declaration", "enum_declaration", "record_declaration", "annotation_type_declaration"];
+pub(super) const METHOD_LIKE: &[&str] = &["method_declaration", "constructor_declaration"];
 
-fn parameters_of<'t>(context: &Context, declaration: Node<'t>) -> Vec<(String, Node<'t>)> {
+pub(super) fn parameters_of<'t>(context: &Context, declaration: Node<'t>) -> Vec<(String, Node<'t>)> {
     let list = declaration.child_by_field_name("type_parameters").or_else(|| token(declaration, "type_parameters"));
     let all = list.map(children).unwrap_or_default();
     all.into_iter()
@@ -210,7 +210,7 @@ fn parameters_of<'t>(context: &Context, declaration: Node<'t>) -> Vec<(String, N
         .collect()
 }
 
-fn is_static(declaration: Node) -> bool {
+pub(super) fn is_static(declaration: Node) -> bool {
     if has_modifier(declaration, "static") {
         return true;
     }

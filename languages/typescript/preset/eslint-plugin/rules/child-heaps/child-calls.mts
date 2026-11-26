@@ -14,7 +14,9 @@ export type ChildCall = {
   readonly options: MaybeNode;
 };
 
-export type EnvKeys = 'unknown' | ReadonlyMap<string, TSESTree.Node>;
+const UNKNOWN = 'unknown';
+
+export type EnvKeys = typeof UNKNOWN | ReadonlyMap<string, TSESTree.Node>;
 
 const FLAG_NAMES = /flag|option|opts|args?$|jvm|gc|heap/i;
 
@@ -45,15 +47,32 @@ function optionsArgument(node: MaybeNode): MaybeNode {
     : node;
 }
 
-export function staticText(context: SourceContext, node: MaybeNode): string | undefined {
+export function staticText(
+  context: SourceContext,
+  node: MaybeNode,
+  separator = '',
+): string | undefined {
   const value = resolveConstant(context, node);
   if (value?.type === AST_NODE_TYPES.Literal && typeof value.value === 'string') {
     return value.value;
   }
   if (value?.type === AST_NODE_TYPES.TemplateLiteral) {
-    return value.quasis.map((quasi) => quasi.value.cooked ?? '').join('');
+    return value.quasis.map((quasi) => quasi.value.cooked ?? '').join(separator);
   }
   return undefined;
+}
+
+export function isCommand(
+  context: SourceContext,
+  command: MaybeNode,
+  patterns: { readonly path: RegExp; readonly name: RegExp },
+): boolean {
+  const text = staticText(context, command);
+  if (text !== undefined) {
+    return patterns.path.test(text);
+  }
+  const name = command?.type === AST_NODE_TYPES.MemberExpression ? command.property : command;
+  return patterns.name.test(nameOf(name) ?? '');
 }
 
 export function argumentTexts(
@@ -86,32 +105,40 @@ function isProcessEnv(node: TSESTree.Node): boolean {
   return isNamedMember(node, 'process', 'env');
 }
 
+type EnvEntry = typeof UNKNOWN | readonly [string, TSESTree.Node] | undefined;
+
+function envEntry(property: TSESTree.ObjectLiteralElement): EnvEntry {
+  if (property.type === AST_NODE_TYPES.SpreadElement) {
+    return isProcessEnv(property.argument) ? undefined : UNKNOWN;
+  }
+  const name = propertyKeyName(property);
+  if (name === undefined) {
+    return UNKNOWN;
+  }
+  return nameOf(property.value) === 'undefined' ? undefined : [name, property.value];
+}
+
 export function envKeys(context: SourceContext, options: MaybeNode): EnvKeys {
   const lookup = optionValue(context, options, 'env');
   if (!lookup.known) {
-    return 'unknown';
+    return UNKNOWN;
   }
   const env = resolveConstant(context, lookup.value);
   if (env === undefined || isProcessEnv(env) || nameOf(env) === 'undefined') {
     return new Map();
   }
-  if (env.type !== AST_NODE_TYPES.ObjectExpression) {
-    return 'unknown';
-  }
+  return env.type === AST_NODE_TYPES.ObjectExpression ? objectEnvKeys(env) : UNKNOWN;
+}
+
+function objectEnvKeys(env: TSESTree.ObjectExpression): EnvKeys {
   const keys = new Map<string, TSESTree.Node>();
   for (const property of env.properties) {
-    if (property.type === AST_NODE_TYPES.SpreadElement) {
-      if (!isProcessEnv(property.argument)) {
-        return 'unknown';
-      }
-      continue;
+    const entry = envEntry(property);
+    if (entry === UNKNOWN) {
+      return UNKNOWN;
     }
-    const name = propertyKeyName(property);
-    if (name === undefined) {
-      return 'unknown';
-    }
-    if (nameOf(property.value) !== 'undefined') {
-      keys.set(name, property.value);
+    if (entry !== undefined) {
+      keys.set(entry[0], entry[1]);
     }
   }
   return keys;

@@ -1,10 +1,11 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
-import { calleeNameOf, isFunction } from '../../typed/syntax-views.mts';
+import { calleeNameOf } from '../../typed/syntax-views.mts';
 import { ancestorsOf } from '../../typed/node-views.mts';
 import { nodesOutsideNestedFunctions } from '../react-effects.mts';
-import { enclosingComponent } from '../support/component-names.mts';
 import { packageDependsOn } from '../support/package-facts.mts';
 import { testsBrowser } from './browser-tests.mts';
+import { browserInitialValue, inComponentRender, suppressed } from './initial-state.mts';
+import { hydratesServerMarkup, loadedWithoutSsr } from './reach/client-only-files.mts';
 
 const SERVER_RENDERERS = [
   'next',
@@ -48,18 +49,6 @@ function rendersPortal(branches: readonly TSESTree.Node[]): boolean {
   );
 }
 
-function suppressed(node: TSESTree.Node): boolean {
-  return ancestorsOf(node).some(
-    (ancestor) =>
-      ancestor.type === AST_NODE_TYPES.JSXElement &&
-      ancestor.openingElement.attributes.some(
-        (attribute) =>
-          attribute.type === AST_NODE_TYPES.JSXAttribute &&
-          attribute.name.name === 'suppressHydrationWarning',
-      ),
-  );
-}
-
 function renderedPosition(node: Branching): boolean {
   const { parent } = node;
   if (parent.type === AST_NODE_TYPES.JSXExpressionContainer) {
@@ -83,19 +72,23 @@ function insideOtherBranch(node: TSESTree.Node): boolean {
   );
 }
 
-function inComponentRender(node: TSESTree.Node): boolean {
-  const component = enclosingComponent(node);
-  const nearest = ancestorsOf(node).find(isFunction);
-  return component !== undefined && nearest === component.fn;
+type Context = Readonly<TSESLint.RuleContext<'mismatch' | 'initial', []>>;
+
+function serverRendered(filename: string): boolean {
+  return (
+    (packageDependsOn(filename, SERVER_RENDERERS) ||
+      (packageDependsOn(filename, ['react-dom']) && hydratesServerMarkup(filename))) &&
+    !loadedWithoutSsr(filename)
+  );
 }
 
-function check(node: Branching, context: Readonly<TSESLint.RuleContext<'mismatch', []>>): void {
+function check(node: Branching, context: Context): void {
   const found = branchTest(node);
   if (
     found === undefined ||
     !renderedPosition(node) ||
     !inComponentRender(node) ||
-    !testsBrowser(found.test, context.sourceCode) ||
+    !testsBrowser(found.test, context) ||
     rendersNothing(found.branches) ||
     rendersPortal(found.branches) ||
     insideOtherBranch(node) ||
@@ -106,7 +99,7 @@ function check(node: Branching, context: Readonly<TSESLint.RuleContext<'mismatch
   context.report({ node: found.test, messageId: 'mismatch' });
 }
 
-export const rule: TSESLint.RuleModule<'mismatch'> = {
+export const rule: TSESLint.RuleModule<'mismatch' | 'initial'> = {
   meta: {
     type: 'problem',
     docs: {
@@ -122,13 +115,31 @@ export const rule: TSESLint.RuleModule<'mismatch'> = {
         '`useSyncExternalStore(subscribe, getSnapshot, () => serverValue)`, or set it in an effect.',
         'An exception fits only when this component never renders on the server (loaded with `ssr: false`).',
       ].join(' '),
+      initial: [
+        'The initial value of `{{name}}` reads a browser-only value while rendering and `{{name}}` is rendered,',
+        'so the server renders it with one value and the first client render with another. React reports a',
+        'hydration mismatch and renders this part again on the client. Start with the value the server has and',
+        'set the browser value in an effect, or read it with',
+        '`useSyncExternalStore(subscribe, getSnapshot, () => serverValue)`.',
+        'An exception fits only when this component never renders on the server (loaded with `ssr: false`).',
+      ].join(' '),
     },
   },
   create(context) {
-    if (!packageDependsOn(context.filename, SERVER_RENDERERS)) {
+    if (!serverRendered(context.filename)) {
       return {};
     }
     return {
+      CallExpression: (node) => {
+        const found = browserInitialValue(node, context);
+        if (found !== undefined) {
+          context.report({
+            node: found.initializer,
+            messageId: 'initial',
+            data: { name: found.name },
+          });
+        }
+      },
       ConditionalExpression: (node) => {
         check(node, context);
       },

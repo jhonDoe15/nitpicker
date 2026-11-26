@@ -37,6 +37,17 @@ const DECLARATION_FILE = /\.d\.(?:[cm]?ts|[^./]+\.ts)$/u;
 const GENERATED_MARKER =
   /@generated|auto-?generated|generated (?:by|from|file)|do not (?:edit|modify)/iu;
 const HEADER_LENGTH = 1000;
+const SCRIPT_FILE = /\.[cm]?jsx?$/u;
+const TYPED_TAGS = ['param', 'arg', 'argument', 'returns?', 'this', 'satisfies', 'implements'].join(
+  '|',
+);
+const DECLARING_TAGS = ['type', 'typedef', 'callback', 'template', 'overload', 'import'].join('|');
+const DOCUMENTATION_TYPE = new RegExp(
+  `@(?:(?:${TYPED_TAGS})\\s*\\{|(?:${DECLARING_TAGS})\\b)`,
+  'u',
+);
+const COMMENT_START = '/**';
+const COMMENT_END = '*/';
 
 function isGeneratedFile(fileName: string): boolean {
   return GENERATED_MARKER.test((ts.sys.readFile(fileName) ?? '').slice(0, HEADER_LENGTH));
@@ -57,6 +68,27 @@ function ownedFiles(rootNames: readonly string[], request: Request): Owned[] {
         !isGeneratedFile(fileName);
       return owned ? [{ fileName, path: info.path }] : [];
     });
+}
+
+function hasTypedComment(text: string): boolean {
+  const starts = [text.indexOf(COMMENT_START)];
+  for (const start of starts) {
+    if (start === -1) {
+      return false;
+    }
+    const end = text.indexOf(COMMENT_END, start + COMMENT_START.length - 1);
+    if (DOCUMENTATION_TYPE.test(text.slice(start, end === -1 ? text.length : end))) {
+      return true;
+    }
+    if (end !== -1) {
+      starts.push(text.indexOf(COMMENT_START, end + COMMENT_END.length));
+    }
+  }
+  return false;
+}
+
+function declaresDocumentationTypes({ fileName }: Owned): boolean {
+  return SCRIPT_FILE.test(fileName) && hasTypedComment(ts.sys.readFile(fileName) ?? '');
 }
 
 function isPublished(value: unknown, published: PublishedNames | undefined): boolean {
@@ -110,6 +142,9 @@ export function engineDesignPart(request: Request): EnginePart<DesignFacts> | un
   }
   const inputs = projectProgramInputs(request);
   const files = ownedFiles(inputs.rootNames, request);
+  if (files.some(declaresDocumentationTypes)) {
+    return undefined;
+  }
   const defaults = (frameworks?.defaultExports ?? []).map((glob) => globMatcher(glob));
   const published = publishedNames(request);
   return {

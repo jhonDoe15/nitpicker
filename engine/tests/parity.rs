@@ -100,6 +100,21 @@ fn review_rules_report_what_pmd_reports() {
 }
 
 #[test]
+fn repeated_work_rules_report_what_pmd_reports() {
+    same_as_pmd("repeats", "all");
+}
+
+#[test]
+fn memory_growth_rules_report_what_pmd_reports() {
+    same_as_pmd("memory", "all");
+}
+
+#[test]
+fn repeated_scans_and_caches_report_what_pmd_reports() {
+    same_as_pmd("fixed", "all");
+}
+
+#[test]
 fn rules_written_with_pmd_7_node_names_match_pmd() {
     same_as_pmd("pmd7names", "all");
 }
@@ -121,7 +136,7 @@ fn error_prone_checks_report_what_error_prone_reports() {
     let missed: Vec<&Row> = expected.iter().filter(|(row, count)| found.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     let extra: Vec<&Row> = found.iter().filter(|(row, count)| expected.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(expected.keys().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 193);
+    assert_eq!(expected.keys().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 344);
 }
 
 /// A Java run selects some checks (`NP_EP_ONLY`); the others are skipped, and each selected check reports what it
@@ -288,7 +303,33 @@ fn null_away_reports_what_null_away_reports() {
     let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures").join("nullaway");
     let (missed, extra, count) = null_away_differences(&source, &source, "n", None, "nullaway.json");
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(count, 122);
+    assert_eq!(count, 132);
+}
+
+/// The Error Prone fixtures, with the top-level packages of the sources as NullAway's annotated packages. Classes in
+/// the default package are outside them.
+#[test]
+fn null_away_reports_what_null_away_reports_on_the_error_prone_fixtures() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("fixtures").join("errorprone");
+    let mut found = BTreeSet::new();
+    let mut pending = vec![source.clone()];
+    while let Some(folder) = pending.pop() {
+        for path in std::fs::read_dir(folder).expect("fixtures").flatten().map(|entry| entry.path()) {
+            if path.is_dir() {
+                pending.push(path);
+            } else if path.extension().is_some_and(|extension| extension == "java") {
+                let text = std::fs::read_to_string(&path).expect("fixture");
+                let declared = text.lines().map(str::trim_start).find_map(|line| line.strip_prefix("package").filter(|rest| rest.starts_with(char::is_whitespace)));
+                if let Some((name, _)) = declared.and_then(|rest| rest.split_once(';')) {
+                    found.insert(name.trim().to_string());
+                }
+            }
+        }
+    }
+    let top: Vec<&str> = found.iter().filter(|name| !found.iter().any(|other| name.starts_with(&format!("{other}.")))).map(String::as_str).collect();
+    let (missed, extra, count) = null_away_differences(&source, &source, &top.join(","), None, "nullaway-errorprone.json");
+    assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
+    assert_eq!(count, 453);
 }
 
 /// A library compiled with javac carries its `@Nullable` in type annotations; NullAway reads them from the class files.
@@ -310,7 +351,7 @@ fn null_away_reads_type_annotations_from_class_files() {
     let _ = std::fs::remove_dir_all(&classes);
     let (missed, extra, count) = result;
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(count, 34);
+    assert_eq!(count, 39);
 }
 
 #[test]
