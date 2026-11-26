@@ -11,8 +11,10 @@ import type {
   SourcePatterns,
 } from './compiler-types.mts';
 import { executionsWithGoal, textAt } from '../configuration/pom-elements.mts';
+import { escapeXml } from '../../builds/typed/xml-views.mts';
 
 const COMPILER = 'maven-compiler-plugin';
+const CENTRAL = 'central';
 const PLACEHOLDER_OPEN = ['$', '{'].join('');
 
 type Setting = (name: string, property: string) => string | undefined;
@@ -187,6 +189,35 @@ function extraCompiles(
     });
 }
 
+function policyXml(repository: XmlElement, name: string): string {
+  const enabled = textAt(repository, name, 'enabled');
+  return enabled === undefined ? '' : `<${name}><enabled>${escapeXml(enabled)}</enabled></${name}>`;
+}
+
+function repositoryXml(repository: XmlElement, url: string): string {
+  const layout = textAt(repository, 'layout');
+  return [
+    `<repository><id>${escapeXml(textAt(repository, 'id') ?? url)}</id><url>${escapeXml(url)}</url>`,
+    layout === undefined ? '' : `<layout>${escapeXml(layout)}</layout>`,
+    policyXml(repository, 'releases'),
+    policyXml(repository, 'snapshots'),
+    '</repository>',
+  ].join('');
+}
+
+function processorRepositories(project: XmlElement): string[] {
+  return childrenAt(project, 'repositories', 'repository').flatMap((repository) => {
+    const url = textAt(repository, 'url');
+    return url === undefined || url === '' || textAt(repository, 'id') === CENTRAL
+      ? []
+      : [repositoryXml(repository, url)];
+  });
+}
+
+function repositoriesField(repositories: string[]): { readonly processorRepositories?: string[] } {
+  return repositories.length === 0 ? {} : { processorRepositories: repositories };
+}
+
 function executionsField(executions: ExtraCompile[]): { readonly executions?: ExtraCompile[] } {
   return executions.length === 0 ? {} : { executions };
 }
@@ -213,6 +244,7 @@ export function compilerSettings(project: XmlElement): CompilerSettings {
     ...patternsField(sourcePatterns(configurations, false)),
     proc: setting('proc', 'maven.compiler.proc'),
     processorPaths: processorPaths(project, configurations),
+    ...repositoriesField(processorRepositories(project)),
     test: {
       ...levelOf(testSetting, true, pluginVersion),
       compilerArgs: argumentsOf(testConfigurations, testSetting),

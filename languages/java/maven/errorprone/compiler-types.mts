@@ -23,6 +23,7 @@ export type CompilerSettings = TestCompiler & {
   readonly encoding: string | undefined;
   readonly proc: string | undefined;
   readonly processorPaths: string[] | undefined;
+  readonly processorRepositories?: string[] | undefined;
   readonly test: TestCompiler | undefined;
   readonly executions?: ExtraCompile[] | undefined;
 };
@@ -63,6 +64,7 @@ export function compilerOf(value: unknown): CompilerSettings {
     encoding: optionalText(fieldOf(value, 'encoding')),
     proc: optionalText(fieldOf(value, 'proc')),
     processorPaths: Array.isArray(paths) ? textsOf(paths) : undefined,
+    processorRepositories: textsOf(fieldOf(value, 'processorRepositories')),
     test: objectOf(test) === undefined ? undefined : testCompilerOf(test),
     executions: executionsOf(fieldOf(value, 'executions')),
   };

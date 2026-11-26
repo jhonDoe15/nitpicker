@@ -212,6 +212,28 @@ describe('compilerSettings', () => {
   });
 });
 
+describe('processorRepositories', () => {
+  it('carries the repositories the project declares, without central, into the processor tool', () => {
+    const settings = compilerSettings(
+      project(`<repositories>
+          <repository><id>central</id><url>https://repo.maven.apache.org/maven2</url></repository>
+          <repository><id>plugins</id><url>https://repo.example.org/public/?a=1&amp;b=2</url>
+            <snapshots><enabled>false</enabled></snapshots></repository>
+        </repositories>${SPRING_STYLE}`),
+    );
+    const plain = defined(processorTool(compilerSettings(project(SPRING_STYLE))));
+    const tool = defined(processorTool(settings));
+
+    expect(settings.processorRepositories).toEqual([
+      '<repository><id>plugins</id><url>https://repo.example.org/public/?a=1&amp;b=2</url>' +
+        '<snapshots><enabled>false</enabled></snapshots></repository>',
+    ]);
+    expect(tool.repositories).toEqual(settings.processorRepositories);
+    expect(tool.name).not.toBe(plain.name);
+    expect(plain.repositories).toBeUndefined();
+  });
+});
+
 describe('processorTool', () => {
   it('names one tool set per distinct list of processor paths, and none without paths', () => {
     const lombok = compilerSettings(project(SPRING_STYLE));

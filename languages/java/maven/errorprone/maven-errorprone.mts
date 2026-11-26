@@ -59,17 +59,27 @@ const ERROR_PRONE_SHARES = 2;
 const DEADLINE_MARGIN_MS = 30_000;
 const OWN_JARS = /^(?:error_prone_|nullaway-)/u;
 
-export function processorTool(compiler: Pick<CompilerSettings, 'processorPaths'>):
+export function processorTool(
+  compiler: Pick<CompilerSettings, 'processorPaths' | 'processorRepositories'>,
+):
   | {
       readonly name: string;
       readonly coordinates: string[];
+      readonly repositories?: string[];
     }
   | undefined {
   if (compiler.processorPaths === undefined || compiler.processorPaths.length === 0) {
     return undefined;
   }
-  const key = createHash('sha256').update(compiler.processorPaths.join('\n')).digest('hex');
-  return { name: `processors-${key.slice(0, 16)}`, coordinates: compiler.processorPaths };
+  const repositories = compiler.processorRepositories ?? [];
+  const key = createHash('sha256')
+    .update([...compiler.processorPaths, ...repositories].join('\n'))
+    .digest('hex');
+  return {
+    name: `processors-${key.slice(0, 16)}`,
+    coordinates: compiler.processorPaths,
+    ...(repositories.length === 0 ? {} : { repositories }),
+  };
 }
 
 function declaredProcessors(
@@ -81,7 +91,7 @@ function declaredProcessors(
 
 export function processorPath(
   classpath: readonly string[],
-  compiler: Pick<CompilerSettings, 'processorPaths' | 'proc'>,
+  compiler: Pick<CompilerSettings, 'processorPaths' | 'processorRepositories' | 'proc'>,
   tools: ToolClasspaths,
 ): readonly string[] {
   if (compiler.proc === 'none') {
