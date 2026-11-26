@@ -1,0 +1,2 @@
+import type { Prisma, PrismaClient } from '@prisma/client';
+export class Orders { constructor(private readonly db: PrismaClient) {} list(): string[] { return [String(this.db)]; } private raw(): Prisma.TransactionClient { return this.db; } }
