@@ -221,6 +221,12 @@ export function withoutSpotbugsEngineReport(reportDir: string): void {
   }
 }
 
+function enginePatterns(lombok: boolean): readonly string[] {
+  return lombok
+    ? ON_ENGINE.filter((pattern) => !LOMBOK_WRITES.some((prefix) => pattern.startsWith(prefix)))
+    : ON_ENGINE;
+}
+
 export function spotbugsOnEngine(
   plan: SpotbugsEnginePlan,
   environment: Environment,
@@ -233,9 +239,7 @@ export function spotbugsOnEngine(
     return [];
   }
   const lombok = processors === 'lombok';
-  const patterns = lombok
-    ? ON_ENGINE.filter((pattern) => !LOMBOK_WRITES.some((prefix) => pattern.startsWith(prefix)))
-    : ON_ENGINE;
+  const patterns = enginePatterns(lombok);
   try {
     const report = engineReport(plan, lombok, { binary, environment, run });
     const sarif = engineSarif(report, patterns);

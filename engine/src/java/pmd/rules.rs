@@ -190,6 +190,7 @@ impl FileRule for XPathRules {
         let mut local: Vec<(usize, u128, usize, Option<String>)> = Vec::new();
         let rules = self.compiled();
         let usages = std::cell::OnceCell::new();
+        let flow = std::cell::OnceCell::new();
         for (rule, scope) in rules.iter().zip(&self.scopes) {
             if !scope.covers(&file.path) {
                 local.push((0, 0, 0, None));
@@ -198,7 +199,7 @@ impl FileRule for XPathRules {
             let started = std::time::Instant::now();
             let mut found = 0;
             if let Some(port) = rule.port {
-                let ctx = super::coded::ctx::Ctx { tree: &tree, file, machine: &machine, properties: &rule.values, usages: &usages };
+                let ctx = super::coded::ctx::Ctx { tree: &tree, file, machine: &machine, properties: &rule.values, usages: &usages, flow: &flow };
                 let mut hits = Vec::new();
                 port(&ctx, &mut hits);
                 for hit in hits {

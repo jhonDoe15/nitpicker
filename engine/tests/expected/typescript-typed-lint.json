@@ -1679,5 +1679,536 @@
   "`.types[0]` picks a union or intersection member by its place in the list (for a map, the last entry with the same key wins), and the compiler does not promise that order: TypeScript 6 lists members in the order their types were created, TypeScript 7 sorts them, so the same source gives a different result. Choose by something the source decides (the declaration's file and position, or a name), or compare all members. An exception fits only when every member that can be picked gives the same result.",
   55,
   22
+ ],
+ [
+  "src/versions/usage.ts",
+  "nitpicker/no-unversioned-orm-entity",
+  33,
+  9,
+  "`Plain` is loaded and saved again without a version column, so two requests that update the same row both succeed and the later one silently overwrites the earlier one. Add `@VersionColumn() version!: number` to the entity: TypeORM then fails the stale save with an error. An exception fits only when concurrent writers of the table are ruled out another way, such as a pessimistic lock or a single writer.",
+  33,
+  45
+ ],
+ [
+  "src/versions/usage.ts",
+  "nitpicker/no-unversioned-orm-entity",
+  38,
+  9,
+  "`Plain` is loaded and saved again without a version column, so two requests that update the same row both succeed and the later one silently overwrites the earlier one. Add `@VersionColumn() version!: number` to the entity: TypeORM then fails the stale save with an error. An exception fits only when concurrent writers of the table are ruled out another way, such as a pessimistic lock or a single writer.",
+  38,
+  42
+ ],
+ [
+  "src/versions/usage.ts",
+  "nitpicker/no-unversioned-orm-entity",
+  45,
+  9,
+  "`Ledger` is loaded and saved again without a version property, so two requests that update the same row both succeed and the later one silently overwrites the earlier one. Add `@Property({ version: true }) version!: number` to the entity: MikroORM then fails the stale flush with an OptimisticLockError. An exception fits only when concurrent writers of the table are ruled out another way, such as a pessimistic lock or a single writer.",
+  45,
+  42
+ ],
+ [
+  "src/versions/usage.ts",
+  "nitpicker/no-unversioned-orm-entity",
+  50,
+  9,
+  "`Invoice` is loaded and saved again without a version column, so two requests that update the same row both succeed and the later one silently overwrites the earlier one. Set `version: true` in the model options (`Model.init(attributes, { sequelize, version: true })`, or `@Table({ version: true })`): Sequelize then fails the stale save with an OptimisticLockError. An exception fits only when concurrent writers of the table are ruled out another way, such as a pessimistic lock or a single writer.",
+  50,
+  47
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-unknown-in-domain",
+  95,
+  48,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  95,
+  55
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-unknown-in-domain",
+  99,
+  55,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  99,
+  62
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-unknown-in-domain",
+  106,
+  55,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  106,
+  62
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-unknown-in-domain",
+  113,
+  54,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  113,
+  61
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-unknown-in-domain",
+  120,
+  53,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  120,
+  60
+ ],
+ [
+  "src/presence/lookups.ts",
+  "nitpicker/no-unknown-in-domain",
+  125,
+  55,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  125,
+  62
+ ],
+ [
+  "src/chunks/streams.ts",
+  "nitpicker/no-unknown-in-domain",
+  19,
+  39,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  19,
+  46
+ ],
+ [
+  "src/chunks/guarded.ts",
+  "nitpicker/no-unknown-in-domain",
+  20,
+  39,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  20,
+  46
+ ],
+ [
+  "src/collections/accumulators.ts",
+  "nitpicker/no-unknown-in-domain",
+  98,
+  126,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  98,
+  133
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  7,
+  51,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  7,
+  54
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  9,
+  34,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  9,
+  37
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  13,
+  36,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  13,
+  41
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  15,
+  37,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  15,
+  47
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  15,
+  56,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  15,
+  75
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  17,
+  29,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  17,
+  32
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  19,
+  33,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  19,
+  38
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  21,
+  37,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  21,
+  44
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  21,
+  54,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  21,
+  60
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  21,
+  68,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  21,
+  72
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  25,
+  35,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  25,
+  41
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  25,
+  53,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  25,
+  61
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  27,
+  33,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  27,
+  38
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  27,
+  45,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  27,
+  53
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  27,
+  79,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  27,
+  84
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  30,
+  17,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  30,
+  20
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  31,
+  17,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  31,
+  20
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  39,
+  16,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  39,
+  19
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  41,
+  28,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  41,
+  31
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  42,
+  18,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  42,
+  21
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  46,
+  37,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  46,
+  40
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  47,
+  17,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  47,
+  20
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  47,
+  36,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  47,
+  39
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  51,
+  30,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  51,
+  33
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  51,
+  56,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  51,
+  59
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  57,
+  21,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  57,
+  27
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  58,
+  42,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  58,
+  52
+ ],
+ [
+  "src/unknown/domain.ts",
+  "nitpicker/no-unknown-in-domain",
+  61,
+  56,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  61,
+  59
+ ],
+ [
+  "src/unknown/shapes.ts",
+  "nitpicker/no-unknown-in-domain",
+  6,
+  39,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  6,
+  44
+ ],
+ [
+  "src/unknown/shapes.ts",
+  "nitpicker/no-unknown-in-domain",
+  12,
+  31,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  12,
+  38
+ ],
+ [
+  "src/unknown/shapes.ts",
+  "nitpicker/no-unknown-in-domain",
+  15,
+  42,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  15,
+  49
+ ],
+ [
+  "src/unknown/shapes.ts",
+  "nitpicker/no-unknown-in-domain",
+  16,
+  54,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  16,
+  61
+ ],
+ [
+  "src/unknown/shapes.ts",
+  "nitpicker/no-unknown-in-domain",
+  22,
+  19,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  22,
+  22
+ ],
+ [
+  "src/versions/usage.ts",
+  "nitpicker/no-unknown-in-domain",
+  5,
+  103,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  5,
+  110
+ ],
+ [
+  "src/versions/usage.ts",
+  "nitpicker/no-unknown-in-domain",
+  6,
+  88,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  6,
+  95
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  1,
+  59,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  1,
+  66
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  5,
+  27,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  5,
+  29
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  5,
+  82,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  5,
+  89
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  5,
+  106,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  5,
+  109
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  5,
+  116,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  5,
+  123
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  12,
+  27,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  12,
+  28
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  24,
+  12,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  24,
+  13
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  31,
+  29,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  31,
+  30
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  31,
+  44,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  31,
+  45
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  31,
+  57,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  31,
+  58
+ ],
+ [
+  "src/unknown/scopes.ts",
+  "nitpicker/no-unknown-in-domain",
+  35,
+  27,
+  "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with a zod schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque.",
+  35,
+  28
  ]
 ]

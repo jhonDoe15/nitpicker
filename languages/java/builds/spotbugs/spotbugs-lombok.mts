@@ -91,7 +91,9 @@ function processorsOf(entry: string): string[] | Unreadable {
   try {
     return readProcessors(entry);
   } catch (error) {
-    return { unreadable: error instanceof Error ? error : new Error(String(error)) };
+    return {
+      unreadable: error instanceof Error ? error : new Error(String(error), { cause: error }),
+    };
   }
 }
 
@@ -137,7 +139,9 @@ function linesOf(config: string): string[] | Unreadable {
   try {
     return meaningfulLines(readFileSync(config, 'utf8'));
   } catch (error) {
-    return { unreadable: error instanceof Error ? error : new Error(String(error)) };
+    return {
+      unreadable: error instanceof Error ? error : new Error(String(error), { cause: error }),
+    };
   }
 }
 
@@ -172,7 +176,9 @@ function entriesOf(config: string, seen: ReadonlySet<string>): Entry[] | Unreada
   return lines.map((line) => ({ line, config, seen: inside }));
 }
 
-function applyEntry(entry: Entry, value: Marked, queue: Entry[], index: number): Marked {
+type Position = { readonly queue: Entry[]; readonly index: number };
+
+function applyEntry(entry: Entry, value: Marked, { queue, index }: Position): Marked {
   const cleared = CLEAR.exec(entry.line);
   if (cleared !== null) {
     return cleared[1]?.toLowerCase() === GENERATED_KEY ? true : value;
@@ -202,7 +208,7 @@ function applied(config: string, marked: Marked): Marked {
   const queue = first;
   let value = marked;
   for (const [index, entry] of queue.entries()) {
-    value = applyEntry(entry, value, queue, index);
+    value = applyEntry(entry, value, { queue, index });
   }
   return value;
 }
@@ -230,6 +236,14 @@ function configsAbove(directory: string): string[] {
   return found;
 }
 
+function importsIn(config: string, lines: readonly string[]): string[] {
+  return lines.flatMap((line) => {
+    const importing = IMPORT.exec(line);
+    const file = importing === null ? undefined : imported(config, importing[1] ?? '');
+    return file === undefined ? [] : [file];
+  });
+}
+
 function renames(start: string): boolean {
   const visited = new Set<string>();
   const pending = [start];
@@ -239,15 +253,11 @@ function renames(start: string): boolean {
       continue;
     }
     visited.add(config);
-    for (const line of lines) {
-      if (RENAMING.test(line)) {
-        return true;
-      }
-      const importing = IMPORT.exec(line);
-      const file = importing === null ? undefined : imported(config, importing[1] ?? '');
-      if (file !== undefined) {
-        pending.push(file);
-      }
+    if (lines.some((line) => RENAMING.test(line))) {
+      return true;
+    }
+    for (const file of importsIn(config, lines)) {
+      pending.push(file);
     }
   }
   return false;

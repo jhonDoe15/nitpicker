@@ -5,7 +5,12 @@ import ts from 'typescript';
 import { afterAll, describe, expect, it } from 'vitest';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import { findEngine } from '../../../../../shared/engine/engine-binary.mts';
-import { ENGINE_SWITCH, engineExtraction, readExtraction } from './engine-dependencies.mts';
+import {
+  ENGINE_SWITCH,
+  engineExtraction,
+  readExtraction,
+  type EngineExtraction,
+} from './engine-dependencies.mts';
 
 const hasEngine = findEngine(process.env) !== undefined;
 const POLICY_TSCONFIG = path.resolve(
@@ -99,12 +104,16 @@ type CruiserModules = {
   readonly acorn: CruiserCall;
 };
 
+function isCall(value: unknown): value is CruiserCall {
+  return typeof value === 'function';
+}
+
 function callOf(module: unknown, name: string): CruiserCall {
   const member = fieldOf(module, name);
-  if (typeof member !== 'function') {
+  if (!isCall(member)) {
     throw new Error(`dependency-cruiser has no ${name} function`);
   }
-  return (...args) => Reflect.apply(member, undefined, args);
+  return member;
 }
 
 async function cruiserModules(): Promise<CruiserModules> {
@@ -131,19 +140,23 @@ async function cruiserExtraction(file: string): Promise<unknown> {
   return detect(extract(options, file, { tsConfig }), acorn(options, file, { tsConfig }));
 }
 
+function requiredExtraction(file: string): EngineExtraction {
+  const extraction = engineExtraction(
+    { baseDirectory: folder, files: [file] },
+    { ...process.env, [ENGINE_SWITCH]: 'required' },
+  ).get(file);
+  if (extraction === undefined) {
+    throw new Error(`the engine did not extract ${file}`);
+  }
+  return extraction;
+}
+
 describe('import extraction on the engine', () => {
   it.skipIf(!hasEngine).each(Object.keys(SOURCES))(
     'lists the dependencies of %s as dependency-cruiser does',
     async (file) => {
       const { detect } = await cruiserModules();
-      const extraction = engineExtraction(
-        { baseDirectory: folder, files: [file] },
-        { ...process.env, [ENGINE_SWITCH]: 'required' },
-      ).get(file);
-
-      if (extraction === undefined) {
-        throw new Error(`the engine did not extract ${file}`);
-      }
+      const extraction = requiredExtraction(file);
       expect(detect(extraction.dependencies, extraction.kept)).toEqual(
         await cruiserExtraction(file),
       );

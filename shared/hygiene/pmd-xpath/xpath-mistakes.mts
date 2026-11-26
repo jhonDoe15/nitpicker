@@ -27,11 +27,6 @@ const OPENING = new Set(['(', '[', '{']);
 const CLOSING = new Set([')', ']', '}']);
 const OPERATOR_BEFORE_PATH = new Set(['(', '[', ',', '=', '!', '<', '>', '|', '+', '-', '?']);
 
-type XPathMistake = {
-  readonly kind: 'predicate-scan' | 'several-nodes';
-  readonly text: string;
-};
-
 function previousWord(xpath: string, end: number): string {
   const before = xpath.slice(0, end);
   const match = /([\w-]+)\s*$/u.exec(before);

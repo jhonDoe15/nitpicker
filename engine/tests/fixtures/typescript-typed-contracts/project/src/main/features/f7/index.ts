@@ -1,0 +1,1 @@
+export { OrderView } from './view';

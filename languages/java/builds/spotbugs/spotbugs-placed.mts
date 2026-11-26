@@ -2,8 +2,7 @@ export type Placed = {
   readonly text: string;
   readonly levels: Readonly<Record<number, string>>;
   readonly classNamed?: readonly number[];
-  readonly byArguments?: boolean;
-  readonly relative?: boolean;
+  readonly placement?: 'arguments' | 'relative';
 };
 
 const ERROR = 'error';
@@ -88,7 +87,7 @@ export const PLACED: Readonly<Record<string, Placed>> = {
   EQ_DOESNT_OVERRIDE_EQUALS: {
     text: "Class doesn't override equals in superclass",
     levels: { 2: 'note' },
-    byArguments: true,
+    placement: 'arguments',
   },
   EQ_COMPARETO_USE_OBJECT_EQUALS: {
     text: 'Class defines compareTo(...) and uses Object.equals()',
@@ -101,6 +100,6 @@ export const PLACED: Readonly<Record<string, Placed>> = {
   HSM_HIDING_METHOD: {
     text: 'Method hiding should be avoided.',
     levels: { 2: ERROR },
-    relative: true,
+    placement: 'relative',
   },
 };
