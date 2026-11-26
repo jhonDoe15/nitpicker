@@ -63,6 +63,8 @@ struct Compiled {
     name: String,
     message: String,
     port: Option<super::coded::Port>,
+    /// UnnecessaryWarningSuppression: runs after every other rule of a file.
+    last: bool,
     values: BTreeMap<String, String>,
     query: Result<Expr, String>,
     suppress: Option<Result<Expr, String>>,
@@ -121,6 +123,7 @@ impl XPathRules {
                                 name: rule.name.clone(),
                                 message: rule.message.clone(),
                                 port: super::coded::port(&rule.port),
+                                last: rule.port == super::coded::suppressions::CLASS,
                                 values: rule.properties.iter().map(|(name, property)| (name.clone(), property.value.clone())).collect(),
                                 query: Parser::parse(&rule.xpath, rule.properties.keys().cloned().collect()).map(|(query, _)| query),
                                 suppress: (!rule.suppress.trim().is_empty())
@@ -191,8 +194,10 @@ impl FileRule for XPathRules {
         let rules = self.compiled();
         let usages = std::cell::OnceCell::new();
         let flow = std::cell::OnceCell::new();
-        for (rule, scope) in rules.iter().zip(&self.scopes) {
-            if !scope.covers(&file.path) {
+        let mut last = None;
+        for (at, (rule, scope)) in rules.iter().zip(&self.scopes).enumerate() {
+            if !scope.covers(&file.path) || rule.last {
+                last = last.or(rule.last.then_some(at).filter(|_| scope.covers(&file.path)));
                 local.push((0, 0, 0, None));
                 continue;
             }
@@ -264,6 +269,13 @@ impl FileRule for XPathRules {
                 }
             }
             local.push((1, started.elapsed().as_nanos(), found, trouble));
+        }
+        if let Some(at) = last {
+            let started = std::time::Instant::now();
+            let rule = &rules[at];
+            let ctx = super::coded::ctx::Ctx { tree: &tree, file, machine: &machine, properties: &rule.values, usages: &usages, flow: &flow };
+            let found = super::coded::suppressions::report(&ctx, &quiet, &rule.name, out);
+            local[at] = (1, started.elapsed().as_nanos(), found, None);
         }
         if let Some(limit) = std::env::var("NP_SLOW").ok().and_then(|limit| limit.parse::<u128>().ok()) {
             let spent: u128 = local.iter().map(|(_, nanos, _, _)| nanos / 1_000_000).sum();

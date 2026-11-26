@@ -240,6 +240,21 @@
   "exclude": []
  },
  {
+  "name": "CloseResource",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.java.rule.errorprone.CloseResourceRule",
+  "message": "Ensure that resources like this {0} object are closed after use",
+  "suppress": "let $name := string(@Name),\n    $scope := ancestor::Block[1],\n    $init := parent::VariableDeclarator/*[2],\n    $fields := ancestor::ClassBody[1]/FieldDeclaration/VariableDeclarator/VariableId/@Name\nreturn .[\n  $init[self::ConstructorCall][pmd-java:typeIsExactly('java.util.Formatter')]\n    [empty(ArgumentList/*) or ArgumentList/*[1][pmd-java:typeIs('java.lang.StringBuilder')\n                                               or pmd-java:typeIs('java.lang.StringBuffer')]]\n  or exists($init/(self::MethodCall | self::CastExpression/MethodCall)[@MethodName = ('unwrap', 'getCurrentSession')\n       or (@MethodName = 'getConnection' and *[1][self::TypeExpression/ClassType/@SimpleName = 'DataSourceUtils'])\n       or (@MethodName = 'get' and *[1][self::TypeExpression/ClassType/@SimpleName = 'GlobalTracer'])\n       or (@MethodName = 'putCloseable' and *[1][self::TypeExpression/ClassType/@SimpleName = 'MDC'])])\n  or exists($scope//MethodCall[@MethodName = ('shutdown', 'shutdownNow')][*[1][self::VariableAccess[@Name = $name]]])\n  or exists($scope//MethodCall[@MethodName = ('close', 'closeQuietly', 'closeSilently', 'closeStream', 'closeResource')]\n       [ancestor::FinallyClause][ArgumentList/VariableAccess[@Name = $name]])\n  or exists($scope//MethodCall[@MethodName = 'renderBinary']/ArgumentList/VariableAccess[@Name = $name])\n  or exists($scope//AssignmentExpression[*[2][self::VariableAccess[@Name = $name]]]\n       [*[1][self::FieldAccess[*[1][self::ThisExpression]]]\n        or *[1][self::VariableAccess[@Name = $fields]]])\n]",
+  "properties": {
+   "allowedResourceTypes": {
+    "type": "",
+    "value": "java.io.ByteArrayOutputStream,java.io.ByteArrayInputStream,java.io.StringWriter,java.io.CharArrayWriter,java.io.StringReader,java.io.CharArrayReader,java.util.stream.Stream,java.util.stream.IntStream,java.util.stream.LongStream,java.util.stream.DoubleStream"
+   }
+  },
+  "include": [],
+  "exclude": []
+ },
+ {
   "name": "AssignmentInOperand",
   "xpath": "",
   "port": "net.sourceforge.pmd.lang.java.rule.errorprone.AssignmentInOperandRule",
@@ -399,6 +414,16 @@
   "xpath": "",
   "port": "net.sourceforge.pmd.lang.java.rule.bestpractices.UnnecessaryVarargsArrayCreationRule",
   "message": "Unnecessary explicit array creation for varargs method call",
+  "suppress": "",
+  "properties": {},
+  "include": [],
+  "exclude": []
+ },
+ {
+  "name": "UnnecessaryWarningSuppression",
+  "xpath": "",
+  "port": "net.sourceforge.pmd.lang.rule.impl.UnnecessaryPmdSuppressionRule",
+  "message": "Unused suppression {0}.",
   "suppress": "",
   "properties": {},
   "include": [],
