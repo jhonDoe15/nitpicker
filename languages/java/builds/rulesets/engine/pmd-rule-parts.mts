@@ -18,30 +18,61 @@ const RULE_PACKAGE = 'net.sourceforge.pmd.lang.java.rule';
 const PORTED_RULES: ReadonlySet<string> = new Set(
   [
     'bestpractices.AbstractClassWithoutAbstractMethodRule',
+    'bestpractices.ArrayIsStoredDirectlyRule',
     'bestpractices.AvoidReassigningCatchVariablesRule',
     'bestpractices.AvoidReassigningParametersRule',
     'bestpractices.CheckResultSetRule',
+    'bestpractices.JUnitUseExpectedRule',
+    'bestpractices.LiteralsFirstInComparisonsRule',
+    'bestpractices.LooseCouplingRule',
+    'bestpractices.MethodReturnsInternalArrayRule',
     'bestpractices.MissingOverrideRule',
+    'bestpractices.PrimitiveWrapperInstantiationRule',
+    'bestpractices.UnitTestShouldIncludeAssertRule',
+    'bestpractices.UnnecessaryVarargsArrayCreationRule',
+    'bestpractices.UnusedFormalParameterRule',
     'bestpractices.UnusedLocalVariableRule',
+    'bestpractices.UnusedPrivateFieldRule',
     'bestpractices.UseCollectionIsEmptyRule',
     'bestpractices.UseEnumCollectionsRule',
+    'bestpractices.UseTryWithResourcesRule',
+    'codestyle.ConfusingTernaryRule',
+    'design.SimplifyConditionalRule',
+    'errorprone.AssignmentInOperandRule',
     'errorprone.AssignmentToNonFinalStaticRule',
+    'errorprone.AvoidBranchingStatementAsLastInLoopRule',
+    'errorprone.AvoidDuplicateLiteralsRule',
     'errorprone.AvoidUsingOctalValuesRule',
+    'errorprone.BrokenNullCheckRule',
     'errorprone.CheckSkipResultRule',
     'errorprone.CloneMethodMustImplementCloneableRule',
+    'errorprone.ConfusingArgumentToVarargsMethodRule',
     'errorprone.DetachedTestCaseRule',
     'errorprone.IdempotentOperationsRule',
     'errorprone.JUnitSpellingRule',
     'errorprone.JUnitStaticSuiteRule',
+    'errorprone.NullAssignmentRule',
+    'errorprone.OverrideBothEqualsAndHashcodeRule',
     'errorprone.ProperCloneImplementationRule',
     'errorprone.SingleMethodSingletonRule',
+    'errorprone.SingletonClassReturningNewInstanceRule',
+    'errorprone.SuspiciousOctalEscapeRule',
+    'errorprone.TestClassWithoutTestCasesRule',
     'errorprone.UnnecessaryCaseChangeRule',
     'errorprone.UselessOperationOnImmutableRule',
+    'multithreading.DoubleCheckedLockingRule',
+    'multithreading.NonThreadSafeSingletonRule',
+    'multithreading.UnsynchronizedStaticFormatterRule',
     'performance.AddEmptyStringRule',
     'performance.AppendCharacterWithCharRule',
+    'performance.BigIntegerInstantiationRule',
+    'performance.ConsecutiveAppendsShouldReuseRule',
+    'performance.InefficientEmptyStringCheckRule',
+    'performance.InefficientStringBufferingRule',
     'performance.RedundantFieldInitializerRule',
     'performance.StringInstantiationRule',
     'performance.UseIndexOfCharRule',
+    'performance.UseStringBufferForStringAppendsRule',
     'performance.UselessStringValueOfRule',
     'security.HardCodedCryptoKeyRule',
     'security.InsecureCryptoIvRule',
@@ -113,6 +144,10 @@ export function ruleLevel(rule: ResolvedRule): 'error' | 'warning' | 'note' {
 
 function isPorted(rule: ResolvedRule): boolean {
   return PORTED_RULES.has(rule.definition.attrs['class'] ?? '');
+}
+
+export function runsOnPmd(rule: ResolvedRule): boolean {
+  return !runsOnEngine(rule) && rule.definition.attrs['maximumLanguageVersion'] === undefined;
 }
 
 export function runsOnEngine(rule: ResolvedRule): boolean {

@@ -34,6 +34,7 @@ enum Constant<'a> {
     Class(u16),
     Text(u16),
     Int(i32),
+    Wide(i64),
     Other,
 }
 
@@ -645,13 +646,14 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 pool.push(Constant::Other);
             }
             3 => pool.push(Constant::Int(reader.u4()? as i32)),
-            4 | 9 | 10 | 11 | 12 | 17 | 18 => {
+            4 => pool.push(Constant::Wide(i64::from(reader.u4()?))),
+            9 | 10 | 11 | 12 | 17 | 18 => {
                 reader.skip(4)?;
                 pool.push(Constant::Other);
             }
             5 | 6 => {
-                reader.skip(8)?;
-                pool.push(Constant::Other);
+                let high = u64::from(reader.u4()?);
+                pool.push(Constant::Wide(((high << 32) | u64::from(reader.u4()?)) as i64));
                 pool.push(Constant::Other);
             }
             _ => return None,
@@ -702,7 +704,8 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 _ => None,
             });
             let number = found_number.and_then(|index| match pool.get(index as usize)? {
-                Constant::Int(value) => Some(*value),
+                Constant::Int(value) => Some(i64::from(*value)),
+                Constant::Wide(value) => Some(*value),
                 _ => None,
             });
             let kind = Signature { text: descriptor, at: 0, written_bounds: Vec::new() }.kind()?;

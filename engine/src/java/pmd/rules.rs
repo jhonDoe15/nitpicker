@@ -214,7 +214,8 @@ impl FileRule for XPathRules {
                             continue;
                         }
                     }
-                    let message = super::coded::expanded(&ctx, super::coded::formatted(&rule.message, &hit.args), hit.node);
+                    let pattern = hit.message.as_deref().unwrap_or(&rule.message);
+                    let message = super::coded::expanded(&ctx, super::coded::formatted(pattern, &hit.args), hit.node);
                     out.push(Finding { file: file.path.clone(), line: place("BeginLine"), column: place("BeginColumn"), rule: rule.name.clone(), message, symbol: None, priority: None });
                     found += 1;
                 }

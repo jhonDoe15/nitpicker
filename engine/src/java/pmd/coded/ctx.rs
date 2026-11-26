@@ -10,6 +10,7 @@ use std::collections::BTreeMap;
 pub struct Hit {
     pub node: u32,
     pub args: Vec<String>,
+    pub message: Option<String>,
 }
 
 pub struct Ctx<'m, 'a, 't> {
@@ -279,4 +280,5 @@ impl<'m, 'a, 't> Ctx<'m, 'a, 't> {
         };
         self.kids_named(body, name).collect()
     }
+
 }

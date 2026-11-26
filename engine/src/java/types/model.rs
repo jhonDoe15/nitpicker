@@ -190,8 +190,9 @@ pub struct Field {
     pub kind: Type,
     pub generic: Type,
     pub constant: Option<String>,
-    /// The value of a final `int` field set from a literal or read from the class file.
-    pub number: Option<i32>,
+    /// The value of a final `int` field set from a literal or read from the class file; for a `float` or `double`
+    /// constant from a class file, its IEEE bits.
+    pub number: Option<i64>,
     /// Set for a final field whose initializer is a constant expression as long as each listed field
     /// (owner class, name; an empty owner means the classes around the field) is a constant too.
     pub fixed: Option<Vec<(String, String)>>,
