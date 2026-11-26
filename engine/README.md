@@ -615,12 +615,22 @@ Lombok reads `lombok.config`: from the outermost file to the nearest, with `clea
 `src/java/spotbugs/classes/` looks at a class as a whole. Findings on a class are placed on its first line as
 SpotBugs reports it: the lowest line any of the class's methods has code on, as `javac` writes the line table
 (`classes/lines.rs`). A constructor's code starts at its `this(...)` or `super(...)` call, else at the `{` of its
-body; a default constructor at the class name; field initializers at the field name (copied into each
+body; a default constructor at the `class` keyword; field initializers at the field name (copied into each
 constructor that does not call `this(...)`); a static constant needs no code; a method at its first statement
-that makes code (a local variable at its name, any other statement where it starts, except a call with no receiver
-and no arguments, at its `(`), or the closing brace of an empty body. A static initializer starts at its first
-statement; `while (true)`, `for (;;)` and an `if` on `true` or `false` start at the code of the body or branch
-that runs; a `for` starts at its initializer. A static constant needs no code only when its value reads literals
+that makes code (a local variable at its name, any other statement where it starts), or the closing brace of an
+empty body. `javac` also marks the test of each conditional expression (at the operator of a binary test, else
+`instanceof` at its keyword, else where the test starts) and each call (at its `(`); when the first
+instruction of a statement comes after such a mark (the statement starts with a conditional expression, or with a call that loads nothing before it: static,
+no receiver value, first argument also leading), the statement's lowest line is the lowest of those marks. An
+`if` is placed the same way by its condition; a `return` always has code on its own line. A static initializer
+starts at its first statement; `while`, `for (;;)` and `if` on a condition `javac` folds to `true` or `false`
+(`int` literals in any base, `boolean` and `int` fields set from a literal in any class, unary, arithmetic,
+bit, shift and comparison operators in 32 bits, `&&`, `||`) start at the code of the body or branch that runs,
+and a conditional expression on such a test makes only the chosen branch; a `for` starts at its initializer,
+else at its condition; a `do` with an empty body at its condition; a `try` with an empty body starts at its
+`finally` block, else at the next statement. Not modelled: constants set from an expression, local constants,
+`long`, `char` and `String` constants, the boxing and unboxing calls `javac` adds, a `for` update or for-each
+variable on a line of its own, and cloneable anonymous classes (SpotBugs reports CN_IDIOM at the `new`). A static constant needs no code only when its value reads literals
 and other such constants. Enums, records, classes that hold an `assert` and classes that get a bridge method (a
 method overriding one of a generic supertype whose erased parameters or result differ) also have code on the
 first line of the declaration, annotations included.
@@ -658,9 +668,10 @@ Clone idiom (#2261, `tests/fixtures/spotbugs/clones`):
   cloneable, and that is no thrower; priority 1 when it calls `super.clone()`.
 - CN_IDIOM is not reported either when the class has a covariant `clone()` of any access.
 
-Review labs (`sing_lazy`, `sing_clone`, `sing_first`) are exact. Not modelled yet: conditions on named
-constants (`if (DEBUG)`), the line of a conditional expression split over lines, a `try` whose body is empty
-before a `finally`, a class header with `class` and its name on separate lines, and a native `clone()`.
+- A native public `clone()` counts as a `clone()` that does not call `super.clone()` and has no line: SpotBugs
+  reports it without a region (line 0).
+
+Review labs (`sing_lazy`, `sing_clone`, `sing_first`) and the line labs (#2459, `class_lines`) are exact.
 
 On the six comparison code bases built here (Elasticsearch not built), SARIF results, same / missed / extra:
 singletons 122 / 1 / 0, clone idiom 112 / 0 / 0. The missed one is SING_SINGLETON_HAS_NONPRIVATE_CONSTRUCTOR on
