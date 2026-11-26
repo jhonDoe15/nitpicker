@@ -751,7 +751,8 @@ every load and store of the run's fields; the run decides once all files are rea
 constructors and static initializer before its other methods, those in the order javac writes them, and the
 methods javac makes of lambdas last; field initializers and initializer blocks count from the first constructor
 that does not start with `this(...)`. A load or store gets the line of the last call made before it in its
-statement, else of the statement's start (a field initializer: the field's name).
+statement, else of the statement's start (a field initializer: the field's name; `this(...)`, an enum constant and
+a `switch` written as a statement each start a statement of their own).
 
 - PA_PUBLIC_PRIMITIVE_ATTRIBUTE, priority 2, level `note`: a public non-final field (any type, static too) of a
   top-level class that is not an enum, interface or annotation, stored into by a method of that class: a lambda
@@ -766,9 +767,11 @@ statement, else of the statement's start (a field initializer: the field's name)
   known to be empty or a `Hashtable` is MS_FINAL_PKGPROTECT, a field the static initializer stores more than
   once is MS_SHOULD_BE_REFACTORED_TO_BE_FINAL, and the rest are MS_SHOULD_BE_FINAL: priority 1 for a non-array
   object, else 2. A load or store by a class of another package turns MS_PKGPROTECT into MS_MUTABLE_ARRAY or
-  MS_CANNOT_BE_FINAL. The finding sits on the first store of the static initializer, or on no line.
+  MS_CANNOT_BE_FINAL. The finding sits on the first load or store of the field in any class's static initializer
+  (field initializers and enum constants included), in visiting order, or on no line.
 - SS_SHOULD_BE_STATIC, priority 2, level `note`: a final instance field of a primitive type or `String` set to a
-  compile-time constant, in any class (nested, local, anonymous and enums too), on the line of the field's name.
+  compile-time constant, in any class (nested, local, anonymous and enums too), on the first line of the field's
+  declaration, annotations included. The constant may use other such fields of the class (`final int e = a + 1;`).
 
 On the six comparison code bases, SARIF results, same / missed / extra: commons-lang 5 / 0 / 0, MyBatis 1 / 0 / 0,
 Guava 0 / 0 / 0, jackson-databind 5 / 1 / 1, javaparser-core 13 / 0 / 0, Nacos 39 / 0 / 0. The jackson-databind

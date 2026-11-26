@@ -89,7 +89,7 @@ fn findings_name_the_place_spotbugs_sarif_names() {
     for name in &cases {
         let case = root.join("fixtures").join("spotbugs").join(name);
         let listed = found_listed(&case, name, "symbol").into_iter().filter(|row| rules.contains(&row.1));
-        found.extend(listed.map(|(file, rule, line, place)| (file, rule, line, place.split('@').next().unwrap_or_default().to_string())));
+        found.extend(listed.map(|(file, rule, line, place)| (file, rule, line, place.split(['@', '|']).next().unwrap_or_default().to_string())));
     }
     found.sort();
     assert_eq!(found, expected);

@@ -16,10 +16,12 @@ use crate::engine::source::{parent, walk};
 use crate::java::helpers::has_modifier;
 use std::collections::HashSet;
 use tree_sitter::Node;
-use writes::{Order, Phase};
+use writes::Order;
+pub(super) use writes::Phase;
 
 pub const PATTERNS: &[&str] = &["PA_PUBLIC_PRIMITIVE_ATTRIBUTE", "MS_SHOULD_BE_FINAL", "MS_PKGPROTECT"];
 
+#[derive(Clone)]
 /// One load or store of a field of the run.
 pub struct Write {
     pub store: bool,
@@ -83,8 +85,9 @@ pub fn gather(context: &Context, names: &HashSet<String>) -> Notes {
         return notes;
     }
     let path = context.file.path.clone();
+    let known = std::cell::RefCell::new(writes::Constructors::new());
     let access = |notes: &mut Notes, key: (String, String), node: Node, value: Option<Node>, store: bool| {
-        let (Some(by), Some(order)) = (writes::writer(context, node), writes::order(node)) else { return };
+        let (Some(by), Some(order)) = (writes::writer(context, node), writes::order(node, &mut known.borrow_mut())) else { return };
         let empty = value.is_some_and(|value| writes::empty_array(context, value));
         let setup = writes::setup(context, node);
         let line = writes::line(context, node, store);
