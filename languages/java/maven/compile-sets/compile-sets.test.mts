@@ -65,9 +65,43 @@ describe('compileSets', () => {
       ]),
     ).toEqual([
       ['main', '8', ['demo/A.java', 'demo/B.java']],
-      ['main-compile-java15', '15', ['demo/jwk/EdEcKeys.java']],
-      ['main-again', '17', []],
+      ['main-1-compile-java15', '15', ['demo/jwk/EdEcKeys.java']],
+      ['main-2-again', '17', []],
       ['test', '8', []],
+    ]);
+  });
+
+  it('compiles the main set as a plain compile when the default compile excludes module-info.java', () => {
+    const { basedir, main } = moduleWith(['module-info.java', 'demo/A.java']);
+    const compiler = compilerOf({
+      release: '8',
+      sources: { includes: [], excludes: ['module-info.java'] },
+      executions: [
+        { id: 'java9', release: '9', sources: { includes: ['module-info.java'], excludes: [] } },
+      ],
+    });
+    const module = {
+      basedir,
+      outputDirectory: path.join(basedir, 'target', 'classes'),
+      testOutputDirectory: path.join(basedir, 'target', 'test-classes'),
+      sourceRoots: [main],
+      testSourceRoots: [],
+      compiler,
+    };
+
+    const sets = compileSets(
+      {
+        module,
+        classpaths: { mainCompile: [], mainRuntime: [], testCompile: [], testRuntime: [] },
+      },
+      compiler,
+      true,
+    );
+
+    expect(sets.map((set) => [set.name, set.modular, set.sources.length])).toEqual([
+      ['main', false, 1],
+      ['main-1-java9', false, 0],
+      ['test', false, 0],
     ]);
   });
 });

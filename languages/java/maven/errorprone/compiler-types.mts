@@ -51,7 +51,7 @@ function executionsOf(value: unknown): ExtraCompile[] {
   return Array.isArray(value)
     ? value.map((execution) => ({
         ...testCompilerOf(execution),
-        id: optionalText(fieldOf(execution, 'id')) ?? 'compile',
+        id: optionalText(fieldOf(execution, 'id')) ?? 'default',
       }))
     : [];
 }

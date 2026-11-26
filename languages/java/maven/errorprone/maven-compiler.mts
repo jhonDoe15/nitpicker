@@ -163,6 +163,7 @@ function isExtraCompile(execution: XmlElement): boolean {
   return (
     textAt(execution, 'id') !== 'default-compile' &&
     textAt(execution, 'phase') !== 'none' &&
+    textAt(execution, 'configuration', 'skipMain') !== 'true' &&
     childAt(execution, 'configuration', 'compileSourceRoots') === undefined
   );
 }
@@ -181,7 +182,7 @@ function extraCompiles(
       ].filter((configuration) => configuration !== undefined);
       const setting = settingOf(project, configurations);
       return {
-        id: textAt(execution, 'id') ?? 'compile',
+        id: textAt(execution, 'id') ?? 'default',
         ...levelOf(setting, false, pluginVersion),
         compilerArgs: argumentsOf(configurations, setting),
         sources: sourcePatterns(configurations, false),

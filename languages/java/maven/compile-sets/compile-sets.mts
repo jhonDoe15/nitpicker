@@ -19,16 +19,28 @@ export type CompileSet = {
 
 const MODULE_INFO = 'module-info.java';
 
-function setName(id: string): string {
-  return `main-${id.replaceAll(/[^\w.-]/gu, '-')}`;
+function setName(id: string, index: number): string {
+  return `main-${String(index + 1)}-${id.replaceAll(/[^\w.-]/gu, '-')}`;
+}
+
+function isDescriptor(file: string): boolean {
+  return path.basename(file) === MODULE_INFO;
+}
+
+function sized(
+  shape: SetShape,
+  sources: readonly string[],
+): Pick<CompileSet, 'sources' | 'modular'> {
+  const kept = sources.every(isDescriptor) ? [] : sources;
+  return { sources: kept, modular: kept.some(isDescriptor) ? shape.modular : false };
 }
 
 function withoutDescriptor(files: readonly string[], modular: Modular): string[] {
-  return files.filter((file) => modular !== false || path.basename(file) !== MODULE_INFO);
+  return files.filter((file) => modular !== false || !isDescriptor(file));
 }
 
 export function isModular(module: SourceModule): boolean {
-  return javaFiles(module.sourceRoots).some((file) => path.basename(file) === MODULE_INFO);
+  return javaFiles(module.sourceRoots).some(isDescriptor);
 }
 
 type SetShape = Omit<CompileSet, 'name' | 'sources' | 'compiler'>;
@@ -37,19 +49,19 @@ function mainSets(module: SourceModule, compiler: CompilerSettings, shape: SetSh
   const files = withoutDescriptor(javaFiles(module.sourceRoots), shape.modular);
   const main = selectedSources(module.sourceRoots, files, compiler.sources);
   const taken = new Set(main);
-  const extra = (compiler.executions ?? []).map((execution): CompileSet => {
+  const extra = (compiler.executions ?? []).map((execution, index): CompileSet => {
     const sources = selectedSources(module.sourceRoots, files, execution.sources).filter(
       (file) => !taken.has(file),
     );
     sources.forEach((file) => taken.add(file));
     return {
       ...shape,
-      name: setName(execution.id),
-      sources,
+      ...sized(shape, sources),
+      name: setName(execution.id, index),
       compiler: { ...compiler, ...execution },
     };
   });
-  return [{ ...shape, name: 'main', sources: main, compiler }, ...extra];
+  return [{ ...shape, ...sized(shape, main), name: 'main', compiler }, ...extra];
 }
 
 export function compileSets(
