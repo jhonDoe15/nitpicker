@@ -1,5 +1,11 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
-import { depthFirst, functionBinding, nameOf, nodeChildren } from '../typed/node-views.mts';
+import {
+  chainOf,
+  depthFirst,
+  functionBinding,
+  nameOf,
+  nodeChildren,
+} from '../typed/node-views.mts';
 import { enclosingFunction, type FunctionNode } from '../typed/syntax-views.mts';
 
 const WALKING_CALLEE =
@@ -19,15 +25,7 @@ export function walksUp(scope: TSESTree.Node): boolean {
 }
 
 function outermostFunction(node: TSESTree.Node): FunctionNode | undefined {
-  let current = enclosingFunction(node);
-  while (current !== undefined) {
-    const outer = enclosingFunction(current);
-    if (outer === undefined) {
-      return current;
-    }
-    current = outer;
-  }
-  return undefined;
+  return chainOf<FunctionNode>(enclosingFunction(node), enclosingFunction).at(-1);
 }
 
 function callersOf(program: TSESTree.Node, fn: FunctionNode): FunctionNode[] {
@@ -44,6 +42,18 @@ function callersOf(program: TSESTree.Node, fn: FunctionNode): FunctionNode[] {
   });
 }
 
+function unseenCallers(
+  program: TSESTree.Node,
+  fn: FunctionNode,
+  seen: Set<FunctionNode>,
+): FunctionNode[] {
+  const unseen = [...new Set(callersOf(program, fn))].filter((caller) => !seen.has(caller));
+  for (const caller of unseen) {
+    seen.add(caller);
+  }
+  return unseen;
+}
+
 export function searchesParents(program: TSESTree.Node, lookup: TSESTree.Node): boolean {
   const start = outermostFunction(lookup);
   if (start === undefined) {
@@ -55,12 +65,7 @@ export function searchesParents(program: TSESTree.Node, lookup: TSESTree.Node): 
     if (walksUp(fn)) {
       return true;
     }
-    for (const caller of callersOf(program, fn)) {
-      if (!seen.has(caller)) {
-        seen.add(caller);
-        queue.push(caller);
-      }
-    }
+    queue.push(...unseenCallers(program, fn, seen));
   }
   return false;
 }
