@@ -18,8 +18,8 @@ let $bounded := function($o, $local) {
     }
 return
 //InfixExpression[@Operator = '-'][count(*) = 2]
-  [let $anchor := ancestor::*[not(self::ParenthesizedExpression or self::CastExpression or self::ConditionalExpression)][1],
-       $cast := exists(parent::CastExpression) or exists(parent::ParenthesizedExpression/parent::CastExpression),
+  [let $anchor := ancestor::*[not(self::CastExpression or self::ConditionalExpression)][1],
+       $cast := exists(parent::CastExpression),
        $method := $anchor/ancestor-or-self::*[self::MethodDeclaration or self::LambdaExpression][1],
        $locals := $method//LocalVariableDeclaration/VariableDeclarator/VariableId/@Name,
        $intParam := function($o) {

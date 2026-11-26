@@ -26,10 +26,14 @@ NP_XPATH_RULES=tests/rules/all.json JAVA_HOME=<jdk 21> target/release/nitpicker-
   --rules _XPath --classpath <file with one jar or class folder per line, absolute paths> --out report.json
 ```
 
-`tests/rules/all.json` holds the 342 XPath rules a Java run sends to PMD (name, message, query, properties):
-the 241 XPath rules of the Java rulesets and the 101 built-in PMD XPath rules those rulesets switch on, with
+`tests/rules/all.json` holds the 353 XPath rules a Java run sends to PMD (name, message, query, properties):
+the 252 XPath rules of the Java rulesets and the 101 built-in PMD XPath rules those rulesets switch on, with
 their property overrides. `parity/rules-from-rulesets.py <rulesets dir> <pmd-java jar> <out.json>` writes it
 and prints the built-in rules PMD implements in Java, which the engine does not run.
+
+PMD selects nothing for an element name it has no node type for, without an error. A unit test parses every
+query of the Java rulesets and fails on a name missing from `tests/rules/pmd-node-names.txt`, the concrete
+node types of PMD 7.16.0's Java tree.
 
 Other switches: `NP_XPATH_ONLY=<rule,rule>` runs some rules, `NP_XPATH_STATS=<file>` writes time
 and findings per rule, `NP_SLOW=<ms>` prints the files slower than that, `NP_DBG=1` prints each type question
@@ -45,7 +49,10 @@ on (`NITPICKER_JDK`), and takes PMD's `--suppress-marker` from `NP_SUPPRESS_MARK
 as `pmd-engine.sarif` next to `pmd.sarif` and join PMD's findings when the reports are read.
 
 - A file the grammar cannot read in full (`syntaxErrorFiles` in the report) goes back to PMD with the XPath
-  rules that cover it, and the engine's findings in it are dropped.
+  rules that cover it, and the engine's findings in it are dropped. Grammar gaps in valid Java are masked before
+  parsing, keeping every byte in place (`src/java/grammar.rs`): an annotation before `...`, a qualified record
+  pattern, and a NUL character in a string, text block, character literal or comment, where the grammar would
+  stop. A NUL in code leaves the file broken.
 - The engine's findings in a file PMD could not read are dropped: PMD reports none there.
 - A project's own PMD ruleset stays with PMD as it is.
 - PMD runs every rule, as before, when `NITPICKER_ENGINE=off`, when there is no engine binary for the
@@ -133,7 +140,8 @@ Measured with all 342 rules on 4 cores (findings: same / missed / extra):
 
 The first three rows were measured before the lookup caches of #2064; the Elasticsearch row after them and after
 #2121 and #2122. The two Elasticsearch rows the engine leaves out are wrong PMD findings: PMD leaves the type of
-two lambdas unfinished and `RetryInTest` then matches them (#2125). The PMD-shaped trees of all 5,106 files have
+two lambdas unfinished and `RetryInTest` then matched them; the rule now asks `typeIsExactly` for lambdas and
+method references (#2125). The PMD-shaped trees of all 5,106 files have
 the same node names in the same places as PMD's but for one (`module-info.java`).
 
 On the whole Elasticsearch tree (18,155 files, 3.3M lines) with the 130 rules of the first set the engine takes
