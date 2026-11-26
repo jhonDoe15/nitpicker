@@ -162,10 +162,10 @@ function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): Spotbug
     throw new Error(`the engine wrote a ${finding.rule} finding nitpicker cannot place: ${place}`);
   }
   const kind = place.slice(0, colon);
-  const qualified = place.slice(colon + 1);
+  const [qualified = '', written] = place.slice(colon + 1).split('|');
   const owner = ownerOf(kind, qualified);
   const subject = placesByArguments(placed) ? (finding.arguments?.[0] ?? owner) : owner;
-  const directory = packageOf(subject).replaceAll('.', '/');
+  const directory = (written ?? packageOf(subject)).replaceAll('.', '/');
   const file = path.basename(finding.file);
   return {
     ruleId: finding.rule,
