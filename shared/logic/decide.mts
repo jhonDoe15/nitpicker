@@ -226,12 +226,17 @@ function solverOf(z3: Z3, assertions: readonly Z3Bool[], resourceLimit: number):
   return solver;
 }
 
-function satisfiable(
+async function satisfiable(
   z3: Z3,
   assertions: readonly Z3Bool[],
   resourceLimit: number,
 ): Promise<CheckSatResult> {
-  return solverOf(z3, assertions, resourceLimit).check();
+  const solver = solverOf(z3, assertions, resourceLimit);
+  try {
+    return await solver.check();
+  } finally {
+    solver.release();
+  }
 }
 
 async function encoded(
@@ -287,8 +292,9 @@ export async function counterexample(
   const { resourceLimit = DEFAULT_RESOURCE_LIMIT } = options;
   const { z3, encoding, facts, asked } = await encoded(conditions, query, options);
   const solver = solverOf(z3, [...facts, z3.Not(asked)], resourceLimit);
-  if ((await solver.check()) !== 'sat') {
-    return undefined;
+  try {
+    return (await solver.check()) === 'sat' ? counterexampleOf(encoding, solver.model()) : undefined;
+  } finally {
+    solver.release();
   }
-  return counterexampleOf(encoding, solver.model());
 }
