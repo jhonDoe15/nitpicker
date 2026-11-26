@@ -236,11 +236,25 @@ export function withoutEngineReports(reportDir: string): void {
   }
 }
 
+function mayNeedWholeRun(file: string, resolve: Resolve): boolean {
+  try {
+    return resolve(file).rules.some(needsWholeRun);
+  } catch {
+    return true;
+  }
+}
+
 function wholeRunOnEngine(plan: PmdEnginePlan, splits: ReadonlyMap<string, Split>): boolean {
   const all = [...splits.values()];
   const partial =
     plan.rulesets.some((file) => !splits.has(file)) || all.some(({ onPmd }) => onPmd.length > 0);
-  return !(partial && all.some(({ onEngine }) => onEngine.some(needsWholeRun)));
+  if (partial && all.some(({ onEngine }) => onEngine.some(needsWholeRun))) {
+    return false;
+  }
+  const resolve = resolvedRulesets(rulesetReader(plan.pmdJar));
+  return !plan.untouched.some(
+    (file) => plan.rulesets.includes(file) && mayNeedWholeRun(file, resolve),
+  );
 }
 
 function rulesetsAfterEngine(

@@ -291,6 +291,21 @@ describe('pmdRulesetsWithEngine when no rule is left on PMD', () => {
     expect(pmdRulesetsWithEngine(plan, environment, { run: unexpected })).toEqual(plan.rulesets);
     expect(existsSync(path.join(plan.reportDir, ENGINE_SARIF))).toBe(false);
   });
+
+  it.each([
+    ['contains unused suppressions', UNUSED_SUPPRESSION_RULE],
+    ['cannot be read', '<rule ref="custom/rules.xml"/>'],
+  ])('leaves every rule to PMD when the project ruleset %s', (_case, rule) => {
+    const { plan, environment } = setup();
+    const [project = ''] = plan.untouched;
+    writeFileSync(project, `${HEAD}${rule}</ruleset>`);
+    const started: Started[] = [];
+    const run = engineWriting({ findings: [], syntaxErrorFiles: [] }, started);
+
+    expect(pmdRulesetsWithEngine(plan, environment, { run })).toEqual(plan.rulesets);
+    expect(started).toHaveLength(0);
+    expect(existsSync(path.join(plan.reportDir, ENGINE_SARIF))).toBe(false);
+  });
 });
 
 describe('enginePlanOf', () => {
