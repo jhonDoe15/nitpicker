@@ -116,3 +116,11 @@ pub fn fixed(context: &Context, condition: Option<Node>) -> Option<bool> {
         Fixed::Int(_) => None,
     }
 }
+
+/// The `int` value javac folds an expression to.
+pub fn number(context: &Context, node: Node) -> Option<i64> {
+    match folded(context, node)? {
+        Fixed::Int(value) => Some(value),
+        Fixed::Bool(_) => None,
+    }
+}

@@ -31,7 +31,7 @@ pub fn member_label(context: &Context, own: &str, class: Node, member: Node) -> 
 
 /// Every node of a member's code that is not in a class declared inside, nor in a lambda, which javac makes a
 /// method of its own: the lambdas go to `lambdas`.
-fn own_nodes<'t>(node: Node<'t>, out: &mut Vec<Node<'t>>, lambdas: &mut Vec<Node<'t>>) {
+pub fn own_nodes<'t>(node: Node<'t>, out: &mut Vec<Node<'t>>, lambdas: &mut Vec<Node<'t>>) {
     for part in children(node) {
         if part.kind() == "class_body" || TYPE_DECLARATIONS.contains(&part.kind()) {
             continue;

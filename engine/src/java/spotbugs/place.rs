@@ -1,6 +1,6 @@
 //! The place a SpotBugs SARIF report names for a finding, written `kind:fully qualified name`: a method
 //! (`function`), a field (`member`), a local variable (`variable`, `method#name`, `#?` for a value without one) or a
-//! class (`type`).
+//! class (`type`). A place may end in `@class`: the SARIF name then drops the package when it is that class's package.
 use super::{Context, names};
 use crate::java::types::expr::{Binding, unwrap};
 use crate::java::types::scope::TYPE_DECLARATIONS;

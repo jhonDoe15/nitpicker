@@ -236,6 +236,27 @@ describe('spotbugsResultOf', () => {
     ]);
   });
 
+  it('drops the package from the name only when the hidden class shares it', () => {
+    const finding = {
+      file: '/src/p/B.java',
+      rule: 'HSM_HIDING_METHOD',
+      line: 4,
+      message: '',
+      priority: 2,
+      arguments: ['f()', 'B', 'A'],
+    };
+
+    const near = spotbugsResultOf({ ...finding, symbol: 'function:p.B.f()@p.A' });
+    const far = spotbugsResultOf({ ...finding, symbol: 'function:p.B.f()@java.lang.Thread' });
+
+    expect(near.level).toBe('error');
+    expect(near.locations[0].physicalLocation.artifactLocation.uri).toBe('p/B.java');
+    expect(near.locations[0].logicalLocations).toStrictEqual([
+      { name: 'B.f()', kind: 'function', fullyQualifiedName: 'p.B.f()' },
+    ]);
+    expect(far.locations[0].logicalLocations[0].name).toBe('p.B.f()');
+  });
+
   it('leaves out the region of a finding without a line', () => {
     const result = spotbugsResultOf({
       file: '/src/p/A.java',

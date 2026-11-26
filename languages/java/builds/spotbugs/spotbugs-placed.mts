@@ -2,7 +2,7 @@ export type Placed = {
   readonly text: string;
   readonly levels: Readonly<Record<number, string>>;
   readonly classNamed?: readonly number[];
-  readonly placement?: 'arguments';
+  readonly placement?: 'arguments' | 'relative';
 };
 
 export function placesByArguments(placed: Placed): boolean {
@@ -101,6 +101,12 @@ export const PLACED: Readonly<Record<string, Placed>> = {
     text: 'Equals method should not assume anything about the type of its argument',
     levels: { 2: 'note' },
   },
+  HSM_HIDING_METHOD: {
+    text: 'Method hiding should be avoided.',
+    levels: { 2: ERROR },
+    placement: 'relative',
+  },
+  NN_NAKED_NOTIFY: { text: 'Naked notify', levels: { 2: WARNING } },
   NP_BOOLEAN_RETURN_NULL: {
     text: 'Method with Boolean return type returns explicit null',
     levels: { 1: 'warning', 2: 'warning' },
