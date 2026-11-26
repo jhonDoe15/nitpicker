@@ -17,7 +17,7 @@ fn auto_annotation(name: &str) -> Option<&'static str> {
 }
 
 /// `@Generated` with a `value`, or without elements, as `ASTHelpers.getGeneratedBy` sees it.
-fn generated(context: &Context, class: Node) -> bool {
+pub(super) fn generated(context: &Context, class: Node) -> bool {
     let Some(holder) = crate::java::helpers::modifiers(class) else { return false };
     children(holder).into_iter().filter(|part| matches!(part.kind(), "annotation" | "marker_annotation")).any(|annotation| {
         let named = annotation.child_by_field_name("name").is_some_and(|name| context.text(name).rsplit('.').next() == Some("Generated"));

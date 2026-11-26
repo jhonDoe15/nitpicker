@@ -840,6 +840,18 @@ impl<'a> Resolver<'a> {
         (names, reason)
     }
 
+    /// `@org.mockito.Mock` on the declaration, with no explicit `answer`.
+    fn plain_mock(&self, declaration: Node) -> bool {
+        let marks = super::super::helpers::modifiers(declaration).map(children).unwrap_or_default();
+        marks.into_iter().any(|part| {
+            matches!(part.kind(), "marker_annotation" | "annotation")
+                && part.child_by_field_name("name").is_some_and(|name| self.class_name(declaration, self.file.text_of(name)).as_deref() == Some("org.mockito.Mock"))
+                && !part.child_by_field_name("arguments").is_some_and(|list| {
+                    children(list).into_iter().any(|pair| pair.kind() == "element_value_pair" && pair.child_by_field_name("key").is_some_and(|key| self.file.text_of(key) == "answer"))
+                })
+        })
+    }
+
     /// What `containerOf` of the class's `@Immutable` names, and the type parameters with `@ImmutableTypeParameter`.
     fn immutable_marks(&self, declaration: Node) -> (Vec<String>, Vec<String>) {
         use super::model::flag::{IMMUTABLE_NAME, IMMUTABLE_PARAMETER_NAME};
@@ -1050,6 +1062,7 @@ impl<'a> Resolver<'a> {
                             strict: (matches!(&kind, Type::Primitive(_)) || kind.name() == "java.lang.String")
                                 && declarator.field("value").is_some_and(|value| value.kind() != "array_initializer"),
                             is_private: has(member, "private"),
+                            mock: self.plain_mock(member),
                             flags: bits(member) | if info.is_interface { super::model::flag::STATIC | super::model::flag::FINAL } else { 0 },
                         });
                     }
@@ -1066,6 +1079,7 @@ impl<'a> Resolver<'a> {
                             fixed: None,
                             strict: false,
                             is_private: false,
+                            mock: false,
                             flags: super::model::flag::PUBLIC | super::model::flag::STATIC | super::model::flag::FINAL | super::model::flag::ENUM,
                         });
                     }
@@ -1161,7 +1175,7 @@ impl<'a> Resolver<'a> {
                 };
                 let name = self.file.text_of(name).to_string();
                 let generic = element(true).unwrap_or(kind.clone());
-                info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, number: None, fixed: None, strict: false, is_private: true, flags: super::model::flag::FINAL | bits(component) & (super::model::flag::NULLABLE | super::model::flag::CHECK_FOR_NULL) });
+                info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, number: None, fixed: None, strict: false, is_private: true, mock: false, flags: super::model::flag::FINAL | bits(component) & (super::model::flag::NULLABLE | super::model::flag::CHECK_FOR_NULL) });
                 info.record_components.get_or_insert_with(Vec::new).push(generic.clone());
                 let accessor = plain(&name, Vec::new(), kind.erased());
                 info.methods.push(Method { generic_returns: generic, flags: accessor.flags | bits(component) & (super::model::flag::NULLABLE | super::model::flag::CHECK_FOR_NULL), ..accessor });

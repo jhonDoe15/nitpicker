@@ -50,4 +50,17 @@ public class Mockito {
     public static Stubber doAnswer(org.mockito.stubbing.Answer answer) {
         return null;
     }
+
+    public static Stubber doCallRealMethod() {
+        return null;
+    }
+
+    public static <T> T mock(Class<T> type, String name) {
+        return null;
+    }
+
+    @SafeVarargs
+    public static <T> T mock(T... reified) {
+        return null;
+    }
 }

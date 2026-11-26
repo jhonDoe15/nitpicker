@@ -7,4 +7,12 @@ public abstract class AbstractModule implements Module {
   }
 
   protected void configure() {}
+
+  protected <T> com.google.inject.binder.AnnotatedBindingBuilder<T> bind(Class<T> type) {
+    return null;
+  }
+
+  protected Binder binder() {
+    return null;
+  }
 }

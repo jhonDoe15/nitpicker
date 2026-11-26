@@ -218,6 +218,8 @@ struct Attributes<'a> {
     /// `@DoNotMock` on the class: the constant pool index of its value, when it has one.
     do_not_mock: Option<Option<u16>>,
     type_marks: Vec<Mark>,
+    /// `@org.mockito.Mock` without an explicit `answer`.
+    mock: bool,
 }
 
 fn starter(descriptor: &[u8]) -> bool {
@@ -411,6 +413,15 @@ fn attributes<'a>(reader: &mut Reader<'a>, utf8: &impl Fn(u16) -> Option<&'a [u8
                         reader.skip(2)?;
                         enum_names(reader, utf8, &mut found.incompatible)?;
                     }
+                }
+                if kind == b"Lorg/mockito/Mock;" {
+                    reader.at = begin + 2;
+                    let mut answered = false;
+                    for _ in 0..reader.u2()? {
+                        answered |= utf8(reader.u2()?) == Some(b"answer");
+                        skip_element(reader)?;
+                    }
+                    found.mock = !answered;
                 }
                 if kind == b"Lcom/google/errorprone/annotations/DoNotMock;" {
                     found.do_not_mock = Some(text);
@@ -776,7 +787,7 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
             let kind = Signature { text: descriptor, at: 0, written_bounds: Vec::new() }.kind()?;
             let generic = signature.and_then(|text| Signature { text, at: 0, written_bounds: Vec::new() }.kind()).unwrap_or_else(|| kind.clone());
             field_marks.push((fields.len(), marks, descriptor));
-            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, number, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, flags: member_flags(flags, &found) | if flags & 0x0040 != 0 { flag::VOLATILE } else { 0 } | if flags & 0x4000 != 0 { flag::ENUM } else { 0 } });
+            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, number, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, mock: found.mock, flags: member_flags(flags, &found) | if flags & 0x0040 != 0 { flag::VOLATILE } else { 0 } | if flags & 0x4000 != 0 { flag::ENUM } else { 0 } });
         }
     }
     let mut methods = Vec::new();

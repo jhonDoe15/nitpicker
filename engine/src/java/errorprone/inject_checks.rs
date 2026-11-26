@@ -7,7 +7,7 @@ use crate::java::helpers::{has_modifier, modifiers};
 use crate::java::types::model::flag;
 use tree_sitter::Node;
 
-const INJECT: [&str; 3] = ["com.google.inject.Inject", "javax.inject.Inject", "jakarta.inject.Inject"];
+pub(super) const INJECT: [&str; 3] = ["com.google.inject.Inject", "javax.inject.Inject", "jakarta.inject.Inject"];
 const PROVIDES: [&str; 7] = [
     "com.google.inject.Provides",
     "dagger.Provides",
@@ -34,7 +34,7 @@ pub fn annotation_class(context: &Context, annotation: Node) -> Option<String> {
     context.resolver.class_name(annotation, context.text(name))
 }
 
-fn is_one_of(context: &Context, annotation: Node, names: &[&str]) -> bool {
+pub(super) fn is_one_of(context: &Context, annotation: Node, names: &[&str]) -> bool {
     annotation_class(context, annotation).is_some_and(|class| names.contains(&class.as_str()))
 }
 
@@ -46,7 +46,7 @@ fn is_scope(context: &Context, annotation: Node) -> bool {
     has_flag(context, annotation, flag::SCOPE_ANNOTATION)
 }
 
-fn is_qualifier(context: &Context, annotation: Node) -> bool {
+pub(super) fn is_qualifier(context: &Context, annotation: Node) -> bool {
     has_flag(context, annotation, flag::QUALIFIER_ANNOTATION)
 }
 
