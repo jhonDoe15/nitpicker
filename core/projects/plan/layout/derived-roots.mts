@@ -36,7 +36,11 @@ function stringsIn(value: unknown): string[] {
 }
 
 function isFolder(file: string): boolean {
-  return existsSync(file) && statSync(file).isDirectory();
+  try {
+    return statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false;
+  } catch {
+    return false;
+  }
 }
 
 function topFolderOf(target: string): string | undefined {
