@@ -307,8 +307,12 @@ fn null_away_reports_what_null_away_reports_on_the_error_prone_fixtures() {
         for path in std::fs::read_dir(folder).expect("fixtures").flatten().map(|entry| entry.path()) {
             if path.is_dir() {
                 pending.push(path);
-            } else if let Some(line) = std::fs::read_to_string(&path).ok().and_then(|text| text.lines().find(|line| line.starts_with("package ")).map(String::from)) {
-                found.insert(line.trim_start_matches("package ").trim_end_matches(';').trim().to_string());
+            } else if path.extension().is_some_and(|extension| extension == "java") {
+                let text = std::fs::read_to_string(&path).expect("fixture");
+                let declared = text.lines().map(str::trim_start).find_map(|line| line.strip_prefix("package").filter(|rest| rest.starts_with(char::is_whitespace)));
+                if let Some((name, _)) = declared.and_then(|rest| rest.split_once(';')) {
+                    found.insert(name.trim().to_string());
+                }
             }
         }
     }
