@@ -17,29 +17,31 @@ const SUPPRESSIONS = /<suppressions[\s>]/u;
 const NARROWING = ['lines', 'columns', 'message', 'files-not', 'query'];
 const SIMPLE_NAME = /^\w+$/u;
 
-type Enabled = { readonly names: ReadonlySet<string>; readonly ids: ReadonlySet<string> };
-
 function simpleName(name: string): string {
   return (name.split('.').at(-1) ?? name).replace(/Check$/u, '');
+}
+
+function moduleBody(text: string, match: RegExpExecArray): string {
+  if (match[2] === '/>') {
+    return '';
+  }
+  const start = match.index + match[0].length;
+  MODULE_END.lastIndex = start;
+  const end = MODULE_END.exec(text);
+  return end === null ? '' : text.slice(start, end.index);
 }
 
 function enabledModules({ file, text }: XmlFile): Map<string, string> {
   const enabled = new Map<string, string>();
   for (const match of text.matchAll(MODULE)) {
-    let body = '';
-    if (match[2] !== '/>') {
-      const start = (match.index ?? 0) + match[0].length;
-      MODULE_END.lastIndex = start;
-      const end = MODULE_END.exec(text);
-      body = end === null ? '' : text.slice(start, end.index);
+    const properties = propertyValues(moduleBody(text, match));
+    if (properties.get('severity') === 'ignore') {
+      continue;
     }
-    const properties = propertyValues(body);
-    if (properties.get('severity') !== 'ignore') {
-      enabled.set(simpleName(match[1] ?? ''), file);
-      const id = properties.get('id');
-      if (id !== undefined) {
-        enabled.set(`id:${id}`, file);
-      }
+    enabled.set(simpleName(match[1] ?? ''), file);
+    const id = properties.get('id');
+    if (id !== undefined) {
+      enabled.set(`id:${id}`, file);
     }
   }
   return enabled;
