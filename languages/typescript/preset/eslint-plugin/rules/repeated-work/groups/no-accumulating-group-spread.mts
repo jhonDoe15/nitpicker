@@ -2,7 +2,7 @@ import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint
 import { calledMember, memberName } from '../../collections/costly-forms/repeated-runs.mts';
 import { ASSERTION_WRAPPERS, unwrapOf } from '../../typed/syntax-views.mts';
 import type { SourceCode } from '../../typed/node-views.mts';
-import { innermostRepeat } from '../support/loop-invariance.mts';
+import { openRepeat } from '../support/loop-invariance.mts';
 
 type Group = { readonly target: TSESTree.Node; readonly key: TSESTree.Node };
 
@@ -66,22 +66,6 @@ function sameGroup(sourceCode: SourceCode, read: Group, written: Group): boolean
   );
 }
 
-function fixedRepeat(node: TSESTree.Node): boolean {
-  const repeat = innermostRepeat(node);
-  if (repeat === undefined) {
-    return true;
-  }
-  if (repeat.node.type === AST_NODE_TYPES.ForOfStatement) {
-    return repeat.node.right.type === AST_NODE_TYPES.ArrayExpression;
-  }
-  const call = repeat.kind === 'callback' ? repeat.node.parent : undefined;
-  return (
-    call?.type === AST_NODE_TYPES.CallExpression &&
-    call.callee.type === AST_NODE_TYPES.MemberExpression &&
-    inner(call.callee.object).type === AST_NODE_TYPES.ArrayExpression
-  );
-}
-
 export const rule: TSESLint.RuleModule<'groupCopied'> = {
   meta: {
     type: 'suggestion',
@@ -109,7 +93,7 @@ export const rule: TSESLint.RuleModule<'groupCopied'> = {
           read !== undefined &&
           written !== undefined &&
           sameGroup(sourceCode, read, written) &&
-          !fixedRepeat(array)
+          openRepeat(array) !== undefined
         ) {
           context.report({
             node: spread,

@@ -560,6 +560,9 @@ Kotlin, Python and Go follow in #2133.
 `Map` or object spread into a new array that replaces it on every step of a loop or iteration
 callback (`m.set(k, [...(m.get(k) ?? []), v])`).
 
+`nitpicker/no-loop-invariant-copy` (production source, in `eslint-lint`, broad) reports a full copy
+of a value that does not change in a loop, made and stored on every pass of it.
+
 Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
 database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
 `for await` loop or a comparator, where running them concurrently still sends one query per item) and a

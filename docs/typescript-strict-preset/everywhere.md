@@ -320,6 +320,18 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   not reported. Allowed form: get the group once and push onto it, creating it with `[v]` when it is
   missing. `nitpicker/no-accumulating-spread` reports the same copy when the accumulator is a
   variable; this rule is separate because oxlint's native port of that rule does not see groups.
+- `nitpicker/no-loop-invariant-copy`: a full copy of a value that does not change in a loop, stored
+  on every pass of it, in all production code (not in tests). It reports `[...shared]`,
+  `shared.slice()`, `Array.from(shared)`, `{ ...shared }`, `new Map(shared)`, `new Set(shared)`,
+  `structuredClone(shared)` and `Buffer.from(shared)` inside a loop body or an iteration callback
+  when `shared` is a name or a `this` or member path declared outside the loop, neither assigned
+  nor changed in place there (`push`, `set`, `sort` and the like), and the copy is stored: a property
+  of an object literal, the value of a member assignment, the argument of `push`, `unshift`, `set`,
+  `add` or of a constructor, or the result of the callback. Memory then grows with the number of
+  passes times the size of the value. A copy kept in a local, a copy of a literal, a loop over a
+  literal list and a copy with other elements next to the spread are not reported. Whether a
+  consumer changes its copy later is not visible, so this is a broad rule. Allowed forms: share one
+  read-only value, or copy once before the loop.
 - `nitpicker/no-wasted-collection-step`: a collection or promise step that copies for nothing or
   walks the data twice, in all production code (not in tests). It reports `filter(p)[0]` and
   `filter(p).at(0)` with a callback `p` (allowed form: `find(p)`; a selector string, as in jQuery,

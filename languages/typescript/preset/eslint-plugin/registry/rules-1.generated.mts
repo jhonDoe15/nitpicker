@@ -87,6 +87,7 @@ import { rule as ruleNoLoadedRowsSavedBack } from '../rules/queries/rows/no-load
 import { rule as ruleNoLocalTimeZone } from '../rules/time/no-local-time-zone.mts';
 import { rule as ruleNoLookupAsPresence } from '../rules/presence/lookups/no-lookup-as-presence.mts';
 import { rule as ruleNoLookupPerElement } from '../rules/concurrency/reactive/no-lookup-per-element.mts';
+import { rule as ruleNoLoopInvariantCopy } from '../rules/repeated-work/copies/no-loop-invariant-copy.mts';
 import { rule as ruleNoLossyJsonStringify } from '../rules/json-values/no-lossy-json-stringify.mts';
 import { rule as ruleNoLossyUtf8Decode } from '../rules/decoding/no-lossy-utf8-decode.mts';
 import { rule as ruleNoMagicNumbers } from '../rules/wrapped/no-magic-numbers.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoMismatchedPreconditionMessage } from '../rules/preconditi
 import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
 import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
 import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
-import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multiple-collection-joins.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -189,6 +189,7 @@ export const partRules = {
   'no-local-time-zone': ruleNoLocalTimeZone,
   'no-lookup-as-presence': ruleNoLookupAsPresence,
   'no-lookup-per-element': ruleNoLookupPerElement,
+  'no-loop-invariant-copy': ruleNoLoopInvariantCopy,
   'no-lossy-json-stringify': ruleNoLossyJsonStringify,
   'no-lossy-utf8-decode': ruleNoLossyUtf8Decode,
   'no-magic-numbers': ruleNoMagicNumbers,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-mocking-subject-under-test': ruleNoMockingSubjectUnderTest,
   'no-module-level-let': ruleNoModuleLevelLet,
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
-  'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
 };
