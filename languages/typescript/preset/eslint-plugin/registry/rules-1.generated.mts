@@ -25,6 +25,7 @@ import { rule as ruleNoBranchInCompositionRoot } from '../rules/boundaries/no-br
 import { rule as ruleNoBtoaOnRuntimeText } from '../rules/encoding/no-btoa-on-runtime-text.mts';
 import { rule as ruleNoBufferedGrowingOutput } from '../rules/processes/output/no-buffered-growing-output.mts';
 import { rule as ruleNoCacheAfterGuardFallback } from '../rules/recursion/guards/no-cache-after-guard-fallback.mts';
+import { rule as ruleNoCachePerInnerUnit } from '../rules/rebuilt-work/no-cache-per-inner-unit.mts';
 import { rule as ruleNoCacheWriteInTransaction } from '../rules/transactions/cache-writes/no-cache-write-in-transaction.mts';
 import { rule as ruleNoCachedRejection } from '../rules/lifecycles/memo/no-cached-rejection.mts';
 import { rule as ruleNoCaseMismatchedLookup } from '../rules/lookups/no-case-mismatched-lookup.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoLoadedRowsSavedBack } from '../rules/queries/rows/no-load
 import { rule as ruleNoLocalTimeZone } from '../rules/time/no-local-time-zone.mts';
 import { rule as ruleNoLookupAsPresence } from '../rules/presence/lookups/no-lookup-as-presence.mts';
 import { rule as ruleNoLookupPerElement } from '../rules/concurrency/reactive/no-lookup-per-element.mts';
-import { rule as ruleNoLoopInvariantCopy } from '../rules/repeated-work/copies/no-loop-invariant-copy.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -127,6 +127,7 @@ export const partRules = {
   'no-btoa-on-runtime-text': ruleNoBtoaOnRuntimeText,
   'no-buffered-growing-output': ruleNoBufferedGrowingOutput,
   'no-cache-after-guard-fallback': ruleNoCacheAfterGuardFallback,
+  'no-cache-per-inner-unit': ruleNoCachePerInnerUnit,
   'no-cache-write-in-transaction': ruleNoCacheWriteInTransaction,
   'no-cached-rejection': ruleNoCachedRejection,
   'no-case-mismatched-lookup': ruleNoCaseMismatchedLookup,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-local-time-zone': ruleNoLocalTimeZone,
   'no-lookup-as-presence': ruleNoLookupAsPresence,
   'no-lookup-per-element': ruleNoLookupPerElement,
-  'no-loop-invariant-copy': ruleNoLoopInvariantCopy,
 };

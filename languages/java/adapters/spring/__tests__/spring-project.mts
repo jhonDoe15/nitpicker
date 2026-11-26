@@ -281,6 +281,7 @@ const REVIEW_RULES = new Set([
   'JvmHeapWithoutGoal',
   'WholeListJsonText',
   'ScanPerCallOverFixedCollection',
+  'CachePerInnerUnit',
   'UnboundedCollectionField',
   'OptionalOrElseGetNull',
   'NullableLibraryResult',

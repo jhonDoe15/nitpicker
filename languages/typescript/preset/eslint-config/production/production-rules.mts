@@ -100,6 +100,7 @@ export const productionGuardEntries: Record<string, Linter.RuleEntry> = {
   'nitpicker/no-overlapping-typescript-programs': 'error',
   'nitpicker/no-per-item-cache-growth': 'error',
   'nitpicker/no-scan-per-call-over-fixed-collection': 'error',
+  'nitpicker/no-cache-per-inner-unit': 'error',
   'nitpicker/no-aggregate-package-for-one-member': 'error',
   'nitpicker/require-client-timeout': 'error',
   'nitpicker/time-unit-mismatch': 'error',

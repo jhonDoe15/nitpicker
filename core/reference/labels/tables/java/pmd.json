@@ -30,6 +30,7 @@
   "pmd/CacheAfterGuardFallback": ["bug"],
   "pmd/CachedEntityFieldNotSerializable": ["bug", "persistence"],
   "pmd/CachedFutureKeepsFailure": ["bug", "async"],
+  "pmd/CachePerInnerUnit": ["performance"],
   "pmd/CallValueStoredInSharedField": ["bug", "async"],
   "pmd/CanonicalNameMayBeNull": ["bug"],
   "pmd/CatchLogWithoutException": ["reliability"],
