@@ -1,3 +1,4 @@
+import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
 import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multiple-collection-joins.mts';
 import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutating-method-in-domain.mts';
 import { rule as ruleNoNanOnlyCheck } from '../rules/numbers/no-nan-only-check.mts';
@@ -97,9 +98,9 @@ import { rule as ruleNoUnguardedCyclicRecursion } from '../rules/recursion/no-un
 import { rule as ruleNoUnguardedDeletedItems } from '../rules/deleted-items/no-unguarded-deleted-items.mts';
 import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-json-parse.mts';
 import { rule as ruleNoUnguardedOptionList } from '../rules/processes/arguments/no-unguarded-option-list.mts';
-import { rule as ruleNoUnguardedRegistryDelete } from '../rules/lifecycles/registry/no-unguarded-registry-delete.mts';
 
 export const partRules = {
+  'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
   'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
   'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
   'no-nan-only-check': ruleNoNanOnlyCheck,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unguarded-deleted-items': ruleNoUnguardedDeletedItems,
   'no-unguarded-json-parse': ruleNoUnguardedJsonParse,
   'no-unguarded-option-list': ruleNoUnguardedOptionList,
-  'no-unguarded-registry-delete': ruleNoUnguardedRegistryDelete,
 };

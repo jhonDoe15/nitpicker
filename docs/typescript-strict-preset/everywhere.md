@@ -2160,6 +2160,15 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   handed on outside the loop (a lookup table), exported, reassigned or returned, a function-local map, and a loop over
   an array literal. The cost only matters when the loop is long and the cached value is large; keep the value in a
   local of the loop body, or delete the entry once the item is done.
+- A whole tool package is not loaded to use one member that ships as its own package
+  (`nitpicker/no-aggregate-package-for-one-member`, production files). `typescript-eslint` loads its parser, its
+  plugin and every rule definition; loading it to use only the parser costs about 0.5 CPU seconds more than
+  `@typescript-eslint/parser`, once per project in a monorepo run. Reported: `require`, a `createRequire(...)`
+  function, `await import(...)` and a static `import` of `typescript-eslint` whose result is used only through
+  `parser` (load `@typescript-eslint/parser`) or only through `plugin` (load `@typescript-eslint/eslint-plugin`): read
+  as a member of the call, destructured, imported by name, or a binding read only through that member. Not reported:
+  two or more members used, a binding used whole, and type-only imports. Load the member's package, resolved from the
+  location of the aggregate package when it is not a direct dependency.
 - Waits without a timeout (`pmd/UnboundedWait`, `unbounded-wait`, `pmd/ReactorBlockWithoutTimeout` in the JVM and
   Python presets) have no TypeScript or JavaScript counterpart: nothing blocks a thread on a promise, and a promise
   that never settles is a missing deadline for `await`, which `nitpicker/require-client-timeout` and

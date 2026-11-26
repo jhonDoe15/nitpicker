@@ -174,6 +174,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-overlapping-typescript-programs`).
 - Keep a value used only while one loop item is processed in a local of the loop body, not in a module-level or field
   map that never drops it: the map grows with the number of items (`nitpicker/no-per-item-cache-growth`).
+- Load `@typescript-eslint/parser` or `@typescript-eslint/eslint-plugin` when only the parser or only the plugin is
+  used, not the whole `typescript-eslint` package with every rule definition
+  (`nitpicker/no-aggregate-package-for-one-member`).
 - A page of rows has an order: `limit`/`offset`/`take`/`skip`, a Prisma `cursor` or SQL `LIMIT` comes with
   `orderBy` on a unique key (or a tie-breaker after a non-unique one), and `json_agg`/`array_agg` or
   Kysely `jsonArrayFrom` lists sort inside (`json_agg(t ORDER BY t.name)`) (`nitpicker/no-unordered-query`).

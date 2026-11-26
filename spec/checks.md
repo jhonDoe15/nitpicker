@@ -499,6 +499,11 @@ module-level or field `Map` or `WeakMap` that a loop fills with one entry per it
 item, when nothing removes the entries. The map grows with the number of items; the allowed form keeps the value in a
 local of the loop body or deletes the entry when the item is done.
 
+Aggregate packages for one member: `nitpicker/no-aggregate-package-for-one-member` (production source, in
+`eslint-lint`) reports a `require`, dynamic `import` or static `import` of `typescript-eslint` used only through
+`parser` or only through `plugin`, which ship as their own packages. The aggregate loads every part of the tool; the
+allowed form loads the member's package.
+
 Unbounded waits: `pmd/UnboundedWait` (Java, main sources) reports `get()` or `join()` without a timeout on a
 `Future` or `CompletableFuture`, `Thread.join()` and `CountDownLatch.await()`, and
 `pmd/ReactorBlockWithoutTimeout` (with `reactor-core` on the compile classpath) reports `block()`,

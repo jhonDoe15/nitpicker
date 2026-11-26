@@ -372,6 +372,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-overlapping-typescript-programs`).
 - Keep a value used only while one loop item is processed in a local of the loop body, not in a module-level or field
   map that never drops it: the map grows with the number of items (`nitpicker/no-per-item-cache-growth`).
+- Load `@typescript-eslint/parser` or `@typescript-eslint/eslint-plugin` when only the parser or only the plugin is
+  used, not the whole `typescript-eslint` package with every rule definition
+  (`nitpicker/no-aggregate-package-for-one-member`).
 - Time values carry their unit in the name (`timeoutMs`, `ttlSeconds`) and meet only the same unit: convert
   once where a value enters (`ttlSeconds * 1000`, `Math.floor(Date.now() / 1000)`), compare JWT `exp` with
   `Date.now() / 1000`, pass milliseconds to `setTimeout` and `new Date(...)`, and never cut an epoch time

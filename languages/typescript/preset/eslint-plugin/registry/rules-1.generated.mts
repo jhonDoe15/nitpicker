@@ -13,6 +13,7 @@ import { rule as ruleNamingConvention } from '../rules/wrapped/naming-convention
 import { rule as ruleNoAccumulatingSpread } from '../rules/collections/no-accumulating-spread.mts';
 import { rule as ruleNoAccumulatorConcat } from '../rules/collections/no-accumulator-concat.mts';
 import { rule as ruleNoAddOnlyCollection } from '../rules/lifecycles/growth/no-add-only-collection.mts';
+import { rule as ruleNoAggregatePackageForOneMember } from '../rules/dependencies/no-aggregate-package-for-one-member.mts';
 import { rule as ruleNoAmbiguousLookupKey } from '../rules/lookup-keys/no-ambiguous-lookup-key.mts';
 import { rule as ruleNoArraySpreadArguments } from '../rules/collections/call-spreads/no-array-spread-arguments.mts';
 import { rule as ruleNoAssertionInLoop } from '../test-assertions/loop-assertions/no-assertion-in-loop.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoMappedCopyForSinglePass } from '../rules/whole-lists/no-m
 import { rule as ruleNoMismatchedPreconditionMessage } from '../rules/preconditions/no-mismatched-precondition-message.mts';
 import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
 import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
-import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -115,6 +115,7 @@ export const partRules = {
   'no-accumulating-spread': ruleNoAccumulatingSpread,
   'no-accumulator-concat': ruleNoAccumulatorConcat,
   'no-add-only-collection': ruleNoAddOnlyCollection,
+  'no-aggregate-package-for-one-member': ruleNoAggregatePackageForOneMember,
   'no-ambiguous-lookup-key': ruleNoAmbiguousLookupKey,
   'no-array-spread-arguments': ruleNoArraySpreadArguments,
   'no-assertion-in-loop': ruleNoAssertionInLoop,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-mismatched-precondition-message': ruleNoMismatchedPreconditionMessage,
   'no-mocking-subject-under-test': ruleNoMockingSubjectUnderTest,
   'no-module-level-let': ruleNoModuleLevelLet,
-  'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
 };
