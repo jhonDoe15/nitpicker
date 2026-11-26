@@ -1093,5 +1093,22 @@
 ["lombok/p/N7.java", "CT_CONSTRUCTOR_THROW", 7, "Exception thrown in class p.N7 at new p.N7(String) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
 ["lombok/p/N9.java", "CT_CONSTRUCTOR_THROW", 15, "Exception thrown in class p.N9 at new p.N9(String) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
 ["lombok/p/N9.java", "CT_CONSTRUCTOR_THROW", 22, "Exception thrown in class p.N9 at new p.N9(int, String) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
-["lombok/p/Nn.java", "CT_CONSTRUCTOR_THROW", 8, "Exception thrown in class p.Nn at new p.Nn(String) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."]
+["lombok/p/Nn.java", "CT_CONSTRUCTOR_THROW", 8, "Exception thrown in class p.Nn at new p.Nn(String) will leave the constructor. The object under construction remains partially initialized and may be vulnerable to Finalizer attacks."],
+["lombok_members/p/Named.java", "JLM_JSR166_LOCK_MONITORENTER", 46, "Synchronization performed on java.util.concurrent.locks.ReentrantLock in p.Named.use(Named$Kind, Named$Chained, Named$Fluent, Named$Prefixed, Named$Levels)"],
+["lombok_members/p/Named.java", "JLM_JSR166_LOCK_MONITORENTER", 47, "Synchronization performed on java.util.concurrent.locks.ReentrantLock in p.Named.use(Named$Kind, Named$Chained, Named$Fluent, Named$Prefixed, Named$Levels)"],
+["lombok_members/p/Named.java", "JLM_JSR166_LOCK_MONITORENTER", 48, "Synchronization performed on java.util.concurrent.locks.ReentrantLock in p.Named.use(Named$Kind, Named$Chained, Named$Fluent, Named$Prefixed, Named$Levels)"],
+["lombok_members/p/Named.java", "JLM_JSR166_LOCK_MONITORENTER", 49, "Synchronization performed on java.util.concurrent.locks.ReentrantLock in p.Named.use(Named$Kind, Named$Chained, Named$Fluent, Named$Prefixed, Named$Levels)"],
+["lombok_members/p/Named.java", "JLM_JSR166_LOCK_MONITORENTER", 50, "Synchronization performed on java.util.concurrent.locks.ReentrantLock in p.Named.use(Named$Kind, Named$Chained, Named$Fluent, Named$Prefixed, Named$Levels)"],
+["lombok_members/p/Named.java", "JLM_JSR166_LOCK_MONITORENTER", 51, "Synchronization performed on java.util.concurrent.locks.ReentrantLock in p.Named.use(Named$Kind, Named$Chained, Named$Fluent, Named$Prefixed, Named$Levels)"],
+["lombok_members/p/Named.java", "JLM_JSR166_LOCK_MONITORENTER", 52, "Synchronization performed on java.util.concurrent.locks.ReentrantLock in p.Named.use(Named$Kind, Named$Chained, Named$Fluent, Named$Prefixed, Named$Levels)"],
+["lombok_members/p/Use.java", "JLM_JSR166_LOCK_MONITORENTER", 9, "Synchronization performed on java.util.concurrent.locks.ReentrantLock in p.Use.a(Holder)"],
+["lombok_members/p/Use.java", "JLM_JSR166_UTILCONCURRENT_MONITORENTER", 12, "Synchronization performed on java.util.concurrent.ConcurrentHashMap in p.Use.b(Holder)"],
+["lombok_members/p/Use.java", "JLM_JSR166_LOCK_MONITORENTER", 15, "Synchronization performed on java.util.concurrent.locks.ReentrantLock in p.Use.c(Holder$Box)"],
+["lombok_members/p/Use.java", "JLM_JSR166_UTILCONCURRENT_MONITORENTER", 16, "Synchronization performed on java.util.concurrent.ConcurrentHashMap in p.Use.c(Holder$Box)"],
+["lombok_members/p/Use.java", "JLM_JSR166_LOCK_MONITORENTER", 19, "Synchronization performed on java.util.concurrent.locks.ReentrantLock in p.Use.d(Holder$Frozen)"],
+["lombok_members/p/Use.java", "JLM_JSR166_LOCK_MONITORENTER", 22, "Synchronization performed on java.util.concurrent.locks.ReentrantLock in p.Use.e(Holder$Plain)"],
+["lombok_members/p/Use.java", "JLM_JSR166_LOCK_MONITORENTER", 23, "Synchronization performed on java.util.concurrent.locks.ReentrantLock in p.Use.e(Holder$Plain)"],
+["lombok_members/p/Use.java", "WMI_WRONG_MAP_ITERATOR", 28, "p.Use.f() makes inefficient use of keySet iterator instead of entrySet iterator"],
+["lombok_members/p/Use.java", "WMI_WRONG_MAP_ITERATOR", 34, "p.Use.g() makes inefficient use of keySet iterator instead of entrySet iterator"],
+["lombok_members/p/Use.java", "WMI_WRONG_MAP_ITERATOR", 40, "p.Use.h(Map) makes inefficient use of keySet iterator instead of entrySet iterator"]
 ]

@@ -43,11 +43,6 @@ const ON_ENGINE: readonly string[] = [
   'SF_SWITCH_FALLTHROUGH',
   'SF_SWITCH_NO_DEFAULT',
 ];
-const NEEDS_LOMBOK_MEMBERS: readonly string[] = [
-  'JLM_JSR166_LOCK_MONITORENTER',
-  'JLM_JSR166_UTILCONCURRENT_MONITORENTER',
-  'WMI_WRONG_MAP_ITERATOR',
-];
 const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   ConstructorThrow: ['CT_CONSTRUCTOR_THROW'],
   DontCatchNullPointerException: ['DCN_NULLPOINTER_EXCEPTION'],
@@ -124,7 +119,7 @@ export function spotbugsArgumentsFor(reportDir: string, patterns: readonly strin
 
 function engineReport(
   plan: SpotbugsEnginePlan,
-  patterns: readonly string[],
+  lombok: boolean,
   { binary, environment, run }: EngineCall,
 ): unknown {
   const sources = writtenFile(
@@ -135,12 +130,22 @@ function engineReport(
   const report = path.join(plan.reportDir, REPORT_FILE);
   rmSync(report, { force: true });
   const { status, stderr } = run(
-    ['--files', sources, '--rules', SPOTBUGS_RULES, '--classpath', lookup, '--out', report],
+    [
+      '--files',
+      sources,
+      '--rules',
+      SPOTBUGS_RULES,
+      '--classpath',
+      lookup,
+      ...(lombok ? ['--lombok'] : []),
+      '--out',
+      report,
+    ],
     {
       binary,
       environment: {
         ...environment,
-        NP_SB_ONLY: patterns.join(','),
+        NP_SB_ONLY: ON_ENGINE.join(','),
         NITPICKER_JDK: plan.javaHome,
       },
     },
@@ -173,15 +178,12 @@ function usable(plan: SpotbugsEnginePlan, binary: string | undefined): binary is
   );
 }
 
-function enginePatterns(plan: SpotbugsEnginePlan): readonly string[] {
+function processorsOn(plan: SpotbugsEnginePlan): ProcessorKind {
   const processors = plan.processors ?? processorKind(plan.processorPath);
-  if (processors === 'none') {
-    return ON_ENGINE;
+  if (processors === 'lombok' && !lombokMarksGenerated(plan.sources)) {
+    return 'other';
   }
-  if (processors === 'lombok' && lombokMarksGenerated(plan.sources)) {
-    return ON_ENGINE.filter((pattern) => !NEEDS_LOMBOK_MEMBERS.includes(pattern));
-  }
-  return [];
+  return processors;
 }
 
 export function withoutSpotbugsEngineReport(reportDir: string): void {
@@ -197,12 +199,14 @@ export function spotbugsOnEngine(
 ): string[] {
   withoutSpotbugsEngineReport(plan.reportDir);
   const binary = findEngine(environment);
-  const patterns = enginePatterns(plan);
-  if (!usable(plan, binary) || patterns.length === 0) {
+  const processors = processorsOn(plan);
+  if (!usable(plan, binary) || processors === 'other') {
     return [];
   }
+  const patterns = ON_ENGINE;
   try {
-    const sarif = engineSarif(engineReport(plan, patterns, { binary, environment, run }), patterns);
+    const report = engineReport(plan, processors === 'lombok', { binary, environment, run });
+    const sarif = engineSarif(report, patterns);
     writeFileSync(path.join(plan.reportDir, SPOTBUGS_ENGINE_SARIF), sarif);
     return spotbugsArgumentsFor(plan.reportDir, patterns);
   } catch (error) {

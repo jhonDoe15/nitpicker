@@ -16,6 +16,7 @@ fn found_with(case: &Path, name: &str, key: &str) -> BTreeSet<Row> {
         .arg(case)
         .args(["--rules", "_SpotBugs", "--out"])
         .arg(&out)
+        .args(name.starts_with("lombok").then_some("--lombok"))
         .status()
         .expect("engine runs");
     assert!(status.success());
@@ -69,3 +70,4 @@ fn stores_name_the_variable_spotbugs_names() {
     let extra: Vec<&Row> = found.difference(&expected).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
 }
+

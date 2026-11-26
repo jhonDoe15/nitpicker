@@ -561,9 +561,23 @@ them either, so only what Lombok changes in hand-written code matters (`tests/fi
   `*`; a single-type import of the same name from another package wins over `import lombok.*`. A varargs parameter
   marked `@NonNull` is checked like any other.
 
-Not rebuilt: the types of the getters Lombok writes and of `lombok.val`, which the lock and map-iterator patterns
-need (`synchronized (other.getLock())`, `for (val key : map.keySet())`). Real runs leave those three patterns to
-SpotBugs on modules that run Lombok.
+With `--lombok` (real runs pass it for a module whose only code-changing processor is Lombok), the type model
+also knows what Lombok writes that the lock and map-iterator patterns need (#2400, `src/java/types/lombok.rs`):
+
+- The getters and setters of `@Getter`, `@Setter`, `@Data` and `@Value` on a class or a field (`isX` for a
+  `boolean`, `AccessLevel.NONE` turns one off, no setter for a final field or under `@Value`, a hand-written
+  method of the same name, in any case, and arity or varargs wins). `AccessLevel` sets the method's access.
+  `@Accessors` on the field, else on the class, sets `fluent`, `chain` (a setter that returns the object) and
+  `prefix` (a field without one of the prefixes gets none); a `lombok.config` that changes accessor names
+  (`lombok.accessors.fluent`, `prefix`, `capitalization`, `lombok.getter.noIsPrefix`) runs SpotBugs alone.
+- `val` and `var` from Lombok take the type of their value, like Java's `var`.
+
+Real runs decide Lombok from the processors javac uses (#2402): the declared `annotationProcessorPaths` when a
+build lists them, else the `META-INF/services` entry of each classpath jar, read without unpacking the jar.
+Processors that only write new files (AutoService, AutoValue, Dagger, Immutables, MapStruct, Hibernate's
+metamodel, Spring's configuration processors and others) are left out. The `@Generated` mark is read the way
+Lombok reads `lombok.config`: from the outermost file to the nearest, with `clear`, `import` and
+`config.stopBubbling`; a module where it is off runs SpotBugs alone.
 
 ## Names the compiler makes up
 
