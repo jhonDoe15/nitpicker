@@ -18,6 +18,7 @@ import { trackTemporaryPath, untrackTemporaryPath } from '../../typed/tooling.mt
 import { isFile } from '../../../../../shared/filesystem.mts';
 import { nativeCompilerPath } from '../../typed-engine/compiler-binary.mts';
 import type { OxlintPlan, PlanGroup } from '../plan/oxlint-shapes.mts';
+import { residualRules, typedGroups } from '../plan/typed-groups.mts';
 
 type EnginePass = {
   readonly plan: OxlintPlan;
@@ -127,33 +128,18 @@ function typesSource({ projectRoot, projectConfigPath }: EnginePass): TypesSourc
   return compiler === undefined || !isFile(project) ? undefined : { compiler, project };
 }
 
-function residualRules({ plan }: EnginePass, group: PlanGroup): string[] {
-  const typed = new Set(plan.typedPluginRules);
-  return [
-    ...Object.keys(group.rules).filter((ruleId) => typed.has(ruleId)),
-    ...(group.programRules ?? []),
-  ];
-}
-
-function typedGroups(pass: EnginePass, typed: ReadonlySet<string>): PlanGroup[] {
-  const mode = pass.environment[TYPED_SWITCH];
-  return pass.plan.groups.filter((group) => {
-    const residual = residualRules(pass, group);
-    if (mode === 'off' || !residual.some((ruleId) => typed.has(ruleId))) {
-      return false;
-    }
-    return mode === 'always' || residual.every((ruleId) => typed.has(ruleId));
-  });
-}
-
 function engineRulesOf(pass: EnginePass): EngineRules {
   const { plan, requests } = pass;
   const testingLibrary = testingLibraryOnEngine(plan.groups);
   const ruleIds = plan.groups.flatMap((group) => Object.keys(group.rules));
   const library = testingLibrary ? ruleIds.filter(isTestingLibraryRule) : [];
   const plugin = pluginRulesOnEngine(plan.groups, requests);
-  const groups = typedGroups(pass, new Set(plugin.filter(requests.isTypedOnEngine)));
-  const wanted = new Set(groups.flatMap((group) => residualRules(pass, group)));
+  const groups = typedGroups(
+    plan,
+    pass.environment[TYPED_SWITCH],
+    new Set(plugin.filter(requests.isTypedOnEngine)),
+  );
+  const wanted = new Set(groups.flatMap((group) => residualRules(plan, group)));
   const types = wanted.size > 0 ? typesSource(pass) : undefined;
   const usable = plugin.filter(
     (ruleId) => !requests.isTypedOnEngine(ruleId) || (types !== undefined && wanted.has(ruleId)),
