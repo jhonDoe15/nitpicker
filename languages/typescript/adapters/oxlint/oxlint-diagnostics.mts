@@ -27,6 +27,12 @@ const MESSAGE_IN_HELP_RULES = new Set(['no-restricted-imports', 'no-restricted-p
 export class UnmappedDiagnosticError extends Error {}
 
 const TSCONFIG_ERROR_CODE = 'typescript(tsconfig-error)';
+const COMPILER_ERROR_CODE = /^TS\(\d+\)$/u;
+const COMPILER_REJECTION = /^TS\(\d+\): /u;
+
+export function isCompilerRejection(message: LintMessage): boolean {
+  return message.fatal === true && COMPILER_REJECTION.test(message.message);
+}
 
 export function eslintShapedResults(
   stage: string,
@@ -158,6 +164,10 @@ function eslintMessage(
     return { message: { fatal: true, message: diagnostic.message, severity: 2, ...position } };
   }
   const ruleId = naming.ruleNames.get(key);
+  if (ruleId === undefined && COMPILER_ERROR_CODE.test(String(diagnostic.code))) {
+    const message = `${String(diagnostic.code)}: ${diagnostic.message}`;
+    return { message: { fatal: true, message, severity: 2, ...position } };
+  }
   if (ruleId === undefined) {
     throw new UnmappedDiagnosticError(
       `oxlint reported ${String(diagnostic.code)}: ${diagnostic.message} ${diagnostic.help ?? ''}`.trim(),
