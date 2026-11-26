@@ -62,10 +62,11 @@ written as `errorprone-engine.json` next to `errorprone.json`, in the same shape
 are read. The engine skips the checks a run did not select. A library class counts as checked by NullAway the way
 NullAway decides it: `@NullMarked` on the class, a class around it or its `package-info`, `@NullUnmarked` to
 switch it off again. A source set compiled with a module path keeps NullAway on Error Prone, because a module
-can carry `@NullMarked` too and the engine does not read that. The engine reads a class file's
-nullness from declaration annotations only; when NullAway relied on a checked class file that carries type
-annotations (JSpecify's `@Nullable` is written that way), the report says `nullAwayUnsure` and the run leaves
-NullAway to Error Prone for that source set.
+can carry `@NullMarked` too and the engine does not read that. A class file's nullness comes from its
+declaration annotations and from its type annotations (JSpecify's `@Nullable` is written that way): a mark on
+the type itself makes a field, a result or a parameter nullable, one on a variable arity parameter's elements
+lets each argument be null, and one on its array lets the array be null. A parameter list printed in a message
+shows the type annotations the way javac prints them.
 
 - The other ported checks stay with Error Prone: it ends their messages with a `Did you mean ...?` sentence
   made from its suggested fix, which the engine does not write yet.

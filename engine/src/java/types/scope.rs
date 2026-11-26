@@ -577,7 +577,7 @@ impl<'a> Resolver<'a> {
             .filter(|parameter| matches!(parameter.kind(), "formal_parameter" | "spread_parameter"))
             .map(|parameter| self.annotation_names(parameter))
             .collect();
-        super::model::Detail { access, annotations: self.annotation_names(member), parameter_annotations }
+        super::model::Detail { access, annotations: self.annotation_names(member), parameter_annotations, marked: String::new(), nullable_types: Vec::new() }
     }
 
     /// The bits the annotations of a declaration give.
@@ -899,7 +899,7 @@ impl<'a> Resolver<'a> {
                             constant: (info.is_interface || has(member, "final"))
                                 .then(|| declarator.field("value"))
                                 .flatten()
-                                .and_then(|value| self.joined(value)),
+                                .and_then(|value| self.joined(value).or_else(|| matches!(value.kind(), "true" | "false").then(|| value.kind().to_string()))),
                             fixed: (info.is_interface || (has(member, "final") && has(member, "static"))).then(|| declarator.field("value")).flatten().and_then(
                                 |value| {
                                     let mut uses = Vec::new();

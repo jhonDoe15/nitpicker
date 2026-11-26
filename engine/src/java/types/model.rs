@@ -150,8 +150,8 @@ pub mod flag {
     pub const NULL_MARKED: u32 = 1 << 24;
     /// A class or a package carries an annotation named `NullUnmarked`.
     pub const NULL_UNMARKED: u32 = 1 << 25;
-    /// A class file with type annotations on the class or a member: nullness written that way is not read.
-    pub const TYPE_MARKS: u32 = 1 << 26;
+    /// A variable arity method whose array itself may be null (`Object @Nullable ...`).
+    pub const NULLABLE_VARARGS: u32 = 1 << 26;
 
     pub const IMMUTABLE_NAME: &str = "com.google.errorprone.annotations.Immutable";
     pub const IMMUTABLE_PARAMETER_NAME: &str = "com.google.errorprone.annotations.ImmutableTypeParameter";
@@ -243,6 +243,10 @@ pub struct Detail {
     /// Full names of the annotations on the method, and on each parameter, with `.` before a member class.
     pub annotations: Vec<String>,
     pub parameter_annotations: Vec<Vec<String>>,
+    /// The parameter types as javac prints them when they carry type annotations from a class file; empty otherwise.
+    pub marked: String,
+    /// Each parameter position and type path that carries a type-use annotation named `Nullable`, from a class file.
+    pub nullable_types: Vec<(u8, Vec<(u8, u8)>)>,
 }
 
 /// Where an annotation type may be used, as bits of `ClassInfo::targets`, from its `@Target`.

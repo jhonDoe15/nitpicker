@@ -74,11 +74,8 @@ impl<'t> Flow<'_, 't> {
         for (at, actual) in actuals.iter().enumerate() {
             let slot = at.min(formals - 1);
             let spread = call.method.varargs && at >= formals - 1;
-            let whole = spread && actuals.len() == formals && {
-                let kind = resolver.type_of(*actual);
-                strip(*actual).kind() == "null_literal" || matches!(kind, Some(Type::Array(_)))
-            };
-            let needed = if whole { annotated(self.context, &call.declaring) } else { required[slot] };
+            let whole = spread && actuals.len() == formals && super::whole_array(self.context, &call, *actual);
+            let needed = if whole { annotated(self.context, &call.declaring) && call.method.flags & flag::NULLABLE_VARARGS == 0 } else { required[slot] };
             if !needed || !self.may_be_null(*actual) || !reported.insert((actual.id(), PASSED)) {
                 continue;
             }
@@ -287,7 +284,8 @@ pub(super) fn overriding(context: &Context, method: Node) {
         return;
     }
     let generic = if above.type_parameters.is_empty() { String::new() } else { format!("<{}>", above.type_parameters.join(",")) };
-    let shown = format!("{}.{generic}{}({})", declaring.name, above.name, above.shown);
+    let parameters = if above.detail.marked.is_empty() { &above.shown } else { &above.detail.marked };
+    let shown = format!("{}.{generic}{}({parameters})", declaring.name, above.name);
     let void = matches!(&above.returns, Type::Primitive(name) if *name == "void");
     let models = super::models::NONNULL_RETURNS;
     let nullable_above = (above.flags & flag::NULLABLE != 0 || !rows(super::models::ALWAYS_NULLABLE_RETURNS, &declaring.name, above).is_empty()) && rows(models, &declaring.name, above).is_empty();
@@ -319,8 +317,12 @@ pub(super) fn rows(table: &'static [super::models::Model], class: &str, method: 
 }
 
 /// The parameters of a method that accept null: its own marks where its class is checked, then the library models.
+/// A variable arity parameter accepts null when its array may be null.
 pub(super) fn accepted(context: &Context, class: &str, method: &crate::java::types::model::Method) -> u64 {
     let mut accepted = if annotated(context, class) { method.nullable_parameters } else { 0 };
+    if let Some(last) = method.parameters.len().checked_sub(1).filter(|last| method.varargs && *last < 64) {
+        accepted = accepted & !(1 << last) | u64::from(method.flags & flag::NULLABLE_VARARGS != 0 && annotated(context, class)) << last;
+    }
     for at in rows(super::models::EXPLICITLY_NULLABLE_PARAMETERS, class, method) {
         accepted |= 1 << at.min(63);
     }
