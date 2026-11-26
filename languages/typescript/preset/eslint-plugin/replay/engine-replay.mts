@@ -40,6 +40,10 @@ function placeOf(line: unknown, column: unknown): Place | undefined {
     : undefined;
 }
 
+function stringsOf(written: unknown, field: string): Set<string> {
+  return new Set(listOf(fieldOf(written, field)).map(String));
+}
+
 function readReplay(file: string): Replay {
   const written = parseJson(readFileSync(file, 'utf8'));
   const reports = new Map<string, Report[]>();
@@ -60,12 +64,11 @@ function readReplay(file: string): Replay {
       reports.set(key, [...(reports.get(key) ?? []), report]);
     }
   }
-  const strings = (field: string) => new Set(listOf(fieldOf(written, field)).map(String));
   return {
-    covered: strings('files'),
-    rules: strings('rules'),
-    typedCovered: strings('typedFiles'),
-    typedRules: strings('typedRules'),
+    covered: stringsOf(written, 'files'),
+    rules: stringsOf(written, 'rules'),
+    typedCovered: stringsOf(written, 'typedFiles'),
+    typedRules: stringsOf(written, 'typedRules'),
     reports,
   };
 }

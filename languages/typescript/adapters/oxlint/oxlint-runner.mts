@@ -12,6 +12,7 @@ import {
   type Translation,
   lintResultsOf,
   planOf,
+  residualPairs,
 } from './plan/oxlint-shapes.mts';
 import { withEngineLint, withTypedCoverage } from './run/engine-pass.mts';
 import { ENGINE_FINDINGS_FILE } from '../../../../shared/engine/engine-findings-file.mts';
@@ -262,14 +263,6 @@ function bridgeRejectedRules(
   const rejected = rejectedRuleIds(String(fieldOf(error, 'message')), ruleNames);
   if (rejected.length === 0 || rejected.every((ruleId) => bridgedRules.has(ruleId))) throw error;
   for (const ruleId of rejected) bridgedRules.add(ruleId);
-}
-
-function residualPairs(residual: readonly ResidualGroup[]): Set<string> {
-  return new Set(
-    residual.flatMap((group) =>
-      group.files.flatMap((file) => group.rules.map((rule) => JSON.stringify([file, rule]))),
-    ),
-  );
 }
 
 async function residualResults(

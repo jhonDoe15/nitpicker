@@ -87,7 +87,10 @@ export function mutatedOwner(
   return partsOf(receiver)
     .flatMap((part) => ownersOf(checker.getApparentType(part).getProperty(method)))
     .filter((owner) => mutates(owner, method))
-    .toSorted()[0];
+    .reduce<string | undefined>(
+      (first, owner) => (first === undefined || owner < first ? owner : first),
+      undefined,
+    );
 }
 
 export function isArrayMutator(method: string): boolean {

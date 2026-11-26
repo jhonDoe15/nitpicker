@@ -39,7 +39,7 @@ type Conditions = Readonly<Record<string, Condition>>;
 export type EngineRule = {
   readonly facts?: FileFacts;
   readonly conditions?: Conditions;
-  readonly typed?: boolean;
+  readonly needs?: 'types';
 };
 
 export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<string, EngineRule>([
@@ -66,7 +66,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
     },
   ],
   ['no-listen-on-all-interfaces', {}],
-  ['no-mutating-method-in-domain', { typed: true }],
+  ['no-mutating-method-in-domain', { needs: 'types' }],
   [
     'no-production-console',
     {

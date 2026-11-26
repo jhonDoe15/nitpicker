@@ -19,7 +19,7 @@ export function engineRuleName(ruleId: string): string {
 }
 
 export function isTypedOnEngine(ruleId: string): boolean {
-  return ENGINE_PLUGIN_RULES.get(pluginRuleName(ruleId) ?? '')?.typed === true;
+  return ENGINE_PLUGIN_RULES.get(pluginRuleName(ruleId) ?? '')?.needs === 'types';
 }
 
 function optionsOf(setting: unknown): readonly unknown[] {
