@@ -24,6 +24,9 @@ use tree_sitter::Node;
 /// What a detector gets: the file, its types and a place to report.
 pub struct Context<'a> {
     pub resolver: &'a Resolver<'a>,
+    pub project: &'a JavaProject,
+    /// What the methods of other files of the run do with null.
+    pub elsewhere: &'a nulls::Elsewhere,
     pub file: &'a SourceFile,
     /// Every class declared in the file, by name.
     pub classes: HashMap<String, Node<'a>>,
@@ -37,6 +40,25 @@ pub struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
+    /// The context of a file, with its class, enum, record and interface declarations and the bodies of its
+    /// anonymous classes.
+    pub fn of(resolver: &'a Resolver<'a>, project: &'a JavaProject, elsewhere: &'a nulls::Elsewhere, selected: Option<Vec<String>>) -> (Self, Vec<Node<'a>>) {
+        let file = resolver.file;
+        let mut line_starts = vec![0];
+        line_starts.extend(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1));
+        let mut declared = Vec::new();
+        walk(file.tree.root_node(), |node| {
+            let unnamed = matches!(node.kind(), "object_creation_expression" | "enum_constant") && children(node).iter().any(|part| part.kind() == "class_body");
+            if TYPE_DECLARATIONS.contains(&node.kind()) || unnamed {
+                declared.push(node);
+            }
+        });
+        let classes = declared.iter().filter_map(|node| Some((resolver.scope.names.get(&node.id())?.clone(), *node))).collect();
+        let out = RefCell::new(Vec::new());
+        let context = Context { resolver, project, elsewhere, file, classes, waiting: RefCell::new(Vec::new()), line_starts, selected, out, compiled: std::cell::OnceCell::new() };
+        (context, declared)
+    }
+
     /// Whether a run restricted to some patterns asks for one of these.
     pub fn wants(&self, patterns: &[&str]) -> bool {
         self.selected.as_ref().is_none_or(|names| names.iter().any(|name| patterns.contains(&name.as_str())))
@@ -121,11 +143,12 @@ impl<'a> Context<'a> {
 /// enum constant that carries the body of an anonymous class.
 type Detector = for<'a> fn(&Context<'a>, Node<'a>);
 
-const DETECTORS: &[Detector] = &[expose::exposed_representation as Detector, constructors::constructor_throw as Detector, nulls::null_dereference as Detector];
+const DETECTORS: &[Detector] = &[expose::exposed_representation as Detector, constructors::constructor_throw as Detector];
 
 #[derive(Default)]
 pub struct SpotBugs {
     known: known::Known,
+    elsewhere: nulls::Elsewhere,
 }
 
 impl FileRule for SpotBugs {
@@ -141,23 +164,14 @@ impl FileRule for SpotBugs {
         let scope = &FileScope::of(file);
         let resolver = &Resolver::new(&project.index, file, scope);
         let _parents = ParentTable::of(file.tree.root_node());
-        let mut line_starts = vec![0];
-        line_starts.extend(file.text.bytes().enumerate().filter(|(_, byte)| *byte == b'\n').map(|(at, _)| at + 1));
         let selected = std::env::var("NP_SB_ONLY").ok().map(|names| names.split(',').map(String::from).collect());
-        let mut declared = Vec::new();
-        walk(file.tree.root_node(), |node| {
-            let unnamed = matches!(node.kind(), "object_creation_expression" | "enum_constant") && children(node).iter().any(|part| part.kind() == "class_body");
-            if TYPE_DECLARATIONS.contains(&node.kind()) || unnamed {
-                declared.push(node);
-            }
-        });
-        let classes = declared.iter().filter_map(|node| Some((scope.names.get(&node.id())?.clone(), *node))).collect();
-        let context = Context { resolver, file, classes, waiting: RefCell::new(Vec::new()), line_starts, selected, out: RefCell::new(Vec::new()), compiled: std::cell::OnceCell::new() };
-        for node in declared {
+        let (context, declared) = Context::of(resolver, project, &self.elsewhere, selected);
+        for node in &declared {
             for detector in DETECTORS {
-                detector(&context, node);
+                detector(&context, *node);
             }
         }
+        nulls::null_dereference(&context, &declared);
         self.known.note(calls::gather(&context), known::gather(&context), context.waiting.take());
         out.append(&mut context.out.into_inner());
     }

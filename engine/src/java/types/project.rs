@@ -10,6 +10,8 @@ use tree_sitter::Node;
 #[derive(Default)]
 pub struct JavaProject {
     pub index: TypeIndex,
+    /// The source file that declares each class of the run.
+    pub sources: std::collections::HashMap<String, String>,
 }
 
 fn jdk_home() -> PathBuf {
@@ -56,9 +58,13 @@ pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>) 
             found
         })
         .collect();
-    for (_, name) in declared.iter().flatten() {
-        index.put(stub(name.clone()));
-        index.source_classes += 1;
+    let mut sources = std::collections::HashMap::new();
+    for (file, found) in files.iter().zip(&declared) {
+        for (_, name) in found {
+            index.put(stub(name.clone()));
+            index.source_classes += 1;
+            sources.insert(name.clone(), file.path.clone());
+        }
     }
     let each = |index: &TypeIndex, with_members: bool| -> Vec<ClassInfo> {
         files
@@ -105,7 +111,7 @@ pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>) 
         started.elapsed().as_secs_f64() * 1e3 - binaries_ms
     );
     index.settle();
-    JavaProject { index }
+    JavaProject { index, sources }
 }
 
 const CLASS_BODIES: [&str; 4] = ["class_body", "interface_body", "enum_body", "annotation_type_body"];

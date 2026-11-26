@@ -22,15 +22,18 @@
 //! - Lambda bodies are not looked at; an anonymous class inside one is.
 //! - A `switch` statement of the old form without `default`: the way past every case counts as not taken.
 mod effects;
+mod elsewhere;
 mod forward;
+mod jdk;
 mod marks;
 mod must;
 mod paths;
 
 use super::{Context, names};
-use crate::engine::source::{children, parent, walk};
+use crate::engine::source::{children, parent};
 use crate::java::helpers::has_modifier;
-use effects::{How, Shared, Unit};
+use effects::{How, Mode, Shared, Unit};
+pub use elsewhere::Elsewhere;
 use forward::{Flow, Kind, NULL, Site};
 use paths::strip;
 use std::collections::BTreeMap;
@@ -157,7 +160,10 @@ fn class<'a>(shared: &Shared<'_, 'a>, class: Node<'a>, own: &str) {
     let labels = Labels { context, own, class };
     for member in members(class) {
         for (body, parameters, label) in labels.units(member) {
-            let unit = Unit::build(shared, own, body, parameters);
+            if !effects::may_hold_null(shared, own, body) {
+                continue;
+            }
+            let unit = Unit::build(shared, own, body, parameters, Mode::Report);
             let (starts, ends) = must::run(&unit);
             let mut flow = Flow::new(&unit, &starts, &ends);
             flow.run();
@@ -166,11 +172,16 @@ fn class<'a>(shared: &Shared<'_, 'a>, class: Node<'a>, own: &str) {
     }
 }
 
-/// Reports where a value that may be null is dereferenced in the methods, constructors and initializers of a class.
-pub fn null_dereference<'a>(context: &Context<'a>, declaration: Node<'a>) {
+/// Reports where a value that may be null is dereferenced in the methods, constructors and initializers of the
+/// classes of a file. Callee summaries are shared by the classes of the file.
+pub fn null_dereference<'a>(context: &Context<'a>, declared: &[Node<'a>]) {
     if !context.wants(&[FROM_RETURN, SOME_PATH, ALWAYS]) {
         return;
     }
-    let Some(own) = context.resolver.scope.names.get(&declaration.id()) else { return };
-    class(&Shared::new(context), declaration, own);
+    let shared = Shared::new(context);
+    for declaration in declared {
+        let Some(own) = context.resolver.scope.names.get(&declaration.id()) else { continue };
+        shared.next_class();
+        class(&shared, *declaration, own);
+    }
 }

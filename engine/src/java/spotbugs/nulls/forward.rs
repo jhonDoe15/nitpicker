@@ -130,6 +130,26 @@ impl<'u, 'c, 'a> Flow<'u, 'c, 'a> {
         self.origins.len() as u32 - 1
     }
 
+    /// Whether every `return` of the body hands back a value known not to be null.
+    pub fn never_null(&self, body: Node) -> bool {
+        let mut returned = Vec::new();
+        let mut pending = vec![body];
+        while let Some(node) = pending.pop() {
+            for part in children(node) {
+                match part.kind() {
+                    "lambda_expression" | "class_body" => {}
+                    "return_statement" => returned.push(part),
+                    _ => pending.push(part),
+                }
+            }
+        }
+        !returned.is_empty()
+            && returned.into_iter().all(|statement| {
+                let value = children(statement).into_iter().find(|part| part.is_named() && !part.kind().ends_with("comment"));
+                value.is_some_and(|value| self.value(value).tag == NONNULL)
+            })
+    }
+
     fn value(&self, node: Node) -> State {
         let known = self.values.get(&(node.id(), self.copy)).or_else(|| self.values.get(&(node.id(), 0)));
         known.copied().unwrap_or(plain(UNKNOWN))
@@ -158,6 +178,7 @@ impl<'u, 'c, 'a> Flow<'u, 'c, 'a> {
                 let stored = parent(step).is_some_and(|above| matches!(above.kind(), "variable_declarator" | "assignment_expression"));
                 State { tag: NULL, origin: self.origin(step.id(), Kind::Constant, if stored { None } else { Some("null") }) }
             }
+            "method_invocation" if self.unit.nonnull_calls.contains(&step.id()) => plain(NONNULL),
             "method_invocation" if self.unit.nullable_calls.contains(&step.id()) => {
                 let called = step.child_by_field_name("name").map(|name| self.unit.finder.context.file.text_of(name));
                 let origin = self.origin(step.id(), Kind::Returned, called);
