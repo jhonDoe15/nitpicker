@@ -16,6 +16,7 @@ export const HYGIENE_RULE_IDS = {
   foreignKeyIndex: 'foreign-key-index',
   fieldLimitMismatch: 'field-limit-mismatch',
   muslDefaultAllocator: 'musl-default-allocator',
+  lintCheckSuppressedEverywhere: 'lint-check-suppressed-everywhere',
 };
 
 export const PACKAGE_RULE_IDS = {
@@ -130,6 +131,13 @@ export const HYGIENE_RULES: RuleEntry[] = [
     limit:
       "a Rust binary crate that runs work on several threads (`rayon`, `threadpool`, `tokio` with the multi-thread runtime, or `std::thread` in its own or its path dependencies' sources) and is built for a `*-musl` target (named in a workflow, `.cargo/config.toml`, a Dockerfile or a build script next to a `cargo build`, or an Alpine Rust image) with no `#[global_allocator]` for that target",
     enforcedBy: EVERY_LANGUAGE,
+  },
+  {
+    id: HYGIENE_RULE_IDS.lintCheckSuppressedEverywhere,
+    check: REPOSITORY_HYGIENE,
+    limit:
+      'a Checkstyle `<suppress>` that matches every file (`files` of `.`, `.*` or `.+`, no `lines` or `columns`) for a module the project\'s Checkstyle configuration enables, or a PMD ruleset that includes a rule and excludes every file (`<exclude-pattern>.*</exclude-pattern>`) or sets its `violationSuppressRegex` to `.*`',
+    enforcedBy: { java: true },
   },
   {
     id: PACKAGE_RULE_IDS.unusedDependency,

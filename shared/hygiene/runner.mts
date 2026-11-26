@@ -7,6 +7,7 @@ import { foreignKeyIndexFindings } from './schema/foreign-key-index.mts';
 import { migrationOrderFindings } from './migrations/migration-order.mts';
 import { withoutExcepted, withoutExcluded } from './rules.mts';
 import { trackedFiles } from './tracked-files.mts';
+import { lintSuppressedEverywhereFindings } from './java-lint/everywhere-findings.mts';
 import { minifiedBundleFindings } from './bundles/minified-bundles.mts';
 import { muslAllocatorFindings } from './rust/musl-allocators.mts';
 import type {
@@ -27,6 +28,7 @@ function collectRepositoryHygiene(context: RepositoryContext): Finding[] {
     ...fieldLimitFindings(REPOSITORY_HYGIENE_TOOL, context),
     ...muslAllocatorFindings(REPOSITORY_HYGIENE_TOOL, context),
     ...minifiedBundleFindings(REPOSITORY_HYGIENE_TOOL, context),
+    ...lintSuppressedEverywhereFindings(REPOSITORY_HYGIENE_TOOL, context),
   ];
 }
 

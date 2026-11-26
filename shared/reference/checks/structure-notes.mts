@@ -157,6 +157,11 @@ export const STRUCTURE_NOTES: Readonly<Record<string, RuleNote>> = {
     "musl's allocator takes one lock for every allocation, so threads that allocate queue behind each other: a lint run took 13.4 s on the musl build against 1.3 s on the glibc build of the same code.",
     'Declare a global allocator that scales across threads for the musl target (`#[cfg(target_env = "musl")] #[global_allocator] static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;`). An exception fits when the binary is single-threaded in practice or does not allocate on its hot path.',
   ],
+  'lint-check-suppressed-everywhere': [
+    "A Checkstyle `<suppress>` that matches every file (no `lines` or `columns`) for a module the project's Checkstyle configuration enables, or a PMD ruleset that includes a rule and excludes every file or sets `violationSuppressRegex` to `.*`.",
+    'The check still runs on every file and can never report anything, so it only costs time.',
+    'Remove the module from the configuration instead of filtering its output.',
+  ],
   'unused-dependency': [
     'A dependency in `package.json` that nothing imports or runs.',
     'Unused dependencies add install time and attack surface.',

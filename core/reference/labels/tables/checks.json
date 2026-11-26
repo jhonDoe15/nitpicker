@@ -41,6 +41,7 @@
   "repository-hygiene/field-limit-mismatch": ["bug", "persistence"],
   "repository-hygiene/foreign-key-index": ["performance", "persistence"],
   "repository-hygiene/large-file": ["maintainability"],
+  "repository-hygiene/lint-check-suppressed-everywhere": ["performance"],
   "repository-hygiene/migration-hardcoded-name": ["maintainability", "persistence"],
   "repository-hygiene/migration-order": ["bug", "persistence"],
   "repository-hygiene/musl-default-allocator": ["performance"],
