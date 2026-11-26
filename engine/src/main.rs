@@ -85,6 +85,7 @@ fn main() {
                 options.classpath.extend(listed.split(['\n', ':']).filter(|entry| !entry.trim().is_empty()).map(|entry| PathBuf::from(entry.trim())));
             }
             "--lombok" => options.lombok = true,
+            "--android-compatible" => options.android_compatible = true,
             "--release" => { index += 1; options.release = Some(args[index].parse().expect("release number")); }
             other => roots.push(PathBuf::from(other)),
         }

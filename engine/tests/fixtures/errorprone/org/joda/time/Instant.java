@@ -12,4 +12,6 @@ public class Instant implements ReadableInstant {
     public Instant toInstant() {
         return this;
     }
+
+    public Instant(long instant) {}
 }

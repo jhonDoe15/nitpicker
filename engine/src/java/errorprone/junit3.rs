@@ -53,7 +53,7 @@ pub fn is_junit3_test_class(context: &Context, class: Node) -> bool {
 }
 
 /// `JUnitMatchers.isAmbiguousJUnitVersion`.
-fn is_ambiguous_junit_version(context: &Context, class: Node) -> bool {
+pub(super) fn is_ambiguous_junit_version(context: &Context, class: Node) -> bool {
     class.kind() != "object_creation_expression"
         && is_test_case_descendant(context, class)
         && (runner_annotation(context, class, None, &RUNNERS).is_some() || has_junit4_test_cases(context, class))

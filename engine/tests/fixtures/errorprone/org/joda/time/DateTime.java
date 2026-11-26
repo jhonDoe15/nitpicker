@@ -12,4 +12,8 @@ public class DateTime {
     public long getMillis() {
         return 0;
     }
+
+    public DateTime(Chronology chronology) {}
+
+    public DateTime(DateTimeZone zone) {}
 }

@@ -40,6 +40,10 @@ pub struct TypeIndex {
     pub checked_packages: Vec<String>,
     /// The sources were compiled with Lombok: see `Options::lombok`.
     pub lombok: bool,
+    /// The javac option `-XDandroidCompatible=true` is set.
+    pub android_compatible: bool,
+    /// The Java source level of the compile: `--release`, else the JDK's own.
+    pub source_level: u32,
 }
 
 /// The class names of an archive, with where each one is.

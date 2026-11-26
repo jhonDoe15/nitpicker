@@ -25,6 +25,15 @@ fn jdk_home() -> PathBuf {
     PathBuf::from(std::env::var("NITPICKER_JDK").or_else(|_| std::env::var("JAVA_HOME")).unwrap_or_default())
 }
 
+/// The major version of the JDK, from its `release` file; zero when it is unknown.
+fn jdk_major() -> u32 {
+    let text = std::fs::read_to_string(jdk_home().join("release")).unwrap_or_default();
+    let version = text.lines().find_map(|line| line.strip_prefix("JAVA_VERSION=")).unwrap_or_default().trim_matches('"');
+    let first = version.split(['.', '-', '+']).next().unwrap_or_default();
+    let major = if first == "1" { version.split('.').nth(1).unwrap_or_default() } else { first };
+    major.parse().unwrap_or(0)
+}
+
 fn jdk_modules() -> Vec<PathBuf> {
     let home = jdk_home();
     let mut modules: Vec<PathBuf> = std::fs::read_dir(home.join("jmods"))
@@ -41,10 +50,12 @@ fn stub(name: String) -> ClassInfo {
     ClassInfo { name, ..ClassInfo::default() }
 }
 
-pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>, lombok: bool) -> JavaProject {
+pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>, lombok: bool, android_compatible: bool) -> JavaProject {
     let started = std::time::Instant::now();
     let mut index = TypeIndex::default();
     index.lombok = lombok;
+    index.android_compatible = android_compatible;
+    index.source_level = release.unwrap_or_else(jdk_major);
     let mut entries = classpath.to_vec();
     index.load_binaries(&entries);
     // An older release sees the library as it was then: the JDK keeps those signatures in `lib/ct.sym`.

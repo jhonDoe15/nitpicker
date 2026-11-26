@@ -93,3 +93,13 @@ fn same<'t>(context: &Context<'t>, scopes: &OnceCell<Scopes<'t>>, first: Node<'t
 pub fn same_symbol<'t>(context: &Context<'t>, first: Node<'t>, second: Node<'t>) -> bool {
     same(context, &OnceCell::new(), first, second)
 }
+
+/// `getSymbol(first).equals(getSymbol(second))` for two names or field accesses: the same variable, read from whatever object.
+pub fn same_declared_symbol<'t>(context: &Context<'t>, first: Node<'t>, second: Node<'t>) -> bool {
+    let named = |node: Node| matches!(node.kind(), "identifier" | "field_access");
+    if !named(first) || !named(second) {
+        return false;
+    }
+    let scopes = OnceCell::new();
+    key(context, &scopes, first).is_some_and(|found| key(context, &scopes, second) == Some(found))
+}

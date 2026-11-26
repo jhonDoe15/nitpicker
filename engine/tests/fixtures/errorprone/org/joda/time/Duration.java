@@ -30,4 +30,8 @@ public class Duration {
     public long getStandardDays() {
         return 0;
     }
+
+    public Duration withMillis(long duration) {
+        return this;
+    }
 }
