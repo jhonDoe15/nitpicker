@@ -1,5 +1,8 @@
 //! What a block can throw, as Error Prone's `ScanThrownTypes` counts it, and the check that uses it.
 use super::Context;
+use super::doc::{Comment, Kind, parse};
+use super::fixes::Fix;
+use super::javadoc::comment_before;
 use crate::engine::source::{children, named_children, parent};
 use crate::java::helpers::has_modifier;
 use crate::java::types::model::Type;
@@ -214,18 +217,16 @@ pub fn can_be_overridden(method: Node) -> bool {
     if method.kind() != "method_declaration" || ["static", "private", "final"].iter().any(|word| has_modifier(method, word)) {
         return false;
     }
-    let Some(body) = parent(method) else { return true };
+    let Some(mut body) = parent(method) else { return true };
+    if body.kind() == "enum_body_declarations" {
+        let Some(enum_body) = parent(body) else { return true };
+        body = enum_body;
+    }
     let Some(owner) = parent(body) else { return true };
     match owner.kind() {
         "class_declaration" => !has_modifier(owner, "final"),
         "record_declaration" | "object_creation_expression" | "enum_constant" => false,
-        "enum_declaration" => {
-            let mut with_body = false;
-            crate::engine::source::walk(owner, |part| {
-                with_body |= part.kind() == "enum_constant" && children(part).iter().any(|inner| inner.kind() == "class_body");
-            });
-            with_body
-        }
+        "enum_declaration" => children(body).into_iter().any(|part| part.kind() == "enum_constant" && part.child_by_field_name("body").is_some()),
         _ => true,
     }
 }
@@ -284,5 +285,37 @@ pub fn checked_exception_not_thrown(context: &Context, node: Node) {
          attempt to handle, or propagate, this exception.",
         names.join(", ")
     );
-    context.report("CheckedExceptionNotThrown", node, at, &text);
+    let kept: Vec<Node> = named_children(clause).into_iter().filter(|listed| !listed.kind().ends_with("comment") && !unthrown.contains(listed)).collect();
+    let fix = javadoc_fix(context, node, &kept).merged(throws_fix(context, clause, &kept));
+    context.report_fixed("CheckedExceptionNotThrown", node, at, &text, &[fix]);
+}
+
+/// The `throws` clause without the exceptions that cannot be thrown.
+fn throws_fix(context: &Context, clause: Node, kept: &[Node]) -> Fix {
+    let Some(last) = named_children(clause).into_iter().next_back() else { return Fix::new() };
+    let Some(first) = kept.first() else {
+        let keyword = children(clause).into_iter().find(|part| part.kind() == "throws").map_or(clause.start_byte(), |word| word.start_byte());
+        return Fix::replace(keyword, last.end_byte(), "");
+    };
+    let written: Vec<&str> = kept.iter().map(|listed| context.text(*listed)).collect();
+    Fix::replace(first.start_byte(), last.end_byte(), written.join(", "))
+}
+
+/// Removes the `@throws` tags of the doc comment that name an exception the method cannot throw.
+fn javadoc_fix(context: &Context, method: Node, kept: &[Node]) -> Fix {
+    let mut fix = Fix::new();
+    let Some(written) = comment_before(context, method) else { return fix };
+    let Some(comment) = Comment::of(context.text(written), written.start_byte()) else { return fix };
+    let thrown: Vec<String> = kept.iter().filter_map(|listed| context.resolver.type_node(*listed)).map(|kind| kind.name()).collect();
+    for tag in parse(&comment).tags.iter().filter(|tag| tag.kind == Kind::Block && matches!(tag.name.as_str(), "throws" | "exception")) {
+        let Some(reference) = tag.children.first().filter(|child| child.kind == Kind::Reference) else { continue };
+        let Some(name) = context.resolver.class_name(method, reference.name.trim()).filter(|name| context.resolver.index.has(name)) else { continue };
+        if thrown.contains(&name) {
+            continue;
+        }
+        if let (Some(start), Some(end)) = (comment.source_pos(tag.pos), comment.source_pos(tag.end_position())) {
+            fix = fix.delete(start, end);
+        }
+    }
+    fix
 }

@@ -1,5 +1,7 @@
 //! CheckReturnValue: a call, constructor call or method reference drops a result that must be used.
 use super::Context;
+use super::fixes::Fix;
+use super::ignored_fix::{call_site_fixes, declaration_fix};
 use super::hierarchy::{sub_signature, super_methods};
 use super::unused::{dropped, exception_testing, function_returns_void, mocking, statements, throwing_type};
 use crate::engine::source::children;
@@ -77,8 +79,8 @@ fn expected(index: &TypeIndex, declaring: &ClassInfo, method: &Method) -> bool {
     false
 }
 
-fn report(context: &Context, node: Node, at: usize, short: &str) {
-    context.report(NAME, node, at, &format!("The result of `{short}` must be used"));
+fn report(context: &Context, node: Node, at: usize, short: &str, fixes: &[Fix]) {
+    context.report_fixed(NAME, node, at, &format!("The result of `{short}` must be used"), fixes);
 }
 
 fn parens(empty: bool) -> &'static str {
@@ -104,10 +106,15 @@ fn call(context: &Context, node: Node) {
     if constructor {
         let start = children(node).into_iter().find(|part| part.kind() == "new").map_or(node.start_byte(), |word| word.start_byte());
         let created = node.child_by_field_name("type").map(|kind| context.text(kind)).unwrap_or_default();
-        report(context, node, start, &format!("new {created}{}", parens(empty)));
+        let anonymous = children(node).iter().any(|part| part.kind() == "class_body");
+        let mut fixes = if anonymous { vec![Fix::new()] } else { vec![declaration_fix(context, &resolved.declaring, method)] };
+        fixes.extend(call_site_fixes(context, node));
+        report(context, node, start, &format!("new {created}{}", parens(empty)), &fixes);
     } else {
         let at = node.child_by_field_name("arguments").map_or(node.start_byte(), |list| list.start_byte());
-        report(context, node, at, &format!("{}{}", method.name, parens(empty)));
+        let mut fixes = vec![declaration_fix(context, &resolved.declaring, method)];
+        fixes.extend(call_site_fixes(context, node));
+        report(context, node, at, &format!("{}{}", method.name, parens(empty)), &fixes);
     }
 }
 
@@ -180,7 +187,8 @@ fn reference(context: &Context, node: Node) {
         }
     }
     let short = if constructor { format!("new {}", context.text(qualifier)) } else { name.to_string() };
-    report(context, node, node.start_byte(), &format!("{short}{}", parens(first.1)));
+    let fixes: Vec<Fix> = candidates.first().map(|(class, method)| declaration_fix(context, &class.name, method)).into_iter().collect();
+    report(context, node, node.start_byte(), &format!("{short}{}", parens(first.1)), &fixes);
 }
 
 /// Both annotations on one declaration, or one of them on a method that gives nothing back.

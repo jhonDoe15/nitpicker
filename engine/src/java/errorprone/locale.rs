@@ -1,5 +1,7 @@
 //! DefaultLocale: a formatting call or constructor that silently takes the default locale of the JVM.
 use super::Context;
+use super::fixes::Fix;
+use super::locale_fix;
 use crate::engine::source::{children, named_children, parent};
 use crate::java::helpers::{declarators, has_modifier};
 use crate::java::types::model::Type;
@@ -122,6 +124,22 @@ fn local(usage: Node, name: &str, context: &Context) -> bool {
     found
 }
 
+fn call_fixes(context: &Context, node: Node, name: &str, is_static: bool, owner: &str) -> Vec<Fix> {
+    use locale_fix::{DISPLAYING, FORMATTING, PLAIN, appended, prepended};
+    match name {
+        "format" | "printf" if owner == "java.text.MessageFormat" => locale_fix::message_format(context, node),
+        "format" | "printf" => prepended(context, node, &FORMATTING),
+        "formatted" => locale_fix::formatted(context, node),
+        "getSymbol" => appended(context, node, &DISPLAYING),
+        "getDateInstance" | "getTimeInstance" | "getDateTimeInstance" => locale_fix::date_format(context, node, name),
+        "getInstance" if owner == "java.text.DateFormat" => locale_fix::date_format(context, node, name),
+        "getBundle" => locale_fix::resource_bundle(context, node),
+        _ if BREAKS.contains(&name) || (name == "getInstance" && owner == "java.text.Collator") => appended(context, node, &PLAIN),
+        _ if is_static || name == "toFormatter" => appended(context, node, &FORMATTING),
+        _ => Vec::new(),
+    }
+}
+
 fn call(context: &Context, node: Node) {
     let name = node.child_by_field_name("name").map(|name| context.text(name)).unwrap_or_default();
     if !NAMES.contains(&name) {
@@ -170,7 +188,8 @@ fn call(context: &Context, node: Node) {
     };
     if found {
         let at = node.child_by_field_name("arguments").map_or(node.start_byte(), |list| list.start_byte());
-        context.report(NAME, node, at, SUMMARY);
+        let fixes = call_fixes(context, node, name, method.is_static, &owner);
+        context.report_fixed(NAME, node, at, SUMMARY, &fixes);
     }
 }
 
@@ -195,7 +214,13 @@ fn creation(context: &Context, node: Node) {
     };
     if found {
         let at = children(node).into_iter().find(|part| part.kind() == "new").map_or(node.start_byte(), |word| word.start_byte());
-        context.report(NAME, node, at, SUMMARY);
+        let fixes = match resolved.declaring.as_str() {
+            "java.text.DecimalFormat" => locale_fix::decimal_format(context, node),
+            "java.text.SimpleDateFormat" => locale_fix::simple_date_format(context, node),
+            "java.util.Formatter" => locale_fix::formatter(context, node),
+            _ => locale_fix::appended(context, node, &locale_fix::FORMATTING),
+        };
+        context.report_fixed(NAME, node, at, SUMMARY, &fixes);
     }
 }
 
