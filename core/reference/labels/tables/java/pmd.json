@@ -161,6 +161,7 @@
   "pmd/OptionalOrElseGetNull": ["bug"],
   "pmd/ParallelStreamSharedMutation": ["bug", "reliability", "async"],
   "pmd/ParameterMutation": ["maintainability"],
+  "pmd/PeekSkippedByCount": ["bug", "reliability"],
   "pmd/PendingFuturesNotFailedOnClose": ["reliability", "async"],
   "pmd/PlainCollectionInConcurrentMap": ["bug", "async"],
   "pmd/PlainTextRegex": ["simplification", "performance"],
