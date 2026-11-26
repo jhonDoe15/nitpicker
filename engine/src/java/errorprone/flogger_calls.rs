@@ -18,7 +18,7 @@ fn name_of<'f>(context: &'f Context, call: Node) -> &'f str {
 }
 
 /// `instanceMethod().onDescendantOf(owner).namedAnyOf(names)`, with no parameters when asked.
-fn on_descendant(context: &Context, tree: Node, owner: &str, names: &[&str], no_parameters: bool) -> bool {
+pub(super) fn on_descendant(context: &Context, tree: Node, owner: &str, names: &[&str], no_parameters: bool) -> bool {
     if tree.kind() != "method_invocation" || !names.contains(&name_of(context, tree)) || (no_parameters && !arguments(tree).is_empty()) {
         return false;
     }
