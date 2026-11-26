@@ -1,5 +1,6 @@
 //! Doc comment checks about tags written inside the text: EscapedEntity, InvalidInlineTag.
 use super::doc::{Kind, Tree};
+use super::fixes::Fix;
 use super::javadoc::{Documented, Element, edit_distance, parameter_names};
 use regex::Regex;
 use std::sync::LazyLock;
@@ -18,6 +19,21 @@ pub(super) fn escaped_entity(documented: &Documented) {
             documented.report("EscapedEntity", tree.pos, TEXT);
         }
     });
+}
+
+/// Where the `)` that closes a tag opened by `(@` is, unless a `}` comes first.
+fn closing_brace(body: &str, from: usize) -> Option<usize> {
+    let mut depth = 0usize;
+    for (at, character) in body[from..].char_indices() {
+        match character {
+            '(' => depth += 1,
+            ')' if depth == 0 => return Some(body[..from + at].chars().count()),
+            ')' => depth -= 1,
+            '}' => return None,
+            _ => {}
+        }
+    }
+    None
 }
 
 fn text_of(documented: &Documented, tree: &Tree) -> String {
@@ -74,8 +90,12 @@ pub(super) fn invalid_inline_tag(documented: &Documented, declaration: Node) {
 }
 
 impl Tags<'_, '_, '_, '_> {
-    fn report_at(&self, pos: usize, message: &str) {
-        self.documented.report(CHECK, pos, message);
+    fn report_at(&self, pos: usize, message: &str, fixes: &[Fix]) {
+        self.documented.report_fixed(CHECK, pos, message, fixes);
+    }
+
+    fn code_fix(&self, tree: &Tree, name: &str) -> Fix {
+        self.documented.replace(tree, &format!("{{@code {name}}}"))
     }
 
     fn scan(&self, tree: &Tree, parent: Option<&Tree>) {
@@ -87,7 +107,8 @@ impl Tags<'_, '_, '_, '_> {
                 if let Some(found) = ANCHORED_PARAM.captures(&tree.name) {
                     let name = &found[1];
                     if self.parameters.iter().any(|parameter| parameter == name) {
-                        self.report_at(tree.pos, &format!("@param cannot be used inline to refer to parameters; {{@code {name}}} is recommended"));
+                        let text = format!("@param cannot be used inline to refer to parameters; {{@code {name}}} is recommended");
+                        self.report_at(tree.pos, &text, &[self.code_fix(tree, name)]);
                     }
                 }
             }
@@ -108,27 +129,41 @@ impl Tags<'_, '_, '_, '_> {
             return;
         }
         let message = format!("The tag @{} is not allowed on this type of element.", tree.name);
+        let fixes = [self.documented.replace(tree, "")];
         match parent {
-            Some(parent) => self.report_at(parent.pos, &message),
-            None => self.documented.report_comment(CHECK, &message),
+            Some(parent) => self.report_at(parent.pos, &message, &fixes),
+            None => self.documented.report_comment_fixed(CHECK, &message, &fixes),
         }
     }
 
     fn text(&self, tree: &Tree) {
         let body = text_of(self.documented, tree);
         let place = |byte: usize| tree.pos + body[..byte].chars().count();
+        let at = |byte: usize| self.documented.source(place(byte));
         let variable = self.documented.element == Element::Variable;
         let curly = if variable { &*VARIABLE_CURLY } else { &*CLASS_CURLY };
-        for found in curly.find_iter(&body) {
-            self.report_at(place(found.start()), INVALID);
+        for found in curly.captures_iter(&body) {
+            let whole = found.get(0).expect("a match");
+            let before = at(whole.start());
+            let brace = at(found.get(1).expect("a group").end());
+            let fix = Fix::new().insert(before, "{").and(brace, brace + 1, " ");
+            self.report_at(place(whole.start()), INVALID, &[fix]);
         }
         let parens = if variable { &*VARIABLE_PARENS } else { &*CLASS_PARENS };
         for found in parens.captures_iter(&body) {
             let whole = found.get(0).expect("a match");
-            self.report_at(place(whole.start()), &format!("Curly braces should be used for inline Javadoc tags: {{@{} ...}}", &found[1]));
+            let before = at(whole.start());
+            let mut fix = Fix::replace(before, before + 1, "{");
+            if let Some(closing) = closing_brace(&body, found.get(1).expect("a group").start()) {
+                let closing = at(closing);
+                fix = fix.and(closing, closing + 1, "}");
+            }
+            self.report_at(place(whole.start()), &format!("Curly braces should be used for inline Javadoc tags: {{@{} ...}}", &found[1]), &[fix]);
         }
-        for found in PARAM.find_iter(&body) {
-            self.report_at(place(found.start()), INVALID);
+        for found in PARAM.captures_iter(&body) {
+            let whole = found.get(0).expect("a match");
+            let fix = Fix::replace(at(whole.start()), at(whole.end()), format!("{{@code {}}}", &found[1]));
+            self.report_at(place(whole.start()), INVALID, &[fix]);
         }
     }
 
@@ -146,23 +181,25 @@ impl Tags<'_, '_, '_, '_> {
             if let Some(found) = file.get(from..to).and_then(|written| PARAM.captures(written)) {
                 let parameter = &found[1];
                 if self.parameters.iter().any(|known| known == parameter) {
-                    self.report_at(tree.pos, &format!("@param cannot be used inline to refer to parameters; {{@code {parameter}}} is recommended"));
+                    let text = format!("@param cannot be used inline to refer to parameters; {{@code {parameter}}} is recommended");
+                    self.report_at(tree.pos, &text, &[self.code_fix(tree, parameter)]);
                 }
                 return Some(true);
             }
         }
         if self.parameters.iter().any(|parameter| parameter == name) {
             let text = format!("@{name} is not a valid tag, but is a parameter name. Use {{@code {name}}} to refer to parameter names inline.");
-            self.report_at(tree.pos, &text);
+            self.report_at(tree.pos, &text, &[self.code_fix(tree, name)]);
             return Some(true);
         }
         if self.probably_type(name) {
             let text = format!("The tag {{@{name}}} is not valid, and will not display or cross-link to the type {name} correctly. Prefer {{@link {name}}}.");
-            self.report_at(tree.pos, &text);
+            let start = self.documented.source(tree.pos);
+            self.report_at(tree.pos, &text, &[Fix::replace(start, start + 2, "{@link ")]);
             return Some(true);
         }
         if self.block.contains(&name) {
-            self.report_at(tree.pos, &format!("Tag name `{name}` is not a valid inline tag, but it is a valid block tag."));
+            self.report_at(tree.pos, &format!("Tag name `{name}` is not a valid inline tag, but it is a valid block tag."), &[]);
             return Some(true);
         }
         let mut best: Option<(&str, usize)> = None;
@@ -172,11 +209,12 @@ impl Tags<'_, '_, '_, '_> {
                 best = Some((choice, distance));
             }
         }
-        let hint = match best {
-            Some((choice, _)) => format!(" Did you mean tag `{choice}`?"),
-            None => " If this is a commonly-used custom tag, please click 'not useful' and file a bug.".to_string(),
+        let start = self.documented.source(tree.pos) + 2;
+        let (hint, fixes) = match best {
+            Some((choice, _)) => (format!(" Did you mean tag `{choice}`?"), vec![Fix::replace(start, start + name.len(), choice)]),
+            None => (" If this is a commonly-used custom tag, please click 'not useful' and file a bug.".to_string(), Vec::new()),
         };
-        self.report_at(tree.pos, &format!("Tag name `{name}` is unknown.{hint}"));
+        self.report_at(tree.pos, &format!("Tag name `{name}` is unknown.{hint}"), &fixes);
         Some(true)
     }
 

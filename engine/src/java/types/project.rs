@@ -4,6 +4,7 @@ use super::model::ClassInfo;
 use super::scope::{FileScope, Resolver, declared_name};
 use crate::engine::source::{SourceFile, walk};
 use rayon::prelude::*;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use tree_sitter::Node;
 
@@ -12,6 +13,12 @@ pub struct JavaProject {
     pub index: TypeIndex,
     /// The source file that declares each class of the run.
     pub sources: std::collections::HashMap<String, String>,
+    /// Classes whose `Class` object the code names: a class literal, or an `assert`, which reads the top class's.
+    pub literals: HashSet<String>,
+    /// The project's `volatile` fields, as the class that declares them and their name.
+    pub volatiles: HashSet<(String, String)>,
+    /// Integer constants the project declares, by field name; `None` when two declarations disagree.
+    pub numbers: HashMap<String, Option<i64>>,
 }
 
 fn jdk_home() -> PathBuf {
@@ -111,7 +118,126 @@ pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>) 
         started.elapsed().as_secs_f64() * 1e3 - binaries_ms
     );
     index.settle();
-    JavaProject { index, sources }
+    let literals = class_literals(files, &scopes, &index);
+    let volatiles = volatile_fields(files, &scopes);
+    let numbers = integer_constants(files);
+    JavaProject { index, sources, literals, volatiles, numbers }
+}
+
+/// Puts back, as statements of the blanked body, the class literals and `assert` statements that `literals` reads.
+fn keep_class_objects(file: &SourceFile, body: Node, bytes: &mut [u8]) {
+    let mut kept: Vec<(usize, usize, bool)> = Vec::new();
+    walk(body, |node| {
+        let inside = kept.last().is_some_and(|(_, end, _)| node.start_byte() < *end);
+        match node.kind() {
+            "assert_statement" if !inside => kept.push((node.start_byte(), node.end_byte(), false)),
+            "class_literal" if !inside && bytes.get(node.end_byte()) == Some(&b' ') => kept.push((node.start_byte(), node.end_byte(), true)),
+            _ => {}
+        }
+    });
+    for (start, end, literal) in kept {
+        bytes[start..end].copy_from_slice(&file.text.as_bytes()[start..end]);
+        if literal {
+            bytes[end] = b';';
+        }
+    }
+}
+
+fn volatile_fields(files: &[SourceFile], scopes: &[FileScope]) -> HashSet<(String, String)> {
+    files
+        .par_iter()
+        .zip(scopes)
+        .flat_map_iter(|(file, scope)| {
+            let mut found = Vec::new();
+            walk(file.tree.root_node(), |node| {
+                if node.kind() != "field_declaration" || !crate::java::helpers::has_modifier(node, "volatile") {
+                    return;
+                }
+                let Some(class) = super::scope::enclosing_types(scope, node).into_iter().next() else { return };
+                let mut cursor = node.walk();
+                for declarator in node.children_by_field_name("declarator", &mut cursor) {
+                    found.extend(declarator.child_by_field_name("name").map(|name| (class.clone(), file.text_of(name).to_string())));
+                }
+            });
+            found
+        })
+        .collect()
+}
+
+/// The value of an integer or character literal, with an optional minus sign.
+pub fn integer_value(file: &SourceFile, node: Node) -> Option<i64> {
+    let text = file.text_of(node).replace('_', "");
+    match node.kind() {
+        "parenthesized_expression" => integer_value(file, node.named_child(0)?),
+        "unary_expression" if text.starts_with('-') => integer_value(file, node.child_by_field_name("operand")?).map(|value| -value),
+        "decimal_integer_literal" => text.trim_end_matches(['l', 'L']).parse().ok(),
+        "hex_integer_literal" => i64::from_str_radix(text.trim_end_matches(['l', 'L']).get(2..)?, 16).ok(),
+        "character_literal" => {
+            let inner = text.get(1..text.len() - 1)?;
+            let mut chars = inner.chars();
+            match (chars.next()?, chars.next()) {
+                ('\\', Some(escaped)) if inner.len() == 2 => "btnfr\"'\\".find(escaped).map(|at| [8, 9, 10, 12, 13, 34, 39, 92][at]),
+                (single, None) => Some(i64::from(u32::from(single))),
+                _ => None,
+            }
+        }
+        _ => None,
+    }
+}
+
+fn integer_constants(files: &[SourceFile]) -> HashMap<String, Option<i64>> {
+    let found: Vec<(String, i64)> = files
+        .par_iter()
+        .flat_map_iter(|file| {
+            let mut found = Vec::new();
+            walk(file.tree.root_node(), |node| {
+                let constant = node.kind() == "constant_declaration"
+                    || (node.kind() == "field_declaration" && ["static", "final"].iter().all(|word| crate::java::helpers::has_modifier(node, word)));
+                if !constant {
+                    return;
+                }
+                let mut cursor = node.walk();
+                for declarator in node.children_by_field_name("declarator", &mut cursor) {
+                    let value = declarator.child_by_field_name("value").and_then(|value| integer_value(file, value));
+                    if let (Some(name), Some(value)) = (declarator.child_by_field_name("name"), value) {
+                        found.push((file.text_of(name).to_string(), value));
+                    }
+                }
+            });
+            found
+        })
+        .collect();
+    let mut numbers: HashMap<String, Option<i64>> = HashMap::new();
+    for (name, value) in found {
+        let entry = numbers.entry(name).or_insert(Some(value));
+        if *entry != Some(value) {
+            *entry = None;
+        }
+    }
+    numbers
+}
+
+fn class_literals(files: &[SourceFile], scopes: &[FileScope], index: &TypeIndex) -> HashSet<String> {
+    files
+        .par_iter()
+        .zip(scopes)
+        .flat_map_iter(|(file, scope)| {
+            let resolver = Resolver::new(index, file, scope);
+            let mut found = Vec::new();
+            walk(file.tree.root_node(), |node| match node.kind() {
+                "class_literal" => {
+                    let named = node.named_child(0).and_then(|written| resolver.type_node(written));
+                    found.extend(named.and_then(|kind| match kind {
+                        super::model::Type::Class(name, _) => Some(name),
+                        _ => None,
+                    }));
+                }
+                "assert_statement" => found.extend(super::scope::enclosing_types(scope, node).pop()),
+                _ => {}
+            });
+            found
+        })
+        .collect()
 }
 
 const CLASS_BODIES: [&str; 4] = ["class_body", "interface_body", "enum_body", "annotation_type_body"];
@@ -138,6 +264,7 @@ pub fn outline(file: &SourceFile) -> String {
                         *byte = b' ';
                     }
                 }
+                keep_class_objects(file, node, &mut bytes);
             }
             continue;
         }

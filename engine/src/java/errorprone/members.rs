@@ -1,5 +1,7 @@
 //! Class members in the order javac keeps them, and checks on that order.
 use super::Context;
+use super::fixes::Fix;
+use super::fix_helpers::{add_modifiers, qualify_type, remove_modifiers};
 use crate::engine::source::{children, named_children};
 use std::collections::HashMap;
 use tree_sitter::Node;
@@ -70,6 +72,7 @@ pub fn ungrouped_overloads(context: &Context, node: Node) {
         if group == 0 || indices.iter().any(|index| context.suppressed("UngroupedOverloads", list[*index])) {
             continue;
         }
+        let fix = grouping_fix(context, &list, indices);
         let name = if key == "<init>" { "constructor overloads".to_string() } else { format!("overloads of '{key}'") };
         for (index, own) in &numbered {
             let lines: Vec<String> = numbered
@@ -78,7 +81,7 @@ pub fn ungrouped_overloads(context: &Context, node: Node) {
                 .map(|(other, _)| (list[*other].start_position().row + 1).to_string())
                 .collect();
             let Some(at) = list[*index].child_by_field_name("name") else { continue };
-            context.report(
+            context.report_fixed(
                 "UngroupedOverloads",
                 node,
                 at.start_byte(),
@@ -86,9 +89,36 @@ pub fn ungrouped_overloads(context: &Context, node: Node) {
                     "Overloads should be grouped together, even when modifiers such as static or private differ between the methods; found ungrouped {name} on line(s): {}",
                     lines.join(", ")
                 ),
+                std::slice::from_ref(&fix),
             );
         }
     }
+}
+
+/// Where javac ends the member at `index`: a field with several names ends each but the last at its name.
+fn member_end(list: &[Node], index: usize) -> usize {
+    let member = list[index];
+    let position = list[..index].iter().filter(|other| other.id() == member.id()).count();
+    let declarators: Vec<Node> = children(member).into_iter().filter(|part| part.kind() == "variable_declarator").collect();
+    match declarators.get(position) {
+        Some(declarator) if position + 1 < declarators.len() => declarator.end_byte(),
+        _ => member.end_byte(),
+    }
+}
+
+/// Replaces the first overload with all of them and removes the others.
+fn grouping_fix(context: &Context, list: &[Node], indices: &[usize]) -> Fix {
+    let first = list[indices[0]];
+    let mut grouped = format!("\n{}", context.text(first));
+    let mut fix = Fix::new();
+    for index in &indices[1..] {
+        let start = member_end(list, index - 1);
+        let end = member_end(list, *index);
+        grouped.push_str(&context.file.text[start..end]);
+        grouped.push('\n');
+        fix = fix.delete(start, end);
+    }
+    fix.and(first.start_byte(), first.end_byte(), grouped)
 }
 
 fn in_generated_class(context: &Context, node: Node) -> bool {
@@ -117,7 +147,7 @@ pub fn missing_override(context: &Context, node: Node) {
         let component = components.iter().any(|part| part.child_by_field_name("name").is_some_and(|own| context.text(own) == context.text(name)));
         if component && crate::java::helpers::has_modifier(node, "public") && formals(node).is_empty() {
             let message = format!("{} is an explicitly declared accessor method for a record component; expected @Override", context.text(name));
-            context.report("MissingOverride", node, name.start_byte(), &message);
+            context.report_fixed("MissingOverride", node, name.start_byte(), &message, &[Fix::new().insert(node.start_byte(), "@Override ")]);
             return;
         }
     }
@@ -128,7 +158,7 @@ pub fn missing_override(context: &Context, node: Node) {
     }
     let verb = if declaring.is_interface || other.is_abstract { "implements" } else { "overrides" };
     let message = format!("{} {verb} method in {}; expected @Override", context.text(name), simple_name(&declaring.name));
-    context.report("MissingOverride", node, name.start_byte(), &message);
+    context.report_fixed("MissingOverride", node, name.start_byte(), &message, &[Fix::new().insert(node.start_byte(), "@Override ")]);
 }
 
 const UTILITY: &str = "Classes which are not intended to be instantiated should be made non-instantiable with a private constructor. This includes utility classes (classes with only static members), and the main class.";
@@ -162,12 +192,15 @@ pub fn private_constructor_for_utility_class(context: &Context, node: Node) {
         return;
     }
     if let Some(keyword) = children(node).into_iter().find(|part| part.kind() == "class") {
-        context.report("PrivateConstructorForUtilityClass", node, keyword.start_byte(), UTILITY);
+        let name = node.child_by_field_name("name").map(|name| context.text(name)).unwrap_or_default();
+        let constructor = Fix::new().insert(node.end_byte() - 1, format!("\n\nprivate {name}() {{}}\n"));
+        let fix = add_modifiers(constructor, node, &["final"]);
+        context.report_fixed("PrivateConstructorForUtilityClass", node, keyword.start_byte(), UTILITY, &[fix]);
     }
 }
 
 /// A type as javac prints its tree: no spaces but one after each comma of a type argument list.
-fn printed_type(context: &Context, node: Node) -> String {
+pub(super) fn printed_type(context: &Context, node: Node) -> String {
     match node.kind() {
         "generic_type" => {
             let mut text = String::new();
@@ -369,7 +402,9 @@ pub fn builder_return_this(context: &Context, node: Node) {
     let (Some(body), Some(name)) = (node.child_by_field_name("body"), node.child_by_field_name("name")) else { return };
     let Some((owner, method)) = super::hierarchy::declared_method(context, node) else { return };
     if builder_return(context, &owner.name, &method.returns) && other_return(context, body) {
-        context.report("BuilderReturnThis", node, name.start_byte(), "Builder instance method does not return 'this'");
+        let annotation = qualify_type(context, node, "com.google.errorprone.annotations.CheckReturnValue", &mut Fix::new());
+        let fix = Fix::new().insert(node.start_byte(), format!("@{annotation}\n")).with_imports();
+        context.report_fixed("BuilderReturnThis", node, name.start_byte(), "Builder instance method does not return 'this'", &[fix]);
     }
 }
 
@@ -425,7 +460,7 @@ pub fn kept(context: &Context, declaration: Node, listed: &[&str]) -> bool {
     })
 }
 
-fn hidden(node: Node) -> bool {
+pub(super) fn hidden(node: Node) -> bool {
     let mut current = Some(node);
     while let Some(at) = current {
         let holder = crate::engine::source::parent(at);
@@ -474,10 +509,11 @@ pub fn effectively_private(context: &Context, node: Node) {
             return;
         }
     }
+    let fix = remove_modifiers(Fix::new(), node, &["public", "protected"]);
     if field {
         for declarator in children(node).into_iter().filter(|part| part.kind() == "variable_declarator") {
             if let Some(name) = declarator.child_by_field_name("name") {
-                context.report("EffectivelyPrivate", node, name.start_byte(), EFFECTIVELY_PRIVATE);
+                context.report_fixed("EffectivelyPrivate", node, name.start_byte(), EFFECTIVELY_PRIVATE, &[fix.clone()]);
             }
         }
         return;
@@ -487,5 +523,5 @@ pub fn effectively_private(context: &Context, node: Node) {
     } else {
         children(node).into_iter().find(|part| matches!(part.kind(), "class" | "interface" | "enum" | "record" | "@interface")).map(|word| word.start_byte())
     };
-    context.report("EffectivelyPrivate", node, at.unwrap_or(node.start_byte()), EFFECTIVELY_PRIVATE);
+    context.report_fixed("EffectivelyPrivate", node, at.unwrap_or(node.start_byte()), EFFECTIVELY_PRIVATE, &[fix]);
 }

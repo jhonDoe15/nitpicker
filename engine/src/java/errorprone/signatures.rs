@@ -137,8 +137,9 @@ pub fn exposed_private_type(context: &Context, node: Node) {
     } else {
         vec![owner_name]
     };
+    let fixes = super::exposed_fixes::fixes(context, node, &seen);
     for name in names {
         let message = format!("Signature of non-private member '{}' should not reference private classes: {}", name, classes.join(", "));
-        context.report("ExposedPrivateType", node, at, &message);
+        context.report_fixed("ExposedPrivateType", node, at, &message, &fixes);
     }
 }

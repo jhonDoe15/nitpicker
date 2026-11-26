@@ -5,12 +5,16 @@ mod constructors;
 mod expose;
 mod fields;
 mod handlers;
+mod held;
 mod flow;
 mod known;
+mod lombok;
 mod mutable;
 mod names;
 mod nulls;
 mod order;
+mod observed;
+mod statements;
 mod stores;
 
 use super::types::project::JavaProject;
@@ -18,7 +22,7 @@ use super::types::scope::{FileScope, Resolver, TYPE_DECLARATIONS};
 use crate::engine::source::{ParentTable, SourceFile, children, parent, walk};
 use crate::engine::{FileRule, Project, finding::Finding};
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use tree_sitter::Node;
 
 /// What a detector gets: the file, its types and a place to report.
@@ -32,11 +36,19 @@ pub struct Context<'a> {
     pub classes: HashMap<String, Node<'a>>,
     /// Findings that hang on what the whole run stores in a field.
     waiting: RefCell<Vec<known::Waiting>>,
+    /// Every value the file stores in a field, worked out once.
+    pub stores: RefCell<Option<std::rc::Rc<observed::Stores<'a>>>>,
+    /// Classes whose `Class` object the project's code names anywhere.
+    pub literals: &'a HashSet<String>,
+    pub volatiles: &'a HashSet<(String, String)>,
+    pub numbers: &'a HashMap<String, Option<i64>>,
     line_starts: Vec<usize>,
     selected: Option<Vec<String>>,
     out: RefCell<Vec<Finding>>,
     /// The names the compiler makes up for lambdas and anonymous classes, worked out once.
     compiled: std::cell::OnceCell<crate::java::javac::Names<'a>>,
+    /// How many stores the file makes into each field, worked out once.
+    pub store_counts: std::cell::OnceCell<HashMap<(String, String), usize>>,
 }
 
 impl<'a> Context<'a> {
@@ -55,7 +67,23 @@ impl<'a> Context<'a> {
         });
         let classes = declared.iter().filter_map(|node| Some((resolver.scope.names.get(&node.id())?.clone(), *node))).collect();
         let out = RefCell::new(Vec::new());
-        let context = Context { resolver, project, elsewhere, file, classes, waiting: RefCell::new(Vec::new()), line_starts, selected, out, compiled: std::cell::OnceCell::new() };
+        let context = Context {
+            resolver,
+            project,
+            elsewhere,
+            file,
+            classes,
+            waiting: RefCell::new(Vec::new()),
+            stores: RefCell::new(None),
+            literals: &project.literals,
+            volatiles: &project.volatiles,
+            numbers: &project.numbers,
+            line_starts,
+            selected,
+            out,
+            compiled: std::cell::OnceCell::new(),
+            store_counts: std::cell::OnceCell::new(),
+        };
         (context, declared)
     }
 
@@ -143,7 +171,11 @@ impl<'a> Context<'a> {
 /// enum constant that carries the body of an anonymous class.
 type Detector = for<'a> fn(&Context<'a>, Node<'a>);
 
-const DETECTORS: &[Detector] = &[expose::exposed_representation as Detector, constructors::constructor_throw as Detector];
+const DETECTORS: &[Detector] = &[
+    expose::exposed_representation as Detector,
+    constructors::constructor_throw as Detector,
+    statements::statements as Detector,
+];
 
 #[derive(Default)]
 pub struct SpotBugs {

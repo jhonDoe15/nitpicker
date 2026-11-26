@@ -931,6 +931,12 @@ impl<'a> Resolver<'a> {
                                 .then(|| declarator.field("value"))
                                 .flatten()
                                 .and_then(|value| self.joined(value)),
+                            number: (matches!(&kind, Type::Primitive("int")) && (info.is_interface || has(member, "final")))
+                                .then(|| declarator.field("value"))
+                                .flatten()
+                                .map(|value| self.file.text_of(value).replace('_', ""))
+                                .filter(|digits| digits == "0" || !digits.starts_with('0'))
+                                .and_then(|digits| digits.parse().ok()),
                             fixed: (info.is_interface || (has(member, "final") && has(member, "static"))).then(|| declarator.field("value")).flatten().and_then(
                                 |value| {
                                     let mut uses = Vec::new();
@@ -952,10 +958,11 @@ impl<'a> Resolver<'a> {
                             kind: own.clone(),
                             generic: own,
                             constant: None,
+                            number: None,
                             fixed: None,
                             strict: false,
                             is_private: false,
-                            flags: super::model::flag::PUBLIC | super::model::flag::STATIC | super::model::flag::FINAL,
+                            flags: super::model::flag::PUBLIC | super::model::flag::STATIC | super::model::flag::FINAL | super::model::flag::ENUM,
                         });
                     }
                 }
@@ -1008,7 +1015,7 @@ impl<'a> Resolver<'a> {
                         varargs,
                         throws: self.thrown(member),
                         names: self.parameter_names(member),
-                        flags: bits(member),
+                        flags: bits(member) | if has(member, "private") { super::model::flag::PRIVATE } else { 0 },
                         detail: self.detail(member, false),
                         shown: self.shown_parameters(member),
                         nullable_parameters: self.nullable_parameters(member),
@@ -1048,7 +1055,7 @@ impl<'a> Resolver<'a> {
                 };
                 let name = self.file.text_of(name).to_string();
                 let generic = element(true).unwrap_or(kind.clone());
-                info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, fixed: None, strict: false, is_private: true, flags: super::model::flag::FINAL | bits(component) & (super::model::flag::NULLABLE | super::model::flag::CHECK_FOR_NULL) });
+                info.fields.push(Field { name: name.clone(), kind: kind.erased(), generic: generic.clone(), constant: None, number: None, fixed: None, strict: false, is_private: true, flags: super::model::flag::FINAL | bits(component) & (super::model::flag::NULLABLE | super::model::flag::CHECK_FOR_NULL) });
                 info.record_components.get_or_insert_with(Vec::new).push(generic.clone());
                 let accessor = plain(&name, Vec::new(), kind.erased());
                 info.methods.push(Method { generic_returns: generic, flags: accessor.flags | bits(component) & (super::model::flag::NULLABLE | super::model::flag::CHECK_FOR_NULL), ..accessor });
