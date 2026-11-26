@@ -8,7 +8,7 @@ use crate::java::types::model::flag;
 use tree_sitter::Node;
 
 pub(super) const INJECT: [&str; 3] = ["com.google.inject.Inject", "javax.inject.Inject", "jakarta.inject.Inject"];
-const PROVIDES: [&str; 7] = [
+pub(super) const PROVIDES: [&str; 7] = [
     "com.google.inject.Provides",
     "dagger.Provides",
     "com.google.inject.multibindings.ProvidesIntoMap",
@@ -18,7 +18,7 @@ const PROVIDES: [&str; 7] = [
     "dagger.producers.Produces",
 ];
 const SCOPES: [&str; 3] = ["com.google.inject.ScopeAnnotation", "javax.inject.Scope", "jakarta.inject.Scope"];
-const QUALIFIERS: [&str; 3] = ["com.google.inject.BindingAnnotation", "javax.inject.Qualifier", "jakarta.inject.Qualifier"];
+pub(super) const QUALIFIERS: [&str; 3] = ["com.google.inject.BindingAnnotation", "javax.inject.Qualifier", "jakarta.inject.Qualifier"];
 const MAP_KEYS: [&str; 2] = ["com.google.inject.multibindings.MapKey", "dagger.MapKey"];
 const COMPONENTS: [&str; 6] =
     ["dagger.Component", "dagger.Subcomponent", "dagger.producers.ProductionComponent", "dagger.producers.ProductionSubcomponent", "dagger.hilt.DefineComponent", "dagger.Module"];
@@ -42,7 +42,7 @@ fn has_flag(context: &Context, annotation: Node, bit: u32) -> bool {
     annotation_class(context, annotation).and_then(|class| context.resolver.index.get(&class)).is_some_and(|info| info.flags & bit != 0)
 }
 
-fn is_scope(context: &Context, annotation: Node) -> bool {
+pub(super) fn is_scope(context: &Context, annotation: Node) -> bool {
     has_flag(context, annotation, flag::SCOPE_ANNOTATION)
 }
 

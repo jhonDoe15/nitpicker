@@ -40,4 +40,8 @@ public class IterableSubject extends Subject {
   public Ordered containsAtLeastElementsIn(Iterable<?> expected) {
     return null;
   }
+
+  public Ordered containsExactlyElementsIn(Object[] expected) {
+    return null;
+  }
 }

@@ -13,7 +13,7 @@ use tree_sitter::Node;
 const INJECT: [&str; 3] = ["com.google.inject.Inject", "javax.inject.Inject", "jakarta.inject.Inject"];
 const SCOPES: [&str; 3] = ["com.google.inject.ScopeAnnotation", "javax.inject.Scope", "jakarta.inject.Scope"];
 const COMPONENTS: [&str; 5] = ["dagger.Component", "dagger.Subcomponent", "dagger.producers.ProductionComponent", "dagger.producers.ProductionSubcomponent", "dagger.hilt.DefineComponent"];
-const TARGET: &str = "java.lang.annotation.Target";
+pub(super) const TARGET: &str = "java.lang.annotation.Target";
 
 fn is_annotation(node: Node) -> bool {
     matches!(node.kind(), "annotation" | "marker_annotation")
@@ -117,7 +117,7 @@ pub fn scope_annotation_on_interface_or_abstract_class(context: &Context, annota
 }
 
 /// The names of the `ElementType` constants a `@Target` lists: its element values are constants or an array of them.
-fn listed_targets(context: &Context, value: Node, found: &mut Vec<String>) {
+pub(super) fn listed_targets(context: &Context, value: Node, found: &mut Vec<String>) {
     match value.kind() {
         "element_value_array_initializer" => named_children(value).into_iter().filter(|part| !part.kind().ends_with("comment")).for_each(|part| listed_targets(context, part, found)),
         "field_access" => found.extend(value.child_by_field_name("field").map(|field| context.text(field).to_string())),

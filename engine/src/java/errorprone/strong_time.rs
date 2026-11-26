@@ -61,33 +61,51 @@ fn factory<'t>(context: &Context, usage: Node<'t>) -> Option<(Node<'t>, String, 
     }
 }
 
+/// What one check of `StronglyType` is built from: the types it replaces and the factory call that wraps a use.
+pub(super) struct Strong {
+    pub check: &'static str,
+    /// The text of a replaceable field type (`int`, `byte[]`), `None` for any other type.
+    pub replaces: fn(&Context, Node, Node) -> Option<String>,
+    pub factory: for<'t> fn(&Context, Node<'t>) -> Option<(Node<'t>, String, String)>,
+    pub rename: fn(&str) -> String,
+}
+
 pub fn strongly_type_time(context: &Context, root: Node) {
+    let time = Strong { check: "StronglyTypeTime", replaces: time_primitive, factory, rename };
+    strongly_type(context, root, &time);
+}
+
+fn time_primitive(context: &Context, node: Node, declarator: Node) -> Option<String> {
+    match context.resolver.declared_type(node, Some(declarator)) {
+        Some(Type::Primitive(kind)) if matches!(kind, "int" | "long" | "float" | "double") => Some(kind.to_string()),
+        Some(Type::Class(boxed, _)) => match boxed.as_str() {
+            "java.lang.Integer" => Some("int".to_string()),
+            "java.lang.Long" => Some("long".to_string()),
+            "java.lang.Float" => Some("float".to_string()),
+            "java.lang.Double" => Some("double".to_string()),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+pub(super) fn strongly_type(context: &Context, root: Node, strong: &Strong) {
     let mut fields: Vec<(Node, Node, String, String)> = Vec::new();
     walk(root, |node| {
         if node.kind() != "field_declaration" || !has_modifier(node, "final") {
             return;
         }
-        let list = declarators(node);
-        if list.len() != 1 || !super::members::hidden(node) || context.suppressed("StronglyTypeTime", node) {
+        if !super::members::hidden(node) || context.suppressed(strong.check, node) {
             return;
         }
-        let declarator = list[0];
-        if declarator.child_by_field_name("name").is_none() || declarator.child_by_field_name("value").is_none() {
-            return;
+        for declarator in declarators(node) {
+            if declarator.child_by_field_name("name").is_none() || declarator.child_by_field_name("value").is_none() {
+                continue;
+            }
+            let Some(primitive) = (strong.replaces)(context, node, declarator) else { continue };
+            let Some(owner) = crate::java::types::scope::enclosing_type(context.file, context.resolver.scope, node) else { continue };
+            fields.push((node, declarator, owner, primitive));
         }
-        let primitive = match context.resolver.declared_type(node, Some(declarator)) {
-            Some(Type::Primitive(kind)) if matches!(kind, "int" | "long" | "float" | "double") => kind.to_string(),
-            Some(Type::Class(boxed, _)) => match boxed.as_str() {
-                "java.lang.Integer" => "int".to_string(),
-                "java.lang.Long" => "long".to_string(),
-                "java.lang.Float" => "float".to_string(),
-                "java.lang.Double" => "double".to_string(),
-                _ => return,
-            },
-            _ => return,
-        };
-        let Some(owner) = crate::java::types::scope::enclosing_type(context.file, context.resolver.scope, node) else { return };
-        fields.push((node, declarator, owner, primitive));
     });
     if fields.is_empty() {
         return;
@@ -107,7 +125,7 @@ pub fn strongly_type_time(context: &Context, root: Node) {
             if fields[at].2 != declaring.name || field.name != name {
                 continue;
             }
-            let found = factory(context, node);
+            let found = (strong.factory)(context, node);
             match (found, usages[at].as_mut()) {
                 (Some(found), Some(list)) => list.push(found),
                 _ => usages[at] = None,
@@ -120,14 +138,14 @@ pub fn strongly_type_time(context: &Context, root: Node) {
         if list.iter().any(|other| other.1 != first.1) {
             continue;
         }
-        report(context, *declaration, *declarator, primitive, list);
+        report(context, strong, *declaration, *declarator, primitive, list);
     }
 }
 
-fn report(context: &Context, declaration: Node, declarator: Node, primitive: &str, list: &[(Node, String, String)]) {
+fn report(context: &Context, strong: &Strong, declaration: Node, declarator: Node, primitive: &str, list: &[(Node, String, String)]) {
     let (Some(name), Some(value)) = (declarator.child_by_field_name("name"), declarator.child_by_field_name("value")) else { return };
     let (factory, _, made) = &list[0];
-    let new_name = rename(context.text(name));
+    let new_name = (strong.rename)(context.text(name));
     let type_name = qualify_type(context, declaration, made, &mut Fix::new());
     let select = if factory.kind() == "method_invocation" {
         let end = factory.child_by_field_name("name").map_or(factory.end_byte(), |part| part.end_byte());
@@ -137,8 +155,14 @@ fn report(context: &Context, declaration: Node, declarator: Node, primitive: &st
         format!("new {written}")
     };
     let modifiers = crate::java::helpers::modifiers(declaration).map(|part| context.text(part)).unwrap_or_default();
-    let text = format!("{modifiers} {type_name} {new_name} = {select}({});", context.text(value));
-    let mut fix = Fix::replace(declaration.start_byte(), declaration.end_byte(), text);
+    let typed = if value.kind() == "array_initializer" { declaration.child_by_field_name("type").map(|written| format!("new {} ", context.text(written))).unwrap_or_default() } else { String::new() };
+    let text = format!("{modifiers} {type_name} {new_name} = {select}({typed}{});", context.text(value));
+    let mut next = declarator.next_sibling();
+    while next.is_some_and(|part| part.kind().ends_with("comment")) {
+        next = next.and_then(|part| part.next_sibling());
+    }
+    let end = next.filter(|part| part.kind() == ",").map_or(declaration.end_byte(), |comma| comma.end_byte());
+    let mut fix = Fix::replace(declaration.start_byte(), end, text);
     if type_name == made.rsplit('.').next().unwrap_or(made) {
         fix = fix.with_imports();
     }
@@ -147,5 +171,5 @@ fn report(context: &Context, declaration: Node, declarator: Node, primitive: &st
     }
     let simple = made.rsplit(['.', '$']).next().unwrap_or(made);
     let message = format!("This {primitive} is only used to construct {simple} instances. It would be clearer to strongly type the field instead.");
-    context.report_fixed("StronglyTypeTime", declaration, name.start_byte(), &message, &[fix]);
+    context.report_fixed(strong.check, declaration, name.start_byte(), &message, &[fix]);
 }
