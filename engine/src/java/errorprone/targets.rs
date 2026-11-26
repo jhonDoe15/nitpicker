@@ -1,5 +1,6 @@
 //! Checks that ask what type the place of an expression wants.
 use super::Context;
+use super::fixes::Fix;
 use super::values::value_name;
 use crate::engine::source::parent;
 use crate::java::types::expr::Receiver;
@@ -82,7 +83,7 @@ pub fn boolean_literal(context: &Context, node: Node) {
         }
         _ => return,
     };
-    let _ = name;
+    let value = name.to_lowercase();
     const TEXT: &str = "This expression can be written more clearly with a boolean literal.";
     let Some(holder) = parent(node) else { return };
     if holder.kind() == "method_reference" {
@@ -91,7 +92,9 @@ pub fn boolean_literal(context: &Context, node: Node) {
     if holder.kind() == "method_invocation" && holder.child_by_field_name("object") == Some(node) {
         let called = holder.child_by_field_name("name").map(|name| context.text(name));
         if matches!(called, Some("toString" | "booleanValue")) {
-            context.report("BooleanLiteral", node, at, TEXT);
+            let text = if called == Some("toString") { format!("\"{value}\"") } else { value };
+            let fix = Fix::replace(holder.start_byte(), holder.end_byte(), text);
+            context.report_fixed("BooleanLiteral", node, at, TEXT, &[fix]);
         }
         return;
     }
@@ -101,6 +104,6 @@ pub fn boolean_literal(context: &Context, node: Node) {
     match target_type(context, node) {
         None | Some(Type::Variable(_)) => {}
         Some(Type::Class(class, _)) if class == BOOLEAN => {}
-        Some(_) => context.report("BooleanLiteral", node, at, TEXT),
+        Some(_) => context.report_fixed("BooleanLiteral", node, at, TEXT, &[Fix::replace(node.start_byte(), node.end_byte(), value)]),
     }
 }

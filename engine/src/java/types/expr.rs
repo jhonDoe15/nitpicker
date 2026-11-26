@@ -439,10 +439,15 @@ impl<'a> Resolver<'a> {
 
     /// Whether a name or field access reads a compile-time constant field.
     pub fn constant_field(&self, expression: Node) -> bool {
+        self.constant_field_as(expression, false)
+    }
+
+    /// `constant_field`, with `strict` asking for what the compiler itself takes for a constant.
+    pub fn constant_field_as(&self, expression: Node, strict: bool) -> bool {
         let near = |class: &str| self.scope.names.values().any(|known| known == class);
         match expression.kind() {
             "identifier" => match self.binding(expression, self.file.text_of(expression)) {
-                Some(Binding::Field(_, info, field)) => self.index.constant_field(&info.name, &field.name, &near, false, 0),
+                Some(Binding::Field(_, info, field)) => self.index.constant_field(&info.name, &field.name, &near, strict, 0),
                 _ => false,
             },
             "field_access" | "scoped_identifier" => {
@@ -454,7 +459,7 @@ impl<'a> Resolver<'a> {
                 };
                 match self.receiver(object) {
                     Some(Receiver::Static(owner)) | Some(Receiver::Value(Type::Class(owner, _))) => {
-                        self.index.constant_field(&owner, self.file.text_of(field), &near, false, 0)
+                        self.index.constant_field(&owner, self.file.text_of(field), &near, strict, 0)
                     }
                     _ => false,
                 }
@@ -957,7 +962,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// The constructor a `new` expression calls. With a diamond, the class's type parameters are inferred like a method's.
-    fn resolve_constructor(&self, creation: Node) -> Option<Call> {
+    pub fn resolve_constructor(&self, creation: Node) -> Option<Call> {
         if let Some(known) = self.calls.borrow().get(&creation.id()) {
             return known.as_deref().cloned();
         }

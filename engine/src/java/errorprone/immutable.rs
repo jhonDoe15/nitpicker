@@ -2,6 +2,8 @@
 //! something that can. The check is off when `@Immutable` is not among the classes of the project, as it is for
 //! Error Prone.
 use super::Context;
+use super::fixes::{self, Fix};
+use super::fix_helpers::add_modifiers;
 use super::hierarchy::{closure, simple_name};
 use super::immutable_known::{IMMUTABLE, MUTABLE};
 use crate::engine::source::{children, named_children};
@@ -212,9 +214,10 @@ fn quiet(context: &Context, node: Node) -> bool {
     context.suppressed(NAME, node) || context.suppressed(OTHER_NAME, node)
 }
 
-fn report(context: &Context, at: usize, pretty: &str, mut why: Vec<String>, first: String) {
+fn report(context: &Context, at: usize, pretty: &str, mut why: Vec<String>, first: String, fixes: &[Fix]) {
     why.insert(0, format!("'{pretty}' {first}"));
-    context.report_always(NAME, at, &format!("enums should be immutable: {}", why.join(", ")));
+    let sentence = fixes::sentence(&context.file.text, fixes);
+    context.report_always(NAME, at, &format!("enums should be immutable: {}{sentence}", why.join(", ")));
 }
 
 fn fields(context: &Context, body: Node, pretty: &str) {
@@ -229,7 +232,7 @@ fn fields(context: &Context, body: Node, pretty: &str) {
             let Some(name) = declarator.child_by_field_name("name") else { continue };
             let label = context.text(name);
             if !fixed {
-                report(context, name.start_byte(), pretty, Vec::new(), format!("has non-final field '{label}'"));
+                report(context, name.start_byte(), pretty, Vec::new(), format!("has non-final field '{label}'"), &[add_modifiers(Fix::new(), field, &["final"])]);
                 continue;
             }
             let Some(mut kind) = kind.as_ref().map(|kind| copy(kind)) else { continue };
@@ -238,7 +241,7 @@ fn fields(context: &Context, body: Node, pretty: &str) {
                 kind = Written::Array(Box::new(kind));
             }
             if let Some(why) = unsafe_type(context, &kind, false) {
-                report(context, name.start_byte(), pretty, why, format!("has field '{label}' of type '{}'", text(&kind)));
+                report(context, name.start_byte(), pretty, why, format!("has field '{label}' of type '{}'", text(&kind)), &[]);
             }
         }
     }
@@ -273,7 +276,7 @@ fn interfaces(context: &Context, node: Node, keyword: usize, pretty: &str) {
         let Some(info) = index.get(name) else { continue };
         let Some(held) = known(name).or_else(|| marked(context, info)) else { continue };
         if let Some(why) = instantiation(context, info, &held, given.as_ref(), false) {
-            return report(context, keyword, pretty, why, format!("extends '{}'", simple_name(name)));
+            return report(context, keyword, pretty, why, format!("extends '{}'", simple_name(name)), &[]);
         }
     }
 }
@@ -301,7 +304,9 @@ pub fn immutable_enum_checker(context: &Context, node: Node) {
             matches!(part.kind(), "annotation" | "marker_annotation")
                 && part.child_by_field_name("name").is_some_and(|name| context.text(name).rsplit('.').next() == Some(OTHER_NAME))
         });
-        context.report_always(NAME, simple.map_or(keyword, |found| found.start_byte()), ANNOTATED);
+        let fix = simple.map(|found| Fix::new().delete(found.start_byte(), found.end_byte()));
+        let sentence = fixes::sentence(&context.file.text, &fix.into_iter().collect::<Vec<_>>());
+        context.report_always(NAME, simple.map_or(keyword, |found| found.start_byte()), &format!("{ANNOTATED}{sentence}"));
     }
     fields(context, body, pretty);
     interfaces(context, node, keyword, pretty);

@@ -138,7 +138,10 @@ async function lintStage({
         acceptedStatuses: [0, 1],
       },
     );
-    appendAll(results, eslintShapedResults(stage, diagnosticsOf(report), naming));
+    appendAll(
+      results,
+      eslintShapedResults(stage, diagnosticsOf(report), { naming, listed: chunk }),
+    );
   }
   return results;
 }
