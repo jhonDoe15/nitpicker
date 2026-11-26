@@ -83,6 +83,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
     { facts: (_filename, options) => ({ options: JSON.stringify(options[0] ?? {}) }) },
   ],
   ['react-test-no-implementation-details', {}],
+  ['require-error-listener', {}],
   [
     'report-module-load-effects',
     {

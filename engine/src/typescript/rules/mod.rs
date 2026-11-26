@@ -1,5 +1,6 @@
 //! Lint rules on the shared parse. Ids, messages and positions are those of the ESLint-plugin rule of the same name.
 mod errors;
+mod events;
 mod lifecycles;
 mod listeners;
 mod modules;
@@ -97,7 +98,7 @@ impl<'a> Context<'a, '_> {
 pub type Rule = fn(&mut Context);
 
 /// Rules written against the ESTree-shaped view.
-const ON_VIEW: &[&str] = &["hover-test-needs-keyboard", "no-add-only-collection", "no-copied-constant", "no-external-executables-in-unit-tests", "no-internal-module-mocks", "no-wait-for-with-fake-timers", "preserve-error-cause", "react-test-no-implementation-details", "report-module-load-effects", "settle-pending-on-close", "structured-catch-logging", "test-must-use-production-runtime", "time-unit-mismatch"];
+const ON_VIEW: &[&str] = &["hover-test-needs-keyboard", "no-add-only-collection", "no-copied-constant", "no-external-executables-in-unit-tests", "no-internal-module-mocks", "no-wait-for-with-fake-timers", "preserve-error-cause", "react-test-no-implementation-details", "report-module-load-effects", "require-error-listener", "settle-pending-on-close", "structured-catch-logging", "test-must-use-production-runtime", "time-unit-mismatch"];
 
 pub const ALL: &[(&str, Rule)] = &[
     ("hover-test-needs-keyboard", react_tests::hover_test_needs_keyboard::check),
@@ -112,6 +113,7 @@ pub const ALL: &[(&str, Rule)] = &[
     ("preserve-error-cause", errors::preserve_error_cause::check),
     ("react-test-no-implementation-details", react_tests::no_implementation_details::check),
     ("report-module-load-effects", modules::load_effects::check),
+    ("require-error-listener", events::require_error_listener::check),
     ("settle-pending-on-close", lifecycles::settle_pending_on_close::check),
     ("structured-catch-logging", errors::logging::structured_catch_logging::check),
     ("test-must-use-production-runtime", test_runtime::production_runtime::check),

@@ -6,8 +6,10 @@ use std::process::Command;
 
 type Row = Vec<serde_json::Value>;
 
-const RULES: &str =
-    "no-external-executables-in-unit-tests,no-internal-module-mocks,no-wait-for-with-fake-timers,preserve-error-cause,structured-catch-logging";
+const RULES: &str = concat!(
+    "no-external-executables-in-unit-tests,no-internal-module-mocks,no-wait-for-with-fake-timers,preserve-error-cause,",
+    "require-error-listener,structured-catch-logging,time-unit-mismatch"
+);
 
 fn sorted(mut rows: Vec<Row>) -> Vec<Row> {
     rows.sort_by_key(|row| serde_json::to_string(row).expect("text"));
