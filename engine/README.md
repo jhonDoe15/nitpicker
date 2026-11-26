@@ -26,10 +26,14 @@ NP_XPATH_RULES=tests/rules/all.json JAVA_HOME=<jdk 21> target/release/nitpicker-
   --rules _XPath --classpath <file with one jar or class folder per line, absolute paths> --out report.json
 ```
 
-`tests/rules/all.json` holds the 342 XPath rules a Java run sends to PMD (name, message, query, properties):
-the 241 XPath rules of the Java rulesets and the 101 built-in PMD XPath rules those rulesets switch on, with
+`tests/rules/all.json` holds the 353 XPath rules a Java run sends to PMD (name, message, query, properties):
+the 252 XPath rules of the Java rulesets and the 101 built-in PMD XPath rules those rulesets switch on, with
 their property overrides. `parity/rules-from-rulesets.py <rulesets dir> <pmd-java jar> <out.json>` writes it
 and prints the built-in rules PMD implements in Java, which the engine does not run.
+
+PMD selects nothing for an element name it has no node type for, without an error. A unit test parses every
+query of the Java rulesets and fails on a name missing from `tests/rules/pmd-node-names.txt`, the concrete
+node types of PMD 7.16.0's Java tree.
 
 Other switches: `NP_XPATH_ONLY=<rule,rule>` runs some rules, `NP_XPATH_STATS=<file>` writes time
 and findings per rule, `NP_SLOW=<ms>` prints the files slower than that, `NP_DBG=1` prints each type question

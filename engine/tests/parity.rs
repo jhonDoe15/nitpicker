@@ -100,6 +100,11 @@ fn review_rules_report_what_pmd_reports() {
 }
 
 #[test]
+fn rules_written_with_pmd_7_node_names_match_pmd() {
+    same_as_pmd("pmd7names", "all");
+}
+
+#[test]
 fn rare_built_in_rules_and_switch_facts_match_pmd() {
     same_as_pmd("builtins", "all");
 }
