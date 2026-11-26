@@ -153,13 +153,15 @@ public final class ErrorProneReport {
   }
 
   /**
-   * With {@code --skip-generated}, adds an {@code -XepExcludedPaths} pattern for each
-   * {@code --generated-root=<dir>} line, joined with a pattern the project declared. Error Prone
+   * Adds an {@code -XepExcludedPaths} pattern for the {@code -s} folder, where annotation processors write sources
+   * during this compile, and with {@code --skip-generated} for each {@code --generated-root=<dir>} line, joined with a
+   * pattern the project declared. Findings in the {@code -s} folder could never be placed in the project. Error Prone
    * matches the pattern against the file's decoded path, and the plugin option is split at whitespace, so a
    * directory's own whitespace is written as a hexadecimal escape.
    */
   static List<String> withoutGenerated(List<String> head, List<String> lines) {
-    if (!head.contains(SKIP_GENERATED)) {
+    int output = head.indexOf("-s") + 1;
+    if (!head.contains(SKIP_GENERATED) && output == 0) {
       return lines;
     }
     List<String> kept = new ArrayList<>();
@@ -171,8 +173,12 @@ public final class ErrorProneReport {
         kept.add(line);
       }
     }
-    List<String> roots = head.stream().filter(line -> line.startsWith(GENERATED_ROOT))
-        .map(line -> pathPattern(line.substring(GENERATED_ROOT.length()))).toList();
+    List<String> roots = new ArrayList<>(head.stream()
+        .filter(line -> head.contains(SKIP_GENERATED) && line.startsWith(GENERATED_ROOT))
+        .map(line -> pathPattern(line.substring(GENERATED_ROOT.length()))).toList());
+    if (output > 0) {
+      roots.add(pathPattern(head.get(output)));
+    }
     if (!roots.isEmpty()) {
       patterns.add(".*(?:" + String.join("|", roots) + ")/.*");
     }

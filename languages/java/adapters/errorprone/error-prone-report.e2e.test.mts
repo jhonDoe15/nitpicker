@@ -38,6 +38,11 @@ public final class Probe {
         boolean matches = java.util.regex.Pattern.compile(pattern).matcher(path).matches();
         System.out.print(String.join(" ", lines) + "\\n" + matches);
       }
+      case "processed" -> {
+        String flag = ErrorProneReport.withoutGenerated(List.of("-s", rest.get(0)), List.of()).get(0);
+        String pattern = flag.substring(flag.indexOf(':') + 1);
+        System.out.print(java.util.regex.Pattern.compile(pattern).matcher(rest.get(1)).matches());
+      }
       case "slices" -> ErrorProneReport.slices(rest).forEach(slice -> System.out.println(slice.size()));
       case "options" -> System.out.print(ErrorProneReport.javacOptions(rest));
       case "modular" -> System.out.print(ErrorProneReport.javacOptions(rest, List.of("src/module-info.java")));
@@ -175,6 +180,15 @@ describe.runIf(enabled)(
         expect(matches).toBe('true');
         expect(flags.match(/-XepExcludedPaths:/gu)).toHaveLength(1);
       });
+    });
+
+    it('leaves out the sources that annotation processors write during its own compile', () => {
+      const output = path.join(work, 'errorprone', 'generated', 'main');
+
+      expect(probe(['processed', output, `${output}/slice-1/demo/jmh_generated/Bench.java`])).toBe(
+        'true',
+      );
+      expect(probe(['processed', output, `${work}/src/main/java/demo/Bench.java`])).toBe('false');
     });
 
     it('splits the sources into one slice per worker, keeping 40 files or more in each', () => {
