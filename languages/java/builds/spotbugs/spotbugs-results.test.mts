@@ -151,9 +151,9 @@ describe('spotbugsResultOf', () => {
     };
 
     expect(spotbugsResultOf(finding).message.arguments).toStrictEqual(['java.util.Random']);
-    expect(
-      spotbugsResultOf({ ...finding, arguments: undefined }).message.arguments,
-    ).toStrictEqual(['p.A.a()']);
+    expect(spotbugsResultOf({ ...finding, arguments: undefined }).message.arguments).toStrictEqual([
+      'p.A.a()',
+    ]);
     expect(engineSpotbugsFindingOf(finding).arguments).toStrictEqual(['java.util.Random']);
   });
 

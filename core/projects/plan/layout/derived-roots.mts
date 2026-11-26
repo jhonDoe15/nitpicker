@@ -36,15 +36,17 @@ function objectIn(file: string): Record<string, unknown> | undefined {
   return parsed?.kind === 'json' && isPlainObject(parsed.value) ? parsed.value : undefined;
 }
 
+function childrenOf(value: unknown): readonly unknown[] {
+  if (Array.isArray(value)) {
+    return listOf(value);
+  }
+  return isPlainObject(value) ? Object.values(value) : [];
+}
+
 function stringsIn(value: unknown): string[] {
   const pending: unknown[] = [value];
   for (const current of pending) {
-    const children: readonly unknown[] = Array.isArray(current)
-      ? listOf(current)
-      : isPlainObject(current)
-        ? Object.values(current)
-        : [];
-    for (const child of children) {
+    for (const child of childrenOf(current)) {
       pending.push(child);
     }
   }

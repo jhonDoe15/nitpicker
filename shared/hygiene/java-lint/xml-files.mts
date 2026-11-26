@@ -8,7 +8,7 @@ const MAX_XML_BYTES = 2 * 1024 * 1024;
 const XML_COMMENT = /<!--[\s\S]*?-->/gu;
 const ATTRIBUTE = /([\w:-]+)\s*=\s*"([^"]*)"/gu;
 
-export function withoutXmlComments(text: string): string {
+function withoutXmlComments(text: string): string {
   return text.replaceAll(XML_COMMENT, ' ');
 }
 

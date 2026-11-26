@@ -86,23 +86,31 @@ describe('spotbugsEnginePlan', () => {
       auxiliary: [],
       javaHome: '/jdk',
     };
-    const { module } = moduleIn('p/A', 'p/B');
+    const { root, module } = moduleIn('p/A', 'p/B');
     const declared = (...paths: string[]) =>
       spotbugsEnginePlan({ ...options, module, compiler: compilerOf({ processorPaths: paths }) });
-
-    expect(declared('org.projectlombok:lombok:1.18.36')).toMatchObject({
+    const planned = (fields: object) => ({
+      reportDir: '/r',
+      sources: ['A', 'B', 'package-info'].map((name) =>
+        path.join(root, `src/main/java/p/${name}.java`),
+      ),
+      classpath: [],
       processorPath: [],
-      processors: 'lombok',
+      javaHome: '/jdk',
+      ...fields,
     });
+
+    expect(declared('org.projectlombok:lombok:1.18.36')).toStrictEqual(
+      planned({ processors: 'lombok' }),
+    );
     expect(
       declared('org.projectlombok:lombok:1.18.36', 'org.mapstruct:mapstruct-processor:1.6.3'),
-    ).toMatchObject({ processors: 'lombok' });
-    expect(declared('com.google.auto.service:auto-service:1.1.1')).toMatchObject({
-      processors: 'none',
-    });
-    expect(declared('org.example:processor:1')).toMatchObject({ processors: 'other' });
-    expect(declared()).toMatchObject({ processorPath: ['/lib/a.jar'] });
-    expect(declared()).not.toHaveProperty('processors');
+    ).toStrictEqual(planned({ processors: 'lombok' }));
+    expect(declared('com.google.auto.service:auto-service:1.1.1')).toStrictEqual(
+      planned({ processors: 'none' }),
+    );
+    expect(declared('org.example:processor:1')).toStrictEqual(planned({ processors: 'other' }));
+    expect(declared()).toStrictEqual(planned({ processorPath: ['/lib/a.jar'] }));
   });
 
   it('runs the engine past an empty processor folder but not past generated sources', () => {

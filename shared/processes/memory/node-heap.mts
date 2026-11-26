@@ -51,14 +51,19 @@ function withSemiSpace(nodeOptions: string, versions: RuntimeVersions): string {
     : `${nodeOptions} --max-semi-space-size=${String(SEMI_SPACE_MEGABYTES)}`.trim();
 }
 
+type NodeHeapOptions = {
+  readonly budget?: Omit<HeapBudget, 'parallel'>;
+  readonly admittedMegabytes?: number;
+  readonly versions?: RuntimeVersions;
+};
+
 export function withNodeHeap(
   environment: Environment,
-  budget: Omit<HeapBudget, 'parallel'> = {
-    memory: machineMemory(),
-    defaultLimit: getHeapStatistics().heap_size_limit,
-  },
-  admittedMegabytes = 0,
-  versions: RuntimeVersions = process.versions,
+  {
+    budget = { memory: machineMemory(), defaultLimit: getHeapStatistics().heap_size_limit },
+    admittedMegabytes = 0,
+    versions = process.versions,
+  }: NodeHeapOptions = {},
 ): Environment {
   const nodeOptions = environment['NODE_OPTIONS'] ?? '';
   if (heapMegabytesOf(nodeOptions) !== undefined) {

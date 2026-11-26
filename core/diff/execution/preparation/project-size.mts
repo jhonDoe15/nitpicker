@@ -143,19 +143,21 @@ function entriesOf(folder: string): FolderEntries {
   }
 }
 
+function isWalkable(entry: Dirent): boolean {
+  return entry.isDirectory() && entry.name !== 'node_modules' && !entry.name.startsWith('.');
+}
+
 function walkedFileCount(root: string, matches: (name: string) => boolean): number {
   let count = 0;
   const folders = [root];
   for (const folder of folders) {
     const { entries } = entriesOf(folder);
-    for (const entry of entries) {
-      const walkable =
-        entry.isDirectory() && entry.name !== 'node_modules' && !entry.name.startsWith('.');
-      if (walkable) {
-        folders.push(path.join(folder, entry.name));
-      }
-      count += !walkable && entry.isFile() && matches(entry.name) ? 1 : 0;
+    for (const entry of entries.filter(isWalkable)) {
+      folders.push(path.join(folder, entry.name));
     }
+    count += entries.filter(
+      (entry) => !isWalkable(entry) && entry.isFile() && matches(entry.name),
+    ).length;
   }
   return count;
 }
