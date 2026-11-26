@@ -233,6 +233,7 @@
   "pmd/SpringOpenRedirect": ["security", "spring"],
   "pmd/SpringOrderedProvider": ["bug", "spring"],
   "pmd/SpringOutboundUrl": ["security", "spring"],
+  "pmd/SpringPagedCollectionFetch": ["performance", "spring", "persistence"],
   "pmd/SpringPasswordEncoder": ["security", "spring"],
   "pmd/SpringPermitAllAnyRequest": ["security", "spring"],
   "pmd/SpringProfileOnConfiguration": ["maintainability", "spring"],

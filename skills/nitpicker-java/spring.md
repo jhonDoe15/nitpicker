@@ -142,6 +142,9 @@ JPA and Spring Data:
 - Fetch at most one collection per query (`join fetch`, Criteria `fetch` or an entity graph); load
   the others in their own query or with `@BatchSize` or `@Fetch(FetchMode.SUBSELECT)`
   (`JpaMultipleCollectionFetch`). Two fetched collections return a row for every pair.
+- Never fetch a collection in a paged query (`Pageable`, `Limit`, `Page`, `Slice`, `setMaxResults`):
+  Hibernate pages it in memory. Page the ids, then fetch the collection `where o.id in :ids`
+  (`SpringPagedCollectionFetch`).
 - Native SQL only when JPQL can't express it, marked on that one method with
   `@SuppressWarnings("PMD.SpringDataNativeQuery")`, `EntityManager.createNativeQuery` too.
 

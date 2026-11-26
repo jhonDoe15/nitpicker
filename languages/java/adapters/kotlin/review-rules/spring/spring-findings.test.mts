@@ -26,6 +26,7 @@ const SKIPPED = {
   SpringAnnotationBeforeProxy: KOTLIN_HALF_NOT_BUILT,
   SpringLockReleasedBeforeCommit: KOTLIN_HALF_NOT_BUILT,
   SpringWriteAfterCommitDropped: KOTLIN_HALF_NOT_BUILT,
+  SpringPagedCollectionFetch: KOTLIN_HALF_NOT_BUILT,
   SpringQueryConcatenation:
     'kotlin-source/SqlStringBuilding flags SQL built from runtime values on the same calls',
 };
