@@ -149,6 +149,15 @@ function entityOf(checker: TypeScript.TypeChecker, type: TypeScript.Type): Entit
   return orm === undefined || name === undefined ? undefined : { name, orm };
 }
 
+function compareText(left: string, right: string): number {
+  if (left === right) {
+    return 0;
+  }
+  return left < right ? -1 : 1;
+}
+
 export function entitiesIn(checker: TypeScript.TypeChecker, type: TypeScript.Type): Entity[] {
-  return findInType(checker, type, (candidate) => entityOf(checker, candidate));
+  return findInType(checker, type, (candidate) => entityOf(checker, candidate)).toSorted(
+    (left, right) => compareText(left.name, right.name) || compareText(left.orm, right.orm),
+  );
 }
