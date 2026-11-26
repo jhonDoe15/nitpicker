@@ -38,4 +38,16 @@ public class Mockito {
     public static <T> T spy(T object) {
         return object;
     }
+
+    public static Stubber doReturn(Object toBeReturned) {
+        return null;
+    }
+
+    public static Stubber doReturn(Object toBeReturned, Object... toBeReturnedNext) {
+        return null;
+    }
+
+    public static Stubber doAnswer(org.mockito.stubbing.Answer answer) {
+        return null;
+    }
 }

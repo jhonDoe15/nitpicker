@@ -135,7 +135,7 @@ pub fn misused_week_year(context: &Context, node: Node) {
 const JODA_TYPES: [&str; 5] = ["DateTime", "Duration", "Instant", "Interval", "Period"];
 const JODA_NO_METHOD: [&str; 3] = ["LocalDate", "LocalDateTime", "LocalTime"];
 
-fn inside_joda(context: &Context) -> bool {
+pub fn inside_joda(context: &Context) -> bool {
     let package = context.resolver.scope.package.as_str();
     package == "org.joda.time" || package.starts_with("org.joda.time.")
 }

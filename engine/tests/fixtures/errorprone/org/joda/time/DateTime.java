@@ -16,4 +16,24 @@ public class DateTime {
     public DateTime(Chronology chronology) {}
 
     public DateTime(DateTimeZone zone) {}
+
+    public static DateTime now() {
+        return new DateTime();
+    }
+
+    public DateTime plus(long millis) {
+        return this;
+    }
+
+    public DateTime minus(long millis) {
+        return this;
+    }
+
+    public DateTime plus(ReadableDuration duration) {
+        return this;
+    }
+
+    public DateTime minus(ReadableDuration duration) {
+        return this;
+    }
 }

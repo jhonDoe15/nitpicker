@@ -10,4 +10,8 @@ public final class Ints {
   public static int saturatedCast(long value) {
     return (int) value;
   }
+
+  public static int hashCode(int value) {
+    return value;
+  }
 }

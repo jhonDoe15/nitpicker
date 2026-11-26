@@ -220,6 +220,13 @@ mod inject_codegen;
 mod source_text;
 mod annotation_misuse;
 mod tree_to_string;
+mod joda_checks;
+mod numeric_calls;
+mod contextual_misc;
+mod nested_instanceof;
+mod optional_nulls;
+mod mockito_setup;
+mod mock_unused;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -680,6 +687,28 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["InstanceOfAndCastMatchWrongType"], misc_b17::instance_of_and_cast_match_wrong_type),
     (&["IntFloatConversion"], misc_b17::int_float_conversion),
     (&["InconsistentHashCode"], hash_code_checks::inconsistent_hash_code),
+    (&["JodaInstantWithMillis"], joda_checks::joda_instant_with_millis),
+    (&["JodaNewPeriod"], joda_checks::joda_new_period),
+    (&["JodaPlusMinusLong"], joda_checks::joda_plus_minus_long),
+    (&["JodaTimeConverterManager"], joda_checks::joda_time_converter_manager),
+    (&["LongFloatConversion"], numeric_calls::long_float_conversion),
+    (&["MathAbsoluteNegative"], numeric_calls::math_absolute_negative),
+    (&["MultipleUnaryOperatorsInMethodCall"], numeric_calls::multiple_unary_operators_in_method_call),
+    (&["NegativeCharLiteral"], numeric_calls::negative_char_literal),
+    (&["LockOnNonEnclosingClassLiteral"], contextual_misc::lock_on_non_enclosing_class_literal),
+    (&["MissingRefasterAnnotation"], contextual_misc::missing_refaster_annotation),
+    (&["MultimapKeys"], contextual_misc::multimap_keys),
+    (&["MultipleParallelOrSequentialCalls"], contextual_misc::multiple_parallel_or_sequential_calls),
+    (&["NamedLikeContextualKeyword"], contextual_misc::named_like_contextual_keyword),
+    (&["LiteEnumValueOf"], contextual_misc::lite_enum_value_of),
+    (&["NestedInstanceOfConditions"], nested_instanceof::nested_instance_of_conditions),
+    (&["NonCanonicalStaticMemberImport"], nested_instanceof::non_canonical_static_member_import),
+    (&["NullOptional"], optional_nulls::null_optional),
+    (&["NullableOptional"], optional_nulls::nullable_optional),
+    (&["NullableConstructor"], optional_nulls::nullable_constructor),
+    (&["OptionalMapToOptional"], optional_nulls::optional_map_to_optional),
+    (&["MockIllegalThrows"], mockito_setup::mock_illegal_throws),
+    (&["MockitoDoSetup"], mockito_setup::mockito_do_setup),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
@@ -703,6 +732,7 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["UnicodeDirectionalityCharacters"], stmt_defects::unicode_directionality_characters),
     (&["UnicodeInCode"], source_text::unicode_in_code),
     (&["TreeToString"], tree_to_string::tree_to_string),
+    (&["MockNotUsedInProduction"], mock_unused::mock_not_used_in_production),
 ];
 
 pub struct ErrorProne;
