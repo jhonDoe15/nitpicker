@@ -101,6 +101,17 @@ describe('knip project config precedence', () => {
     expect(reported(deadCode(root, policy))).toEqual(expected);
   });
 
+  it('reads the report when a config file knip loads prints to stdout', () => {
+    const manifest = { ...MANIFEST, devDependencies: { '@playwright/test': '1.0.0' } };
+    const config =
+      "console.log('[dotenv@17.2.2] injecting env (0) from .env');\nexport default {};\n";
+    const root = createProject({ ...SOURCES, 'playwright.config.ts': config }, manifest);
+    expect(reported(deadCode(root, resolveHeadPolicy({}, root)))).toEqual([
+      ...NITPICKER_ONLY,
+      'unused-dependency @playwright/test',
+    ]);
+  });
+
   it('lays the project config over the JavaScript preset', () => {
     const sources = Object.fromEntries(
       Object.entries(SOURCES).map(([name, text]) => [name.replace(/\.ts$/u, '.js'), text]),
