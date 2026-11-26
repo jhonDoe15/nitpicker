@@ -40,12 +40,13 @@ export function isEarlyExit(
   sourceCode: SourceCode,
   statement: TSESTree.Node | undefined,
   name: string,
+  settled: (test: TSESTree.Node) => boolean = isSettled,
 ): boolean {
   return (
     statement?.type === AST_NODE_TYPES.IfStatement &&
     statement.alternate === null &&
     endsInExit(statement.consequent) &&
-    isSettled(statement.test) &&
+    settled(statement.test) &&
     !readsName(statement.test, name) &&
     !readsName(statement.consequent, name) &&
     !callsReader(sourceCode, statement, name)

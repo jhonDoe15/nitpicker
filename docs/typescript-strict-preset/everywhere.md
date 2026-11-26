@@ -298,8 +298,13 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   same kind. An initializer with an `await` is reported only when the test reads nothing but
   parameters and `const` names, since other state may change while it waits. Calls of project
   functions, `sort` and other changes in place, clocks and ids, a test that reads `x`, an initializer
-  that is a `?:`, `&&` or `||`, and an exit that calls a local function reading `x` are not reported. Allowed form: declare the value below the exit; keep it above only when its error must
-  be raised on the early path too.
+  that is a `?:`, `&&` or `||`, and an exit that calls a local function reading `x` are not reported. Inside a loop
+  body or an iteration callback it also reports a type checker query (`checker.getTypeAtLocation`,
+  `getSymbolAtLocation`, `getResolvedSignature`, `typeToString` and the like on a receiver named
+  `checker` or `...Checker`) made before such an exit whose test calls only `is...` or `has...`
+  guards on plain arguments (`if (!ts.isCallExpression(node)) continue;`): the query is paid for every
+  element the guard throws away. Allowed form: declare the value below the exit; keep it above only
+  when its error must be raised on the early path too.
 - `nitpicker/no-read-all-before-pass`: every input read into memory before a single pass over
   them, in all production code (not in tests). It reports a `const` array filled with one file read
   per element, `await Promise.all(xs.map((x) => readFile(x)))`, `xs.map((x) =>

@@ -16,6 +16,7 @@ export const REPEATED_WORK_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/repeated-calls/no-repeated-call.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/early-exits/pure-work.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/early-exits/early-guards.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/repeated-work/early-exits/type-queries.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/early-exits/no-work-before-early-exit.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/read-all/input-reads.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/read-all/filled-lists.mjs',
