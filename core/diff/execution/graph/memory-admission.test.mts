@@ -124,8 +124,7 @@ describe('a 15,300-file project on a 4-core, 10 GB budget', () => {
     expect(
       withNodeHeap(
         { NITPICKER_MAX_PARALLEL: '4' },
-        { memory: 16 * GIB, defaultLimit: 2 * GIB },
-        11_750,
+        { budget: { memory: 16 * GIB, defaultLimit: 2 * GIB }, admittedMegabytes: 11_750 },
       ),
     ).toEqual({
       NITPICKER_MAX_PARALLEL: '4',
@@ -139,9 +138,10 @@ describe('a 15,300-file project on a 4-core, 10 GB budget', () => {
       expect(
         withNodeHeap(
           { NODE_OPTIONS: '--max-old-space-size=4096' },
-          { memory: 16 * GIB, defaultLimit: 2 * GIB },
-          0,
-          { node: '24.0.0', ...versions },
+          {
+            budget: { memory: 16 * GIB, defaultLimit: 2 * GIB },
+            versions: { node: '24.0.0', ...versions },
+          },
         ),
       ).toEqual({ NODE_OPTIONS: '--max-old-space-size=4096' });
     },

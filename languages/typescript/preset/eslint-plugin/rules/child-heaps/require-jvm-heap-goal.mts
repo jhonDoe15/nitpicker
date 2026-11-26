@@ -1,7 +1,13 @@
-import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type { SourceContext } from '../analysis/constant-resolution.mts';
-import { nameOf } from '../typed/node-views.mts';
-import { childCall, childStarts, envKeys, staticArguments, staticText } from './child-calls.mts';
+import {
+  childCall,
+  childStarts,
+  envKeys,
+  isCommand,
+  staticArguments,
+  staticText,
+} from './child-calls.mts';
 import { startsRepeatedly } from './repeated-starts.mts';
 
 const JAVA_COMMAND = /(?:^|[/\\])java(?:\.exe)?$/;
@@ -10,19 +16,14 @@ const CEILINGS = ['-Xmx', '-XX:MaxRAMPercentage=', '-XX:MaxRAM='];
 const GOALS = ['-XX:GCTimeRatio=', '-XX:SoftMaxHeapSize=', '-XX:MaxHeapFreeRatio='];
 const OPTION_VARIABLES = ['JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS', '_JAVA_OPTIONS'];
 
-function isJava(context: SourceContext, command: TSESTree.Node | undefined): boolean {
-  const text = staticText(context, command);
-  if (text !== undefined) {
-    return JAVA_COMMAND.test(text);
-  }
-  const name = command?.type === AST_NODE_TYPES.MemberExpression ? command.property : command;
-  return JAVA_NAMES.test(nameOf(name) ?? '');
+const JAVA = { path: JAVA_COMMAND, name: JAVA_NAMES };
+
+function hasPrefix(flags: readonly string[], prefixes: readonly string[]): boolean {
+  return flags.some((flag) => prefixes.some((prefix) => flag.startsWith(prefix)));
 }
 
 function ceilingWithoutGoal(flags: readonly string[]): boolean {
-  const has = (prefixes: readonly string[]) =>
-    flags.some((flag) => prefixes.some((prefix) => flag.startsWith(prefix)));
-  return has(CEILINGS) && !has(GOALS);
+  return hasPrefix(flags, CEILINGS) && !hasPrefix(flags, GOALS);
 }
 
 function optionFlags(
@@ -40,7 +41,7 @@ function optionFlags(
 
 function missesGoal(context: SourceContext, call: TSESTree.CallExpression): boolean {
   const { command, args, options } = childCall(context, call);
-  const java = isJava(context, command);
+  const java = isCommand(context, command, JAVA);
   const argumentFlags = java && args !== undefined ? staticArguments(context, args) : [];
   return (
     argumentFlags !== undefined &&

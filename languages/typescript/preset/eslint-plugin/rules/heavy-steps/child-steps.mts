@@ -28,40 +28,35 @@ function startsChildDirectly(node: TSESTree.Node, bindings: ModuleBindings): boo
   return STARTS.has(calleeMethod(node.callee, bindings) ?? '');
 }
 
-export function stepCall(
-  init: TSESTree.Node | null | undefined,
-): TSESTree.CallExpression | undefined {
-  const value = init === null || init === undefined ? undefined : unwrapOf(init, WRAPPERS);
+export function stepCall(init: TSESTree.Node | undefined): TSESTree.CallExpression | undefined {
+  const value = init === undefined ? undefined : unwrapOf(init, WRAPPERS);
   return value?.type === AST_NODE_TYPES.CallExpression ? value : undefined;
 }
 
-export type ChildBodies = Map<TSESTree.Node, boolean>;
-
-function bodyStartsChild(
-  body: TSESTree.Node,
-  bindings: ModuleBindings,
-  known: ChildBodies,
-): boolean {
-  const cached = known.get(body);
-  if (cached !== undefined) {
-    return cached;
-  }
-  const starts = [...depthFirst<TSESTree.Node>(body, nodeChildren)].some((node) =>
-    startsChildDirectly(node, bindings),
-  );
-  known.set(body, starts);
-  return starts;
-}
-
-export function startsChild(
+export type ChildStarter = (
   context: SourceContext,
   call: TSESTree.CallExpression,
   bindings: ModuleBindings,
-  known: ChildBodies,
-): boolean {
-  if (startsChildDirectly(call, bindings)) {
-    return true;
+) => boolean;
+
+export function childStarter(): ChildStarter {
+  const known = new Map<TSESTree.Node, boolean>();
+  function bodyStartsChild(body: TSESTree.Node, bindings: ModuleBindings): boolean {
+    const cached = known.get(body);
+    if (cached !== undefined) {
+      return cached;
+    }
+    const starts = [...depthFirst<TSESTree.Node>(body, nodeChildren)].some((node) =>
+      startsChildDirectly(node, bindings),
+    );
+    known.set(body, starts);
+    return starts;
   }
-  const body = resolveFunction(context, call.callee)?.body;
-  return body !== undefined && body !== null && bodyStartsChild(body, bindings, known);
+  return function startsChild(context, call, bindings) {
+    if (startsChildDirectly(call, bindings)) {
+      return true;
+    }
+    const body = resolveFunction(context, call.callee)?.body;
+    return body !== undefined && body !== null && bodyStartsChild(body, bindings);
+  };
 }

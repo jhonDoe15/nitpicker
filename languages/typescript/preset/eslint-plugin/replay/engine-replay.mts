@@ -4,6 +4,7 @@ import type { Rule } from 'eslint';
 import { engineFindingsFile } from '../../../../../shared/engine/engine-findings-file.mts';
 import { cachedValue } from '../../../../../shared/values/caching/cached-value.mts';
 import { fieldOf, listOf, parseJson } from '../../../../../shared/values/readers.mts';
+import { FINDING_KIND, isSetKind, type SetKind } from './replay-file.mts';
 
 type Place = { readonly line: number; readonly column: number };
 type Conditions = readonly (readonly [string, string])[];
@@ -40,40 +41,49 @@ function placeOf(line: unknown, column: unknown): Place | undefined {
     : undefined;
 }
 
-function stringsOf(written: unknown, field: string): Set<string> {
-  return new Set(listOf(fieldOf(written, field)).map(String));
+function reportFrom(row: unknown): { readonly key: string; readonly report: Report } | undefined {
+  const [name, ruleId, line, column, message, endLine, endColumn, conditions] = listOf(row);
+  const start = placeOf(line, column);
+  if (start === undefined) {
+    return undefined;
+  }
+  const report = {
+    message: String(message),
+    start,
+    end: placeOf(endLine, endColumn),
+    conditions: listOf(conditions).map((pair) => {
+      const [kind, value] = listOf(pair).map(String);
+      return [kind ?? '', value ?? ''] as const;
+    }),
+  };
+  return { key: reportKey(String(name), String(ruleId)), report };
 }
 
 function readReplay(file: string): Replay {
-  const written = parseJson(readFileSync(file, 'utf8'));
+  const sets: Record<SetKind, Set<string>> = {
+    file: new Set(),
+    rule: new Set(),
+    typedFile: new Set(),
+    typedRule: new Set(),
+  };
   const reports = new Map<string, Report[]>();
-  for (const row of listOf(fieldOf(written, 'findings'))) {
-    const [name, ruleId, line, column, message, endLine, endColumn, conditions] = listOf(row);
-    const start = placeOf(line, column);
-    if (start !== undefined) {
-      const key = reportKey(String(name), String(ruleId));
-      const report = {
-        message: String(message),
-        start,
-        end: placeOf(endLine, endColumn),
-        conditions: listOf(conditions).map((pair) => {
-          const [kind, value] = listOf(pair).map(String);
-          return [kind ?? '', value ?? ''] as const;
-        }),
-      };
-      const group = reports.get(key);
-      if (group === undefined) {
-        reports.set(key, [report]);
-      } else {
-        group.push(report);
-      }
+  for (const line of readFileSync(file, 'utf8').split(/\r\n|\r|\n/u)) {
+    const [kind, value] = line === '' ? [] : listOf(parseJson(line));
+    if (isSetKind(kind)) {
+      sets[kind].add(String(value));
+    }
+    const found = kind === FINDING_KIND ? reportFrom(value) : undefined;
+    if (found !== undefined) {
+      const group = reports.get(found.key) ?? [];
+      group.push(found.report);
+      reports.set(found.key, group);
     }
   }
   return {
-    covered: stringsOf(written, 'files'),
-    rules: stringsOf(written, 'rules'),
-    typedCovered: stringsOf(written, 'typedFiles'),
-    typedRules: stringsOf(written, 'typedRules'),
+    covered: sets.file,
+    rules: sets.rule,
+    typedCovered: sets.typedFile,
+    typedRules: sets.typedRule,
     reports,
   };
 }

@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
+import { unwrapAwait } from '../typed/node-views.mts';
 import { calleeNameOf } from '../typed/syntax-views.mts';
 
 const { DefinitionType } = TSESLint.Scope;
@@ -19,10 +20,6 @@ function isFetchCall(node: TSESTree.Node | undefined): boolean {
       callee.object.type === AST_NODE_TYPES.Identifier &&
       FETCH_OWNERS.has(callee.object.name))
   );
-}
-
-function unwrapAwait(node: TSESTree.Node | undefined): TSESTree.Node | undefined {
-  return node?.type === AST_NODE_TYPES.AwaitExpression ? node.argument : node;
 }
 
 function isThenCallbackOfFetch(param: TSESTree.Identifier): boolean {

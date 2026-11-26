@@ -1,4 +1,5 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { nameText } from '../../typed/node-views.mts';
 import { isFunction } from '../../typed/syntax-views.mts';
 
 export type FunctionLookup = {
@@ -11,10 +12,6 @@ type Found =
   | { readonly kind: 'forwarded'; readonly lookup: FunctionLookup };
 
 const DEFAULT = 'default';
-
-function nameText(node: TSESTree.Identifier | TSESTree.StringLiteral): string {
-  return node.type === AST_NODE_TYPES.Identifier ? node.name : node.value;
-}
 
 function declaredFunction(
   declaration: TSESTree.Node | undefined,
@@ -80,12 +77,14 @@ function defaultExport(program: TSESTree.Program, file: string): Found | undefin
     : undefined;
 }
 
-function listedExport(
-  statement: TSESTree.ExportNamedDeclaration,
-  program: TSESTree.Program,
-  file: string,
-  name: string,
-): Found | undefined {
+type ExportQuery = {
+  readonly statement: TSESTree.ExportNamedDeclaration;
+  readonly program: TSESTree.Program;
+  readonly file: string;
+  readonly name: string;
+};
+
+function listedExport({ statement, program, file, name }: ExportQuery): Found | undefined {
   const specifier = statement.specifiers.find(
     (each) => nameText(each.exported) === name && statement.exportKind !== 'type',
   );
@@ -111,7 +110,7 @@ export function exportedFunction(
       continue;
     }
     const fn = declaredFunction(statement.declaration ?? undefined, name);
-    const found = fn === undefined ? listedExport(statement, program, file, name) : undefined;
+    const found = fn === undefined ? listedExport({ statement, program, file, name }) : undefined;
     if (fn !== undefined) {
       return { kind: 'function', fn };
     }

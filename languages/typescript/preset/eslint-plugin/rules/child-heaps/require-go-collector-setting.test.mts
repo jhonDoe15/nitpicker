@@ -36,7 +36,7 @@ tester.run('require-go-collector-setting', rule, {
       "export const f = (tsgoPath) => spawn(tsgoPath, ['--lsp'], { env: { ...process.env, NODE_ENV: 'x' } });",
     ),
     invalid(
-      'const bin = `${root}/node_modules/@typescript/native-preview/bin/tsgo`; spawn(bin, []);',
+      `const bin = \`\${root}/node_modules/@typescript/native-preview/bin/tsgo\`; spawn(bin, []);`,
     ),
   ],
 });

@@ -23,29 +23,53 @@ function bytesAt(handle: number, start: number, length: number): Buffer {
   return buffer;
 }
 
-function entryNamed(handle: number, size: number, name: string): ZipEntry | 'zip64' | undefined {
-  const tailStart = Math.max(0, size - (END_SIZE + MAX_COMMENT + MAX_TRAILING));
-  const tail = bytesAt(handle, tailStart, size - tailStart);
-  const end = endOfDirectory(tail);
-  const locator = end - ZIP64_LOCATOR_SIZE;
-  if (locator >= 0 && tail.readUInt32LE(locator) === ZIP64_LOCATOR) {
-    return 'zip64';
-  }
-  const { start, count, prefix } = directoryStart(tail);
-  const filePrefix = prefix + tailStart;
-  const first = start + filePrefix;
-  const length = tailStart + end - first;
-  const directory =
-    first >= tailStart ? tail.subarray(first - tailStart, end) : bytesAt(handle, first, length);
-  let offset = 0;
-  for (let index = 0; index < count && offset < directory.length; index += 1) {
-    const { entry, next } = readEntry(directory, { offset, prefix: filePrefix });
+type Tail = { readonly bytes: Buffer; readonly start: number; readonly end: number };
+
+function directoryBytes(
+  handle: number,
+  tail: Tail,
+  directory: { start: number; prefix: number },
+): Buffer {
+  const first = directory.start + directory.prefix;
+  return first >= tail.start
+    ? tail.bytes.subarray(first - tail.start, tail.end)
+    : bytesAt(handle, first, tail.start + tail.end - first);
+}
+
+function namedEntry(
+  directory: Buffer,
+  { count, prefix }: { count: number; prefix: number },
+  name: string,
+): ZipEntry | undefined {
+  const offsets = count > 0 && directory.length > 0 ? [0] : [];
+  for (const offset of offsets) {
+    const { entry, next } = readEntry(directory, { offset, prefix });
     if (entry.name === name) {
       return entry;
     }
-    offset = next;
+    if (offsets.length < count && next < directory.length) {
+      offsets.push(next);
+    }
   }
   return undefined;
+}
+
+function entryNamed(handle: number, size: number, name: string): ZipEntry | 'zip64' | undefined {
+  const tailStart = Math.max(0, size - (END_SIZE + MAX_COMMENT + MAX_TRAILING));
+  const bytes = bytesAt(handle, tailStart, size - tailStart);
+  const end = endOfDirectory(bytes);
+  const locator = end - ZIP64_LOCATOR_SIZE;
+  if (locator >= 0 && bytes.readUInt32LE(locator) === ZIP64_LOCATOR) {
+    return 'zip64';
+  }
+  const { start, count, prefix } = directoryStart(bytes);
+  const filePrefix = prefix + tailStart;
+  const directory = directoryBytes(
+    handle,
+    { bytes, start: tailStart, end },
+    { start, prefix: filePrefix },
+  );
+  return namedEntry(directory, { count, prefix: filePrefix }, name);
 }
 
 function entryText(handle: number, entry: ZipEntry): string {

@@ -57,23 +57,23 @@ function isArrayPattern(node: TSESTree.Node): node is TSESTree.ArrayPattern {
   return node.type === AST_NODE_TYPES.ArrayPattern;
 }
 
-function isObjectPattern(node: TSESTree.Node): node is TSESTree.ObjectPattern {
-  return node.type === AST_NODE_TYPES.ObjectPattern;
+function propertyValues(node: TSESTree.Node): TSESTree.Node[] {
+  return node.type === AST_NODE_TYPES.ObjectPattern
+    ? node.properties.flatMap((property) =>
+        property.type === AST_NODE_TYPES.Property ? [property.value] : [],
+      )
+    : [];
 }
 
 function nestedArrayPatterns(root: TSESTree.ObjectPattern): TSESTree.ArrayPattern[] {
   const found: TSESTree.ArrayPattern[] = [];
-  const pending = [root];
-  for (const pattern of pending) {
-    const values = pattern.properties.flatMap((property) =>
-      property.type === AST_NODE_TYPES.Property ? [property.value] : [],
-    );
-    for (const value of values) {
-      if (isArrayPattern(value)) {
-        found.push(value);
-      } else if (isObjectPattern(value)) {
-        pending.push(value);
-      }
+  const pending: TSESTree.Node[] = [root];
+  for (const node of pending) {
+    if (isArrayPattern(node)) {
+      found.push(node);
+    }
+    for (const value of propertyValues(node)) {
+      pending.push(value);
     }
   }
   return found;

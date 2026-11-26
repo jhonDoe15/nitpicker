@@ -31,21 +31,22 @@ export function cellAt(table: Int32Array, index: number): number {
 export function suffixTable<Item>(
   left: readonly Item[],
   right: readonly Item[],
-  cellValue: (table: Int32Array, width: number, i: number, j: number) => number,
+  cellValue: (grid: Table, i: number, j: number) => number,
 ): Table {
   const width = right.length + 1;
   const table = new Int32Array((left.length + 1) * width);
+  const grid = { table, width };
   const columns = [...right.keys()].toReversed();
   for (const i of [...left.keys()].toReversed()) {
     for (const j of columns) {
-      table[i * width + j] = cellValue(table, width, i, j);
+      table[i * width + j] = cellValue(grid, i, j);
     }
   }
-  return { table, width };
+  return grid;
 }
 
 function lcsCell(left: readonly string[], right: readonly string[]) {
-  return (table: Int32Array, width: number, i: number, j: number): number =>
+  return ({ table, width }: Table, i: number, j: number): number =>
     left[i] === right[j]
       ? cellAt(table, (i + 1) * width + j + 1) + 1
       : Math.max(cellAt(table, (i + 1) * width + j), cellAt(table, i * width + j + 1));

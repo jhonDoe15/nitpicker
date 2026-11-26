@@ -1,6 +1,6 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import { enclosingLoop } from '../loops/loop-shapes.mts';
-import { nameOf } from '../typed/node-views.mts';
+import { nameOf, type FileContext } from '../typed/node-views.mts';
 import { openerCallback } from '../transactions/clients.mts';
 import { WRITE_OPTIONS_SCHEMA, type WriteOptions } from '../transactions/writes-in-units.mts';
 import {
@@ -8,7 +8,6 @@ import {
   readStatement,
   readsEarlier,
   runsInTransaction,
-  type FileContext,
   type ReadStatement,
 } from './read-calls.mts';
 

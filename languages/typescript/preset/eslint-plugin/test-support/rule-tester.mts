@@ -59,3 +59,10 @@ export function typescriptRuleTester(parserOptions?: Linter.ParserOptions): Type
 export function cases(codes: readonly string[]): { code: string }[] {
   return codes.map((code) => ({ code }));
 }
+
+export function reported(
+  messageId: string,
+  codes: readonly string[],
+): { code: string; errors: { messageId: string }[] }[] {
+  return codes.map((code) => ({ code, errors: [{ messageId }] }));
+}

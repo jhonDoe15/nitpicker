@@ -182,12 +182,14 @@ function leaves(statement: TSESTree.Statement): boolean {
   );
 }
 
-function blocksTask(
-  handle: Handle,
-  block: TSESTree.BlockStatement,
-  index: number,
-  sourceCode: TSESLint.SourceCode,
-): Between | undefined {
+type TaskQuery = {
+  readonly handle: Handle;
+  readonly block: TSESTree.BlockStatement;
+  readonly index: number;
+  readonly sourceCode: TSESLint.SourceCode;
+};
+
+function blocksTask({ handle, block, index, sourceCode }: TaskQuery): Between | undefined {
   if (handle.type === AST_NODE_TYPES.MemberExpression) {
     const path = memberPath(handle) ?? '';
     return memberStartedEarlier(block, index, handle)
@@ -212,7 +214,7 @@ function earlyWaitAt(
   if (wait?.type !== AST_NODE_TYPES.VariableDeclaration || handle === undefined) {
     return undefined;
   }
-  const usesTask = blocksTask(handle, block, index, sourceCode);
+  const usesTask = blocksTask({ handle, block, index, sourceCode });
   if (usesTask === undefined) {
     return undefined;
   }

@@ -1,12 +1,9 @@
 import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable } from '../../analysis/constant-resolution.mts';
+import type { FileContext } from '../../typed/node-views.mts';
 import { nodesOutsideNestedFunctions } from '../react-effects.mts';
 import { BROWSER_GLOBALS, isBrowserTestHook } from './reach/browser-hooks.mts';
 
-export type FileContext = {
-  readonly sourceCode: TSESLint.SourceCode;
-  readonly filename: string;
-};
 type SourceCode = TSESLint.SourceCode;
 
 const { ScopeType } = TSESLint.Scope;
