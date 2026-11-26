@@ -4,6 +4,7 @@ import { decoratorNames } from '../contracts/decorators.mts';
 import { packageOf } from '../contracts/infrastructure-types.mts';
 import { findInType } from '../contracts/type-walk.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
+import { compareText } from '../../../../../../shared/paths/path-order.mts';
 
 export type Entity = { readonly name: string; readonly orm: string };
 
@@ -147,13 +148,6 @@ function entityOf(checker: TypeScript.TypeChecker, type: TypeScript.Type): Entit
   const orm = (type.flags & ts.TypeFlags.Object) === 0 ? undefined : classOrm(checker, type);
   const name = orm === undefined ? undefined : entityName(checker, type, orm);
   return orm === undefined || name === undefined ? undefined : { name, orm };
-}
-
-function compareText(left: string, right: string): number {
-  if (left === right) {
-    return 0;
-  }
-  return left < right ? -1 : 1;
 }
 
 export function entitiesIn(checker: TypeScript.TypeChecker, type: TypeScript.Type): Entity[] {
