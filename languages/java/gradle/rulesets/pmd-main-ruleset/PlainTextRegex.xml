@@ -4,8 +4,24 @@
     <properties>
       <property name="xpath">
         <value><![CDATA[
+let $plain := function($text) { exists($text) and not(matches($text[1], '[\\^$.|?*+()\[\]{}]')) },
+    $named := function($access) {
+      let $init := ($access/ancestor::*[self::ClassBody or self::EnumBody or self::RecordBody]
+            /FieldDeclaration[pmd-java:modifiers() = 'static'][pmd-java:modifiers() = 'final']
+            /VariableDeclarator[VariableId/@Name = $access/@Name])[last()]/*[2],
+          $parts := $init/descendant-or-self::*
+      return if (exists($init) and empty($parts[not(self::StringLiteral or self::InfixExpression[@Operator = '+'])]))
+             then string-join($parts[self::StringLiteral]/string(@ConstValue), '')
+             else ()
+    }
+return
 //MethodCall[pmd-java:matchesSig('java.lang.String#replaceAll(java.lang.String,java.lang.String)')]
-  [ArgumentList/*[1][@CompileTimeConstant = true()][not(matches(@ConstValue, '[\\^$.|?*+()\[\]{}]'))]]
+  [ArgumentList/*[1][@CompileTimeConstant = true()]
+    [$plain(self::*[not(self::VariableAccess or self::FieldAccess)]/@ConstValue)
+     or self::VariableAccess[$plain($named(.))]
+     or self::FieldAccess[*[1][self::ThisExpression or self::TypeExpression[ClassType/@SimpleName =
+          ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration]/@SimpleName]]]
+          [$plain($named(.))]]]
 ]]></value>
       </property>
     </properties>
