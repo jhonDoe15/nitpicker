@@ -1054,9 +1054,6 @@ pub fn null_away(context: &Context, root: Node) {
             flow.observe(&inputs, unit_node, wanted, &mut summary);
         }
         for block in 0..flow.cfg.blocks.len() {
-            if inputs[block].is_none() {
-                continue;
-            }
             flow.copy = flow.cfg.blocks[block].copy;
             for position in 0..flow.cfg.blocks[block].steps.len() {
                 let node = flow.cfg.blocks[block].steps[position];
@@ -1080,7 +1077,7 @@ pub fn null_away(context: &Context, root: Node) {
             }
         }
         for block in 0..flow.cfg.blocks.len() {
-            if let (Some(_), Exit::Branch(test, _, _)) = (&inputs[block], &flow.cfg.blocks[block].exit) {
+            if let Exit::Branch(test, _, _) = &flow.cfg.blocks[block].exit {
                 let test = *test;
                 flow.copy = flow.cfg.blocks[block].copy;
                 if flow.unboxed_test(test) {
