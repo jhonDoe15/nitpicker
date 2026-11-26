@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import { findVariable } from '../analysis/constant-resolution.mts';
 import { depthFirst, nameOf, nodeChildren } from '../typed/node-views.mts';
-import { enclosingFunction, unwrapped } from '../typed/syntax-views.mts';
+import { enclosingFunction, outermostOf, unwrapped } from '../typed/syntax-views.mts';
 import {
   SINGLE_SHAPE_MEMBERS,
   fieldNameOf,
@@ -137,44 +137,57 @@ function aliasField(context: Context, node: TSESTree.Identifier): string | undef
 }
 
 const GUARD_CALL = /^(?:is|has|assert|ensure)[A-Z]/u;
-const SHAPE_LITERALS = new Set([true, false]);
+const COMPARISON_OPERATORS = ['===', '!==', '==', '!='];
+
+function assignmentProbe(node: TSESTree.AssignmentExpression): TSESTree.Node | undefined {
+  return node.left.type === AST_NODE_TYPES.MemberExpression &&
+    !SINGLE_SHAPE_MEMBERS.has(fieldNameOf(node.left) ?? '')
+    ? undefined
+    : node.left;
+}
+
+function binaryProbe(node: TSESTree.BinaryExpression): TSESTree.Node | undefined {
+  if (node.operator === 'instanceof') {
+    return node.left;
+  }
+  if (node.operator === 'in') {
+    return node.right;
+  }
+  return COMPARISON_OPERATORS.includes(node.operator) &&
+    node.right.type === AST_NODE_TYPES.Literal &&
+    typeof node.right.value === 'boolean'
+    ? node.left
+    : undefined;
+}
+
+function calledName(callee: TSESTree.Node): {
+  name: string | undefined;
+  method: string | undefined;
+} {
+  return callee.type === AST_NODE_TYPES.MemberExpression
+    ? { name: nameOf(callee.object), method: nameOf(callee.property) }
+    : { name: nameOf(callee), method: '' };
+}
+
+function callProbe(node: TSESTree.CallExpression): TSESTree.Node | undefined {
+  const { name, method } = calledName(node.callee);
+  return (name === 'Array' && method === 'isArray') ||
+    GUARD_CALL.test(method === '' ? (name ?? '') : (method ?? ''))
+    ? node.arguments[0]
+    : undefined;
+}
 
 function shapeProbe(node: TSESTree.Node): TSESTree.Node | undefined {
-  switch (node.type) {
-    case AST_NODE_TYPES.UnaryExpression:
-      return node.operator === 'typeof' ? node.argument : undefined;
-    case AST_NODE_TYPES.AssignmentExpression:
-      return node.left.type === AST_NODE_TYPES.MemberExpression &&
-        !SINGLE_SHAPE_MEMBERS.has(fieldNameOf(node.left) ?? '')
-        ? undefined
-        : node.left;
-    case AST_NODE_TYPES.BinaryExpression:
-      if (node.operator === 'instanceof') {
-        return node.left;
-      }
-      if (node.operator === 'in') {
-        return node.right;
-      }
-      return ['===', '!==', '==', '!='].includes(node.operator) &&
-        node.right.type === AST_NODE_TYPES.Literal &&
-        SHAPE_LITERALS.has(node.right.value as boolean)
-        ? node.left
-        : undefined;
-    case AST_NODE_TYPES.CallExpression: {
-      const name =
-        node.callee.type === AST_NODE_TYPES.MemberExpression
-          ? nameOf(node.callee.object)
-          : nameOf(node.callee);
-      const method =
-        node.callee.type === AST_NODE_TYPES.MemberExpression ? nameOf(node.callee.property) : '';
-      return (name === 'Array' && method === 'isArray') ||
-        GUARD_CALL.test(method === '' ? (name ?? '') : (method ?? ''))
-        ? node.arguments[0]
-        : undefined;
-    }
-    default:
-      return undefined;
+  if (node.type === AST_NODE_TYPES.UnaryExpression) {
+    return node.operator === 'typeof' ? node.argument : undefined;
   }
+  if (node.type === AST_NODE_TYPES.AssignmentExpression) {
+    return assignmentProbe(node);
+  }
+  if (node.type === AST_NODE_TYPES.BinaryExpression) {
+    return binaryProbe(node);
+  }
+  return node.type === AST_NODE_TYPES.CallExpression ? callProbe(node) : undefined;
 }
 
 function narrowed(context: Context, scope: TSESTree.Node, subject: string): boolean {
@@ -185,10 +198,7 @@ function narrowed(context: Context, scope: TSESTree.Node, subject: string): bool
 }
 
 function fallsBackToObject(context: Context, node: TSESTree.MemberExpression): boolean {
-  let current: TSESTree.Node = node;
-  while (current.parent?.type === AST_NODE_TYPES.ChainExpression) {
-    current = current.parent;
-  }
+  const current = outermostOf(node, [AST_NODE_TYPES.ChainExpression]);
   const parent = current.parent;
   return (
     parent?.type === AST_NODE_TYPES.LogicalExpression &&
@@ -202,7 +212,7 @@ function unwrappedObject(node: TSESTree.Node): TSESTree.Node {
   return leaves.length === 1 && leaves[0] !== undefined ? leaves[0] : node;
 }
 
-export const rule: TSESLint.RuleModule<'singleShape', []> = {
+export const rule: TSESLint.RuleModule<'singleShape'> = {
   meta: {
     type: 'problem',
     docs: {
@@ -233,11 +243,11 @@ export const rule: TSESLint.RuleModule<'singleShape', []> = {
         }
         const scope = enclosingFunction(node) ?? context.sourceCode.ast;
         const subject = object.type === AST_NODE_TYPES.Identifier ? object.name : field;
-        if (
-          !narrowed(context, scope, subject) &&
-          !narrowed(context, scope, field) &&
-          !fallsBackToObject(context, node)
-        ) {
+        if (!(
+          narrowed(context, scope, subject) ||
+          narrowed(context, scope, field) ||
+          fallsBackToObject(context, node)
+        )) {
           context.report({ node, messageId: 'singleShape', data: { field, member } });
         }
       },
