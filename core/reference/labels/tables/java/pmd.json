@@ -276,6 +276,7 @@
   "pmd/UnboundedWait": ["reliability", "async"],
   "pmd/UnclosedInlineResource": ["reliability"],
   "pmd/UnconditionalIfStatement": ["simplification"],
+  "pmd/UnguardedCyclicRecursion": ["bug", "reliability"],
   "pmd/UnguardedOptionList": ["bug"],
   "pmd/UnitTestShouldIncludeAssert": ["tests"],
   "pmd/UnitTestShouldUseAfterAnnotation": ["tests"],

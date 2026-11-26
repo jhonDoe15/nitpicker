@@ -161,6 +161,7 @@ const REVIEW_RULES = new Set([
   'UnguardedOptionList',
   'GrowingProcessArguments',
   'OperandDepthRecursion',
+  'UnguardedCyclicRecursion',
   'DestroyLeavesDescendants',
   'HeadCutErrorOutput',
   'StderrAsFailure',

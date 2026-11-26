@@ -1048,6 +1048,12 @@ function that calls itself with a typed value reached through `cause`, `parents`
 `base` and `getTypeArguments`) when the function has no visited set, map or depth limit. Single-pointer walks (`parent`,
 `next`, `prev`, `owner`), tree children, syntax tree nodes and untyped parameters are not reported.
 
+Cyclic recursion in Java: `pmd/UnguardedCyclicRecursion` (main sources) reports the same walk: a method that calls
+itself, with the same number of arguments, with an element reached from its parameter through `getDependencies()`,
+`getReferences()`, `getInterfaces()`, `getEdges()` and similar getters or fields (through a `for` loop variable, a
+local or a lambda parameter), or with `getCause()` directly, when the method names no visited set or depth and uses no
+`Collection` or `Map` other than its own locals.
+
 Operand depth recursion: `nitpicker/no-operand-depth-recursion` (production source, in `eslint-lint`) and
 `pmd/OperandDepthRecursion` (Java, main sources) report a function that calls itself on both operands of its parameter
 (`left`/`right`, `lhs`/`rhs`, `getLeft()`/`getRight()`, `getLeftOperand()`/`getRightOperand()`) when it names an

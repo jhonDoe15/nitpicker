@@ -258,6 +258,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   result. Add `if (v == null) return ...;`, annotate the method `@Nullable` and handle it,
   or, when the caller knows the value is set, document it with `Objects.requireNonNull(v, "why")`.
 - A function does not call itself, directly or through another function of the file (`pmd/SelfRecursion`): a retry or poll is a loop over attempt numbers, a tree walk is a loop over a worklist (a `Deque` that each step adds the node's children to), flat data uses `map` or `flatMap`. An exception fits only when the recursion is bounded and deliberate.
+- A recursive walk over references that can lead back (`getDependencies()`, `getReferences()`, `getCause()`,
+  `getInterfaces()`) passes a visited `Set` or a depth limit down (`pmd/UnguardedCyclicRecursion`).
 - A walk over both operands of an expression (`getLeft()` and `getRight()`) loops over the left-leaning chain and
   recurses only into the right operand, or takes a depth limit (`pmd/OperandDepthRecursion`).
 - A public method or constructor does not wait a constant it cannot override
