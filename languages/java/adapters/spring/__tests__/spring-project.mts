@@ -160,6 +160,7 @@ const REVIEW_RULES = new Set([
   'ProcessWaitWithoutTimeout',
   'UnguardedOptionList',
   'GrowingProcessArguments',
+  'OperandDepthRecursion',
   'DestroyLeavesDescendants',
   'HeadCutErrorOutput',
   'StderrAsFailure',

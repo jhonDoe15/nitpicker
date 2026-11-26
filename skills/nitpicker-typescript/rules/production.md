@@ -383,6 +383,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   connections (`nitpicker/no-listen-on-all-interfaces`).
 - A recursive walk over a graph that can contain cycles (an error `cause` chain, `parent` links, a recursive type)
   passes a visited `Set` or a depth limit down (`nitpicker/no-unguarded-cyclic-recursion`).
+- A walk over operands stays shallow on generated input: a function does not recurse into both `left` and
+  `right` of its parameter without a depth limit; loop over the left-leaning chain and recurse only into the right
+  operand, or use an explicit stack (`nitpicker/no-operand-depth-recursion`).
 - A stream is decoded and searched as a whole, not chunk by chunk: collect the chunks and decode once, pass
   `{ stream: true }` to a `TextDecoder`, or search an accumulated buffer (`nitpicker/no-chunkwise-stream-text`).
 - A pino, bunyan or winston call keeps every value it is given: the values go in the fields object first

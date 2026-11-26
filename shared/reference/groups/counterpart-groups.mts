@@ -268,4 +268,5 @@ export const GROUPS: readonly Group[] = [
     python: 'mutating-method-in-domain',
     go: 'go-rules/mutating-method-in-domain',
   },
+  { java: 'OperandDepthRecursion', typescript: 'nitpicker/no-operand-depth-recursion' },
 ];

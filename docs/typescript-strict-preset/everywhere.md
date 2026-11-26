@@ -685,6 +685,13 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `ref`: a chain ends), tree children (`children`, `body`, `left`, `right`),
   and parameters typed as syntax tree nodes (`ts.Node`, ESTree nodes) are left alone. Allowed form: pass a `Set` of
   visited values down and return when the value is in it (`if (seen.has(error)) return [];`), or a depth limit.
+- `nitpicker/no-operand-depth-recursion`: a function that calls itself on both operands of its parameter
+  (`node.left` and `node.right`, or `lhs` and `rhs`; also `this.name(...)`) when its text names an operator, a binary
+  or infix node or an operand (an expression walk, not a plain binary tree), and no parameter is named like a depth or
+  limit (`depth`, `level`, `limit`, `remaining`, `budget`) or compared with a limit. The call stack then grows with the
+  length of an operand chain, and generated code (thousands of `+` operands, a long `else if` ladder) overflows it.
+  Allowed form: walk the left-leaning chain in a loop and recurse only into the right operand, use an explicit stack,
+  or pass a depth and stop with an ordinary error past a limit.
 - `nitpicker/no-chunkwise-stream-text` (needs the type checker): stream data decoded or matched one chunk at a time,
   so text or a message split across two chunks breaks. Inside a `'data'` listener (`on`, `once`, `addListener`,
   `prependListener`) or a `for await` loop over a stream, where the chunk is typed `Buffer`, `Uint8Array` or `ArrayBuffer`

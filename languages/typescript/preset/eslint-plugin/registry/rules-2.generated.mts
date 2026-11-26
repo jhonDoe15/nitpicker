@@ -5,6 +5,7 @@ import { rule as ruleNoNodeProcessPerTest } from '../rules/test-runtime/processe
 import { rule as ruleNoNonLatin1HeaderValue } from '../rules/encoding/no-non-latin1-header-value.mts';
 import { rule as ruleNoNull } from '../rules/syntax/no-null.mts';
 import { rule as ruleNoNullBranchFallThrough } from '../rules/null-branches/no-null-branch-fall-through.mts';
+import { rule as ruleNoOperandDepthRecursion } from '../rules/recursion/operands/no-operand-depth-recursion.mts';
 import { rule as ruleNoOperandSlip } from '../rules/operands/no-operand-slip.mts';
 import { rule as ruleNoOrmQueryLogging } from '../rules/database/no-orm-query-logging.mts';
 import { rule as ruleNoOrmSchemaSync } from '../rules/database/no-orm-schema-sync.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-u
 import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
 import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mts';
 import { rule as ruleNoUninjectableDelay } from '../rules/test-runtime/lifecycle/no-uninjectable-delay.mts';
-import { rule as ruleNoUnionOrderDependence } from '../rules/union-order/no-union-order-dependence.mts';
 
 export const partRules = {
   'no-nan-only-check': ruleNoNanOnlyCheck,
@@ -107,6 +107,7 @@ export const partRules = {
   'no-non-latin1-header-value': ruleNoNonLatin1HeaderValue,
   'no-null': ruleNoNull,
   'no-null-branch-fall-through': ruleNoNullBranchFallThrough,
+  'no-operand-depth-recursion': ruleNoOperandDepthRecursion,
   'no-operand-slip': ruleNoOperandSlip,
   'no-orm-query-logging': ruleNoOrmQueryLogging,
   'no-orm-schema-sync': ruleNoOrmSchemaSync,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
   'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
   'no-uninjectable-delay': ruleNoUninjectableDelay,
-  'no-union-order-dependence': ruleNoUnionOrderDependence,
 };

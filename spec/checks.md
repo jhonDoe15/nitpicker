@@ -1048,6 +1048,12 @@ function that calls itself with a typed value reached through `cause`, `parents`
 `base` and `getTypeArguments`) when the function has no visited set, map or depth limit. Single-pointer walks (`parent`,
 `next`, `prev`, `owner`), tree children, syntax tree nodes and untyped parameters are not reported.
 
+Operand depth recursion: `nitpicker/no-operand-depth-recursion` (production source, in `eslint-lint`) and
+`pmd/OperandDepthRecursion` (Java, main sources) report a function that calls itself on both operands of its parameter
+(`left`/`right`, `lhs`/`rhs`, `getLeft()`/`getRight()`, `getLeftOperand()`/`getRightOperand()`) when it names an
+operator, a binary or infix node or an operand, and no parameter is named like a depth or limit or compared with one.
+The stack grows with the length of an operand chain, which generated code makes very long.
+
 Chunkwise stream text: `nitpicker/no-chunkwise-stream-text` (production source, in `eslint-lint`, type-aware) reports,
 inside a `'data'` listener or a `for await` loop over a stream whose chunk is a `Buffer`, `Uint8Array` or untyped
 stream chunk without `setEncoding`, string accumulation of the chunk (`text += chunk`, `chunk.toString()`), a

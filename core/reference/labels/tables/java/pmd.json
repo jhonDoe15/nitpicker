@@ -153,6 +153,7 @@
   "pmd/NullAssignment": ["maintainability"],
   "pmd/NullableLibraryResult": ["bug"],
   "pmd/OneDeclarationPerLine": ["style"],
+  "pmd/OperandDepthRecursion": ["bug", "reliability"],
   "pmd/OppositeBoundAssigned": ["bug"],
   "pmd/OptionalOrElseGetNull": ["bug"],
   "pmd/ParameterMutation": ["maintainability"],

@@ -190,6 +190,7 @@
   "eslint/nitpicker/no-unescaped-pattern-translation": ["bug", "security"],
   "eslint/nitpicker/no-unfiltered-soft-delete-read": ["bug", "persistence"],
   "eslint/nitpicker/no-unguarded-cyclic-recursion": ["bug", "reliability"],
+  "eslint/nitpicker/no-operand-depth-recursion": ["bug", "reliability"],
   "eslint/nitpicker/no-unguarded-deleted-items": ["bug"],
   "eslint/nitpicker/no-unguarded-json-parse": ["bug", "reliability"],
   "eslint/nitpicker/no-unguarded-registry-delete": ["bug", "reliability"],
