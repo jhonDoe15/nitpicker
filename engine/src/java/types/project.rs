@@ -11,6 +11,8 @@ use tree_sitter::Node;
 #[derive(Default)]
 pub struct JavaProject {
     pub index: TypeIndex,
+    /// The source file that declares each class of the run.
+    pub sources: std::collections::HashMap<String, String>,
     /// Classes whose `Class` object the code names: a class literal, or an `assert`, which reads the top class's.
     pub literals: HashSet<String>,
     /// The project's `volatile` fields, as the class that declares them and their name.
@@ -39,9 +41,10 @@ fn stub(name: String) -> ClassInfo {
     ClassInfo { name, ..ClassInfo::default() }
 }
 
-pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>) -> JavaProject {
+pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>, lombok: bool) -> JavaProject {
     let started = std::time::Instant::now();
     let mut index = TypeIndex::default();
+    index.lombok = lombok;
     let mut entries = classpath.to_vec();
     index.load_binaries(&entries);
     // An older release sees the library as it was then: the JDK keeps those signatures in `lib/ct.sym`.
@@ -63,9 +66,13 @@ pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>) 
             found
         })
         .collect();
-    for (_, name) in declared.iter().flatten() {
-        index.put(stub(name.clone()));
-        index.source_classes += 1;
+    let mut sources = std::collections::HashMap::new();
+    for (file, found) in files.iter().zip(&declared) {
+        for (_, name) in found {
+            index.put(stub(name.clone()));
+            index.source_classes += 1;
+            sources.insert(name.clone(), file.path.clone());
+        }
     }
     let each = |index: &TypeIndex, with_members: bool| -> Vec<ClassInfo> {
         files
@@ -80,6 +87,7 @@ pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>) 
                         let mut info = resolver.class_header(*node, name.clone());
                         if with_members {
                             resolver.members(*node, &mut info);
+                            resolver.lombok_members(*node, &mut info);
                         }
                         info
                     })
@@ -115,7 +123,7 @@ pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>) 
     let literals = class_literals(files, &scopes, &index);
     let volatiles = volatile_fields(files, &scopes);
     let numbers = integer_constants(files);
-    JavaProject { index, literals, volatiles, numbers }
+    JavaProject { index, sources, literals, volatiles, numbers }
 }
 
 /// Puts back, as statements of the blanked body, the class literals and `assert` statements that `literals` reads.

@@ -651,28 +651,76 @@ and Go in #2133.
 
 `nitpicker/no-constant-lookup-in-loop` (production source, in `eslint-lint`) reports a DOM lookup on
 `document` by constant arguments in a loop or iteration callback that leaves the page alone, and a
-`new URL(constant)` there of which only parts are read. Java reflective and registry lookups by a
-constant name and the other presets follow in #2133.
+`new URL(constant)` there of which only parts are read. Java has `ConstantLookupInLoop` (main PMD
+ruleset): `getMethod`, `getDeclaredMethod`, `getField`, `getDeclaredField`, `getConstructor` on a class
+literal with literal arguments, and `Class.forName("literal")`, in a loop or iteration callback.
+Kotlin, Python and Go follow in #2133.
 
 `nitpicker/no-subtree-search-per-ancestor` (production source, in `eslint-lint`) reports a loop that
 climbs a parent chain and searches the children or the whole subtree of every level without testing
-the level's kind first. Java, Kotlin, Python and Go follow in #2133.
+the level's kind first. Java has `SubtreeSearchPerAncestor` (main PMD ruleset) for a loop that
+assigns `x = x.getParentNode()` (or `getParent`, `parent`, `getParentElement`, `getEnclosingElement`)
+and searches the subtree of `x`, or of a cast or pattern variable taken from it. Kotlin, Python and
+Go follow in #2133.
 
 `nitpicker/no-repeated-call` (production source, in `eslint-lint`) reports a call made once to test
 its result and again to use it, and a recursive call repeated with the same arguments on one path.
-Java (`resolve(x).isPresent() && resolve(x).get()`), Kotlin, Python and Go follow in #2133.
+Java has `RepeatedCall` (main PMD ruleset): `resolve(x).isPresent() && resolve(x).get()`, a
+`find(x) != null` test followed by `find(x)` in the guarded branch or arm, and a recursive call
+repeated with the same arguments in one statement and branch. The tested call must be named as a
+lookup or computation (`resolve`, `find`, `lookup`, `compute` and similar); a first run over large
+Java projects showed that other names in this position are mostly cheap accessors (`group(n)`,
+`getenv`, getters). Kotlin, Python and Go follow in #2133.
 
 `nitpicker/no-work-before-early-exit` (production source, in `eslint-lint`) reports effect-free
 in-memory work (a collection pass, a `Map` or `Set` built; file reads and parses are left alone, since
 moving them would change which error the exit path raises) declared right before an early exit
 that does not read it, and in a loop or iteration callback a type checker query made before an exit
-whose test makes no call other than `is...` or `has...` guards. Java (where PMD `PrematureDeclaration` treats calls as
-impure and so skips this case), Kotlin, Python and Go follow in #2133.
+whose test makes no call other than `is...` or `has...` guards. Java has `WorkBeforeEarlyExit` (main PMD ruleset), where PMD
+`PrematureDeclaration` treats calls as impure and so skips this case: a stream pass or a collection
+copy right before an `if` without `else` that ends in an exit, makes no calls and does not read the
+local. Inside a loop body, an iteration callback or a `visit*` method (#2184) a local set from a
+lookup or computation (`resolve`, `find`, `compute` and similar) is reported too, and the condition
+may call methods that do not change state: the expensive call is paid for every element the cheap
+test throws away. Kotlin, Python and Go follow in #2133.
 
 `nitpicker/no-read-all-before-pass` (production source, in `eslint-lint`) reports every file read
 into one array that is then only walked once. `nitpicker/no-collected-stream-rows` is the same idea
-for streamed rows. Java (`Files.readString`, `readAllBytes`, `readAllLines`, `ObjectMapper.readValue`),
-Kotlin, Python and Go follow in #2133.
+for streamed rows. Java has `ReadAllBeforePass` (main PMD ruleset): a list filled in a loop, or
+collected from a stream `map`, with `Files.readString`, `readAllBytes`, `readAllLines` or Jackson
+`ObjectMapper.readValue`/`readTree`, then walked once by an enhanced `for`. Kotlin, Python and Go
+follow in #2133.
+
+Java `StatPerListedEntry` (main PMD ruleset, #2070) reports a loop or stream over `Files.list`,
+`Files.walk`, `Files.newDirectoryStream` or `File.listFiles()` that calls `Files.isDirectory`,
+`isRegularFile`, `isSymbolicLink`, `size` or `getLastModifiedTime` (or `File.isDirectory`, `isFile`,
+`length`, `lastModified`) on the entry, and points to `Files.find` or `Files.walkFileTree`, which
+pass the attributes along.
+
+Java `FilteredPositionalPairing` (main PMD ruleset, #2129, label bug) reports two lists read with
+one index of a counting `for` loop where one came from `stream().filter(...)` or had `removeIf` and
+the other was not filtered.
+
+Java `ReplacingCollectionMerge` (main PMD ruleset, #2209, label bug) reports `putAll` of the loop
+element (or of anything in a parallel stream callback), or an unguarded `put` of an entry value
+from a nested `entrySet()` loop or `Map.forEach`, into a map declared with a collection or map value
+type (`Map<K, Set<V>>`) outside the loop or iteration callback that runs it.
+The value type is read from the declaration, so a `var` target is not reported.
+
+Java `RepeatedKeyedScan` (main PMD ruleset, #2210) reports `map.get(key).stream().anyMatch(test)`
+(also `allMatch`, `noneMatch`, `filter`, directly or through a local holding the lookup) in an
+enhanced `for` or iteration callback, where the key reads the loop element and the test reads
+nothing of it. The weaker ordered-comparison form is not reported, as in TypeScript.
+
+Java `LoopInvariantCopy` (main PMD ruleset, #2214, broad) reports a full copy of a collection, map
+or array declared outside a loop or iteration callback and not changed in it (`new ArrayList<>(x)`,
+`List.copyOf(x)`, `x.clone()`, `Arrays.copyOf(x, x.length)`), stored straight away (added, put,
+passed to a constructor, assigned to a field, returned from a `map` callback).
+
+Java `SortedRangeScan` (main PMD ruleset, #2312, Java only) reports an enhanced `for` over a
+`SortedSet` or the key set or entry set of a `SortedMap` whose body is only an `if` testing the
+element against a lower and an upper bound that returns or breaks on the first hit, and suggests
+`subSet`, `tailSet`, `ceiling` or `subMap`.
 
 Sequential reads: `nitpicker/no-sequential-independent-reads` (production source, in `eslint-lint`, report-only) reports
 two or more adjacent `const x = await <read>` statements in one block where no later read uses an earlier result. Reads

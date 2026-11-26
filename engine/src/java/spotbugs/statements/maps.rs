@@ -192,9 +192,14 @@ pub fn check(context: &Context, member: Node, nodes: &[Node], label: &str) {
             None => first.push((read, *node)),
         }
     }
-    for (_, get) in first {
+    for (slot, get) in first {
         if let Some(at) = get.child_by_field_name("name") {
-            context.report("WMI_WRONG_MAP_ITERATOR", at, context.line(at), format!("{label} makes inefficient use of keySet iterator instead of entrySet iterator"));
+            let place = match &slot {
+                Slot::Field(class, name) => super::super::place::member(context, class, name),
+                _ => super::super::place::function(label),
+            };
+            let message = format!("{label} makes inefficient use of keySet iterator instead of entrySet iterator");
+            context.report_placed("WMI_WRONG_MAP_ITERATOR", at, context.line(at), message, place, 2);
         }
     }
 }

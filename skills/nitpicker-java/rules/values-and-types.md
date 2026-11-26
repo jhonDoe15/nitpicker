@@ -164,6 +164,25 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `filter(...).findFirst().isPresent()` or `filter(...).count() > 0`, and `size()` or `isEmpty()` on
   the source instead of on a `toList()` or `new ArrayList<>(source)` copy
   (`pmd/RedundantStreamStep`).
+- Pair two lists by index before you filter either of them, or filter both the same way: after the first
+  dropped entry the positions no longer line up (`pmd/FilteredPositionalPairing`).
+- Merge maps of collections value by value (`computeIfAbsent(key, k -> new HashSet<>()).addAll(values)`),
+  not with `putAll` or `put` in a loop, which keeps only the last source's values of a key
+  (`pmd/ReplacingCollectionMerge`).
+- Answer a question about the collection of a key once per key, not once per element that shares the
+  key (`pmd/RepeatedKeyedScan`).
+- Share one read-only copy of a large collection across the elements of a loop instead of storing a
+  new copy per element (`pmd/LoopInvariantCopy`).
+- Ask a sorted set or map for a range (`subSet`, `tailSet`, `ceiling`, `subMap`) instead of walking it
+  from the start to the first element between two bounds (`pmd/SortedRangeScan`).
+- Do repeated work once: look a reflective member up by its constant name before the loop, not in it
+  (`pmd/ConstantLookupInLoop`); test the kind of a level before you search its subtree while you climb
+  a parent chain (`pmd/SubtreeSearchPerAncestor`); keep the result of `resolve(key)` in a local
+  instead of calling it again after `isPresent()` or a null test, and call a recursive method once per
+  sub-result (`pmd/RepeatedCall`); declare a local after the early exit that does not read it
+  (`pmd/WorkBeforeEarlyExit`); and read and handle one file at a time instead of reading every file
+  into a list that is walked once (`pmd/ReadAllBeforePass`). Walk a directory with `Files.find` or
+  `Files.walkFileTree` when you need the kind or size of each entry (`pmd/StatPerListedEntry`).
 - A `Collectors.toMap`, `toUnmodifiableMap`, `toConcurrentMap` value function and a `groupingBy`
   classifier never return `null` (they throw on it): filter the nulls first, map them
   (`Objects.toString`), or collect into a `HashMap` with `collect(HashMap::new, ..., Map::putAll)`

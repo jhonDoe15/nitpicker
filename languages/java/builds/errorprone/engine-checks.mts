@@ -24,23 +24,13 @@ export const TEST_SENSITIVE: readonly string[] = [
   'ThrowSpecificExceptions',
 ];
 const MODULE_PATH = '--module-path';
-const CHECK_LEVEL = /^-Xep:(\w+)(?::(\w+))?$/u;
-const OFF = 'OFF';
+const CHECK_LEVEL = /^-Xep:(\w+)(?::\w+)?$/u;
 const ENCODING = '-encoding';
 const UTF_8 = /^utf-?8$/iu;
 
-function switchedOff(flags: readonly string[]): readonly string[] | undefined {
-  const off: string[] = [];
-  for (const flag of flags) {
-    const [, check, level] = CHECK_LEVEL.exec(flag) ?? [];
-    if (check === undefined || (ENGINE_CHECKS.includes(check) && level !== OFF)) {
-      return undefined;
-    }
-    if (level === OFF) {
-      off.push(check);
-    }
-  }
-  return off;
+function configuredChecks(flags: readonly string[]): ReadonlySet<string> | undefined {
+  const checks = flags.flatMap((flag) => CHECK_LEVEL.exec(flag)?.slice(1, 2) ?? []);
+  return checks.length === flags.length ? new Set(checks) : undefined;
 }
 
 function readsAsUtf8(head: readonly string[]): boolean {
@@ -49,8 +39,8 @@ function readsAsUtf8(head: readonly string[]): boolean {
 }
 
 export function engineChecksFor(head: readonly string[]): EngineChecks {
-  const off = switchedOff(projectFlags(head));
-  if (off === undefined || runsProcessors(head) || !readsAsUtf8(head)) {
+  const configured = configuredChecks(projectFlags(head));
+  if (configured === undefined || runsProcessors(head) || !readsAsUtf8(head)) {
     return NONE;
   }
   const elsewhere = head.includes(TEST_ONLY) || head.includes(MODULE_PATH);
@@ -58,7 +48,7 @@ export function engineChecksFor(head: readonly string[]): EngineChecks {
   const testOnly = head.includes(TEST_ONLY);
   const checks = ENGINE_CHECKS.filter(
     (check) =>
-      !off.includes(check) &&
+      !configured.has(check) &&
       (check !== NULL_AWAY || packages.length > 0) &&
       !(testOnly && TEST_SENSITIVE.includes(check)),
   );

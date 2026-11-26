@@ -1,0 +1,39 @@
+  <rule name="StatPerListedEntry" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This asks the file system about every entry of a directory listing, one system call per entry, to learn something the listing could have handed over with it. Walk with Files.find(dir, depth, (path, attributes) -> attributes.isRegularFile()) or Files.walkFileTree, which pass the attributes of each entry along.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $listing := function($node) {
+      exists($node/self::MethodCall[@MethodName = ('list', 'walk', 'newDirectoryStream')]
+          [*[1][self::TypeExpression][pmd-java:typeIs('java.nio.file.Files')]]
+        | $node/self::MethodCall[@MethodName = 'listFiles'][*[1][pmd-java:typeIs('java.io.File')]])
+    },
+    $source := function($node) {
+      exists($node/descendant-or-self::MethodCall[$listing(.)]
+        | $node/descendant-or-self::VariableAccess[@Name = ancestor::*[self::MethodDeclaration
+            or self::ConstructorDeclaration or self::Initializer][1]//VariableDeclarator[*[2][$listing(.)]]/VariableId/@Name])
+    },
+    $pathStats := ('isDirectory', 'isRegularFile', 'isSymbolicLink', 'size', 'getLastModifiedTime'),
+    $fileStats := ('isDirectory', 'isFile', 'length', 'lastModified'),
+    $steps := ('forEach', 'forEachOrdered', 'filter', 'map', 'flatMap', 'peek', 'anyMatch', 'allMatch', 'noneMatch',
+      'mapToLong', 'mapToInt', 'sorted', 'collect'),
+    $stat := function($call, $entry) {
+      exists($call[@MethodName = $pathStats][*[1][self::TypeExpression][pmd-java:typeIs('java.nio.file.Files')]]
+          [ArgumentList/*[1][self::VariableAccess][@Name = $entry]]
+        | $call[@MethodName = $fileStats][ArgumentList/@Size = 0]
+          [*[1][self::VariableAccess][@Name = $entry][pmd-java:typeIs('java.io.File')]
+           or *[1][self::MethodCall][@MethodName = 'toFile'][*[1][self::VariableAccess][@Name = $entry]]])
+    }
+return
+//ForeachStatement[$source(*[2])]
+  /*[3]//MethodCall[$stat(., ancestor::ForeachStatement[1]/LocalVariableDeclaration//VariableId/@Name)]
+|
+//MethodCall[@MethodName = $steps][$source(*[1])]/ArgumentList
+  /(LambdaExpression//MethodCall[$stat(., ancestor::LambdaExpression[last()]/LambdaParameterList//VariableId/@Name)]
+    | MethodReference[@MethodName = $pathStats][*[1][self::TypeExpression][pmd-java:typeIs('java.nio.file.Files')]]
+    | MethodReference[@MethodName = $fileStats][*[1][self::TypeExpression][pmd-java:typeIs('java.io.File')]])
+]]></value>
+      </property>
+    </properties>
+  </rule>

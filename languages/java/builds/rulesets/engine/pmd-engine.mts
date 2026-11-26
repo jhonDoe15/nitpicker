@@ -25,7 +25,7 @@ import {
 } from '../../../../../shared/values/readers.mts';
 import { resolvedRulesets, rulesetReader, type ResolvedRule } from './pmd-catalog.mts';
 import { onlyFiles, renderedRuleset, type RulesetScope } from './pmd-render.mts';
-import { engineRule, portablePattern, ruleLevel, runsOnEngine } from './pmd-rule-parts.mts';
+import { engineRule, portablePattern, ruleLevel, runsOnEngine, runsOnPmd } from './pmd-rule-parts.mts';
 
 export type PmdEnginePlan = {
   readonly reportDir: string;
@@ -82,7 +82,7 @@ function splitOf(file: string, resolve: Resolve): Split | Unresolved {
       include,
       exclude,
       onEngine: rules.filter(runsOnEngine),
-      onPmd: rules.filter((rule) => !runsOnEngine(rule)),
+      onPmd: rules.filter(runsOnPmd),
     };
   } catch (error) {
     return { unresolved: error };

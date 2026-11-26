@@ -63,7 +63,7 @@ pub fn abstract_class_without_abstract_method(ctx: &Ctx, out: &mut Vec<Hit>) {
     }
 }
 
-fn read_usage(ctx: &Ctx, usage: u32) -> bool {
+pub fn read_usage(ctx: &Ctx, usage: u32) -> bool {
     if ctx.text(usage, "AccessType") == "READ" {
         return true;
     }

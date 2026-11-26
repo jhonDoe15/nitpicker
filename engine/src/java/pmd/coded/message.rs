@@ -2,7 +2,7 @@
 //! rule gives, then `${name}` replaced by the variable the finding is about or by a rule property.
 use super::ctx::Ctx;
 
-const EXPRESSIONS: &[&str] = &[
+pub(super) const EXPRESSIONS: &[&str] = &[
     "AmbiguousName",
     "ArrayAccess",
     "ArrayAllocation",

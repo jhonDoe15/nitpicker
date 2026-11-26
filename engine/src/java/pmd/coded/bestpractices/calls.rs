@@ -81,3 +81,32 @@ pub fn use_enum_collections(ctx: &Ctx, out: &mut Vec<Hit>) {
         }
     }
 }
+
+fn constant_string(ctx: &Ctx, id: Option<u32>) -> bool {
+    use crate::java::pmd::coded::constants::{Const, const_value};
+    id.is_some_and(|id| {
+        ctx.is(id, "StringLiteral") || matches!(const_value(ctx, id), Ok(Some(Const::Text(_))))
+    })
+}
+
+pub fn literals_first_in_comparisons(ctx: &Ctx, out: &mut Vec<Hit>) {
+    for &call in ctx.all("MethodCall") {
+        let arguments = ctx.arguments(call);
+        let [argument] = arguments.as_slice() else { continue };
+        let checked = match ctx.method_name(call).as_str() {
+            "equals" => ctx
+                .formals(call)
+                .is_none_or(|formals| {
+                    matches!(formals.as_slice(), [Type::Class(name, _)] if name == "java.lang.Object")
+                }),
+            "equalsIgnoreCase" | "compareTo" | "compareToIgnoreCase" | "contentEquals" => {
+                ctx.declaring(call).as_deref() == Some("java.lang.String")
+            }
+            _ => false,
+        };
+        let qualifier = ctx.qualifier(call);
+        if checked && qualifier.is_some() && !constant_string(ctx, qualifier) && constant_string(ctx, Some(*argument)) {
+            out.push(hit(call));
+        }
+    }
+}
