@@ -14,6 +14,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::RwLock;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 type Key = (String, String, String, u8);
 
@@ -22,16 +23,24 @@ const ROUNDS: u8 = 2;
 /// How many files each thread keeps parsed.
 const KEPT: usize = 32;
 
+static RUNS: AtomicU64 = AtomicU64::new(0);
+
 thread_local! {
     /// The round answers are asked for on this thread: `ROUNDS` outside, one less inside each method worked out.
     static ROUND: Cell<Option<u8>> = const { Cell::new(None) };
-    static PARSED: RefCell<Vec<(String, Rc<Parsed>)>> = const { RefCell::new(Vec::new()) };
+    static PARSED: RefCell<Vec<((u64, String), Rc<Parsed>)>> = const { RefCell::new(Vec::new()) };
 }
 
-#[derive(Default)]
 pub struct Elsewhere {
+    run: u64,
     dereferences: RwLock<HashMap<Key, u64>>,
     never_null: RwLock<HashMap<Key, bool>>,
+}
+
+impl Default for Elsewhere {
+    fn default() -> Self {
+        Elsewhere { run: RUNS.fetch_add(1, Ordering::Relaxed), dereferences: RwLock::default(), never_null: RwLock::default() }
+    }
 }
 
 fn key(call: &Call, round: u8) -> Key {
@@ -45,8 +54,8 @@ struct Parsed {
     memory: RefCell<Memory>,
 }
 
-fn parsed(path: &str) -> Option<Rc<Parsed>> {
-    let kept = PARSED.with(|kept| kept.borrow().iter().find(|(known, _)| known == path).map(|(_, parsed)| parsed.clone()));
+fn parsed(run: u64, path: &str) -> Option<Rc<Parsed>> {
+    let kept = PARSED.with(|kept| kept.borrow().iter().find(|((known_run, known), _)| *known_run == run && known == path).map(|(_, parsed)| parsed.clone()));
     if kept.is_some() {
         return kept;
     }
@@ -58,7 +67,7 @@ fn parsed(path: &str) -> Option<Rc<Parsed>> {
         if kept.len() >= KEPT {
             kept.remove(0);
         }
-        kept.push((path.to_string(), parsed.clone()));
+        kept.push(((run, path.to_string()), parsed.clone()));
     });
     Some(parsed)
 }
@@ -74,7 +83,7 @@ impl Elsewhere {
         if let Some(known) = cache.read().ok()?.get(&wanted) {
             return Some(*known);
         }
-        let parsed = parsed(path)?;
+        let parsed = parsed(self.run, path)?;
         let resolver = Resolver::remembering(&project.index, &parsed.file, &parsed.scope, parsed.memory.take());
         let (context, _) = Context::of(&resolver, project, self, Some(Vec::new()));
         let outer = ROUND.replace(Some(round - 1));
