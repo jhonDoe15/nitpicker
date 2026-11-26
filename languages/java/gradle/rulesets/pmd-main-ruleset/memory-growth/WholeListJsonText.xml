@@ -1,0 +1,51 @@
+  <rule name="WholeListJsonText" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This list grows with the input and is turned into one string (or read back from one) before it is written. A Java string holds at most about 2 billion characters, and below that the text still doubles the memory of the data. Write and read one element at a time: a JsonGenerator or SequenceWriter (one element per line) to write, a MappingIterator or a line reader to read.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $mapper := 'com.fasterxml.jackson.databind.ObjectMapper',
+    $loops := function($node) {
+      exists($node/ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement
+        or self::LambdaExpression])
+    },
+    $grows := function($list) {
+      $list[pmd-java:typeIs('java.util.Collection')]
+        [matches(@Name, '^(results|findings|files|rows|records)$|[a-z0-9](Results|Findings|Files|Rows|Records)$')
+         or (let $name := @Name
+             return exists(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+               //MethodCall[@MethodName = ('add', 'addAll')][*[1][self::VariableAccess[@Name = $name]]]
+                 [$loops(.)]))]
+    },
+    $text := function($value) {
+      $value[self::MethodCall[@MethodName = 'writeValueAsString'][*[1][pmd-java:typeIs($mapper)]]
+               [exists($grows(ArgumentList/*[1][self::VariableAccess or self::FieldAccess]))]
+             or self::MethodCall[pmd-java:matchesSig('java.lang.String#join(_*)')][ArgumentList/@Size = 2]
+               [exists($grows(ArgumentList/*[2][self::VariableAccess or self::FieldAccess]))]
+             or self::MethodCall[@MethodName = 'collect']
+               [ArgumentList/*[1][self::MethodCall[@MethodName = 'joining']]]
+               [*[1][self::MethodCall[@MethodName = 'stream'][ArgumentList/@Size = 0]]
+                 [exists($grows(*[1][self::VariableAccess or self::FieldAccess]))]]]
+    },
+    $written := function($argument) {
+      let $bytes := $argument[self::MethodCall[@MethodName = 'getBytes']],
+          $value := ($bytes/*[1] | $argument[empty($bytes)]),
+          $name := $value[self::VariableAccess]/@Name,
+          $local := $argument/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+            //LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name]/*[2]
+      return exists($text($value) | $text($local))
+    }
+return
+//MethodCall[pmd-java:matchesSig('java.nio.file.Files#writeString(_*)')
+             or pmd-java:matchesSig('java.nio.file.Files#write(_*)')]
+  [$written(ArgumentList/*[2])]
+| //MethodCall[@MethodName = 'readValue'][*[1][pmd-java:typeIs($mapper)]]
+  [pmd-java:typeIs('java.util.Collection')
+   or ArgumentList/*[2][self::ConstructorCall/ClassType/TypeArguments/*[1][pmd-java:typeIs('java.util.Collection')]
+                        or self::ClassLiteral/*[1][pmd-java:typeIs('java.util.Collection')]]]
+  [ArgumentList/*[1][self::MethodCall[pmd-java:matchesSig('java.nio.file.Files#readString(_*)')
+                                      or pmd-java:matchesSig('java.nio.file.Files#readAllBytes(_*)')]]]
+]]></value>
+      </property>
+    </properties>
+  </rule>

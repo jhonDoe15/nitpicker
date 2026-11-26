@@ -1,0 +1,9 @@
+[
+["Analysis.java", "CachePerInnerUnit", 14, 32],
+["Analysis.java", "CachePerInnerUnit", 22, 32],
+["Analysis.java", "CachePerInnerUnit", 77, 34],
+["Analysis.java", "ParameterMutation", 86, 7],
+["Catalog.java", "ScanPerCallOverFixedCollection", 15, 5],
+["Registry.java", "ScanPerCallOverFixedCollection", 22, 12],
+["Registry.java", "ScanPerCallOverFixedCollection", 26, 5]
+]

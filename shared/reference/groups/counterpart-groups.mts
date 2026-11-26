@@ -2,6 +2,26 @@ import type { Group } from '../typed/entry-types.mts';
 
 export const GROUPS: readonly Group[] = [
   {
+    java: 'ScanPerCallOverFixedCollection',
+    typescript: 'nitpicker/no-scan-per-call-over-fixed-collection',
+  },
+  {
+    java: 'CachePerInnerUnit',
+    typescript: 'nitpicker/no-cache-per-inner-unit',
+  },
+  {
+    java: 'PerItemCacheGrowth',
+    typescript: 'nitpicker/no-per-item-cache-growth',
+  },
+  {
+    java: 'JvmHeapWithoutGoal',
+    typescript: 'nitpicker/require-jvm-heap-goal',
+  },
+  {
+    java: 'WholeListJsonText',
+    typescript: 'nitpicker/no-whole-list-json-text',
+  },
+  {
     java: 'UnguardedOptionList',
     typescript: 'nitpicker/no-unguarded-option-list',
     python: 'unguarded-option-list',

@@ -3882,8 +3882,24 @@ return
     <properties>
       <property name="xpath">
         <value><![CDATA[
+let $plain := function($text) { exists($text) and not(matches($text[1], '[\\^$.|?*+()\[\]{}]')) },
+    $named := function($access) {
+      let $init := ($access/ancestor::*[self::ClassBody or self::EnumBody or self::RecordBody]
+            /FieldDeclaration[pmd-java:modifiers() = 'static'][pmd-java:modifiers() = 'final']
+            /VariableDeclarator[VariableId/@Name = $access/@Name])[last()]/*[2],
+          $parts := $init/descendant-or-self::*
+      return if (exists($init) and empty($parts[not(self::StringLiteral or self::InfixExpression[@Operator = '+'])]))
+             then string-join($parts[self::StringLiteral]/string(@ConstValue), '')
+             else ()
+    }
+return
 //MethodCall[pmd-java:matchesSig('java.lang.String#replaceAll(java.lang.String,java.lang.String)')]
-  [ArgumentList/*[1][@CompileTimeConstant = true()][not(matches(@ConstValue, '[\\^$.|?*+()\[\]{}]'))]]
+  [ArgumentList/*[1][@CompileTimeConstant = true()]
+    [$plain(self::*[not(self::VariableAccess or self::FieldAccess)]/@ConstValue)
+     or self::VariableAccess[$plain($named(.))]
+     or self::FieldAccess[*[1][self::ThisExpression or self::TypeExpression[ClassType/@SimpleName =
+          ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration]/@SimpleName]]]
+          [$plain($named(.))]]]
 ]]></value>
       </property>
     </properties>
@@ -6275,6 +6291,133 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="CachePerInnerUnit" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This cache is created again for every pass of the loop although nothing it is built from depends on the element of the pass, so each pass starts empty and works out the same answers again. Create it once before the loop (or once per enclosing unit, such as the file or the run) and share it across the passes.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $repeats := ('ForeachStatement', 'ForStatement', 'WhileStatement', 'DoStatement'),
+    $iterating := ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'anyMatch', 'allMatch', 'noneMatch',
+                   'peek', 'mapToObj', 'mapToInt', 'mapToLong', 'mapToDouble'),
+    $cacheType := function($call) {
+      matches($call/ClassType/@SimpleName, '(Cache|Caches|Memo|Memoizer|Shared)$')
+    },
+    $units := function($node) {
+      let $method := $node/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+      return $node/ancestor::*[local-name() = $repeats
+        or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterating]]]
+        [exists(ancestor::* intersect $method)]
+    },
+    $varying := function($units) {
+      ($units//VariableId
+        | $units//AssignmentExpression/*[1][self::VariableAccess]
+        | $units//UnaryExpression[@Operator = ('++', '--')]/VariableAccess)/@Name
+    }
+return
+//LocalVariableDeclaration/VariableDeclarator[ConstructorCall]
+  [let $call := ConstructorCall,
+       $name := VariableId/@Name,
+       $units := $units(.),
+       $uses := ancestor::Block[1]//VariableAccess[@Name = $name]
+   return exists($units)
+     and $cacheType($call) and $call/ArgumentList/@Size > 0
+     and empty($call/ArgumentList//(MethodCall | ConstructorCall))
+     and empty($call/ArgumentList//VariableAccess[@Name = $varying($units[last()])])
+     and (every $use in $uses satisfies exists($use/parent::*[self::MethodCall or self::FieldAccess][*[1] is $use]))]
+  /ConstructorCall
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="ScanPerCallOverFixedCollection" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This method scans every element of a field collection for one that matches its parameter, and it runs from a loop or from many call sites while the collection does not change after construction, so each call repeats the whole scan. Build an index once (a Map from the compared value to the element, filled where the field is filled) and look the parameter up in it.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $repeats := ('ForeachStatement', 'ForStatement', 'WhileStatement', 'DoStatement'),
+    $iterating := ('forEach', 'forEachOrdered', 'map', 'flatMap', 'filter', 'anyMatch', 'allMatch', 'noneMatch',
+                   'peek', 'removeIf', 'mapToObj', 'mapToInt', 'mapToLong', 'mapToDouble', 'takeWhile', 'dropWhile'),
+    $mutators := ('add', 'addAll', 'remove', 'removeAll', 'removeIf', 'retainAll', 'clear', 'set', 'sort', 'put',
+                  'putAll', 'putIfAbsent', 'compute', 'computeIfAbsent', 'computeIfPresent', 'merge', 'replaceAll',
+                  'addFirst', 'addLast', 'removeFirst', 'removeLast', 'offer', 'push', 'pop', 'poll'),
+    $views := ('values', 'keySet', 'entrySet'),
+    $body := function($lambda) {
+      if ($lambda/*[2][self::Block]) then $lambda/*[2][count(*) = 1]/ReturnStatement/*[1] else $lambda/*[2]
+    },
+    $sides := function($e) {
+      if ($e/self::MethodCall[@MethodName = ('equals', 'equalsIgnoreCase')][ArgumentList/@Size = 1]
+            [not(*[1][self::TypeExpression])])
+      then ($e/*[1], $e/ArgumentList/*[1])
+      else if ($e/self::MethodCall[@MethodName = 'equals'][ArgumentList/@Size = 2]
+                 [*[1][self::TypeExpression][pmd-java:typeIs('java.util.Objects')]])
+      then $e/ArgumentList/*
+      else if ($e/self::InfixExpression[@Operator = '==']) then $e/* else ()
+    },
+    $isKey := function($side, $element) {
+      exists($side/descendant-or-self::VariableAccess[@Name = $element])
+    },
+    $isProbe := function($side, $element, $parameters) {
+      empty($side/descendant-or-self::VariableAccess[@Name = $element])
+      and exists($side/descendant-or-self::VariableAccess[@Name = $parameters])
+    },
+    $matches := function($test, $element, $parameters) {
+      let $s := $sides($test)
+      return count($s) = 2
+        and (($isKey($s[1], $element) and $isProbe($s[2], $element, $parameters))
+          or ($isKey($s[2], $element) and $isProbe($s[1], $element, $parameters)))
+    },
+    $field := function($source) {
+      ($source/self::MethodCall[@MethodName = $views][ArgumentList/@Size = 0]/*[1] | $source[not(self::MethodCall)])
+        [self::VariableAccess or self::FieldAccess[*[1][self::ThisExpression[not(*)]]]]
+    },
+    $streamed := function($call, $parameters) {
+      let $filtered := if ($call/@MethodName = ('findFirst', 'findAny'))
+                       then $call[ArgumentList/@Size = 0]/*[1][self::MethodCall[@MethodName = 'filter']]
+                       else $call,
+          $lambda := $filtered/ArgumentList/*[1][self::LambdaExpression]
+            [LambdaParameterList[count(LambdaParameter) = 1]],
+          $element := $lambda/LambdaParameterList/LambdaParameter/VariableId/@Name
+      return $filtered[exists($lambda)][$matches($body($lambda), $element, $parameters)]
+        /*[1][self::MethodCall[@MethodName = 'stream'][ArgumentList/@Size = 0]]/$field(*[1])
+    },
+    $walked := function($loop, $parameters) {
+      let $element := $loop/LocalVariableDeclaration/VariableDeclarator/VariableId/@Name
+      return $loop[exists(.//IfStatement[*[2]/descendant-or-self::ReturnStatement]
+                     [$matches(*[1], $element, $parameters)])]/$field(*[2])
+    }
+return
+(//MethodCall[@MethodName = ('findFirst', 'findAny', 'anyMatch', 'noneMatch')] | //ForeachStatement)
+  [let $method := ancestor::MethodDeclaration[1],
+       $parameters := $method/FormalParameters/FormalParameter/VariableId/@Name,
+       $source := if (self::ForeachStatement) then $walked(., $parameters) else $streamed(., $parameters),
+       $name := $source/@Name,
+       $class := ancestor::*[self::ClassBody or self::RecordBody or self::EnumBody][1],
+       $declared := $class/FieldDeclaration/VariableDeclarator[VariableId/@Name = $name]
+         [empty(*[2][self::MethodCall[@MethodName = ('of', 'asList', 'ofEntries')] or self::ArrayInitializer
+                      or self::ArrayAllocation[ArrayInitializer]])],
+       $changes := ($class//MethodCall[@MethodName = $mutators]
+                      [*[1][self::VariableAccess[@Name = $name]
+                            or self::FieldAccess[@Name = $name][*[1][self::ThisExpression]]]]
+                    | $class//AssignmentExpression[*[1][@Name = $name]])
+                   [empty(ancestor::ConstructorDeclaration | ancestor::Initializer)],
+       $own := $method/@Name,
+       $arity := $method/@Arity,
+       $calls := $class//MethodCall[@MethodName = $own][ArgumentList/@Size = $arity]
+                   [empty(*[1][not(self::ArgumentList) and not(self::ThisExpression)])],
+       $looped := $calls[ancestor::*[local-name() = $repeats
+                   or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $iterating]]]]
+   return exists($method) and exists($parameters) and count($name) = 1 and exists($declared)
+     and empty($parameters[. = $name])
+     and empty($changes)
+     and empty(ancestor::*[local-name() = $repeats or self::LambdaExpression][ancestor::* intersect $method])
+     and count($class/MethodDeclaration[@Name = $own][@Arity = $arity]) = 1
+     and (exists($looped) or count($calls) >= 3)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="BooleanFlagParameter" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This boolean parameter switches the method between two behaviors, so a call like send(order, true) does not say what it does. Split the method in two, one for each value of the flag, or pass an enum that names each behavior.">
     <description>A public method of a public type whose boolean parameter is the condition of an if, a conditional expression or a loop.</description>
@@ -6343,6 +6486,162 @@ return
   /ClassBody/FieldDeclaration[not(pmd-java:modifiers() = 'static')][not(PrimitiveType)]
     [not(ClassType[pmd-java:typeIsExactly('java.lang.String')])]
   /VariableDeclarator/VariableId
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="JvmHeapWithoutGoal" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This java command sets a heap ceiling (-Xmx or -XX:MaxRAMPercentage) and no heap goal, and it is started once per element, task or call of a loop. Each JVM grows to its ceiling and keeps that memory, so the JVMs together hold far more than their live data. Add -XX:GCTimeRatio=4 (or -XX:SoftMaxHeapSize, -XX:MaxHeapFreeRatio) next to the ceiling.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $steps := ('forEach', 'map', 'mapToInt', 'mapToLong', 'mapToDouble', 'mapToObj', 'flatMap', 'filter', 'peek',
+               'anyMatch', 'allMatch', 'noneMatch', 'submit', 'execute', 'supplyAsync', 'runAsync', 'schedule',
+               'invokeAll', 'invokeAny'),
+    $repeated := function($node) {
+      exists($node/ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement
+        or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $steps]]])
+    },
+    $texts := function($arguments) {
+      let $method := $arguments/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1],
+          $names := $arguments/*/descendant-or-self::VariableAccess/@Name
+      return ($arguments//StringLiteral
+        | $method//LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $names]//StringLiteral
+        | $method//MethodCall[@MethodName = ('add', 'addAll')][*[1][self::VariableAccess[@Name = $names]]]
+            /ArgumentList//StringLiteral)/string(@ConstValue)
+    },
+    $ceiling := function($text) {
+      starts-with($text, '-Xmx') or starts-with($text, '-XX:MaxRAMPercentage')
+        or contains($text, ' -Xmx') or contains($text, ' -XX:MaxRAMPercentage')
+    },
+    $goal := function($text) {
+      contains($text, '-XX:GCTimeRatio') or contains($text, '-XX:SoftMaxHeapSize')
+        or contains($text, '-XX:MaxHeapFreeRatio')
+    },
+    $java := function($text) {
+      some $word in tokenize($text, '\s+') satisfies $word = 'java' or ends-with($word, '/bin/java')
+    },
+    $method := function($node) { $node/ancestor::*[self::MethodDeclaration][1] },
+    $started := function($node) {
+      $repeated($node)
+        or (let $name := $method($node)/@Name, $class := $node/ancestor::ClassBody[last()]
+            return exists($class//MethodCall[@MethodName = $name]
+                [empty(*[1][not(self::ArgumentList or self::ThisExpression)])][$repeated(.)]
+              | $class//MethodReference[@MethodName = $name][*[1][self::ThisExpression]][$repeated(.)
+                  or parent::ArgumentList/parent::MethodCall[@MethodName = $steps]]))
+    },
+    $launches := //ConstructorCall[pmd-java:typeIs('java.lang.ProcessBuilder')][ArgumentList/@Size > 0]
+      | //MethodCall[pmd-java:matchesSig('java.lang.ProcessBuilder#command(_*)')]
+      | //MethodCall[pmd-java:matchesSig('java.lang.Runtime#exec(_*)')]
+return
+($launches[let $texts := $texts(ArgumentList)
+           return exists($texts[$java(.)]) and exists($texts[$ceiling(.)]) and empty($texts[$goal(.)])]
+          [$started(.)]
+ | //MethodCall[@MethodName = 'put'][ArgumentList/@Size = 2]
+     [*[1][self::MethodCall[pmd-java:matchesSig('java.lang.ProcessBuilder#environment()')]]]
+     [ArgumentList/*[1][@ConstValue = ('JAVA_TOOL_OPTIONS', 'JDK_JAVA_OPTIONS')]]
+     [let $texts := $texts(ArgumentList) return exists($texts[$ceiling(.)]) and empty($texts[$goal(.)])]
+     [$started(.)])
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="PerItemCacheGrowth" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This map field gets one entry per element of the loop, keyed by that element, and is read back only for the same element while nothing ever removes an entry, so it grows with every element the program sees and keeps them all. Keep the value in a local of the loop body, or remove the entry when the element is done.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $fills := ('put', 'putIfAbsent', 'computeIfAbsent'),
+    $reads := ('get', 'getOrDefault', 'containsKey'),
+    $steps := ('forEach', 'map', 'mapToInt', 'mapToLong', 'mapToDouble', 'mapToObj', 'flatMap', 'filter', 'peek',
+               'anyMatch', 'allMatch', 'noneMatch'),
+    $loopOf := function($access) {
+      $access/ancestor::*[self::ForeachStatement
+        or self::LambdaExpression[@Arity = 1][parent::ArgumentList/parent::MethodCall[@MethodName = $steps]]][1]
+    },
+    $element := function($loop) {
+      ($loop/LocalVariableDeclaration/VariableDeclarator/VariableId
+        | $loop/LambdaParameterList/LambdaParameter/VariableId)/@Name
+    },
+    $keyed := function($call, $name) {
+      exists($call/ArgumentList/*[1][self::VariableAccess[@Name = $name]
+        or self::MethodCall[ArgumentList/@Size = 0][*[1][self::VariableAccess[@Name = $name]]]])
+    }
+return
+//ClassBody/FieldDeclaration[pmd-java:modifiers() = 'private'][ClassType[pmd-java:typeIs('java.util.Map')]]
+  /VariableDeclarator[ConstructorCall[pmd-java:typeIsExactly('java.util.HashMap')
+    or pmd-java:typeIsExactly('java.util.concurrent.ConcurrentHashMap')
+    or pmd-java:typeIsExactly('java.util.WeakHashMap')]]
+  /(let $name := VariableId/@Name,
+        $accesses := ancestor::ClassBody[1]//*[self::VariableAccess or self::FieldAccess[*[1][self::ThisExpression]]]
+          [@Name = $name],
+        $calls := $accesses/parent::MethodCall,
+        $loops := $accesses/$loopOf(.)
+    return
+      if (count($loops) = 1
+          and (every $access in $accesses satisfies
+                 exists($loopOf($access))
+                 and exists($access/parent::MethodCall[@MethodName = ($fills, $reads)][*[1] is $access]
+                   [$keyed(., $element($loops))]))
+          and count(distinct-values($calls/ArgumentList/*[1]
+            /string-join(descendant-or-self::*/concat(local-name(), ':', @Name, @MethodName), ' '))) = 1
+          and exists($calls[@MethodName = $reads]
+            | $calls[@MethodName = 'computeIfAbsent'][not(parent::ExpressionStatement)]))
+      then ($calls[@MethodName = $fills])[1]
+      else ())
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="WholeListJsonText" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This list grows with the input and is turned into one string (or read back from one) before it is written. A Java string holds at most about 2 billion characters, and below that the text still doubles the memory of the data. Write and read one element at a time: a JsonGenerator or SequenceWriter (one element per line) to write, a MappingIterator or a line reader to read.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $mapper := 'com.fasterxml.jackson.databind.ObjectMapper',
+    $loops := function($node) {
+      exists($node/ancestor::*[self::ForeachStatement or self::ForStatement or self::WhileStatement or self::DoStatement
+        or self::LambdaExpression])
+    },
+    $grows := function($list) {
+      $list[pmd-java:typeIs('java.util.Collection')]
+        [matches(@Name, '^(results|findings|files|rows|records)$|[a-z0-9](Results|Findings|Files|Rows|Records)$')
+         or (let $name := @Name
+             return exists(ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+               //MethodCall[@MethodName = ('add', 'addAll')][*[1][self::VariableAccess[@Name = $name]]]
+                 [$loops(.)]))]
+    },
+    $text := function($value) {
+      $value[self::MethodCall[@MethodName = 'writeValueAsString'][*[1][pmd-java:typeIs($mapper)]]
+               [exists($grows(ArgumentList/*[1][self::VariableAccess or self::FieldAccess]))]
+             or self::MethodCall[pmd-java:matchesSig('java.lang.String#join(_*)')][ArgumentList/@Size = 2]
+               [exists($grows(ArgumentList/*[2][self::VariableAccess or self::FieldAccess]))]
+             or self::MethodCall[@MethodName = 'collect']
+               [ArgumentList/*[1][self::MethodCall[@MethodName = 'joining']]]
+               [*[1][self::MethodCall[@MethodName = 'stream'][ArgumentList/@Size = 0]]
+                 [exists($grows(*[1][self::VariableAccess or self::FieldAccess]))]]]
+    },
+    $written := function($argument) {
+      let $bytes := $argument[self::MethodCall[@MethodName = 'getBytes']],
+          $value := ($bytes/*[1] | $argument[empty($bytes)]),
+          $name := $value[self::VariableAccess]/@Name,
+          $local := $argument/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+            //LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name]/*[2]
+      return exists($text($value) | $text($local))
+    }
+return
+//MethodCall[pmd-java:matchesSig('java.nio.file.Files#writeString(_*)')
+             or pmd-java:matchesSig('java.nio.file.Files#write(_*)')]
+  [$written(ArgumentList/*[2])]
+| //MethodCall[@MethodName = 'readValue'][*[1][pmd-java:typeIs($mapper)]]
+  [pmd-java:typeIs('java.util.Collection')
+   or ArgumentList/*[2][self::ConstructorCall/ClassType/TypeArguments/*[1][pmd-java:typeIs('java.util.Collection')]
+                        or self::ClassLiteral/*[1][pmd-java:typeIs('java.util.Collection')]]]
+  [ArgumentList/*[1][self::MethodCall[pmd-java:matchesSig('java.nio.file.Files#readString(_*)')
+                                      or pmd-java:matchesSig('java.nio.file.Files#readAllBytes(_*)')]]]
 ]]></value>
       </property>
     </properties>

@@ -30,6 +30,7 @@
   "pmd/CacheAfterGuardFallback": ["bug"],
   "pmd/CachedEntityFieldNotSerializable": ["bug", "persistence"],
   "pmd/CachedFutureKeepsFailure": ["bug", "async"],
+  "pmd/CachePerInnerUnit": ["performance"],
   "pmd/CallValueStoredInSharedField": ["bug", "async"],
   "pmd/CanonicalNameMayBeNull": ["bug"],
   "pmd/CatchLogWithoutException": ["reliability"],
@@ -131,6 +132,7 @@
   "pmd/JpaSequenceIds": ["performance", "persistence"],
   "pmd/JpaUnindexedForeignKey": ["performance", "persistence"],
   "pmd/JpaVersion": ["bug", "persistence"],
+  "pmd/JvmHeapWithoutGoal": ["reliability", "performance"],
   "pmd/LegacyCalendarApi": ["bug"],
   "pmd/LinearLookupInLoop": ["performance"],
   "pmd/ListUsedAsSet": ["performance"],
@@ -171,6 +173,7 @@
   "pmd/ParameterMutation": ["maintainability"],
   "pmd/PeekSkippedByCount": ["bug", "reliability"],
   "pmd/PendingFuturesNotFailedOnClose": ["reliability", "async"],
+  "pmd/PerItemCacheGrowth": ["performance"],
   "pmd/PlainCollectionInConcurrentMap": ["bug", "async"],
   "pmd/PlainTextRegex": ["simplification", "performance"],
   "pmd/PooledFieldNotReset": ["bug", "reliability"],
@@ -197,6 +200,7 @@
   "pmd/ReturnFromFinallyBlock": ["reliability"],
   "pmd/ReusableObjectPerCall": ["performance"],
   "pmd/ReversedAssignableCheck": ["bug"],
+  "pmd/ScanPerCallOverFixedCollection": ["performance"],
   "pmd/ScheduledTaskStopsOnFailure": ["bug", "reliability", "async"],
   "pmd/SecretDigestEquals": ["bug", "security"],
   "pmd/SecretInLog": ["security"],
@@ -339,5 +343,6 @@
   "pmd/WeakAssertionInTest": ["tests"],
   "pmd/WeakHmac": ["security"],
   "pmd/WhileLoopWithLiteralBoolean": ["simplification"],
+  "pmd/WholeListJsonText": ["performance", "reliability"],
   "pmd/WorkBeforeEarlyExit": ["performance"]
 }
