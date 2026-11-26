@@ -132,6 +132,20 @@ describe('a 15,300-file project on a 4-core, 10 GB budget', () => {
       NODE_OPTIONS: '--max-old-space-size=11750 --max-semi-space-size=64',
     });
   });
+
+  it.each([{ deno: '2.9.6' }, { bun: '1.3.0' }])(
+    'leaves the young generation alone outside Node (%o), where workers fail to start with it',
+    (versions) => {
+      expect(
+        withNodeHeap(
+          { NODE_OPTIONS: '--max-old-space-size=4096' },
+          { memory: 16 * GIB, defaultLimit: 2 * GIB },
+          0,
+          { node: '24.0.0', ...versions },
+        ),
+      ).toEqual({ NODE_OPTIONS: '--max-old-space-size=4096' });
+    },
+  );
 });
 
 describe('analyzer memory errors', () => {
