@@ -4,25 +4,69 @@ import { calleeNameOf, isCallExpression, isFunction } from '../typed/syntax-view
 import type { BatchFunction } from './batch-inputs.mts';
 
 const READS = new Set(['readFile', 'readFileSync']);
-const SAFE_PARSE_OWNERS = new Set(['path', 'posix', 'win32']);
+const PARSER_MODULES = new Set([
+  'yaml',
+  'js-yaml',
+  'toml',
+  '@iarna/toml',
+  'smol-toml',
+  'json5',
+  'acorn',
+  'espree',
+  'esprima',
+  '@babel/parser',
+  '@typescript-eslint/parser',
+  '@typescript-eslint/typescript-estree',
+]);
+
+function importedFromParser(
+  call: TSESTree.CallExpression,
+  local: string,
+  member: boolean,
+): boolean {
+  const program = ancestorsOf(call).find((ancestor) => ancestor.type === AST_NODE_TYPES.Program);
+  return (
+    program?.type === AST_NODE_TYPES.Program &&
+    program.body.some(
+      (statement) =>
+        statement.type === AST_NODE_TYPES.ImportDeclaration &&
+        PARSER_MODULES.has(String(statement.source.value)) &&
+        statement.specifiers.some(
+          (specifier) =>
+            specifier.local.name === local &&
+            (member
+              ? true
+              : specifier.type === AST_NODE_TYPES.ImportSpecifier &&
+                nameOfImported(specifier) === 'parse'),
+        ),
+    )
+  );
+}
+
+function nameOfImported(specifier: TSESTree.ImportSpecifier): string {
+  return specifier.imported.type === AST_NODE_TYPES.Identifier
+    ? specifier.imported.name
+    : String(specifier.imported.value);
+}
+
+function isFailingParse(call: TSESTree.CallExpression): boolean {
+  const { callee } = call;
+  if (callee.type === AST_NODE_TYPES.Identifier) {
+    return importedFromParser(call, callee.name, false);
+  }
+  return (
+    callee.type === AST_NODE_TYPES.MemberExpression &&
+    !callee.computed &&
+    callee.property.type === AST_NODE_TYPES.Identifier &&
+    callee.property.name === 'parse' &&
+    callee.object.type === AST_NODE_TYPES.Identifier &&
+    (callee.object.name === 'JSON' || importedFromParser(call, callee.object.name, true))
+  );
+}
 
 function isFailingCall(node: TSESTree.CallExpression): boolean {
   const name = calleeNameOf(node.callee);
-  if (name === undefined) {
-    return false;
-  }
-  if (READS.has(name)) {
-    return true;
-  }
-  const { callee } = node;
-  return (
-    name === 'parse' &&
-    !(
-      callee.type === AST_NODE_TYPES.MemberExpression &&
-      callee.object.type === AST_NODE_TYPES.Identifier &&
-      SAFE_PARSE_OWNERS.has(callee.object.name)
-    )
-  );
+  return name !== undefined && (READS.has(name) || isFailingParse(node));
 }
 
 function isHandled(call: TSESTree.CallExpression, within: BatchFunction): boolean {
@@ -42,7 +86,9 @@ function isHandled(call: TSESTree.CallExpression, within: BatchFunction): boolea
 
 export function unhandledFailingCall(callback: BatchFunction): TSESTree.CallExpression | undefined {
   return [
-    ...depthFirst<TSESTree.Node>(callback.body, (node) => (isFunction(node) ? [] : nodeChildren(node))),
+    ...depthFirst<TSESTree.Node>(callback.body, (node) =>
+      isFunction(node) ? [] : nodeChildren(node),
+    ),
   ]
     .filter(isCallExpression)
     .find((call) => isFailingCall(call) && !isHandled(call, callback));

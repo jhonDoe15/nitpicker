@@ -17,7 +17,14 @@ const INPUT_NAMES = new Set([
   'projects',
   'packages',
 ]);
-const LISTING_CALLEES = new Set(['readdir', 'readdirSync', 'glob', 'globSync', 'fastGlob', 'globby']);
+const LISTING_CALLEES = new Set([
+  'readdir',
+  'readdirSync',
+  'glob',
+  'globSync',
+  'fastGlob',
+  'globby',
+]);
 
 export type BatchFunction =
   TSESTree.ArrowFunctionExpression | TSESTree.FunctionExpression | TSESTree.FunctionDeclaration;

@@ -161,7 +161,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   covered by a workspace config gets the default otherwise (`nitpicker/no-single-folder-config-lookup`).
 - Handle each input of a `Promise.all(files.map(...))` batch on its own (a `try` or `.catch` in the callback, or
   `Promise.allSettled`): one unreadable or unparsable file must not discard the results of the others
-  (`nitpicker/no-all-or-nothing-batch`).
+  (`nitpicker/no-all-or-nothing-batch`; only `Promise.all(files.map(...))` with `readFile`, `JSON.parse` or an imported
+  YAML/TOML/JSON5/JS parser is checked: `for...of`, `forEach` and Java are not covered yet).
 - Do not match a language keyword (`/\bcase\b/`) with a regex over raw source text: comments and strings match too.
   Use a parser or a tokenizer, or strip comments and strings first (`nitpicker/no-keyword-regex-over-source`).
 - Use only field names that the grammar defines in `childForFieldName` and `childrenForFieldName`: an unknown name

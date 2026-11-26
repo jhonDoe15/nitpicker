@@ -2088,9 +2088,12 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   Reported: `return`ed or stored `Promise.all(files.map(callback))` where the list is file paths (the result of
   `readdir`, `glob`, `fastGlob` or `globby`, or a value named `files`, `paths`, `filePaths`, `fileNames`, `modules`,
   `projects` or `packages`) and the callback (inline, or a function of the same file) calls `readFile`,
-  `readFileSync`, `JSON.parse` or another `parse` outside a `try` with a `catch` and without `.catch(...)`. One
-  unreadable or unparsable file rejects the call and loses every finished result. Not reported:
-  `Promise.allSettled`, callbacks that catch per input, a `Promise.all` inside a `try`, results that are not
+  `readFileSync`, `JSON.parse` or the `parse` of an imported YAML, TOML, JSON5 or JavaScript parser (`yaml`,
+  `js-yaml`, `toml`, `@iarna/toml`, `smol-toml`, `json5`, `acorn`, `espree`, `esprima`, `@babel/parser`,
+  `@typescript-eslint/parser`, `@typescript-eslint/typescript-estree`) outside a `try` with a `catch` and without
+  `.catch(...)`. One unreadable or unparsable file rejects the call and loses every finished result. Not reported:
+  other `parse` calls (`Date.parse`, `url.parse`, `path.parse`, `schema.parse`), loops (`for...of`, `forEach`) and
+  `map` over a variable that is not a file list, Java (not covered yet), `Promise.allSettled`, callbacks that catch per input, a `Promise.all` inside a `try`, results that are not
   collected, other collections and `throw` statements.
 - Keywords of a programming language are not matched with a regular expression over raw source text
   (`nitpicker/no-keyword-regex-over-source`, production files). Reported: a regex (literal or `new RegExp` with a

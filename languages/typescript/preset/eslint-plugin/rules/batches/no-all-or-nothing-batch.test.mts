@@ -16,6 +16,13 @@ tester.run('no-all-or-nothing-batch', rule, {
     'export async function load(items: string[]) { return Promise.all(items.map(async (item) => readFile(item, "utf8"))); }',
     'export async function load(files: string[]) { return Promise.all(files.map(async (file) => stat(file))); }',
     'export async function load(files: string[]) { return Promise.all(files.map(async (file) => path.parse(file))); }',
+    'export async function load(files: string[]) { return Promise.all(files.map(async (file) => Date.parse(file))); }',
+    'export async function load(files: string[]) { return Promise.all(files.map(async (file) => url.parse(file))); }',
+    'import semver from "semver"; export async function load(files: string[]) { return Promise.all(files.map(async (file) => semver.parse(file))); }',
+    'export async function load(files: string[]) { return Promise.all(files.map(async (file) => path.posix.parse(file))); }',
+    'export async function load(files: string[]) { return Promise.all(files.map(async (file) => schema.parse(file))); }',
+    'export async function load(files: string[]) { return Promise.all(files.map(async (file) => parse(file))); }',
+    'export async function load(files: string[]) { return Promise.all(files.map(async (file) => parser.parse(file))); }',
     'export async function load(files: string[]) { try { return await Promise.all(files.map(async (file) => readFile(file, "utf8"))); } catch { return []; } }',
     'export async function load(files: string[]) { return Promise.all(files.map(readFile)); }',
     'export async function load(files: string[]) { const rows = files.map((file) => JSON.parse(file)); return rows; }',
@@ -39,7 +46,16 @@ tester.run('no-all-or-nothing-batch', rule, {
       'async function one(file: string) { return JSON.parse(await readFile(file, "utf8")); } export async function load(options: Options) { return Promise.all(options.files.map(one)); }',
     ),
     flagged(
-      'export async function load(files: string[]) { return Promise.all(files.map(async function (file) { try { log(); } catch {} return parser.parse(file); })); }',
+      'export async function load(files: string[]) { return Promise.all(files.map(async function (file) { try { log(); } catch {} return JSON.parse(file); })); }',
+    ),
+    flagged(
+      'import YAML from "yaml"; export async function load(files: string[]) { return Promise.all(files.map(async (file) => YAML.parse(file))); }',
+    ),
+    flagged(
+      'import { parse as parseToml } from "smol-toml"; export async function load(files: string[]) { return Promise.all(files.map(async (file) => parseToml(file))); }',
+    ),
+    flagged(
+      'import * as acorn from "acorn"; export async function load(files: string[]) { return Promise.all(files.map(async (file) => acorn.parse(file, { ecmaVersion: 2022 }))); }',
     ),
     flagged(
       'export async function load(modules: string[]) { return Promise.all(modules.map((module) => fs.promises.readFile(module, "utf8").then((text) => text))); }',

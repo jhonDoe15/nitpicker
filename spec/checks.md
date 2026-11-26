@@ -469,8 +469,9 @@ default (a file-name string, a non-empty object, an upper-case or `default...` v
 that a same-file caller replaces with such a default through `??` or `||`) and neither the function nor a same-file
 caller walks the parent folders. A package covered by a config higher up gets the default.
 All-or-nothing batch: `nitpicker/no-all-or-nothing-batch` (production source, in `eslint-lint`) reports a collected
-`Promise.all(files.map(callback))` over file paths whose callback reads or parses a file with no per-input `try` or
-`.catch`. One bad file rejects the call and discards the finished results of the others.
+`Promise.all(files.map(callback))` over file paths whose callback reads a file or parses it with `JSON.parse` or an imported YAML, TOML, JSON5 or
+JavaScript parser, with no per-input `try` or `.catch`. One bad file rejects the call and discards the finished results
+of the others. Other `parse` calls, `for...of`, `forEach` and Java are not covered yet.
 Unknown tree-sitter field: `nitpicker/no-unknown-tree-sitter-field` (production source, in `eslint-lint`) reports a
 constant field name passed to `childForFieldName` or `childrenForFieldName`, or compared with `currentFieldName`,
 in a module that uses `web-tree-sitter` or `tree-sitter`, when the `node-types.json` of the grammar package defines no
