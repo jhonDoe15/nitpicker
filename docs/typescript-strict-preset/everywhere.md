@@ -2034,6 +2034,15 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   40 and cuts that go elsewhere. Cuts that
   can split a character are `nitpicker/no-surrogate-splitting-cut`. The Java preset has the same rule as
   `pmd/HeadCutErrorOutput`.
+- The TypeScript compiler API is given the real file name of its input (`nitpicker/require-compiler-file-name`,
+  production files). Reported: `ts.transpileModule` without `fileName` in its options (or with a string literal),
+  `ts.transpile` without a file name argument (or a literal), `ts.createSourceFile` and
+  `ts.createLanguageServiceSourceFile` with a literal file name, when the enclosing function has a parameter or local
+  named for a file name or path (`fileName`, `filename`, `file`, `path`, `filePath`, also with a one-letter prefix such
+  as `pFileName`). Without the name the compiler treats every input as the same file: relative imports resolve against
+  it (a file importing `./module` imports itself) and the extension picks TSX or the module format. Not reported: a
+  function with no file name to pass, options from a variable or a spread, a `path` that is the `node:path` module,
+  Babel, esbuild and SWC (not covered yet).
 - A finished child process is not judged by text on its standard error (`nitpicker/no-stderr-as-failure`,
   production files). Reported: an `if` or a ternary whose test (alone, or as one side of `||`) checks that the
   standard error is not empty (`stderr`, `stderr.length`, `stderr.length > 0`, `stderr !== ''`, also through

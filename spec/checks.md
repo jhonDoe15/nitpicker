@@ -437,6 +437,11 @@ Error output cut to its start: `nitpicker/no-head-cut-error-output` (production 
 exception, a rejection or an error-level log. The cause is usually at the end of such text; the allowed forms keep the
 end, or both ends.
 
+Compiler API without the input's file name: `nitpicker/require-compiler-file-name` (production source, in
+`eslint-lint`) reports `ts.transpileModule`, `ts.transpile`, `ts.createSourceFile` and
+`ts.createLanguageServiceSourceFile` called without a file name, or with a string literal, inside a function that has a
+parameter or local named for a file name or path. The compiler then treats every input as the same file.
+
 Standard error as failure: `nitpicker/no-stderr-as-failure` (production source, in `eslint-lint`) and
 `pmd/StderrAsFailure` (Java, main sources) report a condition that fails a finished subprocess because its standard
 error is not empty, when the condition stands alone or is one side of `||` and its branch throws (or rejects, or

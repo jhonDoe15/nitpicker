@@ -259,6 +259,7 @@
   "eslint/nitpicker/no-growing-process-arguments": ["bug"],
   "eslint/nitpicker/no-wrapper-only-timeout": ["bug"],
   "eslint/nitpicker/no-head-cut-error-output": ["bug"],
+  "eslint/nitpicker/require-compiler-file-name": ["bug"],
   "eslint/nitpicker/no-stderr-as-failure": ["bug"],
   "eslint/nitpicker/no-status-only-spawn-check": ["bug"],
   "eslint/nitpicker/no-buffered-growing-output": ["bug"],

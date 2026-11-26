@@ -342,6 +342,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Keep the end of a tool's output when an error message has to shorten it
   (`stderr.slice(-4000)`, or the start and the end with a marker between them): the cause is printed last
   (`nitpicker/no-head-cut-error-output`).
+- Pass the real file name to the TypeScript compiler API (`ts.transpileModule(source, { fileName, compilerOptions })`,
+  `ts.createSourceFile(fileName, ...)`) when you have it: the default name makes every input the same file and
+  relative imports resolve against it (`nitpicker/require-compiler-file-name`).
 - Decide whether a child process failed by its exit status (`status !== 0`, `exitCode`, the callback's `error`), not
   by text on its standard error, which also carries warnings and notices (`nitpicker/no-stderr-as-failure`).
 - Read `error` and `signal` of a `spawnSync` result before its `status`: a child that could not start, timed out or
