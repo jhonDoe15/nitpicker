@@ -47,10 +47,14 @@ function fixedOptions(ts: typeof TypeScript): TypeScript.CompilerOptions {
 
 const resolvers = new Map<string, ModuleResolver>();
 
+const configs = new Map<string, { readonly file: string | undefined }>();
+
 function nearestConfig(directory: string): string | undefined {
-  return chainOf(directory, parentDirectory)
-    .flatMap((candidate) => CONFIG_NAMES.map((name) => path.join(candidate, name)))
-    .find((candidate) => existsSync(candidate));
+  return cachedValue(configs, directory, () => ({
+    file: chainOf(directory, parentDirectory)
+      .flatMap((candidate) => CONFIG_NAMES.map((name) => path.join(candidate, name)))
+      .find((candidate) => existsSync(candidate)),
+  })).file;
 }
 
 function pathMapping(options: TypeScript.CompilerOptions): TypeScript.CompilerOptions | undefined {

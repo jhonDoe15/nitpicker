@@ -3,11 +3,12 @@
 ["Patterns.java", "CompareObjectsWithEquals", 51, 66],
 ["Patterns.java", "CompareObjectsWithEquals", 57, 31],
 ["Patterns.java", "OptionalAsFieldOrParameter", 40, 55],
-["Patterns.java", "RetryInTest", 78, 69],
 ["Patterns.java", "SystemPrintln", 29, 33],
 ["Patterns.java", "SystemPrintln", 30, 54],
 ["Patterns.java", "SystemPrintln", 31, 66],
 ["Patterns.java", "SystemPrintln", 32, 43],
 ["Patterns.java", "SystemPrintln", 35, 35],
-["Patterns.java", "SystemPrintln", 36, 37]
+["Patterns.java", "SystemPrintln", 36, 37],
+["Retries.java", "RetryInTest", 6, 29],
+["Retries.java", "RetryInTest", 8, 32]
 ]

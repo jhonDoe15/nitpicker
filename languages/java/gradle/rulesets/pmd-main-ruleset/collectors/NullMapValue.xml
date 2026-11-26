@@ -64,7 +64,7 @@ let $mapTypes := ('Map', 'HashMap', 'LinkedHashMap', 'TreeMap', 'SortedMap', 'Na
                  and $step[self::MethodCall][@MethodName = $passThrough or $identityMap(.)]))
               and empty($steps[self::MethodCall][@MethodName = 'filter']
                          [.//MethodCall[@MethodName = 'getValue']
-                          and (.//NullLiteral or .//InstanceofExpression
+                          and (.//NullLiteral or .//InfixExpression[@Operator = 'instanceof']
                                or .//MethodCall[@MethodName = ('nonNull', 'isNull')])])
               and $nullableMap($entries/*[1])))
     },

@@ -20,7 +20,11 @@ type Placed = {
 };
 type Stretch = { readonly i: number; readonly j: number; readonly length: number };
 type Window = { readonly offset: number; readonly length: number };
-type KeyedBlock = { readonly block: TreeNode; readonly keys: string[] };
+type KeyedBlock = {
+  readonly block: TreeNode;
+  readonly keys: readonly number[];
+  readonly present: ReadonlySet<number>;
+};
 type RunMatch = Alignment & { readonly statements: readonly [TreeNode[], TreeNode[]] };
 
 function* cells<Row, Column>(
@@ -35,28 +39,40 @@ function* cells<Row, Column>(
 }
 
 function runLengths(
-  left: readonly string[],
-  right: readonly string[],
+  left: readonly number[],
+  right: readonly number[],
 ): { readonly table: Int32Array; readonly width: number } {
   const width = right.length + 1;
   const table = new Int32Array((left.length + 1) * width);
-  for (const [i, j] of cells([...left.keys()].toReversed(), [...right.keys()].toReversed())) {
-    table[i * width + j] = left[i] === right[j] ? (table[(i + 1) * width + j + 1] ?? 0) + 1 : 0;
+  const columns = [...right.keys()].toReversed();
+  for (const i of [...left.keys()].toReversed()) {
+    const key = left[i];
+    const row = i * width;
+    for (const j of columns) {
+      table[row + j] = key === right[j] ? (table[row + width + j + 1] ?? 0) + 1 : 0;
+    }
   }
   return { table, width };
 }
 
-function commonStretches(left: readonly string[], right: readonly string[]): Stretch[] {
-  if (left.length * right.length > THRESHOLDS.maxListCells) {
+function commonStretches(leftBlock: KeyedBlock, rightBlock: KeyedBlock): Stretch[] {
+  const [left, right] = [leftBlock.keys, rightBlock.keys];
+  if (
+    left.length * right.length > THRESHOLDS.maxListCells ||
+    !left.some((key) => rightBlock.present.has(key))
+  ) {
     return [];
   }
   const { table, width } = runLengths(left, right);
   const stretches: Stretch[] = [];
-  for (const [i, j] of cells([...left.keys()], [...right.keys()])) {
-    const length = table[i * width + j] ?? 0;
-    const maximal = i === 0 || j === 0 || left[i - 1] !== right[j - 1];
-    if (maximal && length >= THRESHOLDS.minRunStatements) {
-      stretches.push({ i, j, length: Math.min(length, THRESHOLDS.maxRunWindow) });
+  const columns = [...right.keys()];
+  for (const i of left.keys()) {
+    for (const j of columns) {
+      const length = table[i * width + j] ?? 0;
+      const maximal = i === 0 || j === 0 || left[i - 1] !== right[j - 1];
+      if (maximal && length >= THRESHOLDS.minRunStatements) {
+        stretches.push({ i, j, length: Math.min(length, THRESHOLDS.maxRunWindow) });
+      }
     }
   }
   return stretches;
@@ -146,15 +162,21 @@ function bestWindow(sides: Sides, stretch: Stretch): RunMatch | undefined {
   return undefined;
 }
 
-function blockKeys(tree: TreeNode, cachedKey: KeyCache): KeyedBlock[] {
-  return blocksOf(tree).map((block) => ({
-    block,
-    keys: block.children.map((statement) => cachedKey(statement, KEY_MODES.abstract)),
-  }));
+function blockKeys(tree: TreeNode, cachedKey: KeyCache, ids: Map<string, number>): KeyedBlock[] {
+  return blocksOf(tree).map((block) => {
+    const keys = block.children.map((statement) => {
+      const key = cachedKey(statement, KEY_MODES.abstract);
+      const id = ids.get(key) ?? ids.size;
+      ids.set(key, id);
+      return id;
+    });
+    return { block, keys, present: new Set(keys) };
+  });
 }
 
 function blockPairs(trees: Pair, cachedKey: KeyCache): Generator<[KeyedBlock, KeyedBlock]> {
-  return cells(blockKeys(trees[0], cachedKey), blockKeys(trees[1], cachedKey));
+  const ids = new Map<string, number>();
+  return cells(blockKeys(trees[0], cachedKey, ids), blockKeys(trees[1], cachedKey, ids));
 }
 
 function runsBetween(
@@ -167,7 +189,7 @@ function runsBetween(
     right: { tree: trees[1], block: right.block },
     cachedKey,
   };
-  return commonStretches(left.keys, right.keys)
+  return commonStretches(left, right)
     .map((stretch) => bestWindow(sides, stretch))
     .filter((found) => found !== undefined);
 }

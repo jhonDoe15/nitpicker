@@ -1,5 +1,6 @@
 //! Checks on single expressions and statements that ask what a name or a call stands for.
 use super::Context;
+use super::fixes::Fix;
 use crate::engine::source::{children, parent};
 use crate::java::types::expr::Receiver;
 use crate::java::types::model::Type;
@@ -12,7 +13,8 @@ pub fn assert_false(context: &Context, node: Node) {
     let condition = children(node).into_iter().find(|part| part.is_named() && !part.kind().ends_with("comment"));
     if condition.is_some_and(|condition| condition.kind() == "false") {
         let message = "Assertions may be disabled at runtime and do not guarantee that execution will halt here; consider throwing an exception instead";
-        context.report("AssertFalse", node, node.start_byte(), message);
+        let fix = Fix::replace(node.start_byte(), node.end_byte(), "throw new AssertionError()");
+        context.report_fixed("AssertFalse", node, node.start_byte(), message, &[fix]);
     }
 }
 
@@ -90,7 +92,8 @@ pub fn void_used(context: &Context, node: Node) {
     if assigned || !matches!(context.resolver.type_of(node), Some(Type::Class(name, _)) if name == "java.lang.Void") {
         return;
     }
-    context.report("VoidUsed", node, at, "Using a Void-typed variable is potentially confusing, and can be replaced with a literal `null`.");
+    let message = "Using a Void-typed variable is potentially confusing, and can be replaced with a literal `null`.";
+    context.report_fixed("VoidUsed", node, at, message, &[Fix::replace(node.start_byte(), node.end_byte(), "null")]);
 }
 
 pub fn object_equals_for_primitives(context: &Context, node: Node) {
@@ -111,7 +114,9 @@ pub fn object_equals_for_primitives(context: &Context, node: Node) {
     let whole = |kind: &Option<Type>| matches!(kind, Some(Type::Primitive(name)) if !matches!(*name, "double" | "float" | "void"));
     if kinds.len() == 2 && kinds.iter().all(whole) {
         let at = node.child_by_field_name("arguments").map_or(node.start_byte(), |list| list.start_byte());
-        context.report("ObjectEqualsForPrimitives", node, at, "Avoid unnecessary boxing by using plain == for primitive types.");
+        let text = format!("({} == {})", context.text(arguments[0]), context.text(arguments[1]));
+        let fix = Fix::replace(node.start_byte(), node.end_byte(), text);
+        context.report_fixed("ObjectEqualsForPrimitives", node, at, "Avoid unnecessary boxing by using plain == for primitive types.", &[fix]);
     }
 }
 
@@ -139,7 +144,9 @@ const PARENTHESES: &str = "These parentheses are unnecessary; it is unlikely the
 pub fn unnecessary_parentheses(context: &Context, node: Node) {
     if node.kind() == "annotation" {
         if context.text(node).ends_with("()") {
-            context.report("UnnecessaryParentheses", node, node.start_byte(), PARENTHESES);
+            let name = node.child_by_field_name("name").map(|name| context.text(name)).unwrap_or_default();
+            let fix = Fix::replace(node.start_byte(), node.end_byte(), format!("@{name}"));
+            context.report_fixed("UnnecessaryParentheses", node, node.start_byte(), PARENTHESES, &[fix]);
         }
         return;
     }
@@ -179,7 +186,8 @@ pub fn unnecessary_parentheses(context: &Context, node: Node) {
     };
     let _ = only_string_literals;
     if !needed {
-        context.report("UnnecessaryParentheses", node, node.start_byte(), PARENTHESES);
+        let fix = Fix::replace(node.start_byte(), inner.start_byte(), " ").and(inner.end_byte(), node.end_byte(), "");
+        context.report_fixed("UnnecessaryParentheses", node, node.start_byte(), PARENTHESES, &[fix]);
     }
 }
 
@@ -207,7 +215,7 @@ pub fn unused_exception(context: &Context, node: Node) {
     if used || !throws_outside_try(body) {
         return;
     }
-    context.report("UnusedException", parameter, node.start_byte(), UNUSED_EXCEPTION);
+    context.report_fixed("UnusedException", parameter, node.start_byte(), UNUSED_EXCEPTION, &super::unused_fix::fixes(context, node, parameter, name));
 }
 
 fn throws_outside_try(node: Node) -> bool {
@@ -233,7 +241,7 @@ pub fn string_splitter(context: &Context, node: Node) {
     };
     if direct {
         let at = node.child_by_field_name("arguments").map_or(node.start_byte(), |list| list.start_byte());
-        context.report("StringSplitter", node, at, "String.split(String) has surprising behavior");
+        context.report_fixed("StringSplitter", node, at, "String.split(String) has surprising behavior", &[super::splitter_fix::fix(context, node)]);
     }
 }
 

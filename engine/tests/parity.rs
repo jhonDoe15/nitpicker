@@ -100,8 +100,18 @@ fn review_rules_report_what_pmd_reports() {
 }
 
 #[test]
+fn rules_written_with_pmd_7_node_names_match_pmd() {
+    same_as_pmd("pmd7names", "all");
+}
+
+#[test]
 fn rare_built_in_rules_and_switch_facts_match_pmd() {
     same_as_pmd("builtins", "all");
+}
+
+#[test]
+fn concurrency_and_value_rules_report_what_pmd_reports() {
+    same_as_pmd("values", "all");
 }
 
 #[test]
@@ -111,7 +121,7 @@ fn error_prone_checks_report_what_error_prone_reports() {
     let missed: Vec<&Row> = expected.iter().filter(|(row, count)| found.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     let extra: Vec<&Row> = found.iter().filter(|(row, count)| expected.get(*row).unwrap_or(&0) < count).map(|(row, _)| row).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
-    assert_eq!(expected.keys().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 63);
+    assert_eq!(expected.keys().map(|row| row.1.as_str()).collect::<BTreeSet<_>>().len(), 193);
 }
 
 /// A Java run selects some checks (`NP_EP_ONLY`); the others are skipped, and each selected check reports what it
@@ -150,6 +160,44 @@ fn line_breaks_encodings_and_functions_match_pmd() {
 #[test]
 fn byte_order_mark_does_not_move_findings() {
     same_as_pmd("bom", "edges");
+}
+
+/// Java allows a NUL character in strings, text blocks, character literals and comments, and PMD parses such a file.
+/// The grammar stops at it, so the engine reads it as a space there; a NUL in code still marks the file broken.
+#[test]
+fn a_nul_character_breaks_a_file_only_in_code() {
+    let folder = std::env::temp_dir().join(format!("nitpicker-engine-nul-{}", std::process::id()));
+    std::fs::create_dir_all(&folder).expect("folder");
+    let sources = [
+        ("Text", "String s = \"a\0b\";"),
+        ("Letter", "char c = '\0';"),
+        ("Block", "String t = \"\"\"\n  x\0y\n  \"\"\";"),
+        ("Line", "// a\0b\nint a;"),
+        ("Comment", "/* a\0b */ int a;"),
+        ("Code", "int\0 a;"),
+    ];
+    for (name, body) in sources {
+        std::fs::write(folder.join(format!("{name}.java")), format!("class {name} {{\n{body}\n}}\n")).expect("source");
+    }
+    let rules = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("rules").join("edges.json");
+    let output = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
+        .arg(&folder)
+        .args(["--rules", "_XPath"])
+        .env("NP_XPATH_RULES", rules)
+        .env("NP_XPATH_ONLY", "Field")
+        .output()
+        .expect("engine runs");
+    let _ = std::fs::remove_dir_all(&folder);
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).expect("json");
+    let broken: Vec<String> = report["syntaxErrorFiles"]
+        .as_array()
+        .expect("files")
+        .iter()
+        .map(|file| Path::new(file.as_str().expect("file")).file_name().expect("name").to_string_lossy().into_owned())
+        .collect();
+    assert_eq!(broken, ["Code.java"]);
+    assert_eq!(report["findings"].as_array().map(Vec::len), Some(6));
 }
 
 /// One file of a single expression thousands of terms deep: the run of one file uses the large worker stack too.
@@ -237,4 +285,51 @@ fn null_away_reports_what_null_away_reports() {
     let extra: Vec<&Told> = found.difference(&expected).collect();
     assert!(missed.is_empty() && extra.is_empty(), "missed {missed:?}, extra {extra:?}");
     assert_eq!(expected.len(), 119);
+}
+
+#[test]
+fn ported_rules_report_what_pmd_reports_with_its_messages() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests");
+    let source = root.join("fixtures").join("coded");
+    let out = std::env::temp_dir().join(format!("nitpicker-engine-coded-{}.json", std::process::id()));
+    let status = Command::new(env!("CARGO_BIN_EXE_nitpicker-engine"))
+        .arg(&source)
+        .args(["--rules", "_XPath", "--out"])
+        .arg(&out)
+        .env("NP_XPATH_RULES", root.join("rules").join("coded.json"))
+        .status()
+        .expect("engine runs");
+    assert!(status.success());
+    let report: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&out).expect("report")).expect("json");
+    let _ = std::fs::remove_file(&out);
+    let prefix = format!("{}/", source.display());
+    let mut found: Vec<(String, String, u64, u64, String)> = report["findings"]
+        .as_array()
+        .expect("findings")
+        .iter()
+        .map(|finding| {
+            let file = finding["file"].as_str().expect("file");
+            (
+                file.strip_prefix(&prefix).unwrap_or(file).to_string(),
+                finding["rule"].as_str().expect("rule").to_string(),
+                finding["line"].as_u64().expect("line"),
+                finding["column"].as_u64().expect("column"),
+                finding["message"].as_str().expect("message").to_string(),
+            )
+        })
+        .collect();
+    found.sort();
+    let read = |name: &str| -> Vec<(String, String, u64, u64, String)> {
+        serde_json::from_str(&std::fs::read_to_string(root.join("expected").join(name)).expect("expected")).expect("rows")
+    };
+    let wrong = read("coded-pmd-wrong.json");
+    let mut expected = read("coded.json");
+    for row in &wrong {
+        assert!(expected.contains(row), "{row:?} is listed as a wrong PMD finding but PMD did not report it");
+        assert!(!found.contains(row), "{row:?} copies a wrong PMD finding");
+    }
+    expected.retain(|row| !wrong.contains(row) && row.1 != "!error");
+    let missed: Vec<_> = expected.iter().filter(|row| !found.contains(row)).collect();
+    let extra: Vec<_> = found.iter().filter(|row| !expected.contains(row)).collect();
+    assert!(missed.is_empty() && extra.is_empty() && found.len() == expected.len(), "missed {missed:?}, extra {extra:?}");
 }

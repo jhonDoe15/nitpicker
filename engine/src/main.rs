@@ -28,6 +28,10 @@ fn main() {
         typescript_imports(&args[1..]);
         return;
     }
+    if args.first().map(String::as_str) == Some("typescript-import-extract") {
+        typescript::imports::run(&args[1..]);
+        return;
+    }
     if args.first().map(String::as_str) == Some("typescript-reuse") {
         typescript_reuse(&args[1..]);
         return;

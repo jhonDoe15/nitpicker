@@ -1,0 +1,12 @@
+  <rule name="SpringLockReleasedBeforeCommit" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Move the lock to a caller around the transactional call, or lock in the database with @Version or a @Lock(PESSIMISTIC_WRITE) query, instead of synchronized on this @Transactional method: the monitor is released when the method returns and the proxy commits after that, so a second thread can take the lock and still read the rows from before the commit.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodDeclaration[pmd-java:modifiers() = 'synchronized'][not(pmd-java:modifiers() = ('static', 'private'))]
+  [ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')
+      or pmd-java:typeIs('jakarta.transaction.Transactional') or pmd-java:typeIs('javax.transaction.Transactional')]
+     [not(AnnotationMemberList/MemberValuePair[@Name = 'readOnly'][not(BooleanLiteral[@True = false()])])]
+     [not(AnnotationMemberList/MemberValuePair[@Name = ('propagation', 'value')]
+        //*[@Name = ('NOT_SUPPORTED', 'NEVER', 'SUPPORTS')])]]
+]]></value></property></properties>
+  </rule>

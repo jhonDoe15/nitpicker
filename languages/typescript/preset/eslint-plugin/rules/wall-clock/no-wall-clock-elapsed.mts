@@ -18,7 +18,7 @@ function isDateNew(node: TSESTree.Node): boolean {
   );
 }
 
-function isWallRead(node: TSESTree.Node): boolean {
+export function isWallRead(node: TSESTree.Node): boolean {
   if (node.type === AST_NODE_TYPES.UnaryExpression) {
     return node.operator === '+' && isDateNew(node.argument);
   }

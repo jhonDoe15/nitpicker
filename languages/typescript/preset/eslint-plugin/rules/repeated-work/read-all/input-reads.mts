@@ -6,7 +6,7 @@ import { isFsRead } from '../early-exits/pure-work.mts';
 
 const READS = new Set(['readFile', 'readFileSync', 'readJson', 'readJsonSync']);
 
-function isJsonParse(sourceCode: SourceCode, callee: TSESTree.Node): boolean {
+export function isJsonParse(sourceCode: SourceCode, callee: TSESTree.Node): boolean {
   const owner =
     callee.type === AST_NODE_TYPES.MemberExpression ? unwrapped(callee.object) : undefined;
   const variable =

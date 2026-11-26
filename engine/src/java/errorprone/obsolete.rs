@@ -1,5 +1,6 @@
 //! JdkObsolete: old JDK classes and the methods that take a charset by name.
 use super::Context;
+use super::obsolete_fix::{linked_list_fix, string_buffer_fix};
 use super::hierarchy::{declared_method, simple_name, super_method};
 use crate::engine::source::{children, parent, walk};
 use crate::java::types::expr::Receiver;
@@ -215,7 +216,13 @@ pub fn jdk_obsolete(context: &Context, node: Node) {
             let Some(created) = node.child_by_field_name("type").and_then(|kind| context.resolver.type_node(kind)) else { return };
             let Some((class, text)) = message(context, node, &[created.name()]) else { return };
             if class != "java.lang.StringBuffer" || !feeds_matcher(context) {
-                context.report(NAME, node, at, text);
+                let plain = !children(node).iter().any(|part| part.kind() == "class_body");
+                let fix = match class {
+                    "java.util.LinkedList" if plain => linked_list_fix(context, node),
+                    "java.lang.StringBuffer" if plain => string_buffer_fix(context, node),
+                    _ => None,
+                };
+                context.report_fixed(NAME, node, at, text, &fix.into_iter().collect::<Vec<_>>());
             }
         }
         "class_declaration" | "interface_declaration" | "enum_declaration" | "record_declaration" => {

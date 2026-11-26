@@ -12,3 +12,14 @@ Licensed under the Apache License, Version 2.0; a copy is in engine/licenses/Apa
   messages are those of Error Prone. The doc comment parser in that folder (doc.rs, docparse.rs,
   doctags.rs, docref.rs) is not derived from Error Prone or from the JDK: it was written from the
   Documentation Comment Specification for the Standard Doclet.
+
+PMD (https://pmd.github.io)
+Copyright (c) 2003-2009, InfoEther, LLC. All rights reserved.
+Licensed under PMD's BSD-style license (a copy is in engine/licenses/PMD-BSD.txt); PMD's license file also carries
+the Apache License, Version 2.0 (a copy is in engine/licenses/Apache-2.0.txt).
+This product includes software developed in part by support from the Defense Advanced Research Project Agency
+(DARPA).
+
+  The rules in engine/src/java/pmd/coded/ are ports of the PMD 7.16.0 Java rules of the same names, which PMD
+  writes in Java. They were rewritten in Rust for the engine's PMD-shaped tree, and their messages are those of
+  PMD.

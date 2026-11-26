@@ -1,5 +1,7 @@
 //! UnnecessaryBoxedVariable: a variable of a wrapper type that is only ever used as its primitive.
 use super::Context;
+use super::fixes::Fix;
+use super::boxed_fixes::{Edit, assignment_edits, cast_call_edit, null_check_edit, primitive_name, simple_call_edit, variable_fix};
 use super::hierarchy::{formals, has_annotation};
 use super::keep::{VARIABLES, should_keep};
 use super::vars::{Named, named};
@@ -49,6 +51,24 @@ fn is_value(node: Node) -> bool {
     }
 }
 
+/// `Integer.valueOf(...)` and its like.
+fn is_value_of(context: &Context, expression: Node) -> bool {
+    expression.kind() == "method_invocation"
+        && expression.child_by_field_name("name").is_some_and(|name| context.text(name) == "valueOf")
+        && context.resolver.resolve_call(expression).is_some_and(|call| {
+            let owner = if expression.child_by_field_name("object").is_some() { call.receiver.erased().name() } else { call.declaring.clone() };
+            call.method.is_static && WRAPPERS.contains(&owner.as_str())
+        })
+}
+
+/// A use of a variable that changes when the variable becomes a primitive.
+#[derive(Clone, Copy)]
+enum Pending<'t> {
+    Assignment(Node<'t>),
+    NullCheck(Node<'t>),
+    Call(Node<'t>, Node<'t>, bool),
+}
+
 struct Usages<'c, 'a, 't> {
     context: &'c Context<'a>,
     boxed: HashSet<usize>,
@@ -57,6 +77,8 @@ struct Usages<'c, 'a, 't> {
     bodies: std::collections::HashMap<String, Node<'t>>,
     /// By declaration without a written type: whether its first use had a wrapper type.
     inferred: std::cell::RefCell<std::collections::HashMap<usize, bool>>,
+    /// By declaration: the uses that need an edit when it becomes a primitive, worked out only for a reported variable.
+    edits: std::collections::HashMap<usize, Vec<Pending<'t>>>,
 }
 
 /// The type of an expression; a conditional with a primitive branch and a primitive or wrapper branch is primitive.
@@ -123,13 +145,18 @@ impl<'t> Usages<'_, '_, 't> {
         }
     }
 
+    fn edits_of(&self, symbol: usize) -> Vec<Edit> {
+        let pending = self.edits.get(&symbol).map(Vec::as_slice).unwrap_or_default();
+        pending.iter().flat_map(|use_of| match *use_of {
+            Pending::Assignment(right) => assignment_edits(self.context, right, is_value_of(self.context, right)),
+            Pending::NullCheck(call) => null_check_edit(self.context, call).into_iter().collect(),
+            Pending::Call(call, receiver, true) => cast_call_edit(self.context, call, receiver).into_iter().collect(),
+            Pending::Call(call, receiver, false) => simple_call_edit(self.context, call, receiver).into_iter().collect(),
+        }).collect()
+    }
+
     fn value_of(&self, expression: Node) -> bool {
-        expression.kind() == "method_invocation"
-            && expression.child_by_field_name("name").is_some_and(|name| self.context.text(name) == "valueOf")
-            && self.context.resolver.resolve_call(expression).is_some_and(|call| {
-                let owner = if expression.child_by_field_name("object").is_some() { call.receiver.erased().name() } else { call.declaring.clone() };
-                call.method.is_static && WRAPPERS.contains(&owner.as_str())
-            })
+        is_value_of(self.context, expression)
     }
 
     /// Whether the place of the expression takes a primitive; `None` when the place takes no value at all.
@@ -221,6 +248,7 @@ impl<'t> Usages<'_, '_, 't> {
             let first = node.child_by_field_name("arguments").map(named_children).unwrap_or_default().into_iter().find(|part| !part.kind().ends_with("comment"));
             if let Some(symbol) = first.map(crate::java::types::expr::unwrap).and_then(|first| self.symbol_of_argument(first)) {
                 self.dereferenced.insert(symbol);
+                self.edits.entry(symbol).or_default().push(Pending::NullCheck(node));
                 return true;
             }
         }
@@ -230,6 +258,8 @@ impl<'t> Usages<'_, '_, 't> {
         let instance = fixable && self.context.resolver.resolve_call(node).is_some_and(|resolved| !resolved.method.is_static);
         if !instance {
             self.boxed.insert(symbol);
+        } else if let Some(receiver) = node.child_by_field_name("object") {
+            self.edits.entry(symbol).or_default().push(Pending::Call(node, receiver, CASTS.contains(&name)));
         }
         true
     }
@@ -251,6 +281,7 @@ impl<'t> Usages<'_, '_, 't> {
                     return self.scan(right);
                 }
                 if let Some(symbol) = self.symbol(left) {
+                    self.edits.entry(symbol).or_default().push(Pending::Assignment(right));
                     let kind = kind_of(self.context, right);
                     let plain = primitive(&kind) || (kind.is_some() && (self.value_of(right) || right.kind() == "object_creation_expression"));
                     if plain {
@@ -335,14 +366,14 @@ fn can_change_signature(context: &Context, method: Node) -> bool {
     !super::hierarchy::overrides(context, method)
 }
 
-fn report(context: &Context, declaration: Node, name: Option<Node>, field: bool) {
+fn report(context: &Context, declaration: Node, name: Option<Node>, field: bool, fix: Fix) {
     let Some(name) = name else { return };
     let message = match (has_annotation(context, declaration, "Nullable"), field) {
         (false, _) => SUMMARY,
         (true, true) => NULLABLE_FIELD,
         (true, false) => NULLABLE,
     };
-    context.report(NAME, name, name.start_byte(), message);
+    context.report_fixed(NAME, name, name.start_byte(), message, &[fix]);
 }
 
 fn declared(context: &Context, declaration: Node, declarator: Option<Node>) -> Option<Type> {
@@ -365,7 +396,7 @@ pub fn unnecessary_boxed_variable(context: &Context, root: Node) {
             }
         }
     });
-    let mut usages = Usages { context, boxed: HashSet::new(), dereferenced: HashSet::new(), bodies, inferred: Default::default() };
+    let mut usages = Usages { context, boxed: HashSet::new(), dereferenced: HashSet::new(), bodies, inferred: Default::default(), edits: Default::default() };
     usages.scan(root);
     let resolver = context.resolver;
     walk(root, |node| match node.kind() {
@@ -384,7 +415,10 @@ pub fn unnecessary_boxed_variable(context: &Context, root: Node) {
                     value.is_none_or(|value| primitive(&kind) || (kind.is_some() && usages.value_of(value)))
                 };
                 if fits {
-                    report(context, node, declarator.child_by_field_name("name"), field);
+                    let unboxed = primitive_name(declared(context, node, Some(declarator))).unwrap_or_default();
+                    let edits = &usages.edits_of(declarator.id());
+                    let fix = variable_fix(context, node, unboxed, value, value.is_some_and(|value| is_value_of(context, value)), edits);
+                    report(context, node, declarator.child_by_field_name("name"), field, fix);
                 }
             }
         }
@@ -392,7 +426,9 @@ pub fn unnecessary_boxed_variable(context: &Context, root: Node) {
             let over = node.child_by_field_name("value").and_then(|value| resolver.type_of(value));
             let fits = matches!(&over, Some(Type::Array(element)) if matches!(**element, Type::Primitive(_)));
             if fits && wrapper(&declared(context, node, None)) && !usages.boxed.contains(&node.id()) {
-                report(context, node, node.child_by_field_name("name"), false);
+                let unboxed = primitive_name(declared(context, node, None)).unwrap_or_default();
+                let edits = &usages.edits_of(node.id());
+                report(context, node, node.child_by_field_name("name"), false, variable_fix(context, node, unboxed, None, false, edits));
             }
         }
         "formal_parameter" => {
@@ -401,7 +437,9 @@ pub fn unnecessary_boxed_variable(context: &Context, root: Node) {
                 return;
             }
             if usages.dereferenced.contains(&node.id()) && !usages.boxed.contains(&node.id()) && can_change_signature(context, method) {
-                report(context, node, node.child_by_field_name("name"), false);
+                let unboxed = primitive_name(resolver.declared_type(node, None)).unwrap_or_default();
+                let edits = &usages.edits_of(node.id());
+                report(context, node, node.child_by_field_name("name"), false, variable_fix(context, node, unboxed, None, false, edits));
             }
         }
         _ => {}

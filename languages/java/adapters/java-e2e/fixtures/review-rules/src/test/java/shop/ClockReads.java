@@ -67,6 +67,13 @@ class ClockReads {
     assertThat(UUID.fromString(id.toString())).isEqualTo(id);
   }
 
+  void convertsTheStartTime(Metadata metadata) {
+    long started = System.currentTimeMillis();
+    assertThat(System.nanoTime() - java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(started)).isPositive();
+    long stamp = System.currentTimeMillis(); // violation: RealClockInTest
+    metadata.setSeenSeconds(java.util.concurrent.TimeUnit.MILLISECONDS.toSeconds(stamp));
+  }
+
   interface Metadata {
     void setDeletionTimestamp(Instant value);
 
@@ -77,6 +84,8 @@ class ClockReads {
     void setUpdateTimestamp(Instant value);
 
     void setSeen(Instant value);
+
+    void setSeenSeconds(long value);
 
     Instant created();
   }

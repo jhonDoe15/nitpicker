@@ -10,6 +10,8 @@ type Shim = {
 };
 
 const MERGE_MANIFESTS = 'merge-manifests';
+const ENGINE_HOOKS = '../engine-extract/engine-hooks';
+const ORIGINAL_NAMESPACE = '* as original';
 const DEFAULT_ORIGINAL = 'original';
 
 const SHIMS: ReadonlyMap<string, Shim> = new Map([
@@ -35,7 +37,7 @@ const SHIMS: ReadonlyMap<string, Shim> = new Map([
     'get-manifest',
     {
       module: MERGE_MANIFESTS,
-      original: '* as original',
+      original: ORIGINAL_NAMESPACE,
       imports: 'normalizedManifest',
       body: [
         'export const getManifest = (...parameters) =>',
@@ -51,6 +53,36 @@ const SHIMS: ReadonlyMap<string, Shim> = new Map([
       original: DEFAULT_ORIGINAL,
       imports: 'normalizedManifest',
       body: 'export default (closest, further) =>\n  original(normalizedManifest(closest), normalizedManifest(further));',
+    },
+  ],
+  [
+    'gather-initial-sources',
+    {
+      module: ENGINE_HOOKS,
+      original: DEFAULT_ORIGINAL,
+      imports: 'withEngineSources',
+      body: 'export default withEngineSources(original);',
+    },
+  ],
+  [
+    'tsc-extract',
+    {
+      module: ENGINE_HOOKS,
+      original: ORIGINAL_NAMESPACE,
+      imports: 'withEngineTypeScriptExtract',
+      body: [
+        'export const shouldUse = original.shouldUse;',
+        'export const extract = withEngineTypeScriptExtract(original.extract);',
+      ].join('\n'),
+    },
+  ],
+  [
+    'acorn-extract',
+    {
+      module: ENGINE_HOOKS,
+      original: ORIGINAL_NAMESPACE,
+      imports: 'withEngineJavaScriptExtract',
+      body: 'export const extract = withEngineJavaScriptExtract(original.extract);',
     },
   ],
 ]);

@@ -47,7 +47,7 @@ public final class Snapshots {
 
   static int chained() {
     try (StringReader in = new StringReader("a")) {
-      return CompletableFuture.supplyAsync(() -> in.hashCode()).join(); // violation: UnboundedWait
+      return CompletableFuture.supplyAsync(() -> in.hashCode()).join(); // violation: UnboundedWait, FutureJoinedWhereStarted
     }
   }
 

@@ -1,7 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { variableNamed, type SourceCode } from '../../typed/node-views.mts';
 import { someNode } from '../../collections/costly-forms/repeated-runs.mts';
-import { isSettled } from '../repeated-calls/call-shapes.mts';
 import { readsOnlyFixed } from '../support/loop-invariance.mts';
 
 const EXITS = new Set<string>([
@@ -40,12 +39,11 @@ export function isEarlyExit(
   sourceCode: SourceCode,
   statement: TSESTree.Node | undefined,
   name: string,
-): boolean {
+): statement is TSESTree.IfStatement {
   return (
     statement?.type === AST_NODE_TYPES.IfStatement &&
     statement.alternate === null &&
     endsInExit(statement.consequent) &&
-    isSettled(statement.test) &&
     !readsName(statement.test, name) &&
     !readsName(statement.consequent, name) &&
     !callsReader(sourceCode, statement, name)

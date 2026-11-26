@@ -1,3 +1,8 @@
+import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
+import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
+import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
+import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multiple-collection-joins.mts';
+import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutating-method-in-domain.mts';
 import { rule as ruleNoNanOnlyCheck } from '../rules/numbers/no-nan-only-check.mts';
 import { rule as ruleNoNegativeCount } from '../rules/counts/no-negative-count.mts';
 import { rule as ruleNoNewlineOnlyLineSplit } from '../rules/line-splits/no-newline-only-line-split.mts';
@@ -33,7 +38,10 @@ import { rule as ruleNoReleaseOutsideFinally } from '../rules/resources/release/
 import { rule as ruleNoRemoteCallInTransaction } from '../rules/effects/no-remote-call-in-transaction.mts';
 import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-call-under-lock.mts';
 import { rule as ruleNoRepeatedCall } from '../rules/repeated-work/repeated-calls/no-repeated-call.mts';
+import { rule as ruleNoRepeatedKeyedScan } from '../rules/repeated-work/keyed-scans/no-repeated-keyed-scan.mts';
+import { rule as ruleNoRepeatedParsePerItem } from '../rules/repeated-work/parses/no-repeated-parse-per-item.mts';
 import { rule as ruleNoRepeatedStringLiteral } from '../rules/literals/no-repeated-string-literal.mts';
+import { rule as ruleNoReplacingCollectionMerge } from '../rules/repeated-work/merges/no-replacing-collection-merge.mts';
 import { rule as ruleNoRetryWithoutIdempotency } from '../rules/writes/no-retry-without-idempotency.mts';
 import { rule as ruleNoRouteWithoutAuth } from '../rules/route-auth/no-route-without-auth.mts';
 import { rule as ruleNoRuntimeExclusivePropsCheck } from '../rules/react-props/no-runtime-exclusive-props-check.mts';
@@ -52,6 +60,7 @@ import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singu
 import { rule as ruleNoSlashOnlyRedirectGuard } from '../rules/urls/requests/no-slash-only-redirect-guard.mts';
 import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-string-building.mts';
 import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mts';
+import { rule as ruleNoStatPerListedEntry } from '../rules/repeated-work/listings/no-stat-per-listed-entry.mts';
 import { rule as ruleNoStatusOnlySpawnCheck } from '../rules/processes/results/no-status-only-spawn-check.mts';
 import { rule as ruleNoStderrAsFailure } from '../rules/processes/results/no-stderr-as-failure.mts';
 import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mts';
@@ -89,17 +98,13 @@ import { rule as ruleNoUnescapedHtmlInterpolation } from '../rules/patterns/html
 import { rule as ruleNoUnescapedPatternTranslation } from '../rules/patterns/no-unescaped-pattern-translation.mts';
 import { rule as ruleNoUnfilteredSoftDeleteRead } from '../rules/queries/soft-delete/no-unfiltered-soft-delete-read.mts';
 import { rule as ruleNoUnguardedCyclicRecursion } from '../rules/recursion/no-unguarded-cyclic-recursion.mts';
-import { rule as ruleNoUnguardedDeletedItems } from '../rules/deleted-items/no-unguarded-deleted-items.mts';
-import { rule as ruleNoUnguardedJsonParse } from '../rules/parsing/no-unguarded-json-parse.mts';
-import { rule as ruleNoUnguardedOptionList } from '../rules/processes/arguments/no-unguarded-option-list.mts';
-import { rule as ruleNoUnguardedRegistryDelete } from '../rules/lifecycles/registry/no-unguarded-registry-delete.mts';
-import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
-import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
-import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mts';
-import { rule as ruleNoUninjectableDelay } from '../rules/test-runtime/lifecycle/no-uninjectable-delay.mts';
-import { rule as ruleNoUnionOrderDependence } from '../rules/union-order/no-union-order-dependence.mts';
 
 export const partRules = {
+  'no-mocking-subject-under-test': ruleNoMockingSubjectUnderTest,
+  'no-module-level-let': ruleNoModuleLevelLet,
+  'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
+  'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
+  'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
   'no-nan-only-check': ruleNoNanOnlyCheck,
   'no-negative-count': ruleNoNegativeCount,
   'no-newline-only-line-split': ruleNoNewlineOnlyLineSplit,
@@ -135,7 +140,10 @@ export const partRules = {
   'no-remote-call-in-transaction': ruleNoRemoteCallInTransaction,
   'no-remote-call-under-lock': ruleNoRemoteCallUnderLock,
   'no-repeated-call': ruleNoRepeatedCall,
+  'no-repeated-keyed-scan': ruleNoRepeatedKeyedScan,
+  'no-repeated-parse-per-item': ruleNoRepeatedParsePerItem,
   'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
+  'no-replacing-collection-merge': ruleNoReplacingCollectionMerge,
   'no-retry-without-idempotency': ruleNoRetryWithoutIdempotency,
   'no-route-without-auth': ruleNoRouteWithoutAuth,
   'no-runtime-exclusive-props-check': ruleNoRuntimeExclusivePropsCheck,
@@ -154,6 +162,7 @@ export const partRules = {
   'no-slash-only-redirect-guard': ruleNoSlashOnlyRedirectGuard,
   'no-sql-string-building': ruleNoSqlStringBuilding,
   'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
+  'no-stat-per-listed-entry': ruleNoStatPerListedEntry,
   'no-status-only-spawn-check': ruleNoStatusOnlySpawnCheck,
   'no-stderr-as-failure': ruleNoStderrAsFailure,
   'no-string-as-regex': ruleNoStringAsRegex,
@@ -191,13 +200,4 @@ export const partRules = {
   'no-unescaped-pattern-translation': ruleNoUnescapedPatternTranslation,
   'no-unfiltered-soft-delete-read': ruleNoUnfilteredSoftDeleteRead,
   'no-unguarded-cyclic-recursion': ruleNoUnguardedCyclicRecursion,
-  'no-unguarded-deleted-items': ruleNoUnguardedDeletedItems,
-  'no-unguarded-json-parse': ruleNoUnguardedJsonParse,
-  'no-unguarded-option-list': ruleNoUnguardedOptionList,
-  'no-unguarded-registry-delete': ruleNoUnguardedRegistryDelete,
-  'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
-  'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
-  'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
-  'no-uninjectable-delay': ruleNoUninjectableDelay,
-  'no-union-order-dependence': ruleNoUnionOrderDependence,
 };

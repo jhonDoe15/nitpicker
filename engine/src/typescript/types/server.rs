@@ -181,6 +181,23 @@ impl Server {
         self.read(method, parameters)
     }
 
+    /// Many questions of one method in one exchange, answers in the order of the questions.
+    pub fn answer_many<T: for<'de> Deserialize<'de>>(&mut self, project: &Project, method: &str, parameters: Vec<Value>) -> Result<Vec<T>, String> {
+        let payloads: Vec<Vec<u8>> = parameters
+            .into_iter()
+            .map(|mut parameters| {
+                parameters["snapshot"] = json!(self.snapshot);
+                parameters["project"] = json!(project.id);
+                parameters.to_string().into_bytes()
+            })
+            .collect();
+        self.channel
+            .request_many(method, &payloads)?
+            .iter()
+            .map(|body| serde_json::from_slice(if body.is_empty() { b"null" } else { body }).map_err(|error| format!("{method}: {error}")))
+            .collect()
+    }
+
     /// Any other method of the server, for questions that have no wrapper yet.
     pub fn raw(&mut self, project: &Project, method: &str, mut parameters: Value) -> Result<Value, String> {
         parameters["snapshot"] = json!(self.snapshot);

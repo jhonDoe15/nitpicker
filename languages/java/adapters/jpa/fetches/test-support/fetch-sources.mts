@@ -210,6 +210,32 @@ public class Edges {
   }
 }
 `,
+  'src/shop/dto/Order.java': `package shop.dto;
+
+public class Order {
+  private String items;
+  private String customer;
+}
+`,
+  'src/shop/PagedRepository.java': `package shop;
+
+public interface PagedRepository extends JpaRepository<Order, Long> {
+  @Query("select o from PurchaseOrder o join fetch o.customer left join fetch o.items")
+  Page<Order> withItems(Pageable pageable);
+
+  @Query("select o from PurchaseOrder o join fetch o.customer")
+  Page<Order> withCustomer(Pageable pageable);
+
+  @EntityGraph(attributePaths = "notes")
+  Page<Order> findByCustomerId(Long id, Pageable pageable);
+
+  @EntityGraph(attributePaths = "customer")
+  Page<Order> findByCustomerName(String name, Pageable pageable);
+
+  @Query("select o from Unknown o join fetch o.items")
+  Page<Order> unknown(Pageable pageable);
+}
+`,
   'src/shop/Odd.java': `package shop;
 
 import org.springframework.data.jpa.repository.EntityGraph;
