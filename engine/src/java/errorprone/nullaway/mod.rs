@@ -1077,7 +1077,7 @@ pub fn null_away(context: &Context, root: Node) {
             }
         }
         for block in 0..flow.cfg.blocks.len() {
-            if let (Some(_), Exit::Branch(test, _, _)) = (&inputs[block], &flow.cfg.blocks[block].exit) {
+            if let Exit::Branch(test, _, _) = &flow.cfg.blocks[block].exit {
                 let test = *test;
                 flow.copy = flow.cfg.blocks[block].copy;
                 if flow.unboxed_test(test) {
