@@ -61,6 +61,7 @@ import { rule as ruleRequireClientTimeout } from '../rules/clients/require-clien
 import { rule as ruleRequireErrorListener } from '../rules/events/require-error-listener.mts';
 import { rule as ruleRequireGoCollectorSetting } from '../rules/child-heaps/require-go-collector-setting.mts';
 import { rule as ruleRequireHttpTimeout } from '../rules/security/http/require-http-timeout.mts';
+import { rule as ruleRequireJvmHeapGoal } from '../rules/child-heaps/require-jvm-heap-goal.mts';
 import { rule as ruleRequireProcessTimeout } from '../rules/processes/require-process-timeout.mts';
 import { rule as ruleRequirePromiseReject } from '../rules/promises/executors/require-promise-reject.mts';
 import { rule as ruleRequireTestProcessTimeout } from '../rules/test-runtime/processes/timeouts/require-test-process-timeout.mts';
@@ -142,6 +143,7 @@ export const partRules = {
   'require-error-listener': ruleRequireErrorListener,
   'require-go-collector-setting': ruleRequireGoCollectorSetting,
   'require-http-timeout': ruleRequireHttpTimeout,
+  'require-jvm-heap-goal': ruleRequireJvmHeapGoal,
   'require-process-timeout': ruleRequireProcessTimeout,
   'require-promise-reject': ruleRequirePromiseReject,
   'require-test-process-timeout': ruleRequireTestProcessTimeout,

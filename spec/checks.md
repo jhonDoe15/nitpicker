@@ -472,6 +472,12 @@ process started on a Go-built server or checker (`tsgo`, `tsgolint`, `gopls`, th
 `--api`) whose `env` sets neither `GOGC` nor `GOMEMLIMIT`. With the default `GOGC=100` such a server holds twice its
 live heap; the allowed form passes `GOGC` unless the user set one.
 
+JVM heap goals: `nitpicker/require-jvm-heap-goal` (production source, in `eslint-lint`) reports a `java` child process
+started in a loop, a parallel map or a pool, or from a function called there, whose arguments or `JAVA_TOOL_OPTIONS`
+set a heap ceiling (`-Xmx`, `-XX:MaxRAMPercentage`) and no goal (`-XX:GCTimeRatio`, `-XX:SoftMaxHeapSize`,
+`-XX:MaxHeapFreeRatio`). Each such JVM grows to its ceiling and keeps it, so concurrent JVMs hold far more than their
+live data; the allowed form adds `-XX:GCTimeRatio=4` next to the ceiling.
+
 Unbounded waits: `pmd/UnboundedWait` (Java, main sources) reports `get()` or `join()` without a timeout on a
 `Future` or `CompletableFuture`, `Thread.join()` and `CountDownLatch.await()`, and
 `pmd/ReactorBlockWithoutTimeout` (with `reactor-core` on the compile classpath) reports `block()`,

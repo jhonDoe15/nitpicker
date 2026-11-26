@@ -2104,6 +2104,19 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `process.env` alone or a key set to `undefined` does not count). Not reported: `--version` and `--help` runs,
   options or an `env` the rule cannot read (a parameter, another spread). Pass `env: { ...process.env, GOGC:
   process.env.GOGC ?? '50' }`.
+- JVMs started in a loop or pool get a heap goal next to their heap ceiling (`nitpicker/require-jvm-heap-goal`,
+  production files). A ceiling is not a size: with the default throughput goal a JVM grows its heap toward `-Xmx` or
+  `-XX:MaxRAMPercentage` instead of collecting, and does not give it back, so several at once hold far more than their
+  live data (4.0 GB for about 1.6 GB of live data on a 15 GB machine). Reported: `spawn`, `spawnSync`, `execFile`,
+  `execFileSync` and execa calls on `java` (a literal or a path ending in `java` or `java.exe`, or a binding named
+  like `javaPath`) whose argument array sets `-Xmx`, `-XX:MaxRAMPercentage=` or `-XX:MaxRAM=` and none of
+  `-XX:GCTimeRatio=`, `-XX:SoftMaxHeapSize=` or `-XX:MaxHeapFreeRatio=`, and any child whose `env` sets such a ceiling
+  without a goal in `JAVA_TOOL_OPTIONS`, `JDK_JAVA_OPTIONS` or `_JAVA_OPTIONS`, when the call sits in a loop, in a
+  callback given to `map`, `forEach`, `flatMap`, `Promise.all`, `pMap`, `mapLimit` or a `limit` function, or in a
+  function of the same file called from one. Not reported: a JVM started once per run, argument arrays with a spread
+  (arguments from user configuration), and arrays with an element the rule cannot read whose name looks like a flag
+  (`goalFlag`, `jvmArgs`); the ceiling and the goal count together across the arguments and the options variables. Add
+  `-XX:GCTimeRatio=4` (or `-XX:SoftMaxHeapSize` with ZGC) next to the ceiling.
 - Waits without a timeout (`pmd/UnboundedWait`, `unbounded-wait`, `pmd/ReactorBlockWithoutTimeout` in the JVM and
   Python presets) have no TypeScript or JavaScript counterpart: nothing blocks a thread on a promise, and a promise
   that never settles is a missing deadline for `await`, which `nitpicker/require-client-timeout` and

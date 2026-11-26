@@ -358,6 +358,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Start a Go-built server or checker (`tsgo`, the TypeScript 7 API server, `tsgolint`, `gopls`) with `GOGC` (for
   example 50) or `GOMEMLIMIT` in its `env`, unless the user set one: the default lets its heap grow to twice the live
   size (`nitpicker/require-go-collector-setting`).
+- When JVMs are started in a loop or pool with `-Xmx` or `-XX:MaxRAMPercentage`, add a heap goal next to the ceiling
+  (`-XX:GCTimeRatio=4`, or `-XX:SoftMaxHeapSize` with ZGC): each JVM otherwise grows to its ceiling and keeps it
+  (`nitpicker/require-jvm-heap-goal`).
 - Time values carry their unit in the name (`timeoutMs`, `ttlSeconds`) and meet only the same unit: convert
   once where a value enters (`ttlSeconds * 1000`, `Math.floor(Date.now() / 1000)`), compare JWT `exp` with
   `Date.now() / 1000`, pass milliseconds to `setTimeout` and `new Date(...)`, and never cut an epoch time
