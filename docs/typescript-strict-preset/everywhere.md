@@ -2084,6 +2084,15 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   a value of fixed shape (a summary, a config, a `const` set to an object literal or a string), a list cut with
   `slice` first, and an array literal of fixed items. Write one element per line (JSON Lines) or in batches, and read
   the file back line by line.
+- A list that grows with the input is not mapped into a new array only to be walked once
+  (`nitpicker/no-mapped-copy-for-single-pass`, production files). The copy and every object in it stay alive next to
+  the original until the walk ends, long enough to reach the old generation: with 360,000 findings each report file
+  added 100 to 300 MB to the process. Reported: `list.map(...)`, `list.filter(...)`, `list.flatMap(...)` or
+  `[...list]` passed straight to a function of the same file whose parameter is read exactly once, as the source of a
+  `for...of` loop, in `yield*` or in `Readable.from`, when `list` grows with the input (the same lists as
+  `nitpicker/no-whole-list-json-text`). Not reported: a copy that is stored, sorted, read twice or returned, a
+  parameter walked inside another loop or callback, a list cut with `slice` first, and functions from other files. Map
+  each item as it is consumed: a generator over the list, or the mapping inside the loop.
 - Waits without a timeout (`pmd/UnboundedWait`, `unbounded-wait`, `pmd/ReactorBlockWithoutTimeout` in the JVM and
   Python presets) have no TypeScript or JavaScript counterpart: nothing blocks a thread on a promise, and a promise
   that never settles is a missing deadline for `await`, which `nitpicker/require-client-timeout` and

@@ -92,12 +92,12 @@ import { rule as ruleNoMagicNumbers } from '../rules/wrapped/no-magic-numbers.mt
 import { rule as ruleNoMalformedQueryText } from '../rules/query-text/no-malformed-query-text.mts';
 import { rule as ruleNoManagedResourceConstructionOutsideCompositionRoots } from '../rules/boundaries/no-managed-resource-construction-outside-composition-roots.mts';
 import { rule as ruleNoManyToManyCascadeRemove } from '../rules/persistence/no-many-to-many-cascade-remove.mts';
+import { rule as ruleNoMappedCopyForSinglePass } from '../rules/whole-lists/no-mapped-copy-for-single-pass.mts';
 import { rule as ruleNoMismatchedPreconditionMessage } from '../rules/preconditions/no-mismatched-precondition-message.mts';
 import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
 import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
 import { rule as ruleNoModuleLevelMutableState } from '../rules/guards/no-module-level-mutable-state.mts';
 import { rule as ruleNoMultipleCollectionJoins } from '../rules/joins/no-multiple-collection-joins.mts';
-import { rule as ruleNoMutatingMethodInDomain } from '../rules/domain/no-mutating-method-in-domain.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -195,10 +195,10 @@ export const partRules = {
   'no-managed-resource-construction-outside-composition-roots':
     ruleNoManagedResourceConstructionOutsideCompositionRoots,
   'no-many-to-many-cascade-remove': ruleNoManyToManyCascadeRemove,
+  'no-mapped-copy-for-single-pass': ruleNoMappedCopyForSinglePass,
   'no-mismatched-precondition-message': ruleNoMismatchedPreconditionMessage,
   'no-mocking-subject-under-test': ruleNoMockingSubjectUnderTest,
   'no-module-level-let': ruleNoModuleLevelLet,
   'no-module-level-mutable-state': ruleNoModuleLevelMutableState,
   'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
-  'no-mutating-method-in-domain': ruleNoMutatingMethodInDomain,
 };

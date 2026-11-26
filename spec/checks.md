@@ -462,6 +462,11 @@ and `JSON.parse(readFileSync(...))` read for such a list. Past about 512 million
 and the output is lost; below it the text doubles the memory of the data. The allowed form writes and reads one
 element per line.
 
+Copies walked once: `nitpicker/no-mapped-copy-for-single-pass` (production source, in `eslint-lint`) reports `map`,
+`filter`, `flatMap` or a spread copy of a list that grows with the input passed to a function of the same file that
+only walks that parameter once (`for...of`, `yield*`, `Readable.from`). The copy doubles the memory of the list for
+the length of the walk; the allowed form maps each item as it is consumed.
+
 Unbounded waits: `pmd/UnboundedWait` (Java, main sources) reports `get()` or `join()` without a timeout on a
 `Future` or `CompletableFuture`, `Thread.join()` and `CountDownLatch.await()`, and
 `pmd/ReactorBlockWithoutTimeout` (with `reactor-core` on the compile classpath) reports `block()`,

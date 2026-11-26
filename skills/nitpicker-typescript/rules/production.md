@@ -155,6 +155,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Write a list that grows with the input (findings, results, rows) one element per line or in batches, and read it
   back line by line: one `JSON.stringify` or `join` of the whole list throws `Invalid string length` past about 512
   million characters, exactly when the output is largest (`nitpicker/no-whole-list-json-text`).
+- Map a long list while it is consumed (a generator that yields each mapped item, or the mapping inside the loop)
+  instead of `findings.map(...)` handed to a writer that walks it once (`nitpicker/no-mapped-copy-for-single-pass`).
 - A page of rows has an order: `limit`/`offset`/`take`/`skip`, a Prisma `cursor` or SQL `LIMIT` comes with
   `orderBy` on a unique key (or a tie-breaker after a non-unique one), and `json_agg`/`array_agg` or
   Kysely `jsonArrayFrom` lists sort inside (`json_agg(t ORDER BY t.name)`) (`nitpicker/no-unordered-query`).
