@@ -8,6 +8,7 @@ import type TypeScript from 'typescript';
 import { ts } from '../typed/typescript-views.mts';
 import { unwrapOf } from '../typed/syntax-views.mts';
 import { hasTypeInformation } from '../promises/cannot-reject.mts';
+import { isProjectFile } from '../analysis/mutation/caller-objects.mts';
 import { partsOf } from '../analysis/narrowing/type-parts.mts';
 import {
   enclosingNames,
@@ -171,11 +172,7 @@ function declaredInLibrary(view: TypeView, callee: TSESTree.Node): boolean {
   const symbol = checker.getSymbolAtLocation(typed.esTreeNodeToTSNodeMap.get(callee.property));
   return (symbol?.declarations ?? []).some((declaration) => {
     const file = declaration.getSourceFile();
-    return (
-      typed.program.isSourceFileDefaultLibrary(file) ||
-      typed.program.isSourceFileFromExternalLibrary(file) ||
-      file.isDeclarationFile
-    );
+    return !isProjectFile(typed.program, file) || file.isDeclarationFile;
   });
 }
 
