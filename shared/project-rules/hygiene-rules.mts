@@ -138,14 +138,14 @@ export const HYGIENE_RULES: RuleEntry[] = [
     check: REPOSITORY_HYGIENE,
     limit:
       "a Checkstyle `<suppress>` that matches every file (`files` of `.`, `.*` or `.+`, no `lines` or `columns`) for a module the project's Checkstyle configuration enables, or a PMD ruleset that includes a rule and excludes every file (`<exclude-pattern>.*</exclude-pattern>`) or sets its `violationSuppressRegex` to `.*`",
-    enforcedBy: { java: true },
+    enforcedBy: EVERY_LANGUAGE,
   },
   {
     id: HYGIENE_RULE_IDS.pmdXpathRuleMistake,
     check: REPOSITORY_HYGIENE,
     limit:
       'a project-owned PMD XPath rule that scans from the document root inside a predicate (a `//X` path or `ancestor::CompilationUnit//` in `[...]`; a cheap `/CompilationUnit/X` child path is not reported, and node names are not checked against the grammar yet), or applies a single-item function (`string`, `lower-case`, `starts-with`, `contains`, `matches`, `normalize-space`...) or `eq`/`ne` to an unguarded `FormalParameters/FormalParameter`, `ArgumentList/*`, `ClassBody/*` or `Block/*` path',
-    enforcedBy: { java: true },
+    enforcedBy: EVERY_LANGUAGE,
   },
   {
     id: PACKAGE_RULE_IDS.unusedDependency,
