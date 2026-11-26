@@ -17,7 +17,7 @@ const NODE_PROCESS_MEGABYTES = 150;
 const TYPED_TOOLS_MEGABYTES = 250;
 
 const SIZINGS = new Map<string, Sizing>([
-  ['eslint-lint', { perThousandFiles: 768, base: TYPED_TOOLS_MEGABYTES }],
+  ['eslint-lint', { perThousandFiles: 600, base: TYPED_TOOLS_MEGABYTES, program: 1750 }],
   ['typescript-typecheck', { perThousandFiles: 1000, base: NODE_PROCESS_MEGABYTES, program: 1850 }],
   ['structure', { perThousandFiles: 700, base: NODE_PROCESS_MEGABYTES, program: 2850 }],
   ['coding-standards', { perThousandFiles: 300, base: TYPED_TOOLS_MEGABYTES, program: 0 }],
