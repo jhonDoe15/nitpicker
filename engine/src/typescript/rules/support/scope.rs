@@ -38,6 +38,8 @@ pub struct Reference<'v> {
     pub identifier: Node<'v>,
     pub read: bool,
     pub write: bool,
+    /// A use in a type, as in `typeof value`: a read for the ESLint scope manager.
+    pub as_type: bool,
 }
 
 enum Use {
@@ -191,11 +193,37 @@ impl<'a, 's> Scopes<'a, 's> {
             .get_resolved_references(symbol)
             .filter_map(|reference| {
                 let identifier = self.identifier_at(nodes.kind(reference.node_id()).span().start)?;
-                Some(Reference { identifier, read: reference.is_read(), write: reference.is_write() })
+                Some(Reference { identifier, read: reference.is_read(), write: reference.is_write(), as_type: reference.flags().is_type() })
             })
             .collect();
         let written = self.defs(symbol).into_iter().filter(Self::initialized);
-        found.extend(written.map(|definition| Reference { identifier: definition.name, read: false, write: true }));
+        found.extend(written.map(|definition| Reference { identifier: definition.name, read: false, write: true, as_type: false }));
+        found.sort_by_key(|reference| reference.identifier.start());
+        found
+    }
+
+    /// `variable.references` as the ESLint scope manager lists them: also the names oxc leaves without a reference,
+    /// the entity of `import x = name` and the parameter name of a type predicate, as reads in a type.
+    pub fn references_with_types(&self, symbol: SymbolId) -> Vec<Reference<'s>> {
+        let mut found = self.references(symbol);
+        for node in self.view.nodes() {
+            let named = if node.is("TSImportEqualsDeclaration") {
+                let mut entity = node.node("moduleReference");
+                while let Some(qualified) = entity.filter(|entity| entity.is("TSQualifiedName")) {
+                    entity = qualified.node("left");
+                }
+                entity
+            } else if node.is("TSTypePredicate") {
+                node.node("parameterName")
+            } else {
+                None
+            };
+            let Some(identifier) = named.filter(|named| named.is("Identifier")) else { continue };
+            let resolved = identifier.name().and_then(|name| self.variable_by_name(&name, identifier.start()));
+            if resolved == Some(symbol) {
+                found.push(Reference { identifier, read: false, write: false, as_type: true });
+            }
+        }
         found.sort_by_key(|reference| reference.identifier.start());
         found
     }

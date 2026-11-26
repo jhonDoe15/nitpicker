@@ -11,6 +11,7 @@ pub mod questions;
 pub mod regex;
 pub mod relations;
 pub mod retries;
+pub mod rows;
 pub mod streams;
 pub mod time;
 pub mod types;
@@ -38,12 +39,14 @@ use super::number_input;
 use super::patterns;
 use super::presence as presence_rules;
 use super::promises;
+use super::saved_rows;
 use super::signatures;
 use super::spreads;
 use super::stale_retries;
 use super::time_zones;
 use super::union_members;
 use super::unknown_types;
+use super::whole_rows;
 use super::writes;
 
 pub const TYPED: &[(&str, Rule)] =
@@ -63,6 +66,7 @@ pub const TYPED: &[(&str, Rule)] =
     ("no-forwarding-wrapper", forwarding::no_forwarding_wrapper::check),
     ("no-in-presence-check", presence_rules::no_in_presence_check::check),
     ("no-local-time-zone", time_zones::no_local_time_zone::check),
+    ("no-loaded-rows-saved-back", saved_rows::no_loaded_rows_saved_back::check),
     ("no-lookup-as-presence", presence_rules::no_lookup_as_presence::check),
     ("no-mutating-method-in-domain", domain::no_mutating_method_in_domain::check), ("no-parameter-mutation", signatures::no_parameter_mutation::check),
     ("no-remote-call-in-transaction", held_scopes::remote_in_scope::no_remote_call_in_transaction),
@@ -79,6 +83,7 @@ pub const TYPED: &[(&str, Rule)] =
     ("no-union-order-dependence", union_members::no_union_order_check),
     ("no-unknown-in-domain", unknown_types::no_unknown_in_domain::check),
     ("no-unversioned-orm-entity", entity_versions::no_unversioned_orm_entity::check),
+    ("no-whole-rows-for-one-value", whole_rows::no_whole_rows_for_one_value::check),
 ];
 
 pub fn is_typed(name: &str) -> bool {
