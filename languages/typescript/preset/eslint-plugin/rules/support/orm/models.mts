@@ -97,8 +97,15 @@ const METHODS: Readonly<Record<string, Readonly<Record<OrmKind, ReadonlySet<stri
     read: new Set([FIND_ONE, 'findAll', 'findByPk', 'findAndCountAll', 'count']),
   },
 };
-const REPOSITORY_WORDS = new Set(['repository', 'repo', 'dao']);
-const MANAGER_WORDS = new Set(['manager', 'em', 'entitymanager', 'tx', 'trx', 'txn']);
+export const REPOSITORY_WORDS: ReadonlySet<string> = new Set(['repository', 'repo', 'dao']);
+export const MANAGER_WORDS: ReadonlySet<string> = new Set([
+  'manager',
+  'em',
+  'entitymanager',
+  'tx',
+  'trx',
+  'txn',
+]);
 const REPOSITORY_GETTERS = new Set(['getRepository', 'getCustomRepository']);
 const GLOBAL_OBJECTS = new Set([
   'Object',
@@ -123,7 +130,7 @@ const MODEL_NAME = /^[A-Z]/u;
 
 type Receiver = Pick<ChainStep, 'name' | 'args'>;
 
-function methodsOf(orm: string, kind: OrmKind): ReadonlySet<string> {
+export function methodsOf(orm: string, kind: OrmKind): ReadonlySet<string> {
   return METHODS[orm]?.[kind] ?? new Set();
 }
 
