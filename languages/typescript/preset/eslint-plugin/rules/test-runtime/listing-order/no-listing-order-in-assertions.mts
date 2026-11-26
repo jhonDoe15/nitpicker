@@ -33,20 +33,16 @@ function unwrap(node: TSESTree.Node): TSESTree.Node {
 }
 
 function isListingValue(bindings: ListingBindings, node: TSESTree.Node): boolean {
-  const value = unwrap(node);
-  if (isListingCall(bindings, value)) {
-    return true;
-  }
-  if (
-    value.type !== AST_NODE_TYPES.CallExpression ||
-    value.callee.type !== AST_NODE_TYPES.MemberExpression
+  let value = unwrap(node);
+  while (
+    !isListingCall(bindings, value) &&
+    value.type === AST_NODE_TYPES.CallExpression &&
+    value.callee.type === AST_NODE_TYPES.MemberExpression &&
+    ORDER_KEEPING.has(nameOf(value.callee.property) ?? '')
   ) {
-    return false;
+    value = unwrap(value.callee.object);
   }
-  return (
-    ORDER_KEEPING.has(nameOf(value.callee.property) ?? '') &&
-    isListingValue(bindings, value.callee.object)
-  );
+  return isListingCall(bindings, value);
 }
 
 function isOrderedList(node: TSESTree.Node | undefined): boolean {

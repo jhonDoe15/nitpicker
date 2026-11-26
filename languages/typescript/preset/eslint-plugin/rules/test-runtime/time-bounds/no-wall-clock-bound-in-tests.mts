@@ -3,6 +3,7 @@ import { constantNumber, isExpectCall } from '../../analysis/test-code-analysis.
 import { createRunnerApis, runnerApiVisitors } from '../../runner-apis/runner-apis.mts';
 import { fakeTimerChange, setsFakeClock } from '../../runner-apis/runner-doubles.mts';
 import { nameOf } from '../../typed/node-views.mts';
+import { isTrue } from '../../cancellation/abort-signal/loop-check.mts';
 import { isMeasuredDuration, replacesClock } from './clock-durations.mts';
 
 type Context = Readonly<TSESLint.RuleContext<'wallClockBound', []>>;
@@ -24,7 +25,8 @@ const UPPER_MATCHERS = new Set([
 const TRUE_MATCHERS = new Set(['toBe', 'toBeTruthy', 'toEqual', 'toStrictEqual']);
 const LESS = new Set(['<', '<=']);
 const GREATER = new Set(['>', '>=']);
-const ASSERTS = new Set(['assert', 'ok', 'isTrue']);
+const ASSERT = 'assert';
+const ASSERTS = new Set([ASSERT, 'ok', 'isTrue']);
 const BENCHMARK_FILE = /\.bench\.[cm]?[jt]sx?$/u;
 
 function expectSubject(node: TSESTree.Node): TSESTree.Node | undefined {
@@ -71,16 +73,12 @@ function matcherBound(call: TSESTree.CallExpression): Bound | undefined {
   return truthy ? comparison(subject) : undefined;
 }
 
-function isTrue(node: TSESTree.Node): boolean {
-  return node.type === AST_NODE_TYPES.Literal && node.value === true;
-}
-
 function assertBound(call: TSESTree.CallExpression): Bound | undefined {
   const { callee } = call;
   const name =
     callee.type === AST_NODE_TYPES.MemberExpression ? nameOf(callee.property) : nameOf(callee);
-  const owner = callee.type === AST_NODE_TYPES.MemberExpression ? nameOf(callee.object) : 'assert';
-  return ASSERTS.has(name ?? '') && owner === 'assert' ? comparison(call.arguments[0]) : undefined;
+  const owner = callee.type === AST_NODE_TYPES.MemberExpression ? nameOf(callee.object) : ASSERT;
+  return ASSERTS.has(name ?? '') && owner === ASSERT ? comparison(call.arguments[0]) : undefined;
 }
 
 function isTightBound(context: Context, { duration, limit }: Bound): boolean {

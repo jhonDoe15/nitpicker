@@ -1,4 +1,4 @@
-import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import {
   type SourceCode,
   nameOf,
@@ -6,7 +6,12 @@ import {
   variableNamed,
 } from '../../typed/node-views.mts';
 
-type Kind = 'fs' | 'fsPromises' | 'glob' | 'fastGlob' | 'globby';
+const { ScopeType } = TSESLint.Scope;
+const GLOBBY = 'globby';
+const GLOB_SYNC = 'globSync';
+const FS_PROMISES = 'fsPromises';
+
+type Kind = 'fs' | typeof FS_PROMISES | 'glob' | 'fastGlob' | typeof GLOBBY;
 export type ListingBindings = {
   readonly named: Map<string, string>;
   readonly namespaces: Map<string, Kind>;
@@ -18,22 +23,22 @@ const MODULE_KINDS = new Map<string, Kind>([
   ['node:fs', 'fs'],
   ['fs-extra', 'fs'],
   ['graceful-fs', 'fs'],
-  ['fs/promises', 'fsPromises'],
-  ['node:fs/promises', 'fsPromises'],
+  ['fs/promises', FS_PROMISES],
+  ['node:fs/promises', FS_PROMISES],
   ['fs-extra/esm', 'fs'],
   ['glob', 'glob'],
   ['fast-glob', 'fastGlob'],
-  ['globby', 'globby'],
-  ['tinyglobby', 'globby'],
+  [GLOBBY, GLOBBY],
+  ['tinyglobby', GLOBBY],
 ]);
 const LISTING_NAMES: Readonly<Record<Kind, ReadonlySet<string>>> = {
   fs: new Set(['readdir', 'readdirSync']),
   fsPromises: new Set(['readdir']),
-  glob: new Set(['glob', 'globSync']),
-  fastGlob: new Set(['glob', 'globSync', 'sync', 'async']),
-  globby: new Set(['glob', 'globSync', 'globby', 'globbySync']),
+  glob: new Set(['glob', GLOB_SYNC]),
+  fastGlob: new Set(['glob', GLOB_SYNC, 'sync', 'async']),
+  globby: new Set(['glob', GLOB_SYNC, GLOBBY, 'globbySync']),
 };
-const DEFAULT_CALLABLE = new Set<Kind>(['fastGlob', 'globby']);
+const DEFAULT_CALLABLE = new Set<Kind>(['fastGlob', GLOBBY]);
 export const MOCKING_MODULES: ReadonlySet<string> = new Set([
   'memfs',
   'mock-fs',
@@ -61,14 +66,14 @@ function addSpecifier(
   }
 }
 
-function requiredModule(node: TSESTree.Expression | null): string | undefined {
+function requiredModule(node: TSESTree.Expression | undefined): string | undefined {
   const call = node?.type === AST_NODE_TYPES.AwaitExpression ? node.argument : node;
-  const source = requiredLiteral(call ?? undefined);
+  const source = requiredLiteral(call);
   return typeof source === 'string' ? source : undefined;
 }
 
 function addRequire(bindings: ListingBindings, declarator: TSESTree.VariableDeclarator): void {
-  const kind = MODULE_KINDS.get(requiredModule(declarator.init) ?? '');
+  const kind = MODULE_KINDS.get(requiredModule(declarator.init ?? undefined) ?? '');
   const { id } = declarator;
   if (kind === undefined) {
     return;
@@ -128,7 +133,9 @@ export function listingBindings(
       addImport(bindings, statement);
     }
     if (statement.type === AST_NODE_TYPES.VariableDeclaration) {
-      statement.declarations.forEach((declarator) => addRequire(bindings, declarator));
+      for (const declarator of statement.declarations) {
+        addRequire(bindings, declarator);
+      }
     }
   }
   return bindings;
@@ -141,12 +148,17 @@ function namespaceKind(bindings: ListingBindings, node: TSESTree.Node): Kind | u
   const isPromises =
     node.type === AST_NODE_TYPES.MemberExpression &&
     nameOf(node.property) === PROMISES &&
-    namespaceKind(bindings, node.object) === 'fs';
-  return isPromises ? 'fsPromises' : undefined;
+    node.object.type === AST_NODE_TYPES.Identifier &&
+    bindings.namespaces.get(node.object.name) === 'fs';
+  return isPromises ? FS_PROMISES : undefined;
 }
 
 function rootOf(node: TSESTree.Node): TSESTree.Node {
-  return node.type === AST_NODE_TYPES.MemberExpression ? rootOf(node.object) : node;
+  let current = node;
+  while (current.type === AST_NODE_TYPES.MemberExpression) {
+    current = current.object;
+  }
+  return current;
 }
 
 function isTopLevel(sourceCode: SourceCode, node: TSESTree.Node): boolean {
@@ -154,7 +166,7 @@ function isTopLevel(sourceCode: SourceCode, node: TSESTree.Node): boolean {
     node.type === AST_NODE_TYPES.Identifier
       ? variableNamed(sourceCode, node)?.scope.type
       : undefined;
-  return scope === 'module' || scope === 'global';
+  return scope === ScopeType.module || scope === ScopeType.global;
 }
 
 export function isListingCall(bindings: ListingBindings, node: TSESTree.Node): boolean {
