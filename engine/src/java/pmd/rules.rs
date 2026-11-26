@@ -215,7 +215,7 @@ impl FileRule for XPathRules {
                         }
                     }
                     let message = super::coded::expanded(&ctx, super::coded::formatted(&rule.message, &hit.args), hit.node);
-                    out.push(Finding { file: file.path.clone(), line: place("BeginLine"), column: place("BeginColumn"), rule: rule.name.clone(), message, symbol: None });
+                    out.push(Finding { file: file.path.clone(), line: place("BeginLine"), column: place("BeginColumn"), rule: rule.name.clone(), message, symbol: None, priority: None });
                     found += 1;
                 }
                 local.push((1, started.elapsed().as_nanos(), found, None));
@@ -230,7 +230,7 @@ impl FileRule for XPathRules {
                     trouble = machine.trouble.borrow_mut().take();
                     if let Some(trouble) = &trouble {
                         // PMD reports no findings of a rule for a file on which the query fails.
-                        out.push(Finding { file: file.path.clone(), line: 0, column: 0, rule: format!("!{}", rule.name), message: trouble.clone(), symbol: None });
+                        out.push(Finding { file: file.path.clone(), line: 0, column: 0, rule: format!("!{}", rule.name), message: trouble.clone(), symbol: None, priority: None });
                     }
                     for item in result.items().iter().filter(|_| trouble.is_none()) {
                         let Item::Node(id) = item else { continue };
@@ -255,6 +255,7 @@ impl FileRule for XPathRules {
                             rule: rule.name.clone(),
                             message: formatted(&rule.message, tree.image(*id).as_deref()),
                             symbol: None,
+                            priority: None,
                         });
                         found += 1;
                     }

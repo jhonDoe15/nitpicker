@@ -41,9 +41,10 @@ fn stub(name: String) -> ClassInfo {
     ClassInfo { name, ..ClassInfo::default() }
 }
 
-pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>) -> JavaProject {
+pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>, lombok: bool) -> JavaProject {
     let started = std::time::Instant::now();
     let mut index = TypeIndex::default();
+    index.lombok = lombok;
     let mut entries = classpath.to_vec();
     index.load_binaries(&entries);
     // An older release sees the library as it was then: the JDK keeps those signatures in `lib/ct.sym`.
@@ -86,6 +87,7 @@ pub fn build(files: &[SourceFile], classpath: &[PathBuf], release: Option<u32>) 
                         let mut info = resolver.class_header(*node, name.clone());
                         if with_members {
                             resolver.members(*node, &mut info);
+                            resolver.lombok_members(*node, &mut info);
                         }
                         info
                     })

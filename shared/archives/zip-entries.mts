@@ -2,16 +2,16 @@ import { readFileSync } from 'node:fs';
 import { inflateRawSync } from 'node:zlib';
 
 const END_OF_DIRECTORY = 0x06054b50;
-const END_SIZE = 22;
-const ZIP64_LOCATOR = 0x07064b50;
-const ZIP64_LOCATOR_SIZE = 20;
+export const END_SIZE = 22;
+export const ZIP64_LOCATOR = 0x07064b50;
+export const ZIP64_LOCATOR_SIZE = 20;
 const ZIP64_END = 0x06064b50;
 const ZIP64_END_SIZE = 56;
 const DIRECTORY_ENTRY = 0x02014b50;
 const LOCAL_HEADER = 0x04034b50;
 const ZIP64_EXTRA = 0x0001;
-const MAX_COMMENT = 0xffff;
-const MAX_TRAILING = 0x10000;
+export const MAX_COMMENT = 0xffff;
+export const MAX_TRAILING = 0x10000;
 const WIDE = 0xffffffff;
 const STORED = 0;
 const DEFLATED = 8;
@@ -30,9 +30,9 @@ const ENTRY_FIELDS = {
   localOffset: 42,
   name: 46,
 };
-const LOCAL_FIELDS = { nameLength: 26, extraLength: 28, name: 30 };
+export const LOCAL_FIELDS = { nameLength: 26, extraLength: 28, name: 30 };
 
-type ZipEntry = {
+export type ZipEntry = {
   readonly name: string;
   readonly method: number;
   readonly compressedSize: number;
@@ -65,7 +65,7 @@ function isEndOfDirectory(buffer: Buffer, offset: number): boolean {
   );
 }
 
-function endOfDirectory(buffer: Buffer): number {
+export function endOfDirectory(buffer: Buffer): number {
   const last = buffer.length - END_SIZE;
   const window = last < 0 ? 0 : Math.min(last, MAX_COMMENT + MAX_TRAILING) + 1;
   const candidates = Array.from({ length: window }, (_, back) => last - back).filter((offset) =>
@@ -95,7 +95,7 @@ function zip64Directory(buffer: Buffer, locator: number): DirectoryLocation {
   };
 }
 
-function directoryStart(buffer: Buffer): DirectoryLocation {
+export function directoryStart(buffer: Buffer): DirectoryLocation {
   const end = endOfDirectory(buffer);
   const locator = end - ZIP64_LOCATOR_SIZE;
   if (locator >= 0 && buffer.readUInt32LE(locator) === ZIP64_LOCATOR) {
@@ -132,7 +132,7 @@ function zip64Values(buffer: Buffer, range: { offset: number; end: number }): nu
       );
 }
 
-function readEntry(
+export function readEntry(
   buffer: Buffer,
   { offset, prefix }: { offset: number; prefix: number },
 ): { entry: ZipEntry; next: number } {
@@ -172,7 +172,7 @@ function zipDirectory(buffer: Buffer): ZipEntry[] {
   }, initial).entries;
 }
 
-function zipEntryText(buffer: Buffer, entry: ZipEntry): string {
+export function zipEntryText(buffer: Buffer, entry: ZipEntry): string {
   if (buffer.readUInt32LE(entry.localOffset) !== LOCAL_HEADER) {
     throw new Error(`broken zip local header for ${entry.name}`);
   }

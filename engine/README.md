@@ -566,6 +566,13 @@ What was measured (fixtures `tests/fixtures/spotbugs/stmt_*`):
   further; a loop's back jump counts too when javac emits a table with holes (they jump to the default). A last
   `case null -> {}` in a pattern switch is a fall through for SpotBugs.
 
+Each of these findings carries what SpotBugs' SARIF names (#2418, `src/java/spotbugs/place.rs`): the method,
+the field (a map field for the map-iterator pattern) or the local, and the priority that sets the SARIF level
+(`JLM_JSR166_LOCK_MONITORENTER` is priority 1, the others 2). A finding in a field initializer or an initializer
+block is named once for each constructor that does not start with `this(...)`, or for the static initializer;
+a finding inside a lambda names the lambda's method. `tests/expected/spotbugs-places.json` holds the places
+SpotBugs' SARIF gives for the fixtures, and the SARIF results of real runs match SpotBugs' on all seven code bases.
+
 Not done: `REC_CATCH_EXCEPTION` needs the checked exceptions each `try` block can throw and the rule for its
 priority (most findings are low priority and hidden at `-medium`); it is left for a later batch (#2262).
 
@@ -585,9 +592,23 @@ them either, so only what Lombok changes in hand-written code matters (`tests/fi
   `*`; a single-type import of the same name from another package wins over `import lombok.*`. A varargs parameter
   marked `@NonNull` is checked like any other.
 
-Not rebuilt: the types of the getters Lombok writes and of `lombok.val`, which the lock and map-iterator patterns
-need (`synchronized (other.getLock())`, `for (val key : map.keySet())`). Real runs leave those three patterns to
-SpotBugs on modules that run Lombok.
+With `--lombok` (real runs pass it for a module whose only code-changing processor is Lombok), the type model
+also knows what Lombok writes that the lock and map-iterator patterns need (#2400, `src/java/types/lombok.rs`):
+
+- The getters and setters of `@Getter`, `@Setter`, `@Data` and `@Value` on a class or a field (`isX` for a
+  `boolean`, `AccessLevel.NONE` turns one off, no setter for a final field or under `@Value`, a hand-written
+  method of the same name, in any case, and arity or varargs wins). `AccessLevel` sets the method's access.
+  `@Accessors` on the field, else on the class, sets `fluent`, `chain` (a setter that returns the object) and
+  `prefix` (a field without one of the prefixes gets none); a `lombok.config` that changes accessor names
+  (`lombok.accessors.fluent`, `prefix`, `capitalization`, `lombok.getter.noIsPrefix`) runs SpotBugs alone.
+- `val` and `var` from Lombok take the type of their value, like Java's `var`.
+
+Real runs decide Lombok from the processors javac uses (#2402): the declared `annotationProcessorPaths` when a
+build lists them, else the `META-INF/services` entry of each classpath jar, read without unpacking the jar.
+Processors that only write new files (AutoService, AutoValue, Dagger, Immutables, MapStruct, Hibernate's
+metamodel, Spring's configuration processors and others) are left out. The `@Generated` mark is read the way
+Lombok reads `lombok.config`: from the outermost file to the nearest, with `clear`, `import` and
+`config.stopBubbling`; a module where it is off runs SpotBugs alone.
 
 ## Names the compiler makes up
 

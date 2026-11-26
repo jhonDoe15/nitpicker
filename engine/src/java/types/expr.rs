@@ -287,7 +287,7 @@ impl<'a> Resolver<'a> {
         while let Some(node) = scope {
             let typed = |declaration: Node, declarator: Option<Node>| -> Option<Type> {
                 let written = declaration.field("type")?;
-                if self.file.text_of(written) == "var" {
+                if self.inferred_local(self.file.text_of(written)) {
                     let value = declarator.unwrap_or(declaration).field("value")?;
                     return self.type_of(value);
                 }
@@ -315,7 +315,7 @@ impl<'a> Resolver<'a> {
                 }
                 "enhanced_for_statement" => {
                     if named(node) && node.field("value") != Some(inner) {
-                        let inferred = node.field("type").is_none_or(|kind| self.file.text_of(kind) == "var");
+                        let inferred = node.field("type").is_none_or(|kind| self.inferred_local(self.file.text_of(kind)));
                         let kind = if inferred {
                             node.field("value").and_then(|value| self.type_of(value)).and_then(|kind| self.element(kind))
                         } else {
@@ -1559,7 +1559,7 @@ impl<'a> Resolver<'a> {
             }
             "variable_declarator" => {
                 let declaration = crate::engine::source::parent(holder)?;
-                declaration.field("type").filter(|kind| self.file.text_of(*kind) != "var")?;
+                declaration.field("type").filter(|kind| !self.inferred_local(self.file.text_of(*kind)))?;
                 self.declared_type(declaration, Some(holder))
             }
             "assignment_expression" if holder.field("right") == Some(inner) => {

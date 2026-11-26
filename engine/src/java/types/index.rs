@@ -38,6 +38,8 @@ pub struct TypeIndex {
     pub source_classes: usize,
     /// Packages whose methods must have their result used, each with its subpackages: the outermost source packages.
     pub checked_packages: Vec<String>,
+    /// The sources were compiled with Lombok: see `Options::lombok`.
+    pub lombok: bool,
 }
 
 /// The class names of an archive, with where each one is.
