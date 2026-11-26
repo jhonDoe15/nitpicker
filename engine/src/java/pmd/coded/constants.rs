@@ -33,21 +33,26 @@ pub fn written(value: &Const) -> Option<String> {
         Const::Number(Constant::Long(value)) => value.to_string(),
         Const::Number(Constant::Bool(value)) => value.to_string(),
         Const::Number(Constant::Char(value)) => String::from_utf16(&[*value]).ok()?,
-        Const::Number(Constant::Double(value)) => real(*value)?,
-        Const::Number(Constant::Float(value)) => real(f64::from(*value)).filter(|_| value.fract() == 0.0)?,
+        Const::Number(Constant::Double(value)) => real(*value, value.abs(), value.is_nan()),
+        Const::Number(Constant::Float(value)) => real(*value, f64::from(value.abs()), value.is_nan()),
     })
 }
 
-fn real(value: f64) -> Option<String> {
-    let size = value.abs();
-    if !value.is_finite() || (size != 0.0 && !(1e-3..1e7).contains(&size)) {
-        return None;
+fn real<T: std::fmt::Display + std::fmt::LowerExp>(value: T, size: f64, nan: bool) -> String {
+    if nan {
+        return "NaN".to_string();
     }
-    Some(if value.fract() == 0.0 {
-        format!("{value:.1}")
-    } else {
-        value.to_string()
-    })
+    if size.is_infinite() {
+        return format!("{value}").replace("inf", "Infinity");
+    }
+    if size == 0.0 || (1e-3..1e7).contains(&size) {
+        let text = format!("{value}");
+        return if text.contains('.') { text } else { text + ".0" };
+    }
+    let text = format!("{value:e}");
+    let (digits, exponent) = text.split_once('e').unwrap_or((&text, "0"));
+    let digits = if digits.contains('.') { digits.to_string() } else { format!("{digits}.0") };
+    format!("{digits}E{exponent}")
 }
 
 fn number(found: Option<(Const, bool)>) -> Option<(Constant, bool)> {
@@ -73,7 +78,8 @@ fn value(ctx: &Ctx, id: u32, depth: usize) -> Folded {
             char_value(&ctx.text(id, "Image")).map(|code| Const::Number(Constant::Char(code as u16))),
         ),
         "BooleanLiteral" => literal_value(Some(Const::Number(Constant::Bool(ctx.flag(id, "True"))))),
-        "VariableAccess" | "FieldAccess" => return variable(ctx, id, depth),
+        "VariableAccess" => return variable(ctx, id, depth),
+        "FieldAccess" => return field(ctx, id, depth),
         "UnaryExpression" => number(operand(0)?).and_then(|(found, constant)| {
             unary(&ctx.text(id, "Operator"), found).map(|found| (Const::Number(found), constant))
         }),
@@ -141,6 +147,21 @@ fn variable(ctx: &Ctx, access: u32, depth: usize) -> Folded {
     Ok(value(ctx, initializer, depth - 1)?.map(|(found, constant)| (found, constant && constant_field)))
 }
 
+fn field(ctx: &Ctx, access: u32, depth: usize) -> Folded {
+    let Some(variable) = ctx.usages().declaration(access) else {
+        return Ok(outside(ctx, access));
+    };
+    if !ctx.flag(variable, "Final") || !ctx.flag(variable, "Static") {
+        return Ok(None);
+    }
+    let initializer = ctx
+        .parent(variable)
+        .filter(|declarator| ctx.is(*declarator, "VariableDeclarator"))
+        .and_then(|declarator| ctx.nth(declarator, 1));
+    let Some(initializer) = initializer else { return Ok(None) };
+    Ok(value(ctx, initializer, depth - 1)?.filter(|(_, constant)| *constant))
+}
+
 fn outside(ctx: &Ctx, access: u32) -> Option<(Const, bool)> {
     use crate::java::types::expr::Binding;
     let source = ctx.tree.nodes[access as usize].source?;
@@ -156,11 +177,16 @@ fn outside(ctx: &Ctx, access: u32) -> Option<(Const, bool)> {
             resolver.index.field(&owner.erased().name(), &name)?.1
         }
     };
-    let found = match (&field.constant, field.number) {
-        (Some(text), _) => Const::Text(text.clone()),
-        (None, Some(number)) if field.kind == crate::java::types::model::Type::Primitive("int") => {
-            Const::Number(Constant::Int(number))
-        }
+    use crate::java::types::model::Type;
+    let found = match (&field.constant, field.number, &field.kind) {
+        (Some(text), _, _) => Const::Text(text.clone()),
+        (None, Some(number), Type::Primitive(kind)) => Const::Number(match *kind {
+            "int" | "short" | "byte" | "char" | "boolean" => Constant::Int(number as i32),
+            "long" => Constant::Long(number),
+            "float" => Constant::Float(f32::from_bits(number as u32)),
+            "double" => Constant::Double(f64::from_bits(number as u64)),
+            _ => return None,
+        }),
         _ => return None,
     };
     Some((found, true))

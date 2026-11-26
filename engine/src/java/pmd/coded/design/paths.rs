@@ -38,7 +38,10 @@ pub fn local(ctx: &Ctx, access: u32) -> bool {
             .usages()
             .declaration(access)
             .is_some_and(|variable| {
-                !ctx.flag(variable, "Field") && ctx.parent(variable).is_none_or(|owner| !ctx.is(owner, "EnumConstant"))
+                !ctx.flag(variable, "Field")
+                    && ctx
+                        .parent(variable)
+                        .is_none_or(|owner| !matches!(ctx.name(owner), "EnumConstant" | "FormalParameter"))
             })
 }
 
@@ -139,6 +142,9 @@ pub fn other_operand(ctx: &Ctx, id: u32) -> Option<u32> {
 pub fn field_flags(ctx: &Ctx, access: u32) -> Option<(bool, bool)> {
     use crate::java::types::model::flag;
     match symbol(ctx, access)? {
+        Symbol::Declared(variable) if ctx.parent(variable).is_some_and(|owner| ctx.is(owner, "RecordComponent")) => {
+            Some((false, false))
+        }
         Symbol::Declared(variable) => ctx
             .flag(variable, "Field")
             .then(|| (ctx.flag(variable, "Static"), ctx.text(variable, "Visibility") == "public")),

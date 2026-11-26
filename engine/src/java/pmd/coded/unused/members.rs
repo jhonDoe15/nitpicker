@@ -111,6 +111,18 @@ const ALLOWED_PARENTS: &[&str] = &[
     "ModuleProvidesDirective",
 ];
 
+fn type_variable(ctx: &Ctx, written: u32) -> bool {
+    if ctx.kids(written).iter().any(|kid| ctx.is(*kid, "ClassType")) {
+        return false;
+    }
+    let name = ctx.text(written, "SimpleName");
+    ctx.ancestors(written).any(|at| {
+        ctx.kids(at).iter().filter(|kid| ctx.is(**kid, "TypeParameters")).any(|parameters| {
+            ctx.kids(*parameters).iter().any(|kid| ctx.is(*kid, "TypeParameter") && ctx.text(*kid, "Name") == name)
+        })
+    })
+}
+
 pub fn loose_coupling(ctx: &Ctx, out: &mut Vec<Hit>) {
     let allowed = ctx.property_list("allowedTypes", &["java.util.Properties"]);
     let index = ctx.machine.resolver.index;
@@ -131,7 +143,7 @@ pub fn loose_coupling(ctx: &Ctx, out: &mut Vec<Hit>) {
                 || (ctx.is(parent, "ArrayType") && ctx.parent(parent).is_some_and(|up| ctx.is(up, "ArrayAllocation")))
         });
         let allowed_type = allowed.iter().any(|name| ctx.type_is(written, name));
-        let variable = matches!(ctx.type_of(written), Some(Type::Variable(_)));
+        let variable = matches!(ctx.type_of(written), Some(Type::Variable(_))) || type_variable(ctx, written);
         if !overridden && !syntactic && !allowed_type && !variable {
             out.push(hit_with(written, &[&ctx.text(written, "SimpleName")]));
         }

@@ -1,5 +1,5 @@
 //! Which declaration each variable name of a file stands for, as PMD's usage resolution finds it: every
-//! `VariableAccess`, and every `FieldAccess` on a plain `this`, tied to the `VariableId` it reads or writes.
+//! `VariableAccess` and `FieldAccess` tied to the `VariableId` of this file it reads or writes.
 use super::ctx::Ctx;
 use crate::java::types::model::{ClassInfo, Field, flag};
 use std::collections::HashMap;
@@ -23,6 +23,8 @@ impl Usages {
                 walk.node(root);
             }
         }
+        walk.qualified();
+        walk.found.of.values_mut().for_each(|accesses| accesses.sort_unstable());
         walk.found
     }
 
@@ -76,6 +78,31 @@ impl Walk<'_, '_, '_, '_> {
             }
         }
         fields
+    }
+
+    fn qualified(&mut self) {
+        let ctx = self.ctx;
+        let mut types = HashMap::new();
+        for name in ["ClassBody", "EnumBody", "RecordBody", "AnnotationTypeBody"] {
+            for &body in ctx.all(name) {
+                let canonical = ctx.parent(body).map(|owner| ctx.text(owner, "CanonicalName")).unwrap_or_default();
+                if !canonical.is_empty() {
+                    types.insert(canonical, self.type_fields(body));
+                }
+            }
+        }
+        for &access in ctx.all("FieldAccess") {
+            if self.found.declared.contains_key(&access) {
+                continue;
+            }
+            let Some(owner) = ctx.nth(access, 0).and_then(|qualifier| ctx.type_of(qualifier)) else { continue };
+            let name = ctx.text(access, "Name");
+            let Some((info, _)) = ctx.machine.resolver.index.field(&owner.erased().name(), &name) else { continue };
+            let fields = types.get(&info.name).or_else(|| types.get(&info.name.replace('$', ".")));
+            if let Some(&(_, variable)) = fields.and_then(|fields| fields.iter().find(|(known, _)| *known == name)) {
+                self.bind(access, variable);
+            }
+        }
     }
 
     fn scoped(&mut self, run: impl FnOnce(&mut Self)) {
