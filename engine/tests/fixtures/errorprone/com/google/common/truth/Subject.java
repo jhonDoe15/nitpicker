@@ -18,4 +18,16 @@ public class Subject {
   public void isNoneOf(Object first, Object second, Object... rest) {}
 
   public void isSameInstanceAs(Object other) {}
+
+  protected Subject() {}
+
+  protected Subject(FailureMetadata metadata, Object actual) {}
+
+  protected final Object actual() {
+    return null;
+  }
+
+  public interface Factory<SubjectT extends Subject, ActualT> {
+    SubjectT createSubject(FailureMetadata metadata, ActualT actual);
+  }
 }

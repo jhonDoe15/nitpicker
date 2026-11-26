@@ -20,7 +20,7 @@ pub fn period_time_math(context: &Context, call: Node) {
 }
 
 /// The class a type variable stands for when it is erased: its first bound, or `Object`.
-fn erased_at(context: &Context, at: Node, kind: &Type) -> Type {
+pub(super) fn erased_at(context: &Context, at: Node, kind: &Type) -> Type {
     match kind {
         Type::Variable(name) => super::array_calls::variable_bound(context, at, name).map_or(Type::class(OBJECT), |bound| erased_at(context, at, &bound)),
         Type::Array(element) => Type::Array(Box::new(erased_at(context, at, element))),
