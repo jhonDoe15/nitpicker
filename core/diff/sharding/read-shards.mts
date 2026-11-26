@@ -1,9 +1,10 @@
 import path from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import { fieldOf } from '../../../shared/values/readers.mts';
+import { MEMORY_TOOL } from '../../../shared/processes/memory/memory-kills.mts';
 import { EMPTY_SOURCES_TOOL } from '../../../languages/typescript/preset/notices/empty-sources.mts';
 
-const RUN_TOOLS = new Set(['analyzer-scheduler', EMPTY_SOURCES_TOOL]);
+const RUN_TOOLS = new Set(['analyzer-scheduler', EMPTY_SOURCES_TOOL, MEMORY_TOOL]);
 
 export type Entry = Readonly<Record<string, unknown>> & {
   readonly tool?: unknown;
