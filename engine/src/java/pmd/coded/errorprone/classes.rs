@@ -118,3 +118,48 @@ pub fn clone_method_must_implement_cloneable(ctx: &Ctx, out: &mut Vec<Hit>) {
         }
     }
 }
+
+fn equals_method(ctx: &Ctx, method: u32) -> bool {
+    let object_parameter = ctx
+        .kid(method, "FormalParameters")
+        .and_then(|list| ctx.kid(list, "FormalParameter"))
+        .is_some_and(|parameter| ctx.type_is_exactly(parameter, "java.lang.Object"));
+    ctx.text(method, "Name") == "equals"
+        && ctx.arity(method) == 1
+        && object_parameter
+        && !ctx.has_modifier(method, "static")
+}
+
+fn hash_code_method(ctx: &Ctx, method: u32) -> bool {
+    ctx.text(method, "Name") == "hashCode" && ctx.arity(method) == 0 && !ctx.has_modifier(method, "static")
+}
+
+pub fn override_both_equals_and_hashcode(ctx: &Ctx, out: &mut Vec<Hit>) {
+    let mut types = Vec::new();
+    for name in ["ClassDeclaration", "RecordDeclaration", "AnonymousClassDeclaration"] {
+        types.extend(ctx.all(name).iter().copied().filter(|class| !ctx.flag(*class, "Interface")));
+    }
+    types.sort_unstable();
+    for declaration in types {
+        if ctx.type_is(declaration, "java.lang.Comparable") {
+            continue;
+        }
+        let (mut equals, mut hash_code) = (None, None);
+        for method in ctx.declarations(declaration, "MethodDeclaration") {
+            if equals_method(ctx, method) {
+                equals = Some(method);
+                if hash_code.is_some() {
+                    break;
+                }
+            } else if hash_code_method(ctx, method) {
+                hash_code = Some(method);
+                if equals.is_some() {
+                    break;
+                }
+            }
+        }
+        if let (Some(method), None) | (None, Some(method)) = (equals, hash_code) {
+            out.push(hit(method));
+        }
+    }
+}

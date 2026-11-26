@@ -7,6 +7,7 @@ import {
   type TableEntry,
 } from '../../../preset/eslint-plugin/rules/queries/soft-delete/read-mentions.mts';
 import { appendAll } from '../../../../../shared/lists/lists.mts';
+import { mayReadTables } from './candidates/read-candidates.mts';
 
 const ALL_ORMS = ['drizzle', 'knex', 'kysely', 'mikro', 'prisma', 'sequelize', 'typeorm'];
 const READ_HINT = /\b(?:find|select|from|createQueryBuilder|knex|query)/iu;
@@ -20,7 +21,8 @@ function consumedCalls(program: ParsedProgram): TSESTree.CallExpression[] {
 }
 
 function tableReads(text: string, file: string): TableEntry[] {
-  const program = READ_HINT.test(text) ? parseProgram(text, file) : undefined;
+  const program =
+    READ_HINT.test(text) && mayReadTables(text) ? parseProgram(text, file) : undefined;
   if (program === undefined || program.ast === undefined) {
     return [];
   }

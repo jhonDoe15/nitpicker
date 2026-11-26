@@ -1,5 +1,6 @@
 import path from 'node:path';
-import { fieldOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
+import { PLACED, placesByArguments, type Placed } from './spotbugs-placed.mts';
 
 export type EngineSpotbugsFinding = {
   readonly file: string;
@@ -7,6 +8,8 @@ export type EngineSpotbugsFinding = {
   readonly line: number;
   readonly message: string;
   readonly symbol: string | undefined;
+  readonly priority?: number | undefined;
+  readonly arguments?: readonly string[] | undefined;
 };
 type LogicalLocation = {
   readonly name: string;
@@ -25,7 +28,7 @@ export type SpotbugsResult = {
     {
       readonly physicalLocation: {
         readonly artifactLocation: { readonly uri: string };
-        readonly region: { readonly startLine: number };
+        readonly region?: { readonly startLine: number };
       };
       readonly logicalLocations: readonly [LogicalLocation];
     },
@@ -108,11 +111,93 @@ const SHAPES: Readonly<Record<string, Shape>> = {
   },
 };
 
+function withoutPackage(qualified: string, owner: string): string {
+  const local = packageOf(owner);
+  return local === '' ? qualified : qualified.slice(local.length + 1);
+}
+
+function ownerOf(kind: string, qualified: string): string {
+  if (kind === 'type') {
+    return qualified;
+  }
+  if (kind === 'member') {
+    return qualified.slice(0, qualified.lastIndexOf('.'));
+  }
+  const method = kind === 'variable' ? qualified.slice(0, qualified.lastIndexOf('#')) : qualified;
+  return classOf(method);
+}
+
+function placeName(kind: string, qualified: string, owner: string): string {
+  if (kind === 'variable') {
+    return qualified.slice(qualified.lastIndexOf('#') + 1);
+  }
+  if (kind !== 'function') {
+    return withoutPackage(qualified, owner);
+  }
+  if (qualified.startsWith(CONSTRUCTOR)) {
+    return `${CONSTRUCTOR}${withoutPackage(qualified.slice(CONSTRUCTOR.length), owner)}`;
+  }
+  const open = qualified.indexOf('(');
+  return qualified.slice(qualified.lastIndexOf('.', open) + 1);
+}
+
+function placedNameOf(
+  finding: EngineSpotbugsFinding,
+  placed: Placed,
+  [kind, qualified, owner]: readonly [string, string, string],
+): string {
+  if (placesByArguments(placed)) {
+    return finding.arguments?.[1] ?? qualified;
+  }
+  return placed.classNamed?.includes(finding.priority ?? 0)
+    ? withoutPackage(qualified, owner)
+    : placeName(kind, qualified, owner);
+}
+
+function placedResultOf(finding: EngineSpotbugsFinding, placed: Placed): SpotbugsResult {
+  const place = finding.symbol ?? '';
+  const colon = place.indexOf(':');
+  const level = placed.levels[finding.priority ?? 0];
+  if (colon < 1 || level === undefined) {
+    throw new Error(`the engine wrote a ${finding.rule} finding nitpicker cannot place: ${place}`);
+  }
+  const kind = place.slice(0, colon);
+  const [qualified = '', written] = place.slice(colon + 1).split('|');
+  const owner = ownerOf(kind, qualified);
+  const subject = placesByArguments(placed) ? (finding.arguments?.[0] ?? owner) : owner;
+  const directory = (written ?? packageOf(subject)).replaceAll('.', '/');
+  const file = path.basename(finding.file);
+  return {
+    ruleId: finding.rule,
+    message: { id: 'default', text: placed.text, arguments: finding.arguments ?? [qualified] },
+    level,
+    locations: [
+      {
+        physicalLocation: {
+          artifactLocation: { uri: directory === '' ? file : `${directory}/${file}` },
+          ...(finding.line === 0 ? {} : { region: { startLine: finding.line } }),
+        },
+        logicalLocations: [
+          {
+            name: placedNameOf(finding, placed, [kind, qualified, owner]),
+            kind,
+            fullyQualifiedName: qualified,
+          },
+        ],
+      },
+    ],
+  };
+}
+
 function classOfFinding(rule: string, [first]: readonly [string, string]): string {
   return rule === 'CT_CONSTRUCTOR_THROW' ? first : classOf(first);
 }
 
 export function spotbugsResultOf(finding: EngineSpotbugsFinding): SpotbugsResult {
+  const placed = PLACED[finding.rule];
+  if (placed !== undefined) {
+    return placedResultOf(finding, placed);
+  }
   const shape = SHAPES[finding.rule];
   const matched = shape?.pattern.exec(finding.message);
   const [, first, second] = matched ?? [];
@@ -142,11 +227,15 @@ export function spotbugsResultOf(finding: EngineSpotbugsFinding): SpotbugsResult
 
 export function engineSpotbugsFindingOf(value: unknown): EngineSpotbugsFinding {
   const symbol = fieldOf(value, 'symbol');
+  const priority = fieldOf(value, 'priority');
+  const listed = fieldOf(value, 'arguments');
   return {
     file: String(fieldOf(value, 'file')),
     rule: String(fieldOf(value, 'rule')),
     line: Number(fieldOf(value, 'line')),
     message: String(fieldOf(value, 'message')),
     symbol: typeof symbol === 'string' ? symbol : undefined,
+    priority: typeof priority === 'number' ? priority : undefined,
+    ...(Array.isArray(listed) ? { arguments: textsOf(listed) } : {}),
   };
 }

@@ -4,6 +4,7 @@ import { isNestController } from './decorators.mts';
 import { infrastructureOf, type Infrastructure } from './infrastructure-types.mts';
 import { callSignatureTypes, findInType, typeSymbols } from './type-walk.mts';
 import { appendAll } from '../../../../../../shared/lists/lists.mts';
+import { compareText } from '../../../../../../shared/paths/path-order.mts';
 
 type Checker = TypeScript.TypeChecker;
 type Leak = { readonly member: string; readonly found: Infrastructure };
@@ -16,12 +17,20 @@ function resolved(checker: Checker, symbol: TypeScript.Symbol): TypeScript.Symbo
   return (symbol.flags & ts.SymbolFlags.Alias) !== 0 ? checker.getAliasedSymbol(symbol) : symbol;
 }
 
+function compareInfrastructure(left: Infrastructure, right: Infrastructure): number {
+  return (
+    compareText(left.packageName, right.packageName) ||
+    compareText(left.name, right.name) ||
+    compareText(left.kind, right.kind)
+  );
+}
+
 function infrastructureIn(checker: Checker, type: TypeScript.Type): Infrastructure[] {
   return findInType(checker, type, (candidate) =>
     typeSymbols(candidate)
       .map((symbol) => infrastructureOf(symbol))
       .find((found) => found !== undefined),
-  );
+  ).toSorted(compareInfrastructure);
 }
 
 function isHandlerSignature(checker: Checker, signature: TypeScript.Signature): boolean {

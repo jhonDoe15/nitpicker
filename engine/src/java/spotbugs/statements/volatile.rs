@@ -53,9 +53,15 @@ fn field_of<'a>(context: &Context<'a>, key: &(String, String)) -> Option<&'a cra
     context.resolver.index.field(&key.0, &key.1).map(|(_, field)| field)
 }
 
-/// Whether the value of an expression is thrown away: a statement of its own or the update of a `for`.
-fn unused(node: Node) -> bool {
+/// Whether the value of an expression is thrown away: a statement of its own, the update of a `for`, or the body of
+/// a lambda whose method returns nothing.
+fn unused(context: &Context, node: Node) -> bool {
     node.parent().is_some_and(|holder| match holder.kind() {
+        "lambda_expression" => holder.child_by_field_name("body").is_some_and(|body| body.id() == node.id()) && {
+            let target = context.resolver.lambda_target(holder);
+            let method = target.and_then(|target| context.resolver.index.functional_method(&target.erased().name()).map(|(_, method)| method.returns.clone()));
+            method == Some(Type::Primitive("void"))
+        },
         "expression_statement" => true,
         "for_statement" => holder.child_by_field_name("update").is_some_and(|_| {
             let mut cursor = holder.walk();
@@ -66,7 +72,7 @@ fn unused(node: Node) -> bool {
 }
 
 pub fn check(context: &Context, node: Node, label: &str) {
-    if !unused(node) {
+    if !unused(context, node) {
         return;
     }
     let Some(key) = incremented(context, node) else { return };
@@ -79,5 +85,7 @@ pub fn check(context: &Context, node: Node, label: &str) {
     }
     let at = node.parent().filter(|holder| holder.kind() == "expression_statement").unwrap_or(node);
     let message = format!("Increment of volatile field {}.{} in {label}", names::binary(context, &key.0), key.1);
-    context.report("VO_VOLATILE_INCREMENT", at, context.line(at), message);
+    let place = super::super::place::member(context, &key.0, &key.1);
+    let arguments = vec![format!("{}.{}", names::binary(context, &key.0), key.1), label.to_string()];
+    context.report_listed("VO_VOLATILE_INCREMENT", at, context.line(at), message, place, 2, arguments);
 }

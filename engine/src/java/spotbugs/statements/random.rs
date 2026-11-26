@@ -8,7 +8,15 @@ use tree_sitter::Node;
 const RANDOM: &str = "java.util.Random";
 
 fn report(context: &Context, at: Node, generator: &str) {
-    context.report("PREDICTABLE_RANDOM", at, context.line(at), format!("This random generator ({generator}) is predictable"));
+    for label in super::super::place::methods(context, at) {
+        report_in(context, at, generator, &label);
+    }
+}
+
+fn report_in(context: &Context, at: Node, generator: &str, label: &str) {
+    let message = format!("This random generator ({generator}) is predictable");
+    let place = super::super::place::function(label);
+    context.report_listed("PREDICTABLE_RANDOM", at, context.line(at), message, place, 2, vec![generator.to_string()]);
 }
 
 /// What a call or creation builds or hands out, when it is a predictable generator.
@@ -51,10 +59,12 @@ pub fn subclass(context: &Context, class: Node) {
         return;
     }
     let Some(body) = class.child_by_field_name("body") else { return };
+    let Some(own) = context.resolver.scope.names.get(&class.id()) else { return };
+    let label = |member: Node| super::member_label(context, own, class, member).unwrap_or_default();
     let constructors: Vec<Node> = children(body).into_iter().filter(|member| member.kind() == "constructor_declaration").collect();
     if constructors.is_empty() {
         let keyword = children(class).into_iter().find(|part| part.kind() == "class").unwrap_or(class);
-        report(context, keyword, RANDOM);
+        report_in(context, keyword, RANDOM, &label(class));
     }
     for constructor in constructors {
         let first = constructor.child_by_field_name("body").and_then(|body| body.named_child(0));
@@ -62,10 +72,10 @@ pub fn subclass(context: &Context, class: Node) {
             Some(call) => {
                 let target = call.child_by_field_name("constructor");
                 if target.is_some_and(|target| target.kind() == "super") {
-                    report(context, call, RANDOM);
+                    report_in(context, call, RANDOM, &label(constructor));
                 }
             }
-            None => report(context, constructor.child_by_field_name("name").unwrap_or(constructor), RANDOM),
+            None => report_in(context, constructor.child_by_field_name("name").unwrap_or(constructor), RANDOM, &label(constructor)),
         }
     }
 }

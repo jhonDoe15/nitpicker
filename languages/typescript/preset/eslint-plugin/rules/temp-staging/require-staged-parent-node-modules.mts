@@ -4,7 +4,7 @@ import {
   resolveConstant,
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
-import { depthFirst, nodeChildren } from '../typed/node-views.mts';
+import { ancestorsOf, depthFirst, nodeChildren } from '../typed/node-views.mts';
 import { enclosingFunction } from '../typed/syntax-views.mts';
 import { runsResolvingTool } from './resolving-tools.mts';
 import { inTemp, nameOfCall, propertyNamed, scopeOf } from './temp-paths.mts';
@@ -34,21 +34,28 @@ function isReaddir(context: SourceContext, node: TSESTree.Node | undefined): boo
   return call !== undefined && /^readdir/u.test(nameOfCall(call));
 }
 
+function loopCallOwner(
+  context: SourceContext,
+  call: TSESTree.Node | undefined,
+  program: TSESTree.Node,
+): TSESTree.Node | undefined {
+  return call?.type === AST_NODE_TYPES.CallExpression &&
+    call.callee.type === AST_NODE_TYPES.MemberExpression &&
+    LOOPS.has(nameOfCall(call)) &&
+    isReaddir(context, call.callee.object)
+    ? scopeOf(call, program)
+    : undefined;
+}
+
 function loopOwner(
   context: SourceContext,
   node: TSESTree.Node,
   program: TSESTree.Node,
 ): TSESTree.Node | undefined {
   const callback = enclosingFunction(node);
-  for (let current = node.parent; current !== undefined; current = current.parent) {
+  for (const current of ancestorsOf(node)) {
     if (current === callback) {
-      const call = current.parent;
-      return call?.type === AST_NODE_TYPES.CallExpression &&
-        call.callee.type === AST_NODE_TYPES.MemberExpression &&
-        LOOPS.has(nameOfCall(call)) &&
-        isReaddir(context, call.callee.object)
-        ? scopeOf(call, program)
-        : undefined;
+      return loopCallOwner(context, current.parent, program);
     }
     if (current.type === AST_NODE_TYPES.ForOfStatement) {
       return isReaddir(context, current.right) ? scopeOf(node, program) : undefined;
@@ -104,15 +111,19 @@ function spawnsInStage(
   });
 }
 
+function scopeName(scope: TSESTree.Node): string | undefined {
+  if (scope.type === AST_NODE_TYPES.FunctionDeclaration) {
+    return scope.id?.name;
+  }
+  return scope.parent?.type === AST_NODE_TYPES.VariableDeclarator &&
+    scope.parent.id.type === AST_NODE_TYPES.Identifier
+    ? scope.parent.id.name
+    : undefined;
+}
+
 function hasResolutionHint(context: SourceContext, scope: TSESTree.Node): boolean {
   const texts = [context.sourceCode.getText(scope)];
-  const name =
-    scope.type === AST_NODE_TYPES.FunctionDeclaration
-      ? scope.id?.name
-      : scope.parent?.type === AST_NODE_TYPES.VariableDeclarator &&
-          scope.parent.id.type === AST_NODE_TYPES.Identifier
-        ? scope.parent.id.name
-        : undefined;
+  const name = scopeName(scope);
   const variable = name === undefined ? undefined : findVariable(context, scope, name);
   for (const reference of variable?.references ?? []) {
     const caller = enclosingFunction(reference.identifier);

@@ -17,7 +17,9 @@ const SHAPES: readonly (readonly [RegExp, (alternatives: string) => string])[] =
 function shapeOf(glob: string): readonly [number, string] | undefined {
   for (const [index, [shape]] of SHAPES.entries()) {
     const part = shape.exec(glob)?.groups?.['part'];
-    if (part !== undefined) return [index, escapeRegExp(part)];
+    if (part !== undefined) {
+      return [index, escapeRegExp(part)];
+    }
   }
   return undefined;
 }
@@ -27,8 +29,11 @@ export function excludePatternOf(globs: readonly string[]): string | undefined {
   const others: string[] = [];
   for (const glob of globs) {
     const shape = shapeOf(glob);
-    if (shape === undefined) others.push(globToRegExpSource(glob));
-    else grouped[shape[0]]?.push(shape[1]);
+    if (shape === undefined) {
+      others.push(globToRegExpSource(glob));
+    } else {
+      grouped[shape[0]]?.push(shape[1]);
+    }
   }
   const parts = [
     ...SHAPES.flatMap(([, folded], index) => {

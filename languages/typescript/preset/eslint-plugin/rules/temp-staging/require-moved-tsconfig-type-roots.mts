@@ -4,7 +4,8 @@ import {
   resolveConstant,
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
-import { inTemp, nameOfCall, propertyNamed } from './temp-paths.mts';
+import { chainOf } from '../typed/node-views.mts';
+import { inTemp, nameOfCall, propertyNamed, resolvedValues } from './temp-paths.mts';
 
 const WRITERS = new Set(['writeFile', 'writeFileSync']);
 
@@ -32,29 +33,32 @@ function literalObject(
 const TSCONFIG_FILE = /(?:^|[\\/])tsconfig[^\\/]*\.json$/u;
 const MAX_STRINGS_DEPTH = 6;
 
-function stringsIn(context: SourceContext, node: TSESTree.Node | undefined, depth = 0): string[] {
-  const value = depth > MAX_STRINGS_DEPTH ? undefined : resolveConstant(context, node, depth);
-  if (value === undefined) {
-    return [];
+function stringOperands(value: TSESTree.Node): readonly TSESTree.Node[] {
+  if (value.type === AST_NODE_TYPES.TemplateLiteral) {
+    return value.expressions;
   }
-  const next = depth + 1;
-  switch (value.type) {
-    case AST_NODE_TYPES.Literal:
-      return typeof value.value === 'string' ? [value.value] : [];
-    case AST_NODE_TYPES.TemplateLiteral:
-      return [
-        ...value.quasis.map((part) => part.value.cooked ?? ''),
-        ...value.expressions.flatMap((part) => stringsIn(context, part, next)),
-      ];
-    case AST_NODE_TYPES.AwaitExpression:
-      return stringsIn(context, value.argument, next);
-    case AST_NODE_TYPES.BinaryExpression:
-      return [...stringsIn(context, value.left, next), ...stringsIn(context, value.right, next)];
-    case AST_NODE_TYPES.CallExpression:
-      return value.arguments.flatMap((part) => stringsIn(context, part, next));
-    default:
-      return [];
+  if (value.type === AST_NODE_TYPES.AwaitExpression) {
+    return [value.argument];
   }
+  if (value.type === AST_NODE_TYPES.BinaryExpression) {
+    return [value.left, value.right];
+  }
+  return value.type === AST_NODE_TYPES.CallExpression ? value.arguments : [];
+}
+
+function ownStrings(value: TSESTree.Node): readonly string[] {
+  if (value.type === AST_NODE_TYPES.Literal) {
+    return typeof value.value === 'string' ? [value.value] : [];
+  }
+  return value.type === AST_NODE_TYPES.TemplateLiteral
+    ? value.quasis.map((part) => part.value.cooked ?? '')
+    : [];
+}
+
+function stringsIn(context: SourceContext, node: TSESTree.Node): string[] {
+  return [
+    ...resolvedValues({ context, node, operandsOf: stringOperands, maxDepth: MAX_STRINGS_DEPTH }),
+  ].flatMap(ownStrings);
 }
 
 function namesTsconfig(context: SourceContext, target: TSESTree.Node): boolean {
@@ -70,27 +74,31 @@ function extendsSibling(config: TSESTree.ObjectExpression): boolean {
   );
 }
 
+function accessRoot(identifier: TSESTree.Node): TSESTree.Node {
+  return (
+    chainOf(identifier, (current) =>
+      current.parent?.type === AST_NODE_TYPES.MemberExpression && current.parent.object === current
+        ? current.parent
+        : undefined,
+    ).at(-1) ?? identifier
+  );
+}
+
 function isMutated(context: SourceContext, node: TSESTree.Node | undefined): boolean {
   if (node?.type !== AST_NODE_TYPES.Identifier) {
     return false;
   }
   const variable = findVariable(context, node, node.name);
   return (variable?.references ?? []).some((reference) => {
-    let current: TSESTree.Node = reference.identifier;
-    while (
-      current.parent?.type === AST_NODE_TYPES.MemberExpression &&
-      current.parent.object === current
-    ) {
-      current = current.parent;
-    }
-    const parent = current.parent;
+    const root = accessRoot(reference.identifier);
+    const parent = root.parent;
     return (
-      (current !== reference.identifier &&
+      (root !== reference.identifier &&
         parent?.type === AST_NODE_TYPES.AssignmentExpression &&
-        parent.left === current) ||
+        parent.left === root) ||
       (parent?.type === AST_NODE_TYPES.CallExpression &&
         nameOfCall(parent) === 'assign' &&
-        parent.arguments[0] === current)
+        parent.arguments[0] === root)
     );
   });
 }

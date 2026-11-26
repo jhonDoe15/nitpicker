@@ -14,6 +14,13 @@ const REMOVED_ENUM_VALUES: Readonly<Record<string, ReadonlySet<unknown>>> = {
 };
 const REMOVED_FALSE_OPTIONS = ['esModuleInterop', 'allowSyntheticDefaultImports', 'alwaysStrict'];
 const REMOVED_OPTIONS = ['downlevelIteration', 'outFile', 'out'];
+const UNMAPPED_OPTIONS = new Set(['module', 'outFile', 'out']);
+const LOWEST_TARGET = 'ES2015';
+
+export type Typescript7Overrides = {
+  readonly set: Readonly<Record<string, unknown>>;
+  readonly unset: readonly string[];
+};
 
 export function removedOptions(options: CompilerOptions): string[] {
   return [
@@ -23,6 +30,21 @@ export function removedOptions(options: CompilerOptions): string[] {
     ...REMOVED_FALSE_OPTIONS.filter((option) => options[option] === false),
     ...REMOVED_OPTIONS.filter((option) => options[option] !== undefined),
   ];
+}
+
+export function optionOverrides(options: CompilerOptions): Typescript7Overrides | undefined {
+  const removed = removedOptions(options);
+  const hasBaseUrl = baseUrlOf(options) !== undefined;
+  if ((removed.length === 0 && !hasBaseUrl) || removed.some((name) => UNMAPPED_OPTIONS.has(name))) {
+    return undefined;
+  }
+  return {
+    set: {
+      ...baseUrlPaths(options),
+      ...(removed.includes('target') ? { target: LOWEST_TARGET } : {}),
+    },
+    unset: [...(hasBaseUrl ? ['baseUrl'] : []), ...removed.filter((name) => name !== 'target')],
+  };
 }
 
 export function baseUrlOf(options: CompilerOptions): string | undefined {

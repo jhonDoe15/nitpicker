@@ -743,6 +743,9 @@ The pairs:
 - variable: `pmd/UnusedLocalVariable` over `pmd/UnusedAssignment`
 - line: `checkstyle/FileTabCharacter` over `checkstyle/Indentation`
 - line: `pmd/InlineSuppression` over `pmd/UnnecessaryWarningSuppression`
+- line: `pmd/ParallelStreamSharedMutation` over `pmd/ForEachSideEffect`
+- line: `pmd/LocalExecutorNeverShutDown` over `pmd/CloseResource`
+- line: `pmd/ScheduledTaskStopsOnFailure` over `errorprone/FutureReturnValueIgnored`
 
 ## Standard streams and the `main` method
 

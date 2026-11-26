@@ -21,6 +21,7 @@
       "languages/typescript/adapters/eslint-wrapper.config.mts",
       "languages/typescript/adapters/dependency-graph/cruiser-hooks/register.mts",
       "languages/typescript/adapters/dependency-graph/engine-extract/engine-hooks.mts",
+      "languages/typescript/adapters/quality-areas/knip/knip-reporter.mts",
       "languages/typescript/adapters/oxlint/oxlint-bridge.mts",
       "languages/typescript/adapters/oxlint/oxlint-plan.mts",
       "languages/typescript/adapters/test-runners/mocha/mocha-files.config.mts",
@@ -78,6 +79,26 @@
   ],
   "disable": ["mutation", "test-console"],
   "exceptions": [
+    {
+      "rule": "nitpicker/no-unsafe-path-join",
+      "paths": ["languages/java/builds/spotbugs/spotbugs-lombok.mts"],
+      "reason": "Follows lombok.config import lines the way Lombok does; an import may point outside the project, and the joined part is the fixed name lombok.config."
+    },
+    {
+      "rule": "nitpicker/no-module-level-mutable-state",
+      "paths": ["languages/typescript/adapters/dependency-graph/engine-extract/engine-hooks.mts"],
+      "reason": "Per-process singleton: dependency-cruiser loads the gather hook and the two extract hooks as separate shim modules, and they share the engine extraction made at gather time."
+    },
+    {
+      "rule": "nitpicker/no-null",
+      "paths": ["languages/typescript/preset/unused-api/engine/project-inputs.mts"],
+      "reason": "A tsconfig unsets an option it inherits through extends only with null; this object is written as the engine's tsconfig JSON."
+    },
+    {
+      "rule": "large-file",
+      "paths": ["engine/tests/expected/errorprone-messages.json"],
+      "reason": "Recorded Error Prone message catalogue that the engine parity tests compare against row for row."
+    },
     {
       "rule": "pmd-xpath-rule-mistake",
       "paths": ["languages/java/gradle/**"],

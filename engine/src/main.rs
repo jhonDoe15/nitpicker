@@ -48,6 +48,10 @@ fn main() {
         near::near_duplicate_search(&args[1..]);
         return;
     }
+    if args.first().map(String::as_str) == Some("checkstyle-javadoc-trees") {
+        java::checkstyle::dump(&args[1..]);
+        return;
+    }
     if args.first().map(String::as_str) == Some("cpd") {
         java::cpd::run(&args[1..]);
         return;
@@ -84,6 +88,7 @@ fn main() {
                 let listed = std::fs::read_to_string(&args[index]).unwrap_or_else(|_| args[index].clone());
                 options.classpath.extend(listed.split(['\n', ':']).filter(|entry| !entry.trim().is_empty()).map(|entry| PathBuf::from(entry.trim())));
             }
+            "--lombok" => options.lombok = true,
             "--release" => { index += 1; options.release = Some(args[index].parse().expect("release number")); }
             other => roots.push(PathBuf::from(other)),
         }

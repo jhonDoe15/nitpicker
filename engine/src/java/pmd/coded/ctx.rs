@@ -10,6 +10,7 @@ use std::collections::BTreeMap;
 pub struct Hit {
     pub node: u32,
     pub args: Vec<String>,
+    pub message: Option<String>,
 }
 
 pub struct Ctx<'m, 'a, 't> {
@@ -18,6 +19,7 @@ pub struct Ctx<'m, 'a, 't> {
     pub machine: &'m Machine<'a, 't>,
     pub properties: &'m BTreeMap<String, String>,
     pub usages: &'m OnceCell<Usages>,
+    pub flow: &'m OnceCell<super::flow::Flow>,
 }
 
 const BOUNDARIES: &[&str] = &["LambdaExpression", "AnonymousClassDeclaration", "LocalClassStatement"];
@@ -96,6 +98,11 @@ impl<'m, 'a, 't> Ctx<'m, 'a, 't> {
     pub fn boundary(&self, id: u32) -> bool {
         let name = self.name(id);
         BOUNDARIES.contains(&name) || (TYPE_DECLARATIONS.contains(&name) && self.flag(id, "Nested"))
+    }
+
+    /// Whether the node is a written type: PMD's `ASTType`.
+    pub fn type_node(&self, id: u32) -> bool {
+        matches!(self.name(id), "ClassType" | "PrimitiveType" | "ArrayType" | "IntersectionType" | "UnionType" | "WildcardType" | "VoidType")
     }
 
     pub fn attribute(&self, id: u32, key: &str) -> Option<Value> {
@@ -221,6 +228,11 @@ impl<'m, 'a, 't> Ctx<'m, 'a, 't> {
         self.usages.get_or_init(|| Usages::of(self))
     }
 
+    /// PMD's `DataflowPass` result for the file, worked out once for all rules.
+    pub fn flow(&self) -> &super::flow::Flow {
+        self.flow.get_or_init(|| super::flow::Flow::of(self))
+    }
+
     /// The method name of a `MethodCall`.
     pub fn method_name(&self, call: u32) -> String {
         self.text(call, "MethodName")
@@ -279,4 +291,5 @@ impl<'m, 'a, 't> Ctx<'m, 'a, 't> {
         };
         self.kids_named(body, name).collect()
     }
+
 }

@@ -26,19 +26,37 @@ function rebasedPath(value: string, { from, to }: Roots): string {
     : value;
 }
 
+function isContainer(value: unknown): value is object {
+  return typeof value === 'object' && value !== null;
+}
+
+function shellOf(value: unknown): Record<string, unknown> {
+  return Array.isArray(value) ? Object.assign<unknown[], Record<string, unknown>>([], {}) : {};
+}
+
+function rebasedLeaf(value: unknown, roots: Roots): unknown {
+  return typeof value === 'string' ? rebasedPath(value, roots) : value;
+}
+
 function rebased(value: unknown, roots: Roots): unknown {
-  if (typeof value === 'string') {
-    return rebasedPath(value, roots);
+  if (!isContainer(value)) {
+    return rebasedLeaf(value, roots);
   }
-  if (Array.isArray(value)) {
-    return value.map((item: unknown) => rebased(item, roots));
+  const result: Record<string, unknown> = shellOf(value);
+  const pending: [unknown, Record<string, unknown>][] = [[value, result]];
+  for (const [source, target] of pending) {
+    if (!isContainer(source)) {
+      continue;
+    }
+    for (const [key, item] of Object.entries(source)) {
+      const copy = shellOf(item);
+      target[Array.isArray(source) ? key : rebasedPath(key, roots)] = isContainer(item)
+        ? copy
+        : rebasedLeaf(item, roots);
+      pending.push([item, copy]);
+    }
   }
-  if (typeof value === 'object' && value !== null) {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [rebasedPath(key, roots), rebased(item, roots)]),
-    );
-  }
-  return value;
+  return result;
 }
 
 function isTestReport(value: unknown): value is TestReport {
@@ -46,9 +64,18 @@ function isTestReport(value: unknown): value is TestReport {
 }
 
 function readPrepared(options: QualityAreaOptions, directory: string, file: string): unknown {
-  const filePath = path.resolve(options.liveProjectRoot, directory, file);
+  const base = path.resolve(options.liveProjectRoot, directory);
+  const filePath = path.resolve(base, file);
+  if (!filePath.startsWith(`${base}${path.sep}`)) {
+    throw new Error(`${TEST_RESULTS_VARIABLE}: ${file} is outside ${directory}`);
+  }
   const roots = { from: options.liveProjectRoot, to: options.projectRoot };
-  return rebased(JSON.parse(readFileSync(filePath, 'utf8')), roots);
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(filePath, 'utf8'));
+    return rebased(parsed, roots);
+  } catch (error) {
+    throw new Error(`${TEST_RESULTS_VARIABLE}: ${file} cannot be read`, { cause: error });
+  }
 }
 
 function failedCount(report: TestReport): number {

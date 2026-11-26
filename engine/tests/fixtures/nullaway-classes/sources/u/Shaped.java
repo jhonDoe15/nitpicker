@@ -23,11 +23,22 @@ public class Shaped implements Shapes {
     Shapes.Taker<String> taker = Shaped::need;
     Shapes.Taker<String> lambda = (value, note) -> {};
     Shapes.Taker<String> typed = (String value, String note) -> {};
+    holder.new Part(null, null);
+    holder.new Part("a", "b");
+    holder.new Pair<String>(null, null, null);
   }
 
   static class Owner extends Shapes.Holder {
     Owner() {
       super(null, "");
+    }
+
+    Object part() {
+      return new Part(null, null);
+    }
+
+    Object pair() {
+      return new Pair<>("a", null, null);
     }
   }
 }

@@ -17,7 +17,7 @@ let $io := ('org.springframework.data.repository.Repository', 'jakarta.persisten
         [some $m in ancestor::ClassBody[1]/MethodDeclaration[@Name = $c/@MethodName]
                     [count(FormalParameters/FormalParameter) = $c/ArgumentList/@Size]
                     [Block[count(*) = 1][ThrowStatement]]
-         satisfies not($m/ResultType/@Void = true())]
+         satisfies not($m/VoidType)]
     }
 return
 //MethodCall[

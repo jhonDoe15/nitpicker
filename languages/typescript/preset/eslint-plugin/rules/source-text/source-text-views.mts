@@ -1,4 +1,4 @@
-import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
+import { AST_NODE_TYPES, TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import {
   findVariable,
   isFunctionNode,
@@ -6,8 +6,10 @@ import {
   stringValue,
   type SourceContext,
 } from '../analysis/constant-resolution.mts';
-import { depthFirst, nameOf, nodeChildren } from '../typed/node-views.mts';
+import { chainOf, depthFirst, nameOf, nodeChildren } from '../typed/node-views.mts';
 
+const { DefinitionType } = TSESLint.Scope;
+const MAX_MASKING_DEPTH = 6;
 const KEYWORDS = [
   'abstract',
   'async',
@@ -76,40 +78,43 @@ export function hasKeyword(pattern: string): boolean {
   return KEYWORD_PATTERN.test(pattern);
 }
 
-function peel(node: TSESTree.Node): TSESTree.Node {
+function peeled(node: TSESTree.Node): TSESTree.Node | undefined {
   if (node.type === AST_NODE_TYPES.AwaitExpression) {
-    return peel(node.argument);
+    return node.argument;
   }
   if (
     node.type === AST_NODE_TYPES.TSAsExpression ||
     node.type === AST_NODE_TYPES.TSNonNullExpression ||
     node.type === AST_NODE_TYPES.ChainExpression
   ) {
-    return peel(node.expression);
+    return node.expression;
   }
-  if (
-    node.type === AST_NODE_TYPES.CallExpression &&
+  return node.type === AST_NODE_TYPES.CallExpression &&
     node.arguments.length === 0 &&
     node.callee.type === AST_NODE_TYPES.MemberExpression &&
     nameOf(node.callee.property) === 'toString'
-  ) {
-    return peel(node.callee.object);
-  }
-  return node;
+    ? node.callee.object
+    : undefined;
+}
+
+function peel(node: TSESTree.Node): TSESTree.Node {
+  return chainOf(node, peeled).at(-1) ?? node;
+}
+
+function lastJoinArgument(node: TSESTree.Node | undefined): TSESTree.Node | undefined {
+  return node?.type === AST_NODE_TYPES.CallExpression &&
+    node.callee.type === AST_NODE_TYPES.MemberExpression &&
+    PATH_JOINS.has(nameOf(node.callee.property) ?? '')
+    ? node.arguments.at(-1)
+    : undefined;
 }
 
 function pathText(node: TSESTree.Node | undefined): string | undefined {
-  if (
-    node?.type === AST_NODE_TYPES.CallExpression &&
-    node.callee.type === AST_NODE_TYPES.MemberExpression &&
-    PATH_JOINS.has(nameOf(node.callee.property) ?? '')
-  ) {
-    return pathText(node.arguments.at(-1));
+  const last = node === undefined ? undefined : chainOf(node, lastJoinArgument).at(-1);
+  if (last?.type === AST_NODE_TYPES.TemplateLiteral) {
+    return last.quasis.at(-1)?.value.cooked ?? undefined;
   }
-  if (node?.type === AST_NODE_TYPES.TemplateLiteral) {
-    return node.quasis.at(-1)?.value.cooked ?? undefined;
-  }
-  return stringValue(node);
+  return stringValue(last);
 }
 
 function readsSourceFile(node: TSESTree.Node): boolean {
@@ -141,30 +146,44 @@ function isJsonCall(node: TSESTree.CallExpression): boolean {
   );
 }
 
-export function passesThroughMasking(
-  context: SourceContext,
-  node: TSESTree.Node | undefined,
-  depth = 0,
-): boolean {
-  if (node === undefined || depth > 6) {
-    return false;
-  }
-  const value = peel(resolveConstant(context, node) ?? node);
-  if (value.type === AST_NODE_TYPES.MemberExpression) {
-    return passesThroughMasking(context, value.object, depth + 1);
-  }
-  if (value.type !== AST_NODE_TYPES.CallExpression) {
-    return false;
-  }
-  const name = calleeName(value);
-  if ((MASKING_VALUE.test(name) && !isJsonCall(value)) || isMaskingHelper(name)) {
-    return true;
-  }
-  const inputs = [
+type Pending = { readonly node: TSESTree.Node | undefined; readonly depth: number };
+
+function maskingInputs(value: TSESTree.CallExpression): TSESTree.Node[] {
+  return [
     ...(value.callee.type === AST_NODE_TYPES.MemberExpression ? [value.callee.object] : []),
     ...value.arguments,
   ];
-  return inputs.some((input) => passesThroughMasking(context, input, depth + 1));
+}
+
+function maskingChildren(value: TSESTree.Node): TSESTree.Node[] {
+  if (value.type === AST_NODE_TYPES.MemberExpression) {
+    return [value.object];
+  }
+  return value.type === AST_NODE_TYPES.CallExpression ? maskingInputs(value) : [];
+}
+
+function isMaskingCall(value: TSESTree.CallExpression): boolean {
+  const name = calleeName(value);
+  return (MASKING_VALUE.test(name) && !isJsonCall(value)) || isMaskingHelper(name);
+}
+
+function passesThroughMasking(context: SourceContext, start: TSESTree.Node | undefined): boolean {
+  const pending: Pending[] = [{ node: start, depth: 0 }];
+  const seen = new Set<TSESTree.Node>();
+  for (const { node, depth } of pending) {
+    if (node === undefined || depth > MAX_MASKING_DEPTH || seen.has(node)) {
+      continue;
+    }
+    seen.add(node);
+    const value = peel(resolveConstant(context, node) ?? node);
+    if (value.type === AST_NODE_TYPES.CallExpression && isMaskingCall(value)) {
+      return true;
+    }
+    for (const child of maskingChildren(value)) {
+      pending.push({ node: child, depth: depth + 1 });
+    }
+  }
+  return false;
 }
 
 function maskedParameter(context: SourceContext, node: TSESTree.Node): boolean {
@@ -173,7 +192,7 @@ function maskedParameter(context: SourceContext, node: TSESTree.Node): boolean {
     return false;
   }
   const definition = findVariable(context, text, text.name)?.defs[0];
-  const fn = definition?.type === 'Parameter' ? definition.node : undefined;
+  const fn = definition?.type === DefinitionType.Parameter ? definition.node : undefined;
   if (fn === undefined || !isFunctionNode(fn)) {
     return false;
   }
@@ -213,7 +232,7 @@ function functionName(fn: TSESTree.Node): string | undefined {
 export function holdsSourceText(context: SourceContext, node: TSESTree.Node): boolean {
   const text = peel(node);
   if (text.type === AST_NODE_TYPES.Identifier && SOURCE_NAMES.has(text.name)) {
-    return !maskedParameter(context, text) && !passesThroughMasking(context, text);
+    return !(maskedParameter(context, text) || passesThroughMasking(context, text));
   }
   const resolved = text.type === AST_NODE_TYPES.Identifier ? resolveConstant(context, text) : text;
   return resolved !== undefined && readsSourceFile(resolved);

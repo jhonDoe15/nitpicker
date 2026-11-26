@@ -24,19 +24,23 @@ export type EngineExtraction = {
 export const ENGINE_SWITCH = 'NITPICKER_IMPORT_GRAPH_ENGINE';
 
 const TIME_LIMIT_MS = 30 * 60 * 1000;
+const IMPORT = 'import';
+const EXPORT = 'export';
+const TRIPLE_SLASH = 'triple-slash-directive';
+const DYNAMIC_IMPORT = 'dynamic-import';
 const LIST_BREAKS = /[\t\n\r]/u;
 
 const SHAPES: ReadonlyMap<string, readonly [string, readonly string[]]> = new Map([
-  ['import', ['es6', ['import']]],
-  ['import-type-only', ['es6', ['type-only', 'import']]],
-  ['export', ['es6', ['export']]],
-  ['export-type-only', ['es6', ['type-only', 'export']]],
+  ['import', ['es6', [IMPORT]]],
+  ['import-type-only', ['es6', ['type-only', IMPORT]]],
+  ['export', ['es6', [EXPORT]]],
+  ['export-type-only', ['es6', ['type-only', EXPORT]]],
   ['import-equals', ['cjs', ['import-equals']]],
-  ['tsd-file', ['tsd', ['triple-slash-directive', 'triple-slash-file-reference']]],
-  ['tsd-type', ['tsd', ['triple-slash-directive', 'triple-slash-type-reference']]],
-  ['tsd-amd', ['tsd', ['triple-slash-directive', 'triple-slash-amd-dependency']]],
+  ['tsd-file', ['tsd', [TRIPLE_SLASH, 'triple-slash-file-reference']]],
+  ['tsd-type', ['tsd', [TRIPLE_SLASH, 'triple-slash-type-reference']]],
+  ['tsd-amd', ['tsd', [TRIPLE_SLASH, 'triple-slash-amd-dependency']]],
   ['require', ['cjs', ['require']]],
-  ['dynamic-import', ['es6', ['dynamic-import']]],
+  ['dynamic-import', ['es6', [DYNAMIC_IMPORT]]],
   ['type-import', ['es6', ['type-import']]],
 ]);
 
@@ -48,7 +52,7 @@ function dependencyOf(entry: unknown): ExtractedDependency {
   }
   const [moduleSystem, dependencyTypes] = shape;
   return {
-    dynamic: kind === 'dynamic-import',
+    dynamic: kind === DYNAMIC_IMPORT,
     module,
     moduleSystem,
     exoticallyRequired: false,
@@ -64,9 +68,13 @@ function keptOf(entry: unknown): KeptDependency {
 export function readExtraction(text: string): Map<string, EngineExtraction> {
   const files = new Map<string, EngineExtraction>();
   for (const line of text.split('\n')) {
-    if (line.length === 0) continue;
+    if (line.length === 0) {
+      continue;
+    }
     const entry: unknown = JSON.parse(line);
-    if (fieldOf(entry, 'unread') !== undefined) continue;
+    if (fieldOf(entry, 'unread') !== undefined) {
+      continue;
+    }
     files.set(textOf(fieldOf(entry, 'file')), {
       dependencies: listOf(fieldOf(entry, 'dependencies')).map(dependencyOf),
       kept: listOf(fieldOf(entry, 'kept')).map(keptOf),
@@ -108,15 +116,19 @@ function runIn(folder: string, binary: string, { baseDirectory, files }: Extract
 
 export function engineExtraction(
   request: Extraction,
-  environment: Environment = process.env,
+  environment: Environment,
 ): Map<string, EngineExtraction> {
-  if (environment[ENGINE_SWITCH] === 'off') return new Map();
+  if (environment[ENGINE_SWITCH] === 'off') {
+    return new Map();
+  }
   const binary = findEngine(environment);
   if (binary === undefined) {
     checkNotRequired(environment, 'there is no engine binary');
     return new Map();
   }
-  if (request.files.length === 0) return new Map();
+  if (request.files.length === 0) {
+    return new Map();
+  }
   const folder = mkdtempSync(path.join(tmpdir(), 'nitpicker-import-graph-'));
   try {
     return readExtraction(runIn(folder, binary, request));

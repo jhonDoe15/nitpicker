@@ -274,6 +274,7 @@ describe('the hygiene configuration hash', () => {
       'jsonc/jsonc.mts',
       'lists/items.mjs',
       'lists/lists.mts',
+      'lists/match-pairs.mts',
       'messages/docs-url.mts',
       'messages/error-chain.mts',
       'messages/exception-sentence.mts',

@@ -1,3 +1,4 @@
+import { rule as ruleNoLoopInvariantCopy } from '../rules/repeated-work/copies/no-loop-invariant-copy.mts';
 import { rule as ruleNoLossyJsonStringify } from '../rules/json-values/no-lossy-json-stringify.mts';
 import { rule as ruleNoLossyUtf8Decode } from '../rules/decoding/no-lossy-utf8-decode.mts';
 import { rule as ruleNoMagicNumbers } from '../rules/wrapped/no-magic-numbers.mts';
@@ -56,6 +57,7 @@ import { rule as ruleNoReplacingCollectionMerge } from '../rules/repeated-work/m
 import { rule as ruleNoRetryWithoutIdempotency } from '../rules/writes/no-retry-without-idempotency.mts';
 import { rule as ruleNoRouteWithoutAuth } from '../rules/route-auth/no-route-without-auth.mts';
 import { rule as ruleNoRuntimeExclusivePropsCheck } from '../rules/react-props/no-runtime-exclusive-props-check.mts';
+import { rule as ruleNoScanPerCallOverFixedCollection } from '../rules/rebuilt-work/no-scan-per-call-over-fixed-collection.mts';
 import { rule as ruleNoSecretInLog } from '../rules/secrets/no-secret-in-log.mts';
 import { rule as ruleNoSelfRecursion } from '../rules/control/no-self-recursion.mts';
 import { rule as ruleNoSendWithoutReturn } from '../rules/handlers/fall-through/no-send-without-return.mts';
@@ -96,10 +98,9 @@ import { rule as ruleNoTruncatingSplitLimit } from '../rules/split-limits/no-tru
 import { rule as ruleNoTypeLookupPerNode } from '../rules/type-lookups/no-type-lookup-per-node.mts';
 import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framework-in-domain.mts';
 import { rule as ruleNoUnanchoredAffixReplace } from '../rules/affixes/no-unanchored-affix-replace.mts';
-import { rule as ruleNoUnatomicWrites } from '../rules/transactions/no-unatomic-writes.mts';
-import { rule as ruleNoUnbatchedHeavyRun } from '../rules/heavy-steps/no-unbatched-heavy-run.mts';
 
 export const partRules = {
+  'no-loop-invariant-copy': ruleNoLoopInvariantCopy,
   'no-lossy-json-stringify': ruleNoLossyJsonStringify,
   'no-lossy-utf8-decode': ruleNoLossyUtf8Decode,
   'no-magic-numbers': ruleNoMagicNumbers,
@@ -159,6 +160,7 @@ export const partRules = {
   'no-retry-without-idempotency': ruleNoRetryWithoutIdempotency,
   'no-route-without-auth': ruleNoRouteWithoutAuth,
   'no-runtime-exclusive-props-check': ruleNoRuntimeExclusivePropsCheck,
+  'no-scan-per-call-over-fixed-collection': ruleNoScanPerCallOverFixedCollection,
   'no-secret-in-log': ruleNoSecretInLog,
   'no-self-recursion': ruleNoSelfRecursion,
   'no-send-without-return': ruleNoSendWithoutReturn,
@@ -199,6 +201,4 @@ export const partRules = {
   'no-type-lookup-per-node': ruleNoTypeLookupPerNode,
   'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
   'no-unanchored-affix-replace': ruleNoUnanchoredAffixReplace,
-  'no-unatomic-writes': ruleNoUnatomicWrites,
-  'no-unbatched-heavy-run': ruleNoUnbatchedHeavyRun,
 };

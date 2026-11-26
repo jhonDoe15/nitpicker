@@ -5,7 +5,14 @@ import { EXCLUDED_PATH_PATTERN, resolveLayout } from '../../layout.mts';
 import { excludePatternOf } from './exclude-pattern.mts';
 
 const fromCruiser = createRequire(import.meta.resolve('dependency-cruiser'));
-const safeRegex: (pattern: string) => boolean = fromCruiser('safe-regex');
+const loadedSafeRegex: unknown = fromCruiser('safe-regex');
+
+function safeRegex(pattern: string): boolean {
+  return (
+    typeof loadedSafeRegex === 'function' &&
+    Reflect.apply(loadedSafeRegex, undefined, [pattern]) === true
+  );
+}
 
 const USER_GLOBS = [
   ...Array.from({ length: 30 }, (_, index) => `**/*.s${String(index)}.tsx`),
@@ -59,7 +66,9 @@ describe('exclude pattern of hidden globs', () => {
     const globs = resolveLayout({ sourceRoots: ['.'] }, exclude).hiddenGlobs;
     const folded = new RegExp(excludePatternOf(globs) ?? '', 'u');
     const perGlob = new RegExp(globs.map((glob) => globToRegExpSource(glob)).join('|'), 'u');
-    for (const path of PATHS) expect([path, folded.test(path)]).toEqual([path, perGlob.test(path)]);
+    expect(PATHS.map((path) => [path, folded.test(path)])).toEqual(
+      PATHS.map((path) => [path, perGlob.test(path)]),
+    );
   });
 
   it.each([

@@ -1,6 +1,7 @@
 import { AST_NODE_TYPES, type TSESLint, type TSESTree } from '@typescript-eslint/utils';
 import type { SourceCode } from '../typed/node-views.mts';
 import { staticMemberName } from '../support/member-roots.mts';
+import { importedName } from '../../fixes/support/nodes.mts';
 import { findVariable } from '../analysis/constant-resolution.mts';
 import {
   isGlobalObject,
@@ -70,10 +71,6 @@ function namedStreams(
   return specifiers
     .filter((node) => !isTypeOnly(node))
     .flatMap((node) => streamUse(node, nameOf(node)));
-}
-
-function nameText(node: TSESTree.Identifier | TSESTree.StringLiteral): string {
-  return node.type === AST_NODE_TYPES.Identifier ? node.name : node.value;
 }
 
 function restStreamReads(context: Context, pattern: TSESTree.ObjectPattern): StreamUse[] {
@@ -176,14 +173,9 @@ function checkPattern(state: State, pattern: TSESTree.ObjectPattern): void {
   }
 }
 
-function importedName(specifier: Specifier): string | undefined {
-  return specifier.type === AST_NODE_TYPES.ImportSpecifier
-    ? nameText(specifier.imported)
-    : undefined;
-}
-
 function localName(specifier: Specifier): string {
-  return nameText(specifier.local);
+  const { local } = specifier;
+  return local.type === AST_NODE_TYPES.Identifier ? local.name : local.value;
 }
 
 function checkImport(state: State, declaration: TSESTree.ImportDeclaration): void {

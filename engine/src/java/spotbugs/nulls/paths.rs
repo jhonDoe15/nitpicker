@@ -11,12 +11,15 @@ pub struct Path {
     pub key: String,
     /// The name a message gives it: the variable, or `Class.field`.
     pub shown: String,
+    /// The variable, or the field with its class's full name: `pkg.Class.field`.
+    pub full: String,
     pub field: bool,
     /// A field SpotBugs takes as possibly null.
     pub checked: bool,
     pub volatile: bool,
     /// A field of the object the method runs on that is not final: calls can change it.
     pub of_this: bool,
+    pub static_field: bool,
 }
 
 /// The expression inside brackets and casts.
@@ -57,7 +60,7 @@ impl<'c, 'a> Finder<'c, 'a> {
     }
 
     pub fn local(&mut self, name: &str) -> usize {
-        self.add(Path { key: name.to_string(), shown: name.to_string(), field: false, checked: false, volatile: false, of_this: false })
+        self.add(Path { key: name.to_string(), shown: name.to_string(), full: name.to_string(), field: false, checked: false, volatile: false, of_this: false, static_field: false })
     }
 
     fn member(&mut self, base: Option<String>, class: &ClassInfo, field: &Field) -> usize {
@@ -68,7 +71,8 @@ impl<'c, 'a> Finder<'c, 'a> {
         };
         let shown = names::field(self.context, self.class, &class.name, &field.name);
         let checked = marks::field(self.context.resolver.index, class, field);
-        self.add(Path { key, shown, field: true, checked, volatile: field.flags & flag::VOLATILE != 0, of_this })
+        let full = format!("{}.{}", names::binary(self.context, &class.name), field.name);
+        self.add(Path { key, shown, full, field: true, checked, volatile: field.flags & flag::VOLATILE != 0, of_this, static_field: field.flags & flag::STATIC != 0 })
     }
 
     /// A record component read by its name inside the record: the declaration of the component.
@@ -114,7 +118,8 @@ impl<'c, 'a> Finder<'c, 'a> {
                             let key = format!("this.{name}");
                             let shown = names::field(self.context, self.class, self.class, name);
                             let checked = resolver.check_for_null(component);
-                            Some(self.add(Path { key, shown, field: true, checked, volatile: false, of_this: false }))
+                            let full = format!("{}.{name}", names::binary(self.context, self.class));
+                            Some(self.add(Path { key, shown, full, field: true, checked, volatile: false, of_this: false, static_field: false }))
                         }
                         None => Some(self.local(name)),
                     },

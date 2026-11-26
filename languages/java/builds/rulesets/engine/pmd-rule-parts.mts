@@ -14,38 +14,87 @@ export type EngineRule = {
 type RuleProperty = { readonly type: string; readonly value: string };
 
 const XPATH_RULE = 'net.sourceforge.pmd.lang.rule.xpath.XPathRule';
+const UNUSED_SUPPRESSION_RULE = 'net.sourceforge.pmd.lang.rule.impl.UnnecessaryPmdSuppressionRule';
 const RULE_PACKAGE = 'net.sourceforge.pmd.lang.java.rule';
 const PORTED_RULES: ReadonlySet<string> = new Set(
   [
     'bestpractices.AbstractClassWithoutAbstractMethodRule',
+    'bestpractices.ArrayIsStoredDirectlyRule',
     'bestpractices.AvoidReassigningCatchVariablesRule',
+    'bestpractices.AvoidReassigningLoopVariablesRule',
     'bestpractices.AvoidReassigningParametersRule',
+    'bestpractices.AvoidUsingHardCodedIPRule',
     'bestpractices.CheckResultSetRule',
+    'bestpractices.ForLoopCanBeForeachRule',
+    'bestpractices.GuardLogStatementRule',
+    'bestpractices.JUnitUseExpectedRule',
+    'bestpractices.LiteralsFirstInComparisonsRule',
+    'bestpractices.LooseCouplingRule',
+    'bestpractices.MethodReturnsInternalArrayRule',
     'bestpractices.MissingOverrideRule',
+    'bestpractices.PreserveStackTraceRule',
+    'bestpractices.PrimitiveWrapperInstantiationRule',
+    'bestpractices.SimplifiableTestAssertionRule',
+    'bestpractices.UnitTestShouldIncludeAssertRule',
+    'bestpractices.UnnecessaryVarargsArrayCreationRule',
+    'bestpractices.UnusedAssignmentRule',
+    'bestpractices.UnusedFormalParameterRule',
     'bestpractices.UnusedLocalVariableRule',
+    'bestpractices.UnusedPrivateFieldRule',
+    'bestpractices.UnusedPrivateMethodRule',
     'bestpractices.UseCollectionIsEmptyRule',
     'bestpractices.UseEnumCollectionsRule',
+    'bestpractices.UseTryWithResourcesRule',
+    'codestyle.ConfusingTernaryRule',
+    'design.SimplifyBooleanReturnsRule',
+    'design.SimplifyConditionalRule',
+    'errorprone.AssignmentInOperandRule',
     'errorprone.AssignmentToNonFinalStaticRule',
+    'errorprone.AvoidBranchingStatementAsLastInLoopRule',
+    'errorprone.AvoidDuplicateLiteralsRule',
     'errorprone.AvoidUsingOctalValuesRule',
+    'errorprone.BrokenNullCheckRule',
     'errorprone.CheckSkipResultRule',
     'errorprone.CloneMethodMustImplementCloneableRule',
+    'errorprone.CloseResourceRule',
+    'errorprone.ConfusingArgumentToVarargsMethodRule',
+    'errorprone.ConstructorCallsOverridableMethodRule',
     'errorprone.DetachedTestCaseRule',
     'errorprone.IdempotentOperationsRule',
+    'errorprone.ImplicitSwitchFallThroughRule',
+    'errorprone.InvalidLogMessageFormatRule',
     'errorprone.JUnitSpellingRule',
     'errorprone.JUnitStaticSuiteRule',
+    'errorprone.NonSerializableClassRule',
+    'errorprone.NullAssignmentRule',
+    'errorprone.OverrideBothEqualsAndHashcodeRule',
     'errorprone.ProperCloneImplementationRule',
     'errorprone.SingleMethodSingletonRule',
+    'errorprone.SingletonClassReturningNewInstanceRule',
+    'errorprone.SuspiciousOctalEscapeRule',
+    'errorprone.TestClassWithoutTestCasesRule',
     'errorprone.UnnecessaryCaseChangeRule',
     'errorprone.UselessOperationOnImmutableRule',
+    'multithreading.DoubleCheckedLockingRule',
+    'multithreading.NonThreadSafeSingletonRule',
+    'multithreading.UnsynchronizedStaticFormatterRule',
     'performance.AddEmptyStringRule',
     'performance.AppendCharacterWithCharRule',
+    'performance.BigIntegerInstantiationRule',
+    'performance.ConsecutiveAppendsShouldReuseRule',
+    'performance.ConsecutiveLiteralAppendsRule',
+    'performance.InefficientEmptyStringCheckRule',
+    'performance.InefficientStringBufferingRule',
     'performance.RedundantFieldInitializerRule',
     'performance.StringInstantiationRule',
     'performance.UseIndexOfCharRule',
+    'performance.UseStringBufferForStringAppendsRule',
     'performance.UselessStringValueOfRule',
     'security.HardCodedCryptoKeyRule',
     'security.InsecureCryptoIvRule',
-  ].map((rule) => `${RULE_PACKAGE}.${rule}`),
+  ]
+    .map((rule) => `${RULE_PACKAGE}.${rule}`)
+    .concat(UNUSED_SUPPRESSION_RULE),
 );
 const QUERY = 'xpath';
 const SUPPRESS_QUERY = 'violationSuppressXPath';
@@ -113,6 +162,14 @@ export function ruleLevel(rule: ResolvedRule): 'error' | 'warning' | 'note' {
 
 function isPorted(rule: ResolvedRule): boolean {
   return PORTED_RULES.has(rule.definition.attrs['class'] ?? '');
+}
+
+export function needsWholeRun(rule: ResolvedRule): boolean {
+  return rule.definition.attrs['class'] === UNUSED_SUPPRESSION_RULE;
+}
+
+export function runsOnPmd(rule: ResolvedRule): boolean {
+  return !runsOnEngine(rule) && rule.definition.attrs['maximumLanguageVersion'] === undefined;
 }
 
 export function runsOnEngine(rule: ResolvedRule): boolean {

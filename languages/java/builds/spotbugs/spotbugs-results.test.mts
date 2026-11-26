@@ -101,6 +101,178 @@ describe('spotbugsResultOf', () => {
     expect(result.locations[0].logicalLocations[0].fullyQualifiedName).toBe('A.date');
   });
 
+  it.each([
+    ['function:p.q.A$In.run(String)', 'function', 'run(String)', 'p/q/A.java'],
+    ['function:new p.q.A$In(int)', 'function', 'new A$In(int)', 'p/q/A.java'],
+    ['member:p.q.A$In.map', 'member', 'A$In.map', 'p/q/A.java'],
+    ['variable:p.q.A.run(Lock)#lock', 'variable', 'lock', 'p/q/A.java'],
+    ['function:Top.run()', 'function', 'run()', 'A.java'],
+  ])('places %s the way SpotBugs SARIF names it', (symbol, kind, name, uri) => {
+    const result = spotbugsResultOf({
+      file: '/src/p/q/A.java',
+      rule: 'WMI_WRONG_MAP_ITERATOR',
+      line: 7,
+      message: 'unused',
+      symbol,
+      priority: 2,
+    });
+    const qualified = symbol.slice(symbol.indexOf(':') + 1);
+
+    expect(result.level).toBe('note');
+    expect(result.message.text).toBe(
+      'Inefficient use of keySet iterator instead of entrySet iterator',
+    );
+    expect(result.locations[0].physicalLocation.artifactLocation.uri).toBe(uri);
+    expect(result.locations[0].logicalLocations).toStrictEqual([
+      { name, kind, fullyQualifiedName: qualified },
+    ]);
+  });
+
+  it.each([
+    ['NP_BOOLEAN_RETURN_NULL', 'function:p.B.isA()', 1, 'warning', 'p.B.isA()'],
+    [
+      'NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT',
+      'variable:p.F.equals(Object)#o',
+      1,
+      'error',
+      'p.F.equals(Object)',
+    ],
+    [
+      'NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT',
+      'variable:p.E.equals(Object)#o',
+      2,
+      'warning',
+      'p.E.equals(Object)',
+    ],
+  ])('writes %s as SpotBugs SARIF does', (rule, symbol, priority, level, argument) => {
+    const result = spotbugsResultOf({
+      file: '/src/p/B.java',
+      rule,
+      line: 3,
+      message: 'unused',
+      symbol,
+      priority,
+      arguments: rule === 'NP_BOOLEAN_RETURN_NULL' ? undefined : [argument],
+    });
+
+    expect(result.level).toBe(level);
+    expect(result.message.arguments).toStrictEqual([argument]);
+  });
+
+  it('refuses a placed finding without a place or with a priority it has no level for', () => {
+    const finding = { file: '/A.java', rule: 'DCN_NULLPOINTER_EXCEPTION', line: 1, message: '' };
+
+    expect(() => spotbugsResultOf({ ...finding, symbol: undefined, priority: 2 })).toThrow(
+      /cannot place/u,
+    );
+    expect(() => spotbugsResultOf({ ...finding, symbol: 'function:p.A.a()', priority: 3 })).toThrow(
+      /cannot place/u,
+    );
+  });
+
+  it('lists the values the engine gives with the message', () => {
+    const finding = {
+      file: '/src/p/A.java',
+      rule: 'PREDICTABLE_RANDOM',
+      line: 5,
+      message: '',
+      symbol: 'function:p.A.a()',
+      priority: 2,
+      arguments: ['java.util.Random'],
+    };
+
+    expect(spotbugsResultOf(finding).message.arguments).toStrictEqual(['java.util.Random']);
+    expect(spotbugsResultOf({ ...finding, arguments: undefined }).message.arguments).toStrictEqual([
+      'p.A.a()',
+    ]);
+    expect(engineSpotbugsFindingOf(finding).arguments).toStrictEqual(['java.util.Random']);
+  });
+
+  it('names the class in the place where SpotBugs does', () => {
+    const finding = {
+      file: '/src/p/K.java',
+      rule: 'CN_IDIOM_NO_SUPER_CALL',
+      line: 5,
+      message: '',
+      symbol: 'function:p.K.clone()',
+      arguments: ['p.K.clone()'],
+    };
+
+    const first = spotbugsResultOf({ ...finding, priority: 1 });
+    const second = spotbugsResultOf({ ...finding, priority: 2 });
+
+    expect(first.message.arguments).toStrictEqual(['p.K.clone()']);
+    expect([first.level, first.locations[0].logicalLocations[0].name]).toStrictEqual([
+      'warning',
+      'K.clone()',
+    ]);
+    expect([second.level, second.locations[0].logicalLocations[0].name]).toStrictEqual([
+      'note',
+      'clone()',
+    ]);
+    expect(
+      engineSpotbugsFindingOf({ ...finding, arguments: ['p.K', 'p.K.clone()'] }).arguments,
+    ).toStrictEqual(['p.K', 'p.K.clone()']);
+  });
+
+  it('places a finding on the file of the class it names first', () => {
+    const result = spotbugsResultOf({
+      file: '/src/p/Sub.java',
+      rule: 'EQ_DOESNT_OVERRIDE_EQUALS',
+      line: 1,
+      message: '',
+      symbol: 'function:q.Base.equals(Object)',
+      priority: 2,
+      arguments: ['p.Sub', 'q.Base.equals(Object)'],
+    });
+
+    expect(result.locations[0].physicalLocation.artifactLocation.uri).toBe('p/Sub.java');
+    expect(result.locations[0].logicalLocations).toStrictEqual([
+      {
+        name: 'q.Base.equals(Object)',
+        kind: 'function',
+        fullyQualifiedName: 'q.Base.equals(Object)',
+      },
+    ]);
+  });
+
+  it('leaves out the region of a finding without a line', () => {
+    const result = spotbugsResultOf({
+      file: '/src/p/A.java',
+      rule: 'SE_BAD_FIELD',
+      line: 0,
+      message: '',
+      symbol: 'member:p.A.t',
+      priority: 1,
+      arguments: ['p.A', 't'],
+    });
+
+    expect(result.level).toBe('warning');
+    expect(result.locations[0].physicalLocation).toStrictEqual({
+      artifactLocation: { uri: 'p/A.java' },
+    });
+    expect(result.locations[0].logicalLocations[0].name).toBe('A.t');
+  });
+
+  it('places a field finding in the directory of the package that holds its line', () => {
+    const result = spotbugsResultOf({
+      file: '/src/q/C.java',
+      rule: 'PA_PUBLIC_PRIMITIVE_ATTRIBUTE',
+      line: 4,
+      message: '',
+      symbol: 'member:p.A.d|q',
+      priority: 2,
+      arguments: ['p.A.d'],
+    });
+
+    expect(result.locations[0].physicalLocation.artifactLocation.uri).toBe('q/C.java');
+    expect(result.locations[0].logicalLocations[0]).toStrictEqual({
+      name: 'A.d',
+      kind: 'member',
+      fullyQualifiedName: 'p.A.d',
+    });
+  });
+
   it('refuses a message it cannot read', () => {
     expect(() => resultOf('EI_EXPOSE_REP', 'something else')).toThrow(/cannot read/u);
     expect(() => resultOf('OTHER_PATTERN', 'x')).toThrow(/OTHER_PATTERN/u);
@@ -115,8 +287,9 @@ describe('spotbugsResultOf', () => {
         column: 1,
         message: 'm',
         symbol: 's',
+        priority: 1,
       }),
-    ).toStrictEqual({ file: 'f', rule: 'r', line: 2, message: 'm', symbol: 's' });
+    ).toStrictEqual({ file: 'f', rule: 'r', line: 2, message: 'm', symbol: 's', priority: 1 });
     expect(engineSpotbugsFindingOf({ file: 'f', rule: 'r', line: 2, message: 'm' }).symbol).toBe(
       undefined,
     );

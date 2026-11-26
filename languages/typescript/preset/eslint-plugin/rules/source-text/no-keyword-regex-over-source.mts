@@ -11,6 +11,19 @@ import {
 const TEXT_METHODS = new Set(['match', 'matchAll', 'replace', 'replaceAll', 'split', 'search']);
 const REGEX_METHODS = new Set(['test', 'exec']);
 
+type Pair = [TSESTree.Node, TSESTree.Node | undefined];
+
+function textAndRegex(
+  method: string,
+  object: TSESTree.Node,
+  first: TSESTree.Node | undefined,
+): Pair | undefined {
+  if (TEXT_METHODS.has(method)) {
+    return [object, first];
+  }
+  return REGEX_METHODS.has(method) ? [first ?? object, object] : undefined;
+}
+
 export const rule: TSESLint.RuleModule<'keywordRegex'> = {
   meta: {
     type: 'problem',
@@ -32,12 +45,7 @@ export const rule: TSESLint.RuleModule<'keywordRegex'> = {
         }
         const method = nameOf(callee.property) ?? '';
         const [first] = node.arguments;
-        let pair: [TSESTree.Node, TSESTree.Node | undefined] | undefined;
-        if (TEXT_METHODS.has(method)) {
-          pair = [callee.object, first];
-        } else if (REGEX_METHODS.has(method)) {
-          pair = [first ?? callee.object, callee.object];
-        }
+        const pair = textAndRegex(method, callee.object, first);
         if (pair === undefined || pair[1] === undefined || first === undefined) {
           return;
         }

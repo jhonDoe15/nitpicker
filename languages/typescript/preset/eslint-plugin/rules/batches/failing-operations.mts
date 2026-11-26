@@ -1,7 +1,7 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { ancestorsOf, contains, depthFirst, nodeChildren } from '../typed/node-views.mts';
 import { calleeNameOf, isCallExpression, isFunction } from '../typed/syntax-views.mts';
-import type { BatchFunction } from './batch-inputs.mts';
+import type { BatchFunction } from '../dataloaders/batch-functions.mts';
 
 const READS = new Set(['readFile', 'readFileSync']);
 const PARSER_MODULES = new Set([
@@ -30,14 +30,13 @@ function importedFromParser(
     program.body.some(
       (statement) =>
         statement.type === AST_NODE_TYPES.ImportDeclaration &&
-        PARSER_MODULES.has(String(statement.source.value)) &&
+        PARSER_MODULES.has(statement.source.value) &&
         statement.specifiers.some(
           (specifier) =>
             specifier.local.name === local &&
-            (member
-              ? true
-              : specifier.type === AST_NODE_TYPES.ImportSpecifier &&
-                nameOfImported(specifier) === 'parse'),
+            (member ||
+              (specifier.type === AST_NODE_TYPES.ImportSpecifier &&
+                nameOfImported(specifier) === 'parse')),
         ),
     )
   );
@@ -46,7 +45,7 @@ function importedFromParser(
 function nameOfImported(specifier: TSESTree.ImportSpecifier): string {
   return specifier.imported.type === AST_NODE_TYPES.Identifier
     ? specifier.imported.name
-    : String(specifier.imported.value);
+    : specifier.imported.value;
 }
 
 function isFailingParse(call: TSESTree.CallExpression): boolean {

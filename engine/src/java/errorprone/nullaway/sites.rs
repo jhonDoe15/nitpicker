@@ -61,7 +61,8 @@ impl<'t> Flow<'_, 't> {
                 eprintln!("   arg {} may {} known {:?}", self.context.text(actual).lines().next().unwrap_or(""), self.may_be_null(actual), self.known(strip(actual)));
             }
         }
-        let Some((call, _)) = resolved else { return };
+        let Some((call, formals)) = resolved else { return };
+        let call = anonymous_override(self.context, node, call, &formals);
         let formals = call.method.parameters.len();
         if formals == 0 {
             return;
@@ -91,8 +92,9 @@ impl<'t> Flow<'_, 't> {
         match unit.kind() {
             "method_declaration" => {
                 let Some(kind) = unit.child_by_field_name("type") else { return false };
-                let primitive = matches!(kind.kind(), "integral_type" | "floating_point_type" | "boolean_type" | "void_type");
-                !primitive && self.context.text(kind) != "Void" && !crate::java::helpers::marked_nullable(self.context.file, unit)
+                let array = unit.child_by_field_name("dimensions").is_some();
+                let primitive = !array && matches!(kind.kind(), "integral_type" | "floating_point_type" | "boolean_type" | "void_type");
+                !primitive && (array || self.context.text(kind) != "Void") && !crate::java::helpers::marked_nullable(self.context.file, unit)
             }
             "lambda_expression" => {
                 let resolver = self.context.resolver;
@@ -147,7 +149,7 @@ impl<'t> Flow<'_, 't> {
     }
 
     fn maybe(&self, node: Node) -> bool {
-        matches!(self.known(strip(node)), Some(NULL | NULLABLE))
+        strip(node).kind() == "null_literal" || matches!(self.known(strip(node)), Some(NULL | NULLABLE))
     }
 
     pub(super) fn boxed(&self, node: Node) -> bool {
@@ -183,12 +185,16 @@ impl<'t> Flow<'_, 't> {
             "unary_expression" | "update_expression" => true,
             "assignment_expression" if operator == Some("=") => field("right") == Some(node) && field("left").is_some_and(|left| self.primitive(left)),
             "assignment_expression" => field("left").and_then(|left| self.context.resolver.type_of(left)).is_none_or(|kind| kind.name() != "java.lang.String"),
-            "variable_declarator" => field("value") == Some(node) && primitive_name(parent(above).and_then(|declaration| declaration.child_by_field_name("type"))),
+            "variable_declarator" => {
+                let declared = parent(above).and_then(|declaration| declaration.child_by_field_name("type"));
+                field("value") == Some(node) && field("dimensions").is_none() && primitive_name(declared)
+            }
             "cast_expression" => field("value") == Some(node) && primitive_name(field("type")),
             "array_access" => field("index") == Some(node),
             "return_statement" => {
                 let method = crate::engine::source::ancestor(above, &["lambda_expression", "method_declaration", "class_body"]);
-                primitive_name(method.filter(|method| method.kind() == "method_declaration").and_then(|method| method.child_by_field_name("type")))
+                let method = method.filter(|method| method.kind() == "method_declaration" && method.child_by_field_name("dimensions").is_none());
+                primitive_name(method.and_then(|method| method.child_by_field_name("type")))
             }
             "argument_list" => {
                 let Some(call) = parent(above) else { return false };
@@ -308,6 +314,26 @@ pub(super) fn overriding(context: &Context, method: Node) {
             return;
         }
     }
+}
+
+/// A call on `new X() { ... }` calls the method the anonymous class declares when it overrides the one found in `X`,
+/// as javac binds it.
+pub(super) fn anonymous_override(context: &Context, call_node: Node, mut call: crate::java::types::expr::Call, formals: &[Type]) -> crate::java::types::expr::Call {
+    let Some(object) = call_node.child_by_field_name("object").map(unwrap) else { return call };
+    if object.kind() != "object_creation_expression" || !children(object).iter().any(|part| part.kind() == "class_body") {
+        return call;
+    }
+    let Some(name) = context.resolver.scope.names.get(&object.id()) else { return call };
+    let Some(info) = context.resolver.index.get(name) else { return call };
+    let own = info.methods.iter().find(|method| method.name == call.method.name && !method.is_static && {
+        let fitted = formals.len() == method.parameters.len() && formals.iter().zip(&method.parameters).all(|(formal, own)| formal.erased() == *own);
+        method.parameters == call.method.parameters || fitted
+    });
+    if let Some(own) = own {
+        call.declaring = info.name.clone();
+        call.method = own.clone();
+    }
+    call
 }
 
 /// The parameter positions a library model table gives for exactly this method of this class.

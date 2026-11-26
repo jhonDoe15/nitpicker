@@ -8,12 +8,15 @@ function invalid(code: string) {
 }
 
 const STAGE = `const stage = mkdtempSync(path.join(tmpdir(), 'stage-'));`;
-const LINK = `for (const entry of readdirSync(projectRoot)) { symlinkSync(path.join(projectRoot, entry), path.join(stage, entry)); }`;
+const LINK = `for (const entry of readdirSync(projectRoot)) {
+  symlinkSync(path.join(projectRoot, entry), path.join(stage, entry)); }`;
 
 tester.run('require-staged-parent-node-modules', rule, {
   valid: [
-    `function run() { ${STAGE} ${LINK} symlinkSync(path.join(parent, 'node_modules'), path.join(stage, 'node_modules')); writeFileSync(path.join(stage, 'tsconfig.json'), text); }`,
-    `function run() { ${STAGE} ${LINK} spawn(tool, ['--tsconfig', path.join(stage, 'tsconfig.json')], { env: { NODE_PATH: modules } }); }`,
+    `function run() { ${STAGE} ${LINK} symlinkSync(path.join(parent, 'node_modules'), path.join(stage, 'node_modules'));
+      writeFileSync(path.join(stage, 'tsconfig.json'), text); }`,
+    `function run() { ${STAGE} ${LINK} spawn(tool, ['--tsconfig', path.join(stage, 'tsconfig.json')], {
+      env: { NODE_PATH: modules } }); }`,
     `function run() { ${STAGE} ${LINK} spawn(tool, ['--preserve-symlinks'], { cwd: stage }); }`,
     `function run() { ${STAGE} ${LINK} readFileSync(path.join(stage, 'a.txt')); }`,
     `function run() { ${STAGE} writeFileSync(path.join(stage, 'tsconfig.json'), text); }`,
@@ -29,8 +32,10 @@ tester.run('require-staged-parent-node-modules', rule, {
     `function run() { ${STAGE} ${LINK} spawn('npx', ['prettier', '.'], { cwd: stage }); }`,
     `function run() { ${STAGE} ${LINK} writeFileSync(path.join(stage, 'package.json'), text); }`,
     `function run() { ${STAGE} ${LINK} spawn(tool, [], { cwd: stage }); }`,
-    `function run() { ${STAGE} ${LINK} link(); spawn('tsc', [], { cwd: stage }); } function link() { const p = 'node_modules'; } run();`,
-    `function run() { ${STAGE} ${LINK} spawn('tsc', [], { cwd: stage }); } function caller() { process.env.NODE_PATH = modules; run(); } caller(); run();`,
+    `function run() { ${STAGE} ${LINK} link(); spawn('tsc', [], { cwd: stage }); } function link() {
+      const p = 'node_modules'; } run();`,
+    `function run() { ${STAGE} ${LINK} spawn('tsc', [], { cwd: stage }); } function caller() {
+      process.env.NODE_PATH = modules; run(); } caller(); run();`,
   ],
   invalid: [
     invalid(
@@ -52,7 +57,8 @@ tester.run('require-staged-parent-node-modules', rule, {
     invalid(`function run() { ${STAGE} ${LINK} spawn('npx', ['tsc', '-b'], { cwd: stage }); }`),
     invalid(`function run() { ${STAGE} ${LINK} spawn('bin/tsc.cmd', [], { cwd: stage }); }`),
     invalid(
-      `function other() { const x = 'node_modules'; } function run() { ${STAGE} ${LINK} spawn('node', [], { cwd: stage }); }`,
+      `function other() { const x = 'node_modules'; } function run() { ${STAGE} ${LINK} spawn('node', [], {
+        cwd: stage }); }`,
     ),
   ],
 });

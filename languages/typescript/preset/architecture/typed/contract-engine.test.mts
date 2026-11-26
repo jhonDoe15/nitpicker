@@ -1,3 +1,5 @@
+import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, it } from 'vitest';
 import { findEngine } from '../../../../../shared/engine/engine-binary.mts';
@@ -69,5 +71,51 @@ it.runIf(hasEngine)(
       'save',
       'flush',
     ]);
+  },
+);
+
+it.runIf(hasEngine)(
+  'keeps a project with options TypeScript 7 removed on the engine and leaves no config behind',
+  () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-contracts-legacy-'));
+    try {
+      cpSync(path.dirname(PROJECT), root, { recursive: true });
+      const consumer = path.join(root, 'src/nested/consumer.ts');
+      writeFileSync(consumer, readFileSync(consumer, 'utf8').replace('"../ports"', '"ports"'));
+      const config = path.join(root, 'tsconfig.json');
+      writeFileSync(
+        config,
+        JSON.stringify({
+          compilerOptions: {
+            target: 'es2022',
+            module: 'commonjs',
+            moduleResolution: 'node',
+            baseUrl: 'src',
+            strict: true,
+            noEmit: true,
+            rootDir: 'src',
+            types: [],
+            lib: ['ES2022'],
+          },
+          include: ['src'],
+        }),
+      );
+
+      const viaEngine = engineUnusedMethods(config, ENGINE);
+
+      expect(viaEngine?.findings).toEqual(
+        analyzePublicContractUsage(config, { environment: NODE_ONLY }),
+      );
+      expect(viaEngine?.findings.map(({ contract, method }) => `${contract}.${method}`)).toEqual([
+        'Clock.sleep',
+        'Store.__reset',
+        'Store.onChange',
+        'Store.remove',
+        'Ticker.stop',
+      ]);
+      expect(readdirSync(root).toSorted()).toEqual(['src', 'tsconfig.json']);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   },
 );

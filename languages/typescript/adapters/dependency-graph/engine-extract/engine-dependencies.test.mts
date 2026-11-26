@@ -3,8 +3,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import ts from 'typescript';
 import { afterAll, describe, expect, it } from 'vitest';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
 import { findEngine } from '../../../../../shared/engine/engine-binary.mts';
-import { ENGINE_SWITCH, engineExtraction, readExtraction } from './engine-dependencies.mts';
+import {
+  ENGINE_SWITCH,
+  engineExtraction,
+  readExtraction,
+  type EngineExtraction,
+} from './engine-dependencies.mts';
 
 const hasEngine = findEngine(process.env) !== undefined;
 const POLICY_TSCONFIG = path.resolve(
@@ -90,11 +96,40 @@ afterAll(() => {
   rmSync(folder, { recursive: true, force: true });
 });
 
+type CruiserCall = (...args: unknown[]) => unknown;
+
+type CruiserModules = {
+  readonly extract: CruiserCall;
+  readonly detect: CruiserCall;
+  readonly acorn: CruiserCall;
+};
+
+function isCall(value: unknown): value is CruiserCall {
+  return typeof value === 'function';
+}
+
+function callOf(module: unknown, name: string): CruiserCall {
+  const member = fieldOf(module, name);
+  if (!isCall(member)) {
+    throw new Error(`dependency-cruiser has no ${name} function`);
+  }
+  return member;
+}
+
+async function cruiserModules(): Promise<CruiserModules> {
+  const tsc: unknown = await import(new URL('tsc/extract.mjs', EXTRACT).href);
+  const acorn: unknown = await import(new URL('acorn/extract.mjs', EXTRACT).href);
+  const helpers: unknown = await import(new URL('helpers.mjs', EXTRACT).href);
+  return {
+    extract: callOf(tsc, 'extract'),
+    acorn: callOf(acorn, 'extract'),
+    detect: callOf(helpers, 'detectPreCompilationNess'),
+  };
+}
+
 async function cruiserExtraction(file: string): Promise<unknown> {
-  const tsc = await import(new URL('tsc/extract.mjs', EXTRACT).href);
-  const acorn = await import(new URL('acorn/extract.mjs', EXTRACT).href);
-  const { detectPreCompilationNess } = await import(new URL('helpers.mjs', EXTRACT).href);
-  const read = ts.readConfigFile(POLICY_TSCONFIG, ts.sys.readFile).config;
+  const { extract, acorn, detect } = await cruiserModules();
+  const read: unknown = ts.readConfigFile(POLICY_TSCONFIG, (file) => ts.sys.readFile(file)).config;
   const tsConfig = ts.parseJsonConfigFileContent(read, ts.sys, folder, {}, POLICY_TSCONFIG);
   const options = {
     baseDir: folder,
@@ -102,24 +137,27 @@ async function cruiserExtraction(file: string): Promise<unknown> {
     exoticRequireStrings: [],
     tsPreCompilationDeps: 'specify',
   };
-  return detectPreCompilationNess(
-    tsc.extract(options, file, { tsConfig }),
-    acorn.extract(options, file, { tsConfig }),
-  );
+  return detect(extract(options, file, { tsConfig }), acorn(options, file, { tsConfig }));
+}
+
+function requiredExtraction(file: string): EngineExtraction {
+  const extraction = engineExtraction(
+    { baseDirectory: folder, files: [file] },
+    { ...process.env, [ENGINE_SWITCH]: 'required' },
+  ).get(file);
+  if (extraction === undefined) {
+    throw new Error(`the engine did not extract ${file}`);
+  }
+  return extraction;
 }
 
 describe('import extraction on the engine', () => {
   it.skipIf(!hasEngine).each(Object.keys(SOURCES))(
     'lists the dependencies of %s as dependency-cruiser does',
     async (file) => {
-      const { detectPreCompilationNess } = await import(new URL('helpers.mjs', EXTRACT).href);
-      const extraction = engineExtraction(
-        { baseDirectory: folder, files: [file] },
-        { ...process.env, [ENGINE_SWITCH]: 'required' },
-      ).get(file);
-
-      expect(extraction).toBeDefined();
-      expect(detectPreCompilationNess(extraction?.dependencies, extraction?.kept)).toEqual(
+      const { detect } = await cruiserModules();
+      const extraction = requiredExtraction(file);
+      expect(detect(extraction.dependencies, extraction.kept)).toEqual(
         await cruiserExtraction(file),
       );
     },

@@ -11,6 +11,34 @@ const JUNIT5_TESTS: &[&str] = &[
 ];
 
 impl Ctx<'_, '_, '_> {
+    pub fn is_expression(&self, id: u32) -> bool {
+        super::message::EXPRESSIONS.contains(&self.name(id))
+    }
+
+    /// PMD's `JavaAstUtils.getTopLevelExpr`.
+    pub fn top_level_expression(&self, expression: u32) -> u32 {
+        let mut top = expression;
+        while let Some(parent) = self.parent(top) {
+            let argument_list = self.is(parent, "ArgumentList")
+                && self.parent(parent).is_some_and(|call| self.is_expression(call));
+            if !self.is_expression(parent) && !argument_list {
+                break;
+            }
+            top = parent;
+        }
+        top
+    }
+
+    /// The formal parameter types of the method or constructor a call resolves to.
+    pub fn formals(&self, call: u32) -> Option<Vec<Type>> {
+        self.resolved(call).map(|(_, formals)| formals)
+    }
+
+    pub fn resolved(&self, call: u32) -> Option<(crate::java::types::expr::Call, Vec<Type>)> {
+        let source = self.tree.nodes[call as usize].source?;
+        self.machine.resolver.call_formals(source)
+    }
+
     /// PMD's `isAnnotationPresent`: an annotation of the declaration is of the type or a subtype.
     pub fn annotation_present(&self, owner: u32, name: &str) -> bool {
         self.annotations(owner)
@@ -28,6 +56,28 @@ impl Ctx<'_, '_, '_> {
 
     pub fn arity(&self, method: u32) -> i64 {
         self.whole(method, "Arity").unwrap_or(0)
+    }
+
+    /// A written type with its type variables kept rather than replaced by their bounds.
+    pub fn symbolic_type(&self, id: u32) -> Option<Type> {
+        let source = self.tree.nodes[id as usize].source?;
+        self.machine.resolver.generic_type_node(source)
+    }
+
+    /// The name the type model gives a type declaration of this file, local and anonymous classes included.
+    pub fn class_name(&self, declaration: u32) -> Option<String> {
+        let source = self.tree.nodes[declaration as usize].source?;
+        let names = &self.machine.resolver.scope.names;
+        names.get(&source.id()).or_else(|| source.parent().and_then(|parent| names.get(&parent.id()))).cloned()
+    }
+
+    /// PMD's `getBinaryName`: nested, local and anonymous classes joined to their top-level class with `$`.
+    pub fn binary_name(&self, declaration: u32) -> Option<String> {
+        let top = self.ancestors(declaration).filter(|at| super::ctx::TYPE_DECLARATIONS.contains(&self.name(*at))).last();
+        let name = self.class_name(declaration)?;
+        let Some(top) = top.and_then(|top| self.class_name(top)) else { return Some(name) };
+        let rest = name.strip_prefix(top.as_str())?;
+        Some(format!("{top}{}", rest.replace('.', "$")))
     }
 
     pub fn enclosing_type(&self, id: u32) -> Option<u32> {
@@ -55,7 +105,7 @@ impl Ctx<'_, '_, '_> {
             .any(|annotation| JUNIT5_TESTS.iter().any(|name| self.type_is_exactly(annotation, name)))
     }
 
-    fn is_junit_method(&self, method: u32) -> bool {
+    pub fn is_junit_method(&self, method: u32) -> bool {
         if self.has_modifier(method, "static") || self.kid(method, "Block").is_none() {
             return false;
         }

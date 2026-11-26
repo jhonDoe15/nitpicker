@@ -14,10 +14,12 @@ import type { Environment } from '../../../../../shared/processes/environment.mt
 import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 import { ENGINE_FINDINGS_FILE } from '../../../../../shared/engine/engine-findings-file.mts';
+import { writeReplay } from '../../../preset/eslint-plugin/replay/replay-file.mts';
 import { trackTemporaryPath, untrackTemporaryPath } from '../../typed/tooling.mts';
 import { isFile } from '../../../../../shared/filesystem.mts';
 import { nativeCompilerPath } from '../../typed-engine/compiler-binary.mts';
 import type { OxlintPlan, PlanGroup } from '../plan/oxlint-shapes.mts';
+import { residualRules, typedGroups } from '../plan/typed-groups.mts';
 
 type EnginePass = {
   readonly plan: OxlintPlan;
@@ -127,33 +129,18 @@ function typesSource({ projectRoot, projectConfigPath }: EnginePass): TypesSourc
   return compiler === undefined || !isFile(project) ? undefined : { compiler, project };
 }
 
-function residualRules({ plan }: EnginePass, group: PlanGroup): string[] {
-  const typed = new Set(plan.typedPluginRules);
-  return [
-    ...Object.keys(group.rules).filter((ruleId) => typed.has(ruleId)),
-    ...(group.programRules ?? []),
-  ];
-}
-
-function typedGroups(pass: EnginePass, typed: ReadonlySet<string>): PlanGroup[] {
-  const mode = pass.environment[TYPED_SWITCH];
-  return pass.plan.groups.filter((group) => {
-    const residual = residualRules(pass, group);
-    if (mode === 'off' || !residual.some((ruleId) => typed.has(ruleId))) {
-      return false;
-    }
-    return mode === 'always' || residual.every((ruleId) => typed.has(ruleId));
-  });
-}
-
 function engineRulesOf(pass: EnginePass): EngineRules {
   const { plan, requests } = pass;
   const testingLibrary = testingLibraryOnEngine(plan.groups);
   const ruleIds = plan.groups.flatMap((group) => Object.keys(group.rules));
   const library = testingLibrary ? ruleIds.filter(isTestingLibraryRule) : [];
   const plugin = pluginRulesOnEngine(plan.groups, requests);
-  const groups = typedGroups(pass, new Set(plugin.filter(requests.isTypedOnEngine)));
-  const wanted = new Set(groups.flatMap((group) => residualRules(pass, group)));
+  const groups = typedGroups(
+    plan,
+    pass.environment[TYPED_SWITCH],
+    new Set(plugin.filter(requests.isTypedOnEngine)),
+  );
+  const wanted = new Set(groups.flatMap((group) => residualRules(plan, group)));
   const types = wanted.size > 0 ? typesSource(pass) : undefined;
   const usable = plugin.filter(
     (ruleId) => !requests.isTypedOnEngine(ruleId) || (types !== undefined && wanted.has(ruleId)),
@@ -224,17 +211,14 @@ function engineLint(pass: EnginePass): EngineLint {
   const findings = readEngineFindings(out);
   const typed = rules.ids.filter(pass.requests.isTypedOnEngine);
   const covered = typedFiles(files, findings).filter((file) => rules.typedFiles.has(file));
-  const replay = path.join(pass.directory, 'replay.json');
-  writeFileSync(
-    replay,
-    JSON.stringify({
-      files: parsedFiles(files, findings),
-      rules: rules.ids,
-      typedFiles: covered,
-      typedRules: typed,
-      findings: findings.map(replayRow),
-    }),
-  );
+  const replay = path.join(pass.directory, 'replay.jsonl');
+  writeReplay(replay, {
+    file: parsedFiles(files, findings),
+    rule: rules.ids,
+    typedFile: covered,
+    typedRule: typed,
+    finding: findings.map(replayRow),
+  });
   return {
     environment: { ...pass.environment, [ENGINE_FINDINGS_FILE]: replay },
     coverage: { rules: new Set(typed), files: new Set(covered) },

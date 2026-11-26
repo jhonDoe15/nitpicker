@@ -1,7 +1,7 @@
-import { existsSync, readdirSync, readFileSync, statSync, type Dirent } from 'node:fs';
+import { readdirSync, readFileSync, statSync, type Dirent, type Stats } from 'node:fs';
 import path from 'node:path';
 import { parsedJsonc as untypedParsedJsonc } from '../../../../shared/jsonc/jsonc.mts';
-import { fieldOf, isPlainObject, listOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, isPlainObject, stringsIn } from '../../../../shared/values/readers.mts';
 import { expandBraces } from '../../../../languages/typescript/preset/layout/source-root/root-paths.mts';
 
 type ParsedJsonc = { readonly kind: string; readonly value?: unknown };
@@ -21,26 +21,23 @@ const EXTENSION = /\.[^./]+$/u;
 const TOOL_CONFIG = /\.config\.[cm]?[jt]s$/u;
 const DECLARATION_FILE = /\.d\.[cm]?ts$/u;
 
+type StatResult = { readonly stats?: Stats | undefined; readonly error?: unknown };
+
+function statOf(file: string): StatResult {
+  try {
+    return { stats: statSync(file, { throwIfNoEntry: false }) };
+  } catch (error) {
+    return { error };
+  }
+}
+
 function objectIn(file: string): Record<string, unknown> | undefined {
-  const parsed = existsSync(file) ? parsedJsonc(readFileSync(file, 'utf8')) : undefined;
+  const parsed = statOf(file).stats?.isFile() ? parsedJsonc(readFileSync(file, 'utf8')) : undefined;
   return parsed?.kind === 'json' && isPlainObject(parsed.value) ? parsed.value : undefined;
 }
 
-function stringsIn(value: unknown): string[] {
-  const pending: unknown[] = [value];
-  for (const current of pending) {
-    if (Array.isArray(current)) pending.push(...listOf(current));
-    else if (isPlainObject(current)) pending.push(...Object.values(current));
-  }
-  return pending.filter((entry): entry is string => typeof entry === 'string');
-}
-
 function isFolder(file: string): boolean {
-  try {
-    return statSync(file, { throwIfNoEntry: false })?.isDirectory() ?? false;
-  } catch {
-    return false;
-  }
+  return statOf(file).stats?.isDirectory() ?? false;
 }
 
 function topFolderOf(target: string): string | undefined {
@@ -80,22 +77,40 @@ function isSourceName(name: string): boolean {
   return CODE_FILE.test(name) && !DECLARATION_FILE.test(name) && !TOOL_CONFIG.test(name);
 }
 
-function entriesOf(folder: string): Dirent[] {
+type EntriesResult = { readonly entries: Dirent[]; readonly error?: unknown };
+
+function entriesOf(folder: string): EntriesResult {
   try {
-    return readdirSync(folder, { withFileTypes: true });
-  } catch {
-    return [];
+    return { entries: readdirSync(folder, { withFileTypes: true }) };
+  } catch (error) {
+    return { entries: [], error };
   }
+}
+
+function scanFolder(
+  folder: string,
+  output: ReadonlySet<string>,
+): { readonly found: boolean; readonly subfolders: string[] } {
+  const { entries } = entriesOf(folder);
+  return {
+    found: entries.some((entry) => entry.isFile() && isSourceName(entry.name)),
+    subfolders: entries
+      .filter(
+        (entry) => entry.isDirectory() && !entry.name.startsWith('.') && !output.has(entry.name),
+      )
+      .map((entry) => path.join(folder, entry.name)),
+  };
 }
 
 function hasCode(folder: string, output: ReadonlySet<string>): boolean {
   const pending = [folder];
   for (const current of pending) {
-    for (const entry of entriesOf(current)) {
-      if (entry.isFile() && isSourceName(entry.name)) return true;
-      if (entry.isDirectory() && !entry.name.startsWith('.') && !output.has(entry.name)) {
-        pending.push(path.join(current, entry.name));
-      }
+    const scan = scanFolder(current, output);
+    if (scan.found) {
+      return true;
+    }
+    for (const subfolder of scan.subfolders) {
+      pending.push(subfolder);
     }
   }
   return false;

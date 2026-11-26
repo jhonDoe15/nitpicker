@@ -1,6 +1,6 @@
 import type { TSESLint, TSESTree } from '@typescript-eslint/utils';
 import { enclosingLoop } from '../loops/loop-shapes.mts';
-import { nameOf } from '../typed/node-views.mts';
+import { nameOf, type FileContext } from '../typed/node-views.mts';
 import { openerCallback } from '../transactions/clients.mts';
 import { WRITE_OPTIONS_SCHEMA, type WriteOptions } from '../transactions/writes-in-units.mts';
 import {
@@ -18,12 +18,13 @@ function declaredName(read: ReadStatement, sourceCode: TSESLint.SourceCode): str
 function independentRuns(
   statements: readonly TSESTree.Statement[],
   orms: readonly string[],
-  sourceCode: TSESLint.SourceCode,
+  context: FileContext,
 ): ReadStatement[][] {
+  const { sourceCode } = context;
   const runs: ReadStatement[][] = [];
   let run: ReadStatement[] = [];
   for (const statement of statements) {
-    const read = readStatement(statement, orms);
+    const read = readStatement(statement, orms, context);
     if (
       read === undefined ||
       looksLikeGuard(read, sourceCode) ||
@@ -67,7 +68,7 @@ export const rule: TSESLint.RuleModule<'sequential', WriteOptions> = {
         if (enclosingLoop(block, context) !== undefined || openerCallback(block) !== undefined) {
           return;
         }
-        for (const run of independentRuns(block.body, orms, sourceCode)) {
+        for (const run of independentRuns(block.body, orms, context)) {
           const [first] = run;
           if (first !== undefined) {
             context.report({

@@ -3,7 +3,7 @@ import { xmlFilesMatching } from '../java-lint/xml-files.mts';
 export type XPathRule = { readonly file: string; readonly rule: string; readonly xpath: string };
 
 const RULESET = /<ruleset[\s>]/u;
-const RULE = /<rule\b([^>]*?)(?<!\/)>([\s\S]*?)<\/rule>/gu;
+const RULE = /<rule\b([^>]*)(?<!\/)>([\s\S]*?)<\/rule>/gu;
 const XPATH_PROPERTY = /<property\s+name="xpath"[^>]*>\s*<value>([\s\S]*?)<\/value>/u;
 const CDATA = /^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/u;
 const RULE_NAME = /\bname="([^"]*)"/u;
@@ -20,11 +20,14 @@ const ENTITIES: readonly (readonly [string, string])[] = [
 function decoded(value: string): string {
   const cdata = CDATA.exec(value);
   return cdata === null
-    ? ENTITIES.reduce((text, [entity, character]) => text.replaceAll(entity, character), value)
+    ? ENTITIES.reduce(
+        (text, [entity, character]) => text.replaceAll(entity, () => character),
+        value,
+      )
     : (cdata[1] ?? '');
 }
 
-export function plainXPath(xpath: string): string {
+function plainXPath(xpath: string): string {
   return xpath.replaceAll(XPATH_COMMENT, ' ').replaceAll(STRING_LITERAL, "''");
 }
 

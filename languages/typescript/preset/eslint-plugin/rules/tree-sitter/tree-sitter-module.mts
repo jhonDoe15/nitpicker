@@ -4,8 +4,6 @@ const BINDINGS = new Set(['web-tree-sitter', 'tree-sitter']);
 const GRAMMAR_PACKAGE = /^((?:@[\w.-]+\/)?tree-sitter-[\w-]+)(?:\/.*)?$/u;
 const WASM_NAME = /tree-sitter-([\w-]+)\.wasm/u;
 
-export type ModuleSource = { readonly value: string; readonly node: TSESTree.Node };
-
 export function sourceOf(node: TSESTree.Node): string | undefined {
   if (
     node.type === AST_NODE_TYPES.ImportDeclaration ||
@@ -43,11 +41,12 @@ export function isTreeSitterBinding(source: string): boolean {
   return BINDINGS.has(source);
 }
 
-export function grammarPackagesIn(text: string, source: boolean): string[] {
-  if (source) {
-    const match = GRAMMAR_PACKAGE.exec(text);
-    return match?.[1] === undefined ? [] : [match[1]];
-  }
+export function grammarPackagesInSource(text: string): string[] {
+  const match = GRAMMAR_PACKAGE.exec(text);
+  return match?.[1] === undefined ? [] : [match[1]];
+}
+
+export function grammarPackagesInWasm(text: string): string[] {
   const wasm = WASM_NAME.exec(text)?.[1];
   if (wasm === undefined) {
     return [];

@@ -1,18 +1,38 @@
 //! Lint rules on the shared parse. Ids, messages and positions are those of the ESLint-plugin rule of the same name.
+mod arguments;
+mod chunks;
+mod collections;
+mod contracts;
+mod defaults;
+mod delegation;
 mod domain;
+mod effects;
+mod empty_lists;
+mod entity_versions;
 mod errors;
 mod events;
+mod forwarding;
+mod handlers;
+mod held_scopes;
 mod lifecycles;
 mod listeners;
 mod modules;
+mod number_input;
+mod patterns;
+mod presence;
+mod promises;
 mod react_tests;
 mod signatures;
+mod spreads;
 pub mod support;
 mod test_assertions;
 mod test_runtime;
-mod time;
 pub mod testing_library;
+mod time;
+mod time_zones;
 pub mod typed;
+mod union_members;
+mod unknown_types;
 
 use super::ParsedFile;
 use crate::engine::finding::Finding;
@@ -95,7 +115,7 @@ impl<'a> Context<'a, '_> {
     pub fn report_when(&mut self, rule: &str, start: u32, end: Option<u32>, message: String, conditions: Vec<(String, String)>) {
         let (line, column) = self.place(start);
         let rule = if rule.contains('/') { rule.to_string() } else { format!("nitpicker/{rule}") };
-        let finding = Finding { file: self.display.to_string(), line, column, rule, message, symbol: None };
+        let finding = Finding { file: self.display.to_string(), line, column, rule, message, symbol: None, priority: None, arguments: None };
         self.findings.push(Reported { finding, end: end.map(|end| self.place(end)), conditions });
     }
 }
@@ -103,7 +123,7 @@ impl<'a> Context<'a, '_> {
 pub type Rule = fn(&mut Context);
 
 /// Rules written against the ESTree-shaped view.
-const ON_VIEW: &[&str] = &["hover-test-needs-keyboard", "no-mutating-method-in-domain", "no-parameter-mutation", "no-add-only-collection", "no-copied-constant", "no-external-executables-in-unit-tests", "no-internal-module-mocks", "no-wait-for-with-fake-timers", "preserve-error-cause", "react-test-no-implementation-details", "report-module-load-effects", "require-error-listener", "settle-pending-on-close", "structured-catch-logging", "test-must-use-production-runtime", "time-unit-mismatch"];
+const ON_VIEW: &[&str] = &["contract-infrastructure-type", "exhaustive-union-predicate", "handler-entity-type", "hover-test-needs-keyboard", "no-accumulator-concat", "no-add-only-collection", "no-array-spread-arguments", "no-blank-number-coercion", "no-chunkwise-stream-text", "no-copied-constant", "no-dropped-delegate-result", "no-empty-every-signal", "no-expanding-replacement-string", "no-external-executables-in-unit-tests", "no-falsy-default", "no-forwarding-method-alias", "no-forwarding-wrapper", "no-in-presence-check", "no-internal-module-mocks", "no-local-time-zone", "no-lookup-as-presence", "no-mutating-method-in-domain", "no-parameter-mutation", "no-remote-call-in-transaction", "no-remote-call-under-lock", "no-shadowed-spread-key", "no-string-as-regex", "no-swapped-arguments", "no-unhandled-void-promise", "no-union-order-dependence", "no-unknown-in-domain", "no-unversioned-orm-entity", "no-wait-for-with-fake-timers", "preserve-error-cause", "react-test-no-implementation-details", "report-module-load-effects", "require-error-listener", "settle-pending-on-close", "structured-catch-logging", "test-must-use-production-runtime", "time-unit-mismatch"];
 
 pub const ALL: &[(&str, Rule)] = &[
     ("hover-test-needs-keyboard", react_tests::hover_test_needs_keyboard::check),
@@ -166,7 +186,7 @@ impl Selection {
 }
 
 fn unparsed(display: &str, rule: &str) -> Vec<Reported> {
-    vec![Finding { file: display.to_string(), line: 1, column: 1, rule: rule.into(), message: String::new(), symbol: None }.into()]
+    vec![Finding { file: display.to_string(), line: 1, column: 1, rule: rule.into(), message: String::new(), symbol: None, priority: None, arguments: None }.into()]
 }
 
 fn lint_file(path: &str, display: &str, settings: &[String], (selected, rules, view): (&[&'static str], &[Rule], bool), types: Option<&std::cell::RefCell<typed::types::Types>>) -> Vec<Reported> {

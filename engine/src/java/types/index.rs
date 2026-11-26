@@ -38,6 +38,8 @@ pub struct TypeIndex {
     pub source_classes: usize,
     /// Packages whose methods must have their result used, each with its subpackages: the outermost source packages.
     pub checked_packages: Vec<String>,
+    /// The sources were compiled with Lombok: see `Options::lombok`.
+    pub lombok: bool,
 }
 
 /// The class names of an archive, with where each one is.
@@ -154,6 +156,12 @@ impl TypeIndex {
         matches!(self.classes.get(name), Some(Slot::Ready(_)))
     }
 
+    /// The names of the member classes declared directly in a class, in no particular order.
+    pub fn nested(&self, outer: &str) -> Vec<String> {
+        let prefix = format!("{outer}.");
+        self.classes.keys().filter(|name| name.strip_prefix(prefix.as_str()).is_some_and(|rest| !rest.contains('.'))).cloned().collect()
+    }
+
     pub fn get(&self, name: &str) -> Option<&ClassInfo> {
         match self.classes.get(name)? {
             Slot::Ready(class) => Some(class),
@@ -196,6 +204,15 @@ impl TypeIndex {
             }
         }
         checked
+    }
+
+    /// The member classes, at any depth, of the listed classes.
+    pub fn nested_in(&self, outers: &HashSet<String>) -> Vec<String> {
+        self.classes.keys().filter(|name| name.rsplit_once('.').is_some_and(|(outer, _)| outers.contains(outer) || self.nested_of(outer, outers))).cloned().collect()
+    }
+
+    fn nested_of(&self, name: &str, outers: &HashSet<String>) -> bool {
+        name.rsplit_once('.').is_some_and(|(outer, _)| outers.contains(outer) || (self.classes.contains_key(outer) && self.nested_of(outer, outers)))
     }
 
     pub fn has(&self, name: &str) -> bool {

@@ -66,13 +66,6 @@ describe('spotbugsEnginePlan', () => {
       spotbugsEnginePlan({
         ...options,
         module: compiled.module,
-        compiler: compilerOf({ processorPaths: ['org.example:processor:1'] }),
-      }),
-    ).toBeUndefined();
-    expect(
-      spotbugsEnginePlan({
-        ...options,
-        module: compiled.module,
         compiler: compilerOf({ compilerArgs: ['-processorpath', '/lib/processor.jar'] }),
       }),
     ).toBeUndefined();
@@ -84,6 +77,40 @@ describe('spotbugsEnginePlan', () => {
         compiler: compilerOf({ proc: 'none', processorPaths: ['org.example:processor:1'] }),
       })?.processorPath,
     ).toStrictEqual([]);
+  });
+
+  it('reads declared processor paths as javac uses them, in place of the classpath', () => {
+    const options = {
+      reportDir: '/r',
+      compileClasspath: ['/lib/a.jar'],
+      auxiliary: [],
+      javaHome: '/jdk',
+    };
+    const { root, module } = moduleIn('p/A', 'p/B');
+    const declared = (...paths: string[]) =>
+      spotbugsEnginePlan({ ...options, module, compiler: compilerOf({ processorPaths: paths }) });
+    const planned = (fields: object) => ({
+      reportDir: '/r',
+      sources: ['A', 'B', 'package-info'].map((name) =>
+        path.join(root, `src/main/java/p/${name}.java`),
+      ),
+      classpath: [],
+      processorPath: [],
+      javaHome: '/jdk',
+      ...fields,
+    });
+
+    expect(declared('org.projectlombok:lombok:1.18.36')).toStrictEqual(
+      planned({ processors: 'lombok' }),
+    );
+    expect(
+      declared('org.projectlombok:lombok:1.18.36', 'org.mapstruct:mapstruct-processor:1.6.3'),
+    ).toStrictEqual(planned({ processors: 'lombok' }));
+    expect(declared('com.google.auto.service:auto-service:1.1.1')).toStrictEqual(
+      planned({ processors: 'none' }),
+    );
+    expect(declared('org.example:processor:1')).toStrictEqual(planned({ processors: 'other' }));
+    expect(declared()).toStrictEqual(planned({ processorPath: ['/lib/a.jar'] }));
   });
 
   it('runs the engine past an empty processor folder but not past generated sources', () => {

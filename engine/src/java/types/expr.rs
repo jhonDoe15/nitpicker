@@ -287,7 +287,7 @@ impl<'a> Resolver<'a> {
         while let Some(node) = scope {
             let typed = |declaration: Node, declarator: Option<Node>| -> Option<Type> {
                 let written = declaration.field("type")?;
-                if self.file.text_of(written) == "var" {
+                if self.inferred_local(self.file.text_of(written)) {
                     let value = declarator.unwrap_or(declaration).field("value")?;
                     return self.type_of(value);
                 }
@@ -296,12 +296,16 @@ impl<'a> Resolver<'a> {
             let named = |holder: Node| holder.field("name").is_some_and(|n| self.file.text_of(n) == name);
             match node.kind() {
                 "block" | "constructor_body" | "switch_block_statement_group" | "program" => {
-                    let declared = self.locals_of(node);
-                    let found = declared.iter().find(|local| local.0 == name).filter(|local| local.1 < inner.start_byte());
-                    if let Some((_, _, statement, declarator)) = found {
-                        let statement = node.child(*statement)?;
-                        let declarator = statement.child(*declarator)?;
-                        return Some(Binding::Local(typed(statement, Some(declarator))));
+                    let earlier = std::iter::successors(node.prev_named_sibling(), |group| group.prev_named_sibling())
+                        .take_while(|group| node.kind() == "switch_block_statement_group" && group.kind() == node.kind());
+                    for holder in std::iter::once(node).chain(earlier) {
+                        let declared = self.locals_of(holder);
+                        let found = declared.iter().find(|local| local.0 == name).filter(|local| local.1 < inner.start_byte());
+                        if let Some((_, _, statement, declarator)) = found {
+                            let statement = holder.child(*statement)?;
+                            let declarator = statement.child(*declarator)?;
+                            return Some(Binding::Local(typed(statement, Some(declarator))));
+                        }
                     }
                 }
                 "for_statement" => {
@@ -315,7 +319,7 @@ impl<'a> Resolver<'a> {
                 }
                 "enhanced_for_statement" => {
                     if named(node) && node.field("value") != Some(inner) {
-                        let inferred = node.field("type").is_none_or(|kind| self.file.text_of(kind) == "var");
+                        let inferred = node.field("type").is_none_or(|kind| self.inferred_local(self.file.text_of(kind)));
                         let kind = if inferred {
                             node.field("value").and_then(|value| self.type_of(value)).and_then(|kind| self.element(kind))
                         } else {
@@ -1007,7 +1011,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn pick_constructor(&self, creation: Node) -> Option<Call> {
-        let owner = self.type_node(creation.child_by_field_name("type")?)?;
+        let owner = self.written_creation(creation)?;
         let info = self.index.get(&owner.name())?;
         if info.is_interface && children(creation).iter().any(|part| part.kind() == "class_body") {
             let void = Type::Primitive("void");
@@ -1045,8 +1049,27 @@ impl<'a> Resolver<'a> {
         Some(call)
     }
 
+    /// The class a creation names. `outer.new Inner()` looks `Inner` up among the member classes of the type of
+    /// `outer` and its supertypes.
+    fn written_creation(&self, creation: Node) -> Option<Type> {
+        let kind = creation.field("type")?;
+        let before_new = children(creation).into_iter().take_while(|part| part.kind() != "new");
+        let outer = before_new.filter(|part| part.is_named() && !part.kind().ends_with("comment") && !part.kind().ends_with("annotation")).last();
+        let Some(outer) = outer else { return self.type_node(kind) };
+        let base = if kind.kind() == "generic_type" { *crate::engine::source::named_children(kind).first()? } else { kind };
+        let simple = self.file.text_of(base);
+        let Some(owner) = self.type_of(outer).map(|kind| kind.name()) else { return self.type_node(kind) };
+        let found = self.index.lineage(&owner).iter().map(|class| format!("{class}.{simple}")).find(|name| self.index.has(name));
+        let Some(name) = found else { return self.type_node(kind) };
+        let given = match children(kind).into_iter().find(|part| part.kind() == "type_arguments") {
+            Some(list) => crate::engine::source::named_children(list).into_iter().map(|argument| self.type_node(argument).unwrap_or(Type::class("?"))).collect(),
+            None => Vec::new(),
+        };
+        Some(Type::Class(name, given))
+    }
+
     fn created_type(&self, creation: Node) -> Option<Type> {
-        let written = self.type_node(creation.field("type")?)?;
+        let written = self.written_creation(creation)?;
         let Some(info) = self.index.get(&written.name()).filter(|info| !info.type_parameters.is_empty()) else { return Some(written) };
         if !matches!(&written, Type::Class(_, given) if given.is_empty()) {
             return Some(written);
@@ -1094,7 +1117,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// The function type of a functional interface type: parameter types and return type.
-    fn function_type(&self, target: &Type) -> Option<(Vec<Type>, Type)> {
+    pub fn function_type(&self, target: &Type) -> Option<(Vec<Type>, Type)> {
         let (declaring, method) = self.index.functional_method(&target.name())?;
         let map = self.index.member_map(target, &declaring.name);
         Some((method.generic_parameters.iter().map(|kind| kind.substitute(&map)).collect(), method.generic_returns.substitute(&map)))
@@ -1491,7 +1514,7 @@ impl<'a> Resolver<'a> {
         self.target(lambda, true)
     }
 
-    fn returned_type(&self, at: Node) -> Option<Type> {
+    pub fn returned_type(&self, at: Node) -> Option<Type> {
         let scope = crate::engine::source::ancestor(at, &["lambda_expression", "method_declaration", "class_body"])?;
         match scope.kind() {
             "method_declaration" => {
@@ -1559,7 +1582,7 @@ impl<'a> Resolver<'a> {
             }
             "variable_declarator" => {
                 let declaration = crate::engine::source::parent(holder)?;
-                declaration.field("type").filter(|kind| self.file.text_of(*kind) != "var")?;
+                declaration.field("type").filter(|kind| !self.inferred_local(self.file.text_of(*kind)))?;
                 self.declared_type(declaration, Some(holder))
             }
             "assignment_expression" if holder.field("right") == Some(inner) => {

@@ -56,7 +56,7 @@ fn reference_castable(context: &Context, from: &Type, to: &Type) -> bool {
 }
 
 /// javac's `isCastable(from, to)`.
-fn castable(context: &Context, from: &Type, to: &Type) -> bool {
+pub fn castable(context: &Context, from: &Type, to: &Type) -> bool {
     let index = context.resolver.index;
     match (from, to) {
         (Type::Primitive(a), Type::Primitive(b)) => widens(a, b) || widens(b, a),

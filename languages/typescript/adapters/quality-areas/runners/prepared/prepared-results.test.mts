@@ -62,8 +62,9 @@ describe('test results prepared for the head', () => {
     const live = tree(recorded('/elsewhere'));
     const project = tree({});
 
-    expect(preparedTestRun(optionsFor('head', { live, project }), 'results').report).toMatchObject({
-      numTotalTests: 2,
+    expect(preparedTestRun(optionsFor('head', { live, project }), 'results').report).toEqual({
+      ...PASSING,
+      testResults: [{ name: path.join('/elsewhere', 'src', 'a.test.ts') }],
     });
   });
 

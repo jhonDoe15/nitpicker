@@ -4,6 +4,7 @@ import {
   contains,
   depthFirst,
   nameOf,
+  valueIdentifiersIn,
   variableNamed,
   type SourceCode,
 } from '../../typed/node-views.mts';
@@ -25,7 +26,7 @@ function isEndless(node: Loop): boolean {
   return isTrue(node.test);
 }
 
-function isTrue(node: TSESTree.Node): boolean {
+export function isTrue(node: TSESTree.Node): boolean {
   return node.type === AST_NODE_TYPES.Literal && node.value === true;
 }
 
@@ -56,15 +57,7 @@ function listensForAbort(variable: TSESLint.Scope.Variable): boolean {
 }
 
 function valueIdentifiers(root: TSESTree.Node): TSESTree.Identifier[] {
-  return [...depthFirst<TSESTree.Node>(root, syntaxChildren)].filter(
-    (node): node is TSESTree.Identifier =>
-      node.type === AST_NODE_TYPES.Identifier &&
-      !(
-        node.parent.type === AST_NODE_TYPES.MemberExpression &&
-        node.parent.property === node &&
-        !node.parent.computed
-      ),
-  );
+  return valueIdentifiersIn(root, syntaxChildren);
 }
 
 type Hop = { readonly node: TSESTree.Node; readonly hops: number };
