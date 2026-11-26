@@ -692,7 +692,7 @@ return
 | //(ClassDeclaration | EnumDeclaration | RecordDeclaration)/(ExtendsList | ImplementsList)/ClassType
     [pmd-java:typeIs('org.testng.IRetryAnalyzer')]
 | //ConstructorCall[AnonymousClassDeclaration][pmd-java:typeIs('org.testng.IRetryAnalyzer')]
-| //(LambdaExpression | MethodReference)[pmd-java:typeIs('org.testng.IRetryAnalyzer')]
+| //(LambdaExpression | MethodReference)[pmd-java:typeIsExactly('org.testng.IRetryAnalyzer')]
 | //MethodCall[pmd-java:matchesSig('org.testng.annotations.ITestAnnotation#setRetryAnalyzer(_)')]
 ]]></value>
       </property>

@@ -137,7 +137,8 @@ Measured with all 342 rules on 4 cores (findings: same / missed / extra):
 
 The first three rows were measured before the lookup caches of #2064; the Elasticsearch row after them and after
 #2121 and #2122. The two Elasticsearch rows the engine leaves out are wrong PMD findings: PMD leaves the type of
-two lambdas unfinished and `RetryInTest` then matches them (#2125). The PMD-shaped trees of all 5,106 files have
+two lambdas unfinished and `RetryInTest` then matched them; the rule now asks `typeIsExactly` for lambdas and
+method references (#2125). The PMD-shaped trees of all 5,106 files have
 the same node names in the same places as PMD's but for one (`module-info.java`).
 
 On the whole Elasticsearch tree (18,155 files, 3.3M lines) with the 130 rules of the first set the engine takes
