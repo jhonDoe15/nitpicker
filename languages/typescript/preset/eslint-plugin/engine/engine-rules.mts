@@ -12,10 +12,12 @@ import {
 import { vocabularyOf } from '../rules/runner-apis/runner-option.mts';
 import { readLayout } from '../rules/typed/policy-views.mts';
 import { featureOf } from '../rules/contracts/contract-infrastructure-type.mts';
+import { testSourcesFact } from './test-sources-fact.mts';
 
 const stylesheetSpecifier: RegExp = untypedStylesheetSpecifier;
 
 const TYPED = { needs: 'types' } as const;
+const EFFECTS: EngineRule = { ...TYPED, facts: (_filename, _options, { root }) => testSourcesFact(root) };
 
 const layout = readLayout();
 
@@ -91,6 +93,8 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-lookup-as-presence', TYPED],
   ['no-mutating-method-in-domain', TYPED],
   ['no-parameter-mutation', TYPED],
+  ['no-remote-call-in-transaction', EFFECTS],
+  ['no-remote-call-under-lock', EFFECTS],
   [
     'no-production-console',
     {

@@ -24,6 +24,8 @@ pub struct Types {
     located: HashMap<(u32, u32), Option<Type>>,
     /// Verdicts a rule keeps for the run, by a key of its own; type ids stay valid for the whole session.
     pub kept: HashMap<String, bool>,
+    /// State a rule keeps for the whole run, one value per type (see `effects::store`).
+    pub(crate) stores: HashMap<std::any::TypeId, Box<dyn std::any::Any>>,
     /// The first question of this file the server could not answer: the file goes back to the plugin rules.
     pub refused: Option<String>,
 }
@@ -49,7 +51,7 @@ impl Types {
     pub fn open(compiler: &std::path::Path, tsconfig: &str) -> Result<Types, String> {
         let session = Session::open(compiler, tsconfig)?;
         let program = session.files.iter().cloned().collect();
-        Ok(Types { session, program, file: String::new(), offsets: Utf16::of(""), apparent: HashMap::new(), parts: HashMap::new(), owners: HashMap::new(), answers: HashMap::new(), files: HashMap::new(), located: HashMap::new(), kept: HashMap::new(), refused: None })
+        Ok(Types { session, program, file: String::new(), offsets: Utf16::of(""), apparent: HashMap::new(), parts: HashMap::new(), owners: HashMap::new(), answers: HashMap::new(), files: HashMap::new(), located: HashMap::new(), kept: HashMap::new(), stores: HashMap::new(), refused: None })
     }
 
     /// Whether the program has this file, and if so, makes it the file that later questions are about.
