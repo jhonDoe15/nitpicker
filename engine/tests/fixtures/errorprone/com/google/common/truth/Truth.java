@@ -30,4 +30,12 @@ public final class Truth {
   public static StandardSubjectBuilder assert_() {
     return null;
   }
+
+  public static MultimapSubject assertThat(com.google.common.collect.Multimap<?, ?> actual) {
+    return null;
+  }
+
+  public static MultisetSubject assertThat(com.google.common.collect.Multiset<?> actual) {
+    return null;
+  }
 }

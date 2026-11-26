@@ -10,6 +10,7 @@ mod parameter_comment;
 mod parameter_name;
 mod identifier_data;
 mod text_blocks;
+mod truth_implement_chaining;
 mod streams;
 mod strong_time;
 mod references;
@@ -84,6 +85,7 @@ mod unused_methods;
 mod immutable;
 mod immutable_known;
 mod keep;
+mod lambda_function_types;
 mod lexical;
 mod types;
 mod strings;
@@ -149,6 +151,7 @@ mod docparams;
 mod compat;
 mod equalsincompat;
 mod doclinks;
+mod mirror_to_string;
 mod object_to_string;
 mod constant_pattern;
 mod already_checked;
@@ -249,6 +252,8 @@ mod catch_fail;
 mod robolectric_shadow;
 mod test_parameter;
 mod truth_exactly;
+mod flogger_modifiers;
+mod truth_types;
 mod tree_kind_checks;
 mod inject_method_annotations;
 mod strong_byte_string;
@@ -263,6 +268,7 @@ mod flogger_causes;
 mod android_fragments;
 mod rule_not_run;
 mod unnecessary_copy;
+mod unnecessary_qualifier;
 mod matcher_wrapping;
 mod junit_cleanups;
 mod dagger_modules;
@@ -598,6 +604,12 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["ObjectToString"], object_to_string::object_to_string),
     (&["StreamToString"], object_to_string::stream_to_string),
     (&["LiteProtoToString"], object_to_string::lite_proto_to_string),
+    (&["ImplementAssertionWithChaining"], truth_implement_chaining::implement_assertion_with_chaining),
+    (&["LambdaFunctionalInterface"], lambda_function_types::lambda_functional_interface),
+    (&["UnnecessaryQualifier"], unnecessary_qualifier::unnecessary_qualifier),
+    (&["TruthIncompatibleType"], truth_types::truth_incompatible_type),
+    (&["SymbolToString"], object_to_string::symbol_to_string),
+    (&["TypeToString"], object_to_string::type_to_string),
     (&["CompileTimeConstant"], compile_constant::compile_time_constant_check),
     (&["ConstantPatternCompile"], constant_pattern::constant_pattern_compile),
     (&["ReturnValueIgnored"], returns_ignored::return_value_ignored),
@@ -893,6 +905,7 @@ const CHECKS: &[(&[&str], Check)] = &[
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
 /// leave the resolver with answers found in a different order.
 const FILE_CHECKS: &[(&[&str], Check)] = &[
+    (&["FloggerRequiredModifiers"], flogger_modifiers::flogger_required_modifiers),
     (&["StronglyTypeByteString"], strong_byte_string::strongly_type_byte_string),
     (&["UnnecessaryBoxedVariable"], boxed::unnecessary_boxed_variable),
     (&["UnusedMethod"], unused_methods::unused_method),

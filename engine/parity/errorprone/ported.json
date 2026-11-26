@@ -520,5 +520,12 @@
  "UrlInSee",
  "WakelockReleasedDangerously",
  "MustBeClosedChecker",
- "NoAllocation"
+ "NoAllocation",
+ "SymbolToString",
+ "TypeToString",
+ "ImplementAssertionWithChaining",
+ "LambdaFunctionalInterface",
+ "UnnecessaryQualifier",
+ "TruthIncompatibleType",
+ "FloggerRequiredModifiers"
 ]

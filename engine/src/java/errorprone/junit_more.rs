@@ -137,7 +137,7 @@ fn is_subtype(context: &Context, sub: &Type, sup: &Type) -> bool {
 }
 
 /// `IgnoringCasts.ignoringCasts`: the most specific type of a cast or of its operand.
-fn ignoring_casts(context: &Context, resolver: &Resolver, tree: Node) -> Option<Type> {
+pub(super) fn ignoring_casts(context: &Context, resolver: &Resolver, tree: Node) -> Option<Type> {
     match tree.kind() {
         "parenthesized_expression" => ignoring_casts(context, resolver, tree.named_child(0)?),
         "cast_expression" => {
@@ -150,7 +150,7 @@ fn ignoring_casts(context: &Context, resolver: &Resolver, tree: Node) -> Option<
 }
 
 /// The type with each type variable replaced by its first bound: `getUpperBound` for the types the comparison looks at.
-fn bounded(context: &Context, usage: Node, kind: &Type, depth: usize) -> Type {
+pub(super) fn bounded(context: &Context, usage: Node, kind: &Type, depth: usize) -> Type {
     match kind {
         Type::Variable(name) if depth < 4 => match variable_bound(context, usage, name) {
             Some(bound) => bounded(context, usage, &bound, depth + 1),
