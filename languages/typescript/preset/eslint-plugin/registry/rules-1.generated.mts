@@ -10,6 +10,7 @@ import { rule as ruleHermeticGitInTests } from '../rules/test-runtime/processes/
 import { rule as ruleHoverTestNeedsKeyboard } from '../rules/react-tests/hover-test-needs-keyboard.mts';
 import { rule as ruleIntegrationTestUsesApprovedHarness } from '../rules/test-runtime/processes/integration-test-uses-approved-harness.mts';
 import { rule as ruleNamingConvention } from '../rules/wrapped/naming-convention.mts';
+import { rule as ruleNoAccumulatingGroupSpread } from '../rules/repeated-work/groups/no-accumulating-group-spread.mts';
 import { rule as ruleNoAccumulatingSpread } from '../rules/collections/no-accumulating-spread.mts';
 import { rule as ruleNoAccumulatorConcat } from '../rules/collections/no-accumulator-concat.mts';
 import { rule as ruleNoAddOnlyCollection } from '../rules/lifecycles/growth/no-add-only-collection.mts';
@@ -59,6 +60,7 @@ import { rule as ruleNoExpandingReplacementString } from '../rules/patterns/repl
 import { rule as ruleNoExternalExecutablesInUnitTests } from '../rules/test-runtime/processes/no-external-executables-in-unit-tests.mts';
 import { rule as ruleNoFalsyDefault } from '../rules/signatures/no-falsy-default.mts';
 import { rule as ruleNoFalsyErrorCheck } from '../rules/errors/falsy-errors/no-falsy-error-check.mts';
+import { rule as ruleNoFilteredPositionalPairing } from '../rules/repeated-work/pairings/no-filtered-positional-pairing.mts';
 import { rule as ruleNoFirstTestChargedSetup } from '../rules/test-runtime/lifecycle/no-first-test-charged-setup.mts';
 import { rule as ruleNoFixedSleepSynchronization } from '../rules/test-runtime/lifecycle/no-fixed-sleep-synchronization.mts';
 import { rule as ruleNoFloatEqualityInTests } from '../test-assertions/no-float-equality-in-tests.mts';
@@ -88,6 +90,7 @@ import { rule as ruleNoLoadedRowsSavedBack } from '../rules/queries/rows/no-load
 import { rule as ruleNoLocalTimeZone } from '../rules/time/no-local-time-zone.mts';
 import { rule as ruleNoLookupAsPresence } from '../rules/presence/lookups/no-lookup-as-presence.mts';
 import { rule as ruleNoLookupPerElement } from '../rules/concurrency/reactive/no-lookup-per-element.mts';
+import { rule as ruleNoLoopInvariantCopy } from '../rules/repeated-work/copies/no-loop-invariant-copy.mts';
 import { rule as ruleNoLossyJsonStringify } from '../rules/json-values/no-lossy-json-stringify.mts';
 import { rule as ruleNoLossyUtf8Decode } from '../rules/decoding/no-lossy-utf8-decode.mts';
 import { rule as ruleNoMagicNumbers } from '../rules/wrapped/no-magic-numbers.mts';
@@ -95,9 +98,6 @@ import { rule as ruleNoMalformedQueryText } from '../rules/query-text/no-malform
 import { rule as ruleNoManagedResourceConstructionOutsideCompositionRoots } from '../rules/boundaries/no-managed-resource-construction-outside-composition-roots.mts';
 import { rule as ruleNoManyToManyCascadeRemove } from '../rules/persistence/no-many-to-many-cascade-remove.mts';
 import { rule as ruleNoMappedCopyForSinglePass } from '../rules/whole-lists/no-mapped-copy-for-single-pass.mts';
-import { rule as ruleNoMismatchedPreconditionMessage } from '../rules/preconditions/no-mismatched-precondition-message.mts';
-import { rule as ruleNoMockingSubjectUnderTest } from '../rules/test-runtime/assertions/no-mocking-subject-under-test.mts';
-import { rule as ruleNoModuleLevelLet } from '../rules/modules/no-module-level-let.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -112,6 +112,7 @@ export const partRules = {
   'hover-test-needs-keyboard': ruleHoverTestNeedsKeyboard,
   'integration-test-uses-approved-harness': ruleIntegrationTestUsesApprovedHarness,
   'naming-convention': ruleNamingConvention,
+  'no-accumulating-group-spread': ruleNoAccumulatingGroupSpread,
   'no-accumulating-spread': ruleNoAccumulatingSpread,
   'no-accumulator-concat': ruleNoAccumulatorConcat,
   'no-add-only-collection': ruleNoAddOnlyCollection,
@@ -161,6 +162,7 @@ export const partRules = {
   'no-external-executables-in-unit-tests': ruleNoExternalExecutablesInUnitTests,
   'no-falsy-default': ruleNoFalsyDefault,
   'no-falsy-error-check': ruleNoFalsyErrorCheck,
+  'no-filtered-positional-pairing': ruleNoFilteredPositionalPairing,
   'no-first-test-charged-setup': ruleNoFirstTestChargedSetup,
   'no-fixed-sleep-synchronization': ruleNoFixedSleepSynchronization,
   'no-float-equality-in-tests': ruleNoFloatEqualityInTests,
@@ -190,6 +192,7 @@ export const partRules = {
   'no-local-time-zone': ruleNoLocalTimeZone,
   'no-lookup-as-presence': ruleNoLookupAsPresence,
   'no-lookup-per-element': ruleNoLookupPerElement,
+  'no-loop-invariant-copy': ruleNoLoopInvariantCopy,
   'no-lossy-json-stringify': ruleNoLossyJsonStringify,
   'no-lossy-utf8-decode': ruleNoLossyUtf8Decode,
   'no-magic-numbers': ruleNoMagicNumbers,
@@ -198,7 +201,4 @@ export const partRules = {
     ruleNoManagedResourceConstructionOutsideCompositionRoots,
   'no-many-to-many-cascade-remove': ruleNoManyToManyCascadeRemove,
   'no-mapped-copy-for-single-pass': ruleNoMappedCopyForSinglePass,
-  'no-mismatched-precondition-message': ruleNoMismatchedPreconditionMessage,
-  'no-mocking-subject-under-test': ruleNoMockingSubjectUnderTest,
-  'no-module-level-let': ruleNoModuleLevelLet,
 };

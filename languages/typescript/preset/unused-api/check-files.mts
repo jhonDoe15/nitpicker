@@ -23,6 +23,7 @@ export const DEAD_CODE_CHECK_FILES = [
   'shared/paths/script-stem.mjs',
   'languages/typescript/adapters/quality-areas/runners/unused-api.mjs',
   'languages/typescript/adapters/quality-areas/knip/knip-layers.mjs',
+  'languages/typescript/adapters/quality-areas/knip/knip-reporter.mjs',
   'languages/typescript/adapters/quality-areas/knip/knip-run.mjs',
   'languages/typescript/adapters/quality-areas/knip/manifest-guard.mjs',
   ...PROJECT_TOOL_FILES,

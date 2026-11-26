@@ -1,6 +1,7 @@
 //! RedundantOverride: an override whose body only calls the method it overrides through `super` with its own
 //! parameters, with nothing else changed (modifiers, annotations, doc comment, comments in the body).
 use super::Context;
+use super::fixes::Fix;
 use super::hierarchy::{declared_method, formals, super_methods};
 use crate::engine::source::{children, named_children};
 use crate::java::types::model::target;
@@ -58,7 +59,8 @@ pub fn redundant_override(context: &Context, node: Node) {
         return;
     }
     let at = node.child_by_field_name("name").map_or(node.start_byte(), |name| name.start_byte());
-    context.report("RedundantOverride", node, at, "This overriding method is redundant, and can be removed.");
+    let fix = Fix::replace(node.start_byte(), node.end_byte(), "");
+    context.report_fixed("RedundantOverride", node, at, "This overriding method is redundant, and can be removed.", &[fix]);
 }
 
 /// `return call(...);` or `call(...);`, where the call is the whole expression.

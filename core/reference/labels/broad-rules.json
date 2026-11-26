@@ -24,6 +24,7 @@
   "eslint/eqeqeq",
   "eslint/nitpicker/no-falsy-default",
   "eslint/nitpicker/no-local-time-zone",
+  "eslint/nitpicker/no-loop-invariant-copy",
   "eslint/nitpicker/no-per-item-cache-growth",
   "eslint/nitpicker/no-presence-truthiness",
   "eslint/nitpicker/no-repeated-string-literal",

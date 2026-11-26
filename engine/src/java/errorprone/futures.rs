@@ -1,5 +1,6 @@
 //! FutureReturnValueIgnored: a future is dropped, nested in another future, or handed on as a plain `Object`.
 use super::Context;
+use super::ignored_fix::call_site_fixes;
 use super::hierarchy::super_methods;
 use super::returns::referenced;
 use super::unused::{dropped, exception_testing, function_returns_void, mocking, throwing_type};
@@ -131,7 +132,7 @@ fn call(context: &Context, node: Node) {
     if matched {
         if let Some(place) = dropped(node) {
             if (place.id() == node.id() || function_returns_void(context, place) == Some(true)) && !allowed() {
-                context.report(NAME, node, at, SUMMARY);
+                context.report_fixed(NAME, node, at, SUMMARY, &call_site_fixes(context, node));
                 return;
             }
         }
@@ -141,7 +142,7 @@ fn call(context: &Context, node: Node) {
     }
     let lambda = parent(node).filter(|holder| holder.kind() == "lambda_expression" && holder.child_by_field_name("body").is_some_and(|body| body.id() == node.id()));
     if matched && lambda.is_some_and(|lambda| object_lambda(context, lambda)) && !allowed() {
-        context.report(NAME, node, at, SUMMARY);
+        context.report_fixed(NAME, node, at, SUMMARY, &call_site_fixes(context, node));
     }
 }
 

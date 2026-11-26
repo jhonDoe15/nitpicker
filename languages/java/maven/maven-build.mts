@@ -17,7 +17,7 @@ import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mts';
 import { writeSpringRuleset } from '../adapters/spring/proxies/proxy-ruleset.mts';
 import { MAVEN_PRESETS } from '../adapters/gradle-presets.mts';
 import { processorTool } from './errorprone/maven-errorprone.mts';
-import { compilerOf } from './errorprone/compiler-types.mts';
+import { compilerOf } from './compile-sets/compiler-types.mts';
 import { removeQuietly } from '../builds/cleanup/remove-quietly.mts';
 import { readPinnedTools } from '../builds/java-build.mts';
 import { kotlinSetup } from './kotlin/kotlin-setup.mts';

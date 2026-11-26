@@ -23,7 +23,7 @@ return
 //MethodDeclaration[@Visibility = 'public'][@Static = false() or not(@Name = ('of', 'from', 'valueOf', 'create', 'builder'))]
   [not(@Overridden = true())][not(ModifierList/Annotation[@SimpleName = ('Override', 'Bean', 'Test', 'ParameterizedTest')])]
   [not(matches(@Name, '^(?:set|with)[A-Z]'))][not(@Name = 'main')]
-  [not(ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration or self::AnnotationTypeDeclaration or self::InterfaceDeclaration][@Visibility != 'public'])]
+  [not(ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration or self::AnnotationTypeDeclaration][@Visibility != 'public'])]
   [not(ancestor::ClassDeclaration[@Local = true() or @Anonymous = true()])]
   [Block]
   /FormalParameters/FormalParameter[not(ModifierList/Annotation)][PrimitiveType[@Kind = 'boolean']][not(@Varargs = true())]

@@ -11,8 +11,7 @@
       or pmd-java:typeIs('double') or pmd-java:typeIs('float') or pmd-java:typeIs('short')
       or pmd-java:typeIs('byte') or pmd-java:typeIs('char')
       or self::UnaryExpression[@Operator = '!']
-      or self::InfixExpression[@Operator = ('==', '!=', '<', '>', '<=', '>=', '&&', '||')]
-      or self::InstanceOfExpression]
+      or self::InfixExpression[@Operator = ('==', '!=', '<', '>', '<=', '>=', '&&', '||', 'instanceof')]]
    or @MethodName = 'notNull' and ArgumentList/@Size = 2
       and ArgumentList/*[1][self::VariableAccess or self::FieldAccess or self::MethodCall]
         [pmd-java:typeIs('java.lang.CharSequence') or pmd-java:typeIs('java.util.Collection')

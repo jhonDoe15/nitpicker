@@ -4,3 +4,5 @@ pub mod library;
 pub mod parse;
 pub mod value;
 pub mod extra;
+#[cfg(test)]
+mod node_names;

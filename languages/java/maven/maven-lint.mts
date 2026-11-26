@@ -3,7 +3,7 @@ import { guardCompiler } from './errorprone/maven-compiler.mts';
 import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { runJava } from './programs/java-command.mts';
-import { type SourceModule, compilerOf } from './errorprone/compiler-types.mts';
+import { type SourceModule, compilerOf } from './compile-sets/compiler-types.mts';
 import { writeRulesets } from '../adapters/tool-config/pmd-wrappers.mts';
 import { NITPICKER_RULESET } from '../adapters/tool-config/layer-files.mts';
 import {
