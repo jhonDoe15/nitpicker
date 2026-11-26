@@ -58,7 +58,6 @@ mod timeunit;
 mod members;
 mod fix_helpers;
 mod nullaway;
-pub use nullaway::unread_marks;
 mod equality_fix;
 mod nullness;
 mod flow_nullness;
