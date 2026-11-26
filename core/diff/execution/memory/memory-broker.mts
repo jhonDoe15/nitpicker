@@ -11,9 +11,10 @@ export const MEMORY_BROKER_VARIABLE = 'NITPICKER_MEMORY_BROKER';
 export type MemoryBroker = {
   readonly environment: Readonly<Record<string, string>>;
   readonly close: () => Promise<void>;
+  readonly failure?: string;
 };
 
-type Lease = { cancelled: boolean; release: Release | undefined };
+type Lease = { cancelled: boolean; release: Release | undefined; granting?: Promise<void> };
 
 type Ledger = { readonly semaphore: Semaphore; readonly capacity: number };
 
@@ -37,17 +38,13 @@ async function admit(
   ledger: Ledger,
   weight: number,
 ): Promise<void> {
-  try {
-    const release = await ledger.semaphore.acquire(Math.min(weight, ledger.capacity));
-    if (lease.cancelled || socket.destroyed) {
-      release();
-      return;
-    }
-    lease.release = release;
-    socket.write(`${JSON.stringify({ id })}\n`);
-  } catch (error) {
-    process.stderr.write(`nitpicker: memory lease ${String(id)} failed: ${String(error)}\n`);
+  const release = await ledger.semaphore.acquire(Math.min(weight, ledger.capacity));
+  if (lease.cancelled || socket.destroyed) {
+    release();
+    return;
   }
+  lease.release = release;
+  socket.write(`${JSON.stringify({ id })}\n`);
 }
 
 function serve(socket: Socket, ledger: Ledger): void {
@@ -61,7 +58,7 @@ function serve(socket: Socket, ledger: Ledger): void {
     if (typeof megabytes === 'number') {
       const lease: Lease = { cancelled: false, release: undefined };
       leases.set(id, lease);
-      void admit({ socket, id, lease }, ledger, Math.max(0, Math.floor(megabytes)));
+      lease.granting = admit({ socket, id, lease }, ledger, Math.max(0, Math.floor(megabytes)));
       return;
     }
     endLease(leases.get(id));
@@ -96,15 +93,12 @@ async function brokerAddress(): Promise<Address> {
   }
 }
 
-function listening(server: Server, address: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    function failed(): void {
-      resolve(false);
-    }
-    server.once('error', failed);
+function listening(server: Server, address: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
     server.listen(address, () => {
-      server.off('error', failed);
-      resolve(true);
+      server.off('error', reject);
+      resolve();
     });
   });
 }
@@ -143,11 +137,13 @@ export async function startMemoryBroker(capacityMegabytes: number): Promise<Memo
   });
   const chosen = await brokerAddress();
   if ('failed' in chosen) {
-    return NO_BROKER;
+    return { ...NO_BROKER, failure: chosen.failed };
   }
-  if (!(await listening(server, chosen.address))) {
+  try {
+    await listening(server, chosen.address);
+  } catch (error) {
     await removeFolder(chosen.folder);
-    return NO_BROKER;
+    return { ...NO_BROKER, failure: String(error) };
   }
   server.unref();
   return {
