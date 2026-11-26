@@ -23,4 +23,6 @@ export const REPEATED_WORK_RULE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/groups/no-accumulating-group-spread.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/copies/copy-forms.mjs',
   'languages/typescript/preset/eslint-plugin/rules/repeated-work/copies/no-loop-invariant-copy.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/repeated-work/parses/pure-parsers.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/repeated-work/parses/no-repeated-parse-per-item.mjs',
 ];

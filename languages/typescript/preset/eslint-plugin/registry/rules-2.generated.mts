@@ -35,6 +35,7 @@ import { rule as ruleNoReleaseOutsideFinally } from '../rules/resources/release/
 import { rule as ruleNoRemoteCallInTransaction } from '../rules/effects/no-remote-call-in-transaction.mts';
 import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-call-under-lock.mts';
 import { rule as ruleNoRepeatedCall } from '../rules/repeated-work/repeated-calls/no-repeated-call.mts';
+import { rule as ruleNoRepeatedParsePerItem } from '../rules/repeated-work/parses/no-repeated-parse-per-item.mts';
 import { rule as ruleNoRepeatedStringLiteral } from '../rules/literals/no-repeated-string-literal.mts';
 import { rule as ruleNoRetryWithoutIdempotency } from '../rules/writes/no-retry-without-idempotency.mts';
 import { rule as ruleNoRouteWithoutAuth } from '../rules/route-auth/no-route-without-auth.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnguardedOptionList } from '../rules/processes/arguments/
 import { rule as ruleNoUnguardedRegistryDelete } from '../rules/lifecycles/registry/no-unguarded-registry-delete.mts';
 import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mts';
 import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mts';
-import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mts';
 
 export const partRules = {
   'no-multiple-collection-joins': ruleNoMultipleCollectionJoins,
@@ -137,6 +137,7 @@ export const partRules = {
   'no-remote-call-in-transaction': ruleNoRemoteCallInTransaction,
   'no-remote-call-under-lock': ruleNoRemoteCallUnderLock,
   'no-repeated-call': ruleNoRepeatedCall,
+  'no-repeated-parse-per-item': ruleNoRepeatedParsePerItem,
   'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
   'no-retry-without-idempotency': ruleNoRetryWithoutIdempotency,
   'no-route-without-auth': ruleNoRouteWithoutAuth,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-unguarded-registry-delete': ruleNoUnguardedRegistryDelete,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
-  'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
 };

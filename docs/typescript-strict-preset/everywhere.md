@@ -332,6 +332,18 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   literal list and a copy with other elements next to the spread are not reported. Whether a
   consumer changes its copy later is not visible, so this is a broad rule. Allowed forms: share one
   read-only value, or copy once before the loop.
+- `nitpicker/no-repeated-parse-per-item`: the same kind of text parsed again for every item of a
+  list, in all production code (not in tests). It reports a call of a function of the same file
+  inside a loop body or an iteration callback whose argument is a field of the item that items
+  usually share (`message`, `rule`, `ruleId`, `tool`, `path`, `file`, `filePath`, `text`, `title`,
+  `kind`, `type`, `code`, `category`, `source`), possibly through other such functions
+  (`splitRoute(oneLine(finding.message))`), when every function in the chain is a pure parse of its
+  argument: string methods, regular expressions, `split`, `slice` and `JSON.parse`, no assignment,
+  `await`, `this` or `new`, and no state read but its parameters, its own locals and `const` names
+  around it. At least one of them must parse (a regular expression, `split`, `replace`, `match` or
+  `JSON.parse`). Each item then runs the parse again and keeps its own copy of the result. Calls of
+  imported functions, a loop over a literal list and other fields are not reported. Allowed form:
+  parse each distinct value once and share the result through a `Map` kept for the loop.
 - `nitpicker/no-wasted-collection-step`: a collection or promise step that copies for nothing or
   walks the data twice, in all production code (not in tests). It reports `filter(p)[0]` and
   `filter(p).at(0)` with a callback `p` (allowed form: `find(p)`; a selector string, as in jQuery,

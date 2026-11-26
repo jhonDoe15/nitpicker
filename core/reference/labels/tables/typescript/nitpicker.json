@@ -37,6 +37,7 @@
   "eslint/nitpicker/no-repeated-call": ["performance"],
   "eslint/nitpicker/no-work-before-early-exit": ["performance"],
   "eslint/nitpicker/no-read-all-before-pass": ["performance", "reliability"],
+  "eslint/nitpicker/no-repeated-parse-per-item": ["performance"],
   "eslint/nitpicker/no-loop-invariant-copy": ["performance"],
   "eslint/nitpicker/no-accumulating-group-spread": ["performance"],
   "eslint/nitpicker/no-comments": ["style"],

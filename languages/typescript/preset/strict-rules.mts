@@ -63,6 +63,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-repeated-call',
   'nitpicker/no-work-before-early-exit',
   'nitpicker/no-read-all-before-pass',
+  'nitpicker/no-repeated-parse-per-item',
   'nitpicker/no-loop-invariant-copy',
   'nitpicker/no-accumulating-group-spread',
   'nitpicker/no-wasted-collection-step',

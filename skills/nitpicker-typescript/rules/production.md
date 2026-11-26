@@ -225,6 +225,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   need the value (`nitpicker/no-work-before-early-exit`).
 - Read and handle files one at a time (or through a bounded pool), not all into one array that a later
   loop walks once (`nitpicker/no-read-all-before-pass`).
+- Parse a field that many items share (a message, a rule, a path) once per distinct value, not once
+  per item (`nitpicker/no-repeated-parse-per-item`).
 - Share one read-only value across the items of a loop instead of storing a full copy of it with
   every item (`nitpicker/no-loop-invariant-copy`).
 - Grow a group of a `Map` by pushing onto it, not by spreading it into a new array on every item
