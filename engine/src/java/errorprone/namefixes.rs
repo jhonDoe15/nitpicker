@@ -6,13 +6,13 @@ use crate::java::types::model::target;
 use tree_sitter::Node;
 
 /// What a simple name stands for at a place, looking for values and types.
-enum Ident {
+pub enum Ident {
     Class(String),
     Variable,
     Nothing,
 }
 
-fn find_ident(context: &Context, at: Node, name: &str) -> Ident {
+pub fn find_ident(context: &Context, at: Node, name: &str) -> Ident {
     if context.resolver.is_variable(at, name) {
         return Ident::Variable;
     }
@@ -26,7 +26,7 @@ fn class_depth(context: &Context, parts: &[&str]) -> Option<usize> {
 
 /// SameNameButDifferent's `qualifyType`: the name by which the class can be written at the place; a finding of the check
 /// has the qualified class name when no enclosing class is in view, and an import is added when a name is free.
-fn qualify_type(context: &Context, at: Node, class: &str, imports: &mut bool) -> String {
+pub fn qualify_type(context: &Context, at: Node, class: &str, imports: &mut bool) -> String {
     let parts: Vec<&str> = class.split('.').collect();
     let Some(packages) = class_depth(context, &parts) else { return class.to_string() };
     let mut names: Vec<&str> = Vec::new();

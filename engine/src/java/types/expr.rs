@@ -957,7 +957,7 @@ impl<'a> Resolver<'a> {
     }
 
     /// The constructor a `new` expression calls. With a diamond, the class's type parameters are inferred like a method's.
-    fn resolve_constructor(&self, creation: Node) -> Option<Call> {
+    pub fn resolve_constructor(&self, creation: Node) -> Option<Call> {
         if let Some(known) = self.calls.borrow().get(&creation.id()) {
             return known.as_deref().cloned();
         }

@@ -32,6 +32,7 @@ enum Constant<'a> {
     Utf8(&'a [u8]),
     Class(u16),
     Text(u16),
+    Int(i32),
     Other,
 }
 
@@ -614,7 +615,8 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
                 reader.skip(3)?;
                 pool.push(Constant::Other);
             }
-            3 | 4 | 9 | 10 | 11 | 12 | 17 | 18 => {
+            3 => pool.push(Constant::Int(reader.u4()? as i32)),
+            4 | 9 | 10 | 11 | 12 | 17 | 18 => {
                 reader.skip(4)?;
                 pool.push(Constant::Other);
             }
@@ -661,15 +663,20 @@ pub fn parse(data: &[u8]) -> Option<ClassInfo> {
         let found = attributes(&mut reader, &utf8)?;
         nickname(&found);
         let (signature, constant) = (found.signature, found.constant);
+        let found_number = constant;
         if flags & (ACC_PRIVATE | ACC_SYNTHETIC) == 0 {
             let fixed = constant.filter(|_| flags & ACC_STATIC != 0).map(|_| Vec::new());
             let constant = constant.and_then(|index| match pool.get(index as usize)? {
                 Constant::Text(text) => Some(String::from_utf8_lossy(utf8(*text)?).into_owned()),
                 _ => None,
             });
+            let number = found_number.and_then(|index| match pool.get(index as usize)? {
+                Constant::Int(value) => Some(*value),
+                _ => None,
+            });
             let kind = Signature { text: descriptor, at: 0, written_bounds: Vec::new() }.kind()?;
             let generic = signature.and_then(|text| Signature { text, at: 0, written_bounds: Vec::new() }.kind()).unwrap_or_else(|| kind.clone());
-            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, flags: member_flags(flags, &found) | if flags & 0x0040 != 0 { flag::VOLATILE } else { 0 } | if flags & 0x4000 != 0 { flag::ENUM } else { 0 } });
+            fields.push(Field { name: String::from_utf8_lossy(field_name).into_owned(), kind, generic, constant, number, strict: fixed.is_some(), fixed, is_private: flags & 0x0002 != 0, flags: member_flags(flags, &found) | if flags & 0x0040 != 0 { flag::VOLATILE } else { 0 } | if flags & 0x4000 != 0 { flag::ENUM } else { 0 } });
         }
     }
     let mut methods = Vec::new();

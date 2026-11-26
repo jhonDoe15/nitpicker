@@ -105,6 +105,8 @@ pub fn javadoc(context: &Context, node: Node) {
     super::doc_throws::invalid_throws(&documented, declaration);
     super::docparams::invalid_param(&documented, declaration);
     super::doclinks::invalid_link(&documented, declaration);
+    super::docinline::malformed_inline_tag(&documented);
+    super::docinline::prefer_throws_tag(&documented);
 }
 
 fn empty_block_tag(documented: &Documented) {

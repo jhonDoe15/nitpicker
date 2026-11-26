@@ -34,10 +34,27 @@ mod lookup;
 mod docplaced;
 mod doctagged;
 mod doctags;
+mod equality;
+mod equals_methods;
+mod nodes;
+mod inference;
+mod threads;
+mod symbols;
+mod dcl;
+mod misc;
+mod shadow;
+mod statics;
+mod nullcheck;
+mod donot;
+mod fieldlocal;
 #[cfg(test)]
 mod doctest;
 mod hierarchy;
+mod docinline;
 mod javadoc;
+mod nullcompare;
+mod protosetter;
+mod timeunit;
 mod members;
 mod fix_helpers;
 mod nullaway;
@@ -99,7 +116,6 @@ mod qualify;
 mod unsafe_calls;
 mod target;
 mod numeric;
-mod equality;
 mod varargs;
 mod arrays;
 mod imports;
@@ -250,7 +266,7 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["JdkObsolete"], obsolete::jdk_obsolete),
     (&["BooleanLiteral"], targets::boolean_literal),
     (&["IdentifierName"], naming::identifier_name),
-    (&["EmptyBlockTag", "MissingSummary", "InvalidBlockTag", "UnescapedEntity", "EscapedEntity", "InvalidInlineTag", "InvalidThrows", "InvalidParam", "InvalidLink"], javadoc::javadoc),
+    (&["EmptyBlockTag", "MissingSummary", "InvalidBlockTag", "UnescapedEntity", "EscapedEntity", "InvalidInlineTag", "InvalidThrows", "InvalidParam", "InvalidLink", "MalformedInlineTag", "PreferThrowsTag"], javadoc::javadoc),
     (&["AnnotationPosition"], annotated::annotation_position),
     (&["RedundantOverride"], redundant::redundant_override),
     (&["CheckedExceptionNotThrown"], throws::checked_exception_not_thrown),
@@ -279,6 +295,29 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["UnnecessarilyFullyQualified"], names::unnecessarily_fully_qualified),
     (&["SuppressWarningsWithoutExplanation"], names::suppress_warnings_without_explanation),
     (&["TypeParameterUnusedInFormals"], names::type_parameter_unused_in_formals),
+    (&["EqualsHashCode"], equals_methods::equals_hash_code),
+    (&["EqualsUsingHashCode"], equals_methods::equals_using_hash_code),
+    (&["ThrowableEqualsHashCode"], equals_methods::throwable_equals_hash_code),
+    (&["NonOverridingEquals"], equals_methods::non_overriding_equals),
+    (&["ThreadLocalUsage"], threads::thread_local_usage),
+    (&["ThreadPriorityCheck"], threads::thread_priority_check),
+    (&["WaitNotInLoop"], threads::wait_not_in_loop),
+    (&["InputStreamSlowMultibyteRead"], threads::input_stream_slow_multibyte_read),
+    (&["DoubleCheckedLocking"], dcl::double_checked_locking),
+    (&["ObjectsHashCodePrimitive"], misc::objects_hash_code_primitive),
+    (&["LogicalAssignment"], misc::logical_assignment),
+    (&["ArrayAsKeyOfSetOrMap"], misc::array_as_key_of_set_or_map),
+    (&["ComputeIfAbsentAmbiguousReference"], misc::compute_if_absent_ambiguous_reference),
+    (&["VariableNameSameAsType"], shadow::variable_name_same_as_type),
+    (&["ClassNamedLikeTypeParameter"], shadow::class_named_like_type_parameter),
+    (&["TypeParameterShadowing"], shadow::type_parameter_shadowing),
+    (&["StaticQualifiedUsingExpression"], statics::static_qualified_using_expression),
+    (&["UnnecessaryCheckNotNull"], nullcheck::unnecessary_check_not_null),
+    (&["DoNotCall"], donot::do_not_call_method),
+    (&["DoNotCall"], donot::do_not_call_use),
+    (&["TimeUnitMismatch"], timeunit::time_unit_mismatch),
+    (&["AvoidValueSetter"], protosetter::avoid_value_setter),
+    (&["ImpossibleNullComparison"], nullcompare::impossible_null_comparison),
     (&["NullAway"], nullaway::null_away),
     (&["BanClassLoader"], ban::ban_class_loader),
     (&["BanJNDI"], ban::ban_jndi),
@@ -363,6 +402,7 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["UnicodeEscape"], lexical::unicode_escape),
     (&["MultipleTopLevelClasses"], lexical::multiple_top_level_classes),
     (&["DeduplicateConstants"], dedupe::deduplicate_constants),
+    (&["FieldCanBeLocal"], fieldlocal::field_can_be_local),
 ];
 
 pub struct ErrorProne;
