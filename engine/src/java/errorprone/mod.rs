@@ -185,6 +185,15 @@ mod proto_checks;
 mod random_checks;
 mod self_checks;
 mod symbol_key;
+mod stmt_defects;
+mod junit_asserts;
+mod const_checks;
+mod java_text;
+mod call_consts;
+mod auto_value;
+mod tz_data;
+mod zone_ids;
+mod time_constants;
 
 use super::types::project::JavaProject;
 use super::types::scope::{FileScope, Resolver};
@@ -562,6 +571,28 @@ const CHECKS: &[(&[&str], Check)] = &[
     (&["SuppressWarningsDeprecated"], annotation_defects::suppress_warnings_deprecated),
     (&["TestExceptionChecker"], junit_runners::test_exception_checker),
     (&["TestParametersNotInitialized"], junit_runners::test_parameters_not_initialized),
+    (&["ThrowNull"], stmt_defects::throw_null),
+    (&["VarTypeName"], stmt_defects::var_type_name),
+    (&["UnusedAnonymousClass"], stmt_defects::unused_anonymous_class),
+    (&["UnusedCollectionModifiedInPlace"], stmt_defects::unused_collection_modified_in_place),
+    (&["TheoryButNoTheories"], junit_asserts::theory_but_no_theories),
+    (&["JUnitParameterMethodNotFound"], junit_asserts::junit_parameter_method_not_found),
+    (&["TryFailThrowable"], junit_asserts::try_fail_throwable),
+    (&["UseCorrectAssertInTests"], junit_asserts::use_correct_assert_in_tests),
+    (&["ComparisonOutOfRange"], const_checks::comparison_out_of_range),
+    (&["ConstantOverflow"], const_checks::constant_overflow),
+    (&["XorPower"], const_checks::xor_power),
+    (&["DuplicateMapKeys"], call_consts::duplicate_map_keys),
+    (&["InsecureCryptoUsage"], call_consts::insecure_crypto_usage),
+    (&["SubstringOfZero"], call_consts::substring_of_zero),
+    (&["ThreadBuilderNameWithPlaceholder"], call_consts::thread_builder_name_with_placeholder),
+    (&["FloggerLogVarargs"], call_consts::flogger_log_varargs),
+    (&["ZoneIdOfZ"], call_consts::zone_id_of_z),
+    (&["LenientFormatStringValidation"], call_consts::lenient_format_string_validation),
+    (&["ExtendsAutoValue"], auto_value::extends_auto_value),
+    (&["InvalidTimeZoneID"], time_constants::invalid_time_zone_id),
+    (&["InvalidZoneId"], time_constants::invalid_zone_id),
+    (&["InvalidJavaTimeConstant"], time_constants::invalid_java_time_constant),
 ];
 
 /// Checks that look at a whole file. They run after the walk: a call they work out ahead of the checks above would
@@ -582,6 +613,7 @@ const FILE_CHECKS: &[(&[&str], Check)] = &[
     (&["JUnit4TestsNotRunWithinEnclosed"], junit_tests::junit4_tests_not_run_within_enclosed),
     (&["ClassName"], class_names::class_name),
     (&["PackageInfo"], misc12::package_info),
+    (&["UnicodeDirectionalityCharacters"], stmt_defects::unicode_directionality_characters),
 ];
 
 pub struct ErrorProne;

@@ -6,4 +6,8 @@ public class Subject {
   public void isEqualTo(Object other) {}
 
   public void isNotEqualTo(Object other) {}
+
+  public StandardSubjectBuilder check(String format, Object... args) {
+    return null;
+  }
 }

@@ -10,4 +10,8 @@ public final class Truth {
   public static MapSubject assertThat(Map<?, ?> actual) {
     return null;
   }
+
+  public static StandardSubjectBuilder assertWithMessage(String messageToPrepend, Object... args) {
+    return null;
+  }
 }
