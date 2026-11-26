@@ -108,12 +108,47 @@ impl Walk<'_, '_, '_, '_> {
             | "CatchClause"
             | "ForStatement"
             | "ForeachStatement"
-            | "TryStatement"
             | "SwitchStatement"
+            | "SwitchExpression"
+            | "ConditionalExpression"
+            | "WhileStatement"
             | "SwitchArrowBranch"
             | "CompactConstructorDeclaration"
             | "Initializer" => {
                 self.scoped(|walk| walk.kids(id));
+            }
+            "TryStatement" => self.scoped(|walk| {
+                for kid in ctx.kids(id).to_vec() {
+                    if ctx.is(kid, "ResourceList") {
+                        walk.node(kid);
+                    } else if ctx.is(kid, "Block") {
+                        walk.node(kid);
+                        walk.names.retain(|(_, variable)| {
+                            !walk
+                                .ctx
+                                .enclosing(*variable, &["ResourceList"])
+                                .is_some_and(|list| walk.ctx.parent(list) == Some(id))
+                        });
+                    } else {
+                        walk.node(kid);
+                    }
+                }
+            }),
+            "IfStatement" => {
+                let mark = self.names.len();
+                self.kids(id);
+                let condition = ctx.nth(id, 0);
+                let bound: Vec<(String, u32)> = self.names[mark.min(self.names.len())..]
+                    .iter()
+                    .filter(|(_, variable)| {
+                        condition.is_some_and(|condition| self.ctx.ancestors(*variable).any(|at| at == condition))
+                    })
+                    .cloned()
+                    .collect();
+                self.names.truncate(mark);
+                if !ctx.flag(id, "Else") && ctx.nth(id, 1).is_some_and(|then| self.abrupt(then)) {
+                    self.names.extend(bound);
+                }
             }
             "VariableDeclarator" => {
                 if let Some(variable) = ctx.kid(id, "VariableId") {
@@ -155,6 +190,16 @@ impl Walk<'_, '_, '_, '_> {
                 self.kids(id);
             }
             _ => self.kids(id),
+        }
+    }
+
+    /// Whether a statement cannot complete normally, as far as a pattern variable of an `if` before it needs.
+    fn abrupt(&self, statement: u32) -> bool {
+        let ctx = self.ctx;
+        match ctx.name(statement) {
+            "ReturnStatement" | "ThrowStatement" | "BreakStatement" | "ContinueStatement" | "YieldStatement" => true,
+            "Block" => ctx.kids(statement).last().is_some_and(|last| self.abrupt(*last)),
+            _ => false,
         }
     }
 

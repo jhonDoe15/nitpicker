@@ -71,6 +71,15 @@
 ["c/OldTest.java", "JUnitSpelling", 9, 17, "You may have misspelled a JUnit framework method (setUp or tearDown)"],
 ["c/OldTest.java", "JUnitStaticSuite", 13, 22, "You have a suite() method that is not both public and static, so JUnit wont call it to get your TestSuite.  Is that what you wanted to do?"],
 ["c/OldTest.java", "MissingOverride", 11, 17, "The method 'setUp()' is missing an @Override annotation."],
+["c/Scopes.java", "AssignmentToNonFinalStatic", 18, 9, "Possible unsafe assignment to non-final static field 'counter' in a constructor."],
+["c/Scopes.java", "AssignmentToNonFinalStatic", 22, 101, "Possible unsafe assignment to non-final static field 'counter' in a constructor."],
+["c/Scopes.java", "AssignmentToNonFinalStatic", 26, 9, "Possible unsafe assignment to non-final static field 'counter' in a constructor."],
+["c/Scopes.java", "MissingOverride", 6, 19, "The method 'clone()' is missing an @Override annotation."],
+["c/Scopes.java", "UnusedLocalVariable", 21, 16, "Avoid unused local variables such as 'o'."],
+["c/Scopes.java", "UnusedLocalVariable", 22, 35, "Avoid unused local variables such as 'counter'."],
+["c/Scopes.java", "UnusedLocalVariable", 25, 13, "Avoid unused local variables such as 'y'."],
+["c/Scopes.java", "UnusedLocalVariable", 29, 13, "Avoid unused local variables such as 'a'."],
+["c/Scopes.java", "UnusedLocalVariable", 31, 18, "Avoid unused local variables such as 'r'."],
 ["c/StaticLabel.java", "MissingOverride", 10, 19, "The method 'label()' is missing an @Override annotation."],
 ["junit/framework/TestCase.java", "AbstractClassWithoutAbstractMethod", 3, 17, "This abstract class does not have any abstract methods"]
 ]

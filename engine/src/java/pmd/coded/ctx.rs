@@ -20,7 +20,7 @@ pub struct Ctx<'m, 'a, 't> {
     pub usages: &'m OnceCell<Usages>,
 }
 
-const BOUNDARIES: &[&str] = &["LambdaExpression", "AnonymousClassDeclaration"];
+const BOUNDARIES: &[&str] = &["LambdaExpression", "AnonymousClassDeclaration", "LocalClassStatement"];
 pub const TYPE_DECLARATIONS: &[&str] = &[
     "ClassDeclaration",
     "EnumDeclaration",
