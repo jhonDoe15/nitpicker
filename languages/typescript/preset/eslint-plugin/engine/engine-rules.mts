@@ -43,9 +43,13 @@ export type EngineRule = {
 };
 
 export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<string, EngineRule>([
+  ['exhaustive-union-predicate', { needs: 'types' }],
   ['hover-test-needs-keyboard', {}],
+  ['no-accumulator-concat', { needs: 'types' }],
   ['no-add-only-collection', {}],
   ['no-array-spread-arguments', { needs: 'types' }],
+  ['no-blank-number-coercion', { needs: 'types' }],
+  ['no-chunkwise-stream-text', { needs: 'types' }],
   [
     'no-copied-constant',
     {
@@ -57,6 +61,8 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
     },
   ],
   ['no-dropped-delegate-result', { needs: 'types' }],
+  ['no-empty-every-signal', { needs: 'types' }],
+  ['no-expanding-replacement-string', { needs: 'types' }],
   ['no-external-executables-in-unit-tests', {}],
   [
     'no-internal-module-mocks',
@@ -70,7 +76,10 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ['no-falsy-default', { needs: 'types' }],
   ['no-forwarding-method-alias', { needs: 'types' }],
   ['no-forwarding-wrapper', { needs: 'types' }],
+  ['no-in-presence-check', { needs: 'types' }],
   ['no-listen-on-all-interfaces', {}],
+  ['no-local-time-zone', { needs: 'types' }],
+  ['no-lookup-as-presence', { needs: 'types' }],
   ['no-mutating-method-in-domain', { needs: 'types' }],
   ['no-parameter-mutation', { needs: 'types' }],
   [
@@ -86,6 +95,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
   ],
   ['no-shadowed-spread-key', { needs: 'types' }],
   ['no-silent-catch', {}],
+  ['no-string-as-regex', { needs: 'types' }],
   ['no-swapped-arguments', { needs: 'types' }],
   [
     'no-unhandled-void-promise',
@@ -96,6 +106,7 @@ export const ENGINE_PLUGIN_RULES: ReadonlyMap<string, EngineRule> = new Map<stri
       }),
     },
   ],
+  ['no-union-order-dependence', { needs: 'types' }],
   ['no-wait-for-with-fake-timers', {}],
   [
     'preserve-error-cause',
