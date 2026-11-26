@@ -46,7 +46,7 @@ fn rules_name_only_node_types_pmd_has() {
     let mut checked = 0;
     for file in files {
         let text = std::fs::read_to_string(&file).expect("rules");
-        if !text.contains("XPathRule") {
+        if !text.contains("pmd.sourceforge.net/ruleset") {
             continue;
         }
         for query in queries(&text) {
