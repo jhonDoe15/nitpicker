@@ -2326,12 +2326,6 @@
     },
     {
       "tool": "pmd",
-      "rule": "CloseResource",
-      "path": "src/main/java/probe/Q1Concurrency.java",
-      "line": 26
-    },
-    {
-      "tool": "pmd",
       "rule": "LocalExecutorNeverShutDown",
       "path": "src/main/java/probe/Q1Concurrency.java",
       "line": 26

@@ -23,7 +23,7 @@ export type ResolvedRuleset = {
 };
 export type RulesetReader = (reference: string) => string;
 
-const SHIPPED_PREFIX = 'category/';
+const SHIPPED_PREFIXES = ['category/', 'rulesets/'];
 const WHOLE_RULESET = /\.xml$/u;
 const ONE_RULE = /^(?<file>.+\.xml)\/(?<rule>[^/]+)$/u;
 
@@ -33,7 +33,7 @@ export function rulesetReader(pmdJar: string): RulesetReader {
     if (path.isAbsolute(reference) && existsSync(reference)) {
       return readFileSync(reference, 'utf8');
     }
-    if (!reference.startsWith(SHIPPED_PREFIX)) {
+    if (!SHIPPED_PREFIXES.some((prefix) => reference.startsWith(prefix))) {
       throw new Error(`cannot tell where the PMD ruleset ${reference} is`);
     }
     jar.zip ??= readZip(pmdJar);

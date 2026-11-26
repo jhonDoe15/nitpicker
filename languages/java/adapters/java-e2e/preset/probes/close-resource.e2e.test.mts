@@ -24,6 +24,6 @@ describe.skipIf(!enabled)('Closeables held in a local variable', () => {
     ).sort();
 
     expect(reportedProbeLines(probe.findings, 'main', RULES).sort()).toEqual(marked);
-    expect(marked).toHaveLength(8);
+    expect(marked).toHaveLength(7);
   });
 });

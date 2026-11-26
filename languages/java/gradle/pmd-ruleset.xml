@@ -28,7 +28,7 @@
   <rule ref="category/java/errorprone.xml/CloseResource">
     <properties>
       <property name="allowedResourceTypes"
-                value="java.io.ByteArrayOutputStream,java.io.ByteArrayInputStream,java.io.StringWriter,java.io.CharArrayWriter,java.io.StringReader,java.io.CharArrayReader,java.util.stream.Stream,java.util.stream.IntStream,java.util.stream.LongStream,java.util.stream.DoubleStream"/>
+                value="java.io.ByteArrayOutputStream,java.io.ByteArrayInputStream,java.io.StringWriter,java.io.CharArrayWriter,java.io.StringReader,java.io.CharArrayReader,java.util.stream.Stream,java.util.stream.IntStream,java.util.stream.LongStream,java.util.stream.DoubleStream,java.util.concurrent.ExecutorService,java.util.concurrent.ScheduledExecutorService,java.util.concurrent.ThreadPoolExecutor,java.util.concurrent.ScheduledThreadPoolExecutor,java.util.concurrent.ForkJoinPool"/>
       <property name="violationSuppressXPath">
         <value><![CDATA[
 let $name := string(@Name),
