@@ -1,7 +1,7 @@
 //! Ports of PMD's design, code style and multithreading rules written in Java.
 pub mod arrays;
 pub mod paths;
-mod style;
+pub mod style;
 mod threads;
 pub mod varargs;
 
