@@ -9,7 +9,7 @@ function identifiersIn(node: TSESTree.Node): TSESTree.Identifier[] {
     (inner): inner is TSESTree.Identifier =>
       inner.type === AST_NODE_TYPES.Identifier &&
       !(
-        inner.parent?.type === AST_NODE_TYPES.MemberExpression &&
+        inner.parent.type === AST_NODE_TYPES.MemberExpression &&
         inner.parent.property === inner &&
         !inner.parent.computed
       ),
@@ -40,7 +40,9 @@ function passNames(repeat: Repeat): Set<string> {
     node.type === AST_NODE_TYPES.ArrowFunctionExpression ||
     node.type === AST_NODE_TYPES.FunctionExpression
   ) {
-    heads.push(...node.params);
+    for (const param of node.params) {
+      heads.push(param);
+    }
   }
   return new Set(heads.flatMap((head) => identifiersIn(head).map(({ name }) => name)));
 }
@@ -60,7 +62,7 @@ function dependsOnPass(args: readonly TSESTree.Node[], names: ReadonlySet<string
 function escapes(reference: TSESLint.Scope.Reference): boolean {
   const { identifier } = reference;
   const { parent } = identifier;
-  return !(parent?.type === AST_NODE_TYPES.MemberExpression && parent.object === identifier);
+  return !(parent.type === AST_NODE_TYPES.MemberExpression && parent.object === identifier);
 }
 
 function perPass(context: SourceContext, node: TSESTree.NewExpression): boolean {
@@ -79,9 +81,9 @@ function perPass(context: SourceContext, node: TSESTree.NewExpression): boolean 
     return false;
   }
   const variable = findVariable(context, parent.id, parent.id.name);
-  return (
-    !dependsOnPass(node.arguments, passNames(repeat)) &&
-    !(variable?.references ?? []).some(
+  return !(
+    dependsOnPass(node.arguments, passNames(repeat)) ||
+    (variable?.references ?? []).some(
       (reference) => reference.identifier !== parent.id && escapes(reference),
     )
   );

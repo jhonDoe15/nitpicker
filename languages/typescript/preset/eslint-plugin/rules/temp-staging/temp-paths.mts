@@ -1,6 +1,6 @@
 import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 import { resolveConstant, type SourceContext } from '../analysis/constant-resolution.mts';
-import { nameOf } from '../typed/node-views.mts';
+import { compositeOperands, nameOf } from '../typed/node-views.mts';
 import { calleeNameOf, enclosingFunction } from '../typed/syntax-views.mts';
 
 const MAX_DEPTH = 8;
@@ -13,23 +13,31 @@ export function nameOfCall(node: TSESTree.Node): string {
 
 type Pending = { readonly node: TSESTree.Node; readonly depth: number };
 
-export function* resolvedValues(
-  context: SourceContext,
-  node: TSESTree.Node,
-  operandsOf: (value: TSESTree.Node) => readonly TSESTree.Node[],
-  maxDepth: number,
-): Generator<TSESTree.Node> {
-  const pending: Pending[] = [{ node, depth: 0 }];
+interface ResolveOptions {
+  readonly context: SourceContext;
+  readonly node: TSESTree.Node;
+  readonly operandsOf: (value: TSESTree.Node) => readonly TSESTree.Node[];
+  readonly maxDepth: number;
+}
+
+function resolvedAt(options: ResolveOptions, pending: Pending): TSESTree.Node | undefined {
+  return pending.depth > options.maxDepth
+    ? undefined
+    : resolveConstant(options.context, pending.node, pending.depth);
+}
+
+export function* resolvedValues(options: ResolveOptions): Generator<TSESTree.Node> {
+  const pending: Pending[] = [{ node: options.node, depth: 0 }];
   const seen = new Set<TSESTree.Node>();
-  for (const { node: current, depth } of pending) {
-    const value =
-      depth > maxDepth || seen.has(current) ? undefined : resolveConstant(context, current, depth);
-    seen.add(current);
-    if (value !== undefined) {
-      yield value;
-      for (const part of operandsOf(value)) {
-        pending.push({ node: part, depth: depth + 1 });
-      }
+  for (const item of pending) {
+    const value = seen.has(item.node) ? undefined : resolvedAt(options, item);
+    seen.add(item.node);
+    if (value === undefined) {
+      continue;
+    }
+    yield value;
+    for (const part of options.operandsOf(value)) {
+      pending.push({ node: part, depth: item.depth + 1 });
     }
   }
 }
@@ -38,11 +46,9 @@ function tempOperands(value: TSESTree.Node): readonly TSESTree.Node[] {
   if (value.type === AST_NODE_TYPES.AwaitExpression) {
     return [value.argument];
   }
-  if (value.type === AST_NODE_TYPES.TemplateLiteral) {
-    return value.expressions;
-  }
-  if (value.type === AST_NODE_TYPES.BinaryExpression) {
-    return [value.left, value.right];
+  const composite = compositeOperands(value);
+  if (composite !== undefined) {
+    return composite;
   }
   if (value.type === AST_NODE_TYPES.ConditionalExpression) {
     return [value.consequent, value.alternate];
@@ -58,7 +64,9 @@ function createsTemp(value: TSESTree.Node): boolean {
 }
 
 export function inTemp(context: SourceContext, node: TSESTree.Node): boolean {
-  return [...resolvedValues(context, node, tempOperands, MAX_DEPTH)].some(createsTemp);
+  return [...resolvedValues({ context, node, operandsOf: tempOperands, maxDepth: MAX_DEPTH })].some(
+    createsTemp,
+  );
 }
 
 export function scopeOf(node: TSESTree.Node, program: TSESTree.Node): TSESTree.Node {

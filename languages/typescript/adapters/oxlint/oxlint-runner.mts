@@ -162,6 +162,19 @@ async function lintUntilAccepted({
   throw new Error('oxlint rejected the lint configuration too many times');
 }
 
+function namingOf(
+  plan: OxlintPlan,
+  ruleNames: Translation['ruleNames'],
+  neutralized: AttemptContext['neutralized'],
+) {
+  return {
+    ruleNames,
+    messageIdOf: messageIdResolver(plan.ruleMessages),
+    ruleMessages: plan.ruleMessages,
+    neutralized,
+  };
+}
+
 async function lintAttempt({
   plan,
   stage,
@@ -192,12 +205,7 @@ async function lintAttempt({
     bridgeRejectedRules(error, translation.ruleNames, bridgedRules);
     return { results: undefined };
   }
-  const naming = {
-    ruleNames: translation.ruleNames,
-    messageIdOf: messageIdResolver(plan.ruleMessages),
-    ruleMessages: plan.ruleMessages,
-    neutralized,
-  };
+  const naming = namingOf(plan, translation.ruleNames, neutralized);
   return lintBesideResidual({
     residual: () =>
       residualRun(residualRuns, translation.residual, () =>

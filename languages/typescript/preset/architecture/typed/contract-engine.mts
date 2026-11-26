@@ -21,6 +21,17 @@ function unusedMethodOf(value: unknown): UnusedMethod {
   };
 }
 
+type WriteOutcome = { readonly kind: 'written' } | { readonly kind: 'unwritable' };
+
+function writeTranslated(file: string, text: string): WriteOutcome {
+  try {
+    writeFileSync(file, text);
+    return { kind: 'written' };
+  } catch {
+    return { kind: 'unwritable' };
+  }
+}
+
 function withTypescript7Config<T>(configPath: string, run: (project: string) => T): T {
   const overrides = typescript7Overrides(configPath);
   if (overrides === undefined) {
@@ -30,18 +41,17 @@ function withTypescript7Config<T>(configPath: string, run: (project: string) => 
     path.dirname(configPath),
     `.nitpicker-typescript7-${String(process.pid)}.tsconfig.json`,
   );
-  try {
-    writeFileSync(
-      translated,
-      JSON.stringify({
-        extends: `./${path.basename(configPath)}`,
-        compilerOptions: {
-          ...overrides.set,
-          ...Object.fromEntries(overrides.unset.map((option) => [option, null])),
-        },
-      }),
-    );
-  } catch {
+  const written = writeTranslated(
+    translated,
+    JSON.stringify({
+      extends: `./${path.basename(configPath)}`,
+      compilerOptions: {
+        ...overrides.set,
+        ...Object.fromEntries(overrides.unset.map((option) => [option, null])),
+      },
+    }),
+  );
+  if (written.kind === 'unwritable') {
     return run(configPath);
   }
   try {

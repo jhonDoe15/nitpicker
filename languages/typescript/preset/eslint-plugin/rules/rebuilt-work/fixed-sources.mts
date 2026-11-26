@@ -21,7 +21,7 @@ const MUTATORS = new Set([
 const VIEWS = new Set(['values', 'keys', 'entries']);
 const MODULE_SCOPES = new Set(['module', 'global']);
 
-function writtenOut(value: TSESTree.Node | null | undefined): boolean {
+function writtenOut(value: TSESTree.Node | undefined): boolean {
   if (
     value?.type === AST_NODE_TYPES.ArrayExpression ||
     value?.type === AST_NODE_TYPES.ObjectExpression
@@ -103,7 +103,7 @@ function fixedField(member: TSESTree.MemberExpression): boolean {
   if (
     owner === undefined ||
     declared?.type !== AST_NODE_TYPES.PropertyDefinition ||
-    writtenOut(declared.value)
+    writtenOut(declared.value ?? undefined)
   ) {
     return false;
   }
@@ -127,7 +127,7 @@ function fixedModuleValue(context: SourceContext, node: TSESTree.Identifier): bo
     definition.parent?.type === AST_NODE_TYPES.VariableDeclaration &&
     definition.parent.kind === 'const' &&
     !isExported(definition.node) &&
-    !writtenOut(definition.node.init) &&
+    !writtenOut(definition.node.init ?? undefined) &&
     !variable.references.some((reference) => changes(reference.identifier))
   );
 }

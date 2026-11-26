@@ -1,5 +1,6 @@
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
+import { ancestorDirectories } from '../../../../../../shared/filesystem.mts';
 import { fieldOf, fieldsOf } from '../../../../../../shared/values/readers.mts';
 import { parseJsonText, readFileText } from '../../fixes/support/project/read-file.mts';
 
@@ -106,19 +107,8 @@ function loadFields(packageDirectory: string): GrammarFields | undefined {
   return merge(parsed);
 }
 
-export function directoriesUp(start: string): string[] {
-  const chain = [start];
-  for (const current of chain) {
-    const parent = path.dirname(current);
-    if (parent !== current) {
-      chain.push(parent);
-    }
-  }
-  return chain;
-}
-
 export function grammarFieldsOf(directory: string, packageName: string): GrammarFields | undefined {
-  for (const base of directoriesUp(directory)) {
+  for (const base of ancestorDirectories(directory)) {
     const fields = loadFields(path.join(base, 'node_modules', packageName));
     if (fields !== undefined) {
       return fields;
@@ -138,7 +128,7 @@ function packagesOfManifest(file: string): string[] | undefined {
 }
 
 export function projectGrammarPackages(directory: string): string[] {
-  for (const base of directoriesUp(directory)) {
+  for (const base of ancestorDirectories(directory)) {
     const file = path.join(base, 'package.json');
     const grammars = existsSync(file) ? packagesOfManifest(file) : undefined;
     if (grammars !== undefined) {

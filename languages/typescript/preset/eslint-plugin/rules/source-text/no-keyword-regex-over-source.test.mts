@@ -59,8 +59,6 @@ tester.run('no-keyword-regex-over-source', rule, {
       "async function f() { const text = await readFile('a.ts', 'utf8'); return [...text.matchAll(/\\brequire\\(/g)]; }",
     ),
     invalid('function f(source) { const re = /\\b(?:case|default)\\b/g; return re.exec(source); }'),
-    invalid(
-      `readFileSync(\`\${dir}/Main.java\`, 'utf8').toString().search(/\\bclass\\s+\\w+/);`,
-    ),
+    invalid(`readFileSync(\`\${dir}/Main.java\`, 'utf8').toString().search(/\\bclass\\s+\\w+/);`),
   ],
 });
