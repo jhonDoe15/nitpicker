@@ -755,6 +755,22 @@ On the six comparison code bases, SARIF results, same / missed / extra: commons-
 Guava 41 / 0 / 0, jackson-databind 42 / 0 / 0, javaparser-core 2 / 0 / 0, Nacos 82 / 0 / 0. `SerializableIdiom`
 still runs in SpotBugs for its other patterns.
 
+### Method patterns
+
+HSM_HIDING_METHOD (#2263, `src/java/spotbugs/methods/hiding.rs`, labs in `tests/fixtures/spotbugs/hiding*`): a
+static method that is not private hides a static, not private method of a superclass with the same name and the
+same erased descriptor, return type included. Each superclass in the chain that declares one gives its own finding,
+library classes too (`Thread.currentThread()`); a package-private method of a superclass in another package counts.
+`main(String[])` is skipped (`main(int)` is not); static methods of interfaces and private methods are not hidden.
+Priority 2, level `error`, line = the method's first line, arguments the signature with simple parameter types,
+the simple binary name of the class (`N1`, `1L` for a local class, `1` for an anonymous one) and of the
+superclass. The SARIF name drops the package only when the superclass is in the class's own package (`B.f()`, but
+`p.T.currentThread()`). The engine writes the place as `function:p.B.f()@p.A` so nitpicker can tell. Every
+pattern of `FindHiddenMethod` is on the engine, so SpotBugs no longer runs that detector.
+
+On the six comparison code bases, SARIF results, same / missed / extra: jackson-databind 1 / 0 / 0, Guava
+8 / 0 / 0, the others 0.
+
 ## Names the compiler makes up
 
 SpotBugs reads class files, so a finding inside a lambda or an anonymous class names a method that is not in

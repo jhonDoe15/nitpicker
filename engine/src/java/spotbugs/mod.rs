@@ -12,6 +12,7 @@ mod flow;
 mod folds;
 mod known;
 mod lombok;
+mod methods;
 mod mutable;
 mod names;
 mod nulls;
@@ -198,6 +199,7 @@ const DETECTORS: &[Detector] = &[
     constructors::constructor_throw as Detector,
     statements::statements as Detector,
     classes::class_shape as Detector,
+    methods::methods as Detector,
 ];
 
 #[derive(Default)]

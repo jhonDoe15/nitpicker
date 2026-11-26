@@ -3,6 +3,7 @@ export type Placed = {
   readonly levels: Readonly<Record<number, string>>;
   readonly classNamed?: readonly number[];
   readonly byArguments?: boolean;
+  readonly relative?: boolean;
 };
 
 const ERROR = 'error';
@@ -96,5 +97,10 @@ export const PLACED: Readonly<Record<string, Placed>> = {
   BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS: {
     text: 'Equals method should not assume anything about the type of its argument',
     levels: { 2: 'note' },
+  },
+  HSM_HIDING_METHOD: {
+    text: 'Method hiding should be avoided.',
+    levels: { 2: ERROR },
+    relative: true,
   },
 };

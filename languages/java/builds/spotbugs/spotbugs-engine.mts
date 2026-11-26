@@ -59,6 +59,7 @@ export const ON_ENGINE: readonly string[] = [
   'BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS',
   'SE_BAD_FIELD',
   'SE_NO_SERIALVERSIONID',
+  'HSM_HIDING_METHOD',
 ];
 const LOMBOK_WRITES = 'SING_';
 const DETECTORS: Readonly<Record<string, readonly string[]>> = {
@@ -72,6 +73,7 @@ const DETECTORS: Readonly<Record<string, readonly string[]>> = {
   ],
   CloneIdiom: ['CN_IDIOM', 'CN_IDIOM_NO_SUPER_CALL', 'CN_IMPLEMENTS_CLONE_BUT_NOT_CLONEABLE'],
   ConstructorThrow: ['CT_CONSTRUCTOR_THROW'],
+  FindHiddenMethod: ['HSM_HIDING_METHOD'],
   DontCatchNullPointerException: ['DCN_NULLPOINTER_EXCEPTION'],
   WrongMapIterator: [WRONG_MAP_ITERATOR],
   FindJSR166LockMonitorenter: [
