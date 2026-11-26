@@ -18,7 +18,11 @@ function settle(): Promise<void> {
 }
 
 afterEach(async () => {
-  await Promise.all(brokers.splice(0).map((started) => started.close()));
+  const closed = await Promise.allSettled(brokers.splice(0).map((started) => started.close()));
+  const failure = closed.find((result) => result.status === 'rejected');
+  if (failure !== undefined) {
+    throw new Error('A memory broker did not close', { cause: failure.reason });
+  }
 });
 
 describe('memory broker', () => {
@@ -29,15 +33,16 @@ describe('memory broker', () => {
     const granted: string[] = [];
 
     const releaseFirst = await first.acquire(700);
-    void second.acquire(600).then((release) => {
+    async function acquireSecond(): Promise<void> {
+      await second.acquire(600);
       granted.push('second');
-      return release;
-    });
+    }
+    const secondGranted = acquireSecond();
     await settle();
     expect(granted).toEqual([]);
 
     releaseFirst();
-    await settle();
+    await secondGranted;
     expect(granted).toEqual(['second']);
   });
 

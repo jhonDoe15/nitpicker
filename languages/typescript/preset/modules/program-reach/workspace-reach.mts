@@ -18,8 +18,8 @@ function manifestOf(directory: string): unknown {
   }
   try {
     return parseJson(readFileSync(file, 'utf8'));
-  } catch {
-    return undefined;
+  } catch (error) {
+    return { unreadable: String(error) };
   }
 }
 
@@ -50,7 +50,11 @@ function isDependencyCopy(directory: string): boolean {
 
 function installedFolder(name: string, from: string): string | undefined {
   for (const ancestor of ancestorDirectories(from)) {
-    const candidate = path.join(ancestor, DEPENDENCY_FOLDER, name);
+    const folder = path.resolve(ancestor, DEPENDENCY_FOLDER);
+    const candidate = path.resolve(folder, name);
+    if (!candidate.startsWith(folder + path.sep)) {
+      return undefined;
+    }
     if (existsSync(candidate)) {
       return realpathSync(candidate);
     }
@@ -58,35 +62,35 @@ function installedFolder(name: string, from: string): string | undefined {
   return undefined;
 }
 
+type Walk = { readonly start: string; readonly repository: string | undefined };
+
+function dependencyFolders(folder: string, { start, repository }: Walk): string[] {
+  const fields = folder === start ? PROJECT_DEPENDENCY_FIELDS : LIBRARY_DEPENDENCY_FIELDS;
+  return dependencyNames(folder, fields).flatMap((name) => {
+    const dependency = installedFolder(name, folder);
+    return dependency !== undefined && isWorkspaceFolder(dependency, start, repository)
+      ? [dependency]
+      : [];
+  });
+}
+
 export function workspaceDependencyFolders(projectRoot: string): string[] {
   const start = resolvedFolder(path.resolve(projectRoot));
-  const repository = repositoryOf(start);
+  const walk = { start, repository: repositoryOf(start) };
   const reached = new Set([start]);
   for (const folder of reached) {
-    const fields = folder === start ? PROJECT_DEPENDENCY_FIELDS : LIBRARY_DEPENDENCY_FIELDS;
-    for (const name of dependencyNames(folder, fields)) {
-      const dependency = installedFolder(name, folder);
-      if (dependency !== undefined && isWorkspaceFolder(dependency, start, repository)) {
-        reached.add(dependency);
-      }
+    for (const dependency of dependencyFolders(folder, walk)) {
+      reached.add(dependency);
     }
   }
   return [...reached];
 }
 
-const reachedRoots = new Map<string, readonly string[]>();
-
-export function programReachRoots(projectRoot: string): readonly string[] {
-  const known = reachedRoots.get(projectRoot);
-  if (known !== undefined) {
-    return known;
-  }
-  const roots = outermost([
+export function programReachRoots(projectRoot: string): string[] {
+  return outermost([
     ...typecheckProgramRoots(projectRoot).map(resolvedFolder),
     ...workspaceDependencyFolders(projectRoot),
   ]);
-  reachedRoots.set(projectRoot, roots);
-  return roots;
 }
 
 export function holdsProgram(projectRoot: string): boolean {

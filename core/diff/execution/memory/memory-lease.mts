@@ -13,7 +13,9 @@ type Connection = {
   readonly waiting: Map<number, () => void>;
 };
 
-const unlimited: Release = () => undefined;
+function unlimited(): void {
+  return undefined;
+}
 
 function settleWaiting(connection: Connection): void {
   const { socket, waiting } = connection;
