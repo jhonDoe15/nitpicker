@@ -116,6 +116,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A concurrent map is not checked and then used again for the same key (`containsKey` then `put` or `get`,
   `get(k) == null` then `put`): use `computeIfAbsent`, `putIfAbsent`, `getOrDefault`, or read once into a local
   (`pmd/ConcurrentMapCheckThenAct`).
+- An atomic field is updated with one atomic call (`incrementAndGet`, `updateAndGet`, `accumulateAndGet`), and a
+  check then act on an atomic flag is `if (flag.compareAndSet(false, true))`, never `x.set(f(x.get()))` or
+  `if (!flag.get()) { flag.set(true); ... }` (`pmd/AtomicGetThenSet`).
 - A `static` field or a singleton bean's field does not hold a `SimpleDateFormat`, `DecimalFormat`, `Calendar`,
   `Matcher`, `Cipher`, `Mac`, `BeanWrapper` or retry back-off: use `DateTimeFormatter`, a `Pattern` constant with
   `pattern.matcher(text)` per call, a per-call instance or a `ThreadLocal` (`pmd/SharedStatefulHelperField`).

@@ -3,6 +3,7 @@
   "pmd/AnnotationAttributeNotResolved": ["bug", "spring"],
   "pmd/AssertNotNullWrongCheck": ["bug", "spring"],
   "pmd/AssignmentInOperand": ["maintainability"],
+  "pmd/AtomicGetThenSet": ["bug", "async"],
   "pmd/AvoidAssertAsIdentifier": ["style"],
   "pmd/AvoidCatchingGenericException": ["reliability"],
   "pmd/AvoidCatchingNPE": ["reliability"],

@@ -1,0 +1,6 @@
+[
+["atomics/Backoff.java", "AtomicGetThenSet", 15, 5],
+["atomics/Backoff.java", "AtomicGetThenSet", 19, 5],
+["atomics/Backoff.java", "AtomicGetThenSet", 24, 7],
+["atomics/Backoff.java", "AvoidSynchronizedAtMethodLevel", 56, 28]
+]

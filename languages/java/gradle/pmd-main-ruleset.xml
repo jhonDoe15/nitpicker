@@ -148,6 +148,45 @@ return
       </property>
     </properties>
   </rule>
+  <rule name="AtomicGetThenSet" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This atomic field is read with get() and then written with set() in two steps: x.set(f(x.get())), or a check of !flag.get() whose block calls flag.set(true). Each call is atomic, the pair is not, so another thread can write between them: an update is lost, or two threads both pass the check and both run the block. Use one atomic call: incrementAndGet, addAndGet, updateAndGet(v -&gt; f(v)) or accumulateAndGet for an update, and a check of flag.compareAndSet(false, true) for a check then act. An exception fits a field that only one thread writes.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $atomics := ('java.util.concurrent.atomic.AtomicInteger', 'java.util.concurrent.atomic.AtomicLong',
+                 'java.util.concurrent.atomic.AtomicBoolean', 'java.util.concurrent.atomic.AtomicReference'),
+    $field := function($r) {
+      $r[self::VariableAccess or self::FieldAccess[*[1][self::ThisExpression[not(*)]]]]
+        [some $t in $atomics satisfies pmd-java:typeIs($t)]
+    },
+    $local := function($call, $n) {
+      exists($call/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::LambdaExpression]
+               //VariableId[@Name = $n][not(parent::VariableDeclarator/parent::FieldDeclaration)])
+    },
+    $guarded := function($n) {
+      exists($n/ancestor::SynchronizedStatement)
+        or exists($n/ancestor::MethodDeclaration[1][pmd-java:modifiers() = 'synchronized'
+             or .//MethodCall[@MethodName = ('lock', 'lockInterruptibly', 'tryLock')]])
+    },
+    $reads := function($g, $n) {
+      exists($g[@MethodName = 'get'][ArgumentList/@Size = 0][*[1][@Name = $n][exists($field(.))]])
+    }
+return
+//MethodCall[@MethodName = 'set'][ArgumentList/@Size = 1][exists($field(*[1]))]
+  [not($guarded(.))]
+  [let $n := string(*[1]/@Name)
+   return ancestor::ClassBody[1]/FieldDeclaration/VariableDeclarator/VariableId[@Name = $n]
+     and not($local(., $n))
+     and ((some $g in ArgumentList//MethodCall satisfies $reads($g, $n))
+          or (ArgumentList/BooleanLiteral
+              and parent::ExpressionStatement/parent::Block[count(*) > 1]/parent::IfStatement
+                    [*[1][self::MethodCall[$reads(., $n)]
+                          or self::UnaryExpression[@Operator = '!']/MethodCall[$reads(., $n)]]]))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="BlockingInCompletionStage" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Hand the wait to an executor or compose instead of blocking: use the Async variant with an executor (source.thenAcceptAsync(value -&gt; save(value), executor)), return the next stage from thenCompose instead of calling join() on it, or read an already completed future with getNow(null). A stage without the Async suffix runs on the thread that completes its source future, often a Netty I/O thread or a client callback thread, so a get(), join(), await(), take() or sleep() here stalls every other task queued on that thread and can deadlock when the awaited work needs the same thread. An exception fits when the source always completes on a pool made for blocking work.">
     <priority>3</priority>
