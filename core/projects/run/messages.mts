@@ -205,3 +205,17 @@ export function submoduleHint(folders: readonly string[]): string[] {
       `not check: run nitpicker inside ${one ? 'it' : 'each'} to gate ${one ? 'its' : 'their'} own changes.`,
   ];
 }
+
+export function derivedLayoutHint(
+  projects: readonly { readonly path: string; readonly derivedSourceRoots?: readonly string[] }[],
+): string[] {
+  const derived = projects.flatMap(({ path: folder, derivedSourceRoots }) =>
+    derivedSourceRoots === undefined ? [] : [`${folder} (${JSON.stringify(derivedSourceRoots)})`],
+  );
+  return derived.length === 0
+    ? []
+    : [
+        `No src folder in ${derived.join(', ')}, so their source roots come from tsconfig.json, ` +
+          'package.json or the package root. Set "layout.sourceRoots" in each project config to pin them.',
+      ];
+}
