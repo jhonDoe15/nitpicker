@@ -170,9 +170,10 @@
       "rule": "nitpicker/no-module-level-mutable-state",
       "paths": [
         "languages/typescript/preset/eslint-plugin/replay/engine-replay.mts",
-        "shared/engine/engine-findings-file.mts"
+        "shared/engine/engine-findings-file.mts",
+        "shared/project-files/seeded/seeded-trees.mts"
       ],
-      "reason": "Deliberate per-process singleton: the ESLint config entry point names the engine's findings file once for the lint process, and the rule objects, which ESLint creates per file with no way to hand them a value, read it from here."
+      "reason": "Deliberate per-process singleton: the ESLint config entry point names a file once for the lint process (the engine's findings, or the lint stage's file listing), and the rule objects, which ESLint and oxlint create with no way to hand them a value, read it from here."
     },
     {
       "rule": "nitpicker/no-process-access-outside-composition-root",

@@ -7,14 +7,16 @@ import { hasRepositoryMarker } from '../tree-walk.mts';
 
 export const SEEDED_TREE_VARIABLE = 'NITPICKER_PROJECT_FILES_TREE';
 
-type Seeded = { readonly file: string; readonly top: string; readonly tree: TreeListing };
+type Seeded = { readonly top: string; readonly tree: TreeListing };
 
-const loaded: { seeded?: Seeded | undefined } = {};
+const source: { file: string | undefined; seeded: Seeded | undefined } = {
+  file: undefined,
+  seeded: undefined,
+};
 
 function readSeed(file: string): Seeded {
   const value = parseJson(readFileSync(file, 'utf8'));
   return {
-    file,
     top: textOf(fieldOf(value, 'top')),
     tree: {
       files: textsOf(fieldOf(value, 'files')),
@@ -25,18 +27,17 @@ function readSeed(file: string): Seeded {
   };
 }
 
-export function seededTree(
-  top: string,
-  environment: Readonly<Record<string, string | undefined>> = process.env,
-): TreeListing | undefined {
-  const file = environment[SEEDED_TREE_VARIABLE];
-  if (file === undefined || file.length === 0) {
+export function seedTreesFrom(file: string | undefined): void {
+  source.file = file;
+  source.seeded = undefined;
+}
+
+export function seededTree(top: string): TreeListing | undefined {
+  if (source.file === undefined) {
     return undefined;
   }
-  if (loaded.seeded?.file !== file) {
-    loaded.seeded = readSeed(file);
-  }
-  return loaded.seeded.top === top ? loaded.seeded.tree : undefined;
+  source.seeded ??= readSeed(source.file);
+  return source.seeded.top === top ? source.seeded.tree : undefined;
 }
 
 export function seedRepositoryTree(directory: string, file: string): Record<string, string> {

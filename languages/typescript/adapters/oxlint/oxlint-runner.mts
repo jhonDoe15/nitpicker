@@ -1,5 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { trackTemporaryPath, untrackTemporaryPath } from '../typed/tooling.mts';
@@ -9,13 +8,13 @@ import {
   type LintResult,
   type NativeRules,
   type OxlintPlan,
-  type ResidualGroup,
   type Translation,
-  lintResultsOf,
   planOf,
 } from './plan/oxlint-shapes.mts';
 import { withEngineLint } from './run/engine-pass.mts';
 import { mergeResults } from './run/merged-results.mts';
+import { residualResults, residualRun } from './run/residual-run.mts';
+import { withTreeFile } from './stage/tree-file.mts';
 import { type LintTiming, type StageRun, lintConfigs, settledBeside } from './run/stage-lint.mts';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mts';
 import { seedRepositoryTree } from '../../../../shared/project-files/seeded/seeded-trees.mts';
@@ -62,58 +61,71 @@ type Outcome = Accepted | { readonly results: undefined };
 const PLAN_PATH = fileURLToPath(checkoutModuleUrl(new URL('oxlint-plan.mjs', import.meta.url)));
 const MAX_CONFIGURATION_ATTEMPTS = 20;
 
-export async function lintWithOxlint({
-  options,
-  environment,
-  projectConfigPath,
-  runEslintCli,
-}: {
+type StagedLint = {
   readonly options: LintEngineOptions;
   readonly environment: Environment;
   readonly projectConfigPath: string | undefined;
   readonly runEslintCli: RunEslintCli;
-}): Promise<LintResult[]> {
+};
+
+export async function lintWithOxlint(request: StagedLint): Promise<LintResult[]> {
+  const { options, environment, projectConfigPath } = request;
   const plan = planFor(options, environment);
   const files = plan.groups.flatMap((group) => group.files);
   const { root, stage } = createStage(options.projectRoot, projectConfigPath);
   trackTemporaryPath(root);
-  const treeRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-tree-'));
-  trackTemporaryPath(treeRoot);
   try {
     if (projectConfigPath !== undefined) {
       hideNestedTypeScriptConfigs(stage, options.projectRoot, files);
     }
-    const inlineConfig = neutralizeInlineConfig(stage, options.projectRoot, plan.noInlineConfig);
-    const directiveFiles = directiveFilesOf(options.projectRoot, files, plan.noInlineConfig);
-    const { projectRoot, timeoutMs } = options;
-    const { results, residual } = await withEngineLint(
-      { plan, projectRoot, environment, timeoutMs },
-      (engineEnvironment) =>
-        lintUntilAccepted({
-          plan,
-          stage,
-          projectRoot,
-          runEslintCli,
-          environment: engineEnvironment,
-          timeoutMs,
-          neutralized: new Map([
-            ...inlineConfig.neutralized,
-            ...oxlintDirectiveLocations(directiveFiles),
-          ]),
-          directiveFiles,
-          treeFile: path.join(treeRoot, 'tree.json'),
-        }),
+    return await withTreeFile((treeFile) =>
+      lintStage({ ...request, plan, files, stage, treeFile }),
     );
-    return mergeResults([...results, ...inlineConfig.results, ...residual]).map((result) => ({
-      ...result,
-      filePath: path.join(options.projectRoot, result.filePath),
-    }));
   } finally {
-    for (const temporary of [root, treeRoot]) {
-      rmSync(temporary, { recursive: true, force: true });
-      untrackTemporaryPath(temporary);
-    }
+    rmSync(root, { recursive: true, force: true });
+    untrackTemporaryPath(root);
   }
+}
+
+async function lintStage({
+  options,
+  environment,
+  runEslintCli,
+  plan,
+  files,
+  stage,
+  treeFile,
+}: StagedLint & {
+  readonly plan: OxlintPlan;
+  readonly files: readonly string[];
+  readonly stage: string;
+  readonly treeFile: string;
+}): Promise<LintResult[]> {
+  const inlineConfig = neutralizeInlineConfig(stage, options.projectRoot, plan.noInlineConfig);
+  const directiveFiles = directiveFilesOf(options.projectRoot, files, plan.noInlineConfig);
+  const { projectRoot, timeoutMs } = options;
+  const { results, residual } = await withEngineLint(
+    { plan, projectRoot, environment, timeoutMs },
+    (engineEnvironment) =>
+      lintUntilAccepted({
+        plan,
+        stage,
+        projectRoot,
+        runEslintCli,
+        environment: engineEnvironment,
+        timeoutMs,
+        neutralized: new Map([
+          ...inlineConfig.neutralized,
+          ...oxlintDirectiveLocations(directiveFiles),
+        ]),
+        directiveFiles,
+        treeFile,
+      }),
+  );
+  return mergeResults([...results, ...inlineConfig.results, ...residual]).map((result) => ({
+    ...result,
+    filePath: path.join(options.projectRoot, result.filePath),
+  }));
 }
 
 function planFor(options: LintEngineOptions, environment: Environment): OxlintPlan {
@@ -199,17 +211,6 @@ async function lintAttempt({
   });
 }
 
-function residualRun(
-  residualRuns: Map<string, Promise<LintResult[]>>,
-  residual: readonly ResidualGroup[],
-  start: () => Promise<LintResult[]>,
-): Promise<LintResult[]> {
-  const key = JSON.stringify(residual);
-  const running = residualRuns.get(key) ?? start();
-  residualRuns.set(key, running);
-  return running;
-}
-
 async function lintBesideResidual({
   residual,
   translation,
@@ -270,25 +271,4 @@ function bridgeRejectedRules(
   const rejected = rejectedRuleIds(String(fieldOf(error, 'message')), ruleNames);
   if (rejected.length === 0 || rejected.every((ruleId) => bridgedRules.has(ruleId))) throw error;
   for (const ruleId of rejected) bridgedRules.add(ruleId);
-}
-
-async function residualResults(
-  projectRoot: string,
-  residual: readonly ResidualGroup[],
-  runEslintCli: RunEslintCli,
-): Promise<LintResult[]> {
-  if (residual.length === 0) return [];
-  const files = [...new Set(residual.flatMap((group) => group.files))].sort();
-  const rules = [...new Set(residual.flatMap((group) => group.rules))].sort();
-  const results = lintResultsOf(
-    await runEslintCli(files, {
-      NITPICKER_DIFF_ESLINT_ONLY_RULES: JSON.stringify(rules),
-    }),
-  );
-  return results.map((result) => ({
-    filePath: path.relative(projectRoot, result.filePath).replaceAll('\\', '/'),
-    messages: result.messages.filter(
-      (message) => message.ruleId !== undefined && rules.includes(message.ruleId),
-    ),
-  }));
 }

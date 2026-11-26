@@ -1,13 +1,22 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mts';
 import { useProjectFixtures } from '../../../core/diff/git/test-support/projects/project-fixtures.mts';
 import { projectFilePaths } from '../project-files.mts';
 import { loadTree } from '../repository-listing.mts';
-import { SEEDED_TREE_VARIABLE, seedRepositoryTree, seededTree } from './seeded-trees.mts';
+import {
+  SEEDED_TREE_VARIABLE,
+  seedRepositoryTree,
+  seedTreesFrom,
+  seededTree,
+} from './seeded-trees.mts';
 
 const { temporaryRoot, outsideGit, gitProject, tracedGit } = useProjectFixtures();
+
+afterEach(() => {
+  seedTreesFrom(undefined);
+});
 
 const SOURCES = { 'src/a.ts': '', 'src/deep/b.ts': '', 'README.md': '' };
 
@@ -25,8 +34,9 @@ describe('seeded repository trees', () => {
     expect(seedRepositoryTree(path.join(root, 'src'), file)).toEqual({
       [SEEDED_TREE_VARIABLE]: file,
     });
-    expect(seededTree(root, { [SEEDED_TREE_VARIABLE]: file })).toEqual(loadTree(root));
-    expect(seededTree(path.join(root, 'src'), { [SEEDED_TREE_VARIABLE]: file })).toBeUndefined();
+    seedTreesFrom(file);
+    expect(seededTree(root)).toEqual(loadTree(root));
+    expect(seededTree(path.join(root, 'src'))).toBeUndefined();
   });
 
   it('seeds nothing outside a repository', () => {
@@ -42,7 +52,7 @@ describe('seeded repository trees', () => {
     const logFile = path.join(temporaryRoot(), 'git.log');
     writeFileSync(logFile, '');
     tracedGit(logFile);
-    vi.stubEnv(SEEDED_TREE_VARIABLE, file);
+    seedTreesFrom(file);
 
     const before = projectFilePaths(path.join(root, 'src'));
     writeFiles(root, { 'src/deep/c.ts': '' });
