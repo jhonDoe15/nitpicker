@@ -292,6 +292,7 @@
   "pmd/UnboundedReactiveFanOut": ["reliability", "performance", "async"],
   "pmd/UnboundedThreadPool": ["reliability", "async"],
   "pmd/UnboundedWait": ["reliability", "async"],
+  "pmd/EarlyWaitOnStartedWork": ["performance", "async"],
   "pmd/UnclosedInlineResource": ["reliability"],
   "pmd/UnconditionalIfStatement": ["simplification"],
   "pmd/UnguardedCyclicRecursion": ["bug", "reliability"],

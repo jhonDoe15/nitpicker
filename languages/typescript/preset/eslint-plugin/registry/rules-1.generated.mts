@@ -56,6 +56,7 @@ import { rule as ruleNoDroppedTestCallback } from '../test-assertions/dropped-ca
 import { rule as ruleNoDualWrite } from '../rules/writes/no-dual-write.mts';
 import { rule as ruleNoDynamicImportOfPath } from '../rules/urls/paths/no-dynamic-import-of-path.mts';
 import { rule as ruleNoEagerRelation } from '../rules/persistence/no-eager-relation.mts';
+import { rule as ruleNoEarlyWaitOnStartedWork } from '../rules/waterfalls/no-early-wait-on-started-work.mts';
 import { rule as ruleNoEmptyEverySignal } from '../rules/empty-lists/no-empty-every-signal.mts';
 import { rule as ruleNoErrorResponseWithoutStatus } from '../rules/handlers/error-status/no-error-response-without-status.mts';
 import { rule as ruleNoExpandingReplacementString } from '../rules/patterns/replacements/no-expanding-replacement-string.mts';
@@ -97,7 +98,6 @@ import { rule as ruleNoLookupPerElement } from '../rules/concurrency/reactive/no
 import { rule as ruleNoLoopInvariantCopy } from '../rules/repeated-work/copies/no-loop-invariant-copy.mts';
 import { rule as ruleNoLossyJsonStringify } from '../rules/json-values/no-lossy-json-stringify.mts';
 import { rule as ruleNoLossyUtf8Decode } from '../rules/decoding/no-lossy-utf8-decode.mts';
-import { rule as ruleNoMagicNumbers } from '../rules/wrapped/no-magic-numbers.mts';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -158,6 +158,7 @@ export const partRules = {
   'no-dual-write': ruleNoDualWrite,
   'no-dynamic-import-of-path': ruleNoDynamicImportOfPath,
   'no-eager-relation': ruleNoEagerRelation,
+  'no-early-wait-on-started-work': ruleNoEarlyWaitOnStartedWork,
   'no-empty-every-signal': ruleNoEmptyEverySignal,
   'no-error-response-without-status': ruleNoErrorResponseWithoutStatus,
   'no-expanding-replacement-string': ruleNoExpandingReplacementString,
@@ -199,5 +200,4 @@ export const partRules = {
   'no-loop-invariant-copy': ruleNoLoopInvariantCopy,
   'no-lossy-json-stringify': ruleNoLossyJsonStringify,
   'no-lossy-utf8-decode': ruleNoLossyUtf8Decode,
-  'no-magic-numbers': ruleNoMagicNumbers,
 };

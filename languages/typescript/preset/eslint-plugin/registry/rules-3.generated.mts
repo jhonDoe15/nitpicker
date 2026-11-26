@@ -1,3 +1,5 @@
+import { rule as ruleNoUnclearedTimeout } from '../rules/lifecycles/timers/no-uncleared-timeout.mts';
+import { rule as ruleNoUnclosedFileDescriptor } from '../rules/resources/descriptors/no-unclosed-file-descriptor.mts';
 import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mts';
 import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mts';
 import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mts';
@@ -56,11 +58,13 @@ import { rule as ruleReactFieldHasLabel } from '../rules/react/forms/react-field
 import { rule as ruleReactI18nextEscapeValue } from '../rules/react/i18n/react-i18next-escape-value.mts';
 import { rule as ruleReactMutationDropsFailure } from '../rules/react/mutations/react-mutation-drops-failure.mts';
 import { rule as ruleReactNoDirectDom } from '../rules/react/render/react-no-direct-dom.mts';
+import { rule as ruleReactNoDroppedEffectHandle } from '../rules/react/handles/react-no-dropped-effect-handle.mts';
 import { rule as ruleReactNoEagerInitialValue } from '../rules/react/initial-values/react-no-eager-initial-value.mts';
 import { rule as ruleReactNoEffectDataFetching } from '../rules/react/react-no-effect-data-fetching.mts';
 import { rule as ruleReactNoEffectDerivedState } from '../rules/react/react-no-effect-derived-state.mts';
 import { rule as ruleReactNoEffectEventHandling } from '../rules/react/render/react-no-effect-event-handling.mts';
 import { rule as ruleReactNoHardcodedColors } from '../rules/react/theme/react-no-hardcoded-colors.mts';
+import { rule as ruleReactNoHydrationMismatch } from '../rules/react/hydration/react-no-hydration-mismatch.mts';
 import { rule as ruleReactNoLeakedEffectResource } from '../rules/react/effects/react-no-leaked-effect-resource.mts';
 import { rule as ruleReactNoLiteralIdInListComponent } from '../rules/react/ids/react-no-literal-id-in-list-component.mts';
 import { rule as ruleReactNoRandomKey } from '../rules/react/render/react-no-random-key.mts';
@@ -94,12 +98,10 @@ import { rule as ruleStructuredCatchLogging } from '../rules/errors/structured-c
 import { rule as ruleTestMustUseProductionRuntime } from '../rules/test-runtime/assertions/test-must-use-production-runtime.mts';
 import { rule as ruleTestTsconfigPinsLibAndTypes } from '../rules/test-runtime/types/test-tsconfig-pins-lib-and-types.mts';
 import { rule as ruleTimeUnitMismatch } from '../rules/time/units/time-unit-mismatch.mts';
-import { rule as ruleTimeoutAbandonsOperation } from '../rules/async/timeout-abandons-operation.mts';
-import { rule as ruleUnboundedFanOut } from '../rules/concurrency/unbounded-fan-out.mts';
-import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reactive/unbounded-reactive-fan-out.mts';
-import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mts';
 
 export const partRules = {
+  'no-uncleared-timeout': ruleNoUnclearedTimeout,
+  'no-unclosed-file-descriptor': ruleNoUnclosedFileDescriptor,
   'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
   'no-uncollected-tests': ruleNoUncollectedTests,
   'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
@@ -158,11 +160,13 @@ export const partRules = {
   'react-i18next-escape-value': ruleReactI18nextEscapeValue,
   'react-mutation-drops-failure': ruleReactMutationDropsFailure,
   'react-no-direct-dom': ruleReactNoDirectDom,
+  'react-no-dropped-effect-handle': ruleReactNoDroppedEffectHandle,
   'react-no-eager-initial-value': ruleReactNoEagerInitialValue,
   'react-no-effect-data-fetching': ruleReactNoEffectDataFetching,
   'react-no-effect-derived-state': ruleReactNoEffectDerivedState,
   'react-no-effect-event-handling': ruleReactNoEffectEventHandling,
   'react-no-hardcoded-colors': ruleReactNoHardcodedColors,
+  'react-no-hydration-mismatch': ruleReactNoHydrationMismatch,
   'react-no-leaked-effect-resource': ruleReactNoLeakedEffectResource,
   'react-no-literal-id-in-list-component': ruleReactNoLiteralIdInListComponent,
   'react-no-random-key': ruleReactNoRandomKey,
@@ -196,8 +200,4 @@ export const partRules = {
   'test-must-use-production-runtime': ruleTestMustUseProductionRuntime,
   'test-tsconfig-pins-lib-and-types': ruleTestTsconfigPinsLibAndTypes,
   'time-unit-mismatch': ruleTimeUnitMismatch,
-  'timeout-abandons-operation': ruleTimeoutAbandonsOperation,
-  'unbounded-fan-out': ruleUnboundedFanOut,
-  'unbounded-reactive-fan-out': ruleUnboundedReactiveFanOut,
-  'untested-round-trip': ruleUntestedRoundTrip,
 };

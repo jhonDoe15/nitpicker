@@ -1104,6 +1104,32 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   collection (events, `actions$`, route parameters), which this rule leaves alone. Limits: a
   standalone `pipe()` composition and a `mergeMap` nested inside the projection are not followed,
   and without type information any name passed to `from()` counts as a collection.
+- Independent reads awaited one after another (`nitpicker/no-sequential-independent-reads`,
+  report-only): two or more `const x = await <read>` statements next to each other in one block, where
+  no later read uses an earlier result. A read is `fetch(url)` with no options or with an object
+  literal that has no `body` and a `method` of `GET` or `HEAD`, or a read of TypeORM, Prisma, Drizzle,
+  Kysely, Knex, Sequelize or MikroORM (`findMany`, `findUnique`, `count`, `find`, `findOne`,
+  `select().from()`, ...) in a project that depends on one. Start them together with
+  `Promise.all`. Not reported: a write, a guard (`if (!user) return`) or any other statement between
+  them, blocks inside a loop (`nitpicker/no-io-in-loop`) or a transaction callback, a client named like
+  a transaction (`tx`, `trx`, `manager`, `queryRunner`, a repository taken from a transaction scope), a
+  locking read (`.for('update')`, `.lock()`), and a read whose model, chain or variable names an
+  authorization or session check (one of the words `auth`, `authorization`, `authorize`, `permission`,
+  `session`, `membership`, `role`, `access`, `owner`, `ownership`, `allowed`, `policy`, `credential`,
+  `token`, `verify`, `guard` or `acl`), since its result may decide whether the next read runs.
+- Waits placed before independent work (`nitpicker/no-early-wait-on-started-work`, report-only, a broad
+  rule, needs type information): `const result = await task;` where `task` is a `Promise` held in a
+  `const` of the same block initialized by a call or `new` (work started earlier), and `result` is first
+  read three or more statements later, while the statements in between do work, do not mention `task`
+  and do not `return`, `throw`, `break` or `continue`. Work is a call other than a `get*`, `is*` or `has*`
+  accessor, `join`, a logging call (`log`, `trace`, `debug`, `info`, `warn`, `error`) or a call on
+  `console`, `logger`, `log`, `Math` or `JSON`. While the caller waits nothing else runs; move the wait to
+  where the result is first used. Not reported: an `await` of a call (`await load()` starts the work
+  itself), a thenable that is not a `Promise` (a query builder), a wait in a `try` block, a task whose
+  name has a word of a synchronization point (`lock`, `mutex`, `barrier`, `ready`, `init`, `shutdown`,
+  `flush`, `close`, `drain`, `limit`, `sleep`, `delay`, `wait`, `done`, `exit`, `end`, `finish`,
+  `complete`, `settled`, `stop` and their past forms) and a wait whose value is never read. Java has the same check as
+  `pmd/EarlyWaitOnStartedWork`.
 - Per-item I/O (`nitpicker/no-io-in-loop`): a database query or a remote request once per item of a
   loop (`for await` included) or an iteration callback (`map`, `forEach` of an array, a `Map` or a
   `Set`, `flatMap`, `filter`, `reduce`, `reduceRight`, `some`, `every`, `find`, `findIndex`,

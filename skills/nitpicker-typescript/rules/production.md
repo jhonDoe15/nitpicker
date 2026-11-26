@@ -269,6 +269,10 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `Promise.all(items.map(...))`. For a remote API without a batch endpoint use a limiter or fixed-size
   chunks. Paging loops, retries, a call that takes a whole chunk and broker publishes pass
   (`nitpicker/no-io-in-loop`).
+- Start reads that do not use each other's results together: `const [user, orders] = await
+  Promise.all([getUser(id), listOrders(id)])`, not two awaits in a row (`nitpicker/no-sequential-independent-reads`).
+- Await a promise started earlier where its result is first used, after the independent work, so the two
+  overlap (`nitpicker/no-early-wait-on-started-work`).
 - Don't copy an accumulator array with `concat` on every step of `reduce` or a loop: push into an array
   created before the loop, or build the result with `flatMap` (`nitpicker/no-accumulator-concat`).
 - Load a lazy TypeORM relation with the query that reads the items (`relations: { customer: true }` or

@@ -9,6 +9,7 @@ export const nitpickerReactRuleIds = [
   'nitpicker/react-no-eager-initial-value',
   'nitpicker/react-no-effect-event-handling',
   'nitpicker/react-no-leaked-effect-resource',
+  'nitpicker/react-no-dropped-effect-handle',
   'nitpicker/react-no-random-key',
   'nitpicker/react-no-unstable-memo-props',
   'nitpicker/react-no-unstable-selector-result',
@@ -17,4 +18,5 @@ export const nitpickerReactRuleIds = [
   'nitpicker/react-pure-state-updater',
   'nitpicker/react-no-uncached-use-promise',
   'nitpicker/react-no-render-side-effect',
+  'nitpicker/react-no-hydration-mismatch',
 ];
