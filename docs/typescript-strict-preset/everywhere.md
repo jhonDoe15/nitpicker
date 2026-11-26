@@ -2097,6 +2097,14 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   case" matches `case`). Not reported: other text, a function that also calls something named for stripping,
   masking, blanking, tokenizing, lexing or parsing, and keywords that are not between word boundaries. The Java
   preset has the same rule as `pmd/KeywordRegexOverSource`.
+- A tree-sitter field name must exist in the grammar (`nitpicker/no-unknown-tree-sitter-field`, production files).
+  Reported: in a module that imports `web-tree-sitter` or `tree-sitter`, a constant field name in
+  `childForFieldName("x")`, `childrenForFieldName("x")` or `cursor.currentFieldName === "x"` that no node type of the
+  grammar defines. The grammar comes from the `src/node-types.json` of the grammar package (`tree-sitter-java`, found
+  through the module's imports, a `tree-sitter-java.wasm` name or the nearest `package.json`) resolved from the linted
+  file. Inside `node.type === "t"` (an `if`, a ternary or `&&`) the field is checked against the fields of type `t`
+  only. A field name that does not exist is not an error in the API, it is an empty answer. Not reported: field names
+  from variables, modules for which no `node-types.json` can be found.
 - A finished child process is not judged by text on its standard error (`nitpicker/no-stderr-as-failure`,
   production files). Reported: an `if` or a ternary whose test (alone, or as one side of `||`) checks that the
   standard error is not empty (`stderr`, `stderr.length`, `stderr.length > 0`, `stderr !== ''`, also through

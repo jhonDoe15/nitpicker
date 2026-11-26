@@ -72,6 +72,7 @@ export const productionGuardEntries: Record<string, Linter.RuleEntry> = {
   'nitpicker/require-moved-tsconfig-type-roots': 'error',
   'nitpicker/no-single-folder-config-lookup': 'error',
   'nitpicker/no-keyword-regex-over-source': 'error',
+  'nitpicker/no-unknown-tree-sitter-field': 'error',
   'nitpicker/no-stderr-as-failure': 'error',
   'nitpicker/no-status-only-spawn-check': 'error',
   'nitpicker/no-buffered-growing-output': 'error',

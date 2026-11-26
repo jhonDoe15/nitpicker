@@ -5,6 +5,7 @@ import { rule as ruleNoUnionOrderDependence } from '../rules/union-order/no-unio
 import { rule as ruleNoUnisolatedJobLoop } from '../rules/jobs/no-unisolated-job-loop.mts';
 import { rule as ruleNoUnknownInDomain } from '../rules/boundaries/no-unknown-in-domain.mts';
 import { rule as ruleNoUnknownMainFolder } from '../rules/guards/no-unknown-main-folder.mts';
+import { rule as ruleNoUnknownTreeSitterField } from '../rules/tree-sitter/no-unknown-tree-sitter-field.mts';
 import { rule as ruleNoUnmappedException } from '../rules/errors/unmapped/no-unmapped-exception.mts';
 import { rule as ruleNoUnorderedQuery } from '../rules/queries/order/no-unordered-query.mts';
 import { rule as ruleNoUnownedAsyncAssertion } from '../test-assertions/unowned-async/no-unowned-async-assertion.mts';
@@ -90,6 +91,7 @@ export const partRules = {
   'no-unisolated-job-loop': ruleNoUnisolatedJobLoop,
   'no-unknown-in-domain': ruleNoUnknownInDomain,
   'no-unknown-main-folder': ruleNoUnknownMainFolder,
+  'no-unknown-tree-sitter-field': ruleNoUnknownTreeSitterField,
   'no-unmapped-exception': ruleNoUnmappedException,
   'no-unordered-query': ruleNoUnorderedQuery,
   'no-unowned-async-assertion': ruleNoUnownedAsyncAssertion,

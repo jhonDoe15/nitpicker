@@ -468,6 +468,11 @@ higher up gets the default.
 All-or-nothing batch: `nitpicker/no-all-or-nothing-batch` (production source, in `eslint-lint`) reports a collected
 `Promise.all(files.map(callback))` over file paths whose callback reads or parses a file with no per-input `try` or
 `.catch`. One bad file rejects the call and discards the finished results of the others.
+Unknown tree-sitter field: `nitpicker/no-unknown-tree-sitter-field` (production source, in `eslint-lint`) reports a
+constant field name passed to `childForFieldName` or `childrenForFieldName`, or compared with `currentFieldName`,
+in a module that uses `web-tree-sitter` or `tree-sitter`, when the `node-types.json` of the grammar package defines no
+such field (for the node type, when a `node.type === '...'` check on the same node encloses the lookup). Nothing is
+reported when no grammar's `node-types.json` can be found.
 
 Standard error as failure: `nitpicker/no-stderr-as-failure` (production source, in `eslint-lint`) and
 `pmd/StderrAsFailure` (Java, main sources) report a condition that fails a finished subprocess because its standard
