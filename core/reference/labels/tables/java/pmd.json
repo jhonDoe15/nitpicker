@@ -254,6 +254,7 @@
   "pmd/SpringUnusedContext": ["tests", "performance", "spring"],
   "pmd/SpringValidRequestBody": ["bug", "spring"],
   "pmd/SpringValueSecretDefault": ["security", "spring"],
+  "pmd/SpringWriteAfterCommitDropped": ["bug", "spring", "persistence"],
   "pmd/StaticForwardingWrapper": ["simplification"],
   "pmd/StaticMockOfProjectType": ["tests"],
   "pmd/StderrAsFailure": ["bug"],

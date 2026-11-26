@@ -25,6 +25,7 @@ const KOTLIN_HALF_NOT_BUILT = 'the Kotlin half is not built yet';
 const SKIPPED = {
   SpringAnnotationBeforeProxy: KOTLIN_HALF_NOT_BUILT,
   SpringLockReleasedBeforeCommit: KOTLIN_HALF_NOT_BUILT,
+  SpringWriteAfterCommitDropped: KOTLIN_HALF_NOT_BUILT,
   SpringQueryConcatenation:
     'kotlin-source/SqlStringBuilding flags SQL built from runtime values on the same calls',
 };

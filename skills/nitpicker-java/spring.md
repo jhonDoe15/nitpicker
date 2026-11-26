@@ -73,6 +73,9 @@ class, and annotations of your own that carry one of these or that an `@Aspect` 
 - No `@Transactional`, `@Async`, cache, `@Retryable` or `@PreAuthorize` on `@PostConstruct`,
   `afterPropertiesSet` or a `@Bean` `initMethod`: the proxy does not exist yet. Use
   `@EventListener(ApplicationReadyEvent.class)`.
+- A `@TransactionalEventListener` (after commit) that writes through JPA or JDBC needs
+  `@Transactional(propagation = Propagation.REQUIRES_NEW)`, the one place `REQUIRES_NEW` fits;
+  otherwise the write is never committed.
 - Write caches after the commit (`TransactionSynchronization.afterCommit`, a
   `@TransactionalEventListener`, or the caller), never inside a writing transaction: no Spring
   `Cache.put`/`evict`, `@CachePut`, Caffeine or Guava `put`/`invalidate`, or a map field filled with a

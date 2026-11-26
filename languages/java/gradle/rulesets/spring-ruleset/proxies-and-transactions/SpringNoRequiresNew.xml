@@ -3,6 +3,7 @@
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+  [not(../Annotation[pmd-java:typeIs('org.springframework.transaction.event.TransactionalEventListener')])]
   /AnnotationMemberList/MemberValuePair[@Name = 'propagation'][.//*[@Name = 'REQUIRES_NEW']]
 ]]></value></property></properties>
   </rule>

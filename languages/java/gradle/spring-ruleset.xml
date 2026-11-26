@@ -1178,6 +1178,7 @@ return
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+  [not(../Annotation[pmd-java:typeIs('org.springframework.transaction.event.TransactionalEventListener')])]
   /AnnotationMemberList/MemberValuePair[@Name = 'propagation'][.//*[@Name = 'REQUIRES_NEW']]
 ]]></value></property></properties>
   </rule>
@@ -1519,6 +1520,28 @@ return
   //((MethodCall | MethodReference)[$write(.)] | MethodCall[$queryLike(.)]
     | MethodCall[matches(@MethodName, '^set\p{Lu}')][*[1][self::VariableAccess][$loaded(.)]]
     | AssignmentExpression[*[1][self::FieldAccess][*[1][self::VariableAccess][$loaded(.)]]])
+]]></value></property></properties>
+  </rule>
+  <rule name="SpringWriteAfterCommitDropped" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Move this write into a new transaction, @Transactional(propagation = Propagation.REQUIRES_NEW) on the listener, or listen with phase = TransactionPhase.BEFORE_COMMIT: an after-commit @TransactionalEventListener still joins the finished transaction, so the write is never committed and no error is raised.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodDeclaration
+  [ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.event.TransactionalEventListener')]
+     [not(AnnotationMemberList/MemberValuePair[@Name = 'phase']//*[@Name = 'BEFORE_COMMIT'])]]
+  [not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')][AnnotationMemberList/MemberValuePair[@Name = 'propagation']//*[@Name = ('REQUIRES_NEW', 'NOT_SUPPORTED')]])]
+  [ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')]
+   or not(ancestor::ClassDeclaration[1]/ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')][AnnotationMemberList/MemberValuePair[@Name = 'propagation']//*[@Name = ('REQUIRES_NEW', 'NOT_SUPPORTED')]])]
+  [not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.scheduling.annotation.Async')])]
+  [not(ancestor::ClassDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.scheduling.annotation.Async')]])]
+  /Block//MethodCall[not(ancestor::LambdaExpression or ancestor::AnonymousClassDeclaration)]
+    [(*[1][pmd-java:typeIs('org.springframework.data.jpa.repository.JpaRepository')]
+        and matches(@MethodName, '^(save|delete|insert|update|remove)([A-Z0-9_]|$)'))
+     or (*[1][pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager')]
+        and @MethodName = ('persist', 'merge', 'remove'))
+     or (*[1][pmd-java:typeIs('org.springframework.jdbc.core.JdbcOperations')
+              or pmd-java:typeIs('org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations')]
+        and @MethodName = ('update', 'batchUpdate'))]
 ]]></value></property></properties>
   </rule>
   <rule name="SpringDataBatchOfOne" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
