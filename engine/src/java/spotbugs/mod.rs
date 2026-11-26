@@ -5,6 +5,7 @@ mod constructors;
 mod expose;
 mod fields;
 mod handlers;
+mod held;
 mod flow;
 mod known;
 mod mutable;
@@ -42,6 +43,8 @@ pub struct Context<'a> {
     out: RefCell<Vec<Finding>>,
     /// The names the compiler makes up for lambdas and anonymous classes, worked out once.
     compiled: std::cell::OnceCell<crate::java::javac::Names<'a>>,
+    /// How many stores the file makes into each field, worked out once.
+    pub store_counts: std::cell::OnceCell<HashMap<(String, String), usize>>,
 }
 
 impl<'a> Context<'a> {
@@ -165,7 +168,7 @@ impl FileRule for SpotBugs {
             }
         });
         let classes = declared.iter().filter_map(|node| Some((scope.names.get(&node.id())?.clone(), *node))).collect();
-        let context = Context { resolver, file, classes, waiting: RefCell::new(Vec::new()), stores: RefCell::new(None), literals: &project.literals, volatiles: &project.volatiles, numbers: &project.numbers, line_starts, selected, out: RefCell::new(Vec::new()), compiled: std::cell::OnceCell::new() };
+        let context = Context { resolver, file, classes, waiting: RefCell::new(Vec::new()), stores: RefCell::new(None), literals: &project.literals, volatiles: &project.volatiles, numbers: &project.numbers, line_starts, selected, out: RefCell::new(Vec::new()), compiled: std::cell::OnceCell::new(), store_counts: std::cell::OnceCell::new() };
         for node in declared {
             for detector in DETECTORS {
                 detector(&context, node);
